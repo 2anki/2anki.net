@@ -387,6 +387,7 @@ function UploadForm({
     useDropboxChooser(FORMATS);
   const { openPicker, isConfigured: isGoogleDriveConfigured } =
     useGooglePicker();
+  const driveButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleDayPass = async () => {
     setDayPassError(null);
@@ -653,6 +654,11 @@ function UploadForm({
   const handleGoogleDriveClick = async () => {
     setDriveError(null);
     setDrivePending(true);
+    // The Google sign-in pop-up takes over the window; anchor the page at
+    // the top first so returning from it (or the picker itself) doesn't
+    // leave the user scrolled to wherever the browser's default focus
+    // restoration happens to land.
+    globalThis.scrollTo?.({ top: 0, behavior: 'auto' });
     try {
       const outcome = await openPicker();
       if (outcome.kind === 'cancelled') return;
@@ -668,6 +674,19 @@ function UploadForm({
       setDrivePending(false);
     }
   };
+
+  const wasDrivePendingRef = useRef(false);
+  useEffect(() => {
+    // Runs after the DOM commit, once the button is re-enabled — focusing
+    // it any earlier (e.g. right after setDrivePending(false)) would be a
+    // no-op, since a disabled element can't take focus. preventScroll:
+    // handleGoogleDriveClick already anchored the page at the top, so a
+    // plain focus() here would just scroll it into view a second time.
+    if (wasDrivePendingRef.current && !drivePending) {
+      driveButtonRef.current?.focus({ preventScroll: true });
+    }
+    wasDrivePendingRef.current = drivePending;
+  }, [drivePending]);
 
   const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
@@ -1768,6 +1787,7 @@ function UploadForm({
               {t('upload.form.driveHint')}
             </span>
             <button
+              ref={driveButtonRef}
               type="button"
               className={formStyles.chooseButton}
               onClick={handleGoogleDriveClick}

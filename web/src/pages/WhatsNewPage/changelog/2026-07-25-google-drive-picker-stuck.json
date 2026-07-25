@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-25-google-drive-picker-stuck",
+  "date": "2026-07-25",
+  "type": "fix",
+  "title": "The Google Drive picker no longer gets stuck open after a blocked or cancelled sign-in pop-up"
+}
