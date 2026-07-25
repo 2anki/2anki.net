@@ -101,6 +101,30 @@ describe('usePerformanceMetrics', () => {
     expect(result.current.error?.message).toBe('malformed response body');
   });
 
+  test('aborts and surfaces a timeout error when the request hangs', async () => {
+    vi.useFakeTimers();
+    try {
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(
+        (_url: string, init?: { signal?: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError'))
+            );
+          })
+      );
+
+      const { result } = renderHook(() => usePerformanceMetrics(), {
+        wrapper: wrap(noRetryClient()),
+      });
+
+      await vi.advanceTimersByTimeAsync(20_000);
+      await vi.waitFor(() => expect(result.current.isError).toBe(true));
+      expect(result.current.error?.message).toBe('request timed out after 20s');
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 10_000);
+
   test('surfaces status text on a non-ok response', async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false,
