@@ -162,6 +162,63 @@ describe('useGooglePicker', () => {
       );
     });
 
+    it('times out and clears the in-flight guard when the auth callback never fires (blocked or closed pop-up)', async () => {
+      vi.useFakeTimers();
+      try {
+        (window as unknown as { gapi: unknown }).gapi = {
+          load: (_lib: string, cb: () => void) => cb(),
+        };
+        (window as unknown as { google: GoogleGlobal }).google = {
+          picker: {
+            PickerBuilder: function PickerBuilder() {
+              return buildBuilder(() => undefined).builder;
+            },
+            ViewId: { DOCS: 'DOCS' },
+            Action: { PICKED: 'picked', CANCEL: 'cancel', LOADED: 'loaded' },
+            DocsView: function DocsView() {
+              return { setIncludeFolders: vi.fn().mockReturnThis() };
+            },
+          },
+          accounts: {
+            oauth2: {
+              initTokenClient: () => ({
+                callback: () => undefined,
+                requestAccessToken: () => undefined,
+              }),
+            },
+          },
+        };
+
+        const { result } = renderHook(() => useGooglePicker());
+        const pending = result.current.openPicker().catch((e) => e);
+
+        await vi.advanceTimersByTimeAsync(60_000);
+        const err = await pending;
+
+        expect(err).toBeInstanceOf(Error);
+        expect((err as Error).message).toMatch(/pop-up/i);
+
+        // The guard must have reset — a fresh call should not immediately
+        // reject with "already open"; it should be freshly pending instead.
+        let secondSettled = false;
+        let secondError: unknown;
+        result.current.openPicker().then(
+          () => {
+            secondSettled = true;
+          },
+          (e) => {
+            secondSettled = true;
+            secondError = e;
+          }
+        );
+        await vi.advanceTimersByTimeAsync(0);
+        expect(secondSettled).toBe(false);
+        expect(secondError).toBeUndefined();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('calls setAppId with the project number derived from the client id', async () => {
       process.env.REACT_APP_GOOGLE_CLIENT_ID =
         '806855830059-abc123def.apps.googleusercontent.com';

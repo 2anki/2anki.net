@@ -150,10 +150,10 @@ const DECK_RESULT_SHAPE = {
   filename: z.string().nullable().optional(),
   downloadUrl: z.string().optional(),
   deckCount: z.number().optional(),
-  decks: z.array(z.record(z.unknown())).optional(),
-  sampleCards: z.array(z.record(z.unknown())).optional(),
-  applied: z.record(z.unknown()).optional(),
-  ignored: z.array(z.record(z.unknown())).optional(),
+  decks: z.array(z.record(z.string(), z.unknown())).optional(),
+  sampleCards: z.array(z.record(z.string(), z.unknown())).optional(),
+  applied: z.record(z.string(), z.unknown()).optional(),
+  ignored: z.array(z.record(z.string(), z.unknown())).optional(),
   summary: z.string().optional(),
   message: z.string().optional(),
 };
@@ -178,7 +178,7 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     {
       title: 'List my decks',
       outputSchema: {
-        decks: z.array(z.record(z.unknown())),
+        decks: z.array(z.record(z.string(), z.unknown())),
         total: z.number(),
         note: z.string().optional(),
       },
@@ -223,8 +223,8 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
         key: z.string().optional(),
         cardCount: z.number().nullable().optional(),
         deckCount: z.number().optional(),
-        decks: z.array(z.record(z.unknown())).optional(),
-        sampleCards: z.array(z.record(z.unknown())).optional(),
+        decks: z.array(z.record(z.string(), z.unknown())).optional(),
+        sampleCards: z.array(z.record(z.string(), z.unknown())).optional(),
         note: z.string().optional(),
       },
       annotations: {
@@ -491,8 +491,8 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     {
       title: 'Deck capabilities',
       outputSchema: {
-        noteTypes: z.array(z.record(z.unknown())),
-        options: z.array(z.record(z.unknown())),
+        noteTypes: z.array(z.record(z.string(), z.unknown())),
+        options: z.array(z.record(z.string(), z.unknown())),
       },
       annotations: {
         readOnlyHint: true,
@@ -522,7 +522,7 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     {
       title: 'Photo to flashcards',
       outputSchema: {
-        cards: z.array(z.record(z.unknown())),
+        cards: z.array(z.record(z.string(), z.unknown())),
         count: z.number(),
         summary: z.string(),
       },

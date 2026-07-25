@@ -137,6 +137,93 @@ describe('UploadForm', () => {
   });
 });
 
+describe('UploadForm Google Drive picker interaction', () => {
+  const previousClient = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+  const previousKey = process.env.REACT_APP_GOOGLE_API_KEY;
+
+  type GoogleGlobal = {
+    picker?: unknown;
+    accounts?: { oauth2?: unknown };
+  };
+
+  function stubGoogleDriveCancel() {
+    (window as unknown as { gapi: unknown }).gapi = {
+      load: (_lib: string, cb: () => void) => cb(),
+    };
+    (window as unknown as { google: GoogleGlobal }).google = {
+      picker: {
+        PickerBuilder: function PickerBuilder() {
+          const builder: Record<string, unknown> = {};
+          builder.setAppId = vi.fn().mockReturnValue(builder);
+          builder.setOAuthToken = vi.fn().mockReturnValue(builder);
+          builder.setDeveloperKey = vi.fn().mockReturnValue(builder);
+          builder.addView = vi.fn().mockReturnValue(builder);
+          builder.setCallback = vi.fn().mockImplementation((cb) => {
+            queueMicrotask(() => cb({ action: 'cancel' }));
+            return builder;
+          });
+          builder.build = vi.fn().mockReturnValue({ setVisible: vi.fn() });
+          return builder;
+        },
+        ViewId: { DOCS: 'DOCS' },
+        Action: { PICKED: 'picked', CANCEL: 'cancel', LOADED: 'loaded' },
+        DocsView: function DocsView() {
+          return { setIncludeFolders: vi.fn().mockReturnThis() };
+        },
+      },
+      accounts: {
+        oauth2: {
+          initTokenClient: ({
+            callback,
+          }: {
+            callback: (resp: { access_token?: string }) => void;
+          }) => ({
+            callback,
+            requestAccessToken: () => callback({ access_token: 'tok' }),
+          }),
+        },
+      },
+    };
+  }
+
+  beforeEach(() => {
+    process.env.REACT_APP_GOOGLE_CLIENT_ID = 'test-client';
+    process.env.REACT_APP_GOOGLE_API_KEY = 'AIza' + 'fake-test-key';
+  });
+
+  afterEach(() => {
+    process.env.REACT_APP_GOOGLE_CLIENT_ID = previousClient;
+    process.env.REACT_APP_GOOGLE_API_KEY = previousKey;
+    delete (window as unknown as { gapi?: unknown }).gapi;
+    delete (window as unknown as { google?: GoogleGlobal }).google;
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('scrolls to the top before opening the picker and restores focus to the button once it settles', async () => {
+    stubGoogleDriveCancel();
+    const scrollToSpy = vi.fn();
+    vi.stubGlobal('scrollTo', scrollToSpy);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+
+    fireEvent.click(
+      container.querySelector('button[aria-label="Google Drive"]')!
+    );
+    const driveButton = await screen.findByRole('button', {
+      name: 'Choose from Google Drive',
+    });
+
+    fireEvent.click(driveButton);
+
+    expect(scrollToSpy).toHaveBeenCalledWith({ top: 0, behavior: 'auto' });
+
+    await waitFor(() => expect(driveButton).toHaveFocus());
+  });
+});
+
 describe('UploadForm analytics events', () => {
   beforeEach(() => {
     (globalThis as AnalyticsGlobals).gtag = vi.fn();
