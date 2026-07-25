@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-24-register-network-error-message",
+  "date": "2026-07-24",
+  "type": "fix",
+  "title": "A network hiccup during sign up shows a real error instead of a misleading one"
+}

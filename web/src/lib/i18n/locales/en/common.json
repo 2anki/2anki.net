@@ -251,8 +251,7 @@
       "creating": "Creating account…",
       "create": "Create account",
       "loginQuestion": "Have an account?",
-      "errorGeneric": "Something went wrong on our end. Try again, or email support@2anki.net if it keeps happening.",
-      "errorCreate": "Couldn't create your account. If you already have one, log in instead."
+      "errorGeneric": "Something went wrong on our end. Try again, or email support@2anki.net if it keeps happening."
     },
     "forgot": {
       "title": "Reset your password",

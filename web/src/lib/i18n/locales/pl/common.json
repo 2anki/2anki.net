@@ -255,8 +255,7 @@
       "creating": "Tworzenie konta…",
       "create": "Utwórz konto",
       "loginQuestion": "Masz już konto?",
-      "errorGeneric": "Coś poszło nie tak po naszej stronie. Spróbuj ponownie albo napisz na support@2anki.net, jeśli to się powtarza.",
-      "errorCreate": "Nie udało się utworzyć konta. Jeśli już je masz, zaloguj się zamiast tego."
+      "errorGeneric": "Coś poszło nie tak po naszej stronie. Spróbuj ponownie albo napisz na support@2anki.net, jeśli to się powtarza."
     },
     "forgot": {
       "title": "Zresetuj hasło",

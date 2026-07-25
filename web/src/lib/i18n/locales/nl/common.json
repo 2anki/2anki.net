@@ -251,8 +251,7 @@
       "creating": "Account aanmaken…",
       "create": "Account aanmaken",
       "loginQuestion": "Heb je een account?",
-      "errorGeneric": "Er is iets misgegaan aan onze kant. Probeer het opnieuw, of mail support@2anki.net als het blijft gebeuren.",
-      "errorCreate": "Kon je account niet aanmaken. Als je er al een hebt, log dan in."
+      "errorGeneric": "Er is iets misgegaan aan onze kant. Probeer het opnieuw, of mail support@2anki.net als het blijft gebeuren."
     },
     "forgot": {
       "title": "Wachtwoord opnieuw instellen",

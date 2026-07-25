@@ -251,8 +251,7 @@
       "creating": "Konto wird erstellt…",
       "create": "Konto erstellen",
       "loginQuestion": "Hast du ein Konto?",
-      "errorGeneric": "Bei uns ist etwas schiefgelaufen. Versuch es erneut oder schreib an support@2anki.net, falls es weiterhin passiert.",
-      "errorCreate": "Dein Konto konnte nicht erstellt werden. Falls du bereits eins hast, melde dich stattdessen an."
+      "errorGeneric": "Bei uns ist etwas schiefgelaufen. Versuch es erneut oder schreib an support@2anki.net, falls es weiterhin passiert."
     },
     "forgot": {
       "title": "Passwort zurücksetzen",
