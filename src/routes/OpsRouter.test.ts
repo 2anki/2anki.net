@@ -408,43 +408,6 @@ describe('OpsRouter /api/ops/send-abandoned-checkout-recovery', () => {
   });
 });
 
-describe('OpsRouter /api/ops/commands/create-semester-pass', () => {
-  it('returns 404 for non-owner callers', async () => {
-    const { url, close } = await startServer(false);
-    try {
-      const response = await fetch(
-        `${url}/api/ops/commands/create-semester-pass`,
-        { method: 'POST' }
-      );
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
-  });
-
-  it('returns 200 with the provisioned product/price for the ops owner', async () => {
-    const { url, close } = await startServer(true);
-    try {
-      const response = await fetch(
-        `${url}/api/ops/commands/create-semester-pass`,
-        { method: 'POST' }
-      );
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body).toEqual(
-        expect.objectContaining({
-          stripe_product_id: expect.any(String),
-          stripe_price_id: expect.any(String),
-          created_product: expect.any(Boolean),
-          created_price: expect.any(Boolean),
-        })
-      );
-    } finally {
-      await close();
-    }
-  });
-});
-
 describe('OpsRouter /api/ops/upload-funnel', () => {
   it('returns 404 for non-owner callers', async () => {
     const { url, close } = await startServer(false);

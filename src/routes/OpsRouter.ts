@@ -68,9 +68,6 @@ import { FeatureFlagsRepository } from '../data_layer/FeatureFlagsRepository';
 import { ListFeatureFlagsUseCase } from '../usecases/ops/ListFeatureFlagsUseCase';
 import { SetFeatureFlagUseCase } from '../usecases/ops/SetFeatureFlagUseCase';
 import { getStripe } from '../lib/integrations/stripe';
-import { CreateDeveloperTiersUseCase } from '../usecases/ops/CreateDeveloperTiersUseCase';
-import { CreateSemesterPassUseCase } from '../usecases/ops/CreateSemesterPassUseCase';
-import DeveloperTiersRepository from '../data_layer/DeveloperTiersRepository';
 import { OrphanedSubscriptionsRepository } from '../data_layer/OrphanedSubscriptionsRepository';
 import { SubscriptionRecoveryNotificationsRepository } from '../data_layer/SubscriptionRecoveryNotificationsRepository';
 import { GetOrphanedSubscriptionsUseCase } from '../usecases/ops/GetOrphanedSubscriptionsUseCase';
@@ -198,12 +195,7 @@ const OpsRouter = () => {
     new GrantDeveloperAccessUseCase(new UsersRepository(database)),
     new GetCancelFunnelUseCase(
       new CancelFunnelService({ eventsRepo: new EventsRepository(database) })
-    ),
-    new CreateDeveloperTiersUseCase(
-      getStripe(),
-      new DeveloperTiersRepository(database)
-    ),
-    new CreateSemesterPassUseCase(getStripe())
+    )
   );
 
   /**
@@ -622,55 +614,6 @@ const OpsRouter = () => {
    */
   router.get('/api/ops/cancel-funnel', RequireOpsAccess, (req, res) =>
     controller.getCancelFunnel(req, res)
-  );
-
-  /**
-   * @swagger
-   * /api/ops/commands/create-developer-tiers:
-   *   post:
-   *     summary: Create the Stripe developer-tier products and prices
-   *     description: |
-   *       Internal endpoint locked to the ops owner. Idempotently ensures the Starter and Growth
-   *       developer-tier products and monthly prices exist in Stripe (found by product metadata),
-   *       and writes the developer_tiers rows that gate API-key volume. Safe to re-run.
-   *       Returns 404 for everyone else.
-   *     tags: [Ops]
-   *     responses:
-   *       200:
-   *         description: Provisioned tiers with created/found flags
-   *       404:
-   *         description: Not the ops owner
-   */
-  router.post(
-    '/api/ops/commands/create-developer-tiers',
-    RequireOpsAccess,
-    (req, res) => controller.createDeveloperTiers(req, res)
-  );
-
-  /**
-   * @swagger
-   * /api/ops/commands/create-semester-pass:
-   *   post:
-   *     summary: Provision the Stripe Semester Pass product and one-time price
-   *     description: |
-   *       Internal endpoint locked to the ops owner. Idempotently ensures a single
-   *       "2anki Semester Pass" Stripe product (found by product metadata) and one
-   *       one-time $14.99 USD price (no recurring interval) exist. Safe to re-run.
-   *       This only provisions the Stripe product/price — it does NOT enable any
-   *       checkout path. A human must copy the returned stripe_price_id into the
-   *       PASS_4MO_PRICE_ID env var before any purchase flow can reference it, and
-   *       no such flow exists yet. Returns 404 for everyone else.
-   *     tags: [Ops]
-   *     responses:
-   *       200:
-   *         description: The provisioned product/price ids with created/found flags
-   *       404:
-   *         description: Not the ops owner
-   */
-  router.post(
-    '/api/ops/commands/create-semester-pass',
-    RequireOpsAccess,
-    (req, res) => controller.createSemesterPass(req, res)
   );
 
   /**

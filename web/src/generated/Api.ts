@@ -1315,6 +1315,72 @@ export class Api<
       ...params,
     });
   /**
+   * @description Public endpoint. Returns a paginated, newest-first page of decks the owner listed in the public library. Indexable — unlike the other share endpoints, this response does NOT carry X-Robots-Tag&#58; noindex.
+   *
+   * @tags Deck Shares
+   * @name SharesPublicList
+   * @summary List public shared decks
+   * @request GET:/api/shares/public
+   * @secure
+   */
+  sharesPublicList = (
+    query?: {
+      /** Zero-based offset to resume from; omit for the first page. */
+      cursor?: number;
+      /** Number of decks per page (1–100, default 24). */
+      page_size?: number;
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<void, void>({
+      path: `/api/shares/public`,
+      method: "GET",
+      query: query,
+      secure: true,
+      ...params,
+    });
+  /**
+   * @description Owner-only. Setting is_public to true requires a non-empty title and records the deck's card count. Setting it to false removes the deck from the public library; the private share link keeps working either way.
+   *
+   * @tags Deck Shares
+   * @name SharesPartialUpdate
+   * @summary Publish or unpublish a share to the public library
+   * @request PATCH:/api/shares/{token}
+   * @secure
+   */
+  sharesPartialUpdate = (
+    token: string,
+    data: {
+      is_public: boolean;
+      title?: string;
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<void, void>({
+      path: `/api/shares/${token}`,
+      method: "PATCH",
+      body: data,
+      secure: true,
+      type: ContentType.Json,
+      ...params,
+    });
+  /**
+   * @description Sets `revoked_at = NOW()` on a share row the caller owns. Idempotent — repeated calls or unknown tokens still return 204.
+   *
+   * @tags Deck Shares
+   * @name SharesDelete
+   * @summary Revoke a share link
+   * @request DELETE:/api/shares/{token}
+   * @secure
+   */
+  sharesDelete = (token: string, params: RequestParams = {}) =>
+    this.request<void, void>({
+      path: `/api/shares/${token}`,
+      method: "DELETE",
+      secure: true,
+      ...params,
+    });
+  /**
    * @description Public endpoint. Returns total card count and deck list for the shared deck. Rate-limited per IP. Responses carry `X-Robots-Tag&#58; noindex`.
    *
    * @tags Deck Shares
@@ -1391,22 +1457,6 @@ export class Api<
     this.request<void, void>({
       path: `/api/shares/${token}/download`,
       method: "GET",
-      secure: true,
-      ...params,
-    });
-  /**
-   * @description Sets `revoked_at = NOW()` on a share row the caller owns. Idempotent — repeated calls or unknown tokens still return 204.
-   *
-   * @tags Deck Shares
-   * @name SharesDelete
-   * @summary Revoke a share link
-   * @request DELETE:/api/shares/{token}
-   * @secure
-   */
-  sharesDelete = (token: string, params: RequestParams = {}) =>
-    this.request<void, void>({
-      path: `/api/shares/${token}`,
-      method: "DELETE",
       secure: true,
       ...params,
     });
@@ -2063,38 +2113,6 @@ export class Api<
       path: `/api/ops/cancel-funnel`,
       method: "GET",
       query: query,
-      secure: true,
-      ...params,
-    });
-  /**
-   * @description Internal endpoint locked to the ops owner. Idempotently ensures the Starter and Growth developer-tier products and monthly prices exist in Stripe (found by product metadata), and writes the developer_tiers rows that gate API-key volume. Safe to re-run. Returns 404 for everyone else.
-   *
-   * @tags Ops
-   * @name OpsCommandsCreateDeveloperTiersCreate
-   * @summary Create the Stripe developer-tier products and prices
-   * @request POST:/api/ops/commands/create-developer-tiers
-   * @secure
-   */
-  opsCommandsCreateDeveloperTiersCreate = (params: RequestParams = {}) =>
-    this.request<void, void>({
-      path: `/api/ops/commands/create-developer-tiers`,
-      method: "POST",
-      secure: true,
-      ...params,
-    });
-  /**
-   * @description Internal endpoint locked to the ops owner. Idempotently ensures a single "2anki Semester Pass" Stripe product (found by product metadata) and one one-time $14.99 USD price (no recurring interval) exist. Safe to re-run. This only provisions the Stripe product/price — it does NOT enable any checkout path. A human must copy the returned stripe_price_id into the PASS_4MO_PRICE_ID env var before any purchase flow can reference it, and no such flow exists yet. Returns 404 for everyone else.
-   *
-   * @tags Ops
-   * @name OpsCommandsCreateSemesterPassCreate
-   * @summary Provision the Stripe Semester Pass product and one-time price
-   * @request POST:/api/ops/commands/create-semester-pass
-   * @secure
-   */
-  opsCommandsCreateSemesterPassCreate = (params: RequestParams = {}) =>
-    this.request<void, void>({
-      path: `/api/ops/commands/create-semester-pass`,
-      method: "POST",
       secure: true,
       ...params,
     });

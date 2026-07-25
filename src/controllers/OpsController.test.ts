@@ -9,7 +9,6 @@ import { GetLandingPageYieldUseCase } from '../usecases/ops/GetLandingPageYieldU
 import { GetCustomerSignalsUseCase } from '../usecases/ops/GetCustomerSignalsUseCase';
 import { GetPassUnlockMonitorUseCase } from '../usecases/ops/GetPassUnlockMonitorUseCase';
 import { GetCancelFunnelUseCase } from '../usecases/ops/GetCancelFunnelUseCase';
-import { CreateSemesterPassUseCase } from '../usecases/ops/CreateSemesterPassUseCase';
 
 const buildRes = () => {
   const json = jest.fn();
@@ -589,87 +588,6 @@ describe('OpsController.getCancelFunnel', () => {
       .mockImplementation(() => undefined);
 
     await controller.getCancelFunnel(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(500);
-    errSpy.mockRestore();
-  });
-});
-
-describe('OpsController.createSemesterPass', () => {
-  const buildController = (useCase?: CreateSemesterPassUseCase) =>
-    new OpsController(
-      {} as unknown as GetOpsMetricsUseCase,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      useCase
-    );
-
-  it('returns the provisioned product/price with status 200', async () => {
-    const payload = {
-      stripe_product_id: 'prod_semester',
-      stripe_price_id: 'price_semester',
-      created_product: true,
-      created_price: true,
-    };
-    const useCase = {
-      execute: jest.fn().mockResolvedValue(payload),
-    } as unknown as CreateSemesterPassUseCase;
-    const controller = buildController(useCase);
-    const req = {} as unknown as express.Request;
-    const res = buildRes();
-
-    await controller.createSemesterPass(req, res);
-
-    expect(useCase.execute as jest.Mock).toHaveBeenCalledTimes(1);
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(payload);
-  });
-
-  it('responds 500 when the use case is not configured', async () => {
-    const controller = buildController(undefined);
-    const req = {} as unknown as express.Request;
-    const res = buildRes();
-
-    await controller.createSemesterPass(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.any(String) })
-    );
-  });
-
-  it('responds 500 when the use case throws', async () => {
-    const useCase = {
-      execute: jest.fn().mockRejectedValue(new Error('stripe down')),
-    } as unknown as CreateSemesterPassUseCase;
-    const controller = buildController(useCase);
-    const req = {} as unknown as express.Request;
-    const res = buildRes();
-    const errSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
-
-    await controller.createSemesterPass(req, res);
 
     expect(res.status).toHaveBeenCalledWith(500);
     errSpy.mockRestore();
