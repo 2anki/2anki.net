@@ -161,7 +161,7 @@
       "path-to-regexp": ">=8.4.0",
       "2anki-web>yaml": ">=2.8.3",
       "@xmldom/xmldom": ">=0.8.13 <0.9.0",
-      "sanitize-html": "2.17.6"
+      "sanitize-html": "2.17.5"
     },
     "onlyBuiltDependencies": [
       "better-sqlite3"
