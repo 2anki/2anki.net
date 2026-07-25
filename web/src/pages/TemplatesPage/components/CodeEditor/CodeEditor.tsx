@@ -9,13 +9,13 @@ const MonacoEditor = lazy(async () => {
   ]);
 
   const editorWorkerUrl = (
-    await import('monaco-editor/esm/vs/editor/editor.worker?worker&url')
+    await import('monaco-editor/editor/editor.worker?worker&url')
   ).default;
   const cssWorkerUrl = (
-    await import('monaco-editor/esm/vs/language/css/css.worker?worker&url')
+    await import('monaco-editor/language/css/css.worker?worker&url')
   ).default;
   const htmlWorkerUrl = (
-    await import('monaco-editor/esm/vs/language/html/html.worker?worker&url')
+    await import('monaco-editor/language/html/html.worker?worker&url')
   ).default;
 
   (globalThis as unknown as { MonacoEnvironment: object }).MonacoEnvironment = {
