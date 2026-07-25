@@ -273,6 +273,19 @@ describe('RegisterForm', () => {
     expect(arg.message).toBe(notice);
   });
 
+  it('shows the generic error, not the account-exists message, when the request itself fails', async () => {
+    registerMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    const setErrorMessage = renderForm();
+    fillAndSubmit();
+
+    await waitFor(() => {
+      expect(setErrorMessage).toHaveBeenCalledWith(
+        'Something went wrong on our end. Try again, or email support@2anki.net if it keeps happening.'
+      );
+    });
+  });
+
   it('passes a generic backend failure through as a plain message', async () => {
     registerMock.mockResolvedValue({
       status: 400,

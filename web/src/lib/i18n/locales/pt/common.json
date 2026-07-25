@@ -251,8 +251,7 @@
       "creating": "Criando conta…",
       "create": "Criar conta",
       "loginQuestion": "Já tem uma conta?",
-      "errorGeneric": "Algo deu errado do nosso lado. Tente de novo, ou envie um e-mail para support@2anki.net se continuar acontecendo.",
-      "errorCreate": "Não foi possível criar sua conta. Se você já tem uma, entre em vez disso."
+      "errorGeneric": "Algo deu errado do nosso lado. Tente de novo, ou envie um e-mail para support@2anki.net se continuar acontecendo."
     },
     "forgot": {
       "title": "Redefinir sua senha",

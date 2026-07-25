@@ -251,8 +251,7 @@
       "creating": "Creazione account…",
       "create": "Crea un account",
       "loginQuestion": "Hai un account?",
-      "errorGeneric": "Qualcosa è andato storto dalla nostra parte. Riprova, oppure scrivi a support@2anki.net se continua a succedere.",
-      "errorCreate": "Non siamo riusciti a creare il tuo account. Se ne hai già uno, accedi invece."
+      "errorGeneric": "Qualcosa è andato storto dalla nostra parte. Riprova, oppure scrivi a support@2anki.net se continua a succedere."
     },
     "forgot": {
       "title": "Reimposta la password",

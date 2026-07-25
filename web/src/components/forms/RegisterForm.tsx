@@ -115,7 +115,7 @@ function RegisterForm({ setErrorMessage, redirect }: Props) {
       }
     } catch (error) {
       console.error('Register submit failed', error);
-      setErrorMessage(t('auth.register.errorCreate'));
+      setErrorMessage(t('auth.register.errorGeneric'));
       setLoading(false);
     }
   };

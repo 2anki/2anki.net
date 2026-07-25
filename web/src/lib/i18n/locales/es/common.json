@@ -251,8 +251,7 @@
       "creating": "Creando cuenta…",
       "create": "Crear cuenta",
       "loginQuestion": "¿Ya tienes una cuenta?",
-      "errorGeneric": "Algo salió mal por nuestra parte. Inténtalo de nuevo, o escribe a support@2anki.net si sigue ocurriendo.",
-      "errorCreate": "No se pudo crear tu cuenta. Si ya tienes una, inicia sesión en su lugar."
+      "errorGeneric": "Algo salió mal por nuestra parte. Inténtalo de nuevo, o escribe a support@2anki.net si sigue ocurriendo."
     },
     "forgot": {
       "title": "Restablece tu contraseña",

@@ -251,8 +251,7 @@
       "creating": "Création du compte…",
       "create": "Créer un compte",
       "loginQuestion": "Tu as déjà un compte ?",
-      "errorGeneric": "Une erreur est survenue de notre côté. Réessaie, ou écris à support@2anki.net si ça continue.",
-      "errorCreate": "Impossible de créer ton compte. Si tu en as déjà un, connecte-toi plutôt."
+      "errorGeneric": "Une erreur est survenue de notre côté. Réessaie, ou écris à support@2anki.net si ça continue."
     },
     "forgot": {
       "title": "Réinitialise ton mot de passe",
