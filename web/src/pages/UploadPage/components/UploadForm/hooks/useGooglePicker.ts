@@ -105,6 +105,9 @@ const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
 const GOOGLE_UNAVAILABLE =
   "Couldn't load Google Drive. Check your connection or disable script blockers and try again.";
+const AUTH_TIMEOUT_MS = 60_000;
+const AUTH_TIMEOUT_MESSAGE =
+  "Google Drive sign-in didn't complete. If your browser blocked the pop-up, allow pop-ups for 2anki.net and try again.";
 
 function clientId(): string | null {
   const id = process.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -229,10 +232,21 @@ export function useGooglePicker() {
       .then(
         ([picker, oauth2]) =>
           new Promise<GooglePickerResult>((resolve, reject) => {
+            // GIS's callback never fires if the browser blocks the sign-in
+            // pop-up outright, and unreliably fires if the user closes it
+            // manually — either way the promise (and the in-flight guard)
+            // would hang forever without this. Only the auth phase races
+            // the timeout; once a response arrives, the picker's own file
+            // browser can stay open as long as the user needs.
+            const authTimeout = setTimeout(() => {
+              reject(new Error(AUTH_TIMEOUT_MESSAGE));
+            }, AUTH_TIMEOUT_MS);
+
             const tokenClient = oauth2.initTokenClient({
               client_id: id,
               scope: SCOPE,
               callback: (resp) => {
+                clearTimeout(authTimeout);
                 if (resp.error || !resp.access_token) {
                   reject(
                     new Error(
