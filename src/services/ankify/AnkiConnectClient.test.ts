@@ -4,6 +4,7 @@ import {
   AnkiConnectError,
   AnkiConnectTimeoutError,
   AnkiConnectUnreachableError,
+  AnkiFullSyncRequiredError,
 } from './AnkiConnectClient';
 
 const makeFetch = (
@@ -537,6 +538,32 @@ describe('AnkiConnectClient', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  test('sync throws AnkiFullSyncRequiredError when AnkiConnect reports ChangesRequired=FULL_SYNC', async () => {
+    const fetchImpl = makeFetch({
+      result: null,
+      error:
+        'Sync status 2 not one of [0, 1] - see SyncCollectionResponse.ChangesRequired for list of sync statuses: https://github.com/ankitects/anki/blob/e41c4573d789afe8b020fab5d9d1eede50c3fa3d/proto/anki/sync.proto#L57-L65',
+    });
+    const client = new AnkiConnectClient('http://x', fetchImpl);
+
+    const err = await client.sync().catch((e) => e);
+
+    expect(err).toBeInstanceOf(AnkiFullSyncRequiredError);
+    // Existing generic-error handling should still recognize it.
+    expect(err).toBeInstanceOf(AnkiConnectError);
+  });
+
+  test('sync rethrows an unrelated AnkiConnectError unchanged', async () => {
+    const fetchImpl = makeFetch({ result: null, error: 'deck not found' });
+    const client = new AnkiConnectClient('http://x', fetchImpl);
+
+    const err = await client.sync().catch((e) => e);
+
+    expect(err).toBeInstanceOf(AnkiConnectError);
+    expect(err).not.toBeInstanceOf(AnkiFullSyncRequiredError);
+    expect(err.message).toBe('deck not found');
   });
 
   test('getActiveProfile posts getActiveProfile and returns the profile name', async () => {

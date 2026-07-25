@@ -31,6 +31,17 @@ export class AnkiConnectError extends Error {
   }
 }
 
+// AnkiConnect's `sync` action surfaced Anki's own sync protocol saying a
+// one-way full sync is required (ChangesRequired != NO_CHANGES/NORMAL_SYNC).
+// Anki can't safely auto-pick a direction (risk of overwriting one side), so
+// this can only be resolved by a human via the Anki desktop app.
+export class AnkiFullSyncRequiredError extends AnkiConnectError {
+  constructor(cause: string) {
+    super(cause);
+    this.name = 'AnkiFullSyncRequiredError';
+  }
+}
+
 export class AnkiConnectUnreachableError extends Error {
   constructor(url: string, cause: unknown) {
     super(`AnkiConnect unreachable at ${url}`);
@@ -186,7 +197,17 @@ export class AnkiConnectClient {
   }
 
   async sync(): Promise<null> {
-    return this.invoke('sync', undefined, ANKI_CONNECT_SYNC_TIMEOUT_MS);
+    try {
+      return await this.invoke('sync', undefined, ANKI_CONNECT_SYNC_TIMEOUT_MS);
+    } catch (error) {
+      if (
+        error instanceof AnkiConnectError &&
+        error.message.includes('ChangesRequired')
+      ) {
+        throw new AnkiFullSyncRequiredError(error.message);
+      }
+      throw error;
+    }
   }
 
   async ping(): Promise<number> {

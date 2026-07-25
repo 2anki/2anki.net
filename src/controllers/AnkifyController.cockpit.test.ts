@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
 
 import AnkifyController from './AnkifyController';
-import { AnkiConnectUnreachableError } from '../services/ankify/AnkiConnectClient';
+import {
+  AnkiConnectUnreachableError,
+  AnkiFullSyncRequiredError,
+} from '../services/ankify/AnkiConnectClient';
 import { NoActiveAnkifyClientForProfileError } from '../usecases/ankify/GetAnkifyActiveProfileUseCase';
 import { NoActiveAnkifyClientForSyncError } from '../usecases/ankify/SyncToAnkiWebUseCase';
 import { DeckNotOwnedError } from '../usecases/ankify/OpenDeckInAnkiUseCase';
@@ -115,6 +118,24 @@ describe('AnkifyController cockpit handlers', () => {
     await controller.syncToAnkiWeb({} as Request, capture.res);
 
     expect(capture.statusCode).toBe(409);
+  });
+
+  test('syncToAnkiWeb maps a required full sync to a calm 409, not a raw error', async () => {
+    const execute = jest.fn(async () => {
+      throw new AnkiFullSyncRequiredError(
+        'Sync status 2 not one of [0, 1] - see SyncCollectionResponse.ChangesRequired for list of sync statuses: https://github.com/ankitects/anki/blob/e41c4573d789afe8b020fab5d9d1eede50c3fa3d/proto/anki/sync.proto#L57-L65'
+      );
+    });
+    const controller = makeController(SYNC_INDEX, { execute });
+    const capture = makeResponse();
+
+    await controller.syncToAnkiWeb({} as Request, capture.res);
+
+    expect(capture.statusCode).toBe(409);
+    expect(capture.body).toEqual({
+      message:
+        'Anki wants to fully resync this collection. Open Anki desktop, resolve the sync prompt there, then try again.',
+    });
   });
 
   test('openDeckInAnki 400 when deck is missing', async () => {

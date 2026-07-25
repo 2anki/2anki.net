@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-24-ankify-full-sync-message",
+  "date": "2026-07-24",
+  "type": "fix",
+  "title": "Auto-Sync tells you when Anki needs a full resync instead of a raw error"
+}

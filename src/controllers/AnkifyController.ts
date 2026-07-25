@@ -53,7 +53,10 @@ import {
   DockerUnavailableError,
   NoAvailablePortError,
 } from '../services/ankify/RacService';
-import { AnkiConnectUnreachableError } from '../services/ankify/AnkiConnectClient';
+import {
+  AnkiConnectUnreachableError,
+  AnkiFullSyncRequiredError,
+} from '../services/ankify/AnkiConnectClient';
 import { sanitizeDeckPath } from '../lib/ankify/transforms/tags';
 import { GetAnkifyStatsUseCase } from '../usecases/ankify/GetAnkifyStatsUseCase';
 import {
@@ -780,6 +783,13 @@ class AnkifyController {
       if (error instanceof NoActiveAnkifyClientForSyncError) {
         res.status(409).json({
           message: 'No active Ankify client. Provision one first.',
+        });
+        return;
+      }
+      if (error instanceof AnkiFullSyncRequiredError) {
+        res.status(409).json({
+          message:
+            'Anki wants to fully resync this collection. Open Anki desktop, resolve the sync prompt there, then try again.',
         });
         return;
       }
