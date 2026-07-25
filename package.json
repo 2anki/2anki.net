@@ -60,7 +60,7 @@
     "archiver": "^8.0.0",
     "axios": "^1.13.5",
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.9.0",
+    "better-sqlite3": "^13.0.1",
     "cheerio": "^1.0.0",
     "cookie-parser": "^1.4.6",
     "crypto-js": "^4.2.0",
