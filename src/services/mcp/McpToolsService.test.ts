@@ -704,6 +704,7 @@ describe('McpToolsService.createDeck', () => {
         { front: 'What is DNA?', back: 'Heredity molecule.' },
       ],
       'Biochemistry',
+      undefined,
       'owner-9',
       {}
     );
@@ -734,12 +735,14 @@ describe('McpToolsService.createDeck', () => {
     const first = await service.createDeck(
       [{ front: 'A-front', back: 'A-back' }],
       'Same Name',
+      undefined,
       'owner-9',
       {}
     );
     const second = await service.createDeck(
       [{ front: 'B-front', back: 'B-back' }],
       'Same Name',
+      undefined,
       'owner-9',
       {}
     );
@@ -771,6 +774,7 @@ describe('McpToolsService.createDeck', () => {
     await service.createDeck(
       [{ front: 'morning', back: '朝' }],
       'Japanese — Greetings',
+      undefined,
       'owner-9',
       {}
     );
@@ -790,6 +794,7 @@ describe('McpToolsService.createDeck', () => {
         { front: 'C', back: 'gamma' },
       ],
       undefined,
+      undefined,
       'owner-9',
       {}
     );
@@ -808,6 +813,7 @@ describe('McpToolsService.createDeck', () => {
     await service.createDeck(
       [{ front: 'Q', back: 'A' }],
       'Pharmacology',
+      undefined,
       'owner-9',
       {}
     );
@@ -816,7 +822,13 @@ describe('McpToolsService.createDeck', () => {
 
   it('rejects an empty cards array without touching persistence', async () => {
     const { service, persist } = makeService({});
-    const result = await service.createDeck([], 'Deck', 'owner-9', {});
+    const result = await service.createDeck(
+      [],
+      'Deck',
+      undefined,
+      'owner-9',
+      {}
+    );
     expect(result).toMatchObject({ kind: 'error' });
     expect(persist).not.toHaveBeenCalled();
   });
@@ -826,6 +838,7 @@ describe('McpToolsService.createDeck', () => {
     const result = await service.createDeck(
       [{ front: '   ', back: 'answer' }],
       'Deck',
+      undefined,
       'owner-9',
       {}
     );
@@ -839,7 +852,13 @@ describe('McpToolsService.createDeck', () => {
       front: `Q${i}`,
       back: `A${i}`,
     }));
-    const result = await service.createDeck(cards, 'Deck', 'owner-9', {});
+    const result = await service.createDeck(
+      cards,
+      'Deck',
+      undefined,
+      'owner-9',
+      {}
+    );
     expect(result).toMatchObject({ kind: 'error' });
     expect(persist).not.toHaveBeenCalled();
   });
@@ -855,6 +874,7 @@ describe('McpToolsService.createDeck', () => {
         { front: 'Another', back: '   ' },
       ],
       'Deck',
+      undefined,
       'owner-9',
       {}
     );
@@ -864,6 +884,72 @@ describe('McpToolsService.createDeck', () => {
       message:
         'Some cards have an empty back. Every card needs both a front and a back.',
     });
+  });
+
+  it('threads options.noteType through to the pipeline settings and echoes it in applied', async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    const entry: UploadEntrypoint = (req, res) => {
+      capturedBody = (req as unknown as { body: Record<string, unknown> }).body;
+      res.set('X-Card-Count', '1');
+      res.set('File-Name', 'deck.apkg');
+      res.status(200).send(Buffer.from('APKG-BYTES'));
+    };
+    const { service } = makeService({ uploadEntry: entry });
+    const result = await service.createDeck(
+      [{ front: 'Mitochondrion', back: 'Powerhouse of the cell' }],
+      'Biology',
+      { noteType: 'input', tags: ['bio'] },
+      'owner-9',
+      {}
+    );
+    expect(capturedBody).toEqual({
+      deckName: 'Biology',
+      'enable-input': 'true',
+      cloze: 'false',
+      'global-tags': 'bio',
+    });
+    expect(result).toMatchObject({
+      kind: 'deck',
+      applied: { noteType: 'input', tags: ['bio'] },
+    });
+    expect((result as { ignored?: unknown }).ignored).toBeUndefined();
+  });
+
+  it('downgrades cloze to basic and reports it in ignored when no card has {{c1::}} markup', async () => {
+    const { entry } = captureUpload();
+    const { service } = makeService({ uploadEntry: entry });
+    const result = await service.createDeck(
+      [{ front: 'Mitochondrion', back: 'Powerhouse of the cell' }],
+      'Biology',
+      { noteType: 'cloze' },
+      'owner-9',
+      {}
+    );
+    expect(result).toMatchObject({
+      kind: 'deck',
+      applied: { noteType: 'basic' },
+      ignored: [
+        {
+          option: 'noteType',
+          requested: 'cloze',
+          reason:
+            'No {{c1::}} markup found in the text; built basic cards instead.',
+        },
+      ],
+    });
+  });
+
+  it('omits applied entirely when no options are given, unchanged from before', async () => {
+    const { entry } = captureUpload();
+    const { service } = makeService({ uploadEntry: entry });
+    const result = await service.createDeck(
+      [{ front: 'Q', back: 'A' }],
+      'Deck',
+      undefined,
+      'owner-9',
+      {}
+    );
+    expect((result as { applied?: unknown }).applied).toBeUndefined();
   });
 });
 
@@ -1016,6 +1102,7 @@ describe('McpToolsService.createDeck with subdecks', () => {
     const result = await service.createDeck(
       subdeckCards(),
       'JLPT N5',
+      undefined,
       'owner-9',
       {}
     );
@@ -1045,10 +1132,45 @@ describe('McpToolsService.createDeck with subdecks', () => {
     });
   });
 
+  it('keeps noteType basic and reports it ignored when subdeck cards are involved', async () => {
+    const { service } = makeService({});
+    const result = await service.createDeck(
+      subdeckCards(),
+      'JLPT N5',
+      { noteType: 'input', tags: ['jp'] },
+      'owner-9',
+      {}
+    );
+    expect(result).toMatchObject({
+      kind: 'deck',
+      applied: { noteType: 'basic', tags: [] },
+      ignored: [
+        {
+          option: 'noteType',
+          requested: 'input',
+          reason:
+            'Cards with a deck field always build as Basic; noteType only applies when no card sets deck.',
+        },
+        {
+          option: 'tags',
+          requested: ['jp'],
+          reason:
+            'Cards with a deck field always build with no tags; tags only apply when no card sets deck.',
+        },
+      ],
+    });
+  });
+
   it('increments card usage by the flat total across all subdecks', async () => {
     const incrementCardUsage = jest.fn();
     const { service } = makeService({ incrementCardUsage });
-    await service.createDeck(subdeckCards(), 'JLPT N5', 'owner-9', {});
+    await service.createDeck(
+      subdeckCards(),
+      'JLPT N5',
+      undefined,
+      'owner-9',
+      {}
+    );
     expect(incrementCardUsage).toHaveBeenCalledWith('owner-9', 3);
   });
 
@@ -1064,6 +1186,7 @@ describe('McpToolsService.createDeck with subdecks', () => {
     const result = await service.createDeck(
       subdeckCards(),
       'JLPT N5',
+      undefined,
       'owner-9',
       {}
     );
@@ -1090,6 +1213,7 @@ describe('McpToolsService.createDeck with subdecks', () => {
     const result = await service.createDeck(
       subdeckCards(),
       'JLPT N5',
+      undefined,
       'owner-9',
       { subscriber: true }
     );
@@ -1107,6 +1231,7 @@ describe('McpToolsService.createDeck with subdecks', () => {
         { front: 'ichi', back: '1', deck: 'Vocabulary' },
       ],
       'JLPT N5',
+      undefined,
       'owner-9',
       {}
     );
@@ -1135,6 +1260,7 @@ describe('McpToolsService.createDeck with subdecks', () => {
         { front: 'c', back: 'd' },
       ],
       'JLPT N5',
+      undefined,
       'owner-9',
       {}
     );

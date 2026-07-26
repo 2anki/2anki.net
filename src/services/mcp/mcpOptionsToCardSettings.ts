@@ -29,6 +29,13 @@ export interface McpConvertOptions {
   tts?: McpTtsOption;
 }
 
+export type McpCreateDeckNoteType = Exclude<McpNoteType, 'mcq'>;
+
+export interface McpCreateDeckOptions {
+  noteType?: McpCreateDeckNoteType;
+  tags?: string[];
+}
+
 const NOTE_TYPES: readonly McpNoteType[] = [
   'basic',
   'basic-reversed',

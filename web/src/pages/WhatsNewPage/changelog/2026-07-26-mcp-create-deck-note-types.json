@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-26-mcp-create-deck-note-types",
+  "date": "2026-07-26",
+  "type": "feature",
+  "title": "MCP create_deck can build cloze, input, and basic-reversed cards, not just Basic"
+}
