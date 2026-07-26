@@ -915,6 +915,53 @@ describe('McpToolsService.createDeck', () => {
     expect((result as { ignored?: unknown }).ignored).toBeUndefined();
   });
 
+  it('reports no ignored entry for input when every card back is short and plain (regression: #3848)', async () => {
+    const { entry } = captureUpload();
+    const { service } = makeService({ uploadEntry: entry });
+    const result = await service.createDeck(
+      [{ front: 'schedule', back: '予定' }],
+      'Japanese Vocabulary',
+      { noteType: 'input' },
+      'owner-9',
+      {}
+    );
+    expect(result).toMatchObject({
+      kind: 'deck',
+      applied: { noteType: 'input' },
+    });
+    expect((result as { ignored?: unknown }).ignored).toBeUndefined();
+  });
+
+  it('keeps noteType input in applied but reports it ignored when a back is too long to type', async () => {
+    const { entry } = captureUpload();
+    const { service } = makeService({ uploadEntry: entry });
+    const result = await service.createDeck(
+      [
+        { front: 'schedule', back: '予定' },
+        {
+          front: 'What is mitosis?',
+          back: 'Mitosis is the process by which a single eukaryotic cell divides to produce two genetically identical daughter cells.',
+        },
+      ],
+      'Biology',
+      { noteType: 'input' },
+      'owner-9',
+      {}
+    );
+    expect(result).toMatchObject({
+      kind: 'deck',
+      applied: { noteType: 'input' },
+      ignored: [
+        {
+          option: 'noteType',
+          requested: 'input',
+          reason:
+            'One or more card backs were too long, multi-line, or contained a link/image to type as an answer; those cards built as basic instead.',
+        },
+      ],
+    });
+  });
+
   it('downgrades cloze to basic and reports it in ignored when no card has {{c1::}} markup', async () => {
     const { entry } = captureUpload();
     const { service } = makeService({ uploadEntry: entry });

@@ -459,7 +459,7 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
               .enum(['basic', 'basic-reversed', 'cloze', 'input'])
               .optional()
               .describe(
-                "The Anki note type. Cloze also needs {{c1::}} markup in a card's front; without it, cloze falls back to basic. Not available for mcq — use convert_to_deck for that. Applies only to cards with no deck field — cards sorted into a subdeck always build as Basic."
+                "The Anki note type. Cloze also needs {{c1::}} markup in a card's front; without it, cloze falls back to basic. input works automatically for a short, single-line, plain-text back (the learner types it to answer); a longer, multi-line, or link/image back falls back to basic for that card — see the response's ignored list. Not available for mcq — use convert_to_deck for that. Applies only to cards with no deck field — cards sorted into a subdeck always build as Basic."
               ),
             tags: z
               .array(z.string())

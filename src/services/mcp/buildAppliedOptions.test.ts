@@ -69,6 +69,42 @@ describe('buildAppliedOptions', () => {
     expect(ignored).toBeUndefined();
   });
 
+  it('keeps input in applied by default when the typability check is not passed', () => {
+    const { applied, ignored } = buildAppliedOptions(
+      { noteType: 'input' },
+      false
+    );
+    expect(applied.noteType).toBe('input');
+    expect(ignored).toBeUndefined();
+  });
+
+  it('keeps input in applied but records an ignored entry when an answer is not typable', () => {
+    const { applied, ignored } = buildAppliedOptions(
+      { noteType: 'input' },
+      false,
+      false
+    );
+    expect(applied.noteType).toBe('input');
+    expect(ignored).toEqual([
+      {
+        option: 'noteType',
+        requested: 'input',
+        reason:
+          'One or more card backs were too long, multi-line, or contained a link/image to type as an answer; those cards built as basic instead.',
+      },
+    ]);
+  });
+
+  it('keeps input with no ignored entry when every answer is typable', () => {
+    const { applied, ignored } = buildAppliedOptions(
+      { noteType: 'input' },
+      false,
+      true
+    );
+    expect(applied.noteType).toBe('input');
+    expect(ignored).toBeUndefined();
+  });
+
   it('omits deckName and styleTemplate when they resolve to empty or invalid', () => {
     const { applied } = buildAppliedOptions(
       { deckName: '   ', styleTemplate: 'unknown' as never },

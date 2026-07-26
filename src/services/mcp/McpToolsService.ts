@@ -12,6 +12,7 @@ import { getSafeFilename } from '../../lib/getSafeFilename';
 import getDeckFilename from '../../lib/anki/getDeckFilename';
 import Workspace from '../../lib/parser/WorkSpace';
 import CustomExporter from '../../lib/parser/exporters/CustomExporter';
+import { isTypableAnswer } from '../../lib/parser/isTypableAnswer';
 import {
   CheckMonthlyCardLimitUseCase,
   MonthlyLimitError,
@@ -514,7 +515,15 @@ export class McpToolsService {
     }
     const clozePresent =
       options.noteType === 'cloze' ? hasClozeMarkup(markdown) : false;
-    const { applied, ignored } = buildAppliedOptions(options, clozePresent);
+    const inputAnswerTypable =
+      options.noteType === 'input'
+        ? cards.every((card) => isTypableAnswer(card.back))
+        : true;
+    const { applied, ignored } = buildAppliedOptions(
+      options,
+      clozePresent,
+      inputAnswerTypable
+    );
     return {
       ...withCount,
       applied,

@@ -733,7 +733,80 @@ test('global tags on a parent page carry into its sub-pages', async () => {
   expect(subDeck!.cards[0].tags).toContain('parenttag');
 });
 
-test.todo('Input Cards ');
+test('a plain toggle card with a short answer becomes a real input card when no bold markup is present', async () => {
+  const html = `<html><head><title>Japanese</title></head><body><article class="page sans"><header><h1 class="page-title">Japanese</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>schedule</summary><p>予定</p></details></li></ul>
+</div></article></body></html>`;
+
+  const workspace = new Workspace(true, 'fs');
+  const parser = new DeckParser({
+    name: 'japanese.html',
+    settings: new CardOption({
+      cherry: 'false',
+      cloze: 'false',
+      'enable-input': 'true',
+    }),
+    files: [{ name: 'japanese.html', contents: html }],
+    noLimits: true,
+    workspace,
+  });
+  await parser.build(workspace);
+
+  const card = parser.payload[0].cards[0];
+  expect(card.enableInput).toBe(true);
+  expect(card.answer).toBe('予定');
+  expect(card.name).toContain('{{type:Input}}');
+});
+
+test('a toggle card with a long or multi-line answer stays a plain input-disabled card', async () => {
+  const html = `<html><head><title>Notes</title></head><body><article class="page sans"><header><h1 class="page-title">Notes</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>What is mitosis?</summary><p>Mitosis is the process by which a single eukaryotic cell divides to produce two genetically identical daughter cells.</p></details></li></ul>
+</div></article></body></html>`;
+
+  const workspace = new Workspace(true, 'fs');
+  const parser = new DeckParser({
+    name: 'notes.html',
+    settings: new CardOption({
+      cherry: 'false',
+      cloze: 'false',
+      'enable-input': 'true',
+    }),
+    files: [{ name: 'notes.html', contents: html }],
+    noLimits: true,
+    workspace,
+  });
+  await parser.build(workspace);
+
+  const card = parser.payload[0].cards[0];
+  expect(card.enableInput).toBe(true);
+  expect(card.answer).toBe('');
+  expect(card.name).not.toContain('{{type:Input}}');
+});
+
+test('a bold-marked answer still takes priority over the plain-back fallback', async () => {
+  const html = `<html><head><title>Cells</title></head><body><article class="page sans"><header><h1 class="page-title">Cells</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>The powerhouse of the cell is the <strong>mitochondrion</strong></summary><p>Found in eukaryotic cells</p></details></li></ul>
+</div></article></body></html>`;
+
+  const workspace = new Workspace(true, 'fs');
+  const parser = new DeckParser({
+    name: 'cells.html',
+    settings: new CardOption({
+      cherry: 'false',
+      cloze: 'false',
+      'enable-input': 'true',
+    }),
+    files: [{ name: 'cells.html', contents: html }],
+    noLimits: true,
+    workspace,
+  });
+  await parser.build(workspace);
+
+  const card = parser.payload[0].cards[0];
+  expect(card.answer).toBe('mitochondrion');
+  expect(card.name).not.toContain('<strong>');
+});
+
 test.todo('Test Basic Card');
 
 test('Markdown empty deck', async () => {

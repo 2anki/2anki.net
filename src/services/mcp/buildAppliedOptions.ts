@@ -87,7 +87,8 @@ function resolveTts(tts: McpConvertOptions['tts']): AppliedTts {
 
 export function buildAppliedOptions(
   options: McpConvertOptions | undefined,
-  clozeMarkupPresent: boolean
+  clozeMarkupPresent: boolean,
+  inputAnswerTypable: boolean = true
 ): AppliedOptionsResult {
   const ignored: IgnoredOption[] = [];
 
@@ -103,6 +104,15 @@ export function buildAppliedOptions(
       requested: 'cloze',
       reason:
         'No {{c1::}} markup found in the text; built basic cards instead.',
+    });
+  }
+
+  if (noteType === 'input' && !inputAnswerTypable) {
+    ignored.push({
+      option: 'noteType',
+      requested: 'input',
+      reason:
+        'One or more card backs were too long, multi-line, or contained a link/image to type as an answer; those cards built as basic instead.',
     });
   }
 

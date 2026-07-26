@@ -7,6 +7,7 @@ import { File } from '../zip/zip';
 import Deck from './Deck';
 import Note from './Note';
 import { countEmptyBacks } from './countEmptyBacks';
+import { isTypableAnswer, typableAnswerText } from './isTypableAnswer';
 import { noteHasAnswerSide } from './noteHasAnswerSide';
 import CardOption from './Settings';
 import Workspace from './WorkSpace';
@@ -829,6 +830,13 @@ export class DeckParser {
       const inputInfo = this.treatBoldAsInput(card.name, false);
       card.name = inputInfo.mangle;
       card.answer = inputInfo.answer;
+    } else if (
+      this.settings.useInput &&
+      !card.cloze &&
+      isTypableAnswer(card.back)
+    ) {
+      card.answer = typableAnswerText(card.back);
+      card.name = `${card.name}{{type:Input}}`;
     }
 
     card.media = [];

@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-26-mcp-create-deck-input-notetype-fix",
+  "date": "2026-07-26",
+  "type": "fix",
+  "title": "MCP create_deck's input note type builds real type-in-answer cards for short answers, not Basic"
+}
