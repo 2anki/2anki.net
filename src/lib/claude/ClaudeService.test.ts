@@ -1479,3 +1479,78 @@ describe('generateDeckInfo — card with a missing answer field', () => {
     expect(cards[0].back).toBe('');
   });
 });
+
+describe('generateDeckInfo — card with a missing front field', () => {
+  const textHtml =
+    '<html><body><h1>Cells</h1><p>The cell is the basic unit of life.</p></body></html>';
+
+  function responseWith(cards: Array<Record<string, unknown>>) {
+    return {
+      content: [
+        { type: 'text', text: JSON.stringify([{ deck: 'Biology', cards }]) },
+      ],
+      stop_reason: 'end_turn',
+      usage: { input_tokens: 100, output_tokens: 50 },
+    };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockStreamFn.mockReturnValue(mockStream);
+    mockStream.on.mockReturnThis();
+  });
+
+  it('keeps the other cards when one card has no front field', async () => {
+    mockStream.finalMessage.mockResolvedValue(
+      responseWith([
+        { a: 'An answer with no question' },
+        { q: 'What is the basic unit of life?', a: 'The cell' },
+      ])
+    );
+
+    const result = await generateDeckInfo(textHtml, []);
+
+    const cards = result.flatMap((deck) => deck.cards);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].name).toBe('What is the basic unit of life?');
+    expect(cards[0].back).toBe('The cell');
+  });
+
+  it('skips cards whose front is not a string or is blank', async () => {
+    mockStream.finalMessage.mockResolvedValue(
+      responseWith([
+        { q: 42, a: 'Numeric front' },
+        { q: '   ', a: 'Blank front' },
+        { q: 'Kept card?', a: 'Yes' },
+      ])
+    );
+
+    const result = await generateDeckInfo(textHtml, []);
+
+    const cards = result.flatMap((deck) => deck.cards);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].name).toBe('Kept card?');
+  });
+
+  it('keeps other decks when one deck has a malformed cards value', async () => {
+    mockStream.finalMessage.mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify([
+            { deck: 'Broken', cards: 'not-an-array' },
+            { deck: 'Biology', cards: [{ q: 'Kept card?', a: 'Yes' }] },
+          ]),
+        },
+      ],
+      stop_reason: 'end_turn',
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    const result = await generateDeckInfo(textHtml, []);
+
+    const cards = result.flatMap((deck) => deck.cards);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].name).toBe('Kept card?');
+  });
+});
