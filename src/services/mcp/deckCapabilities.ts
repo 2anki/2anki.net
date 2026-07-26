@@ -109,7 +109,7 @@ export const DECK_CAPABILITIES: DeckCapabilities = {
     howItWorks:
       'convert_to_deck scans your text for front and back pairs. Pick one structure below to separate each front from its back — you only need one. The note type (basic, basic-reversed, or input) is set through options.noteType and does not change which structure you use. Cloze is the exception: set options.noteType to cloze and put {{c1::...}} markup inside the front of any structure. Without the markup, cloze falls back to basic.',
     shortcut:
-      'If you already have discrete front and back pairs, skip the text formatting and call create_deck with a { front, back } array instead. It cannot fail on formatting. create_deck also takes options.noteType (basic, basic-reversed, cloze, or input — not mcq), but only for cards with no deck field; subdeck cards always build as Basic.',
+      "If you already have discrete front and back pairs, skip the text formatting and call create_deck with a { front, back } array instead. It cannot fail on formatting. create_deck also takes options.noteType (basic, basic-reversed, cloze, or input — not mcq), but only for cards with no deck field; subdeck cards always build as Basic. input works automatically when a card's back is a short, single-line, plain-text answer — no markup needed; a longer or multi-line back builds as basic for that card instead.",
     structures: [
       {
         name: 'inline',
