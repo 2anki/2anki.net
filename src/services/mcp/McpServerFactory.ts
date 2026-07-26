@@ -2,7 +2,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { McpToolsService } from './McpToolsService';
-import { McpConvertOptions } from './mcpOptionsToCardSettings';
+import {
+  McpConvertOptions,
+  McpCreateDeckOptions,
+} from './mcpOptionsToCardSettings';
 import { DECK_CAPABILITIES } from './deckCapabilities';
 import {
   DeckTableCard,
@@ -411,6 +414,7 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
   registerTool<{
     cards: { front: string; back: string; deck?: string }[];
     deckName?: string;
+    options?: McpCreateDeckOptions;
     detail?: 'summary' | 'preview';
   }>(
     server,
@@ -449,6 +453,25 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
           .string()
           .optional()
           .describe('Optional deck name, e.g. Pharmacology.'),
+        options: z
+          .object({
+            noteType: z
+              .enum(['basic', 'basic-reversed', 'cloze', 'input'])
+              .optional()
+              .describe(
+                "The Anki note type. Cloze also needs {{c1::}} markup in a card's front; without it, cloze falls back to basic. Not available for mcq — use convert_to_deck for that. Applies only to cards with no deck field — cards sorted into a subdeck always build as Basic."
+              ),
+            tags: z
+              .array(z.string())
+              .optional()
+              .describe(
+                'Anki tags applied to every card in the deck. Applies only to cards with no deck field.'
+              ),
+          })
+          .optional()
+          .describe(
+            'Curated card options. See deck_capabilities for the full list.'
+          ),
         detail: z
           .enum(['summary', 'preview'])
           .optional()
@@ -457,11 +480,12 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
           ),
       },
     },
-    async ({ cards, deckName, detail }) => {
+    async ({ cards, deckName, options, detail }) => {
       context.recordToolCall('create_deck');
       const result = await context.toolsService.createDeck(
         cards,
         deckName,
+        options,
         context.owner,
         context.locals
       );

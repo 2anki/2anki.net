@@ -22,6 +22,7 @@ import { groupCardsBySubdeck, hasSubdecks } from './composeSubdecks';
 import { buildSubdeckDecks } from './buildSubdeckDecks';
 import {
   McpConvertOptions,
+  McpCreateDeckOptions,
   mcpOptionsToCardSettings,
 } from './mcpOptionsToCardSettings';
 import {
@@ -454,6 +455,7 @@ export class McpToolsService {
   async createDeck(
     cards: McpCard[],
     deckName: string | undefined,
+    options: McpCreateDeckOptions | undefined,
     owner: string,
     locals: Record<string, unknown>
   ): Promise<ConvertResult> {
@@ -476,7 +478,7 @@ export class McpToolsService {
         : DEFAULT_DECK_NAME;
 
     if (hasSubdecks(cards)) {
-      return this.createSubdeckDeck(cards, title, owner, locals);
+      return this.createSubdeckDeck(cards, title, options, owner, locals);
     }
 
     const markdown = serializeCardsToMarkdown(cards);
@@ -490,20 +492,40 @@ export class McpToolsService {
       size: buffer.byteLength,
       buffer,
     };
-    const res = await this.runUpload(file, locals, { deckName: title });
+    const res = await this.runUpload(file, locals, {
+      deckName: title,
+      ...mcpOptionsToCardSettings(options),
+    });
     const result = await this.mapUploadResult(res, owner, title);
-    if (result.kind === 'deck' && result.cardCount == null) {
-      return { ...result, cardCount: cards.length };
+    if (result.kind === 'error') {
+      return this.everyBackEmpty(cards)
+        ? { ...result, message: EMPTY_BACK_MESSAGE }
+        : result;
     }
-    if (result.kind === 'error' && this.everyBackEmpty(cards)) {
-      return { ...result, message: EMPTY_BACK_MESSAGE };
+    if (result.kind !== 'deck') {
+      return result;
     }
-    return result;
+    const withCount =
+      result.cardCount == null
+        ? { ...result, cardCount: cards.length }
+        : result;
+    if (options == null) {
+      return withCount;
+    }
+    const clozePresent =
+      options.noteType === 'cloze' ? hasClozeMarkup(markdown) : false;
+    const { applied, ignored } = buildAppliedOptions(options, clozePresent);
+    return {
+      ...withCount,
+      applied,
+      ...(ignored ? { ignored } : {}),
+    };
   }
 
   private async createSubdeckDeck(
     cards: McpCard[],
     title: string,
+    options: McpCreateDeckOptions | undefined,
     owner: string,
     locals: Record<string, unknown>
   ): Promise<ConvertResult> {
@@ -552,6 +574,7 @@ export class McpToolsService {
       tts: { enabled: false },
       subdecks,
     };
+    const ignored = this.subdeckIgnoredOptions(options);
     return {
       kind: 'deck',
       jobId: objectId,
@@ -560,8 +583,32 @@ export class McpToolsService {
       downloadUrl: `${this.baseUrl}/api/mcp/decks/${objectId}/download`,
       ...preview,
       applied,
+      ...(ignored ? { ignored } : {}),
       summary: subdeckSummary(title, totalCards, subdecks.length),
     };
+  }
+
+  private subdeckIgnoredOptions(
+    options: McpCreateDeckOptions | undefined
+  ): IgnoredOption[] | undefined {
+    const ignored: IgnoredOption[] = [];
+    if (options?.noteType != null && options.noteType !== 'basic') {
+      ignored.push({
+        option: 'noteType',
+        requested: options.noteType,
+        reason:
+          'Cards with a deck field always build as Basic; noteType only applies when no card sets deck.',
+      });
+    }
+    if (options?.tags != null && options.tags.length > 0) {
+      ignored.push({
+        option: 'tags',
+        requested: options.tags,
+        reason:
+          'Cards with a deck field always build with no tags; tags only apply when no card sets deck.',
+      });
+    }
+    return ignored.length > 0 ? ignored : undefined;
   }
 
   private everyBackEmpty(cards: McpCard[]): boolean {

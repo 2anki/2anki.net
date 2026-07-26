@@ -109,7 +109,7 @@ export const DECK_CAPABILITIES: DeckCapabilities = {
     howItWorks:
       'convert_to_deck scans your text for front and back pairs. Pick one structure below to separate each front from its back — you only need one. The note type (basic, basic-reversed, or input) is set through options.noteType and does not change which structure you use. Cloze is the exception: set options.noteType to cloze and put {{c1::...}} markup inside the front of any structure. Without the markup, cloze falls back to basic.',
     shortcut:
-      'If you already have discrete front and back pairs, skip the text formatting and call create_deck with a { front, back } array instead. It cannot fail on formatting.',
+      'If you already have discrete front and back pairs, skip the text formatting and call create_deck with a { front, back } array instead. It cannot fail on formatting. create_deck also takes options.noteType (basic, basic-reversed, cloze, or input — not mcq), but only for cards with no deck field; subdeck cards always build as Basic.',
     structures: [
       {
         name: 'inline',
@@ -158,7 +158,7 @@ export const DECK_CAPABILITIES: DeckCapabilities = {
         note: 'Cloze needs {{c1::...}} markup in the front of the card. Without the markup, cloze falls back to basic.',
       },
     ],
-    mcq: 'Multiple-choice cards are built from Notion toggle-list exports that mark the correct option, not from free-form text. To make them, convert a Notion export with options.noteType set to mcq. create_deck builds basic front and back cards only.',
+    mcq: 'Multiple-choice cards are built from Notion toggle-list exports that mark the correct option, not from free-form text or structured cards. To make them, convert a Notion export with options.noteType set to mcq. create_deck does not support mcq.',
   },
   conventions: [
     'Cloze cards require {{c1::...}} markup in the text; without it, cloze falls back to basic.',
