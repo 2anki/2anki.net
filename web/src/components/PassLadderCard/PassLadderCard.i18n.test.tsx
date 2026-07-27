@@ -21,12 +21,7 @@ describe('PassLadderCard in German', () => {
   });
 
   it('translates the headline and keeps the Unlimited price in the CTA', () => {
-    render(
-      <PassLadderCard
-        offerOverride={{ passCount: 3, spentUsd: 12 }}
-        emailOverride="learner@example.com"
-      />
-    );
+    render(<PassLadderCard offerOverride={{ passCount: 3, spentUsd: 12 }} />);
     expect(
       screen.getByText('Gibst du mehr für Pässe aus, als Unlimited kostet?')
     ).toBeInTheDocument();
@@ -36,12 +31,7 @@ describe('PassLadderCard in German', () => {
   });
 
   it('pluralises the pass count body', () => {
-    render(
-      <PassLadderCard
-        offerOverride={{ passCount: 1, spentUsd: 4 }}
-        emailOverride="learner@example.com"
-      />
-    );
+    render(<PassLadderCard offerOverride={{ passCount: 1, spentUsd: 4 }} />);
     expect(screen.getByText(/Du hast 1 Pass gekauft/i)).toBeInTheDocument();
   });
 });

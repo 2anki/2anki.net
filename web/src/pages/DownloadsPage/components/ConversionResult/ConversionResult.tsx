@@ -9,11 +9,9 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { classifyUploadError } from '../../../../components/errors/helpers/getErrorMessage';
 import { parseAmbiguousColumnsPayload } from '../../../../lib/fieldMapping/types';
-import {
-  getSubscribeLink,
-  PASS_PRICES,
-} from '../../../PricingPage/payment.links';
+import { PASS_PRICES } from '../../../PricingPage/payment.links';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
+import { startUnlimitedUpgrade } from '../../../../lib/backend/startUnlimitedUpgrade';
 import { track } from '../../../../lib/analytics/track';
 import { formatResetDate } from './formatResetDate';
 import type { UploadErrorBody } from '../../../../types/UploadErrorBody';
@@ -21,6 +19,7 @@ import sharedStyles from '../../../../styles/shared.module.css';
 import styles from './ConversionResult.module.css';
 
 const PAYWALL_SURFACE = 'downloads-limit';
+const UNLIMITED_PRICING_HREF = `/pricing?source=${PAYWALL_SURFACE}`;
 
 type Source = 'notion' | 'upload' | 'dropbox' | 'drive';
 
@@ -39,7 +38,6 @@ interface PaywalledProps {
   limit: number;
   cardsUsed: number;
   resetOn?: string;
-  email?: string;
 }
 
 interface FailedProps {
@@ -65,12 +63,10 @@ function PaywalledVariant({
   limit,
   cardsUsed,
   resetOn,
-  email,
 }: Omit<PaywalledProps, 'variant' | 'title'>) {
   const { t } = useTranslation();
   const shownFiredRef = useRef(false);
   const [pendingKind, setPendingKind] = useState<'24h' | '7d' | null>(null);
-  const upgradeHref = getSubscribeLink(email);
   const resetDate = formatResetDate(resetOn);
 
   useEffect(() => {
@@ -97,15 +93,16 @@ function PaywalledVariant({
     setPendingKind(null);
   };
 
-  const handleUnlimitedClick = (event: MouseEvent<HTMLAnchorElement>) => {
+  const handleUnlimitedClick = async (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
     if (pendingKind != null) {
-      event.preventDefault();
       return;
     }
     track('paywall_upgrade_clicked', {
       surface: PAYWALL_SURFACE,
       plan: 'unlimited',
     });
+    await startUnlimitedUpgrade(PAYWALL_SURFACE);
   };
 
   return (
@@ -146,7 +143,7 @@ function PaywalledVariant({
               })}
         </button>
         <a
-          href={upgradeHref}
+          href={UNLIMITED_PRICING_HREF}
           className={styles.seeAllPlans}
           onClick={handleUnlimitedClick}
           aria-disabled={pendingKind != null}
@@ -261,7 +258,6 @@ export function ConversionResult(props: Readonly<ConversionResultProps>) {
         limit={props.limit}
         cardsUsed={props.cardsUsed}
         resetOn={props.resetOn}
-        email={props.email}
       />
     );
   }

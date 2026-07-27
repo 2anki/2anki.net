@@ -22,6 +22,13 @@ vi.mock('../../lib/hooks/useUserLocals', () => ({
   useUserLocals: vi.fn(),
 }));
 
+const mockStartUnlimitedUpgrade = vi.fn();
+
+vi.mock('../../lib/backend/startUnlimitedUpgrade', () => ({
+  startUnlimitedUpgrade: (...args: unknown[]) =>
+    mockStartUnlimitedUpgrade(...args),
+}));
+
 const mockedUseUserLocals = vi.mocked(useUserLocals);
 
 function asLoggedIn() {
@@ -96,11 +103,13 @@ describe('LimitPage', () => {
     expect(backLink.closest('a')?.getAttribute('href')).toBe('/upload');
   });
 
-  it('Unlimited plan link carries ref=limit-wall parameter', () => {
+  it('starts the Unlimited checkout through the API, not a static link', () => {
     renderPage();
     const upgradeLink = screen.getByText('Upgrade to Unlimited');
-    const href = upgradeLink.getAttribute('href') ?? '';
-    expect(href).toContain('ref=limit-wall');
+    expect(upgradeLink.getAttribute('href')).toBe('/pricing?source=limit-wall');
+
+    fireEvent.click(upgradeLink);
+    expect(mockStartUnlimitedUpgrade).toHaveBeenCalledWith('limit-wall');
   });
 
   it('features the Day Pass as the primary unblock', () => {

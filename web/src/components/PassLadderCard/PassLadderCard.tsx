@@ -1,22 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { track } from '../../lib/analytics/track';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
-import { getSubscribeLink } from '../../pages/PricingPage/payment.links';
+import { startUnlimitedUpgrade } from '../../lib/backend/startUnlimitedUpgrade';
 import styles from './PassLadderCard.module.css';
 
 const SURFACE = 'pass_ladder_success';
+const PRICING_HREF = `/pricing?source=${SURFACE}`;
 
 interface PassLadderCardProps {
   readonly offerOverride?: { passCount: number; spentUsd: number };
-  readonly emailOverride?: string;
 }
 
-export function PassLadderCard({
-  offerOverride,
-  emailOverride,
-}: PassLadderCardProps = {}) {
+export function PassLadderCard({ offerOverride }: PassLadderCardProps = {}) {
   const { t } = useTranslation('marketing');
   const { data } = useUserLocals();
   const shownFiredRef = useRef(false);
@@ -35,8 +32,10 @@ export function PassLadderCard({
 
   if (offer == null) return null;
 
-  const handleUnlimitedClick = () => {
+  const handleUnlimitedClick = async (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
     track('paywall_upgrade_clicked', { surface: SURFACE, plan: 'unlimited' });
+    await startUnlimitedUpgrade(SURFACE);
   };
 
   return (
@@ -50,7 +49,7 @@ export function PassLadderCard({
       </p>
       <a
         className={styles.cta}
-        href={getSubscribeLink(emailOverride ?? data?.user?.email)}
+        href={PRICING_HREF}
         onClick={handleUnlimitedClick}
       >
         {t('passLadder.cta')}

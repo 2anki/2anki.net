@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { track } from '../../lib/analytics/track';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
-import { getSubscribeLink } from '../PricingPage/payment.links';
+import { startUnlimitedUpgrade } from '../../lib/backend/startUnlimitedUpgrade';
 import { PassCards } from '../PricingPage/components/PassCards';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import styles from './LimitPage.module.css';
@@ -75,7 +75,6 @@ function AnonymousLimit() {
 export function LimitPage() {
   const { t } = useTranslation('accountx');
   const { data: userLocals, isLoading } = useUserLocals();
-  const email = userLocals?.user?.email;
   const isLoggedIn = userLocals?.user?.id != null;
   const [dayPassPending, setDayPassPending] = useState(false);
   const [weekPassPending, setWeekPassPending] = useState(false);
@@ -129,8 +128,17 @@ export function LimitPage() {
   };
 
   const unlimitedLink = isLoggedIn
-    ? `${getSubscribeLink(email)}&ref=${REF}`
+    ? `/pricing?source=${REF}`
     : `/login?redirect=/pricing&ref=${REF}`;
+
+  const handleUnlimitedClick = async (event: MouseEvent<HTMLAnchorElement>) => {
+    track('paywall_upgrade_clicked', { surface: REF, plan: 'unlimited' });
+    if (!isLoggedIn) {
+      return;
+    }
+    event.preventDefault();
+    await startUnlimitedUpgrade(REF);
+  };
 
   return (
     <div className={styles.page}>
@@ -176,12 +184,7 @@ export function LimitPage() {
           <a
             href={unlimitedLink}
             className={styles.planCtaSecondary}
-            onClick={() =>
-              track('paywall_upgrade_clicked', {
-                surface: REF,
-                plan: 'unlimited',
-              })
-            }
+            onClick={handleUnlimitedClick}
           >
             {t('limit.upgradeToUnlimited')}
           </a>
