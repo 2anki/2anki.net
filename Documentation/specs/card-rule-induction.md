@@ -108,11 +108,28 @@ This makes three previously unanswerable questions answerable: is deck quality i
 
 ## Sequencing
 
-1. **PR 1 — scorer + telemetry.** Scorer as a pure function with unit tests, `conversion_rule_scores` migration + `pnpm kanel`, recording on every conversion. Ships alone and immediately starts answering "is quality improving." No behaviour change.
-2. **PR 2 — induction fallback.** Wire candidates at the zero-card choke point(s), pick by score, honest failure below floor.
-3. **PR 3 — copy.** Replace the Notion-toggle message with path-appropriate strings across 10 locales.
+1. **PR 1 — wire the existing fallback to the two unwired Notion sites.** Extend `guessTogglelessCards` to `buildDeckFromBlockChildren` and `findFlashcardsFromDatabaseRows`, with outside-in tests for a child-page/sub-deck shape and a database-row shape, plus an assertion that the fallback adds **zero** Notion API calls. This is days of work, needs no new concepts, and closes the recurrence at its actual cause.
+2. **PR 2 — scorer + telemetry.** `scoreCandidateDeck.ts` as a pure function over `Note[]`, unit-tested with no workspace, no Python and no Notion; `conversion_rule_scores` migration + `pnpm kanel`; recorded on every conversion. No behaviour change, and it produces the data that calibrates PR 3's constants.
+3. **PR 3 — candidate induction.** Notion: a candidate loop over the in-memory blocks re-running `classifyBlock` with widened flashcard-type sets, best-above-floor wins. Upload: DOM-level induction inside `handleHTML` before the flattening step, scored on raw notes, winner built.
+4. **PR 4 — copy.** Path-appropriate empty messages across 10 locales; keep the toggle teaching on Notion only.
 
-PR 1 first on purpose: it calibrates the constants PR 2 depends on with real data.
+PR 1 first because it is the verified root cause of the failures that continued after 2026-07-23; PR 2 before PR 3 because every threshold in the scorer should come from measured corpus percentiles rather than my judgement.
+
+## Why the 2026-07-23 fix did not stop the failures
+
+`guessTogglelessCards` is called from **exactly one place** — `BlockHandler.ts:775`, inside `collectDecksFromPage`, the top-level page branch. Verified: `grep guessTogglelessCards` returns the call at 775 and the definition at 869, nothing else. There is one `cards.length === 0` check in the entire file.
+
+Cards can end up empty in **three** places on the Notion path:
+
+| Site | Handles | Fallback today |
+| --- | --- | --- |
+| `collectDecksFromPage:774` | top-level page | ✅ wired 2026-07-23 |
+| `buildDeckFromBlockChildren:883+` | child pages, sub-decks | ❌ none |
+| `findFlashcardsFromDatabaseRows:591+` | Notion database rows | ❌ none |
+
+A user whose material lives under a child page, a sub-deck, or a database gets zero cards and the rescue is never attempted. That is why failures continued on 07-23, 07-24 and 07-25 after the fix shipped, and two of the earlier failures were `type='database'` jobs. The existing test file `BlockHandler.toggleLessFallback.test.ts` only exercises the top-level branch, so nothing caught it.
+
+This is the exact pattern `.claude/rules/first-time-fix.md` was written about: a multi-site class fixed at one site, green tests, and the user's own path still broken. **Wiring all three sites is the highest-value, lowest-risk work in this spec** — it may be most of the Notion fix on its own.
 
 ## Decisions from trio review
 
@@ -122,11 +139,20 @@ PR 1 first on purpose: it calibrates the constants PR 2 depends on with real dat
 
 **Scope honestly** (pm). The Notion induction reaches ~70 failures/month, not 227, and the candidate set contains no table strategy while `table` is the single largest unsupported block (104). Native table/column support is the durable fix; this rescue is also a cheap probe that tells us which structures actually rescue real documents, de-risking that larger investment.
 
-## Open questions
+## Implementation constraints found in review
 
-- **Choke points.** Where exactly is zero-card detected on each path? Both must be wired — the 2026-07-23 fix failed precisely because it reached only one. *Engineer review pending.*
-- **Re-parse safety.** Is the parse safe to run N times over one workspace, or does it mutate extracted files, write media, or carry state? Largest implementation risk. *Engineer review pending.*
-- **Notion re-walk.** Can candidates re-run on retained blocks, or would each re-hit the Notion API? *Engineer review pending.*
+**Score raw `Note[]`, before `processPayload`.** `processPayload` mutates cards in place (`DeckParser.ts:1040-1078`): it sets `card.number`, resets `card.media = []`, rewrites `name`/`back` through `handleClozeDeletions`, and swaps sides when `reversed`. A candidate that is built and then discarded is already consumed. Score on the parsed notes and only `build()` the winner.
+
+**One Python spawn, not N.** Only `build()` → `CustomExporter.save()` spawns Python (`CustomExporter.ts:70-77`). N candidates therefore cost N cheap in-memory DOM parses and a single spawn. N spawns would be unacceptable.
+
+**Zero extra Notion API calls.** `BlockHandler` retains no walked blocks — `blocks` is local to `collectDecksFromPage:707`, `childBlocks` local to `buildDeckFromBlockChildren:897`. Re-running from `performConversion` would re-issue `getPage` + paginated `getBlocks` + `expandSyncedBlocks` + `queryDatabase`, against Notion's ~3 req/s limit. So candidates must run **in-line where the blocks are still in memory**, which is what the existing fallback already does correctly.
+
+**Determinism.** `get16DigitRandomId()` gives every deck and note fresh IDs per run, so the scorer must not depend on IDs. Thresholds are named constants, never env flags — same input must always yield the same `.apkg`.
+
+**Incoherent option combinations to exclude from the candidate set:** `clozeFromToggleContent` assumes a toggle front and toggle-content back, so it is meaningless for heading/list/quote candidates; `template === 'hierarchy'` consumes headings as breadcrumb context, so heading candidates must be excluded when it is on; `column_list` with a single column yields an empty back and should not be offered.
+
+## Open question
+
 - **Signalling a rescue — unresolved conflict.** pm says nothing user-visible this PR (emit a response header, render nothing) because the quality floor is itself the safety mechanism. designer says use the established Downloads-page inline-notice pattern (`ColumnsGuessedNotice` is the precedent for "we guessed your structure") because the user's mental model is "cards from toggles" while reality is "cards from headings", and a silent structural change looks broken with no explanation. Both reject a deck-name marker (syncs permanently into the user's Anki collection) and an in-deck info card (becomes a real card the scheduler shows). **Alexander decides** — this turns on whether a new notice component counts as the forbidden "UI change" or as reuse of an existing pattern.
 
 ## Success measure
