@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-27-full-length-ai-answers",
+  "date": "2026-07-27",
+  "type": "fix",
+  "title": "AI-generated cards keep their full answer instead of stopping partway through"
+}
