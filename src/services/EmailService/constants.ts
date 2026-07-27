@@ -85,6 +85,11 @@ export const PRICE_LOCK_IN_TEMPLATE = fs.readFileSync(
   'utf8'
 );
 
+export const CONTACT_CONFIRMATION_TEMPLATE = fs.readFileSync(
+  path.join(EMAIL_TEMPLATES_DIRECTORY, 'contact-confirmation.html'),
+  'utf8'
+);
+
 export const SUBSCRIPTION_CLAIM_CONFIRMATION_TEMPLATE = fs.readFileSync(
   path.join(EMAIL_TEMPLATES_DIRECTORY, 'subscription-claim-confirmation.html'),
   'utf8'

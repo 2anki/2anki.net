@@ -6,7 +6,10 @@ jest.mock('@sendgrid/mail', () => ({
 }));
 
 import { getDefaultEmailService } from './EmailService';
-import { NOTION_RECONNECT_TEMPLATE } from './constants';
+import {
+  NOTION_RECONNECT_TEMPLATE,
+  CONTACT_CONFIRMATION_TEMPLATE,
+} from './constants';
 
 describe('EmailService.sendNotionReconnectEmail', () => {
   const originalEnv = { ...process.env };
@@ -303,5 +306,53 @@ describe('EmailService support notifications cc the owner', () => {
     const msg = lastMessage();
     expect(msg.to).toBe('support@2anki.net');
     expect(msg.cc).toBe('alexander@alemayhu.com');
+  });
+});
+
+describe('EmailService.sendContactConfirmationEmail', () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.SENDGRID_API_KEY = 'test-key';
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  function lastMessage() {
+    const calls = send.mock.calls;
+    return calls[calls.length - 1][0] as {
+      to: string;
+      subject: string;
+      html: string;
+      replyTo: string;
+    };
+  }
+
+  it('loads the contact-confirmation template with the required blocks', () => {
+    expect(CONTACT_CONFIRMATION_TEMPLATE).toContain(
+      '2anki.net/mascot/navbar-logo.png'
+    );
+    expect(CONTACT_CONFIRMATION_TEMPLATE).toContain('prefers-color-scheme');
+    expect(CONTACT_CONFIRMATION_TEMPLATE).toContain('The 2anki Team');
+    expect(CONTACT_CONFIRMATION_TEMPLATE).toContain(
+      'Turn what you study into Anki flashcards'
+    );
+    expect(CONTACT_CONFIRMATION_TEMPLATE).not.toContain('unsubscribe');
+    expect(CONTACT_CONFIRMATION_TEMPLATE).not.toContain('{{');
+  });
+
+  it('sends to the submitter with replies routed to support', async () => {
+    const service = getDefaultEmailService();
+
+    await service.sendContactConfirmationEmail('user@example.com');
+
+    const msg = lastMessage();
+    expect(msg.to).toBe('user@example.com');
+    expect(msg.subject).toBe('We got your message');
+    expect(msg.replyTo).toBe('support@2anki.net');
+    expect(msg.html).toContain('Your message reached us');
   });
 });

@@ -19,6 +19,7 @@ import {
   SUBSCRIPTION_CANCELLED_TEMPLATE,
   SUBSCRIPTION_CANCELLATIONS_LOG_PATH,
   SUBSCRIPTION_CLAIM_CONFIRMATION_TEMPLATE,
+  CONTACT_CONFIRMATION_TEMPLATE,
   PASS_CLAIM_CONFIRMATION_TEMPLATE,
   SUBSCRIPTION_RECOVERY_TEMPLATE,
   SUBSCRIPTION_SCHEDULED_CANCELLATION_TEMPLATE,
@@ -108,6 +109,7 @@ export interface IEmailService {
     claimUrl: string,
     passKindLabel: string
   ): Promise<void>;
+  sendContactConfirmationEmail(to: string): Promise<void>;
   sendPriceLockInEmail(
     to: string,
     token: string,
@@ -595,6 +597,23 @@ export class EmailService implements IEmailService {
         'Failed to send subscription claim confirmation email:',
         error
       );
+      throw error;
+    }
+  }
+
+  async sendContactConfirmationEmail(to: string): Promise<void> {
+    const msg = {
+      to,
+      from: this.defaultSender,
+      subject: 'We got your message',
+      text: 'Thanks for writing in. Your message reached us. 2anki is a one-person project, so a reply usually takes a day or two. Want to add something? Just reply to this message — it comes straight to support@2anki.net.',
+      html: CONTACT_CONFIRMATION_TEMPLATE,
+      replyTo: 'support@2anki.net',
+    };
+    try {
+      await this.deliver(msg);
+    } catch (error) {
+      console.error('Failed to send contact confirmation email:', error);
       throw error;
     }
   }
@@ -1094,6 +1113,10 @@ export class UnimplementedEmailService implements IEmailService {
     _claimUrl: string
   ): Promise<void> {
     console.info('sendSubscriptionClaimConfirmation not handled');
+  }
+
+  async sendContactConfirmationEmail(_to: string): Promise<void> {
+    console.info('sendContactConfirmationEmail not handled');
   }
 
   async sendPassClaimConfirmation(

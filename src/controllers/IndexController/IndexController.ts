@@ -2,6 +2,11 @@ import express from 'express';
 import { getDatabase } from '../../data_layer';
 import { sendIndex } from './sendIndex';
 import { getDefaultEmailService } from '../../services/EmailService/EmailService';
+import {
+  shouldSendContactAck,
+  CONTACT_ACK_COOLDOWN_MS,
+} from '../../lib/email/shouldSendContactAck';
+import { normalizeEmail } from '../../lib/email/isValidEmailShape';
 
 class IndexController {
   public getIndex(_request: express.Request, response: express.Response) {
@@ -46,6 +51,28 @@ class IndexController {
           err
         );
       });
+
+    // One normalized address drives the cooldown lookup AND the recipient —
+    // if they could differ, padding or a "display <addr>" wrapper would mint a
+    // fresh cooldown key while still delivering to the same mailbox.
+    const normalizedEmail = normalizeEmail(email);
+    const windowStart = new Date(Date.now() - CONTACT_ACK_COOLDOWN_MS);
+    const recentRows = await database('feedback')
+      .whereRaw('lower(btrim(email)) = ?', [normalizedEmail ?? ''])
+      .where('created_at', '>', windowStart)
+      .count<{ count: string | number }[]>('* as count');
+    const recentCount = Number(recentRows?.[0]?.count ?? 0);
+
+    if (shouldSendContactAck(normalizedEmail, message, recentCount)) {
+      void emailService
+        .sendContactConfirmationEmail(normalizedEmail as string)
+        .catch((err) => {
+          console.error(
+            `Contact confirmation email failed for feedback row ${feedbackId}; submission unaffected`,
+            err
+          );
+        });
+    }
 
     return res.status(200).send();
   }

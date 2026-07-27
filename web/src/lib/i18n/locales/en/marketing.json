@@ -72,7 +72,7 @@
     "subtitle": "Have a question, idea, or just want to say hi? We'd love to hear from you.",
     "sendTitle": "Send us a message",
     "formLead": "We typically reply within 24–48 hours.",
-    "sentAlert": "Thanks for reaching out — we'll get back to you soon.",
+    "sentAlert": "Message sent. Check your inbox for a confirmation — reply to it any time to add more.",
     "errorPrefix": "Something went wrong. Please try emailing us directly at ",
     "errorSuffix": ".",
     "nameLabel": "Name",
