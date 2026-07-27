@@ -1,6 +1,8 @@
 import Knex from 'knex';
 import KnexConfig from '../KnexConfig';
 import UsersRepository from './UsersRepository';
+import { isNewMonth } from '../lib/User/isNewMonth';
+import { startOfMonthUtc } from '../lib/User/startOfMonthUtc';
 
 function buildKnexMock() {
   const updateSpy = jest.fn().mockResolvedValue(1);
@@ -368,6 +370,31 @@ describe('UsersRepository.countSignupsSince', () => {
     expect(whereSpy).toHaveBeenCalledWith('created_at', '>=', since);
     expect(countSpy).toHaveBeenCalledWith('* as count');
     expect(count).toBe(42);
+  });
+});
+
+describe('UsersRepository.incrementPrintUsage', () => {
+  const pg = Knex({ client: 'pg' });
+
+  afterAll(() => pg.destroy());
+
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('stamps the month boundary in UTC so getPrintUsage counts the print in the same month', () => {
+    jest.setSystemTime(new Date('2026-07-15T12:00:00.000Z'));
+    const repo = new UsersRepository(pg as any);
+
+    const { bindings } = repo.incrementPrintUsage(1).toSQL();
+    const stampedBoundary = bindings.find(
+      (binding): binding is Date => binding instanceof Date
+    );
+
+    expect(stampedBoundary).toBeInstanceOf(Date);
+    expect((stampedBoundary as Date).toISOString()).toBe(
+      startOfMonthUtc(new Date()).toISOString()
+    );
+    expect(isNewMonth(stampedBoundary as Date, new Date())).toBe(false);
   });
 });
 
