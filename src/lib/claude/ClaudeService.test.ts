@@ -973,6 +973,23 @@ describe('generateDeckInfo — truncated chunk retry', () => {
     expect(result[0].cards.length).toBeGreaterThan(0);
   });
 
+  it('one retried half truncates again → the half that parsed is kept', async () => {
+    mockStream.finalMessage
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValueOnce(fakeResponse())
+      .mockResolvedValueOnce(truncatedResponse());
+
+    const infoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    try {
+      const result = await generateDeckInfo(htmlOneChunk, []);
+      expect(result[0].cards.length).toBeGreaterThan(0);
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
   it('retried halves still truncate → chunk is dropped, sibling chunk survives', async () => {
     const htmlTwoChunks =
       '<p>' +
