@@ -9,7 +9,7 @@ const old = new Date(now.getTime() - ORPHAN_GRACE_MS - 1000);
 const recent = new Date(now.getTime() - 60 * 1000);
 
 describe('isReservedKey', () => {
-  it.each(['mindmaps/12/34/abc.png', 'io-drafts/12/abc.png'])(
+  it.each(['mindmaps/12/34/abc.png', 'io-drafts/12/abc.png', 'assets/app.js'])(
     'reserves %s for the feature that owns it',
     (key) => {
       expect(isReservedKey(key)).toBe(true);
@@ -46,7 +46,7 @@ describe('isDeletableBucketKey', () => {
 
   // The whole-bucket walk would otherwise wipe every mindmap image and
   // image-occlusion draft, since those keys are never in the uploads table.
-  it.each(['mindmaps/1/2/a.png', 'io-drafts/1/a.png'])(
+  it.each(['mindmaps/1/2/a.png', 'io-drafts/1/a.png', 'assets/main.css'])(
     'never deletes %s even when unreferenced and old',
     (key) => {
       expect(

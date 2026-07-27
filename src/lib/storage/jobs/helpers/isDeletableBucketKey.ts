@@ -2,7 +2,17 @@
 // walks the whole bucket, so without this it would delete every mindmap image
 // and image-occlusion draft on its first pass — those keys are never in the
 // uploads table and so can never appear in its keep-set.
-export const RESERVED_KEY_PREFIXES = ['mindmaps/', 'io-drafts/'] as const;
+// 'assets/' is written by the deploy workflow's `aws s3 sync`, not by the app,
+// so no uploads row will ever reference it and --size-only leaves its
+// LastModified old enough to defeat the grace window. Whether it lands in this
+// bucket depends on SPACES_ASSETS_BUCKET, which is a CI secret we cannot read
+// from here — the bucket holds no assets/ objects today, but the previous
+// sweep would have deleted them either way, so absence proves nothing.
+export const RESERVED_KEY_PREFIXES = [
+  'mindmaps/',
+  'io-drafts/',
+  'assets/',
+] as const;
 
 // An object is only orphaned once its owning row has had time to commit. A
 // deck is uploaded to storage before its uploads row is written, so a sweep
