@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-keep-partial-chunk-cards",
+  "date": "2026-07-28",
+  "type": "fix",
+  "title": "Long pages keep every card the AI produced instead of dropping a section that ran out of room"
+}
