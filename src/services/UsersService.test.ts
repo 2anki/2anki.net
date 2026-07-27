@@ -122,6 +122,10 @@ describe('UsersService.sendResetEmail', () => {
       id: 1,
       email: 'al@example.com',
       reset_token: 'existing-token',
+      // Still inside its window, so it is reused rather than reminted and
+      // this test stays focused on the email send.
+      reset_token_expires_at: new Date(Date.now() + 10 * 60 * 1000),
+      reset_token_used_at: null,
     });
     const repository = { getByEmail } as unknown as UsersRepository;
     const service = new UsersService(repository, emailService);
