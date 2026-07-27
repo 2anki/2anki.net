@@ -5,7 +5,7 @@ import type { ClaimPassUseCase } from '../usecases/passes/ClaimPassUseCase';
 import type { ConfirmPassClaimUseCase } from '../usecases/passes/ConfirmPassClaimUseCase';
 import { passKindLabel } from '../usecases/passes/passKindLabel';
 import { emailHash } from '../lib/emailHash';
-import hashToken from '../lib/misc/hashToken';
+import hmacToken from '../lib/misc/hmacToken';
 import { resolveClientIp } from '../lib/rateLimit/ipHelpers';
 
 export class SubscriptionClaimController {
@@ -29,7 +29,7 @@ export class SubscriptionClaimController {
     const input = {
       userId,
       submittedEmail,
-      ipHash: hashToken(ip),
+      ipHash: hmacToken(ip),
       emailHash: emailHash(submittedEmail),
     };
 
@@ -55,8 +55,8 @@ export class SubscriptionClaimController {
     }
 
     const ip = resolveClientIp(req);
-    const ipHashValue = hashToken(ip);
-    const placeholderEmailHash = hashToken('unknown');
+    const ipHashValue = hmacToken(ip);
+    const placeholderEmailHash = hmacToken('unknown');
 
     const outcome = await this.confirmUseCase.execute(
       userId,
@@ -105,8 +105,8 @@ export class SubscriptionClaimController {
     const outcome = await this.confirmPassUseCase.execute(
       userId,
       rawToken,
-      hashToken(ip),
-      hashToken('unknown')
+      hmacToken(ip),
+      hmacToken('unknown')
     );
 
     if (outcome.success) {

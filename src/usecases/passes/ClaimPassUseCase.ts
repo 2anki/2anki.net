@@ -7,7 +7,7 @@ import type { ISubscriptionClaimAuditRepository } from '../../data_layer/Subscri
 import type { UsersId } from '../../data_layer/public/Users';
 import type { AnonymousPassesId } from '../../data_layer/public/AnonymousPasses';
 import { emailHash } from '../../lib/emailHash';
-import hashToken from '../../lib/misc/hashToken';
+import hmacToken from '../../lib/misc/hmacToken';
 import { passKindLabel } from './passKindLabel';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -75,7 +75,7 @@ export class ClaimPassUseCase {
     await this.tokensRepo.insert({
       user_id: input.userId as UsersId,
       anonymous_pass_id: pass.id as AnonymousPassesId,
-      token_hash: hashToken(rawToken),
+      token_hash: hmacToken(rawToken),
       expires_at: new Date(now.getTime() + TOKEN_TTL_MS),
     });
 

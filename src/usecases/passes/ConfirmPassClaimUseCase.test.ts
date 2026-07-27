@@ -4,7 +4,7 @@ import { InMemoryAnonymousPassRepository } from '../../data_layer/AnonymousPassR
 import type { IPassClaimTokensRepository } from '../../data_layer/PassClaimTokensRepository';
 import type { ISubscriptionClaimAuditRepository } from '../../data_layer/SubscriptionClaimAuditRepository';
 import type { IUserPassRepository } from '../../data_layer/UserPassRepository';
-import hashToken from '../../lib/misc/hashToken';
+import hmacToken from '../../lib/misc/hmacToken';
 
 process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
 
@@ -27,7 +27,7 @@ function makeTokensRepo(
       id: 10,
       user_id: 42,
       anonymous_pass_id: 1,
-      token_hash: hashToken(RAW_TOKEN),
+      token_hash: hmacToken(RAW_TOKEN),
       expires_at: new Date(Date.now() + 10 * 60 * 1000),
       consumed_at: null,
       created_at: new Date(),
@@ -129,7 +129,7 @@ describe('ConfirmPassClaimUseCase', () => {
       id: 10,
       user_id: 42,
       anonymous_pass_id: 1,
-      token_hash: hashToken(RAW_TOKEN),
+      token_hash: hmacToken(RAW_TOKEN),
       expires_at: new Date(Date.now() + 10 * 60 * 1000),
       consumed_at: new Date(),
       created_at: new Date(),

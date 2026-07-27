@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import hashToken from '../../lib/misc/hashToken';
+import hmacToken from '../../lib/misc/hmacToken';
 import type { IAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import type { IPassClaimTokensRepository } from '../../data_layer/PassClaimTokensRepository';
 import type { ISubscriptionClaimAuditRepository } from '../../data_layer/SubscriptionClaimAuditRepository';
@@ -36,7 +36,7 @@ export class ConfirmPassClaimUseCase {
         outcome,
       });
 
-    const tokenRow = await this.tokensRepo.findByTokenHash(hashToken(rawToken));
+    const tokenRow = await this.tokensRepo.findByTokenHash(hmacToken(rawToken));
     if (
       tokenRow == null ||
       new Date(tokenRow.expires_at).getTime() < Date.now()
