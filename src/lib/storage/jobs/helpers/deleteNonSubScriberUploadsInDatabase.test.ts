@@ -261,6 +261,74 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
     expect(await remainingUploadKeys()).toEqual(['sub.apkg']);
   });
 
+  it('spares a subscriber who also holds a stale cancelled subscription row', async () => {
+    await seedUserWithUpload(1, 'dual@example.com', false, 'dual.apkg');
+    await db('subscriptions').insert({
+      email: 'dual@example.com',
+      active: false,
+    });
+    await db('subscriptions').insert({
+      email: 'billing@example.com',
+      linked_email: 'dual@example.com',
+      active: true,
+    });
+
+    const storage = { delete: jest.fn() };
+
+    await deleteNonSubScriberUploadsInDatabase(
+      withPgRawShape(db),
+      storage as never
+    );
+
+    expect(storage.delete).not.toHaveBeenCalled();
+    expect(await remainingUploadKeys()).toEqual(['dual.apkg']);
+  });
+
+  it('spares an active subscriber whose account email differs in case', async () => {
+    await seedUserWithUpload(1, 'Mixed.Case@Example.com', false, 'mixed.apkg');
+    await db('subscriptions').insert({
+      email: 'mixed.case@example.com',
+      active: true,
+    });
+
+    const storage = { delete: jest.fn() };
+
+    await deleteNonSubScriberUploadsInDatabase(
+      withPgRawShape(db),
+      storage as never
+    );
+
+    expect(storage.delete).not.toHaveBeenCalled();
+    expect(await remainingUploadKeys()).toEqual(['mixed.apkg']);
+  });
+
+  it('sweeps a non-subscriber only once when several cancelled rows match', async () => {
+    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+
+    await seedUserWithUpload(1, 'lapsed@example.com', false, 'lapsed.apkg');
+    await db('subscriptions').insert({
+      email: 'lapsed@example.com',
+      active: false,
+    });
+    await db('subscriptions').insert({
+      email: 'old-billing@example.com',
+      linked_email: 'lapsed@example.com',
+      active: false,
+    });
+
+    const storage = { delete: jest.fn() };
+
+    await deleteNonSubScriberUploadsInDatabase(
+      withPgRawShape(db),
+      storage as never
+    );
+
+    expect(storage.delete).toHaveBeenCalledTimes(1);
+    expect(await remainingUploadKeys()).toEqual([]);
+
+    infoSpy.mockRestore();
+  });
+
   it('raises a deletion-volume alarm when a run sweeps an anomalous fraction of the uploads table', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
