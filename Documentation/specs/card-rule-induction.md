@@ -138,6 +138,16 @@ A user whose material lives under a child page, a sub-deck, or a database gets z
 
 This is the exact pattern `.claude/rules/first-time-fix.md` was written about: a multi-site class fixed at one site, green tests, and the user's own path still broken. **Wiring all three sites is the highest-value, lowest-risk work in this spec** — it may be most of the Notion fix on its own.
 
+## Locked decision: inference never becomes the default
+
+Decided by Alexander, 2026-07-27. **Structure inference must never replace the toggle contract as the primary extraction path**, and this is not open for revisiting in a later PR.
+
+The reason is a promise, not a preference. 723 paying subscribers have built decks on toggle semantics, and the Ankify/Auto-Sync users re-convert the same Notion pages on a 5-minute loop. If the same page began producing differently-shaped cards, their existing decks would drift and duplicate against notes already in their collections. Deterministic output for unchanged input is a contract the product has already sold.
+
+The zero-card boundary is therefore exactly right, and it is more precise than "documents without toggles." A toggle-less document does **not** necessarily produce nothing today — `DeckParser` also extracts from unclassified lists and paragraphs (`DeckParser.ts:434-468`), so a page with no toggles may still be yielding cards some user depends on. Only the zero-card case has, by definition, no existing output to break.
+
+**Consequence for ambition:** magic cannot come from changing what a successful conversion produces. It has to come from three places that leave the contract untouched — rescuing conversions that produce nothing, raising the quality of output that is already wrong but counted as success (the convert path's 8.78% blank-back rate, oversized cards from unfanned sections), and speed. Any proposal to make inference primary is out of scope permanently.
+
 ## Decisions from trio review
 
 **Fail honest below the floor** (pm). A student who trusts a bad rescued deck is worse off than one told plainly that no structure was found: a false "here's your deck" costs trust *and* causes mislearning, while a false negative costs one retry. The floor reuses primitives that already exist rather than inventing vocabulary: `detectOverSplit()` must be false, empty-back ratio ≤ 20% via `countEmptyBacks()`, at least 3 cards, and front-duplication under a cap. Thresholds are named constants, never env flags — determinism is a hard parser contract (same input → same `.apkg`).
