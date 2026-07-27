@@ -190,6 +190,52 @@ describe('getPackagesFromZip — batch concurrency', () => {
     expect(mockPrepareDeckInfoOnly).not.toHaveBeenCalled();
   });
 
+  // Two files take the all-in-one path (cap 2 → one chunk). Sharing one
+  // workspace means the second conversion overwrites the first's deck_info.json
+  // before the Python child reads it, so both build the same deck and one is
+  // lost — while the user is still billed for both.
+  it('gives every all-in-one conversion its own workspace', async () => {
+    const fileNames = ['first.html', 'second.html'];
+    let subdirCount = 0;
+    (Workspace as unknown as Record<string, jest.Mock>).subdir = jest
+      .fn()
+      .mockImplementation(() => ({
+        location: `${FAKE_WORKSPACE_LOCATION}/sub-${subdirCount++}`,
+      }));
+
+    mockZipHandlerClass.mockImplementation(() => ({
+      build: jest.fn().mockResolvedValue(undefined),
+      getFileNames: jest.fn().mockReturnValue(fileNames),
+      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+    }));
+
+    mockPrepareDeck.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        name,
+        apkg: Buffer.from(''),
+        deck: [],
+        cardCount: 1,
+      })
+    );
+
+    const settings = new CardOption({});
+    const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
+
+    await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      settings,
+      workspace
+    );
+
+    expect(mockPrepareDeck).toHaveBeenCalledTimes(2);
+    const usedLocations = mockPrepareDeck.mock.calls.map(
+      (call) => call[0].workspace.location
+    );
+    expect(new Set(usedLocations).size).toBe(2);
+    expect(usedLocations).not.toContain(FAKE_WORKSPACE_LOCATION);
+  });
+
   it('caps batch chunks at the derived per-worker Python budget (default 2)', async () => {
     const fileCount = 12;
     const fileNames = Array.from(
