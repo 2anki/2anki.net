@@ -117,6 +117,40 @@ function extractRowText(property: unknown): string {
   return '';
 }
 
+function notesFromRows(
+  rows: unknown[],
+  frontField: string,
+  backField: string
+): Note[] {
+  return rows
+    .map((row) => {
+      const properties = (row as { properties?: Record<string, unknown> })
+        .properties;
+      if (properties == null) return null;
+      const front = extractRowText(properties[frontField]);
+      const back = extractRowText(properties[backField]);
+      if (front === '' || back === '') return null;
+      return new Note(front, back);
+    })
+    .filter((note): note is Note => note != null);
+}
+
+function orderedColumnPairs(
+  columnNames: string[],
+  triedFront: string,
+  triedBack: string
+): { frontField: string; backField: string }[] {
+  const pairs: { frontField: string; backField: string }[] = [];
+  for (const frontField of columnNames) {
+    for (const backField of columnNames) {
+      if (frontField === backField) continue;
+      if (frontField === triedFront && backField === triedBack) continue;
+      pairs.push({ frontField, backField });
+    }
+  }
+  return pairs;
+}
+
 function headingTagsFor(
   blockId: string,
   headingTagMap: Map<string, string>
@@ -632,17 +666,33 @@ class BlockHandler {
       );
     }
 
-    const notes = dbResult.results
-      .map((row) => {
-        const properties = (row as { properties?: Record<string, unknown> })
-          .properties;
-        if (properties == null) return null;
-        const front = extractRowText(properties[frontField as string]);
-        const back = extractRowText(properties[backField as string]);
-        if (front === '' || back === '') return null;
-        return new Note(front, back);
-      })
-      .filter((note): note is Note => note != null);
+    let notes = notesFromRows(
+      dbResult.results,
+      frontField,
+      backField as string
+    );
+
+    // The mapping can name two columns that every row leaves blank — a status
+    // or owner field, say — which reads as "this database has no cards." The
+    // rows are already in memory, so try the other pairs before giving up.
+    if (notes.length === 0) {
+      for (const candidate of orderedColumnPairs(
+        columnNames,
+        frontField,
+        backField
+      )) {
+        const rescued = notesFromRows(
+          dbResult.results,
+          candidate.frontField,
+          candidate.backField
+        );
+        if (rescued.length > 0) {
+          notes = rescued;
+          this.guessedColumnMapping = candidate;
+          break;
+        }
+      }
+    }
 
     const deck = new Deck(
       dbName,
@@ -771,9 +821,7 @@ class BlockHandler {
         if (typeof card.notionId === 'string') globalSeenIds.add(card.notionId);
         return true;
       });
-      if (cards.length === 0) {
-        cards = this.guessTogglelessCards(blocks);
-      }
+      cards = this.rescueEmptyCards(cards, blocks);
       const deck = new Deck(
         currentDeckName,
         Deck.CleanCards(cards),
@@ -880,6 +928,34 @@ class BlockHandler {
     return guessed;
   }
 
+  private discountCards(cards: Note[]): void {
+    this.cardCount -= cards.length;
+    this.emptyBackCount -= countEmptyBacks(
+      cards,
+      (c) => c.back,
+      (c) => c.name,
+      (c) =>
+        !c.isValidMCQNote() && !c.isValidClozeNote() && !c.isValidInputNote()
+    );
+  }
+
+  // Cards that Deck.CleanCards will strip — a toggle with an empty body, say —
+  // still make the walk look productive, so the deck ships empty with the
+  // fallback never attempted. Measure what survives cleaning instead, and run
+  // the guess over blocks that are already in memory so no Notion request is
+  // added.
+  private rescueEmptyCards(cards: Note[], blocks: GetBlockResponse[]): Note[] {
+    if (Deck.CleanCards(cards).length > 0) {
+      return cards;
+    }
+    const guessed = this.guessTogglelessCards(blocks);
+    if (guessed.length === 0) {
+      return cards;
+    }
+    this.discountCards(cards);
+    return guessed;
+  }
+
   private async buildDeckFromBlockChildren(
     block: BlockObjectResponse,
     rules: ParserRules,
@@ -934,6 +1010,7 @@ class BlockHandler {
       if (typeof card.notionId === 'string') globalSeenIds.add(card.notionId);
       return true;
     });
+    cards = this.rescueEmptyCards(cards, childBlocks);
 
     return new Deck(
       getDeckName(

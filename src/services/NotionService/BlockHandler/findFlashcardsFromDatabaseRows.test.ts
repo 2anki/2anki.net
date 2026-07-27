@@ -317,4 +317,66 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
 
     expect(bl.resolvedDatabasePath).toEqual({ viaPageLinkSelfHeal: true });
   });
+
+  it('falls back to another column pair when the chosen one is blank on every row', async () => {
+    const api = makeApi({
+      rows: [
+        {
+          properties: {
+            Status: richTextProp(''),
+            Prompt: titleProp('What is an ion?'),
+            Response: richTextProp('An atom with a charge.'),
+          },
+        },
+        {
+          properties: {
+            Status: richTextProp(''),
+            Prompt: titleProp('What is a cation?'),
+            Response: richTextProp('A positively charged ion.'),
+          },
+        },
+      ],
+    });
+    const bl = makeHandler(api);
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks[0].cards.map((c) => [c.name, c.back])).toEqual([
+      ['What is an ion?', 'An atom with a charge.'],
+      ['What is a cation?', 'A positively charged ion.'],
+    ]);
+    expect(bl.guessedColumnMapping).toEqual({
+      frontField: 'Prompt',
+      backField: 'Response',
+    });
+  });
+
+  it('leaves the deck empty when no column pair yields a card', async () => {
+    const api = makeApi({
+      rows: [
+        {
+          properties: {
+            Status: richTextProp(''),
+            Owner: richTextProp(''),
+          },
+        },
+      ],
+    });
+
+    const decks = await makeHandler(api).findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks[0].cards).toHaveLength(0);
+  });
 });
