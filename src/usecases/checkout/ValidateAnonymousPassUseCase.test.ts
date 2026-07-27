@@ -42,6 +42,25 @@ describe('ValidateAnonymousPassUseCase', () => {
     expect(result.pass).toBeUndefined();
   });
 
+  it('returns valid=false for a claimed pass without calling Stripe', async () => {
+    const retrieve = jest.fn();
+    const withStripe = new ValidateAnonymousPassUseCase(repo, {
+      checkout: { sessions: { retrieve } },
+    } as never);
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const pass = await repo.insert({
+      stripeSessionId: 'cs_claimed',
+      kind: '7d',
+      expiresAt,
+      paymentIntentId: 'pi_c',
+    });
+    await repo.claim(pass.id, 42);
+
+    const result = await withStripe.execute('cs_claimed', now);
+    expect(result.valid).toBe(false);
+    expect(retrieve).not.toHaveBeenCalled();
+  });
+
   it('returns valid=false when no record exists', async () => {
     const result = await useCase.execute('cs_nonexistent', now);
     expect(result.valid).toBe(false);

@@ -5,7 +5,7 @@ import type { ISubscriptionClaimAuditRepository } from '../../data_layer/Subscri
 import type { SubscriptionService } from '../../services/SubscriptionService';
 import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
 import type { UsersId } from '../../data_layer/public/Users';
-import hashToken from '../../lib/misc/hashToken';
+import hmacToken from '../../lib/misc/hmacToken';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const MAX_ATTEMPTS_PER_USER_PER_HOUR = 12;
@@ -13,7 +13,7 @@ const MAX_ATTEMPTS_PER_IP_PER_HOUR = 60;
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 
 export const CLAIM_INITIATE_MESSAGE =
-  'If a subscription exists for that email, we sent a confirmation link.';
+  'If a subscription or pass exists for that email, we sent a confirmation link.';
 
 export interface ClaimSubscriptionInput {
   userId: number;
@@ -77,7 +77,7 @@ export class ClaimSubscriptionUseCase {
       const recipientEmail = customer.email ?? input.submittedEmail;
 
       const rawToken = crypto.randomUUID();
-      const tokenHash = hashToken(rawToken);
+      const tokenHash = hmacToken(rawToken);
       const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
 
       await this.tokensRepo.insert({

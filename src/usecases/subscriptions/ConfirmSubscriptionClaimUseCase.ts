@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import hashToken from '../../lib/misc/hashToken';
+import hmacToken from '../../lib/misc/hmacToken';
 import type { ISubscriptionClaimTokensRepository } from '../../data_layer/SubscriptionClaimTokensRepository';
 import type { ISubscriptionClaimAuditRepository } from '../../data_layer/SubscriptionClaimAuditRepository';
 import type UsersRepository from '../../data_layer/UsersRepository';
@@ -34,7 +34,7 @@ export class ConfirmSubscriptionClaimUseCase {
     ipHash: string,
     emailHash: string
   ): Promise<ConfirmOutcome> {
-    const tokenHash = hashToken(rawToken);
+    const tokenHash = hmacToken(rawToken);
     const tokenRow = await this.tokensRepo.findByTokenHash(tokenHash);
 
     if (

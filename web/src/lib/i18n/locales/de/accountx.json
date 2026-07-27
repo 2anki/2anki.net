@@ -21,7 +21,13 @@
     "alreadyUsedTitle": "Link bereits verwendet.",
     "alreadyUsedBody": "Dieser Link wurde bereits verwendet. Melde dich an und versuche es erneut von deiner Kontoseite, wenn du erneut übernehmen möchtest.",
     "activeSubTitle": "Konto hat bereits ein Abo.",
-    "activeSubBody": "Dieses Konto hat bereits ein aktives Abo. Kündige es zuerst oder wende dich an den Support."
+    "activeSubBody": "Dieses Konto hat bereits ein aktives Abo. Kündige es zuerst oder wende dich an den Support.",
+    "passSuccessTitle": "Pass eingelöst.",
+    "passSuccessBody": "{{passKind}} ist jetzt mit diesem Konto verknüpft — aktiv bis {{expiry}}.",
+    "passAlreadyClaimedTitle": "Pass bereits eingelöst.",
+    "passAlreadyClaimedBody": "Dieser Pass ist bereits mit einem Konto verknüpft. Wenn er in deinem Konto nicht angezeigt wird, wende dich an support@2anki.net.",
+    "passExpiredTitle": "Dieser Pass ist abgelaufen.",
+    "passExpiredBody": "Dein {{passKind}} ist abgelaufen, bevor die Verknüpfung abgeschlossen war — es gibt nichts mehr zu übertragen. Kauf einen neuen Pass oder wechsle zum Monatsabo."
   },
   "profile": {
     "hideMyEmailNote": "Hide My Email — Apple leitet Nachrichten an dein echtes Postfach weiter."

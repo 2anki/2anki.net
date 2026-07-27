@@ -21,7 +21,13 @@
     "alreadyUsedTitle": "Link già utilizzato.",
     "alreadyUsedBody": "Questo link è già stato utilizzato. Accedi e riprova dalla pagina del tuo account se devi reclamarlo.",
     "activeSubTitle": "L'account ha già un abbonamento.",
-    "activeSubBody": "Questo account ha già un abbonamento attivo. Annullalo prima o contatta l'assistenza."
+    "activeSubBody": "Questo account ha già un abbonamento attivo. Annullalo prima o contatta l'assistenza.",
+    "passSuccessTitle": "Pass riscattato.",
+    "passSuccessBody": "{{passKind}} collegato a questo account — attivo fino al {{expiry}}.",
+    "passAlreadyClaimedTitle": "Pass già riscattato.",
+    "passAlreadyClaimedBody": "Questo pass è già collegato a un account. Se non compare nel tuo, scrivi a support@2anki.net.",
+    "passExpiredTitle": "Questo pass è scaduto.",
+    "passExpiredBody": "Il tuo {{passKind}} è scaduto prima che il riscatto fosse completato, quindi non c'è più nulla da collegare. Acquista un nuovo pass o passa all'abbonamento mensile."
   },
   "profile": {
     "hideMyEmailNote": "Hide My Email — Apple inoltra i messaggi alla tua casella di posta reale."

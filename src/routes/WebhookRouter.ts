@@ -20,6 +20,7 @@ import UsersService from '../services/UsersService';
 import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import { PersistStripeSessionUseCase } from '../usecases/checkout/PersistStripeSessionUseCase';
 import hashToken from '../lib/misc/hashToken';
+import { emailHash } from '../lib/emailHash';
 import { track } from '../services/events/track';
 import { getEventsSink } from '../services/events/eventsSinkInstance';
 import AbandonedCheckoutRecoveryRepository from '../data_layer/AbandonedCheckoutRecoveryRepository';
@@ -362,11 +363,17 @@ const WebhooksRouter = () => {
               try {
                 const anonRepo = new AnonymousPassRepository(getDatabase());
                 const expiresAt = new Date(now.getTime() + durationMs);
+                const buyerEmail =
+                  session.customer_details?.email ??
+                  session.customer_email ??
+                  null;
                 const granted = await anonRepo.insert({
                   stripeSessionId: session.id,
                   kind: passKind,
                   expiresAt,
                   paymentIntentId,
+                  buyerEmailHash:
+                    buyerEmail == null ? null : emailHash(buyerEmail),
                 });
                 console.info('pass.granted.anonymous', {
                   kind: passKind,

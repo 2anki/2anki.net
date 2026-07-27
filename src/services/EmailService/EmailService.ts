@@ -19,6 +19,7 @@ import {
   SUBSCRIPTION_CANCELLED_TEMPLATE,
   SUBSCRIPTION_CANCELLATIONS_LOG_PATH,
   SUBSCRIPTION_CLAIM_CONFIRMATION_TEMPLATE,
+  PASS_CLAIM_CONFIRMATION_TEMPLATE,
   SUBSCRIPTION_RECOVERY_TEMPLATE,
   SUBSCRIPTION_SCHEDULED_CANCELLATION_TEMPLATE,
   SUBSCRIPTION_RESUMING_SOON_TEMPLATE,
@@ -101,6 +102,11 @@ export interface IEmailService {
   sendSubscriptionClaimConfirmation(
     to: string,
     claimUrl: string
+  ): Promise<void>;
+  sendPassClaimConfirmation(
+    to: string,
+    claimUrl: string,
+    passKindLabel: string
   ): Promise<void>;
   sendPriceLockInEmail(
     to: string,
@@ -593,6 +599,31 @@ export class EmailService implements IEmailService {
     }
   }
 
+  async sendPassClaimConfirmation(
+    to: string,
+    claimUrl: string,
+    passKindLabel: string
+  ): Promise<void> {
+    const markup = PASS_CLAIM_CONFIRMATION_TEMPLATE.replace(
+      '{{link}}',
+      claimUrl
+    ).replace('{{passKind}}', passKindLabel);
+    const msg = {
+      to,
+      from: this.defaultSender,
+      subject: 'Confirm your 2anki pass claim',
+      text: `Confirm your pass claim here: ${claimUrl} — this link expires in 15 minutes.`,
+      html: markup,
+      replyTo: 'support@2anki.net',
+    };
+    try {
+      await this.deliver(msg);
+    } catch (error) {
+      console.error('Failed to send pass claim confirmation email:', error);
+      throw error;
+    }
+  }
+
   private loadCancellationsSent(): Set<string> {
     try {
       // Ensure .2anki directory exists
@@ -1063,6 +1094,14 @@ export class UnimplementedEmailService implements IEmailService {
     _claimUrl: string
   ): Promise<void> {
     console.info('sendSubscriptionClaimConfirmation not handled');
+  }
+
+  async sendPassClaimConfirmation(
+    _to: string,
+    _claimUrl: string,
+    _passKindLabel: string
+  ): Promise<void> {
+    console.info('sendPassClaimConfirmation not handled');
   }
 
   async sendPriceLockInEmail(

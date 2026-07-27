@@ -21,7 +21,13 @@
     "alreadyUsedTitle": "Lien déjà utilisé.",
     "alreadyUsedBody": "Ce lien a déjà été utilisé. Connectez-vous et réessayez depuis votre page de compte si vous devez le récupérer.",
     "activeSubTitle": "Le compte a déjà un abonnement.",
-    "activeSubBody": "Ce compte a déjà un abonnement actif. Annulez-le d'abord ou contactez le support."
+    "activeSubBody": "Ce compte a déjà un abonnement actif. Annulez-le d'abord ou contactez le support.",
+    "passSuccessTitle": "Pass récupéré.",
+    "passSuccessBody": "{{passKind}} rattaché à ce compte — actif jusqu'au {{expiry}}.",
+    "passAlreadyClaimedTitle": "Pass déjà récupéré.",
+    "passAlreadyClaimedBody": "Ce pass est déjà rattaché à un compte. S'il n'apparaît pas sur le tien, contacte support@2anki.net.",
+    "passExpiredTitle": "Ce pass a expiré.",
+    "passExpiredBody": "Ton {{passKind}} a expiré avant la fin de la récupération, il n'y a donc plus rien à rattacher. Achète un nouveau pass ou passe à l'abonnement mensuel."
   },
   "profile": {
     "hideMyEmailNote": "Hide My Email — Apple transfère les messages vers votre vraie boîte de réception."

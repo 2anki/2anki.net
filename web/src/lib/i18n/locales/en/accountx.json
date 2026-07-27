@@ -21,7 +21,13 @@
     "alreadyUsedTitle": "Link already used.",
     "alreadyUsedBody": "This link is already used. Sign in and try again from your account page if you need to reclaim.",
     "activeSubTitle": "Account already has a subscription.",
-    "activeSubBody": "This account already has an active subscription. Cancel it first or contact support."
+    "activeSubBody": "This account already has an active subscription. Cancel it first or contact support.",
+    "passSuccessTitle": "Pass claimed.",
+    "passSuccessBody": "{{passKind}} attached to this account — active until {{expiry}}.",
+    "passAlreadyClaimedTitle": "Pass already claimed.",
+    "passAlreadyClaimedBody": "This pass is already attached to an account. If it isn't showing on yours, contact support@2anki.net.",
+    "passExpiredTitle": "This pass has expired.",
+    "passExpiredBody": "Your {{passKind}} ran out before the claim went through, so there's nothing left to attach. Buy a new pass or go monthly for uninterrupted access."
   },
   "profile": {
     "hideMyEmailNote": "Hide My Email — Apple forwards messages to your real inbox."

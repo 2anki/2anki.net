@@ -80,7 +80,7 @@
   "claimSubscription": {
     "paidDifferentEmail": "Betaald met een ander e-mailadres?",
     "sent": "Verzonden. Check die inbox voor een bevestigingslink.",
-    "description": "Als je Stripe met een ander e-mailadres hebt betaald, voer het hier in. We sturen een bevestigingslink naar dat adres om het abonnement aan dit account te koppelen.",
+    "description": "Heb je een abonnement of een Week of Day Pass met een ander e-mailadres gekocht? Vul dat e-mailadres in en we sturen daar een bevestigingslink naartoe om het aan dit account te koppelen.",
     "emailPlaceholder": "E-mail waarmee je betaalde",
     "emailLabel": "E-mail waarmee je betaalde",
     "error": "Er is iets misgegaan. Probeer het zo weer.",

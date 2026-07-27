@@ -23,7 +23,7 @@ describe('ClaimSubscription', () => {
     render(<ClaimSubscription />);
     fireEvent.click(screen.getByText('Paid with a different email?'));
     expect(
-      screen.getByText(/If you paid Stripe with another email address/)
+      screen.getByText(/Bought a subscription or a Week or Day Pass/)
     ).toBeTruthy();
     expect(
       screen.getByRole('button', { name: 'Send confirmation email' })

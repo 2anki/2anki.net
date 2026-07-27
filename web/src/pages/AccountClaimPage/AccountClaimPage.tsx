@@ -12,13 +12,23 @@ type State =
   | 'already_claimed'
   | 'active_sub'
   | 'unauthenticated'
-  | 'error';
+  | 'error'
+  | 'pass_success'
+  | 'pass_already_claimed'
+  | 'pass_expired';
+
+interface PassResult {
+  passKind: string;
+  expiresAt: string;
+}
 
 export default function AccountClaimPage() {
-  const { t } = useTranslation('accountx');
+  const { t, i18n } = useTranslation('accountx');
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
+  const isPassClaim = searchParams.get('kind') === 'pass';
   const [state, setState] = useState<State>('loading');
+  const [passResult, setPassResult] = useState<PassResult | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -26,13 +36,50 @@ export default function AccountClaimPage() {
       return;
     }
 
+    const redirectToLogin = () => {
+      const kindParam = isPassClaim ? '&kind=pass' : '';
+      const next = encodeURIComponent(
+        `/account/claim?token=${encodeURIComponent(token)}${kindParam}`
+      );
+      globalThis.location.href = `/login?next=${next}`;
+    };
+
+    if (isPassClaim) {
+      post('/api/passes/claim/confirm', { token })
+        .then(async (res) => {
+          if (res.status === 401) {
+            redirectToLogin();
+            return;
+          }
+          const body = (await res.json().catch(() => ({}))) as {
+            passKind?: string;
+            expiresAt?: string;
+            reason?: string;
+          };
+          if (res.ok && body.passKind != null && body.expiresAt != null) {
+            setPassResult({
+              passKind: body.passKind,
+              expiresAt: body.expiresAt,
+            });
+            setState('pass_success');
+            return;
+          }
+          if (body.reason === 'already_claimed') {
+            setState('pass_already_claimed');
+          } else if (body.reason === 'pass_expired') {
+            setState('pass_expired');
+          } else {
+            setState('expired');
+          }
+        })
+        .catch(() => setState('error'));
+      return;
+    }
+
     post('/api/subscriptions/claim/confirm', { token })
       .then(async (res) => {
         if (res.status === 401) {
-          const next = encodeURIComponent(
-            `/account/claim?token=${encodeURIComponent(token)}`
-          );
-          globalThis.location.href = `/login?next=${next}`;
+          redirectToLogin();
           return;
         }
         if (res.ok) {
@@ -52,9 +99,17 @@ export default function AccountClaimPage() {
         }
       })
       .catch(() => setState('error'));
-  }, [token]);
+  }, [token, isPassClaim]);
 
   if (state === 'loading') return <SkeletonPage rows={2} />;
+
+  // VOICE date shape for English is "3 August 2026" (day first), which is
+  // en-GB ordering; other locales keep their native order.
+  const formatExpiry = (iso: string) =>
+    new Date(iso).toLocaleDateString(
+      i18n.language.startsWith('en') ? 'en-GB' : i18n.language,
+      { day: 'numeric', month: 'long', year: 'numeric' }
+    );
 
   return (
     <div className={sharedStyles.pageNarrow}>
@@ -63,6 +118,44 @@ export default function AccountClaimPage() {
           <>
             <h1 className={sharedStyles.title}>{t('claim.successTitle')}</h1>
             <p>{t('claim.successBody')}</p>
+            <a href="/account" className={sharedStyles.btnPrimary}>
+              {t('claim.goToAccount')}
+            </a>
+          </>
+        )}
+        {state === 'pass_success' && passResult && (
+          <>
+            <h1 className={sharedStyles.title}>
+              {t('claim.passSuccessTitle')}
+            </h1>
+            <p>
+              {t('claim.passSuccessBody', {
+                passKind: passResult.passKind,
+                expiry: formatExpiry(passResult.expiresAt),
+              })}
+            </p>
+            <a href="/account" className={sharedStyles.btnPrimary}>
+              {t('claim.goToAccount')}
+            </a>
+          </>
+        )}
+        {state === 'pass_already_claimed' && (
+          <>
+            <h1 className={sharedStyles.title}>
+              {t('claim.passAlreadyClaimedTitle')}
+            </h1>
+            <p>{t('claim.passAlreadyClaimedBody')}</p>
+            <a href="/account" className={sharedStyles.btnPrimary}>
+              {t('claim.goToAccount')}
+            </a>
+          </>
+        )}
+        {state === 'pass_expired' && (
+          <>
+            <h1 className={sharedStyles.title}>
+              {t('claim.passExpiredTitle')}
+            </h1>
+            <p>{t('claim.passExpiredBody')}</p>
             <a href="/account" className={sharedStyles.btnPrimary}>
               {t('claim.goToAccount')}
             </a>
