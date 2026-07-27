@@ -659,6 +659,85 @@ describe('WebhookRouter — lifetime product-ID allowlist', () => {
     expect(mockUpdatePatreonByEmail).not.toHaveBeenCalled();
   });
 
+  it('grants lifetime access when the allowlist holds the price ID rather than the product ID', async () => {
+    process.env.LIFETIME_PRICE_IDS = 'price_lifetime_abc';
+    mockSessionsRetrieve.mockResolvedValue({
+      id: 'cs_lifetime_test',
+      line_items: {
+        data: [
+          { price: { id: 'price_lifetime_abc', product: LIFETIME_PRODUCT_ID } },
+        ],
+      },
+    });
+    mockWebhookEvent = makeLifetimeEvent(LIFETIME_PRODUCT_ID);
+
+    const res = await postWebhookLifetime();
+    expect(res.status).toBe(200);
+    expect(mockUpdatePatreonByEmail).toHaveBeenCalledWith(
+      'user@example.com',
+      true
+    );
+  });
+
+  it('reports an unmatched high-value checkout instead of skipping it silently', async () => {
+    mockSessionsRetrieve.mockResolvedValue({
+      id: 'cs_lifetime_test',
+      line_items: {
+        data: [{ price: { id: 'price_other', product: 'prod_other' } }],
+      },
+    });
+    mockWebhookEvent = makeLifetimeEvent('prod_other');
+
+    const res = await postWebhookLifetime();
+    expect(res.status).toBe(200);
+    expect(mockUpdatePatreonByEmail).not.toHaveBeenCalled();
+    expect(mockRecordError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        surface: 'stripe_provisioning',
+        code: 'unmatched_high_value_payment',
+      })
+    );
+  });
+
+  it('reports an unmatched high-value checkout even when the allowlist is unset', async () => {
+    delete process.env.LIFETIME_PRICE_IDS;
+    mockSessionsRetrieve.mockResolvedValue({
+      id: 'cs_lifetime_test',
+      line_items: {
+        data: [
+          { price: { id: 'price_lifetime_abc', product: LIFETIME_PRODUCT_ID } },
+        ],
+      },
+    });
+    mockWebhookEvent = makeLifetimeEvent(LIFETIME_PRODUCT_ID);
+
+    const res = await postWebhookLifetime();
+    expect(res.status).toBe(200);
+    expect(mockUpdatePatreonByEmail).not.toHaveBeenCalled();
+    expect(mockRecordError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        surface: 'stripe_provisioning',
+        code: 'unmatched_high_value_payment',
+      })
+    );
+  });
+
+  it('does not report an unmatched payment when the grant succeeds', async () => {
+    mockSessionsRetrieve.mockResolvedValue({
+      id: 'cs_lifetime_test',
+      line_items: {
+        data: [
+          { price: { id: 'price_lifetime_abc', product: LIFETIME_PRODUCT_ID } },
+        ],
+      },
+    });
+    mockWebhookEvent = makeLifetimeEvent(LIFETIME_PRODUCT_ID);
+
+    const res = await postWebhookLifetime();
+    expect(res.status).toBe(200);
+    expect(mockRecordError).not.toHaveBeenCalled();
+  });
+
   it('supports multiple comma-separated product IDs in LIFETIME_PRICE_IDS', async () => {
     process.env.LIFETIME_PRICE_IDS = `prod_other,${LIFETIME_PRODUCT_ID},prod_another`;
     mockSessionsRetrieve.mockResolvedValue({
