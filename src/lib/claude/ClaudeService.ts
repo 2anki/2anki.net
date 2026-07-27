@@ -564,6 +564,66 @@ export function describeRepairFailure(toParse: string): RepairFailureReason {
   return hasUsableCard(candidate) ? 'recoverable' : 'no-usable-card';
 }
 
+function sanitizeCompactDecks(
+  parsed: unknown[],
+  chunkIndex: number
+): CompactDeck[] {
+  let droppedDecks = 0;
+  let droppedCards = 0;
+
+  const decks: CompactDeck[] = [];
+  for (const entry of parsed) {
+    const d = entry as Partial<CompactDeck> | null;
+    if (typeof d !== 'object' || d === null || !Array.isArray(d.cards)) {
+      droppedDecks += 1;
+      continue;
+    }
+    const cards: CompactCard[] = [];
+    for (const rawCard of d.cards) {
+      const c = rawCard as Partial<CompactCard> | null;
+      if (
+        typeof c !== 'object' ||
+        c === null ||
+        typeof c.q !== 'string' ||
+        c.q.trim().length === 0
+      ) {
+        droppedCards += 1;
+        continue;
+      }
+      const card: CompactCard = {
+        q: c.q,
+        a: typeof c.a === 'string' ? c.a : '',
+      };
+      if (Array.isArray(c.tags)) {
+        card.tags = c.tags.filter((t): t is string => typeof t === 'string');
+      }
+      if (typeof c.cloze === 'boolean') {
+        card.cloze = c.cloze;
+      }
+      if (Array.isArray(c.media)) {
+        card.media = c.media.filter((m): m is string => typeof m === 'string');
+      }
+      cards.push(card);
+    }
+    decks.push({
+      deck:
+        typeof d.deck === 'string' && d.deck.trim().length > 0
+          ? d.deck
+          : 'Untitled deck',
+      cards,
+    });
+  }
+
+  if (droppedDecks > 0 || droppedCards > 0) {
+    console.warn('[Claude] Dropped malformed entries from parsed response', {
+      chunkIndex,
+      droppedDecks,
+      droppedCards,
+    });
+  }
+  return decks;
+}
+
 export function parseDeckResponse(
   cleaned: string,
   raw: string,
@@ -622,7 +682,7 @@ export function parseDeckResponse(
     throw new ClaudeParseError();
   }
 
-  return parsed as CompactDeck[];
+  return sanitizeCompactDecks(parsed, chunkIndex);
 }
 
 async function generateDeckInfoFromChunk(

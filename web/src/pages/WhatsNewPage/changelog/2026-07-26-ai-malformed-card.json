@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-26-ai-malformed-card",
+  "date": "2026-07-26",
+  "type": "fix",
+  "title": "AI conversions keep the rest of a section's cards when one generated card comes back malformed"
+}
