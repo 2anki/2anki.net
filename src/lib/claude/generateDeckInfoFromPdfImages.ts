@@ -160,20 +160,43 @@ async function runPagesWithConcurrency(
   onProgress?: (step: string) => void
 ): Promise<CompactDeck[]> {
   const compactDecks: CompactDeck[] = [];
+  const failures: unknown[] = [];
   let cursor = 0;
 
+  // A page that fails terminally used to reject its worker, which rejected the
+  // whole Promise.all and discarded every page already converted — while the
+  // remaining workers kept paying for pages the caller would never see. Each
+  // page now stands on its own; the caller decides what to do with a total loss.
   const worker = async () => {
     while (true) {
       const index = cursor++;
       if (index >= images.length) return;
       onProgress?.(`claude:vision:page:${index + 1}:${images.length}`);
-      const decks = await visionCardsForPage(images[index], prompt, index);
-      compactDecks.push(...decks);
+      try {
+        const decks = await visionCardsForPage(images[index], prompt, index);
+        compactDecks.push(...decks);
+      } catch (err) {
+        failures.push(err);
+        console.warn('[Claude] PDF page vision failed; keeping other pages', {
+          pageIndex: index,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
   };
 
   const workerCount = Math.min(PDF_PAGE_VISION_CONCURRENCY, images.length);
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+  if (failures.length === images.length && failures.length > 0) {
+    throw failures[0];
+  }
+  if (failures.length > 0) {
+    console.warn('[Claude] PDF image fallback: some pages failed', {
+      failedPages: failures.length,
+      pageCount: images.length,
+    });
+  }
   return compactDecks;
 }
 
