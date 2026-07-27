@@ -489,5 +489,44 @@ const RUN_INTEGRATION = process.env.DATABASE_URL != null;
 
       expect(favorite).toBeUndefined();
     });
+
+    // A claim token is written before the claim is confirmed, so merely being
+    // issued a claim link made the account permanently undeletable.
+    it('deletes a user who has claimed an anonymous pass, releasing the pass', async () => {
+      const repo = new UsersRepository(db);
+      const passRows = await db('anonymous_passes')
+        .insert({
+          stripe_session_id: `cs_claim_${userId}`,
+          kind: '7d',
+          expires_at: new Date(Date.now() + 86_400_000),
+          payment_intent_id: `pi_claim_${userId}`,
+          claimed_by_user_id: userId,
+        })
+        .returning('id');
+      const passId = passRows[0].id;
+      await db('pass_claim_tokens').insert({
+        user_id: userId,
+        anonymous_pass_id: passId,
+        token_hash: `claim-tok-${userId}`,
+        expires_at: new Date(Date.now() + 3_600_000),
+      });
+
+      try {
+        await repo.deleteUser(String(userId));
+
+        expect(await db('users').where({ id: userId }).first()).toBeUndefined();
+        expect(
+          await db('pass_claim_tokens').where({ user_id: userId }).first()
+        ).toBeUndefined();
+
+        // The pass outlives the user — it was paid for and may be re-claimed.
+        const pass = await db('anonymous_passes').where({ id: passId }).first();
+        expect(pass).toBeDefined();
+        expect(pass.claimed_by_user_id).toBeNull();
+      } finally {
+        await db('pass_claim_tokens').where({ user_id: userId }).del();
+        await db('anonymous_passes').where({ id: passId }).del();
+      }
+    });
   }
 );
