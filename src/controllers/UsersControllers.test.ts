@@ -3636,3 +3636,85 @@ describe('UsersController.logOutEverywhere', () => {
     expect(logOutEverywhere).not.toHaveBeenCalled();
   });
 });
+
+describe('UsersController.newPassword', () => {
+  const buildNewPasswordController = (
+    overrides: {
+      getUserByLiveResetToken?: jest.Mock;
+      updatePassword?: jest.Mock;
+      logOutEverywhere?: jest.Mock;
+    } = {}
+  ) => {
+    const getUserByLiveResetToken =
+      overrides.getUserByLiveResetToken ??
+      jest.fn().mockResolvedValue({ id: 7 });
+    const updatePassword =
+      overrides.updatePassword ?? jest.fn().mockResolvedValue(1);
+    const logOutEverywhere =
+      overrides.logOutEverywhere ?? jest.fn().mockResolvedValue(1);
+    const userService = {
+      getUserByLiveResetToken,
+      updatePassword,
+    } as unknown as UsersService;
+    const authService = {
+      isNewPasswordValid: jest.fn().mockReturnValue(false),
+      getHashPassword: jest.fn().mockReturnValue('hashed'),
+      logOutEverywhere,
+    } as unknown as AuthenticationService;
+    const controller = new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    return { controller, updatePassword, logOutEverywhere };
+  };
+
+  const buildReq = () =>
+    ({
+      body: { reset_token: 'a-token', password: 'longenoughpw' },
+      headers: {},
+      ip: '203.0.113.9',
+    }) as unknown as express.Request;
+
+  const buildRes = () =>
+    ({
+      status: jest.fn().mockReturnThis(),
+      send: jest.fn().mockReturnThis(),
+    }) as unknown as express.Response;
+
+  it('revokes sessions only after the token is successfully redeemed', async () => {
+    const { controller, logOutEverywhere } = buildNewPasswordController();
+    const res = buildRes();
+
+    await controller.newPassword(buildReq(), res, jest.fn());
+
+    expect(logOutEverywhere).toHaveBeenCalledWith(7);
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  // A stale token must not stay usable as a way to force the owner out.
+  it('never revokes sessions when the token no longer redeems', async () => {
+    const { controller, logOutEverywhere } = buildNewPasswordController({
+      getUserByLiveResetToken: jest.fn().mockResolvedValue(null),
+      updatePassword: jest.fn().mockResolvedValue(0),
+    });
+    const res = buildRes();
+
+    await controller.newPassword(buildReq(), res, jest.fn());
+
+    expect(logOutEverywhere).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('does not revoke when the row is gone even if a redeem is reported', async () => {
+    const { controller, logOutEverywhere } = buildNewPasswordController({
+      getUserByLiveResetToken: jest.fn().mockResolvedValue(null),
+    });
+    const res = buildRes();
+
+    await controller.newPassword(buildReq(), res, jest.fn());
+
+    expect(logOutEverywhere).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+});

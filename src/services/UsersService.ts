@@ -69,6 +69,20 @@ class UsersService {
     return resetToken;
   }
 
+  // Resolves a reset token to its owner only while the token is still
+  // redeemable. getByResetToken alone ignores the window, so callers that use
+  // it for a privileged action would act on a token the redeem step refuses.
+  async getUserByLiveResetToken(token: string): Promise<Users | null> {
+    if (typeof token !== 'string' || token.length === 0) {
+      return null;
+    }
+    const user = await this.repository.getByResetToken(token);
+    if (!user || !isResetTokenLive(user)) {
+      return null;
+    }
+    return user;
+  }
+
   getUserFrom(email: string) {
     return this.repository.getByEmail(email);
   }

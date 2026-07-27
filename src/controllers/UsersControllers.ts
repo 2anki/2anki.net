@@ -97,7 +97,11 @@ class UsersController {
     }
 
     try {
-      await this.authService.revokeSessionsByResetToken(resetToken);
+      // Resolve the owner before redeeming, because redeeming clears the
+      // token. Sessions are revoked only after the redeem succeeds — doing it
+      // first would let a stale token log the owner out on every attempt even
+      // though the password change is refused.
+      const owner = await this.userService.getUserByLiveResetToken(resetToken);
       const updated = await this.userService.updatePassword(
         this.authService.getHashPassword(password),
         resetToken
@@ -105,9 +109,10 @@ class UsersController {
       // No row matched: the token is unknown, already used, or past its
       // window. Same response either way so the endpoint cannot be used to
       // probe which tokens exist.
-      if (updated === 0) {
+      if (updated === 0 || owner?.id == null) {
         return res.status(400).send({ message: 'invalid' });
       }
+      await this.authService.logOutEverywhere(owner.id);
       res.status(200).send({ message: 'ok' });
     } catch (error) {
       console.info('Update password failed');
