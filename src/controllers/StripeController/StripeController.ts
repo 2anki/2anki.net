@@ -37,11 +37,13 @@ export class StripeController {
       if (this.sessionBelongsToUser(session, loggedInUser)) {
         // Persist subscription before linking — without this, the link write is a
         // no-op when the webhook hasn't fired yet and the subscriptions row doesn't exist.
-        await this.persistStripeSessionUseCase.execute(sessionId);
+        // A false result means the session was never paid for, so there is nothing
+        // to link and the email on it should not be attached to this account.
+        const paid = await this.persistStripeSessionUseCase.execute(sessionId);
 
         const email = session.customer_details?.email;
 
-        if (loggedInUser.email !== email && email) {
+        if (paid && email && loggedInUser.email !== email) {
           await this.usersService.updateSubScriptionEmailUsingPrimaryEmail(
             email.toLowerCase(),
             loggedInUser.email.toLowerCase()

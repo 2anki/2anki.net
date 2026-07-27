@@ -337,6 +337,24 @@ describe('StripeController', () => {
       expect(h.persistStripeSessionUseCase.execute).not.toHaveBeenCalled();
     });
 
+    it('does not link when the session was never paid for', async () => {
+      const h = buildController();
+      authedUser(h, 'user@2anki.com');
+      h.persistStripeSessionUseCase.execute.mockResolvedValue(false);
+      h.stripe.checkout.sessions.retrieve.mockResolvedValue(
+        buildSession('paypal@email.com', '1')
+      );
+
+      const req = mockRequest({ session_id: 'cs_test_unpaid' });
+      const res = mockResponse();
+
+      await h.controller.getSuccessfulCheckout(req, res);
+
+      expect(
+        h.usersService.updateSubScriptionEmailUsingPrimaryEmail
+      ).not.toHaveBeenCalled();
+    });
+
     it('serves the page without error when no token present', async () => {
       const h = buildController();
       mockedExtractToken.mockReturnValue(null);
