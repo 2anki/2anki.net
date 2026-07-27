@@ -456,14 +456,17 @@ class UsersRepository {
   }
 
   incrementPrintUsage(id: string | number) {
+    const monthStart = startOfMonthUtc(new Date());
     return this.database(this.table)
       .where({ id })
       .update({
         pdf_prints_this_month: this.database.raw(
-          `CASE WHEN prints_month_started_at < date_trunc('month', NOW()) THEN 1 ELSE pdf_prints_this_month + 1 END`
+          `CASE WHEN prints_month_started_at < ? THEN 1 ELSE pdf_prints_this_month + 1 END`,
+          [monthStart]
         ),
         prints_month_started_at: this.database.raw(
-          `CASE WHEN prints_month_started_at < date_trunc('month', NOW()) THEN date_trunc('month', NOW()) ELSE prints_month_started_at END`
+          `CASE WHEN prints_month_started_at < ? THEN ? ELSE prints_month_started_at END`,
+          [monthStart, monthStart]
         ),
       });
   }
