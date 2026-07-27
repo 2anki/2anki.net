@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-27-reset-link-expiry",
+  "date": "2026-07-27",
+  "type": "fix",
+  "title": "Password reset links expire after 15 minutes and can only be used once"
+}

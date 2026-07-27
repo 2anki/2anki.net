@@ -47,6 +47,8 @@ function buildUser(overrides: Partial<UserWithOwner> = {}): UserWithOwner {
     created_at: null,
     updated_at: null,
     reset_token: null,
+    reset_token_expires_at: null,
+    reset_token_used_at: null,
     patreon: false,
     ankify_access: false,
     developer_access: false,

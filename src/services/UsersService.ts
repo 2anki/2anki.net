@@ -6,6 +6,7 @@ import AuthenticationService from './AuthenticationService';
 import { IEmailService } from './EmailService/EmailService';
 import type { IMagicTokenRepository } from '../data_layer/MagicTokenRepository';
 import hashToken from '../lib/misc/hashToken';
+import { isResetTokenLive } from '../lib/User/isResetTokenLive';
 
 const MAGIC_LINK_RATE_LIMIT = 5;
 const MAGIC_LINK_RATE_WINDOW_MS = 60 * 60 * 1000;
@@ -56,12 +57,30 @@ class UsersService {
     user: Users,
     authService: AuthenticationService
   ) {
-    if (user.reset_token) {
+    // Reuse the outstanding token only while it is still inside its window.
+    // A token that has expired (or predates the expiry column) must be
+    // replaced, otherwise the user would be emailed a link the redeeming
+    // query rejects and could never complete a reset.
+    if (user.reset_token && isResetTokenLive(user)) {
       return user.reset_token;
     }
     const resetToken = authService.newResetToken();
     await this.repository.updateResetToken(user.id.toString(), resetToken);
     return resetToken;
+  }
+
+  // Resolves a reset token to its owner only while the token is still
+  // redeemable. getByResetToken alone ignores the window, so callers that use
+  // it for a privileged action would act on a token the redeem step refuses.
+  async getUserByLiveResetToken(token: string): Promise<Users | null> {
+    if (typeof token !== 'string' || token.length === 0) {
+      return null;
+    }
+    const user = await this.repository.getByResetToken(token);
+    if (!user || !isResetTokenLive(user)) {
+      return null;
+    }
+    return user;
   }
 
   getUserFrom(email: string) {
