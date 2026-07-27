@@ -26,7 +26,11 @@ describe('isDeletableBucketKey', () => {
 
   it('deletes an old object that nothing references', () => {
     expect(
-      isDeletableBucketKey({ Key: 'orphan', LastModified: old }, referenced, now)
+      isDeletableBucketKey(
+        { Key: 'orphan', LastModified: old },
+        referenced,
+        now
+      )
     ).toBe(true);
   });
 
