@@ -64,6 +64,7 @@ const makeEmailService = (
   sendNotionReconnectEmail: jest.fn().mockResolvedValue(undefined),
   sendSubscriptionClaimConfirmation: jest.fn().mockResolvedValue(undefined),
   sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
+  sendContactConfirmationEmail: jest.fn().mockResolvedValue(undefined),
   sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
   sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
   ...overrides,
