@@ -97,13 +97,15 @@ type SessionCustomerDetails = NonNullable<
 >;
 
 function buildSession(
-  customerEmail: string | null
-): Pick<StripeTypes.Checkout.Session, 'customer_details'> {
+  customerEmail: string | null,
+  metadataUserId?: string
+): Pick<StripeTypes.Checkout.Session, 'customer_details' | 'metadata'> {
   return {
     customer_details:
       customerEmail == null
         ? null
         : ({ email: customerEmail } as SessionCustomerDetails),
+    metadata: metadataUserId == null ? null : { user_id: metadataUserId },
   };
 }
 
@@ -279,7 +281,7 @@ describe('StripeController', () => {
       authedUser(h, 'user@2anki.com');
       h.persistStripeSessionUseCase.execute.mockResolvedValue(true);
       h.stripe.checkout.sessions.retrieve.mockResolvedValue(
-        buildSession('paypal@email.com')
+        buildSession('paypal@email.com', '1')
       );
       h.usersService.updateSubScriptionEmailUsingPrimaryEmail.mockResolvedValue(
         1
@@ -303,7 +305,7 @@ describe('StripeController', () => {
       authedUser(h, 'user@2anki.com');
       h.persistStripeSessionUseCase.execute.mockResolvedValue(true);
       h.stripe.checkout.sessions.retrieve.mockResolvedValue(
-        buildSession('user@2anki.com')
+        buildSession('user@2anki.com', '1')
       );
 
       const req = mockRequest({ session_id: 'cs_test_123' });
@@ -314,6 +316,25 @@ describe('StripeController', () => {
       expect(
         h.usersService.updateSubScriptionEmailUsingPrimaryEmail
       ).not.toHaveBeenCalled();
+    });
+
+    it('does not link when the session does not belong to the logged-in user', async () => {
+      const h = buildController();
+      authedUser(h, 'attacker@2anki.com');
+      h.persistStripeSessionUseCase.execute.mockResolvedValue(true);
+      h.stripe.checkout.sessions.retrieve.mockResolvedValue(
+        buildSession('victim@email.com', '999')
+      );
+
+      const req = mockRequest({ session_id: 'cs_test_leaked' });
+      const res = mockResponse();
+
+      await h.controller.getSuccessfulCheckout(req, res);
+
+      expect(
+        h.usersService.updateSubScriptionEmailUsingPrimaryEmail
+      ).not.toHaveBeenCalled();
+      expect(h.persistStripeSessionUseCase.execute).not.toHaveBeenCalled();
     });
 
     it('serves the page without error when no token present', async () => {
