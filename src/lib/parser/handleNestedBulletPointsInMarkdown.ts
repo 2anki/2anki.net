@@ -81,6 +81,18 @@ function buildNoteFromBack(
 
 const BULLET_POINT_REGEX = /^-/;
 
+// A YAML front-matter fence is a run of dashes, so BULLET_POINT_REGEX reads it
+// as a card boundary: the opening fence becomes a card whose front is an <hr />
+// and whose back is the metadata, and the closing fence becomes a card holding
+// the rest of the file. Two junk cards are enough to look like a successful
+// parse, so DeckParser never falls through to guessMarkdownCards, which strips
+// front matter correctly. Every Obsidian and Logseq export hits this.
+const YAML_FRONT_MATTER_REGEX = /^---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/;
+
+function stripYamlFrontMatter(contents: string): string {
+  return contents.replace(YAML_FRONT_MATTER_REGEX, '');
+}
+
 interface HandleNestedBulletPointsInMarkdownInput {
   name: string;
   contents: string | undefined;
@@ -105,8 +117,9 @@ export const handleNestedBulletPointsInMarkdown = (
     workspace,
     files,
   } = input;
+  const body = stripYamlFrontMatter(contents ?? '');
   const deck = new Deck(
-    deckName ?? getTitleFromMarkdown(contents) ?? name,
+    deckName ?? getTitleFromMarkdown(body) ?? name,
     [],
     '',
     '',
@@ -116,9 +129,7 @@ export const handleNestedBulletPointsInMarkdown = (
 
   decks.push(deck);
 
-  const lines = (contents ?? '')
-    .replace(/^<\/?aside[^>]*>\s*$/gim, '')
-    .split('\n');
+  const lines = body.replace(/^<\/?aside[^>]*>\s*$/gim, '').split('\n');
   let isCreating = false;
   let currentFront = '';
   let currentBack = '';

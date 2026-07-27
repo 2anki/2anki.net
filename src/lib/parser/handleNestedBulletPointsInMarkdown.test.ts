@@ -130,4 +130,52 @@ describe('handleNestedBulletPointsInMarkdown', () => {
     const card = decks[0].cards[0];
     expect(card.media.length).toBeGreaterThan(0);
   });
+  describe('YAML front matter (Obsidian / Logseq / static-site exports)', () => {
+    const withFrontMatter = [
+      '---',
+      'title: Cardiology',
+      'tags:',
+      '  - med',
+      '---',
+      '',
+      '- What supplies the SA node?',
+      '    - The right coronary artery',
+    ].join('\n');
+
+    it('does not turn the front matter fences into cards', () => {
+      const decks = makeDecks(withFrontMatter);
+      expect(decks[0].cards).toHaveLength(1);
+      expect(decks[0].cards[0].name).toContain('SA node');
+    });
+
+    it('leaves no cards at all when the body has no bullet rows', () => {
+      const headingsOnly = [
+        '---',
+        'title: Cardiology',
+        '---',
+        '',
+        '# Cardiology',
+        '',
+        'The SA node is supplied by the right coronary artery.',
+      ].join('\n');
+
+      expect(makeDecks(headingsOnly)[0].cards).toHaveLength(0);
+    });
+
+    it('names the deck from the body, not from the front matter fence', () => {
+      const workspace = new Workspace(true, 'fs');
+      const decks = handleNestedBulletPointsInMarkdown({
+        name: 'test.md',
+        contents: withFrontMatter,
+        deckName: undefined,
+        decks: [],
+        settings: new CardOption({}),
+        exporter: new CustomExporter('test', workspace.location),
+        workspace,
+        files: [],
+      });
+
+      expect(decks[0].name).not.toBe('---');
+    });
+  });
 });
