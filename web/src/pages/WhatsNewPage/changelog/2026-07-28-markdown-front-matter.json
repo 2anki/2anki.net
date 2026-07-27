@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-markdown-front-matter",
+  "date": "2026-07-28",
+  "type": "fix",
+  "title": "Markdown exports from Obsidian and Logseq skip the front matter instead of turning it into two blank cards"
+}
