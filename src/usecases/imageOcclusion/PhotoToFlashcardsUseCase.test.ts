@@ -941,6 +941,7 @@ describe('PhotoToFlashcardsUseCase', () => {
       cards: Array<{
         mcq?: boolean;
         cloze?: boolean;
+        back?: string;
         options?: string[];
         correctIndices?: number[];
       }>;
@@ -962,6 +963,7 @@ describe('PhotoToFlashcardsUseCase', () => {
         ...BASE_INPUT,
         isPaying: true,
         mode: 'verbatim',
+        includeSourceImage: false,
       });
 
       const cards = readDeckPayload()[0].cards;
@@ -973,6 +975,7 @@ describe('PhotoToFlashcardsUseCase', () => {
         'Lactase',
       ]);
       expect(cards[0].correctIndices).toEqual([1]);
+      expect(cards[0].back).toBe('');
       expect(cards[1].mcq).toBeFalsy();
       expect(cards[1].cloze).toBe(true);
       expect(cards[2].mcq).toBeFalsy();
@@ -1029,6 +1032,71 @@ describe('PhotoToFlashcardsUseCase', () => {
       expect(card.cloze).toBe(false);
       expect(result.mcqCount).toBe(0);
       expect(result.mcqSkippedCount).toBe(1);
+    });
+
+    it('leaves the back empty when a rejected MCQ carries no answer text', async () => {
+      mockMessageCreate.mockResolvedValueOnce({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify([
+              {
+                deck: 'Study sheet',
+                cards: [
+                  {
+                    q: 'Pick one',
+                    options: ['A', 'B', 'C'],
+                    correct_index: 1,
+                  },
+                ],
+              },
+            ]),
+          },
+        ],
+        usage: { input_tokens: 100, output_tokens: 50 },
+      });
+      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+      await useCase.execute({
+        ...BASE_INPUT,
+        isPaying: true,
+        mode: 'verbatim',
+        includeSourceImage: false,
+      });
+      expect(readDeckPayload()[0].cards[0].back).toBe('');
+    });
+
+    it('keeps the rationale on the back of a generative MCQ card', async () => {
+      mockMessageCreate.mockResolvedValueOnce({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify([
+              {
+                deck: 'Study sheet',
+                cards: [
+                  {
+                    q: 'Which enzyme breaks down starch?',
+                    options: ['Lipase', 'Amylase', 'Protease', 'Lactase'],
+                    correct_index: 1,
+                    rationale: 'Amylase hydrolyses starch into maltose.',
+                  },
+                ],
+              },
+            ]),
+          },
+        ],
+        usage: { input_tokens: 100, output_tokens: 50 },
+      });
+      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+      await useCase.execute({
+        ...BASE_INPUT,
+        isPaying: true,
+        mcqEnabled: true,
+        includeSourceImage: false,
+      });
+      expect(readDeckPayload()[0].cards[0].back).toBe(
+        'Amylase hydrolyses starch into maltose.'
+      );
     });
 
     it('leaves the generative path on plain basic cards (no verbatim routing)', async () => {

@@ -290,9 +290,16 @@ interface CompactDeck {
   cards: CompactCard[];
 }
 
+// VerbatimCard types q and a as strings, but the vision response is blind-cast
+// from Claude's JSON and the verbatim MCQ shape carries neither an answer nor a
+// rationale. Interpolating the missing field put the word "undefined" on the
+// back of the card instead of leaving it empty.
+function answerText(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
 function cardBack(card: CompactCard): string {
-  if (typeof card.a === 'string' && card.a.length > 0) return card.a;
-  return typeof card.rationale === 'string' ? card.rationale : '';
+  return answerText(card.a) || answerText(card.rationale);
 }
 
 function flattenDecksToCards(decks: CompactDeck[]): GeneratedFlashcard[] {
@@ -381,7 +388,7 @@ function buildMcqCard(
   const validMcq = asValidMcq(card);
   if (validMcq == null) return null;
   const rationaleBack =
-    validMcq.rationale.length > 0 ? validMcq.rationale : card.a;
+    validMcq.rationale.length > 0 ? validMcq.rationale : answerText(card.a);
   return {
     ...base,
     name: card.q,
@@ -402,7 +409,7 @@ function buildBasicCard(
   return {
     ...base,
     name: card.q,
-    back: `${card.a}${sourceImageTag}`,
+    back: `${answerText(card.a)}${sourceImageTag}`,
     cloze,
   };
 }
