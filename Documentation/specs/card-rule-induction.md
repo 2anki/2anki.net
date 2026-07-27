@@ -18,11 +18,17 @@ The deeper issue: `ParserRules.FLASHCARD` is hardcoded to `['toggle']`. A docume
 
 ## What we are building
 
-When — and only when — a conversion yields **zero cards**, re-run the existing `DeckParser` with different `ParserRules.FLASHCARD` block types, score each resulting deck, and ship the best one if it clears a quality floor. If nothing clears the floor, fail with an honest, path-appropriate message.
+When — and only when — a conversion yields **zero cards**, re-derive the card boundary from the document's own structure, score each candidate deck, and ship the best one if it clears a quality floor. If nothing clears the floor, fail with an honest, path-appropriate message.
 
 Fallback-only scope is deliberate: the induction can never touch a conversion that currently works, so there is no regression surface.
 
-### Candidate rules
+### The two paths use different substrates
+
+An earlier draft of this spec assumed one mechanism — re-running `DeckParser` with different `ParserRules.FLASHCARD` types — would serve both paths. **That is wrong and would have fixed only 31% of the problem.** Verified: `src/lib/parser/DeckParser.ts` contains zero references to `FLASHCARD`, `flashcardTypes()`, or `setFlashcardTypes()`. Those are consumed only by `BlockHandler.ts:712`, `NotionController.ts:540`, and `PopulateShowcaseUseCase.ts:45` — all Notion-API-path code.
+
+So there are two implementations of one idea:
+
+**Notion path (70 of 227 failures)** — induce over block types, driving the existing walk.
 
 | Candidate | `FLASHCARD` types | Rescues |
 | --- | --- | --- |
@@ -32,7 +38,18 @@ Fallback-only scope is deliberate: the induction can never touch a conversion th
 | `columns` | `column_list` | two-column term/definition layouts |
 | `quote` | `quote` | quote-delimited Q&A |
 
-`column_list` is already in `ParserRules.DECK_TYPE_ALLOWLIST`. `setFlashcardTypes()` already exists. No new parser is written — we drive the one we have.
+`column_list` is already in `DECK_TYPE_ALLOWLIST`; `setFlashcardTypes()` already exists. No new parser.
+
+**Upload path (157 of 227 failures)** — a fallback already exists and is failing. `DeckParser.tryExperimental()` (`DeckParser.ts:1118`) calls `FallbackParser`, which routes HTML through `parseHTMLFile` (`experimental/FallbackParser.ts:164`):
+
+```ts
+const plainText = this.htmlToTextWithNewlines(contents).join('\n');
+const found = new PlainTextParser().parse(plainText);
+```
+
+It **flattens the HTML to plain text before parsing** — discarding headings, tables, two-column layouts, list nesting, and bold terms, which is precisely the structure needed to infer a card boundary. What survives is then matched by `PlainTextParser` against a very narrow set: blank-line/`\n- ` splits and ` - ` or ` = ` separators.
+
+This is the upload-path root cause, and it is good news architecturally: docx, PDF, Markdown, and Notion exports are **all converted to HTML upstream** before reaching the parser. One structural inducer operating on the HTML DOM — before the flattening step — therefore covers every upload format at once, using the same candidate vocabulary (headings, list items, table rows, two-column tables, blockquotes) expressed as DOM selectors instead of Notion block types.
 
 ### The scorer
 
@@ -97,13 +114,20 @@ This makes three previously unanswerable questions answerable: is deck quality i
 
 PR 1 first on purpose: it calibrates the constants PR 2 depends on with real data.
 
+## Decisions from trio review
+
+**Fail honest below the floor** (pm). A student who trusts a bad rescued deck is worse off than one told plainly that no structure was found: a false "here's your deck" costs trust *and* causes mislearning, while a false negative costs one retry. The floor reuses primitives that already exist rather than inventing vocabulary: `detectOverSplit()` must be false, empty-back ratio ≤ 20% via `countEmptyBacks()`, at least 3 cards, and front-duplication under a cap. Thresholds are named constants, never env flags — determinism is a hard parser contract (same input → same `.apkg`).
+
+**Notion failure copy keeps the toggle teaching** (designer). It was never wrong *for Notion* — the defect was only that it leaked onto the upload path. Upload gets its own string naming the real causes (no question/answer split, or a scanned PDF with no readable text) and drops the toggles documentation link.
+
+**Scope honestly** (pm). The Notion induction reaches ~70 failures/month, not 227, and the candidate set contains no table strategy while `table` is the single largest unsupported block (104). Native table/column support is the durable fix; this rescue is also a cheap probe that tells us which structures actually rescue real documents, de-risking that larger investment.
+
 ## Open questions
 
-- **Choke points.** Where exactly is zero-card detected on the upload path and the Notion path? If there are two, both must be wired — the 2026-07-23 fix failed precisely because it reached only one path. *Engineer review pending.*
-- **Re-parse safety.** Is `DeckParser` safe to run N times over one workspace, or does it mutate extracted files, write media, or carry state? This is the largest implementation risk. *Engineer review pending.*
-- **Notion re-walk.** Can candidates re-run on retained blocks, or would each re-hit the Notion API (rate limits, latency)? *Engineer review pending.*
-- **Signalling a rescue.** With no UI, do we mark a rescued deck at all (deck name, a note, silence)? *Designer review pending.*
-- **Ship-vs-fail line.** Is a mediocre rescued deck better or worse than an honest failure for a student who trusts it? *PM review pending.*
+- **Choke points.** Where exactly is zero-card detected on each path? Both must be wired — the 2026-07-23 fix failed precisely because it reached only one. *Engineer review pending.*
+- **Re-parse safety.** Is the parse safe to run N times over one workspace, or does it mutate extracted files, write media, or carry state? Largest implementation risk. *Engineer review pending.*
+- **Notion re-walk.** Can candidates re-run on retained blocks, or would each re-hit the Notion API? *Engineer review pending.*
+- **Signalling a rescue — unresolved conflict.** pm says nothing user-visible this PR (emit a response header, render nothing) because the quality floor is itself the safety mechanism. designer says use the established Downloads-page inline-notice pattern (`ColumnsGuessedNotice` is the precedent for "we guessed your structure") because the user's mental model is "cards from toggles" while reality is "cards from headings", and a silent structural change looks broken with no explanation. Both reject a deck-name marker (syncs permanently into the user's Anki collection) and an in-deck info card (becomes a real card the scheduler shows). **Alexander decides** — this turns on whether a new notice component counts as the forbidden "UI change" or as reuse of an existing pattern.
 
 ## Success measure
 
