@@ -121,6 +121,14 @@ function causeCode(err: unknown): string | undefined {
   return undefined;
 }
 
+// Every chunk gets the same output ceiling. It used to scale with the chunk's
+// own byte count, which meant a truncated chunk's halves could land under the
+// threshold and retry at HALF the budget the parent already overran — a tighter
+// budget per byte than the call that failed. max_tokens is a cap, not a charge:
+// output is billed on tokens actually generated, so a uniform ceiling costs
+// nothing and removes the retry's worst case.
+const CHUNK_MAX_TOKENS = 16384;
+
 const MAX_CHUNK_API_ATTEMPTS = 2;
 const CHUNK_RETRY_BASE_DELAY_MS = 500;
 
@@ -709,14 +717,13 @@ async function generateDeckInfoFromChunk(
     cardSize,
     fieldMapping
   );
-  const maxTokens = strippedContent.length > 20000 ? 16384 : 8192;
 
   onProgress?.(`claude:chunk:${chunkIndex + 1}:${totalChunks}`);
 
   console.log('[Claude] Sending request to Claude API', {
     model: 'claude-sonnet-4-5',
     promptBytes: userMessage.length,
-    maxTokens,
+    maxTokens: CHUNK_MAX_TOKENS,
     mediaFilesCount: availableMediaFiles.length,
     hasUserInstructions: !!userInstructions?.trim(),
     chunkIndex,
@@ -728,7 +735,7 @@ async function generateDeckInfoFromChunk(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stream = (client.messages as any).stream({
       model: 'claude-sonnet-4-5',
-      max_tokens: maxTokens,
+      max_tokens: CHUNK_MAX_TOKENS,
       system: [
         {
           type: 'text',
@@ -813,7 +820,7 @@ async function generateDeckInfoFromChunk(
     console.warn('[Claude] Response truncated at max_tokens', {
       chunkIndex,
       totalChunks,
-      maxTokens,
+      maxTokens: CHUNK_MAX_TOKENS,
       chunkBytes: strippedContent.length,
     });
     throw new ClaudeTruncatedError(strippedContent);
@@ -987,8 +994,23 @@ async function runChunkWithTruncationRetry(
       originalBytes: content.length,
       halfBytes: halves.map((h) => h.length),
     });
-    const settled = await Promise.all(halves.map((half) => call(half)));
-    return settled.flat();
+    const settled = await Promise.allSettled(halves.map((half) => call(half)));
+    const parsed = settled
+      .filter(
+        (r): r is PromiseFulfilledResult<DeckInfo[]> => r.status === 'fulfilled'
+      )
+      .map((r) => r.value);
+    // Under Promise.all a second truncation on one half discarded the cards the
+    // other half had already produced, and the caller saw the chunk as a total
+    // loss — 53 cards shipped where 129 were parsed. Half a chunk beats none.
+    if (parsed.length === 0) throw err;
+    if (parsed.length < halves.length) {
+      console.info('[Claude] Keeping the halves that parsed', {
+        ok: parsed.length,
+        total: halves.length,
+      });
+    }
+    return parsed.flat();
   }
 }
 
