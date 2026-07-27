@@ -242,6 +242,53 @@ describe('ConversionResult — failed variant', () => {
     }
   );
 
+  const EMPTY_DECK_REASON =
+    'No cards in this deck yet. 2anki makes a card from every Notion toggle.';
+
+  it('teaches toggles when the empty deck came from Notion', () => {
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Study notes"
+          failureReason={EMPTY_DECK_REASON}
+          source="notion"
+          onMapColumns={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/Notion toggle/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'See how toggles become cards' })
+    ).toBeInTheDocument();
+  });
+
+  it.each(['upload', 'dropbox', 'drive'] as const)(
+    'explains the file, not toggles, when the empty deck came from %s',
+    (source) => {
+      render(
+        <MemoryRouter>
+          <ConversionResult
+            variant="failed"
+            title="Study notes"
+            failureReason={EMPTY_DECK_REASON}
+            source={source}
+            onMapColumns={vi.fn()}
+          />
+        </MemoryRouter>
+      );
+
+      expect(screen.queryByText(/toggle/i)).toBeNull();
+      expect(
+        screen.getByText(/No cards came out of this file/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'See supported formats' })
+      ).toHaveAttribute('href', '/documentation/reference/file-formats');
+    }
+  );
+
   it('renders notion token expired reconnect link when source is notion and reason is notion_token_expired', () => {
     render(
       <MemoryRouter>

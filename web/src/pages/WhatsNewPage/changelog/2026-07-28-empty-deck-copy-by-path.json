@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-empty-deck-copy-by-path",
+  "date": "2026-07-28",
+  "type": "fix",
+  "title": "An upload that produces no cards explains what to fix in the file instead of teaching Notion toggles"
+}

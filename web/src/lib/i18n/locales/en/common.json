@@ -496,6 +496,8 @@
     "reconnectNotion": "Reconnect Notion",
     "emptyDeckTeaching": "2anki makes a card from every Notion toggle — the toggle title becomes the question, what's inside becomes the answer. Wrap your key terms in toggles, then convert again.",
     "togglesDocs": "See how toggles become cards",
+    "emptyDeckTeachingUpload": "No cards came out of this file. 2anki makes a card wherever it finds a clear front and back, so a document with no question-and-answer split — or a scanned PDF with no readable text — gives it nothing to pair. Structure your source into front-and-back pairs and convert again.",
+    "uploadFormatsDocs": "See supported formats",
     "ambiguousColumns": "This database has more than two columns. Pick which column should be the front and back of each card.",
     "mapColumns": "Map columns",
     "checkStatusPrefix": "Something looks off? ",
