@@ -123,6 +123,31 @@ describe('generateDeckInfoFromPdfImages', () => {
     expect(totalCards).toBeGreaterThan(0);
   });
 
+  it('keeps cards from readable pages when one page fails outright', async () => {
+    mockCreateFn
+      .mockRejectedValueOnce(new Error('overloaded_error'))
+      .mockResolvedValue(
+        visionResponse(
+          JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+        )
+      );
+
+    const decks = await generateDeckInfoFromPdfImages(html, {
+      mediaBaseDir: baseDir,
+    });
+
+    const totalCards = decks.reduce((sum, d) => sum + d.cards.length, 0);
+    expect(totalCards).toBe(1);
+  });
+
+  it('surfaces the page failure when every page fails', async () => {
+    mockCreateFn.mockRejectedValue(new Error('overloaded_error'));
+
+    await expect(
+      generateDeckInfoFromPdfImages(html, { mediaBaseDir: baseDir })
+    ).rejects.toThrow('overloaded_error');
+  });
+
   it('ignores images whose path escapes the media base directory', async () => {
     const escaping =
       '<html><body><img src="../../etc/passwd.png"/></body></html>';
