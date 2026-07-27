@@ -1,5 +1,15 @@
 import crypto from 'node:crypto';
 import express from 'express';
+import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
+import { hashIp, resolveClientIp } from '../lib/rateLimit/ipHelpers';
+
+// The reset-redemption endpoint is unauthenticated by nature, so throttle
+// per-IP attempts to keep it from being usable for token guessing.
+const newPasswordRateLimiter = new InMemoryRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  perKeyMax: 10,
+  globalMax: 500,
+});
 
 import AuthenticationService, {
   UserWithOwner,
@@ -82,12 +92,22 @@ class UsersController {
       return res.status(400).send({ message: 'invalid' });
     }
 
+    if (!newPasswordRateLimiter.check(hashIp(resolveClientIp(req)))) {
+      return res.status(429).send({ message: 'invalid' });
+    }
+
     try {
       await this.authService.revokeSessionsByResetToken(resetToken);
-      await this.userService.updatePassword(
+      const updated = await this.userService.updatePassword(
         this.authService.getHashPassword(password),
         resetToken
       );
+      // No row matched: the token is unknown, already used, or past its
+      // window. Same response either way so the endpoint cannot be used to
+      // probe which tokens exist.
+      if (updated === 0) {
+        return res.status(400).send({ message: 'invalid' });
+      }
       res.status(200).send({ message: 'ok' });
     } catch (error) {
       console.info('Update password failed');

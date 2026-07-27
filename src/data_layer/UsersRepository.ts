@@ -7,6 +7,9 @@ import { startOfMonthUtc } from '../lib/User/startOfMonthUtc';
 import DeletedUserUsageRepository from './DeletedUserUsageRepository';
 import { emailHash } from '../lib/emailHash';
 
+// Matches the magic-link window in MagicTokenRepository.
+export const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
+
 export interface SignupCountryCount {
   country: string;
   count: number;
@@ -80,10 +83,24 @@ class UsersRepository {
       .increment('ai_template_modify_count', 1);
   }
 
-  updatePassword(hashPassword: string, reset_token: string) {
+  // A reset token is single-use and time-boxed, matching MagicTokenRepository:
+  // the same token must never redeem twice, and an abandoned link must stop
+  // working rather than staying valid indefinitely.
+  buildUpdatePasswordQuery(hashPassword: string, reset_token: string) {
     return this.database(this.table)
       .where({ reset_token })
-      .update({ password: hashPassword, reset_token: null });
+      .whereNotNull('reset_token_expires_at')
+      .where('reset_token_expires_at', '>', this.database.fn.now())
+      .whereNull('reset_token_used_at')
+      .update({
+        password: hashPassword,
+        reset_token: null,
+        reset_token_used_at: this.database.fn.now(),
+      });
+  }
+
+  updatePassword(hashPassword: string, reset_token: string) {
+    return this.buildUpdatePasswordQuery(hashPassword, reset_token);
   }
 
   getByResetToken(token: string) {
@@ -113,10 +130,20 @@ class UsersRepository {
       .update({ developer_access: value });
   }
 
-  updateResetToken(id: string, resetToken: string) {
-    return this.database(this.table)
-      .where({ id })
-      .update({ reset_token: resetToken });
+  buildUpdateResetTokenQuery(id: string, resetToken: string, expiresAt: Date) {
+    return this.database(this.table).where({ id }).update({
+      reset_token: resetToken,
+      reset_token_expires_at: expiresAt,
+      reset_token_used_at: null,
+    });
+  }
+
+  updateResetToken(
+    id: string,
+    resetToken: string,
+    expiresAt: Date = new Date(Date.now() + RESET_TOKEN_TTL_MS)
+  ) {
+    return this.buildUpdateResetTokenQuery(id, resetToken, expiresAt);
   }
 
   createUser(

@@ -63,6 +63,10 @@ export default interface Users {
   language: string | null;
 
   developer_access: boolean;
+
+  reset_token_expires_at: Date | null;
+
+  reset_token_used_at: Date | null;
 }
 
 /** Represents the initializer for the table public.users */
@@ -138,6 +142,10 @@ export interface UsersInitializer {
 
   /** Default value: false */
   developer_access?: boolean;
+
+  reset_token_expires_at?: Date | null;
+
+  reset_token_used_at?: Date | null;
 }
 
 /** Represents the mutator for the table public.users */
@@ -199,4 +207,8 @@ export interface UsersMutator {
   language?: string | null;
 
   developer_access?: boolean;
+
+  reset_token_expires_at?: Date | null;
+
+  reset_token_used_at?: Date | null;
 }
