@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../../lib/notion-render/escape';
 import {
   TabularRow,
   cellText,
@@ -37,12 +38,12 @@ export function convertXLSXToHTML(buffer: Buffer, title: string): string {
 
   return `<!DOCTYPE html>
 <html>
-<head><title>${title}</title></head>
+<head><title>${escapeHtml(title)}</title></head>
 <body>
   ${rows
     .map((row: TabularRow) => {
-      const front = cellText(row[frontIndex]);
-      const back = cellText(row[backIndex]);
+      const front = escapeHtml(cellText(row[frontIndex]));
+      const back = escapeHtml(cellText(row[backIndex]));
       return `<ul class="toggle">
     <li>
       <details>
