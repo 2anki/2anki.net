@@ -13,8 +13,13 @@ describe('shouldSendContactAck', () => {
     ['missing domain dot', 'user@localhost'],
     ['whitespace inside', 'us er@example.com'],
     ['empty string', ''],
-    ['non-string', 42],
+    ['null (failed normalization)', null],
     ['over the length cap', `${'a'.repeat(250)}@example.com`],
+    // SendGrid would parse these down to the inner address, so the string we
+    // validate would not be the mailbox we deliver to.
+    ['an angle-bracket wrapper', 'evil<victim@example.com'],
+    ['a full display-name form', 'X<victim@example.com>'],
+    ['a trailing comma', 'victim@example.com,'],
   ])('rejects an email with %s', (_label, email) => {
     expect(shouldSendContactAck(email, MESSAGE, 0)).toBe(false);
   });

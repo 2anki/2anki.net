@@ -10,11 +10,11 @@ export const CONTACT_ACK_COOLDOWN_MS = 60 * 60 * 1000;
 // receipt this hour. The submission itself is saved and returns 200
 // regardless — only the outbound ack is gated.
 export function shouldSendContactAck(
-  email: unknown,
+  email: string | null,
   message: unknown,
   recentSubmissionsFromEmail: number
 ): boolean {
-  if (!isValidEmailShape(email)) return false;
+  if (email == null || !isValidEmailShape(email)) return false;
   if (typeof message !== 'string' || message.trim().length < MIN_MESSAGE_CHARS)
     return false;
   return recentSubmissionsFromEmail <= 1;

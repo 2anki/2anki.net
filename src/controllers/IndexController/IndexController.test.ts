@@ -104,6 +104,36 @@ describe('IndexController.contactUs', () => {
     expect(mockSendContactConfirmationEmail).not.toHaveBeenCalled();
   });
 
+  it('normalizes the recipient and the cooldown key to the same address', async () => {
+    const controller = new IndexController();
+    const res = buildRes();
+
+    await controller.contactUs(
+      buildReq({ email: '  User@Example.COM ', message: VALID_MESSAGE }),
+      res
+    );
+    await flushAsync();
+
+    expect(mockSendContactConfirmationEmail).toHaveBeenCalledWith(
+      'user@example.com'
+    );
+    expect(mockCount).toHaveBeenCalled();
+  });
+
+  it('skips the confirmation for an angle-bracket address SendGrid would re-parse', async () => {
+    const controller = new IndexController();
+    const res = buildRes();
+
+    await controller.contactUs(
+      buildReq({ email: 'evil<victim@example.com', message: VALID_MESSAGE }),
+      res
+    );
+    await flushAsync();
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockSendContactConfirmationEmail).not.toHaveBeenCalled();
+  });
+
   it('skips the confirmation for a trivial message', async () => {
     const controller = new IndexController();
     const res = buildRes();
