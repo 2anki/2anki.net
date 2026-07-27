@@ -3,7 +3,6 @@ import type { Message } from '@anthropic-ai/sdk/resources/messages';
 import * as cheerio from 'cheerio';
 import { createHash } from 'node:crypto';
 import { jsonrepair } from 'jsonrepair';
-import { splitOversizedCards } from './splitOversizedCards';
 import { detect } from '../cardStyle/headingDriven/detect';
 import { splitByHeadings } from '../cardStyle/headingDriven/splitByHeadings';
 import { getCardStylePromptFragment } from './getCardStylePromptFragment';
@@ -830,50 +829,8 @@ async function generateDeckInfoFromChunk(
   const tParse0 = Date.now();
   const parsed = parseDeckResponse(cleaned, raw, chunkIndex);
 
-  const inputCardCount = parsed.reduce((sum, d) => sum + d.cards.length, 0);
-  const avgAnswerLenBefore =
-    inputCardCount > 0
-      ? Math.round(
-          parsed.reduce(
-            (sum, d) =>
-              sum +
-              d.cards.reduce(
-                (s, c) => s + (c.a ?? '').replace(/<[^>]*>/g, '').length,
-                0
-              ),
-            0
-          ) / inputCardCount
-        )
-      : 0;
-
-  const split = splitOversizedCards(parsed);
-
-  const outputCardCount = split.reduce((sum, d) => sum + d.cards.length, 0);
-  const avgAnswerLenAfter =
-    outputCardCount > 0
-      ? Math.round(
-          split.reduce(
-            (sum, d) =>
-              sum +
-              d.cards.reduce(
-                (s, c) => s + (c.a ?? '').replace(/<[^>]*>/g, '').length,
-                0
-              ),
-            0
-          ) / outputCardCount
-        )
-      : 0;
-
-  console.log('[Claude] splitOversizedCards', {
-    inputCardCount,
-    outputCardCount,
-    avgAnswerLenBefore,
-    avgAnswerLenAfter,
-    chunkIndex,
-  });
-
   const deckInfo = expandCompactDeckInfo(
-    split,
+    parsed,
     availableMediaFiles,
     pageStyle || null
   );
