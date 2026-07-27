@@ -220,6 +220,28 @@ describe('ConversionResult — failed variant', () => {
     ).toBeNull();
   });
 
+  it.each(['claude_parse_failed', 'claude_response_truncated'])(
+    'renders the designer copy for %s instead of the raw identifier',
+    (reason) => {
+      render(
+        <MemoryRouter>
+          <ConversionResult
+            variant="failed"
+            title="Study notes"
+            failureReason={reason}
+            source="upload"
+            onMapColumns={vi.fn()}
+          />
+        </MemoryRouter>
+      );
+
+      expect(screen.queryByText(new RegExp(reason))).toBeNull();
+      expect(
+        screen.getByText(/Something went wrong while making your cards/)
+      ).toBeInTheDocument();
+    }
+  );
+
   it('renders notion token expired reconnect link when source is notion and reason is notion_token_expired', () => {
     render(
       <MemoryRouter>

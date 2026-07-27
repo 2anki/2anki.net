@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-readable-ai-failure-message",
+  "date": "2026-07-28",
+  "type": "fix",
+  "title": "A failed AI conversion explains itself in your language instead of showing an internal error code"
+}

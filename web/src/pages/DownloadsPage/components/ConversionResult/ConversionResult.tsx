@@ -14,9 +14,21 @@ import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { startUnlimitedUpgrade } from '../../../../lib/backend/startUnlimitedUpgrade';
 import { track } from '../../../../lib/analytics/track';
 import { formatResetDate } from './formatResetDate';
-import type { UploadErrorBody } from '../../../../types/UploadErrorBody';
+import type {
+  UploadErrorBody,
+  UploadErrorCode,
+} from '../../../../types/UploadErrorBody';
 import sharedStyles from '../../../../styles/shared.module.css';
 import styles from './ConversionResult.module.css';
+
+// The server stores these identifiers verbatim in job_reason_failure. Without a
+// code to key on, classifyUploadError falls through to its short-message branch
+// and renders the identifier itself as the whole explanation. The designer copy
+// for claude_parse_failed already ships in all 10 locales.
+const CLAUDE_REASON_CODES: Record<string, UploadErrorCode> = {
+  claude_parse_failed: 'claude_parse_failed',
+  claude_response_truncated: 'claude_parse_failed',
+};
 
 const PAYWALL_SURFACE = 'downloads-limit';
 const UNLIMITED_PRICING_HREF = `/pricing?source=${PAYWALL_SURFACE}`;
@@ -207,7 +219,9 @@ function FailedVariant({
     failureReason.includes('MemoryError') ||
     failureReason.includes('Killed');
   const errorBody: UploadErrorBody = {
-    code: isTooLarge ? 'too_large' : 'unknown',
+    code:
+      CLAUDE_REASON_CODES[failureReason.trim()] ??
+      (isTooLarge ? 'too_large' : 'unknown'),
     message: failureReason,
   };
   const friendly = classifyUploadError(errorBody);
