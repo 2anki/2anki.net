@@ -2,15 +2,16 @@ import type { IReEngagementRepository } from '../../../data_layer/ReEngagementRe
 import type { IEmailService } from '../../../services/EmailService/EmailService';
 import type { EventsSink } from '../../../services/events/EventsSink';
 import { sendReEngagementEmails } from '../../storage/jobs/helpers/sendReEngagementEmails';
+import { isOverdue, type LastRunAt } from '../../inactivity/jobs/lastRunAt';
 
 export const RE_ENGAGEMENT_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
-export const scheduleReEngagementEmails = (
+export const scheduleReEngagementEmails = async (
   repo: IReEngagementRepository,
   emailService: IEmailService,
   eventsSink: EventsSink,
-  options: { intervalMs?: number } = {}
-): NodeJS.Timeout => {
+  options: { intervalMs?: number; lastRunAt?: LastRunAt } = {}
+): Promise<NodeJS.Timeout> => {
   const intervalMs = options.intervalMs ?? RE_ENGAGEMENT_INTERVAL_MS;
 
   const tick = async () => {
@@ -25,6 +26,16 @@ export const scheduleReEngagementEmails = (
       console.error('[re-engagement] daily job failed:', error);
     }
   };
+
+  // Blue-green redeploys reset the interval before it can elapse, so without a
+  // catch-up the tick almost never fires. Eligibility is a fixed 24-hour band,
+  // which makes a missed day permanent for everyone in it.
+  if (options.lastRunAt != null) {
+    const lastRun = await options.lastRunAt();
+    if (isOverdue(lastRun, intervalMs, Date.now())) {
+      await tick();
+    }
+  }
 
   const handle = setInterval(tick, intervalMs);
   handle.unref();

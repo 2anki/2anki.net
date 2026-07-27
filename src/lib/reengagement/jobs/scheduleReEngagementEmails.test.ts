@@ -28,7 +28,7 @@ describe('scheduleReEngagementEmails', () => {
 
   it('fires sendReEngagementEmails after one interval', async () => {
     const sink = makeSink();
-    const handle = scheduleReEngagementEmails(
+    const handle = await scheduleReEngagementEmails(
       mockRepo,
       mockEmailService,
       sink as unknown as EventsSink,
@@ -42,9 +42,9 @@ describe('scheduleReEngagementEmails', () => {
     clearInterval(handle);
   });
 
-  it('does not fire before the interval elapses', () => {
+  it('does not fire before the interval elapses', async () => {
     const sink = makeSink();
-    const handle = scheduleReEngagementEmails(
+    const handle = await scheduleReEngagementEmails(
       mockRepo,
       mockEmailService,
       sink as unknown as EventsSink,
@@ -60,7 +60,7 @@ describe('scheduleReEngagementEmails', () => {
   it('emits email_batch_sent with campaign=reengagement and the returned count', async () => {
     (sendReEngagementEmails as jest.Mock).mockResolvedValueOnce({ count: 7 });
     const sink = makeSink();
-    const handle = scheduleReEngagementEmails(
+    const handle = await scheduleReEngagementEmails(
       mockRepo,
       mockEmailService,
       sink as unknown as EventsSink,
@@ -82,7 +82,7 @@ describe('scheduleReEngagementEmails', () => {
       new Error('db down')
     );
     const sink = makeSink();
-    const handle = scheduleReEngagementEmails(
+    const handle = await scheduleReEngagementEmails(
       mockRepo,
       mockEmailService,
       sink as unknown as EventsSink,
@@ -98,5 +98,67 @@ describe('scheduleReEngagementEmails', () => {
 
   it('uses RE_ENGAGEMENT_INTERVAL_MS as the default interval', () => {
     expect(RE_ENGAGEMENT_INTERVAL_MS).toBe(24 * 60 * 60 * 1000);
+  });
+
+  // Blue-green redeploys reset the interval before it can elapse, so without a
+  // startup catch-up the tick rarely runs. Eligibility here is a fixed 24-hour
+  // band, so a user missed on their day never becomes eligible again.
+  it('runs an overdue tick at startup when the last run is older than the interval', async () => {
+    const sink = makeSink();
+    const lastRunAt = jest.fn().mockResolvedValue(new Date(Date.now() - 2000));
+
+    const handle = await scheduleReEngagementEmails(
+      mockRepo,
+      mockEmailService,
+      sink as unknown as EventsSink,
+      { intervalMs: 1000, lastRunAt }
+    );
+
+    expect(sendReEngagementEmails).toHaveBeenCalledTimes(1);
+    clearInterval(handle);
+  });
+
+  it('runs an overdue tick at startup when the job has never run', async () => {
+    const sink = makeSink();
+    const lastRunAt = jest.fn().mockResolvedValue(null);
+
+    const handle = await scheduleReEngagementEmails(
+      mockRepo,
+      mockEmailService,
+      sink as unknown as EventsSink,
+      { intervalMs: 1000, lastRunAt }
+    );
+
+    expect(sendReEngagementEmails).toHaveBeenCalledTimes(1);
+    clearInterval(handle);
+  });
+
+  it('does not run a catch-up tick when the last run is recent', async () => {
+    const sink = makeSink();
+    const lastRunAt = jest.fn().mockResolvedValue(new Date(Date.now() - 10));
+
+    const handle = await scheduleReEngagementEmails(
+      mockRepo,
+      mockEmailService,
+      sink as unknown as EventsSink,
+      { intervalMs: 1000, lastRunAt }
+    );
+
+    expect(sendReEngagementEmails).not.toHaveBeenCalled();
+    clearInterval(handle);
+  });
+
+  it('does not run a catch-up tick when no lastRunAt is supplied', async () => {
+    const sink = makeSink();
+
+    const handle = await scheduleReEngagementEmails(
+      mockRepo,
+      mockEmailService,
+      sink as unknown as EventsSink,
+      { intervalMs: 1000 }
+    );
+
+    expect(sendReEngagementEmails).not.toHaveBeenCalled();
+    clearInterval(handle);
   });
 });

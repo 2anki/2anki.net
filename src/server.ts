@@ -293,11 +293,15 @@ const serve = async () => {
   }
 
   const eventsSink = getEventsSink();
+  const eventsRepo = new EventsRepository(database);
   const reEngagementRepo = new ReEngagementRepository(database);
   const emailService = getDefaultEmailService();
-  scheduleReEngagementEmails(reEngagementRepo, emailService, eventsSink);
+  scheduleReEngagementEmails(reEngagementRepo, emailService, eventsSink, {
+    lastRunAt: () => eventsRepo.lastEventAt('email_batch_sent', 'reengagement'),
+  }).catch((error) => {
+    console.error('[re-engagement] failed to schedule:', error);
+  });
 
-  const eventsRepo = new EventsRepository(database);
   const inactivityEmailRepo = new InactivityEmailRepository(database);
   const uploadRepo = new UploadRepository(database);
   const sendInactivityWarningsUseCase = new SendInactivityWarningsUseCase(
