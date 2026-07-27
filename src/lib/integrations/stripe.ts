@@ -46,7 +46,9 @@ export interface ProvisionResult {
   resolvedUserId: number | null;
 }
 
-const normalizeEmail = (email: string | null | undefined): string | null => {
+export const normalizeEmail = (
+  email: string | null | undefined
+): string | null => {
   if (email == null) {
     return null;
   }

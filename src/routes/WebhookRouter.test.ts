@@ -13,6 +13,10 @@ const inMemoryAnonRepo = new InMemoryAnonymousPassRepository();
 
 const mockCustomersRetrieve = jest.fn();
 const mockSessionsRetrieve = jest.fn();
+const mockUpdateStoreSubscription = jest
+  .fn()
+  .mockResolvedValue({ status: 'linked', resolvedUserId: 1 });
+const mockResolveAccountForSubscription = jest.fn().mockResolvedValue(null);
 
 jest.mock('../lib/integrations/stripe', () => ({
   getStripe: jest.fn().mockReturnValue({
@@ -26,9 +30,10 @@ jest.mock('../lib/integrations/stripe', () => ({
   }),
   getCustomerId: jest.fn().mockReturnValue('cus_abc'),
   extractProductId: jest.fn().mockReturnValue('prod_test'),
-  updateStoreSubscription: jest
-    .fn()
-    .mockResolvedValue({ status: 'linked', resolvedUserId: 1 }),
+  normalizeEmail: (e: string | null) =>
+    e == null ? null : e.toLowerCase().trim(),
+  updateStoreSubscription: mockUpdateStoreSubscription,
+  resolveAccountForSubscription: mockResolveAccountForSubscription,
 }));
 
 jest.mock('../data_layer', () => ({ getDatabase: jest.fn() }));
@@ -97,9 +102,11 @@ jest.mock('../data_layer/AnonymousPassRepository', () => {
 });
 
 const mockUpdatePatreonByEmail = jest.fn();
+const mockGetByEmail = jest.fn().mockResolvedValue(null);
 jest.mock('../data_layer/UsersRepository', () =>
   jest.fn().mockImplementation(() => ({
     updatePatreonByEmail: mockUpdatePatreonByEmail,
+    getByEmail: mockGetByEmail,
   }))
 );
 
@@ -563,6 +570,85 @@ describe('WebhookRouter — checkout_completed funnel join', () => {
       (c) => c[0] === 'checkout_completed'
     );
     expect(call?.[1].props.surface).toBeUndefined();
+  });
+});
+
+describe('WebhookRouter — customer.subscription.deleted', () => {
+  let server: http.Server;
+  let url: string;
+
+  beforeAll(async () => {
+    ({ server, url } = await buildServer());
+  });
+
+  afterAll(() => server.close());
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockCustomersRetrieve.mockResolvedValue({
+      id: 'cus_abc',
+      email: 'billing@example.com',
+    });
+    mockWebhookEvent = {
+      type: 'customer.subscription.deleted',
+      data: {
+        object: {
+          id: 'sub_abc',
+          customer: 'cus_abc',
+          status: 'canceled',
+          items: { data: [{ price: { product: 'prod_test' } }] },
+        },
+      },
+    };
+  });
+
+  function postWebhookDeleted() {
+    return fetch(`${url}/webhook`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': 'sig_test',
+      },
+      body: JSON.stringify({}),
+    });
+  }
+
+  it('deactivates a subscription paid under an email that is not the account email', async () => {
+    // The supported linked_email shape: the payer email has no users row, but
+    // the subscription resolves to a real account.
+    mockGetByEmail.mockResolvedValue(null);
+    mockResolveAccountForSubscription.mockResolvedValue({
+      id: 7,
+      email: 'account@example.com',
+    });
+
+    const res = await postWebhookDeleted();
+
+    expect(res.status).toBe(200);
+    expect(mockUpdateStoreSubscription).toHaveBeenCalled();
+  });
+
+  it('deactivates a subscription whose payer email is the account email', async () => {
+    mockGetByEmail.mockResolvedValue({ id: 7, email: 'billing@example.com' });
+    mockResolveAccountForSubscription.mockResolvedValue({
+      id: 7,
+      email: 'billing@example.com',
+    });
+
+    const res = await postWebhookDeleted();
+
+    expect(res.status).toBe(200);
+    expect(mockUpdateStoreSubscription).toHaveBeenCalled();
+  });
+
+  it('skips a customer that resolves to no account at all', async () => {
+    mockGetByEmail.mockResolvedValue(null);
+    mockResolveAccountForSubscription.mockResolvedValue(null);
+
+    const res = await postWebhookDeleted();
+
+    expect(res.status).toBe(200);
+    expect(mockUpdateStoreSubscription).not.toHaveBeenCalled();
   });
 });
 

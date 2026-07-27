@@ -5,6 +5,8 @@ import {
   extractProductId,
   getCustomerId,
   getStripe,
+  normalizeEmail,
+  resolveAccountForSubscription,
   updateStoreSubscription,
 } from '../lib/integrations/stripe';
 import { getDatabase } from '../data_layer';
@@ -284,12 +286,22 @@ const WebhooksRouter = () => {
             const customerDeleted =
               await stripe.customers.retrieve(deletedCustomerId);
 
-            if ('email' in customerDeleted && customerDeleted.email) {
-              const usersRepo = new UsersRepository(getDatabase());
-              const user = await usersRepo.getByEmail(customerDeleted.email);
-              if (!user) {
-                break;
-              }
+            // Guarding on the payer email alone treats every subscription paid
+            // under a different address than the account — the supported
+            // linked_email shape — as belonging to nobody, so the row stays
+            // active and a cancelled customer keeps paid access. Resolve the
+            // account the same way updateStoreSubscription does, so only a
+            // customer that matches no account at all is skipped.
+            const deletedAccount = await resolveAccountForSubscription(
+              getDatabase(),
+              customerSubscriptionDeleted,
+              deletedCustomerId,
+              normalizeEmail(
+                'email' in customerDeleted ? customerDeleted.email : null
+              )
+            );
+            if (!deletedAccount) {
+              break;
             }
 
             await updateStoreSubscription(
