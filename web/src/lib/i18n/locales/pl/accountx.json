@@ -21,7 +21,13 @@
     "alreadyUsedTitle": "Link został już użyty.",
     "alreadyUsedBody": "Ten link został już użyty. Zaloguj się i spróbuj ponownie ze strony konta, jeśli chcesz go ponownie przypisać.",
     "activeSubTitle": "Konto ma już subskrypcję.",
-    "activeSubBody": "To konto ma już aktywną subskrypcję. Najpierw ją anuluj lub skontaktuj się z pomocą techniczną."
+    "activeSubBody": "To konto ma już aktywną subskrypcję. Najpierw ją anuluj lub skontaktuj się z pomocą techniczną.",
+    "passSuccessTitle": "Karnet odebrany.",
+    "passSuccessBody": "{{passKind}} przypisany do tego konta — aktywny do {{expiry}}.",
+    "passAlreadyClaimedTitle": "Karnet już odebrany.",
+    "passAlreadyClaimedBody": "Ten karnet jest już przypisany do konta. Jeśli nie widzisz go na swoim, napisz na support@2anki.net.",
+    "passExpiredTitle": "Ten karnet wygasł.",
+    "passExpiredBody": "Twój {{passKind}} wygasł, zanim odbiór został ukończony, więc nie ma już nic do przypisania. Kup nowy karnet albo przejdź na abonament miesięczny."
   },
   "profile": {
     "hideMyEmailNote": "Hide My Email — Apple przekazuje wiadomości do Twojej prawdziwej skrzynki odbiorczej."

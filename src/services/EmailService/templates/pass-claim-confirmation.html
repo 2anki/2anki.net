@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>2anki.net — Confirm pass claim</title>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      body { background-color: #1a1a1a !important; }
+      .email-card { background-color: #111827 !important; }
+      .email-header { color: #f9fafb !important; border-bottom-color: #374151 !important; }
+      .email-body p { color: #f9fafb !important; }
+      .email-cta a { background-color: #60a5fa !important; }
+      .email-footer { color: #6b7280 !important; border-top-color: #374151 !important; }
+    }
+    @media only screen and (max-width: 600px) {
+      .email-card { width: 100% !important; padding: 0 !important; }
+      .email-body { padding: 24px 16px !important; }
+      .email-header { padding: 16px !important; }
+      .email-footer { padding: 12px 16px !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f5f5f5; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+        <table role="presentation" class="email-card" cellpadding="0" cellspacing="0" style="max-width: 580px; width: 100%; background-color: #ffffff; border-radius: 8px;">
+          <tr>
+            <td class="email-header" style="text-align: center; padding: 24px; border-bottom: 1px solid #e5e7eb;">
+              <img src="https://2anki.net/mascot/navbar-logo.png" alt="2anki" width="120" style="display: block; margin: 0 auto; height: auto;" />
+            </td>
+          </tr>
+          <tr>
+            <td class="email-body" style="padding: 32px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 1.6; color: #374151;">
+              <p style="margin: 0 0 16px;">Someone is trying to attach your 2anki {{passKind}} to a different 2anki account. Click the button below to confirm. If that wasn't you, ignore this email — no action is needed.</p>
+              <div style="text-align: center; margin: 24px 0;" class="email-cta">
+                <a href="{{link}}" style="display: inline-block; padding: 12px 32px; background-color: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px;">Confirm pass claim</a>
+              </div>
+              <p style="margin: 0 0 16px;">This link expires in 15 minutes. Sign in to your 2anki account first if you aren't already.</p>
+              <p style="margin: 0;">The 2anki Team</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-footer" style="text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; color: #9ca3af; padding: 16px 24px; border-top: 1px solid #e5e7eb;">
+              2anki.net — Turn what you study into Anki flashcards
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,6 +1,9 @@
 import type { Request, Response } from 'express';
 import type { ClaimSubscriptionUseCase } from '../usecases/subscriptions/ClaimSubscriptionUseCase';
 import type { ConfirmSubscriptionClaimUseCase } from '../usecases/subscriptions/ConfirmSubscriptionClaimUseCase';
+import type { ClaimPassUseCase } from '../usecases/passes/ClaimPassUseCase';
+import type { ConfirmPassClaimUseCase } from '../usecases/passes/ConfirmPassClaimUseCase';
+import { passKindLabel } from '../usecases/passes/passKindLabel';
 import { emailHash } from '../lib/emailHash';
 import hashToken from '../lib/misc/hashToken';
 import { resolveClientIp } from '../lib/rateLimit/ipHelpers';
@@ -8,7 +11,9 @@ import { resolveClientIp } from '../lib/rateLimit/ipHelpers';
 export class SubscriptionClaimController {
   constructor(
     private readonly claimUseCase: ClaimSubscriptionUseCase,
-    private readonly confirmUseCase: ConfirmSubscriptionClaimUseCase
+    private readonly confirmUseCase: ConfirmSubscriptionClaimUseCase,
+    private readonly claimPassUseCase: ClaimPassUseCase,
+    private readonly confirmPassUseCase: ConfirmPassClaimUseCase
   ) {}
 
   async initiate(req: Request, res: Response): Promise<void> {
@@ -21,12 +26,21 @@ export class SubscriptionClaimController {
     }
 
     const ip = resolveClientIp(req);
-    const result = await this.claimUseCase.execute({
+    const input = {
       userId,
       submittedEmail,
       ipHash: hashToken(ip),
       emailHash: emailHash(submittedEmail),
-    });
+    };
+
+    const result = await this.claimUseCase.execute(input);
+    try {
+      await this.claimPassUseCase.execute(input);
+    } catch (error) {
+      // The generic response must not change when the pass branch fails —
+      // log and keep the anti-enumeration contract.
+      console.error('pass.claim.initiate_failed', error);
+    }
 
     res.status(200).json({ message: result.message });
   }
@@ -76,5 +90,44 @@ export class SubscriptionClaimController {
       message:
         'Invalid or expired confirmation link. Start over from /account.',
     });
+  }
+
+  async confirmPass(req: Request, res: Response): Promise<void> {
+    const userId = res.locals.owner as number;
+    const rawToken: string = (req.body?.token ?? '').trim();
+
+    if (!rawToken) {
+      res.status(400).json({ message: 'Token is required.' });
+      return;
+    }
+
+    const ip = resolveClientIp(req);
+    const outcome = await this.confirmPassUseCase.execute(
+      userId,
+      rawToken,
+      hashToken(ip),
+      hashToken('unknown')
+    );
+
+    if (outcome.success) {
+      res.status(200).json({
+        kind: 'pass',
+        passKind: passKindLabel(outcome.passKind),
+        expiresAt: outcome.expiresAt.toISOString(),
+      });
+      return;
+    }
+
+    if (outcome.reason === 'already_claimed') {
+      res.status(409).json({ reason: 'already_claimed' });
+      return;
+    }
+
+    if (outcome.reason === 'pass_expired') {
+      res.status(410).json({ reason: 'pass_expired' });
+      return;
+    }
+
+    res.status(400).json({ reason: 'invalid_token' });
   }
 }

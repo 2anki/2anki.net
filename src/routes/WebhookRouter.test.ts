@@ -3,6 +3,7 @@ import http from 'node:http';
 import { AddressInfo } from 'node:net';
 import { InMemoryUserPassRepository } from '../data_layer/UserPassRepository';
 import { InMemoryAnonymousPassRepository } from '../data_layer/AnonymousPassRepository';
+import { emailHash } from '../lib/emailHash';
 
 const mockUpsert = jest.fn();
 const inMemoryRepo = new InMemoryUserPassRepository();
@@ -65,6 +66,7 @@ jest.mock('../services/EmailService/EmailService', () => ({
     sendParserCanaryAlert: jest.fn(),
     sendNotionReconnectEmail: jest.fn().mockResolvedValue(undefined),
     sendSubscriptionClaimConfirmation: jest.fn().mockResolvedValue(undefined),
+    sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
     sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
     sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
   }),
@@ -306,6 +308,7 @@ describe('WebhookRouter — pass grant', () => {
           currency: 'usd',
           customer: null,
           payment_intent: 'pi_anon_456',
+          customer_details: { email: 'Buyer@Example.com' },
           metadata: { pass_kind: '24h', pass_anonymous: '1' },
         },
       },
@@ -326,6 +329,7 @@ describe('WebhookRouter — pass grant', () => {
         stripeSessionId: 'cs_anon_test',
         kind: '24h',
         paymentIntentId: 'pi_anon_456',
+        buyerEmailHash: emailHash('buyer@example.com'),
       })
     );
   });

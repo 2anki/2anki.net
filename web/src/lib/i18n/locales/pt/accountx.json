@@ -21,7 +21,13 @@
     "alreadyUsedTitle": "Link já utilizado.",
     "alreadyUsedBody": "Este link já foi utilizado. Faça login e tente novamente na página da sua conta se precisar reivindicar de novo.",
     "activeSubTitle": "A conta já tem uma assinatura.",
-    "activeSubBody": "Esta conta já tem uma assinatura ativa. Cancele-a primeiro ou entre em contato com o suporte."
+    "activeSubBody": "Esta conta já tem uma assinatura ativa. Cancele-a primeiro ou entre em contato com o suporte.",
+    "passSuccessTitle": "Passe resgatado.",
+    "passSuccessBody": "{{passKind}} vinculado a esta conta — ativo até {{expiry}}.",
+    "passAlreadyClaimedTitle": "Passe já resgatado.",
+    "passAlreadyClaimedBody": "Este passe já está vinculado a uma conta. Se não aparecer na sua, escreva para support@2anki.net.",
+    "passExpiredTitle": "Este passe expirou.",
+    "passExpiredBody": "Seu {{passKind}} expirou antes de o resgate ser concluído, então não há mais nada para vincular. Compre um novo passe ou mude para o plano mensal."
   },
   "profile": {
     "hideMyEmailNote": "Hide My Email — a Apple encaminha as mensagens para a sua caixa de entrada real."

@@ -80,7 +80,7 @@
   "claimSubscription": {
     "paidDifferentEmail": "Płaciłeś z innego adresu e-mail?",
     "sent": "Wysłano. Sprawdź tę skrzynkę, szukając linku potwierdzającego.",
-    "description": "Jeśli płaciłeś w Stripe innym adresem e-mail, wpisz go tutaj. Wyślemy na ten adres link potwierdzający, aby powiązać subskrypcję z tym kontem.",
+    "description": "Masz subskrypcję albo Week Pass lub Day Pass kupione na inny adres e-mail? Wpisz ten adres, a wyślemy tam link potwierdzający, żeby przypisać zakup do tego konta.",
     "emailPlaceholder": "E-mail, którym płaciłeś",
     "emailLabel": "E-mail, którym płaciłeś",
     "error": "Coś poszło nie tak. Spróbuj ponownie za chwilę.",

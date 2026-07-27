@@ -21,7 +21,13 @@
     "alreadyUsedTitle": "Link al gebruikt.",
     "alreadyUsedBody": "Deze link is al gebruikt. Meld je aan en probeer het opnieuw vanaf je accountpagina als je opnieuw wilt claimen.",
     "activeSubTitle": "Account heeft al een abonnement.",
-    "activeSubBody": "Dit account heeft al een actief abonnement. Zeg het eerst op of neem contact op met support."
+    "activeSubBody": "Dit account heeft al een actief abonnement. Zeg het eerst op of neem contact op met support.",
+    "passSuccessTitle": "Pass geclaimd.",
+    "passSuccessBody": "{{passKind}} gekoppeld aan dit account — actief tot {{expiry}}.",
+    "passAlreadyClaimedTitle": "Pass al geclaimd.",
+    "passAlreadyClaimedBody": "Deze pass is al aan een account gekoppeld. Zie je hem niet op jouw account, mail dan naar support@2anki.net.",
+    "passExpiredTitle": "Deze pass is verlopen.",
+    "passExpiredBody": "Je {{passKind}} was al verlopen voordat de claim rond was, dus er valt niets meer te koppelen. Koop een nieuwe pass of stap over op het maandabonnement."
   },
   "profile": {
     "hideMyEmailNote": "Hide My Email — Apple stuurt berichten door naar je echte inbox."

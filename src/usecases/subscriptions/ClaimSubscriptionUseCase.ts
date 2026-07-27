@@ -13,7 +13,7 @@ const MAX_ATTEMPTS_PER_IP_PER_HOUR = 60;
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 
 export const CLAIM_INITIATE_MESSAGE =
-  'If a subscription exists for that email, we sent a confirmation link.';
+  'If a subscription or pass exists for that email, we sent a confirmation link.';
 
 export interface ClaimSubscriptionInput {
   userId: number;

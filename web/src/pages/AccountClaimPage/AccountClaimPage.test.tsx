@@ -14,8 +14,10 @@ vi.mock('../../components/Skeleton/Skeleton', () => ({
   SkeletonPage: () => <div data-testid="skeleton" />,
 }));
 
-function renderWithToken(token?: string) {
-  const path = token ? `/account/claim?token=${token}` : '/account/claim';
+function renderWithToken(token?: string, extraQuery = '') {
+  const path = token
+    ? `/account/claim?token=${token}${extraQuery}`
+    : '/account/claim';
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
@@ -86,6 +88,51 @@ describe('AccountClaimPage', () => {
     renderWithToken('expired-token');
     await waitFor(() => {
       expect(screen.getByText('Invalid or expired link.')).toBeTruthy();
+    });
+  });
+
+  it('confirms a pass claim against the pass endpoint and shows kind and expiry', async () => {
+    mockPost.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        kind: 'pass',
+        passKind: 'Week Pass',
+        expiresAt: '2026-08-03T10:00:00.000Z',
+      }),
+    });
+    renderWithToken('pass-token', '&kind=pass');
+    await waitFor(() => {
+      expect(screen.getByText('Pass claimed.')).toBeTruthy();
+    });
+    expect(mockPost).toHaveBeenCalledWith('/api/passes/claim/confirm', {
+      token: 'pass-token',
+    });
+    expect(screen.getByText(/Week Pass/)).toBeTruthy();
+    expect(screen.getByText(/3 August 2026/)).toBeTruthy();
+  });
+
+  it('shows the pass-already-claimed state', async () => {
+    mockPost.mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: vi.fn().mockResolvedValue({ reason: 'already_claimed' }),
+    });
+    renderWithToken('pass-token', '&kind=pass');
+    await waitFor(() => {
+      expect(screen.getByText('Pass already claimed.')).toBeTruthy();
+    });
+  });
+
+  it('shows the pass-expired state', async () => {
+    mockPost.mockResolvedValue({
+      ok: false,
+      status: 410,
+      json: vi.fn().mockResolvedValue({ reason: 'pass_expired' }),
+    });
+    renderWithToken('pass-token', '&kind=pass');
+    await waitFor(() => {
+      expect(screen.getByText('This pass has expired.')).toBeTruthy();
     });
   });
 });

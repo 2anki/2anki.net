@@ -21,7 +21,13 @@
     "alreadyUsedTitle": "リンクはすでに使用されています。",
     "alreadyUsedBody": "このリンクはすでに使用されています。再度引き継ぐ必要がある場合は、ログインしてアカウントページからもう一度お試しください。",
     "activeSubTitle": "アカウントにはすでにサブスクリプションがあります。",
-    "activeSubBody": "このアカウントにはすでに有効なサブスクリプションがあります。先に解約するか、サポートにお問い合わせください。"
+    "activeSubBody": "このアカウントにはすでに有効なサブスクリプションがあります。先に解約するか、サポートにお問い合わせください。",
+    "passSuccessTitle": "パスを受け取りました。",
+    "passSuccessBody": "{{passKind}}がこのアカウントに紐付けられました — {{expiry}}まで有効です。",
+    "passAlreadyClaimedTitle": "このパスは受け取り済みです。",
+    "passAlreadyClaimedBody": "このパスはすでに別のアカウントに紐付けられています。お使いのアカウントに表示されない場合は、support@2anki.net までご連絡ください。",
+    "passExpiredTitle": "このパスは期限切れです。",
+    "passExpiredBody": "{{passKind}}は紐付けが完了する前に期限切れになったため、紐付けられるものがありません。新しいパスを購入するか、月額プランをご利用ください。"
   },
   "profile": {
     "hideMyEmailNote": "Hide My Email — Apple がメッセージを実際の受信トレイに転送します。"

@@ -80,7 +80,7 @@
   "claimSubscription": {
     "paidDifferentEmail": "Hai pagato con un'altra email?",
     "sent": "Inviato. Controlla quella casella per un link di conferma.",
-    "description": "Se hai pagato Stripe con un altro indirizzo email, inseriscilo qui. Invieremo un link di conferma a quell'indirizzo per collegare l'abbonamento a questo account.",
+    "description": "Hai acquistato un abbonamento o un Week Pass o Day Pass con un'altra email? Inserisci quell'email e ti invieremo lì un link di conferma per collegarlo a questo account.",
     "emailPlaceholder": "Email con cui hai pagato",
     "emailLabel": "Email con cui hai pagato",
     "error": "Qualcosa è andato storto. Riprova tra un momento.",
