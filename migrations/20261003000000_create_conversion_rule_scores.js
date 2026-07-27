@@ -29,10 +29,13 @@ exports.up = async (knex) => {
     'CREATE INDEX IF NOT EXISTS conversion_rule_scores_created_at_index ON conversion_rule_scores (created_at)'
   );
   await knex.raw(
-    'CREATE INDEX IF NOT EXISTS conversion_rule_scores_source_format_index ON conversion_rule_scores (source, input_format)'
+    'CREATE INDEX IF NOT EXISTS conversion_rule_scores_source_input_format_index ON conversion_rule_scores (source, input_format)'
   );
 };
 
+// Reverting discards the score rows written since the deploy. That is the
+// intended trade for a metrics-only table — there is nothing to preserve and
+// nothing downstream reads it — not an oversight.
 exports.down = async (knex) => {
   await knex.schema.dropTableIfExists('conversion_rule_scores');
 };
