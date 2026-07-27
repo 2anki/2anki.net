@@ -40,10 +40,7 @@ export default function UploadSuccessPreviewPage() {
           <CreateAccountNotice />
         </Variant>
         <Variant title="Repeat pass buyer — pass ladder">
-          <PassLadderCard
-            offerOverride={{ passCount: 3, spentUsd: 13 }}
-            emailOverride="preview@example.com"
-          />
+          <PassLadderCard offerOverride={{ passCount: 3, spentUsd: 13 }} />
         </Variant>
         <Variant title="Logged-in free — pass upsell">
           <UpsellCard surface="upload_success_upsell" />

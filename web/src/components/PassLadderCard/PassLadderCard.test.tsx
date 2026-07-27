@@ -15,6 +15,13 @@ vi.mock('../../lib/analytics/track', () => ({
   track: (...args: unknown[]) => mockTrack(...args),
 }));
 
+const mockStartUnlimitedUpgrade = vi.fn();
+
+vi.mock('../../lib/backend/startUnlimitedUpgrade', () => ({
+  startUnlimitedUpgrade: (...args: unknown[]) =>
+    mockStartUnlimitedUpgrade(...args),
+}));
+
 const repeatBuyer = {
   data: {
     locals: { patreon: false, subscriber: true },
@@ -54,21 +61,21 @@ describe('PassLadderCard', () => {
     });
   });
 
-  it('links to the subscribe flow and tracks the upgrade click', () => {
+  it('starts the checkout through the API and tracks the upgrade click', () => {
     mockUseUserLocals.mockReturnValue(repeatBuyer);
     render(<PassLadderCard />);
 
     const cta = screen.getByRole('link', { name: 'Get Unlimited — $7.99/mo' });
-    expect(cta).toHaveAttribute(
-      'href',
-      expect.stringContaining('prefilled_email=buyer%40example.com')
-    );
+    expect(cta).toHaveAttribute('href', '/pricing?source=pass_ladder_success');
 
     fireEvent.click(cta);
     expect(mockTrack).toHaveBeenCalledWith('paywall_upgrade_clicked', {
       surface: 'pass_ladder_success',
       plan: 'unlimited',
     });
+    expect(mockStartUnlimitedUpgrade).toHaveBeenCalledWith(
+      'pass_ladder_success'
+    );
   });
 
   it('renders nothing when the server sends no offer', () => {

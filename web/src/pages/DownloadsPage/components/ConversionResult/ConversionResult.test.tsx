@@ -18,6 +18,12 @@ vi.mock('../../../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: () => ({ startPassCheckout: mockStartPassCheckout }),
 }));
 
+const mockStartUnlimitedUpgrade = vi.fn();
+vi.mock('../../../../lib/backend/startUnlimitedUpgrade', () => ({
+  startUnlimitedUpgrade: (...args: unknown[]) =>
+    mockStartUnlimitedUpgrade(...args),
+}));
+
 vi.mock('../../hooks/useJobs', () => ({ default: vi.fn() }));
 
 describe('parseMonthlyLimitPayload', () => {
@@ -69,7 +75,6 @@ describe('ConversionResult — paywalled variant', () => {
           resetOn={
             'resetOn' in props ? props.resetOn : '2026-07-01T00:00:00.000Z'
           }
-          email="user@example.com"
         />
       </MemoryRouter>
     );

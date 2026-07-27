@@ -271,8 +271,7 @@ function isNotionTokenExpired(
 function renderFailurePanelContent(
   source: DeckRow['source'],
   reason: string,
-  onMapColumns: () => void,
-  email?: string
+  onMapColumns: () => void
 ): ReactNode {
   const monthlyLimit = parseMonthlyLimitPayload(reason);
   if (monthlyLimit != null) {
@@ -283,7 +282,6 @@ function renderFailurePanelContent(
         limit={monthlyLimit.limit}
         cardsUsed={monthlyLimit.cards_used}
         resetOn={monthlyLimit.reset_on}
-        email={email}
       />
     );
   }
@@ -841,8 +839,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                       {renderFailurePanelContent(
                                         row.source,
                                         row.job.job_reason_failure,
-                                        () => setMappingModalJob(row.job),
-                                        data?.user?.email ?? undefined
+                                        () => setMappingModalJob(row.job)
                                       )}
                                     </td>
                                   </tr>

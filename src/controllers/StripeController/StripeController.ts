@@ -32,22 +32,34 @@ export class StripeController {
     const sessionId = req.query.session_id as string;
 
     if (loggedInUser && sessionId) {
-      // Persist subscription before linking — without this, the link write is a
-      // no-op when the webhook hasn't fired yet and the subscriptions row doesn't exist.
-      await this.persistStripeSessionUseCase.execute(sessionId);
-
       const session = await this.stripe.checkout.sessions.retrieve(sessionId);
-      const email = session.customer_details?.email;
 
-      if (loggedInUser.email !== email && email) {
-        await this.usersService.updateSubScriptionEmailUsingPrimaryEmail(
-          email.toLowerCase(),
-          loggedInUser.email.toLowerCase()
-        );
+      if (this.sessionBelongsToUser(session, loggedInUser)) {
+        // Persist subscription before linking — without this, the link write is a
+        // no-op when the webhook hasn't fired yet and the subscriptions row doesn't exist.
+        // A false result means the session was never paid for, so there is nothing
+        // to link and the email on it should not be attached to this account.
+        const paid = await this.persistStripeSessionUseCase.execute(sessionId);
+
+        const email = session.customer_details?.email;
+
+        if (paid && email && loggedInUser.email !== email) {
+          await this.usersService.updateSubScriptionEmailUsingPrimaryEmail(
+            email.toLowerCase(),
+            loggedInUser.email.toLowerCase()
+          );
+        }
       }
     }
 
     sendIndex(res);
+  }
+
+  private sessionBelongsToUser(
+    session: Pick<StripeTypes.Checkout.Session, 'metadata'>,
+    loggedInUser: { id: number }
+  ): boolean {
+    return session.metadata?.user_id === String(loggedInUser.id);
   }
 
   async checkSubscriptionStatus(req: express.Request, res: express.Response) {
