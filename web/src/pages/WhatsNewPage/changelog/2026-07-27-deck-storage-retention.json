@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-27-deck-storage-retention",
+  "date": "2026-07-27",
+  "type": "fix",
+  "title": "Decks in your Downloads list stay downloadable instead of being removed by storage cleanup"
+}
