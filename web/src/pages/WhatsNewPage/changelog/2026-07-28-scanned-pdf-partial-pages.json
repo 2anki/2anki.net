@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-scanned-pdf-partial-pages",
+  "date": "2026-07-28",
+  "type": "fix",
+  "title": "A scanned PDF still converts when one page fails — you keep the cards from every page that worked"
+}
