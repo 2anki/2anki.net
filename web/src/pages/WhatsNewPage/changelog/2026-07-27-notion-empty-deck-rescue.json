@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-27-notion-empty-deck-rescue",
+  "date": "2026-07-27",
+  "type": "fix",
+  "title": "Notion sub-pages, empty toggles, and blank database columns produce cards instead of an empty deck"
+}
