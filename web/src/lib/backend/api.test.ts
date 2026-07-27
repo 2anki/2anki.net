@@ -148,6 +148,25 @@ describe('api.get error tagging', () => {
     expect(location.href).toBe('');
   });
 
+  it('a 401 on the public note-type gallery does not bounce to /login', async () => {
+    const location = {
+      origin: 'http://localhost',
+      pathname: '/templates',
+      href: '',
+    };
+    vi.stubGlobal('location', location);
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: 'Authentication required' }), {
+        status: 401,
+      })
+    );
+
+    await expect(
+      get('http://localhost/api/templates/user')
+    ).rejects.toBeInstanceOf(UserNotice);
+    expect(location.href).toBe('');
+  });
+
   it('a 401 on the bare reset path does not bounce to /login', async () => {
     const location = {
       origin: 'http://localhost',

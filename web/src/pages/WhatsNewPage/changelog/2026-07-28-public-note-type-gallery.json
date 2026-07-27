@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-public-note-type-gallery",
+  "date": "2026-07-28",
+  "type": "fix",
+  "title": "The note type gallery opens without an account instead of sending you to the sign-in page"
+}
