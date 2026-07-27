@@ -86,6 +86,32 @@ describe('convertXLSXToHTML header detection', () => {
   });
 });
 
+describe('convertXLSXToHTML cell escaping', () => {
+  it('renders markup in cell text as literal characters', () => {
+    const buffer = buildXlsxBuffer([
+      ['front', 'back'],
+      ['<script>alert(1)</script>', 'a "quote" and <b>tag</b>'],
+    ]);
+    const html = convertXLSXToHTML(buffer, 'Deck');
+    expect(html).not.toContain('<script>');
+    expect(html).toContain(
+      '<summary>&lt;script&gt;alert(1)&lt;/script&gt;</summary>'
+    );
+    expect(html).toContain('&quot;quote&quot;');
+    expect(html).toContain('&lt;b&gt;tag&lt;/b&gt;');
+  });
+
+  it('renders markup in the document title as literal characters', () => {
+    const buffer = buildXlsxBuffer([
+      ['front', 'back'],
+      ['hola', 'hello'],
+    ]);
+    const html = convertXLSXToHTML(buffer, '<img src=x onerror=alert(1)>');
+    expect(html).not.toContain('<title><img');
+    expect(html).toContain('<title>&lt;img src=x onerror=alert(1)&gt;</title>');
+  });
+});
+
 describe('convertXLSXToHTML header-name mapping', () => {
   it('maps front and back by column name when the header order is reversed', () => {
     const buffer = buildXlsxBuffer([

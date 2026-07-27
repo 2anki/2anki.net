@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-27-spreadsheet-cell-rendering",
+  "date": "2026-07-27",
+  "type": "fix",
+  "title": "Spreadsheet cells with angle brackets or quotes now render correctly on your cards"
+}
