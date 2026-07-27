@@ -438,17 +438,26 @@ const WebhooksRouter = () => {
             .map((s) => s.trim())
             .filter((s) => s.length > 0);
 
-          if (amount >= LIFE_TIME_PRICE && lifetimePriceIds.length > 0) {
+          if (amount >= LIFE_TIME_PRICE) {
             try {
               const expandedSession = await stripe.checkout.sessions.retrieve(
                 session.id,
                 { expand: ['line_items'] }
               );
-              const sessionProductId =
-                expandedSession.line_items?.data?.[0]?.price?.product;
-              const isAllowlistedProduct =
-                typeof sessionProductId === 'string' &&
-                lifetimePriceIds.includes(sessionProductId);
+              const sessionPrice =
+                expandedSession.line_items?.data?.[0]?.price ?? null;
+              // price.product is a prod_ string because the price is not
+              // expanded, but the allowlist is configured with the price ID.
+              // Comparing against only one shape means a correct configuration
+              // in the other shape never matches and the buyer stays on a free
+              // account, so match either.
+              const sessionPriceIds = [
+                sessionPrice?.id,
+                sessionPrice?.product,
+              ].filter((value): value is string => typeof value === 'string');
+              const isAllowlistedProduct = sessionPriceIds.some((value) =>
+                lifetimePriceIds.includes(value)
+              );
 
               if (isAllowlistedProduct) {
                 const lifeTimeCustomer = await stripe.customers.retrieve(
@@ -490,8 +499,21 @@ const WebhooksRouter = () => {
                   }
                 }
               } else {
-                console.info(
-                  `[webhook] checkout.session.completed: session ${session.id} amount=${amount} but product=${String(sessionProductId)} not in LIFETIME_PRICE_IDS; skipping lifetime grant`
+                // A payment this large that grants nothing is the failure the
+                // lifetime alarm exists for, so it reports from here rather
+                // than from inside the branch that only runs on a match.
+                await recordErrorUseCase.execute({
+                  userId: null,
+                  surface: 'stripe_provisioning',
+                  code: 'unmatched_high_value_payment',
+                  context: {
+                    amount_total: amount,
+                    session_price_ids: sessionPriceIds,
+                    allowlist_configured: lifetimePriceIds.length > 0,
+                  },
+                });
+                console.error(
+                  `[webhook] checkout.session.completed: session ${session.id} amount=${amount} matched no entry in LIFETIME_PRICE_IDS (candidates=${sessionPriceIds.join('|')}); no lifetime grant`
                 );
               }
             } catch (error) {
