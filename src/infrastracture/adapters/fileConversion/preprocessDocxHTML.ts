@@ -64,6 +64,46 @@ function processListItem(html: string): string | null {
   return buildToggle(question, options, correctAnswers);
 }
 
+const PARAGRAPH_FAN_OUT_MIN_ITEMS = 4;
+const PARAGRAPH_FAN_OUT_MAX_CHARS = 200;
+const PARAGRAPH_FAN_OUT_MIN_SHORT_RATIO = 0.8;
+
+interface ParagraphFanOut {
+  units: string[];
+  contextParts: string[];
+}
+
+function collectParagraphFanOut(
+  $: any,
+  siblings: any[]
+): ParagraphFanOut | null {
+  const units: string[] = [];
+  const contextParts: string[] = [];
+  let longCount = 0;
+
+  for (const el of siblings) {
+    const $el = $(el);
+    if (!$el.is('p') || $el.find('img').length > 0) return null;
+
+    const text = $el.text().replaceAll('\u00a0', ' ').trim();
+    if (text.length === 0) continue;
+
+    if (text.length <= PARAGRAPH_FAN_OUT_MAX_CHARS) {
+      const inner = $el.html();
+      if (inner != null && inner.trim().length > 0) units.push(inner);
+    } else {
+      longCount += 1;
+      contextParts.push($.html(el));
+    }
+  }
+
+  if (units.length < PARAGRAPH_FAN_OUT_MIN_ITEMS) return null;
+  const shortRatio = units.length / (units.length + longCount);
+  if (shortRatio < PARAGRAPH_FAN_OUT_MIN_SHORT_RATIO) return null;
+
+  return { units, contextParts };
+}
+
 function buildSectionToggles(
   $: any,
   summary: string,
@@ -93,22 +133,28 @@ function buildSectionToggles(
     }
   }
 
+  let units = bullets;
+  let contextParts = otherParts;
+
   if (bullets.length === 0) {
-    return `<details><summary>${summary}</summary>${otherParts.join('')}</details>`;
+    const paragraphFanOut = collectParagraphFanOut($, siblings);
+    if (paragraphFanOut === null) {
+      return `<details><summary>${summary}</summary>${otherParts.join('')}</details>`;
+    }
+    units = paragraphFanOut.units;
+    contextParts = paragraphFanOut.contextParts;
   }
 
   const toggles: string[] = [];
-  if (otherParts.length > 0) {
+  if (contextParts.length > 0) {
     toggles.push(
-      `<details><summary>${summary}</summary>${otherParts.join('')}</details>`
+      `<details><summary>${summary}</summary>${contextParts.join('')}</details>`
     );
   }
-  bullets.forEach((bullet, index) => {
+  units.forEach((unit, index) => {
     const cue =
-      bullets.length > 1
-        ? `${summary} — ${index + 1}/${bullets.length}`
-        : summary;
-    toggles.push(`<details><summary>${cue}</summary>${bullet}</details>`);
+      units.length > 1 ? `${summary} — ${index + 1}/${units.length}` : summary;
+    toggles.push(`<details><summary>${cue}</summary>${unit}</details>`);
   });
   return toggles.join('');
 }

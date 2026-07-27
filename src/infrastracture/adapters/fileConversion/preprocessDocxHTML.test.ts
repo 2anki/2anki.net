@@ -244,3 +244,149 @@ describe('preprocessDocxHTML bullet fan-out', () => {
     expect(result).toContain('<strong>B. right</strong>');
   });
 });
+
+describe('preprocessDocxHTML paragraph fan-out', () => {
+  const phrasebookHTML =
+    '<h2>Greetings</h2>' +
+    '<p>Good morning — Buongiorno</p>' +
+    '<p>Good evening — Buonasera</p>' +
+    '<p>How are you? — Come stai?</p>' +
+    '<p>See you later — A dopo</p>';
+
+  it('fans a run of short paragraphs into one card per paragraph', () => {
+    const result = preprocessDocxHTML(phrasebookHTML, { bulletFanOut: true });
+
+    expect(result).toContain(
+      '<details><summary>Greetings — 1/4</summary>Good morning — Buongiorno</details>'
+    );
+    expect(result).toContain('<summary>Greetings — 4/4</summary>');
+    expect((result.match(/<details>/g) || []).length).toBe(4);
+  });
+
+  it('keeps a section under four short paragraphs as one card', () => {
+    const input =
+      '<h2>Notes</h2>' +
+      '<p>First point.</p>' +
+      '<p>Second point.</p>' +
+      '<p>Third point.</p>';
+
+    const result = preprocessDocxHTML(input, { bulletFanOut: true });
+
+    expect((result.match(/<details>/g) || []).length).toBe(1);
+    expect(result).toContain('<summary>Notes</summary>');
+  });
+
+  it('keeps a section of long prose paragraphs as one card', () => {
+    const prose = 'This paragraph explains a concept in depth. '.repeat(6);
+    const input =
+      '<h2>Theory</h2>' +
+      `<p>${prose}</p><p>${prose}</p><p>${prose}</p><p>${prose}</p>`;
+
+    const result = preprocessDocxHTML(input, { bulletFanOut: true });
+
+    expect((result.match(/<details>/g) || []).length).toBe(1);
+    expect(result).toContain('<summary>Theory</summary>');
+  });
+
+  it('puts one long intro paragraph on a context card and fans the rest', () => {
+    const intro = 'An introductory explanation of the greetings below. '.repeat(
+      5
+    );
+    const input =
+      `<h2>Greetings</h2><p>${intro.trim()}</p>` +
+      '<p>Good morning — Buongiorno</p>' +
+      '<p>Good evening — Buonasera</p>' +
+      '<p>How are you? — Come stai?</p>' +
+      '<p>See you later — A dopo</p>';
+
+    const result = preprocessDocxHTML(input, { bulletFanOut: true });
+
+    expect(result).toContain('<details><summary>Greetings</summary><p>');
+    expect(result).toContain('<summary>Greetings — 1/4</summary>');
+    expect((result.match(/<details>/g) || []).length).toBe(5);
+  });
+
+  it('skips empty and whitespace-only paragraphs without emitting blank cards', () => {
+    const input =
+      '<h2>Greetings</h2>' +
+      '<p>Good morning — Buongiorno</p>' +
+      '<p></p>' +
+      '<p>&nbsp;</p>' +
+      '<p>Good evening — Buonasera</p>' +
+      '<p>How are you? — Come stai?</p>' +
+      '<p>See you later — A dopo</p>';
+
+    const result = preprocessDocxHTML(input, { bulletFanOut: true });
+
+    expect((result.match(/<details>/g) || []).length).toBe(4);
+    expect(result).toContain('<summary>Greetings — 4/4</summary>');
+  });
+
+  it('falls back to one lumped card when the section contains an image', () => {
+    const input =
+      '<h2>Diagrams</h2>' +
+      '<p>Label one</p>' +
+      '<p><img src="figure.png" /></p>' +
+      '<p>Label two</p>' +
+      '<p>Label three</p>' +
+      '<p>Label four</p>';
+
+    const result = preprocessDocxHTML(input, { bulletFanOut: true });
+
+    expect((result.match(/<details>/g) || []).length).toBe(1);
+    expect(result).toContain('<img src="figure.png">');
+  });
+
+  it('falls back to one lumped card when the section contains a table', () => {
+    const input =
+      '<h2>Verbs</h2>' +
+      '<p>To be — essere</p>' +
+      '<p>To have — avere</p>' +
+      '<table><tr><td>io</td><td>sono</td></tr></table>' +
+      '<p>To go — andare</p>' +
+      '<p>To do — fare</p>';
+
+    const result = preprocessDocxHTML(input, { bulletFanOut: true });
+
+    expect((result.match(/<details>/g) || []).length).toBe(1);
+  });
+
+  it('preserves inline formatting on fanned-out paragraph cards', () => {
+    const input =
+      '<h2>Terms</h2>' +
+      '<p><strong>Osmosis</strong> — passive water movement</p>' +
+      '<p><strong>Diffusion</strong> — passive solute movement</p>' +
+      '<p><strong>Active transport</strong> — energy-dependent movement</p>' +
+      '<p><strong>Endocytosis</strong> — bulk intake</p>';
+
+    const result = preprocessDocxHTML(input, { bulletFanOut: true });
+
+    expect(result).toContain(
+      '<details><summary>Terms — 1/4</summary><strong>Osmosis</strong> — passive water movement</details>'
+    );
+  });
+
+  it('does not hijack a section that already has real bullets', () => {
+    const input =
+      '<h2>Mixed</h2>' +
+      '<p>Intro one</p>' +
+      '<p>Intro two</p>' +
+      '<p>Intro three</p>' +
+      '<p>Intro four</p>' +
+      '<ul><li>Bullet A</li><li>Bullet B</li></ul>';
+
+    const result = preprocessDocxHTML(input, { bulletFanOut: true });
+
+    expect(result).toContain('<summary>Mixed — 1/2</summary>');
+    expect(result).toContain(
+      '<details><summary>Mixed</summary><p>Intro one</p><p>Intro two</p><p>Intro three</p><p>Intro four</p></details>'
+    );
+    expect((result.match(/<details>/g) || []).length).toBe(3);
+  });
+
+  it('does not fan out paragraphs when the flag is off', () => {
+    const result = preprocessDocxHTML(phrasebookHTML);
+
+    expect((result.match(/<details>/g) || []).length).toBe(1);
+  });
+});

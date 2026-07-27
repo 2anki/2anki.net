@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-26-docx-paragraph-fanout",
+  "date": "2026-07-26",
+  "type": "fix",
+  "title": "Word documents with short paragraph lists under a heading fan out into one card per line, not one oversized card"
+}
