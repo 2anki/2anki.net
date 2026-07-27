@@ -69,7 +69,14 @@ score = 0.30·granularity + 0.20·coverage + 0.20·balance
 n == 0 → score = 0
 ```
 
-`P` and `D` are **calibrated against the existing corpus of 914,041 cards**, not guessed. Ship blocked until those constants come from measured percentiles.
+`P` and `D` must be **measured, not guessed** — but the corpus is not queryable. Verified: no table in production stores card front/back text (`information_schema` has no `front`/`back`/`question`/`answer` column anywhere). `conversion_output_stats` holds running totals only — two rows, no distribution:
+
+| Source | Decks | Cards | Blank backs | Cards/deck | Blank-back rate |
+| --- | --- | --- | --- | --- | --- |
+| upload | 14,147 | 915,956 | 15,189 | 64.7 | 1.66% |
+| convert | 1,035 | 22,404 | 1,968 | 21.6 | **8.78%** |
+
+Two things follow. First, calibration must come from **re-converting the 657 upload files retained on prod** locally and measuring the resulting card shapes — slower than a query, but it yields paired input-document → output-card data, which is what a scorer actually needs. Second, the `convert` path ships blank backs at **5× the rate** of the upload path (8.78% vs 1.66%) — that is an unexplained quality gap in an existing surface, unrelated to this spec but worth its own issue.
 
 Floor: a rescued deck must clear `FLOOR` to ship. Below it, we fail honestly rather than hand a student cards we do not believe in. `FLOOR` is set from the corpus so that a clear majority of today's *successful* decks would pass it.
 
