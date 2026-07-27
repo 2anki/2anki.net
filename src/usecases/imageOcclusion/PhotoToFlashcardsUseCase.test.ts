@@ -1149,6 +1149,69 @@ describe('PhotoToFlashcardsUseCase', () => {
       ).rejects.toMatchObject({ status: 422 });
     });
 
+    it('converts a response that opens with a sentence of prose', async () => {
+      mockMessageCreate.mockResolvedValueOnce({
+        content: [
+          {
+            type: 'text',
+            text:
+              'Here are the flashcards from your photo:\n\n' +
+              JSON.stringify([
+                { deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] },
+              ]),
+          },
+        ],
+        usage: { input_tokens: 100, output_tokens: 50 },
+      });
+      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+      const result = await useCase.execute({ ...BASE_INPUT, isPaying: true });
+      expect(result.cardCount).toBe(1);
+    });
+
+    it('fails as a 422, not a TypeError, when the array holds bare cards', async () => {
+      mockMessageCreate.mockResolvedValueOnce({
+        content: [
+          { type: 'text', text: JSON.stringify([{ q: 'Q1', a: 'A1' }]) },
+        ],
+        usage: { input_tokens: 100, output_tokens: 50 },
+      });
+      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+      await expect(
+        useCase.execute({ ...BASE_INPUT, isPaying: true })
+      ).rejects.toMatchObject({ status: 422 });
+    });
+
+    it('keeps the MCQ fields through parsing', async () => {
+      mockMessageCreate.mockResolvedValueOnce({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify([
+              {
+                deck: 'Study',
+                cards: [
+                  {
+                    q: 'Which enzyme breaks down starch?',
+                    options: ['Lipase', 'Amylase', 'Protease', 'Lactase'],
+                    correct_index: 1,
+                    rationale: 'Amylase hydrolyses starch.',
+                  },
+                ],
+              },
+            ]),
+          },
+        ],
+        usage: { input_tokens: 100, output_tokens: 50 },
+      });
+      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+      const result = await useCase.execute({
+        ...BASE_INPUT,
+        isPaying: true,
+        mode: 'verbatim',
+      });
+      expect(result.mcqCount).toBe(1);
+    });
+
     it('does not leak the raw model text in the thrown error message', async () => {
       mockMessageCreate.mockResolvedValueOnce({
         content: [
