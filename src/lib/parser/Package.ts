@@ -1,3 +1,5 @@
+import type { DeckScore } from './scoreCandidateDeck';
+
 class Package {
   name: string;
 
@@ -14,6 +16,10 @@ class Package {
   parsePath?: string;
 
   overSplit = false;
+
+  // Set by the conversion worker, where the parsed notes still exist. The
+  // parent process persists it — the worker pool has no database handle.
+  score?: DeckScore;
 
   constructor(
     name: string,

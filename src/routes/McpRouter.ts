@@ -8,6 +8,7 @@ import UsersRepository from '../data_layer/UsersRepository';
 import SettingsRepository from '../data_layer/SettingsRepository';
 import { ConversionOutputStatsRepository } from '../data_layer/ConversionOutputStatsRepository';
 import { ParsePathSignatureRepository } from '../data_layer/ParsePathSignatureRepository';
+import { ConversionRuleScoresRepository } from '../data_layer/ConversionRuleScoresRepository';
 import TokenRepository from '../data_layer/TokenRepository';
 import DownloadRepository from '../data_layer/DownloadRepository';
 import { McpOAuthClientRepository } from '../data_layer/McpOAuthClientRepository';
@@ -64,7 +65,10 @@ const McpRouter = () => {
     usersRepository,
     new SettingsRepository(database),
     new ConversionOutputStatsRepository(database),
-    new ParsePathSignatureRepository(database)
+    new ParsePathSignatureRepository(database),
+    undefined,
+    undefined,
+    new ConversionRuleScoresRepository(database)
   );
   const storage = new StorageHandler();
   const toolsService = new McpToolsService(

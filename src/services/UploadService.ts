@@ -24,6 +24,8 @@ import { isImageOnlyUpload } from '../lib/upload/isImageOnlyUpload';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
 import { isExpectedClientFault } from '../lib/misc/isExpectedClientFault';
+import type { DeckScore } from '../lib/parser/scoreCandidateDeck';
+import type { IConversionRuleScoresRepository } from '../data_layer/ConversionRuleScoresRepository';
 import {
   MARKDOWN_LIKELY_LOSSY_REASON,
   jobFailureReasonFromError,
@@ -131,6 +133,16 @@ function resolveUploadWarning(warnings: string[] | undefined): string | null {
     return MARKDOWN_HEURISTIC_WARNING;
   }
   return null;
+}
+
+// The extension of the first uploaded file, lowercased. A shape metric, never
+// the filename itself — see .claude/rules/support-confidentiality.md.
+function uploadInputFormat(files: UploadedFile[] | undefined): string {
+  const name = files?.[0]?.originalname;
+  if (typeof name !== 'string') return 'unknown';
+  const dot = name.lastIndexOf('.');
+  if (dot < 0 || dot === name.length - 1) return 'unknown';
+  return name.slice(dot + 1).toLowerCase();
 }
 
 function sumDroppedImages(packages: { droppedImageCount?: number }[]): number {
@@ -242,7 +254,8 @@ class UploadService {
     private readonly conversionOutputStatsRepository?: IConversionOutputStatsRepository,
     private readonly parsePathSignatureRepository?: IParsePathSignatureRepository,
     private readonly apiKeyUsageRepository?: IApiKeyUsageRepository,
-    private readonly apiUsageWarner?: ApiUsageWarner
+    private readonly apiUsageWarner?: ApiUsageWarner,
+    private readonly conversionRuleScoresRepository?: IConversionRuleScoresRepository
   ) {}
 
   private apiTierOf(res: express.Response): ResolvedDeveloperTier | null {
@@ -295,13 +308,47 @@ class UploadService {
     });
   }
 
+  // Every conversion is scored, not just fallbacks — without the baseline there
+  // is nothing to compare a rescued deck against. Fire and forget: a metrics
+  // write must never fail a conversion the user is waiting on.
+  private recordDeckScores(
+    packages: { parsePath?: string; score?: DeckScore }[],
+    owner: number | null,
+    inputFormat: string
+  ): void {
+    if (this.conversionRuleScoresRepository == null) return;
+    for (const pkg of packages) {
+      if (pkg.score == null) continue;
+      this.conversionRuleScoresRepository
+        .record({
+          owner,
+          source: 'upload',
+          inputFormat,
+          rule: pkg.parsePath ?? 'unknown',
+          wasFallback: pkg.parsePath?.includes('fallback') === true,
+          outcome: pkg.score.cardCount > 0 ? 'shipped' : 'below_floor',
+          score: pkg.score,
+        })
+        .catch((error) =>
+          console.error(
+            '[UploadService] failed to record conversion rule score',
+            error
+          )
+        );
+    }
+  }
+
   private recordConversionOutput(
     packages: {
       cardCount?: number;
       emptyBackCount?: number;
       parsePath?: string;
-    }[]
+      score?: DeckScore;
+    }[],
+    owner?: number | null,
+    inputFormat?: string
   ): void {
+    this.recordDeckScores(packages, owner ?? null, inputFormat ?? 'unknown');
     const cards = packages.reduce((sum, p) => sum + (p.cardCount ?? 0), 0);
     const emptyBack = packages.reduce(
       (sum, p) => sum + (p.emptyBackCount ?? 0),
@@ -724,7 +771,11 @@ class UploadService {
       .then(async ({ packages }) => {
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
         if (totalCards > 0) {
-          this.recordConversionOutput(packages);
+          this.recordConversionOutput(
+            packages,
+            ownerId,
+            uploadInputFormat(req.files as UploadedFile[])
+          );
           logEmptyBackAttribution(packages, this.resolveUploadSource(req));
           await this.checkApiCardLimit(res, owner, totalCards);
           await this.promoteClaudeJobToUpload(
@@ -828,7 +879,11 @@ class UploadService {
       throw new EmptyDeckError();
     }
 
-    this.recordConversionOutput(packages);
+    this.recordConversionOutput(
+      packages,
+      owner != null ? Number(owner) : null,
+      uploadInputFormat(req.files as UploadedFile[])
+    );
     logEmptyBackAttribution(packages, this.resolveUploadSource(req));
 
     if (owner != null) {

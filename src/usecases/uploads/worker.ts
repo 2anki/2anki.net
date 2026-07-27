@@ -19,6 +19,7 @@ import {
 import { getPackagesFromZip } from './getPackagesFromZip';
 import Workspace from '../../lib/parser/WorkSpace';
 import { detectOverSplit } from '../../lib/parser/detectOverSplit';
+import { scoreCandidateDeck } from '../../lib/parser/scoreCandidateDeck';
 import { isZipContentFileSupported } from './isZipContentFileSupported';
 import { convertMindmapFileToApkg } from './ConvertMindmapFileUseCase';
 import {
@@ -187,6 +188,13 @@ async function processFile(
       );
       singleFilePackage.overSplit = detectOverSplit(
         (d.deck ?? []).flatMap((deck) => deck.cards.map((card) => card.name))
+      );
+      // Scored here because this is the last point where the notes exist; the
+      // parent process persists the result. Raw notes, before processPayload
+      // has rewritten them in place.
+      singleFilePackage.score = scoreCandidateDeck(
+        (d.deck ?? []).flatMap((deck) => deck.cards),
+        fileContents.length
       );
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
