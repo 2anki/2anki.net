@@ -38,6 +38,7 @@ type Source = 'notion' | 'upload' | 'dropbox' | 'drive';
 const NOTION_TOKEN_EXPIRED_REASON = 'notion_token_expired';
 const EMPTY_DECK_REASON_PREFIX = 'No cards in this deck yet.';
 const TOGGLES_DOCS_HREF = '/documentation/cards/notion-blocks';
+const FILE_FORMATS_DOCS_HREF = '/documentation/reference/file-formats';
 
 interface ProcessingProps {
   variant: 'processing';
@@ -186,14 +187,24 @@ function FailedVariant({
   }
 
   if (failureReason.startsWith(EMPTY_DECK_REASON_PREFIX)) {
+    // The toggle teaching is right for Notion and wrong for everyone else: of
+    // 227 firings in 30 days, 157 were people uploading a Word, PDF, or
+    // Markdown file, told to go use a Notion feature they have no access to.
+    const fromNotion = source === 'notion';
     return (
       <div>
-        <p>{t('conversionResult.emptyDeckTeaching')}</p>
+        <p>
+          {fromNotion
+            ? t('conversionResult.emptyDeckTeaching')
+            : t('conversionResult.emptyDeckTeachingUpload')}
+        </p>
         <Link
-          to={TOGGLES_DOCS_HREF}
+          to={fromNotion ? TOGGLES_DOCS_HREF : FILE_FORMATS_DOCS_HREF}
           className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
         >
-          {t('conversionResult.togglesDocs')}
+          {fromNotion
+            ? t('conversionResult.togglesDocs')
+            : t('conversionResult.uploadFormatsDocs')}
         </Link>
       </div>
     );

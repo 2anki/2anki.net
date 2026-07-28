@@ -496,6 +496,8 @@
     "reconnectNotion": "Notion neu verbinden",
     "emptyDeckTeaching": "2anki erstellt aus jedem Notion-Toggle eine Karte — der Toggle-Titel wird zur Frage, der Inhalt zur Antwort. Verpacke deine Schlüsselbegriffe in Toggles und konvertiere erneut.",
     "togglesDocs": "So werden Toggles zu Karten",
+    "emptyDeckTeachingUpload": "Aus dieser Datei sind keine Karten entstanden. 2anki erstellt eine Karte überall dort, wo es eine klare Vorder- und Rückseite findet — ein Dokument ohne Frage-Antwort-Trennung oder ein gescanntes PDF ohne lesbaren Text gibt nichts her. Gliedere deine Quelle in Vorder- und Rückseiten-Paare und konvertiere erneut.",
+    "uploadFormatsDocs": "Unterstützte Formate ansehen",
     "ambiguousColumns": "Diese Datenbank hat mehr als zwei Spalten. Wähle, welche Spalte die Vorder- und welche die Rückseite jeder Karte sein soll.",
     "mapColumns": "Spalten zuordnen",
     "checkStatusPrefix": "Sieht etwas komisch aus? ",

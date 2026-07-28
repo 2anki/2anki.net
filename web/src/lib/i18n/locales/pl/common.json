@@ -504,6 +504,8 @@
     "reconnectNotion": "Połącz ponownie z Notion",
     "emptyDeckTeaching": "2anki tworzy kartę z każdej listy rozwijanej Notion — tytuł listy staje się pytaniem, a jej zawartość odpowiedzią. Zamknij kluczowe pojęcia w listach rozwijanych, a potem przekonwertuj ponownie.",
     "togglesDocs": "Zobacz, jak listy rozwijane stają się kartami",
+    "emptyDeckTeachingUpload": "Z tego pliku nie powstały żadne karty. 2anki tworzy kartę wszędzie tam, gdzie znajdzie wyraźny przód i tył, więc dokument bez podziału na pytanie i odpowiedź — albo zeskanowany PDF bez czytelnego tekstu — nie daje niczego do sparowania. Uporządkuj źródło w pary przód-tył i przekonwertuj ponownie.",
+    "uploadFormatsDocs": "Zobacz obsługiwane formaty",
     "ambiguousColumns": "Ta baza danych ma więcej niż dwie kolumny. Wybierz, która kolumna ma być przodem, a która tyłem każdej karty.",
     "mapColumns": "Zmapuj kolumny",
     "checkStatusPrefix": "Coś wygląda nie tak? ",

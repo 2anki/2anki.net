@@ -496,6 +496,8 @@
     "reconnectNotion": "Riconnetti Notion",
     "emptyDeckTeaching": "2anki crea una carta da ogni toggle di Notion — il titolo del toggle diventa la domanda, il contenuto diventa la risposta. Racchiudi i termini chiave nei toggle, poi converti di nuovo.",
     "togglesDocs": "Scopri come i toggle diventano carte",
+    "emptyDeckTeachingUpload": "Da questo file non è uscita nessuna carta. 2anki crea una carta ovunque trovi un fronte e un retro chiari, quindi un documento senza separazione tra domanda e risposta — o un PDF scansionato senza testo leggibile — non gli dà niente da abbinare. Struttura la tua fonte in coppie fronte-retro e converti di nuovo.",
+    "uploadFormatsDocs": "Vedi i formati supportati",
     "ambiguousColumns": "Questo database ha più di due colonne. Scegli quale colonna deve essere il fronte e quale il retro di ogni carta.",
     "mapColumns": "Mappa le colonne",
     "checkStatusPrefix": "C'è qualcosa che non va? ",

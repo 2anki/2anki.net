@@ -496,6 +496,8 @@
     "reconnectNotion": "Notion opnieuw verbinden",
     "emptyDeckTeaching": "2anki maakt van elke Notion-toggle een kaart — de togglenaam wordt de vraag, wat erin staat wordt het antwoord. Zet je kernbegrippen in toggles en zet het opnieuw om.",
     "togglesDocs": "Zie hoe toggles kaarten worden",
+    "emptyDeckTeachingUpload": "Uit dit bestand kwamen geen kaarten. 2anki maakt een kaart overal waar het een duidelijke voor- en achterkant vindt, dus een document zonder scheiding tussen vraag en antwoord — of een gescande PDF zonder leesbare tekst — geeft niets om te koppelen. Zet je bron om in voor- en achterkantparen en zet het opnieuw om.",
+    "uploadFormatsDocs": "Bekijk ondersteunde formaten",
     "ambiguousColumns": "Deze database heeft meer dan twee kolommen. Kies welke kolom de voorkant en welke de achterkant van elke kaart wordt.",
     "mapColumns": "Kolommen toewijzen",
     "checkStatusPrefix": "Ziet er iets vreemd uit? ",

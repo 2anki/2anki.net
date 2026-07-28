@@ -496,6 +496,8 @@
     "reconnectNotion": "Reconectar Notion",
     "emptyDeckTeaching": "2anki crea una tarjeta a partir de cada alternancia de Notion — el título de la alternancia pasa a la pregunta, lo que hay dentro pasa a la respuesta. Envuelve tus términos clave en alternancias y convierte de nuevo.",
     "togglesDocs": "Descubre cómo las alternancias se convierten en tarjetas",
+    "emptyDeckTeachingUpload": "De este archivo no salió ninguna tarjeta. 2anki crea una tarjeta allí donde encuentra un anverso y un reverso claros, así que un documento sin separación entre pregunta y respuesta — o un PDF escaneado sin texto legible — no le da nada que emparejar. Estructura tu fuente en pares de anverso y reverso y convierte de nuevo.",
+    "uploadFormatsDocs": "Ver formatos compatibles",
     "ambiguousColumns": "Esta base de datos tiene más de dos columnas. Elige qué columna debe ser el anverso y el reverso de cada tarjeta.",
     "mapColumns": "Asignar columnas",
     "checkStatusPrefix": "¿Algo no cuadra? ",

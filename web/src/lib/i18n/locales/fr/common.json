@@ -496,6 +496,8 @@
     "reconnectNotion": "Reconnecter Notion",
     "emptyDeckTeaching": "2anki crée une carte à partir de chaque bascule Notion — le titre de la bascule devient la question, le contenu devient la réponse. Enveloppe tes termes clés dans des bascules, puis convertis à nouveau.",
     "togglesDocs": "Découvre comment les bascules deviennent des cartes",
+    "emptyDeckTeachingUpload": "Aucune carte n'est sortie de ce fichier. 2anki crée une carte partout où il trouve un recto et un verso clairs : un document sans séparation question-réponse — ou un PDF scanné sans texte lisible — ne lui donne rien à associer. Structure ta source en paires recto-verso, puis convertis à nouveau.",
+    "uploadFormatsDocs": "Voir les formats pris en charge",
     "ambiguousColumns": "Cette base de données a plus de deux colonnes. Choisis quelle colonne doit être le recto et le verso de chaque carte.",
     "mapColumns": "Associer les colonnes",
     "checkStatusPrefix": "Quelque chose cloche ? ",
