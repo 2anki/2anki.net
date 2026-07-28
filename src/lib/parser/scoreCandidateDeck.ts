@@ -49,12 +49,64 @@ export const WEIGHTS = {
   density: 0.1,
 } as const;
 
+// Tags and entities collapse in one alternation rather than two passes. This
+// runs over every field of every card on the conversion path, and each chained
+// .replace() materialises another copy of the whole string.
+const MARKUP = /<[^>]*>|&[a-zA-Z]+;/g;
+
 function plainText(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&[a-z]+;/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return html.replace(MARKUP, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Backs are only ever measured, never read, so counting their visible length in
+// one non-allocating scan avoids materialising a stripped copy of every answer
+// in the deck. Matches plainText().length exactly: markup counts as one space,
+// whitespace runs collapse, and leading and trailing space is dropped.
+function plainLength(html: string): number {
+  let length = 0;
+  let pendingSpace = false;
+  let i = 0;
+  while (i < html.length) {
+    const ch = html[i];
+    if (ch === '<') {
+      const close = html.indexOf('>', i);
+      if (close === -1) break;
+      i = close + 1;
+      pendingSpace = length > 0;
+      continue;
+    }
+    if (ch === '&') {
+      const semi = html.indexOf(';', i);
+      if (
+        semi > i &&
+        semi - i <= 10 &&
+        /^[a-zA-Z]+$/.test(html.slice(i + 1, semi))
+      ) {
+        i = semi + 1;
+        pendingSpace = length > 0;
+        continue;
+      }
+    }
+    if (
+      ch === ' ' ||
+      ch === '\n' ||
+      ch === '\t' ||
+      ch === '\r' ||
+      ch === '\f' ||
+      ch === '\v'
+    ) {
+      pendingSpace = length > 0;
+      i += 1;
+      continue;
+    }
+    if (pendingSpace) {
+      length += 1;
+      pendingSpace = false;
+    }
+    length += 1;
+    i += 1;
+  }
+  return length;
 }
 
 function median(values: number[]): number {
@@ -108,33 +160,36 @@ export function scoreCandidateDeck(
   }
 
   const fronts = cards.map((card) => plainText(card.name ?? ''));
-  const backs = cards.map((card) => plainText(card.back ?? ''));
+  const backLengths = cards.map((card) => plainLength(card.back ?? ''));
 
   const medianFrontLen = median(fronts.map((front) => front.length));
-  const medianBackLen = median(backs.map((back) => back.length));
+  const medianBackLen = median(backLengths);
 
   // A cloze card carries its answer on the front, so an empty back is correct
-  // for it and must not count against the deck.
-  const blankBackCandidates = cards.filter((card) => card.cloze !== true);
-  const blankBacks = blankBackCandidates.filter(
-    (card) => plainText(card.back ?? '').length === 0
-  ).length;
+  // for it and must not count against the deck. Reuses the backs computed
+  // above — stripping every back a second time doubled the work of the whole
+  // function for no new information.
+  let blankBackCandidates = 0;
+  let blankBacks = 0;
+  for (let i = 0; i < cardCount; i += 1) {
+    if (cards[i].cloze === true) continue;
+    blankBackCandidates += 1;
+    if (backLengths[i] === 0) blankBacks += 1;
+  }
   const blankBackRate =
-    blankBackCandidates.length === 0
-      ? 0
-      : blankBacks / blankBackCandidates.length;
+    blankBackCandidates === 0 ? 0 : blankBacks / blankBackCandidates;
 
   const distinctFronts = new Set(fronts.map((front) => front.toLowerCase()));
   const duplicateFrontRate = 1 - distinctFronts.size / cardCount;
 
   const cardChars = fronts.reduce(
-    (sum, front, i) => sum + front.length + backs[i].length,
+    (sum, front, i) => sum + front.length + backLengths[i],
     0
   );
   const coverage = docChars <= 0 ? 0 : clamp01(cardChars / docChars);
 
   const balanced = cards.filter(
-    (card, i) => card.cloze === true || fronts[i].length < backs[i].length
+    (card, i) => card.cloze === true || fronts[i].length < backLengths[i]
   ).length;
   const balance = balanced / cardCount;
 
