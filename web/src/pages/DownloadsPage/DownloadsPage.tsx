@@ -51,6 +51,8 @@ import { ImageDropNotice } from './components/ImageDropNotice';
 import { ProducerPrompt } from './components/ProducerPrompt';
 import { parseDroppedAssetsPayload } from './helpers/parseDroppedAssetsPayload';
 import { ColumnsGuessedNotice } from './components/ColumnsGuessedNotice';
+import { StructureRescuedNotice } from './components/StructureRescuedNotice';
+import { parseStructureRescuedPayload } from './helpers/parseStructureRescuedPayload';
 import { parseColumnsGuessedPayload } from './helpers/parseColumnsGuessedPayload';
 import { UnsupportedBlocksNotice } from './components/UnsupportedBlocksNotice';
 import { parseUnsupportedBlocksPayload } from './helpers/parseUnsupportedBlocksPayload';
@@ -591,6 +593,9 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                           const guessedColumns = parseColumnsGuessedPayload(
                             row.job
                           );
+                          const structureRescued = parseStructureRescuedPayload(
+                            row.job
+                          );
                           const unsupportedBlocks =
                             parseUnsupportedBlocksPayload(row.job);
                           const cardLimitPartial =
@@ -886,6 +891,22 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                       <ColumnsGuessedNotice
                                         frontField={guessedColumns.frontField}
                                         backField={guessedColumns.backField}
+                                      />
+                                    </td>
+                                  </tr>
+                                )}
+                              {!isFailed &&
+                                isExpanded &&
+                                structureRescued != null && (
+                                  <tr
+                                    key={`job-${row.job.id}-structurerescued`}
+                                  >
+                                    <td
+                                      colSpan={4}
+                                      className={styles.failurePanel}
+                                    >
+                                      <StructureRescuedNotice
+                                        rule={structureRescued.rule}
                                       />
                                     </td>
                                   </tr>

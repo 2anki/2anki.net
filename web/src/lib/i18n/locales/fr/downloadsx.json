@@ -58,6 +58,17 @@
     "text_one": "{{count}} bloc de cette page n'a pas pu être converti ({{types}}).",
     "text_other": "{{count}} blocs de cette page n'ont pas pu être convertis ({{types}})."
   },
+  "structureRescued": {
+    "text": "Cartes créées à partir des {{structure}} de cette page, car elle ne contenait aucun toggle.",
+    "structures": {
+      "heading": "titres",
+      "bullets": "listes à puces",
+      "numbered": "listes numérotées",
+      "columns": "colonnes du tableau",
+      "quote": "citations",
+      "guess": "textes de question et réponse"
+    }
+  },
   "columnsGuessed": {
     "text": "Nous n'avons pas pu déterminer quelles colonnes sont la question et la réponse, donc ce paquet utilise <front>{{frontField}}</front> comme recto et <back>{{backField}}</back> comme verso. Convertissez à nouveau la base de données pour choisir d'autres colonnes."
   },

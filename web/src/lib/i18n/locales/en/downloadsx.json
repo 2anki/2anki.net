@@ -58,6 +58,17 @@
     "text_one": "{{count}} block on this page couldn't be converted ({{types}}).",
     "text_other": "{{count}} blocks on this page couldn't be converted ({{types}})."
   },
+  "structureRescued": {
+    "text": "Cards built from the {{structure}} on this page, which had no toggles.",
+    "structures": {
+      "heading": "headings",
+      "bullets": "bulleted lists",
+      "numbered": "numbered lists",
+      "columns": "table columns",
+      "quote": "quotes",
+      "guess": "question and answer text"
+    }
+  },
   "columnsGuessed": {
     "text": "We couldn't tell which columns are the question and answer, so this deck uses <front>{{frontField}}</front> as the front and <back>{{backField}}</back> as the back. Convert the database again to pick different columns."
   },

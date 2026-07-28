@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-structure-rescue",
+  "date": "2026-07-28",
+  "type": "feature",
+  "title": "Pages and files with no toggles convert using their headings, bullets, columns, or Q&A when they would otherwise produce no cards"
+}

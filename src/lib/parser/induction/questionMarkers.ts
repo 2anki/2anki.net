@@ -13,15 +13,7 @@
 //
 //   en Q/A · de F/A · es P/R · pt P/R · fr Q/R · it D/R
 //   nl V/A · pl P/O · ru В/О · ja 問/答
-export const QUESTION_MARKERS = [
-  'Q',
-  'F',
-  'P',
-  'D',
-  'V',
-  'В',
-  '問',
-] as const;
+export const QUESTION_MARKERS = ['Q', 'F', 'P', 'D', 'V', 'В', '問'] as const;
 
 export const ANSWER_MARKERS = ['A', 'R', 'O', 'О', '答'] as const;
 

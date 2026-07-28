@@ -58,6 +58,17 @@
     "text_one": "{{count}} Block auf dieser Seite konnte nicht konvertiert werden ({{types}}).",
     "text_other": "{{count}} Blöcke auf dieser Seite konnten nicht konvertiert werden ({{types}})."
   },
+  "structureRescued": {
+    "text": "Karten aus {{structure}} dieser Seite erstellt, da sie keine Toggles enthielt.",
+    "structures": {
+      "heading": "den Überschriften",
+      "bullets": "den Aufzählungslisten",
+      "numbered": "den nummerierten Listen",
+      "columns": "den Tabellenspalten",
+      "quote": "den Zitaten",
+      "guess": "dem Frage-und-Antwort-Text"
+    }
+  },
   "columnsGuessed": {
     "text": "Wir konnten nicht erkennen, welche Spalten Frage und Antwort sind, daher verwendet dieser Stapel <front>{{frontField}}</front> als Vorderseite und <back>{{backField}}</back> als Rückseite. Konvertiere die Datenbank erneut, um andere Spalten zu wählen."
   },

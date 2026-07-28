@@ -58,6 +58,17 @@
     "text_one": "Non è stato possibile convertire {{count}} blocco di questa pagina ({{types}}).",
     "text_other": "Non è stato possibile convertire {{count}} blocchi di questa pagina ({{types}})."
   },
+  "structureRescued": {
+    "text": "Carte create dalle {{structure}} di questa pagina, poiché non conteneva toggle.",
+    "structures": {
+      "heading": "intestazioni",
+      "bullets": "liste puntate",
+      "numbered": "liste numerate",
+      "columns": "colonne della tabella",
+      "quote": "citazioni",
+      "guess": "testo di domanda e risposta"
+    }
+  },
   "columnsGuessed": {
     "text": "Non siamo riusciti a capire quali colonne siano la domanda e la risposta, quindi questo mazzo usa <front>{{frontField}}</front> come fronte e <back>{{backField}}</back> come retro. Converti di nuovo il database per scegliere colonne diverse."
   },

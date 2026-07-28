@@ -72,6 +72,17 @@
     "text_many": "{{count}} bloków na tej stronie nie mogło zostać przekonwertowanych ({{types}}).",
     "text_other": "{{count}} bloków na tej stronie nie mogło zostać przekonwertowanych ({{types}})."
   },
+  "structureRescued": {
+    "text": "Karty utworzone z {{structure}} na tej stronie, ponieważ nie zawierała przełączników.",
+    "structures": {
+      "heading": "nagłówków",
+      "bullets": "list wypunktowanych",
+      "numbered": "list numerowanych",
+      "columns": "kolumn tabeli",
+      "quote": "cytatów",
+      "guess": "tekstu pytań i odpowiedzi"
+    }
+  },
   "columnsGuessed": {
     "text": "Nie udało nam się ustalić, które kolumny to pytanie i odpowiedź, więc ta talia używa <front>{{frontField}}</front> jako przodu i <back>{{backField}}</back> jako tyłu. Przekonwertuj bazę danych ponownie, aby wybrać inne kolumny."
   },

@@ -102,7 +102,10 @@ function sliceRichText(
       result.push(item);
     } else {
       result.push(
-        cloneItemWithText(item, text.slice(overlapFrom - start, overlapTo - start))
+        cloneItemWithText(
+          item,
+          text.slice(overlapFrom - start, overlapTo - start)
+        )
       );
     }
   }
@@ -207,12 +210,20 @@ function tryQuestionAnswerPair(
   const questionItems = blockRichText(blocks[index]) ?? [];
   const answerItems = blockRichText(answerBlock) ?? [];
   const front = renderItems(
-    sliceRichText(questionItems, questionMarkerLength(questionText), questionText.length),
+    sliceRichText(
+      questionItems,
+      questionMarkerLength(questionText),
+      questionText.length
+    ),
     settings,
     tagRegistry
   );
   const back = renderItems(
-    sliceRichText(answerItems, answerMarkerLength(answerText), answerText.length),
+    sliceRichText(
+      answerItems,
+      answerMarkerLength(answerText),
+      answerText.length
+    ),
     settings,
     tagRegistry
   );

@@ -51,6 +51,17 @@
   "unsupportedBlocks": {
     "text_other": "このページの {{count}} 個のブロックを変換できませんでした（{{types}}）。"
   },
+  "structureRescued": {
+    "text": "このページにはトグルがなかったため、{{structure}}からカードを作成しました。",
+    "structures": {
+      "heading": "見出し",
+      "bullets": "箇条書き",
+      "numbered": "番号付きリスト",
+      "columns": "表の列",
+      "quote": "引用",
+      "guess": "質問と回答のテキスト"
+    }
+  },
   "columnsGuessed": {
     "text": "どの列が問題と解答かを判別できなかったため、このデッキは <front>{{frontField}}</front> を表、<back>{{backField}}</back> を裏として使用します。データベースを再度変換して別の列を選んでください。"
   },

@@ -90,7 +90,10 @@ describe('empty-deck rescue on the page branch', () => {
         block('heading_2', 'What is a flashcard?'),
         block('paragraph', 'A prompt paired with an answer to recall.'),
         block('heading_2', 'What is active recall?'),
-        block('paragraph', 'Retrieving a fact from memory instead of rereading.'),
+        block(
+          'paragraph',
+          'Retrieving a fact from memory instead of rereading.'
+        ),
       ],
     });
     const handler = makeHandler(api);

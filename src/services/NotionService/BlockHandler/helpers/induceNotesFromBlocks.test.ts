@@ -144,7 +144,9 @@ describe('induceNotesFromBlocks', () => {
   });
 
   it('returns nothing for a rule with no in-memory front blocks', () => {
-    const blocks = [block('paragraph', [richText('Just prose, no structure.')])];
+    const blocks = [
+      block('paragraph', [richText('Just prose, no structure.')]),
+    ];
     expect(
       induceNotesFromBlocks(blocks, 'columns', settings(), new TagRegistry())
     ).toHaveLength(0);
