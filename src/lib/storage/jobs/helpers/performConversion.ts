@@ -26,6 +26,11 @@ import {
 } from '../../../../usecases/jobs/jobFailureReason';
 import { PythonExitError } from '../../../anki/buildPythonExitError';
 import { EmptyDeckError } from '../../../../usecases/jobs/EmptyDeckError';
+import {
+  ConversionRuleScoresRepository,
+  type ConversionScoreSource,
+} from '../../../../data_layer/ConversionRuleScoresRepository';
+import { scoreCandidateDeck } from '../../../parser/scoreCandidateDeck';
 import { track } from '../../../../services/events/track';
 import NotionRepository from '../../../../data_layer/NotionRespository';
 import { getDefaultEmailService } from '../../../../services/EmailService/EmailService';
@@ -96,6 +101,53 @@ async function recordConversionOutputStats(
       '[conversion] failed to record conversion output stats',
       error
     );
+  }
+}
+
+// The score's entry point, which is finer-grained than toConversionSource above:
+// that helper maps only 'page' to notion, so a database or a generic conversion
+// job — both Notion — land in 'upload'. Changing it would move existing funnel
+// numbers, so the score gets its own mapping rather than a silent redefinition.
+function toScoreSource(type?: string): ConversionScoreSource {
+  if (type === 'google_drive') return 'google_drive';
+  if (type === 'dropbox') return 'dropbox';
+  if (type === 'page' || type === 'database' || type === 'conversion') {
+    return 'notion';
+  }
+  return 'upload';
+}
+
+// The Notion API path never runs Claude — CreateFlashcardsForJobUseCase walks
+// blocks through BlockHandler — so the engine is always the parser here.
+async function recordDeckScore(
+  database: Knex,
+  entry: {
+    owner: string;
+    type?: string;
+    decks: { cards: { name: string; back: string; cloze?: boolean }[] }[];
+    cardCount: number;
+  }
+): Promise<void> {
+  const ownerId = Number(entry.owner);
+  try {
+    await new ConversionRuleScoresRepository(database).record({
+      owner: Number.isFinite(ownerId) ? ownerId : null,
+      source: toScoreSource(entry.type),
+      engine: 'parser',
+      inputFormat: 'notion',
+      rule: entry.type ?? 'unknown',
+      wasFallback: false,
+      // docChars is 0: cards come from Notion blocks, not a source document, so
+      // coverage and density have nothing to measure against and report 0
+      // rather than a made-up denominator.
+      outcome: entry.cardCount > 0 ? 'shipped' : 'below_floor',
+      score: scoreCandidateDeck(
+        entry.decks.flatMap((d) => d.cards),
+        0
+      ),
+    });
+  } catch (error) {
+    console.error('[conversion] failed to record deck score', error);
   }
 }
 
@@ -209,6 +261,9 @@ export default async function performConversion(
     }
 
     const cardCount = decks.reduce((acc, d) => acc + d.cards.length, 0);
+    // Recorded before the empty-deck return so a zero-card Notion conversion
+    // still lands a row; without the failures the baseline is only the wins.
+    await recordDeckScore(database, { owner, type, decks, cardCount });
     if (cardCount === 0) {
       const setJobFailed = new SetJobFailedUseCase(jobRepository);
       await setJobFailed.execute(id, owner, EMPTY_DECK_FAILURE_REASON);
