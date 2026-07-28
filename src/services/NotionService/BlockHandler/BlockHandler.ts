@@ -41,7 +41,13 @@ import {
   buildHeadingTagMap,
   HeadingContext,
 } from './helpers/buildHeadingTagMap';
-import { guessCardsFromBlocks } from './helpers/guessCardsFromBlocks';
+import {
+  blocksPlainTextLength,
+  induceNotesFromBlocks,
+  NOTION_CANDIDATE_RULES,
+} from './helpers/induceNotesFromBlocks';
+import { InducedRule } from '../../../lib/parser/induction/candidateRules';
+import rankCandidates from '../../../lib/parser/induction/rankCandidates';
 import {
   ConversionTruncation,
   hasRuleBasedSubDecks,
@@ -185,6 +191,11 @@ class BlockHandler {
   truncation?: ConversionTruncation;
 
   guessedColumnMapping?: { frontField: string; backField: string };
+
+  inducedRule?: {
+    rule: InducedRule;
+    outcome: 'rescue_shipped' | 'rescue_rejected';
+  };
 
   resolvedDatabasePath?: { viaPageLinkSelfHeal: boolean };
 
@@ -914,18 +925,65 @@ class BlockHandler {
     return decks;
   }
 
-  private guessTogglelessCards(blocks: GetBlockResponse[]): Note[] {
-    const guessed = guessCardsFromBlocks(blocks);
-    guessed.forEach((note, index) => {
-      note.number = index;
-    });
-    this.cardCount += guessed.length;
+  private accountForRescuedCards(cards: Note[]): void {
+    this.cardCount += cards.length;
     this.emptyBackCount += countEmptyBacks(
-      guessed,
+      cards,
       (c) => c.back,
       (c) => c.name
     );
-    return guessed;
+  }
+
+  // Which candidates the rescue may offer. clozeFromToggleContent assumes a
+  // toggle front, so no structural or text-pattern candidate is coherent with
+  // it — skip induction entirely and fail honest. In the hierarchy template
+  // headings are consumed as breadcrumb context, so the heading candidate is
+  // invalid while it is on.
+  private rescueCandidateRules(): InducedRule[] {
+    if (this.settings.clozeFromToggleContent) {
+      return [];
+    }
+    const rules = [...NOTION_CANDIDATE_RULES];
+    if (this.settings.template === 'hierarchy') {
+      return rules.filter((rule) => rule !== 'heading');
+    }
+    return rules;
+  }
+
+  // Re-derives the card boundary from the document's own structure over the
+  // blocks already in memory — zero extra Notion requests. Each candidate is
+  // scored; the best that clears the quality floor ships, ties broken most
+  // conservative first. Nothing above the floor means we fail honest.
+  private induceRescueDeck(blocks: GetBlockResponse[]): Note[] | null {
+    const rules = this.rescueCandidateRules();
+    if (rules.length === 0) {
+      return null;
+    }
+    const docChars = blocksPlainTextLength(blocks);
+    const candidates = rules
+      .map((rule) => ({
+        rule,
+        cards: induceNotesFromBlocks(
+          blocks,
+          rule,
+          this.settings,
+          new TagRegistry()
+        ),
+        docChars,
+      }))
+      .filter((candidate) => candidate.cards.length > 0);
+    if (candidates.length === 0) {
+      return null;
+    }
+    const { winner, best } = rankCandidates(candidates);
+    if (winner == null) {
+      if (best != null) {
+        this.inducedRule = { rule: best.rule, outcome: 'rescue_rejected' };
+      }
+      return null;
+    }
+    this.inducedRule = { rule: winner.rule, outcome: 'rescue_shipped' };
+    return winner.cards;
   }
 
   private discountCards(cards: Note[]): void {
@@ -941,19 +999,20 @@ class BlockHandler {
 
   // Cards that Deck.CleanCards will strip — a toggle with an empty body, say —
   // still make the walk look productive, so the deck ships empty with the
-  // fallback never attempted. Measure what survives cleaning instead, and run
-  // the guess over blocks that are already in memory so no Notion request is
+  // rescue never attempted. Measure what survives cleaning instead, and induce
+  // candidate decks over the blocks already in memory so no Notion request is
   // added.
   private rescueEmptyCards(cards: Note[], blocks: GetBlockResponse[]): Note[] {
     if (Deck.CleanCards(cards).length > 0) {
       return cards;
     }
-    const guessed = this.guessTogglelessCards(blocks);
-    if (guessed.length === 0) {
+    const rescued = this.induceRescueDeck(blocks);
+    if (rescued == null) {
       return cards;
     }
     this.discountCards(cards);
-    return guessed;
+    this.accountForRescuedCards(rescued);
+    return rescued;
   }
 
   private async buildDeckFromBlockChildren(

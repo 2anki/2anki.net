@@ -126,6 +126,13 @@ async function recordDeckScore(
     type?: string;
     decks: { cards: { name: string; back: string; cloze?: boolean }[] }[];
     cardCount: number;
+    // Set only when the empty-deck rescue ran a candidate loop. It carries the
+    // winning (or best-attempted) structure so the corpus says which rule
+    // rescues Notion and whether it shipped or fell below the floor.
+    induced?: {
+      rule: string;
+      outcome: 'rescue_shipped' | 'rescue_rejected';
+    };
   }
 ): Promise<void> {
   const ownerId = Number(entry.owner);
@@ -135,12 +142,14 @@ async function recordDeckScore(
       source: toScoreSource(entry.type),
       engine: 'parser',
       inputFormat: 'notion',
-      rule: entry.type ?? 'unknown',
-      wasFallback: false,
+      rule: entry.induced?.rule ?? entry.type ?? 'unknown',
+      wasFallback: entry.induced != null,
       // docChars is 0: cards come from Notion blocks, not a source document, so
       // coverage and density have nothing to measure against and report 0
       // rather than a made-up denominator.
-      outcome: entry.cardCount > 0 ? 'shipped' : 'no_cards',
+      outcome:
+        entry.induced?.outcome ??
+        (entry.cardCount > 0 ? 'shipped' : 'no_cards'),
       score: scoreCandidateDeck(
         entry.decks.flatMap((d) => d.cards),
         0
@@ -263,7 +272,13 @@ export default async function performConversion(
     const cardCount = decks.reduce((acc, d) => acc + d.cards.length, 0);
     // Recorded before the empty-deck return so a zero-card Notion conversion
     // still lands a row; without the failures the baseline is only the wins.
-    await recordDeckScore(database, { owner, type, decks, cardCount });
+    await recordDeckScore(database, {
+      owner,
+      type,
+      decks,
+      cardCount,
+      induced: bl.inducedRule,
+    });
     if (cardCount === 0) {
       const setJobFailed = new SetJobFailedUseCase(jobRepository);
       await setJobFailed.execute(id, owner, EMPTY_DECK_FAILURE_REASON);
@@ -357,6 +372,9 @@ export default async function performConversion(
       bl.resolvedDatabasePath,
       bl.unsupportedBlockTypeCounts
         ? Object.fromEntries(bl.unsupportedBlockTypeCounts)
+        : undefined,
+      bl.inducedRule?.outcome === 'rescue_shipped'
+        ? bl.inducedRule.rule
         : undefined
     );
 
