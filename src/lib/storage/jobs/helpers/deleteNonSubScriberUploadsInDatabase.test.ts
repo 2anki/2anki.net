@@ -9,17 +9,24 @@ function makeDb(uploadsToDelete: { key: string }[] = []) {
   const countMock = jest.fn().mockReturnValue({
     first: jest.fn().mockResolvedValue({ count: uploadsToDelete.length }),
   });
+  const revokeUpdateMock = jest.fn().mockResolvedValue(1);
+  const whereMock = jest.fn().mockReturnValue({
+    whereNull: jest.fn().mockReturnValue({ update: revokeUpdateMock }),
+  });
   const db = {
     raw: jest.fn().mockResolvedValue({ rows: uploadsToDelete }),
     uploads: jest.fn(),
+    fn: { now: jest.fn().mockReturnValue('now()') },
   } as unknown;
 
-  const dbFn = jest
-    .fn()
-    .mockReturnValue({ delete: deleteMock, count: countMock });
+  const dbFn = jest.fn().mockReturnValue({
+    delete: deleteMock,
+    count: countMock,
+    where: whereMock,
+  });
   Object.assign(dbFn, db);
 
-  return { dbFn: dbFn as any, deleteMock };
+  return { dbFn: dbFn as any, deleteMock, revokeUpdateMock };
 }
 
 function makeStorage(deleteResult = true) {
@@ -37,12 +44,15 @@ describe('deleteNonSubScriberUploadsInDatabase', () => {
   });
 
   it('deletes uploads that are not pinned by an active share', async () => {
-    const { dbFn, deleteMock } = makeDb([{ key: 'unpinned.apkg' }]);
+    const { dbFn, revokeUpdateMock } = makeDb([{ key: 'unpinned.apkg' }]);
     const storage = makeStorage();
 
     await deleteNonSubScriberUploadsInDatabase(dbFn, storage as any);
 
     expect(storage.delete).toHaveBeenCalledWith('unpinned.apkg');
+    expect(revokeUpdateMock).toHaveBeenCalledWith({
+      revoked_at: expect.anything(),
+    });
   });
 
   it('passes the NOT EXISTS subquery filtering shared uploads to db.raw', async () => {
@@ -51,9 +61,14 @@ describe('deleteNonSubScriberUploadsInDatabase', () => {
 
     await deleteNonSubScriberUploadsInDatabase(dbFn, storage as any);
 
-    const rawCall = (dbFn.raw as jest.Mock).mock.calls[0][0] as string;
+    const [rawCall, rawBindings] = (dbFn.raw as jest.Mock).mock.calls[0] as [
+      string,
+      unknown,
+    ];
     expect(rawCall).toContain('deck_shares');
     expect(rawCall).toContain('revoked_at IS NULL');
+    expect(rawCall).toContain('COALESCE(ds.last_viewed_at, ds.created_at) > ?');
+    expect(rawBindings).toEqual([expect.any(String)]);
   });
 
   it('exempts holders of an active user pass from upload deletion', async () => {
@@ -172,6 +187,11 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       t.increments('id').primary();
       t.text('upload_key').notNullable();
       t.text('revoked_at').nullable();
+      // Seeded as explicit 24-char ISO strings in every test. sqlite's
+      // CURRENT_TIMESTAMP emits 'YYYY-MM-DD HH:MM:SS' (space, no Z) which does
+      // NOT compare lexicographically against the ISO cutoff binding.
+      t.text('created_at').nullable();
+      t.text('last_viewed_at').nullable();
     });
   });
 
@@ -203,11 +223,12 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
     // 6: expired pass, no other signal — swept
     await seedUserWithUpload(6, 'exp@example.com', false, 'expired.apkg');
     await db('user_passes').insert({ user_id: 6, expires_at: PAST });
-    // 7: non-subscriber but upload pinned by an unrevoked share — spared
+    // 7: non-subscriber but upload pinned by a fresh unrevoked share — spared
     await seedUserWithUpload(7, 'shared@example.com', false, 'shared.apkg');
     await db('deck_shares').insert({
       upload_key: 'shared.apkg',
       revoked_at: null,
+      created_at: new Date().toISOString(),
     });
     // 8: cancelled subscriber (active = false) — swept
     await seedUserWithUpload(
@@ -267,6 +288,88 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
 
     expect(storage.delete).not.toHaveBeenCalled();
     expect(await remainingUploadKeys()).toEqual(['sub.apkg']);
+  });
+
+  it('sweeps an upload pinned only by a share idle past the TTL and revokes the share', async () => {
+    await seedUserWithUpload(1, 'stale@example.com', false, 'stale.apkg');
+    await db('deck_shares').insert({
+      upload_key: 'stale.apkg',
+      revoked_at: null,
+      created_at: PAST,
+      last_viewed_at: PAST,
+    });
+
+    const storage = { delete: jest.fn() };
+
+    await deleteNonSubScriberUploadsInDatabase(
+      withPgRawShape(db),
+      storage as never
+    );
+
+    expect(storage.delete).toHaveBeenCalledWith('stale.apkg');
+    expect(await remainingUploadKeys()).toEqual([]);
+    const share = await db('deck_shares').first();
+    expect(share.revoked_at).not.toBeNull();
+  });
+
+  it('spares an old share that was viewed within the TTL window', async () => {
+    await seedUserWithUpload(1, 'active@example.com', false, 'active.apkg');
+    await db('deck_shares').insert({
+      upload_key: 'active.apkg',
+      revoked_at: null,
+      created_at: PAST,
+      last_viewed_at: new Date().toISOString(),
+    });
+
+    const storage = { delete: jest.fn() };
+
+    await deleteNonSubScriberUploadsInDatabase(
+      withPgRawShape(db),
+      storage as never
+    );
+
+    expect(storage.delete).not.toHaveBeenCalled();
+    expect(await remainingUploadKeys()).toEqual(['active.apkg']);
+  });
+
+  it('spares a freshly created share that has never been viewed', async () => {
+    await seedUserWithUpload(1, 'fresh@example.com', false, 'fresh.apkg');
+    await db('deck_shares').insert({
+      upload_key: 'fresh.apkg',
+      revoked_at: null,
+      created_at: new Date().toISOString(),
+      last_viewed_at: null,
+    });
+
+    const storage = { delete: jest.fn() };
+
+    await deleteNonSubScriberUploadsInDatabase(
+      withPgRawShape(db),
+      storage as never
+    );
+
+    expect(storage.delete).not.toHaveBeenCalled();
+    expect(await remainingUploadKeys()).toEqual(['fresh.apkg']);
+  });
+
+  it('sweeps a never-viewed share once its creation date passes the TTL', async () => {
+    await seedUserWithUpload(1, 'aged@example.com', false, 'aged.apkg');
+    await db('deck_shares').insert({
+      upload_key: 'aged.apkg',
+      revoked_at: null,
+      created_at: PAST,
+      last_viewed_at: null,
+    });
+
+    const storage = { delete: jest.fn() };
+
+    await deleteNonSubScriberUploadsInDatabase(
+      withPgRawShape(db),
+      storage as never
+    );
+
+    expect(storage.delete).toHaveBeenCalledWith('aged.apkg');
+    expect(await remainingUploadKeys()).toEqual([]);
   });
 
   it('spares a customer whose only paid subscription is a developer tier', async () => {

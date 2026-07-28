@@ -27,6 +27,8 @@ export default interface DeckShares {
   title: string | null;
 
   card_count: number | null;
+
+  last_viewed_at: Date | null;
 }
 
 /** Represents the initializer for the table public.deck_shares */
@@ -54,6 +56,8 @@ export interface DeckSharesInitializer {
   title?: string | null;
 
   card_count?: number | null;
+
+  last_viewed_at?: Date | null;
 }
 
 /** Represents the mutator for the table public.deck_shares */
@@ -77,4 +81,6 @@ export interface DeckSharesMutator {
   title?: string | null;
 
   card_count?: number | null;
+
+  last_viewed_at?: Date | null;
 }

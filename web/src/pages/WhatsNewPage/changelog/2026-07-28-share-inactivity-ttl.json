@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-share-inactivity-ttl",
+  "date": "2026-07-28",
+  "type": "fix",
+  "title": "Shared deck links on free accounts expire after 90 days without a view"
+}

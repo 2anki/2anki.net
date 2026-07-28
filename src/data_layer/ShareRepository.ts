@@ -19,7 +19,7 @@ export interface IShareRepository {
   ): Promise<DeckShares | null>;
   findAllByOwner(owner: UsersId): Promise<DeckShares[]>;
   revoke(token: string, owner: UsersId): Promise<boolean>;
-  incrementViewCount(id: DeckSharesId): Promise<void>;
+  recordView(id: DeckSharesId): Promise<void>;
   hasActiveShareForKey(uploadKey: string): Promise<boolean>;
   findByTokenAndOwner(
     token: string,
@@ -83,10 +83,13 @@ class ShareRepository implements IShareRepository {
     return count > 0;
   }
 
-  async incrementViewCount(id: DeckSharesId): Promise<void> {
-    await this.database<DeckShares>(this.table)
+  async recordView(id: DeckSharesId): Promise<void> {
+    await this.database(this.table)
       .where({ id })
-      .increment('view_count', 1);
+      .update({
+        view_count: this.database.raw('view_count + 1'),
+        last_viewed_at: this.database.fn.now(),
+      });
   }
 
   async hasActiveShareForKey(uploadKey: string): Promise<boolean> {

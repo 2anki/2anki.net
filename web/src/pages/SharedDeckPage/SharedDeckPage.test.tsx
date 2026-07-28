@@ -57,7 +57,7 @@ describe('SharedDeckPage', () => {
 
     renderPage('revoked-token');
 
-    await screen.findByText('This link was turned off by the owner.');
+    await screen.findByText('This link is no longer active.');
     expect(screen.getByText(/Ask them for a new one/i)).toBeInTheDocument();
   });
 
