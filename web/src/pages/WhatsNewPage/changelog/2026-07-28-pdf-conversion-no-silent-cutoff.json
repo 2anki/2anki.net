@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-pdf-conversion-no-silent-cutoff",
+  "date": "2026-07-28",
+  "type": "fix",
+  "title": "Long PDFs convert much further, and one too large to finish says so instead of quietly dropping its last pages"
+}

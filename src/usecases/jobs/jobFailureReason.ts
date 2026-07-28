@@ -1,6 +1,10 @@
 import { APIResponseError, APIErrorCode } from '@notionhq/client';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 import { ClaudeLargeSectionError } from '../../lib/claude/ClaudeService';
+import {
+  CONVERSION_TRUNCATED_MESSAGE,
+  FileConversionError,
+} from '../../infrastracture/adapters/fileConversion/claudeFileConversion';
 import { EmptyDeckError } from './EmptyDeckError';
 import { inferColumnMapping } from '../../lib/notionDatabase/inferColumnMapping';
 import { isNotionDatabaseNotPageError } from '../../services/NotionService/helpers/isNotionDatabaseNotPageError';
@@ -144,6 +148,12 @@ export function jobFailureReasonFromError(
     return EMPTY_DECK_FAILURE_REASON;
   }
   if (error instanceof ClaudeLargeSectionError) {
+    return error.message;
+  }
+  if (
+    error instanceof FileConversionError &&
+    error.message === CONVERSION_TRUNCATED_MESSAGE
+  ) {
     return error.message;
   }
   if (error instanceof PythonExitError) {
