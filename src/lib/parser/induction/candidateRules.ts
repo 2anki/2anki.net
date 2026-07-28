@@ -27,3 +27,11 @@ export function candidateOrderIndex(rule: InducedRule): number {
   const index = CANDIDATE_ORDER.indexOf(rule);
   return index === -1 ? CANDIDATE_ORDER.length : index;
 }
+
+// The outcome of an empty-deck rescue attempt. The vocabulary matches the
+// reserved values on conversion_rule_scores.outcome so a rescued row reads the
+// same whether it came from the Notion or the upload path.
+export interface InducedRescue {
+  rule: InducedRule;
+  outcome: 'rescue_shipped' | 'rescue_rejected';
+}

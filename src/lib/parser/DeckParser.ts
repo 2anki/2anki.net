@@ -64,6 +64,13 @@ import {
 } from './collectSectionTags';
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import { extractName } from '../extractDeckName';
+import { InducedRescue, InducedRule } from './induction/candidateRules';
+import { runInduction } from './induction/rankCandidates';
+import {
+  domPlainTextLength,
+  induceCardsFromDom,
+  UPLOAD_CANDIDATE_RULES,
+} from './induction/induceCardsFromDom';
 
 const MARKDOWN_SOURCE_RATIO_THRESHOLD = 0.8;
 
@@ -126,6 +133,8 @@ export class DeckParser {
   droppedImageCount: number;
 
   emptyBackCount: number;
+
+  inducedRule?: InducedRescue;
 
   private sawUnclassifiedParse: boolean;
 
@@ -469,6 +478,13 @@ export class DeckParser {
 
     cards = cards.filter(Boolean);
 
+    if (cards.length === 0) {
+      const rescued = this.induceCardsFromStructure(dom);
+      if (rescued != null) {
+        cards = rescued;
+      }
+    }
+
     const deck = new Deck(
       name,
       cards,
@@ -500,6 +516,43 @@ export class DeckParser {
       }
     }
     return decks;
+  }
+
+  private uploadCandidateRules(): InducedRule[] {
+    if (this.settings.clozeFromToggleContent) {
+      return [];
+    }
+    const rules = [...UPLOAD_CANDIDATE_RULES];
+    if (this.settings.template === 'hierarchy') {
+      return rules.filter((rule) => rule !== 'heading');
+    }
+    return rules;
+  }
+
+  // Runs only when the normal HTML parse produced zero cards. It re-derives the
+  // card boundary from the document's own structure (headings, nested lists,
+  // two-column tables, blockquotes, Q:/A: and term::definition markers) on the
+  // DOM before the plain-text flattening fallback, so bold, highlight and colour
+  // survive. Each candidate is scored; the best that clears the quality floor
+  // ships, or we leave the deck empty and fail honest.
+  private induceCardsFromStructure(dom: cheerio.CheerioAPI): Note[] | null {
+    const rules = this.uploadCandidateRules();
+    if (rules.length === 0) {
+      return null;
+    }
+    const { winner, best } = runInduction(
+      rules,
+      (rule) => induceCardsFromDom(dom, rule),
+      domPlainTextLength(dom)
+    );
+    if (winner == null) {
+      if (best != null) {
+        this.inducedRule = { rule: best.rule, outcome: 'rescue_rejected' };
+      }
+      return null;
+    }
+    this.inducedRule = { rule: winner.rule, outcome: 'rescue_shipped' };
+    return winner.cards;
   }
 
   private extractGlobalTags(dom: cheerio.CheerioAPI): string[] {

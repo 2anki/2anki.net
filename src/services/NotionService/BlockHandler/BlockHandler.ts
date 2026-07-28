@@ -46,8 +46,11 @@ import {
   induceNotesFromBlocks,
   NOTION_CANDIDATE_RULES,
 } from './helpers/induceNotesFromBlocks';
-import { InducedRule } from '../../../lib/parser/induction/candidateRules';
-import rankCandidates from '../../../lib/parser/induction/rankCandidates';
+import {
+  InducedRescue,
+  InducedRule,
+} from '../../../lib/parser/induction/candidateRules';
+import { runInduction } from '../../../lib/parser/induction/rankCandidates';
 import {
   ConversionTruncation,
   hasRuleBasedSubDecks,
@@ -192,10 +195,7 @@ class BlockHandler {
 
   guessedColumnMapping?: { frontField: string; backField: string };
 
-  inducedRule?: {
-    rule: InducedRule;
-    outcome: 'rescue_shipped' | 'rescue_rejected';
-  };
+  inducedRule?: InducedRescue;
 
   resolvedDatabasePath?: { viaPageLinkSelfHeal: boolean };
 
@@ -959,23 +959,12 @@ class BlockHandler {
     if (rules.length === 0) {
       return null;
     }
-    const docChars = blocksPlainTextLength(blocks);
-    const candidates = rules
-      .map((rule) => ({
-        rule,
-        cards: induceNotesFromBlocks(
-          blocks,
-          rule,
-          this.settings,
-          new TagRegistry()
-        ),
-        docChars,
-      }))
-      .filter((candidate) => candidate.cards.length > 0);
-    if (candidates.length === 0) {
-      return null;
-    }
-    const { winner, best } = rankCandidates(candidates);
+    const { winner, best } = runInduction(
+      rules,
+      (rule) =>
+        induceNotesFromBlocks(blocks, rule, this.settings, new TagRegistry()),
+      blocksPlainTextLength(blocks)
+    );
     if (winner == null) {
       if (best != null) {
         this.inducedRule = { rule: best.rule, outcome: 'rescue_rejected' };

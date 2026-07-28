@@ -24,6 +24,20 @@ export interface RankResult<T extends ScorableCard> {
   best: ScoredCandidate<T> | null;
 }
 
+// Produces one candidate deck per rule, drops the rules that yielded nothing,
+// and ranks the rest. Both conversion paths share this so their scoring and
+// floor semantics stay identical.
+export function runInduction<T extends ScorableCard>(
+  rules: readonly InducedRule[],
+  produceCards: (rule: InducedRule) => T[],
+  docChars: number
+): RankResult<T> {
+  const candidates = rules
+    .map((rule) => ({ rule, cards: produceCards(rule), docChars }))
+    .filter((candidate) => candidate.cards.length > 0);
+  return rankCandidates(candidates);
+}
+
 export function rankCandidates<T extends ScorableCard>(
   candidates: Candidate<T>[]
 ): RankResult<T> {

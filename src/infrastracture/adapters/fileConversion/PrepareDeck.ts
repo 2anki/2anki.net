@@ -28,6 +28,7 @@ import {
   type DeckScore,
 } from '../../../lib/parser/scoreCandidateDeck';
 import type { ConversionEngine } from '../../../lib/parser/conversionEngine';
+import type { InducedRescue } from '../../../lib/parser/induction/candidateRules';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import Workspace from '../../../lib/parser/WorkSpace';
 import path from 'path';
@@ -84,6 +85,7 @@ interface PrepareDeckResult {
   parsePath?: string;
   engine?: ConversionEngine;
   score?: DeckScore;
+  inducedRule?: InducedRescue;
 }
 
 async function convertFile(
@@ -546,6 +548,7 @@ export async function PrepareDeck(
           parser.payload.flatMap((deck) => deck.cards),
           allFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
         ),
+        inducedRule: parser.inducedRule,
       };
     }
   }
@@ -572,6 +575,7 @@ export async function PrepareDeck(
       parser.payload.flatMap((deck) => deck.cards),
       allFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
     ),
+    inducedRule: parser.inducedRule,
   };
 }
 
