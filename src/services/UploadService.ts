@@ -196,6 +196,54 @@ function hasSessionToken(req: express.Request): boolean {
   return typeof token === 'string' && token.length > 0;
 }
 
+const CONVERSION_SETTINGS_FILENAME = 'conversion-settings.json';
+
+function persistConversionSettings(workspaceDir: string, body: unknown): void {
+  try {
+    const entries = Object.entries(
+      (body ?? {}) as Record<string, unknown>
+    ).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string'
+    );
+    fs.writeFileSync(
+      path.join(workspaceDir, CONVERSION_SETTINGS_FILENAME),
+      JSON.stringify(Object.fromEntries(entries))
+    );
+  } catch (error) {
+    console.warn('[UploadService] failed to persist conversion settings', {
+      workspaceDir,
+      error,
+    });
+  }
+}
+
+function loadPersistedConversionSettings(
+  workspaceDir: string
+): CardOption | null {
+  const settingsPath = path.join(workspaceDir, CONVERSION_SETTINGS_FILENAME);
+  try {
+    if (!fs.existsSync(settingsPath)) {
+      return null;
+    }
+    const parsed: unknown = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null;
+    }
+    const input = Object.fromEntries(
+      Object.entries(parsed).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string'
+      )
+    );
+    return new CardOption(input);
+  } catch (error) {
+    console.warn('[UploadService] ignoring unreadable conversion settings', {
+      workspaceDir,
+      error,
+    });
+    return null;
+  }
+}
+
 function walkHtmlFiles(dir: string): string[] {
   const results: string[] = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -218,7 +266,8 @@ function walkMediaFiles(dir: string): string[] {
     } else if (
       !isHTMLFile(entry.name) &&
       !isMarkdownFile(entry.name) &&
-      !entry.name.endsWith('.apkg')
+      !entry.name.endsWith('.apkg') &&
+      entry.name !== CONVERSION_SETTINGS_FILENAME
     ) {
       results.push(entry.name);
     }
@@ -556,14 +605,27 @@ class UploadService {
       throw new Error('No HTML files found in workspace');
     }
 
+    const settings = loadPersistedConversionSettings(workspaceDir);
+    const ownerNumeric = Number(owner);
+    const generateOptions = {
+      isPaying: paying,
+      userId:
+        Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null,
+      comprehensive: settings?.aiComprehensive,
+    };
+
     const deckInfoArrays: DeckInfo[][] = [];
     for (const htmlFile of htmlFiles) {
       const content = await fs.promises.readFile(htmlFile, 'utf8');
       const deckInfo = await generateDeckInfo(
         content,
         mediaFiles,
-        undefined,
-        onProgress
+        settings?.userInstructions,
+        onProgress,
+        settings?.cardStyle || undefined,
+        settings?.cardSize,
+        settings?.fieldMapping,
+        generateOptions
       );
       deckInfoArrays.push(deckInfo);
     }
@@ -817,6 +879,7 @@ class UploadService {
     const title =
       files.length === 1 ? files[0].originalname : `${files.length} files`;
     await this.jobRepository.create(ws.id, owner, title, 'claude');
+    persistConversionSettings(ws.location, req.body);
 
     const ownerForEvent = Number(owner);
     track('conversion_started', {
