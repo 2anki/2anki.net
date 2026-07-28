@@ -15,9 +15,7 @@ function truncateDeckName(name: string): string {
 function RevokedPage() {
   return (
     <div className={styles.errorPage}>
-      <p className={styles.errorTitle}>
-        This link was turned off by the owner.
-      </p>
+      <p className={styles.errorTitle}>This link is no longer active.</p>
       <p className={styles.errorSub}>
         Ask them for a new one, or make your own deck on 2anki.net.
       </p>

@@ -1,6 +1,7 @@
 import { Knex } from 'knex';
 import StorageHandler from '../../StorageHandler';
 import Uploads from '../../../../data_layer/public/Uploads';
+import { SHARE_INACTIVITY_TTL_DAYS } from '../../../constants';
 import {
   ErrorEventRepository,
   IErrorEventRepository,
@@ -26,7 +27,18 @@ export const deleteNonSubScriberUploadsInDatabase = async (
   // developer tier reads as a free user here and has their uploads deleted from
   // the bucket irreversibly. Matching on email as well as user_id only ever
   // spares a row, so a loose match is the safe direction.
-  const query = await db.raw(`
+  // A share only pins its upload while it has been viewed (or created, if
+  // never viewed) within the TTL. Without the recency bound any free user
+  // could pin storage forever by creating a share and never revoking it
+  // (#3831). last_viewed_at is null for shares that predate the column's
+  // backfill window, so created_at is the fallback. The cutoff is computed
+  // here and bound as a parameter because sqlite (the e2e test dialect) has
+  // no interval arithmetic.
+  const sharePinCutoff = new Date(
+    Date.now() - SHARE_INACTIVITY_TTL_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+  const query = await db.raw(
+    `
     SELECT up.key
     FROM users u
     JOIN uploads up ON u.id = up.owner
@@ -50,9 +62,13 @@ export const deleteNonSubScriberUploadsInDatabase = async (
       )
       AND NOT EXISTS (
         SELECT 1 FROM deck_shares ds
-        WHERE ds.upload_key = up.key AND ds.revoked_at IS NULL
+        WHERE ds.upload_key = up.key
+          AND ds.revoked_at IS NULL
+          AND COALESCE(ds.last_viewed_at, ds.created_at) > ?
       );
-  `);
+  `,
+    [sharePinCutoff]
+  );
   const nonSubScriberUploads: Uploads[] | undefined = query.rows;
   if (!nonSubScriberUploads) {
     return;
@@ -78,5 +94,13 @@ export const deleteNonSubScriberUploadsInDatabase = async (
     console.info(`Deleting non-subscriber upload ${upload.key}`);
     await storage.delete(upload.key);
     await db('uploads').delete().where('key', upload.key);
+    // deck_shares.upload_key has no FK to uploads, so nothing cascades: revoke
+    // the dead pins here or /shared-decks keeps listing decks that 404.
+    // Per-upload rather than batched after the loop so a mid-loop failure
+    // can't leave already-deleted uploads with live share rows.
+    await db('deck_shares')
+      .where('upload_key', upload.key)
+      .whereNull('revoked_at')
+      .update({ revoked_at: db.fn.now() });
   }
 };

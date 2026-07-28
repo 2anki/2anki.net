@@ -38,7 +38,7 @@ class ShareService {
   }
 
   async recordView(share: DeckShares): Promise<void> {
-    await this.repository.incrementViewCount(share.id);
+    await this.repository.recordView(share.id);
   }
 
   buildShareUrl(token: string): string {

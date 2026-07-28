@@ -36,6 +36,12 @@ export function resolvePath(dir: string, x: string) {
 
 export const CLEANUP_AGE_SECONDS = 7200;
 
+// How long an unrevoked deck share keeps pinning its upload in storage after
+// the last view (or creation, if never viewed). Uniform across private and
+// public shares — gating only the public path would leave the private-share
+// pin wide open (#3831).
+export const SHARE_INACTIVITY_TTL_DAYS = 90;
+
 export const ONE_HOUR = 60 * 60 * 1000;
 
 export const BUILD_DIR = path.join(__dirname, '../../web/build');
