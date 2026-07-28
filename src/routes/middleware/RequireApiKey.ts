@@ -17,6 +17,7 @@ import DeveloperTiersRepository from '../../data_layer/DeveloperTiersRepository'
 import ResolveDeveloperTierUseCase, {
   ResolvedDeveloperTier,
 } from '../../usecases/developer/ResolveDeveloperTierUseCase';
+import { DeveloperSubscriptionsRepository } from '../../data_layer/DeveloperSubscriptionsRepository';
 import SubscriptionService from '../../services/SubscriptionService';
 
 const USAGE_EVENT_THROTTLE_MS = 60_000;
@@ -135,9 +136,26 @@ export function makeRequireApiKey(
       (async (email: string) => {
         const subscriptions =
           await SubscriptionService.getUserActiveSubscriptions(email);
-        return subscriptions
+        const baseProductIds = subscriptions
           .map((subscription) => subscription.stripe_product_id)
           .filter((id): id is string => id != null && id !== '');
+        // Developer tiers live in their own table because they are a second
+        // concurrent subscription; the base plan cannot represent them without
+        // one overwriting the other. Both sets feed the resolver, which already
+        // takes an array and picks the highest limit among the tiers owned.
+        //
+        // Matched on user_id only. Matching on the row's email would grant a
+        // paid tier on an unverified string: that column holds the Stripe
+        // customer's email, registration does not verify addresses, and a row
+        // can exist with no user_id at all — so anyone registering that address
+        // would inherit the tier. A subscription bought through the app always
+        // carries subscription_data.metadata.user_id and resolves an account;
+        // one created in the Stripe dashboard has to be claimed through the
+        // token-verified flow, which proves control before setting user_id.
+        const developerProductIds = await new DeveloperSubscriptionsRepository(
+          database
+        ).activeProductIdsForUser(active.user_id);
+        return [...new Set([...baseProductIds, ...developerProductIds])];
       });
     const resolveTier =
       deps.tierResolver ??

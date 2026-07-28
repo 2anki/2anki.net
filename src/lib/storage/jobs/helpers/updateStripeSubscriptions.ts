@@ -1,4 +1,9 @@
-import { getStripe, extractProductId } from '../../../integrations/stripe';
+import {
+  getStripe,
+  extractProductId,
+  isDeveloperTierProduct,
+} from '../../../integrations/stripe';
+import { DeveloperSubscriptionsRepository } from '../../../../data_layer/DeveloperSubscriptionsRepository';
 import { getDatabase } from '../../../../data_layer';
 import { Knex } from 'knex';
 import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
@@ -182,6 +187,26 @@ async function updateSubscriptionRecord(
       subscription,
       email
     );
+
+    // The ops Sync button reaches this path directly, bypassing
+    // updateStoreSubscription. Without the same check, one press writes every
+    // developer tier back into the email-keyed subscriptions table and
+    // re-creates exactly the collapse this table exists to prevent — granting
+    // base-plan perks to a dev-tier-only buyer, and overwriting a concurrent
+    // base subscriber's active flag and product id.
+    const productId = extractProductId(subscription);
+    if (productId != null && (await isDeveloperTierProduct(db, productId))) {
+      await new DeveloperSubscriptionsRepository(db).upsert({
+        stripeSubscriptionId: subscription.id,
+        userId: null,
+        email,
+        stripeProductId: productId,
+        active: shouldRemainActive,
+        payload: subscription,
+      });
+      return;
+    }
+
     const existingSubscription = await db
       .table('subscriptions')
       .where({ email })

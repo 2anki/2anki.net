@@ -38,6 +38,13 @@ jest.mock('../lib/integrations/stripe', () => ({
 
 jest.mock('../data_layer', () => ({ getDatabase: jest.fn() }));
 
+const mockDeactivateDeveloperSubscription = jest.fn().mockResolvedValue(0);
+jest.mock('../data_layer/DeveloperSubscriptionsRepository', () => ({
+  DeveloperSubscriptionsRepository: jest.fn().mockImplementation(() => ({
+    deactivateBySubscriptionId: mockDeactivateDeveloperSubscription,
+  })),
+}));
+
 const mockClaimSession = jest.fn().mockResolvedValue(true);
 const mockIsMarketingOptedOut = jest.fn().mockResolvedValue(false);
 const mockHasLifetimeOrActiveSubscription = jest.fn().mockResolvedValue(false);
@@ -649,6 +656,26 @@ describe('WebhookRouter — customer.subscription.deleted', () => {
 
     expect(res.status).toBe(200);
     expect(mockUpdateStoreSubscription).not.toHaveBeenCalled();
+  });
+
+  it('deactivates the developer tier even when no account resolves', async () => {
+    mockGetByEmail.mockResolvedValue(null);
+    mockResolveAccountForSubscription.mockResolvedValue(null);
+
+    const res = await postWebhookDeleted();
+
+    // Deactivation is keyed on the subscription id and needs no account.
+    // Nothing sweeps subscriptions_developer, so a row skipped here would keep
+    // granting a paid tier forever.
+    expect(res.status).toBe(200);
+    expect(mockDeactivateDeveloperSubscription).toHaveBeenCalled();
+  });
+
+  it('deactivates the developer tier when an account does resolve', async () => {
+    const res = await postWebhookDeleted();
+
+    expect(res.status).toBe(200);
+    expect(mockDeactivateDeveloperSubscription).toHaveBeenCalled();
   });
 });
 

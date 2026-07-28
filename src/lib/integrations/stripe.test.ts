@@ -1,7 +1,7 @@
 process.env.STRIPE_KEY = 'sk_test_fake_key_for_unit_tests';
 
 import knexLib, { Knex } from 'knex';
-import { updateStoreSubscription } from './stripe';
+import { isDeveloperTierProduct, updateStoreSubscription } from './stripe';
 import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
 
 const makeCustomer = (
@@ -52,6 +52,21 @@ describe('updateStoreSubscription', () => {
       t.json('payload');
       t.string('stripe_product_id');
       t.string('linked_email');
+    });
+    await db.schema.createTable('developer_tiers', (t) => {
+      t.increments('id');
+      t.string('tier_key');
+      t.string('stripe_product_id');
+    });
+    await db.schema.createTable('subscriptions_developer', (t) => {
+      t.increments('id');
+      t.string('stripe_subscription_id').unique();
+      t.integer('user_id');
+      t.string('email');
+      t.string('stripe_product_id');
+      t.boolean('active');
+      t.json('payload');
+      t.timestamp('updated_at');
     });
   });
 
@@ -291,6 +306,21 @@ describe('updateStoreSubscription linked_email resolution', () => {
       t.string('stripe_product_id');
       t.string('linked_email');
     });
+    await db.schema.createTable('developer_tiers', (t) => {
+      t.increments('id');
+      t.string('tier_key');
+      t.string('stripe_product_id');
+    });
+    await db.schema.createTable('subscriptions_developer', (t) => {
+      t.increments('id');
+      t.string('stripe_subscription_id').unique();
+      t.integer('user_id');
+      t.string('email');
+      t.string('stripe_product_id');
+      t.boolean('active');
+      t.json('payload');
+      t.timestamp('updated_at');
+    });
   });
 
   afterEach(async () => {
@@ -351,5 +381,136 @@ describe('updateStoreSubscription linked_email resolution', () => {
       .where({ email: 'other-account@example.com' })
       .first();
     expect(user.stripe_customer_id).toBeNull();
+  });
+});
+
+describe('updateStoreSubscription developer tiers', () => {
+  let db: Knex;
+
+  beforeEach(async () => {
+    db = knexLib({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await db.schema.createTable('users', (t) => {
+      t.increments('id');
+      t.string('email');
+      t.string('stripe_customer_id');
+    });
+    await db.schema.createTable('subscriptions', (t) => {
+      t.increments('id');
+      t.string('email').unique();
+      t.boolean('active');
+      t.json('payload');
+      t.string('stripe_product_id');
+      t.string('linked_email');
+    });
+    await db.schema.createTable('developer_tiers', (t) => {
+      t.increments('id');
+      t.string('tier_key');
+      t.string('stripe_product_id');
+    });
+    await db.schema.createTable('subscriptions_developer', (t) => {
+      t.increments('id');
+      t.string('stripe_subscription_id').unique();
+      t.integer('user_id');
+      t.string('email');
+      t.string('stripe_product_id');
+      t.boolean('active');
+      t.json('payload');
+      t.timestamp('updated_at');
+    });
+    await db('developer_tiers').insert([
+      { tier_key: 'starter', stripe_product_id: 'prod_starter' },
+      { tier_key: 'growth', stripe_product_id: 'prod_growth' },
+    ]);
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  const customer = { id: 'cus_dev', email: 'dev@example.com' } as never;
+
+  function sub(id: string, productId: string, status = 'active') {
+    return {
+      id,
+      status,
+      customer: 'cus_dev',
+      items: { data: [{ price: { product: productId } }] },
+    } as never;
+  }
+
+  test('a developer tier never touches the base subscriptions table', async () => {
+    await updateStoreSubscription(db, customer, sub('sub_a', 'prod_starter'));
+
+    expect(await db('subscriptions').select('*')).toHaveLength(0);
+    const rows = await db('subscriptions_developer').select('*');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].stripe_product_id).toBe('prod_starter');
+  });
+
+  test('a base plan and a developer tier coexist instead of overwriting', async () => {
+    await updateStoreSubscription(db, customer, sub('sub_base', 'prod_base'));
+    await updateStoreSubscription(db, customer, sub('sub_dev', 'prod_growth'));
+
+    const base = await db('subscriptions').select('*');
+    expect(base).toHaveLength(1);
+    expect(base[0].stripe_product_id).toBe('prod_base');
+    expect(Boolean(base[0].active)).toBe(true);
+
+    const dev = await db('subscriptions_developer').select('*');
+    expect(dev).toHaveLength(1);
+    expect(dev[0].stripe_product_id).toBe('prod_growth');
+  });
+
+  test('two concurrent developer tiers are two rows, not one overwriting the other', async () => {
+    await updateStoreSubscription(db, customer, sub('sub_1', 'prod_starter'));
+    await updateStoreSubscription(db, customer, sub('sub_2', 'prod_growth'));
+
+    const rows = await db('subscriptions_developer')
+      .select('stripe_product_id')
+      .orderBy('stripe_product_id');
+    expect(rows.map((r) => r.stripe_product_id)).toEqual([
+      'prod_growth',
+      'prod_starter',
+    ]);
+  });
+
+  test('cancelling the developer tier leaves the base plan active', async () => {
+    await updateStoreSubscription(db, customer, sub('sub_base', 'prod_base'));
+    await updateStoreSubscription(db, customer, sub('sub_dev', 'prod_starter'));
+    await updateStoreSubscription(
+      db,
+      customer,
+      sub('sub_dev', 'prod_starter', 'canceled')
+    );
+
+    const base = await db('subscriptions').first();
+    expect(Boolean(base.active)).toBe(true);
+
+    const dev = await db('subscriptions_developer').first();
+    expect(Boolean(dev.active)).toBe(false);
+  });
+
+  test('the same developer subscription updating twice stays one row', async () => {
+    await updateStoreSubscription(db, customer, sub('sub_1', 'prod_starter'));
+    await updateStoreSubscription(
+      db,
+      customer,
+      sub('sub_1', 'prod_starter', 'past_due')
+    );
+
+    expect(await db('subscriptions_developer').select('*')).toHaveLength(1);
+  });
+
+  // Exported so the ops sync path can apply the identical check; it writes to
+  // subscriptions directly and would otherwise re-create the collapse on one
+  // press of the Sync button.
+  test('identifies developer tier products from the developer_tiers table', async () => {
+    expect(await isDeveloperTierProduct(db, 'prod_starter')).toBe(true);
+    expect(await isDeveloperTierProduct(db, 'prod_growth')).toBe(true);
+    expect(await isDeveloperTierProduct(db, 'prod_base')).toBe(false);
   });
 });
