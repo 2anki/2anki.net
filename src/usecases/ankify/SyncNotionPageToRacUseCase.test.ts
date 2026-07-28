@@ -562,6 +562,84 @@ describe('SyncNotionPageToRacUseCase', () => {
     );
   });
 
+  test('skips the database probe when a known page yields zero cards', async () => {
+    (walkNotionPageForFlashcards as jest.Mock).mockResolvedValue(
+      emptyWalkResult()
+    );
+
+    const repos = makeRepos();
+    repos.subscriptions = makeSubscriptionsRepo(
+      sampleSubscription({ id: 7, notion_object_type: 'page' })
+    );
+    const ac = makeAnkiConnectStub();
+    const useCase = new SyncNotionPageToRacUseCase(
+      repos.clients,
+      repos.mappings,
+      repos.conflicts,
+      repos.subscriptions,
+      repos.logs,
+      repos.notionRepo,
+      () => ac,
+      () => async () => []
+    );
+
+    const result = expectSyncResult(
+      await useCase.execute({
+        owner: 42,
+        notionPageId: 'page-id',
+        knownObjectType: 'page',
+        trigger: 'polling',
+      })
+    );
+
+    expect(walkNotionDatabaseForFlashcards).not.toHaveBeenCalled();
+    expect(result.created).toBe(0);
+  });
+
+  test('records the page object type when the database probe reports the id is a page', async () => {
+    (walkNotionPageForFlashcards as jest.Mock).mockResolvedValue(
+      emptyWalkResult()
+    );
+    (walkNotionDatabaseForFlashcards as jest.Mock).mockRejectedValue(
+      Object.assign(
+        new Error(
+          'Provided database_id page-id is a page, not a database. Use the pages API instead, or pass the ID of the database itself.'
+        ),
+        { code: 'validation_error' }
+      )
+    );
+
+    const repos = makeRepos();
+    repos.subscriptions = makeSubscriptionsRepo(
+      sampleSubscription({ id: 7, notion_object_type: null })
+    );
+    const ac = makeAnkiConnectStub();
+    const useCase = new SyncNotionPageToRacUseCase(
+      repos.clients,
+      repos.mappings,
+      repos.conflicts,
+      repos.subscriptions,
+      repos.logs,
+      repos.notionRepo,
+      () => ac,
+      () => async () => []
+    );
+
+    const result = expectSyncResult(
+      await useCase.execute({
+        owner: 42,
+        notionPageId: 'page-id',
+        trigger: 'polling',
+      })
+    );
+
+    expect(repos.subscriptions.recordObjectType).toHaveBeenCalledWith(
+      7,
+      'page'
+    );
+    expect(result.created).toBe(0);
+  });
+
   test('propagates a non-database validation error without a database walk', async () => {
     const otherError = Object.assign(new Error('Something else broke'), {
       code: 'validation_error',
