@@ -1758,6 +1758,154 @@ describe('UploadService.restartClaudeJob — concurrent restart guard', () => {
   });
 });
 
+describe('UploadService.restartClaudeJob — replays original conversion settings', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  let db: Knex;
+  let workspaceBase: string;
+
+  beforeAll(() => {
+    workspaceBase = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'restart-settings-base-')
+    );
+    process.env.WORKSPACE_BASE = workspaceBase;
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+    fs.rmSync(workspaceBase, { recursive: true, force: true });
+  });
+
+  beforeEach(async () => {
+    mockGenerateDeckInfo.mockReset();
+    db = knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await db.schema.createTable('jobs', (t) => {
+      t.increments('id');
+      t.string('owner').notNullable();
+      t.string('object_id').notNullable();
+      t.string('title');
+      t.string('type');
+      t.string('status');
+      t.timestamp('created_at').defaultTo(db.fn.now());
+      t.timestamp('last_edited_time');
+      t.string('job_reason_failure');
+      t.integer('card_count');
+    });
+    fs.rmSync(path.join(workspaceBase, 'job-obj-settings'), {
+      recursive: true,
+      force: true,
+    });
+    const workspaceDir = path.join(workspaceBase, 'job-obj-settings');
+    fs.mkdirSync(workspaceDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(workspaceDir, 'page.html'),
+      '<html><body>Q/A</body></html>'
+    );
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  function buildRestartRequest() {
+    return {
+      params: { jobId: 'job-obj-settings' },
+      body: {},
+    } as unknown as express.Request;
+  }
+
+  async function insertDoneJob() {
+    await db('jobs').insert({
+      owner: '42',
+      object_id: 'job-obj-settings',
+      title: 'Deck',
+      type: 'claude',
+      status: 'done',
+      last_edited_time: new Date(),
+    });
+  }
+
+  async function restartAndWaitForGenerate(): Promise<unknown[]> {
+    const service = new UploadService(
+      buildRepository(),
+      new JobRepository(db),
+      buildUsersRepo()
+    );
+    const generateCalled = new Promise<unknown[]>((resolve) => {
+      mockGenerateDeckInfo.mockImplementation((...args: unknown[]) => {
+        resolve(args);
+        return new Promise(() => {});
+      });
+    });
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+    await service.restartClaudeJob(buildRestartRequest(), res);
+    return generateCalled;
+  }
+
+  it('replays persisted instructions, card size, and comprehensive option', async () => {
+    await insertDoneJob();
+    fs.writeFileSync(
+      path.join(workspaceBase, 'job-obj-settings', 'conversion-settings.json'),
+      JSON.stringify({
+        'user-instructions': 'Summarize each slide into one dense card',
+        'card-size': 'detailed',
+        'ai-comprehensive': 'true',
+      })
+    );
+
+    const args = await restartAndWaitForGenerate();
+
+    expect(args[0]).toBe('<html><body>Q/A</body></html>');
+    expect(args[2]).toBe('Summarize each slide into one dense card');
+    expect(args[5]).toBe('detailed');
+    expect(args[7]).toMatchObject({
+      isPaying: true,
+      userId: 42,
+      comprehensive: true,
+    });
+  });
+
+  it('does not treat the persisted settings file as a media file', async () => {
+    await insertDoneJob();
+    fs.writeFileSync(
+      path.join(workspaceBase, 'job-obj-settings', 'conversion-settings.json'),
+      JSON.stringify({ 'card-size': 'short' })
+    );
+
+    const args = await restartAndWaitForGenerate();
+
+    expect(args[1]).toEqual([]);
+  });
+
+  it('restarts with defaults when no settings file was persisted', async () => {
+    await insertDoneJob();
+
+    const args = await restartAndWaitForGenerate();
+
+    expect(args[0]).toBe('<html><body>Q/A</body></html>');
+    expect(args[2]).toBeUndefined();
+    expect(args[7]).toMatchObject({ isPaying: true, userId: 42 });
+  });
+
+  it('restarts with defaults when the settings file is corrupt', async () => {
+    await insertDoneJob();
+    fs.writeFileSync(
+      path.join(workspaceBase, 'job-obj-settings', 'conversion-settings.json'),
+      'not json {'
+    );
+
+    const args = await restartAndWaitForGenerate();
+
+    expect(args[0]).toBe('<html><body>Q/A</body></html>');
+    expect(args[2]).toBeUndefined();
+  });
+});
+
 describe('UploadService.handleUpload — claude flag does not bypass the card limit', () => {
   const originalWorkspaceBase = process.env.WORKSPACE_BASE;
 
@@ -1863,6 +2011,48 @@ describe('UploadService.handleUpload — claude flag does not bypass the card li
     expect(create).toHaveBeenCalled();
     expect(capturedStatus()).toBe(202);
     expect(capturedJson()).toEqual({ jobId: 'test-ws-id' });
+  });
+
+  it('persists the conversion settings body into the workspace for restarts', async () => {
+    const previousLocation = mockWorkspaceLocation;
+    mockWorkspaceLocation = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'ws-settings-persist-')
+    );
+    try {
+      const usersRepo = buildUsersRepo();
+      const { repo: jobRepo } = buildJobRepo();
+
+      const service = new UploadService(buildRepository(), jobRepo, usersRepo);
+      const req = buildRequest({
+        body: {
+          'claude-ai-flashcards': 'true',
+          'user-instructions': 'Summarize each slide into one dense card',
+          'card-size': 'detailed',
+          'ai-comprehensive': 'true',
+        },
+      });
+      const { res, capturedStatus } = buildResponse();
+      (res.locals as Record<string, unknown>).owner = 42;
+      (res.locals as Record<string, unknown>).subscriber = true;
+
+      await service.handleUpload(req, res);
+
+      expect(capturedStatus()).toBe(202);
+      const saved = JSON.parse(
+        fs.readFileSync(
+          path.join(mockWorkspaceLocation, 'conversion-settings.json'),
+          'utf8'
+        )
+      );
+      expect(saved).toMatchObject({
+        'user-instructions': 'Summarize each slide into one dense card',
+        'card-size': 'detailed',
+        'ai-comprehensive': 'true',
+      });
+    } finally {
+      fs.rmSync(mockWorkspaceLocation, { recursive: true, force: true });
+      mockWorkspaceLocation = previousLocation;
+    }
   });
 });
 

@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-restart-keeps-settings",
+  "date": "2026-07-28",
+  "type": "fix",
+  "title": "Restarting a conversion keeps your AI instructions, card size, and comprehensive mode"
+}
