@@ -1,7 +1,10 @@
 import type { IEventsMetricsRepository } from '../../data_layer/EventsMetricsRepository';
 import type { IJobsMetricsRepository } from '../../data_layer/JobsMetricsRepository';
 import type { ConversionErrorCount } from './ConversionMetricsService';
-import { ConversionMetricsService } from './ConversionMetricsService';
+import {
+  ConversionMetricsService,
+  MIN_COHORT_SAMPLE,
+} from './ConversionMetricsService';
 
 function makeFailingRepo(): IJobsMetricsRepository {
   return {
@@ -221,5 +224,85 @@ describe('ConversionMetricsService — shape assembly', () => {
     );
 
     jest.useRealTimers();
+  });
+});
+
+describe('ConversionMetricsService — deck quality cohorts', () => {
+  function makeScoresRepo(rows: unknown[]) {
+    return {
+      record: jest.fn().mockResolvedValue(undefined),
+      distribution: jest.fn().mockResolvedValue(rows),
+    } as never;
+  }
+
+  const fullCohort = {
+    engine: 'parser',
+    inputFormat: 'pdf',
+    sampleSize: 120,
+    shapedSampleSize: 118,
+    noCardsCount: 8,
+    firstSeen: '2026-07-01',
+    lastSeen: '2026-07-28',
+    compositeP10: 0.41,
+    compositeP25: 0.5,
+    compositeP50: 0.63,
+    compositeP90: 0.82,
+    cardCountP50: 34,
+    medianBackLenP50: 180,
+    blankBackRateP90: 0.05,
+  };
+
+  it('reports percentiles for a cohort with enough conversions', async () => {
+    const service = new ConversionMetricsService(
+      makeStubRepo(),
+      makeStubEventsRepo(),
+      makeScoresRepo([fullCohort])
+    );
+
+    const result = await service.getMetrics();
+    expect(result.deck_quality_cohorts_30d).toEqual([
+      expect.objectContaining({
+        engine: 'parser',
+        input_format: 'pdf',
+        enough_data: true,
+        composite_p50: 0.63,
+      }),
+    ]);
+  });
+
+  it('withholds percentiles below the minimum sample but keeps the cohort visible', async () => {
+    const service = new ConversionMetricsService(
+      makeStubRepo(),
+      makeStubEventsRepo(),
+      makeScoresRepo([{ ...fullCohort, sampleSize: MIN_COHORT_SAMPLE - 1 }])
+    );
+
+    const cohorts = (await service.getMetrics()).deck_quality_cohorts_30d;
+    expect(cohorts).toHaveLength(1);
+    expect(cohorts![0]).toMatchObject({
+      enough_data: false,
+      composite_p50: null,
+      composite_p10: null,
+    });
+    expect(cohorts![0].sample_size).toBe(MIN_COHORT_SAMPLE - 1);
+  });
+
+  it('counts a zero-card conversion in the no-cards rate, not the score sample', async () => {
+    const service = new ConversionMetricsService(
+      makeStubRepo(),
+      makeStubEventsRepo(),
+      makeScoresRepo([{ ...fullCohort, sampleSize: 92, noCardsCount: 8 }])
+    );
+
+    const cohorts = (await service.getMetrics()).deck_quality_cohorts_30d;
+    expect(cohorts![0].no_cards_rate).toBeCloseTo(8 / 100);
+  });
+
+  it('returns null rather than throwing when no scores repository is wired', async () => {
+    const service = new ConversionMetricsService(
+      makeStubRepo(),
+      makeStubEventsRepo()
+    );
+    expect((await service.getMetrics()).deck_quality_cohorts_30d).toBeNull();
   });
 });

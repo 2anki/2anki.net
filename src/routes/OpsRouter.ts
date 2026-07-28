@@ -46,6 +46,7 @@ import { DeleteInactiveUsersUseCase } from '../usecases/ops/DeleteInactiveUsersU
 import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import { UserVisibleErrorsRepository } from '../data_layer/UserVisibleErrorsRepository';
 import { JobsMetricsRepository } from '../data_layer/JobsMetricsRepository';
+import { ConversionRuleScoresRepository } from '../data_layer/ConversionRuleScoresRepository';
 import { EventsMetricsRepository } from '../data_layer/EventsMetricsRepository';
 import { SyncStripeSubscriptionsUseCase } from '../usecases/ops/SyncStripeSubscriptionsUseCase';
 import { GetUploadFunnelUseCase } from '../usecases/ops/GetUploadFunnelUseCase';
@@ -101,7 +102,8 @@ const OpsRouter = () => {
 
   const conversionMetricsService = new ConversionMetricsService(
     new JobsMetricsRepository(database),
-    new EventsMetricsRepository(database)
+    new EventsMetricsRepository(database),
+    new ConversionRuleScoresRepository(database)
   );
   const performanceMetricsService = new PerformanceMetricsService(
     database,

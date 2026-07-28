@@ -1,3 +1,7 @@
+import {
+  CURRENT_SCORER_VERSION,
+  type IConversionRuleScoresRepository,
+} from '../../data_layer/ConversionRuleScoresRepository';
 import type { IEventsMetricsRepository } from '../../data_layer/EventsMetricsRepository';
 import type { IJobsMetricsRepository } from '../../data_layer/JobsMetricsRepository';
 
@@ -23,6 +27,21 @@ export interface FailedConversionsWeekPoint {
   count: number;
 }
 
+export interface DeckQualityCohort {
+  engine: string;
+  input_format: string;
+  sample_size: number;
+  no_cards_count: number;
+  no_cards_rate: number | null;
+  enough_data: boolean;
+  composite_p10: number | null;
+  composite_p50: number | null;
+  composite_p90: number | null;
+  card_count_p50: number | null;
+  median_back_len_p50: number | null;
+  blank_back_rate_p90: number | null;
+}
+
 export interface ConversionMetricsResponse {
   free_conversions_7d: number | null;
   paid_conversions_7d: number | null;
@@ -34,17 +53,54 @@ export interface ConversionMetricsResponse {
   failed_conversions_weekly: FailedConversionsWeekPoint[] | null;
   time_to_first_deck_median_minutes_30d: number | null;
   upload_to_download_rate_7d: number | null;
+  deck_quality_cohorts_30d: DeckQualityCohort[] | null;
 }
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
 const WEEKLY_HISTORY_WEEKS = 12;
 const COHORT_WINDOW_DAYS = 30;
 
+// A cohort below this many conversions is noise, not a distribution. Reported
+// with its sample size and no percentiles rather than dropped, so a format that
+// is failing but rare stays visible instead of silently vanishing.
+export const MIN_COHORT_SAMPLE = 30;
+
 export class ConversionMetricsService {
   constructor(
     private readonly repository: IJobsMetricsRepository,
-    private readonly eventsMetricsRepository: IEventsMetricsRepository
+    private readonly eventsMetricsRepository: IEventsMetricsRepository,
+    private readonly scoresRepository?: IConversionRuleScoresRepository
   ) {}
+
+  private async deckQualityCohorts(
+    since: Date
+  ): Promise<DeckQualityCohort[] | null> {
+    if (this.scoresRepository == null) return null;
+    const rows = await this.scoresRepository.distribution({
+      since,
+      scorerVersion: CURRENT_SCORER_VERSION,
+    });
+    return rows.map((row) => {
+      const enough = row.sampleSize >= MIN_COHORT_SAMPLE;
+      return {
+        engine: row.engine,
+        input_format: row.inputFormat,
+        sample_size: row.sampleSize,
+        no_cards_count: row.noCardsCount,
+        no_cards_rate:
+          row.sampleSize + row.noCardsCount === 0
+            ? null
+            : row.noCardsCount / (row.sampleSize + row.noCardsCount),
+        enough_data: enough,
+        composite_p10: enough ? row.compositeP10 : null,
+        composite_p50: enough ? row.compositeP50 : null,
+        composite_p90: enough ? row.compositeP90 : null,
+        card_count_p50: enough ? row.cardCountP50 : null,
+        median_back_len_p50: enough ? row.medianBackLenP50 : null,
+        blank_back_rate_p90: enough ? row.blankBackRateP90 : null,
+      };
+    });
+  }
 
   async getMetrics(): Promise<ConversionMetricsResponse> {
     const now = new Date();
@@ -70,6 +126,7 @@ export class ConversionMetricsService {
       failedConversionsWeeklyRows,
       timeToFirstDeck30d,
       uploadToDownloadRate7d,
+      deckQualityCohorts30d,
     ] = await Promise.allSettled([
       this.repository.countFreeConversions7d(sevenDaysAgo),
       this.repository.countPaidConversions7d(sevenDaysAgo),
@@ -81,6 +138,7 @@ export class ConversionMetricsService {
       this.repository.failedConversionsWeekly(earliestStart, weekEnd),
       this.eventsMetricsRepository.medianMinutesToFirstDeck(thirtyDaysAgo),
       this.eventsMetricsRepository.uploadToDownloadRate(sevenDaysAgo),
+      this.deckQualityCohorts(thirtyDaysAgo),
     ]);
 
     const failedConversionsWeekly =
@@ -126,6 +184,10 @@ export class ConversionMetricsService {
       upload_to_download_rate_7d:
         uploadToDownloadRate7d.status === 'fulfilled'
           ? uploadToDownloadRate7d.value
+          : null,
+      deck_quality_cohorts_30d:
+        deckQualityCohorts30d.status === 'fulfilled'
+          ? deckQualityCohorts30d.value
           : null,
     };
   }
