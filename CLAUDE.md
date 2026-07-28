@@ -39,22 +39,14 @@ Every PR is checked against all three — does it make the experience simpler/fa
 723 paying subs · 7 new paid/wk · 32 pass sales/wk · 10.1%/mo churn (DB approximation: 73 cancels/30d ÷ 723 active; 87% lifecycle per last-14d cancel reasons, not price) · 15,397 registered (down 376 from 2026-07-19 — inactive-user deletion outpacing 223 gross signups/wk, not churn). MRR/ARPU no longer tracked here (decision 2026-07-19) — dollar figures read off the Stripe dashboard when needed. Funnel events at `/api/ops/metrics`.
 Pricing v2 shipped 2026-06-10: $7.99/mo + $64/yr for new members, legacy $6/$60 lock-in until 21 Jun, annual default. Scheduled reads: v2 funnel week of 15 Jun (targets: ≥70 new paid/wk, page→checkout ≥10%, checkout→paid ≥50%); minimal-layout CTR guardrail 24 Jun.
 
-## Tech stack
-
-- Node 22.20.0 (`.nvmrc`), pnpm workspace, TypeScript ~6.0
-- Express 5, Knex + Postgres (with `better-sqlite3` for local), multer for upload
-- Jest + ts-jest, `*.test.ts` colocated next to source
-- Notion (`@notionhq/client`), Anthropic, Stripe, SendGrid, AWS S3
-- SonarCloud quality gate; oxlint + oxfmt (Oxc) run across both workspaces
-
 ## Entry points
 
 - `src/server.ts` — boots Express, wires routers, runs migrations on startup, marks interrupted Claude jobs.
 - `src/routes/` → `src/controllers/` → `src/usecases/` → `src/services/` → `src/data_layer/` (DB).
   Each layer has its own CLAUDE.md — read it before editing.
-- Hot path docs: @src/lib/parser/FEATURE.md, @src/services/NotionService/FEATURE.md, @src/services/observability/FEATURE.md, @src/lib/ankify/FEATURE.md
-- Copy and voice guide: @VOICE.md
-- MCP server setup: @.claude/MCP_README.md
+- Hot path docs — read the matching one before touching that surface: `src/lib/parser/FEATURE.md`, `src/services/NotionService/FEATURE.md`, `src/services/observability/FEATURE.md`, `src/lib/ankify/FEATURE.md`
+- Copy and voice guide: `VOICE.md` — read before writing or changing any user-facing string
+- MCP server setup: `.claude/MCP_README.md`
 - Deeper context: `Documentation/`, `ROADMAP.md`.
 
 ## Run it
@@ -173,17 +165,7 @@ Three core sub-agents in `.claude/agents/`:
 
 Default: `pm` produces a spec → `designer` validates UX (only if user-facing) → `engineer` implements and ships. For tiny fixes, skip to engineer.
 
-**Supporting cast** (specialists, invoke by name):
-
-- **conversion-funnel-analyst** (sonnet) — weekly funnel pull; names the biggest drop-off between landing → signup → upload → download → paid, plus churn cohorts and the cancel-flow funnel. Use before prioritization.
-- **seo-content** (opus) — landing-page content, topical clusters, internal linking, sitemap proposals. Designer owns in-product voice; this owns search-driven copy.
-- **seo-specialist** (opus) — technical SEO: crawlability, Core Web Vitals, structured data, SERP/AI-overview features, Search Console analysis. seo-content owns the words; this owns the search infrastructure under them.
-- **prod-incident-responder** (opus, worktree) — turns a recurring prod error into a single fix PR with a regression test. Use when logs show a repeat crash with no open PR.
-- **migration-reviewer** (sonnet) — read-only safety review of a Knex migration before flip-ready: locking, backfill, rollback, kanel.
-- **support-triage** (sonnet) — classify inbound `.eml` into bug / feature-request / billing / how-to / spam / urgent; route to the right next action. Reply itself stays in `/support-reply`.
-- **a11y-reviewer** (sonnet) — read-only accessibility punch list on a `web/` diff before browser-check sign-off.
-- **test-writer** (opus, worktree) — colocated Jest tests for a given source file; tests-only, never edits source.
-- **dead-code-auditor** (haiku) — read-only scan for unused exports, files, branches in `src/` and `web/src/`.
+**Supporting cast** (specialists, invoke by name): conversion-funnel-analyst, seo-content, seo-specialist, prod-incident-responder, migration-reviewer, support-triage, a11y-reviewer, test-writer, dead-code-auditor. Each one's description and when-to-use lives in its `.claude/agents/*.md` frontmatter and loads into the session's agent list — don't duplicate them here.
 
 Trio conventions: be opinionated (one recommendation, not five options); specs fit on one page; say what *not* to build; reply to support email *as a draft for Alexander to send*, saved as a `.txt` file in Downloads (see Gotchas).
 
