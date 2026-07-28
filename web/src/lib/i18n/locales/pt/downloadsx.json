@@ -59,7 +59,7 @@
     "text_other": "Não foi possível converter {{count}} blocos desta página ({{types}})."
   },
   "structureRescued": {
-    "text": "Cartões criados a partir de {{structure}} desta página, já que ela não tinha toggles.",
+    "text": "Cartões criados a partir {{structure}} desta página, já que ela não tinha toggles.",
     "structures": {
       "heading": "dos títulos",
       "bullets": "das listas com marcadores",

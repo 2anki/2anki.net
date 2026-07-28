@@ -66,7 +66,7 @@
       "numbered": "las listas numeradas",
       "columns": "las columnas de la tabla",
       "quote": "las citas",
-      "guess": "el texto de pregunta y respuesta"
+      "guess": "las preguntas y respuestas"
     }
   },
   "columnsGuessed": {
