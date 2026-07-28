@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-table-cards-keep-every-column",
+  "date": "2026-07-28",
+  "type": "fix",
+  "title": "Cards from a table keep every column instead of collapsing rows that share a term into one card"
+}
