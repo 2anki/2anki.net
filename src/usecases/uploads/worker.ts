@@ -188,6 +188,11 @@ async function processFile(
       singleFilePackage.overSplit = detectOverSplit(
         (d.deck ?? []).flatMap((deck) => deck.cards.map((card) => card.name))
       );
+      // PrepareDeck scores inside whichever branch ran, because the Claude
+      // branch returns deck: [] and scoring from `deck` out here would measure
+      // nothing on every AI conversion.
+      singleFilePackage.engine = d.engine;
+      singleFilePackage.score = d.score;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
     }

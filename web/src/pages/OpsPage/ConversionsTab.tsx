@@ -12,6 +12,7 @@ import CopyForClaudeButton from './CopyForClaudeButton';
 import ChartPanel from './charts/ChartPanel';
 import FailedConversionsWeeklyChart from './charts/FailedConversionsWeeklyChart';
 import FailureReasonsChart from './charts/FailureReasonsChart';
+import DeckQualitySection from './DeckQualitySection';
 import MetricCard, { formatNumberOrDash } from './MetricCard';
 import styles from './OpsPage.module.css';
 import { useConversionMetrics } from './useConversionMetrics';
@@ -185,6 +186,8 @@ export default function ConversionsTab() {
           </ChartPanel>
         </div>
       </section>
+
+      <DeckQualitySection cohorts={visible?.deck_quality_cohorts_30d ?? null} />
     </>
   );
 }

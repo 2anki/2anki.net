@@ -21,6 +21,7 @@ describe('conversionTypes', () => {
       failed_conversions_weekly: [week],
       time_to_first_deck_median_minutes_30d: 42.5,
       upload_to_download_rate_7d: 25,
+      deck_quality_cohorts_30d: null,
     };
 
     expect(response.free_conversions_7d).toBe(10);
@@ -42,6 +43,7 @@ describe('conversionTypes', () => {
       failed_conversions_weekly: null,
       time_to_first_deck_median_minutes_30d: null,
       upload_to_download_rate_7d: null,
+      deck_quality_cohorts_30d: null,
     };
     expect(response.free_conversions_7d).toBeNull();
     expect(response.failed_conversions_weekly).toBeNull();

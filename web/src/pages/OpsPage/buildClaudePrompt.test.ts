@@ -59,6 +59,7 @@ function makeConversions(
     failed_conversions_weekly: [{ week: '2026-06-01', count: 3 }],
     time_to_first_deck_median_minutes_30d: 42,
     upload_to_download_rate_7d: 25.4,
+    deck_quality_cohorts_30d: null,
     ...overrides,
   };
 }

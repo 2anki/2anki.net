@@ -39,6 +39,7 @@ const buildSampleMetrics = (
   })),
   time_to_first_deck_median_minutes_30d: 42,
   upload_to_download_rate_7d: 25.4,
+  deck_quality_cohorts_30d: null,
   ...overrides,
 });
 

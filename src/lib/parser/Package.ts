@@ -1,3 +1,6 @@
+import type { ConversionEngine } from './conversionEngine';
+import type { DeckScore } from './scoreCandidateDeck';
+
 class Package {
   name: string;
 
@@ -14,6 +17,12 @@ class Package {
   parsePath?: string;
 
   overSplit = false;
+
+  // Set by PrepareDeck, inside whichever branch produced the deck. The parent
+  // process persists them — the worker pool has no database handle.
+  engine?: ConversionEngine;
+
+  score?: DeckScore;
 
   constructor(
     name: string,

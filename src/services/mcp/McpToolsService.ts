@@ -636,7 +636,10 @@ export class McpToolsService {
       cookies: {},
     } as unknown as express.Request;
     const res = new CapturingResponse(req);
-    res.locals = locals;
+    // The synthetic request carries no headers or path, so nothing downstream
+    // can tell an MCP conversion from a browser upload. UploadService reads this
+    // to record the entry point on the conversion score.
+    res.locals = { ...locals, mcp_auth: true };
     await this.uploadEntry(req, res as unknown as express.Response);
     return res;
   }

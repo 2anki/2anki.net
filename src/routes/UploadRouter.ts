@@ -33,6 +33,7 @@ import { DeleteDropboxUploadUseCase } from '../usecases/uploads/DeleteDropboxUpl
 import { GetGoogleDriveUploadsUseCase } from '../usecases/uploads/GetGoogleDriveUploadsUseCase';
 import { DeleteGoogleDriveUploadUseCase } from '../usecases/uploads/DeleteGoogleDriveUploadUseCase';
 import DeleteJobUseCase from '../usecases/jobs/DeleteJobUseCase';
+import { ConversionRuleScoresRepository } from '../data_layer/ConversionRuleScoresRepository';
 import NotionTopLevelPagesRepository from '../data_layer/NotionTopLevelPagesRepository';
 import { GetRecentSourcesUseCase } from '../usecases/uploads/GetRecentSourcesUseCase';
 import { RecentSourcesController } from '../controllers/Upload/RecentSourcesController';
@@ -56,7 +57,8 @@ const UploadRouter = () => {
         cardsUsed,
         limit,
         tierKey
-      )
+      ),
+    new ConversionRuleScoresRepository(database)
   );
   const jobController = new JobController(
     jobService,

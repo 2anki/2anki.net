@@ -24,6 +24,12 @@ import { isImageOnlyUpload } from '../lib/upload/isImageOnlyUpload';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
 import { isExpectedClientFault } from '../lib/misc/isExpectedClientFault';
+import type { DeckScore } from '../lib/parser/scoreCandidateDeck';
+import type {
+  ConversionScoreSource,
+  IConversionRuleScoresRepository,
+} from '../data_layer/ConversionRuleScoresRepository';
+import type { ConversionEngine } from '../lib/parser/conversionEngine';
 import {
   MARKDOWN_LIKELY_LOSSY_REASON,
   jobFailureReasonFromError,
@@ -131,6 +137,49 @@ function resolveUploadWarning(warnings: string[] | undefined): string | null {
     return MARKDOWN_HEURISTIC_WARNING;
   }
   return null;
+}
+
+// The extension of the first uploaded file, lowercased. A shape metric, never
+// the filename itself — see .claude/rules/support-confidentiality.md.
+//
+// Allowlisted rather than passed through: the value is a cohort key, and an
+// unbounded one lets any upload mint a cohort of size one. Anything unrecognised
+// buckets into 'other' so the cardinality stays fixed.
+const KNOWN_INPUT_FORMATS = new Set([
+  'zip',
+  'html',
+  'htm',
+  'md',
+  'markdown',
+  'csv',
+  'tsv',
+  'xlsx',
+  'xls',
+  'pdf',
+  'docx',
+  'doc',
+  'pptx',
+  'ppt',
+  'txt',
+  'apkg',
+  'opml',
+  'epub',
+  'xml',
+  'json',
+  'png',
+  'jpg',
+  'jpeg',
+  'webp',
+  'gif',
+]);
+
+function uploadInputFormat(files: UploadedFile[] | undefined): string {
+  const name = files?.[0]?.originalname;
+  if (typeof name !== 'string') return 'unknown';
+  const dot = name.lastIndexOf('.');
+  if (dot < 0 || dot === name.length - 1) return 'unknown';
+  const ext = name.slice(dot + 1).toLowerCase();
+  return KNOWN_INPUT_FORMATS.has(ext) ? ext : 'other';
 }
 
 function sumDroppedImages(packages: { droppedImageCount?: number }[]): number {
@@ -242,7 +291,8 @@ class UploadService {
     private readonly conversionOutputStatsRepository?: IConversionOutputStatsRepository,
     private readonly parsePathSignatureRepository?: IParsePathSignatureRepository,
     private readonly apiKeyUsageRepository?: IApiKeyUsageRepository,
-    private readonly apiUsageWarner?: ApiUsageWarner
+    private readonly apiUsageWarner?: ApiUsageWarner,
+    private readonly conversionRuleScoresRepository?: IConversionRuleScoresRepository
   ) {}
 
   private apiTierOf(res: express.Response): ResolvedDeveloperTier | null {
@@ -295,12 +345,66 @@ class UploadService {
     });
   }
 
+  // Every conversion is scored, not just fallbacks — without the baseline there
+  // is nothing to compare a rescued deck against. Fire and forget: a metrics
+  // write must never fail a conversion the user is waiting on.
+  // The entry point, not the engine. resolveUploadSource already distinguishes
+  // web/app/dropbox/google_drive from the request; the two machine callers are
+  // only visible on res.locals, and an MCP request also carries api_key_auth,
+  // so MCP is checked first or every MCP conversion would record as 'api'.
+  private resolveScoreSource(
+    req: express.Request,
+    res: express.Response
+  ): ConversionScoreSource {
+    if (res.locals.mcp_auth === true) return 'mcp';
+    if (res.locals.api_key_auth === true) return 'api';
+    return this.resolveUploadSource(req) as ConversionScoreSource;
+  }
+
+  private recordDeckScores(
+    packages: {
+      parsePath?: string;
+      engine?: ConversionEngine;
+      score?: DeckScore;
+    }[],
+    owner: number | null,
+    source: ConversionScoreSource,
+    inputFormat: string
+  ): void {
+    if (this.conversionRuleScoresRepository == null) return;
+    for (const pkg of packages) {
+      if (pkg.score == null) continue;
+      this.conversionRuleScoresRepository
+        .record({
+          owner,
+          source,
+          engine: pkg.engine ?? 'parser',
+          inputFormat,
+          rule: pkg.parsePath ?? 'unknown',
+          wasFallback: pkg.parsePath === 'unclassified',
+          outcome: pkg.score.cardCount > 0 ? 'shipped' : 'no_cards',
+          score: pkg.score,
+        })
+        .catch((error) =>
+          console.error(
+            '[UploadService] failed to record conversion rule score',
+            error
+          )
+        );
+    }
+  }
+
   private recordConversionOutput(
     packages: {
       cardCount?: number;
       emptyBackCount?: number;
       parsePath?: string;
-    }[]
+      engine?: ConversionEngine;
+      score?: DeckScore;
+    }[],
+    owner?: number | null,
+    source?: ConversionScoreSource,
+    inputFormat?: string
   ): void {
     const cards = packages.reduce((sum, p) => sum + (p.cardCount ?? 0), 0);
     const emptyBack = packages.reduce(
@@ -723,8 +827,23 @@ class UploadService {
       )
       .then(async ({ packages }) => {
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
+        // Scores record either way. The conversion-output stats below stay
+        // behind the gate — they count delivered cards — but a conversion that
+        // produced nothing is the most informative row the score table can
+        // hold, and gating it left the corpus made only of successes.
+        this.recordDeckScores(
+          packages,
+          ownerId,
+          this.resolveScoreSource(req, res),
+          uploadInputFormat(req.files as UploadedFile[])
+        );
         if (totalCards > 0) {
-          this.recordConversionOutput(packages);
+          this.recordConversionOutput(
+            packages,
+            ownerId,
+            this.resolveScoreSource(req, res),
+            uploadInputFormat(req.files as UploadedFile[])
+          );
           logEmptyBackAttribution(packages, this.resolveUploadSource(req));
           await this.checkApiCardLimit(res, owner, totalCards);
           await this.promoteClaudeJobToUpload(
@@ -814,6 +933,15 @@ class UploadService {
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
     const authenticated = hasSessionToken(req);
 
+    // Before the empty-deck throw, so a document that produced nothing still
+    // lands a row — that population is the one a rescue has to clear.
+    this.recordDeckScores(
+      packages,
+      owner != null ? Number(owner) : null,
+      this.resolveScoreSource(req, res),
+      uploadInputFormat(req.files as UploadedFile[])
+    );
+
     if (totalCards === 0) {
       logNoPackageDiagnostics(req.files as UploadedFile[]);
       track('conversion_failed', {
@@ -828,7 +956,12 @@ class UploadService {
       throw new EmptyDeckError();
     }
 
-    this.recordConversionOutput(packages);
+    this.recordConversionOutput(
+      packages,
+      owner != null ? Number(owner) : null,
+      this.resolveScoreSource(req, res),
+      uploadInputFormat(req.files as UploadedFile[])
+    );
     logEmptyBackAttribution(packages, this.resolveUploadSource(req));
 
     if (owner != null) {

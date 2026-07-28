@@ -40,6 +40,13 @@ jest.mock('../../../../data_layer/ConversionOutputStatsRepository', () => ({
     .mockImplementation(() => ({ record: mockRecordOutputStats })),
 }));
 
+const mockRecordDeckScore = jest.fn().mockResolvedValue(undefined);
+jest.mock('../../../../data_layer/ConversionRuleScoresRepository', () => ({
+  ConversionRuleScoresRepository: jest
+    .fn()
+    .mockImplementation(() => ({ record: mockRecordDeckScore })),
+}));
+
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -378,6 +385,84 @@ describe('performConversion — heavy pipeline', () => {
       baseRequest.id,
       baseRequest.owner,
       EMPTY_DECK_FAILURE_REASON
+    );
+  });
+
+  it('records a Notion deck score with source notion and engine parser', async () => {
+    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue({
+        ws: {},
+        exporter: {},
+        settings: {},
+        bl: {},
+        rules: {},
+      }),
+    }));
+    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue([
+        {
+          cards: [
+            { name: 'What is ATP?', back: 'Adenosine triphosphate.' },
+            { name: 'What is DNA?', back: 'Deoxyribonucleic acid.' },
+          ],
+        },
+      ]),
+    }));
+    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue(undefined),
+    }));
+
+    await performConversion(mockDatabase, baseRequest);
+
+    expect(mockRecordDeckScore).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'notion',
+        engine: 'parser',
+        inputFormat: 'notion',
+        outcome: 'shipped',
+      })
+    );
+  });
+
+  it('records a no_cards score for a Notion conversion that yields no cards', async () => {
+    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue({
+        ws: {},
+        exporter: {},
+        settings: {},
+        bl: {},
+        rules: {},
+      }),
+    }));
+    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue([{ cards: [] }]),
+    }));
+
+    await performConversion(mockDatabase, baseRequest);
+
+    expect(mockRecordDeckScore).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'notion', outcome: 'no_cards' })
+    );
+  });
+
+  it('maps a database job to the notion source, not upload', async () => {
+    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue({
+        ws: {},
+        exporter: {},
+        settings: {},
+        bl: {},
+        rules: {},
+      }),
+    }));
+    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue([{ cards: [] }]),
+    }));
+
+    await performConversion(mockDatabase, { ...baseRequest, type: 'database' });
+
+    expect(mockRecordDeckScore).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'notion' })
     );
   });
 
