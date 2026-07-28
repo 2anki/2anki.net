@@ -25,6 +25,10 @@ import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
 import { isExpectedClientFault } from '../lib/misc/isExpectedClientFault';
 import type { DeckScore } from '../lib/parser/scoreCandidateDeck';
+import {
+  CONVERSION_TRUNCATED_MESSAGE,
+  FileConversionError,
+} from '../infrastracture/adapters/fileConversion/claudeFileConversion';
 import type {
   ConversionScoreSource,
   IConversionRuleScoresRepository,
@@ -880,6 +884,8 @@ class UploadService {
           err instanceof EmptyDeckError ||
           err instanceof ClaudeParseError ||
           err instanceof ClaudeLargeSectionError ||
+          (err instanceof FileConversionError &&
+            err.message === CONVERSION_TRUNCATED_MESSAGE) ||
           err instanceof ImageOnlyContentError ||
           (err instanceof Error && isExpectedClientFault(err)) ||
           (err instanceof Error && isPdfPasswordSentinel(err.message)) ||

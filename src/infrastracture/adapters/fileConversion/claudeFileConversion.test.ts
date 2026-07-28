@@ -1,16 +1,18 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { convertWithClaude, FileConversionError } from './claudeFileConversion';
 
-const makeAnthropicMock = (responseText: string) => ({
+const makeAnthropicMock = (responseText: string, stopReason = 'end_turn') => ({
   messages: {
     create: jest.fn().mockResolvedValue({
       content: [{ type: 'text', text: responseText }],
+      stop_reason: stopReason,
     }),
   },
   beta: {
     messages: {
       create: jest.fn().mockResolvedValue({
         content: [{ type: 'text', text: responseText }],
+        stop_reason: stopReason,
       }),
     },
   },
@@ -103,14 +105,55 @@ describe('convertWithClaude', () => {
     expect(mock.beta.messages.create).not.toHaveBeenCalled();
   });
 
-  it('uses 8192 max_tokens', async () => {
+  it('uses 32768 max_tokens', async () => {
     const mock = makeAnthropicMock('<p>result</p>');
     await convertWithClaude(mock as unknown as Anthropic, 'system prompt', [
       { type: 'text', text: 'user text' },
     ]);
 
     const callArg = (mock.messages.create as jest.Mock).mock.calls[0][0];
-    expect(callArg.max_tokens).toBe(8192);
+    expect(callArg.max_tokens).toBe(32768);
+  });
+
+  it('throws instead of returning a silently truncated document', async () => {
+    const mock = makeAnthropicMock('<p>first half of the docu', 'max_tokens');
+
+    await expect(
+      convertWithClaude(mock as unknown as Anthropic, 'system prompt', [
+        { type: 'text', text: 'user text' },
+      ])
+    ).rejects.toThrow(/too large to convert in one pass/);
+  });
+
+  it('throws on truncation on the PDF path too', async () => {
+    const mock = makeAnthropicMock('<p>first half', 'max_tokens');
+
+    await expect(
+      convertWithClaude(
+        mock as unknown as Anthropic,
+        'system prompt',
+        [{ type: 'text', text: 'user text' }],
+        { pdf: true }
+      )
+    ).rejects.toThrow(/too large to convert in one pass/);
+  });
+
+  it('joins every text block instead of reading only the first', async () => {
+    const mock = makeAnthropicMock('');
+    (mock.messages.create as jest.Mock).mockResolvedValue({
+      content: [
+        { type: 'text', text: '<p>part one</p>' },
+        { type: 'text', text: '<p>part two</p>' },
+      ],
+      stop_reason: 'end_turn',
+    });
+
+    const result = await convertWithClaude(
+      mock as unknown as Anthropic,
+      'system prompt',
+      [{ type: 'text', text: 'user text' }]
+    );
+    expect(result).toBe('<p>part one</p><p>part two</p>');
   });
 
   it('uses the default model when CLAUDE_FILE_CONVERSION_MODEL is unset', async () => {
