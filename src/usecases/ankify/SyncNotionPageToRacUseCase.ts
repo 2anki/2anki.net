@@ -48,6 +48,7 @@ import { IUnsupportedNotionBlockRepository } from '../../data_layer/UnsupportedN
 import { NoActiveAnkifyClientError } from './SendUploadToRacUseCase';
 import { NotionNotConnectedError } from './ExportReviewDataToNotionUseCase';
 import { isNotionDatabaseNotPageError } from '../../services/NotionService/helpers/isNotionDatabaseNotPageError';
+import { isNotionPageNotDatabaseError } from '../../services/NotionService/helpers/isNotionPageNotDatabaseError';
 import { sanitizeDeckPath } from '../../lib/ankify/transforms/tags';
 import { hashCardContent } from '../../lib/ankify/hashCardContent';
 import {
@@ -763,11 +764,15 @@ export class SyncNotionPageToRacUseCase {
       await this.rememberObjectType(subscription, 'page');
       return pageResult;
     }
+    if (subscription.notion_object_type === 'page') {
+      return pageResult;
+    }
     return this.walkDatabaseOrFallback(
       notionId,
       token,
       fetchChildren,
-      pageResult
+      pageResult,
+      subscription
     );
   }
 
@@ -786,7 +791,8 @@ export class SyncNotionPageToRacUseCase {
     notionId: string,
     token: string,
     fetchChildren: NotionBlockChildrenFetcher,
-    pageResult: WalkNotionPageResult
+    pageResult: WalkNotionPageResult,
+    subscription: AnkifyNotionSubscription
   ): Promise<WalkNotionPageResult> {
     try {
       const databaseResult = await walkNotionDatabaseForFlashcards(
@@ -798,7 +804,10 @@ export class SyncNotionPageToRacUseCase {
         return databaseResult;
       }
       return pageResult;
-    } catch {
+    } catch (error) {
+      if (isNotionPageNotDatabaseError(error)) {
+        await this.rememberObjectType(subscription, 'page');
+      }
       return pageResult;
     }
   }
