@@ -5,7 +5,14 @@ exports.up = async (knex) => {
     // Numeric id only. No filenames, no titles, no card text — shape metrics
     // only, per .claude/rules/support-confidentiality.md.
     table.integer('owner').nullable();
+    // Two independent axes. `source` is the entry point the user came through
+    // (web, app, dropbox, google_drive, mcp, api, notion); `engine` is which
+    // extraction actually ran (parser or claude). The same web upload takes
+    // either engine depending on the account and the settings, and the two
+    // produce very differently shaped decks — recording one axis alone makes
+    // the scores incomparable.
     table.string('source').notNullable();
+    table.string('engine').notNullable();
     table.string('input_format').notNullable();
     table.string('rule').notNullable();
     table.boolean('was_fallback').notNullable().defaultTo(false);
@@ -30,6 +37,9 @@ exports.up = async (knex) => {
   );
   await knex.raw(
     'CREATE INDEX IF NOT EXISTS conversion_rule_scores_source_input_format_index ON conversion_rule_scores (source, input_format)'
+  );
+  await knex.raw(
+    'CREATE INDEX IF NOT EXISTS conversion_rule_scores_engine_index ON conversion_rule_scores (engine)'
   );
 };
 

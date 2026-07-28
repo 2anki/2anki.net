@@ -21,7 +21,8 @@ describe('ConversionRuleScoresRepository', () => {
     const repo = new ConversionRuleScoresRepository(fake);
     await repo.record({
       owner: 21770,
-      source: 'upload',
+      source: 'web',
+      engine: 'parser',
       inputFormat: 'docx',
       rule: 'headings',
       wasFallback: false,
@@ -37,6 +38,7 @@ describe('ConversionRuleScoresRepository', () => {
     for (const column of [
       'owner',
       'source',
+      'engine',
       'input_format',
       'rule',
       'was_fallback',
@@ -69,6 +71,7 @@ describe('ConversionRuleScoresRepository', () => {
     await repo.record({
       owner: null,
       source: 'notion',
+      engine: 'claude',
       inputFormat: 'notion',
       rule: 'toggle',
       wasFallback: true,
@@ -84,5 +87,35 @@ describe('ConversionRuleScoresRepository', () => {
 
     expect(Number.isInteger(inserted.median_front_len)).toBe(true);
     expect(Number.isInteger(inserted.median_back_len)).toBe(true);
+  });
+});
+
+describe('conversion score axes', () => {
+  it('keeps source and engine independent so a web upload can be either engine', async () => {
+    const rows: Record<string, unknown>[] = [];
+    const fake = (() => ({
+      insert: (row: Record<string, unknown>) => {
+        rows.push(row);
+        return Promise.resolve();
+      },
+    })) as never;
+    const repo = new ConversionRuleScoresRepository(fake);
+    const score = scoreCandidateDeck([{ name: 'Q', back: 'A' }], 400);
+
+    for (const engine of ['parser', 'claude'] as const) {
+      await repo.record({
+        owner: 1,
+        source: 'web',
+        engine,
+        inputFormat: 'pdf',
+        rule: 'recognized',
+        wasFallback: false,
+        outcome: 'shipped',
+        score,
+      });
+    }
+
+    expect(rows.map((r) => r.source)).toEqual(['web', 'web']);
+    expect(rows.map((r) => r.engine)).toEqual(['parser', 'claude']);
   });
 });

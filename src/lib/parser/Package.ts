@@ -1,3 +1,4 @@
+import type { ConversionEngine } from './conversionEngine';
 import type { DeckScore } from './scoreCandidateDeck';
 
 class Package {
@@ -17,8 +18,10 @@ class Package {
 
   overSplit = false;
 
-  // Set by the conversion worker, where the parsed notes still exist. The
-  // parent process persists it — the worker pool has no database handle.
+  // Set by PrepareDeck, inside whichever branch produced the deck. The parent
+  // process persists them — the worker pool has no database handle.
+  engine?: ConversionEngine;
+
   score?: DeckScore;
 
   constructor(

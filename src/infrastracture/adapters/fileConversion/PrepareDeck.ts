@@ -23,6 +23,11 @@ import { convertXLSXToHTML } from './convertXLSXToHTML';
 import { convertDocxToHTML } from './convertDocxToHTML';
 import { createWorkspaceDocxImageMediaSink } from './docxImageMediaSink';
 import { generateDeckInfo, DeckInfo } from '../../../lib/claude/ClaudeService';
+import {
+  scoreCandidateDeck,
+  type DeckScore,
+} from '../../../lib/parser/scoreCandidateDeck';
+import type { ConversionEngine } from '../../../lib/parser/conversionEngine';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import Workspace from '../../../lib/parser/WorkSpace';
 import path from 'path';
@@ -77,6 +82,8 @@ interface PrepareDeckResult {
   droppedImageCount: number;
   emptyBackCount: number;
   parsePath?: string;
+  engine?: ConversionEngine;
+  score?: DeckScore;
 }
 
 async function convertFile(
@@ -497,6 +504,14 @@ export async function PrepareDeck(
       apkg,
       deck: [],
       cardCount: claudeCardCount,
+      // The Claude branch returns deck: [], so a caller that scores from `deck`
+      // measures nothing on every AI conversion. Scored here, where the cards
+      // still exist.
+      engine: 'claude',
+      score: scoreCandidateDeck(
+        deckInfo.flatMap((d) => d.cards),
+        htmlFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
+      ),
       mcqCount: 0,
       mcqSkippedCount: 0,
       droppedImageCount: 0,
@@ -543,6 +558,11 @@ export async function PrepareDeck(
     droppedImageCount: parser.droppedImageCount,
     emptyBackCount: parser.emptyBackCount,
     parsePath: parser.parsePathSignature(),
+    engine: 'parser',
+    score: scoreCandidateDeck(
+      parser.payload.flatMap((deck) => deck.cards),
+      allFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
+    ),
   };
 }
 

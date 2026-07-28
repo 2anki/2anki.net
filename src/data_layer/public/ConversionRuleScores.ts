@@ -14,6 +14,8 @@ export default interface ConversionRuleScores {
 
   source: string;
 
+  engine: string;
+
   input_format: string;
 
   rule: string;
@@ -55,6 +57,8 @@ export interface ConversionRuleScoresInitializer {
 
   source: string;
 
+  engine: string;
+
   input_format: string;
 
   rule: string;
@@ -94,6 +98,8 @@ export interface ConversionRuleScoresMutator {
   owner?: number | null;
 
   source?: string;
+
+  engine?: string;
 
   input_format?: string;
 

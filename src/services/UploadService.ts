@@ -25,7 +25,11 @@ import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
 import { isExpectedClientFault } from '../lib/misc/isExpectedClientFault';
 import type { DeckScore } from '../lib/parser/scoreCandidateDeck';
-import type { IConversionRuleScoresRepository } from '../data_layer/ConversionRuleScoresRepository';
+import type {
+  ConversionScoreSource,
+  IConversionRuleScoresRepository,
+} from '../data_layer/ConversionRuleScoresRepository';
+import type { ConversionEngine } from '../lib/parser/conversionEngine';
 import {
   MARKDOWN_LIKELY_LOSSY_REASON,
   jobFailureReasonFromError,
@@ -311,9 +315,27 @@ class UploadService {
   // Every conversion is scored, not just fallbacks — without the baseline there
   // is nothing to compare a rescued deck against. Fire and forget: a metrics
   // write must never fail a conversion the user is waiting on.
+  // The entry point, not the engine. resolveUploadSource already distinguishes
+  // web/app/dropbox/google_drive from the request; the two machine callers are
+  // only visible on res.locals, and an MCP request also carries api_key_auth,
+  // so MCP is checked first or every MCP conversion would record as 'api'.
+  private resolveScoreSource(
+    req: express.Request,
+    res: express.Response
+  ): ConversionScoreSource {
+    if (res.locals.mcp_auth === true) return 'mcp';
+    if (res.locals.api_key_auth === true) return 'api';
+    return this.resolveUploadSource(req) as ConversionScoreSource;
+  }
+
   private recordDeckScores(
-    packages: { parsePath?: string; score?: DeckScore }[],
+    packages: {
+      parsePath?: string;
+      engine?: ConversionEngine;
+      score?: DeckScore;
+    }[],
     owner: number | null,
+    source: ConversionScoreSource,
     inputFormat: string
   ): void {
     if (this.conversionRuleScoresRepository == null) return;
@@ -322,10 +344,11 @@ class UploadService {
       this.conversionRuleScoresRepository
         .record({
           owner,
-          source: 'upload',
+          source,
+          engine: pkg.engine ?? 'parser',
           inputFormat,
           rule: pkg.parsePath ?? 'unknown',
-          wasFallback: pkg.parsePath?.includes('fallback') === true,
+          wasFallback: pkg.parsePath === 'unclassified',
           outcome: pkg.score.cardCount > 0 ? 'shipped' : 'below_floor',
           score: pkg.score,
         })
@@ -343,12 +366,19 @@ class UploadService {
       cardCount?: number;
       emptyBackCount?: number;
       parsePath?: string;
+      engine?: ConversionEngine;
       score?: DeckScore;
     }[],
     owner?: number | null,
+    source?: ConversionScoreSource,
     inputFormat?: string
   ): void {
-    this.recordDeckScores(packages, owner ?? null, inputFormat ?? 'unknown');
+    this.recordDeckScores(
+      packages,
+      owner ?? null,
+      source ?? 'upload',
+      inputFormat ?? 'unknown'
+    );
     const cards = packages.reduce((sum, p) => sum + (p.cardCount ?? 0), 0);
     const emptyBack = packages.reduce(
       (sum, p) => sum + (p.emptyBackCount ?? 0),
@@ -774,6 +804,7 @@ class UploadService {
           this.recordConversionOutput(
             packages,
             ownerId,
+            this.resolveScoreSource(req, res),
             uploadInputFormat(req.files as UploadedFile[])
           );
           logEmptyBackAttribution(packages, this.resolveUploadSource(req));
@@ -882,6 +913,7 @@ class UploadService {
     this.recordConversionOutput(
       packages,
       owner != null ? Number(owner) : null,
+      this.resolveScoreSource(req, res),
       uploadInputFormat(req.files as UploadedFile[])
     );
     logEmptyBackAttribution(packages, this.resolveUploadSource(req));

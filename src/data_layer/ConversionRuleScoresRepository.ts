@@ -1,13 +1,27 @@
 import type { Knex } from 'knex';
 
+import type { ConversionEngine } from '../lib/parser/conversionEngine';
 import type { DeckScore } from '../lib/parser/scoreCandidateDeck';
 
-export type ConversionScoreSource = 'upload' | 'notion';
+// The entry point the user came through. Mirrors the vocabulary the
+// conversion_failed analytics events already use, so scores and funnel events
+// can be read side by side. 'notion' is reserved for the Notion API path, which
+// does not record yet.
+export type ConversionScoreSource =
+  | 'web'
+  | 'app'
+  | 'dropbox'
+  | 'google_drive'
+  | 'mcp'
+  | 'api'
+  | 'upload'
+  | 'notion';
 export type ConversionScoreOutcome = 'shipped' | 'below_floor';
 
 export interface ConversionScoreRecord {
   owner: number | null;
   source: ConversionScoreSource;
+  engine: ConversionEngine;
   inputFormat: string;
   rule: string;
   wasFallback: boolean;
@@ -26,6 +40,7 @@ export class ConversionRuleScoresRepository implements IConversionRuleScoresRepo
     await this.knex('conversion_rule_scores').insert({
       owner: entry.owner,
       source: entry.source,
+      engine: entry.engine,
       input_format: entry.inputFormat,
       rule: entry.rule,
       was_fallback: entry.wasFallback,
