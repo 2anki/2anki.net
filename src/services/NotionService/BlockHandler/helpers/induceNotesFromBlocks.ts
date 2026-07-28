@@ -9,6 +9,7 @@ import TagRegistry from '../../../../lib/parser/TagRegistry';
 import { InducedRule } from '../../../../lib/parser/induction/candidateRules';
 import {
   answerMarkerLength,
+  findTermDefinitionSeparator,
   questionMarkerLength,
   startsWithAnswerMarker,
   startsWithQuestionMarker,
@@ -260,7 +261,7 @@ function tryTermDefinition(
   notes: Note[]
 ): void {
   const text = blockPlainText(block);
-  const separatorIndex = text.indexOf(TERM_DEFINITION_SEPARATOR);
+  const separatorIndex = findTermDefinitionSeparator(text);
   if (separatorIndex <= 0) {
     return;
   }

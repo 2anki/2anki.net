@@ -23,6 +23,32 @@ export const ANSWER_MARKERS = ['A', 'R', 'O', 'О', '答'] as const;
 // A neutral, language-independent term/definition separator (term::definition).
 export const TERM_DEFINITION_SEPARATOR = '::';
 
+// Index of the first `::` that is NOT inside a `{{…}}` span, or -1. Anki cloze
+// syntax reuses `::` inside `{{c1::answer::hint}}`, so a naive indexOf('::')
+// would split a cloze card in half — treat text inside cloze braces as opaque.
+export function findTermDefinitionSeparator(text: string): number {
+  let clozeDepth = 0;
+  for (let i = 0; i + 1 < text.length; i += 1) {
+    const pair = text[i] + text[i + 1];
+    if (pair === '{{') {
+      clozeDepth += 1;
+      i += 1;
+      continue;
+    }
+    if (pair === '}}') {
+      if (clozeDepth > 0) {
+        clozeDepth -= 1;
+      }
+      i += 1;
+      continue;
+    }
+    if (clozeDepth === 0 && pair === TERM_DEFINITION_SEPARATOR) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 function markerPattern(markers: readonly string[]): RegExp {
   return new RegExp(`^\\s*(?:${markers.join('|')})\\s*[:：]\\s*`, 'i');
 }

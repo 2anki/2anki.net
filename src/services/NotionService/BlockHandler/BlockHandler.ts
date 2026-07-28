@@ -1009,7 +1009,7 @@ class BlockHandler {
   // candidate decks over the blocks already in memory so no Notion request is
   // added.
   private rescueEmptyCards(cards: Note[], blocks: GetBlockResponse[]): Note[] {
-    if (Deck.CleanCards(cards).length > 0) {
+    if (Deck.hasUsableCards(cards)) {
       return cards;
     }
     const rescued = this.induceRescueDeck(blocks);

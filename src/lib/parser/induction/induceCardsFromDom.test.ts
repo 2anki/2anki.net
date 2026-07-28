@@ -135,6 +135,13 @@ describe('induceCardsFromDom', () => {
     expect(induceCardsFromDom(dom, 'guess')).toHaveLength(0);
   });
 
+  it('does not split on :: that lives inside a cloze deletion', () => {
+    const dom = load(
+      `<p>{{c1::Canberra::city}} was founded in {{c2::1913}}</p>`
+    );
+    expect(induceCardsFromDom(dom, 'guess')).toHaveLength(0);
+  });
+
   it('does not pair MCQ option labels (Q. / A. / B.) as cards', () => {
     const dom = load(`
       <p>Q. What is the capital of France?</p>

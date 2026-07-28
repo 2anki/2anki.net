@@ -144,6 +144,35 @@ describe('empty-deck rescue on the page branch', () => {
     expect(handler.emptyBackCount).toBe(0);
   });
 
+  it('never rescues (or mangles) a cloze-toggle page whose cards look empty pre-processing', async () => {
+    const api = makeApi({
+      'page-1': [
+        block('toggle', '{{c2::Canberra}} was founded in {{c1::1913}}.'),
+        block(
+          'toggle',
+          '{{c1::Canberra::city}} was founded in {{c2::1913::year}}'
+        ),
+        block('toggle', 'This is a {{c1::cloze deletion}}'),
+      ],
+    });
+    const handler = makeHandler(api);
+
+    await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    // The gate reads the {{c…}} markup as cloze content, so induction never
+    // runs and never splits a card on the :: inside {{c1::Canberra::city}}.
+    // (Cloze-in-summary with an empty body is not a supported Notion cloze
+    // shape, so CleanCards drops these at build — but honestly empty, not
+    // mangled.)
+    expect(handler.inducedRule).toBeUndefined();
+  });
+
   it('fails honest below the floor rather than shipping a one-card rescue', async () => {
     const api = makeApi({
       'page-1': [

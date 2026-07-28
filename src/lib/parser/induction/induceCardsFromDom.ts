@@ -4,6 +4,7 @@ import Note from '../Note';
 import { InducedRule } from './candidateRules';
 import {
   answerMarkerLength,
+  findTermDefinitionSeparator,
   questionMarkerLength,
   startsWithAnswerMarker,
   startsWithQuestionMarker,
@@ -280,7 +281,7 @@ function tryDomTermDefinition(
   notes: Note[]
 ): void {
   const text = dom(element).text();
-  const separatorIndex = text.indexOf(TERM_DEFINITION_SEPARATOR);
+  const separatorIndex = findTermDefinitionSeparator(text);
   if (separatorIndex <= 0) {
     return;
   }

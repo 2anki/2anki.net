@@ -1,5 +1,6 @@
 import {
   answerMarkerLength,
+  findTermDefinitionSeparator,
   questionMarkerLength,
   startsWithAnswerMarker,
   startsWithQuestionMarker,
@@ -45,6 +46,19 @@ describe('question/answer markers', () => {
     expect(startsWithAnswerMarker('Absorption happens in the gut.')).toBe(
       false
     );
+  });
+
+  it('finds a term::definition separator but not one inside cloze braces', () => {
+    expect(
+      findTermDefinitionSeparator('Osmosis::water crossing a membrane')
+    ).toBe(7);
+    expect(
+      findTermDefinitionSeparator('{{c1::Canberra::city}} was founded in 1913')
+    ).toBe(-1);
+    expect(
+      findTermDefinitionSeparator('Term::{{c1::answer::hint}} definition')
+    ).toBe(4);
+    expect(findTermDefinitionSeparator('no separator here')).toBe(-1);
   });
 
   it('reports the length of the matched marker prefix for slicing', () => {

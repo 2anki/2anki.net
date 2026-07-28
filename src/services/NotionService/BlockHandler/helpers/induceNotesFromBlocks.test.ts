@@ -242,6 +242,18 @@ describe('induceNotesFromBlocks', () => {
     expect(notes[0].back).toContain('<strong>membrane</strong>');
   });
 
+  it('does not split a term::definition on the :: inside a cloze deletion', () => {
+    const blocks = [
+      block('paragraph', [
+        richText('{{c1::Canberra::city}} was founded in 1913'),
+      ]),
+    ];
+
+    expect(
+      induceNotesFromBlocks(blocks, 'guess', settings(), new TagRegistry())
+    ).toHaveLength(0);
+  });
+
   it('does not treat an ordinary paragraph as a marker card', () => {
     const blocks = [
       block('paragraph', [richText('Photosynthesis converts light energy.')]),

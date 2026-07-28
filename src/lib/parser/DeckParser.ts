@@ -485,8 +485,10 @@ export class DeckParser {
     // Gate on what survives cleaning, not the raw count: a parse that produced
     // only cards Deck.CleanCards will strip (an empty-toggle equivalent) is
     // effectively empty, so it must reach the rescue instead of shipping an
-    // empty deck. The rescued set replaces the unusable cards outright.
-    if (Deck.CleanCards(cards).length === 0) {
+    // empty deck. hasSalvageableCards also treats raw-stage cloze notes (their
+    // cloze flag not yet set) as usable, so a healthy cloze deck is never
+    // rescued. The rescued set replaces the unusable cards outright.
+    if (!this.hasSalvageableCards(cards)) {
       const rescued = this.induceCardsFromStructure(dom);
       if (rescued != null) {
         cards = rescued;
@@ -524,6 +526,23 @@ export class DeckParser {
       }
     }
     return decks;
+  }
+
+  // A deck is salvageable if any card survives cleaning or carries an explicit
+  // {{c…}} cloze, and — when cloze mode is on — if any card holds an inline
+  // <code> span, which processPayload turns into a cloze deletion. Without the
+  // <code> case a page whose only cloze uses the code shorthand would look
+  // empty and get mangled by induction.
+  private hasSalvageableCards(cards: Note[]): boolean {
+    if (Deck.hasUsableCards(cards)) {
+      return true;
+    }
+    return (
+      this.settings.isCloze &&
+      cards.some(
+        (card) => hasInlineClozeCode(card.name) || hasInlineClozeCode(card.back)
+      )
+    );
   }
 
   private uploadCandidateRules(): InducedRule[] {
