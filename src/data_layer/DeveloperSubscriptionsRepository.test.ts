@@ -110,4 +110,19 @@ describe('DeveloperSubscriptionsRepository', () => {
     await repo().deactivateBySubscriptionId('sub_1');
     expect(await repo().activeProductIdsForUser(7)).toEqual(['prod_growth']);
   });
+
+  it('lists only active rows with their id and subscription id', async () => {
+    await repo().upsert({ ...base, stripeSubscriptionId: 'sub_1' });
+    await repo().upsert({
+      ...base,
+      stripeSubscriptionId: 'sub_2',
+      active: false,
+    });
+
+    const rows = await repo().listActive();
+
+    expect(rows).toEqual([
+      { id: expect.any(Number), stripe_subscription_id: 'sub_1' },
+    ]);
+  });
 });
