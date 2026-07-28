@@ -1,4 +1,3 @@
-import countEmptyBacks from '../countEmptyBacks';
 import { detectOverSplit } from '../detectOverSplit';
 import type { DeckScore, ScorableCard } from '../scoreCandidateDeck';
 
@@ -22,13 +21,12 @@ export function clearsQualityFloor(
   if (detectOverSplit(cards.map((card) => card.name))) {
     return false;
   }
-  const emptyBacks = countEmptyBacks(
-    cards,
-    (card) => card.back,
-    (card) => card.name,
-    (card) => card.cloze !== true
-  );
-  if (emptyBacks / score.cardCount > FLOOR_MAX_EMPTY_BACK_RATE) {
+  // Read the blank-back rate off the score, which measures VISIBLE length
+  // (markup stripped) and exempts cloze cards. A raw string check would pass a
+  // deck whose every back is a `<br>` spacer — the exact class both inducers
+  // let through to the floor, since they already reject raw-blank backs at
+  // construction.
+  if (score.blankBackRate > FLOOR_MAX_EMPTY_BACK_RATE) {
     return false;
   }
   if (score.duplicateFrontRate > FLOOR_MAX_DUPLICATE_FRONT_RATE) {

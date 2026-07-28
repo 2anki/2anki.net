@@ -111,7 +111,7 @@ describe('empty-deck rescue on the page branch', () => {
     expect(cards).toHaveLength(3);
     expect(cards[0].name).toContain('spaced repetition');
     expect(cards[0].back).toContain('spaces reviews');
-    expect(handler.inducedRule).toEqual({
+    expect(handler.inducedRule).toMatchObject({
       rule: 'heading',
       outcome: 'rescue_shipped',
     });
@@ -163,7 +163,7 @@ describe('empty-deck rescue on the page branch', () => {
     });
 
     expect(decks[0].cards).toHaveLength(0);
-    expect(handler.inducedRule).toEqual({
+    expect(handler.inducedRule).toMatchObject({
       rule: 'heading',
       outcome: 'rescue_rejected',
     });
@@ -246,5 +246,33 @@ describe('empty-deck rescue on the sub-deck branch', () => {
     expect(withRescue).toBe(
       (baselineApi.getBlocks as jest.Mock).mock.calls.length
     );
+  });
+
+  it('keeps a shipped sub-deck rescue when a later sub-deck rejects one', async () => {
+    const chapterA = block('heading_1', 'Chapter A', true);
+    const chapterB = block('heading_1', 'Chapter B', true);
+    const api = makeApi({
+      'page-1': [chapterA, chapterB],
+      [chapterA.id]: chapterChildren(),
+      [chapterB.id]: [
+        block('heading_2', 'Only one question here?'),
+        block('paragraph', 'A single answer, below the three-card floor.'),
+      ],
+    });
+    const handler = makeHandler(api);
+    handler.useAll = true;
+
+    await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: subDeckRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(handler.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
   });
 });

@@ -58,6 +58,24 @@ function block(
   } as unknown as GetBlockResponse;
 }
 
+function dividerBlock(): GetBlockResponse {
+  blockCounter += 1;
+  return {
+    object: 'block',
+    id: `divider-${blockCounter}`,
+    parent: { type: 'page_id', page_id: 'page-1' },
+    created_time: '',
+    last_edited_time: '',
+    created_by: { object: 'user', id: 'u' },
+    last_edited_by: { object: 'user', id: 'u' },
+    has_children: false,
+    archived: false,
+    in_trash: false,
+    type: 'divider',
+    divider: {},
+  } as unknown as GetBlockResponse;
+}
+
 function settings(): CardOption {
   return new CardOption({});
 }
@@ -233,5 +251,59 @@ describe('induceNotesFromBlocks', () => {
     expect(
       induceNotesFromBlocks(blocks, 'guess', settings(), new TagRegistry())
     ).toHaveLength(0);
+  });
+
+  it('does not pair MCQ option labels (Q. / A. / B.) as question and answer', () => {
+    const blocks = [
+      block('paragraph', [richText('Q. What is the capital of France?')]),
+      block('paragraph', [richText('A. London')]),
+      block('paragraph', [richText('B. Berlin')]),
+      block('paragraph', [richText('C. Paris')]),
+    ];
+
+    expect(
+      induceNotesFromBlocks(blocks, 'guess', settings(), new TagRegistry())
+    ).toHaveLength(0);
+  });
+
+  it('pairs Q:/A: across a no-text block sitting between them', () => {
+    const blocks = [
+      block('paragraph', [richText('Q: What is diffusion?')]),
+      dividerBlock(),
+      block('paragraph', [richText('A: Movement from high to low.')]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'guess',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0].name).toBe('What is diffusion?');
+    expect(notes[0].back).toBe('Movement from high to low.');
+  });
+
+  it('rescues heading_1 sections the deleted plain-text guess used to cover', () => {
+    const blocks = [
+      block('heading_1', [richText('What is an enzyme?')]),
+      block('paragraph', [richText('A protein that speeds up a reaction.')]),
+      block('heading_1', [richText('What is a substrate?')]),
+      block('paragraph', [richText('The molecule an enzyme acts on.')]),
+      block('heading_1', [richText('What is an active site?')]),
+      block('paragraph', [richText('The pocket where the substrate binds.')]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'heading',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes).toHaveLength(3);
+    expect(notes[0].name).toContain('enzyme');
+    expect(notes[0].back).toContain('speeds up a reaction');
   });
 });

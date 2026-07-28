@@ -114,6 +114,95 @@ describe('induceCardsFromDom', () => {
     expect(induceCardsFromDom(dom, 'guess')).toHaveLength(0);
   });
 
+  it('strips a marker that sits inside an inline element', () => {
+    const dom = load(`
+      <p><strong>Q:</strong> What is osmosis?</p>
+      <p>A: Water crossing a <strong>membrane</strong>.</p>
+    `);
+
+    const notes = induceCardsFromDom(dom, 'guess');
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0].name).not.toContain('Q:');
+    expect(notes[0].name).toContain('What is osmosis?');
+    expect(notes[0].back).toContain('<strong>membrane</strong>');
+  });
+
+  it('does not split on :: that appears only inside markup', () => {
+    const dom = load(
+      `<p>See the <a href="http://x/a::b">reference</a> page.</p>`
+    );
+    expect(induceCardsFromDom(dom, 'guess')).toHaveLength(0);
+  });
+
+  it('does not pair MCQ option labels (Q. / A. / B.) as cards', () => {
+    const dom = load(`
+      <p>Q. What is the capital of France?</p>
+      <p>A. London</p>
+      <p>B. Berlin</p>
+      <p>C. Paris</p>
+    `);
+
+    expect(induceCardsFromDom(dom, 'guess')).toHaveLength(0);
+  });
+
+  it('pairs Q:/A: across an empty block between them', () => {
+    const dom = load(`
+      <p>Q: What is diffusion?</p>
+      <hr />
+      <p>A: Particles spreading out.</p>
+    `);
+
+    const notes = induceCardsFromDom(dom, 'guess');
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0].name).toBe('What is diffusion?');
+    expect(notes[0].back).toBe('Particles spreading out.');
+  });
+
+  it('joins the third column into the back and skips a header row', () => {
+    const dom = load(`
+      <table>
+        <thead><tr><th>Term</th><th>Definition</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td>Osmosis</td><td>Water across a membrane</td><td>Roots</td></tr>
+          <tr><td>Diffusion</td><td>High to low</td><td>Perfume</td></tr>
+          <tr><td>Mitosis</td><td>Cell division</td><td>Growth</td></tr>
+        </tbody>
+      </table>
+    `);
+
+    const notes = induceCardsFromDom(dom, 'columns');
+
+    expect(notes).toHaveLength(3);
+    expect(notes[0].name).toBe('Osmosis');
+    expect(notes[0].back).toContain('Water across a membrane');
+    expect(notes[0].back).toContain('Roots');
+  });
+
+  it('does not turn a nested table row into a duplicate card', () => {
+    const dom = load(`
+      <table>
+        <tr>
+          <td>Outer term</td>
+          <td>
+            <table><tr><td>inner a</td><td>inner b</td></tr></table>
+          </td>
+        </tr>
+        <tr><td>Second term</td><td>Second definition</td></tr>
+        <tr><td>Third term</td><td>Third definition</td></tr>
+      </table>
+    `);
+
+    const notes = induceCardsFromDom(dom, 'columns');
+
+    expect(notes.map((note) => note.name)).toEqual([
+      'Outer term',
+      'Second term',
+      'Third term',
+    ]);
+  });
+
   it('measures the plain-text length of the page body', () => {
     const dom = load(`<p>abcdef</p>`);
     expect(domPlainTextLength(dom)).toBe(6);

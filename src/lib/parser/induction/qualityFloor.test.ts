@@ -34,6 +34,16 @@ describe('clearsQualityFloor', () => {
     expect(clearsQualityFloor(cards, score(cards))).toBe(false);
   });
 
+  it('rejects a deck whose backs are markup-only (a <br> spacer)', () => {
+    const cards: ScorableCard[] = [
+      { name: 'What is osmosis?', back: '<br>' },
+      { name: 'What is diffusion?', back: '<br>' },
+      { name: 'What is mitosis?', back: '<br>' },
+      { name: 'What is meiosis?', back: '<br>' },
+    ];
+    expect(clearsQualityFloor(cards, score(cards))).toBe(false);
+  });
+
   it('does not count cloze cards with an empty back against the floor', () => {
     const cards: ScorableCard[] = [
       { name: 'The capital of {{c1::France}} is Paris', back: '', cloze: true },

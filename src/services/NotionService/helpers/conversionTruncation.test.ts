@@ -90,6 +90,21 @@ describe('buildNotionConversionSignalPayload', () => {
     });
   });
 
+  it('surfaces the rescue rule even when the conversion also truncated', () => {
+    const payload = buildNotionConversionSignalPayload(
+      { blocksConverted: 100, subDeckRulesSkipped: false },
+      0,
+      undefined,
+      undefined,
+      undefined,
+      'heading'
+    );
+    expect(JSON.parse(payload as string)).toMatchObject({
+      code: 'notion_structure_rescued',
+      rule: 'heading',
+    });
+  });
+
   it('gives a rescued deck priority over co-occurring softer signals', () => {
     const payload = buildNotionConversionSignalPayload(
       undefined,

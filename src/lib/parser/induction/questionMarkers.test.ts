@@ -26,6 +26,15 @@ describe('question/answer markers', () => {
     expect(startsWithAnswerMarker('答：膜を通る水。')).toBe(true);
   });
 
+  it('does not treat an MCQ option label (Q. / A. / B.) as a marker', () => {
+    expect(startsWithQuestionMarker('Q. What is the capital of France?')).toBe(
+      false
+    );
+    expect(startsWithAnswerMarker('A. London')).toBe(false);
+    expect(startsWithQuestionMarker('V. Conclusion')).toBe(false);
+    expect(startsWithQuestionMarker('P. 42')).toBe(false);
+  });
+
   it('does not treat an ordinary word as a marker', () => {
     expect(startsWithQuestionMarker('Photosynthesis converts light.')).toBe(
       false

@@ -24,7 +24,11 @@ import renderTextChildren from '../../helpers/renderTextChildren';
 // them would break the zero-extra-Notion-request contract — the upload path
 // rescues two-column layouts from the DOM instead, where they cost nothing.
 const FRONT_TYPES: Partial<Record<InducedRule, ReadonlySet<string>>> = {
-  heading: new Set(['heading_2', 'heading_3']),
+  // heading_1 is included even though the issue table names only heading_2/3:
+  // the deleted plain-text guessCardsFromBlocks matched heading_1/2/3, so a
+  // heading_1-structured page (a title-per-section export) that rescued on main
+  // would otherwise regress to an honest-empty failure.
+  heading: new Set(['heading_1', 'heading_2', 'heading_3']),
   bullets: new Set(['bulleted_list_item']),
   numbered: new Set(['numbered_list_item']),
   quote: new Set(['quote']),
@@ -188,27 +192,45 @@ function pushIfComplete(notes: Note[], front: string, back: string): void {
   }
 }
 
+// Index of the next block that carries any plain text, or -1. A divider or a
+// child-page block between the question and its answer has no rich text, so the
+// pairing scans past it instead of giving up (which is what the deleted helper
+// did when it flattened the whole page first).
+function nextTextBearingIndex(
+  blocks: GetBlockResponse[],
+  from: number
+): number {
+  for (let i = from; i < blocks.length; i += 1) {
+    if (blockPlainText(blocks[i]).length > 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+// Returns the index of the answer block it consumed, or -1 when the block at
+// `index` does not open a question/answer pair.
 function tryQuestionAnswerPair(
   blocks: GetBlockResponse[],
   index: number,
   settings: CardOption,
   tagRegistry: TagRegistry,
   notes: Note[]
-): boolean {
+): number {
   const questionText = blockPlainText(blocks[index]);
   if (!startsWithQuestionMarker(questionText)) {
-    return false;
+    return -1;
   }
-  const answerBlock = blocks[index + 1];
-  if (answerBlock == null) {
-    return false;
+  const answerIndex = nextTextBearingIndex(blocks, index + 1);
+  if (answerIndex === -1) {
+    return -1;
   }
-  const answerText = blockPlainText(answerBlock);
+  const answerText = blockPlainText(blocks[answerIndex]);
   if (!startsWithAnswerMarker(answerText)) {
-    return false;
+    return -1;
   }
   const questionItems = blockRichText(blocks[index]) ?? [];
-  const answerItems = blockRichText(answerBlock) ?? [];
+  const answerItems = blockRichText(blocks[answerIndex]) ?? [];
   const front = renderItems(
     sliceRichText(
       questionItems,
@@ -228,7 +250,7 @@ function tryQuestionAnswerPair(
     tagRegistry
   );
   pushIfComplete(notes, front, back);
-  return true;
+  return answerIndex;
 }
 
 function tryTermDefinition(
@@ -271,8 +293,15 @@ function induceTextPatternNotes(
   const notes: Note[] = [];
   let index = 0;
   while (index < blocks.length) {
-    if (tryQuestionAnswerPair(blocks, index, settings, tagRegistry, notes)) {
-      index += 2;
+    const answerIndex = tryQuestionAnswerPair(
+      blocks,
+      index,
+      settings,
+      tagRegistry,
+      notes
+    );
+    if (answerIndex !== -1) {
+      index = answerIndex + 1;
       continue;
     }
     tryTermDefinition(blocks[index], settings, tagRegistry, notes);

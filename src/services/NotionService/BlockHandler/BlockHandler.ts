@@ -49,6 +49,7 @@ import {
 import {
   InducedRescue,
   InducedRule,
+  mergeInducedRescue,
 } from '../../../lib/parser/induction/candidateRules';
 import { runInduction } from '../../../lib/parser/induction/rankCandidates';
 import {
@@ -940,7 +941,11 @@ class BlockHandler {
   // headings are consumed as breadcrumb context, so the heading candidate is
   // invalid while it is on.
   private rescueCandidateRules(): InducedRule[] {
-    if (this.settings.clozeFromToggleContent) {
+    // isCherry restricts the deck to cherry-marked blocks; getFlashcards has
+    // already applied that filter, so inducing a whole-page deck here would
+    // override the user's explicit selection. Skip induction and fail honest,
+    // same as clozeFromToggleContent (which assumes a toggle front).
+    if (this.settings.clozeFromToggleContent || this.settings.isCherry) {
       return [];
     }
     const rules = [...NOTION_CANDIDATE_RULES];
@@ -967,12 +972,24 @@ class BlockHandler {
     );
     if (winner == null) {
       if (best != null) {
-        this.inducedRule = { rule: best.rule, outcome: 'rescue_rejected' };
+        this.recordInducedRule({
+          rule: best.rule,
+          outcome: 'rescue_rejected',
+          score: best.score,
+        });
       }
       return null;
     }
-    this.inducedRule = { rule: winner.rule, outcome: 'rescue_shipped' };
+    this.recordInducedRule({
+      rule: winner.rule,
+      outcome: 'rescue_shipped',
+      score: winner.score,
+    });
     return winner.cards;
+  }
+
+  private recordInducedRule(next: InducedRescue): void {
+    this.inducedRule = mergeInducedRescue(this.inducedRule, next);
   }
 
   private discountCards(cards: Note[]): void {

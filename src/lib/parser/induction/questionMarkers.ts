@@ -7,9 +7,12 @@
 // These markers locate a card boundary on PLAIN text only. The card's front and
 // back are always rendered from the rich source (rich text / inner HTML), so
 // bold, highlight and equations survive. Case-insensitive matching covers Latin
-// and Cyrillic case; Japanese has no case. A trailing separator (:, ：, .) is
-// required so an ordinary word that merely starts with a marker letter — Osmosis,
-// Photosynthesis — is never mistaken for a marker.
+// and Cyrillic case; Japanese has no case. A trailing colon (:, or fullwidth ：)
+// is required so an ordinary word that merely starts with a marker letter —
+// Osmosis, Photosynthesis — is never mistaken for a marker. A period is NOT a
+// valid separator: 'Q. What…' / 'A. London' / 'V. Conclusion' / 'P. 42' are MCQ
+// option labels, Roman-numeral outlines and page refs, not question/answer
+// boundaries — matching them shipped an MCQ's first option as the answer.
 //
 //   en Q/A · de F/A · es P/R · pt P/R · fr Q/R · it D/R
 //   nl V/A · pl P/O · ru В/О · ja 問/答
@@ -21,7 +24,7 @@ export const ANSWER_MARKERS = ['A', 'R', 'O', 'О', '答'] as const;
 export const TERM_DEFINITION_SEPARATOR = '::';
 
 function markerPattern(markers: readonly string[]): RegExp {
-  return new RegExp(`^\\s*(?:${markers.join('|')})\\s*[:：.]\\s*`, 'i');
+  return new RegExp(`^\\s*(?:${markers.join('|')})\\s*[:：]\\s*`, 'i');
 }
 
 export const QUESTION_MARKER_PATTERN = markerPattern(QUESTION_MARKERS);
