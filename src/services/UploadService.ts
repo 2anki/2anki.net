@@ -381,6 +381,13 @@ class UploadService {
     for (const pkg of packages) {
       if (pkg.score == null) continue;
       const induced = pkg.inducedRule;
+      // A rejected rescue records the candidate the induction actually judged,
+      // not the empty deck that ships; a shipped rescue records the real
+      // shipped deck (pkg.score).
+      const score =
+        induced?.outcome === 'rescue_rejected' && induced.score != null
+          ? induced.score
+          : pkg.score;
       this.conversionRuleScoresRepository
         .record({
           owner,
@@ -392,7 +399,7 @@ class UploadService {
           outcome:
             induced?.outcome ??
             (pkg.score.cardCount > 0 ? 'shipped' : 'no_cards'),
-          score: pkg.score,
+          score,
         })
         .catch((error) =>
           console.error(

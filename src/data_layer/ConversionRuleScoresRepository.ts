@@ -41,6 +41,8 @@ export interface CohortDistributionRow {
   sampleSize: number;
   shapedSampleSize: number;
   noCardsCount: number;
+  rescuedShippedCount: number;
+  rescueRejectedCount: number;
   firstSeen: string | null;
   lastSeen: string | null;
   compositeP10: number | null;
@@ -108,7 +110,12 @@ export class ConversionRuleScoresRepository implements IConversionRuleScoresRepo
     since: Date;
     scorerVersion: number;
   }): Knex.Raw {
-    const shipped = "outcome = 'shipped' AND card_count > 0";
+    // A rescued deck that cleared the floor is a real shipped deck, so it joins
+    // the shipped cohort (flagged separately below); a rescue that fell below
+    // the floor shipped nothing, so it joins the no-cards count.
+    const shipped =
+      "outcome IN ('shipped', 'rescue_shipped') AND card_count > 0";
+    const noCards = "outcome IN ('no_cards', 'rescue_rejected')";
     return this.knex.raw(
       `WITH scored AS (
   SELECT engine, input_format, outcome, created_at, card_count, median_back_len,
@@ -134,7 +141,9 @@ export class ConversionRuleScoresRepository implements IConversionRuleScoresRepo
 SELECT engine, input_format,
        COUNT(*) FILTER (WHERE ${shipped})::int AS sample_size,
        COUNT(*) FILTER (WHERE ${shipped} AND doc_chars > 0)::int AS shaped_sample_size,
-       COUNT(*) FILTER (WHERE outcome = 'no_cards')::int AS no_cards_count,
+       COUNT(*) FILTER (WHERE ${noCards})::int AS no_cards_count,
+       COUNT(*) FILTER (WHERE outcome = 'rescue_shipped')::int AS rescued_shipped_count,
+       COUNT(*) FILTER (WHERE outcome = 'rescue_rejected')::int AS rescue_rejected_count,
        MIN(created_at) AS first_seen,
        MAX(created_at) AS last_seen,
        percentile_cont(0.10) WITHIN GROUP (ORDER BY composite) FILTER (WHERE ${shipped})::float AS composite_p10,
@@ -179,6 +188,8 @@ ORDER BY sample_size DESC`,
       sampleSize: Number(row.sample_size ?? 0),
       shapedSampleSize: Number(row.shaped_sample_size ?? 0),
       noCardsCount: Number(row.no_cards_count ?? 0),
+      rescuedShippedCount: Number(row.rescued_shipped_count ?? 0),
+      rescueRejectedCount: Number(row.rescue_rejected_count ?? 0),
       firstSeen: row.first_seen == null ? null : String(row.first_seen),
       lastSeen: row.last_seen == null ? null : String(row.last_seen),
       compositeP10: numberOrNull(row.composite_p10),

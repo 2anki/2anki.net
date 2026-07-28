@@ -31,6 +31,7 @@ import {
   type ConversionScoreSource,
 } from '../../../../data_layer/ConversionRuleScoresRepository';
 import { scoreCandidateDeck } from '../../../parser/scoreCandidateDeck';
+import type { InducedRescue } from '../../../parser/induction/candidateRules';
 import { track } from '../../../../services/events/track';
 import NotionRepository from '../../../../data_layer/NotionRespository';
 import { getDefaultEmailService } from '../../../../services/EmailService/EmailService';
@@ -127,33 +128,35 @@ async function recordDeckScore(
     decks: { cards: { name: string; back: string; cloze?: boolean }[] }[];
     cardCount: number;
     // Set only when the empty-deck rescue ran a candidate loop. It carries the
-    // winning (or best-attempted) structure so the corpus says which rule
-    // rescues Notion and whether it shipped or fell below the floor.
-    induced?: {
-      rule: string;
-      outcome: 'rescue_shipped' | 'rescue_rejected';
-    };
+    // winning (or best-attempted) structure and that candidate's own score, so
+    // the corpus says which rule rescues Notion, whether it shipped or fell
+    // below the floor, and — for a rejected rescue — the shape of the deck the
+    // induction actually judged rather than the empty deck that ships.
+    induced?: InducedRescue;
   }
 ): Promise<void> {
   const ownerId = Number(entry.owner);
+  const induced = entry.induced;
   try {
     await new ConversionRuleScoresRepository(database).record({
       owner: Number.isFinite(ownerId) ? ownerId : null,
       source: toScoreSource(entry.type),
       engine: 'parser',
       inputFormat: 'notion',
-      rule: entry.induced?.rule ?? entry.type ?? 'unknown',
-      wasFallback: entry.induced != null,
-      // docChars is 0: cards come from Notion blocks, not a source document, so
-      // coverage and density have nothing to measure against and report 0
-      // rather than a made-up denominator.
+      rule: induced?.rule ?? entry.type ?? 'unknown',
+      wasFallback: induced != null,
       outcome:
-        entry.induced?.outcome ??
-        (entry.cardCount > 0 ? 'shipped' : 'no_cards'),
-      score: scoreCandidateDeck(
-        entry.decks.flatMap((d) => d.cards),
-        0
-      ),
+        induced?.outcome ?? (entry.cardCount > 0 ? 'shipped' : 'no_cards'),
+      // A rejected rescue records the rejected candidate's own score; otherwise
+      // docChars is 0, because Notion cards come from blocks, not a source
+      // document, so coverage and density report 0 rather than a made-up
+      // denominator.
+      score:
+        induced?.score ??
+        scoreCandidateDeck(
+          entry.decks.flatMap((d) => d.cards),
+          0
+        ),
     });
   } catch (error) {
     console.error('[conversion] failed to record deck score', error);

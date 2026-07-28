@@ -64,7 +64,11 @@ import {
 } from './collectSectionTags';
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import { extractName } from '../extractDeckName';
-import { InducedRescue, InducedRule } from './induction/candidateRules';
+import {
+  InducedRescue,
+  InducedRule,
+  mergeInducedRescue,
+} from './induction/candidateRules';
 import { runInduction } from './induction/rankCandidates';
 import {
   domPlainTextLength,
@@ -478,7 +482,11 @@ export class DeckParser {
 
     cards = cards.filter(Boolean);
 
-    if (cards.length === 0) {
+    // Gate on what survives cleaning, not the raw count: a parse that produced
+    // only cards Deck.CleanCards will strip (an empty-toggle equivalent) is
+    // effectively empty, so it must reach the rescue instead of shipping an
+    // empty deck. The rescued set replaces the unusable cards outright.
+    if (Deck.CleanCards(cards).length === 0) {
       const rescued = this.induceCardsFromStructure(dom);
       if (rescued != null) {
         cards = rescued;
@@ -519,7 +527,11 @@ export class DeckParser {
   }
 
   private uploadCandidateRules(): InducedRule[] {
-    if (this.settings.clozeFromToggleContent) {
+    // clozeFromToggleContent assumes a toggle front; isCherry means the user
+    // explicitly restricted the conversion to selected blocks, so inducing a
+    // whole-document deck would silently override that filter. Both skip
+    // induction and fail honest.
+    if (this.settings.clozeFromToggleContent || this.settings.isCherry) {
       return [];
     }
     const rules = [...UPLOAD_CANDIDATE_RULES];
@@ -547,12 +559,24 @@ export class DeckParser {
     );
     if (winner == null) {
       if (best != null) {
-        this.inducedRule = { rule: best.rule, outcome: 'rescue_rejected' };
+        this.recordInducedRule({
+          rule: best.rule,
+          outcome: 'rescue_rejected',
+          score: best.score,
+        });
       }
       return null;
     }
-    this.inducedRule = { rule: winner.rule, outcome: 'rescue_shipped' };
+    this.recordInducedRule({
+      rule: winner.rule,
+      outcome: 'rescue_shipped',
+      score: winner.score,
+    });
     return winner.cards;
+  }
+
+  private recordInducedRule(next: InducedRescue): void {
+    this.inducedRule = mergeInducedRescue(this.inducedRule, next);
   }
 
   private extractGlobalTags(dom: cheerio.CheerioAPI): string[] {
