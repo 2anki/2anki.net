@@ -140,7 +140,7 @@ async function recordDeckScore(
       // docChars is 0: cards come from Notion blocks, not a source document, so
       // coverage and density have nothing to measure against and report 0
       // rather than a made-up denominator.
-      outcome: entry.cardCount > 0 ? 'shipped' : 'below_floor',
+      outcome: entry.cardCount > 0 ? 'shipped' : 'no_cards',
       score: scoreCandidateDeck(
         entry.decks.flatMap((d) => d.cards),
         0

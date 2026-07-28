@@ -24,9 +24,11 @@ export default interface ConversionRuleScores {
 
   outcome: string;
 
-  score: number;
+  scorer_version: number;
 
   card_count: number;
+
+  card_chars: number;
 
   doc_chars: number;
 
@@ -38,11 +40,7 @@ export default interface ConversionRuleScores {
 
   duplicate_front_rate: number;
 
-  coverage: number;
-
   balance: number;
-
-  density: number;
 }
 
 /** Represents the initializer for the table public.conversion_rule_scores */
@@ -68,9 +66,12 @@ export interface ConversionRuleScoresInitializer {
 
   outcome: string;
 
-  score: number;
+  /** Default value: 1 */
+  scorer_version?: number;
 
   card_count: number;
+
+  card_chars: number;
 
   doc_chars: number;
 
@@ -82,11 +83,7 @@ export interface ConversionRuleScoresInitializer {
 
   duplicate_front_rate: number;
 
-  coverage: number;
-
   balance: number;
-
-  density: number;
 }
 
 /** Represents the mutator for the table public.conversion_rule_scores */
@@ -109,9 +106,11 @@ export interface ConversionRuleScoresMutator {
 
   outcome?: string;
 
-  score?: number;
+  scorer_version?: number;
 
   card_count?: number;
+
+  card_chars?: number;
 
   doc_chars?: number;
 
@@ -123,9 +122,5 @@ export interface ConversionRuleScoresMutator {
 
   duplicate_front_rate?: number;
 
-  coverage?: number;
-
   balance?: number;
-
-  density?: number;
 }

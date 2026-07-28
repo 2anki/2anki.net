@@ -424,7 +424,7 @@ describe('performConversion — heavy pipeline', () => {
     );
   });
 
-  it('records a below_floor score for a Notion conversion that yields no cards', async () => {
+  it('records a no_cards score for a Notion conversion that yields no cards', async () => {
     (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
       execute: jest.fn().mockResolvedValue({
         ws: {},
@@ -441,7 +441,7 @@ describe('performConversion — heavy pipeline', () => {
     await performConversion(mockDatabase, baseRequest);
 
     expect(mockRecordDeckScore).toHaveBeenCalledWith(
-      expect.objectContaining({ source: 'notion', outcome: 'below_floor' })
+      expect.objectContaining({ source: 'notion', outcome: 'no_cards' })
     );
   });
 

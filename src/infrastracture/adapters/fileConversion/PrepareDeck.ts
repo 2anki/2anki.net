@@ -537,6 +537,15 @@ export async function PrepareDeck(
         warning: parser.usedHeuristic ? 'markdown-heuristic' : undefined,
         droppedImageCount: parser.droppedImageCount,
         emptyBackCount: parser.emptyBackCount,
+        // This is the branch a document takes when nothing recognised it, so it
+        // is exactly the population a rescue has to clear. Without a score here
+        // the corpus is made only of successes, and a floor calibrated on
+        // successes cannot judge a failure.
+        engine: 'parser',
+        score: scoreCandidateDeck(
+          parser.payload.flatMap((deck) => deck.cards),
+          allFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
+        ),
       };
     }
   }

@@ -40,19 +40,18 @@ describe('ConversionRuleScoresRepository', () => {
       'source',
       'engine',
       'input_format',
+      'scorer_version',
+      'card_chars',
       'rule',
       'was_fallback',
       'outcome',
-      'score',
       'card_count',
       'doc_chars',
       'median_front_len',
       'median_back_len',
       'blank_back_rate',
       'duplicate_front_rate',
-      'coverage',
       'balance',
-      'density',
     ]) {
       expect(sql).toContain(`"${column}"`);
     }
@@ -75,7 +74,7 @@ describe('ConversionRuleScoresRepository', () => {
       inputFormat: 'notion',
       rule: 'toggle',
       wasFallback: true,
-      outcome: 'below_floor',
+      outcome: 'no_cards',
       score: scoreCandidateDeck(
         [
           { name: 'a', back: 'bbb' },

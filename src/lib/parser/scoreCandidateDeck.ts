@@ -21,6 +21,11 @@ export interface ScorableCard {
 export interface DeckScore {
   score: number;
   cardCount: number;
+  // Raw, not derived. coverage and density below are cardChars and cardCount
+  // divided by constants that will be retuned; storing only the transformed
+  // values would make every retune invalidate the accumulated corpus instead of
+  // re-scoring it. The recorded row keeps cardChars and recomputes the rest.
+  cardChars: number;
   docChars: number;
   medianFrontLen: number;
   medianBackLen: number;
@@ -148,6 +153,7 @@ export function scoreCandidateDeck(
     return {
       score: 0,
       cardCount: 0,
+      cardChars: 0,
       docChars,
       medianFrontLen: 0,
       medianBackLen: 0,
@@ -209,6 +215,7 @@ export function scoreCandidateDeck(
   return {
     score,
     cardCount,
+    cardChars,
     docChars,
     medianFrontLen,
     medianBackLen,

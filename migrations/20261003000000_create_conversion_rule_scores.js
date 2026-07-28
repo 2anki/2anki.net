@@ -17,16 +17,23 @@ exports.up = async (knex) => {
     table.string('rule').notNullable();
     table.boolean('was_fallback').notNullable().defaultTo(false);
     table.string('outcome').notNullable();
-    table.float('score').notNullable();
+    // Raw measurements only. The composite score, coverage, and density are all
+    // exact functions of these columns plus the weights and bands in
+    // scoreCandidateDeck.ts — storing the transformed values instead would mean
+    // a retune invalidates every accumulated row rather than re-scoring it.
+    // scorer_version tracks the MEASUREMENT function (how a card is measured),
+    // not the weights: bump it when plainText, the median rule, the cloze
+    // blank-back exemption, or the card_chars definition changes, because those
+    // make old rows incomparable. A weights change does not bump it.
+    table.integer('scorer_version').notNullable().defaultTo(1);
     table.integer('card_count').notNullable();
+    table.integer('card_chars').notNullable();
     table.integer('doc_chars').notNullable();
     table.integer('median_front_len').notNullable();
     table.integer('median_back_len').notNullable();
     table.float('blank_back_rate').notNullable();
     table.float('duplicate_front_rate').notNullable();
-    table.float('coverage').notNullable();
     table.float('balance').notNullable();
-    table.float('density').notNullable();
   });
 
   // Every read is a trend: "score over time", optionally narrowed to one path
@@ -35,11 +42,10 @@ exports.up = async (knex) => {
   await knex.raw(
     'CREATE INDEX IF NOT EXISTS conversion_rule_scores_created_at_index ON conversion_rule_scores (created_at)'
   );
+  // The distribution read groups by cohort and filters by scorer_version over a
+  // rolling window, so the cohort key leads and created_at closes the range.
   await knex.raw(
-    'CREATE INDEX IF NOT EXISTS conversion_rule_scores_source_input_format_index ON conversion_rule_scores (source, input_format)'
-  );
-  await knex.raw(
-    'CREATE INDEX IF NOT EXISTS conversion_rule_scores_engine_index ON conversion_rule_scores (engine)'
+    'CREATE INDEX IF NOT EXISTS conversion_rule_scores_cohort_index ON conversion_rule_scores (scorer_version, engine, input_format, created_at)'
   );
 };
 

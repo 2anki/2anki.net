@@ -141,12 +141,45 @@ function resolveUploadWarning(warnings: string[] | undefined): string | null {
 
 // The extension of the first uploaded file, lowercased. A shape metric, never
 // the filename itself — see .claude/rules/support-confidentiality.md.
+//
+// Allowlisted rather than passed through: the value is a cohort key, and an
+// unbounded one lets any upload mint a cohort of size one. Anything unrecognised
+// buckets into 'other' so the cardinality stays fixed.
+const KNOWN_INPUT_FORMATS = new Set([
+  'zip',
+  'html',
+  'htm',
+  'md',
+  'markdown',
+  'csv',
+  'tsv',
+  'xlsx',
+  'xls',
+  'pdf',
+  'docx',
+  'doc',
+  'pptx',
+  'ppt',
+  'txt',
+  'apkg',
+  'opml',
+  'epub',
+  'xml',
+  'json',
+  'png',
+  'jpg',
+  'jpeg',
+  'webp',
+  'gif',
+]);
+
 function uploadInputFormat(files: UploadedFile[] | undefined): string {
   const name = files?.[0]?.originalname;
   if (typeof name !== 'string') return 'unknown';
   const dot = name.lastIndexOf('.');
   if (dot < 0 || dot === name.length - 1) return 'unknown';
-  return name.slice(dot + 1).toLowerCase();
+  const ext = name.slice(dot + 1).toLowerCase();
+  return KNOWN_INPUT_FORMATS.has(ext) ? ext : 'other';
 }
 
 function sumDroppedImages(packages: { droppedImageCount?: number }[]): number {
@@ -349,7 +382,7 @@ class UploadService {
           inputFormat,
           rule: pkg.parsePath ?? 'unknown',
           wasFallback: pkg.parsePath === 'unclassified',
-          outcome: pkg.score.cardCount > 0 ? 'shipped' : 'below_floor',
+          outcome: pkg.score.cardCount > 0 ? 'shipped' : 'no_cards',
           score: pkg.score,
         })
         .catch((error) =>
@@ -373,12 +406,6 @@ class UploadService {
     source?: ConversionScoreSource,
     inputFormat?: string
   ): void {
-    this.recordDeckScores(
-      packages,
-      owner ?? null,
-      source ?? 'upload',
-      inputFormat ?? 'unknown'
-    );
     const cards = packages.reduce((sum, p) => sum + (p.cardCount ?? 0), 0);
     const emptyBack = packages.reduce(
       (sum, p) => sum + (p.emptyBackCount ?? 0),
@@ -800,6 +827,16 @@ class UploadService {
       )
       .then(async ({ packages }) => {
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
+        // Scores record either way. The conversion-output stats below stay
+        // behind the gate — they count delivered cards — but a conversion that
+        // produced nothing is the most informative row the score table can
+        // hold, and gating it left the corpus made only of successes.
+        this.recordDeckScores(
+          packages,
+          ownerId,
+          this.resolveScoreSource(req, res),
+          uploadInputFormat(req.files as UploadedFile[])
+        );
         if (totalCards > 0) {
           this.recordConversionOutput(
             packages,
@@ -895,6 +932,15 @@ class UploadService {
 
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
     const authenticated = hasSessionToken(req);
+
+    // Before the empty-deck throw, so a document that produced nothing still
+    // lands a row — that population is the one a rescue has to clear.
+    this.recordDeckScores(
+      packages,
+      owner != null ? Number(owner) : null,
+      this.resolveScoreSource(req, res),
+      uploadInputFormat(req.files as UploadedFile[])
+    );
 
     if (totalCards === 0) {
       logNoPackageDiagnostics(req.files as UploadedFile[]);
