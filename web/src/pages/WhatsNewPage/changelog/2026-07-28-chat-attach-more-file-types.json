@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-chat-attach-more-file-types",
+  "date": "2026-07-28",
+  "type": "feature",
+  "title": "Chat accepts .zip, .docx, .md, and .txt attachments, and remembers them across follow-up messages"
+}

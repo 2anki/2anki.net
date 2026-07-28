@@ -13,6 +13,7 @@ import { compressImageForUpload } from '../../lib/image/compressImageForUpload';
 import AssistantMarkdown from '../../pages/Chat/AssistantMarkdown';
 import CardPreview from '../../pages/Chat/CardPreview';
 import ConsentModal from '../ConsentModal/ConsentModal';
+import { ALLOWED_ATTACHMENT_TYPES, ATTACHMENT_ACCEPT } from './attachmentTypes';
 import styles from './ChatPanel.module.css';
 
 export interface ChatCard {
@@ -77,14 +78,6 @@ interface AttachmentChip {
   state: ChipState;
   retryCount: number;
 }
-
-const ALLOWED_TYPES = new Set([
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/gif',
-  'image/webp',
-]);
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
@@ -555,7 +548,7 @@ function ComposerPill({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="application/pdf,image/png,image/jpeg,image/gif,image/webp"
+          accept={ATTACHMENT_ACCEPT}
           style={{ display: 'none' }}
           onChange={(e) => {
             if (e.target.files != null && e.target.files.length > 0) {
@@ -721,7 +714,9 @@ export default function ChatPanel({
   async function addFiles(incoming: File[]) {
     setNetworkError(null);
 
-    const disallowed = incoming.filter((f) => !ALLOWED_TYPES.has(f.type));
+    const disallowed = incoming.filter(
+      (f) => !ALLOWED_ATTACHMENT_TYPES.has(f.type)
+    );
     if (disallowed.length > 0) {
       if (disallowed.length === 1) {
         setNetworkError(

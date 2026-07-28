@@ -261,12 +261,12 @@ describe('ChatPage', () => {
     });
   });
 
-  it('shows error when file type is not allowed', async () => {
+  it('shows a chip for a .docx, which the server has always accepted', async () => {
     renderChatPage();
     const input = document.querySelector(
       'input[type="file"]'
     ) as HTMLInputElement;
-    const file = new File(['data'], 'document.docx', {
+    const file = new File(['data'], 'lecture.docx', {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
     Object.defineProperty(input, 'files', {
@@ -276,9 +276,24 @@ describe('ChatPage', () => {
     fireEvent.change(input);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Can't attach document.docx/)
-      ).toBeInTheDocument();
+      expect(screen.getByTitle('lecture.docx')).toBeInTheDocument();
+    });
+  });
+
+  it('shows error when file type is not allowed', async () => {
+    renderChatPage();
+    const input = document.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const file = new File(['data'], 'clip.mp4', { type: 'video/mp4' });
+    Object.defineProperty(input, 'files', {
+      value: [file],
+      configurable: true,
+    });
+    fireEvent.change(input);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Can't attach clip.mp4/)).toBeInTheDocument();
     });
   });
 
