@@ -21,6 +21,11 @@ export const deleteNonSubScriberUploadsInDatabase = async (
   // the cancelled row and sweeps a paying subscriber's decks. Lowercasing both
   // sides matches AuthenticationService.getIsSubscriber, which is what the rest
   // of the product uses to decide the same question.
+  // Developer tiers live in subscriptions_developer (#3902), not subscriptions.
+  // Without the second clause a customer whose only paid subscription is a
+  // developer tier reads as a free user here and has their uploads deleted from
+  // the bucket irreversibly. Matching on email as well as user_id only ever
+  // spares a row, so a loose match is the safe direction.
   const query = await db.raw(`
     SELECT up.key
     FROM users u
@@ -33,6 +38,11 @@ export const deleteNonSubScriberUploadsInDatabase = async (
             lower(u.email) = lower(s.email)
             OR lower(u.email) = lower(s.linked_email)
           )
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM subscriptions_developer sd
+        WHERE sd.active = true
+          AND (sd.user_id = u.id OR lower(u.email) = lower(sd.email))
       )
       AND NOT EXISTS (
         SELECT 1 FROM user_passes pass
