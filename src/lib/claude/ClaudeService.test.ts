@@ -10,7 +10,7 @@ import {
   SYSTEM_PROMPT,
   buildUserMessage,
   buildFieldMappingPromptFragment,
-  dedupeCardsByFront,
+  dedupeIdenticalCards,
   describeRepairFailure,
   generateDeckInfo,
   ClaudeParseError,
@@ -1043,33 +1043,51 @@ function makeDeck(
   };
 }
 
-describe('dedupeCardsByFront', () => {
-  it('removes a card whose front normalizes to the same value as an earlier card', () => {
+describe('dedupeIdenticalCards', () => {
+  it('removes a card identical in front and back to an earlier card', () => {
     const deck = makeDeck('Biology', [
       { name: 'What is mitosis?', back: 'Cell division' },
-      { name: '  What is mitosis?  ', back: 'Duplicate from chunk boundary' },
+      { name: '  What is mitosis?  ', back: 'Cell division' },
     ]);
-    const result = dedupeCardsByFront([deck]);
+    const result = dedupeIdenticalCards([deck]);
     expect(result[0].cards).toHaveLength(1);
     expect(result[0].cards[0].back).toBe('Cell division');
+  });
+
+  it('keeps two cards that share a front but carry different backs', () => {
+    // A table row emitting one card per column: the fronts collide on the
+    // row's key term, the backs are the distinct facts. Front-only dedup
+    // dropped every column after the first (#3849).
+    const deck = makeDeck('Elements', [
+      { name: 'Sodium', back: 'Symbol: Na' },
+      { name: 'Sodium', back: 'Atomic number: 11' },
+      { name: 'Sodium', back: 'Group: 1' },
+    ]);
+    const result = dedupeIdenticalCards([deck]);
+    expect(result[0].cards).toHaveLength(3);
+    expect(result[0].cards.map((c) => c.back)).toEqual([
+      'Symbol: Na',
+      'Atomic number: 11',
+      'Group: 1',
+    ]);
   });
 
   it('normalizes by lowercasing before comparing', () => {
     const deck = makeDeck('Biochemistry', [
       { name: 'What is ATP?', back: 'Adenosine triphosphate' },
-      { name: 'WHAT IS ATP?', back: 'Duplicate upper-case variant' },
+      { name: 'WHAT IS ATP?', back: 'adenosine triphosphate' },
     ]);
-    const result = dedupeCardsByFront([deck]);
+    const result = dedupeIdenticalCards([deck]);
     expect(result[0].cards).toHaveLength(1);
     expect(result[0].cards[0].back).toBe('Adenosine triphosphate');
   });
 
-  it('collapses internal whitespace before comparing', () => {
+  it('collapses internal whitespace and markup before comparing', () => {
     const deck = makeDeck('Chemistry', [
       { name: 'What is H2O?', back: 'Water' },
-      { name: 'What  is  H2O?', back: 'Duplicate collapsed-space variant' },
+      { name: 'What  is  H2O?', back: '<p>Water</p>' },
     ]);
-    const result = dedupeCardsByFront([deck]);
+    const result = dedupeIdenticalCards([deck]);
     expect(result[0].cards).toHaveLength(1);
   });
 
@@ -1078,18 +1096,18 @@ describe('dedupeCardsByFront', () => {
       { name: 'What is velocity?', back: 'Speed with direction' },
       { name: 'What is acceleration?', back: 'Rate of change of velocity' },
     ]);
-    const result = dedupeCardsByFront([deck]);
+    const result = dedupeIdenticalCards([deck]);
     expect(result[0].cards).toHaveLength(2);
   });
 
-  it('dedupes per-deck independently — same front in two different decks is kept in each', () => {
+  it('dedupes per-deck independently — same card in two different decks is kept in each', () => {
     const deckA = makeDeck('DeckA', [
-      { name: 'Shared front', back: 'Answer A' },
+      { name: 'Shared front', back: 'Same answer' },
     ]);
     const deckB = makeDeck('DeckB', [
-      { name: 'Shared front', back: 'Answer B' },
+      { name: 'Shared front', back: 'Same answer' },
     ]);
-    const result = dedupeCardsByFront([deckA, deckB]);
+    const result = dedupeIdenticalCards([deckA, deckB]);
     expect(result).toHaveLength(2);
     expect(result[0].cards).toHaveLength(1);
     expect(result[1].cards).toHaveLength(1);
@@ -1097,7 +1115,7 @@ describe('dedupeCardsByFront', () => {
 
   it('handles an empty deck without throwing', () => {
     const deck = makeDeck('Empty', []);
-    const result = dedupeCardsByFront([deck]);
+    const result = dedupeIdenticalCards([deck]);
     expect(result[0].cards).toHaveLength(0);
   });
 
@@ -1108,11 +1126,11 @@ describe('dedupeCardsByFront', () => {
     try {
       const deck = makeDeck('Bio', [
         { name: 'What is a cell?', back: 'Basic unit of life' },
-        { name: 'What is a cell?', back: 'Duplicate' },
+        { name: 'What is a cell?', back: 'Basic unit of life' },
       ]);
-      dedupeCardsByFront([deck]);
+      dedupeIdenticalCards([deck]);
       expect(warnSpy).toHaveBeenCalledWith(
-        '[Claude] dedupeCardsByFront',
+        '[Claude] dedupeIdenticalCards',
         expect.objectContaining({ deckName: 'Bio', removed: 1 })
       );
     } finally {

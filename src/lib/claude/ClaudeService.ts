@@ -394,22 +394,36 @@ function splitChunkInHalf(html: string): string[] {
   return [html.slice(0, splitAt), html.slice(splitAt)];
 }
 
-function normalizeCardFront(front: string): string {
-  return front.toLowerCase().trim().replace(/\s+/g, ' ');
+function normalizeCardText(text: string): string {
+  return text
+    .replace(/<[^>]*>/g, ' ')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
 }
 
-export function dedupeCardsByFront(decks: DeckInfo[]): DeckInfo[] {
+// Keyed on front AND back, not front alone. A table with columns produces one
+// card per column from a single row, and those cards naturally share the row's
+// key term as their front — front-only dedup dropped every column after the
+// first, silently, which is the "only the first few columns become cards"
+// report (#3849). Two cards with the same front and different backs are
+// distinct facts and both survive; only a genuine duplicate, same front and
+// same back — a chunk boundary re-emitting a card — collapses. Dropping fewer
+// cards is the safe direction here: a surviving near-duplicate is visible and
+// Anki dedupes identical notes on import anyway, whereas a dropped column is
+// content the user never sees.
+export function dedupeIdenticalCards(decks: DeckInfo[]): DeckInfo[] {
   return decks.map((deck) => {
     const seen = new Set<string>();
     const dedupedCards = deck.cards.filter((card) => {
-      const key = normalizeCardFront(card.name);
+      const key = `${normalizeCardText(card.name)} ${normalizeCardText(card.back)}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
     const removed = deck.cards.length - dedupedCards.length;
     if (removed > 0) {
-      console.warn('[Claude] dedupeCardsByFront', {
+      console.warn('[Claude] dedupeIdenticalCards', {
         deckName: deck.name,
         removed,
       });
@@ -428,7 +442,7 @@ export function mergeDeckInfoArrays(decks: DeckInfo[]): DeckInfo[] {
       byName.set(deck.name, { ...deck, cards: [...deck.cards] });
     }
   }
-  return dedupeCardsByFront(Array.from(byName.values()));
+  return dedupeIdenticalCards(Array.from(byName.values()));
 }
 
 export function buildUserMessage(
