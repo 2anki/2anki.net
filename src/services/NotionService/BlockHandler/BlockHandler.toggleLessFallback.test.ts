@@ -87,12 +87,14 @@ describe('BlockHandler toggle-less fallback', () => {
       block('heading_2', 'What is spaced repetition?'),
       block('paragraph', 'A method that spaces reviews over time.'),
       block('heading_2', 'What is a flashcard?'),
-      block('paragraph', 'A prompt paired with an answer.'),
+      block('paragraph', 'A prompt paired with an answer to recall.'),
+      block('heading_2', 'What is active recall?'),
+      block('paragraph', 'Retrieving a fact from memory, not rereading.'),
     ]);
 
     expect(decks).toHaveLength(1);
     const cards = decks[0].cards;
-    expect(cards).toHaveLength(2);
+    expect(cards).toHaveLength(3);
     expect(cards[0].name).toContain('spaced repetition');
     expect(cards[0].back).toContain('spaces reviews');
     expect(cards[1].name).toContain('flashcard');
@@ -102,10 +104,14 @@ describe('BlockHandler toggle-less fallback', () => {
     const decks = await convert([
       block('paragraph', 'Q: What is the powerhouse of the cell?'),
       block('paragraph', 'A: The mitochondria.'),
+      block('paragraph', 'Q: What carries genetic information?'),
+      block('paragraph', 'A: The DNA molecule.'),
+      block('paragraph', 'Q: What makes proteins in the cell?'),
+      block('paragraph', 'A: The ribosome.'),
     ]);
 
     const cards = decks[0].cards;
-    expect(cards).toHaveLength(1);
+    expect(cards).toHaveLength(3);
     expect(cards[0].name).toContain('powerhouse');
     expect(cards[0].back).toContain('mitochondria');
   });

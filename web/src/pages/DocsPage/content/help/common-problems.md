@@ -71,9 +71,9 @@ If you click anywhere else and the input goes away, drop the file in again — t
 
 **What you saw.** The upload finishes but produces no deck.
 
-**Why it happened.** 2anki couldn't find anything that looks like a flashcard. By default it looks for toggle blocks; without toggles, you'll need to enable a different option.
+**Why it happened.** 2anki couldn't find anything that looks like a flashcard. By default it looks for toggle blocks. When there are no toggles, 2anki now falls back to the document's own structure — headings with their content, bulleted or numbered lists, two-column tables, and question-and-answer text — and ships the best match if it's good enough. This message means none of those cleared the quality bar either, so no deck was built rather than a low-quality one.
 
-**How to fix it.** Open [Card options](/documentation/cards/card-options) and turn on the option that matches your source — for Markdown bullet hierarchies, **Markdown Nested Bullet Points**; for Notion exports without toggles, restructure your source, or [contact us](/documentation/help/contact) with an example.
+**How to fix it.** Give the page a clearer structure: a heading followed by its explanation, a two-column table of terms and definitions, or lines marked `Q:` and `A:`. Then convert again. You can also open [Card options](/documentation/cards/card-options) and turn on the option that matches your source — for Markdown bullet hierarchies, **Markdown Nested Bullet Points** — or [contact us](/documentation/help/contact) with an example.
 
 ## "Claude couldn't find any content to turn into flashcards in this Notion page."
 

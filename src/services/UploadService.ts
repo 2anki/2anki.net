@@ -25,6 +25,7 @@ import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
 import { isExpectedClientFault } from '../lib/misc/isExpectedClientFault';
 import type { DeckScore } from '../lib/parser/scoreCandidateDeck';
+import type { InducedRescue } from '../lib/parser/induction/candidateRules';
 import {
   CONVERSION_TRUNCATED_MESSAGE,
   FileConversionError,
@@ -370,6 +371,7 @@ class UploadService {
       parsePath?: string;
       engine?: ConversionEngine;
       score?: DeckScore;
+      inducedRule?: InducedRescue;
     }[],
     owner: number | null,
     source: ConversionScoreSource,
@@ -378,16 +380,26 @@ class UploadService {
     if (this.conversionRuleScoresRepository == null) return;
     for (const pkg of packages) {
       if (pkg.score == null) continue;
+      const induced = pkg.inducedRule;
+      // A rejected rescue records the candidate the induction actually judged,
+      // not the empty deck that ships; a shipped rescue records the real
+      // shipped deck (pkg.score).
+      const score =
+        induced?.outcome === 'rescue_rejected' && induced.score != null
+          ? induced.score
+          : pkg.score;
       this.conversionRuleScoresRepository
         .record({
           owner,
           source,
           engine: pkg.engine ?? 'parser',
           inputFormat,
-          rule: pkg.parsePath ?? 'unknown',
-          wasFallback: pkg.parsePath === 'unclassified',
-          outcome: pkg.score.cardCount > 0 ? 'shipped' : 'no_cards',
-          score: pkg.score,
+          rule: induced?.rule ?? pkg.parsePath ?? 'unknown',
+          wasFallback: induced != null || pkg.parsePath === 'unclassified',
+          outcome:
+            induced?.outcome ??
+            (pkg.score.cardCount > 0 ? 'shipped' : 'no_cards'),
+          score,
         })
         .catch((error) =>
           console.error(

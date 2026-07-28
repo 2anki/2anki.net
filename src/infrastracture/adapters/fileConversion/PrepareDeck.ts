@@ -28,6 +28,7 @@ import {
   type DeckScore,
 } from '../../../lib/parser/scoreCandidateDeck';
 import type { ConversionEngine } from '../../../lib/parser/conversionEngine';
+import type { InducedRescue } from '../../../lib/parser/induction/candidateRules';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import Workspace from '../../../lib/parser/WorkSpace';
 import path from 'path';
@@ -84,6 +85,21 @@ interface PrepareDeckResult {
   parsePath?: string;
   engine?: ConversionEngine;
   score?: DeckScore;
+  inducedRule?: InducedRescue;
+}
+
+// A rejected rescue must not ride a deck that still shipped through a later
+// stage (the fallback parser). When cards shipped, the induction is not what
+// produced them, so the row records as a normal shipped deck; the rejected
+// rescue only travels when the deck it judged is the one that ships (empty).
+function shippedInducedRule(
+  induced: InducedRescue | undefined,
+  cardCount: number
+): InducedRescue | undefined {
+  if (induced?.outcome === 'rescue_rejected' && cardCount > 0) {
+    return undefined;
+  }
+  return induced;
 }
 
 async function convertFile(
@@ -546,6 +562,10 @@ export async function PrepareDeck(
           parser.payload.flatMap((deck) => deck.cards),
           allFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
         ),
+        inducedRule: shippedInducedRule(
+          parser.inducedRule,
+          parser.totalCardCount()
+        ),
       };
     }
   }
@@ -572,6 +592,10 @@ export async function PrepareDeck(
       parser.payload.flatMap((deck) => deck.cards),
       allFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
     ),
+    inducedRule: shippedInducedRule(
+      parser.inducedRule,
+      parser.totalCardCount()
+    ),
   };
 }
 
@@ -588,6 +612,9 @@ export interface DeckInfoOnlyResult {
   droppedImageCount: number;
   emptyBackCount: number;
   parsePath?: string;
+  engine?: ConversionEngine;
+  score?: DeckScore;
+  inducedRule?: InducedRescue;
   needsIndividualBuild: boolean;
 }
 
@@ -654,6 +681,15 @@ export async function prepareDeckInfoOnly(
     droppedImageCount: parser.droppedImageCount,
     emptyBackCount: parser.emptyBackCount,
     parsePath: parser.parsePathSignature(),
+    engine: 'parser',
+    score: scoreCandidateDeck(
+      parser.payload.flatMap((deck) => deck.cards),
+      allFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
+    ),
+    inducedRule: shippedInducedRule(
+      parser.inducedRule,
+      parser.totalCardCount()
+    ),
     needsIndividualBuild: false,
   };
 }

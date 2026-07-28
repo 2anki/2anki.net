@@ -58,6 +58,17 @@
     "text_one": "Não foi possível converter {{count}} bloco desta página ({{types}}).",
     "text_other": "Não foi possível converter {{count}} blocos desta página ({{types}})."
   },
+  "structureRescued": {
+    "text": "Cartões criados a partir {{structure}} desta página, já que ela não tinha toggles.",
+    "structures": {
+      "heading": "dos títulos",
+      "bullets": "das listas com marcadores",
+      "numbered": "das listas numeradas",
+      "columns": "das colunas da tabela",
+      "quote": "das citações",
+      "guess": "do texto de pergunta e resposta"
+    }
+  },
   "columnsGuessed": {
     "text": "Não conseguimos identificar quais colunas são a pergunta e a resposta, então este baralho usa <front>{{frontField}}</front> como frente e <back>{{backField}}</back> como verso. Converta o banco de dados novamente para escolher outras colunas."
   },

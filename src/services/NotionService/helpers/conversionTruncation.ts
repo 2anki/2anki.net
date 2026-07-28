@@ -1,6 +1,7 @@
 export const NOTION_TRUNCATED_CODE = 'notion_truncated';
 export const NOTION_ASSETS_DROPPED_CODE = 'notion_assets_dropped';
 export const NOTION_COLUMNS_GUESSED_CODE = 'notion_columns_guessed';
+export const NOTION_STRUCTURE_RESCUED_CODE = 'notion_structure_rescued';
 export const NOTION_UNSUPPORTED_BLOCKS_CODE = 'notion_unsupported_blocks';
 export const NOTION_DATABASE_RESOLVED_CODE = 'notion_database_resolved';
 export const MONTHLY_LIMIT_PARTIAL_CODE = 'monthly_limit_partial';
@@ -53,8 +54,15 @@ function pickSignalCode(
   truncation: ConversionTruncation | undefined,
   hasDroppedAssets: boolean,
   guessedColumns: GuessedColumnMapping | undefined,
-  hasUnsupportedBlocks: boolean
+  hasUnsupportedBlocks: boolean,
+  structureRescuedRule: string | undefined
 ): string {
+  // A rescued deck is the whole story of the conversion — the cards came from
+  // an inferred structure, not toggles — so it takes priority over the softer
+  // signals below.
+  if (structureRescuedRule != null) {
+    return NOTION_STRUCTURE_RESCUED_CODE;
+  }
   if (truncation != null) {
     return NOTION_TRUNCATED_CODE;
   }
@@ -75,7 +83,8 @@ export function buildNotionConversionSignalPayload(
   droppedAssetCount: number,
   guessedColumns?: GuessedColumnMapping,
   resolvedDatabasePath?: ResolvedDatabasePath,
-  unsupportedBlocks?: Record<string, number>
+  unsupportedBlocks?: Record<string, number>,
+  structureRescuedRule?: string
 ): string | undefined {
   const hasDroppedAssets = droppedAssetCount > 0;
   const hasUnsupportedBlocks = Object.keys(unsupportedBlocks ?? {}).length > 0;
@@ -84,7 +93,8 @@ export function buildNotionConversionSignalPayload(
     !hasDroppedAssets &&
     guessedColumns == null &&
     resolvedDatabasePath == null &&
-    !hasUnsupportedBlocks
+    !hasUnsupportedBlocks &&
+    structureRescuedRule == null
   ) {
     return undefined;
   }
@@ -98,14 +108,20 @@ export function buildNotionConversionSignalPayload(
     back_field?: string;
     via_page_link_selfheal?: boolean;
     unsupported_blocks?: Record<string, number>;
+    rule?: string;
   } = {
     code: pickSignalCode(
       truncation,
       hasDroppedAssets,
       guessedColumns,
-      hasUnsupportedBlocks
+      hasUnsupportedBlocks,
+      structureRescuedRule
     ),
   };
+
+  if (structureRescuedRule != null) {
+    payload.rule = structureRescuedRule;
+  }
 
   if (truncation != null) {
     payload.blocks_converted = truncation.blocksConverted;

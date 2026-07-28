@@ -65,6 +65,7 @@ export const KNOWN_EVENTS = new Set([
   'image_only_photo_deck_shown',
   'image_only_photo_deck_clicked',
   'columns_guessed_notice_shown',
+  'structure_rescued_notice_shown',
   'unsupported_blocks_notice_shown',
   'conversion_pathology_shown',
   'producer_intent_captured',

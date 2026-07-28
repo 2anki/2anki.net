@@ -1,4 +1,5 @@
 import type { ConversionEngine } from './conversionEngine';
+import type { InducedRescue } from './induction/candidateRules';
 import type { DeckScore } from './scoreCandidateDeck';
 
 class Package {
@@ -23,6 +24,11 @@ class Package {
   engine?: ConversionEngine;
 
   score?: DeckScore;
+
+  // Set when the empty-deck structure rescue ran. Carries the winning (or
+  // best-attempted) rule so the corpus records which structure rescued the
+  // upload and whether it shipped or fell below the floor.
+  inducedRule?: InducedRescue;
 
   constructor(
     name: string,

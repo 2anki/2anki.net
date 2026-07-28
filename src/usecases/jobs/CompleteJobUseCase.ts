@@ -25,7 +25,8 @@ export class CompleteJobUseCase {
     guessedColumns?: GuessedColumnMapping,
     monthlyLimitPartial?: MonthlyLimitPartial,
     resolvedDatabasePath?: ResolvedDatabasePath,
-    unsupportedBlocks?: Record<string, number>
+    unsupportedBlocks?: Record<string, number>,
+    structureRescuedRule?: string
   ): Promise<Jobs> {
     const job = await this.jobRepository.findJobById(jobId, owner);
 
@@ -45,7 +46,8 @@ export class CompleteJobUseCase {
             droppedAssetCount,
             guessedColumns,
             resolvedDatabasePath,
-            unsupportedBlocks
+            unsupportedBlocks,
+            structureRescuedRule
           );
 
     const updated = await this.jobRepository.updateJobStatus(

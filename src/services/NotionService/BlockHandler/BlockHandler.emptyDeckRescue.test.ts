@@ -87,6 +87,13 @@ describe('empty-deck rescue on the page branch', () => {
         emptyToggle,
         block('heading_2', 'What is spaced repetition?'),
         block('paragraph', 'A method that spaces reviews over time.'),
+        block('heading_2', 'What is a flashcard?'),
+        block('paragraph', 'A prompt paired with an answer to recall.'),
+        block('heading_2', 'What is active recall?'),
+        block(
+          'paragraph',
+          'Retrieving a fact from memory instead of rereading.'
+        ),
       ],
     });
     const handler = makeHandler(api);
@@ -101,9 +108,13 @@ describe('empty-deck rescue on the page branch', () => {
 
     expect(decks).toHaveLength(1);
     const cards = decks[0].cards;
-    expect(cards).toHaveLength(1);
+    expect(cards).toHaveLength(3);
     expect(cards[0].name).toContain('spaced repetition');
     expect(cards[0].back).toContain('spaces reviews');
+    expect(handler.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
   });
 
   it('counts the rescued cards rather than the discarded empty toggles', async () => {
@@ -113,6 +124,10 @@ describe('empty-deck rescue on the page branch', () => {
         block('toggle', 'Empty two'),
         block('heading_2', 'What is a flashcard?'),
         block('paragraph', 'A prompt paired with an answer.'),
+        block('heading_2', 'What is a deck?'),
+        block('paragraph', 'A named collection of flashcards.'),
+        block('heading_2', 'What is a note?'),
+        block('paragraph', 'The source a card is generated from.'),
       ],
     });
     const handler = makeHandler(api);
@@ -125,8 +140,62 @@ describe('empty-deck rescue on the page branch', () => {
       parentName: '',
     });
 
-    expect(handler.cardCount).toBe(1);
+    expect(handler.cardCount).toBe(3);
     expect(handler.emptyBackCount).toBe(0);
+  });
+
+  it('never rescues (or mangles) a cloze-toggle page whose cards look empty pre-processing', async () => {
+    const api = makeApi({
+      'page-1': [
+        block('toggle', '{{c2::Canberra}} was founded in {{c1::1913}}.'),
+        block(
+          'toggle',
+          '{{c1::Canberra::city}} was founded in {{c2::1913::year}}'
+        ),
+        block('toggle', 'This is a {{c1::cloze deletion}}'),
+      ],
+    });
+    const handler = makeHandler(api);
+
+    await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    // The gate reads the {{c…}} markup as cloze content, so induction never
+    // runs and never splits a card on the :: inside {{c1::Canberra::city}}.
+    // (Cloze-in-summary with an empty body is not a supported Notion cloze
+    // shape, so CleanCards drops these at build — but honestly empty, not
+    // mangled.)
+    expect(handler.inducedRule).toBeUndefined();
+  });
+
+  it('fails honest below the floor rather than shipping a one-card rescue', async () => {
+    const api = makeApi({
+      'page-1': [
+        block('toggle', 'Empty toggle'),
+        block('heading_2', 'What is spaced repetition?'),
+        block('paragraph', 'A method that spaces reviews over time.'),
+      ],
+    });
+    const handler = makeHandler(api);
+
+    const decks = await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks[0].cards).toHaveLength(0);
+    expect(handler.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_rejected',
+    });
   });
 });
 
@@ -137,14 +206,22 @@ describe('empty-deck rescue on the sub-deck branch', () => {
     return rules;
   }
 
+  function chapterChildren() {
+    return [
+      block('heading_2', 'What is an enzyme?'),
+      block('paragraph', 'A protein that speeds up a reaction.'),
+      block('heading_2', 'What is a substrate?'),
+      block('paragraph', 'The molecule an enzyme acts on.'),
+      block('heading_2', 'What is an active site?'),
+      block('paragraph', 'The pocket where the substrate binds.'),
+    ];
+  }
+
   it('rescues a sub-deck built from block children with no toggles', async () => {
     const chapter = block('heading_1', 'Chapter 1', true);
     const api = makeApi({
       'page-1': [chapter],
-      [chapter.id]: [
-        block('heading_2', 'What is an enzyme?'),
-        block('paragraph', 'A protein that speeds up a reaction.'),
-      ],
+      [chapter.id]: chapterChildren(),
     });
     const handler = makeHandler(api);
     handler.useAll = true;
@@ -158,7 +235,7 @@ describe('empty-deck rescue on the sub-deck branch', () => {
     });
 
     const rescued = decks.flatMap((deck) => deck.cards);
-    expect(rescued).toHaveLength(1);
+    expect(rescued).toHaveLength(3);
     expect(rescued[0].name).toContain('enzyme');
     expect(rescued[0].back).toContain('speeds up a reaction');
   });
@@ -167,10 +244,7 @@ describe('empty-deck rescue on the sub-deck branch', () => {
     const chapter = block('heading_1', 'Chapter 1', true);
     const api = makeApi({
       'page-1': [chapter],
-      [chapter.id]: [
-        block('heading_2', 'What is an enzyme?'),
-        block('paragraph', 'A protein that speeds up a reaction.'),
-      ],
+      [chapter.id]: chapterChildren(),
     });
     const handler = makeHandler(api);
     handler.useAll = true;
@@ -201,5 +275,33 @@ describe('empty-deck rescue on the sub-deck branch', () => {
     expect(withRescue).toBe(
       (baselineApi.getBlocks as jest.Mock).mock.calls.length
     );
+  });
+
+  it('keeps a shipped sub-deck rescue when a later sub-deck rejects one', async () => {
+    const chapterA = block('heading_1', 'Chapter A', true);
+    const chapterB = block('heading_1', 'Chapter B', true);
+    const api = makeApi({
+      'page-1': [chapterA, chapterB],
+      [chapterA.id]: chapterChildren(),
+      [chapterB.id]: [
+        block('heading_2', 'Only one question here?'),
+        block('paragraph', 'A single answer, below the three-card floor.'),
+      ],
+    });
+    const handler = makeHandler(api);
+    handler.useAll = true;
+
+    await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: subDeckRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(handler.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
   });
 });

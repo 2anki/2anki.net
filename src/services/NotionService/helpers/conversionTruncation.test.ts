@@ -75,6 +75,51 @@ describe('buildNotionConversionSignalPayload', () => {
     });
   });
 
+  it('serializes a structure-rescued payload carrying the winning rule', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      0,
+      undefined,
+      undefined,
+      undefined,
+      'heading'
+    );
+    expect(JSON.parse(payload as string)).toEqual({
+      code: 'notion_structure_rescued',
+      rule: 'heading',
+    });
+  });
+
+  it('surfaces the rescue rule even when the conversion also truncated', () => {
+    const payload = buildNotionConversionSignalPayload(
+      { blocksConverted: 100, subDeckRulesSkipped: false },
+      0,
+      undefined,
+      undefined,
+      undefined,
+      'heading'
+    );
+    expect(JSON.parse(payload as string)).toMatchObject({
+      code: 'notion_structure_rescued',
+      rule: 'heading',
+    });
+  });
+
+  it('gives a rescued deck priority over co-occurring softer signals', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      4,
+      { frontField: 'Notes', backField: 'Tags' },
+      undefined,
+      undefined,
+      'bullets'
+    );
+    expect(JSON.parse(payload as string)).toMatchObject({
+      code: 'notion_structure_rescued',
+      rule: 'bullets',
+    });
+  });
+
   it('serializes a guessed-columns-only payload', () => {
     const payload = buildNotionConversionSignalPayload(undefined, 0, {
       frontField: 'Notes',

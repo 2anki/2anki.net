@@ -64,8 +64,28 @@ describe('ConversionRuleScoresRepository distribution SQL', () => {
   });
 
   it('excludes zero-card rows from the percentiles but still counts them', () => {
-    expect(sql).toContain("FILTER (WHERE outcome = 'no_cards')");
-    expect(sql).toContain("outcome = 'shipped' AND card_count > 0");
+    expect(sql).toContain(
+      "FILTER (WHERE outcome IN ('no_cards', 'rescue_rejected'))"
+    );
+    expect(sql).toContain(
+      "outcome IN ('shipped', 'rescue_shipped') AND card_count > 0"
+    );
+  });
+
+  it('folds rescued decks into the right cohort and counts them separately', () => {
+    // rescue_shipped is a real shipped deck (joins the shipped stats), and a
+    // rescue that fell below the floor shipped nothing (joins no_cards). Both
+    // also get their own flagged counts so the rescue rate is visible.
+    expect(sql).toContain(
+      "outcome IN ('shipped', 'rescue_shipped') AND card_count > 0"
+    );
+    expect(sql).toContain(
+      "FILTER (WHERE outcome IN ('no_cards', 'rescue_rejected'))"
+    );
+    expect(sql).toContain("FILTER (WHERE outcome = 'rescue_shipped')");
+    expect(sql).toContain("FILTER (WHERE outcome = 'rescue_rejected')");
+    expect(sql).toContain('AS rescued_shipped_count');
+    expect(sql).toContain('AS rescue_rejected_count');
   });
 
   it('groups by the cohort the index leads with', () => {

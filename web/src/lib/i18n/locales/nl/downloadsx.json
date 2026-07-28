@@ -58,6 +58,17 @@
     "text_one": "{{count}} blok op deze pagina kon niet worden geconverteerd ({{types}}).",
     "text_other": "{{count}} blokken op deze pagina konden niet worden geconverteerd ({{types}})."
   },
+  "structureRescued": {
+    "text": "Kaarten gemaakt van de {{structure}} op deze pagina, omdat er geen toggles waren.",
+    "structures": {
+      "heading": "koppen",
+      "bullets": "opsommingslijsten",
+      "numbered": "genummerde lijsten",
+      "columns": "tabelkolommen",
+      "quote": "citaten",
+      "guess": "vraag-en-antwoordtekst"
+    }
+  },
   "columnsGuessed": {
     "text": "We konden niet bepalen welke kolommen de vraag en het antwoord zijn, dus dit pakket gebruikt <front>{{frontField}}</front> als voorkant en <back>{{backField}}</back> als achterkant. Converteer de database opnieuw om andere kolommen te kiezen."
   },

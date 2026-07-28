@@ -193,6 +193,7 @@ async function processFile(
       // nothing on every AI conversion.
       singleFilePackage.engine = d.engine;
       singleFilePackage.score = d.score;
+      singleFilePackage.inducedRule = d.inducedRule;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
     }

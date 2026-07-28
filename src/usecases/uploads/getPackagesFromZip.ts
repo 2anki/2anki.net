@@ -129,17 +129,19 @@ async function buildDeckBatch(
     const batchResults = preparedResults.filter((r) => !r.needsIndividualBuild);
     batchResults.forEach((result, i) => {
       if (!apkgPaths[i]) return;
-      packages.push(
-        new Package(
-          result.name,
-          result.cardCount,
-          result.mcqCount,
-          result.mcqSkippedCount,
-          result.droppedImageCount,
-          result.emptyBackCount ?? 0,
-          result.parsePath
-        )
+      const pkg = new Package(
+        result.name,
+        result.cardCount,
+        result.mcqCount,
+        result.mcqSkippedCount,
+        result.droppedImageCount,
+        result.emptyBackCount ?? 0,
+        result.parsePath
       );
+      pkg.engine = result.engine;
+      pkg.score = result.score;
+      pkg.inducedRule = result.inducedRule;
+      packages.push(pkg);
       if (result.warning) warnings.push(result.warning);
     });
   }
@@ -194,17 +196,19 @@ async function buildStragglerDecks(
     if (isLockedPdfEntry(outcome)) {
       lockedPdfs.push(outcome.filename);
     } else if (outcome) {
-      packages.push(
-        new Package(
-          outcome.name,
-          outcome.cardCount ?? 0,
-          outcome.mcqCount ?? 0,
-          outcome.mcqSkippedCount ?? 0,
-          outcome.droppedImageCount ?? 0,
-          outcome.emptyBackCount ?? 0,
-          outcome.parsePath
-        )
+      const pkg = new Package(
+        outcome.name,
+        outcome.cardCount ?? 0,
+        outcome.mcqCount ?? 0,
+        outcome.mcqSkippedCount ?? 0,
+        outcome.droppedImageCount ?? 0,
+        outcome.emptyBackCount ?? 0,
+        outcome.parsePath
       );
+      pkg.engine = outcome.engine;
+      pkg.score = outcome.score;
+      pkg.inducedRule = outcome.inducedRule;
+      packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
     }
   }
@@ -321,17 +325,19 @@ async function buildAllInOneSlot(
     if (isLockedPdfEntry(outcome)) {
       lockedPdfs.push(outcome.filename);
     } else if (outcome) {
-      packages.push(
-        new Package(
-          outcome.name,
-          outcome.cardCount ?? 0,
-          outcome.mcqCount ?? 0,
-          outcome.mcqSkippedCount ?? 0,
-          outcome.droppedImageCount ?? 0,
-          outcome.emptyBackCount ?? 0,
-          outcome.parsePath
-        )
+      const pkg = new Package(
+        outcome.name,
+        outcome.cardCount ?? 0,
+        outcome.mcqCount ?? 0,
+        outcome.mcqSkippedCount ?? 0,
+        outcome.droppedImageCount ?? 0,
+        outcome.emptyBackCount ?? 0,
+        outcome.parsePath
       );
+      pkg.engine = outcome.engine;
+      pkg.score = outcome.score;
+      pkg.inducedRule = outcome.inducedRule;
+      packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
     }
   });

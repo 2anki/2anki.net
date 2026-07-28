@@ -64,6 +64,17 @@ import {
 } from './collectSectionTags';
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import { extractName } from '../extractDeckName';
+import {
+  InducedRescue,
+  InducedRule,
+  mergeInducedRescue,
+} from './induction/candidateRules';
+import { runInduction } from './induction/rankCandidates';
+import {
+  domPlainTextLength,
+  induceCardsFromDom,
+  UPLOAD_CANDIDATE_RULES,
+} from './induction/induceCardsFromDom';
 
 const MARKDOWN_SOURCE_RATIO_THRESHOLD = 0.8;
 
@@ -126,6 +137,8 @@ export class DeckParser {
   droppedImageCount: number;
 
   emptyBackCount: number;
+
+  inducedRule?: InducedRescue;
 
   private sawUnclassifiedParse: boolean;
 
@@ -469,6 +482,19 @@ export class DeckParser {
 
     cards = cards.filter(Boolean);
 
+    // Gate on what survives cleaning, not the raw count: a parse that produced
+    // only cards Deck.CleanCards will strip (an empty-toggle equivalent) is
+    // effectively empty, so it must reach the rescue instead of shipping an
+    // empty deck. hasSalvageableCards also treats raw-stage cloze notes (their
+    // cloze flag not yet set) as usable, so a healthy cloze deck is never
+    // rescued. The rescued set replaces the unusable cards outright.
+    if (!this.hasSalvageableCards(cards)) {
+      const rescued = this.induceCardsFromStructure(dom);
+      if (rescued != null) {
+        cards = rescued;
+      }
+    }
+
     const deck = new Deck(
       name,
       cards,
@@ -500,6 +526,76 @@ export class DeckParser {
       }
     }
     return decks;
+  }
+
+  // A deck is salvageable if any card survives cleaning or carries an explicit
+  // {{c…}} cloze, and — when cloze mode is on — if any card holds an inline
+  // <code> span, which processPayload turns into a cloze deletion. Without the
+  // <code> case a page whose only cloze uses the code shorthand would look
+  // empty and get mangled by induction.
+  private hasSalvageableCards(cards: Note[]): boolean {
+    if (Deck.hasUsableCards(cards)) {
+      return true;
+    }
+    return (
+      this.settings.isCloze &&
+      cards.some(
+        (card) => hasInlineClozeCode(card.name) || hasInlineClozeCode(card.back)
+      )
+    );
+  }
+
+  private uploadCandidateRules(): InducedRule[] {
+    // clozeFromToggleContent assumes a toggle front; isCherry means the user
+    // explicitly restricted the conversion to selected blocks, so inducing a
+    // whole-document deck would silently override that filter. Both skip
+    // induction and fail honest.
+    if (this.settings.clozeFromToggleContent || this.settings.isCherry) {
+      return [];
+    }
+    const rules = [...UPLOAD_CANDIDATE_RULES];
+    if (this.settings.template === 'hierarchy') {
+      return rules.filter((rule) => rule !== 'heading');
+    }
+    return rules;
+  }
+
+  // Runs only when the normal HTML parse produced zero cards. It re-derives the
+  // card boundary from the document's own structure (headings, nested lists,
+  // two-column tables, blockquotes, Q:/A: and term::definition markers) on the
+  // DOM before the plain-text flattening fallback, so bold, highlight and colour
+  // survive. Each candidate is scored; the best that clears the quality floor
+  // ships, or we leave the deck empty and fail honest.
+  private induceCardsFromStructure(dom: cheerio.CheerioAPI): Note[] | null {
+    const rules = this.uploadCandidateRules();
+    if (rules.length === 0) {
+      return null;
+    }
+    const { winner, best } = runInduction(
+      rules,
+      (rule) => induceCardsFromDom(dom, rule),
+      domPlainTextLength(dom)
+    );
+    if (winner == null) {
+      if (best != null) {
+        this.recordInducedRule({
+          rule: best.rule,
+          outcome: 'rescue_rejected',
+          score: best.score,
+        });
+      }
+      return null;
+    }
+    this.recordInducedRule({
+      rule: winner.rule,
+      outcome: 'rescue_shipped',
+      score: winner.score,
+    });
+    return winner.cards;
+  }
+
+  private recordInducedRule(next: InducedRescue): void {
+    this.inducedRule = mergeInducedRescue(this.inducedRule, next);
   }
 
   private extractGlobalTags(dom: cheerio.CheerioAPI): string[] {

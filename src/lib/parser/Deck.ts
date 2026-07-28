@@ -52,6 +52,18 @@ export default class Deck {
     );
   }
 
+  // True when at least one card is salvageable at the RAW parse stage. A cloze
+  // card's `cloze` flag is only set later in processPayload, so at parse time
+  // CleanCards (which reads that flag) drops a card whose answer lives in a
+  // {{c…}} deletion on the front. The empty-deck rescue gates on this so it
+  // never mistakes a healthy cloze deck for an empty one and replaces it.
+  static hasUsableCards(cards: Note[]): boolean {
+    return (
+      this.CleanCards(cards).length > 0 ||
+      cards.some((note) => note.hasClozeDeletion())
+    );
+  }
+
   cleanStyle() {
     if (this.style) {
       return this.style.replace(/'/g, '"');
