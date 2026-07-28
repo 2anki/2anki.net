@@ -74,29 +74,40 @@ describe('DeveloperSubscriptionsRepository', () => {
     expect(await repo().activeProductIdsForUser(7)).toEqual([]);
   });
 
-  it('finds a subscription paid under an unlinked Stripe email', async () => {
+  it('never resolves a tier for a row with no user_id', async () => {
     await repo().upsert({
       ...base,
       stripeSubscriptionId: 'sub_1',
       userId: null,
     });
 
+    // The row exists, is active, and carries an email — and still grants
+    // nothing. Matching on that email would hand the tier to whoever registers
+    // the address, since registration does not verify it.
     expect(await repo().activeProductIdsForUser(7)).toEqual([]);
-    expect(await repo().activeProductIdsForEmail('  DEV@Example.com ')).toEqual(
-      ['prod_starter']
-    );
   });
 
-  it('does not leak another account’s tier through the email lookup', async () => {
+  it('deactivates by subscription id without needing an account', async () => {
     await repo().upsert({
       ...base,
       stripeSubscriptionId: 'sub_1',
       userId: null,
-      email: 'someone-else@example.com',
     });
 
-    expect(await repo().activeProductIdsForEmail('dev@example.com')).toEqual(
-      []
-    );
+    expect(await repo().deactivateBySubscriptionId('sub_1')).toBe(1);
+    const row = await db('subscriptions_developer').first();
+    expect(Boolean(row.active)).toBe(false);
+  });
+
+  it('leaves other subscriptions alone when deactivating one', async () => {
+    await repo().upsert({ ...base, stripeSubscriptionId: 'sub_1' });
+    await repo().upsert({
+      ...base,
+      stripeSubscriptionId: 'sub_2',
+      stripeProductId: 'prod_growth',
+    });
+
+    await repo().deactivateBySubscriptionId('sub_1');
+    expect(await repo().activeProductIdsForUser(7)).toEqual(['prod_growth']);
   });
 });

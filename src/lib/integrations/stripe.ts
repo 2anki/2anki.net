@@ -119,7 +119,7 @@ export const resolveAccountForSubscription = async (
 // developer_tiers is the source of truth for which Stripe products are API
 // tiers; hardcoding the product ids here would drift the moment a tier is added
 // through the ops page.
-const isDeveloperTierProduct = async (
+export const isDeveloperTierProduct = async (
   db: Knex,
   productId: string
 ): Promise<boolean> => {

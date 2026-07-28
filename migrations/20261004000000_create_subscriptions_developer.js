@@ -14,17 +14,19 @@ exports.up = async (knex) => {
   await knex.schema.createTable('subscriptions_developer', (table) => {
     table.increments('id').primary();
     table.text('stripe_subscription_id').notNullable().unique();
-    // Mirrors the events and error_events tables: a webhook-populated user_id
-    // that must not block account deletion, and must not be left pointing at a
-    // user that no longer exists on a paid-access path. Added now, while the
-    // table is empty — ALTER TABLE ADD CONSTRAINT on a populated table takes
-    // SHARE ROW EXCLUSIVE on both tables.
+    // CASCADE, following api_keys rather than the SET NULL used by events and
+    // error_events. Those are analytics; this row grants a paid API tier, and a
+    // row that outlives its account is a row that can be matched again by
+    // whoever registers that address next. Deleting it is correct — the billing
+    // history lives in Stripe, not here. Added now, while the table is empty:
+    // ALTER TABLE ADD CONSTRAINT on a populated table takes SHARE ROW EXCLUSIVE
+    // on both tables.
     table
       .integer('user_id')
       .nullable()
       .references('id')
       .inTable('users')
-      .onDelete('SET NULL');
+      .onDelete('CASCADE');
     table.string('email', 255).nullable();
     table.text('stripe_product_id').notNullable();
     table.boolean('active').notNullable().defaultTo(false);

@@ -143,17 +143,19 @@ export function makeRequireApiKey(
         // concurrent subscription; the base plan cannot represent them without
         // one overwriting the other. Both sets feed the resolver, which already
         // takes an array and picks the highest limit among the tiers owned.
-        const developerRepo = new DeveloperSubscriptionsRepository(database);
-        const developerProductIds = await developerRepo.activeProductIdsForUser(
-          active.user_id
-        );
-        const byEmail =
-          developerProductIds.length > 0
-            ? []
-            : await developerRepo.activeProductIdsForEmail(email);
-        return [
-          ...new Set([...baseProductIds, ...developerProductIds, ...byEmail]),
-        ];
+        //
+        // Matched on user_id only. Matching on the row's email would grant a
+        // paid tier on an unverified string: that column holds the Stripe
+        // customer's email, registration does not verify addresses, and a row
+        // can exist with no user_id at all — so anyone registering that address
+        // would inherit the tier. A subscription bought through the app always
+        // carries subscription_data.metadata.user_id and resolves an account;
+        // one created in the Stripe dashboard has to be claimed through the
+        // token-verified flow, which proves control before setting user_id.
+        const developerProductIds = await new DeveloperSubscriptionsRepository(
+          database
+        ).activeProductIdsForUser(active.user_id);
+        return [...new Set([...baseProductIds, ...developerProductIds])];
       });
     const resolveTier =
       deps.tierResolver ??

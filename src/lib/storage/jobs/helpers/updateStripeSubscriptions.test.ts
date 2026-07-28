@@ -13,10 +13,20 @@ const mockDbInstance = {
   table: jest.fn(),
 };
 
+const mockIsDeveloperTierProduct = jest.fn().mockResolvedValue(false);
 jest.mock('../../../integrations/stripe', () => ({
   getStripe: () => mockStripeInstance,
   extractProductId: jest.requireActual('../../../integrations/stripe')
     .extractProductId,
+  isDeveloperTierProduct: (...args: unknown[]) =>
+    mockIsDeveloperTierProduct(...args),
+}));
+
+const mockUpsertDeveloperSubscription = jest.fn().mockResolvedValue(undefined);
+jest.mock('../../../../data_layer/DeveloperSubscriptionsRepository', () => ({
+  DeveloperSubscriptionsRepository: jest.fn().mockImplementation(() => ({
+    upsert: mockUpsertDeveloperSubscription,
+  })),
 }));
 
 jest.mock('../../../../data_layer', () => ({
@@ -109,6 +119,24 @@ function setupStripeMock(subscriptions: StripeTypes.Subscription[]) {
 describe('updateStripeSubscriptions — batch provisioning fields', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsDeveloperTierProduct.mockResolvedValue(false);
+  });
+
+  it('keeps a developer tier out of the email-keyed subscriptions table', async () => {
+    // The ops Sync button reaches this path directly. Without the check, one
+    // press writes every developer tier back into subscriptions and re-creates
+    // the collapse the separate table exists to prevent.
+    mockIsDeveloperTierProduct.mockResolvedValue(true);
+    const { insertSpy, updateSubscriptionSpy } = setupDbMock(null);
+    setupStripeMock([buildSubscription('prod_starter')]);
+
+    await updateStripeSubscriptions();
+
+    expect(mockUpsertDeveloperSubscription).toHaveBeenCalledWith(
+      expect.objectContaining({ stripeProductId: 'prod_starter' })
+    );
+    expect(insertSpy).not.toHaveBeenCalled();
+    expect(updateSubscriptionSpy).not.toHaveBeenCalled();
   });
 
   it('inserts stripe_product_id when creating a new subscription row', async () => {

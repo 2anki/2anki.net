@@ -12,7 +12,7 @@ export interface DeveloperSubscriptionRecord {
 export interface IDeveloperSubscriptionsRepository {
   upsert(entry: DeveloperSubscriptionRecord): Promise<void>;
   activeProductIdsForUser(userId: number): Promise<string[]>;
-  activeProductIdsForEmail(email: string): Promise<string[]>;
+  deactivateBySubscriptionId(stripeSubscriptionId: string): Promise<number>;
 }
 
 export class DeveloperSubscriptionsRepository implements IDeveloperSubscriptionsRepository {
@@ -57,19 +57,16 @@ export class DeveloperSubscriptionsRepository implements IDeveloperSubscriptions
   // Stripe email that is not their 2anki email before the two are linked — so
   // the row may carry an email and no user_id. Reading both ways keeps that
   // subscription usable instead of silently dropping the tier.
-  // Normalises the INPUT and compares against the raw column, rather than
-  // wrapping the column in lower(trim(...)). Postgres cannot serve a predicate
-  // over a function call from a plain btree index, so the wrapped form would
-  // sequential-scan on every API request that reaches this fallback. The only
-  // writer stores the value through normalizeEmail, so the column is already
-  // lowercased and trimmed.
-  async activeProductIdsForEmail(email: string): Promise<string[]> {
-    const normalized = email.trim().toLowerCase();
-    if (normalized.length === 0) return [];
-    const rows = await this.knex(this.table)
-      .where({ email: normalized, active: true })
-      .select('stripe_product_id');
-    return toProductIds(rows);
+  // Deactivation is keyed on the Stripe subscription id and needs no account:
+  // the cancellation webhook cannot always resolve one, and a row that outlives
+  // its cancellation keeps granting a paid tier forever — nothing sweeps this
+  // table, and STRIPE_SYNC_ON_STARTUP is off in production.
+  async deactivateBySubscriptionId(
+    stripeSubscriptionId: string
+  ): Promise<number> {
+    return this.knex(this.table)
+      .where({ stripe_subscription_id: stripeSubscriptionId })
+      .update({ active: false, updated_at: this.knex.fn.now() });
   }
 }
 

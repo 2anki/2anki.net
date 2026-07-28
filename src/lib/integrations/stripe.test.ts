@@ -1,7 +1,7 @@
 process.env.STRIPE_KEY = 'sk_test_fake_key_for_unit_tests';
 
 import knexLib, { Knex } from 'knex';
-import { updateStoreSubscription } from './stripe';
+import { isDeveloperTierProduct, updateStoreSubscription } from './stripe';
 import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
 
 const makeCustomer = (
@@ -503,5 +503,14 @@ describe('updateStoreSubscription developer tiers', () => {
     );
 
     expect(await db('subscriptions_developer').select('*')).toHaveLength(1);
+  });
+
+  // Exported so the ops sync path can apply the identical check; it writes to
+  // subscriptions directly and would otherwise re-create the collapse on one
+  // press of the Sync button.
+  test('identifies developer tier products from the developer_tiers table', async () => {
+    expect(await isDeveloperTierProduct(db, 'prod_starter')).toBe(true);
+    expect(await isDeveloperTierProduct(db, 'prod_growth')).toBe(true);
+    expect(await isDeveloperTierProduct(db, 'prod_base')).toBe(false);
   });
 });

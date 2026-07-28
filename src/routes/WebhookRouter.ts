@@ -9,6 +9,7 @@ import {
   resolveAccountForSubscription,
   updateStoreSubscription,
 } from '../lib/integrations/stripe';
+import { DeveloperSubscriptionsRepository } from '../data_layer/DeveloperSubscriptionsRepository';
 import { getDatabase } from '../data_layer';
 import { StripeController } from '../controllers/StripeController/StripeController';
 import UsersRepository from '../data_layer/UsersRepository';
@@ -292,6 +293,14 @@ const WebhooksRouter = () => {
             // active and a cancelled customer keeps paid access. Resolve the
             // account the same way updateStoreSubscription does, so only a
             // customer that matches no account at all is skipped.
+            // Before the account guard, because deactivation never needed an
+            // account. A developer-tier row can exist with no user_id, and
+            // nothing sweeps subscriptions_developer — no reconcile, no startup
+            // sync — so a row skipped here stays active forever.
+            await new DeveloperSubscriptionsRepository(
+              getDatabase()
+            ).deactivateBySubscriptionId(customerSubscriptionDeleted.id);
+
             const deletedAccount = await resolveAccountForSubscription(
               getDatabase(),
               customerSubscriptionDeleted,
