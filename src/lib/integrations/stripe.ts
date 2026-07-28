@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
 import { Knex } from 'knex';
+import { DeveloperSubscriptionsRepository } from '../../data_layer/DeveloperSubscriptionsRepository';
 import { isPaused } from '../subscriptions/isPaused';
 
 let stripeInstance: InstanceType<typeof Stripe> | null = null;
@@ -115,6 +116,20 @@ export const resolveAccountForSubscription = async (
   return null;
 };
 
+// developer_tiers is the source of truth for which Stripe products are API
+// tiers; hardcoding the product ids here would drift the moment a tier is added
+// through the ops page.
+const isDeveloperTierProduct = async (
+  db: Knex,
+  productId: string
+): Promise<boolean> => {
+  const row = await db('developer_tiers')
+    .where({ stripe_product_id: productId })
+    .select('id')
+    .first();
+  return row != null;
+};
+
 const ACCESS_GRANTING_STATUSES = new Set<StripeTypes.Subscription['status']>([
   'active',
   'past_due',
@@ -157,6 +172,34 @@ export const updateStoreSubscription = async (
   const accountEmail = normalizeEmail(account?.email);
   const linkedEmail =
     accountEmail != null && accountEmail !== stripeEmail ? accountEmail : null;
+
+  // A developer tier is a SECOND concurrent subscription — a base-plan
+  // subscriber can also hold Starter or Growth. The subscriptions table upserts
+  // on email, so writing both there collapses them into one row whose active
+  // and stripe_product_id reflect whichever webhook fired last. Routed to its
+  // own table instead, where the key is the Stripe subscription id and two
+  // concurrent subscriptions are representable.
+  if (
+    stripeProductId != null &&
+    (await isDeveloperTierProduct(db, stripeProductId))
+  ) {
+    await new DeveloperSubscriptionsRepository(db).upsert({
+      stripeSubscriptionId: subscription.id,
+      userId: account?.id ?? null,
+      email: accountEmail ?? stripeEmail,
+      stripeProductId,
+      active: shouldRemainActive,
+      payload: subscription,
+    });
+    if (account != null && customerId != null) {
+      await db('users')
+        .where({ id: account.id })
+        .update({ stripe_customer_id: customerId });
+    }
+    return account != null
+      ? { status: 'linked', resolvedUserId: account.id }
+      : { status: 'unlinked', resolvedUserId: null };
+  }
 
   const insertRow: Record<string, unknown> = {
     email: stripeEmail,

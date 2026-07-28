@@ -17,6 +17,7 @@ import DeveloperTiersRepository from '../../data_layer/DeveloperTiersRepository'
 import ResolveDeveloperTierUseCase, {
   ResolvedDeveloperTier,
 } from '../../usecases/developer/ResolveDeveloperTierUseCase';
+import { DeveloperSubscriptionsRepository } from '../../data_layer/DeveloperSubscriptionsRepository';
 import SubscriptionService from '../../services/SubscriptionService';
 
 const USAGE_EVENT_THROTTLE_MS = 60_000;
@@ -135,9 +136,24 @@ export function makeRequireApiKey(
       (async (email: string) => {
         const subscriptions =
           await SubscriptionService.getUserActiveSubscriptions(email);
-        return subscriptions
+        const baseProductIds = subscriptions
           .map((subscription) => subscription.stripe_product_id)
           .filter((id): id is string => id != null && id !== '');
+        // Developer tiers live in their own table because they are a second
+        // concurrent subscription; the base plan cannot represent them without
+        // one overwriting the other. Both sets feed the resolver, which already
+        // takes an array and picks the highest limit among the tiers owned.
+        const developerRepo = new DeveloperSubscriptionsRepository(database);
+        const developerProductIds = await developerRepo.activeProductIdsForUser(
+          active.user_id
+        );
+        const byEmail =
+          developerProductIds.length > 0
+            ? []
+            : await developerRepo.activeProductIdsForEmail(email);
+        return [
+          ...new Set([...baseProductIds, ...developerProductIds, ...byEmail]),
+        ];
       });
     const resolveTier =
       deps.tierResolver ??
