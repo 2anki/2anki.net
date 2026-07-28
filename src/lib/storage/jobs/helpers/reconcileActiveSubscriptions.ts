@@ -1,10 +1,21 @@
 import { Knex } from 'knex';
 import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import { DeveloperSubscriptionsRepository } from '../../../../data_layer/DeveloperSubscriptionsRepository';
+import { isPaused } from '../../../subscriptions/isPaused';
 
 interface ActiveSubscriptionRow {
   id: number;
   payload: unknown;
 }
+
+// Mirrors ACCESS_GRANTING_STATUSES in src/lib/integrations/stripe.ts, which is
+// module-private there. Keep the two in step: a status outside this set means
+// Stripe has stopped granting access and the local row must follow.
+const ACCESS_GRANTING_STATUSES = new Set<StripeTypes.Subscription['status']>([
+  'active',
+  'past_due',
+  'unpaid',
+]);
 
 function parseSubscriptionId(payload: unknown): string | null {
   if (payload == null) return null;
@@ -48,7 +59,7 @@ async function deactivateRow(
   console.info(`[stripe-sync] Flipped subscription row ${row.id} to inactive`);
 }
 
-export async function reconcileActiveSubscriptions(
+async function reconcileSubscriptionsTable(
   db: Knex,
   stripe: Pick<StripeTypes, 'subscriptions'>
 ): Promise<void> {
@@ -81,4 +92,64 @@ export async function reconcileActiveSubscriptions(
       console.error(`[stripe-sync] Failed to reconcile row ${row.id}:`, error);
     }
   }
+}
+
+function developerSubscriptionRemainsActive(
+  subscription: StripeTypes.Subscription
+): boolean {
+  if (!ACCESS_GRANTING_STATUSES.has(subscription.status)) return false;
+  if (isPaused(subscription)) return false;
+
+  if (subscription.cancel_at_period_end && subscription.cancel_at) {
+    const periodEndMs = subscription.cancel_at * 1000;
+    return Date.now() < periodEndMs;
+  }
+  return true;
+}
+
+export async function reconcileDeveloperSubscriptions(
+  db: Knex,
+  stripe: Pick<StripeTypes, 'subscriptions'>
+): Promise<void> {
+  const repository = new DeveloperSubscriptionsRepository(db);
+  const rows = await repository.listActive();
+
+  console.info(
+    `[stripe-sync] Reconciling ${rows.length} active developer subscription row(s)`
+  );
+
+  for (const row of rows) {
+    try {
+      const subscription = await stripe.subscriptions.retrieve(
+        row.stripe_subscription_id
+      );
+      if (!developerSubscriptionRemainsActive(subscription)) {
+        await repository.deactivateBySubscriptionId(row.stripe_subscription_id);
+        console.info(
+          `[stripe-sync] Flipped developer subscription row ${row.id} to inactive`
+        );
+      }
+    } catch (error) {
+      const statusCode = (error as { statusCode?: number })?.statusCode;
+      if (statusCode === 404) {
+        await repository.deactivateBySubscriptionId(row.stripe_subscription_id);
+        console.info(
+          `[stripe-sync] Flipped developer subscription row ${row.id} to inactive (Stripe 404)`
+        );
+        continue;
+      }
+      console.error(
+        `[stripe-sync] Failed to reconcile developer subscription row ${row.id}:`,
+        error
+      );
+    }
+  }
+}
+
+export async function reconcileActiveSubscriptions(
+  db: Knex,
+  stripe: Pick<StripeTypes, 'subscriptions'>
+): Promise<void> {
+  await reconcileSubscriptionsTable(db, stripe);
+  await reconcileDeveloperSubscriptions(db, stripe);
 }

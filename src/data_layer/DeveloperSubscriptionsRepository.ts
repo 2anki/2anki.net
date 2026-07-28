@@ -9,9 +9,15 @@ export interface DeveloperSubscriptionRecord {
   payload: unknown;
 }
 
+export interface ActiveDeveloperSubscriptionRow {
+  id: number;
+  stripe_subscription_id: string;
+}
+
 export interface IDeveloperSubscriptionsRepository {
   upsert(entry: DeveloperSubscriptionRecord): Promise<void>;
   activeProductIdsForUser(userId: number): Promise<string[]>;
+  listActive(): Promise<ActiveDeveloperSubscriptionRow[]>;
   deactivateBySubscriptionId(stripeSubscriptionId: string): Promise<number>;
 }
 
@@ -51,6 +57,15 @@ export class DeveloperSubscriptionsRepository implements IDeveloperSubscriptions
       .where({ user_id: userId, active: true })
       .select('stripe_product_id');
     return toProductIds(rows);
+  }
+
+  // The reconcile sweep re-checks every active row against Stripe. It keys on
+  // the dedicated stripe_subscription_id column, so no payload parsing is
+  // needed — unlike the subscriptions table, which digs the id out of payload.
+  async listActive(): Promise<ActiveDeveloperSubscriptionRow[]> {
+    return this.knex(this.table)
+      .where({ active: true })
+      .select('id', 'stripe_subscription_id');
   }
 
   // The webhook cannot always resolve an account — a developer can pay under a
