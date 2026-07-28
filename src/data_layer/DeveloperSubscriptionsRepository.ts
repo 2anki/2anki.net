@@ -57,10 +57,17 @@ export class DeveloperSubscriptionsRepository implements IDeveloperSubscriptions
   // Stripe email that is not their 2anki email before the two are linked — so
   // the row may carry an email and no user_id. Reading both ways keeps that
   // subscription usable instead of silently dropping the tier.
+  // Normalises the INPUT and compares against the raw column, rather than
+  // wrapping the column in lower(trim(...)). Postgres cannot serve a predicate
+  // over a function call from a plain btree index, so the wrapped form would
+  // sequential-scan on every API request that reaches this fallback. The only
+  // writer stores the value through normalizeEmail, so the column is already
+  // lowercased and trimmed.
   async activeProductIdsForEmail(email: string): Promise<string[]> {
+    const normalized = email.trim().toLowerCase();
+    if (normalized.length === 0) return [];
     const rows = await this.knex(this.table)
-      .whereRaw('lower(trim(email)) = ?', [email.trim().toLowerCase()])
-      .andWhere({ active: true })
+      .where({ email: normalized, active: true })
       .select('stripe_product_id');
     return toProductIds(rows);
   }

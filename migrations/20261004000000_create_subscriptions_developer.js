@@ -14,7 +14,17 @@ exports.up = async (knex) => {
   await knex.schema.createTable('subscriptions_developer', (table) => {
     table.increments('id').primary();
     table.text('stripe_subscription_id').notNullable().unique();
-    table.integer('user_id').nullable();
+    // Mirrors the events and error_events tables: a webhook-populated user_id
+    // that must not block account deletion, and must not be left pointing at a
+    // user that no longer exists on a paid-access path. Added now, while the
+    // table is empty — ALTER TABLE ADD CONSTRAINT on a populated table takes
+    // SHARE ROW EXCLUSIVE on both tables.
+    table
+      .integer('user_id')
+      .nullable()
+      .references('id')
+      .inTable('users')
+      .onDelete('SET NULL');
     table.string('email', 255).nullable();
     table.text('stripe_product_id').notNullable();
     table.boolean('active').notNullable().defaultTo(false);
