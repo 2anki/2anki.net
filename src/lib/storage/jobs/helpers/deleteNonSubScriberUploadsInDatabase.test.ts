@@ -155,6 +155,14 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       t.text('linked_email').nullable();
       t.boolean('active').nullable();
     });
+    await db.schema.createTable('subscriptions_developer', (t) => {
+      t.increments('id');
+      t.string('stripe_subscription_id');
+      t.integer('user_id');
+      t.string('email');
+      t.string('stripe_product_id');
+      t.boolean('active');
+    });
     await db.schema.createTable('user_passes', (t) => {
       t.increments('id').primary();
       t.integer('user_id').notNullable();
@@ -259,6 +267,51 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
 
     expect(storage.delete).not.toHaveBeenCalled();
     expect(await remainingUploadKeys()).toEqual(['sub.apkg']);
+  });
+
+  it('spares a customer whose only paid subscription is a developer tier', async () => {
+    // Developer tiers live in subscriptions_developer, not subscriptions, so
+    // this customer has no row in the table the subscriber predicate reads.
+    // Without the second clause they read as a free user and their uploads are
+    // deleted from the bucket irreversibly.
+    await seedUserWithUpload(1, 'dev@example.com', false, 'dev.apkg');
+    await db('subscriptions_developer').insert({
+      stripe_subscription_id: 'sub_dev_1',
+      user_id: 1,
+      email: 'dev@example.com',
+      stripe_product_id: 'prod_growth',
+      active: true,
+    });
+
+    const storage = { delete: jest.fn() };
+
+    await deleteNonSubScriberUploadsInDatabase(
+      withPgRawShape(db),
+      storage as never
+    );
+
+    expect(storage.delete).not.toHaveBeenCalled();
+    expect(await remainingUploadKeys()).toEqual(['dev.apkg']);
+  });
+
+  it('still sweeps a user whose developer tier is no longer active', async () => {
+    await seedUserWithUpload(1, 'lapsed@example.com', false, 'lapsed.apkg');
+    await db('subscriptions_developer').insert({
+      stripe_subscription_id: 'sub_dev_2',
+      user_id: 1,
+      email: 'lapsed@example.com',
+      stripe_product_id: 'prod_growth',
+      active: false,
+    });
+
+    const storage = { delete: jest.fn() };
+
+    await deleteNonSubScriberUploadsInDatabase(
+      withPgRawShape(db),
+      storage as never
+    );
+
+    expect(await remainingUploadKeys()).toEqual([]);
   });
 
   it('spares a subscriber who also holds a stale cancelled subscription row', async () => {

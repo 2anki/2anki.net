@@ -57,6 +57,11 @@ export class InactivityEmailRepository implements IInactivityEmailRepository {
         this.buildActivePassExistsQuery('user_passes.user_id = users.id')
       )
       .whereNotExists(
+        this.buildActiveDeveloperSubscriptionQuery(
+          '(subscriptions_developer.user_id = users.id OR subscriptions_developer.email = users.email)'
+        )
+      )
+      .whereNotExists(
         this.database(this.table)
           .whereRaw('inactivity_emails.user_id = users.id')
           .limit(1)
@@ -106,6 +111,11 @@ export class InactivityEmailRepository implements IInactivityEmailRepository {
       .whereNotExists(
         this.buildActivePassExistsQuery('user_passes.user_id = u.id')
       )
+      .whereNotExists(
+        this.buildActiveDeveloperSubscriptionQuery(
+          '(subscriptions_developer.user_id = u.id OR subscriptions_developer.email = u.email)'
+        )
+      )
       .orderBy('ie.sent_at', 'asc')
       .limit(limit);
   }
@@ -140,8 +150,27 @@ export class InactivityEmailRepository implements IInactivityEmailRepository {
       .whereNotExists(
         this.buildActivePassExistsQuery('user_passes.user_id = u.id')
       )
+      .whereNotExists(
+        this.buildActiveDeveloperSubscriptionQuery(
+          '(subscriptions_developer.user_id = u.id OR subscriptions_developer.email = u.email)'
+        )
+      )
       .orderBy('u.id', 'asc')
       .limit(limit);
+  }
+
+  // Developer tiers live in subscriptions_developer (#3902), not subscriptions,
+  // so a customer whose only paid subscription is a developer tier has no row
+  // in the table these guards read. Without this they are treated as a free
+  // inactive user: warned, then deleted. Matching on email as well as user_id
+  // is deliberate and safe here — this predicate only ever SPARES a user, so a
+  // loose match costs nothing, unlike the tier-granting path where an email
+  // match would have been a privilege escalation.
+  private buildActiveDeveloperSubscriptionQuery(userCorrelation: string) {
+    return this.database('subscriptions_developer')
+      .where('subscriptions_developer.active', true)
+      .whereRaw(userCorrelation)
+      .limit(1);
   }
 
   private buildActivePassExistsQuery(userCorrelation: string) {
