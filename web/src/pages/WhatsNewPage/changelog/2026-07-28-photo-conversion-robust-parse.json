@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-28-photo-conversion-robust-parse",
+  "date": "2026-07-28",
+  "type": "fix",
+  "title": "Photo conversions that used to fail with a blame-the-photo message now produce their cards"
+}

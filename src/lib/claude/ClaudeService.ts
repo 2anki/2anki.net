@@ -463,7 +463,7 @@ export function buildUserMessage(
   return `Convert this HTML content into the compact deck JSON:\n\n${strippedContent}${mediaFilesList}${instructionsSection}${fieldMappingSection}${styleSection}${sizeSection}`;
 }
 
-function extractJsonArray(text: string): string | null {
+export function extractJsonArray(text: string): string | null {
   const start = text.indexOf('[');
   if (start === -1) return null;
   const end = text.lastIndexOf(']');

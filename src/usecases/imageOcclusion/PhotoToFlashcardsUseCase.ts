@@ -5,6 +5,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { spawn, execFileSync } from 'node:child_process';
 
 import {
+  extractJsonArray,
   getAnthropicClient,
   normalizeTag,
 } from '../../lib/claude/ClaudeService';
@@ -318,14 +319,46 @@ function logUnreadableVisionResponse(raw: string): void {
         .update(raw)
         .digest('hex')
         .slice(0, 12),
+      response_prefix: raw.slice(0, 200),
+      response_tail: raw.slice(-200),
     })
   );
 }
 
+// The model's own field set is wider than the shared parser's: an MCQ card
+// carries options, correct_index, and rationale, which sanitizeCompactDecks
+// drops. Cards keep their shape here; only entries that would crash the caller
+// are removed — a deck with no cards array, or a card with no usable front.
+function sanitizeVisionDecks(parsed: unknown[]): CompactDeck[] {
+  const decks: CompactDeck[] = [];
+  for (const entry of parsed) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const raw = entry as { deck?: unknown; cards?: unknown };
+    if (!Array.isArray(raw.cards)) continue;
+    const cards = raw.cards.filter((card) => {
+      if (typeof card !== 'object' || card === null) return false;
+      const q = (card as { q?: unknown }).q;
+      return typeof q === 'string' && q.trim().length > 0;
+    });
+    decks.push({
+      deck:
+        typeof raw.deck === 'string' && raw.deck.trim().length > 0
+          ? raw.deck
+          : 'Photo deck',
+      // The card shape is whatever the model emitted; buildDeckCards reads every
+      // field defensively, which is why a cast is enough here.
+      cards: cards as CompactCard[],
+    });
+  }
+  return decks;
+}
+
 function parseClaudeVisionResponse(raw: string): CompactDeck[] {
   const cleaned = raw.replace(/```json|```/g, '').trim();
-  const jsonEnd = cleaned.lastIndexOf(']');
-  const toParse = jsonEnd >= 0 ? cleaned.slice(0, jsonEnd + 1) : cleaned;
+  // Slicing from index 0 made a single sentence of preamble fatal on this path
+  // while the shared parser shrugs it off. Prod carries vision_parse_failed on
+  // complete responses for exactly that reason.
+  const toParse = extractJsonArray(cleaned) ?? cleaned;
 
   let parsed: unknown;
   try {
@@ -339,7 +372,15 @@ function parseClaudeVisionResponse(raw: string): CompactDeck[] {
     logUnreadableVisionResponse(raw);
     throw makeUnreadableVisionResponseError();
   }
-  return parsed as CompactDeck[];
+
+  // An array of bare cards parses fine and then crashes the caller on
+  // d.cards.length, which surfaces as a 400 carrying the internal message.
+  const decks = sanitizeVisionDecks(parsed);
+  if (decks.length === 0) {
+    logUnreadableVisionResponse(raw);
+    throw makeUnreadableVisionResponseError();
+  }
+  return decks;
 }
 
 function mediaTypeToExt(mediaType: VisionMediaType): string {
