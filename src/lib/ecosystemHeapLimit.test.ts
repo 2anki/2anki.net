@@ -75,7 +75,7 @@ describe('blue-green ecosystem config — graceful memory recycle', () => {
   );
 
   it.each(['server-blue', 'server-green'])(
-    'keeps %s recycling above the heap ceiling, not below it',
+    'keeps %s recycling before V8 can hit the heap wall',
     (name) => {
       const app = config.apps.find((candidate) => candidate.name === name)!;
       const thresholdMb =
@@ -86,9 +86,12 @@ describe('blue-green ecosystem config — graceful memory recycle', () => {
         10
       );
 
-      // Below the ceiling the process would recycle constantly while V8 still
-      // had usable headroom, turning a rare crash into routine restarts.
-      expect(thresholdMb).toBeGreaterThan(ceilingMb);
+      // max_memory_restart measures RSS; the ceiling caps the heap, and RSS is
+      // never smaller than the heap it contains. So a threshold at or under the
+      // ceiling is guaranteed to trip first, which is the whole point — a
+      // graceful drain instead of a FATAL ERROR. Set it above the ceiling and
+      // V8 wins the race and the recycle never runs, silently disabling itself.
+      expect(thresholdMb).toBeLessThanOrEqual(ceilingMb);
     }
   );
 
