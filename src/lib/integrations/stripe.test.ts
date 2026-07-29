@@ -52,6 +52,8 @@ describe('updateStoreSubscription', () => {
       t.json('payload');
       t.string('stripe_product_id');
       t.string('linked_email');
+      t.timestamp('created_at');
+      t.timestamp('updated_at');
     });
     await db.schema.createTable('developer_tiers', (t) => {
       t.increments('id');
@@ -305,6 +307,8 @@ describe('updateStoreSubscription linked_email resolution', () => {
       t.json('payload');
       t.string('stripe_product_id');
       t.string('linked_email');
+      t.timestamp('created_at');
+      t.timestamp('updated_at');
     });
     await db.schema.createTable('developer_tiers', (t) => {
       t.increments('id');
@@ -405,6 +409,8 @@ describe('updateStoreSubscription developer tiers', () => {
       t.json('payload');
       t.string('stripe_product_id');
       t.string('linked_email');
+      t.timestamp('created_at');
+      t.timestamp('updated_at');
     });
     await db.schema.createTable('developer_tiers', (t) => {
       t.increments('id');

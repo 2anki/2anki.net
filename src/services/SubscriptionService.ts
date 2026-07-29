@@ -17,6 +17,7 @@ async function softDeleteLocalSubscription(
     .update({
       active: false,
       payload: JSON.stringify(canceledPayload),
+      updated_at: new Date(),
     });
 }
 
@@ -287,7 +288,7 @@ export class SubscriptionService {
 
     await database('subscriptions')
       .where({ id: subscriptionId })
-      .update({ active: false });
+      .update({ active: false, updated_at: new Date() });
   }
 }
 

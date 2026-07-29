@@ -215,6 +215,7 @@ export const updateStoreSubscription = async (
     active: shouldRemainActive,
     payload: JSON.stringify(subscription),
     stripe_product_id: stripeProductId,
+    updated_at: new Date(),
   };
   if (linkedEmail != null) {
     mergeColumns.linked_email = linkedEmail;

@@ -161,6 +161,32 @@ describe('updateStripeSubscriptions — batch provisioning fields', () => {
     );
   });
 
+  it('stamps updated_at when a subscription changes active status', async () => {
+    const { updateSubscriptionSpy } = setupDbMock({
+      email: 'user@example.com',
+      active: false,
+      payload: '{}',
+    });
+    setupStripeMock([buildSubscription('prod_autoSync789')]);
+    await updateStripeSubscriptions();
+    expect(updateSubscriptionSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ active: true, updated_at: expect.any(Date) })
+    );
+  });
+
+  it('stamps updated_at when a subscription is refreshed without a status change', async () => {
+    const { updateSubscriptionSpy } = setupDbMock({
+      email: 'user@example.com',
+      active: true,
+      payload: '{}',
+    });
+    setupStripeMock([buildSubscription('prod_autoSync789')]);
+    await updateStripeSubscriptions();
+    expect(updateSubscriptionSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ updated_at: expect.any(Date) })
+    );
+  });
+
   it('backfills users.stripe_customer_id for a new subscription', async () => {
     const { updateUsersSpy } = setupDbMock(null);
     setupStripeMock([buildSubscription()]);

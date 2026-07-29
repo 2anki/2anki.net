@@ -51,7 +51,10 @@ async function deactivateRow(
   row: ActiveSubscriptionRow,
   subscription?: StripeTypes.Subscription
 ): Promise<void> {
-  const update: { active: boolean; payload?: string } = { active: false };
+  const update: { active: boolean; payload?: string; updated_at: Date } = {
+    active: false,
+    updated_at: new Date(),
+  };
   if (subscription) {
     update.payload = JSON.stringify(subscription);
   }

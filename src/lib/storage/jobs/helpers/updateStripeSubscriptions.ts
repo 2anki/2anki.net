@@ -139,15 +139,17 @@ async function updateExistingSubscription(
       active: shouldRemainActive,
       payload,
       stripe_product_id: stripeProductId,
+      updated_at: new Date(),
     });
   } else {
     console.info(
       `Subscription status for email=${shortHash(email)} remains ${shouldRemainActive ? 'active' : 'inactive'}`
     );
-    await db
-      .table('subscriptions')
-      .where({ email })
-      .update({ payload, stripe_product_id: stripeProductId });
+    await db.table('subscriptions').where({ email }).update({
+      payload,
+      stripe_product_id: stripeProductId,
+      updated_at: new Date(),
+    });
   }
 }
 
