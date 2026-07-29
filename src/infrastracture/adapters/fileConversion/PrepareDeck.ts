@@ -33,6 +33,7 @@ import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import Workspace from '../../../lib/parser/WorkSpace';
 import path from 'path';
 import { writeWorkspaceFile } from './writeWorkspaceFile';
+import { writePdfImageFallbackMarker } from './pdfImageFallbackMarker';
 
 const HTML_GENERATION_CONCURRENCY = 3;
 
@@ -444,6 +445,10 @@ export async function PrepareDeck(
     console.log('[PrepareDeck] Claude branch: files written', {
       durationMs: Date.now() - tWrite,
     });
+
+    writePdfImageFallbackMarker(input.workspace.location, [
+      ...pdfImageFallbackNames,
+    ]);
 
     const userInstructions = input.settings.userInstructions;
     const cardStyle = input.settings.cardStyle || undefined;
