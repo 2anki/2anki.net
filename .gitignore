@@ -155,3 +155,8 @@ src/**/*.js.map
 # /api/docs/swagger.json. Not consumed by any runtime code, so it's not
 # checked in like the web/src/generated/* it feeds.
 openapi.json
+
+# Agent worktrees created by EnterWorktree / `git worktree add`. Checked-out
+# copies of this same repo, so they must never be staged, typechecked, or swept
+# into a test run from the main checkout.
+.claude/worktrees/
