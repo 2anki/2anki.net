@@ -48,7 +48,7 @@ describe('reconcileActiveSubscriptions', () => {
 
     expect(stripe.subscriptions.retrieve).toHaveBeenCalledWith('sub_1');
     expect(db.updateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ active: false })
+      expect.objectContaining({ active: false, updated_at: expect.any(Date) })
     );
   });
 
@@ -82,7 +82,7 @@ describe('reconcileActiveSubscriptions', () => {
     await reconcileActiveSubscriptions(db as any, stripe);
 
     expect(db.updateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ active: false })
+      expect.objectContaining({ active: false, updated_at: expect.any(Date) })
     );
   });
 
@@ -102,7 +102,7 @@ describe('reconcileActiveSubscriptions', () => {
     await reconcileActiveSubscriptions(db as any, stripe);
 
     expect(db.updateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ active: false })
+      expect.objectContaining({ active: false, updated_at: expect.any(Date) })
     );
   });
 

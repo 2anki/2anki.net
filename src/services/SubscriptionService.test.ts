@@ -274,12 +274,25 @@ describe('SubscriptionService.cancelUserSubscriptions', () => {
     const updatePayload = db.updateSpy.mock.calls[0][0] as {
       active: boolean;
       payload: string;
+      updated_at: Date;
     };
     expect(updatePayload.active).toBe(false);
     expect(JSON.parse(updatePayload.payload).status).toBe('canceled');
+    expect(updatePayload.updated_at).toBeInstanceOf(Date);
     expect(db.whereRawSpy).toHaveBeenCalledWith("payload->>'id' = ?", [
       'sub_123',
     ]);
+  });
+
+  it('stamps updated_at when deactivating a row by id', async () => {
+    const db = buildDbMock();
+    (getDatabase as jest.Mock).mockReturnValue(db);
+
+    await new SubscriptionService().deactivateSubscription(4374);
+
+    expect(db.updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ active: false, updated_at: expect.any(Date) })
+    );
   });
 
   it('does not touch the DB for period_end cancel', async () => {
@@ -451,9 +464,11 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
     const updatePayload = db.updateSpy.mock.calls[0][0] as {
       active: boolean;
       payload: string;
+      updated_at: Date;
     };
     expect(updatePayload.active).toBe(false);
     expect(JSON.parse(updatePayload.payload).status).toBe('canceled');
+    expect(updatePayload.updated_at).toBeInstanceOf(Date);
   });
 
   it('does not touch the DB for period_end cancel', async () => {
