@@ -30,6 +30,11 @@ import {
   CONVERSION_TRUNCATED_MESSAGE,
   FileConversionError,
 } from '../infrastracture/adapters/fileConversion/claudeFileConversion';
+import {
+  CONVERSION_FALLBACK_FILENAME,
+  loadPdfImageFallbackNames,
+  matchesPdfImageFallback,
+} from '../infrastracture/adapters/fileConversion/pdfImageFallbackMarker';
 import type {
   ConversionScoreSource,
   IConversionRuleScoresRepository,
@@ -267,7 +272,8 @@ function walkMediaFiles(dir: string): string[] {
       !isHTMLFile(entry.name) &&
       !isMarkdownFile(entry.name) &&
       !entry.name.endsWith('.apkg') &&
-      entry.name !== CONVERSION_SETTINGS_FILENAME
+      entry.name !== CONVERSION_SETTINGS_FILENAME &&
+      entry.name !== CONVERSION_FALLBACK_FILENAME
     ) {
       results.push(entry.name);
     }
@@ -606,6 +612,7 @@ class UploadService {
     }
 
     const settings = loadPersistedConversionSettings(workspaceDir);
+    const fallbackNames = loadPdfImageFallbackNames(workspaceDir);
     const ownerNumeric = Number(owner);
     const generateOptions = {
       isPaying: paying,
@@ -617,6 +624,16 @@ class UploadService {
     const deckInfoArrays: DeckInfo[][] = [];
     for (const htmlFile of htmlFiles) {
       const content = await fs.promises.readFile(htmlFile, 'utf8');
+      const options = matchesPdfImageFallback(
+        htmlFile,
+        workspaceDir,
+        fallbackNames
+      )
+        ? {
+            ...generateOptions,
+            pdfImageFallback: { mediaBaseDir: workspaceDir },
+          }
+        : generateOptions;
       const deckInfo = await generateDeckInfo(
         content,
         mediaFiles,
@@ -625,7 +642,7 @@ class UploadService {
         settings?.cardStyle || undefined,
         settings?.cardSize,
         settings?.fieldMapping,
-        generateOptions
+        options
       );
       deckInfoArrays.push(deckInfo);
     }

@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-29-restart-scanned-pdf",
+  "date": "2026-07-29",
+  "type": "fix",
+  "title": "Restarting a conversion of a scanned PDF works again"
+}

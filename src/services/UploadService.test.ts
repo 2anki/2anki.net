@@ -1906,6 +1906,150 @@ describe('UploadService.restartClaudeJob — replays original conversion setting
   });
 });
 
+describe('UploadService.restartClaudeJob — replays the PDF-image-fallback flag', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  let db: Knex;
+  let workspaceBase: string;
+
+  beforeAll(() => {
+    workspaceBase = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'restart-fallback-base-')
+    );
+    process.env.WORKSPACE_BASE = workspaceBase;
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+    fs.rmSync(workspaceBase, { recursive: true, force: true });
+  });
+
+  beforeEach(async () => {
+    mockGenerateDeckInfo.mockReset();
+    db = knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await db.schema.createTable('jobs', (t) => {
+      t.increments('id');
+      t.string('owner').notNullable();
+      t.string('object_id').notNullable();
+      t.string('title');
+      t.string('type');
+      t.string('status');
+      t.timestamp('created_at').defaultTo(db.fn.now());
+      t.timestamp('last_edited_time');
+      t.string('job_reason_failure');
+      t.integer('card_count');
+    });
+    fs.rmSync(path.join(workspaceBase, 'job-obj-fallback'), {
+      recursive: true,
+      force: true,
+    });
+    const workspaceDir = path.join(workspaceBase, 'job-obj-fallback');
+    fs.mkdirSync(workspaceDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(workspaceDir, 'scan.pdf.html'),
+      '<html><body><img src="scan.pdf/page-1.png" /></body></html>'
+    );
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  function buildRestartRequest() {
+    return {
+      params: { jobId: 'job-obj-fallback' },
+      body: {},
+    } as unknown as express.Request;
+  }
+
+  async function insertDoneJob() {
+    await db('jobs').insert({
+      owner: '42',
+      object_id: 'job-obj-fallback',
+      title: 'Deck',
+      type: 'claude',
+      status: 'done',
+      last_edited_time: new Date(),
+    });
+  }
+
+  async function restartAndWaitForGenerate(): Promise<unknown[]> {
+    const service = new UploadService(
+      buildRepository(),
+      new JobRepository(db),
+      buildUsersRepo()
+    );
+    const generateCalled = new Promise<unknown[]>((resolve) => {
+      mockGenerateDeckInfo.mockImplementation((...args: unknown[]) => {
+        resolve(args);
+        return new Promise(() => {});
+      });
+    });
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+    await service.restartClaudeJob(buildRestartRequest(), res);
+    return generateCalled;
+  }
+
+  it('passes pdfImageFallback for a file listed in the fallback marker', async () => {
+    await insertDoneJob();
+    fs.writeFileSync(
+      path.join(workspaceBase, 'job-obj-fallback', 'conversion-fallback.json'),
+      JSON.stringify(['scan.pdf.html'])
+    );
+
+    const args = await restartAndWaitForGenerate();
+
+    expect(args[7]).toMatchObject({
+      isPaying: true,
+      userId: 42,
+      pdfImageFallback: {
+        mediaBaseDir: path.join(workspaceBase, 'job-obj-fallback'),
+      },
+    });
+  });
+
+  it('does not pass pdfImageFallback when no marker was persisted', async () => {
+    await insertDoneJob();
+
+    const args = await restartAndWaitForGenerate();
+
+    expect(
+      (args[7] as { pdfImageFallback?: unknown }).pdfImageFallback
+    ).toBeUndefined();
+  });
+
+  it('does not pass pdfImageFallback when the marker is corrupt', async () => {
+    await insertDoneJob();
+    fs.writeFileSync(
+      path.join(workspaceBase, 'job-obj-fallback', 'conversion-fallback.json'),
+      'not json {'
+    );
+
+    const args = await restartAndWaitForGenerate();
+
+    expect(
+      (args[7] as { pdfImageFallback?: unknown }).pdfImageFallback
+    ).toBeUndefined();
+  });
+
+  it('does not treat the fallback marker file as a media file', async () => {
+    await insertDoneJob();
+    fs.writeFileSync(
+      path.join(workspaceBase, 'job-obj-fallback', 'conversion-fallback.json'),
+      JSON.stringify(['scan.pdf.html'])
+    );
+
+    const args = await restartAndWaitForGenerate();
+
+    expect(args[1]).toEqual([]);
+  });
+});
+
 describe('UploadService.handleUpload — claude flag does not bypass the card limit', () => {
   const originalWorkspaceBase = process.env.WORKSPACE_BASE;
 
