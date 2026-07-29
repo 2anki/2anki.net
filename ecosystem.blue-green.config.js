@@ -44,6 +44,24 @@ const base = {
   // color drains, so this only delays reaping the retired process.
   kill_timeout: 90000,
   node_args: `--max-old-space-size=${MAX_OLD_SPACE_MB}`,
+  // Main-thread memory grows unbounded under load and eventually reaches
+  // whatever ceiling is set (issue #3926 — 3 OOM crashes, 2026-07-18 and
+  // 2026-07-29). Raising the ceiling only lengthens the fuse, so pm2 recycles
+  // the process before V8 hits the wall: SIGINT first, which src/server.ts
+  // drains through gracefulShutdown within kill_timeout, instead of a hard
+  // FATAL ERROR that drops in-flight conversions with no drain.
+  //
+  // 9G sits deliberately between two numbers. Above it: the ~11-12GB RSS where
+  // an 8192MB main heap plus four 1024MB Piscina worker heaps actually dies, so
+  // this fires first. Below it: the 24.7GB the box has free alongside Postgres,
+  // so the kernel OOM-killer — which would pick its own victim, possibly
+  // Postgres — never enters the picture. Normal operation sits near 450MB, and
+  // the pre-crash climb on 2026-07-29 peaked at 6.0GB, so this should only ever
+  // fire during a leak episode, not during ordinary heavy conversion load.
+  //
+  // If it turns out to fire routinely, the leak got worse — fix #3926 rather
+  // than raising this.
+  max_memory_restart: '9G',
 };
 
 const nodeOptions = `--max-old-space-size=${MAX_OLD_SPACE_MB}`;
