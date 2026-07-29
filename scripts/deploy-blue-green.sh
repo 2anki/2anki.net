@@ -107,6 +107,28 @@ export RELEASE
 # Bring up the next color; pm2 keeps the current color serving on its port.
 run pm2 start "$ECOSYSTEM" --only "server-$NEXT" --update-env
 
+# The heap ceiling is declared in the ecosystem config, but declaring it is not
+# the same as the process getting it: pm2 stored --max-old-space-size and then
+# spawned a bare `node src/server.js` anyway, so prod ran at node's ~4144MB
+# default until it OOM-crashed there on 2026-07-29. Config was green the whole
+# time. Assert against the spawned process instead, so a silently-dropped flag
+# fails the deploy rather than waiting for the next out-of-memory crash.
+if [ "$DRY_RUN" != "1" ]; then
+  NEXT_PID="$(pm2 pid "server-$NEXT" 2>/dev/null | tr -d '[:space:]')"
+  if [ -n "$NEXT_PID" ] && [ -r "/proc/$NEXT_PID/environ" ]; then
+    if tr '\0' '\n' < "/proc/$NEXT_PID/environ" \
+      | grep -q -- '--max-old-space-size='; then
+      log "heap ceiling verified on server-$NEXT (pid $NEXT_PID)"
+    else
+      log "server-$NEXT (pid $NEXT_PID) started WITHOUT a heap ceiling — removing it; current color still live"
+      run pm2 delete "server-$NEXT"
+      exit 1
+    fi
+  else
+    log "WARNING: could not read the environment of server-$NEXT — heap ceiling unverified"
+  fi
+fi
+
 if ! wait_for_sha "http://127.0.0.1:$NEXT_PORT$HEALTH_PATH"; then
   log "server-$NEXT failed health check on :$NEXT_PORT — removing it; current color still live"
   run pm2 delete "server-$NEXT"
