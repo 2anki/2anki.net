@@ -603,11 +603,13 @@
       "short": "Kurz",
       "medium": "Mittel",
       "detailed": "Ausführlich",
-      "intro": "Die KI-Konvertierung entscheidet damit, wie viel auf jede Karte passt.",
+      "intro": "Bestimmt, wie viel die KI auf jede Karte packt. Größere Karten bedeuten weniger Karten aus demselben Material.",
       "shortDesc": "1 Fakt pro Karte, ~80 Zeichen pro Antwort. Am besten für Vokabeln, Daten, Formeln.",
       "mediumDesc": "1–2 Fakten pro Karte, ~160 Zeichen pro Antwort. Gute Voreinstellung für die meisten Notizen.",
-      "detailedDesc": "3–4 Fakten pro Karte, ~320 Zeichen pro Antwort. Besser für eng zusammenhängende Konzepte, die du gemeinsam wiederholen willst."
+      "detailedDesc": "3–4 Fakten pro Karte, ~320 Zeichen pro Antwort. Weniger, vollere Karten – gut für Konzepte, die du gemeinsam wiederholen willst."
     },
+    "comprehensiveHint": "Bei langen Dokumenten kann so ein großer Stapel entstehen. Für weniger, vollere Karten stelle die Kartengröße auf Ausführlich.",
+    "comprehensiveHintLink": "Zur Kartengröße",
     "mcq": {
       "heading": "Multiple-Choice-Fragen (MCQ)",
       "aria": "Multiple-Choice-Fragen aktivieren",

@@ -603,11 +603,13 @@
       "short": "Corto",
       "medium": "Medio",
       "detailed": "Detallado",
-      "intro": "La conversión con IA usa esto para decidir cuánto cabe en cada tarjeta.",
+      "intro": "Controla cuánto pone la IA en cada tarjeta. Tarjetas más grandes significan menos tarjetas del mismo material.",
       "shortDesc": "1 dato por tarjeta, ~80 caracteres por respuesta. Ideal para vocabulario, fechas y fórmulas.",
       "mediumDesc": "1–2 datos por tarjeta, ~160 caracteres por respuesta. Buena opción por defecto para la mayoría de notas.",
-      "detailedDesc": "3–4 datos por tarjeta, ~320 caracteres por respuesta. Mejor para conceptos muy relacionados que quieres repasar juntos."
+      "detailedDesc": "3–4 datos por tarjeta, ~320 caracteres por respuesta. Menos tarjetas y más completas: mejor para conceptos que quieres repasar juntos."
     },
+    "comprehensiveHint": "Con un documento largo esto puede crear un mazo enorme. Para menos tarjetas y más completas, pon el tamaño de la tarjeta en Detallado.",
+    "comprehensiveHintLink": "Ir a Tamaño de la tarjeta",
     "mcq": {
       "heading": "Preguntas tipo test (MCQ)",
       "aria": "Activar preguntas tipo test",

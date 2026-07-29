@@ -8,7 +8,7 @@ import { splitByHeadings } from '../cardStyle/headingDriven/splitByHeadings';
 import { getCardStylePromptFragment } from './getCardStylePromptFragment';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
 import { logClaudeUsage } from './logClaudeUsage';
-import { getCardSizePromptSuffix } from './cardSize';
+import { getCardSizePromptSuffix, validateCardSize } from './cardSize';
 
 export interface FieldMappingEntry {
   name: string;
@@ -55,12 +55,13 @@ Minimum-information rules (one fact per card):
 - A table of N rows produces N cards (one row per card)
 - One definition with its example may stay on a single card
 - Cloze cards are already single-fact — do not split them
-- If the user's additional instructions explicitly ask for detailed or longer cards, defer to those instructions over these rules
+- If the user's additional instructions explicitly ask for detailed or longer cards, defer to those instructions over these rules. The Card size directive in the user message overrides these rules the same way.
 
 Card density — extract ALL cards the content supports:
 - Do not stop early; work through the entire input before emitting the array
 - Every heading, term, definition, table row, list item, and detail block is a card candidate
 - Aim for maximum coverage: a 5-page chapter should yield 40–80 cards, not 10–20
+- The Card size directive sets how much belongs on each card; when density and card size conflict, prefer fuller cards over more cards
 
 ${ANKI_MATH_FRAGMENT}
 `.trim();
@@ -868,8 +869,19 @@ async function generateDeckInfoFromChunk(
   return deckInfo;
 }
 
-const FLOOR_V1_CARD_FLOOR = 200;
-const FLOOR_V1_CARD_CEILING = 500;
+const FLOOR_V1_BOUNDS_BY_CARD_SIZE = {
+  short: { floor: 200, ceiling: 500 },
+  medium: { floor: 150, ceiling: 400 },
+  detailed: { floor: 80, ceiling: 250 },
+} as const;
+
+export function resolveFloorV1Bounds(cardSize: string | undefined): {
+  floor: number;
+  ceiling: number;
+} {
+  return FLOOR_V1_BOUNDS_BY_CARD_SIZE[validateCardSize(cardSize)];
+}
+
 const FLOOR_V1_MAX_TOPUP_ROUNDS = 2;
 const FLOOR_V1_MAX_PARALLEL = 4;
 const FLOOR_V1_TOPUP_BUDGET_MS = 50_000;
@@ -977,12 +989,19 @@ function collectExistingFronts(decks: DeckInfo[]): string[] {
   return fronts;
 }
 
-function buildTopUpInstruction(existingFronts: string[]): string {
+function buildTopUpInstruction(
+  existingFronts: string[],
+  cardSize: string | undefined
+): string {
   const sample = existingFronts
     .slice(0, 80)
     .map((f) => (f ?? '').replace(/<[^>]*>/g, '').slice(0, 120));
   const list = sample.map((s) => `- ${s}`).join('\n');
-  return `Extract MORE single-fact cards from the same content. Do NOT repeat any of these fronts:\n${list}\n\nReturn only net-new cards.`;
+  const lead =
+    validateCardSize(cardSize) === 'detailed'
+      ? 'Extract MORE cards from the same content, keeping 3-4 related facts per card.'
+      : 'Extract MORE single-fact cards from the same content.';
+  return `${lead} Do NOT repeat any of these fronts:\n${list}\n\nReturn only net-new cards.`;
 }
 
 function stampChunkIndex(decks: DeckInfo[], chunkIndex: number): DeckInfo[] {
@@ -1195,6 +1214,9 @@ export async function generateDeckInfo(
         cost_usd: costUsd,
         elapsed_ms: elapsedMs,
         comprehensive: true,
+        ...(result.clampedFrom != null
+          ? { clamped_from: result.clampedFrom }
+          : {}),
       },
     });
     return deckInfo;
@@ -1234,6 +1256,7 @@ interface FloorV1Result {
   deckInfo: DeckInfo[];
   usages: ChunkUsage[];
   topUpRounds: number;
+  clampedFrom?: number;
 }
 
 async function runFloorV1(
@@ -1249,6 +1272,7 @@ async function runFloorV1(
   const tStart = Date.now();
   const usages: ChunkUsage[] = [];
   const collect = (usage: ChunkUsage) => usages.push(usage);
+  const bounds = resolveFloorV1Bounds(cardSize);
 
   const firstRoundResults = await runWithSemaphore(
     chunks.map(
@@ -1289,14 +1313,14 @@ async function runFloorV1(
 
   while (
     topUpRounds < FLOOR_V1_MAX_TOPUP_ROUNDS &&
-    totalCardCount(merged) < FLOOR_V1_CARD_FLOOR &&
+    totalCardCount(merged) < bounds.floor &&
     Date.now() - tStart < FLOOR_V1_TOPUP_BUDGET_MS
   ) {
     const beforeCount = totalCardCount(merged);
     const perChunkCounts = cardCountByChunk(merged, chunks.length);
     const targetChunks = thinnestQuartileIndices(perChunkCounts);
     const existingFronts = collectExistingFronts(merged);
-    const topUpInstruction = buildTopUpInstruction(existingFronts);
+    const topUpInstruction = buildTopUpInstruction(existingFronts, cardSize);
     const combinedInstructions = userInstructions
       ? `${userInstructions}\n\n${topUpInstruction}`
       : topUpInstruction;
@@ -1348,11 +1372,18 @@ async function runFloorV1(
     }
   }
 
-  if (totalCardCount(merged) > FLOOR_V1_CARD_CEILING) {
-    merged = clampDeckTotal(merged, FLOOR_V1_CARD_CEILING);
+  let clampedFrom: number | undefined;
+  const preClampCount = totalCardCount(merged);
+  if (preClampCount > bounds.ceiling) {
+    console.log('[Claude] floor v1 ceiling clamp', {
+      preClampCount,
+      ceiling: bounds.ceiling,
+    });
+    merged = clampDeckTotal(merged, bounds.ceiling);
+    clampedFrom = preClampCount;
   }
 
-  return { deckInfo: merged, usages, topUpRounds };
+  return { deckInfo: merged, usages, topUpRounds, clampedFrom };
 }
 
 function clampDeckTotal(decks: DeckInfo[], ceiling: number): DeckInfo[] {

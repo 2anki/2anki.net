@@ -603,11 +603,13 @@
       "short": "Breve",
       "medium": "Media",
       "detailed": "Dettagliata",
-      "intro": "La conversione con l'AI usa questo valore per decidere quanto contenuto sta su ogni carta.",
+      "intro": "Controlla quanto l'AI mette su ogni carta. Carte più grandi significano meno carte dallo stesso materiale.",
       "shortDesc": "1 fatto per carta, ~80 caratteri per risposta. Ideale per vocaboli, date, formule.",
       "mediumDesc": "1–2 fatti per carta, ~160 caratteri per risposta. Buon valore predefinito per la maggior parte degli appunti.",
-      "detailedDesc": "3–4 fatti per carta, ~320 caratteri per risposta. Meglio per concetti strettamente collegati che vuoi ripassare insieme."
+      "detailedDesc": "3–4 fatti per carta, ~320 caratteri per risposta. Meno carte, più complete: meglio per concetti che vuoi ripassare insieme."
     },
+    "comprehensiveHint": "Con un documento lungo può nascere un mazzo enorme. Per carte meno numerose e più complete, imposta la dimensione della carta su Dettagliata.",
+    "comprehensiveHintLink": "Vai a Dimensione della carta",
     "mcq": {
       "heading": "Domande a scelta multipla (MCQ)",
       "aria": "Attiva le domande a scelta multipla",

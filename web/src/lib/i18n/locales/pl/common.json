@@ -611,11 +611,13 @@
       "short": "Krótki",
       "medium": "Średni",
       "detailed": "Szczegółowy",
-      "intro": "Konwersja AI używa tego, aby zdecydować, ile zmieści się na każdej karcie.",
+      "intro": "Określa, ile AI umieszcza na każdej karcie. Większe karty oznaczają mniej kart z tego samego materiału.",
       "shortDesc": "1 fakt na kartę, ~80 znaków na odpowiedź. Najlepsze do słownictwa, dat, wzorów.",
       "mediumDesc": "1–2 fakty na kartę, ~160 znaków na odpowiedź. Dobre domyślne ustawienie dla większości notatek.",
-      "detailedDesc": "3–4 fakty na kartę, ~320 znaków na odpowiedź. Lepsze dla ściśle powiązanych pojęć, które chcesz powtarzać razem."
+      "detailedDesc": "3–4 fakty na kartę, ~320 znaków na odpowiedź. Mniej kart, ale pełniejszych – dobre dla pojęć, które chcesz powtarzać razem."
     },
+    "comprehensiveHint": "Przy długim dokumencie może powstać bardzo duża talia. Aby mieć mniej, ale pełniejszych kart, ustaw rozmiar karty na Szczegółowy.",
+    "comprehensiveHintLink": "Przejdź do rozmiaru karty",
     "mcq": {
       "heading": "Pytania wielokrotnego wyboru (MCQ)",
       "aria": "Włącz pytania wielokrotnego wyboru",
