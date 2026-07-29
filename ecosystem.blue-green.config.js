@@ -10,23 +10,31 @@
 // the process before node starts. Two channels are declared because the obvious
 // one silently does not work here:
 //
-//   node_args  — pm2 stores it (`pm2 describe` prints the interpreter arg) but
-//                did not put it on the spawned command line. On 2026-07-29 the
-//                live process ran as a bare `node src/server.js` while pm2
-//                reported --max-old-space-size=16384, so the real limit was
-//                node's ~4144MB default. The main thread OOM-crashed at 4189MB
-//                (FATAL ERROR: NewSpace::EnsureCurrentCapacity) and pm2 restarted
-//                it. Prior OOMs on 2026-07-18 have the same signature.
+//   node_args  — works sometimes, which is worse than never working. pm2 always
+//                stores it (`pm2 describe` prints the interpreter arg), but only
+//                sometimes puts it on the spawned command line. The GC logs show
+//                both states: on 2026-07-18 the process died at 15673MB of a
+//                16011MB heap, so 16384 was live; on 2026-07-29 it died at
+//                4189MB of 4285MB — node's ~4144MB default — while pm2 still
+//                reported the same interpreter arg. Nothing in this file changed
+//                between those dates. Do not trust this channel alone.
 //   NODE_OPTIONS in env — pm2 puts this in the child's environment before exec,
-//                which is early enough for V8. This is the one that takes effect.
+//                which is early enough for V8. Verified on prod 2026-07-29:
+//                heap_size_limit went 4144MB -> 8240MB. This is the reliable one.
 //
 // Do NOT move this into the box's .env: that file is read by dotenv at runtime,
 // after the heap is already sized, so a NODE_OPTIONS there is inert. Prod had
 // exactly that (8192) and it never applied.
 //
-// Verify after deploy — config is not proof, the command line is:
-//   tr '\0' ' ' < /proc/$(pgrep -f src/server.js | head -1)/cmdline
-const MAX_OLD_SPACE_MB = 8192;
+// Verify after deploy — config is not proof, the process is:
+//   tr '\0' '\n' < /proc/$(pgrep -f src/server.js | head -1)/environ | grep NODE_OPTIONS
+
+// 16384 is not arbitrary and should not be trimmed without evidence: the
+// 2026-07-18 crash shows this process genuinely growing past 15.6GB, so a
+// smaller ceiling converts conversions that used to complete into failures.
+// Lowering it to 8192 on 2026-07-29 was a mistake made while believing the
+// 16384 had never been active — the GC logs above disprove that.
+const MAX_OLD_SPACE_MB = 16384;
 
 const base = {
   script: 'src/server.js',
@@ -44,6 +52,23 @@ const base = {
   // color drains, so this only delays reaping the retired process.
   kill_timeout: 90000,
   node_args: `--max-old-space-size=${MAX_OLD_SPACE_MB}`,
+  // Main-thread memory grows unbounded under load and eventually reaches
+  // whatever ceiling is set (issue #3926 — 3 OOM crashes, 2026-07-18 and
+  // 2026-07-29). Raising the ceiling only lengthens the fuse, so pm2 recycles
+  // the process before V8 hits the wall: SIGINT first, which src/server.ts
+  // drains through gracefulShutdown within kill_timeout, instead of a hard
+  // FATAL ERROR that drops in-flight conversions with no drain.
+  //
+  // 12G sits deliberately between three numbers. Above the 6.0GB peak of the
+  // 2026-07-29 pre-crash climb, so ordinary heavy conversion load does not trip
+  // it. Below the ~16GB heap wall the 2026-07-18 crash actually hit, so the
+  // recycle wins that race. Below the 24.7GB the box has free alongside
+  // Postgres, so the kernel OOM-killer — which picks its own victim, possibly
+  // Postgres — never enters the picture. Normal operation sits near 450MB.
+  //
+  // If it fires routinely, the leak got worse — fix #3926 rather than raising
+  // this. Raising it past the heap ceiling would disable it silently.
+  max_memory_restart: '12G',
 };
 
 const nodeOptions = `--max-old-space-size=${MAX_OLD_SPACE_MB}`;

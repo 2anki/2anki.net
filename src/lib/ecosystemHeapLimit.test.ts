@@ -12,6 +12,8 @@ const config = require(
   apps: Array<{
     name: string;
     node_args?: string;
+    max_memory_restart?: string;
+    kill_timeout?: number;
     env: Record<string, unknown>;
   }>;
 };
@@ -55,4 +57,51 @@ describe('blue-green ecosystem config — heap ceiling', () => {
       expect(app.node_args).toBe(app.env.NODE_OPTIONS);
     }
   });
+});
+
+// Raising the ceiling only lengthens the fuse on an unbounded leak (#3926), so
+// pm2 recycles the process gracefully before V8 dies. The threshold has to stay
+// on the right side of two boundaries at once — high enough that ordinary load
+// never trips it, low enough that it beats the hard OOM.
+describe('blue-green ecosystem config — graceful memory recycle', () => {
+  const GIGABYTE_MB = 1024;
+
+  it.each(['server-blue', 'server-green'])(
+    'sets a max_memory_restart threshold for %s',
+    (name) => {
+      const app = config.apps.find((candidate) => candidate.name === name)!;
+      expect(app.max_memory_restart).toMatch(/^\d+G$/);
+    }
+  );
+
+  it.each(['server-blue', 'server-green'])(
+    'keeps %s recycling before V8 can hit the heap wall',
+    (name) => {
+      const app = config.apps.find((candidate) => candidate.name === name)!;
+      const thresholdMb =
+        Number.parseInt(app.max_memory_restart!.replace('G', ''), 10) *
+        GIGABYTE_MB;
+      const ceilingMb = Number.parseInt(
+        HEAP_FLAG.exec(app.env.NODE_OPTIONS as string)![1],
+        10
+      );
+
+      // max_memory_restart measures RSS; the ceiling caps the heap, and RSS is
+      // never smaller than the heap it contains. So a threshold at or under the
+      // ceiling is guaranteed to trip first, which is the whole point — a
+      // graceful drain instead of a FATAL ERROR. Set it above the ceiling and
+      // V8 wins the race and the recycle never runs, silently disabling itself.
+      expect(thresholdMb).toBeLessThanOrEqual(ceilingMb);
+    }
+  );
+
+  it.each(['server-blue', 'server-green'])(
+    'leaves %s room for the drain to finish before pm2 escalates',
+    (name) => {
+      const app = config.apps.find((candidate) => candidate.name === name)!;
+      // A recycle is only better than an OOM if in-flight conversions actually
+      // drain; kill_timeout must outlast SHUTDOWN_TIMEOUT_MS (85s).
+      expect(app.kill_timeout).toBeGreaterThan(85_000);
+    }
+  );
 });
