@@ -51,6 +51,10 @@ The claude lib converts HTML content into Anki flashcards using the Anthropic AP
 
 **Cost and latency:** Each detected heading becomes one Claude call. A document with 10 headings produces 10 parallel Claude calls instead of 1–2 default chunks. Latency is bounded by the slowest call (parallel dispatch). Token cost scales linearly with heading count. Prompt caching note: `generateDeckInfoFromChunk` marks `SYSTEM_PROMPT` with `cache_control: ephemeral`, but the prompt is below Sonnet's 1024-token cache minimum, so the marker is silently ignored — prod `[claude-usage]` lines show `cache_create=0 cache_read=0` on every ClaudeService call. Do not count on caching here unless the cached block grows past the minimum.
 
+Measured 2026-07-29 on prod, so nobody has to re-derive it: `SYSTEM_PROMPT` is **2077 chars ≈ 572 tokens**, and a probe using prod's own client and prompt returned `cache_create=0 cache_read=0` on two back-to-back calls, while the identical call shape with a ~4000-token system block cached normally (`cache_create=3960` then `cache_read=3960`). The block is roughly half the size it needs to be. Note that measuring this by slicing the template literal out of the source over-reads — the prompt embeds a backtick, so a naive scan to the next `` `; `` runs long and reports ~13k chars. Read it off the compiled `SYSTEM_PROMPT` export instead.
+
+**Caching is not the cost lever here, so don't spend effort on it.** A typical chunk call is ~13k input / ~4-9k output; at $3/M input and $15/M output the output side is roughly two-thirds of the bill. Caching the 572-token system block would cut ~4% of input, so ~1% of total. The only caching with real upside is the comprehensive-mode top-up rounds, which re-send the same chunk body 1-2 extra times — putting the chunk in the cached prefix and the varying instruction after it would make those repeats cheap. That is worth revisiting only if top-up volume grows; the far bigger lever is fewer and shorter outputs, which is what `resolveFloorV1Bounds` already does for `detailed`.
+
 ---
 
 ## Field-mapping contract (`fieldMapping?: FieldMapping`)
