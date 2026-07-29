@@ -19,6 +19,7 @@ import {
   ImageOnlyContentError,
   IMAGE_ONLY_USER_MESSAGE,
   isImageOnlyContent,
+  resolveFloorV1Bounds,
   type DeckInfo,
 } from './ClaudeService';
 
@@ -1464,6 +1465,179 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
     );
 
     expect(mockStream.finalMessage.mock.calls.length).toBeLessThan(6 + 6 + 6);
+  });
+});
+
+describe('floor v1 — card-size scaled bounds', () => {
+  const sixChunkHtml = '<p>' + 'x'.repeat(40_000 * 5 + 100) + '</p>';
+  const comprehensiveOpts = { isPaying: true, userId: 42, comprehensive: true };
+
+  function deckResponse(cardCount: number, frontPrefix = 'Card') {
+    const cards = Array.from({ length: cardCount }, (_, i) => ({
+      q: `${frontPrefix} ${i}`,
+      a: `Answer ${i}`,
+    }));
+    return {
+      content: [
+        { type: 'text', text: JSON.stringify([{ deck: 'Test Deck', cards }]) },
+      ],
+      stop_reason: 'end_turn',
+      usage: { input_tokens: 1000, output_tokens: 500 },
+    };
+  }
+
+  function convertWithSize(size: string | undefined) {
+    return generateDeckInfo(
+      sixChunkHtml,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      size,
+      undefined,
+      comprehensiveOpts
+    );
+  }
+
+  function sentUserMessages(): string[] {
+    return mockStreamFn.mock.calls.map(
+      (c) =>
+        (c[0] as { messages: Array<{ content: string }> }).messages[0].content
+    );
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockStreamFn.mockReturnValue(mockStream);
+    mockStream.on.mockReturnThis();
+  });
+
+  it('resolveFloorV1Bounds maps each size and defaults junk to medium', () => {
+    expect(resolveFloorV1Bounds('short')).toEqual({ floor: 200, ceiling: 500 });
+    expect(resolveFloorV1Bounds('medium')).toEqual({
+      floor: 150,
+      ceiling: 400,
+    });
+    expect(resolveFloorV1Bounds('detailed')).toEqual({
+      floor: 80,
+      ceiling: 250,
+    });
+    expect(resolveFloorV1Bounds(undefined)).toEqual({
+      floor: 150,
+      ceiling: 400,
+    });
+    expect(resolveFloorV1Bounds('nonsense')).toEqual({
+      floor: 150,
+      ceiling: 400,
+    });
+  });
+
+  it('detailed run above its 80-card floor skips top-up where short would top up', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () =>
+      deckResponse(20, `D${call++}`)
+    );
+    await convertWithSize('detailed');
+    expect(mockStream.finalMessage).toHaveBeenCalledTimes(6);
+
+    jest.clearAllMocks();
+    mockStreamFn.mockReturnValue(mockStream);
+    mockStream.on.mockReturnThis();
+    let call2 = 0;
+    mockStream.finalMessage.mockImplementation(async () =>
+      deckResponse(20, `S${call2++}`)
+    );
+    await convertWithSize('short');
+    expect(mockStream.finalMessage.mock.calls.length).toBeGreaterThan(6);
+  });
+
+  it('detailed run clamps the total at its 250-card ceiling', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () =>
+      deckResponse(60, `D${call++}`)
+    );
+    const result = await convertWithSize('detailed');
+    const total = result.reduce((sum, d) => sum + d.cards.length, 0);
+    expect(total).toBe(250);
+  });
+
+  it('emits clamped_from on ai_conversion_completed only when the ceiling clamped', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const trackMod = require('../../services/events/track');
+    const trackSpy = jest
+      .spyOn(trackMod, 'track')
+      .mockImplementation(() => undefined);
+    try {
+      let call = 0;
+      mockStream.finalMessage.mockImplementation(async () =>
+        deckResponse(60, `D${call++}`)
+      );
+      await convertWithSize('detailed');
+      const clampedCall = trackSpy.mock.calls.find(
+        (c: unknown[]) => c[0] === 'ai_conversion_completed'
+      );
+      expect(
+        (clampedCall![1] as { props: Record<string, unknown> }).props
+      ).toMatchObject({ card_count: 250, clamped_from: 360 });
+
+      trackSpy.mockClear();
+      jest.clearAllMocks();
+      mockStreamFn.mockReturnValue(mockStream);
+      mockStream.on.mockReturnThis();
+      let call2 = 0;
+      mockStream.finalMessage.mockImplementation(async () =>
+        deckResponse(20, `E${call2++}`)
+      );
+      await convertWithSize('detailed');
+      const unclampedCall = trackSpy.mock.calls.find(
+        (c: unknown[]) => c[0] === 'ai_conversion_completed'
+      );
+      const props = (unclampedCall![1] as { props: Record<string, unknown> })
+        .props;
+      expect(props.clamped_from).toBeUndefined();
+    } finally {
+      trackSpy.mockRestore();
+    }
+  });
+
+  it('detailed top-up rounds ask for multi-fact cards, not single-fact ones', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () =>
+      deckResponse(10, `D${call++}`)
+    );
+    await convertWithSize('detailed');
+    const topUpMessages = sentUserMessages().filter((m) =>
+      m.includes('Do NOT repeat any of these fronts')
+    );
+    expect(topUpMessages.length).toBeGreaterThan(0);
+    for (const message of topUpMessages) {
+      expect(message).toContain('keeping 3-4 related facts per card');
+      expect(message).not.toContain('single-fact');
+    }
+  });
+
+  it('medium top-up rounds keep the single-fact wording', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () =>
+      deckResponse(10, `M${call++}`)
+    );
+    await convertWithSize('medium');
+    const topUpMessages = sentUserMessages().filter((m) =>
+      m.includes('Do NOT repeat any of these fronts')
+    );
+    expect(topUpMessages.length).toBeGreaterThan(0);
+    for (const message of topUpMessages) {
+      expect(message).toContain('single-fact');
+    }
+  });
+
+  it('SYSTEM_PROMPT defers min-info and density rules to the Card size directive', () => {
+    expect(SYSTEM_PROMPT).toContain(
+      'The Card size directive in the user message overrides these rules the same way'
+    );
+    expect(SYSTEM_PROMPT).toContain(
+      'when density and card size conflict, prefer fuller cards over more cards'
+    );
   });
 });
 

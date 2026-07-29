@@ -183,7 +183,7 @@ const supportedOptions = (): CardOptionDetail[] => {
     new CardOptionDetail(
       'ai-comprehensive',
       'Comprehensive AI mode',
-      'Aim for hundreds of cards per chapter instead of dozens. Conversions take longer. Paid plans only.',
+      'Reads every section of long documents so nothing important gets skipped. Best for thorough study of dense material. Takes longer to make. Paid plans only.',
       defaultFor('ai-comprehensive')
     ),
     new CardOptionDetail(

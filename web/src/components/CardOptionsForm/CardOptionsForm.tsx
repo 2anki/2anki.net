@@ -973,6 +973,15 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                       badge={PREMIUM_KEYS.has(o.key) ? 'Premium' : undefined}
                     />
                   ))}
+                  {isPdfAiGroup &&
+                    (checkboxValues['ai-comprehensive'] ?? false) && (
+                      <p className={fieldStyles.sectionHint}>
+                        {t('cardOptions.comprehensiveHint')}{' '}
+                        <a href="#card-size">
+                          {t('cardOptions.comprehensiveHintLink')}
+                        </a>
+                      </p>
+                    )}
                   {isPdfAiGroup && userInstructionsDisclosure}
                 </div>
               </div>

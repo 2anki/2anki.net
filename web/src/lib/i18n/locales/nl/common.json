@@ -603,11 +603,13 @@
       "short": "Kort",
       "medium": "Gemiddeld",
       "detailed": "Uitgebreid",
-      "intro": "AI-conversie gebruikt dit om te bepalen hoeveel op elke kaart past.",
+      "intro": "Bepaalt hoeveel de AI op elke kaart zet. Grotere kaarten betekenen minder kaarten uit hetzelfde materiaal.",
       "shortDesc": "1 feit per kaart, ~80 tekens per antwoord. Het best voor woordenschat, data, formules.",
       "mediumDesc": "1–2 feiten per kaart, ~160 tekens per antwoord. Goede standaard voor de meeste notities.",
-      "detailedDesc": "3–4 feiten per kaart, ~320 tekens per antwoord. Beter voor nauw verbonden begrippen die je samen wilt leren."
+      "detailedDesc": "3–4 feiten per kaart, ~320 tekens per antwoord. Minder, vollere kaarten: goed voor begrippen die je samen wilt leren."
     },
+    "comprehensiveHint": "Bij een lang document kan dit een grote stapel opleveren. Voor minder, vollere kaarten zet je de kaartgrootte op Uitgebreid.",
+    "comprehensiveHintLink": "Naar Kaartgrootte",
     "mcq": {
       "heading": "Meerkeuzevragen (MCQ)",
       "aria": "Meerkeuzevragen inschakelen",

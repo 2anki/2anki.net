@@ -603,11 +603,13 @@
       "short": "Court",
       "medium": "Moyen",
       "detailed": "Détaillé",
-      "intro": "La conversion par IA s'en sert pour décider combien de contenu tient sur chaque carte.",
+      "intro": "Détermine la quantité que l'IA met sur chaque carte. Des cartes plus grandes signifient moins de cartes pour le même contenu.",
       "shortDesc": "1 fait par carte, ~80 caractères par réponse. Idéal pour le vocabulaire, les dates, les formules.",
       "mediumDesc": "1–2 faits par carte, ~160 caractères par réponse. Bon choix par défaut pour la plupart des notes.",
-      "detailedDesc": "3–4 faits par carte, ~320 caractères par réponse. Mieux pour les concepts étroitement liés que tu veux réviser ensemble."
+      "detailedDesc": "3–4 faits par carte, ~320 caractères par réponse. Moins de cartes, mais plus complètes : idéal pour les concepts que tu veux réviser ensemble."
     },
+    "comprehensiveHint": "Sur un long document, cela peut produire un très grand paquet. Pour des cartes moins nombreuses mais plus complètes, règle la taille de la carte sur Détaillé.",
+    "comprehensiveHintLink": "Aller à Taille de la carte",
     "mcq": {
       "heading": "Questions à choix multiple (QCM)",
       "aria": "Activer les questions à choix multiple",

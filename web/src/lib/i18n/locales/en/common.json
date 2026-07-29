@@ -603,11 +603,13 @@
       "short": "Short",
       "medium": "Medium",
       "detailed": "Detailed",
-      "intro": "AI conversion uses this to decide how much fits on each card.",
+      "intro": "Controls how much AI puts on each card. Bigger cards mean fewer cards from the same material.",
       "shortDesc": "1 fact per card, ~80 characters per answer. Best for vocabulary, dates, formulas.",
       "mediumDesc": "1–2 facts per card, ~160 characters per answer. Good default for most notes.",
-      "detailedDesc": "3–4 facts per card, ~320 characters per answer. Better for tightly grouped concepts you want to review together."
+      "detailedDesc": "3–4 facts per card, ~320 characters per answer. Fewer, fuller cards — good for concepts you want to review together."
     },
+    "comprehensiveHint": "On a long document this can make a large deck. For fewer, fuller cards, set Card size to Detailed.",
+    "comprehensiveHintLink": "Go to Card size",
     "mcq": {
       "heading": "Multiple choice questions (MCQ)",
       "aria": "Enable multiple choice questions",

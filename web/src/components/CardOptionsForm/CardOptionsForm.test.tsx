@@ -592,6 +592,27 @@ describe('CardOptionsForm ai-comprehensive toggle (paid-only)', () => {
     });
     expect(toggle).toBeChecked();
   });
+
+  it('shows the card-size hint only while comprehensive is checked', async () => {
+    setUserLocalsPaying(true);
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+    const toggle = await screen.findByRole('checkbox', {
+      name: 'Comprehensive AI mode',
+    });
+    expect(screen.queryByText(/set Card size to Detailed/i)).toBeNull();
+
+    fireEvent.click(toggle);
+
+    const hint = await screen.findByText(/set Card size to Detailed/i);
+    expect(hint).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Go to Card size' });
+    expect(link).toHaveAttribute('href', '#card-size');
+
+    fireEvent.click(toggle);
+    await waitFor(() => {
+      expect(screen.queryByText(/set Card size to Detailed/i)).toBeNull();
+    });
+  });
 });
 
 describe('CardOptionsForm loads a saved per-page payload', () => {
