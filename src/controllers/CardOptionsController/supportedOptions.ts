@@ -13,15 +13,9 @@ const supportedOptions = (): CardOptionDetail[] => {
       defaultFor('add-notion-link')
     ),
     new CardOptionDetail(
-      'use-notion-id',
-      'Use Notion ID',
-      'Cards from Notion are identified by their block ID automatically. This setting only affects cards built from Notion database rows.',
-      defaultFor('use-notion-id')
-    ),
-    new CardOptionDetail(
       'block-id-identity',
       'Block ID identity',
-      "Identify new cards by their Notion block ID instead of their text. Cards you've already converted keep their remembered IDs either way.",
+      'Off, new cards are matched by their text so decks you imported before keep updating. On, new cards are keyed by their Notion block ID instead. Cards 2anki already remembers keep their IDs either way.',
       defaultFor('block-id-identity')
     ),
     new CardOptionDetail(
