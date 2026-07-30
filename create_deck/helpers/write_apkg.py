@@ -163,10 +163,10 @@ def _write_new_apkg(deck_payloads, media_files):
     """
     decks, first_deck_id = create_decks(deck_payloads)
     package = FastPackage(decks)
-    existing_media = [f for f in media_files if os.path.exists(f)]
-    if len(existing_media) < len(media_files):
-        missing = set(media_files) - set(existing_media)
+    missing = {f for f in media_files if not os.path.exists(f)}
+    if missing:
         print(f"Skipping {len(missing)} missing media file(s): {missing}", file=sys.stderr)
+    existing_media = list(dict.fromkeys(f for f in media_files if os.path.exists(f)))
     package.media_files = existing_media
 
     sanitized_name = sanitize_filename(deck_payloads[0]["name"]) if deck_payloads else "default"

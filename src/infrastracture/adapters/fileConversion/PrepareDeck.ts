@@ -235,24 +235,27 @@ interface ConvertedFile {
   name: string;
   contents: Buffer | string;
   imageFallback?: boolean;
+  droppedImageCount?: number;
 }
 
 async function convertPdfPagesToImagesFile(
   file: DeckParserInput['files'][number],
   input: DeckParserInput
 ): Promise<ConvertedFile> {
+  const html = await convertPDFToImages({
+    name: file.name,
+    workspace: input.workspace,
+    noLimits: input.noLimits,
+    contents: file.contents as Buffer,
+    settings: input.settings,
+  });
   return {
     name: `${file.name}.html`,
-    contents: Buffer.from(
-      await convertPDFToImages({
-        name: file.name,
-        workspace: input.workspace,
-        noLimits: input.noLimits,
-        contents: file.contents as Buffer,
-        settings: input.settings,
-      })
-    ),
+    contents: Buffer.from(html),
     imageFallback: true,
+    droppedImageCount: input.settings.embedImages
+      ? 0
+      : (html.match(/<img /g) ?? []).length,
   };
 }
 
@@ -292,6 +295,7 @@ async function convertPdfByManualTextFlag(
     return {
       name: `${file.name}.html`,
       contents: Buffer.from(textResult.html),
+      droppedImageCount: textResult.droppedImageCount,
     };
   }
 
@@ -339,6 +343,7 @@ async function convertPdfByAutoDetection(
     return {
       name: `${file.name}.html`,
       contents: Buffer.from(autoResult.html),
+      droppedImageCount: autoResult.droppedImageCount,
     };
   }
 
@@ -483,7 +488,10 @@ export async function PrepareDeck(
           pdfImageFallbackNames.has(f.name)
             ? {
                 ...baseGenerateDeckInfoOptions,
-                pdfImageFallback: { mediaBaseDir: input.workspace.location },
+                pdfImageFallback: {
+                  mediaBaseDir: input.workspace.location,
+                  attachPageImages: input.settings.embedImages,
+                },
               }
             : baseGenerateDeckInfoOptions
         )
@@ -537,7 +545,10 @@ export async function PrepareDeck(
       ),
       mcqCount: 0,
       mcqSkippedCount: 0,
-      droppedImageCount: 0,
+      droppedImageCount: convertedFiles.reduce(
+        (sum, f) => sum + (f.droppedImageCount ?? 0),
+        0
+      ),
       emptyBackCount: 0,
     };
   }

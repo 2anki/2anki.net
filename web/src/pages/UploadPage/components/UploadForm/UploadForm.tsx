@@ -957,7 +957,10 @@ function UploadForm({
       )}
       {droppedImageCount > 0 && (
         <div className={formStyles.warningInline}>
-          <ImageDropNotice count={droppedImageCount} source="upload" />
+          <ImageDropNotice
+            count={droppedImageCount}
+            source={imageDropSource()}
+          />
         </div>
       )}
       {emptyBackCount > 0 && (
@@ -1022,7 +1025,7 @@ function UploadForm({
           <div className={formStyles.warningInline}>
             <ImageDropNotice
               count={droppedImageCount}
-              source="upload"
+              source={imageDropSource()}
               multipleDecks
             />
           </div>
@@ -1140,6 +1143,18 @@ function UploadForm({
 
   const currentFilename = (): string =>
     driveFilename ?? dropboxFilename ?? displayFilename(fileInputRef.current);
+
+  const imageDropSource = (): 'pdf' | 'upload' => {
+    const remote = driveFilename ?? dropboxFilename;
+    if (remote) {
+      return remote.toLowerCase().endsWith('.pdf') ? 'pdf' : 'upload';
+    }
+    const files = Array.from(fileInputRef.current?.files ?? []);
+    const allPdf =
+      files.length > 0 &&
+      files.every((f) => f.name.toLowerCase().endsWith('.pdf'));
+    return allPdf ? 'pdf' : 'upload';
+  };
 
   const renderEmptyDeckState = () => {
     const isGoogleDriveFile =

@@ -44,7 +44,9 @@
     "uploadSingleDeck_one": "{{count}} image couldn't be downloaded and isn't in this deck. Your file links to it on another site we couldn't reach. Save the image into the file itself, then upload again.",
     "uploadSingleDeck_other": "{{count}} images couldn't be downloaded and aren't in this deck. Your file links to them on other sites we couldn't reach. Save the images into the file itself, then upload again.",
     "uploadMultiDeck_one": "{{count}} image couldn't be downloaded and isn't in your decks. Your file links to it on another site we couldn't reach. Save the image into the file itself, then upload again.",
-    "uploadMultiDeck_other": "{{count}} images couldn't be downloaded and aren't in your decks. Your file links to them on other sites we couldn't reach. Save the images into the file itself, then upload again."
+    "uploadMultiDeck_other": "{{count}} images couldn't be downloaded and aren't in your decks. Your file links to them on other sites we couldn't reach. Save the images into the file itself, then upload again.",
+    "pdf_one": "{{count}} image from your PDF isn't in this deck — we don't include images from PDFs yet. Export your Notion page as HTML and upload that to keep it.",
+    "pdf_other": "{{count}} images from your PDF aren't in this deck — we don't include images from PDFs yet. Export your Notion page as HTML and upload that to keep them."
   },
   "cardLimitPartial": {
     "heldBack_one": "Your deck has {{delivered}} of your {{limit}} monthly cards. {{count}} more card is ready — <pricingLink>upgrade for unlimited cards</pricingLink>.",

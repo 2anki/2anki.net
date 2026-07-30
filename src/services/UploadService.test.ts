@@ -2013,6 +2013,40 @@ describe('UploadService.restartClaudeJob — replays the PDF-image-fallback flag
     });
   });
 
+  it('attaches page images by default when no embed-images preference is persisted', async () => {
+    await insertDoneJob();
+    fs.writeFileSync(
+      path.join(workspaceBase, 'job-obj-fallback', 'conversion-fallback.json'),
+      JSON.stringify(['scan.pdf.html'])
+    );
+
+    const args = await restartAndWaitForGenerate();
+
+    expect(
+      (args[7] as { pdfImageFallback: { attachPageImages: boolean } })
+        .pdfImageFallback.attachPageImages
+    ).toBe(true);
+  });
+
+  it('omits page images when persisted settings turn embed-images off', async () => {
+    await insertDoneJob();
+    fs.writeFileSync(
+      path.join(workspaceBase, 'job-obj-fallback', 'conversion-fallback.json'),
+      JSON.stringify(['scan.pdf.html'])
+    );
+    fs.writeFileSync(
+      path.join(workspaceBase, 'job-obj-fallback', 'conversion-settings.json'),
+      JSON.stringify({ 'embed-images': 'false' })
+    );
+
+    const args = await restartAndWaitForGenerate();
+
+    expect(
+      (args[7] as { pdfImageFallback: { attachPageImages: boolean } })
+        .pdfImageFallback.attachPageImages
+    ).toBe(false);
+  });
+
   it('does not pass pdfImageFallback when no marker was persisted', async () => {
     await insertDoneJob();
 

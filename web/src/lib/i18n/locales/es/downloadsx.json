@@ -44,7 +44,9 @@
     "uploadSingleDeck_one": "No se pudo descargar {{count}} imagen y no está en este mazo. Tu archivo enlaza a ella en otro sitio que no pudimos alcanzar. Guarda la imagen en el archivo y súbelo de nuevo.",
     "uploadSingleDeck_other": "No se pudieron descargar {{count}} imágenes y no están en este mazo. Tu archivo enlaza a ellas en otros sitios que no pudimos alcanzar. Guarda las imágenes en el archivo y súbelo de nuevo.",
     "uploadMultiDeck_one": "No se pudo descargar {{count}} imagen y no está en tus mazos. Tu archivo enlaza a ella en otro sitio que no pudimos alcanzar. Guarda la imagen en el archivo y súbelo de nuevo.",
-    "uploadMultiDeck_other": "No se pudieron descargar {{count}} imágenes y no están en tus mazos. Tu archivo enlaza a ellas en otros sitios que no pudimos alcanzar. Guarda las imágenes en el archivo y súbelo de nuevo."
+    "uploadMultiDeck_other": "No se pudieron descargar {{count}} imágenes y no están en tus mazos. Tu archivo enlaza a ellas en otros sitios que no pudimos alcanzar. Guarda las imágenes en el archivo y súbelo de nuevo.",
+    "pdf_one": "{{count}} imagen de tu PDF no está en este mazo — todavía no incluimos imágenes de los PDF. Exporta tu página de Notion como HTML y súbela para conservarla.",
+    "pdf_other": "{{count}} imágenes de tu PDF no están en este mazo — todavía no incluimos imágenes de los PDF. Exporta tu página de Notion como HTML y súbela para conservarlas."
   },
   "cardLimitPartial": {
     "heldBack_one": "Tu mazo tiene {{delivered}} de tus {{limit}} tarjetas mensuales. {{count}} tarjeta más está lista — <pricingLink>mejora para tarjetas ilimitadas</pricingLink>.",

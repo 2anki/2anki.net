@@ -44,7 +44,9 @@
     "uploadSingleDeck_one": "{{count}} image n'a pas pu être téléchargée et n'est pas dans ce paquet. Votre fichier renvoie vers celle-ci sur un autre site que nous n'avons pas pu atteindre. Enregistrez l'image dans le fichier, puis téléversez à nouveau.",
     "uploadSingleDeck_other": "{{count}} images n'ont pas pu être téléchargées et ne sont pas dans ce paquet. Votre fichier renvoie vers celles-ci sur d'autres sites que nous n'avons pas pu atteindre. Enregistrez les images dans le fichier, puis téléversez à nouveau.",
     "uploadMultiDeck_one": "{{count}} image n'a pas pu être téléchargée et n'est pas dans vos paquets. Votre fichier renvoie vers celle-ci sur un autre site que nous n'avons pas pu atteindre. Enregistrez l'image dans le fichier, puis téléversez à nouveau.",
-    "uploadMultiDeck_other": "{{count}} images n'ont pas pu être téléchargées et ne sont pas dans vos paquets. Votre fichier renvoie vers celles-ci sur d'autres sites que nous n'avons pas pu atteindre. Enregistrez les images dans le fichier, puis téléversez à nouveau."
+    "uploadMultiDeck_other": "{{count}} images n'ont pas pu être téléchargées et ne sont pas dans vos paquets. Votre fichier renvoie vers celles-ci sur d'autres sites que nous n'avons pas pu atteindre. Enregistrez les images dans le fichier, puis téléversez à nouveau.",
+    "pdf_one": "{{count}} image de votre PDF n'est pas dans ce paquet — nous n'incluons pas encore les images des PDF. Exportez votre page Notion au format HTML et téléversez-la pour la conserver.",
+    "pdf_other": "{{count}} images de votre PDF ne sont pas dans ce paquet — nous n'incluons pas encore les images des PDF. Exportez votre page Notion au format HTML et téléversez-la pour les conserver."
   },
   "cardLimitPartial": {
     "heldBack_one": "Ton paquet contient {{delivered}} de tes {{limit}} cartes mensuelles. {{count}} carte de plus est prête — <pricingLink>passe à l'illimité</pricingLink>.",

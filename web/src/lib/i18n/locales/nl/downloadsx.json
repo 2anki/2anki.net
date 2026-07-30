@@ -44,7 +44,9 @@
     "uploadSingleDeck_one": "{{count}} afbeelding kon niet worden gedownload en zit niet in dit pakket. Je bestand linkt ernaar op een andere site die we niet konden bereiken. Sla de afbeelding op in het bestand zelf en upload opnieuw.",
     "uploadSingleDeck_other": "{{count}} afbeeldingen konden niet worden gedownload en zitten niet in dit pakket. Je bestand linkt ernaar op andere sites die we niet konden bereiken. Sla de afbeeldingen op in het bestand zelf en upload opnieuw.",
     "uploadMultiDeck_one": "{{count}} afbeelding kon niet worden gedownload en zit niet in je pakketten. Je bestand linkt ernaar op een andere site die we niet konden bereiken. Sla de afbeelding op in het bestand zelf en upload opnieuw.",
-    "uploadMultiDeck_other": "{{count}} afbeeldingen konden niet worden gedownload en zitten niet in je pakketten. Je bestand linkt ernaar op andere sites die we niet konden bereiken. Sla de afbeeldingen op in het bestand zelf en upload opnieuw."
+    "uploadMultiDeck_other": "{{count}} afbeeldingen konden niet worden gedownload en zitten niet in je pakketten. Je bestand linkt ernaar op andere sites die we niet konden bereiken. Sla de afbeeldingen op in het bestand zelf en upload opnieuw.",
+    "pdf_one": "{{count}} afbeelding uit je PDF zit niet in dit pakket — afbeeldingen uit PDF's nemen we nog niet over. Exporteer je Notion-pagina als HTML en upload die om haar te behouden.",
+    "pdf_other": "{{count}} afbeeldingen uit je PDF zitten niet in dit pakket — afbeeldingen uit PDF's nemen we nog niet over. Exporteer je Notion-pagina als HTML en upload die om ze te behouden."
   },
   "cardLimitPartial": {
     "heldBack_one": "Je deck bevat {{delivered}} van je {{limit}} maandelijkse kaarten. Nog {{count}} kaart staat klaar — <pricingLink>upgrade voor onbeperkte kaarten</pricingLink>.",

@@ -144,6 +144,30 @@ class TestWriteApkg(TestCase):
 
     @mock.patch('helpers.write_apkg.FastPackage')
     @mock.patch('helpers.write_apkg.os.replace')
+    def test_write_new_apkg_dedupes_repeated_media(self, mock_replace, mock_fast_package):
+        note = Note(model=self.test_model, fields=['Q1', 'A1'])
+        deck_payload = {
+            "id": 1234567890,
+            "name": "Test Deck",
+            "desc": "Test Description",
+            "notes": [note]
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            page_one = os.path.join(tmpdir, 'page-1.png')
+            page_two = os.path.join(tmpdir, 'page-2.png')
+            open(page_one, 'w').close()
+            open(page_two, 'w').close()
+            media_files = [page_one, page_one, page_two, page_one]
+
+            with mock.patch('os.getcwd', return_value=tmpdir):
+                _write_new_apkg([deck_payload], media_files)
+
+                package_instance = mock_fast_package.return_value
+                self.assertEqual(package_instance.media_files, [page_one, page_two])
+
+    @mock.patch('helpers.write_apkg.FastPackage')
+    @mock.patch('helpers.write_apkg.os.replace')
     def test_write_new_apkg_empty_deck_list(self, mock_replace, mock_fast_package):
         with tempfile.TemporaryDirectory() as tmpdir:
             with mock.patch('os.getcwd', return_value=tmpdir):

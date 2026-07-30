@@ -54,7 +54,11 @@
     "uploadMultiDeck_one": "{{count}} obraz nie został pobrany i nie ma go w Twoich taliach. Twój plik odwołuje się do niego w innej witrynie, do której nie mogliśmy dotrzeć. Zapisz obraz w samym pliku, a następnie prześlij go ponownie.",
     "uploadMultiDeck_few": "{{count}} obrazy nie zostały pobrane i nie ma ich w Twoich taliach. Twój plik odwołuje się do nich w innych witrynach, do których nie mogliśmy dotrzeć. Zapisz obrazy w samym pliku, a następnie prześlij go ponownie.",
     "uploadMultiDeck_many": "{{count}} obrazów nie zostało pobranych i nie ma ich w Twoich taliach. Twój plik odwołuje się do nich w innych witrynach, do których nie mogliśmy dotrzeć. Zapisz obrazy w samym pliku, a następnie prześlij go ponownie.",
-    "uploadMultiDeck_other": "{{count}} obrazów nie zostało pobranych i nie ma ich w Twoich taliach. Twój plik odwołuje się do nich w innych witrynach, do których nie mogliśmy dotrzeć. Zapisz obrazy w samym pliku, a następnie prześlij go ponownie."
+    "uploadMultiDeck_other": "{{count}} obrazów nie zostało pobranych i nie ma ich w Twoich taliach. Twój plik odwołuje się do nich w innych witrynach, do których nie mogliśmy dotrzeć. Zapisz obrazy w samym pliku, a następnie prześlij go ponownie.",
+    "pdf_one": "{{count}} obraz z Twojego pliku PDF nie znajduje się w tej talii — nie dołączamy jeszcze obrazów z plików PDF. Wyeksportuj stronę Notion jako HTML i prześlij ją, aby go zachować.",
+    "pdf_few": "{{count}} obrazy z Twojego pliku PDF nie znajdują się w tej talii — nie dołączamy jeszcze obrazów z plików PDF. Wyeksportuj stronę Notion jako HTML i prześlij ją, aby je zachować.",
+    "pdf_many": "{{count}} obrazów z Twojego pliku PDF nie znajduje się w tej talii — nie dołączamy jeszcze obrazów z plików PDF. Wyeksportuj stronę Notion jako HTML i prześlij ją, aby je zachować.",
+    "pdf_other": "{{count}} obrazów z Twojego pliku PDF nie znajduje się w tej talii — nie dołączamy jeszcze obrazów z plików PDF. Wyeksportuj stronę Notion jako HTML i prześlij ją, aby je zachować."
   },
   "cardLimitPartial": {
     "heldBack_one": "Twoja talia ma {{delivered}} z {{limit}} miesięcznych kart. Gotowa jest jeszcze {{count}} karta — <pricingLink>przejdź na nieograniczone karty</pricingLink>.",

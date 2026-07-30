@@ -372,6 +372,112 @@ describe('PrepareDeck — PDF text-vs-image gate', () => {
   });
 });
 
+describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  function claudeDeck() {
+    return [
+      {
+        name: 'PDF Deck',
+        image: '',
+        style: null,
+        id: 111222333444555,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Front',
+            back: 'Back',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ];
+  }
+
+  function runClaudePdf(settings: CardOption) {
+    return PrepareDeck({
+      name: 'notes.pdf',
+      files: [{ name: 'notes.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+  }
+
+  it('mirrors embed-images into pdfImageFallback.attachPageImages (default on)', async () => {
+    generateDeckInfo.mockResolvedValueOnce(claudeDeck());
+
+    await runClaudePdf(makeSettings({ 'claude-ai-flashcards': 'true' }));
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    const options = generateDeckInfo.mock.calls[0][7];
+    expect(options.pdfImageFallback).toEqual({
+      mediaBaseDir: '/tmp/test-workspace',
+      attachPageImages: true,
+    });
+  });
+
+  it('mirrors embed-images off into pdfImageFallback.attachPageImages', async () => {
+    generateDeckInfo.mockResolvedValueOnce(claudeDeck());
+
+    await runClaudePdf(
+      makeSettings({ 'claude-ai-flashcards': 'true', 'embed-images': 'false' })
+    );
+
+    const options = generateDeckInfo.mock.calls[0][7];
+    expect(options.pdfImageFallback.attachPageImages).toBe(false);
+  });
+
+  it('reports zero dropped images when scanned page images are embedded', async () => {
+    generateDeckInfo.mockResolvedValueOnce(claudeDeck());
+
+    const result = await runClaudePdf(
+      makeSettings({ 'claude-ai-flashcards': 'true' })
+    );
+
+    expect(result.droppedImageCount).toBe(0);
+  });
+
+  it('reports the scanned page-image count as dropped when images are off', async () => {
+    convertPDFToImages.mockResolvedValueOnce(
+      '<img src="p1.png" /><img src="p2.png" />'
+    );
+    generateDeckInfo.mockResolvedValueOnce(claudeDeck());
+
+    const result = await runClaudePdf(
+      makeSettings({ 'claude-ai-flashcards': 'true', 'embed-images': 'false' })
+    );
+
+    expect(result.droppedImageCount).toBe(2);
+  });
+
+  it('reports the real painted-image count on a text-shaped Claude conversion', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce({
+      html: '<p>auto text card</p>',
+      cardCount: 5,
+      isDrmLocked: false,
+      needsCredential: false,
+      droppedImageCount: 4,
+      isTextShaped: true,
+    });
+    generateDeckInfo.mockResolvedValueOnce(claudeDeck());
+
+    const result = await runClaudePdf(
+      makeSettings({ 'claude-ai-flashcards': 'true' })
+    );
+
+    expect(convertPDFToImages).not.toHaveBeenCalled();
+    expect(result.droppedImageCount).toBe(4);
+  });
+});
+
 describe('PrepareDeck — duplicate-name dedup', () => {
   let infoSpy: jest.SpyInstance;
 

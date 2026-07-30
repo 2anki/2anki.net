@@ -892,6 +892,7 @@ const FLOOR_V1_CACHE_WRITE_PREMIUM = 1.25;
 
 export interface PdfImageFallbackContext {
   mediaBaseDir: string;
+  attachPageImages?: boolean;
 }
 
 export interface GenerateDeckInfoOptions {
@@ -1092,6 +1093,8 @@ export async function generateDeckInfo(
   const t0 = Date.now();
 
   if (options?.pdfImageFallback) {
+    // The per-page vision path intentionally bypasses comprehensive, cardStyle,
+    // cardSize, and fieldMapping — carrying them here is deferred to a tracking issue.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const {
       generateDeckInfoFromPdfImages,

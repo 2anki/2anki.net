@@ -59,4 +59,29 @@ describe('ImageDropNotice', () => {
       source: 'upload',
     });
   });
+
+  it('uses PDF-specific copy for the pdf source', () => {
+    render(<ImageDropNotice count={2} source="pdf" />);
+    expect(
+      screen.getByText(/images from your PDF aren't in this deck/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/we don't include images from PDFs yet/)
+    ).toBeInTheDocument();
+  });
+
+  it('uses singular PDF copy for one dropped image', () => {
+    render(<ImageDropNotice count={1} source="pdf" />);
+    expect(
+      screen.getByText(/1 image from your PDF isn't in this deck/)
+    ).toBeInTheDocument();
+  });
+
+  it('fires the usage event with the pdf source', () => {
+    render(<ImageDropNotice count={1} source="pdf" />);
+    expect(track).toHaveBeenCalledWith('image_drop_notice_shown', {
+      dropped_count: 1,
+      source: 'pdf',
+    });
+  });
 });
