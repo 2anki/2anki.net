@@ -113,6 +113,19 @@ describe('Sonar config parity between the CLI and Automatic Analysis', () => {
     expect(missing).toEqual([]);
   });
 
+  it.each([
+    ['sonar-project.properties', 'cli'],
+    ['.sonarcloud.properties', 'autoScan'],
+  ])('declares UTF-8 source encoding in %s', (_label, which) => {
+    // Left undeclared, the scanner falls back to the JVM default charset —
+    // US-ASCII in a bare Automatic Analysis container — and fails to decode the
+    // ~1000 source files containing non-ASCII bytes, which is what produced the
+    // "problems with file encoding" warning on 2026-07-30.
+    const config = which === 'cli' ? cli : autoScan;
+
+    expect(config.get('sonar.sourceEncoding')).toBe('UTF-8');
+  });
+
   it('points the CLI at the laer-smart project the repo is bound to', () => {
     // The repo moved orgs; the stale key pointed at a different project that
     // kept scanning main and had no quality gate, so nothing looked wrong.
