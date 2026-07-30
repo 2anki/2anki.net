@@ -15,6 +15,7 @@ import type {
   PhotoDensity,
   PhotoMode,
 } from '../../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
+import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
 
 export const MCP_SERVER_NAME = '2anki';
 export const MCP_SERVER_VERSION = '1.0.0';
@@ -295,7 +296,7 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
         const message =
           error instanceof Error ? error.message : 'Could not load the deck.';
         console.error(
-          `[mcp] get_deck_preview failed for ${identifier}: ${message}`
+          `[mcp] get_deck_preview failed for ${sanitizeForLog(identifier)}: ${message}`
         );
         return errorResult(message, 'preview_failed');
       }

@@ -6,6 +6,7 @@ import UsersRepository from '../../data_layer/UsersRepository';
 import TokenRepository from '../../data_layer/TokenRepository';
 import { getDatabase } from '../../data_layer';
 import { configureUserLocal } from './configureUserLocal';
+import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
 
 const RequireAllowedOrigin = async (
   req: Request,
@@ -18,7 +19,9 @@ const RequireAllowedOrigin = async (
   }
 
   const permitted = ALLOWED_ORIGINS.includes(origin);
-  console.info(`checking if ${origin} is whitelisted ${permitted}`);
+  console.info(
+    `checking if ${sanitizeForLog(origin)} is whitelisted ${permitted}`
+  );
   if (!permitted) {
     return res.status(403).end();
   }

@@ -26,6 +26,7 @@ import type { IBlocksCacheRepository } from '../../data_layer/BlocksCacheReposit
 import { isValidNotionId } from './isValidNotionId';
 import { ValidNotionType } from './types';
 import { notionCallRingBuffer } from './NotionCallRingBuffer';
+import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
 
 const DEFAULT_PAGE_SIZE_LIMIT = 100 * 2;
 const SEARCH_MAX_PAGES = 20;
@@ -61,7 +62,7 @@ class NotionAPIWrapper {
     if (!isValidNotionId(id)) {
       console.info(
         '[notion] skipping pages.retrieve for non-UUID id:',
-        JSON.stringify(id).slice(0, 80)
+        sanitizeForLog(id)
       );
       return Promise.resolve(null);
     }

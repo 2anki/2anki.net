@@ -1295,7 +1295,11 @@ export function MindmapEditor() {
       {contextMenu != null && (
         <div
           role="menu"
+          // Both handlers only stop propagation so a click or key inside the
+          // menu does not reach the dismiss handler on the surface behind it.
+          // The menu's actual controls are the buttons within.
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
           className={styles.contextMenu}
           style={{ top: contextMenu.y, left: contextMenu.x }}
         >

@@ -1233,10 +1233,7 @@ export class DeckParser {
   }
 
   totalCardCount() {
-    if (this.payload.length === 0) {
-      return 0;
-    }
-    return this.payload.map((p) => p.cardCount).reduce((a, b) => a + b);
+    return this.payload.reduce((total, p) => total + p.cardCount, 0);
   }
 
   private loadDOM(contents: string) {

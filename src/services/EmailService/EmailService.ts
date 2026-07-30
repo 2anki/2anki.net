@@ -946,8 +946,11 @@ export class EmailService implements IEmailService {
 }
 
 export class UnimplementedEmailService implements IEmailService {
-  async sendResetEmail(email: string, token: string): Promise<void> {
-    console.info('sendResetEmail not handled', email, token);
+  async sendResetEmail(_email: string, _token: string): Promise<void> {
+    // Deliberately logs neither argument: the address is PII and the token is a
+    // live password-reset credential, so printing them put an account-takeover
+    // secret into the prod log (CWE-532).
+    console.info('sendResetEmail not handled by UnimplementedEmailService');
   }
 
   sendConversionEmail(

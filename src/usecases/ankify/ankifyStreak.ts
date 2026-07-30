@@ -17,10 +17,14 @@ export function computeReviewStreaks(
   reviewsByDay: Array<[string, number]>,
   today: string
 ): ReviewStreaks {
+  // Day keys are ISO `YYYY-MM-DD`, where lexicographic order already equals
+  // chronological order, so a bare .sort() was correct — but it reads as the
+  // classic default-sort bug and Sonar flags it CRITICAL (typescript:S2871).
+  // Comparing explicitly says the ordering is intentional.
   const activeDays = reviewsByDay
     .filter(([, count]) => count > 0)
     .map(([day]) => day)
-    .sort();
+    .sort((a, b) => a.localeCompare(b));
 
   if (activeDays.length === 0) {
     return { currentStreak: 0, longestStreak: 0 };
