@@ -105,16 +105,42 @@ describe('fan-out notes never share a block id', () => {
     }
   });
 
-  it('suffixes the reversed companion so it cannot collide with its source', async () => {
+  it('keeps the reversed companion off block-id identity entirely', async () => {
     const cards = await cardsFor(
       wrap(detailsToggle(BLOCK_ID, 'Question side', '<p>Answer side</p>')),
       { cherry: 'false', 'basic-reversed': 'true' }
     );
     expect(cards).toHaveLength(2);
     const ids = cards.map((c) => c.notionId);
-    expect(new Set(ids).size).toBe(2);
     expect(ids).toContain(BLOCK_ID);
-    expect(ids).toContain(`${BLOCK_ID}::rev`);
+    expect(ids.filter((id) => id === BLOCK_ID)).toHaveLength(1);
+    const companion = cards.find((c) => c.notionId !== BLOCK_ID);
+    expect(companion?.notionId).toBeUndefined();
+  });
+});
+
+describe('user-authored ids never become card identity', () => {
+  const genericDetails = (id: string, summary: string, body: string) =>
+    `<details id="${id}"><summary>${summary}</summary><div>${body}</div></details>`;
+
+  it('ignores non-UUID ids on generic HTML details toggles', async () => {
+    const cards = await cardsFor(
+      wrap(
+        genericDetails('faq-1', 'What is A?', '<p>Answer A</p>') +
+          genericDetails('faq-1', 'What is B?', '<p>Answer B</p>')
+      )
+    );
+    expect(cards).toHaveLength(2);
+    expect(cards[0].notionId).toBeUndefined();
+    expect(cards[1].notionId).toBeUndefined();
+  });
+
+  it('still accepts a Notion-shaped UUID on a plain details toggle', async () => {
+    const cards = await cardsFor(
+      wrap(genericDetails(BLOCK_ID, 'Real block', '<p>Answer</p>'))
+    );
+    expect(cards).toHaveLength(1);
+    expect(cards[0].notionId).toBe(BLOCK_ID);
   });
 });
 
@@ -176,6 +202,7 @@ describe('guid ledger replay', () => {
         guid: cards[0].guid,
       },
     ]);
+    expect(cards[0].sourcePageId).toBeUndefined();
   });
 
   it('leaves guids unset entirely for anonymous conversions', async () => {

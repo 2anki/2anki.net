@@ -7,10 +7,6 @@ export function transformDetailsTagToNotionToggleList(
 ): Element[] {
   return details.map((detail) => {
     const wrapper = dom('<ul class="toggle"><li></li></ul>');
-    const blockId = dom(detail).attr('id');
-    if (blockId) {
-      wrapper.attr('id', blockId);
-    }
     wrapper.find('li').append(dom(detail));
     return wrapper[0] as Element;
   });

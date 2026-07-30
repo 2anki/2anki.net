@@ -347,6 +347,7 @@ async function buildAllInOneSlot(
       pkg.engine = outcome.engine;
       pkg.score = outcome.score;
       pkg.inducedRule = outcome.inducedRule;
+      pkg.guidEntries = outcome.guidEntries;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
     }

@@ -111,10 +111,6 @@ export default class Note {
     note.h1 = input.h1;
     note.h2 = input.h2;
     note.h3 = input.h3;
-    if (input.notionId) {
-      note.notionId = `${input.notionId}::rev`;
-      note.sourcePageId = input.sourcePageId;
-    }
     return note;
   }
 

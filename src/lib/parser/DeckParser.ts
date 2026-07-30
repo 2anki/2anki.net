@@ -1203,6 +1203,27 @@ export class DeckParser {
     this.customExporter.configure(this.payload);
   }
 
+  private static readonly NOTION_BLOCK_ID_PATTERN =
+    /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+
+  // The 2026 details export keeps the block UUID on the <details> element
+  // inside the synthetic wrapper. Only a Notion-shaped UUID may become card
+  // identity: a user-authored id ("faq-1") repeated across toggles or uploads
+  // would collide collection-wide in Anki and silently overwrite notes.
+  private resolveToggleBlockId(
+    parentUL: cheerio.Cheerio<Element>
+  ): string | undefined {
+    const wrapperId = parentUL.attr('id');
+    if (wrapperId) {
+      return wrapperId;
+    }
+    const detailsId = parentUL.children('li').children('details').attr('id');
+    if (detailsId && DeckParser.NOTION_BLOCK_ID_PATTERN.test(detailsId)) {
+      return detailsId;
+    }
+    return undefined;
+  }
+
   private applyLedgerGuids(): void {
     if (this.knownGuids == null) {
       return;
@@ -1320,10 +1341,6 @@ export class DeckParser {
       $details.wrap(
         '<div style="display:contents"><ul class="toggle"><li></li></ul></div>'
       );
-      const blockId = $details.attr('id');
-      if (blockId) {
-        $details.parent().closest('ul.toggle').attr('id', blockId);
-      }
     });
   }
 
@@ -1559,7 +1576,7 @@ export class DeckParser {
                   dom,
                   correctIndex
                 );
-                note.notionId = parentUL.attr('id');
+                note.notionId = this.resolveToggleBlockId(parentUL);
                 note.sourcePageId = pageId;
                 note.sectionTags = sectionTags;
                 mcqCount++;
@@ -1606,7 +1623,8 @@ export class DeckParser {
                 return mangleBackSide;
               })();
               const note = new Note(front || '', backSide);
-              note.notionId = parentUL.attr('id');
+              note.notionId = this.resolveToggleBlockId(parentUL);
+              note.sourcePageId = pageId;
               note.sectionTags = sectionTags;
               if (note.notionId && this.settings.addNotionLink) {
                 const link = this.getLink(pageId, note);

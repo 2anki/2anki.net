@@ -573,6 +573,7 @@ export async function PrepareDeck(
           parser.inducedRule,
           parser.totalCardCount()
         ),
+        guidEntries: parser.issuedGuidEntries,
       };
     }
   }

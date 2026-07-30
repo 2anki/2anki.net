@@ -1,24 +1,61 @@
 import knex from 'knex';
 import { CardGuidLedgerRepository } from './CardGuidLedgerRepository';
 
-describe('CardGuidLedgerRepository SQL generation', () => {
-  const db = knex({ client: 'pg' });
+interface CapturedInsert {
+  rows: Array<Record<string, unknown>>;
+  conflictColumns?: string[];
+  ignored: boolean;
+}
 
-  it('record inserts with a do-nothing conflict guard on (owner, block_id)', () => {
-    const qb = db('card_guids')
-      .insert([
-        {
-          owner: 7,
-          block_id: 'block-a',
-          source_page_id: 'page-1',
-          guid: 'guid-a',
+function captureDatabase(calls: CapturedInsert[]): knex.Knex {
+  const fake = {
+    insert(rows: Array<Record<string, unknown>>) {
+      const call: CapturedInsert = { rows, ignored: false };
+      calls.push(call);
+      return {
+        onConflict(columns: string[]) {
+          call.conflictColumns = columns;
+          return {
+            ignore: async () => {
+              call.ignored = true;
+            },
+          };
         },
-      ])
-      .onConflict(['owner', 'block_id'])
-      .ignore();
-    const sql = qb.toString();
-    expect(sql).toContain('insert into "card_guids"');
-    expect(sql).toContain('on conflict ("owner", "block_id") do nothing');
+      };
+    },
+  };
+  return (() => fake) as unknown as knex.Knex;
+}
+
+describe('CardGuidLedgerRepository SQL generation', () => {
+  it('record guards every batch with onConflict(owner, block_id) ignore', async () => {
+    const calls: CapturedInsert[] = [];
+    const repo = new CardGuidLedgerRepository(captureDatabase(calls));
+
+    await repo.record(7, [
+      { blockId: 'block-a', sourcePageId: 'page-1', guid: 'guid-a' },
+    ]);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].conflictColumns).toEqual(['owner', 'block_id']);
+    expect(calls[0].ignored).toBe(true);
+  });
+
+  it('record chunks large batches and drops over-length ids', async () => {
+    const calls: CapturedInsert[] = [];
+    const repo = new CardGuidLedgerRepository(captureDatabase(calls));
+
+    const entries = Array.from({ length: 1001 }, (_, i) => ({
+      blockId: `block-${i}`,
+      guid: `guid-${i}`,
+    }));
+    entries.push({ blockId: 'x'.repeat(300), guid: 'guid-huge' });
+
+    await repo.record(7, entries);
+
+    expect(calls).toHaveLength(3);
+    const total = calls.reduce((sum, c) => sum + c.rows.length, 0);
+    expect(total).toBe(1001);
   });
 
   it('getAllForOwner returns a block_id to guid record', async () => {
