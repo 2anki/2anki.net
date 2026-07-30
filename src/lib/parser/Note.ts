@@ -27,6 +27,10 @@ export default class Note {
 
   notionLink?: string;
 
+  guid?: string;
+
+  sourcePageId?: string;
+
   mcq = false;
 
   options: string[] = [];
@@ -109,6 +113,7 @@ export default class Note {
     note.h3 = input.h3;
     if (input.notionId) {
       note.notionId = `${input.notionId}::rev`;
+      note.sourcePageId = input.sourcePageId;
     }
     return note;
   }

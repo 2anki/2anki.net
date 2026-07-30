@@ -5,9 +5,10 @@ import Workspace from './WorkSpace';
 
 beforeEach(() => setupTests());
 
-async function cardsFor(
+async function parserFor(
   html: string,
   options: Record<string, string> = { cherry: 'false' },
+  knownGuids?: Record<string, string>,
   name = 'toggle.html'
 ) {
   const workspace = new Workspace(true, 'fs');
@@ -17,8 +18,18 @@ async function cardsFor(
     files: [{ name, contents: html }],
     noLimits: true,
     workspace,
+    knownGuids,
   });
   await parser.writeDeckInfo(workspace);
+  return parser;
+}
+
+async function cardsFor(
+  html: string,
+  options: Record<string, string> = { cherry: 'false' },
+  name = 'toggle.html'
+) {
+  const parser = await parserFor(html, options, undefined, name);
   return parser.payload.flatMap((d) => d.cards);
 }
 
@@ -98,5 +109,38 @@ describe('fan-out notes never share a block id', () => {
     expect(new Set(ids).size).toBe(2);
     expect(ids).toContain(BLOCK_ID);
     expect(ids).toContain(`${BLOCK_ID}::rev`);
+  });
+});
+
+describe('guid ledger replay', () => {
+  const body = detailsToggle(BLOCK_ID, 'Ledger question', '<p>Answer</p>');
+
+  it('stamps the stored guid on a ledger hit and issues nothing', async () => {
+    const parser = await parserFor(wrap(body), { cherry: 'false' }, {
+      [BLOCK_ID]: 'stored-guid',
+    });
+    const cards = parser.payload.flatMap((d) => d.cards);
+    expect(cards[0].guid).toBe('stored-guid');
+    expect(parser.issuedGuidEntries).toEqual([]);
+  });
+
+  it('computes, stamps, and reports a new guid on a ledger miss', async () => {
+    const parser = await parserFor(wrap(body), { cherry: 'false' }, {});
+    const cards = parser.payload.flatMap((d) => d.cards);
+    expect(cards[0].guid).toBeDefined();
+    expect(parser.issuedGuidEntries).toEqual([
+      {
+        blockId: BLOCK_ID,
+        sourcePageId: undefined,
+        guid: cards[0].guid,
+      },
+    ]);
+  });
+
+  it('leaves guids unset entirely for anonymous conversions', async () => {
+    const parser = await parserFor(wrap(body), { cherry: 'false' });
+    const cards = parser.payload.flatMap((d) => d.cards);
+    expect(cards[0].guid).toBeUndefined();
+    expect(parser.issuedGuidEntries).toEqual([]);
   });
 });

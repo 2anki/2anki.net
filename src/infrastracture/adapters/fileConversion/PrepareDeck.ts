@@ -1,4 +1,5 @@
 import getDeckFilename from '../../../lib/anki/getDeckFilename';
+import type { IssuedCardGuid } from '../../../lib/anki/guidLedgerTypes';
 import { DeckParser, DeckParserInput } from '../../../lib/parser/DeckParser';
 import Deck from '../../../lib/parser/Deck';
 import {
@@ -87,6 +88,7 @@ interface PrepareDeckResult {
   engine?: ConversionEngine;
   score?: DeckScore;
   inducedRule?: InducedRescue;
+  guidEntries?: IssuedCardGuid[];
 }
 
 // A rejected rescue must not ride a deck that still shipped through a later
@@ -601,6 +603,7 @@ export async function PrepareDeck(
       parser.inducedRule,
       parser.totalCardCount()
     ),
+    guidEntries: parser.issuedGuidEntries,
   };
 }
 
@@ -620,6 +623,7 @@ export interface DeckInfoOnlyResult {
   engine?: ConversionEngine;
   score?: DeckScore;
   inducedRule?: InducedRescue;
+  guidEntries?: IssuedCardGuid[];
   needsIndividualBuild: boolean;
 }
 
@@ -695,6 +699,7 @@ export async function prepareDeckInfoOnly(
       parser.inducedRule,
       parser.totalCardCount()
     ),
+    guidEntries: parser.issuedGuidEntries,
     needsIndividualBuild: false,
   };
 }

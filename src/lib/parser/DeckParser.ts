@@ -2,6 +2,8 @@ import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 
 import preserveNewlinesIfApplicable from '../../services/NotionService/helpers/preserveNewlinesIfApplicable';
+import { guidFor } from '../anki/guid';
+import type { IssuedCardGuid, KnownGuids } from '../anki/guidLedgerTypes';
 import sanitizeTags from '../anki/sanitizeTags';
 import { File } from '../zip/zip';
 import Deck from './Deck';
@@ -103,6 +105,7 @@ export interface DeckParserInput {
   onProgress?: (step: string) => void;
   pdfCredential?: string;
   userId?: number | null;
+  knownGuids?: KnownGuids;
 }
 
 function hasNestedBullets(content: string | undefined): boolean {
@@ -138,6 +141,10 @@ export class DeckParser {
 
   emptyBackCount: number;
 
+  private readonly knownGuids?: KnownGuids;
+
+  issuedGuidEntries: IssuedCardGuid[] = [];
+
   inducedRule?: InducedRescue;
 
   private sawUnclassifiedParse: boolean;
@@ -156,6 +163,7 @@ export class DeckParser {
   constructor(input: DeckParserInput) {
     this.settings = input.settings;
     this.files = input.files || [];
+    this.knownGuids = input.knownGuids;
     this.firstDeckName = input.name;
     this.noLimits = input.noLimits;
     this.usedHeuristic = false;
@@ -972,6 +980,7 @@ export class DeckParser {
         note.notionId = source.notionId
           ? `${source.notionId}::${index}`
           : undefined;
+        note.sourcePageId = source.sourcePageId;
         note.notionLink = source.notionLink;
       }
       return note;
@@ -1189,8 +1198,37 @@ export class DeckParser {
       this.applyGlobalTags(deck.cards);
     }
 
+    this.applyLedgerGuids();
     this.payload[0].settings = this.settings;
     this.customExporter.configure(this.payload);
+  }
+
+  private applyLedgerGuids(): void {
+    if (this.knownGuids == null) {
+      return;
+    }
+    const issued = new Map<string, IssuedCardGuid>();
+    for (const deck of this.payload) {
+      for (const card of deck.cards) {
+        if (card.notionId == null) {
+          continue;
+        }
+        const stored = this.knownGuids[card.notionId];
+        if (stored != null) {
+          card.guid = stored;
+          continue;
+        }
+        card.guid = guidFor(card.notionId);
+        if (!issued.has(card.notionId)) {
+          issued.set(card.notionId, {
+            blockId: card.notionId,
+            sourcePageId: card.sourcePageId,
+            guid: card.guid,
+          });
+        }
+      }
+    }
+    this.issuedGuidEntries.push(...issued.values());
   }
 
   async build(ws: Workspace): Promise<Buffer> {
@@ -1522,6 +1560,7 @@ export class DeckParser {
                   correctIndex
                 );
                 note.notionId = parentUL.attr('id');
+                note.sourcePageId = pageId;
                 note.sectionTags = sectionTags;
                 mcqCount++;
                 if (

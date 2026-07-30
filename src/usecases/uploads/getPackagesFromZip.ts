@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import pLimit from 'p-limit';
+import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import { ZipHandler } from '../../lib/zip/zip';
 import {
@@ -78,7 +79,8 @@ async function buildDeckBatch(
   zipHandler: ZipHandler,
   settings: CardOption,
   paying: boolean,
-  workspace: Workspace
+  workspace: Workspace,
+  knownGuids?: KnownGuids
 ): Promise<BatchOutcome> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -95,6 +97,7 @@ async function buildDeckBatch(
             settings,
             noLimits: paying,
             workspace: deckSubWorkspace,
+            knownGuids,
           },
           deckSubWorkspace,
           workspace
@@ -141,6 +144,7 @@ async function buildDeckBatch(
       pkg.engine = result.engine;
       pkg.score = result.score;
       pkg.inducedRule = result.inducedRule;
+      pkg.guidEntries = result.guidEntries;
       packages.push(pkg);
       if (result.warning) warnings.push(result.warning);
     });
@@ -151,7 +155,8 @@ async function buildDeckBatch(
     zipHandler,
     settings,
     paying,
-    workspace
+    workspace,
+    knownGuids
   );
   packages.push(...stragglerOutcomes.packages);
   warnings.push(...stragglerOutcomes.warnings);
@@ -166,7 +171,8 @@ async function buildStragglerDecks(
   zipHandler: ZipHandler,
   settings: CardOption,
   paying: boolean,
-  workspace: Workspace
+  workspace: Workspace,
+  knownGuids?: KnownGuids
 ): Promise<BatchOutcome> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -187,6 +193,7 @@ async function buildStragglerDecks(
           settings,
           noLimits: paying,
           workspace,
+          knownGuids,
         })
       );
     } catch {
@@ -208,6 +215,7 @@ async function buildStragglerDecks(
       pkg.engine = outcome.engine;
       pkg.score = outcome.score;
       pkg.inducedRule = outcome.inducedRule;
+      pkg.guidEntries = outcome.guidEntries;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
     }
@@ -284,7 +292,8 @@ async function buildAllInOneSlot(
   settings: CardOption,
   paying: boolean,
   workspace: Workspace,
-  cap: number
+  cap: number,
+  knownGuids?: KnownGuids
 ): Promise<PackageResult> {
   const limit = pLimit(cap);
   const settled = await Promise.allSettled(
@@ -304,6 +313,7 @@ async function buildAllInOneSlot(
             settings,
             noLimits: paying,
             workspace: deckWorkspace,
+            knownGuids,
           });
           await liftDecksToParent(deckWorkspace, workspace);
           return result;
@@ -365,7 +375,8 @@ export const getPackagesFromZip = async (
   settings: CardOption,
   workspace: Workspace,
   onProgress?: (step: string) => void,
-  userId: number | null = null
+  userId: number | null = null,
+  knownGuids?: KnownGuids
 ): Promise<PackageResult> => {
   if (!fileContents) {
     return { packages: [] };
@@ -416,7 +427,8 @@ export const getPackagesFromZip = async (
       effectiveSettings,
       paying,
       workspace,
-      cap
+      cap,
+      knownGuids
     );
   }
 
@@ -426,7 +438,14 @@ export const getPackagesFromZip = async (
   const settledChunks = await Promise.allSettled(
     chunks.map((chunk) =>
       limit(() =>
-        buildDeckBatch(chunk, zipHandler, effectiveSettings, paying, workspace)
+        buildDeckBatch(
+          chunk,
+          zipHandler,
+          effectiveSettings,
+          paying,
+          workspace,
+          knownGuids
+        )
       )
     )
   );

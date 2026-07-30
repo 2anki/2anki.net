@@ -1,4 +1,5 @@
 import type { MessagePort } from 'node:worker_threads';
+import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import type Package from '../../lib/parser/Package';
 import type CardOption from '../../lib/parser/Settings/CardOption';
 import type Workspace from '../../lib/parser/WorkSpace';
@@ -11,6 +12,7 @@ export interface UploadGenerationTask {
   workspace: Workspace;
   enqueuedAt: number;
   userId: number | null;
+  knownGuids?: KnownGuids;
   progressPort?: MessagePort;
 }
 

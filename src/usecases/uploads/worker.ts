@@ -1,4 +1,5 @@
 import { UploadedFile } from '../../lib/storage/types';
+import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import Package from '../../lib/parser/Package';
 import fs from 'fs';
@@ -98,7 +99,8 @@ async function processFile(
   settings: CardOption,
   workspace: Workspace,
   onProgress: (step: string) => void,
-  userId: number | null
+  userId: number | null,
+  knownGuids?: KnownGuids
 ): Promise<FileResult> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -173,6 +175,7 @@ async function processFile(
       workspace,
       onProgress,
       userId,
+      knownGuids,
     });
 
     if (d) {
@@ -194,6 +197,7 @@ async function processFile(
       singleFilePackage.engine = d.engine;
       singleFilePackage.score = d.score;
       singleFilePackage.inducedRule = d.inducedRule;
+      singleFilePackage.guidEntries = d.guidEntries;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
     }
@@ -204,7 +208,8 @@ async function processFile(
       settings,
       workspace,
       onProgress,
-      userId
+      userId,
+      knownGuids
     );
     packages.push(...result.packages);
     if (result.warnings) warnings.push(...result.warnings);
@@ -217,7 +222,8 @@ async function doGenerationWork(
   task: UploadGenerationTask,
   onProgress: (step: string) => void
 ): Promise<{ packages: Package[]; warnings: string[] }> {
-  const { paying, files, settings, workspace, enqueuedAt, userId } = task;
+  const { paying, files, settings, workspace, enqueuedAt, userId, knownGuids } =
+    task;
   let packages: Package[] = [];
   const warnings: string[] = [];
 
@@ -230,7 +236,8 @@ async function doGenerationWork(
       settings,
       workspace,
       onProgress,
-      userId
+      userId,
+      knownGuids
     );
     packages = packages.concat(result.packages);
     warnings.push(...result.warnings);

@@ -8,10 +8,15 @@ import UsersRepository from '../data_layer/UsersRepository';
 import { ISettingsRepository } from '../data_layer/SettingsRepository';
 import { IConversionOutputStatsRepository } from '../data_layer/ConversionOutputStatsRepository';
 import { IParsePathSignatureRepository } from '../data_layer/ParsePathSignatureRepository';
+import { ICardGuidLedgerRepository } from '../data_layer/CardGuidLedgerRepository';
 import ErrorHandler from '../routes/middleware/ErrorHandler';
 import CardOption from '../lib/parser/Settings';
 import Workspace from '../lib/parser/WorkSpace';
 import { logEmptyBackAttribution } from '../lib/parser/logEmptyBackAttribution';
+import type {
+  IssuedCardGuid,
+  KnownGuids,
+} from '../lib/anki/guidLedgerTypes';
 import StorageHandler from '../lib/storage/StorageHandler';
 import { UploadedFile } from '../lib/storage/types';
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';
@@ -352,7 +357,8 @@ class UploadService {
     private readonly parsePathSignatureRepository?: IParsePathSignatureRepository,
     private readonly apiKeyUsageRepository?: IApiKeyUsageRepository,
     private readonly apiUsageWarner?: ApiUsageWarner,
-    private readonly conversionRuleScoresRepository?: IConversionRuleScoresRepository
+    private readonly conversionRuleScoresRepository?: IConversionRuleScoresRepository,
+    private readonly cardGuidLedgerRepository?: ICardGuidLedgerRepository
   ) {}
 
   private apiTierOf(res: express.Response): ResolvedDeveloperTier | null {
@@ -463,6 +469,36 @@ class UploadService {
           )
         );
     }
+  }
+
+  private async loadKnownGuids(
+    ownerId: number | null
+  ): Promise<KnownGuids | undefined> {
+    if (ownerId == null || this.cardGuidLedgerRepository == null) {
+      return undefined;
+    }
+    try {
+      return await this.cardGuidLedgerRepository.getAllForOwner(ownerId);
+    } catch (error) {
+      console.warn('[UploadService] card guid ledger read failed', error);
+      return undefined;
+    }
+  }
+
+  private recordIssuedGuids(
+    packages: { guidEntries?: IssuedCardGuid[] }[],
+    ownerId: number | null
+  ): void {
+    if (ownerId == null || this.cardGuidLedgerRepository == null) {
+      return;
+    }
+    const entries = packages.flatMap((p) => p.guidEntries ?? []);
+    if (entries.length === 0) {
+      return;
+    }
+    this.cardGuidLedgerRepository.record(ownerId, entries).catch((error) => {
+      console.warn('[UploadService] card guid ledger write failed', error);
+    });
   }
 
   private recordConversionOutput(
@@ -910,6 +946,7 @@ class UploadService {
     const ownerNumeric = Number(owner);
     const ownerId =
       Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null;
+    const knownGuids = await this.loadKnownGuids(ownerId);
     useCase
       .execute(
         paying,
@@ -919,9 +956,11 @@ class UploadService {
         async (step) => {
           await this.jobRepository.updateJobStatus(ws.id, owner, step);
         },
-        ownerId
+        ownerId,
+        knownGuids
       )
       .then(async ({ packages }) => {
+        this.recordIssuedGuids(packages, ownerId);
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
         // Scores record either way. The conversion-output stats below stay
         // behind the gate — they count delivered cards — but a conversion that
@@ -1021,12 +1060,18 @@ class UploadService {
     });
 
     const useCase = new GeneratePackagesUseCase();
+    const syncOwnerId = owner != null ? Number(owner) : null;
+    const knownGuids = await this.loadKnownGuids(syncOwnerId);
     const { packages, warnings } = await useCase.execute(
       paying,
       req.files as UploadedFile[],
       settings,
-      ws
+      ws,
+      undefined,
+      syncOwnerId,
+      knownGuids
     );
+    this.recordIssuedGuids(packages, syncOwnerId);
 
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
     const authenticated = hasSessionToken(req);
