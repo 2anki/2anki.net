@@ -44,6 +44,11 @@ export class CardGuidLedgerRepository implements ICardGuidLedgerRepository {
         source_page_id: entry.sourcePageId ?? null,
         guid: entry.guid,
       }));
+    if (rows.length < entries.length) {
+      console.warn(
+        `[CardGuidLedgerRepository] dropped ${entries.length - rows.length} over-length entries`
+      );
+    }
     for (let start = 0; start < rows.length; start += INSERT_CHUNK_SIZE) {
       await this.database(this.table)
         .insert(rows.slice(start, start + INSERT_CHUNK_SIZE))

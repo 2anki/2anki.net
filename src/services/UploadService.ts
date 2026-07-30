@@ -1057,7 +1057,11 @@ class UploadService {
     });
 
     const useCase = new GeneratePackagesUseCase();
-    const syncOwnerId = owner != null ? Number(owner) : null;
+    const syncOwnerNumeric = Number(owner);
+    const syncOwnerId =
+      Number.isFinite(syncOwnerNumeric) && syncOwnerNumeric > 0
+        ? syncOwnerNumeric
+        : null;
     const knownGuids = await this.loadKnownGuids(syncOwnerId);
     const { packages, warnings } = await useCase.execute(
       paying,
