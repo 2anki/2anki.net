@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-30-stable-card-ids",
+  "date": "2026-07-30",
+  "type": "fix",
+  "title": "Re-uploading a Notion page updates your existing cards and keeps your review history instead of duplicating the deck"
+}

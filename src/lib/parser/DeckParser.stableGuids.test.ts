@@ -1,4 +1,6 @@
+import { guidFor } from '../anki/guid';
 import { setupTests } from '../../test/configure-jest';
+import { parseApkgNotes } from '../../services/ApkgPreviewService/parseApkgNotes';
 import CardOption from './Settings/CardOption';
 import { DeckParser } from './DeckParser';
 import Workspace from './WorkSpace';
@@ -109,6 +111,37 @@ describe('fan-out notes never share a block id', () => {
     expect(new Set(ids).size).toBe(2);
     expect(ids).toContain(BLOCK_ID);
     expect(ids).toContain(`${BLOCK_ID}::rev`);
+  });
+});
+
+describe('the shipped apkg carries block-id GUIDs', () => {
+  async function apkgGuidsFor(title: string): Promise<string[]> {
+    const workspace = new Workspace(true, 'fs');
+    const parser = new DeckParser({
+      name: 'toggle.html',
+      settings: new CardOption({ cherry: 'false' }),
+      files: [
+        {
+          name: 'toggle.html',
+          contents: wrap(
+            detailsToggle(BLOCK_ID, 'Same question', '<p>Same answer</p>'),
+            title
+          ),
+        },
+      ],
+      noLimits: true,
+      workspace,
+    });
+    const apkg = await parser.build(workspace);
+    const parsed = await parseApkgNotes(apkg);
+    return parsed.notes.map((n) => n.guid);
+  }
+
+  it('keeps the same GUID across deck renames, derived from the block id', async () => {
+    const first = await apkgGuidsFor('Deck One');
+    const second = await apkgGuidsFor('📖 Renamed Deck');
+    expect(first).toEqual([guidFor(BLOCK_ID)]);
+    expect(second).toEqual(first);
   });
 });
 
