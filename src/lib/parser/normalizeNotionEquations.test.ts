@@ -119,6 +119,29 @@ describe('normalizeNotionEquations', () => {
     expect(html).not.toContain('notion-text-equation-token');
   });
 
+  it('preserves a code wrapper when the code tag is nested inside the equation token', () => {
+    const codeInsideToken = `<p>Recall <span data-notion-inline-equation="E = mc^2" class="notion-text-equation-token" contenteditable="false"><code><span class="katex"><span class="katex-html" aria-hidden="true">E=mc2</span></span></code></span> now.</p>`;
+    const dom = cheerio.load(codeInsideToken);
+
+    normalizeNotionEquations(dom);
+    const html = dom.html();
+
+    expect(html).toContain('<code>\\(E = mc^2\\)</code>');
+    expect(html).not.toContain('notion-text-equation-token');
+    expect(html).not.toContain('class="katex"');
+  });
+
+  it('keeps a code wrapper that sits outside the equation token untouched', () => {
+    const codeOutsideToken = `<p>Recall <code><span data-notion-inline-equation="E = mc^2" class="notion-text-equation-token" contenteditable="false"><span class="katex"><span class="katex-html" aria-hidden="true">E=mc2</span></span></span></code> now.</p>`;
+    const dom = cheerio.load(codeOutsideToken);
+
+    normalizeNotionEquations(dom);
+    const html = dom.html();
+
+    expect(html).toContain('<code>\\(E = mc^2\\)</code>');
+    expect(html).not.toContain('notion-text-equation-token');
+  });
+
   it('strips a stray style tag instead of leaking its CSS text when degrading to plain text', () => {
     const noAttrNoAnnotation = `<figure class="equation" dir="auto"><style>@import url('https://cdn.jsdelivr.net/npm/katex@0.16.25/dist/katex-swap.min.css')</style><div class="equation-container"><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true">E=mc2</span></span></span></div></figure>`;
     const dom = cheerio.load(noAttrNoAnnotation);

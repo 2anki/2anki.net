@@ -39,7 +39,9 @@ function replaceEquation(
   }
   const open = isBlock ? BLOCK_OPEN : INLINE_OPEN;
   const close = isBlock ? BLOCK_CLOSE : INLINE_CLOSE;
-  equation.replaceWith(`${open}${escapeHtml(latex)}${close}`);
+  const rendered = `${open}${escapeHtml(latex)}${close}`;
+  const wrapsCode = equation.find('code').length > 0;
+  equation.replaceWith(wrapsCode ? `<code>${rendered}</code>` : rendered);
 }
 
 export function normalizeNotionEquations(dom: CheerioAPI): void {

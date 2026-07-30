@@ -24,7 +24,10 @@ export default function renderTextChildren(
   const content = text
     .map((t: RichTextItemResponse) => {
       if (isEquation(t)) {
-        return renderInlineEquation(t as EquationRichTextItemResponse);
+        const rendered = renderInlineEquation(
+          t as EquationRichTextItemResponse
+        );
+        return t.annotations.code ? `<code>${rendered}</code>` : rendered;
       }
 
       if (isText(t) || isMention(t)) {

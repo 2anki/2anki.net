@@ -220,6 +220,24 @@ describe('#3245 — cloze on attributed inline code', () => {
   });
 });
 
+describe('inline equations wrapped in code become cloze deletions', () => {
+  it('converts a coded MathJax equation into a single cloze without leaking a code tag', () => {
+    const input = '<p>The identity <code>\\(E = mc^2\\)</code> is famous.</p>';
+    const result = handleClozeDeletions(input);
+    expect(result).toBe(
+      '<p>The identity {{c1::\\(E = mc^2\\)}} is famous.</p>'
+    );
+    expect(result).not.toContain('<code>');
+  });
+
+  it('does not produce a triple closing brace when the equation ends in a curly brace', () => {
+    const input = '<p><code>\\(\\frac{1}{2}\\)</code></p>';
+    const result = handleClozeDeletions(input);
+    expect(result).toBe('<p>{{c1::\\(\\frac{1}{2}\\)}}</p>');
+    expect(result).not.toContain('}}}');
+  });
+});
+
 describe('#2501 — group cloze blanks per toggle', () => {
   const threeBlanks =
     '<p><code>alpha</code> and <code>beta</code> and <code>gamma</code></p>';

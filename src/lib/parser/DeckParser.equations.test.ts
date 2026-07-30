@@ -87,3 +87,27 @@ test('converts a real Notion export inline equation (no annotation present)', ()
   );
   expect(back).not.toContain('notion-text-equation-token');
 });
+
+test('a code-wrapped inline equation in a toggle header becomes a cloze on the upload path', async () => {
+  const html = `<html><head><title>Physics</title></head>
+<body><article class="page sans"><header><h1 class="page-title">Physics</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary><span data-notion-inline-equation="E = mc^2" class="notion-text-equation-token" contenteditable="false"><code><span class="katex"><span class="katex-html" aria-hidden="true">E=mc2</span></span></code></span></summary>
+<p>Mass energy equivalence.</p></details></li></ul>
+</div></article></body></html>`;
+
+  const workspace = new Workspace(true, 'fs');
+  const parser = new DeckParser({
+    name: 'physics.html',
+    settings: new CardOption({ cherry: 'false', cloze: 'true' }),
+    files: [{ name: 'physics.html', contents: html }],
+    noLimits: true,
+    workspace,
+  });
+  await parser.writeDeckInfo(workspace);
+
+  const card = parser.payload[0].cards[0];
+  expect(card.cloze).toBe(true);
+  expect(card.name).toContain('{{c1::\\(E = mc^2\\)}}');
+  expect(card.name).not.toContain('<code>');
+  expect(card.name).not.toContain('}}}');
+});

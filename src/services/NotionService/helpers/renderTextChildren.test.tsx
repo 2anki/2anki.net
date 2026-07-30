@@ -43,6 +43,19 @@ function makeText(
   } as unknown as RichTextItemResponse;
 }
 
+function makeEquation(
+  expression: string,
+  annotations: Partial<typeof baseAnnotations> = {}
+): RichTextItemResponse {
+  return {
+    type: 'equation',
+    plain_text: expression,
+    href: null,
+    annotations: { ...baseAnnotations, ...annotations },
+    equation: { expression },
+  } as unknown as RichTextItemResponse;
+}
+
 describe('renderTextChildren — strikethrough tag collection', () => {
   it('records strikethrough text into the registry it is handed', () => {
     const registry = new TagRegistry();
@@ -80,6 +93,25 @@ describe('renderTextChildren — strikethrough tag collection', () => {
     renderTextChildren([makeText('plain')], defaultSettings, registry);
 
     expect(registry.strikethroughs).toEqual([]);
+  });
+});
+
+describe('renderTextChildren — inline equations', () => {
+  it('renders an unannotated equation as bare Anki inline math', () => {
+    const result = renderTextChildren(
+      [makeEquation('E = mc^2')],
+      defaultSettings
+    );
+    expect(result).toBe('\\(E = mc^2\\)');
+    expect(result).not.toContain('<code>');
+  });
+
+  it('wraps a coded equation in a code element so the cloze pass can pick it up', () => {
+    const result = renderTextChildren(
+      [makeEquation('E = mc^2', { code: true })],
+      defaultSettings
+    );
+    expect(result).toBe('<code>\\(E = mc^2\\)</code>');
   });
 });
 
