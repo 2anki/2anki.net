@@ -76,6 +76,8 @@ class CardOption {
 
   readonly useNotionId: boolean;
 
+  readonly blockIdIdentity: boolean;
+
   readonly pageEmoji: string;
 
   parentBlockId: string;
@@ -170,6 +172,7 @@ class CardOption {
     this.inputModelId = input.input_model_id;
     this.template = input.template;
     this.useNotionId = input['use-notion-id'] === 'true';
+    this.blockIdIdentity = input['block-id-identity'] === 'true';
     this.parentBlockId = input.parentBlockId;
     this.pageEmoji = input['page-emoji'] || 'first_emoji';
     this.addNotionLink = input['add-notion-link'] === 'true';

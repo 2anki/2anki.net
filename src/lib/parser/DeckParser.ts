@@ -2,6 +2,8 @@ import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 
 import preserveNewlinesIfApplicable from '../../services/NotionService/helpers/preserveNewlinesIfApplicable';
+import { collectIssuedGuids } from '../anki/collectIssuedGuids';
+import type { IssuedCardGuid, KnownGuids } from '../anki/guidLedgerTypes';
 import sanitizeTags from '../anki/sanitizeTags';
 import { File } from '../zip/zip';
 import Deck from './Deck';
@@ -103,6 +105,7 @@ export interface DeckParserInput {
   onProgress?: (step: string) => void;
   pdfCredential?: string;
   userId?: number | null;
+  knownGuids?: KnownGuids;
 }
 
 function hasNestedBullets(content: string | undefined): boolean {
@@ -138,6 +141,10 @@ export class DeckParser {
 
   emptyBackCount: number;
 
+  private readonly knownGuids?: KnownGuids;
+
+  issuedGuidEntries: IssuedCardGuid[] = [];
+
   inducedRule?: InducedRescue;
 
   private sawUnclassifiedParse: boolean;
@@ -156,6 +163,7 @@ export class DeckParser {
   constructor(input: DeckParserInput) {
     this.settings = input.settings;
     this.files = input.files || [];
+    this.knownGuids = input.knownGuids;
     this.firstDeckName = input.name;
     this.noLimits = input.noLimits;
     this.usedHeuristic = false;
@@ -964,12 +972,15 @@ export class DeckParser {
 
     const style = this.settings.overlappingCloze as OverlappingClozeStyle;
     const bodies = handleOverlappingCloze(items, style);
-    return bodies.map((body) => {
+    return bodies.map((body, index) => {
       const note = new Note(body, '');
       note.cloze = true;
       if (source) {
         note.tags = source.tags;
-        note.notionId = source.notionId;
+        note.notionId = source.notionId
+          ? `${source.notionId}::${index}`
+          : undefined;
+        note.sourcePageId = source.sourcePageId;
         note.notionLink = source.notionLink;
       }
       return note;
@@ -1187,8 +1198,58 @@ export class DeckParser {
       this.applyGlobalTags(deck.cards);
     }
 
+    this.markUploadDecks();
+    this.applyLedgerGuids();
     this.payload[0].settings = this.settings;
     this.customExporter.configure(this.payload);
+  }
+
+  // Upload decks get the legacy content-formula GUID from python so a deck a
+  // user imported before this feature matches on re-upload. The block-id
+  // option opts new cards into guid_for(blockId) instead; either way the
+  // ledger pins whatever was issued and replays it afterwards.
+  private markUploadDecks(): void {
+    for (const deck of this.payload) {
+      deck.useContentGuid = !this.settings.blockIdIdentity;
+    }
+  }
+
+  private static readonly NOTION_BLOCK_ID_PATTERN =
+    /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+
+  // The 2026 details export keeps the block UUID on the <details> element
+  // inside the synthetic wrapper. Only a Notion-shaped UUID may become card
+  // identity: a user-authored id ("faq-1") repeated across toggles or uploads
+  // would collide collection-wide in Anki and silently overwrite notes.
+  private resolveToggleBlockId(
+    parentUL: cheerio.Cheerio<Element>
+  ): string | undefined {
+    const wrapperId = parentUL.attr('id');
+    if (wrapperId) {
+      return wrapperId;
+    }
+    const detailsId = parentUL.children('li').children('details').attr('id');
+    if (detailsId && DeckParser.NOTION_BLOCK_ID_PATTERN.test(detailsId)) {
+      return detailsId;
+    }
+    return undefined;
+  }
+
+  private applyLedgerGuids(): void {
+    if (this.knownGuids == null) {
+      return;
+    }
+    for (const deck of this.payload) {
+      for (const card of deck.cards) {
+        if (card.notionId == null) {
+          continue;
+        }
+        const stored = this.knownGuids[card.notionId];
+        if (stored != null) {
+          card.guid = stored;
+        }
+      }
+    }
   }
 
   async build(ws: Workspace): Promise<Buffer> {
@@ -1199,7 +1260,13 @@ export class DeckParser {
     }
 
     await this.processPayload(ws);
-    return this.customExporter.save();
+    const apkg = await this.customExporter.save();
+    this.issuedGuidEntries = collectIssuedGuids(
+      ws.location,
+      this.payload,
+      this.knownGuids
+    );
+    return apkg;
   }
 
   async writeDeckInfo(ws: Workspace): Promise<string> {
@@ -1226,6 +1293,7 @@ export class DeckParser {
       throw new EmptyDeckError(markdownSourced ? 'markdown' : undefined);
     }
 
+    this.markUploadDecks();
     this.payload[0].settings = this.settings;
     this.customExporter.configure(this.payload);
 
@@ -1515,7 +1583,8 @@ export class DeckParser {
                   dom,
                   correctIndex
                 );
-                note.notionId = parentUL.attr('id');
+                note.notionId = this.resolveToggleBlockId(parentUL);
+                note.sourcePageId = pageId;
                 note.sectionTags = sectionTags;
                 mcqCount++;
                 if (
@@ -1561,7 +1630,8 @@ export class DeckParser {
                 return mangleBackSide;
               })();
               const note = new Note(front || '', backSide);
-              note.notionId = parentUL.attr('id');
+              note.notionId = this.resolveToggleBlockId(parentUL);
+              note.sourcePageId = pageId;
               note.sectionTags = sectionTags;
               if (note.notionId && this.settings.addNotionLink) {
                 const link = this.getLink(pageId, note);

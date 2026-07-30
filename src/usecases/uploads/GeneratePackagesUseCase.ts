@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { MessageChannel } from 'node:worker_threads';
+import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import Package from '../../lib/parser/Package';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import { UploadedFile } from '../../lib/storage/types';
@@ -55,7 +56,8 @@ class GeneratePackagesUseCase {
     settings: CardOption,
     workspace: Workspace,
     onProgress?: (step: string) => void,
-    userId: number | null = null
+    userId: number | null = null,
+    knownGuids?: KnownGuids
   ): Promise<PackageResult> {
     ensureUploadBytes(files);
     const unavailable = findUnavailableUpload(files);
@@ -74,6 +76,7 @@ class GeneratePackagesUseCase {
           workspace,
           enqueuedAt,
           userId,
+          knownGuids,
           progressPort: channel?.port2,
         },
         channel ? [channel.port2] : undefined

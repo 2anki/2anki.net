@@ -1,6 +1,7 @@
 export const CARD_OPTION_DEFAULTS: Record<string, string> = {
   'add-notion-link': 'false',
   'use-notion-id': 'true',
+  'block-id-identity': 'false',
   all: 'true',
   paragraph: 'false',
   cherry: 'false',

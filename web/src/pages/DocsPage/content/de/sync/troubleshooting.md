@@ -18,15 +18,23 @@ Du hast eine Notion-Seite bearbeitet. Das Deck in Anki hat sich nicht aktualisie
 
 Wenn das Dashboard zeigt, dass Läufe erfolgreich sind, das Deck sich aber trotzdem nicht aktualisiert, ist es fast immer AnkiConnect. Starte Anki neu, und löse dann einen manuellen Sync aus dem Dashboard aus.
 
-## Anki zeigt einen „Duplicate“-Dialog beim erneuten Import
+## Ich habe nach dem erneuten Import doppelte Karten bekommen
 
-Beim ersten erneuten Import eines bestehenden Decks nach dieser Änderung stellen sich die Karten-IDs auf ein neues stabiles Format um. Ankis eingebauter „Duplicate“-Dialog erscheint einmal — wähle **Keep existing**. Deine Reviews bleiben erhalten, und künftige erneute Importe aktualisieren stillschweigend ohne Nachfrage.
+Anki warnt nicht vor Duplikaten. Sie tauchen einfach im Deck auf, und man merkt es oft erst beim Lernen. Sync merkt sich deine Karten unter deinem Konto, deshalb aktualisieren Änderungen die vorhandenen Karten, statt Kopien anzulegen. Wenn sich ein Deck während des Juli-Exportfehlers verdoppelt hat, ist das eine einmalige Aufräumaktion: Räum das zusätzliche Set einmal auf, dann bleibt es sauber.
 
-## Ich sehe ein echtes Duplikat-Deck
+Die Schritte zum Aufräumen und warum das passiert findest du in [Update your deck, keep your reviews](/documentation/cards/duplicate-cards).
 
-Wenn zwei Kopien derselben Karten in Anki existieren, wurde die ältere Kopie vor der ID-Änderung importiert. Lösche das ältere Deck in Anki — behalte das mit deinem Lernverlauf. Künftige erneute Importe derselben Quelle aktualisieren das verbleibende Deck an Ort und Stelle.
+## Ich sehe zwei Kopien derselben Karten
 
-Wenn beide Decks einen Lernverlauf haben, der dir wichtig ist, [kontaktiere uns](/documentation/help/contact), bevor du eines löschst — wir können manchmal zusammenführen.
+Behalte die Kopien mit deinem Lernverlauf, meist die älteren. Die Duplikate sind das frische Set und haben 0 Reviews.
+
+1. Öffne in Anki **Browse** und wähle das Deck.
+2. Sortiere nach der Spalte **Created**, um die Kopien zu gruppieren.
+3. Lösche die Kopien mit 0 Reviews über **Notes → Delete**. Behalte die mit deinen echten Review-Zahlen.
+
+Künftige erneute Importe derselben Quelle aktualisieren die verbliebenen Karten an Ort und Stelle. Vollständige Anleitung: [Update your deck, keep your reviews](/documentation/cards/duplicate-cards).
+
+Wenn beide Kopien einen Lernverlauf haben, der dir wichtig ist, [kontaktiere uns](/documentation/help/contact), bevor du eines löschst. Wir können manchmal zusammenführen.
 
 ## Ich habe den Zugriff versehentlich entzogen
 

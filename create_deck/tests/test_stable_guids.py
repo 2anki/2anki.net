@@ -135,3 +135,84 @@ class TestStableGuids:
             guids_a = _build_and_get_guids(deck_info_a, tmpdir, "a")
             guids_b = _build_and_get_guids(deck_info_b, tmpdir, "b")
         assert guids_a != guids_b
+
+
+class TestUseContentGuidMarker:
+    def test_marker_forces_content_formula_over_notion_id(self):
+        from genanki.util import guid_for
+
+        notion_id = "3917ab29-a11e-8047-9d97-cf0f00b3c8f7"
+        marked = _deck_info_with_notion_id("Science", "front", "back", notion_id)
+        marked[0]["useContentGuid"] = True
+        unmarked = _deck_info_with_notion_id("Science", "front", "back", notion_id)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            marked_guids = _build_and_get_guids(marked, tmpdir, "marked")
+            unmarked_guids = _build_and_get_guids(unmarked, tmpdir, "unmarked")
+        assert marked_guids == [guid_for("Science", "front", "basic")]
+        assert unmarked_guids == [guid_for(notion_id)]
+
+    def test_sidecar_written_next_to_deck_info(self):
+        notion_id = "3917ab29-a11e-8047-9d97-cf0f00b3c8f7"
+        deck_info = _deck_info_with_notion_id("Science", "front", "back", notion_id)
+        deck_info[0]["useContentGuid"] = True
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids(deck_info, tmpdir, "sidecar")
+            sidecar_files = list(Path(tmpdir).rglob("guids.json"))
+            assert sidecar_files, "guids.json missing"
+            records = json.loads(sidecar_files[0].read_text())
+        assert records == [{"notionId": notion_id, "guid": guids[0]}]
+
+
+class TestExplicitGuidPassthrough:
+    def test_explicit_guid_wins_over_notion_id_and_content(self):
+        deck_info = _deck_info_with_notion_id(
+            "Science", "front", "back", "abc123-notion-block-id"
+        )
+        deck_info[0]["cards"][0]["guid"] = "LEDGER-GUID"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids(deck_info, tmpdir, "explicit")
+        assert guids == ["LEDGER-GUID"]
+
+
+class TestGuidForCrossLanguageParity:
+    """Vectors pinned in src/lib/anki/guid.test.ts as well.
+
+    The TS port must stay byte-for-byte identical to genanki's guid_for;
+    a drift on either side re-keys shipped decks.
+    """
+
+    VECTORS = [
+        (("3647ab29-a11e-80a0-8f6f-f23a6c203d4e",), "LRX*dO0[7}"),
+        (("3917ab29-a11e-8047-9d97-cf0f00b3c8f7",), "l@Cd.uzPA3"),
+        (("c94d97e2-5d91-479c-9a1c-49799823bc9f",), "xD`j77z<VK"),
+        (("23b40f2c-3dba-49d5-b38b-735ce6483110",), "noy-;K0O6x"),
+        (("b38e3642-358c-4ca7-aef5-4c409d27ecf4",), "Om15k1LagY"),
+        (("3647ab29-a11e-80a0-8f6f-f23a6c203d4e::0",), "t*4,@CGW|k"),
+        (("3647ab29-a11e-80a0-8f6f-f23a6c203d4e::11",), "B#/MoB~v[t"),
+        (("3647ab29-a11e-80a0-8f6f-f23a6c203d4e::rev",), "BohqBHt9<S"),
+        (("",), "ME_YHw2?15"),
+        (("a",), "IkF(BOZ;]l"),
+        (("0",), "qn?z+W(gM{"),
+        (("äöü ß emoji 📖 test",), "ti%Rzh:{0i"),
+        (
+            (
+                "📖 Finanzbuchhaltung Allgemein",
+                "<div class='toggle'>Was ist X?</div>",
+                "cloze",
+            ),
+            "Bj.{CD|nUO",
+        ),
+        (("Deck", "front", "basic"), "t:%^!&3TCZ"),
+        (("Deck", "front", "mcq"), "wFBZB$yWe1"),
+        (("Deck", "front", "input"), "z|j7;,y!Bo"),
+        (("A__B", "C", "basic"), "NOYHfbqZT_"),
+        (("日本語デッキ", "問題", "cloze"), "BLt3{`}uU-"),
+        (("Deck with spaces", '<p id="x" dir="auto">hi</p>', "basic"), "OpGJrh#S-H"),
+        ((12345, "num", "basic"), "vF},bMi^9Q"),
+    ]
+
+    def test_vectors_match_pinned_guids(self):
+        from genanki.util import guid_for
+
+        for args, expected in self.VECTORS:
+            assert guid_for(*args) == expected, args

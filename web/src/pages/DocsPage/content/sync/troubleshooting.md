@@ -18,15 +18,23 @@ You edited a Notion page. The deck in Anki didn't update. Try, in order:
 
 If the dashboard shows runs are succeeding but the deck still isn't updating, it's almost always AnkiConnect. Restart Anki, then trigger a manual sync from the dashboard.
 
-## Anki shows a "Duplicate" dialog on re-import
+## I got a duplicate set of cards after re-importing
 
-The first time you re-import an existing deck after this change, card IDs switch to a new stable format. Anki's built-in "Duplicate" dialog appears once — pick **Keep existing**. Your reviews stay intact, and future re-imports update silently without prompting.
+Anki doesn't warn you about duplicates. They just appear in the deck, so it's easy to miss them until you're reviewing. Sync remembers your cards under your account, so edits update your existing cards instead of adding copies. If a deck doubled during the July export bug, that's a one-time cleanup: clear the extra set once and it stays clear.
 
-## I see a real duplicate deck
+See [Update your deck, keep your reviews](/documentation/cards/duplicate-cards) for the cleanup steps and why this happens.
 
-If two copies of the same cards exist in Anki, the older copy was imported before the ID change. Delete the older deck in Anki — keep the one with your review history. Future re-imports of the same source update the remaining deck in place.
+## I see two copies of the same cards
 
-If both decks have review history you care about, [contact us](/documentation/help/contact) before deleting either — we can sometimes merge.
+The copies to keep are the ones with your review history, usually the older ones. The duplicates are the fresh set, and they have 0 reviews.
+
+1. In Anki, open **Browse** and select the deck.
+2. Sort by the **Created** column to group the copies.
+3. Delete the copies with 0 reviews with **Notes → Delete**. Keep the ones with your real review counts.
+
+Future re-imports of the same source update the cards you kept, in place. Full walkthrough: [Update your deck, keep your reviews](/documentation/cards/duplicate-cards).
+
+If both copies have review history you care about, [contact us](/documentation/help/contact) before deleting either. We can sometimes merge.
 
 ## I revoked access by mistake
 

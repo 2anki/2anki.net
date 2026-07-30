@@ -107,7 +107,13 @@ const OPTION_GROUPS: Array<{ id: string; labelKey: string; keys: string[] }> = [
   {
     id: 'content',
     labelKey: 'cardOptions.groups.content',
-    keys: ['all', 'paragraph', 'max-one-toggle-per-card', 'perserve-newlines'],
+    keys: [
+      'all',
+      'paragraph',
+      'max-one-toggle-per-card',
+      'perserve-newlines',
+      'block-id-identity',
+    ],
   },
   {
     id: 'cardTypes',

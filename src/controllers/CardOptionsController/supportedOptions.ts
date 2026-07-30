@@ -9,14 +9,14 @@ const supportedOptions = (): CardOptionDetail[] => {
     new CardOptionDetail(
       'add-notion-link',
       'Add Notion link',
-      'Add a link back to the Notion page on each card. Turn on Use Notion ID alongside this to avoid duplicates.',
+      'Add a link back to the Notion page on each card.',
       defaultFor('add-notion-link')
     ),
     new CardOptionDetail(
-      'use-notion-id',
-      'Use Notion ID',
-      'Identify each card by its Notion block ID instead of its content. Prevents duplicates when you re-upload an updated page.',
-      defaultFor('use-notion-id')
+      'block-id-identity',
+      'Block ID identity',
+      'Off, new cards are matched by their text so decks you imported before keep updating. On, new cards are keyed by their Notion block ID instead. Cards 2anki already remembers keep their IDs either way.',
+      defaultFor('block-id-identity')
     ),
     new CardOptionDetail(
       'all',

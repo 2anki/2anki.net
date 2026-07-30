@@ -45,7 +45,7 @@ AnkiWeb is the official sync service. You can study in the browser, but it's mai
 If you re-convert the same Notion page or file, 2anki keeps the card IDs stable. Re-importing the new `.apkg` updates existing cards in place — your review history stays intact, you don't get duplicates.
 
 :::note
-The first time you re-import a deck after this change, Anki shows its built-in "Duplicate" dialog because card IDs have switched to a new stable format. Pick **Keep existing** — your review history stays intact, and future re-imports update silently.
+Signed in, 2anki remembers your cards under your account, so re-imports update in place with no duplicate prompt. Signed out, a re-upload after Notion changes its export format can create a fresh set, which you clear once. See [Update your deck, keep your reviews](/documentation/cards/duplicate-cards).
 :::
 
 For Notion pages where you want updates to flow automatically without re-uploading, use [Sync](/documentation/sync/how-it-works) instead.

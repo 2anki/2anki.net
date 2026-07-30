@@ -34,6 +34,7 @@ import { GetGoogleDriveUploadsUseCase } from '../usecases/uploads/GetGoogleDrive
 import { DeleteGoogleDriveUploadUseCase } from '../usecases/uploads/DeleteGoogleDriveUploadUseCase';
 import DeleteJobUseCase from '../usecases/jobs/DeleteJobUseCase';
 import { ConversionRuleScoresRepository } from '../data_layer/ConversionRuleScoresRepository';
+import { CardGuidLedgerRepository } from '../data_layer/CardGuidLedgerRepository';
 import NotionTopLevelPagesRepository from '../data_layer/NotionTopLevelPagesRepository';
 import { GetRecentSourcesUseCase } from '../usecases/uploads/GetRecentSourcesUseCase';
 import { RecentSourcesController } from '../controllers/Upload/RecentSourcesController';
@@ -58,7 +59,8 @@ const UploadRouter = () => {
         limit,
         tierKey
       ),
-    new ConversionRuleScoresRepository(database)
+    new ConversionRuleScoresRepository(database),
+    new CardGuidLedgerRepository(database)
   );
   const jobController = new JobController(
     jobService,

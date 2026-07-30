@@ -1,3 +1,4 @@
+import type { IssuedCardGuid } from '../anki/guidLedgerTypes';
 import type { ConversionEngine } from './conversionEngine';
 import type { InducedRescue } from './induction/candidateRules';
 import type { DeckScore } from './scoreCandidateDeck';
@@ -24,6 +25,10 @@ class Package {
   engine?: ConversionEngine;
 
   score?: DeckScore;
+
+  // Card GUIDs issued during this conversion that the user's ledger does not
+  // hold yet. The parent process persists them — no database in the worker.
+  guidEntries?: IssuedCardGuid[];
 
   // Set when the empty-deck structure rescue ran. Carries the winning (or
   // best-attempted) rule so the corpus records which structure rescued the

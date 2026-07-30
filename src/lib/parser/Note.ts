@@ -27,6 +27,10 @@ export default class Note {
 
   notionLink?: string;
 
+  guid?: string;
+
+  sourcePageId?: string;
+
   mcq = false;
 
   options: string[] = [];
