@@ -188,3 +188,38 @@ describe('EmailRedirectRouter', () => {
     });
   });
 });
+
+describe('resolveEmailDestination', () => {
+  // The redirect target must always be a string this module owns, never the
+  // caller's — an off-site value reaching res.redirect is an open redirect
+  // (tssecurity:S5146), and a phished 2anki email link is the realistic abuse.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { resolveEmailDestination } = require('./EmailRedirectRouter') as {
+    resolveEmailDestination: (requested: string | null) => string;
+  };
+
+  it.each(['/', '/upload', '/pricing', '/login'])(
+    'passes through the allowlisted destination %s',
+    (destination) => {
+      expect(resolveEmailDestination(destination)).toBe(destination);
+    }
+  );
+
+  it.each([
+    ['https://evil.example.com', 'absolute off-site URL'],
+    ['//evil.example.com', 'protocol-relative URL'],
+    ['/upload/../../etc/passwd', 'traversal out of an allowed path'],
+    ['/uploadX', 'prefix of an allowed path'],
+    ['javascript:alert(1)', 'script scheme'],
+    ['', 'empty string'],
+    ['constructor', 'Object.prototype key'],
+    ['__proto__', 'prototype-pollution key'],
+    ['toString', 'inherited method name'],
+  ])('falls back to / for %s (%s)', (requested) => {
+    expect(resolveEmailDestination(requested)).toBe('/');
+  });
+
+  it('falls back to / when no destination was supplied', () => {
+    expect(resolveEmailDestination(null)).toBe('/');
+  });
+});

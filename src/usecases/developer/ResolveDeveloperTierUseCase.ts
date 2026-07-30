@@ -40,9 +40,15 @@ export class ResolveDeveloperTierUseCase {
     if (owned.length === 0) {
       return SANDBOX_TIER;
     }
-    const best = owned.reduce((a, b) =>
-      b.monthly_card_limit > a.monthly_card_limit ? b : a
-    );
+    // Explicit loop rather than a seedless reduce (typescript:S6959). Keeps the
+    // reduce's tie-breaking exactly: on equal limits the earlier tier wins,
+    // because the comparison is strictly greater-than.
+    let best = owned[0];
+    for (const tier of owned) {
+      if (tier.monthly_card_limit > best.monthly_card_limit) {
+        best = tier;
+      }
+    }
     return {
       tier_key: best.tier_key,
       monthly_card_limit: best.monthly_card_limit,

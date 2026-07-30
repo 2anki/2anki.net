@@ -15,7 +15,14 @@ class IndexController {
 
   async contactUs(req: express.Request, res: express.Response) {
     const { name, email, message } = req.body;
-    console.info('Contact Us', name, email, message);
+    // Never log the name, address or message body. This used to print all three
+    // into the prod log, which is a CWE-532 leak of exactly the identifiers
+    // .claude/rules/support-confidentiality.md exists to keep out of artifacts.
+    // Shape only — enough to confirm the form arrived and see obvious abuse.
+    console.info('Contact Us submission received', {
+      hasName: typeof name === 'string' && name.trim().length > 0,
+      messageLength: typeof message === 'string' ? message.length : 0,
+    });
     if (!email || !message) {
       return res.status(400).send({ error: 'Missing email or message' });
     }

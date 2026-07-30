@@ -6,6 +6,7 @@ import express from 'express';
 
 import { getRandomUUID } from '../../shared/helpers/getRandomUUID';
 import { UploadedFile } from '../storage/types';
+import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
 
 export function preserveFilesForDebugging(
   request: express.Request,
@@ -45,7 +46,9 @@ export function preserveFilesForDebugging(
       );
       const fileContents = fs.readFileSync(file.path);
       fs.writeFileSync(destPath, fileContents);
-      console.log(`Copied file ${file.path} to ${destPath}`);
+      console.log(
+        `Copied file ${sanitizeForLog(file.path)} to ${sanitizeForLog(destPath)}`
+      );
     });
   } catch (error) {
     console.error(`Error in preserveFilesForDebugging: ${error}`);

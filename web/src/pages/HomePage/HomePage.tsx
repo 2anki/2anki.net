@@ -142,10 +142,14 @@ export function HomePage({
 }: Readonly<HomePageProps>) {
   useSettingsCardsOptions(null);
   const { t } = useTranslation();
-  const mascotSrc = useMemo(
-    () => MASCOTS[Math.floor(Math.random() * MASCOTS.length)],
-    []
-  );
+  // Picking a mascot is cosmetic, but Sonar flags every Math.random as a
+  // security hotspot (typescript:S2245) regardless of intent, and crypto costs
+  // nothing here. The retry-jitter callers keep Math.random — see the S2245
+  // carve-out in .claude/rules/security.md.
+  const mascotSrc = useMemo(() => {
+    const sample = crypto.getRandomValues(new Uint32Array(1))[0];
+    return MASCOTS[sample % MASCOTS.length];
+  }, []);
   const [showAll, setShowAll] = useState(false);
   const landingViewedRef = useRef(false);
 

@@ -7,6 +7,7 @@ import supportedOptions from './supportedOptions';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import { unwrapStoredSettingsPayload } from '../../lib/parser/Settings/unwrapStoredSettingsPayload';
 import { CardOptionDetail } from './CardOptionDetail';
+import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
 
 interface DeleteAllUseCase {
   execute(owner: string): Promise<void>;
@@ -20,7 +21,7 @@ class CardOptionsController {
   ) {}
 
   async createSetting(req: Request, res: Response) {
-    console.info(`/settings/create ${req.params.id}`);
+    console.info(`/settings/create ${sanitizeForLog(req.params.id)}`);
     const { settings } = req.body;
     const owner = getOwner(res);
 
