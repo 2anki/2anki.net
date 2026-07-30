@@ -107,11 +107,30 @@ describe('EventsSink', () => {
     await expect(sink.waitForPendingFlush()).resolves.toBeUndefined();
   });
 
-  it('start is idempotent', () => {
+  it('start is idempotent — a second start adds no second timer', () => {
+    // This test previously called start twice and stop once with no assertion,
+    // so it passed no matter what start() did. A leaked second interval would
+    // double every periodic flush; the guard in start() is the thing under test.
     const { repo } = makeFakeRepository();
-    const sink = new EventsSink(repo, { flushIntervalMs: 1000 });
-    sink.start();
-    sink.start();
-    sink.stop();
+    const setIntervalSpy = jest.spyOn(global, 'setInterval');
+    const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+    try {
+      const sink = new EventsSink(repo, { flushIntervalMs: 1000 });
+
+      sink.start();
+      sink.start();
+      expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
+      sink.stop();
+      expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+
+      // A second stop must not throw or clear anything it does not own.
+      sink.stop();
+      expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      setIntervalSpy.mockRestore();
+      clearIntervalSpy.mockRestore();
+    }
   });
 });

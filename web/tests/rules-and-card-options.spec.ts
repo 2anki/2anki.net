@@ -171,7 +171,13 @@ test.describe('RulesPage', () => {
 
     await page.getByRole('button', { name: /Save changes/ }).click();
 
-    await Promise.all([rulesSave, settingsSave]);
+    const [rulesRequest, settingsRequest] = await Promise.all([
+      rulesSave,
+      settingsSave,
+    ]);
+
+    expect(rulesRequest.method()).toBe('POST');
+    expect(settingsRequest.method()).toBe('POST');
   });
 
   test('Save changes navigates back to returnTo', async ({ page }) => {
@@ -267,5 +273,7 @@ test.describe('CardOptionsPage', () => {
 
     await page.getByRole('button', { name: '← Back' }).click();
     await page.waitForURL('**/rules/page-1');
+
+    expect(page.url()).toContain('/rules/page-1');
   });
 });
