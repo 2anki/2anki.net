@@ -964,12 +964,14 @@ export class DeckParser {
 
     const style = this.settings.overlappingCloze as OverlappingClozeStyle;
     const bodies = handleOverlappingCloze(items, style);
-    return bodies.map((body) => {
+    return bodies.map((body, index) => {
       const note = new Note(body, '');
       note.cloze = true;
       if (source) {
         note.tags = source.tags;
-        note.notionId = source.notionId;
+        note.notionId = source.notionId
+          ? `${source.notionId}::${index}`
+          : undefined;
         note.notionLink = source.notionLink;
       }
       return note;
@@ -1280,6 +1282,10 @@ export class DeckParser {
       $details.wrap(
         '<div style="display:contents"><ul class="toggle"><li></li></ul></div>'
       );
+      const blockId = $details.attr('id');
+      if (blockId) {
+        $details.parent().closest('ul.toggle').attr('id', blockId);
+      }
     });
   }
 
