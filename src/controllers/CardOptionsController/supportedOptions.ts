@@ -9,13 +9,13 @@ const supportedOptions = (): CardOptionDetail[] => {
     new CardOptionDetail(
       'add-notion-link',
       'Add Notion link',
-      'Add a link back to the Notion page on each card. Turn on Use Notion ID alongside this to avoid duplicates.',
+      'Add a link back to the Notion page on each card.',
       defaultFor('add-notion-link')
     ),
     new CardOptionDetail(
       'use-notion-id',
       'Use Notion ID',
-      'Identify each card by its Notion block ID instead of its content. Prevents duplicates when you re-upload an updated page.',
+      'Cards from Notion are identified by their block ID automatically. This setting only affects cards built from Notion database rows.',
       defaultFor('use-notion-id')
     ),
     new CardOptionDetail(
