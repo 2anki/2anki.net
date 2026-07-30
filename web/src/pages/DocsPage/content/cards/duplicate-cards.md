@@ -24,15 +24,15 @@ Expect this once: the first re-import after this update may add one last set of 
 
 Notion gives every block its own ID. Some actions keep that ID; a few replace it with a new one. When the ID is new, nothing can tell 2anki it's the same card, so Anki sees a new card. This is Notion's behavior, not something 2anki controls.
 
-| In Notion you… | The toggle's ID | In Anki you get |
-| --- | --- | --- |
-| Edit the header or body in place | Stays the same | The card updates, reviews kept |
-| Drag or reorder it on the page | Stays the same | No change |
-| Indent it under another toggle, or un-indent it | Stays the same | May start or stop being its own card, depending on your card options |
-| Cut it and paste it elsewhere | Becomes new | A new card. The old one stays |
-| Duplicate the block | Becomes new | A new card |
-| Copy it to another page | Becomes new | A new card |
-| Delete it | Stops existing | The card is gone from the next conversion; remove it in Anki when you notice |
+| In Notion you…                                  | The toggle's ID | In Anki you get                                                              |
+| ----------------------------------------------- | --------------- | ---------------------------------------------------------------------------- |
+| Edit the header or body in place                | Stays the same  | The card updates, reviews kept                                               |
+| Drag or reorder it on the page                  | Stays the same  | No change                                                                    |
+| Indent it under another toggle, or un-indent it | Stays the same  | May start or stop being its own card, depending on your card options         |
+| Cut it and paste it elsewhere                   | Becomes new     | A new card. The old one stays                                                |
+| Duplicate the block                             | Becomes new     | A new card                                                                   |
+| Copy it to another page                         | Becomes new     | A new card                                                                   |
+| Delete it                                       | Stops existing  | The card is gone from the next conversion; remove it in Anki when you notice |
 
 If you moved a toggle by cutting and pasting and now see a duplicate, that's why. To move a toggle without making a new card, drag it instead.
 

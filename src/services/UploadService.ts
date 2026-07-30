@@ -13,10 +13,7 @@ import ErrorHandler from '../routes/middleware/ErrorHandler';
 import CardOption from '../lib/parser/Settings';
 import Workspace from '../lib/parser/WorkSpace';
 import { logEmptyBackAttribution } from '../lib/parser/logEmptyBackAttribution';
-import type {
-  IssuedCardGuid,
-  KnownGuids,
-} from '../lib/anki/guidLedgerTypes';
+import type { IssuedCardGuid, KnownGuids } from '../lib/anki/guidLedgerTypes';
 import StorageHandler from '../lib/storage/StorageHandler';
 import { UploadedFile } from '../lib/storage/types';
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';

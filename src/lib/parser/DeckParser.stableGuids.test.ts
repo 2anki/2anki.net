@@ -68,7 +68,11 @@ describe('stable card identity for the 2026 details export format', () => {
     const cards = await cardsFor(
       wrap(
         detailsToggle(BLOCK_ID, 'First question', '<p>First answer</p>') +
-          detailsToggle(OTHER_BLOCK_ID, 'Second question', '<p>Second answer</p>')
+          detailsToggle(
+            OTHER_BLOCK_ID,
+            'Second question',
+            '<p>Second answer</p>'
+          )
       )
     );
     expect(cards).toHaveLength(2);
@@ -149,9 +153,13 @@ describe('guid ledger replay', () => {
   const body = detailsToggle(BLOCK_ID, 'Ledger question', '<p>Answer</p>');
 
   it('stamps the stored guid on a ledger hit and issues nothing', async () => {
-    const parser = await parserFor(wrap(body), { cherry: 'false' }, {
-      [BLOCK_ID]: 'stored-guid',
-    });
+    const parser = await parserFor(
+      wrap(body),
+      { cherry: 'false' },
+      {
+        [BLOCK_ID]: 'stored-guid',
+      }
+    );
     const cards = parser.payload.flatMap((d) => d.cards);
     expect(cards[0].guid).toBe('stored-guid');
     expect(parser.issuedGuidEntries).toEqual([]);

@@ -15,4 +15,6 @@ exports.up = async (knex) => {
   });
 };
 
+// Reverting discards the guid rows written since the deploy; affected users'
+// next conversion re-issues the same deterministic values. Not an oversight.
 exports.down = async (knex) => knex.schema.dropTableIfExists('card_guids');
