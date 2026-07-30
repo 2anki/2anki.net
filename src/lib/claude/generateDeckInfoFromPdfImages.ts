@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as cheerio from 'cheerio';
+import { escapeAttribute } from '../notion-render/escape';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
 import { VisionMediaType } from './countVisionTokens';
 import {
@@ -104,7 +105,7 @@ export function attachPageImageToCompactDecks(
   decks: CompactDeck[],
   relPath: string
 ): CompactDeck[] {
-  const imageTag = `<br><img src="${relPath}" style="max-width:100%;max-height:320px;height:auto;">`;
+  const imageTag = `<br><img src="${escapeAttribute(relPath)}" style="max-width:100%;max-height:320px;height:auto;">`;
   return decks.map((deck) => ({
     ...deck,
     cards: deck.cards.map((card) => ({

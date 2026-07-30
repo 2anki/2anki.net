@@ -6,7 +6,10 @@ import {
   buildPdfPageVisionPrompt,
   generateDeckInfoFromPdfImages,
 } from './generateDeckInfoFromPdfImages';
-import { EMPTY_CONTENT_USER_MESSAGE } from './ClaudeService';
+import {
+  EMPTY_CONTENT_USER_MESSAGE,
+  expandCompactDeckInfo,
+} from './ClaudeService';
 
 const mockCreateFn = jest.fn();
 
@@ -273,5 +276,30 @@ describe('attachPageImageToCompactDecks', () => {
 
     expect(decks[0].cards[0].a).toBe('A1');
     expect(decks[0].cards[0]).not.toHaveProperty('media');
+  });
+
+  it('escapes the src attribute so a quote in the filename cannot break it', () => {
+    const result = attachPageImageToCompactDecks(
+      [{ deck: 'D', cards: [{ q: 'Q', a: 'A' }] }],
+      'pdf-abc/a"b.png'
+    );
+
+    expect(result[0].cards[0].a).toContain('src="pdf-abc/a&quot;b.png"');
+    expect(result[0].cards[0].media).toEqual(['pdf-abc/a"b.png']);
+  });
+
+  it('a crafted filename cannot inject a live attribute into the rendered card back', () => {
+    const attached = attachPageImageToCompactDecks(
+      [{ deck: 'D', cards: [{ q: 'Q', a: 'A' }] }],
+      'a" onerror="alert(1)'
+    );
+
+    const expanded = expandCompactDeckInfo(
+      attached,
+      ['a" onerror="alert(1)'],
+      null
+    );
+
+    expect(expanded[0].cards[0].back).not.toContain('onerror="alert(1)"');
   });
 });
