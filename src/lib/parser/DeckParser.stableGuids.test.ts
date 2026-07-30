@@ -144,7 +144,15 @@ describe('user-authored ids never become card identity', () => {
   });
 });
 
-describe('the shipped apkg carries block-id GUIDs', () => {
+// CustomExporter.save skips the Python packaging step under SKIP_CREATE_DECK
+// (the CI server job sets it), so the buffer is not a real apkg there. The
+// same contract is still covered split across suites: notionId resolution
+// above, and guid_for(notionId) in create_deck/tests/test_stable_guids.py.
+const describeWithPython = process.env.SKIP_CREATE_DECK
+  ? describe.skip
+  : describe;
+
+describeWithPython('the shipped apkg carries block-id GUIDs', () => {
   async function apkgGuidsFor(title: string): Promise<string[]> {
     const workspace = new Workspace(true, 'fs');
     const parser = new DeckParser({
