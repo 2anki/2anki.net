@@ -15,6 +15,7 @@ exports.up = async (knex) => {
   });
 };
 
-// Reverting discards the guid rows written since the deploy; affected users'
-// next conversion re-issues the same deterministic values. Not an oversight.
+// Reverting discards the guid rows written since the deploy. The next
+// conversion re-issues the same value only while the card's content and deck
+// name are unchanged; rows lost after an edit re-key that card once. Accepted.
 exports.down = async (knex) => knex.schema.dropTableIfExists('card_guids');

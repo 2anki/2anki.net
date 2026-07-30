@@ -69,6 +69,7 @@ def build_one_deck(data_file, template_dir):
 
     media_files = []
     decks = []
+    guid_records = []
 
     if len(data) == 0:
         return None
@@ -230,7 +231,7 @@ def build_one_deck(data_file, template_dir):
             notion_id = card.get("notionId")
             if explicit_guid:
                 guid = explicit_guid
-            elif notion_id:
+            elif notion_id and not deck.get("useContentGuid"):
                 guid = guid_for(notion_id)
             else:
                 card_type = "cloze" if card.get("cloze") else ("mcq" if card.get("mcq") else ("input" if card.get("enableInput") else "basic"))
@@ -239,6 +240,7 @@ def build_one_deck(data_file, template_dir):
             my_note = Note(model, fields=fields,
                            sort_field=card["number"], tags=tags,
                            guid=guid)
+            guid_records.append({"notionId": notion_id, "guid": guid})
             notes.append(my_note)
             media_files = media_files + card["media"]
 
@@ -250,6 +252,13 @@ def build_one_deck(data_file, template_dir):
                 "name": deck["name"],
             }
         )
+
+    try:
+        sidecar_path = os.path.join(os.path.dirname(data_file), "guids.json")
+        with open(sidecar_path, "w", encoding="utf-8") as guid_file:
+            json.dump(guid_records, guid_file)
+    except OSError:
+        pass  # best-effort: the ledger skips recording, never fail the build
 
     buf = io.StringIO()
     with redirect_stdout(buf):

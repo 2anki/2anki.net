@@ -11,14 +11,17 @@ Already have duplicates? [Skip to clearing them out](#clearing-out-duplicates-yo
 
 Cards used to be identified by their text. Change a single word, the deck name, or a card option, and the ID changed with it. Notion quietly changing its export format, which happened in July, had the same effect. Anki read the changed cards as brand new and added them next to the originals. That's how one small edit turned into a full second copy of the deck.
 
-Cards built from Notion are now anchored to the Notion block they came from, which doesn't drift. Renaming a deck or changing options no longer affects their identity. Only genuinely new content makes new cards.
+When you're signed in, cards built from Notion are anchored to the Notion block they came from, which doesn't drift, and 2anki remembers that anchor under your account. Renaming a deck or changing options no longer affects their identity. Only genuinely new content makes new cards.
 
-Expect this once: the first re-import after this update may add one last set of duplicates for decks you've converted since early July. Clear those out once (see below) and updates are silent from then on.
+Already have a doubled deck from that July stretch? Clear it out once (see below) and it stays clear. Signed in, this change adds no new duplicates, because your cards already match what you imported. Signed out, a later Notion format change can still split a deck, so clean up once more if that happens.
 
 ## How 2anki knows a card is the same card
 
-- **Cards from Notion toggles**, whether synced pages or uploaded Notion exports, are tied to the toggle's own block in Notion. As long as it's the same block, it's the same card: edit the text all you want and your reviews stay put.
-- **Cards from plain text on a Notion page** (paragraph and list cards) and **cards from other files** (Markdown, CSV, spreadsheets) have no block to anchor to, so they're identified by the deck name and the card's front text. Keep the deck name the same when you re-upload, and know that rewording a card makes Anki see a new one. Delete the old copy when you do.
+Sign in before you convert, and 2anki remembers each card's ID under your account, so re-uploads land on the same cards even across renames and Notion format changes.
+
+- **Signed in, Notion toggle uploads**: 2anki remembers each card's ID under your account, anchored to the Notion block it came from (see the table below). Rename the deck, reword a card, or re-export after Notion changes its format, and your reviews stay put.
+- **Signed out, or cards without a Notion block** (plain text on a page, Markdown, CSV, spreadsheets): cards are identified by the deck name and the card's front text. Keep the deck name the same when you re-upload, and know that rewording a card makes Anki see a new one. Delete the old copy when you do.
+- **Synced Notion pages**: nothing changes here. Sync always runs under your account and remembers every card by its Notion block. Edit the text all you want and your reviews stay put.
 
 ## What keeps a Notion toggle stable
 
@@ -50,7 +53,7 @@ Anki matches decks by name, the way it matches cards by ID. If the deck's name c
 
 ## Clearing out duplicates you already have
 
-Two things leave you with real duplicates: cards made before this update, and the one-time first re-import of any deck you've converted since early July, while the new stable IDs take over. After that first re-import, updates are silent again.
+You can end up with real duplicates a couple of ways: a deck that doubled during the July export bug, or, if you convert signed out, a re-upload after Notion changed something in the page. Signed in, updates land on your existing cards, so you don't collect new copies.
 
 Either way, the copies to keep are the ones with your review history:
 

@@ -20,6 +20,11 @@ export default class Deck {
 
   mcqSkippedCount = 0;
 
+  // Set by DeckParser for uploads: python issues the legacy content-formula
+  // GUID for these decks. Absent on BlockHandler decks, whose cards keep
+  // guid_for(blockId). Data on the payload, never an env flag.
+  useContentGuid?: boolean;
+
   get cardCount() {
     return this.cards.length;
   }

@@ -2,7 +2,7 @@ import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 
 import preserveNewlinesIfApplicable from '../../services/NotionService/helpers/preserveNewlinesIfApplicable';
-import { guidFor } from '../anki/guid';
+import { collectIssuedGuids } from '../anki/collectIssuedGuids';
 import type { IssuedCardGuid, KnownGuids } from '../anki/guidLedgerTypes';
 import sanitizeTags from '../anki/sanitizeTags';
 import { File } from '../zip/zip';
@@ -1198,9 +1198,20 @@ export class DeckParser {
       this.applyGlobalTags(deck.cards);
     }
 
+    this.markUploadDecks();
     this.applyLedgerGuids();
     this.payload[0].settings = this.settings;
     this.customExporter.configure(this.payload);
+  }
+
+  // Upload decks get the legacy content-formula GUID from python so a deck a
+  // user imported before this feature matches on re-upload. The block-id
+  // option opts new cards into guid_for(blockId) instead; either way the
+  // ledger pins whatever was issued and replays it afterwards.
+  private markUploadDecks(): void {
+    for (const deck of this.payload) {
+      deck.useContentGuid = !this.settings.blockIdIdentity;
+    }
   }
 
   private static readonly NOTION_BLOCK_ID_PATTERN =
@@ -1228,7 +1239,6 @@ export class DeckParser {
     if (this.knownGuids == null) {
       return;
     }
-    const issued = new Map<string, IssuedCardGuid>();
     for (const deck of this.payload) {
       for (const card of deck.cards) {
         if (card.notionId == null) {
@@ -1237,19 +1247,9 @@ export class DeckParser {
         const stored = this.knownGuids[card.notionId];
         if (stored != null) {
           card.guid = stored;
-          continue;
-        }
-        card.guid = guidFor(card.notionId);
-        if (!issued.has(card.notionId)) {
-          issued.set(card.notionId, {
-            blockId: card.notionId,
-            sourcePageId: card.sourcePageId,
-            guid: card.guid,
-          });
         }
       }
     }
-    this.issuedGuidEntries.push(...issued.values());
   }
 
   async build(ws: Workspace): Promise<Buffer> {
@@ -1260,7 +1260,13 @@ export class DeckParser {
     }
 
     await this.processPayload(ws);
-    return this.customExporter.save();
+    const apkg = await this.customExporter.save();
+    this.issuedGuidEntries = collectIssuedGuids(
+      ws.location,
+      this.payload,
+      this.knownGuids
+    );
+    return apkg;
   }
 
   async writeDeckInfo(ws: Workspace): Promise<string> {
@@ -1287,6 +1293,7 @@ export class DeckParser {
       throw new EmptyDeckError(markdownSourced ? 'markdown' : undefined);
     }
 
+    this.markUploadDecks();
     this.payload[0].settings = this.settings;
     this.customExporter.configure(this.payload);
 

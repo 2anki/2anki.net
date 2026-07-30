@@ -19,6 +19,12 @@ const supportedOptions = (): CardOptionDetail[] => {
       defaultFor('use-notion-id')
     ),
     new CardOptionDetail(
+      'block-id-identity',
+      'Block ID identity',
+      "Identify new cards by their Notion block ID instead of their text. Cards you've already converted keep their remembered IDs either way.",
+      defaultFor('block-id-identity')
+    ),
+    new CardOptionDetail(
       'all',
       'Use all toggle lists',
       'Pull toggles from anywhere on the page, including nested ones. Off, only top-level toggles become cards.',

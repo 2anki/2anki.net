@@ -20,9 +20,9 @@ If the dashboard shows runs are succeeding but the deck still isn't updating, it
 
 ## I got a duplicate set of cards after re-importing
 
-Anki doesn't warn you about duplicates. They just appear in the deck, so it's easy to miss them until you're reviewing. The first time you re-import a deck you've converted since early July, 2anki switches its cards to a new, stable ID and adds one final fresh set. After that, re-imports update your cards silently.
+Anki doesn't warn you about duplicates. They just appear in the deck, so it's easy to miss them until you're reviewing. Sync remembers your cards under your account, so edits update your existing cards instead of adding copies. If a deck doubled during the July export bug, that's a one-time cleanup: clear the extra set once and it stays clear.
 
-Clear the extra set once and it won't come back. See [Update your deck, keep your reviews](/documentation/cards/duplicate-cards) for the cleanup steps and why this happens.
+See [Update your deck, keep your reviews](/documentation/cards/duplicate-cards) for the cleanup steps and why this happens.
 
 ## I see two copies of the same cards
 

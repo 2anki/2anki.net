@@ -275,7 +275,8 @@ function walkMediaFiles(dir: string): string[] {
       !isMarkdownFile(entry.name) &&
       !entry.name.endsWith('.apkg') &&
       entry.name !== CONVERSION_SETTINGS_FILENAME &&
-      entry.name !== CONVERSION_FALLBACK_FILENAME
+      entry.name !== CONVERSION_FALLBACK_FILENAME &&
+      entry.name !== 'guids.json'
     ) {
       results.push(entry.name);
     }

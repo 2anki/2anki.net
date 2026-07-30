@@ -248,6 +248,7 @@ describe('SettingsController', () => {
     testDefaultSettings('client', {
       'add-notion-link': 'false',
       'use-notion-id': 'true',
+      'block-id-identity': 'false',
       all: 'true',
       paragraph: 'false',
       cherry: 'false',
@@ -285,6 +286,7 @@ describe('SettingsController', () => {
       'global-tags': '',
       'add-notion-link': 'false',
       'use-notion-id': 'true',
+      'block-id-identity': 'false',
       all: 'true',
       paragraph: 'false',
       cherry: 'false',

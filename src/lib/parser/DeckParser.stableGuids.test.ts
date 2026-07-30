@@ -1,4 +1,3 @@
-import { guidFor } from '../anki/guid';
 import { setupTests } from '../../test/configure-jest';
 import { parseApkgNotes } from '../../services/ApkgPreviewService/parseApkgNotes';
 import CardOption from './Settings/CardOption';
@@ -146,47 +145,59 @@ describe('user-authored ids never become card identity', () => {
 
 // CustomExporter.save skips the Python packaging step under SKIP_CREATE_DECK
 // (the CI server job sets it), so the buffer is not a real apkg there. The
-// same contract is still covered split across suites: notionId resolution
-// above, and guid_for(notionId) in create_deck/tests/test_stable_guids.py.
+// same contract is still covered split across suites: marker + replay logic
+// above, and the content-formula branch in create_deck/tests/test_stable_guids.py.
 const describeWithPython = process.env.SKIP_CREATE_DECK
   ? describe.skip
   : describe;
 
-describeWithPython('the shipped apkg carries block-id GUIDs', () => {
-  async function apkgGuidsFor(title: string): Promise<string[]> {
+describeWithPython('the shipped apkg keeps prod-compatible GUIDs', () => {
+  async function buildApkg(
+    body: string,
+    title: string,
+    knownGuids?: Record<string, string>
+  ) {
     const workspace = new Workspace(true, 'fs');
     const parser = new DeckParser({
       name: 'toggle.html',
       settings: new CardOption({ cherry: 'false' }),
-      files: [
-        {
-          name: 'toggle.html',
-          contents: wrap(
-            detailsToggle(BLOCK_ID, 'Same question', '<p>Same answer</p>'),
-            title
-          ),
-        },
-      ],
+      files: [{ name: 'toggle.html', contents: wrap(body, title) }],
       noLimits: true,
       workspace,
+      knownGuids,
     });
     const apkg = await parser.build(workspace);
     const parsed = await parseApkgNotes(apkg);
-    return parsed.notes.map((n) => n.guid);
+    return { guids: parsed.notes.map((n) => n.guid), parser };
   }
 
-  it('keeps the same GUID across deck renames, derived from the block id', async () => {
-    const first = await apkgGuidsFor('Deck One');
-    const second = await apkgGuidsFor('📖 Renamed Deck');
-    expect(first).toEqual([guidFor(BLOCK_ID)]);
-    expect(second).toEqual(first);
+  const withId = detailsToggle(BLOCK_ID, 'Same question', '<p>Same answer</p>');
+  const withoutId = `<details class="toggle" open=""><summary dir="auto">Same question</summary><div class="indented" dir="auto"><p>Same answer</p></div></details>`;
+
+  it('matches what prod produced for the same content, then survives renames via the ledger', async () => {
+    const first = await buildApkg(withId, 'Deck One', {});
+    expect(first.guids).toHaveLength(1);
+    const seeded = first.guids[0];
+
+    const prodShape = await buildApkg(withoutId, 'Deck One');
+    expect(prodShape.guids).toEqual([seeded]);
+
+    expect(first.parser.issuedGuidEntries).toEqual([
+      { blockId: BLOCK_ID, sourcePageId: undefined, guid: seeded },
+    ]);
+
+    const renamed = await buildApkg(withId, '📖 Renamed Deck', {
+      [BLOCK_ID]: seeded,
+    });
+    expect(renamed.guids).toEqual([seeded]);
+    expect(renamed.parser.issuedGuidEntries).toEqual([]);
   });
 });
 
 describe('guid ledger replay', () => {
   const body = detailsToggle(BLOCK_ID, 'Ledger question', '<p>Answer</p>');
 
-  it('stamps the stored guid on a ledger hit and issues nothing', async () => {
+  it('stamps the stored guid on a ledger hit', async () => {
     const parser = await parserFor(
       wrap(body),
       { cherry: 'false' },
@@ -196,27 +207,29 @@ describe('guid ledger replay', () => {
     );
     const cards = parser.payload.flatMap((d) => d.cards);
     expect(cards[0].guid).toBe('stored-guid');
+  });
+
+  it('leaves the guid to python on a ledger miss and marks the deck', async () => {
+    const parser = await parserFor(wrap(body), { cherry: 'false' }, {});
+    const cards = parser.payload.flatMap((d) => d.cards);
+    expect(cards[0].guid).toBeUndefined();
+    expect(parser.payload[0].useContentGuid).toBe(true);
     expect(parser.issuedGuidEntries).toEqual([]);
   });
 
-  it('computes, stamps, and reports a new guid on a ledger miss', async () => {
-    const parser = await parserFor(wrap(body), { cherry: 'false' }, {});
-    const cards = parser.payload.flatMap((d) => d.cards);
-    expect(cards[0].guid).toBeDefined();
-    expect(parser.issuedGuidEntries).toEqual([
-      {
-        blockId: BLOCK_ID,
-        sourcePageId: undefined,
-        guid: cards[0].guid,
-      },
-    ]);
-    expect(cards[0].sourcePageId).toBeUndefined();
-  });
-
-  it('leaves guids unset entirely for anonymous conversions', async () => {
+  it('marks anonymous conversions for the content formula too', async () => {
     const parser = await parserFor(wrap(body), { cherry: 'false' });
     const cards = parser.payload.flatMap((d) => d.cards);
     expect(cards[0].guid).toBeUndefined();
+    expect(parser.payload[0].useContentGuid).toBe(true);
     expect(parser.issuedGuidEntries).toEqual([]);
+  });
+
+  it('opts into block-id identity via the card option', async () => {
+    const parser = await parserFor(wrap(body), {
+      cherry: 'false',
+      'block-id-identity': 'true',
+    });
+    expect(parser.payload[0].useContentGuid).toBe(false);
   });
 });

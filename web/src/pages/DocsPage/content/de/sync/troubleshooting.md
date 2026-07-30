@@ -20,9 +20,9 @@ Wenn das Dashboard zeigt, dass Läufe erfolgreich sind, das Deck sich aber trotz
 
 ## Ich habe nach dem erneuten Import doppelte Karten bekommen
 
-Anki warnt nicht vor Duplikaten. Sie tauchen einfach im Deck auf, und man merkt es oft erst beim Lernen. Beim ersten erneuten Import eines Decks, das du seit Anfang Juli konvertiert hast, stellt 2anki die Karten auf eine neue, stabile ID um und fügt ein letztes frisches Set hinzu. Danach aktualisieren erneute Importe deine Karten stillschweigend.
+Anki warnt nicht vor Duplikaten. Sie tauchen einfach im Deck auf, und man merkt es oft erst beim Lernen. Sync merkt sich deine Karten unter deinem Konto, deshalb aktualisieren Änderungen die vorhandenen Karten, statt Kopien anzulegen. Wenn sich ein Deck während des Juli-Exportfehlers verdoppelt hat, ist das eine einmalige Aufräumaktion: Räum das zusätzliche Set einmal auf, dann bleibt es sauber.
 
-Räum das zusätzliche Set einmal auf, dann kommt es nicht wieder. In [Update your deck, keep your reviews](/documentation/cards/duplicate-cards) findest du die Schritte zum Aufräumen und warum das passiert.
+Die Schritte zum Aufräumen und warum das passiert findest du in [Update your deck, keep your reviews](/documentation/cards/duplicate-cards).
 
 ## Ich sehe zwei Kopien derselben Karten
 

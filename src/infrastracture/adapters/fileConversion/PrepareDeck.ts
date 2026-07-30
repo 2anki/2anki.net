@@ -624,7 +624,6 @@ export interface DeckInfoOnlyResult {
   engine?: ConversionEngine;
   score?: DeckScore;
   inducedRule?: InducedRescue;
-  guidEntries?: IssuedCardGuid[];
   needsIndividualBuild: boolean;
 }
 
@@ -700,7 +699,6 @@ export async function prepareDeckInfoOnly(
       parser.inducedRule,
       parser.totalCardCount()
     ),
-    guidEntries: parser.issuedGuidEntries,
     needsIndividualBuild: false,
   };
 }

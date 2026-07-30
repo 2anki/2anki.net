@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import pLimit from 'p-limit';
+import { collectIssuedGuids } from '../../lib/anki/collectIssuedGuids';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import { ZipHandler } from '../../lib/zip/zip';
@@ -144,7 +145,11 @@ async function buildDeckBatch(
       pkg.engine = result.engine;
       pkg.score = result.score;
       pkg.inducedRule = result.inducedRule;
-      pkg.guidEntries = result.guidEntries;
+      pkg.guidEntries = collectIssuedGuids(
+        path.dirname(result.deckInfoPath),
+        result.deck,
+        knownGuids
+      );
       packages.push(pkg);
       if (result.warning) warnings.push(result.warning);
     });

@@ -137,6 +137,32 @@ class TestStableGuids:
         assert guids_a != guids_b
 
 
+class TestUseContentGuidMarker:
+    def test_marker_forces_content_formula_over_notion_id(self):
+        from genanki.util import guid_for
+
+        notion_id = "3917ab29-a11e-8047-9d97-cf0f00b3c8f7"
+        marked = _deck_info_with_notion_id("Science", "front", "back", notion_id)
+        marked[0]["useContentGuid"] = True
+        unmarked = _deck_info_with_notion_id("Science", "front", "back", notion_id)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            marked_guids = _build_and_get_guids(marked, tmpdir, "marked")
+            unmarked_guids = _build_and_get_guids(unmarked, tmpdir, "unmarked")
+        assert marked_guids == [guid_for("Science", "front", "basic")]
+        assert unmarked_guids == [guid_for(notion_id)]
+
+    def test_sidecar_written_next_to_deck_info(self):
+        notion_id = "3917ab29-a11e-8047-9d97-cf0f00b3c8f7"
+        deck_info = _deck_info_with_notion_id("Science", "front", "back", notion_id)
+        deck_info[0]["useContentGuid"] = True
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids(deck_info, tmpdir, "sidecar")
+            sidecar_files = list(Path(tmpdir).rglob("guids.json"))
+            assert sidecar_files, "guids.json missing"
+            records = json.loads(sidecar_files[0].read_text())
+        assert records == [{"notionId": notion_id, "guid": guids[0]}]
+
+
 class TestExplicitGuidPassthrough:
     def test_explicit_guid_wins_over_notion_id_and_content(self):
         deck_info = _deck_info_with_notion_id(
