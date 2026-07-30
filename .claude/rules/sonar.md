@@ -2,20 +2,32 @@
 
 ## State as of 2026-07-30 — verified, not assumed
 
-**There is currently no quality gate. Sonar blocks nothing.** This file previously claimed "the gate blocks merges when Security Rating on New Code < A." That was false and nobody had checked it. What the API actually returns:
+**There IS a quality gate and it evaluates per PR.** Verified on PR #3928 after the repo was re-onboarded to the `laer-smart` org on 2026-07-30 — the `sonarqubecloud` bot posts a "Quality Gate passed/failed" comment on the PR, and the API returns five conditions:
 
 ```
-GET /api/qualitygates/project_status?projectKey=Laer-Smart_2anki.net
-  {"projectStatus":{"status":"NONE","conditions":[],"periods":[]}}
+GET /api/qualitygates/project_status?projectKey=Laer-Smart_2anki.net&pullRequest=3928
+  status: OK
+  new_security_rating            GT 1    → A required
+  new_reliability_rating         GT 1    → A required
+  new_maintainability_rating     GT 1    → A required
+  new_duplicated_lines_density   GT 3    → <= 3% on new code
+  new_security_hotspots_reviewed LT 100  → 100% reviewed
 ```
 
-`status: NONE`, zero conditions, and — note — an **empty `periods`** array, meaning no New Code period is defined. Without one, a "on New Code" condition cannot evaluate even after a gate is attached. Both have to be set in the SonarCloud UI.
+**Query the right scope or you will read the wrong answer.** This is the trap that produced a wrong version of this very file hours earlier:
 
-**No Sonar check appears on PRs.** Verified across seven merged PRs on 2026-07-29: every `statusCheckRollup` contained only `static`, `test`, `build`, `playwright`. Analyses land on `main` **after** merge, keyed to the merge commit. So writing "Automatic Analysis covers the push" in a PR body is misleading — nothing Sonar sees runs before the merge decision.
+- `qualitygates/project_status?projectKey=…` with **no** `pullRequest` returns `{"status":"NONE","conditions":[],"periods":[]}` whenever `main` has not been analysed yet. That is *not* evidence the gate is absent — PR-scoped gate state lives only behind `&pullRequest=<n>`.
+- `project_analyses/search?project=…` likewise lists **branch** analyses only. PR analyses appear in `project_pull_requests/list?project=…`, which is where the first post-onboarding analysis showed up while the branch list still read `total: 0`.
 
-**The org moved from `2anki` to `laer-smart`, which changed the project key.** The live project is `Laer-Smart_2anki.net`; the old `2anki_server` in org `2anki` kept auto-scanning `main` for weeks afterwards (34 analyses, most recent the same day), so the breakage was invisible — a stale project was quietly absorbing the scans. `sonar-project.properties` now points at the new key, and `src/lib/sonarConfigParity.test.ts` asserts it.
+On 2026-07-30 the branch endpoints reported nothing while the PR endpoints reported a passing gate. Both were true simultaneously. **Check PR scope before concluding anything about the gate.**
 
-Re-verify all three with `curl` before trusting any of it again; this block is a snapshot, and the last snapshot went stale without anyone noticing.
+**`main` may lag PR analysis after onboarding.** AutoScan seeds "the 5 most recently active Pull Requests" first; a `main` analysis needs a push to the default branch. The onboarding page can sit on "you should see this page refresh in a few moments" indefinitely if no such push has landed since it was enabled.
+
+**Coverage on New Code reads 0.0% and that is expected.** Automatic Analysis runs no tests and uploads no lcov, so coverage is always 0 on the PR scan. The current gate has **no** coverage condition, which is why PRs still pass. If anyone adds a coverage-on-new-code condition in the UI, every PR will fail until coverage is uploaded from CI instead — do not add one without wiring that first.
+
+**The org moved from `2anki` to `laer-smart`, which changed the project key.** The live project is `Laer-Smart_2anki.net`; the old `2anki_server` in org `2anki` kept auto-scanning `main` for weeks afterwards (34 analyses, most recent 2026-07-29), so the breakage was invisible — a stale project was quietly absorbing the scans, and PR decoration was silently absent the whole time. `sonar-project.properties` now points at the new key and `src/lib/sonarConfigParity.test.ts` asserts it. Disable AutoScan on the stale project (or delete it) so two projects stop scanning one repo.
+
+Re-verify with `curl` before trusting any of this; it is a snapshot, and two successive snapshots of this block have already gone stale — one because nobody checked, one because the check used the wrong scope.
 
 ## Two configs, read by two different scanners
 
@@ -29,7 +41,9 @@ This drifted in practice: on 2026-07-30, `src/data_layer/public/**` (thousands o
 
 **Why it's required:** `/check` (tsc + oxlint + Jest + Vitest) does not run SonarCloud's rule engine. Cognitive complexity, nesting depth, redundant type assertions, and accessibility smells are invisible to local tooling — they surface only after the push, after CI runs, after the agent has already declared the work done. Catching them locally costs 30–90 seconds; catching them post-push costs another rebase + force-push + CI cycle.
 
-**Setup:** `brew install sonar-scanner` (or `npm i -g sonar-scanner`); token from https://sonarcloud.io/account/security → `SONAR_TOKEN` in your shell profile.
+**Setup:** already done on the maintainer's box — `sonar-scanner` and `sonar` are on PATH and `sonar auth status` reports `[✓ Connected]` with the token in the OS Keychain. **Run `sonar auth status` before claiming you cannot scan locally**; the absence of a `SONAR_TOKEN` env var proves nothing, and asserting "no SONAR_TOKEN, Sonar not run" put a false statement into roughly seven PR bodies on 2026-07-29. Fresh machine: `brew install sonar-scanner`, then `sonar auth login`.
+
+**Since PR decoration works (2026-07-30), the pre-push local scan is a convenience, not the safety net it used to be.** The `sonarqubecloud` bot now comments the gate result on every PR before merge, so a finding surfaces without a local run. Run locally when you want the answer *before* pushing; skip it when the PR comment is soon enough. Either way, do not claim it ran when it did not.
 
 **Preferred path: the `sonarqube` MCP plugin.** Requires Docker (or Podman/Nerdctl) running — the CLI's `sonar run mcp` shells out to a container, there's no bare-metal mode. Auth reads the token from `sonar auth status` (OS keychain), no `SONAR_TOKEN` env needed. Approve it once via `/mcp` in this repo; if `/mcp` reports `Failed to reconnect to sonarqube: -32000`, Docker isn't running — start it and retry.
 
