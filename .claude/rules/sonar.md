@@ -1,8 +1,27 @@
 # SonarCloud quality gate
 
-The gate blocks merges when **Security Rating on New Code < A**. Security issues are the only category that regularly causes failures — reliability and maintainability rarely flip. But maintainability code smells (cognitive complexity, function nesting, redundant assertions, non-native interactive elements) still land on every PR and have to be cleared one push at a time. Run Sonar locally to find them before they bounce off CI.
+## State as of 2026-07-30 — verified, not assumed
 
-**The PR gate is SonarCloud Automatic Analysis, which reads `.sonarcloud.properties` — NOT the `sonar-project.properties` the local `sonar-scanner` uses.** They are two different configs. An exclusion or rule waiver added only to `sonar-project.properties` silences the local scanner but does nothing to the merge gate; the finding still lands on the PR. When you add an exclusion, **mirror it into both files** or the gate won't honor it.
+**There is currently no quality gate. Sonar blocks nothing.** This file previously claimed "the gate blocks merges when Security Rating on New Code < A." That was false and nobody had checked it. What the API actually returns:
+
+```
+GET /api/qualitygates/project_status?projectKey=Laer-Smart_2anki.net
+  {"projectStatus":{"status":"NONE","conditions":[],"periods":[]}}
+```
+
+`status: NONE`, zero conditions, and — note — an **empty `periods`** array, meaning no New Code period is defined. Without one, a "on New Code" condition cannot evaluate even after a gate is attached. Both have to be set in the SonarCloud UI.
+
+**No Sonar check appears on PRs.** Verified across seven merged PRs on 2026-07-29: every `statusCheckRollup` contained only `static`, `test`, `build`, `playwright`. Analyses land on `main` **after** merge, keyed to the merge commit. So writing "Automatic Analysis covers the push" in a PR body is misleading — nothing Sonar sees runs before the merge decision.
+
+**The org moved from `2anki` to `laer-smart`, which changed the project key.** The live project is `Laer-Smart_2anki.net`; the old `2anki_server` in org `2anki` kept auto-scanning `main` for weeks afterwards (34 analyses, most recent the same day), so the breakage was invisible — a stale project was quietly absorbing the scans. `sonar-project.properties` now points at the new key, and `src/lib/sonarConfigParity.test.ts` asserts it.
+
+Re-verify all three with `curl` before trusting any of it again; this block is a snapshot, and the last snapshot went stale without anyone noticing.
+
+## Two configs, read by two different scanners
+
+**Automatic Analysis reads `.sonarcloud.properties`; the local `sonar-scanner` CLI reads `sonar-project.properties`.** An exclusion or waiver added to only one is silently ignored by the other, so "clean locally" can coexist with a noisy PR scan.
+
+This drifted in practice: on 2026-07-30, `src/data_layer/public/**` (thousands of lines of kanel-generated code) and the four email-template waivers existed **only** in the CLI config, so the PR-side scan was analysing all of it. **`src/lib/sonarConfigParity.test.ts` now enforces parity** — it compares all three exclusion lists, the waiver set, and that every waiver has a `ruleKey` and `resourceKey` in both files. Add an exclusion to one file and that test goes red. Only `projectKey`, `organization`, `sonar.javascript.lcov.reportPaths`, and `sonar.qualitygate.wait` are legitimately CLI-only.
 
 ## Run Sonar locally before pushing — required for non-trivial code changes
 
