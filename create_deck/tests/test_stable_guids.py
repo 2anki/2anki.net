@@ -137,6 +137,17 @@ class TestStableGuids:
         assert guids_a != guids_b
 
 
+class TestExplicitGuidPassthrough:
+    def test_explicit_guid_wins_over_notion_id_and_content(self):
+        deck_info = _deck_info_with_notion_id(
+            "Science", "front", "back", "abc123-notion-block-id"
+        )
+        deck_info[0]["cards"][0]["guid"] = "LEDGER-GUID"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids(deck_info, tmpdir, "explicit")
+        assert guids == ["LEDGER-GUID"]
+
+
 class TestGuidForCrossLanguageParity:
     """Vectors pinned in src/lib/anki/guid.test.ts as well.
 

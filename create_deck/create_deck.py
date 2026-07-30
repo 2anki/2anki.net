@@ -226,8 +226,11 @@ def build_one_deck(data_file, template_dir):
             if card["number"] == -1 and "notionId" in card:
                 card["number"] = card["notionId"]
 
+            explicit_guid = card.get("guid")
             notion_id = card.get("notionId")
-            if notion_id:
+            if explicit_guid:
+                guid = explicit_guid
+            elif notion_id:
                 guid = guid_for(notion_id)
             else:
                 card_type = "cloze" if card.get("cloze") else ("mcq" if card.get("mcq") else ("input" if card.get("enableInput") else "basic"))
