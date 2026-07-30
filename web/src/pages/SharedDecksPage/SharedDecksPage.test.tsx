@@ -33,7 +33,7 @@ describe('SharedDecksPage', () => {
 
     renderPage();
 
-    await screen.findByText('No public decks yet');
+    expect(await screen.findByText('No public decks yet')).toBeVisible();
   });
 
   it('renders each deck with title, card count, and a view link', async () => {
@@ -104,6 +104,8 @@ describe('SharedDecksPage', () => {
 
     renderPage();
 
-    await screen.findByText("Couldn't load the shared library. Try again.");
+    expect(
+      await screen.findByText("Couldn't load the shared library. Try again.")
+    ).toBeVisible();
   });
 });

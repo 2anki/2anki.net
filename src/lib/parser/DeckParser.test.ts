@@ -622,12 +622,6 @@ test('Colours', async () => {
   expect(deck.cards[0].back.includes('block-color')).toBe(true);
 });
 
-test.skip('HTML Regression Test', (t) => {
-  t.fail(
-    'please automate HTML regression check. Use this page https://www.notion.so/HTML-test-4aa53621a84a4660b69e9953f3938685.'
-  );
-});
-
 test('Nested Toggles', async () => {
   const deck = await getDeck(
     'Nested Toggles.html',

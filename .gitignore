@@ -160,3 +160,8 @@ openapi.json
 # copies of this same repo, so they must never be staged, typechecked, or swept
 # into a test run from the main checkout.
 .claude/worktrees/
+
+# sonar-scanner working directory, created by a local `sonar-scanner` run.
+# Local CLI scans need SONAR_TOKEN scoped to the laer-smart org; see
+# .claude/rules/sonar.md.
+.scannerwork/
