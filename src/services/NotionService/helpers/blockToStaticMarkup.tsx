@@ -95,7 +95,7 @@ export const blockToStaticMarkup = async (
       back += file;
       break;
     case 'paragraph':
-      back += await BlockParagraph(c, handler);
+      back += BlockParagraph(c, handler);
       break;
     case 'code':
       back += BlockCode(c, handler);

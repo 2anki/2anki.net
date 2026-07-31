@@ -512,7 +512,7 @@ class BlockHandler {
       }
       // Look for cloze deletion cards
       if (!ankiNote.mcq && this.settings.isCloze) {
-        const clozeCard = await getClozeDeletionCard(block);
+        const clozeCard = getClozeDeletionCard(block);
         if (clozeCard) {
           isBasicType = false;
           ankiNote.copyValues(clozeCard);
@@ -530,7 +530,7 @@ class BlockHandler {
       }
       // Look for input cards
       if (!ankiNote.mcq && this.settings.useInput) {
-        const inputCard = await getInputCard(rules, block);
+        const inputCard = getInputCard(rules, block);
         if (inputCard) {
           isBasicType = false;
           ankiNote.copyValues(inputCard);
