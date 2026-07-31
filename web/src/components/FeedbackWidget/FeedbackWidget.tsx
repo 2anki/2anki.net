@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
+import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import styles from './FeedbackWidget.module.css';
 
 type WidgetStatus = 'idle' | 'sending' | 'sent' | 'error';
@@ -24,10 +25,18 @@ export function FeedbackWidget({
   compact = false,
 }: Readonly<FeedbackWidgetProps>) {
   const { t } = useTranslation('marketing');
+  const { data: userLocals } = useUserLocals();
+  const userEmail = userLocals?.user?.email;
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [comment, setComment] = useState('');
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<WidgetStatus>('idle');
+
+  useEffect(() => {
+    if (userEmail) {
+      setEmail((prev) => (prev === '' ? userEmail : prev));
+    }
+  }, [userEmail]);
 
   async function handleSubmit() {
     if (selectedRating == null) return;

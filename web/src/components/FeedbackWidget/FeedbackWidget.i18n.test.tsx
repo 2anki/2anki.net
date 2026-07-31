@@ -9,6 +9,16 @@ vi.mock('../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: () => ({ submitEmojiFeedback: vi.fn() }),
 }));
 
+vi.mock('../../lib/hooks/useUserLocals', () => ({
+  useUserLocals: () => ({
+    data: undefined,
+    isLoading: false,
+    error: null,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+}));
+
 describe('FeedbackWidget in German', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('de');
