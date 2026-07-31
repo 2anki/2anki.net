@@ -8,6 +8,7 @@ vi.mock('./api', () => ({
   del: vi.fn(),
   get: vi.fn(),
   post: vi.fn(),
+  redirectToLogin: vi.fn(),
 }));
 
 // Helper function to create a mock Response
@@ -426,6 +427,29 @@ describe('Backend', () => {
       vi.mocked(api.get).mockResolvedValue(undefined);
 
       await expect(backend.listSettings()).resolves.toEqual({ items: [] });
+    });
+  });
+
+  describe('favorites on an expired session', () => {
+    it('addFavorite redirects to login on 401 instead of failing the toggle', async () => {
+      vi.mocked(api.post).mockResolvedValue(createMockResponse(401, false));
+
+      await expect(backend.addFavorite('page-1', 'page')).resolves.toBe(false);
+      expect(api.redirectToLogin).toHaveBeenCalled();
+    });
+
+    it('deleteFavorite redirects to login on 401', async () => {
+      vi.mocked(api.post).mockResolvedValue(createMockResponse(401, false));
+
+      await expect(backend.deleteFavorite('page-1')).resolves.toBe(false);
+      expect(api.redirectToLogin).toHaveBeenCalled();
+    });
+
+    it('addFavorite does not redirect on a plain failure', async () => {
+      vi.mocked(api.post).mockResolvedValue(createMockResponse(500, false));
+
+      await expect(backend.addFavorite('page-1', 'page')).resolves.toBe(false);
+      expect(api.redirectToLogin).not.toHaveBeenCalled();
     });
   });
 

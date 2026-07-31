@@ -34,7 +34,7 @@ function isNonAuthPath(pathname: string): boolean {
   });
 }
 
-function redirectToLogin() {
+export function redirectToLogin() {
   const currentPath = globalThis.location?.pathname ?? '';
   if (isNonAuthPath(currentPath)) return;
   globalThis.location.href = '/login';
