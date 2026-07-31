@@ -72,6 +72,7 @@ import {
   mergeInducedRescue,
 } from './induction/candidateRules';
 import { runInduction } from './induction/rankCandidates';
+import { scoreCandidateDeck } from './scoreCandidateDeck';
 import {
   domPlainTextLength,
   induceCardsFromDom,
@@ -501,6 +502,11 @@ export class DeckParser {
       if (rescued != null) {
         cards = rescued;
       }
+    } else if (this.isDegenerateYield(cards, dom)) {
+      const richer = this.induceRicherDeck(cards, dom);
+      if (richer != null) {
+        cards = richer;
+      }
     }
 
     const deck = new Deck(
@@ -551,6 +557,59 @@ export class DeckParser {
         (card) => hasInlineClozeCode(card.name) || hasInlineClozeCode(card.back)
       )
     );
+  }
+
+  // A recognized-but-tiny deck from a large document is the silent version of
+  // the empty-deck failure: two toggles found in half a megabyte of text ships
+  // as "success" while the substance of the file never becomes cards. The
+  // thresholds are deliberately conservative — at most 2 usable cards, and at
+  // least 20k characters of document text — so a deliberate two-card page on a
+  // normal-sized document is never second-guessed.
+  private isDegenerateYield(cards: Note[], dom: cheerio.CheerioAPI): boolean {
+    const DEGENERATE_MAX_USABLE_CARDS = 2;
+    const DEGENERATE_MIN_DOC_CHARS = 20_000;
+    return (
+      Deck.CleanCards([...cards]).length <= DEGENERATE_MAX_USABLE_CARDS &&
+      domPlainTextLength(dom) >= DEGENERATE_MIN_DOC_CHARS
+    );
+  }
+
+  // Same candidate loop as the empty-deck rescue, but the bar is higher: the
+  // winning candidate must beat the score of the deck the parse already
+  // produced, not just clear the quality floor. Losing to the existing cards
+  // records rescue_rejected so the corpus keeps the attempt.
+  private induceRicherDeck(
+    existing: Note[],
+    dom: cheerio.CheerioAPI
+  ): Note[] | null {
+    const rules = this.uploadCandidateRules();
+    if (rules.length === 0) {
+      return null;
+    }
+    const docChars = domPlainTextLength(dom);
+    const { winner } = runInduction(
+      rules,
+      (rule) => induceCardsFromDom(dom, rule),
+      docChars
+    );
+    if (winner == null) {
+      return null;
+    }
+    const existingScore = scoreCandidateDeck(existing, docChars);
+    if (winner.score.score <= existingScore.score) {
+      this.recordInducedRule({
+        rule: winner.rule,
+        outcome: 'rescue_rejected',
+        score: winner.score,
+      });
+      return null;
+    }
+    this.recordInducedRule({
+      rule: winner.rule,
+      outcome: 'rescue_shipped',
+      score: winner.score,
+    });
+    return winner.cards;
   }
 
   private uploadCandidateRules(): InducedRule[] {

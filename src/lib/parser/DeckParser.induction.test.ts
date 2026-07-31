@@ -140,3 +140,70 @@ describe('DeckParser upload rescue gating', () => {
     expect(fronts).not.toContain('osmosis');
   });
 });
+
+const USABLE_TOGGLE = (n: number) =>
+  `<ul class="toggle"><li><details open=""><summary>Toggle question ${n}?</summary><div class="indented">Toggle answer ${n}.</div></details></li></ul>`;
+
+function bigHeadingSections(count: number): string {
+  const filler =
+    'The cell membrane regulates transport of molecules and maintains homeostasis across the boundary of every living cell in the organism. '.repeat(
+      4
+    );
+  return Array.from(
+    { length: count },
+    (_, i) =>
+      `<h2>Section question ${i + 1}?</h2><p>Section answer ${i + 1}. ${filler}</p>`
+  ).join('');
+}
+
+describe('DeckParser degenerate-yield rescue', () => {
+  it('re-derives the deck when 2 cards ship from a large document', () => {
+    const parser = parse(
+      page(`${USABLE_TOGGLE(1)}${USABLE_TOGGLE(2)}${bigHeadingSections(40)}`),
+      new CardOption({ cherry: 'false' })
+    );
+
+    const cards = parser.payload[0].cards;
+    expect(cards.length).toBeGreaterThan(2);
+    const fronts = cards.map((card) => card.name).join(' ');
+    expect(fronts).toContain('Section question 1?');
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
+  });
+
+  it('leaves a small document with 2 usable cards alone', () => {
+    const parser = parse(
+      page(`${USABLE_TOGGLE(1)}${USABLE_TOGGLE(2)}${bigHeadingSections(2)}`),
+      new CardOption({ cherry: 'false' })
+    );
+
+    expect(parser.payload[0].cards).toHaveLength(2);
+    expect(parser.inducedRule).toBeUndefined();
+  });
+
+  it('leaves a large document alone when it yields more than 2 usable cards', () => {
+    const parser = parse(
+      page(
+        `${USABLE_TOGGLE(1)}${USABLE_TOGGLE(2)}${USABLE_TOGGLE(3)}${bigHeadingSections(40)}`
+      ),
+      new CardOption({ cherry: 'false' })
+    );
+
+    expect(parser.payload[0].cards).toHaveLength(3);
+    expect(parser.inducedRule).toBeUndefined();
+  });
+
+  it('keeps the original cards when no candidate beats them', () => {
+    const prose = `<p>${'Plain narrative prose without any structural boundaries or markers, continuing at length about the topic in flowing paragraphs. '.repeat(200)}</p>`;
+    const parser = parse(
+      page(`${USABLE_TOGGLE(1)}${USABLE_TOGGLE(2)}${prose}`),
+      new CardOption({ cherry: 'false' })
+    );
+
+    expect(parser.payload[0].cards).toHaveLength(2);
+    const fronts = parser.payload[0].cards.map((card) => card.name).join(' ');
+    expect(fronts).toContain('Toggle question 1?');
+  });
+});
