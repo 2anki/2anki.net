@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-31-equation-cloze",
+  "date": "2026-07-31",
+  "type": "fix",
+  "title": "Inline equations marked as code now become proper cloze cards"
+}

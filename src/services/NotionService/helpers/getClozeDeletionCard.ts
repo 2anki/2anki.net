@@ -1,11 +1,14 @@
 import {
+  EquationRichTextItemResponse,
   GetBlockResponse,
   TextRichTextItemResponse,
 } from '@notionhq/client/build/src/api-endpoints';
 
 import Note from '../../../lib/parser/Note';
+import { renderInlineEquation } from '../blocks/BlockEquation';
 import { getRichTextFromBlock } from './getRichTextFromBlock';
 import isColumnList from './isColumnList';
+import isEquation from './isEquation';
 
 // The user wants to turn code blocks into cloze deletions <code>word</code> becomes {{c1::word}}
 // This all should be tested with Jest
@@ -21,6 +24,17 @@ export default function getClozeDeletionCard(
     return undefined;
   }
   for (const cb of richText) {
+    if (isEquation(cb)) {
+      const rendered = renderInlineEquation(cb as EquationRichTextItemResponse);
+      if (cb.annotations.code) {
+        name += `{{c${index}::${rendered}}}`;
+        isCloze = true;
+        index++;
+      } else {
+        name += rendered;
+      }
+      continue;
+    }
     const text = (cb as TextRichTextItemResponse).text;
     if (cb.annotations.code) {
       if (text?.content.includes('::')) {
