@@ -14,9 +14,9 @@ import getObjectIcon, { ObjectIcon } from '../notion/getObjectIcon';
 import { Rules, Settings } from '../types';
 import { UserNotice, isIntentionalBackendNotice } from '../errors/UserNotice';
 import { AnkifyStats } from '../../pages/AnkifyPage/stats/types';
-import { del, get, getLoginURL, patch, post } from './api';
+import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
-import { CONFLICT, OK } from './http';
+import { CONFLICT, OK, UNAUTHORIZED } from './http';
 
 export class TrackerSchemaError extends Error {
   readonly missing: string[];
@@ -410,11 +410,19 @@ export class Backend {
 
   async addFavorite(id: string, type: string | null): Promise<boolean> {
     const response = await post(`${this.baseURL}favorite/create`, { id, type });
+    if (response.status === UNAUTHORIZED) {
+      redirectToLogin();
+      return false;
+    }
     return response.status === OK;
   }
 
   async deleteFavorite(id: string): Promise<boolean> {
     const response = await post(`${this.baseURL}favorite/remove`, { id });
+    if (response.status === UNAUTHORIZED) {
+      redirectToLogin();
+      return false;
+    }
     return response.status === OK;
   }
 

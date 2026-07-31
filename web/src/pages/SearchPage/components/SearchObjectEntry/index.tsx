@@ -5,6 +5,7 @@ import { ErrorHandlerType } from '../../../../components/errors/helpers/getError
 import DotsHorizontal from '../../../../components/icons/DotsHorizontal';
 import EyeIcon from '../../../../components/icons/EyeIcon';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
+import { redirectToLogin } from '../../../../lib/backend/api';
 import NotionObject from '../../../../lib/interfaces/NotionObject';
 import { BlockIcon } from '../BlockIcon';
 import styles from './SearchObjectEntry.module.css';
@@ -71,8 +72,8 @@ function SearchObjectEntry(props: Readonly<Props>) {
         } else if (response.status === 402) {
           setStatus('paywall');
         } else if (response.status === 401) {
-          setStatus('error');
-          setError(new Error('Authentication required'));
+          setStatus('idle');
+          redirectToLogin();
         } else {
           setStatus('error');
         }

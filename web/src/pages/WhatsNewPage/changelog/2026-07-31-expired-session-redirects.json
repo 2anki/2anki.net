@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-31-expired-session-redirects",
+  "date": "2026-07-31",
+  "type": "fix",
+  "title": "An expired session sends you to sign in instead of a dead-end error when converting or favoriting, and magic links open in locked-down Safari"
+}

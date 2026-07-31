@@ -48,6 +48,27 @@ describe('MagicLinkPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders when localStorage access throws (locked-down Safari)', () => {
+    mockValidateMagicToken.mockReturnValue(new Promise(() => {}));
+    const throwingStorage = new Proxy(
+      {},
+      {
+        get() {
+          throw new ReferenceError("Can't find variable: localStorage");
+        },
+      }
+    );
+    vi.stubGlobal('localStorage', throwingStorage);
+    try {
+      renderMagicLinkPage('?token=abc123');
+      expect(
+        screen.getByRole('heading', { name: 'Verifying your link' })
+      ).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('announces the verifying state to screen readers', () => {
     mockValidateMagicToken.mockReturnValue(new Promise(() => {}));
     renderMagicLinkPage('?token=abc123');

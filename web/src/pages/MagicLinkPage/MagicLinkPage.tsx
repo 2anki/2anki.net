@@ -18,9 +18,13 @@ function MagicLinkPage() {
   const [searchParams] = useSearchParams();
   const [, setCookie] = useCookies(['token']);
   const [state, setState] = useState<MagicLinkState>({ status: 'loading' });
-  const [retryEmail, setRetryEmail] = useState(
-    () => localStorage.getItem('email') ?? ''
-  );
+  const [retryEmail, setRetryEmail] = useState(() => {
+    try {
+      return localStorage.getItem('email') ?? '';
+    } catch {
+      return '';
+    }
+  });
   const [retrySending, setRetrySending] = useState(false);
   const [retryDone, setRetryDone] = useState(false);
 
