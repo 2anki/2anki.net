@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-31-degenerate-deck-rescue",
+  "date": "2026-07-31",
+  "type": "fix",
+  "title": "A large document that would ship only a card or two now rebuilds the deck from its headings, lists, or Q&A instead"
+}
