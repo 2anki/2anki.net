@@ -37,6 +37,7 @@ describe('convertPdfTextToHtml', () => {
       cardCount: 0,
       isDrmLocked: true,
       needsCredential: false,
+      droppedImageCount: 0,
     });
     expect(mockSynthesize).not.toHaveBeenCalled();
   });
@@ -60,6 +61,7 @@ describe('convertPdfTextToHtml', () => {
       cardCount: 0,
       isDrmLocked: false,
       needsCredential: true,
+      droppedImageCount: 0,
     });
     expect(mockSynthesize).not.toHaveBeenCalled();
   });
@@ -86,6 +88,24 @@ describe('convertPdfTextToHtml', () => {
     expect(result.html.match(/<ul class="toggle">/g)).toHaveLength(2);
     expect(result.html).toContain('<summary>Q1</summary>');
     expect(result.html).toContain('<p>A1</p>');
+  });
+
+  it('reports the summed painted-image count as dropped images', async () => {
+    mockExtract.mockResolvedValue({
+      pages: [
+        { text: 'page one', imagePaintCount: 2 },
+        { text: 'page two', imagePaintCount: 4 },
+      ],
+      pageCount: 2,
+      avgCharsPerPage: 60,
+      isDrmLocked: false,
+      needsCredential: false,
+    });
+    mockSynthesize.mockReturnValue([{ front: 'Q1', back: 'A1', tags: [] }]);
+
+    const result = await convertPdfTextToHtml(Buffer.from('x'), 'study.pdf');
+
+    expect(result.droppedImageCount).toBe(6);
   });
 
   it('escapes HTML-sensitive characters in card content', async () => {
@@ -180,6 +200,24 @@ describe('convertPdfTextToHtmlAuto', () => {
     expect(mockSynthesize).not.toHaveBeenCalled();
   });
 
+  it('reports the summed painted-image count as dropped on a text-shaped PDF', async () => {
+    const pages = textShapedPages();
+    pages[0].imagePaintCount = 2;
+    pages[1].imagePaintCount = 3;
+    mockExtract.mockResolvedValue({
+      pages,
+      pageCount: 5,
+      avgCharsPerPage: 320,
+      isDrmLocked: false,
+      needsCredential: false,
+    });
+
+    const result = await convertPdfTextToHtmlAuto(Buffer.from('x'), 'bio.pdf');
+
+    expect(result.isTextShaped).toBe(true);
+    expect(result.droppedImageCount).toBe(5);
+  });
+
   it('reports not text-shaped when most pages have no text', async () => {
     mockExtract.mockResolvedValue({
       pages: [
@@ -202,6 +240,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       cardCount: 0,
       isDrmLocked: false,
       needsCredential: false,
+      droppedImageCount: 0,
       isTextShaped: false,
       overSplit: false,
       pageCount: 5,
@@ -242,6 +281,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       cardCount: 0,
       isDrmLocked: true,
       needsCredential: false,
+      droppedImageCount: 0,
       isTextShaped: false,
       overSplit: false,
       pageCount: 5,
@@ -267,6 +307,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       cardCount: 0,
       isDrmLocked: false,
       needsCredential: true,
+      droppedImageCount: 0,
       isTextShaped: false,
       overSplit: false,
       pageCount: 0,

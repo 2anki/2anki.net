@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-31-ai-pdf-page-images",
+  "date": "2026-07-31",
+  "type": "fix",
+  "title": "AI conversions of scanned PDFs now include the page image on each card"
+}

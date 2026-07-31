@@ -34,6 +34,7 @@ export interface ConvertPdfTextToHtmlResult {
   cardCount: number;
   isDrmLocked: boolean;
   needsCredential: boolean;
+  droppedImageCount: number;
 }
 
 export interface ConvertPdfTextToHtmlAutoResult extends ConvertPdfTextToHtmlResult {
@@ -69,6 +70,7 @@ export async function convertPdfTextToHtml(
       cardCount: 0,
       isDrmLocked: false,
       needsCredential: true,
+      droppedImageCount: 0,
     };
   }
 
@@ -78,6 +80,7 @@ export async function convertPdfTextToHtml(
       cardCount: 0,
       isDrmLocked: true,
       needsCredential: false,
+      droppedImageCount: 0,
     };
   }
 
@@ -89,6 +92,10 @@ export async function convertPdfTextToHtml(
     cardCount: cards.length,
     isDrmLocked: false,
     needsCredential: false,
+    droppedImageCount: extraction.pages.reduce(
+      (sum, p) => sum + p.imagePaintCount,
+      0
+    ),
   };
 }
 
@@ -106,6 +113,7 @@ export async function convertPdfTextToHtmlAuto(
       cardCount: 0,
       isDrmLocked: false,
       needsCredential: true,
+      droppedImageCount: 0,
       isTextShaped: false,
       overSplit: false,
       pageCount: extraction.pageCount,
@@ -118,6 +126,7 @@ export async function convertPdfTextToHtmlAuto(
       cardCount: 0,
       isDrmLocked: true,
       needsCredential: false,
+      droppedImageCount: 0,
       isTextShaped: false,
       overSplit: false,
       pageCount: extraction.pageCount,
@@ -130,6 +139,7 @@ export async function convertPdfTextToHtmlAuto(
       cardCount: 0,
       isDrmLocked: false,
       needsCredential: false,
+      droppedImageCount: 0,
       isTextShaped: false,
       overSplit: false,
       pageCount: extraction.pageCount,
@@ -146,6 +156,10 @@ export async function convertPdfTextToHtmlAuto(
     cardCount: cards.length,
     isDrmLocked: false,
     needsCredential: false,
+    droppedImageCount: extraction.pages.reduce(
+      (sum, p) => sum + p.imagePaintCount,
+      0
+    ),
     isTextShaped: true,
     overSplit,
     pageCount: extraction.pageCount,

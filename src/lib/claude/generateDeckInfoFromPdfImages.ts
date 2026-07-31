@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as cheerio from 'cheerio';
+import { escapeAttribute } from '../notion-render/escape';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
 import { VisionMediaType } from './countVisionTokens';
 import {
@@ -52,6 +53,7 @@ ${ANKI_MATH_FRAGMENT}`;
 interface ResolvedPageImage {
   data: string;
   mediaType: VisionMediaType;
+  relPath: string;
 }
 
 function isRemoteOrInlineSrc(src: string): boolean {
@@ -92,10 +94,26 @@ function resolvePageImages(
     } catch {
       return;
     }
-    images.push({ data: bytes.toString('base64'), mediaType });
+    const relPath = path.relative(baseDir, resolved).replaceAll('\\', '/');
+    images.push({ data: bytes.toString('base64'), mediaType, relPath });
   });
 
   return images;
+}
+
+export function attachPageImageToCompactDecks(
+  decks: CompactDeck[],
+  relPath: string
+): CompactDeck[] {
+  const imageTag = `<br><img src="${escapeAttribute(relPath)}" style="max-width:100%;max-height:320px;height:auto;">`;
+  return decks.map((deck) => ({
+    ...deck,
+    cards: deck.cards.map((card) => ({
+      ...card,
+      media: [relPath],
+      a: `${card.a ?? ''}${imageTag}`,
+    })),
+  }));
 }
 
 async function visionCardsForPage(
@@ -157,6 +175,7 @@ async function visionCardsForPage(
 async function runPagesWithConcurrency(
   images: ResolvedPageImage[],
   prompt: string,
+  attachPageImages: boolean,
   onProgress?: (step: string) => void
 ): Promise<CompactDeck[]> {
   const compactDecks: CompactDeck[] = [];
@@ -174,7 +193,10 @@ async function runPagesWithConcurrency(
       onProgress?.(`claude:vision:page:${index + 1}:${images.length}`);
       try {
         const decks = await visionCardsForPage(images[index], prompt, index);
-        compactDecks.push(...decks);
+        const attributed = attachPageImages
+          ? attachPageImageToCompactDecks(decks, images[index].relPath)
+          : decks;
+        compactDecks.push(...attributed);
       } catch (err) {
         failures.push(err);
         console.warn('[Claude] PDF page vision failed; keeping other pages', {
@@ -220,14 +242,20 @@ export async function generateDeckInfoFromPdfImages(
     pageCount: images.length,
   });
 
+  const attachPageImages = context.attachPageImages ?? true;
   const prompt = buildPdfPageVisionPrompt(userInstructions);
   const compactDecks = await runPagesWithConcurrency(
     images,
     prompt,
+    attachPageImages,
     onProgress
   );
   const deckInfo = mergeDeckInfoArrays(
-    expandCompactDeckInfo(compactDecks, [], null)
+    expandCompactDeckInfo(
+      compactDecks,
+      images.map((i) => i.relPath),
+      null
+    )
   );
   const totalCards = deckInfo.reduce((sum, d) => sum + d.cards.length, 0);
 

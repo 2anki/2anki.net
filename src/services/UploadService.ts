@@ -665,7 +665,10 @@ class UploadService {
       )
         ? {
             ...generateOptions,
-            pdfImageFallback: { mediaBaseDir: workspaceDir },
+            pdfImageFallback: {
+              mediaBaseDir: workspaceDir,
+              attachPageImages: settings?.embedImages ?? true,
+            },
           }
         : generateOptions;
       const deckInfo = await generateDeckInfo(

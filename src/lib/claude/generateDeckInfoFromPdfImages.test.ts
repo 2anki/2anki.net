@@ -2,10 +2,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  attachPageImageToCompactDecks,
   buildPdfPageVisionPrompt,
   generateDeckInfoFromPdfImages,
 } from './generateDeckInfoFromPdfImages';
-import { EMPTY_CONTENT_USER_MESSAGE } from './ClaudeService';
+import {
+  EMPTY_CONTENT_USER_MESSAGE,
+  expandCompactDeckInfo,
+} from './ClaudeService';
 
 const mockCreateFn = jest.fn();
 
@@ -148,6 +152,77 @@ describe('generateDeckInfoFromPdfImages', () => {
     ).rejects.toThrow('overloaded_error');
   });
 
+  it('attaches each page image to its cards as media and an image on the back', async () => {
+    mockCreateFn.mockResolvedValue(
+      visionResponse(
+        JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+      )
+    );
+
+    const decks = await generateDeckInfoFromPdfImages(html, {
+      mediaBaseDir: baseDir,
+    });
+
+    const cards = decks.flatMap((d) => d.cards);
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      expect(card.media).toHaveLength(1);
+      expect(card.media[0]).toMatch(/^pdf-abc\/page-[12]\.png$/);
+      expect(card.back).toMatch(/<img[^>]+src="page-[12]\.png"/);
+    }
+  });
+
+  it('attributes each page its own image', async () => {
+    mockCreateFn.mockImplementation((req: unknown) => {
+      const content = (
+        req as {
+          messages: {
+            content: { type: string; source?: { data: string } }[];
+          }[];
+        }
+      ).messages[0].content;
+      const imageBlock = content.find((b) => b.type === 'image');
+      const isPageOne =
+        imageBlock?.source?.data === Buffer.from('fakepng1').toString('base64');
+      const q = isPageOne ? 'from-page-1' : 'from-page-2';
+      return Promise.resolve(
+        visionResponse(
+          JSON.stringify([{ deck: 'Study', cards: [{ q, a: 'A' }] }])
+        )
+      );
+    });
+
+    const decks = await generateDeckInfoFromPdfImages(html, {
+      mediaBaseDir: baseDir,
+    });
+
+    const cards = decks.flatMap((d) => d.cards);
+    const pageOneCard = cards.find((c) => c.name.includes('from-page-1'));
+    const pageTwoCard = cards.find((c) => c.name.includes('from-page-2'));
+    expect(pageOneCard?.media).toEqual(['pdf-abc/page-1.png']);
+    expect(pageTwoCard?.media).toEqual(['pdf-abc/page-2.png']);
+  });
+
+  it('omits page images when attachPageImages is false', async () => {
+    mockCreateFn.mockResolvedValue(
+      visionResponse(
+        JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+      )
+    );
+
+    const decks = await generateDeckInfoFromPdfImages(html, {
+      mediaBaseDir: baseDir,
+      attachPageImages: false,
+    });
+
+    const cards = decks.flatMap((d) => d.cards);
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      expect(card.media).toEqual([]);
+      expect(card.back).not.toContain('<img');
+    }
+  });
+
   it('ignores images whose path escapes the media base directory', async () => {
     const escaping =
       '<html><body><img src="../../etc/passwd.png"/></body></html>';
@@ -171,5 +246,60 @@ describe('buildPdfPageVisionPrompt', () => {
     expect(buildPdfPageVisionPrompt('Focus on definitions')).toContain(
       'Focus on definitions'
     );
+  });
+});
+
+describe('attachPageImageToCompactDecks', () => {
+  it('sets the media and appends the image tag on every card', () => {
+    const decks = [
+      {
+        deck: 'D',
+        cards: [
+          { q: 'Q1', a: 'A1' },
+          { q: 'Q2', a: 'A2' },
+        ],
+      },
+    ];
+
+    const result = attachPageImageToCompactDecks(decks, 'pdf-abc/page-3.png');
+
+    for (const card of result[0].cards) {
+      expect(card.media).toEqual(['pdf-abc/page-3.png']);
+      expect(card.a).toContain('<img src="pdf-abc/page-3.png"');
+    }
+  });
+
+  it('does not mutate the input decks', () => {
+    const decks = [{ deck: 'D', cards: [{ q: 'Q1', a: 'A1' }] }];
+
+    attachPageImageToCompactDecks(decks, 'pdf-abc/page-1.png');
+
+    expect(decks[0].cards[0].a).toBe('A1');
+    expect(decks[0].cards[0]).not.toHaveProperty('media');
+  });
+
+  it('escapes the src attribute so a quote in the filename cannot break it', () => {
+    const result = attachPageImageToCompactDecks(
+      [{ deck: 'D', cards: [{ q: 'Q', a: 'A' }] }],
+      'pdf-abc/a"b.png'
+    );
+
+    expect(result[0].cards[0].a).toContain('src="pdf-abc/a&quot;b.png"');
+    expect(result[0].cards[0].media).toEqual(['pdf-abc/a"b.png']);
+  });
+
+  it('a crafted filename cannot inject a live attribute into the rendered card back', () => {
+    const attached = attachPageImageToCompactDecks(
+      [{ deck: 'D', cards: [{ q: 'Q', a: 'A' }] }],
+      'a" onerror="alert(1)'
+    );
+
+    const expanded = expandCompactDeckInfo(
+      attached,
+      ['a" onerror="alert(1)'],
+      null
+    );
+
+    expect(expanded[0].cards[0].back).not.toContain('onerror="alert(1)"');
   });
 });
