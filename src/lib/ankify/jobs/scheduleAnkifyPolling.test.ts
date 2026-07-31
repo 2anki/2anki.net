@@ -99,6 +99,101 @@ describe('scheduleAnkifyPolling', () => {
     clearInterval(timer);
   });
 
+  test('does not start a second tick while the previous one is still running', async () => {
+    const subscriptions = makeSubscriptions();
+    const useCase = makeUseCase();
+
+    const sub = sampleSubscription({ id: 10, notion_page_id: 'slow-page' });
+    subscriptions.listEnabled.mockResolvedValue([sub]);
+    subscriptions.findByOwnerAndPageId.mockResolvedValue(sub);
+
+    useCase.execute.mockImplementation(
+      () => new Promise<never>(() => undefined)
+    );
+
+    const timer = scheduleAnkifyPolling(
+      subscriptions,
+      useCase as unknown as SyncNotionPageToRacUseCase,
+      { intervalMs: 5 }
+    );
+
+    try {
+      await waitForTick();
+      expect(subscriptions.listEnabled).toHaveBeenCalledTimes(1);
+    } finally {
+      clearInterval(timer);
+    }
+  });
+
+  test('resumes ticking after a long tick finishes', async () => {
+    const subscriptions = makeSubscriptions();
+    const useCase = makeUseCase();
+
+    const sub = sampleSubscription({ id: 11, notion_page_id: 'resume-page' });
+    subscriptions.listEnabled.mockResolvedValue([sub]);
+    subscriptions.findByOwnerAndPageId.mockResolvedValue(sub);
+
+    const firstSync: { release: () => void } = { release: () => undefined };
+    useCase.execute.mockImplementationOnce(
+      () =>
+        new Promise<never>((resolve) => {
+          firstSync.release = () => resolve(undefined as never);
+        })
+    );
+
+    const timer = scheduleAnkifyPolling(
+      subscriptions,
+      useCase as unknown as SyncNotionPageToRacUseCase,
+      { intervalMs: 5 }
+    );
+
+    try {
+      await waitForTick();
+      expect(subscriptions.listEnabled).toHaveBeenCalledTimes(1);
+
+      firstSync.release();
+      await waitForTick();
+
+      expect(subscriptions.listEnabled.mock.calls.length).toBeGreaterThan(1);
+    } finally {
+      firstSync.release();
+      clearInterval(timer);
+    }
+  });
+
+  test('logs a warning naming the stuck tick age when a tick is skipped', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const subscriptions = makeSubscriptions();
+      const useCase = makeUseCase();
+
+      const sub = sampleSubscription({ id: 12, notion_page_id: 'stuck-page' });
+      subscriptions.listEnabled.mockResolvedValue([sub]);
+      subscriptions.findByOwnerAndPageId.mockResolvedValue(sub);
+
+      useCase.execute.mockImplementation(
+        () => new Promise<never>(() => undefined)
+      );
+
+      const timer = scheduleAnkifyPolling(
+        subscriptions,
+        useCase as unknown as SyncNotionPageToRacUseCase,
+        { intervalMs: 5 }
+      );
+
+      try {
+        await waitForTick();
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[ankify-polling] tick skipped')
+        );
+      } finally {
+        clearInterval(timer);
+      }
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   test('passes the remembered object type so the sync can skip the doomed page lookup', async () => {
     const subscriptions = makeSubscriptions();
     const useCase = makeUseCase();
