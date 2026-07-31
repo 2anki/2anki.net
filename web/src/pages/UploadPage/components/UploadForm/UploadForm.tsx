@@ -18,6 +18,7 @@ import {
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
 import { EmptyBackNotice } from '../../../DownloadsPage/components/EmptyBackNotice';
+import { StructureRescuedNotice } from '../../../DownloadsPage/components/StructureRescuedNotice';
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
@@ -285,6 +286,8 @@ function UploadForm({
     emptyBackCount,
     setEmptyBackCount,
     setOverSplit,
+    structureRescuedRule,
+    setStructureRescuedRule,
     mcqDrawerOpen,
     setMcqDrawerOpen,
     mcqShowAnswer,
@@ -367,6 +370,7 @@ function UploadForm({
     setProgressWidth,
     setBatchResult,
     setZoneState,
+    setStructureRescuedRule,
   };
 
   const { data: userLocals } = useUserLocals();
@@ -973,6 +977,11 @@ function UploadForm({
           <OverSplitNotice cardCount={cardCount} />
         </div>
       )}
+      {structureRescuedRule != null && (
+        <div className={formStyles.warningInline}>
+          <StructureRescuedNotice rule={structureRescuedRule} source="upload" />
+        </div>
+      )}
       {showFallback && (
         <button
           type="button"
@@ -1033,6 +1042,14 @@ function UploadForm({
         {emptyBackCount > 0 && (
           <div className={formStyles.warningInline}>
             <EmptyBackNotice count={emptyBackCount} multipleDecks />
+          </div>
+        )}
+        {structureRescuedRule != null && (
+          <div className={formStyles.warningInline}>
+            <StructureRescuedNotice
+              rule={structureRescuedRule}
+              source="upload"
+            />
           </div>
         )}
         <ul className={formStyles.deckList}>

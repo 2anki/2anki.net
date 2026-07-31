@@ -955,6 +955,93 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it('sets X-Structure-Rescued to the shipped rescue rule on a single-deck sync upload', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockResolvedValue({
+            packages: [
+              {
+                name: 'deck',
+                cardCount: 8,
+                mcqCount: 0,
+                mcqSkippedCount: 0,
+                inducedRule: { rule: 'heading', outcome: 'rescue_shipped' },
+              },
+            ],
+            warnings: [],
+          }),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo()
+    );
+    const req = buildRequest();
+    const { res, capturedStatus } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(res.set).toHaveBeenCalledWith('X-Structure-Rescued', 'heading');
+  });
+
+  it('does not set X-Structure-Rescued when the rescue was rejected', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockResolvedValue({
+            packages: [
+              {
+                name: 'deck',
+                cardCount: 8,
+                mcqCount: 0,
+                mcqSkippedCount: 0,
+                inducedRule: { rule: 'bullets', outcome: 'rescue_rejected' },
+              },
+            ],
+            warnings: [],
+          }),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Structure-Rescued',
+      expect.anything()
+    );
+  });
+
+  it('does not set X-Structure-Rescued when no rescue ran', async () => {
+    mockPackages([{ name: 'deck', cardCount: 12 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Structure-Rescued',
+      expect.anything()
+    );
+  });
+
   it('surfaces a skipped-locked-PDF note on X-Warning when a ZIP entry stays locked', async () => {
     const lockedWarning =
       '2 password-protected PDFs were skipped: Ch1.pdf, Ch2.pdf. Unlock each in Preview or Adobe Reader, save a copy, and upload them on their own.';
