@@ -169,6 +169,33 @@ function headingTagsFor(
   return tag ? [tag] : [];
 }
 
+function asPlainHeading(block: BlockObjectResponse): BlockObjectResponse {
+  switch (block.type) {
+    case 'heading_1':
+      return {
+        ...block,
+        heading_1: { ...block.heading_1, is_toggleable: false },
+      };
+    case 'heading_2':
+      return {
+        ...block,
+        heading_2: { ...block.heading_2, is_toggleable: false },
+      };
+    case 'heading_3':
+      return {
+        ...block,
+        heading_3: { ...block.heading_3, is_toggleable: false },
+      };
+    case 'heading_4':
+      return {
+        ...block,
+        heading_4: { ...block.heading_4, is_toggleable: false },
+      };
+    default:
+      return block;
+  }
+}
+
 function applyHierarchyFields(
   ankiNote: Note,
   blockId: string,
@@ -740,6 +767,76 @@ class BlockHandler {
     }
   }
 
+  // A toggleable heading is carded as front/back when nothing card-shaped
+  // lives inside it. But when real toggle blocks sit underneath — the
+  // "collapsible chapter heading" page shape from #3947 — carding the wrapper
+  // swallows the whole subtree into one giant card. Those headings are
+  // sections, not cards: replace them with their (recursively expanded)
+  // children and keep the heading itself as a plain heading so the tag and
+  // hierarchy maps still see the section.
+  private async expandToggleHeadingSections(
+    blocks: GetBlockResponse[],
+    flashCardTypes: string[],
+    depth = 0,
+    seen: Set<string> = new Set<string>()
+  ): Promise<GetBlockResponse[]> {
+    const maxDepth = 5;
+    if (!flashCardTypes.includes('toggle') || depth >= maxDepth) {
+      return blocks;
+    }
+
+    const expanded: GetBlockResponse[] = [];
+    for (const block of blocks) {
+      if (
+        !isFullBlock(block) ||
+        !isToggleHeading(block) ||
+        !block.has_children ||
+        seen.has(block.id)
+      ) {
+        expanded.push(block);
+        continue;
+      }
+      seen.add(block.id);
+      let children: GetBlockResponse[];
+      try {
+        const response = await this.api.getBlocks({
+          createdAt: block.created_time,
+          lastEditedAt: block.last_edited_time,
+          id: block.id,
+          all: this.useAll,
+          type: block.type,
+        });
+        children = await expandSyncedBlocks(
+          response.results,
+          this.api,
+          this.useAll
+        );
+      } catch (error) {
+        console.info(
+          '[toggle-heading] section fetch failed, keeping heading as card'
+        );
+        console.error(error);
+        expanded.push(block);
+        continue;
+      }
+      const expandedChildren = await this.expandToggleHeadingSections(
+        children,
+        flashCardTypes,
+        depth + 1,
+        seen
+      );
+      const containsToggles = expandedChildren.some(
+        (child) => isFullBlock(child) && child.type === 'toggle'
+      );
+      if (containsToggles) {
+        expanded.push(asPlainHeading(block), ...expandedChildren);
+      } else {
+        expanded.push(block);
+      }
+    }
+    return expanded;
+  }
+
   private async collectDecksFromPage(
     topLevelId: string,
     rules: ParserRules,
@@ -766,12 +863,16 @@ class BlockHandler {
       type: 'page',
     });
     this.recordTruncation(response, rules);
-    const blocks = await expandSyncedBlocks(
+    const topLevelBlocks = await expandSyncedBlocks(
       response.results,
       this.api,
       this.useAll
     );
     const flashCardTypes = rules.flaschardTypeNames();
+    const blocks = await this.expandToggleHeadingSections(
+      topLevelBlocks,
+      flashCardTypes
+    );
 
     const title = await this.api.getPageTitle(page, this.settings);
     if (!this.firstPageTitle) {

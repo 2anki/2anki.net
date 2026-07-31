@@ -1,0 +1,6 @@
+{
+  "id": "2026-07-31-toggle-heading-sections",
+  "date": "2026-07-31",
+  "type": "fix",
+  "title": "Toggles inside collapsible headings become cards — the heading no longer swallows the whole section into one card"
+}
