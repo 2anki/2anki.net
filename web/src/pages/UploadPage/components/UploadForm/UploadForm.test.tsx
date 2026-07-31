@@ -40,6 +40,7 @@ vi.mock('../../../../lib/hooks/useCardUsage', () => ({
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
 import { useCardUsage } from '../../../../lib/hooks/useCardUsage';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
+import { track } from '../../../../lib/analytics/track';
 
 const mockUseUserLocals = vi.mocked(useUserLocals);
 const mockUseCardUsage = vi.mocked(useCardUsage);
@@ -439,6 +440,71 @@ describe('UploadForm analytics events', () => {
     });
 
     expect(gtag).not.toHaveBeenCalledWith('event', 'conversion_success');
+  });
+
+  it('shows the structure-rescue notice when the X-Structure-Rescued header is present', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': '5',
+          'X-Structure-Rescued': 'heading',
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(
+      screen.getByText(/Cards built from the headings/)
+    ).toBeInTheDocument();
+    expect(track).toHaveBeenCalledWith('structure_rescued_notice_shown', {
+      rule: 'heading',
+      source: 'upload',
+    });
+  });
+
+  it('does not show the structure-rescue notice on a normal conversion', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': '5',
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(screen.queryByText(/Cards built from the/)).toBeNull();
   });
 
   it('posts to /api/upload/dropbox when the chooser returns a file', async () => {

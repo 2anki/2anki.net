@@ -134,6 +134,7 @@ interface BatchUploadResponse {
   warning?: string;
   droppedImageCount?: number;
   emptyBackCount?: number;
+  structureRescuedRule?: string;
 }
 
 const MARKDOWN_HEURISTIC_WARNING =
@@ -192,6 +193,15 @@ function uploadInputFormat(files: UploadedFile[] | undefined): string {
   if (dot < 0 || dot === name.length - 1) return 'unknown';
   const ext = name.slice(dot + 1).toLowerCase();
   return KNOWN_INPUT_FORMATS.has(ext) ? ext : 'other';
+}
+
+function shippedRescueRule(
+  packages: { inducedRule?: InducedRescue }[]
+): string | undefined {
+  const shipped = packages.find(
+    (p) => p.inducedRule?.outcome === 'rescue_shipped'
+  );
+  return shipped?.inducedRule?.rule;
 }
 
 function sumDroppedImages(packages: { droppedImageCount?: number }[]): number {
@@ -1176,6 +1186,11 @@ class UploadService {
         res.set('X-Over-Split', '1');
         exposedHeaders.push('X-Over-Split');
       }
+      const rescuedRule = shippedRescueRule(packages);
+      if (rescuedRule != null) {
+        res.set('X-Structure-Rescued', rescuedRule);
+        exposedHeaders.push('X-Structure-Rescued');
+      }
       const warningText = resolveUploadWarning(warnings);
       if (warningText) {
         res.set('X-Warning', warningText);
@@ -1228,7 +1243,8 @@ class UploadService {
           ws,
           resolveUploadWarning(warnings),
           sumDroppedImages(packages),
-          totalEmptyBackCount
+          totalEmptyBackCount,
+          shippedRescueRule(packages)
         )
       );
   }
@@ -1237,7 +1253,8 @@ class UploadService {
     ws: Workspace,
     warning: string | null = null,
     droppedImageCount = 0,
-    emptyBackCount = 0
+    emptyBackCount = 0,
+    structureRescuedRule?: string
   ): Promise<BatchUploadResponse> {
     const apkgFilenames = (await fs.promises.readdir(ws.location)).filter(
       (filename) => filename.endsWith('.apkg')
@@ -1256,6 +1273,7 @@ class UploadService {
       ...(warning ? { warning } : {}),
       ...(droppedImageCount > 0 ? { droppedImageCount } : {}),
       ...(emptyBackCount > 0 ? { emptyBackCount } : {}),
+      ...(structureRescuedRule == null ? {} : { structureRescuedRule }),
     };
   }
 

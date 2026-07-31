@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { UploadErrorBody } from '../../../../../types/UploadErrorBody';
+import type { StructureRescueRule } from '../../../../DownloadsPage/helpers/parseStructureRescuedPayload';
 import type { UploadSource } from '../UploadSourceChips';
 
 export type ZoneState =
@@ -27,6 +28,7 @@ export interface BatchResult {
   warning?: string;
   droppedImageCount?: number;
   emptyBackCount?: number;
+  structureRescuedRule?: string;
 }
 
 export interface LockedPdfInfo {
@@ -51,6 +53,8 @@ export function useUploadFormState(onReset: () => void) {
   const [droppedImageCount, setDroppedImageCount] = useState<number>(0);
   const [emptyBackCount, setEmptyBackCount] = useState<number>(0);
   const [overSplit, setOverSplit] = useState(false);
+  const [structureRescuedRule, setStructureRescuedRule] =
+    useState<StructureRescueRule | null>(null);
   const [mcqDrawerOpen, setMcqDrawerOpen] = useState(false);
   const [mcqShowAnswer, setMcqShowAnswer] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
@@ -87,6 +91,7 @@ export function useUploadFormState(onReset: () => void) {
     setDroppedImageCount(0);
     setEmptyBackCount(0);
     setOverSplit(false);
+    setStructureRescuedRule(null);
     setMcqDrawerOpen(false);
     setMcqShowAnswer(false);
     setWarningMessage(null);
@@ -131,6 +136,8 @@ export function useUploadFormState(onReset: () => void) {
     setEmptyBackCount,
     overSplit,
     setOverSplit,
+    structureRescuedRule,
+    setStructureRescuedRule,
     mcqDrawerOpen,
     setMcqDrawerOpen,
     mcqShowAnswer,

@@ -1,4 +1,8 @@
 import getHeadersFilename from '../../helpers/getHeadersFilename';
+import {
+  STRUCTURE_RESCUE_RULES,
+  type StructureRescueRule,
+} from '../../../DownloadsPage/helpers/parseStructureRescuedPayload';
 import type { BatchResult, ZoneState } from './hooks/useUploadFormState';
 
 export function resolveDeckName(headers: Headers): string {
@@ -40,6 +44,16 @@ export interface ConversionSuccessHandlers {
   setProgressWidth: (value: number) => void;
   setBatchResult: (value: BatchResult) => void;
   setZoneState: (value: ZoneState) => void;
+  setStructureRescuedRule: (value: StructureRescueRule | null) => void;
+}
+
+export function parseStructureRescuedValue(
+  value: unknown
+): StructureRescueRule | null {
+  return typeof value === 'string' &&
+    (STRUCTURE_RESCUE_RULES as readonly string[]).includes(value)
+    ? (value as StructureRescueRule)
+    : null;
 }
 
 function isBatchResult(value: unknown): value is BatchResult {
@@ -62,6 +76,9 @@ export async function applyConversionSuccess(
       handlers.setBatchResult(body);
       handlers.setDroppedImageCount(body.droppedImageCount ?? 0);
       handlers.setEmptyBackCount(body.emptyBackCount ?? 0);
+      handlers.setStructureRescuedRule(
+        parseStructureRescuedValue(body.structureRescuedRule)
+      );
       handlers.setProgressWidth(100);
       handlers.setZoneState('multiDeck');
       return;
@@ -85,6 +102,9 @@ export async function applyConversionSuccess(
     parseNonNegativeIntHeader(response.headers, 'X-Empty-Back-Count')
   );
   handlers.setOverSplit(response.headers.get('X-Over-Split') === '1');
+  handlers.setStructureRescuedRule(
+    parseStructureRescuedValue(response.headers.get('X-Structure-Rescued'))
+  );
   const blob = await response.blob();
   handlers.setDownloadLink(globalThis.URL.createObjectURL(blob));
   handlers.setProgressWidth(100);

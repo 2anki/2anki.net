@@ -23,6 +23,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setProgressWidth: vi.fn(),
     setBatchResult: vi.fn(),
     setZoneState: vi.fn(),
+    setStructureRescuedRule: vi.fn(),
   };
 }
 
@@ -173,6 +174,62 @@ describe('applyConversionSuccess', () => {
     await applyConversionSuccess(singleDeckResponse(), handlers);
 
     expect(handlers.setOverSplit).toHaveBeenCalledWith(false);
+  });
+
+  it('reads the rescue rule from the X-Structure-Rescued header on a single deck', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({ 'X-Structure-Rescued': 'heading' }),
+      handlers
+    );
+
+    expect(handlers.setStructureRescuedRule).toHaveBeenCalledWith('heading');
+  });
+
+  it('sets the rescue rule to null when the X-Structure-Rescued header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setStructureRescuedRule).toHaveBeenCalledWith(null);
+  });
+
+  it('ignores an unknown value in the X-Structure-Rescued header', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({ 'X-Structure-Rescued': 'not-a-rule' }),
+      handlers
+    );
+
+    expect(handlers.setStructureRescuedRule).toHaveBeenCalledWith(null);
+  });
+
+  it('reads structureRescuedRule from the batch JSON body', async () => {
+    const handlers = buildHandlers();
+    const response = {
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          kind: 'batch',
+          workspaceId: 'ws-1',
+          deckCount: 1,
+          decks: [
+            {
+              name: 'A',
+              filename: 'A.apkg',
+              downloadUrl: '/download/ws-1/A.apkg',
+            },
+          ],
+          bulkUrl: '/download/ws-1/bulk',
+          structureRescuedRule: 'columns',
+        }),
+    } as unknown as Response;
+
+    await applyConversionSuccess(response, handlers);
+
+    expect(handlers.setStructureRescuedRule).toHaveBeenCalledWith('columns');
   });
 
   it('reads droppedImageCount from the batch JSON body', async () => {
