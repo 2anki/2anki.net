@@ -35,6 +35,12 @@ Re-verify with `curl` before trusting any of this; it is a snapshot, and two suc
 
 This drifted in practice: on 2026-07-30, `src/data_layer/public/**` (thousands of lines of kanel-generated code) and the four email-template waivers existed **only** in the CLI config, so the PR-side scan was analysing all of it. **`src/lib/sonarConfigParity.test.ts` now enforces parity** — it compares all three exclusion lists, the waiver set, and that every waiver has a `ruleKey` and `resourceKey` in both files. Add an exclusion to one file and that test goes red. Only `projectKey`, `organization`, `sonar.javascript.lcov.reportPaths`, and `sonar.qualitygate.wait` are legitimately CLI-only.
 
+**Automatic Analysis honours a closed property list — `sonar.issue.ignore.multicriteria` is NOT on it (verified 2026-07-31 against the AutoScan docs; #3933).** AutoScan reads only: `sonar.sources`, `sonar.tests`, the `*.inclusions`/`*.exclusions` families (`sonar.exclusions`, `sonar.inclusions`, `sonar.test.exclusions`, `sonar.test.inclusions`), `sonar.sourceEncoding`, `sonar.cpd.exclusions`, and two language-version keys this repo doesn't use. Consequences:
+
+- Every multicriteria waiver is **inert on the PR-side scan** — this is why 22 findings survived the #3930 sweep with a C security rating. The waivers still work for local `sonar-scanner` runs and are kept for that.
+- To silence something on the PR scan, either add a `sonar.exclusions` path (done for `web/src/lib/i18n/locales/**` — the json:S2068 "password" false positives — and `web/src/setupTests.ts` — the S1186 observer stubs) or resolve it once in the SonarCloud UI.
+- **Standing UI actions for Alexander (repo config cannot do these):** mark the 11× `typescript:S5693` findings on `src/routes/**` as reviewed/won't-fix (every multer instance already caps `limits.fileSize`; leaving them findings-with-a-verdict is safer than a blanket suppression that would hide a future uncapped route), and mark the 2× `typescript:S2245` jitter hotspots reviewed (security.md carve-out). Same mechanism as the existing `tssecurity` false positives on `instrumentedAxios.ts`.
+
 ## Run Sonar locally before pushing — required for non-trivial code changes
 
 **When it's required:** any PR that adds or significantly modifies a function, component, controller, or use case. Skip only for pure dependency bumps, doc/changelog edits, test-only changes, or single-line typo fixes.
