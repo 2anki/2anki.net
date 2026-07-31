@@ -14,13 +14,13 @@ export const scheduleAnkifyPolling = (
   const intervalMs = options.intervalMs ?? ANKIFY_POLLING_INTERVAL_MS;
   const refreshTopLevelPagesForOwner = options.refreshTopLevelPagesForOwner;
 
-  const tick = async () => {
+  const tick = async (): Promise<number> => {
     let active: Awaited<ReturnType<typeof subscriptions.listEnabled>>;
     try {
       active = await subscriptions.listEnabled();
     } catch (error) {
       console.error('[ankify-polling] failed to list subscriptions', error);
-      return;
+      return 0;
     }
     const seenOwners = new Set<number>();
     for (const sub of active) {
@@ -56,7 +56,39 @@ export const scheduleAnkifyPolling = (
         }
       }
     }
+    return active.length;
   };
 
-  return setInterval(tick, intervalMs);
+  // setInterval keeps firing while an async tick is still awaiting, so a tick
+  // that outlives the interval would stack unboundedly — each overlapping run
+  // holding its own fetched blocks on the main-thread heap (#3926). Single
+  // flight: a tick that finds the previous one still running skips, and the
+  // skip is logged with the running tick's age so a hung tick is visible in
+  // prod logs instead of silent.
+  let inFlightSince: number | null = null;
+
+  const guardedTick = async () => {
+    if (inFlightSince != null) {
+      console.warn(
+        `[ankify-polling] tick skipped: previous tick still running after ${
+          Date.now() - inFlightSince
+        }ms`
+      );
+      return;
+    }
+    inFlightSince = Date.now();
+    const startedAt = inFlightSince;
+    try {
+      const subscriptionCount = await tick();
+      console.info(
+        `[ankify-polling] tick completed in ${Date.now() - startedAt}ms (${subscriptionCount} subscriptions)`
+      );
+    } catch (error) {
+      console.error('[ankify-polling] tick failed', error);
+    } finally {
+      inFlightSince = null;
+    }
+  };
+
+  return setInterval(guardedTick, intervalMs);
 };
