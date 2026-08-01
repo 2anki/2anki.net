@@ -174,4 +174,44 @@ describe('IndexController.contactUs', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(mockSendContactConfirmationEmail).not.toHaveBeenCalled();
   });
+
+  it('drops a submission with a filled honeypot: 200, no row, no email', async () => {
+    const controller = new IndexController();
+    const res = buildRes();
+
+    await controller.contactUs(
+      buildReq({
+        name: 'Mona Bot',
+        email: 'bot@example.com',
+        message: VALID_MESSAGE,
+        website: 'https://spam.example.ru',
+      }),
+      res
+    );
+    await flushAsync();
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockInsertReturning).not.toHaveBeenCalled();
+    expect(mockSendContactEmail).not.toHaveBeenCalled();
+    expect(mockSendContactConfirmationEmail).not.toHaveBeenCalled();
+  });
+
+  it('treats an empty honeypot field as human and saves the submission', async () => {
+    const controller = new IndexController();
+    const res = buildRes();
+
+    await controller.contactUs(
+      buildReq({
+        email: 'user@example.com',
+        message: VALID_MESSAGE,
+        website: '',
+      }),
+      res
+    );
+    await flushAsync();
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockInsertReturning).toHaveBeenCalled();
+    expect(mockSendContactEmail).toHaveBeenCalled();
+  });
 });
