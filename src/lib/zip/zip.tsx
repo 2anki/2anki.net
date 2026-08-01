@@ -20,13 +20,18 @@ import { MAX_OLD_GENERATION_SIZE_MB } from '../conversionMemoryLimits';
 interface File {
   name: string;
   contents?: Buffer | Uint8Array | string;
+  // Declared decompressed size from the zip central directory, recorded on
+  // spilled entries so length-only consumers (deck-size sums, telemetry) never
+  // trigger the lazy disk read behind `contents`.
+  size?: number;
 }
 
 // Conversion runs in a Piscina worker whose V8 old-generation heap is capped at
-// MAX_OLD_GENERATION_SIZE_MB. Both ceilings below are derived from that cap so
+// MAX_OLD_GENERATION_SIZE_MB. The text ceiling below derives from that cap so
 // the friendly "too large" error fires BEFORE V8 kills the worker with
-// ERR_WORKER_OUT_OF_MEMORY. The previous 4 GB literal sat far above the 1 GB
-// worker cap, so it was dead code — the worker OOMed first (#3717).
+// ERR_WORKER_OUT_OF_MEMORY (#3717). Note the decompressed bytes themselves live
+// mostly in EXTERNAL (ArrayBuffer) memory outside the old-gen cap — the real
+// extraction ceiling is process RSS, which is why extraction is batched below.
 const WORKER_OLD_GEN_BYTES = MAX_OLD_GENERATION_SIZE_MB * 1024 * 1024;
 
 // Text we KEEP in memory (decoded HTML/markdown, the OCR html) is stored as
@@ -37,15 +42,20 @@ const WORKER_OLD_GEN_BYTES = MAX_OLD_GENERATION_SIZE_MB * 1024 * 1024;
 // cap (`getUploadLimits().fileSize`); they do not count here (#3709/#3711).
 const MAX_IN_MEMORY_BYTES = Math.floor(WORKER_OLD_GEN_BYTES * 0.5);
 
-// The whole archive is inflated into a { name: bytes } map by unzipSync before
-// any entry spills to disk, so peak resident bytes during extraction equal the
-// total DECOMPRESSED size. A highly-compressible zip bomb (DEFLATE of zeros,
-// ~1000:1) under the compressed cap inflates to tens of GB and OOM-kills the
-// worker; nested archives compound it. Bound the cumulative decompressed size
-// below the worker cap, summing each entry's declared size from the central
-// directory (which fflate also caps its own inflation at) BEFORE inflating, so a
-// bomb aborts with the friendly error instead of crashing the worker (#3717).
-const MAX_DECOMPRESSED_BYTES = Math.floor(WORKER_OLD_GEN_BYTES * 0.6);
+// Extraction is batched: a census pass reads every entry's declared size from
+// the central directory WITHOUT inflating anything, then entries inflate in
+// bounded batches that spill to disk and release. Peak resident bytes during
+// extraction are therefore one batch (plus the compressed input), never the
+// archive's total decompressed size — which is what let a real 643MB paying
+// export through where the old whole-archive inflation could not. The total
+// decompressed budget moved from a heap bound to a DISK budget: a zip bomb
+// (DEFLATE of zeros, ~1000:1; nested archives compound it) still aborts with
+// the friendly error at the census, before a single byte inflates (#3717).
+const MAX_EXTRACTED_BYTES = 4 * 1024 * 1024 * 1024;
+
+// One extraction batch's decompressed bytes. Far below the worker heap cap so
+// a batch plus the compressed input plus text comfortably fit.
+const MAX_BATCH_EXTRACT_BYTES = 128 * 1024 * 1024;
 
 function formatGigabytes(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
@@ -54,8 +64,12 @@ function formatGigabytes(bytes: number): string {
 // Back a spilled entry with a lazy disk read so every consumer that reads
 // `.contents` (embedFile, PrepareDeck converters, writeWorkspaceFile) still gets
 // real bytes, but only one entry's bytes are resident at a time instead of all.
-function makeDiskBackedFile(name: string, diskPath: string): File {
-  const file: File = { name };
+function makeDiskBackedFile(
+  name: string,
+  diskPath: string,
+  size: number
+): File {
+  const file: File = { name, size };
   Object.defineProperty(file, 'contents', {
     enumerable: true,
     configurable: true,
@@ -75,12 +89,14 @@ class ZipHandler {
   maxInMemoryBytes: number;
   decompressedBytes: number;
   maxDecompressedBytes: number;
+  maxBatchBytes: number;
   spillLocation?: string;
 
   constructor(
     maxNestedZipFiles: number,
     maxInMemoryBytes: number = MAX_IN_MEMORY_BYTES,
-    maxDecompressedBytes: number = MAX_DECOMPRESSED_BYTES
+    maxDecompressedBytes: number = MAX_EXTRACTED_BYTES,
+    maxBatchBytes: number = MAX_BATCH_EXTRACT_BYTES
   ) {
     this.files = [];
     this.zipFileCount = 0;
@@ -90,6 +106,7 @@ class ZipHandler {
     this.maxInMemoryBytes = maxInMemoryBytes;
     this.decompressedBytes = 0;
     this.maxDecompressedBytes = maxDecompressedBytes;
+    this.maxBatchBytes = maxBatchBytes;
   }
 
   private trackInMemoryBytes(byteLength: number) {
@@ -129,7 +146,7 @@ class ZipHandler {
     }
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, file);
-    return makeDiskBackedFile(name, abs);
+    return makeDiskBackedFile(name, abs, file.length);
   }
 
   async build(
@@ -158,6 +175,18 @@ class ZipHandler {
     await this.processZip(zipData, paying, settings);
   }
 
+  // Entries the census keeps resident in memory when inflated: decoded text
+  // and — in image-quiz mode — images that become OCR HTML. Everything else
+  // inflates in bounded batches and spills to disk immediately.
+  private isMemoryBoundEntry(
+    name: string,
+    paying: boolean,
+    settings: CardOption
+  ): boolean {
+    if (isHTMLFile(name) || isMarkdownFile(name)) return true;
+    return paying && settings.imageQuizHtmlToAnki && isImageFile(name);
+  }
+
   private async processZip(
     zipData: Uint8Array,
     paying: boolean,
@@ -168,26 +197,66 @@ class ZipHandler {
     }
 
     try {
-      const loadedZip = unzipSync(zipData, {
+      // Census pass: read every entry's name and declared decompressed size
+      // from the central directory without inflating anything. The cumulative
+      // disk budget (shared across nested archives) trips HERE, so a zip bomb
+      // aborts before a single byte inflates.
+      const census: { name: string; size: number }[] = [];
+      unzipSync(zipData, {
         filter: (file) => {
-          if (isHiddenFileOrDirectory(file.name)) return false;
-          this.trackDecompressedBytes(file.originalSize);
-          return true;
+          if (!isHiddenFileOrDirectory(file.name)) {
+            this.trackDecompressedBytes(file.originalSize);
+            census.push({ name: file.name, size: file.originalSize });
+          }
+          return false;
         },
       });
 
-      let noSuffixCount = 0;
-      const totalFiles = Object.keys(loadedZip).length;
+      const noSuffixCount = census.filter((c) => !c.name.includes('.')).length;
 
-      for (const name in loadedZip) {
-        const file = loadedZip[name];
-        if (!name.includes('.')) {
-          noSuffixCount++;
+      // Text pass: inflate only the memory-bound entries in one go; the
+      // existing in-memory text guard bounds them.
+      const memoryBound = new Set(
+        census
+          .filter((c) => this.isMemoryBoundEntry(c.name, paying, settings))
+          .map((c) => c.name)
+      );
+      if (memoryBound.size > 0) {
+        const textMap = unzipSync(zipData, {
+          filter: (file) => memoryBound.has(file.name),
+        });
+        for (const name in textMap) {
+          await this.handleFile(name, textMap[name], paying, settings);
         }
-        await this.handleFile(name, file, paying, settings);
       }
 
-      if (noSuffixCount === totalFiles) {
+      // Binary passes: inflate the rest in batches bounded by maxBatchBytes,
+      // spilling each batch to disk before the next inflates, so peak resident
+      // decompressed bytes are one batch — never the archive total.
+      const remaining = census.filter((c) => !memoryBound.has(c.name));
+      let batch = new Set<string>();
+      let batchBytes = 0;
+      const flushBatch = async () => {
+        if (batch.size === 0) return;
+        const batchMap = unzipSync(zipData, {
+          filter: (file) => batch.has(file.name),
+        });
+        for (const name in batchMap) {
+          await this.handleFile(name, batchMap[name], paying, settings);
+        }
+        batch = new Set<string>();
+        batchBytes = 0;
+      };
+      for (const entry of remaining) {
+        if (batchBytes + entry.size > this.maxBatchBytes && batch.size > 0) {
+          await flushBatch();
+        }
+        batch.add(entry.name);
+        batchBytes += entry.size;
+      }
+      await flushBatch();
+
+      if (noSuffixCount === census.length) {
         throw new Error(
           'The zip file contains only files with no suffix. Supported file types are: .zip, .html, .csv, .md, .pdf, .ppt, and .pptx.'
         );
@@ -281,4 +350,10 @@ ${this.combinedHTML}
   }
 }
 
-export { ZipHandler, File, MAX_IN_MEMORY_BYTES, MAX_DECOMPRESSED_BYTES };
+export {
+  ZipHandler,
+  File,
+  MAX_IN_MEMORY_BYTES,
+  MAX_EXTRACTED_BYTES,
+  MAX_BATCH_EXTRACT_BYTES,
+};

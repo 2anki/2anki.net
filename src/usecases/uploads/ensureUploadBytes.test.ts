@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { ensureUploadBytes } from './ensureUploadBytes';
+import { ensureUploadBytes, SNAPSHOT_MAX_BYTES } from './ensureUploadBytes';
 import { UploadedFile } from '../../lib/storage/types';
 import { getFileContents } from './worker';
 
@@ -54,6 +54,15 @@ describe('ensureUploadBytes', () => {
     ensureUploadBytes([file]);
 
     expect(file.buffer).toBe(existing);
+  });
+
+  it('skips the eager snapshot for uploads over the cap, keeping the disk path', () => {
+    const file = makeFile({ path: tmpPath, size: SNAPSHOT_MAX_BYTES + 1 });
+
+    ensureUploadBytes([file]);
+
+    expect(file.buffer).toBeUndefined();
+    expect(getFileContents(file)).toEqual(Buffer.from('disk-bytes'));
   });
 
   it('does not throw when the file is already gone at request time', () => {
