@@ -12,6 +12,7 @@ export function ContactPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
+  const [website, setWebsite] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<FormStatus>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,11 +36,12 @@ export function ContactPage() {
     event.preventDefault();
     setStatus('sending');
     try {
-      await get2ankiApi().contactUs(name, email, message, files);
+      await get2ankiApi().contactUs(name, email, message, files, website);
       setStatus('sent');
       setName('');
       setEmail('');
       setMessage('');
+      setWebsite('');
       setFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch {
@@ -71,6 +73,18 @@ export function ContactPage() {
           )}
 
           <form onSubmit={handleSubmit}>
+            <div className={contactStyles.honeypot} aria-hidden="true">
+              <label htmlFor="contact-website">Website</label>
+              <input
+                id="contact-website"
+                type="text"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
+            </div>
             <div className={styles.field}>
               <label htmlFor="contact-name">{t('contact.nameLabel')}</label>
               <input

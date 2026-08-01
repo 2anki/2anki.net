@@ -7,6 +7,10 @@ import {
   CONTACT_ACK_COOLDOWN_MS,
 } from '../../lib/email/shouldSendContactAck';
 import { normalizeEmail } from '../../lib/email/isValidEmailShape';
+import {
+  HONEYPOT_FIELD,
+  isHoneypotTripped,
+} from '../../lib/email/isHoneypotTripped';
 
 class IndexController {
   public getIndex(_request: express.Request, response: express.Response) {
@@ -23,6 +27,12 @@ class IndexController {
       hasName: typeof name === 'string' && name.trim().length > 0,
       messageLength: typeof message === 'string' ? message.length : 0,
     });
+    // Silent 200 so the bot reads success and doesn't adapt. Nothing is
+    // saved and no email fires — support never sees the probe.
+    if (isHoneypotTripped(req.body[HONEYPOT_FIELD])) {
+      console.info('Contact Us submission dropped by honeypot');
+      return res.status(200).send();
+    }
     if (!email || !message) {
       return res.status(400).send({ error: 'Missing email or message' });
     }

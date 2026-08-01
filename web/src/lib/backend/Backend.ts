@@ -1150,12 +1150,14 @@ export class Backend {
     name: string,
     email: string,
     message: string,
-    files?: File[]
+    files?: File[],
+    website?: string
   ): Promise<void> {
     const form = new FormData();
     form.append('name', name);
     form.append('email', email);
     form.append('message', message);
+    form.append('website', website ?? '');
     for (const file of files ?? []) {
       form.append('attachments', file);
     }
