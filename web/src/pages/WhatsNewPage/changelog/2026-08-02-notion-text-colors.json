@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-02-notion-text-colors",
+  "date": "2026-08-02",
+  "type": "fix",
+  "title": "Colored Notion text keeps its color on cards, and highlights use their real pale tint"
+}
