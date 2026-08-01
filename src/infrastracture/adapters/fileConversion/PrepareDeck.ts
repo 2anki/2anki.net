@@ -234,6 +234,7 @@ async function convertFile(
 interface ConvertedFile {
   name: string;
   contents: Buffer | string;
+  size?: number;
   imageFallback?: boolean;
   droppedImageCount?: number;
 }
@@ -541,7 +542,10 @@ export async function PrepareDeck(
       engine: 'claude',
       score: scoreCandidateDeck(
         deckInfo.flatMap((d) => d.cards),
-        htmlFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
+        htmlFiles.reduce(
+          (sum, f) => sum + (f.size ?? f.contents?.length ?? 0),
+          0
+        )
       ),
       mcqCount: 0,
       mcqSkippedCount: 0,
@@ -578,7 +582,10 @@ export async function PrepareDeck(
         engine: 'parser',
         score: scoreCandidateDeck(
           parser.payload.flatMap((deck) => deck.cards),
-          allFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
+          allFiles.reduce(
+            (sum, f) => sum + (f.size ?? f.contents?.length ?? 0),
+            0
+          )
         ),
         inducedRule: shippedInducedRule(
           parser.inducedRule,
@@ -609,7 +616,7 @@ export async function PrepareDeck(
     engine: 'parser',
     score: scoreCandidateDeck(
       parser.payload.flatMap((deck) => deck.cards),
-      allFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
+      allFiles.reduce((sum, f) => sum + (f.size ?? f.contents?.length ?? 0), 0)
     ),
     inducedRule: shippedInducedRule(
       parser.inducedRule,
@@ -704,7 +711,7 @@ export async function prepareDeckInfoOnly(
     engine: 'parser',
     score: scoreCandidateDeck(
       parser.payload.flatMap((deck) => deck.cards),
-      allFiles.reduce((sum, f) => sum + (f.contents?.length ?? 0), 0)
+      allFiles.reduce((sum, f) => sum + (f.size ?? f.contents?.length ?? 0), 0)
     ),
     inducedRule: shippedInducedRule(
       parser.inducedRule,

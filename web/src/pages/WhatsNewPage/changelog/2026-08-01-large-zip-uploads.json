@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-01-large-zip-uploads",
+  "date": "2026-08-01",
+  "type": "fix",
+  "title": "Large Notion exports convert instead of being rejected — zips are now processed in small batches, up to 4 GB unpacked"
+}

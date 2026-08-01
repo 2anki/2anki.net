@@ -13,9 +13,17 @@ import { UploadedFile } from '../../lib/storage/types';
 // populates the worker's buffer fallback so the conversion survives the reaping.
 // The worker still prefers the disk path on the happy path; the buffer only
 // matters when the file vanished. (#3414 / supersedes #3416's late snapshot.)
+// Above this size the eager snapshot is skipped: duplicating a multi-hundred-MB
+// upload into main-process memory (and then structured-cloning it into the
+// worker) costs more than the reap-window risk it insures against. Big uploads
+// rely on the disk path the worker already prefers; the buffer fallback stays
+// for the small-file majority.
+export const SNAPSHOT_MAX_BYTES = 64 * 1024 * 1024;
+
 export function ensureUploadBytes(files: UploadedFile[]): void {
   for (const file of files) {
     if (file.buffer != null || !file.path) continue;
+    if (file.size > SNAPSHOT_MAX_BYTES) continue;
     try {
       file.buffer = fs.readFileSync(file.path);
     } catch (error) {

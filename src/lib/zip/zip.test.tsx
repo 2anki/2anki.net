@@ -3,7 +3,12 @@ import os from 'os';
 import path from 'path';
 import { strToU8, zipSync } from 'fflate';
 
-import { ZipHandler, MAX_IN_MEMORY_BYTES, MAX_DECOMPRESSED_BYTES } from './zip';
+import {
+  ZipHandler,
+  MAX_IN_MEMORY_BYTES,
+  MAX_EXTRACTED_BYTES,
+  MAX_BATCH_EXTRACT_BYTES,
+} from './zip';
 import { MAX_OLD_GENERATION_SIZE_MB } from '../conversionMemoryLimits';
 import CardOption from '../parser/Settings';
 
@@ -164,10 +169,88 @@ describe('ZipHandler memory ceilings derive from the worker heap cap', () => {
     expect(MAX_IN_MEMORY_BYTES).not.toBe(4 * 1024 * 1024 * 1024);
   });
 
-  it('sets the decompressed ceiling below the worker cap so a bomb fails before OOM', () => {
+  it('bounds total extraction by disk budget, comfortably above real large exports', () => {
+    // The old ceiling was 0.6× the worker heap (~614MB) because the whole
+    // archive inflated into memory at once; batched extraction moved the bound
+    // to disk. It must clear the real 643MB paying-user export that motivated
+    // the change, and stay a finite named budget.
+    expect(MAX_EXTRACTED_BYTES).toBeGreaterThan(700 * 1024 * 1024);
+    expect(MAX_EXTRACTED_BYTES).toBe(4 * 1024 * 1024 * 1024);
+  });
+
+  it('keeps the per-batch extraction budget far below the worker heap cap', () => {
     const workerBytes = MAX_OLD_GENERATION_SIZE_MB * 1024 * 1024;
-    expect(MAX_DECOMPRESSED_BYTES).toBe(Math.floor(workerBytes * 0.6));
-    expect(MAX_DECOMPRESSED_BYTES).toBeLessThan(workerBytes);
+    expect(MAX_BATCH_EXTRACT_BYTES).toBeLessThan(workerBytes / 4);
+  });
+});
+
+describe('ZipHandler batched extraction', () => {
+  it('extracts every binary across multiple batches when the batch budget is tiny', async () => {
+    const spill = makeSpillDir();
+    const zip = buildBinaryZip({
+      'a.png': 4096,
+      'b.png': 4096,
+      'c.png': 4096,
+      'd.png': 4096,
+    });
+
+    // Batch budget of 5KB forces ~4 passes; every entry must still land intact.
+    const handler = new ZipHandler(10, 1024, 1024 * 1024, 5 * 1024);
+    await handler.build(zip, true, new CardOption({}), spill);
+
+    expect(handler.getFileNames().sort()).toEqual([
+      'a.png',
+      'b.png',
+      'c.png',
+      'd.png',
+    ]);
+    for (const name of ['a.png', 'b.png', 'c.png', 'd.png']) {
+      const entry = handler.files.find((f) => f.name === name);
+      expect(Buffer.from(entry!.contents as Buffer)).toEqual(
+        Buffer.alloc(4096, 1)
+      );
+    }
+  });
+
+  it('records the declared size on spilled entries so length reads need no disk hit', async () => {
+    const spill = makeSpillDir();
+    const zip = buildBinaryZip({ 'img.png': 2048 });
+
+    const handler = new ZipHandler(10);
+    await handler.build(zip, true, new CardOption({}), spill);
+
+    const entry = handler.files.find((f) => f.name === 'img.png');
+    expect(entry?.size).toBe(2048);
+  });
+
+  it('aborts a bomb at the census with nothing inflated and nothing spilled', async () => {
+    const spill = makeSpillDir();
+    const highlyCompressible = 'a'.repeat(64 * 1024);
+    const zip = buildZip({ 'bomb.html': highlyCompressible });
+
+    const handler = new ZipHandler(10, 8 * 1024 * 1024, 16 * 1024);
+    await expect(
+      handler.build(zip, true, new CardOption({}), spill)
+    ).rejects.toThrow(/decompresses to over/);
+
+    expect(handler.files).toHaveLength(0);
+    expect(fs.readdirSync(spill)).toHaveLength(0);
+  });
+
+  it('still recurses into nested zips arriving through a binary batch', async () => {
+    const spill = makeSpillDir();
+    const inner = buildZip({ 'inner.html': '<p>nested deck</p>' });
+    const outer = zipSync(
+      { 'nested.zip': inner, 'top.html': strToU8('<p>top</p>') },
+      { level: 0 }
+    );
+
+    const handler = new ZipHandler(10);
+    await handler.build(outer, true, new CardOption({}), spill);
+
+    const names = handler.getFileNames();
+    expect(names).toContain('top.html');
+    expect(names).toContain('inner.html');
   });
 });
 

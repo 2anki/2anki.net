@@ -221,7 +221,9 @@ describe('Upload file — multer error handling', () => {
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         code: 'too_large',
-        message: expect.stringContaining('100 MB'),
+        // Plan-neutral copy: the cap differs per tier (100MB free, larger for
+        // paying), so the message must not hardcode a number.
+        message: expect.stringContaining('size limit'),
       })
     );
   });
