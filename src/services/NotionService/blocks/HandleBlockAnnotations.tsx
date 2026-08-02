@@ -1,7 +1,10 @@
 import React from 'react';
 import TagRegistry from '../../../lib/parser/TagRegistry';
 import { RichTextItemResponse } from '@notionhq/client/build/src/api-endpoints';
-import notionColorToHex, { isNotionColorBackground } from '../NotionColors';
+import notionColorToHex, {
+  isNotionColorBackground,
+  notionBackgroundColor,
+} from '../NotionColors';
 
 interface Annotations {
   underline: boolean;
@@ -46,12 +49,26 @@ const HandleBlockAnnotations = (
       <span style={{ borderBottom: '0.05em solid' }}>{styledContent}</span>
     );
   }
-  if (color && isNotionColorBackground(color)) {
-    styledContent = (
-      <span style={{ backgroundColor: notionColorToHex(color) }}>
-        {styledContent}
-      </span>
-    );
+  // Inline styles rather than n2a-highlight-* classes: Ankify custom
+  // templates replace the bundled notion.css wholesale, so class-based
+  // colors would silently drop there.
+  if (color && color !== 'default') {
+    if (isNotionColorBackground(color)) {
+      styledContent = (
+        <span
+          style={{
+            backgroundColor:
+              notionBackgroundColor(color) ?? notionColorToHex(color),
+          }}
+        >
+          {styledContent}
+        </span>
+      );
+    } else {
+      styledContent = (
+        <span style={{ color: notionColorToHex(color) }}>{styledContent}</span>
+      );
+    }
   }
   return <>{styledContent}</>;
 };

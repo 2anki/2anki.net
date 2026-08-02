@@ -71,7 +71,7 @@ test('Highlighted text is rendered with background', async () => {
   expect(flashcards.length).toBeGreaterThan(0);
   const card = flashcards[0];
   expect(card.name).toContain(
-    '<span style="background-color:#DFAB01">highlighted </span>'
+    '<span style="background-color:rgb(251, 243, 219)">highlighted </span>'
   );
 });
 import * as dotenv from 'dotenv';

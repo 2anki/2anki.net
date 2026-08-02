@@ -9,7 +9,7 @@ const baseAnnotations = {
   strikethrough: false,
   underline: false,
   code: false,
-  color: 'default' as const,
+  color: 'default' as string,
 };
 
 const defaultSettings = new CardOption(CardOption.LoadDefaultOptions());
@@ -136,5 +136,39 @@ describe('renderTextChildren — mention support', () => {
     const items: RichTextItemResponse[] = [makeMention('Linked Page')];
     const result = renderTextChildren(items, defaultSettings);
     expect(result).not.toContain('<a ');
+  });
+});
+
+describe('renderTextChildren — inline colors', () => {
+  it('renders red text with the Notion red, not default black', () => {
+    const result = renderTextChildren(
+      [makeText('wichtig', { color: 'red' })],
+      defaultSettings
+    );
+    expect(result).toContain('color:#E03E3E');
+    expect(result).toContain('wichtig');
+  });
+
+  it('renders a background highlight with the pale tint, not the text hex', () => {
+    const result = renderTextChildren(
+      [makeText('marked', { color: 'red_background' })],
+      defaultSettings
+    );
+    expect(result).toContain('background-color:rgb(253, 235, 236)');
+    expect(result).not.toContain('background-color:#E03E3E');
+  });
+
+  it('leaves default-colored text unwrapped', () => {
+    const result = renderTextChildren([makeText('plain')], defaultSettings);
+    expect(result).toBe('plain');
+  });
+
+  it('keeps color alongside bold', () => {
+    const result = renderTextChildren(
+      [makeText('both', { color: 'blue', bold: true })],
+      defaultSettings
+    );
+    expect(result).toContain('color:#0B6E99');
+    expect(result).toContain('<strong>');
   });
 });
