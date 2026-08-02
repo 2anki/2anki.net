@@ -56,6 +56,8 @@ import { parseStructureRescuedPayload } from './helpers/parseStructureRescuedPay
 import { parseColumnsGuessedPayload } from './helpers/parseColumnsGuessedPayload';
 import { UnsupportedBlocksNotice } from './components/UnsupportedBlocksNotice';
 import { parseUnsupportedBlocksPayload } from './helpers/parseUnsupportedBlocksPayload';
+import { ForbiddenBlocksNotice } from './components/ForbiddenBlocksNotice';
+import { parseForbiddenBlocksPayload } from './helpers/parseForbiddenBlocksPayload';
 import { parseMonthlyLimitPayload } from './components/ConversionResult/parseMonthlyLimitPayload';
 import { MonthlyLimitPartialNotice } from './components/MonthlyLimitPartialNotice';
 import { parseMonthlyLimitPartialPayload } from './helpers/parseMonthlyLimitPartialPayload';
@@ -598,6 +600,9 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                           );
                           const unsupportedBlocks =
                             parseUnsupportedBlocksPayload(row.job);
+                          const forbiddenBlocks = parseForbiddenBlocksPayload(
+                            row.job
+                          );
                           const cardLimitPartial =
                             parseMonthlyLimitPartialPayload(row.job);
                           const isMonthlyLimitRow =
@@ -907,6 +912,20 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     >
                                       <StructureRescuedNotice
                                         rule={structureRescued.rule}
+                                      />
+                                    </td>
+                                  </tr>
+                                )}
+                              {!isFailed &&
+                                isExpanded &&
+                                forbiddenBlocks != null && (
+                                  <tr key={`job-${row.job.id}-forbiddenblocks`}>
+                                    <td
+                                      colSpan={4}
+                                      className={styles.failurePanel}
+                                    >
+                                      <ForbiddenBlocksNotice
+                                        count={forbiddenBlocks.count}
                                       />
                                     </td>
                                   </tr>

@@ -115,5 +115,11 @@
     "uploadMultiDeck_few": "{{count}} karty bez odpowiedzi zostały pominięte, więc nie ma ich w Twoich taliach. Dodaj tył do każdej w pliku i przekonwertuj ponownie.",
     "uploadMultiDeck_many": "{{count}} kart bez odpowiedzi zostało pominiętych, więc nie ma ich w Twoich taliach. Dodaj tył do każdej w pliku i przekonwertuj ponownie.",
     "uploadMultiDeck_other": "{{count}} kart bez odpowiedzi zostało pominiętych, więc nie ma ich w Twoich taliach. Dodaj tył do każdej w pliku i przekonwertuj ponownie."
+  },
+  "blocksForbidden": {
+    "notion_one": "{{count}} część tej strony nie mogła zostać odczytana, ponieważ nie jest połączona z 2anki, więc nie ma jej w tej talii. Połącz ją z 2anki w Notion, a następnie przekonwertuj ponownie.",
+    "notion_few": "{{count}} części tej strony nie mogły zostać odczytane, ponieważ nie są połączone z 2anki, więc nie ma ich w tej talii. Połącz je z 2anki w Notion, a następnie przekonwertuj ponownie.",
+    "notion_many": "{{count}} części tej strony nie mogło zostać odczytanych, ponieważ nie są połączone z 2anki, więc nie ma ich w tej talii. Połącz je z 2anki w Notion, a następnie przekonwertuj ponownie.",
+    "notion_other": "{{count}} części tej strony nie mogło zostać odczytanych, ponieważ nie są połączone z 2anki, więc nie ma ich w tej talii. Połącz je z 2anki w Notion, a następnie przekonwertuj ponownie."
   }
 }

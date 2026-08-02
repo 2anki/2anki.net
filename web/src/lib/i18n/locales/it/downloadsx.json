@@ -95,5 +95,9 @@
     "uploadSingleDeck_other": "{{count}} carte non avevano una risposta e sono state saltate, quindi non sono in questo mazzo. Aggiungi un retro a ciascuna nel tuo file e converti di nuovo.",
     "uploadMultiDeck_one": "{{count}} carta non aveva una risposta ed è stata saltata, quindi non è nei tuoi mazzi. Aggiungi un retro nel tuo file e converti di nuovo.",
     "uploadMultiDeck_other": "{{count}} carte non avevano una risposta e sono state saltate, quindi non sono nei tuoi mazzi. Aggiungi un retro a ciascuna nel tuo file e converti di nuovo."
+  },
+  "blocksForbidden": {
+    "notion_one": "Non è stato possibile leggere {{count}} parte di questa pagina perché non è collegata a 2anki, quindi non è in questo mazzo. Collegala a 2anki in Notion, poi converti di nuovo.",
+    "notion_other": "Non è stato possibile leggere {{count}} parti di questa pagina perché non sono collegate a 2anki, quindi non sono in questo mazzo. Collegale a 2anki in Notion, poi converti di nuovo."
   }
 }

@@ -243,6 +243,71 @@ describe('buildNotionConversionSignalPayload', () => {
     });
   });
 
+  it('serializes a forbidden-blocks-only payload', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      0,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      2
+    );
+    expect(JSON.parse(payload as string)).toEqual({
+      code: 'notion_blocks_forbidden',
+      forbidden_blocks: 2,
+    });
+  });
+
+  it('returns undefined when the forbidden-block count is zero', () => {
+    expect(
+      buildNotionConversionSignalPayload(
+        undefined,
+        0,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        0
+      )
+    ).toBeUndefined();
+  });
+
+  it('ranks forbidden blocks above truncation but keeps the truncation fields', () => {
+    const payload = buildNotionConversionSignalPayload(
+      { blocksConverted: 100, subDeckRulesSkipped: false },
+      0,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      3
+    );
+    expect(JSON.parse(payload as string)).toEqual({
+      code: 'notion_blocks_forbidden',
+      blocks_converted: 100,
+      sub_deck_rules_skipped: false,
+      forbidden_blocks: 3,
+    });
+  });
+
+  it('keeps structure-rescued ranked above forbidden blocks', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      0,
+      undefined,
+      undefined,
+      undefined,
+      'heading',
+      4
+    );
+    expect(JSON.parse(payload as string)).toMatchObject({
+      code: 'notion_structure_rescued',
+      rule: 'heading',
+      forbidden_blocks: 4,
+    });
+  });
+
   it('does not collide with the apkg_import done payload shape', () => {
     const parsed = JSON.parse(
       buildNotionConversionSignalPayload(

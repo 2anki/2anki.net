@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-02-notion-unshared-notice",
+  "date": "2026-08-02",
+  "type": "feature",
+  "title": "Notion conversions now tell you when parts of a page aren't connected to 2anki instead of dropping them silently"
+}

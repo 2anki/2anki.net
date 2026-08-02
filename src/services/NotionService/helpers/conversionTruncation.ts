@@ -2,6 +2,7 @@ export const NOTION_TRUNCATED_CODE = 'notion_truncated';
 export const NOTION_ASSETS_DROPPED_CODE = 'notion_assets_dropped';
 export const NOTION_COLUMNS_GUESSED_CODE = 'notion_columns_guessed';
 export const NOTION_STRUCTURE_RESCUED_CODE = 'notion_structure_rescued';
+export const NOTION_BLOCKS_FORBIDDEN_CODE = 'notion_blocks_forbidden';
 export const NOTION_UNSUPPORTED_BLOCKS_CODE = 'notion_unsupported_blocks';
 export const NOTION_DATABASE_RESOLVED_CODE = 'notion_database_resolved';
 export const MONTHLY_LIMIT_PARTIAL_CODE = 'monthly_limit_partial';
@@ -55,13 +56,19 @@ function pickSignalCode(
   hasDroppedAssets: boolean,
   guessedColumns: GuessedColumnMapping | undefined,
   hasUnsupportedBlocks: boolean,
-  structureRescuedRule: string | undefined
+  structureRescuedRule: string | undefined,
+  hasForbiddenBlocks: boolean
 ): string {
   // A rescued deck is the whole story of the conversion — the cards came from
   // an inferred structure, not toggles — so it takes priority over the softer
   // signals below.
   if (structureRescuedRule != null) {
     return NOTION_STRUCTURE_RESCUED_CODE;
+  }
+  // Blocks the integration can't read are missing cards the user can fix by
+  // sharing them, so this outranks the softer "we still shipped a deck" signals.
+  if (hasForbiddenBlocks) {
+    return NOTION_BLOCKS_FORBIDDEN_CODE;
   }
   if (truncation != null) {
     return NOTION_TRUNCATED_CODE;
@@ -84,17 +91,20 @@ export function buildNotionConversionSignalPayload(
   guessedColumns?: GuessedColumnMapping,
   resolvedDatabasePath?: ResolvedDatabasePath,
   unsupportedBlocks?: Record<string, number>,
-  structureRescuedRule?: string
+  structureRescuedRule?: string,
+  forbiddenBlockCount = 0
 ): string | undefined {
   const hasDroppedAssets = droppedAssetCount > 0;
   const hasUnsupportedBlocks = Object.keys(unsupportedBlocks ?? {}).length > 0;
+  const hasForbiddenBlocks = forbiddenBlockCount > 0;
   if (
     truncation == null &&
     !hasDroppedAssets &&
     guessedColumns == null &&
     resolvedDatabasePath == null &&
     !hasUnsupportedBlocks &&
-    structureRescuedRule == null
+    structureRescuedRule == null &&
+    !hasForbiddenBlocks
   ) {
     return undefined;
   }
@@ -109,18 +119,24 @@ export function buildNotionConversionSignalPayload(
     via_page_link_selfheal?: boolean;
     unsupported_blocks?: Record<string, number>;
     rule?: string;
+    forbidden_blocks?: number;
   } = {
     code: pickSignalCode(
       truncation,
       hasDroppedAssets,
       guessedColumns,
       hasUnsupportedBlocks,
-      structureRescuedRule
+      structureRescuedRule,
+      hasForbiddenBlocks
     ),
   };
 
   if (structureRescuedRule != null) {
     payload.rule = structureRescuedRule;
+  }
+
+  if (hasForbiddenBlocks) {
+    payload.forbidden_blocks = forbiddenBlockCount;
   }
 
   if (truncation != null) {

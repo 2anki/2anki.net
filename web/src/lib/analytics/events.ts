@@ -67,6 +67,7 @@ export const KNOWN_EVENTS = new Set([
   'columns_guessed_notice_shown',
   'structure_rescued_notice_shown',
   'unsupported_blocks_notice_shown',
+  'notion_blocks_forbidden_notice_shown',
   'conversion_pathology_shown',
   'producer_intent_captured',
   'producer_entry_viewed',
