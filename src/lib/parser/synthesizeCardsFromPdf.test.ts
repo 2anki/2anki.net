@@ -73,3 +73,19 @@ describe('synthesizeCardsFromPdf', () => {
     expect(cards[0].tags).toContain('My_Deck');
   });
 });
+
+describe('page attribution', () => {
+  it('stamps each pair card with its front page index', () => {
+    const cards = synthesizeCardsFromPdf(
+      [
+        { text: 'Question one' },
+        { text: 'Answer one' },
+        { text: 'Question two' },
+        { text: 'Answer two' },
+      ],
+      'Deck'
+    );
+
+    expect(cards.map((c) => c.pageIndex)).toEqual([0, 2]);
+  });
+});

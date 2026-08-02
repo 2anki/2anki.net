@@ -255,3 +255,38 @@ describe('synthesizeCardsFromPdfHeadings', () => {
     expect(cards[0].front).toBe('General Deterrence');
   });
 });
+
+describe('page attribution', () => {
+  it('stamps each card with the page its heading came from', () => {
+    const cards = synthesizeCardsFromPdfHeadings(
+      [
+        {
+          text: 'First Topic\nBody line about the first topic goes on and on here.',
+        },
+        {
+          text: 'Second Topic\nBody line about the second topic goes on and on too.',
+        },
+      ],
+      'Deck'
+    );
+
+    expect(cards).toHaveLength(2);
+    expect(cards[0].pageIndex).toBe(0);
+    expect(cards[1].pageIndex).toBe(1);
+  });
+
+  it('keeps the heading page when the body spills onto the next page', () => {
+    const cards = synthesizeCardsFromPdfHeadings(
+      [
+        {
+          text: 'Spilling Topic\nThe body starts on the first page with plenty of text.',
+        },
+        { text: 'And continues onto the second page without a new heading.' },
+      ],
+      'Deck'
+    );
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].pageIndex).toBe(0);
+  });
+});

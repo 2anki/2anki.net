@@ -38,6 +38,7 @@ describe('convertPdfTextToHtml', () => {
       isDrmLocked: true,
       needsCredential: false,
       droppedImageCount: 0,
+      images: [],
     });
     expect(mockSynthesize).not.toHaveBeenCalled();
   });
@@ -62,6 +63,7 @@ describe('convertPdfTextToHtml', () => {
       isDrmLocked: false,
       needsCredential: true,
       droppedImageCount: 0,
+      images: [],
     });
     expect(mockSynthesize).not.toHaveBeenCalled();
   });
@@ -241,6 +243,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       isDrmLocked: false,
       needsCredential: false,
       droppedImageCount: 0,
+      images: [],
       isTextShaped: false,
       overSplit: false,
       pageCount: 5,
@@ -282,6 +285,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       isDrmLocked: true,
       needsCredential: false,
       droppedImageCount: 0,
+      images: [],
       isTextShaped: false,
       overSplit: false,
       pageCount: 5,
@@ -308,6 +312,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       isDrmLocked: false,
       needsCredential: true,
       droppedImageCount: 0,
+      images: [],
       isTextShaped: false,
       overSplit: false,
       pageCount: 0,
@@ -411,5 +416,143 @@ describe('convertPdfTextToHtmlAuto', () => {
     expect(result.overSplit).toBe(false);
     expect(result.pageCount).toBe(5);
     expect(result.cardCount).toBe(5);
+  });
+});
+
+describe('embedded image injection', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  function textShapedPagesWithImages() {
+    return [
+      {
+        text: 'What is osmosis?\nMovement of water across a membrane down a gradient.',
+        imagePaintCount: 2,
+      },
+      {
+        text: 'What is diffusion?\nMovement of particles from high to low concentration.',
+        imagePaintCount: 1,
+      },
+      {
+        text: 'What is active transport?\nMovement of particles against the gradient using energy.',
+        imagePaintCount: 0,
+      },
+    ];
+  }
+
+  it("places each page's figures on that page's card and returns the files", async () => {
+    mockExtract.mockResolvedValue({
+      pages: textShapedPagesWithImages(),
+      pageCount: 3,
+      avgCharsPerPage: 320,
+      isDrmLocked: false,
+      needsCredential: false,
+    });
+    const loadImages = jest.fn().mockResolvedValue([
+      { pageIndex: 0, name: 'img-001-000.png', contents: Buffer.from('a') },
+      { pageIndex: 1, name: 'img-002-000.png', contents: Buffer.from('b') },
+    ]);
+
+    const result = await convertPdfTextToHtmlAuto(
+      Buffer.from('x'),
+      'bio.pdf',
+      undefined,
+      loadImages
+    );
+
+    expect(result.html).toContain(
+      '<p>Movement of water across a membrane down a gradient.<img src="bio.pdf-images/img-001-000.png"></p>'
+    );
+    expect(result.html).toContain(
+      '<p>Movement of particles from high to low concentration.<img src="bio.pdf-images/img-002-000.png"></p>'
+    );
+    expect(result.images.map((i) => i.name)).toEqual([
+      'bio.pdf-images/img-001-000.png',
+      'bio.pdf-images/img-002-000.png',
+    ]);
+    expect(result.droppedImageCount).toBe(1);
+  });
+
+  it('appends figures from cardless pages after the toggles', async () => {
+    mockExtract.mockResolvedValue({
+      pages: textShapedPagesWithImages(),
+      pageCount: 3,
+      avgCharsPerPage: 320,
+      isDrmLocked: false,
+      needsCredential: false,
+    });
+    const loadImages = jest
+      .fn()
+      .mockResolvedValue([
+        { pageIndex: 7, name: 'img-008-000.png', contents: Buffer.from('c') },
+      ]);
+
+    const result = await convertPdfTextToHtmlAuto(
+      Buffer.from('x'),
+      'bio.pdf',
+      undefined,
+      loadImages
+    );
+
+    expect(result.html).toContain(
+      '<p><img src="bio.pdf-images/img-008-000.png"></p>'
+    );
+  });
+
+  it('never extracts images for a PDF that is not text-shaped', async () => {
+    mockExtract.mockResolvedValue({
+      pages: [
+        { text: 'cover text only on this page here', imagePaintCount: 0 },
+        ...Array.from({ length: 4 }, () => ({ text: '', imagePaintCount: 3 })),
+      ],
+      pageCount: 5,
+      avgCharsPerPage: 320,
+      isDrmLocked: false,
+      needsCredential: false,
+    });
+    const loadImages = jest.fn();
+
+    await convertPdfTextToHtmlAuto(
+      Buffer.from('x'),
+      'scan.pdf',
+      undefined,
+      loadImages
+    );
+
+    expect(loadImages).not.toHaveBeenCalled();
+  });
+
+  it('injects on the page-pairs path too', async () => {
+    mockExtract.mockResolvedValue({
+      pages: [
+        { text: 'Question page', imagePaintCount: 1 },
+        { text: 'Answer page', imagePaintCount: 0 },
+      ],
+      pageCount: 2,
+      avgCharsPerPage: 60,
+      isDrmLocked: false,
+      needsCredential: false,
+    });
+    mockSynthesize.mockReturnValue([
+      { front: 'Question page', back: 'Answer page', tags: [], pageIndex: 0 },
+    ]);
+    const loadImages = jest
+      .fn()
+      .mockResolvedValue([
+        { pageIndex: 0, name: 'img-001-000.png', contents: Buffer.from('a') },
+      ]);
+
+    const result = await convertPdfTextToHtml(
+      Buffer.from('x'),
+      'pairs.pdf',
+      undefined,
+      loadImages
+    );
+
+    expect(result.html).toContain(
+      '<img src="pairs.pdf-images/img-001-000.png">'
+    );
+    expect(result.droppedImageCount).toBe(0);
   });
 });

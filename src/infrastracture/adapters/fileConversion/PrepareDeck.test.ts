@@ -591,3 +591,100 @@ describe('prepareDeckInfoOnly — duplicate-name dedup', () => {
     expect(convertPDFToImages).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('PrepareDeck — extracted PDF figures reach the Claude media list', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('passes text-path figures as media and hands the converter an image loader', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce({
+      html: '<p>card with figure</p>',
+      cardCount: 2,
+      isDrmLocked: false,
+      needsCredential: false,
+      droppedImageCount: 0,
+      images: [
+        {
+          name: 'notes.pdf-images/img-001-000.png',
+          contents: Buffer.from('fake-png'),
+        },
+      ],
+      isTextShaped: true,
+      overSplit: false,
+      pageCount: 1,
+    });
+    generateDeckInfo.mockResolvedValueOnce([
+      {
+        name: 'PDF Deck',
+        image: '',
+        style: null,
+        id: 1,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Front',
+            back: 'Back',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ]);
+
+    await PrepareDeck({
+      name: 'notes.pdf',
+      files: [{ name: 'notes.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(convertPdfTextToHtmlAuto).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      'notes.pdf',
+      undefined,
+      expect.any(Function)
+    );
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    const mediaFiles = generateDeckInfo.mock.calls[0][1];
+    expect(mediaFiles).toContain('notes.pdf-images/img-001-000.png');
+  });
+
+  it('passes no image loader when the user turned embedded images off', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce({
+      html: '<p>text only</p>',
+      cardCount: 1,
+      isDrmLocked: false,
+      needsCredential: false,
+      droppedImageCount: 3,
+      images: [],
+      isTextShaped: true,
+      overSplit: false,
+      pageCount: 1,
+    });
+    generateDeckInfo.mockResolvedValueOnce([]);
+
+    await PrepareDeck({
+      name: 'notes.pdf',
+      files: [{ name: 'notes.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings: makeSettings({
+        'claude-ai-flashcards': 'true',
+        'embed-images': 'false',
+      }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(convertPdfTextToHtmlAuto).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      'notes.pdf',
+      undefined,
+      undefined
+    );
+  });
+});
