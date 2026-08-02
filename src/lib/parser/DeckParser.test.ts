@@ -1908,3 +1908,85 @@ describe('Notion export image with host glued to relative path', () => {
     expect(downloadMediaOrSkipMock).not.toHaveBeenCalled();
   });
 });
+
+describe('card audio embedding', () => {
+  function audioParser(
+    bodyHtml: string,
+    extraFiles: { name: string; contents: Buffer }[]
+  ) {
+    const html = `<html><head><title>Audio Deck</title></head><body><article>
+<ul class="toggle"><li><details open="">
+  <summary>Hear it</summary>
+  <div>${bodyHtml}</div>
+</details></li></ul>
+</article></body></html>`;
+    return new DeckParser({
+      name: 'deck.html',
+      settings: new CardOption({ cherry: 'false' }),
+      files: [{ name: 'deck.html', contents: html }, ...extraFiles],
+      noLimits: true,
+      workspace: new Workspace(true, 'fs'),
+    });
+  }
+
+  test('embeds a non-mp3 audio link and appends a sound tag', async () => {
+    const parser = audioParser(
+      '<figure><div class="source"><a href="Audio%20Deck/recording.m4a">recording.m4a</a></div></figure>',
+      [{ name: 'Audio Deck/recording.m4a', contents: Buffer.from('fake-m4a') }]
+    );
+    const ws = new Workspace(true, 'fs');
+
+    await parser.writeDeckInfo(ws);
+    const card = parser.payload[0].cards[0];
+
+    expect(card.back).toMatch(/\[sound:[^\]]+\.m4a\]/);
+    expect(card.media.some((m) => m.endsWith('.m4a'))).toBe(true);
+  });
+
+  test('embeds every audio link on the card, not only the first', async () => {
+    const parser = audioParser(
+      '<figure><div class="source"><a href="Audio%20Deck/first.mp3">first.mp3</a></div></figure>' +
+        '<figure><div class="source"><a href="Audio%20Deck/second.wav">second.wav</a></div></figure>',
+      [
+        { name: 'Audio Deck/first.mp3', contents: Buffer.from('fake-mp3') },
+        { name: 'Audio Deck/second.wav', contents: Buffer.from('fake-wav') },
+      ]
+    );
+    const ws = new Workspace(true, 'fs');
+
+    await parser.writeDeckInfo(ws);
+    const card = parser.payload[0].cards[0];
+
+    expect(card.back).toMatch(/\[sound:[^\]]+\.mp3\]/);
+    expect(card.back).toMatch(/\[sound:[^\]]+\.wav\]/);
+    expect(card.media).toHaveLength(2);
+  });
+
+  test('embeds an html5 audio element and removes the dead player', async () => {
+    const parser = audioParser(
+      '<audio controls="" src="Audio%20Deck/note.ogg"></audio>',
+      [{ name: 'Audio Deck/note.ogg', contents: Buffer.from('fake-ogg') }]
+    );
+    const ws = new Workspace(true, 'fs');
+
+    await parser.writeDeckInfo(ws);
+    const card = parser.payload[0].cards[0];
+
+    expect(card.back).toMatch(/\[sound:[^\]]+\.ogg\]/);
+    expect(card.back).not.toContain('<audio');
+  });
+
+  test('leaves remote audio URLs alone', async () => {
+    const parser = audioParser(
+      '<a href="https://example.com/episode.mp3">episode</a>',
+      []
+    );
+    const ws = new Workspace(true, 'fs');
+
+    await parser.writeDeckInfo(ws);
+    const card = parser.payload[0].cards[0];
+
+    expect(card.back).not.toContain('[sound:');
+    expect(card.media).toHaveLength(0);
+  });
+});

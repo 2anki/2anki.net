@@ -710,23 +710,25 @@ export class DeckParser {
     });
   }
 
-  getMP3File(input: string) {
-    return this.ensureNotNull(input, () => {
-      try {
-        const m = input.match(/<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/i);
-        if (!m || m.length < 3) {
-          return null;
-        }
-        const ma = m[2];
-        if (!isValidAudioFile(ma) || ma.startsWith('http')) {
-          return null;
-        }
-        return ma;
-      } catch (error) {
-        console.error(error);
-        return null;
+  getLocalAudioFiles(input: string): string[] {
+    if (!input) return [];
+    const found: string[] = [];
+    const seen = new Set<string>();
+    const patterns = [
+      /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/gi,
+      /<audio[^>]*?\ssrc=(["'])(.*?)\1/gi,
+      /<source[^>]*?\ssrc=(["'])(.*?)\1/gi,
+    ];
+    for (const pattern of patterns) {
+      for (const match of input.matchAll(pattern)) {
+        const target = match[2];
+        if (!target || target.startsWith('http')) continue;
+        if (!isValidAudioFile(target) || seen.has(target)) continue;
+        seen.add(target);
+        found.push(target);
       }
-    });
+    }
+    return found;
   }
 
   treatBoldAsInput(input: string, inline: boolean) {
@@ -911,26 +913,52 @@ export class DeckParser {
   }
 
   private embedCardAudio(card: Note, ws: Workspace) {
-    const audiofile = this.getMP3File(card.back);
-    if (!audiofile) return;
+    const audioFiles = this.getLocalAudioFiles(card.back);
+    if (audioFiles.length === 0) return;
 
-    if (this.settings.removeMP3Links) {
-      card.back = card.back.replace(
-        /<figure.*<a\shref=["'].*\.mp3["']>.*<\/a>.*<\/figure>/,
-        ''
+    const dom = cheerio.load(card.back);
+    const embedded: string[] = [];
+
+    for (const audiofile of audioFiles) {
+      const newFileName = embedFile({
+        exporter: this.customExporter,
+        files: this.files,
+        filePath: global.decodeURIComponent(audiofile),
+        workspace: ws,
+        fallbackWorkspaceLocation: this.workspace.location,
+      });
+      if (!newFileName) continue;
+      embedded.push(newFileName);
+
+      const anchors = dom(`a[href="${audiofile}"]`);
+      if (this.settings.removeMP3Links) {
+        anchors.each((_i, el) => {
+          const figure = dom(el).closest('figure');
+          if (figure.length > 0) figure.remove();
+          else dom(el).remove();
+        });
+      }
+      // A left-behind <audio> element points at a path that no longer exists
+      // inside the .apkg, so it renders as a dead player; the [sound:] tag
+      // below is the working replacement.
+      dom(`audio[src="${audiofile}"], source[src="${audiofile}"]`).each(
+        (_i, el) => {
+          const element = dom(el);
+          const player = element.closest('audio');
+          if (player.length > 0) player.remove();
+          else element.remove();
+        }
       );
     }
-    const newFileName = embedFile({
-      exporter: this.customExporter,
-      files: this.files,
-      filePath: global.decodeURIComponent(audiofile),
-      workspace: ws,
-      fallbackWorkspaceLocation: this.workspace.location,
-    });
-    if (newFileName) {
-      card.back += `[sound:${newFileName}]`;
+
+    if (embedded.length === 0) return;
+
+    let back = dom('body').html() ?? card.back;
+    for (const newFileName of embedded) {
+      back += `[sound:${newFileName}]`;
       card.media.push(newFileName);
     }
+    card.back = back;
   }
 
   private appendCardVideoEmbeds(card: Note) {
