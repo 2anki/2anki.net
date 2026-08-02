@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { APIResponseError } from '@notionhq/client';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import StorageHandler from '../lib/storage/StorageHandler';
@@ -21,6 +22,7 @@ import ExportApkgToCsvUseCase, {
 import ImportApkgToNotionUseCase from '../usecases/apkg/ImportApkgToNotionUseCase';
 import PackEditedApkgUseCase from '../usecases/apkg/PackEditedApkgUseCase';
 import ResolveImportParentPageUseCase from '../usecases/apkg/ResolveImportParentPageUseCase';
+import NoNotionPagesError from '../usecases/apkg/NoNotionPagesError';
 import { CardEdit } from '../services/ApkgPreviewService/applyEditsToCards';
 import { NotionService } from '../services/NotionService/NotionService';
 import JobRepository from '../data_layer/JobRepository';
@@ -393,6 +395,14 @@ class ApkgController {
     } catch (error) {
       if (error instanceof Error && error.message === 'unauthorized') {
         res.status(400).json({ message: 'Notion is not connected.' });
+        return;
+      }
+      if (error instanceof NoNotionPagesError) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      if (error instanceof APIResponseError) {
+        sendErrorResponse(error, res);
         return;
       }
       console.error(error);

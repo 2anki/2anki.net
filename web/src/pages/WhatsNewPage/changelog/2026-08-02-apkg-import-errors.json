@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-02-apkg-import-errors",
+  "date": "2026-08-02",
+  "type": "fix",
+  "title": "Importing an Anki deck to Notion now explains what went wrong instead of failing silently"
+}
