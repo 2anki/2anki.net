@@ -38,6 +38,7 @@ import Workspace from '../../../lib/parser/WorkSpace';
 import path from 'path';
 import { writeWorkspaceFile } from './writeWorkspaceFile';
 import { writePdfImageFallbackMarker } from './pdfImageFallbackMarker';
+import { mediaFilesForHtmlFile } from './mediaFilesForHtmlFile';
 
 const HTML_GENERATION_CONCURRENCY = 3;
 
@@ -140,16 +141,29 @@ async function convertFile(
     const mediaSink = createWorkspaceDocxImageMediaSink(
       input.workspace.location
     );
+    // Record what the sink writes: the flat hash-named images never match the
+    // <html-base>/ media convention, so without carrying them as extraFiles
+    // the AI branch converts DOCX text without its images (#3946).
+    const writtenImages: PdfHtmlImage[] = [];
+    const recordingSink: typeof mediaSink = {
+      write(bytes, contentType) {
+        const fileName = mediaSink.write(bytes, contentType);
+        writtenImages.push({ name: fileName, contents: bytes });
+        return fileName;
+      },
+    };
     const result = {
       name: `${file.name}.html`,
       contents: Buffer.from(
-        await convertDocxToHTML(file.contents as Buffer, mediaSink, {
+        await convertDocxToHTML(file.contents as Buffer, recordingSink, {
           bulletFanOut: input.settings.overlappingCloze === 'off',
         })
       ),
+      extraFiles: writtenImages.length > 0 ? writtenImages : undefined,
     };
     console.log('[PrepareDeck] convertFile docx', {
       file: file.name,
+      imageCount: writtenImages.length,
       durationMs: Date.now() - t0,
     });
     return result;
@@ -391,24 +405,6 @@ function deckPrefixFromFilePath(htmlFileName: string): string {
     .join('::');
 }
 
-function mediaFilesForHtmlFile(
-  htmlFileName: string,
-  allMediaFiles: string[]
-): string[] {
-  const normalized = htmlFileName.replaceAll('\\', '/');
-  const lastSlash = normalized.lastIndexOf('/');
-  const dir = lastSlash >= 0 ? normalized.substring(0, lastSlash) : '';
-  const base = normalized
-    .substring(lastSlash + 1)
-    .replace(/\.html$/i, '')
-    .replace(/ [a-f0-9]{32}$/i, '')
-    .trim();
-  const prefix = dir ? `${dir}/${base}/` : `${base}/`;
-  return allMediaFiles.filter((m) =>
-    m.replaceAll('\\', '/').startsWith(prefix)
-  );
-}
-
 export async function PrepareDeck(
   input: DeckParserInput
 ): Promise<PrepareDeckResult> {
@@ -455,8 +451,22 @@ export async function PrepareDeck(
       (f) => (isHTMLFile(f.name) || isMarkdownFile(f.name)) && f.contents
     );
 
+    // Figure images extracted per source file (PDF text-layer, DOCX) travel
+    // to their own HTML via pdfFigureNamesByHtml below; keeping them out of
+    // the shared pool stops the unclaimed-media fallback from offering one
+    // file's figures to every other file's prompt.
+    const perFileFigureNames = new Set(
+      convertedFiles.flatMap(
+        (f) => f.extraFiles?.map((image) => image.name) ?? []
+      )
+    );
     const mediaFiles = allFiles
-      .filter((f) => !isHTMLFile(f.name) && !isMarkdownFile(f.name))
+      .filter(
+        (f) =>
+          !isHTMLFile(f.name) &&
+          !isMarkdownFile(f.name) &&
+          !perFileFigureNames.has(f.name)
+      )
       .map((f) => f.name);
 
     const pdfFigureNamesByHtml = new Map(
@@ -507,7 +517,11 @@ export async function PrepareDeck(
         generateDeckInfo(
           f.contents!.toString(),
           [
-            ...mediaFilesForHtmlFile(f.name, mediaFiles),
+            ...mediaFilesForHtmlFile(
+              f.name,
+              mediaFiles,
+              htmlFiles.map((h) => h.name)
+            ),
             ...(pdfFigureNamesByHtml.get(f.name) ?? []),
           ],
           userInstructions,

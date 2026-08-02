@@ -46,6 +46,10 @@ jest.mock('./convertPDFToImages', () => ({
   convertPDFToImages: jest.fn().mockResolvedValue('<p>page image card</p>'),
 }));
 
+jest.mock('./convertDocxToHTML', () => ({
+  convertDocxToHTML: jest.fn(),
+}));
+
 const {
   convertPdfTextToHtml,
   convertPdfTextToHtmlAuto,
@@ -686,5 +690,73 @@ describe('PrepareDeck — extracted PDF figures reach the Claude media list', ()
       undefined,
       undefined
     );
+  });
+});
+
+describe('PrepareDeck — AI media matching (#3946)', () => {
+  const { convertDocxToHTML } = require('./convertDocxToHTML');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('offers unclaimed zip images to the AI conversion', async () => {
+    generateDeckInfo.mockResolvedValueOnce([]);
+
+    await PrepareDeck({
+      name: 'export.zip',
+      files: [
+        { name: 'Page.html', contents: '<p>Front</p>' },
+        { name: 'images/photo.png', contents: Buffer.from('png-bytes') },
+      ],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    }).catch(() => {});
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    const mediaArg = generateDeckInfo.mock.calls[0][1];
+    expect(mediaArg).toContain('images/photo.png');
+  });
+
+  it('does not offer the original source files as media', async () => {
+    generateDeckInfo.mockResolvedValueOnce([]);
+    convertDocxToHTML.mockResolvedValueOnce('<p>docx text</p>');
+
+    await PrepareDeck({
+      name: 'notes.docx',
+      files: [{ name: 'notes.docx', contents: Buffer.from('PK-docx') }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    }).catch(() => {});
+
+    const mediaArg = generateDeckInfo.mock.calls[0][1];
+    expect(mediaArg).not.toContain('notes.docx');
+  });
+
+  it('carries DOCX images written by the media sink into the AI conversion', async () => {
+    generateDeckInfo.mockResolvedValueOnce([]);
+    convertDocxToHTML.mockImplementationOnce(
+      async (
+        _contents: Buffer,
+        sink: { write: (bytes: Buffer, contentType: string) => string }
+      ) => {
+        const name = sink.write(Buffer.from('img-bytes'), 'image/png');
+        return `<p>docx text</p><img src="${name}" />`;
+      }
+    );
+
+    await PrepareDeck({
+      name: 'notes.docx',
+      files: [{ name: 'notes.docx', contents: Buffer.from('PK-docx') }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    }).catch(() => {});
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    const mediaArg = generateDeckInfo.mock.calls[0][1] as string[];
+    expect(mediaArg.some((m: string) => m.endsWith('.png'))).toBe(true);
   });
 });
