@@ -68,6 +68,21 @@ sonar-scanner -Dsonar.host.url=https://sonarcloud.io
 
 Scanner reads `sonar-project.properties`; the report link prints to stdout — resolve new smells **before** pushing. Unset `SONAR_TOKEN` still posts anonymously, link still appears. **If running it locally is impractical** (no Docker, no `SONAR_TOKEN`), say so in the PR body — don't go silent and re-push 30 min later, and don't pretend it ran.
 
+## Before merging: a green gate is NOT zero findings
+
+The quality gate's conditions are ratings (A/A/A on new code), duplication, and hotspot review — **it passes with open MAJOR code smells**, because one finding in a couple hundred new lines doesn't dent a letter rating. So "SonarCloud Code Analysis: SUCCESS" in `statusCheckRollup` proves the gate held, not that the analysis found nothing. 2026-08-02: PR #3960 merged fully green while carrying an open `typescript:S8786` — a ReDoS-class backtracking regex running over user-supplied card HTML on the conversion worker — which then needed a follow-up PR (#3963) after the human spotted it in the SonarCloud UI.
+
+**Rule: before `gh pr merge`, assert the PR analysis has zero open findings — one API call, no auth needed:**
+
+```bash
+curl -s "https://sonarcloud.io/api/issues/search?componentKeys=Laer-Smart_2anki.net&pullRequest=<n>&statuses=OPEN,CONFIRMED&sinceLeakPeriod=true" | jq '.total'
+```
+
+- `0` → merge.
+- Anything else → list the findings (`.issues[] | {rule, component, line, message}`), fix them on the same branch before merging, or say explicitly in the PR why each one is acceptable and get a nod. Silent merge-with-findings is what this section exists to prevent.
+- Run it **after** the `SonarCloud Code Analysis` check reports, or `total` reads 0 vacuously because the analysis hasn't landed yet.
+- Merged-PR records never re-scan: a finding fixed in a follow-up stays visible on the old PR's SonarCloud page forever. Judge cleanliness on the *open* PR you're about to merge (and `main`'s branch analysis), not on historical PR records.
+
 ## What triggers a security issue
 
 | Rule | Pattern | Safe alternative |
