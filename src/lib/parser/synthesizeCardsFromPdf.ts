@@ -6,6 +6,9 @@ export interface PdfCard {
   front: string;
   back: string;
   tags: string[];
+  // 0-based page the card's front came from, so per-page assets (extracted
+  // figures) can be attached to the right card.
+  pageIndex?: number;
 }
 
 function isBlank(text: string): boolean {
@@ -27,7 +30,7 @@ export function synthesizeCardsFromPdf(
       continue;
     }
 
-    cards.push({ front, back, tags: [tag] });
+    cards.push({ front, back, tags: [tag], pageIndex: i });
   }
 
   return cards;

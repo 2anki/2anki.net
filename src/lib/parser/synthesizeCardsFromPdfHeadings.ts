@@ -40,27 +40,36 @@ export function synthesizeCardsFromPdfHeadings(
 ): PdfCard[] {
   const tag = deckName.replace(/\s+/g, '_');
   const lines = pages
-    .flatMap((page) => page.text.split('\n'))
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+    .flatMap((page, pageIndex) =>
+      page.text.split('\n').map((text) => ({ text, pageIndex }))
+    )
+    .map(({ text, pageIndex }) => ({ text: text.trim(), pageIndex }))
+    .filter(({ text }) => text.length > 0);
 
   const cards: PdfCard[] = [];
   let front: string | null = null;
+  let frontPageIndex = 0;
   let body: string[] = [];
 
   const flushCard = () => {
     if (front != null && body.length > 0) {
-      cards.push({ front, back: body.join('\n'), tags: [tag] });
+      cards.push({
+        front,
+        back: body.join('\n'),
+        tags: [tag],
+        pageIndex: frontPageIndex,
+      });
     }
   };
 
-  lines.forEach((line, index) => {
-    if (isHeadingLine(line, lines[index + 1], lines[index - 1])) {
+  lines.forEach(({ text, pageIndex }, index) => {
+    if (isHeadingLine(text, lines[index + 1]?.text, lines[index - 1]?.text)) {
       flushCard();
-      front = line;
+      front = text;
+      frontPageIndex = pageIndex;
       body = [];
     } else if (front != null) {
-      body.push(line);
+      body.push(text);
     }
   });
   flushCard();

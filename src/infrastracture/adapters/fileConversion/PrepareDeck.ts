@@ -18,7 +18,10 @@ import { convertPDFToImages } from './convertPDFToImages';
 import {
   convertPdfTextToHtml,
   convertPdfTextToHtmlAuto,
+  LoadPdfImages,
+  PdfHtmlImage,
 } from './convertPdfTextToHtml';
+import { extractPdfImages } from '../../../lib/pdf/extractPdfImages';
 import { buildPdfPasswordSentinel } from '../../../lib/pdf/pdfPasswordSentinel';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
 import { convertDocxToHTML } from './convertDocxToHTML';
@@ -237,6 +240,18 @@ interface ConvertedFile {
   size?: number;
   imageFallback?: boolean;
   droppedImageCount?: number;
+  extraFiles?: PdfHtmlImage[];
+}
+
+// Embedded-figure extraction is opt-out via the same embed-images CardOption
+// that governs every other image path; the loader is handed to the converter
+// so only a committed text-path conversion pays for the pdfimages run.
+function pdfImageLoader(
+  file: DeckParserInput['files'][number],
+  input: DeckParserInput
+): LoadPdfImages | undefined {
+  if (!input.settings.embedImages) return undefined;
+  return () => extractPdfImages(file.contents as Buffer);
 }
 
 async function convertPdfPagesToImagesFile(
@@ -280,7 +295,8 @@ async function convertPdfByManualTextFlag(
   const textResult = await convertPdfTextToHtml(
     file.contents as Buffer,
     file.name,
-    input.pdfCredential
+    input.pdfCredential,
+    pdfImageLoader(file, input)
   );
 
   if (textResult.needsCredential) {
@@ -297,6 +313,7 @@ async function convertPdfByManualTextFlag(
       name: `${file.name}.html`,
       contents: Buffer.from(textResult.html),
       droppedImageCount: textResult.droppedImageCount,
+      extraFiles: textResult.images,
     };
   }
 
@@ -317,7 +334,8 @@ async function convertPdfByAutoDetection(
   const autoResult = await convertPdfTextToHtmlAuto(
     file.contents as Buffer,
     file.name,
-    input.pdfCredential
+    input.pdfCredential,
+    pdfImageLoader(file, input)
   );
 
   if (autoResult.needsCredential) {
@@ -345,6 +363,7 @@ async function convertPdfByAutoDetection(
       name: `${file.name}.html`,
       contents: Buffer.from(autoResult.html),
       droppedImageCount: autoResult.droppedImageCount,
+      extraFiles: autoResult.images,
     };
   }
 
@@ -427,7 +446,8 @@ export async function PrepareDeck(
     convertedFiles.filter((f) => f.imageFallback).map((f) => f.name)
   );
 
-  const allFiles = [...files, ...convertedFiles];
+  const extractedPdfImages = convertedFiles.flatMap((f) => f.extraFiles ?? []);
+  const allFiles = [...files, ...convertedFiles, ...extractedPdfImages];
 
   if (input.settings.claudeAIFlashcards && input.noLimits) {
     console.log('[PrepareDeck] Claude branch: collecting HTML content');
@@ -438,6 +458,12 @@ export async function PrepareDeck(
     const mediaFiles = allFiles
       .filter((f) => !isHTMLFile(f.name) && !isMarkdownFile(f.name))
       .map((f) => f.name);
+
+    const pdfFigureNamesByHtml = new Map(
+      convertedFiles
+        .filter((f) => (f.extraFiles?.length ?? 0) > 0)
+        .map((f) => [f.name, f.extraFiles!.map((image) => image.name)])
+    );
 
     const tWrite = Date.now();
     await Promise.all(
@@ -480,7 +506,10 @@ export async function PrepareDeck(
       (f) =>
         generateDeckInfo(
           f.contents!.toString(),
-          mediaFilesForHtmlFile(f.name, mediaFiles),
+          [
+            ...mediaFilesForHtmlFile(f.name, mediaFiles),
+            ...(pdfFigureNamesByHtml.get(f.name) ?? []),
+          ],
           userInstructions,
           input.onProgress,
           cardStyle,

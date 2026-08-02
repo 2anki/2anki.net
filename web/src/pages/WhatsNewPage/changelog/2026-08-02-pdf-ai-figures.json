@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-02-pdf-ai-figures",
+  "date": "2026-08-02",
+  "type": "fix",
+  "title": "AI conversions of text PDFs keep the document's images — figures land on the cards from their page"
+}
