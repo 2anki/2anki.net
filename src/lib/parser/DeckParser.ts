@@ -710,27 +710,6 @@ export class DeckParser {
     });
   }
 
-  getLocalAudioFiles(input: string): string[] {
-    if (!input) return [];
-    const found: string[] = [];
-    const seen = new Set<string>();
-    const patterns = [
-      /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/gi,
-      /<audio[^>]*?\ssrc=(["'])(.*?)\1/gi,
-      /<source[^>]*?\ssrc=(["'])(.*?)\1/gi,
-    ];
-    for (const pattern of patterns) {
-      for (const match of input.matchAll(pattern)) {
-        const target = match[2];
-        if (!target || target.startsWith('http')) continue;
-        if (!isValidAudioFile(target) || seen.has(target)) continue;
-        seen.add(target);
-        found.push(target);
-      }
-    }
-    return found;
-  }
-
   treatBoldAsInput(input: string, inline: boolean) {
     const dom = cheerio.load(input);
     const underlines = dom('strong');
@@ -912,45 +891,73 @@ export class DeckParser {
     }
   }
 
+  private static isLocalAudioTarget(
+    target: string | undefined
+  ): target is string {
+    return (
+      target != null && !target.startsWith('http') && isValidAudioFile(target)
+    );
+  }
+
   private embedCardAudio(card: Note, ws: Workspace) {
-    const audioFiles = this.getLocalAudioFiles(card.back);
-    if (audioFiles.length === 0) return;
-
-    const dom = cheerio.load(card.back);
-    const embedded: string[] = [];
-
-    for (const audiofile of audioFiles) {
-      const newFileName = embedFile({
-        exporter: this.customExporter,
-        files: this.files,
-        filePath: global.decodeURIComponent(audiofile),
-        workspace: ws,
-        fallbackWorkspaceLocation: this.workspace.location,
-      });
-      if (!newFileName) continue;
-      embedded.push(newFileName);
-
-      const anchors = dom(`a[href="${audiofile}"]`);
-      if (this.settings.removeMP3Links) {
-        anchors.each((_i, el) => {
-          const figure = dom(el).closest('figure');
-          if (figure.length > 0) figure.remove();
-          else dom(el).remove();
-        });
-      }
-      // A left-behind <audio> element points at a path that no longer exists
-      // inside the .apkg, so it renders as a dead player; the [sound:] tag
-      // below is the working replacement.
-      dom(`audio[src="${audiofile}"], source[src="${audiofile}"]`).each(
-        (_i, el) => {
-          const element = dom(el);
-          const player = element.closest('audio');
-          if (player.length > 0) player.remove();
-          else element.remove();
-        }
-      );
+    const lower = card.back.toLowerCase();
+    if (
+      !lower.includes('<a') &&
+      !lower.includes('<audio') &&
+      !lower.includes('<source')
+    ) {
+      return;
     }
 
+    const dom = cheerio.load(card.back);
+    const resolved = new Map<string, string | null>();
+    const embedTarget = (target: string): string | null => {
+      let newFileName = resolved.get(target);
+      if (newFileName === undefined) {
+        newFileName = embedFile({
+          exporter: this.customExporter,
+          files: this.files,
+          filePath: global.decodeURIComponent(target),
+          workspace: ws,
+          fallbackWorkspaceLocation: this.workspace.location,
+        });
+        resolved.set(target, newFileName);
+      }
+      return newFileName;
+    };
+
+    dom('a[href]').each((_i, el) => {
+      const anchor = dom(el);
+      const href = anchor.attr('href');
+      if (!DeckParser.isLocalAudioTarget(href)) return;
+      if (embedTarget(href) == null) return;
+      if (this.settings.removeMP3Links) {
+        const figure = anchor.closest('figure');
+        if (figure.length > 0) figure.remove();
+        else anchor.remove();
+      }
+    });
+
+    // A left-behind <audio> element points at a path that no longer exists
+    // inside the .apkg, so it renders as a dead player; the [sound:] tag
+    // below is the working replacement.
+    dom('audio[src], source[src]').each((_i, el) => {
+      const element = dom(el);
+      const src = element.attr('src');
+      if (!DeckParser.isLocalAudioTarget(src)) return;
+      if (embedTarget(src) == null) return;
+      const player = element.closest('audio');
+      if (player.length > 0) player.remove();
+      else element.remove();
+    });
+
+    const embedded = Array.from(
+      new Set(
+        Array.from(resolved.values()).filter(
+          (name): name is string => name != null
+        )
+      )
+    );
     if (embedded.length === 0) return;
 
     let back = dom('body').html() ?? card.back;
