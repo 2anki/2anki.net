@@ -30,7 +30,7 @@ describe('extractPdfImages', () => {
 
     expect(images.map((i) => i.pageIndex)).toEqual([0, 2]);
     expect(images[0].name).toMatch(/-001-000\.png$/);
-    expect(images[1].contents.length).toBe(MIN_PDF_IMAGE_BYTES + 10);
+    expect(images[1].contents).toHaveLength(MIN_PDF_IMAGE_BYTES + 10);
   });
 
   it('drops page furniture below the size floor', async () => {
