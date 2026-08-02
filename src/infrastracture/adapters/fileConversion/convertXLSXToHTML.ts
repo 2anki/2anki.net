@@ -3,7 +3,6 @@ import {
   TabularRow,
   cellText,
   detectFieldColumns,
-  looksLikeHeaderRow,
   rowsFromBuffer,
 } from './tabularRows';
 
@@ -25,9 +24,9 @@ function resolveColumns(rows: TabularRow[]): FrontBackColumns {
       backIndex: named.backIndex,
     };
   }
-  if (looksLikeHeaderRow(rows[0])) {
-    return { rows: rows.slice(1), frontIndex: 0, backIndex: 1 };
-  }
+  // No fuzzy header guess: a short-text data row is indistinguishable from a
+  // header, and silently dropping a real first card is worse than shipping a
+  // visible, deletable header card (#3945).
   return { rows, frontIndex: 0, backIndex: 1 };
 }
 

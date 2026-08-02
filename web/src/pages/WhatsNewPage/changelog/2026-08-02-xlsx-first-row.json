@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-02-xlsx-first-row",
+  "date": "2026-08-02",
+  "type": "fix",
+  "title": "Headerless spreadsheets keep their first row — and header rows in German, Spanish, and Portuguese are recognized"
+}

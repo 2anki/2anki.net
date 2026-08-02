@@ -2,36 +2,28 @@ import * as XLSX from 'xlsx';
 
 export type TabularRow = unknown[];
 
-const HEADER_CELL_MAX_LENGTH = 40;
-
+// Closed set (trio decision, #3945): English plus the three locales with real
+// upload traffic — de, es, pt. A pair only drops row 0 when BOTH words match
+// exactly, so every addition slightly widens the false-drop surface; extend on
+// traffic evidence, not preemptively.
 const FIELD_HEADER_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['front', 'back'],
   ['question', 'answer'],
   ['term', 'definition'],
+  ['vorderseite', 'rückseite'],
+  ['frage', 'antwort'],
+  ['begriff', 'definition'],
+  ['anverso', 'reverso'],
+  ['pregunta', 'respuesta'],
+  ['término', 'definición'],
+  ['frente', 'verso'],
+  ['pergunta', 'resposta'],
+  ['termo', 'definição'],
 ];
 
 export interface FieldColumns {
   frontIndex: number;
   backIndex: number;
-}
-
-function cellLooksLikeHeader(cell: unknown): boolean {
-  if (cell == null) return true;
-  if (typeof cell === 'string') {
-    const trimmed = cell.trim();
-    if (trimmed.length === 0) return true;
-    if (trimmed.length > HEADER_CELL_MAX_LENGTH) return false;
-    return Number.isNaN(Number(trimmed));
-  }
-  return false;
-}
-
-export function looksLikeHeaderRow(row: TabularRow): boolean {
-  const cells = row.filter(
-    (cell) => cell != null && String(cell).trim() !== ''
-  );
-  if (cells.length === 0) return false;
-  return cells.every(cellLooksLikeHeader);
 }
 
 export function cellText(cell: unknown): string {

@@ -1,7 +1,6 @@
 import { readFileSync } from 'fs';
 import Workspace from '../../../../lib/parser/WorkSpace';
 import { convertXLSXToHTML } from '../convertXLSXToHTML';
-import { looksLikeHeaderRow } from '../tabularRows';
 import { join } from 'path';
 import * as XLSX from 'xlsx';
 
@@ -34,33 +33,25 @@ function buildXlsxBuffer(rows: unknown[][]): Buffer {
   return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 }
 
-describe('looksLikeHeaderRow', () => {
-  it('treats a row of short non-numeric strings as a header', () => {
-    expect(looksLikeHeaderRow(['Term', 'Definition'] as never)).toBe(true);
-  });
-
-  it('treats a row with a numeric cell as data, not a header', () => {
-    expect(looksLikeHeaderRow(['Term', 42] as never)).toBe(false);
-  });
-
-  it('keeps a row with leading short labels but a long-form back cell as data', () => {
-    const longBack =
-      'A really long answer that runs well past the heuristic length cap used to spot label-shaped rows';
-    expect(looksLikeHeaderRow(['hello', longBack] as never)).toBe(false);
-  });
-});
-
 describe('convertXLSXToHTML header detection', () => {
-  it('skips a header row when row 0 looks like labels', () => {
+  it('keeps every row of a headerless short-text sheet (#3945)', () => {
     const buffer = buildXlsxBuffer([
-      ['Term', 'Definition'],
-      ['hola', 'hello'],
-      ['adiós', 'goodbye'],
+      ['Fotossíntese', 'Processo de conversão de luz em energia'],
+      ['Mitose', 'Divisão celular'],
     ]);
     const html = convertXLSXToHTML(buffer, 'deck.html');
-    expect(html).not.toContain('<summary>Term</summary>');
+    expect(html).toContain('<summary>Fotossíntese</summary>');
+    expect(html).toContain('<summary>Mitose</summary>');
+  });
+
+  it('keeps an unrecognized header row as a visible card', () => {
+    const buffer = buildXlsxBuffer([
+      ['Vocabulary', 'Meaning'],
+      ['hola', 'hello'],
+    ]);
+    const html = convertXLSXToHTML(buffer, 'deck.html');
+    expect(html).toContain('<summary>Vocabulary</summary>');
     expect(html).toContain('<summary>hola</summary>');
-    expect(html).toContain('<summary>adiós</summary>');
   });
 
   it('keeps row 0 when it contains a numeric cell', () => {
@@ -73,16 +64,31 @@ describe('convertXLSXToHTML header detection', () => {
     expect(html).toContain('<summary>question 2</summary>');
   });
 
-  it('keeps row 0 when a cell is too long to be a label', () => {
-    const longBack =
-      'A really long answer that runs well past the heuristic length cap used to spot label-shaped rows';
+  it.each([
+    ['German', 'Frage', 'Antwort'],
+    ['German', 'Vorderseite', 'Rückseite'],
+    ['Spanish', 'Pregunta', 'Respuesta'],
+    ['Spanish', 'Anverso', 'Reverso'],
+    ['Portuguese', 'Frente', 'Verso'],
+    ['Portuguese', 'Pergunta', 'Resposta'],
+  ])('drops a %s %s/%s header row', (_locale, front, back) => {
     const buffer = buildXlsxBuffer([
-      ['hola', longBack],
-      ['adiós', 'goodbye'],
+      [front, back],
+      ['hola', 'hello'],
     ]);
     const html = convertXLSXToHTML(buffer, 'deck.html');
+    expect(html).not.toContain(`<summary>${front}</summary>`);
     expect(html).toContain('<summary>hola</summary>');
-    expect(html).toContain('<summary>adiós</summary>');
+  });
+
+  it('maps columns by name for a reversed localized header', () => {
+    const buffer = buildXlsxBuffer([
+      ['Antwort', 'Frage'],
+      ['Hallo', 'Was heißt hello?'],
+    ]);
+    const html = convertXLSXToHTML(buffer, 'Vokabeln');
+    expect(html).toContain('<summary>Was heißt hello?</summary>');
+    expect(html).toContain('<p>Hallo</p>');
   });
 });
 
@@ -144,7 +150,7 @@ describe('convertXLSXToHTML header-name mapping', () => {
     expect(html).not.toContain('<summary>term</summary>');
   });
 
-  it('falls back to positional mapping and drops a generic header row', () => {
+  it('drops a capitalized Term/Definition header via the named match', () => {
     const buffer = buildXlsxBuffer([
       ['Term', 'Definition'],
       ['Dog', 'Animal'],
