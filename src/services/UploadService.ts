@@ -48,6 +48,7 @@ import {
 } from '../usecases/jobs/jobFailureReason';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import { getOwner } from '../lib/User/getOwner';
+import { censusUploadedFile } from '../infrastracture/adapters/fileConversion/documentStructureCensus';
 import { formatDeckName } from '../lib/formatDeckName';
 import {
   CheckMonthlyCardLimitUseCase,
@@ -345,6 +346,18 @@ function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
       console.info(
         `  display:contents=${hasDisplayContents} .toggle=${hasToggleClass} <details=${hasDetails}`
       );
+      // Structural shape, not content — makes the zero-card class
+      // reproducible from logs alone (#3966). Fire and forget: the census
+      // may re-run a DOCX conversion and must never delay the response.
+      censusUploadedFile({ originalname: file.originalname, buffer: contents })
+        .then((census) => {
+          if (census != null) {
+            console.info(
+              `  census=${JSON.stringify(census)} name=${file.originalname}`
+            );
+          }
+        })
+        .catch(() => {});
     } catch (readErr) {
       console.error(`  could not read file: ${readErr}`);
     }
