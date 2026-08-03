@@ -1662,6 +1662,25 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
     expect(deleteUser).toHaveBeenCalledWith('42');
     expect(res.status).toHaveBeenCalledWith(200);
   });
+
+  it('aborts the deletion with 502 when the subscription cancel fails', async () => {
+    SubscriptionServiceMock.cancelUserSubscriptions = jest
+      .fn()
+      .mockRejectedValue(new Error('stripe down'));
+    const deleteUser = jest.fn().mockResolvedValue(undefined);
+    const { controller } = buildDeleteController({ deleteUser });
+    const res = buildDeleteRes();
+
+    await controller.deleteAccount(
+      buildDeleteReq(),
+      Object.assign(res, {
+        locals: { owner: '42' },
+      }) as unknown as express.Response
+    );
+
+    expect(deleteUser).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(502);
+  });
 });
 
 describe('UsersController.login — Notion-aware redirect', () => {

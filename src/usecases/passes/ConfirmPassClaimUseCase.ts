@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import type { UsersId } from '../../data_layer/public/Users';
 import hmacToken from '../../lib/misc/hmacToken';
 import type { IAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import type { IPassClaimTokensRepository } from '../../data_layer/PassClaimTokensRepository';
@@ -30,7 +31,7 @@ export class ConfirmPassClaimUseCase {
   ): Promise<ConfirmPassOutcome> {
     const audit = (outcome: string) =>
       this.auditRepo.insert({
-        user_id: userId,
+        user_id: userId as UsersId,
         email_hash: emailHashValue,
         ip_hash: ipHash,
         outcome,
