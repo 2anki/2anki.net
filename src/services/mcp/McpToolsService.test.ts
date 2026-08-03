@@ -428,6 +428,30 @@ describe('McpToolsService.convertToDeck', () => {
     });
   });
 
+  // The whole point of the CSV-via-text path: an assistant holding an uploaded
+  // spreadsheet pastes its contents into text and names it, and the extension
+  // has to survive getSafeFilename so FallbackParser dispatches on .csv.
+  it('keeps the csv extension when text is named with a filename', async () => {
+    let capturedFiles: { originalname: string; buffer: Buffer }[] | undefined;
+    const uploadEntry: UploadEntrypoint = (req, res) => {
+      capturedFiles = (
+        req as unknown as { files: { originalname: string; buffer: Buffer }[] }
+      ).files;
+      res.status(202).json({ jobId: 'job-async' });
+    };
+    const { service } = makeService({ uploadEntry });
+    await service.convertToDeck(
+      { text: 'front,back\n水,water', filename: 'n5.csv' },
+      'owner',
+      {}
+    );
+    expect(capturedFiles).toHaveLength(1);
+    expect(capturedFiles?.[0].originalname).toBe('n5.csv');
+    expect(capturedFiles?.[0].buffer.toString('utf-8')).toBe(
+      'front,back\n水,water'
+    );
+  });
+
   it('sends an empty body when no options are given', async () => {
     let capturedBody: Record<string, string> | undefined;
     const uploadEntry: UploadEntrypoint = (req, res) => {

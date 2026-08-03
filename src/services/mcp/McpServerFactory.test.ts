@@ -339,6 +339,46 @@ describe('tool result metric', () => {
     expect(calls).toEqual([['convert_to_deck', false, 'empty_export']]);
   });
 
+  // A CSV pasted into text has to be distinguishable from a Markdown one, or
+  // there is no way to read whether assistants take the text path for a
+  // spreadsheet at all.
+  it.each([
+    [
+      { text: 'front,back\n水,water', filename: 'n5.csv' },
+      { inputSource: 'text', inputFormat: 'csv' },
+    ],
+    [{ text: 'Q :: A' }, { inputSource: 'text', inputFormat: 'none' }],
+    [
+      { text: '# hi', filename: 'notes.md' },
+      { inputSource: 'text', inputFormat: 'md' },
+    ],
+    [
+      { url: 'https://example.com/vocab.csv?sig=1' },
+      { inputSource: 'url', inputFormat: 'csv' },
+    ],
+    [
+      { text: 'x', filename: 'weird.qqq' },
+      { inputSource: 'text', inputFormat: 'other' },
+    ],
+  ])('records the input source and format for %j', async (input, expected) => {
+    const props: Array<Record<string, unknown> | undefined> = [];
+    const convertToDeck = jest.fn(async () => ({
+      kind: 'deck' as const,
+      cardCount: 3,
+      filename: 'deck.apkg',
+      summary: 'ready',
+    }));
+    const handler = getHandler(
+      buildContext({
+        toolsService: { convertToDeck } as unknown as McpToolsService,
+        recordToolResult: (_tool, _success, _code, extra) => props.push(extra),
+      }),
+      'convert_to_deck'
+    );
+    await handler(input);
+    expect(props).toEqual([expected]);
+  });
+
   it('records create_deck success and failure results', async () => {
     const successCalls: ResultCall[] = [];
     const successHandler = getHandler(

@@ -13,7 +13,7 @@ For step-by-step connection instructions for Claude and ChatGPT, see [Use 2anki 
 
 | Tool                | What it does                                                                     |
 | ------------------- | -------------------------------------------------------------------------------- |
-| `convert_to_deck`   | Turn text, Markdown, or a URL into a finished deck                               |
+| `convert_to_deck`   | Turn text, Markdown, CSV/TSV, or a URL into a finished deck                      |
 | `create_deck`       | Build a deck from structured cards — supports subdecks via a per-card deck field |
 | `photo_to_deck`     | Turn a photo of notes, a textbook page, or a slide into cards                    |
 | `get_deck_preview`  | Show a deck's cards before downloading                                           |
