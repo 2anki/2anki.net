@@ -263,6 +263,9 @@ describe('UsersRepository.deleteUser', () => {
       });
       const chain: any = { del };
       chain.orWhereRaw = jest.fn().mockReturnValue(chain);
+      chain.whereRaw = jest.fn().mockReturnValue(chain);
+      chain.select = jest.fn().mockReturnValue(chain);
+      chain.whereIn = jest.fn().mockReturnValue(chain);
       if (table === 'users') {
         return {
           where: jest.fn().mockReturnValue({
@@ -276,6 +279,7 @@ describe('UsersRepository.deleteUser', () => {
       return {
         where: jest.fn().mockReturnValue(chain),
         whereRaw: jest.fn().mockReturnValue(chain),
+        whereIn: jest.fn().mockReturnValue(chain),
       };
     });
     const transaction = jest.fn().mockImplementation(async (cb) => cb(trx));
@@ -595,6 +599,55 @@ const RUN_INTEGRATION = process.env.DATABASE_URL != null;
         await db('subscriptions')
           .whereRaw('lower(email) = ?', [user.email.toLowerCase()])
           .del();
+      }
+    });
+
+    // subscriptions.email is the Stripe payer, linked_email the account the
+    // entitlement was granted to. Purging on the payer address alone would
+    // revoke a live third party's paid access.
+    it('leaves a payer-matched subscription that is linked to another account', async () => {
+      const repo = new UsersRepository(db);
+      const user = await db('users').where({ id: userId }).first();
+      const linkedEmail = `beneficiary-${userId}@example.com`;
+      await db('subscriptions').insert({
+        email: user.email,
+        linked_email: linkedEmail,
+        active: true,
+        payload: JSON.stringify({}),
+      });
+
+      try {
+        await repo.deleteUser(String(userId));
+
+        const survivor = await db('subscriptions')
+          .where({ linked_email: linkedEmail })
+          .first();
+        expect(survivor).toBeDefined();
+        expect(survivor.active).toBe(true);
+      } finally {
+        await db('subscriptions').where({ linked_email: linkedEmail }).del();
+      }
+    });
+
+    it('purges a subscription linked to the deleted user even when another address paid', async () => {
+      const repo = new UsersRepository(db);
+      const user = await db('users').where({ id: userId }).first();
+      const payerEmail = `payer-${userId}@example.com`;
+      await db('subscriptions').insert({
+        email: payerEmail,
+        linked_email: user.email,
+        active: true,
+        payload: JSON.stringify({}),
+      });
+
+      try {
+        await repo.deleteUser(String(userId));
+
+        expect(
+          await db('subscriptions').where({ email: payerEmail }).first()
+        ).toBeUndefined();
+      } finally {
+        await db('subscriptions').where({ email: payerEmail }).del();
       }
     });
 

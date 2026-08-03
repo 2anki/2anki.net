@@ -227,7 +227,6 @@ class UsersRepository {
       ['feedback', 'email'],
       ['emoji_feedback', 'email'],
       ['abandoned_checkout_recovery_emails', 'user_email'],
-      ['pause_resume_warning_notices', 'subscription_email'],
     ];
     return this.database.transaction(async (trx) => {
       const email = await this.snapshotUsageForTombstone(owner, trx);
@@ -238,8 +237,33 @@ class UsersRepository {
             .whereRaw('lower(??) = ?', [column, normalized])
             .del();
         }
+        // subscriptions.email is the Stripe payer, linked_email the account
+        // the entitlement was granted to — often different people. Deleting on
+        // the payer address alone would revoke a live third party's paid
+        // access, so a payer-matched row is only purged when it is unlinked or
+        // linked back to this same user. Same reason the warning-notice rows
+        // are scoped through the subscription rows this user actually owns.
+        const ownedSubscriptionEmails = trx('subscriptions')
+          .where((qb) =>
+            qb
+              .whereRaw('lower(email) = ?', [normalized])
+              .whereRaw('(linked_email is null or lower(linked_email) = ?)', [
+                normalized,
+              ])
+          )
+          .orWhereRaw('lower(linked_email) = ?', [normalized])
+          .select('email');
+        await trx('pause_resume_warning_notices')
+          .whereIn('subscription_email', ownedSubscriptionEmails)
+          .del();
         await trx('subscriptions')
-          .whereRaw('lower(email) = ?', [normalized])
+          .where((qb) =>
+            qb
+              .whereRaw('lower(email) = ?', [normalized])
+              .whereRaw('(linked_email is null or lower(linked_email) = ?)', [
+                normalized,
+              ])
+          )
           .orWhereRaw('lower(linked_email) = ?', [normalized])
           .del();
       }
