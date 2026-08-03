@@ -368,7 +368,7 @@ describe('deleteAll', () => {
 
     expect(res.status).toHaveBeenCalledWith(204);
     expect(await repo.listForUser(42)).toEqual([]);
-    expect((await repo.listForUser(7)).length).toBe(1);
+    expect(await repo.listForUser(7)).toHaveLength(1);
     expect(messages.getAll()).toEqual([]);
   });
 

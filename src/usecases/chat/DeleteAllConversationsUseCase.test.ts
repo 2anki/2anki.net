@@ -35,7 +35,7 @@ describe('DeleteAllConversationsUseCase', () => {
 
     expect(deleted).toBe(2);
     expect(await conversations.listForUser(1)).toEqual([]);
-    expect((await conversations.listForUser(2)).length).toBe(1);
+    expect(await conversations.listForUser(2)).toHaveLength(1);
     expect(messages.getAll().map((m) => m.user_id)).toEqual([2]);
   });
 
