@@ -5,6 +5,7 @@ import {
   InvalidDraftError,
   InvalidTemplateError,
 } from '../usecases/chat/ConversationsUseCase';
+import { DeleteAllConversationsUseCase } from '../usecases/chat/DeleteAllConversationsUseCase';
 
 function parseConversationId(raw: unknown): number | null {
   if (typeof raw !== 'string') return null;
@@ -14,7 +15,10 @@ function parseConversationId(raw: unknown): number | null {
 }
 
 class ConversationsController {
-  constructor(private readonly useCase: ConversationsUseCase) {}
+  constructor(
+    private readonly useCase: ConversationsUseCase,
+    private readonly deleteAllUseCase: DeleteAllConversationsUseCase
+  ) {}
 
   async list(req: Request, res: Response): Promise<void> {
     const owner = res.locals.owner as number;
@@ -179,6 +183,12 @@ class ConversationsController {
       res.status(404).json({ error: 'conversation not found' });
       return;
     }
+    res.status(204).end();
+  }
+
+  async deleteAll(req: Request, res: Response): Promise<void> {
+    const owner = res.locals.owner as number;
+    await this.deleteAllUseCase.execute(owner);
     res.status(204).end();
   }
 }

@@ -5,6 +5,8 @@ import {
   InvalidTitleError,
 } from '../usecases/chat/ConversationsUseCase';
 import { InMemoryConversationsRepository } from '../data_layer/ConversationsRepository';
+import { InMemoryChatMessagesRepository } from '../data_layer/ChatMessagesRepository';
+import { DeleteAllConversationsUseCase } from '../usecases/chat/DeleteAllConversationsUseCase';
 
 function buildRes(owner = 42): Response {
   return {
@@ -32,7 +34,11 @@ describe('ConversationsController', () => {
       const a = await repo.create({ userId: 42, title: 'First' });
       const b = await repo.create({ userId: 42, title: 'Second' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -51,7 +57,11 @@ describe('ConversationsController', () => {
   describe('get', () => {
     it('returns 400 for invalid id', async () => {
       const controller = new ConversationsController(
-        new ConversationsUseCase(new InMemoryConversationsRepository())
+        new ConversationsUseCase(new InMemoryConversationsRepository()),
+        new DeleteAllConversationsUseCase(
+          new InMemoryConversationsRepository(),
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes();
 
@@ -64,7 +74,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 99, title: 'theirs' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -83,7 +97,11 @@ describe('ConversationsController', () => {
         content: 'hi',
       });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -105,7 +123,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 42, title: 'old' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -121,7 +143,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 42, title: 'old' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -137,7 +163,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 42, title: 'old' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -153,7 +183,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 99, title: 'theirs' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -171,7 +205,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 42, title: 'work' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -187,7 +225,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 42, title: 'work' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -206,7 +248,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 42, title: 'work' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -222,7 +268,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 42, title: 'work' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -241,7 +291,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 99, title: 'theirs' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -259,7 +313,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 42, title: 'gone' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -272,7 +330,11 @@ describe('ConversationsController', () => {
       const repo = new InMemoryConversationsRepository();
       const id = await repo.create({ userId: 99, title: 'theirs' });
       const controller = new ConversationsController(
-        new ConversationsUseCase(repo)
+        new ConversationsUseCase(repo),
+        new DeleteAllConversationsUseCase(
+          repo,
+          new InMemoryChatMessagesRepository()
+        )
       );
       const res = buildRes(42);
 
@@ -280,5 +342,48 @@ describe('ConversationsController', () => {
 
       expect(res.status).toHaveBeenCalledWith(404);
     });
+  });
+});
+
+describe('deleteAll', () => {
+  it('purges every conversation for the owner and returns 204', async () => {
+    const repo = new InMemoryConversationsRepository();
+    const messages = new InMemoryChatMessagesRepository();
+    await repo.create({ userId: 42, title: 'One' });
+    await repo.create({ userId: 42, title: 'Two' });
+    await repo.create({ userId: 7, title: 'Not mine' });
+    await messages.insert({
+      userId: 42,
+      conversationId: null,
+      role: 'user',
+      content: 'legacy',
+    });
+    const controller = new ConversationsController(
+      new ConversationsUseCase(repo),
+      new DeleteAllConversationsUseCase(repo, messages)
+    );
+    const res = buildRes(42);
+
+    await controller.deleteAll(buildReq({}), res);
+
+    expect(res.status).toHaveBeenCalledWith(204);
+    expect(await repo.listForUser(42)).toEqual([]);
+    expect((await repo.listForUser(7)).length).toBe(1);
+    expect(messages.getAll()).toEqual([]);
+  });
+
+  it('returns 204 when there is nothing to delete', async () => {
+    const controller = new ConversationsController(
+      new ConversationsUseCase(new InMemoryConversationsRepository()),
+      new DeleteAllConversationsUseCase(
+        new InMemoryConversationsRepository(),
+        new InMemoryChatMessagesRepository()
+      )
+    );
+    const res = buildRes(42);
+
+    await controller.deleteAll(buildReq({}), res);
+
+    expect(res.status).toHaveBeenCalledWith(204);
   });
 });

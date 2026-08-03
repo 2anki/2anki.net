@@ -97,6 +97,7 @@ describe('TagCardsUseCase', () => {
         .mockResolvedValue({ id: 42, content: stored }),
       updateContent: jest.fn().mockResolvedValue(true),
       deleteById: jest.fn().mockResolvedValue(true),
+      deleteAllForUser: jest.fn().mockResolvedValue(0),
     };
     const useCase = new TagCardsUseCase(anthropic, repo);
     await useCase.execute({
@@ -130,6 +131,7 @@ describe('TagCardsUseCase', () => {
       findLatestAssistantInConversation: jest.fn(),
       updateContent: jest.fn(),
       deleteById: jest.fn(),
+      deleteAllForUser: jest.fn(),
     };
     const useCase = new TagCardsUseCase(anthropic, repo);
     await useCase.execute({

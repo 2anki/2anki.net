@@ -6,7 +6,8 @@
     "renameError": "Impossible de renommer cette conversation.",
     "deleteError": "Impossible de supprimer cette conversation.",
     "pastChats": "Conversations passées",
-    "newChat": "Nouvelle conversation"
+    "newChat": "Nouvelle conversation",
+    "deleteAllError": "Impossible de supprimer tes chats. Réessaie."
   },
   "sidebar": {
     "newChat": "Nouvelle conversation",
@@ -17,7 +18,8 @@
     "optionsFor": "Options pour {{title}}",
     "rename": "Renommer",
     "delete": "Supprimer",
-    "justNow": "à l'instant"
+    "justNow": "à l'instant",
+    "deleteAllChats": "Supprimer tous les chats"
   },
   "message": {
     "showLess": "Voir moins",
@@ -98,5 +100,13 @@
     "noteTypeAria": "Type de note : {{label}}",
     "noteTypeLabel": "Type de note : {{label}}",
     "listboxLabel": "Type de note"
+  },
+  "deleteAll": {
+    "title": "Supprimer tous les chats ?",
+    "body_one": "Ton chat enregistré sera définitivement supprimé. Cette action est irréversible.",
+    "body_other": "Tes {{count}} chats enregistrés seront définitivement supprimés. Cette action est irréversible.",
+    "confirm": "Supprimer tous les chats",
+    "cancel": "Annuler",
+    "close": "Fermer"
   }
 }

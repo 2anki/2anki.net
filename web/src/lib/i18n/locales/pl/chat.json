@@ -6,7 +6,8 @@
     "renameError": "Nie udało się zmienić nazwy tej rozmowy.",
     "deleteError": "Nie udało się usunąć tej rozmowy.",
     "pastChats": "Poprzednie rozmowy",
-    "newChat": "Nowa rozmowa"
+    "newChat": "Nowa rozmowa",
+    "deleteAllError": "Nie udało się usunąć czatów. Spróbuj ponownie."
   },
   "sidebar": {
     "newChat": "Nowa rozmowa",
@@ -17,7 +18,8 @@
     "optionsFor": "Opcje dla {{title}}",
     "rename": "Zmień nazwę",
     "delete": "Usuń",
-    "justNow": "przed chwilą"
+    "justNow": "przed chwilą",
+    "deleteAllChats": "Usuń wszystkie czaty"
   },
   "message": {
     "showLess": "Pokaż mniej",
@@ -104,5 +106,15 @@
     "noteTypeAria": "Typ notatki: {{label}}",
     "noteTypeLabel": "Typ notatki: {{label}}",
     "listboxLabel": "Typ notatki"
+  },
+  "deleteAll": {
+    "title": "Usunąć wszystkie czaty?",
+    "body_one": "Twój zapisany czat zostanie trwale usunięty. Tej operacji nie można cofnąć.",
+    "body_few": "Twoje {{count}} zapisane czaty zostaną trwale usunięte. Tej operacji nie można cofnąć.",
+    "body_many": "Twoje {{count}} zapisanych czatów zostanie trwale usuniętych. Tej operacji nie można cofnąć.",
+    "body_other": "Twoje {{count}} zapisanych czatów zostanie trwale usuniętych. Tej operacji nie można cofnąć.",
+    "confirm": "Usuń wszystkie czaty",
+    "cancel": "Anuluj",
+    "close": "Zamknij"
   }
 }

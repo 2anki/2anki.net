@@ -20,6 +20,7 @@ function renderSidebar(
     onNew: vi.fn(),
     onRename: vi.fn(),
     onDelete: vi.fn(),
+    onDeleteAll: vi.fn(),
     isOpen: false,
     onClose: vi.fn(),
     ...overrides,
@@ -73,5 +74,39 @@ describe('ConversationsSidebar', () => {
     const props = renderSidebar();
     fireEvent.click(screen.getByText('Photosynthesis'));
     expect(props.onSelect).toHaveBeenCalledWith(1);
+  });
+});
+
+describe('delete all chats', () => {
+  it('hides the footer button with fewer than 2 conversations', () => {
+    renderSidebar({ conversations: [conversations[0]] });
+    expect(screen.queryByText('Delete all chats')).not.toBeInTheDocument();
+  });
+
+  it('shows the footer button with 2 or more conversations', () => {
+    renderSidebar();
+    expect(screen.getByText('Delete all chats')).toBeInTheDocument();
+  });
+
+  it('opens the confirm dialog and only fires onDeleteAll on confirm', () => {
+    const props = renderSidebar();
+    fireEvent.click(screen.getByText('Delete all chats'));
+    expect(
+      screen.getByText(
+        "Your 2 saved chats will be permanently deleted. This can't be undone."
+      )
+    ).toBeInTheDocument();
+    expect(props.onDeleteAll).not.toHaveBeenCalled();
+
+    const dialogButtons = screen.getAllByText('Delete all chats');
+    fireEvent.click(dialogButtons[dialogButtons.length - 1]);
+    expect(props.onDeleteAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not fire onDeleteAll when cancelled', () => {
+    const props = renderSidebar();
+    fireEvent.click(screen.getByText('Delete all chats'));
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(props.onDeleteAll).not.toHaveBeenCalled();
   });
 });

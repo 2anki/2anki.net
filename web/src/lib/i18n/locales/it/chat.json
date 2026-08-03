@@ -6,7 +6,8 @@
     "renameError": "Non siamo riusciti a rinominare questa conversazione.",
     "deleteError": "Non siamo riusciti a eliminare questa conversazione.",
     "pastChats": "Chat precedenti",
-    "newChat": "Nuova chat"
+    "newChat": "Nuova chat",
+    "deleteAllError": "Impossibile eliminare le tue chat. Riprova."
   },
   "sidebar": {
     "newChat": "Nuova chat",
@@ -17,7 +18,8 @@
     "optionsFor": "Opzioni per {{title}}",
     "rename": "Rinomina",
     "delete": "Elimina",
-    "justNow": "poco fa"
+    "justNow": "poco fa",
+    "deleteAllChats": "Elimina tutte le chat"
   },
   "message": {
     "showLess": "Mostra meno",
@@ -98,5 +100,13 @@
     "noteTypeAria": "Tipo di nota: {{label}}",
     "noteTypeLabel": "Tipo di nota: {{label}}",
     "listboxLabel": "Tipo di nota"
+  },
+  "deleteAll": {
+    "title": "Eliminare tutte le chat?",
+    "body_one": "La tua chat salvata verrà eliminata definitivamente. L'operazione non può essere annullata.",
+    "body_other": "Le tue {{count}} chat salvate verranno eliminate definitivamente. L'operazione non può essere annullata.",
+    "confirm": "Elimina tutte le chat",
+    "cancel": "Annulla",
+    "close": "Chiudi"
   }
 }

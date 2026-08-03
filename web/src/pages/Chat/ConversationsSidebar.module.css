@@ -215,3 +215,29 @@
     display: none;
   }
 }
+
+.sidebarFooter {
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+.deleteAllBtn {
+  appearance: none;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  padding: 0.5rem 0.625rem;
+  font-size: var(--text-xs);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.deleteAllBtn:hover {
+  color: var(--color-danger);
+  background: var(--color-bg-tertiary);
+}

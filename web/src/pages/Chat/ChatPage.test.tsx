@@ -29,13 +29,20 @@ vi.mock('../../lib/backend/api', () => ({
   post: vi.fn(),
   postMultipart: vi.fn(),
   get: vi.fn().mockResolvedValue({ used: 0, limit: 20 }),
+  del: vi.fn(),
+  patch: vi.fn(),
 }));
 
-import { get, post, postMultipart } from '../../lib/backend/api';
+vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
+
+import { del, get, post, postMultipart } from '../../lib/backend/api';
+import { track } from '../../lib/analytics/track';
 
 const mockPost = post as ReturnType<typeof vi.fn>;
 const mockGet = get as ReturnType<typeof vi.fn>;
 const mockPostMultipart = postMultipart as ReturnType<typeof vi.fn>;
+const mockDel = del as ReturnType<typeof vi.fn>;
+const mockTrack = track as ReturnType<typeof vi.fn>;
 
 function makeSseResponse(events: Array<{ event: string; data: unknown }>) {
   const encoder = new TextEncoder();
@@ -506,5 +513,64 @@ describe('ChatPage — mobile conversation drawer', () => {
         screen.queryByRole('button', { name: 'Close conversations' })
       ).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('ChatPage — delete all conversations', () => {
+  function mockConversationsList() {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/chat/conversations') {
+        return Promise.resolve({
+          conversations: [
+            { id: 1, title: 'Alpha', updatedAt: '2026-06-10T00:00:00.000Z' },
+            { id: 2, title: 'Beta', updatedAt: '2026-06-09T00:00:00.000Z' },
+          ],
+        });
+      }
+      return Promise.resolve({ used: 0, limit: 20 });
+    });
+  }
+
+  beforeEach(() => {
+    mockDel.mockReset();
+    mockTrack.mockReset();
+    mockConversationsList();
+  });
+
+  it('clears the list, calls the collection endpoint, and tracks', async () => {
+    mockDel.mockResolvedValue({ ok: true, status: 204 });
+    renderChatPage();
+    await screen.findByText('Alpha');
+
+    fireEvent.click(screen.getByText('Delete all chats'));
+    const dialogButtons = screen.getAllByText('Delete all chats');
+    fireEvent.click(dialogButtons[dialogButtons.length - 1]);
+
+    await waitFor(() =>
+      expect(mockDel).toHaveBeenCalledWith('/api/chat/conversations', {
+        redirect: false,
+      })
+    );
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument();
+    expect(screen.queryByText('Beta')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(mockTrack).toHaveBeenCalledWith('chat_all_conversations_deleted', {
+        count: 2,
+      })
+    );
+  });
+
+  it('restores the list and shows the error when the request fails', async () => {
+    mockDel.mockResolvedValue({ ok: false, status: 500 });
+    renderChatPage();
+    await screen.findByText('Alpha');
+
+    fireEvent.click(screen.getByText('Delete all chats'));
+    const dialogButtons = screen.getAllByText('Delete all chats');
+    fireEvent.click(dialogButtons[dialogButtons.length - 1]);
+
+    await screen.findByText("Couldn't delete your chats. Try again.");
+    expect(screen.getByText('Alpha')).toBeInTheDocument();
+    expect(mockTrack).not.toHaveBeenCalled();
   });
 });
