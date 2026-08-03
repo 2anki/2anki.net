@@ -218,9 +218,31 @@ class UsersRepository {
       'blocks',
       'dropbox_uploads',
       'google_drive_uploads',
+      'cancellation_feedback',
+    ];
+    // Feedback and email-log tables key on the raw address, not the user id;
+    // hashed tables (suppression_events, deleted_user_usage, claim audit
+    // hashes) are pseudonymized on purpose and stay.
+    const emailTables: Array<[string, string]> = [
+      ['feedback', 'email'],
+      ['emoji_feedback', 'email'],
+      ['abandoned_checkout_recovery_emails', 'user_email'],
+      ['pause_resume_warning_notices', 'subscription_email'],
     ];
     return this.database.transaction(async (trx) => {
-      await this.snapshotUsageForTombstone(owner, trx);
+      const email = await this.snapshotUsageForTombstone(owner, trx);
+      if (email != null) {
+        const normalized = email.toLowerCase();
+        for (const [tableName, column] of emailTables) {
+          await trx(tableName)
+            .whereRaw('lower(??) = ?', [column, normalized])
+            .del();
+        }
+        await trx('subscriptions')
+          .whereRaw('lower(email) = ?', [normalized])
+          .orWhereRaw('lower(linked_email) = ?', [normalized])
+          .del();
+      }
       for (const tableName of ownerTables) {
         await trx(tableName).where({ owner }).del();
       }
@@ -231,7 +253,7 @@ class UsersRepository {
   private async snapshotUsageForTombstone(
     owner: string,
     trx: Knex.Transaction
-  ) {
+  ): Promise<string | null> {
     const row = await trx(this.table)
       .where({ id: owner })
       .select(
@@ -242,7 +264,7 @@ class UsersRepository {
         'prints_month_started_at'
       )
       .first();
-    if (!row?.email) return;
+    if (!row?.email) return null;
     await this.deletedUserUsage.snapshot(
       emailHash(row.email),
       {
@@ -253,6 +275,7 @@ class UsersRepository {
       },
       trx
     );
+    return row.email as string;
   }
 
   async linkCurrentUserWithEmail(owner: string, email: string) {

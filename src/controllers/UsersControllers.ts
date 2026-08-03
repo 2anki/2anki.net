@@ -492,6 +492,9 @@ class UsersController {
         return res.status(404).json({ message: 'User not found' });
       }
 
+      // A failed Stripe cancel must block the deletion: with the account row
+      // gone there is no user left to retry from, the reconcile sweep is off
+      // in production, and the subscription would keep billing a ghost.
       try {
         await SubscriptionService.cancelUserSubscriptions(
           user.email,
@@ -503,6 +506,10 @@ class UsersController {
           'Subscription cancellation failed during account deletion:',
           cancelError
         );
+        return res.status(502).json({
+          message:
+            "We couldn't cancel your subscription, so your account was not deleted. Try again in a minute.",
+        });
       }
 
       await this.#revokeAppleTokenForOwner(user.id);

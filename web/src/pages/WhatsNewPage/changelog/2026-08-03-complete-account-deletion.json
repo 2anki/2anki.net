@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-03-complete-account-deletion",
+  "date": "2026-08-03",
+  "type": "fix",
+  "title": "Deleting your account now removes all of your data — sync history, cached page titles, feedback, and subscription records included"
+}

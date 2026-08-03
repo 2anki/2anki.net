@@ -54,7 +54,7 @@ export class ClaimPassUseCase {
     }
 
     await this.auditRepo.insert({
-      user_id: input.userId,
+      user_id: input.userId as UsersId,
       email_hash: input.emailHash,
       ip_hash: input.ipHash,
       outcome: 'pass_claim_initiate',

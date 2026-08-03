@@ -257,26 +257,25 @@ describe('UsersRepository.deleteUser', () => {
     };
     const deleteOrder: string[] = [];
     const trx: any = jest.fn().mockImplementation((table: string) => {
+      const del = jest.fn().mockImplementation(() => {
+        deleteOrder.push(table);
+        return Promise.resolve(1);
+      });
+      const chain: any = { del };
+      chain.orWhereRaw = jest.fn().mockReturnValue(chain);
       if (table === 'users') {
         return {
           where: jest.fn().mockReturnValue({
             select: jest.fn().mockReturnValue({
               first: jest.fn().mockResolvedValue(userRow),
             }),
-            del: jest.fn().mockImplementation(() => {
-              deleteOrder.push('users');
-              return Promise.resolve(1);
-            }),
+            del,
           }),
         };
       }
       return {
-        where: jest.fn().mockReturnValue({
-          del: jest.fn().mockImplementation(() => {
-            deleteOrder.push(table);
-            return Promise.resolve(1);
-          }),
-        }),
+        where: jest.fn().mockReturnValue(chain),
+        whereRaw: jest.fn().mockReturnValue(chain),
       };
     });
     const transaction = jest.fn().mockImplementation(async (cb) => cb(trx));
@@ -299,17 +298,34 @@ describe('UsersRepository.deleteUser', () => {
       prints_month_started_at: userRow.prints_month_started_at,
     });
     expect(deleteOrder[deleteOrder.length - 1]).toBe('users');
+    for (const emailTable of [
+      'feedback',
+      'emoji_feedback',
+      'abandoned_checkout_recovery_emails',
+      'pause_resume_warning_notices',
+      'subscriptions',
+    ]) {
+      expect(deleteOrder).toContain(emailTable);
+    }
+    expect(deleteOrder).toContain('cancellation_feedback');
   });
 
-  it('skips the snapshot when the user row has no email', async () => {
-    const trx: any = jest.fn().mockImplementation(() => ({
-      where: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          first: jest.fn().mockResolvedValue({ email: null }),
+  it('skips the snapshot and email purge when the user row has no email', async () => {
+    const touchedTables: string[] = [];
+    const trx: any = jest.fn().mockImplementation((table: string) => {
+      touchedTables.push(table);
+      const chain: any = { del: jest.fn().mockResolvedValue(1) };
+      chain.orWhereRaw = jest.fn().mockReturnValue(chain);
+      return {
+        where: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            first: jest.fn().mockResolvedValue({ email: null }),
+          }),
+          del: jest.fn().mockResolvedValue(1),
         }),
-        del: jest.fn().mockResolvedValue(1),
-      }),
-    }));
+        whereRaw: jest.fn().mockReturnValue(chain),
+      };
+    });
     const transaction = jest.fn().mockImplementation(async (cb) => cb(trx));
     const knex: any = jest.fn();
     knex.transaction = transaction;
@@ -322,6 +338,8 @@ describe('UsersRepository.deleteUser', () => {
     await repo.deleteUser('42');
 
     expect(tombstoneRepo.snapshot).not.toHaveBeenCalled();
+    expect(touchedTables).not.toContain('feedback');
+    expect(touchedTables).not.toContain('subscriptions');
   });
 });
 
@@ -488,6 +506,96 @@ const RUN_INTEGRATION = process.env.DATABASE_URL != null;
       const favorite = await db('favorites').where({ owner: userId }).first();
 
       expect(favorite).toBeUndefined();
+    });
+
+    // The NO ACTION chain users → re_engagement_emails → re_engagement_feedback
+    // made any user who ever answered a re-engagement email undeletable.
+    it('deletes a user whose re-engagement email has feedback attached', async () => {
+      const repo = new UsersRepository(db);
+      const emailRow = await db('re_engagement_emails')
+        .where({ user_id: userId })
+        .first();
+      await db('re_engagement_feedback').insert({
+        email_id: emailRow.id,
+        stopped_reason: 'finished_studies',
+        content_type: 'none',
+      });
+
+      await repo.deleteUser(String(userId));
+
+      expect(await db('users').where({ id: userId }).first()).toBeUndefined();
+      expect(
+        await db('re_engagement_feedback')
+          .where({ email_id: emailRow.id })
+          .first()
+      ).toBeUndefined();
+    });
+
+    it('cascades the previously-leaking owner tables', async () => {
+      const repo = new UsersRepository(db);
+      await db('notion_top_level_pages').insert({
+        owner: userId,
+        notion_page_id: `page-${userId}`,
+        title: 'A cached workspace page title',
+        parent_type: 'workspace',
+      });
+      await db('parser_rules').insert({
+        object_id: `obj-${userId}`,
+        owner: userId,
+      });
+      await db('api_key_usage').insert({
+        user_id: userId,
+        month: '2026-08-01',
+      });
+
+      await repo.deleteUser(String(userId));
+
+      expect(
+        await db('notion_top_level_pages').where({ owner: userId }).first()
+      ).toBeUndefined();
+      expect(
+        await db('parser_rules').where({ owner: userId }).first()
+      ).toBeUndefined();
+      expect(
+        await db('api_key_usage').where({ user_id: userId }).first()
+      ).toBeUndefined();
+    });
+
+    it('purges email-keyed feedback and subscription rows', async () => {
+      const repo = new UsersRepository(db);
+      const user = await db('users').where({ id: userId }).first();
+      await db('feedback').insert({
+        name: 'cascade-test',
+        email: user.email.toUpperCase(),
+        message: 'a message with personal detail',
+      });
+      await db('subscriptions').insert({
+        email: user.email,
+        active: false,
+        payload: JSON.stringify({}),
+      });
+
+      try {
+        await repo.deleteUser(String(userId));
+
+        expect(
+          await db('feedback')
+            .whereRaw('lower(email) = ?', [user.email.toLowerCase()])
+            .first()
+        ).toBeUndefined();
+        expect(
+          await db('subscriptions')
+            .whereRaw('lower(email) = ?', [user.email.toLowerCase()])
+            .first()
+        ).toBeUndefined();
+      } finally {
+        await db('feedback')
+          .whereRaw('lower(email) = ?', [user.email.toLowerCase()])
+          .del();
+        await db('subscriptions')
+          .whereRaw('lower(email) = ?', [user.email.toLowerCase()])
+          .del();
+      }
     });
 
     // A claim token is written before the claim is confirmed, so merely being

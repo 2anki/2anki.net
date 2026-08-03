@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import type { UsersId } from '../../data_layer/public/Users';
 import hmacToken from '../../lib/misc/hmacToken';
 import type { ISubscriptionClaimTokensRepository } from '../../data_layer/SubscriptionClaimTokensRepository';
 import type { ISubscriptionClaimAuditRepository } from '../../data_layer/SubscriptionClaimAuditRepository';
@@ -42,7 +43,7 @@ export class ConfirmSubscriptionClaimUseCase {
       new Date(tokenRow.expires_at).getTime() < Date.now()
     ) {
       await this.auditRepo.insert({
-        user_id: userId,
+        user_id: userId as UsersId,
         email_hash: emailHash,
         ip_hash: ipHash,
         outcome: 'confirm_invalid_token',
@@ -52,7 +53,7 @@ export class ConfirmSubscriptionClaimUseCase {
 
     if (tokenRow.consumed_at != null) {
       await this.auditRepo.insert({
-        user_id: userId,
+        user_id: userId as UsersId,
         email_hash: emailHash,
         ip_hash: ipHash,
         outcome:
@@ -67,7 +68,7 @@ export class ConfirmSubscriptionClaimUseCase {
       );
     if (existingSubs.length > 0) {
       await this.auditRepo.insert({
-        user_id: userId,
+        user_id: userId as UsersId,
         email_hash: emailHash,
         ip_hash: ipHash,
         outcome: 'confirm_user_has_active_sub',
@@ -101,7 +102,7 @@ export class ConfirmSubscriptionClaimUseCase {
       const pgErr = err as { code?: string };
       if (pgErr.code === '23505') {
         await this.auditRepo.insert({
-          user_id: userId,
+          user_id: userId as UsersId,
           email_hash: emailHash,
           ip_hash: ipHash,
           outcome: 'replay',
@@ -112,7 +113,7 @@ export class ConfirmSubscriptionClaimUseCase {
     }
 
     await this.auditRepo.insert({
-      user_id: userId,
+      user_id: userId as UsersId,
       email_hash: emailHash,
       ip_hash: ipHash,
       outcome: 'confirm_success',
