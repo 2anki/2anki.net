@@ -102,7 +102,7 @@ export const DECK_CAPABILITIES: DeckCapabilities = {
     },
   ],
   inputKinds: [
-    'text — Markdown or HTML passed directly',
+    "text — Markdown, HTML, CSV, or TSV passed directly. Paste an uploaded file's contents here and set filename so its extension picks the parser",
     'url — a public URL to an HTML, Markdown, CSV, or other supported file',
   ],
   inputFormats: {

@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-03-mcp-csv-text",
+  "date": "2026-08-03",
+  "type": "fix",
+  "title": "CSV and TSV files convert in Claude and ChatGPT instead of the assistant asking for a public URL"
+}
