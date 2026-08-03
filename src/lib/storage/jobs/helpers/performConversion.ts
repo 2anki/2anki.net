@@ -378,7 +378,8 @@ export default async function performConversion(
         : undefined,
       bl.inducedRule?.outcome === 'rescue_shipped'
         ? bl.inducedRule.rule
-        : undefined
+        : undefined,
+      api.forbiddenBlockCount
     );
 
     void recordConversionTelemetry(database, {

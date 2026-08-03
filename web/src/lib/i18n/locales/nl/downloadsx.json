@@ -95,5 +95,9 @@
     "uploadSingleDeck_other": "{{count}} kaarten hadden geen antwoord en zijn overgeslagen, dus zitten niet in dit pakket. Voeg aan elke kaart een achterkant toe in je bestand en converteer opnieuw.",
     "uploadMultiDeck_one": "{{count}} kaart had geen antwoord en is overgeslagen, dus zit niet in je pakketten. Voeg een achterkant toe in je bestand en converteer opnieuw.",
     "uploadMultiDeck_other": "{{count}} kaarten hadden geen antwoord en zijn overgeslagen, dus zitten niet in je pakketten. Voeg aan elke kaart een achterkant toe in je bestand en converteer opnieuw."
+  },
+  "blocksForbidden": {
+    "notion_one": "{{count}} deel van deze pagina kon niet worden gelezen omdat het niet met 2anki is verbonden, dus het staat niet in dit deck. Verbind het in Notion met 2anki en converteer opnieuw.",
+    "notion_other": "{{count}} delen van deze pagina konden niet worden gelezen omdat ze niet met 2anki zijn verbonden, dus ze staan niet in dit deck. Verbind ze in Notion met 2anki en converteer opnieuw."
   }
 }

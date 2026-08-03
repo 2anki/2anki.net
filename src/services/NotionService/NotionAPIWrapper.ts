@@ -1,4 +1,9 @@
-import { Client, isFullDatabase } from '@notionhq/client';
+import {
+  APIErrorCode,
+  APIResponseError,
+  Client,
+  isFullDatabase,
+} from '@notionhq/client';
 import {
   BlockObjectRequest,
   CreatePageResponse,
@@ -48,6 +53,8 @@ class NotionAPIWrapper {
 
   private blocksCache?: IBlocksCacheRepository;
 
+  private forbiddenBlockIds = new Set<string>();
+
   constructor(
     key: string,
     owner: string,
@@ -56,6 +63,20 @@ class NotionAPIWrapper {
     this.notion = new Client({ auth: key });
     this.owner = owner;
     this.blocksCache = blocksCache;
+  }
+
+  get forbiddenBlockCount(): number {
+    return this.forbiddenBlockIds.size;
+  }
+
+  private recordIfForbidden(id: string, error: unknown): void {
+    if (
+      error instanceof APIResponseError &&
+      error.status === 403 &&
+      error.code === APIErrorCode.RestrictedResource
+    ) {
+      this.forbiddenBlockIds.add(id);
+    }
   }
 
   getPage(id: string): Promise<GetPageResponse | null> {
@@ -108,14 +129,20 @@ class NotionAPIWrapper {
       console.timeEnd(getBlocksLabel);
       return cachedPayload;
     }
-    const response = await withRetry(
-      () =>
-        this.notion.blocks.children.list({
-          block_id: id,
-          page_size: DEFAULT_PAGE_SIZE_LIMIT,
-        }),
-      { label: 'blocks.children.list' }
-    );
+    let response: ListBlockChildrenResponse;
+    try {
+      response = await withRetry(
+        () =>
+          this.notion.blocks.children.list({
+            block_id: id,
+            page_size: DEFAULT_PAGE_SIZE_LIMIT,
+          }),
+        { label: 'blocks.children.list' }
+      );
+    } catch (error) {
+      this.recordIfForbidden(id, error);
+      throw error;
+    }
     console.log('received', response.results.length, 'blocks');
 
     let paginationTruncated = false;
@@ -166,10 +193,16 @@ class NotionAPIWrapper {
     return response;
   }
 
-  getBlock(id: string): Promise<GetBlockResponse> {
-    return withRetry(() => this.notion.blocks.retrieve({ block_id: id }), {
-      label: 'blocks.retrieve',
-    });
+  async getBlock(id: string): Promise<GetBlockResponse> {
+    try {
+      return await withRetry(
+        () => this.notion.blocks.retrieve({ block_id: id }),
+        { label: 'blocks.retrieve' }
+      );
+    } catch (error) {
+      this.recordIfForbidden(id, error);
+      throw error;
+    }
   }
 
   /**

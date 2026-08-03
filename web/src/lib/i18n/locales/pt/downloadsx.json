@@ -95,5 +95,9 @@
     "uploadSingleDeck_other": "{{count}} cartões não tinham resposta e foram ignorados, então não estão neste baralho. Adicione um verso a cada um no seu arquivo e converta novamente.",
     "uploadMultiDeck_one": "{{count}} cartão não tinha resposta e foi ignorado, então não está nos seus baralhos. Adicione um verso no seu arquivo e converta novamente.",
     "uploadMultiDeck_other": "{{count}} cartões não tinham resposta e foram ignorados, então não estão nos seus baralhos. Adicione um verso a cada um no seu arquivo e converta novamente."
+  },
+  "blocksForbidden": {
+    "notion_one": "Não foi possível ler {{count}} parte desta página porque ela não está conectada ao 2anki, então não está neste baralho. Conecte-a ao 2anki no Notion e converta novamente.",
+    "notion_other": "Não foi possível ler {{count}} partes desta página porque não estão conectadas ao 2anki, então não estão neste baralho. Conecte-as ao 2anki no Notion e converta novamente."
   }
 }

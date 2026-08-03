@@ -299,6 +299,7 @@ describe('performConversion — heavy pipeline', () => {
       },
       undefined,
       undefined,
+      undefined,
       undefined
     );
     expect(track).toHaveBeenCalledWith(
