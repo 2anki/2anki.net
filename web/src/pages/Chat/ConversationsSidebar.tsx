@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
+import { useDialog } from '../../lib/hooks/useDialog';
+import sharedStyles from '../../styles/shared.module.css';
 import styles from './ConversationsSidebar.module.css';
 
 export interface ConversationSummary {
@@ -16,6 +18,7 @@ interface Props {
   onNew: () => void;
   onRename: (id: number, title: string) => void;
   onDelete: (id: number) => void;
+  onDeleteAll: () => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -52,6 +55,7 @@ export default function ConversationsSidebar({
   onNew,
   onRename,
   onDelete,
+  onDeleteAll,
   isOpen,
   onClose,
 }: Props) {
@@ -59,9 +63,29 @@ export default function ConversationsSidebar({
   const [menuOpenFor, setMenuOpenFor] = useState<number | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
+  const [confirmDeleteAllOpen, setConfirmDeleteAllOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const asideRef = useRef<HTMLElement>(null);
+  const deleteAllTriggerRef = useRef<HTMLButtonElement>(null);
+  const deleteAllCancelRef = useRef<HTMLButtonElement>(null);
+
+  const closeConfirmDeleteAll = () => setConfirmDeleteAllOpen(false);
+  const deleteAllDialogRef = useDialog(
+    confirmDeleteAllOpen,
+    closeConfirmDeleteAll
+  );
+
+  const confirmWasOpen = useRef(false);
+  useEffect(() => {
+    if (confirmDeleteAllOpen) {
+      confirmWasOpen.current = true;
+      deleteAllCancelRef.current?.focus();
+    } else if (confirmWasOpen.current) {
+      confirmWasOpen.current = false;
+      deleteAllTriggerRef.current?.focus();
+    }
+  }, [confirmDeleteAllOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -252,7 +276,74 @@ export default function ConversationsSidebar({
             })}
           </ul>
         )}
+
+        {conversations.length >= 2 && (
+          <div className={styles.sidebarFooter}>
+            <button
+              ref={deleteAllTriggerRef}
+              type="button"
+              className={styles.deleteAllBtn}
+              onClick={() => setConfirmDeleteAllOpen(true)}
+            >
+              {t('sidebar.deleteAllChats')}
+            </button>
+          </div>
+        )}
       </aside>
+
+      {confirmDeleteAllOpen && (
+        <dialog
+          ref={deleteAllDialogRef}
+          className={sharedStyles.dialog}
+          aria-labelledby="delete-all-chats-title"
+          aria-describedby="delete-all-chats-body"
+        >
+          <div className={sharedStyles.modalCardNarrow}>
+            <div className={sharedStyles.modalHeader}>
+              <h4
+                id="delete-all-chats-title"
+                className={sharedStyles.modalHeaderTitle}
+              >
+                {t('deleteAll.title')}
+              </h4>
+              <button
+                type="button"
+                aria-label={t('deleteAll.close')}
+                onClick={closeConfirmDeleteAll}
+                className={sharedStyles.modalClose}
+              >
+                &times;
+              </button>
+            </div>
+            <section
+              id="delete-all-chats-body"
+              className={sharedStyles.modalBody}
+            >
+              {t('deleteAll.body', { count: conversations.length })}
+            </section>
+            <div className={sharedStyles.modalFooter}>
+              <button
+                ref={deleteAllCancelRef}
+                type="button"
+                className={sharedStyles.btnSecondary}
+                onClick={closeConfirmDeleteAll}
+              >
+                {t('deleteAll.cancel')}
+              </button>
+              <button
+                type="button"
+                className={sharedStyles.btnDanger}
+                onClick={() => {
+                  closeConfirmDeleteAll();
+                  onDeleteAll();
+                }}
+              >
+                {t('deleteAll.confirm')}
+              </button>
+            </div>
+          </div>
+        </dialog>
+      )}
     </>
   );
 }

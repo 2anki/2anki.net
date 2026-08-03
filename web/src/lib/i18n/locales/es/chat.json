@@ -6,7 +6,8 @@
     "renameError": "No se pudo renombrar esta conversación.",
     "deleteError": "No se pudo eliminar esta conversación.",
     "pastChats": "Chats anteriores",
-    "newChat": "Nuevo chat"
+    "newChat": "Nuevo chat",
+    "deleteAllError": "No se pudieron eliminar tus chats. Inténtalo de nuevo."
   },
   "sidebar": {
     "newChat": "Nuevo chat",
@@ -17,7 +18,8 @@
     "optionsFor": "Opciones para {{title}}",
     "rename": "Renombrar",
     "delete": "Eliminar",
-    "justNow": "hace un momento"
+    "justNow": "hace un momento",
+    "deleteAllChats": "Eliminar todos los chats"
   },
   "message": {
     "showLess": "Ver menos",
@@ -98,5 +100,13 @@
     "noteTypeAria": "Tipo de nota: {{label}}",
     "noteTypeLabel": "Tipo de nota: {{label}}",
     "listboxLabel": "Tipo de nota"
+  },
+  "deleteAll": {
+    "title": "¿Eliminar todos los chats?",
+    "body_one": "Tu chat guardado se eliminará de forma permanente. Esto no se puede deshacer.",
+    "body_other": "Tus {{count}} chats guardados se eliminarán de forma permanente. Esto no se puede deshacer.",
+    "confirm": "Eliminar todos los chats",
+    "cancel": "Cancelar",
+    "close": "Cerrar"
   }
 }

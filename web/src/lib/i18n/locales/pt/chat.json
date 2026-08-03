@@ -6,7 +6,8 @@
     "renameError": "Não foi possível renomear esta conversa.",
     "deleteError": "Não foi possível excluir esta conversa.",
     "pastChats": "Conversas anteriores",
-    "newChat": "Nova conversa"
+    "newChat": "Nova conversa",
+    "deleteAllError": "Não foi possível excluir seus chats. Tente novamente."
   },
   "sidebar": {
     "newChat": "Nova conversa",
@@ -17,7 +18,8 @@
     "optionsFor": "Opções de {{title}}",
     "rename": "Renomear",
     "delete": "Excluir",
-    "justNow": "agora mesmo"
+    "justNow": "agora mesmo",
+    "deleteAllChats": "Excluir todos os chats"
   },
   "message": {
     "showLess": "Mostrar menos",
@@ -98,5 +100,13 @@
     "noteTypeAria": "Tipo de nota: {{label}}",
     "noteTypeLabel": "Tipo de nota: {{label}}",
     "listboxLabel": "Tipo de nota"
+  },
+  "deleteAll": {
+    "title": "Excluir todos os chats?",
+    "body_one": "Seu chat salvo será excluído permanentemente. Isso não pode ser desfeito.",
+    "body_other": "Seus {{count}} chats salvos serão excluídos permanentemente. Isso não pode ser desfeito.",
+    "confirm": "Excluir todos os chats",
+    "cancel": "Cancelar",
+    "close": "Fechar"
   }
 }

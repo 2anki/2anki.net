@@ -41,6 +41,7 @@ export interface IChatMessagesRepository {
     content: string;
   }): Promise<boolean>;
   deleteById(input: { userId: number; messageId: number }): Promise<boolean>;
+  deleteAllForUser(userId: number): Promise<number>;
 }
 
 export class ChatMessagesRepository implements IChatMessagesRepository {
@@ -131,6 +132,14 @@ export class ChatMessagesRepository implements IChatMessagesRepository {
       .where({ id: input.messageId, user_id: input.userId })
       .del();
     return deleted > 0;
+  }
+
+  // By user_id, not via conversations: legacy messages predating the
+  // conversations table carry conversation_id NULL and would survive a
+  // conversation-scoped cascade. attachment_text holds users' document text,
+  // so the purge must catch every row.
+  async deleteAllForUser(userId: number): Promise<number> {
+    return this.database(this.table).where({ user_id: userId }).del();
   }
 }
 
@@ -227,6 +236,17 @@ export class InMemoryChatMessagesRepository implements IChatMessagesRepository {
     if (index === -1) return false;
     this.rows.splice(index, 1);
     return true;
+  }
+
+  async deleteAllForUser(userId: number): Promise<number> {
+    let removed = 0;
+    for (let i = this.rows.length - 1; i >= 0; i--) {
+      if (this.rows[i].user_id === userId) {
+        this.rows.splice(i, 1);
+        removed++;
+      }
+    }
+    return removed;
   }
 
   getAll(): typeof this.rows {

@@ -6,7 +6,8 @@
     "renameError": "この会話の名前を変更できませんでした。",
     "deleteError": "この会話を削除できませんでした。",
     "pastChats": "過去のチャット",
-    "newChat": "新しいチャット"
+    "newChat": "新しいチャット",
+    "deleteAllError": "チャットを削除できませんでした。もう一度お試しください。"
   },
   "sidebar": {
     "newChat": "新しいチャット",
@@ -17,7 +18,8 @@
     "optionsFor": "{{title}} のオプション",
     "rename": "名前を変更",
     "delete": "削除",
-    "justNow": "たった今"
+    "justNow": "たった今",
+    "deleteAllChats": "すべてのチャットを削除"
   },
   "message": {
     "showLess": "折りたたむ",
@@ -95,5 +97,12 @@
     "noteTypeAria": "ノートタイプ: {{label}}",
     "noteTypeLabel": "ノートタイプ: {{label}}",
     "listboxLabel": "ノートタイプ"
+  },
+  "deleteAll": {
+    "title": "すべてのチャットを削除しますか？",
+    "body_other": "保存された{{count}}件のチャットが完全に削除されます。この操作は取り消せません。",
+    "confirm": "すべてのチャットを削除",
+    "cancel": "キャンセル",
+    "close": "閉じる"
   }
 }

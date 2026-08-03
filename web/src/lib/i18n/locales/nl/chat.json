@@ -6,7 +6,8 @@
     "renameError": "Kon dit gesprek niet hernoemen.",
     "deleteError": "Kon dit gesprek niet verwijderen.",
     "pastChats": "Eerdere chats",
-    "newChat": "Nieuwe chat"
+    "newChat": "Nieuwe chat",
+    "deleteAllError": "Kan je chats niet verwijderen. Probeer het opnieuw."
   },
   "sidebar": {
     "newChat": "Nieuwe chat",
@@ -17,7 +18,8 @@
     "optionsFor": "Opties voor {{title}}",
     "rename": "Hernoemen",
     "delete": "Verwijderen",
-    "justNow": "zojuist"
+    "justNow": "zojuist",
+    "deleteAllChats": "Alle chats verwijderen"
   },
   "message": {
     "showLess": "Minder tonen",
@@ -98,5 +100,13 @@
     "noteTypeAria": "Notitietype: {{label}}",
     "noteTypeLabel": "Notitietype: {{label}}",
     "listboxLabel": "Notitietype"
+  },
+  "deleteAll": {
+    "title": "Alle chats verwijderen?",
+    "body_one": "Je opgeslagen chat wordt permanent verwijderd. Dit kan niet ongedaan worden gemaakt.",
+    "body_other": "Je {{count}} opgeslagen chats worden permanent verwijderd. Dit kan niet ongedaan worden gemaakt.",
+    "confirm": "Alle chats verwijderen",
+    "cancel": "Annuleren",
+    "close": "Sluiten"
   }
 }

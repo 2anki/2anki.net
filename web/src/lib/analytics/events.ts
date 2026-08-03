@@ -8,6 +8,7 @@ export const KNOWN_EVENTS = new Set([
   'upload_error_chat_resolved_retry',
   'upload_empty_deck_chat_shown',
   'upload_empty_deck_chat_engaged',
+  'chat_all_conversations_deleted',
   'paywall_shown',
   'paywall_upgrade_clicked',
   'paywall_pass_clicked',

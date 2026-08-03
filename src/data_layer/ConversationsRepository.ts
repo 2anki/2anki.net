@@ -48,6 +48,7 @@ export interface IConversationsRepository {
     userId: number;
     conversationId: number;
   }): Promise<boolean>;
+  deleteAllForUser(userId: number): Promise<number>;
   touch(input: { userId: number; conversationId: number }): Promise<void>;
   saveDraft(input: {
     userId: number;
@@ -152,6 +153,12 @@ export class ConversationsRepository implements IConversationsRepository {
       .whereNull('deleted_at')
       .update({ deleted_at: this.database.fn.now() });
     return updated > 0;
+  }
+
+  // Hard delete, soft-deleted rows included — "delete all" is the purge path,
+  // so nothing may survive for the user, not even already-hidden rows.
+  async deleteAllForUser(userId: number): Promise<number> {
+    return this.database(this.table).where({ user_id: userId }).del();
   }
 
   async touch(input: {
@@ -281,6 +288,17 @@ export class InMemoryConversationsRepository implements IConversationsRepository
     if (conv == null) return false;
     conv.deleted_at = new Date();
     return true;
+  }
+
+  async deleteAllForUser(userId: number): Promise<number> {
+    let removed = 0;
+    for (let i = this.rows.length - 1; i >= 0; i--) {
+      if (this.rows[i].user_id === userId) {
+        this.rows.splice(i, 1);
+        removed++;
+      }
+    }
+    return removed;
   }
 
   async touch(input: {

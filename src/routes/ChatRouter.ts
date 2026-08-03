@@ -9,6 +9,7 @@ import { ChatUseCase } from '../usecases/chat/ChatUseCase';
 import { SetChatConsentUseCase } from '../usecases/chat/SetChatConsentUseCase';
 import { ChatDeckUseCase } from '../usecases/chat/ChatDeckUseCase';
 import { ConversationsUseCase } from '../usecases/chat/ConversationsUseCase';
+import { DeleteAllConversationsUseCase } from '../usecases/chat/DeleteAllConversationsUseCase';
 import { TagCardsUseCase } from '../usecases/chat/TagCardsUseCase';
 import { ChatMessagesRepository } from '../data_layer/ChatMessagesRepository';
 import { ConversationsRepository } from '../data_layer/ConversationsRepository';
@@ -38,8 +39,13 @@ const ChatRouter = () => {
   const tagCardsUseCase = new TagCardsUseCase(anthropic, messagesRepo);
   const tagCardsController = new TagCardsController(tagCardsUseCase);
   const conversationsUseCase = new ConversationsUseCase(conversationsRepo);
+  const deleteAllConversationsUseCase = new DeleteAllConversationsUseCase(
+    conversationsRepo,
+    messagesRepo
+  );
   const conversationsController = new ConversationsController(
-    conversationsUseCase
+    conversationsUseCase,
+    deleteAllConversationsUseCase
   );
 
   /**
@@ -362,6 +368,22 @@ const ChatRouter = () => {
    */
   router.get('/api/chat/conversations', RequireAuthentication, (req, res) =>
     conversationsController.list(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/chat/conversations:
+   *   delete:
+   *     summary: Permanently delete every conversation and message for the user
+   *     tags: [Chat]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       204:
+   *         description: All conversations and messages deleted
+   */
+  router.delete('/api/chat/conversations', RequireAuthentication, (req, res) =>
+    conversationsController.deleteAll(req, res)
   );
 
   /**

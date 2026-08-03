@@ -6,7 +6,8 @@
     "renameError": "Couldn't rename this conversation.",
     "deleteError": "Couldn't delete this conversation.",
     "pastChats": "Past chats",
-    "newChat": "New chat"
+    "newChat": "New chat",
+    "deleteAllError": "Couldn't delete your chats. Try again."
   },
   "sidebar": {
     "newChat": "New chat",
@@ -17,7 +18,8 @@
     "optionsFor": "Options for {{title}}",
     "rename": "Rename",
     "delete": "Delete",
-    "justNow": "just now"
+    "justNow": "just now",
+    "deleteAllChats": "Delete all chats"
   },
   "message": {
     "showLess": "Show less",
@@ -98,5 +100,13 @@
     "noteTypeAria": "Note type: {{label}}",
     "noteTypeLabel": "Note Type: {{label}}",
     "listboxLabel": "Note type"
+  },
+  "deleteAll": {
+    "title": "Delete all chats?",
+    "body_one": "Your saved chat will be permanently deleted. This can't be undone.",
+    "body_other": "Your {{count}} saved chats will be permanently deleted. This can't be undone.",
+    "confirm": "Delete all chats",
+    "cancel": "Cancel",
+    "close": "Close"
   }
 }

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import ChatPanel, { type Message } from '../../components/ChatPanel/ChatPanel';
 import { del, get, patch } from '../../lib/backend/api';
+import { track } from '../../lib/analytics/track';
 import styles from './ChatPage.module.css';
 import ConversationsSidebar, {
   ConversationSummary,
@@ -180,6 +181,27 @@ export default function ChatPage() {
     }
   }
 
+  async function handleDeleteAllConversations() {
+    const previous = conversations;
+    setConversations([]);
+    handleNewConversation();
+    try {
+      const response = await del('/api/chat/conversations', {
+        redirect: false,
+      });
+      if (response == null) return;
+      if (!response.ok) {
+        setConversations(previous);
+        setLoadError(t('page.deleteAllError'));
+        return;
+      }
+      track('chat_all_conversations_deleted', { count: previous.length });
+    } catch {
+      setConversations(previous);
+      setLoadError(t('page.deleteAllError'));
+    }
+  }
+
   return (
     <div className={styles.layout} data-hj-suppress>
       <ConversationsSidebar
@@ -189,6 +211,7 @@ export default function ChatPage() {
         onNew={handleNewConversation}
         onRename={handleRenameConversation}
         onDelete={handleDeleteConversation}
+        onDeleteAll={handleDeleteAllConversations}
         isOpen={sidebarOpen}
         onClose={closeSidebar}
       />

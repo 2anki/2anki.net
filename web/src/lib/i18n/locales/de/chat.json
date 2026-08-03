@@ -6,7 +6,8 @@
     "renameError": "Diese Unterhaltung konnte nicht umbenannt werden.",
     "deleteError": "Diese Unterhaltung konnte nicht gelöscht werden.",
     "pastChats": "Frühere Chats",
-    "newChat": "Neuer Chat"
+    "newChat": "Neuer Chat",
+    "deleteAllError": "Deine Chats konnten nicht gelöscht werden. Versuch es erneut."
   },
   "sidebar": {
     "newChat": "Neuer Chat",
@@ -17,7 +18,8 @@
     "optionsFor": "Optionen für {{title}}",
     "rename": "Umbenennen",
     "delete": "Löschen",
-    "justNow": "gerade eben"
+    "justNow": "gerade eben",
+    "deleteAllChats": "Alle Chats löschen"
   },
   "message": {
     "showLess": "Weniger anzeigen",
@@ -98,5 +100,13 @@
     "noteTypeAria": "Notiztyp: {{label}}",
     "noteTypeLabel": "Notiztyp: {{label}}",
     "listboxLabel": "Notiztyp"
+  },
+  "deleteAll": {
+    "title": "Alle Chats löschen?",
+    "body_one": "Dein gespeicherter Chat wird dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.",
+    "body_other": "Deine {{count}} gespeicherten Chats werden dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.",
+    "confirm": "Alle Chats löschen",
+    "cancel": "Abbrechen",
+    "close": "Schließen"
   }
 }
