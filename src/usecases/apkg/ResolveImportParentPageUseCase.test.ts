@@ -1,4 +1,5 @@
 import ResolveImportParentPageUseCase from './ResolveImportParentPageUseCase';
+import NoNotionPagesError from './NoNotionPagesError';
 import NotionAPIWrapper from '../../services/NotionService/NotionAPIWrapper';
 
 function makeNotionApi(
@@ -76,6 +77,9 @@ describe('ResolveImportParentPageUseCase', () => {
       searchTopLevelPages: jest.fn().mockResolvedValue({ results: [] }),
     });
 
+    await expect(useCase.execute(notionApi)).rejects.toBeInstanceOf(
+      NoNotionPagesError
+    );
     await expect(useCase.execute(notionApi)).rejects.toThrow(
       'No Notion pages available'
     );

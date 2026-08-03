@@ -1,4 +1,5 @@
 import NotionAPIWrapper from '../../services/NotionService/NotionAPIWrapper';
+import NoNotionPagesError from './NoNotionPagesError';
 
 const IMPORT_PAGE_TITLE = '2anki Imports';
 
@@ -32,9 +33,7 @@ export default class ResolveImportParentPageUseCase {
     });
 
     if (topPages.results.length === 0) {
-      throw new Error(
-        'No Notion pages available. Share at least one page with 2anki to use quick import.'
-      );
+      throw new NoNotionPagesError();
     }
 
     const parentId = topPages.results[0].id;

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { APIErrorCode, APIResponseError } from '@notionhq/client';
 import ApkgController from './ApkgController';
 import DownloadService from '../services/DownloadService';
 import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewService';
@@ -64,6 +65,17 @@ function makeReq(overrides: Partial<Request> = {}): Partial<Request> {
     },
     ...overrides,
   };
+}
+
+function makeAPIResponseError(code: string, status: number): APIResponseError {
+  const err = Object.create(APIResponseError.prototype) as APIResponseError;
+  Object.assign(err, {
+    name: 'APIResponseError',
+    message: `notion internal detail for ${code}`,
+    code,
+    status,
+  });
+  return err;
 }
 
 function makeController() {
@@ -218,6 +230,72 @@ describe('ApkgController.importToNotion', () => {
     expect(res.status).toHaveBeenCalledWith(202);
     const executeCall = executeMock.mock.calls[0];
     expect(executeCall[5]).toMatchObject({ isPaying: true, maxNotes: 10000 });
+  });
+
+  it('returns 400 when the user has no accessible Notion pages', async () => {
+    const controller = makeController();
+    const notionService = controller[
+      'notionService'
+    ] as jest.Mocked<NotionService>;
+    (notionService.getNotionAPI as jest.Mock).mockResolvedValue({
+      searchTopLevelPages: jest.fn().mockResolvedValue({ results: [] }),
+      createPage: jest.fn(),
+    });
+    const req = makeReq({ body: {} }) as Request;
+    const res = makeRes({ patreon: false, subscriber: false }) as Response;
+
+    await controller.importToNotion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message:
+        'No Notion pages available. Share at least one page with 2anki to use quick import.',
+    });
+  });
+
+  it('returns 401 notion_unauthorized when Notion rejects the search as Unauthorized', async () => {
+    const controller = makeController();
+    const notionService = controller[
+      'notionService'
+    ] as jest.Mocked<NotionService>;
+    (notionService.getNotionAPI as jest.Mock).mockResolvedValue({
+      searchTopLevelPages: jest
+        .fn()
+        .mockRejectedValue(
+          makeAPIResponseError(APIErrorCode.Unauthorized, 401)
+        ),
+      createPage: jest.fn(),
+    });
+    const req = makeReq({ body: {} }) as Request;
+    const res = makeRes({ patreon: false, subscriber: false }) as Response;
+    (res.json as jest.Mock).mockReturnThis();
+    (res as unknown as Record<string, jest.Mock>).send = jest.fn();
+
+    await controller.importToNotion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'notion_unauthorized' })
+    );
+  });
+
+  it('returns 500 when an unexpected error occurs while starting the import', async () => {
+    const controller = makeController();
+    const notionService = controller[
+      'notionService'
+    ] as jest.Mocked<NotionService>;
+    (notionService.getNotionAPI as jest.Mock).mockRejectedValue(
+      new Error('boom')
+    );
+    const req = makeReq({ body: {} }) as Request;
+    const res = makeRes({ patreon: false, subscriber: false }) as Response;
+
+    await controller.importToNotion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'Import failed to start.',
+    });
   });
 });
 
