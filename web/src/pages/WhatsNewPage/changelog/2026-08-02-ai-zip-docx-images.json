@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-02-ai-zip-docx-images",
+  "date": "2026-08-02",
+  "type": "fix",
+  "title": "AI conversions keep the images from Word documents and from zips with images in their own folder"
+}
