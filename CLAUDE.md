@@ -73,11 +73,13 @@ Always loaded — hot on most sessions:
 @.claude/rules/dependencies.md
 @.claude/rules/sonar.md
 @.claude/rules/support-confidentiality.md
-@.claude/rules/browser-attestation.md
-@.claude/rules/first-time-fix.md
 
 Load on demand — read these when the task touches the named surface (kept out of standing context to save tokens):
 
+- `.claude/rules/browser-attestation.md` — read before merging any PR that touches `web/src/` (the merge hook enforces the attestation; this file explains both accepted forms).
+- `.claude/rules/first-time-fix.md` — read before touching any user-reported bug, before writing a line of diagnosis.
+- `.claude/rules/changelog.md` — read before adding a changelog entry or opening any `feat:`/`fix:` PR. The non-negotiable core: user-visible changes ship a changelog JSON in the same PR (merge hook enforces).
+- `.claude/rules/support-email.md` — read before drafting any support reply or user-facing email (draft goes to a `.txt` in Downloads, salutation/pronoun rules, no dashes).
 - `.claude/rules/email-templates.md` — read before editing any template under `src/services/EmailService/templates/`.
 - `.claude/rules/parallel-pr-coordination.md` — read before kicking off a multi-PR batch (more than two PRs in flight) or running `/spec-draft-pr` more than once in a row.
 - `.claude/rules/local-dev.md` — read when running toolchain/migrations/checks locally on the maintainer's machine, working out of a git worktree, or diagnosing a pre-push/deploy-status oddity.
@@ -147,15 +149,12 @@ Load on demand — read these when the task touches the named surface (kept out 
 - **Never edit `src/data_layer/public/`** — Kanel-generated; rerun `pnpm kanel` instead.
 - The Ankify feature is gated to users with `users.patreon = true` (lifetime), `users.ankify_access = true` (per-user comp grant), **or** an active `subscriptions` row whose `stripe_product_id` matches `AUTO_SYNC_PRODUCT_ID`. Use `hasAnkifyAccess` from `src/lib/ankify/access.ts` (single source of truth); don't reintroduce hard-coded emails.
 - **Two distinct paid gates — `isPaying` vs `hasAnkifyAccess` — don't conflate them.** `isPaying` (`src/lib/isPaying.ts`, read off `res.locals`) = ANY active paid subscription; it exempts the monthly card limit (100) and PDF print limit (1). `hasAnkifyAccess` (`src/lib/ankify/access.ts`) is the stricter Ankify/Auto-Sync gate (lifetime `patreon` OR `ankify_access` comp OR active Auto-Sync-product subscription). **Mindmaps are TIERED across both:** free `3` maps / `50` nodes → subscriber (`isPaying`) `25` / `250` → `hasAnkifyAccess` unlimited (`SUBSCRIBER_MAP_LIMIT`/`SUBSCRIBER_NODE_LIMIT` in the mindmap use cases; the `MindmapLimitError` carries the caller's actual applicable cap, and the client renders it via a `{{limit}}` i18n placeholder). When adding a paid perk, decide which gate it belongs to — a normal `$7.99/mo` subscriber has `isPaying` true but `hasAnkifyAccess` false.
-- **Chat has two non-obvious invariants (2026-07-17).** (1) An uploaded attachment's extracted text is persisted in `chat_messages.attachment_text` and replayed into model history (capped at 20k chars) so follow-up turns keep the document — before this, attachments were per-message only and the model would contradict itself ("I don't see any attachment") one turn later. (2) Each assistant turn downloads in ITS OWN note type, derived from that turn's card shapes (`effectiveTemplateForCards`), NOT the conversation-global selector — so an earlier MCQ turn exports as MCQ even when the pill sits on Basic. The template pill reflects the last turn's actual cards; if the AI overrode the requested type, re-selecting it forces a regenerate instead of a no-op. Deck-name on download is suggested from the AI's `Deck: <name>` line, else the conversation title.
 - **`STRIPE_SYNC_ON_STARTUP` is `false` on prod (verified 2026-07-27; last sweep ran 2026-07-14) — nothing repairs a drifted `subscriptions` row automatically.** This flag used to be on, and several safety assumptions in this repo were written against that. **Do not lean on the sweep as a backstop:** any path that fails to deactivate a row on cancellation now leaks paid access permanently rather than being cleaned up on the next deploy (this is exactly how #3862 stayed invisible — prod logs show the sweep quietly repairing rows that had leaked for hours to days). When the flag *is* enabled, every deploy/restart re-runs the full Stripe sync + `reconcileActiveSubscriptions`, which retrieves each active row's `payload.id` from Stripe and flips the row inactive on a 404 — so a synthetic row survives only if its `payload` has no parseable `id` (e.g. `{}`), and `cancelUnlinkedSubscriptions` cancels/emails any active row whose `email` isn't in `users`. Prefer a real access mechanism (`users.ankify_access`) over a fake `subscriptions` row for comps either way.
 - Notion webhook receiver in `routes/AnkifyWebhookRouter.ts` is mounted and fully implemented (HMAC-verified, access-gated, dispatches a `trigger: 'webhook'` sync) but unfed: Notion-side auto-registration is deferred, so no production webhooks reach it and polling at 5 min carries the story today. See `src/lib/ankify/FEATURE.md` for the secret/registration shape.
 - **The prod deploy build typechecks tests too.** `deploy.2anki.net.yml`'s build step is `tsc -p .`, which compiles `*.test.ts`. Add a method to an interface and any test mock typed as that interface (a `const repo: IFoo = { … }` literal missing the new method) becomes a **deploy failure**, not just a Jest failure — and the Jest shards in CI can still pass (ts-jest is per-file/isolatedModules), so the red deploy looks unrelated to the change. After any interface change, run `tsc -p . --noEmit` locally and grep `src/**/*.test.ts` for object literals typed as that interface. (2026-05-31: `loadIfExists` added to `ISettingsRepository` left a mock behind → red `main` deploy until the mock was fixed.)
 - **Local `tsc` can pass while CI's `static` job fails the same file.** The main checkout's `node_modules` drifts from the lockfile over a long-lived session, so a stale local type resolves clean while CI (fresh `--frozen-lockfile` install) fails on it. If CI `static` reports a type error you can't reproduce locally, reproduce in a clean-install worktree (`pnpm install` from a fresh `git worktree add`) before assuming it's a false positive — a red `static` may be a latent breakage already on `main`, not just your diff.
 - **Netlify deploy previews are decorative — do visual review with `pnpm dev` on the branch.** The root `netlify.toml` force-301-redirects every path (`from = "/*"`, `force = true`) to `https://2anki.net`, including `deploy-preview-<n>--notion2anki.netlify.app`, so every PR preview bounces to prod and shows nothing. The Netlify project is a legacy-domain redirect and the same config runs for previews. Don't chase a preview URL for UX review. (Fix, if ever worth it: scope the redirect under `[context.production]` and give previews a real publish dir.)
 - The prod box checks out this repo at `/home/alemayhu/src/github.com/2anki/2anki.net` (legacy name).
-- **Writing an email means creating a `.txt` file in the user's Downloads** — `/mnt/c/Users/alexa/Downloads/` on this WSL box (the Windows Downloads, where uploaded `.eml` files land) — not just printing the draft in chat. Use `reply-<name>.txt` for support replies. Offline Downloads files may carry reporter names/emails; commits, PRs, and issues may not (see `.claude/rules/support-confidentiality.md`).
-- **Rendering Notion-hosted file URLs in card output — never pass through the raw URL.** Notion's `file.url` (PDFs, images, audio, file blocks) is a signed S3 URL that expires roughly an hour after generation. A card that embeds the URL directly (`<embed src={url}>`, `<img src={url}>`, `<a href={url}>` as the only delivery) breaks the moment the signature lapses — users see a broken element on every platform. Always route Notion-hosted assets through `BlockHandler.embedImage` / `embedFile` / `embedAudioFile`, which download the bytes via `instrumentedAxios` and bundle them as Anki media (filename = SHA-512 hex digest, no path traversal, durable inside the `.apkg`). External URLs (the user pasted a real third-party URL into Notion — `type === 'external'`) don't expire and render fine as plain links. Discriminate on `block.<type>.type === 'file'` for the download path; `'external'` stays as a link. Heavy assets (PDFs in v1) can be gated behind an opt-in `CardOption` so users decide between `.apkg` bloat and a working file (see #3068 / `downloadPdfs`).
 - **Bot reviews check code patterns, not runtime lifecycle.** The `@claude` review bot is good at finding correctness bugs, type mismatches, missing tests, and Sonar-class smells. It does NOT model external-resource lifecycles — signed URL expiry, OAuth refresh windows, cache TTLs, session token rotation. PR #3068 was a clear example: bot cleared the diff as correct, missed that the embedded Notion S3 URL would 403 within an hour. Always pair a bot review with manual runtime-thinking on anything that consumes an external URL or a time-bound credential.
 
 ## The trio
@@ -228,62 +227,3 @@ Do not open a separate implementation PR alongside a spec PR. Do not let `Docume
 A new `feat:` surface (a distinct user-facing capability — chat, mindmaps, photo-to-deck, transform, print, quizlet import, image occlusion, ankify) ships with two things in the same PR: a usage analytics event that fires when the surface is used, and a T+30d adoption-review GitHub issue created at merge with the review date in the title. At that review the verdict is binary — **keep or remove**. Silence is removal, not maintenance; an unused surface is a maintenance tax with no offsetting users. History: 8+ surfaces shipped in May 2026 with usage evidence for only 2-3, and one (quizlet import) went silent within days and nobody noticed.
 
 One new surface in flight at a time. The next surface does not start until the previous one has a day-7 prod check and a usage signal. Six years of unmeasured parallel bets (Imba, Electron, KI, avatars, Gemini, Quizlet) is why this gate exists — breadth without evidence is how the backlog filled with surfaces no one uses.
-
-## Changelog
-
-User-visible changes ship with a changelog entry in the **same PR**. The entry lands as a new JSON file in `web/src/pages/WhatsNewPage/changelog/` and renders in the in-app "What's New" page. One entry = one file, so parallel PRs never conflict. Enforced at merge: `.claude/hooks/check-changelog-on-merge.py` blocks `gh pr merge` when a `feat:`/`fix:` commit touches source but adds no changelog JSON and the PR body has no "no changelog entry" out-clause.
-
-**When to add an entry.** Add one if a real user would notice the change. Don't add one if they wouldn't.
-
-| Commit type | Entry? |
-| --- | --- |
-| `feat:` — new feature or new capability | Yes |
-| `fix:` — bug a user could hit | Yes |
-| `revert:` — undoing something users could see | Yes, otherwise no |
-| `perf:` — only if the user perceives the speedup | Yes, otherwise no |
-| `style:` — UI change a user would notice | Yes, otherwise no |
-| `refactor:`, `chore:`, `test:`, `ci:`, `build:`, internal `docs:` | No |
-| Bumping a dependency that doesn't change behavior | No |
-
-If you can't write the entry without referencing internal files, classes, or refactors, the PR probably doesn't warrant one. State that explicitly in the PR body ("no changelog entry — internal refactor, no user-visible behavior change") rather than going silent.
-
-**How to write the entry.** Follow `VOICE.md`. The reader is a busy learner skimming the What's New page — they want to know what they can do now that they couldn't before, or which bug stopped affecting them. The conventions below match the existing entries in `web/src/pages/WhatsNewPage/changelog/`; new entries must match the existing files, not drift from them.
-
-**File shape.** Create `web/src/pages/WhatsNewPage/changelog/YYYY-MM-DD-short-slug.json` with `{ "id": "YYYY-MM-DD-short-slug", "date": "YYYY-MM-DD", "type": "feature" | "fix" | "style", "title": "Sentence-case one-liner" }`. The `id` must equal the filename without `.json` — the loader asserts uniqueness at startup. Sort order is `id` descending, so the date prefix drives ordering and the slug breaks ties.
-
-- User voice, not engineering voice. What changed *for the user*, not what we changed in the code.
-- Specific over generic. Name the surface, the file format, the count — whatever makes the entry useful. If you have a number, use the number; don't write "about twice as fast" when you don't.
-- No implementation details. No file names, class names, library names, commit shas, ticket numbers, "we refactored X", "we migrated Y". The user does not care and shouldn't have to.
-- **Sentence case. No trailing period.** Matches every line in the current file. A trailing period on a one-line entry reads like an essay.
-- One line, ~120 characters max. No multi-sentence entries.
-- Start with the surface or the noun (the deck, the upload, password reset, sign in with Notion), not "Added"/"Fixed"/"Now". The type tag already says `feature`/`fix`; repeating it in prose is noise.
-- No hedge filler that implies prior brokenness: avoid "actually", "finally", "now properly", "no longer broken". These tell the user the thing was bad before — which most of them never noticed.
-- The em-dash is for adding specifics ("Theme switcher — light, dark, gold, and purple"), not for explaining a fix ("— no more waiting"). Don't apologize on the same line.
-
-Good vs bad:
-
-| Bad (don't ship this) | Good (ship this) |
-| --- | --- |
-| Refactored Notion image extractor | Notion pages with embedded images convert even when one image fails to load |
-| Fixed bug in EmailService | Password reset emails arrive within seconds |
-| Migrated S3 client to v3 SDK | (no entry — internal-only) |
-| Improved performance | Large Notion exports convert in about half the time |
-| Added `useDeckSettings` hook | (no entry — internal-only) |
-| Added auto-login on registration | Signed in automatically after creating your account |
-
-**The `/changelog` slash command** is the batch tool for backfilling a window of merged PRs into blog/SEO content. It is not a substitute for the per-PR entry — by the time `/changelog` runs, the entry should already be in the file.
-
-## Support email
-
-Support replies go to `~/Downloads/reply-<name>.txt` for review before sending. Follow VOICE.md guidelines — direct, specific, no hedging.
-
-**Never infer someone's gender, title, or pronouns from their name.** A first name is not evidence. In English, address them by full name or first name ("Hi Nina Hoog," / "Hi Nina,") and use they/them if a pronoun is unavoidable — never "Mr."/"Ms.". In German the formal salutation is **`Guten Tag <full name>,`**, not `Sehr geehrte Frau <surname>` / `Sehr geehrter Herr <surname>`, both of which force a guess. Match the writer's register: if they wrote `Sie`, answer with `Sie`; if they wrote `du`, answer with `du`. (2026-07-28: a German cancellation reply was drafted as "Hallo Frau Hoog" purely on the strength of the first name, and Alexander caught it before it went out.)
-
-Additional rule: **never use dashes (em-dash or hyphen) in support emails.** Dashes split focus and make complex ideas feel fragmented. Use periods and new sentences instead. Example: "Notion changed their export format. Page emoji now lives in a `data-emoji` attribute." not "Notion changed their export format — page emoji now lives in a `data-emoji` attribute."
-
-## Slash commands (`.claude/commands/` and `.claude/skills/`)
-
-- `/trio` — force a trio review on any task.
-- `/triage-feedback`, `/spec-draft-pr`, `/implement`, `/review-pr`, `/changelog`, `/weekly-retro`, `/support-reply` — trio workflow.
-- `/check`, `/pr-checks`, `/deploy-status` — local + remote status.
-- `/tdd`, `/add-tests`, `/security-audit`, `/verify-completion`, `/simplify`, `/systematic-debugging`, `/revise-claude-md` — engineering aids.
