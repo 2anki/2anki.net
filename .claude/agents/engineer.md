@@ -54,7 +54,7 @@ Before the first `Edit`, `Write`, or `Bash` command that mutates files, check th
 
 **Why:** Reverting a worktree is free; reverting a bad edit on the orchestrator's main checkout costs a force-revert and may require a re-deploy. The cost of `EnterWorktree` is seconds; the cost of a botched auth or payments change on main is hours.
 
-**pwd-verify before every mutation.** Run `pwd` + `git rev-parse --show-toplevel` before EVERY `Edit`/`Write` AND every git command — not just before commit (per `.claude/rules/parallel-pr-coordination.md`; three recurrences prove the gate has to sit upstream of commit). If the result doesn't match your assigned worktree, HALT and report — never stash, never paper over the pollution with a stash + apply dance.
+**pwd-verify before every mutation.** Run `pwd` + `git rev-parse --show-toplevel` before EVERY `Edit`/`Write` AND every git command — not just before commit (per `.claude/docs/parallel-pr-coordination.md`; three recurrences prove the gate has to sit upstream of commit). If the result doesn't match your assigned worktree, HALT and report — never stash, never paper over the pollution with a stash + apply dance.
 
 ## Workflow
 

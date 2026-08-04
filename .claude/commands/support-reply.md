@@ -6,7 +6,7 @@ argument-hint: paste the user email
 Use the `pm` agent (with engineer if technical diagnosis is needed).
 
 1. Read the user email below the `---` line.
-2. If the issue requires technical investigation (conversion error, billing edge case, account state), use Grep to find the relevant code path before drafting — and for bugs, pin the reporter's runtime entry point first (manual action vs background job vs webhook; see `.claude/rules/first-time-fix.md`).
+2. If the issue requires technical investigation (conversion error, billing edge case, account state), use Grep to find the relevant code path before drafting — and for bugs, pin the reporter's runtime entry point first (manual action vs background job vs webhook; see `.claude/docs/first-time-fix.md`).
 3. Draft a reply that:
    - Opens with acknowledgement (one sentence, not effusive).
    - Answers the question directly. If we know the answer, give it. If not, say what we'll do next and when.

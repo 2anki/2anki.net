@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Reap orphaned dev/build node processes left behind by parallel agents and
-# long-lived dev servers. See .claude/rules/local-dev.md ("Orphaned process
+# long-lived dev servers. See .claude/docs/local-dev.md ("Orphaned process
 # hygiene") for the incident this exists to prevent.
 #
 # What it targets — ONLY node processes reparented to init (PPID 1), i.e. ones

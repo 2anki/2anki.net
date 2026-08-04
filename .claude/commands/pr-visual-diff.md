@@ -80,7 +80,7 @@ State honestly that it's an **isolated harness using the app's real tokens** (no
 - **NEVER delete the `assets/pr-<n>-shots` branch.** A merged PR's comment renders its images from that branch forever — deleting it 404s the evidence permanently. The branch never merges to `main` and costs nothing; leave it. (Learned the hard way on #3372: a post-merge cleanup deleted it and broke the comment; it had to be re-pushed.)
 - Harness CSS must match the diff's real `-`/`+` declarations verbatim. Drift = false evidence.
 - Render theme bugs on the affected theme(s); `base.css` defines `[data-theme='dark'|'gold'|'purple'|'hotpink']`.
-- This produces *evidence*, not the browser-attestation. The merge gate still needs a real golden-path check (or its out-clause) — see `.claude/rules/browser-attestation.md`.
+- This produces *evidence*, not the browser-attestation. The merge gate still needs a real golden-path check (or its out-clause) — see `.claude/docs/browser-attestation.md`.
 
 ## Tooling note
 

@@ -32,8 +32,8 @@ read:
   - .claude/rules/code-quality.md
   - .claude/rules/dependencies.md
   - .claude/rules/sonar.md
-  - .claude/rules/email-templates.md
-  - .claude/rules/parallel-pr-coordination.md
+  - .claude/docs/email-templates.md
+  - .claude/docs/parallel-pr-coordination.md
 
 # After every edit, do the cheap check. Full /check (web typecheck + vitest +
 # biome) is opt-in via `/run pnpm --filter ... ...` — running it on every edit

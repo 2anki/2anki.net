@@ -10,7 +10,7 @@
 # die with `Cannot find native binding`.
 #
 # Run this as the FIRST action in any new worktree. Idempotent — safe to
-# re-run. See CLAUDE.md "Run it" and .claude/rules/parallel-pr-coordination.md.
+# re-run. See CLAUDE.md "Run it" and .claude/docs/parallel-pr-coordination.md.
 
 set -euo pipefail
 

@@ -181,7 +181,7 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
 11. Open the PR: `gh pr create` — READY for Tier 1 and Tier 2, `--draft` for Tier 3 (state why at
     the top of the body). Tier 2/3 bodies MUST carry the `## Decisions made overnight` section.
     If the diff touches `web/src/`, add the `## Browser check` attestation per
-    `.claude/rules/browser-attestation.md` (out-clause when there's no runtime-visible effect —
+    `.claude/docs/browser-attestation.md` (out-clause when there's no runtime-visible effect —
     don't claim a check you didn't run). Link the issue. Do NOT merge.
 
 ## Between issues — cleanup
