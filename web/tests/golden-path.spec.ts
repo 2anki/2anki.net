@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 /**
  * Golden-path attestation spec.
  *
- * The browser-attestation merge gate (.claude/rules/browser-attestation.md)
+ * The browser-attestation merge gate (.claude/docs/browser-attestation.md)
  * asks every web/src change to confirm two things by hand: the golden path works
  * on localhost:3000, and there are no console errors at 375px. This spec makes
  * that confirmation a real run instead of an honor-system checkbox — it drives

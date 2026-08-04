@@ -66,7 +66,7 @@ Output under 200 words. Same format as Fork A.
 
 **Fork C — ux / voice** (only if `userFacing = true`; otherwise skip this fork entirely)
 ```
-You are reviewing PR #<n> against `VOICE.md` and `.claude/rules/email-templates.md`. Pull diff and files yourself. Read only files under `web/src/**` and `src/services/EmailService/templates/**`.
+You are reviewing PR #<n> against `VOICE.md` and `.claude/docs/email-templates.md`. Pull diff and files yourself. Read only files under `web/src/**` and `src/services/EmailService/templates/**`.
 
 Check exclusively for:
 - Banned words (awesome, amazing, oops, please feel free, leverage, seamless)

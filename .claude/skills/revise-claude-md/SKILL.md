@@ -1,4 +1,5 @@
 ---
+name: revise-claude-md
 description: Diff the session, propose targeted CLAUDE.md / FEATURE.md updates
 allowed-tools: Read, Edit, Bash
 ---

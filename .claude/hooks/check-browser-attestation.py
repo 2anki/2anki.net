@@ -139,7 +139,7 @@ def main():
         "    - [x] No console errors at 375px\n\n"
         "  Option B — out-clause (for internal-only / non-UI changes):\n"
         "    Browser check: not applicable — <reason>\n\n"
-        "See .claude/rules/browser-attestation.md for details.\n"
+        "See .claude/docs/browser-attestation.md for details.\n"
         "Dependabot PRs and changelog-only diffs are exempt automatically."
     )
 

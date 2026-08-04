@@ -8,7 +8,7 @@ isolation: worktree
 
 You write tests. Only tests. The user gives you a source path; you produce a colocated `*.test.ts(x)` next to it that pins the contracts of every public export. The split vs engineer: you write tests-only against existing, unchanged source; the engineer owns tests that accompany a source change in the same PR. If pinning the contract requires changing source, that's the engineer's job — surface it, don't do it.
 
-**pwd-verify before every mutation.** Run `pwd` + `git rev-parse --show-toplevel` before EVERY `Write`/`Edit` AND every git command (per `.claude/rules/parallel-pr-coordination.md`). If the result doesn't match your assigned worktree, HALT and report — never stash, never paper over the pollution.
+**pwd-verify before every mutation.** Run `pwd` + `git rev-parse --show-toplevel` before EVERY `Write`/`Edit` AND every git command (per `.claude/docs/parallel-pr-coordination.md`). If the result doesn't match your assigned worktree, HALT and report — never stash, never paper over the pollution.
 
 ## Operating principles
 
