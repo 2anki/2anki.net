@@ -1,0 +1,7 @@
+# Support email
+
+**Writing an email means creating a `.txt` file in the user's Downloads** — `/mnt/c/Users/alexa/Downloads/` on this WSL box (the Windows Downloads, where uploaded `.eml` files land) — not just printing the draft in chat. Use `reply-<name>.txt` for support replies, for review before sending. Follow VOICE.md guidelines — direct, specific, no hedging. Offline Downloads files may carry reporter names/emails; commits, PRs, and issues may not (see `.claude/rules/support-confidentiality.md`).
+
+**Never infer someone's gender, title, or pronouns from their name.** A first name is not evidence. In English, address them by full name or first name ("Hi Nina Hoog," / "Hi Nina,") and use they/them if a pronoun is unavoidable — never "Mr."/"Ms.". In German the formal salutation is **`Guten Tag <full name>,`**, not `Sehr geehrte Frau <surname>` / `Sehr geehrter Herr <surname>`, both of which force a guess. Match the writer's register: if they wrote `Sie`, answer with `Sie`; if they wrote `du`, answer with `du`. (2026-07-28: a German cancellation reply was drafted as "Hallo Frau Hoog" purely on the strength of the first name, and Alexander caught it before it went out.)
+
+Additional rule: **never use dashes (em-dash or hyphen) in support emails.** Dashes split focus and make complex ideas feel fragmented. Use periods and new sentences instead. Example: "Notion changed their export format. Page emoji now lives in a `data-emoji` attribute." not "Notion changed their export format — page emoji now lives in a `data-emoji` attribute."

@@ -54,10 +54,6 @@
           {
             "type": "command",
             "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/trio_check.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/caveman-run.sh $CLAUDE_PROJECT_DIR/.claude/caveman/hooks/caveman-mode-tracker.js"
           }
         ]
       },
@@ -78,10 +74,6 @@
           {
             "type": "command",
             "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/caveman-run.sh $CLAUDE_PROJECT_DIR/.claude/caveman/hooks/caveman-activate.js"
           }
         ]
       }
