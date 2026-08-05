@@ -73,7 +73,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.5",
     "@vitest/ui": "^4.1.8",
-    "concurrently": "^10.0.3",
+    "concurrently": "^10.0.4",
     "cors": "^2.8.6",
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
