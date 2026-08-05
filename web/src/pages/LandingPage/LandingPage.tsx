@@ -138,7 +138,14 @@ function LandingPage({
         <script type="application/ld+json">{faqJsonLd}</script>
       </Helmet>
 
-      <section id="upload" className={styles.hero}>
+      <section
+        id="upload"
+        className={
+          heroSlot == null
+            ? styles.hero
+            : `${styles.hero} ${styles.heroWithTool}`
+        }
+      >
         <div className={styles.heroInner}>
           <h1 className={styles.heroTitle}>
             {t(`pages.${pageKey}.h1`, { defaultValue: copy.h1 })}

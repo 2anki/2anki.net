@@ -121,9 +121,21 @@ describe('ApkgCsvExportForm', () => {
     });
   });
 
-  it('falls back to a sign-in prompt when the server returns 401 with no body', async () => {
+  // Replaces a test that asserted a 401 sign-in prompt. Anonymous visitors are
+  // no longer blocked at the route, so a 401 is not the shape this form sees;
+  // the real contract is the 402 note-cap gate below.
+  it('shows the note cap as a neutral gate, not an error alert', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(null, { status: 401 })
+      new Response(
+        JSON.stringify({
+          message:
+            'This deck has 340 notes. Without an account you can export 21.',
+          note_count: 340,
+          note_limit: 21,
+          requires_account: true,
+        }),
+        { status: 402, headers: { 'Content-Type': 'application/json' } }
+      )
     );
     render(<ApkgCsvExportForm />);
     const input = screen.getByLabelText(
@@ -131,8 +143,45 @@ describe('ApkgCsvExportForm', () => {
     ) as HTMLInputElement;
     fireEvent.change(input, { target: { files: [makeApkgFile()] } });
     fireEvent.submit(input.closest('form')!);
+
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/Sign in/i);
+      expect(screen.getByRole('status')).toHaveTextContent(/340 notes/);
     });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(
+      screen.getByRole('link', { name: /Sign in to export/i })
+    ).toHaveAttribute('href', '/login?redirect=/convert/apkg-to-csv');
+  });
+
+  it('offers only the upgrade path when a signed-in caller hits their cap', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: 'This deck has 250 notes. Your plan exports 100 per file.',
+          note_count: 250,
+          note_limit: 100,
+          requires_account: false,
+        }),
+        { status: 402, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+    render(<ApkgCsvExportForm />);
+    const input = screen.getByLabelText(
+      /Choose \.apkg file/i
+    ) as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [makeApkgFile()] } });
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(/250 notes/);
+    });
+    expect(
+      screen.queryByRole('link', { name: /Sign in to export/i })
+    ).toBeNull();
+  });
+
+  it('tells anonymous visitors what they can export before they pick a file', () => {
+    render(<ApkgCsvExportForm />);
+    expect(screen.getByText(/Export up to 21 notes now/i)).toBeTruthy();
   });
 });
