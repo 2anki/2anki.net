@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-05-failed-conversion-messages",
+  "date": "2026-08-05",
+  "type": "fix",
+  "title": "Failed conversions explain what happened instead of showing internal error text"
+}

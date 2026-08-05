@@ -4,6 +4,7 @@ import {
   ClaudeLargeSectionError,
   LARGE_SECTION_USER_MESSAGE,
 } from '../../lib/claude/ClaudeService';
+import { CONVERSION_TRUNCATED_MESSAGE } from '../../infrastracture/adapters/fileConversion/claudeFileConversion';
 import { EmptyDeckError } from './EmptyDeckError';
 import {
   COLUMNS_AMBIGUOUS_PREFIX,
@@ -350,5 +351,60 @@ describe('jobFailureReasonCode', () => {
     expect(jobFailureReasonCode(new Error('mystery'))).toBe('unknown');
     expect(jobFailureReasonCode('string error')).toBe('unknown');
     expect(jobFailureReasonCode(undefined)).toBe('unknown');
+  });
+});
+
+describe('jobFailureReasonFromError on worker-flattened errors', () => {
+  // The upload worker serialises errors to { message, name } and
+  // GeneratePackagesUseCase rebuilds a plain Error, so every instanceof and
+  // code check below sees a bare Error. These assert the reason still resolves
+  // from the name that survived the boundary.
+  function flatten(name: string, message: string): Error {
+    const e = new Error(message);
+    e.name = name;
+    return e;
+  }
+
+  it('keeps the large-section message when the class was flattened', () => {
+    expect(
+      jobFailureReasonFromError(
+        flatten('ClaudeLargeSectionError', LARGE_SECTION_USER_MESSAGE)
+      )
+    ).toBe(LARGE_SECTION_USER_MESSAGE);
+  });
+
+  it('keeps the python exit message when the class was flattened', () => {
+    expect(
+      jobFailureReasonFromError(flatten('PythonExitError', 'genanki blew up'))
+    ).toBe('genanki blew up');
+  });
+
+  it('keeps the truncation message when the class was flattened', () => {
+    expect(
+      jobFailureReasonFromError(
+        flatten('FileConversionError', CONVERSION_TRUNCATED_MESSAGE)
+      )
+    ).toBe(CONVERSION_TRUNCATED_MESSAGE);
+  });
+
+  it('does not leak an arbitrary FileConversionError message', () => {
+    const reason = jobFailureReasonFromError(
+      flatten(
+        'FileConversionError',
+        'Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests'
+      ),
+      'job-1'
+    );
+    expect(reason).not.toMatch(/anthropic-sdk-typescript/);
+    expect(reason).toMatch(/Something went wrong on our end/);
+  });
+
+  it('does not leak a raw library error message', () => {
+    const reason = jobFailureReasonFromError(
+      new Error('ECONNRESET at TLSSocket._onTimeout (node:net:1234)'),
+      'job-2'
+    );
+    expect(reason).not.toMatch(/TLSSocket/);
+    expect(reason).toMatch(/Job ID job-2/);
   });
 });
