@@ -78,7 +78,7 @@
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "playwright": "^1.62.1",
     "swagger-typescript-api": "^13.12.6",
     "swagger-ui-express": "^5.0.1",
