@@ -219,6 +219,25 @@ const apkgToCsv: LandingCopy = {
   h1: 'Anki deck to CSV — export cards to a spreadsheet',
   subhead:
     'Drop an .apkg file and download a CSV. Every card front, back, and tag in one spreadsheet you can edit.',
+  // This page runs the opposite direction to the rest of the site: a deck goes
+  // in and a spreadsheet comes out. The shared steps and format list describe
+  // building a deck, so without these overrides the page tells visitors to drop
+  // a Notion export and open an .apkg it never makes.
+  steps: [
+    {
+      title: 'Choose your .apkg',
+      body: 'Any Anki deck file — your own, or one you downloaded.',
+    },
+    {
+      title: '2anki reads every card',
+      body: 'Fronts, backs, and tags, including cloze markup.',
+    },
+    {
+      title: 'Open the CSV',
+      body: 'Excel, Google Sheets, or any spreadsheet app.',
+    },
+  ],
+  formats: ['.apkg in', 'CSV out'],
   faqs: [
     {
       q: 'Why would I export to CSV?',

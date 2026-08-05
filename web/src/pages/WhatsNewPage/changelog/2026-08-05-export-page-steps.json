@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-05-export-page-steps",
+  "date": "2026-08-05",
+  "type": "fix",
+  "title": "The CSV and Notion export pages describe what they actually do"
+}

@@ -13,6 +13,11 @@ export interface RelatedLink {
   href: string;
 }
 
+export interface LandingStep {
+  title: string;
+  body: string;
+}
+
 export interface LandingCopy {
   pathname: string;
   title: string;
@@ -25,4 +30,9 @@ export interface LandingCopy {
   whatComesAcross?: WhatComesAcrossItem[];
   relatedLinks?: ReadonlyArray<RelatedLink>;
   galleryBadge?: boolean;
+  // The default steps and format list describe building a deck from a document.
+  // A page that runs the other direction — a deck in, something else out — has
+  // to say so, or it tells the visitor to open an .apkg that it never produces.
+  steps?: ReadonlyArray<LandingStep>;
+  formats?: ReadonlyArray<string>;
 }
