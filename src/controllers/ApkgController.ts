@@ -316,6 +316,14 @@ class ApkgController {
     let fileBuffer: Buffer;
     try {
       fileBuffer = await fs.readFile(file.path);
+    } catch {
+      // Without this the rejection escapes the handler entirely — express does
+      // not await it — and the unhandled-rejection guard in server.ts exits the
+      // process. One anonymous request hitting a reaped temp file would take
+      // the whole site down.
+      await tryUnlink(file.path);
+      res.status(400).json({ message: "Couldn't read the uploaded file." });
+      return;
     } finally {
       await tryUnlink(file.path);
     }
@@ -324,7 +332,10 @@ class ApkgController {
     try {
       const useCase = new ExportApkgToCsvUseCase();
       const result = await useCase.execute(fileBuffer, noteLimit);
-      if (owner == null) {
+      // A paid day-pass sets `subscriber` without an `owner`, so an owner check
+      // alone would file paying customers under anonymous and skew the funnel
+      // number this event exists to produce.
+      if (owner == null && !isPaying(res.locals)) {
         track('apkg_csv_export_anonymous', {
           userId: null,
           props: { note_count: result.noteCount },
