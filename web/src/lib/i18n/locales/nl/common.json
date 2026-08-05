@@ -436,7 +436,13 @@
       "partial": "Gedeeltelijk",
       "shared": "Gedeeld",
       "imageSkipped_one": "{{count}} afbeelding overgeslagen",
-      "imageSkipped_other": "{{count}} afbeeldingen overgeslagen"
+      "imageSkipped_other": "{{count}} afbeeldingen overgeslagen",
+      "blocksForbidden_one": "{{count}} deel niet verbonden",
+      "blocksForbidden_other": "{{count}} delen niet verbonden",
+      "blocksSkipped_one": "{{count}} blok overgeslagen",
+      "blocksSkipped_other": "{{count}} blokken overgeslagen",
+      "structureGuessed": "Structuur geraden",
+      "columnsGuessed": "Kolommen geraden"
     },
     "done": "Klaar",
     "openInNotion": "Openen in Notion",

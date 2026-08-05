@@ -57,6 +57,8 @@ import { parseColumnsGuessedPayload } from './helpers/parseColumnsGuessedPayload
 import { UnsupportedBlocksNotice } from './components/UnsupportedBlocksNotice';
 import { parseUnsupportedBlocksPayload } from './helpers/parseUnsupportedBlocksPayload';
 import { ForbiddenBlocksNotice } from './components/ForbiddenBlocksNotice';
+import { ConversionNoteToggle } from './components/ConversionNoteToggle';
+import { countUnsupportedBlocks } from './helpers/countUnsupportedBlocks';
 import { parseForbiddenBlocksPayload } from './helpers/parseForbiddenBlocksPayload';
 import { parseMonthlyLimitPayload } from './components/ConversionResult/parseMonthlyLimitPayload';
 import { MonthlyLimitPartialNotice } from './components/MonthlyLimitPartialNotice';
@@ -751,6 +753,57 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                             </span>
                                           </button>
                                         )}
+                                        {forbiddenBlocks != null && (
+                                          <ConversionNoteToggle
+                                            badge={t(
+                                              'downloads.badge.blocksForbidden',
+                                              { count: forbiddenBlocks.count }
+                                            )}
+                                            controlsId={`job-${row.job.id}-forbiddenblocks`}
+                                            tone="warning"
+                                            isExpanded={isExpanded}
+                                            onToggle={toggleFailurePanel}
+                                          />
+                                        )}
+                                        {unsupportedBlocks != null && (
+                                          <ConversionNoteToggle
+                                            badge={t(
+                                              'downloads.badge.blocksSkipped',
+                                              {
+                                                count:
+                                                  countUnsupportedBlocks(
+                                                    unsupportedBlocks
+                                                  ),
+                                              }
+                                            )}
+                                            controlsId={`job-${row.job.id}-unsupportedblocks`}
+                                            tone="warning"
+                                            isExpanded={isExpanded}
+                                            onToggle={toggleFailurePanel}
+                                          />
+                                        )}
+                                        {structureRescued != null && (
+                                          <ConversionNoteToggle
+                                            badge={t(
+                                              'downloads.badge.structureGuessed'
+                                            )}
+                                            controlsId={`job-${row.job.id}-structurerescued`}
+                                            tone="neutral"
+                                            isExpanded={isExpanded}
+                                            onToggle={toggleFailurePanel}
+                                          />
+                                        )}
+                                        {guessedColumns != null && (
+                                          <ConversionNoteToggle
+                                            badge={t(
+                                              'downloads.badge.columnsGuessed'
+                                            )}
+                                            controlsId={`job-${row.job.id}-columnsguess`}
+                                            tone="neutral"
+                                            isExpanded={isExpanded}
+                                            onToggle={toggleFailurePanel}
+                                          />
+                                        )}
                                       </>
                                     )}
                                     <div className={styles.secondaryActions}>
@@ -892,6 +945,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     <td
                                       colSpan={4}
                                       className={styles.failurePanel}
+                                      id={`job-${row.job.id}-columnsguess`}
                                     >
                                       <ColumnsGuessedNotice
                                         frontField={guessedColumns.frontField}
@@ -909,6 +963,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     <td
                                       colSpan={4}
                                       className={styles.failurePanel}
+                                      id={`job-${row.job.id}-structurerescued`}
                                     >
                                       <StructureRescuedNotice
                                         rule={structureRescued.rule}
@@ -923,6 +978,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     <td
                                       colSpan={4}
                                       className={styles.failurePanel}
+                                      id={`job-${row.job.id}-forbiddenblocks`}
                                     >
                                       <ForbiddenBlocksNotice
                                         count={forbiddenBlocks.count}
@@ -939,6 +995,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     <td
                                       colSpan={4}
                                       className={styles.failurePanel}
+                                      id={`job-${row.job.id}-unsupportedblocks`}
                                     >
                                       <UnsupportedBlocksNotice
                                         counts={unsupportedBlocks}

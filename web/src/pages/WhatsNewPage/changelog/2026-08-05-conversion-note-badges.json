@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-05-conversion-note-badges",
+  "date": "2026-08-05",
+  "type": "fix",
+  "title": "Downloads shows when part of a Notion page wasn't connected, wasn't supported, or was guessed"
+}
