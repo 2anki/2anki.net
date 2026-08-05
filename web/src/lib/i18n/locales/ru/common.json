@@ -442,7 +442,17 @@
       "imageSkipped_one": "{{count}} изображение пропущено",
       "imageSkipped_few": "{{count}} изображения пропущено",
       "imageSkipped_many": "{{count}} изображений пропущено",
-      "imageSkipped_other": "{{count}} изображения пропущено"
+      "imageSkipped_other": "{{count}} изображения пропущено",
+      "blocksForbidden_one": "{{count}} часть не подключена",
+      "blocksForbidden_few": "{{count}} части не подключены",
+      "blocksForbidden_many": "{{count}} частей не подключено",
+      "blocksForbidden_other": "{{count}} части не подключено",
+      "blocksSkipped_one": "{{count}} блок пропущен",
+      "blocksSkipped_few": "{{count}} блока пропущено",
+      "blocksSkipped_many": "{{count}} блоков пропущено",
+      "blocksSkipped_other": "{{count}} блока пропущено",
+      "structureGuessed": "Структура определена",
+      "columnsGuessed": "Столбцы определены"
     },
     "done": "Готово",
     "openInNotion": "Открыть в Notion",

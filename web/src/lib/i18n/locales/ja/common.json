@@ -433,7 +433,11 @@
       "monthlyLimitReached": "今月の上限に達しました",
       "partial": "一部",
       "shared": "共有済み",
-      "imageSkipped_other": "画像 {{count}} 枚をスキップ"
+      "imageSkipped_other": "画像 {{count}} 枚をスキップ",
+      "blocksForbidden_other": "未接続の部分 {{count}} 件",
+      "blocksSkipped_other": "ブロック {{count}} 個をスキップ",
+      "structureGuessed": "構造を推定",
+      "columnsGuessed": "列を推定"
     },
     "done": "完了",
     "openInNotion": "Notion で開く",

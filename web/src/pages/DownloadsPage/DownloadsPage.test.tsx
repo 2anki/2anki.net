@@ -1194,3 +1194,165 @@ describe('DownloadsPage truncation notice', () => {
     expect(screen.queryByText('Partial')).not.toBeInTheDocument();
   });
 });
+
+describe('DownloadsPage conversion note toggles', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-10T12:00:00Z'));
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    mockUploads = [];
+    mockDropboxUploads = [];
+    mockGoogleDriveUploads = [];
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    delete (globalThis as AnalyticsGlobals).hj;
+    delete (globalThis as AnalyticsGlobals).gtag;
+  });
+
+  const doneNotionJob = (
+    payload: unknown,
+    overrides: Partial<JobResponse> = {}
+  ) =>
+    buildJob({
+      status: 'done',
+      type: 'page',
+      title: 'Notion deck',
+      download_key: 'deck.apkg',
+      job_reason_failure: JSON.stringify(payload),
+      ...overrides,
+    });
+
+  it('reveals the unshared-blocks notice from its own badge', () => {
+    mockJobs = [
+      doneNotionJob({ code: 'notion_blocks_forbidden', forbidden_blocks: 3 }),
+    ];
+    renderAt('/downloads');
+
+    expect(screen.queryByText(/couldn't be read/)).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: '3 parts not connected' })
+    );
+    expect(screen.getByText(/3 parts of this page/)).toBeInTheDocument();
+  });
+
+  it('counts a single unshared block with the singular badge', () => {
+    mockJobs = [
+      doneNotionJob({ code: 'notion_blocks_forbidden', forbidden_blocks: 1 }),
+    ];
+    renderAt('/downloads');
+    expect(screen.getByText('1 part not connected')).toBeInTheDocument();
+  });
+
+  it('reveals the structure-rescued notice from its own badge', () => {
+    mockJobs = [
+      doneNotionJob({ code: 'notion_structure_rescued', rule: 'heading' }),
+    ];
+    renderAt('/downloads');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Structure guessed' }));
+    expect(screen.getByText(/Cards built from the/)).toBeInTheDocument();
+  });
+
+  it('reveals the columns-guessed notice from its own badge', () => {
+    mockJobs = [
+      doneNotionJob(
+        {
+          code: 'notion_columns_guessed',
+          front_field: 'Term',
+          back_field: 'Definition',
+        },
+        { type: 'database' }
+      ),
+    ];
+    renderAt('/downloads');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Columns guessed' }));
+    expect(screen.getByText(/couldn't tell which columns/)).toBeInTheDocument();
+  });
+
+  it('reveals the unsupported-blocks notice from its own badge', () => {
+    mockJobs = [
+      doneNotionJob({
+        code: 'notion_unsupported_blocks',
+        unsupported_blocks: { pdf: 2 },
+      }),
+    ];
+    renderAt('/downloads');
+
+    fireEvent.click(screen.getByRole('button', { name: '2 blocks skipped' }));
+    expect(screen.getByText(/couldn't be converted/)).toBeInTheDocument();
+  });
+
+  it('shows one badge per signal when several ride along on one conversion', () => {
+    mockJobs = [
+      doneNotionJob({
+        code: 'notion_blocks_forbidden',
+        forbidden_blocks: 2,
+        dropped_assets: 1,
+        unsupported_blocks: { pdf: 4 },
+      }),
+    ];
+    renderAt('/downloads');
+
+    expect(screen.getByText('2 parts not connected')).toBeInTheDocument();
+    expect(screen.getByText('1 image skipped')).toBeInTheDocument();
+    expect(screen.getByText('4 blocks skipped')).toBeInTheDocument();
+  });
+
+  it('shows no conversion-note badge on a clean database conversion', () => {
+    mockJobs = [
+      doneNotionJob(
+        { code: 'notion_database_resolved', via_page_link_selfheal: false },
+        { type: 'database' }
+      ),
+    ];
+    renderAt('/downloads');
+
+    expect(
+      screen.queryByRole('button', { name: /not connected/ })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /blocks skipped/ })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Structure guessed/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('points each badge at the notice panel it reveals', () => {
+    mockJobs = [
+      doneNotionJob({ code: 'notion_blocks_forbidden', forbidden_blocks: 3 }),
+    ];
+    renderAt('/downloads');
+
+    const toggle = screen.getByRole('button', {
+      name: '3 parts not connected',
+    });
+    expect(toggle).toHaveAttribute('aria-controls', 'job-1-forbiddenblocks');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      document.getElementById('job-1-forbiddenblocks')
+    ).toBeInTheDocument();
+  });
+
+  it('shows no conversion-note badge on a failed job', () => {
+    mockJobs = [
+      doneNotionJob(
+        { code: 'notion_blocks_forbidden', forbidden_blocks: 3 },
+        { status: 'failed' }
+      ),
+    ];
+    renderAt('/downloads');
+
+    expect(
+      screen.queryByRole('button', { name: /not connected/ })
+    ).not.toBeInTheDocument();
+  });
+});

@@ -436,7 +436,13 @@
       "partial": "Parcial",
       "shared": "Compartido",
       "imageSkipped_one": "{{count}} imagen omitida",
-      "imageSkipped_other": "{{count}} imágenes omitidas"
+      "imageSkipped_other": "{{count}} imágenes omitidas",
+      "blocksForbidden_one": "{{count}} parte sin conectar",
+      "blocksForbidden_other": "{{count}} partes sin conectar",
+      "blocksSkipped_one": "{{count}} bloque omitido",
+      "blocksSkipped_other": "{{count}} bloques omitidos",
+      "structureGuessed": "Estructura deducida",
+      "columnsGuessed": "Columnas deducidas"
     },
     "done": "Listo",
     "openInNotion": "Abrir en Notion",

@@ -436,7 +436,13 @@
       "partial": "Teilweise",
       "shared": "Geteilt",
       "imageSkipped_one": "{{count}} Bild übersprungen",
-      "imageSkipped_other": "{{count}} Bilder übersprungen"
+      "imageSkipped_other": "{{count}} Bilder übersprungen",
+      "blocksForbidden_one": "{{count}} Teil nicht verbunden",
+      "blocksForbidden_other": "{{count}} Teile nicht verbunden",
+      "blocksSkipped_one": "{{count}} Block übersprungen",
+      "blocksSkipped_other": "{{count}} Blöcke übersprungen",
+      "structureGuessed": "Struktur geraten",
+      "columnsGuessed": "Spalten geraten"
     },
     "done": "Fertig",
     "openInNotion": "In Notion öffnen",

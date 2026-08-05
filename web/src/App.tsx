@@ -91,6 +91,9 @@ const UploadSuccessPreviewPage = import.meta.env.DEV
       () => import('./pages/UploadSuccessPreviewPage/UploadSuccessPreviewPage')
     )
   : null;
+const DownloadsPreviewPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/DownloadsPreviewPage/DownloadsPreviewPage'))
+  : null;
 const SuccessfulCheckoutPage = lazyWithRetry(
   () => import('./pages/SuccessfulCheckout/SuccessfulCheckout'),
   './pages/SuccessfulCheckout/SuccessfulCheckout'
@@ -511,6 +514,12 @@ function AppContent({
               <Route
                 path="/dev/upload-success-preview"
                 element={<UploadSuccessPreviewPage />}
+              />
+            )}
+            {DownloadsPreviewPage && (
+              <Route
+                path="/dev/downloads-preview"
+                element={<DownloadsPreviewPage />}
               />
             )}
             <Route

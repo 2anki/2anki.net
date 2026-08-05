@@ -436,7 +436,13 @@
       "partial": "Parcial",
       "shared": "Compartilhado",
       "imageSkipped_one": "{{count}} imagem ignorada",
-      "imageSkipped_other": "{{count}} imagens ignoradas"
+      "imageSkipped_other": "{{count}} imagens ignoradas",
+      "blocksForbidden_one": "{{count}} parte não conectada",
+      "blocksForbidden_other": "{{count}} partes não conectadas",
+      "blocksSkipped_one": "{{count}} bloco ignorado",
+      "blocksSkipped_other": "{{count}} blocos ignorados",
+      "structureGuessed": "Estrutura deduzida",
+      "columnsGuessed": "Colunas deduzidas"
     },
     "done": "Pronto",
     "openInNotion": "Abrir no Notion",

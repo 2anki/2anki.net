@@ -442,7 +442,17 @@
       "imageSkipped_one": "Pominięto {{count}} obraz",
       "imageSkipped_few": "Pominięto {{count}} obrazy",
       "imageSkipped_many": "Pominięto {{count}} obrazów",
-      "imageSkipped_other": "Pominięto {{count}} obrazu"
+      "imageSkipped_other": "Pominięto {{count}} obrazu",
+      "blocksForbidden_one": "Niepodłączona {{count}} część",
+      "blocksForbidden_few": "Niepodłączone {{count}} części",
+      "blocksForbidden_many": "Niepodłączonych {{count}} części",
+      "blocksForbidden_other": "Niepodłączonej {{count}} części",
+      "blocksSkipped_one": "Pominięto {{count}} blok",
+      "blocksSkipped_few": "Pominięto {{count}} bloki",
+      "blocksSkipped_many": "Pominięto {{count}} bloków",
+      "blocksSkipped_other": "Pominięto {{count}} bloku",
+      "structureGuessed": "Odgadnięto strukturę",
+      "columnsGuessed": "Odgadnięto kolumny"
     },
     "done": "Gotowe",
     "openInNotion": "Otwórz w Notion",
