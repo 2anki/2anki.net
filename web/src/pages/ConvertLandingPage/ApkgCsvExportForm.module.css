@@ -121,3 +121,58 @@
   cursor: pointer;
   text-decoration: underline;
 }
+
+/* The note cap is a gate, not a failure — neutral surface, no danger colour.
+   Red stays for genuine errors so it keeps meaning something. */
+.capNotice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+}
+
+.capHeadline {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-primary);
+}
+
+.capSubline {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.capActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.capPrimary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+}
+
+.capSecondary {
+  font-size: var(--text-sm);
+  color: var(--color-text-link);
+  text-decoration: none;
+}
+
+.capSecondary:hover {
+  text-decoration: underline;
+}

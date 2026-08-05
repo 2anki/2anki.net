@@ -49,6 +49,7 @@ export const KNOWN_EVENTS = new Set([
   'onboarding_skipped',
   'onboarding_completed',
   'apkg_csv_exported',
+  'apkg_csv_export_anonymous',
   'make_another_deck_clicked',
   'recent_page_reconvert_clicked',
   'native_app_page_viewed',

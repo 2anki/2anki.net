@@ -2,6 +2,7 @@ import ExportApkgToCsvUseCase, {
   EmptyDeckError,
   CardLimitExceededError,
   CSV_FREE_NOTE_LIMIT,
+  CSV_ANONYMOUS_NOTE_LIMIT,
 } from './ExportApkgToCsvUseCase';
 import * as parseApkgNotesModule from '../../services/ApkgPreviewService/parseApkgNotes';
 import { ParsedNote } from '../../lib/ankify/transforms/types';
@@ -32,7 +33,7 @@ describe('ExportApkgToCsvUseCase', () => {
       sourceMedia: [],
     });
     const useCase = new ExportApkgToCsvUseCase();
-    const result = await useCase.execute(Buffer.from('fake-apkg'), true);
+    const result = await useCase.execute(Buffer.from('fake-apkg'), null);
     expect(result.deckName).toBe('Spanish 101');
     expect(result.noteCount).toBe(2);
     const csv = result.csv.toString('utf8').replace(/^﻿/, '');
@@ -50,7 +51,7 @@ describe('ExportApkgToCsvUseCase', () => {
     });
     const useCase = new ExportApkgToCsvUseCase();
     await expect(
-      useCase.execute(Buffer.from('fake-apkg'), false)
+      useCase.execute(Buffer.from('fake-apkg'), CSV_FREE_NOTE_LIMIT)
     ).rejects.toBeInstanceOf(EmptyDeckError);
   });
 
@@ -66,11 +67,11 @@ describe('ExportApkgToCsvUseCase', () => {
     });
     const useCase = new ExportApkgToCsvUseCase();
     await expect(
-      useCase.execute(Buffer.from('fake-apkg'), false)
+      useCase.execute(Buffer.from('fake-apkg'), CSV_FREE_NOTE_LIMIT)
     ).rejects.toBeInstanceOf(CardLimitExceededError);
   });
 
-  it('does not apply the cap when the user is on the paid plan', async () => {
+  it('does not apply the cap when the caller is unlimited', async () => {
     const many = Array.from({ length: CSV_FREE_NOTE_LIMIT + 100 }, (_, i) =>
       note([`Q${i}`, `A${i}`])
     );
@@ -81,7 +82,7 @@ describe('ExportApkgToCsvUseCase', () => {
       sourceMedia: [],
     });
     const useCase = new ExportApkgToCsvUseCase();
-    const result = await useCase.execute(Buffer.from('fake-apkg'), true);
+    const result = await useCase.execute(Buffer.from('fake-apkg'), null);
     expect(result.noteCount).toBe(CSV_FREE_NOTE_LIMIT + 100);
   });
 
@@ -93,10 +94,66 @@ describe('ExportApkgToCsvUseCase', () => {
       sourceMedia: [],
     });
     const useCase = new ExportApkgToCsvUseCase();
-    const result = await useCase.execute(Buffer.from('fake-apkg'), true);
+    const result = await useCase.execute(Buffer.from('fake-apkg'), null);
     expect(result.csv[0]).toBe(0xef);
     expect(result.csv[1]).toBe(0xbb);
     expect(result.csv[2]).toBe(0xbf);
     expect(result.csv.toString('utf8')).toContain('¿Cómo estás?');
+  });
+});
+
+describe('ExportApkgToCsvUseCase note limit tiers', () => {
+  const parseSpyFor = (count: number) =>
+    jest.spyOn(parseApkgNotesModule, 'parseApkgNotes').mockResolvedValue({
+      notes: Array.from({ length: count }, (_, i) => note([`Q${i}`, `A${i}`])),
+      unknownModelNames: [],
+      deckName: 'Deck',
+      sourceMedia: [],
+    });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it.each([
+    ['anonymous', CSV_ANONYMOUS_NOTE_LIMIT],
+    ['free account', CSV_FREE_NOTE_LIMIT],
+  ])('exports exactly the cap for %s', async (_tier, cap) => {
+    parseSpyFor(cap);
+    const result = await new ExportApkgToCsvUseCase().execute(
+      Buffer.from('fake-apkg'),
+      cap
+    );
+    expect(result.noteCount).toBe(cap);
+  });
+
+  it.each([
+    ['anonymous', CSV_ANONYMOUS_NOTE_LIMIT],
+    ['free account', CSV_FREE_NOTE_LIMIT],
+  ])('rejects one note over the cap for %s', async (_tier, cap) => {
+    parseSpyFor(cap + 1);
+    await expect(
+      new ExportApkgToCsvUseCase().execute(Buffer.from('fake-apkg'), cap)
+    ).rejects.toMatchObject({
+      name: 'CardLimitExceededError',
+      noteCount: cap + 1,
+      noteLimit: cap,
+    });
+  });
+
+  it('treats a cap of 0 as a cap, not as unlimited', async () => {
+    parseSpyFor(1);
+    await expect(
+      new ExportApkgToCsvUseCase().execute(Buffer.from('fake-apkg'), 0)
+    ).rejects.toBeInstanceOf(CardLimitExceededError);
+  });
+
+  it('exports a deck far over the free cap when the caller is unlimited', async () => {
+    parseSpyFor(CSV_FREE_NOTE_LIMIT * 5);
+    const result = await new ExportApkgToCsvUseCase().execute(
+      Buffer.from('fake-apkg'),
+      null
+    );
+    expect(result.noteCount).toBe(CSV_FREE_NOTE_LIMIT * 5);
   });
 });

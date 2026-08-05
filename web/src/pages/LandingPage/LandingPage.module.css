@@ -247,3 +247,15 @@ details[open] > .faqSummary::before {
     padding: 2rem 1rem;
   }
 }
+
+/* When the hero carries a live tool rather than a marketing CTA, the tool is
+   the conversion moment and should not need a scroll. Tighten the padding so
+   the title, one-line subhead, and the picker row share the first viewport. */
+.heroWithTool {
+  padding-top: 2.5rem;
+  padding-bottom: 2rem;
+}
+
+.heroWithTool .heroSubhead {
+  margin-bottom: 1.25rem;
+}

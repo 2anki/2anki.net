@@ -12,12 +12,43 @@ type FormState =
       csvName: string;
       csvUrl: string;
     }
+  // `capped` is deliberately separate from `error`. Hitting the note limit is a
+  // gate, not a failure — it gets a neutral treatment and an obvious next step,
+  // while red stays reserved for things that actually went wrong.
+  | {
+      kind: 'capped';
+      noteCount: number;
+      noteLimit: number;
+      needsAccount: boolean;
+    }
   | { kind: 'error'; message: string };
 
 interface ServerError {
   message?: string;
   note_count?: number;
   note_limit?: number;
+  requires_account?: boolean;
+}
+
+async function readCapExceeded(response: Response): Promise<{
+  kind: 'capped';
+  noteCount: number;
+  noteLimit: number;
+  needsAccount: boolean;
+} | null> {
+  if (response.status !== 402) return null;
+  try {
+    const body = (await response.clone().json()) as ServerError;
+    if (body.note_count == null || body.note_limit == null) return null;
+    return {
+      kind: 'capped',
+      noteCount: body.note_count,
+      noteLimit: body.note_limit,
+      needsAccount: body.requires_account === true,
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function readErrorMessage(response: Response): Promise<string> {
@@ -29,7 +60,6 @@ async function readErrorMessage(response: Response): Promise<string> {
   } catch {
     // not JSON
   }
-  if (response.status === 401) return 'Sign in to export your deck as a CSV.';
   if (response.status === 413)
     return 'This file is over the 100 MB upload limit.';
   return "Couldn't read this .apkg file. Pick another deck and try again.";
@@ -92,6 +122,11 @@ function ApkgCsvExportForm() {
         body: formData,
       });
       if (!response.ok) {
+        const capped = await readCapExceeded(response);
+        if (capped) {
+          setState(capped);
+          return;
+        }
         const message = await readErrorMessage(response);
         setState({ kind: 'error', message });
         return;
@@ -156,9 +191,37 @@ function ApkgCsvExportForm() {
         </div>
       )}
       <p className={styles.helper}>
-        Sign in to export. Free accounts get 100 notes per file — upgrade for
-        unlimited.
+        Export up to 21 notes now, no account needed. A free account raises that
+        to 100 per file — unlimited with a paid plan.
       </p>
+      {state.kind === 'capped' && (
+        <div className={styles.capNotice} role="status" aria-live="polite">
+          <p className={styles.capHeadline}>
+            This deck has {state.noteCount} notes.{' '}
+            {state.needsAccount
+              ? `Without an account you can export ${state.noteLimit}.`
+              : `Your plan exports ${state.noteLimit} per file.`}
+          </p>
+          {state.needsAccount && (
+            <p className={styles.capSubline}>
+              Sign in free to export up to 100 per file.
+            </p>
+          )}
+          <div className={styles.capActions}>
+            {state.needsAccount && (
+              <a
+                className={styles.capPrimary}
+                href="/login?redirect=/convert/apkg-to-csv"
+              >
+                Sign in to export
+              </a>
+            )}
+            <a className={styles.capSecondary} href="/pricing">
+              Upgrade for unlimited
+            </a>
+          </div>
+        </div>
+      )}
       {state.kind === 'error' && (
         <p className={styles.error} role="alert">
           {state.message}

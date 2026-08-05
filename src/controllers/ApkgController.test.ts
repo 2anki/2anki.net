@@ -24,6 +24,7 @@ jest.mock('../usecases/apkg/ExportApkgToCsvUseCase', () => {
     CardLimitExceededError: actual.CardLimitExceededError,
     EmptyDeckError: actual.EmptyDeckError,
     CSV_FREE_NOTE_LIMIT: actual.CSV_FREE_NOTE_LIMIT,
+    CSV_ANONYMOUS_NOTE_LIMIT: actual.CSV_ANONYMOUS_NOTE_LIMIT,
   };
 });
 jest.mock('../services/events/track', () => ({ track: jest.fn() }));
@@ -496,7 +497,7 @@ describe('ApkgController.exportCsv', () => {
 
     await controller.exportCsv(req, res);
 
-    expect(executeMock).toHaveBeenCalledWith(expect.any(Buffer), true);
+    expect(executeMock).toHaveBeenCalledWith(expect.any(Buffer), null);
     const setHeader = (res as unknown as { setHeader: jest.Mock }).setHeader;
     expect(setHeader).toHaveBeenCalledWith(
       'Content-Type',
@@ -523,7 +524,7 @@ describe('ApkgController.exportCsv', () => {
 
     await controller.exportCsv(req, res);
 
-    expect(executeMock).toHaveBeenCalledWith(expect.any(Buffer), false);
+    expect(executeMock).toHaveBeenCalledWith(expect.any(Buffer), 100);
   });
 
   it('returns 400 when the deck has no notes', async () => {
@@ -549,5 +550,49 @@ describe('ApkgController.exportCsv', () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ note_count: 250, note_limit: 100 })
     );
+  });
+
+  // makeRes defaults locals.owner to 'user-1', so an anonymous case only exists
+  // if owner is explicitly cleared. Without the override these read as
+  // signed-in and quietly assert the wrong tier.
+  it('caps an anonymous caller at the anonymous note limit', async () => {
+    const controller = makeController();
+    const req = makeReq() as Request;
+    const res = makeCsvRes({ owner: undefined });
+
+    await controller.exportCsv(req, res);
+
+    expect(executeMock).toHaveBeenCalledWith(expect.any(Buffer), 21);
+  });
+
+  it('tells an anonymous caller over the cap to make an account, not to pay', async () => {
+    executeMock.mockRejectedValueOnce(new CsvCardLimitExceededError(340, 21));
+    const controller = makeController();
+    const req = makeReq() as Request;
+    const res = makeCsvRes({ owner: undefined });
+
+    await controller.exportCsv(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(402);
+    const body = (res.json as jest.Mock).mock.calls[0][0];
+    expect(body).toMatchObject({
+      note_count: 340,
+      note_limit: 21,
+      requires_account: true,
+    });
+    expect(body.message).toContain('340');
+    expect(body.message).not.toMatch(/upgrade/i);
+  });
+
+  it('does not tell a signed-in caller over the cap that they need an account', async () => {
+    executeMock.mockRejectedValueOnce(new CsvCardLimitExceededError(250, 100));
+    const controller = makeController();
+    const req = makeReq() as Request;
+    const res = makeCsvRes({ patreon: false, subscriber: false });
+
+    await controller.exportCsv(req, res);
+
+    const body = (res.json as jest.Mock).mock.calls[0][0];
+    expect(body.requires_account).toBe(false);
   });
 });

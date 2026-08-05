@@ -17,6 +17,8 @@ import ExportApkgToPdfUseCase, {
 } from '../usecases/apkg/ExportApkgToPdfUseCase';
 import ExportApkgToCsvUseCase, {
   CardLimitExceededError as CsvCardLimitExceededError,
+  CSV_ANONYMOUS_NOTE_LIMIT,
+  CSV_FREE_NOTE_LIMIT,
   EmptyDeckError as CsvEmptyDeckError,
 } from '../usecases/apkg/ExportApkgToCsvUseCase';
 import ImportApkgToNotionUseCase from '../usecases/apkg/ImportApkgToNotionUseCase';
@@ -317,12 +319,20 @@ class ApkgController {
     } finally {
       await tryUnlink(file.path);
     }
+    const owner = res.locals.owner;
+    const noteLimit = csvNoteLimitFor(owner, isPaying(res.locals));
     try {
       const useCase = new ExportApkgToCsvUseCase();
-      const result = await useCase.execute(fileBuffer, isPaying(res.locals));
+      const result = await useCase.execute(fileBuffer, noteLimit);
+      if (owner == null) {
+        track('apkg_csv_export_anonymous', {
+          userId: null,
+          props: { note_count: result.noteCount },
+        });
+      }
       sendCsvDownload(res, result.csv, file.originalname, result.noteCount);
     } catch (error) {
-      sendCsvExportError(res, error);
+      sendCsvExportError(res, error, noteLimit);
     }
   }
 
@@ -564,7 +574,19 @@ function isInvalidApkgError(error: unknown): boolean {
   );
 }
 
-function sendCsvExportError(res: Response, error: unknown): void {
+// Three tiers: no account, free account, paid. Null means unlimited.
+function csvNoteLimitFor(owner: unknown, paying: boolean): number | null {
+  if (paying) {
+    return null;
+  }
+  return owner == null ? CSV_ANONYMOUS_NOTE_LIMIT : CSV_FREE_NOTE_LIMIT;
+}
+
+function sendCsvExportError(
+  res: Response,
+  error: unknown,
+  noteLimit: number | null
+): void {
   if (error instanceof CsvEmptyDeckError) {
     res.status(400).json({
       message: 'No notes found in this .apkg file. Pick another deck.',
@@ -572,10 +594,17 @@ function sendCsvExportError(res: Response, error: unknown): void {
     return;
   }
   if (error instanceof CsvCardLimitExceededError) {
+    // The next step differs by tier: someone without an account should be told
+    // to sign in for a bigger allowance, not to pay. The client renders this as
+    // a neutral gate rather than an error, using the two numbers below.
     res.status(402).json({
-      message: `${error.noteCount} notes — over the free limit of ${error.noteLimit}. Upgrade for no monthly cap.`,
+      message:
+        noteLimit === CSV_ANONYMOUS_NOTE_LIMIT
+          ? `This deck has ${error.noteCount} notes. Without an account you can export ${error.noteLimit}.`
+          : `This deck has ${error.noteCount} notes. Your plan exports ${error.noteLimit} per file.`,
       note_count: error.noteCount,
       note_limit: error.noteLimit,
+      requires_account: noteLimit === CSV_ANONYMOUS_NOTE_LIMIT,
     });
     return;
   }
