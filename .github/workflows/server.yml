@@ -40,7 +40,6 @@ jobs:
 
   test:
     name: test (22.20.0)
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
