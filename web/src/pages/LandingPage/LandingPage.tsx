@@ -188,21 +188,29 @@ function LandingPage({
             {t('sections.howItWorks', { defaultValue: 'How it works' })}
           </p>
           <div className={styles.stepsGrid}>
-            {STEP_KEYS.map((key, idx) => (
-              <div key={key} className={styles.step}>
-                <span className={styles.stepNumber}>{idx + 1}</span>
-                <p className={styles.stepTitle}>
-                  {t(`steps.${key}.title`, {
-                    defaultValue: STEP_FALLBACK[key].title,
-                  })}
-                </p>
-                <p className={styles.stepBody}>
-                  {t(`steps.${key}.body`, {
-                    defaultValue: STEP_FALLBACK[key].body,
-                  })}
-                </p>
-              </div>
-            ))}
+            {copy.steps != null
+              ? copy.steps.map((step, idx) => (
+                  <div key={step.title} className={styles.step}>
+                    <span className={styles.stepNumber}>{idx + 1}</span>
+                    <p className={styles.stepTitle}>{step.title}</p>
+                    <p className={styles.stepBody}>{step.body}</p>
+                  </div>
+                ))
+              : STEP_KEYS.map((key, idx) => (
+                  <div key={key} className={styles.step}>
+                    <span className={styles.stepNumber}>{idx + 1}</span>
+                    <p className={styles.stepTitle}>
+                      {t(`steps.${key}.title`, {
+                        defaultValue: STEP_FALLBACK[key].title,
+                      })}
+                    </p>
+                    <p className={styles.stepBody}>
+                      {t(`steps.${key}.body`, {
+                        defaultValue: STEP_FALLBACK[key].body,
+                      })}
+                    </p>
+                  </div>
+                ))}
           </div>
         </div>
       </section>
@@ -214,7 +222,7 @@ function LandingPage({
           })}
         </p>
         <ul className={styles.formatsList}>
-          {FORMATS.map((format) => (
+          {(copy.formats ?? FORMATS).map((format) => (
             <li key={format} className={styles.formatTag}>
               {format}
             </li>

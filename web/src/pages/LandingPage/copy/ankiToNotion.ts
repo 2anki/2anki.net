@@ -19,6 +19,23 @@ const ankiToNotionCopy: LandingCopy = {
     'Upload an .apkg file. Get every card as a toggle in a Notion page you can study, search, and edit.',
   ctaLabel: 'Start free import',
   ctaHref: '/register?source=/anki-to-notion',
+  // Deck in, Notion page out — the opposite of the shared steps, which end with
+  // "open the .apkg in Anki". This page never produces one.
+  steps: [
+    {
+      title: 'Upload your .apkg',
+      body: 'Any Anki deck file, yours or a shared one.',
+    },
+    {
+      title: 'Pick a Notion page',
+      body: 'Connect Notion and choose where the cards land.',
+    },
+    {
+      title: 'Study it in Notion',
+      body: 'Every card becomes a toggle you can search and edit.',
+    },
+  ],
+  formats: ['.apkg in', 'Notion toggles out'],
   whatComesAcross: [
     {
       title: 'Card fronts and backs',
