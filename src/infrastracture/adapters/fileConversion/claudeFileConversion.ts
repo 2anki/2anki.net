@@ -11,6 +11,14 @@ const DEFAULT_MODEL = 'claude-sonnet-4-6';
 // were the whole thing.
 const MAX_TOKENS = 32768;
 
+// The SDK refuses a non-streaming request whose worst-case duration exceeds ten
+// minutes, and it decides that from max_tokens alone: 60min * max_tokens /
+// 128000 > 10min, so anything above 21 333 throws client-side before a request
+// is ever sent. Raising the cap to 32 768 therefore killed every conversion
+// through here until these calls became streaming ones. Lowering the cap would
+// bring back the silent truncation the cap exists to prevent, so the calls
+// stream instead.
+
 export const CONVERSION_TRUNCATED_MESSAGE =
   'This document is too large to convert in one pass. Split it into smaller parts and convert each one.';
 
@@ -63,26 +71,30 @@ export async function convertWithClaude(
 
   try {
     if (options.pdf) {
-      const response = await client.beta.messages.create({
-        model: getModel(),
-        max_tokens: MAX_TOKENS,
-        system: [systemBlock],
-        messages: [
-          { role: 'user', content: userContent as BetaContentBlockParam[] },
-        ],
-        betas: ['pdfs-2024-09-25'],
-      });
+      const response = await client.beta.messages
+        .stream({
+          model: getModel(),
+          max_tokens: MAX_TOKENS,
+          system: [systemBlock],
+          messages: [
+            { role: 'user', content: userContent as BetaContentBlockParam[] },
+          ],
+          betas: ['pdfs-2024-09-25'],
+        })
+        .finalMessage();
       logClaudeUsage('claudeFileConversion', response.usage);
       assertNotTruncated(response.stop_reason);
       return joinTextBlocks(response.content);
     }
 
-    const response = await client.messages.create({
-      model: getModel(),
-      max_tokens: MAX_TOKENS,
-      system: [systemBlock],
-      messages: [{ role: 'user', content: userContent }],
-    });
+    const response = await client.messages
+      .stream({
+        model: getModel(),
+        max_tokens: MAX_TOKENS,
+        system: [systemBlock],
+        messages: [{ role: 'user', content: userContent }],
+      })
+      .finalMessage();
     logClaudeUsage('claudeFileConversion', response.usage);
     assertNotTruncated(response.stop_reason);
     return joinTextBlocks(response.content);
