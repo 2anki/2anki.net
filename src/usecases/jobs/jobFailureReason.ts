@@ -62,6 +62,15 @@ function hasCode(error: unknown, code: string): boolean {
   );
 }
 
+// The upload worker serialises errors across a thread boundary as
+// { message, name }, and GeneratePackagesUseCase rebuilds a plain Error from
+// that. Every instanceof below therefore fails on the async upload path, so the
+// classes whose message is meant to reach the user are matched by the name that
+// survived instead.
+function hasName(error: unknown, name: string): boolean {
+  return error instanceof Error && error.name === name;
+}
+
 export type JobFailureReasonCode =
   | 'empty_deck'
   | 'markdown_likely_lossy'
@@ -147,17 +156,21 @@ export function jobFailureReasonFromError(
     }
     return EMPTY_DECK_FAILURE_REASON;
   }
-  if (error instanceof ClaudeLargeSectionError) {
-    return error.message;
+  if (
+    error instanceof ClaudeLargeSectionError ||
+    hasName(error, 'ClaudeLargeSectionError')
+  ) {
+    return (error as Error).message;
   }
   if (
-    error instanceof FileConversionError &&
-    error.message === CONVERSION_TRUNCATED_MESSAGE
+    (error instanceof FileConversionError ||
+      hasName(error, 'FileConversionError')) &&
+    (error as Error).message === CONVERSION_TRUNCATED_MESSAGE
   ) {
-    return error.message;
+    return (error as Error).message;
   }
-  if (error instanceof PythonExitError) {
-    return error.message;
+  if (error instanceof PythonExitError || hasName(error, 'PythonExitError')) {
+    return (error as Error).message;
   }
   if (isColumnsAmbiguousError(error)) {
     return buildColumnsAmbiguousReason(error.columns);

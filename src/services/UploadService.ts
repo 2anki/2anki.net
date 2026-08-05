@@ -295,11 +295,7 @@ function walkMediaFiles(dir: string): string[] {
   return results;
 }
 
-function resolveAsyncFailureReason(
-  err: unknown,
-  message: string,
-  jobId: string
-): string {
+function resolveAsyncFailureReason(err: unknown, jobId: string): string {
   if (err instanceof MonthlyLimitError) {
     return JSON.stringify({
       code: 'monthly_limit',
@@ -317,13 +313,11 @@ function resolveAsyncFailureReason(
       reset_on: err.reset_on,
     });
   }
-  const isParserCrash =
-    err instanceof Error &&
-    (err as Error & { code?: string }).code === 'PARSER_CRASH';
-  if (err instanceof EmptyDeckError || isParserCrash || message.trim() === '') {
-    return jobFailureReasonFromError(err, jobId);
-  }
-  return message;
+  // Everything else goes through the allowlist, which decides what a user is
+  // allowed to read. Returning `message` here instead meant any library or
+  // driver text reached the downloads page verbatim — a user was once shown an
+  // Anthropic SDK error complete with a link to its GitHub repo.
+  return jobFailureReasonFromError(err, jobId);
 }
 
 function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
@@ -603,7 +597,7 @@ class UploadService {
         job.object_id,
         owner,
         'failed',
-        resolveAsyncFailureReason(err, err.message, job.object_id)
+        resolveAsyncFailureReason(err, job.object_id)
       );
     });
 
@@ -1057,7 +1051,7 @@ class UploadService {
             err,
           });
         }
-        const reason = resolveAsyncFailureReason(err, message, ws.id);
+        const reason = resolveAsyncFailureReason(err, ws.id);
         await this.jobRepository.updateJobStatus(
           ws.id,
           owner,
