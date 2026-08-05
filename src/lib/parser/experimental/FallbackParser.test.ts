@@ -253,3 +253,42 @@ describe('FallbackParser unstructured text (no tabs, no bullets)', () => {
     expect(decks).toHaveLength(0);
   });
 });
+
+describe('FallbackParser deck naming', () => {
+  const csv = 'front,back\nBonjour,Hello';
+
+  it('strips the extension from a CSV deck name, like its sibling branches', () => {
+    const parser = new FallbackParser([
+      { name: 'JLPT N5.csv', contents: Buffer.from(csv) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks[0].name).toBe('JLPT N5');
+  });
+
+  it('uses an explicit deckName over the filename for CSV', () => {
+    const parser = new FallbackParser([
+      { name: 'JLPT N5.csv', contents: Buffer.from(csv) },
+    ]);
+    const decks = parser.run({ deckName: 'Japanese vocab' } as any);
+    expect(decks[0].name).toBe('Japanese vocab');
+  });
+
+  it('uses an explicit deckName over the filename for plain text', () => {
+    const parser = new FallbackParser([
+      {
+        name: 'notes.txt',
+        contents: Buffer.from('Bonjour\tHello\nMerci\tThanks'),
+      },
+    ]);
+    const decks = parser.run({ deckName: 'Japanese vocab' } as any);
+    expect(decks[0].name).toBe('Japanese vocab');
+  });
+
+  it('falls back to the filename when no deckName is given', () => {
+    const parser = new FallbackParser([
+      { name: 'vocab.csv', contents: Buffer.from(csv) },
+    ]);
+    const decks = parser.run({ deckName: '' } as any);
+    expect(decks[0].name).toBe('vocab');
+  });
+});
