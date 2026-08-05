@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-05-csv-deck-name",
+  "date": "2026-08-05",
+  "type": "fix",
+  "title": "CSV decks use the name you asked for, without the .csv on the end"
+}

@@ -252,7 +252,7 @@ class FallbackParser {
 
     return {
       cards,
-      deckName: fileName ?? 'Default',
+      deckName: fileName?.replace(/\.[^/.]+$/, '') ?? 'Default',
       clean: false,
     };
   }
@@ -283,9 +283,16 @@ class FallbackParser {
 
       const clean = result.clean !== false;
 
+      // An explicit deck name wins over the filename, matching DeckParser and
+      // making the `applied.deckName` the API reports back actually true.
+      const deckName =
+        settings.deckName != null && settings.deckName.trim() !== ''
+          ? settings.deckName
+          : result.deckName;
+
       decks.push(
         new Deck(
-          result.deckName,
+          deckName,
           clean ? Deck.CleanCards(result.cards) : result.cards,
           '',
           '',
