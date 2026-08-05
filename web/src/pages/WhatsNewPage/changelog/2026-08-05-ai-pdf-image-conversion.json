@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-05-ai-pdf-image-conversion",
+  "date": "2026-08-05",
+  "type": "fix",
+  "title": "Uploads with a PDF or image convert again when AI flashcards are on"
+}
