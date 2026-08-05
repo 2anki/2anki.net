@@ -61,7 +61,7 @@
     "universal-cookie": "^8.1.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.62.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
@@ -70,23 +70,23 @@
     "@types/node": "^26.1.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^6.0.5",
     "@vitest/coverage-v8": "^4.1.5",
-    "@vitest/ui": "^4.1.8",
+    "@vitest/ui": "^4.1.10",
     "concurrently": "^10.0.4",
     "cors": "^2.8.6",
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsdom": "^29.1.1",
-    "playwright": "^1.60.0",
-    "swagger-typescript-api": "^13.12.2",
+    "playwright": "^1.62.1",
+    "swagger-typescript-api": "^13.12.6",
     "swagger-ui-express": "^5.0.1",
-    "terser": "^5.48.0",
+    "terser": "^5.49.0",
     "typescript": "^7.0.2",
-    "vite": "^8.0.16",
+    "vite": "^8.2.0",
     "vite-plugin-svgr": "^5.2.0",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.10"
   },
   "browserslist": {
     "production": [
