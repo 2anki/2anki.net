@@ -235,7 +235,7 @@
 
 .badgeWarning {
   composes: badge;
-  color: var(--color-warning);
+  color: var(--color-warning-text);
   background: var(--color-warning-light);
 }
 

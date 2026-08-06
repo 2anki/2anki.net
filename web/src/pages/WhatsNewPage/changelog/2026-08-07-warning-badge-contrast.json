@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-07-warning-badge-contrast",
+  "date": "2026-08-07",
+  "type": "fix",
+  "title": "Warning badges are readable in every theme, not just dark mode"
+}
