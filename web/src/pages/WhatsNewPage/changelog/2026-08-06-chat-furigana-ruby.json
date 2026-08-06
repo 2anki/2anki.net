@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-06-chat-furigana-ruby",
+  "date": "2026-08-06",
+  "type": "fix",
+  "title": "Chat flashcards with furigana use correct ruby markup so readings display above the kanji"
+}

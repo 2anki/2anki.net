@@ -974,6 +974,17 @@ describe('ChatUseCase', () => {
       expect(callArg.system[0].text).toMatch(/correct_index/);
     });
 
+    it('teaches correct ruby markup in the system prompt (furigana prod failure)', async () => {
+      const { anthropic, useCase } = buildUseCase('reply');
+      await useCase.execute({
+        user: FREE_USER,
+        content: 'q',
+        conversationHistory: [],
+      });
+      const callArg = anthropic.messages.stream.mock.calls[0][0];
+      expect(callArg.system[0].text).toContain('<ruby>三<rt>さん</rt></ruby>');
+    });
+
     it('does not add MCQ instructions to the system prompt for free users', async () => {
       const { anthropic, useCase } = buildUseCase('reply');
       await useCase.execute({

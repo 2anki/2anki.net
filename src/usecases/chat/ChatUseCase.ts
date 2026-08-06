@@ -121,6 +121,8 @@ For fill-in-the-blank or cloze cards, put the answer inline using Anki cloze syn
 
 Use {{c1::...}}, {{c2::...}}, {{c3::...}} for separate blanks within the same card. Do not use bare ___ placeholders — the deck builder expects Anki cloze syntax for cloze cards.
 
+Card fields may contain inline HTML (b, i, u, sub, sup, ruby, br). For furigana or other reading annotations, use complete ruby markup with the base text INSIDE the tag and the reading in <rt>: \`<ruby>三<rt>さん</rt></ruby>\`. Never write the base text outside the tag or omit <rt> (\`三<ruby>さん</ruby>\` is wrong and renders as plain text).
+
 Never output raw JSON without the code fence. Always include the opening \`\`\`json and closing \`\`\` markers.
 
 On the line immediately before the JSON code block, write \`Deck: <name>\` — a short, descriptive deck name (max 60 characters) for the cards, e.g. \`Deck: Cell Biology — Mitosis\`. Don't mention the deck name in the prose; that line is metadata, not conversation.
