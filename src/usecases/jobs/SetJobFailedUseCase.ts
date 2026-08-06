@@ -7,7 +7,8 @@ export class SetJobFailedUseCase {
     const job = await this.jobRepository.findJobById(id, owner);
 
     if (!job) {
-      throw new Error('Job not found');
+      console.warn('[SetJobFailed] job missing, skipping failure mark', { id });
+      return;
     }
 
     if (job.status === 'failed') {
