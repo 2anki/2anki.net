@@ -163,7 +163,10 @@ describe('create_deck handler', () => {
 
     expect(result.content[0].text).toContain('2 cards. Ready to download.');
     expect(result.content[0].text).toContain(
-      'Download: https://2anki.net/api/mcp/decks/abc/download'
+      'Download: [deck.apkg](https://2anki.net/api/mcp/decks/abc/download)'
+    );
+    expect(result.content[0].text).toContain(
+      'copy the link exactly as written'
     );
     expect(result.content[0].text).toContain('| # | Front | Back |');
     expect(result.content[0].text).toContain('| 1 | water | 水 |');
