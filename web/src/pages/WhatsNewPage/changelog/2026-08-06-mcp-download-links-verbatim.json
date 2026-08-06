@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-06-mcp-download-links-verbatim",
+  "date": "2026-08-06",
+  "type": "fix",
+  "title": "Deck download links shared by AI assistants stay clickable instead of breaking"
+}
