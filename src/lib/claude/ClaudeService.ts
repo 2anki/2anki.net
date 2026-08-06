@@ -559,11 +559,27 @@ function hasUsableCard(candidate: unknown[]): boolean {
 // „quote" pairs closed with ASCII " — the recurring jsonrepair-threw prod
 // shape). Walk the text tracking string state and escape a closing " only when
 // what follows cannot be the next JSON token.
+function skipWhitespace(text: string, from: number): number {
+  let i = from;
+  while (i < text.length && /\s/.test(text[i])) i++;
+  return i;
+}
+
+function isJsonValueStart(ch: string | undefined): boolean {
+  return ch === '"' || ch === '{' || ch === '[' || /[0-9tfn-]/.test(ch ?? '');
+}
+
+function quoteClosesString(text: string, quoteIndex: number): boolean {
+  const j = skipWhitespace(text, quoteIndex + 1);
+  const next = text[j];
+  if (next === undefined || next === '}' || next === ']') return true;
+  if (next !== ':' && next !== ',') return false;
+  return isJsonValueStart(text[skipWhitespace(text, j + 1)]);
+}
+
 function escapeUnterminatedInnerQuotes(text: string): string {
   let out = '';
   let inString = false;
-  const isValueStart = (ch: string | undefined) =>
-    ch === '"' || ch === '{' || ch === '[' || /[0-9tfn-]/.test(ch ?? '');
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (inString && c === '\\') {
@@ -578,26 +594,11 @@ function escapeUnterminatedInnerQuotes(text: string): string {
     if (!inString) {
       inString = true;
       out += c;
-      continue;
-    }
-    let j = i + 1;
-    while (j < text.length && /\s/.test(text[j])) j++;
-    const next = text[j];
-    let terminates: boolean;
-    if (next === undefined || next === '}' || next === ']') {
-      terminates = true;
-    } else if (next === ':' || next === ',') {
-      let k = j + 1;
-      while (k < text.length && /\s/.test(text[k])) k++;
-      terminates = isValueStart(text[k]);
-    } else {
-      terminates = false;
-    }
-    if (terminates) {
+    } else if (quoteClosesString(text, i)) {
       inString = false;
       out += c;
     } else {
-      out += '\\"';
+      out += String.raw`\"`;
     }
   }
   return out;
