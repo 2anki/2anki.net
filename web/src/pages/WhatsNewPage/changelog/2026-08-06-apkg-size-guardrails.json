@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-06-apkg-size-guardrails",
+  "date": "2026-08-06",
+  "type": "fix",
+  "title": "Oversized Anki packages get a clear \"too large\" message instead of failing midway"
+}

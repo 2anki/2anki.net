@@ -113,3 +113,59 @@ describe('extractApkg + parseCollection composition', () => {
     expect(collection.notes.get(10)?.fields).toEqual(['hello', 'world']);
   });
 });
+
+describe('extractApkg decompression caps', () => {
+  const { ApkgTooLargeError } = require('./extractApkg');
+
+  it('rejects on declared sizes before inflating when the total cap is exceeded', async () => {
+    const zip = new JSZip();
+    zip.file('collection.anki2', Buffer.alloc(64 * 1024, 0));
+    zip.file('media', '{}');
+    const apkg = await zip.generateAsync({ type: 'nodebuffer' });
+
+    await expect(
+      extractApkg(apkg, { maxTotalDecompressedBytes: 16 * 1024 })
+    ).rejects.toBeInstanceOf(ApkgTooLargeError);
+  });
+
+  it('rejects when the archive holds more entries than the cap', async () => {
+    const zip = new JSZip();
+    zip.file('collection.anki2', buildLegacyCollectionBuffer());
+    zip.file('media', '{}');
+    for (let i = 0; i < 5; i++) {
+      zip.file(String(i), Buffer.from('x'));
+    }
+    const apkg = await zip.generateAsync({ type: 'nodebuffer' });
+
+    await expect(extractApkg(apkg, { maxEntries: 4 })).rejects.toBeInstanceOf(
+      ApkgTooLargeError
+    );
+  });
+
+  it('rejects when the zstd collection expands past the collection cap', async () => {
+    const zlib = await import('zlib');
+    const { promisify } = await import('util');
+    const zstdCompress = promisify(zlib.zstdCompress);
+    const compressed = await zstdCompress(Buffer.alloc(4 * 1024 * 1024, 0));
+    const apkg = await buildApkgZip('collection.anki21b', compressed as Buffer);
+
+    await expect(
+      extractApkg(apkg, {
+        maxTotalDecompressedBytes: 64 * 1024 * 1024,
+        maxCollectionDecompressedBytes: 1024 * 1024,
+      })
+    ).rejects.toBeInstanceOf(ApkgTooLargeError);
+  });
+
+  it('carries a user-safe message with no archive internals', async () => {
+    const zip = new JSZip();
+    zip.file('collection.anki2', Buffer.alloc(64 * 1024, 0));
+    const apkg = await zip.generateAsync({ type: 'nodebuffer' });
+
+    const err = await extractApkg(apkg, {
+      maxTotalDecompressedBytes: 1024,
+    }).catch((e) => e);
+    expect(err.name).toBe('ApkgTooLargeError');
+    expect(err.message).toBe('This Anki package is too large to process.');
+  });
+});

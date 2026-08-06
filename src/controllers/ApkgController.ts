@@ -26,6 +26,7 @@ import PackEditedApkgUseCase from '../usecases/apkg/PackEditedApkgUseCase';
 import ResolveImportParentPageUseCase from '../usecases/apkg/ResolveImportParentPageUseCase';
 import NoNotionPagesError from '../usecases/apkg/NoNotionPagesError';
 import { CardEdit } from '../services/ApkgPreviewService/applyEditsToCards';
+import { ApkgTooLargeError } from '../services/ApkgPreviewService/extractApkg';
 import { NotionService } from '../services/NotionService/NotionService';
 import JobRepository from '../data_layer/JobRepository';
 import sendErrorResponse from '../lib/sendErrorResponse';
@@ -158,6 +159,7 @@ class ApkgController {
       if (!parsed) return;
       res.json(this.previewService.getMeta(parsed));
     } catch (error) {
+      if (sendApkgTooLarge(res, error)) return;
       if (this.downloadService.isMissingDownloadError(error)) {
         res.status(404).json({ message: 'Upload is no longer available.' });
         return;
@@ -188,6 +190,7 @@ class ApkgController {
         )
       );
     } catch (error) {
+      if (sendApkgTooLarge(res, error)) return;
       if (this.downloadService.isMissingDownloadError(error)) {
         res.status(404).json({ message: 'Upload is no longer available.' });
         return;
@@ -216,6 +219,7 @@ class ApkgController {
       res.setHeader('Cache-Control', 'private, max-age=300');
       res.send(buffer);
     } catch (error) {
+      if (sendApkgTooLarge(res, error)) return;
       if (this.downloadService.isMissingDownloadError(error)) {
         res.status(404).send();
         return;
@@ -284,6 +288,7 @@ class ApkgController {
       );
       res.send(result.pdf);
     } catch (error) {
+      if (sendApkgTooLarge(res, error)) return;
       if (error instanceof CardLimitExceededError) {
         res.status(400).json({ message: error.message });
         return;
@@ -414,6 +419,7 @@ class ApkgController {
 
       res.status(202).json({ job_id: jobId, status: 'queued' });
     } catch (error) {
+      if (sendApkgTooLarge(res, error)) return;
       if (error instanceof Error && error.message === 'unauthorized') {
         res.status(400).json({ message: 'Notion is not connected.' });
         return;
@@ -473,6 +479,7 @@ class ApkgController {
       );
       res.send(result.buffer);
     } catch (error) {
+      if (sendApkgTooLarge(res, error)) return;
       if (this.downloadService.isMissingDownloadError(error)) {
         res.status(404).json({ message: 'Upload is no longer available.' });
         return;
@@ -593,11 +600,20 @@ function csvNoteLimitFor(owner: unknown, paying: boolean): number | null {
   return owner == null ? CSV_ANONYMOUS_NOTE_LIMIT : CSV_FREE_NOTE_LIMIT;
 }
 
+function sendApkgTooLarge(res: Response, error: unknown): boolean {
+  if (error instanceof ApkgTooLargeError) {
+    res.status(413).json({ message: error.message });
+    return true;
+  }
+  return false;
+}
+
 function sendCsvExportError(
   res: Response,
   error: unknown,
   noteLimit: number | null
 ): void {
+  if (sendApkgTooLarge(res, error)) return;
   if (error instanceof CsvEmptyDeckError) {
     res.status(400).json({
       message: 'No notes found in this .apkg file. Pick another deck.',

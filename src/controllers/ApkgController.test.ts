@@ -527,6 +527,23 @@ describe('ApkgController.exportCsv', () => {
     expect(executeMock).toHaveBeenCalledWith(expect.any(Buffer), 100);
   });
 
+  it('returns 413 when the apkg exceeds the decompression caps', async () => {
+    const { ApkgTooLargeError } = jest.requireActual(
+      '../services/ApkgPreviewService/extractApkg'
+    );
+    executeMock.mockRejectedValueOnce(new ApkgTooLargeError());
+    const controller = makeController();
+    const req = makeReq() as Request;
+    const res = makeCsvRes({ patreon: true });
+
+    await controller.exportCsv(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(413);
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'This Anki package is too large to process.',
+    });
+  });
+
   it('returns 400 when the deck has no notes', async () => {
     executeMock.mockRejectedValueOnce(new CsvEmptyDeckError());
     const controller = makeController();
