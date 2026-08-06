@@ -110,20 +110,29 @@ function slimDeckText(
 
 const DECK_PREVIEW_TEASER_ROWS = 5;
 
+// Assistants retyping the URL into prose corrupt the UUID (a real ChatGPT
+// session added a hex char and the link 404ed) — so tell them to copy it.
+const VERBATIM_LINK_INSTRUCTION =
+  'When sharing this download link, copy the link exactly as written — never retype the URL.';
+
 function deckHeaderLines(result: Record<string, unknown>): string[] {
   const lines: string[] = [];
   if (typeof result.summary === 'string') {
     lines.push(`**${result.summary}**`);
   }
   if (typeof result.downloadUrl === 'string') {
-    lines.push(`Download: ${result.downloadUrl}`);
+    const label =
+      typeof result.filename === 'string' ? result.filename : 'deck';
+    lines.push(`Download: [${label}](${result.downloadUrl})`);
+    lines.push(VERBATIM_LINK_INSTRUCTION);
   } else if (result.kind === 'batch' && Array.isArray(result.decks)) {
     for (const deck of result.decks as {
       name: string;
       downloadUrl: string;
     }[]) {
-      lines.push(`- ${deck.name}: ${deck.downloadUrl}`);
+      lines.push(`- [${deck.name}](${deck.downloadUrl})`);
     }
+    lines.push(VERBATIM_LINK_INSTRUCTION);
   }
   return lines;
 }
