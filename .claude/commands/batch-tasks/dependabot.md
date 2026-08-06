@@ -55,6 +55,8 @@ Inspect the bumped package (from the title) and the file list. Hold — comment 
 - **Pinned override** — touches a package listed in `pnpm.overrides` (`package.json`): `path-to-regexp`, `picomatch`, `rollup`, `yaml`, `@types/express`, `@types/express-serve-static-core`. Bumping these can silently re-open a CVE we've worked around.
 - **Built dependency** — touches anything in `pnpm.onlyBuiltDependencies` (currently `better-sqlite3`). Build-step deps need a manual smoke run.
 - **Security-sensitive surface** — touches `bcryptjs`, `jsonwebtoken`, `sanitize-html`, `multer`, `express`, `stripe`, `@notionhq/client`, `@anthropic-ai/sdk`, `@sendgrid/mail`, `axios`, `knex`, or anything matching `node-*`. Even minors here get a manual look.
+- **Held bump** — the package appears under "Held bumps" in `.claude/rules/dependencies.md` (currently markdown-it 15, jsdom 30, sanitize-html 2.17.6). Comment with the hold reason and exit `needs-review`; do not re-litigate the hold.
+- **Stale or skipped CI** — any `test`-named check in `statusCheckRollup` is SKIPPED/CANCELLED, or the PR's checks predate a `.github/workflows/` change on main. Comment `@dependabot rebase` to refresh, then exit `needs-review` — never merge on a rollup whose test job didn't run (the 2026-08-06 outage shipped exactly this way).
 
 For any 2b hold, comment with the reason and a changelog link so the next reviewer can decide in 30 seconds, then exit `needs-review`:
 
@@ -70,9 +72,9 @@ The changelog URL is usually in the PR body under "Release notes" or "Commits" �
 gh pr checkout <n>
 ```
 
-## Step 4 — run /check
+## Step 4 — run /check AND the server suite
 
-Invoke the `/check` skill — the existing parallel server tsc + web typecheck + web vitest + web lint pipeline. Capture its overall pass/fail. If any of tsc, typecheck, vitest, or lint failed, mark the run as failed and record the first failing summary line for the comment.
+Invoke the `/check` skill — the existing parallel server tsc + web typecheck + web vitest + web lint pipeline. Then run the full server Jest suite: `pnpm test`. **`/check` does not run server Jest**, and tsc cannot see a runtime API removal inside an untyped JS dependency — the 2026-08-06 markdown-it 15 outage passed typecheck and died at module load, which `pnpm test` catches instantly (any suite importing the broken module fails at import). Capture overall pass/fail across both; the documented environmental failures (`getPageCount` pdfinfo, `PythonExitError` in venv-less worktrees) don't count as red. If anything else failed, mark the run as failed and record the first failing summary line for the comment.
 
 ## Step 5 — decide
 

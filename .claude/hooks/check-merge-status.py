@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """
-PreToolUse hook: block `gh pr merge` when any check has FAILURE.
+PreToolUse hook: gate `gh pr merge` on the full check rollup, not just FAILURE.
 
-Reads `gh pr view <num> --json statusCheckRollup` and refuses the merge
-if ANY rollup entry has conclusion == "FAILURE". This catches checks that
-GitHub branch protection didn't mark as required (e.g. SonarCloud).
+Blocks the merge when ANY of these hold:
+  1. Any rollup entry concluded FAILURE (or a commit status reports FAILURE/ERROR).
+  2. Any rollup entry has not COMPLETED yet (merge-while-running).
+  3. Any check named `test*` concluded SKIPPED or CANCELLED — a skipped test job
+     is not a green check. 2026-08-06: the markdown-it 15 bump merged on a
+     rollup whose server `test` job was SKIPPED (its CI predated the workflow
+     fix in #4000 that made dependabot PRs run the suite); the suite would have
+     caught the boot crash that took prod down.
+  4. The PR touches package.json or pnpm-lock.yaml but no `test*` check
+     concluded SUCCESS — a dependency change with no test run is unverified.
 
 Bypass: CLAUDE_SKIP_SAFETY=1 gh pr merge ...
 """
@@ -33,7 +40,6 @@ def deny(reason):
 
 GH_PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
 PR_URL = re.compile(r"https?://github\.com/[^/]+/[^/]+/pull/(\d+)")
-PR_BARE_NUMBER = re.compile(r"\b(\d+)\b")
 
 
 def is_gh_pr_merge(cmd):
@@ -53,11 +59,11 @@ def extract_pr_ref(cmd):
     return None
 
 
-def fetch_check_rollup(pr_ref):
+def fetch_pr_data(pr_ref):
     args = ["gh", "pr", "view"]
     if pr_ref is not None:
         args.append(pr_ref)
-    args.extend(["--json", "statusCheckRollup"])
+    args.extend(["--json", "statusCheckRollup,files"])
     try:
         result = subprocess.run(
             args, capture_output=True, text=True, timeout=15,
@@ -74,21 +80,63 @@ def fetch_check_rollup(pr_ref):
         )
         return None
     try:
-        data = json.loads(result.stdout)
+        return json.loads(result.stdout)
     except json.JSONDecodeError:
         sys.stderr.write(
             "[check-merge-status] could not parse gh JSON; allowing merge.\n"
         )
         return None
-    return data.get("statusCheckRollup") or []
 
 
-def failing_checks(rollup):
-    return [
-        entry.get("name") or "<unnamed>"
-        for entry in rollup
-        if entry.get("conclusion") == "FAILURE"
-    ]
+def entry_name(entry):
+    return entry.get("name") or entry.get("context") or "<unnamed>"
+
+
+def is_test_check(entry):
+    return entry_name(entry).lower().startswith("test")
+
+
+def classify(rollup, files):
+    """Return a list of human-readable violations for this rollup."""
+    violations = []
+    test_success_seen = False
+    for entry in rollup:
+        name = entry_name(entry)
+        conclusion = (entry.get("conclusion") or "").upper()
+        state = (entry.get("state") or "").upper()
+        status = (entry.get("status") or "").upper()
+
+        if conclusion == "FAILURE" or state in ("FAILURE", "ERROR"):
+            violations.append(f"{name}: FAILURE")
+            continue
+        if status and status != "COMPLETED":
+            violations.append(f"{name}: still {status} — wait for it to finish")
+            continue
+        if state == "PENDING":
+            violations.append(f"{name}: still PENDING — wait for it to finish")
+            continue
+        if is_test_check(entry):
+            if conclusion in ("SKIPPED", "CANCELLED"):
+                violations.append(
+                    f"{name}: {conclusion} — a skipped test job is not green; "
+                    "re-run CI (gh run rerun / @dependabot rebase) so the suite "
+                    "actually executes on this head SHA"
+                )
+                continue
+            if conclusion == "SUCCESS":
+                test_success_seen = True
+
+    touches_deps = any(
+        f.get("path") in ("package.json", "pnpm-lock.yaml")
+        for f in files
+    )
+    if touches_deps and not test_success_seen:
+        violations.append(
+            "PR changes package.json/pnpm-lock.yaml but no `test` check "
+            "concluded SUCCESS — a dependency change with no test run is "
+            "unverified (this is how the markdown-it 15 boot crash shipped)"
+        )
+    return violations
 
 
 def main():
@@ -109,20 +157,23 @@ def main():
         allow()
 
     pr_ref = extract_pr_ref(cmd)
-    rollup = fetch_check_rollup(pr_ref)
-    if rollup is None:
+    pr_data = fetch_pr_data(pr_ref)
+    if pr_data is None:
         allow()
 
-    failing = failing_checks(rollup)
-    if failing:
-        bullet_list = "\n".join(f"  - {name}" for name in failing)
+    rollup = pr_data.get("statusCheckRollup") or []
+    files = pr_data.get("files") or []
+
+    violations = classify(rollup, files)
+    if violations:
+        bullet_list = "\n".join(f"  - {v}" for v in violations)
         deny(
-            "Refusing `gh pr merge` — the following checks have conclusion=FAILURE:\n"
+            "Refusing `gh pr merge` — check rollup is not verifiably green:\n"
             f"{bullet_list}\n\n"
-            "All check rollup entries must be green (or non-FAILURE) before merge — "
-            "GitHub branch protection only enforces named required checks. "
-            "Investigate each failure before merging.\n"
-            "Bypass with CLAUDE_SKIP_SAFETY=1 if you've verified the failure is acceptable."
+            "Every rollup entry must be COMPLETED and non-FAILURE, every test "
+            "job must have actually RUN (SKIPPED/CANCELLED test jobs block), "
+            "and dependency changes need a SUCCESS test run.\n"
+            "Bypass with CLAUDE_SKIP_SAFETY=1 only after verifying by hand."
         )
 
     allow()
