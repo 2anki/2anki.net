@@ -554,10 +554,68 @@ function hasUsableCard(candidate: unknown[]): boolean {
   });
 }
 
+// jsonrepair mis-tokenizes an unescaped ASCII " inside a string value when the
+// prose after it contains a colon or comma followed by non-JSON text (German
+// „quote" pairs closed with ASCII " — the recurring jsonrepair-threw prod
+// shape). Walk the text tracking string state and escape a closing " only when
+// what follows cannot be the next JSON token.
+function escapeUnterminatedInnerQuotes(text: string): string {
+  let out = '';
+  let inString = false;
+  const isValueStart = (ch: string | undefined) =>
+    ch === '"' || ch === '{' || ch === '[' || /[0-9tfn-]/.test(ch ?? '');
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inString && c === '\\') {
+      out += c + (text[i + 1] ?? '');
+      i++;
+      continue;
+    }
+    if (c !== '"') {
+      out += c;
+      continue;
+    }
+    if (!inString) {
+      inString = true;
+      out += c;
+      continue;
+    }
+    let j = i + 1;
+    while (j < text.length && /\s/.test(text[j])) j++;
+    const next = text[j];
+    let terminates: boolean;
+    if (next === undefined || next === '}' || next === ']') {
+      terminates = true;
+    } else if (next === ':' || next === ',') {
+      let k = j + 1;
+      while (k < text.length && /\s/.test(text[k])) k++;
+      terminates = isValueStart(text[k]);
+    } else {
+      terminates = false;
+    }
+    if (terminates) {
+      inString = false;
+      out += c;
+    } else {
+      out += '\\"';
+    }
+  }
+  return out;
+}
+
+function repairAndParse(toParse: string): unknown {
+  const escaped = escapeStrayControlChars(toParse);
+  try {
+    return JSON.parse(jsonrepair(escaped));
+  } catch {
+    return JSON.parse(jsonrepair(escapeUnterminatedInnerQuotes(escaped)));
+  }
+}
+
 function tryRepairDeckArray(toParse: string): unknown[] | null {
   let candidate: unknown;
   try {
-    candidate = JSON.parse(jsonrepair(escapeStrayControlChars(toParse)));
+    candidate = repairAndParse(toParse);
   } catch {
     return null;
   }
@@ -577,7 +635,7 @@ export type RepairFailureReason =
 export function describeRepairFailure(toParse: string): RepairFailureReason {
   let candidate: unknown;
   try {
-    candidate = JSON.parse(jsonrepair(escapeStrayControlChars(toParse)));
+    candidate = repairAndParse(toParse);
   } catch {
     return 'jsonrepair-threw';
   }
@@ -684,10 +742,13 @@ export function parseDeckResponse(
         cleaned: redactClaudePayload(cleaned),
         toParse: redactClaudePayload(toParse),
       });
-      console.error('[Claude] Unrecoverable parse failure — full response', {
-        chunkIndex,
-        raw,
-      });
+      // raw passed as its own string argument: util.inspect truncates strings
+      // nested in objects at 10k chars, which silently dropped most of the dump.
+      console.error(
+        '[Claude] Unrecoverable parse failure — full response',
+        { chunkIndex },
+        raw
+      );
       if (looksLikeEmptyContentExplanation(cleaned)) {
         throw new Error(EMPTY_CONTENT_USER_MESSAGE);
       }

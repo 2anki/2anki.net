@@ -137,6 +137,21 @@ describe('parseDeckResponse', () => {
     expect(parsed[0].cards[0].a).toContain('kaputt macht');
   });
 
+  it('recovers a card where prose after an unescaped inner " contains a colon (the „Dreieck" prod failure)', () => {
+    // jsonrepair alone survives a simple inner quote, but when the prose after
+    // the quote contains a colon or parenthesis it mis-tokenizes and throws.
+    const broken =
+      '[{"deck":"Stadt","cards":[{"q":"Wofür ist der Bericht „Der Umzug" (2016) relevant?","a":"Drei Orte bilden das „Dreieck der Wissenschaft": <b>Campus</b> und mehr."}]}]';
+    expect(describeRepairFailure(broken)).toBe('recoverable');
+    const parsed = parseDeckResponse(broken, broken, 0);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].cards).toHaveLength(1);
+    expect(parsed[0].cards[0].q).toContain('Der Umzug');
+    expect(parsed[0].cards[0].q).toContain('(2016) relevant?');
+    expect(parsed[0].cards[0].a).toContain('Dreieck der Wissenschaft');
+    expect(parsed[0].cards[0].a).toContain('<b>Campus</b>');
+  });
+
   it('throws the actionable large-section error when a repaired chunk yields no usable card', () => {
     const unrepairable = '[{"deck":"X","cards":[{"q":"a","a"';
     expect(describeRepairFailure(unrepairable)).toBe('no-usable-card');
@@ -210,9 +225,11 @@ describe('parseDeckResponse', () => {
           msg === '[Claude] Unrecoverable parse failure — full response'
       );
       expect(fullDump).toBeDefined();
-      const payload = fullDump![1] as { chunkIndex: number; raw: string };
+      const payload = fullDump![1] as { chunkIndex: number };
       expect(payload.chunkIndex).toBe(0);
-      expect(payload.raw).toBe(raw);
+      // raw goes as its own string argument: util.inspect truncates strings
+      // inside objects at 10k chars, which silently dropped most of the dump.
+      expect(fullDump![2]).toBe(raw);
     } finally {
       errorSpy.mockRestore();
     }

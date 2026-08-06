@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-06-german-quote-ai-conversions",
+  "date": "2026-08-06",
+  "type": "fix",
+  "title": "AI conversions of documents with German-style quotation marks complete instead of failing"
+}
