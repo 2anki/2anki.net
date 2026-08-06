@@ -5,6 +5,13 @@ updates:
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 10
+    ignore:
+      # markdown-it 15 removed md.utils.assign; markdown-it-multimd-table
+      # calls it at module load and the server dies at boot (2026-08-06
+      # outage, reverted in #4015). Remove this once multimd-table declares
+      # markdown-it 15 support — see "Held bumps" in .claude/rules/dependencies.md.
+      - dependency-name: 'markdown-it'
+        update-types: ['version-update:semver-major']
     groups:
       production-dependencies:
         dependency-type: 'production'
