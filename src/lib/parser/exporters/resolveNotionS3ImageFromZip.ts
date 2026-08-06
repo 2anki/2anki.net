@@ -31,3 +31,31 @@ export function resolveNotionS3ImageFromZip(
 
   return match ?? null;
 }
+
+export function isNotionSignedFileUrl(url: string): boolean {
+  if (!url.startsWith('https://')) {
+    return false;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+
+  const isNotionHost =
+    parsed.hostname.includes(NOTION_S3_HOST) ||
+    parsed.hostname === 'file.notion.so' ||
+    (parsed.hostname.endsWith('.amazonaws.com') &&
+      parsed.pathname.includes('secure.notion-static.com'));
+
+  if (!isNotionHost) {
+    return false;
+  }
+
+  return (
+    parsed.searchParams.has('X-Amz-Signature') ||
+    parsed.searchParams.has('expirationTimestamp')
+  );
+}

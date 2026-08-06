@@ -20,6 +20,8 @@ class Package {
 
   overSplit = false;
 
+  expiredNotionImageCount = 0;
+
   // Set by PrepareDeck, inside whichever branch produced the deck. The parent
   // process persists them — the worker pool has no database handle.
   engine?: ConversionEngine;

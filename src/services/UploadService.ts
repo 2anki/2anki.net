@@ -134,6 +134,7 @@ interface BatchUploadResponse {
   bulkUrl: string;
   warning?: string;
   droppedImageCount?: number;
+  expiredNotionImageCount?: number;
   emptyBackCount?: number;
   structureRescuedRule?: string;
 }
@@ -207,6 +208,12 @@ function shippedRescueRule(
 
 function sumDroppedImages(packages: { droppedImageCount?: number }[]): number {
   return packages.reduce((sum, p) => sum + (p.droppedImageCount ?? 0), 0);
+}
+
+function sumExpiredNotionImages(
+  packages: { expiredNotionImageCount?: number }[]
+): number {
+  return packages.reduce((sum, p) => sum + (p.expiredNotionImageCount ?? 0), 0);
 }
 
 function hasSessionToken(req: express.Request): boolean {
@@ -1170,6 +1177,7 @@ class UploadService {
         0
       );
       const totalDroppedImageCount = sumDroppedImages(packages);
+      const totalExpiredNotionImageCount = sumExpiredNotionImages(packages);
       res.set('Content-Type', 'application/apkg');
       res.set('Content-Length', plen.toString());
       res.set('X-Card-Count', totalCards.toString());
@@ -1184,6 +1192,13 @@ class UploadService {
       if (totalDroppedImageCount > 0) {
         res.set('X-Dropped-Assets', totalDroppedImageCount.toString());
         exposedHeaders.push('X-Dropped-Assets');
+      }
+      if (totalExpiredNotionImageCount > 0) {
+        res.set(
+          'X-Expired-Notion-Assets',
+          totalExpiredNotionImageCount.toString()
+        );
+        exposedHeaders.push('X-Expired-Notion-Assets');
       }
       if (totalEmptyBackCount > 0) {
         res.set('X-Empty-Back-Count', totalEmptyBackCount.toString());
@@ -1251,7 +1266,8 @@ class UploadService {
           resolveUploadWarning(warnings),
           sumDroppedImages(packages),
           totalEmptyBackCount,
-          shippedRescueRule(packages)
+          shippedRescueRule(packages),
+          sumExpiredNotionImages(packages)
         )
       );
   }
@@ -1261,7 +1277,8 @@ class UploadService {
     warning: string | null = null,
     droppedImageCount = 0,
     emptyBackCount = 0,
-    structureRescuedRule?: string
+    structureRescuedRule?: string,
+    expiredNotionImageCount = 0
   ): Promise<BatchUploadResponse> {
     const apkgFilenames = (await fs.promises.readdir(ws.location)).filter(
       (filename) => filename.endsWith('.apkg')
@@ -1279,6 +1296,7 @@ class UploadService {
       bulkUrl: `/download/${ws.id}/bulk`,
       ...(warning ? { warning } : {}),
       ...(droppedImageCount > 0 ? { droppedImageCount } : {}),
+      ...(expiredNotionImageCount > 0 ? { expiredNotionImageCount } : {}),
       ...(emptyBackCount > 0 ? { emptyBackCount } : {}),
       ...(structureRescuedRule == null ? {} : { structureRescuedRule }),
     };

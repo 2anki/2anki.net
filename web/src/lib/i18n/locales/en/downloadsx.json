@@ -46,7 +46,11 @@
     "uploadMultiDeck_one": "{{count}} image couldn't be downloaded and isn't in your decks. Your file links to it on another site we couldn't reach. Save the image into the file itself, then upload again.",
     "uploadMultiDeck_other": "{{count}} images couldn't be downloaded and aren't in your decks. Your file links to them on other sites we couldn't reach. Save the images into the file itself, then upload again.",
     "pdf_one": "{{count}} image from your PDF isn't in this deck — we don't include images from PDFs yet. Export your Notion page as HTML and upload that to keep it.",
-    "pdf_other": "{{count}} images from your PDF aren't in this deck — we don't include images from PDFs yet. Export your Notion page as HTML and upload that to keep them."
+    "pdf_other": "{{count}} images from your PDF aren't in this deck — we don't include images from PDFs yet. Export your Notion page as HTML and upload that to keep them.",
+    "notionExportExpired_one": "{{count}} image couldn't be downloaded and isn't in this deck. The image link in this Notion export expired — these links last about an hour. Export the page again and upload the new file soon after.",
+    "notionExportExpired_other": "{{count}} images couldn't be downloaded and aren't in this deck. The image links in this Notion export expired — these links last about an hour. Export the page again and upload the new file soon after.",
+    "notionExportExpiredMultiDeck_one": "{{count}} image couldn't be downloaded and isn't in your decks. The image link in this Notion export expired — these links last about an hour. Export the page again and upload the new file soon after.",
+    "notionExportExpiredMultiDeck_other": "{{count}} images couldn't be downloaded and aren't in your decks. The image links in this Notion export expired — these links last about an hour. Export the page again and upload the new file soon after."
   },
   "cardLimitPartial": {
     "heldBack_one": "Your deck has {{delivered}} of your {{limit}} monthly cards. {{count}} more card is ready — <pricingLink>upgrade for unlimited cards</pricingLink>.",

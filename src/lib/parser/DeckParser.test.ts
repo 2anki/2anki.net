@@ -1741,11 +1741,11 @@ describe('remote image rehosting', () => {
   const signedUrl =
     'https://prod-files-secure.s3.us-west-2.amazonaws.com/ws/file/diagram.png?X-Amz-Expires=3600&X-Amz-Signature=abc';
 
-  function buildRemoteImageParser() {
+  function buildRemoteImageParser(imageUrl: string = signedUrl) {
     const html = `<html><head><title>Deck</title></head><body><article>
 <ul class="toggle"><li><details open="">
   <summary>Question</summary>
-  <div><img src="${signedUrl}" /></div>
+  <div><img src="${imageUrl}" /></div>
 </details></li></ul>
 </article></body></html>`;
     const workspace = new Workspace(true, 'fs');
@@ -1800,6 +1800,38 @@ describe('remote image rehosting', () => {
     await parser.writeDeckInfo(ws);
 
     expect(parser.droppedImageCount).toBe(1);
+  });
+
+  test('counts an expired Notion signed image separately when the fetch returns null', async () => {
+    downloadMediaOrSkipMock.mockResolvedValueOnce(null);
+    const ws = new Workspace(true, 'fs');
+    const parser = buildRemoteImageParser();
+    await parser.writeDeckInfo(ws);
+
+    expect(parser.droppedImageCount).toBe(1);
+    expect(parser.expiredNotionImageCount).toBe(1);
+  });
+
+  test('does not count a plain external dropped image as an expired Notion image', async () => {
+    downloadMediaOrSkipMock.mockResolvedValueOnce(null);
+    const ws = new Workspace(true, 'fs');
+    const parser = buildRemoteImageParser('https://example.com/photo.png');
+    await parser.writeDeckInfo(ws);
+
+    expect(parser.droppedImageCount).toBe(1);
+    expect(parser.expiredNotionImageCount).toBe(0);
+  });
+
+  test('does not count a thrown fetch as an expired Notion image', async () => {
+    downloadMediaOrSkipMock.mockRejectedValueOnce(
+      new Error('[observability] invalid URL')
+    );
+    const ws = new Workspace(true, 'fs');
+    const parser = buildRemoteImageParser();
+    await parser.writeDeckInfo(ws);
+
+    expect(parser.droppedImageCount).toBe(1);
+    expect(parser.expiredNotionImageCount).toBe(0);
   });
 });
 

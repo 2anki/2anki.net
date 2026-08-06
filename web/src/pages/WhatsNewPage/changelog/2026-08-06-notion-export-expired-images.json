@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-06-notion-export-expired-images",
+  "date": "2026-08-06",
+  "type": "fix",
+  "title": "Notion export uploads with expired image links now say to re-export, not to edit the file"
+}

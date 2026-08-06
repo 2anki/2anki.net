@@ -17,6 +17,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setMcqCount: vi.fn(),
     setMcqSkippedCount: vi.fn(),
     setDroppedImageCount: vi.fn(),
+    setExpiredNotionImageCount: vi.fn(),
     setEmptyBackCount: vi.fn(),
     setOverSplit: vi.fn(),
     setDownloadLink: vi.fn(),
@@ -110,6 +111,25 @@ describe('applyConversionSuccess', () => {
     await applyConversionSuccess(singleDeckResponse(), handlers);
 
     expect(handlers.setDroppedImageCount).toHaveBeenCalledWith(0);
+  });
+
+  it('reads the expired-image count from the X-Expired-Notion-Assets header on a single deck', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({ 'X-Expired-Notion-Assets': '2' }),
+      handlers
+    );
+
+    expect(handlers.setExpiredNotionImageCount).toHaveBeenCalledWith(2);
+  });
+
+  it('sets the expired-image count to 0 when the X-Expired-Notion-Assets header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setExpiredNotionImageCount).toHaveBeenCalledWith(0);
   });
 
   it('reads the empty-back count from the X-Empty-Back-Count header on a single deck', async () => {
@@ -256,5 +276,31 @@ describe('applyConversionSuccess', () => {
     await applyConversionSuccess(response, handlers);
 
     expect(handlers.setDroppedImageCount).toHaveBeenCalledWith(4);
+  });
+
+  it('reads expiredNotionImageCount from the batch JSON body', async () => {
+    const handlers = buildHandlers();
+    const response = {
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          kind: 'batch',
+          workspaceId: 'ws-1',
+          deckCount: 1,
+          decks: [
+            {
+              name: 'A',
+              filename: 'A.apkg',
+              downloadUrl: '/download/ws-1/A.apkg',
+            },
+          ],
+          bulkUrl: '/download/ws-1/bulk',
+          expiredNotionImageCount: 3,
+        }),
+    } as unknown as Response;
+
+    await applyConversionSuccess(response, handlers);
+
+    expect(handlers.setExpiredNotionImageCount).toHaveBeenCalledWith(3);
   });
 });

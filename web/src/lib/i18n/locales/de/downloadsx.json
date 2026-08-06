@@ -46,7 +46,11 @@
     "uploadMultiDeck_one": "{{count}} Bild konnte nicht heruntergeladen werden und ist nicht in deinen Stapeln. Deine Datei verweist darauf auf einer anderen Seite, die wir nicht erreichen konnten. Speichere das Bild in der Datei selbst und lade sie erneut hoch.",
     "uploadMultiDeck_other": "{{count}} Bilder konnten nicht heruntergeladen werden und sind nicht in deinen Stapeln. Deine Datei verweist darauf auf anderen Seiten, die wir nicht erreichen konnten. Speichere die Bilder in der Datei selbst und lade sie erneut hoch.",
     "pdf_one": "{{count}} Bild aus deinem PDF ist nicht in diesem Stapel — Bilder aus PDFs übernehmen wir noch nicht. Exportiere deine Notion-Seite als HTML und lade sie hoch, um es zu behalten.",
-    "pdf_other": "{{count}} Bilder aus deinem PDF sind nicht in diesem Stapel — Bilder aus PDFs übernehmen wir noch nicht. Exportiere deine Notion-Seite als HTML und lade sie hoch, um sie zu behalten."
+    "pdf_other": "{{count}} Bilder aus deinem PDF sind nicht in diesem Stapel — Bilder aus PDFs übernehmen wir noch nicht. Exportiere deine Notion-Seite als HTML und lade sie hoch, um sie zu behalten.",
+    "notionExportExpired_one": "{{count}} Bild konnte nicht heruntergeladen werden und ist nicht in diesem Stapel. Der Bildlink in diesem Notion-Export ist abgelaufen — diese Links gelten nur etwa eine Stunde. Exportiere die Seite erneut und lade die neue Datei kurz danach hoch.",
+    "notionExportExpired_other": "{{count}} Bilder konnten nicht heruntergeladen werden und sind nicht in diesem Stapel. Die Bildlinks in diesem Notion-Export sind abgelaufen — diese Links gelten nur etwa eine Stunde. Exportiere die Seite erneut und lade die neue Datei kurz danach hoch.",
+    "notionExportExpiredMultiDeck_one": "{{count}} Bild konnte nicht heruntergeladen werden und ist nicht in deinen Stapeln. Der Bildlink in diesem Notion-Export ist abgelaufen — diese Links gelten nur etwa eine Stunde. Exportiere die Seite erneut und lade die neue Datei kurz danach hoch.",
+    "notionExportExpiredMultiDeck_other": "{{count}} Bilder konnten nicht heruntergeladen werden und sind nicht in deinen Stapeln. Die Bildlinks in diesem Notion-Export sind abgelaufen — diese Links gelten nur etwa eine Stunde. Exportiere die Seite erneut und lade die neue Datei kurz danach hoch."
   },
   "cardLimitPartial": {
     "heldBack_one": "Dein Deck enthält {{delivered}} von deinen {{limit}} monatlichen Karten. Noch {{count}} Karte ist fertig — <pricingLink>für unbegrenzte Karten upgraden</pricingLink>.",

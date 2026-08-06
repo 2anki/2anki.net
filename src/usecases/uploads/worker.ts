@@ -198,6 +198,8 @@ async function processFile(
       singleFilePackage.score = d.score;
       singleFilePackage.inducedRule = d.inducedRule;
       singleFilePackage.guidEntries = d.guidEntries;
+      singleFilePackage.expiredNotionImageCount =
+        d.expiredNotionImageCount ?? 0;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
     }

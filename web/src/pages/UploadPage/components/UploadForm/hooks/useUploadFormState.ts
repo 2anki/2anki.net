@@ -27,6 +27,7 @@ export interface BatchResult {
   bulkUrl: string;
   warning?: string;
   droppedImageCount?: number;
+  expiredNotionImageCount?: number;
   emptyBackCount?: number;
   structureRescuedRule?: string;
 }
@@ -51,6 +52,8 @@ export function useUploadFormState(onReset: () => void) {
   const [mcqCount, setMcqCount] = useState<number>(0);
   const [mcqSkippedCount, setMcqSkippedCount] = useState<number>(0);
   const [droppedImageCount, setDroppedImageCount] = useState<number>(0);
+  const [expiredNotionImageCount, setExpiredNotionImageCount] =
+    useState<number>(0);
   const [emptyBackCount, setEmptyBackCount] = useState<number>(0);
   const [overSplit, setOverSplit] = useState(false);
   const [structureRescuedRule, setStructureRescuedRule] =
@@ -89,6 +92,7 @@ export function useUploadFormState(onReset: () => void) {
     setMcqCount(0);
     setMcqSkippedCount(0);
     setDroppedImageCount(0);
+    setExpiredNotionImageCount(0);
     setEmptyBackCount(0);
     setOverSplit(false);
     setStructureRescuedRule(null);
@@ -132,6 +136,8 @@ export function useUploadFormState(onReset: () => void) {
     setMcqSkippedCount,
     droppedImageCount,
     setDroppedImageCount,
+    expiredNotionImageCount,
+    setExpiredNotionImageCount,
     emptyBackCount,
     setEmptyBackCount,
     overSplit,

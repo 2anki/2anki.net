@@ -58,7 +58,15 @@
     "pdf_one": "{{count}} obraz z Twojego pliku PDF nie znajduje się w tej talii — nie dołączamy jeszcze obrazów z plików PDF. Wyeksportuj stronę Notion jako HTML i prześlij ją, aby go zachować.",
     "pdf_few": "{{count}} obrazy z Twojego pliku PDF nie znajdują się w tej talii — nie dołączamy jeszcze obrazów z plików PDF. Wyeksportuj stronę Notion jako HTML i prześlij ją, aby je zachować.",
     "pdf_many": "{{count}} obrazów z Twojego pliku PDF nie znajduje się w tej talii — nie dołączamy jeszcze obrazów z plików PDF. Wyeksportuj stronę Notion jako HTML i prześlij ją, aby je zachować.",
-    "pdf_other": "{{count}} obrazów z Twojego pliku PDF nie znajduje się w tej talii — nie dołączamy jeszcze obrazów z plików PDF. Wyeksportuj stronę Notion jako HTML i prześlij ją, aby je zachować."
+    "pdf_other": "{{count}} obrazów z Twojego pliku PDF nie znajduje się w tej talii — nie dołączamy jeszcze obrazów z plików PDF. Wyeksportuj stronę Notion jako HTML i prześlij ją, aby je zachować.",
+    "notionExportExpired_one": "{{count}} obraz nie został pobrany i nie ma go w tej talii. Link do obrazu w tym eksporcie Notion wygasł — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik.",
+    "notionExportExpired_few": "{{count}} obrazy nie zostały pobrane i nie ma ich w tej talii. Linki do obrazów w tym eksporcie Notion wygasły — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik.",
+    "notionExportExpired_many": "{{count}} obrazów nie zostało pobranych i nie ma ich w tej talii. Linki do obrazów w tym eksporcie Notion wygasły — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik.",
+    "notionExportExpired_other": "{{count}} obrazów nie zostało pobranych i nie ma ich w tej talii. Linki do obrazów w tym eksporcie Notion wygasły — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik.",
+    "notionExportExpiredMultiDeck_one": "{{count}} obraz nie został pobrany i nie ma go w Twoich taliach. Link do obrazu w tym eksporcie Notion wygasł — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik.",
+    "notionExportExpiredMultiDeck_few": "{{count}} obrazy nie zostały pobrane i nie ma ich w Twoich taliach. Linki do obrazów w tym eksporcie Notion wygasły — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik.",
+    "notionExportExpiredMultiDeck_many": "{{count}} obrazów nie zostało pobranych i nie ma ich w Twoich taliach. Linki do obrazów w tym eksporcie Notion wygasły — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik.",
+    "notionExportExpiredMultiDeck_other": "{{count}} obrazów nie zostało pobranych i nie ma ich w Twoich taliach. Linki do obrazów w tym eksporcie Notion wygasły — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik."
   },
   "cardLimitPartial": {
     "heldBack_one": "Twoja talia ma {{delivered}} z {{limit}} miesięcznych kart. Gotowa jest jeszcze {{count}} karta — <pricingLink>przejdź na nieograniczone karty</pricingLink>.",

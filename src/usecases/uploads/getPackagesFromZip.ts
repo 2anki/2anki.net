@@ -150,6 +150,7 @@ async function buildDeckBatch(
         result.deck,
         knownGuids
       );
+      pkg.expiredNotionImageCount = result.expiredNotionImageCount ?? 0;
       packages.push(pkg);
       if (result.warning) warnings.push(result.warning);
     });
@@ -221,6 +222,7 @@ async function buildStragglerDecks(
       pkg.score = outcome.score;
       pkg.inducedRule = outcome.inducedRule;
       pkg.guidEntries = outcome.guidEntries;
+      pkg.expiredNotionImageCount = outcome.expiredNotionImageCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
     }
@@ -251,17 +253,17 @@ async function buildClaudeFlashcardDeck(
   const packages: Package[] = [];
   const warnings: string[] = [];
   if (deck) {
-    packages.push(
-      new Package(
-        deck.name,
-        deck.cardCount ?? 0,
-        deck.mcqCount ?? 0,
-        deck.mcqSkippedCount ?? 0,
-        deck.droppedImageCount ?? 0,
-        deck.emptyBackCount ?? 0,
-        deck.parsePath
-      )
+    const pkg = new Package(
+      deck.name,
+      deck.cardCount ?? 0,
+      deck.mcqCount ?? 0,
+      deck.mcqSkippedCount ?? 0,
+      deck.droppedImageCount ?? 0,
+      deck.emptyBackCount ?? 0,
+      deck.parsePath
     );
+    pkg.expiredNotionImageCount = deck.expiredNotionImageCount ?? 0;
+    packages.push(pkg);
     if (deck.warning) warnings.push(deck.warning);
   }
   return { packages, warnings };
@@ -353,6 +355,7 @@ async function buildAllInOneSlot(
       pkg.score = outcome.score;
       pkg.inducedRule = outcome.inducedRule;
       pkg.guidEntries = outcome.guidEntries;
+      pkg.expiredNotionImageCount = outcome.expiredNotionImageCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
     }

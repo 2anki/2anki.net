@@ -50,11 +50,21 @@ jest.mock('./convertDocxToHTML', () => ({
   convertDocxToHTML: jest.fn(),
 }));
 
+jest.mock(
+  '../../../services/NotionService/helpers/downloadMediaOrSkip',
+  () => ({
+    downloadMediaOrSkip: jest.fn(),
+  })
+);
+
 const {
   convertPdfTextToHtml,
   convertPdfTextToHtmlAuto,
 } = require('./convertPdfTextToHtml');
 const { convertPDFToImages } = require('./convertPDFToImages');
+const {
+  downloadMediaOrSkip,
+} = require('../../../services/NotionService/helpers/downloadMediaOrSkip');
 
 const { generateDeckInfo } = require('../../../lib/claude/ClaudeService');
 const CustomExporterMock =
@@ -479,6 +489,35 @@ describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
 
     expect(convertPDFToImages).not.toHaveBeenCalled();
     expect(result.droppedImageCount).toBe(4);
+  });
+});
+
+describe('PrepareDeck — expired Notion image reporting', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('propagates the expired Notion image count from the parser to the result', async () => {
+    downloadMediaOrSkip.mockResolvedValue(null);
+    const signedUrl =
+      'https://prod-files-secure.s3.us-west-2.amazonaws.com/ws/file/diagram.png?X-Amz-Expires=3600&X-Amz-Signature=abc';
+    const html = `<html><head><title>Deck</title></head><body><article>
+<ul class="toggle"><li><details open="">
+  <summary>Question</summary>
+  <div><img src="${signedUrl}" /></div>
+</details></li></ul>
+</article></body></html>`;
+
+    const result = await PrepareDeck({
+      name: 'deck.html',
+      files: [{ name: 'deck.html', contents: html }],
+      settings: makeSettings(),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result.droppedImageCount).toBe(1);
+    expect(result.expiredNotionImageCount).toBe(1);
   });
 });
 
