@@ -419,21 +419,7 @@ class ApkgController {
 
       res.status(202).json({ job_id: jobId, status: 'queued' });
     } catch (error) {
-      if (sendApkgTooLarge(res, error)) return;
-      if (error instanceof Error && error.message === 'unauthorized') {
-        res.status(400).json({ message: 'Notion is not connected.' });
-        return;
-      }
-      if (error instanceof NoNotionPagesError) {
-        res.status(400).json({ message: error.message });
-        return;
-      }
-      if (error instanceof APIResponseError) {
-        sendErrorResponse(error, res);
-        return;
-      }
-      console.error(error);
-      res.status(500).json({ message: 'Import failed to start.' });
+      sendImportStartError(res, error);
     }
   }
 
@@ -598,6 +584,24 @@ function csvNoteLimitFor(owner: unknown, paying: boolean): number | null {
     return null;
   }
   return owner == null ? CSV_ANONYMOUS_NOTE_LIMIT : CSV_FREE_NOTE_LIMIT;
+}
+
+function sendImportStartError(res: Response, error: unknown): void {
+  if (sendApkgTooLarge(res, error)) return;
+  if (error instanceof Error && error.message === 'unauthorized') {
+    res.status(400).json({ message: 'Notion is not connected.' });
+    return;
+  }
+  if (error instanceof NoNotionPagesError) {
+    res.status(400).json({ message: error.message });
+    return;
+  }
+  if (error instanceof APIResponseError) {
+    sendErrorResponse(error, res);
+    return;
+  }
+  console.error(error);
+  res.status(500).json({ message: 'Import failed to start.' });
 }
 
 function sendApkgTooLarge(res: Response, error: unknown): boolean {
