@@ -288,21 +288,7 @@ class ApkgController {
       );
       res.send(result.pdf);
     } catch (error) {
-      if (sendApkgTooLarge(res, error)) return;
-      if (error instanceof CardLimitExceededError) {
-        res.status(400).json({ message: error.message });
-        return;
-      }
-      if (
-        error instanceof Error &&
-        (error.message.includes('No Anki collection') ||
-          error.message.includes('open failed'))
-      ) {
-        res.status(400).json({ message: 'Invalid .apkg file' });
-        return;
-      }
-      console.error(error);
-      res.status(500).json({ message: 'PDF generation failed.' });
+      sendPdfExportError(res, error);
     }
   }
 
@@ -584,6 +570,24 @@ function csvNoteLimitFor(owner: unknown, paying: boolean): number | null {
     return null;
   }
   return owner == null ? CSV_ANONYMOUS_NOTE_LIMIT : CSV_FREE_NOTE_LIMIT;
+}
+
+function sendPdfExportError(res: Response, error: unknown): void {
+  if (sendApkgTooLarge(res, error)) return;
+  if (error instanceof CardLimitExceededError) {
+    res.status(400).json({ message: error.message });
+    return;
+  }
+  if (
+    error instanceof Error &&
+    (error.message.includes('No Anki collection') ||
+      error.message.includes('open failed'))
+  ) {
+    res.status(400).json({ message: 'Invalid .apkg file' });
+    return;
+  }
+  console.error(error);
+  res.status(500).json({ message: 'PDF generation failed.' });
 }
 
 function sendImportStartError(res: Response, error: unknown): void {
