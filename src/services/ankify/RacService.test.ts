@@ -20,15 +20,13 @@ const makeRepo = (
   overrides: Partial<AnkifyClientsRepositoryInterface> = {}
 ): jest.Mocked<AnkifyClientsRepositoryInterface> =>
   ({
-    create: jest.fn(
-      async (input: NewAnkifyClient): Promise<AnkifyClient> => ({
-        id: 1,
-        status: 'active',
-        created_at: new Date(),
-        last_active_at: new Date(),
-        ...input,
-      })
-    ),
+    create: jest.fn(async (input: NewAnkifyClient): Promise<AnkifyClient> => ({
+      id: 1,
+      status: 'active',
+      created_at: new Date(),
+      last_active_at: new Date(),
+      ...input,
+    })),
     listByOwner: jest.fn(async () => []),
     findActiveById: jest.fn(async () => null),
     findActiveByOwner: jest.fn(async () => null),
