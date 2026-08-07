@@ -31,5 +31,7 @@
 ## Held bumps — do not retry without clearing the blocker
 
 - **markdown-it 15** (pinned at 14.3.0, ignored in `.github/dependabot.yml`): v15 removed `md.utils.assign`, which `markdown-it-multimd-table@4.2.3` calls at module load — the server dies at boot (the 2026-08-06 outage, reverted in #4015). Re-attempt only together with a multimd-table release that declares markdown-it 15 support, and remove the dependabot ignore in the same PR.
-- **jsdom 30** (held on 29.1.1, see #3988): regresses attribute-value matching on camelCase SVG attributes (`svg[viewBox="0 0 24 24"]` matches 0). Wait for a fixed release; do not weaken the HomePage icon test to get green.
-- **sanitize-html 2.17.6** (held on 2.17.5, see #4002): pulls ESM-only `htmlparser2@12`, which the CJS Jest suite cannot load, and tests exercise real sanitization so stubbing is not an option.
+- **jsdom 30** (held on 29.1.1, ignored `>=30.0.0` in dependabot.yml, see #3988): regresses attribute-value matching on camelCase SVG attributes (`svg[viewBox="0 0 24 24"]` matches 0). Wait for a fixed release; do not weaken the HomePage icon test to get green.
+- **sanitize-html 2.17.6** (held on 2.17.5, ignored `>=2.17.6` in dependabot.yml, see #4002 and #4025 — the grouped PR resurfaced it once already): pulls ESM-only `htmlparser2@12`, which the CJS Jest suite cannot load, and tests exercise real sanitization so stubbing is not an option.
+
+Every entry here MUST have a matching `ignore` in `.github/dependabot.yml` (and vice versa — remove both together when a hold clears). The ledger is the why; the ignore is the enforcement. A hold without an ignore resurfaces in the next grouped PR with the held bump buried among safe ones (#4025).

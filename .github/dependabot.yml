@@ -12,6 +12,18 @@ updates:
       # markdown-it 15 support — see "Held bumps" in .claude/rules/dependencies.md.
       - dependency-name: 'markdown-it'
         update-types: ['version-update:semver-major']
+      # sanitize-html 2.17.6 moves htmlparser2 to ESM-only 12.0.0, which the
+      # CJS Jest suite cannot load (8 suites red — #4002, resurfaced in #4025).
+      # Tests exercise real sanitization so stubbing is not an option. Remove
+      # once the suite has an ESM strategy or sanitize-html restores CJS
+      # compatibility — see "Held bumps" in .claude/rules/dependencies.md.
+      - dependency-name: 'sanitize-html'
+        versions: ['>=2.17.6']
+      # jsdom 30 regresses attribute-value matching on camelCase SVG
+      # attributes (svg[viewBox="..."] matches nothing — #3988). Held on
+      # 29.1.1 until a fixed release; do not weaken the HomePage icon test.
+      - dependency-name: 'jsdom'
+        versions: ['>=30.0.0']
     groups:
       production-dependencies:
         dependency-type: 'production'
