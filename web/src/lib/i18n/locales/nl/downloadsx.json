@@ -46,7 +46,11 @@
     "uploadMultiDeck_one": "{{count}} afbeelding kon niet worden gedownload en zit niet in je pakketten. Je bestand linkt ernaar op een andere site die we niet konden bereiken. Sla de afbeelding op in het bestand zelf en upload opnieuw.",
     "uploadMultiDeck_other": "{{count}} afbeeldingen konden niet worden gedownload en zitten niet in je pakketten. Je bestand linkt ernaar op andere sites die we niet konden bereiken. Sla de afbeeldingen op in het bestand zelf en upload opnieuw.",
     "pdf_one": "{{count}} afbeelding uit je PDF zit niet in dit pakket — afbeeldingen uit PDF's nemen we nog niet over. Exporteer je Notion-pagina als HTML en upload die om haar te behouden.",
-    "pdf_other": "{{count}} afbeeldingen uit je PDF zitten niet in dit pakket — afbeeldingen uit PDF's nemen we nog niet over. Exporteer je Notion-pagina als HTML en upload die om ze te behouden."
+    "pdf_other": "{{count}} afbeeldingen uit je PDF zitten niet in dit pakket — afbeeldingen uit PDF's nemen we nog niet over. Exporteer je Notion-pagina als HTML en upload die om ze te behouden.",
+    "notionExportExpired_one": "{{count}} afbeelding kon niet worden gedownload en zit niet in dit pakket. De afbeeldingslink in deze Notion-export is verlopen — deze links blijven ongeveer een uur geldig. Exporteer de pagina opnieuw en upload het nieuwe bestand kort daarna.",
+    "notionExportExpired_other": "{{count}} afbeeldingen konden niet worden gedownload en zitten niet in dit pakket. De afbeeldingslinks in deze Notion-export zijn verlopen — deze links blijven ongeveer een uur geldig. Exporteer de pagina opnieuw en upload het nieuwe bestand kort daarna.",
+    "notionExportExpiredMultiDeck_one": "{{count}} afbeelding kon niet worden gedownload en zit niet in je pakketten. De afbeeldingslink in deze Notion-export is verlopen — deze links blijven ongeveer een uur geldig. Exporteer de pagina opnieuw en upload het nieuwe bestand kort daarna.",
+    "notionExportExpiredMultiDeck_other": "{{count}} afbeeldingen konden niet worden gedownload en zitten niet in je pakketten. De afbeeldingslinks in deze Notion-export zijn verlopen — deze links blijven ongeveer een uur geldig. Exporteer de pagina opnieuw en upload het nieuwe bestand kort daarna."
   },
   "cardLimitPartial": {
     "heldBack_one": "Je deck bevat {{delivered}} van je {{limit}} maandelijkse kaarten. Nog {{count}} kaart staat klaar — <pricingLink>upgrade voor onbeperkte kaarten</pricingLink>.",

@@ -36,6 +36,7 @@ describe('ImageDropNotice', () => {
     expect(track).toHaveBeenCalledWith('image_drop_notice_shown', {
       dropped_count: 3,
       source: 'notion',
+      expired_count: 0,
     });
   });
 
@@ -57,6 +58,7 @@ describe('ImageDropNotice', () => {
     expect(track).toHaveBeenCalledWith('image_drop_notice_shown', {
       dropped_count: 1,
       source: 'upload',
+      expired_count: 0,
     });
   });
 
@@ -82,6 +84,69 @@ describe('ImageDropNotice', () => {
     expect(track).toHaveBeenCalledWith('image_drop_notice_shown', {
       dropped_count: 1,
       source: 'pdf',
+      expired_count: 0,
+    });
+  });
+
+  it('uses re-export copy when every dropped image was an expired Notion link', () => {
+    render(<ImageDropNotice count={2} source="upload" expiredCount={2} />);
+    expect(
+      screen.getByText(
+        /Export the page again and upload the new file soon after/
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/isn't in this deck|aren't in this deck/)
+    ).toBeInTheDocument();
+  });
+
+  it('says "your decks" for a pure-expired multi-deck batch upload', () => {
+    render(
+      <ImageDropNotice
+        count={3}
+        source="upload"
+        multipleDecks
+        expiredCount={3}
+      />
+    );
+    expect(screen.getByText(/aren't in your decks/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Export the page again and upload the new file soon after/
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the generic copy when no dropped image was an expired Notion link', () => {
+    render(<ImageDropNotice count={2} expiredCount={0} />);
+    expect(
+      screen.queryByText(
+        /Export the page again and upload the new file soon after/
+      )
+    ).toBeNull();
+    expect(
+      screen.getByText(/Convert the page again to try fetching/)
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the generic copy when only some dropped images were expired links', () => {
+    render(<ImageDropNotice count={3} expiredCount={1} />);
+    expect(
+      screen.queryByText(
+        /Export the page again and upload the new file soon after/
+      )
+    ).toBeNull();
+    expect(
+      screen.getByText(/Convert the page again to try fetching/)
+    ).toBeInTheDocument();
+  });
+
+  it('fires the usage event carrying the expired count', () => {
+    render(<ImageDropNotice count={2} source="upload" expiredCount={2} />);
+    expect(track).toHaveBeenCalledWith('image_drop_notice_shown', {
+      dropped_count: 2,
+      source: 'upload',
+      expired_count: 2,
     });
   });
 });

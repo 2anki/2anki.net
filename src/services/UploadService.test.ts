@@ -902,6 +902,59 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it('sets X-Expired-Notion-Assets to the summed expired-image count on a single-deck sync upload', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockResolvedValue({
+            packages: [
+              {
+                name: 'deck',
+                cardCount: 12,
+                mcqCount: 0,
+                mcqSkippedCount: 0,
+                droppedImageCount: 1,
+                expiredNotionImageCount: 1,
+              },
+            ],
+            warnings: [],
+          }),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo()
+    );
+    const req = buildRequest();
+    const { res, capturedStatus } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(res.set).toHaveBeenCalledWith('X-Expired-Notion-Assets', '1');
+  });
+
+  it('does not set X-Expired-Notion-Assets when no Notion images expired', async () => {
+    mockPackages([{ name: 'deck', cardCount: 12 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Expired-Notion-Assets',
+      expect.anything()
+    );
+  });
+
   it('sets X-Empty-Back-Count to the summed empty-back count on a partial single-deck upload', async () => {
     MockGeneratePackagesUseCase.mockImplementation(
       () =>
@@ -1716,6 +1769,86 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
 
     const body = capturedJson() as { droppedImageCount?: number };
     expect(body.droppedImageCount).toBeUndefined();
+  });
+
+  it('includes expiredNotionImageCount in the batch JSON when Notion images expired across the batch', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockResolvedValue({
+            packages: [
+              {
+                name: 'Biology 101',
+                cardCount: 3,
+                mcqCount: 0,
+                mcqSkippedCount: 0,
+                droppedImageCount: 1,
+                expiredNotionImageCount: 1,
+              },
+              {
+                name: 'Chemistry',
+                cardCount: 5,
+                mcqCount: 0,
+                mcqSkippedCount: 0,
+                droppedImageCount: 2,
+                expiredNotionImageCount: 2,
+              },
+            ],
+            warnings: [],
+          }),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo()
+    );
+    const req = buildRequest();
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    const body = capturedJson() as { expiredNotionImageCount?: number };
+    expect(body.expiredNotionImageCount).toBe(3);
+  });
+
+  it('omits expiredNotionImageCount from the batch JSON when no Notion images expired', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockResolvedValue({
+            packages: [
+              {
+                name: 'Biology 101',
+                cardCount: 3,
+                mcqCount: 0,
+                mcqSkippedCount: 0,
+              },
+              {
+                name: 'Chemistry',
+                cardCount: 5,
+                mcqCount: 0,
+                mcqSkippedCount: 0,
+              },
+            ],
+            warnings: [],
+          }),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo()
+    );
+    const req = buildRequest();
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    const body = capturedJson() as { expiredNotionImageCount?: number };
+    expect(body.expiredNotionImageCount).toBeUndefined();
   });
 });
 

@@ -87,6 +87,7 @@ interface PrepareDeckResult {
   mcqSkippedCount: number;
   warning?: string;
   droppedImageCount: number;
+  expiredNotionImageCount: number;
   emptyBackCount: number;
   parsePath?: string;
   engine?: ConversionEngine;
@@ -596,6 +597,7 @@ export async function PrepareDeck(
         (sum, f) => sum + (f.droppedImageCount ?? 0),
         0
       ),
+      expiredNotionImageCount: 0,
       emptyBackCount: 0,
     };
   }
@@ -617,6 +619,7 @@ export async function PrepareDeck(
         mcqSkippedCount: 0,
         warning: parser.usedHeuristic ? 'markdown-heuristic' : undefined,
         droppedImageCount: parser.droppedImageCount,
+        expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
         // This is the branch a document takes when nothing recognised it, so it
         // is exactly the population a rescue has to clear. Without a score here
@@ -654,6 +657,7 @@ export async function PrepareDeck(
     mcqSkippedCount,
     warning: parser.usedHeuristic ? 'markdown-heuristic' : undefined,
     droppedImageCount: parser.droppedImageCount,
+    expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,
     parsePath: parser.parsePathSignature(),
     engine: 'parser',
@@ -680,6 +684,7 @@ export interface DeckInfoOnlyResult {
   mcqSkippedCount: number;
   warning?: string;
   droppedImageCount: number;
+  expiredNotionImageCount: number;
   emptyBackCount: number;
   parsePath?: string;
   engine?: ConversionEngine;
@@ -720,6 +725,7 @@ export async function prepareDeckInfoOnly(
         mcqSkippedCount: 0,
         warning: parser.usedHeuristic ? 'markdown-heuristic' : undefined,
         droppedImageCount: parser.droppedImageCount,
+        expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
         needsIndividualBuild: true,
       };
@@ -749,6 +755,7 @@ export async function prepareDeckInfoOnly(
     mcqSkippedCount,
     warning: parser.usedHeuristic ? 'markdown-heuristic' : undefined,
     droppedImageCount: parser.droppedImageCount,
+    expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,
     parsePath: parser.parsePathSignature(),
     engine: 'parser',

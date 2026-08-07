@@ -46,7 +46,11 @@
     "uploadMultiDeck_one": "Non è stato possibile scaricare {{count}} immagine e non è nei tuoi mazzi. Il tuo file rimanda a essa su un altro sito che non siamo riusciti a raggiungere. Salva l'immagine nel file, poi caricalo di nuovo.",
     "uploadMultiDeck_other": "Non è stato possibile scaricare {{count}} immagini e non sono nei tuoi mazzi. Il tuo file rimanda a esse su altri siti che non siamo riusciti a raggiungere. Salva le immagini nel file, poi caricalo di nuovo.",
     "pdf_one": "{{count}} immagine del tuo PDF non è in questo mazzo — non includiamo ancora le immagini dei PDF. Esporta la tua pagina Notion come HTML e caricala per conservarla.",
-    "pdf_other": "{{count}} immagini del tuo PDF non sono in questo mazzo — non includiamo ancora le immagini dei PDF. Esporta la tua pagina Notion come HTML e caricala per conservarle."
+    "pdf_other": "{{count}} immagini del tuo PDF non sono in questo mazzo — non includiamo ancora le immagini dei PDF. Esporta la tua pagina Notion come HTML e caricala per conservarle.",
+    "notionExportExpired_one": "Non è stato possibile scaricare {{count}} immagine e non è in questo mazzo. Il link all'immagine in questa esportazione di Notion è scaduto — questi link durano circa un'ora. Esporta di nuovo la pagina e carica il nuovo file subito dopo.",
+    "notionExportExpired_other": "Non è stato possibile scaricare {{count}} immagini e non sono in questo mazzo. I link alle immagini in questa esportazione di Notion sono scaduti — questi link durano circa un'ora. Esporta di nuovo la pagina e carica il nuovo file subito dopo.",
+    "notionExportExpiredMultiDeck_one": "Non è stato possibile scaricare {{count}} immagine e non è nei tuoi mazzi. Il link all'immagine in questa esportazione di Notion è scaduto — questi link durano circa un'ora. Esporta di nuovo la pagina e carica il nuovo file subito dopo.",
+    "notionExportExpiredMultiDeck_other": "Non è stato possibile scaricare {{count}} immagini e non sono nei tuoi mazzi. I link alle immagini in questa esportazione di Notion sono scaduti — questi link durano circa un'ora. Esporta di nuovo la pagina e carica il nuovo file subito dopo."
   },
   "cardLimitPartial": {
     "heldBack_one": "Il tuo mazzo contiene {{delivered}} delle tue {{limit}} carte mensili. {{count}} carta in più è pronta — <pricingLink>passa a carte illimitate</pricingLink>.",

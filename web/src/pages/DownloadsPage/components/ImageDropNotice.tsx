@@ -8,6 +8,7 @@ interface ImageDropNoticeProps {
   count: number;
   source?: ImageDropSource;
   multipleDecks?: boolean;
+  expiredCount?: number;
 }
 
 function resolveImageDropKey(
@@ -27,14 +28,26 @@ export function ImageDropNotice({
   count,
   source = 'notion',
   multipleDecks = false,
+  expiredCount,
 }: Readonly<ImageDropNoticeProps>) {
   const { t } = useTranslation('downloadsx');
+  const expired = expiredCount ?? 0;
 
   useEffect(() => {
-    track('image_drop_notice_shown', { dropped_count: count, source });
-  }, [count, source]);
+    track('image_drop_notice_shown', {
+      dropped_count: count,
+      source,
+      expired_count: expired,
+    });
+  }, [count, source, expired]);
 
-  const key = resolveImageDropKey(source, multipleDecks);
+  const expiredNoticeKey = multipleDecks
+    ? 'imageDrop.notionExportExpiredMultiDeck'
+    : 'imageDrop.notionExportExpired';
+  const key =
+    expired > 0 && expired >= count
+      ? expiredNoticeKey
+      : resolveImageDropKey(source, multipleDecks);
 
   return <p>{t(key, { count })}</p>;
 }

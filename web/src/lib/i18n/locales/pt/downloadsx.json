@@ -46,7 +46,11 @@
     "uploadMultiDeck_one": "Não foi possível baixar {{count}} imagem e ela não está nos seus baralhos. Seu arquivo aponta para ela em outro site que não conseguimos acessar. Salve a imagem no próprio arquivo e envie novamente.",
     "uploadMultiDeck_other": "Não foi possível baixar {{count}} imagens e elas não estão nos seus baralhos. Seu arquivo aponta para elas em outros sites que não conseguimos acessar. Salve as imagens no próprio arquivo e envie novamente.",
     "pdf_one": "{{count}} imagem do seu PDF não está neste baralho — ainda não incluímos imagens de PDFs. Exporte sua página do Notion como HTML e envie esse arquivo para mantê-la.",
-    "pdf_other": "{{count}} imagens do seu PDF não estão neste baralho — ainda não incluímos imagens de PDFs. Exporte sua página do Notion como HTML e envie esse arquivo para mantê-las."
+    "pdf_other": "{{count}} imagens do seu PDF não estão neste baralho — ainda não incluímos imagens de PDFs. Exporte sua página do Notion como HTML e envie esse arquivo para mantê-las.",
+    "notionExportExpired_one": "Não foi possível baixar {{count}} imagem e ela não está neste baralho. O link para a imagem nesta exportação do Notion expirou — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida.",
+    "notionExportExpired_other": "Não foi possível baixar {{count}} imagens e elas não estão neste baralho. Os links para as imagens nesta exportação do Notion expiraram — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida.",
+    "notionExportExpiredMultiDeck_one": "Não foi possível baixar {{count}} imagem e ela não está nos seus baralhos. O link para a imagem nesta exportação do Notion expirou — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida.",
+    "notionExportExpiredMultiDeck_other": "Não foi possível baixar {{count}} imagens e elas não estão nos seus baralhos. Os links para as imagens nesta exportação do Notion expiraram — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida."
   },
   "cardLimitPartial": {
     "heldBack_one": "Seu baralho tem {{delivered}} das suas {{limit}} cartas mensais. Mais {{count}} carta está pronta — <pricingLink>faça upgrade para cartas ilimitadas</pricingLink>.",

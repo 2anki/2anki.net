@@ -32,7 +32,10 @@ import get16DigitRandomId from '../../shared/helpers/get16DigitRandomId';
 import { isValidAudioFile } from '../anki/format';
 import FallbackParser from './experimental/FallbackParser';
 import { embedFile } from './exporters/embedFile';
-import { resolveNotionS3ImageFromZip } from './exporters/resolveNotionS3ImageFromZip';
+import {
+  resolveNotionS3ImageFromZip,
+  isNotionSignedFileUrl,
+} from './exporters/resolveNotionS3ImageFromZip';
 import { recoverNotionExportImageFromZip } from './exporters/recoverNotionExportImageFromZip';
 import { downloadMediaOrSkip } from '../../services/NotionService/helpers/downloadMediaOrSkip';
 import getUniqueFileName from '../misc/getUniqueFileName';
@@ -140,6 +143,8 @@ export class DeckParser {
 
   droppedImageCount: number;
 
+  expiredNotionImageCount: number;
+
   emptyBackCount: number;
 
   private readonly knownGuids?: KnownGuids;
@@ -169,6 +174,7 @@ export class DeckParser {
     this.noLimits = input.noLimits;
     this.usedHeuristic = false;
     this.droppedImageCount = 0;
+    this.expiredNotionImageCount = 0;
     this.emptyBackCount = 0;
     this.sawUnclassifiedParse = false;
     this.payload = [];
@@ -834,13 +840,18 @@ export class DeckParser {
     card: Note
   ): Promise<void> {
     let bytes: Buffer | null = null;
+    let fetchThrew = false;
     try {
       bytes = await downloadMediaOrSkip(url);
     } catch {
+      fetchThrew = true;
       console.warn(`Failed to fetch remote image ${url}`);
     }
     if (bytes == null) {
       this.droppedImageCount++;
+      if (!fetchThrew && isNotionSignedFileUrl(url)) {
+        this.expiredNotionImageCount++;
+      }
       return;
     }
 

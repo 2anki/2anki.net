@@ -283,6 +283,8 @@ function UploadForm({
     droppedImageCount,
     overSplit,
     setDroppedImageCount,
+    expiredNotionImageCount,
+    setExpiredNotionImageCount,
     emptyBackCount,
     setEmptyBackCount,
     setOverSplit,
@@ -364,6 +366,7 @@ function UploadForm({
     setMcqCount,
     setMcqSkippedCount,
     setDroppedImageCount,
+    setExpiredNotionImageCount,
     setEmptyBackCount,
     setOverSplit,
     setDownloadLink,
@@ -964,6 +967,7 @@ function UploadForm({
           <ImageDropNotice
             count={droppedImageCount}
             source={imageDropSource()}
+            expiredCount={expiredNotionImageCount}
           />
         </div>
       )}
@@ -1036,6 +1040,7 @@ function UploadForm({
               count={droppedImageCount}
               source={imageDropSource()}
               multipleDecks
+              expiredCount={expiredNotionImageCount}
             />
           </div>
         )}
