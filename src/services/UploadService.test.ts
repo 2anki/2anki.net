@@ -1185,6 +1185,294 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   });
 });
 
+describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  let tmpDir: string;
+  let infoSpy: jest.SpyInstance;
+  let errorSpy: jest.SpyInstance;
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE = path.join(
+      os.tmpdir(),
+      'upload-service-fallback'
+    );
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+  });
+
+  beforeEach(() => {
+    MockGeneratePackagesUseCase.mockClear();
+    trackMock.mockClear();
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fallback-ws-'));
+    mockWorkspaceLocation = tmpDir;
+    mockWorkspaceId = 'fallback-ws-id';
+    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    infoSpy.mockRestore();
+    errorSpy.mockRestore();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function zeroCardUseCase() {
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockResolvedValue({ packages: [] }),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+  }
+
+  function jobRepositoryWithFailedGate(onFailed?: () => void): JobRepository {
+    return {
+      create: jest.fn().mockResolvedValue(undefined),
+      updateJobStatus: jest
+        .fn()
+        .mockImplementation((_id: string, _owner: string, status: string) => {
+          if (status === 'failed') {
+            onFailed?.();
+          }
+          return Promise.resolve(undefined);
+        }),
+      findJobById: jest.fn().mockResolvedValue(null),
+      deleteJob: jest.fn().mockResolvedValue(undefined),
+    } as unknown as JobRepository;
+  }
+
+  function entitledRequest(
+    overrides: Partial<express.Request> = {}
+  ): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'lecture.html',
+          mimetype: 'text/html',
+          size: 4096,
+          path: '/tmp/lecture.html',
+        } as unknown as Express.Multer.File,
+      ],
+      ...overrides,
+    });
+  }
+
+  function entitledResponse() {
+    const built = buildResponse();
+    (built.res.locals as Record<string, unknown>).owner = 42;
+    (built.res.locals as Record<string, unknown>).subscriber = true;
+    return built;
+  }
+
+  it('dispatches an async Claude job with 202 when an entitled user with AI never set gets zero cards', async () => {
+    zeroCardUseCase();
+    let resolveFailed!: () => void;
+    const failed = new Promise<void>((r) => {
+      resolveFailed = r;
+    });
+    const jobRepository = jobRepositoryWithFailedGate(resolveFailed);
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo()
+    );
+    const req = entitledRequest();
+    const { res, capturedStatus, capturedJson } = entitledResponse();
+
+    await service.handleUpload(req, res);
+    await failed;
+
+    expect(capturedStatus()).toBe(202);
+    expect(capturedJson()).toEqual({ jobId: 'fallback-ws-id' });
+    expect(jobRepository.create).toHaveBeenCalledWith(
+      'fallback-ws-id',
+      '42',
+      expect.any(String),
+      'claude'
+    );
+    expect(trackMock).toHaveBeenCalledWith(
+      'ai_fallback_triggered',
+      expect.objectContaining({
+        userId: 42,
+        props: expect.objectContaining({ reason: 'empty_deck' }),
+      })
+    );
+  });
+
+  it('keeps the empty_export error when an entitled user explicitly turned AI off', async () => {
+    zeroCardUseCase();
+    const jobRepository = jobRepositoryWithFailedGate();
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo()
+    );
+    const req = entitledRequest({
+      body: { 'claude-ai-flashcards': 'false' },
+    } as Partial<express.Request>);
+    const { res, capturedStatus, capturedJson } = entitledResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    expect((capturedJson() as { code: string }).code).toBe('empty_export');
+    expect(jobRepository.create).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'ai_fallback_triggered',
+      expect.anything()
+    );
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({
+        props: expect.objectContaining({ reason: 'empty_deck' }),
+      })
+    );
+  });
+
+  it('keeps the empty_export error for a signed-in free user who is not entitled', async () => {
+    zeroCardUseCase();
+    const jobRepository = jobRepositoryWithFailedGate();
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo()
+    );
+    const req = entitledRequest();
+    const { res, capturedStatus, capturedJson } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    expect((capturedJson() as { code: string }).code).toBe('empty_export');
+    expect(jobRepository.create).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'ai_fallback_triggered',
+      expect.anything()
+    );
+  });
+
+  it('keeps the empty_export error for an anonymous upload', async () => {
+    zeroCardUseCase();
+    const jobRepository = jobRepositoryWithFailedGate();
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo()
+    );
+    const req = entitledRequest();
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    expect((capturedJson() as { code: string }).code).toBe('empty_export');
+    expect(jobRepository.create).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'ai_fallback_triggered',
+      expect.anything()
+    );
+  });
+
+  it('keeps the empty_export error when the entitled upload exceeds the Claude fallback size cap', async () => {
+    zeroCardUseCase();
+    const jobRepository = jobRepositoryWithFailedGate();
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo()
+    );
+    const req = entitledRequest({
+      files: [
+        {
+          originalname: 'huge.html',
+          mimetype: 'text/html',
+          size: 60 * 1024 * 1024,
+          path: '/tmp/huge.html',
+        } as unknown as Express.Multer.File,
+      ],
+    } as Partial<express.Request>);
+    const { res, capturedStatus, capturedJson } = entitledResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    expect((capturedJson() as { code: string }).code).toBe('empty_export');
+    expect(jobRepository.create).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'ai_fallback_triggered',
+      expect.anything()
+    );
+  });
+
+  it('keeps the image_only_no_text response for an entitled image-only upload and does not fall back to Claude', async () => {
+    zeroCardUseCase();
+    const jobRepository = jobRepositoryWithFailedGate();
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo()
+    );
+    const req = entitledRequest({
+      files: [
+        {
+          originalname: 'slide.png',
+          mimetype: 'image/png',
+          size: 2048,
+          path: '/tmp/slide.png',
+        } as unknown as Express.Multer.File,
+      ],
+    } as Partial<express.Request>);
+    const { res, capturedStatus, capturedJson } = entitledResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    expect((capturedJson() as { code: string }).code).toBe(
+      'image_only_no_text'
+    );
+    expect(jobRepository.create).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'ai_fallback_triggered',
+      expect.anything()
+    );
+  });
+
+  it('does not recurse: a fallback job that itself yields zero cards is marked failed once, never re-dispatched', async () => {
+    zeroCardUseCase();
+    let failedCount = 0;
+    let resolveFailed!: () => void;
+    const failed = new Promise<void>((r) => {
+      resolveFailed = r;
+    });
+    const jobRepository = jobRepositoryWithFailedGate(() => {
+      failedCount += 1;
+      resolveFailed();
+    });
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo()
+    );
+    const req = entitledRequest();
+    const { res, capturedStatus } = entitledResponse();
+
+    await service.handleUpload(req, res);
+    await failed;
+    await new Promise((r) => setImmediate(r));
+
+    expect(capturedStatus()).toBe(202);
+    expect(jobRepository.create).toHaveBeenCalledTimes(1);
+    const fallbackCalls = trackMock.mock.calls.filter(
+      (call) => call[0] === 'ai_fallback_triggered'
+    );
+    expect(fallbackCalls).toHaveLength(1);
+    expect(failedCount).toBe(1);
+  });
+});
+
 describe('UploadService.deleteUpload — cascade', () => {
   beforeEach(() => {
     mockStorageDelete.mockClear();

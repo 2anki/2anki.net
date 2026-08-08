@@ -116,6 +116,8 @@ interface ImageOnlyResponse {
 const IMAGE_ONLY_NO_TEXT_MESSAGE =
   'These look like images — no text to read. Turn them into cards with Photo to Deck.';
 
+const AI_FALLBACK_MAX_BYTES = 50 * 1024 * 1024;
+
 interface DeckTooLargeResponse {
   message: string;
 }
@@ -1076,6 +1078,43 @@ class UploadService {
     return res.status(202).json({ jobId: ws.id });
   }
 
+  private canFallBackToClaude(
+    req: express.Request,
+    owner: number | null,
+    paying: boolean
+  ): boolean {
+    if (owner == null || !paying) {
+      return false;
+    }
+    const files = req.files as UploadedFile[] | undefined;
+    if (isImageOnlyUpload(files)) {
+      return false;
+    }
+    const rawFlag = (req.body as Record<string, unknown> | undefined)?.[
+      'claude-ai-flashcards'
+    ];
+    if (rawFlag === 'false') {
+      return false;
+    }
+    const totalBytes = (files ?? []).reduce((sum, file) => sum + file.size, 0);
+    return totalBytes <= AI_FALLBACK_MAX_BYTES;
+  }
+
+  private buildClaudeFallbackSettings(
+    req: express.Request,
+    base: CardOption
+  ): CardOption {
+    const body = (req.body ?? {}) as Record<string, string>;
+    const fallback = new CardOption({
+      ...body,
+      'claude-ai-flashcards': 'true',
+    });
+    fallback.n2aBasic = base.n2aBasic;
+    fallback.n2aCloze = base.n2aCloze;
+    fallback.n2aInput = base.n2aInput;
+    return fallback;
+  }
+
   private async handleSyncUpload(
     req: express.Request,
     res: express.Response,
@@ -1122,8 +1161,27 @@ class UploadService {
 
     if (totalCards === 0) {
       logNoPackageDiagnostics(req.files as UploadedFile[]);
+      const ownerId = owner != null ? Number(owner) : null;
+      if (this.canFallBackToClaude(req, ownerId, paying)) {
+        track('ai_fallback_triggered', {
+          userId: ownerId,
+          anonymousId: this.resolveAnonId(req),
+          props: {
+            reason: 'empty_deck',
+            source: this.resolveUploadSource(req),
+          },
+        });
+        return await this.handleAsyncUpload(
+          req,
+          res,
+          this.buildClaudeFallbackSettings(req, settings),
+          new Workspace(true, 'fs'),
+          String(owner),
+          paying
+        );
+      }
       track('conversion_failed', {
-        userId: owner != null ? Number(owner) : null,
+        userId: ownerId,
         anonymousId: this.resolveAnonId(req),
         props: {
           source: this.resolveUploadSource(req),
