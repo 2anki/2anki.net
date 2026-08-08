@@ -15,6 +15,13 @@ export interface PaidPassCounts {
   weekPasses: number;
 }
 
+export interface UserPassWindowRow {
+  id: number;
+  userId: number;
+  kind: string;
+  expiresAt: Date;
+}
+
 export interface IUserPassRepository {
   findActive(userId: number, now: Date): Promise<UserPass | null>;
   countPaidPassesSince(userId: number, since: Date): Promise<PaidPassCounts>;
@@ -73,6 +80,25 @@ export class UserPassRepository implements IUserPassRepository {
       .where('stripe_payment_intent_id', paymentIntentId)
       .first();
     return row != null;
+  }
+
+  async listActiveInWindow(
+    since: Date,
+    until: Date
+  ): Promise<UserPassWindowRow[]> {
+    const rows = await this.database<UserPassRow>(this.table)
+      .select('id', 'user_id', 'kind', 'expires_at')
+      .where('expires_at', '>=', since)
+      .where('expires_at', '<=', until);
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      kind: row.kind,
+      expiresAt:
+        row.expires_at instanceof Date
+          ? row.expires_at
+          : new Date(row.expires_at),
+    }));
   }
 
   countPaidPassesQuery(userId: number, since: Date) {

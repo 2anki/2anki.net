@@ -61,6 +61,9 @@ import { CustomerSignalsService } from '../services/ops/CustomerSignalsService';
 import { BehavioralDropoffRepository } from '../data_layer/BehavioralDropoffRepository';
 import { GetPassUnlockMonitorUseCase } from '../usecases/ops/GetPassUnlockMonitorUseCase';
 import { PassUnlockMonitorService } from '../services/ops/PassUnlockMonitorService';
+import { GetPaidValueMonitorUseCase } from '../usecases/ops/GetPaidValueMonitorUseCase';
+import { PaidValueMonitorService } from '../services/ops/PaidValueMonitorService';
+import PaidValueSubscriptionsRepository from '../data_layer/PaidValueSubscriptionsRepository';
 import UserPassRepository from '../data_layer/UserPassRepository';
 import AnonymousPassRepository from '../data_layer/AnonymousPassRepository';
 import { updateStripeSubscriptions } from '../lib/storage/jobs/helpers/updateStripeSubscriptions';
@@ -197,6 +200,14 @@ const OpsRouter = () => {
     new GrantDeveloperAccessUseCase(new UsersRepository(database)),
     new GetCancelFunnelUseCase(
       new CancelFunnelService({ eventsRepo: new EventsRepository(database) })
+    ),
+    new GetPaidValueMonitorUseCase(
+      new PaidValueMonitorService({
+        userPasses: new UserPassRepository(database),
+        anonymousPasses: new AnonymousPassRepository(database),
+        subscriptions: new PaidValueSubscriptionsRepository(database),
+        events: new EventsMetricsRepository(database),
+      })
     )
   );
 
@@ -711,6 +722,40 @@ const OpsRouter = () => {
    */
   router.get('/api/ops/passes/unlock-monitor', RequireOpsAccess, (req, res) =>
     controller.getPassUnlockMonitor(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/ops/value-monitor:
+   *   get:
+   *     summary: Paying users who produced zero successful conversions in their paid window
+   *     description: |
+   *       For each Day/Week pass, claimed anonymous pass, and new subscription in
+   *       a rolling window, counts the conversion successes, downloads, and
+   *       failures inside that unit's own paid window. Splits each group into
+   *       with-value, zero-value-tried (failures but no success/download — the
+   *       urgent case), and zero-value-never-tried. Rows list only the zero-value
+   *       units by numeric user id; no emails are returned. Unclaimed anonymous
+   *       passes cannot be linked to a user, so they are reported as an honest
+   *       count only. Defaults to the last 7 days; pass ?window=1d|7d|14d|30d.
+   *       Internal endpoint locked to the ops owner — returns 404 for everyone
+   *       else.
+   *     tags: [Ops]
+   *     parameters:
+   *       - in: query
+   *         name: window
+   *         schema:
+   *           type: string
+   *           enum: ['1d', '7d', '14d', '30d']
+   *         description: Lookback window. Defaults to 7d.
+   *     responses:
+   *       200:
+   *         description: Paid value monitor payload
+   *       404:
+   *         description: Not the ops owner
+   */
+  router.get('/api/ops/value-monitor', RequireOpsAccess, (req, res) =>
+    controller.getPaidValueMonitor(req, res)
   );
 
   /**

@@ -14,6 +14,18 @@ export interface IPassSalesRepository {
   passSalesSince(since: Date): Promise<PassSalesCounts>;
 }
 
+export const PAID_VALUE_EVENT_NAMES = [
+  'conversion_succeeded',
+  'deck_downloaded',
+  'conversion_failed',
+] as const;
+
+export interface PaidValueEventRow {
+  userId: number;
+  name: string;
+  createdAt: Date;
+}
+
 export interface MedianMinutesRow {
   median_minutes: number | string | null;
 }
@@ -121,6 +133,32 @@ export class EventsMetricsRepository
       | UploadToDownloadRateRow
       | undefined;
     return mapUploadToDownloadRateRow(row);
+  }
+
+  async listPaidValueEvents(
+    userIds: number[],
+    since: Date
+  ): Promise<PaidValueEventRow[]> {
+    if (userIds.length === 0) {
+      return [];
+    }
+    const rows = (await this.database('events')
+      .select('user_id', 'name', 'created_at')
+      .whereIn('user_id', userIds)
+      .whereIn('name', [...PAID_VALUE_EVENT_NAMES])
+      .where('created_at', '>=', since)) as Array<{
+      user_id: number;
+      name: string;
+      created_at: Date | string;
+    }>;
+    return rows.map((row) => ({
+      userId: Number(row.user_id),
+      name: String(row.name),
+      createdAt:
+        row.created_at instanceof Date
+          ? row.created_at
+          : new Date(row.created_at),
+    }));
   }
 }
 

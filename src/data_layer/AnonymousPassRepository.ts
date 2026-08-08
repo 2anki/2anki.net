@@ -11,6 +11,14 @@ export interface AnonymousPass {
   buyer_email_hash: string | null;
 }
 
+export interface AnonymousPassWindowRow {
+  id: number;
+  kind: string;
+  createdAt: Date;
+  expiresAt: Date;
+  claimedByUserId: number | null;
+}
+
 export interface IAnonymousPassRepository {
   findBySessionId(stripeSessionId: string): Promise<AnonymousPass | null>;
   findActive(stripeSessionId: string, now: Date): Promise<AnonymousPass | null>;
@@ -118,6 +126,30 @@ export class AnonymousPassRepository implements IAnonymousPassRepository {
       }
       throw err;
     }
+  }
+
+  async listActiveInWindow(
+    since: Date,
+    until: Date
+  ): Promise<AnonymousPassWindowRow[]> {
+    const rows = await this.database(this.table)
+      .select('id', 'kind', 'created_at', 'expires_at', 'claimed_by_user_id')
+      .where('expires_at', '>=', since)
+      .where('created_at', '<=', until);
+    return rows.map((row) => ({
+      id: Number(row.id),
+      kind: String(row.kind),
+      createdAt:
+        row.created_at instanceof Date
+          ? row.created_at
+          : new Date(row.created_at),
+      expiresAt:
+        row.expires_at instanceof Date
+          ? row.expires_at
+          : new Date(row.expires_at),
+      claimedByUserId:
+        row.claimed_by_user_id == null ? null : Number(row.claimed_by_user_id),
+    }));
   }
 
   async findUnclaimedByBuyerEmailHash(
