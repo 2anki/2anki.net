@@ -88,8 +88,9 @@ describe('censusUploadedFile', () => {
       buffer: docx,
     });
     expect(census).not.toBeNull();
-    expect(census!.paragraphs).toBeGreaterThanOrEqual(1);
-    expect(census!.chars).toBeGreaterThan(0);
+    const doc = census as { paragraphs: number; chars: number };
+    expect(doc.paragraphs).toBeGreaterThanOrEqual(1);
+    expect(doc.chars).toBeGreaterThan(0);
   });
 
   it('returns null for an unreadable or binary non-docx file', async () => {
@@ -98,5 +99,77 @@ describe('censusUploadedFile', () => {
       buffer: Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00]),
     });
     expect(census).toBeNull();
+  });
+});
+
+describe('censusUploadedFile — zip archives (#4029)', () => {
+  const { zipSync, strToU8 } = require('fflate');
+
+  function buildZip(entries: Record<string, Uint8Array>): Buffer {
+    return Buffer.from(zipSync(entries));
+  }
+
+  it('returns an entry manifest with supported verdicts and nested-zip count', async () => {
+    const inner = zipSync({ 'Inner Page abc.html': strToU8('<html></html>') });
+    const zip = buildZip({
+      'Private & Shared/Bony Page abc123.html': strToU8('<html></html>'),
+      'Private & Shared/notes.pdf': strToU8('%PDF-1.4'),
+      'ExportBlock-abc-Part-1.zip': inner,
+      'assets/photo.png': strToU8('png-bytes'),
+    });
+
+    const census = await censusUploadedFile({
+      originalname: 'workspace-export.zip',
+      buffer: zip,
+    });
+
+    expect(census).toMatchObject({
+      kind: 'zip',
+      entryCount: 4,
+      nestedZipCount: 1,
+      supportedCount: 2,
+      unsupportedCount: 1,
+      truncated: false,
+    });
+    const entries = (
+      census as { entries: { name: string; supported: boolean }[] }
+    ).entries;
+    expect(entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'Private & Shared/Bony Page abc123.html',
+          supported: true,
+        }),
+        expect.objectContaining({
+          name: 'assets/photo.png',
+          supported: false,
+        }),
+      ])
+    );
+  });
+
+  it('marks an unreadable zip instead of throwing', async () => {
+    const census = await censusUploadedFile({
+      originalname: 'corrupt.zip',
+      buffer: Buffer.from('PK\x03\x04 not really a zip'),
+    });
+    expect(census).toMatchObject({ kind: 'zip', unreadable: true });
+  });
+
+  it('caps the manifest at 50 entries and flags truncation', async () => {
+    const many: Record<string, Uint8Array> = {};
+    for (let i = 0; i < 60; i++) {
+      many[`page-${i}.html`] = strToU8('<html></html>');
+    }
+    const census = await censusUploadedFile({
+      originalname: 'big.zip',
+      buffer: buildZip(many),
+    });
+    expect(census).toMatchObject({
+      kind: 'zip',
+      entryCount: 60,
+      truncated: true,
+    });
+    expect((census as { entries: unknown[] }).entries.length).toBe(50);
   });
 });

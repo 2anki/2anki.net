@@ -339,14 +339,20 @@ function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
         console.info('  no file contents available for diagnostics');
         continue;
       }
-      const head = contents.slice(0, 1000).toString('utf8');
-      const hasDisplayContents = head.includes('display:contents');
-      const hasToggleClass = head.includes('class="toggle"');
-      const hasDetails = head.includes('<details');
-      console.info(`  snippet=${JSON.stringify(head.slice(0, 300))}`);
-      console.info(
-        `  display:contents=${hasDisplayContents} .toggle=${hasToggleClass} <details=${hasDetails}`
-      );
+      if (/\.zip$/i.test(file.originalname)) {
+        // Raw zip bytes as a "snippet" are noise and the toggle heuristics
+        // always read false on binary — the zip census below is the signal.
+        console.info('  zip archive: entry census follows');
+      } else {
+        const head = contents.slice(0, 1000).toString('utf8');
+        const hasDisplayContents = head.includes('display:contents');
+        const hasToggleClass = head.includes('class="toggle"');
+        const hasDetails = head.includes('<details');
+        console.info(`  snippet=${JSON.stringify(head.slice(0, 300))}`);
+        console.info(
+          `  display:contents=${hasDisplayContents} .toggle=${hasToggleClass} <details=${hasDetails}`
+        );
+      }
       // Structural shape, not content — makes the zero-card class
       // reproducible from logs alone (#3966). Fire and forget: the census
       // may re-run a DOCX conversion and must never delay the response.
