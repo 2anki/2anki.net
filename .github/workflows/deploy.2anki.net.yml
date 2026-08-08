@@ -11,6 +11,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: main
+    permissions:
+      contents: read
     concurrency:
       group: 'production'
       cancel-in-progress: false
@@ -92,5 +94,34 @@ jobs:
             bash scripts/deploy-blue-green.sh || {
               echo "blue-green deploy failed — recent logs:"
               pm2 logs --lines 80 --nostream
+              # The tree was already reset+rebuilt to the failing sha above, so
+              # the live color is running code that no longer exists on disk.
+              # Put the last successfully deployed build back so a restart of
+              # the live color cannot boot the broken build (issue #4016).
+              bash scripts/deploy-restore-last-good.sh
               exit 1
             }
+
+  notify-failure:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: failure()
+    permissions:
+      issues: write
+    steps:
+      - name: Open or bump the deploy-failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          TITLE="Production deploy failed — verify box state before anything restarts"
+          BODY="A deploy run failed: $RUN_URL
+
+          Until a deploy succeeds, treat the box per the deploy-poisoning gotcha in CLAUDE.md: the live color may be serving code that a failed run replaced on disk. scripts/deploy-restore-last-good.sh attempted a restore — read the run log to confirm it succeeded before restarting anything."
+          EXISTING=$(gh issue list --repo "$REPO" --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$REPO" --body "Another failed deploy: $RUN_URL"
+          else
+            gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY"
+          fi

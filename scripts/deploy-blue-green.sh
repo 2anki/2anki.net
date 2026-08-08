@@ -170,7 +170,13 @@ run pm2 save
 
 if [ "$DRY_RUN" = "1" ]; then
   log "DRY_RUN: would record live color as $NEXT in $STATE_FILE"
+  log "DRY_RUN: would record last-good sha in ${DEPLOY_LAST_GOOD_FILE:-$HOME/.deploy_last_good}"
 else
   echo "$NEXT" > "$STATE_FILE"
+  # The sha whose build is now live on disk AND in the running process. A
+  # failed later deploy restores the checkout to this via
+  # scripts/deploy-restore-last-good.sh, so the live color can always be
+  # restarted safely (see issue #4016 / the 2026-08-06 outage).
+  git -C "$SERVER_DIR" rev-parse HEAD > "${DEPLOY_LAST_GOOD_FILE:-$HOME/.deploy_last_good}"
 fi
 log "deploy complete — live color is $NEXT on :$NEXT_PORT"
