@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -84,8 +84,8 @@ describe('PaidValueMonitorTab', () => {
     render(<PaidValueMonitorTab />);
     fireEvent.click(screen.getByRole('button', { name: 'Check value' }));
 
-    await waitFor(() => expect(screen.getByText('4242')).toBeInTheDocument());
-    const passRow = screen.getByText('4242').closest('tr');
+    const passCell = await screen.findByText('4242');
+    const passRow = passCell.closest('tr');
     expect(passRow).toHaveTextContent('24h');
     expect(passRow).toHaveTextContent('Tried, failed');
 
@@ -108,9 +108,7 @@ describe('PaidValueMonitorTab', () => {
     render(<PaidValueMonitorTab />);
     fireEvent.click(screen.getByRole('button', { name: 'Check value' }));
 
-    await waitFor(() =>
-      expect(screen.getByText(/5 paid units checked/)).toBeInTheDocument()
-    );
+    expect(await screen.findByText(/5 paid units checked/)).toBeInTheDocument();
     expect(
       screen.queryByRole('columnheader', { name: 'Result' })
     ).not.toBeInTheDocument();
@@ -127,10 +125,8 @@ describe('PaidValueMonitorTab', () => {
     render(<PaidValueMonitorTab />);
     fireEvent.click(screen.getByRole('button', { name: 'Check value' }));
 
-    await waitFor(() =>
-      expect(
-        screen.getByText('Failed to load paid value monitor')
-      ).toBeInTheDocument()
-    );
+    expect(
+      await screen.findByText('Failed to load paid value monitor')
+    ).toBeInTheDocument();
   });
 });
