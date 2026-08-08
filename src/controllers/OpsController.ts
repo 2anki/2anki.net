@@ -24,6 +24,7 @@ import { ReconcileOrphanedSubscriptionsUseCase } from '../usecases/ops/Reconcile
 import { GetLandingPageYieldUseCase } from '../usecases/ops/GetLandingPageYieldUseCase';
 import { GetCustomerSignalsUseCase } from '../usecases/ops/GetCustomerSignalsUseCase';
 import { GetPassUnlockMonitorUseCase } from '../usecases/ops/GetPassUnlockMonitorUseCase';
+import { GetPaidValueMonitorUseCase } from '../usecases/ops/GetPaidValueMonitorUseCase';
 import GrantDeveloperAccessUseCase, {
   InvalidEmailError,
 } from '../usecases/developer/GrantDeveloperAccessUseCase';
@@ -51,7 +52,8 @@ class OpsController {
     private readonly getPassUnlockMonitorUseCase?: GetPassUnlockMonitorUseCase,
     private readonly sendPassWinbackUseCase?: SendPassWinbackUseCase,
     private readonly grantDeveloperAccessUseCase?: GrantDeveloperAccessUseCase,
-    private readonly getCancelFunnelUseCase?: GetCancelFunnelUseCase
+    private readonly getCancelFunnelUseCase?: GetCancelFunnelUseCase,
+    private readonly getPaidValueMonitorUseCase?: GetPaidValueMonitorUseCase
   ) {}
 
   async grantDeveloperAccess(req: express.Request, res: express.Response) {
@@ -433,6 +435,22 @@ class OpsController {
     } catch (error) {
       console.error('[ops] getPassUnlockMonitor failed', error);
       res.status(500).json({ message: 'Failed to load pass unlock monitor' });
+    }
+  }
+
+  async getPaidValueMonitor(req: express.Request, res: express.Response) {
+    if (this.getPaidValueMonitorUseCase == null) {
+      res.status(503).json({ message: 'Paid value monitor not configured' });
+      return;
+    }
+    try {
+      const window =
+        typeof req.query.window === 'string' ? req.query.window : undefined;
+      const result = await this.getPaidValueMonitorUseCase.execute(window);
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ops] getPaidValueMonitor failed', error);
+      res.status(500).json({ message: 'Failed to load paid value monitor' });
     }
   }
 

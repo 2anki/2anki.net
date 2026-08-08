@@ -15,6 +15,7 @@ import {
   ReconcileOrphanedSubscriptionsResponse,
 } from './orphanedSubscriptions';
 import PassUnlockMonitorTab from './PassUnlockMonitorTab';
+import PaidValueMonitorTab from './PaidValueMonitorTab';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -375,6 +376,7 @@ export default function CommandsTab() {
       )}
 
       <PassUnlockMonitorTab />
+      <PaidValueMonitorTab />
     </>
   );
 }
