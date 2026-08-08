@@ -51,6 +51,7 @@ export const KNOWN_EVENTS = new Set([
   'cancel_during_generating',
   'pdf_print_options_used',
   'ai_conversion_completed',
+  'ai_fallback_triggered',
   'feature_flag_changed',
   'account_created',
   'account_offer_shown',

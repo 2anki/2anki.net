@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-08-zero-card-claude-fallback",
+  "date": "2026-08-08",
+  "type": "feature",
+  "title": "Uploads that produce no cards are converted with Claude automatically for members"
+}
