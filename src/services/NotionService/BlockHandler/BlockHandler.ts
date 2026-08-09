@@ -52,6 +52,7 @@ import {
   mergeInducedRescue,
 } from '../../../lib/parser/induction/candidateRules';
 import { runInduction } from '../../../lib/parser/induction/rankCandidates';
+import { scoreCandidateDeck } from '../../../lib/parser/scoreCandidateDeck';
 import {
   ConversionTruncation,
   hasRuleBasedSubDecks,
@@ -1111,7 +1112,7 @@ class BlockHandler {
   // added.
   private rescueEmptyCards(cards: Note[], blocks: GetBlockResponse[]): Note[] {
     if (Deck.hasUsableCards(cards)) {
-      return cards;
+      return this.rescueDegenerateYield(cards, blocks);
     }
     const rescued = this.induceRescueDeck(blocks);
     if (rescued == null) {
@@ -1120,6 +1121,69 @@ class BlockHandler {
     this.discountCards(cards);
     this.accountForRescuedCards(rescued);
     return rescued;
+  }
+
+  // The silent twin of the empty deck: a walk that produces one or two cards
+  // whose backs hold the whole page ships as "success" while the substance never
+  // becomes reviewable cards. Runs the same block-level candidate loop as the
+  // empty rescue, but the winner must beat the score of the giant card it
+  // replaces, not just clear the floor. Losing records rescue_rejected and keeps
+  // the original cards; winning replaces them and records rescue_shipped, so the
+  // Downloads notice fires on both delivery transports.
+  //
+  // The mean-chars trigger sits at 1000 from a prod Notion-path sweep: the
+  // degenerate cluster (pages that shipped <=2 cards from a large body) had a
+  // mean of ~1509 chars/card, while legitimate small decks sat at <=622 and a
+  // healthy deck runs ~230. Image-only backs strip to ~0 visible chars and so
+  // self-exclude. MCQ and input cards are user-authored quiz structure and are
+  // never re-induced.
+  private rescueDegenerateYield(
+    cards: Note[],
+    blocks: GetBlockResponse[]
+  ): Note[] {
+    const DEGENERATE_MIN_MEAN_CARD_CHARS = 1000;
+    const cleaned = Deck.CleanCards([...cards]);
+    if (cleaned.length < 1 || cleaned.length > 2) {
+      return cards;
+    }
+    if (
+      cleaned.every((card) => card.isValidMCQNote() || card.isValidInputNote())
+    ) {
+      return cards;
+    }
+    const docChars = blocksPlainTextLength(blocks);
+    const existingScore = scoreCandidateDeck(cleaned, docChars);
+    if (
+      existingScore.cardChars / cleaned.length <
+      DEGENERATE_MIN_MEAN_CARD_CHARS
+    ) {
+      return cards;
+    }
+    const { winner, best } = runInduction(
+      this.rescueCandidateRules(),
+      (rule) =>
+        induceNotesFromBlocks(blocks, rule, this.settings, new TagRegistry()),
+      docChars
+    );
+    if (winner == null || winner.score.score <= existingScore.score) {
+      const judged = winner ?? best;
+      if (judged != null) {
+        this.recordInducedRule({
+          rule: judged.rule,
+          outcome: 'rescue_rejected',
+          score: judged.score,
+        });
+      }
+      return cards;
+    }
+    this.recordInducedRule({
+      rule: winner.rule,
+      outcome: 'rescue_shipped',
+      score: winner.score,
+    });
+    this.discountCards(cards);
+    this.accountForRescuedCards(winner.cards);
+    return winner.cards;
   }
 
   private async buildDeckFromBlockChildren(
