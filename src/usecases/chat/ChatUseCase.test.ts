@@ -154,7 +154,7 @@ describe('ChatUseCase', () => {
   });
 
   describe('model selection', () => {
-    it('uses haiku model for free users', async () => {
+    it('uses Sonnet 5 for free users', async () => {
       const { anthropic, useCase } = buildUseCase('answer');
 
       await useCase.execute({
@@ -164,11 +164,11 @@ describe('ChatUseCase', () => {
       });
 
       expect(anthropic.messages.stream).toHaveBeenCalledWith(
-        expect.objectContaining({ model: 'claude-haiku-4-5-20251001' })
+        expect.objectContaining({ model: 'claude-sonnet-5' })
       );
     });
 
-    it('uses sonnet model for patreon users', async () => {
+    it('uses Sonnet 5 for patreon users', async () => {
       const { anthropic, useCase } = buildUseCase('answer');
 
       await useCase.execute({
@@ -178,7 +178,7 @@ describe('ChatUseCase', () => {
       });
 
       expect(anthropic.messages.stream).toHaveBeenCalledWith(
-        expect.objectContaining({ model: 'claude-sonnet-4-6' })
+        expect.objectContaining({ model: 'claude-sonnet-5' })
       );
     });
   });
@@ -1054,7 +1054,7 @@ describe('ChatUseCase', () => {
       });
 
       const callArg = anthropic.messages.stream.mock.calls[0][0];
-      expect(callArg.max_tokens).toBe(8192);
+      expect(callArg.max_tokens).toBe(16384);
     });
 
     it('keeps the default max_tokens for non-MCQ templates', async () => {
@@ -1068,7 +1068,7 @@ describe('ChatUseCase', () => {
       });
 
       const callArg = anthropic.messages.stream.mock.calls[0][0];
-      expect(callArg.max_tokens).toBe(4096);
+      expect(callArg.max_tokens).toBe(8192);
     });
 
     it('extracts MCQ cards from the tool_use block for templateSlug=mcq', async () => {

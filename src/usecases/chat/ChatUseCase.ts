@@ -80,8 +80,7 @@ const MCQ_TOOL: Anthropic.Tool = {
 };
 
 const FREE_MONTHLY_LIMIT = 20;
-const FREE_MODEL = 'claude-haiku-4-5-20251001';
-const PATREON_MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-5';
 const MAX_HISTORY_TURNS = 10;
 // A follow-up turn replays the attachment text folded into its original user
 // message, so a large PDF would otherwise be re-sent on every subsequent turn.
@@ -89,12 +88,14 @@ const MAX_HISTORY_TURNS = 10;
 // extractAttachmentText's 200 000-char budget); only the copy carried forward
 // as conversation memory is capped here.
 const MAX_ATTACHMENT_TEXT_IN_HISTORY = 20_000;
-const MAX_TOKENS = 4096;
+// Sonnet 5's adaptive thinking spends from the same max_tokens budget as the
+// visible reply, so both caps are doubled from their pre-Sonnet-5 values.
+const MAX_TOKENS = 8192;
 // MCQ is emitted as forced tool-use JSON (stem + 4 options + rationale per
 // card). At 4096 the structured output truncates on multi-card batches, the
 // tool input never closes, extraction returns nothing, and the turn fails with
 // McqExtractionFailedError. Give the MCQ path more headroom so the JSON fits.
-const MCQ_MAX_TOKENS = 8192;
+const MCQ_MAX_TOKENS = 16384;
 const AUTO_TITLE_MAX_LENGTH = 60;
 
 const STUDY_ASSISTANT_SYSTEM_PROMPT = `You are a study assistant for 2anki, a tool that turns notes into Anki flashcards.
@@ -628,8 +629,6 @@ export class ChatUseCase {
     const { user, conversationId, historyMessages, userContent, onToken } =
       params;
 
-    const model = user.patreon ? PATREON_MODEL : FREE_MODEL;
-
     const resolvedTemplate: ChatCardTemplate = isChatCardTemplate(
       params.templateSlug
     )
@@ -653,7 +652,7 @@ export class ChatUseCase {
     ];
 
     const stream = this.anthropic.messages.stream({
-      model,
+      model: MODEL,
       max_tokens: mcqForced ? MCQ_MAX_TOKENS : MAX_TOKENS,
       system: [
         {
