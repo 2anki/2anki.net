@@ -181,7 +181,7 @@ describe('convertWithClaude', () => {
     ]);
 
     const callArg = (mock.messages.stream as jest.Mock).mock.calls[0][0];
-    expect(callArg.model).toBe('claude-sonnet-4-6');
+    expect(callArg.model).toBe('claude-sonnet-5');
   });
 
   it('uses CLAUDE_FILE_CONVERSION_MODEL env when set', async () => {

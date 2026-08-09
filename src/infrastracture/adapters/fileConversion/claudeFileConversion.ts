@@ -3,7 +3,7 @@ import type { BetaContentBlockParam } from '@anthropic-ai/sdk/resources/beta/mes
 
 import { logClaudeUsage } from '../../../lib/claude/logClaudeUsage';
 
-const DEFAULT_MODEL = 'claude-sonnet-4-6';
+const DEFAULT_MODEL = 'claude-sonnet-5';
 // A cap, not a charge — output is billed on tokens actually generated, so a
 // generous ceiling costs nothing on documents that were never near it. At the
 // old 8192 a dense multi-page PDF hit the cap routinely, and the truncation
