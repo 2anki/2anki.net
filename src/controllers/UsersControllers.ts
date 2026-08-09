@@ -873,6 +873,7 @@ class UsersController {
         context: {
           reason: loginRequest.reason,
           message: loginRequest.message,
+          userAgent: req.headers?.['user-agent'] ?? null,
         },
       });
       return res.redirect('/login?error=google_signin_failed');
@@ -1070,6 +1071,11 @@ class UsersController {
         userId: null,
         surface: 'oauth_apple',
         code: 'oauth_state_mismatch',
+        context: {
+          hadStateCookie: stateCookie != null,
+          hadStateParam: state != null,
+          userAgent: req.headers?.['user-agent'] ?? null,
+        },
       });
       return res.redirect('/login');
     }
@@ -1085,11 +1091,16 @@ class UsersController {
     }
 
     const loginRequest = await this.authService.loginWithApple(code);
-    if (!loginRequest) {
+    if (!loginRequest.ok) {
       await this.recordError?.execute({
         userId: null,
         surface: 'oauth_apple',
         code: 'oauth_token_exchange_failed',
+        context: {
+          reason: loginRequest.reason,
+          message: loginRequest.message,
+          userAgent: req.headers?.['user-agent'] ?? null,
+        },
       });
       return res.redirect('/login');
     }
