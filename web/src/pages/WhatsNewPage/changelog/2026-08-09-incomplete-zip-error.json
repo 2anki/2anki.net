@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-09-incomplete-zip-error",
+  "date": "2026-08-09",
+  "type": "fix",
+  "title": "Half-downloaded zip uploads now say they're incomplete instead of \"No cards found\""
+}

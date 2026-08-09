@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
 import { join } from 'node:path';
 
+import { excludeExtractionArtifacts } from './excludeExtractionArtifacts';
 import { listFiles } from './listFiles';
 import { File } from './types';
 
@@ -24,7 +25,17 @@ export function unpack(filePath: string, workspace: string): Promise<File[]> {
 
     decompressProcess.on('close', () => {
       // We are not reading the status code because we support partial extraction
-      listFiles(workspace).then(resolve).catch(reject);
+      listFiles(workspace)
+        .then((files) =>
+          resolve(
+            excludeExtractionArtifacts(files, [
+              filePath,
+              stdoutLogPath,
+              stderrLogPath,
+            ])
+          )
+        )
+        .catch(reject);
     });
   });
 }

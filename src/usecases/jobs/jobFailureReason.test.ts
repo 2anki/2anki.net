@@ -236,12 +236,21 @@ describe('jobFailureReasonFromError', () => {
     expect(reason).toContain('upload limit');
   });
 
-  it('classifies ZIP_INVALID code as zip error message', () => {
-    const err = new Error('bad zip') as Error & { code?: string };
+  it('passes an IncompleteZipError message through to the user', () => {
+    const err = new Error(
+      'This zip file is incomplete — it ends before its file index, which usually means it was still downloading or syncing when it was uploaded. Wait for the download to finish, then upload it again.'
+    ) as Error & { code?: string };
     err.code = 'ZIP_INVALID';
     const reason = jobFailureReasonFromError(err, 'job-zi');
-    expect(reason).toContain("Couldn't read this zip");
-    expect(reason).toContain('Markdown & CSV export');
+    expect(reason).toContain('incomplete');
+    expect(reason).toContain('upload it again');
+  });
+
+  it('matches an IncompleteZipError by name after the worker boundary strips the code', () => {
+    const err = new Error('This zip file is incomplete — truncated upload.');
+    err.name = 'IncompleteZipError';
+    const reason = jobFailureReasonFromError(err, 'job-zi2');
+    expect(reason).toBe('This zip file is incomplete — truncated upload.');
   });
 
   it('classifies pdfinfo_password error prefix as password-protected message', () => {

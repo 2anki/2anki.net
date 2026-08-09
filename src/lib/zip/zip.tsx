@@ -12,6 +12,7 @@ import {
 } from '../storage/checks';
 import { processAndPrepareArchiveData } from './fallback/processAndPrepareArchiveData';
 import { isSafeZipEntryName } from './isSafeZipEntryName';
+import { isZipContentFileSupported } from '../../usecases/uploads/isZipContentFileSupported';
 import CardOption from '../parser/Settings';
 import { getRandomUUID } from '../../shared/helpers/getRandomUUID';
 import { convertImageToHTML } from '../../infrastracture/adapters/fileConversion/convertImageToHTML';
@@ -59,6 +60,25 @@ const MAX_BATCH_EXTRACT_BYTES = 128 * 1024 * 1024;
 
 function formatGigabytes(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+// Real prod failures (#4028) were zips that end mid-entry with no central
+// directory — files grabbed while the export was still downloading or a cloud
+// folder was still syncing. fflate needs the end-of-central-directory record,
+// so these throw code 13 and land in the bsdtar fallback; when even that
+// recovers nothing usable, the honest answer is "incomplete", not "no cards".
+const INCOMPLETE_ZIP_MESSAGE =
+  'This zip file is incomplete — it ends before its file index, which usually means it was still downloading or syncing when it was uploaded. Wait for the download to finish, then upload it again.';
+
+// The name is what survives the upload worker's thread boundary (errors cross
+// it as { message, name }), so jobFailureReason matches on it, not the class.
+class IncompleteZipError extends Error {
+  code = 'ZIP_INVALID';
+
+  constructor() {
+    super(INCOMPLETE_ZIP_MESSAGE);
+    this.name = 'IncompleteZipError';
+  }
 }
 
 // Back a spilled entry with a lazy disk read so every consumer that reads
@@ -264,7 +284,7 @@ class ZipHandler {
 
       this.addCombinedHTMLToFiles(paying, settings);
     } catch (error: unknown) {
-      await this.handleZipError(error, zipData, paying);
+      await this.handleZipError(error, zipData, paying, settings);
     }
   }
 
@@ -332,16 +352,42 @@ ${this.combinedHTML}
   private async handleZipError(
     error: unknown,
     zipData: Uint8Array,
-    paying: boolean
+    paying: boolean,
+    settings: CardOption
   ) {
     const isArchiveProcessingError = (error as { code?: number }).code === 13;
-
-    if (isArchiveProcessingError) {
-      const foundFiles = await processAndPrepareArchiveData(zipData, paying);
-      this.files.push(...foundFiles);
-      console.log('Processed files using fallback method:');
-    } else {
+    if (!isArchiveProcessingError) {
       throw error;
+    }
+
+    const foundFiles = await processAndPrepareArchiveData(zipData, paying);
+    console.log('Processed files using fallback method:');
+    for (const file of foundFiles) {
+      if (
+        /\.zip$/i.test(file.name) &&
+        file.contents instanceof Uint8Array &&
+        this.zipFileCount < this.maxZipFiles
+      ) {
+        // bsdtar reads sequentially and often recovers a nested export part
+        // intact even when the outer archive is truncated. Recurse so its
+        // pages convert; a nested part that is itself truncated fails its own
+        // fallback below and is skipped rather than aborting the recovery.
+        this.zipFileCount++;
+        try {
+          await this.processZip(file.contents, paying, settings);
+        } catch {
+          console.warn('Recovered nested zip was itself unreadable, skipping');
+        }
+        continue;
+      }
+      this.files.push(file);
+    }
+
+    const anySupported = this.files.some((f) =>
+      isZipContentFileSupported(f.name)
+    );
+    if (!anySupported) {
+      throw new IncompleteZipError();
     }
   }
 
@@ -353,6 +399,8 @@ ${this.combinedHTML}
 export {
   ZipHandler,
   File,
+  IncompleteZipError,
+  INCOMPLETE_ZIP_MESSAGE,
   MAX_IN_MEMORY_BYTES,
   MAX_EXTRACTED_BYTES,
   MAX_BATCH_EXTRACT_BYTES,

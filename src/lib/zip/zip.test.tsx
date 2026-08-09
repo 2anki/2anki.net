@@ -5,12 +5,20 @@ import { strToU8, zipSync } from 'fflate';
 
 import {
   ZipHandler,
+  INCOMPLETE_ZIP_MESSAGE,
   MAX_IN_MEMORY_BYTES,
   MAX_EXTRACTED_BYTES,
   MAX_BATCH_EXTRACT_BYTES,
 } from './zip';
 import { MAX_OLD_GENERATION_SIZE_MB } from '../conversionMemoryLimits';
 import CardOption from '../parser/Settings';
+import { processAndPrepareArchiveData } from './fallback/processAndPrepareArchiveData';
+
+jest.mock('./fallback/processAndPrepareArchiveData');
+
+const mockedFallback = processAndPrepareArchiveData as jest.MockedFunction<
+  typeof processAndPrepareArchiveData
+>;
 
 function makeSpillDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'ziphandler-spill-'));
@@ -295,5 +303,93 @@ describe('ZipHandler disk spill', () => {
     const entry = handler.files.find((f) => f.name === 'page.html');
     expect(entry?.contents).toBe('<p>real deck</p>');
     expect(fs.existsSync(path.join(spill, 'page.html'))).toBe(false);
+  });
+});
+
+describe('ZipHandler incomplete archives (#4028)', () => {
+  // A file grabbed mid-download or mid-sync ends before its central
+  // directory, so fflate throws code 13 and the bsdtar fallback runs.
+  function truncated(zip: Uint8Array): Uint8Array {
+    return zip.slice(0, zip.length - 30);
+  }
+
+  beforeEach(() => {
+    mockedFallback.mockReset();
+  });
+
+  it('tells the user the zip is incomplete when nothing can be recovered', async () => {
+    mockedFallback.mockResolvedValue([]);
+    const handler = new ZipHandler(10);
+
+    await expect(
+      handler.build(
+        truncated(buildZip({ 'page.html': '<p>hi</p>' })),
+        false,
+        new CardOption({}),
+        makeSpillDir()
+      )
+    ).rejects.toThrow(INCOMPLETE_ZIP_MESSAGE);
+  });
+
+  it('still reports incomplete when the fallback recovers a nested zip that is also truncated', async () => {
+    mockedFallback.mockResolvedValueOnce([
+      {
+        name: '/tmp/workspaces/x/ExportBlock-abc-Part-1.zip',
+        contents: truncated(buildZip({ 'Inner Page.html': '<p>lost</p>' })),
+      },
+    ]);
+    // The recovered nested zip fails its own unzip and re-enters the
+    // fallback, which recovers nothing further from the stump.
+    mockedFallback.mockResolvedValueOnce([]);
+    const handler = new ZipHandler(10);
+
+    await expect(
+      handler.build(
+        truncated(buildZip({ 'page.html': '<p>hi</p>' })),
+        false,
+        new CardOption({}),
+        makeSpillDir()
+      )
+    ).rejects.toThrow(INCOMPLETE_ZIP_MESSAGE);
+  });
+
+  it('recurses into a complete nested zip the fallback recovered', async () => {
+    const inner = buildZip({ 'Recovered Page.html': '<p>saved</p>' });
+    mockedFallback.mockResolvedValue([
+      { name: '/tmp/workspaces/x/ExportBlock-abc-Part-1.zip', contents: inner },
+    ]);
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      truncated(buildZip({ 'page.html': '<p>hi</p>' })),
+      false,
+      new CardOption({}),
+      makeSpillDir()
+    );
+
+    expect(handler.getFileNames()).toContain('Recovered Page.html');
+  });
+
+  it('keeps directly recovered supported files without throwing', async () => {
+    mockedFallback.mockResolvedValue([
+      {
+        name: '/tmp/workspaces/x/Private & Shared/Page abc.html',
+        contents: strToU8('<p>recovered</p>'),
+      },
+    ]);
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      truncated(buildZip({ 'page.html': '<p>hi</p>' })),
+      false,
+      new CardOption({}),
+      makeSpillDir()
+    );
+
+    expect(handler.getFileNames()).toEqual(
+      expect.arrayContaining([
+        '/tmp/workspaces/x/Private & Shared/Page abc.html',
+      ])
+    );
   });
 });
