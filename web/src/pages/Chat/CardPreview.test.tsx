@@ -299,4 +299,30 @@ describe('CardPreview', () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe('selector-only state (no cards yet)', () => {
+    it('shows the note type selector without the empty table chrome', () => {
+      render(
+        <CardPreview cards={[]} template="basic" onTemplateChange={vi.fn()} />
+      );
+      expect(
+        screen.getByRole('button', { name: 'Note type: Basic' })
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Front')).not.toBeInTheDocument();
+      expect(screen.queryByText('Back')).not.toBeInTheDocument();
+    });
+
+    it('keeps the column labels when cards exist', () => {
+      render(
+        <CardPreview
+          cards={makeCards(2)}
+          onSave={vi.fn()}
+          template="basic"
+          onTemplateChange={vi.fn()}
+        />
+      );
+      expect(screen.getAllByText('Front').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Back').length).toBeGreaterThan(0);
+    });
+  });
 });

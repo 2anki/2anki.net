@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-09-chat-empty-card-table",
+  "date": "2026-08-09",
+  "type": "fix",
+  "title": "Chat no longer shows an empty card table before any cards exist"
+}

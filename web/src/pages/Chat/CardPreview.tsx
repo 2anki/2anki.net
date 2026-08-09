@@ -294,7 +294,7 @@ export default function CardPreview({
         )}
       </div>
 
-      {!allCardsAreMcq && (
+      {displayCards.length > 0 && !allCardsAreMcq && (
         <div
           className={`${styles.cardPreviewColumnLabels} ${hideBackColumn && !hasTags ? styles.cardPreviewColumnLabelsSingle : ''} ${!hideBackColumn && hasTags ? styles.cardPreviewColumnLabelsThree : ''}`}
         >
@@ -313,7 +313,7 @@ export default function CardPreview({
           {switchLabel}
         </p>
       )}
-      <>
+      {displayCards.length > 0 && (
         <div
           className={`${styles.cardPreviewList} ${isRegenerating === true ? styles.cardPreviewListDimmed : ''}`}
           aria-busy={isRegenerating === true}
@@ -362,19 +362,19 @@ export default function CardPreview({
             )
           )}
         </div>
+      )}
 
-        {hasMore && (
-          <button
-            type="button"
-            className={styles.cardPreviewExpandBtn}
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {expanded
-              ? t('cardPreview.showFewer')
-              : t('cardPreview.showAll', { count: displayCards.length })}
-          </button>
-        )}
-      </>
+      {hasMore && (
+        <button
+          type="button"
+          className={styles.cardPreviewExpandBtn}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded
+            ? t('cardPreview.showFewer')
+            : t('cardPreview.showAll', { count: displayCards.length })}
+        </button>
+      )}
     </div>
   );
 }
