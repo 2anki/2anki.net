@@ -1,8 +1,8 @@
 import { getAnthropicClient } from '../../lib/claude/ClaudeService';
 import { logClaudeUsage } from '../../lib/claude/logClaudeUsage';
 
-const MODEL = 'claude-sonnet-4-5';
-const MAX_TOKENS = 4096;
+const MODEL = 'claude-sonnet-5';
+const MAX_TOKENS = 8192;
 
 export interface AnkiCardTemplateInput {
   name: string;

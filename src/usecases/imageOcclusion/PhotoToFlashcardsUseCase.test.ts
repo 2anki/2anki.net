@@ -213,8 +213,8 @@ describe('PhotoToFlashcardsUseCase', () => {
       const result = await useCase.execute({ ...BASE_INPUT, isPaying: true });
       expect(result.cardCount).toBe(2);
       expect(mockMessageCreate).toHaveBeenCalledTimes(2);
-      expect(mockMessageCreate.mock.calls[0][0].max_tokens).toBe(4096);
-      expect(mockMessageCreate.mock.calls[1][0].max_tokens).toBe(8192);
+      expect(mockMessageCreate.mock.calls[0][0].max_tokens).toBe(8192);
+      expect(mockMessageCreate.mock.calls[1][0].max_tokens).toBe(16384);
     });
 
     it('throws 422 when the retry is also truncated mid-JSON', async () => {

@@ -16,8 +16,8 @@ import {
 
 type CompactDeck = ReturnType<typeof parseDeckResponse>[number];
 
-const PDF_PAGE_VISION_MAX_TOKENS = 8192;
-const PDF_PAGE_VISION_RETRY_MAX_TOKENS = 16384;
+const PDF_PAGE_VISION_MAX_TOKENS = 16384;
+const PDF_PAGE_VISION_RETRY_MAX_TOKENS = 32768;
 const PDF_PAGE_VISION_CONCURRENCY = 4;
 
 const MEDIA_TYPE_BY_EXT: Record<string, VisionMediaType> = {
@@ -125,7 +125,7 @@ async function visionCardsForPage(
 
   const callVision = (maxTokens: number) =>
     client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-5',
       max_tokens: maxTokens,
       messages: [
         {

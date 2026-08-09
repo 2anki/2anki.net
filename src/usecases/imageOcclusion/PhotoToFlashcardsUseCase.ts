@@ -168,8 +168,8 @@ function resolvePrompt(
 
 const INPUT_COST_PER_MILLION = 3;
 const OUTPUT_COST_PER_MILLION = 15;
-const VISION_MAX_TOKENS = 4096;
-const VISION_RETRY_MAX_TOKENS = 8192;
+const VISION_MAX_TOKENS = 8192;
+const VISION_RETRY_MAX_TOKENS = 16384;
 
 function findPython(): string {
   const envOverride = process.env.PYTHON ?? process.env.ANKI_PYTHON;
@@ -583,7 +583,7 @@ export class PhotoToFlashcardsUseCase {
 
     const createVisionMessage = (maxTokens: number) =>
       client.messages.create({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-5',
         max_tokens: maxTokens,
         messages: [
           {
