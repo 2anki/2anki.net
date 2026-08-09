@@ -1307,6 +1307,7 @@ describe('UsersController.loginWithApple', () => {
       loginWithApple:
         overrides?.loginWithApple ??
         jest.fn().mockResolvedValue({
+          ok: true,
           subject: 'apple-sub-001',
           email: 'apple@example.com',
           emailVerified: true,
@@ -1388,6 +1389,7 @@ describe('UsersController.loginWithApple', () => {
   it('stores the Apple refresh token on the linked identity when present', async () => {
     const register = jest.fn().mockResolvedValue([{ id: 20 }]);
     const loginWithApple = jest.fn().mockResolvedValue({
+      ok: true,
       subject: 'apple-sub-001',
       email: 'apple@example.com',
       emailVerified: true,
@@ -1420,6 +1422,7 @@ describe('UsersController.loginWithApple', () => {
       .fn()
       .mockResolvedValue({ id: 20, email: 'apple@example.com' });
     const loginWithApple = jest.fn().mockResolvedValue({
+      ok: true,
       subject: 'apple-sub-001',
       email: 'apple@example.com',
       emailVerified: true,
@@ -1509,7 +1512,11 @@ describe('UsersController.loginWithApple', () => {
   });
 
   it('redirects to /login when the token exchange fails', async () => {
-    const loginWithApple = jest.fn().mockResolvedValue(undefined);
+    const loginWithApple = jest.fn().mockResolvedValue({
+      ok: false,
+      reason: 'token_exchange_failed',
+      message: 'HTTP 400 invalid_grant',
+    });
     const { controller } = buildAppleController({ loginWithApple });
     const res = buildAppleRes();
 
@@ -1520,6 +1527,7 @@ describe('UsersController.loginWithApple', () => {
 
   it('redirects to /login when email is missing and no identity exists', async () => {
     const loginWithApple = jest.fn().mockResolvedValue({
+      ok: true,
       subject: 'apple-sub-noemail',
       email: undefined,
       emailVerified: true,
@@ -1955,6 +1963,7 @@ describe('UsersController.loginWithGoogle — error recording', () => {
       context: {
         reason: 'verify_failed',
         message: 'JsonWebTokenError: invalid signature',
+        userAgent: null,
       },
     });
     expect(res.redirect).toHaveBeenCalledWith(
@@ -2349,6 +2358,7 @@ describe('UsersController cookie options — 30-day persistent session', () => {
     } as unknown as UsersService;
     const authService = {
       loginWithApple: jest.fn().mockResolvedValue({
+        ok: true,
         subject: 'apple-sub',
         email: 'apple@example.com',
         emailVerified: true,

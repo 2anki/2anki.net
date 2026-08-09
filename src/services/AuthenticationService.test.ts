@@ -262,6 +262,34 @@ describe('loginWithGoogle', () => {
     );
   });
 
+  it('captures the provider error body when the token exchange fails', async () => {
+    const axiosError = Object.assign(
+      new Error('Request failed with status code 400'),
+      {
+        isAxiosError: true,
+        response: {
+          status: 400,
+          data: {
+            error: 'invalid_grant',
+            error_description: 'Bad authorization code.',
+          },
+        },
+      }
+    );
+    mockedAxios.post = jest.fn().mockRejectedValue(axiosError);
+
+    const service = createService();
+    const result = await service.loginWithGoogle('auth-code');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe('token_exchange_failed');
+      expect(result.message).toContain('400');
+      expect(result.message).toContain('invalid_grant');
+      expect(result.message).toContain('Bad authorization code.');
+    }
+  });
+
   it('returns a failure reason when the ID token signature is invalid', async () => {
     const otherKey = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
     const idToken = jwt.sign(
@@ -805,6 +833,7 @@ describe('loginWithApple', () => {
     const result = await service.loginWithApple('auth-code');
 
     expect(result).toEqual({
+      ok: true,
       subject: 'apple-sub-001',
       email: 'user@example.com',
       emailVerified: true,
@@ -828,6 +857,7 @@ describe('loginWithApple', () => {
     const result = await service.loginWithApple('auth-code');
 
     expect(result).toMatchObject({
+      ok: true,
       subject: 'apple-sub-001b',
       refreshToken: undefined,
     });
@@ -849,12 +879,13 @@ describe('loginWithApple', () => {
     const result = await service.loginWithApple('auth-code');
 
     expect(result).toMatchObject({
+      ok: true,
       subject: 'apple-sub-002',
       emailVerified: true,
     });
   });
 
-  it('returns undefined when email_verified is false', async () => {
+  it('fails with email_not_verified when email_verified is false', async () => {
     const idToken = signIdToken({
       iss: 'https://appleid.apple.com',
       aud: SERVICES_ID,
@@ -869,10 +900,10 @@ describe('loginWithApple', () => {
     const service = createService();
     const result = await service.loginWithApple('auth-code');
 
-    expect(result).toBeUndefined();
+    expect(result).toMatchObject({ ok: false, reason: 'email_not_verified' });
   });
 
-  it('returns undefined when the issuer is wrong', async () => {
+  it('fails with verify_failed when the issuer is wrong', async () => {
     const idToken = signIdToken({
       iss: 'https://evil.example.com',
       aud: SERVICES_ID,
@@ -887,10 +918,10 @@ describe('loginWithApple', () => {
     const service = createService();
     const result = await service.loginWithApple('auth-code');
 
-    expect(result).toBeUndefined();
+    expect(result).toMatchObject({ ok: false, reason: 'verify_failed' });
   });
 
-  it('returns undefined when the audience does not match', async () => {
+  it('fails with verify_failed when the audience does not match', async () => {
     const idToken = signIdToken({
       iss: 'https://appleid.apple.com',
       aud: 'com.evil.app',
@@ -905,10 +936,10 @@ describe('loginWithApple', () => {
     const service = createService();
     const result = await service.loginWithApple('auth-code');
 
-    expect(result).toBeUndefined();
+    expect(result).toMatchObject({ ok: false, reason: 'verify_failed' });
   });
 
-  it('returns undefined when the signature is invalid', async () => {
+  it('fails with verify_failed when the signature is invalid', async () => {
     const wrongPair = crypto.generateKeyPairSync('rsa', {
       modulusLength: 2048,
     });
@@ -930,10 +961,10 @@ describe('loginWithApple', () => {
     const service = createService();
     const result = await service.loginWithApple('auth-code');
 
-    expect(result).toBeUndefined();
+    expect(result).toMatchObject({ ok: false, reason: 'verify_failed' });
   });
 
-  it('returns undefined when the kid is not in the JWKS', async () => {
+  it('fails with verify_failed when the kid is not in the JWKS', async () => {
     const idToken = jwt.sign(
       {
         iss: 'https://appleid.apple.com',
@@ -952,19 +983,36 @@ describe('loginWithApple', () => {
     const service = createService();
     const result = await service.loginWithApple('auth-code');
 
-    expect(result).toBeUndefined();
+    expect(result).toMatchObject({ ok: false, reason: 'verify_failed' });
   });
 
-  it('returns undefined when the token exchange fails', async () => {
-    mockedAxios.post = jest.fn().mockRejectedValue(new Error('network error'));
+  it('fails with token_exchange_failed and the provider error body', async () => {
+    const axiosError = Object.assign(
+      new Error('Request failed with status code 400'),
+      {
+        isAxiosError: true,
+        response: {
+          status: 400,
+          data: { error: 'invalid_grant' },
+        },
+      }
+    );
+    mockedAxios.post = jest.fn().mockRejectedValue(axiosError);
 
     const service = createService();
     const result = await service.loginWithApple('auth-code');
 
-    expect(result).toBeUndefined();
+    expect(result).toMatchObject({
+      ok: false,
+      reason: 'token_exchange_failed',
+    });
+    if (result.ok === false) {
+      expect(result.message).toContain('400');
+      expect(result.message).toContain('invalid_grant');
+    }
   });
 
-  it('returns undefined when the sub claim is missing', async () => {
+  it('fails with missing_sub when the sub claim is missing', async () => {
     const idToken = signIdToken({
       iss: 'https://appleid.apple.com',
       aud: SERVICES_ID,
@@ -978,7 +1026,7 @@ describe('loginWithApple', () => {
     const service = createService();
     const result = await service.loginWithApple('auth-code');
 
-    expect(result).toBeUndefined();
+    expect(result).toMatchObject({ ok: false, reason: 'missing_sub' });
   });
 });
 
@@ -1043,9 +1091,11 @@ describe('loginWithApple algorithm pin', () => {
     const result = await service.loginWithApple('auth-code');
 
     expect(result).toEqual({
+      ok: true,
       subject: 'apple-rsa-sub-001',
       email: 'rsa-user@example.com',
       emailVerified: true,
+      refreshToken: undefined,
     });
   });
 
@@ -1071,7 +1121,7 @@ describe('loginWithApple algorithm pin', () => {
     const service = createService();
     const result = await service.loginWithApple('auth-code');
 
-    expect(result).toBeUndefined();
+    expect(result).toMatchObject({ ok: false, reason: 'verify_failed' });
   });
 });
 

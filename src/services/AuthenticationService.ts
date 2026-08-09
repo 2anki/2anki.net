@@ -28,6 +28,35 @@ const describeError = (error: unknown): string => {
   return String(error).slice(0, 200);
 };
 
+// OAuth token endpoints answer failures with { error, error_description } —
+// the part that names the actual cause (invalid_grant vs redirect_uri_mismatch
+// vs invalid_client). describeError alone reduces every one of them to
+// "AxiosError: Request failed with status code 400", which is what left the
+// user_visible_errors context useless for #3952. No secrets live in that body.
+const describeTokenExchangeError = (error: unknown): string => {
+  if (typeof error === 'object' && error != null && 'response' in error) {
+    const response = (
+      error as { response?: { status?: number; data?: unknown } }
+    ).response;
+    if (response != null) {
+      const status = `HTTP ${response.status ?? '?'}`;
+      const data = response.data;
+      if (typeof data === 'object' && data != null) {
+        const body = data as Record<string, unknown>;
+        const parts = [body.error, body.error_description].filter(
+          (value): value is string =>
+            typeof value === 'string' && value.length > 0
+        );
+        if (parts.length > 0) {
+          return `${status} ${parts.join(': ')}`.slice(0, 300);
+        }
+      }
+      return `${status} ${describeError(error)}`.slice(0, 300);
+    }
+  }
+  return describeError(error).slice(0, 300);
+};
+
 const resolveRsaSigningKey = (
   idToken: string,
   jwks: RsaJwk[]
@@ -147,6 +176,16 @@ export const __resetGoogleJwksCacheForTests = () => {
 
 export type GoogleLoginResult =
   | { ok: true; email?: string; name?: string }
+  | { ok: false; reason: string; message: string };
+
+export type AppleLoginResult =
+  | {
+      ok: true;
+      subject: string;
+      email?: string;
+      emailVerified: true;
+      refreshToken?: string;
+    }
   | { ok: false; reason: string; message: string };
 
 export interface UserWithOwner extends Users {
@@ -386,7 +425,7 @@ class AuthenticationService {
       return {
         ok: false,
         reason: 'token_exchange_failed',
-        message: describeError(error),
+        message: describeTokenExchangeError(error),
       };
     }
 
@@ -525,12 +564,19 @@ class AuthenticationService {
     );
   }
 
-  async loginWithApple(code: string) {
+  async loginWithApple(code: string): Promise<AppleLoginResult> {
     const clientId = process.env.APPLE_CLIENT_ID;
     const APPLE_REDIRECT_URI = `${process.env.DOMAIN ?? 'https://2anki.net'}/auth/apple/callback`;
     if (!clientId) {
-      return undefined;
+      return {
+        ok: false,
+        reason: 'not_configured',
+        message: 'APPLE_CLIENT_ID is not set',
+      };
     }
+
+    let idToken: string;
+    let refreshToken: string | undefined;
     try {
       const clientSecret = this.mintAppleClientSecret();
       const values = {
@@ -547,24 +593,45 @@ class AuthenticationService {
       }>('apple_login', APPLE_TOKEN_URL, qs.stringify(values), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
-      const idToken = result.data.id_token;
-      const refreshToken =
+      idToken = result.data.id_token;
+      refreshToken =
         typeof result.data.refresh_token === 'string'
           ? result.data.refresh_token
           : undefined;
+    } catch (error) {
+      return {
+        ok: false,
+        reason: 'token_exchange_failed',
+        message: describeTokenExchangeError(error),
+      };
+    }
+
+    try {
       const decoded = jwt.decode(idToken, { complete: true });
       if (!decoded || typeof decoded === 'string') {
-        return undefined;
+        return {
+          ok: false,
+          reason: 'verify_failed',
+          message: 'id_token did not decode to a JWT object',
+        };
       }
       const kid = decoded.header.kid;
       const alg = decoded.header.alg;
       if (alg !== 'RS256' || typeof kid !== 'string') {
-        return undefined;
+        return {
+          ok: false,
+          reason: 'verify_failed',
+          message: `unexpected id_token header alg=${String(alg)}`,
+        };
       }
       const jwks = await getAppleJwks();
       const jwk = jwks.find((k) => k.kid === kid);
       if (!jwk) {
-        return undefined;
+        return {
+          ok: false,
+          reason: 'verify_failed',
+          message: 'no matching signing key in Apple JWKS',
+        };
       }
       const publicKey = crypto.createPublicKey({ key: jwk, format: 'jwk' });
       const payload = jwt.verify(idToken, publicKey, {
@@ -573,28 +640,46 @@ class AuthenticationService {
         issuer: APPLE_ISSUER,
       });
       if (typeof payload === 'string') {
-        return undefined;
+        return {
+          ok: false,
+          reason: 'verify_failed',
+          message: 'unexpected string payload',
+        };
       }
       const subject = typeof payload.sub === 'string' ? payload.sub : undefined;
       if (!subject) {
-        console.info("Couldn't login with Apple: missing sub claim");
-        return undefined;
+        return {
+          ok: false,
+          reason: 'missing_sub',
+          message: 'id_token payload has no sub claim',
+        };
       }
       const emailVerified =
         payload.email_verified === true || payload.email_verified === 'true';
       if (!emailVerified) {
-        console.info("Couldn't login with Apple: email not verified");
-        return undefined;
+        return {
+          ok: false,
+          reason: 'email_not_verified',
+          message: 'Apple reports the email as unverified',
+        };
       }
       const email =
         typeof payload.email === 'string' && payload.email.length > 0
           ? payload.email
           : undefined;
-      return { subject, email, emailVerified: true as const, refreshToken };
+      return {
+        ok: true,
+        subject,
+        email,
+        emailVerified: true as const,
+        refreshToken,
+      };
     } catch (error) {
-      console.info("Couldn't login with Apple");
-      console.error(error);
-      return undefined;
+      return {
+        ok: false,
+        reason: 'verify_failed',
+        message: describeError(error),
+      };
     }
   }
 
