@@ -131,7 +131,7 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
   if (hasCode(error, 'APKG_TOO_LARGE')) {
     return 'apkg_too_large';
   }
-  if (hasCode(error, 'ZIP_INVALID')) {
+  if (hasCode(error, 'ZIP_INVALID') || hasName(error, 'IncompleteZipError')) {
     return 'zip_invalid';
   }
   if (error instanceof Error && error.message.startsWith('pdfinfo_password')) {
@@ -202,8 +202,8 @@ export function jobFailureReasonFromError(
   if (hasCode(error, 'APKG_TOO_LARGE')) {
     return "This deck is over Anki's 100 MB upload limit. Split it by toggling fewer pages, or upload directly to Anki desktop.";
   }
-  if (hasCode(error, 'ZIP_INVALID')) {
-    return "Couldn't read this zip. Make sure it's the Markdown & CSV export from Notion, not the HTML export.";
+  if (hasCode(error, 'ZIP_INVALID') || hasName(error, 'IncompleteZipError')) {
+    return (error as Error).message;
   }
   if (error instanceof Error && error.message.startsWith('pdfinfo_password')) {
     return 'This PDF is password-protected. Remove the password and try again.';
