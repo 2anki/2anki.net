@@ -9,6 +9,7 @@ import {
   createAppleStoreKitService,
   VERIFIED_ENVIRONMENTS,
 } from './createAppleStoreKitService';
+import { DEFAULT_APP_STORE_APPLE_ID } from '../AppStoreLinksService/AppStoreLinksService';
 
 jest.mock('@apple/app-store-server-library', () => {
   const actual = jest.requireActual('@apple/app-store-server-library');
@@ -64,6 +65,37 @@ describe('createAppleStoreKitService', () => {
     expect(VERIFIED_ENVIRONMENTS).toEqual([
       Environment.PRODUCTION,
       Environment.SANDBOX,
+    ]);
+  });
+
+  it('passes the env app Apple ID to every verifier when set', () => {
+    createAppleStoreKitService();
+
+    const appIds = MockedVerifier.mock.calls.map((call) => call[4]);
+    expect(appIds).toEqual([1234567890, 1234567890]);
+  });
+
+  it('falls back to the App Store default id when the env var is unset', () => {
+    delete process.env.APPLE_IAP_APP_APPLE_ID;
+
+    createAppleStoreKitService();
+
+    const appIds = MockedVerifier.mock.calls.map((call) => call[4]);
+    expect(appIds).toEqual([
+      Number(DEFAULT_APP_STORE_APPLE_ID),
+      Number(DEFAULT_APP_STORE_APPLE_ID),
+    ]);
+  });
+
+  it('falls back to the App Store default id when the env var is empty', () => {
+    process.env.APPLE_IAP_APP_APPLE_ID = '';
+
+    createAppleStoreKitService();
+
+    const appIds = MockedVerifier.mock.calls.map((call) => call[4]);
+    expect(appIds).toEqual([
+      Number(DEFAULT_APP_STORE_APPLE_ID),
+      Number(DEFAULT_APP_STORE_APPLE_ID),
     ]);
   });
 });

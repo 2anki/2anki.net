@@ -11,6 +11,7 @@ import {
   AppleStoreKitService,
   type IAppleStoreKitService,
 } from './AppleStoreKitService';
+import { DEFAULT_APP_STORE_APPLE_ID } from '../AppStoreLinksService/AppStoreLinksService';
 
 function loadRootCertificates(dir: string): Buffer[] {
   return fs
@@ -58,11 +59,15 @@ export function createAppleStoreKitService(): IAppleStoreKitService {
     );
   }
 
-  const appAppleIdRaw = process.env.APPLE_IAP_APP_APPLE_ID;
-  const appAppleId =
-    appAppleIdRaw != null && appAppleIdRaw !== ''
-      ? Number.parseInt(appAppleIdRaw, 10)
-      : undefined;
+  // Apple's Production verifier hard-requires the numeric app Apple ID; an
+  // unset env var made every real-money redeem throw at construction while
+  // Sandbox (TestFlight, App Review) kept passing (#4040). The ID is public —
+  // it appears in every apps.apple.com URL — so the checked-in default is the
+  // source of truth and the env var is an override, matching
+  // AppStoreLinksService.
+  const appAppleIdRaw =
+    process.env.APPLE_IAP_APP_APPLE_ID || DEFAULT_APP_STORE_APPLE_ID;
+  const appAppleId = Number.parseInt(appAppleIdRaw, 10);
 
   const enableOnlineChecks = true;
   const verifiers = VERIFIED_ENVIRONMENTS.map(
