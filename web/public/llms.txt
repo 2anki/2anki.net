@@ -8,7 +8,8 @@ or connect a Notion workspace, download a deck, open it in Anki or AnkiDroid.
 ## Supported input formats
 
 - Notion (export zip or live page via OAuth)
-- PDF (text-layer PDFs; lecture slides, textbook chapters)
+- PDF (text-layer PDFs and scanned/image-only PDFs — lecture slides, textbook chapters)
+- Photos and images (.jpg, .png — handwritten notes, whiteboards, slides via AI)
 - Markdown (.md, Obsidian-flavoured Markdown)
 - HTML (.html files, Notion HTML exports)
 - CSV / Excel (.csv, .xlsx — column A front, column B back)
@@ -27,6 +28,14 @@ Cards preserve images, audio, code blocks, and cloze deletions from the source.
 Files are parsed on-device; sign in for AI deck generation and Notion sync. The
 same free/paid limits apply, with the passes sold as Apple in-app purchases
 (Day Pass, Week Pass, Unlimited). Details: https://2anki.net/app
+
+## AI conversion (Claude)
+
+Documents without flashcard structure convert through Claude on the web app:
+scanned or image-only PDFs are read page by page with vision, photos of
+handwritten notes or whiteboards become decks at https://2anki.net/photo-to-deck,
+and text documents (PDF, Word, plain text) are turned into question/answer
+cards. AI conversion runs on Claude Sonnet.
 
 ## How cards are built from Notion
 
@@ -68,16 +77,16 @@ https://2anki.net/documentation/start-here/use-in-claude
 
 - Homepage: https://2anki.net
 - Native app (iPhone, iPad, Mac): https://2anki.net/app
-- Pricing: https://2anki.net/pricing
-- Notion to Anki guide: https://2anki.net/answers/convert-notion-to-anki
-- Notion Auto Sync: https://2anki.net/answers/notion-to-anki-sync
-- PDF to Anki guide: https://2anki.net/answers/pdf-to-anki
-- Quizlet to Anki guide: https://2anki.net/answers/quizlet-to-anki
-- FSRS explained: https://2anki.net/answers/fsrs-explained
-- Lecture notes to Anki: https://2anki.net/answers/lecture-notes-to-anki
-- Word to Anki: https://2anki.net/answers/word-to-anki
-- Image occlusion: https://2anki.net/answers/image-occlusion-anki
-- Google Docs to Anki: https://2anki.net/answers/google-docs-to-anki
-- Handwritten notes to Anki: https://2anki.net/answers/handwritten-notes-to-anki
-- Textbook to Anki: https://2anki.net/answers/textbook-to-anki
+- Pricing: https://2anki.net/pricing/
+- Notion to Anki guide: https://2anki.net/answers/convert-notion-to-anki/
+- Notion Auto Sync: https://2anki.net/answers/notion-to-anki-sync/
+- PDF to Anki guide: https://2anki.net/answers/pdf-to-anki/
+- Quizlet to Anki guide: https://2anki.net/answers/quizlet-to-anki/
+- FSRS explained: https://2anki.net/answers/fsrs-explained/
+- Lecture notes to Anki: https://2anki.net/answers/lecture-notes-to-anki/
+- Word to Anki: https://2anki.net/answers/word-to-anki/
+- Image occlusion: https://2anki.net/answers/image-occlusion-anki/
+- Google Docs to Anki: https://2anki.net/answers/google-docs-to-anki/
+- Handwritten notes to Anki: https://2anki.net/answers/handwritten-notes-to-anki/
+- Textbook to Anki: https://2anki.net/answers/textbook-to-anki/
 - Documentation: https://2anki.net/documentation
