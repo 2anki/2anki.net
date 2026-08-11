@@ -270,6 +270,10 @@ def run_batch(manifest_path, template_dir):
     with open(manifest_path, "r", encoding="utf-8") as f:
         entries = json.load(f)
 
+    # One failing entry must not abort the batch: the caller retries entries
+    # that produced no output line individually, so report the failure on
+    # stderr and keep building the rest (#4028 shipped zero decks because a
+    # single bad page killed every deck in its chunk).
     for entry in entries:
         input_path = entry["input"]
         output_path = _clamp_output_path(entry["output"])
@@ -278,12 +282,7 @@ def run_batch(manifest_path, template_dir):
         original_cwd = os.getcwd()
         try:
             os.chdir(deck_dir)
-            try:
-                apkg_path = build_one_deck(input_path, template_dir)
-            except Exception as exc:
-                raise RuntimeError(
-                    f"Failed to build deck from {input_path}: {exc}"
-                ) from exc
+            apkg_path = build_one_deck(input_path, template_dir)
 
             if apkg_path and apkg_path != output_path:
                 os.replace(apkg_path, output_path)
@@ -294,6 +293,11 @@ def run_batch(manifest_path, template_dir):
                     sys.stdout.write(apkg_path + "\n")
                 except UnicodeEncodeError:
                     sys.stdout.buffer.write((apkg_path + "\n").encode("utf-8"))
+        except Exception as exc:
+            print(
+                f"Failed to build deck from {input_path}: {exc}",
+                file=sys.stderr,
+            )
         finally:
             os.chdir(original_cwd)
 

@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-11-zip-exports-convert-reliably",
+  "date": "2026-08-11",
+  "type": "fix",
+  "title": "Notion workspace exports convert even when one page in the zip fails"
+}
