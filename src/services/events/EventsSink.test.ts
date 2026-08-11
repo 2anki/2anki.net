@@ -133,4 +133,69 @@ describe('EventsSink', () => {
       clearIntervalSpy.mockRestore();
     }
   });
+
+  describe('signup_origin enrichment', () => {
+    it('stamps signup_origin from the resolver onto rows with a user and no origin', async () => {
+      const { repo, inserted } = makeFakeRepository();
+      const resolver = jest.fn().mockResolvedValue(new Map([[1, '/nclex']]));
+      const sink = new EventsSink(repo, {
+        flushThreshold: 1,
+        signupOriginResolver: resolver,
+      });
+
+      sink.record({ ...baseRow, name: 'checkout_completed' });
+      await sink.waitForPendingFlush();
+
+      expect(resolver).toHaveBeenCalledWith([1]);
+      expect(inserted[0][0].props).toEqual({
+        source: 'upload',
+        signup_origin: '/nclex',
+      });
+    });
+
+    it('never overrides an origin the event already carries', async () => {
+      const { repo, inserted } = makeFakeRepository();
+      const resolver = jest.fn().mockResolvedValue(new Map([[1, '/nclex']]));
+      const sink = new EventsSink(repo, {
+        flushThreshold: 1,
+        signupOriginResolver: resolver,
+      });
+
+      sink.record({ ...baseRow, props: { signup_origin: '/mcat' } });
+      await sink.waitForPendingFlush();
+
+      expect(resolver).not.toHaveBeenCalled();
+      expect(inserted[0][0].props).toEqual({ signup_origin: '/mcat' });
+    });
+
+    it('leaves anonymous rows untouched and skips the resolver', async () => {
+      const { repo, inserted } = makeFakeRepository();
+      const resolver = jest.fn().mockResolvedValue(new Map());
+      const sink = new EventsSink(repo, {
+        flushThreshold: 1,
+        signupOriginResolver: resolver,
+      });
+
+      sink.record({ ...baseRow, user_id: null, anonymous_id: 'anon-1' });
+      await sink.waitForPendingFlush();
+
+      expect(resolver).not.toHaveBeenCalled();
+      expect(inserted[0][0].props).toEqual({ source: 'upload' });
+    });
+
+    it('still inserts unenriched rows when the resolver fails', async () => {
+      const { repo, inserted } = makeFakeRepository();
+      const resolver = jest.fn().mockRejectedValue(new Error('db down'));
+      const sink = new EventsSink(repo, {
+        flushThreshold: 1,
+        signupOriginResolver: resolver,
+      });
+
+      sink.record(baseRow);
+      await sink.waitForPendingFlush();
+
+      expect(inserted).toHaveLength(1);
+      expect(inserted[0][0].props).toEqual({ source: 'upload' });
+    });
+  });
 });

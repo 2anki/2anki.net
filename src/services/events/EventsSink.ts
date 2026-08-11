@@ -3,6 +3,15 @@ import { IEventsRepository, EventRow } from '../../data_layer/EventsRepository';
 export const EVENTS_FLUSH_THRESHOLD = 100;
 export const EVENTS_FLUSH_INTERVAL_MS = 5000;
 
+// Looks up users.signup_origin for a batch of user ids. Wired at the instance
+// level so server-emitted funnel events (Stripe webhook checkout_completed,
+// worker paywall_shown) attribute to a landing page instead of the null
+// bucket (#4051) — browser events already carry the origin from the
+// first_touch cookie and are left untouched.
+export type SignupOriginResolver = (
+  userIds: number[]
+) => Promise<Map<number, string | null>>;
+
 export class EventsSink {
   private buffer: EventRow[] = [];
 
@@ -15,6 +24,7 @@ export class EventsSink {
     private readonly options: {
       flushThreshold?: number;
       flushIntervalMs?: number;
+      signupOriginResolver?: SignupOriginResolver;
     } = {}
   ) {}
 
@@ -43,9 +53,35 @@ export class EventsSink {
     const rows = this.buffer;
     this.buffer = [];
     if (rows.length === 0) return;
+    await this.enrichSignupOrigins(rows);
     await this.repository.insertEvents(rows).catch((error) => {
       console.error(`[events] dropping ${rows.length} event(s):`, error);
     });
+  }
+
+  private async enrichSignupOrigins(rows: EventRow[]): Promise<void> {
+    const resolver = this.options.signupOriginResolver;
+    if (resolver == null) return;
+    const needing = rows.filter(
+      (row) =>
+        row.user_id != null &&
+        (row.props as Record<string, unknown>)?.signup_origin == null
+    );
+    if (needing.length === 0) return;
+    const userIds = [...new Set(needing.map((row) => Number(row.user_id)))];
+    let origins: Map<number, string | null>;
+    try {
+      origins = await resolver(userIds);
+    } catch (error) {
+      console.error('[events] signup_origin enrichment failed:', error);
+      return;
+    }
+    for (const row of needing) {
+      const origin = origins.get(Number(row.user_id));
+      if (origin != null) {
+        row.props = { ...row.props, signup_origin: origin };
+      }
+    }
   }
 
   waitForPendingFlush(): Promise<void> {
