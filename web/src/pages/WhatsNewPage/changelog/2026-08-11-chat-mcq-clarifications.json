@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-11-chat-mcq-clarifications",
+  "date": "2026-08-11",
+  "type": "fix",
+  "title": "Chat answers in plain words instead of a quiz card when it needs to ask you something"
+}

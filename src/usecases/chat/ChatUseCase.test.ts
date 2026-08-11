@@ -1031,11 +1031,42 @@ describe('ChatUseCase', () => {
       const callArg = anthropic.messages.stream.mock.calls[0][0];
       expect(callArg.tools).toEqual([
         expect.objectContaining({ name: 'emit_mcq_cards' }),
+        expect.objectContaining({ name: 'reply_without_cards' }),
       ]);
-      expect(callArg.tool_choice).toEqual({
-        type: 'tool',
-        name: 'emit_mcq_cards',
+      expect(callArg.tool_choice).toEqual({ type: 'any' });
+    });
+
+    it('surfaces a reply_without_cards clarification as a normal reply', async () => {
+      const { messagesRepo, useCase } = buildUseCaseWithBlocks([
+        {
+          type: 'tool_use',
+          name: 'reply_without_cards',
+          input: {
+            message:
+              'Your file did not come through — attach it again and I will make the quiz.',
+          },
+        },
+      ]);
+
+      const result = await useCase.execute({
+        user: FREE_USER,
+        content: 'make a quiz from my file',
+        conversationHistory: [],
+        templateSlug: 'mcq',
       });
+
+      expect(result.cards).toBeUndefined();
+      expect(result.content).toBe(
+        'Your file did not come through — attach it again and I will make the quiz.'
+      );
+      const persisted = await messagesRepo.listForConversation({
+        userId: FREE_USER.owner,
+        conversationId: result.conversationId,
+      });
+      const assistantTurn = persisted.find((m) => m.role === 'assistant');
+      expect(assistantTurn?.content).toBe(
+        'Your file did not come through — attach it again and I will make the quiz.'
+      );
     });
 
     it('raises max_tokens on the MCQ tool path so structured output is not truncated', async () => {
