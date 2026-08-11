@@ -56,4 +56,19 @@ describe('RightSide (anonymous nav)', () => {
       screen.queryByRole('link', { name: 'Documentation' })
     ).not.toBeInTheDocument();
   });
+
+  it('shows a Download link to /app for logged-out visitors', () => {
+    render(<RightSide path="/" isLoggedIn={false} />);
+    expect(screen.getByRole('link', { name: 'Download' })).toHaveAttribute(
+      'href',
+      '/app'
+    );
+  });
+
+  it('omits the Download link for logged-in visitors', () => {
+    render(<RightSide path="/" isLoggedIn />);
+    expect(
+      screen.queryByRole('link', { name: 'Download' })
+    ).not.toBeInTheDocument();
+  });
 });
