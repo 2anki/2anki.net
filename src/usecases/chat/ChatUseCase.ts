@@ -82,6 +82,29 @@ const MCQ_TOOL: Anthropic.Tool = {
   },
 };
 
+const CLARIFY_TOOL_NAME = 'reply_without_cards';
+
+// With the MCQ tool forced outright, a turn that cannot produce cards (missing
+// attachment, ambiguous request) had no channel except a quiz card — prod
+// showed a 1-card MCQ asking the user how to proceed (#4056). tool_choice
+// "any" plus this escape tool keeps the structured-output guarantee for real
+// card turns while letting the model answer like a person when it has to.
+const CLARIFY_TOOL: Anthropic.Tool = {
+  name: CLARIFY_TOOL_NAME,
+  description:
+    'Use ONLY when you cannot produce the requested multiple-choice cards this turn — for example a referenced file is missing or the request needs clarification. The message is shown to the user as a normal chat reply. Never use this to deliver card content.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      message: {
+        type: 'string',
+        description: 'The short reply shown to the user',
+      },
+    },
+    required: ['message'],
+  },
+};
+
 const FREE_MONTHLY_LIMIT = 20;
 const MODEL = 'claude-sonnet-5';
 const MAX_HISTORY_TURNS = 10;
@@ -512,6 +535,23 @@ export function extractMcqCardsFromToolUse(
   return cards.length > 0 ? cards : undefined;
 }
 
+export function extractClarifyMessageFromToolUse(
+  content: Anthropic.ContentBlock[]
+): string | undefined {
+  const toolBlock = content.find(
+    (block): block is Anthropic.ToolUseBlock =>
+      block.type === 'tool_use' && block.name === CLARIFY_TOOL_NAME
+  );
+  if (toolBlock == null) return undefined;
+  const input = toolBlock.input;
+  if (input == null || typeof input !== 'object') return undefined;
+  const message = (input as Record<string, unknown>).message;
+  if (typeof message !== 'string' || message.trim().length === 0) {
+    return undefined;
+  }
+  return message.trim();
+}
+
 export class ChatUseCase {
   constructor(
     private readonly messagesRepo: IChatMessagesRepository,
@@ -714,8 +754,8 @@ export class ChatUseCase {
       messages,
       ...(mcqForced
         ? {
-            tools: [MCQ_TOOL],
-            tool_choice: { type: 'tool', name: MCQ_TOOL_NAME },
+            tools: [MCQ_TOOL, CLARIFY_TOOL],
+            tool_choice: { type: 'any' },
           }
         : {}),
     });
@@ -735,6 +775,17 @@ export class ChatUseCase {
     if (mcqForced) {
       const mcqCards = extractMcqCardsFromToolUse(finalMessage.content);
       if (mcqCards == null) {
+        const clarification = extractClarifyMessageFromToolUse(
+          finalMessage.content
+        );
+        if (clarification != null) {
+          await this.persistAssistantTurn(
+            user.owner,
+            conversationId,
+            clarification
+          );
+          return { content: clarification, conversationId };
+        }
         throw new McqExtractionFailedError();
       }
       const persistedContent = embedMcqCardsAsJsonBlock(
