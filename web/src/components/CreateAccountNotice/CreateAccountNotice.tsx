@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { track } from '../../lib/analytics/track';
-import styles from '../PassLadderCard/PassLadderCard.module.css';
+import styles from './CreateAccountNotice.module.css';
 
 const SURFACE = 'upload_success_signup';
 

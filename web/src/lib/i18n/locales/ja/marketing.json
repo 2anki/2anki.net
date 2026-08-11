@@ -183,12 +183,6 @@
     "getDayPass": "Get Day Pass — {{price}}",
     "seePlans": "プランを見る"
   },
-  "passLadder": {
-    "aria": "Unlimited はパスより安い",
-    "headline": "Unlimited の料金より、パスに多く使っていませんか？",
-    "body_other": "これまでに {{count}} 枚のパスを購入 — ${{spent}}。Unlimited は月 $7.99 — 100 枚の上限なし、いつでも解約できます。",
-    "cta": "Get Unlimited — $7.99/mo"
-  },
   "feedback": {
     "thanks": "ありがとうございます — フィードバックを受け取りました。",
     "prompt": "使い心地はいかがですか？",

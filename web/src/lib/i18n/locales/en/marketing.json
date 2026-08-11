@@ -186,13 +186,6 @@
     "getDayPass": "Get Day Pass — {{price}}",
     "seePlans": "See plans"
   },
-  "passLadder": {
-    "aria": "Unlimited costs less than your passes",
-    "headline": "Spending more on passes than Unlimited costs?",
-    "body_one": "You've bought {{count}} pass — ${{spent}}. Unlimited is $7.99 a month — no 100-card cap, cancel anytime.",
-    "body_other": "You've bought {{count}} passes — ${{spent}}. Unlimited is $7.99 a month — no 100-card cap, cancel anytime.",
-    "cta": "Get Unlimited — $7.99/mo"
-  },
   "feedback": {
     "thanks": "Thanks — feedback received.",
     "prompt": "How's your experience?",

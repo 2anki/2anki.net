@@ -186,13 +186,6 @@
     "getDayPass": "Prendre un Day Pass — {{price}}",
     "seePlans": "Voir les offres"
   },
-  "passLadder": {
-    "aria": "Unlimited coûte moins que tes pass",
-    "headline": "Tu dépenses plus en pass que ce que coûte Unlimited ?",
-    "body_one": "Tu as acheté {{count}} pass — ${{spent}}. Unlimited coûte $7.99 par mois — pas de plafond de 100 cartes, annulable à tout moment.",
-    "body_other": "Tu as acheté {{count}} pass — ${{spent}}. Unlimited coûte $7.99 par mois — pas de plafond de 100 cartes, annulable à tout moment.",
-    "cta": "Prendre Unlimited — $7.99/mois"
-  },
   "feedback": {
     "thanks": "Merci — avis reçu.",
     "prompt": "Comment se passe ton expérience ?",
