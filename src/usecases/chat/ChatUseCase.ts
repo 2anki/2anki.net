@@ -213,6 +213,15 @@ function foldAttachmentIntoContent(
   return `${attachmentText}\n\n${content}`;
 }
 
+function textOfMessageContent(
+  content: Anthropic.MessageParam['content']
+): string {
+  if (typeof content === 'string') return content;
+  return content
+    .map((block) => (block.type === 'text' ? block.text : ''))
+    .join('\n');
+}
+
 export class ChatRateLimitError extends Error {
   readonly resetDate: string;
 
@@ -360,20 +369,35 @@ function parseCardArray(
   return cards.length > 0 ? cards : undefined;
 }
 
+/// The model writes `Format: cloze` on its own line before the JSON block
+/// when it honors an explicit cloze request on a non-cloze note type (see
+/// the template suffixes). The declaration lifts the stray-cloze
+/// normalization for that reply and never renders as conversation text.
+const FORMAT_CLOZE_LINE = /(?:^|\n)[ \t]*Format:[ \t]*cloze[ \t]*(?=\n|$)/i;
+
+function stripFormatLine(before: string): string {
+  return before.replace(FORMAT_CLOZE_LINE, '').trim();
+}
+
 export function extractCards(
   text: string,
   mcqAllowed = false,
   forbidCloze = false
 ): ExtractCardsResult {
+  const effectiveForbidCloze = forbidCloze && !FORMAT_CLOZE_LINE.test(text);
   const fencedMatch = /```json\s*([\s\S]*?)```/.exec(text);
   if (fencedMatch != null) {
-    const cards = parseCardArray(fencedMatch[1], mcqAllowed, forbidCloze);
+    const cards = parseCardArray(
+      fencedMatch[1],
+      mcqAllowed,
+      effectiveForbidCloze
+    );
     if (cards != null) {
       const before = text.slice(0, fencedMatch.index).trim();
       const after = text
         .slice(fencedMatch.index + fencedMatch[0].length)
         .trim();
-      const { deckName, rest } = splitDeckName(before);
+      const { deckName, rest } = splitDeckName(stripFormatLine(before));
       return {
         cards,
         contentBefore: rest.length > 0 ? rest : undefined,
@@ -385,11 +409,11 @@ export function extractCards(
 
   const rawMatch = /((?:^|\n)\s*)(\[\s*\{[\s\S]*\}\s*\])/.exec(text);
   if (rawMatch != null) {
-    const cards = parseCardArray(rawMatch[2], mcqAllowed, forbidCloze);
+    const cards = parseCardArray(rawMatch[2], mcqAllowed, effectiveForbidCloze);
     if (cards != null) {
       const before = text.slice(0, rawMatch.index).trim();
       const after = text.slice(rawMatch.index + rawMatch[0].length).trim();
-      const { deckName, rest } = splitDeckName(before);
+      const { deckName, rest } = splitDeckName(stripFormatLine(before));
       return {
         cards,
         contentBefore: rest.length > 0 ? rest : undefined,
@@ -664,12 +688,9 @@ export class ChatUseCase {
       ? params.templateSlug
       : 'basic';
     const mcqForced = resolvedTemplate === 'mcq';
-    const mcqAllowed = user.patreon || mcqForced;
 
     const templateSuffix = templatePromptSuffix(resolvedTemplate);
-    const baseSystemPrompt = mcqAllowed
-      ? `${STUDY_ASSISTANT_SYSTEM_PROMPT}\n\n${MCQ_PROMPT_ADDITION}`
-      : STUDY_ASSISTANT_SYSTEM_PROMPT;
+    const baseSystemPrompt = `${STUDY_ASSISTANT_SYSTEM_PROMPT}\n\n${MCQ_PROMPT_ADDITION}`;
     const systemPromptText =
       templateSuffix.length > 0
         ? `${baseSystemPrompt}\n\n${templateSuffix.trim()}`
@@ -738,10 +759,19 @@ export class ChatUseCase {
       assistantContent
     );
 
-    const forbidCloze = templateForbidsCloze(resolvedTemplate);
+    const userAskedCloze = /\bcloze\b/i.test(
+      textOfMessageContent(params.userContent)
+    );
+    const forbidCloze =
+      templateForbidsCloze(resolvedTemplate) && !userAskedCloze;
+    if (userAskedCloze && templateForbidsCloze(resolvedTemplate)) {
+      console.info('[chat] honoring cloze request over note type', {
+        template: resolvedTemplate,
+      });
+    }
     const { cards, contentBefore, contentAfter, deckName } = extractCards(
       assistantContent,
-      mcqAllowed,
+      true,
       forbidCloze
     );
 

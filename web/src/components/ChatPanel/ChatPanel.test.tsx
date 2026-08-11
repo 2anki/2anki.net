@@ -823,11 +823,11 @@ describe('ChatPanel — template selector', () => {
     ).toBeInTheDocument();
   });
 
-  it('does not render the template selector in the empty state', () => {
+  it('renders the composer template selector in the empty state', () => {
     renderChatPanel();
     expect(
-      screen.queryByRole('button', { name: /Note type/i })
-    ).not.toBeInTheDocument();
+      screen.getByRole('button', { name: 'Note type: Basic' })
+    ).toBeInTheDocument();
   });
 
   it('renders the template selector on the last assistant turn even with no cards', () => {
@@ -1142,9 +1142,10 @@ describe('ChatPanel — template selector', () => {
       initialMessages: [{ role: 'user', content: 'spring boot' }],
       initialConversationId: 7,
     });
-    expect(
-      screen.queryByRole('button', { name: /Note type/i })
-    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Note type: Basic' }));
+    fireEvent.click(
+      screen.getByRole('option', { name: /Cloze/ }).querySelector('button')!
+    );
     expect(mockPost).not.toHaveBeenCalled();
   });
 });
@@ -1308,5 +1309,70 @@ describe('ChatPanel — regenerate with attachments', () => {
         )
       ).toBeInTheDocument();
     });
+  });
+});
+
+describe('ChatPanel — typed note type requests', () => {
+  beforeEach(() => {
+    mockPost.mockReset();
+    mockPatch.mockReset();
+    mockGet.mockResolvedValue({ used: 0, limit: 20 });
+  });
+
+  it('adopts the produced note type and skips regenerate on reselect', async () => {
+    mockPost.mockResolvedValueOnce(
+      makeSseResponse([
+        {
+          event: 'done',
+          data: {
+            content: '```json\n[{"front":"X is {{c1::Y}}.","back":""}]\n```',
+            conversationId: 7,
+            cards: [{ front: 'X is {{c1::Y}}.', back: '' }],
+          },
+        },
+      ])
+    );
+    renderChatPanel({ initialTemplateSlug: 'basic', initialConversationId: 7 });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message input' }), {
+      target: { value: 'cloze please' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalledWith(
+        '/api/chat/conversations/7/template',
+        { templateSlug: 'cloze' }
+      );
+    });
+
+    mockPost.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Note type: Cloze' }));
+    fireEvent.click(
+      screen.getByRole('option', { name: /Cloze/ }).querySelector('button')!
+    );
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it('shows a note type control in the empty composer', () => {
+    renderChatPanel();
+    expect(
+      screen.getByRole('button', { name: 'Note type: Basic' })
+    ).toBeInTheDocument();
+  });
+
+  it('shows exactly one note type control once an assistant reply exists', () => {
+    renderChatPanel({
+      initialMessages: [
+        { role: 'user', content: 'q' },
+        {
+          role: 'assistant',
+          content: 'r',
+          cards: [{ front: 'a', back: 'b' }],
+        },
+      ],
+    });
+    expect(screen.getAllByRole('button', { name: /Note type/ })).toHaveLength(
+      1
+    );
   });
 });
