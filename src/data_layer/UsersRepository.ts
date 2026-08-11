@@ -457,6 +457,20 @@ class UsersRepository {
     }));
   }
 
+  async getSignupOriginsByIds(
+    userIds: number[]
+  ): Promise<Map<number, string | null>> {
+    if (userIds.length === 0) return new Map();
+    const rows = (await this.database(this.table)
+      .whereIn('id', userIds)
+      .whereNotNull('signup_origin')
+      .select('id', 'signup_origin')) as {
+      id: number;
+      signup_origin: string;
+    }[];
+    return new Map(rows.map((row) => [Number(row.id), row.signup_origin]));
+  }
+
   markOnboarded(id: string | number) {
     return this.database(this.table)
       .where({ id })
