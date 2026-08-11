@@ -111,7 +111,8 @@
       "dropIdle": "Sleep je bestanden hierheen",
       "or": "of",
       "chooseFiles": "Kies bestanden",
-      "csvHint": "Noem je kolommen front en back (of question en answer) zodat 2anki ze goed toewijst — anders wordt de eerste kolom de voorkant en de tweede de achterkant."
+      "csvHint": "Noem je kolommen front en back (of question en answer) zodat 2anki ze goed toewijst — anders wordt de eerste kolom de voorkant en de tweede de achterkant.",
+      "folderHint": "Mappen werken ook — als je browser een Notion-export heeft uitgepakt, sleep dan de hele map hierheen."
     },
     "form": {
       "makingDeck": "Je deck wordt gemaakt...",
@@ -148,7 +149,11 @@
       "drivePrompt": "Kies een Doc, Sheet, Slide of bestand uit je Google Drive.",
       "driveHint": "Docs werken het best als een opsomming met bullets — bovenste bullet is de vraag, ingesprongen bullet is het antwoord.",
       "chooseFromDrive": "Kies uit Google Drive",
-      "openingDrive": "Google Drive openen"
+      "openingDrive": "Google Drive openen",
+      "packingFolder": "Je map wordt ingepakt als zip.",
+      "folderTooBig": "Deze map is groter dan 500 MB — zip hem zelf en upload het zip-bestand.",
+      "folderEmpty": "Deze map is leeg — sleep de map met je exportbestanden hierheen.",
+      "folderFailed": "Deze map kon niet worden ingepakt — zip hem zelf en upload de zip, of mail naar support@2anki.net."
     },
     "page": {
       "title": "Zet je notities om",

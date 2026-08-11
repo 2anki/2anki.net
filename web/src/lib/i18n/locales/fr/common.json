@@ -111,7 +111,8 @@
       "dropIdle": "Dépose tes fichiers ici",
       "or": "ou",
       "chooseFiles": "Choisir des fichiers",
-      "csvHint": "Nomme tes colonnes front et back (ou question et answer) pour que 2anki les associe correctement — sinon il utilise la première colonne comme recto et la deuxième comme verso."
+      "csvHint": "Nomme tes colonnes front et back (ou question et answer) pour que 2anki les associe correctement — sinon il utilise la première colonne comme recto et la deuxième comme verso.",
+      "folderHint": "Les dossiers fonctionnent aussi — si ton navigateur a décompressé un export Notion, dépose le dossier entier."
     },
     "form": {
       "makingDeck": "Création de ton paquet...",
@@ -148,7 +149,11 @@
       "drivePrompt": "Choisis un Doc, une Feuille, une Présentation ou un fichier dans ton Google Drive.",
       "driveHint": "Les Docs fonctionnent mieux sous forme de liste à puces — la puce du haut pose la question, la puce en retrait donne la réponse.",
       "chooseFromDrive": "Choisir depuis Google Drive",
-      "openingDrive": "Ouverture de Google Drive"
+      "openingDrive": "Ouverture de Google Drive",
+      "packingFolder": "Ton dossier est en cours d'empaquetage en zip.",
+      "folderTooBig": "Ce dossier dépasse 500 Mo — compresse-le toi-même et téléverse le fichier zip.",
+      "folderEmpty": "Ce dossier est vide — dépose le dossier qui contient tes fichiers exportés.",
+      "folderFailed": "Impossible d'empaqueter ce dossier — compresse-le toi-même et téléverse le zip, ou écris à support@2anki.net."
     },
     "page": {
       "title": "Convertis tes notes",

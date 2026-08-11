@@ -113,7 +113,8 @@
       "dropIdle": "Upuść pliki tutaj",
       "or": "lub",
       "chooseFiles": "Wybierz pliki",
-      "csvHint": "Nazwij kolumny front i back (albo question i answer), żeby 2anki poprawnie je zmapowało — inaczej użyje pierwszej kolumny jako przodu, a drugiej jako tyłu."
+      "csvHint": "Nazwij kolumny front i back (albo question i answer), żeby 2anki poprawnie je zmapowało — inaczej użyje pierwszej kolumny jako przodu, a drugiej jako tyłu.",
+      "folderHint": "Foldery też działają — jeśli przeglądarka rozpakowała eksport z Notion, upuść cały folder."
     },
     "form": {
       "makingDeck": "Tworzenie Twojej talii…",
@@ -152,7 +153,11 @@
       "drivePrompt": "Wybierz dokument, arkusz, prezentację lub plik z Google Drive.",
       "driveHint": "Dokumenty działają najlepiej jako lista wypunktowana — górny punkt pyta, wcięty punkt odpowiada.",
       "chooseFromDrive": "Wybierz z Google Drive",
-      "openingDrive": "Otwieranie Google Drive"
+      "openingDrive": "Otwieranie Google Drive",
+      "packingFolder": "Pakowanie folderu do pliku zip.",
+      "folderTooBig": "Ten folder przekracza 500 MB — spakuj go samodzielnie i prześlij plik zip.",
+      "folderEmpty": "Ten folder jest pusty — upuść folder z wyeksportowanymi plikami.",
+      "folderFailed": "Nie udało się spakować tego folderu — spakuj go samodzielnie i prześlij zip albo napisz na support@2anki.net."
     },
     "page": {
       "title": "Przekształć swoje notatki",

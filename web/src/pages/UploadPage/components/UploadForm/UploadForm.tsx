@@ -45,6 +45,13 @@ import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPl
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
 import sharedStyles from '../../../../styles/shared.module.css';
+import {
+  collectDroppedEntries,
+  hasDirectoryEntry,
+  FolderEmptyError,
+  FolderTooBigError,
+} from './helpers/collectDroppedEntries';
+import { zipDroppedFiles } from './helpers/zipDroppedEntries';
 
 import type {
   ZoneState,
@@ -435,13 +442,64 @@ function UploadForm({
     }
   }, [isUploadLocked]);
 
+  const [folderName, setFolderName] = useState('');
+  const [folderError, setFolderError] = useState<
+    'tooBig' | 'empty' | 'failed' | null
+  >(null);
+
+  const handleFolderDrop = async (
+    entries: Array<FileSystemEntry | null>,
+    droppedFolderName: string
+  ) => {
+    setFolderError(null);
+    setFolderName(droppedFolderName);
+    setZoneState('packaging');
+    track('folder_upload_packaged');
+    try {
+      const droppedFiles = await collectDroppedEntries(entries);
+      const zipFile = await zipDroppedFiles(droppedFolderName, droppedFiles);
+      const transfer = new DataTransfer();
+      transfer.items.add(zipFile);
+      fileInputRef.current!.files = transfer.files;
+      if (validate(transfer.files)) {
+        submitFiles();
+      } else {
+        setZoneState('idle');
+      }
+    } catch (error) {
+      if (error instanceof FolderTooBigError) {
+        setFolderError('tooBig');
+      } else if (error instanceof FolderEmptyError) {
+        setFolderError('empty');
+      } else {
+        setFolderError('failed');
+      }
+      setZoneState('error');
+    }
+  };
+
   const { dropHover } = useDrag({
     onDrop: (event) => {
-      if (isUploadLocked) {
+      if (isUploadLocked || zoneState === 'packaging') {
         event.preventDefault();
         return;
       }
       const { dataTransfer } = event;
+      // webkitGetAsEntry must be read synchronously — DataTransferItemList
+      // goes inert once the drop handler returns.
+      const entries = dataTransfer
+        ? Array.from(dataTransfer.items, (item) =>
+            typeof item.webkitGetAsEntry === 'function'
+              ? item.webkitGetAsEntry()
+              : null
+          )
+        : [];
+      if (hasDirectoryEntry(entries)) {
+        const firstDirectory = entries.find((e) => e?.isDirectory === true);
+        void handleFolderDrop(entries, firstDirectory?.name ?? 'upload');
+        event.preventDefault();
+        return;
+      }
       if (dataTransfer && dataTransfer.files.length > 0) {
         fileInputRef.current!.files = dataTransfer.files;
         if (validate(dataTransfer.files)) {
@@ -451,6 +509,12 @@ function UploadForm({
       event.preventDefault();
     },
   });
+
+  useEffect(() => {
+    if (zoneState === 'converting') {
+      setFolderError(null);
+    }
+  }, [zoneState]);
 
   useEffect(() => {
     if (zoneState === 'success' && downloadLink && !showFallback) {
@@ -1294,6 +1358,45 @@ function UploadForm({
     );
   };
 
+  const renderPackagingState = () => (
+    <div className={formStyles.stateContent}>
+      <p className={formStyles.filename} data-hj-suppress>
+        {folderName}
+      </p>
+      <div className={formStyles.progressTrack}>
+        <div className={formStyles.progressFillIndeterminate} />
+      </div>
+      <p className={formStyles.statusText}>{t('upload.form.packingFolder')}</p>
+    </div>
+  );
+
+  // Folder-packaging failures happen before any server job exists, so the
+  // status-page link and error chat the server error state offers would have
+  // nothing to point at — this render keeps it to the sentence and a reset.
+  const renderFolderErrorState = (kind: 'tooBig' | 'empty' | 'failed') => {
+    const messageKey = {
+      tooBig: 'upload.form.folderTooBig',
+      empty: 'upload.form.folderEmpty',
+      failed: 'upload.form.folderFailed',
+    }[kind];
+    return (
+      <div className={formStyles.stateContent}>
+        <WarningIcon className={formStyles.iconError} />
+        <p className={formStyles.errorBody}>{t(messageKey)}</p>
+        <button
+          type="button"
+          className={formStyles.actionButton}
+          onClick={() => {
+            setFolderError(null);
+            resetForm();
+          }}
+        >
+          {t('upload.form.tryDifferent')}
+        </button>
+      </div>
+    );
+  };
+
   const renderErrorState = () => {
     const isExistingApkg =
       localError != null && /already an Anki deck/i.test(localError.message);
@@ -1379,6 +1482,9 @@ function UploadForm({
           </div>
           <span className={formStyles.shapeHint}>
             {t('upload.dropzone.csvHint')}
+          </span>
+          <span className={formStyles.shapeHint}>
+            {t('upload.dropzone.folderHint')}
           </span>
         </>
       )}
@@ -1588,6 +1694,10 @@ function UploadForm({
     if (zoneState === 'imageOnly') return renderImageOnlyState();
     if (zoneState === 'limitReached' && limitInfo) return renderLimitState();
     if (zoneState === 'lockedPdf') return renderLockedPdfState();
+    if (zoneState === 'packaging') return renderPackagingState();
+    if (zoneState === 'error' && folderError != null) {
+      return renderFolderErrorState(folderError);
+    }
     if (zoneState === 'error') return renderErrorState();
     return renderIdleState();
   };
@@ -1598,6 +1708,7 @@ function UploadForm({
   const showLocalPanel = !showChips || source === 'local';
 
   const renderLiveStatus = (): string => {
+    if (zoneState === 'packaging') return t('upload.form.packingFolder');
     if (zoneState === 'converting') return 'Converting your file.';
     if (zoneState === 'success') {
       if (cardCount == null) return 'Your deck is ready.';

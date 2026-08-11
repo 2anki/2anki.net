@@ -5,6 +5,7 @@ import type { UploadSource } from '../UploadSourceChips';
 
 export type ZoneState =
   | 'idle'
+  | 'packaging'
   | 'converting'
   | 'success'
   | 'multiDeck'

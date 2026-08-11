@@ -111,7 +111,8 @@
       "dropIdle": "Solte seus arquivos aqui",
       "or": "ou",
       "chooseFiles": "Escolher arquivos",
-      "csvHint": "Nomeie suas colunas como front e back (ou question e answer) para que o 2anki mapeie certo — caso contrário, ele usa a primeira coluna como frente e a segunda como verso."
+      "csvHint": "Nomeie suas colunas como front e back (ou question e answer) para que o 2anki mapeie certo — caso contrário, ele usa a primeira coluna como frente e a segunda como verso.",
+      "folderHint": "Pastas também funcionam — se o navegador descompactou uma exportação do Notion, solte a pasta inteira."
     },
     "form": {
       "makingDeck": "Criando seu baralho...",
@@ -148,7 +149,11 @@
       "drivePrompt": "Escolha um Doc, Planilha, Slide ou arquivo do seu Google Drive.",
       "driveHint": "Docs funcionam melhor como uma lista com marcadores — o marcador de cima pergunta, o marcador indentado responde.",
       "chooseFromDrive": "Escolher do Google Drive",
-      "openingDrive": "Abrindo o Google Drive"
+      "openingDrive": "Abrindo o Google Drive",
+      "packingFolder": "Empacotando sua pasta em um zip.",
+      "folderTooBig": "Esta pasta passa de 500 MB — compacte você mesmo e envie o arquivo zip.",
+      "folderEmpty": "Esta pasta está vazia — solte a pasta que contém seus arquivos exportados.",
+      "folderFailed": "Não foi possível empacotar esta pasta — compacte você mesmo e envie o zip, ou escreva para support@2anki.net."
     },
     "page": {
       "title": "Converta suas anotações",

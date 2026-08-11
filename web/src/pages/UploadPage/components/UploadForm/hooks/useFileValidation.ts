@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { track } from '../../../../../lib/analytics/track';
 
 export type ValidationStatus = 'clean' | 'info' | 'warning' | 'error';
 
@@ -7,6 +8,9 @@ export interface FileValidationResult {
   title: string;
   body: string;
   continueLabel: string;
+  // Marks the two Safari-unzipped-Notion-export warnings so their rate is
+  // measurable — they size the population the folder-drop path addresses.
+  code?: 'unbundled_html';
 }
 
 export function detectUploadIssues(
@@ -38,6 +42,7 @@ export function detectUploadIssues(
       title: 'Multiple HTML files — images may be missing',
       body: 'Safari sometimes unpacks Notion exports and leaves images behind. Re-download the zip from Notion in a different browser, or find the original zip in Downloads and upload that.',
       continueLabel: 'Continue with these files',
+      code: 'unbundled_html',
     };
   }
 
@@ -58,6 +63,7 @@ export function detectUploadIssues(
       title: 'Images won’t be included',
       body: "A single HTML file doesn't include images. If this came from Notion, download the zip export instead — it bundles the images.",
       continueLabel: 'Continue without images',
+      code: 'unbundled_html',
     };
   }
 
@@ -87,6 +93,9 @@ export function useFileValidation(aiOn = false) {
     (files: FileList): boolean => {
       const result = detectUploadIssues(files, aiOn);
       if (result) {
+        if (result.code === 'unbundled_html') {
+          track('unbundled_html_warning_shown');
+        }
         setValidation(result);
         setPendingFiles(files);
         return false;

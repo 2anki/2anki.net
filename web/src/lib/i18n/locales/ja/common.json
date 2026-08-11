@@ -110,7 +110,8 @@
       "dropIdle": "ここにファイルをドロップ",
       "or": "または",
       "chooseFiles": "ファイルを選択",
-      "csvHint": "列に front と back（または question と answer）という名前を付けると、2anki が正しく対応付けます — 名前がない場合は、1 列目を表、2 列目を裏として扱います。"
+      "csvHint": "列に front と back（または question と answer）という名前を付けると、2anki が正しく対応付けます — 名前がない場合は、1 列目を表、2 列目を裏として扱います。",
+      "folderHint": "フォルダのままでも大丈夫です — ブラウザがNotionのエクスポートを解凍した場合は、フォルダごとドロップしてください。"
     },
     "form": {
       "makingDeck": "デッキを作成しています...",
@@ -146,7 +147,11 @@
       "drivePrompt": "Google ドライブからドキュメント、スプレッドシート、スライド、またはファイルを選んでください。",
       "driveHint": "ドキュメントは箇条書きのアウトラインが最適です — 上位の箇条書きが質問、字下げした箇条書きが回答になります。",
       "chooseFromDrive": "Google ドライブから選ぶ",
-      "openingDrive": "Google ドライブを開いています"
+      "openingDrive": "Google ドライブを開いています",
+      "packingFolder": "フォルダをzipにまとめています。",
+      "folderTooBig": "このフォルダは500 MBを超えています — ご自身でzipに圧縮してからアップロードしてください。",
+      "folderEmpty": "このフォルダは空です — エクスポートしたファイルが入っているフォルダをドロップしてください。",
+      "folderFailed": "このフォルダをまとめられませんでした — ご自身でzipに圧縮してアップロードするか、support@2anki.net までご連絡ください。"
     },
     "page": {
       "title": "ノートを変換",

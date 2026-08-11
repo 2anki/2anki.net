@@ -48,6 +48,8 @@ export const KNOWN_EVENTS = new Set([
   'pricing_left',
   'pricing_try_clicked',
   'upload_failed',
+  'folder_upload_packaged',
+  'unbundled_html_warning_shown',
   'cancel_during_generating',
   'pdf_print_options_used',
   'ai_conversion_completed',

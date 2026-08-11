@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-11-folder-drop-upload",
+  "date": "2026-08-11",
+  "type": "feature",
+  "title": "Drop a whole folder on the upload page — unzipped Notion exports convert without re-zipping"
+}
