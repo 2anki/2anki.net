@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-11-chat-regenerate-attachments",
+  "date": "2026-08-11",
+  "type": "fix",
+  "title": "Chat regenerate keeps attached notes in context and asks you to re-attach files it can't reuse"
+}

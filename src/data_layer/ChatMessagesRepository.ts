@@ -7,6 +7,7 @@ export interface ChatMessageRow {
   role: 'user' | 'assistant';
   content: string;
   attachment_text: string | null;
+  had_binary_attachments: boolean;
   created_at: Date;
 }
 
@@ -16,6 +17,7 @@ export interface ChatMessageInsert {
   role: 'user' | 'assistant';
   content: string;
   attachmentText?: string | null;
+  hadBinaryAttachments?: boolean;
 }
 
 export interface ChatHistoryMessage {
@@ -56,6 +58,7 @@ export class ChatMessagesRepository implements IChatMessagesRepository {
       role: entry.role,
       content: entry.content,
       attachment_text: entry.attachmentText ?? null,
+      had_binary_attachments: entry.hadBinaryAttachments ?? false,
     });
   }
 
@@ -151,6 +154,7 @@ export class InMemoryChatMessagesRepository implements IChatMessagesRepository {
     role: 'user' | 'assistant';
     content: string;
     attachment_text: string | null;
+    had_binary_attachments: boolean;
     created_at: Date;
   }> = [];
   private nextId = 1;
@@ -163,6 +167,7 @@ export class InMemoryChatMessagesRepository implements IChatMessagesRepository {
       role: entry.role,
       content: entry.content,
       attachment_text: entry.attachmentText ?? null,
+      had_binary_attachments: entry.hadBinaryAttachments ?? false,
       created_at: new Date(),
     });
   }

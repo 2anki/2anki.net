@@ -64,6 +64,7 @@
     "send": "Impossible d'envoyer ce message. Réessaie.",
     "conversationGone": "Cette conversation n'existe plus. Commences-en une nouvelle.",
     "rebuild": "Impossible de reconstruire tes cartes. Réessaie.",
+    "regenerateAttachments": "La régénération ne peut pas réutiliser les fichiers joints. Joins à nouveau le fichier et envoie un nouveau message.",
     "addTags": "Impossible d'ajouter les étiquettes. Réessaie.",
     "deckGenerate": "Impossible de générer le paquet. Réessaie."
   },

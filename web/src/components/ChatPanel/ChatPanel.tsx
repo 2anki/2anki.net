@@ -46,7 +46,8 @@ interface ApiErrorPayload {
     | 'rate_limit'
     | 'server_error'
     | 'conversation_not_found'
-    | 'consent_required';
+    | 'consent_required'
+    | 'attachments_not_replayable';
   resetDate?: string;
 }
 
@@ -1079,6 +1080,10 @@ export default function ChatPanel({
       }
       if (err.type === 'consent_required') {
         setShowConsentModal(true);
+        return;
+      }
+      if (err.type === 'attachments_not_replayable') {
+        setNetworkError(t('errors.regenerateAttachments'));
         return;
       }
       setNetworkError(t('errors.rebuild'));

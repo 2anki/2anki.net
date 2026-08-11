@@ -64,6 +64,7 @@
     "send": "No se pudo enviar este mensaje. Inténtalo de nuevo.",
     "conversationGone": "Esta conversación ya no existe. Empieza una nueva.",
     "rebuild": "No se pudieron rehacer tus tarjetas. Inténtalo de nuevo.",
+    "regenerateAttachments": "Al regenerar no se pueden reutilizar los archivos adjuntos. Adjunta el archivo de nuevo y envía un mensaje nuevo.",
     "addTags": "No se pudieron añadir las etiquetas. Inténtalo de nuevo.",
     "deckGenerate": "No se pudo generar el mazo. Inténtalo de nuevo."
   },

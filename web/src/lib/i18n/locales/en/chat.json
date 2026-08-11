@@ -64,6 +64,7 @@
     "send": "Couldn't send this message. Try again.",
     "conversationGone": "This conversation is gone. Start a new one.",
     "rebuild": "Couldn't rebuild your cards. Try again.",
+    "regenerateAttachments": "Regenerate can't reuse attached files. Re-attach the file and send a new message.",
     "addTags": "Couldn't add tags. Try again.",
     "deckGenerate": "Couldn't generate the deck. Try again."
   },

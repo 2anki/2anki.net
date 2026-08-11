@@ -3,6 +3,7 @@ import {
   ChatUseCase,
   ChatRateLimitError,
   ChatConversationNotFoundError,
+  ChatAttachmentsNotReplayableError,
   McqExtractionFailedError,
 } from '../usecases/chat/ChatUseCase';
 import type { ChatAttachment } from '../usecases/chat/buildAttachmentBlocks';
@@ -176,6 +177,8 @@ function emitChatError(res: Response, err: unknown): void {
     sseWrite(res, 'error', { type: 'conversation_not_found' });
   } else if (err instanceof McqExtractionFailedError) {
     sseWrite(res, 'error', { type: 'mcq_extraction_failed' });
+  } else if (err instanceof ChatAttachmentsNotReplayableError) {
+    sseWrite(res, 'error', { type: 'attachments_not_replayable' });
   } else {
     sseWrite(res, 'error', { type: 'server_error' });
   }

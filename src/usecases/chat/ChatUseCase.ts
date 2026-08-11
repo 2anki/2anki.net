@@ -1,6 +1,9 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { IChatMessagesRepository } from '../../data_layer/ChatMessagesRepository';
-import type { IConversationsRepository } from '../../data_layer/ConversationsRepository';
+import type {
+  ConversationWithMessages,
+  IConversationsRepository,
+} from '../../data_layer/ConversationsRepository';
 import { logClaudeUsage } from '../../lib/claude/logClaudeUsage';
 import {
   buildAttachmentBlocks,
@@ -418,6 +421,30 @@ export class McqExtractionFailedError extends Error {
   }
 }
 
+export class ChatAttachmentsNotReplayableError extends Error {
+  constructor() {
+    super('Attached files cannot be replayed');
+    this.name = 'ChatAttachmentsNotReplayableError';
+  }
+}
+
+type ReplayTurn = ConversationWithMessages['messages'][number];
+
+function selectReplayTurns(
+  messages: ReplayTurn[],
+  excludeMessageId: number | undefined
+): { historyHead: ReplayTurn[]; lastTurn: ReplayTurn | null } {
+  const prior = messages.filter((m) => m.id !== excludeMessageId);
+  const lastUserIndex = prior.map((m) => m.role).lastIndexOf('user');
+  const upToLastUser =
+    lastUserIndex >= 0 ? prior.slice(0, lastUserIndex + 1) : prior;
+  const recent = upToLastUser.slice(-(MAX_HISTORY_TURNS + 1));
+  return {
+    historyHead: recent.slice(0, -1),
+    lastTurn: recent[recent.length - 1] ?? null,
+  };
+}
+
 function mcqCardToWireShape(card: ChatCard): Record<string, unknown> {
   return {
     front: card.front,
@@ -527,6 +554,7 @@ export class ChatUseCase {
         attachmentTextBlock.length > 0
           ? capAttachmentTextForHistory(attachmentTextBlock)
           : null,
+      hadBinaryAttachments: attachmentBlocks.length > 0,
     });
 
     return this.streamAssistantTurn({
@@ -583,6 +611,16 @@ export class ChatUseCase {
         userId: user.owner,
         conversationId: conversation.id,
       });
+
+    const { historyHead, lastTurn } = selectReplayTurns(
+      conversation.messages,
+      latestAssistant?.id
+    );
+
+    if (lastTurn?.hadBinaryAttachments) {
+      throw new ChatAttachmentsNotReplayableError();
+    }
+
     if (latestAssistant != null) {
       await this.messagesRepo.deleteById({
         userId: user.owner,
@@ -590,27 +628,18 @@ export class ChatUseCase {
       });
     }
 
-    const priorMessages = conversation.messages.filter(
-      (m) => m.id !== latestAssistant?.id
-    );
-    const lastUserIndex = priorMessages.map((m) => m.role).lastIndexOf('user');
-    const upToLastUser =
-      lastUserIndex >= 0
-        ? priorMessages.slice(0, lastUserIndex + 1)
-        : priorMessages;
-    const recentHistory = upToLastUser.slice(-(MAX_HISTORY_TURNS + 1));
-    const historyHead = recentHistory.slice(0, -1);
-    const lastTurn = recentHistory[recentHistory.length - 1];
-
     return this.streamAssistantTurn({
       user,
       conversationId: conversation.id,
       templateSlug: input.templateSlug,
       historyMessages: historyHead.map((m) => ({
         role: m.role,
-        content: m.content,
+        content: foldAttachmentIntoContent(m.content, m.attachmentText),
       })),
-      userContent: lastTurn?.content ?? '',
+      userContent:
+        lastTurn != null
+          ? foldAttachmentIntoContent(lastTurn.content, lastTurn.attachmentText)
+          : '',
       onToken,
     });
   }
