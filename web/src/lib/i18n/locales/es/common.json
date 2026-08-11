@@ -111,7 +111,8 @@
       "dropIdle": "Suelta tus archivos aquí",
       "or": "o",
       "chooseFiles": "Elegir archivos",
-      "csvHint": "Nombra tus columnas anverso y reverso (o pregunta y respuesta) para que 2anki las asigne bien — de lo contrario, usa la primera columna como anverso y la segunda como reverso."
+      "csvHint": "Nombra tus columnas anverso y reverso (o pregunta y respuesta) para que 2anki las asigne bien — de lo contrario, usa la primera columna como anverso y la segunda como reverso.",
+      "folderHint": "Las carpetas también funcionan — si tu navegador descomprimió una exportación de Notion, suelta la carpeta completa."
     },
     "form": {
       "makingDeck": "Creando tu mazo...",
@@ -148,7 +149,11 @@
       "drivePrompt": "Elige un Doc, Sheet, Slide o archivo de tu Google Drive.",
       "driveHint": "Los documentos funcionan mejor como un esquema con viñetas — la viñeta superior pregunta, la viñeta con sangría responde.",
       "chooseFromDrive": "Elegir de Google Drive",
-      "openingDrive": "Abriendo Google Drive"
+      "openingDrive": "Abriendo Google Drive",
+      "packingFolder": "Empaquetando tu carpeta en un zip.",
+      "folderTooBig": "Esta carpeta supera los 500 MB — comprímela tú mismo y sube el archivo zip.",
+      "folderEmpty": "Esta carpeta está vacía — suelta la carpeta que contiene tus archivos exportados.",
+      "folderFailed": "No se pudo empaquetar esta carpeta — comprímela tú mismo y sube el zip, o escribe a support@2anki.net."
     },
     "page": {
       "title": "Convierte tus notas",

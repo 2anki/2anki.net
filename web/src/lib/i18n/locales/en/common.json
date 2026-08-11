@@ -111,7 +111,8 @@
       "dropIdle": "Drop your files here",
       "or": "or",
       "chooseFiles": "Choose files",
-      "csvHint": "Name your columns front and back (or question and answer) so 2anki maps them right — otherwise it uses the first column as the front and the second as the back."
+      "csvHint": "Name your columns front and back (or question and answer) so 2anki maps them right — otherwise it uses the first column as the front and the second as the back.",
+      "folderHint": "Folders work too — if your browser unzipped a Notion export, drop the whole folder."
     },
     "form": {
       "makingDeck": "Making your deck...",
@@ -148,7 +149,11 @@
       "drivePrompt": "Pick a Doc, Sheet, Slide, or file from your Google Drive.",
       "driveHint": "Docs work best as a bulleted outline — top bullet asks, indented bullet answers.",
       "chooseFromDrive": "Choose from Google Drive",
-      "openingDrive": "Opening Google Drive"
+      "openingDrive": "Opening Google Drive",
+      "packingFolder": "Packing your folder into a zip.",
+      "folderTooBig": "This folder is over 500 MB — zip it yourself and upload the zip file.",
+      "folderEmpty": "This folder is empty — drop the folder that contains your export files.",
+      "folderFailed": "Couldn't package this folder — zip it yourself and upload the zip, or email support@2anki.net."
     },
     "page": {
       "title": "Convert your notes",

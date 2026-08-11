@@ -216,6 +216,25 @@
   transition: width 8s linear;
 }
 
+/* Folder packaging has no real percentage to report, so the bar sweeps
+   instead of stalling at an invented number. */
+.progressFillIndeterminate {
+  height: 100%;
+  width: 40%;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  animation: progressSweep 1.4s ease-in-out infinite;
+}
+
+@keyframes progressSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
 .statusText {
   font-size: var(--text-sm);
   color: var(--color-text-secondary);

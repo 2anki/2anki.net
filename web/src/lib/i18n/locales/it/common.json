@@ -111,7 +111,8 @@
       "dropIdle": "Trascina qui i tuoi file",
       "or": "oppure",
       "chooseFiles": "Scegli i file",
-      "csvHint": "Chiama le colonne fronte e retro (o domanda e risposta) così 2anki le mappa nel modo giusto — altrimenti usa la prima colonna come fronte e la seconda come retro."
+      "csvHint": "Chiama le colonne fronte e retro (o domanda e risposta) così 2anki le mappa nel modo giusto — altrimenti usa la prima colonna come fronte e la seconda come retro.",
+      "folderHint": "Anche le cartelle funzionano — se il browser ha decompresso un export di Notion, trascina l'intera cartella."
     },
     "form": {
       "makingDeck": "Sto creando il tuo mazzo...",
@@ -148,7 +149,11 @@
       "drivePrompt": "Scegli un Documento, Foglio, Presentazione o file dal tuo Google Drive.",
       "driveHint": "I documenti funzionano meglio come elenco puntato — il punto principale chiede, quello indentato risponde.",
       "chooseFromDrive": "Scegli da Google Drive",
-      "openingDrive": "Sto aprendo Google Drive"
+      "openingDrive": "Sto aprendo Google Drive",
+      "packingFolder": "Sto impacchettando la tua cartella in uno zip.",
+      "folderTooBig": "Questa cartella supera i 500 MB — comprimila tu stesso e carica il file zip.",
+      "folderEmpty": "Questa cartella è vuota — trascina la cartella che contiene i file esportati.",
+      "folderFailed": "Impossibile impacchettare questa cartella — comprimila tu stesso e carica lo zip, oppure scrivi a support@2anki.net."
     },
     "page": {
       "title": "Converti i tuoi appunti",

@@ -111,7 +111,8 @@
       "dropIdle": "Zieh deine Dateien hierher",
       "or": "oder",
       "chooseFiles": "Dateien auswählen",
-      "csvHint": "Benenne deine Spalten front und back (oder question und answer), damit 2anki sie richtig zuordnet — sonst wird die erste Spalte als Vorderseite und die zweite als Rückseite verwendet."
+      "csvHint": "Benenne deine Spalten front und back (oder question und answer), damit 2anki sie richtig zuordnet — sonst wird die erste Spalte als Vorderseite und die zweite als Rückseite verwendet.",
+      "folderHint": "Ordner funktionieren auch — wenn dein Browser einen Notion-Export entpackt hat, zieh einfach den ganzen Ordner hierher."
     },
     "form": {
       "makingDeck": "Dein Stapel wird erstellt",
@@ -148,7 +149,11 @@
       "drivePrompt": "Wähle ein Doc, Sheet, Slide oder eine Datei aus deinem Google Drive.",
       "driveHint": "Docs funktionieren am besten als Aufzählungsgliederung — der oberste Punkt fragt, der eingerückte Punkt antwortet.",
       "chooseFromDrive": "Aus Google Drive wählen",
-      "openingDrive": "Google Drive wird geöffnet"
+      "openingDrive": "Google Drive wird geöffnet",
+      "packingFolder": "Dein Ordner wird in eine Zip-Datei gepackt.",
+      "folderTooBig": "Dieser Ordner ist größer als 500 MB — packe ihn selbst als Zip und lade die Zip-Datei hoch.",
+      "folderEmpty": "Dieser Ordner ist leer — zieh den Ordner mit deinen Export-Dateien hierher.",
+      "folderFailed": "Dieser Ordner konnte nicht gepackt werden — packe ihn selbst als Zip und lade die Zip-Datei hoch, oder schreib an support@2anki.net."
     },
     "page": {
       "title": "Konvertiere deine Notizen",
