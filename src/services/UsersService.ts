@@ -13,8 +13,21 @@ const MAGIC_LINK_RATE_LIMIT = 5;
 const MAGIC_LINK_RATE_WINDOW_MS = 60 * 60 * 1000;
 const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000;
 // Shape check only — the clicked link is the real proof of ownership. This
-// exists so garbage input cannot mint an account row.
-const MAGIC_LINK_EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// exists so garbage input cannot mint an account row. Plain string scans, not
+// a regex: the input is unauthenticated and a backtracking pattern here is a
+// ReDoS surface (typescript:S8786, the #3960 class).
+function looksLikeEmail(email: string): boolean {
+  if (/\s/.test(email)) {
+    return false;
+  }
+  const at = email.indexOf('@');
+  if (at < 1 || at !== email.lastIndexOf('@')) {
+    return false;
+  }
+  const domain = email.slice(at + 1);
+  const lastDot = domain.lastIndexOf('.');
+  return lastDot >= 1 && lastDot < domain.length - 1;
+}
 
 export class MagicLinkRateLimitError extends Error {
   constructor() {
@@ -185,7 +198,7 @@ class UsersService {
       // mailbox ownership (verifyMagicLink marks the email verified) and logs
       // them in. Password resets stay a silent no-op: there is no account to
       // reset, and creating one there would mask the real situation.
-      if (purpose !== 'login' || !MAGIC_LINK_EMAIL_SHAPE.test(email)) {
+      if (purpose !== 'login' || !looksLikeEmail(email)) {
         console.info('password_reset.magic_link', {
           outcome: 'unknown_email',
           purpose,
