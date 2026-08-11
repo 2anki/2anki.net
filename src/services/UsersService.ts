@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 import UsersRepository from '../data_layer/UsersRepository';
 import Users from '../data_layer/public/Users';
@@ -11,6 +12,22 @@ import { isResetTokenLive } from '../lib/User/isResetTokenLive';
 const MAGIC_LINK_RATE_LIMIT = 5;
 const MAGIC_LINK_RATE_WINDOW_MS = 60 * 60 * 1000;
 const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000;
+// Shape check only — the clicked link is the real proof of ownership. This
+// exists so garbage input cannot mint an account row. Plain string scans, not
+// a regex: the input is unauthenticated and a backtracking pattern here is a
+// ReDoS surface (typescript:S8786, the #3960 class).
+function looksLikeEmail(email: string): boolean {
+  if (/\s/.test(email)) {
+    return false;
+  }
+  const at = email.indexOf('@');
+  if (at < 1 || at !== email.lastIndexOf('@')) {
+    return false;
+  }
+  const domain = email.slice(at + 1);
+  const lastDot = domain.lastIndexOf('.');
+  return lastDot >= 1 && lastDot < domain.length - 1;
+}
 
 export class MagicLinkRateLimitError extends Error {
   constructor() {
@@ -174,13 +191,35 @@ class UsersService {
     if (this.magicTokenRepository == null) {
       return;
     }
-    const user = await this.repository.getByEmail(email);
+    let user = await this.repository.getByEmail(email);
     if (user?.id == null) {
+      // A new visitor who picks "email me a sign-in link" is signing up — the
+      // link email doubles as account creation, and clicking it both proves
+      // mailbox ownership (verifyMagicLink marks the email verified) and logs
+      // them in. Password resets stay a silent no-op: there is no account to
+      // reset, and creating one there would mask the real situation.
+      if (purpose !== 'login' || !looksLikeEmail(email)) {
+        console.info('password_reset.magic_link', {
+          outcome: 'unknown_email',
+          purpose,
+        });
+        return;
+      }
+      const placeholderPassword = bcrypt.hashSync(crypto.randomUUID(), 12);
+      await this.register('', placeholderPassword, email, 'magic_link');
+      user = await this.repository.getByEmail(email.toLowerCase());
+      if (user?.id == null) {
+        console.info('password_reset.magic_link', {
+          outcome: 'signup_failed',
+          purpose,
+        });
+        return;
+      }
       console.info('password_reset.magic_link', {
-        outcome: 'unknown_email',
+        outcome: 'account_created',
         purpose,
+        user_id_hash: hashToken(String(user.id)),
       });
-      return;
     }
     const userIdHash = hashToken(String(user.id));
     const oneHourAgo = new Date(Date.now() - MAGIC_LINK_RATE_WINDOW_MS);

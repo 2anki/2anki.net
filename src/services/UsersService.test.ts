@@ -276,15 +276,71 @@ describe('UsersService.requestMagicLink', () => {
     expect(sentToken).toHaveLength(128);
   });
 
-  it('silently returns when the user is not found', async () => {
-    const getByEmail = jest.fn().mockResolvedValue(null);
-    const repository = { getByEmail } as unknown as UsersRepository;
+  it('creates an account and sends the link when the email is new (login)', async () => {
+    const created = { id: 41, email: 'newcomer@example.com' };
+    const getByEmail = jest
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue(created);
+    const createUserAndSeedFromTombstone = jest
+      .fn()
+      .mockResolvedValue([{ id: 41 }]);
+    const repository = {
+      getByEmail,
+      createUserAndSeedFromTombstone,
+    } as unknown as UsersRepository;
     const emailService = buildEmailService();
     const magicTokenRepo = new InMemoryMagicTokenRepository();
     const service = new UsersService(repository, emailService, magicTokenRepo);
 
-    await service.requestMagicLink('nobody@example.com', 'login');
+    await service.requestMagicLink('Newcomer@example.com', 'login');
 
+    expect(createUserAndSeedFromTombstone).toHaveBeenCalledWith(
+      'newcomer',
+      expect.any(String),
+      'newcomer@example.com',
+      'magic_link'
+    );
+    const storedPassword = createUserAndSeedFromTombstone.mock.calls[0][1];
+    expect(storedPassword).toMatch(/^\$2[aby]\$/);
+    expect(emailService.sendMagicLinkEmail).toHaveBeenCalledWith(
+      'Newcomer@example.com',
+      expect.any(String),
+      'login'
+    );
+  });
+
+  it('does not create an account for a password reset on an unknown email', async () => {
+    const getByEmail = jest.fn().mockResolvedValue(null);
+    const createUserAndSeedFromTombstone = jest.fn();
+    const repository = {
+      getByEmail,
+      createUserAndSeedFromTombstone,
+    } as unknown as UsersRepository;
+    const emailService = buildEmailService();
+    const magicTokenRepo = new InMemoryMagicTokenRepository();
+    const service = new UsersService(repository, emailService, magicTokenRepo);
+
+    await service.requestMagicLink('nobody@example.com', 'password_reset');
+
+    expect(createUserAndSeedFromTombstone).not.toHaveBeenCalled();
+    expect(emailService.sendMagicLinkEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not create an account for a malformed address', async () => {
+    const getByEmail = jest.fn().mockResolvedValue(null);
+    const createUserAndSeedFromTombstone = jest.fn();
+    const repository = {
+      getByEmail,
+      createUserAndSeedFromTombstone,
+    } as unknown as UsersRepository;
+    const emailService = buildEmailService();
+    const magicTokenRepo = new InMemoryMagicTokenRepository();
+    const service = new UsersService(repository, emailService, magicTokenRepo);
+
+    await service.requestMagicLink('not-an-email', 'login');
+
+    expect(createUserAndSeedFromTombstone).not.toHaveBeenCalled();
     expect(emailService.sendMagicLinkEmail).not.toHaveBeenCalled();
   });
 
