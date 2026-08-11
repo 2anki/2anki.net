@@ -27,6 +27,11 @@ export function RightSide({ path, isLoggedIn }: Readonly<RightSideProps>) {
           {t('nav.pricing')}
         </NavbarItem>
       )}
+      {!isLoggedIn && (
+        <NavbarItem href="/app" path={path}>
+          {t('nav.download')}
+        </NavbarItem>
+      )}
       <NavbarItem href="/login#login" path={path}>
         {t('nav.login')}
       </NavbarItem>
