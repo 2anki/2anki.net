@@ -98,6 +98,12 @@ export default function ReturnRateTab() {
         </div>
       )}
 
+      {data?.error != null && (
+        <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
+          Return-rate query failed on the server: {data.error}
+        </div>
+      )}
+
       <div className={styles.grid}>
         <MetricCard
           title="Returned within 7 days"

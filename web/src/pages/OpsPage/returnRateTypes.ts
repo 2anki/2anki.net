@@ -19,4 +19,5 @@ export interface ReturnRateMetricsResponse {
   overall: ReturnRateWindow;
   by_source_type: ReturnRateBySourceType[] | null;
   as_of: string;
+  error?: string;
 }
