@@ -79,6 +79,7 @@ curl -s "https://sonarcloud.io/api/issues/search?componentKeys=Laer-Smart_2anki.
 ```
 
 - `0` → merge.
+- **A non-zero `total` can lie: the search API leaks CLOSED issues through the `statuses=OPEN,CONFIRMED` (and `issueStatuses`) filter** — observed 2026-08-11 on PR #4046, where the sole record was `status: CLOSED` (fixed by the head commit) yet `total` read 1 for both filter params. Before treating a non-zero total as a blocker, inspect `.issues[].status` and count only `OPEN`/`CONFIRMED` records; a result set of closed records with the gate `OK` is a clean merge.
 - Anything else → list the findings (`.issues[] | {rule, component, line, message}`), fix them on the same branch before merging, or say explicitly in the PR why each one is acceptable and get a nod. Silent merge-with-findings is what this section exists to prevent.
 - Run it **after** the `SonarCloud Code Analysis` check reports, or `total` reads 0 vacuously because the analysis hasn't landed yet.
 - Merged-PR records never re-scan: a finding fixed in a follow-up stays visible on the old PR's SonarCloud page forever. Judge cleanliness on the *open* PR you're about to merge (and `main`'s branch analysis), not on historical PR records.
