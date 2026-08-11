@@ -10,11 +10,6 @@ export interface UserPass {
   stripe_payment_intent_id: string;
 }
 
-export interface PaidPassCounts {
-  dayPasses: number;
-  weekPasses: number;
-}
-
 export interface UserPassWindowRow {
   id: number;
   userId: number;
@@ -24,7 +19,6 @@ export interface UserPassWindowRow {
 
 export interface IUserPassRepository {
   findActive(userId: number, now: Date): Promise<UserPass | null>;
-  countPaidPassesSince(userId: number, since: Date): Promise<PaidPassCounts>;
   upsertWithExtension(
     userId: number,
     kind: PassKind,
@@ -99,31 +93,6 @@ export class UserPassRepository implements IUserPassRepository {
           ? row.expires_at
           : new Date(row.expires_at),
     }));
-  }
-
-  countPaidPassesQuery(userId: number, since: Date) {
-    return this.database(this.table)
-      .select('kind')
-      .count('* as count')
-      .where('user_id', userId)
-      .whereIn('kind', ['24h', '7d'])
-      .where('expires_at', '>', since)
-      .groupBy('kind');
-  }
-
-  async countPaidPassesSince(
-    userId: number,
-    since: Date
-  ): Promise<PaidPassCounts> {
-    const rows = (await this.countPaidPassesQuery(userId, since)) as Array<{
-      kind: string;
-      count: string | number;
-    }>;
-    const byKind = new Map(rows.map((r) => [r.kind, Number(r.count)]));
-    return {
-      dayPasses: byKind.get('24h') ?? 0,
-      weekPasses: byKind.get('7d') ?? 0,
-    };
   }
 
   async upsertWithExtension(
@@ -230,22 +199,6 @@ export class InMemoryUserPassRepository implements IUserPassRepository {
     return this.rows.some(
       (r) => r.stripe_payment_intent_id === paymentIntentId
     );
-  }
-
-  async countPaidPassesSince(
-    userId: number,
-    since: Date
-  ): Promise<PaidPassCounts> {
-    const recent = this.rows.filter(
-      (r) =>
-        r.user_id === userId &&
-        (r.kind === '24h' || r.kind === '7d') &&
-        r.expires_at > since
-    );
-    return {
-      dayPasses: recent.filter((r) => r.kind === '24h').length,
-      weekPasses: recent.filter((r) => r.kind === '7d').length,
-    };
   }
 
   async upsertWithExtension(

@@ -186,13 +186,6 @@
     "getDayPass": "Day Pass kopen — {{price}}",
     "seePlans": "Bekijk abonnementen"
   },
-  "passLadder": {
-    "aria": "Unlimited kost minder dan je passes",
-    "headline": "Meer aan passes uitgeven dan Unlimited kost?",
-    "body_one": "Je hebt {{count}} pass gekocht — ${{spent}}. Unlimited is $7.99 per maand — geen 100-kaartenlimiet, altijd opzegbaar.",
-    "body_other": "Je hebt {{count}} passes gekocht — ${{spent}}. Unlimited is $7.99 per maand — geen 100-kaartenlimiet, altijd opzegbaar.",
-    "cta": "Get Unlimited — $7.99/mnd"
-  },
   "feedback": {
     "thanks": "Bedankt — feedback ontvangen.",
     "prompt": "Hoe is je ervaring?",

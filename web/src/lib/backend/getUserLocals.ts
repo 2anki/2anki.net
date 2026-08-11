@@ -32,7 +32,6 @@ interface GetUserLocalsResponse {
   };
   autoSyncActive?: boolean;
   freePrintAvailable?: boolean | null;
-  passLadder?: { passCount: number; spentUsd: number } | null;
 }
 
 export const getUserLocals = async (): Promise<GetUserLocalsResponse> =>

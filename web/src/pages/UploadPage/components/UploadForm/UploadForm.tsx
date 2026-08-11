@@ -41,7 +41,6 @@ import { track } from '../../../../lib/analytics/track';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { UpsellCard } from '../../../../components/UpsellCard';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
-import { PassLadderCard } from '../../../../components/PassLadderCard/PassLadderCard';
 import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
@@ -56,7 +55,6 @@ import type {
 interface UploadFormProps {
   setErrorMessage: ErrorHandlerType;
   aiOn?: boolean;
-  passLadderShownOnPage?: boolean;
 }
 
 const FORMATS = [
@@ -252,7 +250,6 @@ function WarningIcon({ className }: Readonly<{ className?: string }>) {
 function UploadForm({
   setErrorMessage,
   aiOn = false,
-  passLadderShownOnPage = false,
 }: Readonly<UploadFormProps>) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -921,8 +918,6 @@ function UploadForm({
   const successOffer = resolveSuccessOffer({
     anonymous: userLocals != null && userLocals.user?.email == null,
     paying: isPayingUser(userLocals?.locals),
-    passLadder: userLocals?.passLadder,
-    passLadderShownOnPage,
   });
 
   const renderSuccessState = () => (
@@ -996,7 +991,6 @@ function UploadForm({
         </button>
       )}
       {successOffer === 'anon_signup' && <CreateAccountNotice />}
-      {successOffer === 'pass_ladder' && <PassLadderCard />}
       {successOffer === 'upsell' && (
         <UpsellCard surface="upload_success_upsell" hideForAnonymous />
       )}

@@ -192,15 +192,6 @@
     "getDayPass": "Kup Day Pass — {{price}}",
     "seePlans": "Zobacz plany"
   },
-  "passLadder": {
-    "aria": "Unlimited kosztuje mniej niż Twoje przepustki",
-    "headline": "Wydajesz na przepustki więcej, niż kosztuje Unlimited?",
-    "body_one": "Kupiłeś {{count}} przepustkę — ${{spent}}. Unlimited to $7.99 miesięcznie — bez limitu 100 kart, anuluj w każdej chwili.",
-    "body_few": "Kupiłeś {{count}} przepustki — ${{spent}}. Unlimited to $7.99 miesięcznie — bez limitu 100 kart, anuluj w każdej chwili.",
-    "body_many": "Kupiłeś {{count}} przepustek — ${{spent}}. Unlimited to $7.99 miesięcznie — bez limitu 100 kart, anuluj w każdej chwili.",
-    "body_other": "Kupiłeś {{count}} przepustki — ${{spent}}. Unlimited to $7.99 miesięcznie — bez limitu 100 kart, anuluj w każdej chwili.",
-    "cta": "Kup Unlimited — $7.99/mies."
-  },
   "feedback": {
     "thanks": "Dzięki — opinia przyjęta.",
     "prompt": "Jak Ci się korzysta?",

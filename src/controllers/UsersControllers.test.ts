@@ -77,17 +77,12 @@ jest.mock('../data_layer/UsersRepository', () => {
   }));
 });
 
-const mockCountPaidPassesSince = jest
-  .fn()
-  .mockResolvedValue({ dayPasses: 0, weekPasses: 0 });
-
 jest.mock('../data_layer/UserPassRepository', () => {
   const actual = jest.requireActual('../data_layer/UserPassRepository');
   return {
     ...actual,
     __esModule: true,
     default: jest.fn().mockImplementation(() => ({
-      countPaidPassesSince: mockCountPaidPassesSince,
       findActive: jest.fn().mockResolvedValue(null),
     })),
   };
@@ -2526,80 +2521,6 @@ describe('UsersController.getLocals', () => {
 
     const payload = res.json.mock.calls[0][0];
     expect(payload.autoSyncActive).toBe(true);
-  });
-
-  it('offers the pass ladder to a repeat pass buyer', async () => {
-    mockCountPaidPassesSince.mockResolvedValueOnce({
-      dayPasses: 2,
-      weekPasses: 0,
-    });
-    const mockUser = {
-      id: 9,
-      email: 'buyer@example.com',
-      email_verified: true,
-      patreon: false,
-      ankify_welcome_seen: false,
-      hosted_anki_requested_at: null,
-      owner: 9,
-    };
-    const userService = {
-      getSubscriptionLinkedEmail: jest.fn().mockResolvedValue(null),
-    } as unknown as UsersService;
-    const authService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
-    } as unknown as AuthenticationService;
-    const controller = new UsersController(
-      userService,
-      authService,
-      {} as ReturnType<typeof import('../data_layer').getDatabase>
-    );
-    const req = { cookies: { token: 'valid' } } as unknown as express.Request;
-    const res = {
-      locals: { planSource: null },
-      json: jest.fn(),
-    } as unknown as express.Response & { json: jest.Mock };
-
-    await controller.getLocals(req, res);
-
-    const payload = res.json.mock.calls[0][0];
-    expect(payload.passLadder).toEqual({ passCount: 2, spentUsd: 8 });
-  });
-
-  it('sends no pass ladder to a subscriber', async () => {
-    mockCountPaidPassesSince.mockResolvedValueOnce({
-      dayPasses: 2,
-      weekPasses: 1,
-    });
-    const mockUser = {
-      id: 10,
-      email: 'sub@example.com',
-      email_verified: true,
-      patreon: false,
-      ankify_welcome_seen: false,
-      hosted_anki_requested_at: null,
-      owner: 10,
-    };
-    const userService = {
-      getSubscriptionLinkedEmail: jest.fn().mockResolvedValue(null),
-    } as unknown as UsersService;
-    const authService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
-    } as unknown as AuthenticationService;
-    const controller = new UsersController(
-      userService,
-      authService,
-      {} as ReturnType<typeof import('../data_layer').getDatabase>
-    );
-    const req = { cookies: { token: 'valid' } } as unknown as express.Request;
-    const res = {
-      locals: { planSource: 'stripe' },
-      json: jest.fn(),
-    } as unknown as express.Response & { json: jest.Mock };
-
-    await controller.getLocals(req, res);
-
-    const payload = res.json.mock.calls[0][0];
-    expect(payload.passLadder).toBeNull();
   });
 
   it('surfaces chat_consent_at on the user object so the consent modal closes after accept', async () => {
