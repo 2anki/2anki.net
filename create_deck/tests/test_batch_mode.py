@@ -170,7 +170,36 @@ class TestBatchMode:
                 text=True,
                 cwd=tmpdir,
             )
-            assert result.returncode != 0
+            assert result.returncode == 0
+            assert "nonexistent" in result.stderr
+            assert result.stdout.strip() == ""
+
+    def test_batch_continues_past_failing_entry(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            good = _write_deck_workspace(tmpdir, "Good Deck", "good.jpg")
+
+            manifest_path = os.path.join(tmpdir, "manifest.json")
+            with open(manifest_path, "w") as f:
+                json.dump(
+                    [
+                        {
+                            "input": "/nonexistent/deck_info.json",
+                            "output": "/tmp/out.apkg",
+                        },
+                        {"input": good["input"], "output": good["output"]},
+                    ],
+                    f,
+                )
+
+            result = subprocess.run(
+                [PYTHON, str(SCRIPT), "--batch", manifest_path, str(TEMPLATE_DIR)],
+                capture_output=True,
+                text=True,
+                cwd=good["subdir"],
+            )
+            assert result.returncode == 0, f"stderr: {result.stderr}"
+            assert os.path.exists(good["output"]), "good apkg missing"
+            assert good["output"] in result.stdout
             assert "nonexistent" in result.stderr
 
     def test_empty_deck_in_batch_exits_cleanly(self):

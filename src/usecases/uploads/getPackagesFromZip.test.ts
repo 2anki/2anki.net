@@ -346,7 +346,7 @@ describe('getPackagesFromZip — batch concurrency', () => {
     expect(runBatchCallCount).toBeLessThanOrEqual(2);
   });
 
-  it('drops a chunk whose batch build fails and warns instead of aborting', async () => {
+  it('rebuilds every deck individually when the whole batch build fails', async () => {
     const fileCount = 8;
     const fileNames = Array.from(
       { length: fileCount },
@@ -371,6 +371,20 @@ describe('getPackagesFromZip — batch concurrency', () => {
       })
     );
 
+    mockPrepareDeck.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        name,
+        apkg: Buffer.from('fake-apkg'),
+        deck: [],
+        cardCount: 1,
+        mcqCount: 0,
+        mcqSkippedCount: 0,
+        droppedImageCount: 0,
+        expiredNotionImageCount: 0,
+        emptyBackCount: 0,
+      })
+    );
+
     mockCardGeneratorClass.mockImplementation(() => ({
       runBatch: jest.fn().mockRejectedValue(new Error('Python batch failed')),
     }));
@@ -385,10 +399,136 @@ describe('getPackagesFromZip — batch concurrency', () => {
       workspace
     );
 
-    expect(result.packages).toEqual([]);
+    expect(result.packages).toHaveLength(fileCount);
     expect(
-      result.warnings?.some((w) => w.includes('could not be converted'))
-    ).toBe(true);
+      result.warnings?.some((w) => w.includes('could not be converted')) ??
+        false
+    ).toBe(false);
+  });
+
+  it('retries a deck individually when the batch produced no apkg for it', async () => {
+    const fileCount = 8;
+    const fileNames = Array.from(
+      { length: fileCount },
+      (_, i) => `deck${i}.html`
+    );
+
+    mockZipHandlerClass.mockImplementation(() => ({
+      build: jest.fn().mockResolvedValue(undefined),
+      getFileNames: jest.fn().mockReturnValue(fileNames),
+      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+    }));
+
+    mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        deckInfoPath: `/fake/${name}/deck_info.json`,
+        outputPath: `/fake/${name}/out.apkg`,
+        name,
+        inputFileName: name,
+        deck: [],
+        cardCount: 1,
+        needsIndividualBuild: false,
+      })
+    );
+
+    mockPrepareDeck.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        name,
+        apkg: Buffer.from('fake-apkg'),
+        deck: [],
+        cardCount: 1,
+        mcqCount: 0,
+        mcqSkippedCount: 0,
+        droppedImageCount: 0,
+        expiredNotionImageCount: 0,
+        emptyBackCount: 0,
+      })
+    );
+
+    mockCardGeneratorClass.mockImplementation(() => ({
+      runBatch: jest
+        .fn()
+        .mockImplementation((entries: Array<{ output: string }>) =>
+          Promise.resolve(
+            entries
+              .filter((e) => !e.output.includes('deck3.html'))
+              .map((e) => e.output)
+          )
+        ),
+    }));
+
+    jest
+      .spyOn(require('node:fs'), 'readFileSync')
+      .mockReturnValue(Buffer.from('fake-apkg'));
+
+    const settings = new CardOption({});
+    const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
+
+    const result = await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      settings,
+      workspace
+    );
+
+    expect(result.packages).toHaveLength(fileCount);
+    const retriedNames = mockPrepareDeck.mock.calls.map((call) => call[0].name);
+    expect(retriedNames).toEqual(['deck3.html']);
+  });
+
+  it('does not retry a deck the batch skipped because it had zero cards', async () => {
+    const fileCount = 8;
+    const fileNames = Array.from(
+      { length: fileCount },
+      (_, i) => `deck${i}.html`
+    );
+
+    mockZipHandlerClass.mockImplementation(() => ({
+      build: jest.fn().mockResolvedValue(undefined),
+      getFileNames: jest.fn().mockReturnValue(fileNames),
+      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+    }));
+
+    mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        deckInfoPath: `/fake/${name}/deck_info.json`,
+        outputPath: `/fake/${name}/out.apkg`,
+        name,
+        inputFileName: name,
+        deck: [],
+        cardCount: name === 'deck5.html' ? 0 : 1,
+        needsIndividualBuild: false,
+      })
+    );
+
+    mockCardGeneratorClass.mockImplementation(() => ({
+      runBatch: jest
+        .fn()
+        .mockImplementation((entries: Array<{ output: string }>) =>
+          Promise.resolve(
+            entries
+              .filter((e) => !e.output.includes('deck5.html'))
+              .map((e) => e.output)
+          )
+        ),
+    }));
+
+    jest
+      .spyOn(require('node:fs'), 'readFileSync')
+      .mockReturnValue(Buffer.from('fake-apkg'));
+
+    const settings = new CardOption({});
+    const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
+
+    const result = await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      settings,
+      workspace
+    );
+
+    expect(result.packages).toHaveLength(fileCount - 1);
+    expect(mockPrepareDeck).not.toHaveBeenCalled();
   });
 
   it('skips one file that fails to convert in the batch path and returns the rest', async () => {

@@ -120,19 +120,40 @@ async function buildDeckBatch(
     }
   });
 
-  const batchEntries = preparedResults
-    .filter((r) => !r.needsIndividualBuild)
-    .map((r) => ({ input: r.deckInfoPath, output: r.outputPath }));
+  const batchResults = preparedResults.filter((r) => !r.needsIndividualBuild);
+  const batchEntries = batchResults.map((r) => ({
+    input: r.deckInfoPath,
+    output: r.outputPath,
+  }));
 
-  const stragglers = preparedResults.filter((r) => r.needsIndividualBuild);
+  const stragglers: { inputFileName: string }[] = preparedResults.filter(
+    (r) => r.needsIndividualBuild
+  );
 
   if (batchEntries.length > 0) {
     const gen = new CardGenerator(workspace.location);
-    const apkgPaths = await gen.runBatch(batchEntries);
+    // The Python batch reports each built deck by printing its output path;
+    // pairing by that path (never by position) keeps one skipped entry from
+    // shifting every deck after it. A deck the batch failed to build — or a
+    // batch process that died outright — retries on the individual path below
+    // instead of silently shipping nothing (#4028).
+    let producedPaths = new Set<string>();
+    try {
+      producedPaths = new Set(await gen.runBatch(batchEntries));
+    } catch (error) {
+      console.warn(
+        '[batch-build] batch deck build failed, rebuilding decks individually',
+        error
+      );
+    }
 
-    const batchResults = preparedResults.filter((r) => !r.needsIndividualBuild);
-    batchResults.forEach((result, i) => {
-      if (!apkgPaths[i]) return;
+    batchResults.forEach((result) => {
+      if (!producedPaths.has(result.outputPath)) {
+        if (result.cardCount > 0) {
+          stragglers.push(result);
+        }
+        return;
+      }
       const pkg = new Package(
         result.name,
         result.cardCount,
