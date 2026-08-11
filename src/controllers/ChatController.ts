@@ -185,6 +185,18 @@ function hasConsented(locals: Record<string, unknown>): boolean {
   return locals.chat_consent_at != null;
 }
 
+function resolveContent(
+  rawContent: unknown,
+  attachmentCount: number
+): string | null {
+  const content = typeof rawContent === 'string' ? rawContent.trim() : '';
+  if (content.length > 0) return content;
+  if (attachmentCount === 0) return null;
+  return attachmentCount === 1
+    ? FILE_ONLY_INSTRUCTION_SINGLE
+    : FILE_ONLY_INSTRUCTION_MULTI;
+}
+
 class ChatController {
   constructor(private readonly chatUseCase: ChatUseCase) {}
 
@@ -208,18 +220,13 @@ class ChatController {
       return;
     }
 
-    const rawContent = req.body?.content;
-    let content = typeof rawContent === 'string' ? rawContent.trim() : '';
-
-    if (content.length === 0) {
-      if (validation.attachments.length === 0) {
-        res.status(400).json({ error: 'content is required' });
-        return;
-      }
-      content =
-        validation.attachments.length === 1
-          ? FILE_ONLY_INSTRUCTION_SINGLE
-          : FILE_ONLY_INSTRUCTION_MULTI;
+    const content = resolveContent(
+      req.body?.content,
+      validation.attachments.length
+    );
+    if (content == null) {
+      res.status(400).json({ error: 'content is required' });
+      return;
     }
 
     const owner = res.locals.owner as number;

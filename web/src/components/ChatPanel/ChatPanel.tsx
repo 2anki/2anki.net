@@ -586,6 +586,15 @@ function ComposerPill({
   );
 }
 
+function resolveOutgoingContent(
+  rawContent: string,
+  fileCount: number,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string {
+  if (rawContent.trim().length > 0) return rawContent;
+  return t('composer.fileOnlyPrompt', { count: fileCount });
+}
+
 export default function ChatPanel({
   initialPrompt,
   cameFromUpload,
@@ -781,10 +790,7 @@ export default function ChatPanel({
 
   async function sendMessage(rawContent: string) {
     if (!rawContent.trim() && readyChips.length === 0) return;
-    const content =
-      rawContent.trim().length > 0
-        ? rawContent
-        : t('composer.fileOnlyPrompt', { count: readyChips.length });
+    const content = resolveOutgoingContent(rawContent, readyChips.length, t);
 
     const userMessage: Message = { role: 'user', content };
     const nextMessages = [...messages, userMessage];
