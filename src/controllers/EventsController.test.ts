@@ -63,6 +63,13 @@ describe('EventsController', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
+  it('returns 400 when the body is unparseable (Express 5 leaves it undefined)', () => {
+    const { controller, req, res } = buildMocks({});
+    (req as { body?: unknown }).body = undefined;
+    controller.track(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
   it('returns 400 when name is not a string', () => {
     const { controller, req, res } = buildMocks({});
     req.body = { name: 42 };

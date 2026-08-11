@@ -10,7 +10,7 @@ export class EventsController {
   constructor(private readonly trackEventUseCase: TrackEventUseCase) {}
 
   track(req: Request, res: Response): void {
-    const { name, props } = req.body as {
+    const { name, props } = (req.body ?? {}) as {
       name: unknown;
       props?: unknown;
     };
