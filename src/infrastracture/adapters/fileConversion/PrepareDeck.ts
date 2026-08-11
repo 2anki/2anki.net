@@ -395,6 +395,18 @@ async function convertPdfByAutoDetection(
   return convertPdfPagesToImagesFile(file, input);
 }
 
+// Both build paths must hand the parser the same file set: the originals, the
+// converted HTML, and any figure images the converters extracted (extraFiles).
+// The batched zip path once dropped the extracted images, so PDF figures went
+// missing from decks only when the upload was large enough to batch (#4054).
+export function assembleParserFiles(
+  files: DeckParserInput['files'],
+  convertedFiles: ConvertedFile[]
+): DeckParserInput['files'] {
+  const extractedImages = convertedFiles.flatMap((f) => f.extraFiles ?? []);
+  return [...files, ...convertedFiles, ...extractedImages];
+}
+
 function deckPrefixFromFilePath(htmlFileName: string): string {
   const normalized = htmlFileName.replaceAll('\\', '/');
   const lastSlash = normalized.lastIndexOf('/');
@@ -443,8 +455,7 @@ export async function PrepareDeck(
     convertedFiles.filter((f) => f.imageFallback).map((f) => f.name)
   );
 
-  const extractedPdfImages = convertedFiles.flatMap((f) => f.extraFiles ?? []);
-  const allFiles = [...files, ...convertedFiles, ...extractedPdfImages];
+  const allFiles = assembleParserFiles(files, convertedFiles);
 
   if (input.settings.claudeAIFlashcards && input.noLimits) {
     console.log('[PrepareDeck] Claude branch: collecting HTML content');
@@ -705,7 +716,7 @@ export async function prepareDeckInfoOnly(
     (file) => convertFile(file, input)
   );
   const convertedFiles = results.flatMap((r) => (r ? [r] : []));
-  const allFiles = [...files, ...convertedFiles];
+  const allFiles = assembleParserFiles(files, convertedFiles);
 
   const parser = new DeckParser({ ...input, files: allFiles });
 

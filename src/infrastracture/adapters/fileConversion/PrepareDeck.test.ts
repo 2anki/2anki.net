@@ -799,3 +799,33 @@ describe('PrepareDeck — AI media matching (#3946)', () => {
     expect(mediaArg.some((m: string) => m.endsWith('.png'))).toBe(true);
   });
 });
+
+describe('assembleParserFiles — both build paths share one file set', () => {
+  const { assembleParserFiles } = require('./PrepareDeck');
+
+  it('includes originals, converted HTML, and extracted figure images', () => {
+    const original = { name: 'notes.pdf', contents: Buffer.from('%PDF') };
+    const figure = { name: 'figure-1.png', contents: Buffer.from('png') };
+    const converted = {
+      name: 'notes.pdf.html',
+      contents: Buffer.from('<p>card</p>'),
+      extraFiles: [figure],
+    };
+
+    const all = assembleParserFiles([original], [converted]);
+
+    expect(all.map((f: { name: string }) => f.name)).toEqual([
+      'notes.pdf',
+      'notes.pdf.html',
+      'figure-1.png',
+    ]);
+  });
+
+  it('handles converters that extracted nothing', () => {
+    const original = { name: 'page.html', contents: Buffer.from('<p></p>') };
+
+    const all = assembleParserFiles([original], []);
+
+    expect(all).toEqual([original]);
+  });
+});
