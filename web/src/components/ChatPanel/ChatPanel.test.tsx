@@ -54,11 +54,12 @@ vi.mock('../../lib/backend/api', () => ({
   del: vi.fn(),
 }));
 
-import { get, patch, post } from '../../lib/backend/api';
+import { get, patch, post, postMultipart } from '../../lib/backend/api';
 
 const mockPost = post as ReturnType<typeof vi.fn>;
 const mockGet = get as ReturnType<typeof vi.fn>;
 const mockPatch = patch as ReturnType<typeof vi.fn>;
+const mockPostMultipart = postMultipart as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   mockUseUserLocals.mockReturnValue(consentedLocals);
@@ -1213,5 +1214,61 @@ describe('ChatPanel — monthly usage counter', () => {
     expect(
       screen.queryByText(/messages left this month/)
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('ChatPanel — file-only send', () => {
+  beforeEach(() => {
+    mockPost.mockReset();
+    mockPostMultipart.mockReset();
+    mockGet.mockResolvedValue({ used: 0, limit: 20 });
+  });
+
+  function attachPdf(name: string) {
+    const input = document.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const file = new File(['%PDF'], name, { type: 'application/pdf' });
+    fireEvent.change(input, { target: { files: [file] } });
+  }
+
+  it('sends a file with no text as the default instruction', async () => {
+    mockPostMultipart.mockResolvedValueOnce(
+      makeSseResponse([
+        { event: 'done', data: { content: 'Cards', conversationId: 1 } },
+      ])
+    );
+    renderChatPanel();
+    attachPdf('notes.pdf');
+    await screen.findByRole('button', { name: 'Remove notes.pdf' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+    await waitFor(() => {
+      expect(mockPostMultipart).toHaveBeenCalled();
+    });
+    const formData = mockPostMultipart.mock.calls[0][1] as FormData;
+    expect(formData.get('content')).toBe(
+      'Create flashcards from the attached file.'
+    );
+  });
+
+  it('shows the default instruction as the user message bubble', async () => {
+    mockPostMultipart.mockResolvedValueOnce(
+      makeSseResponse([
+        { event: 'done', data: { content: 'Cards', conversationId: 1 } },
+      ])
+    );
+    renderChatPanel();
+    attachPdf('notes.pdf');
+    await screen.findByRole('button', { name: 'Remove notes.pdf' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Create flashcards from the attached file.')
+      ).toBeInTheDocument();
+    });
   });
 });

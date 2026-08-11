@@ -39,6 +39,8 @@
     "studyingPlaceholder": "Wat ben je aan het leren?",
     "messageInput": "Berichtinvoer",
     "sendMessage": "Bericht versturen",
+    "fileOnlyPrompt_one": "Maak kaarten van het bijgevoegde bestand.",
+    "fileOnlyPrompt_other": "Maak kaarten van de bijgevoegde bestanden.",
     "region": "Chatvenster met bestandssleepzone",
     "scrollToBottom": "Naar beneden scrollen"
   },

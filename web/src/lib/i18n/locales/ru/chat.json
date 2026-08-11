@@ -39,6 +39,10 @@
     "studyingPlaceholder": "Что ты изучаешь?",
     "messageInput": "Поле сообщения",
     "sendMessage": "Отправить сообщение",
+    "fileOnlyPrompt_one": "Создай карты из прикреплённого файла.",
+    "fileOnlyPrompt_few": "Создай карты из прикреплённых файлов.",
+    "fileOnlyPrompt_many": "Создай карты из прикреплённых файлов.",
+    "fileOnlyPrompt_other": "Создай карты из прикреплённых файлов.",
     "region": "Поле ввода чата с зоной перетаскивания файлов",
     "scrollToBottom": "Прокрутить вниз"
   },

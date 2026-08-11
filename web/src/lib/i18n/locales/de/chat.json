@@ -39,6 +39,8 @@
     "studyingPlaceholder": "Was lernst du gerade?",
     "messageInput": "Nachrichteneingabe",
     "sendMessage": "Nachricht senden",
+    "fileOnlyPrompt_one": "Erstelle Karten aus der angehängten Datei.",
+    "fileOnlyPrompt_other": "Erstelle Karten aus den angehängten Dateien.",
     "region": "Chat-Editor mit Datei-Ablagebereich",
     "scrollToBottom": "Nach unten scrollen"
   },

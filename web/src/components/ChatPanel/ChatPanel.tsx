@@ -779,8 +779,12 @@ export default function ChatPanel({
     );
   }
 
-  async function sendMessage(content: string) {
-    if (!content.trim() && readyChips.length === 0) return;
+  async function sendMessage(rawContent: string) {
+    if (!rawContent.trim() && readyChips.length === 0) return;
+    const content =
+      rawContent.trim().length > 0
+        ? rawContent
+        : t('composer.fileOnlyPrompt', { count: readyChips.length });
 
     const userMessage: Message = { role: 'user', content };
     const nextMessages = [...messages, userMessage];

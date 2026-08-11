@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-11-chat-file-only",
+  "date": "2026-08-11",
+  "type": "fix",
+  "title": "Chat accepts an attached file with no message"
+}

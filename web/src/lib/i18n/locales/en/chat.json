@@ -39,6 +39,8 @@
     "studyingPlaceholder": "What are you studying?",
     "messageInput": "Message input",
     "sendMessage": "Send message",
+    "fileOnlyPrompt_one": "Create flashcards from the attached file.",
+    "fileOnlyPrompt_other": "Create flashcards from the attached files.",
     "region": "Chat composer with file drop zone",
     "scrollToBottom": "Scroll to bottom"
   },

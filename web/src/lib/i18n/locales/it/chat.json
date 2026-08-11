@@ -39,6 +39,8 @@
     "studyingPlaceholder": "Cosa stai studiando?",
     "messageInput": "Campo del messaggio",
     "sendMessage": "Invia il messaggio",
+    "fileOnlyPrompt_one": "Crea carte dal file allegato.",
+    "fileOnlyPrompt_other": "Crea carte dai file allegati.",
     "region": "Editor della chat con area di rilascio file",
     "scrollToBottom": "Scorri in fondo"
   },

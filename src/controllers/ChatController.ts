@@ -66,6 +66,11 @@ function contentMatchesMime(buffer: Buffer, mimeType: string): boolean {
 const ATTACH_REJECTED_MESSAGE =
   'Files work here as PDF, image, .zip, .docx, .md, or .txt.';
 
+const FILE_ONLY_INSTRUCTION_SINGLE =
+  'Create flashcards from the attached file.';
+const FILE_ONLY_INSTRUCTION_MULTI =
+  'Create flashcards from the attached files.';
+
 function sseWrite(res: Response, event: string, data: unknown): void {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
@@ -194,12 +199,27 @@ class ChatController {
       return;
     }
 
+    const rawFiles = Array.isArray(req.files)
+      ? (req.files as Express.Multer.File[])
+      : [];
+    const validation = validateAttachments(rawFiles);
+    if (!validation.ok) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
     const rawContent = req.body?.content;
-    const content = typeof rawContent === 'string' ? rawContent.trim() : '';
+    let content = typeof rawContent === 'string' ? rawContent.trim() : '';
 
     if (content.length === 0) {
-      res.status(400).json({ error: 'content is required' });
-      return;
+      if (validation.attachments.length === 0) {
+        res.status(400).json({ error: 'content is required' });
+        return;
+      }
+      content =
+        validation.attachments.length === 1
+          ? FILE_ONLY_INSTRUCTION_SINGLE
+          : FILE_ONLY_INSTRUCTION_MULTI;
     }
 
     const owner = res.locals.owner as number;
@@ -211,15 +231,6 @@ class ChatController {
       res.status(400).json({
         error: `content must be ${MAX_CONTENT_LENGTH} characters or fewer`,
       });
-      return;
-    }
-
-    const rawFiles = Array.isArray(req.files)
-      ? (req.files as Express.Multer.File[])
-      : [];
-    const validation = validateAttachments(rawFiles);
-    if (!validation.ok) {
-      res.status(400).json({ error: validation.error });
       return;
     }
 

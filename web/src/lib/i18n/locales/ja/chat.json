@@ -39,6 +39,7 @@
     "studyingPlaceholder": "何を勉強していますか？",
     "messageInput": "メッセージ入力",
     "sendMessage": "メッセージを送信",
+    "fileOnlyPrompt_other": "添付ファイルからカードを作成してください。",
     "region": "ファイルドロップゾーン付きのチャット入力欄",
     "scrollToBottom": "一番下へスクロール"
   },
