@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 import UsersRepository from '../data_layer/UsersRepository';
 import Users from '../data_layer/public/Users';
@@ -11,6 +12,9 @@ import { isResetTokenLive } from '../lib/User/isResetTokenLive';
 const MAGIC_LINK_RATE_LIMIT = 5;
 const MAGIC_LINK_RATE_WINDOW_MS = 60 * 60 * 1000;
 const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000;
+// Shape check only — the clicked link is the real proof of ownership. This
+// exists so garbage input cannot mint an account row.
+const MAGIC_LINK_EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export class MagicLinkRateLimitError extends Error {
   constructor() {
@@ -174,13 +178,35 @@ class UsersService {
     if (this.magicTokenRepository == null) {
       return;
     }
-    const user = await this.repository.getByEmail(email);
+    let user = await this.repository.getByEmail(email);
     if (user?.id == null) {
+      // A new visitor who picks "email me a sign-in link" is signing up — the
+      // link email doubles as account creation, and clicking it both proves
+      // mailbox ownership (verifyMagicLink marks the email verified) and logs
+      // them in. Password resets stay a silent no-op: there is no account to
+      // reset, and creating one there would mask the real situation.
+      if (purpose !== 'login' || !MAGIC_LINK_EMAIL_SHAPE.test(email)) {
+        console.info('password_reset.magic_link', {
+          outcome: 'unknown_email',
+          purpose,
+        });
+        return;
+      }
+      const placeholderPassword = bcrypt.hashSync(crypto.randomUUID(), 12);
+      await this.register('', placeholderPassword, email, 'magic_link');
+      user = await this.repository.getByEmail(email.toLowerCase());
+      if (user?.id == null) {
+        console.info('password_reset.magic_link', {
+          outcome: 'signup_failed',
+          purpose,
+        });
+        return;
+      }
       console.info('password_reset.magic_link', {
-        outcome: 'unknown_email',
+        outcome: 'account_created',
         purpose,
+        user_id_hash: hashToken(String(user.id)),
       });
-      return;
     }
     const userIdHash = hashToken(String(user.id));
     const oneHourAgo = new Date(Date.now() - MAGIC_LINK_RATE_WINDOW_MS);
