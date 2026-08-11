@@ -617,7 +617,7 @@ export class ChatUseCase {
       latestAssistant?.id
     );
 
-    if (lastTurn != null && lastTurn.hadBinaryAttachments) {
+    if (lastTurn?.hadBinaryAttachments) {
       throw new ChatAttachmentsNotReplayableError();
     }
 
