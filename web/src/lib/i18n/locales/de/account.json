@@ -135,10 +135,11 @@
     "dismiss": "Schließen"
   },
   "createAccount": {
-    "aria": "Deine nächsten Stapel speichern",
-    "headline": "Behalte deine nächsten Stapel",
-    "body": "Mit einem kostenlosen Konto wird jeder Stapel, den du konvertierst, in deinem Download-Verlauf gespeichert — lade sie jederzeit erneut herunter.",
-    "cta": "Kostenloses Konto erstellen"
+    "aria": "Kostenloses Konto erstellen, um deine Stapel zu sichern",
+    "headline": "Dieser Stapel existiert nur auf diesem Gerät",
+    "body": "Du hast {{deckName}} als Gast erstellt — es gibt keine Online-Kopie, zu der du zurückkehren kannst. Mit einem kostenlosen Konto wird jeder Stapel, den du konvertierst, in deinen Downloads gespeichert — lade ihn jederzeit erneut herunter, von jedem Gerät.",
+    "bodyNoName": "Du hast diesen Stapel als Gast erstellt — es gibt keine Online-Kopie, zu der du zurückkehren kannst. Mit einem kostenlosen Konto wird jeder Stapel, den du konvertierst, in deinen Downloads gespeichert — lade ihn jederzeit erneut herunter, von jedem Gerät.",
+    "cta": "Stapel sichern — kostenlos"
   },
   "accessBanner": {
     "active": "{{passLabel}} aktiv — läuft am {{date}} ab. Konvertiere so viel du willst.",

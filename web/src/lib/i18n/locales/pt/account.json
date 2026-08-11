@@ -135,10 +135,11 @@
     "dismiss": "Dispensar"
   },
   "createAccount": {
-    "aria": "Salve seus próximos baralhos",
-    "headline": "Guarde seus próximos baralhos",
-    "body": "Com uma conta grátis, cada baralho que você converte é salvo no seu histórico de downloads — baixe qualquer um deles de novo depois.",
-    "cta": "Criar uma conta grátis"
+    "aria": "Crie uma conta grátis para guardar seus baralhos",
+    "headline": "Este baralho só existe neste dispositivo",
+    "body": "Você criou {{deckName}} como convidado, então não há uma cópia online para voltar depois. Com uma conta grátis, cada baralho que você converte é salvo nos seus downloads — baixe qualquer um deles de novo, de qualquer dispositivo.",
+    "bodyNoName": "Você criou este baralho como convidado, então não há uma cópia online para voltar depois. Com uma conta grátis, cada baralho que você converte é salvo nos seus downloads — baixe qualquer um deles de novo, de qualquer dispositivo.",
+    "cta": "Salve seus baralhos — grátis"
   },
   "accessBanner": {
     "active": "{{passLabel}} ativo — expira {{date}}. Converta o quanto quiser.",

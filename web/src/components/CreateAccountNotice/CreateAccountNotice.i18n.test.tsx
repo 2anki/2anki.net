@@ -21,10 +21,10 @@ describe('CreateAccountNotice in German', () => {
       </MemoryRouter>
     );
     expect(
-      screen.getByText('Behalte deine nächsten Stapel')
+      screen.getByText('Dieser Stapel existiert nur auf diesem Gerät')
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Kostenloses Konto erstellen' })
+      screen.getByRole('link', { name: 'Stapel sichern — kostenlos' })
     ).toBeInTheDocument();
   });
 });
