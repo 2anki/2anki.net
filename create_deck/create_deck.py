@@ -293,7 +293,7 @@ def run_batch(manifest_path, template_dir):
                     sys.stdout.write(apkg_path + "\n")
                 except UnicodeEncodeError:
                     sys.stdout.buffer.write((apkg_path + "\n").encode("utf-8"))
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             print(
                 f"Failed to build deck from {input_path}: {exc}",
                 file=sys.stderr,
