@@ -64,6 +64,7 @@
     "send": "Kon dit bericht niet versturen. Probeer het opnieuw.",
     "conversationGone": "Dit gesprek is weg. Begin een nieuw gesprek.",
     "rebuild": "Kon je kaarten niet opnieuw maken. Probeer het opnieuw.",
+    "regenerateAttachments": "Bij opnieuw genereren kunnen bijgevoegde bestanden niet worden hergebruikt. Voeg het bestand opnieuw toe en stuur een nieuw bericht.",
     "addTags": "Kon geen tags toevoegen. Probeer het opnieuw.",
     "deckGenerate": "Kon het deck niet genereren. Probeer het opnieuw."
   },

@@ -3,6 +3,7 @@ import ChatController from './ChatController';
 import {
   ChatRateLimitError,
   ChatConversationNotFoundError,
+  ChatAttachmentsNotReplayableError,
   McqExtractionFailedError,
 } from '../usecases/chat/ChatUseCase';
 
@@ -644,6 +645,24 @@ describe('ChatController.sendMessage — file-only messages', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       error: expect.stringContaining('10 MB'),
+    });
+  });
+});
+
+describe('ChatController.regenerateMessage — attachments not replayable', () => {
+  it('emits an attachments_not_replayable SSE error when the use case refuses', async () => {
+    const { regenerate, controller, res } = buildMocks();
+    regenerate.mockRejectedValueOnce(new ChatAttachmentsNotReplayableError());
+
+    await controller.regenerateMessage(
+      buildReqWithParams({}, { id: '7' }),
+      res
+    );
+
+    const events = writtenEvents(res);
+    expect(events).toContainEqual({
+      event: 'error',
+      data: { type: 'attachments_not_replayable' },
     });
   });
 });

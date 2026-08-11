@@ -3,6 +3,7 @@ import {
   ChatUseCase,
   ChatRateLimitError,
   ChatConversationNotFoundError,
+  ChatAttachmentsNotReplayableError,
   McqExtractionFailedError,
   extractCards,
 } from './ChatUseCase';
@@ -1599,5 +1600,112 @@ describe('ChatUseCase', () => {
       expect(caughtError).not.toBeNull();
       expect(caughtError?.resetDate).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
+  });
+});
+
+describe('regenerate with attachments', () => {
+  async function seedTurn(
+    messagesRepo: InMemoryChatMessagesRepository,
+    conversationsRepo: InMemoryConversationsRepository,
+    userTurn: {
+      content: string;
+      attachmentText?: string | null;
+      hadBinaryAttachments?: boolean;
+    }
+  ) {
+    const conversationId = await conversationsRepo.create({
+      userId: PATREON_USER.owner,
+      title: 'Seeded',
+    });
+    const turns = [
+      { role: 'user' as const, ...userTurn },
+      { role: 'assistant' as const, content: 'old assistant reply' },
+    ];
+    for (const turn of turns) {
+      await messagesRepo.insert({
+        userId: PATREON_USER.owner,
+        conversationId,
+        ...turn,
+      });
+      conversationsRepo.recordMessage({
+        userId: PATREON_USER.owner,
+        conversationId,
+        ...turn,
+      });
+    }
+    return conversationId;
+  }
+
+  it('refuses to regenerate a turn that carried a binary attachment', async () => {
+    const { messagesRepo, conversationsRepo, useCase } = buildUseCase('fresh');
+    const conversationId = await seedTurn(messagesRepo, conversationsRepo, {
+      content: 'Create flashcards from the attached file.',
+      hadBinaryAttachments: true,
+    });
+
+    await expect(
+      useCase.regenerate({ user: PATREON_USER, conversationId })
+    ).rejects.toBeInstanceOf(ChatAttachmentsNotReplayableError);
+
+    const assistantContents = messagesRepo
+      .getAll()
+      .filter((r) => r.role === 'assistant')
+      .map((r) => r.content);
+    expect(assistantContents).toEqual(['old assistant reply']);
+  });
+
+  it('folds stored attachment text into the replayed turn', async () => {
+    const { messagesRepo, conversationsRepo, anthropic, useCase } =
+      buildUseCase('fresh');
+    const conversationId = await seedTurn(messagesRepo, conversationsRepo, {
+      content: 'Make cards from my notes',
+      attachmentText: '<file name="notes.md">Mitochondria are…</file>',
+    });
+
+    await useCase.regenerate({ user: PATREON_USER, conversationId });
+
+    const callArg = anthropic.messages.stream.mock.calls[0][0];
+    const lastMessage = callArg.messages[callArg.messages.length - 1];
+    expect(lastMessage.role).toBe('user');
+    expect(lastMessage.content).toContain('Mitochondria are…');
+    expect(lastMessage.content).toContain('Make cards from my notes');
+  });
+
+  it('marks the user turn when a binary attachment is sent', async () => {
+    const { messagesRepo, useCase } = buildUseCase('ok');
+    await useCase.execute({
+      user: PATREON_USER,
+      content: 'make cards',
+      conversationHistory: [],
+      attachments: [
+        {
+          mimeType: 'application/pdf',
+          data: Buffer.from('%PDF-1.4'),
+          fileName: 'notes.pdf',
+        },
+      ],
+    });
+
+    const userRow = messagesRepo.getAll().find((r) => r.role === 'user');
+    expect(userRow?.had_binary_attachments).toBe(true);
+  });
+
+  it('does not mark a text attachment as binary', async () => {
+    const { messagesRepo, useCase } = buildUseCase('ok');
+    await useCase.execute({
+      user: PATREON_USER,
+      content: 'make cards',
+      conversationHistory: [],
+      attachments: [
+        {
+          mimeType: 'text/markdown',
+          data: Buffer.from('# Notes\nMitochondria'),
+          fileName: 'notes.md',
+        },
+      ],
+    });
+
+    const userRow = messagesRepo.getAll().find((r) => r.role === 'user');
+    expect(userRow?.had_binary_attachments).toBe(false);
   });
 });

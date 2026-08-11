@@ -64,6 +64,7 @@
     "send": "Non siamo riusciti a inviare questo messaggio. Riprova.",
     "conversationGone": "Questa conversazione non c'è più. Iniziane una nuova.",
     "rebuild": "Non siamo riusciti a ricreare le tue carte. Riprova.",
+    "regenerateAttachments": "La rigenerazione non può riutilizzare i file allegati. Allega di nuovo il file e invia un nuovo messaggio.",
     "addTags": "Non siamo riusciti ad aggiungere i tag. Riprova.",
     "deckGenerate": "Non siamo riusciti a generare il mazzo. Riprova."
   },

@@ -28,6 +28,8 @@ export interface ConversationWithMessages {
     id: number;
     role: 'user' | 'assistant';
     content: string;
+    attachmentText: string | null;
+    hadBinaryAttachments: boolean;
     created_at: Date;
   }>;
 }
@@ -97,7 +99,7 @@ export class ConversationsRepository implements IConversationsRepository {
       .first<ConversationRow | undefined>();
     if (conv == null) return null;
 
-    const messages = await this.database('chat_messages')
+    const rows = await this.database('chat_messages')
       .where({ conversation_id: input.conversationId, user_id: input.userId })
       .orderBy('created_at', 'asc')
       .select<
@@ -105,9 +107,18 @@ export class ConversationsRepository implements IConversationsRepository {
           id: number;
           role: 'user' | 'assistant';
           content: string;
+          attachment_text: string | null;
+          had_binary_attachments: boolean;
           created_at: Date;
         }[]
-      >('id', 'role', 'content', 'created_at');
+      >(
+        'id',
+        'role',
+        'content',
+        'attachment_text',
+        'had_binary_attachments',
+        'created_at'
+      );
 
     return {
       id: conv.id,
@@ -116,7 +127,14 @@ export class ConversationsRepository implements IConversationsRepository {
       templateSlug: conv.template_slug ?? null,
       created_at: conv.created_at,
       updated_at: conv.updated_at,
-      messages,
+      messages: rows.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        attachmentText: m.attachment_text,
+        hadBinaryAttachments: m.had_binary_attachments,
+        created_at: m.created_at,
+      })),
     };
   }
 
@@ -192,6 +210,8 @@ export class InMemoryConversationsRepository implements IConversationsRepository
     conversation_id: number | null;
     role: 'user' | 'assistant';
     content: string;
+    attachment_text: string | null;
+    had_binary_attachments: boolean;
     created_at: Date;
   }> = [];
   private nextId = 1;
@@ -245,6 +265,8 @@ export class InMemoryConversationsRepository implements IConversationsRepository
         id: m.id,
         role: m.role,
         content: m.content,
+        attachmentText: m.attachment_text,
+        hadBinaryAttachments: m.had_binary_attachments,
         created_at: m.created_at,
       }));
     return {
@@ -351,6 +373,8 @@ export class InMemoryConversationsRepository implements IConversationsRepository
     conversationId: number | null;
     role: 'user' | 'assistant';
     content: string;
+    attachmentText?: string | null;
+    hadBinaryAttachments?: boolean;
   }): void {
     this.messages.push({
       id: this.nextMessageId++,
@@ -358,6 +382,8 @@ export class InMemoryConversationsRepository implements IConversationsRepository
       conversation_id: entry.conversationId,
       role: entry.role,
       content: entry.content,
+      attachment_text: entry.attachmentText ?? null,
+      had_binary_attachments: entry.hadBinaryAttachments ?? false,
       created_at: new Date(),
     });
   }

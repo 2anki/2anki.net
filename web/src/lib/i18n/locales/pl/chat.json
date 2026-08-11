@@ -66,6 +66,7 @@
     "send": "Nie udało się wysłać tej wiadomości. Spróbuj ponownie.",
     "conversationGone": "Ta rozmowa zniknęła. Zacznij nową.",
     "rebuild": "Nie udało się przebudować Twoich kart. Spróbuj ponownie.",
+    "regenerateAttachments": "Ponowne generowanie nie może użyć załączonych plików. Załącz plik ponownie i wyślij nową wiadomość.",
     "addTags": "Nie udało się dodać tagów. Spróbuj ponownie.",
     "deckGenerate": "Nie udało się wygenerować talii. Spróbuj ponownie."
   },

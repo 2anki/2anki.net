@@ -1272,3 +1272,41 @@ describe('ChatPanel — file-only send', () => {
     });
   });
 });
+
+describe('ChatPanel — regenerate with attachments', () => {
+  beforeEach(() => {
+    mockPost.mockReset();
+    mockGet.mockResolvedValue({ used: 0, limit: 20 });
+  });
+
+  it('explains that attached files cannot be reused when regenerate refuses', async () => {
+    mockPost.mockResolvedValueOnce(
+      makeSseResponse([
+        { event: 'error', data: { type: 'attachments_not_replayable' } },
+      ])
+    );
+    renderChatPanel({
+      initialMessages: [
+        { role: 'user', content: 'Create flashcards from the attached file.' },
+        {
+          role: 'assistant',
+          content: 'Reply',
+          cards: [{ front: 'Capital?', back: 'Oslo' }],
+        },
+      ],
+      initialTemplateSlug: 'basic',
+      initialConversationId: 7,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Note type: Basic' }));
+    fireEvent.click(
+      screen.getByRole('option', { name: /Cloze/ }).querySelector('button')!
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Regenerate can't reuse attached files. Re-attach the file and send a new message."
+        )
+      ).toBeInTheDocument();
+    });
+  });
+});

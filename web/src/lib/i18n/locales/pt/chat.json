@@ -64,6 +64,7 @@
     "send": "Não foi possível enviar esta mensagem. Tente de novo.",
     "conversationGone": "Esta conversa não existe mais. Comece uma nova.",
     "rebuild": "Não foi possível refazer seus cartões. Tente de novo.",
+    "regenerateAttachments": "A regeneração não pode reutilizar arquivos anexados. Anexe o arquivo novamente e envie uma nova mensagem.",
     "addTags": "Não foi possível adicionar as tags. Tente de novo.",
     "deckGenerate": "Não foi possível gerar o baralho. Tente de novo."
   },

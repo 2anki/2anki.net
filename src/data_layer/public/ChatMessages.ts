@@ -22,6 +22,8 @@ export default interface ChatMessages {
   conversation_id: ConversationsId | null;
 
   attachment_text: string | null;
+
+  had_binary_attachments: boolean;
 }
 
 /** Represents the initializer for the table public.chat_messages */
@@ -41,6 +43,9 @@ export interface ChatMessagesInitializer {
   conversation_id?: ConversationsId | null;
 
   attachment_text?: string | null;
+
+  /** Default value: false */
+  had_binary_attachments?: boolean;
 }
 
 /** Represents the mutator for the table public.chat_messages */
@@ -58,4 +63,6 @@ export interface ChatMessagesMutator {
   conversation_id?: ConversationsId | null;
 
   attachment_text?: string | null;
+
+  had_binary_attachments?: boolean;
 }
