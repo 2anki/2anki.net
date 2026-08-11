@@ -951,9 +951,11 @@ function UploadForm({
           {mcqDrawerOpen && renderMcqDrawer()}
         </>
       )}
-      <p className={formStyles.successSecondary} data-hj-suppress>
-        {t('upload.form.savedToDownloads', { deckName })}
-      </p>
+      {successOffer !== 'anon_signup' && (
+        <p className={formStyles.successSecondary} data-hj-suppress>
+          {t('upload.form.savedToDownloads', { deckName })}
+        </p>
+      )}
       {warningMessage && (
         <p className={formStyles.warningInline}>{warningMessage}</p>
       )}
@@ -990,7 +992,9 @@ function UploadForm({
           {t('upload.form.fallbackDownload')}
         </button>
       )}
-      {successOffer === 'anon_signup' && <CreateAccountNotice />}
+      {successOffer === 'anon_signup' && (
+        <CreateAccountNotice deckName={deckName} />
+      )}
       {successOffer === 'upsell' && (
         <UpsellCard surface="upload_success_upsell" hideForAnonymous />
       )}

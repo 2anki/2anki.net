@@ -135,10 +135,11 @@
     "dismiss": "Sluiten"
   },
   "createAccount": {
-    "aria": "Bewaar je volgende decks",
-    "headline": "Bewaar je volgende decks",
-    "body": "Met een gratis account wordt elk deck dat je omzet opgeslagen in je downloadgeschiedenis — download ze later opnieuw.",
-    "cta": "Maak een gratis account"
+    "aria": "Maak een gratis account om je decks te bewaren",
+    "headline": "Dit deck bestaat alleen op dit apparaat",
+    "body": "Je hebt {{deckName}} als gast gemaakt, dus er is geen online kopie om naar terug te keren. Met een gratis account wordt elk deck dat je omzet opgeslagen in je downloads — download ze later opnieuw, vanaf elk apparaat.",
+    "bodyNoName": "Je hebt dit deck als gast gemaakt, dus er is geen online kopie om naar terug te keren. Met een gratis account wordt elk deck dat je omzet opgeslagen in je downloads — download ze later opnieuw, vanaf elk apparaat.",
+    "cta": "Bewaar je decks — gratis"
   },
   "accessBanner": {
     "active": "{{passLabel}} actief — verloopt {{date}}. Converteer zoveel je wilt.",

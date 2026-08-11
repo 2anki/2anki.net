@@ -29,8 +29,8 @@
   padding: 0.5rem 1rem;
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: var(--color-primary);
-  background: transparent;
+  color: var(--color-bg-primary);
+  background: var(--color-primary);
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-full);
   cursor: pointer;
@@ -39,7 +39,8 @@
 }
 
 .cta:hover {
-  background: var(--color-bg-primary);
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 
 @media (max-width: 600px) {

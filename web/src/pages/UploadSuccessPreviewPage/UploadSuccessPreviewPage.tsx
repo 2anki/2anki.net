@@ -35,7 +35,10 @@ export default function UploadSuccessPreviewPage() {
           resolveSuccessOffer: anonymous → account offer, logged-in free → pass
           upsell, paying → nothing.
         </p>
-        <Variant title="Anonymous — account offer">
+        <Variant title="Anonymous — account offer (named deck)">
+          <CreateAccountNotice deckName="Pharmacology Week 3" />
+        </Variant>
+        <Variant title="Anonymous — account offer (untitled deck)">
           <CreateAccountNotice />
         </Variant>
         <Variant title="Logged-in free — pass upsell">

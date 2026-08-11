@@ -135,10 +135,11 @@
     "dismiss": "Descartar"
   },
   "createAccount": {
-    "aria": "Guarda tus próximos mazos",
-    "headline": "Conserva tus próximos mazos",
-    "body": "Con una cuenta gratuita, cada mazo que conviertes se guarda en tu historial de descargas — vuelve a descargar cualquiera de ellos más tarde.",
-    "cta": "Crear una cuenta gratuita"
+    "aria": "Crea una cuenta gratuita para guardar tus mazos",
+    "headline": "Este mazo solo existe en este dispositivo",
+    "body": "Creaste {{deckName}} como invitado, así que no hay una copia en línea a la que volver. Con una cuenta gratuita, cada mazo que conviertes se guarda en tus descargas — vuelve a descargarlo cuando quieras, desde cualquier dispositivo.",
+    "bodyNoName": "Creaste este mazo como invitado, así que no hay una copia en línea a la que volver. Con una cuenta gratuita, cada mazo que conviertes se guarda en tus descargas — vuelve a descargarlo cuando quieras, desde cualquier dispositivo.",
+    "cta": "Guarda tus mazos — gratis"
   },
   "accessBanner": {
     "active": "{{passLabel}} activo — caduca el {{date}}. Convierte todo lo que quieras.",

@@ -135,10 +135,11 @@
     "dismiss": "Chiudi"
   },
   "createAccount": {
-    "aria": "Salva i tuoi prossimi mazzi",
-    "headline": "Conserva i tuoi prossimi mazzi",
-    "body": "Con un account gratuito, ogni mazzo che converti viene salvato nella cronologia dei tuoi download — riscaricali quando vuoi.",
-    "cta": "Crea un account gratuito"
+    "aria": "Crea un account gratuito per salvare i tuoi mazzi",
+    "headline": "Questo mazzo esiste solo su questo dispositivo",
+    "body": "Hai creato {{deckName}} come ospite, quindi non c'è una copia online a cui tornare. Con un account gratuito, ogni mazzo che converti viene salvato nei tuoi download — riscaricalo quando vuoi, da qualsiasi dispositivo.",
+    "bodyNoName": "Hai creato questo mazzo come ospite, quindi non c'è una copia online a cui tornare. Con un account gratuito, ogni mazzo che converti viene salvato nei tuoi download — riscaricalo quando vuoi, da qualsiasi dispositivo.",
+    "cta": "Salva i tuoi mazzi — gratis"
   },
   "accessBanner": {
     "active": "{{passLabel}} attivo — scade {{date}}. Converti quanto vuoi.",

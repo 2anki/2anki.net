@@ -7,7 +7,11 @@ import styles from './CreateAccountNotice.module.css';
 
 const SURFACE = 'upload_success_signup';
 
-export function CreateAccountNotice() {
+interface CreateAccountNoticeProps {
+  readonly deckName?: string;
+}
+
+export function CreateAccountNotice({ deckName }: CreateAccountNoticeProps) {
   const { t } = useTranslation('account');
   const shownFiredRef = useRef(false);
 
@@ -17,10 +21,16 @@ export function CreateAccountNotice() {
     track('account_offer_shown', { surface: SURFACE });
   }, []);
 
+  const hasDeckName = deckName != null && deckName.length > 0;
+
   return (
     <section className={styles.card} aria-label={t('createAccount.aria')}>
       <p className={styles.headline}>{t('createAccount.headline')}</p>
-      <p className={styles.body}>{t('createAccount.body')}</p>
+      <p className={styles.body} data-hj-suppress>
+        {hasDeckName
+          ? t('createAccount.body', { deckName })
+          : t('createAccount.bodyNoName')}
+      </p>
       <Link
         className={styles.cta}
         to="/register?redirect=/upload"

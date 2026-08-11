@@ -135,10 +135,11 @@
     "dismiss": "Ignorer"
   },
   "createAccount": {
-    "aria": "Enregistre tes prochains paquets",
-    "headline": "Garde tes prochains paquets",
-    "body": "Avec un compte gratuit, chaque paquet que tu convertis est enregistré dans ton historique de téléchargements — re-télécharge-le quand tu veux.",
-    "cta": "Créer un compte gratuit"
+    "aria": "Crée un compte gratuit pour garder tes paquets",
+    "headline": "Ce paquet n'existe que sur cet appareil",
+    "body": "Tu as créé {{deckName}} en tant qu'invité : il n'existe aucune copie en ligne à retrouver. Avec un compte gratuit, chaque paquet que tu convertis est enregistré dans tes téléchargements — re-télécharge-le quand tu veux, depuis n'importe quel appareil.",
+    "bodyNoName": "Tu as créé ce paquet en tant qu'invité : il n'existe aucune copie en ligne à retrouver. Avec un compte gratuit, chaque paquet que tu convertis est enregistré dans tes téléchargements — re-télécharge-le quand tu veux, depuis n'importe quel appareil.",
+    "cta": "Garde tes paquets — gratuit"
   },
   "accessBanner": {
     "active": "{{passLabel}} actif — expire le {{date}}. Convertis autant que tu veux.",
