@@ -41,14 +41,14 @@ describe('ReturnRateMetricsService — generated SQL', () => {
     );
   });
 
-  it('builds the returns query finding each identity/source next conversion', () => {
+  it('builds the returns query as a single scan with a LEAD window, never a correlated subquery', () => {
     expect(normalizeCutoff(service.buildReturnsQuery(NOW).toString())).toBe(
       "select COALESCE(e1.user_id::text, e1.anonymous_id) as owner, COALESCE(e1.props->>'source', 'unknown') as source_type, " +
         '"e1"."created_at" as "anchor_at", ' +
-        '(SELECT MIN(e2.created_at) FROM events e2 ' +
-        'WHERE COALESCE(e2.user_id::text, e2.anonymous_id) = COALESCE(e1.user_id::text, e1.anonymous_id) ' +
-        "AND COALESCE(e2.props->>'source', 'unknown') = COALESCE(e1.props->>'source', 'unknown') " +
-        "AND e2.name = 'conversion_succeeded' AND e2.created_at > e1.created_at) as first_return_at " +
+        'LEAD(e1.created_at) OVER (' +
+        'PARTITION BY COALESCE(e1.user_id::text, e1.anonymous_id), ' +
+        "COALESCE(e1.props->>'source', 'unknown') " +
+        'ORDER BY e1.created_at) as first_return_at ' +
         'from "events" as "e1" ' +
         'where "e1"."name" = \'conversion_succeeded\' and "e1"."created_at" >= \'<CUTOFF>\' ' +
         'and COALESCE(e1.user_id::text, e1.anonymous_id) IS NOT NULL'
@@ -160,7 +160,7 @@ describe('computeReturnRates — return-rate windows', () => {
 });
 
 describe('ReturnRateMetricsService — graceful failure', () => {
-  it('returns null windows when the query throws', async () => {
+  it('returns null windows and surfaces the error when the query throws', async () => {
     const failing = { raw: jest.fn() } as unknown as Knex;
     const service = new ReturnRateMetricsService(failing);
 
@@ -170,5 +170,7 @@ describe('ReturnRateMetricsService — graceful failure', () => {
     expect(result.overall['7d']).toBeNull();
     expect(result.overall['14d']).toBeNull();
     expect(result.overall['30d']).toBeNull();
+    expect(typeof result.error).toBe('string');
+    expect((result.error ?? '').length).toBeGreaterThan(0);
   });
 });

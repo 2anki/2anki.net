@@ -21,12 +21,18 @@ export interface ReturnRateMetricsResponse {
   overall: ReturnRateWindow;
   by_source_type: ReturnRateBySourceType[] | null;
   as_of: string;
+  error?: string;
 }
 
 const CONVERSION_EVENT = 'conversion_succeeded';
 const SECONDS_PER_DAY = 24 * 60 * 60;
 const LOOKBACK_DAYS = 90;
 const UNKNOWN_SOURCE = 'unknown';
+
+// The ops page auto-refreshes; a query that outlives the refresh interval
+// stacks concurrent copies until the pool starves (#4049 — eight 4-minute
+// copies observed live). Cancel server-side rather than letting them pile up.
+const QUERY_TIMEOUT_MS = 30_000;
 
 export interface CohortMember {
   owner: string;
@@ -139,11 +145,12 @@ export class ReturnRateMetricsService {
         this.fetchCohort(now),
         this.fetchReturns(now),
       ]);
-    } catch {
+    } catch (err) {
       return {
         overall: { '7d': null, '14d': null, '30d': null },
         by_source_type: null,
         as_of,
+        error: err instanceof Error ? err.message : String(err),
       };
     }
 
@@ -194,25 +201,25 @@ export class ReturnRateMetricsService {
         ]),
         'e1.created_at as anchor_at',
         this.database.raw(
-          '(SELECT MIN(e2.created_at) FROM events e2' +
-            ' WHERE COALESCE(e2.user_id::text, e2.anonymous_id) =' +
-            ' COALESCE(e1.user_id::text, e1.anonymous_id)' +
-            " AND COALESCE(e2.props->>'source', ?) =" +
-            " COALESCE(e1.props->>'source', ?)" +
-            ' AND e2.name = ?' +
-            ' AND e2.created_at > e1.created_at' +
-            ') as first_return_at',
-          [UNKNOWN_SOURCE, UNKNOWN_SOURCE, CONVERSION_EVENT]
+          'LEAD(e1.created_at) OVER (' +
+            'PARTITION BY COALESCE(e1.user_id::text, e1.anonymous_id), ' +
+            "COALESCE(e1.props->>'source', ?) " +
+            'ORDER BY e1.created_at) as first_return_at',
+          [UNKNOWN_SOURCE]
         )
       );
   }
 
   private fetchCohort(now: Date): Promise<CohortMember[]> {
-    return this.buildCohortQuery(now) as Promise<CohortMember[]>;
+    return this.buildCohortQuery(now).timeout(QUERY_TIMEOUT_MS, {
+      cancel: true,
+    }) as Promise<CohortMember[]>;
   }
 
   private async fetchReturns(now: Date): Promise<ReturnRecord[]> {
-    const rows = (await this.buildReturnsQuery(now)) as Array<{
+    const rows = (await this.buildReturnsQuery(now).timeout(QUERY_TIMEOUT_MS, {
+      cancel: true,
+    })) as Array<{
       owner: string;
       source_type: string;
       anchor_at: string;
