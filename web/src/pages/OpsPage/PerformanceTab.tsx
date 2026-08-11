@@ -176,7 +176,10 @@ const renderSlowestJobs = (
   );
 };
 
-const renderCountries = (rows: SignupCountryBreakdownItem[]) => {
+const renderCountries = (
+  rows: SignupCountryBreakdownItem[],
+  othersCount: number
+) => {
   if (rows.length === 0) {
     return (
       <p className={styles.emptyHint}>
@@ -205,6 +208,15 @@ const renderCountries = (rows: SignupCountryBreakdownItem[]) => {
           </li>
         );
       })}
+      {othersCount > 0 && (
+        <li className={styles.statusRow}>
+          <span className={`${styles.statusLabel} ${styles.numericMuted}`}>
+            +{othersCount} others
+          </span>
+          <span className={styles.statusBarWrap} />
+          <span className={styles.numericMuted}>—</span>
+        </li>
+      )}
     </ul>
   );
 };
@@ -284,8 +296,13 @@ export default function PerformanceTab() {
           isLoading={isInitial}
           isEmpty={(data?.signup_countries_7d.length ?? 0) === 0}
           emptyText="No countries captured yet."
+          autoHeight
         >
-          {data != null && renderCountries(data.signup_countries_7d)}
+          {data != null &&
+            renderCountries(
+              data.signup_countries_7d,
+              data.signup_countries_7d_others ?? 0
+            )}
         </ChartPanel>
       </div>
     </>

@@ -36,8 +36,25 @@ export interface PerformanceMetricsResponse {
   status_breakdown_24h: JobStatusBreakdown[];
   slowest_jobs_24h: SlowJob[];
   signup_countries_7d: SignupCountryBreakdownItem[];
+  signup_countries_7d_others: number;
   user_visible_errors_24h: ErrorSurfaceCount[];
   user_visible_errors_7d: ErrorSurfaceCount[];
+}
+
+// Mirrors SIGNUP_COUNTRIES_LIMIT on the Business tab: the panel shows the top
+// countries and folds the tail into one "+N others" row instead of overflowing
+// its card (#4050).
+export const SIGNUP_COUNTRIES_PANEL_LIMIT = 10;
+
+export function capSignupCountries(rows: SignupCountryBreakdownItem[]): {
+  top: SignupCountryBreakdownItem[];
+  others: number;
+} {
+  const top = rows.slice(0, SIGNUP_COUNTRIES_PANEL_LIMIT);
+  const others = rows
+    .slice(SIGNUP_COUNTRIES_PANEL_LIMIT)
+    .reduce((sum, row) => sum + row.count, 0);
+  return { top, others };
 }
 
 const TERMINAL_STATUSES = ['done', 'failed', 'cancelled', 'interrupted'];
@@ -74,7 +91,8 @@ export class PerformanceMetricsService {
       ],
       status_breakdown_24h: statuses,
       slowest_jobs_24h: slowest,
-      signup_countries_7d: countries,
+      signup_countries_7d: countries.top,
+      signup_countries_7d_others: countries.others,
       user_visible_errors_24h: errors24h,
       user_visible_errors_7d: errors7d,
     };
@@ -172,9 +190,10 @@ export class PerformanceMetricsService {
     }));
   }
 
-  private async getSignupCountries(
-    sinceDays: number
-  ): Promise<SignupCountryBreakdownItem[]> {
+  private async getSignupCountries(sinceDays: number): Promise<{
+    top: SignupCountryBreakdownItem[];
+    others: number;
+  }> {
     const rows = (await this.db('users')
       .whereNotNull('signup_country')
       .where(
@@ -186,9 +205,11 @@ export class PerformanceMetricsService {
       .count<{ signup_country: string; count: string }[]>('* as count')
       .groupBy('signup_country')
       .orderBy('count', 'desc')) as { signup_country: string; count: string }[];
-    return rows.map((row) => ({
-      country: row.signup_country,
-      count: Number(row.count),
-    }));
+    return capSignupCountries(
+      rows.map((row) => ({
+        country: row.signup_country,
+        count: Number(row.count),
+      }))
+    );
   }
 }
