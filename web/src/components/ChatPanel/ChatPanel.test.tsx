@@ -1309,6 +1309,9 @@ describe('ChatPanel — regenerate with attachments', () => {
         )
       ).toBeInTheDocument();
     });
+  });
+});
+
 describe('ChatPanel — typed note type requests', () => {
   beforeEach(() => {
     mockPost.mockReset();

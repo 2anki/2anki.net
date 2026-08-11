@@ -1711,6 +1711,9 @@ describe('regenerate with attachments', () => {
 
     const userRow = messagesRepo.getAll().find((r) => r.role === 'user');
     expect(userRow?.had_binary_attachments).toBe(false);
+  });
+});
+
 describe('typed format requests override the template default', () => {
   const MCQ_JSON =
     '```json\n[{"front": "Capital of Norway?", "options": ["Bergen", "Oslo", "Trondheim", "Stavanger"], "correct_index": 1}]\n```';
