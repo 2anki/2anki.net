@@ -30,4 +30,5 @@ export interface PerformanceMetricsResponse {
   status_breakdown_24h: JobStatusBreakdown[];
   slowest_jobs_24h: SlowJob[];
   signup_countries_7d: SignupCountryBreakdownItem[];
+  signup_countries_7d_others?: number;
 }

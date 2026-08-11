@@ -1,4 +1,8 @@
-import { PerformanceMetricsService } from './PerformanceMetricsService';
+import {
+  PerformanceMetricsService,
+  capSignupCountries,
+  SIGNUP_COUNTRIES_PANEL_LIMIT,
+} from './PerformanceMetricsService';
 import { InMemoryUserVisibleErrorsRepository } from '../../data_layer/UserVisibleErrorsRepository';
 import type { IUserVisibleErrorsRepository } from '../../data_layer/UserVisibleErrorsRepository';
 
@@ -10,6 +14,35 @@ function buildMockDb() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
+
+describe('capSignupCountries', () => {
+  const row = (country: string, count: number) => ({ country, count });
+
+  it('caps the list at the panel limit and sums the remainder into others', () => {
+    const rows = Array.from({ length: 14 }, (_, i) =>
+      row(`C${i.toString().padStart(2, '0')}`, 100 - i)
+    );
+
+    const { top, others } = capSignupCountries(rows);
+
+    expect(top).toHaveLength(SIGNUP_COUNTRIES_PANEL_LIMIT);
+    expect(top[0]).toEqual(row('C00', 100));
+    expect(others).toBe(
+      rows
+        .slice(SIGNUP_COUNTRIES_PANEL_LIMIT)
+        .reduce((sum, r) => sum + r.count, 0)
+    );
+  });
+
+  it('returns everything with zero others when under the limit', () => {
+    const rows = [row('DE', 5), row('US', 3)];
+
+    const { top, others } = capSignupCountries(rows);
+
+    expect(top).toEqual(rows);
+    expect(others).toBe(0);
+  });
+});
 
 describe('PerformanceMetricsService.getUserVisibleErrorCounts', () => {
   it('returns empty array when no repository is provided', async () => {
