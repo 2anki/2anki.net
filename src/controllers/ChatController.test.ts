@@ -586,3 +586,64 @@ describe('ChatController.regenerateMessage', () => {
     });
   });
 });
+
+describe('ChatController.sendMessage — file-only messages', () => {
+  it('accepts a file with no text and substitutes the default instruction', async () => {
+    const { execute, controller, res } = buildMocks();
+    execute.mockResolvedValueOnce({ content: 'ok', conversationId: 1 });
+
+    await controller.sendMessage(buildReq({ content: '' }, [makeFile()]), res);
+
+    expect(res.status).not.toHaveBeenCalledWith(400);
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'Create flashcards from the attached file.',
+        attachments: [expect.objectContaining({ mimeType: 'application/pdf' })],
+      })
+    );
+  });
+
+  it('substitutes the plural instruction when several files are attached', async () => {
+    const { execute, controller, res } = buildMocks();
+    execute.mockResolvedValueOnce({ content: 'ok', conversationId: 1 });
+
+    await controller.sendMessage(
+      buildReq({ content: '' }, [makeFile(), makeFile()]),
+      res
+    );
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'Create flashcards from the attached files.',
+      })
+    );
+  });
+
+  it('treats whitespace-only content with a file as file-only', async () => {
+    const { execute, controller, res } = buildMocks();
+    execute.mockResolvedValueOnce({ content: 'ok', conversationId: 1 });
+
+    await controller.sendMessage(
+      buildReq({ content: '   ' }, [makeFile()]),
+      res
+    );
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'Create flashcards from the attached file.',
+      })
+    );
+  });
+
+  it('reports the attachment problem, not missing content, when the only file is invalid', async () => {
+    const { controller, res } = buildMocks();
+    const bigFile = makeFile({ size: 11 * 1024 * 1024 });
+
+    await controller.sendMessage(buildReq({ content: '' }, [bigFile]), res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: expect.stringContaining('10 MB'),
+    });
+  });
+});

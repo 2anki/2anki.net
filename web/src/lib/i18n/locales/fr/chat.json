@@ -39,6 +39,8 @@
     "studyingPlaceholder": "Qu'est-ce que tu étudies ?",
     "messageInput": "Saisie du message",
     "sendMessage": "Envoyer le message",
+    "fileOnlyPrompt_one": "Crée des cartes à partir du fichier joint.",
+    "fileOnlyPrompt_other": "Crée des cartes à partir des fichiers joints.",
     "region": "Rédacteur de conversation avec zone de dépôt de fichiers",
     "scrollToBottom": "Aller en bas"
   },

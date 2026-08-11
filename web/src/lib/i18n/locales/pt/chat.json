@@ -39,6 +39,8 @@
     "studyingPlaceholder": "O que você está estudando?",
     "messageInput": "Campo de mensagem",
     "sendMessage": "Enviar mensagem",
+    "fileOnlyPrompt_one": "Crie cartões a partir do arquivo anexado.",
+    "fileOnlyPrompt_other": "Crie cartões a partir dos arquivos anexados.",
     "region": "Compositor de chat com zona de soltar arquivos",
     "scrollToBottom": "Rolar até o fim"
   },

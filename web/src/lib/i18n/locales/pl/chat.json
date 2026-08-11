@@ -39,6 +39,10 @@
     "studyingPlaceholder": "Czego się uczysz?",
     "messageInput": "Pole wiadomości",
     "sendMessage": "Wyślij wiadomość",
+    "fileOnlyPrompt_one": "Utwórz karty z załączonego pliku.",
+    "fileOnlyPrompt_few": "Utwórz karty z załączonych plików.",
+    "fileOnlyPrompt_many": "Utwórz karty z załączonych plików.",
+    "fileOnlyPrompt_other": "Utwórz karty z załączonych plików.",
     "region": "Edytor czatu ze strefą upuszczania plików",
     "scrollToBottom": "Przewiń na dół"
   },

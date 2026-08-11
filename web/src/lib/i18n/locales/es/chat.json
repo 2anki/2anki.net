@@ -39,6 +39,8 @@
     "studyingPlaceholder": "¿Qué estás estudiando?",
     "messageInput": "Campo del mensaje",
     "sendMessage": "Enviar mensaje",
+    "fileOnlyPrompt_one": "Crea tarjetas a partir del archivo adjunto.",
+    "fileOnlyPrompt_other": "Crea tarjetas a partir de los archivos adjuntos.",
     "region": "Redactor de chat con zona para soltar archivos",
     "scrollToBottom": "Ir al final"
   },
