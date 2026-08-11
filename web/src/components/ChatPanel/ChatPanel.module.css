@@ -626,3 +626,9 @@
   color: var(--color-text-secondary);
   margin-left: auto;
 }
+
+.composerTemplateRow {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 0.5rem;
+}

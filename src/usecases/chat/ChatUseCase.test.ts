@@ -937,14 +937,18 @@ describe('ChatUseCase', () => {
       });
     });
 
-    it('drops an MCQ card for a free user', async () => {
+    it('extracts an MCQ card for a free user', async () => {
       const { useCase } = buildUseCase(MCQ_RESPONSE_TEXT);
       const result = await useCase.execute({
         user: FREE_USER,
         content: 'quiz me',
         conversationHistory: [],
       });
-      expect(result.cards).toBeUndefined();
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards![0]).toMatchObject({
+        options: ['Lipase', 'Amylase', 'Protease', 'Lactase'],
+        correctIndex: 1,
+      });
     });
 
     it('drops malformed MCQ (3 options) and keeps surrounding valid cards', async () => {
@@ -986,7 +990,7 @@ describe('ChatUseCase', () => {
       expect(callArg.system[0].text).toContain('<ruby>三<rt>さん</rt></ruby>');
     });
 
-    it('does not add MCQ instructions to the system prompt for free users', async () => {
+    it('adds MCQ instructions to the system prompt for free users too', async () => {
       const { anthropic, useCase } = buildUseCase('reply');
       await useCase.execute({
         user: FREE_USER,
@@ -994,7 +998,7 @@ describe('ChatUseCase', () => {
         conversationHistory: [],
       });
       const callArg = anthropic.messages.stream.mock.calls[0][0];
-      expect(callArg.system[0].text).not.toMatch(/correct_index/);
+      expect(callArg.system[0].text).toMatch(/correct_index/);
     });
   });
 
@@ -1707,5 +1711,91 @@ describe('regenerate with attachments', () => {
 
     const userRow = messagesRepo.getAll().find((r) => r.role === 'user');
     expect(userRow?.had_binary_attachments).toBe(false);
+describe('typed format requests override the template default', () => {
+  const MCQ_JSON =
+    '```json\n[{"front": "Capital of Norway?", "options": ["Bergen", "Oslo", "Trondheim", "Stavanger"], "correct_index": 1}]\n```';
+
+  it('parses MCQ cards for a free user who asked for them in text', async () => {
+    const { useCase } = buildUseCase(`Here you go:\n${MCQ_JSON}`);
+
+    const result = await useCase.execute({
+      user: FREE_USER,
+      content: 'make mcq cards about Norway',
+      conversationHistory: [],
+      templateSlug: 'basic',
+    });
+
+    expect(result.cards).toEqual([
+      expect.objectContaining({
+        front: 'Capital of Norway?',
+        options: ['Bergen', 'Oslo', 'Trondheim', 'Stavanger'],
+        correctIndex: 1,
+      }),
+    ]);
+  });
+
+  it('gives free users the MCQ format spec in the system prompt', async () => {
+    const { anthropic, useCase } = buildUseCase('answer');
+
+    await useCase.execute({
+      user: FREE_USER,
+      content: 'question',
+      conversationHistory: [],
+      templateSlug: 'basic',
+    });
+
+    const callArg = anthropic.messages.stream.mock.calls[0][0];
+    expect(callArg.system[0].text).toContain('correct_index');
+  });
+
+  it('keeps cloze cards when the model declares Format: cloze on a basic template', async () => {
+    const { useCase } = buildUseCase(
+      'Deck: Chemistry\nFormat: cloze\n```json\n[{"front": "Water is {{c1::H2O}}.", "back": ""}]\n```'
+    );
+
+    const result = await useCase.execute({
+      user: FREE_USER,
+      content: 'give me fill-in-the-blank cards',
+      conversationHistory: [],
+      templateSlug: 'basic',
+    });
+
+    expect(result.cards).toEqual([
+      { front: 'Water is {{c1::H2O}}.', back: '' },
+    ]);
+    expect(result.contentBefore ?? '').not.toMatch(/Format:/);
+    expect(result.deckName).toBe('Chemistry');
+  });
+
+  it('keeps cloze cards when the user asked for cloze even without a declaration', async () => {
+    const { useCase } = buildUseCase(
+      '```json\n[{"front": "Water is {{c1::H2O}}.", "back": ""}]\n```'
+    );
+
+    const result = await useCase.execute({
+      user: FREE_USER,
+      content: 'cloze cards please',
+      conversationHistory: [],
+      templateSlug: 'basic',
+    });
+
+    expect(result.cards).toEqual([
+      { front: 'Water is {{c1::H2O}}.', back: '' },
+    ]);
+  });
+
+  it('still normalizes stray cloze on basic when nobody asked for it', async () => {
+    const { useCase } = buildUseCase(
+      '```json\n[{"front": "Water is {{c1::H2O}}.", "back": ""}]\n```'
+    );
+
+    const result = await useCase.execute({
+      user: FREE_USER,
+      content: 'make cards about water',
+      conversationHistory: [],
+      templateSlug: 'basic',
+    });
+
+    expect(result.cards?.[0].front).not.toContain('{{c1::');
   });
 });

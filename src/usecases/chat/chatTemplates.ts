@@ -14,22 +14,24 @@ export function isChatCardTemplate(value: unknown): value is ChatCardTemplate {
   );
 }
 
+const YIELD_TO_REQUEST = `Unless the user explicitly asks for a different card format in their latest message, follow this note type for every card. If they do ask for another format (in any language), honor their request using the card formats described earlier — and when you emit cloze cards this way, write \`Format: cloze\` on its own line immediately before the JSON block.`;
+
 const TEMPLATE_PROMPT_SUFFIX: Record<ChatCardTemplate, string> = {
   basic: `
-TEMPLATE OVERRIDE — basic front/back (this overrides any earlier instruction about cloze or multiple-choice cards):
+DEFAULT NOTE TYPE — basic front/back. ${YIELD_TO_REQUEST}
 
-EVERY card you emit must be a plain front/back pair. For each card:
+By default every card is a plain front/back pair:
 - "front" holds the question or prompt
 - "back" holds the answer and must be non-empty
-- Do NOT use {{cN::...}} cloze syntax anywhere
-- Do NOT produce multiple-choice (MCQ) cards or answer-option lists`,
+- No {{cN::...}} cloze syntax, no answer-option lists`,
   'basic-and-reversed': `
-TEMPLATE OVERRIDE — basic + reverse:
+DEFAULT NOTE TYPE — basic + reverse. ${YIELD_TO_REQUEST}
+
 Each card will appear in Anki as BOTH a question→answer AND answer→question pair. Make sure every card makes sense in both directions (e.g. terms and definitions, language pairs).`,
   cloze: `
-TEMPLATE OVERRIDE — cloze deletion (this overrides any earlier instruction about front/back cards):
+DEFAULT NOTE TYPE — cloze deletion. ${YIELD_TO_REQUEST}
 
-EVERY card you emit must be a cloze deletion. Do not produce any front/back Q&A pairs in this conversation. For each card:
+By default every card is a cloze deletion. For each card:
 - "front" contains the full sentence with the answer wrapped as {{c1::answer}}
 - "back" is the empty string ""
 - Use {{c1::...}}, {{c2::...}} for multiple blanks in the same sentence

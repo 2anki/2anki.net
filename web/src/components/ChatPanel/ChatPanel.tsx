@@ -15,6 +15,7 @@ import CardPreview from '../../pages/Chat/CardPreview';
 import ConsentModal from '../ConsentModal/ConsentModal';
 import { ALLOWED_ATTACHMENT_TYPES, ATTACHMENT_ACCEPT } from './attachmentTypes';
 import styles from './ChatPanel.module.css';
+import { TemplateSelector } from './TemplateSelector';
 
 export interface ChatCard {
   front: string;
@@ -716,6 +717,7 @@ export default function ChatPanel({
     (monthlyLimit ?? FREE_MONTHLY_LIMIT) - messagesUsedThisMonth;
 
   const readyChips = chips.filter((c) => c.state === 'idle');
+  const hasAssistantTurn = messages.some((m) => m.role === 'assistant');
   const canSend =
     (inputValue.trim().length > 0 || readyChips.length > 0) &&
     !isLoading &&
@@ -881,6 +883,7 @@ export default function ChatPanel({
         prev.trim().length > 0 ? prev : provisionalTitle
       );
       onConversationCreated?.(result.conversationId, provisionalTitle);
+      adoptProducedTemplate(result.cards, result.conversationId);
       if (result.cards != null && result.cards.length > 0) {
         onCardsGenerated?.(result.cards);
       }
@@ -974,6 +977,20 @@ export default function ChatPanel({
     }
   }
 
+  function adoptProducedTemplate(
+    cards: ChatCard[] | undefined,
+    conversationId: number
+  ) {
+    if (cards == null || cards.length === 0) return;
+    const produced = effectiveTemplateForCards(cards, activeTemplate);
+    if (produced === activeTemplate) return;
+    setActiveTemplate(produced);
+    onTemplateChange?.(produced);
+    patch(`/api/chat/conversations/${conversationId}/template`, {
+      templateSlug: produced,
+    }).catch(() => {});
+  }
+
   function handleTemplateChange(slug: ChatCardTemplate) {
     const lastAssistant = findLastAssistantIdx(messages);
     const lastTurnCards =
@@ -1060,6 +1077,7 @@ export default function ChatPanel({
       );
       setMessagesUsedThisMonth((n) => n + 1);
       setActiveConversationId(result.conversationId);
+      adoptProducedTemplate(result.cards, result.conversationId);
       if (result.cards != null && result.cards.length > 0) {
         onCardsGenerated?.(result.cards);
       }
@@ -1182,6 +1200,13 @@ export default function ChatPanel({
               {cameFromUpload ? t('heading.withFile') : t('heading.studying')}
             </h1>
             <div className={styles.emptyComposer}>
+              <div className={styles.composerTemplateRow}>
+                <TemplateSelector
+                  value={activeTemplate}
+                  onChange={handleTemplateChange}
+                  disabled={isLoading}
+                />
+              </div>
               <ComposerPill {...composerProps} />
               {networkError != null && (
                 <p className={styles.networkError}>{networkError}</p>
@@ -1305,6 +1330,15 @@ export default function ChatPanel({
                   <a href="/pricing" className={styles.limitPanelLink}>
                     {t('limitPanel.seePlans')}
                   </a>
+                </div>
+              )}
+              {!hasAssistantTurn && (
+                <div className={styles.composerTemplateRow}>
+                  <TemplateSelector
+                    value={activeTemplate}
+                    onChange={handleTemplateChange}
+                    disabled={isLoading}
+                  />
                 </div>
               )}
               <ComposerPill {...composerProps} />
