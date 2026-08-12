@@ -79,6 +79,7 @@ export const KNOWN_EVENTS = new Set([
   'subscription_paused',
   'subscription_cancelled_during_pause',
   'subscription_cancel_started',
+  'subscription_claim_requested',
   'subscription_pause_offer_declined',
   'language_changed',
   'dev_tier_checkout_clicked',

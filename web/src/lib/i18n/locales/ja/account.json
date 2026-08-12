@@ -43,7 +43,14 @@
     "subscriptionEmailPlaceholder": "サブスクリプションのメールアドレスを入力",
     "emailLinked": "メールアドレスを連携しました。",
     "linking": "連携中…",
-    "linkEmail": "メールを連携"
+    "linkEmail": "メールを連携",
+    "billingPeriodEndFallback": "請求期間の終了時",
+    "cancelledImmediate": "解約しました。アクセスは終了しました。",
+    "cancelledPeriodEnd": "解約しました。{{date}}までアクセスできます。",
+    "cancelFailed": "サブスクリプションを解約できませんでした。しばらくしてからもう一度お試しください。",
+    "perPlanCancelFailed": "このプランを解約できませんでした。もう一度お試しください。",
+    "pauseFailed": "サブスクリプションを一時停止できませんでした。しばらくしてからもう一度お試しください。",
+    "resumeFailed": "サブスクリプションを再開できませんでした。しばらくしてからもう一度お試しください。"
   },
   "cancelFlow": {
     "whyCancelling": "解約の理由を教えてください（任意）",
@@ -85,7 +92,9 @@
     "emailLabel": "支払いに使ったメールアドレス",
     "error": "問題が発生しました。少し待ってからもう一度お試しください。",
     "sending": "送信中…",
-    "sendConfirmation": "確認メールを送信"
+    "sendConfirmation": "確認メールを送信",
+    "mismatchTitle": "このアカウントに紐づくサブスクリプションが見つかりません",
+    "mismatchBody": "サブスクリプション登録者としてマークされていますが、ログイン中のメールアドレスに紐づく有効なサブスクリプションが見つかりません。別のメールアドレスで支払った場合は下に入力してください。そのアドレス宛てに確認リンクを送ります。"
   },
   "logOutEverywhere": {
     "sessions": "セッション",

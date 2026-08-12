@@ -757,53 +757,6 @@ const UserRouter = () => {
 
   /**
    * @swagger
-   * /api/users/link_email:
-   *   post:
-   *     summary: Link email to account
-   *     description: Link an email address to the authenticated user's account
-   *     tags: [Users]
-   *     security:
-   *       - bearerAuth: []
-   *       - cookieAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - email
-   *             properties:
-   *               email:
-   *                 type: string
-   *                 format: email
-   *                 description: Email address to link
-   *     responses:
-   *       200:
-   *         description: Email linked successfully
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Success'
-   *       400:
-   *         description: Invalid email or email already in use
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Error'
-   *       401:
-   *         description: Authentication required
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Error'
-   */
-  router.post('/api/users/link_email', RequireAuthentication, (req, res) =>
-    controller.linkEmail(req, res)
-  );
-
-  /**
-   * @swagger
    * /api/users/auth/google:
    *   get:
    *     summary: Google OAuth authentication

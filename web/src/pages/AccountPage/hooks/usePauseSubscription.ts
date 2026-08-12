@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   pauseSubscription,
   resumeSubscription,
@@ -7,6 +8,7 @@ import {
 } from '../../../lib/backend/pauseSubscription';
 
 export function usePauseSubscription(onSuccess?: () => void) {
+  const { t } = useTranslation('account');
   const [pauseError, setPauseError] = useState<string>('');
   const [resumeError, setResumeError] = useState<string>('');
 
@@ -18,7 +20,7 @@ export function usePauseSubscription(onSuccess?: () => void) {
       onSuccess?.();
     },
     onError: (error: Error) => {
-      setPauseError(error?.message || 'Failed to pause subscription');
+      setPauseError(error?.message || t('subscription.pauseFailed'));
     },
   });
 
@@ -29,7 +31,7 @@ export function usePauseSubscription(onSuccess?: () => void) {
       onSuccess?.();
     },
     onError: (error: Error) => {
-      setResumeError(error?.message || 'Failed to resume subscription');
+      setResumeError(error?.message || t('subscription.resumeFailed'));
     },
   });
 

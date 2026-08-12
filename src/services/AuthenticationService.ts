@@ -323,12 +323,16 @@ class AuthenticationService {
       return true;
     }
 
+    // Filter on active here: a user can have an old cancelled row and a new
+    // active one under the same payer email, and an unfiltered .first() can
+    // return the stale row — hiding the whole subscription UI while Stripe
+    // still bills them.
     const result = await db('subscriptions')
       .select('active')
-      .where({ email: email.toLowerCase() })
+      .where({ email: email.toLowerCase(), active: true })
       .first();
 
-    return result?.active ?? false;
+    return !!result;
   }
 
   async getSubscriptionInfo(db: Knex, email: string) {

@@ -43,7 +43,14 @@
     "subscriptionEmailPlaceholder": "Abo-E-Mail eingeben",
     "emailLinked": "E-Mail verknüpft.",
     "linking": "Wird verknüpft …",
-    "linkEmail": "E-Mail verknüpfen"
+    "linkEmail": "E-Mail verknüpfen",
+    "billingPeriodEndFallback": "zum Ende deines Abrechnungszeitraums",
+    "cancelledImmediate": "Gekündigt. Der Zugang ist beendet.",
+    "cancelledPeriodEnd": "Gekündigt. Du behältst den Zugang bis {{date}}.",
+    "cancelFailed": "Dein Abo konnte nicht gekündigt werden. Versuch es gleich noch einmal.",
+    "perPlanCancelFailed": "Dieser Plan konnte nicht gekündigt werden. Versuch es noch einmal.",
+    "pauseFailed": "Dein Abo konnte nicht pausiert werden. Versuch es gleich noch einmal.",
+    "resumeFailed": "Dein Abo konnte nicht fortgesetzt werden. Versuch es gleich noch einmal."
   },
   "cancelFlow": {
     "whyCancelling": "Warum kündigst du? (optional)",
@@ -85,7 +92,9 @@
     "emailLabel": "E-Mail, mit der du bezahlt hast",
     "error": "Etwas ist schiefgelaufen. Versuch es gleich noch einmal.",
     "sending": "Wird gesendet …",
-    "sendConfirmation": "Bestätigungs-E-Mail senden"
+    "sendConfirmation": "Bestätigungs-E-Mail senden",
+    "mismatchTitle": "Wir finden kein Abo zu diesem Konto",
+    "mismatchBody": "Du bist als Abonnent markiert, aber wir können kein laufendes Abo der E-Mail-Adresse zuordnen, mit der du angemeldet bist. Wenn du mit einer anderen E-Mail-Adresse bezahlt hast, gib sie unten ein — wir schicken dir dorthin einen Bestätigungslink, um sie zu verbinden."
   },
   "logOutEverywhere": {
     "sessions": "Sitzungen",

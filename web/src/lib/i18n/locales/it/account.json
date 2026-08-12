@@ -43,7 +43,14 @@
     "subscriptionEmailPlaceholder": "Inserisci l'email dell'abbonamento",
     "emailLinked": "Email collegata.",
     "linking": "Collegamento…",
-    "linkEmail": "Collega l'email"
+    "linkEmail": "Collega l'email",
+    "billingPeriodEndFallback": "la fine del tuo periodo di fatturazione",
+    "cancelledImmediate": "Annullato. L'accesso è terminato.",
+    "cancelledPeriodEnd": "Annullato. Mantieni l'accesso fino al {{date}}.",
+    "cancelFailed": "Impossibile annullare il tuo abbonamento. Riprova tra un momento.",
+    "perPlanCancelFailed": "Impossibile annullare questo piano. Riprova.",
+    "pauseFailed": "Impossibile mettere in pausa il tuo abbonamento. Riprova tra un momento.",
+    "resumeFailed": "Impossibile riattivare il tuo abbonamento. Riprova tra un momento."
   },
   "cancelFlow": {
     "whyCancelling": "Perché stai disdicendo? (facoltativo)",
@@ -85,7 +92,9 @@
     "emailLabel": "Email con cui hai pagato",
     "error": "Qualcosa è andato storto. Riprova tra un momento.",
     "sending": "Invio…",
-    "sendConfirmation": "Invia l'email di conferma"
+    "sendConfirmation": "Invia l'email di conferma",
+    "mismatchTitle": "Non troviamo il tuo abbonamento su questo account",
+    "mismatchBody": "Risulti abbonato, ma non riusciamo ad associare un abbonamento attivo all'email con cui hai effettuato l'accesso. Se hai pagato con un'altra email, inseriscila qui sotto e invieremo lì un link di conferma per collegarla."
   },
   "logOutEverywhere": {
     "sessions": "Sessioni",

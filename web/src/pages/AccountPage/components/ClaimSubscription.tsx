@@ -1,14 +1,24 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { post } from '../../../lib/backend/api';
+import { track } from '../../../lib/analytics/track';
 import styles from '../AccountPage.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
-export function ClaimSubscription() {
+interface ClaimSubscriptionProps {
+  // 'mismatch' renders the form open with no collapse toggle — used inside the
+  // subscription section when the account is marked subscriber but live Stripe
+  // has no matching subscription, the state where the claim IS the repair.
+  variant?: 'collapsed' | 'mismatch';
+}
+
+export function ClaimSubscription({
+  variant = 'collapsed',
+}: Readonly<ClaimSubscriptionProps>) {
   const { t } = useTranslation('account');
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(variant === 'mismatch');
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -17,6 +27,7 @@ export function ClaimSubscription() {
     e.preventDefault();
     setStatus('loading');
     setErrorMessage('');
+    track('subscription_claim_requested', { variant });
 
     const res = await post('/api/subscriptions/claim', { email });
 
@@ -30,21 +41,23 @@ export function ClaimSubscription() {
   };
 
   return (
-    <div className={styles.section}>
-      <button
-        type="button"
-        className={sharedStyles.btnGhost}
-        aria-expanded={expanded}
-        onClick={() => setExpanded((v) => !v)}
-        style={{
-          fontWeight: 'var(--font-semibold)',
-          width: '100%',
-          textAlign: 'left',
-          padding: 0,
-        }}
-      >
-        {t('claimSubscription.paidDifferentEmail')}
-      </button>
+    <div className={variant === 'mismatch' ? undefined : styles.section}>
+      {variant !== 'mismatch' && (
+        <button
+          type="button"
+          className={sharedStyles.btnGhost}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+          style={{
+            fontWeight: 'var(--font-semibold)',
+            width: '100%',
+            textAlign: 'left',
+            padding: 0,
+          }}
+        >
+          {t('claimSubscription.paidDifferentEmail')}
+        </button>
+      )}
 
       {expanded && (
         <div style={{ marginTop: '1rem' }}>
@@ -54,15 +67,17 @@ export function ClaimSubscription() {
             </output>
           ) : (
             <>
-              <p
-                style={{
-                  margin: '0 0 1rem',
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--color-text-secondary)',
-                }}
-              >
-                {t('claimSubscription.description')}
-              </p>
+              {variant !== 'mismatch' && (
+                <p
+                  style={{
+                    margin: '0 0 1rem',
+                    fontSize: 'var(--text-sm)',
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  {t('claimSubscription.description')}
+                </p>
+              )}
               <form
                 onSubmit={handleSubmit}
                 style={{

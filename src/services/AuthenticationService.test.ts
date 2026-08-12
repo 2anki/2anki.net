@@ -1591,6 +1591,27 @@ describe('subscription lookups by linked_email', () => {
     expect(result).toBe(true);
   });
 
+  it('getIsSubscriber returns true when an active row shares the payer email with an older cancelled one', async () => {
+    await database('subscriptions').insert([
+      { email: 'payer@example.com', linked_email: null, active: false },
+      { email: 'payer@example.com', linked_email: null, active: true },
+    ]);
+
+    const result = await service.getIsSubscriber(database, 'payer@example.com');
+
+    expect(result).toBe(true);
+  });
+
+  it('getIsSubscriber returns false when only cancelled rows exist for the payer email', async () => {
+    await database('subscriptions').insert([
+      { email: 'payer@example.com', linked_email: null, active: false },
+    ]);
+
+    const result = await service.getIsSubscriber(database, 'payer@example.com');
+
+    expect(result).toBe(false);
+  });
+
   it('getSubscriptionInfo resolves the active linked row over an older inactive one', async () => {
     await database('subscriptions').insert([
       {
