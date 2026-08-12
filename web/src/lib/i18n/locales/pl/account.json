@@ -43,7 +43,14 @@
     "subscriptionEmailPlaceholder": "Wpisz e-mail subskrypcji",
     "emailLinked": "E-mail powiązany.",
     "linking": "Wiązanie…",
-    "linkEmail": "Powiąż e-mail"
+    "linkEmail": "Powiąż e-mail",
+    "billingPeriodEndFallback": "końca okresu rozliczeniowego",
+    "cancelledImmediate": "Anulowano. Dostęp został zakończony.",
+    "cancelledPeriodEnd": "Anulowano. Zachowujesz dostęp do {{date}}.",
+    "cancelFailed": "Nie udało się anulować subskrypcji. Spróbuj ponownie za chwilę.",
+    "perPlanCancelFailed": "Nie udało się anulować tego planu. Spróbuj ponownie.",
+    "pauseFailed": "Nie udało się wstrzymać subskrypcji. Spróbuj ponownie za chwilę.",
+    "resumeFailed": "Nie udało się wznowić subskrypcji. Spróbuj ponownie za chwilę."
   },
   "cancelFlow": {
     "whyCancelling": "Dlaczego anulujesz? (opcjonalnie)",
@@ -85,7 +92,9 @@
     "emailLabel": "E-mail, którym płaciłeś",
     "error": "Coś poszło nie tak. Spróbuj ponownie za chwilę.",
     "sending": "Wysyłanie…",
-    "sendConfirmation": "Wyślij e-mail potwierdzający"
+    "sendConfirmation": "Wyślij e-mail potwierdzający",
+    "mismatchTitle": "Nie możemy znaleźć subskrypcji na tym koncie",
+    "mismatchBody": "Twoje konto jest oznaczone jako subskrybenckie, ale nie możemy dopasować aktywnej subskrypcji do adresu e-mail, którym się logujesz. Jeśli płacisz innym adresem e-mail, wpisz go poniżej — wyślemy tam link potwierdzający, aby je połączyć."
   },
   "logOutEverywhere": {
     "sessions": "Sesje",

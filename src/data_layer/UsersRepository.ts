@@ -302,15 +302,6 @@ class UsersRepository {
     return row.email as string;
   }
 
-  async linkCurrentUserWithEmail(owner: string, email: string) {
-    const user = await this.database(this.table).where({ id: owner }).first();
-    if (!user) {
-      return null;
-    }
-
-    return this.updateSubScriptionEmailUsingPrimaryEmail(user.email, email);
-  }
-
   updateSubScriptionEmailUsingPrimaryEmail(email: string, newEmail: string) {
     return this.database('subscriptions')
       .where({ email: email.toLowerCase() })
@@ -362,13 +353,6 @@ class UsersRepository {
     return this.database(this.table)
       .whereRaw('TRIM(LOWER(email)) = ?', [email.toLowerCase().trim()])
       .update({ patreon });
-  }
-
-  async checkSubscriptionEmailExists(email: string): Promise<boolean> {
-    const subscription = await this.database('subscriptions')
-      .where({ email: email.toLowerCase() })
-      .first();
-    return !!subscription;
   }
 
   async getCardUsage(

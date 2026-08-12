@@ -43,7 +43,14 @@
     "subscriptionEmailPlaceholder": "Saisis l'e-mail de l'abonnement",
     "emailLinked": "E-mail associé.",
     "linking": "Association…",
-    "linkEmail": "Associer l'e-mail"
+    "linkEmail": "Associer l'e-mail",
+    "billingPeriodEndFallback": "la fin de ta période de facturation",
+    "cancelledImmediate": "Résilié. L'accès est terminé.",
+    "cancelledPeriodEnd": "Résilié. Tu gardes l'accès jusqu'au {{date}}.",
+    "cancelFailed": "Impossible de résilier ton abonnement. Réessaie dans un instant.",
+    "perPlanCancelFailed": "Impossible de résilier ce plan. Réessaie.",
+    "pauseFailed": "Impossible de mettre ton abonnement en pause. Réessaie dans un instant.",
+    "resumeFailed": "Impossible de reprendre ton abonnement. Réessaie dans un instant."
   },
   "cancelFlow": {
     "whyCancelling": "Pourquoi annules-tu ? (facultatif)",
@@ -85,7 +92,9 @@
     "emailLabel": "E-mail utilisé pour le paiement",
     "error": "Une erreur est survenue. Réessaie dans un instant.",
     "sending": "Envoi…",
-    "sendConfirmation": "Envoyer l'e-mail de confirmation"
+    "sendConfirmation": "Envoyer l'e-mail de confirmation",
+    "mismatchTitle": "Nous ne trouvons pas ton abonnement sur ce compte",
+    "mismatchBody": "Tu es marqué comme abonné, mais nous ne trouvons pas d'abonnement actif associé à l'email avec lequel tu es connecté. Si tu as payé avec un autre email, saisis-le ci-dessous et nous y enverrons un lien de confirmation pour le connecter."
   },
   "logOutEverywhere": {
     "sessions": "Sessions",

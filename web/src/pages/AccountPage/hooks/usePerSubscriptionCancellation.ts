@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { cancelSubscriptionById } from '../../../lib/backend/cancelSubscription';
 
-const PER_SUB_CANCEL_ERROR = "Couldn't cancel this plan. Try again.";
-
 export function usePerSubscriptionCancellation(onSuccess?: () => void) {
+  const { t } = useTranslation('account');
   const [confirmingSubId, setConfirmingSubId] = useState<string | null>(null);
   const [errorSubId, setErrorSubId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string>('');
@@ -20,7 +20,7 @@ export function usePerSubscriptionCancellation(onSuccess?: () => void) {
     },
     onError: (_error, variables) => {
       setErrorSubId(variables.id);
-      setCancelError(PER_SUB_CANCEL_ERROR);
+      setCancelError(t('subscription.perPlanCancelFailed'));
     },
   });
 

@@ -43,7 +43,14 @@
     "subscriptionEmailPlaceholder": "Enter subscription email",
     "emailLinked": "Email linked.",
     "linking": "Linking…",
-    "linkEmail": "Link email"
+    "linkEmail": "Link email",
+    "billingPeriodEndFallback": "the end of your billing period",
+    "cancelledImmediate": "Cancelled. Access has ended.",
+    "cancelledPeriodEnd": "Cancelled. You keep access until {{date}}.",
+    "cancelFailed": "Couldn't cancel your subscription. Try again in a moment.",
+    "perPlanCancelFailed": "Couldn't cancel this plan. Try again.",
+    "pauseFailed": "Couldn't pause your subscription. Try again in a moment.",
+    "resumeFailed": "Couldn't resume your subscription. Try again in a moment."
   },
   "cancelFlow": {
     "whyCancelling": "Why are you cancelling? (optional)",
@@ -85,7 +92,9 @@
     "emailLabel": "Email you paid with",
     "error": "Something went wrong. Try again in a moment.",
     "sending": "Sending…",
-    "sendConfirmation": "Send confirmation email"
+    "sendConfirmation": "Send confirmation email",
+    "mismatchTitle": "We can't find your subscription on this account",
+    "mismatchBody": "You're marked as a subscriber, but we can't match a live subscription to the email you're logged in with. If you paid with a different email, enter it below and we'll send a confirmation link there to connect it."
   },
   "logOutEverywhere": {
     "sessions": "Sessions",

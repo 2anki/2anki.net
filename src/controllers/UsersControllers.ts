@@ -415,36 +415,6 @@ class UsersController {
     return res.json({ ok: true });
   }
 
-  async linkEmail(req: express.Request, res: express.Response) {
-    console.info('linkEmail');
-    const { email } = req.body;
-    const { owner } = res.locals;
-
-    if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
-    }
-
-    if (!owner) {
-      return res.status(400).json({});
-    }
-
-    try {
-      const emailExists =
-        await this.userService.checkSubscriptionEmailExists(email);
-      if (!emailExists) {
-        console.warn('Linking attempted with non-existent email');
-        return res.status(400).json({ message: 'Failed to link email.' });
-      }
-
-      await this.userService.updateSubscriptionLinkedEmail(owner, email);
-      return res.status(200).json({});
-    } catch (error) {
-      console.info('Link email failed');
-      console.error(error);
-      return res.status(500).json({ message: 'Failed to link email' });
-    }
-  }
-
   async requestHostedAnkiAccess(req: express.Request, res: express.Response) {
     const { owner } = res.locals;
     if (owner == null) {
@@ -551,7 +521,7 @@ class UsersController {
       if (processedCount === 0) {
         return res.status(422).json({
           message:
-            'No active subscription found for this account. If you paid with a different email, enter it in the field below and try again.',
+            "No active subscription found for this account. If you paid with a different email, use the form below to connect it — we'll send a confirmation link to that inbox.",
         });
       }
 

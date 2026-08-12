@@ -43,7 +43,14 @@
     "subscriptionEmailPlaceholder": "Introduce el correo de la suscripción",
     "emailLinked": "Correo vinculado.",
     "linking": "Vinculando…",
-    "linkEmail": "Vincular correo"
+    "linkEmail": "Vincular correo",
+    "billingPeriodEndFallback": "el final de tu período de facturación",
+    "cancelledImmediate": "Cancelado. El acceso ha terminado.",
+    "cancelledPeriodEnd": "Cancelado. Mantienes el acceso hasta {{date}}.",
+    "cancelFailed": "No se pudo cancelar tu suscripción. Inténtalo de nuevo en un momento.",
+    "perPlanCancelFailed": "No se pudo cancelar este plan. Inténtalo de nuevo.",
+    "pauseFailed": "No se pudo pausar tu suscripción. Inténtalo de nuevo en un momento.",
+    "resumeFailed": "No se pudo reanudar tu suscripción. Inténtalo de nuevo en un momento."
   },
   "cancelFlow": {
     "whyCancelling": "¿Por qué cancelas? (opcional)",
@@ -85,7 +92,9 @@
     "emailLabel": "Correo con el que pagaste",
     "error": "Algo salió mal. Inténtalo de nuevo en un momento.",
     "sending": "Enviando…",
-    "sendConfirmation": "Enviar correo de confirmación"
+    "sendConfirmation": "Enviar correo de confirmación",
+    "mismatchTitle": "No encontramos tu suscripción en esta cuenta",
+    "mismatchBody": "Figuras como suscriptor, pero no podemos asociar una suscripción activa al email con el que has iniciado sesión. Si pagaste con otro email, escríbelo abajo y enviaremos un enlace de confirmación a esa dirección para conectarla."
   },
   "logOutEverywhere": {
     "sessions": "Sesiones",

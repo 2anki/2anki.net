@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-12-cancel-subscription-repair",
+  "date": "2026-08-12",
+  "type": "fix",
+  "title": "Account page connects a subscription paid with a different email so you can manage or cancel it yourself"
+}

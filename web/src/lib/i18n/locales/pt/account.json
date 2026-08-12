@@ -43,7 +43,14 @@
     "subscriptionEmailPlaceholder": "Digite o e-mail da assinatura",
     "emailLinked": "E-mail vinculado.",
     "linking": "Vinculando…",
-    "linkEmail": "Vincular e-mail"
+    "linkEmail": "Vincular e-mail",
+    "billingPeriodEndFallback": "o fim do seu período de cobrança",
+    "cancelledImmediate": "Cancelado. O acesso terminou.",
+    "cancelledPeriodEnd": "Cancelado. Você mantém o acesso até {{date}}.",
+    "cancelFailed": "Não foi possível cancelar sua assinatura. Tente de novo em instantes.",
+    "perPlanCancelFailed": "Não foi possível cancelar este plano. Tente de novo.",
+    "pauseFailed": "Não foi possível pausar sua assinatura. Tente de novo em instantes.",
+    "resumeFailed": "Não foi possível retomar sua assinatura. Tente de novo em instantes."
   },
   "cancelFlow": {
     "whyCancelling": "Por que você está cancelando? (opcional)",
@@ -85,7 +92,9 @@
     "emailLabel": "E-mail com que você pagou",
     "error": "Algo deu errado. Tente de novo em um instante.",
     "sending": "Enviando…",
-    "sendConfirmation": "Enviar e-mail de confirmação"
+    "sendConfirmation": "Enviar e-mail de confirmação",
+    "mismatchTitle": "Não encontramos sua assinatura nesta conta",
+    "mismatchBody": "Você está marcado como assinante, mas não conseguimos associar uma assinatura ativa ao email com o qual você entrou. Se pagou com outro email, digite-o abaixo e enviaremos um link de confirmação para esse endereço para conectá-lo."
   },
   "logOutEverywhere": {
     "sessions": "Sessões",

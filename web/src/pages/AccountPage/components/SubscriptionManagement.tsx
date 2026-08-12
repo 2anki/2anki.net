@@ -1,6 +1,5 @@
-import React, { ChangeEvent, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useEmailLinking } from '../hooks/useEmailLinking';
 import { useSubscriptionCancellation } from '../hooks/useSubscriptionCancellation';
 import { usePerSubscriptionCancellation } from '../hooks/usePerSubscriptionCancellation';
 import { usePauseSubscription } from '../hooks/usePauseSubscription';
@@ -9,6 +8,7 @@ import { StripeSubscriptionSummary } from '../../../lib/backend/getSubscriptionS
 import { track } from '../../../lib/analytics/track';
 import { CancelFlow, isLifecycleReason } from './CancelFlow';
 import { CancellationReason } from './CancellationFollowUp';
+import { ClaimSubscription } from './ClaimSubscription';
 import styles from '../AccountPage.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
 
@@ -317,21 +317,12 @@ export function SubscriptionManagement(props: SubscriptionManagementProps) {
 }
 
 function StripeSubscriptionManagement({
-  user,
   locals,
   onRefetch,
 }: SubscriptionManagementProps) {
   const { t } = useTranslation('account');
   const fmt = (seconds: number | null) =>
     formatDate(seconds, t('subscription.unknownDate'));
-  const {
-    linkEmail,
-    setLinkEmail,
-    linkError,
-    linkSuccess,
-    isLinking,
-    performLinkEmail,
-  } = useEmailLinking(onRefetch);
 
   const stripeStatus = useStripeSubscriptions(Boolean(locals?.subscriber));
 
@@ -357,24 +348,6 @@ function StripeSubscriptionManagement({
   } = usePauseSubscription(refetchAll);
 
   const [confirming, setConfirming] = useState(false);
-
-  useEffect(() => {
-    if (locals?.subscriptionInfo?.linked_email) {
-      setLinkEmail(locals.subscriptionInfo.linked_email);
-    }
-  }, [locals?.subscriptionInfo?.linked_email, setLinkEmail]);
-
-  const onChangeLinkEmail = (event: ChangeEvent<HTMLInputElement>) => {
-    setLinkEmail(event.target.value);
-  };
-
-  const onLink = () => {
-    performLinkEmail(linkEmail);
-  };
-
-  const isEmailLinked =
-    locals?.subscriptionInfo?.linked_email === user.email ||
-    locals?.subscriptionInfo?.email === user.email;
 
   if (!locals?.subscriber) {
     return null;
@@ -530,64 +503,21 @@ function StripeSubscriptionManagement({
             </p>
           )}
 
+          {!stripeStatus.isLoading && view.kind === 'none' && (
+            <div>
+              <h4 className={sharedStyles.smallHeading}>
+                {t('claimSubscription.mismatchTitle')}
+              </h4>
+              <p className={sharedStyles.smallDescription}>
+                {t('claimSubscription.mismatchBody')}
+              </p>
+              <ClaimSubscription variant="mismatch" />
+            </div>
+          )}
+
           {cancelError && <p className={styles.helpDanger}>{cancelError}</p>}
           {cancelSuccess && (
             <p className={styles.helpSuccess}>{cancelSuccess}</p>
-          )}
-        </div>
-      )}
-
-      {locals?.subscriber && (
-        <div className={sharedStyles.marginTopLg}>
-          <h4 className={sharedStyles.smallHeading}>
-            {t('subscription.linkedEmailHeading')}
-          </h4>
-          {isEmailLinked ? (
-            <div className={styles.linkedEmail}>
-              <p>
-                {t('subscription.managedThroughStripe')}{' '}
-                <strong>{locals.subscriptionInfo?.email}</strong>.{' '}
-                {t('subscription.youCan')}
-              </p>
-              <ul className={sharedStyles.featureList}>
-                <li>{t('subscription.manageSubscription')}</li>
-                <li>{t('subscription.updatePayment')}</li>
-                <li>{t('subscription.cancelYourSubscription')}</li>
-              </ul>
-            </div>
-          ) : (
-            <div>
-              <div className={styles.field}>
-                <label htmlFor="subscription-email">
-                  {t('subscription.subscriptionEmail')}
-                </label>
-                <input
-                  id="subscription-email"
-                  value={linkEmail}
-                  onChange={onChangeLinkEmail}
-                  type="email"
-                  placeholder={t('subscription.subscriptionEmailPlaceholder')}
-                  disabled={isEmailLinked}
-                />
-                {linkError && <p className={styles.helpDanger}>{linkError}</p>}
-                {linkSuccess && (
-                  <p className={styles.helpSuccess}>
-                    {t('subscription.emailLinked')}
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="button"
-                className={styles.planButton}
-                onClick={onLink}
-                disabled={isEmailLinked || !linkEmail.trim()}
-              >
-                {isLinking
-                  ? t('subscription.linking')
-                  : t('subscription.linkEmail')}
-              </button>
-            </div>
           )}
         </div>
       )}

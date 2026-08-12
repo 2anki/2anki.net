@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   cancelSubscription,
   submitCancellationFeedback,
@@ -7,19 +8,20 @@ import {
 } from '../../../lib/backend/cancelSubscription';
 import { CancellationReason } from '../components/CancellationFollowUp';
 
-const formatPeriodEnd = (seconds: number | null | undefined): string => {
-  if (!seconds) return 'the end of your billing period';
-  return new Date(seconds * 1000).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
-
 export function useSubscriptionCancellation(onSuccess?: () => void) {
+  const { t } = useTranslation('account');
   const [cancelError, setCancelError] = useState<string>('');
   const [cancelSuccess, setCancelSuccess] = useState<string>('');
   const [showFollowUp, setShowFollowUp] = useState<boolean>(false);
+
+  const formatPeriodEnd = (seconds: number | null | undefined): string => {
+    if (!seconds) return t('subscription.billingPeriodEndFallback');
+    return new Date(seconds * 1000).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
 
   const { mutate, isPending: isCancelling } = useMutation({
     mutationFn: ({
@@ -34,8 +36,10 @@ export function useSubscriptionCancellation(onSuccess?: () => void) {
       setCancelError('');
       setCancelSuccess(
         variables.mode === 'immediate'
-          ? 'Cancelled. Access has ended.'
-          : `Cancelled. You keep access until ${formatPeriodEnd(variables.periodEnd)}.`
+          ? t('subscription.cancelledImmediate')
+          : t('subscription.cancelledPeriodEnd', {
+              date: formatPeriodEnd(variables.periodEnd),
+            })
       );
       setShowFollowUp(true);
       onSuccess?.();
@@ -43,7 +47,7 @@ export function useSubscriptionCancellation(onSuccess?: () => void) {
     onError: (error: Error) => {
       setCancelSuccess('');
       setShowFollowUp(false);
-      setCancelError(error?.message || 'Failed to cancel subscription');
+      setCancelError(error?.message || t('subscription.cancelFailed'));
     },
   });
 

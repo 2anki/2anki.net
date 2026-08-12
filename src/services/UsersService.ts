@@ -126,10 +126,6 @@ class UsersService {
     return this.repository.deleteUser(owner);
   }
 
-  updateSubscriptionLinkedEmail(owner: string, email: string) {
-    return this.repository.linkCurrentUserWithEmail(owner, email);
-  }
-
   updateSubScriptionEmailUsingPrimaryEmail(email: string, newEmail: string) {
     return this.repository.updateSubScriptionEmailUsingPrimaryEmail(
       email,
@@ -139,12 +135,6 @@ class UsersService {
 
   getSubscriptionLinkedEmail(owner: string) {
     return this.repository.getSubscriptionLinkedEmail(owner);
-  }
-
-  async checkSubscriptionEmailExists(email: string): Promise<boolean> {
-    const subscription =
-      await this.repository.checkSubscriptionEmailExists(email);
-    return !!subscription;
   }
 
   getUserById(owner: string): Promise<Users> {

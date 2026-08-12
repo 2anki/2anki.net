@@ -43,7 +43,14 @@
     "subscriptionEmailPlaceholder": "Voer abonnements-e-mail in",
     "emailLinked": "E-mail gekoppeld.",
     "linking": "Koppelen…",
-    "linkEmail": "E-mail koppelen"
+    "linkEmail": "E-mail koppelen",
+    "billingPeriodEndFallback": "het einde van je factureringsperiode",
+    "cancelledImmediate": "Opgezegd. De toegang is beëindigd.",
+    "cancelledPeriodEnd": "Opgezegd. Je houdt toegang tot {{date}}.",
+    "cancelFailed": "Je abonnement kon niet worden opgezegd. Probeer het zo weer.",
+    "perPlanCancelFailed": "Dit plan kon niet worden opgezegd. Probeer het opnieuw.",
+    "pauseFailed": "Je abonnement kon niet worden gepauzeerd. Probeer het zo weer.",
+    "resumeFailed": "Je abonnement kon niet worden hervat. Probeer het zo weer."
   },
   "cancelFlow": {
     "whyCancelling": "Waarom zeg je op? (optioneel)",
@@ -85,7 +92,9 @@
     "emailLabel": "E-mail waarmee je betaalde",
     "error": "Er is iets misgegaan. Probeer het zo weer.",
     "sending": "Verzenden…",
-    "sendConfirmation": "Bevestigingsmail versturen"
+    "sendConfirmation": "Bevestigingsmail versturen",
+    "mismatchTitle": "We kunnen geen abonnement bij dit account vinden",
+    "mismatchBody": "Je staat gemarkeerd als abonnee, maar we kunnen geen lopend abonnement koppelen aan het e-mailadres waarmee je bent ingelogd. Heb je met een ander e-mailadres betaald, vul het dan hieronder in — we sturen daarheen een bevestigingslink om het te koppelen."
   },
   "logOutEverywhere": {
     "sessions": "Sessies",
