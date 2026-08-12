@@ -169,7 +169,8 @@
     "product": "Prodotto",
     "iosApp": "App per iOS e macOS",
     "legal": "Note legali",
-    "security": "Sicurezza"
+    "security": "Sicurezza",
+    "manageSubscription": "Gestisci o annulla il tuo abbonamento"
   },
   "trustNote": {
     "compact": "Indipendente e open source dal 2020, costruito dai suoi contributori — finanziato dagli abbonati, non dagli investitori.",

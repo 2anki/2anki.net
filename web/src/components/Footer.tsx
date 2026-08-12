@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
 import styles from './Footer.module.css';
+import { STRIPE_CUSTOMER_PORTAL_URL } from '../lib/stripePortal';
 
 function Footer() {
   const { t } = useTranslation('marketing');
@@ -28,6 +29,9 @@ function Footer() {
             {t('common:nav.privacy')}
           </a>
           <a href="/security">{t('footer.security')}</a>
+          <a href={STRIPE_CUSTOMER_PORTAL_URL} rel="noreferrer">
+            {t('footer.manageSubscription')}
+          </a>
         </div>
       </div>
       <div className={styles.bottom}>

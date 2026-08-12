@@ -242,7 +242,9 @@
       "logIn": "Accedi",
       "sendLinkInstead": "Inviami invece un link di accesso",
       "noAccount": "Non hai un account?",
-      "signUpFree": "Registrati — è gratis"
+      "signUpFree": "Registrati — è gratis",
+      "manageSubscriptionHint": "Hai pagato ma non riesci ad accedere?",
+      "manageSubscriptionLink": "Gestisci o annulla il tuo abbonamento"
     },
     "register": {
       "accountExists": "Questa email ha già un account — accedi o reimposta la password.",

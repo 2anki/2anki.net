@@ -246,7 +246,9 @@
       "logIn": "Zaloguj się",
       "sendLinkInstead": "Wyślij link do logowania zamiast tego",
       "noAccount": "Nie masz konta?",
-      "signUpFree": "Zarejestruj się — za darmo"
+      "signUpFree": "Zarejestruj się — za darmo",
+      "manageSubscriptionHint": "Zapłacono, ale nie możesz się zalogować?",
+      "manageSubscriptionLink": "Zarządzaj subskrypcją lub ją anuluj"
     },
     "register": {
       "accountExists": "Ten e-mail ma już konto — zaloguj się lub zresetuj hasło.",

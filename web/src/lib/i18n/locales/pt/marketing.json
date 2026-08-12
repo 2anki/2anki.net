@@ -169,7 +169,8 @@
     "product": "Produto",
     "iosApp": "App para iOS e macOS",
     "legal": "Jurídico",
-    "security": "Segurança"
+    "security": "Segurança",
+    "manageSubscription": "Gerencie ou cancele sua assinatura"
   },
   "trustNote": {
     "compact": "Independente e open source desde 2020, construído por seus colaboradores — financiado por assinantes, não por investidores.",

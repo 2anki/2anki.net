@@ -242,7 +242,9 @@
       "logIn": "Inloggen",
       "sendLinkInstead": "Stuur in plaats daarvan een inloglink",
       "noAccount": "Nog geen account?",
-      "signUpFree": "Aanmelden — gratis"
+      "signUpFree": "Aanmelden — gratis",
+      "manageSubscriptionHint": "Betaald maar kun je niet inloggen?",
+      "manageSubscriptionLink": "Beheer of zeg je abonnement op"
     },
     "register": {
       "accountExists": "Dit e-mailadres heeft al een account — log in of stel je wachtwoord opnieuw in.",

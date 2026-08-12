@@ -169,7 +169,8 @@
     "product": "Product",
     "iosApp": "iOS and macOS app",
     "legal": "Legal",
-    "security": "Security"
+    "security": "Security",
+    "manageSubscription": "Manage or cancel your subscription"
   },
   "trustNote": {
     "compact": "Independent and open source since 2020, built by its contributors — funded by subscribers, not investors.",
