@@ -246,7 +246,9 @@
       "logIn": "Войти",
       "sendLinkInstead": "Прислать ссылку для входа",
       "noAccount": "Нет аккаунта?",
-      "signUpFree": "Зарегистрируйся — это бесплатно"
+      "signUpFree": "Зарегистрируйся — это бесплатно",
+      "manageSubscriptionHint": "Оплатил, но не можешь войти?",
+      "manageSubscriptionLink": "Управление подпиской и её отмена"
     },
     "register": {
       "accountExists": "У этого e-mail уже есть аккаунт — войди или сбрось пароль.",

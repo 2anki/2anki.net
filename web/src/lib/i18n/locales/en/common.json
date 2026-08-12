@@ -242,7 +242,9 @@
       "logIn": "Log in",
       "sendLinkInstead": "Send a login link instead",
       "noAccount": "Don't have an account?",
-      "signUpFree": "Sign up — it's free"
+      "signUpFree": "Sign up — it's free",
+      "manageSubscriptionHint": "Paid but can't log in?",
+      "manageSubscriptionLink": "Manage or cancel your subscription"
     },
     "register": {
       "accountExists": "This email already has an account — log in or reset your password.",

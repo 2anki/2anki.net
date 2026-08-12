@@ -166,7 +166,8 @@
     "product": "製品",
     "iosApp": "iOS・macOS アプリ",
     "legal": "法的情報",
-    "security": "セキュリティ"
+    "security": "セキュリティ",
+    "manageSubscription": "サブスクリプションを管理・解約する"
   },
   "trustNote": {
     "compact": "2020 年から独立したオープンソース、貢献者によって作られ — 投資家ではなく、購読者によって支えられています。",

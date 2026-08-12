@@ -6,6 +6,7 @@ import CheckYourEmail from '../../../../components/CheckYourEmail/CheckYourEmail
 import { isValidCredentials } from './helpers/isValidCredentials';
 import { useHandleLoginSubmit } from './helpers/useHandleLoginSubmit';
 import { getVisibleText } from '../../../../lib/text/getVisibleText';
+import { STRIPE_CUSTOMER_PORTAL_URL } from '../../../../lib/stripePortal';
 import { WithGoogleLink } from '../../../../components/forms/WithGoogleLink';
 import { WithNotionLink } from '../../../../components/forms/WithNotionLink';
 import { WithAppleLink } from '../../../../components/forms/WithAppleLink';
@@ -236,6 +237,12 @@ function LoginForm() {
           {t('auth.login.noAccount')}{' '}
           <a rel="noreferrer" href={registerHref}>
             {t('auth.login.signUpFree')}
+          </a>
+        </p>
+        <p className={styles.footerText}>
+          {t('auth.login.manageSubscriptionHint')}{' '}
+          <a rel="noreferrer" href={STRIPE_CUSTOMER_PORTAL_URL}>
+            {t('auth.login.manageSubscriptionLink')}
           </a>
         </p>
       </div>

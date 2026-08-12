@@ -175,7 +175,8 @@
     "product": "Produkt",
     "iosApp": "Aplikacja na iOS i macOS",
     "legal": "Informacje prawne",
-    "security": "Bezpieczeństwo"
+    "security": "Bezpieczeństwo",
+    "manageSubscription": "Zarządzaj subskrypcją lub ją anuluj"
   },
   "trustNote": {
     "compact": "Niezależne i na otwartym kodzie od 2020, tworzone przez współtwórców — finansowane przez subskrybentów, nie inwestorów.",

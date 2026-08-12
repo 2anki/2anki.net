@@ -169,7 +169,8 @@
     "product": "Product",
     "iosApp": "iOS- en macOS-app",
     "legal": "Juridisch",
-    "security": "Beveiliging"
+    "security": "Beveiliging",
+    "manageSubscription": "Beheer of zeg je abonnement op"
   },
   "trustNote": {
     "compact": "Onafhankelijk en open source sinds 2020, gebouwd door zijn bijdragers — gefinancierd door abonnees, niet door investeerders.",

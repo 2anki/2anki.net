@@ -240,7 +240,9 @@
       "logIn": "ログイン",
       "sendLinkInstead": "代わりにログインリンクを送る",
       "noAccount": "アカウントをお持ちでないですか？",
-      "signUpFree": "無料で登録"
+      "signUpFree": "無料で登録",
+      "manageSubscriptionHint": "お支払い済みなのにログインできない場合",
+      "manageSubscriptionLink": "サブスクリプションを管理・解約する"
     },
     "register": {
       "accountExists": "このメールアドレスにはすでにアカウントがあります — ログインするかパスワードをリセットしてください。",

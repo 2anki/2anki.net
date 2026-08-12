@@ -242,7 +242,9 @@
       "logIn": "Se connecter",
       "sendLinkInstead": "Envoyer un lien de connexion à la place",
       "noAccount": "Tu n'as pas de compte ?",
-      "signUpFree": "Inscris-toi — c'est gratuit"
+      "signUpFree": "Inscris-toi — c'est gratuit",
+      "manageSubscriptionHint": "Tu as payé mais tu ne peux pas te connecter ?",
+      "manageSubscriptionLink": "Gérer ou résilier ton abonnement"
     },
     "register": {
       "accountExists": "Cet e-mail a déjà un compte — connecte-toi ou réinitialise ton mot de passe.",

@@ -242,7 +242,9 @@
       "logIn": "Entrar",
       "sendLinkInstead": "Enviar um link de acesso",
       "noAccount": "Não tem uma conta?",
-      "signUpFree": "Cadastre-se — é grátis"
+      "signUpFree": "Cadastre-se — é grátis",
+      "manageSubscriptionHint": "Pagou mas não consegue entrar?",
+      "manageSubscriptionLink": "Gerencie ou cancele sua assinatura"
     },
     "register": {
       "accountExists": "Este e-mail já tem uma conta — entre ou redefina sua senha.",

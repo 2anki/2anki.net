@@ -242,7 +242,9 @@
       "logIn": "Iniciar sesión",
       "sendLinkInstead": "Enviar un enlace de acceso en su lugar",
       "noAccount": "¿No tienes una cuenta?",
-      "signUpFree": "Regístrate — es gratis"
+      "signUpFree": "Regístrate — es gratis",
+      "manageSubscriptionHint": "¿Pagaste pero no puedes iniciar sesión?",
+      "manageSubscriptionLink": "Gestiona o cancela tu suscripción"
     },
     "register": {
       "accountExists": "Este correo ya tiene una cuenta — inicia sesión o restablece tu contraseña.",
