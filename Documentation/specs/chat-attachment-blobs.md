@@ -45,6 +45,7 @@ Persist attachment blobs per message in the existing DigitalOcean Spaces bucket 
 5. The `set-chat-attachments-lifecycle` ops command (route + use case + `CommandsTab.tsx` button, idempotent) ships in the implementing PR; the `expire-chat-attachments-90d` rule is verified live on the bucket before rollout; the interim script under `scripts/` is removed.
 6. `chat_attachments` rows older than 90 days are removed by the startup sweep (tested), and a regenerate that finds a missing blob deletes the turn's rows.
 7. The composer hint and the expired-turn refusal both name the 90-day window, in all 10 locales.
+8. A new message in a conversation whose attachment blobs have expired works unchanged — follow-up turns read only the `attachment_text` fold and never fetch blobs in v1, so expiry can only affect regenerate.
 
 ## Decisions (resolved 2026-08-13)
 
