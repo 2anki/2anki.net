@@ -56,7 +56,10 @@
     "whyCancelling": "Perché stai disdicendo? (facoltativo)",
     "processing": "Elaborazione…",
     "cancelSubscription": "Disdici l'abbonamento",
-    "keepSubscription": "Mantieni l'abbonamento"
+    "keepSubscription": "Mantieni l'abbonamento",
+    "commentAria": "Commento facoltativo",
+    "commentPlaceholder": "Vuoi aggiungere qualcosa? (facoltativo)",
+    "commentPlaceholderTechnical": "Cosa non ha funzionato? (facoltativo)"
   },
   "pauseCard": {
     "pauseInstead": "Metti in pausa invece — nessun addebito mentre sei via",
@@ -69,13 +72,6 @@
     "yourPlan": "il tuo piano",
     "pausing": "Messa in pausa…",
     "pauseSubscription": "Metti in pausa l'abbonamento"
-  },
-  "cancellationFollowUp": {
-    "whyDidYouCancel": "Perché hai disdetto? (facoltativo)",
-    "tellMore": "Raccontaci di più (facoltativo)",
-    "skip": "Salta",
-    "sending": "Invio…",
-    "sendFeedback": "Invia il feedback"
   },
   "accountDeletion": {
     "deleteAccount": "Elimina l'account",

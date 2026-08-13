@@ -56,7 +56,10 @@
     "whyCancelling": "Waarom zeg je op? (optioneel)",
     "processing": "Verwerken…",
     "cancelSubscription": "Abonnement opzeggen",
-    "keepSubscription": "Abonnement behouden"
+    "keepSubscription": "Abonnement behouden",
+    "commentAria": "Optionele opmerking",
+    "commentPlaceholder": "Wil je nog iets toevoegen? (optioneel)",
+    "commentPlaceholderTechnical": "Wat ging er mis? (optioneel)"
   },
   "pauseCard": {
     "pauseInstead": "Pauzeer in plaats daarvan — geen kosten terwijl je weg bent",
@@ -69,13 +72,6 @@
     "yourPlan": "je abonnement",
     "pausing": "Pauzeren…",
     "pauseSubscription": "Abonnement pauzeren"
-  },
-  "cancellationFollowUp": {
-    "whyDidYouCancel": "Waarom heb je opgezegd? (optioneel)",
-    "tellMore": "Vertel ons meer (optioneel)",
-    "skip": "Overslaan",
-    "sending": "Verzenden…",
-    "sendFeedback": "Feedback versturen"
   },
   "accountDeletion": {
     "deleteAccount": "Account verwijderen",

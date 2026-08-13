@@ -56,7 +56,10 @@
     "whyCancelling": "¿Por qué cancelas? (opcional)",
     "processing": "Procesando…",
     "cancelSubscription": "Cancelar suscripción",
-    "keepSubscription": "Mantener suscripción"
+    "keepSubscription": "Mantener suscripción",
+    "commentAria": "Comentario opcional",
+    "commentPlaceholder": "¿Quieres añadir algo? (opcional)",
+    "commentPlaceholderTechnical": "¿Qué falló? (opcional)"
   },
   "pauseCard": {
     "pauseInstead": "Ponla en pausa — sin cargos mientras no estés",
@@ -69,13 +72,6 @@
     "yourPlan": "tu plan",
     "pausing": "Pausando…",
     "pauseSubscription": "Pausar suscripción"
-  },
-  "cancellationFollowUp": {
-    "whyDidYouCancel": "¿Por qué cancelaste? (opcional)",
-    "tellMore": "Cuéntanos más (opcional)",
-    "skip": "Omitir",
-    "sending": "Enviando…",
-    "sendFeedback": "Enviar comentarios"
   },
   "accountDeletion": {
     "deleteAccount": "Eliminar cuenta",
