@@ -4,6 +4,7 @@ import * as cheerio from 'cheerio';
 import { escapeAttribute } from '../notion-render/escape';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
 import { VisionMediaType } from './countVisionTokens';
+import { recordClaudeUsage } from './recordClaudeUsage';
 import {
   DeckInfo,
   EMPTY_CONTENT_USER_MESSAGE,
@@ -146,6 +147,11 @@ async function visionCardsForPage(
     });
 
   let response = await callVision(PDF_PAGE_VISION_MAX_TOKENS);
+  recordClaudeUsage({
+    surface: 'pdf_page_vision',
+    model: response.model,
+    usage: response.usage,
+  });
   if (response.stop_reason === 'max_tokens') {
     console.warn('[Claude] PDF page vision truncated, retrying', {
       pageIndex,
@@ -153,6 +159,11 @@ async function visionCardsForPage(
       retryMaxTokens: PDF_PAGE_VISION_RETRY_MAX_TOKENS,
     });
     response = await callVision(PDF_PAGE_VISION_RETRY_MAX_TOKENS);
+    recordClaudeUsage({
+      surface: 'pdf_page_vision',
+      model: response.model,
+      usage: response.usage,
+    });
   }
 
   const raw = response.content

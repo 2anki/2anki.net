@@ -25,6 +25,7 @@ import { GetLandingPageYieldUseCase } from '../usecases/ops/GetLandingPageYieldU
 import { GetCustomerSignalsUseCase } from '../usecases/ops/GetCustomerSignalsUseCase';
 import { GetPassUnlockMonitorUseCase } from '../usecases/ops/GetPassUnlockMonitorUseCase';
 import { GetPaidValueMonitorUseCase } from '../usecases/ops/GetPaidValueMonitorUseCase';
+import { GetAiUsageMetricsUseCase } from '../usecases/ops/GetAiUsageMetricsUseCase';
 import GrantDeveloperAccessUseCase, {
   InvalidEmailError,
 } from '../usecases/developer/GrantDeveloperAccessUseCase';
@@ -53,8 +54,25 @@ class OpsController {
     private readonly sendPassWinbackUseCase?: SendPassWinbackUseCase,
     private readonly grantDeveloperAccessUseCase?: GrantDeveloperAccessUseCase,
     private readonly getCancelFunnelUseCase?: GetCancelFunnelUseCase,
-    private readonly getPaidValueMonitorUseCase?: GetPaidValueMonitorUseCase
+    private readonly getPaidValueMonitorUseCase?: GetPaidValueMonitorUseCase,
+    private readonly getAiUsageMetricsUseCase?: GetAiUsageMetricsUseCase
   ) {}
+
+  async getAiUsage(req: express.Request, res: express.Response) {
+    if (this.getAiUsageMetricsUseCase == null) {
+      res.status(500).json({ message: 'AI usage metrics not configured' });
+      return;
+    }
+    try {
+      const window =
+        typeof req.query.window === 'string' ? req.query.window : undefined;
+      const result = await this.getAiUsageMetricsUseCase.execute(window);
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ops] getAiUsage failed', error);
+      res.status(500).json({ message: 'Failed to load AI usage metrics' });
+    }
+  }
 
   async grantDeveloperAccess(req: express.Request, res: express.Response) {
     if (this.grantDeveloperAccessUseCase == null) {

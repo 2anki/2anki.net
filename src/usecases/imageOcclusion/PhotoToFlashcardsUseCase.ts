@@ -21,6 +21,8 @@ import {
   TEMPLATE_DIR,
 } from '../../lib/constants';
 import { track } from '../../services/events/track';
+import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
+import { computeUsageCostUsd } from '../../lib/claude/pricing';
 import type { IEventsRepository } from '../../data_layer/EventsRepository';
 import {
   asValidMcq,
@@ -166,8 +168,6 @@ function resolvePrompt(
   return buildVisionPrompt(density, { mcqEnabled });
 }
 
-const INPUT_COST_PER_MILLION = 3;
-const OUTPUT_COST_PER_MILLION = 15;
 const VISION_MAX_TOKENS = 8192;
 const VISION_RETRY_MAX_TOKENS = 16384;
 
@@ -612,6 +612,12 @@ export class PhotoToFlashcardsUseCase {
       });
 
     let response = await createVisionMessage(VISION_MAX_TOKENS);
+    recordClaudeUsage({
+      surface: 'photo_to_deck',
+      model: response.model,
+      usage: response.usage,
+      userId,
+    });
     if (response.stop_reason === 'max_tokens') {
       console.warn(
         '[Claude] Vision response truncated at max_tokens, retrying',
@@ -622,6 +628,12 @@ export class PhotoToFlashcardsUseCase {
         }
       );
       response = await createVisionMessage(VISION_RETRY_MAX_TOKENS);
+      recordClaudeUsage({
+        surface: 'photo_to_deck',
+        model: response.model,
+        usage: response.usage,
+        userId,
+      });
     }
 
     const rawText = response.content
@@ -634,9 +646,10 @@ export class PhotoToFlashcardsUseCase {
 
     const inputTokens = response.usage?.input_tokens ?? tokens;
     const outputTokens = response.usage?.output_tokens ?? 0;
-    const estimatedCostUsd =
-      (inputTokens / 1_000_000) * INPUT_COST_PER_MILLION +
-      (outputTokens / 1_000_000) * OUTPUT_COST_PER_MILLION;
+    const estimatedCostUsd = computeUsageCostUsd(response.model, {
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+    });
 
     const deckName = input.deckName || (decks[0]?.deck ?? 'Photo deck');
 

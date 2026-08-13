@@ -1,5 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import { logClaudeUsage } from '../../lib/claude/logClaudeUsage';
+import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
 import type { IChatMessagesRepository } from '../../data_layer/ChatMessagesRepository';
 import {
   rewriteAssistantContentWithTaggedCards,
@@ -129,7 +129,12 @@ export class TagCardsUseCase {
       ],
     });
 
-    logClaudeUsage('TagCardsUseCase', message.usage);
+    recordClaudeUsage({
+      surface: 'chat_tagging',
+      model: message.model,
+      usage: message.usage,
+      userId: input.userId ?? null,
+    });
 
     const text = message.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')

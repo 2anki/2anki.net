@@ -173,12 +173,12 @@ describe('AINoteTypeUseCase system prompt caching', () => {
     });
   });
 
-  it('emits a [claude-usage] log line labelled AINoteTypeUseCase', async () => {
+  it('emits a [claude-usage] log line for the note_type_ai surface', async () => {
     const useCase = new AINoteTypeUseCase();
     await useCase.generate('a flashcard for the krebs cycle');
 
     expect(infoSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[claude-usage] label=AINoteTypeUseCase')
+      expect.stringContaining('[claude-usage] surface=note_type_ai')
     );
   });
 });
