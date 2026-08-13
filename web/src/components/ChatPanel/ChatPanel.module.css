@@ -344,10 +344,10 @@
 }
 
 .retentionHint {
-  align-self: center;
+  flex-basis: 100%;
   font-size: 0.75rem;
   color: var(--color-text-tertiary);
-  white-space: nowrap;
+  padding: 0 0.25rem;
 }
 
 .chip {
