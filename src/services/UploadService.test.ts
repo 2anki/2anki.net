@@ -1682,7 +1682,7 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
       'conversion_succeeded',
       expect.objectContaining({
         userId: 42,
-        props: expect.objectContaining({ card_count_bucket: '<50' }),
+        props: expect.objectContaining({ card_count_bucket: '3-49' }),
       })
     );
   });

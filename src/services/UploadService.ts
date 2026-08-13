@@ -28,6 +28,8 @@ import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavai
 import { isExpectedClientFault } from '../lib/misc/isExpectedClientFault';
 import type { DeckScore } from '../lib/parser/scoreCandidateDeck';
 import type { InducedRescue } from '../lib/parser/induction/candidateRules';
+import { toCardCountBucket } from '../lib/analytics/cardCountBucket';
+import { uploadInputFormat } from '../lib/analytics/uploadInputFormat';
 import {
   CONVERSION_TRUNCATED_MESSAGE,
   FileConversionError,
@@ -154,49 +156,6 @@ function resolveUploadWarning(warnings: string[] | undefined): string | null {
     return MARKDOWN_HEURISTIC_WARNING;
   }
   return null;
-}
-
-// The extension of the first uploaded file, lowercased. A shape metric, never
-// the filename itself — see .claude/rules/support-confidentiality.md.
-//
-// Allowlisted rather than passed through: the value is a cohort key, and an
-// unbounded one lets any upload mint a cohort of size one. Anything unrecognised
-// buckets into 'other' so the cardinality stays fixed.
-const KNOWN_INPUT_FORMATS = new Set([
-  'zip',
-  'html',
-  'htm',
-  'md',
-  'markdown',
-  'csv',
-  'tsv',
-  'xlsx',
-  'xls',
-  'pdf',
-  'docx',
-  'doc',
-  'pptx',
-  'ppt',
-  'txt',
-  'apkg',
-  'opml',
-  'epub',
-  'xml',
-  'json',
-  'png',
-  'jpg',
-  'jpeg',
-  'webp',
-  'gif',
-]);
-
-function uploadInputFormat(files: UploadedFile[] | undefined): string {
-  const name = files?.[0]?.originalname;
-  if (typeof name !== 'string') return 'unknown';
-  const dot = name.lastIndexOf('.');
-  if (dot < 0 || dot === name.length - 1) return 'unknown';
-  const ext = name.slice(dot + 1).toLowerCase();
-  return KNOWN_INPUT_FORMATS.has(ext) ? ext : 'other';
 }
 
 function shippedRescueRule(
@@ -776,9 +735,8 @@ class UploadService {
         userId: owner != null ? Number(owner) : null,
         anonymousId: this.resolveAnonId(req),
         props: {
-          source: this.resolveUploadSource(req),
+          ...this.baseFunnelProps(req),
           device: classifyDevice(req.headers?.['user-agent']),
-          signup_origin: this.resolveSignupOrigin(req),
         },
       });
 
@@ -801,9 +759,8 @@ class UploadService {
           userId: owner != null ? Number(owner) : null,
           anonymousId: this.resolveAnonId(req),
           props: {
-            source: this.resolveUploadSource(req),
+            ...this.baseFunnelProps(req),
             reason: 'api_card_limit',
-            signup_origin: this.resolveSignupOrigin(req),
           },
         });
         return res.status(402).json({
@@ -824,9 +781,8 @@ class UploadService {
           userId,
           anonymousId,
           props: {
-            source,
+            ...this.baseFunnelProps(req),
             reason: 'monthly_limit',
-            signup_origin: this.resolveSignupOrigin(req),
           },
         });
         track('paywall_shown', {
@@ -853,9 +809,8 @@ class UploadService {
           userId,
           anonymousId,
           props: {
-            source,
+            ...this.baseFunnelProps(req),
             reason: 'anonymous_cap',
-            signup_origin: this.resolveSignupOrigin(req),
           },
         });
         track('paywall_shown', {
@@ -912,9 +867,8 @@ class UploadService {
           userId: owner != null ? Number(owner) : null,
           anonymousId: this.resolveAnonId(req),
           props: {
-            source: this.resolveUploadSource(req),
+            ...this.baseFunnelProps(req),
             reason: 'upload_incomplete',
-            signup_origin: this.resolveSignupOrigin(req),
           },
         });
         return res.status(400).json({
@@ -1027,9 +981,8 @@ class UploadService {
             userId: Number(owner),
             anonymousId: this.resolveAnonId(req),
             props: {
-              source: this.resolveUploadSource(req),
-              card_count_bucket: this.toCardCountBucket(totalCards),
-              signup_origin: this.resolveSignupOrigin(req),
+              ...this.baseFunnelProps(req),
+              card_count_bucket: toCardCountBucket(totalCards),
             },
           });
         } else {
@@ -1185,9 +1138,8 @@ class UploadService {
         userId: ownerId,
         anonymousId: this.resolveAnonId(req),
         props: {
-          source: this.resolveUploadSource(req),
+          ...this.baseFunnelProps(req),
           reason: 'empty_deck',
-          signup_origin: this.resolveSignupOrigin(req),
         },
       });
       throw new EmptyDeckError();
@@ -1292,15 +1244,13 @@ class UploadService {
         console.error(err);
       }
       res.attachment(`/${first.name}`);
-      const uploadSource = this.resolveUploadSource(req);
-      const bucket = this.toCardCountBucket(totalCards);
+      const bucket = toCardCountBucket(totalCards);
       track('conversion_succeeded', {
         userId: owner != null ? Number(owner) : null,
         anonymousId: this.resolveAnonId(req),
         props: {
-          source: uploadSource,
+          ...this.baseFunnelProps(req),
           card_count_bucket: bucket,
-          signup_origin: this.resolveSignupOrigin(req),
         },
       });
       if (owner != null) {
@@ -1314,9 +1264,8 @@ class UploadService {
       userId: owner != null ? Number(owner) : null,
       anonymousId: this.resolveAnonId(req),
       props: {
-        source: this.resolveUploadSource(req),
-        card_count_bucket: this.toCardCountBucket(totalCards),
-        signup_origin: this.resolveSignupOrigin(req),
+        ...this.baseFunnelProps(req),
+        card_count_bucket: toCardCountBucket(totalCards),
       },
     });
     if (owner != null) {
@@ -1383,6 +1332,14 @@ class UploadService {
     return validateUploadSource(body?.source);
   }
 
+  private baseFunnelProps(req: express.Request): Record<string, unknown> {
+    return {
+      source: this.resolveUploadSource(req),
+      input_format: uploadInputFormat(req.files as UploadedFile[] | undefined),
+      signup_origin: this.resolveSignupOrigin(req),
+    };
+  }
+
   private resolveUploadSource(
     req: express.Request
   ): UploadSource | 'upload' | 'google_drive' {
@@ -1391,12 +1348,6 @@ class UploadService {
     if (req.path?.includes('google_drive')) return 'google_drive';
     if (req.path?.includes('dropbox')) return 'dropbox';
     return 'upload';
-  }
-
-  private toCardCountBucket(count: number): '<50' | '50-499' | '500+' {
-    if (count < 50) return '<50';
-    if (count < 500) return '50-499';
-    return '500+';
   }
 }
 

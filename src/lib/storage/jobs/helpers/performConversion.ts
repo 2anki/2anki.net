@@ -40,15 +40,9 @@ import { UnsupportedNotionBlockRepository } from '../../../../data_layer/Unsuppo
 import { ConversionOutputStatsRepository } from '../../../../data_layer/ConversionOutputStatsRepository';
 import { truncateDecksToCardLimit } from '../../../parser/truncateDecksToCardLimit';
 import { MonthlyLimitPartial } from '../../../../services/NotionService/helpers/conversionTruncation';
+import { toCardCountBucket } from '../../../analytics/cardCountBucket';
 
-type CardCountBucket = '<50' | '50-499' | '500+';
 type ConversionSource = 'notion' | 'upload' | 'google_drive';
-
-function toCardCountBucket(count: number): CardCountBucket {
-  if (count < 50) return '<50';
-  if (count < 500) return '50-499';
-  return '500+';
-}
 
 function toConversionSource(type?: string): ConversionSource {
   if (type === 'google_drive') return 'google_drive';
