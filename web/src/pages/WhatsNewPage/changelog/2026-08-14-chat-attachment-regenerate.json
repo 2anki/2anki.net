@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-14-chat-attachment-regenerate",
+  "date": "2026-08-14",
+  "type": "feature",
+  "title": "Chat regenerate reuses your attached PDFs and images — attachments are kept for 90 days"
+}
