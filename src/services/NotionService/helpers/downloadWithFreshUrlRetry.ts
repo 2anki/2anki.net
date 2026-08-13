@@ -30,6 +30,10 @@ async function resolveFreshUrl(
   }
 }
 
+function warnSkipped(blockId: string, reason: string): void {
+  console.warn(`Skipping media fetch for Notion block ${blockId} — ${reason}`);
+}
+
 export async function downloadWithFreshUrlRetry({
   api,
   blockId,
@@ -38,14 +42,29 @@ export async function downloadWithFreshUrlRetry({
   extractFreshUrl,
 }: FreshUrlRetryParams): Promise<Buffer | null> {
   const contents = await downloadMediaOrSkip(url);
-  if (contents != null || sourceType !== 'file') {
+  if (contents != null) {
     return contents;
+  }
+
+  if (sourceType !== 'file') {
+    warnSkipped(blockId, 'external media URL returned no content');
+    return null;
   }
 
   const freshUrl = await resolveFreshUrl(api, blockId, extractFreshUrl);
   if (freshUrl == null) {
+    warnSkipped(blockId, 'signed URL expired and could not be refreshed');
     return null;
   }
 
-  return downloadMediaOrSkip(freshUrl);
+  const refreshed = await downloadMediaOrSkip(freshUrl);
+  if (refreshed == null) {
+    warnSkipped(blockId, 'signed URL expired and could not be refreshed');
+    return null;
+  }
+
+  console.info(
+    `Recovered Notion media for block ${blockId} after refreshing its expired signed URL`
+  );
+  return refreshed;
 }

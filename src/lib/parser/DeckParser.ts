@@ -849,8 +849,13 @@ export class DeckParser {
     }
     if (bytes == null) {
       this.droppedImageCount++;
-      if (!fetchThrew && isNotionSignedFileUrl(url)) {
-        this.expiredNotionImageCount++;
+      if (!fetchThrew) {
+        console.warn(
+          'Skipping media fetch for a remote image — fetch returned no content (URL likely expired)'
+        );
+        if (isNotionSignedFileUrl(url)) {
+          this.expiredNotionImageCount++;
+        }
       }
       return;
     }

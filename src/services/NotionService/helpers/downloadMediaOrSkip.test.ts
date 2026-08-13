@@ -62,7 +62,7 @@ describe('downloadMediaOrSkip', () => {
     );
   });
 
-  test('returns null and does not throw on 403 Forbidden', async () => {
+  test('returns null without warning on 403 so the caller owns the drop signal', async () => {
     mockedAxios.get.mockRejectedValueOnce(makeAxiosError(403));
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -71,10 +71,11 @@ describe('downloadMediaOrSkip', () => {
     );
 
     expect(result).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 
-  test('returns null on 404 Not Found', async () => {
+  test('returns null without warning on 404 so the caller owns the drop signal', async () => {
     mockedAxios.get.mockRejectedValueOnce(makeAxiosError(404));
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -83,6 +84,7 @@ describe('downloadMediaOrSkip', () => {
     );
 
     expect(result).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 

@@ -24,9 +24,6 @@ export async function downloadMediaOrSkip(url: string): Promise<Buffer | null> {
       axios.isAxiosError(error) &&
       isExpiredOrMissing(error.response?.status)
     ) {
-      console.warn(
-        `Skipping media fetch for ${url} — received ${error.response?.status} (URL likely expired)`
-      );
       return null;
     }
     throw error;

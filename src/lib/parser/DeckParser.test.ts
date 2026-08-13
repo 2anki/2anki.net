@@ -1812,6 +1812,19 @@ describe('remote image rehosting', () => {
     expect(parser.expiredNotionImageCount).toBe(1);
   });
 
+  test('logs a skipped-media warning when a remote image fetch returns no content', async () => {
+    downloadMediaOrSkipMock.mockResolvedValueOnce(null);
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const ws = new Workspace(true, 'fs');
+    const parser = buildRemoteImageParser();
+    await parser.writeDeckInfo(ws);
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping media fetch')
+    );
+    warn.mockRestore();
+  });
+
   test('does not count a plain external dropped image as an expired Notion image', async () => {
     downloadMediaOrSkipMock.mockResolvedValueOnce(null);
     const ws = new Workspace(true, 'fs');
