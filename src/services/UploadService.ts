@@ -1244,7 +1244,6 @@ class UploadService {
         console.error(err);
       }
       res.attachment(`/${first.name}`);
-      const uploadSource = this.resolveUploadSource(req);
       const bucket = toCardCountBucket(totalCards);
       track('conversion_succeeded', {
         userId: owner != null ? Number(owner) : null,
