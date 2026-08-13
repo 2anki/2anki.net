@@ -12,6 +12,7 @@ exports.up = (knex) =>
     t.text('content_type').notNullable();
     t.integer('byte_size').notNullable();
     t.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
+    t.index(['user_id']);
     t.index(['message_id']);
     t.index(['created_at']);
   });
