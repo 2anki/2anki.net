@@ -74,9 +74,14 @@ export function LanguagePicker({ variant = 'compact' }: LanguagePickerProps) {
           🌐
         </span>
         {variant === 'bare' && (
-          <span className={styles.bareCode} aria-hidden="true">
-            {current.toUpperCase()}
-          </span>
+          <>
+            <span className={styles.bareCode} aria-hidden="true">
+              {current.toUpperCase()}
+            </span>
+            <span className={styles.bareChevron} aria-hidden="true">
+              ▾
+            </span>
+          </>
         )}
         <select
           className={styles.bareSelect}

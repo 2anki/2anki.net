@@ -136,3 +136,24 @@ describe('RightSide redesign variants (anonymous)', () => {
     ]);
   });
 });
+
+describe('refined variant C affordances', () => {
+  it('shows a dropdown chevron on the language switcher', () => {
+    render(<RightSide path="/" isLoggedIn={false} variant="convertOrSignIn" />);
+    expect(screen.getByText('▾')).toBeInTheDocument();
+  });
+
+  it('renders Log in as a text link, not a button-styled anchor', () => {
+    render(<RightSide path="/" isLoggedIn={false} variant="convertOrSignIn" />);
+    const login = screen.getByRole('link', { name: 'Log in' });
+    const cta = screen.getByRole('link', { name: 'Make flashcards' });
+    expect(login.className).toContain('navLink');
+    expect(login.className).not.toContain('navCta');
+    expect(cta.previousElementSibling).toBe(login);
+  });
+
+  it('keeps the one CTA variant chevron-free', () => {
+    render(<RightSide path="/" isLoggedIn={false} variant="oneCta" />);
+    expect(screen.queryByText('▾')).not.toBeInTheDocument();
+  });
+});

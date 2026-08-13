@@ -94,3 +94,10 @@
   appearance: none;
   border: none;
 }
+
+.bareChevron {
+  font-size: 9px;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0.7;
+}

@@ -38,8 +38,8 @@ const VARIANTS: ReadonlyArray<{
   },
   {
     variant: 'convertOrSignIn',
-    title: 'C — Convert or sign in (designer pick)',
-    note: 'Two jobs, two buttons: ghost Log in for returning users, filled CTA for newcomers; utilities grouped in one segmented pill.',
+    title: 'C — Refined (single focal point)',
+    note: 'One filled container only: Log in demoted to a text link beside the CTA, a 32px gap splits destinations from actions, links sit one contrast step brighter, and the utilities are independent quiet icons — the language switcher gains a ▾ dropdown cue.',
   },
 ];
 

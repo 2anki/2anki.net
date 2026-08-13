@@ -14,7 +14,6 @@ interface RightSideProps {
 
 function utilityGroupClassFor(variant: NavbarVariant): string {
   if (variant === 'oneCta') return styles.utilityGroupDivided;
-  if (variant === 'convertOrSignIn') return styles.utilityGroupSegmented;
   return styles.utilityGroup;
 }
 
@@ -25,29 +24,29 @@ interface VariantRightSideProps {
 
 function VariantRightSide({ path, variant }: Readonly<VariantRightSideProps>) {
   const { t } = useTranslation();
+  const refined = variant === 'convertOrSignIn';
+  const linksClass = refined ? styles.brightLinks : styles.plainLinks;
   return (
     <div className={styles.navEnd}>
-      <NavbarItem href="/print" path={path}>
-        {t('nav.print')}
-      </NavbarItem>
-      <NavbarItem href="/documentation" path={path}>
-        {t('nav.docs')}
-      </NavbarItem>
-      <NavbarItem href="/app" path={path}>
-        {t('nav.download')}
-      </NavbarItem>
-      {variant === 'convertOrSignIn' ? (
-        <a href="/login#login" className={styles.navLogin}>
-          {t('nav.login')}
-        </a>
-      ) : (
+      <div className={linksClass}>
+        <NavbarItem href="/print" path={path}>
+          {t('nav.print')}
+        </NavbarItem>
+        <NavbarItem href="/documentation" path={path}>
+          {t('nav.docs')}
+        </NavbarItem>
+        <NavbarItem href="/app" path={path}>
+          {t('nav.download')}
+        </NavbarItem>
+      </div>
+      <div className={refined ? styles.actionZone : styles.plainLinks}>
         <NavbarItem href="/login#login" path={path}>
           {t('nav.login')}
         </NavbarItem>
-      )}
-      <a href="/upload" className={styles.navCta}>
-        {t('nav.upload')}
-      </a>
+        <a href="/upload" className={styles.navCta}>
+          {t('nav.upload')}
+        </a>
+      </div>
       <div className={utilityGroupClassFor(variant)}>
         <LanguagePicker variant={variant === 'oneCta' ? 'bareIcon' : 'bare'} />
         <ThemeToggle />
