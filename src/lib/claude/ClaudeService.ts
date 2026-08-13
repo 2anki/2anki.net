@@ -798,7 +798,7 @@ async function generateDeckInfoFromChunk(
   onProgress?.(`claude:chunk:${chunkIndex + 1}:${totalChunks}`);
 
   console.log('[Claude] Sending request to Claude API', {
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-5',
     promptBytes: userMessage.length,
     maxTokens: CHUNK_MAX_TOKENS,
     mediaFilesCount: availableMediaFiles.length,
@@ -811,7 +811,7 @@ async function generateDeckInfoFromChunk(
   const runStream = async (): Promise<Message> => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stream = (client.messages as any).stream({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-5',
       max_tokens: CHUNK_MAX_TOKENS,
       system: [
         {
