@@ -118,9 +118,9 @@
     "mcqPayingHint": "Als de bron op een quiz lijkt, schrijft de AI opties A–D.",
     "upgrade": "Upgraden",
     "mcqUpgradeHint": " voor meerkeuzekaarten — A–D-opties wanneer de bron op een quiz lijkt.",
-    "noQuestionsFound": "Geen vragen gevonden in deze foto.",
-    "switchToGenerate": "Schakel naar Kaarten genereren",
-    "switchSuffix": " om ze voor je te laten schrijven.",
+    "noQuestionsFound": "Geen kant-en-klare vragen gevonden in deze foto.",
+    "switchToGenerate": "Probeer Kaarten genereren",
+    "switchSuffix": " om kaarten van deze inhoud te maken.",
     "clear": "Wissen"
   },
   "occlusion": {

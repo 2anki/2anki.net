@@ -214,16 +214,16 @@ export function PhotoToFlashcardsPage() {
     setError(null);
   };
 
-  const switchToGenerative = () => {
-    setMode('generative');
-    setVerbatimEmptyState(false);
-    card1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-  };
+  type ConvertOutcome =
+    | { cardCount: number }
+    | { error: string }
+    | { noQuestions: true };
 
   const convertOnePhoto = async (
     photo: SelectedPhoto,
-    name: string
-  ): Promise<{ cardCount: number } | { error: string }> => {
+    name: string,
+    activeMode: PhotoMode
+  ): Promise<ConvertOutcome> => {
     let prepared: PreparedImage;
     try {
       prepared = await prepareImageForVision(photo.file);
@@ -248,7 +248,7 @@ export function PhotoToFlashcardsPage() {
         height: prepared.height,
         includeSourceImage,
         density,
-        mode,
+        mode: activeMode,
         mcqEnabled: includeMcq && isPaying,
       }),
     });
@@ -276,6 +276,16 @@ export function PhotoToFlashcardsPage() {
         error: t('photo.quotaReached', { limit }),
       };
     }
+    if (res.status === 422) {
+      const body = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        code?: string;
+      };
+      if (body.code === 'no_ready_made_questions') {
+        return { noQuestions: true };
+      }
+      return { error: body.message ?? t('photo.genericReadError') };
+    }
     if (!res.ok) {
       const body = (await res
         .json()
@@ -301,7 +311,7 @@ export function PhotoToFlashcardsPage() {
     return total === 1 ? trimmed : `${trimmed} ${index + 1}`;
   };
 
-  const handleConvert = async () => {
+  const runConversion = async (activeMode: PhotoMode) => {
     if (photos.length === 0) {
       setError(t('photo.addFirst'));
       return;
@@ -317,10 +327,16 @@ export function PhotoToFlashcardsPage() {
       for (let i = 0; i < photos.length; i += 1) {
         const photo = photos[i];
         const name = buildDeckName(photo, i, photos.length);
-        const result = await convertOnePhoto(photo, name);
+        const result = await convertOnePhoto(photo, name, activeMode);
         if ('error' in result) {
           setError(result.error);
           setStatus('idle');
+          return;
+        }
+        if ('noQuestions' in result) {
+          setVerbatimEmptyState(true);
+          setStatus('idle');
+          track('photo_verbatim_no_questions');
           return;
         }
         totalCards += result.cardCount;
@@ -328,13 +344,20 @@ export function PhotoToFlashcardsPage() {
 
       setCardCount(totalCards);
       setStatus('done');
-      if (mode === 'verbatim' && totalCards === 0) {
-        setVerbatimEmptyState(true);
-      }
     } catch {
       setError(t('photo.somethingBroke'));
       setStatus('idle');
     }
+  };
+
+  const handleConvert = () => runConversion(mode);
+
+  const retryWithGenerative = () => {
+    setMode('generative');
+    setVerbatimEmptyState(false);
+    card1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    track('photo_verbatim_switch_to_generate');
+    void runConversion('generative');
   };
 
   const renderConvertLabel = (): string => {
@@ -601,7 +624,7 @@ export function PhotoToFlashcardsPage() {
           <button
             type="button"
             className={pageStyles.switchModeLink}
-            onClick={switchToGenerative}
+            onClick={retryWithGenerative}
           >
             {t('photo.switchToGenerate')}
           </button>

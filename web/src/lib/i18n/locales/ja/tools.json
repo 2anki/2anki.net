@@ -115,9 +115,9 @@
     "mcqPayingHint": "ソースがクイズのように見えるとき、AI が A〜D の選択肢を作成します。",
     "upgrade": "アップグレード",
     "mcqUpgradeHint": " すると多肢選択カードに — ソースがクイズのように見えるとき A〜D の選択肢。",
-    "noQuestionsFound": "この写真に問題が見つかりませんでした。",
-    "switchToGenerate": "「カードを生成」に切り替える",
-    "switchSuffix": " と、代わりに作成してもらえます。",
+    "noQuestionsFound": "この写真に既成の問題が見つかりませんでした。",
+    "switchToGenerate": "「カードを生成」を試す",
+    "switchSuffix": " と、この内容からカードを作成できます。",
     "clear": "クリア"
   },
   "occlusion": {

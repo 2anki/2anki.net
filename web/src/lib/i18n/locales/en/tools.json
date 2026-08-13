@@ -118,9 +118,9 @@
     "mcqPayingHint": "When the source looks like a quiz, the AI writes options A–D.",
     "upgrade": "Upgrade",
     "mcqUpgradeHint": " for multiple-choice cards — A–D options when the source looks like a quiz.",
-    "noQuestionsFound": "No questions found in this photo.",
-    "switchToGenerate": "Switch to Generate cards",
-    "switchSuffix": " to have them written for you.",
+    "noQuestionsFound": "No ready-made questions found in this photo.",
+    "switchToGenerate": "Try Generate cards",
+    "switchSuffix": " to make cards from this content.",
     "clear": "Clear"
   },
   "occlusion": {
