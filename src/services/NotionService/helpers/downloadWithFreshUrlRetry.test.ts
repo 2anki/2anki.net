@@ -19,8 +19,18 @@ const makeApi = (freshBlock: GetBlockResponse): NotionAPIWrapper =>
   }) as unknown as NotionAPIWrapper;
 
 describe('downloadWithFreshUrlRetry', () => {
+  let warn: jest.SpyInstance;
+  let info: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    info = jest.spyOn(console, 'info').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warn.mockRestore();
+    info.mockRestore();
   });
 
   test('returns bytes on the first download without re-fetching the block', async () => {
@@ -39,6 +49,8 @@ describe('downloadWithFreshUrlRetry', () => {
     expect(result).toBe(bytes);
     expect(mockedDownload).toHaveBeenCalledTimes(1);
     expect(api.getBlock).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    expect(info).not.toHaveBeenCalled();
   });
 
   test('re-resolves a fresh signed URL and retries once when the first download fails', async () => {
@@ -67,6 +79,8 @@ describe('downloadWithFreshUrlRetry', () => {
       2,
       'https://notion.s3/fresh.png'
     );
+    expect(info).toHaveBeenCalledWith(expect.stringContaining('Recovered'));
+    expect(warn).not.toHaveBeenCalled();
   });
 
   test('does not retry external assets — their URLs do not expire', async () => {
@@ -84,6 +98,10 @@ describe('downloadWithFreshUrlRetry', () => {
     expect(result).toBeNull();
     expect(api.getBlock).not.toHaveBeenCalled();
     expect(mockedDownload).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping media fetch')
+    );
+    expect(info).not.toHaveBeenCalled();
   });
 
   test('retries at most once — a second expiry yields null, not a third fetch', async () => {
@@ -101,6 +119,10 @@ describe('downloadWithFreshUrlRetry', () => {
     expect(result).toBeNull();
     expect(api.getBlock).toHaveBeenCalledTimes(1);
     expect(mockedDownload).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping media fetch')
+    );
+    expect(info).not.toHaveBeenCalled();
   });
 
   test('gives up gracefully when the fresh block yields no URL', async () => {
@@ -118,6 +140,10 @@ describe('downloadWithFreshUrlRetry', () => {
     expect(result).toBeNull();
     expect(api.getBlock).toHaveBeenCalledTimes(1);
     expect(mockedDownload).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping media fetch')
+    );
+    expect(info).not.toHaveBeenCalled();
   });
 
   test('gives up gracefully when re-fetching the block throws', async () => {
@@ -138,5 +164,9 @@ describe('downloadWithFreshUrlRetry', () => {
 
     expect(result).toBeNull();
     expect(mockedDownload).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping media fetch')
+    );
+    expect(info).not.toHaveBeenCalled();
   });
 });
