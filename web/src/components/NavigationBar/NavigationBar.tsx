@@ -3,13 +3,17 @@ import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '../../lib/hooks/useTheme';
 import styles from './NavigationBar.module.css';
-import { RightSide } from './components/RightSide';
+import { RightSide, type NavbarVariant } from './components/RightSide';
 
 interface NavigationBarProps {
   isLoggedIn: boolean | undefined;
+  variant?: NavbarVariant;
 }
 
-function NavigationBar({ isLoggedIn }: Readonly<NavigationBarProps>) {
+function NavigationBar({
+  isLoggedIn,
+  variant = 'current',
+}: Readonly<NavigationBarProps>) {
   const { t } = useTranslation('chrome');
   const [active, setActive] = useState(false);
   const path = globalThis.location.pathname;
@@ -46,7 +50,9 @@ function NavigationBar({ isLoggedIn }: Readonly<NavigationBarProps>) {
       </div>
 
       <div className={active ? styles.menuActive : styles.menu}>
-        {isResolved && <RightSide path={path} isLoggedIn={isLoggedIn} />}
+        {isResolved && (
+          <RightSide path={path} isLoggedIn={isLoggedIn} variant={variant} />
+        )}
       </div>
     </nav>
   );

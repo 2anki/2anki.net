@@ -72,3 +72,67 @@ describe('RightSide (anonymous nav)', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('RightSide redesign variants (anonymous)', () => {
+  const variants = ['quiet', 'oneCta', 'convertOrSignIn'] as const;
+
+  it.each(variants)(
+    '%s orders links Print, Docs, Download, Log in, CTA',
+    (variant) => {
+      render(<RightSide path="/" isLoggedIn={false} variant={variant} />);
+      const labels = screen.getAllByRole('link').map((a) => a.textContent);
+      expect(labels).toEqual([
+        'Print Decks',
+        'Docs',
+        'Download',
+        'Log in',
+        'Make flashcards',
+      ]);
+    }
+  );
+
+  it.each(variants)('%s keeps the CTA pointed at /upload', (variant) => {
+    render(<RightSide path="/" isLoggedIn={false} variant={variant} />);
+    expect(
+      screen.getByRole('link', { name: 'Make flashcards' })
+    ).toHaveAttribute('href', '/upload');
+  });
+
+  it('quiet and convertOrSignIn show the 2-letter language code, oneCta hides it', () => {
+    const { unmount } = render(
+      <RightSide path="/" isLoggedIn={false} variant="quiet" />
+    );
+    expect(screen.getByText('EN')).toBeInTheDocument();
+    unmount();
+
+    render(<RightSide path="/" isLoggedIn={false} variant="oneCta" />);
+    expect(screen.queryByText('EN')).not.toBeInTheDocument();
+  });
+
+  it('every variant keeps the language select and theme toggle accessible', () => {
+    for (const variant of variants) {
+      const { unmount } = render(
+        <RightSide path="/" isLoggedIn={false} variant={variant} />
+      );
+      expect(
+        screen.getByRole('combobox', { name: 'Language' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Cycle theme' })
+      ).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it('default variant renders the current navbar unchanged', () => {
+    render(<RightSide path="/" isLoggedIn={false} />);
+    const labels = screen.getAllByRole('link').map((a) => a.textContent);
+    expect(labels).toEqual([
+      'Make flashcards',
+      'Print Decks',
+      'Docs',
+      'Download',
+      'Log in',
+    ]);
+  });
+});

@@ -10,7 +10,7 @@ import { scheduleSync } from '../../lib/data_layer/userPreferencesSync';
 import styles from './LanguagePicker.module.css';
 
 interface LanguagePickerProps {
-  readonly variant?: 'compact' | 'labeled';
+  readonly variant?: 'compact' | 'labeled' | 'bare' | 'bareIcon';
 }
 
 function isSupportedLanguage(value: string): value is SupportedLanguage {
@@ -63,6 +63,33 @@ export function LanguagePicker({ variant = 'compact' }: LanguagePickerProps) {
             ))}
           </select>
         </div>
+      </div>
+    );
+  }
+
+  if (variant === 'bare' || variant === 'bareIcon') {
+    return (
+      <div className={styles.bare}>
+        <span className={styles.globe} aria-hidden="true">
+          🌐
+        </span>
+        {variant === 'bare' && (
+          <span className={styles.bareCode} aria-hidden="true">
+            {current.toUpperCase()}
+          </span>
+        )}
+        <select
+          className={styles.bareSelect}
+          value={current}
+          onChange={handleChange}
+          aria-label={t('language.picker')}
+        >
+          {options.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
       </div>
     );
   }
