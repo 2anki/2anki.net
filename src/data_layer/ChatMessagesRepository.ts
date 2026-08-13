@@ -27,7 +27,7 @@ export interface ChatHistoryMessage {
 }
 
 export interface IChatMessagesRepository {
-  insert(entry: ChatMessageInsert): Promise<void>;
+  insert(entry: ChatMessageInsert): Promise<number>;
   countThisMonth(userId: number): Promise<number>;
   listForConversation(input: {
     userId: number;
@@ -51,15 +51,18 @@ export class ChatMessagesRepository implements IChatMessagesRepository {
 
   constructor(private readonly database: Knex) {}
 
-  async insert(entry: ChatMessageInsert): Promise<void> {
-    await this.database(this.table).insert({
-      user_id: entry.userId,
-      conversation_id: entry.conversationId,
-      role: entry.role,
-      content: entry.content,
-      attachment_text: entry.attachmentText ?? null,
-      had_binary_attachments: entry.hadBinaryAttachments ?? false,
-    });
+  async insert(entry: ChatMessageInsert): Promise<number> {
+    const [row] = await this.database(this.table)
+      .insert({
+        user_id: entry.userId,
+        conversation_id: entry.conversationId,
+        role: entry.role,
+        content: entry.content,
+        attachment_text: entry.attachmentText ?? null,
+        had_binary_attachments: entry.hadBinaryAttachments ?? false,
+      })
+      .returning<{ id: number }[]>('id');
+    return row.id;
   }
 
   async countThisMonth(userId: number): Promise<number> {
@@ -159,9 +162,10 @@ export class InMemoryChatMessagesRepository implements IChatMessagesRepository {
   }> = [];
   private nextId = 1;
 
-  async insert(entry: ChatMessageInsert): Promise<void> {
+  async insert(entry: ChatMessageInsert): Promise<number> {
+    const id = this.nextId++;
     this.rows.push({
-      id: this.nextId++,
+      id,
       user_id: entry.userId,
       conversation_id: entry.conversationId,
       role: entry.role,
@@ -170,6 +174,7 @@ export class InMemoryChatMessagesRepository implements IChatMessagesRepository {
       had_binary_attachments: entry.hadBinaryAttachments ?? false,
       created_at: new Date(),
     });
+    return id;
   }
 
   async countThisMonth(userId: number): Promise<number> {

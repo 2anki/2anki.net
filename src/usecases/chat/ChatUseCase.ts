@@ -5,8 +5,11 @@ import type {
   IConversationsRepository,
 } from '../../data_layer/ConversationsRepository';
 import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
+import { chatAttachmentKey } from '../../lib/storage/chatAttachmentKeys';
+import type { IChatAttachmentsRepository } from '../../data_layer/ChatAttachmentsRepository';
 import {
   buildAttachmentBlocks,
+  isReplayableAttachmentMime,
   type ChatAttachment,
 } from './buildAttachmentBlocks';
 import {
@@ -552,11 +555,18 @@ export function extractClarifyMessageFromToolUse(
   return message.trim();
 }
 
+export interface IChatAttachmentBlobStorage {
+  uploadFile(name: string, data: Buffer | string): Promise<void>;
+  getFileContents(key: string): Promise<{ Body: Buffer | undefined }>;
+}
+
 export class ChatUseCase {
   constructor(
     private readonly messagesRepo: IChatMessagesRepository,
     private readonly conversationsRepo: IConversationsRepository,
-    private readonly anthropic: Anthropic
+    private readonly anthropic: Anthropic,
+    private readonly attachmentsRepo?: IChatAttachmentsRepository,
+    private readonly attachmentStorage?: IChatAttachmentBlobStorage
   ) {}
 
   async execute(input: {
@@ -609,7 +619,7 @@ export class ChatUseCase {
       clientHistory: conversationHistory,
     });
 
-    await this.messagesRepo.insert({
+    const userMessageId = await this.messagesRepo.insert({
       userId: user.owner,
       conversationId,
       role: 'user',
@@ -621,7 +631,7 @@ export class ChatUseCase {
       hadBinaryAttachments: attachmentBlocks.length > 0,
     });
 
-    return this.streamAssistantTurn({
+    const result = await this.streamAssistantTurn({
       user,
       conversationId,
       templateSlug: input.templateSlug,
@@ -629,6 +639,84 @@ export class ChatUseCase {
       userContent,
       onToken,
     });
+
+    await this.persistTurnAttachments({
+      userId: user.owner,
+      conversationId,
+      messageId: userMessageId,
+      attachments,
+    });
+
+    return result;
+  }
+
+  // Best-effort by design: a failed upload degrades regenerate on this turn
+  // to the honest refusal, but must never fail a turn the user already got.
+  private async persistTurnAttachments(input: {
+    userId: number;
+    conversationId: number;
+    messageId: number;
+    attachments: ChatAttachment[];
+  }): Promise<void> {
+    if (this.attachmentsRepo == null || this.attachmentStorage == null) return;
+    const binaries = input.attachments.filter((attachment) =>
+      isReplayableAttachmentMime(attachment.mimeType)
+    );
+    if (binaries.length === 0) return;
+    try {
+      const rows = [];
+      for (const [index, attachment] of binaries.entries()) {
+        const key = chatAttachmentKey({
+          userId: input.userId,
+          conversationId: input.conversationId,
+          messageId: input.messageId,
+          index,
+          filename: attachment.fileName ?? 'attachment',
+        });
+        await this.attachmentStorage.uploadFile(key, attachment.data);
+        rows.push({
+          userId: input.userId,
+          messageId: input.messageId,
+          s3Key: key,
+          filename: attachment.fileName ?? 'attachment',
+          contentType: attachment.mimeType,
+          byteSize: attachment.data.length,
+        });
+      }
+      await this.attachmentsRepo.insertMany(rows);
+    } catch (error) {
+      console.error('[chat] attachment persistence failed', error);
+    }
+  }
+
+  private async loadReplayAttachments(input: {
+    userId: number;
+    messageId: number;
+  }): Promise<ChatAttachment[] | null> {
+    if (this.attachmentsRepo == null || this.attachmentStorage == null) {
+      return null;
+    }
+    const rows = await this.attachmentsRepo.listForMessage(input);
+    if (rows.length === 0) return null;
+    const attachments: ChatAttachment[] = [];
+    for (const row of rows) {
+      let body: Buffer | undefined;
+      try {
+        body = (await this.attachmentStorage.getFileContents(row.s3Key)).Body;
+      } catch {
+        body = undefined;
+      }
+      if (body == null) {
+        await this.attachmentsRepo.deleteForMessage(input);
+        return null;
+      }
+      attachments.push({
+        mimeType: row.contentType,
+        data: body,
+        fileName: row.filename,
+      });
+    }
+    return attachments;
   }
 
   private async assembleHistory(input: {
@@ -681,8 +769,23 @@ export class ChatUseCase {
       latestAssistant?.id
     );
 
+    const foldedLastTurnText =
+      lastTurn != null
+        ? foldAttachmentIntoContent(lastTurn.content, lastTurn.attachmentText)
+        : '';
+    let userContent: Anthropic.MessageParam['content'] = foldedLastTurnText;
     if (lastTurn?.hadBinaryAttachments) {
-      throw new ChatAttachmentsNotReplayableError();
+      const replayed = await this.loadReplayAttachments({
+        userId: user.owner,
+        messageId: lastTurn.id,
+      });
+      if (replayed == null) {
+        throw new ChatAttachmentsNotReplayableError();
+      }
+      userContent = [
+        ...buildAttachmentBlocks(replayed),
+        { type: 'text', text: foldedLastTurnText },
+      ];
     }
 
     if (latestAssistant != null) {
@@ -700,10 +803,7 @@ export class ChatUseCase {
         role: m.role,
         content: foldAttachmentIntoContent(m.content, m.attachmentText),
       })),
-      userContent:
-        lastTurn != null
-          ? foldAttachmentIntoContent(lastTurn.content, lastTurn.attachmentText)
-          : '',
+      userContent,
       onToken,
     });
   }

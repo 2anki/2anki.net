@@ -2,10 +2,13 @@ import {
   S3Client,
   DeleteObjectCommand,
   DeleteObjectsCommand,
+  GetBucketLifecycleConfigurationCommand,
   GetObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
+  PutBucketLifecycleConfigurationCommand,
   PutObjectCommand,
+  type LifecycleRule,
   type _Object,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -191,6 +194,42 @@ class StorageHandler {
       new DeleteObjectsCommand({
         Bucket: StorageHandler.DefaultBucketName(),
         Delete: { Objects: objects, Quiet: true },
+      })
+    );
+  }
+
+  async deleteByPrefix(prefix: string): Promise<number> {
+    const keys = await this.listByPrefix(prefix);
+    const batchSize = 1000;
+    for (let start = 0; start < keys.length; start += batchSize) {
+      await this.deleteObjects(keys.slice(start, start + batchSize));
+    }
+    return keys.length;
+  }
+
+  async getLifecycleRules(): Promise<LifecycleRule[]> {
+    try {
+      const response = await this.s3.send(
+        new GetBucketLifecycleConfigurationCommand({
+          Bucket: StorageHandler.DefaultBucketName(),
+        })
+      );
+      return response.Rules ?? [];
+    } catch (error) {
+      if (
+        (error as { name?: string }).name === 'NoSuchLifecycleConfiguration'
+      ) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  async setLifecycleRules(rules: LifecycleRule[]): Promise<void> {
+    await this.s3.send(
+      new PutBucketLifecycleConfigurationCommand({
+        Bucket: StorageHandler.DefaultBucketName(),
+        LifecycleConfiguration: { Rules: rules },
       })
     );
   }
