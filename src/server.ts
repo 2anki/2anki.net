@@ -103,6 +103,10 @@ import { getDefaultEmailService } from './services/EmailService/EmailService';
 import { SendInactivityWarningsUseCase } from './usecases/ops/SendInactivityWarningsUseCase';
 import { DeleteInactiveUsersUseCase } from './usecases/ops/DeleteInactiveUsersUseCase';
 import UsersRepository from './data_layer/UsersRepository';
+import { ChatAttachmentsRepository } from './data_layer/ChatAttachmentsRepository';
+import { chatAttachmentRetentionCutoff } from './lib/storage/chatAttachmentKeys';
+import StorageHandler from './lib/storage/StorageHandler';
+import { UserDeletionService } from './services/UserDeletionService';
 import SuppressionEventsRepository from './data_layer/SuppressionEventsRepository';
 import { initConversionPool } from './lib/conversionPool';
 import { gracefulShutdown } from './lib/gracefulShutdown';
@@ -273,6 +277,15 @@ const serve = async () => {
     );
   }
 
+  const expiredAttachmentRows = await new ChatAttachmentsRepository(
+    database
+  ).deleteOlderThan(chatAttachmentRetentionCutoff());
+  if (expiredAttachmentRows > 0) {
+    console.info(
+      `[startup] Removed ${expiredAttachmentRows} expired chat attachment record(s)`
+    );
+  }
+
   new MagicTokenRepository(database).deleteExpired().then((count) => {
     if (count > 0) {
       console.info(`Cleaned up ${count} expired magic token(s)`);
@@ -330,7 +343,10 @@ const serve = async () => {
 
   const deleteInactiveUsersUseCase = new DeleteInactiveUsersUseCase(
     inactivityEmailRepo,
-    new UsersRepository(database),
+    new UserDeletionService(
+      new UsersRepository(database),
+      new StorageHandler()
+    ),
     new SuppressionEventsRepository(database)
   );
   scheduleInactiveUserDeletions(deleteInactiveUsersUseCase, {

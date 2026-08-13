@@ -73,3 +73,35 @@ describe('DeleteAllConversationsUseCase', () => {
     expect(await useCase.execute(99)).toBe(0);
   });
 });
+
+describe('DeleteAllConversationsUseCase attachment sweep', () => {
+  it('sweeps the user attachment prefix before deleting rows', async () => {
+    const conversations = new InMemoryConversationsRepository();
+    const messages = new InMemoryChatMessagesRepository();
+    const deleteByPrefix = jest.fn().mockResolvedValue(2);
+    const useCase = new DeleteAllConversationsUseCase(conversations, messages, {
+      deleteByPrefix,
+    });
+
+    await useCase.execute(7);
+
+    expect(deleteByPrefix).toHaveBeenCalledWith('chat-attachments/7/');
+  });
+
+  it('still deletes rows when the sweep fails', async () => {
+    const conversations = new InMemoryConversationsRepository();
+    const messages = new InMemoryChatMessagesRepository();
+    await conversations.create({ userId: 7, title: 'Mine' });
+    const deleteByPrefix = jest
+      .fn()
+      .mockRejectedValue(new Error('storage down'));
+    const useCase = new DeleteAllConversationsUseCase(conversations, messages, {
+      deleteByPrefix,
+    });
+
+    const deleted = await useCase.execute(7);
+
+    expect(deleted).toBe(1);
+    expect(await conversations.listForUser(7)).toEqual([]);
+  });
+});

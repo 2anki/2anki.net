@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 
 import UsersRepository from '../data_layer/UsersRepository';
 import Users from '../data_layer/public/Users';
+import StorageHandler from '../lib/storage/StorageHandler';
+import { UserDeletionService } from './UserDeletionService';
 import AuthenticationService from './AuthenticationService';
 import { IEmailService } from './EmailService/EmailService';
 import type { IMagicTokenRepository } from '../data_layer/MagicTokenRepository';
@@ -123,7 +125,10 @@ class UsersService {
   }
 
   deleteUser(owner: any) {
-    return this.repository.deleteUser(owner);
+    return new UserDeletionService(
+      this.repository,
+      new StorageHandler()
+    ).deleteUser(owner);
   }
 
   updateSubScriptionEmailUsingPrimaryEmail(email: string, newEmail: string) {
