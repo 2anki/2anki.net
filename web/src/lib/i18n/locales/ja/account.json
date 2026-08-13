@@ -56,7 +56,10 @@
     "whyCancelling": "解約の理由を教えてください（任意）",
     "processing": "処理中…",
     "cancelSubscription": "サブスクリプションを解約",
-    "keepSubscription": "サブスクリプションを続ける"
+    "keepSubscription": "サブスクリプションを続ける",
+    "commentAria": "任意のコメント",
+    "commentPlaceholder": "何か補足があればどうぞ（任意）",
+    "commentPlaceholderTechnical": "何が問題でしたか？（任意）"
   },
   "pauseCard": {
     "pauseInstead": "代わりに一時停止 — 離れている間は請求なし",
@@ -69,13 +72,6 @@
     "yourPlan": "現在のプラン",
     "pausing": "一時停止中…",
     "pauseSubscription": "サブスクリプションを一時停止"
-  },
-  "cancellationFollowUp": {
-    "whyDidYouCancel": "解約された理由を教えてください（任意）",
-    "tellMore": "詳しく教えてください（任意）",
-    "skip": "スキップ",
-    "sending": "送信中…",
-    "sendFeedback": "フィードバックを送信"
   },
   "accountDeletion": {
     "deleteAccount": "アカウントを削除",

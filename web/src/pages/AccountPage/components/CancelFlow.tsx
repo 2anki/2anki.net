@@ -4,7 +4,7 @@ import {
   CANCELLATION_REASONS,
   CancellationReason,
   REASON_KEYS,
-} from './CancellationFollowUp';
+} from './cancellationReasons';
 import { PauseCard } from './PauseCard';
 import { PauseMonths } from '../../../lib/backend/pauseSubscription';
 import { track } from '../../../lib/analytics/track';
@@ -25,8 +25,8 @@ interface CancelFlowProps {
   readonly isCancelling: boolean;
   readonly isPausing: boolean;
   readonly pauseError: string;
-  readonly onCancel: (reason: CancellationReason | '') => void;
-  readonly onKeep: (reason: CancellationReason | '') => void;
+  readonly onCancel: (reason: CancellationReason | '', comment: string) => void;
+  readonly onKeep: (reason: CancellationReason | '', comment: string) => void;
   readonly onPause: (months: PauseMonths, reason: CancellationReason) => void;
 }
 
@@ -43,6 +43,7 @@ export function CancelFlow({
 }: CancelFlowProps) {
   const { t } = useTranslation('account');
   const [reason, setReason] = useState<CancellationReason | ''>('');
+  const [comment, setComment] = useState('');
   const offeredReasons = useRef<Set<CancellationReason>>(new Set());
 
   const showPause = pauseEligible && isLifecycleReason(reason);
@@ -89,6 +90,22 @@ export function CancelFlow({
         ))}
       </div>
 
+      {reason !== '' && (
+        <textarea
+          className={styles.reasonComment}
+          aria-label={t('cancelFlow.commentAria')}
+          placeholder={
+            reason === 'Technical issues'
+              ? t('cancelFlow.commentPlaceholderTechnical')
+              : t('cancelFlow.commentPlaceholder')
+          }
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          rows={3}
+          maxLength={1000}
+        />
+      )}
+
       {showPause && (
         <PauseCard
           planLabel={planLabel}
@@ -102,7 +119,7 @@ export function CancelFlow({
         <button
           type="button"
           className={styles.secondaryButton}
-          onClick={() => onCancel(reason)}
+          onClick={() => onCancel(reason, comment.trim())}
           disabled={isCancelling}
         >
           {isCancelling
@@ -112,7 +129,7 @@ export function CancelFlow({
         <button
           type="button"
           className={styles.secondaryButton}
-          onClick={() => onKeep(reason)}
+          onClick={() => onKeep(reason, comment.trim())}
           disabled={isCancelling}
         >
           {t('cancelFlow.keepSubscription')}

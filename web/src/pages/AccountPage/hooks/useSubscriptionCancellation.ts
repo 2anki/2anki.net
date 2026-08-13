@@ -6,7 +6,7 @@ import {
   submitCancellationFeedback,
   CancelMode,
 } from '../../../lib/backend/cancelSubscription';
-import { CancellationReason } from '../components/CancellationFollowUp';
+import { CancellationReason } from '../components/cancellationReasons';
 
 export function useSubscriptionCancellation(onSuccess?: () => void) {
   const { t } = useTranslation('account');

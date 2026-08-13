@@ -56,7 +56,10 @@
     "whyCancelling": "Warum kündigst du? (optional)",
     "processing": "Wird verarbeitet …",
     "cancelSubscription": "Abo kündigen",
-    "keepSubscription": "Abo behalten"
+    "keepSubscription": "Abo behalten",
+    "commentAria": "Optionaler Kommentar",
+    "commentPlaceholder": "Möchtest du noch etwas hinzufügen? (optional)",
+    "commentPlaceholderTechnical": "Was hat nicht funktioniert? (optional)"
   },
   "pauseCard": {
     "pauseInstead": "Stattdessen pausieren — keine Kosten, während du weg bist",
@@ -69,13 +72,6 @@
     "yourPlan": "deinem Tarif",
     "pausing": "Wird pausiert …",
     "pauseSubscription": "Abo pausieren"
-  },
-  "cancellationFollowUp": {
-    "whyDidYouCancel": "Warum hast du gekündigt? (optional)",
-    "tellMore": "Erzähl uns mehr (optional)",
-    "skip": "Überspringen",
-    "sending": "Wird gesendet …",
-    "sendFeedback": "Feedback senden"
   },
   "accountDeletion": {
     "deleteAccount": "Konto löschen",

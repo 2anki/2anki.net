@@ -56,7 +56,10 @@
     "whyCancelling": "Why are you cancelling? (optional)",
     "processing": "Processing…",
     "cancelSubscription": "Cancel subscription",
-    "keepSubscription": "Keep subscription"
+    "keepSubscription": "Keep subscription",
+    "commentAria": "Optional comment",
+    "commentPlaceholder": "Anything you'd like to add? (optional)",
+    "commentPlaceholderTechnical": "What broke? (optional)"
   },
   "pauseCard": {
     "pauseInstead": "Pause instead — no charge while you're away",
@@ -69,13 +72,6 @@
     "yourPlan": "your plan",
     "pausing": "Pausing…",
     "pauseSubscription": "Pause subscription"
-  },
-  "cancellationFollowUp": {
-    "whyDidYouCancel": "Why did you cancel? (optional)",
-    "tellMore": "Tell us more (optional)",
-    "skip": "Skip",
-    "sending": "Sending…",
-    "sendFeedback": "Send feedback"
   },
   "accountDeletion": {
     "deleteAccount": "Delete account",

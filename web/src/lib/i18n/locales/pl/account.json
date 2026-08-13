@@ -56,7 +56,10 @@
     "whyCancelling": "Dlaczego anulujesz? (opcjonalnie)",
     "processing": "Przetwarzanie…",
     "cancelSubscription": "Anuluj subskrypcję",
-    "keepSubscription": "Zachowaj subskrypcję"
+    "keepSubscription": "Zachowaj subskrypcję",
+    "commentAria": "Opcjonalny komentarz",
+    "commentPlaceholder": "Chcesz coś dodać? (opcjonalnie)",
+    "commentPlaceholderTechnical": "Co nie działało? (opcjonalnie)"
   },
   "pauseCard": {
     "pauseInstead": "Wstrzymaj zamiast anulować — brak opłat, gdy Cię nie ma",
@@ -69,13 +72,6 @@
     "yourPlan": "Twój plan",
     "pausing": "Wstrzymywanie…",
     "pauseSubscription": "Wstrzymaj subskrypcję"
-  },
-  "cancellationFollowUp": {
-    "whyDidYouCancel": "Dlaczego anulowałeś? (opcjonalnie)",
-    "tellMore": "Powiedz nam więcej (opcjonalnie)",
-    "skip": "Pomiń",
-    "sending": "Wysyłanie…",
-    "sendFeedback": "Wyślij opinię"
   },
   "accountDeletion": {
     "deleteAccount": "Usuń konto",

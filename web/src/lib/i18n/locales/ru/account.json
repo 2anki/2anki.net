@@ -56,7 +56,10 @@
     "whyCancelling": "Почему отменяешь? (необязательно)",
     "processing": "Обработка…",
     "cancelSubscription": "Отменить подписку",
-    "keepSubscription": "Оставить подписку"
+    "keepSubscription": "Оставить подписку",
+    "commentAria": "Необязательный комментарий",
+    "commentPlaceholder": "Хочешь что-то добавить? (необязательно)",
+    "commentPlaceholderTechnical": "Что не работало? (необязательно)"
   },
   "pauseCard": {
     "pauseInstead": "Поставь на паузу — никаких списаний, пока тебя нет",
@@ -69,13 +72,6 @@
     "yourPlan": "твой план",
     "pausing": "Ставим на паузу…",
     "pauseSubscription": "Поставить на паузу"
-  },
-  "cancellationFollowUp": {
-    "whyDidYouCancel": "Почему ты отменил? (необязательно)",
-    "tellMore": "Расскажи подробнее (необязательно)",
-    "skip": "Пропустить",
-    "sending": "Отправка…",
-    "sendFeedback": "Отправить отзыв"
   },
   "accountDeletion": {
     "deleteAccount": "Удалить аккаунт",

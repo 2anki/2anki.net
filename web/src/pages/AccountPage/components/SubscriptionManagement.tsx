@@ -7,7 +7,7 @@ import { useStripeSubscriptions } from '../../../lib/hooks/useStripeSubscription
 import { StripeSubscriptionSummary } from '../../../lib/backend/getSubscriptionStatus';
 import { track } from '../../../lib/analytics/track';
 import { CancelFlow, isLifecycleReason } from './CancelFlow';
-import { CancellationReason } from './CancellationFollowUp';
+import { CancellationReason } from './cancellationReasons';
 import { ClaimSubscription } from './ClaimSubscription';
 import styles from '../AccountPage.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
@@ -373,9 +373,12 @@ function StripeSubscriptionManagement({
     setConfirming(true);
   };
 
-  const handleCancelFromFlow = (reason: CancellationReasonInput) => {
+  const handleCancelFromFlow = (
+    reason: CancellationReasonInput,
+    comment: string
+  ) => {
     if (reason) {
-      submitFeedback(reason, '');
+      submitFeedback(reason, comment);
     }
     if (pauseEligible && isLifecycleReason(reason)) {
       track('subscription_pause_offer_declined', {
@@ -391,9 +394,9 @@ function StripeSubscriptionManagement({
     setConfirming(false);
   };
 
-  const handleKeep = (reason: CancellationReasonInput) => {
+  const handleKeep = (reason: CancellationReasonInput, comment: string) => {
     if (reason) {
-      submitFeedback(reason, '');
+      submitFeedback(reason, comment);
     }
     setConfirming(false);
   };

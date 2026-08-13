@@ -56,7 +56,10 @@
     "whyCancelling": "Pourquoi annules-tu ? (facultatif)",
     "processing": "Traitement en cours…",
     "cancelSubscription": "Annuler l'abonnement",
-    "keepSubscription": "Garder l'abonnement"
+    "keepSubscription": "Garder l'abonnement",
+    "commentAria": "Commentaire facultatif",
+    "commentPlaceholder": "Tu veux ajouter quelque chose ? (facultatif)",
+    "commentPlaceholderTechnical": "Qu'est-ce qui n'a pas fonctionné ? (facultatif)"
   },
   "pauseCard": {
     "pauseInstead": "Mettre en pause plutôt — aucun débit pendant ton absence",
@@ -69,13 +72,6 @@
     "yourPlan": "ton offre",
     "pausing": "Mise en pause…",
     "pauseSubscription": "Mettre l'abonnement en pause"
-  },
-  "cancellationFollowUp": {
-    "whyDidYouCancel": "Pourquoi as-tu annulé ? (facultatif)",
-    "tellMore": "Dis-nous-en plus (facultatif)",
-    "skip": "Passer",
-    "sending": "Envoi…",
-    "sendFeedback": "Envoyer l'avis"
   },
   "accountDeletion": {
     "deleteAccount": "Supprimer le compte",
