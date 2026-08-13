@@ -118,9 +118,9 @@
     "mcqPayingHint": "Quando la sorgente sembra un quiz, l'AI scrive le opzioni A–D.",
     "upgrade": "Fai l'upgrade",
     "mcqUpgradeHint": " per le carte a scelta multipla — opzioni A–D quando la sorgente sembra un quiz.",
-    "noQuestionsFound": "Nessuna domanda trovata in questa foto.",
-    "switchToGenerate": "Passa a Genera le carte",
-    "switchSuffix": " per farle scrivere al posto tuo.",
+    "noQuestionsFound": "Nessuna domanda già pronta trovata in questa foto.",
+    "switchToGenerate": "Prova Genera le carte",
+    "switchSuffix": " per creare carte da questo contenuto.",
     "clear": "Cancella"
   },
   "occlusion": {

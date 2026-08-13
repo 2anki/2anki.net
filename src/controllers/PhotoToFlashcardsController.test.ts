@@ -200,6 +200,7 @@ describe('PhotoToFlashcardsController unreadable Vision response', () => {
         ),
         {
           status: 422,
+          code: 'unreadable',
         }
       )
     );
@@ -216,6 +217,32 @@ describe('PhotoToFlashcardsController unreadable Vision response', () => {
     expect(res.json).toHaveBeenCalledWith({
       message:
         "Couldn't read the cards from this photo. Try a clearer or less dense image.",
+      code: 'unreadable',
+    });
+  });
+
+  it('forwards the no_ready_made_questions code so the client can offer Generate cards', async () => {
+    const execute = jest
+      .fn()
+      .mockRejectedValue(
+        Object.assign(
+          new Error(
+            'No ready-made questions found in this photo. Switch to Generate cards to make cards from this content.'
+          ),
+          { status: 422, code: 'no_ready_made_questions' }
+        )
+      );
+    const useCase = { execute } as unknown as PhotoToFlashcardsUseCase & {
+      execute: jest.Mock;
+    };
+    const controller = new PhotoToFlashcardsController(useCase);
+    const res = makeRes();
+    await controller.create(makeReq(baseBody), res);
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.json).toHaveBeenCalledWith({
+      message:
+        'No ready-made questions found in this photo. Switch to Generate cards to make cards from this content.',
+      code: 'no_ready_made_questions',
     });
   });
 });

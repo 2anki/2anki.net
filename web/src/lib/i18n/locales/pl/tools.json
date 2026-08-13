@@ -124,9 +124,9 @@
     "mcqPayingHint": "Gdy źródło wygląda jak quiz, AI pisze opcje A–D.",
     "upgrade": "Ulepsz plan",
     "mcqUpgradeHint": ", aby mieć karty wielokrotnego wyboru — opcje A–D, gdy źródło wygląda jak quiz.",
-    "noQuestionsFound": "Nie znaleziono pytań na tym zdjęciu.",
-    "switchToGenerate": "Przełącz na Generuj karty",
-    "switchSuffix": ", aby zostały napisane za Ciebie.",
+    "noQuestionsFound": "Nie znaleziono gotowych pytań na tym zdjęciu.",
+    "switchToGenerate": "Wypróbuj Generuj karty",
+    "switchSuffix": ", aby utworzyć karty z tej treści.",
     "clear": "Wyczyść"
   },
   "occlusion": {

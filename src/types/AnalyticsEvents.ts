@@ -23,6 +23,8 @@ export const KNOWN_EVENTS = new Set([
   'photo_entry_point_clicked',
   'photo_upload_started',
   'photo_quota_reached',
+  'photo_verbatim_no_questions',
+  'photo_verbatim_switch_to_generate',
   'sidebar_auto_minimize_fired',
   'sidebar_auto_minimize_reverted',
   'card_size_selected',

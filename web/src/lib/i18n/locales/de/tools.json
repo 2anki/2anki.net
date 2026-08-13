@@ -118,9 +118,9 @@
     "mcqPayingHint": "Wenn die Quelle wie ein Quiz aussieht, schreibt die KI Optionen A–D.",
     "upgrade": "Upgrade",
     "mcqUpgradeHint": " für Multiple-Choice-Karten — Optionen A–D, wenn die Quelle wie ein Quiz aussieht.",
-    "noQuestionsFound": "Keine Fragen in diesem Foto gefunden.",
-    "switchToGenerate": "Zu Karten erstellen wechseln",
-    "switchSuffix": ", damit sie für dich geschrieben werden.",
+    "noQuestionsFound": "Keine fertigen Fragen in diesem Foto gefunden.",
+    "switchToGenerate": "Karten erstellen ausprobieren",
+    "switchSuffix": ", um daraus Karten zu machen.",
     "clear": "Leeren"
   },
   "occlusion": {

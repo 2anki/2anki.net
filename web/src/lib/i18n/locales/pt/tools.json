@@ -118,9 +118,9 @@
     "mcqPayingHint": "Quando a fonte parece um quiz, a IA escreve as opções A–D.",
     "upgrade": "Fazer upgrade",
     "mcqUpgradeHint": " para cartões de múltipla escolha — opções A–D quando a fonte parece um quiz.",
-    "noQuestionsFound": "Nenhuma pergunta encontrada nesta foto.",
-    "switchToGenerate": "Mude para Gerar cartões",
-    "switchSuffix": " para que sejam escritos para você.",
+    "noQuestionsFound": "Nenhuma pergunta pronta encontrada nesta foto.",
+    "switchToGenerate": "Experimente Gerar cartões",
+    "switchSuffix": " para criar cartões com este conteúdo.",
     "clear": "Limpar"
   },
   "occlusion": {

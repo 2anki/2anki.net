@@ -118,9 +118,9 @@
     "mcqPayingHint": "Cuando el original parece un examen, la IA escribe opciones de la A a la D.",
     "upgrade": "Mejorar",
     "mcqUpgradeHint": " para tarjetas tipo test — opciones de la A a la D cuando el original parece un examen.",
-    "noQuestionsFound": "No se encontraron preguntas en esta foto.",
-    "switchToGenerate": "Cambia a Generar tarjetas",
-    "switchSuffix": " para que las escriban por ti.",
+    "noQuestionsFound": "No se encontraron preguntas listas en esta foto.",
+    "switchToGenerate": "Prueba Generar tarjetas",
+    "switchSuffix": " para crear tarjetas con este contenido.",
     "clear": "Borrar"
   },
   "occlusion": {

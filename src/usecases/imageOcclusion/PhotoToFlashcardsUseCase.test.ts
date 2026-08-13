@@ -1228,6 +1228,96 @@ describe('PhotoToFlashcardsUseCase', () => {
     });
   });
 
+  describe('verbatim no-ready-made-questions vs unreadable', () => {
+    it('throws a distinct no-ready-made-questions 422 when verbatim returns an empty array', async () => {
+      mockMessageCreate.mockResolvedValueOnce({
+        content: [{ type: 'text', text: '[]' }],
+        usage: { input_tokens: 100, output_tokens: 10 },
+      });
+      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+      await expect(
+        useCase.execute({ ...BASE_INPUT, isPaying: true, mode: 'verbatim' })
+      ).rejects.toMatchObject({
+        status: 422,
+        code: 'no_ready_made_questions',
+        message: expect.stringContaining('No ready-made questions'),
+      });
+    });
+
+    it('throws no-ready-made-questions when verbatim returns a deck with no cards', async () => {
+      mockMessageCreate.mockResolvedValueOnce({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify([{ deck: 'Empty', cards: [] }]),
+          },
+        ],
+        usage: { input_tokens: 100, output_tokens: 10 },
+      });
+      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+      await expect(
+        useCase.execute({ ...BASE_INPUT, isPaying: true, mode: 'verbatim' })
+      ).rejects.toMatchObject({
+        status: 422,
+        code: 'no_ready_made_questions',
+      });
+    });
+
+    it('keeps the unreadable 422 when generative mode returns an empty array', async () => {
+      mockMessageCreate.mockResolvedValueOnce({
+        content: [{ type: 'text', text: '[]' }],
+        usage: { input_tokens: 100, output_tokens: 10 },
+      });
+      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+      await expect(
+        useCase.execute({ ...BASE_INPUT, isPaying: true, mode: 'generative' })
+      ).rejects.toMatchObject({
+        status: 422,
+        code: 'unreadable',
+        message:
+          "Couldn't read the cards from this photo. Try a clearer or less dense image.",
+      });
+    });
+
+    it('keeps the unreadable 422 for unparseable JSON even in verbatim mode', async () => {
+      mockMessageCreate.mockResolvedValueOnce({
+        content: [{ type: 'text', text: '[{"deck":"X","cards":[{"q":' }],
+        usage: { input_tokens: 100, output_tokens: 10 },
+      });
+      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+      await expect(
+        useCase.execute({ ...BASE_INPUT, isPaying: true, mode: 'verbatim' })
+      ).rejects.toMatchObject({
+        status: 422,
+        code: 'unreadable',
+      });
+    });
+
+    it('logs reason no_questions for a verbatim empty parse so prod can tell it from a misread', async () => {
+      const logSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => undefined);
+      mockMessageCreate.mockResolvedValueOnce({
+        content: [{ type: 'text', text: '[]' }],
+        usage: { input_tokens: 100, output_tokens: 10 },
+      });
+      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+      await expect(
+        useCase.execute({ ...BASE_INPUT, isPaying: true, mode: 'verbatim' })
+      ).rejects.toMatchObject({ status: 422 });
+
+      const logged = logSpy.mock.calls
+        .map(([line]) => String(line))
+        .find((line) => line.includes('vision_parse_failed'));
+      expect(logged).toBeDefined();
+      expect(JSON.parse(logged!) as { reason: string }).toMatchObject({
+        event: 'vision_parse_failed',
+        reason: 'no_questions',
+      });
+      logSpy.mockRestore();
+    });
+  });
+
   describe('deck builder invocation', () => {
     it('spawns create_deck.py with deck_info.json and a trailing-slashed template dir', async () => {
       const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());

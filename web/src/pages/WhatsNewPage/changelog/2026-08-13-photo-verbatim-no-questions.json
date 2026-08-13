@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-13-photo-verbatim-no-questions",
+  "date": "2026-08-13",
+  "type": "fix",
+  "title": "Photo to deck tells you when a copied-questions photo has none, and offers to generate cards instead"
+}

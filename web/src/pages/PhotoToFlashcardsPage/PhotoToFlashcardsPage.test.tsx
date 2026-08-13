@@ -616,17 +616,30 @@ describe('PhotoToFlashcardsPage', () => {
       ).toBeTruthy();
     });
 
-    it('shows a warning and Switch to Generate cards button when verbatim returns zero cards', async () => {
-      setLocals({ paying: true });
-      const fetchMock = vi.fn().mockResolvedValue(
-        new Response('fake-apkg-bytes', {
-          status: 200,
-          headers: {
-            'X-Card-Count': '0',
-            'Content-Type': 'application/octet-stream',
-          },
-        })
+    function noQuestionsResponse() {
+      return new Response(
+        JSON.stringify({
+          message:
+            'No ready-made questions found in this photo. Switch to Generate cards to make cards from this content.',
+          code: 'no_ready_made_questions',
+        }),
+        { status: 422, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    function okDeckResponse(cardCount = '8') {
+      return new Response('fake-apkg-bytes', {
+        status: 200,
+        headers: {
+          'X-Card-Count': cardCount,
+          'Content-Type': 'application/octet-stream',
+        },
+      });
+    }
+
+    it('shows the no-ready-made-questions warning and a Try Generate cards button on the 422 code', async () => {
+      setLocals({ paying: true });
+      const fetchMock = vi.fn().mockResolvedValue(noQuestionsResponse());
       vi.stubGlobal('fetch', fetchMock);
       HTMLAnchorElement.prototype.click = vi.fn();
 
@@ -642,25 +655,21 @@ describe('PhotoToFlashcardsPage', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/No questions found in this photo/)
+          screen.getByText(/No ready-made questions found in this photo/)
         ).toBeTruthy();
       });
       expect(
-        screen.getByRole('button', { name: 'Switch to Generate cards' })
+        screen.getByRole('button', { name: 'Try Generate cards' })
       ).toBeTruthy();
+      expect(mockTrack).toHaveBeenCalledWith('photo_verbatim_no_questions');
     });
 
-    it('switches to generative mode when the Switch button is clicked from empty state', async () => {
+    it('re-runs the same photo in generative mode when Try Generate cards is clicked', async () => {
       setLocals({ paying: true });
-      const fetchMock = vi.fn().mockResolvedValue(
-        new Response('fake-apkg-bytes', {
-          status: 200,
-          headers: {
-            'X-Card-Count': '0',
-            'Content-Type': 'application/octet-stream',
-          },
-        })
-      );
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(noQuestionsResponse())
+        .mockResolvedValueOnce(okDeckResponse('8'));
       vi.stubGlobal('fetch', fetchMock);
       HTMLAnchorElement.prototype.click = vi.fn();
 
@@ -676,18 +685,61 @@ describe('PhotoToFlashcardsPage', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: 'Switch to Generate cards' })
+          screen.getByRole('button', { name: 'Try Generate cards' })
         ).toBeTruthy();
       });
 
       fireEvent.click(
-        screen.getByRole('button', { name: 'Switch to Generate cards' })
+        screen.getByRole('button', { name: 'Try Generate cards' })
       );
 
       await waitFor(() => {
-        expect(screen.getByLabelText('How many cards?')).toBeTruthy();
+        expect(
+          screen.getByText(/8 cards from your photo\. Deck downloaded\./)
+        ).toBeTruthy();
       });
-      expect(screen.queryByText(/No questions found in this photo/)).toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const secondBody = JSON.parse(
+        (fetchMock.mock.calls[1][1] as RequestInit).body as string
+      ) as { mode: string };
+      expect(secondBody.mode).toBe('generative');
+      expect(mockTrack).toHaveBeenCalledWith(
+        'photo_verbatim_switch_to_generate'
+      );
+      expect(
+        screen.queryByText(/No ready-made questions found in this photo/)
+      ).toBeNull();
+    });
+
+    it('shows the generic read error (not the switch prompt) on an unreadable 422', async () => {
+      setLocals({ paying: true });
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message:
+              "Couldn't read the cards from this photo. Try a clearer or less dense image.",
+            code: 'unreadable',
+          }),
+          { status: 422, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderPage();
+      const input = document.getElementById(
+        'photo-file-input'
+      ) as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [makePhoto()] } });
+      fireEvent.click(screen.getByRole('button', { name: 'Get cards' }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Couldn't read the cards from this photo/)
+        ).toBeTruthy();
+      });
+      expect(
+        screen.queryByRole('button', { name: 'Try Generate cards' })
+      ).toBeNull();
     });
   });
 

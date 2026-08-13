@@ -133,6 +133,7 @@ export class PhotoToFlashcardsController {
         status?: number;
         used?: number;
         limit?: number;
+        code?: string;
       };
       if (e.status === 403) {
         res.status(403).json({ message: e.message });
@@ -143,7 +144,7 @@ export class PhotoToFlashcardsController {
         return;
       }
       if (e.status === 422) {
-        res.status(422).json({ message: e.message });
+        res.status(422).json({ message: e.message, code: e.code });
         return;
       }
       if (e.status === 429) {

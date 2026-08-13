@@ -259,11 +259,27 @@ function makePayloadTooLargeError(): Error & { status: number } {
   return err;
 }
 
-function makeUnreadableVisionResponseError(): Error & { status: number } {
+function makeUnreadableVisionResponseError(): Error & {
+  status: number;
+  code: string;
+} {
   const err = new Error(
     "Couldn't read the cards from this photo. Try a clearer or less dense image."
-  ) as Error & { status: number };
+  ) as Error & { status: number; code: string };
   err.status = 422;
+  err.code = 'unreadable';
+  return err;
+}
+
+function makeNoReadyMadeQuestionsError(): Error & {
+  status: number;
+  code: string;
+} {
+  const err = new Error(
+    'No ready-made questions found in this photo. Switch to Generate cards to make cards from this content.'
+  ) as Error & { status: number; code: string };
+  err.status = 422;
+  err.code = 'no_ready_made_questions';
   return err;
 }
 
@@ -309,10 +325,17 @@ function flattenDecksToCards(decks: CompactDeck[]): GeneratedFlashcard[] {
   );
 }
 
-function logUnreadableVisionResponse(raw: string): void {
+type VisionParseOutcome =
+  | 'unparseable'
+  | 'not_array'
+  | 'empty'
+  | 'no_questions';
+
+function logVisionParseOutcome(raw: string, reason: VisionParseOutcome): void {
   console.log(
     JSON.stringify({
       event: 'vision_parse_failed',
+      reason,
       source: 'photo',
       response_length: raw.length,
       response_sha256_prefix: createHash('sha256')
@@ -353,7 +376,10 @@ function sanitizeVisionDecks(parsed: unknown[]): CompactDeck[] {
   return decks;
 }
 
-function parseClaudeVisionResponse(raw: string): CompactDeck[] {
+function parseClaudeVisionResponse(
+  raw: string,
+  mode: PhotoMode
+): CompactDeck[] {
   const cleaned = raw.replace(/```json|```/g, '').trim();
   // Slicing from index 0 made a single sentence of preamble fatal on this path
   // while the shared parser shrugs it off. Prod carries vision_parse_failed on
@@ -364,20 +390,25 @@ function parseClaudeVisionResponse(raw: string): CompactDeck[] {
   try {
     parsed = JSON.parse(toParse);
   } catch {
-    logUnreadableVisionResponse(raw);
+    logVisionParseOutcome(raw, 'unparseable');
     throw makeUnreadableVisionResponseError();
   }
 
   if (!Array.isArray(parsed)) {
-    logUnreadableVisionResponse(raw);
+    logVisionParseOutcome(raw, 'not_array');
     throw makeUnreadableVisionResponseError();
   }
 
-  // An array of bare cards parses fine and then crashes the caller on
-  // d.cards.length, which surfaces as a 400 carrying the internal message.
   const decks = sanitizeVisionDecks(parsed);
-  if (decks.length === 0) {
-    logUnreadableVisionResponse(raw);
+  const totalCards = decks.reduce((sum, deck) => sum + deck.cards.length, 0);
+  if (totalCards === 0) {
+    // Verbatim forbids inventing questions, so a photo with no ready-made Q&A
+    // parses cleanly to zero cards — a wrong-mode readable photo, not a misread.
+    if (mode === 'verbatim') {
+      logVisionParseOutcome(raw, 'no_questions');
+      throw makeNoReadyMadeQuestionsError();
+    }
+    logVisionParseOutcome(raw, 'empty');
     throw makeUnreadableVisionResponseError();
   }
   return decks;
@@ -641,7 +672,7 @@ export class PhotoToFlashcardsUseCase {
       .map((b) => (b as { type: 'text'; text: string }).text)
       .join('');
 
-    const decks = parseClaudeVisionResponse(rawText);
+    const decks = parseClaudeVisionResponse(rawText, mode);
     const cardCount = decks.reduce((sum, d) => sum + d.cards.length, 0);
 
     const inputTokens = response.usage?.input_tokens ?? tokens;
