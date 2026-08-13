@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-13-zero-card-reason",
+  "date": "2026-08-13",
+  "type": "fix",
+  "title": "Uploads that produce no cards now say so, instead of reporting a converter error"
+}

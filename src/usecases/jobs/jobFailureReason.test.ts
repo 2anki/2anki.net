@@ -374,6 +374,12 @@ describe('jobFailureReasonFromError on worker-flattened errors', () => {
     return e;
   }
 
+  it('maps a flattened PythonZeroCardsError to the empty-deck reason', () => {
+    const flat = flatten('PythonZeroCardsError', 'Python built zero cards.');
+    expect(jobFailureReasonFromError(flat)).toBe(EMPTY_DECK_FAILURE_REASON);
+    expect(jobFailureReasonCode(flat)).toBe('empty_deck');
+  });
+
   it('keeps the large-section message when the class was flattened', () => {
     expect(
       jobFailureReasonFromError(

@@ -1053,6 +1053,7 @@ class UploadService {
           err instanceof ImageOnlyContentError ||
           (err instanceof Error && isExpectedClientFault(err)) ||
           (err instanceof Error && isPdfPasswordSentinel(err.message)) ||
+          (err instanceof Error && err.name === 'PythonZeroCardsError') ||
           (err instanceof Error && /^docx_parse_failed/.test(err.message));
         if (isExpectedState) {
           console.info('[UploadService] async job user-input state', {
