@@ -16,6 +16,7 @@ import {
   RateLimiter,
 } from '../../lib/rateLimit/InMemoryRateLimiter';
 import { hashIp, resolveClientIp } from '../../lib/rateLimit/ipHelpers';
+import { mcpFirstTouchMiddleware } from './mcpFirstTouch';
 
 export const MCP_AUTHORIZE_PATH = '/mcp/authorize';
 export const MCP_TOKEN_PATH = '/mcp/token';
@@ -125,6 +126,7 @@ export function createMcpRouter(deps: McpRouterDeps): express.Router {
 
   router.use(
     MCP_AUTHORIZE_PATH,
+    mcpFirstTouchMiddleware,
     rateLimit(authorizeLimiter),
     authorizationHandler({ provider })
   );

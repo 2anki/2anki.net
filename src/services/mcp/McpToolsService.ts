@@ -310,6 +310,7 @@ export class McpToolsService {
       includeSourceImage: input.includeSourceImage,
       density: input.density,
       mode: input.mode,
+      usageSurface: 'photo_to_deck_mcp',
     });
 
     return {

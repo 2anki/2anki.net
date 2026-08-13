@@ -1388,7 +1388,11 @@ class UsersController {
     }
 
     try {
-      await this.userService.requestMagicLink(email.trim(), purpose);
+      await this.userService.requestMagicLink(
+        email.trim(),
+        purpose,
+        readFirstTouchCookie(req).signupOrigin
+      );
     } catch (error) {
       if (error instanceof MagicLinkRateLimitError) {
         return res.status(200).json({ message: 'ok' });

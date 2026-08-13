@@ -59,6 +59,7 @@ export interface PhotoToFlashcardsInput {
   mode?: PhotoMode;
   cardStyle?: PhotoCardStyle;
   mcqEnabled?: boolean;
+  usageSurface?: string;
 }
 
 export interface PhotoToFlashcardsResult {
@@ -613,7 +614,7 @@ export class PhotoToFlashcardsUseCase {
 
     let response = await createVisionMessage(VISION_MAX_TOKENS);
     recordClaudeUsage({
-      surface: 'photo_to_deck',
+      surface: input.usageSurface ?? 'photo_to_deck',
       model: response.model,
       usage: response.usage,
       userId,
@@ -629,7 +630,7 @@ export class PhotoToFlashcardsUseCase {
       );
       response = await createVisionMessage(VISION_RETRY_MAX_TOKENS);
       recordClaudeUsage({
-        surface: 'photo_to_deck',
+        surface: input.usageSurface ?? 'photo_to_deck',
         model: response.model,
         usage: response.usage,
         userId,

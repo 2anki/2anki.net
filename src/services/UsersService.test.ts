@@ -310,6 +310,35 @@ describe('UsersService.requestMagicLink', () => {
     );
   });
 
+  it('stamps the first-touch origin on a magic-link signup when provided', async () => {
+    const created = { id: 42, email: 'viambient@example.com' };
+    const getByEmail = jest
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue(created);
+    const createUserAndSeedFromTombstone = jest
+      .fn()
+      .mockResolvedValue([{ id: 42 }]);
+    const repository = {
+      getByEmail,
+      createUserAndSeedFromTombstone,
+    } as unknown as UsersRepository;
+    const service = new UsersService(
+      repository,
+      buildEmailService(),
+      new InMemoryMagicTokenRepository()
+    );
+
+    await service.requestMagicLink('viambient@example.com', 'login', '/mcp');
+
+    expect(createUserAndSeedFromTombstone).toHaveBeenCalledWith(
+      'viambient',
+      expect.any(String),
+      'viambient@example.com',
+      '/mcp'
+    );
+  });
+
   it('does not create an account for a password reset on an unknown email', async () => {
     const getByEmail = jest.fn().mockResolvedValue(null);
     const createUserAndSeedFromTombstone = jest.fn();
