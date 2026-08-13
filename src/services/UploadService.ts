@@ -735,12 +735,8 @@ class UploadService {
         userId: owner != null ? Number(owner) : null,
         anonymousId: this.resolveAnonId(req),
         props: {
-          source: this.resolveUploadSource(req),
-          input_format: uploadInputFormat(
-            req.files as UploadedFile[] | undefined
-          ),
+          ...this.baseFunnelProps(req),
           device: classifyDevice(req.headers?.['user-agent']),
-          signup_origin: this.resolveSignupOrigin(req),
         },
       });
 
@@ -763,12 +759,8 @@ class UploadService {
           userId: owner != null ? Number(owner) : null,
           anonymousId: this.resolveAnonId(req),
           props: {
-            source: this.resolveUploadSource(req),
-            input_format: uploadInputFormat(
-              req.files as UploadedFile[] | undefined
-            ),
+            ...this.baseFunnelProps(req),
             reason: 'api_card_limit',
-            signup_origin: this.resolveSignupOrigin(req),
           },
         });
         return res.status(402).json({
@@ -789,12 +781,8 @@ class UploadService {
           userId,
           anonymousId,
           props: {
-            source,
-            input_format: uploadInputFormat(
-              req.files as UploadedFile[] | undefined
-            ),
+            ...this.baseFunnelProps(req),
             reason: 'monthly_limit',
-            signup_origin: this.resolveSignupOrigin(req),
           },
         });
         track('paywall_shown', {
@@ -821,12 +809,8 @@ class UploadService {
           userId,
           anonymousId,
           props: {
-            source,
-            input_format: uploadInputFormat(
-              req.files as UploadedFile[] | undefined
-            ),
+            ...this.baseFunnelProps(req),
             reason: 'anonymous_cap',
-            signup_origin: this.resolveSignupOrigin(req),
           },
         });
         track('paywall_shown', {
@@ -883,12 +867,8 @@ class UploadService {
           userId: owner != null ? Number(owner) : null,
           anonymousId: this.resolveAnonId(req),
           props: {
-            source: this.resolveUploadSource(req),
-            input_format: uploadInputFormat(
-              req.files as UploadedFile[] | undefined
-            ),
+            ...this.baseFunnelProps(req),
             reason: 'upload_incomplete',
-            signup_origin: this.resolveSignupOrigin(req),
           },
         });
         return res.status(400).json({
@@ -1001,12 +981,8 @@ class UploadService {
             userId: Number(owner),
             anonymousId: this.resolveAnonId(req),
             props: {
-              source: this.resolveUploadSource(req),
-              input_format: uploadInputFormat(
-                req.files as UploadedFile[] | undefined
-              ),
+              ...this.baseFunnelProps(req),
               card_count_bucket: toCardCountBucket(totalCards),
-              signup_origin: this.resolveSignupOrigin(req),
             },
           });
         } else {
@@ -1162,12 +1138,8 @@ class UploadService {
         userId: ownerId,
         anonymousId: this.resolveAnonId(req),
         props: {
-          source: this.resolveUploadSource(req),
-          input_format: uploadInputFormat(
-            req.files as UploadedFile[] | undefined
-          ),
+          ...this.baseFunnelProps(req),
           reason: 'empty_deck',
-          signup_origin: this.resolveSignupOrigin(req),
         },
       });
       throw new EmptyDeckError();
@@ -1278,12 +1250,8 @@ class UploadService {
         userId: owner != null ? Number(owner) : null,
         anonymousId: this.resolveAnonId(req),
         props: {
-          source: uploadSource,
-          input_format: uploadInputFormat(
-            req.files as UploadedFile[] | undefined
-          ),
+          ...this.baseFunnelProps(req),
           card_count_bucket: bucket,
-          signup_origin: this.resolveSignupOrigin(req),
         },
       });
       if (owner != null) {
@@ -1297,12 +1265,8 @@ class UploadService {
       userId: owner != null ? Number(owner) : null,
       anonymousId: this.resolveAnonId(req),
       props: {
-        source: this.resolveUploadSource(req),
-        input_format: uploadInputFormat(
-          req.files as UploadedFile[] | undefined
-        ),
+        ...this.baseFunnelProps(req),
         card_count_bucket: toCardCountBucket(totalCards),
-        signup_origin: this.resolveSignupOrigin(req),
       },
     });
     if (owner != null) {
@@ -1367,6 +1331,14 @@ class UploadService {
   private resolvePersistedSource(req: express.Request): UploadSource | null {
     const body = req.body as Record<string, unknown> | undefined;
     return validateUploadSource(body?.source);
+  }
+
+  private baseFunnelProps(req: express.Request): Record<string, unknown> {
+    return {
+      source: this.resolveUploadSource(req),
+      input_format: uploadInputFormat(req.files as UploadedFile[] | undefined),
+      signup_origin: this.resolveSignupOrigin(req),
+    };
   }
 
   private resolveUploadSource(
