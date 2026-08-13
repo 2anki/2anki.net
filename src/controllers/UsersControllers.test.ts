@@ -631,7 +631,11 @@ describe('UsersController.requestMagicLink', () => {
 
     await controller.requestMagicLink(req, res, next);
 
-    expect(requestMagicLink).toHaveBeenCalledWith('al@example.com', 'login');
+    expect(requestMagicLink).toHaveBeenCalledWith(
+      'al@example.com',
+      'login',
+      null
+    );
   });
 
   it('returns 400 when email is missing', async () => {

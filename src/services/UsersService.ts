@@ -176,7 +176,8 @@ class UsersService {
 
   async requestMagicLink(
     email: string,
-    purpose: 'login' | 'password_reset'
+    purpose: 'login' | 'password_reset',
+    signupOrigin?: string | null
   ): Promise<void> {
     if (this.magicTokenRepository == null) {
       return;
@@ -196,7 +197,12 @@ class UsersService {
         return;
       }
       const placeholderPassword = bcrypt.hashSync(crypto.randomUUID(), 12);
-      await this.register('', placeholderPassword, email, 'magic_link');
+      await this.register(
+        '',
+        placeholderPassword,
+        email,
+        signupOrigin ?? 'magic_link'
+      );
       user = await this.repository.getByEmail(email.toLowerCase());
       if (user?.id == null) {
         console.info('password_reset.magic_link', {
