@@ -4,66 +4,53 @@ import { ThemeToggle } from '../../ThemeSwitcher/ThemeToggle';
 import { LanguagePicker } from '../../LanguagePicker/LanguagePicker';
 import styles from '../NavigationBar.module.css';
 
-export type NavbarVariant = 'current' | 'quiet' | 'oneCta' | 'convertOrSignIn';
-
 interface RightSideProps {
   path: string;
   isLoggedIn: boolean;
-  variant?: NavbarVariant;
 }
 
-function utilityGroupClassFor(variant: NavbarVariant): string {
-  if (variant === 'oneCta') return styles.utilityGroupDivided;
-  return styles.utilityGroup;
-}
-
-interface VariantRightSideProps {
-  path: string;
-  variant: Exclude<NavbarVariant, 'current'>;
-}
-
-function VariantRightSide({ path, variant }: Readonly<VariantRightSideProps>) {
+export function NavLinks({ path }: Readonly<{ path: string }>) {
   const { t } = useTranslation();
-  const refined = variant === 'convertOrSignIn';
-  const linksClass = refined ? styles.brightLinks : styles.plainLinks;
   return (
-    <div className={styles.navEnd}>
-      <div className={linksClass}>
-        <NavbarItem href="/print" path={path}>
-          {t('nav.print')}
-        </NavbarItem>
-        <NavbarItem href="/documentation" path={path}>
-          {t('nav.docs')}
-        </NavbarItem>
-        <NavbarItem href="/app" path={path}>
-          {t('nav.download')}
-        </NavbarItem>
-      </div>
-      <div className={refined ? styles.actionZone : styles.plainLinks}>
-        <NavbarItem href="/login#login" path={path}>
-          {t('nav.login')}
-        </NavbarItem>
-        <a href="/upload" className={styles.navCta}>
-          {t('nav.upload')}
-        </a>
-      </div>
-      <div className={utilityGroupClassFor(variant)}>
-        <LanguagePicker variant={variant === 'oneCta' ? 'bareIcon' : 'bare'} />
-        <ThemeToggle />
-      </div>
-    </div>
+    <>
+      <NavbarItem href="/print" path={path}>
+        {t('nav.print')}
+      </NavbarItem>
+      <NavbarItem href="/documentation" path={path}>
+        {t('nav.docs')}
+      </NavbarItem>
+      <NavbarItem href="/app" path={path}>
+        {t('nav.download')}
+      </NavbarItem>
+    </>
   );
 }
 
-export function RightSide({
-  path,
-  isLoggedIn,
-  variant = 'current',
-}: Readonly<RightSideProps>) {
+interface NavActionsProps {
+  path: string;
+  ctaClass?: string;
+}
+
+export function NavActions({ path, ctaClass }: Readonly<NavActionsProps>) {
   const { t } = useTranslation();
-  if (variant !== 'current') {
-    return <VariantRightSide path={path} variant={variant} />;
-  }
+  return (
+    <>
+      <NavbarItem href="/login#login" path={path}>
+        {t('nav.login')}
+      </NavbarItem>
+      <a href="/upload" className={ctaClass ?? styles.navCta}>
+        {t('nav.upload')}
+      </a>
+      <div className={styles.utilityGroup}>
+        <LanguagePicker variant="bare" />
+        <ThemeToggle />
+      </div>
+    </>
+  );
+}
+
+export function RightSide({ path, isLoggedIn }: Readonly<RightSideProps>) {
+  const { t } = useTranslation();
   return (
     <div className={styles.navEnd}>
       <NavbarItem href="/upload" path={path}>

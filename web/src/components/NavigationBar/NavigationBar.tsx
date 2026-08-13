@@ -3,11 +3,24 @@ import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '../../lib/hooks/useTheme';
 import styles from './NavigationBar.module.css';
-import { RightSide, type NavbarVariant } from './components/RightSide';
+import { NavActions, NavLinks, RightSide } from './components/RightSide';
+
+export type NavbarVariant = 'current' | 'groupedLeft' | 'centered' | 'deck';
 
 interface NavigationBarProps {
   isLoggedIn: boolean | undefined;
   variant?: NavbarVariant;
+}
+
+function navbarClassFor(variant: NavbarVariant): string {
+  if (variant === 'deck') return `${styles.navbar} ${styles.navbarDeck}`;
+  return styles.navbar;
+}
+
+function menuVariantClassFor(variant: NavbarVariant): string {
+  if (variant === 'current') return '';
+  if (variant === 'deck') return `${styles.menuVariant} ${styles.menuDeck}`;
+  return styles.menuVariant;
 }
 
 function NavigationBar({
@@ -23,9 +36,14 @@ function NavigationBar({
   const logoWidth = isLight ? 103 : 33;
 
   const isResolved = isLoggedIn !== undefined;
+  const menuClass =
+    `${active ? styles.menuActive : styles.menu} ${menuVariantClassFor(variant)}`.trim();
 
   return (
-    <nav className={styles.navbar} aria-label={t('nav.mainNavigation')}>
+    <nav
+      className={navbarClassFor(variant)}
+      aria-label={t('nav.mainNavigation')}
+    >
       <div className={styles.brand}>
         <a className={styles.logoLink} href="/">
           <img
@@ -49,9 +67,28 @@ function NavigationBar({
         </button>
       </div>
 
-      <div className={active ? styles.menuActive : styles.menu}>
-        {isResolved && (
-          <RightSide path={path} isLoggedIn={isLoggedIn} variant={variant} />
+      <div className={menuClass}>
+        {isResolved && variant === 'current' && (
+          <RightSide path={path} isLoggedIn={isLoggedIn} />
+        )}
+        {isResolved && variant !== 'current' && (
+          <>
+            <div
+              className={
+                variant === 'centered'
+                  ? styles.linksSlotCentered
+                  : styles.linksSlot
+              }
+            >
+              <NavLinks path={path} />
+            </div>
+            <div className={styles.actionsSlot}>
+              <NavActions
+                path={path}
+                ctaClass={variant === 'deck' ? styles.navCtaDeck : undefined}
+              />
+            </div>
+          </>
         )}
       </div>
     </nav>

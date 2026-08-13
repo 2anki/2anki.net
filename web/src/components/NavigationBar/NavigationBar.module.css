@@ -150,26 +150,55 @@
 
 .navCta {
   composes: btnPrimary btnInline from '../../styles/shared.module.css';
+}
+
+.navCta.navCta {
   background: var(--color-primary-hover);
   text-decoration: none;
   margin: 0.25rem 0 0.25rem 0.5rem;
 }
 
-.navCta:hover {
+.navCta.navCta:hover {
   background: var(--color-primary-hover);
   filter: brightness(0.96);
   box-shadow: var(--shadow-sm);
 }
 
-.plainLinks {
-  display: contents;
+.navbarDeck {
+  background: var(--color-bg-tertiary);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.brightLinks {
-  display: contents;
+.navCtaDeck {
+  composes: navCta;
 }
 
-.brightLinks .navLink {
+.navCtaDeck.navCtaDeck {
+  border-radius: var(--radius-sm);
+  margin: 0.375rem 12px 12px 0.5rem;
+  box-shadow:
+    4px 4px 0 -1px var(--color-bg-primary),
+    4px 4px 0 0 var(--color-border),
+    8px 8px 0 -1px var(--color-bg-primary),
+    8px 8px 0 0 var(--color-border);
+}
+
+.navCtaDeck.navCtaDeck:hover {
+  transform: translate(2px, 2px);
+  box-shadow:
+    2px 2px 0 -1px var(--color-bg-primary),
+    2px 2px 0 0 var(--color-border),
+    4px 4px 0 -1px var(--color-bg-primary),
+    4px 4px 0 0 var(--color-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navCtaDeck.navCtaDeck:hover {
+    transform: none;
+  }
+}
+
+.menuVariant .navLink {
   color: color-mix(
     in srgb,
     var(--color-text-secondary),
@@ -177,18 +206,52 @@
   );
 }
 
-.brightLinks .navLink:hover {
+.menuVariant .navLink:hover {
   color: var(--color-text-primary);
 }
 
-.actionZone {
+.linksSlot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.linksSlotCentered {
+  composes: linksSlot;
+}
+
+.actionsSlot {
   display: flex;
   flex-direction: column;
   align-items: stretch;
 }
 
 @media (min-width: 1024px) {
-  .actionZone {
+  .menuVariant {
+    flex: 1;
+    justify-content: space-between;
+    margin-left: 2rem;
+  }
+
+  .menuDeck {
+    justify-content: flex-end;
+  }
+
+  .linksSlot {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .linksSlotCentered {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .menuDeck .linksSlot {
+    flex: 0 1 auto;
+  }
+
+  .actionsSlot {
     flex-direction: row;
     align-items: center;
     margin-left: 2rem;
@@ -200,11 +263,4 @@
   align-items: center;
   gap: 0.5rem;
   margin-left: 0.75rem;
-}
-
-.utilityGroupDivided {
-  composes: utilityGroup;
-  border-left: 1px solid var(--color-border-light);
-  padding-left: 0.75rem;
-  border-radius: 0;
 }

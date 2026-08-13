@@ -1,7 +1,8 @@
 import { useState } from 'react';
 
-import NavigationBar from '../../components/NavigationBar/NavigationBar';
-import type { NavbarVariant } from '../../components/NavigationBar/components/RightSide';
+import NavigationBar, {
+  type NavbarVariant,
+} from '../../components/NavigationBar/NavigationBar';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './NavbarPreviewPage.module.css';
 
@@ -27,19 +28,19 @@ const VARIANTS: ReadonlyArray<{
     note: 'What ships today — seven items, four treatments, the accent on Download, the language pill heaviest.',
   },
   {
-    variant: 'quiet',
-    title: 'A — Quiet utilities',
-    note: 'Smallest change. Log in stays a text link; utilities drop to quiet icons (globe keeps a 2-letter code); one filled CTA.',
+    variant: 'groupedLeft',
+    title: 'A — Grouped left',
+    note: 'Links move next to the logo, the way Stripe and Linear set their marketing chrome. The whole right side becomes the action zone: Log in, the one filled CTA, quiet utilities.',
   },
   {
-    variant: 'oneCta',
-    title: 'B — One CTA',
-    note: 'Maximum restraint. Everything is a whisper except the CTA; utilities are icon-only behind a hairline divider.',
+    variant: 'centered',
+    title: 'B — Center stage',
+    note: 'Links sit dead-center between the brand and the actions — a balanced, editorial bar where the CTA owns the right edge alone.',
   },
   {
-    variant: 'convertOrSignIn',
-    title: 'C — Refined (single focal point)',
-    note: 'One filled container only: Log in demoted to a text link beside the CTA, a 32px gap splits destinations from actions, links sit one contrast step brighter, and the utilities are independent quiet icons — the language switcher gains a ▾ dropdown cue.',
+    variant: 'deck',
+    title: 'C — Deck on the desk',
+    note: 'The bar takes a soft gray surface and the CTA becomes a stacked flashcard — a white card edge peeks out beneath it and the stack presses down on hover. The one signature move, grounded in what 2anki makes.',
   },
 ];
 

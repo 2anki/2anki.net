@@ -96,8 +96,8 @@
 }
 
 .bareChevron {
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1;
   pointer-events: none;
-  opacity: 0.7;
+  opacity: 0.8;
 }

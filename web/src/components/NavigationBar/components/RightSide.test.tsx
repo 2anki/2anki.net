@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, expect, it } from 'vitest';
+import NavigationBar from '../NavigationBar';
 import { RightSide } from './RightSide';
 
 function getNavLinks() {
@@ -73,14 +74,17 @@ describe('RightSide (anonymous nav)', () => {
   });
 });
 
-describe('RightSide redesign variants (anonymous)', () => {
-  const variants = ['quiet', 'oneCta', 'convertOrSignIn'] as const;
+describe('NavigationBar redesign variants (anonymous)', () => {
+  const variants = ['groupedLeft', 'centered', 'deck'] as const;
 
   it.each(variants)(
-    '%s orders links Print, Docs, Download, Log in, CTA',
+    '%s orders links Print, Docs, Download, then Log in and the CTA',
     (variant) => {
-      render(<RightSide path="/" isLoggedIn={false} variant={variant} />);
-      const labels = screen.getAllByRole('link').map((a) => a.textContent);
+      render(<NavigationBar isLoggedIn={false} variant={variant} />);
+      const labels = screen
+        .getAllByRole('link', { hidden: true })
+        .map((a) => a.textContent)
+        .filter((text) => text !== '');
       expect(labels).toEqual([
         'Print Decks',
         'Docs',
@@ -92,36 +96,49 @@ describe('RightSide redesign variants (anonymous)', () => {
   );
 
   it.each(variants)('%s keeps the CTA pointed at /upload', (variant) => {
-    render(<RightSide path="/" isLoggedIn={false} variant={variant} />);
+    render(<NavigationBar isLoggedIn={false} variant={variant} />);
     expect(
-      screen.getByRole('link', { name: 'Make flashcards' })
+      screen.getByRole('link', { name: 'Make flashcards', hidden: true })
     ).toHaveAttribute('href', '/upload');
   });
 
-  it('quiet and convertOrSignIn show the 2-letter language code, oneCta hides it', () => {
+  it.each(variants)(
+    '%s shows the language code with a dropdown chevron',
+    (variant) => {
+      render(<NavigationBar isLoggedIn={false} variant={variant} />);
+      expect(screen.getByText('EN')).toBeInTheDocument();
+      expect(screen.getByText('▾')).toBeInTheDocument();
+    }
+  );
+
+  it.each(variants)(
+    '%s keeps the language select and theme toggle accessible',
+    (variant) => {
+      render(<NavigationBar isLoggedIn={false} variant={variant} />);
+      expect(
+        screen.getByRole('combobox', { name: 'Language', hidden: true })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Cycle theme', hidden: true })
+      ).toBeInTheDocument();
+    }
+  );
+
+  it('only the deck variant styles the CTA as a stacked card', () => {
     const { unmount } = render(
-      <RightSide path="/" isLoggedIn={false} variant="quiet" />
+      <NavigationBar isLoggedIn={false} variant="deck" />
     );
-    expect(screen.getByText('EN')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Make flashcards', hidden: true })
+        .className
+    ).toContain('navCtaDeck');
     unmount();
 
-    render(<RightSide path="/" isLoggedIn={false} variant="oneCta" />);
-    expect(screen.queryByText('EN')).not.toBeInTheDocument();
-  });
-
-  it('every variant keeps the language select and theme toggle accessible', () => {
-    for (const variant of variants) {
-      const { unmount } = render(
-        <RightSide path="/" isLoggedIn={false} variant={variant} />
-      );
-      expect(
-        screen.getByRole('combobox', { name: 'Language' })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: 'Cycle theme' })
-      ).toBeInTheDocument();
-      unmount();
-    }
+    render(<NavigationBar isLoggedIn={false} variant="groupedLeft" />);
+    expect(
+      screen.getByRole('link', { name: 'Make flashcards', hidden: true })
+        .className
+    ).not.toContain('navCtaDeck');
   });
 
   it('default variant renders the current navbar unchanged', () => {
@@ -134,26 +151,5 @@ describe('RightSide redesign variants (anonymous)', () => {
       'Download',
       'Log in',
     ]);
-  });
-});
-
-describe('refined variant C affordances', () => {
-  it('shows a dropdown chevron on the language switcher', () => {
-    render(<RightSide path="/" isLoggedIn={false} variant="convertOrSignIn" />);
-    expect(screen.getByText('▾')).toBeInTheDocument();
-  });
-
-  it('renders Log in as a text link, not a button-styled anchor', () => {
-    render(<RightSide path="/" isLoggedIn={false} variant="convertOrSignIn" />);
-    const login = screen.getByRole('link', { name: 'Log in' });
-    const cta = screen.getByRole('link', { name: 'Make flashcards' });
-    expect(login.className).toContain('navLink');
-    expect(login.className).not.toContain('navCta');
-    expect(cta.previousElementSibling).toBe(login);
-  });
-
-  it('keeps the one CTA variant chevron-free', () => {
-    render(<RightSide path="/" isLoggedIn={false} variant="oneCta" />);
-    expect(screen.queryByText('▾')).not.toBeInTheDocument();
   });
 });
