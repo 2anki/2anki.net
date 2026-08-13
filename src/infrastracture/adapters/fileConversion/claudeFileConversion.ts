@@ -1,7 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { BetaContentBlockParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 
-import { logClaudeUsage } from '../../../lib/claude/logClaudeUsage';
+import { recordClaudeUsage } from '../../../lib/claude/recordClaudeUsage';
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
 // A cap, not a charge — output is billed on tokens actually generated, so a
@@ -82,7 +82,11 @@ export async function convertWithClaude(
           betas: ['pdfs-2024-09-25'],
         })
         .finalMessage();
-      logClaudeUsage('claudeFileConversion', response.usage);
+      recordClaudeUsage({
+        surface: 'file_conversion',
+        model: response.model,
+        usage: response.usage,
+      });
       assertNotTruncated(response.stop_reason);
       return joinTextBlocks(response.content);
     }
@@ -95,7 +99,11 @@ export async function convertWithClaude(
         messages: [{ role: 'user', content: userContent }],
       })
       .finalMessage();
-    logClaudeUsage('claudeFileConversion', response.usage);
+    recordClaudeUsage({
+      surface: 'file_conversion',
+      model: response.model,
+      usage: response.usage,
+    });
     assertNotTruncated(response.stop_reason);
     return joinTextBlocks(response.content);
   } catch (error) {

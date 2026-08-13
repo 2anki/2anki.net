@@ -53,6 +53,9 @@ import { GetUploadFunnelUseCase } from '../usecases/ops/GetUploadFunnelUseCase';
 import { UploadFunnelService } from '../services/ops/UploadFunnelService';
 import { GetCancelFunnelUseCase } from '../usecases/ops/GetCancelFunnelUseCase';
 import { CancelFunnelService } from '../services/ops/CancelFunnelService';
+import { GetAiUsageMetricsUseCase } from '../usecases/ops/GetAiUsageMetricsUseCase';
+import { AiUsageMetricsService } from '../services/ops/AiUsageMetricsService';
+import { AiUsageMetricsRepository } from '../data_layer/AiUsageMetricsRepository';
 import { GetLandingPageYieldUseCase } from '../usecases/ops/GetLandingPageYieldUseCase';
 import { LandingPageYieldService } from '../services/ops/LandingPageYieldService';
 import { LandingPageYieldRepository } from '../data_layer/LandingPageYieldRepository';
@@ -207,6 +210,11 @@ const OpsRouter = () => {
         anonymousPasses: new AnonymousPassRepository(database),
         subscriptions: new PaidValueSubscriptionsRepository(database),
         events: new EventsMetricsRepository(database),
+      })
+    ),
+    new GetAiUsageMetricsUseCase(
+      new AiUsageMetricsService({
+        repo: new AiUsageMetricsRepository(database),
       })
     )
   );
@@ -627,6 +635,35 @@ const OpsRouter = () => {
    */
   router.get('/api/ops/cancel-funnel', RequireOpsAccess, (req, res) =>
     controller.getCancelFunnel(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/ops/ai-usage:
+   *   get:
+   *     summary: AI spend and token usage aggregated from usage events
+   *     description: |
+   *       Returns Claude API cost and token totals for the window, broken down
+   *       by product surface, by model, and by day. Sourced from the
+   *       ai_usage_recorded event every Anthropic call site emits.
+   *       Defaults to the last 30 days; pass ?window=7d|14d|30d|60d|90d.
+   *       Internal endpoint locked to the ops owner — returns 404 for everyone else.
+   *     tags: [Ops]
+   *     parameters:
+   *       - in: query
+   *         name: window
+   *         schema:
+   *           type: string
+   *           enum: ['7d', '14d', '30d', '60d', '90d']
+   *         description: Lookback window. Defaults to 30d.
+   *     responses:
+   *       200:
+   *         description: AI usage payload
+   *       404:
+   *         description: Not the ops owner
+   */
+  router.get('/api/ops/ai-usage', RequireOpsAccess, (req, res) =>
+    controller.getAiUsage(req, res)
   );
 
   /**

@@ -7,7 +7,8 @@ import { detect } from '../cardStyle/headingDriven/detect';
 import { splitByHeadings } from '../cardStyle/headingDriven/splitByHeadings';
 import { getCardStylePromptFragment } from './getCardStylePromptFragment';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
-import { logClaudeUsage } from './logClaudeUsage';
+import { recordClaudeUsage } from './recordClaudeUsage';
+import { computeUsageCostUsd } from './pricing';
 import { getCardSizePromptSuffix, validateCardSize } from './cardSize';
 
 export interface FieldMappingEntry {
@@ -882,7 +883,12 @@ async function generateDeckInfoFromChunk(
     chunkIndex,
     totalChunks,
   });
-  logClaudeUsage('ClaudeService', response.usage);
+  recordClaudeUsage({
+    surface: 'conversion',
+    model: response.model,
+    usage: response.usage,
+    durationMs: apiMs,
+  });
   if (usageCollector && response.usage) {
     usageCollector({
       input_tokens: response.usage.input_tokens ?? 0,
@@ -947,10 +953,6 @@ export function resolveFloorV1Bounds(cardSize: string | undefined): {
 const FLOOR_V1_MAX_TOPUP_ROUNDS = 2;
 const FLOOR_V1_MAX_PARALLEL = 4;
 const FLOOR_V1_TOPUP_BUDGET_MS = 50_000;
-const FLOOR_V1_INPUT_TOKEN_PRICE_PER_MILLION = 3;
-const FLOOR_V1_OUTPUT_TOKEN_PRICE_PER_MILLION = 15;
-const FLOOR_V1_CACHE_READ_DISCOUNT = 0.1;
-const FLOOR_V1_CACHE_WRITE_PREMIUM = 1.25;
 
 export interface PdfImageFallbackContext {
   mediaBaseDir: string;
@@ -972,23 +974,7 @@ interface ChunkUsage {
 }
 
 function computeCostUsd(usages: ChunkUsage[]): number {
-  let cost = 0;
-  for (const u of usages) {
-    const input = u.input_tokens / 1_000_000;
-    const output = u.output_tokens / 1_000_000;
-    const cacheRead = u.cache_read_input_tokens / 1_000_000;
-    const cacheWrite = u.cache_creation_input_tokens / 1_000_000;
-    cost += input * FLOOR_V1_INPUT_TOKEN_PRICE_PER_MILLION;
-    cost += output * FLOOR_V1_OUTPUT_TOKEN_PRICE_PER_MILLION;
-    cost +=
-      cacheRead *
-      FLOOR_V1_INPUT_TOKEN_PRICE_PER_MILLION *
-      FLOOR_V1_CACHE_READ_DISCOUNT;
-    cost +=
-      cacheWrite *
-      FLOOR_V1_INPUT_TOKEN_PRICE_PER_MILLION *
-      FLOOR_V1_CACHE_WRITE_PREMIUM;
-  }
+  const cost = usages.reduce((sum, u) => sum + computeUsageCostUsd(null, u), 0);
   return Math.round(cost * 10_000) / 10_000;
 }
 

@@ -4,7 +4,7 @@ import type {
   ConversationWithMessages,
   IConversationsRepository,
 } from '../../data_layer/ConversationsRepository';
-import { logClaudeUsage } from '../../lib/claude/logClaudeUsage';
+import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
 import {
   buildAttachmentBlocks,
   type ChatAttachment,
@@ -765,7 +765,12 @@ export class ChatUseCase {
     }
 
     const finalMessage = await stream.finalMessage();
-    logClaudeUsage('ChatUseCase', finalMessage.usage);
+    recordClaudeUsage({
+      surface: 'chat',
+      model: finalMessage.model,
+      usage: finalMessage.usage,
+      userId: user.owner,
+    });
 
     const assistantContent = finalMessage.content
       .filter((block): block is Anthropic.TextBlock => block.type === 'text')

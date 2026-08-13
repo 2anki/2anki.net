@@ -1,10 +1,21 @@
 import EngineeringTab from './EngineeringTab';
 import PerformanceTab from './PerformanceTab';
+import AiUsageSection from './AiUsageSection';
 import styles from './OpsPage.module.css';
 
 export default function SystemTab() {
   return (
     <>
+      <section
+        className={styles.compositeSection}
+        aria-labelledby="system-ai-usage"
+      >
+        <h2 id="system-ai-usage" className={styles.compositeHeading}>
+          AI usage
+        </h2>
+        <AiUsageSection />
+      </section>
+
       <section
         className={styles.compositeSection}
         aria-labelledby="system-engineering"

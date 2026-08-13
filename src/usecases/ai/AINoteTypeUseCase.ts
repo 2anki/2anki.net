@@ -1,5 +1,5 @@
 import { getAnthropicClient } from '../../lib/claude/ClaudeService';
-import { logClaudeUsage } from '../../lib/claude/logClaudeUsage';
+import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
 
 const MODEL = 'claude-sonnet-5';
 const MAX_TOKENS = 8192;
@@ -267,7 +267,11 @@ async function askClaude(messages: ClaudeMessage[]): Promise<string> {
     ],
     messages: messages.map((m) => ({ role: m.role, content: m.content })),
   });
-  logClaudeUsage('AINoteTypeUseCase', response.usage);
+  recordClaudeUsage({
+    surface: 'note_type_ai',
+    model: response.model,
+    usage: response.usage,
+  });
   return response.content
     .filter((b) => b.type === 'text')
     .map((b) => ('text' in b ? b.text : ''))
