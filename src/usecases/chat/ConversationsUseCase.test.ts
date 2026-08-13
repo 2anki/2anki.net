@@ -4,6 +4,7 @@ import {
   InvalidDraftError,
 } from './ConversationsUseCase';
 import { InMemoryConversationsRepository } from '../../data_layer/ConversationsRepository';
+import { InMemoryChatAttachmentsRepository } from '../../data_layer/ChatAttachmentsRepository';
 
 const USER_A = 1;
 const USER_B = 2;
@@ -324,6 +325,50 @@ describe('ConversationsUseCase', () => {
 
       const ok = await useCase.delete({ userId: USER_A, conversationId: id });
       expect(ok).toBe(false);
+    });
+
+    it('sweeps the conversation attachment prefix and rows on delete', async () => {
+      const repo = new InMemoryConversationsRepository();
+      const attachments = new InMemoryChatAttachmentsRepository();
+      const deleteByPrefix = jest.fn().mockResolvedValue(1);
+      const useCase = new ConversationsUseCase(repo, attachments, {
+        deleteByPrefix,
+      });
+      const id = await repo.create({ userId: USER_A, title: 'gone' });
+      attachments.messageConversations.set(11, id);
+      await attachments.insertMany([
+        {
+          userId: USER_A,
+          messageId: 11,
+          s3Key: `chat-attachments/${USER_A}/${id}/11/0-notes.pdf`,
+          filename: 'notes.pdf',
+          contentType: 'application/pdf',
+          byteSize: 4,
+        },
+      ]);
+
+      const ok = await useCase.delete({ userId: USER_A, conversationId: id });
+
+      expect(ok).toBe(true);
+      expect(deleteByPrefix).toHaveBeenCalledWith(
+        `chat-attachments/${USER_A}/${id}/`
+      );
+      expect(attachments.rows).toEqual([]);
+    });
+
+    it('does not sweep when the conversation was not deleted', async () => {
+      const repo = new InMemoryConversationsRepository();
+      const deleteByPrefix = jest.fn();
+      const useCase = new ConversationsUseCase(
+        repo,
+        new InMemoryChatAttachmentsRepository(),
+        { deleteByPrefix }
+      );
+
+      const ok = await useCase.delete({ userId: USER_A, conversationId: 999 });
+
+      expect(ok).toBe(false);
+      expect(deleteByPrefix).not.toHaveBeenCalled();
     });
 
     it('returns false on the second delete', async () => {

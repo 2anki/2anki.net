@@ -4,6 +4,7 @@ import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
 import { syncStripeSubscriptions } from './syncStripeSubscriptions';
 import { grantDeveloperAccess } from './grantDeveloperAccess';
+import { setChatAttachmentsLifecycle } from './setChatAttachmentsLifecycle';
 import {
   deleteInactiveUsers,
   DeleteInactiveUsersResponse,
@@ -63,6 +64,8 @@ export default function CommandsTab() {
   const [devEmail, setDevEmail] = useState('');
   const [devStatus, setDevStatus] = useState<Status>('idle');
   const [devMessage, setDevMessage] = useState('');
+  const [lifecycleStatus, setLifecycleStatus] = useState<Status>('idle');
+  const [lifecycleMessage, setLifecycleMessage] = useState('');
 
   const runDeveloperAccess = async (grant: boolean) => {
     const email = devEmail.trim();
@@ -124,6 +127,23 @@ export default function CommandsTab() {
     } catch (error) {
       setDeleteStatus('error');
       setDeleteMessage(
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
+  };
+
+  const runLifecycle = async () => {
+    setLifecycleStatus('loading');
+    setLifecycleMessage('');
+    try {
+      const result = await setChatAttachmentsLifecycle();
+      setLifecycleStatus('success');
+      setLifecycleMessage(
+        `Applied ${result.ruleId} — the bucket now carries ${result.ruleCount} lifecycle rule${result.ruleCount === 1 ? '' : 's'}.`
+      );
+    } catch (error) {
+      setLifecycleStatus('error');
+      setLifecycleMessage(
         error instanceof Error ? error.message : 'Unknown error'
       );
     }
@@ -322,6 +342,39 @@ export default function CommandsTab() {
       {deleteStatus === 'error' && deleteMessage && (
         <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
           {deleteMessage}
+        </div>
+      )}
+
+      <section className={`${sharedStyles.surface} ${styles.card}`}>
+        <h2 className={styles.cardTitle}>Chat attachment expiry</h2>
+        <p className={styles.panelSubtitle}>
+          Applies the 90-day expiry rule for persisted chat attachments to the
+          storage bucket. Idempotent — existing lifecycle rules are kept, only
+          the chat-attachments rule is replaced. Run once after deploy, or again
+          any time to verify the rule is in place.
+        </p>
+        <div className={styles.controls}>
+          <button
+            type="button"
+            className={sharedStyles.btnSmall}
+            onClick={runLifecycle}
+            disabled={lifecycleStatus === 'loading'}
+          >
+            {lifecycleStatus === 'loading'
+              ? 'Applying…'
+              : 'Apply 90-day expiry rule'}
+          </button>
+        </div>
+      </section>
+
+      {lifecycleStatus === 'success' && lifecycleMessage && (
+        <div className={`${sharedStyles.alertSuccess} ${styles.banner}`}>
+          {lifecycleMessage}
+        </div>
+      )}
+      {lifecycleStatus === 'error' && lifecycleMessage && (
+        <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
+          {lifecycleMessage}
         </div>
       )}
 

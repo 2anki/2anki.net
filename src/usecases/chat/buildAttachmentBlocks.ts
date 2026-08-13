@@ -21,6 +21,10 @@ function isImageMime(mime: string): mime is ImageMediaType {
 
 const PDF_MIME = 'application/pdf';
 
+export function isReplayableAttachmentMime(mime: string): boolean {
+  return IMAGE_MIMES.has(mime) || mime === PDF_MIME;
+}
+
 export function buildAttachmentBlocks(
   attachments: ChatAttachment[]
 ): Anthropic.ContentBlockParam[] {

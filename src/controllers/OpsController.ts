@@ -29,6 +29,7 @@ import { GetAiUsageMetricsUseCase } from '../usecases/ops/GetAiUsageMetricsUseCa
 import GrantDeveloperAccessUseCase, {
   InvalidEmailError,
 } from '../usecases/developer/GrantDeveloperAccessUseCase';
+import { SetChatAttachmentsLifecycleUseCase } from '../usecases/ops/SetChatAttachmentsLifecycleUseCase';
 
 class OpsController {
   constructor(
@@ -55,7 +56,8 @@ class OpsController {
     private readonly grantDeveloperAccessUseCase?: GrantDeveloperAccessUseCase,
     private readonly getCancelFunnelUseCase?: GetCancelFunnelUseCase,
     private readonly getPaidValueMonitorUseCase?: GetPaidValueMonitorUseCase,
-    private readonly getAiUsageMetricsUseCase?: GetAiUsageMetricsUseCase
+    private readonly getAiUsageMetricsUseCase?: GetAiUsageMetricsUseCase,
+    private readonly setChatAttachmentsLifecycleUseCase?: SetChatAttachmentsLifecycleUseCase
   ) {}
 
   async getAiUsage(req: express.Request, res: express.Response) {
@@ -71,6 +73,25 @@ class OpsController {
     } catch (error) {
       console.error('[ops] getAiUsage failed', error);
       res.status(500).json({ message: 'Failed to load AI usage metrics' });
+    }
+  }
+
+  async setChatAttachmentsLifecycle(
+    _req: express.Request,
+    res: express.Response
+  ) {
+    if (this.setChatAttachmentsLifecycleUseCase == null) {
+      res
+        .status(500)
+        .json({ message: 'Chat attachment lifecycle not configured' });
+      return;
+    }
+    try {
+      const result = await this.setChatAttachmentsLifecycleUseCase.execute();
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ops] setChatAttachmentsLifecycle failed', error);
+      res.status(500).json({ message: 'Failed to apply the lifecycle rule' });
     }
   }
 

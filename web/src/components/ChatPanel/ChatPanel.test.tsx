@@ -1254,6 +1254,20 @@ describe('ChatPanel — file-only send', () => {
     );
   });
 
+  it('shows the retention hint while a file is attached', async () => {
+    renderChatPanel();
+    expect(
+      screen.queryByText('Attachments are kept for 90 days')
+    ).not.toBeInTheDocument();
+
+    attachPdf('notes.pdf');
+    await screen.findByRole('button', { name: 'Remove notes.pdf' });
+
+    expect(
+      screen.getByText('Attachments are kept for 90 days')
+    ).toBeInTheDocument();
+  });
+
   it('shows the default instruction as the user message bubble', async () => {
     mockPostMultipart.mockResolvedValueOnce(
       makeSseResponse([
@@ -1305,7 +1319,7 @@ describe('ChatPanel — regenerate with attachments', () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "Regenerate can't reuse attached files. Re-attach the file and send a new message."
+          "Regenerate can't reuse attached files — attachments are kept for 90 days. Re-attach the file and send a new message."
         )
       ).toBeInTheDocument();
     });

@@ -510,6 +510,9 @@ function ComposerPill({
               </button>
             </div>
           ))}
+          <span className={styles.retentionHint}>
+            {t('composer.attachmentRetention')}
+          </span>
         </div>
       )}
       <div className={styles.composerRow}>

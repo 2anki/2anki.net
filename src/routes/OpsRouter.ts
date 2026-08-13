@@ -24,6 +24,7 @@ import { CancellationFeedbackRepository } from '../data_layer/CancellationFeedba
 import { EmojiFeedbackRepository } from '../data_layer/EmojiFeedbackRepository';
 import { ReEngagementFeedbackRepository } from '../data_layer/ReEngagementFeedbackRepository';
 import UsersRepository from '../data_layer/UsersRepository';
+import { UserDeletionService } from '../services/UserDeletionService';
 import { SubscriptionsSourceRepository } from '../data_layer/SubscriptionsSourceRepository';
 import SuppressionEventsRepository from '../data_layer/SuppressionEventsRepository';
 import { ShowcaseRepository } from '../data_layer/ShowcaseRepository';
@@ -43,6 +44,7 @@ import PassWinbackRepository from '../data_layer/PassWinbackRepository';
 import { emailHash } from '../lib/emailHash';
 import { getEventsSink } from '../services/events/eventsSinkInstance';
 import { DeleteInactiveUsersUseCase } from '../usecases/ops/DeleteInactiveUsersUseCase';
+import { SetChatAttachmentsLifecycleUseCase } from '../usecases/ops/SetChatAttachmentsLifecycleUseCase';
 import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import { UserVisibleErrorsRepository } from '../data_layer/UserVisibleErrorsRepository';
 import { JobsMetricsRepository } from '../data_layer/JobsMetricsRepository';
@@ -150,7 +152,10 @@ const OpsRouter = () => {
     new GetMindmapStorageMetricsUseCase(mindmapStorageService),
     new DeleteInactiveUsersUseCase(
       new InactivityEmailRepository(database),
-      new UsersRepository(database),
+      new UserDeletionService(
+        new UsersRepository(database),
+        new StorageHandler()
+      ),
       new SuppressionEventsRepository(database)
     ),
     new SyncStripeSubscriptionsUseCase(() => updateStripeSubscriptions()),
@@ -216,7 +221,8 @@ const OpsRouter = () => {
       new AiUsageMetricsService({
         repo: new AiUsageMetricsRepository(database),
       })
-    )
+    ),
+    new SetChatAttachmentsLifecycleUseCase(new StorageHandler())
   );
 
   /**
@@ -406,6 +412,29 @@ const OpsRouter = () => {
    */
   router.post('/api/ops/delete-inactive-users', RequireOpsAccess, (req, res) =>
     controller.deleteInactiveUsers(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/ops/chat-attachments-lifecycle:
+   *   post:
+   *     summary: Apply the 90-day expiry rule for chat attachments to the storage bucket
+   *     description: |
+   *       Idempotent. Reads the bucket's lifecycle configuration, replaces only the
+   *       chat-attachments rule by its ID, keeps every other rule, writes the merged
+   *       set back, and verifies the rule is present afterwards. Internal endpoint
+   *       locked to the ops owner.
+   *     tags: [Ops]
+   *     responses:
+   *       200:
+   *         description: Rule applied — returns the rule id and total rule count
+   *       404:
+   *         description: Not the ops owner
+   */
+  router.post(
+    '/api/ops/chat-attachments-lifecycle',
+    RequireOpsAccess,
+    (req, res) => controller.setChatAttachmentsLifecycle(req, res)
   );
 
   /**

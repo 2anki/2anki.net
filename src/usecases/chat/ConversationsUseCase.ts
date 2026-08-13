@@ -3,8 +3,14 @@ import type {
   ConversationSummary,
   ConversationWithMessages,
 } from '../../data_layer/ConversationsRepository';
+import type { IChatAttachmentsRepository } from '../../data_layer/ChatAttachmentsRepository';
+import { chatAttachmentsConversationPrefix } from '../../lib/storage/chatAttachmentKeys';
 import { extractCards, ChatCard } from './ChatUseCase';
 import { isChatCardTemplate, templateForbidsCloze } from './chatTemplates';
+
+export interface IChatAttachmentPrefixStorage {
+  deleteByPrefix(prefix: string): Promise<number>;
+}
 
 const MAX_TITLE_LENGTH = 120;
 
@@ -74,7 +80,11 @@ function hydrateMessages(
 }
 
 export class ConversationsUseCase {
-  constructor(private readonly repo: IConversationsRepository) {}
+  constructor(
+    private readonly repo: IConversationsRepository,
+    private readonly attachmentsRepo?: IChatAttachmentsRepository,
+    private readonly storage?: IChatAttachmentPrefixStorage
+  ) {}
 
   list(userId: number): Promise<ConversationSummary[]> {
     return this.repo.listForUser(userId);
@@ -137,8 +147,26 @@ export class ConversationsUseCase {
     });
   }
 
-  delete(input: { userId: number; conversationId: number }): Promise<boolean> {
-    return this.repo.softDelete(input);
+  // A soft-deleted conversation keeps its message rows, so the FK cascade
+  // never fires — attachment rows and objects go explicitly here instead.
+  async delete(input: {
+    userId: number;
+    conversationId: number;
+  }): Promise<boolean> {
+    const deleted = await this.repo.softDelete(input);
+    if (!deleted) return false;
+    try {
+      await this.storage?.deleteByPrefix(
+        chatAttachmentsConversationPrefix(input.userId, input.conversationId)
+      );
+      await this.attachmentsRepo?.deleteForConversation(input);
+    } catch (error) {
+      console.error(
+        '[chat] attachment cleanup failed for deleted conversation',
+        error
+      );
+    }
+    return true;
   }
 
   async saveTemplate(input: {

@@ -10,6 +10,7 @@ import {
 import { ConversationsUseCase } from './ConversationsUseCase';
 import { InMemoryChatMessagesRepository } from '../../data_layer/ChatMessagesRepository';
 import { InMemoryConversationsRepository } from '../../data_layer/ConversationsRepository';
+import { InMemoryChatAttachmentsRepository } from '../../data_layer/ChatAttachmentsRepository';
 
 jest.mock(
   '../../infrastracture/adapters/fileConversion/convertDocxToHTML',
@@ -1833,3 +1834,240 @@ describe('typed format requests override the template default', () => {
     expect(result.cards?.[0].front).not.toContain('{{c1::');
   });
 });
+
+class FakeAttachmentBlobStorage {
+  store = new Map<string, Buffer>();
+  failNextUpload = false;
+  getCalls = 0;
+
+  async uploadFile(name: string, data: Buffer | string): Promise<void> {
+    if (this.failNextUpload) {
+      this.failNextUpload = false;
+      throw new Error('upload failed');
+    }
+    this.store.set(name, Buffer.from(data));
+  }
+
+  async getFileContents(key: string): Promise<{ Body: Buffer | undefined }> {
+    this.getCalls++;
+    const body = this.store.get(key);
+    if (body == null) {
+      throw new Error('NoSuchKey');
+    }
+    return { Body: body };
+  }
+}
+
+function buildUseCaseWithAttachmentPersistence(responseContent: string) {
+  const messagesRepo = new InMemoryChatMessagesRepository();
+  const conversationsRepo = new InMemoryConversationsRepository();
+  const attachmentsRepo = new InMemoryChatAttachmentsRepository();
+  const storage = new FakeAttachmentBlobStorage();
+  const anthropic = buildAnthropicMock(responseContent);
+  const useCase = new ChatUseCase(
+    messagesRepo,
+    conversationsRepo,
+    anthropic as never,
+    attachmentsRepo,
+    storage
+  );
+  return {
+    messagesRepo,
+    conversationsRepo,
+    attachmentsRepo,
+    storage,
+    anthropic,
+    useCase,
+  };
+}
+
+describe('attachment blob persistence', () => {
+  const PDF_ATTACHMENT = {
+    mimeType: 'application/pdf',
+    data: Buffer.from('%PDF-1.4 fake'),
+    fileName: 'notes.pdf',
+  };
+
+  it('persists binary attachments after a successful turn', async () => {
+    const { attachmentsRepo, storage, useCase } =
+      buildUseCaseWithAttachmentPersistence('ok');
+
+    const result = await useCase.execute({
+      user: PATREON_USER,
+      content: 'make cards',
+      conversationHistory: [],
+      attachments: [PDF_ATTACHMENT],
+    });
+
+    expect(attachmentsRepo.rows).toEqual([
+      expect.objectContaining({
+        userId: PATREON_USER.owner,
+        messageId: 1,
+        filename: 'notes.pdf',
+        contentType: 'application/pdf',
+        byteSize: PDF_ATTACHMENT.data.length,
+        s3Key: `chat-attachments/${PATREON_USER.owner}/${result.conversationId}/1/0-notes.pdf`,
+      }),
+    ]);
+    expect(
+      storage.store
+        .get(attachmentsRepo.rows[0].s3Key)
+        ?.equals(PDF_ATTACHMENT.data)
+    ).toBe(true);
+  });
+
+  it('persists nothing for text-only attachments', async () => {
+    const { attachmentsRepo, storage, useCase } =
+      buildUseCaseWithAttachmentPersistence('ok');
+
+    await useCase.execute({
+      user: PATREON_USER,
+      content: 'make cards',
+      conversationHistory: [],
+      attachments: [
+        {
+          mimeType: 'text/markdown',
+          data: Buffer.from('# Notes'),
+          fileName: 'notes.md',
+        },
+      ],
+    });
+
+    expect(attachmentsRepo.rows).toEqual([]);
+    expect(storage.store.size).toBe(0);
+  });
+
+  it('still completes the turn when the blob upload fails', async () => {
+    const { attachmentsRepo, storage, useCase } =
+      buildUseCaseWithAttachmentPersistence('ok');
+    storage.failNextUpload = true;
+
+    const result = await useCase.execute({
+      user: PATREON_USER,
+      content: 'make cards',
+      conversationHistory: [],
+      attachments: [PDF_ATTACHMENT],
+    });
+
+    expect(result.content).toBe('ok');
+    expect(attachmentsRepo.rows).toEqual([]);
+  });
+
+  async function seedBinaryTurn(deps: {
+    messagesRepo: InMemoryChatMessagesRepository;
+    conversationsRepo: InMemoryConversationsRepository;
+  }) {
+    const conversationId = await deps.conversationsRepo.create({
+      userId: PATREON_USER.owner,
+      title: 'Seeded',
+    });
+    const turns = [
+      {
+        role: 'user' as const,
+        content: 'Create flashcards from the attached file.',
+        hadBinaryAttachments: true,
+      },
+      { role: 'assistant' as const, content: 'old assistant reply' },
+    ];
+    for (const turn of turns) {
+      await deps.messagesRepo.insert({
+        userId: PATREON_USER.owner,
+        conversationId,
+        ...turn,
+      });
+      deps.conversationsRepo.recordMessage({
+        userId: PATREON_USER.owner,
+        conversationId,
+        ...turn,
+      });
+    }
+    return { conversationId, userMessageId: 1 };
+  }
+
+  it('replays a persisted attachment on regenerate', async () => {
+    const deps = buildUseCaseWithAttachmentPersistence('fresh');
+    const { conversationId, userMessageId } = await seedBinaryTurn(deps);
+    const key = `chat-attachments/${PATREON_USER.owner}/${conversationId}/${userMessageId}/0-notes.pdf`;
+    storageSeed(deps.storage, key, PDF_ATTACHMENT.data);
+    await deps.attachmentsRepo.insertMany([
+      {
+        userId: PATREON_USER.owner,
+        messageId: userMessageId,
+        s3Key: key,
+        filename: 'notes.pdf',
+        contentType: 'application/pdf',
+        byteSize: PDF_ATTACHMENT.data.length,
+      },
+    ]);
+
+    const result = await deps.useCase.regenerate({
+      user: PATREON_USER,
+      conversationId,
+    });
+
+    expect(result.content).toBe('fresh');
+    const callArg = deps.anthropic.messages.stream.mock.calls[0][0];
+    const lastMessage = callArg.messages[callArg.messages.length - 1];
+    expect(Array.isArray(lastMessage.content)).toBe(true);
+    expect(lastMessage.content[0]).toMatchObject({
+      type: 'document',
+      source: { media_type: 'application/pdf' },
+    });
+    expect(lastMessage.content[lastMessage.content.length - 1]).toMatchObject({
+      type: 'text',
+      text: 'Create flashcards from the attached file.',
+    });
+  });
+
+  it('refuses and clears rows when the blob is gone', async () => {
+    const deps = buildUseCaseWithAttachmentPersistence('fresh');
+    const { conversationId, userMessageId } = await seedBinaryTurn(deps);
+    await deps.attachmentsRepo.insertMany([
+      {
+        userId: PATREON_USER.owner,
+        messageId: userMessageId,
+        s3Key: 'chat-attachments/gone.pdf',
+        filename: 'notes.pdf',
+        contentType: 'application/pdf',
+        byteSize: 8,
+      },
+    ]);
+
+    await expect(
+      deps.useCase.regenerate({ user: PATREON_USER, conversationId })
+    ).rejects.toBeInstanceOf(ChatAttachmentsNotReplayableError);
+    expect(deps.attachmentsRepo.rows).toEqual([]);
+  });
+
+  it('refuses a pre-feature turn that has no rows', async () => {
+    const deps = buildUseCaseWithAttachmentPersistence('fresh');
+    const { conversationId } = await seedBinaryTurn(deps);
+
+    await expect(
+      deps.useCase.regenerate({ user: PATREON_USER, conversationId })
+    ).rejects.toBeInstanceOf(ChatAttachmentsNotReplayableError);
+  });
+
+  it('never fetches blobs for a follow-up message in a conversation with expired attachments', async () => {
+    const deps = buildUseCaseWithAttachmentPersistence('follow-up answer');
+    const { conversationId } = await seedBinaryTurn(deps);
+
+    const result = await deps.useCase.execute({
+      user: PATREON_USER,
+      content: 'tell me more',
+      conversationHistory: [],
+      conversationId,
+    });
+
+    expect(result.content).toBe('follow-up answer');
+    expect(deps.storage.getCalls).toBe(0);
+  });
+});
+
+function storageSeed(
+  storage: FakeAttachmentBlobStorage,
+  key: string,
+  data: Buffer
+): void {
+  storage.store.set(key, data);
+}

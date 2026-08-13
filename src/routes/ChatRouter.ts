@@ -11,11 +11,13 @@ import { ChatDeckUseCase } from '../usecases/chat/ChatDeckUseCase';
 import { ConversationsUseCase } from '../usecases/chat/ConversationsUseCase';
 import { DeleteAllConversationsUseCase } from '../usecases/chat/DeleteAllConversationsUseCase';
 import { TagCardsUseCase } from '../usecases/chat/TagCardsUseCase';
+import { ChatAttachmentsRepository } from '../data_layer/ChatAttachmentsRepository';
 import { ChatMessagesRepository } from '../data_layer/ChatMessagesRepository';
 import { ConversationsRepository } from '../data_layer/ConversationsRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import { getDatabase } from '../data_layer';
 import { getAnthropicClient } from '../lib/claude/ClaudeService';
+import StorageHandler from '../lib/storage/StorageHandler';
 import RequireAuthentication from './middleware/RequireAuthentication';
 
 const chatUpload = multer({
@@ -28,9 +30,17 @@ const ChatRouter = () => {
   const db = getDatabase();
   const messagesRepo = new ChatMessagesRepository(db);
   const conversationsRepo = new ConversationsRepository(db);
+  const attachmentsRepo = new ChatAttachmentsRepository(db);
   const usersRepo = new UsersRepository(db);
+  const storage = new StorageHandler();
   const anthropic = getAnthropicClient();
-  const useCase = new ChatUseCase(messagesRepo, conversationsRepo, anthropic);
+  const useCase = new ChatUseCase(
+    messagesRepo,
+    conversationsRepo,
+    anthropic,
+    attachmentsRepo,
+    storage
+  );
   const controller = new ChatController(useCase);
   const consentUseCase = new SetChatConsentUseCase(usersRepo);
   const consentController = new ChatConsentController(consentUseCase);
@@ -38,10 +48,15 @@ const ChatRouter = () => {
   const deckController = new ChatDeckController(deckUseCase);
   const tagCardsUseCase = new TagCardsUseCase(anthropic, messagesRepo);
   const tagCardsController = new TagCardsController(tagCardsUseCase);
-  const conversationsUseCase = new ConversationsUseCase(conversationsRepo);
+  const conversationsUseCase = new ConversationsUseCase(
+    conversationsRepo,
+    attachmentsRepo,
+    storage
+  );
   const deleteAllConversationsUseCase = new DeleteAllConversationsUseCase(
     conversationsRepo,
-    messagesRepo
+    messagesRepo,
+    storage
   );
   const conversationsController = new ConversationsController(
     conversationsUseCase,
