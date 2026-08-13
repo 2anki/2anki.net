@@ -36,6 +36,7 @@
     "retry": "Opnieuw",
     "remove": "{{name}} verwijderen",
     "attachFiles": "Bestanden bijvoegen",
+    "attachmentRetention": "Bijlagen worden 90 dagen bewaard",
     "studyingPlaceholder": "Wat ben je aan het leren?",
     "messageInput": "Berichtinvoer",
     "sendMessage": "Bericht versturen",
@@ -64,7 +65,7 @@
     "send": "Kon dit bericht niet versturen. Probeer het opnieuw.",
     "conversationGone": "Dit gesprek is weg. Begin een nieuw gesprek.",
     "rebuild": "Kon je kaarten niet opnieuw maken. Probeer het opnieuw.",
-    "regenerateAttachments": "Bij opnieuw genereren kunnen bijgevoegde bestanden niet worden hergebruikt. Voeg het bestand opnieuw toe en stuur een nieuw bericht.",
+    "regenerateAttachments": "Bij opnieuw genereren kunnen bijgevoegde bestanden niet worden hergebruikt — bijlagen worden 90 dagen bewaard. Voeg het bestand opnieuw toe en stuur een nieuw bericht.",
     "addTags": "Kon geen tags toevoegen. Probeer het opnieuw.",
     "deckGenerate": "Kon het deck niet genereren. Probeer het opnieuw."
   },

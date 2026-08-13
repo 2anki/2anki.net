@@ -343,6 +343,13 @@
   padding: 0 0.25rem 0.25rem;
 }
 
+.retentionHint {
+  align-self: center;
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;

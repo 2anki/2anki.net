@@ -36,6 +36,7 @@
     "retry": "Erneut versuchen",
     "remove": "{{name}} entfernen",
     "attachFiles": "Dateien anhängen",
+    "attachmentRetention": "Anhänge werden 90 Tage aufbewahrt",
     "studyingPlaceholder": "Was lernst du gerade?",
     "messageInput": "Nachrichteneingabe",
     "sendMessage": "Nachricht senden",
@@ -64,7 +65,7 @@
     "send": "Diese Nachricht konnte nicht gesendet werden. Versuch es erneut.",
     "conversationGone": "Diese Unterhaltung existiert nicht mehr. Starte eine neue.",
     "rebuild": "Deine Karten konnten nicht neu erstellt werden. Versuch es erneut.",
-    "regenerateAttachments": "Beim Neugenerieren können angehängte Dateien nicht wiederverwendet werden. Hänge die Datei erneut an und sende eine neue Nachricht.",
+    "regenerateAttachments": "Beim Neugenerieren können angehängte Dateien nicht wiederverwendet werden — Anhänge werden 90 Tage aufbewahrt. Hänge die Datei erneut an und sende eine neue Nachricht.",
     "addTags": "Tags konnten nicht hinzugefügt werden. Versuch es erneut.",
     "deckGenerate": "Der Stapel konnte nicht erstellt werden. Versuch es erneut."
   },
