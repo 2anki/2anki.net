@@ -117,11 +117,23 @@ export async function uploadMindmapImage(
   return response.json();
 }
 
+export interface MindmapExportResult {
+  blob: Blob;
+  excludedNodeCount: number;
+}
+
+function parseExcludedNodeCount(headers: Headers): number {
+  const raw = headers.get('X-Excluded-Node-Count');
+  if (raw == null) return 0;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
 export async function exportMindmap(
   id: string,
   deckName: string,
   cardType: MindmapCardType = 'cloze'
-): Promise<Blob> {
+): Promise<MindmapExportResult> {
   const response = await fetch(`/api/mindmaps/${id}/export`, {
     method: 'POST',
     credentials: 'include',
@@ -131,5 +143,8 @@ export async function exportMindmap(
   if (!response.ok) {
     throw new Error(`Export failed: ${response.statusText}`);
   }
-  return response.blob();
+  return {
+    blob: await response.blob(),
+    excludedNodeCount: parseExcludedNodeCount(response.headers),
+  };
 }

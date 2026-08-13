@@ -293,6 +293,41 @@ describe('MindmapRouter', () => {
 
       expect(res.status).toBe(200);
     });
+
+    it('reports zero excluded nodes for a fully connected map', async () => {
+      mockGetById.mockResolvedValue(baseMap);
+
+      const res = await fetch(`${url}/api/mindmaps/export-id/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deck_name: 'Test deck', card_type: 'basic' }),
+      });
+
+      expect(res.headers.get('x-excluded-node-count')).toBe('0');
+    });
+
+    it('reports isolated nodes as excluded in the basic export header', async () => {
+      mockGetById.mockResolvedValue({
+        ...baseMap,
+        data: {
+          nodes: [
+            { id: '1', label: 'Parent' },
+            { id: '2', label: 'Child' },
+            { id: '3', label: 'Orphan' },
+          ],
+          edges: [{ source: '1', target: '2' }],
+        },
+      });
+
+      const res = await fetch(`${url}/api/mindmaps/export-id/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deck_name: 'Test deck', card_type: 'basic' }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('x-excluded-node-count')).toBe('1');
+    });
   });
 
   describe('POST /api/mindmaps/:id/images', () => {

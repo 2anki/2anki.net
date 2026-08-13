@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-13-mindmap-disconnected-export",
+  "date": "2026-08-13",
+  "type": "fix",
+  "title": "Mind maps with disconnected or standalone nodes export to Anki, and tell you when a node had no connection to include"
+}

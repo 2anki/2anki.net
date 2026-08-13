@@ -405,6 +405,7 @@
     "deleteNodeConfirm": "このノードには子があります。このノードと接続されたすべてのエッジを削除しますか？",
     "layoutUpdated": "レイアウトを更新しました",
     "deckDownloaded": "デッキをダウンロードしました — Anki で開いて学習を始めましょう。",
+    "nodesExcluded_other": "デッキをダウンロードしました — 接続されていないノードが {{count}} 個除外されました。接続するか、マップ全体をエクスポートしてください。",
     "newNode": "新しいノード",
     "clickToRename": "クリックして名前を変更",
     "mindmapsBack": "マインドマップ",

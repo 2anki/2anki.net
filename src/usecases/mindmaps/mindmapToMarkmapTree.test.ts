@@ -94,7 +94,7 @@ describe('mindmapToMarkmapTree', () => {
     expect(bNode?.children).toHaveLength(0);
   });
 
-  it('returns null for multiple disconnected nodes with no edges', () => {
+  it('renders a forest for multiple disconnected nodes with no edges', () => {
     const result = mindmapToMarkmapTree({
       nodes: [
         { id: '1', label: 'Isolated A' },
@@ -102,7 +102,48 @@ describe('mindmapToMarkmapTree', () => {
       ],
       edges: [],
     });
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result?.children).toHaveLength(2);
+    const labels = result?.children.map((c) => c.content);
+    expect(labels).toContain('Isolated A');
+    expect(labels).toContain('Isolated B');
+  });
+
+  it('renders a forest for two disconnected clusters, each with edges', () => {
+    const result = mindmapToMarkmapTree({
+      nodes: [
+        { id: 'r1', label: 'Cluster1' },
+        { id: 'c1', label: 'Leaf1' },
+        { id: 'r2', label: 'Cluster2' },
+        { id: 'c2', label: 'Leaf2' },
+      ],
+      edges: [
+        { source: 'r1', target: 'c1' },
+        { source: 'r2', target: 'c2' },
+      ],
+    });
+    expect(result?.children).toHaveLength(2);
+    const roots = result?.children.map((c) => c.content);
+    expect(roots).toContain('Cluster1');
+    expect(roots).toContain('Cluster2');
+  });
+
+  it('terminates on a cycle reachable from a root without infinite recursion', () => {
+    const result = mindmapToMarkmapTree({
+      nodes: [
+        { id: 'r', label: 'Root' },
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+      ],
+      edges: [
+        { source: 'r', target: 'a' },
+        { source: 'a', target: 'b' },
+        { source: 'b', target: 'a' },
+      ],
+    });
+    expect(result?.content).toBe('Root');
+    expect(result?.children[0].content).toBe('A');
+    expect(result?.children[0].children[0].content).toBe('B');
   });
 
   it('escapes HTML special characters in labels', () => {

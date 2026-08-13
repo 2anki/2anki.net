@@ -412,6 +412,8 @@
     "deleteNodeConfirm": "Deze node heeft onderliggende nodes. Hem en alle verbonden verbindingen verwijderen?",
     "layoutUpdated": "Lay-out bijgewerkt",
     "deckDownloaded": "Deck gedownload — open het in Anki om te beginnen met leren.",
+    "nodesExcluded_one": "Deck gedownload — {{count}} niet-verbonden knoop is weggelaten. Verbind hem of exporteer de hele kaart.",
+    "nodesExcluded_other": "Deck gedownload — {{count}} niet-verbonden knopen zijn weggelaten. Verbind ze of exporteer de hele kaart.",
     "newNode": "Nieuwe node",
     "clickToRename": "Klik om te hernoemen",
     "mindmapsBack": "Mindmaps",

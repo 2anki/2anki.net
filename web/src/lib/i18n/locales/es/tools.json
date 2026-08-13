@@ -412,6 +412,8 @@
     "deleteNodeConfirm": "Este nodo tiene hijos. ¿Eliminarlo junto con todas las conexiones vinculadas?",
     "layoutUpdated": "Disposición actualizada",
     "deckDownloaded": "Mazo descargado — ábrelo en Anki para empezar a estudiar.",
+    "nodesExcluded_one": "Mazo descargado — se omitió {{count}} nodo sin conexión. Conéctalo o exporta el mapa completo.",
+    "nodesExcluded_other": "Mazo descargado — se omitieron {{count}} nodos sin conexión. Conéctalos o exporta el mapa completo.",
     "newNode": "Nuevo nodo",
     "clickToRename": "Haz clic para renombrar",
     "mindmapsBack": "Mapas mentales",
