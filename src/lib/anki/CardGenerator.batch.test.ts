@@ -144,3 +144,30 @@ describe('CardGenerator.runBatch', () => {
     expect(mockedSpawn.mock.calls[0][2]).toMatchObject({ cwd: workspace });
   });
 });
+
+describe('CardGenerator.run zero-card sentinel', () => {
+  const workspace = '/tmp/test-workspace';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedExistsSync.mockReturnValue(false);
+  });
+
+  it('rejects with PythonZeroCardsError when Python exits cleanly with no cards', async () => {
+    mockedSpawn.mockReturnValue(
+      makeProcessStub('No cards generated; exiting cleanly', 0)
+    );
+
+    const gen = new CardGenerator(workspace);
+    await expect(gen.run()).rejects.toMatchObject({
+      name: 'PythonZeroCardsError',
+    });
+  });
+
+  it('keeps the generic error for a missing apkg path without the sentinel', async () => {
+    mockedSpawn.mockReturnValue(makeProcessStub('some unrelated output', 0));
+
+    const gen = new CardGenerator(workspace);
+    await expect(gen.run()).rejects.toMatchObject({ name: 'Error' });
+  });
+});

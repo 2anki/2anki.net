@@ -10,6 +10,10 @@ import {
   resolvePath,
 } from '../constants';
 import { buildPythonExitError } from './buildPythonExitError';
+import {
+  PYTHON_NO_CARDS_SENTINEL,
+  PythonZeroCardsError,
+} from './PythonZeroCardsError';
 
 function tryCommand(command: string): boolean {
   try {
@@ -133,6 +137,9 @@ class CardGenerator {
         const output = stdoutData.join('').trim();
         const lastLine = output.split('\n').pop();
         if (!lastLine?.endsWith('.apkg')) {
+          if (output.includes(PYTHON_NO_CARDS_SENTINEL)) {
+            return reject(new PythonZeroCardsError(output));
+          }
           return reject(
             new Error(
               `Python script did not return a valid .apkg path. stdout: ${output || '(empty)'}`

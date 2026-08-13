@@ -98,6 +98,9 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
   if (error instanceof ClaudeLargeSectionError) {
     return 'claude_large_section';
   }
+  if (hasName(error, 'PythonZeroCardsError')) {
+    return 'empty_deck';
+  }
   if (error instanceof PythonExitError) {
     return 'python_crash';
   }
@@ -154,6 +157,9 @@ export function jobFailureReasonFromError(
     if (error.sourceFormat === 'markdown') {
       return MARKDOWN_LIKELY_LOSSY_REASON;
     }
+    return EMPTY_DECK_FAILURE_REASON;
+  }
+  if (hasName(error, 'PythonZeroCardsError')) {
     return EMPTY_DECK_FAILURE_REASON;
   }
   if (
