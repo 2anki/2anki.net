@@ -412,6 +412,8 @@
     "deleteNodeConfirm": "Dieser Knoten hat Kindknoten. Ihn und alle verbundenen Kanten löschen?",
     "layoutUpdated": "Layout aktualisiert",
     "deckDownloaded": "Stapel heruntergeladen — öffne ihn in Anki, um mit dem Lernen zu starten.",
+    "nodesExcluded_one": "Stapel heruntergeladen — {{count}} nicht verbundener Knoten wurde ausgelassen. Verbinde ihn oder exportiere die ganze Karte.",
+    "nodesExcluded_other": "Stapel heruntergeladen — {{count}} nicht verbundene Knoten wurden ausgelassen. Verbinde sie oder exportiere die ganze Karte.",
     "newNode": "Neuer Knoten",
     "clickToRename": "Zum Umbenennen klicken",
     "mindmapsBack": "Mindmaps",

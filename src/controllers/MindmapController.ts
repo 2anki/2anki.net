@@ -169,7 +169,7 @@ export class MindmapController {
     const cardType = this.resolveCardType(req.body?.card_type);
 
     try {
-      const buffer = await this.exportUseCase.execute({
+      const { buffer, excludedNodeCount } = await this.exportUseCase.execute({
         id,
         userId,
         deckName,
@@ -181,6 +181,7 @@ export class MindmapController {
         'Content-Disposition',
         `attachment; filename="${fileName}"`
       );
+      res.setHeader('X-Excluded-Node-Count', String(excludedNodeCount));
       res.status(200).send(buffer);
     } catch (error) {
       if (error instanceof MindmapNotFoundError) {

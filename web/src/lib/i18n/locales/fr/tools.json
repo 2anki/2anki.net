@@ -412,6 +412,8 @@
     "deleteNodeConfirm": "Ce nœud a des enfants. Le supprimer avec toutes les arêtes connectées ?",
     "layoutUpdated": "Disposition mise à jour",
     "deckDownloaded": "Paquet téléchargé — ouvre-le dans Anki pour commencer à étudier.",
+    "nodesExcluded_one": "Paquet téléchargé — {{count}} nœud non connecté a été ignoré. Connecte-le ou exporte la carte entière.",
+    "nodesExcluded_other": "Paquet téléchargé — {{count}} nœuds non connectés ont été ignorés. Connecte-les ou exporte la carte entière.",
     "newNode": "Nouveau nœud",
     "clickToRename": "Clique pour renommer",
     "mindmapsBack": "Cartes mentales",

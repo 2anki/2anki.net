@@ -6,13 +6,79 @@ describe('mindmapToClozeNotes', () => {
     expect(result).toEqual([]);
   });
 
-  it('returns empty array for disconnected nodes (no edges)', () => {
+  it('exports each node of an edge-free map as a single-node cloze card', () => {
     const result = mindmapToClozeNotes({
       nodes: [
         { id: '1', label: 'Root' },
         { id: '2', label: 'Isolated' },
       ],
       edges: [],
+    });
+    expect(result).toHaveLength(2);
+    for (const note of result) {
+      expect(note.cloze).toBe(true);
+      expect(note.hasClozeDeletion()).toBe(true);
+    }
+    expect(result.map((n) => n.name)).toEqual(
+      expect.arrayContaining(['{{c1::Root}}', '{{c1::Isolated}}'])
+    );
+  });
+
+  it('keeps an isolated node alongside a connected tree as a single-node card', () => {
+    const result = mindmapToClozeNotes({
+      nodes: [
+        { id: '1', label: 'Root' },
+        { id: '2', label: 'Child' },
+        { id: 'x', label: 'Orphan' },
+      ],
+      edges: [{ source: '1', target: '2' }],
+    });
+    expect(result).toHaveLength(2);
+    const names = result.map((n) => n.name);
+    expect(names).toEqual(
+      expect.arrayContaining(['{{c1::Root}} → Child', '{{c1::Orphan}}'])
+    );
+  });
+
+  it('exports a single isolated node as one single-node cloze card', () => {
+    const result = mindmapToClozeNotes({
+      nodes: [{ id: '1', label: 'Solo' }],
+      edges: [],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('{{c1::Solo}}');
+    expect(result[0].cloze).toBe(true);
+  });
+
+  it('terminates on a cycle reachable from a root without infinite recursion', () => {
+    const result = mindmapToClozeNotes({
+      nodes: [
+        { id: 'r', label: 'Root' },
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+      ],
+      edges: [
+        { source: 'r', target: 'a' },
+        { source: 'a', target: 'b' },
+        { source: 'b', target: 'a' },
+      ],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toContain('{{c1::Root}}');
+    expect(result[0].name).toContain('{{c2::A}}');
+    expect(result[0].name).toContain('B');
+  });
+
+  it('drops a rootless pure cycle without hanging', () => {
+    const result = mindmapToClozeNotes({
+      nodes: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+      ],
+      edges: [
+        { source: 'a', target: 'b' },
+        { source: 'b', target: 'a' },
+      ],
     });
     expect(result).toEqual([]);
   });

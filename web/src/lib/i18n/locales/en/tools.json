@@ -412,6 +412,8 @@
     "deleteNodeConfirm": "This node has children. Delete it and all connected edges?",
     "layoutUpdated": "Layout updated",
     "deckDownloaded": "Deck downloaded — open it in Anki to start studying.",
+    "nodesExcluded_one": "Deck downloaded — {{count}} unconnected node was left out. Connect it or export the whole map.",
+    "nodesExcluded_other": "Deck downloaded — {{count}} unconnected nodes were left out. Connect them or export the whole map.",
     "newNode": "New node",
     "clickToRename": "Click to rename",
     "mindmapsBack": "Mindmaps",

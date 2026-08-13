@@ -17,7 +17,7 @@ vi.mock('../../lib/backend/api', () => ({
   del: mockDel,
 }));
 
-import { useMindmapList } from './useMindmap';
+import { useMindmapList, exportMindmap } from './useMindmap';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -79,5 +79,44 @@ describe('useMindmapList', () => {
     renderHook(() => useMindmapList(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(mockGet).toHaveBeenCalledWith('/api/mindmaps'));
+  });
+});
+
+describe('exportMindmap', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function stubFetch(headers: Record<string, string>) {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('deck', { status: 200, headers })
+    );
+  }
+
+  it('parses the excluded node count from the response header', async () => {
+    stubFetch({ 'X-Excluded-Node-Count': '3' });
+
+    const result = await exportMindmap('map-1', 'My deck', 'basic');
+
+    expect(result.excludedNodeCount).toBe(3);
+    expect(await result.blob.text()).toBe('deck');
+  });
+
+  it('defaults the excluded node count to 0 when the header is absent', async () => {
+    stubFetch({});
+
+    const result = await exportMindmap('map-1', 'My deck', 'cloze');
+
+    expect(result.excludedNodeCount).toBe(0);
+  });
+
+  it('throws when the export request fails', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, { status: 500, statusText: 'Server Error' })
+    );
+
+    await expect(exportMindmap('map-1', 'My deck', 'basic')).rejects.toThrow(
+      /Export failed/
+    );
   });
 });

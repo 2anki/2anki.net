@@ -412,6 +412,8 @@
     "deleteNodeConfirm": "Questo nodo ha dei figli. Eliminarlo insieme a tutti i collegamenti connessi?",
     "layoutUpdated": "Layout aggiornato",
     "deckDownloaded": "Mazzo scaricato — aprilo in Anki per iniziare a studiare.",
+    "nodesExcluded_one": "Mazzo scaricato — {{count}} nodo non collegato è stato escluso. Collegalo o esporta l'intera mappa.",
+    "nodesExcluded_other": "Mazzo scaricato — {{count}} nodi non collegati sono stati esclusi. Collegali o esporta l'intera mappa.",
     "newNode": "Nuovo nodo",
     "clickToRename": "Clicca per rinominare",
     "mindmapsBack": "Mappe mentali",

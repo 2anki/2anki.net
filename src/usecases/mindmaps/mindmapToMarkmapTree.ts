@@ -1,5 +1,6 @@
 import { MindmapData } from './MindmapData';
 import { escapeHtml } from './escapeHtml';
+import { buildChildMap, findRootIds } from './mindmapGraph';
 
 export interface MarkmapTreeNode {
   content: string;
@@ -30,14 +31,25 @@ function buildTree(
   labelMap: Map<string, string>,
   imageUrlMap: Map<string, string | undefined>,
   childMap: Map<string, string[]>,
-  filenameMap: Record<string, string>
+  filenameMap: Record<string, string>,
+  ancestors: Set<string>
 ): MarkmapTreeNode {
   const content = buildNodeContent(nodeId, labelMap, imageUrlMap, filenameMap);
-  const childIds = childMap.get(nodeId) ?? [];
+  const childIds = (childMap.get(nodeId) ?? []).filter(
+    (childId) => !ancestors.has(childId)
+  );
+  const nextAncestors = new Set(ancestors).add(nodeId);
   return {
     content,
     children: childIds.map((childId) =>
-      buildTree(childId, labelMap, imageUrlMap, childMap, filenameMap)
+      buildTree(
+        childId,
+        labelMap,
+        imageUrlMap,
+        childMap,
+        filenameMap,
+        nextAncestors
+      )
     ),
   };
 }
@@ -56,21 +68,15 @@ export function mindmapToMarkmapTree(
   const imageUrlMap = new Map<string, string | undefined>(
     data.nodes.map((n) => [n.id, n.image?.url ?? undefined])
   );
-  const childMap = new Map<string, string[]>(data.nodes.map((n) => [n.id, []]));
+  const childMap = buildChildMap(data);
+  const rootIds = findRootIds(data);
 
-  for (const edge of data.edges) {
-    const children = childMap.get(edge.source);
-    if (children != null) {
-      children.push(edge.target);
-    }
+  const rootTrees = rootIds.map((rootId) =>
+    buildTree(rootId, labelMap, imageUrlMap, childMap, filenameMap, new Set())
+  );
+
+  if (rootTrees.length === 1) {
+    return rootTrees[0];
   }
-
-  const targetIds = new Set(data.edges.map((e) => e.target));
-  const roots = data.nodes.filter((n) => !targetIds.has(n.id));
-
-  if (roots.length !== 1) {
-    return null;
-  }
-
-  return buildTree(roots[0].id, labelMap, imageUrlMap, childMap, filenameMap);
+  return { content: '', children: rootTrees };
 }

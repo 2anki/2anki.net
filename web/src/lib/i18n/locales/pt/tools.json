@@ -412,6 +412,8 @@
     "deleteNodeConfirm": "Este nó tem filhos. Excluir ele e todas as conexões ligadas?",
     "layoutUpdated": "Layout atualizado",
     "deckDownloaded": "Baralho baixado — abra no Anki para começar a estudar.",
+    "nodesExcluded_one": "Baralho baixado — {{count}} nó sem conexão foi deixado de fora. Conecte-o ou exporte o mapa inteiro.",
+    "nodesExcluded_other": "Baralho baixado — {{count}} nós sem conexão foram deixados de fora. Conecte-os ou exporte o mapa inteiro.",
     "newNode": "Novo nó",
     "clickToRename": "Clique para renomear",
     "mindmapsBack": "Mapas mentais",

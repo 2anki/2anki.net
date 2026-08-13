@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Link, useParams } from 'react-router-dom';
 import PencilIcon from '../../components/icons/PencilIcon';
+import { track } from '../../lib/analytics/track';
 import shared from '../../styles/shared.module.css';
 import { layoutGraph, NODE_HEIGHT } from './layoutGraph';
 import styles from './MindmapEditor.module.css';
@@ -943,7 +944,11 @@ export function MindmapEditor() {
     if (id == null) return;
     setExporting(true);
     try {
-      const blob = await exportMindmap(id, deckName, cardType);
+      const { blob, excludedNodeCount } = await exportMindmap(
+        id,
+        deckName,
+        cardType
+      );
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -953,7 +958,15 @@ export function MindmapEditor() {
       a.remove();
       URL.revokeObjectURL(url);
       setShowExport(false);
-      showToast(t('mindmaps.deckDownloaded'));
+      if (excludedNodeCount > 0) {
+        track('mindmap_export_excluded_nodes', {
+          excluded_node_count: excludedNodeCount,
+          card_type: cardType,
+        });
+        showToast(t('mindmaps.nodesExcluded', { count: excludedNodeCount }));
+      } else {
+        showToast(t('mindmaps.deckDownloaded'));
+      }
     } finally {
       setExporting(false);
     }
