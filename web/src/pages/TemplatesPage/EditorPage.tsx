@@ -341,7 +341,9 @@ function EditorBody({ initialStarter, shouldFork }: Readonly<EditorBodyProps>) {
     setSaving(true);
     setSaveError(null);
     try {
-      const starterToSave = shouldFork ? duplicateStarter(draft) : draft;
+      const starterToSave = shouldFork
+        ? duplicateStarter(draft, initialStarter.name)
+        : draft;
       await saveUserTemplate(starterToSave);
       setSavedAt(Date.now());
       if (starterToSave.id !== draft.id) {

@@ -109,11 +109,15 @@ export function buildEmptyNoteType(baseType: BaseType): NoteTypeStarter {
   };
 }
 
-export function duplicateStarter(starter: NoteTypeStarter): NoteTypeStarter {
+export function duplicateStarter(
+  starter: NoteTypeStarter,
+  sourceName: string = starter.name
+): NoteTypeStarter {
+  const renamed = starter.name.trim() !== sourceName.trim();
   return {
     ...starter,
     id: randomId(),
-    name: `${starter.name} (copy)`,
+    name: renamed ? starter.name : `${starter.name} (copy)`,
     noteType: {
       ...starter.noteType,
       tmpls: starter.noteType.tmpls.map((t) => ({ ...t })),

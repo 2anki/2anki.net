@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-13-note-type-copy-name",
+  "date": "2026-08-13",
+  "type": "fix",
+  "title": "Saving a note type as a copy keeps the name you typed instead of adding (copy)"
+}

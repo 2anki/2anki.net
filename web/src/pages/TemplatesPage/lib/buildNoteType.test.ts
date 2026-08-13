@@ -47,4 +47,17 @@ describe('duplicateStarter', () => {
     copy.noteType.tmpls[0].qfmt = 'mutated';
     expect(original.noteType.tmpls[0].qfmt).not.toBe('mutated');
   });
+
+  it('keeps a custom name when the draft was renamed from its source', () => {
+    const original = buildEmptyNoteType('basic');
+    const renamed = { ...original, name: 'Alex Super Clean Basic' };
+    const copy = duplicateStarter(renamed, original.name);
+    expect(copy.name).toBe('Alex Super Clean Basic');
+  });
+
+  it('appends (copy) when the draft name matches its source', () => {
+    const original = buildEmptyNoteType('basic');
+    const copy = duplicateStarter(original, original.name);
+    expect(copy.name).toBe(`${original.name} (copy)`);
+  });
 });
