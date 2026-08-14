@@ -1,9 +1,10 @@
 import { PrepareDeck, prepareDeckInfoOnly } from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 
-jest.mock('../../../lib/claude/ClaudeService', () => ({
-  generateDeckInfo: jest.fn(),
-}));
+jest.mock('../../../lib/claude/ClaudeService', () => {
+  const actual = jest.requireActual('../../../lib/claude/ClaudeService');
+  return { ...actual, generateDeckInfo: jest.fn() };
+});
 
 jest.mock('../../../lib/parser/exporters/CustomExporter', () => {
   return {
@@ -118,8 +119,8 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     });
 
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
-    expect(result.name).toContain('My Deck');
-    expect(result.apkg).toEqual(Buffer.from('fake-apkg'));
+    expect(result?.name).toContain('My Deck');
+    expect(result?.apkg).toEqual(Buffer.from('fake-apkg'));
   });
 
   it('does not invoke ClaudeService when noLimits is false', async () => {
@@ -163,62 +164,60 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
   });
 });
 
-describe('PrepareDeck — HTML generation concurrency window', () => {
+describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  function deckArrayFor(label: string) {
+  function deckWithCards(
+    name: string,
+    cards: Array<{ name: string; back: string }>
+  ) {
     return [
       {
-        name: label,
+        name,
         image: '',
         style: null,
         id: 100000000000000,
         settings: { template: 'specialstyle' },
-        cards: [
-          {
-            name: label,
-            back: 'Back',
-            tags: [],
-            cloze: false,
-            number: 0,
-            enableInput: false,
-            answer: '',
-            media: [],
-          },
-        ],
+        cards: cards.map((c) => ({
+          name: c.name,
+          back: c.back,
+          tags: [],
+          cloze: false,
+          number: 0,
+          enableInput: false,
+          answer: '',
+          media: [],
+        })),
       },
     ];
   }
 
-  it('keeps at most 3 calls in flight, slides the window, and returns results in source order', async () => {
-    const fileCount = 7;
-    const files = Array.from({ length: fileCount }, (_, i) => ({
+  it('converts multiple files sequentially and threads earlier fronts into later prompts', async () => {
+    const files = Array.from({ length: 3 }, (_, i) => ({
       name: `page-${i}.html`,
       contents: `<p>page ${i}</p>`,
     }));
 
     let inFlight = 0;
     let maxInFlight = 0;
-    const resolvers: Array<(value: unknown) => void> = [];
-    const callOrder: number[] = [];
-
-    generateDeckInfo.mockImplementation((html: string) => {
+    generateDeckInfo.mockImplementation(async (html: string) => {
       const index = Number(/page (\d+)/.exec(html)![1]);
-      callOrder.push(index);
       inFlight += 1;
       maxInFlight = Math.max(maxInFlight, inFlight);
-      return new Promise((resolve) => {
-        resolvers[index] = (value) => {
-          inFlight -= 1;
-          resolve(value);
-        };
-      });
+      await new Promise((r) => setImmediate(r));
+      inFlight -= 1;
+      return deckWithCards(`page-${index}`, [
+        { name: `Fact from file ${index}`, back: `Answer ${index}` },
+      ]);
     });
 
-    const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
-    const prepared = PrepareDeck({
+    const settings = makeSettings({
+      'claude-ai-flashcards': 'true',
+      'user-instructions': 'Focus on definitions',
+    });
+    await PrepareDeck({
       name: 'export.zip',
       files,
       settings,
@@ -226,47 +225,207 @@ describe('PrepareDeck — HTML generation concurrency window', () => {
       workspace: makeWorkspace(),
     });
 
-    const flush = () => new Promise((r) => setImmediate(r));
-    const waitUntil = async (predicate: () => boolean, label: string) => {
-      for (let i = 0; i < 2000; i++) {
-        if (predicate()) return;
-        await flush();
+    expect(generateDeckInfo).toHaveBeenCalledTimes(3);
+    expect(maxInFlight).toBe(1);
+
+    const instructionsFor = (call: number) =>
+      generateDeckInfo.mock.calls[call][2] as string;
+
+    expect(instructionsFor(0)).toBe('Focus on definitions');
+    expect(instructionsFor(0)).not.toContain('Do NOT repeat');
+
+    expect(instructionsFor(1)).toContain('Focus on definitions');
+    expect(instructionsFor(1)).toContain('Do NOT repeat any of these fronts');
+    expect(instructionsFor(1)).toContain('Fact from file 0');
+
+    expect(instructionsFor(2)).toContain('Fact from file 0');
+    expect(instructionsFor(2)).toContain('Fact from file 1');
+  });
+
+  it('suppresses a later file card duplicating an earlier file, keeping sub-deck names', async () => {
+    const files = [
+      { name: 'chapter.html', contents: '<p>page 0</p>' },
+      { name: 'transcript.html', contents: '<p>page 1</p>' },
+    ];
+
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      const index = Number(/page (\d+)/.exec(html)![1]);
+      if (index === 0) {
+        return deckWithCards('Chapter', [
+          { name: 'What is glycolysis?', back: 'Glucose breakdown' },
+          { name: 'Where does it occur?', back: 'Cytoplasm' },
+        ]);
       }
-      throw new Error(`waitUntil exhausted 2000 flushes waiting for ${label}`);
-    };
+      return deckWithCards('Transcript', [
+        { name: '  WHAT is  glycolysis? ', back: '<p>Glucose breakdown</p>' },
+        { name: 'Net ATP yield?', back: 'Two ATP' },
+      ]);
+    });
 
-    await waitUntil(() => callOrder.length >= 3, 'first 3 calls in flight');
-
-    expect(inFlight).toBe(3);
-
-    const resolveOrder = [2, 0, 1, 5, 3, 6, 4];
-    for (const index of resolveOrder) {
-      await waitUntil(
-        () => Boolean(resolvers[index]),
-        `resolver for page-${index}`
-      );
-      resolvers[index](deckArrayFor(`page-${index}`));
-      await flush();
-    }
-
-    const result = await prepared;
-
-    expect(generateDeckInfo).toHaveBeenCalledTimes(fileCount);
-    expect(maxInFlight).toBe(3);
+    const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
+    await PrepareDeck({
+      name: 'export.zip',
+      files,
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
 
     const configuredDecks = CustomExporterMock.mock.results[0].value.configure
-      .mock.calls[0][0] as Array<{ name: string }>;
+      .mock.calls[0][0] as Array<{
+      name: string;
+      cards: Array<{ name: string }>;
+    }>;
     expect(configuredDecks.map((d) => d.name)).toEqual([
-      'page-0',
-      'page-1',
-      'page-2',
-      'page-3',
-      'page-4',
-      'page-5',
-      'page-6',
+      'Chapter',
+      'Transcript',
     ]);
+    const transcript = configuredDecks.find((d) => d.name === 'Transcript')!;
+    expect(transcript.cards.map((c) => c.name)).toEqual(['Net ATP yield?']);
+  });
 
-    expect(result.cardCount).toBe(fileCount);
+  it('emits ai_conversion_completed with source_file_count and suppressed count', async () => {
+    const files = [
+      { name: 'a.html', contents: '<p>page 0</p>' },
+      { name: 'b.html', contents: '<p>page 1</p>' },
+    ];
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      const index = Number(/page (\d+)/.exec(html)![1]);
+      return deckWithCards(`deck-${index}`, [
+        { name: 'Shared fact', back: 'Same answer' },
+      ]);
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const trackMod = require('../../../services/events/track');
+    const trackSpy = jest
+      .spyOn(trackMod, 'track')
+      .mockImplementation(() => undefined);
+
+    try {
+      await PrepareDeck({
+        name: 'export.zip',
+        files,
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+        userId: 42,
+      });
+
+      const completed = trackSpy.mock.calls.find(
+        (call: unknown[]) => call[0] === 'ai_conversion_completed'
+      );
+      expect(completed).toBeDefined();
+      expect(
+        (completed![1] as { props?: Record<string, unknown> }).props
+      ).toMatchObject({
+        source_file_count: 2,
+        cross_file_duplicates_suppressed: 1,
+      });
+    } finally {
+      trackSpy.mockRestore();
+    }
+  });
+
+  it('leaves a single-file upload unchanged: no top-up, no cross-file event', async () => {
+    generateDeckInfo.mockResolvedValueOnce(
+      deckWithCards('Solo', [{ name: 'Only fact', back: 'Only answer' }])
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const trackMod = require('../../../services/events/track');
+    const trackSpy = jest
+      .spyOn(trackMod, 'track')
+      .mockImplementation(() => undefined);
+
+    try {
+      const settings = makeSettings({
+        'claude-ai-flashcards': 'true',
+        'user-instructions': 'Focus on definitions',
+      });
+      await PrepareDeck({
+        name: 'solo.html',
+        files: [{ name: 'solo.html', contents: '<p>page 0</p>' }],
+        settings,
+        noLimits: true,
+        workspace: makeWorkspace(),
+      });
+
+      expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+      expect(generateDeckInfo.mock.calls[0][2]).toBe('Focus on definitions');
+      const completed = trackSpy.mock.calls.find(
+        (call: unknown[]) => call[0] === 'ai_conversion_completed'
+      );
+      expect(completed).toBeUndefined();
+    } finally {
+      trackSpy.mockRestore();
+    }
+  });
+
+  it('uses a caller-threaded dedup state for a single-file conversion (loose multi-file path)', async () => {
+    const { createCrossFileDedupState, cardDedupeKey } = jest.requireActual(
+      '../../../lib/claude/ClaudeService'
+    );
+    const crossFileDedup = createCrossFileDedupState();
+    crossFileDedup.fronts.push('Fact from earlier file');
+    crossFileDedup.seenKeys.add(
+      cardDedupeKey({ name: 'Recycled fact', back: 'Recycled answer' })
+    );
+
+    generateDeckInfo.mockResolvedValueOnce(
+      deckWithCards('Loose', [
+        { name: 'Recycled fact', back: 'Recycled answer' },
+        { name: 'Brand new fact', back: 'New answer' },
+      ])
+    );
+
+    const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
+    await PrepareDeck({
+      name: 'second.html',
+      files: [{ name: 'second.html', contents: '<p>page 0</p>' }],
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+      crossFileDedup,
+    });
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    expect(generateDeckInfo.mock.calls[0][2]).toContain(
+      'Fact from earlier file'
+    );
+    const configuredDecks = CustomExporterMock.mock.results[0].value.configure
+      .mock.calls[0][0] as Array<{ cards: Array<{ name: string }> }>;
+    expect(configuredDecks.flatMap((d) => d.cards.map((c) => c.name))).toEqual([
+      'Brand new fact',
+    ]);
+    expect(crossFileDedup.suppressed).toBe(1);
+  });
+
+  it('returns no deck (no exporter) when a threaded file is fully covered by earlier files', async () => {
+    const { createCrossFileDedupState, cardDedupeKey } = jest.requireActual(
+      '../../../lib/claude/ClaudeService'
+    );
+    const crossFileDedup = createCrossFileDedupState();
+    crossFileDedup.seenKeys.add(
+      cardDedupeKey({ name: 'Only fact', back: 'Only answer' })
+    );
+
+    generateDeckInfo.mockResolvedValueOnce(
+      deckWithCards('Duplicate', [{ name: 'Only fact', back: 'Only answer' }])
+    );
+
+    const result = await PrepareDeck({
+      name: 'dupe.html',
+      files: [{ name: 'dupe.html', contents: '<p>page 0</p>' }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+      crossFileDedup,
+    });
+
+    expect(result).toBeUndefined();
+    expect(CustomExporterMock).not.toHaveBeenCalled();
+    expect(crossFileDedup.suppressed).toBe(1);
   });
 });
 
@@ -456,7 +615,7 @@ describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
       makeSettings({ 'claude-ai-flashcards': 'true' })
     );
 
-    expect(result.droppedImageCount).toBe(0);
+    expect(result?.droppedImageCount).toBe(0);
   });
 
   it('reports the scanned page-image count as dropped when images are off', async () => {
@@ -469,7 +628,7 @@ describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
       makeSettings({ 'claude-ai-flashcards': 'true', 'embed-images': 'false' })
     );
 
-    expect(result.droppedImageCount).toBe(2);
+    expect(result?.droppedImageCount).toBe(2);
   });
 
   it('reports the real painted-image count on a text-shaped Claude conversion', async () => {
@@ -488,7 +647,7 @@ describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
     );
 
     expect(convertPDFToImages).not.toHaveBeenCalled();
-    expect(result.droppedImageCount).toBe(4);
+    expect(result?.droppedImageCount).toBe(4);
   });
 });
 
@@ -516,8 +675,8 @@ describe('PrepareDeck — expired Notion image reporting', () => {
       workspace: makeWorkspace(),
     });
 
-    expect(result.droppedImageCount).toBe(1);
-    expect(result.expiredNotionImageCount).toBe(1);
+    expect(result?.droppedImageCount).toBe(1);
+    expect(result?.expiredNotionImageCount).toBe(1);
   });
 });
 

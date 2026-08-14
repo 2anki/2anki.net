@@ -35,6 +35,10 @@ export class RetryPdfWithCredentialUseCase {
         pdfCredential: credential,
       });
 
+      if (result == null) {
+        throw new Error('PDF conversion produced no cards');
+      }
+
       return {
         apkg: result.apkg,
         cardCount: result.cardCount,

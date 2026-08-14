@@ -21,6 +21,10 @@ import { getPackagesFromZip } from './getPackagesFromZip';
 import Workspace from '../../lib/parser/WorkSpace';
 import { detectOverSplit } from '../../lib/parser/detectOverSplit';
 import { isZipContentFileSupported } from './isZipContentFileSupported';
+import {
+  CrossFileDedupState,
+  createCrossFileDedupState,
+} from '../../lib/claude/ClaudeService';
 import { convertMindmapFileToApkg } from './ConvertMindmapFileUseCase';
 import {
   convertAnkiAppExportToApkg,
@@ -92,6 +96,60 @@ interface FileResult {
   warnings: string[];
 }
 
+// Files handled by these branches in processFile pre-empt the Claude/PrepareDeck
+// route, so they must not count toward the cross-file gate even when their
+// extension (e.g. "My Clippings.txt" matching isPlainText) otherwise would.
+function routedAwayFromClaude(name: string): boolean {
+  return (
+    isAnkiDeckFile(name) ||
+    isXmlFile(name) ||
+    isOpmlFile(name) ||
+    isBrainstormsJsonFile(name) ||
+    isKindleClippingsFile(name) ||
+    isEpubFile(name)
+  );
+}
+
+// Mirror the exact set of files processFile routes into PrepareDeck's Claude
+// branch (single content files and zips), so the dedup gate opens on the same
+// files the sequential/backstop path will actually see. Zips count as one
+// container: their true content-file count is only known after extraction, and
+// the emitted source_file_count uses filesProcessed for the accurate number.
+export function reachesClaudeContentPath(
+  file: UploadedFile,
+  paying: boolean,
+  settings: CardOption
+): boolean {
+  const name = file.originalname;
+  if (routedAwayFromClaude(name)) return false;
+  const isImageQuiz =
+    paying && settings.imageQuizHtmlToAnki && isImageFile(name);
+  const isSingleContent =
+    isZipContentFileSupported(name) || isPPTFile(name) || isImageQuiz;
+  return Boolean(isSingleContent || isCompressedFile(name));
+}
+
+export function countAiContentFiles(
+  files: UploadedFile[],
+  paying: boolean,
+  settings: CardOption
+): number {
+  return files.filter((f) => reachesClaudeContentPath(f, paying, settings))
+    .length;
+}
+
+export function shouldDedupeAcrossFiles(
+  paying: boolean,
+  settings: CardOption,
+  files: UploadedFile[]
+): boolean {
+  return (
+    paying &&
+    settings.claudeAIFlashcards &&
+    countAiContentFiles(files, paying, settings) >= 2
+  );
+}
+
 async function processFile(
   file: UploadedFile,
   fileContents: Buffer,
@@ -100,7 +158,8 @@ async function processFile(
   workspace: Workspace,
   onProgress: (step: string) => void,
   userId: number | null,
-  knownGuids?: KnownGuids
+  knownGuids?: KnownGuids,
+  crossFileDedup?: CrossFileDedupState
 ): Promise<FileResult> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -176,6 +235,7 @@ async function processFile(
       onProgress,
       userId,
       knownGuids,
+      crossFileDedup,
     });
 
     if (d) {
@@ -211,7 +271,7 @@ async function processFile(
       workspace,
       onProgress,
       userId,
-      knownGuids
+      { knownGuids, crossFileDedup }
     );
     packages.push(...result.packages);
     if (result.warnings) warnings.push(...result.warnings);
@@ -229,6 +289,10 @@ async function doGenerationWork(
   let packages: Package[] = [];
   const warnings: string[] = [];
 
+  const crossFileDedup = shouldDedupeAcrossFiles(paying, settings, files)
+    ? createCrossFileDedupState()
+    : undefined;
+
   for (const file of files) {
     const fileContents = getFileContents(file, enqueuedAt);
     const result = await processFile(
@@ -239,10 +303,23 @@ async function doGenerationWork(
       workspace,
       onProgress,
       userId,
-      knownGuids
+      knownGuids,
+      crossFileDedup
     );
     packages = packages.concat(result.packages);
     warnings.push(...result.warnings);
+  }
+
+  if (crossFileDedup && crossFileDedup.filesProcessed >= 2) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { track } = require('../../services/events/track');
+    track('ai_conversion_completed', {
+      userId,
+      props: {
+        source_file_count: crossFileDedup.filesProcessed,
+        cross_file_duplicates_suppressed: crossFileDedup.suppressed,
+      },
+    });
   }
 
   return { packages, warnings };

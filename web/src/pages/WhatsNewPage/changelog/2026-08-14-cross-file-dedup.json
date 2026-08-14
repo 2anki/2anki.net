@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-14-cross-file-dedup",
+  "date": "2026-08-14",
+  "type": "feature",
+  "title": "Uploading several sources on one topic no longer makes duplicate cards across them"
+}
