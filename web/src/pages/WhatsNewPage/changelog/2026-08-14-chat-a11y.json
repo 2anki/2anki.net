@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-14-chat-a11y",
+  "date": "2026-08-14",
+  "type": "fix",
+  "title": "Chat errors are announced to screen readers, and its small helper text is easier to read"
+}
