@@ -425,6 +425,260 @@ function deckPrefixFromFilePath(htmlFileName: string): string {
     .join('::');
 }
 
+function composeCrossFileInstructions(
+  priorFronts: string[],
+  userInstructions: string | undefined,
+  cardSize: string | undefined
+): string | undefined {
+  if (priorFronts.length === 0) return userInstructions;
+  const topUp = buildTopUpInstruction(priorFronts, cardSize);
+  return userInstructions ? `${userInstructions}\n\n${topUp}` : topUp;
+}
+
+interface ClaudeConversionResult {
+  deckInfoArrays: DeckInfo[][];
+  crossFileDedup: CrossFileDedupState | undefined;
+  ownsDedup: boolean;
+}
+
+async function runClaudeConversion(
+  htmlFiles: DeckParserInput['files'],
+  generateForFile: (
+    file: DeckParserInput['files'][number],
+    instructions?: string
+  ) => Promise<DeckInfo[]>,
+  userInstructions: string | undefined,
+  cardSize: string | undefined,
+  threadedDedup: CrossFileDedupState | undefined
+): Promise<ClaudeConversionResult> {
+  const ownsDedup = threadedDedup == null && htmlFiles.length >= 2;
+  const crossFileDedup =
+    threadedDedup ?? (ownsDedup ? createCrossFileDedupState() : undefined);
+
+  if (crossFileDedup) {
+    const deckInfoArrays: DeckInfo[][] = [];
+    for (const file of htmlFiles) {
+      const instructions = composeCrossFileInstructions(
+        crossFileDedup.fronts,
+        userInstructions,
+        cardSize
+      );
+      const decks = await generateForFile(file, instructions);
+      deckInfoArrays.push(absorbFileIntoCrossFileDedup(crossFileDedup, decks));
+    }
+    return { deckInfoArrays, crossFileDedup, ownsDedup };
+  }
+
+  const deckInfoArrays = await mapWithConcurrency(
+    htmlFiles,
+    HTML_GENERATION_CONCURRENCY,
+    (file) => generateForFile(file, userInstructions)
+  );
+  return { deckInfoArrays, crossFileDedup, ownsDedup };
+}
+
+function emitCrossFileConversionEvent(
+  userId: number | null,
+  state: CrossFileDedupState
+): void {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { track } = require('../../../services/events/track');
+  track('ai_conversion_completed', {
+    userId,
+    props: {
+      source_file_count: state.filesProcessed,
+      cross_file_duplicates_suppressed: state.suppressed,
+    },
+  });
+}
+
+async function buildClaudeDeck(
+  input: DeckParserInput,
+  allFiles: DeckParserInput['files'],
+  convertedFiles: ConvertedFile[],
+  pdfImageFallbackNames: Set<string>,
+  tTotal: number
+): Promise<PrepareDeckResult | undefined> {
+  console.log('[PrepareDeck] Claude branch: collecting HTML content');
+  const htmlFiles = allFiles.filter(
+    (f) => (isHTMLFile(f.name) || isMarkdownFile(f.name)) && f.contents
+  );
+
+  // Figure images extracted per source file (PDF text-layer, DOCX) travel
+  // to their own HTML via pdfFigureNamesByHtml below; keeping them out of
+  // the shared pool stops the unclaimed-media fallback from offering one
+  // file's figures to every other file's prompt.
+  const perFileFigureNames = new Set(
+    convertedFiles.flatMap(
+      (f) => f.extraFiles?.map((image) => image.name) ?? []
+    )
+  );
+  const mediaFiles = allFiles
+    .filter(
+      (f) =>
+        !isHTMLFile(f.name) &&
+        !isMarkdownFile(f.name) &&
+        !perFileFigureNames.has(f.name)
+    )
+    .map((f) => f.name);
+
+  const pdfFigureNamesByHtml = new Map(
+    convertedFiles
+      .filter((f) => (f.extraFiles?.length ?? 0) > 0)
+      .map((f) => [f.name, f.extraFiles!.map((image) => image.name)])
+  );
+
+  const tWrite = Date.now();
+  await Promise.all(
+    allFiles
+      .filter((file) => file.contents)
+      .map((file) =>
+        writeWorkspaceFile(input.workspace.location, {
+          name: file.name,
+          contents: file.contents,
+        })
+      )
+  );
+  console.log('[PrepareDeck] Claude branch: files written', {
+    durationMs: Date.now() - tWrite,
+  });
+
+  writePdfImageFallbackMarker(input.workspace.location, [
+    ...pdfImageFallbackNames,
+  ]);
+
+  const userInstructions = input.settings.userInstructions;
+  const cardStyle = input.settings.cardStyle || undefined;
+  const fieldMapping = input.settings.fieldMapping;
+  console.log('[PrepareDeck] Claude branch: calling generateDeckInfo', {
+    htmlFileCount: htmlFiles.length,
+    mediaFilesCount: mediaFiles.length,
+    hasUserInstructions: !!userInstructions?.trim(),
+    cardStyle,
+    hasFieldMapping: fieldMapping != null,
+  });
+  const tClaude = Date.now();
+  const baseGenerateDeckInfoOptions = {
+    isPaying: input.noLimits,
+    userId: input.userId ?? null,
+    comprehensive: input.settings.aiComprehensive,
+  };
+  const optionsForFile = (f: (typeof htmlFiles)[number]) =>
+    pdfImageFallbackNames.has(f.name)
+      ? {
+          ...baseGenerateDeckInfoOptions,
+          pdfImageFallback: {
+            mediaBaseDir: input.workspace.location,
+            attachPageImages: input.settings.embedImages,
+          },
+        }
+      : baseGenerateDeckInfoOptions;
+  const generateForFile = (
+    f: (typeof htmlFiles)[number],
+    instructions?: string
+  ) =>
+    generateDeckInfo(
+      f.contents!.toString(),
+      [
+        ...mediaFilesForHtmlFile(
+          f.name,
+          mediaFiles,
+          htmlFiles.map((h) => h.name)
+        ),
+        ...(pdfFigureNamesByHtml.get(f.name) ?? []),
+      ],
+      instructions,
+      input.onProgress,
+      cardStyle,
+      input.settings.cardSize,
+      fieldMapping,
+      optionsForFile(f)
+    );
+
+  const { deckInfoArrays, crossFileDedup, ownsDedup } =
+    await runClaudeConversion(
+      htmlFiles,
+      generateForFile,
+      userInstructions,
+      input.settings.cardSize,
+      input.crossFileDedup
+    );
+
+  if (ownsDedup && crossFileDedup) {
+    emitCrossFileConversionEvent(input.userId ?? null, crossFileDedup);
+  }
+
+  const deckInfo = deckInfoArrays.flatMap((decks, i) => {
+    const prefix = deckPrefixFromFilePath(htmlFiles[i].name);
+    return decks
+      .filter((d) => d.cards.length > 0)
+      .map((d) => ({
+        ...d,
+        name: prefix ? `${prefix}::${d.name}` : d.name,
+      }));
+  });
+  console.log('[PrepareDeck] Claude branch: generateDeckInfo done', {
+    durationMs: Date.now() - tClaude,
+    htmlFilesProcessed: htmlFiles.length,
+    totalDecks: deckInfo.length,
+    totalCards: deckInfo.reduce((sum, d) => sum + d.cards.length, 0),
+  });
+
+  // A file whose cards were all covered by earlier files of the same upload
+  // has nothing left to export. Running the Python exporter on an empty deck
+  // throws PythonZeroCardsError, which — with no per-file catch in the worker
+  // loop — would fail the whole upload and discard the earlier files' decks.
+  // Return no deck instead; the earlier files carry the upload.
+  if (crossFileDedup && deckInfo.length === 0) {
+    console.info(
+      '[PrepareDeck] Claude branch: file fully covered by earlier files',
+      {
+        suppressed: crossFileDedup.suppressed,
+        filesProcessed: crossFileDedup.filesProcessed,
+      }
+    );
+    return undefined;
+  }
+
+  const deckName =
+    deckInfo.length === 1
+      ? deckInfo[0].name
+      : (input.name ?? deckInfo[0]?.name ?? 'Untitled Deck');
+  const exporter = new CustomExporter(deckName, input.workspace.location);
+  exporter.configure(deckInfo as unknown as Deck[]);
+  const tExport = Date.now();
+  const apkg = await exporter.save();
+  const claudeCardCount = deckInfo.reduce((sum, d) => sum + d.cards.length, 0);
+  console.log('[PrepareDeck] Claude branch: exporter.save done', {
+    durationMs: Date.now() - tExport,
+  });
+  console.log('[PrepareDeck] done (Claude path)', {
+    totalMs: Date.now() - tTotal,
+  });
+  return {
+    name: getDeckFilename(deckName),
+    apkg,
+    deck: [],
+    cardCount: claudeCardCount,
+    // The Claude branch returns deck: [], so a caller that scores from `deck`
+    // measures nothing on every AI conversion. Scored here, where the cards
+    // still exist.
+    engine: 'claude',
+    score: scoreCandidateDeck(
+      deckInfo.flatMap((d) => d.cards),
+      htmlFiles.reduce((sum, f) => sum + (f.size ?? f.contents?.length ?? 0), 0)
+    ),
+    mcqCount: 0,
+    mcqSkippedCount: 0,
+    droppedImageCount: convertedFiles.reduce(
+      (sum, f) => sum + (f.droppedImageCount ?? 0),
+      0
+    ),
+    expiredNotionImageCount: 0,
+    emptyBackCount: 0,
+  };
+}
+
 export async function PrepareDeck(
   input: DeckParserInput
 ): Promise<PrepareDeckResult | undefined> {
@@ -465,220 +719,13 @@ export async function PrepareDeck(
   const allFiles = assembleParserFiles(files, convertedFiles);
 
   if (input.settings.claudeAIFlashcards && input.noLimits) {
-    console.log('[PrepareDeck] Claude branch: collecting HTML content');
-    const htmlFiles = allFiles.filter(
-      (f) => (isHTMLFile(f.name) || isMarkdownFile(f.name)) && f.contents
+    return buildClaudeDeck(
+      input,
+      allFiles,
+      convertedFiles,
+      pdfImageFallbackNames,
+      tTotal
     );
-
-    // Figure images extracted per source file (PDF text-layer, DOCX) travel
-    // to their own HTML via pdfFigureNamesByHtml below; keeping them out of
-    // the shared pool stops the unclaimed-media fallback from offering one
-    // file's figures to every other file's prompt.
-    const perFileFigureNames = new Set(
-      convertedFiles.flatMap(
-        (f) => f.extraFiles?.map((image) => image.name) ?? []
-      )
-    );
-    const mediaFiles = allFiles
-      .filter(
-        (f) =>
-          !isHTMLFile(f.name) &&
-          !isMarkdownFile(f.name) &&
-          !perFileFigureNames.has(f.name)
-      )
-      .map((f) => f.name);
-
-    const pdfFigureNamesByHtml = new Map(
-      convertedFiles
-        .filter((f) => (f.extraFiles?.length ?? 0) > 0)
-        .map((f) => [f.name, f.extraFiles!.map((image) => image.name)])
-    );
-
-    const tWrite = Date.now();
-    await Promise.all(
-      allFiles
-        .filter((file) => file.contents)
-        .map((file) =>
-          writeWorkspaceFile(input.workspace.location, {
-            name: file.name,
-            contents: file.contents,
-          })
-        )
-    );
-    console.log('[PrepareDeck] Claude branch: files written', {
-      durationMs: Date.now() - tWrite,
-    });
-
-    writePdfImageFallbackMarker(input.workspace.location, [
-      ...pdfImageFallbackNames,
-    ]);
-
-    const userInstructions = input.settings.userInstructions;
-    const cardStyle = input.settings.cardStyle || undefined;
-    const fieldMapping = input.settings.fieldMapping;
-    console.log('[PrepareDeck] Claude branch: calling generateDeckInfo', {
-      htmlFileCount: htmlFiles.length,
-      mediaFilesCount: mediaFiles.length,
-      hasUserInstructions: !!userInstructions?.trim(),
-      cardStyle,
-      hasFieldMapping: fieldMapping != null,
-    });
-    const tClaude = Date.now();
-    const baseGenerateDeckInfoOptions = {
-      isPaying: input.noLimits,
-      userId: input.userId ?? null,
-      comprehensive: input.settings.aiComprehensive,
-    };
-    const optionsForFile = (f: (typeof htmlFiles)[number]) =>
-      pdfImageFallbackNames.has(f.name)
-        ? {
-            ...baseGenerateDeckInfoOptions,
-            pdfImageFallback: {
-              mediaBaseDir: input.workspace.location,
-              attachPageImages: input.settings.embedImages,
-            },
-          }
-        : baseGenerateDeckInfoOptions;
-    const generateForFile = (
-      f: (typeof htmlFiles)[number],
-      instructions?: string
-    ) =>
-      generateDeckInfo(
-        f.contents!.toString(),
-        [
-          ...mediaFilesForHtmlFile(
-            f.name,
-            mediaFiles,
-            htmlFiles.map((h) => h.name)
-          ),
-          ...(pdfFigureNamesByHtml.get(f.name) ?? []),
-        ],
-        instructions,
-        input.onProgress,
-        cardStyle,
-        input.settings.cardSize,
-        fieldMapping,
-        optionsForFile(f)
-      );
-
-    const threadedDedup = input.crossFileDedup;
-    const ownsDedup = threadedDedup == null && htmlFiles.length >= 2;
-    const crossFileDedup =
-      threadedDedup ?? (ownsDedup ? createCrossFileDedupState() : undefined);
-
-    const instructionsWithPriorFronts = (
-      priorFronts: string[]
-    ): string | undefined => {
-      if (priorFronts.length === 0) return userInstructions;
-      const topUp = buildTopUpInstruction(priorFronts, input.settings.cardSize);
-      return userInstructions ? `${userInstructions}\n\n${topUp}` : topUp;
-    };
-
-    let deckInfoArrays: DeckInfo[][];
-    if (crossFileDedup) {
-      deckInfoArrays = [];
-      for (const f of htmlFiles) {
-        const instructions = instructionsWithPriorFronts(crossFileDedup.fronts);
-        const decks = await generateForFile(f, instructions);
-        deckInfoArrays.push(
-          absorbFileIntoCrossFileDedup(crossFileDedup, decks)
-        );
-      }
-    } else {
-      deckInfoArrays = await mapWithConcurrency(
-        htmlFiles,
-        HTML_GENERATION_CONCURRENCY,
-        (f) => generateForFile(f, userInstructions)
-      );
-    }
-
-    if (ownsDedup && crossFileDedup) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { track } = require('../../../services/events/track');
-      track('ai_conversion_completed', {
-        userId: input.userId ?? null,
-        props: {
-          source_file_count: crossFileDedup.filesProcessed,
-          cross_file_duplicates_suppressed: crossFileDedup.suppressed,
-        },
-      });
-    }
-
-    const deckInfo = deckInfoArrays.flatMap((decks, i) => {
-      const prefix = deckPrefixFromFilePath(htmlFiles[i].name);
-      return decks
-        .filter((d) => d.cards.length > 0)
-        .map((d) => ({
-          ...d,
-          name: prefix ? `${prefix}::${d.name}` : d.name,
-        }));
-    });
-    console.log('[PrepareDeck] Claude branch: generateDeckInfo done', {
-      durationMs: Date.now() - tClaude,
-      htmlFilesProcessed: htmlFiles.length,
-      totalDecks: deckInfo.length,
-      totalCards: deckInfo.reduce((sum, d) => sum + d.cards.length, 0),
-    });
-
-    // A file whose cards were all covered by earlier files of the same upload
-    // has nothing left to export. Running the Python exporter on an empty deck
-    // throws PythonZeroCardsError, which — with no per-file catch in the worker
-    // loop — would fail the whole upload and discard the earlier files' decks.
-    // Return no deck instead; the earlier files carry the upload.
-    if (crossFileDedup && deckInfo.length === 0) {
-      console.info(
-        '[PrepareDeck] Claude branch: file fully covered by earlier files',
-        {
-          suppressed: crossFileDedup.suppressed,
-          filesProcessed: crossFileDedup.filesProcessed,
-        }
-      );
-      return undefined;
-    }
-
-    const deckName =
-      deckInfo.length === 1
-        ? deckInfo[0].name
-        : (input.name ?? deckInfo[0]?.name ?? 'Untitled Deck');
-    const exporter = new CustomExporter(deckName, input.workspace.location);
-    exporter.configure(deckInfo as unknown as Deck[]);
-    const tExport = Date.now();
-    const apkg = await exporter.save();
-    const claudeCardCount = deckInfo.reduce(
-      (sum, d) => sum + d.cards.length,
-      0
-    );
-    console.log('[PrepareDeck] Claude branch: exporter.save done', {
-      durationMs: Date.now() - tExport,
-    });
-    console.log('[PrepareDeck] done (Claude path)', {
-      totalMs: Date.now() - tTotal,
-    });
-    return {
-      name: getDeckFilename(deckName),
-      apkg,
-      deck: [],
-      cardCount: claudeCardCount,
-      // The Claude branch returns deck: [], so a caller that scores from `deck`
-      // measures nothing on every AI conversion. Scored here, where the cards
-      // still exist.
-      engine: 'claude',
-      score: scoreCandidateDeck(
-        deckInfo.flatMap((d) => d.cards),
-        htmlFiles.reduce(
-          (sum, f) => sum + (f.size ?? f.contents?.length ?? 0),
-          0
-        )
-      ),
-      mcqCount: 0,
-      mcqSkippedCount: 0,
-      droppedImageCount: convertedFiles.reduce(
-        (sum, f) => sum + (f.droppedImageCount ?? 0),
-        0
-      ),
-      expiredNotionImageCount: 0,
-      emptyBackCount: 0,
-    };
   }
 
   const parser = new DeckParser({ ...input, files: allFiles });
