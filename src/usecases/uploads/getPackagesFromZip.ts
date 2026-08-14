@@ -11,6 +11,7 @@ import {
   DeckInfoOnlyResult,
 } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import Package from '../../lib/parser/Package';
+import type { CrossFileDedupState } from '../../lib/claude/ClaudeService';
 import { PackageResult } from './GeneratePackagesUseCase';
 import Workspace from '../../lib/parser/WorkSpace';
 import { getMaxUploadCount } from '../../lib/misc/getMaxUploadCount';
@@ -259,7 +260,8 @@ async function buildClaudeFlashcardDeck(
   paying: boolean,
   workspace: Workspace,
   onProgress: ((step: string) => void) | undefined,
-  userId: number | null
+  userId: number | null,
+  crossFileDedup?: CrossFileDedupState
 ): Promise<PackageResult> {
   const deck = await PrepareDeck({
     name: rootName,
@@ -269,6 +271,7 @@ async function buildClaudeFlashcardDeck(
     workspace,
     onProgress,
     userId,
+    crossFileDedup,
   });
 
   const packages: Package[] = [];
@@ -406,7 +409,8 @@ export const getPackagesFromZip = async (
   workspace: Workspace,
   onProgress?: (step: string) => void,
   userId: number | null = null,
-  knownGuids?: KnownGuids
+  knownGuids?: KnownGuids,
+  crossFileDedup?: CrossFileDedupState
 ): Promise<PackageResult> => {
   if (!fileContents) {
     return { packages: [] };
@@ -443,7 +447,8 @@ export const getPackagesFromZip = async (
       paying,
       workspace,
       onProgress,
-      userId
+      userId,
+      crossFileDedup
     );
   }
 

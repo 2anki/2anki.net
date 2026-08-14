@@ -11,8 +11,10 @@ import {
   buildUserMessage,
   buildFieldMappingPromptFragment,
   dedupeIdenticalCards,
+  cardDedupeKey,
   collectExistingFronts,
   buildTopUpInstruction,
+  sampleEvenly,
   createCrossFileDedupState,
   absorbFileIntoCrossFileDedup,
   describeRepairFailure,
@@ -1186,11 +1188,41 @@ describe('buildTopUpInstruction', () => {
     expect(instruction).toContain('Return only net-new cards');
   });
 
-  it('caps the listed fronts at 80 even when more are accumulated', () => {
+  it('caps the listed fronts at 80 but samples across the whole accumulated list', () => {
     const fronts = Array.from({ length: 200 }, (_, i) => `Front ${i}`);
     const instruction = buildTopUpInstruction(fronts, 'medium');
-    expect(instruction).toContain('- Front 79');
-    expect(instruction).not.toContain('- Front 80');
+    const listed = instruction
+      .split('\n')
+      .filter((line) => line.startsWith('- Front '));
+    expect(listed).toHaveLength(80);
+    // Every earlier file is represented: fronts from both the early and late
+    // ranges appear, not just the first 80.
+    expect(instruction).toContain('- Front 0');
+    expect(instruction).toContain('- Front 197');
+    expect(instruction).not.toContain('- Front 79\n- Front 80');
+  });
+});
+
+describe('sampleEvenly', () => {
+  it('returns the list unchanged when at or under the cap', () => {
+    expect(sampleEvenly([1, 2, 3], 5)).toEqual([1, 2, 3]);
+  });
+
+  it('spreads the sample deterministically across the whole list', () => {
+    const items = Array.from({ length: 10 }, (_, i) => i);
+    expect(sampleEvenly(items, 5)).toEqual([0, 2, 4, 6, 8]);
+  });
+});
+
+describe('cardDedupeKey', () => {
+  it('joins normalized front and back with a NUL, not a space', () => {
+    expect(cardDedupeKey({ name: 'Front', back: 'Back' })).toBe('front\0back');
+  });
+
+  it('keeps a boundary-shifted split distinct (NUL separator)', () => {
+    const a = cardDedupeKey({ name: 'Krebs cycle', back: 'produces ATP' });
+    const b = cardDedupeKey({ name: 'Krebs', back: 'cycle produces ATP' });
+    expect(a).not.toBe(b);
   });
 });
 
@@ -1239,6 +1271,46 @@ describe('cross-file dedup accumulator', () => {
     ]);
     const secondFile = absorbFileIntoCrossFileDedup(state, [
       makeDeck('Slides', [{ name: 'Sodium', back: 'Atomic number: 11' }]),
+    ]);
+    expect(secondFile[0].cards).toHaveLength(1);
+    expect(state.suppressed).toBe(0);
+  });
+
+  it('keeps an identical card repeated across two sub-decks of the SAME file', () => {
+    // Review sections legitimately repeat content; dedupeIdenticalCards scopes
+    // per-deck, and the first file must convert identically alone or batched.
+    const state = createCrossFileDedupState();
+    const firstFile = absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Chapter 3', [{ name: 'What is osmosis?', back: 'Diffusion' }]),
+      makeDeck('Chapter 3 Review', [
+        { name: 'What is osmosis?', back: 'Diffusion' },
+      ]),
+    ]);
+    expect(firstFile[0].cards).toHaveLength(1);
+    expect(firstFile[1].cards).toHaveLength(1);
+    expect(state.suppressed).toBe(0);
+  });
+
+  it('suppresses a later file card only after the whole earlier file is absorbed', () => {
+    const state = createCrossFileDedupState();
+    absorbFileIntoCrossFileDedup(state, [
+      makeDeck('A', [{ name: 'What is osmosis?', back: 'Diffusion' }]),
+      makeDeck('A Review', [{ name: 'What is osmosis?', back: 'Diffusion' }]),
+    ]);
+    const secondFile = absorbFileIntoCrossFileDedup(state, [
+      makeDeck('B', [{ name: 'What is osmosis?', back: 'Diffusion' }]),
+    ]);
+    expect(secondFile[0].cards).toHaveLength(0);
+    expect(state.suppressed).toBe(1);
+  });
+
+  it('does not collide boundary-shifted front/back splits across files (NUL key)', () => {
+    const state = createCrossFileDedupState();
+    absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Chapter', [{ name: 'Krebs cycle', back: 'produces ATP' }]),
+    ]);
+    const secondFile = absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Transcript', [{ name: 'Krebs', back: 'cycle produces ATP' }]),
     ]);
     expect(secondFile[0].cards).toHaveLength(1);
     expect(state.suppressed).toBe(0);

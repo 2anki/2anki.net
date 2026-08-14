@@ -96,11 +96,46 @@ interface FileResult {
   warnings: string[];
 }
 
-export function countAiContentFiles(files: UploadedFile[]): number {
-  return files.filter(
-    (f) =>
-      isZipContentFileSupported(f.originalname) || isPPTFile(f.originalname)
-  ).length;
+// Files handled by these branches in processFile pre-empt the Claude/PrepareDeck
+// route, so they must not count toward the cross-file gate even when their
+// extension (e.g. "My Clippings.txt" matching isPlainText) otherwise would.
+function routedAwayFromClaude(name: string): boolean {
+  return (
+    isAnkiDeckFile(name) ||
+    isXmlFile(name) ||
+    isOpmlFile(name) ||
+    isBrainstormsJsonFile(name) ||
+    isKindleClippingsFile(name) ||
+    isEpubFile(name)
+  );
+}
+
+// Mirror the exact set of files processFile routes into PrepareDeck's Claude
+// branch (single content files and zips), so the dedup gate opens on the same
+// files the sequential/backstop path will actually see. Zips count as one
+// container: their true content-file count is only known after extraction, and
+// the emitted source_file_count uses filesProcessed for the accurate number.
+export function reachesClaudeContentPath(
+  file: UploadedFile,
+  paying: boolean,
+  settings: CardOption
+): boolean {
+  const name = file.originalname;
+  if (routedAwayFromClaude(name)) return false;
+  const isImageQuiz =
+    paying && settings.imageQuizHtmlToAnki && isImageFile(name);
+  const isSingleContent =
+    isZipContentFileSupported(name) || isPPTFile(name) || isImageQuiz;
+  return Boolean(isSingleContent || isCompressedFile(name));
+}
+
+export function countAiContentFiles(
+  files: UploadedFile[],
+  paying: boolean,
+  settings: CardOption
+): number {
+  return files.filter((f) => reachesClaudeContentPath(f, paying, settings))
+    .length;
 }
 
 export function shouldDedupeAcrossFiles(
@@ -109,7 +144,9 @@ export function shouldDedupeAcrossFiles(
   files: UploadedFile[]
 ): boolean {
   return (
-    paying && settings.claudeAIFlashcards && countAiContentFiles(files) >= 2
+    paying &&
+    settings.claudeAIFlashcards &&
+    countAiContentFiles(files, paying, settings) >= 2
   );
 }
 
@@ -234,7 +271,8 @@ async function processFile(
       workspace,
       onProgress,
       userId,
-      knownGuids
+      knownGuids,
+      crossFileDedup
     );
     packages.push(...result.packages);
     if (result.warnings) warnings.push(...result.warnings);

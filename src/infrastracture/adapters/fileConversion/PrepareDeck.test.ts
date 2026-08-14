@@ -119,8 +119,8 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     });
 
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
-    expect(result.name).toContain('My Deck');
-    expect(result.apkg).toEqual(Buffer.from('fake-apkg'));
+    expect(result?.name).toContain('My Deck');
+    expect(result?.apkg).toEqual(Buffer.from('fake-apkg'));
   });
 
   it('does not invoke ClaudeService when noLimits is false', async () => {
@@ -363,12 +363,14 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
   });
 
   it('uses a caller-threaded dedup state for a single-file conversion (loose multi-file path)', async () => {
-    const { createCrossFileDedupState } = jest.requireActual(
+    const { createCrossFileDedupState, cardDedupeKey } = jest.requireActual(
       '../../../lib/claude/ClaudeService'
     );
     const crossFileDedup = createCrossFileDedupState();
     crossFileDedup.fronts.push('Fact from earlier file');
-    crossFileDedup.seenKeys.add('recycled fact recycled answer');
+    crossFileDedup.seenKeys.add(
+      cardDedupeKey({ name: 'Recycled fact', back: 'Recycled answer' })
+    );
 
     generateDeckInfo.mockResolvedValueOnce(
       deckWithCards('Loose', [
@@ -396,6 +398,33 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
     expect(configuredDecks.flatMap((d) => d.cards.map((c) => c.name))).toEqual([
       'Brand new fact',
     ]);
+    expect(crossFileDedup.suppressed).toBe(1);
+  });
+
+  it('returns no deck (no exporter) when a threaded file is fully covered by earlier files', async () => {
+    const { createCrossFileDedupState, cardDedupeKey } = jest.requireActual(
+      '../../../lib/claude/ClaudeService'
+    );
+    const crossFileDedup = createCrossFileDedupState();
+    crossFileDedup.seenKeys.add(
+      cardDedupeKey({ name: 'Only fact', back: 'Only answer' })
+    );
+
+    generateDeckInfo.mockResolvedValueOnce(
+      deckWithCards('Duplicate', [{ name: 'Only fact', back: 'Only answer' }])
+    );
+
+    const result = await PrepareDeck({
+      name: 'dupe.html',
+      files: [{ name: 'dupe.html', contents: '<p>page 0</p>' }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+      crossFileDedup,
+    });
+
+    expect(result).toBeUndefined();
+    expect(CustomExporterMock).not.toHaveBeenCalled();
     expect(crossFileDedup.suppressed).toBe(1);
   });
 });
@@ -586,7 +615,7 @@ describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
       makeSettings({ 'claude-ai-flashcards': 'true' })
     );
 
-    expect(result.droppedImageCount).toBe(0);
+    expect(result?.droppedImageCount).toBe(0);
   });
 
   it('reports the scanned page-image count as dropped when images are off', async () => {
@@ -599,7 +628,7 @@ describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
       makeSettings({ 'claude-ai-flashcards': 'true', 'embed-images': 'false' })
     );
 
-    expect(result.droppedImageCount).toBe(2);
+    expect(result?.droppedImageCount).toBe(2);
   });
 
   it('reports the real painted-image count on a text-shaped Claude conversion', async () => {
@@ -618,7 +647,7 @@ describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
     );
 
     expect(convertPDFToImages).not.toHaveBeenCalled();
-    expect(result.droppedImageCount).toBe(4);
+    expect(result?.droppedImageCount).toBe(4);
   });
 });
 
@@ -646,8 +675,8 @@ describe('PrepareDeck — expired Notion image reporting', () => {
       workspace: makeWorkspace(),
     });
 
-    expect(result.droppedImageCount).toBe(1);
-    expect(result.expiredNotionImageCount).toBe(1);
+    expect(result?.droppedImageCount).toBe(1);
+    expect(result?.expiredNotionImageCount).toBe(1);
   });
 });
 

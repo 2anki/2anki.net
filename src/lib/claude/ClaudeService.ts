@@ -404,6 +404,10 @@ function normalizeCardText(text: string): string {
     .replace(/\s+/g, ' ');
 }
 
+export function cardDedupeKey(card: Pick<CardInfo, 'name' | 'back'>): string {
+  return `${normalizeCardText(card.name)}\0${normalizeCardText(card.back)}`;
+}
+
 // Keyed on front AND back, not front alone. A table with columns produces one
 // card per column from a single row, and those cards naturally share the row's
 // key term as their front — front-only dedup dropped every column after the
@@ -418,7 +422,7 @@ export function dedupeIdenticalCards(decks: DeckInfo[]): DeckInfo[] {
   return decks.map((deck) => {
     const seen = new Set<string>();
     const dedupedCards = deck.cards.filter((card) => {
-      const key = `${normalizeCardText(card.name)} ${normalizeCardText(card.back)}`;
+      const key = cardDedupeKey(card);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -1038,13 +1042,29 @@ export function collectExistingFronts(decks: DeckInfo[]): string[] {
   return fronts;
 }
 
+const TOP_UP_FRONT_SAMPLE_SIZE = 80;
+
+// Spread the sample across the whole accumulated list instead of taking the
+// first N. With a cross-file accumulator that grows in file order, slice(0, N)
+// froze the hint to the earliest file once it alone produced N fronts, so later
+// files' prompts never saw the files just before them. An even stride keeps
+// every earlier file represented.
+export function sampleEvenly<T>(items: T[], cap: number): T[] {
+  if (items.length <= cap) return items;
+  const sampled: T[] = [];
+  for (let i = 0; i < cap; i++) {
+    sampled.push(items[Math.floor((i * items.length) / cap)]);
+  }
+  return sampled;
+}
+
 export function buildTopUpInstruction(
   existingFronts: string[],
   cardSize: string | undefined
 ): string {
-  const sample = existingFronts
-    .slice(0, 80)
-    .map((f) => (f ?? '').replace(/<[^>]*>/g, '').slice(0, 120));
+  const sample = sampleEvenly(existingFronts, TOP_UP_FRONT_SAMPLE_SIZE).map(
+    (f) => (f ?? '').replace(/<[^>]*>/g, '').slice(0, 120)
+  );
   const list = sample.map((s) => `- ${s}`).join('\n');
   const lead =
     validateCardSize(cardSize) === 'detailed'
@@ -1064,22 +1084,32 @@ export function createCrossFileDedupState(): CrossFileDedupState {
   return { fronts: [], seenKeys: new Set(), filesProcessed: 0, suppressed: 0 };
 }
 
+// Suppress only cards that matched an EARLIER file. Filtering against
+// state.seenKeys (frozen to prior files) rather than a set that grows within
+// this file preserves single-file semantics: dedupeIdenticalCards scopes
+// per-deck, so a card legitimately repeated across two sub-decks of the same
+// file survives, and cross_file_duplicates_suppressed counts only genuine
+// cross-file drops. This file's own keys are absorbed after filtering, so the
+// next file dedupes against them.
 export function absorbFileIntoCrossFileDedup(
   state: CrossFileDedupState,
   decks: DeckInfo[]
 ): DeckInfo[] {
+  const priorKeys = state.seenKeys;
+  const thisFileKeys = new Set<string>();
   const deduped = decks.map((deck) => {
     const cards = deck.cards.filter((card) => {
-      const key = `${normalizeCardText(card.name)} ${normalizeCardText(card.back)}`;
-      if (state.seenKeys.has(key)) {
+      const key = cardDedupeKey(card);
+      if (priorKeys.has(key)) {
         state.suppressed += 1;
         return false;
       }
-      state.seenKeys.add(key);
+      thisFileKeys.add(key);
       return true;
     });
     return { ...deck, cards };
   });
+  for (const key of thisFileKeys) state.seenKeys.add(key);
   state.fronts.push(...collectExistingFronts(deduped));
   state.filesProcessed += 1;
   return deduped;

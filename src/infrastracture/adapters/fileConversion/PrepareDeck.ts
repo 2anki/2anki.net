@@ -427,7 +427,7 @@ function deckPrefixFromFilePath(htmlFileName: string): string {
 
 export async function PrepareDeck(
   input: DeckParserInput
-): Promise<PrepareDeckResult> {
+): Promise<PrepareDeckResult | undefined> {
   const tTotal = Date.now();
 
   const files = dedupeFilesByName(input.files);
@@ -619,6 +619,22 @@ export async function PrepareDeck(
       totalDecks: deckInfo.length,
       totalCards: deckInfo.reduce((sum, d) => sum + d.cards.length, 0),
     });
+
+    // A file whose cards were all covered by earlier files of the same upload
+    // has nothing left to export. Running the Python exporter on an empty deck
+    // throws PythonZeroCardsError, which — with no per-file catch in the worker
+    // loop — would fail the whole upload and discard the earlier files' decks.
+    // Return no deck instead; the earlier files carry the upload.
+    if (crossFileDedup && deckInfo.length === 0) {
+      console.info(
+        '[PrepareDeck] Claude branch: file fully covered by earlier files',
+        {
+          suppressed: crossFileDedup.suppressed,
+          filesProcessed: crossFileDedup.filesProcessed,
+        }
+      );
+      return undefined;
+    }
 
     const deckName =
       deckInfo.length === 1

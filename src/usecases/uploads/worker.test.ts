@@ -10,17 +10,25 @@ import { UploadedFile } from '../../lib/storage/types';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import Workspace from '../../lib/parser/WorkSpace';
 import { UploadGenerationTask } from './uploadGenerationTypes';
-import { absorbFileIntoCrossFileDedup } from '../../lib/claude/ClaudeService';
+import {
+  absorbFileIntoCrossFileDedup,
+  CrossFileDedupState,
+} from '../../lib/claude/ClaudeService';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
+import { getPackagesFromZip } from './getPackagesFromZip';
 
 jest.mock('fs');
 jest.mock('../../lib/parser/WorkSpace');
 jest.mock('../../infrastracture/adapters/fileConversion/PrepareDeck', () => ({
   PrepareDeck: jest.fn(),
 }));
+jest.mock('./getPackagesFromZip', () => ({
+  getPackagesFromZip: jest.fn(),
+}));
 
 const mockFs = jest.mocked(fs);
 const mockPrepareDeck = jest.mocked(PrepareDeck);
+const mockGetPackagesFromZip = jest.mocked(getPackagesFromZip);
 
 function makeClaudeSettings(): CardOption {
   return new CardOption({
@@ -271,7 +279,7 @@ describe('runUploadGenerationInWorker', () => {
 });
 
 describe('countAiContentFiles', () => {
-  it('counts html, markdown, and pdf content files, ignoring zips and xml', () => {
+  it('counts files that reach the Claude path: html/md/pdf and zips, not xml', () => {
     const files = [
       makeFile({ originalname: 'a.html' }),
       makeFile({ originalname: 'b.md' }),
@@ -279,7 +287,29 @@ describe('countAiContentFiles', () => {
       makeFile({ originalname: 'export.zip' }),
       makeFile({ originalname: 'deck.xml' }),
     ];
-    expect(countAiContentFiles(files)).toBe(3);
+    expect(countAiContentFiles(files, true, makeClaudeSettings())).toBe(4);
+  });
+
+  it('does not count a Kindle clippings .txt (routed to the vocab path, not Claude)', () => {
+    const files = [
+      makeFile({ originalname: 'My Clippings.txt' }),
+      makeFile({ originalname: 'notes.html' }),
+    ];
+    expect(countAiContentFiles(files, true, makeClaudeSettings())).toBe(1);
+  });
+
+  it('counts image-quiz images only when the image-quiz option is on', () => {
+    const images = [
+      makeFile({ originalname: 'slide1.png' }),
+      makeFile({ originalname: 'slide2.png' }),
+    ];
+    const withQuiz = new CardOption({
+      ...CardOption.LoadDefaultOptions(),
+      'claude-ai-flashcards': 'true',
+      'image-quiz-html-to-anki': 'true',
+    });
+    expect(countAiContentFiles(images, true, withQuiz)).toBe(2);
+    expect(countAiContentFiles(images, true, makeClaudeSettings())).toBe(0);
   });
 });
 
@@ -417,5 +447,99 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
       (call: unknown[]) => call[0] === 'ai_conversion_completed'
     );
     expect(completed).toBeUndefined();
+  });
+
+  it('succeeds and keeps earlier decks when a later loose file is fully suppressed', async () => {
+    const trackMod = require('../../services/events/track');
+    jest.spyOn(trackMod, 'track').mockImplementation(() => undefined);
+
+    mockPrepareDeck.mockImplementation(async (input) => {
+      const isFirst = input.name === 'chapter.html';
+      if (input.crossFileDedup) {
+        absorbFileIntoCrossFileDedup(input.crossFileDedup, [
+          oneCardDeck(input.name, 'Shared fact', 'Same answer'),
+        ]);
+      }
+      if (isFirst) {
+        return {
+          name: input.name,
+          apkg: Buffer.from('x'),
+          deck: [],
+          cardCount: 1,
+        } as never;
+      }
+      return undefined as never;
+    });
+
+    const result = await runUploadGenerationInWorker(makeMultiFileTask());
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected success');
+    expect(result.packages).toHaveLength(1);
+    expect(result.packages[0].name).toBe('chapter.html');
+  });
+
+  it('shares one accumulator across loose files and a zip, emitting a single event', async () => {
+    const trackMod = require('../../services/events/track');
+    const trackSpy = jest
+      .spyOn(trackMod, 'track')
+      .mockImplementation(() => undefined);
+
+    const looseStates: unknown[] = [];
+    mockPrepareDeck.mockImplementation(async (input) => {
+      looseStates.push(input.crossFileDedup);
+      if (input.crossFileDedup) {
+        absorbFileIntoCrossFileDedup(input.crossFileDedup, [
+          oneCardDeck(input.name, `Fact ${input.name}`, 'Answer'),
+        ]);
+      }
+      return {
+        name: input.name,
+        apkg: Buffer.from('x'),
+        deck: [],
+        cardCount: 1,
+      } as never;
+    });
+
+    let zipState: CrossFileDedupState | undefined;
+    mockGetPackagesFromZip.mockImplementation(async (...args) => {
+      const crossFileDedup = args[7];
+      zipState = crossFileDedup;
+      if (crossFileDedup) {
+        absorbFileIntoCrossFileDedup(crossFileDedup, [
+          oneCardDeck('page.html', 'Zip fact', 'Answer'),
+        ]);
+      }
+      return { packages: [], warnings: [] };
+    });
+
+    const task = makeMultiFileTask();
+    task.files = [
+      task.files[0],
+      task.files[1],
+      makeFile({
+        originalname: 'notes.zip',
+        filename: 'notes.zip',
+        key: 'notes.zip',
+        path: '',
+        buffer: Buffer.from('PK zip bytes'),
+      }),
+    ];
+
+    await runUploadGenerationInWorker(task);
+
+    expect(mockGetPackagesFromZip).toHaveBeenCalledTimes(1);
+    expect(looseStates[0]).toBeDefined();
+    expect(zipState).toBe(looseStates[0]);
+
+    const completedEvents = trackSpy.mock.calls.filter(
+      (call: unknown[]) => call[0] === 'ai_conversion_completed'
+    );
+    expect(completedEvents).toHaveLength(1);
+    expect(
+      completedEvents[0][1] as { props?: Record<string, unknown> }
+    ).toMatchObject({
+      props: { source_file_count: 3 },
+    });
   });
 });
