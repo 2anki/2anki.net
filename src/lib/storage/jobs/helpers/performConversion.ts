@@ -413,6 +413,8 @@ export default async function performConversion(
         code: error.code,
         rawOutput: error.rawOutput,
       });
+    } else {
+      console.error('[conversion] failed', { jobId: id, error });
     }
     if (isNotionUnauthorizedError(error)) {
       const ownerNum = Number(owner);
