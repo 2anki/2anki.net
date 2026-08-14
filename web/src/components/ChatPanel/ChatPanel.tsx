@@ -1212,7 +1212,9 @@ export default function ChatPanel({
               </div>
               <ComposerPill {...composerProps} />
               {networkError != null && (
-                <p className={styles.networkError}>{networkError}</p>
+                <p className={styles.networkError} role="alert">
+                  {networkError}
+                </p>
               )}
               {monthlyLimit != null &&
                 !limitReached &&
@@ -1358,7 +1360,9 @@ export default function ChatPanel({
                   </p>
                 )}
               {networkError != null && (
-                <p className={styles.networkError}>{networkError}</p>
+                <p className={styles.networkError} role="alert">
+                  {networkError}
+                </p>
               )}
               {successMessage != null && (
                 <p className={styles.successMessage} role="status">

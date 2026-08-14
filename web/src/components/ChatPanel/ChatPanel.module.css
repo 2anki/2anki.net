@@ -156,7 +156,7 @@
 
 .makingCards {
   font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
+  color: var(--color-text-tertiary-accessible);
   font-style: italic;
 }
 
@@ -242,7 +242,7 @@
 
 .usageLine {
   font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
+  color: var(--color-text-tertiary-accessible);
   font-variant-numeric: tabular-nums;
 }
 
@@ -346,7 +346,7 @@
 .retentionHint {
   flex-basis: 100%;
   font-size: 0.75rem;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-tertiary-accessible);
   padding: 0 0.25rem;
 }
 
@@ -388,7 +388,7 @@
 
 .chipSize {
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-tertiary-accessible);
   flex-shrink: 0;
   white-space: nowrap;
 }

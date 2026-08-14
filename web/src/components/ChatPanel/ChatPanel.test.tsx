@@ -499,6 +499,46 @@ describe('ChatPanel — aria-live', () => {
   });
 });
 
+describe('ChatPanel — error announcements', () => {
+  beforeEach(() => {
+    mockPost.mockReset();
+    mockGet.mockResolvedValue({ used: 0, limit: 20 });
+  });
+
+  it('announces a send failure to screen readers via role="alert"', async () => {
+    mockPost.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({}),
+    } as Response);
+    renderChatPanel();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message input' }), {
+      target: { value: 'What went wrong?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        "Couldn't send this message. Try again."
+      );
+    });
+  });
+
+  it('announces an attachment-type rejection via role="alert"', async () => {
+    renderChatPanel();
+    const input = document.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const badFile = new File(['x'], 'clip.mp4', { type: 'video/mp4' });
+    Object.defineProperty(input, 'files', { value: [badFile] });
+    fireEvent.change(input);
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Only PDF and image files work here.'
+      );
+    });
+  });
+});
+
 describe('ChatPanel', () => {
   beforeEach(() => {
     mockPost.mockReset();
