@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-14-interrupted-not-failed",
+  "date": "2026-08-14",
+  "type": "fix",
+  "title": "Conversions interrupted by a server update now say so and ask you to retry"
+}
