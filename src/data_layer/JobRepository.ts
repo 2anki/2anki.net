@@ -149,6 +149,13 @@ class JobRepository {
     if (!isTerminal) {
       query.whereNotIn('status', JobRepository.TERMINAL_STATUSES);
     }
+    // A finished deck must never present as failed: a racing writer (pool
+    // shutdown, duplicate dispatch) marking failure after the success writer
+    // marked done is the bug, not a state to record. done may still overwrite
+    // failed — that is the restart path succeeding.
+    if (isTerminal && status !== 'done') {
+      query.whereNot('status', 'done');
+    }
     const update: Record<string, unknown> = {
       status,
       job_reason_failure: description,

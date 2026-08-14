@@ -358,3 +358,56 @@ describe('JobRepository — generated SQL shape', () => {
     pgKnex.destroy();
   });
 });
+
+describe('JobRepository.updateJobStatus — terminal transitions', () => {
+  let db: Knex;
+  let repo: JobRepository;
+
+  beforeEach(async () => {
+    db = await makeDb();
+    repo = new JobRepository(db);
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  it('failed does not overwrite done', async () => {
+    await insertJob(db, { owner: '1', object_id: 'job-1', status: 'done' });
+
+    await repo.updateJobStatus('job-1', '1', 'failed', 'late race loser');
+
+    const row = await db('jobs').where({ object_id: 'job-1' }).first();
+    expect(row.status).toBe('done');
+    expect(row.job_reason_failure).toBeNull();
+  });
+
+  it('interrupted does not overwrite done', async () => {
+    await insertJob(db, { owner: '1', object_id: 'job-1', status: 'done' });
+
+    await repo.updateJobStatus('job-1', '1', 'interrupted', 'pool drain');
+
+    const row = await db('jobs').where({ object_id: 'job-1' }).first();
+    expect(row.status).toBe('done');
+  });
+
+  it('done overwrites failed so a successful restart recovers the job', async () => {
+    await insertJob(db, { owner: '1', object_id: 'job-1', status: 'failed' });
+
+    await repo.updateJobStatus('job-1', '1', 'done', undefined, 12);
+
+    const row = await db('jobs').where({ object_id: 'job-1' }).first();
+    expect(row.status).toBe('done');
+    expect(row.card_count).toBe(12);
+  });
+
+  it('failed still lands on a running job', async () => {
+    await insertJob(db, { owner: '1', object_id: 'job-1', status: 'started' });
+
+    await repo.updateJobStatus('job-1', '1', 'failed', 'real failure');
+
+    const row = await db('jobs').where({ object_id: 'job-1' }).first();
+    expect(row.status).toBe('failed');
+    expect(row.job_reason_failure).toBe('real failure');
+  });
+});

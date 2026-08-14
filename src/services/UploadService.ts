@@ -83,6 +83,10 @@ import CustomExporter from '../lib/parser/exporters/CustomExporter';
 import Deck from '../lib/parser/Deck';
 import { isHTMLFile, isMarkdownFile } from '../lib/storage/checks';
 import { FileSizeInMegaBytes } from '../lib/misc/file';
+import {
+  isWorkerTerminationError,
+  WORKER_INTERRUPTED_REASON,
+} from '../lib/workerTermination';
 import { track } from './events/track';
 import { parseFirstTouch } from '../controllers/helpers/parseFirstTouch';
 import { classifyDevice } from '../lib/analytics/classifyDevice';
@@ -567,6 +571,18 @@ class UploadService {
         await this.jobRepository.updateJobStatus(job.object_id, owner, step);
       }
     ).catch(async (err: Error) => {
+      if (isWorkerTerminationError(err)) {
+        console.info('[UploadService] restart interrupted by pool drain', {
+          jobId: job.object_id,
+        });
+        await this.jobRepository.updateJobStatus(
+          job.object_id,
+          owner,
+          'interrupted',
+          WORKER_INTERRUPTED_REASON
+        );
+        return;
+      }
       await this.jobRepository.updateJobStatus(
         job.object_id,
         owner,
@@ -996,6 +1012,18 @@ class UploadService {
         }
       })
       .catch(async (err: unknown) => {
+        if (isWorkerTerminationError(err)) {
+          console.info('[UploadService] async job interrupted by pool drain', {
+            jobId: ws.id,
+          });
+          await this.jobRepository.updateJobStatus(
+            ws.id,
+            owner,
+            'interrupted',
+            WORKER_INTERRUPTED_REASON
+          );
+          return;
+        }
         const message = err instanceof Error ? err.message : String(err);
         const isExpectedState =
           err instanceof EmptyDeckError ||
