@@ -5,6 +5,7 @@ import preserveNewlinesIfApplicable from '../../services/NotionService/helpers/p
 import { collectIssuedGuids } from '../anki/collectIssuedGuids';
 import type { IssuedCardGuid, KnownGuids } from '../anki/guidLedgerTypes';
 import sanitizeTags from '../anki/sanitizeTags';
+import type { CrossFileDedupState } from '../claude/ClaudeService';
 import { File } from '../zip/zip';
 import Deck from './Deck';
 import Note from './Note';
@@ -110,6 +111,7 @@ export interface DeckParserInput {
   pdfCredential?: string;
   userId?: number | null;
   knownGuids?: KnownGuids;
+  crossFileDedup?: CrossFileDedupState;
 }
 
 function hasNestedBullets(content: string | undefined): boolean {

@@ -11,6 +11,10 @@ import {
   buildUserMessage,
   buildFieldMappingPromptFragment,
   dedupeIdenticalCards,
+  collectExistingFronts,
+  buildTopUpInstruction,
+  createCrossFileDedupState,
+  absorbFileIntoCrossFileDedup,
   describeRepairFailure,
   generateDeckInfo,
   ClaudeParseError,
@@ -1154,6 +1158,90 @@ describe('dedupeIdenticalCards', () => {
     } finally {
       warnSpy.mockRestore();
     }
+  });
+});
+
+describe('collectExistingFronts', () => {
+  it('flattens every card front across decks in order', () => {
+    const fronts = collectExistingFronts([
+      makeDeck('A', [
+        { name: 'Front 1', back: 'B1' },
+        { name: 'Front 2', back: 'B2' },
+      ]),
+      makeDeck('B', [{ name: 'Front 3', back: 'B3' }]),
+    ]);
+    expect(fronts).toEqual(['Front 1', 'Front 2', 'Front 3']);
+  });
+});
+
+describe('buildTopUpInstruction', () => {
+  it('lists the existing fronts under a do-not-repeat directive', () => {
+    const instruction = buildTopUpInstruction(
+      ['Mitochondria role', 'Ribosome role'],
+      'medium'
+    );
+    expect(instruction).toContain('Do NOT repeat any of these fronts');
+    expect(instruction).toContain('- Mitochondria role');
+    expect(instruction).toContain('- Ribosome role');
+    expect(instruction).toContain('Return only net-new cards');
+  });
+
+  it('caps the listed fronts at 80 even when more are accumulated', () => {
+    const fronts = Array.from({ length: 200 }, (_, i) => `Front ${i}`);
+    const instruction = buildTopUpInstruction(fronts, 'medium');
+    expect(instruction).toContain('- Front 79');
+    expect(instruction).not.toContain('- Front 80');
+  });
+});
+
+describe('cross-file dedup accumulator', () => {
+  it('keeps every card of the first file and records its fronts', () => {
+    const state = createCrossFileDedupState();
+    const kept = absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Chapter', [
+        { name: 'What is glycolysis?', back: 'Glucose breakdown' },
+        { name: 'Where does it occur?', back: 'Cytoplasm' },
+      ]),
+    ]);
+    expect(kept[0].cards).toHaveLength(2);
+    expect(state.suppressed).toBe(0);
+    expect(state.filesProcessed).toBe(1);
+    expect(state.fronts).toEqual([
+      'What is glycolysis?',
+      'Where does it occur?',
+    ]);
+  });
+
+  it('suppresses a later file card whose normalized front+back matched an earlier file', () => {
+    const state = createCrossFileDedupState();
+    absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Chapter', [
+        { name: 'What is glycolysis?', back: 'Glucose breakdown' },
+      ]),
+    ]);
+    const secondFile = absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Transcript', [
+        { name: '  WHAT is  glycolysis? ', back: '<p>Glucose breakdown</p>' },
+        { name: 'What is the net ATP yield?', back: 'Two ATP' },
+      ]),
+    ]);
+    expect(secondFile[0].cards.map((c) => c.name)).toEqual([
+      'What is the net ATP yield?',
+    ]);
+    expect(state.suppressed).toBe(1);
+    expect(state.filesProcessed).toBe(2);
+  });
+
+  it('keeps a same-front card from a later file when the back differs', () => {
+    const state = createCrossFileDedupState();
+    absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Chapter', [{ name: 'Sodium', back: 'Symbol: Na' }]),
+    ]);
+    const secondFile = absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Slides', [{ name: 'Sodium', back: 'Atomic number: 11' }]),
+    ]);
+    expect(secondFile[0].cards).toHaveLength(1);
+    expect(state.suppressed).toBe(0);
   });
 });
 

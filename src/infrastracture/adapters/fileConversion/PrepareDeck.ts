@@ -26,7 +26,14 @@ import { buildPdfPasswordSentinel } from '../../../lib/pdf/pdfPasswordSentinel';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
 import { convertDocxToHTML } from './convertDocxToHTML';
 import { createWorkspaceDocxImageMediaSink } from './docxImageMediaSink';
-import { generateDeckInfo, DeckInfo } from '../../../lib/claude/ClaudeService';
+import {
+  generateDeckInfo,
+  DeckInfo,
+  CrossFileDedupState,
+  createCrossFileDedupState,
+  absorbFileIntoCrossFileDedup,
+  buildTopUpInstruction,
+} from '../../../lib/claude/ClaudeService';
 import {
   scoreCandidateDeck,
   type DeckScore,
@@ -522,36 +529,81 @@ export async function PrepareDeck(
       userId: input.userId ?? null,
       comprehensive: input.settings.aiComprehensive,
     };
-    const deckInfoArrays: DeckInfo[][] = await mapWithConcurrency(
-      htmlFiles,
-      HTML_GENERATION_CONCURRENCY,
-      (f) =>
-        generateDeckInfo(
-          f.contents!.toString(),
-          [
-            ...mediaFilesForHtmlFile(
-              f.name,
-              mediaFiles,
-              htmlFiles.map((h) => h.name)
-            ),
-            ...(pdfFigureNamesByHtml.get(f.name) ?? []),
-          ],
-          userInstructions,
-          input.onProgress,
-          cardStyle,
-          input.settings.cardSize,
-          fieldMapping,
-          pdfImageFallbackNames.has(f.name)
-            ? {
-                ...baseGenerateDeckInfoOptions,
-                pdfImageFallback: {
-                  mediaBaseDir: input.workspace.location,
-                  attachPageImages: input.settings.embedImages,
-                },
-              }
-            : baseGenerateDeckInfoOptions
-        )
-    );
+    const optionsForFile = (f: (typeof htmlFiles)[number]) =>
+      pdfImageFallbackNames.has(f.name)
+        ? {
+            ...baseGenerateDeckInfoOptions,
+            pdfImageFallback: {
+              mediaBaseDir: input.workspace.location,
+              attachPageImages: input.settings.embedImages,
+            },
+          }
+        : baseGenerateDeckInfoOptions;
+    const generateForFile = (
+      f: (typeof htmlFiles)[number],
+      instructions?: string
+    ) =>
+      generateDeckInfo(
+        f.contents!.toString(),
+        [
+          ...mediaFilesForHtmlFile(
+            f.name,
+            mediaFiles,
+            htmlFiles.map((h) => h.name)
+          ),
+          ...(pdfFigureNamesByHtml.get(f.name) ?? []),
+        ],
+        instructions,
+        input.onProgress,
+        cardStyle,
+        input.settings.cardSize,
+        fieldMapping,
+        optionsForFile(f)
+      );
+
+    const threadedDedup = input.crossFileDedup;
+    const ownsDedup = threadedDedup == null && htmlFiles.length >= 2;
+    const crossFileDedup =
+      threadedDedup ?? (ownsDedup ? createCrossFileDedupState() : undefined);
+
+    const instructionsWithPriorFronts = (
+      priorFronts: string[]
+    ): string | undefined => {
+      if (priorFronts.length === 0) return userInstructions;
+      const topUp = buildTopUpInstruction(priorFronts, input.settings.cardSize);
+      return userInstructions ? `${userInstructions}\n\n${topUp}` : topUp;
+    };
+
+    let deckInfoArrays: DeckInfo[][];
+    if (crossFileDedup) {
+      deckInfoArrays = [];
+      for (const f of htmlFiles) {
+        const instructions = instructionsWithPriorFronts(crossFileDedup.fronts);
+        const decks = await generateForFile(f, instructions);
+        deckInfoArrays.push(
+          absorbFileIntoCrossFileDedup(crossFileDedup, decks)
+        );
+      }
+    } else {
+      deckInfoArrays = await mapWithConcurrency(
+        htmlFiles,
+        HTML_GENERATION_CONCURRENCY,
+        (f) => generateForFile(f, userInstructions)
+      );
+    }
+
+    if (ownsDedup && crossFileDedup) {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { track } = require('../../../services/events/track');
+      track('ai_conversion_completed', {
+        userId: input.userId ?? null,
+        props: {
+          source_file_count: crossFileDedup.filesProcessed,
+          cross_file_duplicates_suppressed: crossFileDedup.suppressed,
+        },
+      });
+    }
+
     const deckInfo = deckInfoArrays.flatMap((decks, i) => {
       const prefix = deckPrefixFromFilePath(htmlFiles[i].name);
       return decks

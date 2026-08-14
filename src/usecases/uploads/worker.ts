@@ -21,6 +21,10 @@ import { getPackagesFromZip } from './getPackagesFromZip';
 import Workspace from '../../lib/parser/WorkSpace';
 import { detectOverSplit } from '../../lib/parser/detectOverSplit';
 import { isZipContentFileSupported } from './isZipContentFileSupported';
+import {
+  CrossFileDedupState,
+  createCrossFileDedupState,
+} from '../../lib/claude/ClaudeService';
 import { convertMindmapFileToApkg } from './ConvertMindmapFileUseCase';
 import {
   convertAnkiAppExportToApkg,
@@ -92,6 +96,23 @@ interface FileResult {
   warnings: string[];
 }
 
+export function countAiContentFiles(files: UploadedFile[]): number {
+  return files.filter(
+    (f) =>
+      isZipContentFileSupported(f.originalname) || isPPTFile(f.originalname)
+  ).length;
+}
+
+export function shouldDedupeAcrossFiles(
+  paying: boolean,
+  settings: CardOption,
+  files: UploadedFile[]
+): boolean {
+  return (
+    paying && settings.claudeAIFlashcards && countAiContentFiles(files) >= 2
+  );
+}
+
 async function processFile(
   file: UploadedFile,
   fileContents: Buffer,
@@ -100,7 +121,8 @@ async function processFile(
   workspace: Workspace,
   onProgress: (step: string) => void,
   userId: number | null,
-  knownGuids?: KnownGuids
+  knownGuids?: KnownGuids,
+  crossFileDedup?: CrossFileDedupState
 ): Promise<FileResult> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -176,6 +198,7 @@ async function processFile(
       onProgress,
       userId,
       knownGuids,
+      crossFileDedup,
     });
 
     if (d) {
@@ -229,6 +252,10 @@ async function doGenerationWork(
   let packages: Package[] = [];
   const warnings: string[] = [];
 
+  const crossFileDedup = shouldDedupeAcrossFiles(paying, settings, files)
+    ? createCrossFileDedupState()
+    : undefined;
+
   for (const file of files) {
     const fileContents = getFileContents(file, enqueuedAt);
     const result = await processFile(
@@ -239,10 +266,23 @@ async function doGenerationWork(
       workspace,
       onProgress,
       userId,
-      knownGuids
+      knownGuids,
+      crossFileDedup
     );
     packages = packages.concat(result.packages);
     warnings.push(...result.warnings);
+  }
+
+  if (crossFileDedup && crossFileDedup.filesProcessed >= 2) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { track } = require('../../services/events/track');
+    track('ai_conversion_completed', {
+      userId,
+      props: {
+        source_file_count: crossFileDedup.filesProcessed,
+        cross_file_duplicates_suppressed: crossFileDedup.suppressed,
+      },
+    });
   }
 
   return { packages, warnings };

@@ -1028,7 +1028,7 @@ function thinnestQuartileIndices(perChunkCounts: number[]): number[] {
   return indexed.slice(0, quartileSize).map((entry) => entry.index);
 }
 
-function collectExistingFronts(decks: DeckInfo[]): string[] {
+export function collectExistingFronts(decks: DeckInfo[]): string[] {
   const fronts: string[] = [];
   for (const deck of decks) {
     for (const card of deck.cards) {
@@ -1038,7 +1038,7 @@ function collectExistingFronts(decks: DeckInfo[]): string[] {
   return fronts;
 }
 
-function buildTopUpInstruction(
+export function buildTopUpInstruction(
   existingFronts: string[],
   cardSize: string | undefined
 ): string {
@@ -1051,6 +1051,38 @@ function buildTopUpInstruction(
       ? 'Extract MORE cards from the same content, keeping 3-4 related facts per card.'
       : 'Extract MORE single-fact cards from the same content.';
   return `${lead} Do NOT repeat any of these fronts:\n${list}\n\nReturn only net-new cards.`;
+}
+
+export interface CrossFileDedupState {
+  fronts: string[];
+  seenKeys: Set<string>;
+  filesProcessed: number;
+  suppressed: number;
+}
+
+export function createCrossFileDedupState(): CrossFileDedupState {
+  return { fronts: [], seenKeys: new Set(), filesProcessed: 0, suppressed: 0 };
+}
+
+export function absorbFileIntoCrossFileDedup(
+  state: CrossFileDedupState,
+  decks: DeckInfo[]
+): DeckInfo[] {
+  const deduped = decks.map((deck) => {
+    const cards = deck.cards.filter((card) => {
+      const key = `${normalizeCardText(card.name)} ${normalizeCardText(card.back)}`;
+      if (state.seenKeys.has(key)) {
+        state.suppressed += 1;
+        return false;
+      }
+      state.seenKeys.add(key);
+      return true;
+    });
+    return { ...deck, cards };
+  });
+  state.fronts.push(...collectExistingFronts(deduped));
+  state.filesProcessed += 1;
+  return deduped;
 }
 
 function stampChunkIndex(decks: DeckInfo[], chunkIndex: number): DeckInfo[] {
