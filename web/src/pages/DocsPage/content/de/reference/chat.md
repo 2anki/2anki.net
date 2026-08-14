@@ -1,9 +1,9 @@
 ---
 title: Chat — Lernassistent
-description: Notizen einfügen, nach Karten fragen, ein Konzept durcharbeiten. Unterhaltungen werden gespeichert.
+description: Notizen einfügen oder eine Datei anhängen, nach Karten fragen, ein Konzept durcharbeiten. Unterhaltungen werden gespeichert.
 ---
 
-Chat ist ein Lernassistent, gebaut auf Claude. Füge deine Notizen ein und bitte ihn, Karten zu machen, bitte ihn, etwas zu erklären, oder arbeite ein Thema im Hin und Her durch. Öffne ihn unter [2anki.net/chat](https://2anki.net/chat). Anmeldung erforderlich.
+Chat ist ein Lernassistent, gebaut auf Claude. Füge deine Notizen ein oder häng eine Datei an, dann bitte ihn, Karten zu machen, etwas zu erklären, oder arbeite ein Thema im Hin und Her durch. Öffne ihn unter [2anki.net/chat](https://2anki.net/chat). Anmeldung erforderlich.
 
 **Plan:** Kostenlos für die ersten 20 Nachrichten pro Monat. Subscription und Lifetime sind unbegrenzt und nutzen ein stärkeres Modell.
 
@@ -14,7 +14,7 @@ Chat ist ein Lernassistent, gebaut auf Claude. Füge deine Notizen ein und bitte
 - Du willst ein Konzept durchdenken, bevor du Karten machst — Erklärung zuerst, Karten danach.
 - Du hängst an einem bestimmten Upload-Fehler fest und willst Hilfe, herauszufinden, warum eine Datei nicht konvertiert.
 
-Wenn deine Quelle schon sauber auf Karteikarten abbildet (Toggles, Aufzählungspaare, eine Tabelle), ist der Standard-[Upload-Ablauf](/documentation/start-here/upload-a-file) schneller. Chat ist für die Zwischenfälle.
+Chat verarbeitet Dateien jetzt direkt — häng ein PDF, ein Bild, einen Notion-Export oder ein Dokument an, und er arbeitet aus dem Inhalt. Für Massenkonvertierung oder eine Notion-Seite, deren Toggles schon sauber auf Karten abbilden, ist der Standard-[Upload-Ablauf](/documentation/start-here/upload-a-file) weiterhin schneller und deterministisch. Greif zu Chat, wenn du die Karten interaktiv formen willst.
 
 ## Eine Unterhaltung starten
 
@@ -24,6 +24,25 @@ Wenn deine Quelle schon sauber auf Karteikarten abbildet (Toggles, Aufzählungsp
 4. Wenn der Assistent Karten vorschlägt, siehst du sie inline als Vorder-/Rückseiten-Vorschauen. Du kannst weiter iterieren oder von dort eine `.apkg` herunterladen.
 
 Vergangene Unterhaltungen bleiben in der Seitenleiste links. Klick auf eine beliebige, um sie wieder zu öffnen. Du kannst eine Unterhaltung aus derselben Zeile umbenennen oder löschen.
+
+## Dateien anhängen
+
+Häng Lernmaterial direkt an eine Nachricht an — für eine einzelne Datei brauchst du die Upload-Seite nicht. Klick auf den Anhängen-Button, wähle deine Dateien und sende sie mit oder ohne Prompt. Ohne Prompt macht Chat Karten aus dem, was du angehängt hast.
+
+Was du anhängen kannst:
+
+- PDFs und Bilder (PNG, JPEG, GIF, WebP) gehen unverändert an das Modell — es liest die Seiten oder das Bild direkt.
+- Notion-Exporte (.zip), Word-Dokumente (.docx), Markdown (.md) und einfacher Text (.txt) werden in Text umgewandelt, bevor das Modell sie sieht.
+
+Grenzen pro Nachricht:
+
+- Bis zu 5 Dateien.
+- 10 MB pro Datei.
+- 25 MB über alle Dateien.
+
+Überschreitest du eine Grenze, wird die Nachricht abgelehnt, bevor sie sendet, mit einem Hinweis, welche Datei oder Summe du kürzen musst.
+
+**Einen Turn neu generieren.** Neugenerieren nutzt das PDF oder Bild wieder, das du an diesen Turn angehängt hast, sodass du für einen anderen Blickwinkel nichts erneut hochladen musst. Angehängte PDFs und Bilder werden 90 Tage aufbewahrt, dann gelöscht. Generierst du danach einen älteren Turn neu, bittet Chat dich, die Datei erneut anzuhängen.
 
 ## Nützliche Prompts schreiben
 
@@ -49,7 +68,8 @@ Die Zählung setzt sich am Ersten des Folgemonats zurück. Das genaue Rücksetzd
 
 ## Was wir speichern
 
-- Den Text jeder Nachricht in jeder Unterhaltung (damit du sie wieder öffnen kannst).
+- Den Text jeder Nachricht in jeder Unterhaltung (damit du sie wieder öffnen kannst). Ein Notion-Export, ein Dokument, Markdown oder eine Textdatei, die du anhängst, wird Teil dieses Nachrichtentexts.
+- Jedes PDF und Bild, das du anhängst, 90 Tage aufbewahrt, damit du den Turn neu generieren kannst, dann gelöscht.
 - Das Nutzerkonto, dem die Unterhaltung gehört.
 - Nichts sonst — wir betreiben keine Analytik darüber, was du fragst, und wir trainieren keine Modelle mit deinen Unterhaltungen.
 
@@ -58,7 +78,7 @@ Lösche eine Unterhaltung jederzeit über das Papierkorb-Symbol in der Seitenlei
 ## Häufige Fehler
 
 - **Mehr als das Nachrichtenlimit einfügen.** Jede Nachricht ist auf 100 000 Zeichen begrenzt. Teile eine längere Quelle über mehrere Nachrichten auf.
-- **Erwarten, dass Chat hochgeladene Dateien liest.** Chat liest Text. Um ein PDF oder einen Notion-Export zu konvertieren, nutze stattdessen die [Upload-Seite](/documentation/start-here/upload-a-file) — dieser Weg ist für Dateien gebaut. Chat kann dir helfen, einen festgefahrenen Upload zu debuggen, aber er verarbeitet die Datei nicht selbst.
+- **Einen Dateityp anhängen, den Chat nicht nimmt.** Chat akzeptiert PDF, Bilder, Notion-.zip-Exporte, .docx, .md und .txt. Exportiere oder konvertiere alles andere zuerst in eines davon.
 - **Chat als einzigen Weg behandeln.** Für Quellen, die schon Struktur haben, ist der Standard-Parser schneller, deterministisch und kostenlos.
 
 ## Verwandt
