@@ -271,8 +271,7 @@ async function processFile(
       workspace,
       onProgress,
       userId,
-      knownGuids,
-      crossFileDedup
+      { knownGuids, crossFileDedup }
     );
     packages.push(...result.packages);
     if (result.warnings) warnings.push(...result.warnings);

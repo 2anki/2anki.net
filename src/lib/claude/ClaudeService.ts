@@ -1063,7 +1063,7 @@ export function buildTopUpInstruction(
   cardSize: string | undefined
 ): string {
   const sample = sampleEvenly(existingFronts, TOP_UP_FRONT_SAMPLE_SIZE).map(
-    (f) => (f ?? '').replace(/<[^>]*>/g, '').slice(0, 120)
+    (f) => (f ?? '').replace(/<[^<>]*>/g, '').slice(0, 120)
   );
   const list = sample.map((s) => `- ${s}`).join('\n');
   const lead =

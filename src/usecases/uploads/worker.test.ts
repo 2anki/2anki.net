@@ -503,7 +503,7 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
 
     let zipState: CrossFileDedupState | undefined;
     mockGetPackagesFromZip.mockImplementation(async (...args) => {
-      const crossFileDedup = args[7];
+      const crossFileDedup = args[6]?.crossFileDedup;
       zipState = crossFileDedup;
       if (crossFileDedup) {
         absorbFileIntoCrossFileDedup(crossFileDedup, [
