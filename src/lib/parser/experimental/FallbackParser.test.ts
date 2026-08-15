@@ -83,6 +83,70 @@ describe('FallbackParser tab-separated text', () => {
   });
 });
 
+describe('FallbackParser comma-separated text (Quizlet comma export)', () => {
+  it('creates one card per line from a comma-separated .txt export', () => {
+    const content =
+      'mitochondria,powerhouse of the cell\nosmosis,diffusion of water across a membrane\nATP,energy currency of the cell';
+    const parser = new FallbackParser([
+      { name: 'quizlet_export.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].cards).toHaveLength(3);
+    expect(decks[0].cards[0].name).toBe('mitochondria');
+    expect(decks[0].cards[0].back).toBe('powerhouse of the cell');
+    expect(decks[0].cards[2].name).toBe('ATP');
+    expect(decks[0].cards[2].back).toBe('energy currency of the cell');
+  });
+
+  it('splits on the first comma when a definition itself contains commas', () => {
+    const content =
+      'CNS,brain and spinal cord\nPNS,nerves outside the CNS\nneuron,nerve cell\nsynapse,junction between neurons\nglia,support cells\naxon,long projection\ndendrite,branched projection\nsoma,cell body\nmyelin,insulating sheath\nmeninges,dura, arachnoid, and pia mater';
+    const parser = new FallbackParser([
+      { name: 'anatomy.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].cards).toHaveLength(10);
+    expect(decks[0].cards[9].name).toBe('meninges');
+    expect(decks[0].cards[9].back).toBe('dura, arachnoid, and pia mater');
+  });
+
+  it('leaves " - " pair files to pair parsing even when lines contain commas', () => {
+    const content =
+      'What is DNA? - deoxyribonucleic acid, the genetic code\nWhat is RNA? - ribonucleic acid, the messenger\nWhat is a gene? - a unit of heredity, made of DNA';
+    const parser = new FallbackParser([
+      { name: 'bio.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].cards).toHaveLength(3);
+    expect(decks[0].cards[0].name).toBe('What is DNA?');
+    expect(decks[0].cards[0].back).toBe(
+      'deoxyribonucleic acid, the genetic code'
+    );
+  });
+
+  it('keeps prose with varying comma counts an empty deck', () => {
+    const content =
+      'The cell membrane regulates transport, signaling, and adhesion.\nRibosomes synthesize proteins.\nThe nucleus, dense and central, stores DNA.\nEnzymes lower activation energy.';
+    const parser = new FallbackParser([
+      { name: 'lecture_notes.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(0);
+  });
+
+  it('needs at least three lines before treating commas as separators', () => {
+    const content = 'First point, made in passing.\nSecond point, also brief.';
+    const parser = new FallbackParser([
+      { name: 'two_lines.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(0);
+  });
+});
+
 describe('FallbackParser CSV column mapping', () => {
   it('maps front and back by column name when the header order is reversed', () => {
     const csv = 'back,front\nHello,Bonjour';

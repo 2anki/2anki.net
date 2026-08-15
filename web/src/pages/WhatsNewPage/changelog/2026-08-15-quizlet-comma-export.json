@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-15-quizlet-comma-export",
+  "date": "2026-08-15",
+  "type": "fix",
+  "title": "Quizlet exports with comma-separated terms now convert line by line"
+}
