@@ -161,7 +161,7 @@
       "reattachPrefix": "Erneut anhängen",
       "reattachSuffix": "zum Konvertieren",
       "aiOn": "KI ist an",
-      "aiOnBody": "Karten werden von Claude geschrieben.",
+      "aiOnBody": "Claude schreibt deine Karten — sag ihm, worauf es sich konzentrieren soll: prüfungsrelevante Themen, mehr Multiple Choice, ein Lückentext pro Liste.",
       "aiOff": "KI ist aus",
       "aiOffBody": "Du erhältst regelbasierte Karten aus der Struktur deiner Datei.",
       "turnOnClaudeCards": "Claude-Karten aktivieren",

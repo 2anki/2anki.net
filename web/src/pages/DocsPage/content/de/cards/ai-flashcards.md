@@ -37,6 +37,7 @@ Nützliche Anweisungen:
 - "Focus on USMLE Step 1 high-yield. Skip background paragraphs."
 - "Make every card a clinical vignette ending in a question."
 - "Use the exact wording from the source on the back."
+- "Mostly cloze deletions, with a few multiple-choice for the key facts."
 
 Überspringe Anweisungen wie "make great flashcards" oder "explain everything" — das versucht das Modell ohnehin schon.
 

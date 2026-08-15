@@ -37,6 +37,7 @@ Useful instructions:
 - "Focus on USMLE Step 1 high-yield. Skip background paragraphs."
 - "Make every card a clinical vignette ending in a question."
 - "Use the exact wording from the source on the back."
+- "Mostly cloze deletions, with a few multiple-choice for the key facts."
 
 Skip instructions like "make great flashcards" or "explain everything" — the model already tries to do that.
 

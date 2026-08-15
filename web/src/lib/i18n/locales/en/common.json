@@ -161,7 +161,7 @@
       "reattachPrefix": "Re-attach",
       "reattachSuffix": "to convert",
       "aiOn": "AI is on",
-      "aiOnBody": "Cards are written by Claude.",
+      "aiOnBody": "Claude writes your cards — tell it what to focus on: high-yield topics, more multiple choice, one cloze per list.",
       "aiOff": "AI is off",
       "aiOffBody": "You'll get rule-based cards from your file's structure.",
       "turnOnClaudeCards": "Turn on Claude cards",

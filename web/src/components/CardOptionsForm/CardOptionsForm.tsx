@@ -745,7 +745,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
 
     const userInstructionsDisclosure = (
       <div className={fieldStyles.section}>
-        <details>
+        <details open={window.location.hash === '#pdf-ai' || undefined}>
           <summary className={fieldStyles.detailsSummary}>
             {t('cardOptions.userInstructions.summary')}
           </summary>

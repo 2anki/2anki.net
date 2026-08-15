@@ -33,6 +33,7 @@ export const KNOWN_EVENTS = new Set([
   'convert_clicked_from_preview',
   'upload_ai_badge_viewed',
   'upload_ai_free_badge_clicked',
+  'upload_ai_settings_link_clicked',
   'upload_ai_turned_on',
   'upload_ai_turned_off',
   'upload_ai_off_badge_viewed',

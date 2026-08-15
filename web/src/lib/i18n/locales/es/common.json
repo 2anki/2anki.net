@@ -161,7 +161,7 @@
       "reattachPrefix": "Vuelve a adjuntar",
       "reattachSuffix": "para convertir",
       "aiOn": "La IA está activada",
-      "aiOnBody": "Claude escribe las tarjetas.",
+      "aiOnBody": "Claude escribe tus tarjetas — dile en qué centrarse: temas de alto rendimiento, más opción múltiple, un cloze por lista.",
       "aiOff": "La IA está desactivada",
       "aiOffBody": "Obtendrás tarjetas basadas en reglas a partir de la estructura de tu archivo.",
       "turnOnClaudeCards": "Activar tarjetas de Claude",

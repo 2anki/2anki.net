@@ -159,7 +159,7 @@
       "reattachPrefix": "もう一度添付",
       "reattachSuffix": "を変換",
       "aiOn": "AI はオン",
-      "aiOnBody": "カードは Claude が作成します。",
+      "aiOnBody": "カードは Claude が作成します。重視してほしいことを伝えられます：重要トピック、選択問題を増やす、リストごとに穴埋め 1 枚など。",
       "aiOff": "AI はオフ",
       "aiOffBody": "ファイルの構造からルールベースのカードが作成されます。",
       "turnOnClaudeCards": "Claude カードをオンにする",
