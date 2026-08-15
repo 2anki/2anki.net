@@ -15,6 +15,12 @@ describe('getCardStylePromptFragment', () => {
     expect(fragment.toLowerCase()).toContain('cloze');
   });
 
+  it('tells the model to keep a list on one cloze card', () => {
+    const fragment = getCardStylePromptFragment('cloze');
+    expect(fragment).toContain('one card per list, not one card per item');
+    expect(fragment).toContain('{{c2::...}}');
+  });
+
   it('returns a qa fragment for qa style', () => {
     const fragment = getCardStylePromptFragment('qa');
     expect(fragment.length).toBeGreaterThan(0);

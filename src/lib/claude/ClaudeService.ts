@@ -56,6 +56,7 @@ Minimum-information rules (one fact per card):
 - A table of N rows produces N cards (one row per card)
 - One definition with its example may stay on a single card
 - Cloze cards are already single-fact — do not split them
+- When cloze deletions cover the items of one list or enumeration, put them on one card as sequential {{c1::...}} {{c2::...}} ... deletions — one card per list, not one card per item — unless the user's instructions ask for separate cards
 - If the user's additional instructions explicitly ask for detailed or longer cards, defer to those instructions over these rules. The Card size directive in the user message overrides these rules the same way.
 
 Card density — extract ALL cards the content supports:
