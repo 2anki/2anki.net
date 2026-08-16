@@ -266,12 +266,6 @@ jest.mock('get-notion-object-title', () => ({
 }));
 
 describe('BlockHandler', () => {
-  test.skip('Get Notion Page', async () => {
-    const page = await api.getPage('446d09aa05d041058c16e56232188e2b');
-    const title = await api.getPageTitle(page, new CardOption({}));
-    expect(title).toBe('Testing');
-  });
-
   test('Get Blocks', async () => {
     // This should be mocked
     const blocks = await api.getBlocks({
@@ -283,55 +277,6 @@ describe('BlockHandler', () => {
     });
     const topLevelToggles = getToggleBlocks(blocks.results);
     expect(topLevelToggles.length).toEqual(14);
-  });
-
-  test.skip('Toggle Headings in HTML export', async () => {
-    const r = new ParserRules();
-    r.setFlashcardTypes(['heading']);
-    const cards = await loadCards(
-      {},
-      '25226df63b4d4895a71f3bba01d8a8f3',
-      new Workspace(true, 'fs'),
-      r
-    );
-    console.log('cards', JSON.stringify(cards, null, 4));
-    expect(cards.length).toBe(1);
-  });
-
-  test.skip('Subpages', async () => {
-    const settings = new CardOption({ all: 'true' });
-    const rules = new ParserRules();
-    const exporter = new CustomExporter('', new Workspace(true, 'fs').location);
-    const bl = new BlockHandler(exporter, api, settings);
-    const decks = await bl.findFlashcards({
-      parentType: 'page',
-      topLevelId: examplId,
-      rules,
-      decks: [],
-      parentName: '',
-    });
-
-    expect(decks.length > 1).toBe(true);
-    expect(decks[1].name.includes('::')).toBe(true);
-  });
-
-  test.skip('Toggle Mode', async () => {
-    const flashcards = await loadCards(
-      {},
-      examplId,
-      new Workspace(true, 'fs'),
-      new ParserRules()
-    );
-    const nestedOnes = flashcards.find((c) => c.name.match(/Nested/i));
-    expect(nestedOnes?.back).toBe(true);
-  });
-
-  test.skip('Strikethrough Local Tags', async () => {
-    const card = await findCardByName('This card has three tags', {
-      tags: 'true',
-    });
-    const expected = ['global tag', 'tag a', 'tag b'];
-    expect(card?.tags).toBe(expected);
   });
 
   test('Basic Cards from Blocks', async () => {
@@ -880,25 +825,27 @@ describe('BlockHandler', () => {
 
     const getBlocksSpy = jest.spyOn(api, 'getBlocks');
 
-    const flashcards = await loadCards(
-      {},
-      tablePageId,
-      new Workspace(true, 'fs'),
-      rules
-    );
+    try {
+      const flashcards = await loadCards(
+        {},
+        tablePageId,
+        new Workspace(true, 'fs'),
+        rules
+      );
 
-    expect(flashcards).toHaveLength(2);
-    expect(flashcards[0].name).toContain('hello');
-    expect(flashcards[0].back).toContain('world');
-    expect(flashcards[1].name).toContain('goodbye');
-    expect(flashcards[1].back).toContain('moon');
+      expect(flashcards).toHaveLength(2);
+      expect(flashcards[0].name).toContain('hello');
+      expect(flashcards[0].back).toContain('world');
+      expect(flashcards[1].name).toContain('goodbye');
+      expect(flashcards[1].back).toContain('moon');
 
-    const tableBlockCalls = getBlocksSpy.mock.calls.filter(
-      (call) => call[0].id === tableBlockId
-    );
-    expect(tableBlockCalls).toHaveLength(1);
-
-    getBlocksSpy.mockRestore();
+      const tableBlockCalls = getBlocksSpy.mock.calls.filter(
+        (call) => call[0].id === tableBlockId
+      );
+      expect(tableBlockCalls).toHaveLength(1);
+    } finally {
+      getBlocksSpy.mockRestore();
+    }
   });
 
   test('Code-wrapped text in a table cell produces a cloze note', async () => {
