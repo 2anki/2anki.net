@@ -102,7 +102,8 @@
       "cardTitle": "Invia il tuo video",
       "showFewer": "▴ Mostra meno",
       "showAll_one": "▾ Mostra {{count}} video",
-      "showAll_other": "▾ Mostra tutti i {{count}} video"
+      "showAll_other": "▾ Mostra tutti i {{count}} video",
+      "playVideo": "Riproduci: {{title}}"
     }
   },
   "upload": {
@@ -153,7 +154,19 @@
       "packingFolder": "Sto impacchettando la tua cartella in uno zip.",
       "folderTooBig": "Questa cartella supera i 500 MB — comprimila tu stesso e carica il file zip.",
       "folderEmpty": "Questa cartella è vuota — trascina la cartella che contiene i file esportati.",
-      "folderFailed": "Impossibile impacchettare questa cartella — comprimila tu stesso e carica lo zip, oppure scrivi a support@2anki.net."
+      "folderFailed": "Impossibile impacchettare questa cartella — comprimila tu stesso e carica lo zip, oppure scrivi a support@2anki.net.",
+      "liveConverting": "Sto convertendo il tuo file.",
+      "liveDeckReady": "Il tuo mazzo è pronto.",
+      "liveDeckReadyCount_one": "Il tuo mazzo è pronto — {{count}} carta.",
+      "liveDeckReadyCount_other": "Il tuo mazzo è pronto — {{count}} carte.",
+      "liveEmptyDeck": "Conversione completata, ma non è stata trovata nessuna carta.",
+      "liveImageOnly": "Sembrano immagini. Prova Da foto a mazzo per trasformarle in carte.",
+      "liveError": "Conversione non riuscita.",
+      "liveLimitReached": "Hai raggiunto il limite mensile.",
+      "liveLockedPdf": "Questo PDF è protetto da password. Inserisci la password per continuare.",
+      "pdfPasswordAria": "Password del PDF",
+      "changeSourceAria": "Cambia sorgente di caricamento",
+      "uploadFileAria": "Carica file"
     },
     "page": {
       "title": "Converti i tuoi appunti",

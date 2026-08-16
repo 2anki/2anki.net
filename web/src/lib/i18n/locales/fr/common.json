@@ -102,7 +102,8 @@
       "cardTitle": "Propose ta vidéo",
       "showFewer": "▴ Afficher moins",
       "showAll_one": "▾ Afficher {{count}} vidéo",
-      "showAll_other": "▾ Afficher les {{count}} vidéos"
+      "showAll_other": "▾ Afficher les {{count}} vidéos",
+      "playVideo": "Lire : {{title}}"
     }
   },
   "upload": {
@@ -153,7 +154,19 @@
       "packingFolder": "Ton dossier est en cours d'empaquetage en zip.",
       "folderTooBig": "Ce dossier dépasse 500 Mo — compresse-le toi-même et téléverse le fichier zip.",
       "folderEmpty": "Ce dossier est vide — dépose le dossier qui contient tes fichiers exportés.",
-      "folderFailed": "Impossible d'empaqueter ce dossier — compresse-le toi-même et téléverse le zip, ou écris à support@2anki.net."
+      "folderFailed": "Impossible d'empaqueter ce dossier — compresse-le toi-même et téléverse le zip, ou écris à support@2anki.net.",
+      "liveConverting": "Conversion de ton fichier en cours.",
+      "liveDeckReady": "Ton paquet est prêt.",
+      "liveDeckReadyCount_one": "Ton paquet est prêt — {{count}} carte.",
+      "liveDeckReadyCount_other": "Ton paquet est prêt — {{count}} cartes.",
+      "liveEmptyDeck": "Conversion terminée, mais aucune carte n'a été trouvée.",
+      "liveImageOnly": "On dirait des images. Essaie Photo vers paquet pour en faire des cartes.",
+      "liveError": "La conversion a échoué.",
+      "liveLimitReached": "Tu as atteint ta limite mensuelle.",
+      "liveLockedPdf": "Ce PDF est protégé par mot de passe. Saisis le mot de passe pour continuer.",
+      "pdfPasswordAria": "Mot de passe du PDF",
+      "changeSourceAria": "Changer la source d'envoi",
+      "uploadFileAria": "Envoyer le fichier"
     },
     "page": {
       "title": "Convertis tes notes",

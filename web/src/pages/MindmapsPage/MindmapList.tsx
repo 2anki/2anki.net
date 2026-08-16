@@ -121,42 +121,31 @@ export function MindmapList() {
         </div>
       )}
 
-      {(data?.maps ?? []).map((map) => (
-        <button
-          key={map.id}
-          type="button"
-          onClick={() => navigate(`/mindmaps/${map.id}`)}
-          className={styles.mapRow}
-        >
-          <span className={styles.mapTitle} title={map.title}>
-            {map.title.length === 0 ? t('mindmaps.untitled') : map.title}
-          </span>
-          <span className={styles.mapActions}>
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label={t('mindmaps.deleteAria', {
-                title:
-                  map.title.length === 0 ? t('mindmaps.untitled') : map.title,
-              })}
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteMindmap.mutate(map.id);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  deleteMindmap.mutate(map.id);
-                }
-              }}
+      {(data?.maps ?? []).map((map) => {
+        const displayTitle =
+          map.title.length === 0 ? t('mindmaps.untitled') : map.title;
+        return (
+          <div key={map.id} className={styles.mapRow}>
+            <button
+              type="button"
+              onClick={() => navigate(`/mindmaps/${map.id}`)}
+              className={styles.mapOpen}
+            >
+              <span className={styles.mapTitle} title={map.title}>
+                {displayTitle}
+              </span>
+            </button>
+            <button
+              type="button"
+              aria-label={t('mindmaps.deleteAria', { title: displayTitle })}
+              onClick={() => deleteMindmap.mutate(map.id)}
               className={styles.deleteBtn}
             >
               <TrashIcon width={16} height={16} />
-            </span>
-          </span>
-        </button>
-      ))}
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

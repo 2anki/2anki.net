@@ -102,7 +102,8 @@
       "cardTitle": "Submit your video",
       "showFewer": "▴ Show fewer",
       "showAll_one": "▾ Show {{count}} video",
-      "showAll_other": "▾ Show all {{count}} videos"
+      "showAll_other": "▾ Show all {{count}} videos",
+      "playVideo": "Play: {{title}}"
     }
   },
   "upload": {
@@ -153,7 +154,19 @@
       "packingFolder": "Packing your folder into a zip.",
       "folderTooBig": "This folder is over 500 MB — zip it yourself and upload the zip file.",
       "folderEmpty": "This folder is empty — drop the folder that contains your export files.",
-      "folderFailed": "Couldn't package this folder — zip it yourself and upload the zip, or email support@2anki.net."
+      "folderFailed": "Couldn't package this folder — zip it yourself and upload the zip, or email support@2anki.net.",
+      "liveConverting": "Converting your file.",
+      "liveDeckReady": "Your deck is ready.",
+      "liveDeckReadyCount_one": "Your deck is ready — {{count}} card.",
+      "liveDeckReadyCount_other": "Your deck is ready — {{count}} cards.",
+      "liveEmptyDeck": "Conversion finished, but no cards were found.",
+      "liveImageOnly": "These look like images. Try Photo to Deck to turn them into cards.",
+      "liveError": "Conversion failed.",
+      "liveLimitReached": "You've reached your monthly limit.",
+      "liveLockedPdf": "This PDF is password-protected. Enter the password to continue.",
+      "pdfPasswordAria": "PDF password",
+      "changeSourceAria": "Change upload source",
+      "uploadFileAria": "Upload file"
     },
     "page": {
       "title": "Convert your notes",

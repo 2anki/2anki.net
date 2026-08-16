@@ -18,6 +18,7 @@ import type { TFunction } from 'i18next';
 import { Link, useParams } from 'react-router-dom';
 import PencilIcon from '../../components/icons/PencilIcon';
 import { track } from '../../lib/analytics/track';
+import { useDialogFocus } from '../../lib/hooks/useDialogFocus';
 import shared from '../../styles/shared.module.css';
 import { layoutGraph, NODE_HEIGHT } from './layoutGraph';
 import styles from './MindmapEditor.module.css';
@@ -167,6 +168,8 @@ function ExportModal({
   const { t } = useTranslation('tools');
   const [deckName, setDeckName] = useState(defaultName);
   const [cardType, setCardType] = useState<MindmapCardType>('basic');
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   function cardCountLabel(): string {
     let count = clozeCardCount;
@@ -177,8 +180,16 @@ function ExportModal({
 
   return (
     <div className={styles.exportModal}>
-      <div className={styles.exportCard}>
-        <h2 className={styles.exportTitle}>{t('mindmaps.downloadDeck')}</h2>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mindmap-export-title"
+        className={styles.exportCard}
+      >
+        <h2 id="mindmap-export-title" className={styles.exportTitle}>
+          {t('mindmaps.downloadDeck')}
+        </h2>
         <label className={styles.exportLabel}>{t('mindmaps.deckName')}</label>
         <input
           type="text"
@@ -881,8 +892,15 @@ export function MindmapEditor() {
       );
     }
 
+    function isInsideDialog(target: EventTarget | null): boolean {
+      return (
+        target instanceof HTMLElement &&
+        target.closest('[role="dialog"]') != null
+      );
+    }
+
     function handleKeyDown(e: KeyboardEvent) {
-      if (isEditableTarget(e.target)) return;
+      if (isEditableTarget(e.target) || isInsideDialog(e.target)) return;
 
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
         e.preventDefault();

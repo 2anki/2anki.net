@@ -83,7 +83,6 @@ export function UploadSourceChips({
       >
         <button
           type="button"
-          aria-label="Dropbox"
           aria-pressed={active === 'dropbox'}
           disabled={!dropboxAvailable}
           className={`${styles.chip} ${active === 'dropbox' ? styles.chipActive : ''}`}
@@ -94,7 +93,6 @@ export function UploadSourceChips({
         </button>
         <button
           type="button"
-          aria-label="Google Drive"
           aria-pressed={active === 'google_drive'}
           disabled={!googleDriveAvailable}
           className={`${styles.chip} ${active === 'google_drive' ? styles.chipActive : ''}`}

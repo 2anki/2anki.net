@@ -102,7 +102,8 @@
       "cardTitle": "Video einreichen",
       "showFewer": "▴ Weniger anzeigen",
       "showAll_one": "▾ {{count}} Video anzeigen",
-      "showAll_other": "▾ Alle {{count}} Videos anzeigen"
+      "showAll_other": "▾ Alle {{count}} Videos anzeigen",
+      "playVideo": "Abspielen: {{title}}"
     }
   },
   "upload": {
@@ -153,7 +154,19 @@
       "packingFolder": "Dein Ordner wird in eine Zip-Datei gepackt.",
       "folderTooBig": "Dieser Ordner ist größer als 500 MB — packe ihn selbst als Zip und lade die Zip-Datei hoch.",
       "folderEmpty": "Dieser Ordner ist leer — zieh den Ordner mit deinen Export-Dateien hierher.",
-      "folderFailed": "Dieser Ordner konnte nicht gepackt werden — packe ihn selbst als Zip und lade die Zip-Datei hoch, oder schreib an support@2anki.net."
+      "folderFailed": "Dieser Ordner konnte nicht gepackt werden — packe ihn selbst als Zip und lade die Zip-Datei hoch, oder schreib an support@2anki.net.",
+      "liveConverting": "Deine Datei wird konvertiert.",
+      "liveDeckReady": "Dein Stapel ist fertig.",
+      "liveDeckReadyCount_one": "Dein Stapel ist fertig — {{count}} Karte.",
+      "liveDeckReadyCount_other": "Dein Stapel ist fertig — {{count}} Karten.",
+      "liveEmptyDeck": "Konvertierung abgeschlossen, aber es wurden keine Karten gefunden.",
+      "liveImageOnly": "Das sehen nach Bildern aus. Probiere Foto zu Stapel, um daraus Karten zu machen.",
+      "liveError": "Konvertierung fehlgeschlagen.",
+      "liveLimitReached": "Du hast dein monatliches Limit erreicht.",
+      "liveLockedPdf": "Dieses PDF ist passwortgeschützt. Gib das Passwort ein, um fortzufahren.",
+      "pdfPasswordAria": "PDF-Passwort",
+      "changeSourceAria": "Upload-Quelle ändern",
+      "uploadFileAria": "Datei hochladen"
     },
     "page": {
       "title": "Konvertiere deine Notizen",

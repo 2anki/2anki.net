@@ -225,6 +225,36 @@ describe('OnboardingTour', () => {
     expect(trackMock).not.toHaveBeenCalledWith('onboarding_completed');
   });
 
+  it('exposes a dialog and moves focus into it when it opens', () => {
+    render(
+      <OnboardingTour
+        createdAt={AFTER_MIGRATION}
+        onboardedAt={null}
+        migrationDate={MIGRATION_DATE}
+      />
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveFocus();
+  });
+
+  it('dismisses the tour on Escape and calls markOnboarded', async () => {
+    render(
+      <OnboardingTour
+        createdAt={AFTER_MIGRATION}
+        onboardedAt={null}
+        migrationDate={MIGRATION_DATE}
+      />
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Drop a file, or pick a Notion page.')
+      ).not.toBeInTheDocument()
+    );
+    expect(markOnboardedMock).toHaveBeenCalledTimes(1);
+    expect(trackMock).toHaveBeenCalledWith('onboarding_skipped');
+  });
+
   it('tracks onboarding_completed when Skip is pressed on the last step', () => {
     render(
       <OnboardingTour

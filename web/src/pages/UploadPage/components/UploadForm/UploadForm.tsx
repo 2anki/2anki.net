@@ -1573,7 +1573,7 @@ function UploadForm({
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleUnlock();
           }}
-          aria-label="PDF password"
+          aria-label={t('upload.form.pdfPasswordAria')}
         />
         <button
           type="button"
@@ -1713,28 +1713,27 @@ function UploadForm({
 
   const renderLiveStatus = (): string => {
     if (zoneState === 'packaging') return t('upload.form.packingFolder');
-    if (zoneState === 'converting') return 'Converting your file.';
+    if (zoneState === 'converting') return t('upload.form.liveConverting');
     if (zoneState === 'success') {
-      if (cardCount == null) return 'Your deck is ready.';
-      const noun = cardCount === 1 ? 'card' : 'cards';
-      return `Your deck is ready — ${cardCount} ${noun}.`;
+      if (cardCount == null) return t('upload.form.liveDeckReady');
+      return t('upload.form.liveDeckReadyCount', { count: cardCount });
     }
     if (zoneState === 'multiDeck') {
       const n = batchResult?.deckCount ?? 0;
-      return `${n} ${n === 1 ? 'deck' : 'decks'} ready.`;
+      return t('upload.form.decksReady', { count: n });
     }
     if (zoneState === 'emptyDeck') {
-      return 'Conversion finished, but no cards were found.';
+      return t('upload.form.liveEmptyDeck');
     }
     if (zoneState === 'imageOnly') {
-      return 'These look like images. Try Photo to Deck to turn them into cards.';
+      return t('upload.form.liveImageOnly');
     }
-    if (zoneState === 'error') return 'Conversion failed.';
+    if (zoneState === 'error') return t('upload.form.liveError');
     if (zoneState === 'limitReached') {
-      return "You've reached your monthly limit.";
+      return t('upload.form.liveLimitReached');
     }
     if (zoneState === 'lockedPdf') {
-      return 'This PDF is password-protected. Enter the password to continue.';
+      return t('upload.form.liveLockedPdf');
     }
     return '';
   };
@@ -1875,7 +1874,7 @@ function UploadForm({
             <button
               type="button"
               className={formStyles.changeSourceLink}
-              aria-label="Change upload source"
+              aria-label={t('upload.form.changeSourceAria')}
               onClick={() => handleSourceChange('local')}
             >
               {t('upload.form.changeSource')}
@@ -1889,7 +1888,7 @@ function UploadForm({
               className={formStyles.chooseButton}
               onClick={handleDropboxClick}
               disabled={dropboxPending}
-              aria-label="Choose from Dropbox"
+              aria-label={t('upload.form.chooseFromDropbox')}
             >
               {dropboxPending
                 ? t('upload.form.openingDropbox')
@@ -1920,7 +1919,7 @@ function UploadForm({
             <button
               type="button"
               className={formStyles.changeSourceLink}
-              aria-label="Change upload source"
+              aria-label={t('upload.form.changeSourceAria')}
               onClick={() => handleSourceChange('local')}
             >
               {t('upload.form.changeSource')}
@@ -1938,7 +1937,7 @@ function UploadForm({
               className={formStyles.chooseButton}
               onClick={handleGoogleDriveClick}
               disabled={drivePending}
-              aria-label="Choose from Google Drive"
+              aria-label={t('upload.form.chooseFromDrive')}
             >
               {drivePending
                 ? t('upload.form.openingDrive')
@@ -1983,7 +1982,7 @@ function UploadForm({
         </a>
       )}
       <button
-        aria-label="Upload file"
+        aria-label={t('upload.form.uploadFileAria')}
         className={sharedStyles.hidden}
         ref={convertRef}
         type="submit"

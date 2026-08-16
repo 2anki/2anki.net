@@ -101,7 +101,8 @@
       "ctaBody": "2anki の動画を作りましたか？ ご連絡いただければ、ここで無料で紹介します。",
       "cardTitle": "動画を投稿する",
       "showFewer": "▴ 表示を減らす",
-      "showAll_other": "▾ {{count}} 本の動画をすべて表示"
+      "showAll_other": "▾ {{count}} 本の動画をすべて表示",
+      "playVideo": "再生: {{title}}"
     }
   },
   "upload": {
@@ -151,7 +152,18 @@
       "packingFolder": "フォルダをzipにまとめています。",
       "folderTooBig": "このフォルダは500 MBを超えています — ご自身でzipに圧縮してからアップロードしてください。",
       "folderEmpty": "このフォルダは空です — エクスポートしたファイルが入っているフォルダをドロップしてください。",
-      "folderFailed": "このフォルダをまとめられませんでした — ご自身でzipに圧縮してアップロードするか、support@2anki.net までご連絡ください。"
+      "folderFailed": "このフォルダをまとめられませんでした — ご自身でzipに圧縮してアップロードするか、support@2anki.net までご連絡ください。",
+      "liveConverting": "ファイルを変換しています。",
+      "liveDeckReady": "デッキの準備ができました。",
+      "liveDeckReadyCount_other": "デッキの準備ができました — {{count}} 枚",
+      "liveEmptyDeck": "変換は完了しましたが、カードは見つかりませんでした。",
+      "liveImageOnly": "これらは画像のようです。写真からデッキでカードに変換してみてください。",
+      "liveError": "変換に失敗しました。",
+      "liveLimitReached": "今月の上限に達しました。",
+      "liveLockedPdf": "この PDF はパスワードで保護されています。続けるにはパスワードを入力してください。",
+      "pdfPasswordAria": "PDF のパスワード",
+      "changeSourceAria": "アップロード元を変更",
+      "uploadFileAria": "ファイルをアップロード"
     },
     "page": {
       "title": "ノートを変換",

@@ -1,4 +1,3 @@
-/* eslint-disable jsx-a11y/label-has-associated-control */
 import React, {
   forwardRef,
   SyntheticEvent,
@@ -850,12 +849,16 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
 
           <div className={fieldStyles.section}>
             <div className={fieldStyles.labelRow}>
-              <label className={fieldStyles.sectionLabel}>
+              <span id="deck-icon-label" className={fieldStyles.sectionLabel}>
                 {t('cardOptions.deck.iconLabel')}
-              </label>
+              </span>
               <FieldHint text={t('cardOptions.deck.iconHint')} />
             </div>
-            <div className={fieldStyles.segmented}>
+            <div
+              className={fieldStyles.segmented}
+              role="group"
+              aria-labelledby="deck-icon-label"
+            >
               {(
                 [
                   {
@@ -889,12 +892,19 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
 
           <div className={fieldStyles.section}>
             <div className={fieldStyles.labelRow}>
-              <label className={fieldStyles.sectionLabel}>
+              <span
+                id="deck-toggle-mode-label"
+                className={fieldStyles.sectionLabel}
+              >
                 {t('cardOptions.deck.toggleModeLabel')}
-              </label>
+              </span>
               <FieldHint text={t('cardOptions.deck.toggleModeHint')} />
             </div>
-            <div className={fieldStyles.segmented}>
+            <div
+              className={fieldStyles.segmented}
+              role="group"
+              aria-labelledby="deck-toggle-mode-label"
+            >
               {(
                 [
                   {

@@ -94,6 +94,7 @@ function VideoCard({
   embedId,
   title,
 }: Readonly<{ embedId: string; title: string }>) {
+  const { t } = useTranslation();
   const [playing, setPlaying] = useState(false);
 
   if (playing) {
@@ -117,7 +118,7 @@ function VideoCard({
       type="button"
       className={styles.walkCard}
       onClick={() => setPlaying(true)}
-      aria-label={`Play: ${title}`}
+      aria-label={t('home.walkthroughs.playVideo', { title })}
     >
       <div className={styles.walkThumb}>
         <img

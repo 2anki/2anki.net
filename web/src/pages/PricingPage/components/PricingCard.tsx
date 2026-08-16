@@ -101,7 +101,7 @@ export function PricingCard({
     <div className={cardClass}>
       {badge != null && <span className={badgeClass}>{badge}</span>}
       <div className={styles.cardHeader}>
-        <p className={styles.cardTitle}>{title}</p>
+        <h3 className={styles.cardTitle}>{title}</h3>
         {priceNode}
       </div>
       <div className={styles.cardBody}>
