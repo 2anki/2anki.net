@@ -111,7 +111,7 @@ describe('TemplatesController.aiGenerate quota', () => {
     );
     const res = buildRes();
     await controller.aiGenerate(buildReq({ prompt: 'hi' }), res);
-    expect(aiUseCase.generate).toHaveBeenCalledWith('hi');
+    expect(aiUseCase.generate).toHaveBeenCalledWith('hi', 42);
     expect(quota.record).toHaveBeenCalledWith(42, 'generate');
   });
 

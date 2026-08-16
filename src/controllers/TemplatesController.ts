@@ -196,7 +196,10 @@ class TemplatesController {
     const ok = await this.enforceQuota(req, res, 'generate');
     if (!ok) return;
     try {
-      const result = await this.aiUseCase.generate(prompt);
+      const result = await this.aiUseCase.generate(
+        prompt,
+        Number(getOwner(res)) || null
+      );
       if (this.quotaService) {
         await this.quotaService.record(getOwner(res), 'generate');
       }
@@ -226,7 +229,12 @@ class TemplatesController {
     const ok = await this.enforceQuota(req, res, 'modify');
     if (!ok) return;
     try {
-      const result = await this.aiUseCase.modify(starter, instruction, history);
+      const result = await this.aiUseCase.modify(
+        starter,
+        instruction,
+        history,
+        Number(getOwner(res)) || null
+      );
       if (this.quotaService) {
         await this.quotaService.record(getOwner(res), 'modify');
       }

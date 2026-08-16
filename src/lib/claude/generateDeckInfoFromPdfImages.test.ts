@@ -80,6 +80,39 @@ describe('generateDeckInfoFromPdfImages', () => {
     expect(totalCards).toBeGreaterThan(0);
   });
 
+  it('attributes every vision usage event to the converting user', async () => {
+    mockCreateFn.mockResolvedValue(
+      visionResponse(
+        JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+      )
+    );
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const trackMod = require('../../services/events/track');
+    const trackSpy = jest
+      .spyOn(trackMod, 'track')
+      .mockImplementation(() => undefined);
+
+    try {
+      await generateDeckInfoFromPdfImages(
+        html,
+        { mediaBaseDir: baseDir },
+        undefined,
+        undefined,
+        77
+      );
+
+      const usageCalls = trackSpy.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'ai_usage_recorded'
+      );
+      expect(usageCalls.length).toBeGreaterThan(0);
+      for (const usageCall of usageCalls) {
+        expect((usageCall[1] as { userId?: number | null }).userId).toBe(77);
+      }
+    } finally {
+      trackSpy.mockRestore();
+    }
+  });
+
   it('retries a page once at a larger token budget when the response is truncated', async () => {
     mockCreateFn
       .mockResolvedValueOnce(visionResponse('[', 'max_tokens'))

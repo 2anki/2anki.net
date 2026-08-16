@@ -120,7 +120,8 @@ export function attachPageImageToCompactDecks(
 async function visionCardsForPage(
   image: ResolvedPageImage,
   prompt: string,
-  pageIndex: number
+  pageIndex: number,
+  userId?: number | null
 ): Promise<CompactDeck[]> {
   const client = getAnthropicClient();
 
@@ -151,6 +152,7 @@ async function visionCardsForPage(
     surface: 'pdf_page_vision',
     model: response.model,
     usage: response.usage,
+    userId,
   });
   if (response.stop_reason === 'max_tokens') {
     console.warn('[Claude] PDF page vision truncated, retrying', {
@@ -163,6 +165,7 @@ async function visionCardsForPage(
       surface: 'pdf_page_vision',
       model: response.model,
       usage: response.usage,
+      userId,
     });
   }
 
@@ -187,7 +190,8 @@ async function runPagesWithConcurrency(
   images: ResolvedPageImage[],
   prompt: string,
   attachPageImages: boolean,
-  onProgress?: (step: string) => void
+  onProgress?: (step: string) => void,
+  userId?: number | null
 ): Promise<CompactDeck[]> {
   const compactDecks: CompactDeck[] = [];
   const failures: unknown[] = [];
@@ -203,7 +207,12 @@ async function runPagesWithConcurrency(
       if (index >= images.length) return;
       onProgress?.(`claude:vision:page:${index + 1}:${images.length}`);
       try {
-        const decks = await visionCardsForPage(images[index], prompt, index);
+        const decks = await visionCardsForPage(
+          images[index],
+          prompt,
+          index,
+          userId
+        );
         const attributed = attachPageImages
           ? attachPageImageToCompactDecks(decks, images[index].relPath)
           : decks;
@@ -237,7 +246,8 @@ export async function generateDeckInfoFromPdfImages(
   htmlContent: string,
   context: PdfImageFallbackContext,
   userInstructions?: string,
-  onProgress?: (step: string) => void
+  onProgress?: (step: string) => void,
+  userId?: number | null
 ): Promise<DeckInfo[]> {
   const t0 = Date.now();
   const images = resolvePageImages(htmlContent, context.mediaBaseDir);
@@ -259,7 +269,8 @@ export async function generateDeckInfoFromPdfImages(
     images,
     prompt,
     attachPageImages,
-    onProgress
+    onProgress,
+    userId
   );
   const deckInfo = mergeDeckInfoArrays(
     expandCompactDeckInfo(
