@@ -253,7 +253,10 @@ interface ClaudeMessage {
   content: string;
 }
 
-async function askClaude(messages: ClaudeMessage[]): Promise<string> {
+async function askClaude(
+  messages: ClaudeMessage[],
+  userId?: number | null
+): Promise<string> {
   const client = getAnthropicClient();
   const response = await client.messages.create({
     model: MODEL,
@@ -271,6 +274,7 @@ async function askClaude(messages: ClaudeMessage[]): Promise<string> {
     surface: 'note_type_ai',
     model: response.model,
     usage: response.usage,
+    userId,
   });
   return response.content
     .filter((b) => b.type === 'text')
@@ -279,26 +283,33 @@ async function askClaude(messages: ClaudeMessage[]): Promise<string> {
 }
 
 export class AINoteTypeUseCase {
-  async generate(prompt: string): Promise<AIGenerateResult> {
+  async generate(
+    prompt: string,
+    userId?: number | null
+  ): Promise<AIGenerateResult> {
     if (typeof prompt !== 'string' || prompt.trim().length === 0) {
       throw new Error('Prompt is required');
     }
     if (prompt.length > 2000) {
       throw new Error('Prompt is too long (max 2000 chars)');
     }
-    const text = await askClaude([
-      {
-        role: 'user',
-        content: `Design a new Anki note type for this request:\n\n${prompt}`,
-      },
-    ]);
+    const text = await askClaude(
+      [
+        {
+          role: 'user',
+          content: `Design a new Anki note type for this request:\n\n${prompt}`,
+        },
+      ],
+      userId
+    );
     return parseResponse(text);
   }
 
   async modify(
     starter: NoteTypeStarterInput,
     instruction: string,
-    history: ChatMessage[]
+    history: ChatMessage[],
+    userId?: number | null
   ): Promise<AIGenerateResult> {
     if (typeof instruction !== 'string' || instruction.trim().length === 0) {
       throw new Error('Instruction is required');
@@ -330,7 +341,7 @@ export class AINoteTypeUseCase {
       { role: 'user', content: instruction },
     ];
 
-    const text = await askClaude(messages);
+    const text = await askClaude(messages, userId);
     const result = parseResponse(text);
     if (
       JSON.stringify(starter.noteType) ===

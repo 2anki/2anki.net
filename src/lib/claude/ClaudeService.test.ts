@@ -1594,6 +1594,46 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
     }
   });
 
+  it('attributes every ai_usage_recorded event to the converting user', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () =>
+      deckResponse(50, `C${call++}`)
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const trackMod = require('../../services/events/track');
+    const trackSpy = jest
+      .spyOn(trackMod, 'track')
+      .mockImplementation(() => undefined);
+
+    try {
+      await generateDeckInfo(
+        sixChunkHtml,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          isPaying: true,
+          userId: 42,
+          comprehensive: true,
+        }
+      );
+
+      const usageCalls = trackSpy.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'ai_usage_recorded'
+      );
+      expect(usageCalls.length).toBeGreaterThan(0);
+      for (const usageCall of usageCalls) {
+        expect((usageCall[1] as { userId?: number | null }).userId).toBe(42);
+      }
+    } finally {
+      trackSpy.mockRestore();
+    }
+  });
+
   it('comprehensive off — does NOT emit ai_conversion_completed event', async () => {
     let call = 0;
     mockStream.finalMessage.mockImplementation(async () =>

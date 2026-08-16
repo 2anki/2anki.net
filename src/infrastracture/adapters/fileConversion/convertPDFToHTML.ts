@@ -33,7 +33,8 @@ Some extra rules and explanations:
 
 export const convertPDFToHTML = (
   pdf: string,
-  userInstructions?: string
+  userInstructions?: string,
+  userId?: number | null
 ): Promise<string> => {
   const client = getAnthropicClient();
   const instructions = userInstructions ?? DEFAULT_PDF_TO_HTML_INSTRUCTIONS;
@@ -52,7 +53,7 @@ export const convertPDFToHTML = (
         },
       },
     ],
-    { pdf: true }
+    { pdf: true, userId }
   );
 };
 

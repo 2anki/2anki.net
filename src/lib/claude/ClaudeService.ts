@@ -786,7 +786,8 @@ async function generateDeckInfoFromChunk(
   cardStyle?: string,
   cardSize?: string,
   fieldMapping?: FieldMapping,
-  usageCollector?: (usage: ChunkUsage) => void
+  usageCollector?: (usage: ChunkUsage) => void,
+  userId?: number | null
 ): Promise<DeckInfo[]> {
   const tChunk0 = Date.now();
   const client = getAnthropicClient();
@@ -892,6 +893,7 @@ async function generateDeckInfoFromChunk(
     surface: 'conversion',
     model: response.model,
     usage: response.usage,
+    userId,
     durationMs: apiMs,
   });
   if (usageCollector && response.usage) {
@@ -1214,7 +1216,8 @@ export async function generateDeckInfo(
       htmlContent,
       options.pdfImageFallback,
       userInstructions,
-      onProgress
+      onProgress,
+      options.userId
     );
   }
 
@@ -1270,7 +1273,9 @@ export async function generateDeckInfo(
                   onProgress,
                   cardStyle,
                   cardSize,
-                  fieldMapping
+                  fieldMapping,
+                  undefined,
+                  options?.userId
                 )
             )
         )
@@ -1304,7 +1309,8 @@ export async function generateDeckInfo(
       onProgress,
       cardStyle,
       cardSize,
-      fieldMapping
+      fieldMapping,
+      options?.userId
     );
     const deckInfo = result.deckInfo;
     const elapsedMs = Date.now() - t0;
@@ -1350,7 +1356,9 @@ export async function generateDeckInfo(
             onProgress,
             cardStyle,
             cardSize,
-            fieldMapping
+            fieldMapping,
+            undefined,
+            options?.userId
           )
         )
     )
@@ -1381,7 +1389,8 @@ async function runFloorV1(
   onProgress: ((step: string) => void) | undefined,
   cardStyle: string | undefined,
   cardSize: string | undefined,
-  fieldMapping: FieldMapping | undefined
+  fieldMapping: FieldMapping | undefined,
+  userId?: number | null
 ): Promise<FloorV1Result> {
   const tStart = Date.now();
   const usages: ChunkUsage[] = [];
@@ -1403,7 +1412,8 @@ async function runFloorV1(
             cardStyle,
             cardSize,
             fieldMapping,
-            collect
+            collect,
+            userId
           )
         ).then((decks) => stampChunkIndex(decks, i))
     ),
@@ -1454,7 +1464,8 @@ async function runFloorV1(
               cardStyle,
               cardSize,
               fieldMapping,
-              collect
+              collect,
+              userId
             )
           ).then((decks) => stampChunkIndex(decks, idx))
       ),
