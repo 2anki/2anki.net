@@ -129,8 +129,12 @@ function causeCode(err: unknown): string | undefined {
 // threshold and retry at HALF the budget the parent already overran — a tighter
 // budget per byte than the call that failed. max_tokens is a cap, not a charge:
 // output is billed on tokens actually generated, so a uniform ceiling costs
-// nothing and removes the retry's worst case.
-const CHUNK_MAX_TOKENS = 16384;
+// nothing and removes the retry's worst case. 16384 fit the pre-Sonnet-5
+// models; on 2026-08-16 Sonnet 5's fuller answers hit that cap on 71% of
+// conversion calls, and every hit re-billed the chunk as halves (~3x the cost
+// of just letting the answer finish). 32768 covers the observed demand for a
+// CHUNK_SIZE chunk while staying half of Sonnet 5's 64k output limit.
+const CHUNK_MAX_TOKENS = 32768;
 
 const MAX_CHUNK_API_ATTEMPTS = 2;
 const CHUNK_RETRY_BASE_DELAY_MS = 500;
@@ -1252,7 +1256,17 @@ export async function generateDeckInfo(
   if (cardStyle === 'heading-driven') {
     const headings = detect('html', strippedContent);
     if (headings.length > 0) {
-      const chunks = splitByHeadings(headings);
+      // splitByHeadings is content-driven and unbounded — a document whose
+      // whole body sits under one heading arrives as a single chunk of
+      // hundreds of KB, which can only ever truncate and cascade through the
+      // halves retry (the 2026-08-16 spend spike's worst offender). Re-split
+      // oversized section bodies to the same budget the default path uses.
+      const chunks = splitByHeadings(headings).flatMap((chunk) =>
+        chunkHtmlByDetails(chunk.bodyChunk).map((bodyChunk) => ({
+          anchor: chunk.anchor,
+          bodyChunk,
+        }))
+      );
       console.log('[Claude] heading-driven chunks', {
         headingCount: headings.length,
         chunkCount: chunks.length,

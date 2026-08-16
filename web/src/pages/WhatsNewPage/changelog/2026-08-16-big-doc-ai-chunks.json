@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-16-big-doc-ai-chunks",
+  "date": "2026-08-16",
+  "type": "fix",
+  "title": "AI conversion of large documents no longer loses cards to cut-off answers"
+}
