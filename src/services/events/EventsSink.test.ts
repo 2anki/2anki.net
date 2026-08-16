@@ -107,6 +107,44 @@ describe('EventsSink', () => {
     await expect(sink.waitForPendingFlush()).resolves.toBeUndefined();
   });
 
+  it('salvages the rest of a batch when one row violates the user foreign key', async () => {
+    const { repo, inserted } = makeFakeRepository();
+    const deletedUserId = 999;
+    (repo.insertEvents as jest.Mock).mockImplementation(
+      async (rows: EventRow[]) => {
+        if (rows.some((row) => row.user_id === deletedUserId)) {
+          const error = new Error(
+            'violates foreign key constraint "events_user_id_foreign"'
+          ) as Error & { code: string };
+          error.code = '23503';
+          throw error;
+        }
+        inserted.push([...rows]);
+      }
+    );
+    const sink = new EventsSink(repo, { flushThreshold: 2 });
+    sink.record(baseRow);
+    sink.record({ ...baseRow, user_id: deletedUserId, anonymous_id: 'anon-7' });
+    await sink.waitForPendingFlush();
+
+    const flat = inserted.flat();
+    expect(flat).toHaveLength(2);
+    expect(flat[0]).toMatchObject({ user_id: 1 });
+    expect(flat[1]).toMatchObject({ user_id: null, anonymous_id: 'anon-7' });
+  });
+
+  it('still drops the batch on non-foreign-key repository errors', async () => {
+    const { repo, inserted } = makeFakeRepository();
+    (repo.insertEvents as jest.Mock).mockRejectedValue(new Error('db down'));
+    const sink = new EventsSink(repo, { flushThreshold: 2 });
+    sink.record(baseRow);
+    sink.record({ ...baseRow, name: 'upload_started' });
+    await expect(sink.waitForPendingFlush()).resolves.toBeUndefined();
+
+    expect(inserted).toHaveLength(0);
+    expect(repo.insertEvents).toHaveBeenCalledTimes(1);
+  });
+
   it('start is idempotent — a second start adds no second timer', () => {
     // This test previously called start twice and stop once with no assertion,
     // so it passed no matter what start() did. A leaked second interval would

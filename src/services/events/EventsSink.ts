@@ -12,6 +12,13 @@ export type SignupOriginResolver = (
   userIds: number[]
 ) => Promise<Map<number, string | null>>;
 
+function isForeignKeyViolation(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error as Error & { code?: string }).code === '23503'
+  );
+}
+
 export class EventsSink {
   private buffer: EventRow[] = [];
 
@@ -54,9 +61,34 @@ export class EventsSink {
     this.buffer = [];
     if (rows.length === 0) return;
     await this.enrichSignupOrigins(rows);
-    await this.repository.insertEvents(rows).catch((error) => {
+    await this.repository.insertEvents(rows).catch(async (error) => {
+      if (isForeignKeyViolation(error)) {
+        await this.salvageRows(rows);
+        return;
+      }
       console.error(`[events] dropping ${rows.length} event(s):`, error);
     });
+  }
+
+  // A row whose user was deleted between record() and flush() fails the whole
+  // batch insert; re-inserting it anonymously keeps the funnel count while the
+  // other rows land untouched.
+  private async salvageRows(rows: EventRow[]): Promise<void> {
+    for (const row of rows) {
+      try {
+        await this.repository.insertEvents([row]);
+      } catch (rowError) {
+        if (!isForeignKeyViolation(rowError)) {
+          console.error('[events] dropping 1 event:', rowError);
+          continue;
+        }
+        await this.repository
+          .insertEvents([{ ...row, user_id: null }])
+          .catch((anonError) => {
+            console.error('[events] dropping 1 event:', anonError);
+          });
+      }
+    }
   }
 
   private async enrichSignupOrigins(rows: EventRow[]): Promise<void> {
