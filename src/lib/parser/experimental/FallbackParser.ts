@@ -161,6 +161,46 @@ class FallbackParser {
       .filter((note) => note.name.length > 0 && note.back.length > 0);
   }
 
+  isCommaSeparated(contents: string): boolean {
+    const lines = contents
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    if (lines.length < 3) return false;
+    if (
+      lines.some(
+        (line) =>
+          line.includes('\t') || line.includes(' - ') || line.includes(' = ')
+      )
+    ) {
+      return false;
+    }
+    const pairLines = lines.filter((line) => {
+      const commaIndex = line.indexOf(',');
+      return (
+        line.split(',').length === 2 &&
+        line.slice(0, commaIndex).trim().length > 0 &&
+        line.slice(commaIndex + 1).trim().length > 0
+      );
+    });
+    return pairLines.length >= lines.length * 0.9;
+  }
+
+  parseCommaSeparated(contents: string): Note[] {
+    return contents
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.includes(','))
+      .map((line, index) => {
+        const commaIndex = line.indexOf(',');
+        const note = new Note(line.slice(0, commaIndex).trim(), '');
+        note.back = line.slice(commaIndex + 1).trim();
+        note.number = index;
+        return note;
+      })
+      .filter((note) => note.name.length > 0 && note.back.length > 0);
+  }
+
   private parseHTMLFile(
     contents: string,
     fileName: string
@@ -191,6 +231,12 @@ class FallbackParser {
       return {
         cards: this.mapCardsToNotes(found),
         deckName: this.getTitleMarkdown(contents),
+      };
+    }
+    if (this.isCommaSeparated(contents)) {
+      return {
+        cards: this.parseCommaSeparated(contents),
+        deckName: fileName.replace(/\.[^/.]+$/, ''),
       };
     }
     return this.parseUnstructuredText(contents, fileName);
