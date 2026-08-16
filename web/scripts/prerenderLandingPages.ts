@@ -133,7 +133,7 @@ const NOTION_MARKETPLACE_META = {
   pathname: '/notion-marketplace',
   title: 'Notion to Anki — automatic sync | 2anki',
   description:
-    'Connect your Notion workspace and your notes become Anki flashcards automatically. No exports, no zips. Auto Sync $30/mo, Unlimited $6/mo.',
+    'Connect your Notion workspace and your notes become Anki flashcards automatically. No exports, no zips. Included with Unlimited at $7.99/mo.',
   h1: 'Your Notion notes become Anki cards — automatically',
   subhead:
     'Connect your workspace in 5 minutes. No exports, no zips, no manual steps.',
@@ -249,9 +249,9 @@ const META_ONLY_PAGES: MetaOnlyPageMeta[] = [
   },
   {
     pathname: '/pricing',
-    title: 'Pricing — Free, Day Pass, Unlimited, Auto Sync | 2anki',
+    title: 'Pricing — Free, Day Pass, Unlimited, Lifetime | 2anki',
     description:
-      'Compare 2anki plans. Free converts 100 cards a month. Unlimited at $6/mo. Auto Sync at $30/mo polls your Notion workspace and keeps your decks current.',
+      'Compare 2anki plans. Free converts 100 cards a month. Unlimited at $7.99/mo or $64/yr. Day and Week Passes from $4. Lifetime with Auto Sync included.',
   },
   {
     pathname: '/about',

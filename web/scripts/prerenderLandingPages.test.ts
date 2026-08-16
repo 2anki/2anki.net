@@ -225,7 +225,7 @@ describe('emitMetaOnlyPages', () => {
       '<title>Upload notes and get an Anki deck — 2anki</title>'
     );
     expect(pricing).toContain(
-      '<title>Pricing — Free, Day Pass, Unlimited, Auto Sync | 2anki</title>'
+      '<title>Pricing — Free, Day Pass, Unlimited, Lifetime | 2anki</title>'
     );
     expect(about).toContain(
       '<title>About 2anki — open-source Notion to Anki converter</title>'

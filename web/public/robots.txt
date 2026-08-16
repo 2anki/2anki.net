@@ -2,7 +2,7 @@
 User-agent: *
 Disallow: /api/
 Disallow: /rules/
-Disallow: /notion
+Disallow: /notion$
 Disallow: /favorites
 Disallow: /downloads
 Disallow: /chat
