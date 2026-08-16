@@ -99,6 +99,15 @@ describe('getPageCount', () => {
     }
   );
 
+  it('still resolves when the pdf filename is too long for a diagnostic log name', async () => {
+    const longBase = 'a'.repeat(250);
+    const longPath = path.join(tmpDir, `${longBase}.pdf`);
+    await fs.writeFile(longPath, '%PDF-1.4 placeholder');
+    fakePdfinfo({ stdout: 'Pages: 3\n', code: 0 });
+
+    await expect(getPageCount(longPath)).resolves.toBe(3);
+  }, 10000);
+
   it('rejects encrypted PDFs with a message the failure classifier reads as pdf_password', async () => {
     fakePdfinfo({
       stderr: 'Command Line Error: Incorrect password\nEncrypted',

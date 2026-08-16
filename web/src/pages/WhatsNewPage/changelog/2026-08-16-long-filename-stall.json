@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-16-long-filename-stall",
+  "date": "2026-08-16",
+  "type": "fix",
+  "title": "PDFs with very long filenames no longer stall the conversion"
+}

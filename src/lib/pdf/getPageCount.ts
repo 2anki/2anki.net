@@ -2,6 +2,19 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
 
+const DIAGNOSTIC_LOG_BASENAME_MAX = 80;
+
+async function writeDiagnosticLog(
+  filePath: string,
+  contents: string
+): Promise<void> {
+  try {
+    await fs.writeFile(filePath, contents);
+  } catch (error) {
+    console.warn('[pdfinfo] diagnostic log write failed:', error);
+  }
+}
+
 export function getPageCount(
   pdfPath: string,
   credential?: string
@@ -36,13 +49,14 @@ export function getPageCount(
       const pdfDir = path.dirname(pdfPath);
       const pdfBaseName = path.basename(pdfPath, path.extname(pdfPath));
       const basename = path.basename(pdfPath);
+      const logBase = pdfBaseName.slice(0, DIAGNOSTIC_LOG_BASENAME_MAX);
 
-      await fs.writeFile(
-        path.join(pdfDir, `${pdfBaseName}_stdout.log`),
+      await writeDiagnosticLog(
+        path.join(pdfDir, `${logBase}_stdout.log`),
         stdout
       );
-      await fs.writeFile(
-        path.join(pdfDir, `${pdfBaseName}_stderr.log`),
+      await writeDiagnosticLog(
+        path.join(pdfDir, `${logBase}_stderr.log`),
         stderr
       );
 
