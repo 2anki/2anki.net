@@ -23,3 +23,10 @@ describe('robots.txt', () => {
     expect(robotsTxt).toContain('Disallow: /card-options');
   });
 });
+
+describe('robots.txt landing-page safety', () => {
+  it('anchors the /notion disallow so /notion-to-anki stays crawlable', () => {
+    expect(robotsTxt).toContain('Disallow: /notion$');
+    expect(robotsTxt).not.toMatch(/Disallow: \/notion\n/);
+  });
+});
