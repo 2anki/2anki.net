@@ -105,3 +105,37 @@ describe('generateDeckInfo — heading-driven wiring', () => {
     expect(userContent).not.toContain('2–6');
   });
 });
+
+describe('generateDeckInfo — chunk output budget', () => {
+  it('caps every chunk call at 32768 output tokens so Sonnet 5 answers fit', async () => {
+    await generateDeckInfo(htmlWithHeadings, [], undefined, undefined);
+
+    expect(mockStreamFn).toHaveBeenCalled();
+    for (const call of mockStreamFn.mock.calls) {
+      expect(call[0].max_tokens).toBe(32768);
+    }
+  });
+
+  it('splits an oversized heading section into bounded chunk calls', async () => {
+    const paragraphs = Array.from(
+      { length: 250 },
+      (_, i) => `<p>Fact ${i}: ${'lorem ipsum dolor sit amet '.repeat(20)}</p>`
+    ).join('\n');
+    const oversized = `<h1>Anatomy</h1>\n${paragraphs}`;
+    expect(oversized.length).toBeGreaterThan(100_000);
+
+    await generateDeckInfo(
+      oversized,
+      [],
+      undefined,
+      undefined,
+      'heading-driven'
+    );
+
+    expect(mockStreamFn.mock.calls.length).toBeGreaterThan(1);
+    for (const call of mockStreamFn.mock.calls) {
+      const userContent: string = call[0].messages[0].content;
+      expect(userContent.length).toBeLessThan(60_000);
+    }
+  });
+});
