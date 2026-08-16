@@ -2,13 +2,31 @@ import { MindmapData } from './MindmapData';
 import type { MindmapCardType } from './ExportMindmapUseCase';
 import { reachableNodeIds } from './mindmapGraph';
 
-function countIsolatedNodes(data: MindmapData): number {
+function edgeIncidentNodeIds(data: MindmapData): Set<string> {
   const incident = new Set<string>();
   for (const edge of data.edges) {
     incident.add(edge.source);
     incident.add(edge.target);
   }
+  return incident;
+}
+
+function countIsolatedNodes(data: MindmapData): number {
+  const incident = edgeIncidentNodeIds(data);
   return data.nodes.filter((n) => !incident.has(n.id)).length;
+}
+
+export function mediaEligibleNodeIds(
+  data: MindmapData,
+  cardType: MindmapCardType
+): Set<string> | null {
+  if (cardType === 'basic') {
+    return edgeIncidentNodeIds(data);
+  }
+  if (cardType === 'cloze') {
+    return reachableNodeIds(data);
+  }
+  return null;
 }
 
 export function countExcludedMindmapNodes(

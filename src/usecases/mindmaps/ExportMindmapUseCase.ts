@@ -11,7 +11,10 @@ import { mindmapToNotes } from './mindmapToNotes';
 import { mindmapToClozeNotes } from './mindmapToClozeNotes';
 import { mindmapToMarkmapHtml } from './mindmapToMarkmapHtml';
 import { collectMindmapImages } from './collectMindmapImages';
-import { countExcludedMindmapNodes } from './mindmapExportCensus';
+import {
+  countExcludedMindmapNodes,
+  mediaEligibleNodeIds,
+} from './mindmapExportCensus';
 import { MindmapData } from './MindmapData';
 import { buildMindmapDeckInfo } from './buildMindmapDeckInfo';
 import CustomExporter from '../../lib/parser/exporters/CustomExporter';
@@ -73,7 +76,11 @@ export class ExportMindmapUseCase {
     const resolvedDeckName = deckName ?? map.title;
     const mapData = map.data as MindmapData;
     const excludedNodeCount = countExcludedMindmapNodes(mapData, cardType);
-    const collectedImages = await collectMindmapImages(mapData, this.storage);
+    const collectedImages = await collectMindmapImages(
+      mapData,
+      this.storage,
+      mediaEligibleNodeIds(mapData, cardType)
+    );
 
     const filenameMap: Record<string, string> = {};
     const allMediaFilenames: string[] = [];

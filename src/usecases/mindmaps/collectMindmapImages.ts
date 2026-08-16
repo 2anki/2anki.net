@@ -8,12 +8,14 @@ export interface CollectedImage {
 
 export async function collectMindmapImages(
   data: MindmapData,
-  storage: StorageHandler
+  storage: StorageHandler,
+  eligibleNodeIds: Set<string> | null = null
 ): Promise<CollectedImage[]> {
   const seen = new Set<string>();
   const result: CollectedImage[] = [];
 
   for (const node of data.nodes) {
+    if (eligibleNodeIds != null && !eligibleNodeIds.has(node.id)) continue;
     const { image } = node;
     if (image == null) continue;
     if (image.url == null || image.missing === true) continue;
