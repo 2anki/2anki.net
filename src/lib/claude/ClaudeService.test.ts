@@ -1808,6 +1808,13 @@ describe('floor v1 — card-size scaled bounds', () => {
     }
   });
 
+  it('SYSTEM_PROMPT keeps list cloze deletions on one card unless instructed otherwise', () => {
+    expect(SYSTEM_PROMPT).toContain('one card per list, not one card per item');
+    expect(SYSTEM_PROMPT).toContain(
+      "unless the user's instructions ask for separate cards"
+    );
+  });
+
   it('SYSTEM_PROMPT defers min-info and density rules to the Card size directive', () => {
     expect(SYSTEM_PROMPT).toContain(
       'The Card size directive in the user message overrides these rules the same way'
