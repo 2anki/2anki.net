@@ -159,6 +159,30 @@ describe('emitLandingPages', () => {
     );
   });
 
+  it('canonicalizes the /convert duplicates to the top-level slug', () => {
+    emitLandingPages(buildDir);
+    const html = readFileSync(
+      join(buildDir, 'convert', 'notion-to-anki', 'index.html'),
+      'utf8'
+    );
+    expect(html).toContain(
+      '<link rel="canonical" href="https://2anki.net/notion-to-anki/">'
+    );
+    expect(html).toContain(
+      '<meta property="og:url" content="https://2anki.net/convert/notion-to-anki/">'
+    );
+  });
+
+  it('injects FAQPage JSON-LD into the prerendered head', () => {
+    emitLandingPages(buildDir);
+    const html = readFileSync(
+      join(buildDir, 'notion-to-anki', 'index.html'),
+      'utf8'
+    );
+    expect(html).toContain('application/ld+json');
+    expect(html).toContain('"@type":"FAQPage"');
+  });
+
   it('inserts the H1 into the root div so bots without JS can index it', () => {
     emitLandingPages(buildDir);
     const html = readFileSync(
@@ -238,6 +262,19 @@ describe('emitMetaOnlyPages', () => {
     expect(html).toContain(
       '<link rel="canonical" href="https://2anki.net/pricing/">'
     );
+  });
+
+  it('emits the /app native-app social meta', () => {
+    const files = emitMetaOnlyPages(buildDir);
+    expect(files.some((p) => p.endsWith('app/index.html'))).toBe(true);
+    const html = readFileSync(join(buildDir, 'app', 'index.html'), 'utf8');
+    expect(html).toContain(
+      '<title>Anki flashcards on iPhone — 2anki app</title>'
+    );
+    expect(html).toContain(
+      '<link rel="canonical" href="https://2anki.net/app/">'
+    );
+    expect(html).toContain('<meta property="og:title"');
   });
 
   it('leaves the root div empty so React mounts without a flash', () => {

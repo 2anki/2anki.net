@@ -79,3 +79,44 @@ describe('sitemap parity with isKnownAppRoute', () => {
     expect(isKnownAppRoute(loc)).toBe(true);
   });
 });
+
+describe('CONVERT_SLUGS parity with the landing config', () => {
+  const knownRoutesSrc = fs.readFileSync(
+    path.resolve(__dirname, './knownRoutes.ts'),
+    'utf8'
+  );
+  const convertBlock =
+    /const CONVERT_SLUGS = new Set<string>\(\[([\s\S]*?)\]\)/.exec(
+      knownRoutesSrc
+    );
+  const convertSlugs = [
+    ...(convertBlock?.[1] ?? '').matchAll(/'([^']+)'/g),
+  ].map((match) => match[1]);
+
+  const configSrc = fs.readFileSync(
+    path.resolve(
+      __dirname,
+      '../../web/src/pages/ConvertLandingPage/convertLandingConfig.ts'
+    ),
+    'utf8'
+  );
+  const mapBlock =
+    /CONVERT_LANDING_PAGES[^=]*=\s*new Map\(\[([\s\S]*?)\]\);/.exec(configSrc);
+  const configSlugs = new Set(
+    [...(mapBlock?.[1] ?? '').matchAll(/\['([^']+)',/g)].map(
+      (match) => match[1]
+    )
+  );
+
+  it('parses a plausible number of convert slugs from both files', () => {
+    expect(convertSlugs.length).toBeGreaterThan(20);
+    expect(configSlugs.size).toBeGreaterThan(20);
+  });
+
+  it.each(convertSlugs)(
+    'convert slug %s has a landing config entry',
+    (slug) => {
+      expect(configSlugs.has(slug)).toBe(true);
+    }
+  );
+});

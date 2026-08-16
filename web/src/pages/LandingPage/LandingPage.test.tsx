@@ -17,6 +17,7 @@ import { ankiFidelityProof } from './copy/ankiFidelityProof';
 import powerpointCopy from './copy/powerpoint';
 import goodnotesCopy from './copy/goodnotes';
 import aiFlashcardGeneratorCopy from './copy/ai-flashcard-generator';
+import { CONVERT_LANDING_PAGES } from '../ConvertLandingPage/convertLandingConfig';
 
 function renderLandingPage(children: React.ReactElement) {
   const queryClient = new QueryClient({
@@ -187,6 +188,27 @@ describe('LandingPage', () => {
         const canonical = document.head.querySelector('link[rel="canonical"]');
         expect(canonical).toHaveAttribute('href', expectedCanonical);
       });
+    }
+  );
+
+  it.each([
+    ['notion-to-anki', 'https://2anki.net/notion-to-anki'],
+    ['pdf-to-anki', 'https://2anki.net/pdf-to-anki'],
+    ['markdown-to-anki', 'https://2anki.net/markdown-to-anki'],
+  ])(
+    'points the /convert/%s canonical at the top-level slug',
+    async (slug, expectedCanonical) => {
+      const copy = CONVERT_LANDING_PAGES.get(slug)!;
+      renderLandingPage(<LandingPage copy={copy} setErrorMessage={vi.fn()} />);
+      await waitFor(() => {
+        const canonical = document.head.querySelector('link[rel="canonical"]');
+        expect(canonical).toHaveAttribute('href', expectedCanonical);
+      });
+      const ogUrl = document.head.querySelector('meta[property="og:url"]');
+      expect(ogUrl).toHaveAttribute(
+        'content',
+        `https://2anki.net/convert/${slug}`
+      );
     }
   );
 

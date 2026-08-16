@@ -20,6 +20,7 @@ export interface LandingStep {
 
 export interface LandingCopy {
   pathname: string;
+  canonicalPathname?: string;
   title: string;
   description: string;
   h1: string;

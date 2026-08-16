@@ -16,6 +16,19 @@
   command = "corepack enable && pnpm install --frozen-lockfile && pnpm --filter 2anki-web build"
   publish = "web/build"
 
+# Keep preview and branch builds out of the search index — they mirror
+# production content on a crawlable Netlify URL and would compete for the
+# same keywords the real site ranks for.
+[[context.deploy-preview.headers]]
+  for = "/*"
+  [context.deploy-preview.headers.values]
+    X-Robots-Tag = "noindex"
+
 [context.branch-deploy]
   command = "corepack enable && pnpm install --frozen-lockfile && pnpm --filter 2anki-web build"
   publish = "web/build"
+
+[[context.branch-deploy.headers]]
+  for = "/*"
+  [context.branch-deploy.headers.values]
+    X-Robots-Tag = "noindex"

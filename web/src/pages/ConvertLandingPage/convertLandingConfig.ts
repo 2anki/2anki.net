@@ -9,12 +9,13 @@ const notionToAnki: LandingCopy = {
     },
     {
       label: 'Convert Markdown and Obsidian notes to Anki',
-      href: '/convert/markdown-to-anki',
+      href: '/markdown-to-anki',
     },
-    { label: 'Convert a PDF to Anki', href: '/convert/pdf-to-anki' },
+    { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
     { label: 'Browse every converter', href: '/convert' },
   ],
   pathname: '/convert/notion-to-anki',
+  canonicalPathname: '/notion-to-anki',
   title: 'Notion to Anki — decks that open clean in Anki | 2anki',
   description:
     'Convert any Notion page to an Anki deck that opens clean — cloze stays clickable, images render, toggles become cards. Paste a link, get a .apkg.',
@@ -49,12 +50,13 @@ const pdfToAnki: LandingCopy = {
     { label: 'Convert an HTML file to Anki', href: '/convert/html-to-anki' },
     {
       label: 'Convert Markdown and Obsidian notes to Anki',
-      href: '/convert/markdown-to-anki',
+      href: '/markdown-to-anki',
     },
-    { label: 'Convert Notion pages to Anki', href: '/convert/notion-to-anki' },
+    { label: 'Convert Notion pages to Anki', href: '/notion-to-anki' },
     { label: 'Browse every converter', href: '/convert' },
   ],
   pathname: '/convert/pdf-to-anki',
+  canonicalPathname: '/pdf-to-anki',
   title: 'Convert PDF to Anki — flashcards that work in Anki | 2anki',
   description:
     'Convert a lecture PDF, slide export, or textbook chapter into a .apkg deck. Text becomes question-and-answer cards, scanned pages become image cards, and AI mode handles dense chapters.',
@@ -88,12 +90,13 @@ const pdfToAnki: LandingCopy = {
 
 const markdownToAnki: LandingCopy = {
   relatedLinks: [
-    { label: 'Convert Notion pages to Anki', href: '/convert/notion-to-anki' },
+    { label: 'Convert Notion pages to Anki', href: '/notion-to-anki' },
     { label: 'Convert an HTML file to Anki', href: '/convert/html-to-anki' },
-    { label: 'Convert a PDF to Anki', href: '/convert/pdf-to-anki' },
+    { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
     { label: 'Browse every converter', href: '/convert' },
   ],
   pathname: '/convert/markdown-to-anki',
+  canonicalPathname: '/markdown-to-anki',
   title: 'Markdown to Anki — decks that open clean in Anki | 2anki',
   description:
     'Convert Markdown or Obsidian notes to an Anki deck that opens clean — code blocks intact, cloze clickable, bullets become cards.',
@@ -162,12 +165,12 @@ const csvToAnki: LandingCopy = {
 
 const htmlToAnki: LandingCopy = {
   relatedLinks: [
-    { label: 'Convert Notion pages to Anki', href: '/convert/notion-to-anki' },
+    { label: 'Convert Notion pages to Anki', href: '/notion-to-anki' },
     {
       label: 'Convert Markdown and Obsidian notes to Anki',
-      href: '/convert/markdown-to-anki',
+      href: '/markdown-to-anki',
     },
-    { label: 'Convert a PDF to Anki', href: '/convert/pdf-to-anki' },
+    { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
     {
       label: 'Convert a CSV or Excel sheet to Anki',
       href: '/convert/csv-to-anki',
@@ -260,14 +263,14 @@ const apkgToCsv: LandingCopy = {
 
 const notionTablesToAnki: LandingCopy = {
   relatedLinks: [
-    { label: 'Convert Notion pages to Anki', href: '/convert/notion-to-anki' },
+    { label: 'Convert Notion pages to Anki', href: '/notion-to-anki' },
     {
       label: 'Convert a CSV or Excel sheet to Anki',
       href: '/convert/csv-to-anki',
     },
     {
       label: 'Convert Markdown and Obsidian notes to Anki',
-      href: '/convert/markdown-to-anki',
+      href: '/markdown-to-anki',
     },
     { label: 'Browse every converter', href: '/convert' },
   ],
@@ -565,7 +568,7 @@ const epubToAnki: LandingCopy = {
       label: 'Move Language Reactor saves to Anki',
       href: '/convert/language-reactor-to-anki',
     },
-    { label: 'Convert a PDF to Anki', href: '/convert/pdf-to-anki' },
+    { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
     { label: 'Browse every converter', href: '/convert' },
   ],
   pathname: '/convert/epub-to-anki',
@@ -598,10 +601,10 @@ const epubToAnki: LandingCopy = {
 const kindleToAnki: LandingCopy = {
   relatedLinks: [
     { label: 'Convert EPUB highlights to Anki', href: '/convert/epub-to-anki' },
-    { label: 'Convert a PDF to Anki', href: '/convert/pdf-to-anki' },
+    { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
     {
       label: 'Convert Markdown and Obsidian notes to Anki',
-      href: '/convert/markdown-to-anki',
+      href: '/markdown-to-anki',
     },
     { label: 'Browse every converter', href: '/convert' },
   ],
@@ -686,10 +689,10 @@ const wordToAnki: LandingCopy = {
       label: 'Word to Anki — a step-by-step guide',
       href: '/answers/word-to-anki',
     },
-    { label: 'Convert a PDF to Anki', href: '/convert/pdf-to-anki' },
+    { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
     {
       label: 'Convert Markdown and Obsidian notes to Anki',
-      href: '/convert/markdown-to-anki',
+      href: '/markdown-to-anki',
     },
     { label: 'Browse every converter', href: '/convert' },
   ],
@@ -733,9 +736,9 @@ const obsidianToAnki: LandingCopy = {
     },
     {
       label: 'Convert Markdown and Obsidian notes to Anki',
-      href: '/convert/markdown-to-anki',
+      href: '/markdown-to-anki',
     },
-    { label: 'Convert Notion pages to Anki', href: '/convert/notion-to-anki' },
+    { label: 'Convert Notion pages to Anki', href: '/notion-to-anki' },
     { label: 'Browse every converter', href: '/convert' },
   ],
   pathname: '/convert/obsidian-to-anki',
@@ -780,7 +783,7 @@ const photoToAnki: LandingCopy = {
       label: 'Image occlusion in Anki — a guide',
       href: '/answers/image-occlusion-anki',
     },
-    { label: 'Convert a PDF to Anki', href: '/convert/pdf-to-anki' },
+    { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
     { label: 'AI flashcard generator', href: '/ai-flashcard-generator' },
   ],
   pathname: '/convert/photo-to-anki',
@@ -818,7 +821,7 @@ const photoToAnki: LandingCopy = {
 const googleSlidesToAnki: LandingCopy = {
   relatedLinks: [
     { label: 'Convert PowerPoint slides to Anki', href: '/powerpoint-to-anki' },
-    { label: 'Convert a PDF to Anki', href: '/convert/pdf-to-anki' },
+    { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
     {
       label: 'Anki from medical lecture slides',
       href: '/anki-from-medical-lecture-slides',
@@ -868,7 +871,7 @@ const screenshotToAnki: LandingCopy = {
       href: '/answers/image-occlusion-anki',
     },
     { label: 'AI flashcard generator', href: '/ai-flashcard-generator' },
-    { label: 'Convert a PDF to Anki', href: '/convert/pdf-to-anki' },
+    { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
   ],
   pathname: '/convert/screenshot-to-anki',
   title: 'Screenshot to Anki — clip to flashcards | 2anki',
@@ -954,7 +957,7 @@ const txtToAnki: LandingCopy = {
   relatedLinks: [
     {
       label: 'Convert Markdown and Obsidian notes to Anki',
-      href: '/convert/markdown-to-anki',
+      href: '/markdown-to-anki',
     },
     {
       label: 'Convert a CSV or Excel sheet to Anki',
@@ -1001,7 +1004,7 @@ const txtToAnki: LandingCopy = {
 const onenoteToAnki: LandingCopy = {
   relatedLinks: [
     { label: 'Convert a Word document to Anki', href: '/convert/word-to-anki' },
-    { label: 'Convert a PDF to Anki', href: '/convert/pdf-to-anki' },
+    { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
     {
       label: 'Handwritten notes to Anki — a guide',
       href: '/answers/handwritten-notes-to-anki',
@@ -1043,7 +1046,7 @@ const onenoteToAnki: LandingCopy = {
 const evernoteToAnki: LandingCopy = {
   relatedLinks: [
     { label: 'Convert an HTML file to Anki', href: '/convert/html-to-anki' },
-    { label: 'Convert Notion pages to Anki', href: '/convert/notion-to-anki' },
+    { label: 'Convert Notion pages to Anki', href: '/notion-to-anki' },
     { label: 'Convert a Word document to Anki', href: '/convert/word-to-anki' },
     { label: 'Browse every converter', href: '/convert' },
   ],
@@ -1088,7 +1091,7 @@ const googleDocsToAnki: LandingCopy = {
     { label: 'Convert a Word document to Anki', href: '/convert/word-to-anki' },
     {
       label: 'Convert Markdown and Obsidian notes to Anki',
-      href: '/convert/markdown-to-anki',
+      href: '/markdown-to-anki',
     },
     { label: 'Browse every converter', href: '/convert' },
   ],
