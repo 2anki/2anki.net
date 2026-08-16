@@ -66,4 +66,4 @@ The spec is **not** wired into the merge gate; the hook stays **honor-system and
 
 ## Connection to CLAUDE.md
 
-CLAUDE.md already mandates "use the feature in a browser" before opening a PR. This gate makes that instruction machine-checkable at merge time. It does not replace the judgment call — it enforces the moment of confirmation.
+This gate makes browser verification machine-checkable at merge time (CLAUDE.md permits an honest "browser verification unavailable" note when the environment genuinely cannot run one — the out-clause above is that note's enforced form). It does not replace the judgment call — it enforces the moment of confirmation.

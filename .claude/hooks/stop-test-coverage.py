@@ -25,6 +25,9 @@ DEBUG_ARTIFACT_PATTERNS = [
 
 TEST_ISOLATION_PATTERNS = [
     ("focused test (.only)", re.compile(r"\.only\s*\(")),
+    # Line-anchored so the sanctioned env-gate idiom
+    # `(RUN_INTEGRATION ? describe : describe.skip)` (mid-expression) passes.
+    ("unconditional skip", re.compile(r"^\s*(?:test|it|describe)\.skip\s*\(", re.MULTILINE)),
     ("xdescribe", re.compile(r"\bxdescribe\b")),
     ("xit", re.compile(r"\bxit\b")),
     ("fdescribe", re.compile(r"\bfdescribe\b")),

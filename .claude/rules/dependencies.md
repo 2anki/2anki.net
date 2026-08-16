@@ -1,6 +1,6 @@
 # Dependency rules
 
-`pnpm` workspace (`pnpm-workspace.yaml`), Node `>=12` declared but CI runs on **22.20.0** (`.github/workflows/server.yml`) and `.nvmrc` is the source of truth. The web app is a sibling workspace under `web/`.
+`pnpm` workspace (`pnpm-workspace.yaml`), Node engines pin `>=22.20.0`, matching `.nvmrc` and both CI workflows — bump all three together. The web app is a sibling workspace under `web/`.
 
 | Requirement | Do instead | CWE |
 | --- | --- | --- |

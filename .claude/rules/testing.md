@@ -7,7 +7,7 @@ Jest + ts-jest, `*.test.ts(x)` colocated next to source. `pnpm test <path>` to s
 | Do not mock internal services, repositories, or use cases just to make a test "easier". | Mock only at the external edge: HTTP (`axios`, `fetch`), Notion/Claude/Stripe SDKs, SendGrid, AWS, the filesystem when slow. Internal collaborators run for real. | — |
 | Do not write a test that asserts only "did not throw". | Assert observable output: returned value, repository state, response body, side-effect call args. | — |
 | Do not use `expect(...).toBeTruthy()` / `toBeFalsy()` on values that have a real shape. | Match the value: `toEqual({ ... })`, `toBe(0)`, `toMatchObject({ ... })`. Truthy/falsy hide regressions to neighbouring states. | CWE-754 |
-| Do not commit `.only` / `.skip` / `xit` / `xdescribe`. | Re-enable before commit; the suite is the contract. Use `--testNamePattern` while iterating. | — |
+| Do not commit `.only` / unconditional `.skip` / `xit` / `xdescribe`. The env-gated integration idiom `(RUN_INTEGRATION ? describe : describe.skip)` is the sanctioned exception (it is how NOTION_KEY-gated suites work). | Re-enable before commit; the suite is the contract. Use `--testNamePattern` while iterating. | — |
 | Do not assert on the literal `Error.message` text from third-party libs. | Assert on the error class or your own coded error. Library messages drift between versions. | — |
 | Do not write a test that depends on wall-clock time, current date, or `Math.random`. | Inject a clock/seed; use `jest.useFakeTimers()` and `jest.setSystemTime()`. | CWE-330 |
 | Do not skip the failing-test step when fixing a bug. | Reproduce the bug as a failing test first, watch it fail for the right reason, then fix. | — |
