@@ -30,7 +30,7 @@
     "start": "pnpm run dev",
     "build": "tsc -p .",
     "typecheck": "tsc -p . --noEmit",
-    "arch": "depcruise src --config .dependency-cruiser.cjs",
+    "arch": "git clean -fX -q src && depcruise src --config .dependency-cruiser.cjs",
     "dev": "concurrently --names server,web --prefix-colors magenta,cyan \"pnpm:dev:server\" \"pnpm:dev:web\"",
     "dev:server": "cross-env LOCAL_DEV=true tsx watch --env-file=.env src/server.ts",
     "dev:web": "pnpm --filter 2anki-web dev",

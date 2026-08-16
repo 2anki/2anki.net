@@ -15,7 +15,7 @@
  *   knex value-import outside data_layer: 0 (conversionPool — allowlisted infra)
  *   circular dependencies:                27 (mostly hubbed on data_layer/index.ts)
  *   data_layer importing upward:          2  (data_layer/index.ts wiring barrel)
- *   routes/controllers -> data_layer:     ~447 import edges (warn — debt frozen,
+ *   routes/controllers -> data_layer:     329 import edges (warn — debt frozen,
  *     not blocked; new code should go through a use case or service).
  */
 module.exports = {
@@ -58,7 +58,7 @@ module.exports = {
     {
       name: 'no-layer-skip-to-data-layer',
       comment:
-        'Route -> controller -> use case -> service -> data layer. Routes and controllers should not reach into data_layer directly. ~447 existing skip edges document the debt; surfaced as warn so the count is visible and new code goes through a use case or service instead of growing it.',
+        'Route -> controller -> use case -> service -> data layer. Routes and controllers should not reach into data_layer directly. Baseline 2026-08-17: 329 skip edges (warn — debt frozen; new code goes through a use case or service instead of growing it). The count is only honest when no stale compiled .js sits in src/ — the arch script purges them first; a run reporting ~36 means the purge was skipped and the cruiser resolved .js siblings instead of the .ts sources.',
       severity: 'warn',
       from: { path: '^src/(routes|controllers)' },
       to: { path: '^src/data_layer' },
@@ -68,9 +68,13 @@ module.exports = {
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },
     doNotFollow: { path: 'node_modules' },
-    // `\\.js$` keeps the cruise on TypeScript only — `tsx`/`build` leave stale
-    // compiled .js in src/ (see the `purge-js`/`dev-cleanup` scripts) that would
-    // otherwise double-count every module locally.
+    // `\\.js$` keeps the cruise on TypeScript only. In-place `pnpm build`
+    // output (there is no outDir; prod runs src/server.js) leaves compiled .js
+    // beside every .ts locally, and TS module resolution then prefers the
+    // stale .js sibling — silently dropping ~90% of edges and blinding every
+    // rule (the 2026-08-17 audit saw 36 reported vs 329 real skip edges). The
+    // `arch` script runs `git clean -fX src` first so local cruises match CI,
+    // which never emits .js (typecheck is --noEmit).
     exclude: { path: '\\.test\\.ts$|\\.js$|/test/|/__mocks__/|/migrations/' },
   },
 };
