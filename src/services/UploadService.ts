@@ -1,6 +1,7 @@
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 
 import { IUploadRepository } from '../data_layer/UploadRespository';
 import JobRepository from '../data_layer/JobRepository';
@@ -337,6 +338,8 @@ function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
 }
 
 class UploadService {
+  private readonly inFlightConversions = new Set<string>();
+
   getUploadsByOwner(owner: number) {
     return this.uploadRepository.getUploadsByOwner(owner);
   }
@@ -923,6 +926,26 @@ class UploadService {
     }
   }
 
+  private static conversionFingerprint(
+    owner: string,
+    files: UploadedFile[]
+  ): string {
+    const hash = createHash('sha256');
+    hash.update(owner);
+    const sorted = [...files].sort((a, b) =>
+      a.originalname.localeCompare(b.originalname)
+    );
+    for (const file of sorted) {
+      hash.update('\0');
+      hash.update(file.originalname);
+      hash.update(String(file.size ?? ''));
+      if (file.buffer != null) {
+        hash.update(file.buffer);
+      }
+    }
+    return hash.digest('hex');
+  }
+
   private async handleAsyncUpload(
     req: express.Request,
     res: express.Response,
@@ -932,9 +955,23 @@ class UploadService {
     paying: boolean
   ) {
     const files = req.files as UploadedFile[];
+    const fingerprint = UploadService.conversionFingerprint(owner, files);
+    if (this.inFlightConversions.has(fingerprint)) {
+      return res.status(409).json({
+        code: 'conversion_in_flight',
+        message:
+          "We're already converting this file. It'll land in My Decks in a few minutes — no need to upload again.",
+      });
+    }
+    this.inFlightConversions.add(fingerprint);
     const title =
       files.length === 1 ? files[0].originalname : `${files.length} files`;
-    await this.jobRepository.create(ws.id, owner, title, 'claude');
+    try {
+      await this.jobRepository.create(ws.id, owner, title, 'claude');
+    } catch (err) {
+      this.inFlightConversions.delete(fingerprint);
+      throw err;
+    }
     persistConversionSettings(ws.location, req.body);
 
     const ownerForEvent = Number(owner);
@@ -1055,6 +1092,9 @@ class UploadService {
           'failed',
           reason
         );
+      })
+      .finally(() => {
+        this.inFlightConversions.delete(fingerprint);
       });
 
     return res.status(202).json({ jobId: ws.id });

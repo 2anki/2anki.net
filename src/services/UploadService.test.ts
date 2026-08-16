@@ -2974,3 +2974,156 @@ describe('UploadService.handleUpload — signup_origin attribution', () => {
     );
   });
 });
+
+describe('UploadService.handleUpload — in-flight duplicate guard', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'upload-service-test');
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+  });
+
+  beforeEach(() => {
+    MockGeneratePackagesUseCase.mockClear();
+    trackMock.mockClear();
+    mockWorkspaceId = 'guard-ws-id';
+  });
+
+  function buildJobRepo(): JobRepository {
+    return {
+      create: jest.fn().mockResolvedValue(undefined),
+      updateJobStatus: jest.fn().mockResolvedValue(undefined),
+    } as unknown as JobRepository;
+  }
+
+  function buildService() {
+    return new UploadService(
+      buildRepository(),
+      buildJobRepo(),
+      buildUsersRepo()
+    );
+  }
+
+  function buildAiRequest(contents: string, name = 'chapter.pdf') {
+    return buildRequest({
+      files: [
+        {
+          originalname: name,
+          mimetype: 'application/pdf',
+          size: contents.length,
+          buffer: Buffer.from(contents),
+        },
+      ],
+      body: { 'claude-ai-flashcards': 'true' },
+    } as unknown as Partial<express.Request>);
+  }
+
+  function buildPayingResponse() {
+    const built = buildResponse();
+    (built.res.locals as Record<string, unknown>).owner = 42;
+    (built.res.locals as Record<string, unknown>).patreon = true;
+    return built;
+  }
+
+  it('rejects a second identical upload while the first is still converting', async () => {
+    let finishFirst: (() => void) | undefined;
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn(
+            () =>
+              new Promise((resolve) => {
+                finishFirst = () => resolve({ packages: [] });
+              })
+          ),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+
+    const service = buildService();
+    const firstRes = buildPayingResponse();
+    await service.handleUpload(buildAiRequest('same bytes'), firstRes.res);
+    expect(firstRes.capturedStatus()).toBe(202);
+
+    const secondRes = buildPayingResponse();
+    await service.handleUpload(buildAiRequest('same bytes'), secondRes.res);
+
+    expect(secondRes.capturedStatus()).toBe(409);
+    expect(secondRes.capturedJson()).toMatchObject({
+      code: 'conversion_in_flight',
+    });
+    expect(MockGeneratePackagesUseCase).toHaveBeenCalledTimes(1);
+
+    finishFirst?.();
+  });
+
+  it('allows different content to convert concurrently', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn(() => new Promise(() => {})),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+
+    const service = buildService();
+    const firstRes = buildPayingResponse();
+    await service.handleUpload(buildAiRequest('doc one'), firstRes.res);
+    const secondRes = buildPayingResponse();
+    await service.handleUpload(buildAiRequest('doc two'), secondRes.res);
+
+    expect(firstRes.capturedStatus()).toBe(202);
+    expect(secondRes.capturedStatus()).toBe(202);
+  });
+
+  it('releases the guard when the conversion finishes, allowing a re-upload', async () => {
+    let finishFirst: (() => void) | undefined;
+    MockGeneratePackagesUseCase.mockImplementationOnce(
+      () =>
+        ({
+          execute: jest.fn(
+            () =>
+              new Promise((_, reject) => {
+                finishFirst = () => reject(new EmptyDeckError());
+              })
+          ),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    ).mockImplementation(
+      () =>
+        ({
+          execute: jest.fn(() => new Promise(() => {})),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+
+    const service = buildService();
+    const firstRes = buildPayingResponse();
+    await service.handleUpload(buildAiRequest('retry bytes'), firstRes.res);
+
+    finishFirst?.();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const retryRes = buildPayingResponse();
+    await service.handleUpload(buildAiRequest('retry bytes'), retryRes.res);
+    expect(retryRes.capturedStatus()).toBe(202);
+  });
+
+  it('never blocks two different users uploading the same content', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn(() => new Promise(() => {})),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+
+    const service = buildService();
+    const firstRes = buildPayingResponse();
+    await service.handleUpload(buildAiRequest('shared bytes'), firstRes.res);
+
+    const otherUser = buildPayingResponse();
+    (otherUser.res.locals as Record<string, unknown>).owner = 43;
+    await service.handleUpload(buildAiRequest('shared bytes'), otherUser.res);
+
+    expect(otherUser.capturedStatus()).toBe(202);
+  });
+});
