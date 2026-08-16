@@ -763,3 +763,38 @@ describe('CardOptionsForm save defaults feedback', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 });
+
+describe('CardOptionsForm user instructions disclosure', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResetUserCardOptions.mockResolvedValue(undefined);
+    setUserLocalsPaying(false);
+    globalThis.localStorage.clear();
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'claude-ai-flashcards',
+        'AI flashcards',
+        'Write the cards with Claude.',
+        false
+      ),
+    ]);
+    window.location.hash = '';
+  });
+
+  it('opens the instructions box when arriving at the pdf-ai anchor', async () => {
+    window.location.hash = '#pdf-ai';
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+    const summary = await screen.findByText(/instructions/i, {
+      selector: 'summary',
+    });
+    expect(summary.closest('details')).toHaveAttribute('open');
+  });
+
+  it('keeps the instructions box collapsed without the anchor', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+    const summary = await screen.findByText(/instructions/i, {
+      selector: 'summary',
+    });
+    expect(summary.closest('details')).not.toHaveAttribute('open');
+  });
+});

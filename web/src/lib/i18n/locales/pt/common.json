@@ -161,7 +161,7 @@
       "reattachPrefix": "Anexe novamente",
       "reattachSuffix": "para converter",
       "aiOn": "A IA está ativada",
-      "aiOnBody": "Os cartões são escritos pelo Claude.",
+      "aiOnBody": "O Claude escreve os seus cartões — diga-lhe em que se concentrar: temas essenciais, mais escolha múltipla, um cloze por lista.",
       "aiOff": "A IA está desativada",
       "aiOffBody": "Você receberá cartões baseados em regras a partir da estrutura do seu arquivo.",
       "turnOnClaudeCards": "Ativar cartões do Claude",

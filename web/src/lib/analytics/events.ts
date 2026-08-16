@@ -30,6 +30,7 @@ export const KNOWN_EVENTS = new Set([
   'upload_ai_turned_on',
   'upload_ai_turned_off',
   'upload_ai_free_badge_clicked',
+  'upload_ai_settings_link_clicked',
   'upload_ai_anon_badge_clicked',
   'home_ai_anon_badge_viewed',
   'home_ai_anon_badge_clicked',

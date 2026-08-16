@@ -323,6 +323,23 @@ describe('UploadPage AI badge settings link', () => {
     ).toHaveAttribute('href', '/card-options?returnTo=/upload#pdf-ai');
   });
 
+  it('tells the user the AI cards are steerable in the on state body', () => {
+    fakeUser = { id: 42 };
+    fakeLocals = { patreon: true, subscriber: false };
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPage();
+    expect(screen.getByText(/tell it what to focus on/i)).toBeInTheDocument();
+  });
+
+  it('tracks a click on the on state Manage in Settings link', () => {
+    fakeUser = { id: 42 };
+    fakeLocals = { patreon: true, subscriber: false };
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPage();
+    screen.getByRole('link', { name: /manage in settings/i }).click();
+    expect(trackMock).toHaveBeenCalledWith('upload_ai_settings_link_clicked');
+  });
+
   it('does not add a settings link in the anon state', () => {
     fakeUser = null;
     renderPage();

@@ -165,7 +165,7 @@
       "reattachPrefix": "Dołącz ponownie",
       "reattachSuffix": "aby przekonwertować",
       "aiOn": "AI jest włączone",
-      "aiOnBody": "Karty pisze Claude.",
+      "aiOnBody": "Claude pisze twoje karty — powiedz mu, na czym się skupić: najważniejsze tematy, więcej pytań wielokrotnego wyboru, jedno cloze na listę.",
       "aiOff": "AI jest wyłączone",
       "aiOffBody": "Otrzymasz karty tworzone według reguł na podstawie struktury Twojego pliku.",
       "turnOnClaudeCards": "Włącz karty Claude",

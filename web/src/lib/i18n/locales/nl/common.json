@@ -161,7 +161,7 @@
       "reattachPrefix": "Voeg opnieuw toe",
       "reattachSuffix": "om te converteren",
       "aiOn": "AI staat aan",
-      "aiOnBody": "Kaarten worden door Claude geschreven.",
+      "aiOnBody": "Claude schrijft je kaarten — vertel waar het op moet letten: belangrijke onderwerpen, meer meerkeuze, één cloze per lijst.",
       "aiOff": "AI staat uit",
       "aiOffBody": "Je krijgt op regels gebaseerde kaarten uit de structuur van je bestand.",
       "turnOnClaudeCards": "Claude-kaarten inschakelen",

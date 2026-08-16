@@ -161,7 +161,7 @@
       "reattachPrefix": "Rattache",
       "reattachSuffix": "pour convertir",
       "aiOn": "L'IA est activée",
-      "aiOnBody": "Les cartes sont écrites par Claude.",
+      "aiOnBody": "Claude écrit vos cartes — dites-lui sur quoi se concentrer : notions essentielles, plus de QCM, un texte à trous par liste.",
       "aiOff": "L'IA est désactivée",
       "aiOffBody": "Tu obtiendras des cartes basées sur des règles à partir de la structure de ton fichier.",
       "turnOnClaudeCards": "Activer les cartes Claude",

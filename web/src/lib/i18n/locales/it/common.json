@@ -161,7 +161,7 @@
       "reattachPrefix": "Riallega",
       "reattachSuffix": "per convertire",
       "aiOn": "L'IA è attiva",
-      "aiOnBody": "Le carte sono scritte da Claude.",
+      "aiOnBody": "Claude scrive le tue carte — digli su cosa concentrarsi: argomenti ad alto rendimento, più scelta multipla, un cloze per lista.",
       "aiOff": "L'IA è disattivata",
       "aiOffBody": "Otterrai carte basate su regole a partire dalla struttura del tuo file.",
       "turnOnClaudeCards": "Attiva le carte di Claude",

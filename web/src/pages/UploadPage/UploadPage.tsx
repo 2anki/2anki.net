@@ -171,7 +171,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
             </button>
             <span className={styles.aiOffBadgeBody}>
               <span> {t('upload.page.aiOnBody')} </span>
-              <Link to="/card-options?returnTo=/upload#pdf-ai">
+              <Link
+                to="/card-options?returnTo=/upload#pdf-ai"
+                onClick={() => track('upload_ai_settings_link_clicked')}
+              >
                 {t('upload.page.manageInSettings')}
               </Link>
               <span>.</span>
