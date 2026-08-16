@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-16-duplicate-conversion-guard",
+  "date": "2026-08-16",
+  "type": "fix",
+  "title": "Uploading the same file twice mid-conversion now tells you it's already in progress"
+}
