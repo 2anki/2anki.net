@@ -174,6 +174,10 @@ export function DeckPicker({
 }
 
 const MIN_CARD_FRAME_HEIGHT = 128;
+// A sandboxed srcDoc frame (no allow-same-origin) always posts with the
+// literal origin "null"; anything else is another window impersonating the
+// card. The cap bounds what hostile card content can do to the page layout.
+const MAX_CARD_FRAME_HEIGHT = 4096;
 
 function buildSrcDoc(css: string, body: string): string {
   const sizingScript = `<script>(function(){function post(){parent.postMessage({type:'n2a-review-height',height:document.documentElement.scrollHeight},'*');}window.addEventListener('load',post);document.querySelectorAll('img').forEach(function(img){img.addEventListener('load',post);img.addEventListener('error',post);});if(window.ResizeObserver){new ResizeObserver(post).observe(document.documentElement);}post();var __a=document.querySelector('audio');if(__a){__a.play().catch(function(){});}})();</script>`;
@@ -194,6 +198,9 @@ export function CardFrame({ srcDoc }: { readonly srcDoc: string }) {
       if (event.source !== iframeRef.current?.contentWindow) {
         return;
       }
+      if (event.origin !== 'null') {
+        return;
+      }
       const data = event.data as { type?: string; height?: number };
       if (
         data?.type !== 'n2a-review-height' ||
@@ -202,7 +209,12 @@ export function CardFrame({ srcDoc }: { readonly srcDoc: string }) {
       ) {
         return;
       }
-      setHeight(Math.max(MIN_CARD_FRAME_HEIGHT, data.height));
+      setHeight(
+        Math.min(
+          MAX_CARD_FRAME_HEIGHT,
+          Math.max(MIN_CARD_FRAME_HEIGHT, data.height)
+        )
+      );
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);

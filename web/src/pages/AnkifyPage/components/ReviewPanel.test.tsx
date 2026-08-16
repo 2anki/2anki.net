@@ -1,9 +1,15 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import ReviewPanel, { DeckPicker } from './ReviewPanel';
+import ReviewPanel, { CardFrame, DeckPicker } from './ReviewPanel';
 import { Backend, ReviewQueueCard } from '../../../lib/backend/Backend';
 import { AnkifyStats, AnkifyStatsDeck } from '../stats/types';
 
@@ -611,5 +617,55 @@ describe('DeckPicker collapse persistence', () => {
     expect(
       screen.getByRole('button', { name: 'Expand MS3' })
     ).toBeInTheDocument();
+  });
+});
+
+describe('CardFrame message handling', () => {
+  function frameHeight(container: HTMLElement): string {
+    const iframe = container.querySelector('iframe');
+    if (iframe == null) throw new Error('iframe missing');
+    return iframe.style.height;
+  }
+
+  function sendHeight(
+    container: HTMLElement,
+    height: number,
+    overrides: Partial<MessageEventInit> = {}
+  ) {
+    const iframe = container.querySelector('iframe');
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: { type: 'n2a-review-height', height },
+          origin: 'null',
+          source: iframe?.contentWindow ?? null,
+          ...overrides,
+        })
+      );
+    });
+  }
+
+  it('resizes to a height reported by its own sandboxed frame', () => {
+    const { container } = render(<CardFrame srcDoc="<p>card</p>" />);
+    sendHeight(container, 480);
+    expect(frameHeight(container)).toBe('480px');
+  });
+
+  it('ignores a height message from a foreign origin', () => {
+    const { container } = render(<CardFrame srcDoc="<p>card</p>" />);
+    sendHeight(container, 480, { origin: 'https://evil.example' });
+    expect(frameHeight(container)).toBe('128px');
+  });
+
+  it('ignores a height message whose source is not the frame', () => {
+    const { container } = render(<CardFrame srcDoc="<p>card</p>" />);
+    sendHeight(container, 480, { source: null });
+    expect(frameHeight(container)).toBe('128px');
+  });
+
+  it('caps a hostile height so card content cannot blow up the layout', () => {
+    const { container } = render(<CardFrame srcDoc="<p>card</p>" />);
+    sendHeight(container, 10_000_000);
+    expect(frameHeight(container)).toBe('4096px');
   });
 });
