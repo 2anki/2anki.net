@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { describe, expect, it, vi } from 'vitest';
 import DocsPage from './DocsPage';
 
@@ -15,11 +16,13 @@ vi.mock('./DocsSidebar', () => ({
 
 function renderAt(path: string) {
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path="/documentation/*" element={<DocsPage />} />
-      </Routes>
-    </MemoryRouter>
+    <HelmetProvider>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/documentation/*" element={<DocsPage />} />
+        </Routes>
+      </MemoryRouter>
+    </HelmetProvider>
   );
 }
 
@@ -51,5 +54,32 @@ describe('DocsPage', () => {
   it('marks the legal page even with a trailing slash', () => {
     renderAt('/documentation/reference/privacy/');
     expect(mainEl()).toHaveAttribute('data-legal', 'true');
+  });
+});
+
+describe('DocsPage metadata', () => {
+  it('sets a per-doc title and a self-referencing canonical', async () => {
+    renderAt('/documentation/start-here/connect-notion');
+    await waitFor(() => {
+      expect(document.title.endsWith(' — 2anki docs')).toBe(true);
+    });
+    expect(document.title).not.toBe('Documentation — 2anki docs');
+    const canonical = document.head.querySelector('link[rel="canonical"]');
+    expect(canonical).toHaveAttribute(
+      'href',
+      'https://2anki.net/documentation/start-here/connect-notion'
+    );
+  });
+
+  it('uses the generic docs title on the documentation home', async () => {
+    renderAt('/documentation');
+    await waitFor(() => {
+      expect(document.title).toBe('Documentation — 2anki docs');
+    });
+    const canonical = document.head.querySelector('link[rel="canonical"]');
+    expect(canonical).toHaveAttribute(
+      'href',
+      'https://2anki.net/documentation'
+    );
   });
 });

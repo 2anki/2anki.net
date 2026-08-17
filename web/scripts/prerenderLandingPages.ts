@@ -21,6 +21,7 @@ import {
   buildArticleJsonLd,
   buildFaqJsonLd,
 } from '../src/pages/AnswersPage/answersJsonLd';
+import { buildFaqJsonLd as buildLandingFaqJsonLd } from '../src/pages/LandingPage/landingJsonLd';
 import type { LandingCopy } from '../src/pages/LandingPage/types';
 
 const LANDING_COPIES: LandingCopy[] = [
@@ -95,7 +96,8 @@ function stripExistingMeta(html: string): string {
 }
 
 function rewriteHead(html: string, copy: LandingCopy): string {
-  const canonical = canonicalUrl(copy.pathname);
+  const canonical = canonicalUrl(copy.canonicalPathname ?? copy.pathname);
+  const pageUrl = canonicalUrl(copy.pathname);
   const titleTag = `<title>${escapeHtml(copy.title)}</title>`;
   const descriptionTag = `<meta name="description" content="${escapeHtml(
     copy.description
@@ -105,7 +107,7 @@ function rewriteHead(html: string, copy: LandingCopy): string {
     `<meta property="og:description" content="${escapeHtml(
       copy.description
     )}">`,
-    `<meta property="og:url" content="${canonical}">`,
+    `<meta property="og:url" content="${pageUrl}">`,
     '<meta property="og:type" content="website">',
     `<meta name="twitter:title" content="${escapeHtml(copy.title)}">`,
     `<meta name="twitter:description" content="${escapeHtml(
@@ -227,7 +229,14 @@ export function emitLandingPages(buildDir: string): string[] {
     const outDir = join(buildDir, slug);
     const outPath = join(outDir, 'index.html');
     mkdirSync(dirname(outPath), { recursive: true });
-    const html = rewriteRoot(rewriteHead(source, copy), copy);
+    let html = rewriteRoot(rewriteHead(source, copy), copy);
+    const faqJsonLd = buildLandingFaqJsonLd(copy.faqs);
+    if (faqJsonLd != null) {
+      html = html.replace(
+        /<\/head>/,
+        `  <script type="application/ld+json">${faqJsonLd}</script>\n</head>`
+      );
+    }
     writeFileSync(outPath, html, 'utf8');
     emitted.push(outPath);
   }
@@ -258,6 +267,12 @@ const META_ONLY_PAGES: MetaOnlyPageMeta[] = [
     title: 'About 2anki — open-source Notion to Anki converter',
     description:
       'Why 2anki exists, who builds it, and how the project stays free and open source. Independent, no venture funding, supported by lifetime and subscription users.',
+  },
+  {
+    pathname: '/app',
+    title: 'Anki flashcards on iPhone — 2anki app',
+    description:
+      'Convert your notes and files into Anki decks on iPhone, iPad, and Mac. Markdown, PDF, Notion, CSV, OPML, Kindle — parsed on your device. On the App Store for iPhone, iPad, and Mac.',
   },
 ];
 

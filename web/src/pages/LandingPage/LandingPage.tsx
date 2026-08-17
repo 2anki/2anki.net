@@ -8,6 +8,7 @@ import { persistSignupOrigin } from '../../lib/signupOrigin';
 import styles from './LandingPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 import type { LandingCopy } from './types';
+import { buildFaqJsonLd } from './landingJsonLd';
 
 interface LandingPageProps {
   copy: LandingCopy;
@@ -106,22 +107,12 @@ function LandingPage({
     persistSignupOrigin(copy.pathname, globalThis.sessionStorage ?? null);
   }, [copy.pathname]);
 
-  const canonical = `https://2anki.net${copy.pathname}`;
+  const pageUrl = `https://2anki.net${copy.pathname}`;
+  const canonical = `https://2anki.net${copy.canonicalPathname ?? copy.pathname}`;
   const registerHref = `/register?source=${encodeURIComponent(copy.pathname)}`;
   const pageKey = pageKeyFromPathname(copy.pathname);
 
-  const faqJsonLd = JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: copy.faqs.map((faq) => ({
-      '@type': 'Question',
-      name: faq.q,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: faq.a,
-      },
-    })),
-  });
+  const faqJsonLd = buildFaqJsonLd(copy.faqs);
 
   return (
     <div className={styles.landing}>
@@ -131,11 +122,13 @@ function LandingPage({
         <link rel="canonical" href={canonical} />
         <meta property="og:title" content={copy.title} />
         <meta property="og:description" content={copy.description} />
-        <meta property="og:url" content={canonical} />
+        <meta property="og:url" content={pageUrl} />
         <meta property="og:type" content="website" />
         <meta name="twitter:title" content={copy.title} />
         <meta name="twitter:description" content={copy.description} />
-        <script type="application/ld+json">{faqJsonLd}</script>
+        {faqJsonLd != null && (
+          <script type="application/ld+json">{faqJsonLd}</script>
+        )}
       </Helmet>
 
       <section
@@ -184,9 +177,9 @@ function LandingPage({
 
       <section className={styles.stepsSection}>
         <div className={styles.stepsInner}>
-          <p className={styles.sectionLabel}>
+          <h2 className={styles.sectionLabel}>
             {t('sections.howItWorks', { defaultValue: 'How it works' })}
-          </p>
+          </h2>
           <div className={styles.stepsGrid}>
             {copy.steps != null
               ? copy.steps.map((step, idx) => (
@@ -216,11 +209,11 @@ function LandingPage({
       </section>
 
       <section className={styles.section}>
-        <p className={styles.sectionLabel}>
+        <h2 className={styles.sectionLabel}>
           {t('sections.supportedFormats', {
             defaultValue: 'Supported formats',
           })}
-        </p>
+        </h2>
         <ul className={styles.formatsList}>
           {(copy.formats ?? FORMATS).map((format) => (
             <li key={format} className={styles.formatTag}>
@@ -232,11 +225,11 @@ function LandingPage({
 
       {copy.whatComesAcross != null && (
         <section className={styles.section}>
-          <p className={styles.sectionLabel}>
+          <h2 className={styles.sectionLabel}>
             {t('sections.whatYouGet', {
               defaultValue: 'What you actually get in Anki',
             })}
-          </p>
+          </h2>
           <dl className={styles.stepsGrid}>
             {copy.whatComesAcross.map((item) => (
               <div key={item.title} className={styles.step}>
@@ -249,9 +242,9 @@ function LandingPage({
       )}
 
       <section className={styles.section}>
-        <p className={styles.sectionLabel}>
+        <h2 className={styles.sectionLabel}>
           {t('sections.commonQuestions', { defaultValue: 'Common questions' })}
-        </p>
+        </h2>
         <div className={styles.faqList}>
           {copy.faqs.map((faq) => (
             <details key={faq.q} className={styles.faqItem}>
@@ -267,9 +260,9 @@ function LandingPage({
           className={styles.related}
           aria-label={t('sections.related', { defaultValue: 'Related' })}
         >
-          <p className={styles.relatedHeading}>
+          <h2 className={styles.relatedHeading}>
             {t('sections.related', { defaultValue: 'Related' })}
-          </p>
+          </h2>
           <ul className={styles.relatedList}>
             {copy.relatedLinks.map((link) => (
               <li key={link.href}>

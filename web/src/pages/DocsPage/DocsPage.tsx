@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import { DocsSidebar } from './DocsSidebar';
 import { DocContent } from './DocContent';
 import { DocsHome } from './DocsHome';
 import { DocsSearchTrigger } from './DocsSearchTrigger';
 import { DocsSearch } from './DocsSearch';
 import { WipBanner } from './WipBanner';
+import { loadDoc } from './loader';
+import { buildDocDescription, buildDocTitle } from './docMeta';
 import styles from './DocsPage.module.css';
 
 function stripTrailingSlashes(value: string): string {
@@ -24,8 +28,16 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 export default function DocsPage() {
   const params = useParams();
+  const { pathname } = useLocation();
+  const { i18n } = useTranslation();
   const slug = stripTrailingSlashes(params['*'] ?? '');
   const [searchOpen, setSearchOpen] = useState(false);
+
+  const doc = slug ? loadDoc(slug, i18n.resolvedLanguage) : null;
+  const metaTitle = buildDocTitle(doc?.frontmatter.title);
+  const metaDescription =
+    doc != null ? buildDocDescription(doc.frontmatter, doc.body) : undefined;
+  const canonical = `https://2anki.net${pathname}`;
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
@@ -48,6 +60,14 @@ export default function DocsPage() {
 
   return (
     <div className={styles.layout}>
+      <Helmet>
+        <title>{metaTitle}</title>
+        {metaDescription != null && (
+          <meta name="description" content={metaDescription} />
+        )}
+        <link rel="canonical" href={canonical} />
+      </Helmet>
+
       <div className={styles.mobileSearch}>
         <DocsSearchTrigger onOpen={openSearch} />
       </div>

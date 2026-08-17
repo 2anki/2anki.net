@@ -97,7 +97,6 @@ const CONVERT_SLUGS = new Set<string>([
   'language-reactor-to-anki',
   'epub-to-anki',
   'kindle-to-anki',
-  'enrich-anki-deck',
   'excel-to-anki',
   'word-to-anki',
   'obsidian-to-anki',
