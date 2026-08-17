@@ -822,7 +822,7 @@ describe('CardOptionsForm card style picker', () => {
 
   it('renders the four card style options', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const select = await screen.findByLabelText('Card format');
+    const select = await screen.findByLabelText('Card style');
     const labels = within(select)
       .getAllByRole('option')
       .map((option) => option.textContent);
@@ -836,13 +836,13 @@ describe('CardOptionsForm card style picker', () => {
 
   it('defaults to Automatic', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const select = await screen.findByLabelText('Card format');
+    const select = await screen.findByLabelText('Card style');
     expect(select).toHaveValue('');
   });
 
   it('writes the picked style to localStorage on change', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const select = await screen.findByLabelText('Card format');
+    const select = await screen.findByLabelText('Card style');
     fireEvent.change(select, { target: { value: 'heading-driven' } });
     expect(localStorage.getItem('card-style')).toBe('heading-driven');
     expect(select).toHaveValue('heading-driven');
@@ -850,7 +850,7 @@ describe('CardOptionsForm card style picker', () => {
 
   it('fires the card_style_selected event with the chosen style', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const select = await screen.findByLabelText('Card format');
+    const select = await screen.findByLabelText('Card style');
     fireEvent.change(select, { target: { value: 'cloze' } });
     expect(mockTrack).toHaveBeenCalledWith('card_style_selected', {
       style: 'cloze',

@@ -636,7 +636,7 @@
       "detailedDesc": "3–4 datos por tarjeta, ~320 caracteres por respuesta. Menos tarjetas y más completas: mejor para conceptos que quieres repasar juntos."
     },
     "cardStyle": {
-      "heading": "Formato de tarjeta",
+      "heading": "Estilo de tarjeta",
       "automatic": "Automático",
       "cloze": "Cloze",
       "qa": "Pregunta y respuesta",
@@ -704,7 +704,7 @@
       "introMiddle": " aparecen en ",
       "introStrong": "Mis tipos de nota",
       "introSuffix": ".",
-      "cardStyleLabel": "Estilo de tarjeta",
+      "cardStyleLabel": "Estilo visual",
       "cardStyleHint": "Elige el estilo visual que se aplica durante la conversión de Notion → Anki. Elige «Mis tipos de nota» para usar las plantillas que guardaste en el editor de Tipos de nota.",
       "basicNoteType": "Tipo de nota básica",
       "basicNoteHint": "Cuál de tus tipos de nota guardados usar para las tarjetas básicas (anverso/reverso) en esta conversión.",

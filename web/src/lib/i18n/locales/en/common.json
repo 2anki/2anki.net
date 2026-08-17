@@ -636,7 +636,7 @@
       "detailedDesc": "3–4 facts per card, ~320 characters per answer. Fewer, fuller cards — good for concepts you want to review together."
     },
     "cardStyle": {
-      "heading": "Card format",
+      "heading": "Card style",
       "automatic": "Automatic",
       "cloze": "Cloze",
       "qa": "Question and answer",
@@ -704,7 +704,7 @@
       "introMiddle": " show up under ",
       "introStrong": "My note types",
       "introSuffix": ".",
-      "cardStyleLabel": "Card style",
+      "cardStyleLabel": "Visual style",
       "cardStyleHint": "Pick the visual style applied during Notion → Anki conversion. Choose 'My note types' to use templates you saved in the Note types editor.",
       "basicNoteType": "Basic note type",
       "basicNoteHint": "Which of your saved note types to use for Basic (front/back) cards in this conversion.",

@@ -629,7 +629,7 @@
       "detailedDesc": "1 カードに 3〜4 つの事実、1 回答あたり約 320 文字。枚数を抑えた充実したカードで、まとめて復習したい概念に向いています。"
     },
     "cardStyle": {
-      "heading": "カード形式",
+      "heading": "カードスタイル",
       "automatic": "自動",
       "cloze": "穴埋め",
       "qa": "質問と回答",
@@ -697,7 +697,7 @@
       "introMiddle": " で保存したノートタイプは ",
       "introStrong": "マイノートタイプ",
       "introSuffix": " に表示されます。",
-      "cardStyleLabel": "カードスタイル",
+      "cardStyleLabel": "ビジュアルスタイル",
       "cardStyleHint": "Notion → Anki 変換時に適用する視覚スタイルを選びます。ノートタイプエディタで保存したテンプレートを使うには「マイノートタイプ」を選んでください。",
       "basicNoteType": "Basic ノートタイプ",
       "basicNoteHint": "この変換で Basic（表/裏）カードに使う、保存済みノートタイプ。",

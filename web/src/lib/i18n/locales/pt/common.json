@@ -636,7 +636,7 @@
       "detailedDesc": "3–4 fatos por cartão, ~320 caracteres por resposta. Menos cartões e mais completos: melhor para conceitos que você quer revisar juntos."
     },
     "cardStyle": {
-      "heading": "Formato do cartão",
+      "heading": "Estilo do cartão",
       "automatic": "Automático",
       "cloze": "Cloze",
       "qa": "Pergunta e resposta",
@@ -704,7 +704,7 @@
       "introMiddle": " aparecem em ",
       "introStrong": "Meus tipos de nota",
       "introSuffix": ".",
-      "cardStyleLabel": "Estilo do cartão",
+      "cardStyleLabel": "Estilo visual",
       "cardStyleHint": "Escolha o estilo visual aplicado durante a conversão Notion → Anki. Escolha 'Meus tipos de nota' para usar modelos que você salvou no editor de Tipos de nota.",
       "basicNoteType": "Tipo de nota Basic",
       "basicNoteHint": "Qual dos seus tipos de nota salvos usar para cartões Basic (frente/verso) nesta conversão.",

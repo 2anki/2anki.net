@@ -636,7 +636,7 @@
       "detailedDesc": "3–4 feiten per kaart, ~320 tekens per antwoord. Minder, vollere kaarten: goed voor begrippen die je samen wilt leren."
     },
     "cardStyle": {
-      "heading": "Kaartformaat",
+      "heading": "Kaartstijl",
       "automatic": "Automatisch",
       "cloze": "Cloze",
       "qa": "Vraag en antwoord",
@@ -704,7 +704,7 @@
       "introMiddle": " verschijnen onder ",
       "introStrong": "Mijn notitietypen",
       "introSuffix": ".",
-      "cardStyleLabel": "Kaartstijl",
+      "cardStyleLabel": "Visuele stijl",
       "cardStyleHint": "Kies de visuele stijl die wordt toegepast tijdens de Notion → Anki-conversie. Kies 'Mijn notitietypen' om sjablonen te gebruiken die je in de notitietype-editor hebt opgeslagen.",
       "basicNoteType": "Basic-notitietype",
       "basicNoteHint": "Welk van je opgeslagen notitietypen te gebruiken voor Basic-kaarten (voor/achter) in deze conversie.",

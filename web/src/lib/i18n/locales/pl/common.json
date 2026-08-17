@@ -650,7 +650,7 @@
       "detailedDesc": "3–4 fakty na kartę, ~320 znaków na odpowiedź. Mniej kart, ale pełniejszych – dobre dla pojęć, które chcesz powtarzać razem."
     },
     "cardStyle": {
-      "heading": "Format karty",
+      "heading": "Styl karty",
       "automatic": "Automatyczny",
       "cloze": "Luka",
       "qa": "Pytanie i odpowiedź",
@@ -718,7 +718,7 @@
       "introMiddle": " pojawiają się pod ",
       "introStrong": "Moje typy notatek",
       "introSuffix": ".",
-      "cardStyleLabel": "Styl karty",
+      "cardStyleLabel": "Styl wizualny",
       "cardStyleHint": "Wybierz styl wizualny stosowany podczas konwersji Notion → Anki. Wybierz „Moje typy notatek”, aby użyć szablonów zapisanych w edytorze typów notatek.",
       "basicNoteType": "Typ notatki Basic",
       "basicNoteHint": "Który z zapisanych typów notatek użyć dla kart Basic (przód/tył) w tej konwersji.",
