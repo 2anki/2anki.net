@@ -636,7 +636,7 @@
       "detailedDesc": "3–4 fatos por cartão, ~320 caracteres por resposta. Menos cartões e mais completos: melhor para conceitos que você quer revisar juntos."
     },
     "cardStyle": {
-      "heading": "Estilo do cartão",
+      "heading": "Formato do cartão",
       "automatic": "Automático",
       "cloze": "Cloze",
       "qa": "Pergunta e resposta",

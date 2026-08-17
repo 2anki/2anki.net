@@ -822,45 +822,36 @@ describe('CardOptionsForm card style picker', () => {
 
   it('renders the four card style options', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const styleGroup = await screen.findByRole('group', { name: 'Card style' });
-    expect(
-      within(styleGroup).getByRole('button', { name: 'Automatic' })
-    ).toBeInTheDocument();
-    expect(
-      within(styleGroup).getByRole('button', { name: 'Cloze' })
-    ).toBeInTheDocument();
-    expect(
-      within(styleGroup).getByRole('button', { name: 'Question and answer' })
-    ).toBeInTheDocument();
-    expect(
-      within(styleGroup).getByRole('button', { name: 'By heading' })
-    ).toBeInTheDocument();
+    const select = await screen.findByLabelText('Card format');
+    const labels = within(select)
+      .getAllByRole('option')
+      .map((option) => option.textContent);
+    expect(labels).toEqual([
+      'Automatic',
+      'Cloze',
+      'Question and answer',
+      'By heading',
+    ]);
   });
 
   it('defaults to Automatic', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const styleGroup = await screen.findByRole('group', { name: 'Card style' });
-    expect(
-      within(styleGroup).getByRole('button', { name: 'Automatic' })
-    ).toHaveAttribute('aria-pressed', 'true');
+    const select = await screen.findByLabelText('Card format');
+    expect(select).toHaveValue('');
   });
 
-  it('writes the picked style to localStorage and marks it active on change', async () => {
+  it('writes the picked style to localStorage on change', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const styleGroup = await screen.findByRole('group', { name: 'Card style' });
-    fireEvent.click(
-      within(styleGroup).getByRole('button', { name: 'By heading' })
-    );
+    const select = await screen.findByLabelText('Card format');
+    fireEvent.change(select, { target: { value: 'heading-driven' } });
     expect(localStorage.getItem('card-style')).toBe('heading-driven');
-    expect(
-      within(styleGroup).getByRole('button', { name: 'By heading' })
-    ).toHaveAttribute('aria-pressed', 'true');
+    expect(select).toHaveValue('heading-driven');
   });
 
   it('fires the card_style_selected event with the chosen style', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const styleGroup = await screen.findByRole('group', { name: 'Card style' });
-    fireEvent.click(within(styleGroup).getByRole('button', { name: 'Cloze' }));
+    const select = await screen.findByLabelText('Card format');
+    fireEvent.change(select, { target: { value: 'cloze' } });
     expect(mockTrack).toHaveBeenCalledWith('card_style_selected', {
       style: 'cloze',
     });

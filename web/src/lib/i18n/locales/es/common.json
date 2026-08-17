@@ -636,7 +636,7 @@
       "detailedDesc": "3–4 datos por tarjeta, ~320 caracteres por respuesta. Menos tarjetas y más completas: mejor para conceptos que quieres repasar juntos."
     },
     "cardStyle": {
-      "heading": "Estilo de tarjeta",
+      "heading": "Formato de tarjeta",
       "automatic": "Automático",
       "cloze": "Cloze",
       "qa": "Pregunta y respuesta",

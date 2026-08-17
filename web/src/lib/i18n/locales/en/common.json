@@ -636,7 +636,7 @@
       "detailedDesc": "3–4 facts per card, ~320 characters per answer. Fewer, fuller cards — good for concepts you want to review together."
     },
     "cardStyle": {
-      "heading": "Card style",
+      "heading": "Card format",
       "automatic": "Automatic",
       "cloze": "Cloze",
       "qa": "Question and answer",

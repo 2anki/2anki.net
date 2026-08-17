@@ -650,7 +650,7 @@
       "detailedDesc": "3–4 fakty na kartę, ~320 znaków na odpowiedź. Mniej kart, ale pełniejszych – dobre dla pojęć, które chcesz powtarzać razem."
     },
     "cardStyle": {
-      "heading": "Styl karty",
+      "heading": "Format karty",
       "automatic": "Automatyczny",
       "cloze": "Luka",
       "qa": "Pytanie i odpowiedź",
