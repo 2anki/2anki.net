@@ -1,6 +1,6 @@
 import Workspace from '../../../lib/parser/WorkSpace';
 import path from 'path';
-import { pathToFileURL } from 'url';
+import { pathToFileURL } from 'node:url';
 import fs from 'fs/promises';
 import { spawn } from 'child_process';
 import { getRandomUUID } from '../../../shared/helpers/getRandomUUID';
