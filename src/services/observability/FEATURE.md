@@ -31,6 +31,6 @@ Express controllers used to call `axios.get(...)` directly with user-controlled 
 
 - The DNS pin is what stops a TOCTOU SSRF (validate hostname → connect happens later → DNS answer changed). Don't "simplify" it back to axios's default lookup.
 - The IPv4-mapped IPv6 rejection (`::ffff:127.0.0.1`) was a real bypass — keep both the textual check and the resolved-IP check.
-- SonarCloud has historical taint findings on this file marked false-positive via the API (see `reference_sonarcloud_taint_fp` memory). If a new taint warning shows up here, audit before silencing.
+- SonarCloud has historical taint findings on this file marked false-positive via the API (dispositions live in the SonarCloud UI; the waiver context is documented beside the `tssecurity` FP notes in `sonar-project.properties` and `.claude/rules/sonar.md`). If a new taint warning shows up here, audit before silencing.
 - This file is the only file where `axios` may be imported.
 - `request_logs` and `outbound_call_logs` are insert-only and unbounded. `IObservabilityRepository.deleteOlderThan(days)` prunes rows past the retention window; `src/lib/observability/jobs/scheduleObservabilityCleanup.ts` runs it daily on startup (`OBSERVABILITY_RETENTION_DAYS = 30`). Both tables index `created_at`, so the prune uses the index. Adjust the window by editing the constant, not by adding an env flag.

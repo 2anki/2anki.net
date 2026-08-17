@@ -68,10 +68,10 @@ Mission: give people the simplest, fastest way to turn what they're studying int
 
 ### Growth (current priority)
 
-- 🔴 SEO landing pages: `/notion-to-anki`, `/quizlet-to-anki`, `/markdown-to-anki`, `/pdf-to-anki` (speced + designed, ready for engineer)
-- 🔴 Signup-origin tracking (`users.signup_origin` column) for measuring landing page effectiveness
-- 🔴 Prerendered static HTML for landing pages (Googlebot indexing)
-- 🔴 `sitemap.xml` and `robots.txt` updates
+- 🟢 SEO landing pages (`/notion-to-anki`, `/quizlet-to-anki`, `/markdown-to-anki`, `/pdf-to-anki`) — shipped
+- 🟢 Signup-origin tracking (`users.signup_origin`) — shipped
+- 🟢 Prerendered static HTML for landing pages — shipped (`web/scripts/prerenderLandingPages.ts`)
+- 🟢 `sitemap.xml` and `robots.txt` — shipped
 
 ## Phase 3 — Scale to 300K
 
@@ -83,12 +83,8 @@ Mission: give people the simplest, fastest way to turn what they're studying int
 
 ---
 
-## Current numbers (W19 — 2026-05-10)
+## Current numbers
 
-- ~19,400 registered users (6.5% of 300K target)
-- 53 signups/week (need ~700/week for 18-month pace)
-- $1,618 MRR, 799 active paying subscribers
-- Uploads up 174% WoW, distinct uploaders up 63% WoW
-- Biggest gap: top-of-funnel acquisition, not conversion
+Live numbers are NOT tracked here — the maintained business baseline is the dated block in CLAUDE.md (weekly-retro updates), and dollar figures read off the Stripe dashboard (MRR is deliberately untracked, decision 2026-07-19).
 
 See `Documentation/retros/` for weekly retro history.

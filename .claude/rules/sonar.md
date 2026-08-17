@@ -45,7 +45,7 @@ This drifted in practice: on 2026-07-30, `src/data_layer/public/**` (thousands o
 
 **When it's required:** any PR that adds or significantly modifies a function, component, controller, or use case. Skip only for pure dependency bumps, doc/changelog edits, test-only changes, or single-line typo fixes.
 
-**Why it's required:** `/check` (tsc + oxlint + Jest + Vitest) does not run SonarCloud's rule engine. Cognitive complexity, nesting depth, redundant type assertions, and accessibility smells are invisible to local tooling — they surface only after the push, after CI runs, after the agent has already declared the work done. Catching them locally costs 30–90 seconds; catching them post-push costs another rebase + force-push + CI cycle.
+**Why it's required:** `/check` (server tsc + arch, web typecheck/vitest/lint — NOT the server Jest suite, NOT format:check) does not run SonarCloud's rule engine. Cognitive complexity, nesting depth, redundant type assertions, and accessibility smells are invisible to local tooling — they surface only after the push, after CI runs, after the agent has already declared the work done. Catching them locally costs 30–90 seconds; catching them post-push costs another rebase + force-push + CI cycle.
 
 **Setup:** already done on the maintainer's box — `sonar-scanner` and `sonar` are on PATH and `sonar auth status` reports `[✓ Connected]` with the token in the OS Keychain. **Run `sonar auth status` before claiming you cannot scan locally**; the absence of a `SONAR_TOKEN` env var proves nothing, and asserting "no SONAR_TOKEN, Sonar not run" put a false statement into roughly seven PR bodies on 2026-07-29. Fresh machine: `brew install sonar-scanner`, then `sonar auth login`.
 
@@ -128,4 +128,7 @@ The existing FPs in `instrumentedAxios.ts` (S5144/S7044) are already marked in t
 | `test1` | `javascript:S2068` (hardcoded credential) | `web/tests/**` | Playwright fixtures use placeholder credentials |
 | `test2` | `javascript:S1481` (unused variable) | `web/tests/**` | Test helpers declare but don't always use locals |
 | `gen1/gen2` | all rules | `web/src/generated/**`, `web/src/schemas/**` | Generated code — don't edit |
+| `email1-4` | `Web:S1827`, `Web:S5257`, `Web:S6819`, `css:S7924` | `src/services/EmailService/templates/**` | Email-client HTML needs table layout and inline patterns web rules ban |
+| `jitter1/jitter2` | `typescript:S2245` | retry helpers | Backoff jitter is not a security context (security.md carve-out) — never swap for crypto |
+| `upload1` | `typescript:S5693` | `src/routes/**` | multer size limits set per-route via `limits.fileSize`; hotspots marked reviewed in the UI |
 | (exclusions) | all rules | `src/data_layer/public/**` | Kanel-generated from Postgres schema; rerun `pnpm kanel` instead |
