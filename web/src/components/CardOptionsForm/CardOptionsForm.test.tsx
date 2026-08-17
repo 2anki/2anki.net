@@ -18,6 +18,7 @@ const mockGetSettingsCardOptions = vi.fn();
 const mockUseUserLocals = vi.fn();
 const mockSaveSettings = vi.fn();
 const mockGetSettings = vi.fn();
+const mockTrack = vi.fn();
 
 vi.mock('../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: () => ({
@@ -40,6 +41,10 @@ vi.mock('../../lib/backend/templates', () => ({
   getUserTemplates: vi.fn().mockResolvedValue({ templates: [], hiddenIds: [] }),
   getOfficialNoteTypes: vi.fn().mockResolvedValue([]),
   getDefaultNoteTypes: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../../lib/analytics/track', () => ({
+  track: (...args: unknown[]) => mockTrack(...args),
 }));
 
 function setUserLocalsPaying(paying: boolean) {
@@ -796,5 +801,59 @@ describe('CardOptionsForm user instructions disclosure', () => {
       selector: 'summary',
     });
     expect(summary.closest('details')).not.toHaveAttribute('open');
+  });
+});
+
+describe('CardOptionsForm card style picker', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResetUserCardOptions.mockResolvedValue(undefined);
+    setUserLocalsPaying(false);
+    globalThis.localStorage.clear();
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'claude-ai-flashcards',
+        'AI flashcards',
+        'Write the cards with Claude.',
+        false
+      ),
+    ]);
+  });
+
+  it('renders the four card style options', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+    const select = await screen.findByLabelText('Card style');
+    const labels = within(select)
+      .getAllByRole('option')
+      .map((option) => option.textContent);
+    expect(labels).toEqual([
+      'Automatic',
+      'Cloze',
+      'Question and answer',
+      'By heading',
+    ]);
+  });
+
+  it('defaults to Automatic', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+    const select = await screen.findByLabelText('Card style');
+    expect(select).toHaveValue('');
+  });
+
+  it('writes the picked style to localStorage on change', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+    const select = await screen.findByLabelText('Card style');
+    fireEvent.change(select, { target: { value: 'heading-driven' } });
+    expect(localStorage.getItem('card-style')).toBe('heading-driven');
+    expect(select).toHaveValue('heading-driven');
+  });
+
+  it('fires the card_style_selected event with the chosen style', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+    const select = await screen.findByLabelText('Card style');
+    fireEvent.change(select, { target: { value: 'cloze' } });
+    expect(mockTrack).toHaveBeenCalledWith('card_style_selected', {
+      style: 'cloze',
+    });
   });
 });

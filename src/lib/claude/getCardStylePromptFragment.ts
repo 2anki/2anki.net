@@ -1,4 +1,4 @@
-const VALID_PICKER_STYLES = new Set(['cloze', 'qa']);
+const VALID_PICKER_STYLES = new Set(['cloze', 'qa', 'heading-driven']);
 
 export function validateCardStylePicker(raw: string | undefined): string {
   if (raw != null && VALID_PICKER_STYLES.has(raw)) {

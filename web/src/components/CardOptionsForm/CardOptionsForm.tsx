@@ -17,6 +17,7 @@ import { getLocalStorageBooleanValue } from '../../lib/data_layer/getLocalStorag
 import { getLocalStorageValue } from '../../lib/data_layer/getLocalStorageValue';
 import CardOption from '../../lib/data_layer/model/CardOption';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
+import { track } from '../../lib/analytics/track';
 import { SettingsPayload } from '../../lib/types';
 import sharedStyles from '../../styles/shared.module.css';
 import { ErrorHandlerType } from '../errors/helpers/getErrorMessage';
@@ -66,6 +67,7 @@ const TTS_MANUAL_SIDE_OPTIONS = [
   { labelKey: 'cardOptions.audio.sideBoth', value: 'both' },
 ] as const;
 const DEFAULT_CARD_SIZE = 'medium';
+const DEFAULT_CARD_STYLE = '';
 const DEFAULT_OVERLAPPING_CLOZE = 'off';
 const DEFAULT_CODE_THEME = 'github';
 const CODE_THEME_OPTIONS = [
@@ -81,6 +83,21 @@ function normalizeCardSize(raw: string | null | undefined): CardSizeValue {
   if (raw === 'short' || raw === 'medium' || raw === 'detailed') return raw;
   return DEFAULT_CARD_SIZE;
 }
+
+const CARD_STYLE_VALUES = ['', 'cloze', 'qa', 'heading-driven'] as const;
+type CardStyleValue = (typeof CARD_STYLE_VALUES)[number];
+
+function normalizeCardStyle(raw: string | null | undefined): CardStyleValue {
+  if (raw === 'cloze' || raw === 'qa' || raw === 'heading-driven') return raw;
+  return DEFAULT_CARD_STYLE;
+}
+
+const CARD_STYLE_OPTIONS = [
+  { labelKey: 'cardOptions.cardStyle.automatic', value: '' },
+  { labelKey: 'cardOptions.cardStyle.cloze', value: 'cloze' },
+  { labelKey: 'cardOptions.cardStyle.qa', value: 'qa' },
+  { labelKey: 'cardOptions.cardStyle.byHeading', value: 'heading-driven' },
+] as const;
 
 const MCQ_TTS_LANGUAGE_OPTIONS = [
   { label: "Don't speak", value: '' },
@@ -208,6 +225,7 @@ function computeSnapshot(values: {
   ttsManualLang: string;
   ttsManualSide: string;
   cardSize: CardSizeValue;
+  cardStyle: CardStyleValue;
   fieldMapping: FieldMapping | null;
 }) {
   const sortedCheckboxes = Object.keys(values.checkboxValues)
@@ -375,6 +393,11 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         getLocalStorageValue('card-size', DEFAULT_CARD_SIZE, settings)
       )
     );
+    const [cardStyle, setCardStyle] = useState<CardStyleValue>(() =>
+      normalizeCardStyle(
+        getLocalStorageValue('card-style', DEFAULT_CARD_STYLE, settings)
+      )
+    );
     const [fieldMapping, setFieldMapping] = useState<FieldMapping | null>(() =>
       getDefaultFieldMapping(
         getLocalStorageValue('template', DEFAULT_TEMPLATE, settings)
@@ -446,6 +469,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         localStorage.getItem('tts-manual-side') ?? DEFAULT_TTS_MANUAL_SIDE
       );
       setCardSize(normalizeCardSize(localStorage.getItem('card-size')));
+      setCardStyle(normalizeCardStyle(localStorage.getItem('card-style')));
       setFieldMapping(
         getDefaultFieldMapping(
           localStorage.getItem('template') ?? DEFAULT_TEMPLATE
@@ -487,6 +511,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         }
         if (Object.hasOwn(payload, 'card-size')) {
           setCardSize(normalizeCardSize(payload['card-size']));
+        }
+        if (Object.hasOwn(payload, 'card-style')) {
+          setCardStyle(normalizeCardStyle(payload['card-style']));
         }
         if (Object.hasOwn(payload, 'field-mapping')) {
           try {
@@ -548,6 +575,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           ttsManualLang,
           ttsManualSide,
           cardSize,
+          cardStyle,
           fieldMapping,
         }),
       [
@@ -573,6 +601,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         ttsManualLang,
         ttsManualSide,
         cardSize,
+        cardStyle,
         fieldMapping,
       ]
     );
@@ -637,6 +666,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       setTtsManualLang(DEFAULT_TTS_MANUAL_LANG);
       setTtsManualSide(DEFAULT_TTS_MANUAL_SIDE);
       setCardSize(DEFAULT_CARD_SIZE);
+      setCardStyle(DEFAULT_CARD_STYLE);
       setFieldMapping(getDefaultFieldMapping(DEFAULT_TEMPLATE));
       if (options) {
         const reset: Record<string, boolean> = {};
@@ -678,6 +708,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       payload['tts-manual-lang'] = ttsManualLang;
       payload['tts-manual-side'] = ttsManualSide;
       payload['card-size'] = cardSize;
+      payload['card-style'] = cardStyle;
       if (fieldMapping != null) {
         payload['field-mapping'] = JSON.stringify(fieldMapping);
       }
@@ -995,6 +1026,36 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                         </a>
                       </p>
                     )}
+                  {isPdfAiGroup && (
+                    <div className={fieldStyles.section} id="card-style">
+                      <label
+                        htmlFor="card-style-select"
+                        className={fieldStyles.sectionLabel}
+                      >
+                        {t('cardOptions.cardStyle.heading')}
+                      </label>
+                      <select
+                        id="card-style-select"
+                        className={fieldStyles.deckInput}
+                        value={cardStyle}
+                        onChange={(e) => {
+                          const value = normalizeCardStyle(e.target.value);
+                          setCardStyle(value);
+                          saveValueInLocalStorage('card-style', value, pageId);
+                          track('card_style_selected', { style: value });
+                        }}
+                      >
+                        {CARD_STYLE_OPTIONS.map(({ labelKey, value }) => (
+                          <option key={value || 'automatic'} value={value}>
+                            {t(labelKey)}
+                          </option>
+                        ))}
+                      </select>
+                      <p className={fieldStyles.sectionHint}>
+                        {t('cardOptions.cardStyle.hint')}
+                      </p>
+                    </div>
+                  )}
                   {isPdfAiGroup && userInstructionsDisclosure}
                 </div>
               </div>

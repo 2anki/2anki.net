@@ -635,6 +635,14 @@
       "mediumDesc": "1–2 Fakten pro Karte, ~160 Zeichen pro Antwort. Gute Voreinstellung für die meisten Notizen.",
       "detailedDesc": "3–4 Fakten pro Karte, ~320 Zeichen pro Antwort. Weniger, vollere Karten – gut für Konzepte, die du gemeinsam wiederholen willst."
     },
+    "cardStyle": {
+      "heading": "Kartenstil",
+      "automatic": "Automatisch",
+      "cloze": "Lückentext",
+      "qa": "Frage und Antwort",
+      "byHeading": "Nach Überschrift",
+      "hint": "Nach Überschrift teilt das Deck nach den Abschnitten deines Dokuments auf."
+    },
     "comprehensiveHint": "Bei langen Dokumenten kann so ein großer Stapel entstehen. Für weniger, vollere Karten stelle die Kartengröße auf Ausführlich.",
     "comprehensiveHintLink": "Zur Kartengröße",
     "mcq": {
@@ -696,7 +704,7 @@
       "introMiddle": " erscheinen unter ",
       "introStrong": "Meine Notiztypen",
       "introSuffix": ".",
-      "cardStyleLabel": "Kartenstil",
+      "cardStyleLabel": "Visueller Stil",
       "cardStyleHint": "Wähle den visuellen Stil, der bei der Notion → Anki-Konvertierung angewendet wird. Wähle 'Meine Notiztypen', um Vorlagen zu nutzen, die du im Notiztypen-Editor gespeichert hast.",
       "basicNoteType": "Basic-Notiztyp",
       "basicNoteHint": "Welchen deiner gespeicherten Notiztypen für Basic-Karten (Vorder-/Rückseite) in dieser Konvertierung verwendet werden soll.",

@@ -635,6 +635,14 @@
       "mediumDesc": "1–2 faits par carte, ~160 caractères par réponse. Bon choix par défaut pour la plupart des notes.",
       "detailedDesc": "3–4 faits par carte, ~320 caractères par réponse. Moins de cartes, mais plus complètes : idéal pour les concepts que tu veux réviser ensemble."
     },
+    "cardStyle": {
+      "heading": "Style de carte",
+      "automatic": "Automatique",
+      "cloze": "Texte à trous",
+      "qa": "Question et réponse",
+      "byHeading": "Par titre",
+      "hint": "Par titre divise le paquet selon les sections de votre document."
+    },
     "comprehensiveHint": "Sur un long document, cela peut produire un très grand paquet. Pour des cartes moins nombreuses mais plus complètes, règle la taille de la carte sur Détaillé.",
     "comprehensiveHintLink": "Aller à Taille de la carte",
     "mcq": {
@@ -696,7 +704,7 @@
       "introMiddle": " apparaissent sous ",
       "introStrong": "Mes types de notes",
       "introSuffix": ".",
-      "cardStyleLabel": "Style de carte",
+      "cardStyleLabel": "Style visuel",
       "cardStyleHint": "Choisis le style visuel appliqué lors de la conversion Notion → Anki. Choisis « Mes types de notes » pour utiliser les modèles que tu as enregistrés dans l'éditeur de types de notes.",
       "basicNoteType": "Type de note Basic",
       "basicNoteHint": "Lequel de tes types de notes enregistrés utiliser pour les cartes Basic (recto/verso) dans cette conversion.",

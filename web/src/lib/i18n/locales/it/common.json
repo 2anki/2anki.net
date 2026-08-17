@@ -635,6 +635,14 @@
       "mediumDesc": "1–2 fatti per carta, ~160 caratteri per risposta. Buon valore predefinito per la maggior parte degli appunti.",
       "detailedDesc": "3–4 fatti per carta, ~320 caratteri per risposta. Meno carte, più complete: meglio per concetti che vuoi ripassare insieme."
     },
+    "cardStyle": {
+      "heading": "Stile della carta",
+      "automatic": "Automatico",
+      "cloze": "Cloze",
+      "qa": "Domanda e risposta",
+      "byHeading": "Per intestazione",
+      "hint": "Per intestazione divide il mazzo in base alle sezioni del documento."
+    },
     "comprehensiveHint": "Con un documento lungo può nascere un mazzo enorme. Per carte meno numerose e più complete, imposta la dimensione della carta su Dettagliata.",
     "comprehensiveHintLink": "Vai a Dimensione della carta",
     "mcq": {
@@ -696,7 +704,7 @@
       "introMiddle": " compaiono sotto ",
       "introStrong": "I miei tipi di nota",
       "introSuffix": ".",
-      "cardStyleLabel": "Stile della carta",
+      "cardStyleLabel": "Stile visivo",
       "cardStyleHint": "Scegli lo stile visivo applicato durante la conversione Notion → Anki. Scegli \"I miei tipi di nota\" per usare i modelli salvati nell'editor dei tipi di nota.",
       "basicNoteType": "Tipo di nota Basic",
       "basicNoteHint": "Quale dei tuoi tipi di nota salvati usare per le carte Basic (fronte/retro) in questa conversione.",

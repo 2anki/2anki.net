@@ -1,4 +1,26 @@
-import { getCardStylePromptFragment } from './getCardStylePromptFragment';
+import {
+  getCardStylePromptFragment,
+  validateCardStylePicker,
+} from './getCardStylePromptFragment';
+
+describe('validateCardStylePicker', () => {
+  it('admits heading-driven from the card-style picker', () => {
+    expect(validateCardStylePicker('heading-driven')).toBe('heading-driven');
+  });
+
+  it('admits cloze and qa', () => {
+    expect(validateCardStylePicker('cloze')).toBe('cloze');
+    expect(validateCardStylePicker('qa')).toBe('qa');
+  });
+
+  it('coerces an unknown value to the empty default', () => {
+    expect(validateCardStylePicker('concise')).toBe('');
+  });
+
+  it('coerces undefined to the empty default', () => {
+    expect(validateCardStylePicker(undefined)).toBe('');
+  });
+});
 
 describe('getCardStylePromptFragment', () => {
   it('returns a heading-driven fragment for heading-driven style', () => {

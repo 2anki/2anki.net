@@ -16,6 +16,7 @@ export const CARD_OPTION_KEYS = [
   'overlapping-cloze',
   'code-theme',
   'card-size',
+  'card-style',
   'field-mapping',
   'mcq-enabled',
   'mcq-tts-question',
