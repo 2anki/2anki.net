@@ -635,6 +635,14 @@
       "mediumDesc": "1–2 feiten per kaart, ~160 tekens per antwoord. Goede standaard voor de meeste notities.",
       "detailedDesc": "3–4 feiten per kaart, ~320 tekens per antwoord. Minder, vollere kaarten: goed voor begrippen die je samen wilt leren."
     },
+    "cardStyle": {
+      "heading": "Kaartstijl",
+      "automatic": "Automatisch",
+      "cloze": "Cloze",
+      "qa": "Vraag en antwoord",
+      "byHeading": "Per kop",
+      "hint": "Per kop splitst het dek op basis van de secties in je document."
+    },
     "comprehensiveHint": "Bij een lang document kan dit een grote stapel opleveren. Voor minder, vollere kaarten zet je de kaartgrootte op Uitgebreid.",
     "comprehensiveHintLink": "Naar Kaartgrootte",
     "mcq": {

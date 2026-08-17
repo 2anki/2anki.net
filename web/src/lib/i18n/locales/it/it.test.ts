@@ -83,6 +83,7 @@ const allowedIdentical = new Set<string>([
   'common:cardOptions.mcq.introSuffix',
   'common:cardOptions.mcq.extra',
   'common:cardOptions.overlappingCloze.off',
+  'common:cardOptions.cardStyle.cloze',
   'common:cardOptions.audio.heading',
   'common:cardOptions.templates.introSuffix',
   'marketing:about.philosophySuffix',

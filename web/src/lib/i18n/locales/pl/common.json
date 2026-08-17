@@ -649,6 +649,14 @@
       "mediumDesc": "1–2 fakty na kartę, ~160 znaków na odpowiedź. Dobre domyślne ustawienie dla większości notatek.",
       "detailedDesc": "3–4 fakty na kartę, ~320 znaków na odpowiedź. Mniej kart, ale pełniejszych – dobre dla pojęć, które chcesz powtarzać razem."
     },
+    "cardStyle": {
+      "heading": "Styl karty",
+      "automatic": "Automatyczny",
+      "cloze": "Luka",
+      "qa": "Pytanie i odpowiedź",
+      "byHeading": "Według nagłówka",
+      "hint": "Według nagłówka dzieli talię na podstawie sekcji dokumentu."
+    },
     "comprehensiveHint": "Przy długim dokumencie może powstać bardzo duża talia. Aby mieć mniej, ale pełniejszych kart, ustaw rozmiar karty na Szczegółowy.",
     "comprehensiveHintLink": "Przejdź do rozmiaru karty",
     "mcq": {

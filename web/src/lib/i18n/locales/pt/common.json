@@ -635,6 +635,14 @@
       "mediumDesc": "1–2 fatos por cartão, ~160 caracteres por resposta. Bom padrão para a maioria das anotações.",
       "detailedDesc": "3–4 fatos por cartão, ~320 caracteres por resposta. Menos cartões e mais completos: melhor para conceitos que você quer revisar juntos."
     },
+    "cardStyle": {
+      "heading": "Estilo do cartão",
+      "automatic": "Automático",
+      "cloze": "Cloze",
+      "qa": "Pergunta e resposta",
+      "byHeading": "Por título",
+      "hint": "Por título divide o baralho de acordo com as seções do seu documento."
+    },
     "comprehensiveHint": "Com um documento longo isso pode gerar um baralho enorme. Para menos cartões e mais completos, defina o tamanho do cartão como Detalhado.",
     "comprehensiveHintLink": "Ir para Tamanho do cartão",
     "mcq": {

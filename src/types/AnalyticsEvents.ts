@@ -28,6 +28,7 @@ export const KNOWN_EVENTS = new Set([
   'sidebar_auto_minimize_fired',
   'sidebar_auto_minimize_reverted',
   'card_size_selected',
+  'card_style_selected',
   'notion_column_mapping_submitted',
   'database_preview_viewed',
   'convert_clicked_from_preview',

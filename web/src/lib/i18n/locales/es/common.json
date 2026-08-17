@@ -635,6 +635,14 @@
       "mediumDesc": "1–2 datos por tarjeta, ~160 caracteres por respuesta. Buena opción por defecto para la mayoría de notas.",
       "detailedDesc": "3–4 datos por tarjeta, ~320 caracteres por respuesta. Menos tarjetas y más completas: mejor para conceptos que quieres repasar juntos."
     },
+    "cardStyle": {
+      "heading": "Estilo de tarjeta",
+      "automatic": "Automático",
+      "cloze": "Cloze",
+      "qa": "Pregunta y respuesta",
+      "byHeading": "Por encabezado",
+      "hint": "Por encabezado divide el mazo según las secciones de tu documento."
+    },
     "comprehensiveHint": "Con un documento largo esto puede crear un mazo enorme. Para menos tarjetas y más completas, pon el tamaño de la tarjeta en Detallado.",
     "comprehensiveHintLink": "Ir a Tamaño de la tarjeta",
     "mcq": {

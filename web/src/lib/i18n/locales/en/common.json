@@ -635,6 +635,14 @@
       "mediumDesc": "1–2 facts per card, ~160 characters per answer. Good default for most notes.",
       "detailedDesc": "3–4 facts per card, ~320 characters per answer. Fewer, fuller cards — good for concepts you want to review together."
     },
+    "cardStyle": {
+      "heading": "Card style",
+      "automatic": "Automatic",
+      "cloze": "Cloze",
+      "qa": "Question and answer",
+      "byHeading": "By heading",
+      "hint": "By heading splits the deck by your document’s sections."
+    },
     "comprehensiveHint": "On a long document this can make a large deck. For fewer, fuller cards, set Card size to Detailed.",
     "comprehensiveHintLink": "Go to Card size",
     "mcq": {
