@@ -49,7 +49,7 @@
 .deckInput:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 
 .detailsSummary {
@@ -327,7 +327,7 @@
   left: 2px;
   width: 1.125rem;
   height: 1.125rem;
-  background: #fff;
+  background: var(--color-bg-primary);
   border-radius: 50%;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   transition: transform var(--transition-fast, 150ms);
@@ -339,4 +339,17 @@
 
 .toggleSwitch input:checked + .toggleSwitchTrack::after {
   transform: translateX(1.125rem);
+}
+
+.fieldsetReset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.legendReset {
+  display: block;
+  width: 100%;
+  padding: 0;
 }

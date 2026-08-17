@@ -86,7 +86,7 @@ export function UnlimitedCard({
         {t('pricing.unlimited.mostPopular')}
       </span>
       <div className={styles.cardHeader}>
-        <p className={styles.cardTitle}>Unlimited</p>
+        <h3 className={styles.cardTitle}>Unlimited</h3>
         <span className={styles.cardPriceLine}>
           <span className={styles.cardPrice}>{heroPrice}</span>
           <span className={styles.cardPriceSuffix}>

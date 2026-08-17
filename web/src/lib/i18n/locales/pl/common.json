@@ -104,7 +104,8 @@
       "showAll_one": "▾ Pokaż {{count}} film",
       "showAll_few": "▾ Pokaż wszystkie {{count}} filmy",
       "showAll_many": "▾ Pokaż wszystkie {{count}} filmów",
-      "showAll_other": "▾ Pokaż wszystkie {{count}} filmu"
+      "showAll_other": "▾ Pokaż wszystkie {{count}} filmu",
+      "playVideo": "Odtwórz: {{title}}"
     }
   },
   "upload": {
@@ -157,7 +158,21 @@
       "packingFolder": "Pakowanie folderu do pliku zip.",
       "folderTooBig": "Ten folder przekracza 500 MB — spakuj go samodzielnie i prześlij plik zip.",
       "folderEmpty": "Ten folder jest pusty — upuść folder z wyeksportowanymi plikami.",
-      "folderFailed": "Nie udało się spakować tego folderu — spakuj go samodzielnie i prześlij zip albo napisz na support@2anki.net."
+      "folderFailed": "Nie udało się spakować tego folderu — spakuj go samodzielnie i prześlij zip albo napisz na support@2anki.net.",
+      "liveConverting": "Konwertowanie pliku.",
+      "liveDeckReady": "Twoja talia jest gotowa.",
+      "liveDeckReadyCount_one": "Twoja talia jest gotowa — {{count}} karta.",
+      "liveDeckReadyCount_few": "Twoja talia jest gotowa — {{count}} karty.",
+      "liveDeckReadyCount_many": "Twoja talia jest gotowa — {{count}} kart.",
+      "liveDeckReadyCount_other": "Twoja talia jest gotowa — {{count}} karty.",
+      "liveEmptyDeck": "Konwersja zakończona, ale nie znaleziono kart.",
+      "liveImageOnly": "To wygląda na obrazy. Wypróbuj Zdjęcie na talię, aby zmienić je w karty.",
+      "liveError": "Konwersja nie powiodła się.",
+      "liveLimitReached": "Osiągnąłeś miesięczny limit.",
+      "liveLockedPdf": "Ten PDF jest chroniony hasłem. Wprowadź hasło, aby kontynuować.",
+      "pdfPasswordAria": "Hasło do PDF",
+      "changeSourceAria": "Zmień źródło przesyłania",
+      "uploadFileAria": "Prześlij plik"
     },
     "page": {
       "title": "Przekształć swoje notatki",

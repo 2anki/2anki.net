@@ -102,7 +102,8 @@
       "cardTitle": "Envie seu vídeo",
       "showFewer": "▴ Mostrar menos",
       "showAll_one": "▾ Mostrar {{count}} vídeo",
-      "showAll_other": "▾ Mostrar todos os {{count}} vídeos"
+      "showAll_other": "▾ Mostrar todos os {{count}} vídeos",
+      "playVideo": "Reproduzir: {{title}}"
     }
   },
   "upload": {
@@ -153,7 +154,19 @@
       "packingFolder": "Empacotando sua pasta em um zip.",
       "folderTooBig": "Esta pasta passa de 500 MB — compacte você mesmo e envie o arquivo zip.",
       "folderEmpty": "Esta pasta está vazia — solte a pasta que contém seus arquivos exportados.",
-      "folderFailed": "Não foi possível empacotar esta pasta — compacte você mesmo e envie o zip, ou escreva para support@2anki.net."
+      "folderFailed": "Não foi possível empacotar esta pasta — compacte você mesmo e envie o zip, ou escreva para support@2anki.net.",
+      "liveConverting": "Convertendo seu arquivo.",
+      "liveDeckReady": "Seu baralho está pronto.",
+      "liveDeckReadyCount_one": "Seu baralho está pronto — {{count}} cartão.",
+      "liveDeckReadyCount_other": "Seu baralho está pronto — {{count}} cartões.",
+      "liveEmptyDeck": "Conversão concluída, mas nenhum cartão foi encontrado.",
+      "liveImageOnly": "Isto parece ser imagens. Use Foto para baralho para transformá-las em cartões.",
+      "liveError": "A conversão falhou.",
+      "liveLimitReached": "Você atingiu seu limite mensal.",
+      "liveLockedPdf": "Este PDF está protegido por senha. Digite a senha para continuar.",
+      "pdfPasswordAria": "Senha do PDF",
+      "changeSourceAria": "Trocar fonte de upload",
+      "uploadFileAria": "Enviar arquivo"
     },
     "page": {
       "title": "Converta suas anotações",

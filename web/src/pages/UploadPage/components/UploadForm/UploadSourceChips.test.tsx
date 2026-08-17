@@ -1,4 +1,4 @@
-import { render, act } from '@testing-library/react';
+import { render, act, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { UploadSourceChips, type UploadSource } from './UploadSourceChips';
 
@@ -28,9 +28,10 @@ describe('UploadSourceChips', () => {
         googleDriveAvailable={false}
       />
     );
-    const dropboxBtn = container.querySelector('button[aria-label="Dropbox"]');
-    expect(dropboxBtn).not.toBeNull();
-    expect(dropboxBtn?.hasAttribute('disabled')).toBe(false);
+    const dropboxBtn = within(container).getByRole('button', {
+      name: 'Dropbox',
+    });
+    expect(dropboxBtn.hasAttribute('disabled')).toBe(false);
   });
 
   it('renders Dropbox chip disabled when not available', () => {
@@ -42,9 +43,10 @@ describe('UploadSourceChips', () => {
         googleDriveAvailable={false}
       />
     );
-    const dropboxBtn = container.querySelector('button[aria-label="Dropbox"]');
-    expect(dropboxBtn).not.toBeNull();
-    expect(dropboxBtn?.hasAttribute('disabled')).toBe(true);
+    const dropboxBtn = within(container).getByRole('button', {
+      name: 'Dropbox',
+    });
+    expect(dropboxBtn.hasAttribute('disabled')).toBe(true);
   });
 
   it('renders the Google Drive chip when available', () => {
@@ -56,11 +58,10 @@ describe('UploadSourceChips', () => {
         googleDriveAvailable={true}
       />
     );
-    const driveBtn = container.querySelector(
-      'button[aria-label="Google Drive"]'
-    );
-    expect(driveBtn).not.toBeNull();
-    expect(driveBtn?.hasAttribute('disabled')).toBe(false);
+    const driveBtn = within(container).getByRole('button', {
+      name: 'Google Drive',
+    });
+    expect(driveBtn.hasAttribute('disabled')).toBe(false);
   });
 
   it('renders Google Drive chip disabled when not available', () => {
@@ -72,11 +73,10 @@ describe('UploadSourceChips', () => {
         googleDriveAvailable={false}
       />
     );
-    const driveBtn = container.querySelector(
-      'button[aria-label="Google Drive"]'
-    );
-    expect(driveBtn).not.toBeNull();
-    expect(driveBtn?.hasAttribute('disabled')).toBe(true);
+    const driveBtn = within(container).getByRole('button', {
+      name: 'Google Drive',
+    });
+    expect(driveBtn.hasAttribute('disabled')).toBe(true);
   });
 
   it('calls onChange with "dropbox" when the Dropbox chip is clicked and local is active', async () => {
@@ -89,9 +89,9 @@ describe('UploadSourceChips', () => {
         googleDriveAvailable={false}
       />
     );
-    const dropboxBtn = container.querySelector(
-      'button[aria-label="Dropbox"]'
-    ) as HTMLButtonElement;
+    const dropboxBtn = within(container).getByRole('button', {
+      name: 'Dropbox',
+    });
     await act(async () => {
       dropboxBtn.click();
     });
@@ -108,9 +108,9 @@ describe('UploadSourceChips', () => {
         googleDriveAvailable={false}
       />
     );
-    const dropboxBtn = container.querySelector(
-      'button[aria-label="Dropbox"]'
-    ) as HTMLButtonElement;
+    const dropboxBtn = within(container).getByRole('button', {
+      name: 'Dropbox',
+    });
     await act(async () => {
       dropboxBtn.click();
     });
@@ -127,9 +127,9 @@ describe('UploadSourceChips', () => {
         googleDriveAvailable={true}
       />
     );
-    const driveBtn = container.querySelector(
-      'button[aria-label="Google Drive"]'
-    ) as HTMLButtonElement;
+    const driveBtn = within(container).getByRole('button', {
+      name: 'Google Drive',
+    });
     await act(async () => {
       driveBtn.click();
     });
@@ -145,8 +145,10 @@ describe('UploadSourceChips', () => {
         googleDriveAvailable={false}
       />
     );
-    const dropboxBtn = container.querySelector('button[aria-label="Dropbox"]');
-    expect(dropboxBtn?.getAttribute('aria-pressed')).toBe('true');
+    const dropboxBtn = within(container).getByRole('button', {
+      name: 'Dropbox',
+    });
+    expect(dropboxBtn.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('does not render null class names', () => {

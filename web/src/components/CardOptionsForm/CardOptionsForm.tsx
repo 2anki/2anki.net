@@ -1,4 +1,3 @@
-/* eslint-disable jsx-a11y/label-has-associated-control */
 import React, {
   forwardRef,
   SyntheticEvent,
@@ -848,13 +847,17 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
             />
           </div>
 
-          <div className={fieldStyles.section}>
-            <div className={fieldStyles.labelRow}>
-              <label className={fieldStyles.sectionLabel}>
-                {t('cardOptions.deck.iconLabel')}
-              </label>
-              <FieldHint text={t('cardOptions.deck.iconHint')} />
-            </div>
+          <fieldset
+            className={`${fieldStyles.section} ${fieldStyles.fieldsetReset}`}
+          >
+            <legend className={fieldStyles.legendReset}>
+              <span className={fieldStyles.labelRow}>
+                <span className={fieldStyles.sectionLabel}>
+                  {t('cardOptions.deck.iconLabel')}
+                </span>
+                <FieldHint text={t('cardOptions.deck.iconHint')} />
+              </span>
+            </legend>
             <div className={fieldStyles.segmented}>
               {(
                 [
@@ -885,15 +888,19 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
-          <div className={fieldStyles.section}>
-            <div className={fieldStyles.labelRow}>
-              <label className={fieldStyles.sectionLabel}>
-                {t('cardOptions.deck.toggleModeLabel')}
-              </label>
-              <FieldHint text={t('cardOptions.deck.toggleModeHint')} />
-            </div>
+          <fieldset
+            className={`${fieldStyles.section} ${fieldStyles.fieldsetReset}`}
+          >
+            <legend className={fieldStyles.legendReset}>
+              <span className={fieldStyles.labelRow}>
+                <span className={fieldStyles.sectionLabel}>
+                  {t('cardOptions.deck.toggleModeLabel')}
+                </span>
+                <FieldHint text={t('cardOptions.deck.toggleModeHint')} />
+              </span>
+            </legend>
             <div className={fieldStyles.segmented}>
               {(
                 [
@@ -920,7 +927,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
         </div>
 
         {generalOptions.length > 0 && (

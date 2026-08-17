@@ -247,6 +247,24 @@ describe('MindmapEditor', () => {
     expect(await screen.findByText(/card type/i)).toBeDefined();
   });
 
+  it('the export modal has dialog semantics and Escape closes it', async () => {
+    setInnerWidth(375);
+    const { MindmapEditor } = await import('./MindmapEditor');
+    render(createElement(MindmapEditor), { wrapper });
+
+    const bar = await screen.findByTestId('editor-mobile-bar');
+    fireEvent.click(
+      within(bar).getByRole('button', { name: /download deck/i })
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-labelledby')).toBe('mindmap-export-title');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
   it('paste image event triggers upload and node creation', async () => {
     const imageResult = {
       url: '/api/mindmaps/images/42/map-1/abc.png',

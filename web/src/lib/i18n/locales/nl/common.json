@@ -102,7 +102,8 @@
       "cardTitle": "Dien je video in",
       "showFewer": "▴ Minder tonen",
       "showAll_one": "▾ {{count}} video tonen",
-      "showAll_other": "▾ Alle {{count}} video's tonen"
+      "showAll_other": "▾ Alle {{count}} video's tonen",
+      "playVideo": "Afspelen: {{title}}"
     }
   },
   "upload": {
@@ -153,7 +154,19 @@
       "packingFolder": "Je map wordt ingepakt als zip.",
       "folderTooBig": "Deze map is groter dan 500 MB — zip hem zelf en upload het zip-bestand.",
       "folderEmpty": "Deze map is leeg — sleep de map met je exportbestanden hierheen.",
-      "folderFailed": "Deze map kon niet worden ingepakt — zip hem zelf en upload de zip, of mail naar support@2anki.net."
+      "folderFailed": "Deze map kon niet worden ingepakt — zip hem zelf en upload de zip, of mail naar support@2anki.net.",
+      "liveConverting": "Je bestand wordt geconverteerd.",
+      "liveDeckReady": "Je deck is klaar.",
+      "liveDeckReadyCount_one": "Je deck is klaar — {{count}} kaart.",
+      "liveDeckReadyCount_other": "Je deck is klaar — {{count}} kaarten.",
+      "liveEmptyDeck": "Conversie voltooid, maar er zijn geen kaarten gevonden.",
+      "liveImageOnly": "Dit lijken afbeeldingen. Probeer Foto naar deck om er kaarten van te maken.",
+      "liveError": "Conversie mislukt.",
+      "liveLimitReached": "Je hebt je maandlimiet bereikt.",
+      "liveLockedPdf": "Deze PDF is met een wachtwoord beveiligd. Voer het wachtwoord in om door te gaan.",
+      "pdfPasswordAria": "PDF-wachtwoord",
+      "changeSourceAria": "Uploadbron wijzigen",
+      "uploadFileAria": "Bestand uploaden"
     },
     "page": {
       "title": "Zet je notities om",

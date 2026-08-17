@@ -104,7 +104,8 @@
       "showAll_one": "▾ Показать {{count}} видео",
       "showAll_few": "▾ Показать все {{count}} видео",
       "showAll_many": "▾ Показать все {{count}} видео",
-      "showAll_other": "▾ Показать все {{count}} видео"
+      "showAll_other": "▾ Показать все {{count}} видео",
+      "playVideo": "Воспроизвести: {{title}}"
     }
   },
   "upload": {
@@ -157,7 +158,21 @@
       "packingFolder": "Упаковываем папку в zip.",
       "folderTooBig": "Эта папка больше 500 МБ — заархивируй её и загрузи zip-файл.",
       "folderEmpty": "Эта папка пуста — перетащи папку с экспортированными файлами.",
-      "folderFailed": "Не удалось упаковать эту папку — заархивируй её и загрузи zip или напиши на support@2anki.net."
+      "folderFailed": "Не удалось упаковать эту папку — заархивируй её и загрузи zip или напиши на support@2anki.net.",
+      "liveConverting": "Конвертируем твой файл.",
+      "liveDeckReady": "Твоя колода готова.",
+      "liveDeckReadyCount_one": "Твоя колода готова — {{count}} карта.",
+      "liveDeckReadyCount_few": "Твоя колода готова — {{count}} карты.",
+      "liveDeckReadyCount_many": "Твоя колода готова — {{count}} карт.",
+      "liveDeckReadyCount_other": "Твоя колода готова — {{count}} карты.",
+      "liveEmptyDeck": "Конвертация завершена, но карты не найдены.",
+      "liveImageOnly": "Это похоже на изображения. Попробуй «Фото в колоду», чтобы превратить их в карты.",
+      "liveError": "Конвертация не удалась.",
+      "liveLimitReached": "Ты достиг месячного лимита.",
+      "liveLockedPdf": "Этот PDF защищён паролем. Введи пароль, чтобы продолжить.",
+      "pdfPasswordAria": "Пароль PDF",
+      "changeSourceAria": "Сменить источник загрузки",
+      "uploadFileAria": "Загрузить файл"
     },
     "page": {
       "title": "Преобразуй свои заметки",

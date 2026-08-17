@@ -104,6 +104,11 @@
   min-width: 0;
 }
 
+.sidebarTitle:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .renameTrigger {
   background: transparent;
   border: none;

@@ -102,7 +102,8 @@
       "cardTitle": "Envía tu vídeo",
       "showFewer": "▴ Mostrar menos",
       "showAll_one": "▾ Mostrar {{count}} vídeo",
-      "showAll_other": "▾ Mostrar los {{count}} vídeos"
+      "showAll_other": "▾ Mostrar los {{count}} vídeos",
+      "playVideo": "Reproducir: {{title}}"
     }
   },
   "upload": {
@@ -153,7 +154,19 @@
       "packingFolder": "Empaquetando tu carpeta en un zip.",
       "folderTooBig": "Esta carpeta supera los 500 MB — comprímela tú mismo y sube el archivo zip.",
       "folderEmpty": "Esta carpeta está vacía — suelta la carpeta que contiene tus archivos exportados.",
-      "folderFailed": "No se pudo empaquetar esta carpeta — comprímela tú mismo y sube el zip, o escribe a support@2anki.net."
+      "folderFailed": "No se pudo empaquetar esta carpeta — comprímela tú mismo y sube el zip, o escribe a support@2anki.net.",
+      "liveConverting": "Convirtiendo tu archivo.",
+      "liveDeckReady": "Tu mazo está listo.",
+      "liveDeckReadyCount_one": "Tu mazo está listo — {{count}} tarjeta.",
+      "liveDeckReadyCount_other": "Tu mazo está listo — {{count}} tarjetas.",
+      "liveEmptyDeck": "La conversión terminó, pero no se encontraron tarjetas.",
+      "liveImageOnly": "Esto parecen imágenes. Prueba Foto a mazo para convertirlas en tarjetas.",
+      "liveError": "La conversión falló.",
+      "liveLimitReached": "Has alcanzado tu límite mensual.",
+      "liveLockedPdf": "Este PDF está protegido con contraseña. Introduce la contraseña para continuar.",
+      "pdfPasswordAria": "Contraseña del PDF",
+      "changeSourceAria": "Cambiar origen de subida",
+      "uploadFileAria": "Subir archivo"
     },
     "page": {
       "title": "Convierte tus notas",

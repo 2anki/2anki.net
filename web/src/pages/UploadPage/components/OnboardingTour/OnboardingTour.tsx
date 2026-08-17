@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { track } from '../../../../lib/analytics/track';
 import { markOnboarded } from '../../../../lib/backend/markOnboarded';
+import { useDialogFocus } from '../../../../lib/hooks/useDialogFocus';
 import styles from './OnboardingTour.module.css';
 
 const STEP_KEYS: ReadonlyArray<{ title: string; hint: string }> = [
@@ -50,9 +51,11 @@ export function OnboardingTour({
   const [step, setStep] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const shownTracked = useRef(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const visible =
     !dismissed && shouldShowTour(createdAt, onboardedAt, migrationDate);
+  const isLast = step === STEP_KEYS.length - 1;
 
   useEffect(() => {
     if (visible && !shownTracked.current) {
@@ -61,20 +64,22 @@ export function OnboardingTour({
     }
   }, [visible]);
 
+  const handleClose = useCallback(() => {
+    track(isLast ? 'onboarding_completed' : 'onboarding_skipped');
+    setDismissed(true);
+    void markOnboarded();
+  }, [isLast]);
+
+  useDialogFocus(dialogRef, handleClose, visible);
+
   if (!visible) return null;
 
   const current = STEP_KEYS[step];
   const isFirst = step === 0;
-  const isLast = step === STEP_KEYS.length - 1;
-
-  const handleSkip = () => {
-    track(isLast ? 'onboarding_completed' : 'onboarding_skipped');
-    setDismissed(true);
-    void markOnboarded();
-  };
 
   return (
     <div
+      ref={dialogRef}
       className={styles.tour}
       role="dialog"
       aria-label={t('upload.onboarding.aria')}
@@ -110,7 +115,7 @@ export function OnboardingTour({
             {t('upload.onboarding.next')}
           </button>
         )}
-        <button type="button" className={styles.btnSkip} onClick={handleSkip}>
+        <button type="button" className={styles.btnSkip} onClick={handleClose}>
           {t('upload.onboarding.skip')}
         </button>
       </div>

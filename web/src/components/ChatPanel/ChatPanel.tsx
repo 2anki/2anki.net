@@ -1199,9 +1199,9 @@ export default function ChatPanel({
       <div className={styles.container} data-hj-suppress>
         {showEmptyState ? (
           <div className={styles.emptyState}>
-            <h1 className={styles.emptyHeading}>
+            <h2 className={styles.emptyHeading}>
               {cameFromUpload ? t('heading.withFile') : t('heading.studying')}
-            </h1>
+            </h2>
             <div className={styles.emptyComposer}>
               <div className={styles.composerTemplateRow}>
                 <TemplateSelector

@@ -4,6 +4,7 @@ import {
   waitFor,
   fireEvent,
   screen,
+  within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest';
@@ -89,8 +90,9 @@ describe('UploadForm', () => {
       const { container } = renderUploadForm(
         <UploadForm setErrorMessage={vi.fn()} />
       );
-      const chip = container.querySelector('button[aria-label="Google Drive"]');
-      expect(chip).not.toBeNull();
+      const chip = within(container).getByRole('button', {
+        name: 'Google Drive',
+      });
       expect(chip?.hasAttribute('disabled')).toBe(false);
     } finally {
       process.env.REACT_APP_GOOGLE_CLIENT_ID = previousClient;
@@ -128,8 +130,9 @@ describe('UploadForm', () => {
       const { container } = renderUploadForm(
         <UploadForm setErrorMessage={vi.fn()} />
       );
-      const chip = container.querySelector('button[aria-label="Google Drive"]');
-      expect(chip).not.toBeNull();
+      const chip = within(container).getByRole('button', {
+        name: 'Google Drive',
+      });
       expect(chip?.hasAttribute('disabled')).toBe(true);
     } finally {
       process.env.REACT_APP_GOOGLE_CLIENT_ID = previousClient;
@@ -211,7 +214,7 @@ describe('UploadForm Google Drive picker interaction', () => {
     );
 
     fireEvent.click(
-      container.querySelector('button[aria-label="Google Drive"]')!
+      within(container).getByRole('button', { name: 'Google Drive' })
     );
     const driveButton = await screen.findByRole('button', {
       name: 'Choose from Google Drive',
@@ -584,9 +587,9 @@ describe('UploadForm analytics events', () => {
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} />
     );
-    const dropboxChip = container.querySelector(
-      'button[aria-label="Dropbox"]'
-    ) as HTMLButtonElement;
+    const dropboxChip = within(container).getByRole('button', {
+      name: 'Dropbox',
+    });
     expect(dropboxChip).toBeTruthy();
     await act(async () => {
       dropboxChip.click();
@@ -605,9 +608,9 @@ describe('UploadForm analytics events', () => {
       <UploadForm setErrorMessage={vi.fn()} />
     );
     const before = container.querySelector('input#pakker');
-    const dropboxChip = container.querySelector(
-      'button[aria-label="Dropbox"]'
-    ) as HTMLButtonElement;
+    const dropboxChip = within(container).getByRole('button', {
+      name: 'Dropbox',
+    });
     await act(async () => {
       dropboxChip.click();
     });
@@ -625,9 +628,9 @@ describe('UploadForm analytics events', () => {
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} />
     );
-    const dropboxChip = container.querySelector(
-      'button[aria-label="Dropbox"]'
-    ) as HTMLButtonElement;
+    const dropboxChip = within(container).getByRole('button', {
+      name: 'Dropbox',
+    });
     await act(async () => {
       dropboxChip.click();
     });
@@ -644,9 +647,9 @@ describe('UploadForm analytics events', () => {
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} />
     );
-    const dropboxChip = container.querySelector(
-      'button[aria-label="Dropbox"]'
-    ) as HTMLButtonElement;
+    const dropboxChip = within(container).getByRole('button', {
+      name: 'Dropbox',
+    });
     await act(async () => {
       dropboxChip.click();
     });
@@ -1537,7 +1540,7 @@ describe('UploadForm multi-deck batch', () => {
       );
     });
 
-    await screen.findByText('2 decks ready');
+    await screen.findAllByText('2 decks ready');
     expect(locationStub.href).toBe('');
 
     const biology = screen.getByLabelText(
