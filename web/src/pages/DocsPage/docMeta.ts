@@ -55,7 +55,7 @@ function firstParagraph(body: string): string {
 
 function stripMarkdown(text: string): string {
   return text
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/!?\[([^\]]{0,500})\]\([^)]{0,1000}\)/g, '$1')
     .replace(/[*_`]/g, '')
     .replace(/\s+/g, ' ')
     .trim();

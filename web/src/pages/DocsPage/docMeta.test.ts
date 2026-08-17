@@ -46,8 +46,8 @@ describe('buildDocDescription', () => {
   });
 
   it('returns undefined when there is no usable prose', () => {
-    expect(buildDocDescription({}, '# Only a heading\n\n- a list item')).toBe(
-      undefined
-    );
+    expect(
+      buildDocDescription({}, '# Only a heading\n\n- a list item')
+    ).toBeUndefined();
   });
 });
