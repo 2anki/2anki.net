@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-17-powerpoint-conversion-reliability",
+  "date": "2026-08-17",
+  "type": "fix",
+  "title": "PowerPoint uploads no longer fail when several convert at the same time"
+}

@@ -18,7 +18,7 @@ const mockedSpawn = childProcess.spawn as jest.MockedFunction<
   typeof childProcess.spawn
 >;
 
-function makeFailingProcess(
+function makeProcess(
   stderr: string,
   exitCode: number
 ): childProcess.ChildProcess {
@@ -31,11 +31,19 @@ function makeFailingProcess(
     stderrEmitter;
 
   setImmediate(() => {
-    stderrEmitter.emit('data', Buffer.from(stderr));
+    if (stderr) {
+      stderrEmitter.emit('data', Buffer.from(stderr));
+    }
     proc.emit('close', exitCode);
   });
 
   return proc;
+}
+
+const makeFailingProcess = makeProcess;
+
+function spawnedArgs(callIndex: number): string[] {
+  return mockedSpawn.mock.calls[callIndex][1] as string[];
 }
 
 describe('convertPPTToPDF', () => {
@@ -77,5 +85,56 @@ describe('convertPPTToPDF', () => {
     expect(logged).toContain('251');
 
     errorSpy.mockRestore();
+  });
+
+  it('converts headlessly with an isolated profile per invocation', async () => {
+    mockedSpawn.mockReturnValue(makeProcess('', 0));
+
+    const result = await convertPPTToPDF(
+      'slides.pptx',
+      Buffer.from('fake'),
+      workspace
+    );
+
+    expect(result).toEqual(Buffer.from('pdf-bytes'));
+    const [bin] = mockedSpawn.mock.calls[0];
+    expect(String(bin)).toContain('soffice');
+    const args = spawnedArgs(0);
+    expect(args).toEqual(
+      expect.arrayContaining(['--headless', '--convert-to', 'pdf', '--outdir'])
+    );
+    expect(args.some((a) => a.startsWith('-env:UserInstallation=file:'))).toBe(
+      true
+    );
+  });
+
+  it('uses a different profile directory on every invocation', async () => {
+    mockedSpawn.mockReturnValueOnce(makeProcess('', 0));
+    mockedSpawn.mockReturnValueOnce(makeProcess('', 0));
+
+    await convertPPTToPDF('a.pptx', Buffer.from('fake'), workspace);
+    await convertPPTToPDF('b.pptx', Buffer.from('fake'), workspace);
+
+    const profileOf = (args: string[]) =>
+      args.find((a) => a.startsWith('-env:UserInstallation='));
+    const first = profileOf(spawnedArgs(0));
+    const second = profileOf(spawnedArgs(1));
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    expect(first).not.toEqual(second);
+  });
+
+  it('rejects instead of hanging when exit 0 produced no PDF', async () => {
+    const fsPromises = jest.requireMock('fs/promises') as {
+      readFile: jest.Mock;
+    };
+    fsPromises.readFile.mockRejectedValueOnce(
+      Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+    );
+    mockedSpawn.mockReturnValue(makeProcess('', 0));
+
+    await expect(
+      convertPPTToPDF('slides.pptx', Buffer.from('fake'), workspace)
+    ).rejects.toThrow(/no PDF/i);
   });
 });
