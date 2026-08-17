@@ -340,3 +340,16 @@
 .toggleSwitch input:checked + .toggleSwitchTrack::after {
   transform: translateX(1.125rem);
 }
+
+.fieldsetReset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.legendReset {
+  display: block;
+  width: 100%;
+  padding: 0;
+}

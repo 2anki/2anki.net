@@ -847,18 +847,18 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
             />
           </div>
 
-          <div className={fieldStyles.section}>
-            <div className={fieldStyles.labelRow}>
-              <span id="deck-icon-label" className={fieldStyles.sectionLabel}>
-                {t('cardOptions.deck.iconLabel')}
+          <fieldset
+            className={`${fieldStyles.section} ${fieldStyles.fieldsetReset}`}
+          >
+            <legend className={fieldStyles.legendReset}>
+              <span className={fieldStyles.labelRow}>
+                <span className={fieldStyles.sectionLabel}>
+                  {t('cardOptions.deck.iconLabel')}
+                </span>
+                <FieldHint text={t('cardOptions.deck.iconHint')} />
               </span>
-              <FieldHint text={t('cardOptions.deck.iconHint')} />
-            </div>
-            <div
-              className={fieldStyles.segmented}
-              role="group"
-              aria-labelledby="deck-icon-label"
-            >
+            </legend>
+            <div className={fieldStyles.segmented}>
               {(
                 [
                   {
@@ -888,23 +888,20 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
-          <div className={fieldStyles.section}>
-            <div className={fieldStyles.labelRow}>
-              <span
-                id="deck-toggle-mode-label"
-                className={fieldStyles.sectionLabel}
-              >
-                {t('cardOptions.deck.toggleModeLabel')}
+          <fieldset
+            className={`${fieldStyles.section} ${fieldStyles.fieldsetReset}`}
+          >
+            <legend className={fieldStyles.legendReset}>
+              <span className={fieldStyles.labelRow}>
+                <span className={fieldStyles.sectionLabel}>
+                  {t('cardOptions.deck.toggleModeLabel')}
+                </span>
+                <FieldHint text={t('cardOptions.deck.toggleModeHint')} />
               </span>
-              <FieldHint text={t('cardOptions.deck.toggleModeHint')} />
-            </div>
-            <div
-              className={fieldStyles.segmented}
-              role="group"
-              aria-labelledby="deck-toggle-mode-label"
-            >
+            </legend>
+            <div className={fieldStyles.segmented}>
               {(
                 [
                   {
@@ -930,7 +927,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
         </div>
 
         {generalOptions.length > 0 && (
