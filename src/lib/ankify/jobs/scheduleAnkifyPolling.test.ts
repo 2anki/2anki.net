@@ -45,9 +45,17 @@ const makeUseCase = (): jest.Mocked<
     execute: jest.fn(async () => undefined),
   }) as unknown as jest.Mocked<Pick<SyncNotionPageToRacUseCase, 'execute'>>;
 
-const waitForTick = () => new Promise((resolve) => setTimeout(resolve, 30));
+const waitForTick = () => jest.advanceTimersByTimeAsync(16);
 
 describe('scheduleAnkifyPolling', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   test('skips a subscription deleted after the enabled snapshot was taken', async () => {
     const subscriptions = makeSubscriptions();
     const useCase = makeUseCase();
