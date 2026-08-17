@@ -5,6 +5,7 @@ import styles from './OpsPage.module.css';
 import { syncStripeSubscriptions } from './syncStripeSubscriptions';
 import { grantDeveloperAccess } from './grantDeveloperAccess';
 import { setChatAttachmentsLifecycle } from './setChatAttachmentsLifecycle';
+import { sendPassWinback } from './sendPassWinback';
 import {
   deleteInactiveUsers,
   DeleteInactiveUsersResponse,
@@ -66,6 +67,35 @@ export default function CommandsTab() {
   const [devMessage, setDevMessage] = useState('');
   const [lifecycleStatus, setLifecycleStatus] = useState<Status>('idle');
   const [lifecycleMessage, setLifecycleMessage] = useState('');
+  const [winbackCampaign, setWinbackCampaign] = useState('');
+  const [winbackStatus, setWinbackStatus] = useState<Status>('idle');
+  const [winbackMessage, setWinbackMessage] = useState('');
+
+  const runWinback = async (dryRun: boolean) => {
+    const campaign = winbackCampaign.trim();
+    if (campaign.length === 0) {
+      setWinbackStatus('error');
+      setWinbackMessage('Enter a campaign id first.');
+      return;
+    }
+    setWinbackStatus('loading');
+    setWinbackMessage('');
+    try {
+      const result = await sendPassWinback(campaign, dryRun);
+      const buyers = `lapsed pass buyer${result.count === 1 ? '' : 's'}`;
+      setWinbackStatus('success');
+      setWinbackMessage(
+        result.dryRun
+          ? `${result.count} ${buyers} would receive the ${result.campaign} win-back email.`
+          : `Win-back email sent to ${result.count} ${buyers} for ${result.campaign}.`
+      );
+    } catch (error) {
+      setWinbackStatus('error');
+      setWinbackMessage(
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
+  };
 
   const runDeveloperAccess = async (grant: boolean) => {
     const email = devEmail.trim();
@@ -271,6 +301,54 @@ export default function CommandsTab() {
       {status === 'error' && message && (
         <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
           {message}
+        </div>
+      )}
+
+      <section className={`${sharedStyles.surface} ${styles.card}`}>
+        <h2 className={styles.cardTitle}>Pass win-back</h2>
+        <p className={styles.panelSubtitle}>
+          Emails lapsed Day/Week pass buyers whose pass expired with no active
+          pass or subscription a seasonal nudge to come back. Excludes opted-out
+          and hard-suppressed addresses and dedupes per campaign. Enter a
+          campaign id (e.g. winback-2026-fall), dry-run to check counts, then
+          send. Capped at 500 per run.
+        </p>
+        <div className={styles.controls}>
+          <input
+            type="text"
+            aria-label="Campaign id"
+            placeholder="winback-2026-fall"
+            className={styles.textInput}
+            value={winbackCampaign}
+            onChange={(e) => setWinbackCampaign(e.target.value)}
+          />
+          <button
+            type="button"
+            className={sharedStyles.btnSmall}
+            onClick={() => runWinback(true)}
+            disabled={winbackStatus === 'loading'}
+          >
+            {winbackStatus === 'loading' ? 'Working…' : 'Dry run'}
+          </button>
+          <button
+            type="button"
+            className={sharedStyles.btnSmall}
+            onClick={() => runWinback(false)}
+            disabled={winbackStatus === 'loading'}
+          >
+            Send win-back
+          </button>
+        </div>
+      </section>
+
+      {winbackStatus === 'success' && winbackMessage && (
+        <div className={`${sharedStyles.alertSuccess} ${styles.banner}`}>
+          {winbackMessage}
+        </div>
+      )}
+      {winbackStatus === 'error' && winbackMessage && (
+        <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
+          {winbackMessage}
         </div>
       )}
 
