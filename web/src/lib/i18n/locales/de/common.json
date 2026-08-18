@@ -104,6 +104,11 @@
       "showAll_one": "▾ {{count}} Video anzeigen",
       "showAll_other": "▾ Alle {{count}} Videos anzeigen",
       "playVideo": "Abspielen: {{title}}"
+    },
+    "studyLinks": {
+      "heading": "Für dein Studium gemacht",
+      "nursingSchool": "Pflegeausbildung",
+      "japanese": "Japanisch"
     }
   },
   "upload": {

@@ -104,6 +104,11 @@
       "showAll_one": "▾ Mostra {{count}} video",
       "showAll_other": "▾ Mostra tutti i {{count}} video",
       "playVideo": "Riproduci: {{title}}"
+    },
+    "studyLinks": {
+      "heading": "Fatto per ciò che studi",
+      "nursingSchool": "Infermieristica",
+      "japanese": "Giapponese"
     }
   },
   "upload": {

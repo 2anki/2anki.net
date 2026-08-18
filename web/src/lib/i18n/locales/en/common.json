@@ -104,6 +104,11 @@
       "showAll_one": "▾ Show {{count}} video",
       "showAll_other": "▾ Show all {{count}} videos",
       "playVideo": "Play: {{title}}"
+    },
+    "studyLinks": {
+      "heading": "Made for what you study",
+      "nursingSchool": "Nursing school",
+      "japanese": "Japanese"
     }
   },
   "upload": {

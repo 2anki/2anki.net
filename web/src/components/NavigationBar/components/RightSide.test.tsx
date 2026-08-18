@@ -27,11 +27,16 @@ describe('RightSide (anonymous nav)', () => {
     expect(docsIdx).toBeGreaterThan(uploadIdx);
   });
 
-  it('omits the Pricing link for logged-out visitors', () => {
+  it('shows the Pricing link to logged-out visitors, before Download', () => {
     render(<RightSide path="/" isLoggedIn={false} />);
-    expect(
-      screen.queryByRole('link', { name: 'Pricing' })
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Pricing' })).toHaveAttribute(
+      'href',
+      '/pricing'
+    );
+    const positions = getNavLinks().map((a) => a.textContent);
+    expect(positions.indexOf('Pricing')).toBeLessThan(
+      positions.indexOf('Download')
+    );
   });
 
   it('keeps the Pricing link for logged-in visitors', () => {

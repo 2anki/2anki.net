@@ -22,11 +22,9 @@ export function RightSide({ path, isLoggedIn }: Readonly<RightSideProps>) {
       <NavbarItem href="/documentation" path={path}>
         {t('nav.docs')}
       </NavbarItem>
-      {isLoggedIn && (
-        <NavbarItem href="/pricing" path={path}>
-          {t('nav.pricing')}
-        </NavbarItem>
-      )}
+      <NavbarItem href="/pricing" path={path}>
+        {t('nav.pricing')}
+      </NavbarItem>
       {!isLoggedIn && (
         <NavbarItem href="/app" path={path}>
           {t('nav.download')}

@@ -503,3 +503,37 @@
     padding: 8px;
   }
 }
+
+.studyLinks {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 1.5rem 2.5rem;
+}
+
+.studyLinksHeading {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--color-text-tertiary);
+  margin: 0 0 0.75rem;
+}
+
+.studyLinksList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+
+.studyLink {
+  color: var(--color-text-link);
+  text-decoration: none;
+  font-size: var(--text-base);
+}
+
+.studyLink:hover {
+  text-decoration: underline;
+}
