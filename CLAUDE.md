@@ -37,7 +37,7 @@ Every PR is checked against all three — does it make the experience simpler/fa
 ### Business baseline (as of 2026-08-11 — weekly-retro updates this block)
 
 729 paying subs · 15 new paid/wk · 23 pass sales/wk · 9.1%/mo churn (DB approximation: 66 cancels/30d ÷ 729 active; 78% lifecycle per last-14d cancel reasons, not price) · 14,460 registered (down 390 from 2026-08-04 — inactive-user deletion outpacing 216 gross signups/wk, not churn). MRR/ARPU no longer tracked here (decision 2026-07-19) — dollar figures read off the Stripe dashboard when needed. Funnel events at `/api/ops/metrics`.
-Pricing v2 shipped 2026-06-10: $7.99/mo + $64/yr for new members, legacy $6/$60 lock-in until 21 Jun, annual default. Scheduled reads: v2 funnel week of 15 Jun (targets: ≥70 new paid/wk, page→checkout ≥10%, checkout→paid ≥50%); minimal-layout CTR guardrail 24 Jun.
+Pricing v2 shipped 2026-06-10: $7.99/mo + $64/yr for new members, legacy $6/$60 lock-in until 21 Jun (annual is offered, NOT the checkout default — corrected 2026-08-18). Scheduled reads: v2 funnel week of 15 Jun (targets: ≥70 new paid/wk, page→checkout ≥10%, checkout→paid ≥50%); minimal-layout CTR guardrail 24 Jun.
 
 ## Entry points
 
