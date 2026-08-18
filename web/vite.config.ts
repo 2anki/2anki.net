@@ -5,6 +5,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import {
   emitAnswersPages,
+  emitConvertHubPage,
   emitLandingPages,
   emitMetaOnlyPages,
   emitNotionMarketplacePage,
@@ -44,6 +45,7 @@ function landingPrerender(): Plugin {
       const buildDir = path.resolve(__dirname, 'build');
       emitLandingPages(buildDir);
       emitNotionMarketplacePage(buildDir);
+      emitConvertHubPage(buildDir);
       emitAnswersPages(buildDir);
       emitMetaOnlyPages(buildDir);
     },

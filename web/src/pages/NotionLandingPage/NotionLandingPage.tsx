@@ -2,11 +2,12 @@ import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
 import { track } from '../../lib/analytics/track';
+import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import { PricingCard } from '../PricingPage/components/PricingCard';
 import styles from './NotionLandingPage.module.css';
 
 const REF = 'notion-marketplace';
-const CANONICAL = 'https://2anki.net/notion-marketplace';
+const CANONICAL = canonicalUrl('/notion-marketplace');
 
 const CONNECT_HREF = `/register?source=${REF}&ref=${REF}`;
 const UNLIMITED_HREF = `/pricing?ref=${REF}`;
