@@ -104,6 +104,11 @@
       "showAll_one": "▾ Mostrar {{count}} vídeo",
       "showAll_other": "▾ Mostrar los {{count}} vídeos",
       "playVideo": "Reproducir: {{title}}"
+    },
+    "studyLinks": {
+      "heading": "Hecho para lo que estudias",
+      "nursingSchool": "Enfermería",
+      "japanese": "Japonés"
     }
   },
   "upload": {

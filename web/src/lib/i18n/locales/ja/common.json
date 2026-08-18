@@ -103,6 +103,11 @@
       "showFewer": "▴ 表示を減らす",
       "showAll_other": "▾ {{count}} 本の動画をすべて表示",
       "playVideo": "再生: {{title}}"
+    },
+    "studyLinks": {
+      "heading": "学ぶ内容に合わせて",
+      "nursingSchool": "看護学校",
+      "japanese": "日本語学習"
     }
   },
   "upload": {

@@ -40,6 +40,15 @@ interface HomePageProps {
   isLoggedIn: boolean;
 }
 
+const STUDY_LINKS = [
+  { href: '/usmle-anki', label: 'USMLE' },
+  { href: '/step1-anki', label: 'Step 1' },
+  { href: '/nclex-anki', label: 'NCLEX' },
+  { href: '/mcat-anki', label: 'MCAT' },
+  { href: '/nursing-flashcards', labelKey: 'home.studyLinks.nursingSchool' },
+  { href: '/anki-for-japanese', labelKey: 'home.studyLinks.japanese' },
+] as const;
+
 const STEPS = [
   {
     title: 'Upload',
@@ -286,6 +295,30 @@ export function HomePage({
           </button>
         </div>
       </section>
+
+      <nav
+        className={styles.studyLinks}
+        aria-label={t('home.studyLinks.heading', {
+          defaultValue: 'Made for what you study',
+        })}
+      >
+        <h2 className={styles.studyLinksHeading}>
+          {t('home.studyLinks.heading', {
+            defaultValue: 'Made for what you study',
+          })}
+        </h2>
+        <ul className={styles.studyLinksList}>
+          {STUDY_LINKS.map((link) => (
+            <li key={link.href}>
+              <a href={link.href} className={styles.studyLink}>
+                {'labelKey' in link
+                  ? t(link.labelKey, { defaultValue: link.href.slice(1) })
+                  : link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
       <TrustNote />
     </div>

@@ -104,6 +104,11 @@
       "showAll_one": "▾ Afficher {{count}} vidéo",
       "showAll_other": "▾ Afficher les {{count}} vidéos",
       "playVideo": "Lire : {{title}}"
+    },
+    "studyLinks": {
+      "heading": "Fait pour ce que tu étudies",
+      "nursingSchool": "Soins infirmiers",
+      "japanese": "Japonais"
     }
   },
   "upload": {

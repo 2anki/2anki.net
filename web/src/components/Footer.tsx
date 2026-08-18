@@ -18,6 +18,7 @@ function Footer() {
           <a href="/about">{t('common:nav.about')}</a>
           <a href="/app">{t('footer.iosApp')}</a>
           <a href="/documentation">{t('common:nav.docs')}</a>
+          <a href="/pricing">{t('common:nav.pricing')}</a>
           <a href="/contact">{t('common:nav.contact')}</a>
         </div>
         <div className={styles.group}>

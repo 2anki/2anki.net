@@ -104,6 +104,11 @@
       "showAll_one": "▾ {{count}} video tonen",
       "showAll_other": "▾ Alle {{count}} video's tonen",
       "playVideo": "Afspelen: {{title}}"
+    },
+    "studyLinks": {
+      "heading": "Gemaakt voor wat jij studeert",
+      "nursingSchool": "Verpleegkunde",
+      "japanese": "Japans"
     }
   },
   "upload": {
