@@ -10,6 +10,7 @@ import {
   emitNotionMarketplacePage,
 } from './scripts/prerenderLandingPages';
 import { keepRootAssetsSameOrigin } from './scripts/keepRootAssetsSameOrigin';
+import { sameOriginBuiltUrl } from './scripts/sameOriginBuiltUrl';
 
 const SHORT_SHA_LENGTH = 7;
 const FULL_SHA_PATTERN = /^[0-9a-f]{40}$/i;
@@ -73,6 +74,12 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     base,
+
+    experimental: {
+      renderBuiltUrl(filename) {
+        return sameOriginBuiltUrl(filename);
+      },
+    },
 
     plugins: [
       react(),
