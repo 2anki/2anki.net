@@ -43,6 +43,7 @@ import templatesRouter from './routes/TemplatesRouter';
 import defaultRouter from './routes/DefaultRouter';
 import rejectScannerProbes from './routes/middleware/rejectScannerProbes';
 import { denyFraming } from './routes/middleware/denyFraming';
+import { securityHeaders } from './routes/middleware/securityHeaders';
 import { noindexNonCanonicalHosts } from './routes/middleware/noindexNonCanonicalHosts';
 import { redirectNonCanonicalHosts } from './routes/middleware/redirectNonCanonicalHosts';
 import { redirectConvertDuplicates } from './routes/middleware/redirectConvertDuplicates';
@@ -152,6 +153,7 @@ const serve = async () => {
   const app = express();
   // nginx on the same box terminates SSL and forwards over loopback; trust exactly one hop.
   app.set('trust proxy', 1);
+  app.disable('x-powered-by');
   const server = http.createServer(app);
 
   app.use(webhookRouter());
@@ -161,6 +163,7 @@ const serve = async () => {
   app.use(express.json({ limit: '50mb' }) as RequestHandler);
   app.use(cookieParser());
   app.use(denyFraming);
+  app.use(securityHeaders);
   app.use(anonIdMiddleware);
   app.use(noindexNonCanonicalHosts);
   app.use(redirectConvertDuplicates);
