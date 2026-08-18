@@ -300,7 +300,7 @@ describe('emitNotionMarketplacePage', () => {
       'utf8'
     );
     expect(html).toContain(
-      '<title>Notion to Anki — automatic sync | 2anki</title>'
+      '<title>Sync Notion to Anki automatically | 2anki</title>'
     );
     expect(html).toContain(
       '<link rel="canonical" href="https://2anki.net/notion-marketplace/">'

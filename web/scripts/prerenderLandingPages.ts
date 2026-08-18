@@ -133,7 +133,7 @@ function rewriteRoot(html: string, copy: LandingCopy): string {
 
 const NOTION_MARKETPLACE_META = {
   pathname: '/notion-marketplace',
-  title: 'Notion to Anki — automatic sync | 2anki',
+  title: 'Sync Notion to Anki automatically | 2anki',
   description:
     'Connect your Notion workspace and your notes become Anki flashcards automatically. No exports, no zips. Included with Unlimited at $7.99/mo.',
   h1: 'Your Notion notes become Anki cards — automatically',
