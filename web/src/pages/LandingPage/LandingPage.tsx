@@ -89,8 +89,8 @@ function renderHeroAction({
         </a>
         {' — '}
         <a href="/pricing">
-          {t('hero.tryUnlimited', {
-            defaultValue: 'try Unlimited free for 1 hour',
+          {t('hero.getDayPass', {
+            defaultValue: 'get a Day Pass for $4',
           })}
         </a>
       </p>
