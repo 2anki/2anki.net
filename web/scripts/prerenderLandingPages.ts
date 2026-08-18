@@ -23,6 +23,7 @@ import {
 } from '../src/pages/AnswersPage/answersJsonLd';
 import { buildFaqJsonLd as buildLandingFaqJsonLd } from '../src/pages/LandingPage/landingJsonLd';
 import type { LandingCopy } from '../src/pages/LandingPage/types';
+import { canonicalUrl } from '../src/lib/seo/canonicalUrl';
 
 const LANDING_COPIES: LandingCopy[] = [
   notionCopy,
@@ -50,11 +51,6 @@ const escapeHtml = (value: string): string =>
     .replace(/'/g, '&#39;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-
-const canonicalUrl = (pathname: string): string => {
-  const withTrailingSlash = pathname.endsWith('/') ? pathname : `${pathname}/`;
-  return `https://2anki.net${withTrailingSlash}`;
-};
 
 function buildHeroFragment(copy: LandingCopy): string {
   return [
@@ -273,6 +269,30 @@ const META_ONLY_PAGES: MetaOnlyPageMeta[] = [
     title: 'Anki flashcards on iPhone — 2anki app',
     description:
       'Convert your notes and files into Anki decks on iPhone, iPad, and Mac. Markdown, PDF, Notion, CSV, OPML, Kindle — parsed on your device. On the App Store for iPhone, iPad, and Mac.',
+  },
+  {
+    pathname: '/security',
+    title: 'Report a security vulnerability — 2anki',
+    description:
+      'How to report a security issue in 2anki: what to include, what is in scope, and how fast we respond. Covers 2anki.net, the API, and the open-source repository.',
+  },
+  {
+    pathname: '/contact',
+    title: 'Contact 2anki — support and feedback',
+    description:
+      'Reach the people who build 2anki. Report a conversion problem, ask a billing question, or send feedback — messages go straight to the maintainer.',
+  },
+  {
+    pathname: '/documentation/start-here/connect-notion',
+    title: 'Connect Notion in 5 minutes — 2anki docs',
+    description:
+      'From signing in to your first deck downloaded: connect your Notion account once, pick a page, and 2anki builds the Anki deck. No exports, no zip files.',
+  },
+  {
+    pathname: '/documentation/cards/notion-to-anki-japanese',
+    title: 'Notion to Anki for Japanese — 2anki docs',
+    description:
+      'Structure mined sentences and vocab in Notion, keep audio and screenshots, choose a note type, and open the deck in Anki. For sentence miners and JLPT studiers.',
   },
 ];
 

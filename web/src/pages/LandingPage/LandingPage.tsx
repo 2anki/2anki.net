@@ -5,6 +5,7 @@ import type { TFunction } from 'i18next';
 import UploadForm from '../UploadPage/components/UploadForm/UploadForm';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
+import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import styles from './LandingPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 import type { LandingCopy } from './types';
@@ -107,8 +108,8 @@ function LandingPage({
     persistSignupOrigin(copy.pathname, globalThis.sessionStorage ?? null);
   }, [copy.pathname]);
 
-  const pageUrl = `https://2anki.net${copy.pathname}`;
-  const canonical = `https://2anki.net${copy.canonicalPathname ?? copy.pathname}`;
+  const pageUrl = canonicalUrl(copy.pathname);
+  const canonical = canonicalUrl(copy.canonicalPathname ?? copy.pathname);
   const registerHref = `/register?source=${encodeURIComponent(copy.pathname)}`;
   const pageKey = pageKeyFromPathname(copy.pathname);
 

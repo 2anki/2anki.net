@@ -2,6 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
 import styles from './ConvertHubPage.module.css';
 import { CONVERT_HUB_GROUPS } from './convertHubGroups';
+import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 
 function groupKey(heading: string): string {
   return heading.toLowerCase().replace(/\s+/g, '-');
@@ -16,7 +17,7 @@ const SUBHEAD =
 
 function ConvertHubPage() {
   const { t } = useTranslation('landing');
-  const canonical = 'https://2anki.net/convert';
+  const canonical = canonicalUrl('/convert');
 
   return (
     <div className={styles.page}>

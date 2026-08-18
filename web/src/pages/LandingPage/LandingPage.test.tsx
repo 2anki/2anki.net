@@ -177,11 +177,11 @@ describe('LandingPage', () => {
   });
 
   it.each([
-    [notionCopy, 'https://2anki.net/notion-to-anki'],
-    [pdfCopy, 'https://2anki.net/pdf-to-anki'],
-    [markdownCopy, 'https://2anki.net/markdown-to-anki'],
+    [notionCopy, 'https://2anki.net/notion-to-anki/'],
+    [pdfCopy, 'https://2anki.net/pdf-to-anki/'],
+    [markdownCopy, 'https://2anki.net/markdown-to-anki/'],
   ])(
-    'self-references the bare-path canonical for %s',
+    'self-references the trailing-slash canonical the prerender emits for %s',
     async (copy, expectedCanonical) => {
       renderLandingPage(<LandingPage copy={copy} setErrorMessage={vi.fn()} />);
       await waitFor(() => {
@@ -192,9 +192,9 @@ describe('LandingPage', () => {
   );
 
   it.each([
-    ['notion-to-anki', 'https://2anki.net/notion-to-anki'],
-    ['pdf-to-anki', 'https://2anki.net/pdf-to-anki'],
-    ['markdown-to-anki', 'https://2anki.net/markdown-to-anki'],
+    ['notion-to-anki', 'https://2anki.net/notion-to-anki/'],
+    ['pdf-to-anki', 'https://2anki.net/pdf-to-anki/'],
+    ['markdown-to-anki', 'https://2anki.net/markdown-to-anki/'],
   ])(
     'points the /convert/%s canonical at the top-level slug',
     async (slug, expectedCanonical) => {
@@ -207,7 +207,7 @@ describe('LandingPage', () => {
       const ogUrl = document.head.querySelector('meta[property="og:url"]');
       expect(ogUrl).toHaveAttribute(
         'content',
-        `https://2anki.net/convert/${slug}`
+        `https://2anki.net/convert/${slug}/`
       );
     }
   );

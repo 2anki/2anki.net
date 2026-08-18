@@ -2,6 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import NotFoundPage from '../NotFoundPage';
+import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import { AnswerFigure } from './AnswerFigures';
 import { ANSWERS_PAGES } from './answersConfig';
 import styles from './AnswersPage.module.css';
@@ -18,7 +19,7 @@ function AnswersPage() {
     return <NotFoundPage />;
   }
 
-  const canonical = `https://2anki.net/answers/${config.slug}`;
+  const canonical = canonicalUrl(`/answers/${config.slug}`);
 
   const articleJsonLd = buildArticleJsonLd(config);
   const faqJsonLd = buildFaqJsonLd(config);
