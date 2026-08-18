@@ -128,13 +128,29 @@ describe('emitLandingPages', () => {
     );
   });
 
-  it('does not prerender the client-rendered proof section body', () => {
+  it('prerenders the proof section so crawlers without JS see it', () => {
     emitLandingPages(buildDir);
     const html = readFileSync(
       join(buildDir, 'notion-to-anki', 'index.html'),
       'utf8'
     );
-    expect(html).not.toContain('What you actually get in Anki');
+    expect(html).toContain('What you actually get in Anki');
+  });
+
+  it('prerenders every FAQ question and answer as visible body text', () => {
+    emitLandingPages(buildDir);
+    const html = readFileSync(
+      join(buildDir, 'notion-to-anki', 'index.html'),
+      'utf8'
+    );
+    const body = html.slice(html.indexOf('<div id="root">'));
+    for (const faq of notionCopy.faqs) {
+      expect(body).toContain(
+        faq.q.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+      );
+    }
+    expect(body).toContain('How it works');
+    expect(body).toContain('Supported formats');
   });
 
   it('replaces the description with the per-route description', () => {
@@ -277,10 +293,17 @@ describe('emitMetaOnlyPages', () => {
     expect(html).toContain('<meta property="og:title"');
   });
 
-  it('leaves the root div empty so React mounts without a flash', () => {
+  it('prerenders an h1 and intro so crawlers without JS see real content', () => {
     emitMetaOnlyPages(buildDir);
-    const html = readFileSync(join(buildDir, 'upload', 'index.html'), 'utf8');
-    expect(html).toContain('<div id="root"></div>');
+    const upload = readFileSync(join(buildDir, 'upload', 'index.html'), 'utf8');
+    expect(upload).not.toContain('<div id="root"></div>');
+    expect(upload).toContain('Upload notes, get an Anki deck');
+    const pricing = readFileSync(
+      join(buildDir, 'pricing', 'index.html'),
+      'utf8'
+    );
+    expect(pricing).toContain('<h1');
+    expect(pricing).toContain('$7.99/mo or $64/yr');
   });
 
   it('does not duplicate og:* tags from the source index', () => {
@@ -310,6 +333,34 @@ describe('emitNotionMarketplacePage', () => {
 });
 
 describe('emitAnswersPages', () => {
+  it('prerenders the full article body — intro, every section, every FAQ', () => {
+    emitAnswersPages(buildDir);
+    const config = ANSWERS_PAGES.get('convert-notion-to-anki')!;
+    const html = readFileSync(
+      join(buildDir, 'answers', 'convert-notion-to-anki', 'index.html'),
+      'utf8'
+    );
+    const body = html.slice(html.indexOf('<div id="root">'));
+    expect(body).toContain('<article');
+    for (const section of config.sections) {
+      expect(body).toContain(
+        section.heading
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;')
+      );
+    }
+    for (const faq of config.faqs ?? []) {
+      expect(body).toContain(
+        faq.q
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;')
+      );
+    }
+    expect(body).not.toContain('How it works');
+  });
+
   it('writes one HTML file per answers slug', () => {
     const files = emitAnswersPages(buildDir);
     expect(files).toHaveLength(ANSWERS_PAGES.size);

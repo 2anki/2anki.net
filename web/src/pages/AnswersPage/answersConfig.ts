@@ -50,7 +50,7 @@ const convertNotionToAnki: AnswerConfig = {
     },
     {
       heading: 'Re-convert after editing',
-      body: 'Paste the same page URL again to get a fresh deck reflecting your edits. For edits to sync automatically every 5 minutes without manual steps, use Auto Sync ($30/month).',
+      body: 'Paste the same page URL again to get a fresh deck reflecting your edits. For edits to sync automatically every 5 minutes without manual steps, use Auto Sync — included with Lifetime, see 2anki.net/pricing.',
     },
     {
       heading: 'Use a Notion export instead',
@@ -85,7 +85,7 @@ const notionToAnkiSync: AnswerConfig = {
     },
     {
       heading: 'Set up Auto Sync',
-      body: 'Subscribe to Auto Sync ($30/month) at 2anki.net/pricing. Then go to 2anki.net/ankify/setup, connect your Notion workspace, and select the pages to watch. The first sync runs within 5 minutes.',
+      body: 'Get Auto Sync at 2anki.net/pricing — included with Lifetime. Then go to 2anki.net/ankify/setup, connect your Notion workspace, and select the pages to watch. The first sync runs within 5 minutes.',
     },
     {
       heading: 'Card format requirements',

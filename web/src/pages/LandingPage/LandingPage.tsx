@@ -10,6 +10,10 @@ import styles from './LandingPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 import type { LandingCopy } from './types';
 import { buildFaqJsonLd } from './landingJsonLd';
+import {
+  DEFAULT_LANDING_FORMATS,
+  DEFAULT_LANDING_STEPS,
+} from './landingDefaults';
 
 interface LandingPageProps {
   copy: LandingCopy;
@@ -23,21 +27,12 @@ const STEP_FALLBACK: Record<
   (typeof STEP_KEYS)[number],
   { title: string; body: string }
 > = {
-  dropFile: {
-    title: 'Drop your file',
-    body: 'Notion export, PDF, Word, Markdown, or a Quizlet export.',
-  },
-  buildsDeck: {
-    title: '2anki builds your deck',
-    body: 'Usually a few seconds. Bigger files take a minute.',
-  },
-  openInAnki: {
-    title: 'Open it in Anki',
-    body: 'Double-click the .apkg file. Your cards are ready to study.',
-  },
+  dropFile: DEFAULT_LANDING_STEPS[0],
+  buildsDeck: DEFAULT_LANDING_STEPS[1],
+  openInAnki: DEFAULT_LANDING_STEPS[2],
 };
 
-const FORMATS = ['Notion', 'PDF', 'Markdown', 'HTML', 'CSV', 'Word', 'Quizlet'];
+const FORMATS = DEFAULT_LANDING_FORMATS;
 
 function pageKeyFromPathname(pathname: string): string {
   return pathname.replace(/^\//, '').replace(/\//g, '-');
