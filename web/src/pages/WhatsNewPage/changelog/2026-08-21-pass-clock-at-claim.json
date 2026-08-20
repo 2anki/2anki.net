@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-21-pass-clock-at-claim",
+  "date": "2026-08-21",
+  "type": "fix",
+  "title": "Day and Week pass time starts when you first use the pass, not when you pay — claim within 30 days"
+}

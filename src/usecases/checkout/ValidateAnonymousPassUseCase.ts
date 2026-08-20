@@ -4,11 +4,11 @@ import type {
   AnonymousPass,
 } from '../../data_layer/AnonymousPassRepository';
 import type { PassKind } from '../../data_layer/UserPassRepository';
-
-const DURATION_MS: Record<Extract<PassKind, '24h' | '7d'>, number> = {
-  '24h': 24 * 60 * 60 * 1000,
-  '7d': 7 * 24 * 60 * 60 * 1000,
-};
+import {
+  PASS_CLAIM_WINDOW_MS,
+  PASS_DURATION_MS,
+  isAnonymousPassKind,
+} from '../passes/passDurations';
 
 export interface ValidateAnonymousPassResult {
   valid: boolean;
@@ -31,7 +31,7 @@ export class ValidateAnonymousPassUseCase {
 
     const active = await this.anonPassRepo.findActive(stripeSessionId, now);
     if (active != null) {
-      return { valid: true, pass: active };
+      return { valid: true, pass: await this.ensureActivated(active, now) };
     }
 
     const existing = await this.anonPassRepo.findBySessionId(stripeSessionId);
@@ -40,6 +40,18 @@ export class ValidateAnonymousPassUseCase {
     }
 
     return this.reconcileFromStripe(stripeSessionId, now);
+  }
+
+  private async ensureActivated(
+    pass: AnonymousPass,
+    now: Date
+  ): Promise<AnonymousPass> {
+    if (pass.activated_at != null || !isAnonymousPassKind(pass.kind)) {
+      return pass;
+    }
+    const expiresAt = new Date(now.getTime() + PASS_DURATION_MS[pass.kind]);
+    const activated = await this.anonPassRepo.activate(pass.id, now, expiresAt);
+    return activated ?? pass;
   }
 
   private async reconcileFromStripe(
@@ -73,7 +85,7 @@ export class ValidateAnonymousPassUseCase {
 
       const createdMs =
         session.created != null ? session.created * 1000 : now.getTime();
-      const expiresAt = new Date(createdMs + DURATION_MS[passKind]);
+      const expiresAt = new Date(createdMs + PASS_CLAIM_WINDOW_MS);
       if (expiresAt <= now) {
         return { valid: false };
       }
@@ -84,7 +96,7 @@ export class ValidateAnonymousPassUseCase {
         expiresAt,
         paymentIntentId,
       });
-      return { valid: true, pass };
+      return { valid: true, pass: await this.ensureActivated(pass, now) };
     } catch {
       return { valid: false };
     }

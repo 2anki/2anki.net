@@ -74,9 +74,18 @@ async function seedPass(anonRepo: InMemoryAnonymousPassRepository) {
 }
 
 describe('ConfirmPassClaimUseCase', () => {
-  it('attaches the pass with its original expiry and marks the anon row claimed', async () => {
+  it('starts the pass window at claim when it was never used, and marks the anon row claimed', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-01T00:00:00.000Z'));
+    const now = Date.now();
     const anonRepo = new InMemoryAnonymousPassRepository();
-    await seedPass(anonRepo);
+    await anonRepo.insert({
+      stripeSessionId: 'cs_1',
+      kind: '7d',
+      expiresAt: new Date(now + 30 * 24 * 60 * 60 * 1000),
+      paymentIntentId: 'pi_1',
+      buyerEmailHash: 'hash',
+    });
     const tokensRepo = makeTokensRepo();
     const userPassRepo = makeUserPassRepo();
     const useCase = new ConfirmPassClaimUseCase(
@@ -89,20 +98,67 @@ describe('ConfirmPassClaimUseCase', () => {
 
     const outcome = await useCase.execute(42, RAW_TOKEN, 'ip', 'eh');
 
+    const expected = new Date(now + 7 * 24 * 60 * 60 * 1000);
     expect(outcome).toEqual({
       success: true,
       passKind: '7d',
-      expiresAt: FUTURE,
+      expiresAt: expected,
     });
     expect(userPassRepo.upsertWithAbsoluteExpiry).toHaveBeenCalledWith(
       42,
       '7d',
-      FUTURE,
+      expected,
       'pi_1'
     );
     const row = await anonRepo.findById(1);
     expect(row?.claimed_by_user_id).toBe(42);
+    expect(row?.activated_at).toEqual(new Date(now));
+    expect(row?.expires_at).toEqual(expected);
     expect(tokensRepo.markConsumed).toHaveBeenCalledWith(10, expect.anything());
+    jest.useRealTimers();
+  });
+
+  it('carries the remaining window when the pass was already used anonymously', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-01T00:00:00.000Z'));
+    const now = Date.now();
+    const anonRepo = new InMemoryAnonymousPassRepository();
+    const pass = await anonRepo.insert({
+      stripeSessionId: 'cs_2',
+      kind: '7d',
+      expiresAt: new Date(now + 30 * 24 * 60 * 60 * 1000),
+      paymentIntentId: 'pi_1',
+      buyerEmailHash: 'hash',
+    });
+    const remaining = new Date(now + 6 * 24 * 60 * 60 * 1000);
+    await anonRepo.activate(
+      pass.id,
+      new Date(now - 24 * 60 * 60 * 1000),
+      remaining
+    );
+    const userPassRepo = makeUserPassRepo();
+    const useCase = new ConfirmPassClaimUseCase(
+      makeDb(),
+      makeTokensRepo(),
+      anonRepo,
+      userPassRepo,
+      makeAuditRepo()
+    );
+
+    const outcome = await useCase.execute(42, RAW_TOKEN, 'ip', 'eh');
+
+    expect(outcome).toEqual({
+      success: true,
+      passKind: '7d',
+      expiresAt: remaining,
+    });
+    expect(userPassRepo.upsertWithAbsoluteExpiry).toHaveBeenCalledWith(
+      42,
+      '7d',
+      remaining,
+      'pi_1'
+    );
+    jest.useRealTimers();
   });
 
   it('rejects an unknown or expired token', async () => {

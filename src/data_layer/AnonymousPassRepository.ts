@@ -9,6 +9,7 @@ export interface AnonymousPass {
   payment_intent_id: string;
   claimed_by_user_id: number | null;
   buyer_email_hash: string | null;
+  activated_at: Date | null;
 }
 
 export interface AnonymousPassWindowRow {
@@ -38,6 +39,11 @@ export interface IAnonymousPassRepository {
   setBuyerEmailHash(id: number, buyerEmailHash: string): Promise<void>;
   claim(id: number, userId: number): Promise<boolean>;
   unclaim(id: number): Promise<void>;
+  activate(
+    id: number,
+    activatedAt: Date,
+    expiresAt: Date
+  ): Promise<AnonymousPass | null>;
 }
 
 interface AnonymousPassRow {
@@ -48,6 +54,12 @@ interface AnonymousPassRow {
   payment_intent_id: string;
   claimed_by_user_id: number | null;
   buyer_email_hash: string | null;
+  activated_at: Date | null;
+}
+
+function toDate(value: Date | string | null): Date | null {
+  if (value == null) return null;
+  return value instanceof Date ? value : new Date(value);
 }
 
 function toAnonymousPass(row: AnonymousPassRow): AnonymousPass {
@@ -62,6 +74,7 @@ function toAnonymousPass(row: AnonymousPassRow): AnonymousPass {
     payment_intent_id: row.payment_intent_id,
     claimed_by_user_id: row.claimed_by_user_id ?? null,
     buyer_email_hash: row.buyer_email_hash ?? null,
+    activated_at: toDate(row.activated_at ?? null),
   };
 }
 
@@ -194,6 +207,18 @@ export class AnonymousPassRepository implements IAnonymousPassRepository {
       .update({ claimed_by_user_id: null });
   }
 
+  async activate(
+    id: number,
+    activatedAt: Date,
+    expiresAt: Date
+  ): Promise<AnonymousPass | null> {
+    await this.database(this.table)
+      .where({ id })
+      .whereNull('activated_at')
+      .update({ activated_at: activatedAt, expires_at: expiresAt });
+    return this.findById(id);
+  }
+
   async findById(id: number): Promise<AnonymousPass | null> {
     const row = await this.database<AnonymousPassRow>(this.table)
       .where({ id })
@@ -247,6 +272,7 @@ export class InMemoryAnonymousPassRepository implements IAnonymousPassRepository
       payment_intent_id: params.paymentIntentId,
       claimed_by_user_id: null,
       buyer_email_hash: params.buyerEmailHash ?? null,
+      activated_at: null,
     };
     this.rows.push(entry);
     return entry;
@@ -290,6 +316,20 @@ export class InMemoryAnonymousPassRepository implements IAnonymousPassRepository
   async unclaim(id: number): Promise<void> {
     const row = this.rows.find((r) => r.id === id);
     if (row) row.claimed_by_user_id = null;
+  }
+
+  async activate(
+    id: number,
+    activatedAt: Date,
+    expiresAt: Date
+  ): Promise<AnonymousPass | null> {
+    const row = this.rows.find((r) => r.id === id);
+    if (row == null) return null;
+    if (row.activated_at == null) {
+      row.activated_at = activatedAt;
+      row.expires_at = expiresAt;
+    }
+    return row;
   }
 
   async findById(id: number): Promise<AnonymousPass | null> {

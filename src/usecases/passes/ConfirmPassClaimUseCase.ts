@@ -1,11 +1,17 @@
 import type { Knex } from 'knex';
 import type { UsersId } from '../../data_layer/public/Users';
 import hmacToken from '../../lib/misc/hmacToken';
-import type { IAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
+import type {
+  AnonymousPass,
+  IAnonymousPassRepository,
+} from '../../data_layer/AnonymousPassRepository';
 import type { IPassClaimTokensRepository } from '../../data_layer/PassClaimTokensRepository';
 import type { ISubscriptionClaimAuditRepository } from '../../data_layer/SubscriptionClaimAuditRepository';
-import type { IUserPassRepository } from '../../data_layer/UserPassRepository';
-import type { PassKind } from '../../data_layer/UserPassRepository';
+import type {
+  IUserPassRepository,
+  PassKind,
+} from '../../data_layer/UserPassRepository';
+import { PASS_DURATION_MS, isAnonymousPassKind } from './passDurations';
 
 export type ConfirmPassOutcome =
   | { success: true; passKind: PassKind; expiresAt: Date }
@@ -77,11 +83,13 @@ export class ConfirmPassClaimUseCase {
       return { success: false, reason: 'already_claimed' };
     }
 
+    const grantExpiry = await this.resolveGrantExpiry(pass);
+
     try {
       await this.userPassRepo.upsertWithAbsoluteExpiry(
         userId,
         pass.kind,
-        pass.expires_at,
+        grantExpiry,
         pass.payment_intent_id
       );
     } catch (error) {
@@ -94,6 +102,16 @@ export class ConfirmPassClaimUseCase {
     });
     await audit('pass_confirm_success');
 
-    return { success: true, passKind: pass.kind, expiresAt: pass.expires_at };
+    return { success: true, passKind: pass.kind, expiresAt: grantExpiry };
+  }
+
+  private async resolveGrantExpiry(pass: AnonymousPass): Promise<Date> {
+    if (pass.activated_at != null || !isAnonymousPassKind(pass.kind)) {
+      return pass.expires_at;
+    }
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + PASS_DURATION_MS[pass.kind]);
+    const activated = await this.anonPassRepo.activate(pass.id, now, expiresAt);
+    return activated?.expires_at ?? expiresAt;
   }
 }

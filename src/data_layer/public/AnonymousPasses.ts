@@ -23,6 +23,8 @@ export default interface AnonymousPasses {
   claimed_by_user_id: UsersId | null;
 
   buyer_email_hash: string | null;
+
+  activated_at: Date | null;
 }
 
 /** Represents the initializer for the table public.anonymous_passes */
@@ -44,6 +46,8 @@ export interface AnonymousPassesInitializer {
   claimed_by_user_id?: UsersId | null;
 
   buyer_email_hash?: string | null;
+
+  activated_at?: Date | null;
 }
 
 /** Represents the mutator for the table public.anonymous_passes */
@@ -63,4 +67,6 @@ export interface AnonymousPassesMutator {
   claimed_by_user_id?: UsersId | null;
 
   buyer_email_hash?: string | null;
+
+  activated_at?: Date | null;
 }
