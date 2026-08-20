@@ -36,6 +36,7 @@ export const CARD_OPTION_KEYS = [
   'cloze',
   'cloze-from-toggle-content',
   'group-cloze-per-toggle',
+  'remove-deck-name-numbering',
   'enable-input',
   'basic-reversed',
   'reversed',

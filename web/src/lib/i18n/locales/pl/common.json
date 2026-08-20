@@ -626,7 +626,9 @@
       "toggleModeLabel": "Tryb listy rozwijanej",
       "toggleModeHint": "Nagłówek listy = przód karty; zawartość = tył karty. Zagnieżdżone listy stają się własnymi kartami. Otwórz rozwija zagnieżdżoną zawartość; Zamknij zostawia ją zwiniętą do nauki krok po kroku.",
       "toggleOpen": "Otwórz zagnieżdżone listy",
-      "toggleClose": "Zamknij zagnieżdżone listy"
+      "toggleClose": "Zamknij zagnieżdżone listy",
+      "removeNumberingLabel": "Usuń numerację z nazw talii",
+      "removeNumberingHelp": "Usuwa początkowy numer, np. “3. ” lub “03 - ”, z nazw talii i podtalii. Domyślnie wyłączone — tytuły takie jak 3D Anatomy, które zaczynają się tylko od cyfry, nigdy nie są zmieniane."
     },
     "groups": {
       "content": "Treść",

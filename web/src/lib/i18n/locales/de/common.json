@@ -612,7 +612,9 @@
       "toggleModeLabel": "Toggle-Modus",
       "toggleModeHint": "Toggle-Überschrift = Kartenvorderseite; Inhalt = Kartenrückseite. Verschachtelte Toggles werden zu eigenen Karten. Offen klappt verschachtelte Inhalte auf; Geschlossen hält sie eingeklappt für schrittweises Wiederholen.",
       "toggleOpen": "Verschachtelte Toggles öffnen",
-      "toggleClose": "Verschachtelte Toggles schließen"
+      "toggleClose": "Verschachtelte Toggles schließen",
+      "removeNumberingLabel": "Nummerierung aus Stapelnamen entfernen",
+      "removeNumberingHelp": "Entfernt eine führende Zahl wie “3. ” oder “03 - ” aus Stapel- und Unterstapelnamen. Standardmäßig aus — Titel wie 3D Anatomy, die nur mit einer Zahl beginnen, werden nie geändert."
     },
     "groups": {
       "content": "Inhalt",

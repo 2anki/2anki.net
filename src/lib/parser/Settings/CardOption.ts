@@ -40,6 +40,8 @@ class CardOption {
 
   readonly groupClozePerToggle: boolean;
 
+  readonly removeDeckNameNumbering: boolean;
+
   readonly useTags: boolean;
 
   readonly useSectionTags: boolean;
@@ -157,6 +159,8 @@ class CardOption {
     this.isCloze = input.cloze !== 'false';
     this.clozeFromToggleContent = input['cloze-from-toggle-content'] === 'true';
     this.groupClozePerToggle = input['group-cloze-per-toggle'] === 'true';
+    this.removeDeckNameNumbering =
+      input['remove-deck-name-numbering'] === 'true';
     this.useTags = input.tags !== 'false';
     this.useSectionTags = input['section-tags'] === 'true';
     this.globalTags = parseGlobalTags(input['global-tags']);

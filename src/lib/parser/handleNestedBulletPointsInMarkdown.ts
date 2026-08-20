@@ -13,6 +13,7 @@ import Workspace from './WorkSpace';
 
 import { File } from '../zip/zip';
 import { detectMarkdownMCQ } from './findNotionToggleLists';
+import { stripLeadingDeckNumbering } from './helpers/stripLeadingDeckNumbering';
 
 function dedent(text: string): string {
   const lines = text.split('\n');
@@ -118,8 +119,14 @@ export const handleNestedBulletPointsInMarkdown = (
     files,
   } = input;
   const body = stripYamlFrontMatter(contents ?? '');
+  const derivedName = getTitleFromMarkdown(body) ?? name;
+  const resolvedDeckName =
+    deckName ??
+    (settings.removeDeckNameNumbering
+      ? stripLeadingDeckNumbering(derivedName)
+      : derivedName);
   const deck = new Deck(
-    deckName ?? getTitleFromMarkdown(body) ?? name,
+    resolvedDeckName,
     [],
     '',
     '',

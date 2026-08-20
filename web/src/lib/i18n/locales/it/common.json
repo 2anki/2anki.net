@@ -612,7 +612,9 @@
       "toggleModeLabel": "Modalità toggle",
       "toggleModeHint": "Intestazione del toggle = fronte della carta; contenuto = retro della carta. I toggle annidati diventano carte a sé. Apri espande i contenuti annidati; Chiudi li tiene compressi per uno studio passo passo.",
       "toggleOpen": "Apri i toggle annidati",
-      "toggleClose": "Chiudi i toggle annidati"
+      "toggleClose": "Chiudi i toggle annidati",
+      "removeNumberingLabel": "Rimuovi la numerazione dai nomi dei mazzi",
+      "removeNumberingHelp": "Rimuove un numero iniziale come “3. ” o “03 - ” dai nomi dei mazzi e dei sottomazzi. Disattivato per impostazione predefinita — i titoli come 3D Anatomy che iniziano solo con un numero non vengono mai modificati."
     },
     "groups": {
       "content": "Contenuto",

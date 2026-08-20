@@ -73,6 +73,12 @@ const supportedOptions = (): CardOptionDetail[] => {
       defaultFor('group-cloze-per-toggle')
     ),
     new CardOptionDetail(
+      'remove-deck-name-numbering',
+      'Remove numbering from deck names',
+      'Removes a leading number like "3. " or "03 - " from deck and sub-deck names. Off by default — titles like 3D Anatomy that only start with a number are never changed.',
+      defaultFor('remove-deck-name-numbering')
+    ),
+    new CardOptionDetail(
       'enable-input',
       'Treat bold text as input',
       'Hide bold words on the front of the card so you type them during review. Useful for vocabulary and exact-answer recall.',

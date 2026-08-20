@@ -612,7 +612,9 @@
       "toggleModeLabel": "Togglemodus",
       "toggleModeHint": "Toggletitel = voorkant van de kaart; inhoud = achterkant. Geneste toggles worden hun eigen kaarten. Open klapt geneste inhoud uit; Sluiten houdt ze ingeklapt voor stap-voor-stap leren.",
       "toggleOpen": "Geneste toggles openen",
-      "toggleClose": "Geneste toggles sluiten"
+      "toggleClose": "Geneste toggles sluiten",
+      "removeNumberingLabel": "Nummering uit decknamen verwijderen",
+      "removeNumberingHelp": "Verwijdert een voorloopnummer zoals “3. ” of “03 - ” uit deck- en subdecknamen. Standaard uit — titels zoals 3D Anatomy die alleen met een cijfer beginnen, worden nooit gewijzigd."
     },
     "groups": {
       "content": "Inhoud",

@@ -612,7 +612,9 @@
       "toggleModeLabel": "Modo toggle",
       "toggleModeHint": "Cabeçalho do toggle = frente do cartão; conteúdo = verso do cartão. Toggles aninhados viram cartões próprios. Aberto expande o conteúdo aninhado; Fechado mantém recolhido para revisão passo a passo.",
       "toggleOpen": "Abrir toggles aninhados",
-      "toggleClose": "Fechar toggles aninhados"
+      "toggleClose": "Fechar toggles aninhados",
+      "removeNumberingLabel": "Remover a numeração dos nomes dos baralhos",
+      "removeNumberingHelp": "Remove um número inicial como “3. ” ou “03 - ” dos nomes de baralhos e sub-baralhos. Desativado por padrão — títulos como 3D Anatomy que apenas começam com um número nunca são alterados."
     },
     "groups": {
       "content": "Conteúdo",

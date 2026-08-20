@@ -612,7 +612,9 @@
       "toggleModeLabel": "Mode bascule",
       "toggleModeHint": "En-tête de bascule = recto de la carte ; contenu = verso de la carte. Les bascules imbriquées deviennent leurs propres cartes. Ouvrir déplie le contenu imbriqué ; Fermer le garde replié pour une révision pas à pas.",
       "toggleOpen": "Ouvrir les bascules imbriquées",
-      "toggleClose": "Fermer les bascules imbriquées"
+      "toggleClose": "Fermer les bascules imbriquées",
+      "removeNumberingLabel": "Supprimer la numérotation des noms de paquets",
+      "removeNumberingHelp": "Supprime un numéro en début de nom comme “3. ” ou “03 - ” dans les noms de paquets et de sous-paquets. Désactivé par défaut — les titres comme 3D Anatomy qui commencent seulement par un chiffre ne sont jamais modifiés."
     },
     "groups": {
       "content": "Contenu",
