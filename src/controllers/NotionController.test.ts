@@ -62,7 +62,6 @@ function buildEmailService(): IEmailService {
     sendSubscriptionScheduledCancellationEmail: jest.fn(),
     sendSubscriptionResumingSoonEmail: jest.fn().mockResolvedValue(undefined),
     sendHostedAnkiAccessRequestEmail: jest.fn(),
-    sendApiUsageWarningEmail: jest.fn().mockResolvedValue(undefined),
     sendMagicLinkEmail: jest.fn(),
     sendReEngagementEmail: jest.fn(),
     sendInactivityWarningEmail: jest.fn(),

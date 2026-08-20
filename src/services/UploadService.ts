@@ -63,19 +63,6 @@ import {
   MONTHLY_CARD_LIMIT,
 } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 import {
-  ApiCardLimitError,
-  CheckApiCardLimitUseCase,
-} from '../usecases/developer/CheckApiCardLimitUseCase';
-import {
-  ApiUsageWarner,
-  RecordApiCardUsageUseCase,
-} from '../usecases/developer/RecordApiCardUsageUseCase';
-import type { IApiKeyUsageRepository } from '../data_layer/ApiKeyUsageRepository';
-import {
-  ResolvedDeveloperTier,
-  SANDBOX_TIER,
-} from '../usecases/developer/ResolveDeveloperTierUseCase';
-import {
   generateDeckInfo,
   DeckInfo,
   ClaudeParseError,
@@ -308,15 +295,6 @@ function resolveAsyncFailureReason(err: unknown, jobId: string): string {
       reset_on: err.reset_on,
     });
   }
-  if (err instanceof ApiCardLimitError) {
-    return JSON.stringify({
-      code: 'api_card_limit',
-      cards_used: err.cards_used,
-      limit: err.limit,
-      tier: err.tier_key,
-      reset_on: err.reset_on,
-    });
-  }
   // Everything else goes through the allowlist, which decides what a user is
   // allowed to read. Returning `message` here instead meant any library or
   // driver text reached the downloads page verbatim — a user was once shown an
@@ -382,76 +360,22 @@ class UploadService {
     private readonly settingsRepository?: ISettingsRepository,
     private readonly conversionOutputStatsRepository?: IConversionOutputStatsRepository,
     private readonly parsePathSignatureRepository?: IParsePathSignatureRepository,
-    private readonly apiKeyUsageRepository?: IApiKeyUsageRepository,
-    private readonly apiUsageWarner?: ApiUsageWarner,
     private readonly conversionRuleScoresRepository?: IConversionRuleScoresRepository,
     private readonly cardGuidLedgerRepository?: ICardGuidLedgerRepository,
     private readonly photoToFlashcardsUseCase?: PhotoToFlashcardsUseCase
   ) {}
 
-  private apiTierOf(res: express.Response): ResolvedDeveloperTier | null {
-    if (res.locals.api_key_auth !== true) {
-      return null;
-    }
-    return (res.locals.developer_tier as ResolvedDeveloperTier) ?? SANDBOX_TIER;
-  }
-
-  private async checkApiCardLimit(
-    res: express.Response,
-    owner: string | number | null | undefined,
-    totalCards: number
-  ): Promise<void> {
-    const tier = this.apiTierOf(res);
-    if (tier == null || owner == null) {
-      return;
-    }
-    if (this.apiKeyUsageRepository == null) {
-      console.error(
-        '[api-tier] api_key_auth request but no usage repository wired — cap not enforced'
-      );
-      return;
-    }
-    await new CheckApiCardLimitUseCase(this.apiKeyUsageRepository).execute({
-      userId: Number(owner),
-      candidateCardCount: totalCards,
-      tier,
-    });
-  }
-
-  private async recordApiCardUsage(
-    res: express.Response,
-    owner: string | number | null | undefined,
-    totalCards: number
-  ): Promise<void> {
-    const tier = this.apiTierOf(res);
-    if (tier == null || owner == null || this.apiKeyUsageRepository == null) {
-      return;
-    }
-    const email = typeof res.locals.email === 'string' ? res.locals.email : '';
-    await new RecordApiCardUsageUseCase(
-      this.apiKeyUsageRepository,
-      this.apiUsageWarner ?? (async () => {})
-    ).execute({
-      userId: Number(owner),
-      email,
-      cards: totalCards,
-      tier,
-    });
-  }
-
   // Every conversion is scored, not just fallbacks — without the baseline there
   // is nothing to compare a rescued deck against. Fire and forget: a metrics
   // write must never fail a conversion the user is waiting on.
   // The entry point, not the engine. resolveUploadSource already distinguishes
-  // web/app/dropbox/google_drive from the request; the two machine callers are
-  // only visible on res.locals, and an MCP request also carries api_key_auth,
-  // so MCP is checked first or every MCP conversion would record as 'api'.
+  // web/app/dropbox/google_drive from the request; the MCP caller is only
+  // visible on res.locals, so it is checked before the request-derived sources.
   private resolveScoreSource(
     req: express.Request,
     res: express.Response
   ): ConversionScoreSource {
     if (res.locals.mcp_auth === true) return 'mcp';
-    if (res.locals.api_key_auth === true) return 'api';
     return this.resolveUploadSource(req) as ConversionScoreSource;
   }
 
@@ -814,25 +738,6 @@ class UploadService {
 
       return await this.handleSyncUpload(req, res, settings, ws, paying);
     } catch (err) {
-      if (err instanceof ApiCardLimitError) {
-        const owner = getOwner(res);
-        track('conversion_failed', {
-          userId: owner != null ? Number(owner) : null,
-          anonymousId: this.resolveAnonId(req),
-          props: {
-            ...this.baseFunnelProps(req),
-            reason: 'api_card_limit',
-          },
-        });
-        return res.status(402).json({
-          message: `Monthly API card limit reached (${err.cards_used} of ${err.limit} on the ${err.tier_key} tier), so this deck wasn't created. Upgrade at https://2anki.net/pricing?from=api or wait for the reset on ${err.reset_on.slice(0, 10)}.`,
-          cards_used: err.cards_used,
-          limit: err.limit,
-          tier: err.tier_key,
-          reset_on: err.reset_on,
-          upgrade_url: 'https://2anki.net/pricing?from=api',
-        });
-      }
       if (err instanceof MonthlyLimitError) {
         const owner = getOwner(res);
         const userId = owner != null ? Number(owner) : null;
@@ -851,15 +756,6 @@ class UploadService {
           anonymousId,
           props: { source, kind: 'card_count' },
         });
-        if (res.locals.api_key_auth === true) {
-          return res.status(402).json({
-            message: `Monthly card limit reached (${err.cards_used} of ${err.limit}), so this deck wasn't created. Upgrade at https://2anki.net/pricing?from=api or wait for the reset on ${err.reset_on.slice(0, 10)}.`,
-            cards_used: err.cards_used,
-            limit: err.limit,
-            reset_on: err.reset_on,
-            upgrade_url: 'https://2anki.net/pricing?from=api',
-          });
-        }
         return res.redirect('/limit?kind=card_count');
       } else if (err instanceof AnonymousCardCapError) {
         const owner = getOwner(res);
@@ -1062,7 +958,6 @@ class UploadService {
             uploadInputFormat(req.files as UploadedFile[])
           );
           logEmptyBackAttribution(packages, this.resolveUploadSource(req));
-          await this.checkApiCardLimit(res, owner, totalCards);
           await this.promoteClaudeJobToUpload(
             ws.id,
             ws.location,
@@ -1071,7 +966,6 @@ class UploadService {
             source,
             paying
           );
-          await this.recordApiCardUsage(res, owner, totalCards);
           track('conversion_succeeded', {
             userId: Number(owner),
             anonymousId: this.resolveAnonId(req),
@@ -1269,7 +1163,6 @@ class UploadService {
         candidateCardCount: totalCards,
         isPaying: paying,
       });
-      await this.checkApiCardLimit(res, owner, totalCards);
     } else if (totalCards > ANONYMOUS_CARD_CAP) {
       if (authenticated) {
         throw new MonthlyLimitError(
@@ -1365,7 +1258,6 @@ class UploadService {
       });
       if (owner != null) {
         await this.usersRepository.incrementCardUsage(owner, totalCards);
-        await this.recordApiCardUsage(res, owner, totalCards);
       }
       return res.status(200).send(apkg);
     }
@@ -1380,7 +1272,6 @@ class UploadService {
     });
     if (owner != null) {
       await this.usersRepository.incrementCardUsage(owner, totalCards);
-      await this.recordApiCardUsage(res, owner, totalCards);
     }
     return res
       .status(200)

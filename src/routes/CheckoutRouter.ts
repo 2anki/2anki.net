@@ -9,11 +9,6 @@ import { AutoSyncCheckoutUseCase } from '../usecases/checkout/AutoSyncCheckoutUs
 import { CreatePassCheckoutUseCase } from '../usecases/checkout/CreatePassCheckoutUseCase';
 import { ResumeAbandonedCheckoutUseCase } from '../usecases/checkout/ResumeAbandonedCheckoutUseCase';
 import { UnlimitedCheckoutUseCase } from '../usecases/checkout/UnlimitedCheckoutUseCase';
-import {
-  DeveloperTierCheckoutUseCase,
-  UnknownDeveloperTierError,
-} from '../usecases/checkout/DeveloperTierCheckoutUseCase';
-import DeveloperTiersRepository from '../data_layer/DeveloperTiersRepository';
 import { getStripe } from '../lib/integrations/stripe';
 import { getDatabase } from '../data_layer';
 import AbandonedCheckoutRecoveryRepository from '../data_layer/AbandonedCheckoutRecoveryRepository';
@@ -133,42 +128,6 @@ const CheckoutRouter = () => {
         getUserCreatedAt,
       });
       return controller.getPrices(_req, res);
-    }
-  );
-
-  router.post(
-    '/api/checkout/developer',
-    RequireAuthentication,
-    express.json(),
-    async (req, res) => {
-      const tierKey = typeof req.body?.tier === 'string' ? req.body.tier : '';
-      const owner = res.locals.owner;
-      const email = res.locals.email;
-      if (owner == null || typeof email !== 'string') {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-      try {
-        const useCase = new DeveloperTierCheckoutUseCase(
-          getStripe(),
-          new DeveloperTiersRepository(getDatabase())
-        );
-        const { url } = await useCase.execute({
-          tierKey,
-          userId: Number(owner),
-          userEmail: email,
-        });
-        return res.status(200).json({ url });
-      } catch (error) {
-        if (error instanceof UnknownDeveloperTierError) {
-          return res
-            .status(404)
-            .json({ message: 'This plan is not available right now.' });
-        }
-        console.error('[checkout] developer tier session failed', error);
-        return res
-          .status(500)
-          .json({ message: 'Could not start checkout. Try again.' });
-      }
     }
   );
 

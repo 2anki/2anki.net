@@ -71,10 +71,6 @@ const AccountClaimPage = lazyWithRetry(
   () => import('./pages/AccountClaimPage/AccountClaimPage'),
   './pages/AccountClaimPage/AccountClaimPage'
 );
-const DevelopersPage = lazyWithRetry(
-  () => import('./pages/DevelopersPage/DevelopersPage'),
-  './pages/DevelopersPage/DevelopersPage'
-);
 const AccountPreviewPage = import.meta.env.DEV
   ? lazy(() => import('./pages/AccountPreviewPage/AccountPreviewPage'))
   : null;
@@ -523,10 +519,6 @@ function AppContent({
               element={requireAuth(<ImportPage setError={setErrorMessage} />)}
             />
             <Route path="/ankify" element={requireAuth(<AnkifyPage />)} />
-            <Route
-              path="/developers"
-              element={requireAuth(<DevelopersPage />)}
-            />
             <Route
               path="/ankify/setup"
               element={requireAuth(<AnkifySetupPage />)}

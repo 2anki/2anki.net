@@ -4,15 +4,12 @@ import path from 'path';
 
 import RequireAllowedOrigin from './middleware/RequireAllowedOrigin';
 import RequireAuthentication from './middleware/RequireAuthentication';
-import { acceptKeyOr } from './middleware/RequireApiKey';
 import RequirePayingJson from './middleware/RequirePayingJson';
 import { normalizeUploadFilenames } from './middleware/normalizeUploadFilenames';
 import UploadController from '../controllers/Upload/UploadController';
 import { SaveNativeDeckController } from '../controllers/Upload/SaveNativeDeckController';
 import { SaveNativeDeckUseCase } from '../usecases/uploads/SaveNativeDeckUseCase';
 import StorageHandler from '../lib/storage/StorageHandler';
-import { ApiKeyUsageRepository } from '../data_layer/ApiKeyUsageRepository';
-import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import JobController from '../controllers/JobController';
 import JobService from '../services/JobService';
 import JobRepository from '../data_layer/JobRepository';
@@ -53,14 +50,6 @@ const UploadRouter = () => {
     new SettingsRepository(database),
     new ConversionOutputStatsRepository(database),
     new ParsePathSignatureRepository(database),
-    new ApiKeyUsageRepository(database),
-    (email, cardsUsed, limit, tierKey) =>
-      getDefaultEmailService().sendApiUsageWarningEmail(
-        email,
-        cardsUsed,
-        limit,
-        tierKey
-      ),
     new ConversionRuleScoresRepository(database),
     new CardGuidLedgerRepository(database),
     new PhotoToFlashcardsUseCase(new EventsRepository(database))
@@ -143,10 +132,8 @@ const UploadRouter = () => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.post(
-    '/api/upload/file',
-    acceptKeyOr(RequireAllowedOrigin),
-    (req, res) => uploadController.file(req, res)
+  router.post('/api/upload/file', RequireAllowedOrigin, (req, res) =>
+    uploadController.file(req, res)
   );
 
   /**
@@ -437,10 +424,8 @@ const UploadRouter = () => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.get(
-    '/api/upload/jobs',
-    acceptKeyOr(RequireAuthentication),
-    (req, res) => jobController.getJobsByOwner(req, res)
+  router.get('/api/upload/jobs', RequireAuthentication, (req, res) =>
+    jobController.getJobsByOwner(req, res)
   );
 
   /**

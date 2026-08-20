@@ -75,11 +75,6 @@ export const NOTION_RECONNECT_TEMPLATE = fs.readFileSync(
   'utf8'
 );
 
-export const API_USAGE_WARNING_TEMPLATE = fs.readFileSync(
-  path.join(EMAIL_TEMPLATES_DIRECTORY, 'api-usage-warning.html'),
-  'utf8'
-);
-
 export const PRICE_LOCK_IN_TEMPLATE = fs.readFileSync(
   path.join(EMAIL_TEMPLATES_DIRECTORY, 'price-lock-in.html'),
   'utf8'

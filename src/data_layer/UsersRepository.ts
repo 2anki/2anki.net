@@ -121,15 +121,6 @@ class UsersRepository {
     return row?.language ?? null;
   }
 
-  async setDeveloperAccessByEmail(
-    email: string,
-    value: boolean
-  ): Promise<number> {
-    return this.database(this.table)
-      .whereRaw('LOWER(TRIM(email)) = LOWER(?)', [email.trim()])
-      .update({ developer_access: value });
-  }
-
   buildUpdateResetTokenQuery(id: string, resetToken: string, expiresAt: Date) {
     return this.database(this.table).where({ id }).update({
       reset_token: resetToken,

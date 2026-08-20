@@ -6,7 +6,6 @@ interface GetUserLocalsResponse {
   locals: {
     owner: number;
     patreon: boolean;
-    developer_access?: boolean;
     subscriber: boolean;
     subscriptionInfo: {
       active: boolean;
