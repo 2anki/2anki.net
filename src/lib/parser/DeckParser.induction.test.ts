@@ -203,7 +203,7 @@ describe('DeckParser docx bold-heading prose rescue', () => {
       rule: 'heading',
       outcome: 'rescue_shipped',
     });
-    expect(Deck.CleanCards([...clozeOff.payload[0].cards]).length).toBe(
+    expect(Deck.CleanCards([...clozeOff.payload[0].cards])).toHaveLength(
       Deck.CleanCards([...clozeOn.payload[0].cards]).length
     );
   });
