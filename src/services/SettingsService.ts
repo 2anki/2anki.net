@@ -34,15 +34,8 @@ class SettingsService implements IServiceSettings {
     });
   }
 
-  delete(owner: string, id: string) {
-    return new Promise<void>(async (resolve, reject) => {
-      try {
-        await this.repository.delete(owner, id);
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
-    });
+  async delete(owner: string, id: string): Promise<void> {
+    await this.repository.delete(owner, id);
   }
 
   getById(owner: string, id: string) {
