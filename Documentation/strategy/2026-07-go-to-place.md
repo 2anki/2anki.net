@@ -231,7 +231,7 @@ channel · Android/desktop by the numbers.
 | P1 "Anything → Anki" positioning | Open. Format breadth largely shipped (PPT, DOCX, images route to vision as of 2026-08-21); AnkiHub-era positioning/outreach not started. Was #3683 |
 | P2 Price to the lifecycle | Partially shipped: pricing v2 (2026-06-10), day/week passes, pause offer (kept — 4 saves/60d, review 2026-08-21), win-back email. Semester pass parked (ROADMAP). Was #3684 |
 | P3 Reasons to return | Verdict in: shared-deck library REMOVED at T+28 with zero publishes (#3832); webhook sync built but unfed (Notion-side registration deferred, `src/lib/ankify/FEATURE.md`). Was #3685 |
-| P4 Hosted MCP server | ✅ Shipped (#3686), KEEP verdict at T+30 (37 users/30d). Directory submissions tracked in #3798's kit |
+| P4 Hosted MCP server | ✅ Shipped (#3686), KEEP verdict at T+30 (37 users/30d). Directory listings: Smithery ✅, mcp.so ✅ (submitted 2026-08-21), PulseMCP auto-ingests the official registry. Two remain owner-only: Anthropic Connectors Directory (needs claude.ai org Owner) and the official MCP Registry (`mcp-publisher` CLI + DNS auth on 2anki.net) — canonical listing facts in closed #3798 |
 | P5 Developer API tier | ❌ REMOVED at adoption review 2026-08-21 (1 external key, used once). Was #3687/#3780 |
 | P6 Native app | Executes in the `Laer-Smart/2anki.app` repo. Was #3688 |
 
