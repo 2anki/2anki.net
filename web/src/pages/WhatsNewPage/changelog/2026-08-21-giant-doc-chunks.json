@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-21-giant-doc-chunks",
+  "date": "2026-08-21",
+  "type": "fix",
+  "title": "Very large documents now convert reliably instead of coming back incomplete"
+}
