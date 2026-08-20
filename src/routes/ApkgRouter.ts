@@ -2,7 +2,6 @@ import express from 'express';
 import multer from 'multer';
 
 import RequireAuthentication from './middleware/RequireAuthentication';
-import { acceptKeyOr } from './middleware/RequireApiKey';
 import RequireAllowedOrigin from './middleware/RequireAllowedOrigin';
 import { printQuotaMiddleware } from './middleware/PrintQuotaMiddleware';
 import ApkgController from '../controllers/ApkgController';
@@ -63,10 +62,8 @@ const ApkgRouter = () => {
    *       404:
    *         description: Upload not found
    */
-  router.get(
-    '/api/apkg/:key/meta',
-    acceptKeyOr(RequireAuthentication),
-    (req, res) => controller.getMeta(req, res)
+  router.get('/api/apkg/:key/meta', RequireAuthentication, (req, res) =>
+    controller.getMeta(req, res)
   );
 
   /**
@@ -111,10 +108,8 @@ const ApkgRouter = () => {
    *       404:
    *         description: Upload not found
    */
-  router.get(
-    '/api/apkg/:key/cards',
-    acceptKeyOr(RequireAuthentication),
-    (req, res) => controller.getCards(req, res)
+  router.get('/api/apkg/:key/cards', RequireAuthentication, (req, res) =>
+    controller.getCards(req, res)
   );
 
   /**

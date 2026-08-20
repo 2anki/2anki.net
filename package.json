@@ -17,13 +17,8 @@
     ]
   },
   "main": "main.js",
-  "bin": {
-    "2anki": "./dist/cli/2anki.cjs"
-  },
   "packageManager": "pnpm@10.18.2",
   "scripts": {
-    "cli": "tsx src/cli/bin.ts",
-    "cli:bundle": "npx --yes esbuild@0.25.10 src/cli/bin.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/cli/2anki.cjs",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

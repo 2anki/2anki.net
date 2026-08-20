@@ -3,7 +3,6 @@ import { useState } from 'react';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
 import { syncStripeSubscriptions } from './syncStripeSubscriptions';
-import { grantDeveloperAccess } from './grantDeveloperAccess';
 import { setChatAttachmentsLifecycle } from './setChatAttachmentsLifecycle';
 import { sendPassWinback } from './sendPassWinback';
 import {
@@ -62,9 +61,6 @@ export default function CommandsTab() {
   const [orphans, setOrphans] = useState<
     OrphanedSubscriptionsResponse['orphans']
   >([]);
-  const [devEmail, setDevEmail] = useState('');
-  const [devStatus, setDevStatus] = useState<Status>('idle');
-  const [devMessage, setDevMessage] = useState('');
   const [lifecycleStatus, setLifecycleStatus] = useState<Status>('idle');
   const [lifecycleMessage, setLifecycleMessage] = useState('');
   const [winbackCampaign, setWinbackCampaign] = useState('');
@@ -94,27 +90,6 @@ export default function CommandsTab() {
       setWinbackMessage(
         error instanceof Error ? error.message : 'Unknown error'
       );
-    }
-  };
-
-  const runDeveloperAccess = async (grant: boolean) => {
-    const email = devEmail.trim();
-    if (email.length === 0) {
-      setDevStatus('error');
-      setDevMessage('Enter an email first.');
-      return;
-    }
-    setDevStatus('loading');
-    setDevMessage('');
-    try {
-      const result = await grantDeveloperAccess(email, grant);
-      setDevStatus('success');
-      setDevMessage(
-        `${grant ? 'Granted' : 'Revoked'} developer access for ${email} (${result.updated} account${result.updated === 1 ? '' : 's'}).`
-      );
-    } catch (error) {
-      setDevStatus('error');
-      setDevMessage(error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
@@ -220,51 +195,6 @@ export default function CommandsTab() {
       <p className={styles.panelSubtitle}>
         Manual ops actions. Run dry-run first to validate counts before sending.
       </p>
-
-      <section className={`${sharedStyles.surface} ${styles.card}`}>
-        <h2 className={styles.cardTitle}>Developer access</h2>
-        <p className={styles.panelSubtitle}>
-          Grant or revoke access to the Developers API surface for one account
-          by email. Grants access without making the account lifetime.
-        </p>
-        <div className={styles.controls}>
-          <input
-            type="email"
-            aria-label="Account email"
-            placeholder="name@example.com"
-            className={styles.textInput}
-            value={devEmail}
-            onChange={(e) => setDevEmail(e.target.value)}
-          />
-          <button
-            type="button"
-            className={sharedStyles.btnSmall}
-            onClick={() => runDeveloperAccess(true)}
-            disabled={devStatus === 'loading'}
-          >
-            {devStatus === 'loading' ? 'Working…' : 'Grant'}
-          </button>
-          <button
-            type="button"
-            className={sharedStyles.btnSmall}
-            onClick={() => runDeveloperAccess(false)}
-            disabled={devStatus === 'loading'}
-          >
-            Revoke
-          </button>
-        </div>
-      </section>
-
-      {devStatus === 'success' && devMessage && (
-        <div className={`${sharedStyles.alertSuccess} ${styles.banner}`}>
-          {devMessage}
-        </div>
-      )}
-      {devStatus === 'error' && devMessage && (
-        <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
-          {devMessage}
-        </div>
-      )}
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
         <h2 className={styles.cardTitle}>Inactivity warnings</h2>

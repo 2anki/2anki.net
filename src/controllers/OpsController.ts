@@ -26,9 +26,6 @@ import { GetCustomerSignalsUseCase } from '../usecases/ops/GetCustomerSignalsUse
 import { GetPassUnlockMonitorUseCase } from '../usecases/ops/GetPassUnlockMonitorUseCase';
 import { GetPaidValueMonitorUseCase } from '../usecases/ops/GetPaidValueMonitorUseCase';
 import { GetAiUsageMetricsUseCase } from '../usecases/ops/GetAiUsageMetricsUseCase';
-import GrantDeveloperAccessUseCase, {
-  InvalidEmailError,
-} from '../usecases/developer/GrantDeveloperAccessUseCase';
 import { SetChatAttachmentsLifecycleUseCase } from '../usecases/ops/SetChatAttachmentsLifecycleUseCase';
 
 class OpsController {
@@ -53,7 +50,6 @@ class OpsController {
     private readonly getCustomerSignalsUseCase?: GetCustomerSignalsUseCase,
     private readonly getPassUnlockMonitorUseCase?: GetPassUnlockMonitorUseCase,
     private readonly sendPassWinbackUseCase?: SendPassWinbackUseCase,
-    private readonly grantDeveloperAccessUseCase?: GrantDeveloperAccessUseCase,
     private readonly getCancelFunnelUseCase?: GetCancelFunnelUseCase,
     private readonly getPaidValueMonitorUseCase?: GetPaidValueMonitorUseCase,
     private readonly getAiUsageMetricsUseCase?: GetAiUsageMetricsUseCase,
@@ -92,34 +88,6 @@ class OpsController {
     } catch (error) {
       console.error('[ops] setChatAttachmentsLifecycle failed', error);
       res.status(500).json({ message: 'Failed to apply the lifecycle rule' });
-    }
-  }
-
-  async grantDeveloperAccess(req: express.Request, res: express.Response) {
-    if (this.grantDeveloperAccessUseCase == null) {
-      res
-        .status(500)
-        .json({ message: 'Developer access grant not configured' });
-      return;
-    }
-    const { email, grant } = req.body as { email?: unknown; grant?: unknown };
-    try {
-      const result = await this.grantDeveloperAccessUseCase.execute(
-        email,
-        grant !== false
-      );
-      if (result.updated === 0) {
-        res.status(404).json({ message: 'No account found for that email' });
-        return;
-      }
-      res.status(200).json(result);
-    } catch (error) {
-      if (error instanceof InvalidEmailError) {
-        res.status(400).json({ message: error.message });
-        return;
-      }
-      console.error('[ops] grantDeveloperAccess failed', error);
-      res.status(500).json({ message: 'Failed to update developer access' });
     }
   }
 

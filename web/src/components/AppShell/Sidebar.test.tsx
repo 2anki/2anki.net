@@ -202,31 +202,6 @@ describe('Sidebar help group', () => {
   });
 });
 
-describe('Sidebar developers entry', () => {
-  it('shows Developers for a free logged-in user so they can request access', () => {
-    renderSidebar();
-    expect(screen.getByRole('link', { name: 'Developers' })).toHaveAttribute(
-      'href',
-      '/developers'
-    );
-  });
-
-  it('shows Developers for lifetime users', () => {
-    renderSidebar({ patreon: true });
-    expect(screen.getByRole('link', { name: 'Developers' })).toHaveAttribute(
-      'href',
-      '/developers'
-    );
-  });
-
-  it('hides Developers for unauthenticated visitors', () => {
-    renderSidebar({ locals: null });
-    expect(
-      screen.queryByRole('link', { name: 'Developers' })
-    ).not.toBeInTheDocument();
-  });
-});
-
 describe('Sidebar admin group', () => {
   it('hides the admin group when no flags are on', () => {
     renderSidebar();

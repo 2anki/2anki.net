@@ -67,8 +67,6 @@ const McpRouter = () => {
     new SettingsRepository(database),
     new ConversionOutputStatsRepository(database),
     new ParsePathSignatureRepository(database),
-    undefined,
-    undefined,
     new ConversionRuleScoresRepository(database),
     new CardGuidLedgerRepository(database),
     new PhotoToFlashcardsUseCase(new EventsRepository(database))

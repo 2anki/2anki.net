@@ -531,7 +531,6 @@ describe('OpsController.getCancelFunnel', () => {
       undefined,
       undefined,
       undefined,
-      undefined,
       useCase
     );
 

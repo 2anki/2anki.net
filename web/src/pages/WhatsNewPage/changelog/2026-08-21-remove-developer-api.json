@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-21-remove-developer-api",
+  "date": "2026-08-21",
+  "type": "fix",
+  "title": "The developer API keys page has been retired — convert through the MCP connector in Claude or ChatGPT instead"
+}

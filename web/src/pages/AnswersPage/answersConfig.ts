@@ -829,8 +829,8 @@ const claudeToAnki: AnswerConfig = {
       body: 'Text and notes become a deck — paste a chapter, a list of terms, or a summary and get question-and-answer cards. A photo becomes cards — attach an image of your notes and the assistant reads the page. You can ask for specific note types, including cloze deletions, and organise a large topic into subdecks. Preview the cards in the chat before you download the .apkg, so nothing lands in Anki that you did not check.',
     },
     {
-      heading: 'Connector access and the self-service path',
-      body: 'The hosted connector is open to every signed-in account — add it and approve the consent screen once, no request needed. API keys and the command-line tool are self-service too, so if you would rather script deck creation without the connector you can start there right away. Both paths build decks through the same 2anki account, so anything you make in the connector shows up alongside your uploads.',
+      heading: 'Connector access',
+      body: 'The hosted connector is open to every signed-in account — add it and approve the consent screen once, no request needed. It builds decks through the same 2anki account, so anything you make in the connector shows up alongside your uploads.',
     },
     {
       heading: 'What it costs',
@@ -841,10 +841,6 @@ const claudeToAnki: AnswerConfig = {
     {
       q: 'Which assistants work with the connector?',
       a: 'Claude and ChatGPT. In Claude, add it under Settings → Connectors. In ChatGPT, turn on developer mode and add the same https://2anki.net/mcp URL. Ask for flashcards the way you would ask anything else.',
-    },
-    {
-      q: 'Do I need an API key?',
-      a: 'Not for the connector — signing in through it is enough. API keys and the command-line tool are a separate, self-service path if you would rather script deck creation instead of using the chat connector.',
     },
     {
       q: 'Can it read a photo of my notes?',
@@ -863,10 +859,6 @@ const claudeToAnki: AnswerConfig = {
     {
       label: 'MCP connector reference',
       href: '/documentation/reference/mcp?ref=ai',
-    },
-    {
-      label: 'Request beta access — developer tools',
-      href: '/developers?ref=ai',
     },
     {
       label: 'Turn handwritten notes into Anki flashcards',
