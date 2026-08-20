@@ -304,6 +304,15 @@ class FallbackParser {
     };
   }
 
+  private resolveDeckName(settings: CardOption, derived: string): string {
+    if (settings.deckName != null && settings.deckName.trim() !== '') {
+      return settings.deckName;
+    }
+    return settings.removeDeckNameNumbering
+      ? stripLeadingDeckNumbering(derived)
+      : derived;
+  }
+
   run(settings: CardOption) {
     const decks = [];
 
@@ -332,13 +341,7 @@ class FallbackParser {
 
       // An explicit deck name wins over the filename, matching DeckParser and
       // making the `applied.deckName` the API reports back actually true.
-      const derivedDeckName = settings.removeDeckNameNumbering
-        ? stripLeadingDeckNumbering(result.deckName)
-        : result.deckName;
-      const deckName =
-        settings.deckName != null && settings.deckName.trim() !== ''
-          ? settings.deckName
-          : derivedDeckName;
+      const deckName = this.resolveDeckName(settings, result.deckName);
 
       decks.push(
         new Deck(
