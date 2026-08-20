@@ -3,6 +3,7 @@ import { useState } from 'react';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
 import { syncStripeSubscriptions } from './syncStripeSubscriptions';
+import { grantUnclaimedPass } from './grantUnclaimedPass';
 import { setChatAttachmentsLifecycle } from './setChatAttachmentsLifecycle';
 import { sendPassWinback } from './sendPassWinback';
 import {
@@ -66,6 +67,10 @@ export default function CommandsTab() {
   const [winbackCampaign, setWinbackCampaign] = useState('');
   const [winbackStatus, setWinbackStatus] = useState<Status>('idle');
   const [winbackMessage, setWinbackMessage] = useState('');
+  const [passId, setPassId] = useState('');
+  const [passEmail, setPassEmail] = useState('');
+  const [passStatus, setPassStatus] = useState<Status>('idle');
+  const [passMessage, setPassMessage] = useState('');
 
   const runWinback = async (dryRun: boolean) => {
     const campaign = winbackCampaign.trim();
@@ -90,6 +95,33 @@ export default function CommandsTab() {
       setWinbackMessage(
         error instanceof Error ? error.message : 'Unknown error'
       );
+    }
+  };
+
+  const runGrantPass = async () => {
+    const id = Number(passId.trim());
+    const email = passEmail.trim();
+    if (!Number.isInteger(id) || id <= 0) {
+      setPassStatus('error');
+      setPassMessage('Enter a numeric pass id first.');
+      return;
+    }
+    if (!email.includes('@')) {
+      setPassStatus('error');
+      setPassMessage('Enter the account email first.');
+      return;
+    }
+    setPassStatus('loading');
+    setPassMessage('');
+    try {
+      const result = await grantUnclaimedPass(id, email);
+      setPassStatus('success');
+      setPassMessage(
+        `Granted a ${result.kind} pass to account ${result.userId}, valid until ${new Date(result.expiresAt).toLocaleString()}.`
+      );
+    } catch (error) {
+      setPassStatus('error');
+      setPassMessage(error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
@@ -195,6 +227,53 @@ export default function CommandsTab() {
       <p className={styles.panelSubtitle}>
         Manual ops actions. Run dry-run first to validate counts before sending.
       </p>
+
+      <section className={`${sharedStyles.surface} ${styles.card}`}>
+        <h2 className={styles.cardTitle}>Grant unclaimed pass</h2>
+        <p className={styles.panelSubtitle}>
+          Attaches an unclaimed anonymous pass to an account by email and grants
+          the full duration from now — for a buyer whose checkout redirect never
+          returned. Find the pass id in the pass unlock monitor. Idempotent for
+          the same account.
+        </p>
+        <div className={styles.controls}>
+          <input
+            type="number"
+            aria-label="Anonymous pass id"
+            placeholder="Pass id"
+            className={styles.textInput}
+            value={passId}
+            onChange={(e) => setPassId(e.target.value)}
+          />
+          <input
+            type="email"
+            aria-label="Account email"
+            placeholder="name@example.com"
+            className={styles.textInput}
+            value={passEmail}
+            onChange={(e) => setPassEmail(e.target.value)}
+          />
+          <button
+            type="button"
+            className={sharedStyles.btnSmall}
+            onClick={() => runGrantPass()}
+            disabled={passStatus === 'loading'}
+          >
+            {passStatus === 'loading' ? 'Working…' : 'Grant pass'}
+          </button>
+        </div>
+      </section>
+
+      {passStatus === 'success' && passMessage && (
+        <div className={`${sharedStyles.alertSuccess} ${styles.banner}`}>
+          {passMessage}
+        </div>
+      )}
+      {passStatus === 'error' && passMessage && (
+        <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
+          {passMessage}
+        </div>
+      )}
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
         <h2 className={styles.cardTitle}>Inactivity warnings</h2>

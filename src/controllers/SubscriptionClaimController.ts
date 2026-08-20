@@ -7,6 +7,7 @@ import { passKindLabel } from '../usecases/passes/passKindLabel';
 import { emailHash } from '../lib/emailHash';
 import hmacToken from '../lib/misc/hmacToken';
 import { resolveClientIp } from '../lib/rateLimit/ipHelpers';
+import { track } from '../services/events/track';
 
 export class SubscriptionClaimController {
   constructor(
@@ -110,6 +111,10 @@ export class SubscriptionClaimController {
     );
 
     if (outcome.success) {
+      track('anonymous_pass_claimed', {
+        userId,
+        props: { kind: outcome.passKind, method: 'link' },
+      });
       res.status(200).json({
         kind: 'pass',
         passKind: passKindLabel(outcome.passKind),

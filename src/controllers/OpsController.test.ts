@@ -9,6 +9,7 @@ import { GetLandingPageYieldUseCase } from '../usecases/ops/GetLandingPageYieldU
 import { GetCustomerSignalsUseCase } from '../usecases/ops/GetCustomerSignalsUseCase';
 import { GetPassUnlockMonitorUseCase } from '../usecases/ops/GetPassUnlockMonitorUseCase';
 import { GetCancelFunnelUseCase } from '../usecases/ops/GetCancelFunnelUseCase';
+import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
 
 const buildRes = () => {
   const json = jest.fn();
@@ -590,5 +591,121 @@ describe('OpsController.getCancelFunnel', () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     errSpy.mockRestore();
+  });
+});
+
+describe('OpsController.grantUnclaimedPass', () => {
+  const buildController = (execute: jest.Mock) =>
+    new OpsController(
+      {} as unknown as GetOpsMetricsUseCase,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { execute } as unknown as GrantUnclaimedPassUseCase
+    );
+
+  it('returns 200 with the grant details on success', async () => {
+    const expiresAt = new Date('2026-08-21T12:00:00Z');
+    const execute = jest.fn().mockResolvedValue({
+      success: true,
+      userId: 42,
+      kind: '24h',
+      expiresAt,
+    });
+    const controller = buildController(execute);
+    const req = {
+      body: { anonymousPassId: 55, email: 'buyer@example.com' },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.grantUnclaimedPass(req, res);
+
+    expect(execute).toHaveBeenCalledWith({
+      anonymousPassId: 55,
+      email: 'buyer@example.com',
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      granted: true,
+      userId: 42,
+      kind: '24h',
+      expiresAt: expiresAt.toISOString(),
+    });
+  });
+
+  it('returns 404 when no pass matches the id', async () => {
+    const execute = jest
+      .fn()
+      .mockResolvedValue({ success: false, reason: 'pass_not_found' });
+    const controller = buildController(execute);
+    const req = {
+      body: { anonymousPassId: 999, email: 'buyer@example.com' },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.grantUnclaimedPass(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns 409 when the pass is already claimed by another account', async () => {
+    const execute = jest
+      .fn()
+      .mockResolvedValue({ success: false, reason: 'already_claimed' });
+    const controller = buildController(execute);
+    const req = {
+      body: { anonymousPassId: 55, email: 'buyer@example.com' },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.grantUnclaimedPass(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+  });
+
+  it('returns 400 without calling the use case on a missing pass id', async () => {
+    const execute = jest.fn();
+    const controller = buildController(execute);
+    const req = {
+      body: { email: 'buyer@example.com' },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.grantUnclaimedPass(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 when the use case is not configured', async () => {
+    const controller = new OpsController({} as unknown as GetOpsMetricsUseCase);
+    const req = {
+      body: { anonymousPassId: 55, email: 'buyer@example.com' },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.grantUnclaimedPass(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
   });
 });

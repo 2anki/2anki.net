@@ -95,6 +95,11 @@ export const PASS_CLAIM_CONFIRMATION_TEMPLATE = fs.readFileSync(
   'utf8'
 );
 
+export const ANONYMOUS_PASS_CLAIM_TEMPLATE = fs.readFileSync(
+  path.join(EMAIL_TEMPLATES_DIRECTORY, 'anonymous-pass-claim.html'),
+  'utf8'
+);
+
 export const SUBSCRIPTION_RECOVERY_TEMPLATE = fs.readFileSync(
   path.join(EMAIL_TEMPLATES_DIRECTORY, 'subscription-recovery.html'),
   'utf8'

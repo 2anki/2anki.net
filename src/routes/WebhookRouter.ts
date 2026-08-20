@@ -17,6 +17,8 @@ import UserPassRepository, {
   type PassKind,
 } from '../data_layer/UserPassRepository';
 import AnonymousPassRepository from '../data_layer/AnonymousPassRepository';
+import PassClaimTokensRepository from '../data_layer/PassClaimTokensRepository';
+import { SendAnonymousPassClaimEmailUseCase } from '../usecases/passes/SendAnonymousPassClaimEmailUseCase';
 import TokenRepository from '../data_layer/TokenRepository';
 import AuthenticationService from '../services/AuthenticationService';
 import UsersService from '../services/UsersService';
@@ -69,6 +71,12 @@ const WebhooksRouter = () => {
   const recordErrorUseCase = new RecordUserVisibleErrorUseCase(
     new UserVisibleErrorsRepository(database)
   );
+  const sendAnonymousPassClaimEmailUseCase =
+    new SendAnonymousPassClaimEmailUseCase(
+      new PassClaimTokensRepository(database),
+      getDefaultEmailService(),
+      getEventsSink()
+    );
 
   /**
    * @swagger
@@ -388,6 +396,9 @@ const WebhooksRouter = () => {
                   session.customer_details?.email ??
                   session.customer_email ??
                   null;
+                const alreadyGranted = await anonRepo.findBySessionId(
+                  session.id
+                );
                 const granted = await anonRepo.insert({
                   stripeSessionId: session.id,
                   kind: passKind,
@@ -401,6 +412,20 @@ const WebhooksRouter = () => {
                   expires_at: granted.expires_at.toISOString(),
                   payment_intent_id_hash: hashToken(paymentIntentId),
                 });
+                if (alreadyGranted == null && buyerEmail != null) {
+                  try {
+                    await sendAnonymousPassClaimEmailUseCase.execute({
+                      anonymousPassId: granted.id,
+                      kind: passKind,
+                      buyerEmail,
+                    });
+                  } catch (claimEmailError) {
+                    console.error(
+                      'pass.claim_email.send_failed',
+                      claimEmailError
+                    );
+                  }
+                }
               } catch (passError) {
                 console.error('pass.webhook.grant_failed', passError);
               }
