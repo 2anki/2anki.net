@@ -288,6 +288,35 @@ describe('UpdateMindmapUseCase', () => {
     expect(savedImage.url).toBe('mindmaps/1/map-1/uuid.png');
   });
 
+  it('drops edges referencing a missing node id before persisting', async () => {
+    const repo = makeRepo(makeMap(2));
+    const useCase = new UpdateMindmapUseCase(repo);
+
+    await useCase.execute({
+      id: 'map-1' as MindmapsId,
+      userId: 1 as UsersId,
+      data: {
+        nodes: [
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ],
+        edges: [
+          { source: 'a', target: 'b' },
+          { source: 'a', target: 'ghost' },
+          { source: 'ghost', target: 'b' },
+        ],
+      },
+      user: FREE_USER,
+      subscriptions: [],
+      isPaying: false,
+    });
+
+    const saved = (repo.update as jest.Mock).mock.calls[0][2] as {
+      data: MindmapData;
+    };
+    expect(saved.data.edges).toEqual([{ source: 'a', target: 'b' }]);
+  });
+
   it('rejects cross-tenant s3Key: key for user 99 in map belonging to user 1', async () => {
     const repo = makeRepo(makeMap(1));
     const useCase = new UpdateMindmapUseCase(repo);

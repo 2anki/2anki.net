@@ -78,12 +78,16 @@ function sanitizeData(
   userId: UsersId,
   mapId: MindmapsId
 ): MindmapData {
+  const nodeIds = new Set(data.nodes.map((node) => node.id));
   return {
     ...data,
     nodes: data.nodes.map((node) => {
       if (node.image == null) return node;
       return { ...node, image: sanitizeImageUrl(node.image, userId, mapId) };
     }),
+    edges: data.edges.filter(
+      (edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target)
+    ),
   };
 }
 

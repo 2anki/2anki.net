@@ -28,6 +28,30 @@ const mapWithIsolatedImageNode: MindmapData = {
   edges: [{ source: 'a', target: 'b' }],
 };
 
+const mapWithRootlessCycle: MindmapData = {
+  nodes: [
+    {
+      id: 'anchor',
+      label: 'Anchor',
+      image: { url: 'mindmaps/2/1/anchor.png', width: 10, height: 10 },
+    },
+    {
+      id: 'x',
+      label: 'Cycle X',
+      image: { url: 'mindmaps/2/1/cyclex.png', width: 10, height: 10 },
+    },
+    {
+      id: 'y',
+      label: 'Cycle Y',
+      image: { url: 'mindmaps/2/1/cycley.png', width: 10, height: 10 },
+    },
+  ],
+  edges: [
+    { source: 'x', target: 'y' },
+    { source: 'y', target: 'x' },
+  ],
+};
+
 function buildUseCase(data: MindmapData) {
   const repo = {
     findById: jest.fn().mockResolvedValue({ id: 1, title: 'Anatomy', data }),
@@ -75,9 +99,26 @@ describe('ExportMindmapUseCase media bundling', () => {
     expect(result.buffer.toString()).toContain('floating.png');
   });
 
-  it('fetches every node image on markmap export', async () => {
+  it('bundles reachable-node images on markmap export', async () => {
     const { storage } = await runExport(mapWithIsolatedImageNode, 'markmap');
-    expect(storage.getFileContents).toHaveBeenCalledTimes(3);
+    const fetchedKeys = storage.getFileContents.mock.calls.map((c) => c[0]);
+    expect(fetchedKeys).toContain('mindmaps/2/1/heart.png');
+    expect(fetchedKeys).toContain('mindmaps/2/1/aorta.png');
+    expect(fetchedKeys).toContain('mindmaps/2/1/floating.png');
+  });
+
+  it('does not bundle rootless-cycle node media on markmap export', async () => {
+    const { result, storage } = await runExport(
+      mapWithRootlessCycle,
+      'markmap'
+    );
+    const fetchedKeys = storage.getFileContents.mock.calls.map((c) => c[0]);
+    expect(fetchedKeys).toContain('mindmaps/2/1/anchor.png');
+    expect(fetchedKeys).not.toContain('mindmaps/2/1/cyclex.png');
+    expect(fetchedKeys).not.toContain('mindmaps/2/1/cycley.png');
+    expect(result.buffer.toString()).not.toContain('cyclex.png');
+    expect(result.buffer.toString()).not.toContain('cycley.png');
+    expect(result.excludedNodeCount).toBe(2);
   });
 
   it('keeps connected-node media intact on basic export', async () => {
