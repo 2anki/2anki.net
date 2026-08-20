@@ -53,7 +53,7 @@ export interface IEmailService {
     filename: string,
     link: string,
     cardCount?: number
-  ): void;
+  ): Promise<void>;
   sendContactEmail(
     name: string,
     email: string,
@@ -968,12 +968,12 @@ export class UnimplementedEmailService implements IEmailService {
     );
   }
 
-  sendConversionLinkEmail(
+  async sendConversionLinkEmail(
     email: string,
     filename: string,
     link: string,
     cardCount?: number
-  ): void {
+  ): Promise<void> {
     console.info(
       'sendConversionLinkEmail not handled',
       email,

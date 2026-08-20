@@ -3419,5 +3419,50 @@ describe('SyncNotionPageToRacUseCase', () => {
       expect(result.created).toBe(1);
       expect(result.errors).toEqual([]);
     });
+
+    test('logs a rejected telemetry write once and keeps it out of the error feed', async () => {
+      const repos = makeRepos();
+      const ac = makeAnkiConnectStub();
+      const unsupportedRepo = makeUnsupportedRepo();
+      const failure = new Error('db down');
+      unsupportedRepo.record.mockRejectedValue(failure);
+      const errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      const useCase = new SyncNotionPageToRacUseCase(
+        repos.clients,
+        repos.mappings,
+        repos.conflicts,
+        repos.subscriptions,
+        repos.logs,
+        repos.notionRepo,
+        () => ac,
+        () => async () => [],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        unsupportedRepo
+      );
+
+      const result = expectSyncResult(
+        await useCase.execute({
+          owner: 42,
+          notionPageId: 'page-id',
+          trigger: 'polling',
+        })
+      );
+      await new Promise((resolve) => setImmediate(resolve));
+
+      const recordFailureLogs = errorSpy.mock.calls.filter(
+        (call) =>
+          call[0] === '[ankify-sync] failed to record unsupported blocks'
+      );
+      expect(result.errors).toEqual([]);
+      expect(recordFailureLogs).toHaveLength(1);
+      expect(recordFailureLogs[0][1]).toBe(failure);
+      errorSpy.mockRestore();
+    });
   });
 });

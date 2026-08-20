@@ -1127,16 +1127,9 @@ export class SyncNotionPageToRacUseCase {
     if (this.unsupportedBlockRepo == null || types.length === 0) {
       return;
     }
-    try {
-      void this.unsupportedBlockRepo.record(types).catch((error) => {
-        console.error(
-          '[ankify-sync] failed to record unsupported blocks',
-          error
-        );
-      });
-    } catch (error) {
+    void this.unsupportedBlockRepo.record(types).catch((error) => {
       console.error('[ankify-sync] failed to record unsupported blocks', error);
-    }
+    });
   }
 
   private async persistSyncLog(
