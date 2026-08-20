@@ -19,6 +19,7 @@ import UserPassRepository, {
 import AnonymousPassRepository from '../data_layer/AnonymousPassRepository';
 import PassClaimTokensRepository from '../data_layer/PassClaimTokensRepository';
 import { SendAnonymousPassClaimEmailUseCase } from '../usecases/passes/SendAnonymousPassClaimEmailUseCase';
+import { PASS_CLAIM_WINDOW_MS } from '../usecases/passes/passDurations';
 import TokenRepository from '../data_layer/TokenRepository';
 import AuthenticationService from '../services/AuthenticationService';
 import UsersService from '../services/UsersService';
@@ -391,7 +392,9 @@ const WebhooksRouter = () => {
               }
               try {
                 const anonRepo = new AnonymousPassRepository(getDatabase());
-                const expiresAt = new Date(now.getTime() + durationMs);
+                const expiresAt = new Date(
+                  now.getTime() + PASS_CLAIM_WINDOW_MS
+                );
                 const buyerEmail =
                   session.customer_details?.email ??
                   session.customer_email ??

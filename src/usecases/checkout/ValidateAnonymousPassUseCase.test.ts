@@ -71,6 +71,47 @@ describe('ValidateAnonymousPassUseCase', () => {
     expect(result.valid).toBe(false);
   });
 
+  it('activates an unused pass on first validation, starting the clock from now', async () => {
+    const claimDeadline = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    await repo.insert({
+      stripeSessionId: 'cs_fresh',
+      kind: '24h',
+      expiresAt: claimDeadline,
+      paymentIntentId: 'pi_f',
+    });
+
+    const result = await useCase.execute('cs_fresh', now);
+
+    expect(result.valid).toBe(true);
+    const stored = await repo.findBySessionId('cs_fresh');
+    expect(stored?.activated_at).toEqual(now);
+    expect(stored?.expires_at).toEqual(
+      new Date(now.getTime() + 24 * 60 * 60 * 1000)
+    );
+  });
+
+  it('does not restart the window for an already-activated pass', async () => {
+    const pass = await repo.insert({
+      stripeSessionId: 'cs_used',
+      kind: '24h',
+      expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+      paymentIntentId: 'pi_u',
+    });
+    const activatedExpiry = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    await repo.activate(
+      pass.id,
+      new Date(now.getTime() - 22 * 60 * 60 * 1000),
+      activatedExpiry
+    );
+
+    const result = await useCase.execute('cs_used', now);
+
+    expect(result.valid).toBe(true);
+    expect(result.pass?.expires_at).toEqual(activatedExpiry);
+    const stored = await repo.findBySessionId('cs_used');
+    expect(stored?.expires_at).toEqual(activatedExpiry);
+  });
+
   describe('Stripe reconciliation when the webhook has not landed yet', () => {
     const paidSession = {
       payment_status: 'paid',
@@ -96,6 +137,19 @@ describe('ValidateAnonymousPassUseCase', () => {
         kind: '24h',
       });
       expect(await repo.findBySessionId('cs_new')).not.toBeNull();
+    });
+
+    it('activates a reconciled pass to the duration window, not the 30-day deadline', async () => {
+      const retrieve = jest.fn().mockResolvedValue(paidSession);
+
+      const result = await useCaseWith(retrieve).execute('cs_new2', now);
+
+      expect(result.valid).toBe(true);
+      const stored = await repo.findBySessionId('cs_new2');
+      expect(stored?.activated_at).toEqual(now);
+      expect(stored?.expires_at).toEqual(
+        new Date(now.getTime() + 24 * 60 * 60 * 1000)
+      );
     });
 
     it('returns valid=false for an unpaid session', async () => {
