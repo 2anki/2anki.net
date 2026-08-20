@@ -8,9 +8,7 @@ import type { EventsSink } from '../../services/events/EventsSink';
 
 function makeUsersRepo(id: number | null): UsersByEmailRepository {
   return {
-    getByEmail: jest
-      .fn()
-      .mockResolvedValue(id == null ? undefined : { id }),
+    getByEmail: jest.fn().mockResolvedValue(id == null ? undefined : { id }),
   };
 }
 

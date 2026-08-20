@@ -11,6 +11,9 @@ exports.up = async (knex) => {
   });
 };
 
+// Rolling back is only viable before the first anonymous-claim email has run:
+// once a NULL-user token row exists, re-adding NOT NULL fails. Delete or
+// backfill those rows first if a rollback is ever genuinely needed.
 exports.down = async (knex) => {
   await knex.schema.alterTable('pass_claim_tokens', (table) => {
     table.integer('user_id').notNullable().alter();

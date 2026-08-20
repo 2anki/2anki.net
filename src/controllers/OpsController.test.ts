@@ -699,9 +699,7 @@ describe('OpsController.grantUnclaimedPass', () => {
   });
 
   it('returns 500 when the use case is not configured', async () => {
-    const controller = new OpsController(
-      {} as unknown as GetOpsMetricsUseCase
-    );
+    const controller = new OpsController({} as unknown as GetOpsMetricsUseCase);
     const req = {
       body: { anonymousPassId: 55, email: 'buyer@example.com' },
     } as unknown as express.Request;
