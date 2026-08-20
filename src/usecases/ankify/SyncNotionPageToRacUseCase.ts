@@ -5,6 +5,7 @@ import { AnkifySyncMappingsRepositoryInterface } from '../../data_layer/ankify/A
 import { AnkifySyncConflictsRepositoryInterface } from '../../data_layer/ankify/AnkifySyncConflictsRepository';
 import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../data_layer/ankify/AnkifyNotionSubscriptionsRepository';
 import { AnkifySyncLogsRepositoryInterface } from '../../data_layer/ankify/AnkifySyncLogsRepository';
+import { syncLogStatus } from '../../lib/ankify/syncLogStatus';
 import { INotionRepository } from '../../data_layer/NotionRespository';
 import { track } from '../../services/events/track';
 
@@ -1147,7 +1148,7 @@ export class SyncNotionPageToRacUseCase {
       .log({
         owner: input.owner,
         kind: 'dispatch',
-        status: result.errors.length > 0 ? 'error' : 'success',
+        status: syncLogStatus(result),
         message: `notion-page sync ${input.trigger} for ${input.notionPageId} (created ${result.created}, updated ${result.updated}, conflicts ${result.conflicts})`,
         payload: {
           trigger: input.trigger,

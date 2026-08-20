@@ -611,6 +611,87 @@ describe('SendUploadToRacUseCase', () => {
     );
   });
 
+  test('logs a partial dispatch when some cards land and some error', async () => {
+    const { clients, mappings, uploads } = makeRepos();
+    const ac = makeAnkiConnectStub();
+    (ac.addNote as jest.Mock)
+      .mockResolvedValueOnce(9_876_543_210)
+      .mockRejectedValueOnce(new AnkiConnectError('duplicate note'));
+    const logs = { log: jest.fn(async () => undefined), list: jest.fn() };
+    const twoNotes = new Map([
+      [
+        100,
+        {
+          id: 100,
+          mid: 1,
+          tags: 'notion-sync',
+          fields: ['front text', 'back text'],
+          guid: 'guid-aaa',
+        },
+      ],
+      [
+        101,
+        {
+          id: 101,
+          mid: 1,
+          tags: 'notion-sync',
+          fields: ['front two', 'back two'],
+          guid: 'guid-bbb',
+        },
+      ],
+    ]);
+    const useCase = new SendUploadToRacUseCase(
+      clients,
+      mappings,
+      uploads,
+      async () => Buffer.from('fake'),
+      async () =>
+        buildParsed({
+          notes: twoNotes,
+          cards: [
+            { id: 1, nid: 100, did: 10, ord: 0 },
+            { id: 2, nid: 101, did: 10, ord: 0 },
+          ],
+        }),
+      () => ac,
+      logs as never
+    );
+
+    const result = await useCase.execute({ uploadId: 7, owner: 42 });
+
+    expect(result.created).toBe(1);
+    expect(result.errors).toHaveLength(1);
+    expect(logs.log).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'partial' })
+    );
+  });
+
+  test('logs a failed dispatch when no card lands', async () => {
+    const { clients, mappings, uploads } = makeRepos();
+    const ac = makeAnkiConnectStub();
+    (ac.addNote as jest.Mock).mockRejectedValue(
+      new AnkiConnectError('collection locked')
+    );
+    const logs = { log: jest.fn(async () => undefined), list: jest.fn() };
+    const useCase = new SendUploadToRacUseCase(
+      clients,
+      mappings,
+      uploads,
+      async () => Buffer.from('fake'),
+      async () => buildParsed({}),
+      () => ac,
+      logs as never
+    );
+
+    const result = await useCase.execute({ uploadId: 7, owner: 42 });
+
+    expect(result.created).toBe(0);
+    expect(result.errors).toHaveLength(1);
+    expect(logs.log).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'error' })
+    );
+  });
+
   test('falls back to Ankify Basic when templateOverridesProvider returns null', async () => {
     const { clients, mappings, uploads } = makeRepos();
     const ac = makeAnkiConnectStub();

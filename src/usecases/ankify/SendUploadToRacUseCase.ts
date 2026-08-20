@@ -6,6 +6,7 @@ import {
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkifySyncMappingsRepositoryInterface } from '../../data_layer/ankify/AnkifySyncMappingsRepository';
 import { AnkifySyncLogsRepositoryInterface } from '../../data_layer/ankify/AnkifySyncLogsRepository';
+import { syncLogStatus } from '../../lib/ankify/syncLogStatus';
 import { IUploadRepository } from '../../data_layer/UploadRespository';
 import {
   AnkiConnectClient,
@@ -372,7 +373,7 @@ export class SendUploadToRacUseCase {
       .log({
         owner: input.owner,
         kind: 'dispatch',
-        status: result.errors.length > 0 ? 'error' : 'success',
+        status: syncLogStatus(result),
         message: `dispatched upload ${input.uploadId} (${result.created} new, ${result.updated} updated, ${result.errors.length} errors)`,
         payload: {
           upload_id: input.uploadId,
