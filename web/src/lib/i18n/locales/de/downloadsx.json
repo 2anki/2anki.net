@@ -101,7 +101,7 @@
     "uploadMultiDeck_other": "{{count}} Karten hatten keine Antwort und wurden übersprungen, sie sind also nicht in deinen Stapeln. Füge in deiner Datei jeweils eine Rückseite hinzu und konvertiere erneut."
   },
   "blocksForbidden": {
-    "notion_one": "{{count}} Teil dieser Seite konnte nicht gelesen werden, weil er nicht mit 2anki verbunden ist, und fehlt daher in diesem Deck. Verbinde ihn in Notion mit 2anki und konvertiere dann erneut.",
-    "notion_other": "{{count}} Teile dieser Seite konnten nicht gelesen werden, weil sie nicht mit 2anki verbunden sind, und fehlen daher in diesem Deck. Verbinde sie in Notion mit 2anki und konvertiere dann erneut."
+    "notion_one": "{{count}} Teil dieser Seite ist nicht mit 2anki verbunden und fehlt daher in diesem Deck. Füge 2anki dieser Seite und ihren Unterseiten im Verbindungen-Menü von Notion hinzu und konvertiere dann erneut.",
+    "notion_other": "{{count}} Teile dieser Seite sind nicht mit 2anki verbunden und fehlen daher in diesem Deck. Füge 2anki dieser Seite und ihren Unterseiten im Verbindungen-Menü von Notion hinzu und konvertiere dann erneut."
   }
 }

@@ -101,7 +101,7 @@
     "uploadMultiDeck_other": "{{count}} cards had no answer and were skipped, so they aren't in your decks. Add a back to each in your file, then convert again."
   },
   "blocksForbidden": {
-    "notion_one": "{{count}} part of this page couldn't be read because it isn't connected to 2anki, so it's not in this deck. Connect it to 2anki in Notion, then convert again.",
-    "notion_other": "{{count}} parts of this page couldn't be read because they aren't connected to 2anki, so they aren't in this deck. Connect them to 2anki in Notion, then convert again."
+    "notion_one": "{{count}} part of this page isn't connected to 2anki, so it's not in this deck. Add 2anki to this page and its sub-pages in Notion's Connections menu, then convert again.",
+    "notion_other": "{{count}} parts of this page aren't connected to 2anki, so they aren't in this deck. Add 2anki to this page and its sub-pages in Notion's Connections menu, then convert again."
   }
 }

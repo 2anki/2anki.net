@@ -101,7 +101,7 @@
     "uploadMultiDeck_other": "{{count}} kaarten hadden geen antwoord en zijn overgeslagen, dus zitten niet in je pakketten. Voeg aan elke kaart een achterkant toe in je bestand en converteer opnieuw."
   },
   "blocksForbidden": {
-    "notion_one": "{{count}} deel van deze pagina kon niet worden gelezen omdat het niet met 2anki is verbonden, dus het staat niet in dit deck. Verbind het in Notion met 2anki en converteer opnieuw.",
-    "notion_other": "{{count}} delen van deze pagina konden niet worden gelezen omdat ze niet met 2anki zijn verbonden, dus ze staan niet in dit deck. Verbind ze in Notion met 2anki en converteer opnieuw."
+    "notion_one": "{{count}} deel van deze pagina is niet met 2anki verbonden, dus het staat niet in dit deck. Voeg 2anki toe aan deze pagina en de subpagina's via het menu Verbindingen in Notion en converteer opnieuw.",
+    "notion_other": "{{count}} delen van deze pagina zijn niet met 2anki verbonden, dus ze staan niet in dit deck. Voeg 2anki toe aan deze pagina en de subpagina's via het menu Verbindingen in Notion en converteer opnieuw."
   }
 }

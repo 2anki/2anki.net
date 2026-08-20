@@ -1231,7 +1231,9 @@ describe('DownloadsPage conversion note toggles', () => {
     ];
     renderAt('/downloads');
 
-    expect(screen.queryByText(/couldn't be read/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/isn't connected to 2anki/)
+    ).not.toBeInTheDocument();
     fireEvent.click(
       screen.getByRole('button', { name: '3 parts not connected' })
     );
