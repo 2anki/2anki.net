@@ -57,3 +57,38 @@ test('throws when NOTION_REDIRECT_URI is missing rather than POSTing an invalid 
   );
   expect(mockedAxios.post).not.toHaveBeenCalled();
 });
+
+describe('NotionService.getAccessData settles per the OAuth response', () => {
+  test('resolves with the token payload Notion returns', async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: { access_token: 'tok-abc', workspace_id: 'ws-1' },
+    } as Awaited<ReturnType<typeof mockedAxios.post>>);
+
+    const result = await makeService().getAccessData('auth-code-123');
+
+    expect(result).toEqual({ access_token: 'tok-abc', workspace_id: 'ws-1' });
+  });
+
+  test('rejects with the underlying error when the token request fails', async () => {
+    const failure = new Error('notion oauth request failed');
+    mockedAxios.post.mockRejectedValue(failure);
+
+    await expect(makeService().getAccessData('auth-code-123')).rejects.toBe(
+      failure
+    );
+  });
+
+  test('stays pending when Notion responds without an access_token', async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: {},
+    } as Awaited<ReturnType<typeof mockedAxios.post>>);
+
+    const settled = jest.fn();
+    void makeService().getAccessData('auth-code-123').then(settled, settled);
+
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(settled).not.toHaveBeenCalled();
+  });
+});

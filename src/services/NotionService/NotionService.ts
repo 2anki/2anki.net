@@ -263,7 +263,7 @@ export class NotionService {
       throw new Error('Notion Connection Handler not configured');
     }
 
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const url = 'https://api.notion.com/v1/oauth/token';
       const data = {
         grant_type: 'authorization_code',
@@ -278,21 +278,18 @@ export class NotionService {
         headers: { 'Content-Type': 'application/json' },
       };
 
-      try {
-        const res = await instrumentedAxios.post<{ access_token?: string }>(
-          'notion',
-          url,
-          data,
-          options
-        );
-        if (res.data.access_token) {
-          resolve(res.data as { [key: string]: string });
-        }
-      } catch (err) {
-        console.info('Get access data failed');
-        console.error(err);
-        reject(err);
-      }
+      instrumentedAxios
+        .post<{ access_token?: string }>('notion', url, data, options)
+        .then((res) => {
+          if (res.data.access_token) {
+            resolve(res.data as { [key: string]: string });
+          }
+        })
+        .catch((err) => {
+          console.info('Get access data failed');
+          console.error(err);
+          reject(err);
+        });
     });
   }
 
