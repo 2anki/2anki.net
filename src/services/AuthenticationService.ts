@@ -11,6 +11,16 @@ import Users from '../data_layer/public/Users';
 import { Knex } from 'knex';
 import instrumentedAxios from './observability/instrumentedAxios';
 import { SESSION_JWT_EXPIRY } from '../shared/session';
+import { withRetry, WithRetryOptions } from './NotionService/helpers/withRetry';
+
+// OAuth token exchanges die transiently at the last step of signup (network
+// blips, provider 5xx). withRetry only re-attempts the transient class
+// (ECONNRESET/ETIMEDOUT/5xx/no-response); a 4xx (invalid_grant = the code was
+// consumed or is invalid) is never retried, so we don't replay a spent code.
+const OAUTH_TOKEN_EXCHANGE_RETRY: WithRetryOptions = {
+  maxAttempts: 3,
+  baseDelayMs: 300,
+};
 
 interface RsaJwk {
   kid: string;
@@ -373,14 +383,22 @@ class AuthenticationService {
     if (!clientId || !clientSecret || !redirectUri) return null;
 
     try {
-      const result = await instrumentedAxios.post<{ [key: string]: unknown }>(
-        'notion',
-        'https://api.notion.com/v1/oauth/token',
-        { grant_type: 'authorization_code', code, redirect_uri: redirectUri },
-        {
-          auth: { username: clientId, password: clientSecret },
-          headers: { 'Content-Type': 'application/json' },
-        }
+      const result = await withRetry(
+        () =>
+          instrumentedAxios.post<{ [key: string]: unknown }>(
+            'notion',
+            'https://api.notion.com/v1/oauth/token',
+            {
+              grant_type: 'authorization_code',
+              code,
+              redirect_uri: redirectUri,
+            },
+            {
+              auth: { username: clientId, password: clientSecret },
+              headers: { 'Content-Type': 'application/json' },
+            }
+          ),
+        { ...OAUTH_TOKEN_EXCHANGE_RETRY, label: 'oauth_notion' }
       );
       const ownerUser = (
         result.data?.owner as {
@@ -414,15 +432,19 @@ class AuthenticationService {
 
     let idToken: string;
     try {
-      const result = await instrumentedAxios.post<{ id_token: string }>(
-        'google_drive',
-        url,
-        qs.stringify(values),
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
+      const result = await withRetry(
+        () =>
+          instrumentedAxios.post<{ id_token: string }>(
+            'google_drive',
+            url,
+            qs.stringify(values),
+            {
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+            }
+          ),
+        { ...OAUTH_TOKEN_EXCHANGE_RETRY, label: 'oauth_google' }
       );
       idToken = result.data.id_token;
     } catch (error) {
@@ -481,15 +503,19 @@ class AuthenticationService {
       scope: 'openid profile email offline_access',
     };
     try {
-      const result = await instrumentedAxios.post<{ id_token: string }>(
-        'microsoft_login',
-        url,
-        qs.stringify(values),
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
+      const result = await withRetry(
+        () =>
+          instrumentedAxios.post<{ id_token: string }>(
+            'microsoft_login',
+            url,
+            qs.stringify(values),
+            {
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+            }
+          ),
+        { ...OAUTH_TOKEN_EXCHANGE_RETRY, label: 'oauth_microsoft' }
       );
       const idToken = result.data.id_token;
       const decoded = jwt.decode(idToken, { complete: true });
@@ -590,13 +616,17 @@ class AuthenticationService {
         redirect_uri: APPLE_REDIRECT_URI,
         grant_type: 'authorization_code',
       };
-      const result = await instrumentedAxios.post<{
-        id_token: string;
-        refresh_token?: string;
-        access_token?: string;
-      }>('apple_login', APPLE_TOKEN_URL, qs.stringify(values), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
+      const result = await withRetry(
+        () =>
+          instrumentedAxios.post<{
+            id_token: string;
+            refresh_token?: string;
+            access_token?: string;
+          }>('apple_login', APPLE_TOKEN_URL, qs.stringify(values), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          }),
+        { ...OAUTH_TOKEN_EXCHANGE_RETRY, label: 'oauth_apple' }
+      );
       idToken = result.data.id_token;
       refreshToken =
         typeof result.data.refresh_token === 'string'

@@ -4,6 +4,7 @@ import {
   RequestTimeoutError,
   UnknownHTTPResponseError,
 } from '@notionhq/client';
+import axios from 'axios';
 
 export interface WithRetryOptions {
   maxAttempts?: number;
@@ -37,6 +38,16 @@ const RETRYABLE_NETWORK_CODES = new Set<string>([
 // (no known APIErrorCode) — gateway/upstream blips worth one more attempt.
 const RETRYABLE_HTTP_STATUSES = new Set<number>([429, 500, 502, 503, 504]);
 
+function isRetryableAxiosError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) {
+    return false;
+  }
+  if (error.response == null) {
+    return true;
+  }
+  return RETRYABLE_HTTP_STATUSES.has(error.response.status);
+}
+
 function isRetryable(error: unknown): boolean {
   if (error instanceof APIResponseError) {
     return RETRYABLE_NOTION_CODES.has(error.code);
@@ -46,6 +57,9 @@ function isRetryable(error: unknown): boolean {
   }
   if (UnknownHTTPResponseError.isUnknownHTTPResponseError(error)) {
     return RETRYABLE_HTTP_STATUSES.has(error.status);
+  }
+  if (isRetryableAxiosError(error)) {
+    return true;
   }
   const code = (error as { code?: string })?.code;
   if (typeof code === 'string' && RETRYABLE_NETWORK_CODES.has(code)) {
