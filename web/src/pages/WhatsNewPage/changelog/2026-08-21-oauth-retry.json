@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-21-oauth-retry",
+  "date": "2026-08-21",
+  "type": "fix",
+  "title": "Sign in with Google, Apple, Microsoft, or Notion retries automatically through a brief provider hiccup"
+}

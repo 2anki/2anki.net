@@ -105,6 +105,47 @@ describe('withRetry', () => {
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
+  it('retries an axios 503 response and eventually succeeds', async () => {
+    const axiosError = Object.assign(
+      new Error('Request failed with status code 503'),
+      { isAxiosError: true, response: { status: 503 } }
+    );
+    const fn = jest
+      .fn()
+      .mockRejectedValueOnce(axiosError)
+      .mockResolvedValueOnce('ok');
+    await withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 });
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries an axios error with no response (transport failure)', async () => {
+    const axiosError = Object.assign(new Error('socket hang up'), {
+      isAxiosError: true,
+      code: 'ERR_NETWORK',
+    });
+    const fn = jest
+      .fn()
+      .mockRejectedValueOnce(axiosError)
+      .mockResolvedValueOnce('ok');
+    await withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 });
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('does NOT retry an axios 4xx response (consumed/invalid auth code)', async () => {
+    const axiosError = Object.assign(
+      new Error('Request failed with status code 400'),
+      {
+        isAxiosError: true,
+        response: { status: 400, data: { error: 'invalid_grant' } },
+      }
+    );
+    const fn = jest.fn().mockRejectedValue(axiosError);
+    await expect(
+      withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })
+    ).rejects.toBe(axiosError);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
   it('retries on a Notion client RequestTimeoutError', async () => {
     const fn = jest
       .fn()

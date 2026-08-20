@@ -164,6 +164,37 @@ describe('loginWithNotion', () => {
     expect(result).toBeNull();
   });
 
+  it('retries a transient 503 token exchange and completes the sign-in', async () => {
+    const transient = Object.assign(
+      new Error('Request failed with status code 503'),
+      { isAxiosError: true, response: { status: 503 } }
+    );
+    mockedAxios.post = jest
+      .fn()
+      .mockRejectedValueOnce(transient)
+      .mockResolvedValueOnce({ data: notionResponse });
+
+    const service = createService();
+    const result = await service.loginWithNotion('auth-code');
+
+    expect(result?.email).toBe('alice@example.com');
+    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a 4xx token exchange (consumed code)', async () => {
+    const consumed = Object.assign(
+      new Error('Request failed with status code 400'),
+      { isAxiosError: true, response: { status: 400 } }
+    );
+    mockedAxios.post = jest.fn().mockRejectedValue(consumed);
+
+    const service = createService();
+    const result = await service.loginWithNotion('auth-code');
+
+    expect(result).toBeNull();
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+  });
+
   it('returns null when NOTION_CLIENT_ID is not set', async () => {
     const originalId = process.env.NOTION_CLIENT_ID;
     delete process.env.NOTION_CLIENT_ID;
@@ -409,6 +440,54 @@ describe('loginWithGoogle', () => {
     if (!result.ok) {
       expect(result.reason).toBe('token_exchange_failed');
     }
+  });
+
+  it('retries a transient 503 token exchange and completes the sign-in', async () => {
+    const idToken = signIdToken({
+      iss: 'https://accounts.google.com',
+      aud: CLIENT_ID,
+      sub: 'google-sub-retry',
+      email: 'retry@example.com',
+      name: 'Retry User',
+    });
+    const transient = Object.assign(
+      new Error('Request failed with status code 503'),
+      { isAxiosError: true, response: { status: 503 } }
+    );
+    mockedAxios.post = jest
+      .fn()
+      .mockRejectedValueOnce(transient)
+      .mockResolvedValueOnce({ data: { id_token: idToken } });
+
+    const service = createService();
+    const result = await service.loginWithGoogle('auth-code');
+
+    expect(result).toEqual({
+      ok: true,
+      email: 'retry@example.com',
+      name: 'Retry User',
+    });
+    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a 4xx token exchange (consumed code) and fails fast', async () => {
+    const consumed = Object.assign(
+      new Error('Request failed with status code 400'),
+      {
+        isAxiosError: true,
+        response: { status: 400, data: { error: 'invalid_grant' } },
+      }
+    );
+    mockedAxios.post = jest.fn().mockRejectedValue(consumed);
+
+    const service = createService();
+    const result = await service.loginWithGoogle('auth-code');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe('token_exchange_failed');
+    }
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
   });
 
   it('rejects an ES256-signed id_token (algorithm substitution defense)', async () => {
@@ -1010,6 +1089,30 @@ describe('loginWithApple', () => {
       expect(result.message).toContain('400');
       expect(result.message).toContain('invalid_grant');
     }
+  });
+
+  it('retries a transient 502 token exchange and completes the sign-in', async () => {
+    const idToken = signIdToken({
+      iss: 'https://appleid.apple.com',
+      aud: SERVICES_ID,
+      sub: 'apple-sub-retry',
+      email: 'retry@example.com',
+      email_verified: true,
+    });
+    const transient = Object.assign(
+      new Error('Request failed with status code 502'),
+      { isAxiosError: true, response: { status: 502 } }
+    );
+    mockedAxios.post = jest
+      .fn()
+      .mockRejectedValueOnce(transient)
+      .mockResolvedValueOnce({ data: { id_token: idToken } });
+
+    const service = createService();
+    const result = await service.loginWithApple('auth-code');
+
+    expect(result).toMatchObject({ ok: true, subject: 'apple-sub-retry' });
+    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
   });
 
   it('fails with missing_sub when the sub claim is missing', async () => {

@@ -4,6 +4,7 @@ import {
   RequestTimeoutError,
   UnknownHTTPResponseError,
 } from '@notionhq/client';
+import axios from 'axios';
 
 export interface WithRetryOptions {
   maxAttempts?: number;
@@ -37,6 +38,16 @@ const RETRYABLE_NETWORK_CODES = new Set<string>([
 // (no known APIErrorCode) — gateway/upstream blips worth one more attempt.
 const RETRYABLE_HTTP_STATUSES = new Set<number>([429, 500, 502, 503, 504]);
 
+function isRetryableAxiosError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) {
+    return false;
+  }
+  if (error.response == null) {
+    return true;
+  }
+  return RETRYABLE_HTTP_STATUSES.has(error.response.status);
+}
+
 function isRetryable(error: unknown): boolean {
   if (error instanceof APIResponseError) {
     return RETRYABLE_NOTION_CODES.has(error.code);
@@ -47,11 +58,31 @@ function isRetryable(error: unknown): boolean {
   if (UnknownHTTPResponseError.isUnknownHTTPResponseError(error)) {
     return RETRYABLE_HTTP_STATUSES.has(error.status);
   }
+  if (isRetryableAxiosError(error)) {
+    return true;
+  }
   const code = (error as { code?: string })?.code;
   if (typeof code === 'string' && RETRYABLE_NETWORK_CODES.has(code)) {
     return true;
   }
   return false;
+}
+
+function describeFailure(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    if (typeof error.response?.status === 'number') {
+      return `status ${error.response.status}`;
+    }
+    const code = typeof error.code === 'string' ? error.code : '';
+    if (/^[A-Z0-9_]+$/.test(code)) {
+      return `code ${code}`;
+    }
+    return 'network error';
+  }
+  if (error instanceof Error) {
+    return error.constructor.name;
+  }
+  return 'unknown';
 }
 
 function sleep(ms: number): Promise<void> {
@@ -97,9 +128,9 @@ export async function withRetry<T>(
       const jitter = 0.5 + Math.random();
       const delay =
         retryAfterMs ?? Math.floor(baseDelayMs * 2 ** (attempt - 1) * jitter);
-      const message = (error as { message?: string })?.message ?? 'unknown';
+      const labelSuffix = label ? `:${label}` : '';
       console.warn(
-        `[withRetry${label ? `:${label}` : ''}] attempt ${attempt}/${maxAttempts} failed (${message}); retrying in ${delay}ms`
+        `[withRetry${labelSuffix}] attempt ${attempt}/${maxAttempts} failed (${describeFailure(error)}); retrying in ${delay}ms`
       );
       await doSleep(delay);
     }
