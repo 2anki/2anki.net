@@ -81,6 +81,14 @@ Mission: give people the simplest, fastest way to turn what they're studying int
 - 🔴 Per-locale landing pages (i18n)
 - 🔴 Full HTML → Notion rich text conversion (tables, code blocks, LaTeX) for APKG import v2
 
+## Parked ideas (issue backlog folded in 2026-08-21; the surface-lifecycle gate allows one new surface at a time)
+
+- 🔴 AI-native fallback for unrecognized upload formats — magic-byte sniffing, known formats keep deterministic parsers, everything else falls through to the vision/AI path instead of a flat reject (was #3833; generalizes the shipped PDF-vision fallback)
+- 🔴 Contextual structure interview — when a conversion's yield disagrees wildly with the page's block census, ask one evidence-based question at the result screen and record the answer as that page's parser rules (was #3949; per-page, never per-account)
+- 🔴 Resumable or direct-to-storage upload for very large exports — the browser-side half of the large-export incident; Safari dies on a ~643MB multipart POST before any server cap applies (was #3957; server-side extraction already bounded by #3956)
+- 🔴 Re-record the walkthrough videos against the v2 UI — recording task for the maintainer; the written docs are current, the home/start-here videos still show the pre-v2 interface (was #4061)
+- 🔴 Semester Pass one-time tier — pricing-lifecycle idea from the P2 pillar; revisit against pass-sales data (was spec PR #3621; passes shipped as day/week passes instead)
+
 ---
 
 ## Current numbers

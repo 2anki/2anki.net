@@ -223,6 +223,20 @@ channel · Android/desktop by the numbers.
 
 ---
 
+## Pillar status (2026-08-21 — tracking moved here from GitHub issues #3683–#3689, now closed)
+
+| Pillar | State |
+|---|---|
+| P0 Instrumentation | ✅ Shipped (#3682): funnel events, `input_format` segmentation (#4088), MCP + native attribution (#4094) |
+| P1 "Anything → Anki" positioning | Open. Format breadth largely shipped (PPT, DOCX, images route to vision as of 2026-08-21); AnkiHub-era positioning/outreach not started. Was #3683 |
+| P2 Price to the lifecycle | Partially shipped: pricing v2 (2026-06-10), day/week passes, pause offer (kept — 4 saves/60d, review 2026-08-21), win-back email. Semester pass parked (ROADMAP). Was #3684 |
+| P3 Reasons to return | Verdict in: shared-deck library REMOVED at T+28 with zero publishes (#3832); webhook sync built but unfed (Notion-side registration deferred, `src/lib/ankify/FEATURE.md`). Was #3685 |
+| P4 Hosted MCP server | ✅ Shipped (#3686), KEEP verdict at T+30 (37 users/30d). Directory submissions tracked in #3798's kit |
+| P5 Developer API tier | ❌ REMOVED at adoption review 2026-08-21 (1 external key, used once). Was #3687/#3780 |
+| P6 Native app | Executes in the `Laer-Smart/2anki.app` repo. Was #3688 |
+
+The weekly allocation rule (one acquisition-facing change ships first, every week) lives in CLAUDE.md and remains the standing guardrail; per-pillar issue tracking ends here — new work gets fresh, scoped issues.
+
 *Repo anchors: pricing `src/usecases/checkout/pricingV2.ts` · quotas
 `src/usecases/users/CheckMonthly*` · AI `src/lib/claude/ClaudeService.ts` · API docs
 `src/config/swagger.ts` (`/api/docs`) · shares `src/routes/ShareRouter.ts` · sync design
