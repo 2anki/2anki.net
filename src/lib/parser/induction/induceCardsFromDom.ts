@@ -27,9 +27,42 @@ export const UPLOAD_CANDIDATE_RULES: readonly InducedRule[] = [
 ];
 
 const HEADING_TAGS = new Set(['h2', 'h3']);
+const BOLD_TAGS = new Set(['strong', 'b']);
 
 function tagName(element: Element): string {
   return element.type === 'tag' ? element.name.toLowerCase() : '';
+}
+
+// A Word "Heading" style becomes an <h1> that preprocessDocxHTML turns into a
+// toggle, but a section marked with a fully bold paragraph reaches the parser as
+// a bare <p><strong>…</strong></p>. Treat that paragraph as a section heading so
+// the prose beneath it becomes the card back. A paragraph with any text outside
+// the bold run (e.g. "<strong>Note:</strong> some text") is ordinary content and
+// is left alone.
+function isBoldOnlyParagraph(dom: CheerioAPI, element: Element): boolean {
+  if (tagName(element) !== 'p') {
+    return false;
+  }
+  const node = dom(element);
+  const text = node.text().trim();
+  if (text.length === 0) {
+    return false;
+  }
+  const elementChildren = node.children().toArray();
+  if (elementChildren.length !== 1) {
+    return false;
+  }
+  const only = elementChildren[0] as Element;
+  if (!BOLD_TAGS.has(tagName(only))) {
+    return false;
+  }
+  return dom(only).text().trim() === text;
+}
+
+function isHeadingFront(dom: CheerioAPI, element: Element): boolean {
+  return (
+    HEADING_TAGS.has(tagName(element)) || isBoldOnlyParagraph(dom, element)
+  );
 }
 
 function topLevelBlocks(dom: CheerioAPI): Element[] {
@@ -92,7 +125,7 @@ function groupByTag(
 
 function induceHeadingCards(dom: CheerioAPI): Note[] {
   return groupByTag(dom, topLevelBlocks(dom), (element) =>
-    HEADING_TAGS.has(tagName(element))
+    isHeadingFront(dom, element)
   );
 }
 
