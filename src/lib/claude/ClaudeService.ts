@@ -360,23 +360,32 @@ export function getAnthropicClient(): Anthropic {
   return _anthropicClient as Anthropic;
 }
 
-const CHUNK_SIZE = 40_000;
+export const CHUNK_SIZE = 40_000;
+// A giant document fills any output cap: on 2026-08-17 one large conversion
+// pegged 17 calls at exactly CHUNK_MAX_TOKENS and re-billed each through the
+// halving retry ($33.72 that day vs a <$15 target). Past this input size the
+// chunks start at half size so answers land comfortably under the cap instead
+// of round-tripping through the retry. Normal documents are untouched.
+export const GIANT_INPUT_THRESHOLD = 300_000;
+export const GIANT_INPUT_CHUNK_SIZE = 20_000;
 
-function chunkHtmlByDetails(html: string): string[] {
-  if (html.length <= CHUNK_SIZE) return [html];
+export function chunkHtmlByDetails(html: string): string[] {
+  const chunkSize =
+    html.length > GIANT_INPUT_THRESHOLD ? GIANT_INPUT_CHUNK_SIZE : CHUNK_SIZE;
+  if (html.length <= chunkSize) return [html];
 
   const chunks: string[] = [];
   let offset = 0;
 
   while (offset < html.length) {
-    if (offset + CHUNK_SIZE >= html.length) {
+    if (offset + chunkSize >= html.length) {
       chunks.push(html.slice(offset));
       break;
     }
 
-    let splitAt = html.lastIndexOf('</details>', offset + CHUNK_SIZE);
+    let splitAt = html.lastIndexOf('</details>', offset + chunkSize);
     if (splitAt <= offset) {
-      splitAt = offset + CHUNK_SIZE;
+      splitAt = offset + chunkSize;
     } else {
       splitAt += '</details>'.length;
     }
