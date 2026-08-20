@@ -12,6 +12,7 @@ import Deck from '../Deck';
 import Note from '../Note';
 import CardOption from '../Settings';
 import { PlainTextParser } from './PlainTextParser/PlainTextParser';
+import { stripLeadingDeckNumbering } from '../helpers/stripLeadingDeckNumbering';
 import { Flashcard, isClozeFlashcard } from './PlainTextParser/types';
 import get16DigitRandomId from '../../../shared/helpers/get16DigitRandomId';
 import {
@@ -303,6 +304,15 @@ class FallbackParser {
     };
   }
 
+  private resolveDeckName(settings: CardOption, derived: string): string {
+    if (settings.deckName != null && settings.deckName.trim() !== '') {
+      return settings.deckName;
+    }
+    return settings.removeDeckNameNumbering
+      ? stripLeadingDeckNumbering(derived)
+      : derived;
+  }
+
   run(settings: CardOption) {
     const decks = [];
 
@@ -331,10 +341,7 @@ class FallbackParser {
 
       // An explicit deck name wins over the filename, matching DeckParser and
       // making the `applied.deckName` the API reports back actually true.
-      const deckName =
-        settings.deckName != null && settings.deckName.trim() !== ''
-          ? settings.deckName
-          : result.deckName;
+      const deckName = this.resolveDeckName(settings, result.deckName);
 
       decks.push(
         new Deck(

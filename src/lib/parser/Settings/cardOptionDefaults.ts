@@ -12,6 +12,7 @@ export const CARD_OPTION_DEFAULTS: Record<string, string> = {
   cloze: 'true',
   'cloze-from-toggle-content': 'false',
   'group-cloze-per-toggle': 'false',
+  'remove-deck-name-numbering': 'false',
   'enable-input': 'false',
   'basic-reversed': 'false',
   reversed: 'false',

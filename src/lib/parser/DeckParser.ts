@@ -23,6 +23,7 @@ import handleOverlappingCloze, {
 import extractListItems from './helpers/extractListItems';
 import extractTextLines from './helpers/extractTextLines';
 import splitParagraphSegments from './helpers/splitParagraphSegments';
+import { stripLeadingDeckNumbering } from './helpers/stripLeadingDeckNumbering';
 import {
   extractHeadingFromSummary,
   extractHeadingMarkup,
@@ -305,7 +306,8 @@ export class DeckParser {
       }
     }
     const deck = new Deck(
-      this.settings.deckName ?? getTitleFromMarkdown(contentsStr) ?? name,
+      this.settings.deckName ??
+        this.applyDeckNameNumbering(getTitleFromMarkdown(contentsStr) ?? name),
       heuristic.notes,
       '',
       '',
@@ -418,6 +420,12 @@ export class DeckParser {
     }
   }
 
+  private applyDeckNameNumbering(name: string): string {
+    return this.settings.removeDeckNameNumbering
+      ? stripLeadingDeckNumbering(name)
+      : name;
+  }
+
   handleHTML(
     fileName: string,
     contents: string,
@@ -448,9 +456,9 @@ export class DeckParser {
     const name = extractName({
       name:
         deckName ||
-        dom('title').text() ||
-        this.getFirstHeadingText(dom) ||
-        fileName ||
+        this.applyDeckNameNumbering(dom('title').text()) ||
+        this.applyDeckNameNumbering(this.getFirstHeadingText(dom) ?? '') ||
+        this.applyDeckNameNumbering(fileName) ||
         'Default',
       pageIcon: this.extractPageIcon(dom),
       decksCount: decks.length,
@@ -537,7 +545,9 @@ export class DeckParser {
       const href = ref.attr('href');
       const pageContent = this.findNextPage(href);
       if (pageContent && name) {
-        const subDeckName = spDom.find('title').text() || ref.text();
+        const subDeckName = this.applyDeckNameNumbering(
+          spDom.find('title').text() || ref.text()
+        );
         this.handleHTML(
           fileName,
           pageContent.toString(),

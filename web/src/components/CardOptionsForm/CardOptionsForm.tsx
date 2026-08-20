@@ -186,6 +186,7 @@ const HIDDEN_KEYS = [
   'remove-mp3-links',
   'cloze-from-toggle-content',
   'group-cloze-per-toggle',
+  'remove-deck-name-numbering',
   'split-sections-into-decks',
 ];
 const GROUPED_KEYS = new Set([
@@ -959,6 +960,19 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
               ))}
             </div>
           </fieldset>
+
+          <div className={fieldStyles.groupOptions}>
+            <LocalCheckbox
+              label={t('cardOptions.deck.removeNumberingLabel')}
+              description={t('cardOptions.deck.removeNumberingHelp')}
+              defaultValue={
+                checkboxValues['remove-deck-name-numbering'] ?? false
+              }
+              onChecked={(checked) =>
+                toggleCheckbox('remove-deck-name-numbering', checked)
+              }
+            />
+          </div>
         </div>
 
         {generalOptions.length > 0 && (

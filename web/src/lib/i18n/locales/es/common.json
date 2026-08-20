@@ -612,7 +612,9 @@
       "toggleModeLabel": "Modo de alternancia",
       "toggleModeHint": "Encabezado de la alternancia = anverso de la tarjeta; contenido = reverso. Las alternancias anidadas se convierten en sus propias tarjetas. Abrir expande el contenido anidado; Cerrar lo mantiene contraído para un repaso paso a paso.",
       "toggleOpen": "Abrir alternancias anidadas",
-      "toggleClose": "Cerrar alternancias anidadas"
+      "toggleClose": "Cerrar alternancias anidadas",
+      "removeNumberingLabel": "Quitar la numeración de los nombres de mazos",
+      "removeNumberingHelp": "Quita un número inicial como “3. ” o “03 - ” de los nombres de mazos y submazos. Desactivado por defecto: los títulos como 3D Anatomy que solo empiezan por un número nunca se cambian."
     },
     "groups": {
       "content": "Contenido",

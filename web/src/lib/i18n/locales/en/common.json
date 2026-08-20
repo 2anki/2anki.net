@@ -612,7 +612,9 @@
       "toggleModeLabel": "Toggle mode",
       "toggleModeHint": "Toggle header = card front; contents = card back. Nested toggles become their own cards. Open expands nested contents; Close keeps them collapsed for step-by-step review.",
       "toggleOpen": "Open nested toggles",
-      "toggleClose": "Close nested toggles"
+      "toggleClose": "Close nested toggles",
+      "removeNumberingLabel": "Remove numbering from deck names",
+      "removeNumberingHelp": "Removes a leading number like “3. ” or “03 - ” from deck and sub-deck names. Off by default — titles like 3D Anatomy that only start with a number are never changed."
     },
     "groups": {
       "content": "Content",

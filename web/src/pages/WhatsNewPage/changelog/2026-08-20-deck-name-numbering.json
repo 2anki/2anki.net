@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-20-deck-name-numbering",
+  "date": "2026-08-20",
+  "type": "feature",
+  "title": "Optionally drop leading numbering like \"3. \" from deck and sub-deck names"
+}
