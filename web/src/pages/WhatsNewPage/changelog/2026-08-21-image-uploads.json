@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-21-image-uploads",
+  "date": "2026-08-21",
+  "type": "fix",
+  "title": "Drop a photo on the uploader and it now converts into cards instead of failing"
+}

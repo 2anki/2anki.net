@@ -70,7 +70,8 @@ const McpRouter = () => {
     undefined,
     undefined,
     new ConversionRuleScoresRepository(database),
-    new CardGuidLedgerRepository(database)
+    new CardGuidLedgerRepository(database),
+    new PhotoToFlashcardsUseCase(new EventsRepository(database))
   );
   const storage = new StorageHandler();
   const toolsService = new McpToolsService(
