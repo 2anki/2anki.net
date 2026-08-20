@@ -68,6 +68,23 @@ function isRetryable(error: unknown): boolean {
   return false;
 }
 
+function describeFailure(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    if (typeof error.response?.status === 'number') {
+      return `status ${error.response.status}`;
+    }
+    const code = typeof error.code === 'string' ? error.code : '';
+    if (/^[A-Z0-9_]+$/.test(code)) {
+      return `code ${code}`;
+    }
+    return 'network error';
+  }
+  if (error instanceof Error) {
+    return error.constructor.name;
+  }
+  return 'unknown';
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -111,9 +128,8 @@ export async function withRetry<T>(
       const jitter = 0.5 + Math.random();
       const delay =
         retryAfterMs ?? Math.floor(baseDelayMs * 2 ** (attempt - 1) * jitter);
-      const message = (error as { message?: string })?.message ?? 'unknown';
       console.warn(
-        `[withRetry${label ? `:${label}` : ''}] attempt ${attempt}/${maxAttempts} failed (${message}); retrying in ${delay}ms`
+        `[withRetry${label ? `:${label}` : ''}] attempt ${attempt}/${maxAttempts} failed (${describeFailure(error)}); retrying in ${delay}ms`
       );
       await doSleep(delay);
     }
