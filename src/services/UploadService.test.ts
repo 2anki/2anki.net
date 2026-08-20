@@ -3170,8 +3170,6 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
       undefined,
       undefined,
       undefined,
-      undefined,
-      undefined,
       vision
     );
   }
