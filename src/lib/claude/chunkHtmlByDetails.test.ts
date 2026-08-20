@@ -17,7 +17,7 @@ describe('chunkHtmlByDetails input tiering', () => {
   it('keeps a normal document on the standard chunk size', () => {
     const html = htmlOfLength(120_000);
     const chunks = chunkHtmlByDetails(html);
-    expect(chunks.length).toBe(Math.ceil(html.length / CHUNK_SIZE));
+    expect(chunks).toHaveLength(Math.ceil(html.length / CHUNK_SIZE));
     for (const chunk of chunks) {
       expect(chunk.length).toBeLessThanOrEqual(CHUNK_SIZE + 200);
     }
@@ -42,7 +42,7 @@ describe('chunkHtmlByDetails input tiering', () => {
   it('keeps a document just under the threshold on the standard size', () => {
     const html = htmlOfLength(GIANT_INPUT_THRESHOLD - 20_000);
     const chunks = chunkHtmlByDetails(html);
-    expect(chunks.length).toBe(Math.ceil(html.length / CHUNK_SIZE));
+    expect(chunks).toHaveLength(Math.ceil(html.length / CHUNK_SIZE));
   });
 
   it('splits on toggle boundaries in both tiers', () => {
