@@ -118,6 +118,8 @@ export const KNOWN_EVENTS = new Set([
   'empty_back_notice_shown',
   'mindmap_export_excluded_nodes',
   'ai_usage_recorded',
+  'pass_claim_email_sent',
+  'anonymous_pass_claimed',
 ] as const);
 
 export type KnownEvent = typeof KNOWN_EVENTS extends Set<infer T> ? T : never;

@@ -44,6 +44,7 @@ import { emailHash } from '../lib/emailHash';
 import { getEventsSink } from '../services/events/eventsSinkInstance';
 import { DeleteInactiveUsersUseCase } from '../usecases/ops/DeleteInactiveUsersUseCase';
 import { SetChatAttachmentsLifecycleUseCase } from '../usecases/ops/SetChatAttachmentsLifecycleUseCase';
+import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
 import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import { UserVisibleErrorsRepository } from '../data_layer/UserVisibleErrorsRepository';
 import { JobsMetricsRepository } from '../data_layer/JobsMetricsRepository';
@@ -220,7 +221,13 @@ const OpsRouter = () => {
         repo: new AiUsageMetricsRepository(database),
       })
     ),
-    new SetChatAttachmentsLifecycleUseCase(new StorageHandler())
+    new SetChatAttachmentsLifecycleUseCase(new StorageHandler()),
+    new GrantUnclaimedPassUseCase(
+      new AnonymousPassRepository(database),
+      new UserPassRepository(database),
+      new UsersRepository(database),
+      getEventsSink()
+    )
   );
 
   /**
@@ -433,6 +440,43 @@ const OpsRouter = () => {
     '/api/ops/chat-attachments-lifecycle',
     RequireOpsAccess,
     (req, res) => controller.setChatAttachmentsLifecycle(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/ops/grant-unclaimed-pass:
+   *   post:
+   *     summary: Claim an anonymous Day/Week pass to an account with a fresh window
+   *     description: |
+   *       Attaches an unclaimed anonymous_passes row to the account matching the
+   *       given email and grants a user pass whose validity window starts now, so
+   *       a buyer whose checkout redirect never returned still gets the full
+   *       duration they paid for. Idempotent for the same account; 409 if the pass
+   *       is already claimed by a different account. Internal endpoint locked to
+   *       the ops owner — returns 404 for everyone else.
+   *     tags: [Ops]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [anonymousPassId, email]
+   *             properties:
+   *               anonymousPassId: { type: integer }
+   *               email: { type: string }
+   *     responses:
+   *       200:
+   *         description: Pass granted — returns userId, kind, expiresAt
+   *       400:
+   *         description: Missing or invalid pass id or email
+   *       404:
+   *         description: Not the ops owner, or no pass/account found
+   *       409:
+   *         description: Pass already claimed by another account
+   */
+  router.post('/api/ops/grant-unclaimed-pass', RequireOpsAccess, (req, res) =>
+    controller.grantUnclaimedPass(req, res)
   );
 
   /**

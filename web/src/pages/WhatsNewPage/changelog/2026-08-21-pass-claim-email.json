@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-21-pass-claim-email",
+  "date": "2026-08-21",
+  "type": "fix",
+  "title": "Day and Week passes arrive by email so you can claim them even if checkout never returns to the site"
+}

@@ -20,6 +20,7 @@ import {
   SUBSCRIPTION_CLAIM_CONFIRMATION_TEMPLATE,
   CONTACT_CONFIRMATION_TEMPLATE,
   PASS_CLAIM_CONFIRMATION_TEMPLATE,
+  ANONYMOUS_PASS_CLAIM_TEMPLATE,
   SUBSCRIPTION_RECOVERY_TEMPLATE,
   SUBSCRIPTION_SCHEDULED_CANCELLATION_TEMPLATE,
   SUBSCRIPTION_RESUMING_SOON_TEMPLATE,
@@ -98,6 +99,11 @@ export interface IEmailService {
     claimUrl: string
   ): Promise<void>;
   sendPassClaimConfirmation(
+    to: string,
+    claimUrl: string,
+    passKindLabel: string
+  ): Promise<void>;
+  sendAnonymousPassClaimEmail(
     to: string,
     claimUrl: string,
     passKindLabel: string
@@ -636,6 +642,31 @@ export class EmailService implements IEmailService {
     }
   }
 
+  async sendAnonymousPassClaimEmail(
+    to: string,
+    claimUrl: string,
+    passKindLabel: string
+  ): Promise<void> {
+    const markup = ANONYMOUS_PASS_CLAIM_TEMPLATE.replace(
+      '{{link}}',
+      claimUrl
+    ).replace('{{passKind}}', passKindLabel);
+    const msg = {
+      to,
+      from: this.defaultSender,
+      subject: `Claim your 2anki ${passKindLabel}`,
+      text: `Thanks for buying a 2anki ${passKindLabel}. Claim it to your account here: ${claimUrl} — this link stays valid for 30 days, and the pass clock starts when you claim it.`,
+      html: markup,
+      replyTo: 'support@2anki.net',
+    };
+    try {
+      await this.deliver(msg);
+    } catch (error) {
+      console.error('Failed to send anonymous pass claim email:', error);
+      throw error;
+    }
+  }
+
   private loadCancellationsSent(): Set<string> {
     try {
       // Ensure .2anki directory exists
@@ -1075,6 +1106,14 @@ export class UnimplementedEmailService implements IEmailService {
     _passKindLabel: string
   ): Promise<void> {
     console.info('sendPassClaimConfirmation not handled');
+  }
+
+  async sendAnonymousPassClaimEmail(
+    _to: string,
+    _claimUrl: string,
+    _passKindLabel: string
+  ): Promise<void> {
+    console.info('sendAnonymousPassClaimEmail not handled');
   }
 
   async sendPriceLockInEmail(

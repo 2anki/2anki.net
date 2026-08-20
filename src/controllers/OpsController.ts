@@ -27,6 +27,7 @@ import { GetPassUnlockMonitorUseCase } from '../usecases/ops/GetPassUnlockMonito
 import { GetPaidValueMonitorUseCase } from '../usecases/ops/GetPaidValueMonitorUseCase';
 import { GetAiUsageMetricsUseCase } from '../usecases/ops/GetAiUsageMetricsUseCase';
 import { SetChatAttachmentsLifecycleUseCase } from '../usecases/ops/SetChatAttachmentsLifecycleUseCase';
+import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
 
 class OpsController {
   constructor(
@@ -53,7 +54,8 @@ class OpsController {
     private readonly getCancelFunnelUseCase?: GetCancelFunnelUseCase,
     private readonly getPaidValueMonitorUseCase?: GetPaidValueMonitorUseCase,
     private readonly getAiUsageMetricsUseCase?: GetAiUsageMetricsUseCase,
-    private readonly setChatAttachmentsLifecycleUseCase?: SetChatAttachmentsLifecycleUseCase
+    private readonly setChatAttachmentsLifecycleUseCase?: SetChatAttachmentsLifecycleUseCase,
+    private readonly grantUnclaimedPassUseCase?: GrantUnclaimedPassUseCase
   ) {}
 
   async getAiUsage(req: express.Request, res: express.Response) {
@@ -88,6 +90,56 @@ class OpsController {
     } catch (error) {
       console.error('[ops] setChatAttachmentsLifecycle failed', error);
       res.status(500).json({ message: 'Failed to apply the lifecycle rule' });
+    }
+  }
+
+  async grantUnclaimedPass(req: express.Request, res: express.Response) {
+    if (this.grantUnclaimedPassUseCase == null) {
+      res.status(500).json({ message: 'Pass grant not configured' });
+      return;
+    }
+    const { anonymousPassId, email } = req.body as {
+      anonymousPassId?: unknown;
+      email?: unknown;
+    };
+    const passId = Number(anonymousPassId);
+    const trimmedEmail = typeof email === 'string' ? email.trim() : '';
+    if (!Number.isInteger(passId) || passId <= 0) {
+      res.status(400).json({ message: 'A valid pass id is required.' });
+      return;
+    }
+    if (!trimmedEmail.includes('@')) {
+      res.status(400).json({ message: 'A valid email is required.' });
+      return;
+    }
+    try {
+      const outcome = await this.grantUnclaimedPassUseCase.execute({
+        anonymousPassId: passId,
+        email: trimmedEmail,
+      });
+      if (outcome.success) {
+        res.status(200).json({
+          granted: true,
+          userId: outcome.userId,
+          kind: outcome.kind,
+          expiresAt: outcome.expiresAt.toISOString(),
+        });
+        return;
+      }
+      if (outcome.reason === 'pass_not_found') {
+        res.status(404).json({ message: 'No pass found for that id.' });
+        return;
+      }
+      if (outcome.reason === 'user_not_found') {
+        res.status(404).json({ message: 'No account found for that email.' });
+        return;
+      }
+      res
+        .status(409)
+        .json({ message: 'That pass is already claimed by another account.' });
+    } catch (error) {
+      console.error('[ops] grantUnclaimedPass failed', error);
+      res.status(500).json({ message: 'Failed to grant the pass.' });
     }
   }
 

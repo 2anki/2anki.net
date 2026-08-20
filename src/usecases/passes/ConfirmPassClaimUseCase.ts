@@ -48,7 +48,7 @@ export class ConfirmPassClaimUseCase {
 
     if (tokenRow.consumed_at != null) {
       await audit(
-        tokenRow.user_id === userId
+        tokenRow.user_id == null || tokenRow.user_id === userId
           ? 'pass_confirm_already_consumed'
           : 'pass_confirm_replay'
       );

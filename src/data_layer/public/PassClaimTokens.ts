@@ -11,7 +11,7 @@ export type PassClaimTokensId = number & { __brand: 'public.pass_claim_tokens' }
 export default interface PassClaimTokens {
   id: PassClaimTokensId;
 
-  user_id: UsersId;
+  user_id: UsersId | null;
 
   anonymous_pass_id: AnonymousPassesId;
 
@@ -29,7 +29,7 @@ export interface PassClaimTokensInitializer {
   /** Default value: nextval('pass_claim_tokens_id_seq'::regclass) */
   id?: PassClaimTokensId;
 
-  user_id: UsersId;
+  user_id?: UsersId | null;
 
   anonymous_pass_id: AnonymousPassesId;
 
@@ -47,7 +47,7 @@ export interface PassClaimTokensInitializer {
 export interface PassClaimTokensMutator {
   id?: PassClaimTokensId;
 
-  user_id?: UsersId;
+  user_id?: UsersId | null;
 
   anonymous_pass_id?: AnonymousPassesId;
 

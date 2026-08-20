@@ -5,10 +5,14 @@ import { InMemoryUserPassRepository } from '../data_layer/UserPassRepository';
 import { InMemoryAnonymousPassRepository } from '../data_layer/AnonymousPassRepository';
 import { emailHash } from '../lib/emailHash';
 
+process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
+
 const mockUpsert = jest.fn();
 const inMemoryRepo = new InMemoryUserPassRepository();
 
 const mockAnonInsert = jest.fn();
+const mockAnonFindBySessionId = jest.fn().mockResolvedValue(null);
+const mockPassClaimTokenInsert = jest.fn().mockResolvedValue({ id: 1 });
 const inMemoryAnonRepo = new InMemoryAnonymousPassRepository();
 
 const mockCustomersRetrieve = jest.fn();
@@ -62,6 +66,7 @@ jest.mock('../data_layer/AbandonedCheckoutRecoveryRepository', () => ({
 const mockSendAbandonedCheckoutRecoveryEmail = jest
   .fn()
   .mockResolvedValue(undefined);
+const mockSendAnonymousPassClaimEmail = jest.fn().mockResolvedValue(undefined);
 jest.mock('../services/EmailService/EmailService', () => ({
   getDefaultEmailService: jest.fn().mockReturnValue({
     sendAbandonedCheckoutRecoveryEmail: mockSendAbandonedCheckoutRecoveryEmail,
@@ -79,6 +84,7 @@ jest.mock('../services/EmailService/EmailService', () => ({
     sendNotionReconnectEmail: jest.fn().mockResolvedValue(undefined),
     sendSubscriptionClaimConfirmation: jest.fn().mockResolvedValue(undefined),
     sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
+    sendAnonymousPassClaimEmail: mockSendAnonymousPassClaimEmail,
     sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
     sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
   }),
@@ -103,10 +109,20 @@ jest.mock('../data_layer/AnonymousPassRepository', () => {
   );
   return {
     __esModule: true,
-    default: jest.fn().mockImplementation(() => ({ insert: mockAnonInsert })),
+    default: jest.fn().mockImplementation(() => ({
+      insert: mockAnonInsert,
+      findBySessionId: mockAnonFindBySessionId,
+    })),
     InMemoryAnonymousPassRepository: AnonMem,
   };
 });
+
+jest.mock('../data_layer/PassClaimTokensRepository', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => ({ insert: mockPassClaimTokenInsert })),
+}));
 
 const mockUpdatePatreonByEmail = jest.fn();
 const mockGetByEmail = jest.fn().mockResolvedValue(null);
@@ -346,6 +362,80 @@ describe('WebhookRouter — pass grant', () => {
         buyerEmailHash: emailHash('buyer@example.com'),
       })
     );
+  });
+
+  it('emails a claim link to the buyer when a newly granted anonymous pass has an email', async () => {
+    mockWebhookEvent = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_anon_email',
+          amount_total: 400,
+          currency: 'usd',
+          customer: null,
+          payment_intent: 'pi_anon_email',
+          customer_details: { email: 'buyer@example.com' },
+          metadata: { pass_kind: '7d', pass_anonymous: '1' },
+        },
+      },
+    };
+    mockAnonFindBySessionId.mockResolvedValueOnce(null);
+    mockAnonInsert.mockResolvedValue({
+      id: 55,
+      stripe_session_id: 'cs_anon_email',
+      kind: '7d',
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      payment_intent_id: 'pi_anon_email',
+    });
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    expect(mockPassClaimTokenInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: null, anonymous_pass_id: 55 })
+    );
+    expect(mockSendAnonymousPassClaimEmail).toHaveBeenCalledWith(
+      'buyer@example.com',
+      expect.stringContaining('/account/claim?token='),
+      'Week Pass'
+    );
+  });
+
+  it('does not re-send the claim email when the anonymous pass already existed', async () => {
+    mockWebhookEvent = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_anon_retry',
+          amount_total: 400,
+          currency: 'usd',
+          customer: null,
+          payment_intent: 'pi_anon_retry',
+          customer_details: { email: 'buyer@example.com' },
+          metadata: { pass_kind: '24h', pass_anonymous: '1' },
+        },
+      },
+    };
+    mockAnonFindBySessionId.mockResolvedValueOnce({
+      id: 55,
+      stripe_session_id: 'cs_anon_retry',
+      kind: '24h',
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      payment_intent_id: 'pi_anon_retry',
+      claimed_by_user_id: null,
+      buyer_email_hash: null,
+    });
+    mockAnonInsert.mockResolvedValue({
+      id: 55,
+      stripe_session_id: 'cs_anon_retry',
+      kind: '24h',
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      payment_intent_id: 'pi_anon_retry',
+    });
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    expect(mockSendAnonymousPassClaimEmail).not.toHaveBeenCalled();
+    expect(mockPassClaimTokenInsert).not.toHaveBeenCalled();
   });
 
   it('returns 200 and skips anonymous insert when payment_intent is missing', async () => {
