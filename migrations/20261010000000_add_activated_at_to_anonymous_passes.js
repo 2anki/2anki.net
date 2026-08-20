@@ -9,6 +9,9 @@ exports.up = async (knex) => {
   });
 };
 
+// Rolling back after any pass has activated loses data: activation overwrites
+// expires_at in place (no backup of the purchase-stamped value), and dropping
+// activated_at erases which rows were touched. Treat down as pre-traffic only.
 exports.down = async (knex) => {
   await knex.schema.alterTable('anonymous_passes', (table) => {
     table.dropColumn('activated_at');

@@ -362,9 +362,11 @@ describe('WebhookRouter — pass grant', () => {
         buyerEmailHash: emailHash('buyer@example.com'),
       })
     );
-    const insertedExpiry = (mockAnonInsert.mock.calls[0][0] as {
-      expiresAt: Date;
-    }).expiresAt;
+    const insertedExpiry = (
+      mockAnonInsert.mock.calls[0][0] as {
+        expiresAt: Date;
+      }
+    ).expiresAt;
     const daysOut =
       (insertedExpiry.getTime() - Date.now()) / (24 * 60 * 60 * 1000);
     expect(daysOut).toBeGreaterThan(29);
