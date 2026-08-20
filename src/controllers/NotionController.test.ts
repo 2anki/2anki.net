@@ -24,19 +24,17 @@ jest.mock('../data_layer', () => ({
 }));
 jest.mock('../data_layer/JobRepository');
 jest.mock('../usecases/jobs/FindOrCreateJobUseCase');
-jest.mock('../usecases/jobs/CheckInProgressJobUseCase');
+jest.mock('../usecases/jobs/ClaimJobForRestartUseCase');
 jest.mock('../usecases/jobs/CheckJobLimitUseCase');
 jest.mock('../usecases/jobs/CancelJobUseCase');
-jest.mock('../usecases/jobs/StartJobUseCase');
 
 import { runConversion } from '../lib/conversionPool';
 import { track } from '../services/events/track';
 import JobRepository from '../data_layer/JobRepository';
 import { FindOrCreateJobUseCase } from '../usecases/jobs/FindOrCreateJobUseCase';
-import { CheckInProgressJobUseCase } from '../usecases/jobs/CheckInProgressJobUseCase';
+import { ClaimJobForRestartUseCase } from '../usecases/jobs/ClaimJobForRestartUseCase';
 import { CheckJobLimitUseCase } from '../usecases/jobs/CheckJobLimitUseCase';
 import { CancelJobUseCase } from '../usecases/jobs/CancelJobUseCase';
-import { StartJobUseCase } from '../usecases/jobs/StartJobUseCase';
 
 function buildNotionRepo(
   overrides: Partial<INotionRepository> = {}
@@ -106,26 +104,32 @@ describe('NotionController', () => {
     }) as any;
 
   function setupConvertMocks({
-    canStart = true,
+    created = true,
+    claimed = true,
     withinLimit = true,
-  }: { canStart?: boolean; withinLimit?: boolean } = {}) {
+    jobStatus = 'started',
+  }: {
+    created?: boolean;
+    claimed?: boolean;
+    withinLimit?: boolean;
+    jobStatus?: string;
+  } = {}) {
     (
       JobRepository as unknown as { TERMINAL_STATUSES: string[] }
     ).TERMINAL_STATUSES = ['done', 'failed', 'cancelled', 'interrupted'];
     (JobRepository as unknown as jest.Mock).mockImplementation(() => ({}));
     (FindOrCreateJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({ id: 77, status: 'started' }),
+      execute: jest
+        .fn()
+        .mockResolvedValue({ job: { id: 77, status: jobStatus }, created }),
     }));
-    (CheckInProgressJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(canStart),
+    (ClaimJobForRestartUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue(claimed),
     }));
     (CheckJobLimitUseCase as jest.Mock).mockImplementation(() => ({
       execute: jest.fn().mockResolvedValue(withinLimit),
     }));
     (CancelJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (StartJobUseCase as jest.Mock).mockImplementation(() => ({
       execute: jest.fn().mockResolvedValue(undefined),
     }));
     (runConversion as jest.Mock).mockResolvedValue(undefined);
@@ -344,23 +348,7 @@ describe('NotionController', () => {
     });
 
     it('returns restarted: true when re-converting a page whose job row is done', async () => {
-      (
-        JobRepository as unknown as { TERMINAL_STATUSES: string[] }
-      ).TERMINAL_STATUSES = ['done', 'failed', 'cancelled', 'interrupted'];
-      (JobRepository as unknown as jest.Mock).mockImplementation(() => ({}));
-      (FindOrCreateJobUseCase as jest.Mock).mockImplementation(() => ({
-        execute: jest.fn().mockResolvedValue({ id: 77, status: 'done' }),
-      }));
-      (CheckInProgressJobUseCase as jest.Mock).mockImplementation(() => ({
-        execute: jest.fn().mockResolvedValue(true),
-      }));
-      (CheckJobLimitUseCase as jest.Mock).mockImplementation(() => ({
-        execute: jest.fn().mockResolvedValue(true),
-      }));
-      (StartJobUseCase as jest.Mock).mockImplementation(() => ({
-        execute: jest.fn().mockResolvedValue(undefined),
-      }));
-      (runConversion as jest.Mock).mockResolvedValue(undefined);
+      setupConvertMocks({ created: false, claimed: true, jobStatus: 'done' });
 
       await controller.convert(req as express.Request, res as express.Response);
 
@@ -368,13 +356,18 @@ describe('NotionController', () => {
       expect(res.json).toHaveBeenCalledWith({ jobId: 77, restarted: true });
     });
 
-    it('returns 409 when job is already in progress', async () => {
-      setupConvertMocks({ canStart: false });
+    it('returns 409 and dispatches no conversion when a duplicate is already in flight', async () => {
+      setupConvertMocks({
+        created: false,
+        claimed: false,
+        jobStatus: 'started',
+      });
 
       await controller.convert(req as express.Request, res as express.Response);
 
       expect(res.status).toHaveBeenCalledWith(409);
       expect(res.json).toHaveBeenCalledWith({ reason: 'already_in_progress' });
+      expect(runConversion).not.toHaveBeenCalled();
     });
 
     it('returns 402 when free user has hit the limit', async () => {

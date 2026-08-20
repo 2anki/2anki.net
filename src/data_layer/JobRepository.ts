@@ -45,8 +45,13 @@ class JobRepository {
     });
   }
 
-  create(id: string, owner: string, title?: string | null, type?: string) {
-    return this.database(this.tableName)
+  async create(
+    id: string,
+    owner: string,
+    title?: string | null,
+    type?: string
+  ): Promise<Jobs | undefined> {
+    const rows = await this.database(this.tableName)
       .insert({
         type,
         title,
@@ -56,7 +61,9 @@ class JobRepository {
         last_edited_time: new Date(),
       })
       .onConflict(['object_id', 'owner'])
-      .ignore();
+      .ignore()
+      .returning('*');
+    return rows[0] as Jobs | undefined;
   }
 
   findJobById(id: string, owner: string) {
@@ -124,6 +131,12 @@ class JobRepository {
     'interrupted',
   ];
 
+  static readonly RESTARTABLE_TERMINAL_STATUSES = [
+    'done',
+    'failed',
+    'interrupted',
+  ];
+
   async restartJob(id: string, owner: string): Promise<Jobs | undefined> {
     const rows = await this.database(this.tableName)
       .where({ object_id: id, owner })
@@ -137,13 +150,40 @@ class JobRepository {
     return rows[0] as Jobs | undefined;
   }
 
+  async claimStaleOrTerminalJob(
+    id: string,
+    owner: string,
+    stalenessMs: number
+  ): Promise<Jobs | undefined> {
+    const now = new Date();
+    const staleCutoff = new Date(now.getTime() - stalenessMs);
+    const rows = await this.database(this.tableName)
+      .where({ object_id: id, owner })
+      .where((claimable) => {
+        claimable
+          .whereIn('status', JobRepository.RESTARTABLE_TERMINAL_STATUSES)
+          .orWhere((staleInFlight) => {
+            staleInFlight
+              .whereNotIn('status', JobRepository.TERMINAL_STATUSES)
+              .andWhere('last_edited_time', '<', staleCutoff);
+          });
+      })
+      .update({
+        status: 'started',
+        job_reason_failure: '',
+        last_edited_time: now,
+      })
+      .returning('*');
+    return rows[0] as Jobs | undefined;
+  }
+
   async updateJobStatus(
     id: string,
     owner: string,
     status: string,
     description?: string,
     cardCount?: number
-  ): Promise<Jobs> {
+  ): Promise<Jobs | undefined> {
     const isTerminal = JobRepository.TERMINAL_STATUSES.includes(status);
     const query = this.database(this.tableName).where({ object_id: id, owner });
     if (!isTerminal) {
@@ -165,7 +205,7 @@ class JobRepository {
       update.card_count = cardCount;
     }
     const rows = await query.update(update).returning('*');
-    return rows[0] as Jobs;
+    return rows[0] as Jobs | undefined;
   }
 
   countJobsByType(owner: string, type: string): Promise<number> {

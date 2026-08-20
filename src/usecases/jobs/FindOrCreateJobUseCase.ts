@@ -1,5 +1,4 @@
 import JobRepository from '../../data_layer/JobRepository';
-import { CreateJobUseCase } from './CreateJobUseCase';
 import Jobs from '../../data_layer/public/Jobs';
 
 interface FindOrCreateJobUseCaseInput {
@@ -9,34 +8,33 @@ interface FindOrCreateJobUseCaseInput {
   type: string;
 }
 
+export interface FindOrCreateJobResult {
+  job: Jobs;
+  created: boolean;
+}
+
 export class FindOrCreateJobUseCase {
   constructor(private readonly jobRepository: JobRepository) {}
 
-  async execute(input: FindOrCreateJobUseCaseInput): Promise<Jobs> {
+  async execute(
+    input: FindOrCreateJobUseCaseInput
+  ): Promise<FindOrCreateJobResult> {
     const { id, owner, title, type } = input;
 
-    // Check if the job already exists
     const existingJob = await this.jobRepository.findJobById(id, owner);
     if (existingJob) {
-      return existingJob;
+      return { job: existingJob, created: false };
     }
 
-    const createJob = new CreateJobUseCase(this.jobRepository);
-    try {
-      await createJob.execute({
-        id,
-        owner,
-        title,
-        type,
-      });
-    } catch {
-      // ignore — conflict handled by ON CONFLICT DO NOTHING in repository
+    const inserted = await this.jobRepository.create(id, owner, title, type);
+    if (inserted) {
+      return { job: inserted, created: true };
     }
 
-    const secondLookup = await this.jobRepository.findJobById(id, owner);
-    if (!secondLookup) {
+    const raced = await this.jobRepository.findJobById(id, owner);
+    if (!raced) {
       throw new Error('Failed to find or create job after creation attempt');
     }
-    return secondLookup;
+    return { job: raced, created: false };
   }
 }

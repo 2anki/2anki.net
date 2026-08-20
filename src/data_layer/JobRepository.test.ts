@@ -18,6 +18,7 @@ async function makeDb(): Promise<Knex> {
     t.timestamp('last_edited_time');
     t.string('job_reason_failure');
     t.integer('card_count');
+    t.unique(['object_id', 'owner']);
   });
   await db.schema.createTable('uploads', (t) => {
     t.increments('id');
@@ -39,6 +40,7 @@ async function insertJob(
     status?: string;
     title?: string;
     type?: string;
+    last_edited_time?: Date;
   }
 ) {
   return db('jobs').insert({
@@ -47,7 +49,7 @@ async function insertJob(
     status: attrs.status ?? 'done',
     title: attrs.title ?? 'Deck',
     type: attrs.type ?? 'page',
-    last_edited_time: new Date(),
+    last_edited_time: attrs.last_edited_time ?? new Date(),
   });
 }
 
@@ -206,6 +208,193 @@ describe('JobRepository.restartJob — optimistic lock', () => {
   });
 });
 
+describe('JobRepository.create — atomic insert-if-absent', () => {
+  let db: Knex;
+
+  beforeEach(async () => {
+    db = await makeDb();
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  it('returns the inserted row when the (object_id, owner) pair is new', async () => {
+    const repo = new JobRepository(db);
+
+    const created = await repo.create('page-a', '1', 'Deck', 'page');
+
+    expect(created).toMatchObject({ object_id: 'page-a', status: 'started' });
+  });
+
+  it('returns undefined when a row for (object_id, owner) already exists', async () => {
+    await insertJob(db, { owner: '1', object_id: 'page-a', status: 'done' });
+    const repo = new JobRepository(db);
+
+    const created = await repo.create('page-a', '1', 'Deck', 'page');
+
+    expect(created).toBeUndefined();
+    const row = await db('jobs').where({ object_id: 'page-a' }).first();
+    expect(row.status).toBe('done');
+  });
+
+  it('only one of two concurrent creates wins; the other returns undefined', async () => {
+    const repo = new JobRepository(db);
+
+    const [first, second] = await Promise.all([
+      repo.create('page-a', '1', 'Deck', 'page'),
+      repo.create('page-a', '1', 'Deck', 'page'),
+    ]);
+
+    const winners = [first, second].filter((r) => r != null);
+    const losers = [first, second].filter((r) => r == null);
+    expect(winners).toHaveLength(1);
+    expect(losers).toHaveLength(1);
+
+    const count = await db('jobs').where({ object_id: 'page-a' }).count();
+    expect(Number((count[0] as { 'count(*)': number })['count(*)'])).toBe(1);
+  });
+});
+
+describe('JobRepository.claimStaleOrTerminalJob — atomic dispatch claim', () => {
+  let db: Knex;
+  const STALE_MS = 15 * 60 * 1000;
+
+  beforeEach(async () => {
+    db = await makeDb();
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  it('claims a terminal done job for restart', async () => {
+    await insertJob(db, { owner: '1', object_id: 'page-a', status: 'done' });
+    const repo = new JobRepository(db);
+
+    const result = await repo.claimStaleOrTerminalJob('page-a', '1', STALE_MS);
+
+    expect(result).toMatchObject({ status: 'started', object_id: 'page-a' });
+  });
+
+  it('claims a terminal failed job for restart', async () => {
+    await insertJob(db, { owner: '1', object_id: 'page-a', status: 'failed' });
+    const repo = new JobRepository(db);
+
+    const result = await repo.claimStaleOrTerminalJob('page-a', '1', STALE_MS);
+
+    expect(result).toMatchObject({ status: 'started' });
+  });
+
+  it('claims a terminal interrupted job for restart', async () => {
+    await insertJob(db, {
+      owner: '1',
+      object_id: 'page-a',
+      status: 'interrupted',
+    });
+    const repo = new JobRepository(db);
+
+    const result = await repo.claimStaleOrTerminalJob('page-a', '1', STALE_MS);
+
+    expect(result).toMatchObject({ status: 'started' });
+  });
+
+  it('does NOT claim a cancelled job (stays already-in-progress to the caller)', async () => {
+    await insertJob(db, {
+      owner: '1',
+      object_id: 'page-a',
+      status: 'cancelled',
+    });
+    const repo = new JobRepository(db);
+
+    const result = await repo.claimStaleOrTerminalJob('page-a', '1', STALE_MS);
+
+    expect(result).toBeUndefined();
+    const row = await db('jobs').where({ object_id: 'page-a' }).first();
+    expect(row.status).toBe('cancelled');
+  });
+
+  it('does NOT claim a fresh in-flight started job (the duplicate-dispatch guard)', async () => {
+    await insertJob(db, {
+      owner: '1',
+      object_id: 'page-a',
+      status: 'started',
+      last_edited_time: new Date(),
+    });
+    const repo = new JobRepository(db);
+
+    const result = await repo.claimStaleOrTerminalJob('page-a', '1', STALE_MS);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('does NOT claim a fresh in-flight step status (mid-conversion)', async () => {
+    await insertJob(db, {
+      owner: '1',
+      object_id: 'page-a',
+      status: 'step2_creating_flashcards',
+      last_edited_time: new Date(),
+    });
+    const repo = new JobRepository(db);
+
+    const result = await repo.claimStaleOrTerminalJob('page-a', '1', STALE_MS);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('claims a stale started job (stuck past the staleness window)', async () => {
+    await insertJob(db, {
+      owner: '1',
+      object_id: 'page-a',
+      status: 'started',
+      last_edited_time: new Date(Date.now() - 20 * 60 * 1000),
+    });
+    const repo = new JobRepository(db);
+
+    const result = await repo.claimStaleOrTerminalJob('page-a', '1', STALE_MS);
+
+    expect(result).toMatchObject({ status: 'started' });
+  });
+
+  it('claims a stale mid-conversion step job (worker died without a reboot)', async () => {
+    await insertJob(db, {
+      owner: '1',
+      object_id: 'page-a',
+      status: 'step2_creating_flashcards',
+      last_edited_time: new Date(Date.now() - 20 * 60 * 1000),
+    });
+    const repo = new JobRepository(db);
+
+    const result = await repo.claimStaleOrTerminalJob('page-a', '1', STALE_MS);
+
+    expect(result).toMatchObject({ status: 'started' });
+  });
+
+  it('second concurrent claim of a done job is a no-op: only one conversion starts', async () => {
+    await insertJob(db, { owner: '1', object_id: 'page-a', status: 'done' });
+    const repo = new JobRepository(db);
+
+    const [first, second] = await Promise.all([
+      repo.claimStaleOrTerminalJob('page-a', '1', STALE_MS),
+      repo.claimStaleOrTerminalJob('page-a', '1', STALE_MS),
+    ]);
+
+    const winners = [first, second].filter((r) => r != null);
+    const losers = [first, second].filter((r) => r == null);
+    expect(winners).toHaveLength(1);
+    expect(losers).toHaveLength(1);
+  });
+
+  it('keeps owner-scoping: another owner cannot claim this owner job', async () => {
+    await insertJob(db, { owner: '1', object_id: 'page-a', status: 'done' });
+    const repo = new JobRepository(db);
+
+    const result = await repo.claimStaleOrTerminalJob('page-a', '2', STALE_MS);
+
+    expect(result).toBeUndefined();
+  });
+});
+
 describe('JobRepository.findPriorNotionJobByOwnerAndObjectId', () => {
   let db: Knex;
 
@@ -355,6 +544,40 @@ describe('JobRepository — generated SQL shape', () => {
     expect(sql).toContain('count(*) as "count"');
     expect(sql).toContain("\"type\" in ('page', 'database')");
     expect(sql).toContain('"created_at" >=');
+    pgKnex.destroy();
+  });
+
+  it('claimStaleOrTerminalJob generates a single guarded UPDATE in PG', () => {
+    const pgKnex = knex({ client: 'pg' });
+    const staleCutoff = new Date(Date.now() - 15 * 60 * 1000);
+    const sql = pgKnex('jobs')
+      .where({ object_id: 'page-a', owner: 'u1' })
+      .where((claimable) => {
+        claimable
+          .whereIn('status', ['done', 'failed', 'interrupted'])
+          .orWhere((staleInFlight) => {
+            staleInFlight
+              .whereNotIn('status', [
+                'done',
+                'failed',
+                'cancelled',
+                'interrupted',
+              ])
+              .andWhere('last_edited_time', '<', staleCutoff);
+          });
+      })
+      .update({ status: 'started', job_reason_failure: '' })
+      .returning('*')
+      .toString();
+
+    expect(sql).toContain('update "jobs" set');
+    expect(sql).toContain('"object_id" = \'page-a\'');
+    expect(sql).toContain('"owner" = \'u1\'');
+    expect(sql).toContain("\"status\" in ('done', 'failed', 'interrupted')");
+    expect(sql).toContain(
+      "\"status\" not in ('done', 'failed', 'cancelled', 'interrupted')"
+    );
+    expect(sql).toContain('"last_edited_time" <');
     pgKnex.destroy();
   });
 });

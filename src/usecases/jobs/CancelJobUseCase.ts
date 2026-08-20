@@ -10,7 +10,7 @@ interface CancelJobUseCaseInput {
 export class CancelJobUseCase {
   constructor(private readonly jobRepository: JobRepository) {}
 
-  async execute(input: CancelJobUseCaseInput): Promise<Jobs> {
+  async execute(input: CancelJobUseCaseInput): Promise<Jobs | undefined> {
     const { id, owner, reason } = input;
     const job = await this.jobRepository.findJobById(id, owner);
 
