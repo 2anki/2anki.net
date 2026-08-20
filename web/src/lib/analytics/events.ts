@@ -87,7 +87,6 @@ export const KNOWN_EVENTS = new Set([
   'subscription_pause_offer_declined',
   'language_changed',
   'dev_tier_checkout_clicked',
-  'shared_deck_published',
   'card_style_selected',
 ] as const);
 

@@ -80,9 +80,6 @@ export interface ActiveShare {
   url: string;
   created_at: string;
   view_count: number;
-  is_public: boolean;
-  title: string | null;
-  card_count: number | null;
 }
 
 export async function getActiveSharesForUploadKey(
@@ -92,51 +89,4 @@ export async function getActiveSharesForUploadKey(
   if (!response.ok) return null;
   const shares = (await response.json()) as ActiveShare[];
   return shares.find((s) => s.upload_key === uploadKey) ?? null;
-}
-
-export interface ShareVisibility {
-  token: string;
-  is_public: boolean;
-  title: string | null;
-  card_count: number | null;
-}
-
-export async function setShareVisibility(
-  token: string,
-  isPublic: boolean,
-  title?: string
-): Promise<ShareVisibility> {
-  const url = `/api/shares/${encodeURIComponent(token)}`;
-  const response = await fetch(url, {
-    method: 'PATCH',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ is_public: isPublic, title }),
-  });
-  if (!response.ok) {
-    throw await shareApiError('PATCH', url, response);
-  }
-  return response.json() as Promise<ShareVisibility>;
-}
-
-export interface PublicSharedDeck {
-  token: string;
-  title: string | null;
-  card_count: number | null;
-  created_at: string;
-  view_count: number;
-  url: string;
-}
-
-export interface PublicSharedDeckPage {
-  decks: PublicSharedDeck[];
-  nextCursor: number | null;
-}
-
-export async function getPublicSharedDecks(
-  cursor: number | null
-): Promise<PublicSharedDeckPage> {
-  const params = new URLSearchParams();
-  if (cursor) params.set('cursor', String(cursor));
-  return fetchShareApi(`/api/shares/public?${params.toString()}`);
 }

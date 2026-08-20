@@ -2,17 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SharePopover } from './SharePopover';
 import * as sharedDeckLib from '../../lib/backend/getSharedDeck';
-import * as trackLib from '../../lib/analytics/track';
 
 vi.mock('../../lib/backend/getSharedDeck', () => ({
   getActiveSharesForUploadKey: vi.fn(),
   createDeckShare: vi.fn(),
   revokeDeckShare: vi.fn(),
-  setShareVisibility: vi.fn(),
-}));
-
-vi.mock('../../lib/analytics/track', () => ({
-  track: vi.fn(),
 }));
 
 const activeShare: sharedDeckLib.ActiveShare = {
@@ -21,9 +15,6 @@ const activeShare: sharedDeckLib.ActiveShare = {
   url: 'https://2anki.net/s/test-token',
   created_at: new Date().toISOString(),
   view_count: 0,
-  is_public: false,
-  title: null,
-  card_count: null,
 };
 
 beforeEach(() => {
@@ -114,86 +105,6 @@ describe('SharePopover', () => {
 
     await waitFor(() => {
       expect(sharedDeckLib.revokeDeckShare).toHaveBeenCalledWith('test-token');
-    });
-  });
-
-  it('reveals the title field when the public-library checkbox is checked', async () => {
-    vi.mocked(sharedDeckLib.getActiveSharesForUploadKey).mockResolvedValue(
-      activeShare
-    );
-
-    render(<SharePopover uploadKey="test.apkg" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
-
-    await waitFor(() => screen.getByText('List in the public library'));
-    fireEvent.click(screen.getByRole('checkbox'));
-
-    expect(
-      screen.getByPlaceholderText('e.g. Organic chemistry — Chapter 4')
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'List deck' })).toBeDisabled();
-  });
-
-  it('publishes the deck and tracks shared_deck_published on success', async () => {
-    vi.mocked(sharedDeckLib.getActiveSharesForUploadKey).mockResolvedValue(
-      activeShare
-    );
-    vi.mocked(sharedDeckLib.setShareVisibility).mockResolvedValue({
-      token: 'test-token',
-      is_public: true,
-      title: 'My deck',
-      card_count: 10,
-    });
-
-    render(<SharePopover uploadKey="test.apkg" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
-
-    await waitFor(() => screen.getByText('List in the public library'));
-    fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(
-      screen.getByPlaceholderText('e.g. Organic chemistry — Chapter 4'),
-      { target: { value: 'My deck' } }
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'List deck' }));
-
-    await waitFor(() => {
-      expect(sharedDeckLib.setShareVisibility).toHaveBeenCalledWith(
-        'test-token',
-        true,
-        'My deck'
-      );
-    });
-    expect(trackLib.track).toHaveBeenCalledWith('shared_deck_published');
-    await screen.findByText('Listed in the public library as My deck');
-  });
-
-  it('unpublishes a listed deck', async () => {
-    vi.mocked(sharedDeckLib.getActiveSharesForUploadKey).mockResolvedValue({
-      ...activeShare,
-      is_public: true,
-      title: 'My deck',
-      card_count: 10,
-    });
-    vi.mocked(sharedDeckLib.setShareVisibility).mockResolvedValue({
-      token: 'test-token',
-      is_public: false,
-      title: null,
-      card_count: null,
-    });
-
-    render(<SharePopover uploadKey="test.apkg" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
-
-    await waitFor(() => screen.getByText('Remove from library'));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Remove from library' })
-    );
-
-    await waitFor(() => {
-      expect(sharedDeckLib.setShareVisibility).toHaveBeenCalledWith(
-        'test-token',
-        false
-      );
     });
   });
 });

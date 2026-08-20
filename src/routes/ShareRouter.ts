@@ -6,8 +6,6 @@ import ShareService from '../services/ShareService';
 import CreateShareUseCase from '../usecases/share/CreateShareUseCase';
 import ResolveShareUseCase from '../usecases/share/ResolveShareUseCase';
 import RevokeShareUseCase from '../usecases/share/RevokeShareUseCase';
-import PublishShareUseCase from '../usecases/share/PublishShareUseCase';
-import ListPublicSharesUseCase from '../usecases/share/ListPublicSharesUseCase';
 import StorageHandler from '../lib/storage/StorageHandler';
 import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewService';
 import DownloadService from '../services/DownloadService';
@@ -95,12 +93,6 @@ const ShareRouter = () => {
   const createUseCase = new CreateShareUseCase(uploadRepository, shareService);
   const resolveUseCase = new ResolveShareUseCase(shareService);
   const revokeUseCase = new RevokeShareUseCase(shareService);
-  const publishUseCase = new PublishShareUseCase(
-    shareService,
-    storage,
-    previewService
-  );
-  const listPublicUseCase = new ListPublicSharesUseCase(shareService);
 
   const controller = new ShareController(
     createUseCase,
@@ -109,9 +101,7 @@ const ShareRouter = () => {
     shareService,
     storage,
     previewService,
-    downloadService,
-    publishUseCase,
-    listPublicUseCase
+    downloadService
   );
 
   const router = express.Router();
@@ -171,76 +161,6 @@ const ShareRouter = () => {
    */
   router.get('/api/shares', RequireAuthentication, (req, res) =>
     controller.getActiveSharesForOwner(req, res)
-  );
-
-  /**
-   * @swagger
-   * /api/shares/public:
-   *   get:
-   *     summary: List public shared decks
-   *     description: Public endpoint. Returns a paginated, newest-first page of decks the owner listed in the public library. Indexable — unlike the other share endpoints, this response does NOT carry X-Robots-Tag&#58; noindex.
-   *     tags: [Deck Shares]
-   *     parameters:
-   *       - in: query
-   *         name: cursor
-   *         schema:
-   *           type: integer
-   *         description: Zero-based offset to resume from; omit for the first page.
-   *       - in: query
-   *         name: page_size
-   *         schema:
-   *           type: integer
-   *         description: Number of decks per page (1–100, default 24).
-   *     responses:
-   *       200:
-   *         description: Page of public decks
-   *       429:
-   *         description: Too many requests from this IP
-   */
-  router.get('/api/shares/public', ipRateLimit, (req, res) =>
-    controller.getPublicListing(req, res)
-  );
-
-  /**
-   * @swagger
-   * /api/shares/{token}:
-   *   patch:
-   *     summary: Publish or unpublish a share to the public library
-   *     description: Owner-only. Setting is_public to true requires a non-empty title and records the deck's card count. Setting it to false removes the deck from the public library; the private share link keeps working either way.
-   *     tags: [Deck Shares]
-   *     security:
-   *       - bearerAuth: []
-   *       - cookieAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: token
-   *         required: true
-   *         schema:
-   *           type: string
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required: [is_public]
-   *             properties:
-   *               is_public:
-   *                 type: boolean
-   *               title:
-   *                 type: string
-   *     responses:
-   *       200:
-   *         description: Updated visibility
-   *       400:
-   *         description: Missing is_public, or missing title while publishing
-   *       401:
-   *         description: Authentication required
-   *       404:
-   *         description: Share not found or not owned by the caller
-   */
-  router.patch('/api/shares/:token', RequireAuthentication, (req, res) =>
-    controller.setVisibility(req, res)
   );
 
   /**

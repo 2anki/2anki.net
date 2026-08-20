@@ -2,11 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createDeckShare,
   getActiveSharesForUploadKey,
-  getPublicSharedDecks,
   getSharedDeckBatch,
   getSharedDeckMeta,
   revokeDeckShare,
-  setShareVisibility,
 } from './getSharedDeck';
 
 function jsonResponse(
@@ -205,69 +203,6 @@ describe('getSharedDeck', () => {
       await expect(
         getActiveSharesForUploadKey('uploads/x.apkg')
       ).resolves.toBeNull();
-    });
-  });
-
-  describe('setShareVisibility', () => {
-    it('PATCHes is_public and title, returning the updated visibility', async () => {
-      vi.mocked(globalThis.fetch).mockResolvedValue(
-        jsonResponse(200, {
-          token: 'abc',
-          is_public: true,
-          title: 'My deck',
-          card_count: 12,
-        })
-      );
-
-      const result = await setShareVisibility('abc', true, 'My deck');
-
-      expect(result).toEqual({
-        token: 'abc',
-        is_public: true,
-        title: 'My deck',
-        card_count: 12,
-      });
-      const [url, init] = vi.mocked(globalThis.fetch).mock.calls[0];
-      expect(url).toBe('/api/shares/abc');
-      expect(init).toMatchObject({
-        method: 'PATCH',
-        credentials: 'include',
-        body: JSON.stringify({ is_public: true, title: 'My deck' }),
-      });
-    });
-
-    it('throws the server message when publishing without a title', async () => {
-      vi.mocked(globalThis.fetch).mockResolvedValue(
-        jsonResponse(400, { message: 'Title is required to publish a deck.' })
-      );
-
-      await expect(setShareVisibility('abc', true)).rejects.toThrow(
-        'Title is required to publish a deck.'
-      );
-    });
-  });
-
-  describe('getPublicSharedDecks', () => {
-    it('omits cursor when null', async () => {
-      vi.mocked(globalThis.fetch).mockResolvedValue(
-        jsonResponse(200, { decks: [], nextCursor: null })
-      );
-
-      await getPublicSharedDecks(null);
-
-      const url = vi.mocked(globalThis.fetch).mock.calls[0][0] as string;
-      expect(url).toBe('/api/shares/public?');
-    });
-
-    it('includes cursor when provided', async () => {
-      vi.mocked(globalThis.fetch).mockResolvedValue(
-        jsonResponse(200, { decks: [], nextCursor: null })
-      );
-
-      await getPublicSharedDecks(24);
-
-      const url = vi.mocked(globalThis.fetch).mock.calls[0][0] as string;
-      expect(url).toContain('cursor=24');
     });
   });
 });

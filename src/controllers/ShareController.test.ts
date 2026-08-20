@@ -79,25 +79,6 @@ function makeDownloadService(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makePublishUseCase(overrides: Record<string, unknown> = {}) {
-  return {
-    execute: jest.fn().mockResolvedValue({
-      token: 'abc-token',
-      is_public: true,
-      title: 'My deck',
-      card_count: 5,
-    }),
-    ...overrides,
-  };
-}
-
-function makeListPublicUseCase(overrides: Record<string, unknown> = {}) {
-  return {
-    execute: jest.fn().mockResolvedValue({ decks: [], nextCursor: null }),
-    ...overrides,
-  };
-}
-
 function buildController(
   overrides: {
     createUseCase?: unknown;
@@ -107,8 +88,6 @@ function buildController(
     storage?: unknown;
     previewService?: unknown;
     downloadService?: unknown;
-    publishUseCase?: unknown;
-    listPublicUseCase?: unknown;
   } = {}
 ) {
   return new ShareController(
@@ -118,25 +97,13 @@ function buildController(
     (overrides.shareService ?? makeShareService()) as any,
     (overrides.storage ?? makeStorage()) as any,
     (overrides.previewService ?? makePreviewService()) as any,
-    (overrides.downloadService ?? makeDownloadService()) as any,
-    (overrides.publishUseCase ?? makePublishUseCase()) as any,
-    (overrides.listPublicUseCase ?? makeListPublicUseCase()) as any
+    (overrides.downloadService ?? makeDownloadService()) as any
   );
 }
 
 describe('ShareController - POST /api/shares (createShare)', () => {
   it('returns 401 when owner is not set', async () => {
-    const controller = new ShareController(
-      makeCreateUseCase() as any,
-      makeResolveUseCase() as any,
-      makeRevokeUseCase() as any,
-      makeShareService() as any,
-      makeStorage() as any,
-      makePreviewService() as any,
-      makeDownloadService() as any,
-      makePublishUseCase() as any,
-      makeListPublicUseCase() as any
-    );
+    const controller = buildController();
     const req = { body: { upload_key: 'test.apkg' } } as unknown as Request;
     const res = mockResponse({ owner: null });
 
@@ -149,17 +116,7 @@ describe('ShareController - POST /api/shares (createShare)', () => {
   });
 
   it('returns 400 when upload_key is missing', async () => {
-    const controller = new ShareController(
-      makeCreateUseCase() as any,
-      makeResolveUseCase() as any,
-      makeRevokeUseCase() as any,
-      makeShareService() as any,
-      makeStorage() as any,
-      makePreviewService() as any,
-      makeDownloadService() as any,
-      makePublishUseCase() as any,
-      makeListPublicUseCase() as any
-    );
+    const controller = buildController();
     const req = { body: {} } as unknown as Request;
     const res = mockResponse({ owner: 42 });
 
@@ -172,17 +129,7 @@ describe('ShareController - POST /api/shares (createShare)', () => {
   });
 
   it('returns token and url on success', async () => {
-    const controller = new ShareController(
-      makeCreateUseCase() as any,
-      makeResolveUseCase() as any,
-      makeRevokeUseCase() as any,
-      makeShareService() as any,
-      makeStorage() as any,
-      makePreviewService() as any,
-      makeDownloadService() as any,
-      makePublishUseCase() as any,
-      makeListPublicUseCase() as any
-    );
+    const controller = buildController();
     const req = { body: { upload_key: 'test.apkg' } } as unknown as Request;
     const res = mockResponse({ owner: 42 });
 
@@ -197,17 +144,11 @@ describe('ShareController - POST /api/shares (createShare)', () => {
 
 describe('ShareController - GET /api/shares/:token/meta', () => {
   it('returns 404 when token is not found or revoked', async () => {
-    const controller = new ShareController(
-      makeCreateUseCase() as any,
-      makeResolveUseCase({ execute: jest.fn().mockResolvedValue(null) }) as any,
-      makeRevokeUseCase() as any,
-      makeShareService() as any,
-      makeStorage() as any,
-      makePreviewService() as any,
-      makeDownloadService() as any,
-      makePublishUseCase() as any,
-      makeListPublicUseCase() as any
-    );
+    const controller = buildController({
+      resolveUseCase: makeResolveUseCase({
+        execute: jest.fn().mockResolvedValue(null),
+      }),
+    });
     const req = { params: { token: 'gone-token' } } as unknown as Request;
     const res = mockResponse();
 
@@ -219,41 +160,26 @@ describe('ShareController - GET /api/shares/:token/meta', () => {
     });
   });
 
-  it('returns meta on active share', async () => {
-    const controller = new ShareController(
-      makeCreateUseCase() as any,
-      makeResolveUseCase() as any,
-      makeRevokeUseCase() as any,
-      makeShareService() as any,
-      makeStorage() as any,
-      makePreviewService() as any,
-      makeDownloadService() as any,
-      makePublishUseCase() as any,
-      makeListPublicUseCase() as any
-    );
+  it('records a view and returns meta on active share', async () => {
+    const shareService = makeShareService();
+    const controller = buildController({ shareService });
     const req = { params: { token: 'abc-token' } } as unknown as Request;
     const res = mockResponse();
 
     await controller.getMeta(req, res);
 
     expect(res.json).toHaveBeenCalledWith({ totalCards: 5, decks: [] });
-    expect(makeShareService().recordView).not.toHaveBeenCalled();
+    expect(shareService.recordView).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('ShareController - GET /api/shares/:token/download', () => {
   it('returns 404 on missing or revoked token', async () => {
-    const controller = new ShareController(
-      makeCreateUseCase() as any,
-      makeResolveUseCase({ execute: jest.fn().mockResolvedValue(null) }) as any,
-      makeRevokeUseCase() as any,
-      makeShareService() as any,
-      makeStorage() as any,
-      makePreviewService() as any,
-      makeDownloadService() as any,
-      makePublishUseCase() as any,
-      makeListPublicUseCase() as any
-    );
+    const controller = buildController({
+      resolveUseCase: makeResolveUseCase({
+        execute: jest.fn().mockResolvedValue(null),
+      }),
+    });
     const req = { params: { token: 'gone' } } as unknown as Request;
     const res = mockResponse();
 
@@ -274,17 +200,7 @@ describe('ShareController - GET /api/shares/:token/download', () => {
       send: jest.fn(),
     } as unknown as Response;
 
-    const controller = new ShareController(
-      makeCreateUseCase() as any,
-      makeResolveUseCase() as any,
-      makeRevokeUseCase() as any,
-      makeShareService() as any,
-      makeStorage() as any,
-      makePreviewService() as any,
-      makeDownloadService() as any,
-      makePublishUseCase() as any,
-      makeListPublicUseCase() as any
-    );
+    const controller = buildController();
     const req = { params: { token: 'abc-token' } } as unknown as Request;
 
     await controller.download(req, res);
@@ -300,17 +216,7 @@ describe('ShareController - GET /api/shares/:token/download', () => {
 
 describe('ShareController - DELETE /api/shares/:token', () => {
   it('returns 401 when owner is missing', async () => {
-    const controller = new ShareController(
-      makeCreateUseCase() as any,
-      makeResolveUseCase() as any,
-      makeRevokeUseCase() as any,
-      makeShareService() as any,
-      makeStorage() as any,
-      makePreviewService() as any,
-      makeDownloadService() as any,
-      makePublishUseCase() as any,
-      makeListPublicUseCase() as any
-    );
+    const controller = buildController();
     const req = { params: { token: 'abc-token' } } as unknown as Request;
     const res = mockResponse({ owner: null });
 
@@ -320,17 +226,11 @@ describe('ShareController - DELETE /api/shares/:token', () => {
   });
 
   it('returns 404 when revoke returns false', async () => {
-    const controller = new ShareController(
-      makeCreateUseCase() as any,
-      makeResolveUseCase() as any,
-      makeRevokeUseCase({ execute: jest.fn().mockResolvedValue(false) }) as any,
-      makeShareService() as any,
-      makeStorage() as any,
-      makePreviewService() as any,
-      makeDownloadService() as any,
-      makePublishUseCase() as any,
-      makeListPublicUseCase() as any
-    );
+    const controller = buildController({
+      revokeUseCase: makeRevokeUseCase({
+        execute: jest.fn().mockResolvedValue(false),
+      }),
+    });
     const req = { params: { token: 'abc-token' } } as unknown as Request;
     const res = mockResponse({ owner: 42 });
 
@@ -340,17 +240,7 @@ describe('ShareController - DELETE /api/shares/:token', () => {
   });
 
   it('returns 204 on successful revoke', async () => {
-    const controller = new ShareController(
-      makeCreateUseCase() as any,
-      makeResolveUseCase() as any,
-      makeRevokeUseCase() as any,
-      makeShareService() as any,
-      makeStorage() as any,
-      makePreviewService() as any,
-      makeDownloadService() as any,
-      makePublishUseCase() as any,
-      makeListPublicUseCase() as any
-    );
+    const controller = buildController();
     const req = { params: { token: 'abc-token' } } as unknown as Request;
     const res = mockResponse({ owner: 42 });
 
@@ -358,128 +248,5 @@ describe('ShareController - DELETE /api/shares/:token', () => {
 
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalled();
-  });
-});
-
-describe('ShareController - PATCH /api/shares/:token (setVisibility)', () => {
-  it('returns 401 when owner is missing', async () => {
-    const controller = buildController();
-    const req = {
-      params: { token: 'abc-token' },
-      body: { is_public: true, title: 'My deck' },
-    } as unknown as Request;
-    const res = mockResponse({ owner: null });
-
-    await controller.setVisibility(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(401);
-  });
-
-  it('returns 400 when is_public is not a boolean', async () => {
-    const controller = buildController();
-    const req = {
-      params: { token: 'abc-token' },
-      body: {},
-    } as unknown as Request;
-    const res = mockResponse({ owner: 42 });
-
-    await controller.setVisibility(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 404 when the use case reports the share was not found', async () => {
-    const publishUseCase = makePublishUseCase({
-      execute: jest.fn().mockResolvedValue(null),
-    });
-    const controller = buildController({ publishUseCase });
-    const req = {
-      params: { token: 'missing' },
-      body: { is_public: true, title: 'My deck' },
-    } as unknown as Request;
-    const res = mockResponse({ owner: 42 });
-
-    await controller.setVisibility(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(404);
-  });
-
-  it('returns 400 when the use case rejects a missing title', async () => {
-    const publishUseCase = makePublishUseCase({
-      execute: jest
-        .fn()
-        .mockRejectedValue(new Error('Title is required to publish a deck.')),
-    });
-    const controller = buildController({ publishUseCase });
-    const req = {
-      params: { token: 'abc-token' },
-      body: { is_public: true },
-    } as unknown as Request;
-    const res = mockResponse({ owner: 42 });
-
-    await controller.setVisibility(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({
-      message: 'Title is required to publish a deck.',
-    });
-  });
-
-  it('returns the updated visibility on success', async () => {
-    const controller = buildController();
-    const req = {
-      params: { token: 'abc-token' },
-      body: { is_public: true, title: 'My deck' },
-    } as unknown as Request;
-    const res = mockResponse({ owner: 42 });
-
-    await controller.setVisibility(req, res);
-
-    expect(res.json).toHaveBeenCalledWith({
-      token: 'abc-token',
-      is_public: true,
-      title: 'My deck',
-      card_count: 5,
-    });
-  });
-});
-
-describe('ShareController - GET /api/shares/public (getPublicListing)', () => {
-  it('returns the listing page from the use case', async () => {
-    const listPublicUseCase = makeListPublicUseCase({
-      execute: jest.fn().mockResolvedValue({
-        decks: [
-          {
-            token: 't1',
-            title: 'Deck one',
-            card_count: 10,
-            created_at: new Date('2026-07-01'),
-            view_count: 2,
-            url: 'https://2anki.net/s/t1',
-          },
-        ],
-        nextCursor: null,
-      }),
-    });
-    const controller = buildController({ listPublicUseCase });
-    const req = { query: {} } as unknown as Request;
-    const res = mockResponse();
-
-    await controller.getPublicListing(req, res);
-
-    expect(listPublicUseCase.execute).toHaveBeenCalledWith(0, 24);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ nextCursor: null })
-    );
-  });
-
-  it('does not set X-Robots-Tag: noindex, unlike the other share endpoints', async () => {
-    const controller = buildController();
-    const req = { query: {} } as unknown as Request;
-    const res = mockResponse();
-
-    await controller.getPublicListing(req, res);
-
-    expect(res.setHeader).not.toHaveBeenCalledWith('X-Robots-Tag', 'noindex');
   });
 });

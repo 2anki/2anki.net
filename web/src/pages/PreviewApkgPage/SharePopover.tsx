@@ -4,10 +4,8 @@ import {
   createDeckShare,
   revokeDeckShare,
   getActiveSharesForUploadKey,
-  setShareVisibility,
   ActiveShare,
 } from '../../lib/backend/getSharedDeck';
-import { track } from '../../lib/analytics/track';
 import styles from './SharePopover.module.css';
 
 interface SharePopoverProps {
@@ -18,109 +16,20 @@ interface PopoverBodyProps {
   loading: boolean;
   share: ActiveShare | null;
   showConfirm: boolean;
-  publishTitle: string;
-  publishing: boolean;
-  publishError: string | null;
   onCopy: () => void;
   onStopRequest: () => void;
   onStopConfirm: () => void;
   onKeepSharing: () => void;
-  onPublishTitleChange: (value: string) => void;
-  onPublish: () => void;
-  onUnpublish: () => void;
-}
-
-function PublishSection({
-  share,
-  publishTitle,
-  publishing,
-  publishError,
-  onPublishTitleChange,
-  onPublish,
-  onUnpublish,
-}: Readonly<{
-  share: ActiveShare;
-  publishTitle: string;
-  publishing: boolean;
-  publishError: string | null;
-  onPublishTitleChange: (value: string) => void;
-  onPublish: () => void;
-  onUnpublish: () => void;
-}>) {
-  const { t } = useTranslation('previews');
-  const [wantsPublic, setWantsPublic] = useState(share.is_public);
-
-  if (share.is_public) {
-    return (
-      <div className={styles.publishSection}>
-        <p className={styles.publishedText}>
-          {t('share.listedAs', { title: share.title })}
-        </p>
-        <button
-          type="button"
-          className={styles.stopLink}
-          onClick={onUnpublish}
-          disabled={publishing}
-        >
-          {t('share.removeFromLibrary')}
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.publishSection}>
-      <label className={styles.publishToggle}>
-        <input
-          type="checkbox"
-          checked={wantsPublic}
-          onChange={(e) => setWantsPublic(e.target.checked)}
-        />
-        {t('share.listInLibrary')}
-      </label>
-      {wantsPublic && (
-        <>
-          <p className={styles.helperText}>{t('share.listInLibraryHelper')}</p>
-          <input
-            type="text"
-            value={publishTitle}
-            onChange={(e) => onPublishTitleChange(e.target.value)}
-            placeholder={t('share.deckTitlePlaceholder')}
-            aria-label={t('share.deckTitle')}
-            maxLength={120}
-            className={styles.titleInput}
-          />
-          {publishError != null && (
-            <p className={styles.publishError}>{publishError}</p>
-          )}
-          <button
-            type="button"
-            className={styles.copyButton}
-            onClick={onPublish}
-            disabled={publishing || publishTitle.trim().length === 0}
-          >
-            {t('share.listDeck')}
-          </button>
-        </>
-      )}
-    </div>
-  );
 }
 
 function PopoverBody({
   loading,
   share,
   showConfirm,
-  publishTitle,
-  publishing,
-  publishError,
   onCopy,
   onStopRequest,
   onStopConfirm,
   onKeepSharing,
-  onPublishTitleChange,
-  onPublish,
-  onUnpublish,
 }: Readonly<PopoverBodyProps>) {
   const { t } = useTranslation('previews');
   if (loading) {
@@ -147,15 +56,6 @@ function PopoverBody({
         </button>
       </div>
       <p className={styles.helperText}>{t('share.helper')}</p>
-      <PublishSection
-        share={share}
-        publishTitle={publishTitle}
-        publishing={publishing}
-        publishError={publishError}
-        onPublishTitleChange={onPublishTitleChange}
-        onPublish={onPublish}
-        onUnpublish={onUnpublish}
-      />
       {showConfirm ? (
         <div className={styles.confirmDialog}>
           <p className={styles.confirmText}>{t('share.stopConfirm')}</p>
@@ -196,9 +96,6 @@ export function SharePopover({ uploadKey }: Readonly<SharePopoverProps>) {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [publishTitle, setPublishTitle] = useState('');
-  const [publishing, setPublishing] = useState(false);
-  const [publishError, setPublishError] = useState<string | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -217,9 +114,6 @@ export function SharePopover({ uploadKey }: Readonly<SharePopoverProps>) {
               url: result.url,
               created_at: new Date().toISOString(),
               view_count: 0,
-              is_public: false,
-              title: null,
-              card_count: null,
             });
           });
         } else {
@@ -272,36 +166,6 @@ export function SharePopover({ uploadKey }: Readonly<SharePopoverProps>) {
     } catch {}
   };
 
-  const publishToLibrary = async () => {
-    if (share == null || publishTitle.trim().length === 0) return;
-    setPublishing(true);
-    setPublishError(null);
-    try {
-      const updated = await setShareVisibility(share.token, true, publishTitle);
-      setShare({ ...share, ...updated });
-      track('shared_deck_published');
-    } catch (error) {
-      setPublishError(
-        error instanceof Error ? error.message : t('share.publishFailed')
-      );
-    } finally {
-      setPublishing(false);
-    }
-  };
-
-  const unpublishFromLibrary = async () => {
-    if (share == null) return;
-    setPublishing(true);
-    try {
-      const updated = await setShareVisibility(share.token, false);
-      setShare({ ...share, ...updated });
-      setPublishTitle('');
-    } catch {
-    } finally {
-      setPublishing(false);
-    }
-  };
-
   return (
     <>
       <div className={styles.anchor} ref={anchorRef}>
@@ -329,16 +193,10 @@ export function SharePopover({ uploadKey }: Readonly<SharePopoverProps>) {
               loading={loading}
               share={share}
               showConfirm={showConfirm}
-              publishTitle={publishTitle}
-              publishing={publishing}
-              publishError={publishError}
               onCopy={copyLink}
               onStopRequest={() => setShowConfirm(true)}
               onStopConfirm={stopSharing}
               onKeepSharing={() => setShowConfirm(false)}
-              onPublishTitleChange={setPublishTitle}
-              onPublish={publishToLibrary}
-              onUnpublish={unpublishFromLibrary}
             />
           </dialog>
         )}

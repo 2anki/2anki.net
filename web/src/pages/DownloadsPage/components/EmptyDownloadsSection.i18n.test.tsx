@@ -37,13 +37,3 @@ describe('EmptyDownloadsSection in German', () => {
     expect(screen.getByText('Datei hochladen')).toBeInTheDocument();
   });
 });
-
-describe('EmptyDownloadsSection', () => {
-  it('links to the shared-decks library', () => {
-    renderEmpty();
-    const link = screen.getByRole('link', {
-      name: 'Browse the shared library',
-    });
-    expect(link).toHaveAttribute('href', '/shared-decks');
-  });
-});
