@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-21-retire-shared-library",
+  "date": "2026-08-21",
+  "type": "fix",
+  "title": "The public shared-deck library has been retired — private share links keep working"
+}

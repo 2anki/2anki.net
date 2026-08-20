@@ -16,15 +16,12 @@ function renderPresenter(favorites: any[] = []) {
 }
 
 describe('FavoritesPresenter', () => {
-  it('links to the shared-decks library when there are no favorites', () => {
+  it('shows the empty message when there are no favorites', () => {
     renderPresenter([]);
-    const link = screen.getByRole('link', {
-      name: 'Browse the shared library',
-    });
-    expect(link).toHaveAttribute('href', '/shared-decks');
+    expect(screen.getByText('No favorites yet.')).toBeInTheDocument();
   });
 
-  it('does not render the library link when favorites exist', () => {
+  it('renders the favorites list when favorites exist', () => {
     renderPresenter([
       {
         object: 'page',
@@ -33,8 +30,6 @@ describe('FavoritesPresenter', () => {
         id: 'page-1',
       } as any,
     ]);
-    expect(
-      screen.queryByRole('link', { name: 'Browse the shared library' })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('No favorites yet.')).not.toBeInTheDocument();
   });
 });

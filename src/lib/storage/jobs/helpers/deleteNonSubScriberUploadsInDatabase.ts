@@ -95,7 +95,7 @@ export const deleteNonSubScriberUploadsInDatabase = async (
     await storage.delete(upload.key);
     await db('uploads').delete().where('key', upload.key);
     // deck_shares.upload_key has no FK to uploads, so nothing cascades: revoke
-    // the dead pins here or /shared-decks keeps listing decks that 404.
+    // the dead pins here or a share link keeps resolving to a deck that 404s.
     // Per-upload rather than batched after the loop so a mid-loop failure
     // can't leave already-deleted uploads with live share rows.
     await db('deck_shares')

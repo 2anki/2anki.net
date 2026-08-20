@@ -122,15 +122,7 @@
     "keepSharing": "Продолжить делиться",
     "share": "Поделиться",
     "shareThisDeck": "Поделиться этой колодой",
-    "linkCopied": "Ссылка скопирована",
-    "listInLibrary": "List in the public library",
-    "listInLibraryHelper": "Anyone can find and view this deck. Your Notion account stays private.",
-    "deckTitle": "Deck title",
-    "deckTitlePlaceholder": "e.g. Organic chemistry — Chapter 4",
-    "listDeck": "List deck",
-    "removeFromLibrary": "Remove from library",
-    "listedAs": "Listed in the public library as {{title}}",
-    "publishFailed": "Couldn't update the library listing. Try again."
+    "linkCopied": "Ссылка скопирована"
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",
@@ -148,22 +140,5 @@
     "backLabel": "Обратная сторона",
     "editFront": "Изменить лицевую сторону",
     "editBack": "Изменить обратную сторону"
-  },
-  "sharedLibrary": {
-    "header": "Shared decks",
-    "subtitle": "Decks people made public. Open one, then make your own.",
-    "viewDeck": "View deck",
-    "emptyTitle": "No public decks yet",
-    "emptyDescription": "Share one of yours to start the library.",
-    "emptyAction": "Make a deck",
-    "loadFailed": "Couldn't load the shared library. Try again.",
-    "loadMore": "Load more",
-    "remixCta": "Make your own deck",
-    "remixSubtext": "Make your own version on 2anki.",
-    "cardCount_one": "{{count}} card",
-    "cardCount_few": "{{count}} cards",
-    "cardCount_many": "{{count}} cards",
-    "cardCount_other": "{{count}} cards",
-    "browseLibrary": "Browse the shared library"
   }
 }

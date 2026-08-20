@@ -1,6 +1,4 @@
 import { Dispatch, SetStateAction } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import Favorites from './Favorites';
 
 import { ErrorHandlerType } from '../../../components/errors/helpers/getErrorMessage';
@@ -19,12 +17,10 @@ export default function FavoritesPresenter({
   setFavorites,
   favorites,
 }: Readonly<Props>) {
-  const { t } = useTranslation('previews');
   if (favorites.length === 0) {
     return (
       <div className={styles.emptyState}>
         <p>{getVisibleText('favorites.empty')}</p>
-        <Link to="/shared-decks">{t('sharedLibrary.browseLibrary')}</Link>
       </div>
     );
   }

@@ -308,16 +308,6 @@ describe('EventsController', () => {
       })
     );
   });
-
-  it('accepts shared_deck_published as known, not unknown', () => {
-    const { controller, req, res, executeSpy } = buildMocks({ userId: 1 });
-    req.body = { name: 'shared_deck_published' };
-    controller.track(req, res);
-    expect(res.status).toHaveBeenCalledWith(202);
-    expect(executeSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'shared_deck_published', unknown: false })
-    );
-  });
 });
 
 describe('EventsController — regression: all client events return 202 (AC #5)', () => {

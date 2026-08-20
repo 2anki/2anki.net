@@ -1,9 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import DeckShares from '../data_layer/public/DeckShares';
-import {
-  IShareRepository,
-  PublicListingFields,
-} from '../data_layer/ShareRepository';
+import { IShareRepository } from '../data_layer/ShareRepository';
 import { UsersId } from '../data_layer/public/Users';
 
 class ShareService {
@@ -44,28 +41,6 @@ class ShareService {
   buildShareUrl(token: string): string {
     const baseUrl = process.env.BASE_URL ?? 'https://2anki.net';
     return `${baseUrl}/s/${token}`;
-  }
-
-  async findShareForOwner(
-    token: string,
-    owner: UsersId
-  ): Promise<DeckShares | null> {
-    return this.repository.findByTokenAndOwner(token, owner);
-  }
-
-  async setPublicListing(
-    token: string,
-    owner: UsersId,
-    fields: PublicListingFields
-  ): Promise<DeckShares | null> {
-    return this.repository.updatePublicListing(token, owner, fields);
-  }
-
-  async listPublicShares(
-    cursor: number,
-    pageSize: number
-  ): Promise<DeckShares[]> {
-    return this.repository.findPublicListing(cursor, pageSize);
   }
 }
 
