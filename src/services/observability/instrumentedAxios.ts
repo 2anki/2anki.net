@@ -356,11 +356,35 @@ const resolveNextHop = async (
   return { currentUrl: nextUrl, endpoint, lookup };
 };
 
+// Credentials are bound to the host the caller addressed. A redirect that
+// leaves that host must not carry them along — otherwise any service without
+// a fixed host allowlist (notion, dropbox, mcp) would forward Basic auth or a
+// bearer token to whatever host the origin redirects to. Same behavior as
+// follow-redirects' cross-host credential drop.
+export const stripAuthForCrossHostHop = (
+  config: AxiosRequestConfig | undefined
+): AxiosRequestConfig | undefined => {
+  if (config == null) return config;
+  const { auth: _auth, headers, ...rest } = config;
+  if (headers == null) return rest;
+  const cleaned = { ...headers };
+  for (const key of Object.keys(cleaned)) {
+    if (key.toLowerCase() === 'authorization') {
+      delete cleaned[key];
+    }
+  }
+  return { ...rest, headers: cleaned };
+};
+
 const measure = async <T>(
   sink: ObservabilitySink,
   service: string,
   url: string,
-  exec: (hopUrl: string, lookup: AxiosLookup) => Promise<AxiosResponse<T>>
+  exec: (
+    hopUrl: string,
+    lookup: AxiosLookup,
+    sameHost: boolean
+  ) => Promise<AxiosResponse<T>>
 ): Promise<AxiosResponse<T>> => {
   if (!isAllowedService(service)) {
     throw new Error(
@@ -370,6 +394,7 @@ const measure = async <T>(
   const firstParsed = parseRequestUrl(url);
   const { endpoint: firstEndpoint, lookup: firstLookup } =
     await validateAndResolveUrl(firstParsed, service);
+  const originalHost = firstParsed.hostname.toLowerCase();
 
   let currentUrl = url;
   let endpoint = firstEndpoint;
@@ -377,9 +402,11 @@ const measure = async <T>(
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const start = Date.now();
+    const sameHost =
+      parseRequestUrl(currentUrl).hostname.toLowerCase() === originalHost;
     let response: AxiosResponse<T>;
     try {
-      response = await exec(currentUrl, lookup);
+      response = await exec(currentUrl, lookup, sameHost);
     } catch (error) {
       const redirectTarget = redirectLocationFromError(error, currentUrl);
       recordSafely(
@@ -420,24 +447,44 @@ const measure = async <T>(
   );
 };
 
+const configForHop = (
+  config: AxiosRequestConfig | undefined,
+  sameHost: boolean
+): AxiosRequestConfig | undefined =>
+  sameHost ? config : stripAuthForCrossHostHop(config);
+
 export const makeInstrumentedAxios = (
   sink: ObservabilitySink
 ): InstrumentedAxios => ({
   get: (service, url, config) =>
-    measure(sink, service, url, (hopUrl, lookup) =>
-      axios.get(hopUrl, mergeRequestOptions(config, lookup))
+    measure(sink, service, url, (hopUrl, lookup, sameHost) =>
+      axios.get(
+        hopUrl,
+        mergeRequestOptions(configForHop(config, sameHost), lookup)
+      )
     ),
   post: (service, url, data, config) =>
-    measure(sink, service, url, (hopUrl, lookup) =>
-      axios.post(hopUrl, data, mergeRequestOptions(config, lookup))
+    measure(sink, service, url, (hopUrl, lookup, sameHost) =>
+      axios.post(
+        hopUrl,
+        data,
+        mergeRequestOptions(configForHop(config, sameHost), lookup)
+      )
     ),
   put: (service, url, data, config) =>
-    measure(sink, service, url, (hopUrl, lookup) =>
-      axios.put(hopUrl, data, mergeRequestOptions(config, lookup))
+    measure(sink, service, url, (hopUrl, lookup, sameHost) =>
+      axios.put(
+        hopUrl,
+        data,
+        mergeRequestOptions(configForHop(config, sameHost), lookup)
+      )
     ),
   delete: (service, url, config) =>
-    measure(sink, service, url, (hopUrl, lookup) =>
-      axios.delete(hopUrl, mergeRequestOptions(config, lookup))
+    measure(sink, service, url, (hopUrl, lookup, sameHost) =>
+      axios.delete(
+        hopUrl,
+        mergeRequestOptions(configForHop(config, sameHost), lookup)
+      )
     ),
 });
 

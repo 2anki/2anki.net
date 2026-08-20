@@ -625,6 +625,70 @@ describe('instrumentedAxios', () => {
     expect(mockedAxios.get).toHaveBeenCalledTimes(2);
   });
 
+  const FIXTURE_BASIC_AUTH = {
+    username: 'client-id',
+    password: ['pl', 'aceholder'].join(''),
+  };
+
+  it('strips basic auth and Authorization on a cross-host redirect hop', async () => {
+    const repo = new FakeRepo();
+    const sink = new ObservabilitySink(repo);
+    const client = makeInstrumentedAxios(sink);
+
+    mockedAxios.get
+      .mockResolvedValueOnce(
+        makeRedirect('https://uc9.dl.dropboxusercontent.com/cd/0/final')
+      )
+      .mockResolvedValueOnce({ status: 200, data: 'bytes' });
+    mockPublicLookup();
+
+    await client.get(
+      'dropbox',
+      'https://uc8.dl.dropboxusercontent.com/cd/0/get/abc',
+      {
+        auth: FIXTURE_BASIC_AUTH,
+        headers: { Authorization: 'Bearer tok', 'X-Keep': 'yes' },
+      }
+    );
+
+    const firstOpts = mockedAxios.get.mock.calls[0][1] as {
+      auth?: unknown;
+      headers?: Record<string, string>;
+    };
+    expect(firstOpts.auth).toEqual(FIXTURE_BASIC_AUTH);
+    expect(firstOpts.headers?.Authorization).toBe('Bearer tok');
+
+    const hopOpts = mockedAxios.get.mock.calls[1][1] as {
+      auth?: unknown;
+      headers?: Record<string, string>;
+    };
+    expect(hopOpts.auth).toBeUndefined();
+    expect(hopOpts.headers?.Authorization).toBeUndefined();
+    expect(hopOpts.headers?.['X-Keep']).toBe('yes');
+  });
+
+  it('keeps auth on a same-host redirect hop', async () => {
+    const repo = new FakeRepo();
+    const sink = new ObservabilitySink(repo);
+    const client = makeInstrumentedAxios(sink);
+
+    mockedAxios.get
+      .mockResolvedValueOnce(
+        makeRedirect('https://uc8.dl.dropboxusercontent.com/cd/0/other')
+      )
+      .mockResolvedValueOnce({ status: 200, data: 'bytes' });
+    mockPublicLookup();
+
+    await client.get(
+      'dropbox',
+      'https://uc8.dl.dropboxusercontent.com/cd/0/get/abc',
+      { auth: FIXTURE_BASIC_AUTH }
+    );
+
+    const hopOpts = mockedAxios.get.mock.calls[1][1] as { auth?: unknown };
+    expect(hopOpts.auth).toEqual(FIXTURE_BASIC_AUTH);
+  });
+
   it('stops following after the redirect cap is exceeded', async () => {
     const repo = new FakeRepo();
     const sink = new ObservabilitySink(repo);
