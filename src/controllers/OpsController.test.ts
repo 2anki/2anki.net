@@ -621,7 +621,6 @@ describe('OpsController.grantUnclaimedPass', () => {
       undefined,
       undefined,
       undefined,
-      undefined,
       { execute } as unknown as GrantUnclaimedPassUseCase
     );
 

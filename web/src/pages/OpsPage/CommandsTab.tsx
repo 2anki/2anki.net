@@ -229,7 +229,6 @@ export default function CommandsTab() {
       </p>
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
-      <section className={`${sharedStyles.surface} ${styles.card}`}>
         <h2 className={styles.cardTitle}>Grant unclaimed pass</h2>
         <p className={styles.panelSubtitle}>
           Attaches an unclaimed anonymous pass to an account by email and grants
