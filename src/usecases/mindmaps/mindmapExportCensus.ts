@@ -2,40 +2,31 @@ import { MindmapData } from './MindmapData';
 import type { MindmapCardType } from './ExportMindmapUseCase';
 import { reachableNodeIds } from './mindmapGraph';
 
-function edgeIncidentNodeIds(data: MindmapData): Set<string> {
+function realEdgeIncidentNodeIds(data: MindmapData): Set<string> {
+  const nodeIds = new Set(data.nodes.map((n) => n.id));
   const incident = new Set<string>();
   for (const edge of data.edges) {
+    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) continue;
     incident.add(edge.source);
     incident.add(edge.target);
   }
   return incident;
 }
 
-function countIsolatedNodes(data: MindmapData): number {
-  const incident = edgeIncidentNodeIds(data);
-  return data.nodes.filter((n) => !incident.has(n.id)).length;
-}
-
 export function mediaEligibleNodeIds(
   data: MindmapData,
   cardType: MindmapCardType
-): Set<string> | null {
+): Set<string> {
   if (cardType === 'basic') {
-    return edgeIncidentNodeIds(data);
+    return realEdgeIncidentNodeIds(data);
   }
-  if (cardType === 'cloze') {
-    return reachableNodeIds(data);
-  }
-  return null;
+  return reachableNodeIds(data);
 }
 
 export function countExcludedMindmapNodes(
   data: MindmapData,
   cardType: MindmapCardType
 ): number {
-  if (cardType === 'basic') {
-    return countIsolatedNodes(data);
-  }
-  const reachable = reachableNodeIds(data);
-  return data.nodes.filter((n) => !reachable.has(n.id)).length;
+  const eligible = mediaEligibleNodeIds(data, cardType);
+  return data.nodes.filter((n) => !eligible.has(n.id)).length;
 }

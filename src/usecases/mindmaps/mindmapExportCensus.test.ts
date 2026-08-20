@@ -61,4 +61,19 @@ describe('countExcludedMindmapNodes', () => {
     expect(countExcludedMindmapNodes(edgeFree, 'basic')).toBe(2);
     expect(countExcludedMindmapNodes(edgeFree, 'cloze')).toBe(0);
   });
+
+  it('counts a node whose only edge dangles as excluded from basic export', () => {
+    const danglingOnly = {
+      nodes: [
+        { id: '1', label: 'Root' },
+        { id: '2', label: 'Child' },
+        { id: 'lonely', label: 'Dangling-only' },
+      ],
+      edges: [
+        { source: '1', target: '2' },
+        { source: 'lonely', target: 'ghost' },
+      ],
+    };
+    expect(countExcludedMindmapNodes(danglingOnly, 'basic')).toBe(1);
+  });
 });

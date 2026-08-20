@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-20-mindmap-export-leftover-node-images",
+  "date": "2026-08-20",
+  "type": "fix",
+  "title": "Mind map exports no longer carry images from nodes left out of the deck, and the skipped-node count is now accurate"
+}
