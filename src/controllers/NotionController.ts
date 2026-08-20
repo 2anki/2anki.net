@@ -319,31 +319,10 @@ class NotionController {
       const restarted = JobRepository.TERMINAL_STATUSES.includes(job.status);
 
       if (!created) {
-        const claimJob = new ClaimJobForRestartUseCase(jobRepository);
-        const claimed = await claimJob.execute({ id, owner });
-        if (!claimed) {
-          console.info('[event] duplicate_conversion_rejected', {
-            owner,
-            jobId: job.id,
-            objectId: id,
-          });
-          throw new InProgressJobError(id);
-        }
+        await this.claimExistingJob(jobRepository, id, owner, job.id);
       }
 
-      const checkLimit = new CheckJobLimitUseCase(jobRepository);
-      const maxJobs = paying ? Infinity : 1;
-      const withinLimit = await checkLimit.execute({ owner, maxJobs });
-      if (!withinLimit) {
-        const cancelJob = new CancelJobUseCase(jobRepository);
-        await cancelJob.execute({
-          id,
-          owner,
-          reason: 'Free plan — one conversion at a time',
-        });
-        console.info('[event] paywall_shown', { owner, attemptedJobId: id });
-        throw new JobLimitError(owner);
-      }
+      await this.enforceJobLimit(jobRepository, id, owner, paying);
 
       const safeString = (v: unknown): string | undefined =>
         typeof v === 'string' && v.length > 0 ? v : undefined;
@@ -373,6 +352,45 @@ class NotionController {
       }
       console.error('[notion/convert] enqueue failed:', err);
       return res.status(500).json({ error: 'conversion failed' });
+    }
+  }
+
+  private async claimExistingJob(
+    jobRepository: JobRepository,
+    objectId: string,
+    owner: string,
+    jobId: number
+  ): Promise<void> {
+    const claimJob = new ClaimJobForRestartUseCase(jobRepository);
+    const claimed = await claimJob.execute({ id: objectId, owner });
+    if (!claimed) {
+      console.info('[event] duplicate_conversion_rejected', {
+        owner,
+        jobId,
+        objectId,
+      });
+      throw new InProgressJobError(objectId);
+    }
+  }
+
+  private async enforceJobLimit(
+    jobRepository: JobRepository,
+    id: string,
+    owner: string,
+    paying: boolean
+  ): Promise<void> {
+    const checkLimit = new CheckJobLimitUseCase(jobRepository);
+    const maxJobs = paying ? Infinity : 1;
+    const withinLimit = await checkLimit.execute({ owner, maxJobs });
+    if (!withinLimit) {
+      const cancelJob = new CancelJobUseCase(jobRepository);
+      await cancelJob.execute({
+        id,
+        owner,
+        reason: 'Free plan — one conversion at a time',
+      });
+      console.info('[event] paywall_shown', { owner, attemptedJobId: id });
+      throw new JobLimitError(owner);
     }
   }
 
