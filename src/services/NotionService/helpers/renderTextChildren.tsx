@@ -43,6 +43,6 @@ export default function renderTextChildren(
 
       return `unsupported type: ${t.type}\n${JSON.stringify(t, null, 2)}`;
     })
-    .reduce((acc, curr) => acc + curr);
+    .reduce((acc, curr) => acc + curr, '');
   return preserveNewlinesIfApplicable(content, settings);
 }

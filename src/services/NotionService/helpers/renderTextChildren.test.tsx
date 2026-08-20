@@ -172,3 +172,29 @@ describe('renderTextChildren — inline colors', () => {
     expect(result).toContain('<strong>');
   });
 });
+
+describe('renderTextChildren — multi-item concatenation', () => {
+  it('joins plain text and an inline equation in order with no separator', () => {
+    const result = renderTextChildren(
+      [makeText('alpha'), makeEquation('E = mc^2'), makeText('omega')],
+      defaultSettings
+    );
+
+    expect(result).toBe('alpha\\(E = mc^2\\)omega');
+    expect(result).not.toContain('[object Object]');
+  });
+
+  it('joins a markup-rendered annotated item with plain items as strings', () => {
+    const result = renderTextChildren(
+      [
+        makeText('before '),
+        makeText('bold', { bold: true }),
+        makeText(' after'),
+      ],
+      defaultSettings
+    );
+
+    expect(result).toBe('before <strong>bold</strong> after');
+    expect(result).not.toContain('[object Object]');
+  });
+});
