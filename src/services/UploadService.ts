@@ -24,6 +24,8 @@ import { isLimitError } from '../lib/misc/isLimitError';
 import { handleUploadLimitError } from '../controllers/Upload/helpers/handleUploadLimitError';
 import { getUploadValidationError } from '../lib/upload/getUploadValidationError';
 import { isImageOnlyUpload } from '../lib/upload/isImageOnlyUpload';
+import { decodeUploadImage } from '../lib/upload/decodeUploadImage';
+import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
 import { isExpectedClientFault } from '../lib/misc/isExpectedClientFault';
@@ -185,6 +187,35 @@ function sumExpiredNotionImages(
 function hasSessionToken(req: express.Request): boolean {
   const token = (req.cookies as Record<string, unknown> | undefined)?.token;
   return typeof token === 'string' && token.length > 0;
+}
+
+async function readUploadBytes(file: UploadedFile): Promise<Buffer | null> {
+  if (file.buffer != null) {
+    return file.buffer;
+  }
+  if (file.path != null && file.path !== '') {
+    try {
+      return await fs.promises.readFile(file.path);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function deckNameFromImageFilename(name: string): string {
+  const base = name.replace(/\.[^./\\]+$/, '').trim();
+  return base.length > 0 ? base : 'Photo deck';
+}
+
+function imageConversionErrorStatus(err: unknown): number | null {
+  if (err instanceof Error) {
+    const status = (err as Error & { status?: unknown }).status;
+    if (typeof status === 'number') {
+      return status;
+    }
+  }
+  return null;
 }
 
 const CONVERSION_SETTINGS_FILENAME = 'conversion-settings.json';
@@ -354,7 +385,8 @@ class UploadService {
     private readonly apiKeyUsageRepository?: IApiKeyUsageRepository,
     private readonly apiUsageWarner?: ApiUsageWarner,
     private readonly conversionRuleScoresRepository?: IConversionRuleScoresRepository,
-    private readonly cardGuidLedgerRepository?: ICardGuidLedgerRepository
+    private readonly cardGuidLedgerRepository?: ICardGuidLedgerRepository,
+    private readonly photoToFlashcardsUseCase?: PhotoToFlashcardsUseCase
   ) {}
 
   private apiTierOf(res: express.Response): ResolvedDeveloperTier | null {
@@ -758,6 +790,16 @@ class UploadService {
           device: classifyDevice(req.headers?.['user-agent']),
         },
       });
+
+      const files = req.files as UploadedFile[];
+      if (
+        owner != null &&
+        this.photoToFlashcardsUseCase != null &&
+        files.length === 1 &&
+        isImageOnlyUpload(files)
+      ) {
+        return await this.handleImageUpload(req, res, String(owner), paying);
+      }
 
       if (owner != null && paying && settings.claudeAIFlashcards) {
         return await this.handleAsyncUpload(
@@ -1352,6 +1394,122 @@ class UploadService {
           sumExpiredNotionImages(packages)
         )
       );
+  }
+
+  // Image uploads convert through the same vision pipeline as Photo to Deck
+  // (its 5-per-month free quota, unlimited-for-paying gate, and Claude cost all
+  // live inside PhotoToFlashcardsUseCase), so dropping a photo on the file
+  // uploader succeeds instead of failing with an empty deck. Anonymous and
+  // multi-file image uploads never reach here — they keep the image_only_no_text
+  // guidance floor.
+  private async handleImageUpload(
+    req: express.Request,
+    res: express.Response,
+    owner: string,
+    paying: boolean
+  ) {
+    const file = (req.files as UploadedFile[])[0];
+    track('conversion_started', {
+      userId: Number(owner),
+      anonymousId: this.resolveAnonId(req),
+      props: { source: this.resolveUploadSource(req), mode: 'image' },
+    });
+
+    const bytes = await readUploadBytes(file);
+    const decoded = bytes == null ? null : decodeUploadImage(bytes);
+    if (decoded == null) {
+      track('conversion_failed', {
+        userId: Number(owner),
+        anonymousId: this.resolveAnonId(req),
+        props: { ...this.baseFunnelProps(req), reason: 'empty_deck' },
+      });
+      throw new EmptyDeckError();
+    }
+
+    const deckName = deckNameFromImageFilename(file.originalname);
+    let result: Awaited<ReturnType<PhotoToFlashcardsUseCase['execute']>>;
+    try {
+      result = await this.photoToFlashcardsUseCase!.execute({
+        imageBase64: decoded.imageBase64,
+        mediaType: decoded.mediaType,
+        deckName,
+        owner,
+        isPaying: paying,
+        imageDimensions: { width: decoded.width, height: decoded.height },
+        usageSurface: 'photo_to_deck_upload',
+      });
+    } catch (err) {
+      if (this.respondToImageConversionError(req, res, err)) {
+        return;
+      }
+      throw err;
+    }
+
+    const apkg = await fs.promises.readFile(result.apkgPath);
+    fs.promises.unlink(result.apkgPath).catch(() => undefined);
+
+    res.set('Content-Type', 'application/apkg');
+    res.set('Content-Length', Buffer.byteLength(apkg).toString());
+    res.set('X-Card-Count', result.cardCount.toString());
+    res.set('X-MCQ-Count', result.mcqCount.toString());
+    res.set('X-MCQ-Skipped-Count', result.mcqSkippedCount.toString());
+    res.set(
+      'Access-Control-Expose-Headers',
+      'File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count'
+    );
+    try {
+      res.set('File-Name', encodeURIComponent(deckName));
+    } catch (err) {
+      console.info(`failed to set name ${deckName}`);
+      console.error(err);
+    }
+    res.attachment(`/${deckName}`);
+    track('conversion_succeeded', {
+      userId: Number(owner),
+      anonymousId: this.resolveAnonId(req),
+      props: {
+        ...this.baseFunnelProps(req),
+        card_count_bucket: toCardCountBucket(result.cardCount),
+      },
+    });
+    return res.status(200).send(apkg);
+  }
+
+  private respondToImageConversionError(
+    req: express.Request,
+    res: express.Response,
+    err: unknown
+  ): boolean {
+    const status = imageConversionErrorStatus(err);
+    if (status == null) {
+      return false;
+    }
+    const e = err as Error & {
+      code?: string;
+      used?: number;
+      limit?: number;
+    };
+    const owner = getOwner(res);
+    track('conversion_failed', {
+      userId: owner != null ? Number(owner) : null,
+      anonymousId: this.resolveAnonId(req),
+      props: {
+        ...this.baseFunnelProps(req),
+        reason: `image_${e.code ?? status}`,
+      },
+    });
+    const body: Record<string, unknown> = {
+      code: 'image_conversion_failed',
+      message: e.message,
+    };
+    if (e.used != null) {
+      body.used = e.used;
+    }
+    if (e.limit != null) {
+      body.limit = e.limit;
+    }
+    res.status(status).json(body);
+    return true;
   }
 
   private async buildBatchResponse(

@@ -35,6 +35,8 @@ import { DeleteGoogleDriveUploadUseCase } from '../usecases/uploads/DeleteGoogle
 import DeleteJobUseCase from '../usecases/jobs/DeleteJobUseCase';
 import { ConversionRuleScoresRepository } from '../data_layer/ConversionRuleScoresRepository';
 import { CardGuidLedgerRepository } from '../data_layer/CardGuidLedgerRepository';
+import { EventsRepository } from '../data_layer/EventsRepository';
+import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import NotionTopLevelPagesRepository from '../data_layer/NotionTopLevelPagesRepository';
 import { GetRecentSourcesUseCase } from '../usecases/uploads/GetRecentSourcesUseCase';
 import { RecentSourcesController } from '../controllers/Upload/RecentSourcesController';
@@ -60,7 +62,8 @@ const UploadRouter = () => {
         tierKey
       ),
     new ConversionRuleScoresRepository(database),
-    new CardGuidLedgerRepository(database)
+    new CardGuidLedgerRepository(database),
+    new PhotoToFlashcardsUseCase(new EventsRepository(database))
   );
   const jobController = new JobController(
     jobService,

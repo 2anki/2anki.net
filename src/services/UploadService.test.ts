@@ -72,6 +72,7 @@ jest.mock('../lib/storage/StorageHandler', () => {
 });
 
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';
+import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import UploadService from './UploadService';
@@ -3125,5 +3126,151 @@ describe('UploadService.handleUpload — in-flight duplicate guard', () => {
     await service.handleUpload(buildAiRequest('shared bytes'), otherUser.res);
 
     expect(otherUser.capturedStatus()).toBe(202);
+  });
+});
+
+describe('UploadService.handleUpload — image uploads route through vision', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  const ONE_BY_ONE_PNG_BASE64 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'upload-service-test');
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+  });
+
+  beforeEach(() => {
+    MockGeneratePackagesUseCase.mockClear();
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockResolvedValue({ packages: [] }),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+    trackMock.mockClear();
+    mockWorkspaceId = 'image-ws-id';
+  });
+
+  function buildVisionUseCase(execute: jest.Mock) {
+    return { execute } as unknown as PhotoToFlashcardsUseCase;
+  }
+
+  function buildServiceWithVision(vision: PhotoToFlashcardsUseCase) {
+    return new UploadService(
+      buildRepository(),
+      {
+        create: jest.fn().mockResolvedValue(undefined),
+      } as unknown as JobRepository,
+      buildUsersRepo(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      vision
+    );
+  }
+
+  function buildImageRequest(overrides: Partial<express.Request> = {}) {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'lecture-slide.png',
+          mimetype: 'image/png',
+          size: 2048,
+          buffer: Buffer.from(ONE_BY_ONE_PNG_BASE64, 'base64'),
+        },
+      ],
+      body: {},
+      ...overrides,
+    } as unknown as Partial<express.Request>);
+  }
+
+  function signedInResponse() {
+    const built = buildResponse();
+    (built.res.locals as Record<string, unknown>).owner = 42;
+    return built;
+  }
+
+  it('converts a single-image upload through the vision pipeline and returns the apkg', async () => {
+    const apkgPath = path.join(os.tmpdir(), `vision-upload-${Date.now()}.apkg`);
+    const apkgBytes = Buffer.from('fake-apkg-bytes');
+    fs.writeFileSync(apkgPath, apkgBytes);
+    const execute = jest.fn().mockResolvedValue({
+      apkgPath,
+      cardCount: 7,
+      estimatedCostUsd: 0.01,
+      tileCount: 1,
+      mcqCount: 0,
+      mcqSkippedCount: 0,
+    });
+    const service = buildServiceWithVision(buildVisionUseCase(execute));
+    const { res, capturedStatus, capturedSend } = signedInResponse();
+
+    await service.handleUpload(buildImageRequest(), res);
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageBase64: ONE_BY_ONE_PNG_BASE64,
+        mediaType: 'image/png',
+        owner: '42',
+        imageDimensions: { width: 1, height: 1 },
+        usageSurface: 'photo_to_deck_upload',
+      })
+    );
+    expect(capturedStatus()).toBe(200);
+    expect(capturedSend()).toEqual(apkgBytes);
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_succeeded',
+      expect.objectContaining({ userId: 42 })
+    );
+  });
+
+  it('surfaces the vision quota error with its status instead of a silent failure', async () => {
+    const quotaError = Object.assign(
+      new Error(
+        "Free plan is 5 photos per month. You've used 5. Upgrade for unlimited."
+      ),
+      { status: 429, used: 5, limit: 5 }
+    );
+    const execute = jest.fn().mockRejectedValue(quotaError);
+    const service = buildServiceWithVision(buildVisionUseCase(execute));
+    const { res, capturedStatus, capturedJson } = signedInResponse();
+
+    await service.handleUpload(buildImageRequest(), res);
+
+    expect(capturedStatus()).toBe(429);
+    const body = capturedJson() as {
+      code: string;
+      message: string;
+      limit?: number;
+    };
+    expect(body.code).toBe('image_conversion_failed');
+    expect(body.limit).toBe(5);
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({
+        props: expect.objectContaining({ reason: 'image_429' }),
+      })
+    );
+  });
+
+  it('leaves an anonymous image upload on the image_only_no_text floor and never calls vision', async () => {
+    const execute = jest.fn();
+    const service = buildServiceWithVision(buildVisionUseCase(execute));
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(buildImageRequest(), res);
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(capturedStatus()).toBe(400);
+    expect((capturedJson() as { code: string }).code).toBe(
+      'image_only_no_text'
+    );
   });
 });
