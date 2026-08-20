@@ -28,7 +28,7 @@ export class CompleteJobUseCase {
     unsupportedBlocks?: Record<string, number>,
     structureRescuedRule?: string,
     forbiddenBlockCount = 0
-  ): Promise<Jobs> {
+  ): Promise<Jobs | undefined> {
     const job = await this.jobRepository.findJobById(jobId, owner);
 
     if (!job) {
