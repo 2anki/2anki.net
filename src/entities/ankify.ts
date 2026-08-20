@@ -95,7 +95,7 @@ export type AnkifySyncLogKind =
   | 'provision'
   | 'respin';
 
-export type AnkifySyncLogStatus = 'success' | 'error' | 'info';
+export type AnkifySyncLogStatus = 'success' | 'partial' | 'error' | 'info';
 
 export interface AnkifySyncLog {
   id: number;

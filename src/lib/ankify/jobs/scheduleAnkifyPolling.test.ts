@@ -107,6 +107,68 @@ describe('scheduleAnkifyPolling', () => {
     clearInterval(timer);
   });
 
+  test('backs off a subscription whose client has been offline past the lapse window', async () => {
+    const subscriptions = makeSubscriptions();
+    const useCase = makeUseCase();
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const lapsed = sampleSubscription({
+      id: 9,
+      notion_page_id: 'lapsed-page',
+      last_error: 'Anki client offline — will retry next tick',
+      last_synced_at: thirtyDaysAgo,
+      last_polled_at: new Date(Date.now() - 5 * 60 * 1000),
+    });
+    subscriptions.listEnabled.mockResolvedValue([lapsed]);
+    subscriptions.findByOwnerAndPageId.mockResolvedValue(lapsed);
+
+    const refreshTopLevelPagesForOwner = jest.fn();
+    const timer = scheduleAnkifyPolling(
+      subscriptions,
+      useCase as unknown as SyncNotionPageToRacUseCase,
+      { intervalMs: 5, refreshTopLevelPagesForOwner }
+    );
+
+    await waitForTick();
+
+    expect(useCase.execute).not.toHaveBeenCalled();
+    expect(refreshTopLevelPagesForOwner).not.toHaveBeenCalled();
+
+    clearInterval(timer);
+  });
+
+  test('retries a lapsed offline subscription once the hourly window passes', async () => {
+    const subscriptions = makeSubscriptions();
+    const useCase = makeUseCase();
+
+    const lapsedButDue = sampleSubscription({
+      id: 10,
+      notion_page_id: 'lapsed-due-page',
+      last_error: 'Anki client offline — will retry next tick',
+      last_synced_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      last_polled_at: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    });
+    subscriptions.listEnabled.mockResolvedValue([lapsedButDue]);
+    subscriptions.findByOwnerAndPageId.mockResolvedValue(lapsedButDue);
+
+    const timer = scheduleAnkifyPolling(
+      subscriptions,
+      useCase as unknown as SyncNotionPageToRacUseCase,
+      { intervalMs: 5 }
+    );
+
+    await waitForTick();
+
+    expect(useCase.execute).toHaveBeenCalledWith({
+      owner: 42,
+      notionPageId: 'lapsed-due-page',
+      knownObjectType: null,
+      trigger: 'polling',
+    });
+
+    clearInterval(timer);
+  });
+
   test('does not start a second tick while the previous one is still running', async () => {
     const subscriptions = makeSubscriptions();
     const useCase = makeUseCase();

@@ -1,5 +1,6 @@
 import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../../data_layer/ankify/AnkifyNotionSubscriptionsRepository';
 import { SyncNotionPageToRacUseCase } from '../../../usecases/ankify/SyncNotionPageToRacUseCase';
+import { shouldSkipLapsedOfflinePoll } from '../offlineBackoff';
 
 export const ANKIFY_POLLING_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -30,6 +31,9 @@ export const scheduleAnkifyPolling = (
           sub.notion_page_id
         );
         if (current == null) {
+          continue;
+        }
+        if (shouldSkipLapsedOfflinePoll(current, new Date())) {
           continue;
         }
         await useCase.execute({
