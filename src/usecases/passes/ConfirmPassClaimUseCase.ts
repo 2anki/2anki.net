@@ -1,12 +1,16 @@
 import type { Knex } from 'knex';
 import type { UsersId } from '../../data_layer/public/Users';
 import hmacToken from '../../lib/misc/hmacToken';
-import type { IAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
+import type {
+  AnonymousPass,
+  IAnonymousPassRepository,
+} from '../../data_layer/AnonymousPassRepository';
 import type { IPassClaimTokensRepository } from '../../data_layer/PassClaimTokensRepository';
 import type { ISubscriptionClaimAuditRepository } from '../../data_layer/SubscriptionClaimAuditRepository';
-import type { IUserPassRepository } from '../../data_layer/UserPassRepository';
-import type { PassKind } from '../../data_layer/UserPassRepository';
-import type { AnonymousPass } from '../../data_layer/AnonymousPassRepository';
+import type {
+  IUserPassRepository,
+  PassKind,
+} from '../../data_layer/UserPassRepository';
 import { PASS_DURATION_MS, isAnonymousPassKind } from './passDurations';
 
 export type ConfirmPassOutcome =
