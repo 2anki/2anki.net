@@ -5,7 +5,10 @@ jest.mock('@sendgrid/mail', () => ({
   send,
 }));
 
-import { getDefaultEmailService } from './EmailService';
+import {
+  getDefaultEmailService,
+  UnimplementedEmailService,
+} from './EmailService';
 import {
   NOTION_RECONNECT_TEMPLATE,
   CONTACT_CONFIRMATION_TEMPLATE,
@@ -354,5 +357,48 @@ describe('EmailService.sendContactConfirmationEmail', () => {
     expect(msg.subject).toBe('We got your message');
     expect(msg.replyTo).toBe('support@2anki.net');
     expect(msg.html).toContain('Your message reached us');
+  });
+});
+
+describe('EmailService.sendConversionLinkEmail delivery contract', () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.SENDGRID_API_KEY = 'test-key';
+    process.env.DOMAIN = 'https://2anki.net';
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it('returns an awaitable promise whose resolution follows delivery', async () => {
+    const service = getDefaultEmailService();
+
+    const returned = service.sendConversionLinkEmail(
+      'learner@example.com',
+      'Anatomy',
+      'https://2anki.net/api/download/u/key-9',
+      2
+    );
+
+    expect(returned).toBeInstanceOf(Promise);
+    await returned;
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the unimplemented service be awaited without delivering', async () => {
+    const service = new UnimplementedEmailService();
+
+    const returned = service.sendConversionLinkEmail(
+      'learner@example.com',
+      'Anatomy',
+      'https://2anki.net/api/download/u/key-9',
+      2
+    );
+
+    await returned;
+    expect(send).not.toHaveBeenCalled();
   });
 });
