@@ -101,7 +101,7 @@
     "uploadMultiDeck_other": "{{count}} cartes n'avaient pas de réponse et ont été ignorées, elles ne sont donc pas dans vos paquets. Ajoutez un verso à chacune dans votre fichier, puis convertissez à nouveau."
   },
   "blocksForbidden": {
-    "notion_one": "{{count}} partie de cette page n'a pas pu être lue car elle n'est pas connectée à 2anki, elle n'est donc pas dans ce paquet. Connecte-la à 2anki dans Notion, puis relance la conversion.",
-    "notion_other": "{{count}} parties de cette page n'ont pas pu être lues car elles ne sont pas connectées à 2anki, elles ne sont donc pas dans ce paquet. Connecte-les à 2anki dans Notion, puis relance la conversion."
+    "notion_one": "{{count}} partie de cette page n'est pas connectée à 2anki, elle n'est donc pas dans ce paquet. Ajoute 2anki à cette page et à ses sous-pages dans le menu Connexions de Notion, puis relance la conversion.",
+    "notion_other": "{{count}} parties de cette page ne sont pas connectées à 2anki, elles ne sont donc pas dans ce paquet. Ajoute 2anki à cette page et à ses sous-pages dans le menu Connexions de Notion, puis relance la conversion."
   }
 }

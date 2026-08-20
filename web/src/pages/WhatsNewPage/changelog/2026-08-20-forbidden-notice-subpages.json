@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-20-forbidden-notice-subpages",
+  "date": "2026-08-20",
+  "type": "fix",
+  "title": "The unshared-parts notice on Notion decks now points at the Connections menu and sub-pages"
+}

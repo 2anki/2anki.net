@@ -101,7 +101,7 @@
     "uploadMultiDeck_other": "{{count}} tarjetas no tenían respuesta y se omitieron, así que no están en tus mazos. Añade un reverso a cada una en tu archivo y vuelve a convertir."
   },
   "blocksForbidden": {
-    "notion_one": "No se pudo leer {{count}} parte de esta página porque no está conectada a 2anki, así que no está en este mazo. Conéctala a 2anki en Notion y vuelve a convertir.",
-    "notion_other": "No se pudieron leer {{count}} partes de esta página porque no están conectadas a 2anki, así que no están en este mazo. Conéctalas a 2anki en Notion y vuelve a convertir."
+    "notion_one": "{{count}} parte de esta página no está conectada a 2anki, así que no está en este mazo. Añade 2anki a esta página y sus subpáginas en el menú Conexiones de Notion y vuelve a convertir.",
+    "notion_other": "{{count}} partes de esta página no están conectadas a 2anki, así que no están en este mazo. Añade 2anki a esta página y sus subpáginas en el menú Conexiones de Notion y vuelve a convertir."
   }
 }

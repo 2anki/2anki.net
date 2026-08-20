@@ -16,18 +16,14 @@ describe('ForbiddenBlocksNotice', () => {
   it('uses singular copy for one unshared part', () => {
     render(<ForbiddenBlocksNotice count={1} />);
     expect(
-      screen.getByText(
-        /1 part of this page couldn't be read because it isn't connected to 2anki/
-      )
+      screen.getByText(/1 part of this page isn't connected to 2anki/)
     ).toBeInTheDocument();
   });
 
   it('uses plural copy and shows the count for several unshared parts', () => {
     render(<ForbiddenBlocksNotice count={3} />);
     expect(
-      screen.getByText(
-        /3 parts of this page couldn't be read because they aren't connected to 2anki/
-      )
+      screen.getByText(/3 parts of this page aren't connected to 2anki/)
     ).toBeInTheDocument();
   });
 
