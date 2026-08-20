@@ -23,6 +23,36 @@ describe('induceCardsFromDom', () => {
     expect(notes[0].back).toContain('membrane');
   });
 
+  it('pairs bold-only paragraphs (docx pseudo-headings) with following prose', () => {
+    const dom = load(`
+      <p><strong>What is osmosis?</strong></p>
+      <p>Water crossing a membrane.</p>
+      <p>It moves from low to high solute concentration.</p>
+      <p><strong>What is diffusion?</strong></p>
+      <p>Particles spreading out over time.</p>
+      <p><strong>What is mitosis?</strong></p>
+      <p>Cell division into two identical cells.</p>
+    `);
+
+    const notes = induceCardsFromDom(dom, 'heading');
+
+    expect(notes).toHaveLength(3);
+    expect(notes[0].name).toContain('<strong>What is osmosis?</strong>');
+    expect(notes[0].back).toContain('membrane');
+    expect(notes[0].back).toContain('low to high');
+    expect(notes[1].name).toContain('diffusion');
+    expect(notes[1].back).toContain('spreading out');
+  });
+
+  it('does not treat a partly-bold paragraph as a pseudo-heading', () => {
+    const dom = load(`
+      <p><strong>Note:</strong> osmosis moves water across a membrane.</p>
+      <p>Diffusion spreads particles out over time.</p>
+    `);
+
+    expect(induceCardsFromDom(dom, 'heading')).toHaveLength(0);
+  });
+
   it('keeps a bold term inside a bullet bold in the rescued card', () => {
     const dom = load(`
       <ul>

@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-20-docx-bold-heading-empty-deck",
+  "date": "2026-08-20",
+  "type": "fix",
+  "title": "Word documents with bold section titles no longer convert to an empty deck"
+}

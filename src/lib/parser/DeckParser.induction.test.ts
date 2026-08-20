@@ -141,6 +141,74 @@ describe('DeckParser upload rescue gating', () => {
   });
 });
 
+// mammoth converts a Word "Heading" style to an <h1>, which preprocessDocxHTML
+// turns into a toggle. But many study docs mark sections with a fully bold
+// paragraph instead, and mammoth emits those verbatim as <p><strong>…</strong>.
+// That HTML reaches DeckParser unchanged, matches no toggle/list/table, and with
+// cloze OFF the front-only paragraph notes are all filtered — an empty deck.
+function docxBoldSections(count: number): string {
+  const filler =
+    'The cell membrane regulates transport of molecules and maintains homeostasis across the boundary of every living cell. '.repeat(
+      3
+    );
+  return Array.from(
+    { length: count },
+    (_, i) =>
+      `<p><strong>Section ${i + 1}: Cellular biology topic ${i + 1}</strong></p><p>Answer ${i + 1}. ${filler}</p><p>Further detail ${i + 1}. ${filler}</p>`
+  ).join('');
+}
+
+describe('DeckParser docx bold-heading prose rescue', () => {
+  it('produces cards from bold-pseudo-heading prose with cloze off', () => {
+    const parser = parse(
+      docxBoldSections(6),
+      new CardOption({
+        cherry: 'false',
+        cloze: 'false',
+      })
+    );
+
+    const cards = parser.payload[0].cards;
+    expect(Deck.CleanCards([...cards]).length).toBeGreaterThanOrEqual(3);
+    const fronts = cards.map((card) => card.name).join(' ');
+    expect(fronts).toContain('Cellular biology topic 1');
+    const backs = cards.map((card) => card.back).join(' ');
+    expect(backs).toContain('homeostasis');
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
+  });
+
+  it('rescues the same prose to cards whether cloze is on or off', () => {
+    const clozeOff = parse(
+      docxBoldSections(6),
+      new CardOption({
+        cherry: 'false',
+        cloze: 'false',
+      })
+    );
+    const clozeOn = parse(
+      docxBoldSections(6),
+      new CardOption({
+        cherry: 'false',
+        cloze: 'true',
+      })
+    );
+
+    expect(
+      Deck.CleanCards([...clozeOn.payload[0].cards]).length
+    ).toBeGreaterThanOrEqual(3);
+    expect(clozeOn.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
+    expect(Deck.CleanCards([...clozeOff.payload[0].cards])).toHaveLength(
+      Deck.CleanCards([...clozeOn.payload[0].cards]).length
+    );
+  });
+});
+
 const USABLE_TOGGLE = (n: number) =>
   `<ul class="toggle"><li><details open=""><summary>Toggle question ${n}?</summary><div class="indented">Toggle answer ${n}.</div></details></li></ul>`;
 
