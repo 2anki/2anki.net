@@ -16,7 +16,7 @@ export function shouldSkipLapsedOfflinePoll(
 ): boolean {
   const { last_error, last_synced_at, last_polled_at, created_at } =
     subscription;
-  if (last_error == null || !last_error.startsWith(OFFLINE_ERROR_PREFIX)) {
+  if (!last_error?.startsWith(OFFLINE_ERROR_PREFIX)) {
     return false;
   }
   const offlineAnchor = last_synced_at ?? created_at;
