@@ -128,8 +128,9 @@ export async function withRetry<T>(
       const jitter = 0.5 + Math.random();
       const delay =
         retryAfterMs ?? Math.floor(baseDelayMs * 2 ** (attempt - 1) * jitter);
+      const labelSuffix = label ? `:${label}` : '';
       console.warn(
-        `[withRetry${label ? `:${label}` : ''}] attempt ${attempt}/${maxAttempts} failed (${describeFailure(error)}); retrying in ${delay}ms`
+        `[withRetry${labelSuffix}] attempt ${attempt}/${maxAttempts} failed (${describeFailure(error)}); retrying in ${delay}ms`
       );
       await doSleep(delay);
     }
