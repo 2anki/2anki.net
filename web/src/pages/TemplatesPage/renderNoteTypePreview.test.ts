@@ -40,6 +40,24 @@ const cloze: AnkiNoteType = {
 };
 
 describe('renderCardSide', () => {
+  it('renders with empty values when previewData is missing entirely', () => {
+    const result = renderCardSide(
+      basic,
+      undefined as unknown as Record<string, string>,
+      'front'
+    );
+    expect(result).toBe('');
+  });
+
+  it('builds a document for a starter with no previewData', () => {
+    const doc = buildPreviewDocument(
+      basic,
+      undefined as unknown as Record<string, string>,
+      'back'
+    );
+    expect(doc).toContain('<div class="card">');
+  });
+
   it('substitutes simple {{Field}} placeholders on the front', () => {
     const result = renderCardSide(
       basic,
