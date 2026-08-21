@@ -585,7 +585,11 @@ function resolveOutgoingContent(
   return t('composer.fileOnlyPrompt', { count: fileCount });
 }
 
-function ChatUpgradePanel({ showReassurance }: { showReassurance: boolean }) {
+function ChatUpgradePanel({
+  showReassurance,
+}: {
+  readonly showReassurance: boolean;
+}) {
   const { t } = useTranslation('chat');
 
   useEffect(() => {
@@ -804,11 +808,20 @@ export default function ChatPanel({
       .slice(-10)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    let response: Response;
-    if (readyChips.length > 0) {
+    function requestMessage(
+      historyPayload: { role: string; content: string }[]
+    ): Promise<Response> {
+      if (readyChips.length === 0) {
+        return post('/api/chat/message', {
+          content,
+          history: historyPayload,
+          conversationId: activeConversationId,
+          templateSlug: activeTemplate,
+        });
+      }
       const formData = new FormData();
       formData.append('content', content);
-      formData.append('history', JSON.stringify(history));
+      formData.append('history', JSON.stringify(historyPayload));
       formData.append('templateSlug', activeTemplate);
       if (activeConversationId != null) {
         formData.append('conversationId', String(activeConversationId));
@@ -816,26 +829,16 @@ export default function ChatPanel({
       for (const chip of readyChips) {
         formData.append('files', chip.file, chip.file.name);
       }
-      try {
-        response = await postMultipart('/api/chat/message', formData);
-      } catch {
-        setNetworkError(t('errors.send'));
-        setIsLoading(false);
-        return;
-      }
-    } else {
-      try {
-        response = await post('/api/chat/message', {
-          content,
-          history,
-          conversationId: activeConversationId,
-          templateSlug: activeTemplate,
-        });
-      } catch {
-        setNetworkError(t('errors.send'));
-        setIsLoading(false);
-        return;
-      }
+      return postMultipart('/api/chat/message', formData);
+    }
+
+    let response: Response;
+    try {
+      response = await requestMessage(history);
+    } catch {
+      setNetworkError(t('errors.send'));
+      setIsLoading(false);
+      return;
     }
 
     if (response.status === 402) {
