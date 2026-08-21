@@ -19,6 +19,7 @@ import { getDatabase } from '../data_layer';
 import { getAnthropicClient } from '../lib/claude/ClaudeService';
 import StorageHandler from '../lib/storage/StorageHandler';
 import RequireAuthentication from './middleware/RequireAuthentication';
+import RequirePayingJson from './middleware/RequirePayingJson';
 
 const chatUpload = multer({
   storage: multer.memoryStorage(),
@@ -212,10 +213,13 @@ const ChatRouter = () => {
    *               $ref: '#/components/schemas/Error'
    *       401:
    *         description: Authentication required
+   *       402:
+   *         description: Chat requires a paid plan
    */
   router.post(
     '/api/chat/message',
     RequireAuthentication,
+    RequirePayingJson,
     chatUpload.array('files', 5),
     (req, res) => controller.sendMessage(req, res)
   );
@@ -331,43 +335,15 @@ const ChatRouter = () => {
    *                     items: { type: string }
    *       400:
    *         description: Invalid input
+   *       402:
+   *         description: Chat requires a paid plan
    */
-  router.post('/api/chat/tag-cards', RequireAuthentication, (req, res) =>
-    tagCardsController.tag(req, res)
+  router.post(
+    '/api/chat/tag-cards',
+    RequireAuthentication,
+    RequirePayingJson,
+    (req, res) => tagCardsController.tag(req, res)
   );
-
-  /**
-   * @swagger
-   * /api/chat/usage:
-   *   get:
-   *     summary: Get chat usage for the current month
-   *     tags: [Chat]
-   *     security:
-   *       - bearerAuth: []
-   *     responses:
-   *       200:
-   *         description: Usage data
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 used:
-   *                   type: integer
-   *                 limit:
-   *                   type: integer
-   *                   nullable: true
-   */
-  router.get('/api/chat/usage', RequireAuthentication, async (req, res) => {
-    const owner = res.locals.owner as number;
-    const patreon = (res.locals.patreon as boolean) ?? false;
-    const subscriber = (res.locals.subscriber as boolean) ?? false;
-    const count = await messagesRepo.countThisMonth(owner);
-    res.status(200).json({
-      used: count,
-      limit: patreon || subscriber ? null : 20,
-    });
-  });
 
   /**
    * @swagger
@@ -608,10 +584,13 @@ const ChatRouter = () => {
    *               $ref: '#/components/schemas/Error'
    *       401:
    *         description: Authentication required
+   *       402:
+   *         description: Chat requires a paid plan
    */
   router.post(
     '/api/chat/conversations/:id/regenerate',
     RequireAuthentication,
+    RequirePayingJson,
     (req, res) => controller.regenerateMessage(req, res)
   );
 

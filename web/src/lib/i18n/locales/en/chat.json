@@ -49,14 +49,6 @@
     "withFile": "What would you like to do with this file?",
     "studying": "What are you studying?"
   },
-  "usage": {
-    "messagesLeftOne": "1 message left this month — your next send uses it",
-    "messagesLeft": "{{count}} of {{limit}} messages left this month"
-  },
-  "limitPanel": {
-    "text": "You've used all {{count}} messages this month. Resets {{date}}.",
-    "seePlans": "See plans"
-  },
   "errors": {
     "cantAttachOne": "Can't attach {{name}}. Only PDF and image files work here.",
     "cantAttachMany": "Can't attach {{count}} files. Only PDF and image files work here.",
@@ -112,5 +104,11 @@
     "confirm": "Delete all chats",
     "cancel": "Cancel",
     "close": "Close"
+  },
+  "paywall": {
+    "heading": "Chat is part of a paid plan",
+    "body": "Upgrade to make flashcards by chatting.",
+    "keepReading": "Your past chats stay here to read.",
+    "seePlans": "See plans"
   }
 }

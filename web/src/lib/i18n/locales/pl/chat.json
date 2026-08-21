@@ -51,14 +51,6 @@
     "withFile": "Co chcesz zrobić z tym plikiem?",
     "studying": "Czego się uczysz?"
   },
-  "usage": {
-    "messagesLeftOne": "Została 1 wiadomość w tym miesiącu — kolejne wysłanie ją wykorzysta",
-    "messagesLeft": "Pozostało {{count}} z {{limit}} wiadomości w tym miesiącu"
-  },
-  "limitPanel": {
-    "text": "Wykorzystałeś wszystkie {{count}} wiadomości w tym miesiącu. Odnawia się {{date}}.",
-    "seePlans": "Zobacz plany"
-  },
   "errors": {
     "cantAttachOne": "Nie można załączyć {{name}}. Działają tu tylko pliki PDF i obrazy.",
     "cantAttachMany": "Nie można załączyć {{count}} plików. Działają tu tylko pliki PDF i obrazy.",
@@ -122,5 +114,11 @@
     "confirm": "Usuń wszystkie czaty",
     "cancel": "Anuluj",
     "close": "Zamknij"
+  },
+  "paywall": {
+    "heading": "Czat jest częścią płatnego planu",
+    "body": "Przejdź na płatny plan, aby tworzyć fiszki na czacie.",
+    "keepReading": "Twoje wcześniejsze czaty nadal możesz tu czytać.",
+    "seePlans": "Zobacz plany"
   }
 }

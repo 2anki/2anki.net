@@ -547,7 +547,7 @@
   "modals": {
     "consent": {
       "title": "Der Chat sendet deine Nachrichten an Anthropic",
-      "body": "Deine Nachrichten und alle angehängten Dateien gehen an Anthropic, um Antworten zu generieren. Sie werden nicht zum Trainieren von Modellen verwendet. 20 Nachrichten pro Monat im kostenlosen Tarif.",
+      "body": "Deine Nachrichten und alle angehängten Dateien gehen an Anthropic, um Antworten zu generieren. Sie werden nicht zum Trainieren von Modellen verwendet.",
       "signIn": "Anmelden",
       "toChat": ", um zu chatten.",
       "start": "Chat starten",

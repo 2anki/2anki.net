@@ -4,7 +4,6 @@ import type { IChatMessagesRepository } from '../../data_layer/ChatMessagesRepos
 import {
   rewriteAssistantContentWithTaggedCards,
   extractCards,
-  assertWithinMonthlyQuota,
 } from './ChatUseCase';
 
 const TAGGING_MODEL = 'claude-haiku-4-5-20251001';
@@ -24,7 +23,6 @@ Example output:
 export interface TagCardsInput {
   cards: { front: string; back: string }[];
   userId?: number;
-  patreon?: boolean;
   conversationId?: number | null;
 }
 
@@ -94,13 +92,6 @@ export class TagCardsUseCase {
   ) {}
 
   async execute(input: TagCardsInput): Promise<TagCardsResult> {
-    if (this.messagesRepo != null && input.userId != null) {
-      await assertWithinMonthlyQuota(this.messagesRepo, {
-        owner: input.userId,
-        patreon: input.patreon ?? false,
-      });
-    }
-
     if (input.cards.length === 0) {
       return { tags: [] };
     }

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { get, patch, post, postMultipart } from '../../lib/backend/api';
+import { Link } from 'react-router-dom';
+import { track } from '../../lib/analytics/track';
+import { patch, post, postMultipart } from '../../lib/backend/api';
 import {
   type ChatCardTemplate,
   DEFAULT_TEMPLATE,
@@ -9,6 +11,8 @@ import {
   suggestDeckName,
 } from '../../lib/chat/templates';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { isPayingUser } from '../NavigationBar/helpers/getPlanLabel';
+import sharedStyles from '../../styles/shared.module.css';
 import { compressImageForUpload } from '../../lib/image/compressImageForUpload';
 import AssistantMarkdown from '../../pages/Chat/AssistantMarkdown';
 import CardPreview from '../../pages/Chat/CardPreview';
@@ -44,17 +48,10 @@ interface ApiDonePayload {
 
 interface ApiErrorPayload {
   type:
-    | 'rate_limit'
     | 'server_error'
     | 'conversation_not_found'
     | 'consent_required'
     | 'attachments_not_replayable';
-  resetDate?: string;
-}
-
-interface ApiUsageResponse {
-  used: number;
-  limit: number | null;
 }
 
 export interface ChatPanelProps {
@@ -85,19 +82,7 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
 const MAX_FILE_COUNT = 5;
 
-const FREE_MONTHLY_LIMIT = 20;
 const TAG_SUCCESS_DISMISS_MS = 3000;
-
-function formatResetDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
-}
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) {
@@ -600,6 +585,35 @@ function resolveOutgoingContent(
   return t('composer.fileOnlyPrompt', { count: fileCount });
 }
 
+function ChatUpgradePanel({ showReassurance }: { showReassurance: boolean }) {
+  const { t } = useTranslation('chat');
+
+  useEffect(() => {
+    track('paywall_shown', { surface: 'chat' });
+  }, []);
+
+  return (
+    <section
+      className={styles.upgradePanel}
+      aria-label={t('paywall.heading')}
+      data-testid="chat-upgrade-panel"
+    >
+      <h2 className={styles.upgradeHeading}>{t('paywall.heading')}</h2>
+      <p className={styles.upgradeBody}>
+        {t('paywall.body')}
+        {showReassurance ? ` ${t('paywall.keepReading')}` : ''}
+      </p>
+      <Link
+        to="/pricing?source=chat-paywall"
+        className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+        onClick={() => track('paywall_upgrade_clicked', { surface: 'chat' })}
+      >
+        {t('paywall.seePlans')}
+      </Link>
+    </section>
+  );
+}
+
 export default function ChatPanel({
   initialPrompt,
   cameFromUpload,
@@ -614,6 +628,7 @@ export default function ChatPanel({
 }: ChatPanelProps) {
   const { t } = useTranslation('chat');
   const { data: userLocals, refetch: refetchUserLocals } = useUserLocals();
+  const paying = userLocals == null || isPayingUser(userLocals.locals);
   const hasConsented = userLocals?.user?.chat_consent_at != null;
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [userDismissedConsent, setUserDismissedConsent] = useState(false);
@@ -645,10 +660,6 @@ export default function ChatPanel({
   const [taggingIdx, setTaggingIdx] = useState<number | null>(null);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [limitReached, setLimitReached] = useState(false);
-  const [resetDate, setResetDate] = useState<string | null>(null);
-  const [messagesUsedThisMonth, setMessagesUsedThisMonth] = useState(0);
-  const [monthlyLimit, setMonthlyLimit] = useState<number | null>(null);
   const [chips, setChips] = useState<AttachmentChip[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [userScrolledAway, setUserScrolledAway] = useState(false);
@@ -657,20 +668,6 @@ export default function ChatPanel({
   const messageListRef = useRef<HTMLDivElement>(null);
   const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lastSavedDraftRef = useRef<string>('');
-
-  useEffect(() => {
-    get('/api/chat/usage', { redirect: false })
-      .then((data: ApiUsageResponse | undefined) => {
-        if (data != null) {
-          setMessagesUsedThisMonth(data.used);
-          setMonthlyLimit(data.limit);
-          if (data.limit != null && data.used >= data.limit) {
-            setLimitReached(true);
-          }
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     const el = messageListRef.current;
@@ -716,15 +713,10 @@ export default function ChatPanel({
     return () => clearTimeout(handle);
   }, [inputValue, activeConversationId]);
 
-  const remainingMessages =
-    (monthlyLimit ?? FREE_MONTHLY_LIMIT) - messagesUsedThisMonth;
-
   const readyChips = chips.filter((c) => c.state === 'idle');
   const hasAssistantTurn = messages.some((m) => m.role === 'assistant');
   const canSend =
-    (inputValue.trim().length > 0 || readyChips.length > 0) &&
-    !isLoading &&
-    !limitReached;
+    (inputValue.trim().length > 0 || readyChips.length > 0) && !isLoading;
 
   async function addFiles(incoming: File[]) {
     setNetworkError(null);
@@ -846,6 +838,12 @@ export default function ChatPanel({
       }
     }
 
+    if (response.status === 402) {
+      refetchUserLocals();
+      setIsLoading(false);
+      return;
+    }
+
     if (!response.ok) {
       const data = (await response.json().catch(() => ({}))) as {
         error?: string;
@@ -877,7 +875,6 @@ export default function ChatPanel({
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setStreamingText('');
-      setMessagesUsedThisMonth((n) => n + 1);
       setActiveConversationId(result.conversationId);
       lastSavedDraftRef.current = '';
       const provisionalTitle =
@@ -894,11 +891,6 @@ export default function ChatPanel({
 
     const handleSseError = (data: string) => {
       const err = JSON.parse(data) as ApiErrorPayload;
-      if (err.type === 'rate_limit') {
-        setLimitReached(true);
-        if (err.resetDate != null) setResetDate(err.resetDate);
-        return;
-      }
       if (err.type === 'conversation_not_found') {
         setNetworkError(t('errors.conversationGone'));
         setActiveConversationId(null);
@@ -1048,6 +1040,13 @@ export default function ChatPanel({
       return;
     }
 
+    if (response.status === 402) {
+      refetchUserLocals();
+      setIsLoading(false);
+      setRegeneratingIdx(null);
+      return;
+    }
+
     if (!response.ok || response.body == null) {
       const data = (await response.json().catch(() => ({}))) as {
         error?: string;
@@ -1078,7 +1077,6 @@ export default function ChatPanel({
             : m
         )
       );
-      setMessagesUsedThisMonth((n) => n + 1);
       setActiveConversationId(result.conversationId);
       adoptProducedTemplate(result.cards, result.conversationId);
       if (result.cards != null && result.cards.length > 0) {
@@ -1088,11 +1086,6 @@ export default function ChatPanel({
 
     const handleRegenError = (data: string) => {
       const err = JSON.parse(data) as ApiErrorPayload;
-      if (err.type === 'rate_limit') {
-        setLimitReached(true);
-        if (err.resetDate != null) setResetDate(err.resetDate);
-        return;
-      }
       if (err.type === 'conversation_not_found') {
         setNetworkError(t('errors.conversationGone'));
         setActiveConversationId(null);
@@ -1166,7 +1159,7 @@ export default function ChatPanel({
     attachedFiles: chips,
     onRemoveFile: removeChip,
     onRetryFile: retryChip,
-    disabled: isLoading || limitReached,
+    disabled: isLoading,
     isDragging,
     onDragOver: handleDragOver,
     onDragLeave: handleDragLeave,
@@ -1184,7 +1177,10 @@ export default function ChatPanel({
   return (
     <>
       {(showConsentModal ||
-        (!hasConsented && userLocals != null && !userDismissedConsent)) && (
+        (!hasConsented &&
+          userLocals != null &&
+          isPayingUser(userLocals.locals) &&
+          !userDismissedConsent)) && (
         <ConsentModal
           onAccept={async () => {
             await refetchUserLocals();
@@ -1199,36 +1195,32 @@ export default function ChatPanel({
       <div className={styles.container} data-hj-suppress>
         {showEmptyState ? (
           <div className={styles.emptyState}>
-            <h2 className={styles.emptyHeading}>
-              {cameFromUpload ? t('heading.withFile') : t('heading.studying')}
-            </h2>
-            <div className={styles.emptyComposer}>
-              <div className={styles.composerTemplateRow}>
-                <TemplateSelector
-                  value={activeTemplate}
-                  onChange={handleTemplateChange}
-                  disabled={isLoading}
-                />
-              </div>
-              <ComposerPill {...composerProps} />
-              {networkError != null && (
-                <p className={styles.networkError} role="alert">
-                  {networkError}
-                </p>
-              )}
-              {monthlyLimit != null &&
-                !limitReached &&
-                messagesUsedThisMonth > 0 && (
-                  <p className={styles.usageLine}>
-                    {remainingMessages === 1
-                      ? t('usage.messagesLeftOne')
-                      : t('usage.messagesLeft', {
-                          count: remainingMessages,
-                          limit: monthlyLimit,
-                        })}
-                  </p>
-                )}
-            </div>
+            {paying ? (
+              <>
+                <h2 className={styles.emptyHeading}>
+                  {cameFromUpload
+                    ? t('heading.withFile')
+                    : t('heading.studying')}
+                </h2>
+                <div className={styles.emptyComposer}>
+                  <div className={styles.composerTemplateRow}>
+                    <TemplateSelector
+                      value={activeTemplate}
+                      onChange={handleTemplateChange}
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <ComposerPill {...composerProps} />
+                  {networkError != null && (
+                    <p className={styles.networkError} role="alert">
+                      {networkError}
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <ChatUpgradePanel showReassurance={false} />
+            )}
           </div>
         ) : (
           <>
@@ -1324,41 +1316,22 @@ export default function ChatPanel({
             )}
 
             <div className={styles.inputArea}>
-              {limitReached && resetDate != null && (
-                <div className={styles.limitPanel}>
-                  <span>
-                    {t('limitPanel.text', {
-                      count: FREE_MONTHLY_LIMIT,
-                      date: formatResetDate(resetDate),
-                    })}
-                  </span>
-                  <a href="/pricing" className={styles.limitPanelLink}>
-                    {t('limitPanel.seePlans')}
-                  </a>
-                </div>
+              {paying ? (
+                <>
+                  {!hasAssistantTurn && (
+                    <div className={styles.composerTemplateRow}>
+                      <TemplateSelector
+                        value={activeTemplate}
+                        onChange={handleTemplateChange}
+                        disabled={isLoading}
+                      />
+                    </div>
+                  )}
+                  <ComposerPill {...composerProps} />
+                </>
+              ) : (
+                <ChatUpgradePanel showReassurance={messages.length > 0} />
               )}
-              {!hasAssistantTurn && (
-                <div className={styles.composerTemplateRow}>
-                  <TemplateSelector
-                    value={activeTemplate}
-                    onChange={handleTemplateChange}
-                    disabled={isLoading}
-                  />
-                </div>
-              )}
-              <ComposerPill {...composerProps} />
-              {monthlyLimit != null &&
-                !limitReached &&
-                messagesUsedThisMonth > 0 && (
-                  <p className={styles.usageLine}>
-                    {remainingMessages === 1
-                      ? t('usage.messagesLeftOne')
-                      : t('usage.messagesLeft', {
-                          count: remainingMessages,
-                          limit: monthlyLimit,
-                        })}
-                  </p>
-                )}
               {networkError != null && (
                 <p className={styles.networkError} role="alert">
                   {networkError}

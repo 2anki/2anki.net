@@ -28,7 +28,6 @@ export interface ChatHistoryMessage {
 
 export interface IChatMessagesRepository {
   insert(entry: ChatMessageInsert): Promise<number>;
-  countThisMonth(userId: number): Promise<number>;
   listForConversation(input: {
     userId: number;
     conversationId: number;
@@ -63,20 +62,6 @@ export class ChatMessagesRepository implements IChatMessagesRepository {
       })
       .returning<{ id: number }[]>('id');
     return row.id;
-  }
-
-  async countThisMonth(userId: number): Promise<number> {
-    const firstOfMonth = new Date();
-    firstOfMonth.setUTCDate(1);
-    firstOfMonth.setUTCHours(0, 0, 0, 0);
-
-    const result = await this.database(this.table)
-      .where('user_id', userId)
-      .where('created_at', '>=', firstOfMonth)
-      .count<{ count: string }>('* as count')
-      .first();
-
-    return Number(result?.count ?? 0);
   }
 
   async listForConversation(input: {
@@ -175,16 +160,6 @@ export class InMemoryChatMessagesRepository implements IChatMessagesRepository {
       created_at: new Date(),
     });
     return id;
-  }
-
-  async countThisMonth(userId: number): Promise<number> {
-    const firstOfMonth = new Date();
-    firstOfMonth.setUTCDate(1);
-    firstOfMonth.setUTCHours(0, 0, 0, 0);
-
-    return this.rows.filter(
-      (r) => r.user_id === userId && r.created_at >= firstOfMonth
-    ).length;
   }
 
   async listForConversation(input: {

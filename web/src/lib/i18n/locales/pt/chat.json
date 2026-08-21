@@ -49,14 +49,6 @@
     "withFile": "O que você gostaria de fazer com este arquivo?",
     "studying": "O que você está estudando?"
   },
-  "usage": {
-    "messagesLeftOne": "1 mensagem restante neste mês — o próximo envio usa ela",
-    "messagesLeft": "{{count}} de {{limit}} mensagens restantes neste mês"
-  },
-  "limitPanel": {
-    "text": "Você usou todas as {{count}} mensagens deste mês. Renova em {{date}}.",
-    "seePlans": "Ver planos"
-  },
   "errors": {
     "cantAttachOne": "Não é possível anexar {{name}}. Só arquivos PDF e de imagem funcionam aqui.",
     "cantAttachMany": "Não é possível anexar {{count}} arquivos. Só arquivos PDF e de imagem funcionam aqui.",
@@ -112,5 +104,11 @@
     "confirm": "Excluir todos os chats",
     "cancel": "Cancelar",
     "close": "Fechar"
+  },
+  "paywall": {
+    "heading": "O chat faz parte de um plano pago",
+    "body": "Faça upgrade para criar flashcards conversando.",
+    "keepReading": "Suas conversas anteriores continuam aqui para leitura.",
+    "seePlans": "Ver planos"
   }
 }

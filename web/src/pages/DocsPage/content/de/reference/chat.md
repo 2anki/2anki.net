@@ -5,7 +5,7 @@ description: Notizen einfügen oder eine Datei anhängen, nach Karten fragen, ei
 
 Chat ist ein Lernassistent, gebaut auf Claude. Füge deine Notizen ein oder häng eine Datei an, dann bitte ihn, Karten zu machen, etwas zu erklären, oder arbeite ein Thema im Hin und Her durch. Öffne ihn unter [2anki.net/chat](https://2anki.net/chat). Anmeldung erforderlich.
 
-**Plan:** Kostenlos für die ersten 20 Nachrichten pro Monat. Subscription und Lifetime sind unbegrenzt und nutzen ein stärkeres Modell.
+**Plan:** Teil jedes bezahlten Plans — Subscription, Day Pass und Lifetime. Mit einem kostenlosen Konto kannst du deine bisherigen Unterhaltungen lesen und bereits erstellte Decks herunterladen; zum Senden von Nachrichten brauchst du einen Plan.
 
 ## Wann du das nutzt
 
@@ -58,13 +58,12 @@ Der gleiche Rat, der für [KI-Karteikarten](/documentation/cards/ai-flashcards) 
 
 ## Unterhaltungsgrenzen
 
-|                       | Free            | Subscription    | Lifetime        |
-| --------------------- | --------------- | --------------- | --------------- |
-| Nachrichten pro Monat | 20              | Unbegrenzt      | Unbegrenzt      |
-| Nachrichtenlänge      | 100 000 Zeichen | 100 000 Zeichen | 100 000 Zeichen |
-| Modell                | Claude Haiku    | Claude Sonnet   | Claude Sonnet   |
+|                  | Free                               | Bezahlte Pläne  |
+| ---------------- | ---------------------------------- | --------------- |
+| Nachrichten      | — (bisherige Chats bleiben lesbar) | Unbegrenzt      |
+| Nachrichtenlänge | —                                  | 100 000 Zeichen |
 
-Die Zählung setzt sich am Ersten des Folgemonats zurück. Das genaue Rücksetzdatum erscheint, wenn du das Limit erreichst. Siehe [Grenzen und Kontingente](/documentation/help/limits) für die vollständige Plantabelle.
+Siehe [Grenzen und Kontingente](/documentation/help/limits) für die vollständige Plantabelle.
 
 ## Was wir speichern
 

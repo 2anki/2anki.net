@@ -108,7 +108,6 @@ const CLARIFY_TOOL: Anthropic.Tool = {
   },
 };
 
-const FREE_MONTHLY_LIMIT = 20;
 const MODEL = 'claude-sonnet-5';
 const MAX_HISTORY_TURNS = 10;
 // A follow-up turn replays the attachment text folded into its original user
@@ -200,7 +199,6 @@ function parseTagsField(raw: unknown): string[] | undefined {
 
 export interface ChatUser {
   owner: number;
-  patreon: boolean;
 }
 
 export interface ChatMessage {
@@ -246,35 +244,6 @@ function textOfMessageContent(
   return content
     .map((block) => (block.type === 'text' ? block.text : ''))
     .join('\n');
-}
-
-export class ChatRateLimitError extends Error {
-  readonly resetDate: string;
-
-  constructor(resetDate: string) {
-    super('Message limit reached');
-    this.name = 'ChatRateLimitError';
-    this.resetDate = resetDate;
-  }
-}
-
-function firstOfNextMonth(): string {
-  const now = new Date();
-  const next = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
-  );
-  return next.toISOString();
-}
-
-export async function assertWithinMonthlyQuota(
-  messagesRepo: Pick<IChatMessagesRepository, 'countThisMonth'>,
-  user: ChatUser
-): Promise<void> {
-  if (user.patreon) return;
-  const count = await messagesRepo.countThisMonth(user.owner);
-  if (count >= FREE_MONTHLY_LIMIT) {
-    throw new ChatRateLimitError(firstOfNextMonth());
-  }
 }
 
 export interface ExtractCardsResult {
@@ -581,8 +550,6 @@ export class ChatUseCase {
     const { user, content, conversationHistory, onToken } = input;
     const attachments = input.attachments ?? [];
 
-    await assertWithinMonthlyQuota(this.messagesRepo, user);
-
     let conversationId: number;
     if (input.conversationId != null) {
       const existing = await this.conversationsRepo.findForUser({
@@ -747,8 +714,6 @@ export class ChatUseCase {
     onToken?: (text: string) => void;
   }): Promise<SendMessageResult> {
     const { user, onToken } = input;
-
-    await assertWithinMonthlyQuota(this.messagesRepo, user);
 
     const conversation = await this.conversationsRepo.findForUser({
       userId: user.owner,

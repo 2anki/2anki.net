@@ -41,15 +41,12 @@ Die Kartenoption **Use Claude AI** ist eine Subscription-/Lifetime-Funktion. Kos
 
 ## Chat
 
-Der Chat-Lernassistent ist für alle angemeldeten Nutzer verfügbar.
+Der Chat-Lernassistent ist Teil jedes bezahlten Plans — Subscription, Day Pass und Lifetime. Mit einem kostenlosen Konto bleiben bisherige Unterhaltungen lesbar und bereits erstellte Decks herunterladbar; zum Senden von Nachrichten brauchst du einen Plan.
 
-|                       | Free            | Subscription    | Lifetime        |
-| --------------------- | --------------- | --------------- | --------------- |
-| Nachrichten pro Monat | 20              | Unbegrenzt      | Unbegrenzt      |
-| Nachrichtenlänge      | 100 000 Zeichen | 100 000 Zeichen | 100 000 Zeichen |
-| Modell                | Claude Haiku    | Claude Sonnet   | Claude Sonnet   |
-
-Kostenlose Nutzer, die 20 Nachrichten erreichen, sehen das genaue Reset-Datum (der Erste des Folgemonats). Der Nachrichtenzähler setzt sich monatlich zurück.
+|                  | Free                               | Bezahlte Pläne  |
+| ---------------- | ---------------------------------- | --------------- |
+| Nachrichten      | — (bisherige Chats bleiben lesbar) | Unbegrenzt      |
+| Nachrichtenlänge | —                                  | 100 000 Zeichen |
 
 ## Speicherung
 
@@ -77,15 +74,15 @@ Wenn dein Abo ausläuft, werden deine gespeicherten Decks in der nächsten tägl
 
 Free deckt die Konvertierungswege ab, die die meisten Leute brauchen: eine Datei hineinziehen, ein Deck zurückbekommen. Die kostenpflichtigen Pläne fügen KI-generierte Karteikarten, größere Uploads, längere Speicherung und Notion-Sync hinzu.
 
-| Fähigkeit                                      | Free              | Subscription    | Lifetime   |
-| ---------------------------------------------- | ----------------- | --------------- | ---------- |
-| Karten pro Monat                               | 100 (21 anonym)   | Unbegrenzt      | Unbegrenzt |
-| Anonymer Datei-Upload                          | ✓                 | ✓               | ✓          |
-| Kontofunktionen (Verlauf, Favoriten, Vorlagen) | Anmeldung nötig   | ✓               | ✓          |
-| KI-generierte Karteikarten (Claude)            | —                 | ✓               | ✓          |
-| Chat (Lernassistent)                           | 20 Nachr. / Monat | Unbegrenzt      | Unbegrenzt |
-| Langzeit-Deckspeicherung                       | 24 h              | aktives Abo     | unbegrenzt |
-| Auto Sync (Notion → Anki)                      | —                 | 30 $/Mo. Add-on | ✓          |
+| Fähigkeit                                      | Free            | Subscription    | Lifetime   |
+| ---------------------------------------------- | --------------- | --------------- | ---------- |
+| Karten pro Monat                               | 100 (21 anonym) | Unbegrenzt      | Unbegrenzt |
+| Anonymer Datei-Upload                          | ✓               | ✓               | ✓          |
+| Kontofunktionen (Verlauf, Favoriten, Vorlagen) | Anmeldung nötig | ✓               | ✓          |
+| KI-generierte Karteikarten (Claude)            | —               | ✓               | ✓          |
+| Chat (Lernassistent)                           | —               | Unbegrenzt      | Unbegrenzt |
+| Langzeit-Deckspeicherung                       | 24 h            | aktives Abo     | unbegrenzt |
+| Auto Sync (Notion → Anki)                      | —               | 30 $/Mo. Add-on | ✓          |
 
 Siehe die [Preisseite](/pricing) für die aktuelle Planliste. Datenschutzdetails — was wir lesen, was nicht — findest du in der [Datenschutzerklärung](/documentation/reference/privacy).
 

@@ -547,7 +547,7 @@
   "modals": {
     "consent": {
       "title": "Le chat envoie tes messages à Anthropic",
-      "body": "Tes messages et les fichiers que tu joins sont envoyés à Anthropic pour générer les réponses. Ils ne servent pas à entraîner des modèles. 20 messages par mois avec l'offre gratuite.",
+      "body": "Tes messages et les fichiers que tu joins sont envoyés à Anthropic pour générer les réponses. Ils ne servent pas à entraîner des modèles.",
       "signIn": "Connecte-toi",
       "toChat": " pour discuter.",
       "start": "Commencer à discuter",

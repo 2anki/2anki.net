@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import ChatController from './ChatController';
 import {
-  ChatRateLimitError,
   ChatConversationNotFoundError,
   ChatAttachmentsNotReplayableError,
   McqExtractionFailedError,
@@ -145,18 +144,6 @@ describe('ChatController.sendMessage', () => {
       res
     );
     expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('sends error SSE event with rate_limit type on ChatRateLimitError', async () => {
-    const { execute, controller, res } = buildMocks();
-    const resetDate = '2026-06-01T00:00:00.000Z';
-    execute.mockRejectedValueOnce(new ChatRateLimitError(resetDate));
-    await controller.sendMessage(buildReq({ content: 'Hello' }), res);
-    const events = writtenEvents(res);
-    expect(events).toContainEqual({
-      event: 'error',
-      data: { type: 'rate_limit', resetDate },
-    });
   });
 
   it('sends done SSE event with content on happy path', async () => {
@@ -550,7 +537,7 @@ describe('ChatController.regenerateMessage', () => {
       expect.objectContaining({
         conversationId: 7,
         templateSlug: 'cloze',
-        user: { owner: 42, patreon: false },
+        user: { owner: 42 },
       })
     );
   });

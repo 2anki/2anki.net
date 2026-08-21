@@ -49,14 +49,6 @@
     "withFile": "Wat wil je met dit bestand doen?",
     "studying": "Wat ben je aan het leren?"
   },
-  "usage": {
-    "messagesLeftOne": "Nog 1 bericht deze maand — je volgende verzending gebruikt het",
-    "messagesLeft": "Nog {{count}} van {{limit}} berichten deze maand"
-  },
-  "limitPanel": {
-    "text": "Je hebt alle {{count}} berichten deze maand gebruikt. Vernieuwt op {{date}}.",
-    "seePlans": "Bekijk abonnementen"
-  },
   "errors": {
     "cantAttachOne": "Kan {{name}} niet bijvoegen. Alleen PDF- en afbeeldingsbestanden werken hier.",
     "cantAttachMany": "Kan {{count}} bestanden niet bijvoegen. Alleen PDF- en afbeeldingsbestanden werken hier.",
@@ -112,5 +104,11 @@
     "confirm": "Alle chats verwijderen",
     "cancel": "Annuleren",
     "close": "Sluiten"
+  },
+  "paywall": {
+    "heading": "Chat is onderdeel van een betaald abonnement",
+    "body": "Upgrade om flashcards te maken via de chat.",
+    "keepReading": "Je eerdere chats blijven hier leesbaar.",
+    "seePlans": "Bekijk abonnementen"
   }
 }

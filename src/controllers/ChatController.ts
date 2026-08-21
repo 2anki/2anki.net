@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import {
   ChatUseCase,
-  ChatRateLimitError,
   ChatConversationNotFoundError,
   ChatAttachmentsNotReplayableError,
   McqExtractionFailedError,
@@ -171,9 +170,7 @@ function parseHistory(raw: unknown): HistoryEntry[] {
 }
 
 function emitChatError(res: Response, err: unknown): void {
-  if (err instanceof ChatRateLimitError) {
-    sseWrite(res, 'error', { type: 'rate_limit', resetDate: err.resetDate });
-  } else if (err instanceof ChatConversationNotFoundError) {
+  if (err instanceof ChatConversationNotFoundError) {
     sseWrite(res, 'error', { type: 'conversation_not_found' });
   } else if (err instanceof McqExtractionFailedError) {
     sseWrite(res, 'error', { type: 'mcq_extraction_failed' });
@@ -233,9 +230,6 @@ class ChatController {
     }
 
     const owner = res.locals.owner as number;
-    const patreon = (res.locals.patreon as boolean) ?? false;
-    const subscriber = (res.locals.subscriber as boolean) ?? false;
-    const isPremium = patreon || subscriber;
 
     if (content.length > MAX_CONTENT_LENGTH) {
       res.status(400).json({
@@ -257,7 +251,7 @@ class ChatController {
 
     try {
       const result = await this.chatUseCase.execute({
-        user: { owner, patreon: isPremium },
+        user: { owner },
         content,
         conversationHistory,
         conversationId,
@@ -303,9 +297,6 @@ class ChatController {
     }
 
     const owner = res.locals.owner as number;
-    const patreon = (res.locals.patreon as boolean) ?? false;
-    const subscriber = (res.locals.subscriber as boolean) ?? false;
-    const isPremium = patreon || subscriber;
 
     const rawTemplateSlug = req.body?.templateSlug;
     const templateSlug =
@@ -318,7 +309,7 @@ class ChatController {
 
     try {
       const result = await this.chatUseCase.regenerate({
-        user: { owner, patreon: isPremium },
+        user: { owner },
         conversationId,
         templateSlug,
         onToken: (text) => sseWrite(res, 'token', text),

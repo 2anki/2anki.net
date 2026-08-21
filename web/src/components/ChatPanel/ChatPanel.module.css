@@ -240,27 +240,31 @@
   width: 100%;
 }
 
-.usageLine {
-  font-size: var(--text-xs);
-  color: var(--color-text-tertiary-accessible);
-  font-variant-numeric: tabular-nums;
-}
-
-.limitPanel {
-  padding: 0.75rem 1rem;
-  background: var(--color-warning-light);
-  border: 1px solid var(--color-warning-border);
+.upgradePanel {
+  padding: 1.5rem 1.25rem;
+  background: var(--color-bg-secondary);
   border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  color: var(--color-warning-text);
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
 }
 
-.limitPanelLink {
-  color: var(--color-warning-text);
+.upgradeHeading {
+  font-size: var(--text-lg);
   font-weight: var(--font-medium);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.upgradeBody {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 0.5rem;
 }
 
 .networkError {

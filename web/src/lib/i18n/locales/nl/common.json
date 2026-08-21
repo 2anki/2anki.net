@@ -547,7 +547,7 @@
   "modals": {
     "consent": {
       "title": "Chat stuurt je berichten naar Anthropic",
-      "body": "Je berichten en eventuele bijgevoegde bestanden gaan naar Anthropic om antwoorden te genereren. Ze worden niet gebruikt om modellen te trainen. 20 berichten per maand op het gratis abonnement.",
+      "body": "Je berichten en eventuele bijgevoegde bestanden gaan naar Anthropic om antwoorden te genereren. Ze worden niet gebruikt om modellen te trainen.",
       "signIn": "Inloggen",
       "toChat": " om te chatten.",
       "start": "Beginnen met chatten",
