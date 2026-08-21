@@ -51,22 +51,23 @@ function substituteFields(
 
 export function renderCardSide(
   noteType: AnkiNoteType,
-  previewData: PreviewData,
+  previewData: PreviewData | undefined,
   side: 'front' | 'back'
 ): string {
   const template = noteType.tmpls[0];
   if (!template) return '';
+  const data = previewData ?? {};
   if (side === 'front') {
-    return substituteFields(template.qfmt, previewData, 'front');
+    return substituteFields(template.qfmt, data, 'front');
   }
-  const frontHtml = substituteFields(template.qfmt, previewData, 'front');
+  const frontHtml = substituteFields(template.qfmt, data, 'front');
   const backWithFront = template.afmt.replaceAll('{{FrontSide}}', frontHtml);
-  return substituteFields(backWithFront, previewData, 'back');
+  return substituteFields(backWithFront, data, 'back');
 }
 
 export function buildPreviewDocument(
   noteType: AnkiNoteType,
-  previewData: PreviewData,
+  previewData: PreviewData | undefined,
   side: 'front' | 'back'
 ): string {
   const body = renderCardSide(noteType, previewData, side);

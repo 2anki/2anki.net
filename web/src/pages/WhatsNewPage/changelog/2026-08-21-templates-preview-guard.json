@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-21-templates-preview-guard",
+  "date": "2026-08-21",
+  "type": "fix",
+  "title": "The note types page no longer goes blank when one saved template is missing its preview example"
+}
