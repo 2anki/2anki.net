@@ -470,17 +470,21 @@
   border-color: var(--color-primary);
 }
 
-.aiUpgradeLink {
-  display: inline-block;
-  margin-left: 0.25rem;
-  color: var(--color-primary);
-  font-weight: var(--font-medium);
-  text-decoration: none;
+.aiUpgradePanel {
+  padding: 1rem;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
 }
 
-.aiUpgradeLink:hover,
-.aiUpgradeLink:focus-visible {
-  text-decoration: underline;
+.aiUpgradeBody {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 
 .aiRetryButton {

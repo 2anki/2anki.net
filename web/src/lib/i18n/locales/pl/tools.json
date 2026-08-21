@@ -268,7 +268,6 @@
     "drafting": "Szkicowanie…",
     "draftIt": "Naszkicuj",
     "couldNotGenerateShort": "Nie udało się wygenerować",
-    "seePricing": "Zobacz cennik →",
     "missingTemplateId": "Brak ID szablonu",
     "templateNotFound": "Nie znaleziono szablonu",
     "couldNotLoadTemplate": "Nie udało się wczytać szablonu",
@@ -304,7 +303,9 @@
     "claudeNoResponse": "Claude nie mógł odpowiedzieć",
     "couldNotSave": "Nie udało się zapisać szablonu",
     "sideFront": "przód",
-    "sideBack": "tył"
+    "sideBack": "tył",
+    "aiPaywallBody": "Tworzenie i edytowanie typów notatek z Claude jest częścią płatnego planu.",
+    "aiPaywallSeePlans": "Zobacz plany"
   },
   "rules": {
     "headingWithTitle": "Reguły dla {{title}}",

@@ -1,23 +1,20 @@
 import express from 'express';
 
 import RequireAuthentication from './middleware/RequireAuthentication';
+import RequirePayingJson from './middleware/RequirePayingJson';
 import TemplatesController from '../controllers/TemplatesController';
 import TemplatesRepository from '../data_layer/TemplatesRepository';
-import UsersRepository from '../data_layer/UsersRepository';
 import { getDatabase } from '../data_layer';
 import TemplateService from '../services/TemplatesService';
 import { AINoteTypeUseCase } from '../usecases/ai/AINoteTypeUseCase';
-import { AiTemplateQuotaService } from '../services/ai/AiTemplateQuotaService';
 
 const TemplatesRouter = () => {
   const router = express.Router();
 
   const database = getDatabase();
-  const usersRepository = new UsersRepository(database);
   const controller = new TemplatesController(
     new TemplateService(new TemplatesRepository(database)),
-    new AINoteTypeUseCase(),
-    new AiTemplateQuotaService(usersRepository)
+    new AINoteTypeUseCase()
   );
 
   /**
@@ -235,10 +232,14 @@ const TemplatesRouter = () => {
    *       200: { description: Generated starter + reply text }
    *       400: { description: Invalid prompt }
    *       401: { description: Authentication required }
+   *       402: { description: AI drafting requires a paid plan }
    *       500: { description: Generation failed }
    */
-  router.post('/api/templates/ai/generate', RequireAuthentication, (req, res) =>
-    controller.aiGenerate(req, res)
+  router.post(
+    '/api/templates/ai/generate',
+    RequireAuthentication,
+    RequirePayingJson,
+    (req, res) => controller.aiGenerate(req, res)
   );
 
   /**
@@ -273,10 +274,14 @@ const TemplatesRouter = () => {
    *       200: { description: Updated starter + reply text }
    *       400: { description: Invalid request }
    *       401: { description: Authentication required }
+   *       402: { description: AI editing requires a paid plan }
    *       500: { description: Modification failed }
    */
-  router.post('/api/templates/ai/modify', RequireAuthentication, (req, res) =>
-    controller.aiModify(req, res)
+  router.post(
+    '/api/templates/ai/modify',
+    RequireAuthentication,
+    RequirePayingJson,
+    (req, res) => controller.aiModify(req, res)
   );
 
   return router;

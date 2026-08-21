@@ -247,7 +247,6 @@
     "drafting": "下書き中…",
     "draftIt": "下書きする",
     "couldNotGenerateShort": "生成できませんでした",
-    "seePricing": "料金を見る →",
     "missingTemplateId": "テンプレート ID がありません",
     "templateNotFound": "テンプレートが見つかりません",
     "couldNotLoadTemplate": "テンプレートを読み込めませんでした",
@@ -283,7 +282,9 @@
     "claudeNoResponse": "Claude が応答できませんでした",
     "couldNotSave": "テンプレートを保存できませんでした",
     "sideFront": "表",
-    "sideBack": "裏"
+    "sideBack": "裏",
+    "aiPaywallBody": "Claude によるノートタイプの作成と編集は有料プランの機能です。",
+    "aiPaywallSeePlans": "プランを見る"
   },
   "rules": {
     "headingWithTitle": "{{title}} のルール",

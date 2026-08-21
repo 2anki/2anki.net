@@ -17,11 +17,6 @@ import {
   ChatMessage,
   NoteTypeStarterInput,
 } from '../usecases/ai/AINoteTypeUseCase';
-import {
-  AiTemplateQuotaService,
-  QuotaKind,
-  UserPaymentLocals,
-} from '../services/ai/AiTemplateQuotaService';
 import TemplatesService from '../services/TemplatesService';
 
 const EMPTY_USER_PAYLOAD = { templates: [], hiddenIds: [] } as const;
@@ -85,41 +80,8 @@ function safeApkgFilename(name: string | undefined): string {
 class TemplatesController {
   constructor(
     private readonly service: TemplatesService,
-    private readonly aiUseCase: AINoteTypeUseCase = new AINoteTypeUseCase(),
-    private readonly quotaService: AiTemplateQuotaService | null = null
+    private readonly aiUseCase: AINoteTypeUseCase = new AINoteTypeUseCase()
   ) {}
-
-  private async enforceQuota(
-    req: Request,
-    res: Response,
-    kind: QuotaKind
-  ): Promise<boolean> {
-    if (!this.quotaService) return true;
-    const owner = getOwner(res);
-    if (owner == null) {
-      res.status(401).json({ error: 'Authentication required' });
-      return false;
-    }
-    const check = await this.quotaService.check(
-      owner,
-      kind,
-      res.locals as UserPaymentLocals
-    );
-    if (!check.allowed) {
-      res.status(429).json({
-        error:
-          kind === 'generate'
-            ? `You've used your ${check.limit} free Claude drafts. Upgrade for unlimited.`
-            : `You've used your ${check.limit} free Claude edits. Upgrade for unlimited.`,
-        kind,
-        limit: check.limit,
-        used: check.used,
-        upgradeUrl: '/pricing',
-      });
-      return false;
-    }
-    return true;
-  }
 
   async createTemplate(req: Request, res: Response) {
     const { templates } = req.body;
@@ -193,16 +155,11 @@ class TemplatesController {
       res.status(400).json({ error: 'prompt is required' });
       return;
     }
-    const ok = await this.enforceQuota(req, res, 'generate');
-    if (!ok) return;
     try {
       const result = await this.aiUseCase.generate(
         prompt,
         Number(getOwner(res)) || null
       );
-      if (this.quotaService) {
-        await this.quotaService.record(getOwner(res), 'generate');
-      }
       res.json(result);
     } catch (error) {
       console.error('AI generation failed:', error);
@@ -226,8 +183,6 @@ class TemplatesController {
     const history: ChatMessage[] = Array.isArray(body.history)
       ? (body.history as ChatMessage[])
       : [];
-    const ok = await this.enforceQuota(req, res, 'modify');
-    if (!ok) return;
     try {
       const result = await this.aiUseCase.modify(
         starter,
@@ -235,9 +190,6 @@ class TemplatesController {
         history,
         Number(getOwner(res)) || null
       );
-      if (this.quotaService) {
-        await this.quotaService.record(getOwner(res), 'modify');
-      }
       res.json(result);
     } catch (error) {
       console.error('AI modify failed:', error);

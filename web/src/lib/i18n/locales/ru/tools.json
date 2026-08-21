@@ -268,7 +268,6 @@
     "drafting": "Набрасываем…",
     "draftIt": "Набросать",
     "couldNotGenerateShort": "Не удалось создать",
-    "seePricing": "Посмотреть цены →",
     "missingTemplateId": "Отсутствует id шаблона",
     "templateNotFound": "Шаблон не найден",
     "couldNotLoadTemplate": "Не удалось загрузить шаблон",
@@ -304,7 +303,9 @@
     "claudeNoResponse": "Claude не смог ответить",
     "couldNotSave": "Не удалось сохранить шаблон",
     "sideFront": "лицо",
-    "sideBack": "оборот"
+    "sideBack": "оборот",
+    "aiPaywallBody": "Создание и редактирование типов заметок с Claude доступно в платном тарифе.",
+    "aiPaywallSeePlans": "Посмотреть тарифы"
   },
   "rules": {
     "headingWithTitle": "Правила для {{title}}",

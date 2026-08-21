@@ -254,7 +254,6 @@
     "drafting": "Concept maken…",
     "draftIt": "Maak een concept",
     "couldNotGenerateShort": "Kon niet genereren",
-    "seePricing": "Bekijk prijzen →",
     "missingTemplateId": "Ontbrekende sjabloon-id",
     "templateNotFound": "Sjabloon niet gevonden",
     "couldNotLoadTemplate": "Kon sjabloon niet laden",
@@ -290,7 +289,9 @@
     "claudeNoResponse": "Claude kon niet reageren",
     "couldNotSave": "Kon sjabloon niet opslaan",
     "sideFront": "voorkant",
-    "sideBack": "achterkant"
+    "sideBack": "achterkant",
+    "aiPaywallBody": "Notitietypen ontwerpen en bewerken met Claude is onderdeel van een betaald abonnement.",
+    "aiPaywallSeePlans": "Bekijk abonnementen"
   },
   "rules": {
     "headingWithTitle": "Regels voor {{title}}",

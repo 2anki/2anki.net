@@ -8,6 +8,17 @@ import EditorPage from './EditorPage';
 import * as templatesApi from '../../lib/backend/templates';
 import { NoteTypeStarter } from '../../lib/backend/templates';
 
+let mockPayingLocals = { patreon: false, subscriber: true };
+
+vi.mock('../../lib/hooks/useUserLocals', () => ({
+  useUserLocals: () => ({
+    data: { locals: { owner: 1, ...mockPayingLocals } },
+    refetch: vi.fn(),
+  }),
+}));
+
+vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
+
 vi.mock('./components/CodeEditor/CodeEditor', () => ({
   CodeEditor: ({
     value,
@@ -298,27 +309,23 @@ describe('EditorPage chat (modify path)', () => {
     expect(modifySpy.mock.calls[1][1]).toBe('add a hint field');
   });
 
-  it('does not show Try again for quota errors', async () => {
-    vi.spyOn(templatesApi, 'aiModifyNoteType').mockRejectedValue(
-      new templatesApi.AiQuotaExceededError(
-        'AI modify quota exceeded',
-        'modify',
-        10,
-        10,
-        '/pricing'
-      )
-    );
-
-    const input = await openChatReady();
-    fireEvent.change(input, { target: { value: 'do something' } });
-    fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
-
-    await screen.findByText(/ai modify quota exceeded/i);
-    expect(
-      screen.queryByRole('button', { name: /try again/i })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: /see pricing/i })
-    ).toBeInTheDocument();
+  it('replaces the Ask Claude rail with the upgrade panel for a free user', async () => {
+    mockPayingLocals = { patreon: false, subscriber: false };
+    try {
+      renderEditor('edit', `/templates/edit/${sampleStarter.id}`);
+      await screen.findByDisplayValue('Clean Basic');
+      expect(
+        screen.getByTestId('note-type-ai-upgrade-panel')
+      ).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /see plans/i })).toHaveAttribute(
+        'href',
+        '/pricing?source=note-type-ai-paywall'
+      );
+      expect(
+        screen.queryByPlaceholderText(/ask claude to change something/i)
+      ).not.toBeInTheDocument();
+    } finally {
+      mockPayingLocals = { patreon: false, subscriber: true };
+    }
   });
 });
