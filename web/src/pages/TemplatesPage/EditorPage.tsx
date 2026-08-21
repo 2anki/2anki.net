@@ -6,7 +6,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
   AIChatMessage,
-  AiQuotaExceededError,
   AnkiNoteType,
   NoteTypeStarter,
   aiGenerateNoteType,
@@ -17,6 +16,9 @@ import {
   getUserTemplates,
   saveUserTemplate,
 } from '../../lib/backend/templates';
+import { track } from '../../lib/analytics/track';
+import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
 import sharedStyles from '../../styles/shared.module.css';
 import editorStyles from './EditorPage.module.css';
 import galleryStyles from './TemplatesPage.module.css';
@@ -173,21 +175,49 @@ function PresetPicker({
   );
 }
 
+function AiUpgradePanel() {
+  const { t } = useTranslation('tools');
+
+  useEffect(() => {
+    track('paywall_shown', { surface: 'note_type_ai' });
+  }, []);
+
+  return (
+    <div
+      className={editorStyles.aiUpgradePanel}
+      data-testid="note-type-ai-upgrade-panel"
+    >
+      <p className={editorStyles.aiUpgradeBody}>
+        {t('templates.aiPaywallBody')}
+      </p>
+      <Link
+        to="/pricing?source=note-type-ai-paywall"
+        className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+        onClick={() =>
+          track('paywall_upgrade_clicked', { surface: 'note_type_ai' })
+        }
+      >
+        {t('templates.aiPaywallSeePlans')}
+      </Link>
+    </div>
+  );
+}
+
 interface AIGenerateSectionProps {
   onGenerated: (pick: NoteTypeStarter) => void;
 }
 
 function AIGenerateSection({ onGenerated }: Readonly<AIGenerateSectionProps>) {
   const { t } = useTranslation('tools');
+  const { data: userLocals } = useUserLocals();
+  const paying = userLocals == null || isPayingUser(userLocals.locals);
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [quotaUpgradeUrl, setQuotaUpgradeUrl] = useState<string | null>(null);
 
   const onSubmit = async () => {
     setBusy(true);
     setError(null);
-    setQuotaUpgradeUrl(null);
     try {
       const result = await aiGenerateNoteType(prompt);
       onGenerated(result.starter);
@@ -197,9 +227,6 @@ function AIGenerateSection({ onGenerated }: Readonly<AIGenerateSectionProps>) {
           ? err.message
           : t('templates.couldNotGenerateShort')
       );
-      if (err instanceof AiQuotaExceededError) {
-        setQuotaUpgradeUrl(err.upgradeUrl);
-      }
     } finally {
       setBusy(false);
     }
@@ -216,41 +243,43 @@ function AIGenerateSection({ onGenerated }: Readonly<AIGenerateSectionProps>) {
       <p className={editorStyles.presetSubtitle}>
         {t('templates.describeSubtitle')}
       </p>
-      <div className={editorStyles.aiPromptRow}>
-        <input
-          className={editorStyles.aiPromptInput}
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-          placeholder={t('templates.aiPromptPlaceholder')}
-          aria-label={t('templates.aiPromptAria')}
-          disabled={busy}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !busy && prompt.trim().length > 0) {
-              onSubmit();
-            }
-          }}
-        />
-        <button
-          type="button"
-          className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
-          onClick={onSubmit}
-          disabled={busy || prompt.trim().length === 0}
-        >
-          {busy ? t('templates.drafting') : t('templates.draftIt')}
-        </button>
-      </div>
-      {error && (
-        <p className={editorStyles.aiError} role="alert">
-          {error}
-          {quotaUpgradeUrl && (
-            <>
-              {' '}
-              <Link to={quotaUpgradeUrl} className={editorStyles.aiUpgradeLink}>
-                {t('templates.seePricing')}
-              </Link>
-            </>
+      {paying ? (
+        <>
+          <div className={editorStyles.aiPromptRow}>
+            <input
+              className={editorStyles.aiPromptInput}
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              placeholder={t('templates.aiPromptPlaceholder')}
+              aria-label={t('templates.aiPromptAria')}
+              disabled={busy}
+              onKeyDown={(event) => {
+                if (
+                  event.key === 'Enter' &&
+                  !busy &&
+                  prompt.trim().length > 0
+                ) {
+                  onSubmit();
+                }
+              }}
+            />
+            <button
+              type="button"
+              className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+              onClick={onSubmit}
+              disabled={busy || prompt.trim().length === 0}
+            >
+              {busy ? t('templates.drafting') : t('templates.draftIt')}
+            </button>
+          </div>
+          {error && (
+            <p className={editorStyles.aiError} role="alert">
+              {error}
+            </p>
           )}
-        </p>
+        </>
+      ) : (
+        <AiUpgradePanel />
       )}
     </section>
   );
@@ -273,6 +302,8 @@ interface EditorBodyProps {
 
 function EditorBody({ initialStarter, shouldFork }: Readonly<EditorBodyProps>) {
   const { t } = useTranslation('tools');
+  const { data: userLocals } = useUserLocals();
+  const paying = userLocals == null || isPayingUser(userLocals.locals);
   const navigate = useNavigate();
   const [draft, setDraft] = useState<NoteTypeStarter>(initialStarter);
   const [pane, setPane] = useState<Pane>('front');
@@ -283,7 +314,6 @@ function EditorBody({ initialStarter, shouldFork }: Readonly<EditorBodyProps>) {
   const [chatInput, setChatInput] = useState('');
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
-  const [chatUpgradeUrl, setChatUpgradeUrl] = useState<string | null>(null);
   const [lastAttempt, setLastAttempt] = useState<{
     instruction: string;
     history: AIChatMessage[];
@@ -366,7 +396,6 @@ function EditorBody({ initialStarter, shouldFork }: Readonly<EditorBodyProps>) {
   ) => {
     setChatBusy(true);
     setChatError(null);
-    setChatUpgradeUrl(null);
     setLastAttempt({ instruction, history: historyBeforeUser });
     const before = fingerprintStarter(draft);
     try {
@@ -398,9 +427,6 @@ function EditorBody({ initialStarter, shouldFork }: Readonly<EditorBodyProps>) {
       setChatError(
         error instanceof Error ? error.message : t('templates.claudeNoResponse')
       );
-      if (error instanceof AiQuotaExceededError) {
-        setChatUpgradeUrl(error.upgradeUrl);
-      }
     } finally {
       setChatBusy(false);
     }
@@ -628,48 +654,40 @@ function EditorBody({ initialStarter, shouldFork }: Readonly<EditorBodyProps>) {
             <div className={editorStyles.previewLabel}>
               {t('templates.askClaude')}
             </div>
-            <div
-              className={editorStyles.chatHistory}
-              aria-live="polite"
-              aria-atomic="false"
-            >
-              {chatHistory.length === 0 && !chatBusy && (
-                <p className={editorStyles.chatEmpty}>
-                  {t('templates.chatEmpty')}
-                </p>
-              )}
-              {chatHistory.map((message, index) => (
-                <div
-                  // eslint-disable-next-line react/no-array-index-key
-                  key={index}
-                  className={`${editorStyles.chatBubble} ${message.role === 'user' ? editorStyles.chatBubbleUser : editorStyles.chatBubbleAssistant}`}
-                >
-                  {message.content}
-                </div>
-              ))}
-              {chatBusy && (
-                <div
-                  className={`${editorStyles.chatBubble} ${editorStyles.chatBubbleAssistant} ${editorStyles.chatPending}`}
-                >
-                  {t('templates.thinking')}
-                </div>
-              )}
-            </div>
-            {chatError && (
+            {!paying && <AiUpgradePanel />}
+            {paying && (
+              <div
+                className={editorStyles.chatHistory}
+                aria-live="polite"
+                aria-atomic="false"
+              >
+                {chatHistory.length === 0 && !chatBusy && (
+                  <p className={editorStyles.chatEmpty}>
+                    {t('templates.chatEmpty')}
+                  </p>
+                )}
+                {chatHistory.map((message, index) => (
+                  <div
+                    // eslint-disable-next-line react/no-array-index-key
+                    key={index}
+                    className={`${editorStyles.chatBubble} ${message.role === 'user' ? editorStyles.chatBubbleUser : editorStyles.chatBubbleAssistant}`}
+                  >
+                    {message.content}
+                  </div>
+                ))}
+                {chatBusy && (
+                  <div
+                    className={`${editorStyles.chatBubble} ${editorStyles.chatBubbleAssistant} ${editorStyles.chatPending}`}
+                  >
+                    {t('templates.thinking')}
+                  </div>
+                )}
+              </div>
+            )}
+            {paying && chatError && (
               <p className={editorStyles.aiError} role="alert">
                 {chatError}
-                {chatUpgradeUrl && (
-                  <>
-                    {' '}
-                    <Link
-                      to={chatUpgradeUrl}
-                      className={editorStyles.aiUpgradeLink}
-                    >
-                      {t('templates.seePricing')}
-                    </Link>
-                  </>
-                )}
-                {!chatUpgradeUrl && lastAttempt && (
+                {lastAttempt && (
                   <>
                     {' '}
                     <button
@@ -684,30 +702,32 @@ function EditorBody({ initialStarter, shouldFork }: Readonly<EditorBodyProps>) {
                 )}
               </p>
             )}
-            <div className={editorStyles.chatInputRow}>
-              <input
-                className={editorStyles.chatInput}
-                value={chatInput}
-                onChange={(event) => setChatInput(event.target.value)}
-                placeholder={t('templates.chatInputPlaceholder')}
-                disabled={chatBusy}
-                aria-label={t('templates.askClaude')}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    handleSendChat();
-                  }
-                }}
-              />
-              <button
-                type="button"
-                className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
-                onClick={handleSendChat}
-                disabled={chatBusy || chatInput.trim().length === 0}
-              >
-                {t('templates.send')}
-              </button>
-            </div>
+            {paying && (
+              <div className={editorStyles.chatInputRow}>
+                <input
+                  className={editorStyles.chatInput}
+                  value={chatInput}
+                  onChange={(event) => setChatInput(event.target.value)}
+                  placeholder={t('templates.chatInputPlaceholder')}
+                  disabled={chatBusy}
+                  aria-label={t('templates.askClaude')}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      handleSendChat();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+                  onClick={handleSendChat}
+                  disabled={chatBusy || chatInput.trim().length === 0}
+                >
+                  {t('templates.send')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

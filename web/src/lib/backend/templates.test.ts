@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  AiQuotaExceededError,
   NoteTypeStarter,
   aiModifyNoteType,
   downloadNoteTypeApkg,
@@ -89,19 +88,13 @@ describe('aiModifyNoteType error handling', () => {
     );
   });
 
-  it('throws AiQuotaExceededError on 429 with kind=modify', async () => {
+  it('surfaces the 402 paid-plan message as a plain error', async () => {
     vi.mocked(globalThis.fetch).mockResolvedValue(
-      jsonResponse(429, {
-        error: 'AI modify quota exceeded',
-        kind: 'modify',
-        limit: 10,
-        used: 10,
-        upgradeUrl: '/pricing',
-      })
+      jsonResponse(402, { error: 'upgrade required' })
     );
 
-    await expect(aiModifyNoteType(starter, 'x', [])).rejects.toBeInstanceOf(
-      AiQuotaExceededError
+    await expect(aiModifyNoteType(starter, 'x', [])).rejects.toThrow(
+      'upgrade required'
     );
   });
 

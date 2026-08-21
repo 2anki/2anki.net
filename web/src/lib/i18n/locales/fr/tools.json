@@ -254,7 +254,6 @@
     "drafting": "Rédaction…",
     "draftIt": "Le rédiger",
     "couldNotGenerateShort": "Génération impossible",
-    "seePricing": "Voir les tarifs →",
     "missingTemplateId": "ID de modèle manquant",
     "templateNotFound": "Modèle introuvable",
     "couldNotLoadTemplate": "Impossible de charger le modèle",
@@ -290,7 +289,9 @@
     "claudeNoResponse": "Claude n'a pas pu répondre",
     "couldNotSave": "Impossible d'enregistrer le modèle",
     "sideFront": "recto",
-    "sideBack": "verso"
+    "sideBack": "verso",
+    "aiPaywallBody": "Créer et modifier des types de notes avec Claude fait partie d'une offre payante.",
+    "aiPaywallSeePlans": "Voir les offres"
   },
   "rules": {
     "headingWithTitle": "Règles pour {{title}}",

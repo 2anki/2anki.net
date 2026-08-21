@@ -254,7 +254,6 @@
     "drafting": "Drafting…",
     "draftIt": "Draft it",
     "couldNotGenerateShort": "Could not generate",
-    "seePricing": "See pricing →",
     "missingTemplateId": "Missing template id",
     "templateNotFound": "Template not found",
     "couldNotLoadTemplate": "Could not load template",
@@ -290,7 +289,9 @@
     "claudeNoResponse": "Claude could not respond",
     "couldNotSave": "Could not save template",
     "sideFront": "front",
-    "sideBack": "back"
+    "sideBack": "back",
+    "aiPaywallBody": "Drafting and editing note types with Claude is part of a paid plan.",
+    "aiPaywallSeePlans": "See plans"
   },
   "rules": {
     "headingWithTitle": "Rules for {{title}}",

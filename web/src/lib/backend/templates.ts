@@ -149,28 +149,6 @@ export interface AIGenerateResponse {
   starter: NoteTypeStarter;
 }
 
-export class AiQuotaExceededError extends Error {
-  readonly kind: 'generate' | 'modify';
-  readonly limit: number;
-  readonly used: number;
-  readonly upgradeUrl: string;
-
-  constructor(
-    message: string,
-    kind: 'generate' | 'modify',
-    limit: number,
-    used: number,
-    upgradeUrl: string
-  ) {
-    super(message);
-    this.name = 'AiQuotaExceededError';
-    this.kind = kind;
-    this.limit = limit;
-    this.used = used;
-    this.upgradeUrl = upgradeUrl;
-  }
-}
-
 export async function aiGenerateNoteType(
   prompt: string
 ): Promise<AIGenerateResponse> {
@@ -195,10 +173,6 @@ export async function aiModifyNoteType(
 
 interface AiErrorBody {
   error?: unknown;
-  kind?: unknown;
-  limit?: unknown;
-  used?: unknown;
-  upgradeUrl?: unknown;
 }
 
 function fallbackMessageFor(status: number): string {
@@ -219,17 +193,5 @@ async function aiError(response: Response): Promise<Error> {
     typeof data.error === 'string'
       ? data.error
       : fallbackMessageFor(response.status);
-  if (
-    response.status === 429 &&
-    (data.kind === 'generate' || data.kind === 'modify')
-  ) {
-    return new AiQuotaExceededError(
-      message,
-      data.kind,
-      typeof data.limit === 'number' ? data.limit : 0,
-      typeof data.used === 'number' ? data.used : 0,
-      typeof data.upgradeUrl === 'string' ? data.upgradeUrl : '/pricing'
-    );
-  }
   return new Error(message);
 }

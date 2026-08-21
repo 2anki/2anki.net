@@ -254,7 +254,6 @@
     "drafting": "Rascunhando…",
     "draftIt": "Rascunhar",
     "couldNotGenerateShort": "Não foi possível gerar",
-    "seePricing": "Ver preços →",
     "missingTemplateId": "ID de modelo ausente",
     "templateNotFound": "Modelo não encontrado",
     "couldNotLoadTemplate": "Não foi possível carregar o modelo",
@@ -290,7 +289,9 @@
     "claudeNoResponse": "O Claude não conseguiu responder",
     "couldNotSave": "Não foi possível salvar o modelo",
     "sideFront": "frente",
-    "sideBack": "verso"
+    "sideBack": "verso",
+    "aiPaywallBody": "Criar e editar tipos de nota com o Claude faz parte de um plano pago.",
+    "aiPaywallSeePlans": "Ver planos"
   },
   "rules": {
     "headingWithTitle": "Regras para {{title}}",

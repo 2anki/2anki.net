@@ -254,7 +254,6 @@
     "drafting": "Redactando…",
     "draftIt": "Redactar",
     "couldNotGenerateShort": "No se pudo generar",
-    "seePricing": "Ver precios →",
     "missingTemplateId": "Falta el id de la plantilla",
     "templateNotFound": "Plantilla no encontrada",
     "couldNotLoadTemplate": "No se pudo cargar la plantilla",
@@ -290,7 +289,9 @@
     "claudeNoResponse": "Claude no pudo responder",
     "couldNotSave": "No se pudo guardar la plantilla",
     "sideFront": "anverso",
-    "sideBack": "reverso"
+    "sideBack": "reverso",
+    "aiPaywallBody": "Crear y editar tipos de nota con Claude es parte de un plan de pago.",
+    "aiPaywallSeePlans": "Ver planes"
   },
   "rules": {
     "headingWithTitle": "Reglas para {{title}}",

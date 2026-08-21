@@ -254,7 +254,6 @@
     "drafting": "Wird entworfen…",
     "draftIt": "Entwerfen",
     "couldNotGenerateShort": "Konnte nicht erstellt werden",
-    "seePricing": "Preise ansehen →",
     "missingTemplateId": "Fehlende Vorlagen-ID",
     "templateNotFound": "Vorlage nicht gefunden",
     "couldNotLoadTemplate": "Vorlage konnte nicht geladen werden",
@@ -290,7 +289,9 @@
     "claudeNoResponse": "Claude konnte nicht antworten",
     "couldNotSave": "Vorlage konnte nicht gespeichert werden",
     "sideFront": "Vorderseite",
-    "sideBack": "Rückseite"
+    "sideBack": "Rückseite",
+    "aiPaywallBody": "Notiztypen mit Claude zu entwerfen und zu bearbeiten ist Teil eines bezahlten Plans.",
+    "aiPaywallSeePlans": "Pläne ansehen"
   },
   "rules": {
     "headingWithTitle": "Regeln für {{title}}",
