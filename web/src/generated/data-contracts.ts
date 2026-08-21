@@ -322,13 +322,8 @@ export interface ChatDoneFrame {
 /** SSE frame emitted as `event: error`. Terminal frame on failure. HTTP status remains 200 — branch on `data.type`. */
 export interface ChatErrorFrame {
   event: "error";
-  /** Monthly free-tier message budget reached. `resetDate` is when the budget refills. */
+  /** Caller has not yet recorded chat consent (POST /api/chat/consent). */
   data:
-    | {
-        type: "rate_limit";
-        /** @format date-time */
-        resetDate: string;
-      }
     | {
         type: "consent_required";
       }

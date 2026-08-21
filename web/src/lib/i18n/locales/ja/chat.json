@@ -48,14 +48,6 @@
     "withFile": "このファイルで何をしますか？",
     "studying": "何を勉強していますか？"
   },
-  "usage": {
-    "messagesLeftOne": "今月の残りメッセージは 1 件 — 次の送信で消費されます",
-    "messagesLeft": "今月の残りメッセージは {{limit}} 件中 {{count}} 件"
-  },
-  "limitPanel": {
-    "text": "今月の {{count}} 件のメッセージをすべて使い切りました。{{date}} にリセットされます。",
-    "seePlans": "プランを見る"
-  },
   "errors": {
     "cantAttachOne": "{{name}} は添付できません。ここでは PDF と画像ファイルのみ使えます。",
     "cantAttachMany": "{{count}} 件のファイルは添付できません。ここでは PDF と画像ファイルのみ使えます。",
@@ -107,5 +99,11 @@
     "confirm": "すべてのチャットを削除",
     "cancel": "キャンセル",
     "close": "閉じる"
+  },
+  "paywall": {
+    "heading": "チャットは有料プランの機能です",
+    "body": "アップグレードすると、チャットでフラッシュカードを作成できます。",
+    "keepReading": "これまでのチャットはここで読むことができます。",
+    "seePlans": "プランを見る"
   }
 }

@@ -561,7 +561,7 @@
   "modals": {
     "consent": {
       "title": "Czat wysyła Twoje wiadomości do Anthropic",
-      "body": "Twoje wiadomości i wszelkie załączone pliki trafiają do Anthropic, aby wygenerować odpowiedzi. Nie są używane do trenowania modeli. 20 wiadomości miesięcznie w planie darmowym.",
+      "body": "Twoje wiadomości i wszelkie załączone pliki trafiają do Anthropic, aby wygenerować odpowiedzi. Nie są używane do trenowania modeli.",
       "signIn": "Zaloguj się",
       "toChat": ", aby korzystać z czatu.",
       "start": "Zacznij rozmowę",

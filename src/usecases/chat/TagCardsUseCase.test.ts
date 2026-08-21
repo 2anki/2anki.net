@@ -1,5 +1,4 @@
 import { parseTagsResponse, TagCardsUseCase } from './TagCardsUseCase';
-import { ChatRateLimitError } from './ChatUseCase';
 import { InMemoryChatMessagesRepository } from '../../data_layer/ChatMessagesRepository';
 
 describe('parseTagsResponse', () => {
@@ -90,7 +89,6 @@ describe('TagCardsUseCase', () => {
       'Here you go:\n\n```json\n[{"front":"Capital?","back":"Oslo"}]\n```\n\nLet me know.';
     const repo = {
       insert: jest.fn(),
-      countThisMonth: jest.fn(),
       listForConversation: jest.fn().mockResolvedValue([]),
       findLatestAssistantInConversation: jest
         .fn()
@@ -126,7 +124,6 @@ describe('TagCardsUseCase', () => {
     const anthropic = makeAnthropic('[["geography"]]');
     const repo = {
       insert: jest.fn(),
-      countThisMonth: jest.fn(),
       listForConversation: jest.fn().mockResolvedValue([]),
       findLatestAssistantInConversation: jest.fn(),
       updateContent: jest.fn(),
@@ -142,69 +139,27 @@ describe('TagCardsUseCase', () => {
     expect(repo.updateContent).not.toHaveBeenCalled();
   });
 
-  describe('monthly quota enforcement', () => {
-    async function repoAtCount(userId: number, count: number) {
-      const repo = new InMemoryChatMessagesRepository();
-      for (let i = 0; i < count; i++) {
-        await repo.insert({
-          userId,
-          conversationId: null,
-          role: 'user',
-          content: `msg ${i}`,
-        });
-      }
-      return repo;
+  it('tags cards regardless of how many messages the user has sent', async () => {
+    const anthropic = makeAnthropic('[["geography"]]');
+    const create = (anthropic.messages as unknown as { create: jest.Mock })
+      .create;
+    const repo = new InMemoryChatMessagesRepository();
+    for (let i = 0; i < 50; i++) {
+      await repo.insert({
+        userId: 7,
+        conversationId: null,
+        role: 'user',
+        content: `msg ${i}`,
+      });
     }
+    const useCase = new TagCardsUseCase(anthropic, repo);
 
-    it('rejects a free user over the monthly cap without calling Claude', async () => {
-      const anthropic = makeAnthropic('[["geography"]]');
-      const create = (anthropic.messages as unknown as { create: jest.Mock })
-        .create;
-      const repo = await repoAtCount(7, 20);
-      const useCase = new TagCardsUseCase(anthropic, repo);
-
-      await expect(
-        useCase.execute({
-          cards: [{ front: 'q', back: 'a' }],
-          userId: 7,
-          patreon: false,
-        })
-      ).rejects.toBeInstanceOf(ChatRateLimitError);
-      expect(create).not.toHaveBeenCalled();
+    const result = await useCase.execute({
+      cards: [{ front: 'q', back: 'a' }],
+      userId: 7,
     });
 
-    it('lets a free user under the monthly cap tag cards', async () => {
-      const anthropic = makeAnthropic('[["geography"]]');
-      const create = (anthropic.messages as unknown as { create: jest.Mock })
-        .create;
-      const repo = await repoAtCount(7, 19);
-      const useCase = new TagCardsUseCase(anthropic, repo);
-
-      const result = await useCase.execute({
-        cards: [{ front: 'q', back: 'a' }],
-        userId: 7,
-        patreon: false,
-      });
-
-      expect(result.tags).toEqual([['geography']]);
-      expect(create).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not cap a patreon user over the free limit', async () => {
-      const anthropic = makeAnthropic('[["geography"]]');
-      const create = (anthropic.messages as unknown as { create: jest.Mock })
-        .create;
-      const repo = await repoAtCount(7, 50);
-      const useCase = new TagCardsUseCase(anthropic, repo);
-
-      const result = await useCase.execute({
-        cards: [{ front: 'q', back: 'a' }],
-        userId: 7,
-        patreon: true,
-      });
-
-      expect(result.tags).toEqual([['geography']]);
-      expect(create).toHaveBeenCalledTimes(1);
-    });
+    expect(result.tags).toEqual([['geography']]);
+    expect(create).toHaveBeenCalledTimes(1);
   });
 });

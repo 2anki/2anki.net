@@ -672,16 +672,6 @@ const options: swaggerJsdoc.Options = {
                 {
                   type: 'object',
                   description:
-                    'Monthly free-tier message budget reached. `resetDate` is when the budget refills.',
-                  required: ['type', 'resetDate'],
-                  properties: {
-                    type: { type: 'string', enum: ['rate_limit'] },
-                    resetDate: { type: 'string', format: 'date-time' },
-                  },
-                },
-                {
-                  type: 'object',
-                  description:
                     'Caller has not yet recorded chat consent (POST /api/chat/consent).',
                   required: ['type'],
                   properties: {

@@ -16,13 +16,16 @@ type UserLocalsReturn = ReturnType<typeof useUserLocals>;
 
 const mockUseUserLocals = vi.mocked(useUserLocals);
 
-const makeLocals = (chat_consent_at: string | null): UserLocalsReturn => ({
+const makeLocals = (
+  chat_consent_at: string | null,
+  subscriber = true
+): UserLocalsReturn => ({
   data: {
     locals: {
       owner: 1,
       patreon: false,
-      subscriber: false,
-      subscriptionInfo: { active: false, email: '', linked_email: '' },
+      subscriber,
+      subscriptionInfo: { active: subscriber, email: '', linked_email: '' },
     },
     linked_email: '',
     user: {
@@ -45,16 +48,22 @@ const makeLocals = (chat_consent_at: string | null): UserLocalsReturn => ({
 
 const consentedLocals = makeLocals('2026-01-01T00:00:00.000Z');
 const unconsentedLocals = makeLocals(null);
+const freeUserLocals = makeLocals('2026-01-01T00:00:00.000Z', false);
+
+vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
 
 vi.mock('../../lib/backend/api', () => ({
   post: vi.fn(),
   postMultipart: vi.fn(),
-  get: vi.fn().mockResolvedValue({ used: 0, limit: 20 }),
+  get: vi.fn().mockResolvedValue({}),
   patch: vi.fn(),
   del: vi.fn(),
 }));
 
 import { get, patch, post, postMultipart } from '../../lib/backend/api';
+import { track } from '../../lib/analytics/track';
+
+const mockTrack = track as ReturnType<typeof vi.fn>;
 
 const mockPost = post as ReturnType<typeof vi.fn>;
 const mockGet = get as ReturnType<typeof vi.fn>;
@@ -634,15 +643,12 @@ describe('ChatPanel', () => {
     });
   });
 
-  it('handles rate_limit by showing the limit panel', async () => {
-    mockPost.mockResolvedValueOnce(
-      makeSseResponse([
-        {
-          event: 'error',
-          data: { type: 'rate_limit', resetDate: '2026-06-01T00:00:00.000Z' },
-        },
-      ])
-    );
+  it('swaps to the upgrade panel when the server answers 402', async () => {
+    mockPost.mockResolvedValueOnce({
+      ok: false,
+      status: 402,
+      json: async () => ({ error: 'upgrade required' }),
+    });
 
     renderChatPanel();
 
@@ -652,10 +658,9 @@ describe('ChatPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/You've used all 20 messages this month/)
-      ).toBeInTheDocument();
+      expect(consentedLocals.refetch).toHaveBeenCalled();
     });
+    expect(screen.queryByText('upgrade required')).not.toBeInTheDocument();
   });
 
   it('shows thinking pill with aria-label when loading with no streamed tokens yet', async () => {
@@ -1230,31 +1235,69 @@ describe('consumeSseEvents', () => {
   });
 });
 
-describe('ChatPanel — monthly usage counter', () => {
+describe('ChatPanel — free-user paywall', () => {
   beforeEach(() => {
     mockPost.mockReset();
+    mockTrack.mockReset();
+    mockUseUserLocals.mockReturnValue(freeUserLocals);
   });
 
-  it('shows the free counter when the usage endpoint returns a numeric limit', async () => {
-    mockGet.mockResolvedValue({ used: 18, limit: 20 });
+  it('replaces the composer with the upgrade panel for a free user', () => {
     renderChatPanel();
 
+    expect(screen.getByTestId('chat-upgrade-panel')).toBeInTheDocument();
+    expect(screen.getByText('Chat is part of a paid plan')).toBeInTheDocument();
     expect(
-      await screen.findByText('2 of 20 messages left this month')
+      screen.queryByRole('textbox', { name: 'Message input' })
+    ).not.toBeInTheDocument();
+    expect(mockTrack).toHaveBeenCalledWith('paywall_shown', {
+      surface: 'chat',
+    });
+    expect(
+      mockTrack.mock.calls.filter(([name]) => name === 'paywall_shown')
+    ).toHaveLength(1);
+  });
+
+  it('keeps history readable and adds the reassurance line', () => {
+    render(
+      <MemoryRouter>
+        <ChatPanel
+          initialMessages={[
+            { role: 'user', content: 'Old question' },
+            { role: 'assistant', content: 'Old answer' },
+          ]}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Old question')).toBeInTheDocument();
+    expect(screen.getByText('Old answer')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Your past chats stay here to read\./)
     ).toBeInTheDocument();
   });
 
-  it('hides the counter for premium users (limit null), even with messages used', async () => {
-    mockGet.mockResolvedValue({ used: 18, limit: null });
+  it('links the upgrade button to pricing and tracks the click', () => {
     renderChatPanel();
 
-    await waitFor(() => {
-      expect(get).toHaveBeenCalledWith('/api/chat/usage', { redirect: false });
+    const cta = screen.getByRole('link', { name: 'See plans' });
+    expect(cta).toHaveAttribute('href', '/pricing?source=chat-paywall');
+    fireEvent.click(cta);
+    expect(mockTrack).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: 'chat',
     });
+  });
+
+  it('does not open the consent modal for an unconsented free user', () => {
+    mockUseUserLocals.mockReturnValue(makeLocals(null, false));
+    renderChatPanel();
 
     expect(
-      screen.queryByText(/messages left this month/)
+      screen.queryByRole('heading', {
+        name: 'Chat sends your messages to Anthropic',
+      })
     ).not.toBeInTheDocument();
+    expect(screen.getByTestId('chat-upgrade-panel')).toBeInTheDocument();
   });
 });
 

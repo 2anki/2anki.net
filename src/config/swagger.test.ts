@@ -322,7 +322,7 @@ describe('Swagger Documentation Coverage', () => {
       expect(props.templateSlug).toBeDefined();
     });
 
-    it('documents the four error-frame types for /api/chat/message', () => {
+    it('documents the error-frame types for /api/chat/message', () => {
       const errorFrame = spec.components.schemas.ChatErrorFrame;
       const variants = errorFrame.properties.data.oneOf;
       const types = variants.map(
@@ -331,12 +331,12 @@ describe('Swagger Documentation Coverage', () => {
       );
       expect(types).toEqual(
         expect.arrayContaining([
-          'rate_limit',
           'consent_required',
           'conversation_not_found',
           'server_error',
         ])
       );
+      expect(types).not.toContain('rate_limit');
     });
 
     it('documents /api/notion/login as deprecated and points to get-notion-link', () => {

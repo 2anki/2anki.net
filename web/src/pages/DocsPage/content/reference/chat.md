@@ -5,7 +5,7 @@ description: Paste notes or attach a file, ask for cards, work through a concept
 
 Chat is a study assistant built on Claude. Paste your notes or attach a file, then ask it to make cards, explain something, or work through a topic by going back and forth. Open it at [2anki.net/chat](https://2anki.net/chat). Sign-in required.
 
-**Plan:** Free for the first 20 messages a month. Subscription and Lifetime are unlimited and use a stronger model.
+**Plan:** Part of every paid plan — Subscription, Day Pass, and Lifetime. On a free account you can read your past conversations and download decks you already made, but sending messages requires a plan.
 
 ## When to use this
 
@@ -58,13 +58,12 @@ The same advice that works for [AI flashcards](/documentation/cards/ai-flashcard
 
 ## Conversation limits
 
-|                    | Free               | Subscription       | Lifetime           |
-| ------------------ | ------------------ | ------------------ | ------------------ |
-| Messages per month | 20                 | Unlimited          | Unlimited          |
-| Message length     | 100 000 characters | 100 000 characters | 100 000 characters |
-| Model              | Claude Haiku       | Claude Sonnet      | Claude Sonnet      |
+|                | Free                              | Paid plans         |
+| -------------- | --------------------------------- | ------------------ |
+| Messages       | — (reading past chats stays free) | Unlimited          |
+| Message length | —                                 | 100 000 characters |
 
-The count resets on the first of the following month. The exact reset date shows up when you hit the limit. See [Limits and quotas](/documentation/help/limits) for the full plan table.
+See [Limits and quotas](/documentation/help/limits) for the full plan table.
 
 ## What we store
 

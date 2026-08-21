@@ -49,14 +49,6 @@
     "withFile": "Was möchtest du mit dieser Datei tun?",
     "studying": "Was lernst du gerade?"
   },
-  "usage": {
-    "messagesLeftOne": "1 Nachricht diesen Monat übrig — deine nächste Sendung verbraucht sie",
-    "messagesLeft": "{{count}} von {{limit}} Nachrichten diesen Monat übrig"
-  },
-  "limitPanel": {
-    "text": "Du hast diesen Monat alle {{count}} Nachrichten genutzt. Auffrischung am {{date}}.",
-    "seePlans": "Tarife ansehen"
-  },
   "errors": {
     "cantAttachOne": "{{name}} kann nicht angehängt werden. Hier funktionieren nur PDF- und Bilddateien.",
     "cantAttachMany": "{{count}} Dateien können nicht angehängt werden. Hier funktionieren nur PDF- und Bilddateien.",
@@ -112,5 +104,11 @@
     "confirm": "Alle Chats löschen",
     "cancel": "Abbrechen",
     "close": "Schließen"
+  },
+  "paywall": {
+    "heading": "Der Chat ist Teil eines bezahlten Plans",
+    "body": "Upgrade, um per Chat Karteikarten zu erstellen.",
+    "keepReading": "Deine bisherigen Chats bleiben hier lesbar.",
+    "seePlans": "Pläne ansehen"
   }
 }

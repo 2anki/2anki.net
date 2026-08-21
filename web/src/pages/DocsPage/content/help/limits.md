@@ -41,15 +41,12 @@ The **Use Claude AI** card option is a Subscription / Lifetime feature. Free acc
 
 ## Chat
 
-The Chat study assistant is available to all signed-in users.
+The Chat study assistant is part of every paid plan — Subscription, Day Pass, and Lifetime. On a free account, past conversations stay readable and decks you already made stay downloadable; sending messages requires a plan.
 
-|                    | Free               | Subscription       | Lifetime           |
-| ------------------ | ------------------ | ------------------ | ------------------ |
-| Messages per month | 20                 | Unlimited          | Unlimited          |
-| Message length     | 100 000 characters | 100 000 characters | 100 000 characters |
-| Model              | Claude Haiku       | Claude Sonnet      | Claude Sonnet      |
-
-Free users who reach 20 messages see the exact reset date (first of the following month). Message count resets monthly.
+|                | Free                         | Paid plans         |
+| -------------- | ---------------------------- | ------------------ |
+| Messages       | — (past chats stay readable) | Unlimited          |
+| Message length | —                            | 100 000 characters |
 
 ## Mind maps
 
@@ -105,7 +102,7 @@ Free covers the conversion paths most people need: drag in a file, get a deck ba
 | Anonymous file upload                            | ✓                  | ✓            | ✓          |
 | Account features (history, favorites, templates) | sign-in required   | ✓            | ✓          |
 | AI-generated flashcards (Claude)                 | —                  | ✓            | ✓          |
-| Chat (study assistant)                           | 20 msg / mo        | Unlimited    | Unlimited  |
+| Chat (study assistant)                           | —                  | Unlimited    | Unlimited  |
 | Long-term deck storage                           | 24 h               | active sub   | indefinite |
 | Auto Sync (Notion → Anki)                        | —                  | by request   | ✓          |
 

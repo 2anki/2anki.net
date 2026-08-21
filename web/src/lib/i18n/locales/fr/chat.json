@@ -49,14 +49,6 @@
     "withFile": "Que veux-tu faire avec ce fichier ?",
     "studying": "Qu'est-ce que tu étudies ?"
   },
-  "usage": {
-    "messagesLeftOne": "1 message restant ce mois-ci — ton prochain envoi l'utilise",
-    "messagesLeft": "{{count}} messages restants sur {{limit}} ce mois-ci"
-  },
-  "limitPanel": {
-    "text": "Tu as utilisé tes {{count}} messages ce mois-ci. Réinitialisation le {{date}}.",
-    "seePlans": "Voir les offres"
-  },
   "errors": {
     "cantAttachOne": "Impossible de joindre {{name}}. Seuls les fichiers PDF et image fonctionnent ici.",
     "cantAttachMany": "Impossible de joindre {{count}} fichiers. Seuls les fichiers PDF et image fonctionnent ici.",
@@ -112,5 +104,11 @@
     "confirm": "Supprimer tous les chats",
     "cancel": "Annuler",
     "close": "Fermer"
+  },
+  "paywall": {
+    "heading": "Le chat fait partie d'une offre payante",
+    "body": "Passe à une offre payante pour créer des cartes en discutant.",
+    "keepReading": "Tes anciennes discussions restent lisibles ici.",
+    "seePlans": "Voir les offres"
   }
 }

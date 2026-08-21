@@ -29,7 +29,7 @@ const aiFlashcardGeneratorCopy: LandingCopy = {
     },
     {
       q: 'How do I use the study chat?',
-      a: 'Sign in and open the chat. The free tier covers 20 messages a month; paste your notes and it returns cards you can refine. Conversion from a file — PDF, PowerPoint, Notion, Markdown — has no message cap.',
+      a: 'Sign in with any paid plan — subscription, day pass, or lifetime — and open the chat. Paste your notes and it returns cards you can refine. Conversion from a file — PDF, PowerPoint, Notion, Markdown — is free and has no message cap.',
     },
     {
       q: 'Why notes-first instead of a one-click generator?',

@@ -10,6 +10,7 @@ window.HTMLElement.prototype.scrollIntoView = vi.fn();
 vi.mock('../../lib/hooks/useUserLocals', () => ({
   useUserLocals: () => ({
     data: {
+      locals: { owner: 1, patreon: false, subscriber: true },
       user: { patreon: false, chat_consent_at: '2026-01-01T00:00:00.000Z' },
     },
     refetch: vi.fn(),

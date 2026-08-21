@@ -19,6 +19,7 @@ function renderChatPage(path = '/chat') {
 vi.mock('../../lib/hooks/useUserLocals', () => ({
   useUserLocals: () => ({
     data: {
+      locals: { owner: 1, patreon: false, subscriber: true },
       user: { patreon: false, chat_consent_at: '2026-01-01T00:00:00.000Z' },
     },
     refetch: vi.fn(),
@@ -230,15 +231,16 @@ describe('ChatPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('hydrates usage counter from server on mount', async () => {
-    mockGet.mockResolvedValueOnce({ used: 5, limit: 20 });
-
+  it('does not call the removed usage endpoint on mount', async () => {
     renderChatPage();
 
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith('/api/chat/usage', {
+      expect(mockGet).toHaveBeenCalledWith('/api/chat/conversations', {
         redirect: false,
       });
+    });
+    expect(mockGet).not.toHaveBeenCalledWith('/api/chat/usage', {
+      redirect: false,
     });
   });
 
@@ -367,20 +369,17 @@ describe('ChatPage', () => {
     });
   });
 
-  it('shows 1 message left special copy at limit minus one', async () => {
-    mockGet.mockImplementation((url: string) => {
-      if (url === '/api/chat/usage')
-        return Promise.resolve({ used: 19, limit: 20 });
-      return Promise.resolve({ conversations: [] });
-    });
-
+  it('never renders a monthly message counter', async () => {
     renderChatPage();
 
     await waitFor(() => {
       expect(
-        screen.getByText('1 message left this month — your next send uses it')
+        screen.getByRole('textbox', { name: 'Message input' })
       ).toBeInTheDocument();
     });
+    expect(
+      screen.queryByText(/message(s)? left this month/)
+    ).not.toBeInTheDocument();
   });
 });
 

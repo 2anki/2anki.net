@@ -514,34 +514,6 @@ export class Api<
       ...params,
     });
   /**
-   * @description Link an email address to the authenticated user's account
-   *
-   * @tags Users
-   * @name UsersLinkEmailCreate
-   * @summary Link email to account
-   * @request POST:/api/users/link_email
-   * @secure
-   */
-  usersLinkEmailCreate = (
-    data: {
-      /**
-       * Email address to link
-       * @format email
-       */
-      email: string;
-    },
-    params: RequestParams = {},
-  ) =>
-    this.request<Success, Error>({
-      path: `/api/users/link_email`,
-      method: "POST",
-      body: data,
-      secure: true,
-      type: ContentType.Json,
-      format: "json",
-      ...params,
-    });
-  /**
    * @description Initiate Google OAuth authentication flow
    *
    * @tags Authentication
@@ -1315,72 +1287,6 @@ export class Api<
       ...params,
     });
   /**
-   * @description Public endpoint. Returns a paginated, newest-first page of decks the owner listed in the public library. Indexable — unlike the other share endpoints, this response does NOT carry X-Robots-Tag&#58; noindex.
-   *
-   * @tags Deck Shares
-   * @name SharesPublicList
-   * @summary List public shared decks
-   * @request GET:/api/shares/public
-   * @secure
-   */
-  sharesPublicList = (
-    query?: {
-      /** Zero-based offset to resume from; omit for the first page. */
-      cursor?: number;
-      /** Number of decks per page (1–100, default 24). */
-      page_size?: number;
-    },
-    params: RequestParams = {},
-  ) =>
-    this.request<void, void>({
-      path: `/api/shares/public`,
-      method: "GET",
-      query: query,
-      secure: true,
-      ...params,
-    });
-  /**
-   * @description Owner-only. Setting is_public to true requires a non-empty title and records the deck's card count. Setting it to false removes the deck from the public library; the private share link keeps working either way.
-   *
-   * @tags Deck Shares
-   * @name SharesPartialUpdate
-   * @summary Publish or unpublish a share to the public library
-   * @request PATCH:/api/shares/{token}
-   * @secure
-   */
-  sharesPartialUpdate = (
-    token: string,
-    data: {
-      is_public: boolean;
-      title?: string;
-    },
-    params: RequestParams = {},
-  ) =>
-    this.request<void, void>({
-      path: `/api/shares/${token}`,
-      method: "PATCH",
-      body: data,
-      secure: true,
-      type: ContentType.Json,
-      ...params,
-    });
-  /**
-   * @description Sets `revoked_at = NOW()` on a share row the caller owns. Idempotent — repeated calls or unknown tokens still return 204.
-   *
-   * @tags Deck Shares
-   * @name SharesDelete
-   * @summary Revoke a share link
-   * @request DELETE:/api/shares/{token}
-   * @secure
-   */
-  sharesDelete = (token: string, params: RequestParams = {}) =>
-    this.request<void, void>({
-      path: `/api/shares/${token}`,
-      method: "DELETE",
-      secure: true,
-      ...params,
-    });
-  /**
    * @description Public endpoint. Returns total card count and deck list for the shared deck. Rate-limited per IP. Responses carry `X-Robots-Tag&#58; noindex`.
    *
    * @tags Deck Shares
@@ -1457,6 +1363,22 @@ export class Api<
     this.request<void, void>({
       path: `/api/shares/${token}/download`,
       method: "GET",
+      secure: true,
+      ...params,
+    });
+  /**
+   * @description Sets `revoked_at = NOW()` on a share row the caller owns. Idempotent — repeated calls or unknown tokens still return 204.
+   *
+   * @tags Deck Shares
+   * @name SharesDelete
+   * @summary Revoke a share link
+   * @request DELETE:/api/shares/{token}
+   * @secure
+   */
+  sharesDelete = (token: string, params: RequestParams = {}) =>
+    this.request<void, void>({
+      path: `/api/shares/${token}`,
+      method: "DELETE",
       secure: true,
       ...params,
     });
@@ -1951,19 +1873,43 @@ export class Api<
       ...params,
     });
   /**
-   * @description Sets `users.developer_access` for the account matching the given email. Grants access to the lifetime-gated Developers surface without making the account lifetime. Internal endpoint locked to the ops owner.
+   * @description Idempotent. Reads the bucket's lifecycle configuration, replaces only the chat-attachments rule by its ID, keeps every other rule, writes the merged set back, and verifies the rule is present afterwards. Internal endpoint locked to the ops owner.
    *
    * @tags Ops
-   * @name OpsDeveloperAccessCreate
-   * @summary Grant or revoke Developers API access for an account by email
-   * @request POST:/api/ops/developer-access
+   * @name OpsChatAttachmentsLifecycleCreate
+   * @summary Apply the 90-day expiry rule for chat attachments to the storage bucket
+   * @request POST:/api/ops/chat-attachments-lifecycle
    * @secure
    */
-  opsDeveloperAccessCreate = (params: RequestParams = {}) =>
+  opsChatAttachmentsLifecycleCreate = (params: RequestParams = {}) =>
     this.request<void, void>({
-      path: `/api/ops/developer-access`,
+      path: `/api/ops/chat-attachments-lifecycle`,
       method: "POST",
       secure: true,
+      ...params,
+    });
+  /**
+   * @description Attaches an unclaimed anonymous_passes row to the account matching the given email and grants a user pass whose validity window starts now, so a buyer whose checkout redirect never returned still gets the full duration they paid for. Idempotent for the same account; 409 if the pass is already claimed by a different account. Internal endpoint locked to the ops owner — returns 404 for everyone else.
+   *
+   * @tags Ops
+   * @name OpsGrantUnclaimedPassCreate
+   * @summary Claim an anonymous Day/Week pass to an account with a fresh window
+   * @request POST:/api/ops/grant-unclaimed-pass
+   * @secure
+   */
+  opsGrantUnclaimedPassCreate = (
+    data: {
+      anonymousPassId: number;
+      email: string;
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<void, void>({
+      path: `/api/ops/grant-unclaimed-pass`,
+      method: "POST",
+      body: data,
+      secure: true,
+      type: ContentType.Json,
       ...params,
     });
   /**
@@ -2117,6 +2063,29 @@ export class Api<
       ...params,
     });
   /**
+   * @description Returns Claude API cost and token totals for the window, broken down by product surface, by model, and by day. Sourced from the ai_usage_recorded event every Anthropic call site emits. Defaults to the last 30 days; pass ?window=7d|14d|30d|60d|90d. Internal endpoint locked to the ops owner — returns 404 for everyone else.
+   *
+   * @tags Ops
+   * @name OpsAiUsageList
+   * @summary AI spend and token usage aggregated from usage events
+   * @request GET:/api/ops/ai-usage
+   * @secure
+   */
+  opsAiUsageList = (
+    query?: {
+      /** Lookback window. Defaults to 30d. */
+      window?: "7d" | "14d" | "30d" | "60d" | "90d";
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<void, void>({
+      path: `/api/ops/ai-usage`,
+      method: "GET",
+      query: query,
+      secure: true,
+      ...params,
+    });
+  /**
    * @description Groups users by signup_origin and reports, per page, the number of signups in the window, how many became active subscribers, how many bought a pass, and the deduplicated paid conversion rate. Defaults to the last 30 days; pass ?window=7d|14d|30d|60d|90d. Internal endpoint locked to the ops owner — returns 404 for everyone else.
    *
    * @tags Ops
@@ -2180,6 +2149,29 @@ export class Api<
   ) =>
     this.request<void, void>({
       path: `/api/ops/passes/unlock-monitor`,
+      method: "GET",
+      query: query,
+      secure: true,
+      ...params,
+    });
+  /**
+   * @description For each Day/Week pass, claimed anonymous pass, and new subscription in a rolling window, counts the conversion successes, downloads, and failures inside that unit's own paid window. Splits each group into with-value, zero-value-tried (failures but no success/download — the urgent case), and zero-value-never-tried. Rows list only the zero-value units by numeric user id; no emails are returned. Unclaimed anonymous passes cannot be linked to a user, so they are reported as an honest count only. Defaults to the last 7 days; pass ?window=1d|7d|14d|30d. Internal endpoint locked to the ops owner — returns 404 for everyone else.
+   *
+   * @tags Ops
+   * @name OpsValueMonitorList
+   * @summary Paying users who produced zero successful conversions in their paid window
+   * @request GET:/api/ops/value-monitor
+   * @secure
+   */
+  opsValueMonitorList = (
+    query?: {
+      /** Lookback window. Defaults to 7d. */
+      window?: "1d" | "7d" | "14d" | "30d";
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<void, void>({
+      path: `/api/ops/value-monitor`,
       method: "GET",
       query: query,
       secure: true,
@@ -3374,54 +3366,6 @@ export class Api<
       ...params,
     });
   /**
-   * @description Self-service — any signed-in account. Returns key names, prefixes, and last-used timestamps; never the secret.
-   *
-   * @tags Developer
-   * @name DeveloperKeysList
-   * @summary List the caller's API keys
-   * @request GET:/api/developer/keys
-   * @secure
-   */
-  developerKeysList = (params: RequestParams = {}) =>
-    this.request<void, void>({
-      path: `/api/developer/keys`,
-      method: "GET",
-      secure: true,
-      ...params,
-    });
-  /**
-   * @description Self-service — any signed-in account. The secret is returned once and stored only as a hash. Keys start on the free Sandbox tier.
-   *
-   * @tags Developer
-   * @name DeveloperKeysCreate
-   * @summary Create an API key
-   * @request POST:/api/developer/keys
-   * @secure
-   */
-  developerKeysCreate = (params: RequestParams = {}) =>
-    this.request<void, void>({
-      path: `/api/developer/keys`,
-      method: "POST",
-      secure: true,
-      ...params,
-    });
-  /**
-   * @description Revocation is immediate — anything using the key stops working.
-   *
-   * @tags Developer
-   * @name DeveloperKeysDelete
-   * @summary Revoke an API key
-   * @request DELETE:/api/developer/keys/{id}
-   * @secure
-   */
-  developerKeysDelete = (id: string, params: RequestParams = {}) =>
-    this.request<void, void>({
-      path: `/api/developer/keys/${id}`,
-      method: "DELETE",
-      secure: true,
-      ...params,
-    });
-  /**
    * @description Submit a contact form with optional file attachments
    *
    * @tags Support
@@ -3663,29 +3607,6 @@ export class Api<
    * No description
    *
    * @tags Chat
-   * @name ChatUsageList
-   * @summary Get chat usage for the current month
-   * @request GET:/api/chat/usage
-   * @secure
-   */
-  chatUsageList = (params: RequestParams = {}) =>
-    this.request<
-      {
-        used?: number;
-        limit?: number | null;
-      },
-      any
-    >({
-      path: `/api/chat/usage`,
-      method: "GET",
-      secure: true,
-      format: "json",
-      ...params,
-    });
-  /**
-   * No description
-   *
-   * @tags Chat
    * @name ChatConversationsList
    * @summary List the user's chat conversations
    * @request GET:/api/chat/conversations
@@ -3695,6 +3616,22 @@ export class Api<
     this.request<void, any>({
       path: `/api/chat/conversations`,
       method: "GET",
+      secure: true,
+      ...params,
+    });
+  /**
+   * No description
+   *
+   * @tags Chat
+   * @name ChatConversationsDelete
+   * @summary Permanently delete every conversation and message for the user
+   * @request DELETE:/api/chat/conversations
+   * @secure
+   */
+  chatConversationsDelete = (params: RequestParams = {}) =>
+    this.request<void, any>({
+      path: `/api/chat/conversations`,
+      method: "DELETE",
       secure: true,
       ...params,
     });
@@ -3743,12 +3680,14 @@ export class Api<
    * No description
    *
    * @tags Chat
-   * @name ChatConversationsDelete
+   * @name ChatConversationsDelete2
    * @summary Soft-delete a conversation
    * @request DELETE:/api/chat/conversations/{id}
+   * @originalName chatConversationsDelete
+   * @duplicate
    * @secure
    */
-  chatConversationsDelete = (id: number, params: RequestParams = {}) =>
+  chatConversationsDelete2 = (id: number, params: RequestParams = {}) =>
     this.request<void, void>({
       path: `/api/chat/conversations/${id}`,
       method: "DELETE",

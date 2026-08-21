@@ -1,7 +1,6 @@
 import { zipSync, strToU8 } from 'fflate';
 import {
   ChatUseCase,
-  ChatRateLimitError,
   ChatConversationNotFoundError,
   ChatAttachmentsNotReplayableError,
   McqExtractionFailedError,
@@ -49,8 +48,8 @@ function lastUserText(stream: jest.Mock): string {
   return textBlock?.text ?? '';
 }
 
-const FREE_USER = { owner: 1, patreon: false } as const;
-const PATREON_USER = { owner: 2, patreon: true } as const;
+const FREE_USER = { owner: 1 } as const;
+const PATREON_USER = { owner: 2 } as const;
 
 function buildAnthropicMockWithBlocks(content: unknown[]) {
   const mockStream = {
@@ -95,30 +94,10 @@ function buildUseCaseWithBlocks(content: unknown[]) {
 }
 
 describe('ChatUseCase', () => {
-  describe('message counting and rate limiting', () => {
-    it('throws ChatRateLimitError when free user has used 20 messages this month', async () => {
-      const { messagesRepo, useCase } = buildUseCase('Hello');
-      for (let i = 0; i < 20; i++) {
-        await messagesRepo.insert({
-          userId: FREE_USER.owner,
-          conversationId: null,
-          role: 'user',
-          content: `msg ${i}`,
-        });
-      }
-
-      await expect(
-        useCase.execute({
-          user: FREE_USER,
-          content: 'another message',
-          conversationHistory: [],
-        })
-      ).rejects.toBeInstanceOf(ChatRateLimitError);
-    });
-
-    it('does not throw when free user has used fewer than 20 messages', async () => {
-      const { messagesRepo, useCase } = buildUseCase('Nice response');
-      for (let i = 0; i < 19; i++) {
+  describe('message history is never capped by a monthly quota', () => {
+    it('answers a user with an arbitrarily large message history', async () => {
+      const { messagesRepo, useCase } = buildUseCase('Paid response');
+      for (let i = 0; i < 100; i++) {
         await messagesRepo.insert({
           userId: FREE_USER.owner,
           conversationId: null,
@@ -132,26 +111,7 @@ describe('ChatUseCase', () => {
         content: 'question',
         conversationHistory: [],
       });
-      expect(result.content).toBe('Nice response');
-    });
-
-    it('does not apply limit to patreon users', async () => {
-      const { messagesRepo, useCase } = buildUseCase('Patreon response');
-      for (let i = 0; i < 100; i++) {
-        await messagesRepo.insert({
-          userId: PATREON_USER.owner,
-          conversationId: null,
-          role: 'user',
-          content: `msg ${i}`,
-        });
-      }
-
-      const result = await useCase.execute({
-        user: PATREON_USER,
-        content: 'question',
-        conversationHistory: [],
-      });
-      expect(result.content).toBe('Patreon response');
+      expect(result.content).toBe('Paid response');
     });
   });
 
@@ -1561,9 +1521,9 @@ describe('ChatUseCase', () => {
       ).rejects.toBeInstanceOf(ChatConversationNotFoundError);
     });
 
-    it('rejects a free user over the monthly cap without calling Claude', async () => {
+    it('regenerates regardless of how many messages the user has sent', async () => {
       const { messagesRepo, conversationsRepo, anthropic, useCase } =
-        buildUseCase('should not be produced');
+        buildUseCase('fresh reply');
       const conversationId = await seedConversation(
         messagesRepo,
         conversationsRepo,
@@ -1578,25 +1538,6 @@ describe('ChatUseCase', () => {
         });
       }
 
-      await expect(
-        useCase.regenerate({
-          user: FREE_USER,
-          conversationId,
-          templateSlug: null,
-        })
-      ).rejects.toBeInstanceOf(ChatRateLimitError);
-      expect(anthropic.messages.stream).not.toHaveBeenCalled();
-    });
-
-    it('lets a free user under the monthly cap regenerate', async () => {
-      const { messagesRepo, conversationsRepo, anthropic, useCase } =
-        buildUseCase('fresh reply');
-      const conversationId = await seedConversation(
-        messagesRepo,
-        conversationsRepo,
-        FREE_USER.owner
-      );
-
       const result = await useCase.regenerate({
         user: FREE_USER,
         conversationId,
@@ -1605,36 +1546,6 @@ describe('ChatUseCase', () => {
 
       expect(result.content).toBe('fresh reply');
       expect(anthropic.messages.stream).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('ChatRateLimitError', () => {
-    it('provides a resetDate as the first of next month', async () => {
-      const { messagesRepo, useCase } = buildUseCase('');
-      for (let i = 0; i < 20; i++) {
-        await messagesRepo.insert({
-          userId: FREE_USER.owner,
-          conversationId: null,
-          role: 'user',
-          content: `msg ${i}`,
-        });
-      }
-
-      let caughtError: ChatRateLimitError | null = null;
-      try {
-        await useCase.execute({
-          user: FREE_USER,
-          content: 'more',
-          conversationHistory: [],
-        });
-      } catch (err) {
-        if (err instanceof ChatRateLimitError) {
-          caughtError = err;
-        }
-      }
-
-      expect(caughtError).not.toBeNull();
-      expect(caughtError?.resetDate).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
   });
 });
