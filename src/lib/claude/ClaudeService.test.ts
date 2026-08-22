@@ -9,6 +9,7 @@ import {
   normalizeTag,
   SYSTEM_PROMPT,
   buildUserMessage,
+  buildUserContentBlocks,
   buildFieldMappingPromptFragment,
   dedupeIdenticalCards,
   cardDedupeKey,
@@ -1717,10 +1718,16 @@ describe('floor v1 — card-size scaled bounds', () => {
   }
 
   function sentUserMessages(): string[] {
-    return mockStreamFn.mock.calls.map(
-      (c) =>
-        (c[0] as { messages: Array<{ content: string }> }).messages[0].content
-    );
+    return mockStreamFn.mock.calls.map((c) => {
+      const content = (
+        c[0] as {
+          messages: Array<{ content: string | Array<{ text: string }> }>;
+        }
+      ).messages[0].content;
+      return typeof content === 'string'
+        ? content
+        : content.map((b) => b.text).join('');
+    });
   }
 
   beforeEach(() => {
@@ -1985,5 +1992,62 @@ describe('generateDeckInfo — card with a missing front field', () => {
     const cards = result.flatMap((deck) => deck.cards);
     expect(cards).toHaveLength(1);
     expect(cards[0].name).toBe('Kept card?');
+  });
+});
+
+describe('buildUserContentBlocks — cache-safe split', () => {
+  const content = '<details><summary>Q</summary>A</details>';
+  const media = ['diagram.png', 'photo.jpg'];
+
+  it('concatenates back to exactly the single-string prompt', () => {
+    const blocks = buildUserContentBlocks(
+      content,
+      media,
+      'Focus on definitions',
+      'heading-driven fragment',
+      'detailed',
+      {
+        templateName: 'n2a-basic',
+        fields: [{ name: 'Front', instruction: 'the term' }],
+      }
+    );
+    const joined = blocks.map((b) => b.text).join('');
+    expect(joined).toBe(
+      buildUserMessage(
+        content,
+        media,
+        'Focus on definitions',
+        'heading-driven fragment',
+        'detailed',
+        {
+          templateName: 'n2a-basic',
+          fields: [{ name: 'Front', instruction: 'the term' }],
+        }
+      )
+    );
+  });
+
+  it('marks only the content prefix for caching', () => {
+    const blocks = buildUserContentBlocks(
+      content,
+      media,
+      'Focus on definitions',
+      '',
+      undefined,
+      undefined
+    );
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0].cache_control).toEqual({ type: 'ephemeral' });
+    expect(blocks[0].text).toContain(content);
+    expect(blocks[0].text).toContain('diagram.png');
+    expect(blocks[1].cache_control).toBeUndefined();
+    expect(blocks[1].text).toContain('Focus on definitions');
+  });
+
+  it('returns a single cached block when there are no trailing sections', () => {
+    const blocks = buildUserContentBlocks(content, [], undefined, '');
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].cache_control).toEqual({ type: 'ephemeral' });
+    expect(blocks[0].text).toBe(buildUserMessage(content, [], undefined, ''));
   });
 });
