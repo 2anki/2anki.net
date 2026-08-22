@@ -9,8 +9,11 @@ import { SkeletonPage } from './components/Skeleton/Skeleton';
 import { RootErrorBoundary } from './components/RootErrorBoundary/RootErrorBoundary';
 import { initTheme } from './lib/theme';
 import { initI18n } from './lib/i18n';
-import { recoverFromChunkError } from './lib/chunkReload';
-import { reportClientError } from './lib/reportClientError';
+import { isChunkLoadError, recoverFromChunkError } from './lib/chunkReload';
+import {
+  reportClientError,
+  reportDeclinedChunkRecovery,
+} from './lib/reportClientError';
 
 window.addEventListener('error', (event) => {
   recoverFromChunkError(event.error);
@@ -37,11 +40,14 @@ function main() {
     <React.StrictMode>
       <Suspense fallback={<SkeletonPage />}>
         <RootErrorBoundary
-          onError={(error, errorInfo) =>
-            reportClientError(error, {
-              componentStack: errorInfo.componentStack,
-            })
-          }
+          onError={(error, errorInfo) => {
+            const context = { componentStack: errorInfo.componentStack };
+            if (isChunkLoadError(error)) {
+              reportDeclinedChunkRecovery(error, context);
+              return;
+            }
+            reportClientError(error, context);
+          }}
         >
           <App />
         </RootErrorBoundary>

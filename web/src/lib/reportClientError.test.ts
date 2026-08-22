@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { reportClientError } from './reportClientError';
+import {
+  reportClientError,
+  reportDeclinedChunkRecovery,
+} from './reportClientError';
 import { UserNotice } from './errors/UserNotice';
 import { getClientRelease } from './release';
 
@@ -243,5 +246,26 @@ describe('reportClientError', () => {
     chunkError.name = 'ChunkLoadError';
     reportClientError(chunkError);
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('reportDeclinedChunkRecovery', () => {
+  it('reports the declined recovery with a message the chunk skip cannot match', () => {
+    reportDeclinedChunkRecovery(
+      new Error('Importing a module script failed.'),
+      { componentStack: 'at LazyRoute' }
+    );
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [, init] = getLastCall();
+    const body = JSON.parse(init.body as string) as {
+      message: string;
+      context: Record<string, unknown>;
+    };
+    expect(body.message).toBe('Stale chunk failed again within cooldown');
+    expect(body.context).toMatchObject({
+      originalMessage: 'Importing a module script failed.',
+      componentStack: 'at LazyRoute',
+    });
   });
 });

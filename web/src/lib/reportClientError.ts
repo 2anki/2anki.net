@@ -59,6 +59,25 @@ function isTransientGatewayGetError(error: unknown): boolean {
   );
 }
 
+/**
+ * The one chunk-failure state ops still needs to see: the reload guard
+ * declined to recover (second failure inside the cooldown) and the user is
+ * looking at the fallback UI. Reported under a distinct message that the
+ * chunk-error skip cannot match; the original browser wording rides in
+ * context.
+ */
+export function reportDeclinedChunkRecovery(
+  error: unknown,
+  context?: Record<string, unknown>
+): void {
+  const originalMessage =
+    error instanceof Error ? error.message : String(error);
+  reportClientError(new Error('Stale chunk failed again within cooldown'), {
+    ...context,
+    originalMessage,
+  });
+}
+
 export function reportClientError(
   error: unknown,
   context?: Record<string, unknown>
