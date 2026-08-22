@@ -29,5 +29,11 @@ export const isExpectedClientFault = (error?: Error): boolean => {
   if (isHttpCodedClientFault(error)) {
     return true;
   }
+  // Every multer error is the request's fault (too large, wrong field,
+  // too many files) and ErrorHandler maps each to a clean 4xx — recording
+  // them as server errors buries real crashes in the dashboard.
+  if (error.name === 'MulterError') {
+    return true;
+  }
   return error.name === 'AnkiAppExportError';
 };
