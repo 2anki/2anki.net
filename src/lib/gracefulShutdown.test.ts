@@ -10,6 +10,7 @@ import type { Knex } from 'knex';
 import { shutdownConversionPool } from './conversionPool';
 import {
   gracefulShutdown,
+  HTTP_CLOSE_BUDGET_MS,
   POOL_DRAIN_TIMEOUT_MS,
   SHUTDOWN_TIMEOUT_MS,
   PM2_KILL_TIMEOUT_MS,
@@ -140,6 +141,51 @@ describe('gracefulShutdown', () => {
   it('orders the timeouts so drain finishes before the hard exit and pm2 SIGKILL', () => {
     expect(POOL_DRAIN_TIMEOUT_MS).toBeLessThan(SHUTDOWN_TIMEOUT_MS);
     expect(SHUTDOWN_TIMEOUT_MS).toBeLessThan(PM2_KILL_TIMEOUT_MS);
+  });
+
+  it('bounds the HTTP close so piscina keeps its full self-managed window', () => {
+    const POOL_CLOSE_TIMEOUT_MS =
+      jest.requireActual<typeof import('./conversionPool')>(
+        './conversionPool'
+      ).POOL_CLOSE_TIMEOUT_MS;
+    expect(HTTP_CLOSE_BUDGET_MS + POOL_CLOSE_TIMEOUT_MS).toBeLessThan(
+      SHUTDOWN_TIMEOUT_MS
+    );
+  });
+
+  it('severs hung connections after the close budget so the drain still runs', async () => {
+    jest.useFakeTimers();
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    let closeCb: (() => void) | undefined;
+    const calls = { closeAll: 0 };
+    // An open SSE stream is an in-flight request: closeIdleConnections cannot
+    // reap it and server.close waits for it forever.
+    const server = {
+      close: (cb?: () => void) => {
+        closeCb = cb;
+        return server;
+      },
+      closeIdleConnections: () => undefined,
+      closeAllConnections: () => {
+        calls.closeAll += 1;
+        closeCb?.();
+      },
+    } as unknown as http.Server;
+    const { db, destroyCalls } = fakeDatabase();
+
+    const done = gracefulShutdown('SIGINT', server, db);
+    await Promise.resolve();
+    jest.advanceTimersByTime(HTTP_CLOSE_BUDGET_MS + 1);
+    await done;
+
+    expect(calls.closeAll).toBe(1);
+    expect(drainMock).toHaveBeenCalledTimes(1);
+    expect(destroyCalls.count).toBe(1);
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    warnSpy.mockRestore();
+    jest.useRealTimers();
   });
 
   it('gives in-flight conversions room past the old 23s window that force-killed large decks', () => {
