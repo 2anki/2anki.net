@@ -124,6 +124,22 @@ class JobRepository {
       .update({ status: 'interrupted', last_edited_time: new Date() });
   }
 
+  // Boot-time sweep for job types with no interrupted-marking of their own.
+  // Claude and Notion types are excluded: their markInterrupted* methods above
+  // own those rows, and this sweep used to run first and convert every
+  // in-flight Notion job to 'failed' with no reason, making
+  // markInterruptedNotionJobs dead code (#4176).
+  failStrandedLegacyJobs() {
+    return this.database(this.tableName)
+      .whereNotIn('status', ['done', 'failed', 'cancelled', 'interrupted'])
+      .where((qb) =>
+        qb
+          .whereNull('type')
+          .orWhereNotIn('type', ['claude', 'page', 'database', 'conversion'])
+      )
+      .update({ status: 'failed' });
+  }
+
   static readonly TERMINAL_STATUSES = [
     'done',
     'failed',
