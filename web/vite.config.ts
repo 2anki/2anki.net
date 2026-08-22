@@ -118,7 +118,6 @@ export default defineConfig(({ command, mode }) => {
         exclude: [
           'src/**/*.{test,spec}.{ts,tsx}',
           'src/setupTests.ts',
-          'src/generated/**',
           'src/schemas/**',
           'src/react-app-env.d.ts',
         ],
