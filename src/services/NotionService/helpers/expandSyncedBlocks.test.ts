@@ -1,5 +1,14 @@
+import { APIResponseError } from '@notionhq/client';
 import { expandSyncedBlocks } from './expandSyncedBlocks';
 import NotionAPIWrapper from '../NotionAPIWrapper';
+
+function makeFailingApi(error: unknown): NotionAPIWrapper {
+  return {
+    getBlocks: jest.fn(async () => {
+      throw error;
+    }),
+  } as unknown as NotionAPIWrapper;
+}
 
 const baseBlockShape = {
   object: 'block' as const,
@@ -76,6 +85,44 @@ function makeApi(responses: Record<string, unknown[]>): NotionAPIWrapper {
 }
 
 describe('expandSyncedBlocks', () => {
+  it('logs one compact line when the source 404s as unshared', async () => {
+    const reference = makeSyncedBlock('ref-x', 'source-x');
+    const error = Object.create(APIResponseError.prototype) as APIResponseError;
+    Object.assign(error, {
+      name: 'APIResponseError',
+      message: 'Could not find block',
+      code: 'object_not_found',
+      status: 404,
+    });
+    const api = makeFailingApi(error);
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await expandSyncedBlocks([reference], api, true);
+
+    expect(result).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      '[notion] synced_block source not accessible (object_not_found/404) — dropped, id source-x'
+    );
+    warn.mockRestore();
+  });
+
+  it('keeps the full dump for unexpected error shapes', async () => {
+    const reference = makeSyncedBlock('ref-y', 'source-y');
+    const error = new Error('socket hang up');
+    const api = makeFailingApi(error);
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await expandSyncedBlocks([reference], api, true);
+
+    expect(result).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      '[notion] failed to resolve synced_block source',
+      error
+    );
+    warn.mockRestore();
+  });
+
   it('passes non-synced blocks through unchanged', async () => {
     const api = makeApi({});
     const toggle = makeToggle('t-1', 'plain toggle');

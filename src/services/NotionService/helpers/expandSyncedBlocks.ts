@@ -1,4 +1,4 @@
-import { isFullBlock } from '@notionhq/client';
+import { APIResponseError, isFullBlock } from '@notionhq/client';
 import {
   BlockObjectResponse,
   GetBlockResponse,
@@ -53,8 +53,16 @@ async function resolveSyncedBlockChildren(
     return await expandInternal(response.results, api, useAll, seen, depth + 1);
   } catch (e: unknown) {
     // Expected when the user hasn't shared the synced block's source with the
-    // integration — we recover by returning no children, not an error.
-    console.warn('[notion] failed to resolve synced_block source', e);
+    // integration — we recover by returning no children, not an error. The
+    // expected shape logs one line; the ~60-line raw dump (stack + response
+    // headers/body) is reserved for errors we did not anticipate (#4174).
+    if (e instanceof APIResponseError) {
+      console.warn(
+        `[notion] synced_block source not accessible (${e.code}/${e.status}) — dropped, id ${sourceId}`
+      );
+    } else {
+      console.warn('[notion] failed to resolve synced_block source', e);
+    }
     return [];
   }
 }

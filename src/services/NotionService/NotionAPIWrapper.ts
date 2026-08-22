@@ -69,12 +69,17 @@ class NotionAPIWrapper {
     return this.forbiddenBlockIds.size;
   }
 
+  // Notion answers 403 restricted_resource for blocks the integration can see
+  // but not read, and 404 object_not_found for content it cannot see at all —
+  // unshared synced-block sources arrive as the 404 flavor. Both mean the same
+  // thing to the user: part of the page is not connected to 2anki (#4174).
   private recordIfForbidden(id: string, error: unknown): void {
-    if (
-      error instanceof APIResponseError &&
-      error.status === 403 &&
-      error.code === APIErrorCode.RestrictedResource
-    ) {
+    if (!(error instanceof APIResponseError)) return;
+    const forbidden =
+      (error.status === 403 &&
+        error.code === APIErrorCode.RestrictedResource) ||
+      (error.status === 404 && error.code === APIErrorCode.ObjectNotFound);
+    if (forbidden) {
       this.forbiddenBlockIds.add(id);
     }
   }

@@ -97,12 +97,42 @@ describe('NotionAPIWrapper forbidden block counting', () => {
     expect(wrapper.forbiddenBlockCount).toBe(1);
   });
 
-  test('does not count a non-403 error', async () => {
+  test('counts a 404 object_not_found (unshared synced-block source)', async () => {
     const wrapper = new NotionAPIWrapper('test-token', '1');
     const error = makeApiError(
       APIErrorCode.ObjectNotFound,
       404,
       'Could not find block'
+    );
+    setNotion(wrapper, {
+      blocks: {
+        children: {
+          list: jest.fn(async () => {
+            throw error;
+          }),
+        },
+      },
+    });
+
+    await expect(
+      wrapper.getBlocks({
+        createdAt: '2026-08-01T00:00:00.000Z',
+        lastEditedAt: '2026-08-02T00:00:00.000Z',
+        id: 'block-a',
+        all: true,
+        type: 'page',
+      })
+    ).rejects.toBe(error);
+
+    expect(wrapper.forbiddenBlockCount).toBe(1);
+  });
+
+  test('does not count a non-403, non-404 error', async () => {
+    const wrapper = new NotionAPIWrapper('test-token', '1');
+    const error = makeApiError(
+      APIErrorCode.InternalServerError,
+      500,
+      'Something went wrong'
     );
     setNotion(wrapper, {
       blocks: {
