@@ -111,7 +111,7 @@
   "devDependencies": {
     "@types/archiver": "^8.0.0",
     "@types/bcryptjs": "^3.0.0",
-    "@types/better-sqlite3": "^7.6.13",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/cheerio": "^1.0.0",
     "@types/cookie-parser": "^1.4.6",
     "@types/crypto-js": "^4.2.1",
