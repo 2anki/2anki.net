@@ -1,13 +1,13 @@
 import { QuoteBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import ReactDOMServer from 'react-dom/server';
-import BlockHandler from '../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../BlockHandler/types';
 import getPlainText from '../helpers/getPlainText';
 import HandleBlockAnnotations from './HandleBlockAnnotations';
 import { styleWithColors } from '../NotionColors';
 
 export const BlockQuote = (
   block: QuoteBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ) => {
   const { quote } = block;
   const { rich_text: richText } = quote;

@@ -1,11 +1,11 @@
 import { LinkToPageBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
-import BlockHandler from '../../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../../BlockHandler/types';
 import renderLink from '../../helpers/renderLink';
 import getBlockIcon, { WithIcon } from '../getBlockIcon';
 
 export default async function LinkToPage(
   block: LinkToPageBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ) {
   const linkToPage =
     block.link_to_page.type === 'page_id'

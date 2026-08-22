@@ -1,11 +1,11 @@
 import { ChildPageBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
-import BlockHandler from '../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../BlockHandler/types';
 import getBlockIcon, { WithIcon } from './getBlockIcon';
 import renderLink from '../helpers/renderLink';
 
 export const BlockChildPage = async (
   block: ChildPageBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ) => {
   const childPage = block.child_page;
   const { api } = handler;

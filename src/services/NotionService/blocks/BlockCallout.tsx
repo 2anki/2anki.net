@@ -3,7 +3,7 @@ import {
   RichTextItemResponse,
 } from '@notionhq/client/build/src/api-endpoints';
 import ReactDOMServer from 'react-dom/server';
-import BlockHandler from '../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../BlockHandler/types';
 import getChildren from '../helpers/getChildren';
 import getPlainText from '../helpers/getPlainText';
 import { styleWithColors } from '../NotionColors';
@@ -11,7 +11,7 @@ import HandleBlockAnnotations from './HandleBlockAnnotations';
 
 export const BlockCallout = async (
   block: CalloutBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ) => {
   const { callout } = block;
   const { icon } = callout;

@@ -1,10 +1,10 @@
 import { ColumnBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
-import BlockHandler from '../../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../../BlockHandler/types';
 import getChildren from '../../helpers/getChildren';
 
 export default function BlockColumn(
   block: ColumnBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ) {
   return getChildren(block, handler);
 }

@@ -1,14 +1,14 @@
 import { ParagraphBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import ReactDOMServer from 'react-dom/server';
 import { convert } from 'html-to-text';
-import BlockHandler from '../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../BlockHandler/types';
 
 import renderTextChildren from '../helpers/renderTextChildren';
 import { styleWithColors } from '../NotionColors';
 
 const BlockParagraph = (
   block: ParagraphBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ): string | null => {
   const { paragraph } = block;
   const { rich_text: richText } = paragraph;

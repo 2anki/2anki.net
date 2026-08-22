@@ -1,9 +1,9 @@
 import { ColumnBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
-import BlockHandler from '../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../BlockHandler/types';
 
 export default async function getColumn(
   parentId: string,
-  handler: BlockHandler,
+  handler: IBlockRenderer,
   index: number
 ): Promise<ColumnBlockObjectResponse | null> {
   console.time('[NO_CACHE] - getColumn');

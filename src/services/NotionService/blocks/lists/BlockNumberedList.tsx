@@ -4,14 +4,14 @@ import {
 } from '@notionhq/client/build/src/api-endpoints';
 import ReactDOMServer from 'react-dom/server';
 import { convert } from 'html-to-text';
-import BlockHandler from '../../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../../BlockHandler/types';
 import getListItems from '../../helpers/getListItems';
 import { styleWithColors } from '../../NotionColors';
 
 export const BlockNumberedList = async (
   block: NumberedListItemBlockObjectResponse,
   response: ListBlockChildrenResponse | undefined,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ) => {
   const list = block.numbered_list_item;
   const items = await getListItems(response, handler, 'numbered_list_item');

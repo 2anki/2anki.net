@@ -3,7 +3,7 @@ import { convert } from 'html-to-text';
 
 import { BookmarkBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import useMetadata from './hooks/useMetadata';
-import BlockHandler from '../../../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../../../BlockHandler/types';
 import React from 'react';
 import { BookmarkTitle } from './components/BookmarkTitle';
 import { BookmarkDescription } from './components/BookmarkDescription';
@@ -13,7 +13,7 @@ import { BookmarkContainer } from './components/BookmarkContainer';
 
 const BlockBookmark = async (
   block: BookmarkBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ): Promise<string | null> => {
   const { bookmark } = block;
   const metadata = await useMetadata(bookmark.url);

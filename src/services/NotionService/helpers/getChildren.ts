@@ -1,10 +1,10 @@
 import { BlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 
-import BlockHandler from '../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../BlockHandler/types';
 
 export default async function getChildren(
   block: BlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ): Promise<string> {
   let backSide = '';
   if (block.has_children) {
