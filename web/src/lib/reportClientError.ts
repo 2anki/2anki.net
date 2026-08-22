@@ -1,4 +1,5 @@
 import { UserNotice } from './errors/UserNotice';
+import { isChunkLoadError } from './chunkReload';
 import { isDomManipulationError } from './isDomManipulationError';
 import { getClientRelease } from './release';
 
@@ -64,6 +65,7 @@ export function reportClientError(
 ): void {
   if (error instanceof UserNotice) return;
   if (isAbortError(error)) return;
+  if (isChunkLoadError(error)) return;
   if (isDomManipulationError(error)) return;
   if (isExpectedClientFault(error)) return;
   if (isTransientGatewayGetError(error)) return;

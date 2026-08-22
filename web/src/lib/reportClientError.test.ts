@@ -237,4 +237,25 @@ describe('reportClientError', () => {
     );
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it('skips the WebKit stale-chunk import failure', () => {
+    reportClientError(new Error('Importing a module script failed.'));
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('skips the Chromium stale-chunk import failure', () => {
+    reportClientError(
+      new Error(
+        'Failed to fetch dynamically imported module: https://2anki.net/assets/DownloadsPage-abc123.js'
+      )
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('skips an error named ChunkLoadError regardless of message', () => {
+    const chunkError = new Error('Loading chunk 42 failed.');
+    chunkError.name = 'ChunkLoadError';
+    reportClientError(chunkError);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
