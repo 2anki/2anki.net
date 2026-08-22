@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-22-interrupted-status",
+  "date": "2026-08-22",
+  "type": "fix",
+  "title": "Notion conversions caught mid-update show as interrupted with a restart, not failed with no reason"
+}

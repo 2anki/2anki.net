@@ -229,10 +229,10 @@ export const setupDatabase = async (database: Knex) => {
     }
 
     // Completed jobs become uploads. Any left during startup means they failed.
-    // Claude jobs are handled separately by markInterruptedClaudeJobs to preserve restart capability.
-    await database.raw(
-      "UPDATE jobs SET status = 'failed' WHERE status NOT IN ('done', 'failed', 'cancelled', 'interrupted') AND type IS DISTINCT FROM 'claude';"
-    );
+    // Claude AND Notion job types are excluded — their markInterrupted* methods
+    // in server.ts own those rows so they surface as restartable 'interrupted',
+    // not 'failed' with no reason (#4176).
+    await new JobRepository(database).failStrandedLegacyJobs();
   } catch (error) {
     console.error(error);
     process.exit(1);

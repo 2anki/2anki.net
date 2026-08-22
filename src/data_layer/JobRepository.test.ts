@@ -634,3 +634,84 @@ describe('JobRepository.updateJobStatus — terminal transitions', () => {
     expect(row.job_reason_failure).toBe('real failure');
   });
 });
+
+describe('JobRepository boot-time stranded-job handling', () => {
+  let db: Knex;
+  let repo: JobRepository;
+
+  beforeEach(async () => {
+    db = await makeDb();
+    repo = new JobRepository(db);
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  it('leaves in-flight Notion jobs for markInterruptedNotionJobs', async () => {
+    await insertJob(db, {
+      owner: '1',
+      object_id: 'notion-1',
+      status: 'step1_started',
+      type: 'page',
+    });
+
+    await repo.failStrandedLegacyJobs();
+    await repo.markInterruptedNotionJobs();
+
+    const row = await db('jobs').where({ object_id: 'notion-1' }).first();
+    expect(row.status).toBe('interrupted');
+  });
+
+  it('leaves in-flight claude jobs for markInterruptedClaudeJobs', async () => {
+    await insertJob(db, {
+      owner: '1',
+      object_id: 'claude-1',
+      status: 'step1_started',
+      type: 'claude',
+    });
+
+    await repo.failStrandedLegacyJobs();
+
+    const row = await db('jobs').where({ object_id: 'claude-1' }).first();
+    expect(row.status).toBe('step1_started');
+  });
+
+  it('fails an in-flight job of unknown or missing type', async () => {
+    await insertJob(db, {
+      owner: '1',
+      object_id: 'legacy-1',
+      status: 'step1_started',
+      type: 'apkg_import',
+    });
+    await db('jobs').insert({
+      owner: '1',
+      object_id: 'legacy-2',
+      status: 'step1_started',
+      title: 'Deck',
+      type: null,
+      last_edited_time: new Date(),
+    });
+
+    await repo.failStrandedLegacyJobs();
+
+    const one = await db('jobs').where({ object_id: 'legacy-1' }).first();
+    const two = await db('jobs').where({ object_id: 'legacy-2' }).first();
+    expect(one.status).toBe('failed');
+    expect(two.status).toBe('failed');
+  });
+
+  it('never touches terminal rows', async () => {
+    await insertJob(db, {
+      owner: '1',
+      object_id: 'done-1',
+      status: 'done',
+      type: 'apkg_import',
+    });
+
+    await repo.failStrandedLegacyJobs();
+
+    const row = await db('jobs').where({ object_id: 'done-1' }).first();
+    expect(row.status).toBe('done');
+  });
+});
