@@ -30,6 +30,7 @@ import { withTextAlign } from '../../../lib/parser/withTextAlign';
 import get16DigitRandomId from '../../../shared/helpers/get16DigitRandomId';
 import { NOTION_STYLE, getCodeThemeCss } from '../../../templates/helper';
 import NotionAPIWrapper from '../NotionAPIWrapper';
+import type { IBlockRenderer } from './types';
 import BlockColumn from '../blocks/lists/BlockColumn';
 import { tableRowsToCards } from '../blocks/lists/BlockTable';
 import { blockToStaticMarkup } from '../helpers/blockToStaticMarkup';
@@ -209,7 +210,7 @@ function applyHierarchyFields(
   ankiNote.h3 = context?.h3 ?? '';
 }
 
-class BlockHandler {
+class BlockHandler implements IBlockRenderer {
   api: NotionAPIWrapper;
 
   exporter;

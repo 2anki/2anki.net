@@ -4,11 +4,11 @@ import {
   ListBlockChildrenResponse,
   PartialBlockObjectResponse,
 } from '@notionhq/client/build/src/api-endpoints';
-import BlockHandler from '../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../BlockHandler/types';
 import { blockToStaticMarkup } from './blockToStaticMarkup';
 
 export const renderBack = async (
-  handler: BlockHandler,
+  handler: IBlockRenderer,
   requestChildren: Array<PartialBlockObjectResponse | BlockObjectResponse>,
   response: ListBlockChildrenResponse,
   handleChildren: boolean | undefined

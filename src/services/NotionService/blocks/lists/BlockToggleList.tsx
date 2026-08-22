@@ -2,7 +2,7 @@ import { ToggleBlockObjectResponse } from '@notionhq/client/build/src/api-endpoi
 import ReactDOMServer from 'react-dom/server';
 import { convert } from 'html-to-text';
 
-import BlockHandler from '../../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../../BlockHandler/types';
 import renderTextChildren from '../../helpers/renderTextChildren';
 import getChildren from '../../helpers/getChildren';
 import { ReactNode } from 'react';
@@ -14,7 +14,7 @@ interface DetailsProps {
 
 export async function BlockToggleList(
   block: ToggleBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ) {
   const list = block.toggle;
   const { rich_text: richText } = list;

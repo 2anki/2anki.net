@@ -5,7 +5,7 @@ import {
 } from '@notionhq/client/build/src/api-endpoints';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
-import BlockHandler from '../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../BlockHandler/types';
 import getPlainText from '../helpers/getPlainText';
 import HandleBlockAnnotations from './HandleBlockAnnotations';
 import { getHeadingText } from '../helpers/getHeadingText';
@@ -47,7 +47,7 @@ const Heading = (props: HeadingProps) => {
 export const BlockHeading = (
   level: 'heading_1' | 'heading_2' | 'heading_3' | 'heading_4',
   block: GetBlockResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ) => {
   const headingText = getHeadingText(block as BlockObjectResponse);
   if (!headingText) {

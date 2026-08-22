@@ -3,11 +3,11 @@ import {
   RichTextItemResponse,
 } from '@notionhq/client/build/src/api-endpoints';
 import ReactDOMServer from 'react-dom/server';
-import BlockHandler from '../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../BlockHandler/types';
 import getPlainText from '../helpers/getPlainText';
 import HandleBlockAnnotations from './HandleBlockAnnotations';
 
-const BlockCode = (block: CodeBlockObjectResponse, handler: BlockHandler) => {
+const BlockCode = (block: CodeBlockObjectResponse, handler: IBlockRenderer) => {
   const { code } = block;
   const { rich_text: richText } = code;
 

@@ -7,7 +7,7 @@ import {
 import { inferColumnMapping } from '../../../../lib/notionDatabase/inferColumnMapping';
 import handleClozeDeletions from '../../../../lib/parser/helpers/handleClozeDeletions';
 import hasInlineClozeCode from '../../../../lib/parser/helpers/hasInlineClozeCode';
-import BlockHandler from '../../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../../BlockHandler/types';
 import renderTextChildren from '../../helpers/renderTextChildren';
 
 interface TableCard {
@@ -35,14 +35,14 @@ function toClozeCard(front: string, back: string): TableCard {
 
 function renderCell(
   cell: RichTextItemResponse[],
-  handler: BlockHandler
+  handler: IBlockRenderer
 ): string {
   return renderTextChildren(cell, handler.settings, handler.tagRegistry);
 }
 
 function buildExtraColumnsTable(
   extraCells: RichTextItemResponse[][],
-  handler: BlockHandler
+  handler: IBlockRenderer
 ): string {
   const tds = extraCells
     .map((cell) => `<td>${renderCell(cell, handler)}</td>`)
@@ -53,7 +53,7 @@ function buildExtraColumnsTable(
 function resolveColumnRoles(
   rows: readonly TableRowBlockObjectResponse[],
   hasColumnHeader: boolean,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ): ColumnRoles {
   const headerRow = rows[0];
   if (!hasColumnHeader || headerRow == null) {
@@ -89,7 +89,7 @@ function extraColumnCells(
 export function tableRowsToCards(
   block: TableBlockObjectResponse,
   children: ListBlockChildrenResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ): TableCard[] {
   const rows = children.results.filter(
     (r): r is TableRowBlockObjectResponse =>
@@ -146,7 +146,7 @@ export function tableRowsToCards(
 
 export async function BlockTable(
   block: TableBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ): Promise<string> {
   const children = await handler.api.getBlocks({
     createdAt: block.created_time,

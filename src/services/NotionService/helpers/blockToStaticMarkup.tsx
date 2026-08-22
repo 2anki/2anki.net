@@ -7,7 +7,7 @@ import {
   SyncedBlockBlockObjectResponse,
 } from '@notionhq/client/build/src/api-endpoints';
 import { renderToStaticMarkup } from 'react-dom/server';
-import BlockHandler from '../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../BlockHandler/types';
 import { BlockCallout } from '../blocks/BlockCallout';
 import { BlockChildPage } from '../blocks/BlockChildPage';
 import BlockCode from '../blocks/BlockCode';
@@ -36,7 +36,7 @@ const renderPdfLink = (url: string): string =>
 
 const renderPdf = async (
   c: PdfBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ): Promise<string> => {
   const url = c.pdf.type === 'file' ? c.pdf.file.url : c.pdf.external.url;
   if (!url) {
@@ -62,7 +62,7 @@ const renderLinkPreview = (c: LinkPreviewBlockObjectResponse): string => {
 
 const renderSyncedBlock = async (
   c: SyncedBlockBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ): Promise<string> => {
   if (c.has_children) {
     const children = await handler.getBackSide(c, true);
@@ -76,7 +76,7 @@ const renderSyncedBlock = async (
 };
 
 export const blockToStaticMarkup = async (
-  handler: BlockHandler,
+  handler: IBlockRenderer,
   c: BlockObjectResponse,
   response?: ListBlockChildrenResponse
 ) => {

@@ -42,10 +42,10 @@ module.exports = {
     {
       name: 'no-circular',
       comment:
-        'Circular dependency between modules. Break the cycle — extract the shared piece or invert one direction. 27 existing cycles cluster on the data_layer/index.ts barrel; surfaced as warn so the count cannot grow unnoticed.',
+        'Circular dependency between modules (runtime edges only — type-only imports are erased at compile time and cannot cycle at runtime). Break the cycle — extract the shared piece or invert one direction. Surfaced as warn so the count cannot grow unnoticed.',
       severity: 'warn',
       from: {},
-      to: { circular: true },
+      to: { circular: true, dependencyTypesNot: ['type-only'] },
     },
     {
       name: 'data-layer-is-leaf',

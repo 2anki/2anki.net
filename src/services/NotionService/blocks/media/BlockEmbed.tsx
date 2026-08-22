@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import getLoomEmbedUrl from '../../../../lib/parser/helpers/getLoomEmbedUrl';
 import getYouTubeEmbedLink from '../../../../lib/parser/helpers/getYouTubeEmbedLink';
 import getYouTubeID from '../../../../lib/parser/helpers/getYouTubeID';
-import BlockHandler from '../../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../../BlockHandler/types';
 import {
   isLoomURL,
   isSoundCloudURL,
@@ -12,7 +12,7 @@ import {
 
 export const BlockEmbed = (
   c: EmbedBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ) => {
   if (handler.settings?.isTextOnlyBack) {
     return '';

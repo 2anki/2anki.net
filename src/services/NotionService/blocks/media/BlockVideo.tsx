@@ -1,12 +1,12 @@
 import { VideoBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import { renderToStaticMarkup } from 'react-dom/server';
-import BlockHandler from '../../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../../BlockHandler/types';
 import { getVideoUrl } from './helpers/getVideoUrl';
 import { isVimeoLink } from './helpers/isVimeoLink';
 
 export const BlockVideo = (
   c: VideoBlockObjectResponse,
-  handler: BlockHandler
+  handler: IBlockRenderer
 ) => {
   let url = getVideoUrl(c);
   if (handler.settings?.isTextOnlyBack || !url) {

@@ -4,7 +4,7 @@ import {
 } from '@notionhq/client/build/src/api-endpoints';
 
 import renderTextChildren from './renderTextChildren';
-import BlockHandler from '../BlockHandler/BlockHandler';
+import type { IBlockRenderer } from '../BlockHandler/types';
 import getChildren from './getChildren';
 import { getListBlock } from './getListBlock';
 import { getListColor } from './getListColor';
@@ -15,7 +15,7 @@ type ListType = 'numbered_list_item' | 'bulleted_list_item' | 'to_do';
 
 export default function getListItems(
   response: ListBlockChildrenResponse | undefined,
-  handler: BlockHandler,
+  handler: IBlockRenderer,
   type: ListType
 ) {
   if (!response) {
