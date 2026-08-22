@@ -323,4 +323,74 @@ describe('ErrorHandler', () => {
     expect(res.send).not.toHaveBeenCalled();
     expect(res.json).not.toHaveBeenCalled();
   });
+
+  test('a TypeError responds 500 with a generic body, not the internal message', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeResponse(false);
+    const req = makeRequest();
+
+    await ErrorHandler(
+      res as unknown as express.Response,
+      req,
+      new TypeError(
+        "Cannot destructure property 'name' of 'req.body' as it is undefined."
+      )
+    );
+
+    expect(res.statusCode).toBe(500);
+    const body = res.body as { code: string; message: string };
+    expect(body.code).toBe('unknown');
+    expect(body.message).not.toContain('req.body');
+    expect(body.message).toContain('support@2anki.net');
+    errorSpy.mockRestore();
+  });
+
+  test('a Knex pool error responds 500 with a generic body', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeResponse(false);
+    const req = makeRequest();
+
+    await ErrorHandler(
+      res as unknown as express.Response,
+      req,
+      new Error(
+        'Knex: Timeout acquiring a connection. The pool is probably full.'
+      )
+    );
+
+    expect(res.statusCode).toBe(500);
+    const body = res.body as { code: string; message: string };
+    expect(body.message).not.toContain('Knex');
+    errorSpy.mockRestore();
+  });
+
+  test('a SQLSTATE-coded database error responds 500 with a generic body', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeResponse(false);
+    const req = makeRequest();
+
+    const dbError = Object.assign(
+      new Error('null value in column "user_id" violates not-null constraint'),
+      { code: '23502' }
+    );
+    await ErrorHandler(res as unknown as express.Response, req, dbError);
+
+    expect(res.statusCode).toBe(500);
+    const body = res.body as { code: string; message: string };
+    expect(body.message).not.toContain('user_id');
+    errorSpy.mockRestore();
+  });
+
+  test('a malformed-JSON body error keeps its 400 and message', async () => {
+    const res = makeResponse(false);
+    const req = makeRequest();
+
+    const parseError = Object.assign(
+      new SyntaxError('Unexpected token < in JSON at position 0'),
+      { type: 'entity.parse.failed' }
+    );
+    await ErrorHandler(res as unknown as express.Response, req, parseError);
+
+    expect(res.statusCode).toBe(400);
+  });
 });
