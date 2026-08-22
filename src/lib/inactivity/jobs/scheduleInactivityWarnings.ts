@@ -1,5 +1,8 @@
 import type { SendInactivityWarningsUseCase } from '../../../usecases/ops/SendInactivityWarningsUseCase';
+import type { IJobLockRepository } from '../../../data_layer/JobLockRepository';
+import { JOB_LOCK_KEYS } from '../../../data_layer/JobLockRepository';
 import type { EventsSink } from '../../../services/events/EventsSink';
+import { makeExclusiveBatchRunner } from '../../scheduling/exclusiveBatch';
 import { isOverdue, type LastRunAt } from './lastRunAt';
 
 export const INACTIVITY_WARNING_DAILY_LIMIT = 100;
@@ -12,6 +15,7 @@ export const scheduleInactivityWarnings = async (
     limit?: number;
     eventsSink?: EventsSink;
     lastRunAt?: LastRunAt;
+    lock?: IJobLockRepository;
   } = {}
 ): Promise<NodeJS.Timeout> => {
   const intervalMs = options.intervalMs ?? INACTIVITY_WARNING_INTERVAL_MS;
@@ -32,14 +36,24 @@ export const scheduleInactivityWarnings = async (
     }
   };
 
+  const eventsSink = options.eventsSink;
+  const runBatch = makeExclusiveBatchRunner(tick, {
+    label: 'inactivity-warnings',
+    lockKey: JOB_LOCK_KEYS.inactivityWarnings,
+    intervalMs,
+    lock: options.lock,
+    lastRunAt: options.lastRunAt,
+    flush: eventsSink != null ? () => eventsSink.flush() : undefined,
+  });
+
   if (options.lastRunAt != null) {
     const lastRun = await options.lastRunAt();
     if (isOverdue(lastRun, intervalMs, Date.now())) {
-      await tick();
+      await runBatch();
     }
   }
 
-  const handle = setInterval(tick, intervalMs);
+  const handle = setInterval(runBatch, intervalMs);
   handle.unref();
   return handle;
 };
