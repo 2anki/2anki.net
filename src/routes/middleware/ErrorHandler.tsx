@@ -126,10 +126,43 @@ export default async function ErrorHandler(
     return;
   }
 
+  if (!quietError && isInternalFault(err)) {
+    const body: UploadErrorBody = {
+      code: 'unknown',
+      message:
+        'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.',
+    };
+    res.status(500).json(body);
+    return;
+  }
+
   const code: UploadErrorCode =
     err instanceof PythonExitError ? toUploadErrorCode(err.kind) : 'unknown';
   const body: UploadErrorBody = { code, message: err.message };
   res.status(400).json(body);
+}
+
+const SQLSTATE_RE = /^[0-9A-Z]{5}$/;
+
+/**
+ * Native JS error classes and database faults are never intentional
+ * user-facing messages — surfacing err.message for these leaks internals
+ * (CWE-209) and mislabels a server bug as a client fault. Deliberate throws
+ * (limit errors, upload-shape errors) are plain Error and keep the 400 path.
+ */
+function isInternalFault(err: Error): boolean {
+  if (
+    err instanceof TypeError ||
+    err instanceof RangeError ||
+    err instanceof ReferenceError
+  ) {
+    return true;
+  }
+  if (err.message.startsWith('Knex:') || err.name === 'KnexTimeoutError') {
+    return true;
+  }
+  const code = (err as { code?: unknown }).code;
+  return typeof code === 'string' && SQLSTATE_RE.test(code);
 }
 
 function toMulterErrorBody(err: multer.MulterError): {

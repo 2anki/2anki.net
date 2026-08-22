@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-22-plain-error-message",
+  "date": "2026-08-22",
+  "type": "fix",
+  "title": "Unexpected server errors now show a plain message with a way to reach support"
+}
