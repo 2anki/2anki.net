@@ -500,6 +500,62 @@ export function buildUserMessage(
   return `Convert this HTML content into the compact deck JSON:\n\n${strippedContent}${mediaFilesList}${instructionsSection}${fieldMappingSection}${styleSection}${sizeSection}`;
 }
 
+// The chunk request as two text blocks instead of one string, byte-identical
+// when concatenated (asserted by test against buildUserMessage). The split
+// exists purely for prompt caching: the cache breakpoint sits on the first
+// block (chunk content + media list), which together with the system prompt
+// clears Sonnet 5's 1024-token cacheable minimum — the system prompt alone is
+// ~600 tokens, which the API silently refuses to cache (#4188). Reads happen
+// whenever the same chunk content is re-sent within the TTL: comprehensive
+// top-up rounds, cross-file dedup passes, job restarts, duplicate re-uploads.
+// The per-job trailing sections stay in the second, uncached block so a
+// top-up's changed instructions don't invalidate the content prefix.
+export function buildUserContentBlocks(
+  strippedContent: string,
+  availableMediaFiles: string[],
+  userInstructions: string | undefined,
+  cardStyleFragment: string,
+  cardSize?: string,
+  fieldMapping?: FieldMapping
+): Array<{
+  type: 'text';
+  text: string;
+  cache_control?: { type: 'ephemeral' };
+}> {
+  const full = buildUserMessage(
+    strippedContent,
+    availableMediaFiles,
+    userInstructions,
+    cardStyleFragment,
+    cardSize,
+    fieldMapping
+  );
+  const stablePrefix = buildUserMessage(
+    strippedContent,
+    availableMediaFiles,
+    undefined,
+    '',
+    undefined,
+    undefined
+  );
+  const trailing = full.slice(stablePrefix.length);
+  const blocks: Array<{
+    type: 'text';
+    text: string;
+    cache_control?: { type: 'ephemeral' };
+  }> = [
+    {
+      type: 'text',
+      text: stablePrefix,
+      cache_control: { type: 'ephemeral' },
+    },
+  ];
+  if (trailing.length > 0) {
+    blocks.push({ type: 'text', text: trailing });
+  }
+  return blocks;
+}
+
 export function extractJsonArray(text: string): string | null {
   const start = text.indexOf('[');
   if (start === -1) return null;
@@ -816,7 +872,7 @@ async function generateDeckInfoFromChunk(
   const client = getAnthropicClient();
 
   const cardStyleFragment = getCardStylePromptFragment(cardStyle);
-  const userMessage = buildUserMessage(
+  const userContent = buildUserContentBlocks(
     strippedContent,
     availableMediaFiles,
     userInstructions,
@@ -824,12 +880,13 @@ async function generateDeckInfoFromChunk(
     cardSize,
     fieldMapping
   );
+  const promptBytes = userContent.reduce((sum, b) => sum + b.text.length, 0);
 
   onProgress?.(`claude:chunk:${chunkIndex + 1}:${totalChunks}`);
 
   console.log('[Claude] Sending request to Claude API', {
     model: 'claude-sonnet-5',
-    promptBytes: userMessage.length,
+    promptBytes,
     maxTokens: CHUNK_MAX_TOKENS,
     mediaFilesCount: availableMediaFiles.length,
     hasUserInstructions: !!userInstructions?.trim(),
@@ -847,10 +904,9 @@ async function generateDeckInfoFromChunk(
         {
           type: 'text',
           text: SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' },
         },
       ],
-      messages: [{ role: 'user', content: userMessage }],
+      messages: [{ role: 'user', content: userContent }],
     });
 
     let lastPulseMs = Date.now();

@@ -62,7 +62,9 @@ describe('generateDeckInfo — heading-driven wiring', () => {
 
     expect(mockStreamFn).toHaveBeenCalled();
     const callArgs = mockStreamFn.mock.calls[0][0];
-    const userContent: string = callArgs.messages[0].content;
+    const userContent: string = callArgs.messages[0].content
+      .map((b: { text: string }) => b.text)
+      .join('');
     expect(userContent).toContain('heading');
     expect(userContent).toContain('2–6');
   });

@@ -76,6 +76,10 @@ describe('generateDeckInfoFromPdfImages', () => {
     expect(imageBlock.source.data).toBe(
       Buffer.from('fakepng1').toString('base64')
     );
+    const promptBlock = firstCall.messages[0].content.find(
+      (b: { type: string }) => b.type === 'text'
+    );
+    expect(promptBlock.cache_control).toEqual({ type: 'ephemeral' });
     const totalCards = decks.reduce((sum, d) => sum + d.cards.length, 0);
     expect(totalCards).toBeGreaterThan(0);
   });

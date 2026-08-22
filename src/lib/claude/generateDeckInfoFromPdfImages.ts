@@ -142,7 +142,15 @@ async function visionCardsForPage(
                 data: image.data,
               },
             },
-            { type: 'text', text: prompt },
+            // Breakpoint after the image: the truncation retry re-sends this
+            // exact page at a larger max_tokens (which does not invalidate the
+            // cache), so the image tokens come back as a 0.1x cache read
+            // instead of being re-billed in full (#4188).
+            {
+              type: 'text',
+              text: prompt,
+              cache_control: { type: 'ephemeral' },
+            },
           ],
         },
       ],
