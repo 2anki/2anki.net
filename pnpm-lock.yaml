@@ -31,10 +31,10 @@ importers:
         version: 3.1.0
       '@aws-sdk/client-s3':
         specifier: ^3.1048.0
-        version: 3.1110.0
+        version: 3.1112.0
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1048.0
-        version: 3.1110.0
+        version: 3.1112.0
       '@modelcontextprotocol/sdk':
         specifier: 1.30.0
         version: 1.30.0(zod@4.4.3)
@@ -145,22 +145,22 @@ importers:
         version: 0.18.12(markmap-common@0.18.9)
       metascraper:
         specifier: ^5.50.1
-        version: 5.55.2(debug@4.4.3)
+        version: 5.56.2(debug@4.4.3)
       metascraper-description:
         specifier: ^5.50.1
-        version: 5.55.2(debug@4.4.3)
+        version: 5.56.2(debug@4.4.3)
       metascraper-image:
         specifier: ^5.50.1
-        version: 5.55.2(debug@4.4.3)
+        version: 5.56.2(debug@4.4.3)
       metascraper-logo-favicon:
         specifier: ^5.50.1
-        version: 5.55.2(debug@4.4.3)
+        version: 5.56.2(debug@4.4.3)
       metascraper-title:
         specifier: ^5.50.1
-        version: 5.55.2(debug@4.4.3)
+        version: 5.56.2(debug@4.4.3)
       metascraper-url:
         specifier: ^5.50.1
-        version: 5.55.2(debug@4.4.3)
+        version: 5.56.2(debug@4.4.3)
       morgan:
         specifier: ^1.11.0
         version: 1.11.0
@@ -184,7 +184,7 @@ importers:
         version: 5.3.0
       puppeteer:
         specifier: ^25.0.2
-        version: 25.7.0(yauzl@3.4.0)
+        version: 25.8.0(yauzl@3.4.0)
       react:
         specifier: ^19.2.5
         version: 19.2.8
@@ -196,7 +196,7 @@ importers:
         version: 2.17.5
       sql.js:
         specifier: ^1.13.0
-        version: 1.14.1
+        version: 1.14.2
       stripe:
         specifier: ^22.0.2
         version: 22.5.0(@types/node@26.2.0)
@@ -549,8 +549,8 @@ packages:
     resolution: {integrity: sha512-VCpnmyHQ1IH49ni3LXnQj7DPr7rmcJmzYeiCkYdCcfgNtkvOj38cdcL9lapBWoItZWFACJPFJlymqC7/gem3Gw==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-s3@3.1110.0':
-    resolution: {integrity: sha512-40xbEcWjdaYKlZ4/NvndIJ3LotAEQAvHVQ7Z4NVy4Z4xGRN7xXJlHI9bMh/4aMJQ++6h5W5sv+wqjfk0rEKOBg==}
+  '@aws-sdk/client-s3@3.1112.0':
+    resolution: {integrity: sha512-E+Z+rIkExcUQbnV9EYfT/fOnveV9B8vIZUzE+wYCVMKgcn/aJJy73FvRf46SGd1NqgT8ESqNlk3Wc/9wE/7/Og==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/core@3.977.8':
@@ -597,8 +597,8 @@ packages:
     resolution: {integrity: sha512-bit+VpqWNyi3wHxFoTsTliNXimCSL2r2OeDTm7ZrG+YsTZ2D7ofDJ6r/t9PVBn80i6/v0X2h9Tgw6QP2MAKfPw==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/s3-request-presigner@3.1110.0':
-    resolution: {integrity: sha512-xr7vfMj3Mea1r1+GzdBT/9LpKN2l+xBMSzbGoj3Uia6ERPMjx55BeqVtVGBHWw5+IKSGCx5SVC7Jn+3FxntMLg==}
+  '@aws-sdk/s3-request-presigner@3.1112.0':
+    resolution: {integrity: sha512-Qmnhl9jpjJrp3Jei6yfnMPdhX/wLxM2kFdUr2V/9PpDhosRUIMfVTNfuq6Mq6WVHfGyLyeksoHt16agzJ50auA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/signature-v4-multi-region@3.996.45':
@@ -1328,8 +1328,8 @@ packages:
   '@mermaid-js/parser@1.1.1':
     resolution: {integrity: sha512-VuHdsYMK1bT6X2JbcAaWAhugTRvRBRyuZgd+c22swUeI9g/ntaxF7CY7dYarhZovofCbUNO0G7JesfmNtjYOCw==}
 
-  '@metascraper/helpers@5.55.2':
-    resolution: {integrity: sha512-3hVAj5mtgDvH6QekXc52Pod1VxzAzDelzY1HCgxIe4J+lInhQKWmcFVRpXrpwWvJTnpN5OueFyekQnqeyhDL+Q==}
+  '@metascraper/helpers@5.56.2':
+    resolution: {integrity: sha512-a5D654n7GrWJk8nXtPA4N0g7ZpuGi8KzR/0HAe3NR7BZ6eyV8vW+e93uYyyZyk1pfnh0XCdvPbo1u/KyqV7V3Q==}
     engines: {node: '>= 22.13'}
 
   '@modelcontextprotocol/sdk@1.30.0':
@@ -1762,8 +1762,8 @@ packages:
   '@protobufjs/utf8@1.1.1':
     resolution: {integrity: sha512-oOAWABowe8EAbMyWKM0tYDKi8Yaox52D+HWZhAIJqQXbqe0xI/GV7FhLWqlEKreMkfDjshR5FKgi3mnle0h6Eg==}
 
-  '@puppeteer/browsers@3.2.0':
-    resolution: {integrity: sha512-LlBrE8oqGfU7b1Nk2d5Q1SbuPhZxTj0cJEMDPEws28OjNMELlflekmPPuf4FnK03x0ZRjKaYwJElUcKK4kyqJA==}
+  '@puppeteer/browsers@3.2.1':
+    resolution: {integrity: sha512-KDz+3qDRdBAlRlMjmKyj6dEs33YHTk/xRHEENSXq6TNnhgoU15ruSHtEBeVF6OZ9tBDY55Se4P0nFMNsipzU9A==}
     engines: {node: '>=22.12.0'}
     hasBin: true
     peerDependencies:
@@ -4693,8 +4693,8 @@ packages:
   inline-style-parser@0.2.7:
     resolution: {integrity: sha512-Nb2ctOyNR8DqQoR0OwRG95uNWIC0C1lCgf5Naz5H6Ji72KZ8OcFZLz2P5sNgwlyoJ8Yif11oMuYs5pBQa86csA==}
 
-  install-artifact-from-github@1.7.0:
-    resolution: {integrity: sha512-qAb91yAKVF9rFY4rVP21ZtYUyCScxAFt9udwzVWNLBE1pQcdQeB2gd1HlNPcQNYCzCDvJ/QJQPuWQ6aTmSlU8g==}
+  install-artifact-from-github@1.8.0:
+    resolution: {integrity: sha512-EA861BGTOO91yuymA5V6Sx//J5471NBpMHnVZJetquqOYknm4zz25Y2tk/f74ggxerqtd8nfBrn9eaR0oxReEA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -5488,28 +5488,28 @@ packages:
   mermaid@11.15.0:
     resolution: {integrity: sha512-pTMbcf3rWdtLiYGpmoTjHEpeY8seiy6sR+9nD7LOs8KfUbHE4lOUAprTRqRAcWSQ6MQpdX+YEsxShtGsINtPtw==}
 
-  metascraper-description@5.55.2:
-    resolution: {integrity: sha512-lV10KxGQ05QAquF+Uie2TfuXh3Ma7SGU7LIByaIwH3LhkR9PFz5zCbHwg3lDtQubDB/s8BRAOUMsDq2WToPBmQ==}
+  metascraper-description@5.56.2:
+    resolution: {integrity: sha512-mZuOtt9KwzWi2DdJspJf8rlUU1Xi/06gUOMng8EX6o9UAC0IUkCTKxl8ySs5pFpX1Uy6OYtxj8XrsnwGRD6saw==}
     engines: {node: '>= 22'}
 
-  metascraper-image@5.55.2:
-    resolution: {integrity: sha512-lzznTrLmIO2I+NlmPqnYpRgE+YoPlxwgsSZUBk7q30Ir/kfQL+qjcblesjlYs36rzgaAPBx70+LKSdxJyEh+ew==}
+  metascraper-image@5.56.2:
+    resolution: {integrity: sha512-N4DGdcylu6z1lcBxLD+S4ppEwfr1lHgQ5Xp3WVJ7opIBfUgJLkO0OUxM0xsvUbiXV/q/6aKCqE2Gp+11seccaQ==}
     engines: {node: '>= 22'}
 
-  metascraper-logo-favicon@5.55.2:
-    resolution: {integrity: sha512-KdTjf5yo//t5XOMSBYGEudLMuHrMpx10HXuXpvn8FhH3QApQruDMrdvf9mrtTRlBfHb93nms6BQcPnSjkdwH8w==}
+  metascraper-logo-favicon@5.56.2:
+    resolution: {integrity: sha512-J86iz3hzH1YpuiiOWLStKL1a//BW1R8LVPTJy9UNrqO+TcWDl4tdkjmQ11J3ty07WLUdXdqcVSovEdysjI4qfA==}
     engines: {node: '>= 22'}
 
-  metascraper-title@5.55.2:
-    resolution: {integrity: sha512-swMLD+utq1ejyGMMUXyrpFw8oBbnzgMh/iWn9xIRqtSKH9GrA2HS1gx6mWx9sYDCH3+XTPtaj85XF+DZoeEgjA==}
+  metascraper-title@5.56.2:
+    resolution: {integrity: sha512-OzpBHL1k9S58L68hK/Y82kYF7OM56D8CJldztll2L4lxiie+49BqizMVR4/NILVvHuNZb64dE29bDoC91nPGAg==}
     engines: {node: '>= 22'}
 
-  metascraper-url@5.55.2:
-    resolution: {integrity: sha512-DBYPjGnYM3hkUgz5ZY5d8s9CKiA9q7/2MhlcZMuszGnoOWq0IMbzuysSjngSbFHHbf+NwEGORUvZPQlxw6NafA==}
+  metascraper-url@5.56.2:
+    resolution: {integrity: sha512-quE2um5Edugwlemvl9vhq5oIAWjSvyPaAr2ZgeO1M7b2sRobdK7jc51iyGoJSJxLnlt6KO2hGrj3KOgQ7XcSgA==}
     engines: {node: '>= 22'}
 
-  metascraper@5.55.2:
-    resolution: {integrity: sha512-ePRV1iObxmRs6yKLZuMTfT2yz8psgZYQuSR9Kpjsr+bbjfsc3SUErPXczEwpemmgi3HA/vllq7Pk4hhvKTxCzA==}
+  metascraper@5.56.2:
+    resolution: {integrity: sha512-3z+X+RdUgko2etdzjwhRtCUDNKv3FhB2UWHXZ76IwoqWbuYJ5aRDMPzqlOZ7s+XoyX8Bfc+txj52NPO0IC3DTg==}
     engines: {node: '>= 22'}
 
   micromark-core-commonmark@2.0.3:
@@ -6217,12 +6217,12 @@ packages:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
 
-  puppeteer-core@25.7.0:
-    resolution: {integrity: sha512-wgBBj7dU5ceGyoT2PCrJpkYOhxPY8mDOmcSKZP92Cj5GgqQ3kv/UxzawnOLxiYuupe4bDf/yiQm3bzs/1nI0rQ==}
+  puppeteer-core@25.8.0:
+    resolution: {integrity: sha512-LDOrawV8vfCVk+yLj2ozvajNP4Sv3OV9y3Tpiyy2g2Z+aQlbcozP6KJfI4iSBq7YQER+86ihEtPa5ioiZyWxMQ==}
     engines: {node: '>=22.12.0'}
 
-  puppeteer@25.7.0:
-    resolution: {integrity: sha512-zLBIYuW66SGwY7JNqGmiqeKiM92CYOs6xPibSRBPIeYGIfM1nE/8VCE8G0fGot2EfXENC4PbhktxLrQ0EK5Thg==}
+  puppeteer@25.8.0:
+    resolution: {integrity: sha512-3gcUJ+Jfodb5zNa/lWLZukBUwYiRIwAc8WRICoqfi+ZYmNWqpsPFyanTU3Gw/lhgII9aotVbAmhT6/NKHWgyUA==}
     engines: {node: '>=22.12.0'}
     hasBin: true
 
@@ -6684,8 +6684,8 @@ packages:
   sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
 
-  sql.js@1.14.1:
-    resolution: {integrity: sha512-gcj8zBWU5cFsi9WUP+4bFNXAyF1iRpA3LLyS/DP5xlrNzGmPIizUeBggKa8DbDwdqaKwUcTEnChtd2grWo/x/A==}
+  sql.js@1.14.2:
+    resolution: {integrity: sha512-3ZGPovObMFrdw79zrUHbfdE/DLIsy8jdNdssmMSQuRAymedU6q84asPt0kgiqrdMYlPegDItiIMfmIXzZnYFcw==}
 
   ssh2@1.17.0:
     resolution: {integrity: sha512-wPldCk3asibAjQ/kziWQQt1Wh3PgDFpC0XpwclzKcdT1vql6KeYxf5LIt4nlFkUeR8WuphYMKqUA56X4rjbfgQ==}
@@ -7633,7 +7633,7 @@ snapshots:
       '@smithy/types': 4.17.2
       tslib: 2.8.1
 
-  '@aws-sdk/client-s3@3.1110.0':
+  '@aws-sdk/client-s3@3.1112.0':
     dependencies:
       '@aws-sdk/checksums': 3.1000.28
       '@aws-sdk/core': 3.977.8
@@ -7762,7 +7762,7 @@ snapshots:
       '@smithy/types': 4.17.2
       tslib: 2.8.1
 
-  '@aws-sdk/s3-request-presigner@3.1110.0':
+  '@aws-sdk/s3-request-presigner@3.1112.0':
     dependencies:
       '@aws-sdk/core': 3.977.8
       '@aws-sdk/signature-v4-multi-region': 3.996.45
@@ -8575,7 +8575,7 @@ snapshots:
     dependencies:
       '@chevrotain/types': 11.1.2
 
-  '@metascraper/helpers@5.55.2(debug@4.4.3)':
+  '@metascraper/helpers@5.56.2(debug@4.4.3)':
     dependencies:
       audio-extensions: 0.0.0
       chrono-node: 2.10.1
@@ -8868,7 +8868,7 @@ snapshots:
 
   '@protobufjs/utf8@1.1.1': {}
 
-  '@puppeteer/browsers@3.2.0(yauzl@3.4.0)':
+  '@puppeteer/browsers@3.2.1(yauzl@3.4.0)':
     dependencies:
       modern-tar: 0.8.4
       yargs: 18.1.0
@@ -11834,7 +11834,7 @@ snapshots:
 
   inline-style-parser@0.2.7: {}
 
-  install-artifact-from-github@1.7.0: {}
+  install-artifact-from-github@1.8.0: {}
 
   internmap@1.0.1: {}
 
@@ -12878,26 +12878,26 @@ snapshots:
       ts-dedent: 2.2.0
       uuid: 14.0.0
 
-  metascraper-description@5.55.2(debug@4.4.3):
+  metascraper-description@5.56.2(debug@4.4.3):
     dependencies:
-      '@metascraper/helpers': 5.55.2(debug@4.4.3)
+      '@metascraper/helpers': 5.56.2(debug@4.4.3)
     transitivePeerDependencies:
       - '@noble/hashes'
       - canvas
       - debug
 
-  metascraper-image@5.55.2(debug@4.4.3):
+  metascraper-image@5.56.2(debug@4.4.3):
     dependencies:
-      '@metascraper/helpers': 5.55.2(debug@4.4.3)
+      '@metascraper/helpers': 5.56.2(debug@4.4.3)
     transitivePeerDependencies:
       - '@noble/hashes'
       - canvas
       - debug
 
-  metascraper-logo-favicon@5.55.2(debug@4.4.3):
+  metascraper-logo-favicon@5.56.2(debug@4.4.3):
     dependencies:
       '@keyvhq/memoize': 2.2.7
-      '@metascraper/helpers': 5.55.2(debug@4.4.3)
+      '@metascraper/helpers': 5.56.2(debug@4.4.3)
       lodash: 4.18.1
       reachable-url: 2.1.3
     transitivePeerDependencies:
@@ -12905,25 +12905,25 @@ snapshots:
       - canvas
       - debug
 
-  metascraper-title@5.55.2(debug@4.4.3):
+  metascraper-title@5.56.2(debug@4.4.3):
     dependencies:
-      '@metascraper/helpers': 5.55.2(debug@4.4.3)
+      '@metascraper/helpers': 5.56.2(debug@4.4.3)
     transitivePeerDependencies:
       - '@noble/hashes'
       - canvas
       - debug
 
-  metascraper-url@5.55.2(debug@4.4.3):
+  metascraper-url@5.56.2(debug@4.4.3):
     dependencies:
-      '@metascraper/helpers': 5.55.2(debug@4.4.3)
+      '@metascraper/helpers': 5.56.2(debug@4.4.3)
     transitivePeerDependencies:
       - '@noble/hashes'
       - canvas
       - debug
 
-  metascraper@5.55.2(debug@4.4.3):
+  metascraper@5.56.2(debug@4.4.3):
     dependencies:
-      '@metascraper/helpers': 5.55.2(debug@4.4.3)
+      '@metascraper/helpers': 5.56.2(debug@4.4.3)
       cheerio: 1.2.0
       debug-logfmt: 1.4.15(debug@4.4.3)
       whoops: 5.1.4
@@ -13715,9 +13715,9 @@ snapshots:
 
   punycode@2.3.1: {}
 
-  puppeteer-core@25.7.0(yauzl@3.4.0):
+  puppeteer-core@25.8.0(yauzl@3.4.0):
     dependencies:
-      '@puppeteer/browsers': 3.2.0(yauzl@3.4.0)
+      '@puppeteer/browsers': 3.2.1(yauzl@3.4.0)
       chromium-bidi: 17.0.2(devtools-protocol@0.0.1666840)
       devtools-protocol: 0.0.1666840
       typed-query-selector: 2.12.2
@@ -13729,13 +13729,13 @@ snapshots:
       - utf-8-validate
       - yauzl
 
-  puppeteer@25.7.0(yauzl@3.4.0):
+  puppeteer@25.8.0(yauzl@3.4.0):
     dependencies:
-      '@puppeteer/browsers': 3.2.0(yauzl@3.4.0)
+      '@puppeteer/browsers': 3.2.1(yauzl@3.4.0)
       chromium-bidi: 17.0.2(devtools-protocol@0.0.1666840)
       devtools-protocol: 0.0.1666840
       lilconfig: 3.1.3
-      puppeteer-core: 25.7.0(yauzl@3.4.0)
+      puppeteer-core: 25.8.0(yauzl@3.4.0)
       typed-query-selector: 2.12.2
     transitivePeerDependencies:
       - bufferutil
@@ -13769,7 +13769,7 @@ snapshots:
 
   re2@1.26.1:
     dependencies:
-      install-artifact-from-github: 1.7.0
+      install-artifact-from-github: 1.8.0
       nan: 2.28.0
       node-gyp: 13.0.1
 
@@ -14283,7 +14283,7 @@ snapshots:
 
   sprintf-js@1.0.3: {}
 
-  sql.js@1.14.1: {}
+  sql.js@1.14.2: {}
 
   ssh2@1.17.0:
     dependencies:
