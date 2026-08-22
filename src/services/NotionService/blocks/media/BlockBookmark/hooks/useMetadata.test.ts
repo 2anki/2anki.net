@@ -31,11 +31,11 @@ jest.mock(
     (...args: unknown[]) =>
       scrape(...args)
 );
-jest.mock('metascraper-description', () => ({}), { virtual: true });
-jest.mock('metascraper-image', () => ({}), { virtual: true });
-jest.mock('metascraper-logo-favicon', () => ({}), { virtual: true });
-jest.mock('metascraper-title', () => ({}), { virtual: true });
-jest.mock('metascraper-url', () => ({}), { virtual: true });
+jest.mock('metascraper-description', () => () => ({}), { virtual: true });
+jest.mock('metascraper-image', () => () => ({}), { virtual: true });
+jest.mock('metascraper-logo-favicon', () => () => ({}), { virtual: true });
+jest.mock('metascraper-title', () => () => ({}), { virtual: true });
+jest.mock('metascraper-url', () => () => ({}), { virtual: true });
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockedLookup = dns.promises.lookup as jest.Mock;
