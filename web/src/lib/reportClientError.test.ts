@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { reportClientError } from './reportClientError';
+import {
+  reportClientError,
+  reportDeclinedChunkRecovery,
+} from './reportClientError';
 import { UserNotice } from './errors/UserNotice';
 import { getClientRelease } from './release';
 
@@ -229,12 +232,40 @@ describe('reportClientError', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('skips an Unable to preload CSS chunk error', () => {
-    reportClientError(
-      new Error(
-        'Unable to preload CSS for https://cdn.2anki.net/assets/index-abc123.css'
-      )
-    );
+  it.each([
+    'Unable to preload CSS for https://cdn.2anki.net/assets/index-abc123.css',
+    'Importing a module script failed.',
+    'Failed to fetch dynamically imported module: https://2anki.net/assets/DownloadsPage-abc123.js',
+  ])('skips the stale-chunk failure message %s', (message) => {
+    reportClientError(new Error(message));
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('skips an error named ChunkLoadError regardless of message', () => {
+    const chunkError = new Error('Loading chunk 42 failed.');
+    chunkError.name = 'ChunkLoadError';
+    reportClientError(chunkError);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('reportDeclinedChunkRecovery', () => {
+  it('reports the declined recovery with a message the chunk skip cannot match', () => {
+    reportDeclinedChunkRecovery(
+      new Error('Importing a module script failed.'),
+      { componentStack: 'at LazyRoute' }
+    );
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [, init] = getLastCall();
+    const body = JSON.parse(init.body as string) as {
+      message: string;
+      context: Record<string, unknown>;
+    };
+    expect(body.message).toBe('Stale chunk failed again within cooldown');
+    expect(body.context).toMatchObject({
+      originalMessage: 'Importing a module script failed.',
+      componentStack: 'at LazyRoute',
+    });
   });
 });
