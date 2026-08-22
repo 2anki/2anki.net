@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { post } from '../../lib/backend/api';
+import { useDialog } from '../../lib/hooks/useDialog';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './ConsentModal.module.css';
 
@@ -17,6 +18,7 @@ export default function ConsentModal({
   const { t } = useTranslation();
   const [pending, setPending] = useState(false);
   const [needsSignIn, setNeedsSignIn] = useState(false);
+  const dialogRef = useDialog(true, onDismiss);
 
   const handleAccept = async () => {
     setPending(true);
@@ -34,12 +36,10 @@ export default function ConsentModal({
 
   return (
     <dialog
-      open
-      className={styles.dialog}
-      aria-modal="true"
+      ref={dialogRef}
+      className={sharedStyles.dialog}
       aria-labelledby="consent-heading"
     >
-      <div className={sharedStyles.modalBackdrop} />
       <div className={sharedStyles.modalCardNarrow}>
         <div className={sharedStyles.modalHeader}>
           <h2 id="consent-heading" className={sharedStyles.modalHeaderTitle}>
