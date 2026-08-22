@@ -76,6 +76,7 @@ import { anonIdMiddleware } from './routes/middleware/anonIdMiddleware';
 import { getEventsSink } from './services/events/eventsSinkInstance';
 
 import { getDatabase, setupDatabase } from './data_layer';
+import { bootstrapBackgroundJobs } from './app/bootstrapBackgroundJobs';
 import JobRepository from './data_layer/JobRepository';
 import { MagicTokenRepository } from './data_layer/MagicTokenRepository';
 import TokenRepository from './data_layer/TokenRepository';
@@ -256,6 +257,7 @@ const serve = async () => {
   registerSignalHandlers(server, database);
 
   await setupDatabase(database);
+  await bootstrapBackgroundJobs(database);
 
   const drainedCount = await drainFallbackFile(errorEventRepo);
   if (drainedCount > 0) {
@@ -369,10 +371,16 @@ const serve = async () => {
     clients: new McpOAuthClientRepository(database),
   });
 
-  try {
-    ScheduleCleanup(database);
-  } catch (error) {
-    console.error('[fs-cleanup] failed to schedule:', error);
+  if (process.env.INSTANCE_ID === 'singapore') {
+    console.info(
+      'Singapore instance: Cleanup jobs disabled to prevent conflicts'
+    );
+  } else {
+    try {
+      ScheduleCleanup(database);
+    } catch (error) {
+      console.error('[fs-cleanup] failed to schedule:', error);
+    }
   }
 };
 

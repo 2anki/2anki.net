@@ -11,7 +11,7 @@ export const setAnkifyExportScheduler = (
 export const getAnkifyExportScheduler = (): AnkifyExportScheduler => {
   if (instance == null) {
     throw new Error(
-      'AnkifyExportScheduler accessed before initialization. Did setupDatabase run?'
+      'AnkifyExportScheduler accessed before initialization. Did bootstrapBackgroundJobs run?'
     );
   }
   return instance;
