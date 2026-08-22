@@ -41,7 +41,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@2anki/csv-to-apkg": "^1.4.4",
     "@anthropic-ai/sdk": "^0.117.1",
     "@apple/app-store-server-library": "^3.1.0",
     "@aws-sdk/client-s3": "^3.1048.0",
