@@ -502,7 +502,8 @@
       "remove": "Usuń",
       "removeNamed": "Usuń {{name}}",
       "restart": "Uruchom ponownie",
-      "restartJob": "Uruchom zadanie ponownie"
+      "restartJob": "Uruchom zadanie ponownie",
+      "restarting": "Ponowne uruchamianie"
     },
     "toggle": {
       "collapseLimit": "Zwiń szczegóły miesięcznego limitu",
@@ -513,7 +514,10 @@
       "showNote": "Pokaż notatkę o konwersji",
       "collapseImageNote": "Zwiń notatkę o obrazach",
       "showImageNote": "Pokaż notatkę o obrazach"
-    }
+    },
+    "restartExhausted": "Ponowne uruchomienie nie pomogło — konwersja wciąż kończy się tym samym błędem. Prześlij plik ponownie, aby zacząć od nowa.",
+    "restartUploadAgain": "Prześlij ponownie",
+    "workspaceExpired": "Przesłane pliki przechowujemy tylko przez 2 godziny, więc ten wygasł. Prześlij go ponownie, aby go przekonwertować."
   },
   "status": {
     "generating": "Generowanie fiszek ({{current}} / {{total}})",

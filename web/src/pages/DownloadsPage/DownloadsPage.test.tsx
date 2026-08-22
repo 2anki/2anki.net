@@ -16,6 +16,7 @@ vi.mock('./hooks/useJobs', () => ({
     restartJob: vi.fn(),
     refreshJobs: vi.fn().mockResolvedValue(undefined),
     lastFetchedAt: new Date('2026-05-18T12:00:00Z'),
+    restartUi: {},
   }),
 }));
 

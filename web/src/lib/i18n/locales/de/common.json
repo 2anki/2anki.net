@@ -490,7 +490,8 @@
       "remove": "Entfernen",
       "removeNamed": "{{name}} entfernen",
       "restart": "Neu starten",
-      "restartJob": "Auftrag neu starten"
+      "restartJob": "Auftrag neu starten",
+      "restarting": "Neustart läuft"
     },
     "toggle": {
       "collapseLimit": "Monatslimit-Details einklappen",
@@ -501,7 +502,10 @@
       "showNote": "Konvertierungshinweis anzeigen",
       "collapseImageNote": "Bildhinweis einklappen",
       "showImageNote": "Bildhinweis anzeigen"
-    }
+    },
+    "restartExhausted": "Der Neustart hat nichts geändert — die Konvertierung schlägt immer mit demselben Fehler fehl. Lade die Datei erneut hoch, um von vorn zu beginnen.",
+    "restartUploadAgain": "Erneut hochladen",
+    "workspaceExpired": "Wir bewahren hochgeladene Dateien nur 2 Stunden auf, diese ist also abgelaufen. Lade sie erneut hoch, um sie zu konvertieren."
   },
   "status": {
     "generating": "Karteikarten werden erstellt ({{current}} / {{total}})",

@@ -490,7 +490,8 @@
       "remove": "Remove",
       "removeNamed": "Remove {{name}}",
       "restart": "Restart",
-      "restartJob": "Restart job"
+      "restartJob": "Restart job",
+      "restarting": "Restarting"
     },
     "toggle": {
       "collapseLimit": "Collapse monthly limit details",
@@ -501,7 +502,10 @@
       "showNote": "Show conversion note",
       "collapseImageNote": "Collapse image note",
       "showImageNote": "Show image note"
-    }
+    },
+    "restartExhausted": "Restarting didn't fix it — this keeps failing the same way. Upload the file again to start over.",
+    "restartUploadAgain": "Upload again",
+    "workspaceExpired": "We only keep uploaded files for 2 hours, so this one has expired. Upload it again to convert it."
   },
   "status": {
     "generating": "Generating flashcards ({{current}} / {{total}})",

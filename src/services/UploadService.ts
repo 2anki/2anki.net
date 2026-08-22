@@ -286,6 +286,18 @@ function walkMediaFiles(dir: string): string[] {
   return results;
 }
 
+// A restart of a PDF-image-fallback job re-reads the page images the original
+// conversion rendered into the workspace. The 2h tmp reaper can remove those
+// images while the workspace dir (and its restart-refreshed HTML) survives, so
+// a dir-exists check alone lets the restart run straight into a guaranteed
+// empty-content failure (#4172). Media surviving anywhere in the workspace is
+// enough to let the restart try; the per-image truth is settled by the
+// conversion itself.
+function restartNeedsMissingPageImages(workspaceDir: string): boolean {
+  if (loadPdfImageFallbackNames(workspaceDir).size === 0) return false;
+  return walkMediaFiles(workspaceDir).length === 0;
+}
+
 function resolveAsyncFailureReason(err: unknown, jobId: string): string {
   if (err instanceof MonthlyLimitError) {
     return JSON.stringify({
@@ -507,16 +519,23 @@ class UploadService {
       process.env.WORKSPACE_BASE as string,
       job.object_id
     );
-    if (!fs.existsSync(workspaceDir)) {
-      res
-        .status(409)
-        .json({ error: 'Workspace files are no longer available' });
+    if (
+      !fs.existsSync(workspaceDir) ||
+      restartNeedsMissingPageImages(workspaceDir)
+    ) {
+      res.status(409).json({
+        error: 'Workspace files are no longer available',
+        code: 'workspace_gone',
+      });
       return;
     }
 
     const claimed = await this.jobRepository.restartJob(job.object_id, owner);
     if (claimed == null) {
-      res.status(409).json({ error: 'This job is already running' });
+      res.status(409).json({
+        error: 'This job is already running',
+        code: 'already_running',
+      });
       return;
     }
 

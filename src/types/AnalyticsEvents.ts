@@ -68,6 +68,7 @@ export const KNOWN_EVENTS = new Set([
   'signup_failed',
   'upload_page_viewed',
   'downloads_page_viewed',
+  'restart_exhausted_notice_shown',
   'onboarding_shown',
   'onboarding_skipped',
   'onboarding_completed',

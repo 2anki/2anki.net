@@ -72,6 +72,7 @@ jest.mock('../lib/storage/StorageHandler', () => {
 });
 
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';
+import { writePdfImageFallbackMarker } from '../infrastracture/adapters/fileConversion/pdfImageFallbackMarker';
 import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
@@ -2257,13 +2258,106 @@ describe('UploadService.restartClaudeJob — concurrent restart guard', () => {
     const jobRepository = new JobRepository(db);
     const service = new UploadService(repo, jobRepository, buildUsersRepo());
 
-    const { res, capturedStatus } = buildResponse();
+    const { res, capturedStatus, capturedJson } = buildResponse();
     (res.locals as Record<string, unknown>).owner = 42;
 
     await service.restartClaudeJob(buildRestartRequest(), res);
 
     expect(mockGenerateDeckInfo).not.toHaveBeenCalled();
     expect(capturedStatus()).toBe(409);
+    expect(capturedJson()).toMatchObject({ code: 'already_running' });
+  });
+
+  it('409s workspace_gone when the fallback marker names images that no longer exist', async () => {
+    await db('jobs').insert({
+      owner: '42',
+      object_id: 'job-obj-1',
+      title: 'Deck',
+      type: 'claude',
+      status: 'failed',
+      last_edited_time: new Date(),
+    });
+    const workspaceDir = path.join(workspaceBase, 'job-obj-1');
+    writePdfImageFallbackMarker(workspaceDir, ['page.html']);
+
+    const repo = buildRepository();
+    const jobRepository = new JobRepository(db);
+    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+
+    const { res, capturedStatus, capturedJson } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.restartClaudeJob(buildRestartRequest(), res);
+
+    expect(mockGenerateDeckInfo).not.toHaveBeenCalled();
+    expect(capturedStatus()).toBe(409);
+    expect(capturedJson()).toMatchObject({ code: 'workspace_gone' });
+  });
+
+  it('restarts a fallback job normally while its page images are still on disk', async () => {
+    await db('jobs').insert({
+      owner: '42',
+      object_id: 'job-obj-1',
+      title: 'Deck',
+      type: 'claude',
+      status: 'failed',
+      last_edited_time: new Date(),
+    });
+    const workspaceDir = path.join(workspaceBase, 'job-obj-1');
+    writePdfImageFallbackMarker(workspaceDir, ['page.html']);
+    const imagesDir = path.join(workspaceDir, 'pdf-abc');
+    fs.mkdirSync(imagesDir, { recursive: true });
+    fs.writeFileSync(path.join(imagesDir, 'page-1.png'), Buffer.from('png'));
+    // Park the background restart on a pending promise (same pattern as the
+    // race test above): letting it run to completion leaks a late
+    // generateDeckInfo call into whichever describe runs next.
+    const generateStarted = new Promise<void>((resolve) => {
+      mockGenerateDeckInfo.mockImplementation(() => {
+        resolve();
+        return new Promise(() => {});
+      });
+    });
+
+    const repo = buildRepository();
+    const jobRepository = new JobRepository(db);
+    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.restartClaudeJob(buildRestartRequest(), res);
+    await generateStarted;
+
+    expect(capturedStatus()).toBe(202);
+  });
+
+  it('409s workspace_gone when the workspace directory is missing entirely', async () => {
+    await db('jobs').insert({
+      owner: '42',
+      object_id: 'job-obj-2',
+      title: 'Deck',
+      type: 'claude',
+      status: 'failed',
+      last_edited_time: new Date(),
+    });
+
+    const repo = buildRepository();
+    const jobRepository = new JobRepository(db);
+    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+
+    const { res, capturedStatus, capturedJson } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.restartClaudeJob(
+      {
+        params: { jobId: 'job-obj-2' },
+        body: {},
+      } as unknown as express.Request,
+      res
+    );
+
+    expect(capturedStatus()).toBe(409);
+    expect(capturedJson()).toMatchObject({ code: 'workspace_gone' });
   });
 });
 
@@ -2461,6 +2555,12 @@ describe('UploadService.restartClaudeJob — replays the PDF-image-fallback flag
       path.join(workspaceDir, 'scan.pdf.html'),
       '<html><body><img src="scan.pdf/page-1.png" /></body></html>'
     );
+    const pageImagesDir = path.join(workspaceDir, 'scan.pdf');
+    fs.mkdirSync(pageImagesDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(pageImagesDir, 'page-1.png'),
+      Buffer.from('png')
+    );
   });
 
   afterEach(async () => {
@@ -2589,7 +2689,7 @@ describe('UploadService.restartClaudeJob — replays the PDF-image-fallback flag
 
     const args = await restartAndWaitForGenerate();
 
-    expect(args[1]).toEqual([]);
+    expect(args[1]).toEqual(['page-1.png']);
   });
 });
 

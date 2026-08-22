@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-22-restart-guard",
+  "date": "2026-08-22",
+  "type": "fix",
+  "title": "Restarting a failed conversion tells you when retrying can't help and what to do instead"
+}

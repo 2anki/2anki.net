@@ -395,7 +395,23 @@ export class Backend {
   }
 
   async restartClaudeJob(jobId: string) {
-    return post(`${this.baseURL}upload/jobs/${jobId}/restart`, {});
+    const response = await post(
+      `${this.baseURL}upload/jobs/${jobId}/restart`,
+      {}
+    );
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+      };
+      const error = new Error(
+        body.error ?? `Restart failed with status ${response.status}`
+      ) as Error & { status?: number; code?: string };
+      error.status = response.status;
+      error.code = body.code;
+      throw error;
+    }
+    return response;
   }
 
   async convert(

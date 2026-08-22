@@ -490,7 +490,8 @@
       "remove": "Retirer",
       "removeNamed": "Retirer {{name}}",
       "restart": "Redémarrer",
-      "restartJob": "Redémarrer la tâche"
+      "restartJob": "Redémarrer la tâche",
+      "restarting": "Redémarrage en cours"
     },
     "toggle": {
       "collapseLimit": "Réduire les détails de la limite mensuelle",
@@ -501,7 +502,10 @@
       "showNote": "Afficher la note de conversion",
       "collapseImageNote": "Réduire la note sur les images",
       "showImageNote": "Afficher la note sur les images"
-    }
+    },
+    "restartExhausted": "Le redémarrage n'a rien changé — la conversion échoue toujours de la même façon. Téléverse à nouveau le fichier pour repartir de zéro.",
+    "restartUploadAgain": "Téléverser à nouveau",
+    "workspaceExpired": "Nous ne conservons les fichiers téléversés que 2 heures, celui-ci a donc expiré. Téléverse-le à nouveau pour le convertir."
   },
   "status": {
     "generating": "Génération des cartes ({{current}} / {{total}})",

@@ -7,6 +7,8 @@ import { UserNotice } from '../../../lib/errors/UserNotice';
 import { JobsId } from '../../../schemas/public/Jobs';
 import JobResponse from '../../../schemas/public/JobResponse';
 
+vi.mock('../../../lib/analytics/track', () => ({ track: vi.fn() }));
+
 function makeMockBackend(): Backend {
   return {
     getJobs: vi.fn().mockResolvedValue([]),
@@ -180,5 +182,117 @@ describe('useJobs warmup window', () => {
     );
     const lastIntervalMs = callsWithMs[callsWithMs.length - 1]?.[1];
     expect(lastIntervalMs).toBe(10000);
+  });
+});
+
+describe('useJobs restart guard', () => {
+  function failedClaudeJob(reason: string): JobResponse {
+    return {
+      id: 11,
+      type: 'claude',
+      object_id: 'obj-1',
+      status: 'failed',
+      title: 'Deck',
+      job_reason_failure: reason,
+      restartable: true,
+    } as unknown as JobResponse;
+  }
+
+  function taggedError(status: number, code: string): Error {
+    const error = new Error(code) as Error & { status?: number; code?: string };
+    error.status = status;
+    error.code = code;
+    return error;
+  }
+
+  it('marks the job expired on a workspace_gone 409 without raising an error', async () => {
+    const backend = makeMockBackend();
+    (
+      backend.restartClaudeJob as ReturnType<typeof vi.fn>
+    ).mockRejectedValueOnce(taggedError(409, 'workspace_gone'));
+    const setError = vi.fn();
+    const { result } = renderHook(() => useJobs(backend, setError));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await result.current.restartJob(failedClaudeJob('boom'));
+    });
+
+    expect(setError).not.toHaveBeenCalled();
+    expect(result.current.restartUi['obj-1']).toMatchObject({
+      expired: true,
+      inFlight: false,
+    });
+  });
+
+  it('sends only one restart when the button is hammered before the first resolves', async () => {
+    const backend = makeMockBackend();
+    let release: () => void = () => {};
+    (backend.restartClaudeJob as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        release = resolve;
+      })
+    );
+    const setError = vi.fn();
+    const { result } = renderHook(() => useJobs(backend, setError));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const job = failedClaudeJob('boom');
+    await act(async () => {
+      const first = result.current.restartJob(job);
+      const second = result.current.restartJob(job);
+      const third = result.current.restartJob(job);
+      release();
+      await Promise.all([first, second, third]);
+    });
+
+    expect(backend.restartClaudeJob).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks the job exhausted when a restart fails again with the same reason', async () => {
+    const backend = makeMockBackend();
+    const job = failedClaudeJob('same reason');
+    (backend.getJobs as ReturnType<typeof vi.fn>).mockResolvedValue([job]);
+    (backend.restartClaudeJob as ReturnType<typeof vi.fn>).mockResolvedValue(
+      {}
+    );
+    const setError = vi.fn();
+    const { result } = renderHook(() => useJobs(backend, setError));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await result.current.restartJob(job);
+    });
+
+    expect(result.current.restartUi['obj-1']).toMatchObject({
+      exhausted: true,
+    });
+  });
+
+  it('keeps the restart button when the retry fails with a different reason', async () => {
+    const backend = makeMockBackend();
+    const before = failedClaudeJob('first reason');
+    const after = failedClaudeJob('second reason');
+    (backend.getJobs as ReturnType<typeof vi.fn>).mockResolvedValue([after]);
+    (backend.restartClaudeJob as ReturnType<typeof vi.fn>).mockResolvedValue(
+      {}
+    );
+    const setError = vi.fn();
+    const { result } = renderHook(() => useJobs(backend, setError));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await result.current.restartJob(before);
+    });
+
+    expect(result.current.restartUi['obj-1']?.exhausted).not.toBe(true);
   });
 });
