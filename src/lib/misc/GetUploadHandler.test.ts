@@ -77,6 +77,41 @@ describe('withNormalizedFilenames', () => {
     expect(file.buffer).toEqual(Buffer.from('disk-bytes'));
   });
 
+  it('skips the snapshot entirely when the request already aborted', () => {
+    fs.rmSync(tmpPath); // multer 2.x removes temp files when the client aborts
+    const file = makeDiskFile(tmpPath);
+    const req = {
+      files: [file],
+      aborted: true,
+    } as unknown as express.Request;
+    const res = {} as express.Response;
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const wrapped = withNormalizedFilenames((_req, _res, next) => next());
+
+    const callback = jest.fn();
+    wrapped(req, res, callback);
+
+    expect(callback).toHaveBeenCalledWith();
+    expect(file.buffer).toBeUndefined();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('skips the snapshot when the response is already finished', () => {
+    fs.rmSync(tmpPath);
+    const file = makeDiskFile(tmpPath);
+    const { req } = makeReqRes([file]);
+    const res = { writableEnded: true } as unknown as express.Response;
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const wrapped = withNormalizedFilenames((_req, _res, next) => next());
+
+    wrapped(req, res, jest.fn());
+
+    expect(file.buffer).toBeUndefined();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it('forwards multer errors without snapshotting', () => {
     const file = makeDiskFile(tmpPath);
     const { req, res } = makeReqRes([file]);

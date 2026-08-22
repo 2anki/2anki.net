@@ -28,16 +28,25 @@ export function withNormalizedFilenames(
         callback(error);
         return;
       }
+      // A dead request has nothing to convert, and multer 2.x has already
+      // removed its temp files — snapshotting would only ENOENT-spam the log
+      // once per file (#4173).
+      const requestDead =
+        req.aborted || req.destroyed || res.writableEnded || res.destroyed;
       const files = req.files as UploadedFile[] | undefined;
       if (files) {
         for (const file of files) {
           file.originalname = decodeMultipartFilename(file.originalname);
         }
-        ensureUploadBytes(files);
+        if (!requestDead) {
+          ensureUploadBytes(files);
+        }
       }
       if (req.file) {
         req.file.originalname = decodeMultipartFilename(req.file.originalname);
-        ensureUploadBytes([req.file as UploadedFile]);
+        if (!requestDead) {
+          ensureUploadBytes([req.file as UploadedFile]);
+        }
       }
       callback();
     });

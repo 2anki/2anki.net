@@ -21,19 +21,26 @@ import { UploadedFile } from '../../lib/storage/types';
 export const SNAPSHOT_MAX_BYTES = 64 * 1024 * 1024;
 
 export function ensureUploadBytes(files: UploadedFile[]): void {
+  const unreadable: { file: string; error: string }[] = [];
   for (const file of files) {
     if (file.buffer != null || !file.path) continue;
     if (file.size > SNAPSHOT_MAX_BYTES) continue;
     try {
       file.buffer = fs.readFileSync(file.path);
     } catch (error) {
-      // The file is already gone or unreadable at request time (rare). Leave the
+      // The file is already gone or unreadable at request time. Leave the
       // buffer unset; the worker surfaces its own clear error if the disk read
       // also fails by the time it runs.
-      console.warn('[upload] could not snapshot upload bytes', {
-        file: path.basename(file.path),
-        error: String(error),
-      });
+      unreadable.push({ file: path.basename(file.path), error: String(error) });
     }
+  }
+  if (unreadable.length > 0) {
+    // One line per request, not per file: an aborted multi-file upload used to
+    // dump 4 log lines for each of its dozens of vanished temp files (#4173).
+    console.warn('[upload] could not snapshot upload bytes', {
+      count: unreadable.length,
+      firstFile: unreadable[0].file,
+      firstError: unreadable[0].error,
+    });
   }
 }

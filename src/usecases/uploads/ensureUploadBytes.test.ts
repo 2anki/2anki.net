@@ -72,4 +72,26 @@ describe('ensureUploadBytes', () => {
     expect(() => ensureUploadBytes([file])).not.toThrow();
     expect(file.buffer).toBeUndefined();
   });
+
+  it('collapses a batch of unreadable files into a single warn', () => {
+    fs.rmSync(tmpPath);
+    const gone = path.join(path.dirname(tmpPath), 'gone-too.bin');
+    const files = [
+      makeFile({ path: tmpPath }),
+      makeFile({ path: gone, originalname: 'other.html' }),
+    ];
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    ensureUploadBytes(files);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      '[upload] could not snapshot upload bytes',
+      expect.objectContaining({
+        count: 2,
+        firstFile: path.basename(tmpPath),
+      })
+    );
+    warn.mockRestore();
+  });
 });
