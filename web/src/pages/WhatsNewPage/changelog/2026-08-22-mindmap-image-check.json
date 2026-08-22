@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-22-mindmap-image-check",
+  "date": "2026-08-22",
+  "type": "fix",
+  "title": "Mindmap image uploads verify the file is really a PNG, JPEG, GIF, or WebP before saving"
+}

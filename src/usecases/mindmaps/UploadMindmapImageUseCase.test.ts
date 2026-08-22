@@ -36,7 +36,7 @@ describe('UploadMindmapImageUseCase', () => {
     const result = await useCase.execute({
       userId: '42',
       mapId: 'map-1',
-      file: { buffer: TINY_PNG, mimetype: 'image/png', size: TINY_PNG.length },
+      file: { buffer: TINY_PNG, size: TINY_PNG.length },
     });
 
     expect(result.s3Key).toMatch(/^mindmaps\/42\/map-1\/.+\.png$/);
@@ -57,11 +57,7 @@ describe('UploadMindmapImageUseCase', () => {
       useCase.execute({
         userId: '42',
         mapId: 'map-1',
-        file: {
-          buffer: svgBuf,
-          mimetype: 'image/svg+xml',
-          size: svgBuf.length,
-        },
+        file: { buffer: svgBuf, size: svgBuf.length },
       })
     ).rejects.toBeInstanceOf(MindmapImageTypeError);
 
@@ -77,7 +73,7 @@ describe('UploadMindmapImageUseCase', () => {
       useCase.execute({
         userId: '42',
         mapId: 'map-1',
-        file: { buffer: big, mimetype: 'image/png', size: big.length },
+        file: { buffer: big, size: big.length },
       })
     ).rejects.toBeInstanceOf(MindmapImageTooLargeError);
 
@@ -91,9 +87,38 @@ describe('UploadMindmapImageUseCase', () => {
     const result = await useCase.execute({
       userId: '7',
       mapId: 'abc',
-      file: { buffer: TINY_PNG, mimetype: 'image/jpeg', size: TINY_PNG.length },
+      file: { buffer: TINY_PNG, size: TINY_PNG.length },
     });
 
-    expect(result.s3Key).toMatch(/^mindmaps\/7\/abc\/.+\.jpg$/);
+    expect(result.s3Key).toMatch(/^mindmaps\/7\/abc\/.+\.png$/);
+  });
+
+  it('rejects a non-image payload regardless of the declared content type', async () => {
+    const storage = makeStorage();
+    const useCase = new UploadMindmapImageUseCase(storage);
+    const icns = Buffer.concat([Buffer.from('icns'), Buffer.alloc(64, 0x01)]);
+
+    await expect(
+      useCase.execute({
+        userId: '42',
+        mapId: 'map-1',
+        file: { buffer: icns, size: icns.length },
+      })
+    ).rejects.toBeInstanceOf(MindmapImageTypeError);
+
+    expect(storage.uploadFile).not.toHaveBeenCalled();
+  });
+
+  it('derives the stored extension from the detected type, not a claim', async () => {
+    const storage = makeStorage();
+    const useCase = new UploadMindmapImageUseCase(storage);
+
+    const result = await useCase.execute({
+      userId: '42',
+      mapId: 'map-1',
+      file: { buffer: TINY_PNG, size: TINY_PNG.length },
+    });
+
+    expect(result.s3Key).toMatch(/\.png$/);
   });
 });

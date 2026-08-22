@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import imageSize from 'image-size';
 
 import StorageHandler from '../../lib/storage/StorageHandler';
+import { detectFileMime } from '../../lib/detectFileMime';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set([
@@ -31,7 +32,6 @@ interface UploadInput {
   mapId: string;
   file: {
     buffer: Buffer;
-    mimetype: string;
     size: number;
   };
 }
@@ -49,15 +49,16 @@ export class UploadMindmapImageUseCase {
   async execute(input: UploadInput): Promise<MindmapImageResult> {
     const { userId, mapId, file } = input;
 
-    if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
-      throw new MindmapImageTypeError();
-    }
-
     if (file.size > MAX_IMAGE_BYTES) {
       throw new MindmapImageTooLargeError();
     }
 
-    const ext = this.extensionFor(file.mimetype);
+    const detectedType = detectFileMime(file.buffer);
+    if (detectedType == null || !ALLOWED_MIME_TYPES.has(detectedType)) {
+      throw new MindmapImageTypeError();
+    }
+
+    const ext = this.extensionFor(detectedType);
     const s3Key = `mindmaps/${userId}/${mapId}/${randomUUID()}${ext}`;
 
     await this.storage.uploadFile(s3Key, file.buffer);
