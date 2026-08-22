@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-22-one-page-pdf",
+  "date": "2026-08-22",
+  "type": "fix",
+  "title": "One-page PDFs convert to a deck instead of failing, and PDFs with an odd page count keep their last page"
+}

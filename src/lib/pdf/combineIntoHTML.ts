@@ -14,16 +14,17 @@ export function combineIntoHTML(
 <html>
 <head><title>${title}</title></head>
 <body>
-  ${Array.from({ length: imagePaths.length / 2 }, (_, i) => {
+  ${Array.from({ length: Math.ceil(imagePaths.length / 2) }, (_, i) => {
     const front = toSrc(imagePaths[i * 2]);
-    const back = toSrc(imagePaths[i * 2 + 1]);
+    const backPath = imagePaths[i * 2 + 1];
+    const back =
+      backPath == null ? '' : `\n        <img src="${toSrc(backPath)}" />`;
     return `<ul class="toggle">
     <li>
       <details>
         <summary>
         <img src="${front}" />
-        </summary>
-        <img src="${back}" />
+        </summary>${back}
       </details>
     </li>
     </ul>`;
