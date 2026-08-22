@@ -22,7 +22,7 @@ import { StructureRescuedNotice } from '../../../DownloadsPage/components/Struct
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
-import { useDrag } from './hooks/useDrag';
+import { useDrag } from '../../../../lib/hooks/useDrag';
 import { useUploadFormState } from './hooks/useUploadFormState';
 import { useFileValidation } from './hooks/useFileValidation';
 import { useDropboxChooser, type DropboxFile } from './hooks/useDropboxChooser';
