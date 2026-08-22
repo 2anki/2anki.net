@@ -208,7 +208,7 @@ export class MindmapController {
       const result = await useCase.execute({
         userId,
         mapId,
-        file: { buffer: file.buffer, mimetype: file.mimetype, size: file.size },
+        file: { buffer: file.buffer, size: file.size },
       });
       res.status(201).json({
         url: result.presignedUrl,
