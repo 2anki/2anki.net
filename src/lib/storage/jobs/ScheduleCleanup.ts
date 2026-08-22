@@ -6,16 +6,18 @@ import deleteOldUploads, {
 } from './helpers/deleteOldUploads';
 import { runFileSystemCleanup } from './helpers/runFileSystemCleanup';
 
-export const ScheduleCleanup = (db: Knex) => {
-  setInterval(() => {
+export const ScheduleCleanup = (db: Knex): NodeJS.Timeout[] => {
+  const fileSystemCleanup = setInterval(() => {
     runFileSystemCleanup(db).catch(console.error);
   }, MS_21);
 
-  setInterval(
+  const oldUploadDeletion = setInterval(
     () =>
       deleteOldUploads(db)
         .then(() => console.info('deleted old uploads'))
         .catch(console.error),
     MS_24_HOURS
   );
+
+  return [fileSystemCleanup, oldUploadDeletion];
 };

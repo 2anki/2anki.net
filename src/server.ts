@@ -110,6 +110,7 @@ import StorageHandler from './lib/storage/StorageHandler';
 import { UserDeletionService } from './services/UserDeletionService';
 import SuppressionEventsRepository from './data_layer/SuppressionEventsRepository';
 import { initConversionPool } from './lib/conversionPool';
+import { registerSchedulerTimer } from './lib/scheduling/timerRegistry';
 import { gracefulShutdown } from './lib/gracefulShutdown';
 
 function registerSignalHandlers(server: http.Server, database: Knex) {
@@ -314,9 +315,11 @@ const serve = async () => {
   const emailService = getDefaultEmailService();
   scheduleReEngagementEmails(reEngagementRepo, emailService, eventsSink, {
     lastRunAt: () => eventsRepo.lastEventAt('email_batch_sent', 'reengagement'),
-  }).catch((error) => {
-    console.error('[re-engagement] failed to schedule:', error);
-  });
+  })
+    .then(registerSchedulerTimer)
+    .catch((error) => {
+      console.error('[re-engagement] failed to schedule:', error);
+    });
 
   const inactivityEmailRepo = new InactivityEmailRepository(database);
   const uploadRepo = new UploadRepository(database);
@@ -328,9 +331,11 @@ const serve = async () => {
   scheduleInactivityWarnings(sendInactivityWarningsUseCase, {
     eventsSink,
     lastRunAt: () => eventsRepo.lastEventAt('email_batch_sent', 'inactivity'),
-  }).catch((error) => {
-    console.error('[inactivity-warnings] failed to schedule:', error);
-  });
+  })
+    .then(registerSchedulerTimer)
+    .catch((error) => {
+      console.error('[inactivity-warnings] failed to schedule:', error);
+    });
 
   const pauseResumeWarningRepo = new PauseResumeWarningRepository(database);
   const sendPauseResumeWarningsUseCase = new SendPauseResumeWarningsUseCase(
@@ -340,9 +345,11 @@ const serve = async () => {
   schedulePauseResumeWarnings(sendPauseResumeWarningsUseCase, {
     eventsSink,
     lastRunAt: () => eventsRepo.lastEventAt('email_batch_sent', 'pause_resume'),
-  }).catch((error) => {
-    console.error('[pause-resume-warnings] failed to schedule:', error);
-  });
+  })
+    .then(registerSchedulerTimer)
+    .catch((error) => {
+      console.error('[pause-resume-warnings] failed to schedule:', error);
+    });
 
   const deleteInactiveUsersUseCase = new DeleteInactiveUsersUseCase(
     inactivityEmailRepo,
@@ -355,21 +362,27 @@ const serve = async () => {
   scheduleInactiveUserDeletions(deleteInactiveUsersUseCase, {
     eventsSink,
     lastRunAt: () => eventsRepo.lastEventAt('inactive_users_deleted'),
-  }).catch((error) => {
-    console.error('[inactivity-deletions] failed to schedule:', error);
-  });
+  })
+    .then(registerSchedulerTimer)
+    .catch((error) => {
+      console.error('[inactivity-deletions] failed to schedule:', error);
+    });
 
-  scheduleParserCanary(emailService);
+  registerSchedulerTimer(scheduleParserCanary(emailService));
 
-  scheduleExportDriftCanary(emailService);
+  registerSchedulerTimer(scheduleExportDriftCanary(emailService));
 
-  scheduleObservabilityCleanup(new ObservabilityRepository(database));
+  registerSchedulerTimer(
+    scheduleObservabilityCleanup(new ObservabilityRepository(database))
+  );
 
-  scheduleMcpOAuthReaper({
-    authorizationCodes: new McpAuthorizationCodeRepository(database),
-    tokens: new McpTokenRepository(database),
-    clients: new McpOAuthClientRepository(database),
-  });
+  registerSchedulerTimer(
+    scheduleMcpOAuthReaper({
+      authorizationCodes: new McpAuthorizationCodeRepository(database),
+      tokens: new McpTokenRepository(database),
+      clients: new McpOAuthClientRepository(database),
+    })
+  );
 
   if (process.env.INSTANCE_ID === 'singapore') {
     console.info(
@@ -377,7 +390,7 @@ const serve = async () => {
     );
   } else {
     try {
-      ScheduleCleanup(database);
+      ScheduleCleanup(database).forEach(registerSchedulerTimer);
     } catch (error) {
       console.error('[fs-cleanup] failed to schedule:', error);
     }
