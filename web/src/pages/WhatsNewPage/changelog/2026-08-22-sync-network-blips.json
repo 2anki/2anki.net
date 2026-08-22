@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-22-sync-network-blips",
+  "date": "2026-08-22",
+  "type": "fix",
+  "title": "Auto-Sync rides out brief network blips instead of showing a failed check for five minutes"
+}

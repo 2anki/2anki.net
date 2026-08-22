@@ -48,7 +48,7 @@ function isRetryableAxiosError(error: unknown): boolean {
   return RETRYABLE_HTTP_STATUSES.has(error.response.status);
 }
 
-function isRetryable(error: unknown): boolean {
+function isRetryable(error: unknown, depth = 0): boolean {
   if (error instanceof APIResponseError) {
     return RETRYABLE_NOTION_CODES.has(error.code);
   }
@@ -64,6 +64,13 @@ function isRetryable(error: unknown): boolean {
   const code = (error as { code?: string })?.code;
   if (typeof code === 'string' && RETRYABLE_NETWORK_CODES.has(code)) {
     return true;
+  }
+  // Node's native fetch reports undici failures as a generic
+  // TypeError('fetch failed') with the real code on `cause` — a connect
+  // timeout sat unretried here for exactly that reason (#4175).
+  const cause = (error as { cause?: unknown })?.cause;
+  if (cause != null && depth < 2) {
+    return isRetryable(cause, depth + 1);
   }
   return false;
 }

@@ -78,6 +78,37 @@ describe('withRetry', () => {
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
+  it('retries when the retryable code hides in error.cause (undici fetch failed)', async () => {
+    // Node's native fetch wraps undici connect timeouts as a generic
+    // TypeError('fetch failed') with the real code on `cause`.
+    const fetchFailed = new TypeError('fetch failed') as TypeError & {
+      cause?: unknown;
+    };
+    fetchFailed.cause = Object.assign(new Error('Connect Timeout Error'), {
+      code: 'UND_ERR_CONNECT_TIMEOUT',
+    });
+    const fn = jest
+      .fn()
+      .mockRejectedValueOnce(fetchFailed)
+      .mockResolvedValueOnce('ok');
+    await withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 });
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry when neither the error nor its cause is retryable', async () => {
+    const fetchFailed = new TypeError('fetch failed') as TypeError & {
+      cause?: unknown;
+    };
+    fetchFailed.cause = Object.assign(new Error('certificate error'), {
+      code: 'CERT_HAS_EXPIRED',
+    });
+    const fn = jest.fn().mockRejectedValue(fetchFailed);
+    await expect(
+      withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })
+    ).rejects.toBe(fetchFailed);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
   it('retries on a 502 bad gateway (UnknownHTTPResponseError)', async () => {
     const fn = jest
       .fn()
