@@ -8,6 +8,7 @@ This checkout (`2anki/server`) is the backend + web app. The **native iOS app is
 
 - **Native app / ASO / App Store listing / store metadata / StoreKit / Swift** → `2anki.app` repo and **its** agents (they have the app, the current listing, the screenshots, the feature set in front of them). Do NOT draft ASO or store copy from this server checkout — it's context-poor and the metadata PR lands over there.
 - **Backend, web app, conversion pipeline, Notion/Stripe/Claude integrations, funnel instrumentation** → here in `2anki/server`.
+- **Legacy sibling `2anki/csv-to-apkg`** (npm lib, local checkout at `../csv-to-apkg`): the server no longer uses it — CSV parses in-repo (`src/lib/parser/experimental/FallbackParser.ts`, `src/lib/csv/`) and apkg generation uses the vendored `create_deck/`. The `@2anki/csv-to-apkg` entry in `package.json` has zero imports and is safe to drop. The standalone lib still reads this repo's `src/templates/` at runtime when used on its own.
 
 A strategy issue may be *filed* in `2anki/server` for tracking (e.g. #3582 ASO, #3688 native) while the *work* executes in `2anki.app` — create/mirror the actionable issue in `2anki.app` and cross-link (`2anki/server#NNNN`). Open app issues with `gh issue create --repo Laer-Smart/2anki.app`.
 
