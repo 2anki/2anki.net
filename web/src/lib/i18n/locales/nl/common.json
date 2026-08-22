@@ -490,7 +490,8 @@
       "remove": "Verwijderen",
       "removeNamed": "{{name}} verwijderen",
       "restart": "Opnieuw starten",
-      "restartJob": "Taak opnieuw starten"
+      "restartJob": "Taak opnieuw starten",
+      "restarting": "Opnieuw starten"
     },
     "toggle": {
       "collapseLimit": "Details maandlimiet inklappen",
@@ -501,7 +502,11 @@
       "showNote": "Conversienotitie tonen",
       "collapseImageNote": "Afbeeldingsnotitie inklappen",
       "showImageNote": "Afbeeldingsnotitie tonen"
-    }
+    },
+    "restartExhausted": "Opnieuw starten hielp niet — het blijft op dezelfde manier mislukken. Upload het bestand opnieuw om overnieuw te beginnen.",
+    "restartUploadAgain": "Opnieuw uploaden",
+    "workspaceExpired": "We bewaren geüploade bestanden maar 2 uur, dus dit bestand is verlopen. Upload het opnieuw om het te converteren.",
+    "emailSupport": "Mail de support"
   },
   "status": {
     "generating": "Flashcards genereren ({{current}} / {{total}})",

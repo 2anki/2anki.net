@@ -341,10 +341,8 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
   const backend = get2ankiApi();
   const { deleteUpload, loading, uploads, error, refreshUploads } =
     useUploads(backend);
-  const { jobs, deleteJob, restartJob, refreshJobs, lastFetchedAt } = useJobs(
-    backend,
-    setError
-  );
+  const { jobs, deleteJob, restartJob, refreshJobs, lastFetchedAt, restartUi } =
+    useJobs(backend, setError);
   const { uploads: dropboxUploads, deleteUpload: deleteDropboxUpload } =
     useDropboxUploads(backend);
   const { uploads: googleDriveUploads, deleteUpload: deleteGoogleDriveUpload } =
@@ -837,6 +835,10 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                         )}
                                       {isFailed &&
                                         row.job.restartable &&
+                                        !restartUi[row.job.object_id]
+                                          ?.exhausted &&
+                                        !restartUi[row.job.object_id]
+                                          ?.expired &&
                                         !isNotionTokenExpired(
                                           row.source,
                                           row.job.job_reason_failure
@@ -845,12 +847,28 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                             type="button"
                                             onClick={() => restartJob(row.job)}
                                             className={styles.iconButton}
-                                            aria-label={t(
-                                              'downloads.actions.restartJob'
-                                            )}
-                                            title={t(
-                                              'downloads.actions.restart'
-                                            )}
+                                            disabled={
+                                              restartUi[row.job.object_id]
+                                                ?.inFlight
+                                            }
+                                            aria-label={
+                                              restartUi[row.job.object_id]
+                                                ?.inFlight
+                                                ? t(
+                                                    'downloads.actions.restarting'
+                                                  )
+                                                : t(
+                                                    'downloads.actions.restartJob'
+                                                  )
+                                            }
+                                            title={
+                                              restartUi[row.job.object_id]
+                                                ?.inFlight
+                                                ? t(
+                                                    'downloads.actions.restarting'
+                                                  )
+                                                : t('downloads.actions.restart')
+                                            }
                                           >
                                             ↺
                                           </button>
@@ -888,6 +906,36 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                   </div>
                                 </td>
                               </tr>
+                              {isFailed &&
+                                (restartUi[row.job.object_id]?.exhausted ||
+                                  restartUi[row.job.object_id]?.expired) && (
+                                  <tr key={`job-${row.job.id}-restart-notice`}>
+                                    <td
+                                      colSpan={4}
+                                      className={styles.failurePanel}
+                                    >
+                                      {restartUi[row.job.object_id]?.expired
+                                        ? t('downloads.workspaceExpired')
+                                        : t('downloads.restartExhausted')}{' '}
+                                      <Link to="/upload">
+                                        {t('downloads.restartUploadAgain')}
+                                      </Link>
+                                      {restartUi[row.job.object_id]
+                                        ?.exhausted && (
+                                        <>
+                                          {' · '}
+                                          <a
+                                            href={`mailto:support@2anki.net?subject=${encodeURIComponent(
+                                              `Conversion keeps failing (job ${row.job.object_id})`
+                                            )}`}
+                                          >
+                                            {t('downloads.emailSupport')}
+                                          </a>
+                                        </>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )}
                               {isFailed &&
                                 (isExpanded ||
                                   isEmptyDeckReason(

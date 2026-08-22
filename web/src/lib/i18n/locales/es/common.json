@@ -490,7 +490,8 @@
       "remove": "Quitar",
       "removeNamed": "Quitar {{name}}",
       "restart": "Reiniciar",
-      "restartJob": "Reiniciar tarea"
+      "restartJob": "Reiniciar tarea",
+      "restarting": "Reiniciando"
     },
     "toggle": {
       "collapseLimit": "Contraer los detalles del límite mensual",
@@ -501,7 +502,11 @@
       "showNote": "Mostrar la nota de conversión",
       "collapseImageNote": "Contraer la nota de imagen",
       "showImageNote": "Mostrar la nota de imagen"
-    }
+    },
+    "restartExhausted": "Reiniciar no lo arregló: sigue fallando de la misma manera. Sube el archivo de nuevo para empezar de cero.",
+    "restartUploadAgain": "Subir de nuevo",
+    "workspaceExpired": "Solo guardamos los archivos subidos durante 2 horas, así que este ha caducado. Súbelo de nuevo para convertirlo.",
+    "emailSupport": "Escribir a soporte"
   },
   "status": {
     "generating": "Generando tarjetas ({{current}} / {{total}})",

@@ -490,7 +490,8 @@
       "remove": "Remover",
       "removeNamed": "Remover {{name}}",
       "restart": "Reiniciar",
-      "restartJob": "Reiniciar tarefa"
+      "restartJob": "Reiniciar tarefa",
+      "restarting": "Reiniciando"
     },
     "toggle": {
       "collapseLimit": "Recolher detalhes do limite mensal",
@@ -501,7 +502,11 @@
       "showNote": "Mostrar nota da conversão",
       "collapseImageNote": "Recolher nota da imagem",
       "showImageNote": "Mostrar nota da imagem"
-    }
+    },
+    "restartExhausted": "Reiniciar não resolveu — continua falhando do mesmo jeito. Envie o arquivo de novo para começar do zero.",
+    "restartUploadAgain": "Enviar de novo",
+    "workspaceExpired": "Guardamos os arquivos enviados por apenas 2 horas, então este expirou. Envie-o de novo para convertê-lo.",
+    "emailSupport": "Enviar e-mail ao suporte"
   },
   "status": {
     "generating": "Gerando flashcards ({{current}} / {{total}})",
