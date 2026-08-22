@@ -6,7 +6,7 @@ export type ObjectIcon = {
     | null;
 };
 
-export default function getObjectIcon(p?: ObjectIcon): string {
+export default function getObjectIcon(p?: Partial<ObjectIcon>): string {
   switch (p?.icon?.type) {
     case 'emoji':
       return p.icon.emoji;

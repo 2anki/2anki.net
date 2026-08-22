@@ -1,6 +1,6 @@
 import { getNotionObjectTitle } from 'get-notion-object-title';
 import Cookies from 'universal-cookie';
-import { NotionDatabase, NotionPage } from '../../generated/data-contracts';
+import { NotionResource } from '../interfaces/NotionResource';
 import JobResponse from '../../schemas/public/JobResponse';
 import { JobsId } from '../../schemas/public/Jobs';
 import { cancelPendingSync } from '../data_layer/userPreferencesSync';
@@ -279,12 +279,12 @@ export class Backend {
 
     if (data?.results) {
       return data.results
-        .map((p: NotionDatabase | NotionPage) => {
+        .map((p: NotionResource) => {
           const parentType = (p as { parent?: { type?: string } }).parent?.type;
           return {
             object: p.object,
             title: getNotionObjectTitle(p, { emoji: false }) ?? '',
-            icon: getObjectIcon(p as ObjectIcon),
+            icon: getObjectIcon(p),
             url: getResourceUrl(p),
             id: p.id,
             isFavorite: favorites.some((f) => f.id === p.id),
@@ -447,10 +447,10 @@ export class Backend {
       const favorites = await get(`${this.baseURL}favorite`, {
         redirect: false,
       });
-      return favorites.map((f: NotionDatabase | NotionPage) => ({
+      return favorites.map((f: NotionResource) => ({
         object: f,
         title: getNotionObjectTitle(f, { emoji: false }),
-        icon: getObjectIcon(f as ObjectIcon),
+        icon: getObjectIcon(f),
         url: getResourceUrl(f),
         id: f.id,
         data: f,

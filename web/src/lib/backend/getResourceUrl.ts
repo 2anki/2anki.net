@@ -1,6 +1,6 @@
-import { NotionDatabase, NotionPage } from '../../generated/data-contracts';
+import { NotionResource } from '../interfaces/NotionResource';
 
-export function getResourceUrl(p: NotionDatabase | NotionPage) {
+export function getResourceUrl(p: NotionResource) {
   if ('url' in p) {
     return p.url;
   }
