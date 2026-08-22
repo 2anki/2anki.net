@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-22-synced-block-notice",
+  "date": "2026-08-22",
+  "type": "fix",
+  "title": "Synced blocks whose source page isn't shared with 2anki now show up in the not-connected notice instead of vanishing"
+}
