@@ -1,5 +1,6 @@
 import { scheduleAnkifyPolling } from './scheduleAnkifyPolling';
 import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../../data_layer/ankify/AnkifyNotionSubscriptionsRepository';
+import { NoActiveAnkifyClientError } from '../../../usecases/ankify/SendUploadToRacUseCase';
 import { SyncNotionPageToRacUseCase } from '../../../usecases/ankify/SyncNotionPageToRacUseCase';
 import { AnkifyNotionSubscription } from '../../../entities/ankify';
 
@@ -292,5 +293,67 @@ describe('scheduleAnkifyPolling', () => {
     });
 
     clearInterval(timer);
+  });
+
+  test('mutes a NoActiveAnkifyClientError after one info line per boot', async () => {
+    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const subscriptions = makeSubscriptions();
+    const useCase = makeUseCase();
+
+    const sub = sampleSubscription({ id: 9, notion_page_id: 'no-client' });
+    subscriptions.listEnabled.mockResolvedValue([sub]);
+    subscriptions.findByOwnerAndPageId.mockResolvedValue(sub);
+    useCase.execute.mockRejectedValue(new NoActiveAnkifyClientError());
+
+    const timer = scheduleAnkifyPolling(
+      subscriptions,
+      useCase as unknown as SyncNotionPageToRacUseCase,
+      { intervalMs: 5 }
+    );
+
+    await waitForTick();
+    await waitForTick();
+    await waitForTick();
+
+    expect(useCase.execute.mock.calls.length).toBeGreaterThan(1);
+    expect(errorSpy).not.toHaveBeenCalled();
+    const muteLines = infoSpy.mock.calls.filter(([line]) =>
+      String(line).includes('no active Ankify client; muting')
+    );
+    expect(muteLines).toHaveLength(1);
+
+    clearInterval(timer);
+    infoSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  test('still logs an error for a non-client failure', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const subscriptions = makeSubscriptions();
+    const useCase = makeUseCase();
+
+    const sub = sampleSubscription({ id: 10, notion_page_id: 'broken' });
+    subscriptions.listEnabled.mockResolvedValue([sub]);
+    subscriptions.findByOwnerAndPageId.mockResolvedValue(sub);
+    useCase.execute.mockRejectedValue(new Error('Notion exploded'));
+
+    const timer = scheduleAnkifyPolling(
+      subscriptions,
+      useCase as unknown as SyncNotionPageToRacUseCase,
+      { intervalMs: 5 }
+    );
+
+    await waitForTick();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[ankify-polling] sync failed for subscription 10',
+      expect.any(Error)
+    );
+
+    clearInterval(timer);
+    errorSpy.mockRestore();
+    infoSpy.mockRestore();
   });
 });
