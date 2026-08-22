@@ -15,8 +15,8 @@ import { sendReEngagementEmails } from '../../storage/jobs/helpers/sendReEngagem
 const mockRepo = {} as IReEngagementRepository;
 const mockEmailService = {} as IEmailService;
 
-function makeSink(): jest.Mocked<Pick<EventsSink, 'record'>> {
-  return { record: jest.fn() };
+function makeSink(): jest.Mocked<Pick<EventsSink, 'record' | 'flush'>> {
+  return { record: jest.fn(), flush: jest.fn().mockResolvedValue(undefined) };
 }
 
 describe('scheduleReEngagementEmails', () => {
@@ -159,6 +159,73 @@ describe('scheduleReEngagementEmails', () => {
     );
 
     expect(sendReEngagementEmails).not.toHaveBeenCalled();
+    clearInterval(handle);
+  });
+
+  it('skips the catch-up batch when another instance holds the lock', async () => {
+    const sink = makeSink();
+    const lastRunAt = jest.fn().mockResolvedValue(null);
+    const lock = {
+      runExclusively: jest.fn().mockResolvedValue(false),
+    };
+
+    const handle = await scheduleReEngagementEmails(
+      mockRepo,
+      mockEmailService,
+      sink as unknown as EventsSink,
+      { intervalMs: 1000, lastRunAt, lock }
+    );
+
+    expect(lock.runExclusively).toHaveBeenCalledTimes(1);
+    expect(sendReEngagementEmails).not.toHaveBeenCalled();
+    clearInterval(handle);
+  });
+
+  it('skips the batch when the lock re-check sees a run by another instance', async () => {
+    const sink = makeSink();
+    // Outer check reads overdue; the re-check inside the lock reads a batch
+    // another instance finished moments ago — the blue-green boot race.
+    const lastRunAt = jest
+      .fn()
+      .mockResolvedValueOnce(new Date(Date.now() - 2000))
+      .mockResolvedValueOnce(new Date(Date.now() - 10));
+    const lock = {
+      runExclusively: jest.fn(async (_key: number, fn: () => Promise<void>) => {
+        await fn();
+        return true;
+      }),
+    };
+
+    const handle = await scheduleReEngagementEmails(
+      mockRepo,
+      mockEmailService,
+      sink as unknown as EventsSink,
+      { intervalMs: 1000, lastRunAt, lock }
+    );
+
+    expect(sendReEngagementEmails).not.toHaveBeenCalled();
+    clearInterval(handle);
+  });
+
+  it('sends and flushes events inside the lock when still overdue', async () => {
+    const sink = makeSink();
+    const lastRunAt = jest.fn().mockResolvedValue(null);
+    const lock = {
+      runExclusively: jest.fn(async (_key: number, fn: () => Promise<void>) => {
+        await fn();
+        return true;
+      }),
+    };
+
+    const handle = await scheduleReEngagementEmails(
+      mockRepo,
+      mockEmailService,
+      sink as unknown as EventsSink,
+      { intervalMs: 1000, lastRunAt, lock }
+    );
+
+    expect(sendReEngagementEmails).toHaveBeenCalledTimes(1);
+    expect(sink.flush).toHaveBeenCalledTimes(1);
     clearInterval(handle);
   });
 });

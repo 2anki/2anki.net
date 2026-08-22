@@ -92,6 +92,7 @@ import PauseResumeWarningRepository from './data_layer/PauseResumeWarningReposit
 import { SendPauseResumeWarningsUseCase } from './usecases/ops/SendPauseResumeWarningsUseCase';
 import { scheduleInactiveUserDeletions } from './lib/inactivity/jobs/scheduleInactiveUserDeletions';
 import { EventsRepository } from './data_layer/EventsRepository';
+import { JobLockRepository } from './data_layer/JobLockRepository';
 import { scheduleParserCanary } from './lib/parser/canary/scheduleParserCanary';
 import { scheduleExportDriftCanary } from './lib/parser/canary/scheduleExportDriftCanary';
 import { scheduleObservabilityCleanup } from './lib/observability/jobs/scheduleObservabilityCleanup';
@@ -310,10 +311,12 @@ const serve = async () => {
 
   const eventsSink = getEventsSink();
   const eventsRepo = new EventsRepository(database);
+  const jobLock = new JobLockRepository(database);
   const reEngagementRepo = new ReEngagementRepository(database);
   const emailService = getDefaultEmailService();
   scheduleReEngagementEmails(reEngagementRepo, emailService, eventsSink, {
     lastRunAt: () => eventsRepo.lastEventAt('email_batch_sent', 'reengagement'),
+    lock: jobLock,
   }).catch((error) => {
     console.error('[re-engagement] failed to schedule:', error);
   });
@@ -328,6 +331,7 @@ const serve = async () => {
   scheduleInactivityWarnings(sendInactivityWarningsUseCase, {
     eventsSink,
     lastRunAt: () => eventsRepo.lastEventAt('email_batch_sent', 'inactivity'),
+    lock: jobLock,
   }).catch((error) => {
     console.error('[inactivity-warnings] failed to schedule:', error);
   });
@@ -340,6 +344,7 @@ const serve = async () => {
   schedulePauseResumeWarnings(sendPauseResumeWarningsUseCase, {
     eventsSink,
     lastRunAt: () => eventsRepo.lastEventAt('email_batch_sent', 'pause_resume'),
+    lock: jobLock,
   }).catch((error) => {
     console.error('[pause-resume-warnings] failed to schedule:', error);
   });
@@ -355,6 +360,7 @@ const serve = async () => {
   scheduleInactiveUserDeletions(deleteInactiveUsersUseCase, {
     eventsSink,
     lastRunAt: () => eventsRepo.lastEventAt('inactive_users_deleted'),
+    lock: jobLock,
   }).catch((error) => {
     console.error('[inactivity-deletions] failed to schedule:', error);
   });
