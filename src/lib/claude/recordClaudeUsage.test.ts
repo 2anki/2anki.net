@@ -48,7 +48,7 @@ describe('recordClaudeUsage', () => {
     });
   });
 
-  it('logs a claude-usage line with surface, model, and cost', () => {
+  it('logs a claude-usage line with surface, model, user, and cost', () => {
     recordClaudeUsage({
       surface: 'file_conversion',
       model: 'claude-sonnet-5',
@@ -57,8 +57,21 @@ describe('recordClaudeUsage', () => {
 
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining(
-        '[claude-usage] surface=file_conversion model=claude-sonnet-5 input=100 output=50'
+        '[claude-usage] surface=file_conversion model=claude-sonnet-5 user=anon input=100 output=50'
       )
+    );
+  });
+
+  it('stamps the user id into the log line when provided', () => {
+    recordClaudeUsage({
+      surface: 'conversion',
+      model: 'claude-sonnet-5',
+      usage: { input_tokens: 100, output_tokens: 50 },
+      userId: 21770,
+    });
+
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('user=21770 input=100')
     );
   });
 
