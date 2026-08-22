@@ -14,6 +14,7 @@ import {
 import { CreateJobWorkSpaceUseCase } from '../../../../usecases/jobs/CreateJobWorkSpaceUseCase';
 import { CreateFlashcardsForJobUseCase } from '../../../../usecases/jobs/CreateFlashcardsForJobUseCase';
 import { SetJobFailedUseCase } from '../../../../usecases/jobs/SetJobFailedUseCase';
+import { persistJobFailureWithRetry } from './persistJobFailureWithRetry';
 import { BuildDeckForJobUseCase } from '../../../../usecases/jobs/BuildDeckForJobUseCase';
 import { CompleteJobUseCase } from '../../../../usecases/jobs/CompleteJobUseCase';
 import { NotifyUserUseCase } from '../../../../usecases/jobs/NotifyUserUseCase';
@@ -428,7 +429,9 @@ export default async function performConversion(
       }
     }
     const failedJob = new SetJobFailedUseCase(jobRepository);
-    await failedJob.execute(id, owner, jobFailureReasonFromError(error, id));
+    await persistJobFailureWithRetry(() =>
+      failedJob.execute(id, owner, jobFailureReasonFromError(error, id))
+    );
     trackConversionFailed(owner, anonId, type, resolvedSignupOrigin, {
       reason: jobFailureReasonCode(error),
     });
