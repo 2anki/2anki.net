@@ -23,7 +23,9 @@ import RequirePayingJson from './middleware/RequirePayingJson';
 
 const chatUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024, files: 5 },
+  // fieldSize codifies multer's default: a text field (the chat message)
+  // caps at 1 MB and overflow maps to a clean 413 in ErrorHandler (#4209).
+  limits: { fileSize: 10 * 1024 * 1024, files: 5, fieldSize: 1024 * 1024 },
 });
 
 const ChatRouter = () => {

@@ -260,6 +260,21 @@ describe('makeErrorCaptureMiddleware', () => {
     expect(next).toHaveBeenCalledWith(limitError);
   });
 
+  it('does not record an over-long form field multer error', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const next = makeNext();
+    const fieldError = Object.assign(new Error('Field value too long'), {
+      code: 'LIMIT_FIELD_VALUE',
+      name: 'MulterError',
+    });
+
+    await middleware(fieldError, makeReq('/api/chat/message'), makeRes(), next);
+
+    expect(repo.inserts).toHaveLength(0);
+    expect(next).toHaveBeenCalledWith(fieldError);
+  });
+
   it('does not record a client-abort error', async () => {
     const repo = makeRepository();
     const middleware = makeErrorCaptureMiddleware(repo);
