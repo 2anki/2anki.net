@@ -71,6 +71,9 @@ ${ANKI_MATH_FRAGMENT}
 export const EMPTY_CONTENT_USER_MESSAGE =
   "Claude couldn't find any content to turn into flashcards in this Notion page. The page looks empty or only contains layout elements like buttons or placeholders. Try adding headings with explanations, toggle lists, or question-and-answer text, then convert again.";
 
+export const EMPTY_CONTENT_UPLOAD_MESSAGE =
+  "Claude couldn't find any text to turn into flashcards in this file. This usually means the file is a scan or image-only PDF whose text can't be read, or the document has no study content. Re-export it as a text-based PDF, or upload the original document instead of a scan, then convert again. If the file does have selectable text, email support@2anki.net and we'll take a look.";
+
 export const LARGE_SECTION_USER_MESSAGE =
   "Couldn't finish converting a large section of this page. Try converting a smaller part, or split the page and convert each part separately.";
 
@@ -533,6 +536,13 @@ export class ClaudeLargeSectionError extends Error {
   }
 }
 
+export class EmptyContentError extends Error {
+  constructor(message: string = EMPTY_CONTENT_USER_MESSAGE) {
+    super(message);
+    this.name = 'EmptyContentError';
+  }
+}
+
 export class ImageOnlyContentError extends Error {
   constructor() {
     super(IMAGE_ONLY_USER_MESSAGE);
@@ -770,7 +780,7 @@ export function parseDeckResponse(
         raw
       );
       if (looksLikeEmptyContentExplanation(cleaned)) {
-        throw new Error(EMPTY_CONTENT_USER_MESSAGE);
+        throw new EmptyContentError();
       }
       throw new ClaudeLargeSectionError();
     }

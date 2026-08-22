@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-22-upload-empty-content-copy",
+  "date": "2026-08-22",
+  "type": "fix",
+  "title": "Uploads with no readable text get a clear explanation — scan detection advice instead of Notion instructions"
+}
