@@ -168,6 +168,7 @@ const serve = async () => {
   app.use(noindexNonCanonicalHosts);
   app.use(redirectConvertDuplicates);
 
+  app.use(rejectScannerProbes);
   app.use(morgan('combined') as RequestHandler);
   app.use(requestLoggingMiddleware);
 
@@ -216,7 +217,6 @@ const serve = async () => {
   const database = getDatabase();
   app.use(healthRouter(database));
   app.use(wellKnownRouter());
-  app.use(rejectScannerProbes);
   app.use(defaultRouter());
   const errorEventRepo = new ErrorEventRepository(database);
   app.use(
