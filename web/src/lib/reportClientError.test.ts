@@ -229,26 +229,12 @@ describe('reportClientError', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('skips an Unable to preload CSS chunk error', () => {
-    reportClientError(
-      new Error(
-        'Unable to preload CSS for https://cdn.2anki.net/assets/index-abc123.css'
-      )
-    );
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it('skips the WebKit stale-chunk import failure', () => {
-    reportClientError(new Error('Importing a module script failed.'));
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it('skips the Chromium stale-chunk import failure', () => {
-    reportClientError(
-      new Error(
-        'Failed to fetch dynamically imported module: https://2anki.net/assets/DownloadsPage-abc123.js'
-      )
-    );
+  it.each([
+    'Unable to preload CSS for https://cdn.2anki.net/assets/index-abc123.css',
+    'Importing a module script failed.',
+    'Failed to fetch dynamically imported module: https://2anki.net/assets/DownloadsPage-abc123.js',
+  ])('skips the stale-chunk failure message %s', (message) => {
+    reportClientError(new Error(message));
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
