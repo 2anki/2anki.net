@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import imageSize from 'image-size';
 
 import StorageHandler from '../../lib/storage/StorageHandler';
+import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { detectFileMime } from '../../lib/detectFileMime';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -13,17 +14,19 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/webp',
 ]);
 
-export class MindmapImageTooLargeError extends Error {
+export class MindmapImageTooLargeError extends HttpCodedError {
   constructor() {
-    super('Image exceeds the 5 MB limit');
-    this.name = 'MindmapImageTooLargeError';
+    super('Image exceeds the 5 MB limit', 413, 'too_large');
   }
 }
 
-export class MindmapImageTypeError extends Error {
+export class MindmapImageTypeError extends HttpCodedError {
   constructor() {
-    super('Only PNG, JPEG, GIF, and WebP images are accepted');
-    this.name = 'MindmapImageTypeError';
+    super(
+      'Only PNG, JPEG, GIF, and WebP images are accepted',
+      415,
+      'unsupported_format'
+    );
   }
 }
 

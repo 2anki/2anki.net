@@ -81,9 +81,26 @@ process.env.SKIP_CREATE_DECK = '1';
 
 async function buildServer() {
   const { default: MindmapRouter } = await import('./MindmapRouter');
+  const { default: ErrorHandler } = await import('./middleware/ErrorHandler');
   const app = express();
   app.use(express.json());
   app.use(MindmapRouter());
+  // Mirror the server.ts error funnel so HttpCodedError thrown from use
+  // cases resolves to its status here the same way it does in production.
+  app.use(
+    (
+      err: Error,
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction
+    ) => {
+      if (!err) {
+        next();
+        return;
+      }
+      void ErrorHandler(res, req, err);
+    }
+  );
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, resolve));
   const { port } = server.address() as AddressInfo;
@@ -145,6 +162,11 @@ describe('MindmapRouter', () => {
       });
 
       expect(res.status).toBe(402);
+      const body = await res.json();
+      expect(body).toEqual({
+        code: 'mindmap_limit',
+        message: 'Mind map limit reached (3)',
+      });
     });
   });
 

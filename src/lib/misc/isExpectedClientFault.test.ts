@@ -1,4 +1,5 @@
 import { isExpectedClientFault } from './isExpectedClientFault';
+import { HttpCodedError } from '../errors/HttpCodedError';
 
 describe('isExpectedClientFault', () => {
   it('returns false for undefined', () => {
@@ -43,5 +44,17 @@ describe('isExpectedClientFault', () => {
     expect(isExpectedClientFault(new SyntaxError('thrown by our code'))).toBe(
       false
     );
+  });
+
+  it('returns true for a 4xx HttpCodedError', () => {
+    expect(
+      isExpectedClientFault(new HttpCodedError('limit reached', 402, 'limit'))
+    ).toBe(true);
+  });
+
+  it('returns false for a 5xx HttpCodedError', () => {
+    expect(
+      isExpectedClientFault(new HttpCodedError('upstream down', 503, 'up'))
+    ).toBe(false);
   });
 });
