@@ -505,7 +505,8 @@
     },
     "restartExhausted": "Reiniciar no lo arregló: sigue fallando de la misma manera. Sube el archivo de nuevo para empezar de cero.",
     "restartUploadAgain": "Subir de nuevo",
-    "workspaceExpired": "Solo guardamos los archivos subidos durante 2 horas, así que este ha caducado. Súbelo de nuevo para convertirlo."
+    "workspaceExpired": "Solo guardamos los archivos subidos durante 2 horas, así que este ha caducado. Súbelo de nuevo para convertirlo.",
+    "emailSupport": "Escribir a soporte"
   },
   "status": {
     "generating": "Generando tarjetas ({{current}} / {{total}})",

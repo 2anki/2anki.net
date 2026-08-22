@@ -505,7 +505,8 @@
     },
     "restartExhausted": "Le redémarrage n'a rien changé — la conversion échoue toujours de la même façon. Téléverse à nouveau le fichier pour repartir de zéro.",
     "restartUploadAgain": "Téléverser à nouveau",
-    "workspaceExpired": "Nous ne conservons les fichiers téléversés que 2 heures, celui-ci a donc expiré. Téléverse-le à nouveau pour le convertir."
+    "workspaceExpired": "Nous ne conservons les fichiers téléversés que 2 heures, celui-ci a donc expiré. Téléverse-le à nouveau pour le convertir.",
+    "emailSupport": "Écrire au support"
   },
   "status": {
     "generating": "Génération des cartes ({{current}} / {{total}})",

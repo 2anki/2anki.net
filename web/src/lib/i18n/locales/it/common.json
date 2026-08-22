@@ -505,7 +505,8 @@
     },
     "restartExhausted": "Il riavvio non ha risolto: continua a fallire nello stesso modo. Carica di nuovo il file per ricominciare da capo.",
     "restartUploadAgain": "Carica di nuovo",
-    "workspaceExpired": "Conserviamo i file caricati solo per 2 ore, quindi questo è scaduto. Caricalo di nuovo per convertirlo."
+    "workspaceExpired": "Conserviamo i file caricati solo per 2 ore, quindi questo è scaduto. Caricalo di nuovo per convertirlo.",
+    "emailSupport": "Scrivi al supporto"
   },
   "status": {
     "generating": "Generazione flashcard ({{current}} / {{total}})",

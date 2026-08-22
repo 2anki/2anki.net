@@ -920,6 +920,19 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                       <Link to="/upload">
                                         {t('downloads.restartUploadAgain')}
                                       </Link>
+                                      {restartUi[row.job.object_id]
+                                        ?.exhausted && (
+                                        <>
+                                          {' · '}
+                                          <a
+                                            href={`mailto:support@2anki.net?subject=${encodeURIComponent(
+                                              `Conversion keeps failing (job ${row.job.object_id})`
+                                            )}`}
+                                          >
+                                            {t('downloads.emailSupport')}
+                                          </a>
+                                        </>
+                                      )}
                                     </td>
                                   </tr>
                                 )}

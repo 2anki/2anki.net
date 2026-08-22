@@ -505,7 +505,8 @@
     },
     "restartExhausted": "Restarting didn't fix it — this keeps failing the same way. Upload the file again to start over.",
     "restartUploadAgain": "Upload again",
-    "workspaceExpired": "We only keep uploaded files for 2 hours, so this one has expired. Upload it again to convert it."
+    "workspaceExpired": "We only keep uploaded files for 2 hours, so this one has expired. Upload it again to convert it.",
+    "emailSupport": "Email support"
   },
   "status": {
     "generating": "Generating flashcards ({{current}} / {{total}})",
