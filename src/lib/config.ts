@@ -11,63 +11,35 @@ interface ConfigVarSpec {
   purpose: string;
 }
 
+const FATAL_VARS: ReadonlyArray<[string, string]> = [
+  ['SECRET', 'signs and verifies JWTs'],
+  ['WORKSPACE_BASE', 'root directory for uploads and conversion workspaces'],
+];
+
+const WARN_VARS: ReadonlyArray<[string, string]> = [
+  ['DATABASE_URL', 'Postgres connection; without it every query fails'],
+  ['STRIPE_KEY', 'checkout, subscriptions, and Stripe sync'],
+  ['STRIPE_ENDPOINT_SECRET', 'verifies Stripe webhook signatures'],
+  ['PASS_24H_PRICE_ID', 'day-pass checkout price'],
+  ['PASS_7D_PRICE_ID', 'week-pass checkout price'],
+  ['UNLIMITED_MONTHLY_PRICE_ID', 'legacy monthly price and v2 fallback'],
+  ['UNLIMITED_YEARLY_PRICE_ID', 'legacy annual price and v2 fallback'],
+  ['ANTHROPIC_API_KEY', 'AI card generation, chat assistant, file conversion'],
+  ['SENDGRID_API_KEY', 'transactional and batch email'],
+  ['DOMAIN', 'absolute links in emails and OAuth redirects'],
+];
+
+const toSpec =
+  (level: ConfigVarSpec['level']) =>
+  ([name, purpose]: [string, string]): ConfigVarSpec => ({
+    name,
+    level,
+    purpose,
+  });
+
 export const CONFIG_VARS: readonly ConfigVarSpec[] = [
-  { name: 'SECRET', level: 'fatal', purpose: 'signs and verifies JWTs' },
-  {
-    name: 'WORKSPACE_BASE',
-    level: 'fatal',
-    purpose: 'root directory for uploads and conversion workspaces',
-  },
-  {
-    name: 'DATABASE_URL',
-    level: 'warn',
-    purpose: 'Postgres connection; without it every query fails',
-  },
-  {
-    name: 'STRIPE_KEY',
-    level: 'warn',
-    purpose: 'checkout, subscriptions, and Stripe sync',
-  },
-  {
-    name: 'STRIPE_ENDPOINT_SECRET',
-    level: 'warn',
-    purpose: 'verifies Stripe webhook signatures',
-  },
-  {
-    name: 'PASS_24H_PRICE_ID',
-    level: 'warn',
-    purpose: 'day-pass checkout price',
-  },
-  {
-    name: 'PASS_7D_PRICE_ID',
-    level: 'warn',
-    purpose: 'week-pass checkout price',
-  },
-  {
-    name: 'UNLIMITED_MONTHLY_PRICE_ID',
-    level: 'warn',
-    purpose: 'legacy monthly subscription price and v2 fallback',
-  },
-  {
-    name: 'UNLIMITED_YEARLY_PRICE_ID',
-    level: 'warn',
-    purpose: 'legacy annual subscription price and v2 fallback',
-  },
-  {
-    name: 'ANTHROPIC_API_KEY',
-    level: 'warn',
-    purpose: 'AI card generation, chat assistant, file conversion',
-  },
-  {
-    name: 'SENDGRID_API_KEY',
-    level: 'warn',
-    purpose: 'transactional and batch email',
-  },
-  {
-    name: 'DOMAIN',
-    level: 'warn',
-    purpose: 'absolute links in emails and OAuth redirects',
-  },
+  ...FATAL_VARS.map(toSpec('fatal')),
+  ...WARN_VARS.map(toSpec('warn')),
 ];
 
 export interface ConfigReport {
