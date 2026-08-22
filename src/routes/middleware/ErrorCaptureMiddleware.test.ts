@@ -5,6 +5,7 @@ import {
   ErrorEventInsert,
 } from '../../data_layer/ErrorEventRepository';
 import { FallbackErrorPayload } from '../../lib/errorFallback';
+import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 
 function makeRepository(
@@ -243,6 +244,38 @@ describe('makeErrorCaptureMiddleware', () => {
 
     expect(repo.inserts).toHaveLength(0);
     expect(next).toHaveBeenCalledWith(parseError);
+  });
+
+  it('does not record a 4xx HttpCodedError (deliberate client fault)', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const next = makeNext();
+    const codedError = new HttpCodedError(
+      'Mind map limit reached (3)',
+      402,
+      'mindmap_limit'
+    );
+
+    await middleware(codedError, makeReq('/api/mindmaps'), makeRes(), next);
+
+    expect(repo.inserts).toHaveLength(0);
+    expect(next).toHaveBeenCalledWith(codedError);
+  });
+
+  it('records a 5xx HttpCodedError', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const next = makeNext();
+    const codedError = new HttpCodedError(
+      'Upstream unavailable',
+      503,
+      'upstream'
+    );
+
+    await middleware(codedError, makeReq('/api/mindmaps'), makeRes(), next);
+
+    expect(repo.inserts).toHaveLength(1);
+    expect(next).toHaveBeenCalledWith(codedError);
   });
 
   it('does not record a multer file-size limit error', async () => {

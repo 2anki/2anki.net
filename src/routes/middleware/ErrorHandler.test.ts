@@ -3,6 +3,7 @@ import express from 'express';
 import multer from 'multer';
 
 import ErrorHandler from './ErrorHandler';
+import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 
 const makeAPIResponseError = (
@@ -392,5 +393,45 @@ describe('ErrorHandler', () => {
     await ErrorHandler(res as unknown as express.Response, req, parseError);
 
     expect(res.statusCode).toBe(400);
+  });
+
+  test('a 4xx HttpCodedError responds with its status, code, and message, quietly', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeResponse(false);
+    const req = makeRequest();
+
+    await ErrorHandler(
+      res as unknown as express.Response,
+      req,
+      new HttpCodedError('Mind map limit reached (3)', 402, 'mindmap_limit')
+    );
+
+    expect(res.statusCode).toBe(402);
+    expect(res.body).toEqual({
+      code: 'mindmap_limit',
+      message: 'Mind map limit reached (3)',
+    });
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  test('a 5xx HttpCodedError keeps its status and message and is not quiet', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeResponse(false);
+    const req = makeRequest();
+
+    await ErrorHandler(
+      res as unknown as express.Response,
+      req,
+      new HttpCodedError('Upstream export service unavailable', 503, 'upstream')
+    );
+
+    expect(res.statusCode).toBe(503);
+    expect(res.body).toEqual({
+      code: 'upstream',
+      message: 'Upstream export service unavailable',
+    });
+    expect(errorSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 });

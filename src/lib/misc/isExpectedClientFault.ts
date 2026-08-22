@@ -1,3 +1,5 @@
+import { isHttpCodedClientFault } from '../errors/HttpCodedError';
+
 // Errors that are the client's fault and fully handled by ErrorHandler as a
 // 4xx — not bugs to investigate. Logging a full stack for these floods the
 // server logs and buries real crashes. Mirrors the dashboard skip in
@@ -22,6 +24,9 @@ export const isExpectedClientFault = (error?: Error): boolean => {
     return true;
   }
   if (isClientAbort(error)) {
+    return true;
+  }
+  if (isHttpCodedClientFault(error)) {
     return true;
   }
   return error.name === 'AnkiAppExportError';
