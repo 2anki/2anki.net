@@ -7,7 +7,8 @@ import { VisionMediaType } from './countVisionTokens';
 import { recordClaudeUsage } from './recordClaudeUsage';
 import {
   DeckInfo,
-  EMPTY_CONTENT_USER_MESSAGE,
+  EMPTY_CONTENT_UPLOAD_MESSAGE,
+  EmptyContentError,
   PdfImageFallbackContext,
   expandCompactDeckInfo,
   getAnthropicClient,
@@ -256,7 +257,7 @@ export async function generateDeckInfoFromPdfImages(
     console.warn('[Claude] PDF image fallback: no resolvable page images', {
       mediaBaseDir: context.mediaBaseDir,
     });
-    throw new Error(EMPTY_CONTENT_USER_MESSAGE);
+    throw new EmptyContentError(EMPTY_CONTENT_UPLOAD_MESSAGE);
   }
 
   console.log('[Claude] PDF image fallback: routing pages to vision', {
@@ -289,7 +290,7 @@ export async function generateDeckInfoFromPdfImages(
   });
 
   if (totalCards === 0) {
-    throw new Error(EMPTY_CONTENT_USER_MESSAGE);
+    throw new EmptyContentError(EMPTY_CONTENT_UPLOAD_MESSAGE);
   }
 
   return deckInfo;

@@ -2,6 +2,8 @@ import { APIResponseError, APIErrorCode } from '@notionhq/client';
 import { buildPythonExitError } from '../../lib/anki/buildPythonExitError';
 import {
   ClaudeLargeSectionError,
+  EMPTY_CONTENT_UPLOAD_MESSAGE,
+  EmptyContentError,
   LARGE_SECTION_USER_MESSAGE,
 } from '../../lib/claude/ClaudeService';
 import { CONVERSION_TRUNCATED_MESSAGE } from '../../infrastracture/adapters/fileConversion/claudeFileConversion';
@@ -386,6 +388,18 @@ describe('jobFailureReasonFromError on worker-flattened errors', () => {
         flatten('ClaudeLargeSectionError', LARGE_SECTION_USER_MESSAGE)
       )
     ).toBe(LARGE_SECTION_USER_MESSAGE);
+  });
+
+  it('keeps the empty-content message on a live instance', () => {
+    const error = new EmptyContentError(EMPTY_CONTENT_UPLOAD_MESSAGE);
+    expect(jobFailureReasonFromError(error)).toBe(EMPTY_CONTENT_UPLOAD_MESSAGE);
+    expect(jobFailureReasonCode(error)).toBe('empty_content');
+  });
+
+  it('keeps the empty-content message when the class was flattened', () => {
+    const flat = flatten('EmptyContentError', EMPTY_CONTENT_UPLOAD_MESSAGE);
+    expect(jobFailureReasonFromError(flat)).toBe(EMPTY_CONTENT_UPLOAD_MESSAGE);
+    expect(jobFailureReasonCode(flat)).toBe('empty_content');
   });
 
   it('keeps the python exit message when the class was flattened', () => {

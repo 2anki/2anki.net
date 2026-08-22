@@ -812,6 +812,11 @@ class UploadService {
           docsLink: '/documentation/help/common-problems',
         };
         return res.status(400).json(body);
+      } else if (err instanceof Error && err.name === 'EmptyContentError') {
+        return res.status(400).json({
+          code: 'empty_content',
+          message: err.message,
+        });
       } else if (err instanceof DeckTooLargeError) {
         const body: DeckTooLargeResponse = {
           message:
@@ -1002,6 +1007,7 @@ class UploadService {
           err instanceof EmptyDeckError ||
           err instanceof ClaudeParseError ||
           err instanceof ClaudeLargeSectionError ||
+          (err instanceof Error && err.name === 'EmptyContentError') ||
           (err instanceof FileConversionError &&
             err.message === CONVERSION_TRUNCATED_MESSAGE) ||
           err instanceof ImageOnlyContentError ||

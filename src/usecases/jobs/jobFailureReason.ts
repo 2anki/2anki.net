@@ -1,6 +1,9 @@
 import { APIResponseError, APIErrorCode } from '@notionhq/client';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
-import { ClaudeLargeSectionError } from '../../lib/claude/ClaudeService';
+import {
+  ClaudeLargeSectionError,
+  EmptyContentError,
+} from '../../lib/claude/ClaudeService';
 import {
   CONVERSION_TRUNCATED_MESSAGE,
   FileConversionError,
@@ -87,6 +90,7 @@ export type JobFailureReasonCode =
   | 'pdf_password'
   | 'pdf_unreadable'
   | 'claude_large_section'
+  | 'empty_content'
   | 'unknown';
 
 export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
@@ -97,6 +101,12 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
   }
   if (error instanceof ClaudeLargeSectionError) {
     return 'claude_large_section';
+  }
+  if (
+    error instanceof EmptyContentError ||
+    hasName(error, 'EmptyContentError')
+  ) {
+    return 'empty_content';
   }
   if (hasName(error, 'PythonZeroCardsError')) {
     return 'empty_deck';
@@ -165,6 +175,12 @@ export function jobFailureReasonFromError(
   if (
     error instanceof ClaudeLargeSectionError ||
     hasName(error, 'ClaudeLargeSectionError')
+  ) {
+    return (error as Error).message;
+  }
+  if (
+    error instanceof EmptyContentError ||
+    hasName(error, 'EmptyContentError')
   ) {
     return (error as Error).message;
   }

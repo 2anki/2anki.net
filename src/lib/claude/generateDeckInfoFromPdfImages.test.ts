@@ -7,7 +7,7 @@ import {
   generateDeckInfoFromPdfImages,
 } from './generateDeckInfoFromPdfImages';
 import {
-  EMPTY_CONTENT_USER_MESSAGE,
+  EMPTY_CONTENT_UPLOAD_MESSAGE,
   expandCompactDeckInfo,
 } from './ClaudeService';
 
@@ -140,7 +140,7 @@ describe('generateDeckInfoFromPdfImages', () => {
 
     await expect(
       generateDeckInfoFromPdfImages(html, { mediaBaseDir: baseDir })
-    ).rejects.toThrow(EMPTY_CONTENT_USER_MESSAGE);
+    ).rejects.toThrow(EMPTY_CONTENT_UPLOAD_MESSAGE);
   });
 
   it('keeps cards from readable pages when one page comes back blank', async () => {
@@ -263,7 +263,7 @@ describe('generateDeckInfoFromPdfImages', () => {
 
     await expect(
       generateDeckInfoFromPdfImages(escaping, { mediaBaseDir: baseDir })
-    ).rejects.toThrow(EMPTY_CONTENT_USER_MESSAGE);
+    ).rejects.toThrow(EMPTY_CONTENT_UPLOAD_MESSAGE);
     expect(mockCreateFn).not.toHaveBeenCalled();
   });
 });
