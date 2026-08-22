@@ -534,9 +534,7 @@ export function buildUserContentBlocks(
     strippedContent,
     availableMediaFiles,
     undefined,
-    '',
-    undefined,
-    undefined
+    ''
   );
   const trailing = full.slice(stablePrefix.length);
   const blocks: Array<{
