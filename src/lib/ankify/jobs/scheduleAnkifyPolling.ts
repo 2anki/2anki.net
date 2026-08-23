@@ -1,4 +1,5 @@
 import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../../data_layer/ankify/AnkifyNotionSubscriptionsRepository';
+import { NoActiveAnkifyClientError } from '../../../usecases/ankify/SendUploadToRacUseCase';
 import { SyncNotionPageToRacUseCase } from '../../../usecases/ankify/SyncNotionPageToRacUseCase';
 import { shouldSkipLapsedOfflinePoll } from '../offlineBackoff';
 
@@ -14,6 +15,28 @@ export const scheduleAnkifyPolling = (
 ): NodeJS.Timeout => {
   const intervalMs = options.intervalMs ?? ANKIFY_POLLING_INTERVAL_MS;
   const refreshTopLevelPagesForOwner = options.refreshTopLevelPagesForOwner;
+  // A subscription with no provisioned Anki client fails every 5-minute tick
+  // the same way until someone provisions one — a state, not an incident.
+  // One info line per subscription per boot instead of an error per tick
+  // (#4203: four dead clients were burying real errors in the prod log).
+  const mutedNoClientSubs = new Set<number>();
+
+  const logSyncFailure = (subscriptionId: number, error: unknown): void => {
+    if (!(error instanceof NoActiveAnkifyClientError)) {
+      console.error(
+        `[ankify-polling] sync failed for subscription ${subscriptionId}`,
+        error
+      );
+      return;
+    }
+    if (mutedNoClientSubs.has(subscriptionId)) {
+      return;
+    }
+    mutedNoClientSubs.add(subscriptionId);
+    console.info(
+      `[ankify-polling] subscription ${subscriptionId} has no active Ankify client; muting until next boot`
+    );
+  };
 
   const tick = async (): Promise<number> => {
     let active: Awaited<ReturnType<typeof subscriptions.listEnabled>>;
@@ -43,10 +66,7 @@ export const scheduleAnkifyPolling = (
           trigger: 'polling',
         });
       } catch (error) {
-        console.error(
-          `[ankify-polling] sync failed for subscription ${sub.id}`,
-          error
-        );
+        logSyncFailure(sub.id, error);
       }
       if (refreshTopLevelPagesForOwner && !seenOwners.has(sub.owner)) {
         seenOwners.add(sub.owner);
