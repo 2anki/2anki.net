@@ -3,6 +3,7 @@ import { Client as NotionClient } from '@notionhq/client';
 import Docker from 'dockerode';
 
 import { scheduleAnkifyReaper } from '../lib/ankify/jobs/scheduleAnkifyReaper';
+import { registerSchedulerTimer } from '../lib/scheduling/timerRegistry';
 import { scheduleImportJobReaper } from '../usecases/apkg/scheduleImportJobReaper';
 import JobRepository from '../data_layer/JobRepository';
 import { scheduleAnkifyPolling } from '../lib/ankify/jobs/scheduleAnkifyPolling';
@@ -47,8 +48,8 @@ export const bootstrapBackgroundJobs = async (database: Knex) => {
     new Docker(),
     ankifySessionTokensRepo
   );
-  scheduleAnkifyReaper(ankifyRac);
-  scheduleImportJobReaper(new JobRepository(database));
+  registerSchedulerTimer(scheduleAnkifyReaper(ankifyRac));
+  registerSchedulerTimer(scheduleImportJobReaper(new JobRepository(database)));
 
   const schedulesRepo = new AnkifyExportSchedulesRepository(database);
   const notionRepo = new NotionRepository(database);
@@ -163,7 +164,7 @@ export const bootstrapBackgroundJobs = async (database: Knex) => {
     topLevelPagesRepo,
     blocksCacheRepo
   );
-  scheduleAnkifyPolling(subscriptionsRepo, syncUseCase, {
+  const pollingHandle = scheduleAnkifyPolling(subscriptionsRepo, syncUseCase, {
     refreshTopLevelPagesForOwner: async (owner) => {
       const newest = await topLevelPagesRepo.newestCachedAt(owner);
       if (
@@ -175,5 +176,6 @@ export const bootstrapBackgroundJobs = async (database: Knex) => {
       await notionServiceForRefresh.refreshTopLevelPagesCache(owner);
     },
   });
+  registerSchedulerTimer(pollingHandle);
   console.info('Ankify polling worker scheduled');
 };

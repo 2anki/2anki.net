@@ -4,6 +4,7 @@ import {
   shutdownConversionPool,
   POOL_CLOSE_TIMEOUT_MS,
 } from './conversionPool';
+import { clearSchedulerTimers } from './scheduling/timerRegistry';
 
 // pm2 sends SIGINT then escalates to SIGKILL after kill_timeout
 // (ecosystem.blue-green.config.js). Blue-green puts the new color live before
@@ -42,6 +43,11 @@ export async function gracefulShutdown(
   if (shuttingDown) return;
   shuttingDown = true;
   console.info(`${signal} received — draining HTTP, conversion pool, DB pool`);
+
+  const clearedTimers = clearSchedulerTimers();
+  if (clearedTimers > 0) {
+    console.info(`Cleared ${clearedTimers} scheduler timer(s)`);
+  }
 
   const hardExit = setTimeout(() => {
     console.error(
