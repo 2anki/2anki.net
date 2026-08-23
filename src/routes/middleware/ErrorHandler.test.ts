@@ -382,6 +382,20 @@ describe('ErrorHandler', () => {
     errorSpy.mockRestore();
   });
 
+  test('an over-long form field responds 413 with a friendly message', async () => {
+    const res = makeResponse(false);
+    const req = makeRequest();
+
+    const fieldError = new multer.MulterError('LIMIT_FIELD_VALUE');
+    await ErrorHandler(res as unknown as express.Response, req, fieldError);
+
+    expect(res.statusCode).toBe(413);
+    expect(res.body).toEqual({
+      code: 'too_large',
+      message: 'Message is too long — shorten it and try again.',
+    });
+  });
+
   test('a malformed-JSON body error keeps its 400 and message', async () => {
     const res = makeResponse(false);
     const req = makeRequest();

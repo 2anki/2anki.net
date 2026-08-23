@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-22-chat-message-too-long",
+  "date": "2026-08-22",
+  "type": "fix",
+  "title": "Chat tells you when a message is too long instead of failing with a server error"
+}
