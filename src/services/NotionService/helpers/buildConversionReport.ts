@@ -46,9 +46,9 @@ export function buildConversionReport(
   let omitted = 0;
 
   const push = (entry: ConversionReportEntry) => {
-    // Guards undefined/NaN counters as well as zero — a report entry without
-    // a positive count is noise.
-    if (!(entry.count > 0)) {
+    // A missing counter counts as zero — a report entry without a positive
+    // count is noise.
+    if ((entry.count ?? 0) <= 0) {
       return;
     }
     if (entries.length >= MAX_REPORT_ENTRIES) {
