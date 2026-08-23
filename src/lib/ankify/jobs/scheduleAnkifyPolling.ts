@@ -21,6 +21,23 @@ export const scheduleAnkifyPolling = (
   // (#4203: four dead clients were burying real errors in the prod log).
   const mutedNoClientSubs = new Set<number>();
 
+  const logSyncFailure = (subscriptionId: number, error: unknown): void => {
+    if (!(error instanceof NoActiveAnkifyClientError)) {
+      console.error(
+        `[ankify-polling] sync failed for subscription ${subscriptionId}`,
+        error
+      );
+      return;
+    }
+    if (mutedNoClientSubs.has(subscriptionId)) {
+      return;
+    }
+    mutedNoClientSubs.add(subscriptionId);
+    console.info(
+      `[ankify-polling] subscription ${subscriptionId} has no active Ankify client; muting until next boot`
+    );
+  };
+
   const tick = async (): Promise<number> => {
     let active: Awaited<ReturnType<typeof subscriptions.listEnabled>>;
     try {
@@ -49,19 +66,7 @@ export const scheduleAnkifyPolling = (
           trigger: 'polling',
         });
       } catch (error) {
-        if (error instanceof NoActiveAnkifyClientError) {
-          if (!mutedNoClientSubs.has(sub.id)) {
-            mutedNoClientSubs.add(sub.id);
-            console.info(
-              `[ankify-polling] subscription ${sub.id} has no active Ankify client; muting until next boot`
-            );
-          }
-        } else {
-          console.error(
-            `[ankify-polling] sync failed for subscription ${sub.id}`,
-            error
-          );
-        }
+        logSyncFailure(sub.id, error);
       }
       if (refreshTopLevelPagesForOwner && !seenOwners.has(sub.owner)) {
         seenOwners.add(sub.owner);
