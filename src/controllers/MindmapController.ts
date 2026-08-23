@@ -1,10 +1,7 @@
 import { Request, Response } from 'express';
 
 import StorageHandler from '../lib/storage/StorageHandler';
-import {
-  CreateMindmapUseCase,
-  MindmapLimitError,
-} from '../usecases/mindmaps/CreateMindmapUseCase';
+import { CreateMindmapUseCase } from '../usecases/mindmaps/CreateMindmapUseCase';
 import { UpdateMindmapUseCase } from '../usecases/mindmaps/UpdateMindmapUseCase';
 import { DeleteMindmapUseCase } from '../usecases/mindmaps/DeleteMindmapUseCase';
 import { ListMindmapsUseCase } from '../usecases/mindmaps/ListMindmapsUseCase';
@@ -12,13 +9,8 @@ import { GetMindmapUseCase } from '../usecases/mindmaps/GetMindmapUseCase';
 import {
   ExportMindmapUseCase,
   MindmapCardType,
-  MindmapNotFoundError,
 } from '../usecases/mindmaps/ExportMindmapUseCase';
-import {
-  UploadMindmapImageUseCase,
-  MindmapImageTooLargeError,
-  MindmapImageTypeError,
-} from '../usecases/mindmaps/UploadMindmapImageUseCase';
+import { UploadMindmapImageUseCase } from '../usecases/mindmaps/UploadMindmapImageUseCase';
 import { MindmapsId } from '../data_layer/public/Mindmaps';
 import { UsersId } from '../data_layer/public/Users';
 import {
@@ -88,23 +80,15 @@ export class MindmapController {
       typeof req.body?.title === 'string' ? req.body.title.trim() : '';
     const title = rawTitle.length > 0 ? rawTitle : 'Untitled';
 
-    try {
-      const map = await this.createUseCase.execute({
-        userId,
-        title,
-        user,
-        subscriptions,
-        autoSyncProductId,
-        isPaying,
-      });
-      res.status(201).json(map);
-    } catch (error) {
-      if (error instanceof MindmapLimitError) {
-        res.status(402).json({ message: error.message });
-        return;
-      }
-      throw error;
-    }
+    const map = await this.createUseCase.execute({
+      userId,
+      title,
+      user,
+      subscriptions,
+      autoSyncProductId,
+      isPaying,
+    });
+    res.status(201).json(map);
   }
 
   async getById(req: Request, res: Response) {
@@ -126,29 +110,21 @@ export class MindmapController {
       req.body?.title != null ? String(req.body.title).trim() : undefined;
     const data = req.body?.data ?? undefined;
 
-    try {
-      const map = await this.updateUseCase.execute({
-        id,
-        userId,
-        title,
-        data,
-        user,
-        subscriptions,
-        autoSyncProductId,
-        isPaying,
-      });
-      if (map == null) {
-        res.status(404).json({ message: 'Mind map not found' });
-        return;
-      }
-      res.status(200).json(map);
-    } catch (error) {
-      if (error instanceof MindmapLimitError) {
-        res.status(402).json({ message: error.message });
-        return;
-      }
-      throw error;
+    const map = await this.updateUseCase.execute({
+      id,
+      userId,
+      title,
+      data,
+      user,
+      subscriptions,
+      autoSyncProductId,
+      isPaying,
+    });
+    if (map == null) {
+      res.status(404).json({ message: 'Mind map not found' });
+      return;
     }
+    res.status(200).json(map);
   }
 
   async remove(req: Request, res: Response) {
@@ -168,28 +144,17 @@ export class MindmapController {
         : undefined;
     const cardType = this.resolveCardType(req.body?.card_type);
 
-    try {
-      const { buffer, excludedNodeCount } = await this.exportUseCase.execute({
-        id,
-        userId,
-        deckName,
-        cardType,
-      });
-      const fileName = `${(deckName ?? id).replace(/[^a-zA-Z0-9._-]/g, '_')}.apkg`;
-      res.setHeader('Content-Type', 'application/octet-stream');
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename="${fileName}"`
-      );
-      res.setHeader('X-Excluded-Node-Count', String(excludedNodeCount));
-      res.status(200).send(buffer);
-    } catch (error) {
-      if (error instanceof MindmapNotFoundError) {
-        res.status(404).json({ message: 'Mind map not found' });
-        return;
-      }
-      throw error;
-    }
+    const { buffer, excludedNodeCount } = await this.exportUseCase.execute({
+      id,
+      userId,
+      deckName,
+      cardType,
+    });
+    const fileName = `${(deckName ?? id).replace(/[^a-zA-Z0-9._-]/g, '_')}.apkg`;
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('X-Excluded-Node-Count', String(excludedNodeCount));
+    res.status(200).send(buffer);
   }
 
   async uploadImage(req: Request, res: Response) {
@@ -204,28 +169,16 @@ export class MindmapController {
 
     const useCase = new UploadMindmapImageUseCase(this.storage);
 
-    try {
-      const result = await useCase.execute({
-        userId,
-        mapId,
-        file: { buffer: file.buffer, size: file.size },
-      });
-      res.status(201).json({
-        url: result.presignedUrl,
-        width: result.width,
-        height: result.height,
-      });
-    } catch (error) {
-      if (error instanceof MindmapImageTypeError) {
-        res.status(415).json({ message: error.message });
-        return;
-      }
-      if (error instanceof MindmapImageTooLargeError) {
-        res.status(413).json({ message: error.message });
-        return;
-      }
-      throw error;
-    }
+    const result = await useCase.execute({
+      userId,
+      mapId,
+      file: { buffer: file.buffer, size: file.size },
+    });
+    res.status(201).json({
+      url: result.presignedUrl,
+      width: result.width,
+      height: result.height,
+    });
   }
 
   async serveImage(req: Request, res: Response): Promise<void> {

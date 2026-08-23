@@ -3,6 +3,7 @@ import {
   AnkifyAccessUser,
   AnkifyAccessSubscription,
 } from '../../lib/ankify/access';
+import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { MindmapRepositoryInterface } from '../../data_layer/MindmapRepository';
 import Mindmaps from '../../data_layer/public/Mindmaps';
 import { UsersId } from '../../data_layer/public/Users';
@@ -10,10 +11,9 @@ import { UsersId } from '../../data_layer/public/Users';
 export const FREE_MAP_LIMIT = 3;
 export const SUBSCRIBER_MAP_LIMIT = 25;
 
-export class MindmapLimitError extends Error {
+export class MindmapLimitError extends HttpCodedError {
   constructor(public readonly limit: number) {
-    super(`Mind map limit reached (${limit})`);
-    this.name = 'MindmapLimitError';
+    super(`Mind map limit reached (${limit})`, 402, 'mindmap_limit');
   }
 }
 

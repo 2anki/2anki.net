@@ -4,6 +4,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 import StorageHandler from '../../lib/storage/StorageHandler';
+import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { MindmapRepositoryInterface } from '../../data_layer/MindmapRepository';
 import { MindmapsId } from '../../data_layer/public/Mindmaps';
 import { UsersId } from '../../data_layer/public/Users';
@@ -20,10 +21,9 @@ import { buildMindmapDeckInfo } from './buildMindmapDeckInfo';
 import CustomExporter from '../../lib/parser/exporters/CustomExporter';
 import Note from '../../lib/parser/Note';
 
-export class MindmapNotFoundError extends Error {
+export class MindmapNotFoundError extends HttpCodedError {
   constructor() {
-    super('Mind map not found');
-    this.name = 'MindmapNotFoundError';
+    super('Mind map not found', 404, 'not_found');
   }
 }
 

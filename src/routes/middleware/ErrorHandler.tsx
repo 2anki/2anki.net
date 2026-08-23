@@ -9,6 +9,7 @@ import { isEmptyPayload } from '../../lib/misc/isEmptyPayload';
 import { preserveFilesForDebugging } from '../../lib/debug/preserveFilesForDebugging';
 import { shouldShareFilesForDebugging } from './shouldShareFilesForDebugging';
 import * as cheerio from 'cheerio';
+import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import {
   PythonExitError,
   toUploadErrorCode,
@@ -109,6 +110,11 @@ export default async function ErrorHandler(
 
   if (res.headersSent) {
     console.info('Skipping error response: headers already sent');
+    return;
+  }
+
+  if (err instanceof HttpCodedError) {
+    res.status(err.status).json({ code: err.code, message: err.message });
     return;
   }
 
