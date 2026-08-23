@@ -111,6 +111,7 @@ import StorageHandler from './lib/storage/StorageHandler';
 import { UserDeletionService } from './services/UserDeletionService';
 import SuppressionEventsRepository from './data_layer/SuppressionEventsRepository';
 import { initConversionPool } from './lib/conversionPool';
+import { assertBootConfig } from './lib/config';
 import { gracefulShutdown } from './lib/gracefulShutdown';
 
 function registerSignalHandlers(server: http.Server, database: Knex) {
@@ -241,16 +242,7 @@ const serve = async () => {
 
   const cwd = process.cwd();
   process.chdir(cwd);
-  if (!process.env.SECRET) {
-    throw new Error(
-      'SECRET environment variable is required to sign JWTs. Refusing to boot with an unset secret.'
-    );
-  }
-  if (!process.env.WORKSPACE_BASE) {
-    throw new Error(
-      'WORKSPACE_BASE environment variable is required. Refusing to boot without a workspace root.'
-    );
-  }
+  assertBootConfig();
   initConversionPool();
   const port = process.env.PORT || 2020;
   server.listen(port, () => {
