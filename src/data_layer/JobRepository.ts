@@ -198,7 +198,8 @@ class JobRepository {
     owner: string,
     status: string,
     description?: string,
-    cardCount?: number
+    cardCount?: number,
+    conversionReport?: unknown
   ): Promise<Jobs | undefined> {
     const isTerminal = JobRepository.TERMINAL_STATUSES.includes(status);
     const query = this.database(this.tableName).where({ object_id: id, owner });
@@ -219,6 +220,11 @@ class JobRepository {
     };
     if (cardCount != null && cardCount >= 0) {
       update.card_count = cardCount;
+    }
+    // Written only when the caller has one (the done write); a racing failed
+    // write never carries the key, so it can never null out a stored report.
+    if (conversionReport != null) {
+      update.conversion_report = JSON.stringify(conversionReport);
     }
     const rows = await query.update(update).returning('*');
     return rows[0] as Jobs | undefined;

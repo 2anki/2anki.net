@@ -16,6 +16,7 @@ const makeJob = (overrides: Partial<JobResponse> = {}): JobResponse => ({
   title: 'Test Deck',
   type: 'page',
   job_reason_failure: null,
+  card_count: null,
   restartable: false,
   download_key: null,
   upload_id: null,

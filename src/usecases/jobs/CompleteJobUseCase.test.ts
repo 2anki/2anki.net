@@ -30,10 +30,48 @@ describe('CompleteJobUseCase', () => {
       'user-a',
       'done',
       undefined,
-      0
+      0,
+      undefined
     );
     expect(jobRepository.deleteJob).not.toHaveBeenCalled();
     expect(result).toEqual(updatedJob);
+  });
+
+  it('passes the conversion report through to the done write', async () => {
+    const jobRepository = {
+      findJobById: jest.fn().mockResolvedValue({
+        id: 1,
+        object_id: 'page-1',
+        owner: 'user-a',
+        status: 'started',
+      }),
+      updateJobStatus: jest.fn().mockResolvedValue({ status: 'done' }),
+      deleteJob: jest.fn(),
+    } as unknown as JobRepository;
+    const report = {
+      summary: { blocks_seen: 52, cards_created: 34, blocks_skipped: 3 },
+      entries: [],
+    };
+
+    const useCase = new CompleteJobUseCase(jobRepository);
+    await useCase.execute(
+      'page-1',
+      'user-a',
+      34,
+      undefined,
+      0,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      0,
+      report
+    );
+
+    const reportArg = (jobRepository.updateJobStatus as jest.Mock).mock
+      .calls[0][5];
+    expect(reportArg).toEqual(report);
   });
 
   it('persists a dropped-assets signal payload when images were dropped', async () => {
@@ -215,7 +253,8 @@ describe('CompleteJobUseCase', () => {
       'user-a',
       'done',
       undefined,
-      42
+      42,
+      undefined
     );
   });
 

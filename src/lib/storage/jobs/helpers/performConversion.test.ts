@@ -300,7 +300,11 @@ describe('performConversion — heavy pipeline', () => {
       undefined,
       undefined,
       undefined,
-      undefined
+      undefined,
+      {
+        summary: { blocks_seen: 0, cards_created: 1, blocks_skipped: 0 },
+        entries: [],
+      }
     );
     expect(track).toHaveBeenCalledWith(
       'paywall_shown',

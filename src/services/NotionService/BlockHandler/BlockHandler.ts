@@ -235,6 +235,8 @@ class BlockHandler implements IBlockRenderer {
 
   cardCount = 0;
 
+  blocksSeen = 0;
+
   unsupportedBlockTypeCounts: Map<string, number> = new Map();
 
   get unsupportedBlockTypes(): string[] {
@@ -454,6 +456,7 @@ class BlockHandler implements IBlockRenderer {
     let counter = 0;
 
     for (const block of flashcardBlocks) {
+      this.blocksSeen += 1;
       if (isFullBlock(block) && block.type === 'table') {
         const tableBlock = block as TableBlockObjectResponse;
         const tableChildren = await this.api.getBlocks({

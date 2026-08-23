@@ -7,7 +7,9 @@ import { JobWithDownloadKey } from '../data_layer/JobRepository';
 import { getOwner } from '../lib/User/getOwner';
 import DeleteJobUseCase from '../usecases/jobs/DeleteJobUseCase';
 
-interface JobListItem extends JobWithDownloadKey {
+// conversion_report stays out of the polled jobs list on purpose — the
+// report is fetched lazily per job when the user opens it (#4211).
+interface JobListItem extends Omit<JobWithDownloadKey, 'conversion_report'> {
   restartable: boolean;
 }
 

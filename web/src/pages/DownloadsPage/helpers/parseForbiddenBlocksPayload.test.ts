@@ -17,6 +17,7 @@ function buildJob(overrides: Partial<JobResponse> = {}): JobResponse {
       code: 'notion_blocks_forbidden',
       forbidden_blocks: 2,
     }),
+    card_count: null,
     restartable: false,
     download_key: 'deck.apkg',
     upload_id: null,
