@@ -108,6 +108,7 @@ const buildJob = (overrides: Partial<JobResponse> = {}): JobResponse => ({
   title: 'Active conversion',
   type: 'page',
   job_reason_failure: null,
+  card_count: null,
   restartable: false,
   download_key: null,
   upload_id: null,

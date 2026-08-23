@@ -18,6 +18,7 @@ function buildJob(overrides: Partial<JobResponse> = {}): JobResponse {
       front_field: 'Notes',
       back_field: 'Tags',
     }),
+    card_count: null,
     restartable: false,
     download_key: 'deck.apkg',
     upload_id: null,

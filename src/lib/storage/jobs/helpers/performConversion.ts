@@ -17,6 +17,7 @@ import { SetJobFailedUseCase } from '../../../../usecases/jobs/SetJobFailedUseCa
 import { persistJobFailureWithRetry } from './persistJobFailureWithRetry';
 import { BuildDeckForJobUseCase } from '../../../../usecases/jobs/BuildDeckForJobUseCase';
 import { CompleteJobUseCase } from '../../../../usecases/jobs/CompleteJobUseCase';
+import { buildConversionReport } from '../../../../services/NotionService/helpers/buildConversionReport';
 import { NotifyUserUseCase } from '../../../../usecases/jobs/NotifyUserUseCase';
 import {
   EMPTY_DECK_FAILURE_REASON,
@@ -374,7 +375,16 @@ export default async function performConversion(
       bl.inducedRule?.outcome === 'rescue_shipped'
         ? bl.inducedRule.rule
         : undefined,
-      api.forbiddenBlockCount
+      api.forbiddenBlockCount,
+      buildConversionReport({
+        blocksSeen: bl.blocksSeen,
+        cardsCreated: deliveredCardCount,
+        emptyBackCount: bl.emptyBackCount,
+        droppedAssetCount: bl.droppedAssetCount,
+        forbiddenBlockCount: api.forbiddenBlockCount,
+        unsupportedBlockTypeCounts: bl.unsupportedBlockTypeCounts,
+        truncation: bl.truncation,
+      })
     );
 
     void recordConversionTelemetry(database, {

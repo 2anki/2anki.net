@@ -63,6 +63,7 @@ const buildJob = (overrides: Partial<JobResponse> = {}): JobResponse => ({
   title: 'Pharmacology Ch. 4',
   type: 'page',
   job_reason_failure: null,
+  card_count: null,
   restartable: false,
   download_key: 'deck.apkg',
   upload_id: null,

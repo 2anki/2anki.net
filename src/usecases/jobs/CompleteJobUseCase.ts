@@ -1,6 +1,7 @@
 import JobRepository from '../../data_layer/JobRepository';
 import Jobs from '../../data_layer/public/Jobs';
 import UsersRepository from '../../data_layer/UsersRepository';
+import type { ConversionReport } from '../../services/NotionService/helpers/buildConversionReport';
 import {
   buildMonthlyLimitPartialPayload,
   buildNotionConversionSignalPayload,
@@ -27,7 +28,8 @@ export class CompleteJobUseCase {
     resolvedDatabasePath?: ResolvedDatabasePath,
     unsupportedBlocks?: Record<string, number>,
     structureRescuedRule?: string,
-    forbiddenBlockCount = 0
+    forbiddenBlockCount = 0,
+    conversionReport?: ConversionReport
   ): Promise<Jobs | undefined> {
     const job = await this.jobRepository.findJobById(jobId, owner);
 
@@ -57,7 +59,8 @@ export class CompleteJobUseCase {
       owner,
       'done',
       signalPayload,
-      cardCount
+      cardCount,
+      conversionReport
     );
 
     if (this.usersRepository && cardCount > 0) {

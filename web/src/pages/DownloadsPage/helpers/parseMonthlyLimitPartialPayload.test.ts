@@ -20,6 +20,7 @@ function buildJob(overrides: Partial<JobResponse> = {}): JobResponse {
       limit: 100,
       reset_on: '2026-08-01T00:00:00.000Z',
     }),
+    card_count: null,
     restartable: false,
     download_key: 'deck.apkg',
     upload_id: null,

@@ -17,6 +17,7 @@ function buildJob(overrides: Partial<JobResponse> = {}): JobResponse {
       code: 'notion_structure_rescued',
       rule: 'heading',
     }),
+    card_count: null,
     restartable: false,
     download_key: 'deck.apkg',
     upload_id: null,

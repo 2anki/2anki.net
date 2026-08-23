@@ -17,6 +17,7 @@ function buildJob(overrides: Partial<JobResponse> = {}): JobResponse {
       code: 'notion_unsupported_blocks',
       unsupported_blocks: { child_database: 2, synced_block: 1 },
     }),
+    card_count: null,
     restartable: false,
     download_key: 'deck.apkg',
     upload_id: null,

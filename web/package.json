@@ -21,7 +21,7 @@
     "test:coverage": "vitest run --coverage",
     "lint": "oxlint -c ../.oxlintrc.json src",
     "lint:fix": "oxfmt -c ../.oxfmtrc.json --write src",
-    "schema:generate-types": "npx kanel -c .kanelrc.js",
+    "schema:generate-types": "npx kanel -c .kanelrc.cjs",
     "mock-server": "node mock-server/server.js",
     "test:e2e": "playwright test",
     "test:golden-path": "playwright test golden-path.spec.ts",

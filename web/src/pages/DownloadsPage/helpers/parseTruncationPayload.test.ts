@@ -18,6 +18,7 @@ function buildJob(overrides: Partial<JobResponse> = {}): JobResponse {
       blocks_converted: 100,
       sub_deck_rules_skipped: false,
     }),
+    card_count: null,
     restartable: false,
     download_key: 'deck.apkg',
     upload_id: null,

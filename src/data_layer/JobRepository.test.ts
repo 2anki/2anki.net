@@ -18,6 +18,7 @@ async function makeDb(): Promise<Knex> {
     t.timestamp('last_edited_time');
     t.string('job_reason_failure');
     t.integer('card_count');
+    t.text('conversion_report');
     t.unique(['object_id', 'owner']);
   });
   await db.schema.createTable('uploads', (t) => {
@@ -632,6 +633,43 @@ describe('JobRepository.updateJobStatus — terminal transitions', () => {
     const row = await db('jobs').where({ object_id: 'job-1' }).first();
     expect(row.status).toBe('failed');
     expect(row.job_reason_failure).toBe('real failure');
+  });
+
+  it('the done write persists the conversion report', async () => {
+    await insertJob(db, { owner: '1', object_id: 'job-1', status: 'started' });
+    const report = {
+      summary: { blocks_seen: 5, cards_created: 3, blocks_skipped: 1 },
+      entries: [],
+    };
+
+    await repo.updateJobStatus('job-1', '1', 'done', undefined, 3, report);
+
+    const row = await db('jobs').where({ object_id: 'job-1' }).first();
+    expect(JSON.parse(row.conversion_report)).toEqual(report);
+  });
+
+  it('a racing failed write never clobbers a stored report', async () => {
+    await insertJob(db, { owner: '1', object_id: 'job-1', status: 'started' });
+    const report = {
+      summary: { blocks_seen: 5, cards_created: 3, blocks_skipped: 1 },
+      entries: [],
+    };
+    await repo.updateJobStatus('job-1', '1', 'done', undefined, 3, report);
+
+    await repo.updateJobStatus('job-1', '1', 'failed', 'late race loser');
+
+    const row = await db('jobs').where({ object_id: 'job-1' }).first();
+    expect(row.status).toBe('done');
+    expect(JSON.parse(row.conversion_report)).toEqual(report);
+  });
+
+  it('a failed write on a running job leaves conversion_report null', async () => {
+    await insertJob(db, { owner: '1', object_id: 'job-1', status: 'started' });
+
+    await repo.updateJobStatus('job-1', '1', 'failed', 'real failure');
+
+    const row = await db('jobs').where({ object_id: 'job-1' }).first();
+    expect(row.conversion_report).toBeNull();
   });
 });
 

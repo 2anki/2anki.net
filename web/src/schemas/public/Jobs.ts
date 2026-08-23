@@ -23,6 +23,10 @@ export default interface Jobs {
   type: string | null;
 
   job_reason_failure: string | null;
+
+  card_count: number | null;
+
+  conversion_report: unknown | null;
 }
 
 /** Represents the initializer for the table public.jobs */
@@ -48,6 +52,10 @@ export interface JobsInitializer {
   type?: string | null;
 
   job_reason_failure?: string | null;
+
+  card_count?: number | null;
+
+  conversion_report?: unknown | null;
 }
 
 /** Represents the mutator for the table public.jobs */
@@ -69,4 +77,8 @@ export interface JobsMutator {
   type?: string | null;
 
   job_reason_failure?: string | null;
+
+  card_count?: number | null;
+
+  conversion_report?: unknown | null;
 }

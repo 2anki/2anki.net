@@ -17,6 +17,7 @@ function buildJob(overrides: Partial<JobResponse> = {}): JobResponse {
       code: 'notion_assets_dropped',
       dropped_assets: 3,
     }),
+    card_count: null,
     restartable: false,
     download_key: 'deck.apkg',
     upload_id: null,
