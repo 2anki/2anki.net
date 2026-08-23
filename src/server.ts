@@ -73,6 +73,7 @@ import wellKnownRouter from './routes/WellKnownRouter';
 import healthRouter from './routes/HealthRouter';
 import requestLoggingMiddleware from './routes/middleware/requestLoggingMiddleware';
 import { anonIdMiddleware } from './routes/middleware/anonIdMiddleware';
+import { requestIdMiddleware } from './routes/middleware/requestIdMiddleware';
 import { getEventsSink } from './services/events/eventsSinkInstance';
 
 import { getDatabase, setupDatabase } from './data_layer';
@@ -164,6 +165,7 @@ const serve = async () => {
   app.use(cookieParser());
   app.use(denyFraming);
   app.use(securityHeaders);
+  app.use(requestIdMiddleware);
   app.use(anonIdMiddleware);
   app.use(noindexNonCanonicalHosts);
   app.use(redirectConvertDuplicates);

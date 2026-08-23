@@ -20,7 +20,7 @@ export function recordClaudeUsage(options: RecordClaudeUsageOptions): void {
   const cacheRead = usage.cache_read_input_tokens ?? 0;
   const costUsd = computeUsageCostUsd(model, usage);
   console.info(
-    `[claude-usage] surface=${surface} model=${model ?? 'unknown'} input=${input} output=${output} cache_create=${cacheCreate} cache_read=${cacheRead} cost_usd=${costUsd}`
+    `[claude-usage] surface=${surface} model=${model ?? 'unknown'} user=${userId ?? 'anon'} input=${input} output=${output} cache_create=${cacheCreate} cache_read=${cacheRead} cost_usd=${costUsd}`
   );
   try {
     track('ai_usage_recorded', {
