@@ -103,5 +103,26 @@
   "blocksForbidden": {
     "notion_one": "{{count}} partie de cette page n'est pas connectée à 2anki, elle n'est donc pas dans ce paquet. Ajoute 2anki à cette page et à ses sous-pages dans le menu Connexions de Notion, puis relance la conversion.",
     "notion_other": "{{count}} parties de cette page ne sont pas connectées à 2anki, elles ne sont donc pas dans ce paquet. Ajoute 2anki à cette page et à ses sous-pages dans le menu Connexions de Notion, puis relance la conversion."
+  },
+  "report": {
+    "link": "Rapport de conversion",
+    "title": "Rapport de conversion",
+    "close": "Fermer",
+    "loading": "Chargement du rapport…",
+    "skipped_one": "{{count}} ignoré",
+    "skipped_other": "{{count}} ignorés",
+    "summary_one": "{{count}} carte créée, à partir de {{blocks}} blocs",
+    "summary_other": "{{count}} cartes créées, à partir de {{blocks}} blocs",
+    "clean": "Rien n'a été ignoré — toute la page a été convertie.",
+    "toneNote": "Note",
+    "toneSkipped": "Ignoré",
+    "toneFailed": "Conversion impossible",
+    "reasonEmptyBack_one": "{{count}} toggle n'avait pas de réponse à l'intérieur, donc aucune carte n'en a été créée. Ajoute la réponse dans le toggle, puis convertis à nouveau.",
+    "reasonEmptyBack_other": "{{count}} toggles n'avaient pas de réponse à l'intérieur, donc aucune carte n'en a été créée. Ajoute la réponse dans les toggles, puis convertis à nouveau.",
+    "reasonTruncated": "La conversion s'est arrêtée avant la fin de la page.",
+    "reasonUnsupported_one": "{{count}} bloc {{type}} ne peut pas encore devenir des cartes.",
+    "reasonUnsupported_other": "{{count}} blocs {{type}} ne peuvent pas encore devenir des cartes.",
+    "omitted_one": "{{count}} bloc de plus a été ignoré pour d'autres raisons.",
+    "omitted_other": "{{count}} blocs de plus ont été ignorés pour d'autres raisons."
   }
 }

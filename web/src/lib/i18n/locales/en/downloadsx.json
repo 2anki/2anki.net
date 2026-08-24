@@ -103,5 +103,26 @@
   "blocksForbidden": {
     "notion_one": "{{count}} part of this page isn't connected to 2anki, so it's not in this deck. Add 2anki to this page and its sub-pages in Notion's Connections menu, then convert again.",
     "notion_other": "{{count}} parts of this page aren't connected to 2anki, so they aren't in this deck. Add 2anki to this page and its sub-pages in Notion's Connections menu, then convert again."
+  },
+  "report": {
+    "link": "Conversion report",
+    "title": "Conversion report",
+    "close": "Close",
+    "loading": "Loading the report…",
+    "skipped_one": "{{count}} skipped",
+    "skipped_other": "{{count}} skipped",
+    "summary_one": "{{count}} card created, from {{blocks}} blocks",
+    "summary_other": "{{count}} cards created, from {{blocks}} blocks",
+    "clean": "Nothing was skipped — the whole page converted.",
+    "toneNote": "Note",
+    "toneSkipped": "Skipped",
+    "toneFailed": "Couldn't convert",
+    "reasonEmptyBack_one": "{{count}} toggle had no answer inside, so no card was made from it. Add the answer inside the toggle, then convert again.",
+    "reasonEmptyBack_other": "{{count}} toggles had no answer inside, so no cards were made from them. Add the answer inside each toggle, then convert again.",
+    "reasonTruncated": "The conversion stopped before the end of the page.",
+    "reasonUnsupported_one": "{{count}} {{type}} block can't become cards yet.",
+    "reasonUnsupported_other": "{{count}} {{type}} blocks can't become cards yet.",
+    "omitted_one": "{{count}} more block was skipped for other reasons.",
+    "omitted_other": "{{count}} more blocks were skipped for other reasons."
   }
 }

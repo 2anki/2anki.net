@@ -103,5 +103,26 @@
   "blocksForbidden": {
     "notion_one": "{{count}} parte de esta página no está conectada a 2anki, así que no está en este mazo. Añade 2anki a esta página y sus subpáginas en el menú Conexiones de Notion y vuelve a convertir.",
     "notion_other": "{{count}} partes de esta página no están conectadas a 2anki, así que no están en este mazo. Añade 2anki a esta página y sus subpáginas en el menú Conexiones de Notion y vuelve a convertir."
+  },
+  "report": {
+    "link": "Informe de conversión",
+    "title": "Informe de conversión",
+    "close": "Cerrar",
+    "loading": "Cargando el informe…",
+    "skipped_one": "{{count}} omitido",
+    "skipped_other": "{{count}} omitidos",
+    "summary_one": "{{count}} tarjeta creada, de {{blocks}} bloques",
+    "summary_other": "{{count}} tarjetas creadas, de {{blocks}} bloques",
+    "clean": "No se omitió nada — toda la página se convirtió.",
+    "toneNote": "Nota",
+    "toneSkipped": "Omitido",
+    "toneFailed": "No se pudo convertir",
+    "reasonEmptyBack_one": "{{count}} toggle no tenía respuesta dentro, así que no se creó ninguna tarjeta con él. Añade la respuesta dentro del toggle y convierte de nuevo.",
+    "reasonEmptyBack_other": "{{count}} toggles no tenían respuesta dentro, así que no se crearon tarjetas con ellos. Añade la respuesta dentro de cada toggle y convierte de nuevo.",
+    "reasonTruncated": "La conversión se detuvo antes del final de la página.",
+    "reasonUnsupported_one": "{{count}} bloque {{type}} aún no puede convertirse en tarjetas.",
+    "reasonUnsupported_other": "{{count}} bloques {{type}} aún no pueden convertirse en tarjetas.",
+    "omitted_one": "{{count}} bloque más se omitió por otros motivos.",
+    "omitted_other": "{{count}} bloques más se omitieron por otros motivos."
   }
 }

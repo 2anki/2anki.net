@@ -103,5 +103,26 @@
   "blocksForbidden": {
     "notion_one": "{{count}} Teil dieser Seite ist nicht mit 2anki verbunden und fehlt daher in diesem Deck. Füge 2anki dieser Seite und ihren Unterseiten im Verbindungen-Menü von Notion hinzu und konvertiere dann erneut.",
     "notion_other": "{{count}} Teile dieser Seite sind nicht mit 2anki verbunden und fehlen daher in diesem Deck. Füge 2anki dieser Seite und ihren Unterseiten im Verbindungen-Menü von Notion hinzu und konvertiere dann erneut."
+  },
+  "report": {
+    "link": "Umwandlungsbericht",
+    "title": "Umwandlungsbericht",
+    "close": "Schließen",
+    "loading": "Bericht wird geladen…",
+    "skipped_one": "{{count}} übersprungen",
+    "skipped_other": "{{count}} übersprungen",
+    "summary_one": "{{count}} Karte erstellt, aus {{blocks}} Blöcken",
+    "summary_other": "{{count}} Karten erstellt, aus {{blocks}} Blöcken",
+    "clean": "Nichts wurde übersprungen — die ganze Seite wurde umgewandelt.",
+    "toneNote": "Hinweis",
+    "toneSkipped": "Übersprungen",
+    "toneFailed": "Nicht umwandelbar",
+    "reasonEmptyBack_one": "{{count}} Toggle hatte keine Antwort darin, deshalb wurde daraus keine Karte. Schreib die Antwort in den Toggle und wandle die Seite erneut um.",
+    "reasonEmptyBack_other": "{{count}} Toggles hatten keine Antwort darin, deshalb wurden daraus keine Karten. Schreib die Antwort in die Toggles und wandle die Seite erneut um.",
+    "reasonTruncated": "Die Umwandlung endete vor dem Ende der Seite.",
+    "reasonUnsupported_one": "{{count}} {{type}}-Block kann noch nicht zu Karten werden.",
+    "reasonUnsupported_other": "{{count}} {{type}}-Blöcke können noch nicht zu Karten werden.",
+    "omitted_one": "{{count}} weiterer Block wurde aus anderen Gründen übersprungen.",
+    "omitted_other": "{{count}} weitere Blöcke wurden aus anderen Gründen übersprungen."
   }
 }
