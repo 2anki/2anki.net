@@ -90,5 +90,21 @@
   },
   "blocksForbidden": {
     "notion_other": "このページの {{count}} 個の部分は 2anki に接続されていないため、このデッキに含まれていません。Notion のコネクトメニューでこのページとサブページに 2anki を追加してから、もう一度変換してください。"
+  },
+  "report": {
+    "link": "変換レポート",
+    "title": "変換レポート",
+    "close": "閉じる",
+    "loading": "レポートを読み込んでいます…",
+    "skipped_other": "{{count}}件スキップ",
+    "summary_other": "{{blocks}}ブロックから{{count}}枚のカードを作成しました",
+    "clean": "スキップされたものはありません — ページ全体が変換されました。",
+    "toneNote": "メモ",
+    "toneSkipped": "スキップ",
+    "toneFailed": "変換できませんでした",
+    "reasonEmptyBack_other": "{{count}}個のトグルに答えがなかったため、カードは作成されませんでした。トグルの中に答えを書いてから、もう一度変換してください。",
+    "reasonTruncated": "変換はページの途中で停止しました。",
+    "reasonUnsupported_other": "{{count}}個の{{type}}ブロックはまだカードにできません。",
+    "omitted_other": "他の理由でさらに{{count}}個のブロックがスキップされました。"
   }
 }

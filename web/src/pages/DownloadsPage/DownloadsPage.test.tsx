@@ -31,7 +31,9 @@ vi.mock('./hooks/useUploads', () => ({
 }));
 
 vi.mock('../../lib/backend/get2ankiApi', () => ({
-  get2ankiApi: () => ({}),
+  get2ankiApi: () => ({
+    getJobReport: mockGetJobReport,
+  }),
 }));
 
 vi.mock('../../lib/hooks/useUserLocals', () => ({
@@ -70,6 +72,8 @@ type AnalyticsGlobals = {
   hj?: ReturnType<typeof vi.fn>;
   gtag?: ReturnType<typeof vi.fn>;
 };
+
+const mockGetJobReport = vi.fn().mockResolvedValue(null);
 
 let mockJobs: JobResponse[] = [];
 let mockUploads: {
@@ -1128,8 +1132,6 @@ describe('DownloadsPage truncation notice', () => {
     });
 
   beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-06-01T12:00:00Z'));
     (globalThis as AnalyticsGlobals).hj = vi.fn();
     (globalThis as AnalyticsGlobals).gtag = vi.fn();
     mockJobs = [truncatedJob(false)];
@@ -1139,26 +1141,25 @@ describe('DownloadsPage truncation notice', () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     delete (globalThis as AnalyticsGlobals).hj;
     delete (globalThis as AnalyticsGlobals).gtag;
   });
 
-  it('shows a Partial toggle on a truncated done Notion row', () => {
+  it('keeps the truncation note out of the row until the report opens', () => {
     renderAt('/downloads');
-    expect(screen.getByText('Partial')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Conversion report' })
+    ).toBeInTheDocument();
     expect(
       screen.queryByText(/Converted the first 100 blocks/)
     ).not.toBeInTheDocument();
   });
 
-  it('expands the truncation note with the upgrade link on toggle', () => {
+  it('shows the truncation note with the upgrade link inside the report', async () => {
     renderAt('/downloads');
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Show conversion note' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Conversion report' }));
     expect(
-      screen.getByText(
+      await screen.findByText(
         /Converted the first 100 blocks\. The free plan stops there/
       )
     ).toBeInTheDocument();
@@ -1170,20 +1171,18 @@ describe('DownloadsPage truncation notice', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('adds the sub-deck rules line when they were skipped', () => {
+  it('adds the sub-deck rules line when they were skipped', async () => {
     mockJobs = [truncatedJob(true)];
     renderAt('/downloads');
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Show conversion note' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Conversion report' }));
     expect(
-      screen.getByText(
+      await screen.findByText(
         /Sub-deck rules from toggles, headings, and databases apply on paid plans/
       )
     ).toBeInTheDocument();
   });
 
-  it('shows no toggle on a done Notion row without truncation', () => {
+  it('reports a clean conversion on a done Notion row without signals', async () => {
     mockJobs = [
       buildJob({
         status: 'done',
@@ -1193,14 +1192,15 @@ describe('DownloadsPage truncation notice', () => {
       }),
     ];
     renderAt('/downloads');
-    expect(screen.queryByText('Partial')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Conversion report' }));
+    expect(
+      await screen.findByText('Nothing was skipped — the whole page converted.')
+    ).toBeInTheDocument();
   });
 });
 
 describe('DownloadsPage conversion note toggles', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-05-10T12:00:00Z'));
     (globalThis as AnalyticsGlobals).hj = vi.fn();
     (globalThis as AnalyticsGlobals).gtag = vi.fn();
     mockUploads = [];
@@ -1209,7 +1209,6 @@ describe('DownloadsPage conversion note toggles', () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     delete (globalThis as AnalyticsGlobals).hj;
     delete (globalThis as AnalyticsGlobals).gtag;
   });
@@ -1227,7 +1226,7 @@ describe('DownloadsPage conversion note toggles', () => {
       ...overrides,
     });
 
-  it('reveals the unshared-blocks notice from its own badge', () => {
+  it('shows the skipped-count pill and reveals the notice in the report', async () => {
     mockJobs = [
       doneNotionJob({ code: 'notion_blocks_forbidden', forbidden_blocks: 3 }),
     ];
@@ -1236,31 +1235,22 @@ describe('DownloadsPage conversion note toggles', () => {
     expect(
       screen.queryByText(/isn't connected to 2anki/)
     ).not.toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole('button', { name: '3 parts not connected' })
-    );
-    expect(screen.getByText(/3 parts of this page/)).toBeInTheDocument();
+    expect(screen.getByText('3 skipped')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Conversion report/ }));
+    expect(await screen.findByText(/3 parts of this page/)).toBeInTheDocument();
   });
 
-  it('counts a single unshared block with the singular badge', () => {
-    mockJobs = [
-      doneNotionJob({ code: 'notion_blocks_forbidden', forbidden_blocks: 1 }),
-    ];
-    renderAt('/downloads');
-    expect(screen.getByText('1 part not connected')).toBeInTheDocument();
-  });
-
-  it('reveals the structure-rescued notice from its own badge', () => {
+  it('reveals the structure-rescued notice in the report', async () => {
     mockJobs = [
       doneNotionJob({ code: 'notion_structure_rescued', rule: 'heading' }),
     ];
     renderAt('/downloads');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Structure guessed' }));
-    expect(screen.getByText(/Cards built from the/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Conversion report' }));
+    expect(await screen.findByText(/Cards built from the/)).toBeInTheDocument();
   });
 
-  it('reveals the columns-guessed notice from its own badge', () => {
+  it('reveals the columns-guessed notice in the report', async () => {
     mockJobs = [
       doneNotionJob(
         {
@@ -1273,11 +1263,13 @@ describe('DownloadsPage conversion note toggles', () => {
     ];
     renderAt('/downloads');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Columns guessed' }));
-    expect(screen.getByText(/couldn't tell which columns/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Conversion report' }));
+    expect(
+      await screen.findByText(/couldn't tell which columns/)
+    ).toBeInTheDocument();
   });
 
-  it('reveals the unsupported-blocks notice from its own badge', () => {
+  it('reveals the unsupported-blocks notice in the report', async () => {
     mockJobs = [
       doneNotionJob({
         code: 'notion_unsupported_blocks',
@@ -1286,11 +1278,14 @@ describe('DownloadsPage conversion note toggles', () => {
     ];
     renderAt('/downloads');
 
-    fireEvent.click(screen.getByRole('button', { name: '2 blocks skipped' }));
-    expect(screen.getByText(/couldn't be converted/)).toBeInTheDocument();
+    expect(screen.getByText('2 skipped')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Conversion report/ }));
+    expect(
+      await screen.findByText(/couldn't be converted/)
+    ).toBeInTheDocument();
   });
 
-  it('shows one badge per signal when several ride along on one conversion', () => {
+  it('stacks every applicable notice when several ride along on one conversion', async () => {
     mockJobs = [
       doneNotionJob({
         code: 'notion_blocks_forbidden',
@@ -1301,12 +1296,15 @@ describe('DownloadsPage conversion note toggles', () => {
     ];
     renderAt('/downloads');
 
-    expect(screen.getByText('2 parts not connected')).toBeInTheDocument();
-    expect(screen.getByText('1 image skipped')).toBeInTheDocument();
-    expect(screen.getByText('4 blocks skipped')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Conversion report/ }));
+    expect(await screen.findByText(/2 parts of this page/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 image couldn't be downloaded/)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/4 blocks on this page/)).toBeInTheDocument();
   });
 
-  it('shows no conversion-note badge on a clean database conversion', () => {
+  it('reports a clean conversion without a pill on a clean database row', async () => {
     mockJobs = [
       doneNotionJob(
         { code: 'notion_database_resolved', via_page_link_selfheal: false },
@@ -1315,38 +1313,49 @@ describe('DownloadsPage conversion note toggles', () => {
     ];
     renderAt('/downloads');
 
+    expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Conversion report' }));
     expect(
-      screen.queryByRole('button', { name: /not connected/ })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /blocks skipped/ })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /Structure guessed/ })
-    ).not.toBeInTheDocument();
+      await screen.findByText('Nothing was skipped — the whole page converted.')
+    ).toBeInTheDocument();
   });
 
-  it('points each badge at the notice panel it reveals', () => {
+  it('prefers the stored report over the legacy signal when one exists', async () => {
+    mockGetJobReport.mockResolvedValueOnce({
+      summary: { blocks_seen: 52, cards_created: 34, blocks_skipped: 3 },
+      entries: [
+        {
+          stage: 'block',
+          reason_code: 'blocks_forbidden',
+          human_reason: 'Blocks in parts of the page that are not shared',
+          count: 3,
+        },
+      ],
+    });
     mockJobs = [
       doneNotionJob({ code: 'notion_blocks_forbidden', forbidden_blocks: 3 }),
     ];
     renderAt('/downloads');
 
-    const toggle = screen.getByRole('button', {
-      name: '3 parts not connected',
-    });
-    expect(toggle).toHaveAttribute('aria-controls', 'job-1-forbiddenblocks');
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-
-    fireEvent.click(toggle);
-
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(screen.getByRole('button', { name: /Conversion report/ }));
     expect(
-      document.getElementById('job-1-forbiddenblocks')
+      await screen.findByText(/34 cards created, from 52 blocks/)
     ).toBeInTheDocument();
+    expect(mockGetJobReport).toHaveBeenCalledWith('page-id');
   });
 
-  it('shows no conversion-note badge on a failed job', () => {
+  it('closes the report from its close button', async () => {
+    mockJobs = [
+      doneNotionJob({ code: 'notion_blocks_forbidden', forbidden_blocks: 3 }),
+    ];
+    renderAt('/downloads');
+
+    fireEvent.click(screen.getByRole('button', { name: /Conversion report/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Close' }));
+    expect(screen.queryByText(/3 parts of this page/)).not.toBeInTheDocument();
+  });
+
+  it('shows no report link on a failed job', () => {
     mockJobs = [
       doneNotionJob(
         { code: 'notion_blocks_forbidden', forbidden_blocks: 3 },
@@ -1356,7 +1365,16 @@ describe('DownloadsPage conversion note toggles', () => {
     renderAt('/downloads');
 
     expect(
-      screen.queryByRole('button', { name: /not connected/ })
+      screen.queryByRole('button', { name: /Conversion report/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no report link on a done upload job', () => {
+    mockJobs = [doneNotionJob(null, { type: 'claude', title: 'Upload deck' })];
+    renderAt('/downloads');
+
+    expect(
+      screen.queryByRole('button', { name: /Conversion report/ })
     ).not.toBeInTheDocument();
   });
 });

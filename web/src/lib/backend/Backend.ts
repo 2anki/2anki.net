@@ -16,7 +16,8 @@ import { UserNotice, isIntentionalBackendNotice } from '../errors/UserNotice';
 import { AnkifyStats } from '../../pages/AnkifyPage/stats/types';
 import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
-import { CONFLICT, OK, UNAUTHORIZED } from './http';
+import { CONFLICT, NOT_FOUND, OK, UNAUTHORIZED } from './http';
+import { ConversionReport } from '../interfaces/ConversionReport';
 
 export class TrackerSchemaError extends Error {
   readonly missing: string[];
@@ -368,6 +369,21 @@ export class Backend {
 
   async getJobs(): Promise<JobResponse[]> {
     return get(`${this.baseURL}upload/jobs`);
+  }
+
+  // 404 means "no report stored" (pre-report jobs, failed jobs) — a normal
+  // state the report modal renders from the legacy signal payload instead.
+  async getJobReport(jobId: string): Promise<ConversionReport | null> {
+    try {
+      return await get(
+        `${this.baseURL}upload/jobs/${encodeURIComponent(jobId)}/report`
+      );
+    } catch (error) {
+      if ((error as { status?: number }).status === NOT_FOUND) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**

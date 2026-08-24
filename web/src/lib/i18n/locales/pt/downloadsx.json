@@ -103,5 +103,26 @@
   "blocksForbidden": {
     "notion_one": "{{count}} parte desta página não está conectada ao 2anki, então não está neste baralho. Adicione o 2anki a esta página e às suas subpáginas no menu Conexões do Notion e converta novamente.",
     "notion_other": "{{count}} partes desta página não estão conectadas ao 2anki, então não estão neste baralho. Adicione o 2anki a esta página e às suas subpáginas no menu Conexões do Notion e converta novamente."
+  },
+  "report": {
+    "link": "Relatório de conversão",
+    "title": "Relatório de conversão",
+    "close": "Fechar",
+    "loading": "Carregando o relatório…",
+    "skipped_one": "{{count}} ignorado",
+    "skipped_other": "{{count}} ignorados",
+    "summary_one": "{{count}} cartão criado, de {{blocks}} blocos",
+    "summary_other": "{{count}} cartões criados, de {{blocks}} blocos",
+    "clean": "Nada foi ignorado — a página inteira foi convertida.",
+    "toneNote": "Nota",
+    "toneSkipped": "Ignorado",
+    "toneFailed": "Não foi possível converter",
+    "reasonEmptyBack_one": "{{count}} toggle não tinha resposta dentro, então nenhum cartão foi criado a partir dele. Adicione a resposta dentro do toggle e converta de novo.",
+    "reasonEmptyBack_other": "{{count}} toggles não tinham resposta dentro, então nenhum cartão foi criado a partir deles. Adicione a resposta dentro dos toggles e converta de novo.",
+    "reasonTruncated": "A conversão parou antes do fim da página.",
+    "reasonUnsupported_one": "{{count}} bloco {{type}} ainda não pode virar cartões.",
+    "reasonUnsupported_other": "{{count}} blocos {{type}} ainda não podem virar cartões.",
+    "omitted_one": "Mais {{count}} bloco foi ignorado por outros motivos.",
+    "omitted_other": "Mais {{count}} blocos foram ignorados por outros motivos."
   }
 }

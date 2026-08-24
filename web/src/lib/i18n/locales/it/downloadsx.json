@@ -103,5 +103,26 @@
   "blocksForbidden": {
     "notion_one": "{{count}} parte di questa pagina non è collegata a 2anki, quindi non è in questo mazzo. Aggiungi 2anki a questa pagina e alle sue sottopagine nel menu Connessioni di Notion, poi converti di nuovo.",
     "notion_other": "{{count}} parti di questa pagina non sono collegate a 2anki, quindi non sono in questo mazzo. Aggiungi 2anki a questa pagina e alle sue sottopagine nel menu Connessioni di Notion, poi converti di nuovo."
+  },
+  "report": {
+    "link": "Rapporto di conversione",
+    "title": "Rapporto di conversione",
+    "close": "Chiudi",
+    "loading": "Caricamento del rapporto…",
+    "skipped_one": "{{count}} saltato",
+    "skipped_other": "{{count}} saltati",
+    "summary_one": "{{count}} carta creata, da {{blocks}} blocchi",
+    "summary_other": "{{count}} carte create, da {{blocks}} blocchi",
+    "clean": "Non è stato saltato nulla — l'intera pagina è stata convertita.",
+    "toneNote": "Nota",
+    "toneSkipped": "Saltato",
+    "toneFailed": "Impossibile convertire",
+    "reasonEmptyBack_one": "{{count}} toggle non aveva una risposta all'interno, quindi non ne è stata creata nessuna carta. Aggiungi la risposta dentro il toggle e converti di nuovo.",
+    "reasonEmptyBack_other": "{{count}} toggle non avevano una risposta all'interno, quindi non ne sono state create carte. Aggiungi la risposta dentro i toggle e converti di nuovo.",
+    "reasonTruncated": "La conversione si è fermata prima della fine della pagina.",
+    "reasonUnsupported_one": "{{count}} blocco {{type}} non può ancora diventare carte.",
+    "reasonUnsupported_other": "{{count}} blocchi {{type}} non possono ancora diventare carte.",
+    "omitted_one": "{{count}} altro blocco è stato saltato per altri motivi.",
+    "omitted_other": "{{count}} altri blocchi sono stati saltati per altri motivi."
   }
 }

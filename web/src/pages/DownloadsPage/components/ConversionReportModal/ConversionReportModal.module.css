@@ -1,0 +1,30 @@
+.summary {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  margin: 0 0 0.75rem;
+}
+
+.summarySkippedWarning {
+  color: var(--color-warning-text);
+}
+
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.entry {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.legacyNotices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}

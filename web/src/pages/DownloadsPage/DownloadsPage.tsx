@@ -45,24 +45,10 @@ import {
   type FieldMapping,
 } from '../../lib/fieldMapping/types';
 import { ConversionResult } from './components/ConversionResult/ConversionResult';
-import { TruncationNotice } from './components/TruncationNotice';
-import { parseTruncationPayload } from './helpers/parseTruncationPayload';
-import { ImageDropNotice } from './components/ImageDropNotice';
 import { ProducerPrompt } from './components/ProducerPrompt';
-import { parseDroppedAssetsPayload } from './helpers/parseDroppedAssetsPayload';
-import { ColumnsGuessedNotice } from './components/ColumnsGuessedNotice';
-import { StructureRescuedNotice } from './components/StructureRescuedNotice';
-import { parseStructureRescuedPayload } from './helpers/parseStructureRescuedPayload';
-import { parseColumnsGuessedPayload } from './helpers/parseColumnsGuessedPayload';
-import { UnsupportedBlocksNotice } from './components/UnsupportedBlocksNotice';
-import { parseUnsupportedBlocksPayload } from './helpers/parseUnsupportedBlocksPayload';
-import { ForbiddenBlocksNotice } from './components/ForbiddenBlocksNotice';
-import { ConversionNoteToggle } from './components/ConversionNoteToggle';
-import { countUnsupportedBlocks } from './helpers/countUnsupportedBlocks';
-import { parseForbiddenBlocksPayload } from './helpers/parseForbiddenBlocksPayload';
+import { ConversionReportModal } from './components/ConversionReportModal/ConversionReportModal';
+import { getSignalSkippedCount } from './helpers/getSignalSkippedCount';
 import { parseMonthlyLimitPayload } from './components/ConversionResult/parseMonthlyLimitPayload';
-import { MonthlyLimitPartialNotice } from './components/MonthlyLimitPartialNotice';
-import { parseMonthlyLimitPartialPayload } from './helpers/parseMonthlyLimitPartialPayload';
 import styles from './DownloadsPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 
@@ -364,6 +350,9 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
   const [mappingModalJob, setMappingModalJob] = useState<JobResponse | null>(
     null
   );
+  const [reportModalJob, setReportModalJob] = useState<JobResponse | null>(
+    null
+  );
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const pageViewTracked = useRef(false);
   const navigate = useNavigate();
@@ -588,23 +577,14 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                           const isExpanded =
                             expandedFailureJobId === row.job.id;
                           const isFailed = isFailedJob(row.job.status);
-                          const truncation = parseTruncationPayload(row.job);
-                          const droppedAssets = parseDroppedAssetsPayload(
+                          const isNotionDoneRow =
+                            !isFailed &&
+                            isDoneJob(row.job.status) &&
+                            (row.job.type === 'page' ||
+                              row.job.type === 'database');
+                          const signalSkippedCount = getSignalSkippedCount(
                             row.job
                           );
-                          const guessedColumns = parseColumnsGuessedPayload(
-                            row.job
-                          );
-                          const structureRescued = parseStructureRescuedPayload(
-                            row.job
-                          );
-                          const unsupportedBlocks =
-                            parseUnsupportedBlocksPayload(row.job);
-                          const forbiddenBlocks = parseForbiddenBlocksPayload(
-                            row.job
-                          );
-                          const cardLimitPartial =
-                            parseMonthlyLimitPartialPayload(row.job);
                           const isMonthlyLimitRow =
                             isFailed &&
                             parseMonthlyLimitPayload(
@@ -664,143 +644,30 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                         {renderJobStatusCell(row.job, t, () =>
                                           setHasDownloaded(true)
                                         )}
-                                        {truncation != null && (
+                                        {isNotionDoneRow && (
                                           <button
                                             type="button"
-                                            className={styles.statusToggle}
-                                            onClick={toggleFailurePanel}
-                                            aria-label={
-                                              isExpanded
-                                                ? t(
-                                                    'downloads.toggle.collapseNote'
-                                                  )
-                                                : t('downloads.toggle.showNote')
+                                            className={styles.reportLink}
+                                            onClick={() =>
+                                              setReportModalJob(row.job)
                                             }
-                                            aria-expanded={isExpanded}
                                           >
-                                            <span
-                                              className={sharedStyles.badge}
-                                            >
-                                              {t('downloads.badge.partial')}
-                                            </span>
-                                            <span
-                                              className={`${styles.statusChevron} ${isExpanded ? styles.statusChevronExpanded : ''}`}
-                                            >
-                                              ▾
-                                            </span>
-                                          </button>
-                                        )}
-                                        {droppedAssets != null && (
-                                          <button
-                                            type="button"
-                                            className={styles.statusToggle}
-                                            onClick={toggleFailurePanel}
-                                            aria-label={
-                                              isExpanded
-                                                ? t(
-                                                    'downloads.toggle.collapseImageNote'
-                                                  )
-                                                : t(
-                                                    'downloads.toggle.showImageNote'
-                                                  )
-                                            }
-                                            aria-expanded={isExpanded}
-                                          >
-                                            <span
-                                              className={
-                                                sharedStyles.badgeWarning
-                                              }
-                                            >
-                                              {t(
-                                                'downloads.badge.imageSkipped',
-                                                {
-                                                  count: droppedAssets,
+                                            {t('downloadsx:report.link')}
+                                            {signalSkippedCount > 0 && (
+                                              <span
+                                                className={
+                                                  sharedStyles.badgeWarning
                                                 }
-                                              )}
-                                            </span>
-                                            <span
-                                              className={`${styles.statusChevron} ${isExpanded ? styles.statusChevronExpanded : ''}`}
-                                            >
-                                              ▾
-                                            </span>
+                                              >
+                                                {t(
+                                                  'downloadsx:report.skipped',
+                                                  {
+                                                    count: signalSkippedCount,
+                                                  }
+                                                )}
+                                              </span>
+                                            )}
                                           </button>
-                                        )}
-                                        {cardLimitPartial != null && (
-                                          <button
-                                            type="button"
-                                            className={styles.statusToggle}
-                                            onClick={toggleFailurePanel}
-                                            aria-label={
-                                              isExpanded
-                                                ? t(
-                                                    'downloads.toggle.collapseNote'
-                                                  )
-                                                : t('downloads.toggle.showNote')
-                                            }
-                                            aria-expanded={isExpanded}
-                                          >
-                                            <span
-                                              className={sharedStyles.badge}
-                                            >
-                                              {t('downloads.badge.partial')}
-                                            </span>
-                                            <span
-                                              className={`${styles.statusChevron} ${isExpanded ? styles.statusChevronExpanded : ''}`}
-                                            >
-                                              ▾
-                                            </span>
-                                          </button>
-                                        )}
-                                        {forbiddenBlocks != null && (
-                                          <ConversionNoteToggle
-                                            badge={t(
-                                              'downloads.badge.blocksForbidden',
-                                              { count: forbiddenBlocks.count }
-                                            )}
-                                            controlsId={`job-${row.job.id}-forbiddenblocks`}
-                                            tone="warning"
-                                            isExpanded={isExpanded}
-                                            onToggle={toggleFailurePanel}
-                                          />
-                                        )}
-                                        {unsupportedBlocks != null && (
-                                          <ConversionNoteToggle
-                                            badge={t(
-                                              'downloads.badge.blocksSkipped',
-                                              {
-                                                count:
-                                                  countUnsupportedBlocks(
-                                                    unsupportedBlocks
-                                                  ),
-                                              }
-                                            )}
-                                            controlsId={`job-${row.job.id}-unsupportedblocks`}
-                                            tone="warning"
-                                            isExpanded={isExpanded}
-                                            onToggle={toggleFailurePanel}
-                                          />
-                                        )}
-                                        {structureRescued != null && (
-                                          <ConversionNoteToggle
-                                            badge={t(
-                                              'downloads.badge.structureGuessed'
-                                            )}
-                                            controlsId={`job-${row.job.id}-structurerescued`}
-                                            tone="neutral"
-                                            isExpanded={isExpanded}
-                                            onToggle={toggleFailurePanel}
-                                          />
-                                        )}
-                                        {guessedColumns != null && (
-                                          <ConversionNoteToggle
-                                            badge={t(
-                                              'downloads.badge.columnsGuessed'
-                                            )}
-                                            controlsId={`job-${row.job.id}-columnsguess`}
-                                            tone="neutral"
-                                            isExpanded={isExpanded}
-                                            onToggle={toggleFailurePanel}
-                                          />
                                         )}
                                       </>
                                     )}
@@ -952,122 +819,6 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                         row.job.job_reason_failure,
                                         () => setMappingModalJob(row.job)
                                       )}
-                                    </td>
-                                  </tr>
-                                )}
-                              {!isFailed &&
-                                isExpanded &&
-                                truncation != null && (
-                                  <tr key={`job-${row.job.id}-truncation`}>
-                                    <td
-                                      colSpan={4}
-                                      className={styles.failurePanel}
-                                    >
-                                      <TruncationNotice
-                                        blocksConverted={
-                                          truncation.blocksConverted
-                                        }
-                                        subDeckRulesSkipped={
-                                          truncation.subDeckRulesSkipped
-                                        }
-                                      />
-                                    </td>
-                                  </tr>
-                                )}
-                              {!isFailed &&
-                                isExpanded &&
-                                droppedAssets != null && (
-                                  <tr key={`job-${row.job.id}-imagedrop`}>
-                                    <td
-                                      colSpan={4}
-                                      className={styles.failurePanel}
-                                    >
-                                      <ImageDropNotice count={droppedAssets} />
-                                    </td>
-                                  </tr>
-                                )}
-                              {!isFailed &&
-                                isExpanded &&
-                                guessedColumns != null && (
-                                  <tr key={`job-${row.job.id}-columnsguess`}>
-                                    <td
-                                      colSpan={4}
-                                      className={styles.failurePanel}
-                                      id={`job-${row.job.id}-columnsguess`}
-                                    >
-                                      <ColumnsGuessedNotice
-                                        frontField={guessedColumns.frontField}
-                                        backField={guessedColumns.backField}
-                                      />
-                                    </td>
-                                  </tr>
-                                )}
-                              {!isFailed &&
-                                isExpanded &&
-                                structureRescued != null && (
-                                  <tr
-                                    key={`job-${row.job.id}-structurerescued`}
-                                  >
-                                    <td
-                                      colSpan={4}
-                                      className={styles.failurePanel}
-                                      id={`job-${row.job.id}-structurerescued`}
-                                    >
-                                      <StructureRescuedNotice
-                                        rule={structureRescued.rule}
-                                      />
-                                    </td>
-                                  </tr>
-                                )}
-                              {!isFailed &&
-                                isExpanded &&
-                                forbiddenBlocks != null && (
-                                  <tr key={`job-${row.job.id}-forbiddenblocks`}>
-                                    <td
-                                      colSpan={4}
-                                      className={styles.failurePanel}
-                                      id={`job-${row.job.id}-forbiddenblocks`}
-                                    >
-                                      <ForbiddenBlocksNotice
-                                        count={forbiddenBlocks.count}
-                                      />
-                                    </td>
-                                  </tr>
-                                )}
-                              {!isFailed &&
-                                isExpanded &&
-                                unsupportedBlocks != null && (
-                                  <tr
-                                    key={`job-${row.job.id}-unsupportedblocks`}
-                                  >
-                                    <td
-                                      colSpan={4}
-                                      className={styles.failurePanel}
-                                      id={`job-${row.job.id}-unsupportedblocks`}
-                                    >
-                                      <UnsupportedBlocksNotice
-                                        counts={unsupportedBlocks}
-                                      />
-                                    </td>
-                                  </tr>
-                                )}
-                              {!isFailed &&
-                                isExpanded &&
-                                cardLimitPartial != null && (
-                                  <tr key={`job-${row.job.id}-cardlimit`}>
-                                    <td
-                                      colSpan={4}
-                                      className={styles.failurePanel}
-                                    >
-                                      <MonthlyLimitPartialNotice
-                                        cardsDelivered={
-                                          cardLimitPartial.cardsDelivered
-                                        }
-                                        cardsHeldBack={
-                                          cardLimitPartial.cardsHeldBack
-                                        }
-                                        limit={cardLimitPartial.limit}
-                                      />
                                     </td>
                                   </tr>
                                 )}
@@ -1316,6 +1067,12 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
             </div>
           )}
         </>
+      )}
+      {reportModalJob != null && (
+        <ConversionReportModal
+          job={reportModalJob}
+          onClose={() => setReportModalJob(null)}
+        />
       )}
       {mappingModalJob != null &&
         (() => {
