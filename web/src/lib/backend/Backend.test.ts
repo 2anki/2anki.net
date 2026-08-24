@@ -159,6 +159,35 @@ describe('Backend', () => {
       expect(results[0].parent).toEqual({ type: 'page_id' });
       expect(results[1].parent).toEqual({ type: 'database_id' });
     });
+
+    it('tags an expired-session 401 as a client fault and bounces to login', async () => {
+      vi.mocked(api.post).mockResolvedValue(
+        createMockResponse(401, false, 'Unauthorized', {
+          message: 'Authentication required',
+        })
+      );
+
+      const error = await backend.search('biology').catch((e) => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toBe('Authentication required');
+      expect(error.status).toBe(401);
+      expect(api.redirectToLogin).toHaveBeenCalled();
+    });
+
+    it('tags a server failure with its status without redirecting', async () => {
+      vi.mocked(api.post).mockResolvedValue(
+        createMockResponse(500, false, 'Internal Server Error', {
+          message: 'Search blew up',
+        })
+      );
+
+      const error = await backend.search('biology').catch((e) => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error.status).toBe(500);
+      expect(api.redirectToLogin).not.toHaveBeenCalled();
+    });
   });
 
   describe('restartClaudeJob', () => {

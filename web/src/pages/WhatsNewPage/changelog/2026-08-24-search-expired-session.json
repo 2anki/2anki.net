@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-24-search-expired-session",
+  "date": "2026-08-24",
+  "type": "fix",
+  "title": "Notion search with an expired session sends you back to sign in instead of showing an error"
+}
