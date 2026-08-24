@@ -202,6 +202,18 @@ export function ConversionReportModal({
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ConversionReport | null>(null);
 
+  // Route the button through the native close() so focus returns to the
+  // trigger via the standard dialog close steps; useDialog's close listener
+  // then calls onClose. jsdom lacks close() on some versions — fall through.
+  const closeDialog = () => {
+    const dialog = dialogRef.current;
+    if (dialog != null && typeof dialog.close === 'function') {
+      dialog.close();
+    } else {
+      onClose();
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     get2ankiApi()
@@ -243,13 +255,13 @@ export function ConversionReportModal({
           <button
             type="button"
             className={sharedStyles.modalClose}
-            onClick={onClose}
+            onClick={closeDialog}
             aria-label={t('report.close')}
           >
             ×
           </button>
         </div>
-        <div className={sharedStyles.modalBody}>
+        <div className={sharedStyles.modalBody} aria-live="polite">
           {loading && <p>{t('report.loading')}</p>}
           {!loading && report != null && (
             <>

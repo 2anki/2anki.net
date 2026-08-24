@@ -648,24 +648,28 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                           <button
                                             type="button"
                                             className={styles.reportLink}
+                                            aria-haspopup="dialog"
                                             onClick={() =>
                                               setReportModalJob(row.job)
                                             }
                                           >
                                             {t('downloadsx:report.link')}
                                             {signalSkippedCount > 0 && (
-                                              <span
-                                                className={
-                                                  sharedStyles.badgeWarning
-                                                }
-                                              >
-                                                {t(
-                                                  'downloadsx:report.skipped',
-                                                  {
-                                                    count: signalSkippedCount,
+                                              <>
+                                                {' '}
+                                                <span
+                                                  className={
+                                                    sharedStyles.badgeWarning
                                                   }
-                                                )}
-                                              </span>
+                                                >
+                                                  {t(
+                                                    'downloadsx:report.skipped',
+                                                    {
+                                                      count: signalSkippedCount,
+                                                    }
+                                                  )}
+                                                </span>
+                                              </>
                                             )}
                                           </button>
                                         )}
