@@ -508,6 +508,72 @@ const UploadRouter = () => {
 
   /**
    * @swagger
+   * /api/upload/jobs/{jobId}/report:
+   *   get:
+   *     summary: Get the conversion report for a job
+   *     description: Fetch the per-conversion accounting stored on a completed job
+   *     tags: [Jobs]
+   *     security:
+   *       - bearerAuth: []
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: jobId
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: The conversion report
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 summary:
+   *                   type: object
+   *                   properties:
+   *                     blocks_seen:
+   *                       type: integer
+   *                     cards_created:
+   *                       type: integer
+   *                     blocks_skipped:
+   *                       type: integer
+   *                 entries:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       stage:
+   *                         type: string
+   *                         enum: [block, media, card, output]
+   *                       reason_code:
+   *                         type: string
+   *                       human_reason:
+   *                         type: string
+   *                       count:
+   *                         type: integer
+   *       401:
+   *         description: Authentication required
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       404:
+   *         description: Job not found or no report stored
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
+  router.get(
+    '/api/upload/jobs/:jobId/report',
+    RequireAuthentication,
+    (req, res) => jobController.getJobReport(req, res)
+  );
+
+  /**
+   * @swagger
    * /api/upload/jobs/{jobId}/restart:
    *   post:
    *     summary: Restart an interrupted Claude job

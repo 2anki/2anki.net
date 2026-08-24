@@ -63,11 +63,14 @@ jest.mock('../controllers/Upload/SaveNativeDeckController', () => ({
   })),
 }));
 
+const mockGetJobReport = jest.fn();
+
 jest.mock('../controllers/JobController', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(() => ({
     getJobs: jest.fn(),
     deleteJob: jest.fn(),
+    getJobReport: mockGetJobReport,
   })),
 }));
 
@@ -135,6 +138,41 @@ describe('UploadRouter POST /api/upload/dropbox', () => {
       const res = await postDropbox(url);
       expect(res.status).toBe(200);
       expect(mockDropbox).toHaveBeenCalledTimes(1);
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe('UploadRouter GET /api/upload/jobs/:jobId/report', () => {
+  beforeEach(() => {
+    mockAuthOwner = 42;
+    mockGetJobReport.mockReset();
+    mockGetJobReport.mockImplementation(
+      (_req: express.Request, res: express.Response) => {
+        res.status(200).json({ summary: {}, entries: [] });
+      }
+    );
+  });
+
+  it('rejects unauthenticated report reads with 401', async () => {
+    mockAuthOwner = null;
+    const { url, close } = await startServer();
+    try {
+      const res = await fetch(`${url}/api/upload/jobs/job-1/report`);
+      expect(res.status).toBe(401);
+      expect(mockGetJobReport).not.toHaveBeenCalled();
+    } finally {
+      await close();
+    }
+  });
+
+  it('forwards an authenticated report read to the controller', async () => {
+    const { url, close } = await startServer();
+    try {
+      const res = await fetch(`${url}/api/upload/jobs/job-1/report`);
+      expect(res.status).toBe(200);
+      expect(mockGetJobReport).toHaveBeenCalledTimes(1);
     } finally {
       await close();
     }

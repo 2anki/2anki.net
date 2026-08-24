@@ -73,6 +73,16 @@ class JobRepository {
       .first();
   }
 
+  findConversionReportRow(
+    objectId: string,
+    owner: string
+  ): Promise<Pick<Jobs, 'conversion_report'> | undefined> {
+    return this.database<Jobs>(this.tableName)
+      .where({ object_id: objectId, owner })
+      .select('conversion_report')
+      .first();
+  }
+
   findJobByObjectId(
     objectId: string
   ): Promise<Pick<Jobs, 'title' | 'created_at'> | undefined> {

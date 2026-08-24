@@ -16,6 +16,7 @@ describe('JobController', () => {
       getJobsByOwner: jest.fn(),
       deleteJobById: jest.fn(),
       findJobByObjectId: jest.fn(),
+      getConversionReport: jest.fn(),
     } as unknown as JobService;
     deleteJobUseCase = {
       execute: jest.fn(),
@@ -216,5 +217,73 @@ describe('JobController', () => {
     );
     expect(res.redirect).toHaveBeenCalledWith('/login');
     expect(res.send).not.toHaveBeenCalled();
+  });
+
+  describe('getJobReport', () => {
+    const report = {
+      summary: { blocks_seen: 52, cards_created: 34, blocks_skipped: 3 },
+      entries: [
+        {
+          stage: 'card',
+          reason_code: 'empty_back',
+          human_reason: 'Cards whose back came out empty',
+          count: 3,
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      req = { params: { jobId: 'job-object-id' } };
+    });
+
+    it('sends the typed report for the owner job', async () => {
+      (jobService.getConversionReport as jest.Mock).mockResolvedValue({
+        jobExists: true,
+        report,
+      });
+
+      await jobController.getJobReport(
+        req as express.Request,
+        res as express.Response
+      );
+
+      expect(jobService.getConversionReport).toHaveBeenCalledWith(
+        'job-object-id',
+        'owner1'
+      );
+      expect(res.json).toHaveBeenCalledWith(report);
+    });
+
+    it('responds 404 when the job does not exist for this owner', async () => {
+      (jobService.getConversionReport as jest.Mock).mockResolvedValue({
+        jobExists: false,
+        report: null,
+      });
+
+      await jobController.getJobReport(
+        req as express.Request,
+        res as express.Response
+      );
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Job not found' });
+    });
+
+    it('responds 404 when the job has no stored report', async () => {
+      (jobService.getConversionReport as jest.Mock).mockResolvedValue({
+        jobExists: true,
+        report: null,
+      });
+
+      await jobController.getJobReport(
+        req as express.Request,
+        res as express.Response
+      );
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'No report for this job',
+      });
+    });
   });
 });
