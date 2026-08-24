@@ -1,4 +1,11 @@
 import JobRepository, { JobWithDownloadKey } from '../data_layer/JobRepository';
+import type { ConversionReport } from './NotionService/helpers/buildConversionReport';
+import { toConversionReport } from './NotionService/helpers/toConversionReport';
+
+export interface ConversionReportLookup {
+  jobExists: boolean;
+  report: ConversionReport | null;
+}
 
 class JobService {
   constructor(private readonly repository: JobRepository) {}
@@ -28,6 +35,20 @@ class JobService {
 
   findJobByObjectId(objectId: string, owner: string) {
     return this.repository.findJobById(objectId, owner);
+  }
+
+  async getConversionReport(
+    objectId: string,
+    owner: string
+  ): Promise<ConversionReportLookup> {
+    const row = await this.repository.findConversionReportRow(objectId, owner);
+    if (!row) {
+      return { jobExists: false, report: null };
+    }
+    return {
+      jobExists: true,
+      report: toConversionReport(row.conversion_report),
+    };
   }
 
   async getAllStartedJobs(owner: string) {

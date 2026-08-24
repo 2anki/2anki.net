@@ -78,6 +78,24 @@ class JobController {
     res.download(filePath, apkgFile);
   }
 
+  async getJobReport(req: express.Request, res: express.Response) {
+    const owner = getOwner(res);
+    const jobId = req.params.jobId;
+    const { jobExists, report } = await this.service.getConversionReport(
+      jobId,
+      owner
+    );
+    if (!jobExists) {
+      res.status(404).json({ error: 'Job not found' });
+      return;
+    }
+    if (!report) {
+      res.status(404).json({ error: 'No report for this job' });
+      return;
+    }
+    res.json(report);
+  }
+
   async deleteJobByOwner(req: express.Request, res: express.Response) {
     try {
       const id = req.params.id;

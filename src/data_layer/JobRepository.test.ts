@@ -673,6 +673,50 @@ describe('JobRepository.updateJobStatus — terminal transitions', () => {
   });
 });
 
+describe('JobRepository.findConversionReportRow', () => {
+  let db: Knex;
+  let repo: JobRepository;
+
+  beforeEach(async () => {
+    db = await makeDb();
+    repo = new JobRepository(db);
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  it('returns the stored report for the owner job', async () => {
+    await insertJob(db, { owner: '1', object_id: 'job-1', status: 'started' });
+    const report = {
+      summary: { blocks_seen: 5, cards_created: 3, blocks_skipped: 1 },
+      entries: [],
+    };
+    await repo.updateJobStatus('job-1', '1', 'done', undefined, 3, report);
+
+    const row = await repo.findConversionReportRow('job-1', '1');
+
+    expect(row).toBeDefined();
+    expect(JSON.parse(row!.conversion_report as string)).toEqual(report);
+  });
+
+  it('returns a row with a null report when none was written', async () => {
+    await insertJob(db, { owner: '1', object_id: 'job-1', status: 'done' });
+
+    const row = await repo.findConversionReportRow('job-1', '1');
+
+    expect(row).toEqual({ conversion_report: null });
+  });
+
+  it('returns undefined for another owner job', async () => {
+    await insertJob(db, { owner: '1', object_id: 'job-1', status: 'done' });
+
+    const row = await repo.findConversionReportRow('job-1', '2');
+
+    expect(row).toBeUndefined();
+  });
+});
+
 describe('JobRepository boot-time stranded-job handling', () => {
   let db: Knex;
   let repo: JobRepository;

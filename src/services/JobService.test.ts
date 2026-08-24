@@ -74,3 +74,68 @@ describe('JobService.deleteJobById', () => {
     expect(repository.deleteJob).not.toHaveBeenCalled();
   });
 });
+
+describe('JobService.getConversionReport', () => {
+  const storedReport = {
+    summary: { blocks_seen: 52, cards_created: 34, blocks_skipped: 3 },
+    entries: [
+      {
+        stage: 'card',
+        reason_code: 'empty_back',
+        human_reason: 'Cards whose back came out empty',
+        count: 3,
+      },
+    ],
+  };
+  let repository: jest.Mocked<JobRepository>;
+  let service: JobService;
+
+  beforeEach(() => {
+    repository = {
+      findConversionReportRow: jest.fn(),
+    } as unknown as jest.Mocked<JobRepository>;
+    service = new JobService(repository);
+  });
+
+  it('reports a missing job', async () => {
+    repository.findConversionReportRow.mockResolvedValue(undefined);
+
+    const result = await service.getConversionReport('missing', '1');
+
+    expect(result).toEqual({ jobExists: false, report: null });
+    expect(repository.findConversionReportRow).toHaveBeenCalledWith(
+      'missing',
+      '1'
+    );
+  });
+
+  it('maps the stored report to the typed shape', async () => {
+    repository.findConversionReportRow.mockResolvedValue({
+      conversion_report: storedReport,
+    });
+
+    const result = await service.getConversionReport('job-1', '1');
+
+    expect(result).toEqual({ jobExists: true, report: storedReport });
+  });
+
+  it('returns a null report when the job has none stored', async () => {
+    repository.findConversionReportRow.mockResolvedValue({
+      conversion_report: null,
+    });
+
+    const result = await service.getConversionReport('job-1', '1');
+
+    expect(result).toEqual({ jobExists: true, report: null });
+  });
+
+  it('returns a null report when the stored value is malformed', async () => {
+    repository.findConversionReportRow.mockResolvedValue({
+      conversion_report: '{not json',
+    });
+
+    const result = await service.getConversionReport('job-1', '1');
+
+    expect(result).toEqual({ jobExists: true, report: null });
+  });
+});
