@@ -1,3 +1,6 @@
+---
+description: Post before/after stills + GIFs on a visual PR, captured headlessly with Playwright + ffmpeg
+---
 # pr-visual-diff
 
 Post **before/after visual evidence** (stills + GIFs) as a comment on a PR that changes CSS, design tokens, motion, or layout — captured headlessly with Playwright + ffmpeg, so a reviewer sees the change instead of reading a description of it.
