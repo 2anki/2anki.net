@@ -239,6 +239,36 @@ export class Backend {
     );
   }
 
+  // The search POST reads its body here instead of going through api.ts's
+  // taggedHttpError, so a failed response must be tagged with its status —
+  // otherwise an expired session's 401 slips past reportClientError's
+  // expected-client-fault filter and lands in /ops/errors as a crash.
+  private searchFailure(
+    status: number,
+    data: { message?: unknown; code?: unknown }
+  ): Error {
+    const message =
+      typeof data.message === 'string'
+        ? data.message
+        : `Search failed (${status})`;
+    if (isIntentionalBackendNotice(message)) {
+      return new UserNotice(
+        message,
+        typeof data.code === 'string' ? data.code : undefined
+      );
+    }
+    if (status === UNAUTHORIZED) {
+      redirectToLogin();
+    }
+    const error = new Error(message) as Error & {
+      status?: number;
+      method?: string;
+    };
+    error.status = status;
+    error.method = 'POST';
+    return error;
+  }
+
   async search(query: string): Promise<NotionObject[]> {
     const favorites = await this.getFavorites();
 
@@ -269,6 +299,9 @@ export class Backend {
     } else {
       const response = await post(`${this.baseURL}notion/pages`, { query });
       data = await response.json();
+      if (!response.ok) {
+        throw this.searchFailure(response.status, data);
+      }
     }
 
     if ('message' in data) {
