@@ -164,6 +164,26 @@ describe('RacService.provision', () => {
     expect(client.owner).toBe(42);
   });
 
+  test('never writes the AnkiConnect API key to the log', async () => {
+    const info = jest.spyOn(console, 'info').mockImplementation(() => {});
+    try {
+      const { service, repo } = makeService();
+
+      await service.provision(42);
+
+      const { anki_connect_api_key: key } = (repo.create as jest.Mock).mock
+        .calls[0][0] as { anki_connect_api_key: string };
+      const logged = info.mock.calls.map((args) => JSON.stringify(args));
+      expect(key).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(logged.some((line) => line.includes(key))).toBe(false);
+      expect(
+        logged.some((line) => line.includes('docker.createContainer args'))
+      ).toBe(true);
+    } finally {
+      info.mockRestore();
+    }
+  });
+
   test('binds host ports on 127.0.0.1 only and does not publish 5900', async () => {
     const { service, docker } = makeService();
 

@@ -498,7 +498,7 @@ export class RacService {
     };
     console.info(
       '[ankify-provision] docker.createContainer args:',
-      JSON.stringify(createOpts)
+      JSON.stringify({ ...createOpts, Env: ['ANKICONNECT_API_KEY=<redacted>'] })
     );
     let container: DockerContainerLike;
     try {
