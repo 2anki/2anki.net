@@ -112,7 +112,7 @@ Pipe a single comment with this shape:
 
 Never use `--approve` — Alexander authors most PRs and GitHub blocks self-approval. Use `--comment` even when the verdict is "approve."
 
-If the verdict is approve and the PR is the author's own and all `statusCheckRollup` entries are non-FAILURE, follow up with `gh pr merge <n> --squash --delete-branch`. Otherwise stop after posting.
+Stop after posting. Merging is `/ship`'s job — it calls this command as its review step and posts the `ship-review` marker on a clean verdict; never merge from here.
 
 ## Notes
 

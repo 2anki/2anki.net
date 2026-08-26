@@ -5,6 +5,11 @@ import re
 import subprocess
 import sys
 
+HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HOOKS_DIR)
+
+import merge_command  # noqa: E402
+
 
 CHECKBOX_GOLDEN_PATH = "- [x] Golden path on localhost:3000"
 CHECKBOX_CONSOLE_ERRORS = "- [x] No console errors at 375px"
@@ -32,7 +37,7 @@ def deny(reason):
 
 
 def is_gh_pr_merge(cmd):
-    return bool(GH_PR_MERGE.search(cmd))
+    return merge_command.is_gh_pr_merge(cmd)
 
 
 def extract_pr_ref(cmd):

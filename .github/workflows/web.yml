@@ -2,12 +2,6 @@ name: Web
 
 on:
   push:
-    paths:
-      - 'web/**'
-      - '.github/workflows/web.yml'
-      - '.github/actions/setup/**'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -43,8 +37,8 @@ jobs:
         env:
           CI: true
 
-  test:
-    name: test (22.20.0)
+  test-web:
+    name: test-web (22.20.0)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

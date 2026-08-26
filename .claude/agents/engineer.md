@@ -71,7 +71,7 @@ When given a spec or issue:
 9. **Run `/check`** — parallel tsc + web typecheck + web vitest. Everything green before pushing.
 10. **Open the PR.** Title uses a conventional commit prefix (`fix:`, `feat:`, `chore:`, `refactor:`, `test:`, `docs:`) followed by an imperative summary.
 
-**Always end with the PR link.** Whenever you open a PR or flip one to ready, print the full `https://github.com/2anki/server/pull/<n>` URL as the last line of your reply so Alexander can click straight through.
+**Ship it, then end with the PR link.** A finished non-rail PR is not done until `/ship <n>` has merged it, verified the deploy, and posted the digest. A hard-rail PR (`.claude/hooks/hard_rails.py`) stops at ready with the review-agent verdict posted. Either way, print the full `https://github.com/2anki/server/pull/<n>` URL and the deploy verdict as the last lines of your reply.
 
 ### When the work originated from a draft spec PR
 
@@ -145,4 +145,4 @@ Security, testing, code-quality, and dependency rules live in `.claude/rules/*.m
 - Make UX decisions on net-new flows (that's Designer).
 - Decide pricing, marketing, or roadmap priority.
 - Reply to support email in user-facing voice (you draft for Alexander; he sends).
-- Run anything that touches the production host directly. Deploys go through CI.
+- Run anything that touches the production host directly. Deploys go through CI via `/ship`; the read-only `/deploy-status` inside `/ship` is the one exception.

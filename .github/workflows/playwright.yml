@@ -2,24 +2,6 @@ name: Playwright
 
 on:
   push:
-    paths:
-      - 'web/src/App.tsx'
-      - 'web/src/App.test.tsx'
-      - 'web/src/index.tsx'
-      - 'web/src/setupTests.ts'
-      - 'web/src/components/**'
-      - 'web/src/pages/**'
-      - 'web/src/lib/**'
-      - 'web/src/styles/**'
-      - 'web/mock-server/**'
-      - 'web/tests/**'
-      - 'web/playwright.config.ts'
-      - 'web/vite.config.*'
-      - 'web/index.html'
-      - 'web/package.json'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/playwright.yml'
-      - '.github/actions/setup/**'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -31,7 +13,6 @@ concurrency:
 jobs:
   playwright:
     name: playwright (22.20.0)
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
