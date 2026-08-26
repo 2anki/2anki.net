@@ -86,6 +86,7 @@ import UsersRepository from '../data_layer/UsersRepository';
 import { ISettingsRepository } from '../data_layer/SettingsRepository';
 import Uploads from '../data_layer/public/Uploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
+import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
 
 const MockGeneratePackagesUseCase = GeneratePackagesUseCase as jest.MockedClass<
   typeof GeneratePackagesUseCase
@@ -680,7 +681,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   });
 
   function mockPackages(
-    packages: Array<{ name: string; cardCount: number }>,
+    packages: Array<{
+      name: string;
+      cardCount: number;
+      guidEntries?: IssuedCardGuid[];
+    }>,
     warnings?: string[]
   ) {
     MockGeneratePackagesUseCase.mockImplementation(
