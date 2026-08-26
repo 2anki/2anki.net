@@ -394,6 +394,8 @@
     "actionNewNode": "新しいノード",
     "actionImageNode": "画像ノード",
     "actionRenameNode": "ノードの名前を変更",
+    "actionSaveNode": "ノードを保存",
+    "actionNewLine": "改行",
     "actionDelete": "削除",
     "actionAutoSize": "自動サイズ調整",
     "actionTidyLayout": "レイアウトを整える",

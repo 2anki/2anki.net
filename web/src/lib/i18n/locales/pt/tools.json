@@ -401,6 +401,8 @@
     "actionNewNode": "Novo nó",
     "actionImageNode": "Nó de imagem",
     "actionRenameNode": "Renomear nó",
+    "actionSaveNode": "Salvar nó",
+    "actionNewLine": "Nova linha",
     "actionDelete": "Excluir",
     "actionAutoSize": "Ajustar tamanho",
     "actionTidyLayout": "Organizar layout",

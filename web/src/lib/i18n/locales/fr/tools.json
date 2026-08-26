@@ -401,6 +401,8 @@
     "actionNewNode": "Nouveau nœud",
     "actionImageNode": "Nœud image",
     "actionRenameNode": "Renommer le nœud",
+    "actionSaveNode": "Enregistrer le nœud",
+    "actionNewLine": "Nouvelle ligne",
     "actionDelete": "Supprimer",
     "actionAutoSize": "Taille automatique",
     "actionTidyLayout": "Ranger la disposition",

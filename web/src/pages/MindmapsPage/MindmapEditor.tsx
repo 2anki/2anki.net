@@ -80,6 +80,8 @@ function buildShortcutGroups(t: TFunction<'tools'>): {
           keys: ['F2', t('mindmaps.gestureDoubleClick')],
           action: t('mindmaps.actionRenameNode'),
         },
+        { keys: ['Enter'], action: t('mindmaps.actionSaveNode') },
+        { keys: ['Shift+Enter'], action: t('mindmaps.actionNewLine') },
         { keys: ['Backspace'], action: t('mindmaps.actionDelete') },
         {
           keys: [t('mindmaps.gestureDoubleClickBorder')],

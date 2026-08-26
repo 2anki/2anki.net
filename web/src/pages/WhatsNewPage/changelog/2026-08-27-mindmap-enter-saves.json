@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-27-mindmap-enter-saves",
+  "date": "2026-08-27",
+  "type": "fix",
+  "title": "Mindmap node editing saves on Enter, with Shift+Enter for a line break"
+}
