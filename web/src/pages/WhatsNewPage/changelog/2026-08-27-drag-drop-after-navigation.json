@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-27-drag-drop-after-navigation",
+  "date": "2026-08-27",
+  "type": "fix",
+  "title": "Dropping a file on the upload page keeps working after you move between pages"
+}
