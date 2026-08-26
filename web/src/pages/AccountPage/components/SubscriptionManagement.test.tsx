@@ -383,6 +383,7 @@ describe('SubscriptionManagement', () => {
 
     expect(track).toHaveBeenCalledWith('subscription_cancelled_during_pause');
   });
+
   describe('update payment details', () => {
     it('links the Stripe billing portal ahead of Cancel for an active subscription', () => {
       stubStripeActive();
@@ -396,9 +397,9 @@ describe('SubscriptionManagement', () => {
       const cancel = screen.getByRole('button', {
         name: 'Cancel subscription',
       });
-      expect(
-        link.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING
-      ).toBeTruthy();
+      expect(link.compareDocumentPosition(cancel)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING
+      );
       expect(
         screen.getByText(
           "You'll get a secure link by email, and your plan and price stay the same."
@@ -445,12 +446,17 @@ describe('SubscriptionManagement', () => {
       ).toBeNull();
     });
 
-    it.each(['scheduled', 'cancelled', 'none'] as const)(
+    it.each([
+      ['scheduled', /Access continues until then/],
+      ['cancelled', /Ended/],
+      ['none', /We can't find your subscription on this account/],
+    ] as const)(
       'does not render the link in the %s state',
-      (kind) => {
+      (kind, stateMarker) => {
         stubStripeView(kind);
         renderStripeManagement();
 
+        expect(screen.getByText(stateMarker)).toBeInTheDocument();
         expect(
           screen.queryByRole('link', { name: 'Update payment details' })
         ).toBeNull();
