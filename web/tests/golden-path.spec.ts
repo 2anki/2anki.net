@@ -196,7 +196,9 @@ test.describe('golden path @golden', () => {
     });
     await expect(portalLink).toBeVisible({ timeout: 10_000 });
     await expect(portalLink).toHaveAttribute('target', '_blank');
-    await page.waitForLoadState('networkidle');
+    await expect(
+      page.getByRole('button', { name: 'Cancel subscription' })
+    ).toBeVisible();
     expect(realErrors(errors)).toEqual([]);
   });
 });
