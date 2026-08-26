@@ -1,6 +1,11 @@
 jest.mock('./conversionPool', () => ({
   __esModule: true,
   shutdownConversionPool: jest.fn(),
+  describeConversionPool: jest.fn(() => ({
+    queueSize: 2,
+    threads: 3,
+    utilization: 0.5,
+  })),
   POOL_CLOSE_TIMEOUT_MS:
     jest.requireActual('./conversionPool').POOL_CLOSE_TIMEOUT_MS,
 }));
@@ -186,6 +191,51 @@ describe('gracefulShutdown', () => {
     expect(exitSpy).toHaveBeenCalledWith(0);
     warnSpy.mockRestore();
     jest.useRealTimers();
+  });
+
+  it('names the stuck phase and the open resources when the hard exit fires', async () => {
+    jest.useFakeTimers();
+    const { server } = fakeServer();
+    const { db } = fakeDatabase();
+    (db as unknown as { client: unknown }).client = {
+      pool: {
+        numUsed: () => 4,
+        numFree: () => 1,
+        numPendingAcquires: () => 2,
+        numPendingCreates: () => 0,
+      },
+    };
+    drainMock.mockReturnValue(new Promise(() => undefined));
+
+    const done = gracefulShutdown('SIGINT', server, db);
+    await jest.advanceTimersByTimeAsync(SHUTDOWN_TIMEOUT_MS + 1);
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const [message, details] = errorSpy.mock.calls.find(([m]) =>
+      String(m).includes('forcing exit')
+    ) as [string, Record<string, unknown>];
+    expect(message).toContain('during conversion pool drain');
+    expect(details).toMatchObject({
+      databasePool: { used: 4, free: 1, pendingAcquires: 2, pendingCreates: 0 },
+      conversionPool: { queueSize: 2, threads: 3, utilization: 0.5 },
+    });
+    expect(details.activeResources).toEqual(expect.any(Object));
+    jest.useRealTimers();
+    void done;
+  });
+
+  it('logs how long each drain phase took so a slow deploy shows which one ate the clock', async () => {
+    const { server } = fakeServer();
+    const { db } = fakeDatabase();
+    await gracefulShutdown('SIGINT', server, db);
+    const phases = infoSpy.mock.calls
+      .map(([m]) => String(m))
+      .filter((m) => / drained in \d+ms$/.test(m));
+    expect(phases).toEqual([
+      expect.stringMatching(/^HTTP server drained in \d+ms$/),
+      expect.stringMatching(/^Conversion pool drained in \d+ms$/),
+      expect.stringMatching(/^Database pool drained in \d+ms$/),
+    ]);
   });
 
   it('gives in-flight conversions room past the old 23s window that force-killed large decks', () => {

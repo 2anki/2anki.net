@@ -97,6 +97,19 @@ export function getConversionPool(): Piscina {
   return initConversionPool();
 }
 
+export function describeConversionPool(): {
+  queueSize: number;
+  threads: number;
+  utilization: number;
+} | null {
+  if (pool == null) return null;
+  return {
+    queueSize: pool.queueSize,
+    threads: pool.threads.length,
+    utilization: Number(pool.utilization.toFixed(2)),
+  };
+}
+
 // Swap in a fresh pool and drain the retiring one in the background so heaps
 // reset without dropping in-flight conversions — close() waits for outstanding
 // tasks up to its budget. Guarded against re-entry so a burst of completions
