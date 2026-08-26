@@ -1,6 +1,7 @@
 import type http from 'http';
 import type { Knex } from 'knex';
 import {
+  describeConversionPool,
   shutdownConversionPool,
   POOL_CLOSE_TIMEOUT_MS,
 } from './conversionPool';
@@ -35,6 +36,49 @@ export function resetGracefulShutdownStateForTesting(): void {
   shuttingDown = false;
 }
 
+type DrainPhase = 'HTTP server' | 'Conversion pool' | 'Database pool';
+
+export function describeActiveResources(): Record<string, number> {
+  const tally: Record<string, number> = {};
+  for (const kind of process.getActiveResourcesInfo()) {
+    tally[kind] = (tally[kind] ?? 0) + 1;
+  }
+  return tally;
+}
+
+export function describeDatabasePool(database: Knex): {
+  used: number;
+  free: number;
+  pendingAcquires: number;
+  pendingCreates: number;
+} | null {
+  const pool = (
+    database as unknown as {
+      client?: {
+        pool?: {
+          numUsed?: () => number;
+          numFree?: () => number;
+          numPendingAcquires?: () => number;
+          numPendingCreates?: () => number;
+        };
+      };
+    }
+  ).client?.pool;
+  if (pool?.numUsed == null) return null;
+  return {
+    used: pool.numUsed(),
+    free: pool.numFree?.() ?? 0,
+    pendingAcquires: pool.numPendingAcquires?.() ?? 0,
+    pendingCreates: pool.numPendingCreates?.() ?? 0,
+  };
+}
+
+async function timedPhase(phase: DrainPhase, run: () => Promise<void>) {
+  const startedAt = Date.now();
+  await run();
+  console.info(`${phase} drained in ${Date.now() - startedAt}ms`);
+}
+
 export async function gracefulShutdown(
   signal: string,
   server: http.Server,
@@ -49,37 +93,53 @@ export async function gracefulShutdown(
     console.info(`Cleared ${clearedTimers} scheduler timer(s)`);
   }
 
+  let phase: DrainPhase = 'HTTP server';
   const hardExit = setTimeout(() => {
     console.error(
-      `Graceful shutdown exceeded ${SHUTDOWN_TIMEOUT_MS}ms — forcing exit`
+      `Graceful shutdown exceeded ${SHUTDOWN_TIMEOUT_MS}ms during ${phase.toLowerCase()} drain — forcing exit`,
+      {
+        activeResources: describeActiveResources(),
+        databasePool: describeDatabasePool(database),
+        conversionPool: describeConversionPool(),
+      }
     );
     process.exit(1);
   }, SHUTDOWN_TIMEOUT_MS);
   hardExit.unref();
 
-  server.closeIdleConnections?.();
-  const closed = new Promise<void>((resolve) => server.close(() => resolve()));
-  const closeBudget = setTimeout(() => {
-    console.warn(
-      `HTTP close exceeded ${HTTP_CLOSE_BUDGET_MS}ms — severing remaining connections`
+  await timedPhase('HTTP server', async () => {
+    server.closeIdleConnections?.();
+    const closed = new Promise<void>((resolve) =>
+      server.close(() => resolve())
     );
-    server.closeAllConnections?.();
-  }, HTTP_CLOSE_BUDGET_MS);
-  closeBudget.unref();
-  await closed;
-  clearTimeout(closeBudget);
+    const closeBudget = setTimeout(() => {
+      console.warn(
+        `HTTP close exceeded ${HTTP_CLOSE_BUDGET_MS}ms — severing remaining connections`
+      );
+      server.closeAllConnections?.();
+    }, HTTP_CLOSE_BUDGET_MS);
+    closeBudget.unref();
+    await closed;
+    clearTimeout(closeBudget);
+  });
 
-  try {
-    await shutdownConversionPool({ timeoutMs: POOL_DRAIN_TIMEOUT_MS });
-  } catch (err) {
-    console.error('Conversion pool drain failed:', err);
-  }
+  phase = 'Conversion pool';
+  await timedPhase('Conversion pool', async () => {
+    try {
+      await shutdownConversionPool({ timeoutMs: POOL_DRAIN_TIMEOUT_MS });
+    } catch (err) {
+      console.error('Conversion pool drain failed:', err);
+    }
+  });
 
-  try {
-    await database.destroy();
-  } catch (err) {
-    console.error('Database pool teardown failed:', err);
-  }
+  phase = 'Database pool';
+  await timedPhase('Database pool', async () => {
+    try {
+      await database.destroy();
+    } catch (err) {
+      console.error('Database pool teardown failed:', err);
+    }
+  });
 
   clearTimeout(hardExit);
   console.info(`${signal} drain complete — exiting cleanly`);
