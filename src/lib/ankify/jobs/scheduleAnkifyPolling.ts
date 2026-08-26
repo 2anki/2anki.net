@@ -60,8 +60,53 @@ export const scheduleAnkifyPolling = (
     return false;
   };
 
+  type EnabledSubscription = Awaited<
+    ReturnType<typeof subscriptions.listEnabled>
+  >[number];
+
+  const syncSubscription = async (
+    sub: EnabledSubscription
+  ): Promise<'skipped' | 'attempted'> => {
+    const current = await subscriptions.findByOwnerAndPageId(
+      sub.owner,
+      sub.notion_page_id
+    );
+    if (
+      current == null ||
+      shouldSkipLapsedOfflinePoll(current, new Date()) ||
+      isBackedOffForNoClient(sub.id)
+    ) {
+      return 'skipped';
+    }
+    await useCase.execute({
+      owner: sub.owner,
+      notionPageId: sub.notion_page_id,
+      knownObjectType: current.notion_object_type ?? null,
+      trigger: 'polling',
+    });
+    return 'attempted';
+  };
+
+  const refreshOwnerOnce = async (
+    owner: number,
+    seenOwners: Set<number>
+  ): Promise<void> => {
+    if (!refreshTopLevelPagesForOwner || seenOwners.has(owner)) {
+      return;
+    }
+    seenOwners.add(owner);
+    try {
+      await refreshTopLevelPagesForOwner(owner);
+    } catch (error) {
+      console.error(
+        `[ankify-polling] top-level pages refresh failed for owner ${owner}`,
+        error
+      );
+    }
+  };
+
   const tick = async (): Promise<number> => {
-    let active: Awaited<ReturnType<typeof subscriptions.listEnabled>>;
+    let active: EnabledSubscription[];
     try {
       active = await subscriptions.listEnabled();
     } catch (error) {
@@ -70,39 +115,14 @@ export const scheduleAnkifyPolling = (
     }
     const seenOwners = new Set<number>();
     for (const sub of active) {
+      let outcome: 'skipped' | 'attempted' = 'attempted';
       try {
-        const current = await subscriptions.findByOwnerAndPageId(
-          sub.owner,
-          sub.notion_page_id
-        );
-        if (current == null) {
-          continue;
-        }
-        if (shouldSkipLapsedOfflinePoll(current, new Date())) {
-          continue;
-        }
-        if (isBackedOffForNoClient(sub.id)) {
-          continue;
-        }
-        await useCase.execute({
-          owner: sub.owner,
-          notionPageId: sub.notion_page_id,
-          knownObjectType: current.notion_object_type ?? null,
-          trigger: 'polling',
-        });
+        outcome = await syncSubscription(sub);
       } catch (error) {
         logSyncFailure(sub.id, error);
       }
-      if (refreshTopLevelPagesForOwner && !seenOwners.has(sub.owner)) {
-        seenOwners.add(sub.owner);
-        try {
-          await refreshTopLevelPagesForOwner(sub.owner);
-        } catch (error) {
-          console.error(
-            `[ankify-polling] top-level pages refresh failed for owner ${sub.owner}`,
-            error
-          );
-        }
+      if (outcome === 'attempted') {
+        await refreshOwnerOnce(sub.owner, seenOwners);
       }
     }
     return active.length;
