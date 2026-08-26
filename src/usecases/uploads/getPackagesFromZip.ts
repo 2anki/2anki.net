@@ -260,7 +260,11 @@ async function buildClaudeFlashcardDeck(
   paying: boolean,
   workspace: Workspace,
   onProgress: ((step: string) => void) | undefined,
-  ctx: { userId: number | null; crossFileDedup?: CrossFileDedupState }
+  ctx: {
+    userId: number | null;
+    requestId?: string;
+    crossFileDedup?: CrossFileDedupState;
+  }
 ): Promise<PackageResult> {
   const deck = await PrepareDeck({
     name: rootName,
@@ -270,6 +274,7 @@ async function buildClaudeFlashcardDeck(
     workspace,
     onProgress,
     userId: ctx.userId,
+    requestId: ctx.requestId,
     crossFileDedup: ctx.crossFileDedup,
   });
 
@@ -403,6 +408,7 @@ function appendConversionFailureWarning(
 
 export interface GetPackagesFromZipOptions {
   knownGuids?: KnownGuids;
+  requestId?: string;
   crossFileDedup?: CrossFileDedupState;
 }
 
@@ -415,7 +421,7 @@ export const getPackagesFromZip = async (
   userId: number | null = null,
   options: GetPackagesFromZipOptions = {}
 ): Promise<PackageResult> => {
-  const { knownGuids, crossFileDedup } = options;
+  const { knownGuids, requestId, crossFileDedup } = options;
   if (!fileContents) {
     return { packages: [] };
   }
@@ -451,7 +457,7 @@ export const getPackagesFromZip = async (
       paying,
       workspace,
       onProgress,
-      { userId, crossFileDedup }
+      { userId, requestId, crossFileDedup }
     );
   }
 

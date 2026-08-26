@@ -310,7 +310,20 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
         noLimits: true,
         workspace: makeWorkspace(),
         userId: 42,
+        requestId: 'req-0f1e2d3c',
       });
+
+      const claude = require('../../../lib/claude/ClaudeService');
+      const generateOptions = claude.generateDeckInfo.mock.calls.map(
+        (call: unknown[]) => call[7]
+      );
+      expect(generateOptions.length).toBeGreaterThan(0);
+      for (const options of generateOptions) {
+        expect(options).toMatchObject({
+          userId: 42,
+          requestId: 'req-0f1e2d3c',
+        });
+      }
 
       const completed = trackSpy.mock.calls.find(
         (call: unknown[]) => call[0] === 'ai_conversion_completed'

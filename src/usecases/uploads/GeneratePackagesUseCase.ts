@@ -57,7 +57,8 @@ class GeneratePackagesUseCase {
     workspace: Workspace,
     onProgress?: (step: string) => void,
     userId: number | null = null,
-    knownGuids?: KnownGuids
+    knownGuids?: KnownGuids,
+    requestId?: string
   ): Promise<PackageResult> {
     ensureUploadBytes(files);
     const unavailable = findUnavailableUpload(files);
@@ -77,6 +78,7 @@ class GeneratePackagesUseCase {
           enqueuedAt,
           userId,
           knownGuids,
+          requestId,
           progressPort: channel?.port2,
         },
         channel ? [channel.port2] : undefined

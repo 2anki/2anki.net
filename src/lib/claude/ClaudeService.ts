@@ -864,9 +864,11 @@ async function generateDeckInfoFromChunk(
   cardSize?: string,
   fieldMapping?: FieldMapping,
   usageCollector?: (usage: ChunkUsage) => void,
-  userId?: number | null
+  attribution?: SpendAttribution
 ): Promise<DeckInfo[]> {
   const tChunk0 = Date.now();
+  const userId = attribution?.userId;
+  const requestId = attribution?.requestId;
   const client = getAnthropicClient();
 
   const cardStyleFragment = getCardStylePromptFragment(cardStyle);
@@ -883,6 +885,7 @@ async function generateDeckInfoFromChunk(
   onProgress?.(`claude:chunk:${chunkIndex + 1}:${totalChunks}`);
 
   console.log('[Claude] Sending request to Claude API', {
+    requestId,
     model: 'claude-sonnet-5',
     promptBytes,
     maxTokens: CHUNK_MAX_TOKENS,
@@ -933,6 +936,7 @@ async function generateDeckInfoFromChunk(
       const willRetry =
         attempt < MAX_CHUNK_API_ATTEMPTS && isTransientChunkError(err);
       console.error('[Claude] API request failed', {
+        requestId,
         elapsedMs,
         chunkIndex,
         totalChunks,
@@ -954,6 +958,7 @@ async function generateDeckInfoFromChunk(
   const apiMs = Date.now() - tApi0;
 
   console.log('[Claude] Received response', {
+    requestId,
     stopReason: response.stop_reason,
     inputTokens: response.usage?.input_tokens,
     outputTokens: response.usage?.output_tokens,
@@ -971,6 +976,7 @@ async function generateDeckInfoFromChunk(
     model: response.model,
     usage: response.usage,
     userId,
+    requestId,
     durationMs: apiMs,
   });
   if (usageCollector && response.usage) {
@@ -985,6 +991,7 @@ async function generateDeckInfoFromChunk(
 
   if (response.stop_reason === 'max_tokens') {
     console.warn('[Claude] Response truncated at max_tokens', {
+      requestId,
       chunkIndex,
       totalChunks,
       maxTokens: CHUNK_MAX_TOKENS,
@@ -1010,6 +1017,7 @@ async function generateDeckInfoFromChunk(
   );
   const parseMs = Date.now() - tParse0;
   console.log('[Claude] chunk done', {
+    requestId,
     chunkIndex,
     totalChunks,
     decksCount: deckInfo.length,
@@ -1046,8 +1054,22 @@ export interface PdfImageFallbackContext {
 export interface GenerateDeckInfoOptions {
   isPaying?: boolean;
   userId?: number | null;
+  requestId?: string;
   comprehensive?: boolean;
   pdfImageFallback?: PdfImageFallbackContext;
+}
+
+// Who to bill and which request started it: the pair every [Claude] and
+// [claude-usage] line carries so spend can be joined back to a request (#4198).
+export interface SpendAttribution {
+  userId?: number | null;
+  requestId?: string;
+}
+
+function spendAttributionOf(
+  options: GenerateDeckInfoOptions | undefined
+): SpendAttribution {
+  return { userId: options?.userId, requestId: options?.requestId };
 }
 
 interface ChunkUsage {
@@ -1362,7 +1384,7 @@ export async function generateDeckInfo(
                   cardSize,
                   fieldMapping,
                   undefined,
-                  options?.userId
+                  spendAttributionOf(options)
                 )
             )
         )
@@ -1397,7 +1419,7 @@ export async function generateDeckInfo(
       cardStyle,
       cardSize,
       fieldMapping,
-      options?.userId
+      spendAttributionOf(options)
     );
     const deckInfo = result.deckInfo;
     const elapsedMs = Date.now() - t0;
@@ -1445,7 +1467,7 @@ export async function generateDeckInfo(
             cardSize,
             fieldMapping,
             undefined,
-            options?.userId
+            spendAttributionOf(options)
           )
         )
     )
@@ -1477,7 +1499,7 @@ async function runFloorV1(
   cardStyle: string | undefined,
   cardSize: string | undefined,
   fieldMapping: FieldMapping | undefined,
-  userId?: number | null
+  attribution?: SpendAttribution
 ): Promise<FloorV1Result> {
   const tStart = Date.now();
   const usages: ChunkUsage[] = [];
@@ -1500,7 +1522,7 @@ async function runFloorV1(
             cardSize,
             fieldMapping,
             collect,
-            userId
+            attribution
           )
         ).then((decks) => stampChunkIndex(decks, i))
     ),
@@ -1552,7 +1574,7 @@ async function runFloorV1(
               cardSize,
               fieldMapping,
               collect,
-              userId
+              attribution
             )
           ).then((decks) => stampChunkIndex(decks, idx))
       ),

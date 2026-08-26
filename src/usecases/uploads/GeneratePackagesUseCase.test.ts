@@ -89,11 +89,17 @@ describe('GeneratePackagesUseCase', () => {
       makeSettings(),
       makeWorkspace(),
       undefined,
-      42
+      42,
+      undefined,
+      'req-0f1e2d3c'
     );
 
     const [task] = mockRunUploadGeneration.mock.calls[0];
-    expect(task).toMatchObject({ paying: true, userId: 42 });
+    expect(task).toMatchObject({
+      paying: true,
+      userId: 42,
+      requestId: 'req-0f1e2d3c',
+    });
   });
 
   it('forwards progress messages from the pool worker to onProgress', async () => {
