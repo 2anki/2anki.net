@@ -34,6 +34,7 @@ HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HOOKS_DIR)
 
 import hard_rails  # noqa: E402
+import merge_command  # noqa: E402
 import sonar_gate  # noqa: E402
 
 
@@ -60,12 +61,12 @@ DEPENDABOT = "dependabot[bot]"
 
 
 def is_gh_pr_merge(cmd):
-    return bool(GH_PR_MERGE.search(cmd))
+    return merge_command.is_gh_pr_merge(cmd)
 
 
 def extract_pr_ref(cmd):
     after = GH_PR_MERGE.split(cmd, 1)[1]
-    after = re.split(r"[;&|]", after, 1)[0]
+    after = re.split(r"[;&|]", after, maxsplit=1)[0]
     url_match = PR_URL.search(after)
     if url_match:
         return url_match.group(1)
