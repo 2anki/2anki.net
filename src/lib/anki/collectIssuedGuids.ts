@@ -20,11 +20,59 @@ function readSidecar(location: string): SidecarEntry[] | null {
 }
 
 /**
- * Pairs python's guids.json sidecar back to the cards that produced it and
- * returns the entries the user's ledger does not hold yet. The GUID value is
- * computed by python (the legacy content formula lives there); any pairing
- * doubt fails safe to an empty list, so nothing wrong is ever pinned.
+ * Pairs python's guids.json sidecar back to the cards that produced it. The
+ * GUID value is computed by python (the legacy content formula lives there);
+ * any pairing doubt fails safe to null, so nothing wrong is ever pinned.
  */
+function pairSidecarWithCards(
+  location: string,
+  decks: Deck[]
+): IssuedCardGuid[] | null {
+  const sidecar = readSidecar(location);
+  if (sidecar == null) {
+    return null;
+  }
+  const cards = decks.flatMap((deck) => deck.cards);
+  if (sidecar.length !== cards.length) {
+    console.warn(
+      `[guid-ledger] sidecar length mismatch: ${sidecar.length} entries for ${cards.length} cards`
+    );
+    return null;
+  }
+  const paired: IssuedCardGuid[] = [];
+  for (const [index, card] of cards.entries()) {
+    const entry = sidecar[index];
+    if ((entry.notionId ?? undefined) !== card.notionId) {
+      console.warn('[guid-ledger] sidecar notionId misalignment, skipping');
+      return null;
+    }
+    if (card.notionId == null || entry.guid == null) {
+      continue;
+    }
+    paired.push({
+      blockId: card.notionId,
+      sourcePageId: card.sourcePageId,
+      guid: entry.guid,
+    });
+  }
+  return paired;
+}
+
+function firstPerBlock(
+  paired: IssuedCardGuid[],
+  keep: (entry: IssuedCardGuid) => boolean
+): IssuedCardGuid[] {
+  const issued = new Map<string, IssuedCardGuid>();
+  for (const entry of paired) {
+    if (issued.has(entry.blockId) || !keep(entry)) {
+      continue;
+    }
+    issued.set(entry.blockId, entry);
+  }
+  return [...issued.values()];
+}
+
+/** The entries the user's ledger does not hold yet. */
 export function collectIssuedGuids(
   location: string,
   decks: Deck[],
@@ -33,35 +81,29 @@ export function collectIssuedGuids(
   if (knownGuids == null) {
     return [];
   }
-  const sidecar = readSidecar(location);
-  if (sidecar == null) {
+  const paired = pairSidecarWithCards(location, decks);
+  if (paired == null) {
     return [];
   }
-  const cards = decks.flatMap((deck) => deck.cards);
-  if (sidecar.length !== cards.length) {
-    console.warn(
-      `[guid-ledger] sidecar length mismatch: ${sidecar.length} entries for ${cards.length} cards`
-    );
+  return firstPerBlock(paired, (entry) => knownGuids[entry.blockId] == null);
+}
+
+/**
+ * The entries whose GUID python just issued differs from what the ledger
+ * holds, plus the ones it does not hold at all. Used when the block-id
+ * identity option re-keys a page so the ledger follows the new identity.
+ */
+export function collectRekeyedGuids(
+  location: string,
+  decks: Deck[],
+  knownGuids: KnownGuids
+): IssuedCardGuid[] {
+  const paired = pairSidecarWithCards(location, decks);
+  if (paired == null) {
     return [];
   }
-  const issued = new Map<string, IssuedCardGuid>();
-  for (const [index, card] of cards.entries()) {
-    const entry = sidecar[index];
-    if ((entry.notionId ?? undefined) !== card.notionId) {
-      console.warn('[guid-ledger] sidecar notionId misalignment, skipping');
-      return [];
-    }
-    if (card.notionId == null || entry.guid == null) {
-      continue;
-    }
-    if (knownGuids[card.notionId] != null || issued.has(card.notionId)) {
-      continue;
-    }
-    issued.set(card.notionId, {
-      blockId: card.notionId,
-      sourcePageId: card.sourcePageId,
-      guid: entry.guid,
-    });
-  }
-  return [...issued.values()];
+  return firstPerBlock(
+    paired,
+    (entry) => knownGuids[entry.blockId] !== entry.guid
+  );
 }

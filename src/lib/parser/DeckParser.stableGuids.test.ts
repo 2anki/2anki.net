@@ -232,4 +232,15 @@ describe('guid ledger replay', () => {
     });
     expect(parser.payload[0].useContentGuid).toBe(false);
   });
+
+  it('re-keys a ledger hit to the block id when the option is on', async () => {
+    const parser = await parserFor(
+      wrap(body),
+      { cherry: 'false', 'block-id-identity': 'true' },
+      { [BLOCK_ID]: 'content-formula-guid' }
+    );
+    const cards = parser.payload.flatMap((d) => d.cards);
+    expect(cards[0].guid).toBeUndefined();
+    expect(parser.payload[0].useContentGuid).toBe(false);
+  });
 });

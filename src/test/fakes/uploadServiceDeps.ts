@@ -49,6 +49,7 @@ export function fakeUploadServiceDeps(
     overrides.guidLedger ?? {
       getAllForOwner: jest.fn().mockResolvedValue({}),
       record: jest.fn().mockResolvedValue(undefined),
+      reissue: jest.fn().mockResolvedValue(undefined),
     },
     overrides.photoToFlashcards ??
       ({
