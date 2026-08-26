@@ -85,6 +85,7 @@ import JobRepository from '../data_layer/JobRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import { ISettingsRepository } from '../data_layer/SettingsRepository';
 import Uploads from '../data_layer/public/Uploads';
+import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 
 const MockGeneratePackagesUseCase = GeneratePackagesUseCase as jest.MockedClass<
   typeof GeneratePackagesUseCase
@@ -221,7 +222,8 @@ describe('UploadService.handleUpload — error paths', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
       cookies: { anon_id: 'anon-upload-1' },
@@ -256,9 +258,9 @@ describe('UploadService.handleUpload — error paths', () => {
       buildRepository(),
       {} as JobRepository,
       buildUsersRepo(),
-      {
-        attachCustomTemplates,
-      } as unknown as ISettingsRepository
+      ...fakeUploadServiceDeps({
+        settings: { attachCustomTemplates } as unknown as ISettingsRepository,
+      })
     );
     const req = buildRequest({
       body: { template: 'custom' },
@@ -287,9 +289,9 @@ describe('UploadService.handleUpload — error paths', () => {
       buildRepository(),
       {} as JobRepository,
       buildUsersRepo(),
-      {
-        attachCustomTemplates,
-      } as unknown as ISettingsRepository
+      ...fakeUploadServiceDeps({
+        settings: { attachCustomTemplates } as unknown as ISettingsRepository,
+      })
     );
     const req = buildRequest({
       body: { template: 'custom' },
@@ -312,7 +314,8 @@ describe('UploadService.handleUpload — error paths', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
       path: '/api/upload/dropbox',
@@ -340,7 +343,8 @@ describe('UploadService.handleUpload — error paths', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus, capturedJson } = buildResponse();
@@ -377,7 +381,8 @@ describe('UploadService.handleUpload — error paths', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
       files: [
@@ -425,7 +430,8 @@ describe('UploadService.handleUpload — error paths', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus, capturedJson } = buildResponse();
@@ -452,7 +458,8 @@ describe('UploadService.handleUpload — error paths', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedJson } = buildResponse();
@@ -482,7 +489,8 @@ describe('UploadService.handleUpload — error paths', () => {
       const service = new UploadService(
         buildRepository(),
         {} as JobRepository,
-        buildUsersRepo()
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
       );
       const req = buildRequest({
         files: [
@@ -522,7 +530,8 @@ describe('UploadService.handleUpload — error paths', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus, capturedJson } = buildResponse();
@@ -548,7 +557,8 @@ describe('UploadService.handleUpload — error paths', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedJson } = buildResponse();
@@ -577,7 +587,8 @@ describe('UploadService.handleUpload — error paths', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
       files: [
@@ -619,7 +630,8 @@ describe('UploadService.handleUpload — error paths', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
       files: [
@@ -697,7 +709,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
       cookies: { anon_id: 'anon-sync-start' },
@@ -735,7 +748,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      usersRepo
+      usersRepo,
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedSend, redirectedTo } = responseWithRedirect();
@@ -780,7 +794,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      usersRepo
+      usersRepo,
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus, capturedSend } = buildResponse();
@@ -801,7 +816,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      usersRepo
+      usersRepo,
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedSend, redirectedTo } = responseWithRedirect();
@@ -839,7 +855,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      usersRepo
+      usersRepo,
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
       cookies: { token: 'a-valid-session-token' },
@@ -874,7 +891,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus } = buildResponse();
@@ -891,7 +909,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res } = buildResponse();
@@ -927,7 +946,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus } = buildResponse();
@@ -944,7 +964,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res } = buildResponse();
@@ -979,7 +1000,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus, capturedSend } = buildResponse();
@@ -997,7 +1019,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res } = buildResponse();
@@ -1032,7 +1055,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus } = buildResponse();
@@ -1065,7 +1089,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res } = buildResponse();
@@ -1084,7 +1109,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res } = buildResponse();
@@ -1106,7 +1132,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      usersRepo
+      usersRepo,
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus } = buildResponse();
@@ -1125,7 +1152,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      usersRepo
+      usersRepo,
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus, capturedSend } = buildResponse();
@@ -1145,7 +1173,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      usersRepo
+      usersRepo,
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus, capturedSend, capturedJson } = buildResponse();
@@ -1174,7 +1203,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus, capturedJson } = buildResponse();
@@ -1278,7 +1308,8 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     const service = new UploadService(
       buildRepository(),
       jobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = entitledRequest();
     const { res, capturedStatus, capturedJson } = entitledResponse();
@@ -1309,7 +1340,8 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     const service = new UploadService(
       buildRepository(),
       jobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = entitledRequest({
       body: { 'claude-ai-flashcards': 'false' },
@@ -1339,7 +1371,8 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     const service = new UploadService(
       buildRepository(),
       jobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = entitledRequest();
     const { res, capturedStatus, capturedJson } = buildResponse();
@@ -1362,7 +1395,8 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     const service = new UploadService(
       buildRepository(),
       jobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = entitledRequest();
     const { res, capturedStatus, capturedJson } = buildResponse();
@@ -1384,7 +1418,8 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     const service = new UploadService(
       buildRepository(),
       jobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = entitledRequest({
       files: [
@@ -1415,7 +1450,8 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     const service = new UploadService(
       buildRepository(),
       jobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = entitledRequest({
       files: [
@@ -1456,7 +1492,8 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     const service = new UploadService(
       buildRepository(),
       jobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = entitledRequest();
     const { res, capturedStatus } = entitledResponse();
@@ -1498,7 +1535,12 @@ describe('UploadService.deleteUpload — cascade', () => {
       deleteJobByObjectId: jest.fn().mockResolvedValue(1),
     } as unknown as JobRepository;
 
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
     await service.deleteUpload(7, 'k.apkg');
 
     expect(repo.findByKey).toHaveBeenCalledWith(7, 'k.apkg');
@@ -1528,7 +1570,12 @@ describe('UploadService.deleteUpload — cascade', () => {
       deleteJobByObjectId: jest.fn(),
     } as unknown as JobRepository;
 
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
     await service.deleteUpload(7, 'k.apkg');
 
     expect(repo.deleteUpload).toHaveBeenCalledWith(7, 'k.apkg');
@@ -1546,7 +1593,12 @@ describe('UploadService.deleteUpload — cascade', () => {
       deleteJobByObjectId: jest.fn(),
     } as unknown as JobRepository;
 
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
     await service.deleteUpload(7, 'k.apkg');
 
     expect(jobRepository.deleteJobByObjectId).not.toHaveBeenCalled();
@@ -1612,7 +1664,12 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
         }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
     );
 
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
     const req = buildRequest({ body: { 'claude-ai-flashcards': 'true' } });
     const { res } = buildResponse();
     (res.locals as Record<string, unknown>).owner = 42;
@@ -1660,7 +1717,12 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
         }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
     );
 
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
     const req = buildRequest({
       body: { 'claude-ai-flashcards': 'true' },
       cookies: { anon_id: 'anon-async-1' },
@@ -1729,7 +1791,12 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
         }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
     );
 
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
     const req = buildRequest({
       body: { 'claude-ai-flashcards': 'true', ...body },
     });
@@ -1792,7 +1859,8 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
     const service = new UploadService(
       buildRepository(),
       jobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest({ body: { 'claude-ai-flashcards': 'true' } });
     const { res } = buildResponse();
@@ -1869,7 +1937,12 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
         }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
     );
 
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
     const req = buildRequest({ body: { 'claude-ai-flashcards': 'true' } });
     const { res } = buildResponse();
     (res.locals as Record<string, unknown>).owner = 42;
@@ -1941,7 +2014,8 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedStatus, capturedJson } = buildResponse();
@@ -2012,7 +2086,8 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedJson } = buildResponse();
@@ -2050,7 +2125,8 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedJson } = buildResponse();
@@ -2092,7 +2168,8 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedJson } = buildResponse();
@@ -2130,7 +2207,8 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res, capturedJson } = buildResponse();
@@ -2220,7 +2298,12 @@ describe('UploadService.restartClaudeJob — concurrent restart guard', () => {
 
     const repo = buildRepository();
     const jobRepository = new JobRepository(db);
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
 
     const firstResponse = buildResponse();
     (firstResponse.res.locals as Record<string, unknown>).owner = 42;
@@ -2256,7 +2339,12 @@ describe('UploadService.restartClaudeJob — concurrent restart guard', () => {
 
     const repo = buildRepository();
     const jobRepository = new JobRepository(db);
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
 
     const { res, capturedStatus, capturedJson } = buildResponse();
     (res.locals as Record<string, unknown>).owner = 42;
@@ -2282,7 +2370,12 @@ describe('UploadService.restartClaudeJob — concurrent restart guard', () => {
 
     const repo = buildRepository();
     const jobRepository = new JobRepository(db);
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
 
     const { res, capturedStatus, capturedJson } = buildResponse();
     (res.locals as Record<string, unknown>).owner = 42;
@@ -2320,7 +2413,12 @@ describe('UploadService.restartClaudeJob — concurrent restart guard', () => {
 
     const repo = buildRepository();
     const jobRepository = new JobRepository(db);
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
 
     const { res, capturedStatus } = buildResponse();
     (res.locals as Record<string, unknown>).owner = 42;
@@ -2343,7 +2441,12 @@ describe('UploadService.restartClaudeJob — concurrent restart guard', () => {
 
     const repo = buildRepository();
     const jobRepository = new JobRepository(db);
-    const service = new UploadService(repo, jobRepository, buildUsersRepo());
+    const service = new UploadService(
+      repo,
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
 
     const { res, capturedStatus, capturedJson } = buildResponse();
     (res.locals as Record<string, unknown>).owner = 42;
@@ -2435,7 +2538,8 @@ describe('UploadService.restartClaudeJob — replays original conversion setting
     const service = new UploadService(
       buildRepository(),
       new JobRepository(db),
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const generateCalled = new Promise<unknown[]>((resolve) => {
       mockGenerateDeckInfo.mockImplementation((...args: unknown[]) => {
@@ -2589,7 +2693,8 @@ describe('UploadService.restartClaudeJob — replays the PDF-image-fallback flag
     const service = new UploadService(
       buildRepository(),
       new JobRepository(db),
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const generateCalled = new Promise<unknown[]>((resolve) => {
       mockGenerateDeckInfo.mockImplementation((...args: unknown[]) => {
@@ -2741,7 +2846,12 @@ describe('UploadService.handleUpload — claude flag does not bypass the card li
     const incrementSpy = usersRepo.incrementCardUsage as jest.Mock;
     const { repo: jobRepo, create } = buildJobRepo();
 
-    const service = new UploadService(buildRepository(), jobRepo, usersRepo);
+    const service = new UploadService(
+      buildRepository(),
+      jobRepo,
+      usersRepo,
+      ...fakeUploadServiceDeps()
+    );
     const req = buildRequest({ body: { 'claude-ai-flashcards': 'true' } });
     const built = buildResponse();
     let redirectedTo: string | null = null;
@@ -2770,7 +2880,12 @@ describe('UploadService.handleUpload — claude flag does not bypass the card li
     const incrementSpy = usersRepo.incrementCardUsage as jest.Mock;
     const { repo: jobRepo, create } = buildJobRepo();
 
-    const service = new UploadService(buildRepository(), jobRepo, usersRepo);
+    const service = new UploadService(
+      buildRepository(),
+      jobRepo,
+      usersRepo,
+      ...fakeUploadServiceDeps()
+    );
     const req = buildRequest({ body: { 'claude-ai-flashcards': 'true' } });
     const { res, capturedStatus, capturedSend } = buildResponse();
     (res.locals as Record<string, unknown>).owner = 42;
@@ -2787,7 +2902,12 @@ describe('UploadService.handleUpload — claude flag does not bypass the card li
     const usersRepo = buildUsersRepo();
     const { repo: jobRepo, create } = buildJobRepo();
 
-    const service = new UploadService(buildRepository(), jobRepo, usersRepo);
+    const service = new UploadService(
+      buildRepository(),
+      jobRepo,
+      usersRepo,
+      ...fakeUploadServiceDeps()
+    );
     const req = buildRequest({ body: { 'claude-ai-flashcards': 'true' } });
     const { res, capturedStatus, capturedJson } = buildResponse();
     (res.locals as Record<string, unknown>).owner = 42;
@@ -2809,7 +2929,12 @@ describe('UploadService.handleUpload — claude flag does not bypass the card li
       const usersRepo = buildUsersRepo();
       const { repo: jobRepo } = buildJobRepo();
 
-      const service = new UploadService(buildRepository(), jobRepo, usersRepo);
+      const service = new UploadService(
+        buildRepository(),
+        jobRepo,
+        usersRepo,
+        ...fakeUploadServiceDeps()
+      );
       const req = buildRequest({
         body: {
           'claude-ai-flashcards': 'true',
@@ -2933,7 +3058,8 @@ describe('UploadService.restartClaudeJob — card-limit enforcement', () => {
     const service = new UploadService(
       buildRepository(),
       new JobRepository(db),
-      usersRepo
+      usersRepo,
+      ...fakeUploadServiceDeps()
     );
     const req = {
       params: { jobId: 'job-obj-limit' },
@@ -2997,7 +3123,8 @@ describe('UploadService.handleUpload — signup_origin attribution', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
       cookies: { first_touch: firstTouchCookie('/pricing') },
@@ -3032,7 +3159,8 @@ describe('UploadService.handleUpload — signup_origin attribution', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      usersRepo
+      usersRepo,
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
       cookies: { first_touch: firstTouchCookie('/photo-to-deck') },
@@ -3060,7 +3188,8 @@ describe('UploadService.handleUpload — signup_origin attribution', () => {
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const req = buildRequest();
     const { res } = buildResponse();
@@ -3104,7 +3233,8 @@ describe('UploadService.handleUpload — in-flight duplicate guard', () => {
     return new UploadService(
       buildRepository(),
       buildJobRepo(),
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
   }
 
@@ -3265,12 +3395,7 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
         create: jest.fn().mockResolvedValue(undefined),
       } as unknown as JobRepository,
       buildUsersRepo(),
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      vision
+      ...fakeUploadServiceDeps({ photoToFlashcards: vision })
     );
   }
 

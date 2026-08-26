@@ -369,12 +369,12 @@ class UploadService {
     private readonly uploadRepository: IUploadRepository,
     private readonly jobRepository: JobRepository,
     private readonly usersRepository: UsersRepository,
-    private readonly settingsRepository?: ISettingsRepository,
-    private readonly conversionOutputStatsRepository?: IConversionOutputStatsRepository,
-    private readonly parsePathSignatureRepository?: IParsePathSignatureRepository,
-    private readonly conversionRuleScoresRepository?: IConversionRuleScoresRepository,
-    private readonly cardGuidLedgerRepository?: ICardGuidLedgerRepository,
-    private readonly photoToFlashcardsUseCase?: PhotoToFlashcardsUseCase
+    private readonly settingsRepository: ISettingsRepository,
+    private readonly conversionOutputStatsRepository: IConversionOutputStatsRepository,
+    private readonly parsePathSignatureRepository: IParsePathSignatureRepository,
+    private readonly conversionRuleScoresRepository: IConversionRuleScoresRepository,
+    private readonly cardGuidLedgerRepository: ICardGuidLedgerRepository,
+    private readonly photoToFlashcardsUseCase: PhotoToFlashcardsUseCase
   ) {}
 
   // Every conversion is scored, not just fallbacks — without the baseline there
@@ -402,7 +402,6 @@ class UploadService {
     source: ConversionScoreSource,
     inputFormat: string
   ): void {
-    if (this.conversionRuleScoresRepository == null) return;
     for (const pkg of packages) {
       if (pkg.score == null) continue;
       const induced = pkg.inducedRule;
@@ -438,7 +437,7 @@ class UploadService {
   private async loadKnownGuids(
     ownerId: number | null
   ): Promise<KnownGuids | undefined> {
-    if (ownerId == null || this.cardGuidLedgerRepository == null) {
+    if (ownerId == null) {
       return undefined;
     }
     try {
@@ -453,7 +452,7 @@ class UploadService {
     packages: { guidEntries?: IssuedCardGuid[] }[],
     ownerId: number | null
   ): void {
-    if (ownerId == null || this.cardGuidLedgerRepository == null) {
+    if (ownerId == null) {
       return;
     }
     const entries = packages.flatMap((p) => p.guidEntries ?? []);
@@ -483,7 +482,7 @@ class UploadService {
       0
     );
     this.conversionOutputStatsRepository
-      ?.record('upload', { decks: packages.length, cards, emptyBack })
+      .record('upload', { decks: packages.length, cards, emptyBack })
       .catch((error) =>
         console.error(
           '[UploadService] failed to record conversion output stats',
@@ -495,7 +494,7 @@ class UploadService {
       .filter((p): p is string => typeof p === 'string');
     if (parsePaths.length > 0) {
       this.parsePathSignatureRepository
-        ?.record(parsePaths)
+        .record(parsePaths)
         .catch((error) =>
           console.error(
             '[UploadService] failed to record parse path signatures',
@@ -719,7 +718,7 @@ class UploadService {
       const paying = isPaying(res.locals);
 
       if (owner != null && settings.n2aBasic == null) {
-        await this.settingsRepository?.attachCustomTemplates(
+        await this.settingsRepository.attachCustomTemplates(
           String(owner),
           settings
         );
@@ -735,12 +734,7 @@ class UploadService {
       });
 
       const files = req.files as UploadedFile[];
-      if (
-        owner != null &&
-        this.photoToFlashcardsUseCase != null &&
-        files.length === 1 &&
-        isImageOnlyUpload(files)
-      ) {
+      if (owner != null && files.length === 1 && isImageOnlyUpload(files)) {
         return await this.handleImageUpload(req, res, String(owner), paying);
       }
 
@@ -1345,7 +1339,7 @@ class UploadService {
     const deckName = deckNameFromImageFilename(file.originalname);
     let result: Awaited<ReturnType<PhotoToFlashcardsUseCase['execute']>>;
     try {
-      result = await this.photoToFlashcardsUseCase!.execute({
+      result = await this.photoToFlashcardsUseCase.execute({
         imageBase64: decoded.imageBase64,
         mediaType: decoded.mediaType,
         deckName,
