@@ -25,6 +25,7 @@ import UploadService from '../../services/UploadService';
 import JobRepository from '../../data_layer/JobRepository';
 import UsersRepository from '../../data_layer/UsersRepository';
 import UploadController from './UploadController';
+import { fakeUploadServiceDeps } from '../../test/fakes/uploadServiceDeps';
 
 function buildUsersRepo(): UsersRepository {
   return {
@@ -120,7 +121,8 @@ describe('Upload file', () => {
     const uploadService = new UploadService(
       repository,
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const notionService = new NotionService(notionRepository);
     const uploadController = new UploadController(uploadService, notionService);
@@ -196,7 +198,8 @@ describe('Upload file — multer error handling', () => {
     const uploadService = new UploadService(
       repository,
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const notionService = new NotionService(notionRepository);
     const controller = new UploadController(uploadService, notionService);
@@ -259,7 +262,8 @@ describe('UploadController.retryPdfWithCredential rate limit', () => {
     const uploadService = new UploadService(
       repository,
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const notionService = new NotionService(notionRepository);
 
@@ -341,7 +345,8 @@ describe('UploadController.retryPdfWithCredential rate limit', () => {
     const uploadService = new UploadService(
       repository,
       {} as JobRepository,
-      buildUsersRepo()
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
     );
     const notionService = new NotionService(notionRepository);
 

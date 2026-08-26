@@ -23,6 +23,7 @@ import UsersRepository from '../../data_layer/UsersRepository';
 import UploadController from './UploadController';
 import { GetDropboxUploadsUseCase } from '../../usecases/uploads/GetDropboxUploadsUseCase';
 import { DeleteDropboxUploadUseCase } from '../../usecases/uploads/DeleteDropboxUploadUseCase';
+import { fakeUploadServiceDeps } from '../../test/fakes/uploadServiceDeps';
 
 function makeController(
   getUseCase: GetDropboxUploadsUseCase,
@@ -62,7 +63,8 @@ function makeController(
         .fn()
         .mockResolvedValue({ cards_used: 0, month_started_at: new Date() }),
       incrementCardUsage: jest.fn().mockResolvedValue(1),
-    } as unknown as UsersRepository
+    } as unknown as UsersRepository,
+    ...fakeUploadServiceDeps()
   );
   const notionService = new NotionService(notionRepository);
   return new UploadController(
