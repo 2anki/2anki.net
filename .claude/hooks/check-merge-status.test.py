@@ -99,6 +99,14 @@ class TestExtractPrRef(unittest.TestCase):
         self.assertEqual(hook.extract_pr_ref('echo "gh pr merge" && gh pr merge 4244'), "4244")
 
 
+class TestGraphqlMerge(unittest.TestCase):
+    def test_graphql_mutation_is_denied_outright(self):
+        cmd = "gh api graphql -f query='mutation { mergePullRequest(input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
+        result = run_hook(cmd, pr_json(CLEAN_FILES, comments=[MARKER]))
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("mergePullRequest", result["reason"])
+
+
 class TestHardRails(unittest.TestCase):
     def test_rail_path_denies_and_names_it(self):
         result = run_hook("gh pr merge 4244", pr_json(["src/lib/isPaying.ts"], comments=[MARKER]))
