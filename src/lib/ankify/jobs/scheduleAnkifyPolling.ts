@@ -4,22 +4,31 @@ import { SyncNotionPageToRacUseCase } from '../../../usecases/ankify/SyncNotionP
 import { shouldSkipLapsedOfflinePoll } from '../offlineBackoff';
 
 export const ANKIFY_POLLING_INTERVAL_MS = 5 * 60 * 1000;
+// A subscription whose Anki client is gone fails identically every tick until
+// someone provisions one (#4236: four rows polled forever). Retry hourly so a
+// re-provisioned client picks up within the hour instead of every 5 minutes
+// spent on a call that cannot succeed.
+export const NO_CLIENT_RETRY_INTERVAL_MS = 60 * 60 * 1000;
 
 export const scheduleAnkifyPolling = (
   subscriptions: AnkifyNotionSubscriptionsRepositoryInterface,
   useCase: SyncNotionPageToRacUseCase,
   options: {
     intervalMs?: number;
+    noClientRetryIntervalMs?: number;
     refreshTopLevelPagesForOwner?: (owner: number) => Promise<void> | void;
   } = {}
 ): NodeJS.Timeout => {
   const intervalMs = options.intervalMs ?? ANKIFY_POLLING_INTERVAL_MS;
+  const noClientRetryIntervalMs =
+    options.noClientRetryIntervalMs ?? NO_CLIENT_RETRY_INTERVAL_MS;
   const refreshTopLevelPagesForOwner = options.refreshTopLevelPagesForOwner;
   // A subscription with no provisioned Anki client fails every 5-minute tick
   // the same way until someone provisions one — a state, not an incident.
   // One info line per subscription per boot instead of an error per tick
   // (#4203: four dead clients were burying real errors in the prod log).
   const mutedNoClientSubs = new Set<number>();
+  const noClientRetryAt = new Map<number, number>();
 
   const logSyncFailure = (subscriptionId: number, error: unknown): void => {
     if (!(error instanceof NoActiveAnkifyClientError)) {
@@ -29,13 +38,26 @@ export const scheduleAnkifyPolling = (
       );
       return;
     }
+    noClientRetryAt.set(subscriptionId, Date.now() + noClientRetryIntervalMs);
     if (mutedNoClientSubs.has(subscriptionId)) {
       return;
     }
     mutedNoClientSubs.add(subscriptionId);
     console.info(
-      `[ankify-polling] subscription ${subscriptionId} has no active Ankify client; muting until next boot`
+      `[ankify-polling] subscription ${subscriptionId} has no active Ankify client; muting until next boot, retrying hourly`
     );
+  };
+
+  const isBackedOffForNoClient = (subscriptionId: number): boolean => {
+    const retryAt = noClientRetryAt.get(subscriptionId);
+    if (retryAt == null) {
+      return false;
+    }
+    if (Date.now() < retryAt) {
+      return true;
+    }
+    noClientRetryAt.delete(subscriptionId);
+    return false;
   };
 
   const tick = async (): Promise<number> => {
@@ -57,6 +79,9 @@ export const scheduleAnkifyPolling = (
           continue;
         }
         if (shouldSkipLapsedOfflinePoll(current, new Date())) {
+          continue;
+        }
+        if (isBackedOffForNoClient(sub.id)) {
           continue;
         }
         await useCase.execute({
