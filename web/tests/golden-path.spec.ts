@@ -143,4 +143,60 @@ test.describe('golden path @golden', () => {
     await page.waitForLoadState('networkidle');
     expect(realErrors(errors)).toEqual([]);
   });
+  test('account page for an active subscriber links the billing portal at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ...AUTHED_LOCALS,
+          locals: {
+            ...AUTHED_LOCALS.locals,
+            subscriber: true,
+            planSource: 'stripe',
+            subscriptionInfo: {
+              active: true,
+              email: 'test@example.com',
+              linked_email: 'test@example.com',
+            },
+          },
+        }),
+      })
+    );
+    await page.route('**/api/users/subscription-status**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          subscriptions: [
+            {
+              id: 'sub_golden',
+              status: 'active',
+              created: 1_700_000_000,
+              cancel_at_period_end: false,
+              current_period_end: 1_893_456_000,
+              cancel_at: null,
+              canceled_at: null,
+              paused_until: null,
+              plan: { amount: 799, currency: 'usd', interval: 'month' },
+            },
+          ],
+        }),
+      })
+    );
+
+    await page.goto('/account');
+
+    const portalLink = page.getByRole('link', {
+      name: 'Update payment details',
+    });
+    await expect(portalLink).toBeVisible({ timeout: 10_000 });
+    await expect(portalLink).toHaveAttribute('target', '_blank');
+    await page.waitForLoadState('networkidle');
+    expect(realErrors(errors)).toEqual([]);
+  });
 });
