@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-27-block-id-identity-recovery",
+  "date": "2026-08-27",
+  "type": "fix",
+  "title": "Match cards to their Notion blocks re-keys a re-uploaded deck so decks built before July 2026 update instead of duplicating"
+}
