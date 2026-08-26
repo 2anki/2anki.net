@@ -93,3 +93,18 @@ test('leaves the sub-page emoji out when page-emoji is disabled', async () => {
   );
   expect(names).toEqual(['Parent', 'Parent::Child Page']);
 });
+
+test('does not double the emoji when the icon carries it as both attribute and text', async () => {
+  const names = await subDeckNames(
+    parentWithLinkedChild('<span class="icon" data-emoji="💼">💼</span>')
+  );
+  expect(names).toEqual(['📖 Parent', '📖 Parent::💼Child Page']);
+});
+
+test('appends the sub-page emoji with a space when page-emoji is last_emoji', async () => {
+  const names = await subDeckNames(
+    parentWithLinkedChild('<span class="icon" data-emoji="💼"></span>'),
+    { 'page-emoji': 'last_emoji' }
+  );
+  expect(names).toEqual(['Parent 📖', 'Parent 📖::Child Page 💼']);
+});

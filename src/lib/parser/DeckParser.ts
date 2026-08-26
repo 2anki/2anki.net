@@ -1579,7 +1579,7 @@ export class DeckParser {
     }
     return this.settings.pageEmoji === 'first_emoji'
       ? `${emoji}${title}`
-      : `${title}${emoji}`;
+      : `${title} ${emoji}`;
   }
 
   private extractPageIcon(dom: cheerio.CheerioAPI) {
