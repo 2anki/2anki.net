@@ -313,8 +313,7 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
         requestId: 'req-0f1e2d3c',
       });
 
-      const claude = require('../../../lib/claude/ClaudeService');
-      const generateOptions = claude.generateDeckInfo.mock.calls.map(
+      const generateOptions = generateDeckInfo.mock.calls.map(
         (call: unknown[]) => call[7]
       );
       expect(generateOptions.length).toBeGreaterThan(0);

@@ -1371,25 +1371,28 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
       .spyOn(console, 'info')
       .mockImplementation(() => undefined);
 
-    await generateDeckInfo(
-      sixChunkHtml,
-      [],
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { userId: 42, requestId: 'req-0f1e2d3c' }
-    );
+    try {
+      await generateDeckInfo(
+        sixChunkHtml,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { userId: 42, requestId: 'req-0f1e2d3c' }
+      );
 
-    const usageLines = info.mock.calls
-      .map((args) => String(args[0]))
-      .filter((line) => line.startsWith('[claude-usage]'));
-    expect(usageLines).toHaveLength(6);
-    for (const line of usageLines) {
-      expect(line).toContain('user=42 request=req-0f1e2d3c ');
+      const usageLines = info.mock.calls
+        .map((args) => String(args[0]))
+        .filter((line) => line.startsWith('[claude-usage]'));
+      expect(usageLines).toHaveLength(6);
+      for (const line of usageLines) {
+        expect(line).toContain('user=42 request=req-0f1e2d3c ');
+      }
+    } finally {
+      info.mockRestore();
     }
-    info.mockRestore();
   });
 
   it('comprehensive on — caps in-flight calls at 4 (semaphore)', async () => {
