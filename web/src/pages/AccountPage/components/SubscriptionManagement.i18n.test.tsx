@@ -67,6 +67,9 @@ describe('SubscriptionManagement in German', () => {
       screen.getByRole('button', { name: 'Abo kündigen' })
     ).toBeInTheDocument();
     expect(screen.getByText(/Verlängert sich am/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Zahlungsdaten aktualisieren' })
+    ).toBeInTheDocument();
   });
 
   it('renders Apple management copy in German', () => {

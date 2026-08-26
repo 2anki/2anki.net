@@ -38,6 +38,7 @@
     "youCan": "Tu peux :",
     "manageSubscription": "Gérer ton abonnement",
     "updatePayment": "Mettre à jour les informations de paiement",
+    "updatePaymentHelp": "Tu recevras un lien sécurisé par e-mail, et ton forfait et ton tarif restent les mêmes.",
     "cancelYourSubscription": "Annuler ton abonnement",
     "subscriptionEmail": "E-mail de l'abonnement",
     "subscriptionEmailPlaceholder": "Saisis l'e-mail de l'abonnement",

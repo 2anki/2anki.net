@@ -38,6 +38,7 @@
     "youCan": "Ты можешь:",
     "manageSubscription": "Управлять подпиской",
     "updatePayment": "Обновить платёжные данные",
+    "updatePaymentHelp": "Ты получишь безопасную ссылку по почте, а твой тариф и цена останутся прежними.",
     "cancelYourSubscription": "Отменить подписку",
     "subscriptionEmail": "E-mail подписки",
     "subscriptionEmailPlaceholder": "Введи e-mail подписки",

@@ -6,6 +6,7 @@ import { usePauseSubscription } from '../hooks/usePauseSubscription';
 import { useStripeSubscriptions } from '../../../lib/hooks/useStripeSubscriptions';
 import { StripeSubscriptionSummary } from '../../../lib/backend/getSubscriptionStatus';
 import { track } from '../../../lib/analytics/track';
+import { STRIPE_CUSTOMER_PORTAL_URL } from '../../../lib/stripePortal';
 import { CancelFlow, isLifecycleReason } from './CancelFlow';
 import { CancellationReason } from './cancellationReasons';
 import { ClaimSubscription } from './ClaimSubscription';
@@ -406,6 +407,14 @@ function StripeSubscriptionManagement({
     cancelUserSubscription('immediate');
   };
 
+  const handleManageBilling = () => {
+    if (activeSub != null) {
+      track('subscription_manage_billing_clicked', {
+        interval: isAnnual(activeSub) ? 'year' : 'month',
+      });
+    }
+  };
+
   return (
     <section className={styles.section}>
       {hasMultipleActive && (
@@ -430,16 +439,30 @@ function StripeSubscriptionManagement({
                 </p>
               )}
               {!confirming && (
-                <div className={styles.actions}>
-                  <button
-                    type="button"
-                    className={styles.secondaryButton}
-                    onClick={handleOpenCancelFlow}
-                    disabled={isCancelling}
-                  >
-                    {t('subscription.cancelSubscription')}
-                  </button>
-                </div>
+                <>
+                  <div className={styles.actions}>
+                    <a
+                      className={styles.manageBillingButton}
+                      href={STRIPE_CUSTOMER_PORTAL_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={handleManageBilling}
+                    >
+                      {t('subscription.updatePayment')}
+                    </a>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={handleOpenCancelFlow}
+                      disabled={isCancelling}
+                    >
+                      {t('subscription.cancelSubscription')}
+                    </button>
+                  </div>
+                  <p className={sharedStyles.smallDescription}>
+                    {t('subscription.updatePaymentHelp')}
+                  </p>
+                </>
               )}
               {confirming && (
                 <CancelFlow

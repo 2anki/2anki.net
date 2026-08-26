@@ -38,6 +38,7 @@
     "youCan": "できること:",
     "manageSubscription": "サブスクリプションを管理",
     "updatePayment": "支払い情報を更新",
+    "updatePaymentHelp": "安全なリンクをメールでお送りします。プランと料金はそのままです。",
     "cancelYourSubscription": "サブスクリプションを解約",
     "subscriptionEmail": "サブスクリプションのメールアドレス",
     "subscriptionEmailPlaceholder": "サブスクリプションのメールアドレスを入力",
