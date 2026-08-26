@@ -1,25 +1,40 @@
 #!/usr/bin/env python3
 """
-PreToolUse hook: gate `gh pr merge` on the full check rollup, not just FAILURE.
+PreToolUse hook: gate `gh pr merge` on the autonomous-shipping merge gate.
 
-Blocks the merge when ANY of these hold:
-  1. Any rollup entry concluded FAILURE (or a commit status reports FAILURE/ERROR).
-  2. Any rollup entry has not COMPLETED yet (merge-while-running).
-  3. Any check named `test*` concluded SKIPPED or CANCELLED — a skipped test job
+Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md):
+  1. The PR touches a hard-rail path or its diff contains a rail content trigger
+     (`hard_rails.py`) — those PRs wait for Alexander in the GitHub UI.
+  2. Any rollup entry concluded FAILURE (or a commit status reports FAILURE/ERROR).
+  3. Any rollup entry has not COMPLETED yet (merge-while-running).
+  4. Any check named `test*` concluded SKIPPED or CANCELLED — a skipped test job
      is not a green check. 2026-08-06: the markdown-it 15 bump merged on a
      rollup whose server `test` job was SKIPPED (its CI predated the workflow
      fix in #4000 that made dependabot PRs run the suite); the suite would have
      caught the boot crash that took prod down.
-  4. The PR touches package.json or pnpm-lock.yaml but no `test*` check
+  5. The PR touches package.json or pnpm-lock.yaml but no `test*` check
      concluded SUCCESS — a dependency change with no test run is unverified.
+  6. No review-agent pass marker for the head SHA
+     (`<!-- ship-review: pass sha=<headRefOid> -->`, posted by /ship). Dependabot
+     PRs are exempt — the /batch dependabot decision matrix is their review.
+  7. SonarCloud is not clean for the head SHA (`sonar_gate.py`; fails closed).
 
-Bypass: CLAUDE_SKIP_SAFETY=1 gh pr merge ...
+`gh` tooling errors fail open (a broken gh should not block a human); Sonar
+errors fail closed (an unscanned merge is the exact gap the gate closes).
+
+Bypass: CLAUDE_SKIP_SAFETY=1 gh pr merge ... — for Alexander only, never /ship.
 """
 import json
 import os
 import re
 import subprocess
 import sys
+
+HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HOOKS_DIR)
+
+import hard_rails  # noqa: E402
+import sonar_gate  # noqa: E402
 
 
 def allow():
@@ -40,6 +55,8 @@ def deny(reason):
 
 GH_PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
 PR_URL = re.compile(r"https?://github\.com/[^/]+/[^/]+/pull/(\d+)")
+REVIEW_MARKER = re.compile(r"<!--\s*ship-review:\s*pass\s+sha=([0-9a-f]{7,40})\s*-->")
+DEPENDABOT = "dependabot[bot]"
 
 
 def is_gh_pr_merge(cmd):
@@ -59,33 +76,42 @@ def extract_pr_ref(cmd):
     return None
 
 
-def fetch_pr_data(pr_ref):
-    args = ["gh", "pr", "view"]
-    if pr_ref is not None:
-        args.append(pr_ref)
-    args.extend(["--json", "statusCheckRollup,files"])
+def run_gh(args, label):
     try:
-        result = subprocess.run(
-            args, capture_output=True, text=True, timeout=15,
-        )
+        result = subprocess.run(args, capture_output=True, text=True, timeout=15)
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
-        sys.stderr.write(
-            f"[check-merge-status] could not run gh ({exc}); allowing merge.\n"
-        )
+        sys.stderr.write(f"[check-merge-status] could not run gh for {label} ({exc}); allowing.\n")
         return None
     if result.returncode != 0:
         sys.stderr.write(
-            "[check-merge-status] gh pr view failed; allowing merge. "
+            f"[check-merge-status] gh {label} failed; allowing. "
             f"stderr: {result.stderr.strip()[:300]}\n"
         )
         return None
-    try:
-        return json.loads(result.stdout)
-    except json.JSONDecodeError:
-        sys.stderr.write(
-            "[check-merge-status] could not parse gh JSON; allowing merge.\n"
-        )
+    return result.stdout
+
+
+def pr_args(pr_ref):
+    return [pr_ref] if pr_ref is not None else []
+
+
+def fetch_pr_data(pr_ref):
+    stdout = run_gh(
+        ["gh", "pr", "view", *pr_args(pr_ref), "--json",
+         "number,headRefOid,author,files,statusCheckRollup,reviews,comments"],
+        "pr view",
+    )
+    if stdout is None:
         return None
+    try:
+        return json.loads(stdout)
+    except json.JSONDecodeError:
+        sys.stderr.write("[check-merge-status] could not parse gh JSON; allowing merge.\n")
+        return None
+
+
+def fetch_pr_diff(pr_ref):
+    return run_gh(["gh", "pr", "diff", *pr_args(pr_ref)], "pr diff") or ""
 
 
 def entry_name(entry):
@@ -139,6 +165,46 @@ def classify(rollup, files):
     return violations
 
 
+def review_marker_violation(pr_data):
+    head = pr_data.get("headRefOid") or ""
+    bodies = [r.get("body") or "" for r in pr_data.get("reviews") or []]
+    bodies += [c.get("body") or "" for c in pr_data.get("comments") or []]
+    seen_shas = []
+    for body in bodies:
+        for match in REVIEW_MARKER.finditer(body):
+            sha = match.group(1)
+            if head.startswith(sha):
+                return None
+            seen_shas.append(sha)
+    if seen_shas:
+        stale = ", ".join(s[:7] for s in seen_shas)
+        return (
+            f"review-agent marker is for {stale} but head is {head[:7]} — the branch "
+            "moved after review; run /ship again so the review agent re-reads the diff"
+        )
+    return (
+        "no review-agent pass marker (`<!-- ship-review: pass sha=<head> -->`) on this PR "
+        "— merge through /ship, which runs the review agent and posts the marker"
+    )
+
+
+def rail_reason(paths, content_hits):
+    lines = []
+    if paths:
+        lines.append("  paths:")
+        lines.extend(f"    - {p}" for p in paths)
+    if content_hits:
+        lines.append("  diff contains:")
+        lines.extend(f"    - {h}" for h in content_hits)
+    return (
+        "Refusing `gh pr merge` — this PR touches a hard rail, which agents never merge:\n"
+        + "\n".join(lines)
+        + "\n\nFlip it ready, post the review-agent result, print the PR URL, and stop. "
+        "Alexander merges hard-rail PRs from the GitHub UI. "
+        "The rail list lives in .claude/hooks/hard_rails.py."
+    )
+
+
 def main():
     if os.environ.get("CLAUDE_SKIP_SAFETY"):
         allow()
@@ -163,17 +229,36 @@ def main():
 
     rollup = pr_data.get("statusCheckRollup") or []
     files = pr_data.get("files") or []
+    paths = [f.get("path") or "" for f in files]
+    author = (pr_data.get("author") or {}).get("login", "")
+
+    rail_hits = hard_rails.rail_paths(paths)
+    content_hits = hard_rails.rail_content_hits(fetch_pr_diff(pr_ref))
+    if rail_hits or content_hits:
+        deny(rail_reason(rail_hits, content_hits))
 
     violations = classify(rollup, files)
+
+    if author != DEPENDABOT:
+        marker_violation = review_marker_violation(pr_data)
+        if marker_violation:
+            violations.append(marker_violation)
+
+    sonar_ok, sonar_reason = sonar_gate.evaluate(
+        pr_data.get("number"), pr_data.get("headRefOid") or ""
+    )
+    if not sonar_ok:
+        violations.append(sonar_reason)
+
     if violations:
         bullet_list = "\n".join(f"  - {v}" for v in violations)
         deny(
-            "Refusing `gh pr merge` — check rollup is not verifiably green:\n"
+            "Refusing `gh pr merge` — the merge gate is not satisfied:\n"
             f"{bullet_list}\n\n"
             "Every rollup entry must be COMPLETED and non-FAILURE, every test "
-            "job must have actually RUN (SKIPPED/CANCELLED test jobs block), "
-            "and dependency changes need a SUCCESS test run.\n"
-            "Bypass with CLAUDE_SKIP_SAFETY=1 only after verifying by hand."
+            "job must have actually RUN, dependency changes need a SUCCESS test run, "
+            "the review agent must have passed the head SHA, and SonarCloud must be clean.\n"
+            "Bypass with CLAUDE_SKIP_SAFETY=1 only after verifying by hand (never from /ship)."
         )
 
     allow()
