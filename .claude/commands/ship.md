@@ -87,7 +87,7 @@ Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the o
 If the deploy run failed, `/api/version` does not report the merge SHA after the run finished, or `/deploy-status` says "broken":
 
 1. `git checkout main && git pull --ff-only && git checkout -b revert/<slug>`
-2. `git revert --no-edit $MERGE_SHA` — the commit subject becomes `revert: <original subject>` (keep ≤72 chars) with the deploy run URL in the body.
+2. `git revert --no-commit $MERGE_SHA && git commit -m "revert: <original subject>" -m "Deploy run <run URL> failed after merging #<n>: <one line on what broke>."` — git's default `Revert "…"` subject fails the conventional-prefix hook, so write the subject yourself (≤72 chars).
 3. `git push -u origin revert/<slug>` and `gh pr create --repo 2anki/server --base main --head revert/<slug>` with a body that links the failed run and the original PR.
 4. Ship the revert through this command. A pure `git revert` of the PR just merged skips step 2's review agent: post the marker directly with the verdict "mechanical revert of #<n> after a failed deploy". CI, Sonar, and the hooks still gate it.
 5. Comment the revert PR URL on the deploy-failure issue the workflow opened (`gh issue list --search "Production deploy failed" --state open`).
@@ -100,7 +100,10 @@ Find or create today's digest issue and append one comment:
 ```bash
 TODAY=$(date -u +%Y-%m-%d)
 ISSUE=$(gh issue list --repo 2anki/server --label shipped-digest --state open --search "\"Shipped $TODAY\" in:title" --json number --jq '.[0].number // empty')
-[ -z "$ISSUE" ] && ISSUE=$(gh issue create --repo 2anki/server --title "Shipped $TODAY" --label shipped-digest --body "Everything agents merged and deployed today. One comment per PR; override any decision by replying or opening a follow-up." --json number --jq .number 2>/dev/null || gh issue list --repo 2anki/server --label shipped-digest --search "\"Shipped $TODAY\" in:title" --json number --jq '.[0].number')
+if [ -z "$ISSUE" ]; then
+  URL=$(gh issue create --repo 2anki/server --title "Shipped $TODAY" --label shipped-digest --body "Everything agents merged and deployed today. One comment per PR; override any decision by replying or opening a follow-up.")
+  ISSUE=${URL##*/}
+fi
 gh issue comment "$ISSUE" --repo 2anki/server --body-file /tmp/ship-digest.md
 ```
 
@@ -113,7 +116,7 @@ gh issue comment "$ISSUE" --repo 2anki/server --body-file /tmp/ship-digest.md
 Deploy: <merge sha short> · <"healthy" | "no deploy (docs only)" | "reverted via #<m>">
 ```
 
-If the `shipped-digest` label does not exist yet, create it once: `gh label create shipped-digest --repo 2anki/server --color 0E8A16 --description "Daily digest of agent-merged PRs"`.
+`gh issue create` prints the new issue's URL, hence `${URL##*/}` for the number. The `shipped-digest` label exists (created 2026-08-26); if it ever goes missing, `--label` errors — recreate it with `gh label create shipped-digest --repo 2anki/server --color 0E8A16 --description "Daily digest of agent-merged PRs"`.
 
 ## Report
 

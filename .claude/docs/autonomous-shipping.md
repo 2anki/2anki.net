@@ -15,17 +15,17 @@ Before this, every merge was a human step — but branch protection on `main` re
 | --- | --- | --- |
 | 1 | PR touches no hard rail | `hard_rails.py` on the PR file list + diff |
 | 2 | Every rollup entry COMPLETED and non-FAILURE; every `test*` check RAN; dep changes have a SUCCESS test | `gh pr view --json statusCheckRollup,files` |
-| 3 | Review-agent pass marker for the head SHA | `<!-- ship-review: pass sha=<headRefOid> -->` in a PR review or comment; dependabot exempt |
+| 3 | Review-agent pass marker for the head SHA | `<!-- ship-review: pass sha=<headRefOid> -->` in a PR review or comment; dependabot exempt. **Honor-system**, like the browser attestation: anyone who can comment can post it — it binds the operator's session to having run the review, it does not prove the review ran |
 | 4 | SonarCloud: analysis exists for the head SHA, gate `OK`, zero `OPEN`/`CONFIRMED` issues | `sonar_gate.py` via the SonarCloud API — Sonar posts no GitHub check on this repo |
 | 5 | Browser attestation (web/src diffs) and changelog (feat/fix) | existing hooks |
 
-Failure modes are deliberate: `gh` tooling errors **fail open** (a broken `gh` must not block a human), Sonar errors **fail closed** (an unscanned merge is the exact gap the gate closes). The Sonar issue search leaks CLOSED records through its status filter (seen 2026-08-11 on #4046), so `sonar_gate.py` counts only records whose own `status` is OPEN/CONFIRMED.
+Failure modes are deliberate: `gh pr view` tooling errors **fail open** (a broken `gh` must not block a human); the rail diff fetch and Sonar **fail closed** (an unchecked rail or an unscanned merge is the exact gap the gate closes). The Sonar issue search leaks CLOSED records through its status filter (seen 2026-08-11 on #4046), so `sonar_gate.py` counts only records whose own `status` is OPEN/CONFIRMED.
 
 `CLAUDE_SKIP_SAFETY=1` bypasses the hook. It exists for Alexander verifying by hand; `/ship` never sets it, and an agent that reaches for it has left the sanctioned path.
 
 ## Hard rails
 
-The surfaces an agent never merges: auth, payments/Stripe, subscriptions, checkout, webhooks, migrations and the generated data layer, the deploy pipeline and CI workflows, the hooks and settings that make up this gate, and the prod safety limits. Canonical list: `.claude/hooks/hard_rails.py` (name globs matched anywhere in the path, explicit paths, and content triggers scanned on changed diff lines).
+The surfaces an agent never merges: auth, payments/Stripe, subscriptions, checkout, passes, webhooks, the monthly card/print quota use cases and mindmap quota constants, migrations and the generated data layer, `src/server.ts`, everything under `.github/`, the whole harness (`.claude/`, `CLAUDE.md` — so an agent cannot rewrite its own gate, brief, or `/ship` and self-merge), and the prod safety limits. Canonical list: `.claude/hooks/hard_rails.py` (name globs matched anywhere in the path, explicit paths, and content triggers scanned on changed diff lines).
 
 Rail PR flow: the agent still runs the review agent and posts its verdict, flips the PR ready, prints the URL, and stops. Alexander merges from the GitHub UI, where the hook does not run. Widening or narrowing the list is its own PR, never folded into feature work — the list is also itself a rail.
 
