@@ -68,13 +68,40 @@ describe('MindmapNode', () => {
     expect(input.value).toBe('Test node');
   });
 
-  it('calls onCommit with trimmed value on Enter', () => {
+  it('calls onCommit with trimmed value on plain Enter', () => {
     const onCommit = vi.fn();
     render(<MindmapNode {...makeProps({ editing: true, onCommit })} />);
     const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: '  Chemistry  ' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onCommit).toHaveBeenCalledWith('Chemistry');
+  });
+
+  it('still commits on Ctrl+Enter', () => {
+    const onCommit = vi.fn();
+    render(<MindmapNode {...makeProps({ editing: true, onCommit })} />);
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'Chemistry' } });
     fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
     expect(onCommit).toHaveBeenCalledWith('Chemistry');
+  });
+
+  it('does not commit on Shift+Enter so the textarea gets a newline', () => {
+    const onCommit = vi.fn();
+    render(<MindmapNode {...makeProps({ editing: true, onCommit })} />);
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'Line one' } });
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it('does not commit on Enter while an IME composition is in progress', () => {
+    const onCommit = vi.fn();
+    render(<MindmapNode {...makeProps({ editing: true, onCommit })} />);
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: '化学' } });
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+    expect(onCommit).not.toHaveBeenCalled();
   });
 
   it('calls onCancel on Escape', () => {
@@ -94,7 +121,7 @@ describe('MindmapNode', () => {
     );
     const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: '   ' } });
-    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+    fireEvent.keyDown(input, { key: 'Enter' });
     expect(onCommit).toHaveBeenCalledWith('Physics');
   });
 

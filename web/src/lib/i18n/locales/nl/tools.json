@@ -401,6 +401,8 @@
     "actionNewNode": "Nieuwe node",
     "actionImageNode": "Afbeeldingsnode",
     "actionRenameNode": "Node hernoemen",
+    "actionSaveNode": "Node opslaan",
+    "actionNewLine": "Nieuwe regel",
     "actionDelete": "Verwijderen",
     "actionAutoSize": "Auto-formaat",
     "actionTidyLayout": "Lay-out opruimen",

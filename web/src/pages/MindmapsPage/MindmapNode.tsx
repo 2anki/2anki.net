@@ -105,7 +105,7 @@ export function MindmapNode({ data, selected }: NodeProps) {
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     e.stopPropagation();
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       const trimmed = inputRef.current?.value.trim() ?? '';
       nodeData.onCommit?.(trimmed.length > 0 ? trimmed : nodeData.label);

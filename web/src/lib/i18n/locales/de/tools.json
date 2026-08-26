@@ -401,6 +401,8 @@
     "actionNewNode": "Neuer Knoten",
     "actionImageNode": "Bildknoten",
     "actionRenameNode": "Knoten umbenennen",
+    "actionSaveNode": "Knoten speichern",
+    "actionNewLine": "Neue Zeile",
     "actionDelete": "Löschen",
     "actionAutoSize": "Automatische Größe",
     "actionTidyLayout": "Layout aufräumen",

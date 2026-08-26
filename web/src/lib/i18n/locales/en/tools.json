@@ -401,6 +401,8 @@
     "actionNewNode": "New node",
     "actionImageNode": "Image node",
     "actionRenameNode": "Rename node",
+    "actionSaveNode": "Save node",
+    "actionNewLine": "New line",
     "actionDelete": "Delete",
     "actionAutoSize": "Auto-size",
     "actionTidyLayout": "Tidy layout",

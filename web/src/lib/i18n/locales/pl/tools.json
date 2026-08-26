@@ -415,6 +415,8 @@
     "actionNewNode": "Nowy węzeł",
     "actionImageNode": "Węzeł obrazu",
     "actionRenameNode": "Zmień nazwę węzła",
+    "actionSaveNode": "Zapisz węzeł",
+    "actionNewLine": "Nowa linia",
     "actionDelete": "Usuń",
     "actionAutoSize": "Automatyczny rozmiar",
     "actionTidyLayout": "Uporządkuj układ",

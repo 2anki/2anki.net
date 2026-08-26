@@ -401,6 +401,8 @@
     "actionNewNode": "Nuevo nodo",
     "actionImageNode": "Nodo de imagen",
     "actionRenameNode": "Renombrar nodo",
+    "actionSaveNode": "Guardar nodo",
+    "actionNewLine": "Nueva línea",
     "actionDelete": "Eliminar",
     "actionAutoSize": "Ajuste automático",
     "actionTidyLayout": "Ordenar disposición",
