@@ -316,7 +316,7 @@ describe('scheduleAnkifyPolling', () => {
     await waitForTick();
     await waitForTick();
 
-    expect(useCase.execute.mock.calls.length).toBeGreaterThan(1);
+    expect(useCase.execute).toHaveBeenCalledTimes(1);
     expect(errorSpy).not.toHaveBeenCalled();
     const muteLines = infoSpy.mock.calls.filter(([line]) =>
       String(line).includes('no active Ankify client; muting')
@@ -326,6 +326,59 @@ describe('scheduleAnkifyPolling', () => {
     clearInterval(timer);
     infoSpy.mockRestore();
     errorSpy.mockRestore();
+  });
+
+  test('backs off a subscription with no active client instead of retrying every tick', async () => {
+    jest.spyOn(console, 'info').mockImplementation(() => {});
+    const subscriptions = makeSubscriptions();
+    const useCase = makeUseCase();
+
+    const sub = sampleSubscription({ id: 11, notion_page_id: 'no-client' });
+    subscriptions.listEnabled.mockResolvedValue([sub]);
+    subscriptions.findByOwnerAndPageId.mockResolvedValue(sub);
+    useCase.execute.mockRejectedValue(new NoActiveAnkifyClientError());
+
+    const timer = scheduleAnkifyPolling(
+      subscriptions,
+      useCase as unknown as SyncNotionPageToRacUseCase,
+      { intervalMs: 5, noClientRetryIntervalMs: 50 }
+    );
+
+    await waitForTick();
+    await waitForTick();
+    await waitForTick();
+    expect(useCase.execute).toHaveBeenCalledTimes(1);
+
+    await jest.advanceTimersByTimeAsync(50);
+    expect(useCase.execute).toHaveBeenCalledTimes(2);
+
+    clearInterval(timer);
+  });
+
+  test('polls a backed-off subscription again once its client is provisioned', async () => {
+    jest.spyOn(console, 'info').mockImplementation(() => {});
+    const subscriptions = makeSubscriptions();
+    const useCase = makeUseCase();
+
+    const sub = sampleSubscription({ id: 12, notion_page_id: 'reprovisioned' });
+    subscriptions.listEnabled.mockResolvedValue([sub]);
+    subscriptions.findByOwnerAndPageId.mockResolvedValue(sub);
+    useCase.execute.mockRejectedValueOnce(new NoActiveAnkifyClientError());
+
+    const timer = scheduleAnkifyPolling(
+      subscriptions,
+      useCase as unknown as SyncNotionPageToRacUseCase,
+      { intervalMs: 5, noClientRetryIntervalMs: 50 }
+    );
+
+    await waitForTick();
+    await jest.advanceTimersByTimeAsync(50);
+    await waitForTick();
+    await waitForTick();
+    await waitForTick();
+    expect(useCase.execute.mock.calls.length).toBeGreaterThanOrEqual(3);
+
+    clearInterval(timer);
   });
 
   test('still logs an error for a non-client failure', async () => {
