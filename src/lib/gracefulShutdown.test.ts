@@ -14,6 +14,8 @@ import type http from 'http';
 import type { Knex } from 'knex';
 import { shutdownConversionPool } from './conversionPool';
 import {
+  describeActiveResources,
+  describeDatabasePool,
   gracefulShutdown,
   HTTP_CLOSE_BUDGET_MS,
   POOL_DRAIN_TIMEOUT_MS,
@@ -236,6 +238,23 @@ describe('gracefulShutdown', () => {
       expect.stringMatching(/^Conversion pool drained in \d+ms$/),
       expect.stringMatching(/^Database pool drained in \d+ms$/),
     ]);
+  });
+
+  it('reports null for a database client without a tarn pool and defaults missing counters', () => {
+    expect(describeDatabasePool({} as Knex)).toBeNull();
+    expect(
+      describeDatabasePool({
+        client: { pool: { numUsed: () => 3 } },
+      } as unknown as Knex)
+    ).toEqual({ used: 3, free: 0, pendingAcquires: 0, pendingCreates: 0 });
+  });
+
+  it('tallies active resource handles by type', () => {
+    const spy = jest
+      .spyOn(process, 'getActiveResourcesInfo')
+      .mockReturnValue(['Timeout', 'Timeout', 'TCPSocketWrap']);
+    expect(describeActiveResources()).toEqual({ Timeout: 2, TCPSocketWrap: 1 });
+    spy.mockRestore();
   });
 
   it('gives in-flight conversions room past the old 23s window that force-killed large decks', () => {
