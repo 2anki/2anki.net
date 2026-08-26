@@ -51,12 +51,14 @@ PER-ISSUE WORKFLOW (each agent):
      the PR body.
   5. If the diff touches web/src/, add the ## Browser check attestation.
   6. Conventional commit, subject ≤72 chars, "Fixes #<n>", Co-Authored-By line.
-  7. git push -u origin <branch>; open the PR READY for review (not draft).
+  7. git push -u origin <branch>; open the PR READY (not draft); then run /ship <n>.
 
 ABSOLUTE SAFETY RULES (non-negotiable):
-  - NEVER merge a PR. NEVER run `gh pr merge`. Leave every PR ready for my review.
+  - Merge ONLY through /ship. NEVER run `gh pr merge` by hand, NEVER set
+    CLAUDE_SKIP_SAFETY. A hard-rail PR stays ready for my review.
   - NEVER push to main. NEVER `git push` without `-u origin <branch>`.
-  - NEVER deploy, SSH to prod, or touch production data.
+  - Deploys happen only through /ship (CI). NEVER SSH to prod outside the
+    read-only /deploy-status inside /ship. NEVER touch production data.
   - One PR per issue, off fresh origin/main. Never stack branches.
   - NEVER put a reporter's name, email, Notion workspace, or deck title in a
     commit, PR, branch, or issue comment — use the numeric user ID or a role.

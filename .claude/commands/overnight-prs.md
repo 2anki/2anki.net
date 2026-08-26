@@ -1,14 +1,15 @@
 ---
-description: Autonomous overnight loop — verify issues against the codebase, close stale ones, open review-ready PRs (bug fixes + trio-decided features/improvements, decisions documented), until done or limited
+description: Autonomous overnight loop — verify issues against the codebase, close stale ones, ship PRs through /ship (bug fixes + trio-decided features/improvements, decisions documented), until done or limited
 argument-hint: optional — issue numbers to prioritize, or a focus area
 ---
 
 You are working autonomously overnight on the 2anki/server repo. Your job: verify each open issue
 is still relevant against the current codebase, CLOSE the ones that no longer apply, and turn the
-relevant ones into review-ready pull requests (one PR per issue) — not just bug fixes, but
-features, improvements, and copy/UX changes too. Keep going until you exhaust the queue or hit
-your usage limit. The night is wasted if you only close stale issues and ship nothing; aim to
-leave a stack of PRs Alexander can review and merge.
+relevant ones into merged, deployed pull requests (one PR per issue) — not just bug fixes, but
+features, improvements, and copy/UX changes too. Every Tier 1 and Tier 2 PR goes through `/ship`
+(review agent → gate → merge → deploy verified → digest); only hard-rail and Tier 3 PRs wait for
+Alexander. Keep going until you exhaust the queue or hit your usage limit. The night is wasted if
+you only close stale issues and ship nothing.
 
 Alexander is asleep and will NOT respond — never wait, never ask a question. **The old rule was
 "if a decision is needed, SKIP." That is what made past runs unproductive. The new rule: when an
@@ -24,9 +25,11 @@ Optional focus / seed from the invocation: $ARGUMENTS
 of the backlog under the same rules. If empty, work the whole open backlog.)
 
 ## Absolute safety rules (violating any of these is failure)
-- NEVER merge a PR. NEVER run `gh pr merge`. Alexander does all merging.
+- Merge ONLY through `/ship`. NEVER run `gh pr merge` by hand, NEVER set `CLAUDE_SKIP_SAFETY`,
+  NEVER merge a hard-rail PR (the hook refuses; the PR waits for Alexander).
 - NEVER push to `main`. NEVER `git push` without `-u origin <branch>`. Always work on a branch.
-- NEVER deploy, NEVER SSH to the prod box, NEVER touch production data.
+- Deploys happen only through `/ship` (CI). NEVER SSH to the prod box except the read-only
+  `/deploy-status` inside `/ship`. NEVER touch production data.
 - One PR per issue, branched off fresh `origin/main`. NEVER stack PRs.
 - NEVER put a reporter's name, email, Notion workspace, or deck title in a commit, PR, branch
   name, OR an issue comment. Use the numeric user ID or a symptom description (see
@@ -117,7 +120,7 @@ The old command only allowed tiny "safe bug fixes" and SKIPped everything else; 
 produced nothing. You may now open a PR for any of the three tiers. Pick the lowest tier that
 fits, and always pick the smallest change that resolves the issue, traceable line-by-line.
 
-**Tier 1 — safe bug fix → open READY.**
+**Tier 1 — safe bug fix → open READY, then `/ship`.**
 - A bug (wrong/empty/broken deck, crash, parser/conversion/formatting defect).
 - You can write a FAILING TEST that reproduces it, watch it fail for the right reason, then make
   it pass.
@@ -125,7 +128,7 @@ fits, and always pick the smallest change that resolves the issue, traceable lin
 - No hard-rail change (see below).
 
 **Tier 2 — improvement or feature that needs a product/UX/copy decision → run the TRIO, then open
-READY with a `## Decisions made overnight` section.**
+READY with a `## Decisions made overnight` section, then `/ship`.**
 - A feature request, an enhancement, a copy change, an empty/error/loading state, a small UX fix.
 - BEFORE coding, run the trio (pm + designer + engineer in one parallel Agent call) on the issue.
   Take their recommendation as the spec: what to build, what NOT to build, the exact copy.
@@ -182,7 +185,10 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
     the top of the body). Tier 2/3 bodies MUST carry the `## Decisions made overnight` section.
     If the diff touches `web/src/`, add the `## Browser check` attestation per
     `.claude/docs/browser-attestation.md` (out-clause when there's no runtime-visible effect —
-    don't claim a check you didn't run). Link the issue. Do NOT merge.
+    don't claim a check you didn't run). Link the issue.
+12. Tier 1 and Tier 2: run `/ship <n>`. It reviews, waits for green, merges, watches the deploy,
+    verifies prod, and appends to the day's `Shipped <date>` digest issue. A rail hit or a third
+    review round leaves the PR ready for Alexander — log it as `PR` not `SHIPPED`. Tier 3 stays draft.
 
 ## Between issues — cleanup
 - `git checkout main && git pull --ff-only`.
@@ -211,7 +217,9 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
 Running log, one line per issue, with a running counter so the log reconciles against M:
 `[idx/M] #NNN <title> → <state>`. There are FOUR terminal states — every issue you reach lands in
 exactly one, so the log accounts for every issue you opened, not just the ones you acted on:
-- `PR <url> (T1|T2|T3, ready|draft)` — opened a PR; note the tier and whether it's ready or draft.
+- `SHIPPED <url> (T1|T2, healthy|no deploy|reverted)` — merged and deployed through `/ship`.
+- `PR <url> (T1|T2|T3, ready|draft)` — opened a PR that is waiting for Alexander (rail, third
+  review round, or Tier 3 draft); note the tier and whether it's ready or draft.
 - `CLOSED: <reason>` — closed per Step 0 (already fixed / already shipped / superseded / duplicate
   of #m / junk).
 - `SKIPPED: <reason>` — relevant but hit a hard rail (auth/payments/integration/destructive
@@ -226,14 +234,15 @@ On stop, print the summary in this order — counts are the hero; the four bucke
 1. **Coverage line first** (a half-awake reader sees this before anything else). "Never reached"
    is load-bearing — do NOT soften it to "remaining" or "pending":
    ```
-   <M> open issues. Reached <N>[ before stopping (<limit>)]. Acted on <A> — <c> closed, <p> PRs
-   opened, <s> skipped. <R> reached and left open. <M-N> never reached.
+   <M> open issues. Reached <N>[ before stopping (<limit>)]. Acted on <A> — <c> closed, <d>
+   shipped, <p> PRs waiting for you, <s> skipped. <R> reached and left open. <M-N> never reached.
    ```
    If N == M, write "Reached all <M>." and "0 never reached." The phrase "no eligible issues
    remain" is true ONLY when N == M.
 2. **Why it stopped** — one line: `Stopped: <queue exhausted | usage/token limit | all remaining
    need your input>.[ <M-N> issues never reached — rerun to continue.]`
-3. **PRs open for review** — issue #, title, PR URL.
+3. **Shipped** — issue #, title, PR URL, deploy verdict (also in the `Shipped <date>` digest issue).
+3b. **PRs waiting for you** — issue #, title, PR URL, why (rail / review round / Tier 3).
 4. **Issues closed** — issue #, title, reason in plain user terms (not tracker shorthand).
 5. **Issues skipped — left open for you** — issue #, title, the specific blocker.
 6. A trailing count for the `REACHED: left open` bucket (`<R> reached, left open — no action`).
@@ -241,7 +250,8 @@ On stop, print the summary in this order — counts are the hero; the four bucke
 ## Stop conditions
 Stop when every issue in the Step 0a backlog file has been processed (its number is in
 `/tmp/overnight-processed.txt`), OR you hit your usage/token limit, OR remaining candidates all
-need Alexander's input. "No eligible issues remain" is true ONLY when N == M from Step 0a — never
+need Alexander's input. A `/ship` that is mid-deploy when you stop must finish first — never
+leave a merge unverified. "No eligible issues remain" is true ONLY when N == M from Step 0a — never
 infer it from an un-paginated `gh issue list`. ALWAYS emit the coverage line on stop, even when
 truncated. Do NOT invent work. Quality and safety over volume.
 
