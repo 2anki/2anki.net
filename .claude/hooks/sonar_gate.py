@@ -22,6 +22,7 @@ PROJECT_KEY = "Laer-Smart_2anki.net"
 API = "https://sonarcloud.io/api"
 OPEN_STATUSES = ("OPEN", "CONFIRMED")
 POLL_SECONDS = 15
+MIN_SHA_PREFIX = 7
 
 CLEAN = "clean"
 PENDING = "pending"
@@ -47,6 +48,12 @@ def pr_analysis(pr_number, fetch):
     return None
 
 
+def analysis_matches_head(analysis_sha, head_sha):
+    if len(head_sha) < MIN_SHA_PREFIX:
+        return False
+    return analysis_sha.startswith(head_sha)
+
+
 def open_issues(pr_number, fetch):
     url = (
         f"{API}/issues/search?componentKeys={PROJECT_KEY}"
@@ -69,9 +76,9 @@ def classify_with_reason(pr_number, head_sha, fetch):
         analysis = pr_analysis(pr_number, fetch)
         if analysis is None:
             return PENDING, f"no SonarCloud analysis yet for PR #{pr_number}"
-        if analysis["sha"] != head_sha:
+        if not analysis_matches_head(analysis["sha"], head_sha):
             return PENDING, (
-                f"SonarCloud analysis is for {analysis['sha'][:7]}, head is {head_sha[:7]} "
+                f"SonarCloud analysis is for {analysis['sha'][:12]}, head is {head_sha[:12]} "
                 "— wait for the head-SHA analysis"
             )
         if analysis["quality_gate"] != "OK":

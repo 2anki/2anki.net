@@ -36,6 +36,13 @@ class TestEvaluate(unittest.TestCase):
         self.assertTrue(ok)
         self.assertIn(HEAD[:7], reason)
 
+    def test_short_head_sha_prefix_matches_full_analysis_sha(self):
+        ok, _ = gate.evaluate("4244", HEAD[:12], fake_fetch([pr_entry()]))
+        self.assertTrue(ok)
+
+    def test_head_sha_shorter_than_seven_never_matches(self):
+        self.assertEqual(gate.classify("4244", HEAD[:6], fake_fetch([pr_entry()])), gate.PENDING)
+
     def test_missing_analysis_fails_as_pending(self):
         ok, reason = gate.evaluate("4244", HEAD, fake_fetch([pr_entry(key="1")]))
         self.assertFalse(ok)
