@@ -1362,6 +1362,39 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
     ).toBe(true);
   });
 
+  it('stamps the request id on every chunk usage line', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () =>
+      deckResponse(5, `C${call++}`)
+    );
+    const info = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+
+    try {
+      await generateDeckInfo(
+        sixChunkHtml,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { userId: 42, requestId: 'req-0f1e2d3c' }
+      );
+
+      const usageLines = info.mock.calls
+        .map((args) => String(args[0]))
+        .filter((line) => line.startsWith('[claude-usage]'));
+      expect(usageLines).toHaveLength(6);
+      for (const line of usageLines) {
+        expect(line).toContain('user=42 request=req-0f1e2d3c ');
+      }
+    } finally {
+      info.mockRestore();
+    }
+  });
+
   it('comprehensive on — caps in-flight calls at 4 (semaphore)', async () => {
     let inFlight = 0;
     let maxInFlight = 0;

@@ -565,6 +565,7 @@ async function buildClaudeDeck(
   const baseGenerateDeckInfoOptions = {
     isPaying: input.noLimits,
     userId: input.userId ?? null,
+    requestId: input.requestId,
     comprehensive: input.settings.aiComprehensive,
   };
   const optionsForFile = (f: (typeof htmlFiles)[number]) =>

@@ -246,6 +246,35 @@ describe('UploadService.handleUpload — error paths', () => {
     );
   });
 
+  it('hands the request id to the package generator so Claude spend lines can be joined back', async () => {
+    const executeMock = jest.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({ execute: executeMock }) as unknown as InstanceType<
+          typeof GeneratePackagesUseCase
+        >
+    );
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    res.locals.owner = 42;
+    res.locals.requestId = '0f1e2d3c-4b5a-4697-8877-665544332211';
+
+    await service.handleUpload(req, res);
+
+    expect(executeMock).toHaveBeenCalledTimes(1);
+    const [, , , , , ownerId, context] = executeMock.mock.calls[0];
+    expect(ownerId).toBe(42);
+    expect(context).toMatchObject({
+      requestId: '0f1e2d3c-4b5a-4697-8877-665544332211',
+    });
+  });
+
   it('attaches the saved custom templates for a signed-in upload before generating packages', async () => {
     MockGeneratePackagesUseCase.mockImplementation(
       () =>

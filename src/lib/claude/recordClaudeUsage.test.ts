@@ -98,4 +98,38 @@ describe('recordClaudeUsage', () => {
       })
     ).not.toThrow();
   });
+  it('stamps the request id on the usage line when one is known', () => {
+    const info = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+
+    recordClaudeUsage({
+      surface: 'conversion',
+      model: 'claude-sonnet-5',
+      usage: { input_tokens: 10, output_tokens: 5 },
+      userId: 42,
+      requestId: '0f1e2d3c-4b5a-4697-8877-665544332211',
+    });
+
+    expect(info).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'user=42 request=0f1e2d3c-4b5a-4697-8877-665544332211 input=10'
+      )
+    );
+  });
+
+  it('leaves the request id off the usage line when none is known', () => {
+    const info = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+
+    recordClaudeUsage({
+      surface: 'chat',
+      model: 'claude-sonnet-5',
+      usage: { input_tokens: 10, output_tokens: 5 },
+      userId: null,
+    });
+
+    expect(info).toHaveBeenCalledWith(expect.not.stringContaining('request='));
+  });
 });

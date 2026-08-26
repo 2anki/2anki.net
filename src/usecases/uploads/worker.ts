@@ -159,7 +159,8 @@ async function processFile(
   onProgress: (step: string) => void,
   userId: number | null,
   knownGuids?: KnownGuids,
-  crossFileDedup?: CrossFileDedupState
+  crossFileDedup?: CrossFileDedupState,
+  requestId?: string
 ): Promise<FileResult> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -234,6 +235,7 @@ async function processFile(
       workspace,
       onProgress,
       userId,
+      requestId,
       knownGuids,
       crossFileDedup,
     });
@@ -271,7 +273,7 @@ async function processFile(
       workspace,
       onProgress,
       userId,
-      { knownGuids, crossFileDedup }
+      { knownGuids, requestId, crossFileDedup }
     );
     packages.push(...result.packages);
     if (result.warnings) warnings.push(...result.warnings);
@@ -284,8 +286,16 @@ async function doGenerationWork(
   task: UploadGenerationTask,
   onProgress: (step: string) => void
 ): Promise<{ packages: Package[]; warnings: string[] }> {
-  const { paying, files, settings, workspace, enqueuedAt, userId, knownGuids } =
-    task;
+  const {
+    paying,
+    files,
+    settings,
+    workspace,
+    enqueuedAt,
+    userId,
+    knownGuids,
+    requestId,
+  } = task;
   let packages: Package[] = [];
   const warnings: string[] = [];
 
@@ -304,7 +314,8 @@ async function doGenerationWork(
       onProgress,
       userId,
       knownGuids,
-      crossFileDedup
+      crossFileDedup,
+      requestId
     );
     packages = packages.concat(result.packages);
     warnings.push(...result.warnings);

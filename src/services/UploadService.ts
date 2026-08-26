@@ -553,6 +553,7 @@ class UploadService {
       owner,
       workspaceDir,
       paying,
+      res.locals.requestId,
       async (step) => {
         await this.jobRepository.updateJobStatus(job.object_id, owner, step);
       }
@@ -629,6 +630,7 @@ class UploadService {
     owner: string,
     workspaceDir: string,
     paying: boolean,
+    requestId: string | undefined,
     onProgress: (step: string) => Promise<void>
   ) {
     const htmlFiles = walkHtmlFiles(workspaceDir);
@@ -645,6 +647,7 @@ class UploadService {
       isPaying: paying,
       userId:
         Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null,
+      requestId,
       comprehensive: settings?.aiComprehensive,
     };
 
@@ -962,7 +965,7 @@ class UploadService {
           await this.jobRepository.updateJobStatus(ws.id, owner, step);
         },
         ownerId,
-        knownGuids
+        { knownGuids, requestId: res.locals.requestId }
       )
       .then(async ({ packages }) => {
         this.recordIssuedGuids(packages, ownerId, settings);
@@ -1129,7 +1132,7 @@ class UploadService {
       ws,
       undefined,
       syncOwnerId,
-      knownGuids
+      { knownGuids, requestId: res.locals.requestId }
     );
     this.recordIssuedGuids(packages, syncOwnerId, settings);
 

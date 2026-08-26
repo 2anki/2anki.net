@@ -13,6 +13,7 @@ export interface UploadGenerationTask {
   enqueuedAt: number;
   userId: number | null;
   knownGuids?: KnownGuids;
+  requestId?: string;
   progressPort?: MessagePort;
 }
 
