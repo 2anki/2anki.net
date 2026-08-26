@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import json
 import os
-import re
 import subprocess
 import sys
 
@@ -16,8 +15,6 @@ CHECKBOX_CONSOLE_ERRORS = "- [x] No console errors at 375px"
 OUT_CLAUSE_PREFIX = "Browser check: not applicable —"
 CHANGELOG_DIR_PREFIX = "web/src/pages/WhatsNewPage/changelog/"
 
-GH_PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
-PR_URL = re.compile(r"https?://github\.com/[^/]+/[^/]+/pull/(\d+)")
 
 
 def allow():
@@ -41,16 +38,7 @@ def is_gh_pr_merge(cmd):
 
 
 def extract_pr_ref(cmd):
-    after = GH_PR_MERGE.split(cmd, 1)[1]
-    after = re.split(r"[;&|]", after, 1)[0]
-    url_match = PR_URL.search(after)
-    if url_match:
-        return url_match.group(1)
-    tokens = [t for t in after.split() if not t.startswith("-")]
-    for token in tokens:
-        if token.isdigit():
-            return token
-    return None
+    return merge_command.extract_pr_ref(cmd)
 
 
 def fetch_pr_data(pr_ref):
