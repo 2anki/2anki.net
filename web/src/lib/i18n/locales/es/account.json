@@ -37,7 +37,7 @@
     "managedThroughStripe": "Tu suscripción se gestiona a través de tu cuenta de Stripe en",
     "youCan": "Puedes:",
     "manageSubscription": "Gestionar tu suscripción",
-    "updatePayment": "Actualizar los datos de pago",
+    "updatePayment": "Actualizar datos de pago",
     "updatePaymentHelp": "Recibirás un enlace seguro por correo, y tu plan y tu precio no cambian.",
     "cancelYourSubscription": "Cancelar tu suscripción",
     "subscriptionEmail": "Correo de la suscripción",
