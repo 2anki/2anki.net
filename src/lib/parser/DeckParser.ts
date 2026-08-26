@@ -546,7 +546,7 @@ export class DeckParser {
       const pageContent = this.findNextPage(href);
       if (pageContent && name) {
         const subDeckName = this.applyDeckNameNumbering(
-          spDom.find('title').text() || ref.text()
+          this.subPageName(spDom, ref)
         );
         this.handleHTML(
           fileName,
@@ -1562,6 +1562,24 @@ export class DeckParser {
       return pageCoverImage.attr('src');
     }
     return undefined;
+  }
+
+  private subPageName(
+    figure: cheerio.Cheerio<Element>,
+    link: cheerio.Cheerio<Element>
+  ): string {
+    const title = figure.find('title').text() || link.text();
+    const emoji = link.find('.icon').first().attr('data-emoji');
+    if (
+      !emoji ||
+      title.includes(emoji) ||
+      this.settings.pageEmoji === 'disable_emoji'
+    ) {
+      return title;
+    }
+    return this.settings.pageEmoji === 'first_emoji'
+      ? `${emoji}${title}`
+      : `${title} ${emoji}`;
   }
 
   private extractPageIcon(dom: cheerio.CheerioAPI) {

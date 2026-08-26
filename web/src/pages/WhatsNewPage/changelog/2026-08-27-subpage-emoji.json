@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-27-subpage-emoji",
+  "date": "2026-08-27",
+  "type": "fix",
+  "title": "Nested decks keep the sub-page emoji in their name for 2026 Notion exports"
+}
