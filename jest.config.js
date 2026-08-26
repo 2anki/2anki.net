@@ -24,6 +24,7 @@ module.exports = {
     '!src/migrations/**',
     '!src/test/fixtures/**',
     '!src/test/mocks/**',
+    '!src/test/fakes/**',
     '!src/config/swagger.ts',
   ],
   coverageDirectory: 'coverage',
