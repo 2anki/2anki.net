@@ -72,19 +72,26 @@ async function subDeckNames(parentHtml: string, settings = {}) {
   return parser.payload.map((deck) => deck.name);
 }
 
-test('keeps the sub-page emoji from the 2026 data-emoji icon in the nested deck name', async () => {
-  const names = await subDeckNames(
-    parentWithLinkedChild('<span class="icon" data-emoji="💼"></span>')
-  );
-  expect(names).toEqual(['📖 Parent', '📖 Parent::💼Child Page']);
-});
-
-test('does not double the emoji when the older export carries it as icon text', async () => {
-  const names = await subDeckNames(
-    parentWithLinkedChild('<span class="icon">💼</span>')
-  );
-  expect(names).toEqual(['📖 Parent', '📖 Parent::💼Child Page']);
-});
+test.each([
+  [
+    'the 2026 data-emoji icon with empty text',
+    '<span class="icon" data-emoji="💼"></span>',
+  ],
+  [
+    'the older export that carries the emoji as icon text',
+    '<span class="icon">💼</span>',
+  ],
+  [
+    'an icon that carries the emoji as both attribute and text',
+    '<span class="icon" data-emoji="💼">💼</span>',
+  ],
+])(
+  'names the nested deck with a single sub-page emoji from %s',
+  async (_, iconSpan) => {
+    const names = await subDeckNames(parentWithLinkedChild(iconSpan));
+    expect(names).toEqual(['📖 Parent', '📖 Parent::💼Child Page']);
+  }
+);
 
 test('leaves the sub-page emoji out when page-emoji is disabled', async () => {
   const names = await subDeckNames(
@@ -92,13 +99,6 @@ test('leaves the sub-page emoji out when page-emoji is disabled', async () => {
     { 'page-emoji': 'disable_emoji' }
   );
   expect(names).toEqual(['Parent', 'Parent::Child Page']);
-});
-
-test('does not double the emoji when the icon carries it as both attribute and text', async () => {
-  const names = await subDeckNames(
-    parentWithLinkedChild('<span class="icon" data-emoji="💼">💼</span>')
-  );
-  expect(names).toEqual(['📖 Parent', '📖 Parent::💼Child Page']);
 });
 
 test('appends the sub-page emoji with a space when page-emoji is last_emoji', async () => {
