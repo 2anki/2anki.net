@@ -6,6 +6,7 @@ import type { UsersId } from './public/Users';
 export interface ICardGuidLedgerRepository {
   getAllForOwner(owner: number): Promise<Record<string, string>>;
   record(owner: number, entries: IssuedCardGuid[]): Promise<void>;
+  reissue(owner: number, entries: IssuedCardGuid[]): Promise<void>;
 }
 
 const MAX_ID_LENGTH = 255;
@@ -30,6 +31,27 @@ export class CardGuidLedgerRepository implements ICardGuidLedgerRepository {
   }
 
   async record(owner: number, entries: IssuedCardGuid[]): Promise<void> {
+    for (const batch of this.batches(owner, entries)) {
+      await this.database(this.table)
+        .insert(batch)
+        .onConflict(['owner', 'block_id'])
+        .ignore();
+    }
+  }
+
+  async reissue(owner: number, entries: IssuedCardGuid[]): Promise<void> {
+    for (const batch of this.batches(owner, entries)) {
+      await this.database(this.table)
+        .insert(batch)
+        .onConflict(['owner', 'block_id'])
+        .merge(['guid', 'source_page_id']);
+    }
+  }
+
+  private batches(
+    owner: number,
+    entries: IssuedCardGuid[]
+  ): Array<Array<Record<string, unknown>>> {
     const rows = entries
       .filter(
         (entry) =>
@@ -49,11 +71,10 @@ export class CardGuidLedgerRepository implements ICardGuidLedgerRepository {
         `[CardGuidLedgerRepository] dropped ${entries.length - rows.length} over-length entries`
       );
     }
+    const batches: Array<Array<Record<string, unknown>>> = [];
     for (let start = 0; start < rows.length; start += INSERT_CHUNK_SIZE) {
-      await this.database(this.table)
-        .insert(rows.slice(start, start + INSERT_CHUNK_SIZE))
-        .onConflict(['owner', 'block_id'])
-        .ignore();
+      batches.push(rows.slice(start, start + INSERT_CHUNK_SIZE));
     }
+    return batches;
   }
 }

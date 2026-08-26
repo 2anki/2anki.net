@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { collectIssuedGuids } from './collectIssuedGuids';
+import { collectIssuedGuids, collectRekeyedGuids } from './collectIssuedGuids';
 import CardOption from '../parser/Settings';
 import Deck from '../parser/Deck';
 import Note from '../parser/Note';
@@ -91,5 +91,45 @@ describe('collectIssuedGuids', () => {
     expect(collectIssuedGuids(dir, decks, {})).toEqual([
       { blockId: 'block-a', sourcePageId: undefined, guid: 'guid-a' },
     ]);
+  });
+});
+
+describe('collectRekeyedGuids', () => {
+  it('returns every block whose sidecar guid differs from the ledger', () => {
+    const dir = workspaceWith([
+      { notionId: 'block-changed', guid: 'block-guid-1' },
+      { notionId: 'block-same', guid: 'block-guid-2' },
+      { notionId: 'block-new', guid: 'block-guid-3' },
+      { notionId: null, guid: 'content-guid' },
+    ]);
+    const decks = [
+      deckWith([
+        noteWith('block-changed', 'page-1'),
+        noteWith('block-same', 'page-1'),
+        noteWith('block-new', 'page-1'),
+        noteWith(),
+      ]),
+    ];
+
+    const entries = collectRekeyedGuids(dir, decks, {
+      'block-changed': 'content-formula-guid',
+      'block-same': 'block-guid-2',
+    });
+
+    expect(entries).toEqual([
+      {
+        blockId: 'block-changed',
+        sourcePageId: 'page-1',
+        guid: 'block-guid-1',
+      },
+      { blockId: 'block-new', sourcePageId: 'page-1', guid: 'block-guid-3' },
+    ]);
+  });
+
+  it('fails safe on a misaligned sidecar like the insert-only collector', () => {
+    const dir = workspaceWith([{ notionId: 'other', guid: 'g' }]);
+    const decks = [deckWith([noteWith('block-a')])];
+
+    expect(collectRekeyedGuids(dir, decks, { 'block-a': 'old' })).toEqual([]);
   });
 });

@@ -5,6 +5,7 @@ interface CapturedInsert {
   rows: Array<Record<string, unknown>>;
   conflictColumns?: string[];
   ignored: boolean;
+  mergedColumns?: string[];
 }
 
 function captureDatabase(calls: CapturedInsert[]): knex.Knex {
@@ -18,6 +19,9 @@ function captureDatabase(calls: CapturedInsert[]): knex.Knex {
           return {
             ignore: async () => {
               call.ignored = true;
+            },
+            merge: async (columns: string[]) => {
+              call.mergedColumns = columns;
             },
           };
         },
@@ -39,6 +43,28 @@ describe('CardGuidLedgerRepository SQL generation', () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].conflictColumns).toEqual(['owner', 'block_id']);
     expect(calls[0].ignored).toBe(true);
+  });
+
+  it('reissue upserts the guid on conflict instead of ignoring it', async () => {
+    const calls: CapturedInsert[] = [];
+    const repo = new CardGuidLedgerRepository(captureDatabase(calls));
+
+    await repo.reissue(7, [
+      { blockId: 'block-a', sourcePageId: 'page-1', guid: 'block-guid-a' },
+    ]);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].rows).toEqual([
+      {
+        owner: 7,
+        block_id: 'block-a',
+        source_page_id: 'page-1',
+        guid: 'block-guid-a',
+      },
+    ]);
+    expect(calls[0].conflictColumns).toEqual(['owner', 'block_id']);
+    expect(calls[0].mergedColumns).toEqual(['guid', 'source_page_id']);
+    expect(calls[0].ignored).toBe(false);
   });
 
   it('record chunks large batches and drops over-length ids', async () => {

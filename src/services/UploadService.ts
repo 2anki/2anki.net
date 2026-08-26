@@ -450,7 +450,8 @@ class UploadService {
 
   private recordIssuedGuids(
     packages: { guidEntries?: IssuedCardGuid[] }[],
-    ownerId: number | null
+    ownerId: number | null,
+    settings: CardOption
   ): void {
     if (ownerId == null) {
       return;
@@ -459,7 +460,15 @@ class UploadService {
     if (entries.length === 0) {
       return;
     }
-    this.cardGuidLedgerRepository.record(ownerId, entries).catch((error) => {
+    const rekey = settings.blockIdIdentity;
+    const write = rekey
+      ? this.cardGuidLedgerRepository.reissue(ownerId, entries).then(() => {
+          console.info(
+            `[guid-ledger] re-keyed ${entries.length} rows to block-id identity for owner ${ownerId}`
+          );
+        })
+      : this.cardGuidLedgerRepository.record(ownerId, entries);
+    write.catch((error) => {
       console.warn('[UploadService] card guid ledger write failed', error);
     });
   }
@@ -956,7 +965,7 @@ class UploadService {
         knownGuids
       )
       .then(async ({ packages }) => {
-        this.recordIssuedGuids(packages, ownerId);
+        this.recordIssuedGuids(packages, ownerId, settings);
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
         // Scores record either way. The conversion-output stats below stay
         // behind the gate — they count delivered cards — but a conversion that
@@ -1122,7 +1131,7 @@ class UploadService {
       syncOwnerId,
       knownGuids
     );
-    this.recordIssuedGuids(packages, syncOwnerId);
+    this.recordIssuedGuids(packages, syncOwnerId, settings);
 
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
     const authenticated = hasSessionToken(req);

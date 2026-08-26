@@ -2,7 +2,10 @@ import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 
 import preserveNewlinesIfApplicable from '../../services/NotionService/helpers/preserveNewlinesIfApplicable';
-import { collectIssuedGuids } from '../anki/collectIssuedGuids';
+import {
+  collectIssuedGuids,
+  collectRekeyedGuids,
+} from '../anki/collectIssuedGuids';
 import type { IssuedCardGuid, KnownGuids } from '../anki/guidLedgerTypes';
 import sanitizeTags from '../anki/sanitizeTags';
 import type { CrossFileDedupState } from '../claude/ClaudeService';
@@ -1357,8 +1360,11 @@ export class DeckParser {
     return undefined;
   }
 
+  // Block-id identity is a recovery switch: while it is on, every toggle is
+  // re-keyed to guid_for(blockId) by python and the ledger is rewritten to
+  // follow, so a stored content-formula GUID must not win here.
   private applyLedgerGuids(): void {
-    if (this.knownGuids == null) {
+    if (this.knownGuids == null || this.settings.blockIdIdentity) {
       return;
     }
     for (const deck of this.payload) {
@@ -1383,12 +1389,15 @@ export class DeckParser {
 
     await this.processPayload(ws);
     const apkg = await this.customExporter.save();
-    this.issuedGuidEntries = collectIssuedGuids(
-      ws.location,
-      this.payload,
-      this.knownGuids
-    );
+    this.issuedGuidEntries = this.collectGuidEntries(ws.location);
     return apkg;
+  }
+
+  private collectGuidEntries(location: string): IssuedCardGuid[] {
+    if (this.knownGuids != null && this.settings.blockIdIdentity) {
+      return collectRekeyedGuids(location, this.payload, this.knownGuids);
+    }
+    return collectIssuedGuids(location, this.payload, this.knownGuids);
   }
 
   async writeDeckInfo(ws: Workspace): Promise<string> {

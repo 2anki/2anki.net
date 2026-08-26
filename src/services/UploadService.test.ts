@@ -86,6 +86,7 @@ import UsersRepository from '../data_layer/UsersRepository';
 import { ISettingsRepository } from '../data_layer/SettingsRepository';
 import Uploads from '../data_layer/public/Uploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
+import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
 
 const MockGeneratePackagesUseCase = GeneratePackagesUseCase as jest.MockedClass<
   typeof GeneratePackagesUseCase
@@ -680,7 +681,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   });
 
   function mockPackages(
-    packages: Array<{ name: string; cardCount: number }>,
+    packages: Array<{
+      name: string;
+      cardCount: number;
+      guidEntries?: IssuedCardGuid[];
+    }>,
     warnings?: string[]
   ) {
     MockGeneratePackagesUseCase.mockImplementation(
@@ -780,6 +785,62 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
         }),
       })
     );
+  });
+
+  it('re-keys the guid ledger through reissue when block-id identity is on', async () => {
+    const guidEntries = [
+      { blockId: 'block-a', sourcePageId: 'page-1', guid: 'block-guid-a' },
+    ];
+    mockPackages([{ name: 'deck', cardCount: 1, guidEntries }]);
+    const guidLedger = {
+      getAllForOwner: jest.fn().mockResolvedValue({ 'block-a': 'old-guid' }),
+      record: jest.fn().mockResolvedValue(undefined),
+      reissue: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ guidLedger })
+    );
+    const req = buildRequest({
+      body: { 'block-id-identity': 'true' },
+    } as Partial<express.Request>);
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(guidLedger.reissue).toHaveBeenCalledWith(42, guidEntries);
+    expect(guidLedger.record).not.toHaveBeenCalled();
+  });
+
+  it('pins new guids through the insert-only record path by default', async () => {
+    const guidEntries = [
+      { blockId: 'block-a', sourcePageId: 'page-1', guid: 'content-guid-a' },
+    ];
+    mockPackages([{ name: 'deck', cardCount: 1, guidEntries }]);
+    const guidLedger = {
+      getAllForOwner: jest.fn().mockResolvedValue({}),
+      record: jest.fn().mockResolvedValue(undefined),
+      reissue: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ guidLedger })
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(guidLedger.record).toHaveBeenCalledWith(42, guidEntries);
+    expect(guidLedger.reissue).not.toHaveBeenCalled();
   });
 
   it('sends the deck and increments card usage for a logged-in free user under the limit', async () => {

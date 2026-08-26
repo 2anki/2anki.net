@@ -26,13 +26,13 @@ See [Update your deck, keep your reviews](/documentation/cards/duplicate-cards) 
 
 ## I see two copies of the same cards
 
-The copies to keep are the ones with your review history, usually the older ones. The duplicates are the fresh set, and they have 0 reviews.
+The copies to keep are the ones carrying your review history; which set that is depends on when you first built the deck. If you built it before July 2026, turn on **Match cards to their Notion blocks** in your card options and upload the page again, so the import updates your originals; then clear the leftover set. If you built it in July 2026 or later, leave that option off.
 
 1. In Anki, open **Browse** and select the deck.
 2. Sort by the **Created** column to group the copies.
 3. Delete the copies with 0 reviews with **Notes → Delete**. Keep the ones with your real review counts.
 
-Future re-imports of the same source update the cards you kept, in place. Full walkthrough: [Update your deck, keep your reviews](/documentation/cards/duplicate-cards).
+Future imports of the same page update the cards you kept, in place. Full walkthrough: [Update your deck, keep your reviews](/documentation/cards/duplicate-cards).
 
 If both copies have review history you care about, [contact us](/documentation/help/contact) before deleting either. We can sometimes merge.
 
