@@ -57,7 +57,7 @@ Welche Kopie du behältst, hängt davon ab, wann du das Deck zum ersten Mal geba
 
 **Vor Juli 2026 gebaut?** Deine Originalkarten tragen deinen Lernfortschritt, aber ein erneuter Upload nach Notions Exportänderung vom Juli kann ein frisches Set anlegen, statt sie zu aktualisieren. Schalte in deinen Kartenoptionen **Karten ihren Notion-Blöcken zuordnen** ein und lade die Seite dann erneut hoch. Damit werden deine Originale an Ort und Stelle aktualisiert; die übrig gebliebenen 0-Review-Kopien räumst du mit den Schritten unten weg.
 
-**Im Juli 2026 oder später gebaut?** Lass die Option aus. Deine Karten sind bereits an ihre Notion-Blöcke gebunden, ein Einschalten würde sie in ein zweites Set umschlüsseln. Angemeldet landen Updates von allein auf deinen bestehenden Karten.
+**Im Juli 2026 oder später gebaut?** Lass die Option aus. Deine Karten sind ihren Notion-Blöcken bereits zugeordnet, ein Einschalten würde sie in ein zweites Set aufteilen. Angemeldet landen Updates von allein auf deinen bestehenden Karten.
 
 Danach, in beiden Fällen:
 

@@ -460,14 +460,14 @@ class UploadService {
     if (entries.length === 0) {
       return;
     }
-    const write = settings.blockIdIdentity
-      ? this.cardGuidLedgerRepository.reissue(ownerId, entries)
+    const rekey = settings.blockIdIdentity;
+    const write = rekey
+      ? this.cardGuidLedgerRepository.reissue(ownerId, entries).then(() => {
+          console.info(
+            `[guid-ledger] re-keyed ${entries.length} rows to block-id identity for owner ${ownerId}`
+          );
+        })
       : this.cardGuidLedgerRepository.record(ownerId, entries);
-    if (settings.blockIdIdentity) {
-      console.info(
-        `[guid-ledger] re-keyed ${entries.length} rows to block-id identity for owner ${ownerId}`
-      );
-    }
     write.catch((error) => {
       console.warn('[UploadService] card guid ledger write failed', error);
     });

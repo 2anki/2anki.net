@@ -57,7 +57,7 @@ Which copy you keep depends on when you first built the deck. Either way, keep t
 
 **Built before July 2026?** Your original cards hold your reviews, but re-uploading after Notion's July export change can create a fresh set instead of updating them. Turn on **Match cards to their Notion blocks** in your card options, then upload the page again. It updates your originals in place; clear the leftover 0-review copies with the steps below.
 
-**Built in July 2026 or later?** Leave that option off. Your cards already key to their Notion blocks, so turning it on would re-key them into a second set. Signed in, updates land on your existing cards on their own.
+**Built in July 2026 or later?** Leave that option off. Your cards are already matched to their Notion blocks, so turning it on would split them into a second set. Signed in, updates land on your existing cards on their own.
 
 Then, either way:
 
