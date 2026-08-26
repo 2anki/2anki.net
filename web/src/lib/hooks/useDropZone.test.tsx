@@ -32,14 +32,18 @@ describe('useDropZone', () => {
     expect(zone).toHaveTextContent('idle');
   });
 
-  it('ignores drags that never touch the zone', () => {
+  it('binds to the element, not the page', () => {
     const onDrop = vi.fn();
     render(<Harness onDrop={onDrop} />);
+    const zone = screen.getByTestId('zone');
 
-    fireEvent.dragEnter(screen.getByTestId('outside'));
+    fireEvent.dragEnter(zone);
+    expect(zone).toHaveTextContent('hovering');
+
     fireEvent.drop(screen.getByTestId('outside'));
+    fireEvent.drop(document.body);
 
-    expect(screen.getByTestId('zone')).toHaveTextContent('idle');
     expect(onDrop).not.toHaveBeenCalled();
+    expect(zone).toHaveTextContent('hovering');
   });
 });
