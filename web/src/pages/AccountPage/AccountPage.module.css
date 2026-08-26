@@ -256,6 +256,17 @@
   composes: secondaryButton;
 }
 
+.manageBillingButton {
+  composes: secondaryButton;
+  text-decoration: none;
+}
+
+.manageBillingButton:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
 .pauseChip:hover {
   background: var(--color-bg-secondary);
   color: var(--color-text-primary);

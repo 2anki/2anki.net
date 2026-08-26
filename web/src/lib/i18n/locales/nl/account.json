@@ -38,6 +38,7 @@
     "youCan": "Je kunt:",
     "manageSubscription": "Je abonnement beheren",
     "updatePayment": "Betaalgegevens bijwerken",
+    "updatePaymentHelp": "Je krijgt een veilige link per e-mail, en je abonnement en prijs blijven hetzelfde.",
     "cancelYourSubscription": "Je abonnement opzeggen",
     "subscriptionEmail": "Abonnements-e-mail",
     "subscriptionEmailPlaceholder": "Voer abonnements-e-mail in",

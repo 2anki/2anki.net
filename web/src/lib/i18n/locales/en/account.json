@@ -38,6 +38,7 @@
     "youCan": "You can:",
     "manageSubscription": "Manage your subscription",
     "updatePayment": "Update payment details",
+    "updatePaymentHelp": "You'll get a secure link by email, and your plan and price stay the same.",
     "cancelYourSubscription": "Cancel your subscription",
     "subscriptionEmail": "Subscription email",
     "subscriptionEmailPlaceholder": "Enter subscription email",
