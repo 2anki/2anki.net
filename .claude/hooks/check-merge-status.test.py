@@ -76,9 +76,9 @@ class TestNonMerge(unittest.TestCase):
     def test_non_merge_command_allows(self):
         self.assertEqual(run_hook("gh pr view 4244", pr_json(CLEAN_FILES))["result"], "allow")
 
-    def test_skip_safety_prefix_in_command_allows(self):
+    def test_skip_safety_prefix_in_command_is_not_honored(self):
         result = run_hook("CLAUDE_SKIP_SAFETY=1 gh pr merge 4244 --squash", pr_json(["src/lib/isPaying.ts"]))
-        self.assertEqual(result["result"], "allow")
+        self.assertEqual(result["result"], "deny")
 
     def test_skip_safety_env_allows(self):
         result = run_hook("gh pr merge 4244", pr_json(["src/lib/isPaying.ts"]), env={"CLAUDE_SKIP_SAFETY": "1"})

@@ -23,9 +23,11 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
 the rail diff fetch and Sonar fail closed (an unchecked rail or an unscanned
 merge is the exact gap the gate closes).
 
-Bypass: `CLAUDE_SKIP_SAFETY=1 gh pr merge ...` — honored both as a process env var
-and as a prefix in the command string (a PreToolUse hook runs before the shell,
-so the prefix never reaches os.environ). For Alexander only, never /ship.
+Bypass: launch the session with the env var set (`CLAUDE_SKIP_SAFETY=1 claude`).
+A command-string prefix is deliberately NOT honored: a PreToolUse hook runs
+before the shell, and anything typed into the command is within an agent's
+reach — honoring it would make the whole gate self-bypassable. The launch-time
+var and the GitHub UI are the two paths only a human holds.
 """
 import json
 import os
@@ -61,7 +63,6 @@ GH_PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
 PR_URL = re.compile(r"https?://github\.com/[^/]+/[^/]+/pull/(\d+)")
 REVIEW_MARKER = re.compile(r"<!--\s*ship-review:\s*pass\s+sha=([0-9a-f]{40})\s*-->")
 DEPENDABOT = "dependabot[bot]"
-SKIP_SAFETY_PREFIX = re.compile(r"\bCLAUDE_SKIP_SAFETY=1\b")
 
 
 def is_gh_pr_merge(cmd):
@@ -227,10 +228,6 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
-    if SKIP_SAFETY_PREFIX.search(cmd):
-        sys.stderr.write("[check-merge-status] CLAUDE_SKIP_SAFETY=1 in command; allowing merge.\n")
-        allow()
-
     pr_ref = extract_pr_ref(cmd)
     pr_data = fetch_pr_data(pr_ref)
     if pr_data is None:
@@ -273,7 +270,7 @@ def main():
             "Every rollup entry must be COMPLETED and non-FAILURE, every test "
             "job must have actually RUN, dependency changes need a SUCCESS test run, "
             "the review agent must have passed the head SHA, and SonarCloud must be clean.\n"
-            "Bypass with CLAUDE_SKIP_SAFETY=1 only after verifying by hand (never from /ship)."
+            "Human bypass: merge from the GitHub UI, or relaunch with CLAUDE_SKIP_SAFETY=1 set at launch."
         )
 
     allow()

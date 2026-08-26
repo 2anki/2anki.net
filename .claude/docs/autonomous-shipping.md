@@ -21,7 +21,7 @@ Before this, every merge was a human step — but branch protection on `main` re
 
 Failure modes are deliberate: `gh pr view` tooling errors **fail open** (a broken `gh` must not block a human); the rail diff fetch and Sonar **fail closed** (an unchecked rail or an unscanned merge is the exact gap the gate closes). The Sonar issue search leaks CLOSED records through its status filter (seen 2026-08-11 on #4046), so `sonar_gate.py` counts only records whose own `status` is OPEN/CONFIRMED.
 
-`CLAUDE_SKIP_SAFETY=1` bypasses the hook. It exists for Alexander verifying by hand; `/ship` never sets it, and an agent that reaches for it has left the sanctioned path.
+The only bypasses are ones an agent cannot reach from inside a session: merging from the GitHub UI, or launching the session with the env var set (`CLAUDE_SKIP_SAFETY=1 claude`). A `CLAUDE_SKIP_SAFETY=1` prefix typed into a command is deliberately ignored — a PreToolUse hook runs before the shell, and honoring the prefix would let any agent self-bypass the gate (caught by the commit security review on #4244).
 
 ## Hard rails
 

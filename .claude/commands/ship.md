@@ -4,7 +4,7 @@ argument-hint: <PR number or URL>
 allowed-tools: Bash, Read, Grep, Glob, Agent, Monitor, ScheduleWakeup
 ---
 
-You are shipping PR `$ARGUMENTS`. This is the **only** path an agent uses to run `gh pr merge`. Never call it outside this flow, never set `CLAUDE_SKIP_SAFETY`, never weaken a hook to get through — if the gate blocks, the fix goes on the branch. Reference: `.claude/docs/autonomous-shipping.md`.
+You are shipping PR `$ARGUMENTS`. This is the **only** path an agent uses to run `gh pr merge`. Never call it outside this flow, never try to bypass the hook (a `CLAUDE_SKIP_SAFETY=1` prefix is ignored by design), never weaken a hook to get through — if the gate blocks, the fix goes on the branch. Reference: `.claude/docs/autonomous-shipping.md`.
 
 ## 1. Preflight
 
