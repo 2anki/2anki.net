@@ -23,7 +23,9 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
 the rail diff fetch and Sonar fail closed (an unchecked rail or an unscanned
 merge is the exact gap the gate closes).
 
-Bypass: CLAUDE_SKIP_SAFETY=1 gh pr merge ... — for Alexander only, never /ship.
+Bypass: `CLAUDE_SKIP_SAFETY=1 gh pr merge ...` — honored both as a process env var
+and as a prefix in the command string (a PreToolUse hook runs before the shell,
+so the prefix never reaches os.environ). For Alexander only, never /ship.
 """
 import json
 import os
@@ -59,6 +61,7 @@ GH_PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
 PR_URL = re.compile(r"https?://github\.com/[^/]+/[^/]+/pull/(\d+)")
 REVIEW_MARKER = re.compile(r"<!--\s*ship-review:\s*pass\s+sha=([0-9a-f]{40})\s*-->")
 DEPENDABOT = "dependabot[bot]"
+SKIP_SAFETY_PREFIX = re.compile(r"\bCLAUDE_SKIP_SAFETY=1\b")
 
 
 def is_gh_pr_merge(cmd):
@@ -222,6 +225,10 @@ def main():
     cmd = data.get("tool_input", {}).get("command", "")
 
     if not is_gh_pr_merge(cmd):
+        allow()
+
+    if SKIP_SAFETY_PREFIX.search(cmd):
+        sys.stderr.write("[check-merge-status] CLAUDE_SKIP_SAFETY=1 in command; allowing merge.\n")
         allow()
 
     pr_ref = extract_pr_ref(cmd)
