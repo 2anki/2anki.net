@@ -36,6 +36,21 @@ class TestRunsMerge(unittest.TestCase):
     def test_with_extra_spaces(self):
         self.assertTrue(mc.is_gh_pr_merge("gh  pr   merge 4244"))
 
+    def test_after_then(self):
+        self.assertTrue(mc.is_gh_pr_merge("if true; then gh pr merge 4244; fi"))
+
+    def test_after_exec(self):
+        self.assertTrue(mc.is_gh_pr_merge("exec gh pr merge 4244"))
+
+    def test_in_backtick_substitution(self):
+        self.assertTrue(mc.is_gh_pr_merge("x=`gh pr merge 4244`"))
+
+    def test_double_quote_inside_single_quotes_does_not_swallow_a_later_merge(self):
+        self.assertTrue(mc.is_gh_pr_merge("echo 'don\"t' && gh pr merge 4244 && echo \"x\""))
+
+    def test_single_quote_inside_double_quotes_does_not_swallow_a_later_merge(self):
+        self.assertTrue(mc.is_gh_pr_merge('echo "it\'s" && gh pr merge 4244 && echo \'y\''))
+
 
 class TestMentionsOnly(unittest.TestCase):
     def test_gh_pr_view_is_not_merge(self):

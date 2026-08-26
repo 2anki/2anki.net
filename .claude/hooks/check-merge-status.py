@@ -15,12 +15,13 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
   5. The PR touches package.json or pnpm-lock.yaml but no `test*` check
      concluded SUCCESS — a dependency change with no test run is unverified.
   6. No review-agent pass marker for the head SHA
-     (`<!-- ship-review: pass sha=<headRefOid> -->`, posted by /ship). Dependabot
-     PRs are exempt — the /batch dependabot decision matrix is their review.
+     (`<!-- ship-review: pass sha=<headRefOid> -->`, full 40-char SHA, posted by
+     /ship). Dependabot PRs are exempt — the /batch dependabot decision matrix is their review.
   7. SonarCloud is not clean for the head SHA (`sonar_gate.py`; fails closed).
 
-`gh` tooling errors fail open (a broken gh should not block a human); Sonar
-errors fail closed (an unscanned merge is the exact gap the gate closes).
+`gh pr view` tooling errors fail open (a broken gh should not block a human);
+the rail diff fetch and Sonar fail closed (an unchecked rail or an unscanned
+merge is the exact gap the gate closes).
 
 Bypass: CLAUDE_SKIP_SAFETY=1 gh pr merge ... — for Alexander only, never /ship.
 """
@@ -56,7 +57,7 @@ def deny(reason):
 
 GH_PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
 PR_URL = re.compile(r"https?://github\.com/[^/]+/[^/]+/pull/(\d+)")
-REVIEW_MARKER = re.compile(r"<!--\s*ship-review:\s*pass\s+sha=([0-9a-f]{7,40})\s*-->")
+REVIEW_MARKER = re.compile(r"<!--\s*ship-review:\s*pass\s+sha=([0-9a-f]{40})\s*-->")
 DEPENDABOT = "dependabot[bot]"
 
 
@@ -65,7 +66,7 @@ def is_gh_pr_merge(cmd):
 
 
 def extract_pr_ref(cmd):
-    after = GH_PR_MERGE.split(cmd, 1)[1]
+    after = GH_PR_MERGE.split(merge_command.strip_literals(cmd), 1)[1]
     after = re.split(r"[;&|]", after, maxsplit=1)[0]
     url_match = PR_URL.search(after)
     if url_match:
@@ -112,7 +113,7 @@ def fetch_pr_data(pr_ref):
 
 
 def fetch_pr_diff(pr_ref):
-    return run_gh(["gh", "pr", "diff", *pr_args(pr_ref)], "pr diff") or ""
+    return run_gh(["gh", "pr", "diff", *pr_args(pr_ref)], "pr diff")
 
 
 def entry_name(entry):
@@ -174,7 +175,7 @@ def review_marker_violation(pr_data):
     for body in bodies:
         for match in REVIEW_MARKER.finditer(body):
             sha = match.group(1)
-            if head.startswith(sha):
+            if sha == head:
                 return None
             seen_shas.append(sha)
     if seen_shas:
@@ -234,7 +235,13 @@ def main():
     author = (pr_data.get("author") or {}).get("login", "")
 
     rail_hits = hard_rails.rail_paths(paths)
-    content_hits = hard_rails.rail_content_hits(fetch_pr_diff(pr_ref))
+    diff = fetch_pr_diff(pr_ref)
+    if diff is None:
+        deny(
+            "Refusing `gh pr merge` — could not fetch the PR diff for the hard-rail "
+            "content check. Retry, or verify by hand and merge from the GitHub UI."
+        )
+    content_hits = hard_rails.rail_content_hits(diff)
     if rail_hits or content_hits:
         deny(rail_reason(rail_hits, content_hits))
 

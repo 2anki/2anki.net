@@ -5,9 +5,10 @@ Shared matcher for the three merge-gate hooks: does this Bash command *run*
 
 A mention inside a commit message, a heredoc'd doc edit, or an echo used to
 trip every gate (2026-08-26: two doc-edit commands were denied as hard-rail
-merges). Heredoc bodies and quoted literals are stripped first, then the
-phrase must sit at a command position (start of line, after `;`, `&&`, `|`,
-`(`, `$(`, or an env-var prefix).
+merges). Heredoc bodies and quoted literals are stripped first; whatever is
+left is real shell, so any remaining occurrence counts — `then gh pr merge`,
+`exec gh pr merge`, and backtick substitution all match (a command-position
+anchor missed those, per the PR #4244 security review).
 
 Known limitation: `bash -c "gh pr merge 1"` hides the merge inside a quoted
 literal and is not matched. That is a policy violation, not a hook gap.
@@ -15,18 +16,14 @@ literal and is not matched. That is a policy violation, not a hook gap.
 import re
 
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n.*?^\s*\2\s*$", re.S | re.M)
-DOUBLE_QUOTED = re.compile(r'"(?:\\.|[^"\\])*"')
-SINGLE_QUOTED = re.compile(r"'[^']*'")
-COMMAND_POSITION = re.compile(
-    r"(?:^|[;&|(\n]|\$\()\s*(?:\w+=\S*\s+)*gh\s+pr\s+merge\b"
-)
+QUOTED_LITERAL = re.compile(r"'[^']*'|\"(?:\\.|[^\"\\])*\"")
+GH_PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
 
 
 def strip_literals(cmd):
     without_heredocs = HEREDOC.sub("", cmd)
-    without_double = DOUBLE_QUOTED.sub('""', without_heredocs)
-    return SINGLE_QUOTED.sub("''", without_double)
+    return QUOTED_LITERAL.sub("", without_heredocs)
 
 
 def is_gh_pr_merge(cmd):
-    return bool(COMMAND_POSITION.search(strip_literals(cmd)))
+    return bool(GH_PR_MERGE.search(strip_literals(cmd)))

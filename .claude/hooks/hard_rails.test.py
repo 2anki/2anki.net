@@ -28,6 +28,8 @@ class TestRailPaths(unittest.TestCase):
             "src/usecases/checkout/AutoSyncCheckoutUseCase.ts",
             "web/src/pages/PricingPage/PricingPage.tsx",
             "src/lib/ankify/notionWebhookSignature.ts",
+            "src/usecases/users/CheckMonthlyCardLimitUseCase.ts",
+            "src/usecases/passes/ClaimPassUseCase.ts",
         ]
         self.assertEqual(rails.rail_paths(paths), paths)
 
@@ -40,8 +42,14 @@ class TestRailPaths(unittest.TestCase):
             "migrations/20261012000000_add_thing.js",
             "src/data_layer/public/Users.ts",
             ".github/workflows/deploy.2anki.net.yml",
+            ".github/dependabot.yml",
+            ".github/actions/setup/action.yml",
             "scripts/deploy-blue-green.sh",
             ".claude/hooks/safety.py",
+            ".claude/commands/ship.md",
+            ".claude/agents/engineer.md",
+            ".claude/docs/autonomous-shipping.md",
+            ".claude/settings.local.json",
             "src/services/EmailService/templates/subscription-cancelled.html",
             "src/services/EmailService/templates/abandoned-checkout-recovery.html",
         ]
@@ -50,7 +58,8 @@ class TestRailPaths(unittest.TestCase):
     def test_explicit_files(self):
         paths = [
             "ecosystem.blue-green.config.js",
-            ".claude/settings.json",
+            "CLAUDE.md",
+            "src/server.ts",
             "src/lib/isPaying.ts",
             "src/lib/ankify/access.ts",
         ]
@@ -63,7 +72,8 @@ class TestRailPaths(unittest.TestCase):
     def test_non_rail_neighbours_of_explicit_files_stay_clean(self):
         paths = [
             "src/lib/isPayingBanner.tsx",
-            ".claude/settings.local.json",
+            "src/lib/parser/CLAUDE.md",
+            "src/servers.ts",
             "scripts/reap-orphans.sh",
             "src/services/EmailService/templates/welcome.html",
         ]
@@ -93,6 +103,10 @@ class TestContentTriggers(unittest.TestCase):
         self.assertEqual(
             rails.rail_content_hits(diff), ["max-old-space-size", "process.env.SECRET"]
         )
+
+    def test_paid_quota_constants_are_triggers(self):
+        diff = "-const SUBSCRIBER_MAP_LIMIT = 25;\n+const SUBSCRIBER_MAP_LIMIT = 250;"
+        self.assertEqual(rails.rail_content_hits(diff), ["SUBSCRIBER_MAP_LIMIT"])
 
 
 if __name__ == "__main__":

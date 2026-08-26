@@ -37,7 +37,7 @@ def pr_json(files, rollup=None, author="aalemayhu", reviews=None, comments=None,
     })
 
 
-def run_hook(command, pr_stdout, diff_stdout="", sonar=(True, "SonarCloud clean"), env=None, tool_name="Bash"):
+def run_hook(command, pr_stdout, diff_stdout="", sonar=(True, "SonarCloud clean"), env=None, tool_name="Bash", diff_fails=False):
     captured = {}
 
     def fake_allow():
@@ -51,7 +51,7 @@ def run_hook(command, pr_stdout, diff_stdout="", sonar=(True, "SonarCloud clean"
 
     def fake_run(args, **kwargs):
         if "diff" in args:
-            return MagicMock(returncode=0, stdout=diff_stdout, stderr="")
+            return MagicMock(returncode=1 if diff_fails else 0, stdout=diff_stdout, stderr="boom")
         return MagicMock(returncode=0, stdout=pr_stdout, stderr="")
 
     with patch.object(hook, "allow", side_effect=fake_allow), \
@@ -81,6 +81,20 @@ class TestNonMerge(unittest.TestCase):
         self.assertEqual(result["result"], "allow")
 
 
+class TestExtractPrRef(unittest.TestCase):
+    def test_number(self):
+        self.assertEqual(hook.extract_pr_ref("gh pr merge 4244 --squash"), "4244")
+
+    def test_url(self):
+        self.assertEqual(hook.extract_pr_ref("gh pr merge https://github.com/2anki/server/pull/4244 --squash"), "4244")
+
+    def test_no_arg_means_current_branch(self):
+        self.assertIsNone(hook.extract_pr_ref("gh pr merge --squash --delete-branch"))
+
+    def test_mention_in_quotes_before_the_real_merge_is_ignored(self):
+        self.assertEqual(hook.extract_pr_ref('echo "gh pr merge" && gh pr merge 4244'), "4244")
+
+
 class TestHardRails(unittest.TestCase):
     def test_rail_path_denies_and_names_it(self):
         result = run_hook("gh pr merge 4244", pr_json(["src/lib/isPaying.ts"], comments=[MARKER]))
@@ -93,6 +107,11 @@ class TestHardRails(unittest.TestCase):
         result = run_hook("gh pr merge 4244", pr_json(CLEAN_FILES, comments=[MARKER]), diff_stdout=diff)
         self.assertEqual(result["result"], "deny")
         self.assertIn("AUTO_SYNC_PRODUCT_ID", result["reason"])
+
+    def test_diff_fetch_failure_fails_closed(self):
+        result = run_hook("gh pr merge 4244", pr_json(CLEAN_FILES, comments=[MARKER]), diff_fails=True)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("could not fetch the PR diff", result["reason"])
 
     def test_rail_denies_even_when_everything_else_is_green(self):
         result = run_hook("gh pr merge 4244", pr_json(["migrations/20261012_x.js"], comments=[MARKER]))
@@ -119,6 +138,11 @@ class TestReviewMarker(unittest.TestCase):
         self.assertEqual(result["result"], "deny")
         self.assertIn(OLD[:7], result["reason"])
         self.assertIn(HEAD[:7], result["reason"])
+
+    def test_short_sha_marker_is_not_accepted(self):
+        short = f"<!-- ship-review: pass sha={HEAD[:12]} -->"
+        result = run_hook("gh pr merge 4244", pr_json(CLEAN_FILES, comments=[short]))
+        self.assertEqual(result["result"], "deny")
 
     def test_dependabot_needs_no_marker(self):
         result = run_hook("gh pr merge 4244", pr_json(["pnpm-lock.yaml"], author="dependabot[bot]"))

@@ -3,8 +3,10 @@
 Hard-rail path list: the surfaces an agent may never merge on its own.
 
 `check-merge-status.py` denies `gh pr merge` when a PR touches any of these;
-the PR waits for Alexander in the GitHub UI instead. Widening or narrowing
-this list is its own PR — never folded into feature work.
+the PR waits for Alexander in the GitHub UI instead. The harness itself
+(`.claude/`, `CLAUDE.md`, `.github/`) is a rail so an agent cannot rewrite its
+own gate or brief and self-merge. Widening or narrowing this list is its own
+PR — never folded into feature work.
 See `.claude/docs/autonomous-shipping.md`.
 """
 
@@ -21,21 +23,24 @@ NAME_GLOBS = (
     "jwt",
     "pricing",
     "signup",
+    "checkmonthly",
+    "passes",
 )
 
 EXPLICIT_PREFIXES = (
     "migrations/",
     "src/data_layer/public/",
-    ".github/workflows/",
+    ".github/",
     "scripts/deploy-",
-    ".claude/hooks/",
+    ".claude/",
     "src/services/EmailService/templates/subscription-",
     "src/services/EmailService/templates/abandoned-checkout-",
 )
 
 EXPLICIT_FILES = (
     "ecosystem.blue-green.config.js",
-    ".claude/settings.json",
+    "CLAUDE.md",
+    "src/server.ts",
     "src/lib/isPaying.ts",
     "src/lib/ankify/access.ts",
 )
@@ -45,6 +50,8 @@ CONTENT_TRIGGERS = (
     "max_memory_restart",
     "max-old-space-size",
     "process.env.SECRET",
+    "SUBSCRIBER_MAP_LIMIT",
+    "SUBSCRIBER_NODE_LIMIT",
 )
 
 
