@@ -68,6 +68,30 @@ class TestApiMerge(unittest.TestCase):
     def test_gh_api_pull_view_is_not_merge(self):
         self.assertFalse(mc.is_gh_pr_merge("gh api repos/2anki/server/pulls/4244"))
 
+    def test_is_merged_probe_get_is_not_merge(self):
+        self.assertFalse(mc.is_gh_pr_merge("gh api repos/2anki/server/pulls/4244/merge"))
+        self.assertFalse(mc.is_gh_pr_merge("gh api -X GET repos/2anki/server/pulls/4244/merge"))
+
+    def test_curl_request_put(self):
+        self.assertTrue(mc.is_gh_pr_merge("curl --request PUT https://api.github.com/repos/2anki/server/pulls/4244/merge"))
+
+    def test_input_body_counts_as_write(self):
+        self.assertTrue(mc.is_gh_pr_merge("gh api repos/2anki/server/pulls/4244/merge --input body.json"))
+
+    def test_api_path_inside_heredoc_is_not_merge(self):
+        cmd = "python3 - <<'EOF'\nassert is_merge('gh api -X PUT repos/o/r/pulls/4244/merge')\nEOF"
+        self.assertFalse(mc.is_gh_pr_merge(cmd))
+
+    def test_graphql_merge_mutation(self):
+        cmd = "gh api graphql -f query='mutation { mergePullRequest(input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
+        self.assertTrue(mc.is_gh_pr_merge(cmd))
+        self.assertTrue(mc.is_graphql_merge(cmd))
+        self.assertIsNone(mc.extract_pr_ref(cmd))
+
+    def test_graphql_mention_inside_heredoc_is_not_merge(self):
+        cmd = "cat <<'EOF' > notes.md\nthe mergePullRequest mutation is denied\nEOF"
+        self.assertFalse(mc.is_gh_pr_merge(cmd))
+
 
 class TestExtractPrRef(unittest.TestCase):
     def test_number(self):

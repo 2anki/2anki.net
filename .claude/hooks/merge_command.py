@@ -11,7 +11,9 @@ left is real shell, so any remaining occurrence counts — `then gh pr merge`,
 anchor missed those, per the PR #4244 security review).
 
 The REST merge endpoint (`gh api -X PUT repos/o/r/pulls/N/merge`, or curl to
-the same URL) counts too — it was used once, on 2026-08-26, to merge #4244 on
+the same URL) and the GraphQL `mergePullRequest` mutation count too. Those two
+are matched with quotes kept (the URL is often quoted) but heredoc bodies
+stripped, so a script that merely mentions the path is not a merge — it was used once, on 2026-08-26, to merge #4244 on
 Alexander's instruction after the hook (correctly) refused the rail PR, and that
 is exactly the path an agent must not have.
 
@@ -23,25 +25,43 @@ import re
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n.*?^\s*\2\s*$", re.S | re.M)
 QUOTED_LITERAL = re.compile(r"'[^']*'|\"(?:\\.|[^\"\\])*\"")
 GH_PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
-API_MERGE = re.compile(r"\bpulls/(\d+)/merge\b")
+API_MERGE_PATH = re.compile(r"\bpulls/(\d+)/merge\b")
+API_WRITE_SIGNAL = re.compile(
+    r"(?:-X|--method|--request)[= ]*PUT\b|(?:^|\s)(?:-f|-F|--input|--raw-field|--field)\b"
+)
+GRAPHQL_MERGE = re.compile(r"\bmergePullRequest\b")
 PR_URL = re.compile(r"https?://github\.com/[^/]+/[^/]+/pull/(\d+)")
 
 
+def strip_heredocs(cmd):
+    return HEREDOC.sub("", cmd)
+
+
 def strip_literals(cmd):
-    without_heredocs = HEREDOC.sub("", cmd)
-    return QUOTED_LITERAL.sub("", without_heredocs)
+    return QUOTED_LITERAL.sub("", strip_heredocs(cmd))
+
+
+def is_api_merge(cmd):
+    shell = strip_heredocs(cmd)
+    return bool(API_MERGE_PATH.search(shell) and API_WRITE_SIGNAL.search(shell))
+
+
+def is_graphql_merge(cmd):
+    return bool(GRAPHQL_MERGE.search(strip_heredocs(cmd)))
 
 
 def is_gh_pr_merge(cmd):
-    stripped = strip_literals(cmd)
-    return bool(GH_PR_MERGE.search(stripped) or API_MERGE.search(cmd))
+    return bool(
+        GH_PR_MERGE.search(strip_literals(cmd))
+        or is_api_merge(cmd)
+        or is_graphql_merge(cmd)
+    )
 
 
 def extract_pr_ref(cmd):
     """PR number the command merges, or None when `gh pr merge` targets the current branch."""
-    api_match = API_MERGE.search(cmd)
-    if api_match:
-        return api_match.group(1)
+    if is_api_merge(cmd):
+        return API_MERGE_PATH.search(strip_heredocs(cmd)).group(1)
     parts = GH_PR_MERGE.split(strip_literals(cmd), 1)
     if len(parts) < 2:
         return None

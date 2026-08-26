@@ -217,6 +217,12 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
+    if merge_command.is_graphql_merge(cmd):
+        deny(
+            "Refusing a GraphQL mergePullRequest mutation — no PR number to gate on. "
+            "Merge through /ship with `gh pr merge <n>`."
+        )
+
     pr_ref = extract_pr_ref(cmd)
     pr_data = fetch_pr_data(pr_ref)
     if pr_data is None:

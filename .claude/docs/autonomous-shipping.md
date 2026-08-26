@@ -47,6 +47,6 @@ One GitHub issue per UTC day, `Shipped YYYY-MM-DD`, label `shipped-digest`, one 
 
 ## Rolling it out / rolling it back
 
-- Branch protection was applied with `gh api -X PUT repos/2anki/server/branches/main/protection` after the workflow change landed on `main`. To read the current state: `gh api repos/2anki/server/branches/main/protection`.
+- Branch protection was applied 2026-08-26 with `gh api -X PUT repos/2anki/2anki.net/branches/main/protection` — use the canonical repo name for writes, `gh api` does not follow the rename redirect (`2anki/server` answers a PUT with HTTP 307). To read the current state: `gh api repos/2anki/server/branches/main/protection`.
 - To pause autonomous merging without touching code, set `required_approving_review_count` to 1 in branch protection — every merge then waits for a human approval. Restore with the same PUT.
 - If SonarCloud's GitHub status check is ever enabled in the SonarCloud UI, add its context to the required list and keep `sonar_gate.py` as the finding-count check (the GitHub check reports the gate, not the count).
