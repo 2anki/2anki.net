@@ -83,4 +83,31 @@ describe('PrintForm', () => {
       screen.queryByRole('link', { name: /Upgrade for unlimited/i })
     ).not.toBeInTheDocument();
   });
+  test('accepts a dropped deck and posts it like a picked one', async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 400,
+      clone() {
+        return {
+          json: async () => ({ message: 'Invalid .apkg file' }),
+        };
+      },
+    } as unknown as Response);
+
+    renderForm();
+    const zone = screen.getByText(/Drop an Anki deck/i).closest('label');
+    expect(zone).not.toBeNull();
+    const file = new File(['fake'], 'deck.apkg', {
+      type: 'application/octet-stream',
+    });
+
+    fireEvent.drop(zone!, { dataTransfer: { files: [file] } });
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        '/api/apkg/pdf',
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+  });
 });

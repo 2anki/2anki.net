@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import styles from './PrintForm.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
+import { useDropZone } from '../../../lib/hooks/useDropZone';
 
 type PrintState = 'idle' | 'uploading' | 'done' | 'error';
 type PaperSize = 'A4' | 'Letter' | 'Legal';
@@ -64,7 +65,6 @@ export default function PrintForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
-  const [dropHover, setDropHover] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState('#ffffff');
   const [paperSize, setPaperSize] = useState<PaperSize>('A4');
   const [orientation, setOrientation] = useState<Orientation>('portrait');
@@ -132,14 +132,14 @@ export default function PrintForm() {
     await handleFile(files[0]);
   };
 
-  const handleDrop = (event: React.DragEvent) => {
-    event.preventDefault();
-    setDropHover(false);
-    const { dataTransfer } = event;
-    if (dataTransfer && dataTransfer.files.length > 0) {
-      handleFile(dataTransfer.files[0]);
-    }
-  };
+  const { dropHover, dragProps } = useDropZone<HTMLLabelElement>({
+    onDrop: (event) => {
+      const { dataTransfer } = event;
+      if (dataTransfer && dataTransfer.files.length > 0) {
+        handleFile(dataTransfer.files[0]);
+      }
+    },
+  });
 
   const isUploading = state === 'uploading';
 
@@ -215,16 +215,7 @@ export default function PrintForm() {
       <label
         htmlFor="print-file"
         className={`${styles.dropZone} ${dropHover ? styles.dropZoneActive : ''}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDropHover(true);
-        }}
-        onDragEnter={(e) => {
-          e.preventDefault();
-          setDropHover(true);
-        }}
-        onDragLeave={() => setDropHover(false)}
-        onDrop={handleDrop}
+        {...dragProps}
       >
         <span className={styles.dropLabel}>{t('print.dropLabel')}</span>
         <span className={styles.dropHint}>{t('print.or')}</span>
