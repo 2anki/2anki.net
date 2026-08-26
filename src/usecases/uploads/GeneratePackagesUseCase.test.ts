@@ -90,8 +90,7 @@ describe('GeneratePackagesUseCase', () => {
       makeWorkspace(),
       undefined,
       42,
-      undefined,
-      'req-0f1e2d3c'
+      { requestId: 'req-0f1e2d3c' }
     );
 
     const [task] = mockRunUploadGeneration.mock.calls[0];

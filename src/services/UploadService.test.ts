@@ -268,9 +268,11 @@ describe('UploadService.handleUpload — error paths', () => {
     await service.handleUpload(req, res);
 
     expect(executeMock).toHaveBeenCalledTimes(1);
-    const [, , , , , ownerId, , requestId] = executeMock.mock.calls[0];
+    const [, , , , , ownerId, context] = executeMock.mock.calls[0];
     expect(ownerId).toBe(42);
-    expect(requestId).toBe('0f1e2d3c-4b5a-4697-8877-665544332211');
+    expect(context).toMatchObject({
+      requestId: '0f1e2d3c-4b5a-4697-8877-665544332211',
+    });
   });
 
   it('attaches the saved custom templates for a signed-in upload before generating packages', async () => {

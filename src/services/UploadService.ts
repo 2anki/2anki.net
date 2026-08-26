@@ -965,8 +965,7 @@ class UploadService {
           await this.jobRepository.updateJobStatus(ws.id, owner, step);
         },
         ownerId,
-        knownGuids,
-        res.locals.requestId
+        { knownGuids, requestId: res.locals.requestId }
       )
       .then(async ({ packages }) => {
         this.recordIssuedGuids(packages, ownerId, settings);
@@ -1133,8 +1132,7 @@ class UploadService {
       ws,
       undefined,
       syncOwnerId,
-      knownGuids,
-      res.locals.requestId
+      { knownGuids, requestId: res.locals.requestId }
     );
     this.recordIssuedGuids(packages, syncOwnerId, settings);
 

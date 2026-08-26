@@ -49,6 +49,11 @@ function buildWorkerError(failure: UploadGenerationFailure): Error {
   return fallback;
 }
 
+export interface GenerationContext {
+  knownGuids?: KnownGuids;
+  requestId?: string;
+}
+
 class GeneratePackagesUseCase {
   async execute(
     paying: boolean,
@@ -57,9 +62,9 @@ class GeneratePackagesUseCase {
     workspace: Workspace,
     onProgress?: (step: string) => void,
     userId: number | null = null,
-    knownGuids?: KnownGuids,
-    requestId?: string
+    context: GenerationContext = {}
   ): Promise<PackageResult> {
+    const { knownGuids, requestId } = context;
     ensureUploadBytes(files);
     const unavailable = findUnavailableUpload(files);
     if (unavailable) {
