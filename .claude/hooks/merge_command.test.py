@@ -52,6 +52,40 @@ class TestRunsMerge(unittest.TestCase):
         self.assertTrue(mc.is_gh_pr_merge('echo "it\'s" && gh pr merge 4244 && echo \'y\''))
 
 
+class TestApiMerge(unittest.TestCase):
+    def test_gh_api_put_merge(self):
+        self.assertTrue(mc.is_gh_pr_merge("gh api -X PUT repos/2anki/server/pulls/4244/merge -f merge_method=squash"))
+
+    def test_gh_api_method_flag(self):
+        self.assertTrue(mc.is_gh_pr_merge("gh api --method PUT /repos/2anki/server/pulls/4244/merge"))
+
+    def test_curl_to_merge_endpoint(self):
+        self.assertTrue(mc.is_gh_pr_merge('curl -X PUT "https://api.github.com/repos/2anki/server/pulls/4244/merge"'))
+
+    def test_api_merge_inside_quotes_still_counts(self):
+        self.assertTrue(mc.is_gh_pr_merge('gh api -X PUT "repos/2anki/server/pulls/4244/merge"'))
+
+    def test_gh_api_pull_view_is_not_merge(self):
+        self.assertFalse(mc.is_gh_pr_merge("gh api repos/2anki/server/pulls/4244"))
+
+
+class TestExtractPrRef(unittest.TestCase):
+    def test_number(self):
+        self.assertEqual(mc.extract_pr_ref("gh pr merge 4244 --squash"), "4244")
+
+    def test_url(self):
+        self.assertEqual(mc.extract_pr_ref("gh pr merge https://github.com/2anki/server/pull/4244"), "4244")
+
+    def test_current_branch(self):
+        self.assertIsNone(mc.extract_pr_ref("gh pr merge --squash --delete-branch"))
+
+    def test_api_endpoint(self):
+        self.assertEqual(mc.extract_pr_ref("gh api -X PUT repos/2anki/server/pulls/4244/merge"), "4244")
+
+    def test_quoted_mention_before_real_merge(self):
+        self.assertEqual(mc.extract_pr_ref('echo "gh pr merge" && gh pr merge 4244'), "4244")
+
+
 class TestMentionsOnly(unittest.TestCase):
     def test_gh_pr_view_is_not_merge(self):
         self.assertFalse(mc.is_gh_pr_merge("gh pr view 4244 --json body"))

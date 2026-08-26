@@ -59,8 +59,6 @@ def deny(reason):
     sys.exit(0)
 
 
-GH_PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
-PR_URL = re.compile(r"https?://github\.com/[^/]+/[^/]+/pull/(\d+)")
 REVIEW_MARKER = re.compile(r"<!--\s*ship-review:\s*pass\s+sha=([0-9a-f]{40})\s*-->")
 DEPENDABOT = "dependabot[bot]"
 
@@ -70,16 +68,7 @@ def is_gh_pr_merge(cmd):
 
 
 def extract_pr_ref(cmd):
-    after = GH_PR_MERGE.split(merge_command.strip_literals(cmd), 1)[1]
-    after = re.split(r"[;&|]", after, maxsplit=1)[0]
-    url_match = PR_URL.search(after)
-    if url_match:
-        return url_match.group(1)
-    tokens = [t for t in after.split() if not t.startswith("-")]
-    for token in tokens:
-        if token.isdigit():
-            return token
-    return None
+    return merge_command.extract_pr_ref(cmd)
 
 
 def run_gh(args, label):
