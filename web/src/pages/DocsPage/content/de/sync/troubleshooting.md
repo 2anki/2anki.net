@@ -26,13 +26,13 @@ Die Schritte zum Aufräumen und warum das passiert findest du in [Update your de
 
 ## Ich sehe zwei Kopien derselben Karten
 
-Behalte die Kopien mit deinem Lernverlauf, meist die älteren. Die Duplikate sind das frische Set und haben 0 Reviews.
+Behalte die Kopien, die deinen Lernverlauf tragen; welches Set das ist, hängt davon ab, wann du das Deck zum ersten Mal gebaut hast. Hast du es vor Juli 2026 gebaut, schalte in deinen Kartenoptionen **Karten ihren Notion-Blöcken zuordnen** ein und lade die Seite erneut hoch, damit der Import deine Originale aktualisiert; räum danach das übrig gebliebene Set weg. Hast du es im Juli 2026 oder später gebaut, lass die Option aus.
 
 1. Öffne in Anki **Browse** und wähle das Deck.
 2. Sortiere nach der Spalte **Created**, um die Kopien zu gruppieren.
 3. Lösche die Kopien mit 0 Reviews über **Notes → Delete**. Behalte die mit deinen echten Review-Zahlen.
 
-Künftige erneute Importe derselben Quelle aktualisieren die verbliebenen Karten an Ort und Stelle. Vollständige Anleitung: [Update your deck, keep your reviews](/documentation/cards/duplicate-cards).
+Künftige Importe derselben Seite aktualisieren die verbliebenen Karten an Ort und Stelle. Vollständige Anleitung: [Update your deck, keep your reviews](/documentation/cards/duplicate-cards).
 
 Wenn beide Kopien einen Lernverlauf haben, der dir wichtig ist, [kontaktiere uns](/documentation/help/contact), bevor du eines löschst. Wir können manchmal zusammenführen.
 

@@ -53,15 +53,19 @@ Anki matches decks by name, the way it matches cards by ID. If the deck's name c
 
 ## Clearing out duplicates you already have
 
-You can end up with real duplicates a couple of ways: a deck that doubled during the July export bug, or, if you convert signed out, a re-upload after Notion changed something in the page. Signed in, updates land on your existing cards, so you don't collect new copies.
+Which copy you keep depends on when you first built the deck. Either way, keep the copies with your review history and delete the ones with **0 reviews**.
 
-Either way, the copies to keep are the ones with your review history:
+**Built before July 2026?** Your original cards hold your reviews, but re-uploading after Notion's July export change can create a fresh set instead of updating them. Turn on **Match cards to their Notion blocks** in your card options, then upload the page again. It updates your originals in place; clear the leftover 0-review copies with the steps below.
+
+**Built in July 2026 or later?** Leave that option off. Your cards already key to their Notion blocks, so turning it on would re-key them into a second set. Signed in, updates land on your existing cards on their own.
+
+Then, either way:
 
 1. In Anki, open **Browse**.
 2. Select the deck, then click the **Created** column to sort by creation date. Right-click the column header and add the **Reviews** column if it isn't shown.
-3. The copies created just now are the duplicates. They have **0 reviews**. Your originals are the older ones, with your real review counts.
+3. The extra copies have **0 reviews**. Your originals are the older ones, with your real review counts.
 4. Select the 0-review copies and delete them with **Notes → Delete** in the menu bar.
 
-Future re-imports of the same source update the cards you kept, in place.
+Future imports of the same page update the cards you kept, in place.
 
 If both copies have review history you care about, [contact us](/documentation/help/contact) before deleting anything. We can sometimes merge them.

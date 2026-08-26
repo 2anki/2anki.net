@@ -53,15 +53,19 @@ Anki ordnet Decks über den Namen zu, so wie Karten über die ID. Ändert sich d
 
 ## Vorhandene Duplikate aufräumen
 
-Echte Duplikate entstehen auf zwei Wegen: ein Deck, das sich während des Juli-Exportfehlers verdoppelt hat, oder — wenn du abgemeldet konvertierst — ein erneuter Upload, nachdem Notion etwas an der Seite geändert hat. Angemeldet landen Updates auf deinen bestehenden Karten, du sammelst also keine neuen Kopien.
+Welche Kopie du behältst, hängt davon ab, wann du das Deck zum ersten Mal gebaut hast. So oder so: Behalte die Kopien mit deinem Lernfortschritt und lösch die mit **0 Reviews**.
 
-So oder so: Behalten willst du die Kopien mit deinem Lernfortschritt:
+**Vor Juli 2026 gebaut?** Deine Originalkarten tragen deinen Lernfortschritt, aber ein erneuter Upload nach Notions Exportänderung vom Juli kann ein frisches Set anlegen, statt sie zu aktualisieren. Schalte in deinen Kartenoptionen **Karten ihren Notion-Blöcken zuordnen** ein und lade die Seite dann erneut hoch. Damit werden deine Originale an Ort und Stelle aktualisiert; die übrig gebliebenen 0-Review-Kopien räumst du mit den Schritten unten weg.
+
+**Im Juli 2026 oder später gebaut?** Lass die Option aus. Deine Karten sind bereits an ihre Notion-Blöcke gebunden, ein Einschalten würde sie in ein zweites Set umschlüsseln. Angemeldet landen Updates von allein auf deinen bestehenden Karten.
+
+Danach, in beiden Fällen:
 
 1. Öffne in Anki **Browse**.
 2. Wähle das Deck und klick auf die Spalte **Created**, um nach Erstellungsdatum zu sortieren. Rechtsklick auf die Spaltenüberschrift und die Spalte **Reviews** hinzufügen, falls sie fehlt.
-3. Die gerade erstellten Kopien sind die Duplikate. Sie haben **0 Reviews**. Deine Originale sind die älteren, mit deinen echten Review-Zahlen.
+3. Die überzähligen Kopien haben **0 Reviews**. Deine Originale sind die älteren, mit deinen echten Review-Zahlen.
 4. Wähle die 0-Review-Kopien aus und lösch sie über **Notes → Delete** in der Menüleiste.
 
-Zukünftige Re-Importe derselben Quelle aktualisieren die behaltenen Karten an Ort und Stelle.
+Zukünftige Importe derselben Seite aktualisieren die behaltenen Karten an Ort und Stelle.
 
 Wenn beide Kopien Lernfortschritt haben, der dir wichtig ist, [melde dich bei uns](/documentation/help/contact), bevor du etwas löschst. Manchmal können wir sie zusammenführen.

@@ -14,8 +14,8 @@ const supportedOptions = (): CardOptionDetail[] => {
     ),
     new CardOptionDetail(
       'block-id-identity',
-      'Block ID identity',
-      'Off, new cards are matched by their text so decks you imported before keep updating. On, new cards are keyed by their Notion block ID instead. Cards 2anki already remembers keep their IDs either way.',
+      'Match cards to their Notion blocks',
+      'On, uploading the page again matches your toggle cards to their Notion blocks and updates them in place. Turn it on for decks you first built before July 2026. Off for newer decks.',
       defaultFor('block-id-identity')
     ),
     new CardOptionDetail(
