@@ -24,6 +24,7 @@ import { isLimitError } from '../lib/misc/isLimitError';
 import { handleUploadLimitError } from '../controllers/Upload/helpers/handleUploadLimitError';
 import { getUploadValidationError } from '../lib/upload/getUploadValidationError';
 import { isImageOnlyUpload } from '../lib/upload/isImageOnlyUpload';
+import { mergeStoredCardOptions } from '../lib/upload/mergeStoredCardOptions';
 import { decodeUploadImage } from '../lib/upload/decodeUploadImage';
 import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
@@ -724,9 +725,10 @@ class UploadService {
         return;
       }
 
-      const settings = new CardOption(req.body || {});
-      const ws = new Workspace(true, 'fs');
       const owner = getOwner(res);
+      req.body = await this.resolveCardOptionInput(owner, req.body);
+      const settings = new CardOption(req.body);
+      const ws = new Workspace(true, 'fs');
       const paying = isPaying(res.locals);
 
       if (owner != null && settings.n2aBasic == null) {
@@ -1087,6 +1089,23 @@ class UploadService {
     }
     const totalBytes = (files ?? []).reduce((sum, file) => sum + file.size, 0);
     return totalBytes <= AI_FALLBACK_MAX_BYTES;
+  }
+
+  // The browser fills the body from localStorage, so a key it never saved is
+  // absent rather than false; the account's stored options fill those gaps.
+  private async resolveCardOptionInput(
+    owner: string | number | null | undefined,
+    body: unknown
+  ): Promise<Record<string, unknown>> {
+    const requestOptions =
+      body != null && typeof body === 'object'
+        ? (body as Record<string, unknown>)
+        : {};
+    if (owner == null) {
+      return requestOptions;
+    }
+    const stored = await this.usersRepository.getCardOptions(String(owner));
+    return mergeStoredCardOptions(stored, requestOptions);
   }
 
   private buildClaudeFallbackSettings(

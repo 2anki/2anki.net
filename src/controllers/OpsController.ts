@@ -28,6 +28,7 @@ import { GetPaidValueMonitorUseCase } from '../usecases/ops/GetPaidValueMonitorU
 import { GetAiUsageMetricsUseCase } from '../usecases/ops/GetAiUsageMetricsUseCase';
 import { SetChatAttachmentsLifecycleUseCase } from '../usecases/ops/SetChatAttachmentsLifecycleUseCase';
 import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
+import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
 
 class OpsController {
   constructor(
@@ -55,8 +56,48 @@ class OpsController {
     private readonly getPaidValueMonitorUseCase?: GetPaidValueMonitorUseCase,
     private readonly getAiUsageMetricsUseCase?: GetAiUsageMetricsUseCase,
     private readonly setChatAttachmentsLifecycleUseCase?: SetChatAttachmentsLifecycleUseCase,
-    private readonly grantUnclaimedPassUseCase?: GrantUnclaimedPassUseCase
+    private readonly grantUnclaimedPassUseCase?: GrantUnclaimedPassUseCase,
+    private readonly setBlockIdIdentityUseCase?: SetBlockIdIdentityUseCase
   ) {}
+
+  async setBlockIdIdentity(req: express.Request, res: express.Response) {
+    if (this.setBlockIdIdentityUseCase == null) {
+      res
+        .status(500)
+        .json({ message: 'Block-id identity switch not configured' });
+      return;
+    }
+    const { email, enabled } = req.body as {
+      email?: unknown;
+      enabled?: unknown;
+    };
+    const trimmedEmail = typeof email === 'string' ? email.trim() : '';
+    if (!trimmedEmail.includes('@')) {
+      res.status(400).json({ message: 'A valid email is required.' });
+      return;
+    }
+    if (typeof enabled !== 'boolean') {
+      res.status(400).json({ message: 'enabled must be true or false.' });
+      return;
+    }
+    try {
+      const outcome = await this.setBlockIdIdentityUseCase.execute({
+        email: trimmedEmail,
+        enabled,
+      });
+      if (outcome.success) {
+        res.status(200).json({
+          userId: outcome.userId,
+          blockIdIdentity: outcome.blockIdIdentity,
+        });
+        return;
+      }
+      res.status(404).json({ message: 'No account found for that email.' });
+    } catch (error) {
+      console.error('[ops] setBlockIdIdentity failed', error);
+      res.status(500).json({ message: 'Failed to update block-id identity' });
+    }
+  }
 
   async getAiUsage(req: express.Request, res: express.Response) {
     if (this.getAiUsageMetricsUseCase == null) {

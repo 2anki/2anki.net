@@ -10,6 +10,7 @@ import { GetCustomerSignalsUseCase } from '../usecases/ops/GetCustomerSignalsUse
 import { GetPassUnlockMonitorUseCase } from '../usecases/ops/GetPassUnlockMonitorUseCase';
 import { GetCancelFunnelUseCase } from '../usecases/ops/GetCancelFunnelUseCase';
 import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
+import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
 
 const buildRes = () => {
   const json = jest.fn();
@@ -705,6 +706,113 @@ describe('OpsController.grantUnclaimedPass', () => {
     const res = buildRes();
 
     await controller.grantUnclaimedPass(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('OpsController.setBlockIdIdentity', () => {
+  const buildController = (useCase?: SetBlockIdIdentityUseCase) =>
+    new OpsController(
+      {} as unknown as GetOpsMetricsUseCase,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      useCase
+    );
+
+  it('stores the override and returns the account id', async () => {
+    const execute = jest
+      .fn()
+      .mockResolvedValue({ success: true, userId: 21, blockIdIdentity: true });
+    const controller = buildController({
+      execute,
+    } as unknown as SetBlockIdIdentityUseCase);
+    const req = {
+      body: { email: ' learner@example.com ', enabled: true },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.setBlockIdIdentity(req, res);
+
+    expect(execute).toHaveBeenCalledWith({
+      email: 'learner@example.com',
+      enabled: true,
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      userId: 21,
+      blockIdIdentity: true,
+    });
+  });
+
+  it('returns 404 when no account matches the email', async () => {
+    const execute = jest
+      .fn()
+      .mockResolvedValue({ success: false, reason: 'user_not_found' });
+    const controller = buildController({
+      execute,
+    } as unknown as SetBlockIdIdentityUseCase);
+    const req = {
+      body: { email: 'nobody@example.com', enabled: false },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.setBlockIdIdentity(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'No account found for that email.',
+    });
+  });
+
+  it.each([
+    [{ email: 'not-an-email', enabled: true }],
+    [{ email: 'learner@example.com', enabled: 'true' }],
+    [{ enabled: true }],
+  ])('returns 400 without calling the use case for body %o', async (body) => {
+    const execute = jest.fn();
+    const controller = buildController({
+      execute,
+    } as unknown as SetBlockIdIdentityUseCase);
+    const req = { body } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.setBlockIdIdentity(req, res);
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('returns 500 when the use case is not configured', async () => {
+    const controller = buildController(undefined);
+    const req = {
+      body: { email: 'learner@example.com', enabled: true },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.setBlockIdIdentity(req, res);
 
     expect(res.status).toHaveBeenCalledWith(500);
   });
