@@ -29,7 +29,6 @@
     "imageOcclusion": "Occlusion d'image",
     "mindMaps": "Cartes mentales",
     "printsToPdf": "Impressions en PDF",
-    "autoSyncNotion": "Auto Sync depuis Notion",
     "prioritySupport": "Assistance prioritaire",
     "noSubscription": "Sans abonnement"
   },
@@ -49,7 +48,7 @@
     },
     "q4": {
       "question": "Existe-t-il un plan Lifetime ?",
-      "answer": "Plus maintenant. Lifetime est fermé aux nouveaux membres. Si tu as déjà Lifetime, ton accès et toutes les fonctionnalités restent exactement les mêmes. Pour un accès illimité, utilise le plan Unlimited sur les cartes ci-dessus."
+      "answer": "Plus maintenant. Lifetime est fermé aux nouveaux membres. Si vous avez déjà Lifetime, votre accès et toutes les fonctionnalités restent exactement les mêmes. Pour un accès illimité, utilisez le plan Unlimited sur les cartes ci-dessus."
     },
     "q5": {
       "question": "Puis-je annuler à tout moment ?",
