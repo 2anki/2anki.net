@@ -1094,7 +1094,7 @@ class UploadService {
   // The browser fills the body from localStorage, so a key it never saved is
   // absent rather than false; the account's stored options fill those gaps.
   private async resolveCardOptionInput(
-    owner: unknown,
+    owner: string | number | null | undefined,
     body: unknown
   ): Promise<Record<string, unknown>> {
     const requestOptions =

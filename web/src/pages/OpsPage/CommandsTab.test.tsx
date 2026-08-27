@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -47,13 +47,11 @@ describe('CommandsTab — match cards to Notion blocks', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Turn on' }));
 
-    await waitFor(() =>
-      expect(
-        screen.getByText(
-          'On for learner@example.com. Ask them to upload the same page again — their existing cards update in place.'
-        )
-      ).toBeInTheDocument()
-    );
+    expect(
+      await screen.findByText(
+        'On for learner@example.com. Ask them to upload the same page again — their existing cards update in place.'
+      )
+    ).toBeInTheDocument();
     expect(globalThis.fetch).toHaveBeenCalledWith(
       BLOCK_ID_URL,
       expect.objectContaining({
@@ -74,13 +72,11 @@ describe('CommandsTab — match cards to Notion blocks', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Turn off' }));
 
-    await waitFor(() =>
-      expect(
-        screen.getByText(
-          'Off for learner@example.com. Their own card option setting applies again.'
-        )
-      ).toBeInTheDocument()
-    );
+    expect(
+      await screen.findByText(
+        'Off for learner@example.com. Their own card option setting applies again.'
+      )
+    ).toBeInTheDocument();
     expect(globalThis.fetch).toHaveBeenCalledWith(
       BLOCK_ID_URL,
       expect.objectContaining({
