@@ -55,6 +55,7 @@ export type CardOptions = Partial<{
   'claude-ai-flashcards': string;
   'ai-comprehensive': string;
   'share-files-for-debugging': string;
+  'block-id-identity': string;
 }>;
 
 export interface UserPreferences {
@@ -75,7 +76,13 @@ export interface IUserPreferencesRepository {
     prefs: Partial<UserPreferences>
   ): Promise<UserPreferences>;
   clearCardOptions(userId: number): Promise<UserPreferences>;
+  setBlockIdIdentity(
+    userId: number,
+    enabled: boolean
+  ): Promise<UserPreferences>;
 }
+
+const BLOCK_ID_IDENTITY_KEY = 'block-id-identity';
 
 export const ALLOWED_CARD_OPTION_KEYS = new Set([
   'deckName',
@@ -169,7 +176,9 @@ export class UserPreferencesRepository implements IUserPreferencesRepository {
   ): Promise<UserPreferences> {
     const update: Record<string, unknown> = {};
     if (prefs.cardOptions != null) {
-      update.card_options = sanitizeCardOptions(prefs.cardOptions);
+      update.card_options = this.mergedCardOptions(
+        sanitizeCardOptions(prefs.cardOptions)
+      );
     }
     if (prefs.theme != null) {
       update.theme = prefs.theme;
@@ -185,6 +194,44 @@ export class UserPreferencesRepository implements IUserPreferencesRepository {
     }
     if (Object.keys(update).length > 0) {
       await this.database('users').where({ id: userId }).update(update);
+    }
+    return this.get(userId);
+  }
+
+  private mergedCardOptions(options: Record<string, string | undefined>) {
+    return this.database.raw(
+      "coalesce(card_options, '{}'::jsonb) || ?::jsonb",
+      [JSON.stringify(options)]
+    );
+  }
+
+  buildMergeCardOptionsQuery(
+    userId: number,
+    options: Record<string, string | undefined>
+  ) {
+    return this.database('users')
+      .where({ id: userId })
+      .update({ card_options: this.mergedCardOptions(options) });
+  }
+
+  buildRemoveCardOptionQuery(userId: number, key: string) {
+    return this.database('users')
+      .where({ id: userId })
+      .update({
+        card_options: this.database.raw('card_options - ?::text', [key]),
+      });
+  }
+
+  async setBlockIdIdentity(
+    userId: number,
+    enabled: boolean
+  ): Promise<UserPreferences> {
+    if (enabled) {
+      await this.buildMergeCardOptionsQuery(userId, {
+        [BLOCK_ID_IDENTITY_KEY]: 'true',
+      });
+    } else {
+      await this.buildRemoveCardOptionQuery(userId, BLOCK_ID_IDENTITY_KEY);
     }
     return this.get(userId);
   }
@@ -249,7 +296,10 @@ export class InMemoryUserPreferencesRepository implements IUserPreferencesReposi
   ): Promise<UserPreferences> {
     const current = await this.get(userId);
     const next: UserPreferences = {
-      cardOptions: prefs.cardOptions ?? current.cardOptions,
+      cardOptions:
+        prefs.cardOptions == null
+          ? current.cardOptions
+          : { ...current.cardOptions, ...prefs.cardOptions },
       theme: prefs.theme ?? current.theme,
       language: prefs.language ?? current.language,
       ankiWebAcknowledgedAt:
@@ -284,9 +334,33 @@ export class InMemoryUserPreferencesRepository implements IUserPreferencesReposi
     return next;
   }
 
+  async setBlockIdIdentity(
+    userId: number,
+    enabled: boolean
+  ): Promise<UserPreferences> {
+    const current = await this.get(userId);
+    const next: UserPreferences = {
+      ...current,
+      cardOptions: enabled
+        ? { ...current.cardOptions, [BLOCK_ID_IDENTITY_KEY]: 'true' }
+        : withoutBlockIdIdentity(current.cardOptions),
+    };
+    this.store.set(userId, next);
+    return next;
+  }
+
   clear(): void {
     this.store.clear();
   }
+}
+
+function withoutBlockIdIdentity(
+  cardOptions: CardOptions | null
+): CardOptions | null {
+  if (cardOptions == null) return null;
+  const rest: CardOptions = { ...cardOptions };
+  delete rest[BLOCK_ID_IDENTITY_KEY];
+  return rest;
 }
 
 export default UserPreferencesRepository;

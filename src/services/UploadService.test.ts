@@ -127,6 +127,7 @@ function buildUsersRepo(
       .fn()
       .mockResolvedValue({ cards_used: 0, month_started_at: new Date() }),
     incrementCardUsage: jest.fn().mockResolvedValue(1),
+    getCardOptions: jest.fn().mockResolvedValue(null),
     ...overrides,
   } as unknown as UsersRepository;
 }
@@ -3585,5 +3586,167 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
     expect((capturedJson() as { code: string }).code).toBe(
       'image_only_no_text'
     );
+  });
+});
+
+describe('UploadService.handleUpload — stored card options', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'upload-service-test');
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+  });
+
+  beforeEach(() => {
+    MockGeneratePackagesUseCase.mockClear();
+    trackMock.mockClear();
+    mockFirstApkg = Buffer.from('fake-apkg');
+    mockWorkspaceId = 'test-ws-id';
+  });
+
+  const guidEntries = [
+    { blockId: 'block-a', sourcePageId: 'page-1', guid: 'block-guid-a' },
+  ];
+
+  function buildGuidLedger() {
+    return {
+      getAllForOwner: jest.fn().mockResolvedValue({ 'block-a': 'old-guid' }),
+      record: jest.fn().mockResolvedValue(undefined),
+      reissue: jest.fn().mockResolvedValue(undefined),
+    };
+  }
+
+  function mockOneDeck() {
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockResolvedValue({
+            packages: [{ name: 'deck', cardCount: 1, guidEntries }],
+          }),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+  }
+
+  it('re-keys through a stored block-id-identity the body never sent', async () => {
+    mockOneDeck();
+    const guidLedger = buildGuidLedger();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({
+        getCardOptions: jest
+          .fn()
+          .mockResolvedValue({ 'block-id-identity': 'true' }),
+      } as unknown as Partial<UsersRepository>),
+      ...fakeUploadServiceDeps({ guidLedger })
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(guidLedger.reissue).toHaveBeenCalledWith(42, guidEntries);
+  });
+
+  it('lets a stored block-id-identity beat a stale false from the browser', async () => {
+    mockOneDeck();
+    const guidLedger = buildGuidLedger();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({
+        getCardOptions: jest
+          .fn()
+          .mockResolvedValue({ 'block-id-identity': 'true' }),
+      } as unknown as Partial<UsersRepository>),
+      ...fakeUploadServiceDeps({ guidLedger })
+    );
+    const req = buildRequest({
+      body: { 'block-id-identity': 'false' },
+    } as Partial<express.Request>);
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(guidLedger.reissue).toHaveBeenCalledWith(42, guidEntries);
+    expect(guidLedger.record).not.toHaveBeenCalled();
+  });
+
+  it('fills an ordinary option the body omits from the stored options', async () => {
+    mockOneDeck();
+    const attachCustomTemplates = jest.fn().mockResolvedValue(undefined);
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({
+        getCardOptions: jest.fn().mockResolvedValue({ template: 'custom' }),
+      } as unknown as Partial<UsersRepository>),
+      ...fakeUploadServiceDeps({
+        settings: { attachCustomTemplates } as unknown as ISettingsRepository,
+      })
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(attachCustomTemplates).toHaveBeenCalledWith(
+      '42',
+      expect.objectContaining({ template: 'custom' })
+    );
+  });
+
+  it('lets the browser win for an ordinary option it did send', async () => {
+    mockOneDeck();
+    const attachCustomTemplates = jest.fn().mockResolvedValue(undefined);
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({
+        getCardOptions: jest.fn().mockResolvedValue({ template: 'stored' }),
+      } as unknown as Partial<UsersRepository>),
+      ...fakeUploadServiceDeps({
+        settings: { attachCustomTemplates } as unknown as ISettingsRepository,
+      })
+    );
+    const req = buildRequest({
+      body: { template: 'custom' },
+    } as Partial<express.Request>);
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(attachCustomTemplates).toHaveBeenCalledWith(
+      '42',
+      expect.objectContaining({ template: 'custom' })
+    );
+  });
+
+  it('never reads stored options for an anonymous upload', async () => {
+    mockOneDeck();
+    const getCardOptions = jest
+      .fn()
+      .mockResolvedValue({ 'block-id-identity': 'true' });
+    const guidLedger = buildGuidLedger();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({ getCardOptions } as unknown as Partial<UsersRepository>),
+      ...fakeUploadServiceDeps({ guidLedger })
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(getCardOptions).not.toHaveBeenCalled();
+    expect(guidLedger.reissue).not.toHaveBeenCalled();
   });
 });

@@ -24,6 +24,8 @@ import { CancellationFeedbackRepository } from '../data_layer/CancellationFeedba
 import { EmojiFeedbackRepository } from '../data_layer/EmojiFeedbackRepository';
 import { ReEngagementFeedbackRepository } from '../data_layer/ReEngagementFeedbackRepository';
 import UsersRepository from '../data_layer/UsersRepository';
+import { UserPreferencesRepository } from '../data_layer/UserPreferencesRepository';
+import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
 import { UserDeletionService } from '../services/UserDeletionService';
 import { SubscriptionsSourceRepository } from '../data_layer/SubscriptionsSourceRepository';
 import SuppressionEventsRepository from '../data_layer/SuppressionEventsRepository';
@@ -227,6 +229,10 @@ const OpsRouter = () => {
       new UserPassRepository(database),
       new UsersRepository(database),
       getEventsSink()
+    ),
+    new SetBlockIdIdentityUseCase(
+      new UsersRepository(database),
+      new UserPreferencesRepository(database)
     )
   );
 
@@ -477,6 +483,41 @@ const OpsRouter = () => {
    */
   router.post('/api/ops/grant-unclaimed-pass', RequireOpsAccess, (req, res) =>
     controller.grantUnclaimedPass(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/ops/set-block-id-identity:
+   *   post:
+   *     summary: Pin the "Match cards to their Notion blocks" option on an account
+   *     description: |
+   *       Stores block-id-identity=true in the account's card options so every
+   *       future upload re-keys cards to their Notion blocks, whatever the
+   *       browser sends; enabled=false removes the override so the user's own
+   *       toggle applies again. Support uses it when a re-upload keeps
+   *       duplicating a deck. Internal endpoint locked to the ops owner —
+   *       returns 404 for everyone else.
+   *     tags: [Ops]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [email, enabled]
+   *             properties:
+   *               email: { type: string }
+   *               enabled: { type: boolean }
+   *     responses:
+   *       200:
+   *         description: Override stored — returns userId and blockIdIdentity
+   *       400:
+   *         description: Missing or invalid email or enabled flag
+   *       404:
+   *         description: Not the ops owner, or no account for that email
+   */
+  router.post('/api/ops/set-block-id-identity', RequireOpsAccess, (req, res) =>
+    controller.setBlockIdIdentity(req, res)
   );
 
   /**

@@ -4,6 +4,7 @@ import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
 import { syncStripeSubscriptions } from './syncStripeSubscriptions';
 import { grantUnclaimedPass } from './grantUnclaimedPass';
+import { setBlockIdIdentity } from './setBlockIdIdentity';
 import { setChatAttachmentsLifecycle } from './setChatAttachmentsLifecycle';
 import { sendPassWinback } from './sendPassWinback';
 import {
@@ -71,6 +72,9 @@ export default function CommandsTab() {
   const [passEmail, setPassEmail] = useState('');
   const [passStatus, setPassStatus] = useState<Status>('idle');
   const [passMessage, setPassMessage] = useState('');
+  const [blockIdEmail, setBlockIdEmail] = useState('');
+  const [blockIdStatus, setBlockIdStatus] = useState<Status>('idle');
+  const [blockIdMessage, setBlockIdMessage] = useState('');
 
   const runWinback = async (dryRun: boolean) => {
     const campaign = winbackCampaign.trim();
@@ -93,6 +97,31 @@ export default function CommandsTab() {
     } catch (error) {
       setWinbackStatus('error');
       setWinbackMessage(
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
+  };
+
+  const runSetBlockIdIdentity = async (enabled: boolean) => {
+    const email = blockIdEmail.trim();
+    if (!email.includes('@')) {
+      setBlockIdStatus('error');
+      setBlockIdMessage('Enter the account email first.');
+      return;
+    }
+    setBlockIdStatus('loading');
+    setBlockIdMessage('');
+    try {
+      await setBlockIdIdentity(email, enabled);
+      setBlockIdStatus('success');
+      setBlockIdMessage(
+        enabled
+          ? `On for ${email}. Ask them to upload the same page again — their existing cards update in place.`
+          : `Off for ${email}. Their own card option setting applies again.`
+      );
+    } catch (error) {
+      setBlockIdStatus('error');
+      setBlockIdMessage(
         error instanceof Error ? error.message : 'Unknown error'
       );
     }
@@ -272,6 +301,54 @@ export default function CommandsTab() {
       {passStatus === 'error' && passMessage && (
         <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
           {passMessage}
+        </div>
+      )}
+
+      <section className={`${sharedStyles.surface} ${styles.card}`}>
+        <h2 className={styles.cardTitle}>Match cards to Notion blocks</h2>
+        <p className={styles.panelSubtitle}>
+          Turns &quot;Match cards to their Notion blocks&quot; on or off for an
+          account&apos;s future uploads, saved to their card options. Use when a
+          user needs their re-upload to update existing cards in place but
+          can&apos;t reach the toggle. After you flip it, tell them to upload
+          the same page again.
+        </p>
+        <div className={styles.controls}>
+          <input
+            type="email"
+            aria-label="Match cards account email"
+            placeholder="name@example.com"
+            className={styles.textInput}
+            value={blockIdEmail}
+            onChange={(e) => setBlockIdEmail(e.target.value)}
+          />
+          <button
+            type="button"
+            className={sharedStyles.btnSmall}
+            onClick={() => runSetBlockIdIdentity(true)}
+            disabled={blockIdStatus === 'loading'}
+          >
+            {blockIdStatus === 'loading' ? 'Working…' : 'Turn on'}
+          </button>
+          <button
+            type="button"
+            className={sharedStyles.btnSmall}
+            onClick={() => runSetBlockIdIdentity(false)}
+            disabled={blockIdStatus === 'loading'}
+          >
+            Turn off
+          </button>
+        </div>
+      </section>
+
+      {blockIdStatus === 'success' && blockIdMessage && (
+        <div className={`${sharedStyles.alertSuccess} ${styles.banner}`}>
+          {blockIdMessage}
+        </div>
+      )}
+      {blockIdStatus === 'error' && blockIdMessage && (
+        <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
+          {blockIdMessage}
         </div>
       )}
 

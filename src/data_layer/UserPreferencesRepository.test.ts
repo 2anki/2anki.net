@@ -1,8 +1,40 @@
 import {
   ALLOWED_CARD_OPTION_KEYS,
   CardOptions,
+  InMemoryUserPreferencesRepository,
   sanitizeCardOptions,
 } from './UserPreferencesRepository';
+
+describe('InMemoryUserPreferencesRepository card options', () => {
+  it('merges a patch into the stored options instead of replacing them', async () => {
+    const repo = new InMemoryUserPreferencesRepository();
+    await repo.setBlockIdIdentity(3, true);
+
+    const prefs = await repo.patch(3, { cardOptions: { template: 'custom' } });
+
+    expect(prefs.cardOptions).toEqual({
+      'block-id-identity': 'true',
+      template: 'custom',
+    });
+  });
+
+  it('keeps stored options untouched when a patch carries none', async () => {
+    const repo = new InMemoryUserPreferencesRepository();
+    await repo.patch(3, { cardOptions: { template: 'custom' } });
+
+    const prefs = await repo.patch(3, { theme: 'dark' });
+
+    expect(prefs.cardOptions).toEqual({ template: 'custom' });
+  });
+
+  it('leaves card options null when disabling on an account with none', async () => {
+    const repo = new InMemoryUserPreferencesRepository();
+
+    const prefs = await repo.setBlockIdIdentity(3, false);
+
+    expect(prefs.cardOptions).toBeNull();
+  });
+});
 
 describe('sanitizeCardOptions card-option allowlist', () => {
   it('keeps every boolean toggle key', () => {

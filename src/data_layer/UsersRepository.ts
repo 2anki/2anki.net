@@ -51,6 +51,14 @@ class UsersRepository {
     return user;
   }
 
+  async getCardOptions(id: string | number): Promise<unknown> {
+    const row = await this.database(this.table)
+      .select('card_options')
+      .where({ id })
+      .first();
+    return row?.card_options ?? null;
+  }
+
   async getEmailById(id: string | number): Promise<string | undefined> {
     const row = await this.database(this.table)
       .where({ id })
