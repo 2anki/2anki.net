@@ -338,7 +338,6 @@
     "socialProof": "Von über 15 000 Lernenden weltweit genutzt",
     "payOnceSection": "Einmal zahlen — kein Abo",
     "monthlySection": "Monatliche Tarife",
-    "oneTimeSection": "Einmalzahlung",
     "pricesNote": "Preise in USD. Deine Karte wird beim Checkout in deiner lokalen Währung belastet.",
     "reassuranceCancel": "Jederzeit kündbar — ein Klick",
     "reassuranceOwn": "Deine Stapel gehören dir — natives .apkg, funktioniert in jedem Anki-Client",
@@ -346,15 +345,6 @@
     "educatorsBody": "Erstellst du Stapel für eine Klasse, eine Lerngruppe oder einen Kurs, den du verkaufst? Wir erproben Werkzeuge für Menschen, die Stapel für andere erstellen.",
     "educatorsButton": "Sag uns, was du brauchst",
     "philosophy": "Kostenlos funktioniert für immer. Bezahltarife unterstützen 2anki.net.",
-    "lifetime": {
-      "badge": "Einmal zahlen",
-      "price": "Ab $345",
-      "benefit1": "Alle Unlimited-Funktionen, einmal bezahlt",
-      "benefit2": "Auto Sync inklusive",
-      "benefit3": "Keine künftigen Preisänderungen",
-      "request": "Lifetime anfragen",
-      "caption": "Antwort innerhalb von 24 Stunden."
-    },
     "pass": {
       "noSubscription": "Kein Abo",
       "unlimitedCards": "Unbegrenzte Karten und Konvertierungen",

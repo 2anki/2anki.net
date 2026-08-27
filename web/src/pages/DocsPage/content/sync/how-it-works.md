@@ -32,6 +32,6 @@ A background job polls your subscribed pages, diffs them against what's already 
 
 ## Getting Auto Sync access
 
-Auto Sync isn't sold as a standalone plan right now — not enough people were using it to keep it on the pricing page. It's included with a Lifetime account. On any other plan, email [support@2anki.net](mailto:support@2anki.net) and we'll switch it on for your account so you can try it. The conversion features that ship today — Connect Notion + download deck, plus file uploads — stay free.
+Auto Sync isn't on the pricing page right now. On any subscription, email [support@2anki.net](mailto:support@2anki.net) and we'll switch it on so you can try it. Connect Notion, download deck, and file uploads stay free.
 
 See the [pricing page](/pricing) for current plans, and [When sync gets stuck](/documentation/sync/troubleshooting) if a sync isn't running.

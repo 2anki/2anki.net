@@ -3,13 +3,13 @@ import { useTranslation } from 'react-i18next';
 
 import styles from './ComparisonTable.module.css';
 
-const PLANS = ['Free', 'Day / Week pass', 'Unlimited', 'Lifetime'];
+const PLANS = ['Free', 'Day / Week pass', 'Unlimited'];
 
 type Cell = boolean | string;
 
 interface Row {
   label: string;
-  values: [Cell, Cell, Cell, Cell];
+  values: [Cell, Cell, Cell];
 }
 
 interface Group {
@@ -53,23 +53,23 @@ export function ComparisonTable({
       rows: [
         {
           label: t('rows.cardsPerMonth'),
-          values: ['100', unlimited, unlimited, unlimited],
+          values: ['100', unlimited, unlimited],
         },
         {
           label: t('rows.conversionsAtOnce'),
-          values: ['1', unlimited, unlimited, unlimited],
+          values: ['1', unlimited, unlimited],
         },
         {
           label: t('rows.pdfPagesPerFile'),
-          values: ['100', unlimited, unlimited, unlimited],
+          values: ['100', unlimited, unlimited],
         },
         {
           label: t('rows.maxUploadSize'),
-          values: ['100 MB', '10 GB', '10 GB', '10 GB'],
+          values: ['100 MB', '10 GB', '10 GB'],
         },
         {
           label: t('rows.ankiNotionNotes'),
-          values: ['1,000', '10,000', '10,000', '10,000'],
+          values: ['1,000', '10,000', '10,000'],
         },
       ],
     },
@@ -78,19 +78,19 @@ export function ComparisonTable({
       rows: [
         {
           label: t('rows.aiFlashcards'),
-          values: [false, true, true, true],
+          values: [false, true, true],
         },
         {
           label: t('rows.photoToDeck'),
-          values: [t('cells.photoPerMonth'), unlimited, unlimited, unlimited],
+          values: [t('cells.photoPerMonth'), unlimited, unlimited],
         },
         {
           label: t('rows.aiMcq'),
-          values: [false, true, true, true],
+          values: [false, true, true],
         },
         {
           label: t('rows.aiCardTemplate'),
-          values: ['3', unlimited, unlimited, unlimited],
+          values: ['3', unlimited, unlimited],
         },
       ],
     },
@@ -99,15 +99,15 @@ export function ComparisonTable({
       rows: [
         {
           label: t('rows.imageOcclusion'),
-          values: [t('cells.imagesQty'), unlimited, unlimited, unlimited],
+          values: [t('cells.imagesQty'), unlimited, unlimited],
         },
         {
           label: t('rows.mindMaps'),
-          values: ['3', '25', '25', unlimited],
+          values: ['3', '25', '25'],
         },
         {
           label: t('rows.printsToPdf'),
-          values: [t('cells.printsPerMonth'), unlimited, unlimited, unlimited],
+          values: [t('cells.printsPerMonth'), unlimited, unlimited],
         },
       ],
     },
@@ -115,12 +115,8 @@ export function ComparisonTable({
       name: t('groups.syncSupport'),
       rows: [
         {
-          label: t('rows.autoSyncNotion'),
-          values: [false, false, false, true],
-        },
-        {
           label: t('rows.prioritySupport'),
-          values: [false, false, true, true],
+          values: [false, false, true],
         },
       ],
     },
@@ -129,7 +125,7 @@ export function ComparisonTable({
       rows: [
         {
           label: t('rows.noSubscription'),
-          values: [true, true, false, true],
+          values: [true, true, false],
         },
       ],
     },
@@ -157,12 +153,7 @@ export function ComparisonTable({
     return value;
   };
 
-  const planPrices = [
-    '$0',
-    '$4 / $9',
-    `${unlimitedMonthlyPrice} / mo`,
-    'From $345',
-  ];
+  const planPrices = ['$0', '$4 / $9', `${unlimitedMonthlyPrice} / mo`];
 
   return (
     <section className={styles.section} aria-labelledby="comparison-heading">

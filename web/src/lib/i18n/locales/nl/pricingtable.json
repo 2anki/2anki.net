@@ -13,7 +13,7 @@
     "conversionLimits": "Conversielimieten",
     "ai": "AI (Claude)",
     "studyTools": "Studiehulpmiddelen",
-    "syncSupport": "Synchronisatie en ondersteuning",
+    "syncSupport": "Ondersteuning",
     "billing": "Facturering"
   },
   "rows": {
@@ -48,8 +48,8 @@
       "answer": "Unlimited verwijdert de limiet van 100 kaarten, voegt PDF-ondersteuning toe, laat je meerdere conversies tegelijk uitvoeren en bevat Anki-naar-Notion-imports tot 10.000 notities per import. De prijzen staan op de kaarten hierboven."
     },
     "q4": {
-      "question": "En Lifetime?",
-      "answer": "Lifetime begint bij $345, eenmalig betaald. Het bevat alle Unlimited-functies plus Auto Sync. Vraag het aan op deze pagina; toegang wordt na beoordeling verleend."
+      "question": "Is er een Lifetime-abonnement?",
+      "answer": "Niet meer. Lifetime is gesloten voor nieuwe leden. Als je al Lifetime hebt, blijven je toegang en alle functies precies hetzelfde. Voor onbeperkte toegang gebruik je het Unlimited-plan op de kaarten hierboven."
     },
     "q5": {
       "question": "Kan ik altijd opzeggen?",

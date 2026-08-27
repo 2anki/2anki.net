@@ -13,7 +13,7 @@
     "conversionLimits": "Limites de conversion",
     "ai": "IA (Claude)",
     "studyTools": "Outils d'étude",
-    "syncSupport": "Synchronisation et assistance",
+    "syncSupport": "Assistance",
     "billing": "Facturation"
   },
   "rows": {
@@ -48,8 +48,8 @@
       "answer": "Unlimited supprime la limite de 100 cartes, ajoute la prise en charge du PDF, permet plusieurs conversions à la fois et inclut des imports Anki vers Notion jusqu’à 10 000 notes chacun. Les tarifs figurent sur les cartes ci-dessus."
     },
     "q4": {
-      "question": "Et Lifetime ?",
-      "answer": "Lifetime débute à $345, payé une fois. Il inclut toutes les fonctionnalités Unlimited ainsi qu'Auto Sync. Faites la demande sur cette page ; l'accès est accordé après examen."
+      "question": "Existe-t-il un plan Lifetime ?",
+      "answer": "Plus maintenant. Lifetime est fermé aux nouveaux membres. Si tu as déjà Lifetime, ton accès et toutes les fonctionnalités restent exactement les mêmes. Pour un accès illimité, utilise le plan Unlimited sur les cartes ci-dessus."
     },
     "q5": {
       "question": "Puis-je annuler à tout moment ?",

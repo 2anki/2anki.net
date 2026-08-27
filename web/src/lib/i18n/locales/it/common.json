@@ -338,7 +338,6 @@
     "socialProof": "Scelto da oltre 15 000 studenti in tutto il mondo",
     "payOnceSection": "Paghi una volta — niente abbonamento",
     "monthlySection": "Piani mensili",
-    "oneTimeSection": "Pagamento una tantum",
     "pricesNote": "Prezzi in USD. La tua carta viene addebitata nella valuta locale al momento del pagamento.",
     "reassuranceCancel": "Disdici quando vuoi — con un clic",
     "reassuranceOwn": "I tuoi mazzi sono tuoi — .apkg nativo, funziona con qualsiasi client Anki",
@@ -346,15 +345,6 @@
     "educatorsBody": "Crei mazzi per una classe, un gruppo di ripetizioni o un corso che vendi? Stiamo esplorando strumenti per chi crea mazzi per gli altri.",
     "educatorsButton": "Dicci di cosa hai bisogno",
     "philosophy": "Il piano gratuito resta gratis per sempre. I piani a pagamento sostengono 2anki.net.",
-    "lifetime": {
-      "badge": "Paghi una volta",
-      "price": "Da $345",
-      "benefit1": "Tutte le funzioni di Unlimited, pagate una volta",
-      "benefit2": "Auto Sync incluso",
-      "benefit3": "Nessuna variazione di prezzo futura",
-      "request": "Richiedi Lifetime",
-      "caption": "Rispondiamo entro 24 ore."
-    },
     "pass": {
       "noSubscription": "Nessun abbonamento",
       "unlimitedCards": "Carte e conversioni illimitate",

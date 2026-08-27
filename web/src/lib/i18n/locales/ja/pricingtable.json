@@ -13,7 +13,7 @@
     "conversionLimits": "変換の上限",
     "ai": "AI（Claude）",
     "studyTools": "学習ツール",
-    "syncSupport": "同期とサポート",
+    "syncSupport": "サポート",
     "billing": "請求"
   },
   "rows": {
@@ -48,8 +48,8 @@
       "answer": "Unlimited は100枚の上限を解除し、PDF対応を追加し、複数の変換を同時に実行でき、Anki から Notion へのインポート（1回につき最大10,000ノート）を含みます。価格は上のカードに記載されています。"
     },
     "q4": {
-      "question": "Lifetime はどうですか？",
-      "answer": "Lifetime は $345 からで、一度の支払いです。Unlimited のすべての機能に加え Auto Sync が含まれます。このページで申請してください。アクセスは審査のうえ付与されます。"
+      "question": "Lifetime プランはありますか？",
+      "answer": "いまはありません。Lifetime は新規メンバーには提供を終了しました。すでに Lifetime をお持ちの場合、アクセスとすべての機能はそのまま変わりません。無制限に使うには、上のカードにある Unlimited プランをご利用ください。"
     },
     "q5": {
       "question": "いつでも解約できますか？",

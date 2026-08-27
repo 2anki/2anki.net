@@ -34,12 +34,12 @@ describe('index.html SoftwareApplication schema', () => {
   it('does not offer plans that cannot be purchased', () => {
     const { offers } = extractSoftwareApplicationSchema();
     expect(offers.map((o) => o.name)).not.toContain('Auto Sync');
+    expect(offers.map((o) => o.name)).not.toContain('Lifetime');
   });
 
-  it('lists the pass and lifetime offers at their card prices', () => {
+  it('lists the pass offers at their card prices', () => {
     const { offers } = extractSoftwareApplicationSchema();
     expect(offers.find((o) => o.name === 'Day Pass')?.price).toBe('4');
     expect(offers.find((o) => o.name === 'Week Pass')?.price).toBe('9');
-    expect(offers.find((o) => o.name === 'Lifetime')?.price).toBe('345');
   });
 });

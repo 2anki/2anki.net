@@ -34,9 +34,9 @@ export const PRICING_FAQ: PricingFaqItem[] = [
     answerKey: 'faq.q3.answer',
   },
   {
-    question: 'What about Lifetime?',
+    question: 'Is there a lifetime plan?',
     answer:
-      'Lifetime starts at $345, paid once. It includes all Unlimited features plus Auto Sync. Apply on this page; access is granted by review.',
+      'Not anymore. Lifetime is closed to new members. If you already have Lifetime, your access and every feature stay exactly as they are. For unlimited access, use the Unlimited plan on the cards above.',
     questionKey: 'faq.q4.question',
     answerKey: 'faq.q4.answer',
   },

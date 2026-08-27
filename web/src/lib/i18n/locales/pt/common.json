@@ -338,7 +338,6 @@
     "socialProof": "Confiado por mais de 15.000 estudantes no mundo todo",
     "payOnceSection": "Pague uma vez — sem assinatura",
     "monthlySection": "Planos mensais",
-    "oneTimeSection": "Pagamento único",
     "pricesNote": "Preços em USD. Seu cartão é cobrado na sua moeda local no checkout.",
     "reassuranceCancel": "Cancele quando quiser — em um clique",
     "reassuranceOwn": "Seus baralhos são seus — .apkg nativo, funciona em qualquer cliente Anki",
@@ -346,15 +345,6 @@
     "educatorsBody": "Criando baralhos para uma turma, um grupo de estudos ou um curso que você vende? Estamos explorando ferramentas para quem cria baralhos para outras pessoas.",
     "educatorsButton": "Conte o que você precisa",
     "philosophy": "O grátis funciona para sempre. Os planos pagos sustentam o 2anki.net.",
-    "lifetime": {
-      "badge": "Pague uma vez",
-      "price": "A partir de $345",
-      "benefit1": "Todos os recursos do Unlimited, pagos uma vez",
-      "benefit2": "Auto Sync incluído",
-      "benefit3": "Sem mudanças de preço no futuro",
-      "request": "Solicitar Lifetime",
-      "caption": "Resposta em até 24 horas."
-    },
     "pass": {
       "noSubscription": "Sem assinatura",
       "unlimitedCards": "Cartões e conversões ilimitados",

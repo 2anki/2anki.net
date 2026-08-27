@@ -338,7 +338,6 @@
     "socialProof": "Vertrouwd door 15.000+ lerenden wereldwijd",
     "payOnceSection": "Betaal eenmalig — geen abonnement",
     "monthlySection": "Maandabonnementen",
-    "oneTimeSection": "Eenmalige betaling",
     "pricesNote": "Prijzen in USD. Je kaart wordt bij het afrekenen in je lokale valuta belast.",
     "reassuranceCancel": "Altijd opzegbaar — met één klik",
     "reassuranceOwn": "Je decks zijn van jou — native .apkg, werkt in elke Anki-client",
@@ -346,15 +345,6 @@
     "educatorsBody": "Maak je decks voor een klas, een bijlesgroep of een cursus die je verkoopt? We verkennen tools voor mensen die decks voor anderen maken.",
     "educatorsButton": "Vertel ons wat je nodig hebt",
     "philosophy": "Gratis werkt voor altijd. Betaalde abonnementen steunen 2anki.net.",
-    "lifetime": {
-      "badge": "Betaal eenmalig",
-      "price": "Vanaf $345",
-      "benefit1": "Alle Unlimited-functies, eenmalig betaald",
-      "benefit2": "Auto Sync inbegrepen",
-      "benefit3": "Geen toekomstige prijswijzigingen",
-      "request": "Lifetime aanvragen",
-      "caption": "Reactie binnen 24 uur."
-    },
     "pass": {
       "noSubscription": "Geen abonnement",
       "unlimitedCards": "Onbeperkt kaarten en conversies",
