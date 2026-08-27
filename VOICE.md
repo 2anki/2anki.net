@@ -157,6 +157,7 @@ These words are banned from product UI copy. Marketing pages get slightly more l
 | Let's, now let's, don't forget to | Tutorial voice | Use imperative: "Export your page" |
 | Exclamation marks | Overenthusiasm | Period. Reserve for genuine celebration (rare) |
 | Emoji in product UI | Noise | Marketing pages can use one, rarely |
+| Add-on, add on (for a 2anki plan or feature) | Means an installable Anki extension | "its own plan", "sold separately", or the plan's name |
 
 ---
 
