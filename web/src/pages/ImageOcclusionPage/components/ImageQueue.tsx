@@ -18,6 +18,19 @@ interface Props {
   keptFirst?: number | null;
 }
 
+type FreePlanNotice = 'kept' | 'atLimit' | 'count';
+
+function freePlanNotice(
+  isPaying: boolean,
+  atLimit: boolean,
+  keptFirst: number | null
+): FreePlanNotice | null {
+  if (isPaying) return null;
+  if (keptFirst != null && keptFirst > 0) return 'kept';
+  if (atLimit) return 'atLimit';
+  return 'count';
+}
+
 export function ImageQueue({
   entries,
   activeIndex,
@@ -33,6 +46,7 @@ export function ImageQueue({
   const { t } = useTranslation('tools');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const atLimit = !isPaying && entries.length >= FREE_TIER_LIMIT;
+  const notice = freePlanNotice(isPaying, atLimit, keptFirst);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,30 +180,20 @@ export function ImageQueue({
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
-      {!isPaying && (
+      {notice != null && (
         <div className={styles.upgradeNotice}>
-          {keptFirst != null && keptFirst > 0 ? (
-            <>
-              <p>{t('occlusion.keptFirstImages', { count: keptFirst })}</p>
-              <Link to="/pricing" className={styles.upgradeLink}>
-                {t('occlusion.upgradeToAddMore')}
-              </Link>
-            </>
-          ) : atLimit ? (
-            <>
-              <p>{t('occlusion.freePlanAdded')}</p>
-              <Link to="/pricing" className={styles.upgradeLink}>
-                {t('occlusion.upgradeToAddMore')}
-              </Link>
-            </>
-          ) : (
-            <>
-              {t('occlusion.freePlanCount', { count: entries.length })}{' '}
-              <Link to="/pricing" className={styles.upgradeLink}>
-                {t('occlusion.upgradeForUnlimited')}
-              </Link>
-            </>
+          {notice === 'kept' && (
+            <p>{t('occlusion.keptFirstImages', { count: keptFirst ?? 0 })}</p>
           )}
+          {notice === 'atLimit' && <p>{t('occlusion.freePlanAdded')}</p>}
+          {notice === 'count' && (
+            <>{t('occlusion.freePlanCount', { count: entries.length })} </>
+          )}
+          <Link to="/pricing" className={styles.upgradeLink}>
+            {notice === 'count'
+              ? t('occlusion.upgradeForUnlimited')
+              : t('occlusion.upgradeToAddMore')}
+          </Link>
         </div>
       )}
     </div>

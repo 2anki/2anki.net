@@ -2,5 +2,5 @@
   "id": "2026-08-28-image-occlusion-free-cap",
   "date": "2026-08-28",
   "type": "fix",
-  "title": "Image occlusion keeps the first 3 images on the free plan and shows the upgrade path instead of a failed download"
+  "title": "Image occlusion keeps the first 3 images on the free plan and links to plans when a deck needs more"
 }
