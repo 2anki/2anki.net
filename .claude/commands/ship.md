@@ -111,10 +111,13 @@ gh issue comment "$ISSUE" --repo 2anki/server --body-file /tmp/ship-digest.md
 
 ```
 ### <PR title> — https://github.com/2anki/server/pull/<n>
+**Needs you:** <the one manual step only Alexander can do, or omit this line>
 <one line: what changed and why>
 <the PR body's `## Decisions` block verbatim, if present>
 Deploy: <merge sha short> · <"healthy" | "no deploy (docs only)" | "reverted via #<m>">
 ```
+
+Any step only Alexander can do (flip an ops switch for a user, confirm a fix on a specific account, change a Stripe or prod setting) goes on the `**Needs you:**` line at the top of the entry, never only inside the `Decisions` block — the block is a review, the line is a to-do (2026-08-28: the #4262 ops-switch step sat inside `Decisions` and was found by accident). Alexander closes the day's issue once read; closed means reviewed, so never close a digest issue from an agent.
 
 `gh issue create` prints the new issue's URL, hence `${URL##*/}` for the number. The `shipped-digest` label exists (created 2026-08-26); if it ever goes missing, `--label` errors — recreate it with `gh label create shipped-digest --repo 2anki/server --color 0E8A16 --description "Daily digest of agent-merged PRs"`.
 
