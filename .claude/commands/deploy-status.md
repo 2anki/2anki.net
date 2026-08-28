@@ -11,6 +11,8 @@ ssh -o ConnectTimeout=10 alemayhu@2anki.net "pm2 list && echo '---LOGS---' && pm
 
 The app runs **blue-green**, so the live process is `server-green` or `server-blue` — never plain `server`. Hardcoding `pm2 logs server` returns an empty tail (no process by that name). Omit the process name so `pm2 logs` tails whichever slot is live (the two pm2 modules, `pm2-logrotate` and `pm2-server-monit`, are low-volume and won't drown the app log). If you need to scope to one process, read the active name from the `pm2 list` table first.
 
+Every app line carries an ISO timestamp prefix (`log_date_format` in `ecosystem.blue-green.config.js`; the files are `~/.pm2/logs/server-<color>-{out,error}.log` plus dated rotations). To read a window — "errors in the last 5 days" — filter on that prefix. Never scope by file mtime or `find -newermt`: pm2 appends to whatever already sits at a log path, and after the 2026-08-22 daemon restart reused pm_ids appended fresh output onto July files, so mtime-scoped reads reported July's `NoActiveAnkifyClientError` as live and spawned two phantom fixes (#4203 → #4223, #4236 → #4251).
+
 Then report concisely:
 
 - **Process**: online / errored / restarted recently? Note recent uptime, not the lifetime ↺ counter.
