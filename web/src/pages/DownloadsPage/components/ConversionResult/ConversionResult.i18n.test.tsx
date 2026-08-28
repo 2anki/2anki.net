@@ -27,6 +27,7 @@ describe('ConversionResult in German', () => {
     renderResult(<ConversionResult variant="success" count={5} />);
     expect(screen.getByText('Karten')).toBeInTheDocument();
     expect(screen.getByText(/Bereit für Anki/i)).toBeInTheDocument();
+    expect(screen.getByText(/Reihenfolge des Dokuments/i)).toBeInTheDocument();
   });
 
   it('translates the expired-Notion failure message', () => {

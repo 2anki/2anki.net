@@ -516,7 +516,8 @@
     "success": {
       "card_one": "carta",
       "card_other": "carte",
-      "helper": "Nessun retro vuoto, nessun carattere di troppo. Pronto per Anki."
+      "helper": "Nessun retro vuoto, nessun carattere di troppo. Pronto per Anki.",
+      "order": "Le carte mantengono l'ordine del documento in Anki."
     },
     "notionExpired": "La connessione a Notion è scaduta. Riconnettiti per continuare a convertire le pagine.",
     "reconnectNotion": "Riconnetti Notion",

@@ -264,6 +264,9 @@ function SuccessVariant({ count }: Omit<SuccessProps, 'variant'>) {
       <span className={styles.helperText}>
         {t('conversionResult.success.helper')}
       </span>
+      <span className={styles.helperText}>
+        {t('conversionResult.success.order')}
+      </span>
     </div>
   );
 }

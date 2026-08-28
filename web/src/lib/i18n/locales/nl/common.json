@@ -516,7 +516,8 @@
     "success": {
       "card_one": "kaart",
       "card_other": "kaarten",
-      "helper": "Geen lege achterkanten, geen rare tekens. Klaar voor Anki."
+      "helper": "Geen lege achterkanten, geen rare tekens. Klaar voor Anki.",
+      "order": "De kaarten houden in Anki de volgorde van het document aan."
     },
     "notionExpired": "Notion-verbinding verlopen. Verbind opnieuw om pagina's te blijven omzetten.",
     "reconnectNotion": "Notion opnieuw verbinden",

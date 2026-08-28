@@ -516,7 +516,8 @@
     "success": {
       "card_one": "cartão",
       "card_other": "cartões",
-      "helper": "Sem versos vazios, sem caracteres estranhos. Pronto para o Anki."
+      "helper": "Sem versos vazios, sem caracteres estranhos. Pronto para o Anki.",
+      "order": "Os cartões mantêm a ordem do documento no Anki."
     },
     "notionExpired": "A conexão com o Notion expirou. Reconecte para continuar convertendo páginas.",
     "reconnectNotion": "Reconectar o Notion",

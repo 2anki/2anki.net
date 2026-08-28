@@ -189,6 +189,18 @@ describe('ConversionResult — success variant', () => {
     ).toBeInTheDocument();
   });
 
+  it('tells the learner the cards keep the document order in Anki', () => {
+    render(
+      <MemoryRouter>
+        <ConversionResult variant="success" count={76} />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText("Cards keep the document's order in Anki.")
+    ).toBeInTheDocument();
+  });
+
   it('uses the singular noun for a one-card deck', () => {
     render(
       <MemoryRouter>

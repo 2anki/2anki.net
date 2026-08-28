@@ -516,7 +516,8 @@
     "success": {
       "card_one": "Karte",
       "card_other": "Karten",
-      "helper": "Keine leeren Rückseiten, keine überflüssigen Zeichen. Bereit für Anki."
+      "helper": "Keine leeren Rückseiten, keine überflüssigen Zeichen. Bereit für Anki.",
+      "order": "Die Karten behalten in Anki die Reihenfolge des Dokuments."
     },
     "notionExpired": "Notion-Verbindung abgelaufen. Verbinde neu, um weiter Seiten zu konvertieren.",
     "reconnectNotion": "Notion neu verbinden",

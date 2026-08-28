@@ -95,6 +95,11 @@ if __name__ == "__main__":
             image_notes = build_io_notes(full_entry, occlude_inactive, media_files)
             notes.extend(image_notes)
 
+        # Same rule as create_deck.py: image order is document order, and
+        # Anki shows `due` as "New #N" for new cards.
+        for position, note in enumerate(notes, start=1):
+            note.due = position
+
         if not notes:
             print("No cards generated; exiting cleanly")
             sys.exit(0)

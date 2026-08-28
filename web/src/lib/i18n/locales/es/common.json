@@ -516,7 +516,8 @@
     "success": {
       "card_one": "tarjeta",
       "card_other": "tarjetas",
-      "helper": "Sin reversos vacíos, sin caracteres sueltos. Listo para Anki."
+      "helper": "Sin reversos vacíos, sin caracteres sueltos. Listo para Anki.",
+      "order": "Las tarjetas mantienen el orden del documento en Anki."
     },
     "notionExpired": "La conexión con Notion caducó. Reconéctate para seguir convirtiendo páginas.",
     "reconnectNotion": "Reconectar Notion",

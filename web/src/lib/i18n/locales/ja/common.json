@@ -509,7 +509,8 @@
   "conversionResult": {
     "success": {
       "card_other": "枚",
-      "helper": "空の裏面も、余計な文字もありません。Anki の準備完了です。"
+      "helper": "空の裏面も、余計な文字もありません。Anki の準備完了です。",
+      "order": "カードは Anki でも文書の順番を保ちます。"
     },
     "notionExpired": "Notion との接続の有効期限が切れました。ページの変換を続けるには再接続してください。",
     "reconnectNotion": "Notion に再接続",

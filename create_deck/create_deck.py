@@ -157,10 +157,18 @@ def build_one_deck(data_file, template_dir):
     }
     front_lang, back_lang = resolve_tts_langs(mt)
 
+    # Anki keeps a new card's `due` from the apkg and shows it as "New #N"; it
+    # is the only carrier of document order the user can see or sort by. One
+    # counter across every deck in the file, so parent -> child page order
+    # survives too. `card["number"]` cannot serve: it may be a Notion id string
+    # or a .5 reversed-note offset, and Anki rebuilds sfld from the front field
+    # on import anyway.
+    position = 0
     for deck in data:
         cards = deck.get("cards", [])
         notes = []
         for card in cards:
+            position += 1
             tags = sanitize_tags(card.get('tags', []))
             front = card.get("name", "")
             back = card.get("back", "")
@@ -239,7 +247,7 @@ def build_one_deck(data_file, template_dir):
                 guid = guid_for(deck["name"], guid_value, card_type)
             my_note = Note(model, fields=fields,
                            sort_field=card["number"], tags=tags,
-                           guid=guid)
+                           guid=guid, due=position)
             guid_records.append({"notionId": notion_id, "guid": guid})
             notes.append(my_note)
             media_files = media_files + card["media"]
