@@ -90,7 +90,7 @@ If the deploy run failed, `/api/version` does not report the merge SHA after the
 2. `git revert --no-commit $MERGE_SHA && git commit -m "revert: <original subject>" -m "Deploy run <run URL> failed after merging #<n>: <one line on what broke>."` — git's default `Revert "…"` subject fails the conventional-prefix hook, so write the subject yourself (≤72 chars).
 3. `git push -u origin revert/<slug>` and `gh pr create --repo 2anki/server --base main --head revert/<slug>` with a body that links the failed run and the original PR.
 4. Ship the revert through this command. A pure `git revert` of the PR just merged skips step 2's review agent: post the marker directly with the verdict "mechanical revert of #<n> after a failed deploy". CI, Sonar, and the hooks still gate it.
-5. Comment the revert PR URL on the deploy-failure issue the workflow opened (`gh issue list --search "Production deploy failed" --state open`).
+5. Comment the revert PR URL on the deploy-failure issue the workflow opened (`gh issue list --repo 2anki/2anki.net --search "Production deploy failed" --state open` — the search API does not follow the `2anki/server` rename, so list/search calls use the canonical name).
 6. Reopen the original issue if the PR had closed one, with one line on what failed.
 
 ## 8. Digest
@@ -99,7 +99,7 @@ Find or create today's digest issue and append one comment:
 
 ```bash
 TODAY=$(date -u +%Y-%m-%d)
-ISSUE=$(gh issue list --repo 2anki/server --label shipped-digest --state open --search "\"Shipped $TODAY\" in:title" --json number --jq '.[0].number // empty')
+ISSUE=$(gh issue list --repo 2anki/2anki.net --label shipped-digest --state open --search "\"Shipped $TODAY\" in:title" --json number --jq '.[0].number // empty')
 if [ -z "$ISSUE" ]; then
   URL=$(gh issue create --repo 2anki/server --title "Shipped $TODAY" --label shipped-digest --body "Everything agents merged and deployed today. One comment per PR; override any decision by replying or opening a follow-up.")
   ISSUE=${URL##*/}
