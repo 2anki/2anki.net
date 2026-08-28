@@ -1,3 +1,6 @@
+const os = require('node:os');
+const path = require('node:path');
+
 // Blue-green variant. Two identical apps on two ports; the deploy script
 // (scripts/deploy-blue-green.sh) starts exactly one at a time with
 // `pm2 start ecosystem.blue-green.config.js --only server-<color>`.
@@ -35,6 +38,24 @@
 // Lowering it to 8192 on 2026-07-29 was a mistake made while believing the
 // 16384 had never been active — the GC logs above disprove that.
 const MAX_OLD_SPACE_MB = 16384;
+
+// pm2's default log name carries the pm_id (server-blue-out-<id>.log), and pm2
+// appends to whatever already sits at that name. `pm2 delete` on every cutover
+// orphans the file and a daemon restart resets the id counter, so after the
+// 2026-08-22 reboot each deploy landed on an id last used in June/July and wrote
+// today's output onto a file whose head was two months old. Read by mtime, those
+// files served July's NoActiveAnkifyClientError traces as live — #4203 and
+// #4236 were both that, and their fixes (#4223, #4251) changed nothing real.
+// A fixed per-color path leaves nothing stale to append to, and the timestamp
+// on every line is what lets a reader scope a window by content, not by mtime.
+const PM2_LOG_DIR = path.join(os.homedir(), '.pm2', 'logs');
+const LOG_DATE_FORMAT = 'YYYY-MM-DDTHH:mm:ss.SSSZ';
+
+const logFiles = (name) => ({
+  out_file: path.join(PM2_LOG_DIR, `${name}-out.log`),
+  error_file: path.join(PM2_LOG_DIR, `${name}-error.log`),
+  log_date_format: LOG_DATE_FORMAT,
+});
 
 const base = {
   script: 'src/server.js',
@@ -77,6 +98,7 @@ module.exports = {
   apps: [
     {
       ...base,
+      ...logFiles('server-blue'),
       name: 'server-blue',
       env: {
         NODE_ENV: 'production',
@@ -87,6 +109,7 @@ module.exports = {
     },
     {
       ...base,
+      ...logFiles('server-green'),
       name: 'server-green',
       env: {
         NODE_ENV: 'production',
