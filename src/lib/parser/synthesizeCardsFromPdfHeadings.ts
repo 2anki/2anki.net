@@ -2,7 +2,11 @@ import type { PdfCard, PdfPage } from './synthesizeCardsFromPdf';
 
 const HEADING_MAX_CHARS = 60;
 const SENTENCE_TAIL = /[.,;]$/;
-const LIST_MARKER = /^(?:[-*•●○◦▪‣·☐☑☒✓✔]|\d{1,3}[.)])\s/;
+// Geometric shapes (■ ▶ ◦ …) and arrows (→ ↓ …) are bullet glyphs in exported
+// study notes; a bare marker with nothing after it is an empty list item the
+// author forgot to delete, which pdf.js emits on its own line.
+const LIST_MARKER = /^(?:[-*•●○◦▪‣·☐☑☒✓✔■-◿←-⇿]|\d{1,3}[.)])(?:\s|$)/;
+const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 const TERMINAL_PUNCTUATION = /[.!?:;]$/;
 const BARE_PAGE_NUMBER = /^[-–—]?\s*\d{1,3}\s*[-–—]?$/;
 const PAGE_WORD_NUMBER = /^page\s+\d{1,4}$/i;
@@ -63,6 +67,7 @@ function isHeadingLine(
     line.length < HEADING_MAX_CHARS &&
     nextLine != null &&
     nextLine.length > line.length &&
+    WORD_CHARACTER.test(line) &&
     !SENTENCE_TAIL.test(line) &&
     !LIST_MARKER.test(line) &&
     !startsLowercase(line) &&

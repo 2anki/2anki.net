@@ -449,3 +449,93 @@ describe('page attribution', () => {
     expect(cards[0].pageIndex).toBe(0);
   });
 });
+
+describe('stray glyph lines', () => {
+  it.each(['•', '↓', '■', '→'])(
+    'keeps a glyph-only line on the back instead of making it a card front: %s',
+    (glyph) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Board duties',
+            'Directors owe fiduciary duties of care and loyalty to the company itself.',
+            glyph,
+            'Why? Because principals would spend too much on preventing any appearance of authority.',
+          ].join('\n'),
+        },
+      ];
+
+      const cards = synthesizeCardsFromPdfHeadings(pages, 'Law');
+
+      expect(cards).toHaveLength(1);
+      expect(cards[0].front).toBe('Board duties');
+      expect(cards[0].back).toBe(
+        [
+          'Directors owe fiduciary duties of care and loyalty to the company itself.',
+          glyph,
+          'Why? Because principals would spend too much on preventing any appearance of authority.',
+        ].join('\n')
+      );
+    }
+  );
+
+  it('still opens a new card at the heading that follows a glyph-only line', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Osmosis',
+          'Movement of water across a semipermeable membrane down a gradient.',
+          '•',
+          'Diffusion',
+          'Movement of particles from high to low concentration in a solution.',
+        ].join('\n'),
+      },
+    ];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'Bio');
+
+    expect(cards.map((card) => card.front)).toEqual(['Osmosis', 'Diffusion']);
+    expect(cards[0].back).toBe(
+      [
+        'Movement of water across a semipermeable membrane down a gradient.',
+        '•',
+      ].join('\n')
+    );
+  });
+
+  it.each(['■ Examples: …', '→ Key takeaways', '▶ Watch the lecture'])(
+    'does not treat a line opened by a shape or arrow marker as a heading: %s',
+    (line) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            line,
+            'Formation requires offer and acceptance plus consideration between parties.',
+          ].join('\n'),
+        },
+      ];
+
+      expect(synthesizeCardsFromPdfHeadings(pages, 'Law')).toEqual([]);
+    }
+  );
+
+  it('discards a glyph-only line that appears before the first heading', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          '•',
+          'Glycolysis',
+          'Splits glucose into two pyruvate molecules in the cytoplasm.',
+        ].join('\n'),
+      },
+    ];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'Bio');
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({
+      front: 'Glycolysis',
+      back: 'Splits glucose into two pyruvate molecules in the cytoplasm.',
+    });
+  });
+});
