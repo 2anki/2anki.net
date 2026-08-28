@@ -4,7 +4,8 @@ const HEADING_MAX_CHARS = 60;
 const SENTENCE_TAIL = /[.,;]$/;
 const LIST_MARKER = /^(?:[-*•●○◦▪‣·☐☑☒✓✔]|\d{1,3}[.)])\s/;
 const TERMINAL_PUNCTUATION = /[.!?:;]$/;
-const PAGE_FOOTER = /^(?:page\s+)?\d{1,4}(?:\s*(?:\/|of)\s*\d{1,4})?$/i;
+const PAGE_FOOTER =
+  /^[-–—]?\s*(?:page\s+)?\d{1,4}(?:\s*(?:\/|of)\s*\d{1,4})?\s*[-–—]?$/i;
 
 function startsLowercase(line: string): boolean {
   const first = line.charAt(0);
@@ -19,11 +20,27 @@ function isWrappedContinuation(previousLine: string | undefined): boolean {
   );
 }
 
-function isListSibling(previousBodyLine: string | undefined): boolean {
+function isShortUnpunctuated(line: string | undefined): line is string {
   return (
-    previousBodyLine != null &&
-    previousBodyLine.length < HEADING_MAX_CHARS &&
-    !TERMINAL_PUNCTUATION.test(previousBodyLine)
+    line != null &&
+    line.length < HEADING_MAX_CHARS &&
+    !TERMINAL_PUNCTUATION.test(line)
+  );
+}
+
+function leadingWord(line: string): string {
+  return line.split(/[\s:]/, 1)[0].toLowerCase();
+}
+
+function isListSibling(
+  line: string,
+  nextLine: string | undefined,
+  previousBodyLine: string | undefined
+): boolean {
+  return (
+    isShortUnpunctuated(previousBodyLine) &&
+    isShortUnpunctuated(nextLine) &&
+    leadingWord(previousBodyLine) === leadingWord(line)
   );
 }
 
@@ -41,7 +58,7 @@ function isHeadingLine(
     !LIST_MARKER.test(line) &&
     !startsLowercase(line) &&
     !isWrappedContinuation(previousLine) &&
-    !isListSibling(previousBodyLine)
+    !isListSibling(line, nextLine, previousBodyLine)
   );
 }
 

@@ -272,18 +272,28 @@ describe('synthesizeCardsFromPdfHeadings', () => {
   });
 
   it.each(['35', 'Page 3', '3 / 35', '3 of 35', '- 12 -'])(
-    'never uses a page footer as a card front: %s',
+    'drops a page footer from both the front and the back: %s',
     (footer) => {
       const pages: PdfPage[] = [
         {
           text: [
-            footer,
+            'Contract formation',
             'Formation requires offer and acceptance plus consideration between parties.',
+            footer,
+            'Consideration must move from the promisee but need not be adequate in value.',
           ].join('\n'),
         },
       ];
 
-      expect(synthesizeCardsFromPdfHeadings(pages, 'Law')).toEqual([]);
+      const cards = synthesizeCardsFromPdfHeadings(pages, 'Law');
+
+      expect(cards).toHaveLength(1);
+      expect(cards[0].back).toBe(
+        [
+          'Formation requires offer and acceptance plus consideration between parties.',
+          'Consideration must move from the promisee but need not be adequate in value.',
+        ].join('\n')
+      );
     }
   );
 
@@ -306,6 +316,50 @@ describe('synthesizeCardsFromPdfHeadings', () => {
     expect(cards).toHaveLength(1);
     expect(cards[0].front).toBe('Teaching plan');
     expect(cards[0].back).toBe(items.join('\n'));
+  });
+
+  it('keeps a heading that follows a terse unpunctuated one-line body', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Osmosis',
+          'Water movement across a membrane',
+          'Diffusion',
+          'Movement of particles from high to low concentration in a solution.',
+        ].join('\n'),
+      },
+    ];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'Bio');
+
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toMatchObject({
+      front: 'Osmosis',
+      back: 'Water movement across a membrane',
+    });
+    expect(cards[1].front).toBe('Diffusion');
+  });
+
+  it('keeps the first heading after short title-page lines', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Corporate Governance',
+          'Lecture 3',
+          'Agency costs',
+          'Managers may pursue their own interests at shareholder expense over time.',
+          'Board duties',
+          'Directors owe fiduciary duties of care and loyalty to the company itself.',
+        ].join('\n'),
+      },
+    ];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'Law');
+
+    expect(cards.map((card) => card.front)).toEqual([
+      'Agency costs',
+      'Board duties',
+    ]);
   });
 
   it.each([
