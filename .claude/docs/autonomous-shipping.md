@@ -39,7 +39,7 @@ Sanctioned carve-outs inside `/ship` only: starting `pnpm dev` for the browser a
 
 ## The digest
 
-One GitHub issue per UTC day, `Shipped YYYY-MM-DD`, label `shipped-digest`, one comment per merged PR: link, one line what/why, the PR body's `## Decisions` block verbatim, deploy verdict. This is where Alexander overrides a trio call — reply on the issue or open a follow-up. Trio decisions therefore **must** land in the PR body under `## Decisions` (the `overnight-prs` format), or the digest has nothing to surface.
+One GitHub issue per UTC day, `Shipped YYYY-MM-DD`, label `shipped-digest`, one comment per merged PR: link, one line what/why, the PR body's `## Decisions` block verbatim, deploy verdict. This is where Alexander overrides a trio call — reply on the issue or open a follow-up. Trio decisions therefore **must** land in the PR body under `## Decisions` (the `overnight-prs` format), or the digest has nothing to surface. An entry that leaves a manual step for Alexander carries it as a `**Needs you:**` first line, separate from the decisions. He closes the day's issue once read — closed means reviewed — so agents never close one.
 
 ## Throughput
 
