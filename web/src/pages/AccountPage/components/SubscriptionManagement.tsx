@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSubscriptionCancellation } from '../hooks/useSubscriptionCancellation';
 import { usePerSubscriptionCancellation } from '../hooks/usePerSubscriptionCancellation';
@@ -361,6 +361,15 @@ function StripeSubscriptionManagement({
   });
 
   const [confirming, setConfirming] = useState(false);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const wasConfirming = useRef(false);
+
+  useEffect(() => {
+    if (wasConfirming.current && !confirming) {
+      cancelButtonRef.current?.focus();
+    }
+    wasConfirming.current = confirming;
+  }, [confirming]);
 
   const { view } = stripeStatus;
   const shownSubId =
@@ -502,6 +511,7 @@ function StripeSubscriptionManagement({
                     <button
                       type="button"
                       className={styles.secondaryButton}
+                      ref={cancelButtonRef}
                       onClick={handleOpenCancelFlow}
                       disabled={isCancelling}
                     >
@@ -543,20 +553,22 @@ function StripeSubscriptionManagement({
 
           {view.kind === 'past_due' && (
             <>
-              <p className={styles.statusLine}>
-                {t('subscription.pastDueTitle')}
-              </p>
-              <p className={sharedStyles.smallDescription}>
-                {formatPlan(view.subscription)
-                  ? t('subscription.pastDueBody', {
-                      plan: formatPlan(view.subscription),
-                    })
-                  : t('subscription.pastDueBodyNoPlan')}
-              </p>
+              <div role="status" aria-live="polite">
+                <p className={styles.statusLine}>
+                  {t('subscription.pastDueTitle')}
+                </p>
+                <p className={sharedStyles.smallDescription}>
+                  {formatPlan(view.subscription)
+                    ? t('subscription.pastDueBody', {
+                        plan: formatPlan(view.subscription),
+                      })
+                    : t('subscription.pastDueBodyNoPlan')}
+                </p>
+              </div>
               {!confirming && (
                 <div className={styles.actions}>
                   <a
-                    className={styles.manageBillingButton}
+                    className={styles.primaryButton}
                     href={STRIPE_CUSTOMER_PORTAL_URL}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -567,6 +579,7 @@ function StripeSubscriptionManagement({
                   <button
                     type="button"
                     className={styles.secondaryButton}
+                    ref={cancelButtonRef}
                     onClick={() => setConfirming(true)}
                     disabled={isCancellingPerSub}
                   >
@@ -588,7 +601,9 @@ function StripeSubscriptionManagement({
                 />
               )}
               {perSubCancelError && (
-                <p className={styles.helpDanger}>{perSubCancelError}</p>
+                <p className={styles.helpDanger}>
+                  {t('subscription.cancelFailed')}
+                </p>
               )}
             </>
           )}
@@ -616,7 +631,7 @@ function StripeSubscriptionManagement({
           )}
 
           {view.kind === 'cancelled' && (
-            <>
+            <div role="status" aria-live="polite">
               <p className={styles.statusLineMuted}>
                 {t('subscription.endedPrefix')}{' '}
                 <strong>{fmt(view.subscription.canceled_at)}</strong>.
@@ -628,11 +643,15 @@ function StripeSubscriptionManagement({
                   {t('subscription.endedPaymentFailed')}
                 </p>
               )}
-            </>
+            </div>
           )}
 
           {stripeStatus.isLoading && view.kind === 'none' && (
-            <p className={sharedStyles.smallDescription}>
+            <p
+              role="status"
+              aria-live="polite"
+              className={sharedStyles.smallDescription}
+            >
               {t('subscription.readingSubscription')}
             </p>
           )}
@@ -640,7 +659,7 @@ function StripeSubscriptionManagement({
           {!stripeStatus.isLoading &&
             stripeStatus.isError &&
             view.kind === 'none' && (
-              <p className={sharedStyles.smallDescription}>
+              <p role="alert" className={sharedStyles.smallDescription}>
                 {t('subscription.statusLoadFailed')}
               </p>
             )}
