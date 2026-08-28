@@ -113,6 +113,63 @@ function stubStripeView(kind: 'scheduled' | 'cancelled' | 'none') {
   } as unknown as StripeSubscriptionsState);
 }
 
+function stubStripePastDue() {
+  const subscription = {
+    id: 'sub_due',
+    status: 'past_due',
+    created: Math.floor(Date.now() / 1000) - 120 * 24 * 60 * 60,
+    cancel_at_period_end: false,
+    current_period_end: 1893456000,
+    cancel_at: null,
+    canceled_at: null,
+    paused_until: null,
+    cancellation_reason: null,
+    plan: { amount: 799, currency: 'usd', interval: 'month' },
+  };
+  mockUseStripeSubscriptions.mockReturnValue({
+    subscriptions: [subscription],
+    activeSubscriptions: [],
+    view: { kind: 'past_due', subscription },
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn().mockResolvedValue(undefined),
+  } as unknown as StripeSubscriptionsState);
+}
+
+function stubStripeCancelled(cancellationReason: string | null) {
+  const subscription = {
+    id: 'sub_ended',
+    status: 'canceled',
+    created: Math.floor(Date.now() / 1000) - 200 * 24 * 60 * 60,
+    cancel_at_period_end: false,
+    current_period_end: null,
+    cancel_at: null,
+    canceled_at: 1880000000,
+    paused_until: null,
+    cancellation_reason: cancellationReason,
+    plan: { amount: 799, currency: 'usd', interval: 'month' },
+  };
+  mockUseStripeSubscriptions.mockReturnValue({
+    subscriptions: [subscription],
+    activeSubscriptions: [],
+    view: { kind: 'cancelled', subscription },
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn().mockResolvedValue(undefined),
+  } as unknown as StripeSubscriptionsState);
+}
+
+function stubStripeStatusError() {
+  mockUseStripeSubscriptions.mockReturnValue({
+    subscriptions: [],
+    activeSubscriptions: [],
+    view: { kind: 'none' },
+    isLoading: false,
+    isError: true,
+    refetch: vi.fn().mockResolvedValue(undefined),
+  } as unknown as StripeSubscriptionsState);
+}
+
 function renderStripeManagement() {
   return render(
     withQueryClient(
@@ -382,6 +439,142 @@ describe('SubscriptionManagement', () => {
     );
 
     expect(track).toHaveBeenCalledWith('subscription_cancelled_during_pause');
+  });
+
+  describe('past_due subscription', () => {
+    it('renders the payment-failed state with Update payment ahead of Cancel', () => {
+      stubStripePastDue();
+      renderStripeManagement();
+
+      expect(screen.getByText("Your payment didn't go through")).toBeTruthy();
+      const link = screen.getByRole('link', { name: 'Update payment details' });
+      expect(link).toHaveAttribute('href', STRIPE_CUSTOMER_PORTAL_URL);
+      const cancel = screen.getByRole('button', {
+        name: 'Cancel subscription',
+      });
+      expect(link.compareDocumentPosition(cancel)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING
+      );
+      expect(screen.queryByText(/Pause instead/)).toBeNull();
+    });
+
+    it('fires subscription_past_due_shown once on render', () => {
+      stubStripePastDue();
+      renderStripeManagement();
+
+      const shownCalls = vi
+        .mocked(track)
+        .mock.calls.filter((c) => c[0] === 'subscription_past_due_shown');
+      expect(shownCalls).toHaveLength(1);
+    });
+
+    it('sends from past_due on the manage-billing click', () => {
+      stubStripePastDue();
+      renderStripeManagement();
+
+      fireEvent.click(
+        screen.getByRole('link', { name: 'Update payment details' })
+      );
+
+      expect(track).toHaveBeenCalledWith(
+        'subscription_manage_billing_clicked',
+        {
+          from: 'past_due',
+          interval: 'month',
+        }
+      );
+    });
+
+    it('cancels the past_due subscription through the per-id immediate route', async () => {
+      stubStripePastDue();
+      vi.mocked(cancelSubscriptionById).mockResolvedValue({ message: 'ok' });
+      renderStripeManagement();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Cancel subscription' })
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Cancel subscription' })
+      );
+
+      await waitFor(() =>
+        expect(cancelSubscriptionById).toHaveBeenCalledWith(
+          'sub_due',
+          'immediate'
+        )
+      );
+    });
+  });
+
+  describe('recently ended subscription', () => {
+    it('shows the payment-failed reason when Stripe cancelled for a failed payment', () => {
+      stubStripeCancelled('payment_failed');
+      renderStripeManagement();
+
+      expect(screen.getByText(/Ended/)).toBeTruthy();
+      expect(
+        screen.getByText(
+          "Your subscription ended because your payment didn't go through."
+        )
+      ).toBeTruthy();
+    });
+
+    it('omits the payment-failed reason for a voluntary cancellation', () => {
+      stubStripeCancelled('cancellation_requested');
+      renderStripeManagement();
+
+      expect(
+        screen.queryByText(/because your payment didn.t go through/)
+      ).toBeNull();
+    });
+
+    it('fires subscription_ended_shown once on render', () => {
+      stubStripeCancelled(null);
+      renderStripeManagement();
+
+      const shownCalls = vi
+        .mocked(track)
+        .mock.calls.filter((c) => c[0] === 'subscription_ended_shown');
+      expect(shownCalls).toHaveLength(1);
+    });
+
+    it('renders the ended state for a churned non-subscriber with a linked email', () => {
+      stubStripeCancelled('payment_failed');
+
+      render(
+        withQueryClient(
+          <SubscriptionManagement
+            user={user}
+            locals={{
+              subscriber: false,
+              planSource: 'stripe',
+              subscriptionInfo: { email: 'paid@example.com' },
+            }}
+            hasActivePlan={false}
+            onRefetch={vi.fn().mockResolvedValue(undefined)}
+          />
+        )
+      );
+
+      expect(screen.getByText(/Ended/)).toBeTruthy();
+      expect(mockUseStripeSubscriptions).toHaveBeenCalledWith(true);
+    });
+  });
+
+  describe('subscription status load failure', () => {
+    it('shows the load-failed line and hides the claim/mismatch block', () => {
+      stubStripeStatusError();
+      renderStripeManagement();
+
+      expect(
+        screen.getByText(
+          "We couldn't load your subscription just now. Refresh to try again."
+        )
+      ).toBeTruthy();
+      expect(
+        screen.queryByText(/We can't find your subscription on this account/)
+      ).toBeNull();
+    });
   });
 
   describe('update payment details', () => {

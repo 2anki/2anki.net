@@ -51,6 +51,11 @@ function placeholders(text: string): string[] {
 
 const allowedIdentical = new Set<string>([
   'account:subscription.premium',
+  'account:subscription.pastDueTitle',
+  'account:subscription.pastDueBody',
+  'account:subscription.pastDueBodyNoPlan',
+  'account:subscription.endedPaymentFailed',
+  'account:subscription.statusLoadFailed',
   'account:planDetails.free',
   'ankify:subscriptions.inAnki',
   'ankify:workspace.backLink',

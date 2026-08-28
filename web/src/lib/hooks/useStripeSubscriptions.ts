@@ -9,6 +9,7 @@ export type SubscriptionViewState =
   | { kind: 'active'; subscription: StripeSubscriptionSummary }
   | { kind: 'scheduled'; subscription: StripeSubscriptionSummary }
   | { kind: 'paused'; subscription: StripeSubscriptionSummary }
+  | { kind: 'past_due'; subscription: StripeSubscriptionSummary }
   | { kind: 'cancelled'; subscription: StripeSubscriptionSummary };
 
 export interface StripeSubscriptionsState {
@@ -16,11 +17,24 @@ export interface StripeSubscriptionsState {
   activeSubscriptions: StripeSubscriptionSummary[];
   view: SubscriptionViewState;
   isLoading: boolean;
+  isError: boolean;
   refetch: () => Promise<unknown>;
 }
 
-function deriveView(
-  subscriptions: StripeSubscriptionSummary[]
+const RECENT_CANCEL_WINDOW_SECONDS = 30 * 24 * 60 * 60;
+
+const isRecentlyCancelled = (
+  sub: StripeSubscriptionSummary,
+  nowMs: number
+): boolean => {
+  if (sub.canceled_at == null) return false;
+  const secondsSinceCancel = nowMs / 1000 - sub.canceled_at;
+  return secondsSinceCancel <= RECENT_CANCEL_WINDOW_SECONDS;
+};
+
+export function deriveView(
+  subscriptions: StripeSubscriptionSummary[],
+  nowMs: number = Date.now()
 ): SubscriptionViewState {
   const active = subscriptions.find((sub) => sub.status === 'active');
   if (active) {
@@ -32,8 +46,15 @@ function deriveView(
       : { kind: 'active', subscription: active };
   }
 
+  const pastDue = subscriptions.find(
+    (sub) => sub.status === 'past_due' || sub.status === 'unpaid'
+  );
+  if (pastDue) {
+    return { kind: 'past_due', subscription: pastDue };
+  }
+
   const cancelled = subscriptions.find((sub) => sub.status === 'canceled');
-  if (cancelled) {
+  if (cancelled && isRecentlyCancelled(cancelled, nowMs)) {
     return { kind: 'cancelled', subscription: cancelled };
   }
 
@@ -43,7 +64,7 @@ function deriveView(
 export function useStripeSubscriptions(
   enabled: boolean
 ): StripeSubscriptionsState {
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['stripeSubscriptions'],
     queryFn: getSubscriptionStatus,
     enabled,
@@ -60,6 +81,7 @@ export function useStripeSubscriptions(
     activeSubscriptions,
     view: deriveView(subscriptions),
     isLoading,
+    isError,
     refetch,
   };
 }

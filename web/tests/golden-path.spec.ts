@@ -201,4 +201,67 @@ test.describe('golden path @golden', () => {
     ).toBeVisible();
     expect(realErrors(errors)).toEqual([]);
   });
+
+  test('account page for a past_due subscriber offers Update payment and Cancel at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ...AUTHED_LOCALS,
+          locals: {
+            ...AUTHED_LOCALS.locals,
+            subscriber: true,
+            planSource: 'stripe',
+            subscriptionInfo: {
+              active: true,
+              email: 'test@example.com',
+              linked_email: 'test@example.com',
+            },
+          },
+        }),
+      })
+    );
+    await page.route('**/api/users/subscription-status**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          subscriptions: [
+            {
+              id: 'sub_past_due',
+              status: 'past_due',
+              created: 1_700_000_000,
+              cancel_at_period_end: false,
+              current_period_end: 1_893_456_000,
+              cancel_at: null,
+              canceled_at: null,
+              paused_until: null,
+              cancellation_reason: null,
+              plan: { amount: 799, currency: 'usd', interval: 'month' },
+            },
+          ],
+        }),
+      })
+    );
+
+    await page.goto('/account');
+
+    await expect(page.getByText("Your payment didn't go through")).toBeVisible({
+      timeout: 10_000,
+    });
+    const portalLink = page.getByRole('link', {
+      name: 'Update payment details',
+    });
+    await expect(portalLink).toBeVisible();
+    await expect(portalLink).toHaveAttribute('target', '_blank');
+    await expect(
+      page.getByRole('button', { name: 'Cancel subscription' })
+    ).toBeVisible();
+    expect(realErrors(errors)).toEqual([]);
+  });
 });
