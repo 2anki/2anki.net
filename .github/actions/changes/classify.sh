@@ -15,7 +15,7 @@ if [ "${GITHUB_REF:-}" != "refs/heads/main" ] && [ -n "${GITHUB_SHA:-}" ]; then
     while IFS= read -r file; do
       case "$file" in
         .claude/*|Documentation/*) ;;
-        web/*) code=true; break ;;
+        src/*|web/*) code=true; break ;;
         *.md) ;;
         *) code=true; break ;;
       esac

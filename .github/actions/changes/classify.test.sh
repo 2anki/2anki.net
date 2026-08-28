@@ -28,6 +28,7 @@ expect false refs/heads/feature VOICE.md
 expect true  refs/heads/feature web/src/pages/DocsPage/content/cards/mind-maps.md
 expect true  refs/heads/feature .github/workflows/server.yml
 expect true  refs/heads/feature src/lib/parser/FEATURE.md src/lib/parser/DeckParser.ts
+expect true  refs/heads/feature src/lib/parser/FEATURE.md
 expect true  refs/heads/feature package.json
 out=$(cd "$here" && PATH="$stub:$PATH" GITHUB_REF=refs/heads/main GITHUB_SHA=abc GITHUB_REPOSITORY=x/y GITHUB_OUTPUT=/dev/null bash ./classify.sh)
 [ "$out" = "changes: code=true (0 changed files vs main)" ] && echo "ok   true <- (push to main, gh never consulted)" || { echo "FAIL main push: $out"; fail=1; }
