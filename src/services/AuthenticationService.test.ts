@@ -1740,4 +1740,51 @@ describe('subscription lookups by linked_email', () => {
       linked_email: 'recipient@example.com',
     });
   });
+
+  it('getSubscriptionInfo falls back to an inactive linked row when nothing else matches', async () => {
+    await database('subscriptions').insert([
+      {
+        email: 'gifter@example.com',
+        linked_email: 'recipient@example.com',
+        active: false,
+      },
+    ]);
+
+    const result = await service.getSubscriptionInfo(
+      database,
+      'recipient@example.com'
+    );
+
+    expect(result).toEqual({
+      active: false,
+      email: 'gifter@example.com',
+      linked_email: 'recipient@example.com',
+    });
+  });
+
+  it('getSubscriptionInfo prefers the payer email row over an inactive linked row', async () => {
+    await database('subscriptions').insert([
+      {
+        email: 'gifter@example.com',
+        linked_email: 'recipient@example.com',
+        active: false,
+      },
+      {
+        email: 'recipient@example.com',
+        linked_email: null,
+        active: false,
+      },
+    ]);
+
+    const result = await service.getSubscriptionInfo(
+      database,
+      'recipient@example.com'
+    );
+
+    expect(result).toEqual({
+      active: false,
+      email: 'recipient@example.com',
+      linked_email: null,
+    });
+  });
 });
