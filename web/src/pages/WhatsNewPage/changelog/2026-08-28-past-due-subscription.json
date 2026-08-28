@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-28-past-due-subscription",
+  "date": "2026-08-28",
+  "type": "fix",
+  "title": "Account page shows your subscription with a way to update payment or cancel when a charge fails or the plan just ended"
+}
