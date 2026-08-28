@@ -88,6 +88,8 @@ export const KNOWN_EVENTS = new Set([
   'subscription_claim_requested',
   'subscription_pause_offer_declined',
   'subscription_manage_billing_clicked',
+  'subscription_past_due_shown',
+  'subscription_ended_shown',
   'language_changed',
   'card_style_selected',
   'pass_claim_email_sent',

@@ -113,6 +113,8 @@ export const KNOWN_EVENTS = new Set([
   'subscription_pause_offer_declined',
   'subscription_manage_billing_clicked',
   'subscription_cancelled',
+  'subscription_past_due_shown',
+  'subscription_ended_shown',
   'language_changed',
   'mcp_deck_download',
   'image_only_photo_deck_shown',

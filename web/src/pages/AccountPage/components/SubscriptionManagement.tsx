@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSubscriptionCancellation } from '../hooks/useSubscriptionCancellation';
 import { usePerSubscriptionCancellation } from '../hooks/usePerSubscriptionCancellation';
@@ -46,6 +46,9 @@ interface SubscriptionManagementProps {
   readonly hasActivePlan: boolean;
   readonly onRefetch: () => Promise<any>;
 }
+
+const canRenderSubscriptionSection = (locals: LocalsData): boolean =>
+  Boolean(locals?.subscriber) || locals?.subscriptionInfo?.email != null;
 
 const formatDate = (seconds: number | null, unknownLabel: string): string => {
   if (!seconds) return unknownLabel;
@@ -306,7 +309,7 @@ function PausedState({
 export function SubscriptionManagement(props: SubscriptionManagementProps) {
   const { locals } = props;
 
-  if (!locals?.subscriber) {
+  if (!canRenderSubscriptionSection(locals)) {
     return null;
   }
 
@@ -325,7 +328,8 @@ function StripeSubscriptionManagement({
   const fmt = (seconds: number | null) =>
     formatDate(seconds, t('subscription.unknownDate'));
 
-  const stripeStatus = useStripeSubscriptions(Boolean(locals?.subscriber));
+  const canRender = canRenderSubscriptionSection(locals);
+  const stripeStatus = useStripeSubscriptions(canRender);
 
   const refetchAll = async () => {
     await Promise.all([onRefetch(), stripeStatus.refetch()]);
@@ -348,16 +352,39 @@ function StripeSubscriptionManagement({
     resumeError,
   } = usePauseSubscription(refetchAll);
 
+  const {
+    cancelError: perSubCancelError,
+    isCancelling: isCancellingPerSub,
+    confirmCancel: confirmPerSubCancel,
+  } = usePerSubscriptionCancellation(() => {
+    void refetchAll();
+  });
+
   const [confirming, setConfirming] = useState(false);
 
-  if (!locals?.subscriber) {
+  const { view } = stripeStatus;
+  const shownSubId =
+    view.kind === 'past_due' || view.kind === 'cancelled'
+      ? view.subscription.id
+      : null;
+
+  useEffect(() => {
+    if (view.kind === 'past_due') {
+      track('subscription_past_due_shown', { subscription_id: shownSubId });
+    } else if (view.kind === 'cancelled') {
+      track('subscription_ended_shown', { subscription_id: shownSubId });
+    }
+  }, [view.kind, shownSubId]);
+
+  if (!canRender) {
     return null;
   }
 
-  const { view, activeSubscriptions } = stripeStatus;
+  const { activeSubscriptions } = stripeStatus;
   const hasMultipleActive = activeSubscriptions.length > 1;
 
   const activeSub = view.kind === 'active' ? view.subscription : null;
+  const pastDueSub = view.kind === 'past_due' ? view.subscription : null;
   const pauseEligible =
     activeSub != null &&
     !isAnnual(activeSub) &&
@@ -415,6 +442,28 @@ function StripeSubscriptionManagement({
     }
   };
 
+  const handleManageBillingPastDue = () => {
+    if (pastDueSub != null) {
+      track('subscription_manage_billing_clicked', {
+        from: 'past_due',
+        interval: isAnnual(pastDueSub) ? 'year' : 'month',
+      });
+    }
+  };
+
+  const handlePastDueCancel = (
+    reason: CancellationReasonInput,
+    comment: string
+  ) => {
+    if (reason) {
+      submitFeedback(reason, comment);
+    }
+    if (pastDueSub != null) {
+      confirmPerSubCancel(pastDueSub.id);
+    }
+    setConfirming(false);
+  };
+
   return (
     <section className={styles.section}>
       {hasMultipleActive && (
@@ -424,7 +473,7 @@ function StripeSubscriptionManagement({
         />
       )}
 
-      {!hasMultipleActive && locals?.subscriber && (
+      {!hasMultipleActive && canRender && (
         <div>
           {view.kind === 'active' && (
             <>
@@ -492,6 +541,58 @@ function StripeSubscriptionManagement({
             />
           )}
 
+          {view.kind === 'past_due' && (
+            <>
+              <p className={styles.statusLine}>
+                {t('subscription.pastDueTitle')}
+              </p>
+              <p className={sharedStyles.smallDescription}>
+                {formatPlan(view.subscription)
+                  ? t('subscription.pastDueBody', {
+                      plan: formatPlan(view.subscription),
+                    })
+                  : t('subscription.pastDueBodyNoPlan')}
+              </p>
+              {!confirming && (
+                <div className={styles.actions}>
+                  <a
+                    className={styles.manageBillingButton}
+                    href={STRIPE_CUSTOMER_PORTAL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={handleManageBillingPastDue}
+                  >
+                    {t('subscription.updatePayment')}
+                  </a>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => setConfirming(true)}
+                    disabled={isCancellingPerSub}
+                  >
+                    {t('subscription.cancelSubscription')}
+                  </button>
+                </div>
+              )}
+              {confirming && (
+                <CancelFlow
+                  planLabel={formatPlan(view.subscription)}
+                  tenureDays={tenureDaysOf(view.subscription)}
+                  pauseEligible={false}
+                  isCancelling={isCancellingPerSub}
+                  isPausing={false}
+                  pauseError=""
+                  onCancel={handlePastDueCancel}
+                  onKeep={handleKeep}
+                  onPause={() => undefined}
+                />
+              )}
+              {perSubCancelError && (
+                <p className={styles.helpDanger}>{perSubCancelError}</p>
+              )}
+            </>
+          )}
+
           {view.kind === 'scheduled' && (
             <>
               <p className={styles.statusLine}>
@@ -515,12 +616,19 @@ function StripeSubscriptionManagement({
           )}
 
           {view.kind === 'cancelled' && (
-            <p className={styles.statusLineMuted}>
-              {t('subscription.endedPrefix')}{' '}
-              <strong>{fmt(view.subscription.canceled_at)}</strong>.
-              {formatPlan(view.subscription) &&
-                ` ${t('subscription.previousPlan', { plan: formatPlan(view.subscription) })}`}
-            </p>
+            <>
+              <p className={styles.statusLineMuted}>
+                {t('subscription.endedPrefix')}{' '}
+                <strong>{fmt(view.subscription.canceled_at)}</strong>.
+                {formatPlan(view.subscription) &&
+                  ` ${t('subscription.previousPlan', { plan: formatPlan(view.subscription) })}`}
+              </p>
+              {view.subscription.cancellation_reason === 'payment_failed' && (
+                <p className={sharedStyles.smallDescription}>
+                  {t('subscription.endedPaymentFailed')}
+                </p>
+              )}
+            </>
           )}
 
           {stripeStatus.isLoading && view.kind === 'none' && (
@@ -529,17 +637,27 @@ function StripeSubscriptionManagement({
             </p>
           )}
 
-          {!stripeStatus.isLoading && view.kind === 'none' && (
-            <div>
-              <h4 className={sharedStyles.smallHeading}>
-                {t('claimSubscription.mismatchTitle')}
-              </h4>
+          {!stripeStatus.isLoading &&
+            stripeStatus.isError &&
+            view.kind === 'none' && (
               <p className={sharedStyles.smallDescription}>
-                {t('claimSubscription.mismatchBody')}
+                {t('subscription.statusLoadFailed')}
               </p>
-              <ClaimSubscription variant="mismatch" />
-            </div>
-          )}
+            )}
+
+          {!stripeStatus.isLoading &&
+            !stripeStatus.isError &&
+            view.kind === 'none' && (
+              <div>
+                <h4 className={sharedStyles.smallHeading}>
+                  {t('claimSubscription.mismatchTitle')}
+                </h4>
+                <p className={sharedStyles.smallDescription}>
+                  {t('claimSubscription.mismatchBody')}
+                </p>
+                <ClaimSubscription variant="mismatch" />
+              </div>
+            )}
 
           {cancelError && <p className={styles.helpDanger}>{cancelError}</p>}
           {cancelSuccess && (

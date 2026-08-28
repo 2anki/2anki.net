@@ -2,9 +2,49 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode } from 'react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import i18n from '../../../lib/i18n';
 import { SubscriptionManagement } from './SubscriptionManagement';
 import type { StripeSubscriptionsState } from '../../../lib/hooks/useStripeSubscriptions';
+
+const LOCALES = ['de', 'en', 'es', 'fr', 'it', 'ja', 'nl', 'pl', 'pt', 'ru'];
+const PAST_DUE_KEYS = [
+  'pastDueTitle',
+  'pastDueBody',
+  'pastDueBodyNoPlan',
+  'endedPaymentFailed',
+  'statusLoadFailed',
+];
+
+describe('past-due subscription i18n keys', () => {
+  it.each(LOCALES)('has all past_due keys in %s/account.json', (lang) => {
+    const file = join(
+      __dirname,
+      '../../../lib/i18n/locales',
+      lang,
+      'account.json'
+    );
+    const subscription = JSON.parse(readFileSync(file, 'utf8')).subscription;
+    const missing = PAST_DUE_KEYS.filter((key) => !(key in subscription));
+    expect(missing).toEqual([]);
+  });
+
+  it('keeps the {{plan}} placeholder in every pastDueBody', () => {
+    for (const lang of LOCALES) {
+      const file = join(
+        __dirname,
+        '../../../lib/i18n/locales',
+        lang,
+        'account.json'
+      );
+      const { pastDueBody } = JSON.parse(
+        readFileSync(file, 'utf8')
+      ).subscription;
+      expect(pastDueBody).toContain('{{plan}}');
+    }
+  });
+});
 
 vi.mock('../../../lib/hooks/useStripeSubscriptions', () => ({
   useStripeSubscriptions: vi.fn(),

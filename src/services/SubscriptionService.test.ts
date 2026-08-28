@@ -427,6 +427,34 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
     expect(stripe.subscriptions.cancel).not.toHaveBeenCalled();
   });
 
+  it('cancels a past_due subscription immediately and soft-deletes its DB row', async () => {
+    const db = buildDbMock();
+    (getDatabase as jest.Mock).mockReturnValue(db);
+    const pastDueSub = { ...activeSub, id: 'sub_due', status: 'past_due' };
+    stripe.subscriptions.list.mockResolvedValue({ data: [pastDueSub] });
+    stripe.subscriptions.cancel.mockResolvedValue({
+      id: 'sub_due',
+      status: 'canceled',
+      canceled_at: periodEndSeconds,
+      ended_at: periodEndSeconds,
+    });
+
+    await SubscriptionService.cancelSubscriptionById(
+      email,
+      'sub_due',
+      'immediate'
+    );
+
+    expect(stripe.subscriptions.cancel).toHaveBeenCalledWith('sub_due');
+    expect(stripe.subscriptions.update).not.toHaveBeenCalled();
+    expect(db.whereRawSpy).toHaveBeenCalledWith("payload->>'id' = ?", [
+      'sub_due',
+    ]);
+    expect(db.updateSpy).toHaveBeenCalledTimes(1);
+    const updatePayload = db.updateSpy.mock.calls[0][0] as { active: boolean };
+    expect(updatePayload.active).toBe(false);
+  });
+
   it('throws SubscriptionNotOwnedError and never calls Stripe when the id is not owned', async () => {
     await expect(
       SubscriptionService.cancelSubscriptionById(
