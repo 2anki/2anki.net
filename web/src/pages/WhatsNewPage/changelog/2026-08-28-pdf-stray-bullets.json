@@ -2,5 +2,5 @@
   "id": "2026-08-28-pdf-stray-bullets",
   "date": "2026-08-28",
   "type": "fix",
-  "title": "PDF uploads keep a stray bullet or arrow on the card it belongs to instead of turning it into a card of its own"
+  "title": "PDF uploads keep a stray bullet or arrow on the card it belongs to"
 }

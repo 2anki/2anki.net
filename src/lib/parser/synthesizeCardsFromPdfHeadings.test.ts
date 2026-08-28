@@ -460,7 +460,7 @@ describe('stray glyph lines', () => {
             'Board duties',
             'Directors owe fiduciary duties of care and loyalty to the company itself.',
             glyph,
-            'Why? Because principals would spend too much on preventing any appearance of authority.',
+            'Why? Because a board that never delegates spends its time on details, not strategy.',
           ].join('\n'),
         },
       ];
@@ -473,7 +473,7 @@ describe('stray glyph lines', () => {
         [
           'Directors owe fiduciary duties of care and loyalty to the company itself.',
           glyph,
-          'Why? Because principals would spend too much on preventing any appearance of authority.',
+          'Why? Because a board that never delegates spends its time on details, not strategy.',
         ].join('\n')
       );
     }
