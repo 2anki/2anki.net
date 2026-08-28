@@ -297,6 +297,24 @@ describe('synthesizeCardsFromPdfHeadings', () => {
     }
   );
 
+  it('keeps a bare four-digit year as a card front', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Timeline',
+          '1914',
+          'War begins after the assassination in Sarajevo triggers the alliances.',
+          '1918',
+          'Armistice signed in a railway carriage at Compiègne in November.',
+        ].join('\n'),
+      },
+    ];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'History');
+
+    expect(cards.map((card) => card.front)).toEqual(['1914', '1918']);
+  });
+
   it('keeps a run of short sibling lines under the heading above (a checklist with its glyphs stripped)', () => {
     const items = [
       'Classes 1-2: Theory & Introduction',

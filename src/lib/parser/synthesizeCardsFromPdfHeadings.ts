@@ -5,7 +5,7 @@ const SENTENCE_TAIL = /[.,;]$/;
 const LIST_MARKER = /^(?:[-*•●○◦▪‣·☐☑☒✓✔]|\d{1,3}[.)])\s/;
 const TERMINAL_PUNCTUATION = /[.!?:;]$/;
 const PAGE_FOOTER =
-  /^[-–—]?\s*(?:page\s+)?\d{1,4}(?:\s*(?:\/|of)\s*\d{1,4})?\s*[-–—]?$/i;
+  /^(?:[-–—]?\s*\d{1,3}\s*[-–—]?|page\s+\d{1,4}|\d{1,4}\s*(?:\/|of)\s*\d{1,4})$/i;
 
 function startsLowercase(line: string): boolean {
   const first = line.charAt(0);
