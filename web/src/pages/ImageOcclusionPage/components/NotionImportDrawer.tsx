@@ -5,6 +5,7 @@ import NotionObject from '../../../lib/interfaces/NotionObject';
 import { BlockIcon } from '../../SearchPage/components/BlockIcon';
 import sharedStyles from '../../../styles/shared.module.css';
 import styles from '../ImageOcclusionPage.module.css';
+import { FREE_TIER_LIMIT } from '../freeTier';
 
 interface NotionImageBlock {
   id: string;
@@ -52,7 +53,6 @@ interface Props {
   currentCount: number;
 }
 
-const FREE_TIER_LIMIT = 3;
 const PREVIEW_COUNT = 6;
 const FETCH_CONCURRENCY = 6;
 

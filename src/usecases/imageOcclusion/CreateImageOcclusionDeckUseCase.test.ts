@@ -52,6 +52,18 @@ describe('CreateImageOcclusionDeckUseCase', () => {
       );
     });
 
+    it('throws an ImageLimitError the client can detect by code', async () => {
+      const useCase = new CreateImageOcclusionDeckUseCase();
+      await expect(
+        useCase.execute(buildFourImageInput())
+      ).rejects.toMatchObject({
+        name: 'ImageLimitError',
+        status: 403,
+        code: 'image_limit',
+        limit: 3,
+      });
+    });
+
     it('rejects exactly 4 images for free users without touching the filesystem', async () => {
       const useCase = new CreateImageOcclusionDeckUseCase();
       await expect(useCase.execute(buildFourImageInput())).rejects.toThrow();

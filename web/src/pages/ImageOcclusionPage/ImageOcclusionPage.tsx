@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import styles from '../../styles/shared.module.css';
 import { ImageQueue } from './components/ImageQueue';
+import { takeFreeSlots } from './freeTier';
+import { resolveDownloadError } from './resolveDownloadError';
 import { NotionImportDrawer } from './components/NotionImportDrawer';
 import { OcclusionCanvas } from './components/OcclusionCanvas';
 import pageStyles from './ImageOcclusionPage.module.css';
@@ -149,6 +152,8 @@ export function ImageOcclusionPage() {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageLimitHit, setImageLimitHit] = useState(false);
+  const [keptFirst, setKeptFirst] = useState<number | null>(null);
   const [isNotionConnected, setIsNotionConnected] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [mobileDismissed, setMobileDismissed] = useState(
@@ -236,7 +241,10 @@ export function ImageOcclusionPage() {
 
   const handleAdd = useCallback(
     (files: File[]) => {
-      const newEntries: ImageEntry[] = files.map((file) => {
+      const { kept, dropped } = takeFreeSlots(entries.length, files, isPaying);
+      setKeptFirst(dropped > 0 ? kept.length : null);
+      setImageLimitHit(false);
+      const newEntries: ImageEntry[] = kept.map((file) => {
         return {
           id: crypto.randomUUID(),
           file,
@@ -290,7 +298,7 @@ export function ImageOcclusionPage() {
         );
       }
     },
-    [isLoggedIn]
+    [isLoggedIn, entries.length, isPaying]
   );
 
   useEffect(() => {
@@ -326,6 +334,8 @@ export function ImageOcclusionPage() {
   }, []);
 
   const handleRemove = useCallback((id: string) => {
+    setKeptFirst(null);
+    setImageLimitHit(false);
     setEntries((prev) => {
       const next = prev.filter((e) => e.id !== id);
       setActiveIndex((cur) => Math.min(cur, Math.max(0, next.length - 1)));
@@ -422,6 +432,7 @@ export function ImageOcclusionPage() {
       return;
     }
     setError(null);
+    setImageLimitHit(false);
     setIsDownloading(true);
     try {
       const formData = await buildDownloadFormData(deckName, mode, entries);
@@ -434,10 +445,12 @@ export function ImageOcclusionPage() {
         const body = await response
           .json()
           .catch(() => ({ message: response.statusText }));
-        throw new Error(
-          (body as { message?: string }).message ??
-            t('occlusion.downloadFailed')
-        );
+        const failure = resolveDownloadError(response.status, body);
+        if (failure.kind === 'image_limit') {
+          setImageLimitHit(true);
+          return;
+        }
+        throw new Error(failure.message ?? t('occlusion.downloadFailed'));
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -537,6 +550,7 @@ export function ImageOcclusionPage() {
             onSelect={setActiveIndex}
             onAdd={handleAdd}
             onRemove={handleRemove}
+            keptFirst={keptFirst}
             onHeaderChange={handleHeaderChange}
             isPaying={isPaying}
             isNotionConnected={isNotionConnected}
@@ -559,6 +573,12 @@ export function ImageOcclusionPage() {
                 {t('occlusion.hideOneAtATime')}
               </button>
             </div>
+            {imageLimitHit && (
+              <div className={styles.notificationInfo} aria-live="polite">
+                {t('occlusion.paywallImages')}{' '}
+                <Link to="/pricing">{t('occlusion.seePlans')}</Link>
+              </div>
+            )}
             {error != null && (
               <div className={styles.notificationDanger}>
                 {t('occlusion.errorWrapper', { error })}

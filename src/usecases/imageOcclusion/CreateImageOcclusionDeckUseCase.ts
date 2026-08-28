@@ -6,6 +6,7 @@ import os from 'node:os';
 import { randomUUID } from 'node:crypto';
 
 import { CREATE_DECK_DIR } from '../../lib/constants';
+import { FREE_TIER_IMAGE_LIMIT, ImageLimitError } from './ImageLimitError';
 
 export interface OcclusionRect {
   x: number;
@@ -32,8 +33,6 @@ export interface CreateImageOcclusionDeckInput {
   imageFiles: { name: string; path: string }[];
   isPaying: boolean;
 }
-
-const FREE_TIER_LIMIT = 3;
 
 function findPython(): string {
   const envOverride = process.env.PYTHON ?? process.env.ANKI_PYTHON;
@@ -82,12 +81,8 @@ const IO_SCRIPT_PATH = path.join(CREATE_DECK_DIR, 'create_io_deck.py');
 
 export class CreateImageOcclusionDeckUseCase {
   async execute(input: CreateImageOcclusionDeckInput): Promise<string> {
-    if (!input.isPaying && input.images.length > FREE_TIER_LIMIT) {
-      const err = new Error('Upgrade to process more than 3 images');
-      (err as NodeJS.ErrnoException as unknown as Record<string, unknown>)[
-        'status'
-      ] = 403;
-      throw err;
+    if (!input.isPaying && input.images.length > FREE_TIER_IMAGE_LIMIT) {
+      throw new ImageLimitError(FREE_TIER_IMAGE_LIMIT);
     }
 
     const workspaceDir = path.join(os.tmpdir(), `io-${randomUUID()}`);
