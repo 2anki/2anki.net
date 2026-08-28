@@ -574,7 +574,7 @@ export function ImageOcclusionPage() {
               </button>
             </div>
             {imageLimitHit && (
-              <div className={styles.notificationInfo} role="status">
+              <div className={styles.notificationInfo} aria-live="polite">
                 {t('occlusion.paywallImages')}{' '}
                 <Link to="/pricing">{t('occlusion.seePlans')}</Link>
               </div>
