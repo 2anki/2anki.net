@@ -2950,6 +2950,96 @@ describe('UsersController.cancelSubscription', () => {
   });
 });
 
+describe('UsersController.getSubscriptionStatus', () => {
+  const buildStatusController = () => {
+    const userService = {
+      getUserById: jest
+        .fn()
+        .mockResolvedValue({ id: 1, email: 'sub@example.com' }),
+    } as unknown as UsersService;
+    const controller = new UsersController(
+      userService,
+      {} as AuthenticationService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    return { controller };
+  };
+
+  const buildResWithLocals = (owner: number | null = 1) => {
+    const json = jest.fn();
+    const status = jest.fn().mockReturnValue({ json });
+    return {
+      json,
+      status,
+      locals: { owner },
+    } as unknown as express.Response & {
+      json: jest.Mock;
+      status: jest.Mock;
+    };
+  };
+
+  const readSummaries = (res: {
+    json: jest.Mock;
+  }): Array<{ cancellation_reason: string | null }> =>
+    (
+      res.json.mock.calls[0][0] as {
+        subscriptions: Array<{ cancellation_reason: string | null }>;
+      }
+    ).subscriptions;
+
+  beforeEach(() => {
+    (
+      SubscriptionService.findRecentStripeSubscriptions as jest.Mock
+    ).mockReset();
+  });
+
+  it('maps cancellation_details.reason onto cancellation_reason', async () => {
+    (
+      SubscriptionService.findRecentStripeSubscriptions as jest.Mock
+    ).mockResolvedValue([
+      {
+        id: 'sub_ended',
+        status: 'canceled',
+        created: 1_700_000_000,
+        cancel_at_period_end: false,
+        cancel_at: null,
+        canceled_at: 1_800_000_000,
+        cancellation_details: { reason: 'payment_failed' },
+        items: { data: [] },
+      },
+    ]);
+    const { controller } = buildStatusController();
+    const res = buildResWithLocals();
+
+    await controller.getSubscriptionStatus({} as express.Request, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(readSummaries(res)[0].cancellation_reason).toBe('payment_failed');
+  });
+
+  it('sends cancellation_reason null when Stripe has no cancellation details', async () => {
+    (
+      SubscriptionService.findRecentStripeSubscriptions as jest.Mock
+    ).mockResolvedValue([
+      {
+        id: 'sub_active',
+        status: 'active',
+        created: 1_700_000_000,
+        cancel_at_period_end: false,
+        cancel_at: null,
+        canceled_at: null,
+        items: { data: [] },
+      },
+    ]);
+    const { controller } = buildStatusController();
+    const res = buildResWithLocals();
+
+    await controller.getSubscriptionStatus({} as express.Request, res);
+
+    expect(readSummaries(res)[0].cancellation_reason).toBeNull();
+  });
+});
+
 describe('UsersController.pauseSubscription', () => {
   const buildPauseController = () => {
     const userService = {
