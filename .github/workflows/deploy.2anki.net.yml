@@ -102,13 +102,15 @@ jobs:
               exit 1
             }
 
-            # pm2-logrotate's per-name `retain` never applies here: blue-green
-            # gives each color a fresh pm_id every deploy, so every id is its
-            # own "app" to logrotate and files pile up per id (#4239: 1,717
-            # files / 1.6 GB back to May, some holding pre-2026-05-30 lines
-            # with plain subscriber emails). Prune by mtime after a successful
-            # cutover; both colors' current files are always inside the window.
-            # Never let housekeeping fail a deploy that already cut over.
+            # Each color now logs to a fixed path (ecosystem.blue-green.config.js
+            # out_file/error_file), so pm2-logrotate's per-name `retain` finally
+            # caps the live files. This prune clears what it cannot reach: the
+            # dated rotations past `retain`, and the legacy pm_id-named files from
+            # before the fixed paths (#4239: 1,717 files / 1.6 GB back to May,
+            # some holding pre-2026-05-30 lines with plain subscriber emails).
+            # Prune by mtime after a successful cutover; both colors' current
+            # files are always inside the window. Never let housekeeping fail a
+            # deploy that already cut over.
             PRUNED=$( (find "$HOME/.pm2/logs" -maxdepth 1 -type f -name 'server-*.log' -mtime +14 -print -delete 2>/dev/null || true) | wc -l | tr -d ' ')
             echo "pruned ${PRUNED} pm2 log file(s) older than 14 days"
 
