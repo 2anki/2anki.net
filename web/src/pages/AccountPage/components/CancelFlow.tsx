@@ -45,7 +45,7 @@ export function CancelFlow({
   const [reason, setReason] = useState<CancellationReason | ''>('');
   const [comment, setComment] = useState('');
   const offeredReasons = useRef<Set<CancellationReason>>(new Set());
-  const rootRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLFieldSetElement>(null);
 
   const showPause = pauseEligible && isLifecycleReason(reason);
 
@@ -78,11 +78,10 @@ export function CancelFlow({
   };
 
   return (
-    <div
+    <fieldset
       ref={rootRef}
       tabIndex={-1}
       className={styles.dangerSection}
-      role="group"
       aria-label="Cancel"
     >
       <p className={styles.dangerTitle}>{t('cancelFlow.whyCancelling')}</p>
@@ -146,6 +145,6 @@ export function CancelFlow({
           {t('cancelFlow.keepSubscription')}
         </button>
       </div>
-    </div>
+    </fieldset>
   );
 }
