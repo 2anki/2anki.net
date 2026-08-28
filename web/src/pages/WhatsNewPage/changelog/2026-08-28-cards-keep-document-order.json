@@ -2,5 +2,5 @@
   "id": "2026-08-28-cards-keep-document-order",
   "date": "2026-08-28",
   "type": "fix",
-  "title": "Cards are numbered in document order, so Anki studies and sorts them the way you wrote them"
+  "title": "Cards are numbered in document order, so you study them in the order you wrote them"
 }
