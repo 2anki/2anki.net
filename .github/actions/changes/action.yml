@@ -1,0 +1,14 @@
+name: Classify the diff
+description: Outputs code=true unless the push only touches docs and the agent harness
+outputs:
+  code:
+    description: "'true' when any changed file needs the full CI run"
+    value: ${{ steps.classify.outputs.code }}
+runs:
+  using: composite
+  steps:
+    - id: classify
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: bash "${GITHUB_ACTION_PATH}/classify.sh"

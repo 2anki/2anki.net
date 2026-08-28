@@ -16,20 +16,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - id: changes
+        uses: ./.github/actions/changes
       - uses: ./.github/actions/setup
+        if: steps.changes.outputs.code == 'true'
       - name: Typecheck
+        if: steps.changes.outputs.code == 'true'
         run: pnpm typecheck
         env:
           CI: true
       - name: Lint
+        if: steps.changes.outputs.code == 'true'
         run: pnpm lint
         env:
           CI: true
       - name: Format check
+        if: steps.changes.outputs.code == 'true'
         run: pnpm format:check
         env:
           CI: true
       - name: Architecture
+        if: steps.changes.outputs.code == 'true'
         run: pnpm arch
         env:
           CI: true
@@ -39,8 +46,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - id: changes
+        uses: ./.github/actions/changes
       - uses: ./.github/actions/setup
+        if: steps.changes.outputs.code == 'true'
       - name: Test
+        if: steps.changes.outputs.code == 'true'
         run: pnpm test
         env:
           CI: true

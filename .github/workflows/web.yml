@@ -16,23 +16,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - id: changes
+        uses: ./.github/actions/changes
       - uses: ./.github/actions/setup
+        if: steps.changes.outputs.code == 'true'
       - name: Lint
+        if: steps.changes.outputs.code == 'true'
         run: pnpm --filter 2anki-web lint
         env:
           CI: true
       - name: Typecheck
+        if: steps.changes.outputs.code == 'true'
         run: pnpm --filter 2anki-web typecheck
         env:
           CI: true
       - name: Cache dist
+        if: steps.changes.outputs.code == 'true'
         id: dist-cache
         uses: actions/cache@v6
         with:
           path: web/build
           key: dist-${{ runner.os }}-${{ hashFiles('web/src/**', 'web/public/**', 'web/index.html', 'web/vite.config.*', 'web/tsconfig*', 'pnpm-lock.yaml') }}
       - name: Build
-        if: steps.dist-cache.outputs.cache-hit != 'true'
+        if: steps.changes.outputs.code == 'true' && steps.dist-cache.outputs.cache-hit != 'true'
         run: pnpm --filter 2anki-web build
         env:
           CI: true
@@ -42,8 +48,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - id: changes
+        uses: ./.github/actions/changes
       - uses: ./.github/actions/setup
+        if: steps.changes.outputs.code == 'true'
       - name: Test
+        if: steps.changes.outputs.code == 'true'
         run: pnpm --filter 2anki-web test
         env:
           CI: true
