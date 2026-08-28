@@ -346,29 +346,31 @@ class AuthenticationService {
   }
 
   async getSubscriptionInfo(db: Knex, email: string) {
-    const linkedEmail = await db('subscriptions')
+    const normalized = email.toLowerCase();
+    const linked = await db('subscriptions')
       .select(['active', 'email', 'linked_email'])
-      .where({ linked_email: email.toLowerCase() })
-      .andWhere({ active: true })
+      .where({ linked_email: normalized })
+      .orderBy('active', 'desc')
       .first();
 
-    if (linkedEmail?.active) {
+    if (linked?.active) {
       return {
         active: true,
-        email: linkedEmail.email,
-        linked_email: linkedEmail.linked_email,
+        email: linked.email,
+        linked_email: linked.linked_email,
       };
     }
 
-    const result = await db('subscriptions')
+    const payer = await db('subscriptions')
       .select(['active', 'email', 'linked_email'])
-      .where({ email: email.toLowerCase() })
+      .where({ email: normalized })
       .first();
 
+    const fallback = payer ?? linked;
     return {
-      active: result?.active ?? false,
-      email: result?.email,
-      linked_email: result?.linked_email,
+      active: Boolean(fallback?.active),
+      email: fallback?.email,
+      linked_email: fallback?.linked_email,
     };
   }
 
