@@ -13,7 +13,7 @@
     "conversionLimits": "Limity konwersji",
     "ai": "AI (Claude)",
     "studyTools": "Narzędzia do nauki",
-    "syncSupport": "Synchronizacja i wsparcie",
+    "syncSupport": "Wsparcie",
     "billing": "Rozliczenia"
   },
   "rows": {
@@ -29,7 +29,6 @@
     "imageOcclusion": "Zasłanianie obrazu",
     "mindMaps": "Mapy myśli",
     "printsToPdf": "Wydruki do PDF",
-    "autoSyncNotion": "Auto Sync z Notion",
     "prioritySupport": "Wsparcie priorytetowe",
     "noSubscription": "Bez subskrypcji"
   },
@@ -48,8 +47,8 @@
       "answer": "Unlimited usuwa limit 100 kart, dodaje obsługę PDF, pozwala uruchamiać wiele konwersji naraz i obejmuje importy z Anki do Notion do 10 000 notatek każdy. Ceny znajdziesz na kartach powyżej."
     },
     "q4": {
-      "question": "A co z Lifetime?",
-      "answer": "Lifetime zaczyna się od $345, płatne raz. Obejmuje wszystkie funkcje Unlimited oraz Auto Sync. Złóż wniosek na tej stronie; dostęp przyznawany jest po weryfikacji."
+      "question": "Czy jest plan Lifetime?",
+      "answer": "Już nie. Lifetime jest zamknięty dla nowych użytkowników. Jeśli masz już Lifetime, Twój dostęp i wszystkie funkcje pozostają dokładnie takie same. Aby uzyskać nieograniczony dostęp, skorzystaj z planu Unlimited na kartach powyżej."
     },
     "q5": {
       "question": "Czy mogę anulować w dowolnym momencie?",

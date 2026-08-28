@@ -338,7 +338,6 @@
     "socialProof": "Trusted by 15,000+ learners worldwide",
     "payOnceSection": "Pay once — no subscription",
     "monthlySection": "Monthly plans",
-    "oneTimeSection": "One-time payment",
     "pricesNote": "Prices in USD. Your card is charged in your local currency at checkout.",
     "reassuranceCancel": "Cancel anytime — one click",
     "reassuranceOwn": "Your decks are yours — native .apkg, works in any Anki client",
@@ -346,15 +345,6 @@
     "educatorsBody": "Making decks for a class, a tutoring group, or a course you sell? We're exploring tools for people who make decks for others.",
     "educatorsButton": "Tell us what you need",
     "philosophy": "Free works forever. Paid plans support 2anki.net.",
-    "lifetime": {
-      "badge": "Pay once",
-      "price": "From $345",
-      "benefit1": "All Unlimited features, paid once",
-      "benefit2": "Auto Sync included",
-      "benefit3": "No future price changes",
-      "request": "Request Lifetime",
-      "caption": "Reply within 24 hours."
-    },
     "pass": {
       "noSubscription": "No subscription",
       "unlimitedCards": "Unlimited cards and conversions",

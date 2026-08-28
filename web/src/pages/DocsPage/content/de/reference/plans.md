@@ -31,17 +31,17 @@ Nutze das, wenn du eine Woche hast, um dich auf eine Prüfung vorzubereiten, ode
 
 ## Wie sich die kurzen Pläne von Subscription unterscheiden
 
-|                                                       | Free      | Day Pass   | Week Pass  | Unlimited (Abo) | Lifetime         |
-| ----------------------------------------------------- | --------- | ---------- | ---------- | --------------- | ---------------- |
-| Kosten                                                | $0        | $4         | $9         | $6 / Mon.       | ab $345 einmalig |
-| Dauer                                                 | für immer | 24 h       | 7 Tage     | bis gekündigt   | für immer        |
-| Karten pro Monat                                      | 100       | unbegrenzt | unbegrenzt | unbegrenzt      | unbegrenzt       |
-| PDF-Unterstützung                                     | —         | ✓          | ✓          | ✓               | ✓                |
-| [KI-Karteikarten](/documentation/cards/ai-flashcards) | —         | ✓          | ✓          | ✓               | ✓                |
-| [Auto Sync](/documentation/sync/how-it-works)         | —         | —          | —          | auf Anfrage     | ✓                |
-| Wiederkehrende Belastung                              | —         | —          | —          | monatlich       | —                |
+|                                                       | Free      | Day Pass   | Week Pass  | Unlimited (Abo) |
+| ----------------------------------------------------- | --------- | ---------- | ---------- | --------------- |
+| Kosten                                                | $0        | $4         | $9         | $6 / Mon.       |
+| Dauer                                                 | für immer | 24 h       | 7 Tage     | bis gekündigt   |
+| Karten pro Monat                                      | 100       | unbegrenzt | unbegrenzt | unbegrenzt      |
+| PDF-Unterstützung                                     | —         | ✓          | ✓          | ✓               |
+| [KI-Karteikarten](/documentation/cards/ai-flashcards) | —         | ✓          | ✓          | ✓               |
+| [Auto Sync](/documentation/sync/how-it-works)         | —         | —          | —          | auf Anfrage     |
+| Wiederkehrende Belastung                              | —         | —          | —          | monatlich       |
 
-Day Pass und Week Pass enthalten kein Auto Sync. Auto Sync wird gerade nicht als Plan verkauft — es ist in Lifetime enthalten, und in jedem anderen Plan kannst du an [support@2anki.net](mailto:support@2anki.net) mailen, um es einschalten zu lassen, damit du es ausprobieren kannst.
+Auto Sync ist nicht auf der Preisseite. Bei jedem Abo schreib eine E-Mail an [support@2anki.net](mailto:support@2anki.net), und wir schalten es für dein Konto frei.
 
 ## Ein Abo pausieren
 
@@ -52,7 +52,7 @@ Pausieren ist bei monatlichen Plänen nach 30 Tagen verfügbar. Jahrespläne und
 ## Häufige Fehler
 
 - **Erwarten, dass der Pass sich verlängert.** Day- und Week-Pässe sind einmalig. Wenn das Fenster schließt, gehst du zurück zu Free. Kauf einen weiteren Pass oder wechsle zu einem Subscription, wenn du durchgehenden Zugang willst.
-- **Zahlwege mischen.** Lifetime ist ein separater, bewerbungsbasierter Plan, bezahlt über Patreon (siehe [Preise](/pricing)). Day- und Week-Pässe sind Stripe-Checkouts.
+- **Zahlwege mischen.** Day- und Week-Pässe sind einmalige Stripe-Checkouts; Unlimited ist ein monatliches oder jährliches Abo.
 
 ## Verwandt
 

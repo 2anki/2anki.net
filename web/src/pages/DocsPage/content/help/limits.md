@@ -106,6 +106,6 @@ Free covers the conversion paths most people need: drag in a file, get a deck ba
 | Long-term deck storage                           | 24 h               | active sub   | indefinite |
 | Auto Sync (Notion → Anki)                        | —                  | by request   | ✓          |
 
-Auto Sync isn't sold as a plan — it's included with Lifetime, and on any subscription you can email [support@2anki.net](mailto:support@2anki.net) to have it switched on. See the [pricing page](/pricing) for the current plan list. Privacy details — what we read, what we don't — are on the [privacy policy](/documentation/reference/privacy).
+Auto Sync isn't on the pricing page. On any subscription, email [support@2anki.net](mailto:support@2anki.net) and we'll switch it on for your account. See the [pricing page](/pricing) for the current plan list. Privacy details — what we read, what we don't — are on the [privacy policy](/documentation/reference/privacy).
 
 If something looks wrong, [contact us](/documentation/help/contact).

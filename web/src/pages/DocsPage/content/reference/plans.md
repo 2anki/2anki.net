@@ -31,17 +31,17 @@ Use this when you have a week to prep for an exam or a sprint to digitize a stac
 
 ## How the short plans differ from Subscription
 
-|                                                     | Free    | Day Pass  | Week Pass | Unlimited (sub)        | Lifetime       |
-| --------------------------------------------------- | ------- | --------- | --------- | ---------------------- | -------------- |
-| Cost                                                | $0      | $4        | $9        | $7.99 / mo or $64 / yr | from $345 once |
-| Length                                              | forever | 24 h      | 7 days    | until cancelled        | forever        |
-| Cards per month                                     | 100     | unlimited | unlimited | unlimited              | unlimited      |
-| PDF support                                         | —       | ✓         | ✓         | ✓                      | ✓              |
-| [AI flashcards](/documentation/cards/ai-flashcards) | —       | ✓         | ✓         | ✓                      | ✓              |
-| [Auto Sync](/documentation/sync/how-it-works)       | —       | —         | —         | by request             | ✓              |
-| Recurring charge                                    | —       | —         | —         | monthly                | —              |
+|                                                     | Free    | Day Pass  | Week Pass | Unlimited (sub)        |
+| --------------------------------------------------- | ------- | --------- | --------- | ---------------------- |
+| Cost                                                | $0      | $4        | $9        | $7.99 / mo or $64 / yr |
+| Length                                              | forever | 24 h      | 7 days    | until cancelled        |
+| Cards per month                                     | 100     | unlimited | unlimited | unlimited              |
+| PDF support                                         | —       | ✓         | ✓         | ✓                      |
+| [AI flashcards](/documentation/cards/ai-flashcards) | —       | ✓         | ✓         | ✓                      |
+| [Auto Sync](/documentation/sync/how-it-works)       | —       | —         | —         | by request             |
+| Recurring charge                                    | —       | —         | —         | monthly                |
 
-Day Pass and Week Pass do not include Auto Sync. Auto Sync isn't sold as a plan right now — it's included with Lifetime, and on any other plan you can email [support@2anki.net](mailto:support@2anki.net) to have it switched on so you can try it.
+Auto Sync isn't on the pricing page. On any subscription, email [support@2anki.net](mailto:support@2anki.net) and we'll switch it on for your account.
 
 ## Pausing a subscription
 
@@ -52,7 +52,7 @@ Pausing is available on monthly plans after 30 days. Annual plans and passes can
 ## Common mistakes
 
 - **Expecting the pass to renew.** Day and Week passes are one-time. When the window closes, you go back to Free. Buy another pass or move to a Subscription if you want continuous access.
-- **Mixing payment paths.** Lifetime is a separate, application-based plan — apply by email to [support@2anki.net](mailto:support@2anki.net) (see [pricing](/pricing)). Day and Week passes are Stripe checkouts.
+- **Mixing payment paths.** Day and Week passes are one-time Stripe checkouts; Unlimited is a monthly or yearly subscription.
 
 ## Related
 

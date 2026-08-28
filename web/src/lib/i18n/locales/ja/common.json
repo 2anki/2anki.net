@@ -335,7 +335,6 @@
     "socialProof": "世界中の 15,000 人以上の学習者に利用されています",
     "payOnceSection": "一度だけのお支払い — サブスクリプションなし",
     "monthlySection": "月額プラン",
-    "oneTimeSection": "一回払い",
     "pricesNote": "価格は米ドル表示です。チェックアウト時にお使いの地域通貨で請求されます。",
     "reassuranceCancel": "いつでも解約 — ワンクリック",
     "reassuranceOwn": "デッキはあなたのもの — ネイティブ .apkg で、どの Anki クライアントでも使えます",
@@ -343,15 +342,6 @@
     "educatorsBody": "授業、家庭教師グループ、または販売する講座のためにデッキを作っていますか？他の人のためにデッキを作る方向けのツールを検討しています。",
     "educatorsButton": "ご要望をお聞かせください",
     "philosophy": "無料はずっと無料です。有料プランが 2anki.net を支えます。",
-    "lifetime": {
-      "badge": "一度だけのお支払い",
-      "price": "$345 から",
-      "benefit1": "Unlimited のすべての機能を、一度のお支払いで",
-      "benefit2": "Auto Sync 込み",
-      "benefit3": "今後の価格変更なし",
-      "request": "Lifetime をリクエスト",
-      "caption": "24 時間以内に返信します。"
-    },
     "pass": {
       "noSubscription": "サブスクリプションなし",
       "unlimitedCards": "無制限のカードと変換",

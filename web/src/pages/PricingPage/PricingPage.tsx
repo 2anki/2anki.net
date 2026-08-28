@@ -11,7 +11,6 @@ import { usePricingOrderVariant } from '../../lib/hooks/usePricingOrderVariant';
 import { ComparisonTable } from './components/ComparisonTable';
 import { FeatureGrid } from './components/FeatureGrid';
 import { PassCards } from './components/PassCards';
-import { PricingCard } from './components/PricingCard';
 import { PricingFaq } from './components/PricingFaq';
 import { UnlimitedCard } from './components/UnlimitedCard';
 import { ProducerCaptureModal } from '../../components/ProducerCaptureModal/ProducerCaptureModal';
@@ -19,7 +18,6 @@ import { TrustNote } from '../../components/TrustNote/TrustNote';
 import { useInViewOnce } from '../../lib/hooks/useInViewOnce';
 import styles from './PricingPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
-import { getLifetimeLink } from './payment.links';
 import { formatMonthly, LEGACY_UNLIMITED_PRICING } from './pricing.constants';
 import { PRICING_FAQ } from './pricingFaq';
 
@@ -38,7 +36,6 @@ export default function PricingPage({
 }: Readonly<PricingPageProps>) {
   const { t } = useTranslation();
   const isUS = signupCountry === 'US';
-  const lifetimeLink = getLifetimeLink();
   const [dayPassState, setDayPassState] = useState<PassState>('idle');
   const [weekPassState, setWeekPassState] = useState<PassState>('idle');
   const [billingCycle, setBillingCycle] = useState<'month' | 'year'>('month');
@@ -292,25 +289,6 @@ export default function PricingPage({
           {monthlySection}
         </>
       )}
-
-      <h2 className={styles.sectionLabel}>{t('pricing.oneTimeSection')}</h2>
-      <div className={styles.grid}>
-        <PricingCard
-          badge={t('pricing.lifetime.badge')}
-          badgeMuted
-          price={t('pricing.lifetime.price')}
-          title="Lifetime"
-          benefits={[
-            t('pricing.lifetime.benefit1'),
-            t('pricing.lifetime.benefit2'),
-            t('pricing.lifetime.benefit3'),
-          ]}
-          link={lifetimeLink}
-          linkText={t('pricing.lifetime.request')}
-          variant="outline"
-          caption={t('pricing.lifetime.caption')}
-        />
-      </div>
 
       <p className={styles.pricesNote}>{t('pricing.pricesNote')}</p>
 

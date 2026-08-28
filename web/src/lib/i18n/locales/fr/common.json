@@ -338,7 +338,6 @@
     "socialProof": "Adopté par plus de 15 000 apprenants dans le monde",
     "payOnceSection": "Paie une seule fois — sans abonnement",
     "monthlySection": "Offres mensuelles",
-    "oneTimeSection": "Paiement unique",
     "pricesNote": "Prix en USD. Ta carte est débitée dans ta devise locale au moment du paiement.",
     "reassuranceCancel": "Annulable à tout moment — en un clic",
     "reassuranceOwn": "Tes paquets t'appartiennent — .apkg natif, fonctionne dans tous les clients Anki",
@@ -346,15 +345,6 @@
     "educatorsBody": "Tu crées des paquets pour une classe, un groupe de tutorat ou un cours que tu vends ? Nous explorons des outils pour les personnes qui créent des paquets pour les autres.",
     "educatorsButton": "Dis-nous ce dont tu as besoin",
     "philosophy": "Le gratuit fonctionne pour toujours. Les offres payantes soutiennent 2anki.net.",
-    "lifetime": {
-      "badge": "Paie une seule fois",
-      "price": "À partir de $345",
-      "benefit1": "Toutes les fonctionnalités Unlimited, payées une seule fois",
-      "benefit2": "Auto Sync inclus",
-      "benefit3": "Aucun changement de prix futur",
-      "request": "Demander Lifetime",
-      "caption": "Réponse sous 24 heures."
-    },
     "pass": {
       "noSubscription": "Sans abonnement",
       "unlimitedCards": "Cartes et conversions illimitées",

@@ -7,11 +7,18 @@ import { ComparisonTable } from './ComparisonTable';
 describe('ComparisonTable', () => {
   it('renders a column for every plan', () => {
     render(<ComparisonTable unlimitedMonthlyPrice="$7.99" />);
-    for (const plan of ['Free', 'Day / Week pass', 'Unlimited', 'Lifetime']) {
+    for (const plan of ['Free', 'Day / Week pass', 'Unlimited']) {
       expect(
         screen.getByRole('columnheader', { name: new RegExp(plan) })
       ).toBeInTheDocument();
     }
+  });
+
+  it('no longer offers a Lifetime column', () => {
+    render(<ComparisonTable unlimitedMonthlyPrice="$7.99" />);
+    expect(
+      screen.queryByRole('columnheader', { name: /Lifetime/ })
+    ).not.toBeInTheDocument();
   });
 
   it('shows the v2 cohort Unlimited price in the header', () => {
@@ -41,28 +48,21 @@ describe('ComparisonTable', () => {
       screen.getByRole('columnheader', { name: 'AI (Claude)' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: 'Sync & support' })
+      screen.getByRole('columnheader', { name: 'Support' })
     ).toBeInTheDocument();
   });
 
   it('gates AI multiple choice and AI flashcards to paid tiers', () => {
     render(<ComparisonTable unlimitedMonthlyPrice="$7.99" />);
     const mcq = screen.getByRole('row', { name: /AI multiple choice/ });
-    expect(within(mcq).getAllByText('Included').length).toBe(3);
+    expect(within(mcq).getAllByText('Included').length).toBe(2);
     expect(within(mcq).getAllByText('Not included').length).toBe(1);
-  });
-
-  it('exposes Auto Sync included/not included state to assistive tech', () => {
-    render(<ComparisonTable unlimitedMonthlyPrice="$7.99" />);
-    const row = screen.getByRole('row', { name: /Auto Sync from Notion/ });
-    expect(within(row).getAllByText('Included').length).toBe(1);
-    expect(within(row).getAllByText('Not included').length).toBe(3);
   });
 
   it('shows priority support as a paid-tier differentiator', () => {
     render(<ComparisonTable unlimitedMonthlyPrice="$7.99" />);
     const row = screen.getByRole('row', { name: /Priority support/ });
-    expect(within(row).getAllByText('Included').length).toBe(2);
+    expect(within(row).getAllByText('Included').length).toBe(1);
     expect(within(row).getAllByText('Not included').length).toBe(2);
   });
 });

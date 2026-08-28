@@ -22,7 +22,6 @@ describe('ComparisonTable in German', () => {
     );
     expect(screen.getByText('Lernwerkzeuge')).toBeInTheDocument();
 
-    expect(screen.getByText('Lifetime')).toBeInTheDocument();
     expect(screen.getByText('Free')).toBeInTheDocument();
   });
 });

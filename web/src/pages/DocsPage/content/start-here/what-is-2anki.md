@@ -40,4 +40,4 @@ Inside the deck:
 
 **Free:** 100 cards per month across every conversion path, file uploads up to 100 MB, and PDFs up to 100 pages. The Connect Notion flow works free with a 2anki account too. Without an account, each conversion is capped at 21 cards.
 
-**Paid:** larger uploads, more PDF pages, AI flashcard generation, and (for lifetime supporters) two-way Notion sync. See the [pricing page](/pricing) and [Limits and quotas](/documentation/help/limits) for the numbers.
+**Paid:** larger uploads, more PDF pages, AI flashcard generation, and two-way Notion sync by request. See the [pricing page](/pricing) and [Limits and quotas](/documentation/help/limits) for the numbers.

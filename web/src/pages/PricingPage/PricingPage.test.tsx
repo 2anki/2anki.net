@@ -149,9 +149,15 @@ describe('PricingPage layout', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows Lifetime card with From $345 price', () => {
+  it('does not offer Lifetime to new members', () => {
     renderAt('/pricing');
-    expect(screen.getAllByText('From $345').length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('link', { name: 'Request Lifetime' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Lifetime' })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('From $345')).not.toBeInTheDocument();
   });
 
   it('shows the v2 fallback Unlimited price in the comparison table', async () => {
@@ -179,11 +185,6 @@ describe('PricingPage layout', () => {
   it('shows the Monthly plans section label', () => {
     renderAt('/pricing');
     expect(screen.getByText('Monthly plans')).toBeInTheDocument();
-  });
-
-  it('shows the One-time payment section label above Lifetime', () => {
-    renderAt('/pricing');
-    expect(screen.getByText('One-time payment')).toBeInTheDocument();
   });
 
   it('leads with the pay-once passes above the monthly plans', () => {

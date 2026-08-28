@@ -344,7 +344,6 @@
     "socialProof": "Zaufało nam ponad 15 000 uczących się na całym świecie",
     "payOnceSection": "Zapłać raz — bez subskrypcji",
     "monthlySection": "Plany miesięczne",
-    "oneTimeSection": "Płatność jednorazowa",
     "pricesNote": "Ceny w USD. Twoja karta zostanie obciążona w Twojej walucie lokalnej przy płatności.",
     "reassuranceCancel": "Anuluj w każdej chwili — jednym kliknięciem",
     "reassuranceOwn": "Twoje talie należą do Ciebie — natywny .apkg, działa w każdym kliencie Anki",
@@ -352,15 +351,6 @@
     "educatorsBody": "Tworzysz talie dla klasy, grupy korepetycyjnej albo kursu, który sprzedajesz? Rozważamy narzędzia dla osób, które robią talie dla innych.",
     "educatorsButton": "Powiedz nam, czego potrzebujesz",
     "philosophy": "Darmowy plan działa zawsze. Plany płatne wspierają 2anki.net.",
-    "lifetime": {
-      "badge": "Zapłać raz",
-      "price": "Od $345",
-      "benefit1": "Wszystkie funkcje Unlimited, opłacone raz",
-      "benefit2": "Auto Sync w zestawie",
-      "benefit3": "Bez przyszłych zmian ceny",
-      "request": "Poproś o Lifetime",
-      "caption": "Odpowiedź w ciągu 24 godzin."
-    },
     "pass": {
       "noSubscription": "Bez subskrypcji",
       "unlimitedCards": "Nieograniczone karty i konwersje",
