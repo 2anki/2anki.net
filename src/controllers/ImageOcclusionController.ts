@@ -6,6 +6,7 @@ import {
   ImageOcclusionImage,
   OcclusionRect,
 } from '../usecases/imageOcclusion/CreateImageOcclusionDeckUseCase';
+import { HttpCodedError } from '../lib/errors/HttpCodedError';
 import { buildContentDisposition } from '../lib/buildContentDisposition';
 
 interface RawPoint {
@@ -108,9 +109,8 @@ class ImageOcclusionController {
         isPaying,
       });
     } catch (err) {
-      const e = err as NodeJS.ErrnoException & { status?: number };
-      if (e.status === 403) {
-        res.status(403).json({ message: e.message });
+      if (err instanceof HttpCodedError) {
+        res.status(err.status).json({ code: err.code, message: err.message });
         return;
       }
       throw err;

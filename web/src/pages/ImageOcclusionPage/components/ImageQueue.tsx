@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ImageEntry } from '../types';
+import { FREE_TIER_LIMIT } from '../freeTier';
 import styles from '../ImageOcclusionPage.module.css';
 import { Link } from 'react-router-dom';
 
@@ -14,9 +15,8 @@ interface Props {
   isPaying: boolean;
   isNotionConnected: boolean;
   onImportFromNotion: () => void;
+  keptFirst?: number | null;
 }
-
-const FREE_TIER_LIMIT = 3;
 
 export function ImageQueue({
   entries,
@@ -28,6 +28,7 @@ export function ImageQueue({
   isPaying,
   isNotionConnected,
   onImportFromNotion,
+  keptFirst = null,
 }: Readonly<Props>) {
   const { t } = useTranslation('tools');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -167,7 +168,14 @@ export function ImageQueue({
       />
       {!isPaying && (
         <div className={styles.upgradeNotice}>
-          {atLimit ? (
+          {keptFirst != null && keptFirst > 0 ? (
+            <>
+              <p>{t('occlusion.keptFirstImages', { count: keptFirst })}</p>
+              <Link to="/pricing" className={styles.upgradeLink}>
+                {t('occlusion.upgradeToAddMore')}
+              </Link>
+            </>
+          ) : atLimit ? (
             <>
               <p>{t('occlusion.freePlanAdded')}</p>
               <Link to="/pricing" className={styles.upgradeLink}>
