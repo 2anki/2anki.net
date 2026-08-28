@@ -43,7 +43,7 @@ One GitHub issue per UTC day, `Shipped YYYY-MM-DD`, label `shipped-digest`, one 
 
 ## Throughput
 
-Docs-only pushes (`.claude/**`, `Documentation/**`, `*.md` outside `web/`) still run every required job, but each job asks `.github/actions/changes` first and finishes in seconds when nothing needs building — a `paths-ignore` would leave the required checks unreported and the PR blocked forever. `strict: true` means a PR behind `main` must rebase and re-run CI before it can merge; two concurrent `/ship` runs serialize at roughly ten minutes per PR. Dependabot PRs behind `main` need `@dependabot rebase`. If this hurts, the next step is GitHub's merge queue (workflows would need the `merge_group` trigger) — not loosening `strict`.
+Docs-only pushes (`.claude/**`, `Documentation/**`, `*.md` outside `src/` and `web/` — oxfmt formats Markdown under both, so those stay code) still run every required job, but each job asks `.github/actions/changes` first and finishes in seconds when nothing needs building — a `paths-ignore` would leave the required checks unreported and the PR blocked forever. `strict: true` means a PR behind `main` must rebase and re-run CI before it can merge; two concurrent `/ship` runs serialize at roughly ten minutes per PR. Dependabot PRs behind `main` need `@dependabot rebase`. If this hurts, the next step is GitHub's merge queue (workflows would need the `merge_group` trigger) — not loosening `strict`.
 
 ## Rolling it out / rolling it back
 
