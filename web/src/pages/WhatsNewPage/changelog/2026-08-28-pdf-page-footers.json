@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-28-pdf-page-footers",
+  "date": "2026-08-28",
+  "type": "fix",
+  "title": "PDF uploads skip page-number footers and keep checklists and bullet lists whole across page breaks"
+}

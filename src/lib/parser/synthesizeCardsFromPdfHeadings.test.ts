@@ -238,6 +238,165 @@ describe('synthesizeCardsFromPdfHeadings', () => {
     expect(synthesizeCardsFromPdfHeadings(pages, 'Law')).toEqual([]);
   });
 
+  it('drops a page-number footer and rejoins the bullets after the page break to the heading above', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          '2)Coordination costs',
+          '• Large firms involve many participants.',
+          '1',
+        ].join('\n'),
+      },
+      {
+        text: [
+          '• Decision-making therefore becomes difficult.',
+          '• One legal solution is: Majority rule.',
+          '• Corporate law therefore creates voting rules that reduce coordination costs.',
+          '2',
+        ].join('\n'),
+      },
+    ];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'Law');
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].front).toBe('2)Coordination costs');
+    expect(cards[0].back).toBe(
+      [
+        '• Large firms involve many participants.',
+        '• Decision-making therefore becomes difficult.',
+        '• One legal solution is: Majority rule.',
+        '• Corporate law therefore creates voting rules that reduce coordination costs.',
+      ].join('\n')
+    );
+  });
+
+  it.each(['35', 'Page 3', '3 / 35', '3 of 35', '- 12 -'])(
+    'drops a page footer from both the front and the back: %s',
+    (footer) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Contract formation',
+            'Formation requires offer and acceptance plus consideration between parties.',
+            footer,
+            'Consideration must move from the promisee but need not be adequate in value.',
+          ].join('\n'),
+        },
+      ];
+
+      const cards = synthesizeCardsFromPdfHeadings(pages, 'Law');
+
+      expect(cards).toHaveLength(1);
+      expect(cards[0].back).toBe(
+        [
+          'Formation requires offer and acceptance plus consideration between parties.',
+          'Consideration must move from the promisee but need not be adequate in value.',
+        ].join('\n')
+      );
+    }
+  );
+
+  it('keeps a bare four-digit year as a card front', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Timeline',
+          '1914',
+          'War begins after the assassination in Sarajevo triggers the alliances.',
+          '1918',
+          'Armistice signed in a railway carriage at Compiègne in November.',
+        ].join('\n'),
+      },
+    ];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'History');
+
+    expect(cards.map((card) => card.front)).toEqual(['1914', '1918']);
+  });
+
+  it('keeps a run of short sibling lines under the heading above (a checklist with its glyphs stripped)', () => {
+    const items = [
+      'Classes 1-2: Theory & Introduction',
+      'Classes 3-4: Boards of Directors',
+      'Classes 5-6: Shareholders and Institutional Investors',
+      'Class 7: Related Party Transactions',
+      'Class 8: Creditor Protection',
+      'Class 9: Employees in Corporate Governance',
+      'Class 10: Agency Capitalism, equity markets and takeovers',
+      'Class 11: Lawmaking and Regulatory Competition',
+      'Class 12: Exam',
+    ];
+    const pages: PdfPage[] = [{ text: ['Teaching plan', ...items].join('\n') }];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'Law');
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].front).toBe('Teaching plan');
+    expect(cards[0].back).toBe(items.join('\n'));
+  });
+
+  it('keeps a heading that follows a terse unpunctuated one-line body', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Osmosis',
+          'Water movement across a membrane',
+          'Diffusion',
+          'Movement of particles from high to low concentration in a solution.',
+        ].join('\n'),
+      },
+    ];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'Bio');
+
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toMatchObject({
+      front: 'Osmosis',
+      back: 'Water movement across a membrane',
+    });
+    expect(cards[1].front).toBe('Diffusion');
+  });
+
+  it('keeps the first heading after short title-page lines', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Corporate Governance',
+          'Lecture 3',
+          'Agency costs',
+          'Managers may pursue their own interests at shareholder expense over time.',
+          'Board duties',
+          'Directors owe fiduciary duties of care and loyalty to the company itself.',
+        ].join('\n'),
+      },
+    ];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'Law');
+
+    expect(cards.map((card) => card.front)).toEqual([
+      'Agency costs',
+      'Board duties',
+    ]);
+  });
+
+  it.each([
+    '☐ Class 7: Related Party Transactions',
+    '☑ Classes 1-2: Theory & Introduction',
+    '✓ Class 8: Creditor Protection',
+  ])('does not treat a checkbox line as a heading: %s', (line) => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          line,
+          'Formation requires offer and acceptance plus consideration between parties.',
+        ].join('\n'),
+      },
+    ];
+
+    expect(synthesizeCardsFromPdfHeadings(pages, 'Law')).toEqual([]);
+  });
+
   it('treats a heading after a sentence-terminated line as a heading', () => {
     const pages: PdfPage[] = [
       {
