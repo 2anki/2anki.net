@@ -5,7 +5,7 @@ const SENTENCE_TAIL = /[.,;]$/;
 // Geometric shapes (■ ▶ ◦ …) and arrows (→ ↓ …) are bullet glyphs in exported
 // study notes; a bare marker with nothing after it is an empty list item the
 // author forgot to delete, which pdf.js emits on its own line.
-const LIST_MARKER = /^(?:[-*•●○◦▪‣·☐☑☒✓✔■-◿←-⇿]|\d{1,3}[.)])(?:\s|$)/;
+const LIST_MARKER = /^(?:[-*•‣·☐☑☒✓✔■-◿←-⇿]|\d{1,3}[.)])(?:\s|$)/;
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 const TERMINAL_PUNCTUATION = /[.!?:;]$/;
 const BARE_PAGE_NUMBER = /^[-–—]?\s*\d{1,3}\s*[-–—]?$/;
