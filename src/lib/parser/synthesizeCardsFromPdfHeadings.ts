@@ -2,8 +2,9 @@ import type { PdfCard, PdfPage } from './synthesizeCardsFromPdf';
 
 const HEADING_MAX_CHARS = 60;
 const SENTENCE_TAIL = /[.,;]$/;
-const LIST_MARKER = /^(?:[-*•●○◦▪‣·]|\d{1,3}[.)])\s/;
+const LIST_MARKER = /^(?:[-*•●○◦▪‣·☐☑☒✓✔]|\d{1,3}[.)])\s/;
 const TERMINAL_PUNCTUATION = /[.!?:;]$/;
+const PAGE_FOOTER = /^(?:page\s+)?\d{1,4}(?:\s*(?:\/|of)\s*\d{1,4})?$/i;
 
 function startsLowercase(line: string): boolean {
   const first = line.charAt(0);
@@ -18,10 +19,19 @@ function isWrappedContinuation(previousLine: string | undefined): boolean {
   );
 }
 
+function isListSibling(previousBodyLine: string | undefined): boolean {
+  return (
+    previousBodyLine != null &&
+    previousBodyLine.length < HEADING_MAX_CHARS &&
+    !TERMINAL_PUNCTUATION.test(previousBodyLine)
+  );
+}
+
 function isHeadingLine(
   line: string,
   nextLine: string | undefined,
-  previousLine: string | undefined
+  previousLine: string | undefined,
+  previousBodyLine: string | undefined
 ): boolean {
   return (
     line.length < HEADING_MAX_CHARS &&
@@ -30,7 +40,8 @@ function isHeadingLine(
     !SENTENCE_TAIL.test(line) &&
     !LIST_MARKER.test(line) &&
     !startsLowercase(line) &&
-    !isWrappedContinuation(previousLine)
+    !isWrappedContinuation(previousLine) &&
+    !isListSibling(previousBodyLine)
   );
 }
 
@@ -44,12 +55,13 @@ export function synthesizeCardsFromPdfHeadings(
       page.text.split('\n').map((text) => ({ text, pageIndex }))
     )
     .map(({ text, pageIndex }) => ({ text: text.trim(), pageIndex }))
-    .filter(({ text }) => text.length > 0);
+    .filter(({ text }) => text.length > 0 && !PAGE_FOOTER.test(text));
 
   const cards: PdfCard[] = [];
   let front: string | null = null;
   let frontPageIndex = 0;
   let body: string[] = [];
+  let previousBodyLine: string | undefined;
 
   const flushCard = () => {
     if (front != null && body.length > 0) {
@@ -63,13 +75,24 @@ export function synthesizeCardsFromPdfHeadings(
   };
 
   lines.forEach(({ text, pageIndex }, index) => {
-    if (isHeadingLine(text, lines[index + 1]?.text, lines[index - 1]?.text)) {
+    if (
+      isHeadingLine(
+        text,
+        lines[index + 1]?.text,
+        lines[index - 1]?.text,
+        previousBodyLine
+      )
+    ) {
       flushCard();
       front = text;
       frontPageIndex = pageIndex;
       body = [];
-    } else if (front != null) {
-      body.push(text);
+      previousBodyLine = undefined;
+    } else {
+      if (front != null) {
+        body.push(text);
+      }
+      previousBodyLine = text;
     }
   });
   flushCard();

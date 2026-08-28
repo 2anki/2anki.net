@@ -238,6 +238,93 @@ describe('synthesizeCardsFromPdfHeadings', () => {
     expect(synthesizeCardsFromPdfHeadings(pages, 'Law')).toEqual([]);
   });
 
+  it('drops a page-number footer and rejoins the bullets after the page break to the heading above', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          '2)Coordination costs',
+          '• Large firms involve many participants.',
+          '1',
+        ].join('\n'),
+      },
+      {
+        text: [
+          '• Decision-making therefore becomes difficult.',
+          '• One legal solution is: Majority rule.',
+          '• Corporate law therefore creates voting rules that reduce coordination costs.',
+          '2',
+        ].join('\n'),
+      },
+    ];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'Law');
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].front).toBe('2)Coordination costs');
+    expect(cards[0].back).toBe(
+      [
+        '• Large firms involve many participants.',
+        '• Decision-making therefore becomes difficult.',
+        '• One legal solution is: Majority rule.',
+        '• Corporate law therefore creates voting rules that reduce coordination costs.',
+      ].join('\n')
+    );
+  });
+
+  it.each(['35', 'Page 3', '3 / 35', '3 of 35', '- 12 -'])(
+    'never uses a page footer as a card front: %s',
+    (footer) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            footer,
+            'Formation requires offer and acceptance plus consideration between parties.',
+          ].join('\n'),
+        },
+      ];
+
+      expect(synthesizeCardsFromPdfHeadings(pages, 'Law')).toEqual([]);
+    }
+  );
+
+  it('keeps a run of short sibling lines under the heading above (a checklist with its glyphs stripped)', () => {
+    const items = [
+      'Classes 1-2: Theory & Introduction',
+      'Classes 3-4: Boards of Directors',
+      'Classes 5-6: Shareholders and Institutional Investors',
+      'Class 7: Related Party Transactions',
+      'Class 8: Creditor Protection',
+      'Class 9: Employees in Corporate Governance',
+      'Class 10: Agency Capitalism, equity markets and takeovers',
+      'Class 11: Lawmaking and Regulatory Competition',
+      'Class 12: Exam',
+    ];
+    const pages: PdfPage[] = [{ text: ['Teaching plan', ...items].join('\n') }];
+
+    const cards = synthesizeCardsFromPdfHeadings(pages, 'Law');
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].front).toBe('Teaching plan');
+    expect(cards[0].back).toBe(items.join('\n'));
+  });
+
+  it.each([
+    '☐ Class 7: Related Party Transactions',
+    '☑ Classes 1-2: Theory & Introduction',
+    '✓ Class 8: Creditor Protection',
+  ])('does not treat a checkbox line as a heading: %s', (line) => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          line,
+          'Formation requires offer and acceptance plus consideration between parties.',
+        ].join('\n'),
+      },
+    ];
+
+    expect(synthesizeCardsFromPdfHeadings(pages, 'Law')).toEqual([]);
+  });
+
   it('treats a heading after a sentence-terminated line as a heading', () => {
     const pages: PdfPage[] = [
       {
