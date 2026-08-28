@@ -736,6 +736,7 @@ class UsersController {
           canceled_at: sub.canceled_at ?? null,
           current_period_end: firstItem?.current_period_end ?? null,
           paused_until: pausedResumesAt(sub),
+          cancellation_reason: sub.cancellation_details?.reason ?? null,
           plan: price
             ? {
                 amount: price.unit_amount ?? null,
