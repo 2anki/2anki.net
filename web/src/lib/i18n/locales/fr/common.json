@@ -516,7 +516,8 @@
     "success": {
       "card_one": "carte",
       "card_other": "cartes",
-      "helper": "Pas de verso vide, pas de caractères parasites. Prêt pour Anki."
+      "helper": "Pas de verso vide, pas de caractères parasites. Prêt pour Anki.",
+      "order": "Les cartes gardent l'ordre du document dans Anki."
     },
     "notionExpired": "La connexion Notion a expiré. Reconnecte-toi pour continuer à convertir des pages.",
     "reconnectNotion": "Reconnecter Notion",

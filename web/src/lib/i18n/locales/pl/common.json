@@ -530,7 +530,8 @@
       "card_few": "karty",
       "card_many": "kart",
       "card_other": "karty",
-      "helper": "Żadnych pustych tyłów, żadnych zbędnych znaków. Gotowe dla Anki."
+      "helper": "Żadnych pustych tyłów, żadnych zbędnych znaków. Gotowe dla Anki.",
+      "order": "Karty zachowują w Anki kolejność z dokumentu."
     },
     "notionExpired": "Połączenie z Notion wygasło. Połącz ponownie, aby dalej konwertować strony.",
     "reconnectNotion": "Połącz ponownie z Notion",

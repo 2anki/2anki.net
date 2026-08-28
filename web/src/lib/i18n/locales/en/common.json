@@ -516,7 +516,8 @@
     "success": {
       "card_one": "card",
       "card_other": "cards",
-      "helper": "No empty backs, no stray characters. Ready for Anki."
+      "helper": "No empty backs, no stray characters. Ready for Anki.",
+      "order": "Cards keep the document's order in Anki."
     },
     "notionExpired": "Notion connection expired. Reconnect to keep converting pages.",
     "reconnectNotion": "Reconnect Notion",

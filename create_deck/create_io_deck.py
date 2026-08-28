@@ -99,6 +99,11 @@ if __name__ == "__main__":
             print("No cards generated; exiting cleanly")
             sys.exit(0)
 
+        # Same rule as create_deck.py: image order is document order, and
+        # Anki shows `due` as "New #N" for new cards.
+        for position, note in enumerate(notes, start=1):
+            note.due = position
+
         deck_payload = [
             {
                 "notes": notes,
