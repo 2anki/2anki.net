@@ -781,8 +781,8 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                               </tr>
                               {isNotionDoneRow &&
                                 shouldShowEmptyToggleNotice(
-                                  row.job.empty_back_count,
-                                  row.job.card_count
+                                  row.job.empty_back_count ?? 0,
+                                  row.job.card_count ?? 0
                                 ) && (
                                   <tr key={`job-${row.job.id}-empty-toggles`}>
                                     <td

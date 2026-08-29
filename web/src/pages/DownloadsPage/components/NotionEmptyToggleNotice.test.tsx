@@ -80,8 +80,6 @@ describe('shouldShowEmptyToggleNotice', () => {
     [1, 40, false],
     [0, 9, false],
     [5, 0, false],
-    [undefined, 9, false],
-    [5, null, false],
   ])('empty %s vs cards %s → %s', (skipped, cards, expected) => {
     expect(shouldShowEmptyToggleNotice(skipped, cards)).toBe(expected);
   });

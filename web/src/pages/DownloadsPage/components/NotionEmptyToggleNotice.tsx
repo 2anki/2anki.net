@@ -42,10 +42,8 @@ export function NotionEmptyToggleNotice({
 }
 
 export function shouldShowEmptyToggleNotice(
-  emptyBackCount: number | undefined,
-  cardCount: number | null | undefined
+  skipped: number,
+  cards: number
 ): boolean {
-  const skipped = emptyBackCount ?? 0;
-  const cards = cardCount ?? 0;
   return skipped > 0 && cards > 0 && skipped >= cards;
 }
