@@ -51,9 +51,14 @@ const MAX_OLD_SPACE_MB = 16384;
 const PM2_LOG_DIR = path.join(os.homedir(), '.pm2', 'logs');
 const LOG_DATE_FORMAT = 'YYYY-MM-DDTHH:mm:ss.SSSZ';
 
+// merge_logs is not optional here: without it pm2 rewrites every log path,
+// custom or default, to `…-<pm_id>.log` (lib/God.js "If merge option, dont
+// separate the logs"), which is exactly how the first deploy of the fixed
+// paths still produced server-green-out-46.log.
 const logFiles = (name) => ({
   out_file: path.join(PM2_LOG_DIR, `${name}-out.log`),
   error_file: path.join(PM2_LOG_DIR, `${name}-error.log`),
+  merge_logs: true,
   log_date_format: LOG_DATE_FORMAT,
 });
 
