@@ -194,7 +194,7 @@ describe('LimitPage — anonymous variant', () => {
     renderPage();
     expect(
       screen.getByText(
-        'Converting without an account stops at 21 cards. A free account raises that to 100 cards a month — or sign in to the one you have.'
+        'Without an account, conversions stop at 21 cards. A free account raises that to 100 cards a month — or sign in to the one you have.'
       )
     ).toBeTruthy();
   });
@@ -229,7 +229,7 @@ describe('LimitPage — anonymous variant', () => {
     renderPage();
     expect(
       screen.getByText(
-        'Your file stays in this browser — drop it in again after signing in.'
+        "Your file wasn't uploaded — drop it in again after signing in."
       )
     ).toBeTruthy();
   });
