@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { AddressInfo } from 'node:net';
+import type { AddressInfo } from 'node:net';
 
 const mockExecute = jest.fn();
 
@@ -111,6 +111,10 @@ describe('ImageOcclusionRouter — POST /api/image-occlusion paying gate', () =>
     );
     fs.writeFileSync(apkgPath, 'apkg');
     mockExecute.mockResolvedValue(apkgPath);
+  });
+
+  afterEach(() => {
+    fs.rmSync(path.dirname(apkgPath), { recursive: true, force: true });
   });
 
   const postDeck = (imageCount: number) => {
