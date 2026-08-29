@@ -18,6 +18,7 @@ const config = require(
     out_file?: string;
     error_file?: string;
     log_date_format?: string;
+    merge_logs?: boolean;
   }>;
 };
 
@@ -31,6 +32,18 @@ describe('blue-green ecosystem config — log files', () => {
 
       expect(app.out_file).toBe(path.join(PM2_LOG_DIR, `${name}-out.log`));
       expect(app.error_file).toBe(path.join(PM2_LOG_DIR, `${name}-error.log`));
+    }
+  );
+
+  // pm2 rewrites every log path to `…-<pm_id>.log` unless merge_logs is set
+  // (lib/God.js), so out_file alone still produced server-green-out-46.log on
+  // prod after #4279 deployed. This flag is what makes the fixed path stick.
+  it.each(['server-blue', 'server-green'])(
+    'sets merge_logs on %s so pm2 does not append the pm_id to the fixed paths',
+    (name) => {
+      const app = config.apps.find((candidate) => candidate.name === name)!;
+
+      expect(app.merge_logs).toBe(true);
     }
   );
 
