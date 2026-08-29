@@ -1,6 +1,8 @@
 import express from 'express';
 import multer from 'multer';
-import RequireAuthentication from './middleware/RequireAuthentication';
+import RequireAuthentication, {
+  OptionalAuthentication,
+} from './middleware/RequireAuthentication';
 import ImageOcclusionController from '../controllers/ImageOcclusionController';
 import { IoDraftController } from '../controllers/IoDraftController';
 import { PhotoToFlashcardsController } from '../controllers/PhotoToFlashcardsController';
@@ -56,8 +58,14 @@ const ImageOcclusionRouter = () => {
    *       200:
    *         description: Anki deck generated
    */
-  router.post('/api/image-occlusion', upload.array('images', 20), (req, res) =>
-    oc.create(req, res)
+  // Open to guests, but the paying gate in the controller reads res.locals,
+  // which only the auth middleware populates. Without it every download was
+  // free-capped at 3 images, subscribers included (#4287).
+  router.post(
+    '/api/image-occlusion',
+    OptionalAuthentication,
+    upload.array('images', 20),
+    (req, res) => oc.create(req, res)
   );
 
   /**
