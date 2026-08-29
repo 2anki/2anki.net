@@ -1480,6 +1480,85 @@ describe('UploadForm analytics events', () => {
     );
     expect(successCopy).toHaveAttribute('data-hj-suppress');
   });
+
+  it('recovers a dropped download from the server copy when the response carries a key', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'File-Name': encodeURIComponent('private-notes.apkg'),
+          'X-Card-Count': '5',
+          'X-Download-Key': 'owner-1-123-req.apkg',
+        }),
+        blob: () => Promise.reject(new TypeError('Load failed')),
+      })
+    );
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    const form = document.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(
+      await screen.findByText(
+        "Your download didn't finish — the deck is saved to your downloads."
+      )
+    ).toBeInTheDocument();
+    const download = screen.getByRole('link', { name: 'Download deck' });
+    expect(download).toHaveAttribute(
+      'href',
+      '/api/download/u/owner-1-123-req.apkg'
+    );
+    expect(screen.queryByText(/was saved to your downloads/)).toBeNull();
+    expect(trackMock).toHaveBeenCalledWith(
+      'upload_failed',
+      expect.objectContaining({ reason: 'network', recovered: true })
+    );
+  });
+
+  it('still fails the upload when the body read fails without a download key', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'File-Name': encodeURIComponent('private-notes.apkg'),
+          'X-Card-Count': '5',
+        }),
+        blob: () => Promise.reject(new TypeError('Load failed')),
+      })
+    );
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    const form = document.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(screen.queryByRole('link', { name: 'Download deck' })).toBeNull();
+    expect(trackMock).toHaveBeenCalledWith(
+      'upload_failed',
+      expect.objectContaining({ reason: 'network' })
+    );
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'upload_failed',
+      expect.objectContaining({ recovered: true })
+    );
+  });
 });
 
 describe('UploadForm multi-deck batch', () => {

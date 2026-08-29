@@ -48,6 +48,7 @@ export function useUploadFormState(onReset: () => void) {
   const [zoneState, setZoneState] = useState<ZoneState>('idle');
   const [batchResult, setBatchResult] = useState<BatchResult | null>(null);
   const [downloadLink, setDownloadLink] = useState<string | null>(null);
+  const [downloadRecovered, setDownloadRecovered] = useState(false);
   const [deckName, setDeckName] = useState('');
   const [cardCount, setCardCount] = useState<number | null>(null);
   const [mcqCount, setMcqCount] = useState<number>(0);
@@ -88,6 +89,7 @@ export function useUploadFormState(onReset: () => void) {
     setZoneState('idle');
     setBatchResult(null);
     setDownloadLink(null);
+    setDownloadRecovered(false);
     setDeckName('');
     setCardCount(null);
     setMcqCount(0);
@@ -127,6 +129,8 @@ export function useUploadFormState(onReset: () => void) {
     setBatchResult,
     downloadLink,
     setDownloadLink,
+    downloadRecovered,
+    setDownloadRecovered,
     deckName,
     setDeckName,
     cardCount,

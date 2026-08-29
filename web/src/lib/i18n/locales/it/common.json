@@ -124,6 +124,8 @@
       "fetching": "Sto recuperando {{filename}} da {{source}}",
       "deckReady": "Il tuo mazzo è pronto",
       "savedToDownloads": "{{deckName}} è stato salvato nei tuoi download",
+      "downloadRecoveredNote": "Il download non è stato completato — il mazzo è salvato nei tuoi download.",
+      "downloadDeck": "Scarica il mazzo",
       "makeAnother": "Crea un altro mazzo",
       "fallbackDownload": "Non hai ricevuto il file? Scaricalo qui.",
       "feedbackLabel": "Com'è andata?",

@@ -276,6 +276,8 @@ function UploadForm({
     setBatchResult,
     downloadLink,
     setDownloadLink,
+    downloadRecovered,
+    setDownloadRecovered,
     deckName,
     setDeckName,
     cardCount,
@@ -378,6 +380,18 @@ function UploadForm({
     setBatchResult,
     setZoneState,
     setStructureRescuedRule,
+    recoverDownload: (recoveryUrl, errorMessage) => {
+      setDownloadLink(recoveryUrl);
+      setDownloadRecovered(true);
+      // Same shape as the failure it replaces, so the 30-day baseline of
+      // lost downloads stays comparable; `recovered` splits the two.
+      track('upload_failed', {
+        reason: 'network',
+        recovered: true,
+        message: errorMessage.slice(0, 200),
+        fileSizeBytes: fileInputRef.current?.files?.[0]?.size ?? null,
+      });
+    },
   };
 
   const { data: userLocals } = useUserLocals();
@@ -520,6 +534,11 @@ function UploadForm({
     if (zoneState === 'success' && downloadLink && !showFallback) {
       globalThis.sessionStorage?.removeItem('upload_pending_filename');
       queryClient.invalidateQueries({ queryKey: CARD_USAGE_QUERY_KEY });
+      // A recovered download is a server copy behind a visible button: the
+      // user just watched one download fail, so it waits for their click.
+      if (downloadRecovered) {
+        return;
+      }
       if (cardCount !== 0) {
         fireAnalyticsEvent('deck_downloaded');
         track('deck_downloaded');
@@ -1015,10 +1034,29 @@ function UploadForm({
           {mcqDrawerOpen && renderMcqDrawer()}
         </>
       )}
-      {successOffer !== 'anon_signup' && (
-        <p className={formStyles.successSecondary} data-hj-suppress>
-          {t('upload.form.savedToDownloads', { deckName })}
-        </p>
+      {downloadRecovered && downloadLink ? (
+        <>
+          <p className={formStyles.successSecondary}>
+            {t('upload.form.downloadRecoveredNote')}
+          </p>
+          <a
+            href={downloadLink}
+            download={getDownloadFileName(deckName || 'Untitled')}
+            className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+            onClick={() => {
+              fireAnalyticsEvent('deck_downloaded');
+              track('deck_downloaded', { source: 'key_fallback' });
+            }}
+          >
+            {t('upload.form.downloadDeck')}
+          </a>
+        </>
+      ) : (
+        successOffer !== 'anon_signup' && (
+          <p className={formStyles.successSecondary} data-hj-suppress>
+            {t('upload.form.savedToDownloads', { deckName })}
+          </p>
+        )
       )}
       {warningMessage && (
         <p className={formStyles.warningInline}>{warningMessage}</p>

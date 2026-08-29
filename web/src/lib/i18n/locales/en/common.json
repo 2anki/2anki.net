@@ -124,6 +124,8 @@
       "fetching": "Fetching {{filename}} from {{source}}",
       "deckReady": "Your deck is ready",
       "savedToDownloads": "{{deckName}} was saved to your downloads",
+      "downloadRecoveredNote": "Your download didn't finish — the deck is saved to your downloads.",
+      "downloadDeck": "Download deck",
       "makeAnother": "Make another deck",
       "fallbackDownload": "Didn't get the file? Download it here.",
       "feedbackLabel": "How was your experience?",

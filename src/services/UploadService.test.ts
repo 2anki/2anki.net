@@ -3750,3 +3750,117 @@ describe('UploadService.handleUpload — stored card options', () => {
     expect(guidLedger.reissue).not.toHaveBeenCalled();
   });
 });
+
+describe('UploadService.handleSyncUpload — persisted copy for a signed-in owner', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'upload-service-test');
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+  });
+
+  beforeEach(() => {
+    MockGeneratePackagesUseCase.mockClear();
+    mockStorageUploadFile.mockClear();
+    trackMock.mockClear();
+    mockFirstApkg = Buffer.from('fake-apkg');
+    mockWorkspaceId = 'test-ws-id';
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockResolvedValue({
+            packages: [{ name: 'deck', cardCount: 12 }],
+            warnings: [],
+          }),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+  });
+
+  function exposedHeaders(res: express.Response): string {
+    const call = (res.set as jest.Mock).mock.calls.find(
+      ([name]) => name === 'Access-Control-Expose-Headers'
+    );
+    return call?.[1] ?? '';
+  }
+
+  it('persists the built deck, records an uploads row, and advertises the key', async () => {
+    const update = jest.fn().mockResolvedValue([]);
+    const usersRepo = buildUsersRepo();
+    const service = new UploadService(
+      { ...buildRepository(), update },
+      {} as JobRepository,
+      usersRepo,
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res, capturedSend } = buildResponse();
+    res.locals.owner = 42;
+    res.locals.requestId = 'req-4271';
+
+    await service.handleUpload(req, res);
+
+    expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
+    const [key, body] = mockStorageUploadFile.mock.calls[0] as [string, Buffer];
+    expect(key).toMatch(/\.apkg$/);
+    expect(body).toEqual(Buffer.from('fake-apkg'));
+    expect(update).toHaveBeenCalledWith(
+      42,
+      'deck',
+      key,
+      expect.any(Number),
+      null
+    );
+    expect(res.set).toHaveBeenCalledWith('X-Download-Key', key);
+    expect(exposedHeaders(res)).toContain('X-Download-Key');
+    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
+    expect(usersRepo.incrementCardUsage).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps streaming for an anonymous upload without persisting or advertising a key', async () => {
+    const update = jest.fn().mockResolvedValue([]);
+    const service = new UploadService(
+      { ...buildRepository(), update },
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res, capturedSend } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(mockStorageUploadFile).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Download-Key',
+      expect.anything()
+    );
+    expect(exposedHeaders(res)).not.toContain('X-Download-Key');
+    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
+  });
+
+  it('still sends the deck when the copy cannot be persisted', async () => {
+    mockStorageUploadFile.mockRejectedValueOnce(new Error('storage down'));
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res, capturedStatus, capturedSend } = buildResponse();
+    res.locals.owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Download-Key',
+      expect.anything()
+    );
+  });
+});
