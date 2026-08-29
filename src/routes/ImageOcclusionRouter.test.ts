@@ -87,6 +87,7 @@ describe('ImageOcclusionRouter — POST /api/image-occlusion paying gate', () =>
   let server: http.Server;
   let baseUrl: string;
   let apkgPath: string;
+  let tmpDir: string | null = null;
 
   beforeAll((done) => {
     const app = express();
@@ -105,19 +106,22 @@ describe('ImageOcclusionRouter — POST /api/image-occlusion paying gate', () =>
   beforeEach(() => {
     jest.clearAllMocks();
     mockLocals = { owner: 42, patreon: false, subscriber: false };
-    apkgPath = path.join(
-      fs.mkdtempSync(path.join(os.tmpdir(), 'io-router-')),
-      'deck.apkg'
-    );
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'io-router-'));
+    apkgPath = path.join(tmpDir, 'deck.apkg');
     fs.writeFileSync(apkgPath, 'apkg');
     mockExecute.mockResolvedValue(apkgPath);
   });
 
   afterEach(() => {
-    fs.rmSync(path.dirname(apkgPath), { recursive: true, force: true });
+    // Only ever remove the directory this test created — never a fallback
+    // like "." if mkdtemp threw before tmpDir was assigned.
+    if (tmpDir != null && tmpDir.startsWith(os.tmpdir())) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+    tmpDir = null;
   });
 
-  const postDeck = (imageCount: number) => {
+  const postDeck = async (imageCount: number) => {
     const form = new FormData();
     form.append(
       'data',
@@ -132,10 +136,14 @@ describe('ImageOcclusionRouter — POST /api/image-occlusion paying gate', () =>
         })),
       })
     );
-    return fetch(`${baseUrl}/api/image-occlusion`, {
+    const response = await fetch(`${baseUrl}/api/image-occlusion`, {
       method: 'POST',
       body: form,
     });
+    // Drain the body so the controller's stream-end unlink has run before
+    // afterEach removes the directory.
+    await response.arrayBuffer();
+    return response;
   };
 
   it('hands the subscriber flag from the session to the use case', async () => {
