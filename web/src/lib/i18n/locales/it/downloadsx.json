@@ -126,8 +126,8 @@
     "omitted_other": "{{count}} altri blocchi sono stati saltati per altri motivi."
   },
   "emptyToggleRow": {
-    "notice_one": "{{skipped}} dei tuoi toggle non avevano una risposta all'interno, quindi è stata creata solo 1 carta. Aggiungi la risposta dentro ogni toggle, poi converti di nuovo.",
-    "notice_other": "{{skipped}} dei tuoi toggle non avevano una risposta all'interno, quindi sono state create solo {{count}} carte. Aggiungi la risposta dentro ogni toggle, poi converti di nuovo.",
-    "seeReport": "Vedi il report completo"
+    "notice_one": "In {{skipped}} dei tuoi toggle manca la risposta, quindi è stata creata solo 1 carta. Aggiungi la risposta dentro ogni toggle, poi converti di nuovo.",
+    "notice_other": "In {{skipped}} dei tuoi toggle manca la risposta, quindi sono state create solo {{count}} carte. Aggiungi la risposta dentro ogni toggle, poi converti di nuovo.",
+    "seeReport": "Vedi il rapporto completo"
   }
 }

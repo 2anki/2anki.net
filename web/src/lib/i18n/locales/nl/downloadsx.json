@@ -126,8 +126,8 @@
     "omitted_other": "{{count}} andere blokken zijn om andere redenen overgeslagen."
   },
   "emptyToggleRow": {
-    "notice_one": "{{skipped}} van je toggles hadden geen antwoord erin, dus er is maar 1 kaart gemaakt. Zet het antwoord in elke toggle en zet daarna opnieuw om.",
-    "notice_other": "{{skipped}} van je toggles hadden geen antwoord erin, dus er zijn maar {{count}} kaarten gemaakt. Zet het antwoord in elke toggle en zet daarna opnieuw om.",
+    "notice_one": "In {{skipped}} van je toggles ontbreekt het antwoord, dus er is maar 1 kaart gemaakt. Zet het antwoord in elke toggle en converteer daarna opnieuw.",
+    "notice_other": "In {{skipped}} van je toggles ontbreekt het antwoord, dus er zijn maar {{count}} kaarten gemaakt. Zet het antwoord in elke toggle en converteer daarna opnieuw.",
     "seeReport": "Volledig rapport bekijken"
   }
 }

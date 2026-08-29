@@ -126,8 +126,8 @@
     "omitted_other": "Mais {{count}} blocos foram ignorados por outros motivos."
   },
   "emptyToggleRow": {
-    "notice_one": "{{skipped}} dos seus toggles não tinham resposta dentro, então só 1 cartão foi criado. Coloque a resposta dentro de cada toggle e converta de novo.",
-    "notice_other": "{{skipped}} dos seus toggles não tinham resposta dentro, então só {{count}} cartões foram criados. Coloque a resposta dentro de cada toggle e converta de novo.",
+    "notice_one": "Em {{skipped}} dos seus toggles falta a resposta, então só 1 cartão foi criado. Coloque a resposta dentro de cada toggle e converta de novo.",
+    "notice_other": "Em {{skipped}} dos seus toggles falta a resposta, então só {{count}} cartões foram criados. Coloque a resposta dentro de cada toggle e converta de novo.",
     "seeReport": "Ver o relatório completo"
   }
 }

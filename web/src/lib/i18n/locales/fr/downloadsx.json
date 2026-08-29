@@ -126,8 +126,8 @@
     "omitted_other": "{{count}} blocs de plus ont été ignorés pour d'autres raisons."
   },
   "emptyToggleRow": {
-    "notice_one": "{{skipped}} de vos toggles n'avaient pas de réponse à l'intérieur, donc 1 seule carte a été créée. Ajoutez la réponse dans chaque toggle, puis relancez la conversion.",
-    "notice_other": "{{skipped}} de vos toggles n'avaient pas de réponse à l'intérieur, donc seulement {{count}} cartes ont été créées. Ajoutez la réponse dans chaque toggle, puis relancez la conversion.",
+    "notice_one": "Il manque la réponse dans {{skipped}} de tes toggles, donc 1 seule carte a été créée. Ajoute la réponse dans chaque toggle, puis convertis à nouveau.",
+    "notice_other": "Il manque la réponse dans {{skipped}} de tes toggles, donc seulement {{count}} cartes ont été créées. Ajoute la réponse dans chaque toggle, puis convertis à nouveau.",
     "seeReport": "Voir le rapport complet"
   }
 }
