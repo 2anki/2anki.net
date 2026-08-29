@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-29-limit-page-sign-in",
+  "date": "2026-08-29",
+  "type": "fix",
+  "title": "The 21-card limit page has a Sign in button — subscribers who got logged out get straight back in"
+}

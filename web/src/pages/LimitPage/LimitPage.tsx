@@ -33,9 +33,10 @@ function AnonymousLimit() {
         </p>
         <h1 className={styles.heading}>{t('limit.anonHeading')}</h1>
         <p className={styles.subheading}>
-          Without an account, conversions stop at {ANONYMOUS_CARD_CAP} cards. A
-          free account raises that to {FREE_MONTHLY_CARDS} cards a month — same
-          conversion, no cap to worry about.
+          {t('limit.anonSubheading', {
+            cap: ANONYMOUS_CARD_CAP,
+            monthly: FREE_MONTHLY_CARDS,
+          })}
         </p>
       </header>
 
@@ -44,30 +45,40 @@ function AnonymousLimit() {
           <p className={styles.planTitle}>{t('limit.freeAccount')}</p>
           <ul className={styles.planBenefits}>
             <li className={styles.planBenefit}>
-              Convert up to {FREE_MONTHLY_CARDS} cards a month
+              {t('limit.freeBenefitCards', { monthly: FREE_MONTHLY_CARDS })}
             </li>
             <li className={styles.planBenefit}>{t('limit.saveRedownload')}</li>
             <li className={styles.planBenefit}>{t('limit.connectServices')}</li>
           </ul>
-          <Link
-            to="/register?redirect=/upload"
-            className={styles.planCtaPrimary}
-            onClick={() =>
-              track('paywall_upgrade_clicked', {
-                surface: REF,
-                plan: 'free_signup',
-              })
-            }
-          >
-            {t('limit.signUpFinish')}
-          </Link>
+          <div className={styles.planCtas}>
+            <Link
+              to="/register?redirect=/upload"
+              className={styles.planCtaPrimary}
+              onClick={() =>
+                track('paywall_upgrade_clicked', {
+                  surface: REF,
+                  plan: 'free_signup',
+                })
+              }
+            >
+              {t('limit.signUpFree')}
+            </Link>
+            <Link
+              to="/login?redirect=/upload"
+              className={styles.planCtaSecondary}
+              onClick={() =>
+                track('paywall_upgrade_clicked', {
+                  surface: REF,
+                  plan: 'sign_in',
+                })
+              }
+            >
+              {t('limit.signIn')}
+            </Link>
+          </div>
+          <p className={styles.planNote}>{t('limit.browserNote')}</p>
         </div>
       </div>
-
-      <p className={styles.backLink}>
-        {t('limit.alreadyHaveAccount')}{' '}
-        <Link to="/login?redirect=/upload">{t('limit.signIn')}</Link>
-      </p>
     </div>
   );
 }

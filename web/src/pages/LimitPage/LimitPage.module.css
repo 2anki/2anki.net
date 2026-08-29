@@ -145,10 +145,24 @@
   font-weight: var(--font-semibold);
 }
 
+.planCtas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.planNote {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin: 0.75rem 0 0;
+}
+
 .planCtaPrimary {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 44px;
   padding: 0.75rem 1.5rem;
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
@@ -175,6 +189,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 44px;
   padding: 0.75rem 1.5rem;
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
