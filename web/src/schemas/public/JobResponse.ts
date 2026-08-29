@@ -11,4 +11,6 @@ export default interface JobResponse extends Omit<Jobs, 'conversion_report'> {
   restartable: boolean;
   download_key: string | null;
   upload_id: number | null;
+  /** Toggles the stored report counted as empty; 0 when there is no report. */
+  empty_back_count: number;
 }

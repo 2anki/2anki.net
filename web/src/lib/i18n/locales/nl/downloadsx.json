@@ -124,5 +124,10 @@
     "reasonUnsupported_other": "{{count}} {{type}}-blokken kunnen nog geen kaarten worden.",
     "omitted_one": "{{count}} ander blok is om andere redenen overgeslagen.",
     "omitted_other": "{{count}} andere blokken zijn om andere redenen overgeslagen."
+  },
+  "emptyToggleRow": {
+    "notice_one": "{{skipped}} van je toggles hadden geen antwoord erin, dus er is maar 1 kaart gemaakt. Zet het antwoord in elke toggle en zet daarna opnieuw om.",
+    "notice_other": "{{skipped}} van je toggles hadden geen antwoord erin, dus er zijn maar {{count}} kaarten gemaakt. Zet het antwoord in elke toggle en zet daarna opnieuw om.",
+    "seeReport": "Volledig rapport bekijken"
   }
 }

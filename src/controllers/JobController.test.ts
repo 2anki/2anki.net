@@ -44,9 +44,55 @@ describe('JobController', () => {
     );
     expect(jobService.getJobsByOwner).toHaveBeenCalled();
     expect(res.send).toHaveBeenCalledWith([
-      { id: 1, title: 'job1', download_key: null, restartable: true },
-      { id: 2, title: 'job2', download_key: null, restartable: true },
+      {
+        id: 1,
+        title: 'job1',
+        download_key: null,
+        restartable: true,
+        empty_back_count: 0,
+      },
+      {
+        id: 2,
+        title: 'job2',
+        download_key: null,
+        restartable: true,
+        empty_back_count: 0,
+      },
     ]);
+  });
+
+  it('serves the empty-toggle count from the stored report without the report itself', async () => {
+    const mockJobs = [
+      {
+        id: 7,
+        title: 'Thin Notion deck',
+        object_id: 'notion-page-uuid',
+        status: 'done',
+        owner: 'owner1',
+        type: 'page',
+        card_count: 9,
+        download_key: 'thin.apkg',
+        conversion_report: {
+          summary: { blocks_seen: 23, cards_created: 9, blocks_skipped: 14 },
+          entries: [
+            {
+              stage: 'card',
+              reason_code: 'empty_back',
+              human_reason: 'Toggle had no answer inside',
+              count: 14,
+            },
+          ],
+        },
+      },
+    ];
+    (jobService.getJobsByOwner as jest.Mock).mockResolvedValue(mockJobs);
+    await jobController.getJobsByOwner(
+      req as express.Request,
+      res as express.Response
+    );
+    const [sent] = (res.send as jest.Mock).mock.calls[0][0];
+    expect(sent.empty_back_count).toBe(14);
+    expect(sent).not.toHaveProperty('conversion_report');
   });
 
   it('passes job_reason_failure through for a done Notion job', async () => {

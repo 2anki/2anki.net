@@ -124,5 +124,10 @@
     "reasonUnsupported_other": "{{count}} blocs {{type}} ne peuvent pas encore devenir des cartes.",
     "omitted_one": "{{count}} bloc de plus a été ignoré pour d'autres raisons.",
     "omitted_other": "{{count}} blocs de plus ont été ignorés pour d'autres raisons."
+  },
+  "emptyToggleRow": {
+    "notice_one": "{{skipped}} de vos toggles n'avaient pas de réponse à l'intérieur, donc 1 seule carte a été créée. Ajoutez la réponse dans chaque toggle, puis relancez la conversion.",
+    "notice_other": "{{skipped}} de vos toggles n'avaient pas de réponse à l'intérieur, donc seulement {{count}} cartes ont été créées. Ajoutez la réponse dans chaque toggle, puis relancez la conversion.",
+    "seeReport": "Voir le rapport complet"
   }
 }

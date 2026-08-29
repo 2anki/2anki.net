@@ -116,6 +116,7 @@ const buildJob = (overrides: Partial<JobResponse> = {}): JobResponse => ({
   restartable: false,
   download_key: null,
   upload_id: null,
+  empty_back_count: 0,
   ...overrides,
 });
 
@@ -1196,6 +1197,64 @@ describe('DownloadsPage truncation notice', () => {
     expect(
       await screen.findByText('Nothing was skipped — the whole page converted.')
     ).toBeInTheDocument();
+  });
+
+  it('says why the deck is thin when the empty toggles outnumber the cards', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Thin Page',
+        download_key: 'deck-thin.apkg',
+        card_count: 9,
+        empty_back_count: 14,
+      }),
+    ];
+    renderAt('/downloads');
+    expect(
+      screen.getByText(
+        '14 of your toggles had no answer inside, so only 9 cards were made. Add the answer inside each toggle, then convert again.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'See full report' })
+    ).toBeInTheDocument();
+  });
+
+  it('opens the existing report modal from the thin-deck notice', async () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Thin Page',
+        download_key: 'deck-thin.apkg',
+        card_count: 9,
+        empty_back_count: 14,
+      }),
+    ];
+    renderAt('/downloads');
+    fireEvent.click(screen.getByRole('button', { name: 'See full report' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Conversion report' })
+    ).toBeInTheDocument();
+  });
+
+  it('stays quiet about a few empty toggles on a healthy deck', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Healthy Page',
+        download_key: 'deck-ok.apkg',
+        card_count: 34,
+        empty_back_count: 2,
+      }),
+    ];
+    renderAt('/downloads');
+    expect(screen.queryByText(/of your toggles had no answer/)).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'See full report' })
+    ).toBeNull();
   });
 });
 

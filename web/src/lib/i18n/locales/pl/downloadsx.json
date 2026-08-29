@@ -160,5 +160,12 @@
     "omitted_few": "Jeszcze {{count}} bloki pominięto z innych powodów.",
     "omitted_many": "Jeszcze {{count}} bloków pominięto z innych powodów.",
     "omitted_other": "Jeszcze {{count}} bloku pominięto z innych powodów."
+  },
+  "emptyToggleRow": {
+    "notice_one": "{{skipped}} z twoich toggle'ów nie miało odpowiedzi w środku, więc powstała tylko 1 karta. Wpisz odpowiedź w każdym toggle'u i skonwertuj ponownie.",
+    "notice_few": "{{skipped}} z twoich toggle'ów nie miało odpowiedzi w środku, więc powstały tylko {{count}} karty. Wpisz odpowiedź w każdym toggle'u i skonwertuj ponownie.",
+    "notice_many": "{{skipped}} z twoich toggle'ów nie miało odpowiedzi w środku, więc powstało tylko {{count}} kart. Wpisz odpowiedź w każdym toggle'u i skonwertuj ponownie.",
+    "notice_other": "{{skipped}} z twoich toggle'ów nie miało odpowiedzi w środku, więc powstało tylko {{count}} karty. Wpisz odpowiedź w każdym toggle'u i skonwertuj ponownie.",
+    "seeReport": "Zobacz pełny raport"
   }
 }

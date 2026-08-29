@@ -124,5 +124,10 @@
     "reasonUnsupported_other": "{{count}} {{type}}-Blöcke können noch nicht zu Karten werden.",
     "omitted_one": "{{count}} weiterer Block wurde aus anderen Gründen übersprungen.",
     "omitted_other": "{{count}} weitere Blöcke wurden aus anderen Gründen übersprungen."
+  },
+  "emptyToggleRow": {
+    "notice_one": "{{skipped}} deiner Toggles hatten keine Antwort darin, deshalb ist nur 1 Karte entstanden. Schreib die Antwort in jeden Toggle und konvertiere dann erneut.",
+    "notice_other": "{{skipped}} deiner Toggles hatten keine Antwort darin, deshalb sind nur {{count}} Karten entstanden. Schreib die Antwort in jeden Toggle und konvertiere dann erneut.",
+    "seeReport": "Vollständigen Bericht ansehen"
   }
 }

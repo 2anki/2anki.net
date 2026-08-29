@@ -201,6 +201,32 @@
   line-height: var(--leading-relaxed);
 }
 
+.emptyTogglePanel {
+  padding: 0;
+  background: var(--color-bg-secondary);
+  border-left: 2px solid var(--color-warning);
+}
+
+/* The table scrolls horizontally on phones; pin the notice to the viewport so
+   both sentences wrap and stay readable instead of running off to the right. */
+.emptyToggleNotice {
+  position: sticky;
+  left: 0;
+  max-width: calc(100vw - 2rem);
+  padding: 1rem 1.25rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  line-height: var(--leading-relaxed);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.emptyToggleText {
+  margin: 0;
+}
+
 .failureLearnMore {
   display: inline-flex;
   align-items: center;
