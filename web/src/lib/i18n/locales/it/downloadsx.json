@@ -124,5 +124,10 @@
     "reasonUnsupported_other": "{{count}} blocchi {{type}} non possono ancora diventare carte.",
     "omitted_one": "{{count}} altro blocco è stato saltato per altri motivi.",
     "omitted_other": "{{count}} altri blocchi sono stati saltati per altri motivi."
+  },
+  "emptyToggleRow": {
+    "notice_one": "In {{skipped}} dei tuoi toggle manca la risposta, quindi è stata creata solo 1 carta. Aggiungi la risposta dentro ogni toggle, poi converti di nuovo.",
+    "notice_other": "In {{skipped}} dei tuoi toggle manca la risposta, quindi sono state create solo {{count}} carte. Aggiungi la risposta dentro ogni toggle, poi converti di nuovo.",
+    "seeReport": "Vedi il rapporto completo"
   }
 }

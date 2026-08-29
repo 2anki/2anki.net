@@ -19,6 +19,7 @@ const doneNotionJob = (payload: unknown): JobResponse =>
     restartable: true,
     download_key: 'deck.apkg',
     upload_id: null,
+    empty_back_count: 0,
   }) as JobResponse;
 
 describe('getSignalSkippedCount', () => {

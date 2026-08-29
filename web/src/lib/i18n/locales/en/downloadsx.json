@@ -124,5 +124,10 @@
     "reasonUnsupported_other": "{{count}} {{type}} blocks can't become cards yet.",
     "omitted_one": "{{count}} more block was skipped for other reasons.",
     "omitted_other": "{{count}} more blocks were skipped for other reasons."
+  },
+  "emptyToggleRow": {
+    "notice_one": "{{skipped}} of your toggles had no answer inside, so only 1 card was made. Add the answer inside each toggle, then convert again.",
+    "notice_other": "{{skipped}} of your toggles had no answer inside, so only {{count}} cards were made. Add the answer inside each toggle, then convert again.",
+    "seeReport": "See full report"
   }
 }

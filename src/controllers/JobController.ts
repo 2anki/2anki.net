@@ -6,11 +6,15 @@ import JobService from '../services/JobService';
 import { JobWithDownloadKey } from '../data_layer/JobRepository';
 import { getOwner } from '../lib/User/getOwner';
 import DeleteJobUseCase from '../usecases/jobs/DeleteJobUseCase';
+import { getEmptyBackCount } from '../services/NotionService/helpers/getEmptyBackCount';
 
 // conversion_report stays out of the polled jobs list on purpose — the
-// report is fetched lazily per job when the user opens it (#4211).
+// report is fetched lazily per job when the user opens it (#4211). Only the
+// empty-toggle count is derived from it, so the Downloads row can say why a
+// Notion deck came back thin (#4273).
 interface JobListItem extends Omit<JobWithDownloadKey, 'conversion_report'> {
   restartable: boolean;
+  empty_back_count: number;
 }
 
 function toJobListItem(job: JobWithDownloadKey): JobListItem {
@@ -28,6 +32,7 @@ function toJobListItem(job: JobWithDownloadKey): JobListItem {
     download_key: job.download_key,
     upload_id: job.upload_id,
     restartable: true,
+    empty_back_count: getEmptyBackCount(job.conversion_report),
   };
 }
 

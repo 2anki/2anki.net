@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
   useRef,
@@ -39,6 +40,10 @@ import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
 import { UpsellCard } from '../../components/UpsellCard';
 import JobResponse from '../../schemas/public/JobResponse';
+import {
+  NotionEmptyToggleNotice,
+  shouldShowEmptyToggleNotice,
+} from './components/NotionEmptyToggleNotice';
 import { NotionColumnMappingModal } from '../../components/NotionColumnMappingModal/NotionColumnMappingModal';
 import {
   parseAmbiguousColumnsPayload,
@@ -600,11 +605,8 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                           };
 
                           return (
-                            <>
-                              <tr
-                                key={`job-${row.job.id}`}
-                                className={isFailed ? styles.failedRow : ''}
-                              >
+                            <Fragment key={`job-${row.job.id}`}>
+                              <tr className={isFailed ? styles.failedRow : ''}>
                                 <td>
                                   <span
                                     data-hj-suppress
@@ -777,6 +779,26 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                   </div>
                                 </td>
                               </tr>
+                              {isNotionDoneRow &&
+                                shouldShowEmptyToggleNotice(
+                                  row.job.empty_back_count ?? 0,
+                                  row.job.card_count ?? 0
+                                ) && (
+                                  <tr key={`job-${row.job.id}-empty-toggles`}>
+                                    <td
+                                      colSpan={4}
+                                      className={styles.emptyTogglePanel}
+                                    >
+                                      <NotionEmptyToggleNotice
+                                        skipped={row.job.empty_back_count}
+                                        cards={row.job.card_count ?? 0}
+                                        onSeeReport={() =>
+                                          setReportModalJob(row.job)
+                                        }
+                                      />
+                                    </td>
+                                  </tr>
+                                )}
                               {isFailed &&
                                 (restartUi[row.job.object_id]?.exhausted ||
                                   restartUi[row.job.object_id]?.expired) && (
@@ -826,7 +848,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     </td>
                                   </tr>
                                 )}
-                            </>
+                            </Fragment>
                           );
                         }
 

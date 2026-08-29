@@ -37,6 +37,7 @@ const buildJob = (overrides: Partial<JobResponse> = {}): JobResponse =>
     restartable: true,
     download_key: 'deck.apkg',
     upload_id: null,
+    empty_back_count: 0,
     ...overrides,
   }) as JobResponse;
 

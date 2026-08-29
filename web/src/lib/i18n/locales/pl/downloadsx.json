@@ -160,5 +160,12 @@
     "omitted_few": "Jeszcze {{count}} bloki pominięto z innych powodów.",
     "omitted_many": "Jeszcze {{count}} bloków pominięto z innych powodów.",
     "omitted_other": "Jeszcze {{count}} bloku pominięto z innych powodów."
+  },
+  "emptyToggleRow": {
+    "notice_one": "W {{skipped}} z Twoich przełączników brakuje odpowiedzi, więc powstała tylko 1 fiszka. Wpisz odpowiedź w każdym przełączniku i przekonwertuj ponownie.",
+    "notice_few": "W {{skipped}} z Twoich przełączników brakuje odpowiedzi, więc powstały tylko {{count}} fiszki. Wpisz odpowiedź w każdym przełączniku i przekonwertuj ponownie.",
+    "notice_many": "W {{skipped}} z Twoich przełączników brakuje odpowiedzi, więc powstało tylko {{count}} fiszek. Wpisz odpowiedź w każdym przełączniku i przekonwertuj ponownie.",
+    "notice_other": "W {{skipped}} z Twoich przełączników brakuje odpowiedzi, więc powstało tylko {{count}} fiszki. Wpisz odpowiedź w każdym przełączniku i przekonwertuj ponownie.",
+    "seeReport": "Zobacz pełny raport"
   }
 }

@@ -24,6 +24,7 @@ function buildJob(overrides: Partial<JobResponse> = {}): JobResponse {
     restartable: false,
     download_key: 'deck.apkg',
     upload_id: null,
+    empty_back_count: 0,
     ...overrides,
   };
 }

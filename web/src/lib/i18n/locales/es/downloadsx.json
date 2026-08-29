@@ -124,5 +124,10 @@
     "reasonUnsupported_other": "{{count}} bloques {{type}} aún no pueden convertirse en tarjetas.",
     "omitted_one": "{{count}} bloque más se omitió por otros motivos.",
     "omitted_other": "{{count}} bloques más se omitieron por otros motivos."
+  },
+  "emptyToggleRow": {
+    "notice_one": "A {{skipped}} de tus toggles les falta la respuesta, así que solo se creó 1 tarjeta. Pon la respuesta dentro de cada toggle y vuelve a convertir.",
+    "notice_other": "A {{skipped}} de tus toggles les falta la respuesta, así que solo se crearon {{count}} tarjetas. Pon la respuesta dentro de cada toggle y vuelve a convertir.",
+    "seeReport": "Ver el informe completo"
   }
 }

@@ -106,5 +106,9 @@
     "reasonTruncated": "変換はページの途中で停止しました。",
     "reasonUnsupported_other": "{{count}}個の{{type}}ブロックはまだカードにできません。",
     "omitted_other": "他の理由でさらに{{count}}個のブロックがスキップされました。"
+  },
+  "emptyToggleRow": {
+    "notice_other": "トグルのうち{{skipped}}個に答えが入っていなかったため、作成されたカードは{{count}}枚だけです。各トグルの中に答えを入れてから、もう一度変換してください。",
+    "seeReport": "レポート全体を見る"
   }
 }
