@@ -13,6 +13,7 @@ import ExportApkgToCsvUseCase, {
   EmptyDeckError as CsvEmptyDeckError,
 } from '../usecases/apkg/ExportApkgToCsvUseCase';
 import { track } from '../services/events/track';
+import { InvalidApkgError } from '../services/ApkgPreviewService/extractApkg';
 
 jest.mock('../usecases/apkg/ImportApkgToNotionUseCase');
 jest.mock('../usecases/apkg/ExportApkgToPdfUseCase');
@@ -323,13 +324,13 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
   }
 
   it('answers 400 Invalid .apkg file when the upload is not a zip at all', async () => {
-    // yauzl's message for a renamed PDF/HTML; used to fall through to a logged
-    // 500 "PDF generation failed." (prod, 2026-08-27).
+    // extractApkg wraps yauzl's "End of central directory…" for a renamed
+    // PDF/HTML; this used to fall through to a logged 500 (prod, 2026-08-27).
     (ExportApkgToPdfUseCase as jest.Mock).mockImplementation(() => ({
       execute: jest
         .fn()
         .mockRejectedValue(
-          new Error(
+          new InvalidApkgError(
             'End of central directory record signature not found. Either not a zip file, or file is truncated.'
           )
         ),

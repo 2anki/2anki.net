@@ -31,6 +31,16 @@ export class ApkgTooLargeError extends Error {
   }
 }
 
+// The upload is not something Anki exported: not a zip at all, a zip yauzl
+// cannot open, or a zip with no collection file. Callers answer 400 on this
+// class instead of matching yauzl's message text.
+export class InvalidApkgError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidApkgError';
+  }
+}
+
 const COLLECTION_CANDIDATES = [
   'collection.anki21b',
   'collection.anki21',
@@ -96,7 +106,9 @@ export async function extractApkg(
 
   return new Promise((resolve, reject) => {
     yauzl.fromBuffer(bytes, { lazyEntries: true }, (err, zipfile) => {
-      if (err || !zipfile) return reject(err ?? new Error('open failed'));
+      if (err || !zipfile) {
+        return reject(new InvalidApkgError(err?.message ?? 'open failed'));
+      }
 
       const collections: Map<string, Buffer> = new Map();
       const mediaEntries: Map<string, Buffer> = new Map();
@@ -153,7 +165,9 @@ export async function extractApkg(
           collections.has(candidate)
         );
         if (!name) {
-          fail(new Error('No Anki collection file found in archive'));
+          fail(
+            new InvalidApkgError('No Anki collection file found in archive')
+          );
           return;
         }
         let collectionBuffer = collections.get(name) as Buffer;

@@ -26,7 +26,10 @@ import PackEditedApkgUseCase from '../usecases/apkg/PackEditedApkgUseCase';
 import ResolveImportParentPageUseCase from '../usecases/apkg/ResolveImportParentPageUseCase';
 import NoNotionPagesError from '../usecases/apkg/NoNotionPagesError';
 import { CardEdit } from '../services/ApkgPreviewService/applyEditsToCards';
-import { ApkgTooLargeError } from '../services/ApkgPreviewService/extractApkg';
+import {
+  ApkgTooLargeError,
+  InvalidApkgError,
+} from '../services/ApkgPreviewService/extractApkg';
 import { NotionService } from '../services/NotionService/NotionService';
 import JobRepository from '../data_layer/JobRepository';
 import sendErrorResponse from '../lib/sendErrorResponse';
@@ -557,11 +560,7 @@ function sendCsvDownload(
 }
 
 function isInvalidApkgError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    (error.message.includes('No Anki collection') ||
-      error.message.includes('open failed'))
-  );
+  return error instanceof InvalidApkgError;
 }
 
 // Three tiers: no account, free account, paid. Null means unlimited.
@@ -578,12 +577,7 @@ function sendPdfExportError(res: Response, error: unknown): void {
     res.status(400).json({ message: error.message });
     return;
   }
-  if (
-    error instanceof Error &&
-    (error.message.includes('No Anki collection') ||
-      error.message.includes('open failed') ||
-      error.message.includes('End of central directory'))
-  ) {
+  if (isInvalidApkgError(error)) {
     res.status(400).json({ message: 'Invalid .apkg file' });
     return;
   }
