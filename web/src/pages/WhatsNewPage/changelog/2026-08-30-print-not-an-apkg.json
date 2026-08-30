@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-30-print-not-an-apkg",
+  "date": "2026-08-30",
+  "type": "fix",
+  "title": "Printing a file that isn't really an .apkg now says so, instead of \"PDF generation failed\""
+}

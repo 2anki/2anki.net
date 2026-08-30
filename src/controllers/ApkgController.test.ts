@@ -322,6 +322,31 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
     return res as Response;
   }
 
+  it('answers 400 Invalid .apkg file when the upload is not a zip at all', async () => {
+    // yauzl's message for a renamed PDF/HTML; used to fall through to a logged
+    // 500 "PDF generation failed." (prod, 2026-08-27).
+    (ExportApkgToPdfUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            'End of central directory record signature not found. Either not a zip file, or file is truncated.'
+          )
+        ),
+    }));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const controller = makeController();
+    const req = makeReq({ body: {} }) as Request;
+    const res = makePdfRes({ owner: 42 });
+
+    await controller.exportPdf(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ message: 'Invalid .apkg file' });
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
   it('fires the event with all four booleans false when every option is default', async () => {
     const controller = makeController();
     const req = makeReq({ body: {} }) as Request;

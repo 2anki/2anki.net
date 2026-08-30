@@ -581,7 +581,8 @@ function sendPdfExportError(res: Response, error: unknown): void {
   if (
     error instanceof Error &&
     (error.message.includes('No Anki collection') ||
-      error.message.includes('open failed'))
+      error.message.includes('open failed') ||
+      error.message.includes('End of central directory'))
   ) {
     res.status(400).json({ message: 'Invalid .apkg file' });
     return;
