@@ -154,53 +154,102 @@ describe('Upload file — multer error handling', () => {
     jest.clearAllMocks();
   });
 
-  test('returns 400 with code=too_many_files when multer LIMIT_FILE_COUNT fires, without converting', async () => {
-    // multer has already deleted every temp file by the time it reports the
-    // count limit; running the conversion on the dead placeholders used to
-    // answer "your upload didn't finish" instead of naming the cap.
-    const multerError = new multer.MulterError('LIMIT_FILE_COUNT');
+  test.each([
+    // `.array('pakker', 21)` reports the 22nd file this way (multer index.js).
+    new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'pakker'),
+    // `limits.files`, if it were ever set, reports it this way.
+    new multer.MulterError('LIMIT_FILE_COUNT'),
+  ])(
+    'returns 400 with code=too_many_files on the multer count error %s, without converting',
+    async (multerError) => {
+      // multer has already deleted every temp file by the time it reports the
+      // count limit; running the conversion on the dead placeholders used to
+      // answer "your upload didn't finish" instead of naming the cap.
+      (getUploadHandler as jest.Mock).mockImplementation(
+        () =>
+          (
+            req: express.Request,
+            _res: express.Response,
+            cb: (err?: unknown) => void
+          ) => {
+            req.files = [{ path: '/gone/1' }, { path: '/gone/2' }] as never;
+            cb(multerError);
+          }
+      );
+
+      const uploadService = new UploadService(
+        {} as IUploadRepository,
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const handleUpload = jest
+        .spyOn(uploadService, 'handleUpload')
+        .mockResolvedValue(undefined);
+      const notionService = new NotionService({} as INotionRepository);
+      const controller = new UploadController(uploadService, notionService);
+
+      const jsonSpy = jest.fn();
+      let capturedStatus = 0;
+      await new Promise<void>((resolve) => {
+        const fakeRes = {
+          locals: { patreon: false, subscriber: false },
+          status: (code: number) => {
+            capturedStatus = code;
+            return {
+              json: (body: unknown) => {
+                jsonSpy(body);
+                resolve();
+              },
+            };
+          },
+        } as unknown as express.Response;
+        controller.file({} as express.Request, fakeRes);
+      });
+
+      expect(capturedStatus).toBe(400);
+      expect(jsonSpy).toHaveBeenCalledWith({
+        code: 'too_many_files',
+        message: expect.stringContaining('21'),
+      });
+      expect(handleUpload).not.toHaveBeenCalled();
+    }
+  );
+
+  test('a stray field name is not the file cap and still reaches the service', async () => {
     (getUploadHandler as jest.Mock).mockImplementation(
       () =>
         (
-          req: express.Request,
+          _req: express.Request,
           _res: express.Response,
           cb: (err?: unknown) => void
         ) => {
-          req.files = [{ path: '/gone/1' }, { path: '/gone/2' }] as never;
-          cb(multerError);
+          cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'avatar'));
         }
     );
+    const uploadService = new UploadService(
+      {} as IUploadRepository,
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const handleUpload = jest
+      .spyOn(uploadService, 'handleUpload')
+      .mockResolvedValue(undefined);
+    const controller = new UploadController(
+      uploadService,
+      new NotionService({} as INotionRepository)
+    );
 
-    const uploadService = {
-      handleUpload: jest.fn(),
-    } as unknown as UploadService;
-    const notionService = new NotionService({} as INotionRepository);
-    const controller = new UploadController(uploadService, notionService);
+    controller.file(
+      {} as express.Request,
+      {
+        locals: {},
+      } as unknown as express.Response
+    );
+    await new Promise((r) => setImmediate(r));
 
-    const jsonSpy = jest.fn();
-    let capturedStatus = 0;
-    await new Promise<void>((resolve) => {
-      const fakeRes = {
-        locals: { patreon: false, subscriber: false },
-        status: (code: number) => {
-          capturedStatus = code;
-          return {
-            json: (body: unknown) => {
-              jsonSpy(body);
-              resolve();
-            },
-          };
-        },
-      } as unknown as express.Response;
-      controller.file({} as express.Request, fakeRes);
-    });
-
-    expect(capturedStatus).toBe(400);
-    expect(jsonSpy).toHaveBeenCalledWith({
-      code: 'too_many_files',
-      message: expect.stringContaining('21'),
-    });
-    expect(uploadService.handleUpload).not.toHaveBeenCalled();
+    expect(handleUpload).toHaveBeenCalledTimes(1);
   });
 
   test('returns 413 with code=too_large when multer LIMIT_FILE_SIZE fires', async () => {

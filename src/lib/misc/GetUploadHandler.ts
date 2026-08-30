@@ -55,6 +55,8 @@ export function withNormalizedFilenames(
   };
 }
 
+export const UPLOAD_FIELD = 'pakker';
+
 export const getUploadHandler = (res: express.Response): UploadHandler => {
   const paying = isPaying(res.locals);
   const maxUploadCount = getMaxUploadCount(paying);
@@ -62,7 +64,7 @@ export const getUploadHandler = (res: express.Response): UploadHandler => {
   const handler = multer({
     limits: getUploadLimits(paying),
     dest: process.env.UPLOAD_BASE,
-  }).array('pakker', maxUploadCount);
+  }).array(UPLOAD_FIELD, maxUploadCount);
 
   return withNormalizedFilenames(handler);
 };
