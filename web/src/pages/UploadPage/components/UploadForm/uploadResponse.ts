@@ -46,6 +46,15 @@ export interface ConversionSuccessHandlers {
   setBatchResult: (value: BatchResult) => void;
   setZoneState: (value: ZoneState) => void;
   setStructureRescuedRule: (value: StructureRescueRule | null) => void;
+  /**
+   * The body read failed but the server kept a copy: point the download at
+   * it and let the form record what happened.
+   */
+  recoverDownload: (recoveryUrl: string, errorMessage: string) => void;
+}
+
+export function recoveryDownloadUrl(downloadKey: string): string {
+  return `/api/download/u/${encodeURIComponent(downloadKey)}`;
 }
 
 export function parseStructureRescuedValue(
@@ -110,8 +119,20 @@ export async function applyConversionSuccess(
   handlers.setStructureRescuedRule(
     parseStructureRescuedValue(response.headers.get('X-Structure-Rescued'))
   );
-  const blob = await response.blob();
-  handlers.setDownloadLink(globalThis.URL.createObjectURL(blob));
+  // Read before the body: once blob() throws the headers are all we have.
+  const downloadKey = response.headers.get('X-Download-Key');
+  try {
+    const blob = await response.blob();
+    handlers.setDownloadLink(globalThis.URL.createObjectURL(blob));
+  } catch (error) {
+    if (downloadKey == null) {
+      throw error;
+    }
+    handlers.recoverDownload(
+      recoveryDownloadUrl(downloadKey),
+      error instanceof Error ? error.message : String(error)
+    );
+  }
   handlers.setProgressWidth(100);
   if (count === 0) {
     handlers.setZoneState('emptyDeck');

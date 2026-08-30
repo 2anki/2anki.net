@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-29-recover-dropped-download",
+  "date": "2026-08-29",
+  "type": "fix",
+  "title": "A signed-in upload keeps its deck when the download drops — one button gets it back, and it's under My decks"
+}

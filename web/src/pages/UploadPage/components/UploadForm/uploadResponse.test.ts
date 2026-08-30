@@ -25,6 +25,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setBatchResult: vi.fn(),
     setZoneState: vi.fn(),
     setStructureRescuedRule: vi.fn(),
+    recoverDownload: vi.fn(),
   };
 }
 
@@ -302,5 +303,57 @@ describe('applyConversionSuccess', () => {
     await applyConversionSuccess(response, handlers);
 
     expect(handlers.setExpiredNotionImageCount).toHaveBeenCalledWith(3);
+  });
+
+  it('falls back to the server copy when the body read fails and a download key came with the headers', async () => {
+    const handlers = buildHandlers();
+    const response = {
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'X-Card-Count': '5',
+        'X-Download-Key': 'owner-1-123-req.apkg',
+      }),
+      blob: () => Promise.reject(new TypeError('Load failed')),
+    } as unknown as Response;
+
+    await applyConversionSuccess(response, handlers);
+
+    expect(handlers.recoverDownload).toHaveBeenCalledWith(
+      '/api/download/u/owner-1-123-req.apkg',
+      'Load failed'
+    );
+    expect(handlers.setDownloadLink).not.toHaveBeenCalled();
+    expect(handlers.setZoneState).toHaveBeenCalledWith('success');
+  });
+
+  it('rethrows a failed body read when the response carried no download key', async () => {
+    const handlers = buildHandlers();
+    const response = {
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'X-Card-Count': '5',
+      }),
+      blob: () => Promise.reject(new TypeError('Load failed')),
+    } as unknown as Response;
+
+    await expect(applyConversionSuccess(response, handlers)).rejects.toThrow(
+      'Load failed'
+    );
+    expect(handlers.recoverDownload).not.toHaveBeenCalled();
+    expect(handlers.setZoneState).not.toHaveBeenCalledWith('success');
+  });
+
+  it('keeps the streamed body when it reads fine, key or no key', async () => {
+    const handlers = buildHandlers();
+    const response = singleDeckResponse({
+      'X-Download-Key': 'owner-1-123-req.apkg',
+    });
+
+    await applyConversionSuccess(response, handlers);
+
+    expect(handlers.setDownloadLink).toHaveBeenCalledWith(
+      expect.stringMatching(/^blob:/)
+    );
+    expect(handlers.recoverDownload).not.toHaveBeenCalled();
   });
 });

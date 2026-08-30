@@ -124,6 +124,8 @@
       "fetching": "Buscando {{filename}} em {{source}}",
       "deckReady": "Seu baralho está pronto",
       "savedToDownloads": "{{deckName}} foi salvo nos seus downloads",
+      "downloadRecoveredNote": "Seu download não terminou — o baralho está salvo nos seus downloads.",
+      "downloadDeck": "Baixar baralho",
       "makeAnother": "Criar outro baralho",
       "fallbackDownload": "Não recebeu o arquivo? Baixe aqui.",
       "feedbackLabel": "Como foi sua experiência?",

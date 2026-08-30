@@ -126,6 +126,8 @@
       "fetching": "Pobieranie {{filename}} z {{source}}",
       "deckReady": "Twoja talia jest gotowa",
       "savedToDownloads": "{{deckName}} zapisano w pobranych",
+      "downloadRecoveredNote": "Pobieranie nie zostało ukończone — talia jest zapisana w Twoich pobranych plikach.",
+      "downloadDeck": "Pobierz talię",
       "makeAnother": "Utwórz kolejną talię",
       "fallbackDownload": "Nie dostałeś pliku? Pobierz go tutaj.",
       "feedbackLabel": "Jak Ci poszło?",

@@ -124,6 +124,8 @@
       "fetching": "Récupération de {{filename}} depuis {{source}}",
       "deckReady": "Ton paquet est prêt",
       "savedToDownloads": "{{deckName}} a été enregistré dans tes téléchargements",
+      "downloadRecoveredNote": "Ton téléchargement ne s'est pas terminé — le paquet est enregistré dans tes téléchargements.",
+      "downloadDeck": "Télécharger le paquet",
       "makeAnother": "Créer un autre paquet",
       "fallbackDownload": "Tu n'as pas reçu le fichier ? Télécharge-le ici.",
       "feedbackLabel": "Comment s'est passée ton expérience ?",

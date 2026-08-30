@@ -126,6 +126,8 @@
       "fetching": "Загружаем {{filename}} из {{source}}",
       "deckReady": "Твоя колода готова",
       "savedToDownloads": "{{deckName}} сохранена в твои загрузки",
+      "downloadRecoveredNote": "Загрузка не завершилась — колода сохранена в твоих загрузках.",
+      "downloadDeck": "Скачать колоду",
       "makeAnother": "Создать ещё колоду",
       "fallbackDownload": "Файл не пришёл? Скачай его здесь.",
       "feedbackLabel": "Как впечатления?",

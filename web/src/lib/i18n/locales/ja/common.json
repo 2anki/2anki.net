@@ -123,6 +123,8 @@
       "fetching": "{{source}} から {{filename}} を取得しています",
       "deckReady": "デッキの準備ができました",
       "savedToDownloads": "{{deckName}} をダウンロードに保存しました",
+      "downloadRecoveredNote": "ダウンロードが完了しませんでしたが、デッキはダウンロード一覧に保存されています。",
+      "downloadDeck": "デッキをダウンロード",
       "makeAnother": "別のデッキを作る",
       "fallbackDownload": "ファイルが届きませんでしたか？こちらからダウンロードできます。",
       "feedbackLabel": "使い心地はいかがでしたか？",

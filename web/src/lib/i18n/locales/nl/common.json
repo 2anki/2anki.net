@@ -124,6 +124,8 @@
       "fetching": "{{filename}} ophalen van {{source}}",
       "deckReady": "Je deck is klaar",
       "savedToDownloads": "{{deckName}} is opgeslagen in je downloads",
+      "downloadRecoveredNote": "Je download is niet afgerond — het deck staat opgeslagen bij je downloads.",
+      "downloadDeck": "Deck downloaden",
       "makeAnother": "Nog een deck maken",
       "fallbackDownload": "Bestand niet ontvangen? Download het hier.",
       "feedbackLabel": "Hoe was je ervaring?",

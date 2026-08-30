@@ -1,7 +1,7 @@
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { IUploadRepository } from '../data_layer/UploadRespository';
 import JobRepository from '../data_layer/JobRepository';
@@ -73,7 +73,7 @@ import {
 import CustomExporter from '../lib/parser/exporters/CustomExporter';
 import Deck from '../lib/parser/Deck';
 import { isHTMLFile, isMarkdownFile } from '../lib/storage/checks';
-import { FileSizeInMegaBytes } from '../lib/misc/file';
+import { BytesToMegaBytes, FileSizeInMegaBytes } from '../lib/misc/file';
 import {
   isWorkerTerminationError,
   WORKER_INTERRUPTED_REASON,
@@ -702,6 +702,44 @@ class UploadService {
     );
   }
 
+  /**
+   * A signed-in sync upload used to exist only as the response body: when the
+   * client's body read failed the built deck was gone and the only recourse
+   * was a full re-upload (#4271). Persist it the way the async path does so
+   * the response can carry a key the client falls back to. A failed persist
+   * never fails a conversion that already succeeded — the stream still goes
+   * out, just without a recovery key.
+   */
+  private async persistSyncDeck(
+    owner: string,
+    filename: string,
+    apkg: Buffer,
+    source: UploadSource | null,
+    requestId: string | undefined
+  ): Promise<string | null> {
+    try {
+      const storage = new StorageHandler();
+      const key = storage.uniqify(
+        requestId ?? randomUUID(),
+        owner,
+        200,
+        'apkg'
+      );
+      await storage.uploadFile(key, apkg);
+      await this.uploadRepository.update(
+        Number(owner),
+        filename,
+        key,
+        BytesToMegaBytes(apkg.byteLength),
+        source
+      );
+      return key;
+    } catch (error) {
+      console.error('[UploadService] could not persist the sync deck', error);
+      return null;
+    }
+  }
+
   async deleteUpload(owner: number, key: string) {
     const upload = await this.uploadRepository.findByKey(owner, key);
     const s = new StorageHandler();
@@ -1238,6 +1276,16 @@ class UploadService {
         throw new Error(`Could not produce APKG for ${name}`);
       }
       const plen = Buffer.byteLength(apkg);
+      const downloadKey =
+        owner == null
+          ? null
+          : await this.persistSyncDeck(
+              owner,
+              first.name,
+              apkg,
+              this.resolvePersistedSource(req),
+              res.locals.requestId
+            );
       const totalMcqCount = packages.reduce(
         (sum, p) => sum + (p.mcqCount ?? 0),
         0
@@ -1287,6 +1335,10 @@ class UploadService {
       if (warningText) {
         res.set('X-Warning', warningText);
         exposedHeaders.push('X-Warning');
+      }
+      if (downloadKey != null) {
+        res.set('X-Download-Key', downloadKey);
+        exposedHeaders.push('X-Download-Key');
       }
       res.set('Access-Control-Expose-Headers', exposedHeaders.join(', '));
       first.name = toText(first.name);
