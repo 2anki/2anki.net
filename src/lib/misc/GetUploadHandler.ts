@@ -30,9 +30,11 @@ export function withNormalizedFilenames(
       }
       // A dead request has nothing to convert, and multer 2.x has already
       // removed its temp files — snapshotting would only ENOENT-spam the log
-      // once per file (#4173).
-      const requestDead =
-        req.aborted || req.destroyed || res.writableEnded || res.destroyed;
+      // once per file (#4173). `req.destroyed` is deliberately not consulted:
+      // Node auto-destroys IncomingMessage once its body is read, so it is
+      // true for every healthy request by the time multer calls back and
+      // would disable the snapshot everywhere.
+      const requestDead = req.aborted || res.writableEnded || res.destroyed;
       const files = req.files as UploadedFile[] | undefined;
       if (files) {
         for (const file of files) {

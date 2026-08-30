@@ -1,0 +1,6 @@
+{
+  "id": "2026-08-30-upload-file-cap-message",
+  "date": "2026-08-30",
+  "type": "fix",
+  "title": "Dropping in more files than your plan takes at once now says the limit, instead of \"your upload didn't finish\""
+}

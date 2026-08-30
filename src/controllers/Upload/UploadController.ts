@@ -11,6 +11,7 @@ import { hashIp, resolveClientIp } from '../../lib/rateLimit/ipHelpers';
 import NotionService from '../../services/NotionService';
 import UploadService from '../../services/UploadService';
 import { getUploadHandler } from '../../lib/misc/GetUploadHandler';
+import { getMaxUploadCount } from '../../lib/misc/getMaxUploadCount';
 import { isLimitError } from '../../lib/misc/isLimitError';
 import { handleUploadLimitError } from './helpers/handleUploadLimitError';
 import { handleDropbox } from './helpers/handleDropbox';
@@ -105,6 +106,16 @@ class UploadController {
             code: 'too_large',
             message:
               'Upload failed — the file is over your plan’s size limit. Try splitting it.',
+          });
+        }
+        if (
+          error instanceof multer.MulterError &&
+          error.code === 'LIMIT_FILE_COUNT'
+        ) {
+          const cap = getMaxUploadCount(isPaying(res.locals));
+          return res.status(400).json({
+            code: 'too_many_files',
+            message: `Upload failed — that’s more than ${cap} files at once. Send them in smaller batches.`,
           });
         }
         if (isLimitError(error)) {

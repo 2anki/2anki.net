@@ -1,6 +1,7 @@
 export type UploadErrorCode =
   | 'unsupported_format'
   | 'too_large'
+  | 'too_many_files'
   | 'invalid_markup'
   | 'malformed_notion'
   | 'corrupted_apkg'

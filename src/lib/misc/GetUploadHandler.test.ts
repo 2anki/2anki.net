@@ -77,6 +77,25 @@ describe('withNormalizedFilenames', () => {
     expect(file.buffer).toEqual(Buffer.from('disk-bytes'));
   });
 
+  it('still snapshots after Node auto-destroys the fully read request', () => {
+    // Node 16+ marks IncomingMessage destroyed once its body has been read, so
+    // by the time multer calls back every healthy request reads as destroyed.
+    const file = makeDiskFile(tmpPath);
+    const req = {
+      files: [file],
+      destroyed: true,
+      aborted: false,
+    } as unknown as express.Request;
+    const res = {} as express.Response;
+    const wrapped = withNormalizedFilenames((_req, _res, next) => next());
+
+    const callback = jest.fn();
+    wrapped(req, res, callback);
+
+    expect(callback).toHaveBeenCalledWith();
+    expect(file.buffer).toEqual(Buffer.from('disk-bytes'));
+  });
+
   it('skips the snapshot entirely when the request already aborted', () => {
     fs.rmSync(tmpPath); // multer 2.x removes temp files when the client aborts
     const file = makeDiskFile(tmpPath);
