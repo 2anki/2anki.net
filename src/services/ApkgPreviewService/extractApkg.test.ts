@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import Database from 'better-sqlite3';
 
-import { extractApkg } from './extractApkg';
+import { extractApkg, InvalidApkgError } from './extractApkg';
 import { parseCollection } from './parseCollection';
 
 function buildLegacyCollectionBuffer(): Buffer {
@@ -111,6 +111,31 @@ describe('extractApkg + parseCollection composition', () => {
     expect(archive.collectionName).toBe('collection.anki21b');
     expect(collection.notes.size).toBe(1);
     expect(collection.notes.get(10)?.fields).toEqual(['hello', 'world']);
+  });
+});
+
+describe('extractApkg on files that are not Anki packages', () => {
+  it('rejects a file that is not a zip with InvalidApkgError', async () => {
+    await expect(
+      extractApkg(Buffer.from('%PDF-1.4 definitely not a zip'))
+    ).rejects.toBeInstanceOf(InvalidApkgError);
+  });
+
+  it('keeps the zip reader message on the error for the server log', async () => {
+    await expect(
+      extractApkg(Buffer.from('%PDF-1.4 definitely not a zip'))
+    ).rejects.toThrow(/end of central directory/i);
+  });
+
+  it('rejects a zip with no collection file with InvalidApkgError', async () => {
+    const zip = new JSZip();
+    zip.file('media', '{}');
+    zip.file('notes.txt', 'front;back');
+    const notAnApkg = await zip.generateAsync({ type: 'nodebuffer' });
+
+    await expect(extractApkg(notAnApkg)).rejects.toBeInstanceOf(
+      InvalidApkgError
+    );
   });
 });
 
