@@ -15,6 +15,7 @@ module.exports = {
     '^metascraper$': '<rootDir>/src/test/mocks/metascraper.ts',
     '^metascraper-(description|image|logo-favicon|title|url)$':
       '<rootDir>/src/test/mocks/metascraperPlugin.ts',
+    '^standardwebhooks$': '<rootDir>/src/test/mocks/standardwebhooks.ts',
   },
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
