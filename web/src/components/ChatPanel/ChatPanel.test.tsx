@@ -235,11 +235,9 @@ describe('ChatPanel — CardPreview integration', () => {
   beforeEach(() => {
     mockPost.mockReset();
     mockGet.mockResolvedValue({ used: 0, limit: 20 });
-    Object.assign(global, {
-      URL: {
-        createObjectURL: vi.fn(() => 'blob:test'),
-        revokeObjectURL: vi.fn(),
-      },
+    Object.assign(URL, {
+      createObjectURL: vi.fn(() => 'blob:test'),
+      revokeObjectURL: vi.fn(),
     });
   });
 
@@ -288,11 +286,9 @@ describe('ChatPanel — per-turn deck download and naming', () => {
     mockPost.mockReset();
     mockGet.mockResolvedValue({ used: 0, limit: 20 });
     mockPatch.mockResolvedValue({ ok: true, status: 204 });
-    Object.assign(global, {
-      URL: {
-        createObjectURL: vi.fn(() => 'blob:test'),
-        revokeObjectURL: vi.fn(),
-      },
+    Object.assign(URL, {
+      createObjectURL: vi.fn(() => 'blob:test'),
+      revokeObjectURL: vi.fn(),
     });
   });
 
