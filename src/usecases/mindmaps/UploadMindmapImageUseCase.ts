@@ -6,7 +6,7 @@ import StorageHandler from '../../lib/storage/StorageHandler';
 import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { detectFileMime } from '../../lib/detectFileMime';
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MINDMAP_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set([
   'image/png',
   'image/jpeg',
@@ -52,7 +52,7 @@ export class UploadMindmapImageUseCase {
   async execute(input: UploadInput): Promise<MindmapImageResult> {
     const { userId, mapId, file } = input;
 
-    if (file.size > MAX_IMAGE_BYTES) {
+    if (file.size > MINDMAP_IMAGE_MAX_BYTES) {
       throw new MindmapImageTooLargeError();
     }
 

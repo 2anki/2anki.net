@@ -11,6 +11,7 @@ import { GetPassUnlockMonitorUseCase } from '../usecases/ops/GetPassUnlockMonito
 import { GetCancelFunnelUseCase } from '../usecases/ops/GetCancelFunnelUseCase';
 import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
 import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
+import { ChangeUserEmailUseCase } from '../usecases/ops/ChangeUserEmailUseCase';
 
 const buildRes = () => {
   const json = jest.fn();
@@ -813,6 +814,140 @@ describe('OpsController.setBlockIdIdentity', () => {
     const res = buildRes();
 
     await controller.setBlockIdIdentity(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('OpsController.changeUserEmail', () => {
+  const buildController = (useCase?: ChangeUserEmailUseCase) =>
+    new OpsController(
+      {} as unknown as GetOpsMetricsUseCase,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      useCase
+    );
+
+  it('returns 200 with the account id on success', async () => {
+    const execute = jest.fn().mockResolvedValue({ success: true, userId: 42 });
+    const controller = buildController({
+      execute,
+    } as unknown as ChangeUserEmailUseCase);
+    const req = {
+      body: { currentEmail: ' old@example.com ', newEmail: 'new@example.com' },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.changeUserEmail(req, res);
+
+    expect(execute).toHaveBeenCalledWith({
+      currentEmail: 'old@example.com',
+      newEmail: 'new@example.com',
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ userId: 42 });
+  });
+
+  it('returns 404 when no account matches the current email', async () => {
+    const execute = jest
+      .fn()
+      .mockResolvedValue({ success: false, reason: 'user_not_found' });
+    const controller = buildController({
+      execute,
+    } as unknown as ChangeUserEmailUseCase);
+    const req = {
+      body: { currentEmail: 'ghost@example.com', newEmail: 'new@example.com' },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.changeUserEmail(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns 409 when the new email already belongs to another account', async () => {
+    const execute = jest
+      .fn()
+      .mockResolvedValue({ success: false, reason: 'new_email_taken' });
+    const controller = buildController({
+      execute,
+    } as unknown as ChangeUserEmailUseCase);
+    const req = {
+      body: { currentEmail: 'old@example.com', newEmail: 'taken@example.com' },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.changeUserEmail(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+  });
+
+  it('returns 409 when the new email matches the current one', async () => {
+    const execute = jest
+      .fn()
+      .mockResolvedValue({ success: false, reason: 'same_email' });
+    const controller = buildController({
+      execute,
+    } as unknown as ChangeUserEmailUseCase);
+    const req = {
+      body: { currentEmail: 'same@example.com', newEmail: 'same@example.com' },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.changeUserEmail(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+  });
+
+  it.each([
+    [{ currentEmail: 'not-an-email', newEmail: 'new@example.com' }],
+    [{ currentEmail: 'old@example.com', newEmail: 'not-an-email' }],
+    [{ newEmail: 'new@example.com' }],
+  ])('returns 400 without calling the use case for body %o', async (body) => {
+    const execute = jest.fn();
+    const controller = buildController({
+      execute,
+    } as unknown as ChangeUserEmailUseCase);
+    const req = { body } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.changeUserEmail(req, res);
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('returns 500 when the use case is not configured', async () => {
+    const controller = buildController(undefined);
+    const req = {
+      body: { currentEmail: 'old@example.com', newEmail: 'new@example.com' },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.changeUserEmail(req, res);
 
     expect(res.status).toHaveBeenCalledWith(500);
   });
