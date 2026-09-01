@@ -5,6 +5,7 @@ import styles from './OpsPage.module.css';
 import { syncStripeSubscriptions } from './syncStripeSubscriptions';
 import { grantUnclaimedPass } from './grantUnclaimedPass';
 import { setBlockIdIdentity } from './setBlockIdIdentity';
+import { changeUserEmail } from './changeUserEmail';
 import { setChatAttachmentsLifecycle } from './setChatAttachmentsLifecycle';
 import { sendPassWinback } from './sendPassWinback';
 import {
@@ -75,6 +76,10 @@ export default function CommandsTab() {
   const [blockIdEmail, setBlockIdEmail] = useState('');
   const [blockIdStatus, setBlockIdStatus] = useState<Status>('idle');
   const [blockIdMessage, setBlockIdMessage] = useState('');
+  const [emailChangeCurrent, setEmailChangeCurrent] = useState('');
+  const [emailChangeNew, setEmailChangeNew] = useState('');
+  const [emailChangeStatus, setEmailChangeStatus] = useState<Status>('idle');
+  const [emailChangeMessage, setEmailChangeMessage] = useState('');
 
   const runWinback = async (dryRun: boolean) => {
     const campaign = winbackCampaign.trim();
@@ -151,6 +156,35 @@ export default function CommandsTab() {
     } catch (error) {
       setPassStatus('error');
       setPassMessage(error instanceof Error ? error.message : 'Unknown error');
+    }
+  };
+
+  const runChangeUserEmail = async () => {
+    const current = emailChangeCurrent.trim();
+    const next = emailChangeNew.trim();
+    if (!current.includes('@')) {
+      setEmailChangeStatus('error');
+      setEmailChangeMessage('Enter the current account email first.');
+      return;
+    }
+    if (!next.includes('@')) {
+      setEmailChangeStatus('error');
+      setEmailChangeMessage('Enter the new email first.');
+      return;
+    }
+    setEmailChangeStatus('loading');
+    setEmailChangeMessage('');
+    try {
+      const result = await changeUserEmail(current, next);
+      setEmailChangeStatus('success');
+      setEmailChangeMessage(
+        `Account ${result.userId} now signs in with ${next}. Their subscription stays linked; no email was sent.`
+      );
+    } catch (error) {
+      setEmailChangeStatus('error');
+      setEmailChangeMessage(
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   };
 
@@ -349,6 +383,53 @@ export default function CommandsTab() {
       {blockIdStatus === 'error' && blockIdMessage && (
         <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
           {blockIdMessage}
+        </div>
+      )}
+
+      <section className={`${sharedStyles.surface} ${styles.card}`}>
+        <h2 className={styles.cardTitle}>Change account email</h2>
+        <p className={styles.panelSubtitle}>
+          Moves a user&apos;s login email to a new address (matched
+          case-insensitively) and re-links their subscription in one step. For
+          lockout cases where the old inbox is lost. Does not email either
+          address or sign the user out — the self-serve flow handles those.
+        </p>
+        <div className={styles.controls}>
+          <input
+            type="email"
+            aria-label="Current account email"
+            placeholder="current@example.com"
+            className={styles.textInput}
+            value={emailChangeCurrent}
+            onChange={(e) => setEmailChangeCurrent(e.target.value)}
+          />
+          <input
+            type="email"
+            aria-label="New account email"
+            placeholder="new@example.com"
+            className={styles.textInput}
+            value={emailChangeNew}
+            onChange={(e) => setEmailChangeNew(e.target.value)}
+          />
+          <button
+            type="button"
+            className={sharedStyles.btnSmall}
+            onClick={() => runChangeUserEmail()}
+            disabled={emailChangeStatus === 'loading'}
+          >
+            {emailChangeStatus === 'loading' ? 'Working…' : 'Change email'}
+          </button>
+        </div>
+      </section>
+
+      {emailChangeStatus === 'success' && emailChangeMessage && (
+        <div className={`${sharedStyles.alertSuccess} ${styles.banner}`}>
+          {emailChangeMessage}
+        </div>
+      )}
+      {emailChangeStatus === 'error' && emailChangeMessage && (
+        <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
+          {emailChangeMessage}
         </div>
       )}
 

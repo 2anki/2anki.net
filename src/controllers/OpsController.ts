@@ -29,6 +29,7 @@ import { GetAiUsageMetricsUseCase } from '../usecases/ops/GetAiUsageMetricsUseCa
 import { SetChatAttachmentsLifecycleUseCase } from '../usecases/ops/SetChatAttachmentsLifecycleUseCase';
 import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
 import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
+import { ChangeUserEmailUseCase } from '../usecases/ops/ChangeUserEmailUseCase';
 
 class OpsController {
   constructor(
@@ -57,8 +58,57 @@ class OpsController {
     private readonly getAiUsageMetricsUseCase?: GetAiUsageMetricsUseCase,
     private readonly setChatAttachmentsLifecycleUseCase?: SetChatAttachmentsLifecycleUseCase,
     private readonly grantUnclaimedPassUseCase?: GrantUnclaimedPassUseCase,
-    private readonly setBlockIdIdentityUseCase?: SetBlockIdIdentityUseCase
+    private readonly setBlockIdIdentityUseCase?: SetBlockIdIdentityUseCase,
+    private readonly changeUserEmailUseCase?: ChangeUserEmailUseCase
   ) {}
+
+  async changeUserEmail(req: express.Request, res: express.Response) {
+    if (this.changeUserEmailUseCase == null) {
+      res.status(500).json({ message: 'Email change not configured' });
+      return;
+    }
+    const { currentEmail, newEmail } = req.body as {
+      currentEmail?: unknown;
+      newEmail?: unknown;
+    };
+    const trimmedCurrent =
+      typeof currentEmail === 'string' ? currentEmail.trim() : '';
+    const trimmedNew = typeof newEmail === 'string' ? newEmail.trim() : '';
+    if (!trimmedCurrent.includes('@')) {
+      res.status(400).json({ message: 'A valid current email is required.' });
+      return;
+    }
+    if (!trimmedNew.includes('@')) {
+      res.status(400).json({ message: 'A valid new email is required.' });
+      return;
+    }
+    try {
+      const outcome = await this.changeUserEmailUseCase.execute({
+        currentEmail: trimmedCurrent,
+        newEmail: trimmedNew,
+      });
+      if (outcome.success) {
+        res.status(200).json({ userId: outcome.userId });
+        return;
+      }
+      if (outcome.reason === 'user_not_found') {
+        res.status(404).json({ message: 'No account found for that email.' });
+        return;
+      }
+      if (outcome.reason === 'new_email_taken') {
+        res
+          .status(409)
+          .json({ message: 'Another account already uses that email.' });
+        return;
+      }
+      res
+        .status(409)
+        .json({ message: 'The new email matches the current one.' });
+    } catch (error) {
+      console.error('[ops] changeUserEmail failed', error);
+      res.status(500).json({ message: 'Failed to change the account email.' });
+    }
+  }
 
   async setBlockIdIdentity(req: express.Request, res: express.Response) {
     if (this.setBlockIdIdentityUseCase == null) {
