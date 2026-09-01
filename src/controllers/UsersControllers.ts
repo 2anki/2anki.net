@@ -16,6 +16,7 @@ import AuthenticationService, {
 } from '../services/AuthenticationService';
 import UsersService from '../services/UsersService';
 import { getRedirect } from './helpers/getRedirect';
+import { sanitizeRelativeRedirect } from './helpers/sanitizeRelativeRedirect';
 import { parseSignupOrigin } from './helpers/parseSignupOrigin';
 import {
   parseFirstTouch,
@@ -1376,6 +1377,7 @@ class UsersController {
   ) {
     const { email, purpose: rawPurpose } = req.body;
     const purpose = rawPurpose ?? 'login';
+    const redirect = sanitizeRelativeRedirect(req.body?.redirect);
 
     if (
       email == null ||
@@ -1392,7 +1394,8 @@ class UsersController {
       await this.userService.requestMagicLink(
         email.trim(),
         purpose,
-        readFirstTouchCookie(req).signupOrigin
+        readFirstTouchCookie(req).signupOrigin,
+        redirect
       );
     } catch (error) {
       if (error instanceof MagicLinkRateLimitError) {
@@ -1466,6 +1469,10 @@ class UsersController {
         await this.userService.updateLastLoginAt(user.id.toString());
         await this.userService.markEmailVerified(user.id.toString());
         res.cookie('token', jwtToken, sessionCookieOptions());
+        const redirect = sanitizeRelativeRedirect(req.query?.redirect);
+        if (redirect != null) {
+          return res.status(200).json({ token: jwtToken, redirect });
+        }
         return res.status(200).json({ token: jwtToken });
       }
 

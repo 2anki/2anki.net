@@ -28,6 +28,7 @@ function renderMagicLinkPage(queryString: string) {
 describe('MagicLinkPage', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('shows error when no token is present', () => {
@@ -129,6 +130,60 @@ describe('MagicLinkPage', () => {
     expect(
       screen.getByText('Something went wrong. Try again.')
     ).toBeInTheDocument();
+  });
+
+  it('forwards the redirect to the verify endpoint and navigates to the returned redirect', async () => {
+    vi.stubGlobal('location', { href: '' });
+    mockValidateMagicToken.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ token: 'jwt-tok', redirect: '/upload' }),
+    });
+    renderMagicLinkPage('?token=abc123&redirect=/upload');
+
+    await waitFor(() => {
+      expect(globalThis.location.href).toBe('/upload');
+    });
+    expect(mockValidateMagicToken).toHaveBeenCalledWith('abc123', '/upload');
+  });
+
+  it('falls back to the default search path when no redirect is returned', async () => {
+    vi.stubGlobal('location', { href: '' });
+    mockValidateMagicToken.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ token: 'jwt-tok' }),
+    });
+    renderMagicLinkPage('?token=abc123');
+
+    await waitFor(() => {
+      expect(globalThis.location.href).toBe('/search?q=anki');
+    });
+  });
+
+  it('ignores an unsafe redirect echoed by the server and uses the default', async () => {
+    vi.stubGlobal('location', { href: '' });
+    mockValidateMagicToken.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({ token: 'jwt-tok', redirect: 'https://evil.example' }),
+    });
+    renderMagicLinkPage('?token=abc123&redirect=https://evil.example');
+
+    await waitFor(() => {
+      expect(globalThis.location.href).toBe('/search?q=anki');
+    });
+  });
+
+  it('does not forward an unsafe redirect from the URL to the verify endpoint', async () => {
+    vi.stubGlobal('location', { href: '' });
+    mockValidateMagicToken.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ token: 'jwt-tok' }),
+    });
+    renderMagicLinkPage('?token=abc123&redirect=//evil.example');
+
+    await waitFor(() => {
+      expect(mockValidateMagicToken).toHaveBeenCalledWith('abc123', undefined);
+    });
   });
 
   it('strips the token from the address bar after reading it', async () => {

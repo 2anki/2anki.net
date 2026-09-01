@@ -520,15 +520,30 @@ export class Backend {
 
   async requestMagicLink(
     email: string,
-    purpose: 'login' | 'password_reset' = 'login'
+    purpose: 'login' | 'password_reset' = 'login',
+    redirect?: string
   ): Promise<Response> {
-    return post(`${this.baseURL}users/magic-link`, { email, purpose });
+    const body: Record<string, string> = { email, purpose };
+    if (redirect != null && redirect.length > 0) {
+      body.redirect = redirect;
+    }
+    return post(`${this.baseURL}users/magic-link`, body);
   }
 
-  async validateMagicToken(token: string): Promise<Response> {
-    const response = await fetch(`${this.baseURL}users/magic/${token}`, {
-      credentials: 'include',
-    });
+  async validateMagicToken(
+    token: string,
+    redirect?: string
+  ): Promise<Response> {
+    const query =
+      redirect != null && redirect.length > 0
+        ? `?redirect=${encodeURIComponent(redirect)}`
+        : '';
+    const response = await fetch(
+      `${this.baseURL}users/magic/${token}${query}`,
+      {
+        credentials: 'include',
+      }
+    );
     return response;
   }
 

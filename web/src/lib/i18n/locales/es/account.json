@@ -65,7 +65,9 @@
     "keepSubscription": "Mantener suscripción",
     "commentAria": "Comentario opcional",
     "commentPlaceholder": "¿Quieres añadir algo? (opcional)",
-    "commentPlaceholderTechnical": "¿Qué falló? (opcional)"
+    "commentPlaceholderTechnical": "¿Qué falló? (opcional)",
+    "stillWantToCancel": "¿Aún quieres cancelar?",
+    "pauseOrCancel": "Pausar o cancelar"
   },
   "pauseCard": {
     "pauseInstead": "Ponla en pausa — sin cargos mientras no estés",
@@ -77,7 +79,8 @@
     "resumesLine": "Se reanuda el {{date}} con {{plan}}. Cancela cuando quieras antes de esa fecha.",
     "yourPlan": "tu plan",
     "pausing": "Pausando…",
-    "pauseSubscription": "Pausar suscripción"
+    "pauseSubscription": "Pausar suscripción",
+    "legacyKeeps": "Al pausar conservas tu tarifa heredada de {{plan}}. Al cancelar la pierdes."
   },
   "accountDeletion": {
     "deleteAccount": "Eliminar cuenta",
