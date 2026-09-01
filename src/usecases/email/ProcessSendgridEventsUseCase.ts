@@ -20,16 +20,31 @@ export interface SendgridEvent {
   event?: unknown;
   sg_event_id?: unknown;
   timestamp?: unknown;
+  category?: unknown;
 }
 
 export interface ProcessSendgridEventsResult {
   recorded: number;
   skipped: number;
   duplicates: number;
+  categories: Record<string, number>;
 }
+
+const UNCATEGORIZED = 'uncategorized';
 
 function isTrackedEvent(value: unknown): value is SuppressionEventType {
   return typeof value === 'string' && TRACKED_EVENT_TYPES.has(value);
+}
+
+function normalizeCategory(value: unknown): string | null {
+  if (typeof value === 'string' && value.length > 0) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    const first = value[0];
+    return typeof first === 'string' && first.length > 0 ? first : null;
+  }
+  return null;
 }
 
 function toEventDate(timestamp: unknown): Date {
@@ -47,6 +62,7 @@ export class ProcessSendgridEventsUseCase {
       recorded: 0,
       skipped: 0,
       duplicates: 0,
+      categories: {},
     };
 
     for (const event of events) {
@@ -70,6 +86,8 @@ export class ProcessSendgridEventsUseCase {
           eventAt: toEventDate(event.timestamp),
         });
         result.recorded += 1;
+        const category = normalizeCategory(event.category) ?? UNCATEGORIZED;
+        result.categories[category] = (result.categories[category] ?? 0) + 1;
       } catch (err) {
         if (err instanceof DuplicateSuppressionEventError) {
           result.duplicates += 1;

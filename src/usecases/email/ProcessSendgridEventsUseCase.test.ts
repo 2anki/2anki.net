@@ -18,7 +18,12 @@ describe('ProcessSendgridEventsUseCase', () => {
       },
     ]);
 
-    expect(result).toEqual({ recorded: 1, skipped: 0, duplicates: 0 });
+    expect(result).toEqual({
+      recorded: 1,
+      skipped: 0,
+      duplicates: 0,
+      categories: { uncategorized: 1 },
+    });
     expect(await repo.isSuppressed(emailHash(address))).toBe(true);
   });
 
@@ -95,7 +100,12 @@ describe('ProcessSendgridEventsUseCase', () => {
       },
     ]);
 
-    expect(result).toEqual({ recorded: 0, skipped: 2, duplicates: 0 });
+    expect(result).toEqual({
+      recorded: 0,
+      skipped: 2,
+      duplicates: 0,
+      categories: {},
+    });
     expect(await repo.isSuppressed(emailHash(address))).toBe(false);
   });
 
@@ -108,7 +118,12 @@ describe('ProcessSendgridEventsUseCase', () => {
       { email: address, event: 'bounce', timestamp: 2 },
     ]);
 
-    expect(result).toEqual({ recorded: 0, skipped: 2, duplicates: 0 });
+    expect(result).toEqual({
+      recorded: 0,
+      skipped: 2,
+      duplicates: 0,
+      categories: {},
+    });
   });
 
   it('counts a duplicate SendGrid event id without double-recording', async () => {
@@ -122,6 +137,104 @@ describe('ProcessSendgridEventsUseCase', () => {
       { email: address, event: 'bounce', sg_event_id: 'evt-1', timestamp: 1 },
     ]);
 
-    expect(result).toEqual({ recorded: 0, skipped: 0, duplicates: 1 });
+    expect(result).toEqual({
+      recorded: 0,
+      skipped: 0,
+      duplicates: 1,
+      categories: {},
+    });
+  });
+
+  it('attributes a recorded event to its category (array form)', async () => {
+    const repo = new InMemorySuppressionEventsRepository();
+    const useCase = new ProcessSendgridEventsUseCase(repo);
+
+    const result = await useCase.execute([
+      {
+        email: address,
+        event: 'delivered',
+        sg_event_id: 'evt-cat-array',
+        timestamp: 1,
+        category: ['magic-link'],
+      },
+    ]);
+
+    expect(result.categories).toEqual({ 'magic-link': 1 });
+  });
+
+  it('attributes a recorded event to its category (string form)', async () => {
+    const repo = new InMemorySuppressionEventsRepository();
+    const useCase = new ProcessSendgridEventsUseCase(repo);
+
+    const result = await useCase.execute([
+      {
+        email: address,
+        event: 'delivered',
+        sg_event_id: 'evt-cat-string',
+        timestamp: 1,
+        category: 'password-reset',
+      },
+    ]);
+
+    expect(result.categories).toEqual({ 'password-reset': 1 });
+  });
+
+  it('buckets a recorded event with no category as uncategorized', async () => {
+    const repo = new InMemorySuppressionEventsRepository();
+    const useCase = new ProcessSendgridEventsUseCase(repo);
+
+    const result = await useCase.execute([
+      {
+        email: address,
+        event: 'delivered',
+        sg_event_id: 'evt-no-cat',
+        timestamp: 1,
+      },
+      {
+        email: 'other@example.com',
+        event: 'delivered',
+        sg_event_id: 'evt-empty-cat',
+        timestamp: 2,
+        category: [],
+      },
+    ]);
+
+    expect(result.categories).toEqual({ uncategorized: 2 });
+  });
+
+  it('aggregates per-category counts across events for the log summary', async () => {
+    const repo = new InMemorySuppressionEventsRepository();
+    const useCase = new ProcessSendgridEventsUseCase(repo);
+
+    const result = await useCase.execute([
+      {
+        email: 'a@x.com',
+        event: 'delivered',
+        sg_event_id: 'e1',
+        timestamp: 1,
+        category: 'magic-link',
+      },
+      {
+        email: 'b@x.com',
+        event: 'bounce',
+        sg_event_id: 'e2',
+        timestamp: 2,
+        category: ['magic-link'],
+      },
+      {
+        email: 'c@x.com',
+        event: 'delivered',
+        sg_event_id: 'e3',
+        timestamp: 3,
+        category: 'password-reset',
+      },
+    ]);
+
+    expect(result.categories).toEqual({ 'magic-link': 2, 'password-reset': 1 });
+    const categoryTotal = Object.values(result.categories).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+    expect(categoryTotal).toBe(result.recorded);
   });
 });

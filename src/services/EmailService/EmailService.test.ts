@@ -7,9 +7,11 @@ jest.mock('@sendgrid/mail', () => ({
 
 import {
   getDefaultEmailService,
+  IEmailService,
   UnimplementedEmailService,
 } from './EmailService';
 import {
+  EMAIL_CATEGORIES,
   NOTION_RECONNECT_TEMPLATE,
   CONTACT_CONFIRMATION_TEMPLATE,
 } from './constants';
@@ -400,5 +402,190 @@ describe('EmailService.sendConversionLinkEmail delivery contract', () => {
 
     await returned;
     expect(send).not.toHaveBeenCalled();
+  });
+});
+
+describe('EMAIL_CATEGORIES slugs', () => {
+  it('defines a unique non-empty kebab-case slug for every category', () => {
+    const slugs = Object.values(EMAIL_CATEGORIES);
+    expect(slugs.length).toBeGreaterThan(0);
+    for (const slug of slugs) {
+      expect(slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+    }
+    expect(new Set(slugs).size).toBe(slugs.length);
+  });
+});
+
+describe('EmailService tags every outgoing send with a template category', () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.SENDGRID_API_KEY = 'test-key';
+    process.env.DOMAIN = 'https://2anki.net';
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  function lastCategories(): string[] | undefined {
+    const calls = send.mock.calls;
+    return (calls[calls.length - 1][0] as { categories?: string[] }).categories;
+  }
+
+  const cases: {
+    category: string;
+    run: (s: IEmailService) => Promise<void>;
+  }[] = [
+    {
+      category: EMAIL_CATEGORIES.passwordReset,
+      run: (s) => s.sendResetEmail('user@example.com', 'tok'),
+    },
+    {
+      category: EMAIL_CATEGORIES.deckReady,
+      run: async (s) => {
+        await s.sendConversionEmail(
+          'user@example.com',
+          'Deck',
+          Buffer.from('apkg'),
+          3
+        );
+      },
+    },
+    {
+      category: EMAIL_CATEGORIES.deckReadyLink,
+      run: (s) =>
+        s.sendConversionLinkEmail(
+          'user@example.com',
+          'Deck',
+          'https://2anki.net/api/download/u/key-1',
+          3
+        ),
+    },
+    {
+      category: EMAIL_CATEGORIES.contactForm,
+      run: async (s) => {
+        await s.sendContactEmail('Ada', 'user@example.com', 'Hi', []);
+      },
+    },
+    {
+      category: EMAIL_CATEGORIES.autoSyncAccessRequest,
+      run: async (s) => {
+        await s.sendHostedAnkiAccessRequestEmail('21770', 'user@example.com');
+      },
+    },
+    {
+      category: EMAIL_CATEGORIES.magicLink,
+      run: async (s) => {
+        await s.sendMagicLinkEmail('user@example.com', 'tok', 'login');
+      },
+    },
+    {
+      category: EMAIL_CATEGORIES.reEngagement,
+      run: (s) => s.sendReEngagementEmail('user@example.com', 'Ada', 'tok'),
+    },
+    {
+      category: EMAIL_CATEGORIES.inactivityWarning,
+      run: (s) => s.sendInactivityWarningEmail('user@example.com', 'tok'),
+    },
+    {
+      category: EMAIL_CATEGORIES.abandonedCheckoutRecovery,
+      run: (s) =>
+        s.sendAbandonedCheckoutRecoveryEmail('user@example.com', 'tok'),
+    },
+    {
+      category: EMAIL_CATEGORIES.passWinback,
+      run: (s) => s.sendPassWinbackEmail('user@example.com', 'tok'),
+    },
+    {
+      category: EMAIL_CATEGORIES.subscriptionClaim,
+      run: (s) =>
+        s.sendSubscriptionClaimConfirmation(
+          'user@example.com',
+          'https://2anki.net/claim'
+        ),
+    },
+    {
+      category: EMAIL_CATEGORIES.contactConfirmation,
+      run: (s) => s.sendContactConfirmationEmail('user@example.com'),
+    },
+    {
+      category: EMAIL_CATEGORIES.passClaim,
+      run: (s) =>
+        s.sendPassClaimConfirmation(
+          'user@example.com',
+          'https://2anki.net/claim',
+          'weekly pass'
+        ),
+    },
+    {
+      category: EMAIL_CATEGORIES.anonymousPassClaim,
+      run: (s) =>
+        s.sendAnonymousPassClaimEmail(
+          'user@example.com',
+          'https://2anki.net/claim',
+          'weekly pass'
+        ),
+    },
+    {
+      category: EMAIL_CATEGORIES.subscriptionScheduledCancellation,
+      run: (s) =>
+        s.sendSubscriptionScheduledCancellationEmail(
+          'user@example.com',
+          'Ada',
+          new Date('2026-10-01')
+        ),
+    },
+    {
+      category: EMAIL_CATEGORIES.subscriptionResumingSoon,
+      run: (s) =>
+        s.sendSubscriptionResumingSoonEmail(
+          'user@example.com',
+          new Date('2026-10-01'),
+          '$7.99'
+        ),
+    },
+    {
+      category: EMAIL_CATEGORIES.parserCanary,
+      run: (s) => s.sendParserCanaryAlert('support@2anki.net', 'mismatch'),
+    },
+    {
+      category: EMAIL_CATEGORIES.notionReconnect,
+      run: (s) => s.sendNotionReconnectEmail('user@example.com'),
+    },
+    {
+      category: EMAIL_CATEGORIES.priceLockIn,
+      run: (s) => s.sendPriceLockInEmail('user@example.com', 'tok', 'a'),
+    },
+    {
+      category: EMAIL_CATEGORIES.subscriptionRecovery,
+      run: (s) =>
+        s.sendSubscriptionRecoveryEmail('user@example.com', 'paid@example.com'),
+    },
+  ];
+
+  it.each(cases)('tags $category on the send', async ({ category, run }) => {
+    const service = getDefaultEmailService();
+
+    await run(service);
+
+    expect(lastCategories()).toEqual([category]);
+  });
+
+  it('tags the subscription-cancelled email with its category', async () => {
+    const fs = jest.requireActual('fs') as typeof import('fs');
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+    jest.spyOn(fs, 'mkdirSync').mockImplementation(() => undefined);
+    jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined);
+    const service = getDefaultEmailService();
+
+    await service.sendSubscriptionCancelledEmail(
+      'user@example.com',
+      'Ada',
+      'sub_test_123'
+    );
+
+    expect(lastCategories()).toEqual([EMAIL_CATEGORIES.subscriptionCancelled]);
   });
 });
