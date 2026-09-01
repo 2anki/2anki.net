@@ -162,7 +162,7 @@ export async function detectMarkdownZipIssue(
   return null;
 }
 
-function trackValidationShown(result: FileValidationResult): void {
+export function trackValidationShown(result: FileValidationResult): void {
   if (result.code === 'unbundled_html') {
     track('unbundled_html_warning_shown');
     return;
@@ -188,7 +188,6 @@ export function useFileValidation(aiOn = false, t?: ValidationTranslator) {
         detectUploadIssues(files, aiOn, t) ??
         (await detectMarkdownZipIssue(files, t));
       if (result) {
-        trackValidationShown(result);
         setValidation(result);
         setPendingFiles(files);
         return false;

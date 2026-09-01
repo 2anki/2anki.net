@@ -239,6 +239,7 @@
     "overSplit": "Molti fronti delle carte contengono solo una o due parole, il che di solito significa che il file è stato diviso a metà frase. Controlla il mazzo prima di studiare o carica il file Word o Notion originale per carte più pulite.",
     "validation": {
       "continue": "Converti comunque",
+      "pickDifferent": "Scegli un altro file",
       "markdown": {
         "title": "Il Markdown di Notion elimina i toggle",
         "body": "L'esportazione in Markdown di Notion tralascia i blocchi toggle — la parte che 2anki trasforma in carte — quindi questo file potrebbe creare poche carte o nessuna. Riesporta come HTML: in Notion, apri la pagina → ••• (in alto a destra) → Esporta → imposta HTML come formato di esportazione, poi carica quel file. Un semplice file Markdown che non proviene da Notion funziona comunque — le carte nascono da coppie di punti elenco."
