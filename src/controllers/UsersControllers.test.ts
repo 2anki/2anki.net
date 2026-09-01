@@ -634,7 +634,50 @@ describe('UsersController.requestMagicLink', () => {
     expect(requestMagicLink).toHaveBeenCalledWith(
       'al@example.com',
       'login',
-      null
+      null,
+      undefined
+    );
+  });
+
+  it('forwards a validated relative redirect to the service', async () => {
+    const requestMagicLink = jest.fn().mockResolvedValue(undefined);
+    const { controller } = buildMagicController({ requestMagicLink });
+    const req = {
+      body: { email: 'al@example.com', purpose: 'login', redirect: '/upload' },
+    } as express.Request;
+    const res = buildRes();
+    const next = jest.fn();
+
+    await controller.requestMagicLink(req, res, next);
+
+    expect(requestMagicLink).toHaveBeenCalledWith(
+      'al@example.com',
+      'login',
+      null,
+      '/upload'
+    );
+  });
+
+  it('drops an unsafe redirect before calling the service', async () => {
+    const requestMagicLink = jest.fn().mockResolvedValue(undefined);
+    const { controller } = buildMagicController({ requestMagicLink });
+    const req = {
+      body: {
+        email: 'al@example.com',
+        purpose: 'login',
+        redirect: 'https://evil.example',
+      },
+    } as express.Request;
+    const res = buildRes();
+    const next = jest.fn();
+
+    await controller.requestMagicLink(req, res, next);
+
+    expect(requestMagicLink).toHaveBeenCalledWith(
+      'al@example.com',
+      'login',
+      null,
+      undefined
     );
   });
 
@@ -917,6 +960,60 @@ describe('UsersController.verifyMagicLink', () => {
 
     expect(markEmailVerified).toHaveBeenCalledWith('8');
   });
+
+  it('echoes a validated relative redirect for a login token', async () => {
+    const verifyMagicToken = jest
+      .fn()
+      .mockResolvedValue({ userId: 5, purpose: 'login' });
+    const getUserById = jest
+      .fn()
+      .mockResolvedValue({ id: 5, email: 'al@example.com' });
+    const { controller } = buildVerifyController({
+      verifyMagicToken,
+      getUserById,
+      newJWTToken: jest.fn().mockResolvedValue('jwt-login-tok'),
+    });
+    const req = {
+      params: { token: 'valid-tok' },
+      query: { redirect: '/upload' },
+    } as unknown as express.Request;
+    const res = buildVerifyRes();
+    const next = jest.fn();
+
+    await controller.verifyMagicLink(req, res, next);
+
+    expect(res.json).toHaveBeenCalledWith({
+      token: 'jwt-login-tok',
+      redirect: '/upload',
+    });
+  });
+
+  it.each(['https://evil.example', '//evil.example', '/\\evil'])(
+    'drops the unsafe redirect %s and returns only the token',
+    async (unsafe) => {
+      const verifyMagicToken = jest
+        .fn()
+        .mockResolvedValue({ userId: 5, purpose: 'login' });
+      const getUserById = jest
+        .fn()
+        .mockResolvedValue({ id: 5, email: 'al@example.com' });
+      const { controller } = buildVerifyController({
+        verifyMagicToken,
+        getUserById,
+        newJWTToken: jest.fn().mockResolvedValue('jwt-login-tok'),
+      });
+      const req = {
+        params: { token: 'valid-tok' },
+        query: { redirect: unsafe },
+      } as unknown as express.Request;
+      const res = buildVerifyRes();
+      const next = jest.fn();
+
+      await controller.verifyMagicLink(req, res, next);
+
+      expect(res.json).toHaveBeenCalledWith({ token: 'jwt-login-tok' });
+    }
+  );
 });
 
 describe('UsersController.loginWithGoogle', () => {

@@ -12,6 +12,7 @@ import { WithNotionLink } from '../../../../components/forms/WithNotionLink';
 import { WithAppleLink } from '../../../../components/forms/WithAppleLink';
 import { WithMicrosoftLink } from '../../../../components/forms/WithMicrosoftLink';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
+import { sanitizeRelativeRedirect } from '../../../../lib/auth/sanitizeRelativeRedirect';
 import styles from '../../../../styles/auth.module.css';
 import loginStyles from './LoginForm.module.css';
 
@@ -35,7 +36,12 @@ function LoginForm() {
     setMagicLinkLoading(true);
     setError(null);
     try {
-      const response = await get2ankiApi().requestMagicLink(email, 'login');
+      const redirect = sanitizeRelativeRedirect(searchParams.get('redirect'));
+      const response = await get2ankiApi().requestMagicLink(
+        email,
+        'login',
+        redirect
+      );
       const body = await response.json().catch(() => ({}));
       if (body?.suppressed) {
         setError(t('auth.login.magicLinkSuppressed'));
