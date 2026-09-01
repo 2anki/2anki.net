@@ -182,7 +182,8 @@ class UsersService {
   async requestMagicLink(
     email: string,
     purpose: 'login' | 'password_reset',
-    signupOrigin?: string | null
+    signupOrigin?: string | null,
+    redirect?: string
   ): Promise<void> {
     if (this.magicTokenRepository == null) {
       return;
@@ -244,7 +245,8 @@ class UsersService {
       sendResult = await this.emailService.sendMagicLinkEmail(
         email,
         token,
-        purpose
+        purpose,
+        redirect
       );
     } catch (error) {
       console.info('password_reset.magic_link', {
