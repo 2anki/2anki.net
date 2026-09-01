@@ -242,7 +242,18 @@
     "chips": {
       "groupAria": "Inne źródła przesyłania"
     },
-    "overSplit": "Wiele przodów kart ma tylko jedno lub dwa słowa, co zwykle oznacza, że plik został podzielony w środku zdania. Przejrzyj talię przed nauką lub prześlij oryginalny plik Word albo Notion, aby uzyskać czytelniejsze karty."
+    "overSplit": "Wiele przodów kart ma tylko jedno lub dwa słowa, co zwykle oznacza, że plik został podzielony w środku zdania. Przejrzyj talię przed nauką lub prześlij oryginalny plik Word albo Notion, aby uzyskać czytelniejsze karty.",
+    "validation": {
+      "continue": "Konwertuj mimo to",
+      "markdown": {
+        "title": "Markdown z Notion pomija przełączniki",
+        "body": "Eksport Markdown z Notion pomija bloki toggle — czyli tę część, którą 2anki zamienia na fiszki — więc ten plik może utworzyć niewiele fiszek lub żadnej. Wyeksportuj ponownie jako HTML: w Notion otwórz stronę → ••• (w prawym górnym rogu) → Eksportuj → ustaw HTML jako format eksportu i prześlij ten plik. Zwykły plik Markdown, który nie pochodzi z Notion, nadal działa — fiszki powstają z par punktów listy."
+      },
+      "markdownZip": {
+        "title": "Markdown z Notion pomija przełączniki",
+        "body": "Eksport Markdown z Notion pomija bloki toggle — czyli tę część, którą 2anki zamienia na fiszki — więc ten eksport może utworzyć niewiele fiszek lub żadnej. Wyeksportuj ponownie jako HTML: w Notion otwórz stronę → ••• (w prawym górnym rogu) → Eksportuj → ustaw HTML jako format eksportu i prześlij ten plik. Zwykły plik Markdown, który nie pochodzi z Notion, nadal działa — fiszki powstają z par punktów listy."
+      }
+    }
   },
   "auth": {
     "common": {

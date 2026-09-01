@@ -236,7 +236,18 @@
     "chips": {
       "groupAria": "Otras fuentes de subida"
     },
-    "overSplit": "Muchos anversos de tarjeta tienen solo una o dos palabras, lo que suele significar que el archivo se dividió a mitad de una frase. Revisa el mazo antes de estudiar o sube el archivo original de Word o Notion para obtener tarjetas más limpias."
+    "overSplit": "Muchos anversos de tarjeta tienen solo una o dos palabras, lo que suele significar que el archivo se dividió a mitad de una frase. Revisa el mazo antes de estudiar o sube el archivo original de Word o Notion para obtener tarjetas más limpias.",
+    "validation": {
+      "continue": "Convertir de todos modos",
+      "markdown": {
+        "title": "El Markdown de Notion pierde tus toggles",
+        "body": "La exportación a Markdown de Notion omite los bloques de toggle — la parte que 2anki convierte en tarjetas — así que este archivo puede generar pocas tarjetas o ninguna. Vuelve a exportar como HTML: en Notion, abre la página → ••• (arriba a la derecha) → Exportar → elige HTML como formato de exportación y sube ese archivo. Un archivo Markdown normal que no venga de Notion sigue funcionando — las tarjetas se crean a partir de pares de viñetas."
+      },
+      "markdownZip": {
+        "title": "El Markdown de Notion pierde tus toggles",
+        "body": "La exportación a Markdown de Notion omite los bloques de toggle — la parte que 2anki convierte en tarjetas — así que esta exportación puede generar pocas tarjetas o ninguna. Vuelve a exportar como HTML: en Notion, abre la página → ••• (arriba a la derecha) → Exportar → elige HTML como formato de exportación y sube ese archivo. Un archivo Markdown normal que no venga de Notion sigue funcionando — las tarjetas se crean a partir de pares de viñetas."
+      }
+    }
   },
   "auth": {
     "common": {

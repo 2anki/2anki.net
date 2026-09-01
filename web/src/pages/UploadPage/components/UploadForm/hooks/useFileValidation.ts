@@ -1,7 +1,10 @@
 import { useCallback, useState } from 'react';
+import { unzip } from 'fflate';
 import { track } from '../../../../../lib/analytics/track';
 
 export type ValidationStatus = 'clean' | 'info' | 'warning' | 'error';
+
+export type ValidationTranslator = (key: string) => string;
 
 export interface FileValidationResult {
   status: ValidationStatus;
@@ -10,12 +13,41 @@ export interface FileValidationResult {
   continueLabel: string;
   // Marks the two Safari-unzipped-Notion-export warnings so their rate is
   // measurable — they size the population the folder-drop path addresses.
-  code?: 'unbundled_html';
+  // markdown / markdown_zip mark the Notion-Markdown guardrails so
+  // overridden÷shown reads as the crying-wolf ratio.
+  code?: 'unbundled_html' | 'markdown' | 'markdown_zip';
+}
+
+const ZIP_PEEK_BUDGET_BYTES = 200 * 1024 * 1024;
+
+function translate(t: ValidationTranslator | undefined, key: string): string {
+  return t ? t(key) : key;
+}
+
+function markdownResult(t?: ValidationTranslator): FileValidationResult {
+  return {
+    status: 'warning',
+    title: translate(t, 'upload.validation.markdown.title'),
+    body: translate(t, 'upload.validation.markdown.body'),
+    continueLabel: translate(t, 'upload.validation.continue'),
+    code: 'markdown',
+  };
+}
+
+function markdownZipResult(t?: ValidationTranslator): FileValidationResult {
+  return {
+    status: 'warning',
+    title: translate(t, 'upload.validation.markdownZip.title'),
+    body: translate(t, 'upload.validation.markdownZip.body'),
+    continueLabel: translate(t, 'upload.validation.continue'),
+    code: 'markdown_zip',
+  };
 }
 
 export function detectUploadIssues(
   files: FileList | File[],
-  aiOn = false
+  aiOn = false,
+  t?: ValidationTranslator
 ): FileValidationResult | null {
   const fileArray = Array.from(files);
   if (fileArray.length === 0) return null;
@@ -24,12 +56,7 @@ export function detectUploadIssues(
     f.name.toLowerCase().endsWith('.md')
   );
   if (allMarkdown) {
-    return {
-      status: 'error',
-      title: 'Markdown files produce simple cards',
-      body: "Exported from Notion? Choose HTML in Notion's export menu — you'll keep images, toggles, and formatting. For a plain Markdown file, cards are built from bullet pairs.",
-      continueLabel: 'Continue with this file',
-    };
+    return markdownResult(t);
   }
 
   const htmlFiles = fileArray.filter((f) =>
@@ -83,19 +110,85 @@ export function detectUploadIssues(
   return null;
 }
 
-export function useFileValidation(aiOn = false) {
+function listZipEntryNames(file: File): Promise<string[]> {
+  return file.arrayBuffer().then(
+    (buffer) =>
+      new Promise<string[]>((resolve, reject) => {
+        const names: string[] = [];
+        unzip(
+          new Uint8Array(buffer),
+          {
+            filter: (entry) => {
+              names.push(entry.name);
+              return false;
+            },
+          },
+          (error) => {
+            if (error != null) {
+              reject(error);
+              return;
+            }
+            resolve(names);
+          }
+        );
+      })
+  );
+}
+
+export async function detectMarkdownZipIssue(
+  files: FileList | File[],
+  t?: ValidationTranslator
+): Promise<FileValidationResult | null> {
+  const fileArray = Array.from(files);
+  if (fileArray.length !== 1) return null;
+
+  const file = fileArray[0];
+  if (!file.name.toLowerCase().endsWith('.zip')) return null;
+  if (file.size > ZIP_PEEK_BUDGET_BYTES) return null;
+
+  let names: string[];
+  try {
+    names = await listZipEntryNames(file);
+  } catch {
+    return null;
+  }
+
+  const lowerNames = names.map((name) => name.toLowerCase());
+  const hasMarkdown = lowerNames.some((name) => name.endsWith('.md'));
+  const hasHtml = lowerNames.some((name) => name.endsWith('.html'));
+  if (hasMarkdown && !hasHtml) {
+    return markdownZipResult(t);
+  }
+  return null;
+}
+
+function trackValidationShown(result: FileValidationResult): void {
+  if (result.code === 'unbundled_html') {
+    track('unbundled_html_warning_shown');
+    return;
+  }
+  if (result.code === 'markdown') {
+    track('upload_guardrail_shown', { kind: 'markdown' });
+    return;
+  }
+  if (result.code === 'markdown_zip') {
+    track('upload_guardrail_shown', { kind: 'markdown_zip' });
+  }
+}
+
+export function useFileValidation(aiOn = false, t?: ValidationTranslator) {
   const [validation, setValidation] = useState<FileValidationResult | null>(
     null
   );
   const [pendingFiles, setPendingFiles] = useState<FileList | null>(null);
 
   const validate = useCallback(
-    (files: FileList): boolean => {
-      const result = detectUploadIssues(files, aiOn);
+    async (files: FileList): Promise<boolean> => {
+      const result =
+        detectUploadIssues(files, aiOn, t) ??
+        (await detectMarkdownZipIssue(files, t));
       if (result) {
-        if (result.code === 'unbundled_html') {
-          track('unbundled_html_warning_shown');
-        }
+        trackValidationShown(result);
         setValidation(result);
         setPendingFiles(files);
         return false;
@@ -104,7 +197,7 @@ export function useFileValidation(aiOn = false) {
       setPendingFiles(null);
       return true;
     },
-    [aiOn]
+    [aiOn, t]
   );
 
   const reset = useCallback(() => {

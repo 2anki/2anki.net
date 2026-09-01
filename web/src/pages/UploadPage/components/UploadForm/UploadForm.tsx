@@ -267,7 +267,7 @@ function UploadForm({
     validation,
     validate,
     reset: resetValidation,
-  } = useFileValidation(aiOn);
+  } = useFileValidation(aiOn, t);
 
   const {
     zoneState,
@@ -475,7 +475,7 @@ function UploadForm({
       const transfer = new DataTransfer();
       transfer.items.add(zipFile);
       fileInputRef.current!.files = transfer.files;
-      if (validate(transfer.files)) {
+      if (await validate(transfer.files)) {
         submitFiles();
       } else {
         setZoneState('idle');
@@ -515,10 +515,11 @@ function UploadForm({
         return;
       }
       if (dataTransfer && dataTransfer.files.length > 0) {
-        fileInputRef.current!.files = dataTransfer.files;
-        if (validate(dataTransfer.files)) {
-          submitFiles();
-        }
+        const { files } = dataTransfer;
+        fileInputRef.current!.files = files;
+        void validate(files).then((clean) => {
+          if (clean) submitFiles();
+        });
       }
       event.preventDefault();
     },
@@ -893,41 +894,53 @@ function UploadForm({
     .filter(Boolean)
     .join(' ');
 
-  const renderValidationState = () => (
-    <div className={formStyles.stateContent}>
-      <span className={formStyles.validationIcon}>
-        {validation?.status === 'error' ? '⚠' : 'ℹ'}
-      </span>
-      <p className={formStyles.validationTitle}>{validation?.title}</p>
-      <p className={formStyles.validationBody}>{validation?.body}</p>
-      <div className={formStyles.validationActions}>
-        <button
-          type="button"
-          className={formStyles.actionButton}
-          onClick={(e) => {
-            e.preventDefault();
-            resetValidation();
-            if (fileInputRef.current) {
-              fileInputRef.current.value = '';
-            }
-          }}
-        >
-          Pick a different file
-        </button>
-        <button
-          type="button"
-          className={formStyles.resetLink}
-          onClick={(e) => {
-            e.preventDefault();
-            resetValidation();
-            submitFiles();
-          }}
-        >
-          {validation?.continueLabel}
-        </button>
+  const renderValidationState = () => {
+    const isAlert =
+      validation?.status === 'error' || validation?.status === 'warning';
+    return (
+      <div className={formStyles.stateContent}>
+        <span className={formStyles.validationIcon} aria-hidden="true">
+          {isAlert ? '⚠' : 'ℹ'}
+        </span>
+        <p className={formStyles.validationTitle}>{validation?.title}</p>
+        <p className={formStyles.validationBody}>{validation?.body}</p>
+        <div className={formStyles.validationActions}>
+          <button
+            type="button"
+            className={formStyles.actionButton}
+            onClick={(e) => {
+              e.preventDefault();
+              resetValidation();
+              if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+              }
+            }}
+          >
+            Pick a different file
+          </button>
+          <button
+            type="button"
+            className={formStyles.resetLink}
+            onClick={(e) => {
+              e.preventDefault();
+              if (
+                validation?.code === 'markdown' ||
+                validation?.code === 'markdown_zip'
+              ) {
+                track('upload_guardrail_overridden', {
+                  kind: validation.code,
+                });
+              }
+              resetValidation();
+              submitFiles();
+            }}
+          >
+            {validation?.continueLabel}
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const remoteSourceLabel = (): string | null => {
     if (driveFilename) return 'Google Drive';
@@ -1750,6 +1763,7 @@ function UploadForm({
   const showLocalPanel = !showChips || source === 'local';
 
   const renderLiveStatus = (): string => {
+    if (validation && zoneState === 'idle') return validation.title;
     if (zoneState === 'packaging') return t('upload.form.packingFolder');
     if (zoneState === 'converting') return t('upload.form.liveConverting');
     if (zoneState === 'success') {
@@ -1801,9 +1815,10 @@ function UploadForm({
           disabled={isUploadLocked}
           onChange={() => {
             const files = fileInputRef.current?.files;
-            if (files && validate(files)) {
-              submitFiles();
-            }
+            if (!files) return;
+            void validate(files).then((clean) => {
+              if (clean) submitFiles();
+            });
           }}
         />
       </label>
