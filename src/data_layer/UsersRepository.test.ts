@@ -246,6 +246,49 @@ describe('UsersRepository.createUserAndSeedFromTombstone', () => {
   });
 });
 
+describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
+  function buildTrxKnex() {
+    const usersUpdate = jest.fn().mockResolvedValue(1);
+    const subsUpdate = jest.fn().mockResolvedValue(1);
+    const usersWhereRaw = jest.fn().mockReturnValue({ update: usersUpdate });
+    const subsWhere = jest.fn().mockReturnValue({ update: subsUpdate });
+    const trx: any = jest.fn().mockImplementation((table: string) => {
+      if (table === 'users') {
+        return { whereRaw: usersWhereRaw };
+      }
+      if (table === 'subscriptions') {
+        return { where: subsWhere };
+      }
+      return {};
+    });
+    const transaction = jest.fn().mockImplementation(async (cb) => cb(trx));
+    const knex: any = jest.fn();
+    knex.transaction = transaction;
+    return { knex, usersWhereRaw, usersUpdate, subsWhere, subsUpdate };
+  }
+
+  it('moves users.email and subscriptions.linked_email in one transaction', async () => {
+    const { knex, usersWhereRaw, usersUpdate, subsWhere, subsUpdate } =
+      buildTrxKnex();
+    const repo = new UsersRepository(knex as any);
+
+    await repo.changeEmailAndRelinkSubscriptions(
+      ' Old@Example.com ',
+      ' NEW@Example.com '
+    );
+
+    expect(usersWhereRaw).toHaveBeenCalledWith(
+      'LOWER(TRIM(email)) = LOWER(?)',
+      ['Old@Example.com']
+    );
+    expect(usersUpdate).toHaveBeenCalledWith({ email: 'new@example.com' });
+    expect(subsWhere).toHaveBeenCalledWith({ email: 'old@example.com' });
+    expect(subsUpdate).toHaveBeenCalledWith({
+      linked_email: 'new@example.com',
+    });
+  });
+});
+
 describe('UsersRepository.deleteUser', () => {
   it('snapshots usage to the tombstone before deleting the user', async () => {
     const userRow = {
