@@ -605,7 +605,10 @@ export class ImageOnlyContentError extends Error {
 }
 
 export class ClaudeTruncatedError extends Error {
-  constructor(readonly chunkContent: string) {
+  constructor(
+    readonly chunkContent: string,
+    readonly salvagedDecks: DeckInfo[] = []
+  ) {
     super('claude_response_truncated');
     this.name = 'ClaudeTruncatedError';
   }
@@ -852,6 +855,25 @@ export function parseDeckResponse(
   return sanitizeCompactDecks(parsed, chunkIndex);
 }
 
+function salvageTruncatedDecks(
+  cleaned: string,
+  raw: string,
+  availableMediaFiles: string[],
+  pageStyle: string,
+  chunkIndex: number
+): DeckInfo[] {
+  try {
+    const parsed = parseDeckResponse(cleaned, raw, chunkIndex);
+    return expandCompactDeckInfo(
+      parsed,
+      availableMediaFiles,
+      pageStyle || null
+    );
+  } catch {
+    return [];
+  }
+}
+
 async function generateDeckInfoFromChunk(
   strippedContent: string,
   pageStyle: string,
@@ -989,23 +1011,31 @@ async function generateDeckInfoFromChunk(
     });
   }
 
-  if (response.stop_reason === 'max_tokens') {
-    console.warn('[Claude] Response truncated at max_tokens', {
-      requestId,
-      chunkIndex,
-      totalChunks,
-      maxTokens: CHUNK_MAX_TOKENS,
-      chunkBytes: strippedContent.length,
-    });
-    throw new ClaudeTruncatedError(strippedContent);
-  }
-
   const raw = (response.content as Array<{ type: string; text?: string }>)
     .filter((block) => block.type === 'text')
     .map((block) => block.text ?? '')
     .join('');
 
   const cleaned = raw.replace(/^```json\n?|^```\n?|```\s*$/gm, '').trim();
+
+  if (response.stop_reason === 'max_tokens') {
+    const salvaged = salvageTruncatedDecks(
+      cleaned,
+      raw,
+      availableMediaFiles,
+      pageStyle,
+      chunkIndex
+    );
+    console.warn('[Claude] Response truncated at max_tokens', {
+      requestId,
+      chunkIndex,
+      totalChunks,
+      maxTokens: CHUNK_MAX_TOKENS,
+      chunkBytes: strippedContent.length,
+      salvagedCards: salvaged.reduce((sum, deck) => sum + deck.cards.length, 0),
+    });
+    throw new ClaudeTruncatedError(strippedContent, salvaged);
+  }
 
   const tParse0 = Date.now();
   const parsed = parseDeckResponse(cleaned, raw, chunkIndex);
@@ -1226,6 +1256,15 @@ function stampChunkIndex(decks: DeckInfo[], chunkIndex: number): DeckInfo[] {
   return decks;
 }
 
+function salvageOrThrow(err: ClaudeTruncatedError): DeckInfo[] {
+  if (err.salvagedDecks.length === 0) throw err;
+  console.info('[Claude] Keeping cards salvaged from the truncated response', {
+    decks: err.salvagedDecks.length,
+    cards: err.salvagedDecks.reduce((sum, deck) => sum + deck.cards.length, 0),
+  });
+  return err.salvagedDecks;
+}
+
 async function runChunkWithTruncationRetry(
   content: string,
   call: (content: string) => Promise<DeckInfo[]>
@@ -1235,28 +1274,37 @@ async function runChunkWithTruncationRetry(
   } catch (err) {
     if (!(err instanceof ClaudeTruncatedError)) throw err;
     const halves = splitChunkInHalf(content);
-    if (halves.length < 2) throw err;
+    if (halves.length < 2) return salvageOrThrow(err);
     console.info('[Claude] Retrying truncated chunk as halves', {
       originalBytes: content.length,
       halfBytes: halves.map((h) => h.length),
     });
     const settled = await Promise.allSettled(halves.map((half) => call(half)));
-    const parsed = settled
-      .filter(
-        (r): r is PromiseFulfilledResult<DeckInfo[]> => r.status === 'fulfilled'
-      )
-      .map((r) => r.value);
+    let fulfilled = 0;
+    const recovered = settled.flatMap((r) => {
+      if (r.status === 'fulfilled') {
+        fulfilled += 1;
+        return [r.value];
+      }
+      if (
+        r.reason instanceof ClaudeTruncatedError &&
+        r.reason.salvagedDecks.length > 0
+      ) {
+        return [r.reason.salvagedDecks];
+      }
+      return [];
+    });
     // Under Promise.all a second truncation on one half discarded the cards the
     // other half had already produced, and the caller saw the chunk as a total
     // loss — 53 cards shipped where 129 were parsed. Half a chunk beats none.
-    if (parsed.length === 0) throw err;
-    if (parsed.length < halves.length) {
+    if (recovered.length === 0) return salvageOrThrow(err);
+    if (fulfilled < halves.length) {
       console.info('[Claude] Keeping the halves that parsed', {
-        ok: parsed.length,
+        ok: fulfilled,
         total: halves.length,
       });
     }
-    return parsed.flat();
+    return recovered.flat();
   }
 }
 

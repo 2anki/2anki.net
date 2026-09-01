@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-01-truncated-chunk-salvage",
+  "date": "2026-09-01",
+  "type": "fix",
+  "title": "Card-dense pages keep more cards when a long section would otherwise be cut short"
+}
