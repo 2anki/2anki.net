@@ -316,6 +316,17 @@ describe('NotionController', () => {
       );
     });
 
+    it('threads res.locals.requestId into the runConversion payload so worker logs join the request', async () => {
+      setupConvertMocks();
+      res.locals = { owner: 'owner1', requestId: 'req-abc-123' };
+
+      await controller.convert(req as express.Request, res as express.Response);
+
+      expect(runConversion).toHaveBeenCalledWith(
+        expect.objectContaining({ requestId: 'req-abc-123' })
+      );
+    });
+
     it('emits upload_started so the Notion path enters the upload→download funnel', async () => {
       setupConvertMocks();
 
