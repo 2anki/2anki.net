@@ -50,7 +50,7 @@ function buildDbMock(linkedRows: Array<{ email: string }> = []): jest.Mock & {
 }
 
 type StripeMock = {
-  customers: { list: jest.Mock };
+  customers: { list: jest.Mock; search: jest.Mock };
   subscriptions: {
     list: jest.Mock;
     update: jest.Mock;
@@ -62,6 +62,7 @@ function buildStripeMock(overrides: Partial<StripeMock> = {}): StripeMock {
   return {
     customers: {
       list: jest.fn().mockResolvedValue({ data: [] }),
+      search: jest.fn().mockResolvedValue({ data: [] }),
     },
     subscriptions: {
       list: jest.fn().mockResolvedValue({ data: [] }),
@@ -158,6 +159,40 @@ describe('SubscriptionService.findActiveStripeSubscriptions', () => {
       await SubscriptionService.findActiveStripeSubscriptions(email);
 
     expect(result).toHaveLength(1);
+  });
+
+  it('resolves a mixed-case Stripe customer email for a lowercased submission', async () => {
+    const mixedCaseCustomer = {
+      id: 'cus_mixed',
+      email: 'User.Name@Example.com',
+    };
+    stripe.customers.list.mockResolvedValue({ data: [] });
+    stripe.customers.search.mockResolvedValue({ data: [mixedCaseCustomer] });
+    stripe.subscriptions.list.mockResolvedValue({ data: [activeSub] });
+
+    const result = await SubscriptionService.findActiveStripeSubscriptions(
+      'user.name@example.com'
+    );
+
+    expect(stripe.customers.search).toHaveBeenCalledWith({
+      query: "email:'user.name@example.com'",
+      limit: 10,
+    });
+    expect(stripe.subscriptions.list).toHaveBeenCalledWith({
+      customer: 'cus_mixed',
+      status: 'active',
+      limit: 10,
+    });
+    expect(result).toEqual([activeSub]);
+  });
+
+  it('does not fall back to search when list already finds the customer', async () => {
+    stripe.customers.list.mockResolvedValue({ data: [{ id: 'cus_1', email }] });
+    stripe.subscriptions.list.mockResolvedValue({ data: [activeSub] });
+
+    await SubscriptionService.findActiveStripeSubscriptions(email);
+
+    expect(stripe.customers.search).not.toHaveBeenCalled();
   });
 });
 
