@@ -64,6 +64,7 @@ interface ConversionRequest {
   backField?: string;
   anonId?: string;
   signupOrigin?: string | null;
+  requestId?: string;
 }
 
 function toAnonymousId(anonId?: string): string | null {
@@ -217,9 +218,10 @@ export default async function performConversion(
     backField,
     anonId,
     signupOrigin,
+    requestId,
   }: ConversionRequest
 ) {
-  console.info(`Performing conversion for ${id}`);
+  console.info(`Performing conversion for ${id}`, { requestId, jobId: id });
   const resolvedSignupOrigin = signupOrigin ?? null;
 
   const storage = new StorageHandler();
@@ -420,12 +422,13 @@ export default async function performConversion(
     if (error instanceof PythonExitError) {
       console.error('[conversion] python crash', {
         jobId: id,
+        requestId,
         kind: error.kind,
         code: error.code,
         rawOutput: error.rawOutput,
       });
     } else {
-      console.error('[conversion] failed', { jobId: id, error });
+      console.error('[conversion] failed', { jobId: id, requestId, error });
     }
     if (isNotionUnauthorizedError(error)) {
       const ownerNum = Number(owner);
@@ -452,6 +455,7 @@ export default async function performConversion(
     if (isExpectedUserState) {
       console.info('[conversion] user-input state', {
         jobId: id,
+        requestId,
         kind: error instanceof Error ? error.name : 'unknown',
       });
     } else {
@@ -464,6 +468,7 @@ export default async function performConversion(
       } catch (cleanupError) {
         console.error('[conversion] workspace cleanup failed', {
           jobId: id,
+          requestId,
           message:
             cleanupError instanceof Error ? cleanupError.message : 'unknown',
         });
