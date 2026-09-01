@@ -65,7 +65,9 @@
     "keepSubscription": "Abo behalten",
     "commentAria": "Optionaler Kommentar",
     "commentPlaceholder": "Möchtest du noch etwas hinzufügen? (optional)",
-    "commentPlaceholderTechnical": "Was hat nicht funktioniert? (optional)"
+    "commentPlaceholderTechnical": "Was hat nicht funktioniert? (optional)",
+    "stillWantToCancel": "Trotzdem kündigen?",
+    "pauseOrCancel": "Pausieren oder kündigen"
   },
   "pauseCard": {
     "pauseInstead": "Stattdessen pausieren — keine Kosten, während du weg bist",
@@ -77,7 +79,8 @@
     "resumesLine": "Wird am {{date}} zu {{plan}} fortgesetzt. Du kannst jederzeit vorher kündigen.",
     "yourPlan": "deinem Tarif",
     "pausing": "Wird pausiert …",
-    "pauseSubscription": "Abo pausieren"
+    "pauseSubscription": "Abo pausieren",
+    "legacyKeeps": "Beim Pausieren behältst du deinen alten Tarif {{plan}}. Beim Kündigen verfällt er."
   },
   "accountDeletion": {
     "deleteAccount": "Konto löschen",

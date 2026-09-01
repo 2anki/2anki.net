@@ -7,7 +7,7 @@ import { useStripeSubscriptions } from '../../../lib/hooks/useStripeSubscription
 import { StripeSubscriptionSummary } from '../../../lib/backend/getSubscriptionStatus';
 import { track } from '../../../lib/analytics/track';
 import { STRIPE_CUSTOMER_PORTAL_URL } from '../../../lib/stripePortal';
-import { CancelFlow, isLifecycleReason } from './CancelFlow';
+import { CancelFlow } from './CancelFlow';
 import { CancellationReason } from './cancellationReasons';
 import { ClaimSubscription } from './ClaimSubscription';
 import styles from '../AccountPage.module.css';
@@ -273,12 +273,14 @@ function PausedState({
 
   return (
     <>
-      <p className={styles.scheduledBadge}>
-        {t('subscription.pausedResumesPrefix')} <strong>{resumeDate}</strong>
-      </p>
-      <p className={styles.dangerNotice}>
-        {t('subscription.pausedNotice', { date: resumeDate, plan: planText })}
-      </p>
+      <div role="status" aria-live="polite">
+        <p className={styles.scheduledBadge}>
+          {t('subscription.pausedResumesPrefix')} <strong>{resumeDate}</strong>
+        </p>
+        <p className={styles.dangerNotice}>
+          {t('subscription.pausedNotice', { date: resumeDate, plan: planText })}
+        </p>
+      </div>
       <div className={styles.actions}>
         <button
           type="button"
@@ -417,10 +419,10 @@ function StripeSubscriptionManagement({
     if (reason) {
       submitFeedback(reason, comment);
     }
-    if (pauseEligible && isLifecycleReason(reason)) {
+    if (pauseEligible) {
       track('subscription_pause_offer_declined', {
-        reason,
         tenure_days: activeSub == null ? 0 : tenureDaysOf(activeSub),
+        ...(reason ? { reason } : {}),
       });
     }
     cancelUserSubscription(
@@ -528,6 +530,7 @@ function StripeSubscriptionManagement({
                   planLabel={formatPlan(view.subscription)}
                   tenureDays={tenureDaysOf(view.subscription)}
                   pauseEligible={pauseEligible}
+                  isLegacyRate={isLegacyRate(view.subscription)}
                   isCancelling={isCancelling}
                   isPausing={isPausing}
                   pauseError={pauseError}
@@ -592,6 +595,7 @@ function StripeSubscriptionManagement({
                   planLabel={formatPlan(view.subscription)}
                   tenureDays={tenureDaysOf(view.subscription)}
                   pauseEligible={false}
+                  isLegacyRate={isLegacyRate(view.subscription)}
                   isCancelling={isCancellingPerSub}
                   isPausing={false}
                   pauseError=""

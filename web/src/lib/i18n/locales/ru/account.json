@@ -65,7 +65,9 @@
     "keepSubscription": "Оставить подписку",
     "commentAria": "Необязательный комментарий",
     "commentPlaceholder": "Хочешь что-то добавить? (необязательно)",
-    "commentPlaceholderTechnical": "Что не работало? (необязательно)"
+    "commentPlaceholderTechnical": "Что не работало? (необязательно)",
+    "stillWantToCancel": "Всё равно отменить?",
+    "pauseOrCancel": "Пауза или отмена"
   },
   "pauseCard": {
     "pauseInstead": "Поставь на паузу — никаких списаний, пока тебя нет",
@@ -77,7 +79,8 @@
     "resumesLine": "Возобновится {{date}} по тарифу {{plan}}. Можно отменить в любой момент до этого.",
     "yourPlan": "твой план",
     "pausing": "Ставим на паузу…",
-    "pauseSubscription": "Поставить на паузу"
+    "pauseSubscription": "Поставить на паузу",
+    "legacyKeeps": "Пауза сохраняет твой старый тариф {{plan}}. Отмена его аннулирует."
   },
   "accountDeletion": {
     "deleteAccount": "Удалить аккаунт",

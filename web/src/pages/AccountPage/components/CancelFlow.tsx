@@ -10,30 +10,27 @@ import { PauseMonths } from '../../../lib/backend/pauseSubscription';
 import { track } from '../../../lib/analytics/track';
 import styles from '../AccountPage.module.css';
 
-export const LIFECYCLE_REASONS: readonly CancellationReason[] = [
-  'I finished what I needed',
-  "I don't use it enough",
-];
-
-export const isLifecycleReason = (reason: CancellationReason | ''): boolean =>
-  LIFECYCLE_REASONS.includes(reason as CancellationReason);
-
 interface CancelFlowProps {
   readonly planLabel: string | null;
   readonly tenureDays: number;
   readonly pauseEligible: boolean;
+  readonly isLegacyRate: boolean;
   readonly isCancelling: boolean;
   readonly isPausing: boolean;
   readonly pauseError: string;
   readonly onCancel: (reason: CancellationReason | '', comment: string) => void;
   readonly onKeep: (reason: CancellationReason | '', comment: string) => void;
-  readonly onPause: (months: PauseMonths, reason: CancellationReason) => void;
+  readonly onPause: (
+    months: PauseMonths,
+    reason: CancellationReason | ''
+  ) => void;
 }
 
 export function CancelFlow({
   planLabel,
   tenureDays,
   pauseEligible,
+  isLegacyRate,
   isCancelling,
   isPausing,
   pauseError,
@@ -44,35 +41,27 @@ export function CancelFlow({
   const { t } = useTranslation('account');
   const [reason, setReason] = useState<CancellationReason | ''>('');
   const [comment, setComment] = useState('');
-  const offeredReasons = useRef<Set<CancellationReason>>(new Set());
+  const offered = useRef(false);
   const rootRef = useRef<HTMLFieldSetElement>(null);
 
-  const showPause = pauseEligible && isLifecycleReason(reason);
+  const showPause = pauseEligible;
 
   useEffect(() => {
     rootRef.current?.focus();
   }, []);
 
   useEffect(() => {
-    if (
-      showPause &&
-      reason !== '' &&
-      !offeredReasons.current.has(reason as CancellationReason)
-    ) {
-      offeredReasons.current.add(reason as CancellationReason);
-      track('subscription_pause_offered', {
-        reason,
-        tenure_days: tenureDays,
-      });
+    if (showPause && !offered.current) {
+      offered.current = true;
+      track('subscription_pause_offered', { tenure_days: tenureDays });
     }
-  }, [showPause, reason, tenureDays]);
+  }, [showPause, tenureDays]);
 
   const handlePause = (months: PauseMonths) => {
-    if (reason === '') return;
     track('subscription_paused', {
       pause_months: months,
-      reason,
       tenure_days: tenureDays,
+      ...(reason ? { reason } : {}),
     });
     onPause(months, reason);
   };
@@ -82,9 +71,23 @@ export function CancelFlow({
       ref={rootRef}
       tabIndex={-1}
       className={styles.dangerSection}
-      aria-label="Cancel"
+      aria-label={pauseEligible ? t('cancelFlow.pauseOrCancel') : 'Cancel'}
     >
-      <p className={styles.dangerTitle}>{t('cancelFlow.whyCancelling')}</p>
+      {showPause && (
+        <PauseCard
+          planLabel={planLabel}
+          isLegacyRate={isLegacyRate}
+          isPausing={isPausing}
+          pauseError={pauseError}
+          onPause={handlePause}
+        />
+      )}
+
+      <p className={styles.dangerTitle}>
+        {showPause
+          ? t('cancelFlow.stillWantToCancel')
+          : t('cancelFlow.whyCancelling')}
+      </p>
       <div className={styles.reasonList}>
         {CANCELLATION_REASONS.map((r) => (
           <label key={r} className={styles.reasonOption}>
@@ -113,15 +116,6 @@ export function CancelFlow({
           onChange={(e) => setComment(e.target.value)}
           rows={3}
           maxLength={1000}
-        />
-      )}
-
-      {showPause && (
-        <PauseCard
-          planLabel={planLabel}
-          isPausing={isPausing}
-          pauseError={pauseError}
-          onPause={handlePause}
         />
       )}
 
