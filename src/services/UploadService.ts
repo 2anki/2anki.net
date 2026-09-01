@@ -10,6 +10,7 @@ import { ISettingsRepository } from '../data_layer/SettingsRepository';
 import { IConversionOutputStatsRepository } from '../data_layer/ConversionOutputStatsRepository';
 import { IParsePathSignatureRepository } from '../data_layer/ParsePathSignatureRepository';
 import { ICardGuidLedgerRepository } from '../data_layer/CardGuidLedgerRepository';
+import { getConversionResultCache } from '../data_layer/ConversionResultCacheRepository';
 import ErrorHandler from '../routes/middleware/ErrorHandler';
 import CardOption from '../lib/parser/Settings';
 import Workspace from '../lib/parser/WorkSpace';
@@ -649,6 +650,7 @@ class UploadService {
         Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null,
       requestId,
       comprehensive: settings?.aiComprehensive,
+      conversionResultCache: getConversionResultCache(),
     };
 
     const deckInfoArrays: DeckInfo[][] = [];
