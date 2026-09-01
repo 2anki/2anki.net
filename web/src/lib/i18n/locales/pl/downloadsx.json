@@ -161,11 +161,19 @@
     "omitted_many": "Jeszcze {{count}} bloków pominięto z innych powodów.",
     "omitted_other": "Jeszcze {{count}} bloku pominięto z innych powodów."
   },
-  "emptyToggleRow": {
-    "notice_one": "W {{skipped}} z Twoich przełączników brakuje odpowiedzi, więc powstała tylko 1 fiszka. Wpisz odpowiedź w każdym przełączniku i przekonwertuj ponownie.",
-    "notice_few": "W {{skipped}} z Twoich przełączników brakuje odpowiedzi, więc powstały tylko {{count}} fiszki. Wpisz odpowiedź w każdym przełączniku i przekonwertuj ponownie.",
-    "notice_many": "W {{skipped}} z Twoich przełączników brakuje odpowiedzi, więc powstało tylko {{count}} fiszek. Wpisz odpowiedź w każdym przełączniku i przekonwertuj ponownie.",
-    "notice_other": "W {{skipped}} z Twoich przełączników brakuje odpowiedzi, więc powstało tylko {{count}} fiszki. Wpisz odpowiedź w każdym przełączniku i przekonwertuj ponownie.",
+  "thinDeck": {
+    "emptyToggles_one": "Z tej strony powstała tylko {{count}} karta. {{skipped}} przełączników nie miało odpowiedzi w środku i zostało pominiętych — dodaj odpowiedź w każdym, a potem przekonwertuj ponownie.",
+    "emptyToggles_few": "Z tej strony powstały tylko {{count}} karty. {{skipped}} przełączników nie miało odpowiedzi w środku i zostało pominiętych — dodaj odpowiedź w każdym, a potem przekonwertuj ponownie.",
+    "emptyToggles_many": "Z tej strony powstało tylko {{count}} kart. {{skipped}} przełączników nie miało odpowiedzi w środku i zostało pominiętych — dodaj odpowiedź w każdym, a potem przekonwertuj ponownie.",
+    "emptyToggles_other": "Z tej strony powstało tylko {{count}} karty. {{skipped}} przełączników nie miało odpowiedzi w środku i zostało pominiętych — dodaj odpowiedź w każdym, a potem przekonwertuj ponownie.",
+    "notConnected_one": "Z tej strony powstała tylko {{count}} karta. {{skipped}} części nie jest połączonych z 2anki i zostało pominiętych — w Notion dodaj 2anki do tej strony i jej podstron w sekcji Connections, a potem przekonwertuj ponownie.",
+    "notConnected_few": "Z tej strony powstały tylko {{count}} karty. {{skipped}} części nie jest połączonych z 2anki i zostało pominiętych — w Notion dodaj 2anki do tej strony i jej podstron w sekcji Connections, a potem przekonwertuj ponownie.",
+    "notConnected_many": "Z tej strony powstało tylko {{count}} kart. {{skipped}} części nie jest połączonych z 2anki i zostało pominiętych — w Notion dodaj 2anki do tej strony i jej podstron w sekcji Connections, a potem przekonwertuj ponownie.",
+    "notConnected_other": "Z tej strony powstało tylko {{count}} karty. {{skipped}} części nie jest połączonych z 2anki i zostało pominiętych — w Notion dodaj 2anki do tej strony i jej podstron w sekcji Connections, a potem przekonwertuj ponownie.",
+    "generic_one": "Z tej strony powstała tylko {{count}} karta, a {{skipped}} części zostało pominiętych. Otwórz raport, aby zobaczyć dlaczego.",
+    "generic_few": "Z tej strony powstały tylko {{count}} karty, a {{skipped}} części zostało pominiętych. Otwórz raport, aby zobaczyć dlaczego.",
+    "generic_many": "Z tej strony powstało tylko {{count}} kart, a {{skipped}} części zostało pominiętych. Otwórz raport, aby zobaczyć dlaczego.",
+    "generic_other": "Z tej strony powstało tylko {{count}} karty, a {{skipped}} części zostało pominiętych. Otwórz raport, aby zobaczyć dlaczego.",
     "seeReport": "Zobacz pełny raport"
   }
 }

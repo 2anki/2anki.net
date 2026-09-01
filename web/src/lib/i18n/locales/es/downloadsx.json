@@ -125,9 +125,13 @@
     "omitted_one": "{{count}} bloque más se omitió por otros motivos.",
     "omitted_other": "{{count}} bloques más se omitieron por otros motivos."
   },
-  "emptyToggleRow": {
-    "notice_one": "A {{skipped}} de tus toggles les falta la respuesta, así que solo se creó 1 tarjeta. Pon la respuesta dentro de cada toggle y vuelve a convertir.",
-    "notice_other": "A {{skipped}} de tus toggles les falta la respuesta, así que solo se crearon {{count}} tarjetas. Pon la respuesta dentro de cada toggle y vuelve a convertir.",
+  "thinDeck": {
+    "emptyToggles_one": "Solo salió {{count}} tarjeta de esta página. {{skipped}} alternadores no tenían respuesta dentro y se omitieron — añade una respuesta dentro de cada uno y vuelve a convertir.",
+    "emptyToggles_other": "Solo salieron {{count}} tarjetas de esta página. {{skipped}} alternadores no tenían respuesta dentro y se omitieron — añade una respuesta dentro de cada uno y vuelve a convertir.",
+    "notConnected_one": "Solo salió {{count}} tarjeta de esta página. {{skipped}} partes no están conectadas a 2anki y se omitieron — en Notion, añade 2anki a esta página y sus subpáginas en Connections y vuelve a convertir.",
+    "notConnected_other": "Solo salieron {{count}} tarjetas de esta página. {{skipped}} partes no están conectadas a 2anki y se omitieron — en Notion, añade 2anki a esta página y sus subpáginas en Connections y vuelve a convertir.",
+    "generic_one": "Solo salió {{count}} tarjeta de esta página y se omitieron {{skipped}} partes. Abre el informe para ver por qué.",
+    "generic_other": "Solo salieron {{count}} tarjetas de esta página y se omitieron {{skipped}} partes. Abre el informe para ver por qué.",
     "seeReport": "Ver el informe completo"
   }
 }

@@ -125,9 +125,13 @@
     "omitted_one": "{{count}} altro blocco è stato saltato per altri motivi.",
     "omitted_other": "{{count}} altri blocchi sono stati saltati per altri motivi."
   },
-  "emptyToggleRow": {
-    "notice_one": "In {{skipped}} dei tuoi toggle manca la risposta, quindi è stata creata solo 1 carta. Aggiungi la risposta dentro ogni toggle, poi converti di nuovo.",
-    "notice_other": "In {{skipped}} dei tuoi toggle manca la risposta, quindi sono state create solo {{count}} carte. Aggiungi la risposta dentro ogni toggle, poi converti di nuovo.",
+  "thinDeck": {
+    "emptyToggles_one": "Solo {{count}} carta è nata da questa pagina. {{skipped}} interruttori non avevano una risposta all'interno e sono stati saltati — aggiungi una risposta dentro ciascuno, poi converti di nuovo.",
+    "emptyToggles_other": "Solo {{count}} carte sono nate da questa pagina. {{skipped}} interruttori non avevano una risposta all'interno e sono stati saltati — aggiungi una risposta dentro ciascuno, poi converti di nuovo.",
+    "notConnected_one": "Solo {{count}} carta è nata da questa pagina. {{skipped}} parti non sono collegate a 2anki e sono state saltate — in Notion, aggiungi 2anki a questa pagina e alle sue sottopagine in Connections, poi converti di nuovo.",
+    "notConnected_other": "Solo {{count}} carte sono nate da questa pagina. {{skipped}} parti non sono collegate a 2anki e sono state saltate — in Notion, aggiungi 2anki a questa pagina e alle sue sottopagine in Connections, poi converti di nuovo.",
+    "generic_one": "Solo {{count}} carta è nata da questa pagina e {{skipped}} parti sono state saltate. Apri il rapporto per vedere perché.",
+    "generic_other": "Solo {{count}} carte sono nate da questa pagina e {{skipped}} parti sono state saltate. Apri il rapporto per vedere perché.",
     "seeReport": "Vedi il rapporto completo"
   }
 }

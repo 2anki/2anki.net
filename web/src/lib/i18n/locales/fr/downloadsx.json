@@ -125,9 +125,13 @@
     "omitted_one": "{{count}} bloc de plus a été ignoré pour d'autres raisons.",
     "omitted_other": "{{count}} blocs de plus ont été ignorés pour d'autres raisons."
   },
-  "emptyToggleRow": {
-    "notice_one": "Il manque la réponse dans {{skipped}} de tes toggles, donc 1 seule carte a été créée. Ajoute la réponse dans chaque toggle, puis convertis à nouveau.",
-    "notice_other": "Il manque la réponse dans {{skipped}} de tes toggles, donc seulement {{count}} cartes ont été créées. Ajoute la réponse dans chaque toggle, puis convertis à nouveau.",
+  "thinDeck": {
+    "emptyToggles_one": "Seulement {{count}} carte est issue de cette page. {{skipped}} bascules n'avaient pas de réponse à l'intérieur et ont été ignorées — ajoute une réponse dans chacune, puis relance la conversion.",
+    "emptyToggles_other": "Seulement {{count}} cartes sont issues de cette page. {{skipped}} bascules n'avaient pas de réponse à l'intérieur et ont été ignorées — ajoute une réponse dans chacune, puis relance la conversion.",
+    "notConnected_one": "Seulement {{count}} carte est issue de cette page. {{skipped}} parties ne sont pas connectées à 2anki et ont été ignorées — dans Notion, ajoute 2anki à cette page et à ses sous-pages sous Connections, puis relance la conversion.",
+    "notConnected_other": "Seulement {{count}} cartes sont issues de cette page. {{skipped}} parties ne sont pas connectées à 2anki et ont été ignorées — dans Notion, ajoute 2anki à cette page et à ses sous-pages sous Connections, puis relance la conversion.",
+    "generic_one": "Seulement {{count}} carte est issue de cette page, et {{skipped}} parties ont été ignorées. Ouvre le rapport pour voir pourquoi.",
+    "generic_other": "Seulement {{count}} cartes sont issues de cette page, et {{skipped}} parties ont été ignorées. Ouvre le rapport pour voir pourquoi.",
     "seeReport": "Voir le rapport complet"
   }
 }

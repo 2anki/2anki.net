@@ -65,7 +65,9 @@
     "keepSubscription": "Zachowaj subskrypcję",
     "commentAria": "Opcjonalny komentarz",
     "commentPlaceholder": "Chcesz coś dodać? (opcjonalnie)",
-    "commentPlaceholderTechnical": "Co nie działało? (opcjonalnie)"
+    "commentPlaceholderTechnical": "Co nie działało? (opcjonalnie)",
+    "stillWantToCancel": "Nadal chcesz anulować?",
+    "pauseOrCancel": "Wstrzymaj lub anuluj"
   },
   "pauseCard": {
     "pauseInstead": "Wstrzymaj zamiast anulować — brak opłat, gdy Cię nie ma",
@@ -77,7 +79,8 @@
     "resumesLine": "Wznowienie {{date}} w planie {{plan}}. Możesz anulować w każdej chwili wcześniej.",
     "yourPlan": "Twój plan",
     "pausing": "Wstrzymywanie…",
-    "pauseSubscription": "Wstrzymaj subskrypcję"
+    "pauseSubscription": "Wstrzymaj subskrypcję",
+    "legacyKeeps": "Wstrzymanie zachowuje Twoją starą stawkę {{plan}}. Anulowanie oznacza jej utratę."
   },
   "accountDeletion": {
     "deleteAccount": "Usuń konto",

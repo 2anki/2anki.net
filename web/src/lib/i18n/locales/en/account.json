@@ -65,7 +65,9 @@
     "keepSubscription": "Keep subscription",
     "commentAria": "Optional comment",
     "commentPlaceholder": "Anything you'd like to add? (optional)",
-    "commentPlaceholderTechnical": "What broke? (optional)"
+    "commentPlaceholderTechnical": "What broke? (optional)",
+    "stillWantToCancel": "Still want to cancel?",
+    "pauseOrCancel": "Pause or cancel"
   },
   "pauseCard": {
     "pauseInstead": "Pause instead — no charge while you're away",
@@ -77,7 +79,8 @@
     "resumesLine": "Resumes {{date}} at {{plan}}. Cancel anytime before then.",
     "yourPlan": "your plan",
     "pausing": "Pausing…",
-    "pauseSubscription": "Pause subscription"
+    "pauseSubscription": "Pause subscription",
+    "legacyKeeps": "Pausing keeps your legacy {{plan}} rate. Cancelling gives it up."
   },
   "accountDeletion": {
     "deleteAccount": "Delete account",

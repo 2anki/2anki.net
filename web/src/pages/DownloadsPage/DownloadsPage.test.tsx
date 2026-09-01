@@ -1213,7 +1213,7 @@ describe('DownloadsPage truncation notice', () => {
     renderAt('/downloads');
     expect(
       screen.getByText(
-        '14 of your toggles had no answer inside, so only 9 cards were made. Add the answer inside each toggle, then convert again.'
+        'Only 9 cards came from this page. 14 toggles had no answer inside and were skipped — add an answer inside each, then convert again.'
       )
     ).toBeInTheDocument();
     expect(
@@ -1251,10 +1251,34 @@ describe('DownloadsPage truncation notice', () => {
       }),
     ];
     renderAt('/downloads');
-    expect(screen.queryByText(/of your toggles had no answer/)).toBeNull();
+    expect(screen.queryByText(/toggles had no answer inside/)).toBeNull();
     expect(
       screen.queryByRole('button', { name: 'See full report' })
     ).toBeNull();
+  });
+
+  it('shows the same candidate-skip count on the pill and the thin-deck notice', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Not Connected Page',
+        download_key: 'deck-nc.apkg',
+        card_count: 2,
+        empty_back_count: 0,
+        job_reason_failure: JSON.stringify({
+          code: 'notion_blocks_forbidden',
+          forbidden_blocks: 3,
+        }),
+      }),
+    ];
+    renderAt('/downloads');
+    expect(screen.getByText('3 skipped')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Only 2 cards came from this page. 3 parts aren't connected to 2anki and were skipped — in Notion, add 2anki to this page and its sub-pages under Connections, then convert again."
+      )
+    ).toBeInTheDocument();
   });
 });
 

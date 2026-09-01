@@ -125,9 +125,13 @@
     "omitted_one": "{{count}} more block was skipped for other reasons.",
     "omitted_other": "{{count}} more blocks were skipped for other reasons."
   },
-  "emptyToggleRow": {
-    "notice_one": "{{skipped}} of your toggles had no answer inside, so only 1 card was made. Add the answer inside each toggle, then convert again.",
-    "notice_other": "{{skipped}} of your toggles had no answer inside, so only {{count}} cards were made. Add the answer inside each toggle, then convert again.",
+  "thinDeck": {
+    "emptyToggles_one": "Only {{count}} card came from this page. {{skipped}} toggles had no answer inside and were skipped — add an answer inside each, then convert again.",
+    "emptyToggles_other": "Only {{count}} cards came from this page. {{skipped}} toggles had no answer inside and were skipped — add an answer inside each, then convert again.",
+    "notConnected_one": "Only {{count}} card came from this page. {{skipped}} parts aren't connected to 2anki and were skipped — in Notion, add 2anki to this page and its sub-pages under Connections, then convert again.",
+    "notConnected_other": "Only {{count}} cards came from this page. {{skipped}} parts aren't connected to 2anki and were skipped — in Notion, add 2anki to this page and its sub-pages under Connections, then convert again.",
+    "generic_one": "Only {{count}} card came from this page, and {{skipped}} parts were skipped. Open the report to see why.",
+    "generic_other": "Only {{count}} cards came from this page, and {{skipped}} parts were skipped. Open the report to see why.",
     "seeReport": "See full report"
   }
 }

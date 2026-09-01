@@ -125,9 +125,13 @@
     "omitted_one": "{{count}} ander blok is om andere redenen overgeslagen.",
     "omitted_other": "{{count}} andere blokken zijn om andere redenen overgeslagen."
   },
-  "emptyToggleRow": {
-    "notice_one": "In {{skipped}} van je toggles ontbreekt het antwoord, dus er is maar 1 kaart gemaakt. Zet het antwoord in elke toggle en converteer daarna opnieuw.",
-    "notice_other": "In {{skipped}} van je toggles ontbreekt het antwoord, dus er zijn maar {{count}} kaarten gemaakt. Zet het antwoord in elke toggle en converteer daarna opnieuw.",
+  "thinDeck": {
+    "emptyToggles_one": "Er kwam maar {{count}} kaart uit deze pagina. {{skipped}} toggles hadden binnenin geen antwoord en zijn overgeslagen — voeg in elk een antwoord toe en converteer opnieuw.",
+    "emptyToggles_other": "Er kwamen maar {{count}} kaarten uit deze pagina. {{skipped}} toggles hadden binnenin geen antwoord en zijn overgeslagen — voeg in elk een antwoord toe en converteer opnieuw.",
+    "notConnected_one": "Er kwam maar {{count}} kaart uit deze pagina. {{skipped}} delen zijn niet met 2anki verbonden en zijn overgeslagen — voeg 2anki in Notion onder Connections toe aan deze pagina en de subpagina's en converteer opnieuw.",
+    "notConnected_other": "Er kwamen maar {{count}} kaarten uit deze pagina. {{skipped}} delen zijn niet met 2anki verbonden en zijn overgeslagen — voeg 2anki in Notion onder Connections toe aan deze pagina en de subpagina's en converteer opnieuw.",
+    "generic_one": "Er kwam maar {{count}} kaart uit deze pagina en {{skipped}} delen zijn overgeslagen. Open het rapport om te zien waarom.",
+    "generic_other": "Er kwamen maar {{count}} kaarten uit deze pagina en {{skipped}} delen zijn overgeslagen. Open het rapport om te zien waarom.",
     "seeReport": "Volledig rapport bekijken"
   }
 }

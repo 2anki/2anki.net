@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useCookies } from 'react-cookie';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { getSearchPath } from '../../components/NavigationBar/helpers/getSearchPath';
+import { sanitizeRelativeRedirect } from '../../lib/auth/sanitizeRelativeRedirect';
 import { stripUrlParam } from '../../lib/stripUrlParam';
 import styles from '../../styles/auth.module.css';
 import sharedStyles from '../../styles/shared.module.css';
@@ -29,7 +30,7 @@ function MagicLinkPage() {
   const [retryDone, setRetryDone] = useState(false);
 
   const token = searchParams.get('token');
-  const redirect = searchParams.get('redirect');
+  const redirect = sanitizeRelativeRedirect(searchParams.get('redirect'));
 
   useEffect(() => {
     if (token == null) {
@@ -46,7 +47,10 @@ function MagicLinkPage() {
 
     async function validateToken() {
       try {
-        const response = await get2ankiApi().validateMagicToken(validToken);
+        const response = await get2ankiApi().validateMagicToken(
+          validToken,
+          redirect
+        );
         if (cancelled) return;
 
         if (response.ok) {
@@ -59,7 +63,7 @@ function MagicLinkPage() {
           setCookie('token', data.token);
           setState({ status: 'success' });
           globalThis.location.href =
-            redirect ?? data.redirect ?? getSearchPath('anki');
+            sanitizeRelativeRedirect(data.redirect) ?? getSearchPath('anki');
         } else {
           const errorData = await response.json().catch(() => ({}));
           setState({
@@ -87,7 +91,7 @@ function MagicLinkPage() {
     setRetrySending(true);
     setRetryDone(false);
     try {
-      await get2ankiApi().requestMagicLink(retryEmail, 'login');
+      await get2ankiApi().requestMagicLink(retryEmail, 'login', redirect);
       setRetryDone(true);
     } catch {
       setState({
