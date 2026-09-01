@@ -93,6 +93,23 @@ async function collectCandidateEmails(userEmail: string): Promise<string[]> {
   return [...emails];
 }
 
+async function findStripeCustomersByEmail(
+  stripe: ReturnType<typeof getStripe>,
+  email: string
+): Promise<StripeTypes.Customer[]> {
+  const listed = await stripe.customers.list({ email, limit: 10 });
+  if (listed.data.length > 0) {
+    return listed.data;
+  }
+
+  const escaped = email.replace(/(['\\])/g, '\\$1');
+  const searched = await stripe.customers.search({
+    query: `email:'${escaped}'`,
+    limit: 10,
+  });
+  return searched.data;
+}
+
 async function listStripeSubscriptionsFor(
   userEmail: string,
   status: StripeTypes.SubscriptionListParams['status']
@@ -104,8 +121,8 @@ async function listStripeSubscriptionsFor(
   const subs: StripeTypes.Subscription[] = [];
 
   for (const email of candidateEmails) {
-    const customers = await stripe.customers.list({ email, limit: 10 });
-    for (const customer of customers.data) {
+    const customers = await findStripeCustomersByEmail(stripe, email);
+    for (const customer of customers) {
       const list = await stripe.subscriptions.list({
         customer: customer.id,
         status,
