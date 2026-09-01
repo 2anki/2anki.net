@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-01-claim-email-case",
+  "date": "2026-09-01",
+  "type": "fix",
+  "title": "Claiming a subscription you paid for under a different email now works no matter how the email was capitalized"
+}

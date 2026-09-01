@@ -37,7 +37,7 @@ import { getNotionId } from '../services/NotionService/getNotionId';
 import { getOwner } from '../lib/User/getOwner';
 import sendErrorResponse from '../lib/sendErrorResponse';
 import { isPaying } from '../lib/isPaying';
-import { MONTHLY_CARD_LIMIT } from '../usecases/users/CheckMonthlyCardLimitUseCase';
+import { MONTHLY_CARD_LIMIT } from '../lib/limits';
 import ParserRules from '../lib/parser/ParserRules';
 import { GetDatabasePreviewUseCase } from '../usecases/notion/GetDatabasePreviewUseCase';
 import { MarkNotionTokenInvalidUseCase } from '../usecases/notion/MarkNotionTokenInvalidUseCase';
@@ -338,6 +338,7 @@ class NotionController {
         backField: safeString(backField),
         anonId: safeString(anonId),
         signupOrigin: parseFirstTouch(cookies?.first_touch).signupOrigin,
+        requestId: safeString(res.locals.requestId),
       }).catch((err: unknown) => {
         console.error('notion convert worker:', err);
       });
