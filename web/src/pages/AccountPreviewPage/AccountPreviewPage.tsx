@@ -6,7 +6,10 @@ import {
   PlanDetails,
   AccountDeletion,
 } from '../AccountPage/components';
+import { CancelFlow } from '../AccountPage/components/CancelFlow';
 import previewStyles from './AccountPreviewPage.module.css';
+
+const noop = () => undefined;
 
 interface Variant {
   label: string;
@@ -92,6 +95,64 @@ const variants: Variant[] = [
               or cancel now
             </button>
           </div>
+        </section>
+        <AccountDeletion />
+      </>
+    ),
+  },
+  {
+    label: 'Cancel flow — pause leads (legacy monthly)',
+    note: 'Pause-eligible legacy sub mid-cancel: pause card leads, legacy line names the kept rate, cancel stays a visible peer.',
+    render: () => (
+      <>
+        <UserProfile
+          user={{ name: 'Dani Legacy', email: 'dani@example.com' }}
+        />
+        <PlanDetails subscriptionType="subscriber" />
+        <section className={accountStyles.section}>
+          <p className={accountStyles.statusLine}>
+            $2.00 / month · Renews <strong>15 June 2026</strong>
+          </p>
+          <CancelFlow
+            planLabel="$2.00 / month"
+            tenureDays={120}
+            pauseEligible
+            isLegacyRate
+            isCancelling={false}
+            isPausing={false}
+            pauseError=""
+            onCancel={noop}
+            onKeep={noop}
+            onPause={noop}
+          />
+        </section>
+        <AccountDeletion />
+      </>
+    ),
+  },
+  {
+    label: 'Cancel flow — pause leads (standard monthly)',
+    note: 'Pause-eligible standard sub mid-cancel: pause card leads, no legacy line, cancel stays a visible peer.',
+    render: () => (
+      <>
+        <UserProfile user={{ name: 'Casey Pro', email: 'casey@example.com' }} />
+        <PlanDetails subscriptionType="subscriber" />
+        <section className={accountStyles.section}>
+          <p className={accountStyles.statusLine}>
+            $7.99 / month · Renews <strong>15 June 2026</strong>
+          </p>
+          <CancelFlow
+            planLabel="$7.99 / month"
+            tenureDays={90}
+            pauseEligible
+            isLegacyRate={false}
+            isCancelling={false}
+            isPausing={false}
+            pauseError=""
+            onCancel={noop}
+            onKeep={noop}
+            onPause={noop}
+          />
         </section>
         <AccountDeletion />
       </>

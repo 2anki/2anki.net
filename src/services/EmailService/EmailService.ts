@@ -83,7 +83,8 @@ export interface IEmailService {
   sendMagicLinkEmail(
     email: string,
     token: string,
-    purpose: 'login' | 'password_reset'
+    purpose: 'login' | 'password_reset',
+    redirect?: string
   ): Promise<MagicLinkSendResult>;
   sendReEngagementEmail(to: string, name: string, token: string): Promise<void>;
   sendInactivityWarningEmail(
@@ -386,10 +387,15 @@ export class EmailService implements IEmailService {
   async sendMagicLinkEmail(
     email: string,
     token: string,
-    purpose: 'login' | 'password_reset'
+    purpose: 'login' | 'password_reset',
+    redirect?: string
   ): Promise<MagicLinkSendResult> {
-    const link = `${process.env.DOMAIN ?? 'https://2anki.net'}/auth/magic?token=${token}`;
     const isLogin = purpose === 'login';
+    const redirectSuffix =
+      isLogin && redirect != null
+        ? `&redirect=${encodeURIComponent(redirect)}`
+        : '';
+    const link = `${process.env.DOMAIN ?? 'https://2anki.net'}/auth/magic?token=${token}${redirectSuffix}`;
     const strings = getEmailStrings(await this.resolveLanguage(email));
     const variant = isLogin ? strings.magicLinkLogin : strings.magicLinkReset;
     const shared = strings.magicLinkShared;
@@ -1058,7 +1064,8 @@ export class UnimplementedEmailService implements IEmailService {
   async sendMagicLinkEmail(
     email: string,
     token: string,
-    purpose: 'login' | 'password_reset'
+    purpose: 'login' | 'password_reset',
+    redirect?: string
   ): Promise<MagicLinkSendResult> {
     console.info('sendMagicLinkEmail not handled');
     return { suppressed: false };

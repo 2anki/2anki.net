@@ -65,7 +65,9 @@
     "keepSubscription": "Abonnement behouden",
     "commentAria": "Optionele opmerking",
     "commentPlaceholder": "Wil je nog iets toevoegen? (optioneel)",
-    "commentPlaceholderTechnical": "Wat ging er mis? (optioneel)"
+    "commentPlaceholderTechnical": "Wat ging er mis? (optioneel)",
+    "stillWantToCancel": "Toch opzeggen?",
+    "pauseOrCancel": "Pauzeren of opzeggen"
   },
   "pauseCard": {
     "pauseInstead": "Pauzeer in plaats daarvan — geen kosten terwijl je weg bent",
@@ -77,7 +79,8 @@
     "resumesLine": "Hervat {{date}} met {{plan}}. Voor die tijd altijd opzegbaar.",
     "yourPlan": "je abonnement",
     "pausing": "Pauzeren…",
-    "pauseSubscription": "Abonnement pauzeren"
+    "pauseSubscription": "Abonnement pauzeren",
+    "legacyKeeps": "Bij pauzeren houd je je oude tarief van {{plan}}. Bij opzeggen verlies je het."
   },
   "accountDeletion": {
     "deleteAccount": "Account verwijderen",

@@ -15,10 +15,10 @@ vi.mock('../../../../lib/backend/get2ankiApi', () => ({
   }),
 }));
 
-function renderLoginForm() {
+function renderLoginForm(entry = '/login') {
   return render(
     <CookiesProvider>
-      <MemoryRouter initialEntries={['/login']}>
+      <MemoryRouter initialEntries={[entry]}>
         <LoginForm />
       </MemoryRouter>
     </CookiesProvider>
@@ -157,6 +157,42 @@ describe('LoginForm', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Check your email')).toBeInTheDocument();
+    });
+  });
+
+  it('forwards a safe redirect from the URL to the magic-link request', async () => {
+    renderLoginForm('/login?redirect=/upload');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
+      target: { value: 'test@example.com' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Email me a sign-in link' })
+    );
+
+    await waitFor(() => {
+      expect(mockRequestMagicLink).toHaveBeenCalledWith(
+        'test@example.com',
+        'login',
+        '/upload'
+      );
+    });
+  });
+
+  it('drops an unsafe redirect from the URL before requesting the link', async () => {
+    renderLoginForm('/login?redirect=https://evil.example');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
+      target: { value: 'test@example.com' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Email me a sign-in link' })
+    );
+
+    await waitFor(() => {
+      expect(mockRequestMagicLink).toHaveBeenCalledWith(
+        'test@example.com',
+        'login',
+        undefined
+      );
     });
   });
 

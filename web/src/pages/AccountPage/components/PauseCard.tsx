@@ -21,6 +21,7 @@ const formatDate = (date: Date): string =>
 
 interface PauseCardProps {
   readonly planLabel: string | null;
+  readonly isLegacyRate: boolean;
   readonly isPausing: boolean;
   readonly pauseError: string;
   readonly onPause: (months: PauseMonths) => void;
@@ -28,6 +29,7 @@ interface PauseCardProps {
 
 export function PauseCard({
   planLabel,
+  isLegacyRate,
   isPausing,
   pauseError,
   onPause,
@@ -42,6 +44,11 @@ export function PauseCard({
     <div className={`${styles.section} ${sharedStyles.marginTopLg}`}>
       <p className={styles.dangerTitle}>{t('pauseCard.pauseInstead')}</p>
       <p className={styles.dangerNotice}>{t('pauseCard.notice')}</p>
+      {isLegacyRate && (
+        <p className={styles.legacyNote}>
+          {t('pauseCard.legacyKeeps', { plan: planText })}
+        </p>
+      )}
 
       <p className={styles.dangerTitle}>{t('pauseCard.pauseFor')}</p>
       <div
@@ -69,7 +76,7 @@ export function PauseCard({
       </div>
 
       {resumeDate && (
-        <p className={styles.planDetail}>
+        <p className={styles.planDetail} role="status" aria-live="polite">
           {t('pauseCard.resumesLine', {
             date: formatDate(resumeDate),
             plan: planText,
