@@ -611,7 +611,6 @@
       "placeholder": "Instrukcje dla konwersji PDF…",
       "presetsLabel": "Szybkie instrukcje",
       "presetsHint": "Dodaj punkt wyjścia, a następnie edytuj go w polu poniżej.",
-      "presetsAria": "Punkty wyjścia instrukcji",
       "presets": {
         "mcqOnFront": {
           "label": "Wielokrotny wybór na przodzie"

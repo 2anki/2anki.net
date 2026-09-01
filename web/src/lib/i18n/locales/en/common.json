@@ -597,7 +597,6 @@
       "placeholder": "Instructions for PDF conversion...",
       "presetsLabel": "Quick instructions",
       "presetsHint": "Add a starting point, then edit it in the box below.",
-      "presetsAria": "Instruction starting points",
       "presets": {
         "mcqOnFront": {
           "label": "Multiple choice on front"

@@ -883,7 +883,7 @@ describe('CardOptionsForm AI instruction presets', () => {
   it('renders the two preset chips inside the AI group', async () => {
     renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
     const group = await screen.findByRole('group', {
-      name: 'Instruction starting points',
+      name: 'Quick instructions',
     });
     expect(
       within(group).getByRole('button', { name: 'Multiple choice on front' })

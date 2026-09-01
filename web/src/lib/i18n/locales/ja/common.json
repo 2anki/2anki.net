@@ -590,7 +590,6 @@
       "placeholder": "PDF 変換の指示...",
       "presetsLabel": "クイック指示",
       "presetsHint": "出発点を追加してから、下の入力欄で編集できます。",
-      "presetsAria": "指示の出発点",
       "presets": {
         "mcqOnFront": {
           "label": "多肢選択を表面に"

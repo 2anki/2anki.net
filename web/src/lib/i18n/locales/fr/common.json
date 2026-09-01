@@ -597,7 +597,6 @@
       "placeholder": "Instructions pour la conversion PDF...",
       "presetsLabel": "Instructions rapides",
       "presetsHint": "Ajoute un point de départ, puis modifie-le dans le champ ci-dessous.",
-      "presetsAria": "Points de départ des instructions",
       "presets": {
         "mcqOnFront": {
           "label": "Choix multiple au recto"

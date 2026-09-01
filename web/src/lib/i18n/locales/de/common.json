@@ -597,7 +597,6 @@
       "placeholder": "Anweisungen für die PDF-Konvertierung...",
       "presetsLabel": "Schnellanweisungen",
       "presetsHint": "Füge einen Ausgangspunkt hinzu und passe ihn dann im Feld unten an.",
-      "presetsAria": "Ausgangspunkte für Anweisungen",
       "presets": {
         "mcqOnFront": {
           "label": "Multiple Choice auf der Vorderseite"

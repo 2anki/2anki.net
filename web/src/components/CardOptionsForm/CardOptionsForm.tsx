@@ -835,18 +835,18 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
     };
 
     const userInstructionsDisclosure = (
-      <div className={fieldStyles.section}>
-        <span className={fieldStyles.sectionLabel}>
-          {t('cardOptions.userInstructions.presetsLabel')}
-        </span>
+      <fieldset
+        className={`${fieldStyles.section} ${fieldStyles.fieldsetReset}`}
+      >
+        <legend className={fieldStyles.legendReset}>
+          <span className={fieldStyles.sectionLabel}>
+            {t('cardOptions.userInstructions.presetsLabel')}
+          </span>
+        </legend>
         <p className={fieldStyles.sectionHint}>
           {t('cardOptions.userInstructions.presetsHint')}
         </p>
-        <div
-          className={fieldStyles.instructionChips}
-          role="group"
-          aria-label={t('cardOptions.userInstructions.presetsAria')}
-        >
+        <div className={fieldStyles.instructionChips}>
           {INSTRUCTION_PRESETS.map((preset) => {
             const selected = hasInstructionLine(
               userInstructions,
@@ -889,7 +889,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
             placeholder={t('cardOptions.userInstructions.placeholder')}
           />
         </details>
-      </div>
+      </fieldset>
     );
 
     const showResetButton = !hideActions && pageId == null;

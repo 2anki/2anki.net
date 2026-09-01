@@ -597,7 +597,6 @@
       "placeholder": "Instruções para conversão de PDF...",
       "presetsLabel": "Instruções rápidas",
       "presetsHint": "Adicione um ponto de partida e depois edite-o na caixa abaixo.",
-      "presetsAria": "Pontos de partida das instruções",
       "presets": {
         "mcqOnFront": {
           "label": "Múltipla escolha na frente"
