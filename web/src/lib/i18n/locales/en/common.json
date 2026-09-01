@@ -605,7 +605,17 @@
     },
     "userInstructions": {
       "summary": "User instructions for PDF conversion",
-      "placeholder": "Instructions for PDF conversion..."
+      "placeholder": "Instructions for PDF conversion...",
+      "presetsLabel": "Quick instructions",
+      "presetsHint": "Add a starting point, then edit it in the box below.",
+      "presets": {
+        "mcqOnFront": {
+          "label": "Multiple choice on front"
+        },
+        "oneCardPerItem": {
+          "label": "One card per item"
+        }
+      }
     },
     "deck": {
       "structureHeading": "Deck & structure",

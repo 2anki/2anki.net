@@ -605,7 +605,17 @@
     },
     "userInstructions": {
       "summary": "Istruzioni utente per la conversione dei PDF",
-      "placeholder": "Istruzioni per la conversione dei PDF..."
+      "placeholder": "Istruzioni per la conversione dei PDF...",
+      "presetsLabel": "Istruzioni rapide",
+      "presetsHint": "Aggiungi un punto di partenza, poi modificalo nel riquadro qui sotto.",
+      "presets": {
+        "mcqOnFront": {
+          "label": "Scelta multipla sul fronte"
+        },
+        "oneCardPerItem": {
+          "label": "Una scheda per voce"
+        }
+      }
     },
     "deck": {
       "structureHeading": "Mazzo e struttura",

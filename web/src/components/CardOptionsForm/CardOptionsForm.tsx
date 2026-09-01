@@ -119,6 +119,42 @@ const DEFAULT_USER_INSTRUCTIONS = `Some extra rules and explanations:
 - Do not make up any questions and use the questions in the document!
 - Create a ul for every question pair, not one ul for all of them with li!`;
 
+const INSTRUCTION_PRESETS = [
+  {
+    id: 'mcq_front',
+    labelKey: 'cardOptions.userInstructions.presets.mcqOnFront.label',
+    sentence:
+      "Write multiple-choice questions. Put the question and all answer options (A, B, C, D) on the front of the card; put only the correct option's letter on the back.",
+  },
+  {
+    id: 'one_card_per_item',
+    labelKey: 'cardOptions.userInstructions.presets.oneCardPerItem.label',
+    sentence:
+      'Make a separate card for each list item instead of grouping a list onto one card.',
+  },
+] as const;
+
+function hasInstructionLine(text: string, sentence: string): boolean {
+  return text.split('\n').some((line) => line.trim() === sentence);
+}
+
+function appendInstructionLine(text: string, sentence: string): string {
+  return text === '' ? sentence : `${text}\n${sentence}`;
+}
+
+function removeInstructionLine(text: string, sentence: string): string {
+  const lines = text.split('\n');
+  const index = lines.findLastIndex((line) => line.trim() === sentence);
+  if (index === -1) {
+    return text;
+  }
+  lines.splice(index, 1);
+  if (lines[index] === '' && lines[index - 1] === '') {
+    lines.splice(index, 1);
+  }
+  return lines.join('\n');
+}
+
 const OPTION_GROUPS: Array<{ id: string; labelKey: string; keys: string[] }> = [
   {
     id: 'content',
@@ -356,6 +392,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         DEFAULT_USER_INSTRUCTIONS,
         settings
       )
+    );
+    const [instructionsOpen, setInstructionsOpen] = useState(
+      window.location.hash === '#pdf-ai'
     );
     const [checkboxValues, setCheckboxValues] = useState<
       Record<string, boolean>
@@ -774,9 +813,64 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       (o: CardOption) => !GROUPED_KEYS.has(o.key)
     );
 
+    const toggleInstructionPreset = (
+      preset: (typeof INSTRUCTION_PRESETS)[number]
+    ) => {
+      const wasSelected = hasInstructionLine(userInstructions, preset.sentence);
+      const next = wasSelected
+        ? removeInstructionLine(userInstructions, preset.sentence)
+        : appendInstructionLine(userInstructions, preset.sentence);
+      setUserInstructions(next);
+      if (!pageId) {
+        saveValueInLocalStorage('user-instructions', next, pageId);
+      }
+      if (!wasSelected) {
+        setInstructionsOpen(true);
+      }
+      track('ai_preset_applied', {
+        preset: preset.id,
+        action: wasSelected ? 'removed' : 'added',
+        scope: pageId ? 'page' : 'default',
+      });
+    };
+
     const userInstructionsDisclosure = (
-      <div className={fieldStyles.section}>
-        <details open={window.location.hash === '#pdf-ai' || undefined}>
+      <fieldset
+        className={`${fieldStyles.section} ${fieldStyles.fieldsetReset}`}
+      >
+        <legend className={fieldStyles.legendReset}>
+          <span className={fieldStyles.sectionLabel}>
+            {t('cardOptions.userInstructions.presetsLabel')}
+          </span>
+        </legend>
+        <p className={fieldStyles.sectionHint}>
+          {t('cardOptions.userInstructions.presetsHint')}
+        </p>
+        <div className={fieldStyles.instructionChips}>
+          {INSTRUCTION_PRESETS.map((preset) => {
+            const selected = hasInstructionLine(
+              userInstructions,
+              preset.sentence
+            );
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                className={`${fieldStyles.instructionChip} ${
+                  selected ? fieldStyles.instructionChipActive : ''
+                }`}
+                aria-pressed={selected}
+                onClick={() => toggleInstructionPreset(preset)}
+              >
+                {t(preset.labelKey)}
+              </button>
+            );
+          })}
+        </div>
+        <details
+          open={instructionsOpen}
+          onToggle={(e) => setInstructionsOpen(e.currentTarget.open)}
+        >
           <summary className={fieldStyles.detailsSummary}>
             {t('cardOptions.userInstructions.summary')}
           </summary>
@@ -795,7 +889,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
             placeholder={t('cardOptions.userInstructions.placeholder')}
           />
         </details>
-      </div>
+      </fieldset>
     );
 
     const showResetButton = !hideActions && pageId == null;

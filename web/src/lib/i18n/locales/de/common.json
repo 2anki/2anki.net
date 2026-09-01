@@ -605,7 +605,17 @@
     },
     "userInstructions": {
       "summary": "Nutzeranweisungen für die PDF-Konvertierung",
-      "placeholder": "Anweisungen für die PDF-Konvertierung..."
+      "placeholder": "Anweisungen für die PDF-Konvertierung...",
+      "presetsLabel": "Schnellanweisungen",
+      "presetsHint": "Füge einen Ausgangspunkt hinzu und passe ihn dann im Feld unten an.",
+      "presets": {
+        "mcqOnFront": {
+          "label": "Multiple Choice auf der Vorderseite"
+        },
+        "oneCardPerItem": {
+          "label": "Eine Karte pro Eintrag"
+        }
+      }
     },
     "deck": {
       "structureHeading": "Stapel & Struktur",

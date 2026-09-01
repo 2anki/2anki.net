@@ -605,7 +605,17 @@
     },
     "userInstructions": {
       "summary": "Instructions utilisateur pour la conversion PDF",
-      "placeholder": "Instructions pour la conversion PDF..."
+      "placeholder": "Instructions pour la conversion PDF...",
+      "presetsLabel": "Instructions rapides",
+      "presetsHint": "Ajoute un point de départ, puis modifie-le dans le champ ci-dessous.",
+      "presets": {
+        "mcqOnFront": {
+          "label": "Choix multiple au recto"
+        },
+        "oneCardPerItem": {
+          "label": "Une carte par élément"
+        }
+      }
     },
     "deck": {
       "structureHeading": "Paquet et structure",

@@ -619,7 +619,17 @@
     },
     "userInstructions": {
       "summary": "Instrukcje użytkownika dla konwersji PDF",
-      "placeholder": "Instrukcje dla konwersji PDF…"
+      "placeholder": "Instrukcje dla konwersji PDF…",
+      "presetsLabel": "Szybkie instrukcje",
+      "presetsHint": "Dodaj punkt wyjścia, a następnie edytuj go w polu poniżej.",
+      "presets": {
+        "mcqOnFront": {
+          "label": "Wielokrotny wybór na przodzie"
+        },
+        "oneCardPerItem": {
+          "label": "Jedna karta na element"
+        }
+      }
     },
     "deck": {
       "structureHeading": "Talia i struktura",

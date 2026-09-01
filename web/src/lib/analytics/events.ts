@@ -95,6 +95,7 @@ export const KNOWN_EVENTS = new Set([
   'subscription_ended_shown',
   'language_changed',
   'card_style_selected',
+  'ai_preset_applied',
   'pass_claim_email_sent',
   'anonymous_pass_claimed',
   'pass_account_email_autolinked',
