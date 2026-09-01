@@ -283,6 +283,22 @@ class UsersRepository {
       .update({ linked_email: newEmail.toLowerCase() });
   }
 
+  changeEmailAndRelinkSubscriptions(
+    currentEmail: string,
+    newEmail: string
+  ): Promise<void> {
+    const current = currentEmail.trim();
+    const next = newEmail.trim().toLowerCase();
+    return this.database.transaction(async (trx) => {
+      await trx(this.table)
+        .whereRaw('LOWER(TRIM(email)) = LOWER(?)', [current])
+        .update({ email: next });
+      await trx('subscriptions')
+        .where({ email: current.toLowerCase() })
+        .update({ linked_email: next });
+    });
+  }
+
   async getSubscriptionLinkedEmail(owner: string) {
     const user = await this.database(this.table).where({ id: owner }).first();
     if (!user) {
