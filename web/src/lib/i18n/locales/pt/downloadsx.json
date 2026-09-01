@@ -125,9 +125,13 @@
     "omitted_one": "Mais {{count}} bloco foi ignorado por outros motivos.",
     "omitted_other": "Mais {{count}} blocos foram ignorados por outros motivos."
   },
-  "emptyToggleRow": {
-    "notice_one": "Em {{skipped}} dos seus toggles falta a resposta, então só 1 cartão foi criado. Coloque a resposta dentro de cada toggle e converta de novo.",
-    "notice_other": "Em {{skipped}} dos seus toggles falta a resposta, então só {{count}} cartões foram criados. Coloque a resposta dentro de cada toggle e converta de novo.",
+  "thinDeck": {
+    "emptyToggles_one": "Só saiu {{count}} cartão desta página. {{skipped}} alternadores não tinham resposta dentro e foram ignorados — adicione uma resposta dentro de cada um e converta de novo.",
+    "emptyToggles_other": "Só saíram {{count}} cartões desta página. {{skipped}} alternadores não tinham resposta dentro e foram ignorados — adicione uma resposta dentro de cada um e converta de novo.",
+    "notConnected_one": "Só saiu {{count}} cartão desta página. {{skipped}} partes não estão conectadas ao 2anki e foram ignoradas — no Notion, adicione o 2anki a esta página e às subpáginas em Connections e converta de novo.",
+    "notConnected_other": "Só saíram {{count}} cartões desta página. {{skipped}} partes não estão conectadas ao 2anki e foram ignoradas — no Notion, adicione o 2anki a esta página e às subpáginas em Connections e converta de novo.",
+    "generic_one": "Só saiu {{count}} cartão desta página, e {{skipped}} partes foram ignoradas. Abra o relatório para ver o motivo.",
+    "generic_other": "Só saíram {{count}} cartões desta página, e {{skipped}} partes foram ignoradas. Abra o relatório para ver o motivo.",
     "seeReport": "Ver o relatório completo"
   }
 }

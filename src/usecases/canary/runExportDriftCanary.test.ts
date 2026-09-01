@@ -22,13 +22,35 @@ describe('runExportDriftCanary', () => {
     if (result.status === 'pass') {
       expect(result.failures).toHaveLength(0);
     }
-  });
+  }, 60000);
 
   test('represents the known Notion drift classes in the reference fixtures', () => {
     const classes = EXPORT_DRIFT_FIXTURES.map((f) => f.driftClass).join(' | ');
     expect(classes).toContain('display:contents');
     expect(classes).toContain('details.toggle');
+    expect(classes).toContain('figure.image');
+    expect(classes).toContain('figure.equation');
   });
+
+  test('keeps the figure.image fixture embedding its bundled subfolder image', async () => {
+    const fixture = EXPORT_DRIFT_FIXTURES.find((f) =>
+      f.driftClass.startsWith('figure.image')
+    )!;
+    const result = await runExportDriftCanary([fixture]);
+    expect(result.status).toBe('pass');
+    expect(fixture.baseline.mediaCount).toBe(1);
+    expect(fixture.baseline.cardCount).toBe(1);
+  }, 30000);
+
+  test('keeps the figure.equation fixture producing a non-empty back', async () => {
+    const fixture = EXPORT_DRIFT_FIXTURES.find((f) =>
+      f.driftClass.startsWith('figure.equation')
+    )!;
+    const result = await runExportDriftCanary([fixture]);
+    expect(result.status).toBe('pass');
+    expect(fixture.baseline.cardCount).toBe(1);
+    expect(fixture.baseline.nonEmptyBackCount).toBe(1);
+  }, 30000);
 
   test('alerts with a field-level diff when the card count drifts', async () => {
     const target = EXPORT_DRIFT_FIXTURES[0];
