@@ -27,10 +27,20 @@ export interface ProcessSendgridEventsResult {
   recorded: number;
   skipped: number;
   duplicates: number;
-  categories: Record<string, number>;
+  categories: Record<string, Record<string, number>>;
 }
 
 const UNCATEGORIZED = 'uncategorized';
+
+export class SendgridEventProcessingError extends Error {
+  constructor(
+    readonly cause: unknown,
+    readonly partial: ProcessSendgridEventsResult
+  ) {
+    super('Failed to process sendgrid events');
+    this.name = 'SendgridEventProcessingError';
+  }
+}
 
 function isTrackedEvent(value: unknown): value is SuppressionEventType {
   return typeof value === 'string' && TRACKED_EVENT_TYPES.has(value);
@@ -41,8 +51,10 @@ function normalizeCategory(value: unknown): string | null {
     return value;
   }
   if (Array.isArray(value)) {
-    const first = value[0];
-    return typeof first === 'string' && first.length > 0 ? first : null;
+    const firstNonEmpty = value.find(
+      (entry): entry is string => typeof entry === 'string' && entry.length > 0
+    );
+    return firstNonEmpty ?? null;
   }
   return null;
 }
@@ -65,6 +77,8 @@ export class ProcessSendgridEventsUseCase {
       categories: {},
     };
 
+    let fatalError: unknown = null;
+
     for (const event of events) {
       const email = event.email;
       const sgEventId = event.sg_event_id;
@@ -78,23 +92,30 @@ export class ProcessSendgridEventsUseCase {
         continue;
       }
 
+      const eventType = event.event;
       try {
         await this.repository.record({
           emailHash: emailHash(email),
-          eventType: event.event,
+          eventType,
           sgEventId,
           eventAt: toEventDate(event.timestamp),
         });
         result.recorded += 1;
         const category = normalizeCategory(event.category) ?? UNCATEGORIZED;
-        result.categories[category] = (result.categories[category] ?? 0) + 1;
+        const byEventType = (result.categories[category] ??= {});
+        byEventType[eventType] = (byEventType[eventType] ?? 0) + 1;
       } catch (err) {
         if (err instanceof DuplicateSuppressionEventError) {
           result.duplicates += 1;
           continue;
         }
-        throw err;
+        fatalError = err;
+        break;
       }
+    }
+
+    if (fatalError != null) {
+      throw new SendgridEventProcessingError(fatalError, result);
     }
 
     return result;

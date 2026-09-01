@@ -5,6 +5,7 @@ import SuppressionEventsRepository from '../data_layer/SuppressionEventsReposito
 import {
   ProcessSendgridEventsUseCase,
   SendgridEvent,
+  SendgridEventProcessingError,
 } from '../usecases/email/ProcessSendgridEventsUseCase';
 import { verifySendgridEventWebhookSignature } from '../lib/sendgrid/sendgridEventWebhookSignature';
 
@@ -63,9 +64,18 @@ const SendgridWebhookRouter = (
         return;
       }
 
-      const summary = await useCase.execute(events);
-      console.info('sendgrid.events.processed', summary);
-      res.status(200).json({ message: 'accepted' });
+      try {
+        const summary = await useCase.execute(events);
+        console.info('sendgrid.events.processed', summary);
+        res.status(200).json({ message: 'accepted' });
+      } catch (err) {
+        if (err instanceof SendgridEventProcessingError) {
+          console.error('sendgrid.events.partial', err.partial);
+          res.status(500).json({ message: 'partial processing failure' });
+          return;
+        }
+        throw err;
+      }
     }
   );
 

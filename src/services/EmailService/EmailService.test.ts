@@ -431,6 +431,9 @@ describe('EmailService tags every outgoing send with a template category', () =>
 
   function lastCategories(): string[] | undefined {
     const calls = send.mock.calls;
+    if (calls.length === 0) {
+      return undefined;
+    }
     return (calls[calls.length - 1][0] as { categories?: string[] }).categories;
   }
 
@@ -476,9 +479,15 @@ describe('EmailService tags every outgoing send with a template category', () =>
       },
     },
     {
-      category: EMAIL_CATEGORIES.magicLink,
+      category: EMAIL_CATEGORIES.magicLinkLogin,
       run: async (s) => {
         await s.sendMagicLinkEmail('user@example.com', 'tok', 'login');
+      },
+    },
+    {
+      category: EMAIL_CATEGORIES.magicLinkPasswordReset,
+      run: async (s) => {
+        await s.sendMagicLinkEmail('user@example.com', 'tok', 'password_reset');
       },
     },
     {
@@ -564,6 +573,10 @@ describe('EmailService tags every outgoing send with a template category', () =>
         s.sendSubscriptionRecoveryEmail('user@example.com', 'paid@example.com'),
     },
   ];
+
+  it('returns undefined categories when no email was sent', () => {
+    expect(lastCategories()).toBeUndefined();
+  });
 
   it.each(cases)('tags $category on the send', async ({ category, run }) => {
     const service = getDefaultEmailService();

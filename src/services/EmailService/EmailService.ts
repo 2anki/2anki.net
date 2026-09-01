@@ -419,8 +419,11 @@ export class EmailService implements IEmailService {
       replyTo: 'support@2anki.net',
     };
 
+    const category = isLogin
+      ? EMAIL_CATEGORIES.magicLinkLogin
+      : EMAIL_CATEGORIES.magicLinkPasswordReset;
     try {
-      const result = await this.deliver(msg, EMAIL_CATEGORIES.magicLink);
+      const result = await this.deliver(msg, category);
       return { suppressed: result == null };
     } catch (error) {
       console.error('Failed to send magic link email:', error);

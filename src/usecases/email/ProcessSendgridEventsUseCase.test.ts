@@ -1,6 +1,13 @@
-import { InMemorySuppressionEventsRepository } from '../../data_layer/SuppressionEventsRepository';
+import {
+  InMemorySuppressionEventsRepository,
+  ISuppressionEventsRepository,
+  RecordSuppressionEvent,
+} from '../../data_layer/SuppressionEventsRepository';
 import { emailHash } from '../../lib/emailHash';
-import { ProcessSendgridEventsUseCase } from './ProcessSendgridEventsUseCase';
+import {
+  ProcessSendgridEventsUseCase,
+  SendgridEventProcessingError,
+} from './ProcessSendgridEventsUseCase';
 
 describe('ProcessSendgridEventsUseCase', () => {
   const address = 'bounced@example.com';
@@ -22,7 +29,7 @@ describe('ProcessSendgridEventsUseCase', () => {
       recorded: 1,
       skipped: 0,
       duplicates: 0,
-      categories: { uncategorized: 1 },
+      categories: { uncategorized: { bounce: 1 } },
     });
     expect(await repo.isSuppressed(emailHash(address))).toBe(true);
   });
@@ -159,7 +166,7 @@ describe('ProcessSendgridEventsUseCase', () => {
       },
     ]);
 
-    expect(result.categories).toEqual({ 'magic-link': 1 });
+    expect(result.categories).toEqual({ 'magic-link': { delivered: 1 } });
   });
 
   it('attributes a recorded event to its category (string form)', async () => {
@@ -176,7 +183,7 @@ describe('ProcessSendgridEventsUseCase', () => {
       },
     ]);
 
-    expect(result.categories).toEqual({ 'password-reset': 1 });
+    expect(result.categories).toEqual({ 'password-reset': { delivered: 1 } });
   });
 
   it('buckets a recorded event with no category as uncategorized', async () => {
@@ -199,10 +206,10 @@ describe('ProcessSendgridEventsUseCase', () => {
       },
     ]);
 
-    expect(result.categories).toEqual({ uncategorized: 2 });
+    expect(result.categories).toEqual({ uncategorized: { delivered: 2 } });
   });
 
-  it('aggregates per-category counts across events for the log summary', async () => {
+  it('aggregates per-category and per-event-type counts for the log summary', async () => {
     const repo = new InMemorySuppressionEventsRepository();
     const useCase = new ProcessSendgridEventsUseCase(repo);
 
@@ -230,11 +237,57 @@ describe('ProcessSendgridEventsUseCase', () => {
       },
     ]);
 
-    expect(result.categories).toEqual({ 'magic-link': 2, 'password-reset': 1 });
-    const categoryTotal = Object.values(result.categories).reduce(
-      (sum, count) => sum + count,
-      0
-    );
+    expect(result.categories).toEqual({
+      'magic-link': { delivered: 1, bounce: 1 },
+      'password-reset': { delivered: 1 },
+    });
+    const categoryTotal = Object.values(result.categories)
+      .flatMap((byEventType) => Object.values(byEventType))
+      .reduce((sum, count) => sum + count, 0);
     expect(categoryTotal).toBe(result.recorded);
+  });
+
+  it('throws with the partial result when recording fails mid-batch', async () => {
+    const failure = new Error('database unavailable');
+    const repo: ISuppressionEventsRepository = {
+      record: jest
+        .fn<Promise<void>, [RecordSuppressionEvent]>()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(failure),
+      isSuppressed: jest
+        .fn<Promise<boolean>, [string]>()
+        .mockResolvedValue(false),
+    };
+    const useCase = new ProcessSendgridEventsUseCase(repo);
+
+    const events = [
+      {
+        email: 'a@x.com',
+        event: 'delivered',
+        sg_event_id: 'e1',
+        timestamp: 1,
+        category: 'magic-link-login',
+      },
+      {
+        email: 'b@x.com',
+        event: 'bounce',
+        sg_event_id: 'e2',
+        timestamp: 2,
+        category: 'magic-link-login',
+      },
+    ];
+
+    const caught = await useCase.execute(events).catch((err) => err);
+
+    expect(caught).toBeInstanceOf(SendgridEventProcessingError);
+    const error = caught as SendgridEventProcessingError;
+    expect(error.cause).toBe(failure);
+    expect(error.partial).toEqual({
+      recorded: 1,
+      skipped: 0,
+      duplicates: 0,
+      categories: { 'magic-link-login': { delivered: 1 } },
+    });
+    expect(repo.record).toHaveBeenCalledTimes(2);
   });
 });
