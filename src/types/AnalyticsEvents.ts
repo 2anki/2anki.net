@@ -121,6 +121,7 @@ export const KNOWN_EVENTS = new Set([
   'image_only_photo_deck_clicked',
   'ankify_decklist_sorted',
   'empty_back_notice_shown',
+  'thin_deck_notice_shown',
   'mindmap_export_excluded_nodes',
   'ai_usage_recorded',
   'pass_claim_email_sent',

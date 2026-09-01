@@ -107,8 +107,10 @@
     "reasonUnsupported_other": "{{count}}個の{{type}}ブロックはまだカードにできません。",
     "omitted_other": "他の理由でさらに{{count}}個のブロックがスキップされました。"
   },
-  "emptyToggleRow": {
-    "notice_other": "トグルのうち{{skipped}}個に答えが入っていなかったため、作成されたカードは{{count}}枚だけです。各トグルの中に答えを入れてから、もう一度変換してください。",
+  "thinDeck": {
+    "emptyToggles_other": "このページからは{{count}}枚のカードしか作成されませんでした。{{skipped}}個のトグルに答えが入っていなかったためスキップされました。各トグルの中に答えを追加してから、もう一度変換してください。",
+    "notConnected_other": "このページからは{{count}}枚のカードしか作成されませんでした。{{skipped}}個の部分が2ankiに接続されていないためスキップされました。Notionで、このページとサブページのConnectionsに2ankiを追加してから、もう一度変換してください。",
+    "generic_other": "このページからは{{count}}枚のカードしか作成されず、{{skipped}}個の部分がスキップされました。理由を確認するにはレポートを開いてください。",
     "seeReport": "レポート全体を見る"
   }
 }

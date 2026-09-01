@@ -125,9 +125,13 @@
     "omitted_one": "{{count}} weiterer Block wurde aus anderen Gründen übersprungen.",
     "omitted_other": "{{count}} weitere Blöcke wurden aus anderen Gründen übersprungen."
   },
-  "emptyToggleRow": {
-    "notice_one": "Bei {{skipped}} deiner Toggles fehlt die Antwort, deshalb ist nur 1 Karte entstanden. Schreib die Antwort in jeden Toggle und konvertiere dann erneut.",
-    "notice_other": "Bei {{skipped}} deiner Toggles fehlt die Antwort, deshalb sind nur {{count}} Karten entstanden. Schreib die Antwort in jeden Toggle und konvertiere dann erneut.",
+  "thinDeck": {
+    "emptyToggles_one": "Nur {{count}} Karte ist aus dieser Seite entstanden. {{skipped}} Toggles hatten innen keine Antwort und wurden übersprungen — füge in jedes eine Antwort ein und konvertiere erneut.",
+    "emptyToggles_other": "Nur {{count}} Karten sind aus dieser Seite entstanden. {{skipped}} Toggles hatten innen keine Antwort und wurden übersprungen — füge in jedes eine Antwort ein und konvertiere erneut.",
+    "notConnected_one": "Nur {{count}} Karte ist aus dieser Seite entstanden. {{skipped}} Teile sind nicht mit 2anki verbunden und wurden übersprungen — füge 2anki in Notion unter Connections zu dieser Seite und ihren Unterseiten hinzu und konvertiere erneut.",
+    "notConnected_other": "Nur {{count}} Karten sind aus dieser Seite entstanden. {{skipped}} Teile sind nicht mit 2anki verbunden und wurden übersprungen — füge 2anki in Notion unter Connections zu dieser Seite und ihren Unterseiten hinzu und konvertiere erneut.",
+    "generic_one": "Nur {{count}} Karte ist aus dieser Seite entstanden, und {{skipped}} Teile wurden übersprungen. Öffne den Bericht, um zu sehen, warum.",
+    "generic_other": "Nur {{count}} Karten sind aus dieser Seite entstanden, und {{skipped}} Teile wurden übersprungen. Öffne den Bericht, um zu sehen, warum.",
     "seeReport": "Vollständigen Bericht ansehen"
   }
 }
