@@ -65,7 +65,9 @@
     "keepSubscription": "Mantieni l'abbonamento",
     "commentAria": "Commento facoltativo",
     "commentPlaceholder": "Vuoi aggiungere qualcosa? (facoltativo)",
-    "commentPlaceholderTechnical": "Cosa non ha funzionato? (facoltativo)"
+    "commentPlaceholderTechnical": "Cosa non ha funzionato? (facoltativo)",
+    "stillWantToCancel": "Vuoi comunque disdire?",
+    "pauseOrCancel": "Metti in pausa o disdici"
   },
   "pauseCard": {
     "pauseInstead": "Metti in pausa invece — nessun addebito mentre sei via",
@@ -77,7 +79,8 @@
     "resumesLine": "Riprende il {{date}} a {{plan}}. Disdici quando vuoi prima di allora.",
     "yourPlan": "il tuo piano",
     "pausing": "Messa in pausa…",
-    "pauseSubscription": "Metti in pausa l'abbonamento"
+    "pauseSubscription": "Metti in pausa l'abbonamento",
+    "legacyKeeps": "Mettendo in pausa mantieni la tua vecchia tariffa {{plan}}. Disdicendo la perdi."
   },
   "accountDeletion": {
     "deleteAccount": "Elimina l'account",

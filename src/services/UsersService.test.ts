@@ -268,7 +268,8 @@ describe('UsersService.requestMagicLink', () => {
     expect(emailService.sendMagicLinkEmail).toHaveBeenCalledWith(
       'al@example.com',
       expect.any(String),
-      'login'
+      'login',
+      undefined
     );
     const sentToken = (emailService.sendMagicLinkEmail as jest.Mock).mock
       .calls[0][1];
@@ -305,7 +306,8 @@ describe('UsersService.requestMagicLink', () => {
     expect(emailService.sendMagicLinkEmail).toHaveBeenCalledWith(
       'Newcomer@example.com',
       expect.any(String),
-      'login'
+      'login',
+      undefined
     );
   });
 

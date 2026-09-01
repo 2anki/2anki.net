@@ -65,7 +65,9 @@
     "keepSubscription": "Garder l'abonnement",
     "commentAria": "Commentaire facultatif",
     "commentPlaceholder": "Tu veux ajouter quelque chose ? (facultatif)",
-    "commentPlaceholderTechnical": "Qu'est-ce qui n'a pas fonctionné ? (facultatif)"
+    "commentPlaceholderTechnical": "Qu'est-ce qui n'a pas fonctionné ? (facultatif)",
+    "stillWantToCancel": "Tu veux quand même annuler ?",
+    "pauseOrCancel": "Mettre en pause ou annuler"
   },
   "pauseCard": {
     "pauseInstead": "Mettre en pause plutôt — aucun débit pendant ton absence",
@@ -77,7 +79,8 @@
     "resumesLine": "Reprend le {{date}} au tarif {{plan}}. Annulable à tout moment d'ici là.",
     "yourPlan": "ton offre",
     "pausing": "Mise en pause…",
-    "pauseSubscription": "Mettre l'abonnement en pause"
+    "pauseSubscription": "Mettre l'abonnement en pause",
+    "legacyKeeps": "La mise en pause conserve ton ancien tarif {{plan}}. L’annulation le fait perdre."
   },
   "accountDeletion": {
     "deleteAccount": "Supprimer le compte",

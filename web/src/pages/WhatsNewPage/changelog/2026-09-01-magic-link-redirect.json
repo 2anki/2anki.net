@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-01-magic-link-redirect",
+  "date": "2026-09-01",
+  "type": "fix",
+  "title": "Signing in with an email link now returns you to the page you came from"
+}

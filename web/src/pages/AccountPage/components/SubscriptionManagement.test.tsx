@@ -381,7 +381,7 @@ describe('SubscriptionManagement', () => {
     expect(mockUseStripeSubscriptions).not.toHaveBeenCalled();
   });
 
-  it('opens the confirm panel and reveals the pause card on a lifecycle reason', () => {
+  it('leads the cancel flow with the pause card for a pause-eligible sub', () => {
     stubStripeActive();
     renderStripeManagement();
 
@@ -389,14 +389,9 @@ describe('SubscriptionManagement', () => {
       screen.getByRole('button', { name: 'Cancel subscription' })
     );
 
-    expect(screen.getByText(/Why are you cancelling/)).toBeTruthy();
-    expect(screen.queryByText(/Pause instead — no charge/)).toBeNull();
-
-    fireEvent.click(screen.getByLabelText('I finished what I needed'));
-
     expect(screen.getByText(/Pause instead — no charge/)).toBeTruthy();
+    expect(screen.getByText('Still want to cancel?')).toBeTruthy();
     expect(track).toHaveBeenCalledWith('subscription_pause_offered', {
-      reason: 'I finished what I needed',
       tenure_days: expect.any(Number),
     });
     expect(
