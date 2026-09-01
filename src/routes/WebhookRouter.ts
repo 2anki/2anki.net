@@ -19,6 +19,7 @@ import UserPassRepository, {
 import AnonymousPassRepository from '../data_layer/AnonymousPassRepository';
 import PassClaimTokensRepository from '../data_layer/PassClaimTokensRepository';
 import { SendAnonymousPassClaimEmailUseCase } from '../usecases/passes/SendAnonymousPassClaimEmailUseCase';
+import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
 import { PASS_CLAIM_WINDOW_MS } from '../usecases/passes/passDurations';
 import TokenRepository from '../data_layer/TokenRepository';
 import AuthenticationService from '../services/AuthenticationService';
@@ -78,6 +79,12 @@ const WebhooksRouter = () => {
       getDefaultEmailService(),
       getEventsSink()
     );
+  const grantUnclaimedPassUseCase = new GrantUnclaimedPassUseCase(
+    new AnonymousPassRepository(database),
+    new UserPassRepository(database),
+    usersRepository,
+    getEventsSink()
+  );
 
   /**
    * @swagger
@@ -415,7 +422,37 @@ const WebhooksRouter = () => {
                   expires_at: granted.expires_at.toISOString(),
                   payment_intent_id_hash: hashToken(paymentIntentId),
                 });
-                if (alreadyGranted == null && buyerEmail != null) {
+
+                let autoLinked = false;
+                if (alreadyGranted == null) {
+                  const accountEmail = session.custom_fields
+                    ?.find((field) => field.key === 'account_email')
+                    ?.text?.value?.trim();
+                  if (accountEmail != null && accountEmail !== '') {
+                    const outcome = await grantUnclaimedPassUseCase.execute(
+                      { anonymousPassId: granted.id, email: accountEmail },
+                      now
+                    );
+                    if (outcome.success) {
+                      autoLinked = true;
+                      track('pass_account_email_autolinked', {
+                        userId: outcome.userId,
+                        props: { kind: passKind },
+                      });
+                      console.info('pass.autolinked', {
+                        user_id: outcome.userId,
+                        kind: passKind,
+                        payment_intent_id_hash: hashToken(paymentIntentId),
+                      });
+                    }
+                  }
+                }
+
+                if (
+                  !autoLinked &&
+                  alreadyGranted == null &&
+                  buyerEmail != null
+                ) {
                   try {
                     await sendAnonymousPassClaimEmailUseCase.execute({
                       anonymousPassId: granted.id,

@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-01-pass-checkout-email-link",
+  "date": "2026-09-01",
+  "type": "fix",
+  "title": "Day and Week Passes bought while signed out now reach your account when you give your 2anki email at checkout"
+}

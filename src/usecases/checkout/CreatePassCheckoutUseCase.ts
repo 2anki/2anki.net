@@ -55,7 +55,19 @@ export class CreatePassCheckoutUseCase {
       metadata,
     };
 
-    if (!isAnonymous) {
+    if (isAnonymous) {
+      sessionParams.custom_fields = [
+        {
+          key: 'account_email',
+          label: {
+            type: 'custom',
+            custom: 'Your 2anki account email (optional)',
+          },
+          type: 'text',
+          optional: true,
+        },
+      ];
+    } else {
       sessionParams.customer_email =
         input.stripeCustomerId == null ? input.userEmail : undefined;
       sessionParams.customer = input.stripeCustomerId ?? undefined;
