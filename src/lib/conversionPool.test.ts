@@ -141,6 +141,18 @@ describe('runConversionInWorker', () => {
     expect(typeof request.api.getPage).toBe('function');
   });
 
+  it('forwards the originating requestId into performConversion so worker logs join the request', async () => {
+    const fakeKnex = {} as unknown as Parameters<typeof performConversion>[0];
+
+    await runConversionInWorker(
+      { ...baseRequest, requestId: 'req-xyz-789' },
+      () => fakeKnex
+    );
+
+    const [, request] = (performConversion as jest.Mock).mock.calls[0];
+    expect(request.requestId).toBe('req-xyz-789');
+  });
+
   it('sets job failed with notion_token_expired when owner has no Notion token', async () => {
     (NotionRepository as jest.Mock).mockImplementation(() => ({
       getNotionToken: jest.fn().mockResolvedValue(null),
