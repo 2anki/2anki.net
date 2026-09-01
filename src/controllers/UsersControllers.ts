@@ -37,7 +37,7 @@ import {
   MagicLinkRateLimitError,
   MagicLinkSuppressedError,
 } from '../services/UsersService';
-import { MONTHLY_CARD_LIMIT } from '../usecases/users/CheckMonthlyCardLimitUseCase';
+import { MONTHLY_CARD_LIMIT } from '../lib/limits';
 import UsersRepository from '../data_layer/UsersRepository';
 import OauthIdentitiesRepository from '../data_layer/OauthIdentitiesRepository';
 import { UsersId } from '../data_layer/public/Users';
