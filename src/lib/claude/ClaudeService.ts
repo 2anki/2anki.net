@@ -137,7 +137,7 @@ function causeCode(err: unknown): string | undefined {
 // conversion calls, and every hit re-billed the chunk as halves (~3x the cost
 // of just letting the answer finish). 32768 covers the observed demand for a
 // CHUNK_SIZE chunk while staying half of Sonnet 5's 64k output limit.
-const CHUNK_MAX_TOKENS = 32768;
+export const CHUNK_MAX_TOKENS = 32768;
 
 const MAX_CHUNK_API_ATTEMPTS = 2;
 const CHUNK_RETRY_BASE_DELAY_MS = 500;

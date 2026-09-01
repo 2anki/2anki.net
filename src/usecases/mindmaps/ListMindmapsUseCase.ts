@@ -6,8 +6,9 @@ import {
 import { MindmapRepositoryInterface } from '../../data_layer/MindmapRepository';
 import Mindmaps from '../../data_layer/public/Mindmaps';
 import { UsersId } from '../../data_layer/public/Users';
-import { resolveMapLimit, FREE_MAP_LIMIT } from './CreateMindmapUseCase';
-import { resolveNodeLimit, FREE_NODE_LIMIT } from './UpdateMindmapUseCase';
+import { resolveMapLimit } from './CreateMindmapUseCase';
+import { resolveNodeLimit } from './UpdateMindmapUseCase';
+import { FREE_MAP_LIMIT, FREE_NODE_LIMIT } from '../../lib/limits';
 
 export interface MindmapAccessInfo {
   hasUnlimited: boolean;
