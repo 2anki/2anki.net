@@ -857,3 +857,166 @@ describe('CardOptionsForm card style picker', () => {
     });
   });
 });
+
+describe('CardOptionsForm AI instruction presets', () => {
+  const MCQ_SENTENCE =
+    "Write multiple-choice questions. Put the question and all answer options (A, B, C, D) on the front of the card; put only the correct option's letter on the back.";
+  const GROUPED_CLOZE_SENTENCE =
+    'Put all items of a list or enumeration on one card as sequential cloze deletions (c1, c2, c3...), not a separate card per item.';
+  const ONE_CARD_SENTENCE =
+    'Make a separate card for each list item instead of grouping a list onto one card.';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResetUserCardOptions.mockResolvedValue(undefined);
+    setUserLocalsPaying(false);
+    globalThis.localStorage.clear();
+    window.location.hash = '';
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'claude-ai-flashcards',
+        'AI flashcards',
+        'Write the cards with Claude.',
+        false
+      ),
+    ]);
+  });
+
+  it('renders the three preset chips inside the AI group', async () => {
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+    const group = await screen.findByRole('group', {
+      name: 'Instruction starting points',
+    });
+    expect(
+      within(group).getByRole('button', { name: 'Multiple choice on front' })
+    ).toBeInTheDocument();
+    expect(
+      within(group).getByRole('button', { name: 'Grouped cloze' })
+    ).toBeInTheDocument();
+    expect(
+      within(group).getByRole('button', { name: 'One card per item' })
+    ).toBeInTheDocument();
+  });
+
+  it('appends the sentence, persists it, opens the box, and tracks added on first click', async () => {
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+    const chip = await screen.findByRole('button', {
+      name: 'Multiple choice on front',
+    });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(chip);
+
+    await waitFor(() => {
+      expect(localStorage.getItem('user-instructions')).toContain(MCQ_SENTENCE);
+    });
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    const summary = screen.getByText(/instructions/i, { selector: 'summary' });
+    expect(summary.closest('details')).toHaveAttribute('open');
+    expect(mockTrack).toHaveBeenCalledWith('ai_preset_applied', {
+      preset: 'mcq_front',
+      action: 'added',
+    });
+  });
+
+  it('removes the exact line and tracks removed on the second click', async () => {
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+    const chip = await screen.findByRole('button', {
+      name: 'One card per item',
+    });
+
+    fireEvent.click(chip);
+    await waitFor(() => {
+      expect(localStorage.getItem('user-instructions')).toContain(
+        ONE_CARD_SENTENCE
+      );
+    });
+
+    fireEvent.click(chip);
+    await waitFor(() => {
+      expect(localStorage.getItem('user-instructions')).not.toContain(
+        ONE_CARD_SENTENCE
+      );
+    });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    expect(mockTrack).toHaveBeenLastCalledWith('ai_preset_applied', {
+      preset: 'one_card_per_item',
+      action: 'removed',
+    });
+  });
+
+  it('preserves hand-written instructions when a chip is toggled', async () => {
+    localStorage.setItem('user-instructions', 'Keep my custom rule.');
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+    const chip = await screen.findByRole('button', { name: 'Grouped cloze' });
+
+    fireEvent.click(chip);
+    await waitFor(() => {
+      expect(localStorage.getItem('user-instructions')).toBe(
+        `Keep my custom rule.\n${GROUPED_CLOZE_SENTENCE}`
+      );
+    });
+
+    fireEvent.click(chip);
+    await waitFor(() => {
+      expect(localStorage.getItem('user-instructions')).toBe(
+        'Keep my custom rule.'
+      );
+    });
+  });
+
+  it('marks a chip pressed when its sentence is already in the instructions', async () => {
+    localStorage.setItem(
+      'user-instructions',
+      `Something first.\n${ONE_CARD_SENTENCE}`
+    );
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+    const chip = await screen.findByRole('button', {
+      name: 'One card per item',
+    });
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('recomputes aria-pressed live as the instructions box is edited', async () => {
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+    const chip = await screen.findByRole('button', {
+      name: 'One card per item',
+    });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+
+    const textarea = screen.getByPlaceholderText(
+      'Instructions for PDF conversion...'
+    );
+    fireEvent.change(textarea, { target: { value: ONE_CARD_SENTENCE } });
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.change(textarea, { target: { value: 'edited away' } });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+  });
+});
+
+describe('CardOptionsForm AI instruction presets outside the AI group', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResetUserCardOptions.mockResolvedValue(undefined);
+    setUserLocalsPaying(false);
+    globalThis.localStorage.clear();
+    window.location.hash = '';
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'cloze',
+        'Cloze deletion cards',
+        'Turn code spans into cloze deletions.',
+        true
+      ),
+    ]);
+  });
+
+  it('does not render the preset chips when the AI group is absent', async () => {
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+    await screen.findByRole('checkbox', { name: 'Cloze deletion cards' });
+    expect(
+      screen.queryByRole('group', { name: 'Instruction starting points' })
+    ).toBeNull();
+  });
+});

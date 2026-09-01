@@ -594,7 +594,21 @@
     },
     "userInstructions": {
       "summary": "Gebruikersinstructies voor PDF-conversie",
-      "placeholder": "Instructies voor PDF-conversie..."
+      "placeholder": "Instructies voor PDF-conversie...",
+      "presetsLabel": "Snelle instructies",
+      "presetsHint": "Voeg een startpunt toe en pas het daarna aan in het vak hieronder.",
+      "presetsAria": "Startpunten voor instructies",
+      "presets": {
+        "mcqOnFront": {
+          "label": "Meerkeuze op de voorkant"
+        },
+        "groupedCloze": {
+          "label": "Gegroepeerde cloze"
+        },
+        "oneCardPerItem": {
+          "label": "Eén kaart per item"
+        }
+      }
     },
     "deck": {
       "structureHeading": "Deck en structuur",

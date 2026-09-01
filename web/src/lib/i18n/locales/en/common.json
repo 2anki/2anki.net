@@ -594,7 +594,21 @@
     },
     "userInstructions": {
       "summary": "User instructions for PDF conversion",
-      "placeholder": "Instructions for PDF conversion..."
+      "placeholder": "Instructions for PDF conversion...",
+      "presetsLabel": "Quick instructions",
+      "presetsHint": "Add a starting point, then edit it in the box below.",
+      "presetsAria": "Instruction starting points",
+      "presets": {
+        "mcqOnFront": {
+          "label": "Multiple choice on front"
+        },
+        "groupedCloze": {
+          "label": "Grouped cloze"
+        },
+        "oneCardPerItem": {
+          "label": "One card per item"
+        }
+      }
     },
     "deck": {
       "structureHeading": "Deck & structure",

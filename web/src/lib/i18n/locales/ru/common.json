@@ -608,7 +608,21 @@
     },
     "userInstructions": {
       "summary": "Указания пользователя для конвертации PDF",
-      "placeholder": "Указания для конвертации PDF..."
+      "placeholder": "Указания для конвертации PDF...",
+      "presetsLabel": "Быстрые указания",
+      "presetsHint": "Добавьте отправную точку, затем измените её в поле ниже.",
+      "presetsAria": "Отправные точки для указаний",
+      "presets": {
+        "mcqOnFront": {
+          "label": "Множественный выбор на лицевой стороне"
+        },
+        "groupedCloze": {
+          "label": "Сгруппированный cloze"
+        },
+        "oneCardPerItem": {
+          "label": "Одна карточка на пункт"
+        }
+      }
     },
     "deck": {
       "structureHeading": "Колода и структура",

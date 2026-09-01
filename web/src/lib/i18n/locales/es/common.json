@@ -594,7 +594,21 @@
     },
     "userInstructions": {
       "summary": "Instrucciones del usuario para la conversión de PDF",
-      "placeholder": "Instrucciones para la conversión de PDF..."
+      "placeholder": "Instrucciones para la conversión de PDF...",
+      "presetsLabel": "Instrucciones rápidas",
+      "presetsHint": "Añade un punto de partida y luego edítalo en el cuadro de abajo.",
+      "presetsAria": "Puntos de partida para las instrucciones",
+      "presets": {
+        "mcqOnFront": {
+          "label": "Opción múltiple en el anverso"
+        },
+        "groupedCloze": {
+          "label": "Cloze agrupado"
+        },
+        "oneCardPerItem": {
+          "label": "Una tarjeta por elemento"
+        }
+      }
     },
     "deck": {
       "structureHeading": "Mazo y estructura",
