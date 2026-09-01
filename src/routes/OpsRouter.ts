@@ -26,6 +26,7 @@ import { ReEngagementFeedbackRepository } from '../data_layer/ReEngagementFeedba
 import UsersRepository from '../data_layer/UsersRepository';
 import { UserPreferencesRepository } from '../data_layer/UserPreferencesRepository';
 import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
+import { ChangeUserEmailUseCase } from '../usecases/ops/ChangeUserEmailUseCase';
 import { UserDeletionService } from '../services/UserDeletionService';
 import { SubscriptionsSourceRepository } from '../data_layer/SubscriptionsSourceRepository';
 import SuppressionEventsRepository from '../data_layer/SuppressionEventsRepository';
@@ -233,7 +234,8 @@ const OpsRouter = () => {
     new SetBlockIdIdentityUseCase(
       new UsersRepository(database),
       new UserPreferencesRepository(database)
-    )
+    ),
+    new ChangeUserEmailUseCase(new UsersRepository(database), getEventsSink())
   );
 
   /**
@@ -518,6 +520,44 @@ const OpsRouter = () => {
    */
   router.post('/api/ops/set-block-id-identity', RequireOpsAccess, (req, res) =>
     controller.setBlockIdIdentity(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/ops/change-user-email:
+   *   post:
+   *     summary: Change an account's login email and re-link its subscriptions
+   *     description: |
+   *       Moves a user's login email to a new address, matched case-insensitively,
+   *       and re-links their subscriptions' linked_email in the same transaction so
+   *       the unlinked-subscription sweep does not cancel a paying user. Replaces the
+   *       manual SQL run support did for lockout cases where the old inbox is lost.
+   *       Does not touch subscriptions.email (the Stripe payer, possibly a different
+   *       person), sends no confirmation emails, and does not sign the user out.
+   *       Internal endpoint locked to the ops owner — returns 404 for everyone else.
+   *     tags: [Ops]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [currentEmail, newEmail]
+   *             properties:
+   *               currentEmail: { type: string }
+   *               newEmail: { type: string }
+   *     responses:
+   *       200:
+   *         description: Email changed — returns userId
+   *       400:
+   *         description: Missing or invalid current or new email
+   *       404:
+   *         description: Not the ops owner, or no account for the current email
+   *       409:
+   *         description: The new email is already taken, or matches the current one
+   */
+  router.post('/api/ops/change-user-email', RequireOpsAccess, (req, res) =>
+    controller.changeUserEmail(req, res)
   );
 
   /**
