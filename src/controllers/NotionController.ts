@@ -2,6 +2,10 @@ import { Request, Response } from 'express';
 
 import { runConversion } from '../lib/conversionPool';
 import {
+  isWorkerTerminationError,
+  WORKER_INTERRUPTED_REASON,
+} from '../lib/workerTermination';
+import {
   InProgressJobError,
   JobLimitError,
 } from '../lib/storage/jobs/helpers/errors';
@@ -292,6 +296,9 @@ class NotionController {
       },
     });
 
+    const safeString = (v: unknown): string | undefined =>
+      typeof v === 'string' && v.length > 0 ? v : undefined;
+
     try {
       if (!paying) {
         const usersRepository = new UsersRepository(database);
@@ -324,8 +331,11 @@ class NotionController {
 
       await this.enforceJobLimit(jobRepository, id, owner, paying);
 
-      const safeString = (v: unknown): string | undefined =>
-        typeof v === 'string' && v.length > 0 ? v : undefined;
+      const correlation = {
+        requestId: safeString(res.locals.requestId),
+        jobId: job.id,
+        owner,
+      };
 
       runConversion({
         id,
@@ -339,8 +349,25 @@ class NotionController {
         anonId: safeString(anonId),
         signupOrigin: parseFirstTouch(cookies?.first_touch).signupOrigin,
         requestId: safeString(res.locals.requestId),
-      }).catch((err: unknown) => {
-        console.error('notion convert worker:', err);
+      }).catch(async (err: unknown) => {
+        if (isWorkerTerminationError(err)) {
+          console.info('[notion/convert] worker interrupted by pool drain', {
+            ...correlation,
+            pageId: id,
+          });
+          await jobRepository.updateJobStatus(
+            id,
+            owner,
+            'interrupted',
+            WORKER_INTERRUPTED_REASON
+          );
+          return;
+        }
+        console.error('[notion/convert] worker failed', {
+          ...correlation,
+          pageId: id,
+          error: err,
+        });
       });
 
       return res.status(202).json({ jobId: job.id, restarted });
@@ -351,7 +378,12 @@ class NotionController {
       if (err instanceof JobLimitError) {
         return res.status(402).json({ reason: 'free_plan_one_at_a_time' });
       }
-      console.error('[notion/convert] enqueue failed:', err);
+      console.error('[notion/convert] enqueue failed', {
+        requestId: safeString(res.locals.requestId),
+        owner,
+        pageId: id,
+        error: err,
+      });
       return res.status(500).json({ error: 'conversion failed' });
     }
   }

@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import NotionAPIWrapper from '../../services/NotionService/NotionAPIWrapper';
 import JobRepository from '../../data_layer/JobRepository';
 import { ISettingsRepository } from '../../data_layer/SettingsRepository';
@@ -50,20 +51,25 @@ export class CreateJobWorkSpaceUseCase {
     const ws = new Workspace(true, 'fs');
     console.debug(`using workspace ${ws.location}`);
 
-    const exporter = new CustomExporter('', ws.location);
-    const settings = await this.settingsRepository.load(owner, id);
-    console.debug(`using settings ${JSON.stringify(settings, null, 2)}`);
+    try {
+      const exporter = new CustomExporter('', ws.location);
+      const settings = await this.settingsRepository.load(owner, id);
+      console.debug(`using settings ${JSON.stringify(settings, null, 2)}`);
 
-    const bl = new BlockHandler(
-      exporter,
-      api,
-      settings,
-      this.settingsRepository,
-      owner
-    );
-    const rules = await this.parserRulesRepository.load(owner, id);
-    bl.useAll = input.isPaying;
+      const bl = new BlockHandler(
+        exporter,
+        api,
+        settings,
+        this.settingsRepository,
+        owner
+      );
+      const rules = await this.parserRulesRepository.load(owner, id);
+      bl.useAll = input.isPaying;
 
-    return { ws, exporter, settings, bl, rules };
+      return { ws, exporter, settings, bl, rules };
+    } catch (error) {
+      fs.rmSync(ws.location, { recursive: true, force: true });
+      throw error;
+    }
   }
 }

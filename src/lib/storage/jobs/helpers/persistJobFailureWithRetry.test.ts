@@ -77,4 +77,25 @@ describe('persistJobFailureWithRetry', () => {
     expect(write).toHaveBeenCalledTimes(4);
     expect(sleepFn).toHaveBeenCalledTimes(3);
   });
+
+  it('stamps the retry warning with the caller-supplied correlation prefix', async () => {
+    const write = jest
+      .fn()
+      .mockRejectedValueOnce(connectionError('ECONNREFUSED'))
+      .mockResolvedValueOnce(undefined);
+    const sleepFn = jest.fn().mockResolvedValue(undefined);
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+
+    await persistJobFailureWithRetry(write, {
+      sleepFn,
+      logContext: '[conversion] job=42 request=req-9',
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[conversion] job=42 request=req-9 failure write')
+    );
+    warnSpy.mockRestore();
+  });
 });

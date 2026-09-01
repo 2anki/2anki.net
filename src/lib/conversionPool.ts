@@ -8,7 +8,10 @@ import {
   UploadGenerationResult,
   UploadGenerationTask,
 } from '../usecases/uploads/uploadGenerationTypes';
-import performConversion from './storage/jobs/helpers/performConversion';
+import performConversion, {
+  conversionLogPrefix,
+  trackConversionFailed,
+} from './storage/jobs/helpers/performConversion';
 import NotionAPIWrapper from '../services/NotionService/NotionAPIWrapper';
 import NotionRepository from '../data_layer/NotionRespository';
 import BlocksCacheRepository from '../data_layer/BlocksCacheRepository';
@@ -20,22 +23,10 @@ import {
   resolveConversionWorkerRecycleTasks,
 } from './pythonWorkerBudget';
 import { MAX_OLD_GENERATION_SIZE_MB } from './conversionMemoryLimits';
+import type { ConversionWorkerRequest } from './conversionRequestTypes';
 
 export { resolveConversionWorkers } from './pythonWorkerBudget';
-
-export interface ConversionWorkerRequest {
-  id: string;
-  owner: string;
-  isPaying: boolean;
-  type?: string;
-  title: string;
-  jobDbId: string | number;
-  frontField?: string;
-  backField?: string;
-  anonId?: string;
-  signupOrigin?: string | null;
-  requestId?: string;
-}
+export type { ConversionWorkerRequest } from './conversionRequestTypes';
 
 let pool: Piscina | null = null;
 
@@ -219,6 +210,13 @@ export async function runConversionInWorker(
   const notionRepo = new NotionRepository(database);
   const token = await notionRepo.getNotionToken(request.owner);
   if (token == null) {
+    console.info(
+      `${conversionLogPrefix({
+        jobDbId: request.jobDbId,
+        requestId: request.requestId,
+      })} notion token expired — marking job failed`,
+      { pageId: request.id }
+    );
     const jobRepo = new JobRepository(database);
     const setJobFailed = new SetJobFailedUseCase(jobRepo);
     await setJobFailed.execute(
@@ -226,22 +224,16 @@ export async function runConversionInWorker(
       request.owner,
       NOTION_TOKEN_EXPIRED_REASON
     );
+    trackConversionFailed(
+      request.owner,
+      request.anonId,
+      request.type,
+      request.signupOrigin ?? null,
+      { reason: 'notion_token_expired' }
+    );
     return;
   }
   const blocksCache = new BlocksCacheRepository(database);
   const api = new NotionAPIWrapper(token, request.owner, blocksCache);
-  await performConversion(database, {
-    api,
-    id: request.id,
-    owner: request.owner,
-    isPaying: request.isPaying,
-    type: request.type,
-    title: request.title,
-    jobDbId: request.jobDbId,
-    frontField: request.frontField,
-    backField: request.backField,
-    anonId: request.anonId,
-    signupOrigin: request.signupOrigin,
-    requestId: request.requestId,
-  });
+  await performConversion(database, { ...request, api });
 }

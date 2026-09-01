@@ -31,9 +31,13 @@ function sleep(ms: number): Promise<void> {
 
 export async function persistJobFailureWithRetry(
   write: () => Promise<unknown>,
-  options: { sleepFn?: (ms: number) => Promise<void> } = {}
+  options: {
+    sleepFn?: (ms: number) => Promise<void>;
+    logContext?: string;
+  } = {}
 ): Promise<void> {
   const doSleep = options.sleepFn ?? sleep;
+  const logPrefix = options.logContext ?? '[conversion]';
   let lastError: unknown;
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     try {
@@ -48,7 +52,7 @@ export async function persistJobFailureWithRetry(
         throw error;
       }
       console.warn(
-        `[conversion] failure write hit a connection error; retrying in ${RETRY_DELAYS_MS[attempt]}ms`
+        `${logPrefix} failure write hit a connection error; retrying in ${RETRY_DELAYS_MS[attempt]}ms`
       );
       await doSleep(RETRY_DELAYS_MS[attempt]);
     }

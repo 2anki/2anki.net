@@ -43,28 +43,27 @@ import { ConversionOutputStatsRepository } from '../../../../data_layer/Conversi
 import { truncateDecksToCardLimit } from '../../../parser/truncateDecksToCardLimit';
 import { MonthlyLimitPartial } from '../../../../services/NotionService/helpers/conversionTruncation';
 import { toCardCountBucket } from '../../../analytics/cardCountBucket';
+import type { ConversionWorkerRequest } from '../../../conversionRequestTypes';
 
 type ConversionSource = 'notion' | 'upload' | 'google_drive';
 
-function toConversionSource(type?: string): ConversionSource {
+export function toConversionSource(type?: string): ConversionSource {
   if (type === 'google_drive') return 'google_drive';
   if (type === 'page') return 'notion';
   return 'upload';
 }
 
-interface ConversionRequest {
-  title: string;
-  api: NotionAPIWrapper;
-  id: string;
-  owner: string;
-  isPaying: boolean;
-  type?: string;
+export interface ConversionLogFields {
   jobDbId: string | number;
-  frontField?: string;
-  backField?: string;
-  anonId?: string;
-  signupOrigin?: string | null;
   requestId?: string;
+}
+
+export function conversionLogPrefix(fields: ConversionLogFields): string {
+  return `[conversion] job=${fields.jobDbId} request=${fields.requestId ?? 'none'}`;
+}
+
+interface ConversionRequest extends ConversionWorkerRequest {
+  api: NotionAPIWrapper;
 }
 
 function toAnonymousId(anonId?: string): string | null {
@@ -73,7 +72,8 @@ function toAnonymousId(anonId?: string): string | null {
 
 async function recordUnsupportedBlocks(
   database: Knex,
-  types: string[]
+  types: string[],
+  logPrefix: string
 ): Promise<void> {
   if (types == null || types.length === 0) {
     return;
@@ -81,13 +81,14 @@ async function recordUnsupportedBlocks(
   try {
     await new UnsupportedNotionBlockRepository(database).record(types);
   } catch (error) {
-    console.error('[conversion] failed to record unsupported blocks', error);
+    console.error(`${logPrefix} failed to record unsupported blocks`, error);
   }
 }
 
 async function recordConversionOutputStats(
   database: Knex,
-  delta: { decks: number; cards: number; emptyBack: number }
+  delta: { decks: number; cards: number; emptyBack: number },
+  logPrefix: string
 ): Promise<void> {
   try {
     await new ConversionOutputStatsRepository(database).record(
@@ -96,7 +97,7 @@ async function recordConversionOutputStats(
     );
   } catch (error) {
     console.error(
-      '[conversion] failed to record conversion output stats',
+      `${logPrefix} failed to record conversion output stats`,
       error
     );
   }
@@ -130,7 +131,8 @@ async function recordDeckScore(
     // below the floor, and — for a rejected rescue — the shape of the deck the
     // induction actually judged rather than the empty deck that ships.
     induced?: InducedRescue;
-  }
+  },
+  logPrefix: string
 ): Promise<void> {
   const ownerId = Number(entry.owner);
   const induced = entry.induced;
@@ -156,7 +158,7 @@ async function recordDeckScore(
         ),
     });
   } catch (error) {
-    console.error('[conversion] failed to record deck score', error);
+    console.error(`${logPrefix} failed to record deck score`, error);
   }
 }
 
@@ -165,13 +167,18 @@ async function recordConversionTelemetry(
   telemetry: {
     unsupportedBlockTypes: string[];
     stats: { decks: number; cards: number; emptyBack: number };
-  }
+  },
+  logPrefix: string
 ): Promise<void> {
-  await recordUnsupportedBlocks(database, telemetry.unsupportedBlockTypes);
-  await recordConversionOutputStats(database, telemetry.stats);
+  await recordUnsupportedBlocks(
+    database,
+    telemetry.unsupportedBlockTypes,
+    logPrefix
+  );
+  await recordConversionOutputStats(database, telemetry.stats, logPrefix);
 }
 
-function trackConversionFailed(
+export function trackConversionFailed(
   owner: string,
   anonId: string | undefined,
   type: string | undefined,
@@ -221,7 +228,9 @@ export default async function performConversion(
     requestId,
   }: ConversionRequest
 ) {
-  console.info(`Performing conversion for ${id}`, { requestId, jobId: id });
+  const logPrefix = conversionLogPrefix({ jobDbId, requestId });
+  const startedAt = Date.now();
+  console.info(`${logPrefix} started`, { pageId: id });
   const resolvedSignupOrigin = signupOrigin ?? null;
 
   const storage = new StorageHandler();
@@ -273,13 +282,17 @@ export default async function performConversion(
     const cardCount = decks.reduce((acc, d) => acc + d.cards.length, 0);
     // Recorded before the empty-deck return so a zero-card Notion conversion
     // still lands a row; without the failures the baseline is only the wins.
-    await recordDeckScore(database, {
-      owner,
-      type,
-      decks,
-      cardCount,
-      induced: bl.inducedRule,
-    });
+    await recordDeckScore(
+      database,
+      {
+        owner,
+        type,
+        decks,
+        cardCount,
+        induced: bl.inducedRule,
+      },
+      logPrefix
+    );
     if (cardCount === 0) {
       const setJobFailed = new SetJobFailedUseCase(jobRepository);
       await setJobFailed.execute(id, owner, EMPTY_DECK_FAILURE_REASON);
@@ -389,14 +402,18 @@ export default async function performConversion(
       })
     );
 
-    void recordConversionTelemetry(database, {
-      unsupportedBlockTypes: bl.unsupportedBlockTypes,
-      stats: {
-        decks: decks.length,
-        cards: cardLimitPartial ? deliveredCardCount : bl.cardCount,
-        emptyBack: bl.emptyBackCount,
+    void recordConversionTelemetry(
+      database,
+      {
+        unsupportedBlockTypes: bl.unsupportedBlockTypes,
+        stats: {
+          decks: decks.length,
+          cards: cardLimitPartial ? deliveredCardCount : bl.cardCount,
+          emptyBack: bl.emptyBackCount,
+        },
       },
-    });
+      logPrefix
+    );
 
     if (cardLimitPartial) {
       trackCardLimitPaywall(owner, anonId, type);
@@ -418,32 +435,41 @@ export default async function performConversion(
           : {}),
       },
     });
+    console.info(
+      `${logPrefix} completed cards=${deliveredCardCount} duration_ms=${Date.now() - startedAt}`
+    );
   } catch (error) {
     if (error instanceof PythonExitError) {
-      console.error('[conversion] python crash', {
-        jobId: id,
-        requestId,
+      console.error(`${logPrefix} python crash`, {
+        pageId: id,
         kind: error.kind,
         code: error.code,
         rawOutput: error.rawOutput,
       });
     } else {
-      console.error('[conversion] failed', { jobId: id, requestId, error });
+      console.error(`${logPrefix} failed`, { pageId: id, error });
     }
     if (isNotionUnauthorizedError(error)) {
       const ownerNum = Number(owner);
       if (Number.isFinite(ownerNum)) {
-        const notionRepo = new NotionRepository(database);
-        await new MarkNotionTokenInvalidUseCase(
-          notionRepo,
-          new UsersRepository(database),
-          getDefaultEmailService()
-        ).execute(ownerNum);
+        try {
+          const notionRepo = new NotionRepository(database);
+          await new MarkNotionTokenInvalidUseCase(
+            notionRepo,
+            new UsersRepository(database),
+            getDefaultEmailService()
+          ).execute(ownerNum);
+        } catch (markError) {
+          console.error(`${logPrefix} failed to mark notion token invalid`, {
+            error: markError,
+          });
+        }
       }
     }
     const failedJob = new SetJobFailedUseCase(jobRepository);
-    await persistJobFailureWithRetry(() =>
-      failedJob.execute(id, owner, jobFailureReasonFromError(error, id))
+    await persistJobFailureWithRetry(
+      () => failedJob.execute(id, owner, jobFailureReasonFromError(error, id)),
+      { logContext: logPrefix }
     );
     trackConversionFailed(owner, anonId, type, resolvedSignupOrigin, {
       reason: jobFailureReasonCode(error),
@@ -453,22 +479,17 @@ export default async function performConversion(
       isColumnsAmbiguousError(error) ||
       isNotionUnauthorizedError(error);
     if (isExpectedUserState) {
-      console.info('[conversion] user-input state', {
-        jobId: id,
-        requestId,
-        kind: error instanceof Error ? error.name : 'unknown',
-      });
-    } else {
-      console.error(error);
+      console.info(
+        `${logPrefix} user-input state kind=${error instanceof Error ? error.name : 'unknown'}`
+      );
     }
   } finally {
     if (workspaceLocation != null) {
       try {
         fs.rmSync(workspaceLocation, { recursive: true, force: true });
       } catch (cleanupError) {
-        console.error('[conversion] workspace cleanup failed', {
-          jobId: id,
-          requestId,
+        console.error(`${logPrefix} workspace cleanup failed`, {
+          pageId: id,
           message:
             cleanupError instanceof Error ? cleanupError.message : 'unknown',
         });
