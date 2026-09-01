@@ -338,6 +338,7 @@ class NotionController {
         backField: safeString(backField),
         anonId: safeString(anonId),
         signupOrigin: parseFirstTouch(cookies?.first_touch).signupOrigin,
+        requestId: safeString(res.locals.requestId),
       }).catch((err: unknown) => {
         console.error('notion convert worker:', err);
       });
