@@ -9,8 +9,8 @@ before then.
 
 A 90-day `user_passes` row at the `unlimited` kind, granted by hand:
 
-    INSERT INTO user_passes (user_id, kind, expires_at, stripe_payment_intent_id, created_at)
-    VALUES (<id>, 'unlimited', now() + interval '90 days', 'comp:testimonial:' || gen_random_uuid(), now());
+    INSERT INTO user_passes (user_id, kind, expires_at, stripe_payment_intent_id)
+    VALUES (<id>, 'unlimited', now() + interval '90 days', 'comp:testimonial:' || gen_random_uuid());
 
 - `findActive` filters on `user_id` + future `expires_at`, so the pass sets the
   normal paid tier (`res.locals.subscriber`). Self-expiring - nothing to revoke.
