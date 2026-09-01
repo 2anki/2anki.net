@@ -127,12 +127,6 @@ const INSTRUCTION_PRESETS = [
       "Write multiple-choice questions. Put the question and all answer options (A, B, C, D) on the front of the card; put only the correct option's letter on the back.",
   },
   {
-    id: 'grouped_cloze',
-    labelKey: 'cardOptions.userInstructions.presets.groupedCloze.label',
-    sentence:
-      'Put all items of a list or enumeration on one card as sequential cloze deletions (c1, c2, c3...), not a separate card per item.',
-  },
-  {
     id: 'one_card_per_item',
     labelKey: 'cardOptions.userInstructions.presets.oneCardPerItem.label',
     sentence:
@@ -145,17 +139,20 @@ function hasInstructionLine(text: string, sentence: string): boolean {
 }
 
 function appendInstructionLine(text: string, sentence: string): string {
-  const trimmed = text.trim();
-  return trimmed.length === 0 ? sentence : `${trimmed}\n${sentence}`;
+  return text === '' ? sentence : `${text}\n${sentence}`;
 }
 
 function removeInstructionLine(text: string, sentence: string): string {
-  return text
-    .split('\n')
-    .filter((line) => line.trim() !== sentence)
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  const lines = text.split('\n');
+  const index = lines.findLastIndex((line) => line.trim() === sentence);
+  if (index === -1) {
+    return text;
+  }
+  lines.splice(index, 1);
+  if (lines[index] === '' && lines[index - 1] === '') {
+    lines.splice(index, 1);
+  }
+  return lines.join('\n');
 }
 
 const OPTION_GROUPS: Array<{ id: string; labelKey: string; keys: string[] }> = [
@@ -824,13 +821,16 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         ? removeInstructionLine(userInstructions, preset.sentence)
         : appendInstructionLine(userInstructions, preset.sentence);
       setUserInstructions(next);
-      saveValueInLocalStorage('user-instructions', next, pageId);
+      if (!pageId) {
+        saveValueInLocalStorage('user-instructions', next, pageId);
+      }
       if (!wasSelected) {
         setInstructionsOpen(true);
       }
       track('ai_preset_applied', {
         preset: preset.id,
         action: wasSelected ? 'removed' : 'added',
+        scope: pageId ? 'page' : 'default',
       });
     };
 

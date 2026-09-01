@@ -861,8 +861,6 @@ describe('CardOptionsForm card style picker', () => {
 describe('CardOptionsForm AI instruction presets', () => {
   const MCQ_SENTENCE =
     "Write multiple-choice questions. Put the question and all answer options (A, B, C, D) on the front of the card; put only the correct option's letter on the back.";
-  const GROUPED_CLOZE_SENTENCE =
-    'Put all items of a list or enumeration on one card as sequential cloze deletions (c1, c2, c3...), not a separate card per item.';
   const ONE_CARD_SENTENCE =
     'Make a separate card for each list item instead of grouping a list onto one card.';
 
@@ -882,7 +880,7 @@ describe('CardOptionsForm AI instruction presets', () => {
     ]);
   });
 
-  it('renders the three preset chips inside the AI group', async () => {
+  it('renders the two preset chips inside the AI group', async () => {
     renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
     const group = await screen.findByRole('group', {
       name: 'Instruction starting points',
@@ -891,11 +889,11 @@ describe('CardOptionsForm AI instruction presets', () => {
       within(group).getByRole('button', { name: 'Multiple choice on front' })
     ).toBeInTheDocument();
     expect(
-      within(group).getByRole('button', { name: 'Grouped cloze' })
-    ).toBeInTheDocument();
-    expect(
       within(group).getByRole('button', { name: 'One card per item' })
     ).toBeInTheDocument();
+    expect(
+      within(group).queryByRole('button', { name: 'Grouped cloze' })
+    ).toBeNull();
   });
 
   it('appends the sentence, persists it, opens the box, and tracks added on first click', async () => {
@@ -916,6 +914,7 @@ describe('CardOptionsForm AI instruction presets', () => {
     expect(mockTrack).toHaveBeenCalledWith('ai_preset_applied', {
       preset: 'mcq_front',
       action: 'added',
+      scope: 'default',
     });
   });
 
@@ -942,18 +941,21 @@ describe('CardOptionsForm AI instruction presets', () => {
     expect(mockTrack).toHaveBeenLastCalledWith('ai_preset_applied', {
       preset: 'one_card_per_item',
       action: 'removed',
+      scope: 'default',
     });
   });
 
   it('preserves hand-written instructions when a chip is toggled', async () => {
     localStorage.setItem('user-instructions', 'Keep my custom rule.');
     renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
-    const chip = await screen.findByRole('button', { name: 'Grouped cloze' });
+    const chip = await screen.findByRole('button', {
+      name: 'Multiple choice on front',
+    });
 
     fireEvent.click(chip);
     await waitFor(() => {
       expect(localStorage.getItem('user-instructions')).toBe(
-        `Keep my custom rule.\n${GROUPED_CLOZE_SENTENCE}`
+        `Keep my custom rule.\n${MCQ_SENTENCE}`
       );
     });
 
@@ -963,6 +965,46 @@ describe('CardOptionsForm AI instruction presets', () => {
         'Keep my custom rule.'
       );
     });
+  });
+
+  it('keeps deliberate blank-line spacing when a chip is removed', async () => {
+    localStorage.setItem('user-instructions', 'Rule A.\n\n\n\nRule B.');
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+    const chip = await screen.findByRole('button', {
+      name: 'Multiple choice on front',
+    });
+
+    fireEvent.click(chip);
+    await waitFor(() => {
+      expect(localStorage.getItem('user-instructions')).toBe(
+        `Rule A.\n\n\n\nRule B.\n${MCQ_SENTENCE}`
+      );
+    });
+
+    fireEvent.click(chip);
+    await waitFor(() => {
+      expect(localStorage.getItem('user-instructions')).toBe(
+        'Rule A.\n\n\n\nRule B.'
+      );
+    });
+  });
+
+  it('removes only one copy when the sentence is duplicated in the box', async () => {
+    localStorage.setItem(
+      'user-instructions',
+      `${MCQ_SENTENCE}\n${MCQ_SENTENCE}`
+    );
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+    const chip = await screen.findByRole('button', {
+      name: 'Multiple choice on front',
+    });
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(chip);
+    await waitFor(() => {
+      expect(localStorage.getItem('user-instructions')).toBe(MCQ_SENTENCE);
+    });
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('marks a chip pressed when its sentence is already in the instructions', async () => {
@@ -1018,5 +1060,61 @@ describe('CardOptionsForm AI instruction presets outside the AI group', () => {
     expect(
       screen.queryByRole('group', { name: 'Instruction starting points' })
     ).toBeNull();
+  });
+});
+
+describe('CardOptionsForm AI instruction presets on a page-scoped view', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResetUserCardOptions.mockResolvedValue(undefined);
+    setUserLocalsPaying(false);
+    globalThis.localStorage.clear();
+    window.location.hash = '';
+    mockGetSettings.mockResolvedValue({});
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'claude-ai-flashcards',
+        'AI flashcards',
+        'Write the cards with Claude.',
+        false
+      ),
+    ]);
+  });
+
+  function renderScopedPageForm() {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    return render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <CardOptionsForm
+            pageId="page-1"
+            pageTitle="Pharmacology"
+            isLoggedIn
+            setError={vi.fn()}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+  }
+
+  it('does not write to localStorage and tags the event scope:page', async () => {
+    renderScopedPageForm();
+    const chip = await screen.findByRole('button', {
+      name: 'Multiple choice on front',
+    });
+
+    fireEvent.click(chip);
+
+    await waitFor(() => {
+      expect(chip).toHaveAttribute('aria-pressed', 'true');
+    });
+    expect(localStorage.getItem('user-instructions')).toBeNull();
+    expect(mockTrack).toHaveBeenCalledWith('ai_preset_applied', {
+      preset: 'mcq_front',
+      action: 'added',
+      scope: 'page',
+    });
   });
 });

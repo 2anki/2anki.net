@@ -616,9 +616,6 @@
         "mcqOnFront": {
           "label": "Множественный выбор на лицевой стороне"
         },
-        "groupedCloze": {
-          "label": "Сгруппированный cloze"
-        },
         "oneCardPerItem": {
           "label": "Одна карточка на пункт"
         }

@@ -602,9 +602,6 @@
         "mcqOnFront": {
           "label": "Opción múltiple en el anverso"
         },
-        "groupedCloze": {
-          "label": "Cloze agrupado"
-        },
         "oneCardPerItem": {
           "label": "Una tarjeta por elemento"
         }

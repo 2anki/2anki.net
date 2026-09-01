@@ -595,9 +595,6 @@
         "mcqOnFront": {
           "label": "多肢選択を表面に"
         },
-        "groupedCloze": {
-          "label": "グループ化した cloze"
-        },
         "oneCardPerItem": {
           "label": "項目ごとに1枚のカード"
         }

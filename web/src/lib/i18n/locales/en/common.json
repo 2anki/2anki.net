@@ -602,9 +602,6 @@
         "mcqOnFront": {
           "label": "Multiple choice on front"
         },
-        "groupedCloze": {
-          "label": "Grouped cloze"
-        },
         "oneCardPerItem": {
           "label": "One card per item"
         }

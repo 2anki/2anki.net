@@ -602,9 +602,6 @@
         "mcqOnFront": {
           "label": "Scelta multipla sul fronte"
         },
-        "groupedCloze": {
-          "label": "Cloze raggruppato"
-        },
         "oneCardPerItem": {
           "label": "Una scheda per voce"
         }

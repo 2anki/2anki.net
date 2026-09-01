@@ -602,9 +602,6 @@
         "mcqOnFront": {
           "label": "Meerkeuze op de voorkant"
         },
-        "groupedCloze": {
-          "label": "Gegroepeerde cloze"
-        },
         "oneCardPerItem": {
           "label": "Eén kaart per item"
         }

@@ -616,9 +616,6 @@
         "mcqOnFront": {
           "label": "Wielokrotny wybór na przodzie"
         },
-        "groupedCloze": {
-          "label": "Zgrupowane cloze"
-        },
         "oneCardPerItem": {
           "label": "Jedna karta na element"
         }
