@@ -174,6 +174,10 @@ const NotionToAnki = lazyWithRetry(
   () => import('./pages/LandingPage/NotionToAnki'),
   './pages/LandingPage/NotionToAnki'
 );
+const NotionZuAnki = lazyWithRetry(
+  () => import('./pages/LandingPage/NotionZuAnki'),
+  './pages/LandingPage/NotionZuAnki'
+);
 const AnkiToNotion = lazyWithRetry(
   () => import('./pages/LandingPage/AnkiToNotion'),
   './pages/LandingPage/AnkiToNotion'
@@ -611,6 +615,10 @@ function AppContent({
             <Route
               path="/notion-to-anki"
               element={<NotionToAnki setErrorMessage={setErrorMessage} />}
+            />
+            <Route
+              path="/notion-zu-anki"
+              element={<NotionZuAnki setErrorMessage={setErrorMessage} />}
             />
             <Route
               path="/anki-to-notion"

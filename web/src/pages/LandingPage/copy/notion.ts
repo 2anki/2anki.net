@@ -3,6 +3,11 @@ import { ankiFidelityProof } from './ankiFidelityProof';
 
 const notionCopy: LandingCopy = {
   galleryBadge: true,
+  alternates: [
+    { hreflang: 'en', href: 'https://2anki.net/notion-to-anki/' },
+    { hreflang: 'de', href: 'https://2anki.net/notion-zu-anki/' },
+    { hreflang: 'x-default', href: 'https://2anki.net/notion-to-anki/' },
+  ],
   relatedLinks: [
     {
       label: 'Convert Notion tables to Anki',

@@ -18,6 +18,11 @@ export interface LandingStep {
   body: string;
 }
 
+export interface LandingAlternate {
+  hreflang: string;
+  href: string;
+}
+
 export interface LandingCopy {
   pathname: string;
   canonicalPathname?: string;
@@ -36,4 +41,6 @@ export interface LandingCopy {
   // to say so, or it tells the visitor to open an .apkg that it never produces.
   steps?: ReadonlyArray<LandingStep>;
   formats?: ReadonlyArray<string>;
+  htmlLang?: string;
+  alternates?: ReadonlyArray<LandingAlternate>;
 }
