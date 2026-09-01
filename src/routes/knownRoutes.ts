@@ -63,6 +63,7 @@ const OPS_ROUTES = new Set<string>([
 
 const LANDING_SLUGS = new Set<string>([
   'notion-to-anki',
+  'notion-zu-anki',
   'quizlet-to-anki',
   'markdown-to-anki',
   'pdf-to-anki',

@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import notionCopy from '../src/pages/LandingPage/copy/notion';
+import notionZuAnkiCopy from '../src/pages/LandingPage/copy/notion-zu-anki';
 import quizletCopy from '../src/pages/LandingPage/copy/quizlet';
 import markdownCopy from '../src/pages/LandingPage/copy/markdown';
 import pdfCopy from '../src/pages/LandingPage/copy/pdf';
@@ -31,6 +32,7 @@ import {
 
 const LANDING_COPIES: LandingCopy[] = [
   notionCopy,
+  notionZuAnkiCopy,
   quizletCopy,
   markdownCopy,
   pdfCopy,
@@ -178,6 +180,34 @@ function stripExistingMeta(html: string): string {
   return next;
 }
 
+function localizedHeadTags(copy: LandingCopy): string {
+  const tags: string[] = [];
+  for (const alt of copy.alternates ?? []) {
+    tags.push(
+      `<link rel="alternate" hreflang="${escapeHtml(
+        alt.hreflang
+      )}" href="${escapeHtml(alt.href)}">`
+    );
+  }
+  if (copy.htmlLang != null) {
+    const ogLocale = `${copy.htmlLang}_${copy.htmlLang.toUpperCase()}`;
+    tags.push(
+      `<meta property="og:locale" content="${escapeHtml(ogLocale)}">`
+    );
+  }
+  return tags.join('\n  ');
+}
+
+function rewriteHtmlLang(html: string, copy: LandingCopy): string {
+  if (copy.htmlLang == null) {
+    return html;
+  }
+  return html.replace(
+    /<html lang="en">/,
+    `<html lang="${escapeHtml(copy.htmlLang)}">`
+  );
+}
+
 function rewriteHead(html: string, copy: LandingCopy): string {
   const canonical = canonicalUrl(copy.canonicalPathname ?? copy.pathname);
   const pageUrl = canonicalUrl(copy.pathname);
@@ -205,7 +235,13 @@ function rewriteHead(html: string, copy: LandingCopy): string {
     `<link rel="canonical" href="${canonical}">`
   );
   next = stripExistingMeta(next);
-  next = next.replace(/<\/head>/, `  ${ogTags}\n</head>`);
+  if (copy.htmlLang != null) {
+    next = next.replace(/\s*<meta\s+property="og:locale"[^>]*>/g, '');
+  }
+  const localized = localizedHeadTags(copy);
+  const headInsert = localized === '' ? ogTags : `${ogTags}\n  ${localized}`;
+  next = next.replace(/<\/head>/, `  ${headInsert}\n</head>`);
+  next = rewriteHtmlLang(next, copy);
   return next;
 }
 

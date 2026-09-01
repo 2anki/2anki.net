@@ -9,18 +9,20 @@ import {
   emitNotionMarketplacePage,
 } from './prerenderLandingPages';
 import notionCopy from '../src/pages/LandingPage/copy/notion';
+import notionZuAnkiCopy from '../src/pages/LandingPage/copy/notion-zu-anki';
 import { ANSWERS_PAGES } from '../src/pages/AnswersPage/answersConfig';
 
 let buildDir: string;
 
 const SOURCE_INDEX = `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <link rel="canonical" href="https://2anki.net" />
   <title>Create Anki Flashcards - 2anki.net</title>
   <meta name="description" content="Original description">
   <meta property="og:url" content="https://2anki.net:443">
   <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
   <meta property="og:title" content="2anki.net">
   <meta property="og:description" content="Original og description">
   <meta property="og:image" content="https://2anki.net/notion2anki.png">
@@ -50,8 +52,11 @@ beforeEach(() => {
 describe('emitLandingPages', () => {
   it('writes one HTML file per landing path', () => {
     const files = emitLandingPages(buildDir);
-    expect(files).toHaveLength(41);
+    expect(files).toHaveLength(42);
     expect(files.some((p) => p.endsWith('notion-to-anki/index.html'))).toBe(
+      true
+    );
+    expect(files.some((p) => p.endsWith('notion-zu-anki/index.html'))).toBe(
       true
     );
     expect(files.some((p) => p.endsWith('anki-for-japanese/index.html'))).toBe(
@@ -242,6 +247,87 @@ describe('emitLandingPages', () => {
     );
     expect(html).toContain('<meta property="og:image"');
     expect(html).toContain('<meta name="twitter:card"');
+  });
+});
+
+describe('emitLandingPages German hreflang twin', () => {
+  const HREFLANG_EN =
+    '<link rel="alternate" hreflang="en" href="https://2anki.net/notion-to-anki/">';
+  const HREFLANG_DE =
+    '<link rel="alternate" hreflang="de" href="https://2anki.net/notion-zu-anki/">';
+  const HREFLANG_X_DEFAULT =
+    '<link rel="alternate" hreflang="x-default" href="https://2anki.net/notion-to-anki/">';
+
+  const readGerman = (): string => {
+    emitLandingPages(buildDir);
+    return readFileSync(
+      join(buildDir, 'notion-zu-anki', 'index.html'),
+      'utf8'
+    );
+  };
+
+  const readEnglish = (): string => {
+    emitLandingPages(buildDir);
+    return readFileSync(
+      join(buildDir, 'notion-to-anki', 'index.html'),
+      'utf8'
+    );
+  };
+
+  it('prerenders the authored German title', () => {
+    expect(readGerman()).toContain(`<title>${notionZuAnkiCopy.title}</title>`);
+    expect(readGerman()).toContain(
+      '<title>Notion zu Anki — Karteikarten in Sekunden | 2anki</title>'
+    );
+  });
+
+  it('sets the html lang attribute to de on the German page', () => {
+    expect(readGerman()).toContain('<html lang="de">');
+    expect(readGerman()).not.toContain('<html lang="en">');
+  });
+
+  it('self-canonicals the German page to itself, not the English page', () => {
+    expect(readGerman()).toContain(
+      '<link rel="canonical" href="https://2anki.net/notion-zu-anki/">'
+    );
+  });
+
+  it('emits a single de_DE og:locale, replacing the base en_US one', () => {
+    const html = readGerman();
+    expect(html).toContain('<meta property="og:locale" content="de_DE">');
+    expect(html).not.toContain('<meta property="og:locale" content="en_US">');
+    expect(countMatches(html, /<meta\s+property="og:locale"/g)).toBe(1);
+  });
+
+  it('carries the full hreflang triplet on the German page', () => {
+    const html = readGerman();
+    expect(html).toContain(HREFLANG_EN);
+    expect(html).toContain(HREFLANG_DE);
+    expect(html).toContain(HREFLANG_X_DEFAULT);
+  });
+
+  it('carries the identical hreflang triplet on the English page', () => {
+    const html = readEnglish();
+    expect(html).toContain(HREFLANG_EN);
+    expect(html).toContain(HREFLANG_DE);
+    expect(html).toContain(HREFLANG_X_DEFAULT);
+  });
+
+  it('leaves the English page lang unchanged and out of German locale', () => {
+    const html = readEnglish();
+    expect(html).toContain('<html lang="en">');
+    expect(html).not.toContain('<html lang="de">');
+    expect(html).toContain('<meta property="og:locale" content="en_US">');
+    expect(html).not.toContain(
+      '<meta property="og:locale" content="de_DE">'
+    );
+  });
+
+  it('renders the German med-exam framing in the crawlable body', () => {
+    const html = readGerman();
+    const body = html.slice(html.indexOf('<div id="root">'));
+    expect(body).toContain('Für Medizin, Pflege und Examen gebaut');
+    expect(body).toContain('Physikum');
   });
 });
 
