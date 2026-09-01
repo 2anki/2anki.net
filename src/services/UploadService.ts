@@ -60,9 +60,8 @@ import {
   CheckMonthlyCardLimitUseCase,
   MonthlyLimitError,
   AnonymousCardCapError,
-  ANONYMOUS_CARD_CAP,
-  MONTHLY_CARD_LIMIT,
 } from '../usecases/users/CheckMonthlyCardLimitUseCase';
+import { ANONYMOUS_CARD_CAP, MONTHLY_CARD_LIMIT } from '../lib/limits';
 import {
   generateDeckInfo,
   DeckInfo,
