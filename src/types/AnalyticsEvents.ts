@@ -129,6 +129,7 @@ export const KNOWN_EVENTS = new Set([
   'pass_claim_email_sent',
   'anonymous_pass_claimed',
   'ops_user_email_changed',
+  'pass_account_email_autolinked',
 ] as const);
 
 export type KnownEvent = typeof KNOWN_EVENTS extends Set<infer T> ? T : never;

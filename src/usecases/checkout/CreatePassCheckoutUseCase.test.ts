@@ -343,5 +343,43 @@ describe('CreatePassCheckoutUseCase', () => {
       expect(call.success_url).toContain('{CHECKOUT_SESSION_ID}');
       expect(call.success_url).toContain('/upload?pass_session=');
     });
+
+    it('collects an optional account_email custom field so a signed-out buyer can link the pass', async () => {
+      mockStripeCreateSession.mockResolvedValue({
+        url: 'https://checkout.stripe.com/anon',
+      });
+
+      const uc = new CreatePassCheckoutUseCase(
+        makeStripe(),
+        'price_24h',
+        '24h'
+      );
+      await uc.execute({});
+
+      const call = mockStripeCreateSession.mock.calls[0][0];
+      expect(call.custom_fields).toEqual([
+        {
+          key: 'account_email',
+          label: {
+            type: 'custom',
+            custom: 'Your 2anki account email (optional)',
+          },
+          type: 'text',
+          optional: true,
+        },
+      ]);
+    });
+  });
+
+  it('omits the account_email custom field for signed-in sessions', async () => {
+    mockStripeCreateSession.mockResolvedValue({
+      url: 'https://checkout.stripe.com/test',
+    });
+
+    const uc = new CreatePassCheckoutUseCase(makeStripe(), 'price_24h', '24h');
+    await uc.execute({ userEmail: 'user@example.com', userId: 42 });
+
+    const call = mockStripeCreateSession.mock.calls[0][0];
+    expect(call.custom_fields).toBeUndefined();
   });
 });

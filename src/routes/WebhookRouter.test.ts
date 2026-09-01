@@ -12,6 +12,9 @@ const inMemoryRepo = new InMemoryUserPassRepository();
 
 const mockAnonInsert = jest.fn();
 const mockAnonFindBySessionId = jest.fn().mockResolvedValue(null);
+const mockAnonFindById = jest.fn().mockResolvedValue(null);
+const mockAnonClaim = jest.fn().mockResolvedValue(true);
+const mockUpsertAbsolute = jest.fn();
 const mockPassClaimTokenInsert = jest.fn().mockResolvedValue({ id: 1 });
 const inMemoryAnonRepo = new InMemoryAnonymousPassRepository();
 
@@ -96,9 +99,10 @@ jest.mock('../data_layer/UserPassRepository', () => {
   );
   return {
     __esModule: true,
-    default: jest
-      .fn()
-      .mockImplementation(() => ({ upsertWithExtension: mockUpsert })),
+    default: jest.fn().mockImplementation(() => ({
+      upsertWithExtension: mockUpsert,
+      upsertWithAbsoluteExpiry: mockUpsertAbsolute,
+    })),
     InMemoryUserPassRepository: Mem,
   };
 });
@@ -112,6 +116,8 @@ jest.mock('../data_layer/AnonymousPassRepository', () => {
     default: jest.fn().mockImplementation(() => ({
       insert: mockAnonInsert,
       findBySessionId: mockAnonFindBySessionId,
+      findById: mockAnonFindById,
+      claim: mockAnonClaim,
     })),
     InMemoryAnonymousPassRepository: AnonMem,
   };
@@ -467,6 +473,142 @@ describe('WebhookRouter — pass grant', () => {
     expect(res.status).toBe(200);
     expect(mockAnonInsert).not.toHaveBeenCalled();
     warnSpy.mockRestore();
+  });
+
+  describe('signed-out pass auto-link by checkout email', () => {
+    function makeAnonPassWithAccountEmail(accountEmail: string | undefined) {
+      const customFields =
+        accountEmail === undefined
+          ? []
+          : [
+              {
+                key: 'account_email',
+                type: 'text',
+                text: { value: accountEmail },
+              },
+            ];
+      return {
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            id: 'cs_anon_link',
+            amount_total: 400,
+            currency: 'usd',
+            customer: null,
+            payment_intent: 'pi_anon_link',
+            customer_details: { email: 'buyer@example.com' },
+            metadata: { pass_kind: '24h', pass_anonymous: '1' },
+            custom_fields: customFields,
+          },
+        },
+      };
+    }
+
+    const grantedAnonPass = {
+      id: 77,
+      stripe_session_id: 'cs_anon_link',
+      kind: '24h' as const,
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      payment_intent_id: 'pi_anon_link',
+      claimed_by_user_id: null,
+      buyer_email_hash: null,
+    };
+
+    it('links the pass to a matching account and skips the claim email', async () => {
+      mockWebhookEvent = makeAnonPassWithAccountEmail('  Owner@Example.com  ');
+      mockAnonFindBySessionId.mockResolvedValueOnce(null);
+      mockAnonInsert.mockResolvedValue(grantedAnonPass);
+      mockAnonFindById.mockResolvedValue(grantedAnonPass);
+      mockGetByEmail.mockResolvedValue({ id: 501 });
+      mockAnonClaim.mockResolvedValue(true);
+      mockUpsertAbsolute.mockResolvedValue({
+        id: 9,
+        user_id: 501,
+        kind: '24h',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        stripe_payment_intent_id: 'pi_anon_link',
+      });
+
+      const res = await postWebhook();
+      expect(res.status).toBe(200);
+      expect(mockGetByEmail).toHaveBeenCalledWith('Owner@Example.com');
+      expect(mockAnonClaim).toHaveBeenCalledWith(77, 501);
+      expect(mockUpsertAbsolute).toHaveBeenCalledWith(
+        501,
+        '24h',
+        expect.any(Date),
+        'pi_anon_link'
+      );
+      expect(mockSendAnonymousPassClaimEmail).not.toHaveBeenCalled();
+      expect(mockPassClaimTokenInsert).not.toHaveBeenCalled();
+      expect(mockTrack).toHaveBeenCalledWith('pass_account_email_autolinked', {
+        userId: 501,
+        props: { kind: '24h' },
+      });
+    });
+
+    it('falls back to the claim email when the account email matches no user', async () => {
+      mockWebhookEvent = makeAnonPassWithAccountEmail('nobody@example.com');
+      mockAnonFindBySessionId.mockResolvedValueOnce(null);
+      mockAnonInsert.mockResolvedValue(grantedAnonPass);
+      mockAnonFindById.mockResolvedValue(grantedAnonPass);
+      mockGetByEmail.mockResolvedValue(null);
+
+      const res = await postWebhook();
+      expect(res.status).toBe(200);
+      expect(mockUpsertAbsolute).not.toHaveBeenCalled();
+      expect(mockAnonClaim).not.toHaveBeenCalled();
+      expect(mockTrack).not.toHaveBeenCalledWith(
+        'pass_account_email_autolinked',
+        expect.anything()
+      );
+      expect(mockSendAnonymousPassClaimEmail).toHaveBeenCalledWith(
+        'buyer@example.com',
+        expect.stringContaining('/account/claim?token='),
+        'Day Pass'
+      );
+    });
+
+    it('ignores a blank account email and keeps the existing claim flow', async () => {
+      mockWebhookEvent = makeAnonPassWithAccountEmail('   ');
+      mockAnonFindBySessionId.mockResolvedValueOnce(null);
+      mockAnonInsert.mockResolvedValue(grantedAnonPass);
+
+      const res = await postWebhook();
+      expect(res.status).toBe(200);
+      expect(mockGetByEmail).not.toHaveBeenCalled();
+      expect(mockUpsertAbsolute).not.toHaveBeenCalled();
+      expect(mockSendAnonymousPassClaimEmail).toHaveBeenCalled();
+    });
+
+    it('links exactly once when the webhook is delivered twice', async () => {
+      mockWebhookEvent = makeAnonPassWithAccountEmail('owner@example.com');
+      mockAnonFindBySessionId
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(grantedAnonPass);
+      mockAnonInsert.mockResolvedValue(grantedAnonPass);
+      mockAnonFindById.mockResolvedValue(grantedAnonPass);
+      mockGetByEmail.mockResolvedValue({ id: 501 });
+      mockAnonClaim.mockResolvedValue(true);
+      mockUpsertAbsolute.mockResolvedValue({
+        id: 9,
+        user_id: 501,
+        kind: '24h',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        stripe_payment_intent_id: 'pi_anon_link',
+      });
+
+      await postWebhook();
+      await postWebhook();
+
+      expect(mockUpsertAbsolute).toHaveBeenCalledTimes(1);
+      expect(
+        mockTrack.mock.calls.filter(
+          ([name]) => name === 'pass_account_email_autolinked'
+        )
+      ).toHaveLength(1);
+      expect(mockSendAnonymousPassClaimEmail).not.toHaveBeenCalled();
+    });
   });
 });
 
