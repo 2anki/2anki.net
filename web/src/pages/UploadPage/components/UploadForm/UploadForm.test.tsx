@@ -1990,4 +1990,91 @@ describe('limit state', () => {
       expect(filename?.textContent).toContain('notes/chapter.pdf');
     });
   });
+
+  describe('Notion Markdown guardrail', () => {
+    function selectMarkdownFile(container: HTMLElement) {
+      const fileInput = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      const file = new File(['# notes'], 'notes.md', {
+        type: 'text/markdown',
+      });
+      Object.defineProperty(fileInput, 'files', {
+        value: [file],
+        configurable: true,
+      });
+      return fileInput;
+    }
+
+    it('shows the guardrail and fires upload_guardrail_shown', async () => {
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const fileInput = selectMarkdownFile(container);
+      await act(async () => {
+        fireEvent.change(fileInput);
+      });
+      await waitFor(() => {
+        const title = container.querySelector('[class*="validationTitle"]');
+        expect(title?.textContent).toBe('Notion Markdown drops your toggles');
+      });
+      expect(trackMock).toHaveBeenCalledWith('upload_guardrail_shown', {
+        kind: 'markdown',
+      });
+    });
+
+    it('announces the guardrail title in the polite live region', async () => {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const fileInput = selectMarkdownFile(container);
+      await act(async () => {
+        fireEvent.change(fileInput);
+      });
+      await waitFor(() => {
+        const live = container.querySelector('output[aria-live="polite"]');
+        expect(live?.textContent).toContain(
+          'Notion Markdown drops your toggles'
+        );
+      });
+    });
+
+    it('fires upload_guardrail_overridden and submits on Convert anyway', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'X-Card-Count': '3',
+        }),
+        blob: () => Promise.resolve(new Blob(['deck'])),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const fileInput = selectMarkdownFile(container);
+      fileInput.removeAttribute('required');
+      await act(async () => {
+        fireEvent.change(fileInput);
+      });
+      const button = await screen.findByText('Convert anyway');
+      await act(async () => {
+        fireEvent.click(button);
+      });
+      expect(trackMock).toHaveBeenCalledWith('upload_guardrail_overridden', {
+        kind: 'markdown',
+      });
+      await waitFor(() => {
+        const uploadCalls = fetchMock.mock.calls.filter(
+          ([url]) => url === '/api/upload/file'
+        );
+        expect(uploadCalls.length).toBeGreaterThan(0);
+      });
+    });
+  });
 });

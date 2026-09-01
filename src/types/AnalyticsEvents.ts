@@ -55,6 +55,8 @@ export const KNOWN_EVENTS = new Set([
   'upload_failed',
   'folder_upload_packaged',
   'unbundled_html_warning_shown',
+  'upload_guardrail_shown',
+  'upload_guardrail_overridden',
   'cancel_during_generating',
   'pdf_print_options_used',
   'ai_conversion_completed',

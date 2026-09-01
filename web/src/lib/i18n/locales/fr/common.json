@@ -236,7 +236,18 @@
     "chips": {
       "groupAria": "Autres sources d'import"
     },
-    "overSplit": "Beaucoup de rectos de cartes ne comptent qu'un ou deux mots, ce qui signifie généralement que le fichier a été coupé au milieu d'une phrase. Vérifie le paquet avant de réviser ou importe le fichier Word ou Notion d'origine pour des cartes plus propres."
+    "overSplit": "Beaucoup de rectos de cartes ne comptent qu'un ou deux mots, ce qui signifie généralement que le fichier a été coupé au milieu d'une phrase. Vérifie le paquet avant de réviser ou importe le fichier Word ou Notion d'origine pour des cartes plus propres.",
+    "validation": {
+      "continue": "Convertir quand même",
+      "markdown": {
+        "title": "Le Markdown de Notion supprime vos toggles",
+        "body": "L'export Markdown de Notion laisse de côté les blocs toggle — la partie que 2anki transforme en cartes — donc ce fichier risque de créer peu ou pas de cartes. Réexportez en HTML : dans Notion, ouvrez la page → ••• (en haut à droite) → Exporter → choisissez HTML comme format d'export, puis importez ce fichier. Un simple fichier Markdown qui ne vient pas de Notion fonctionne toujours — les cartes proviennent de paires de puces."
+      },
+      "markdownZip": {
+        "title": "Le Markdown de Notion supprime vos toggles",
+        "body": "L'export Markdown de Notion laisse de côté les blocs toggle — la partie que 2anki transforme en cartes — donc cet export risque de créer peu ou pas de cartes. Réexportez en HTML : dans Notion, ouvrez la page → ••• (en haut à droite) → Exporter → choisissez HTML comme format d'export, puis importez ce fichier. Un simple fichier Markdown qui ne vient pas de Notion fonctionne toujours — les cartes proviennent de paires de puces."
+      }
+    }
   },
   "auth": {
     "common": {

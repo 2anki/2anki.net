@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-02-notion-markdown-zip-warning",
+  "date": "2026-09-02",
+  "type": "feature",
+  "title": "Uploading a Notion Markdown export now warns you before converting, with the exact steps to re-export as HTML"
+}
