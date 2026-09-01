@@ -41,9 +41,9 @@ import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabe
 import { UpsellCard } from '../../components/UpsellCard';
 import JobResponse from '../../schemas/public/JobResponse';
 import {
-  NotionEmptyToggleNotice,
-  shouldShowEmptyToggleNotice,
-} from './components/NotionEmptyToggleNotice';
+  ThinDeckNotice,
+  shouldShowThinDeckNotice,
+} from './components/ThinDeckNotice';
 import { NotionColumnMappingModal } from '../../components/NotionColumnMappingModal/NotionColumnMappingModal';
 import {
   parseAmbiguousColumnsPayload,
@@ -52,7 +52,7 @@ import {
 import { ConversionResult } from './components/ConversionResult/ConversionResult';
 import { ProducerPrompt } from './components/ProducerPrompt';
 import { ConversionReportModal } from './components/ConversionReportModal/ConversionReportModal';
-import { getSignalSkippedCount } from './helpers/getSignalSkippedCount';
+import { getThinDeckSignal } from './helpers/getThinDeckSignal';
 import { parseMonthlyLimitPayload } from './components/ConversionResult/parseMonthlyLimitPayload';
 import styles from './DownloadsPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
@@ -587,9 +587,8 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                             isDoneJob(row.job.status) &&
                             (row.job.type === 'page' ||
                               row.job.type === 'database');
-                          const signalSkippedCount = getSignalSkippedCount(
-                            row.job
-                          );
+                          const { candidateSkips, reason: thinDeckReason } =
+                            getThinDeckSignal(row.job);
                           const isMonthlyLimitRow =
                             isFailed &&
                             parseMonthlyLimitPayload(
@@ -656,7 +655,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                             }
                                           >
                                             {t('downloadsx:report.link')}
-                                            {signalSkippedCount > 0 && (
+                                            {candidateSkips > 0 && (
                                               <>
                                                 {' '}
                                                 <span
@@ -667,7 +666,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                                   {t(
                                                     'downloadsx:report.skipped',
                                                     {
-                                                      count: signalSkippedCount,
+                                                      count: candidateSkips,
                                                     }
                                                   )}
                                                 </span>
@@ -780,17 +779,18 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                 </td>
                               </tr>
                               {isNotionDoneRow &&
-                                shouldShowEmptyToggleNotice(
-                                  row.job.empty_back_count ?? 0,
+                                shouldShowThinDeckNotice(
+                                  candidateSkips,
                                   row.job.card_count ?? 0
                                 ) && (
-                                  <tr key={`job-${row.job.id}-empty-toggles`}>
+                                  <tr key={`job-${row.job.id}-thin-deck`}>
                                     <td
                                       colSpan={4}
                                       className={styles.emptyTogglePanel}
                                     >
-                                      <NotionEmptyToggleNotice
-                                        skipped={row.job.empty_back_count}
+                                      <ThinDeckNotice
+                                        reason={thinDeckReason}
+                                        skipped={candidateSkips}
                                         cards={row.job.card_count ?? 0}
                                         onSeeReport={() =>
                                           setReportModalJob(row.job)

@@ -267,6 +267,10 @@
   color: var(--color-text-primary);
 }
 
+.thinDeckSeeReport {
+  min-height: 44px;
+}
+
 .statusChevron {
   display: inline-block;
   transition: transform var(--transition-fast);

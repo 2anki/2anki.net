@@ -77,6 +77,32 @@ export const EXPORT_DRIFT_FIXTURES: ExportDriftFixture[] = [
       mediaCount: 0,
     },
   },
+  {
+    driftClass: 'figure.image subfolder path (Apr-2026 export)',
+    parserName: 'notion-figure-image-2026.html',
+    htmlPath: 'notion-figure-image-2026.html',
+    mediaDir: 'notion-figure-image-2026/media',
+    mediaPrefix: 'Sample Diagram Set',
+    baseline: {
+      deckCount: 1,
+      cardCount: 1,
+      nonEmptyFrontCount: 1,
+      nonEmptyBackCount: 1,
+      mediaCount: 1,
+    },
+  },
+  {
+    driftClass: 'figure.equation data-notion-equation (2026 KaTeX export)',
+    parserName: 'notion-katex-equation-2026.html',
+    htmlPath: 'notion-katex-equation-2026.html',
+    baseline: {
+      deckCount: 1,
+      cardCount: 1,
+      nonEmptyFrontCount: 1,
+      nonEmptyBackCount: 1,
+      mediaCount: 0,
+    },
+  },
 ];
 
 const isNonEmpty = (value: string | undefined): boolean =>
