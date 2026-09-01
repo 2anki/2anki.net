@@ -3,7 +3,11 @@ import express from 'express';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-import { InMemorySuppressionEventsRepository } from '../data_layer/SuppressionEventsRepository';
+import {
+  InMemorySuppressionEventsRepository,
+  ISuppressionEventsRepository,
+  RecordSuppressionEvent,
+} from '../data_layer/SuppressionEventsRepository';
 import { emailHash } from '../lib/emailHash';
 import { ProcessSendgridEventsUseCase } from '../usecases/email/ProcessSendgridEventsUseCase';
 import SendgridWebhookRouter from './SendgridWebhookRouter';
@@ -33,7 +37,7 @@ function sign(
     .toString('base64');
 }
 
-async function buildServer(repo: InMemorySuppressionEventsRepository) {
+async function buildServer(repo: ISuppressionEventsRepository) {
   const useCase = new ProcessSendgridEventsUseCase(repo);
   const app = express();
   app.use(SendgridWebhookRouter(useCase));
@@ -206,6 +210,62 @@ describe(`POST ${ENDPOINT}`, () => {
     });
 
     expect(res.status).toBe(400);
+  });
+
+  it('returns 500 and logs the partial result when recording fails mid-batch', async () => {
+    class FailAfterFirstRepository implements ISuppressionEventsRepository {
+      readonly recorded: RecordSuppressionEvent[] = [];
+      async record(input: RecordSuppressionEvent): Promise<void> {
+        if (this.recorded.length >= 1) {
+          throw new Error('database unavailable');
+        }
+        this.recorded.push(input);
+      }
+      async isSuppressed(): Promise<boolean> {
+        return false;
+      }
+    }
+    const failingRepo = new FailAfterFirstRepository();
+    const failing = await buildServer(failingRepo);
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const timestamp = freshTimestamp();
+      const payload = JSON.stringify([
+        {
+          email: 'a@example.com',
+          event: 'bounce',
+          sg_event_id: 'evt-a',
+          timestamp: Number(timestamp),
+        },
+        {
+          email: 'b@example.com',
+          event: 'bounce',
+          sg_event_id: 'evt-b',
+          timestamp: Number(timestamp),
+        },
+      ]);
+      const signature = sign(keyPair.privateKey, timestamp, payload);
+
+      const res = await fetch(`${failing.url}${ENDPOINT}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'X-Twilio-Email-Event-Webhook-Signature': signature,
+          'X-Twilio-Email-Event-Webhook-Timestamp': timestamp,
+        },
+        body: payload,
+      });
+
+      expect(res.status).toBe(500);
+      expect(failingRepo.recorded).toHaveLength(1);
+      expect(errorSpy).toHaveBeenCalledWith(
+        'sendgrid.events.partial',
+        expect.objectContaining({ recorded: 1 })
+      );
+    } finally {
+      errorSpy.mockRestore();
+      failing.server.close();
+    }
   });
 
   it('returns 500 when the verification key is not configured', async () => {

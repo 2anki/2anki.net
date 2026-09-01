@@ -8,6 +8,7 @@ import {
   CONVERT_LINK_TEMPLATE,
   CONVERT_TEMPLATE,
   DEFAULT_SENDER,
+  EMAIL_CATEGORIES,
   INACTIVITY_WARNING_TEMPLATE,
   MAGIC_LINK_TEMPLATE,
   NOTION_RECONNECT_TEMPLATE,
@@ -207,7 +208,10 @@ export class EmailService implements IEmailService {
     }
   }
 
-  private async deliver(msg: SgMessage): Promise<[ClientResponse, {}] | null> {
+  private async deliver(
+    msg: SgMessage,
+    category: string
+  ): Promise<[ClientResponse, {}] | null> {
     const recipient = firstRecipient(msg.to);
     if (recipient != null) {
       let suppressed = false;
@@ -225,6 +229,7 @@ export class EmailService implements IEmailService {
         return null;
       }
     }
+    msg.categories = [category];
     return sgMail.send(msg);
   }
 
@@ -251,7 +256,7 @@ export class EmailService implements IEmailService {
     };
 
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.passwordReset);
     } catch (error) {
       console.error('Failed to send password reset email:', error);
       throw error;
@@ -296,7 +301,7 @@ export class EmailService implements IEmailService {
       ],
     };
 
-    return this.deliver(msg);
+    return this.deliver(msg, EMAIL_CATEGORIES.deckReady);
   }
 
   async sendConversionLinkEmail(
@@ -322,7 +327,7 @@ export class EmailService implements IEmailService {
       replyTo: 'support@2anki.net',
     };
 
-    await this.deliver(msg);
+    await this.deliver(msg, EMAIL_CATEGORIES.deckReadyLink);
   }
 
   async sendContactEmail(
@@ -340,6 +345,7 @@ export class EmailService implements IEmailService {
         name ?? 'Anon'
       } <${email}>`,
       text: `Message: ${message}\n\n`,
+      categories: [EMAIL_CATEGORIES.contactForm],
       attachments: attachments.map((file) => ({
         content: file.buffer.toString('base64'),
         filename: file.originalname,
@@ -367,6 +373,7 @@ export class EmailService implements IEmailService {
       subject: 'Auto Sync access request',
       text: `User ${userId} <${userEmail}> requested access to Auto Sync.`,
       replyTo: userEmail,
+      categories: [EMAIL_CATEGORIES.autoSyncAccessRequest],
     };
     try {
       await sgMail.send(msg);
@@ -412,8 +419,11 @@ export class EmailService implements IEmailService {
       replyTo: 'support@2anki.net',
     };
 
+    const category = isLogin
+      ? EMAIL_CATEGORIES.magicLinkLogin
+      : EMAIL_CATEGORIES.magicLinkPasswordReset;
     try {
-      const result = await this.deliver(msg);
+      const result = await this.deliver(msg, category);
       return { suppressed: result == null };
     } catch (error) {
       console.error('Failed to send magic link email:', error);
@@ -452,6 +462,7 @@ export class EmailService implements IEmailService {
         .replaceAll('{{surveyUrl}}', surveyUrl),
       html: markup,
       replyTo: 'support@2anki.net',
+      categories: [EMAIL_CATEGORIES.reEngagement],
     };
 
     try {
@@ -502,6 +513,7 @@ export class EmailService implements IEmailService {
       text,
       html: markup,
       replyTo: 'support@2anki.net',
+      categories: [EMAIL_CATEGORIES.inactivityWarning],
     };
 
     try {
@@ -541,6 +553,7 @@ export class EmailService implements IEmailService {
       text,
       html: markup,
       replyTo: 'support@2anki.net',
+      categories: [EMAIL_CATEGORIES.abandonedCheckoutRecovery],
     };
     try {
       await sgMail.send(msg);
@@ -570,6 +583,7 @@ export class EmailService implements IEmailService {
       text,
       html: markup,
       replyTo: 'support@2anki.net',
+      categories: [EMAIL_CATEGORIES.passWinback],
     };
     try {
       await sgMail.send(msg);
@@ -596,7 +610,7 @@ export class EmailService implements IEmailService {
       replyTo: 'support@2anki.net',
     };
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.subscriptionClaim);
     } catch (error) {
       console.error(
         'Failed to send subscription claim confirmation email:',
@@ -616,7 +630,7 @@ export class EmailService implements IEmailService {
       replyTo: 'support@2anki.net',
     };
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.contactConfirmation);
     } catch (error) {
       console.error('Failed to send contact confirmation email:', error);
       throw error;
@@ -641,7 +655,7 @@ export class EmailService implements IEmailService {
       replyTo: 'support@2anki.net',
     };
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.passClaim);
     } catch (error) {
       console.error('Failed to send pass claim confirmation email:', error);
       throw error;
@@ -666,7 +680,7 @@ export class EmailService implements IEmailService {
       replyTo: 'support@2anki.net',
     };
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.anonymousPassClaim);
     } catch (error) {
       console.error('Failed to send anonymous pass claim email:', error);
       throw error;
@@ -738,7 +752,7 @@ export class EmailService implements IEmailService {
     };
 
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.subscriptionCancelled);
       this.saveCancellationSent(subscriptionId);
       console.log(`Successfully sent cancellation confirmation to ${email}`);
     } catch (error) {
@@ -779,7 +793,10 @@ export class EmailService implements IEmailService {
     };
 
     try {
-      await this.deliver(msg);
+      await this.deliver(
+        msg,
+        EMAIL_CATEGORIES.subscriptionScheduledCancellation
+      );
       console.log(
         `Successfully sent scheduled cancellation notification to ${email}`
       );
@@ -821,7 +838,7 @@ export class EmailService implements IEmailService {
     };
 
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.subscriptionResumingSoon);
       console.log(`Successfully sent resume warning to ${emailHash(email)}`);
     } catch (error) {
       console.error(
@@ -840,6 +857,7 @@ export class EmailService implements IEmailService {
       subject: '[2anki] Parser canary failure — fixture count mismatch',
       text: summary,
       replyTo: 'support@2anki.net',
+      categories: [EMAIL_CATEGORIES.parserCanary],
     };
     try {
       await sgMail.send(msg);
@@ -862,7 +880,7 @@ export class EmailService implements IEmailService {
     };
 
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.notionReconnect);
     } catch (error) {
       console.error(
         '[notion-reconnect] failed to send reconnect email:',
@@ -898,7 +916,7 @@ export class EmailService implements IEmailService {
     };
 
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.priceLockIn);
     } catch (error) {
       console.error(`Failed to send price lock-in email to ${to}:`, error);
       throw error;
@@ -933,7 +951,7 @@ export class EmailService implements IEmailService {
     };
 
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.subscriptionRecovery);
     } catch (error) {
       console.error(
         `Failed to send subscription recovery email to ${emailHash(to)}:`,

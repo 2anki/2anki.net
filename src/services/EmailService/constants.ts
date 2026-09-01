@@ -104,3 +104,28 @@ export const SUBSCRIPTION_RECOVERY_TEMPLATE = fs.readFileSync(
   path.join(EMAIL_TEMPLATES_DIRECTORY, 'subscription-recovery.html'),
   'utf8'
 );
+
+export const EMAIL_CATEGORIES = {
+  passwordReset: 'password-reset',
+  deckReady: 'deck-ready',
+  deckReadyLink: 'deck-ready-link',
+  contactForm: 'contact-form',
+  autoSyncAccessRequest: 'auto-sync-access-request',
+  magicLinkLogin: 'magic-link-login',
+  magicLinkPasswordReset: 'magic-link-password-reset',
+  reEngagement: 're-engagement',
+  inactivityWarning: 'inactivity-warning',
+  abandonedCheckoutRecovery: 'abandoned-checkout-recovery',
+  passWinback: 'pass-winback',
+  subscriptionClaim: 'subscription-claim',
+  contactConfirmation: 'contact-confirmation',
+  passClaim: 'pass-claim',
+  anonymousPassClaim: 'anonymous-pass-claim',
+  subscriptionCancelled: 'subscription-cancelled',
+  subscriptionScheduledCancellation: 'subscription-scheduled-cancellation',
+  subscriptionResumingSoon: 'resuming-soon',
+  parserCanary: 'parser-canary',
+  notionReconnect: 'notion-reconnect',
+  priceLockIn: 'price-lock-in',
+  subscriptionRecovery: 'subscription-recovery',
+} as const;
