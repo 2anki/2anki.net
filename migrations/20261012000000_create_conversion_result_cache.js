@@ -12,6 +12,7 @@ exports.up = async function (knex) {
   await knex.schema.createTable('conversion_result_cache', (table) => {
     table.increments('id').primary();
     table.string('cache_key', 64).notNullable().unique();
+    table.index('created_at');
     table.string('model').notNullable();
     table.string('prompt_version').notNullable();
     table.jsonb('deck_info').notNullable();

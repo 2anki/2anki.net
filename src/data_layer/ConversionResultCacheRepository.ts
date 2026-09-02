@@ -83,7 +83,7 @@ export class ConversionResultCacheRepository implements ConversionResultCacheSto
       cutoff
     );
     if (row == null) return undefined;
-    this.bumpHit(key, row.hits);
+    this.bumpHit(key);
     return row.deck_info;
   }
 
@@ -96,11 +96,11 @@ export class ConversionResultCacheRepository implements ConversionResultCacheSto
     return this.database(this.table).where('created_at', '<', cutoff).del();
   }
 
-  private bumpHit(key: string, currentHits: number): void {
+  private bumpHit(key: string): void {
     void this.database(this.table)
       .where({ cache_key: key })
       .update({
-        hits: currentHits + 1,
+        hits: this.database.raw('hits + 1'),
         last_accessed_at: this.database.fn.now(),
       })
       .then(undefined, (error: unknown) => {
