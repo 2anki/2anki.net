@@ -131,6 +131,8 @@ export const KNOWN_EVENTS = new Set([
   'anonymous_pass_claimed',
   'ops_user_email_changed',
   'pass_account_email_autolinked',
+  'email_change_requested',
+  'email_change_confirmed',
 ] as const);
 
 export type KnownEvent = typeof KNOWN_EVENTS extends Set<infer T> ? T : never;

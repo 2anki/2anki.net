@@ -105,5 +105,29 @@
     "upgradeToUnlimited": "Upgraden naar Unlimited",
     "checkoutError": "Kon de betaling niet starten. Probeer het opnieuw of mail naar support@2anki.net.",
     "backToUpload": "Terug naar uploaden"
+  },
+  "emailChange": {
+    "toggle": "E-mailadres wijzigen",
+    "description": "We sturen een bevestigingslink naar het nieuwe adres. Je e-mailadres verandert pas als je die link opent.",
+    "newEmailLabel": "Nieuw e-mailadres",
+    "newEmailPlaceholder": "you@newdomain.com",
+    "passwordLabel": "Huidig wachtwoord",
+    "submit": "Bevestigingslink versturen",
+    "sending": "Versturen",
+    "cancel": "Annuleren",
+    "pendingTitle": "Controleer je nieuwe inbox",
+    "pendingBody": "We hebben een bevestigingslink naar {{email}} gestuurd. Hij verloopt over 30 minuten — open hem om de wijziging af te ronden.",
+    "useDifferent": "Ander e-mailadres gebruiken",
+    "cancelChange": "Wijziging annuleren",
+    "errorGeneric": "Er ging iets mis. Probeer het zo opnieuw.",
+    "setPasswordLink": "Wachtwoord instellen"
+  },
+  "emailChangeConfirm": {
+    "successTitle": "E-mailadres bijgewerkt.",
+    "successBody": "Je aanmeld-e-mailadres is gewijzigd. Voor je veiligheid hebben we je overal afgemeld — meld je aan met het nieuwe e-mailadres om verder te gaan.",
+    "invalidTitle": "Link verlopen of ongeldig.",
+    "invalidBody": "Deze bevestigingslink is niet meer geldig. Start een nieuwe e-mailwijziging vanuit je account.",
+    "takenTitle": "Dat e-mailadres is al in gebruik.",
+    "takenBody": "Een ander account gebruikt dit e-mailadres al, dus de wijziging is niet doorgevoerd. Probeer een ander adres vanuit je account."
   }
 }

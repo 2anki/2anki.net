@@ -90,9 +90,9 @@
     "cancel": "Cancelar"
   },
   "claimSubscription": {
-    "paidDifferentEmail": "Pagou com outro e-mail?",
+    "paidDifferentEmail": "Vincular uma assinatura",
     "sent": "Enviado. Verifique essa caixa de entrada para um link de confirmação.",
-    "description": "Comprou uma assinatura ou um Week Pass ou Day Pass com outro e-mail? Digite esse e-mail e enviaremos para lá um link de confirmação para vinculá-lo a esta conta.",
+    "description": "Comprou uma assinatura ou um Week Pass ou Day Pass com outro e-mail? Digite esse e-mail e enviaremos para lá um link de confirmação para vinculá-lo a esta conta. Isso vincula apenas o pagamento; não muda o e-mail com que você entra.",
     "emailPlaceholder": "E-mail com que você pagou",
     "emailLabel": "E-mail com que você pagou",
     "error": "Algo deu errado. Tente de novo em um instante.",

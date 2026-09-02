@@ -16,12 +16,12 @@ describe('ClaimSubscription', () => {
 
   it('renders the section heading', () => {
     render(<ClaimSubscription />);
-    expect(screen.getByText('Paid with a different email?')).toBeTruthy();
+    expect(screen.getByText('Link a subscription')).toBeTruthy();
   });
 
   it('shows the helper text and button when expanded', () => {
     render(<ClaimSubscription />);
-    fireEvent.click(screen.getByText('Paid with a different email?'));
+    fireEvent.click(screen.getByText('Link a subscription'));
     expect(
       screen.getByText(/Bought a subscription or a Week or Day Pass/)
     ).toBeTruthy();
@@ -33,7 +33,7 @@ describe('ClaimSubscription', () => {
   it('shows success toast after successful submission', async () => {
     mockPost.mockResolvedValue({ ok: true });
     render(<ClaimSubscription />);
-    fireEvent.click(screen.getByText('Paid with a different email?'));
+    fireEvent.click(screen.getByText('Link a subscription'));
 
     const input = screen.getByLabelText('Email you paid with');
     fireEvent.change(input, { target: { value: 'payer@example.com' } });

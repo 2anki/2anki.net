@@ -25,6 +25,8 @@ import {
   SUBSCRIPTION_RECOVERY_TEMPLATE,
   SUBSCRIPTION_SCHEDULED_CANCELLATION_TEMPLATE,
   SUBSCRIPTION_RESUMING_SOON_TEMPLATE,
+  EMAIL_CHANGE_CONFIRMATION_TEMPLATE,
+  EMAIL_CHANGE_NOTIFICATION_TEMPLATE,
 } from './constants';
 import { isValidDeckName, addDeckNameSuffix } from '../../lib/anki/format';
 import { escapeHtml } from '../../lib/notion-render/escape';
@@ -117,6 +119,14 @@ export interface IEmailService {
     variant: 'a' | 'b'
   ): Promise<void>;
   sendSubscriptionRecoveryEmail(to: string, paidEmail: string): Promise<void>;
+  sendEmailChangeConfirmationEmail(
+    newEmail: string,
+    confirmUrl: string
+  ): Promise<void>;
+  sendEmailChangeNotificationEmail(
+    oldEmail: string,
+    newEmail: string
+  ): Promise<void>;
 }
 
 export const SUBSCRIPTION_RECOVERY_SUBJECT =
@@ -616,6 +626,54 @@ export class EmailService implements IEmailService {
         'Failed to send subscription claim confirmation email:',
         error
       );
+      throw error;
+    }
+  }
+
+  async sendEmailChangeConfirmationEmail(
+    newEmail: string,
+    confirmUrl: string
+  ): Promise<void> {
+    const markup = EMAIL_CHANGE_CONFIRMATION_TEMPLATE.replace(
+      '{{link}}',
+      confirmUrl
+    );
+    const msg = {
+      to: newEmail,
+      from: this.defaultSender,
+      subject: 'Confirm your new 2anki email',
+      text: `Confirm your new 2anki email here: ${confirmUrl} — this link expires in 30 minutes. If you didn't request this, ignore this email.`,
+      html: markup,
+      replyTo: 'support@2anki.net',
+    };
+    try {
+      await this.deliver(msg);
+    } catch (error) {
+      console.error('Failed to send email change confirmation email:', error);
+      throw error;
+    }
+  }
+
+  async sendEmailChangeNotificationEmail(
+    oldEmail: string,
+    newEmail: string
+  ): Promise<void> {
+    const markup = EMAIL_CHANGE_NOTIFICATION_TEMPLATE.replace(
+      '{{newEmail}}',
+      escapeHtml(newEmail)
+    );
+    const msg = {
+      to: oldEmail,
+      from: this.defaultSender,
+      subject: 'A change to your 2anki email was requested',
+      text: `Someone asked to change the email on your 2anki account to ${newEmail}. It only takes effect after it's confirmed from the new address, so your current email still works. If this wasn't you, change your password and email support@2anki.net.`,
+      html: markup,
+      replyTo: 'support@2anki.net',
+    };
+    try {
+      await this.deliver(msg);
+    } catch (error) {
+      console.error('Failed to send email change notification email:', error);
       throw error;
     }
   }
@@ -1154,6 +1212,20 @@ export class UnimplementedEmailService implements IEmailService {
     paidEmail: string
   ): Promise<void> {
     console.info('sendSubscriptionRecoveryEmail not handled', to, paidEmail);
+  }
+
+  async sendEmailChangeConfirmationEmail(
+    _newEmail: string,
+    _confirmUrl: string
+  ): Promise<void> {
+    console.info('sendEmailChangeConfirmationEmail not handled');
+  }
+
+  async sendEmailChangeNotificationEmail(
+    _oldEmail: string,
+    _newEmail: string
+  ): Promise<void> {
+    console.info('sendEmailChangeNotificationEmail not handled');
   }
 }
 

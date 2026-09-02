@@ -105,5 +105,29 @@
     "upgradeToUnlimited": "Cambiar a Unlimited",
     "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo o escribe a support@2anki.net.",
     "backToUpload": "Volver a la subida"
+  },
+  "emailChange": {
+    "toggle": "Cambiar correo",
+    "description": "Enviaremos un enlace de confirmación a la nueva dirección. Tu correo solo cambia cuando abres ese enlace.",
+    "newEmailLabel": "Correo nuevo",
+    "newEmailPlaceholder": "you@newdomain.com",
+    "passwordLabel": "Contraseña actual",
+    "submit": "Enviar enlace de confirmación",
+    "sending": "Enviando",
+    "cancel": "Cancelar",
+    "pendingTitle": "Revisa tu nueva bandeja de entrada",
+    "pendingBody": "Enviamos un enlace de confirmación a {{email}}. Caduca en 30 minutos; ábrelo para completar el cambio.",
+    "useDifferent": "Usar otro correo",
+    "cancelChange": "Cancelar cambio",
+    "errorGeneric": "Algo salió mal. Inténtalo de nuevo en un momento.",
+    "setPasswordLink": "Establecer una contraseña"
+  },
+  "emailChangeConfirm": {
+    "successTitle": "Correo actualizado.",
+    "successBody": "Tu correo de inicio de sesión ha cambiado. Por tu seguridad, cerramos tu sesión en todas partes; inicia sesión con el nuevo correo para continuar.",
+    "invalidTitle": "Enlace caducado o no válido.",
+    "invalidBody": "Este enlace de confirmación ya no es válido. Inicia un nuevo cambio de correo desde tu cuenta.",
+    "takenTitle": "Ese correo ya está en uso.",
+    "takenBody": "Otra cuenta ya usa este correo, así que el cambio no se completó. Prueba con otra dirección desde tu cuenta."
   }
 }

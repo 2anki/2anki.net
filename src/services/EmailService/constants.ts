@@ -129,3 +129,12 @@ export const EMAIL_CATEGORIES = {
   priceLockIn: 'price-lock-in',
   subscriptionRecovery: 'subscription-recovery',
 } as const;
+export const EMAIL_CHANGE_CONFIRMATION_TEMPLATE = fs.readFileSync(
+  path.join(EMAIL_TEMPLATES_DIRECTORY, 'email-change-confirmation.html'),
+  'utf8'
+);
+
+export const EMAIL_CHANGE_NOTIFICATION_TEMPLATE = fs.readFileSync(
+  path.join(EMAIL_TEMPLATES_DIRECTORY, 'email-change-notification.html'),
+  'utf8'
+);

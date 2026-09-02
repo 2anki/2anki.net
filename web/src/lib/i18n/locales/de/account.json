@@ -90,9 +90,9 @@
     "cancel": "Abbrechen"
   },
   "claimSubscription": {
-    "paidDifferentEmail": "Mit einer anderen E-Mail bezahlt?",
+    "paidDifferentEmail": "Abo verknüpfen",
     "sent": "Gesendet. Sieh in diesem Postfach nach einem Bestätigungslink.",
-    "description": "Hast du ein Abo oder einen Week oder Day Pass mit einer anderen E-Mail-Adresse gekauft? Gib diese E-Mail-Adresse ein und wir senden dir dorthin einen Bestätigungslink, um den Kauf mit diesem Konto zu verknüpfen.",
+    "description": "Hast du ein Abo oder einen Week oder Day Pass mit einer anderen E-Mail-Adresse gekauft? Gib diese E-Mail-Adresse ein und wir senden dir dorthin einen Bestätigungslink, um den Kauf mit diesem Konto zu verknüpfen. Damit wird nur die Zahlung verknüpft — deine Anmelde-E-Mail ändert sich dadurch nicht.",
     "emailPlaceholder": "E-Mail, mit der du bezahlt hast",
     "emailLabel": "E-Mail, mit der du bezahlt hast",
     "error": "Etwas ist schiefgelaufen. Versuch es gleich noch einmal.",

@@ -33,7 +33,8 @@
     "title": "Compte",
     "subscribed": "Abonné.",
     "emailVerified": "E-mail vérifié.",
-    "dismiss": "Ignorer"
+    "dismiss": "Ignorer",
+    "emailChanged": "E-mail mis à jour."
   },
   "language": {
     "label": "Langue",

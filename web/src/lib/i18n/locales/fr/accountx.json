@@ -105,5 +105,29 @@
     "upgradeToUnlimited": "Passer à Unlimited",
     "checkoutError": "Impossible de démarrer le paiement. Réessayez ou écrivez à support@2anki.net.",
     "backToUpload": "Retour à l'import"
+  },
+  "emailChange": {
+    "toggle": "Changer d'e-mail",
+    "description": "Nous envoyons un lien de confirmation à la nouvelle adresse. Ton e-mail ne change qu'une fois ce lien ouvert.",
+    "newEmailLabel": "Nouvel e-mail",
+    "newEmailPlaceholder": "you@newdomain.com",
+    "passwordLabel": "Mot de passe actuel",
+    "submit": "Envoyer le lien de confirmation",
+    "sending": "Envoi",
+    "cancel": "Annuler",
+    "pendingTitle": "Vérifie ta nouvelle boîte de réception",
+    "pendingBody": "Nous avons envoyé un lien de confirmation à {{email}}. Il expire dans 30 minutes — ouvre-le pour terminer le changement.",
+    "useDifferent": "Utiliser un autre e-mail",
+    "cancelChange": "Annuler le changement",
+    "errorGeneric": "Une erreur s'est produite. Réessaie dans un instant.",
+    "setPasswordLink": "Définir un mot de passe"
+  },
+  "emailChangeConfirm": {
+    "successTitle": "E-mail mis à jour.",
+    "successBody": "Ton e-mail de connexion a été changé. Pour ta sécurité, nous t'avons déconnecté partout — connecte-toi avec le nouvel e-mail pour continuer.",
+    "invalidTitle": "Lien expiré ou invalide.",
+    "invalidBody": "Ce lien de confirmation n'est plus valide. Relance un changement d'e-mail depuis ton compte.",
+    "takenTitle": "Cet e-mail est déjà pris.",
+    "takenBody": "Un autre compte utilise déjà cet e-mail, le changement n'a donc pas abouti. Essaie une autre adresse depuis ton compte."
   }
 }

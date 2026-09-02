@@ -33,7 +33,8 @@
     "title": "Konto",
     "subscribed": "Abonniert.",
     "emailVerified": "E-Mail bestätigt.",
-    "dismiss": "Schließen"
+    "dismiss": "Schließen",
+    "emailChanged": "E-Mail-Adresse aktualisiert."
   },
   "language": {
     "label": "Sprache",

@@ -33,7 +33,8 @@
     "title": "Account",
     "subscribed": "Abbonamento attivo.",
     "emailVerified": "Email verificata.",
-    "dismiss": "Chiudi"
+    "dismiss": "Chiudi",
+    "emailChanged": "Email aggiornata."
   },
   "language": {
     "label": "Lingua",

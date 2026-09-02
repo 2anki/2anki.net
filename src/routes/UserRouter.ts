@@ -40,7 +40,8 @@ const UserRouter = () => {
     ),
     authService,
     database,
-    recordErrorUseCase
+    recordErrorUseCase,
+    emailService
   );
   const emailPreferencesController = new EmailPreferencesController(
     new EmailPreferencesRepository(database)
@@ -432,6 +433,75 @@ const UserRouter = () => {
    */
   router.post('/api/users/delete-account', RequireAuthentication, (req, res) =>
     controller.deleteAccount(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/users/email-change/request:
+   *   post:
+   *     summary: Request an account email change
+   *     description: Re-authenticates with the current password, mails a confirmation link to the new address, and notifies the old address. The change applies only when the link is confirmed.
+   *     tags: [Users]
+   *     security:
+   *       - cookieAuth: []
+   *     responses:
+   *       200:
+   *         description: Confirmation link sent to the new address
+   *       400:
+   *         description: Invalid or unchanged email
+   *       401:
+   *         description: Authentication required or wrong password
+   *       403:
+   *         description: OAuth-only account must set a password first
+   *       409:
+   *         description: Email already in use
+   *       429:
+   *         description: Too many attempts
+   */
+  router.post(
+    '/api/users/email-change/request',
+    RequireAuthentication,
+    (req, res) => controller.requestEmailChange(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/users/email-change/confirm:
+   *   post:
+   *     summary: Confirm an account email change
+   *     description: Applies the pending email change identified by the emailed token. Token-authenticated, so it works from the new inbox on any device; every session is revoked on success.
+   *     tags: [Users]
+   *     responses:
+   *       200:
+   *         description: Email updated
+   *       400:
+   *         description: Invalid or expired token
+   *       409:
+   *         description: Email now in use by another account
+   */
+  router.post('/api/users/email-change/confirm', (req, res) =>
+    controller.confirmEmailChange(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/users/email-change/cancel:
+   *   post:
+   *     summary: Cancel a pending account email change
+   *     description: Deletes any live pending email-change token for the authenticated account.
+   *     tags: [Users]
+   *     security:
+   *       - cookieAuth: []
+   *     responses:
+   *       200:
+   *         description: Pending change cancelled (if one existed)
+   *       401:
+   *         description: Authentication required
+   */
+  router.post(
+    '/api/users/email-change/cancel',
+    RequireAuthentication,
+    (req, res) => controller.cancelEmailChange(req, res)
   );
 
   router.post(

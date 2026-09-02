@@ -90,9 +90,9 @@
     "cancel": "Cancelar"
   },
   "claimSubscription": {
-    "paidDifferentEmail": "¿Pagaste con otro correo?",
+    "paidDifferentEmail": "Vincular una suscripción",
     "sent": "Enviado. Revisa esa bandeja de entrada para ver el enlace de confirmación.",
-    "description": "¿Compraste una suscripción o un Week Pass o Day Pass con otro correo? Introduce ese correo y te enviaremos allí un enlace de confirmación para vincularlo a esta cuenta.",
+    "description": "¿Compraste una suscripción o un Week Pass o Day Pass con otro correo? Introduce ese correo y te enviaremos allí un enlace de confirmación para vincularlo a esta cuenta. Esto solo vincula el pago; no cambia el correo con el que inicias sesión.",
     "emailPlaceholder": "Correo con el que pagaste",
     "emailLabel": "Correo con el que pagaste",
     "error": "Algo salió mal. Inténtalo de nuevo en un momento.",

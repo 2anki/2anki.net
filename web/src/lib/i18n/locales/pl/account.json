@@ -90,9 +90,9 @@
     "cancel": "Anuluj"
   },
   "claimSubscription": {
-    "paidDifferentEmail": "Płaciłeś z innego adresu e-mail?",
+    "paidDifferentEmail": "Połącz subskrypcję",
     "sent": "Wysłano. Sprawdź tę skrzynkę, szukając linku potwierdzającego.",
-    "description": "Masz subskrypcję albo Week Pass lub Day Pass kupione na inny adres e-mail? Wpisz ten adres, a wyślemy tam link potwierdzający, żeby przypisać zakup do tego konta.",
+    "description": "Masz subskrypcję albo Week Pass lub Day Pass kupione na inny adres e-mail? Wpisz ten adres, a wyślemy tam link potwierdzający, żeby przypisać zakup do tego konta. To łączy tylko płatność — nie zmienia adresu e-mail używanego do logowania.",
     "emailPlaceholder": "E-mail, którym płaciłeś",
     "emailLabel": "E-mail, którym płaciłeś",
     "error": "Coś poszło nie tak. Spróbuj ponownie za chwilę.",

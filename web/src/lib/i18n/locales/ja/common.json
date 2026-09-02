@@ -33,7 +33,8 @@
     "title": "アカウント",
     "subscribed": "登録済みです。",
     "emailVerified": "メールを確認しました。",
-    "dismiss": "閉じる"
+    "dismiss": "閉じる",
+    "emailChanged": "メールアドレスを更新しました。"
   },
   "language": {
     "label": "言語",

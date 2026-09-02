@@ -90,9 +90,9 @@
     "cancel": "Annulla"
   },
   "claimSubscription": {
-    "paidDifferentEmail": "Hai pagato con un'altra email?",
+    "paidDifferentEmail": "Collega un abbonamento",
     "sent": "Inviato. Controlla quella casella per un link di conferma.",
-    "description": "Hai acquistato un abbonamento o un Week Pass o Day Pass con un'altra email? Inserisci quell'email e ti invieremo lì un link di conferma per collegarlo a questo account.",
+    "description": "Hai acquistato un abbonamento o un Week Pass o Day Pass con un'altra email? Inserisci quell'email e ti invieremo lì un link di conferma per collegarlo a questo account. Questo collega solo il pagamento e non modifica l'email con cui accedi.",
     "emailPlaceholder": "Email con cui hai pagato",
     "emailLabel": "Email con cui hai pagato",
     "error": "Qualcosa è andato storto. Riprova tra un momento.",

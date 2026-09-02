@@ -90,9 +90,9 @@
     "cancel": "Annuleren"
   },
   "claimSubscription": {
-    "paidDifferentEmail": "Betaald met een ander e-mailadres?",
+    "paidDifferentEmail": "Abonnement koppelen",
     "sent": "Verzonden. Check die inbox voor een bevestigingslink.",
-    "description": "Heb je een abonnement of een Week of Day Pass met een ander e-mailadres gekocht? Vul dat e-mailadres in en we sturen daar een bevestigingslink naartoe om het aan dit account te koppelen.",
+    "description": "Heb je een abonnement of een Week of Day Pass met een ander e-mailadres gekocht? Vul dat e-mailadres in en we sturen daar een bevestigingslink naartoe om het aan dit account te koppelen. Dit koppelt alleen de betaling — je aanmeld-e-mailadres verandert hierdoor niet.",
     "emailPlaceholder": "E-mail waarmee je betaalde",
     "emailLabel": "E-mail waarmee je betaalde",
     "error": "Er is iets misgegaan. Probeer het zo weer.",

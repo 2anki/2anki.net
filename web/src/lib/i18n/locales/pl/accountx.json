@@ -109,5 +109,29 @@
     "upgradeToUnlimited": "Przejdź na Unlimited",
     "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie lub napisz na support@2anki.net.",
     "backToUpload": "Powrót do przesyłania"
+  },
+  "emailChange": {
+    "toggle": "Zmień adres e-mail",
+    "description": "Wyślemy link potwierdzający na nowy adres. Twój e-mail zmieni się dopiero po otwarciu tego linku.",
+    "newEmailLabel": "Nowy adres e-mail",
+    "newEmailPlaceholder": "you@newdomain.com",
+    "passwordLabel": "Aktualne hasło",
+    "submit": "Wyślij link potwierdzający",
+    "sending": "Wysyłanie",
+    "cancel": "Anuluj",
+    "pendingTitle": "Sprawdź swoją nową skrzynkę",
+    "pendingBody": "Wysłaliśmy link potwierdzający na {{email}}. Wygasa za 30 minut — otwórz go, aby zakończyć zmianę.",
+    "useDifferent": "Użyj innego adresu e-mail",
+    "cancelChange": "Anuluj zmianę",
+    "errorGeneric": "Coś poszło nie tak. Spróbuj ponownie za chwilę.",
+    "setPasswordLink": "Ustaw hasło"
+  },
+  "emailChangeConfirm": {
+    "successTitle": "Adres e-mail zaktualizowany.",
+    "successBody": "Twój adres e-mail do logowania został zmieniony. Dla bezpieczeństwa wylogowaliśmy Cię wszędzie — zaloguj się nowym adresem, aby kontynuować.",
+    "invalidTitle": "Link wygasł lub jest nieprawidłowy.",
+    "invalidBody": "Ten link potwierdzający już nie działa. Rozpocznij nową zmianę adresu e-mail w swoim koncie.",
+    "takenTitle": "Ten adres e-mail jest zajęty.",
+    "takenBody": "Inne konto już używa tego adresu e-mail, więc zmiana się nie powiodła. Spróbuj innego adresu w swoim koncie."
   }
 }

@@ -33,7 +33,8 @@
     "title": "Cuenta",
     "subscribed": "Suscrito.",
     "emailVerified": "Correo verificado.",
-    "dismiss": "Descartar"
+    "dismiss": "Descartar",
+    "emailChanged": "Correo actualizado."
   },
   "language": {
     "label": "Idioma",

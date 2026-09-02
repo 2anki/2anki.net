@@ -33,7 +33,8 @@
     "title": "Account",
     "subscribed": "Subscribed.",
     "emailVerified": "Email verified.",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "emailChanged": "Email updated."
   },
   "language": {
     "label": "Language",

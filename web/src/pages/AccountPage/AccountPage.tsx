@@ -24,6 +24,7 @@ export default function AccountPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const justSubscribed = searchParams.get('subscribed') === '1';
   const justVerified = searchParams.get('verified') === '1';
+  const justChangedEmail = searchParams.get('email_changed') === '1';
 
   const dismissParam = (key: string) => {
     const next = new URLSearchParams(searchParams);
@@ -77,6 +78,23 @@ export default function AccountPage() {
             type="button"
             className={sharedStyles.btnGhost}
             onClick={() => dismissParam('verified')}
+          >
+            {t('account.dismiss')}
+          </button>
+        </div>
+      )}
+
+      {justChangedEmail && (
+        <div
+          className={sharedStyles.alertSuccess}
+          role="status"
+          aria-live="polite"
+        >
+          <p>{t('account.emailChanged')}</p>
+          <button
+            type="button"
+            className={sharedStyles.btnGhost}
+            onClick={() => dismissParam('email_changed')}
           >
             {t('account.dismiss')}
           </button>

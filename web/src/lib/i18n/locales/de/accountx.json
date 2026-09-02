@@ -105,5 +105,29 @@
     "upgradeToUnlimited": "Auf Unlimited upgraden",
     "checkoutError": "Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.",
     "backToUpload": "Zurück zum Upload"
+  },
+  "emailChange": {
+    "toggle": "E-Mail-Adresse ändern",
+    "description": "Wir senden einen Bestätigungslink an die neue Adresse. Deine E-Mail-Adresse ändert sich erst, wenn du diesen Link öffnest.",
+    "newEmailLabel": "Neue E-Mail-Adresse",
+    "newEmailPlaceholder": "you@newdomain.com",
+    "passwordLabel": "Aktuelles Passwort",
+    "submit": "Bestätigungslink senden",
+    "sending": "Senden",
+    "cancel": "Abbrechen",
+    "pendingTitle": "Sieh in deinem neuen Postfach nach",
+    "pendingBody": "Wir haben einen Bestätigungslink an {{email}} gesendet. Er läuft in 30 Minuten ab — öffne ihn, um die Änderung abzuschließen.",
+    "useDifferent": "Andere E-Mail-Adresse verwenden",
+    "cancelChange": "Änderung abbrechen",
+    "errorGeneric": "Etwas ist schiefgelaufen. Versuche es gleich noch einmal.",
+    "setPasswordLink": "Passwort festlegen"
+  },
+  "emailChangeConfirm": {
+    "successTitle": "E-Mail-Adresse aktualisiert.",
+    "successBody": "Deine Anmelde-E-Mail wurde geändert. Zu deiner Sicherheit haben wir dich überall abgemeldet — melde dich mit der neuen E-Mail-Adresse an, um fortzufahren.",
+    "invalidTitle": "Link abgelaufen oder ungültig.",
+    "invalidBody": "Dieser Bestätigungslink ist nicht mehr gültig. Starte die E-Mail-Änderung erneut über dein Konto.",
+    "takenTitle": "Diese E-Mail-Adresse ist vergeben.",
+    "takenBody": "Ein anderes Konto verwendet diese E-Mail-Adresse bereits, daher konnte die Änderung nicht abgeschlossen werden. Versuche es mit einer anderen Adresse über dein Konto."
   }
 }

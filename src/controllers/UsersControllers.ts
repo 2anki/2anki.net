@@ -50,6 +50,10 @@ import { RecordUserVisibleErrorUseCase } from '../usecases/observability/RecordU
 import { track } from '../services/events/track';
 import { mapEntitlement } from './helpers/mapEntitlement';
 import { hasAnkifyAccess } from '../lib/ankify/access';
+import EmailChangeTokenRepository from '../data_layer/EmailChangeTokenRepository';
+import { RequestEmailChangeUseCase } from '../usecases/users/RequestEmailChangeUseCase';
+import { ConfirmEmailChangeUseCase } from '../usecases/users/ConfirmEmailChangeUseCase';
+import type { IEmailService } from '../services/EmailService/EmailService';
 
 function readFirstTouchCookie(req: express.Request): FirstTouchAttribution {
   const cookies = req.cookies as Record<string, unknown> | undefined;
@@ -75,7 +79,8 @@ class UsersController {
     private readonly userService: UsersService,
     private readonly authService: AuthenticationService,
     private readonly db: ReturnType<typeof import('../data_layer').getDatabase>,
-    private readonly recordError: RecordUserVisibleErrorUseCase | null = null
+    private readonly recordError: RecordUserVisibleErrorUseCase | null = null,
+    private readonly emailService: IEmailService | null = null
   ) {}
 
   async newPassword(
@@ -381,6 +386,10 @@ class UsersController {
       freePrintAvailable = prints_used < 1;
     }
 
+    const pendingEmailChange = await this.resolvePendingEmailChange(
+      user?.owner
+    );
+
     const response = {
       user: {
         id: user?.id,
@@ -402,9 +411,32 @@ class UsersController {
       autoSyncCapReached,
       autoSyncActive,
       freePrintAvailable,
+      pending_email_change: pendingEmailChange,
     };
 
     return res.json(response);
+  }
+
+  private async resolvePendingEmailChange(
+    owner: UsersId | number | undefined
+  ): Promise<{ new_email: string; requested_at: string } | null> {
+    if (owner == null) {
+      return null;
+    }
+    try {
+      const pending = await new EmailChangeTokenRepository(
+        this.db
+      ).findLivePendingByUser(Number(owner), new Date());
+      if (pending == null) {
+        return null;
+      }
+      return {
+        new_email: pending.new_email,
+        requested_at: new Date(pending.created_at).toISOString(),
+      };
+    } catch {
+      return null;
+    }
   }
 
   async markAnkifyWelcomeSeen(_req: express.Request, res: express.Response) {
@@ -414,6 +446,123 @@ class UsersController {
     }
     await this.userService.markAnkifyWelcomeSeen(owner);
     return res.json({ ok: true });
+  }
+
+  async requestEmailChange(req: express.Request, res: express.Response) {
+    const { owner } = res.locals;
+    if (owner == null) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    if (this.emailService == null) {
+      return res.status(500).json({ message: 'Email change is unavailable.' });
+    }
+
+    const newEmail =
+      typeof req.body?.new_email === 'string' ? req.body.new_email : '';
+    const password =
+      typeof req.body?.password === 'string' ? req.body.password : '';
+
+    const useCase = new RequestEmailChangeUseCase(
+      new EmailChangeTokenRepository(this.db),
+      new UsersRepository(this.db),
+      new OauthIdentitiesRepository(this.db),
+      this.emailService,
+      (plain, hash) => this.authService.comparePassword(plain, hash)
+    );
+
+    const outcome = await useCase.execute({
+      userId: Number(owner),
+      newEmail,
+      password,
+    });
+
+    if (outcome.ok) {
+      return res
+        .status(200)
+        .json({ message: 'Check your new inbox for a confirmation link.' });
+    }
+
+    return this.#respondRequestEmailChangeError(res, outcome.reason);
+  }
+
+  #respondRequestEmailChangeError(
+    res: express.Response,
+    reason:
+      | 'invalid_email'
+      | 'same_as_current'
+      | 'wrong_password'
+      | 'set_password_first'
+      | 'email_taken'
+      | 'rate_limited'
+  ) {
+    switch (reason) {
+      case 'invalid_email':
+        return res
+          .status(400)
+          .json({ message: 'Enter a valid email address.' });
+      case 'same_as_current':
+        return res.status(400).json({ message: 'That is already your email.' });
+      case 'wrong_password':
+        return res
+          .status(401)
+          .json({ message: 'That password is not correct.' });
+      case 'set_password_first':
+        return res.status(403).json({
+          reason: 'set_password_first',
+          message: 'Set a password first, then change your email from here.',
+        });
+      case 'email_taken':
+        return res
+          .status(409)
+          .json({ message: 'That email is already in use.' });
+      case 'rate_limited':
+        return res
+          .status(429)
+          .json({ message: 'Too many attempts. Try again later.' });
+    }
+  }
+
+  async confirmEmailChange(req: express.Request, res: express.Response) {
+    const rawToken = typeof req.body?.token === 'string' ? req.body.token : '';
+    if (rawToken.trim().length === 0) {
+      return res.status(400).json({ message: 'Token is required.' });
+    }
+
+    const useCase = new ConfirmEmailChangeUseCase(
+      new EmailChangeTokenRepository(this.db),
+      new UsersRepository(this.db),
+      (userId) => this.authService.logOutEverywhere(userId)
+    );
+
+    const outcome = await useCase.execute(rawToken);
+
+    if (outcome.ok) {
+      res.clearCookie('token');
+      return res.status(200).json({ message: 'Email updated.' });
+    }
+
+    if (outcome.reason === 'email_taken') {
+      return res.status(409).json({
+        reason: 'email_taken',
+        message: 'That email is now in use by another account.',
+      });
+    }
+
+    return res.status(400).json({
+      reason: 'invalid_token',
+      message: 'This link is invalid or has expired.',
+    });
+  }
+
+  async cancelEmailChange(_req: express.Request, res: express.Response) {
+    const { owner } = res.locals;
+    if (owner == null) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    const removed = await new EmailChangeTokenRepository(
+      this.db
+    ).deleteLivePendingByUser(Number(owner));
+    return res.status(200).json({ cancelled: removed > 0 });
   }
 
   async requestHostedAnkiAccess(req: express.Request, res: express.Response) {
