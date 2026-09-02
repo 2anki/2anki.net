@@ -924,6 +924,23 @@ function truncatedResponse() {
   };
 }
 
+function salvageableTruncatedResponse() {
+  return {
+    content: [
+      {
+        type: 'text',
+        text:
+          '[{"deck":"Anatomy","cards":[' +
+          '{"q":"SALVAGE-Q1","a":"A1"},' +
+          '{"q":"SALVAGE-Q2","a":"A2"},' +
+          '{"q":"SALVAGE-Q3","a":"partial answer that got cut o',
+      },
+    ],
+    stop_reason: 'max_tokens',
+    usage: { input_tokens: 100, output_tokens: 900 },
+  };
+}
+
 describe('generateDeckInfo — partial chunk success (default)', () => {
   const htmlTwoChunks = '<p>' + 'x'.repeat(39_990) + '</p><p>y</p>';
 
@@ -1039,6 +1056,48 @@ describe('generateDeckInfo — truncated chunk retry', () => {
       const result = await generateDeckInfo(htmlTwoChunks, []);
       expect(result.length).toBeGreaterThan(0);
       expect(result[0].cards.length).toBeGreaterThan(0);
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('max_tokens with a salvageable partial and both halves truncate → keeps the salvaged cards instead of dropping the chunk', async () => {
+    mockStream.finalMessage
+      .mockResolvedValueOnce(salvageableTruncatedResponse())
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValueOnce(truncatedResponse());
+
+    const infoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    try {
+      const result = await generateDeckInfo(htmlOneChunk, []);
+      const fronts = result.flatMap((deck) =>
+        deck.cards.map((card) => card.name)
+      );
+      expect(fronts).toContain('SALVAGE-Q1');
+      expect(fronts).toContain('SALVAGE-Q2');
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('a retried half truncates with a salvageable partial → its cards survive next to the clean half', async () => {
+    mockStream.finalMessage
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValueOnce(fakeResponse())
+      .mockResolvedValueOnce(salvageableTruncatedResponse());
+
+    const infoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    try {
+      const result = await generateDeckInfo(htmlOneChunk, []);
+      const fronts = result.flatMap((deck) =>
+        deck.cards.map((card) => card.name)
+      );
+      expect(fronts).toContain('Q1');
+      expect(fronts).toContain('SALVAGE-Q1');
     } finally {
       infoSpy.mockRestore();
     }
