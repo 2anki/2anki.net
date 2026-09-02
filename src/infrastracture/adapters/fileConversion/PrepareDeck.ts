@@ -34,6 +34,7 @@ import {
   absorbFileIntoCrossFileDedup,
   buildTopUpInstruction,
 } from '../../../lib/claude/ClaudeService';
+import { getConversionResultCache } from '../../../data_layer/ConversionResultCacheRepository';
 import {
   scoreCandidateDeck,
   type DeckScore,
@@ -567,6 +568,7 @@ async function buildClaudeDeck(
     userId: input.userId ?? null,
     requestId: input.requestId,
     comprehensive: input.settings.aiComprehensive,
+    conversionResultCache: getConversionResultCache(),
   };
   const optionsForFile = (f: (typeof htmlFiles)[number]) =>
     pdfImageFallbackNames.has(f.name)

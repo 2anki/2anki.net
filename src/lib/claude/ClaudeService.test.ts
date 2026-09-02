@@ -2143,3 +2143,119 @@ describe('buildUserContentBlocks — cache-safe split', () => {
     expect(blocks[0].text).toBe(buildUserMessage(content, [], undefined, ''));
   });
 });
+
+describe('generateDeckInfo — conversion result cache', () => {
+  const textHtml =
+    '<html><body><h1>Cells</h1><p>The cell is the basic unit of life.</p></body></html>';
+
+  function makeStore(initial?: DeckInfo[]) {
+    const saved: DeckInfo[][] = [];
+    const store = {
+      get: jest.fn(async () => initial),
+      save: jest.fn(async (entry: { result: DeckInfo[] }) => {
+        saved.push(entry.result);
+      }),
+    };
+    return { store, saved };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockStreamFn.mockReturnValue(mockStream);
+    mockStream.on.mockReturnThis();
+    mockStream.finalMessage.mockResolvedValue(fakeResponse());
+  });
+
+  it('calls Claude and stores the result on a cache miss', async () => {
+    const { store, saved } = makeStore(undefined);
+    const result = await generateDeckInfo(
+      textHtml,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { conversionResultCache: store }
+    );
+    expect(mockStreamFn).toHaveBeenCalledTimes(1);
+    expect(store.save).toHaveBeenCalledTimes(1);
+    expect(saved[0]).toEqual(result);
+  });
+
+  it('returns cached decks and never calls Claude on a hit', async () => {
+    const cached: DeckInfo[] = [
+      {
+        name: 'Cached Deck',
+        image: '',
+        style: null,
+        id: 7,
+        settings: {},
+        cards: [
+          {
+            name: 'cached front',
+            back: 'cached back',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ];
+    const { store } = makeStore(cached);
+    const result = await generateDeckInfo(
+      textHtml,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { conversionResultCache: store }
+    );
+    expect(mockStreamFn).not.toHaveBeenCalled();
+    expect(store.save).not.toHaveBeenCalled();
+    expect(result).toEqual(cached);
+  });
+
+  it('bypasses the cache for the PDF image fallback path', async () => {
+    const { store } = makeStore(undefined);
+    await generateDeckInfo(
+      textHtml,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        conversionResultCache: store,
+        pdfImageFallback: { mediaBaseDir: '/tmp/ws' },
+      }
+    ).catch(() => undefined);
+    expect(store.get).not.toHaveBeenCalled();
+    expect(store.save).not.toHaveBeenCalled();
+  });
+
+  it('converts fresh when the cache read throws', async () => {
+    const store = {
+      get: jest.fn().mockRejectedValue(new Error('db down')),
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const result = await generateDeckInfo(
+      textHtml,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { conversionResultCache: store }
+    );
+    expect(mockStreamFn).toHaveBeenCalledTimes(1);
+    expect(result.length).toBeGreaterThan(0);
+  });
+});
