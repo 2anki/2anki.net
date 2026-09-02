@@ -152,6 +152,25 @@ describe('ValidateAnonymousPassUseCase', () => {
       );
     });
 
+    it('reconciles a paid anonymous 120d Semester Pass session', async () => {
+      const retrieve = jest.fn().mockResolvedValue({
+        ...paidSession,
+        metadata: { pass_kind: '120d', pass_anonymous: '1' },
+      });
+
+      const result = await useCaseWith(retrieve).execute('cs_semester', now);
+
+      expect(result.valid).toBe(true);
+      expect(result.pass).toMatchObject({
+        stripe_session_id: 'cs_semester',
+        kind: '120d',
+      });
+      const stored = await repo.findBySessionId('cs_semester');
+      expect(stored?.expires_at).toEqual(
+        new Date(now.getTime() + 120 * 24 * 60 * 60 * 1000)
+      );
+    });
+
     it('returns valid=false for an unpaid session', async () => {
       const retrieve = jest
         .fn()

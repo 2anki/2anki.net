@@ -373,7 +373,9 @@
       "week1": "— 1 week",
       "redirecting": "Doorsturen…",
       "getDayPass": "Day Pass kopen",
-      "getWeekPass": "Week Pass kopen"
+      "getWeekPass": "Week Pass kopen",
+      "semester4mo": "— 4 maanden",
+      "getSemesterPass": "Semester Pass kopen"
     },
     "unlimited": {
       "mostPopular": "Meest gekozen",

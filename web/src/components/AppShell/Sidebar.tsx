@@ -68,7 +68,7 @@ export interface SidebarLocals {
   subscriber?: boolean;
   autoSyncActive?: boolean;
   passExpiresAt?: string | null;
-  passKind?: '24h' | '7d' | 'unlimited' | null;
+  passKind?: '24h' | '7d' | '120d' | 'unlimited' | null;
 }
 
 export interface SidebarFeatures {

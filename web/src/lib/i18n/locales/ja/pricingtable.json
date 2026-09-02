@@ -40,7 +40,7 @@
     },
     "q2": {
       "question": "一回払いのオプションはありますか？",
-      "answer": "Day Pass（{{dayPrice}}）で24時間の無制限アクセス、Week Pass（{{weekPrice}}）で7日間です。どちらも一回払いで、サブスクリプションは不要です。"
+      "answer": "Day Pass（{{dayPrice}}）で24時間の無制限アクセス、Week Pass（{{weekPrice}}）で7日間、Semester Pass（{{semesterPrice}}）で約4か月です。いずれも一回払いで、サブスクリプションは不要です。"
     },
     "q3": {
       "question": "Unlimited プランとは何ですか？",

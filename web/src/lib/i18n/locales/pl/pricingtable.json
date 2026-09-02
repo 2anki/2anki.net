@@ -40,7 +40,7 @@
     },
     "q2": {
       "question": "Czy jest opcja jednorazowej płatności?",
-      "answer": "Day Pass ({{dayPrice}}) daje 24 godziny nieograniczonego dostępu. Week Pass ({{weekPrice}}) daje 7 dni. Oba to płatności jednorazowe, bez subskrypcji."
+      "answer": "Day Pass ({{dayPrice}}) daje 24 godziny nieograniczonego dostępu. Week Pass ({{weekPrice}}) daje 7 dni. Semester Pass ({{semesterPrice}}) daje około 4 miesiące. Wszystkie to płatności jednorazowe, bez subskrypcji."
     },
     "q3": {
       "question": "Czym jest plan Unlimited?",

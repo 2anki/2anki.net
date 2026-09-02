@@ -30,7 +30,7 @@ interface NotificationRow {
   user_id: number;
 }
 
-const PAID_PASS_KINDS = ['24h', '7d'];
+const PAID_PASS_KINDS = ['24h', '7d', '120d'];
 
 export class PassWinbackRepository implements IPassWinbackRepository {
   private readonly table = 'pass_winback_notifications';

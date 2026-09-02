@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { PricingCard } from './PricingCard';
+import { PASS_PRICES } from '../payment.links';
 import styles from '../PricingPage.module.css';
 
 const PASS_BENEFIT_KEYS = [
@@ -14,16 +15,20 @@ const PASS_BENEFIT_KEYS = [
 interface PassCardsProps {
   onDayPass: () => void;
   onWeekPass: () => void;
+  onSemesterPass?: () => void;
   dayPassPending: boolean;
   weekPassPending: boolean;
+  semesterPassPending?: boolean;
   featureDayPass?: boolean;
 }
 
 export function PassCards({
   onDayPass,
   onWeekPass,
+  onSemesterPass,
   dayPassPending,
   weekPassPending,
+  semesterPassPending = false,
   featureDayPass = true,
 }: Readonly<PassCardsProps>) {
   const { t } = useTranslation();
@@ -63,6 +68,21 @@ export function PassCards({
         }
         actionDisabled={weekPassPending}
       />
+      {onSemesterPass != null && (
+        <PricingCard
+          title="Semester Pass"
+          price={PASS_PRICES['120d']}
+          priceSuffix={t('pricing.pass.semester4mo')}
+          benefits={benefits}
+          onAction={onSemesterPass}
+          actionLabel={
+            semesterPassPending
+              ? t('pricing.pass.redirecting')
+              : t('pricing.pass.getSemesterPass')
+          }
+          actionDisabled={semesterPassPending}
+        />
+      )}
     </div>
   );
 }

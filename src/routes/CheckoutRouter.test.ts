@@ -65,6 +65,7 @@ describe('CheckoutRouter — pass routes', () => {
     mockStripeCreate.mockReset();
     delete process.env.PASS_24H_PRICE_ID;
     delete process.env.PASS_7D_PRICE_ID;
+    delete process.env.PASS_120D_PRICE_ID;
     mockOptionalOwner = undefined;
     mockOptionalEmail = undefined;
   });
@@ -182,6 +183,59 @@ describe('CheckoutRouter — pass routes', () => {
       expect(mockStripeCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           metadata: expect.objectContaining({ pass_kind: '7d' }),
+        })
+      );
+    });
+  });
+
+  describe('POST /api/checkout/pass/120d', () => {
+    it('returns 503 when PASS_120D_PRICE_ID env var is not set', async () => {
+      const res = await fetch(`${url}/api/checkout/pass/120d`, {
+        method: 'POST',
+      });
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.message).toBe('Semester Pass is not available right now.');
+    });
+
+    it('returns checkout url when env var is set', async () => {
+      process.env.PASS_120D_PRICE_ID = 'price_120d_test';
+      mockStripeCreate.mockResolvedValue({
+        url: 'https://checkout.stripe.com/120d',
+      });
+
+      const res = await fetch(`${url}/api/checkout/pass/120d`, {
+        method: 'POST',
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.url).toBe('https://checkout.stripe.com/120d');
+    });
+
+    it('passes pass_kind=120d in session metadata', async () => {
+      process.env.PASS_120D_PRICE_ID = 'price_120d_test';
+      mockStripeCreate.mockResolvedValue({
+        url: 'https://checkout.stripe.com/120d',
+      });
+
+      await fetch(`${url}/api/checkout/pass/120d`, { method: 'POST' });
+      expect(mockStripeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: expect.objectContaining({ pass_kind: '120d' }),
+        })
+      );
+    });
+
+    it('uses the PASS_120D_PRICE_ID as the checkout line item', async () => {
+      process.env.PASS_120D_PRICE_ID = 'price_120d_test';
+      mockStripeCreate.mockResolvedValue({
+        url: 'https://checkout.stripe.com/120d',
+      });
+
+      await fetch(`${url}/api/checkout/pass/120d`, { method: 'POST' });
+      expect(mockStripeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          line_items: [{ price: 'price_120d_test', quantity: 1 }],
         })
       );
     });

@@ -1,6 +1,6 @@
 import type { Knex } from 'knex';
 
-export type PassKind = '24h' | '7d' | 'unlimited';
+export type PassKind = '24h' | '7d' | '120d' | 'unlimited';
 
 export interface UserPass {
   id: number;

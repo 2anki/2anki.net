@@ -370,7 +370,9 @@
       "week1": "— 1 週間",
       "redirecting": "リダイレクト中…",
       "getDayPass": "Get Day Pass",
-      "getWeekPass": "Get Week Pass"
+      "getWeekPass": "Get Week Pass",
+      "semester4mo": "— 4 か月",
+      "getSemesterPass": "Get Semester Pass"
     },
     "unlimited": {
       "mostPopular": "一番人気",

@@ -40,7 +40,7 @@
     },
     "q2": {
       "question": "Is there a one-time payment option?",
-      "answer": "Day Pass ({{dayPrice}}) gives 24 hours of unlimited access. Week Pass ({{weekPrice}}) gives 7 days. Both are one-time payments, no subscription required."
+      "answer": "Day Pass ({{dayPrice}}) gives 24 hours of unlimited access. Week Pass ({{weekPrice}}) gives 7 days. Semester Pass ({{semesterPrice}}) gives about 4 months. All are one-time payments, no subscription required."
     },
     "q3": {
       "question": "What is the Unlimited plan?",

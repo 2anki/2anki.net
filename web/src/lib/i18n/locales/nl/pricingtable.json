@@ -40,7 +40,7 @@
     },
     "q2": {
       "question": "Is er een eenmalige betaaloptie?",
-      "answer": "Day Pass ({{dayPrice}}) geeft 24 uur onbeperkte toegang. Week Pass ({{weekPrice}}) geeft 7 dagen. Beide zijn eenmalige betalingen, geen abonnement nodig."
+      "answer": "Day Pass ({{dayPrice}}) geeft 24 uur onbeperkte toegang. Week Pass ({{weekPrice}}) geeft 7 dagen. Semester Pass ({{semesterPrice}}) geeft ongeveer 4 maanden. Alle zijn eenmalige betalingen, geen abonnement nodig."
     },
     "q3": {
       "question": "Wat is het Unlimited-abonnement?",

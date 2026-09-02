@@ -76,7 +76,7 @@ describe('EventsMetricsRepository generated SQL', () => {
     expect(sql).toContain("props->>'plan' as plan");
     expect(sql).toContain('"name" = \'checkout_completed\'');
     expect(sql).toContain('"created_at" >=');
-    expect(sql).toContain("props->>'plan' in ('24h', '7d')");
+    expect(sql).toContain("props->>'plan' in ('24h', '7d', '120d')");
     expect(sql).toContain('group by "plan"');
     expect(sql).toContain('count(*)');
   });

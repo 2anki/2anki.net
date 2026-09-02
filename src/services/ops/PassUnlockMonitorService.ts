@@ -43,7 +43,7 @@ const PAGE_SIZE = 100;
 const MAX_PAGES = 10;
 const GRACE_MINUTES = 15;
 const GRACE_MS = GRACE_MINUTES * 60 * 1000;
-const PASS_KINDS = new Set(['24h', '7d']);
+const PASS_KINDS = new Set(['24h', '7d', '120d']);
 
 function paymentIntentIdOf(
   session: StripeTypes.Checkout.Session

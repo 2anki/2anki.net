@@ -40,7 +40,7 @@
     },
     "q2": {
       "question": "Esiste un'opzione di pagamento unico?",
-      "answer": "Day Pass ({{dayPrice}}) offre 24 ore di accesso illimitato. Week Pass ({{weekPrice}}) offre 7 giorni. Entrambi sono pagamenti unici, senza abbonamento."
+      "answer": "Day Pass ({{dayPrice}}) offre 24 ore di accesso illimitato. Week Pass ({{weekPrice}}) offre 7 giorni. Semester Pass ({{semesterPrice}}) offre circa 4 mesi. Tutti sono pagamenti unici, senza abbonamento."
     },
     "q3": {
       "question": "Cos'è il piano Unlimited?",

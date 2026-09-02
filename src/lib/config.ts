@@ -22,6 +22,7 @@ const WARN_VARS: ReadonlyArray<[string, string]> = [
   ['STRIPE_ENDPOINT_SECRET', 'verifies Stripe webhook signatures'],
   ['PASS_24H_PRICE_ID', 'day-pass checkout price'],
   ['PASS_7D_PRICE_ID', 'week-pass checkout price'],
+  ['PASS_120D_PRICE_ID', 'semester-pass checkout price'],
   ['UNLIMITED_MONTHLY_PRICE_ID', 'legacy monthly price and v2 fallback'],
   ['UNLIMITED_YEARLY_PRICE_ID', 'legacy annual price and v2 fallback'],
   ['ANTHROPIC_API_KEY', 'AI card generation, chat assistant, file conversion'],

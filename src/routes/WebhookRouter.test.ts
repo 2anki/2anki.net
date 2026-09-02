@@ -265,6 +265,30 @@ describe('WebhookRouter — pass grant', () => {
     );
   });
 
+  it('grants 120d Semester Pass on checkout.session.completed with pass_kind=120d', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      metadata: { user_id: '99', pass_kind: '120d' },
+      payment_intent: 'pi_120d',
+    });
+    mockUpsert.mockResolvedValue({
+      id: 3,
+      user_id: 99,
+      kind: '120d',
+      expires_at: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
+      stripe_payment_intent_id: 'pi_120d',
+    });
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    expect(mockUpsert).toHaveBeenCalledWith(
+      99,
+      '120d',
+      120 * 24 * 60 * 60 * 1000,
+      'pi_120d',
+      expect.any(Date)
+    );
+  });
+
   it('returns 200 without calling upsert when user_id metadata is missing', async () => {
     mockWebhookEvent = makePassSessionEvent({ metadata: { pass_kind: '24h' } });
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});

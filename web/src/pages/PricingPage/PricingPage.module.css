@@ -109,11 +109,11 @@
 }
 
 /* =====================================================================
-   PASS GRID — Day Pass + Week Pass as full cards above the subscriptions
+   PASS GRID — the pay-once passes as full cards above the subscriptions
    ===================================================================== */
 .passGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1.5rem;
   align-items: stretch;
   margin-bottom: 2.5rem;

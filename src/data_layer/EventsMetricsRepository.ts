@@ -8,6 +8,7 @@ export interface IEventsMetricsRepository {
 export interface PassSalesCounts {
   day_passes: number;
   week_passes: number;
+  semester_passes: number;
 }
 
 export interface IPassSalesRepository {
@@ -60,7 +61,7 @@ export class EventsMetricsRepository
       .count('* as count')
       .where('name', 'checkout_completed')
       .where('created_at', '>=', since)
-      .whereRaw("props->>'plan' in ('24h', '7d')")
+      .whereRaw("props->>'plan' in ('24h', '7d', '120d')")
       .groupBy('plan');
   }
 
@@ -73,6 +74,7 @@ export class EventsMetricsRepository
     return {
       day_passes: byPlan.get('24h') ?? 0,
       week_passes: byPlan.get('7d') ?? 0,
+      semester_passes: byPlan.get('120d') ?? 0,
     };
   }
 

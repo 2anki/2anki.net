@@ -90,7 +90,11 @@ export interface BusinessMetricsResponse {
   churn_30d_pct: number | null;
   failed_payments_7d: number | null;
   new_paid_conversions_7d: number | null;
-  pass_sales_7d: { day_passes: number; week_passes: number } | null;
+  pass_sales_7d: {
+    day_passes: number;
+    week_passes: number;
+    semester_passes?: number;
+  } | null;
   mrr_timeseries: MrrTimeseriesPoint[] | null;
   active_subs_timeseries: ActiveSubsTimeseriesPoint[] | null;
   conversions_vs_churn_weekly: ConversionsChurnWeekPoint[] | null;

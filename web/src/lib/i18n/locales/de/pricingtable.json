@@ -40,7 +40,7 @@
     },
     "q2": {
       "question": "Gibt es eine Einmalzahlung?",
-      "answer": "Day Pass ({{dayPrice}}) gibt 24 Stunden unbegrenzten Zugriff. Week Pass ({{weekPrice}}) gibt 7 Tage. Beide sind Einmalzahlungen, kein Abo nötig."
+      "answer": "Day Pass ({{dayPrice}}) gibt 24 Stunden unbegrenzten Zugriff. Week Pass ({{weekPrice}}) gibt 7 Tage. Semester Pass ({{semesterPrice}}) gibt rund 4 Monate. Alle sind Einmalzahlungen, kein Abo nötig."
     },
     "q3": {
       "question": "Was ist der Unlimited-Tarif?",

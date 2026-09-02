@@ -38,6 +38,7 @@ export default function PricingPage({
   const isUS = signupCountry === 'US';
   const [dayPassState, setDayPassState] = useState<PassState>('idle');
   const [weekPassState, setWeekPassState] = useState<PassState>('idle');
+  const [semesterPassState, setSemesterPassState] = useState<PassState>('idle');
   const [billingCycle, setBillingCycle] = useState<'month' | 'year'>('month');
   const [producerModalOpen, setProducerModalOpen] = useState(false);
   const educatorsRef = useInViewOnce<HTMLElement>(() =>
@@ -132,17 +133,23 @@ export default function PricingPage({
     });
   };
 
-  const handlePassCheckout = async (kind: '24h' | '7d') => {
+  const handlePassCheckout = async (kind: '24h' | '7d' | '120d') => {
+    const planByKind = {
+      '24h': 'day_pass',
+      '7d': 'week_pass',
+      '120d': 'semester_pass',
+    } as const;
+    const setPassState = {
+      '24h': setDayPassState,
+      '7d': setWeekPassState,
+      '120d': setSemesterPassState,
+    }[kind];
     track('paywall_upgrade_clicked', {
       surface: 'pricing_page',
-      plan: kind === '24h' ? 'day_pass' : 'week_pass',
+      plan: planByKind[kind],
       variant: pricingOrder,
     });
-    if (kind === '24h') {
-      setDayPassState('pending');
-    } else {
-      setWeekPassState('pending');
-    }
+    setPassState('pending');
     const result = await get2ankiApi().startPassCheckout(
       kind,
       pricingOrder,
@@ -152,11 +159,7 @@ export default function PricingPage({
       globalThis.location.href = result.url;
       return;
     }
-    if (kind === '24h') {
-      setDayPassState('error');
-    } else {
-      setWeekPassState('error');
-    }
+    setPassState('error');
   };
 
   const handleUnlimitedUpgrade = async () => {
@@ -204,8 +207,10 @@ export default function PricingPage({
     <PassCards
       onDayPass={() => handlePassCheckout('24h')}
       onWeekPass={() => handlePassCheckout('7d')}
+      onSemesterPass={() => handlePassCheckout('120d')}
       dayPassPending={dayPassState === 'pending'}
       weekPassPending={weekPassState === 'pending'}
+      semesterPassPending={semesterPassState === 'pending'}
       featureDayPass={false}
     />
   );
