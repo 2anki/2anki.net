@@ -5,11 +5,11 @@ import type UsersRepository from '../../data_layer/UsersRepository';
 import type OauthIdentitiesRepository from '../../data_layer/OauthIdentitiesRepository';
 import type { UsersId } from '../../data_layer/public/Users';
 import hmacToken from '../../lib/misc/hmacToken';
+import { normalizeEmail } from '../../lib/email/isValidEmailShape';
 
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const MAX_REQUESTS_PER_HOUR = 5;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type RequestEmailChangeReason =
   | 'invalid_email'
@@ -41,8 +41,8 @@ export class RequestEmailChangeUseCase {
   async execute(
     input: RequestEmailChangeInput
   ): Promise<RequestEmailChangeOutcome> {
-    const nextEmail = input.newEmail.trim().toLowerCase();
-    if (!EMAIL_PATTERN.test(nextEmail)) {
+    const nextEmail = normalizeEmail(input.newEmail);
+    if (nextEmail == null) {
       return { ok: false, reason: 'invalid_email' };
     }
 

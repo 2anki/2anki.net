@@ -6,7 +6,7 @@ import type {
 } from './EmailChangeTokenRepository';
 
 class InMemoryEmailChangeTokenRepository implements IEmailChangeTokenRepository {
-  private rows: EmailChangeToken[] = [];
+  private readonly rows: EmailChangeToken[] = [];
   private nextId = 1;
 
   async insert(
