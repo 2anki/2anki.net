@@ -33,7 +33,8 @@
     "title": "Conta",
     "subscribed": "Assinatura ativa.",
     "emailVerified": "E-mail verificado.",
-    "dismiss": "Dispensar"
+    "dismiss": "Dispensar",
+    "emailChanged": "E-mail atualizado."
   },
   "language": {
     "label": "Idioma",

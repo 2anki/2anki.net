@@ -10,6 +10,13 @@ import { emailHash } from '../lib/emailHash';
 // Matches the magic-link window in MagicTokenRepository.
 export const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
 
+export type EmailChangeResult =
+  | { ok: true }
+  | { ok: false; reason: 'invalid_token' | 'email_taken' };
+
+class EmailAlreadyInUseError extends Error {}
+class EmailChangeTokenInvalidError extends Error {}
+
 export interface SignupCountryCount {
   country: string;
   count: number;
@@ -297,6 +304,84 @@ class UsersRepository {
         .where({ email: current.toLowerCase() })
         .update({ linked_email: next });
     });
+  }
+
+  relinkSubscriptionsForEmailChangeQuery(
+    executor: Knex | Knex.Transaction,
+    oldEmail: string,
+    newEmail: string
+  ) {
+    const old = oldEmail.trim().toLowerCase();
+    return executor('subscriptions')
+      .whereRaw('LOWER(email) = ? OR LOWER(linked_email) = ?', [old, old])
+      .update({ linked_email: newEmail.trim().toLowerCase() });
+  }
+
+  async applyEmailChange(params: {
+    userId: number;
+    newEmail: string;
+    tokenId: number;
+    now?: Date;
+  }): Promise<EmailChangeResult> {
+    const now = params.now ?? new Date();
+    const nextEmail = params.newEmail.trim().toLowerCase();
+    try {
+      await this.database.transaction(async (trx) => {
+        const user = await trx(this.table)
+          .where({ id: params.userId })
+          .forUpdate()
+          .first();
+        if (user == null) {
+          throw new EmailChangeTokenInvalidError();
+        }
+
+        const token = await trx('email_change_tokens')
+          .where({ id: params.tokenId })
+          .forUpdate()
+          .first();
+        if (
+          token == null ||
+          token.consumed_at != null ||
+          new Date(token.expires_at).getTime() < now.getTime()
+        ) {
+          throw new EmailChangeTokenInvalidError();
+        }
+
+        const collision = await trx(this.table)
+          .whereRaw('LOWER(TRIM(email)) = ?', [nextEmail])
+          .whereNot({ id: params.userId })
+          .first();
+        if (collision != null) {
+          throw new EmailAlreadyInUseError();
+        }
+
+        const oldEmail = String(user.email).trim().toLowerCase();
+        await trx(this.table)
+          .where({ id: params.userId })
+          .update({ email: nextEmail });
+        await this.relinkSubscriptionsForEmailChangeQuery(
+          trx,
+          oldEmail,
+          nextEmail
+        );
+        await trx('email_change_tokens')
+          .where({ user_id: params.userId })
+          .whereNull('consumed_at')
+          .update({ consumed_at: trx.fn.now() });
+      });
+    } catch (error) {
+      if (error instanceof EmailAlreadyInUseError) {
+        return { ok: false, reason: 'email_taken' };
+      }
+      if (error instanceof EmailChangeTokenInvalidError) {
+        return { ok: false, reason: 'invalid_token' };
+      }
+      if ((error as { code?: string }).code === '23505') {
+        return { ok: false, reason: 'email_taken' };
+      }
+      throw error;
+    }
+    return { ok: true };
   }
 
   async getSubscriptionLinkedEmail(owner: string) {

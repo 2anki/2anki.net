@@ -13,6 +13,7 @@ const APP_ROUTES = new Set<string>([
   '/forgot',
   '/account',
   '/account/claim',
+  '/account/email-change',
   '/notion',
   '/search',
   '/downloads',

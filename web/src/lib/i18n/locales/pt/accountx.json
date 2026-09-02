@@ -105,5 +105,29 @@
     "upgradeToUnlimited": "Mudar para Unlimited",
     "checkoutError": "Não foi possível iniciar o pagamento. Tente novamente ou escreva para support@2anki.net.",
     "backToUpload": "Voltar para o envio"
+  },
+  "emailChange": {
+    "toggle": "Alterar e-mail",
+    "description": "Enviaremos um link de confirmação para o novo endereço. Seu e-mail só muda depois que você abre esse link.",
+    "newEmailLabel": "Novo e-mail",
+    "newEmailPlaceholder": "you@newdomain.com",
+    "passwordLabel": "Senha atual",
+    "submit": "Enviar link de confirmação",
+    "sending": "Enviando",
+    "cancel": "Cancelar",
+    "pendingTitle": "Verifique sua nova caixa de entrada",
+    "pendingBody": "Enviamos um link de confirmação para {{email}}. Ele expira em 30 minutos — abra-o para concluir a alteração.",
+    "useDifferent": "Usar outro e-mail",
+    "cancelChange": "Cancelar alteração",
+    "errorGeneric": "Algo deu errado. Tente novamente em instantes.",
+    "setPasswordLink": "Definir uma senha"
+  },
+  "emailChangeConfirm": {
+    "successTitle": "E-mail atualizado.",
+    "successBody": "Seu e-mail de login foi alterado. Por segurança, desconectamos você de todos os lugares — entre com o novo e-mail para continuar.",
+    "invalidTitle": "Link expirado ou inválido.",
+    "invalidBody": "Este link de confirmação não é mais válido. Inicie uma nova alteração de e-mail na sua conta.",
+    "takenTitle": "Esse e-mail já está em uso.",
+    "takenBody": "Outra conta já usa este e-mail, então a alteração não foi concluída. Tente outro endereço na sua conta."
   }
 }

@@ -33,7 +33,8 @@
     "title": "Аккаунт",
     "subscribed": "Подписка оформлена.",
     "emailVerified": "E-mail подтверждён.",
-    "dismiss": "Скрыть"
+    "dismiss": "Скрыть",
+    "emailChanged": "Адрес электронной почты обновлён."
   },
   "language": {
     "label": "Язык",

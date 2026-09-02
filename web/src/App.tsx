@@ -71,6 +71,10 @@ const AccountClaimPage = lazyWithRetry(
   () => import('./pages/AccountClaimPage/AccountClaimPage'),
   './pages/AccountClaimPage/AccountClaimPage'
 );
+const AccountEmailChangePage = lazyWithRetry(
+  () => import('./pages/AccountEmailChangePage/AccountEmailChangePage'),
+  './pages/AccountEmailChangePage/AccountEmailChangePage'
+);
 const AccountPreviewPage = import.meta.env.DEV
   ? lazy(() => import('./pages/AccountPreviewPage/AccountPreviewPage'))
   : null;
@@ -487,6 +491,10 @@ function AppContent({
             <Route
               path="/account/claim"
               element={requireAuth(<AccountClaimPage />)}
+            />
+            <Route
+              path="/account/email-change"
+              element={<AccountEmailChangePage />}
             />
             {AccountPreviewPage && (
               <Route

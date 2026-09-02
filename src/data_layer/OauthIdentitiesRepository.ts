@@ -47,6 +47,13 @@ class OauthIdentitiesRepository {
       .update({ refresh_token: hashToken(refreshToken) });
   }
 
+  async hasIdentityForUser(userId: number): Promise<boolean> {
+    const row = await this.database(this.table)
+      .where({ user_id: userId })
+      .first();
+    return row != null;
+  }
+
   async findRefreshTokenByUserAndProvider(
     userId: UsersId,
     provider: string

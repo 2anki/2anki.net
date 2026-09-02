@@ -33,7 +33,8 @@
     "title": "Account",
     "subscribed": "Geabonneerd.",
     "emailVerified": "E-mail geverifieerd.",
-    "dismiss": "Sluiten"
+    "dismiss": "Sluiten",
+    "emailChanged": "E-mailadres bijgewerkt."
   },
   "language": {
     "label": "Taal",

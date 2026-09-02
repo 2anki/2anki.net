@@ -90,9 +90,9 @@
     "cancel": "Cancel"
   },
   "claimSubscription": {
-    "paidDifferentEmail": "Paid with a different email?",
+    "paidDifferentEmail": "Link a subscription",
     "sent": "Sent. Check that inbox for a confirmation link.",
-    "description": "Bought a subscription or a Week or Day Pass with a different email? Enter that email and we'll send a confirmation link there to attach it to this account.",
+    "description": "Bought a subscription or a Week or Day Pass with a different email? Enter that email and we'll send a confirmation link there to attach it to this account. This links the payment only — it does not change the email you sign in with.",
     "emailPlaceholder": "Email you paid with",
     "emailLabel": "Email you paid with",
     "error": "Something went wrong. Try again in a moment.",

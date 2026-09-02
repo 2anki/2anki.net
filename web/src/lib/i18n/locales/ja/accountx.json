@@ -103,5 +103,29 @@
     "upgradeToUnlimited": "Unlimited にアップグレード",
     "checkoutError": "チェックアウトを開始できませんでした。もう一度お試しいただくか、support@2anki.net までメールしてください。",
     "backToUpload": "アップロードに戻る"
+  },
+  "emailChange": {
+    "toggle": "メールアドレスを変更",
+    "description": "確認リンクを新しいアドレスに送信します。そのリンクを開いて初めてメールアドレスが変わります。",
+    "newEmailLabel": "新しいメールアドレス",
+    "newEmailPlaceholder": "you@newdomain.com",
+    "passwordLabel": "現在のパスワード",
+    "submit": "確認リンクを送信",
+    "sending": "送信中",
+    "cancel": "キャンセル",
+    "pendingTitle": "新しい受信トレイを確認してください",
+    "pendingBody": "確認リンクを {{email}} に送信しました。30 分で期限切れになります。リンクを開いて変更を完了してください。",
+    "useDifferent": "別のメールアドレスを使う",
+    "cancelChange": "変更をキャンセル",
+    "errorGeneric": "問題が発生しました。少し経ってからもう一度お試しください。",
+    "setPasswordLink": "パスワードを設定"
+  },
+  "emailChangeConfirm": {
+    "successTitle": "メールアドレスを更新しました。",
+    "successBody": "ログイン用のメールアドレスが変更されました。安全のためすべての端末からログアウトしました。続けるには新しいメールアドレスでログインしてください。",
+    "invalidTitle": "リンクの有効期限が切れているか無効です。",
+    "invalidBody": "この確認リンクは無効になりました。アカウントからメールアドレスの変更をやり直してください。",
+    "takenTitle": "そのメールアドレスは使用されています。",
+    "takenBody": "別のアカウントがこのメールアドレスを既に使用しているため、変更は完了しませんでした。アカウントから別のアドレスをお試しください。"
   }
 }

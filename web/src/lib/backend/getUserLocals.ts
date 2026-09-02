@@ -31,6 +31,10 @@ interface GetUserLocalsResponse {
   };
   autoSyncActive?: boolean;
   freePrintAvailable?: boolean | null;
+  pending_email_change?: {
+    new_email: string;
+    requested_at: string;
+  } | null;
 }
 
 export const getUserLocals = async (): Promise<GetUserLocalsResponse> =>

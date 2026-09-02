@@ -32,6 +32,30 @@
   "profile": {
     "hideMyEmailNote": "Hide My Email — Apple forwards messages to your real inbox."
   },
+  "emailChange": {
+    "toggle": "Change email",
+    "description": "We'll send a confirmation link to the new address. Your email changes only after you open that link.",
+    "newEmailLabel": "New email",
+    "newEmailPlaceholder": "you@newdomain.com",
+    "passwordLabel": "Current password",
+    "submit": "Send confirmation link",
+    "sending": "Sending",
+    "cancel": "Cancel",
+    "pendingTitle": "Check your new inbox",
+    "pendingBody": "We sent a confirmation link to {{email}}. It expires in 30 minutes — open it to finish the change.",
+    "useDifferent": "Use a different email",
+    "cancelChange": "Cancel change",
+    "errorGeneric": "Something went wrong. Try again in a moment.",
+    "setPasswordLink": "Set a password"
+  },
+  "emailChangeConfirm": {
+    "successTitle": "Email updated.",
+    "successBody": "Your sign-in email is changed. For your security we signed you out everywhere — sign in with the new email to continue.",
+    "invalidTitle": "Link expired or invalid.",
+    "invalidBody": "This confirmation link is no longer valid. Start a new email change from your account.",
+    "takenTitle": "That email is taken.",
+    "takenBody": "Another account is already using this email, so the change didn't go through. Try a different address from your account."
+  },
   "deleteAccount": {
     "delete": "Delete",
     "confirmDelete": "Yes, delete account",
