@@ -26,6 +26,7 @@ function findUnavailableUpload(
 export interface PackageResult {
   packages: Package[];
   warnings?: string[];
+  cardFingerprints?: string[];
 }
 
 function buildWorkerError(failure: UploadGenerationFailure): Error {
@@ -51,6 +52,7 @@ function buildWorkerError(failure: UploadGenerationFailure): Error {
 
 export interface GenerationContext {
   knownGuids?: KnownGuids;
+  existingCardFingerprints?: string[];
   requestId?: string;
 }
 
@@ -64,7 +66,7 @@ class GeneratePackagesUseCase {
     userId: number | null = null,
     context: GenerationContext = {}
   ): Promise<PackageResult> {
-    const { knownGuids, requestId } = context;
+    const { knownGuids, existingCardFingerprints, requestId } = context;
     ensureUploadBytes(files);
     const unavailable = findUnavailableUpload(files);
     if (unavailable) {
@@ -83,13 +85,18 @@ class GeneratePackagesUseCase {
           enqueuedAt,
           userId,
           knownGuids,
+          existingCardFingerprints,
           requestId,
           progressPort: channel?.port2,
         },
         channel ? [channel.port2] : undefined
       );
       if (result.ok) {
-        return { packages: result.packages, warnings: result.warnings };
+        return {
+          packages: result.packages,
+          warnings: result.warnings,
+          cardFingerprints: result.cardFingerprints,
+        };
       }
       throw buildWorkerError(result.error);
     } finally {

@@ -3,6 +3,7 @@ import type { IConversionOutputStatsRepository } from '../../data_layer/Conversi
 import type { IParsePathSignatureRepository } from '../../data_layer/ParsePathSignatureRepository';
 import type { IConversionRuleScoresRepository } from '../../data_layer/ConversionRuleScoresRepository';
 import type { ICardGuidLedgerRepository } from '../../data_layer/CardGuidLedgerRepository';
+import type { IAiCardFingerprintRepository } from '../../data_layer/AiCardFingerprintRepository';
 import type { PhotoToFlashcardsUseCase } from '../../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 
 export type UploadServiceDeps = [
@@ -11,6 +12,7 @@ export type UploadServiceDeps = [
   IParsePathSignatureRepository,
   IConversionRuleScoresRepository,
   ICardGuidLedgerRepository,
+  IAiCardFingerprintRepository,
   PhotoToFlashcardsUseCase,
 ];
 
@@ -20,6 +22,7 @@ export interface UploadServiceDepOverrides {
   parsePaths?: IParsePathSignatureRepository;
   ruleScores?: IConversionRuleScoresRepository;
   guidLedger?: ICardGuidLedgerRepository;
+  aiFingerprints?: IAiCardFingerprintRepository;
   photoToFlashcards?: PhotoToFlashcardsUseCase;
 }
 
@@ -50,6 +53,10 @@ export function fakeUploadServiceDeps(
       getAllForOwner: jest.fn().mockResolvedValue({}),
       record: jest.fn().mockResolvedValue(undefined),
       reissue: jest.fn().mockResolvedValue(undefined),
+    },
+    overrides.aiFingerprints ?? {
+      getRecentForOwner: jest.fn().mockResolvedValue([]),
+      record: jest.fn().mockResolvedValue(undefined),
     },
     overrides.photoToFlashcards ??
       ({

@@ -10,6 +10,7 @@ import { ISettingsRepository } from '../data_layer/SettingsRepository';
 import { IConversionOutputStatsRepository } from '../data_layer/ConversionOutputStatsRepository';
 import { IParsePathSignatureRepository } from '../data_layer/ParsePathSignatureRepository';
 import { ICardGuidLedgerRepository } from '../data_layer/CardGuidLedgerRepository';
+import { IAiCardFingerprintRepository } from '../data_layer/AiCardFingerprintRepository';
 import { getConversionResultCache } from '../data_layer/ConversionResultCacheRepository';
 import ErrorHandler from '../routes/middleware/ErrorHandler';
 import CardOption from '../lib/parser/Settings';
@@ -208,6 +209,12 @@ function imageConversionErrorStatus(err: unknown): number | null {
 
 const CONVERSION_SETTINGS_FILENAME = 'conversion-settings.json';
 
+// The most recent card fingerprints seeded into cross-deck dedup. Bounds both
+// the query cost (covered by the ai_card_fingerprints owner+created_at index)
+// and the worker payload; older duplicates fall out of the window rather than
+// growing the seed unbounded for heavy users.
+const AI_DEDUP_HISTORY_LIMIT = 5000;
+
 function persistConversionSettings(workspaceDir: string, body: unknown): void {
   try {
     const entries = Object.entries(
@@ -375,6 +382,7 @@ class UploadService {
     private readonly parsePathSignatureRepository: IParsePathSignatureRepository,
     private readonly conversionRuleScoresRepository: IConversionRuleScoresRepository,
     private readonly cardGuidLedgerRepository: ICardGuidLedgerRepository,
+    private readonly aiCardFingerprintRepository: IAiCardFingerprintRepository,
     private readonly photoToFlashcardsUseCase: PhotoToFlashcardsUseCase
   ) {}
 
@@ -447,6 +455,39 @@ class UploadService {
       console.warn('[UploadService] card guid ledger read failed', error);
       return undefined;
     }
+  }
+
+  private async loadExistingCardFingerprints(
+    ownerId: number | null,
+    settings: CardOption,
+    paying: boolean
+  ): Promise<string[] | undefined> {
+    if (ownerId == null || !paying || !settings.claudeAIFlashcards) {
+      return undefined;
+    }
+    try {
+      return await this.aiCardFingerprintRepository.getRecentForOwner(
+        ownerId,
+        AI_DEDUP_HISTORY_LIMIT
+      );
+    } catch (error) {
+      console.warn('[UploadService] ai card fingerprint read failed', error);
+      return undefined;
+    }
+  }
+
+  private recordCardFingerprints(
+    ownerId: number | null,
+    fingerprints: string[] | undefined
+  ): void {
+    if (ownerId == null || fingerprints == null || fingerprints.length === 0) {
+      return;
+    }
+    this.aiCardFingerprintRepository
+      .record(ownerId, fingerprints)
+      .catch((error) => {
+        console.warn('[UploadService] ai card fingerprint write failed', error);
+      });
   }
 
   private recordIssuedGuids(
@@ -996,6 +1037,11 @@ class UploadService {
     const ownerId =
       Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null;
     const knownGuids = await this.loadKnownGuids(ownerId);
+    const existingCardFingerprints = await this.loadExistingCardFingerprints(
+      ownerId,
+      settings,
+      paying
+    );
     useCase
       .execute(
         paying,
@@ -1006,10 +1052,15 @@ class UploadService {
           await this.jobRepository.updateJobStatus(ws.id, owner, step);
         },
         ownerId,
-        { knownGuids, requestId: res.locals.requestId }
+        {
+          knownGuids,
+          existingCardFingerprints,
+          requestId: res.locals.requestId,
+        }
       )
-      .then(async ({ packages }) => {
+      .then(async ({ packages, cardFingerprints }) => {
         this.recordIssuedGuids(packages, ownerId, settings);
+        this.recordCardFingerprints(ownerId, cardFingerprints);
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
         // Scores record either way. The conversion-output stats below stay
         // behind the gate — they count delivered cards — but a conversion that
@@ -1183,16 +1234,22 @@ class UploadService {
         ? syncOwnerNumeric
         : null;
     const knownGuids = await this.loadKnownGuids(syncOwnerId);
-    const { packages, warnings } = await useCase.execute(
+    const existingCardFingerprints = await this.loadExistingCardFingerprints(
+      syncOwnerId,
+      settings,
+      paying
+    );
+    const { packages, warnings, cardFingerprints } = await useCase.execute(
       paying,
       req.files as UploadedFile[],
       settings,
       ws,
       undefined,
       syncOwnerId,
-      { knownGuids, requestId: res.locals.requestId }
+      { knownGuids, existingCardFingerprints, requestId: res.locals.requestId }
     );
     this.recordIssuedGuids(packages, syncOwnerId, settings);
+    this.recordCardFingerprints(syncOwnerId, cardFingerprints);
 
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
     const authenticated = hasSessionToken(req);

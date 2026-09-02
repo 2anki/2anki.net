@@ -5,6 +5,7 @@ import {
   runUploadGenerationInWorker,
   countAiContentFiles,
   shouldDedupeAcrossFiles,
+  shouldDedupeAcrossDecks,
 } from './worker';
 import { UploadedFile } from '../../lib/storage/types';
 import CardOption from '../../lib/parser/Settings/CardOption';
@@ -12,6 +13,7 @@ import Workspace from '../../lib/parser/WorkSpace';
 import { UploadGenerationTask } from './uploadGenerationTypes';
 import {
   absorbFileIntoCrossFileDedup,
+  cardFingerprint,
   CrossFileDedupState,
 } from '../../lib/claude/ClaudeService';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
@@ -344,6 +346,41 @@ describe('shouldDedupeAcrossFiles', () => {
   });
 });
 
+describe('shouldDedupeAcrossDecks', () => {
+  const oneHtml = [makeFile({ originalname: 'a.html' })];
+
+  it('is true for a signed-in paying AI upload with a single content file', () => {
+    expect(
+      shouldDedupeAcrossDecks(true, makeClaudeSettings(), oneHtml, 7)
+    ).toBe(true);
+  });
+
+  it('is false when the user is anonymous (no userId)', () => {
+    expect(
+      shouldDedupeAcrossDecks(true, makeClaudeSettings(), oneHtml, null)
+    ).toBe(false);
+  });
+
+  it('is false when AI flashcards are off', () => {
+    expect(shouldDedupeAcrossDecks(true, new CardOption({}), oneHtml, 7)).toBe(
+      false
+    );
+  });
+
+  it('is false when the user is not paying', () => {
+    expect(
+      shouldDedupeAcrossDecks(false, makeClaudeSettings(), oneHtml, 7)
+    ).toBe(false);
+  });
+
+  it('is false when there is no AI content file', () => {
+    const xmlOnly = [makeFile({ originalname: 'deck.xml' })];
+    expect(
+      shouldDedupeAcrossDecks(true, makeClaudeSettings(), xmlOnly, 7)
+    ).toBe(false);
+  });
+});
+
 describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -424,7 +461,7 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
     });
   });
 
-  it('does not thread a dedup state for a single-file upload', async () => {
+  it('does not thread a dedup state for an anonymous single-file upload', async () => {
     const trackMod = require('../../services/events/track');
     const trackSpy = jest
       .spyOn(trackMod, 'track')
@@ -439,14 +476,94 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
 
     const task = makeMultiFileTask();
     task.files = [task.files[0]];
+    task.userId = null;
 
-    await runUploadGenerationInWorker(task);
+    const result = await runUploadGenerationInWorker(task);
 
     expect(mockPrepareDeck.mock.calls[0][0].crossFileDedup).toBeUndefined();
+    if (!result.ok) throw new Error('expected success');
+    expect(result.cardFingerprints).toBeUndefined();
     const completed = trackSpy.mock.calls.find(
       (call: unknown[]) => call[0] === 'ai_conversion_completed'
     );
     expect(completed).toBeUndefined();
+  });
+
+  it('threads a state and returns fingerprints for a signed-in single-file AI upload', async () => {
+    const trackMod = require('../../services/events/track');
+    const trackSpy = jest
+      .spyOn(trackMod, 'track')
+      .mockImplementation(() => undefined);
+
+    mockPrepareDeck.mockImplementation(async (input) => {
+      if (input.crossFileDedup) {
+        absorbFileIntoCrossFileDedup(input.crossFileDedup, [
+          oneCardDeck(input.name, 'Solo fact', 'Solo answer'),
+        ]);
+      }
+      return {
+        name: input.name,
+        apkg: Buffer.from('x'),
+        deck: [],
+        cardCount: 1,
+      } as never;
+    });
+
+    const task = makeMultiFileTask();
+    task.files = [task.files[0]];
+
+    const result = await runUploadGenerationInWorker(task);
+    if (!result.ok) throw new Error('expected success');
+
+    expect(mockPrepareDeck.mock.calls[0][0].crossFileDedup).toBeDefined();
+    expect(result.cardFingerprints).toEqual([
+      cardFingerprint({ name: 'Solo fact', back: 'Solo answer' }),
+    ]);
+    const completed = trackSpy.mock.calls.find(
+      (call: unknown[]) => call[0] === 'ai_conversion_completed'
+    );
+    expect(completed).toBeUndefined();
+  });
+
+  it('suppresses a card matching seeded history and reports the cross-deck count', async () => {
+    const trackMod = require('../../services/events/track');
+    const trackSpy = jest
+      .spyOn(trackMod, 'track')
+      .mockImplementation(() => undefined);
+
+    mockPrepareDeck.mockImplementation(async (input) => {
+      if (input.crossFileDedup) {
+        absorbFileIntoCrossFileDedup(input.crossFileDedup, [
+          oneCardDeck(input.name, 'Old fact', 'Old answer'),
+        ]);
+      }
+      return {
+        name: input.name,
+        apkg: Buffer.from('x'),
+        deck: [],
+        cardCount: 0,
+      } as never;
+    });
+
+    const task = makeMultiFileTask();
+    task.files = [task.files[0]];
+    task.existingCardFingerprints = [
+      cardFingerprint({ name: 'Old fact', back: 'Old answer' }),
+    ];
+
+    const result = await runUploadGenerationInWorker(task);
+    if (!result.ok) throw new Error('expected success');
+
+    expect(result.cardFingerprints).toEqual([]);
+    const completed = trackSpy.mock.calls.find(
+      (call: unknown[]) => call[0] === 'ai_conversion_completed'
+    );
+    expect(completed![1] as { props?: Record<string, unknown> }).toMatchObject({
+      props: {
+        cross_deck_duplicates_suppressed: 1,
+        historical_cards_considered: 1,
+      },
+    });
   });
 
   it('succeeds and keeps earlier decks when a later loose file is fully suppressed', async () => {

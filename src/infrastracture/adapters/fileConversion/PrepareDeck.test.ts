@@ -375,13 +375,13 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
   });
 
   it('uses a caller-threaded dedup state for a single-file conversion (loose multi-file path)', async () => {
-    const { createCrossFileDedupState, cardDedupeKey } = jest.requireActual(
+    const { createCrossFileDedupState, cardFingerprint } = jest.requireActual(
       '../../../lib/claude/ClaudeService'
     );
     const crossFileDedup = createCrossFileDedupState();
     crossFileDedup.fronts.push('Fact from earlier file');
     crossFileDedup.seenKeys.add(
-      cardDedupeKey({ name: 'Recycled fact', back: 'Recycled answer' })
+      cardFingerprint({ name: 'Recycled fact', back: 'Recycled answer' })
     );
 
     generateDeckInfo.mockResolvedValueOnce(
@@ -414,12 +414,12 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
   });
 
   it('returns no deck (no exporter) when a threaded file is fully covered by earlier files', async () => {
-    const { createCrossFileDedupState, cardDedupeKey } = jest.requireActual(
+    const { createCrossFileDedupState, cardFingerprint } = jest.requireActual(
       '../../../lib/claude/ClaudeService'
     );
     const crossFileDedup = createCrossFileDedupState();
     crossFileDedup.seenKeys.add(
-      cardDedupeKey({ name: 'Only fact', back: 'Only answer' })
+      cardFingerprint({ name: 'Only fact', back: 'Only answer' })
     );
 
     generateDeckInfo.mockResolvedValueOnce(

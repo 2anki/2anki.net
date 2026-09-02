@@ -10,6 +10,7 @@ import { ConversionOutputStatsRepository } from '../data_layer/ConversionOutputS
 import { ParsePathSignatureRepository } from '../data_layer/ParsePathSignatureRepository';
 import { ConversionRuleScoresRepository } from '../data_layer/ConversionRuleScoresRepository';
 import { CardGuidLedgerRepository } from '../data_layer/CardGuidLedgerRepository';
+import { AiCardFingerprintRepository } from '../data_layer/AiCardFingerprintRepository';
 import TokenRepository from '../data_layer/TokenRepository';
 import DownloadRepository from '../data_layer/DownloadRepository';
 import { McpOAuthClientRepository } from '../data_layer/McpOAuthClientRepository';
@@ -69,6 +70,7 @@ const McpRouter = () => {
     new ParsePathSignatureRepository(database),
     new ConversionRuleScoresRepository(database),
     new CardGuidLedgerRepository(database),
+    new AiCardFingerprintRepository(database),
     new PhotoToFlashcardsUseCase(new EventsRepository(database))
   );
   const storage = new StorageHandler();
