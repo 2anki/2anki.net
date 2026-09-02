@@ -109,17 +109,17 @@ const MCQ_TTS_LANGUAGE_OPTIONS = [
   { label: 'Mandarin (Simplified)', value: 'zh_CN' },
   { label: 'Portuguese (Brazil)', value: 'pt_BR' },
 ] as const;
-const DEFAULT_USER_INSTRUCTIONS = `Some extra rules and explanations:
+export const DEFAULT_USER_INSTRUCTIONS = `Some extra rules and explanations:
 - Read the document from start to finish and identify any question and answers.
 - Use the same language as the document or infer the language based on what is mostly used.
-- Use the same text as the document and do not make up any questions or answers.
+- Use the same text as in the document and do not make up any questions or answers.
 - Cite the document as source for the text.
 - Be complete by finding all of the questions and answer in the document.
 - Do not limit the number of number of questions and answer but create all of them!
 - Do not make up any questions and use the questions in the document!
 - Create a ul for every question pair, not one ul for all of them with li!`;
 
-const INSTRUCTION_PRESETS = [
+export const INSTRUCTION_PRESETS = [
   {
     id: 'mcq_front',
     labelKey: 'cardOptions.userInstructions.presets.mcqOnFront.label',
@@ -448,6 +448,16 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
     const [justSaved, setJustSaved] = useState(false);
     const [saveFailed, setSaveFailed] = useState(false);
     const savingRef = useRef(false);
+
+    useEffect(() => {
+      const openOnPdfAiAnchor = () => {
+        if (window.location.hash === '#pdf-ai') {
+          setInstructionsOpen(true);
+        }
+      };
+      window.addEventListener('hashchange', openOnPdfAiAnchor);
+      return () => window.removeEventListener('hashchange', openOnPdfAiAnchor);
+    }, []);
 
     useEffect(() => {
       if (!options) return;
