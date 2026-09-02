@@ -20,9 +20,18 @@ const WARN_VARS: ReadonlyArray<[string, string]> = [
   ['DATABASE_URL', 'Postgres connection; without it every query fails'],
   ['STRIPE_KEY', 'checkout, subscriptions, and Stripe sync'],
   ['STRIPE_ENDPOINT_SECRET', 'verifies Stripe webhook signatures'],
-  ['PASS_24H_PRICE_ID', 'day-pass checkout price'],
-  ['PASS_7D_PRICE_ID', 'week-pass checkout price'],
-  ['PASS_120D_PRICE_ID', 'semester-pass checkout price'],
+  [
+    'PASS_24H_PRICE_ID',
+    'day-pass price fallback (runtime resolves from Stripe)',
+  ],
+  [
+    'PASS_7D_PRICE_ID',
+    'week-pass price fallback (runtime resolves from Stripe)',
+  ],
+  [
+    'PASS_120D_PRICE_ID',
+    'semester-pass price fallback (runtime resolves from Stripe)',
+  ],
   ['UNLIMITED_MONTHLY_PRICE_ID', 'legacy monthly price and v2 fallback'],
   ['UNLIMITED_YEARLY_PRICE_ID', 'legacy annual price and v2 fallback'],
   ['ANTHROPIC_API_KEY', 'AI card generation, chat assistant, file conversion'],

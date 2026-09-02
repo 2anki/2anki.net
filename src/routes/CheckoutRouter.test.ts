@@ -56,6 +56,8 @@ describe('CheckoutRouter — pass routes', () => {
   let url: string;
 
   beforeAll(async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
     ({ server, url } = await buildServer());
   });
 
@@ -238,6 +240,29 @@ describe('CheckoutRouter — pass routes', () => {
           line_items: [{ price: 'price_120d_test', quantity: 1 }],
         })
       );
+    });
+  });
+
+  describe('GET /api/pricing', () => {
+    it('responds 200 with a passes object', async () => {
+      const res = await fetch(`${url}/api/pricing`);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toHaveProperty('passes');
+      expect(typeof body.passes).toBe('object');
+    });
+
+    it('sets a public, cacheable Cache-Control header', async () => {
+      const res = await fetch(`${url}/api/pricing`);
+      const cacheControl = res.headers.get('cache-control');
+      expect(cacheControl).toContain('public');
+      expect(cacheControl).toContain('max-age=');
+    });
+
+    it('omits passes when Stripe amounts cannot be resolved', async () => {
+      const res = await fetch(`${url}/api/pricing`);
+      const body = await res.json();
+      expect(body.passes).toEqual({});
     });
   });
 });

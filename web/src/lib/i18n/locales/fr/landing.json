@@ -24,7 +24,7 @@
     "freeQuota": "Gratuit · jusqu'à 1 000 cartes par import",
     "orPrefix": "ou ",
     "signUpFree": "inscris-toi gratuitement",
-    "getDayPass": "prends un Day Pass à $6"
+    "getDayPass": "prends un Day Pass à {{price}}"
   },
   "footer": {
     "readyPrefix": "Prêt à essayer ? ",

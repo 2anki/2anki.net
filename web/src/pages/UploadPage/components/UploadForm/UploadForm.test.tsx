@@ -38,6 +38,10 @@ vi.mock('../../../../lib/hooks/useCardUsage', () => ({
   CARD_USAGE_QUERY_KEY: ['cardUsage'],
 }));
 
+vi.mock('../../../../lib/hooks/usePassPrices', () => ({
+  usePassPrices: () => ({ '24h': '$6', '7d': '$12', '120d': '$29' }),
+}));
+
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
 import { useCardUsage } from '../../../../lib/hooks/useCardUsage';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';

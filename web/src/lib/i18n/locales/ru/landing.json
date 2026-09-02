@@ -24,7 +24,7 @@
     "freeQuota": "Бесплатно · до 1 000 карт за один импорт",
     "orPrefix": "или ",
     "signUpFree": "зарегистрируйся бесплатно",
-    "getDayPass": "купи Day Pass за $6"
+    "getDayPass": "купи Day Pass за {{price}}"
   },
   "footer": {
     "readyPrefix": "Готов попробовать? ",

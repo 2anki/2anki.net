@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { classifyUploadError } from '../../../../components/errors/helpers/getErrorMessage';
 import { parseAmbiguousColumnsPayload } from '../../../../lib/fieldMapping/types';
-import { PASS_PRICES } from '../../../PricingPage/payment.links';
+import { usePassPrices } from '../../../../lib/hooks/usePassPrices';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { startUnlimitedUpgrade } from '../../../../lib/backend/startUnlimitedUpgrade';
 import { track } from '../../../../lib/analytics/track';
@@ -78,6 +78,7 @@ function PaywalledVariant({
   resetOn,
 }: Omit<PaywalledProps, 'variant' | 'title'>) {
   const { t } = useTranslation();
+  const passPrices = usePassPrices();
   const shownFiredRef = useRef(false);
   const [pendingKind, setPendingKind] = useState<'24h' | '7d' | null>(null);
   const resetDate = formatResetDate(resetOn);
@@ -140,7 +141,7 @@ function PaywalledVariant({
           {pendingKind === '24h'
             ? t('conversionResult.paywall.openingCheckout')
             : t('conversionResult.paywall.getDayPass', {
-                price: PASS_PRICES['24h'],
+                price: passPrices['24h'],
               })}
         </button>
         <button
@@ -152,7 +153,7 @@ function PaywalledVariant({
           {pendingKind === '7d'
             ? t('conversionResult.paywall.openingCheckout')
             : t('conversionResult.paywall.getWeekPass', {
-                price: PASS_PRICES['7d'],
+                price: passPrices['7d'],
               })}
         </button>
         <a
