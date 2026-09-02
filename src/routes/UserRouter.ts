@@ -5,6 +5,7 @@ import RequireAuthentication, {
   OptionalAuthentication,
 } from './middleware/RequireAuthentication';
 import UsersController from '../controllers/UsersControllers';
+import SubscriptionLifecycleController from '../controllers/SubscriptionLifecycleController';
 import { EmailPreferencesController } from '../controllers/EmailPreferencesController';
 import { UserPreferencesController } from '../controllers/UserPreferencesController';
 import UsersRepository from '../data_layer/UsersRepository';
@@ -32,16 +33,21 @@ const UserRouter = () => {
   const recordErrorUseCase = new RecordUserVisibleErrorUseCase(
     new UserVisibleErrorsRepository(database)
   );
+  const usersService = new UsersService(
+    new UsersRepository(database),
+    emailService,
+    magicTokenRepository
+  );
   const controller = new UsersController(
-    new UsersService(
-      new UsersRepository(database),
-      emailService,
-      magicTokenRepository
-    ),
+    usersService,
     authService,
     database,
     recordErrorUseCase,
     emailService
+  );
+  const subscriptionController = new SubscriptionLifecycleController(
+    usersService,
+    database
   );
   const emailPreferencesController = new EmailPreferencesController(
     new EmailPreferencesRepository(database)
@@ -543,7 +549,7 @@ const UserRouter = () => {
   router.post(
     '/api/users/cancel-subscription',
     RequireAuthentication,
-    (req, res) => controller.cancelSubscription(req, res)
+    (req, res) => subscriptionController.cancelSubscription(req, res)
   );
 
   /**
@@ -589,7 +595,7 @@ const UserRouter = () => {
   router.post(
     '/api/users/subscriptions/:id/cancel',
     RequireAuthentication,
-    (req, res) => controller.cancelSubscriptionById(req, res)
+    (req, res) => subscriptionController.cancelSubscriptionById(req, res)
   );
 
   /**
@@ -613,7 +619,7 @@ const UserRouter = () => {
   router.post(
     '/api/users/cancellation-feedback',
     RequireAuthentication,
-    (req, res) => controller.submitCancellationFeedback(req, res)
+    (req, res) => subscriptionController.submitCancellationFeedback(req, res)
   );
 
   /**
@@ -649,7 +655,7 @@ const UserRouter = () => {
   router.post(
     '/api/users/pause-subscription',
     RequireAuthentication,
-    (req, res) => controller.pauseSubscription(req, res)
+    (req, res) => subscriptionController.pauseSubscription(req, res)
   );
 
   /**
@@ -673,7 +679,7 @@ const UserRouter = () => {
   router.post(
     '/api/users/resume-subscription',
     RequireAuthentication,
-    (req, res) => controller.resumeSubscription(req, res)
+    (req, res) => subscriptionController.resumeSubscription(req, res)
   );
 
   /**
@@ -714,7 +720,7 @@ const UserRouter = () => {
   router.get(
     '/api/users/subscription-status',
     RequireAuthentication,
-    (req, res) => controller.getSubscriptionStatus(req, res)
+    (req, res) => subscriptionController.getSubscriptionStatus(req, res)
   );
 
   /**
