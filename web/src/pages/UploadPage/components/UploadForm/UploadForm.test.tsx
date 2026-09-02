@@ -2088,7 +2088,7 @@ describe('limit state', () => {
         const uploadCalls = fetchMock.mock.calls.filter(
           ([url]) => url === '/api/upload/file'
         );
-        expect(uploadCalls.length).toBe(1);
+        expect(uploadCalls).toHaveLength(1);
       });
     });
 
@@ -2103,17 +2103,15 @@ describe('limit state', () => {
       ) as HTMLInputElement;
       fileInput.removeAttribute('required');
       setInputFile(fileInput, new File(['deck'], 'first.docx'));
-      await act(async () => {
-        fireEvent.change(fileInput);
-      });
+      fireEvent.change(fileInput);
+      await act(async () => {});
       setInputFile(fileInput, new File(['deck'], 'second.docx'));
-      await act(async () => {
-        fireEvent.change(fileInput);
-      });
+      fireEvent.change(fileInput);
+      await act(async () => {});
       const uploadCalls = fetchMock.mock.calls.filter(
         ([url]) => url === '/api/upload/file'
       );
-      expect(uploadCalls.length).toBe(1);
+      expect(uploadCalls).toHaveLength(1);
     });
 
     it('does not fire upload_guardrail_shown while a conversion is in flight', async () => {
@@ -2128,17 +2126,15 @@ describe('limit state', () => {
       ) as HTMLInputElement;
       fileInput.removeAttribute('required');
       setInputFile(fileInput, new File(['deck'], 'first.docx'));
-      await act(async () => {
-        fireEvent.change(fileInput);
-      });
+      fireEvent.change(fileInput);
+      await act(async () => {});
       trackMock.mockClear();
       setInputFile(
         fileInput,
         new File(['# notes'], 'notes.md', { type: 'text/markdown' })
       );
-      await act(async () => {
-        fireEvent.change(fileInput);
-      });
+      fireEvent.change(fileInput);
+      await act(async () => {});
       const impressions = trackMock.mock.calls.filter(
         ([event]) => event === 'upload_guardrail_shown'
       );
