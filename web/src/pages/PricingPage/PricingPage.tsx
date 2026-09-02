@@ -126,13 +126,6 @@ export default function PricingPage({
     }
   }, [fromPaywall]);
 
-  const handleTryFreeClick = () => {
-    track('pricing_try_clicked', {
-      surface: 'pricing_page',
-      variant: pricingOrder,
-    });
-  };
-
   const handlePassCheckout = async (kind: '24h' | '7d' | '120d') => {
     const planByKind = {
       '24h': 'day_pass',
@@ -268,15 +261,6 @@ export default function PricingPage({
           <p className={styles.intro}>
             {isUS ? t('pricing.introUS') : t('pricing.introDefault')}
           </p>
-        )}
-        {!isLoggedIn && (
-          <a
-            href="/upload"
-            className={styles.tryFreeCta}
-            onClick={handleTryFreeClick}
-          >
-            {t('pricing.tryFree')}
-          </a>
         )}
         {!minimalHeader && (
           <p className={styles.socialProof}>{t('pricing.socialProof')}</p>

@@ -79,33 +79,11 @@ describe('PricingPage try-free CTA', () => {
     mockUseCardUsage.mockReturnValue(null);
   });
 
-  it('renders the Convert a deck free button routing to /upload for logged-out visitors', () => {
+  it('renders no Convert a deck free link for any visitor', () => {
     renderAt('/pricing', { isLoggedIn: false });
-    const cta = screen.getByRole('link', { name: 'Convert a deck free' });
-    expect(cta).toBeInTheDocument();
-    expect(cta).toHaveAttribute('href', '/upload');
-  });
-
-  it('hides the Convert a deck free button for logged-in visitors', () => {
-    renderAt('/pricing', { isLoggedIn: true });
     expect(
       screen.queryByRole('link', { name: 'Convert a deck free' })
     ).not.toBeInTheDocument();
-  });
-
-  it('fires pricing_try_clicked once when the CTA is clicked', async () => {
-    const { track } = await import('../../lib/analytics/track');
-    const trackMock = vi.mocked(track);
-    trackMock.mockClear();
-
-    renderAt('/pricing', { isLoggedIn: false });
-    fireEvent.click(screen.getByRole('link', { name: 'Convert a deck free' }));
-
-    expect(
-      trackMock.mock.calls.filter(([event]) => event === 'pricing_try_clicked')
-    ).toEqual([
-      ['pricing_try_clicked', { surface: 'pricing_page', variant: 'minimal' }],
-    ]);
   });
 });
 
