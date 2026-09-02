@@ -16,6 +16,9 @@ import { getEventsSink } from '../services/events/eventsSinkInstance';
 import { FeatureFlagsRepository } from '../data_layer/FeatureFlagsRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import { StripePriceResolver } from '../services/StripePriceResolver';
+import { getPricingService } from '../services/pricingServiceInstance';
+import { GetPassPricingUseCase } from '../usecases/checkout/GetPassPricingUseCase';
+import PassPricingController from '../controllers/PassPricingController';
 import { PRICING_V2_FLAG } from '../usecases/checkout/pricingV2';
 import PricingController from '../controllers/PricingController';
 
@@ -77,6 +80,7 @@ const CheckoutRouter = () => {
   const unlimitedMonthlyPriceId = process.env.UNLIMITED_MONTHLY_PRICE_ID ?? '';
   const unlimitedYearlyPriceId = process.env.UNLIMITED_YEARLY_PRICE_ID ?? '';
   const priceResolver = new StripePriceResolver(getStripe());
+  const pricingService = getPricingService();
 
   router.post(
     '/api/checkout/unlimited',
@@ -135,9 +139,9 @@ const CheckoutRouter = () => {
     '/api/checkout/pass/24h',
     optionalAuthMiddleware,
     express.json(),
-    (req, res) => {
-      const pass24hPriceId = process.env.PASS_24H_PRICE_ID ?? '';
-      if (pass24hPriceId === '') {
+    async (req, res) => {
+      const pass24hPriceId = await pricingService.resolvePriceId('24h');
+      if (pass24hPriceId == null) {
         return res
           .status(503)
           .json({ message: 'Day Pass is not available right now.' });
@@ -156,9 +160,9 @@ const CheckoutRouter = () => {
     '/api/checkout/pass/7d',
     optionalAuthMiddleware,
     express.json(),
-    (req, res) => {
-      const pass7dPriceId = process.env.PASS_7D_PRICE_ID ?? '';
-      if (pass7dPriceId === '') {
+    async (req, res) => {
+      const pass7dPriceId = await pricingService.resolvePriceId('7d');
+      if (pass7dPriceId == null) {
         return res
           .status(503)
           .json({ message: 'Week Pass is not available right now.' });
@@ -177,9 +181,9 @@ const CheckoutRouter = () => {
     '/api/checkout/pass/120d',
     optionalAuthMiddleware,
     express.json(),
-    (req, res) => {
-      const pass120dPriceId = process.env.PASS_120D_PRICE_ID ?? '';
-      if (pass120dPriceId === '') {
+    async (req, res) => {
+      const pass120dPriceId = await pricingService.resolvePriceId('120d');
+      if (pass120dPriceId == null) {
         return res
           .status(503)
           .json({ message: 'Semester Pass is not available right now.' });
@@ -193,6 +197,28 @@ const CheckoutRouter = () => {
       return controller.createSession(req, res);
     }
   );
+
+  /**
+   * @swagger
+   * /api/pricing:
+   *   get:
+   *     summary: Get the current one-time pass prices
+   *     description: |
+   *       Returns the live amount, currency, and formatted display string for
+   *       each pass kind (24h, 7d, 120d), resolved from Stripe by price
+   *       metadata so the displayed price can never diverge from the amount
+   *       charged at checkout. Public and cacheable; a pass whose amount cannot
+   *       be resolved from Stripe is omitted so the client keeps its fallback.
+   *     tags: [Payments]
+   *     responses:
+   *       200:
+   *         description: Amount, currency, and display string per pass kind
+   */
+  router.get('/api/pricing', (req, res) => {
+    const useCase = new GetPassPricingUseCase(pricingService);
+    const controller = new PassPricingController(useCase);
+    return controller.getPassPricing(req, res);
+  });
 
   /**
    * @swagger

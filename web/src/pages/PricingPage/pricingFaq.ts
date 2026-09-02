@@ -1,4 +1,5 @@
-import { PASS_PRICES } from './payment.links';
+import { FALLBACK_PASS_PRICES } from './payment.links';
+import type { PassPriceDisplay } from '../../lib/hooks/usePassPrices';
 
 export interface PricingFaqItem {
   question: string;
@@ -8,7 +9,9 @@ export interface PricingFaqItem {
   answerValues?: Record<string, string>;
 }
 
-export const PRICING_FAQ: PricingFaqItem[] = [
+export const buildPricingFaq = (
+  passPrices: PassPriceDisplay
+): PricingFaqItem[] => [
   {
     question: 'How many cards can I make for free?',
     answer:
@@ -18,13 +21,13 @@ export const PRICING_FAQ: PricingFaqItem[] = [
   },
   {
     question: 'Is there a one-time payment option?',
-    answer: `Day Pass (${PASS_PRICES['24h']}) gives 24 hours of unlimited access. Week Pass (${PASS_PRICES['7d']}) gives 7 days. Semester Pass (${PASS_PRICES['120d']}) gives about 4 months. All are one-time payments, no subscription required.`,
+    answer: `Day Pass (${passPrices['24h']}) gives 24 hours of unlimited access. Week Pass (${passPrices['7d']}) gives 7 days. Semester Pass (${passPrices['120d']}) gives about 4 months. All are one-time payments, no subscription required.`,
     questionKey: 'faq.q2.question',
     answerKey: 'faq.q2.answer',
     answerValues: {
-      dayPrice: PASS_PRICES['24h'],
-      weekPrice: PASS_PRICES['7d'],
-      semesterPrice: PASS_PRICES['120d'],
+      dayPrice: passPrices['24h'],
+      weekPrice: passPrices['7d'],
+      semesterPrice: passPrices['120d'],
     },
   },
   {
@@ -63,3 +66,6 @@ export const PRICING_FAQ: PricingFaqItem[] = [
     answerKey: 'faq.q7.answer',
   },
 ];
+
+export const PRICING_FAQ: PricingFaqItem[] =
+  buildPricingFaq(FALLBACK_PASS_PRICES);

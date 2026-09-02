@@ -1,6 +1,8 @@
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { FALLBACK_PASS_PRICES } from '../payment.links';
+import type { PassPriceDisplay } from '../../../lib/hooks/usePassPrices';
 import styles from './ComparisonTable.module.css';
 
 const PLANS = ['Free', 'Day / Week pass', 'Unlimited'];
@@ -38,10 +40,12 @@ function CheckIcon() {
 
 interface ComparisonTableProps {
   unlimitedMonthlyPrice: string;
+  passPrices?: PassPriceDisplay;
 }
 
 export function ComparisonTable({
   unlimitedMonthlyPrice,
+  passPrices = FALLBACK_PASS_PRICES,
 }: Readonly<ComparisonTableProps>) {
   const { t } = useTranslation('pricingtable');
 
@@ -153,7 +157,11 @@ export function ComparisonTable({
     return value;
   };
 
-  const planPrices = ['$0', '$6 / $12', `${unlimitedMonthlyPrice} / mo`];
+  const planPrices = [
+    '$0',
+    `${passPrices['24h']} / ${passPrices['7d']}`,
+    `${unlimitedMonthlyPrice} / mo`,
+  ];
 
   return (
     <section className={styles.section} aria-labelledby="comparison-heading">

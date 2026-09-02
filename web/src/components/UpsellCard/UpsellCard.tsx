@@ -7,7 +7,7 @@ import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { useCardUsage } from '../../lib/hooks/useCardUsage';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { isPayingUser } from '../NavigationBar/helpers/getPlanLabel';
-import { PASS_PRICES } from '../../pages/PricingPage/payment.links';
+import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import styles from './UpsellCard.module.css';
 
 type Surface = 'downloads_upsell' | 'upload_success_upsell';
@@ -32,6 +32,7 @@ export function UpsellCard({
   hideForAnonymous = false,
 }: UpsellCardProps) {
   const { t } = useTranslation('marketing');
+  const passPrices = usePassPrices();
   const { data } = useUserLocals();
   const [pendingKind, setPendingKind] = useState<'24h' | '7d' | null>(null);
   const upgradeClickedRef = useRef(false);
@@ -116,7 +117,7 @@ export function UpsellCard({
         >
           {pendingKind === '24h'
             ? t('upsell.startingCheckout')
-            : t('upsell.getDayPass', { price: PASS_PRICES['24h'] })}
+            : t('upsell.getDayPass', { price: passPrices['24h'] })}
         </button>
         <Link
           className={styles.secondary}

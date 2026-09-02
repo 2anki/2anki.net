@@ -10,7 +10,7 @@
     "title": "Du hast diesen Monat alle {{limit}} Karten genutzt",
     "body": "{{used}} / {{limit}} Karten · Auffrischung am {{resetsOn}}, dann kommen deine kostenlosen Karten zurück",
     "startingCheckout": "Checkout wird gestartet",
-    "getDayPass": "Day Pass holen — $6",
+    "getDayPass": "Day Pass holen — {{price}}",
     "seePlans": "Tarife ansehen"
   },
   "connect": {

@@ -24,7 +24,7 @@
     "freeQuota": "Gratis · tot 1 000 kaarten per import",
     "orPrefix": "of ",
     "signUpFree": "meld je gratis aan",
-    "getDayPass": "koop een Day Pass voor $6"
+    "getDayPass": "koop een Day Pass voor {{price}}"
   },
   "footer": {
     "readyPrefix": "Klaar om het te proberen? ",

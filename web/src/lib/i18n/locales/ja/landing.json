@@ -24,7 +24,7 @@
     "freeQuota": "無料 · 1 回のインポートで最大 1 000 枚",
     "orPrefix": "または ",
     "signUpFree": "無料で登録",
-    "getDayPass": "$6 の Day Pass を購入"
+    "getDayPass": "{{price}} の Day Pass を購入"
   },
   "footer": {
     "readyPrefix": "試してみますか？ ",

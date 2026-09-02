@@ -19,7 +19,8 @@ import { useInViewOnce } from '../../lib/hooks/useInViewOnce';
 import styles from './PricingPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 import { formatMonthly, LEGACY_UNLIMITED_PRICING } from './pricing.constants';
-import { PRICING_FAQ } from './pricingFaq';
+import { buildPricingFaq } from './pricingFaq';
+import { usePassPrices } from '../../lib/hooks/usePassPrices';
 
 interface PricingPageProps {
   isLoggedIn: boolean;
@@ -56,6 +57,7 @@ export default function PricingPage({
   const shownFiredRef = useRef(false);
   const cardUsage = useCardUsage(true);
   const pricingOrder = usePricingOrderVariant();
+  const passPrices = usePassPrices();
   const quotaRemaining =
     cardUsage != null && !cardUsage.loading
       ? cardUsage.cards_limit - cardUsage.cards_used
@@ -183,7 +185,7 @@ export default function PricingPage({
   const pricingFaqJsonLd = JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: PRICING_FAQ.map((item) => ({
+    mainEntity: buildPricingFaq(passPrices).map((item) => ({
       '@type': 'Question',
       name: item.question,
       acceptedAnswer: {
@@ -205,6 +207,7 @@ export default function PricingPage({
       weekPassPending={weekPassState === 'pending'}
       semesterPassPending={semesterPassState === 'pending'}
       featureDayPass={false}
+      prices={passPrices}
     />
   );
 
@@ -292,9 +295,10 @@ export default function PricingPage({
 
       <ComparisonTable
         unlimitedMonthlyPrice={formatMonthly(pricing.monthlyCents)}
+        passPrices={passPrices}
       />
 
-      <PricingFaq />
+      <PricingFaq passPrices={passPrices} />
 
       <section ref={educatorsRef} className={styles.educators}>
         <h2 className={styles.educatorsTitle}>{t('pricing.educatorsTitle')}</h2>

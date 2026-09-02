@@ -6,6 +6,7 @@ import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessag
 import { SkeletonList } from '../../components/Skeleton/Skeleton';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { useCardUsage } from '../../lib/hooks/useCardUsage';
+import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
 import styles from '../../styles/shared.module.css';
@@ -20,6 +21,7 @@ interface SearchPageProps {
 
 export function SearchPage({ setError }: Readonly<SearchPageProps>) {
   const { t } = useTranslation('search');
+  const passPrices = usePassPrices();
   const notionData = useNotionData(get2ankiApi());
   const { data: userLocals } = useUserLocals();
   const isAuthenticated = userLocals?.user?.id != null;
@@ -105,7 +107,7 @@ export function SearchPage({ setError }: Readonly<SearchPageProps>) {
           >
             {dayPassPending
               ? t('limit.startingCheckout')
-              : t('limit.getDayPass')}
+              : t('limit.getDayPass', { price: passPrices['24h'] })}
           </button>
           <Link
             to="/limit?ref=notion-limit-wall"

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { PricingCard } from './PricingCard';
-import { PASS_PRICES } from '../payment.links';
+import { FALLBACK_PASS_PRICES } from '../payment.links';
+import type { PassPriceDisplay } from '../../../lib/hooks/usePassPrices';
 import styles from '../PricingPage.module.css';
 
 const PASS_BENEFIT_KEYS = [
@@ -20,6 +21,7 @@ interface PassCardsProps {
   weekPassPending: boolean;
   semesterPassPending?: boolean;
   featureDayPass?: boolean;
+  prices?: PassPriceDisplay;
 }
 
 export function PassCards({
@@ -30,6 +32,7 @@ export function PassCards({
   weekPassPending,
   semesterPassPending = false,
   featureDayPass = true,
+  prices = FALLBACK_PASS_PRICES,
 }: Readonly<PassCardsProps>) {
   const { t } = useTranslation();
   const benefits = PASS_BENEFIT_KEYS.map((key) => t(key));
@@ -41,7 +44,7 @@ export function PassCards({
         horizonCaption={
           featureDayPass ? undefined : t('pricing.pass.horizonDay')
         }
-        price={PASS_PRICES['24h']}
+        price={prices['24h']}
         priceSuffix={t('pricing.pass.day24')}
         benefits={benefits}
         onAction={onDayPass}
@@ -59,7 +62,7 @@ export function PassCards({
         horizonCaption={
           featureDayPass ? undefined : t('pricing.pass.horizonWeek')
         }
-        price={PASS_PRICES['7d']}
+        price={prices['7d']}
         priceSuffix={t('pricing.pass.week1')}
         benefits={benefits}
         onAction={onWeekPass}
@@ -78,7 +81,7 @@ export function PassCards({
           badgeMuted
           horizonCaption={t('pricing.pass.horizonSemester')}
           valueCaption={t('pricing.pass.semesterPerWeek')}
-          price={PASS_PRICES['120d']}
+          price={prices['120d']}
           priceSuffix={t('pricing.pass.semester4mo')}
           benefits={benefits}
           onAction={onSemesterPass}

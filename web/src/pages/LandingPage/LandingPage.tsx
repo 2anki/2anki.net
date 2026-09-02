@@ -6,6 +6,7 @@ import UploadForm from '../UploadPage/components/UploadForm/UploadForm';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
+import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import styles from './LandingPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 import type { LandingCopy } from './types';
@@ -44,6 +45,7 @@ interface HeroActionProps {
   ctaLabel?: string;
   setErrorMessage: ErrorHandlerType;
   registerHref: string;
+  dayPassPrice: string;
   t: TFunction<'landing'>;
 }
 
@@ -53,6 +55,7 @@ function renderHeroAction({
   ctaLabel,
   setErrorMessage,
   registerHref,
+  dayPassPrice,
   t,
 }: Readonly<HeroActionProps>) {
   if (heroSlot != null) {
@@ -85,7 +88,8 @@ function renderHeroAction({
         {' — '}
         <a href="/pricing">
           {t('hero.getDayPass', {
-            defaultValue: 'get a Day Pass for $6',
+            price: dayPassPrice,
+            defaultValue: 'get a Day Pass for {{price}}',
           })}
         </a>
       </p>
@@ -99,6 +103,7 @@ function LandingPage({
   heroSlot,
 }: Readonly<LandingPageProps>) {
   const { t } = useTranslation('landing');
+  const passPrices = usePassPrices();
   useEffect(() => {
     persistSignupOrigin(copy.pathname, globalThis.sessionStorage ?? null);
   }, [copy.pathname]);
@@ -166,6 +171,7 @@ function LandingPage({
             ctaLabel: copy.ctaLabel,
             setErrorMessage,
             registerHref,
+            dayPassPrice: passPrices['24h'],
             t,
           })}
         </div>

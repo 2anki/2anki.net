@@ -1,10 +1,19 @@
 import { useTranslation } from 'react-i18next';
 
-import { PRICING_FAQ } from '../pricingFaq';
+import { buildPricingFaq } from '../pricingFaq';
+import { FALLBACK_PASS_PRICES } from '../payment.links';
+import type { PassPriceDisplay } from '../../../lib/hooks/usePassPrices';
 import styles from './PricingFaq.module.css';
 
-export function PricingFaq() {
+interface PricingFaqProps {
+  passPrices?: PassPriceDisplay;
+}
+
+export function PricingFaq({
+  passPrices = FALLBACK_PASS_PRICES,
+}: Readonly<PricingFaqProps>) {
   const { t } = useTranslation('pricingtable');
+  const faqItems = buildPricingFaq(passPrices);
 
   return (
     <section className={styles.faq} aria-labelledby="pricing-faq-heading">
@@ -12,7 +21,7 @@ export function PricingFaq() {
         {t('faq.heading')}
       </h2>
       <div className={styles.list}>
-        {PRICING_FAQ.map((item) => (
+        {faqItems.map((item) => (
           <details key={item.questionKey} className={styles.item}>
             <summary className={styles.summary}>
               <span>{t(item.questionKey)}</span>

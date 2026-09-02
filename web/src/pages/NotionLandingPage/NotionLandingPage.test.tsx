@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { NotionLandingPage } from './NotionLandingPage';
@@ -13,12 +14,17 @@ vi.mock('../../lib/analytics/track', () => ({
 import { track } from '../../lib/analytics/track';
 
 function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <MemoryRouter>
-      <HelmetProvider>
-        <NotionLandingPage />
-      </HelmetProvider>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <HelmetProvider>
+          <NotionLandingPage />
+        </HelmetProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 

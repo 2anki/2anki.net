@@ -23,6 +23,7 @@ import { ConversionResult } from '../../../DownloadsPage/components/ConversionRe
 import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
 import { useDrag } from '../../../../lib/hooks/useDrag';
+import { usePassPrices } from '../../../../lib/hooks/usePassPrices';
 import { useUploadFormState } from './hooks/useUploadFormState';
 import {
   useFileValidation,
@@ -399,6 +400,7 @@ function UploadForm({
   };
 
   const { data: userLocals } = useUserLocals();
+  const passPrices = usePassPrices();
   const queryClient = useQueryClient();
   const isAuthenticated = userLocals?.user?.id != null;
   const [dayPassPending, setDayPassPending] = useState(false);
@@ -1412,7 +1414,9 @@ function UploadForm({
                 onClick={handleDayPass}
                 disabled={dayPassPending}
               >
-                {dayPassPending ? 'Starting checkout' : 'Get Day Pass — $6'}
+                {dayPassPending
+                  ? 'Starting checkout'
+                  : `Get Day Pass — ${passPrices['24h']}`}
               </button>
               <Link
                 to="/limit?ref=upload-limit-wall"
@@ -1723,7 +1727,9 @@ function UploadForm({
             onClick={handleDayPass}
             disabled={dayPassPending}
           >
-            {dayPassPending ? 'Starting checkout' : 'Get Day Pass — $6'}
+            {dayPassPending
+              ? 'Starting checkout'
+              : `Get Day Pass — ${passPrices['24h']}`}
           </button>
           <Link
             to="/limit?ref=upload-limit-wall"

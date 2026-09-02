@@ -10,7 +10,7 @@
     "title": "Ты использовал все {{limit}} карт в этом месяце",
     "body": "{{used}} / {{limit}} карт · обновятся {{resetsOn}}, когда вернутся твои бесплатные карты",
     "startingCheckout": "Открываем оплату",
-    "getDayPass": "Купить Day Pass — $6",
+    "getDayPass": "Купить Day Pass — {{price}}",
     "seePlans": "Посмотреть планы"
   },
   "connect": {

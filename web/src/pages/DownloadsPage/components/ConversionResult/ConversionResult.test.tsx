@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConversionResult } from './ConversionResult';
 import { parseMonthlyLimitPayload } from './parseMonthlyLimitPayload';
 
@@ -64,20 +65,26 @@ describe('ConversionResult — paywalled variant', () => {
 
   const renderPaywall = (
     props: Partial<{ cardsUsed: number; limit: number; resetOn?: string }> = {}
-  ) =>
-    render(
-      <MemoryRouter>
-        <ConversionResult
-          variant="paywalled"
-          title="Big deck"
-          limit={props.limit ?? 100}
-          cardsUsed={props.cardsUsed ?? 56}
-          resetOn={
-            'resetOn' in props ? props.resetOn : '2026-07-01T00:00:00.000Z'
-          }
-        />
-      </MemoryRouter>
+  ) => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ConversionResult
+            variant="paywalled"
+            title="Big deck"
+            limit={props.limit ?? 100}
+            cardsUsed={props.cardsUsed ?? 56}
+            resetOn={
+              'resetOn' in props ? props.resetOn : '2026-07-01T00:00:00.000Z'
+            }
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
     );
+  };
 
   it('shows the used-of-limit headline when cards_used is below the limit', () => {
     renderPaywall({ cardsUsed: 56, limit: 100 });

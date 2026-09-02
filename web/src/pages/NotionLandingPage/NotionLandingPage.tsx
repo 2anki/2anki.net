@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { track } from '../../lib/analytics/track';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import { PricingCard } from '../PricingPage/components/PricingCard';
+import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import styles from './NotionLandingPage.module.css';
 
 const REF = 'notion-marketplace';
@@ -15,6 +16,7 @@ const DAY_PASS_HREF = `/pricing?ref=${REF}`;
 
 export function NotionLandingPage() {
   const { t } = useTranslation('marketing');
+  const passPrices = usePassPrices();
 
   const unlimitedBenefits = [
     t('notionLanding.unlimitedBenefit1'),
@@ -81,7 +83,7 @@ export function NotionLandingPage() {
           />
           <PricingCard
             title="Day Pass"
-            price="$6"
+            price={passPrices['24h']}
             priceSuffix={t('notionLanding.dayPassSuffix')}
             benefits={dayPassBenefits}
             link={DAY_PASS_HREF}

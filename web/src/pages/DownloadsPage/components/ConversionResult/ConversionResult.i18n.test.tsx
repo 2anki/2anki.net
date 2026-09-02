@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import i18n from '../../../../lib/i18n';
 import { ConversionResult } from './ConversionResult';
@@ -11,7 +12,14 @@ vi.mock('../../../../lib/analytics/track', () => ({
 }));
 
 function renderResult(node: React.ReactElement) {
-  return render(<MemoryRouter>{node}</MemoryRouter>);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{node}</MemoryRouter>
+    </QueryClientProvider>
+  );
 }
 
 describe('ConversionResult in German', () => {
