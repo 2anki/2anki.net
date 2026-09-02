@@ -9,6 +9,11 @@ vi.mock('../../lib/backend/getSharedDeck', () => ({
   revokeDeckShare: vi.fn(),
 }));
 
+const mockTrack = vi.fn();
+vi.mock('../../lib/analytics/track', () => ({
+  track: (...args: unknown[]) => mockTrack(...args),
+}));
+
 const activeShare: sharedDeckLib.ActiveShare = {
   token: 'test-token',
   upload_key: 'test.apkg',
@@ -69,6 +74,23 @@ describe('SharePopover', () => {
     await waitFor(() => {
       expect(sharedDeckLib.createDeckShare).toHaveBeenCalledWith('test.apkg');
     });
+    await waitFor(() => {
+      expect(mockTrack).toHaveBeenCalledWith('share_link_created');
+    });
+  });
+
+  it('does not track share_link_created when reusing an active share', async () => {
+    vi.mocked(sharedDeckLib.getActiveSharesForUploadKey).mockResolvedValue(
+      activeShare
+    );
+
+    render(<SharePopover uploadKey="test.apkg" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue(activeShare.url)).toBeInTheDocument();
+    });
+    expect(mockTrack).not.toHaveBeenCalledWith('share_link_created');
   });
 
   it('shows stop-sharing confirmation on Stop sharing click', async () => {

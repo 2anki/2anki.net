@@ -6,6 +6,7 @@ import {
   getActiveSharesForUploadKey,
   ActiveShare,
 } from '../../lib/backend/getSharedDeck';
+import { track } from '../../lib/analytics/track';
 import styles from './SharePopover.module.css';
 
 interface SharePopoverProps {
@@ -107,6 +108,7 @@ export function SharePopover({ uploadKey }: Readonly<SharePopoverProps>) {
         if (cancelled) return;
         if (existing == null) {
           return createDeckShare(uploadKey).then((result) => {
+            track('share_link_created');
             if (cancelled) return;
             setShare({
               token: result.token,
