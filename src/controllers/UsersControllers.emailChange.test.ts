@@ -15,7 +15,7 @@ const tokenRepoMock = {
   insert: jest.fn().mockResolvedValue({ id: 1 }),
   findByTokenHash: jest.fn(),
   findLivePendingByUser: jest.fn(),
-  deleteLivePendingByUser: jest.fn(),
+  expireLivePendingByUser: jest.fn(),
   countRecentByUser: jest.fn().mockResolvedValue(0),
 };
 
@@ -146,7 +146,7 @@ describe('UsersController.requestEmailChange', () => {
     );
   });
 
-  it('returns 409 when the email is already used', async () => {
+  it('answers 200 when the email is already used, indistinguishable from success', async () => {
     usersRepoMock.getByEmail.mockResolvedValue({ id: 99 });
     const { controller } = buildController();
     const res = buildRes(7);
@@ -154,7 +154,7 @@ describe('UsersController.requestEmailChange', () => {
       asReq({ new_email: 'new@example.com', password: TYPED_SECRET }),
       res
     );
-    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 
   it('returns 400 for a malformed email', async () => {
@@ -223,7 +223,7 @@ describe('UsersController.cancelEmailChange', () => {
   });
 
   it('reports a cancelled pending change', async () => {
-    tokenRepoMock.deleteLivePendingByUser.mockResolvedValue(1);
+    tokenRepoMock.expireLivePendingByUser.mockResolvedValue(1);
     const { controller } = buildController();
     const res = buildRes(7);
     await controller.cancelEmailChange(asReq({}), res);

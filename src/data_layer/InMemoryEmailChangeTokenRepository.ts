@@ -51,12 +51,19 @@ class InMemoryEmailChangeTokenRepository implements IEmailChangeTokenRepository 
     }
   }
 
-  async deleteLivePendingByUser(userId: number): Promise<number> {
-    const before = this.rows.length;
-    this.rows = this.rows.filter(
-      (row) => !(Number(row.user_id) === userId && row.consumed_at == null)
-    );
-    return before - this.rows.length;
+  async expireLivePendingByUser(userId: number, now: Date): Promise<number> {
+    let expired = 0;
+    for (const row of this.rows) {
+      if (
+        Number(row.user_id) === userId &&
+        row.consumed_at == null &&
+        row.expires_at.getTime() > now.getTime()
+      ) {
+        row.expires_at = now;
+        expired += 1;
+      }
+    }
+    return expired;
   }
 
   async countRecentByUser(userId: number, since: Date): Promise<number> {

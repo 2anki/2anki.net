@@ -152,15 +152,17 @@ describe('RequestEmailChangeUseCase', () => {
     expect(outcome).toEqual({ ok: false, reason: 'set_password_first' });
   });
 
-  it('rejects an email already used by another account', async () => {
+  it('answers a taken email like a fresh one but never mails or mints a live token', async () => {
+    const tokensRepo = new InMemoryEmailChangeTokenRepository();
+    const emailService = makeEmailService();
     const useCase = new RequestEmailChangeUseCase(
-      new InMemoryEmailChangeTokenRepository(),
+      tokensRepo,
       makeUsersRepo({
         current: currentUser,
         collision: { id: 99, email: 'new@example.com', password: STORED_HASH },
       }),
       makeOauthRepo(false),
-      makeEmailService(),
+      emailService,
       () => true
     );
 
@@ -170,7 +172,45 @@ describe('RequestEmailChangeUseCase', () => {
       password: TYPED_SECRET,
     });
 
-    expect(outcome).toEqual({ ok: false, reason: 'email_taken' });
+    expect(outcome).toEqual({ ok: true });
+    expect(
+      (emailService.sendEmailChangeConfirmationEmail as jest.Mock).mock.calls
+    ).toHaveLength(0);
+    expect(
+      (emailService.sendEmailChangeNotificationEmail as jest.Mock).mock.calls
+    ).toHaveLength(0);
+    expect(await tokensRepo.findLivePendingByUser(7, new Date())).toBeNull();
+    expect(
+      await tokensRepo.countRecentByUser(7, new Date(Date.now() - 60_000))
+    ).toBe(1);
+  });
+
+  it('keeps counting cancelled requests against the hourly cap', async () => {
+    const tokensRepo = new InMemoryEmailChangeTokenRepository();
+    for (let i = 0; i < 5; i++) {
+      await tokensRepo.insert({
+        user_id: 7 as never,
+        new_email: `n${i}@example.com`,
+        token_hash: `h${i}`,
+        expires_at: new Date(Date.now() + 60_000),
+      });
+    }
+    await tokensRepo.expireLivePendingByUser(7, new Date());
+    const useCase = new RequestEmailChangeUseCase(
+      tokensRepo,
+      makeUsersRepo({ current: currentUser }),
+      makeOauthRepo(false),
+      makeEmailService(),
+      () => true
+    );
+
+    const outcome = await useCase.execute({
+      userId: 7,
+      newEmail: 'another@example.com',
+      password: TYPED_SECRET,
+    });
+
+    expect(outcome).toEqual({ ok: false, reason: 'rate_limited' });
   });
 
   it('rate-limits after too many recent requests', async () => {

@@ -33,7 +33,7 @@ export interface IEmailChangeTokenRepository {
     now: Date
   ): Promise<EmailChangeToken | null>;
   markConsumed(id: number, trx: Knex.Transaction): Promise<void>;
-  deleteLivePendingByUser(userId: number): Promise<number>;
+  expireLivePendingByUser(userId: number, now: Date): Promise<number>;
   countRecentByUser(userId: number, since: Date): Promise<number>;
 }
 
@@ -75,11 +75,12 @@ class EmailChangeTokenRepository implements IEmailChangeTokenRepository {
       .update({ consumed_at: trx.fn.now() });
   }
 
-  async deleteLivePendingByUser(userId: number): Promise<number> {
+  async expireLivePendingByUser(userId: number, now: Date): Promise<number> {
     return this.database('email_change_tokens')
       .where({ user_id: userId })
       .whereNull('consumed_at')
-      .del();
+      .where('expires_at', '>', now)
+      .update({ expires_at: now });
   }
 
   async countRecentByUser(userId: number, since: Date): Promise<number> {

@@ -16,7 +16,6 @@ export type RequestEmailChangeReason =
   | 'same_as_current'
   | 'wrong_password'
   | 'set_password_first'
-  | 'email_taken'
   | 'rate_limited';
 
 export type RequestEmailChangeOutcome =
@@ -65,11 +64,6 @@ export class RequestEmailChangeUseCase {
       };
     }
 
-    const existing = await this.usersRepo.getByEmail(nextEmail);
-    if (existing != null && String(existing.id) !== String(input.userId)) {
-      return { ok: false, reason: 'email_taken' };
-    }
-
     const hourAgo = new Date(Date.now() - ONE_HOUR_MS);
     const recent = await this.tokensRepo.countRecentByUser(
       input.userId,
@@ -77,6 +71,19 @@ export class RequestEmailChangeUseCase {
     );
     if (recent >= MAX_REQUESTS_PER_HOUR) {
       return { ok: false, reason: 'rate_limited' };
+    }
+
+    const existing = await this.usersRepo.getByEmail(nextEmail);
+    if (existing != null && String(existing.id) !== String(input.userId)) {
+      const now = new Date();
+      await this.tokensRepo.insert({
+        user_id: input.userId as UsersId,
+        new_email: nextEmail,
+        token_hash: hmacToken(crypto.randomUUID()),
+        expires_at: now,
+        consumed_at: now,
+      });
+      return { ok: true };
     }
 
     const rawToken = crypto.randomUUID();

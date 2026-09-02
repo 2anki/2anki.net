@@ -53,17 +53,24 @@ describe('InMemoryEmailChangeTokenRepository', () => {
     expect(pending).toBeNull();
   });
 
-  it('deletes only live pending rows for the owner', async () => {
+  it('expires only live pending rows and keeps them countable', async () => {
     const repo = new InMemoryEmailChangeTokenRepository();
     await repo.insert(seed());
     const consumed = await repo.insert({ ...seed(), token_hash: 'hash-2' });
     await repo.markConsumed(Number(consumed.id));
 
-    const deleted = await repo.deleteLivePendingByUser(Number(userId));
+    const now = new Date();
+    const expired = await repo.expireLivePendingByUser(Number(userId), now);
 
-    expect(deleted).toBe(1);
-    expect(await repo.findByTokenHash('hash-1')).toBeNull();
-    expect(await repo.findByTokenHash('hash-2')).not.toBeNull();
+    expect(expired).toBe(1);
+    expect(await repo.findLivePendingByUser(Number(userId), now)).toBeNull();
+    expect(await repo.findByTokenHash('hash-1')).not.toBeNull();
+    expect(
+      await repo.countRecentByUser(
+        Number(userId),
+        new Date(now.getTime() - 60_000)
+      )
+    ).toBe(2);
   });
 
   it('counts only rows created since the cutoff', async () => {

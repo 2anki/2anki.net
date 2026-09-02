@@ -365,7 +365,8 @@ class UsersRepository {
           nextEmail
         );
         await trx('email_change_tokens')
-          .where({ id: params.tokenId })
+          .where({ user_id: params.userId })
+          .whereNull('consumed_at')
           .update({ consumed_at: trx.fn.now() });
       });
     } catch (error) {

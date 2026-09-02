@@ -492,7 +492,6 @@ class UsersController {
       | 'same_as_current'
       | 'wrong_password'
       | 'set_password_first'
-      | 'email_taken'
       | 'rate_limited'
   ) {
     switch (reason) {
@@ -511,10 +510,6 @@ class UsersController {
           reason: 'set_password_first',
           message: 'Set a password first, then change your email from here.',
         });
-      case 'email_taken':
-        return res
-          .status(409)
-          .json({ message: 'That email is already in use.' });
       case 'rate_limited':
         return res
           .status(429)
@@ -561,7 +556,7 @@ class UsersController {
     }
     const removed = await new EmailChangeTokenRepository(
       this.db
-    ).deleteLivePendingByUser(Number(owner));
+    ).expireLivePendingByUser(Number(owner), new Date());
     return res.status(200).json({ cancelled: removed > 0 });
   }
 

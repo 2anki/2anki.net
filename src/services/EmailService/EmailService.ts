@@ -647,7 +647,7 @@ export class EmailService implements IEmailService {
       replyTo: 'support@2anki.net',
     };
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.emailChangeConfirmation);
     } catch (error) {
       console.error('Failed to send email change confirmation email:', error);
       throw error;
@@ -671,7 +671,7 @@ export class EmailService implements IEmailService {
       replyTo: 'support@2anki.net',
     };
     try {
-      await this.deliver(msg);
+      await this.deliver(msg, EMAIL_CATEGORIES.emailChangeNotification);
     } catch (error) {
       console.error('Failed to send email change notification email:', error);
       throw error;
