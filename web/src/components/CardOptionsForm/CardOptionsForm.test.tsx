@@ -802,6 +802,21 @@ describe('CardOptionsForm user instructions disclosure', () => {
     });
     expect(summary.closest('details')).not.toHaveAttribute('open');
   });
+
+  it('opens the box when the pdf-ai anchor is reached on an already-mounted form', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+    const summary = await screen.findByText(/instructions/i, {
+      selector: 'summary',
+    });
+    expect(summary.closest('details')).not.toHaveAttribute('open');
+
+    window.location.hash = '#pdf-ai';
+    fireEvent(window, new Event('hashchange'));
+
+    await waitFor(() => {
+      expect(summary.closest('details')).toHaveAttribute('open');
+    });
+  });
 });
 
 describe('CardOptionsForm card style picker', () => {

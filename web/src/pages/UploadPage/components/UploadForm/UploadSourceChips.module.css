@@ -39,42 +39,11 @@
 }
 
 .chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    box-shadow var(--transition-fast);
-}
-
-.chip:hover:not(:disabled) {
-  border-color: var(--color-text-tertiary);
-  background: var(--color-bg-secondary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.chip:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
-}
-
-.chip:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  composes: toggleChip from '../../../../styles/shared.module.css';
 }
 
 .chipActive {
-  border-color: var(--color-primary);
-  background: var(--color-primary-light);
+  composes: toggleChipActive from '../../../../styles/shared.module.css';
 }
 
 .dropboxIcon,
