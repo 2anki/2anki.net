@@ -34,6 +34,10 @@ interface CacheEntry {
 
 export class PricingService {
   private readonly cache = new Map<PassPriceKind, CacheEntry>();
+  private readonly inFlight = new Map<
+    PassPriceKind,
+    Promise<ResolvedPassPrice | null>
+  >();
   private readonly lastKnownGood = new Map<PassPriceKind, ResolvedPassPrice>();
 
   constructor(private readonly stripe: Pick<StripeTypes, 'prices'>) {}
@@ -44,7 +48,19 @@ export class PricingService {
       return cached.record;
     }
 
-    const fresh = await this.resolveFromStripe(kind);
+    const pending = this.inFlight.get(kind);
+    if (pending != null) {
+      const shared = await pending;
+      if (shared != null) {
+        return shared;
+      }
+      return this.fallback(kind);
+    }
+    const request = this.resolveFromStripe(kind).finally(() => {
+      this.inFlight.delete(kind);
+    });
+    this.inFlight.set(kind, request);
+    const fresh = await request;
     if (fresh != null) {
       this.cache.set(kind, {
         record: fresh,

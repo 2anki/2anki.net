@@ -191,4 +191,19 @@ describe('PricingService', () => {
       'price_120d',
     ]);
   });
+
+  it('coalesces concurrent cold-cache resolutions into one Stripe call', async () => {
+    const search = jest.fn().mockResolvedValue({
+      data: [price({ id: 'price_24h_coalesced' })],
+    });
+    const service = new PricingService(makeStripe(search));
+    const [a, b, c] = await Promise.all([
+      service.resolve('24h'),
+      service.resolve('24h'),
+      service.resolve('24h'),
+    ]);
+    expect(search).toHaveBeenCalledTimes(1);
+    expect(a.priceId).toBe(b.priceId);
+    expect(b.priceId).toBe(c.priceId);
+  });
 });
