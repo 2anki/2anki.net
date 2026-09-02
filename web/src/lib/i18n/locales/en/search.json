@@ -10,7 +10,7 @@
     "title": "You've used all {{limit}} cards this month",
     "body": "{{used}} / {{limit}} cards · resets {{resetsOn}}, when your free cards come back",
     "startingCheckout": "Starting checkout",
-    "getDayPass": "Get Day Pass — $4",
+    "getDayPass": "Get Day Pass — $6",
     "seePlans": "See plans"
   },
   "connect": {

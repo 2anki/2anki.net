@@ -120,10 +120,10 @@ describe('ConversionResult — paywalled variant', () => {
   it('leads with the Day Pass as the primary CTA, then Week Pass, then Unlimited', () => {
     renderPaywall();
     expect(
-      screen.getByRole('button', { name: 'Get Day Pass — $4' })
+      screen.getByRole('button', { name: 'Get Day Pass — $6' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Get Week Pass — $9' })
+      screen.getByRole('button', { name: 'Get Week Pass — $12' })
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Upgrade to Unlimited' })
@@ -133,7 +133,7 @@ describe('ConversionResult — paywalled variant', () => {
   it('fires paywall_pass_clicked with plan=day and starts the 24h checkout', async () => {
     mockStartPassCheckout.mockResolvedValue({ status: 'error' });
     renderPaywall();
-    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass — $4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass — $6' }));
     await waitFor(() => {
       expect(mockTrack).toHaveBeenCalledWith('paywall_pass_clicked', {
         surface: 'downloads-limit',
@@ -150,7 +150,9 @@ describe('ConversionResult — paywalled variant', () => {
   it('fires paywall_pass_clicked with plan=week and starts the 7d checkout', async () => {
     mockStartPassCheckout.mockResolvedValue({ status: 'error' });
     renderPaywall();
-    fireEvent.click(screen.getByRole('button', { name: 'Get Week Pass — $9' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Week Pass — $12' })
+    );
     await waitFor(() => {
       expect(mockTrack).toHaveBeenCalledWith('paywall_pass_clicked', {
         surface: 'downloads-limit',

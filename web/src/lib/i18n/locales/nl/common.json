@@ -352,7 +352,7 @@
     "tryFree": "Zet gratis een deck om",
     "socialProof": "Vertrouwd door 15.000+ lerenden wereldwijd",
     "payOnceSection": "Betaal eenmalig — geen abonnement",
-    "monthlySection": "Maandabonnementen",
+    "monthlySection": "Liever een abonnement?",
     "pricesNote": "Prijzen in USD. Je kaart wordt bij het afrekenen in je lokale valuta belast.",
     "reassuranceCancel": "Altijd opzegbaar — met één klik",
     "reassuranceOwn": "Je decks zijn van jou — native .apkg, werkt in elke Anki-client",
@@ -368,17 +368,20 @@
       "nativeApkg": "Native .apkg — werkt in elke Anki-client",
       "imageOcclusion": "Onbeperkte image occlusion",
       "mostPopular": "Meest gekozen",
-      "payOnce": "Betaal eenmalig",
       "day24": "— 24 uur",
       "week1": "— 1 week",
       "redirecting": "Doorsturen…",
       "getDayPass": "Day Pass kopen",
       "getWeekPass": "Week Pass kopen",
       "semester4mo": "— 4 maanden",
-      "getSemesterPass": "Semester Pass kopen"
+      "getSemesterPass": "Semester Pass kopen",
+      "bestValue": "Beste waarde",
+      "horizonDay": "Eén studiedag",
+      "horizonWeek": "Eén tentamenweek",
+      "horizonSemester": "Een heel semester",
+      "semesterPerWeek": "≈$2/week — 85% minder dan de Week Pass"
     },
     "unlimited": {
-      "mostPopular": "Meest gekozen",
       "perMonth": "/ mnd",
       "yearlyHint": "{{annualTotal}} vandaag afgeschreven, daarna jaarlijks · bespaar {{savings}}%",
       "monthlyHint": "{{monthlyTotal}} vandaag afgeschreven, daarna maandelijks",
@@ -399,7 +402,8 @@
       "getUnlimitedMonthly": "Unlimited kopen — maandelijkse facturering",
       "termsYearly": "{{annualTotal}} vandaag afgeschreven, wordt jaarlijks verlengd. Altijd opzegbaar — je houdt toegang gedurende het jaar waarvoor je betaalde.",
       "termsMonthly": "{{monthlyTotal}} vandaag afgeschreven, wordt maandelijks verlengd. Altijd opzegbaar.",
-      "checkoutError": "Kon het afrekenen niet starten. Probeer het opnieuw, of mail support@2anki.net."
+      "checkoutError": "Kon het afrekenen niet starten. Probeer het opnieuw, of mail support@2anki.net.",
+      "pauseReassurance": "Altijd opzegbaar — of pauzeer tussen semesters, geen kosten zolang je weg bent."
     },
     "card": {
       "howSyncWorks": "Hoe sync werkt"

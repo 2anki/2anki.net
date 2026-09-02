@@ -153,7 +153,7 @@ export function ComparisonTable({
     return value;
   };
 
-  const planPrices = ['$0', '$4 / $9', `${unlimitedMonthlyPrice} / mo`];
+  const planPrices = ['$0', '$6 / $12', `${unlimitedMonthlyPrice} / mo`];
 
   return (
     <section className={styles.section} aria-labelledby="comparison-heading">

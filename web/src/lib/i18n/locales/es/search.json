@@ -10,7 +10,7 @@
     "title": "Has usado las {{limit}} tarjetas de este mes",
     "body": "{{used}} / {{limit}} tarjetas · se reinicia el {{resetsOn}}, cuando vuelven tus tarjetas gratis",
     "startingCheckout": "Abriendo el pago",
-    "getDayPass": "Consigue el Day Pass — $4",
+    "getDayPass": "Consigue el Day Pass — $6",
     "seePlans": "Ver planes"
   },
   "connect": {

@@ -10,7 +10,7 @@
     "title": "Je hebt alle {{limit}} kaarten deze maand gebruikt",
     "body": "{{used}} / {{limit}} kaarten · vernieuwt {{resetsOn}}, wanneer je gratis kaarten terugkomen",
     "startingCheckout": "Afrekenen starten",
-    "getDayPass": "Day Pass kopen — $4",
+    "getDayPass": "Day Pass kopen — $6",
     "seePlans": "Bekijk abonnementen"
   },
   "connect": {

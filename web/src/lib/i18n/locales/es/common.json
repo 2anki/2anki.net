@@ -352,7 +352,7 @@
     "tryFree": "Convierte un mazo gratis",
     "socialProof": "La confianza de más de 15 000 estudiantes en todo el mundo",
     "payOnceSection": "Paga una vez — sin suscripción",
-    "monthlySection": "Planes mensuales",
+    "monthlySection": "¿Prefieres una suscripción?",
     "pricesNote": "Precios en USD. Se cobra en tu moneda local al pagar.",
     "reassuranceCancel": "Cancela cuando quieras — con un clic",
     "reassuranceOwn": "Tus mazos son tuyos — .apkg nativo, funciona en cualquier cliente de Anki",
@@ -368,17 +368,20 @@
       "nativeApkg": ".apkg nativo — funciona en cualquier cliente de Anki",
       "imageOcclusion": "Oclusión de imágenes ilimitada",
       "mostPopular": "El más popular",
-      "payOnce": "Paga una vez",
       "day24": "— 24 horas",
       "week1": "— 1 semana",
       "redirecting": "Redirigiendo…",
       "getDayPass": "Consigue el Day Pass",
       "getWeekPass": "Consigue el Week Pass",
       "semester4mo": "— 4 meses",
-      "getSemesterPass": "Consigue el Semester Pass"
+      "getSemesterPass": "Consigue el Semester Pass",
+      "bestValue": "Mejor valor",
+      "horizonDay": "Un día de estudio",
+      "horizonWeek": "Una semana de exámenes",
+      "horizonSemester": "Un semestre completo",
+      "semesterPerWeek": "≈$2/semana — 85 % menos que el Week Pass"
     },
     "unlimited": {
-      "mostPopular": "El más popular",
       "perMonth": "/ mes",
       "yearlyHint": "{{annualTotal}} se cobra hoy, luego cada año · ahorra un {{savings}} %",
       "monthlyHint": "{{monthlyTotal}} se cobra hoy, luego cada mes",
@@ -399,7 +402,8 @@
       "getUnlimitedMonthly": "Consigue Unlimited — facturación mensual",
       "termsYearly": "{{annualTotal}} se cobra hoy, se renueva anualmente. Cancela cuando quieras — conservas el acceso durante el año que pagaste.",
       "termsMonthly": "{{monthlyTotal}} se cobra hoy, se renueva mensualmente. Cancela cuando quieras.",
-      "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo, o escribe a support@2anki.net."
+      "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo, o escribe a support@2anki.net.",
+      "pauseReassurance": "Cancela cuando quieras — o pausa entre semestres, sin cargos mientras no estás."
     },
     "card": {
       "howSyncWorks": "Cómo funciona la sincronización"

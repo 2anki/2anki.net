@@ -352,7 +352,7 @@
     "tryFree": "Converter um baralho grátis",
     "socialProof": "Confiado por mais de 15.000 estudantes no mundo todo",
     "payOnceSection": "Pague uma vez — sem assinatura",
-    "monthlySection": "Planos mensais",
+    "monthlySection": "Prefere uma assinatura?",
     "pricesNote": "Preços em USD. Seu cartão é cobrado na sua moeda local no checkout.",
     "reassuranceCancel": "Cancele quando quiser — em um clique",
     "reassuranceOwn": "Seus baralhos são seus — .apkg nativo, funciona em qualquer cliente Anki",
@@ -368,17 +368,20 @@
       "nativeApkg": ".apkg nativo — funciona em qualquer cliente Anki",
       "imageOcclusion": "Oclusão de imagem ilimitada",
       "mostPopular": "Mais popular",
-      "payOnce": "Pague uma vez",
       "day24": "— 24 horas",
       "week1": "— 1 semana",
       "redirecting": "Redirecionando…",
       "getDayPass": "Obter Day Pass",
       "getWeekPass": "Obter Week Pass",
       "semester4mo": "— 4 meses",
-      "getSemesterPass": "Obter Semester Pass"
+      "getSemesterPass": "Obter Semester Pass",
+      "bestValue": "Melhor valor",
+      "horizonDay": "Um dia de estudo",
+      "horizonWeek": "Uma semana de provas",
+      "horizonSemester": "Um semestre inteiro",
+      "semesterPerWeek": "≈$2/semana — 85% menos que o Week Pass"
     },
     "unlimited": {
-      "mostPopular": "Mais popular",
       "perMonth": "/ mês",
       "yearlyHint": "{{annualTotal}} cobrado hoje, depois anualmente · economize {{savings}}%",
       "monthlyHint": "{{monthlyTotal}} cobrado hoje, depois mensalmente",
@@ -399,7 +402,8 @@
       "getUnlimitedMonthly": "Obter Unlimited — cobrança mensal",
       "termsYearly": "{{annualTotal}} cobrado hoje, renova anualmente. Cancele quando quiser — o acesso continua até o fim do ano pago.",
       "termsMonthly": "{{monthlyTotal}} cobrado hoje, renova mensalmente. Cancele quando quiser.",
-      "checkoutError": "Não foi possível iniciar o checkout. Tente de novo, ou envie um e-mail para support@2anki.net."
+      "checkoutError": "Não foi possível iniciar o checkout. Tente de novo, ou envie um e-mail para support@2anki.net.",
+      "pauseReassurance": "Cancele quando quiser — ou pause entre semestres, sem cobrança enquanto estiver fora."
     },
     "card": {
       "howSyncWorks": "Como funciona a sincronização"

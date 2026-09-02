@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter } from 'react-router-dom';
@@ -42,14 +42,18 @@ describe('NotionLandingPage', () => {
     renderPage();
     expect(screen.getByText('Unlimited')).toBeInTheDocument();
     expect(screen.getByText('See pricing')).toBeInTheDocument();
-    expect(screen.queryByText('$6')).not.toBeInTheDocument();
+    const unlimitedCard = screen
+      .getByRole('heading', { name: 'Unlimited' })
+      .closest('div')?.parentElement;
+    if (unlimitedCard == null) throw new Error('Unlimited card not found');
+    expect(within(unlimitedCard).queryByText(/\$\d/)).toBeNull();
     expect(screen.getByText('Recommended')).toBeInTheDocument();
   });
 
   it('renders the Day Pass plan card as the secondary option', () => {
     renderPage();
     expect(screen.getByText('Day Pass')).toBeInTheDocument();
-    expect(screen.getByText('$4')).toBeInTheDocument();
+    expect(screen.getByText('$6')).toBeInTheDocument();
   });
 
   it('does not advertise the Auto Sync plan', () => {

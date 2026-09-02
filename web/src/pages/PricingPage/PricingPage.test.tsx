@@ -117,11 +117,12 @@ describe('PricingPage Unlimited benefits', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('features the Day Pass with the Most popular badge', () => {
+  it('features the Week Pass and marks the Semester Pass best value', () => {
     renderAt('/pricing');
     expect(screen.getByText('Most popular')).toBeInTheDocument();
+    expect(screen.getByText('Best value')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Get Day Pass' })
+      screen.getByRole('button', { name: 'Get Week Pass' })
     ).toBeInTheDocument();
   });
 });
@@ -182,15 +183,15 @@ describe('PricingPage layout', () => {
     expect(screen.getByText('Pay once — no subscription')).toBeInTheDocument();
   });
 
-  it('shows the Monthly plans section label', () => {
+  it('shows the subscription section label', () => {
     renderAt('/pricing');
-    expect(screen.getByText('Monthly plans')).toBeInTheDocument();
+    expect(screen.getByText('Prefer a subscription?')).toBeInTheDocument();
   });
 
   it('leads with the pay-once passes above the monthly plans', () => {
     renderAt('/pricing');
     const passLabel = screen.getByText('Pay once — no subscription');
-    const monthlyLabel = screen.getByText('Monthly plans');
+    const monthlyLabel = screen.getByText('Prefer a subscription?');
     expect(
       passLabel.compareDocumentPosition(monthlyLabel) &
         Node.DOCUMENT_POSITION_FOLLOWING
@@ -200,7 +201,7 @@ describe('PricingPage layout', () => {
   it('leads with the monthly plans when the variant is unlimited-first', () => {
     mockPricingVariant.current = 'unlimited-first';
     renderAt('/pricing');
-    const monthlyLabel = screen.getByText('Monthly plans');
+    const monthlyLabel = screen.getByText('Prefer a subscription?');
     const passLabel = screen.getByText('Pay once — no subscription');
     expect(
       monthlyLabel.compareDocumentPosition(passLabel) &

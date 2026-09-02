@@ -69,7 +69,7 @@ describe('UpsellCard', () => {
     mockUseUserLocals.mockReturnValue(freeUser);
     renderCard(<UpsellCard surface="downloads_upsell" />);
     expect(
-      screen.getByRole('button', { name: 'Get Day Pass — $4' })
+      screen.getByRole('button', { name: 'Get Day Pass — $6' })
     ).toBeInTheDocument();
     const plans = screen.getByRole('link', { name: 'See plans' });
     expect(plans).toHaveAttribute('href', '/pricing');

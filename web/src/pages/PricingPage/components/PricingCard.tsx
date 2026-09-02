@@ -12,6 +12,8 @@ interface PricingCardProp {
   title: string;
   badge?: string;
   badgeMuted?: boolean;
+  horizonCaption?: string;
+  valueCaption?: string;
   benefits: string[];
   link?: string;
   linkText?: string;
@@ -54,6 +56,8 @@ export function PricingCard({
   title,
   badge,
   badgeMuted,
+  horizonCaption,
+  valueCaption,
   benefits,
   linkText,
   link,
@@ -103,6 +107,12 @@ export function PricingCard({
       <div className={styles.cardHeader}>
         <h3 className={styles.cardTitle}>{title}</h3>
         {priceNode}
+        {horizonCaption != null && (
+          <p className={styles.priceCaption}>{horizonCaption}</p>
+        )}
+        {valueCaption != null && (
+          <p className={styles.priceCaption}>{valueCaption}</p>
+        )}
       </div>
       <div className={styles.cardBody}>
         {benefits.map((benefit) => (

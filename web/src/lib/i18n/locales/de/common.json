@@ -352,7 +352,7 @@
     "tryFree": "Kostenlos einen Stapel konvertieren",
     "socialProof": "Von über 15 000 Lernenden weltweit genutzt",
     "payOnceSection": "Einmal zahlen — kein Abo",
-    "monthlySection": "Monatliche Tarife",
+    "monthlySection": "Lieber ein Abo?",
     "pricesNote": "Preise in USD. Deine Karte wird beim Checkout in deiner lokalen Währung belastet.",
     "reassuranceCancel": "Jederzeit kündbar — ein Klick",
     "reassuranceOwn": "Deine Stapel gehören dir — natives .apkg, funktioniert in jedem Anki-Client",
@@ -368,17 +368,20 @@
       "nativeApkg": "Natives .apkg — funktioniert in jedem Anki-Client",
       "imageOcclusion": "Unbegrenzte Bildverdeckung",
       "mostPopular": "Am beliebtesten",
-      "payOnce": "Einmal zahlen",
       "day24": "— 24 Stunden",
       "week1": "— 1 Woche",
       "redirecting": "Weiterleitung…",
       "getDayPass": "Day Pass holen",
       "getWeekPass": "Week Pass holen",
       "semester4mo": "— 4 Monate",
-      "getSemesterPass": "Semester Pass holen"
+      "getSemesterPass": "Semester Pass holen",
+      "bestValue": "Bester Wert",
+      "horizonDay": "Ein Lerntag",
+      "horizonWeek": "Eine Prüfungswoche",
+      "horizonSemester": "Ein ganzes Semester",
+      "semesterPerWeek": "≈$2/Woche — 85 % weniger als der Week Pass"
     },
     "unlimited": {
-      "mostPopular": "Am beliebtesten",
       "perMonth": "/ Monat",
       "yearlyHint": "{{annualTotal}} heute fällig, dann jährlich · spare {{savings}} %",
       "monthlyHint": "{{monthlyTotal}} heute fällig, dann monatlich",
@@ -399,7 +402,8 @@
       "getUnlimitedMonthly": "Unlimited holen — monatliche Abrechnung",
       "termsYearly": "{{annualTotal}} heute fällig, verlängert sich jährlich. Jederzeit kündbar — der Zugang bleibt bis zum Ende des bezahlten Jahres.",
       "termsMonthly": "{{monthlyTotal}} heute fällig, verlängert sich monatlich. Jederzeit kündbar.",
-      "checkoutError": "Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net."
+      "checkoutError": "Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.",
+      "pauseReassurance": "Jederzeit kündbar — oder zwischen den Semestern pausieren, kostenlos während deiner Abwesenheit."
     },
     "card": {
       "howSyncWorks": "So funktioniert die Synchronisierung"
