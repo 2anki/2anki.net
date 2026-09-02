@@ -24,6 +24,7 @@ import { isZipContentFileSupported } from './isZipContentFileSupported';
 import {
   CrossFileDedupState,
   createCrossFileDedupState,
+  collectNewFingerprints,
 } from '../../lib/claude/ClaudeService';
 import { convertMindmapFileToApkg } from './ConvertMindmapFileUseCase';
 import {
@@ -147,6 +148,25 @@ export function shouldDedupeAcrossFiles(
     paying &&
     settings.claudeAIFlashcards &&
     countAiContentFiles(files, paying, settings) >= 2
+  );
+}
+
+// Cross-deck dedup (#4243) needs the accumulator whenever a signed-in paying
+// user runs the AI path over at least one content file — even a single file,
+// so it dedupes against their prior decks and records its own fingerprints for
+// next time. Anonymous or multi-file uploads still go through
+// shouldDedupeAcrossFiles for the same-upload backstop.
+export function shouldDedupeAcrossDecks(
+  paying: boolean,
+  settings: CardOption,
+  files: UploadedFile[],
+  userId: number | null
+): boolean {
+  return (
+    userId != null &&
+    paying &&
+    settings.claudeAIFlashcards &&
+    countAiContentFiles(files, paying, settings) >= 1
   );
 }
 
@@ -285,7 +305,11 @@ async function processFile(
 async function doGenerationWork(
   task: UploadGenerationTask,
   onProgress: (step: string) => void
-): Promise<{ packages: Package[]; warnings: string[] }> {
+): Promise<{
+  packages: Package[];
+  warnings: string[];
+  cardFingerprints?: string[];
+}> {
   const {
     paying,
     files,
@@ -294,14 +318,22 @@ async function doGenerationWork(
     enqueuedAt,
     userId,
     knownGuids,
+    existingCardFingerprints,
     requestId,
   } = task;
   let packages: Package[] = [];
   const warnings: string[] = [];
 
-  const crossFileDedup = shouldDedupeAcrossFiles(paying, settings, files)
-    ? createCrossFileDedupState()
-    : undefined;
+  const dedupeAcrossDecks = shouldDedupeAcrossDecks(
+    paying,
+    settings,
+    files,
+    userId
+  );
+  const crossFileDedup =
+    shouldDedupeAcrossFiles(paying, settings, files) || dedupeAcrossDecks
+      ? createCrossFileDedupState(existingCardFingerprints ?? [])
+      : undefined;
 
   for (const file of files) {
     const fileContents = getFileContents(file, enqueuedAt);
@@ -321,7 +353,12 @@ async function doGenerationWork(
     warnings.push(...result.warnings);
   }
 
-  if (crossFileDedup && crossFileDedup.filesProcessed >= 2) {
+  const reportsCrossDeck =
+    crossFileDedup != null && crossFileDedup.historicalKeys.size > 0;
+  if (
+    crossFileDedup &&
+    (crossFileDedup.filesProcessed >= 2 || reportsCrossDeck)
+  ) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { track } = require('../../services/events/track');
     track('ai_conversion_completed', {
@@ -329,11 +366,18 @@ async function doGenerationWork(
       props: {
         source_file_count: crossFileDedup.filesProcessed,
         cross_file_duplicates_suppressed: crossFileDedup.suppressed,
+        cross_deck_duplicates_suppressed: crossFileDedup.crossDeckSuppressed,
+        historical_cards_considered: crossFileDedup.historicalKeys.size,
       },
     });
   }
 
-  return { packages, warnings };
+  const cardFingerprints =
+    dedupeAcrossDecks && crossFileDedup
+      ? collectNewFingerprints(crossFileDedup)
+      : undefined;
+
+  return { packages, warnings, cardFingerprints };
 }
 
 export async function runUploadGenerationInWorker(
@@ -343,8 +387,11 @@ export async function runUploadGenerationInWorker(
     task.progressPort?.postMessage(step);
   };
   try {
-    const { packages, warnings } = await doGenerationWork(task, onProgress);
-    return { ok: true, packages, warnings };
+    const { packages, warnings, cardFingerprints } = await doGenerationWork(
+      task,
+      onProgress
+    );
+    return { ok: true, packages, warnings, cardFingerprints };
   } catch (err) {
     return {
       ok: false,

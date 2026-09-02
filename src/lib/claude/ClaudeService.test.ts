@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,11 +14,13 @@ import {
   buildFieldMappingPromptFragment,
   dedupeIdenticalCards,
   cardDedupeKey,
+  cardFingerprint,
   collectExistingFronts,
   buildTopUpInstruction,
   sampleEvenly,
   createCrossFileDedupState,
   absorbFileIntoCrossFileDedup,
+  collectNewFingerprints,
   describeRepairFailure,
   generateDeckInfo,
   ClaudeParseError,
@@ -1374,6 +1377,91 @@ describe('cross-file dedup accumulator', () => {
     ]);
     expect(secondFile[0].cards).toHaveLength(1);
     expect(state.suppressed).toBe(0);
+  });
+});
+
+describe('cardFingerprint', () => {
+  it('is a stable sha256 hex of the normalized front+back key', () => {
+    const fp = cardFingerprint({ name: '  WHAT is  X? ', back: '<p>Y</p>' });
+    const expected = createHash('sha256')
+      .update(cardDedupeKey({ name: 'what is x?', back: 'y' }))
+      .digest('hex');
+    expect(fp).toBe(expected);
+    expect(fp).toHaveLength(64);
+  });
+
+  it('collides only for cards whose normalized front AND back match', () => {
+    const a = cardFingerprint({ name: 'Krebs cycle', back: 'produces ATP' });
+    const b = cardFingerprint({ name: 'Krebs', back: 'cycle produces ATP' });
+    expect(a).not.toBe(b);
+  });
+});
+
+describe('cross-deck dedup (historical seed)', () => {
+  const fp = (name: string, back: string) => cardFingerprint({ name, back });
+
+  it('suppresses a card whose fingerprint matches the seeded history', () => {
+    const state = createCrossFileDedupState([
+      fp('What is glycolysis?', 'Glucose breakdown'),
+    ]);
+    const kept = absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Transcript', [
+        { name: '  WHAT is  glycolysis? ', back: '<p>Glucose breakdown</p>' },
+        { name: 'What is the net ATP yield?', back: 'Two ATP' },
+      ]),
+    ]);
+    expect(kept[0].cards.map((c) => c.name)).toEqual([
+      'What is the net ATP yield?',
+    ]);
+    expect(state.crossDeckSuppressed).toBe(1);
+    expect(state.suppressed).toBe(0);
+  });
+
+  it('keeps everything and suppresses nothing when history is empty', () => {
+    const state = createCrossFileDedupState();
+    const kept = absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Chapter', [{ name: 'What is osmosis?', back: 'Diffusion' }]),
+    ]);
+    expect(kept[0].cards).toHaveLength(1);
+    expect(state.crossDeckSuppressed).toBe(0);
+    expect(state.historicalKeys.size).toBe(0);
+  });
+
+  it('counts an earlier-file match as cross-file, a history match as cross-deck', () => {
+    const state = createCrossFileDedupState([fp('Old fact', 'Old answer')]);
+    absorbFileIntoCrossFileDedup(state, [
+      makeDeck('A', [{ name: 'New fact', back: 'New answer' }]),
+    ]);
+    const second = absorbFileIntoCrossFileDedup(state, [
+      makeDeck('B', [
+        { name: 'New fact', back: 'New answer' },
+        { name: 'Old fact', back: 'Old answer' },
+      ]),
+    ]);
+    expect(second[0].cards).toHaveLength(0);
+    expect(state.suppressed).toBe(1);
+    expect(state.crossDeckSuppressed).toBe(1);
+  });
+
+  it('exposes the produced fingerprints, excluding seeded history', () => {
+    const state = createCrossFileDedupState([fp('Old fact', 'Old answer')]);
+    absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Chapter', [
+        { name: 'New fact', back: 'New answer' },
+        { name: 'Old fact', back: 'Old answer' },
+      ]),
+    ]);
+    expect(collectNewFingerprints(state)).toEqual([
+      fp('New fact', 'New answer'),
+    ]);
+  });
+
+  it('does not thread historical content into the prompt front list', () => {
+    const state = createCrossFileDedupState([fp('Secret prior fact', 'x')]);
+    absorbFileIntoCrossFileDedup(state, [
+      makeDeck('Chapter', [{ name: 'Visible fact', back: 'y' }]),
+    ]);
+    expect(state.fronts).toEqual(['Visible fact']);
   });
 });
 

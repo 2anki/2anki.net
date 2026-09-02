@@ -442,6 +442,14 @@ export function cardDedupeKey(card: Pick<CardInfo, 'name' | 'back'>): string {
   return `${normalizeCardText(card.name)}\0${normalizeCardText(card.back)}`;
 }
 
+// The persisted, content-independent identity of a card for cross-deck dedup.
+// Hashing cardDedupeKey lets the per-user history ledger store a fixed-width
+// surrogate instead of the user's normalized front+back text — same equality
+// semantics, no study content retained server-side, and a bounded column.
+export function cardFingerprint(card: Pick<CardInfo, 'name' | 'back'>): string {
+  return createHash('sha256').update(cardDedupeKey(card)).digest('hex');
+}
+
 // Keyed on front AND back, not front alone. A table with columns produces one
 // card per column from a single row, and those cards naturally share the row's
 // key term as their front — front-only dedup dropped every column after the
@@ -1226,21 +1234,39 @@ export function buildTopUpInstruction(
 export interface CrossFileDedupState {
   fronts: string[];
   seenKeys: Set<string>;
+  historicalKeys: Set<string>;
   filesProcessed: number;
   suppressed: number;
+  crossDeckSuppressed: number;
 }
 
-export function createCrossFileDedupState(): CrossFileDedupState {
-  return { fronts: [], seenKeys: new Set(), filesProcessed: 0, suppressed: 0 };
+// historicalFingerprints seeds seenKeys with the user's prior decks so the
+// backstop suppresses a fact the user already has in another deck (#4243).
+// They are hashes only, never fronts, so they never reach the prompt front
+// list and add no Claude tokens — cross-deck dedup happens entirely on our
+// side, after the model returns.
+export function createCrossFileDedupState(
+  historicalFingerprints: Iterable<string> = []
+): CrossFileDedupState {
+  const historicalKeys = new Set(historicalFingerprints);
+  return {
+    fronts: [],
+    seenKeys: new Set(historicalKeys),
+    historicalKeys,
+    filesProcessed: 0,
+    suppressed: 0,
+    crossDeckSuppressed: 0,
+  };
 }
 
-// Suppress only cards that matched an EARLIER file. Filtering against
-// state.seenKeys (frozen to prior files) rather than a set that grows within
-// this file preserves single-file semantics: dedupeIdenticalCards scopes
-// per-deck, so a card legitimately repeated across two sub-decks of the same
-// file survives, and cross_file_duplicates_suppressed counts only genuine
-// cross-file drops. This file's own keys are absorbed after filtering, so the
-// next file dedupes against them.
+// Suppress only cards that matched an EARLIER file or the user's seeded prior
+// decks. Filtering against state.seenKeys (frozen to prior files plus history)
+// rather than a set that grows within this file preserves single-file
+// semantics: dedupeIdenticalCards scopes per-deck, so a card legitimately
+// repeated across two sub-decks of the same file survives. A drop is counted
+// as cross-deck when the matched fingerprint came from the historical seed and
+// cross-file otherwise. This file's own keys are absorbed after filtering, so
+// the next file dedupes against them.
 export function absorbFileIntoCrossFileDedup(
   state: CrossFileDedupState,
   decks: DeckInfo[]
@@ -1249,9 +1275,13 @@ export function absorbFileIntoCrossFileDedup(
   const thisFileKeys = new Set<string>();
   const deduped = decks.map((deck) => {
     const cards = deck.cards.filter((card) => {
-      const key = cardDedupeKey(card);
+      const key = cardFingerprint(card);
       if (priorKeys.has(key)) {
-        state.suppressed += 1;
+        if (state.historicalKeys.has(key)) {
+          state.crossDeckSuppressed += 1;
+        } else {
+          state.suppressed += 1;
+        }
         return false;
       }
       thisFileKeys.add(key);
@@ -1263,6 +1293,16 @@ export function absorbFileIntoCrossFileDedup(
   state.fronts.push(...collectExistingFronts(deduped));
   state.filesProcessed += 1;
   return deduped;
+}
+
+// The fingerprints this run produced that the user's ledger did not already
+// hold — the rows to append so the next conversion dedupes against them.
+export function collectNewFingerprints(state: CrossFileDedupState): string[] {
+  const fresh: string[] = [];
+  for (const key of state.seenKeys) {
+    if (!state.historicalKeys.has(key)) fresh.push(key);
+  }
+  return fresh;
 }
 
 function stampChunkIndex(decks: DeckInfo[], chunkIndex: number): DeckInfo[] {

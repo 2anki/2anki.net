@@ -13,6 +13,7 @@ export interface UploadGenerationTask {
   enqueuedAt: number;
   userId: number | null;
   knownGuids?: KnownGuids;
+  existingCardFingerprints?: string[];
   requestId?: string;
   progressPort?: MessagePort;
 }
@@ -24,7 +25,12 @@ export interface UploadGenerationFailure {
 }
 
 export type UploadGenerationResult =
-  | { ok: true; packages: Package[]; warnings: string[] }
+  | {
+      ok: true;
+      packages: Package[];
+      warnings: string[];
+      cardFingerprints?: string[];
+    }
   | { ok: false; error: UploadGenerationFailure };
 
 export const UPLOAD_GENERATION_TASK = 'uploadGeneration';
