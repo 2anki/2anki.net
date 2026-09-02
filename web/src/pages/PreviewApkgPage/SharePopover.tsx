@@ -108,8 +108,8 @@ export function SharePopover({ uploadKey }: Readonly<SharePopoverProps>) {
         if (cancelled) return;
         if (existing == null) {
           return createDeckShare(uploadKey).then((result) => {
-            if (cancelled) return;
             track('share_link_created');
+            if (cancelled) return;
             setShare({
               token: result.token,
               upload_key: uploadKey,

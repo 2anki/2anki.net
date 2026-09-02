@@ -88,9 +88,7 @@ describe('SharePopover', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Share' }));
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('dialog', { name: 'Share this deck' })
-      ).toBeInTheDocument();
+      expect(screen.getByDisplayValue(activeShare.url)).toBeInTheDocument();
     });
     expect(mockTrack).not.toHaveBeenCalledWith('share_link_created');
   });
