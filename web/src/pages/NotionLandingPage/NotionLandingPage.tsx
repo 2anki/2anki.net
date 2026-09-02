@@ -81,7 +81,7 @@ export function NotionLandingPage() {
           />
           <PricingCard
             title="Day Pass"
-            price="$4"
+            price="$6"
             priceSuffix={t('notionLanding.dayPassSuffix')}
             benefits={dayPassBenefits}
             link={DAY_PASS_HREF}

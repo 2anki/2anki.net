@@ -352,7 +352,7 @@
     "tryFree": "Convertir un paquet gratuitement",
     "socialProof": "Adopté par plus de 15 000 apprenants dans le monde",
     "payOnceSection": "Paie une seule fois — sans abonnement",
-    "monthlySection": "Offres mensuelles",
+    "monthlySection": "Tu préfères un abonnement ?",
     "pricesNote": "Prix en USD. Ta carte est débitée dans ta devise locale au moment du paiement.",
     "reassuranceCancel": "Annulable à tout moment — en un clic",
     "reassuranceOwn": "Tes paquets t'appartiennent — .apkg natif, fonctionne dans tous les clients Anki",
@@ -368,17 +368,20 @@
       "nativeApkg": ".apkg natif — fonctionne dans tous les clients Anki",
       "imageOcclusion": "Occlusion d'image illimitée",
       "mostPopular": "Le plus populaire",
-      "payOnce": "Paie une seule fois",
       "day24": "— 24 heures",
       "week1": "— 1 semaine",
       "redirecting": "Redirection…",
       "getDayPass": "Prendre un Day Pass",
       "getWeekPass": "Prendre un Week Pass",
       "semester4mo": "— 4 mois",
-      "getSemesterPass": "Prendre un Semester Pass"
+      "getSemesterPass": "Prendre un Semester Pass",
+      "bestValue": "Meilleure offre",
+      "horizonDay": "Une journée de révisions",
+      "horizonWeek": "Une semaine d'examens",
+      "horizonSemester": "Un semestre entier",
+      "semesterPerWeek": "≈$2/semaine — 85 % de moins que le Week Pass"
     },
     "unlimited": {
-      "mostPopular": "Le plus populaire",
       "perMonth": "/ mois",
       "yearlyHint": "{{annualTotal}} facturé aujourd'hui, puis chaque année · économise {{savings}} %",
       "monthlyHint": "{{monthlyTotal}} facturé aujourd'hui, puis chaque mois",
@@ -399,7 +402,8 @@
       "getUnlimitedMonthly": "Prendre Unlimited — facturation mensuelle",
       "termsYearly": "{{annualTotal}} facturé aujourd'hui, se renouvelle chaque année. Annulable à tout moment — l'accès est conservé jusqu'à la fin de l'année payée.",
       "termsMonthly": "{{monthlyTotal}} facturé aujourd'hui, se renouvelle chaque mois. Annulable à tout moment.",
-      "checkoutError": "Impossible de démarrer le paiement. Réessaie, ou écris à support@2anki.net."
+      "checkoutError": "Impossible de démarrer le paiement. Réessaie, ou écris à support@2anki.net.",
+      "pauseReassurance": "Annulable à tout moment — ou mets en pause entre les semestres, sans frais pendant ton absence."
     },
     "card": {
       "howSyncWorks": "Comment fonctionne la synchro"

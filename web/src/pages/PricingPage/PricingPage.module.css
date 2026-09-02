@@ -713,6 +713,10 @@
   line-height: 1.3;
 }
 
+.priceCaption {
+  composes: yearlyHint;
+}
+
 .cardTerms {
   font-family: var(--font-sans);
   font-size: var(--text-xs);

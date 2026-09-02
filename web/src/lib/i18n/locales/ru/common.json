@@ -358,7 +358,7 @@
     "tryFree": "Конвертировать колоду бесплатно",
     "socialProof": "Нам доверяют 15 000+ учащихся по всему миру",
     "payOnceSection": "Плати разово — без подписки",
-    "monthlySection": "Месячные планы",
+    "monthlySection": "Предпочитаете подписку?",
     "pricesNote": "Цены в долларах США. Твоя карта будет списана в местной валюте при оплате.",
     "reassuranceCancel": "Отмена в любой момент — в один клик",
     "reassuranceOwn": "Твои колоды принадлежат тебе — родной .apkg, работает в любом клиенте Anki",
@@ -374,17 +374,20 @@
       "nativeApkg": "Родной .apkg — работает в любом клиенте Anki",
       "imageOcclusion": "Безлимитное перекрытие изображений",
       "mostPopular": "Самый популярный",
-      "payOnce": "Плати разово",
       "day24": "— 24 часа",
       "week1": "— 1 неделя",
       "redirecting": "Перенаправляем…",
       "getDayPass": "Купить Day Pass",
       "getWeekPass": "Купить Week Pass",
       "semester4mo": "— 4 месяца",
-      "getSemesterPass": "Купить Semester Pass"
+      "getSemesterPass": "Купить Semester Pass",
+      "bestValue": "Выгоднее всего",
+      "horizonDay": "Один день учёбы",
+      "horizonWeek": "Одна неделя экзаменов",
+      "horizonSemester": "Целый семестр",
+      "semesterPerWeek": "≈$2/неделю — на 85% дешевле Week Pass"
     },
     "unlimited": {
-      "mostPopular": "Самый популярный",
       "perMonth": "/ мес",
       "yearlyHint": "{{annualTotal}} спишется сегодня, далее ежегодно · экономия {{savings}}%",
       "monthlyHint": "{{monthlyTotal}} спишется сегодня, далее ежемесячно",
@@ -405,7 +408,8 @@
       "getUnlimitedMonthly": "Купить Unlimited — помесячная оплата",
       "termsYearly": "{{annualTotal}} спишется сегодня, продлевается ежегодно. Отмена в любой момент — доступ сохраняется до конца оплаченного года.",
       "termsMonthly": "{{monthlyTotal}} спишется сегодня, продлевается ежемесячно. Отмена в любой момент.",
-      "checkoutError": "Не удалось открыть оплату. Попробуй ещё раз или напиши на support@2anki.net."
+      "checkoutError": "Не удалось открыть оплату. Попробуй ещё раз или напиши на support@2anki.net.",
+      "pauseReassurance": "Отмена в любой момент — или пауза между семестрами без списаний, пока вас нет."
     },
     "card": {
       "howSyncWorks": "Как работает синхронизация"

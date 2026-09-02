@@ -352,7 +352,7 @@
     "tryFree": "Convert a deck free",
     "socialProof": "Trusted by 15,000+ learners worldwide",
     "payOnceSection": "Pay once — no subscription",
-    "monthlySection": "Monthly plans",
+    "monthlySection": "Prefer a subscription?",
     "pricesNote": "Prices in USD. Your card is charged in your local currency at checkout.",
     "reassuranceCancel": "Cancel anytime — one click",
     "reassuranceOwn": "Your decks are yours — native .apkg, works in any Anki client",
@@ -368,17 +368,20 @@
       "nativeApkg": "Native .apkg — works in any Anki client",
       "imageOcclusion": "Unlimited image occlusion",
       "mostPopular": "Most popular",
-      "payOnce": "Pay once",
       "day24": "— 24 hours",
       "week1": "— 1 week",
       "redirecting": "Redirecting…",
       "getDayPass": "Get Day Pass",
       "getWeekPass": "Get Week Pass",
       "semester4mo": "— 4 months",
-      "getSemesterPass": "Get Semester Pass"
+      "getSemesterPass": "Get Semester Pass",
+      "bestValue": "Best value",
+      "horizonDay": "One study day",
+      "horizonWeek": "One exam week",
+      "horizonSemester": "A full term",
+      "semesterPerWeek": "≈$2/week — 85% less than the Week Pass"
     },
     "unlimited": {
-      "mostPopular": "Most popular",
       "perMonth": "/ mo",
       "yearlyHint": "{{annualTotal}} billed today, then yearly · save {{savings}}%",
       "monthlyHint": "{{monthlyTotal}} billed today, then monthly",
@@ -399,7 +402,8 @@
       "getUnlimitedMonthly": "Get Unlimited — billed monthly",
       "termsYearly": "{{annualTotal}} billed today, renews yearly. Cancel anytime — keeps access through the year you paid for.",
       "termsMonthly": "{{monthlyTotal}} billed today, renews monthly. Cancel anytime.",
-      "checkoutError": "Couldn't start checkout. Try again, or email support@2anki.net."
+      "checkoutError": "Couldn't start checkout. Try again, or email support@2anki.net.",
+      "pauseReassurance": "Cancel anytime — or pause between terms, no charge while you're away."
     },
     "card": {
       "howSyncWorks": "How sync works"

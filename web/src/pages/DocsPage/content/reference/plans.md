@@ -7,23 +7,23 @@ Most people use Free or a monthly Subscription. But two short options exist for 
 
 For the full plan list and prices, see the [pricing page](/pricing).
 
-## Day Pass — $4
+## Day Pass — $6
 
 24 hours of Unlimited access, paid once.
 
 - **Length:** 24 hours from purchase.
-- **Cost:** $4, one-time.
+- **Cost:** $6, one-time.
 - **What you get:** Unlimited conversions, every upload format (`.zip`, `.html`, `.md`, `.csv`, `.apkg`), image occlusion, custom card templates.
 - **Where:** **Day Pass** on the [pricing page](/pricing).
 
 Use this when you have a weekend of cards to build and don't want a recurring charge.
 
-## Week Pass — $9
+## Week Pass — $12
 
 7 days of Unlimited access, paid once.
 
 - **Length:** 7 days from purchase.
-- **Cost:** $9, one-time.
+- **Cost:** $12, one-time.
 - **What you get:** same feature set as the Day Pass.
 - **Where:** **Week Pass** on the [pricing page](/pricing).
 
@@ -33,7 +33,7 @@ Use this when you have a week to prep for an exam or a sprint to digitize a stac
 
 |                                                     | Free    | Day Pass  | Week Pass | Unlimited (sub)        |
 | --------------------------------------------------- | ------- | --------- | --------- | ---------------------- |
-| Cost                                                | $0      | $4        | $9        | $7.99 / mo or $64 / yr |
+| Cost                                                | $0      | $6        | $12       | $7.99 / mo or $64 / yr |
 | Length                                              | forever | 24 h      | 7 days    | until cancelled        |
 | Cards per month                                     | 100     | unlimited | unlimited | unlimited              |
 | PDF support                                         | —       | ✓         | ✓         | ✓                      |

@@ -85,7 +85,7 @@ function renderHeroAction({
         {' — '}
         <a href="/pricing">
           {t('hero.getDayPass', {
-            defaultValue: 'get a Day Pass for $4',
+            defaultValue: 'get a Day Pass for $6',
           })}
         </a>
       </p>

@@ -737,10 +737,10 @@ describe('DownloadsPage monthly limit panel', () => {
   it('leads the panel with the Day Pass primary CTA', () => {
     renderAt('/downloads');
     expect(
-      screen.getByRole('button', { name: 'Get Day Pass — $4' })
+      screen.getByRole('button', { name: 'Get Day Pass — $6' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Get Week Pass — $9' })
+      screen.getByRole('button', { name: 'Get Week Pass — $12' })
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Upgrade to Unlimited' })

@@ -1,8 +1,15 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PassCards } from './PassCards';
 
 type Overrides = Partial<Parameters<typeof PassCards>[0]>;
+
+function cardByTitle(title: string): HTMLElement {
+  const heading = screen.getByRole('heading', { name: title });
+  const card = heading.closest('div')?.parentElement;
+  if (card == null) throw new Error(`card for ${title} not found`);
+  return card;
+}
 
 function renderPassCards(overrides: Overrides = {}) {
   const props = {
@@ -89,14 +96,55 @@ describe('PassCards', () => {
 
   it('renders correct pricing for each pass', () => {
     renderPassCards();
-    expect(screen.getByText('$4')).toBeInTheDocument();
-    expect(screen.getByText('$9')).toBeInTheDocument();
+    expect(screen.getByText('$6')).toBeInTheDocument();
+    expect(screen.getByText('$12')).toBeInTheDocument();
     expect(screen.getByText('$29')).toBeInTheDocument();
   });
 
-  it('features the Day Pass as Most popular without overclaiming', () => {
-    renderPassCards({ featureDayPass: true });
-    expect(screen.getByText('Most popular')).toBeInTheDocument();
+  it('features the Day Pass as Most popular on the limit wall', () => {
+    renderPassCards({ featureDayPass: true, onSemesterPass: undefined });
+    expect(
+      within(cardByTitle('Day Pass')).getByText('Most popular')
+    ).toBeInTheDocument();
     expect(screen.queryByText('Best value')).not.toBeInTheDocument();
+  });
+
+  it('gives the Week Pass the primary treatment on the pricing page', () => {
+    renderPassCards({ featureDayPass: false });
+    expect(
+      within(cardByTitle('Week Pass')).getByText('Most popular')
+    ).toBeInTheDocument();
+    expect(
+      within(cardByTitle('Day Pass')).queryByText('Most popular')
+    ).toBeNull();
+  });
+
+  it('marks the Semester Pass as Best value and leaves the Day Pass unbadged', () => {
+    renderPassCards({ featureDayPass: false });
+    expect(
+      within(cardByTitle('Semester Pass')).getByText('Best value')
+    ).toBeInTheDocument();
+    expect(
+      within(cardByTitle('Day Pass')).queryByText('Best value')
+    ).toBeNull();
+    expect(
+      within(cardByTitle('Day Pass')).queryByText('Most popular')
+    ).toBeNull();
+  });
+
+  it('captions each pass with its study horizon on the pricing page', () => {
+    renderPassCards({ featureDayPass: false });
+    expect(screen.getByText('One study day')).toBeInTheDocument();
+    expect(screen.getByText('One exam week')).toBeInTheDocument();
+    expect(screen.getByText('A full term')).toBeInTheDocument();
+  });
+
+  it('shows the per-week value line under the Semester Pass', () => {
+    renderPassCards({ featureDayPass: false });
+    expect(
+      within(cardByTitle('Semester Pass')).getByText(
+        '≈$2/week — 85% less than the Week Pass'
+      )
+    ).toBeInTheDocument();
   });
 });

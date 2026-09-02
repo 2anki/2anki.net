@@ -349,7 +349,7 @@
     "tryFree": "デッキを無料で変換",
     "socialProof": "世界中の 15,000 人以上の学習者に利用されています",
     "payOnceSection": "一度だけのお支払い — サブスクリプションなし",
-    "monthlySection": "月額プラン",
+    "monthlySection": "サブスクリプションがお好みですか？",
     "pricesNote": "価格は米ドル表示です。チェックアウト時にお使いの地域通貨で請求されます。",
     "reassuranceCancel": "いつでも解約 — ワンクリック",
     "reassuranceOwn": "デッキはあなたのもの — ネイティブ .apkg で、どの Anki クライアントでも使えます",
@@ -365,17 +365,20 @@
       "nativeApkg": "ネイティブ .apkg — どの Anki クライアントでも使えます",
       "imageOcclusion": "無制限の画像で隠す問題",
       "mostPopular": "一番人気",
-      "payOnce": "一度だけのお支払い",
       "day24": "— 24 時間",
       "week1": "— 1 週間",
       "redirecting": "リダイレクト中…",
       "getDayPass": "Get Day Pass",
       "getWeekPass": "Get Week Pass",
       "semester4mo": "— 4 か月",
-      "getSemesterPass": "Get Semester Pass"
+      "getSemesterPass": "Get Semester Pass",
+      "bestValue": "一番お得",
+      "horizonDay": "学習1日分",
+      "horizonWeek": "試験1週間分",
+      "horizonSemester": "1学期まるごと",
+      "semesterPerWeek": "≈$2/週 — Week Pass より85%安い"
     },
     "unlimited": {
-      "mostPopular": "一番人気",
       "perMonth": "/ 月",
       "yearlyHint": "本日 {{annualTotal}} を請求、以降は年払い · {{savings}}% お得",
       "monthlyHint": "本日 {{monthlyTotal}} を請求、以降は月払い",
@@ -396,7 +399,8 @@
       "getUnlimitedMonthly": "Get Unlimited — 月払い",
       "termsYearly": "本日 {{annualTotal}} を請求、毎年更新。いつでも解約可能 — お支払い済みの 1 年間はご利用いただけます。",
       "termsMonthly": "本日 {{monthlyTotal}} を請求、毎月更新。いつでも解約可能。",
-      "checkoutError": "チェックアウトを開始できませんでした。もう一度お試しいただくか、support@2anki.net までご連絡ください。"
+      "checkoutError": "チェックアウトを開始できませんでした。もう一度お試しいただくか、support@2anki.net までご連絡ください。",
+      "pauseReassurance": "いつでも解約可能 — 学期の合間は一時停止でき、その間は料金がかかりません。"
     },
     "card": {
       "howSyncWorks": "同期の仕組み"

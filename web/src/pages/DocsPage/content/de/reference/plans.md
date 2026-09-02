@@ -7,23 +7,23 @@ Die meisten nutzen Free oder ein monatliches Subscription. Aber zwei kurze Optio
 
 Für die vollständige Planliste und Preise siehe die [Preisseite](/pricing).
 
-## Day Pass — $4
+## Day Pass — $6
 
 24 Stunden Unlimited-Zugang, einmalig bezahlt.
 
 - **Dauer:** 24 Stunden ab Kauf.
-- **Kosten:** $4, einmalig.
+- **Kosten:** $6, einmalig.
 - **Was du bekommst:** Unbegrenzte Konvertierungen, jedes Upload-Format (`.zip`, `.html`, `.md`, `.csv`, `.apkg`), Image Occlusion, eigene Kartenvorlagen.
 - **Wo:** **Day Pass** auf der [Preisseite](/pricing).
 
 Nutze das, wenn du ein Wochenende voller Karten zu bauen hast und keine wiederkehrende Belastung willst.
 
-## Week Pass — $9
+## Week Pass — $12
 
 7 Tage Unlimited-Zugang, einmalig bezahlt.
 
 - **Dauer:** 7 Tage ab Kauf.
-- **Kosten:** $9, einmalig.
+- **Kosten:** $12, einmalig.
 - **Was du bekommst:** derselbe Funktionsumfang wie der Day Pass.
 - **Wo:** **Week Pass** auf der [Preisseite](/pricing).
 
@@ -33,7 +33,7 @@ Nutze das, wenn du eine Woche hast, um dich auf eine Prüfung vorzubereiten, ode
 
 |                                                       | Free      | Day Pass   | Week Pass  | Unlimited (Abo) |
 | ----------------------------------------------------- | --------- | ---------- | ---------- | --------------- |
-| Kosten                                                | $0        | $4         | $9         | $6 / Mon.       |
+| Kosten                                                | $0        | $6         | $12        | $6 / Mon.       |
 | Dauer                                                 | für immer | 24 h       | 7 Tage     | bis gekündigt   |
 | Karten pro Monat                                      | 100       | unbegrenzt | unbegrenzt | unbegrenzt      |
 | PDF-Unterstützung                                     | —         | ✓          | ✓          | ✓               |

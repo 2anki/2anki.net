@@ -82,9 +82,6 @@ export function UnlimitedCard({
 
   return (
     <div className={`${styles.card} ${styles.cardPro}`}>
-      <span className={styles.cardBadge}>
-        {t('pricing.unlimited.mostPopular')}
-      </span>
       <div className={styles.cardHeader}>
         <h3 className={styles.cardTitle}>Unlimited</h3>
         <span className={styles.cardPriceLine}>
@@ -161,6 +158,9 @@ export function UnlimitedCard({
         ) : (
           <p className={styles.cardTerms}>{terms}</p>
         )}
+        <p className={styles.cardCaption}>
+          {t('pricing.unlimited.pauseReassurance')}
+        </p>
       </div>
     </div>
   );

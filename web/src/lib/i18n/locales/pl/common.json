@@ -358,7 +358,7 @@
     "tryFree": "Przekonwertuj talię za darmo",
     "socialProof": "Zaufało nam ponad 15 000 uczących się na całym świecie",
     "payOnceSection": "Zapłać raz — bez subskrypcji",
-    "monthlySection": "Plany miesięczne",
+    "monthlySection": "Wolisz subskrypcję?",
     "pricesNote": "Ceny w USD. Twoja karta zostanie obciążona w Twojej walucie lokalnej przy płatności.",
     "reassuranceCancel": "Anuluj w każdej chwili — jednym kliknięciem",
     "reassuranceOwn": "Twoje talie należą do Ciebie — natywny .apkg, działa w każdym kliencie Anki",
@@ -374,17 +374,20 @@
       "nativeApkg": "Natywny .apkg — działa w każdym kliencie Anki",
       "imageOcclusion": "Nieograniczone zasłanianie obrazu",
       "mostPopular": "Najpopularniejszy",
-      "payOnce": "Zapłać raz",
       "day24": "— 24 godziny",
       "week1": "— 1 tydzień",
       "redirecting": "Przekierowywanie…",
       "getDayPass": "Kup Day Pass",
       "getWeekPass": "Kup Week Pass",
       "semester4mo": "— 4 miesiące",
-      "getSemesterPass": "Kup Semester Pass"
+      "getSemesterPass": "Kup Semester Pass",
+      "bestValue": "Najlepsza oferta",
+      "horizonDay": "Jeden dzień nauki",
+      "horizonWeek": "Jeden tydzień egzaminów",
+      "horizonSemester": "Cały semestr",
+      "semesterPerWeek": "≈$2/tydzień — 85% taniej niż Week Pass"
     },
     "unlimited": {
-      "mostPopular": "Najpopularniejszy",
       "perMonth": "/ mies.",
       "yearlyHint": "{{annualTotal}} pobierane dziś, potem co roku · oszczędzasz {{savings}}%",
       "monthlyHint": "{{monthlyTotal}} pobierane dziś, potem co miesiąc",
@@ -405,7 +408,8 @@
       "getUnlimitedMonthly": "Kup Unlimited — płatność miesięczna",
       "termsYearly": "{{annualTotal}} pobierane dziś, odnawia się co roku. Anuluj w każdej chwili — zachowujesz dostęp przez opłacony rok.",
       "termsMonthly": "{{monthlyTotal}} pobierane dziś, odnawia się co miesiąc. Anuluj w każdej chwili.",
-      "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie albo napisz na support@2anki.net."
+      "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie albo napisz na support@2anki.net.",
+      "pauseReassurance": "Anuluj w każdej chwili — albo wstrzymaj między semestrami, bez opłat, gdy Cię nie ma."
     },
     "card": {
       "howSyncWorks": "Jak działa synchronizacja"

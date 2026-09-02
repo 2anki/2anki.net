@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
@@ -96,8 +96,12 @@ describe('LimitPage', () => {
 
   it('does not show a hardcoded Unlimited monthly price', () => {
     renderPage();
-    expect(screen.queryByText('$6')).toBeNull();
-    expect(screen.getByText('Upgrade to Unlimited')).toBeTruthy();
+    const unlimitedCard = screen
+      .getByText('Upgrade to Unlimited')
+      .closest('div');
+    if (unlimitedCard == null) throw new Error('Unlimited card not found');
+    expect(within(unlimitedCard).queryByText(/\$\d/)).toBeNull();
+    expect(screen.getByText('Upgrade to Unlimited')).toBeInTheDocument();
   });
 
   it('shows a back link to /upload', () => {

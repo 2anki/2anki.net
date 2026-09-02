@@ -37,13 +37,11 @@ export function PassCards({
     <div className={styles.passGrid}>
       <PricingCard
         title="Day Pass"
-        badge={
-          featureDayPass
-            ? t('pricing.pass.mostPopular')
-            : t('pricing.pass.payOnce')
+        badge={featureDayPass ? t('pricing.pass.mostPopular') : undefined}
+        horizonCaption={
+          featureDayPass ? undefined : t('pricing.pass.horizonDay')
         }
-        badgeMuted={!featureDayPass}
-        price="$4"
+        price={PASS_PRICES['24h']}
         priceSuffix={t('pricing.pass.day24')}
         benefits={benefits}
         onAction={onDayPass}
@@ -57,7 +55,11 @@ export function PassCards({
       />
       <PricingCard
         title="Week Pass"
-        price="$9"
+        badge={featureDayPass ? undefined : t('pricing.pass.mostPopular')}
+        horizonCaption={
+          featureDayPass ? undefined : t('pricing.pass.horizonWeek')
+        }
+        price={PASS_PRICES['7d']}
         priceSuffix={t('pricing.pass.week1')}
         benefits={benefits}
         onAction={onWeekPass}
@@ -67,10 +69,15 @@ export function PassCards({
             : t('pricing.pass.getWeekPass')
         }
         actionDisabled={weekPassPending}
+        className={featureDayPass ? undefined : styles.cardPro}
       />
       {onSemesterPass != null && (
         <PricingCard
           title="Semester Pass"
+          badge={t('pricing.pass.bestValue')}
+          badgeMuted
+          horizonCaption={t('pricing.pass.horizonSemester')}
+          valueCaption={t('pricing.pass.semesterPerWeek')}
           price={PASS_PRICES['120d']}
           priceSuffix={t('pricing.pass.semester4mo')}
           benefits={benefits}

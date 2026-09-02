@@ -10,7 +10,7 @@
     "title": "今月の {{limit}} 枚のカードをすべて使い切りました",
     "body": "{{used}} / {{limit}} 枚 · {{resetsOn}} に無料カードが戻ってリセットされます",
     "startingCheckout": "チェックアウトを開始しています",
-    "getDayPass": "Get Day Pass — $4",
+    "getDayPass": "Get Day Pass — $6",
     "seePlans": "プランを見る"
   },
   "connect": {
