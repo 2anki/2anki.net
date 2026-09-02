@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 global.IntersectionObserver = class IntersectionObserver {
   observe() {}
@@ -14,6 +14,11 @@ import * as sharedDeckLib from '../../lib/backend/getSharedDeck';
 vi.mock('../../lib/backend/getSharedDeck', () => ({
   getSharedDeckMeta: vi.fn(),
   getSharedDeckBatch: vi.fn(),
+}));
+
+const mockTrack = vi.fn();
+vi.mock('../../lib/analytics/track', () => ({
+  track: (...args: unknown[]) => mockTrack(...args),
 }));
 
 vi.mock('react-helmet-async', () => ({
@@ -44,6 +49,7 @@ function renderPage(token: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  globalThis.sessionStorage.clear();
 });
 
 describe('SharedDeckPage', () => {
@@ -106,5 +112,66 @@ describe('SharedDeckPage', () => {
     await screen.findByText('Download deck');
     const link = screen.getByRole('link', { name: 'Download deck' });
     expect(link).toHaveAttribute('href', '/api/shares/my-token/download');
+  });
+
+  it('tracks a single shared_deck_viewed when meta resolves', async () => {
+    vi.mocked(sharedDeckLib.getSharedDeckMeta).mockResolvedValue({
+      totalCards: 0,
+      decks: [],
+    });
+    vi.mocked(sharedDeckLib.getSharedDeckBatch).mockResolvedValue({
+      cards: [],
+      nextCursor: null,
+      total: 0,
+    });
+
+    renderPage('view-token');
+
+    await screen.findByText('Download deck');
+    await waitFor(() => {
+      expect(
+        mockTrack.mock.calls.filter(([name]) => name === 'shared_deck_viewed')
+      ).toHaveLength(1);
+    });
+  });
+
+  it('persists the shared-deck signup origin on mount', async () => {
+    vi.mocked(sharedDeckLib.getSharedDeckMeta).mockResolvedValue({
+      totalCards: 0,
+      decks: [],
+    });
+    vi.mocked(sharedDeckLib.getSharedDeckBatch).mockResolvedValue({
+      cards: [],
+      nextCursor: null,
+      total: 0,
+    });
+
+    renderPage('origin-token');
+
+    await screen.findByText('Download deck');
+    expect(globalThis.sessionStorage.getItem('signup_origin')).toBe(
+      '/shared-deck'
+    );
+  });
+
+  it('tracks download and convert clicks on the action row', async () => {
+    vi.mocked(sharedDeckLib.getSharedDeckMeta).mockResolvedValue({
+      totalCards: 0,
+      decks: [],
+    });
+    vi.mocked(sharedDeckLib.getSharedDeckBatch).mockResolvedValue({
+      cards: [],
+      nextCursor: null,
+      total: 0,
+    });
+
+    renderPage('click-token');
+
+    await screen.findByText('Download deck');
+    fireEvent.click(screen.getByRole('link', { name: 'Download deck' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Make your own deck' }));
+
+    expect(mockTrack).toHaveBeenCalledWith('shared_deck_downloaded');
+    expect(mockTrack).toHaveBeenCalledWith('shared_deck_convert_clicked');
   });
 });

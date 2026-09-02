@@ -5,6 +5,8 @@ import { SkeletonList } from '../../components/Skeleton/Skeleton';
 import { EmptyState } from '../../components/EmptyState/EmptyState';
 import { CardFrame } from '../PreviewApkgPage/CardFrame';
 import { useSharedDeckMeta, useSharedDeckStream } from './useSharedDeckStream';
+import { track } from '../../lib/analytics/track';
+import { persistSignupOrigin } from '../../lib/signupOrigin';
 import styles from './SharedDeckPage.module.css';
 
 function truncateDeckName(name: string): string {
@@ -35,9 +37,20 @@ function DeletedPage() {
 export default function SharedDeckPage() {
   const { token } = useParams<{ token: string }>();
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const viewTrackedRef = useRef(false);
 
   const meta = useSharedDeckMeta(token);
   const stream = useSharedDeckStream(token, null);
+
+  useEffect(() => {
+    persistSignupOrigin('/shared-deck', globalThis.sessionStorage ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (meta.data == null || viewTrackedRef.current) return;
+    viewTrackedRef.current = true;
+    track('shared_deck_viewed');
+  }, [meta.data]);
 
   const isRevoked =
     (meta.error?.message?.toLowerCase().includes('turned off') ||
@@ -149,10 +162,18 @@ export default function SharedDeckPage() {
 
       {downloadUrl != null && (
         <div className={styles.downloadRow}>
-          <a href={downloadUrl} className={styles.downloadButton}>
+          <a
+            href={downloadUrl}
+            className={styles.downloadButton}
+            onClick={() => track('shared_deck_downloaded')}
+          >
             Download deck
           </a>
-          <a href="/upload" className={styles.remixButton}>
+          <a
+            href="/upload"
+            className={styles.remixButton}
+            onClick={() => track('shared_deck_convert_clicked')}
+          >
             Make your own deck
           </a>
         </div>
