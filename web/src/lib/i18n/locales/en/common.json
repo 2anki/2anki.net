@@ -239,6 +239,7 @@
     "overSplit": "Many card fronts are just one or two words, which usually means the file split mid-sentence. Look over the deck before you study, or upload the original Word or Notion file for cleaner cards.",
     "validation": {
       "continue": "Convert anyway",
+      "pickDifferent": "Pick a different file",
       "markdown": {
         "title": "Notion Markdown drops your toggles",
         "body": "Notion's Markdown export leaves out toggle blocks — the part 2anki turns into cards — so this file may make few or no cards. Re-export as HTML: in Notion, open the page → ••• (top right) → Export → set Export format to HTML, then upload that. A plain Markdown file that isn't from Notion still works — cards come from bullet pairs."

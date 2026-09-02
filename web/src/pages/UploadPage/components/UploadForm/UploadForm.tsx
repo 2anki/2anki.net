@@ -24,7 +24,11 @@ import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
 import { useDrag } from '../../../../lib/hooks/useDrag';
 import { useUploadFormState } from './hooks/useUploadFormState';
-import { useFileValidation } from './hooks/useFileValidation';
+import {
+  useFileValidation,
+  trackValidationShown,
+  type FileValidationResult,
+} from './hooks/useFileValidation';
 import { useDropboxChooser, type DropboxFile } from './hooks/useDropboxChooser';
 import { useGooglePicker, type GoogleDriveFile } from './hooks/useGooglePicker';
 import { UploadSourceChips, type UploadSource } from './UploadSourceChips';
@@ -443,7 +447,13 @@ function UploadForm({
     }
   };
 
+  const zoneStateRef = useRef(zoneState);
+  useEffect(() => {
+    zoneStateRef.current = zoneState;
+  }, [zoneState]);
+
   const submitFiles = () => {
+    if (zoneStateRef.current === 'converting') return;
     convertRef.current?.click();
   };
 
@@ -455,6 +465,17 @@ function UploadForm({
       });
     }
   }, [isUploadLocked]);
+
+  const guardrailVisible =
+    validation != null && zoneState === 'idle' && !isUploadLocked;
+
+  const trackedValidationRef = useRef<FileValidationResult | null>(null);
+  useEffect(() => {
+    if (!guardrailVisible || validation == null) return;
+    if (trackedValidationRef.current === validation) return;
+    trackedValidationRef.current = validation;
+    trackValidationShown(validation);
+  }, [guardrailVisible, validation]);
 
   const [folderName, setFolderName] = useState('');
   const [folderError, setFolderError] = useState<
@@ -916,7 +937,7 @@ function UploadForm({
               }
             }}
           >
-            Pick a different file
+            {t('upload.validation.pickDifferent')}
           </button>
           <button
             type="button"
@@ -1763,7 +1784,7 @@ function UploadForm({
   const showLocalPanel = !showChips || source === 'local';
 
   const renderLiveStatus = (): string => {
-    if (validation && zoneState === 'idle') return validation.title;
+    if (guardrailVisible && validation) return validation.title;
     if (zoneState === 'packaging') return t('upload.form.packingFolder');
     if (zoneState === 'converting') return t('upload.form.liveConverting');
     if (zoneState === 'success') {

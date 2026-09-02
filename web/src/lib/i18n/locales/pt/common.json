@@ -239,6 +239,7 @@
     "overSplit": "Muitas frentes de cartão têm apenas uma ou duas palavras, o que geralmente significa que o arquivo foi dividido no meio de uma frase. Revise o baralho antes de estudar ou envie o arquivo original do Word ou Notion para cartões mais limpos.",
     "validation": {
       "continue": "Converter mesmo assim",
+      "pickDifferent": "Escolher outro arquivo",
       "markdown": {
         "title": "O Markdown do Notion descarta seus toggles",
         "body": "A exportação em Markdown do Notion deixa de fora os blocos de toggle — a parte que o 2anki transforma em cartões — então este arquivo pode gerar poucos cartões ou nenhum. Exporte novamente como HTML: no Notion, abra a página → ••• (canto superior direito) → Exportar → defina HTML como formato de exportação e envie esse arquivo. Um arquivo Markdown comum que não venha do Notion continua funcionando — os cartões vêm de pares de marcadores."

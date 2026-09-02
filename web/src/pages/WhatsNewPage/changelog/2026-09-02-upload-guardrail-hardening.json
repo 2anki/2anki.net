@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-02-upload-guardrail-hardening",
+  "date": "2026-09-02",
+  "type": "fix",
+  "title": "The upload warning now shows Pick a different file in your language, and a slow file check can no longer start a duplicate conversion"
+}

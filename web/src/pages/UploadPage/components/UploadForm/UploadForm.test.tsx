@@ -1992,6 +1992,10 @@ describe('limit state', () => {
   });
 
   describe('Notion Markdown guardrail', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
     function selectMarkdownFile(container: HTMLElement) {
       const fileInput = container.querySelector(
         'input[type="file"]'
@@ -2004,6 +2008,17 @@ describe('limit state', () => {
         configurable: true,
       });
       return fileInput;
+    }
+
+    function setInputFile(fileInput: HTMLInputElement, file: File) {
+      Object.defineProperty(fileInput, 'files', {
+        value: [file],
+        configurable: true,
+      });
+    }
+
+    function pendingFetch() {
+      return vi.fn().mockImplementation(() => new Promise(() => {}));
     }
 
     it('shows the guardrail and fires upload_guardrail_shown', async () => {
@@ -2073,8 +2088,57 @@ describe('limit state', () => {
         const uploadCalls = fetchMock.mock.calls.filter(
           ([url]) => url === '/api/upload/file'
         );
-        expect(uploadCalls.length).toBeGreaterThan(0);
+        expect(uploadCalls).toHaveLength(1);
       });
+    });
+
+    it('does not submit again when a file is picked mid-conversion', async () => {
+      const fetchMock = pendingFetch();
+      vi.stubGlobal('fetch', fetchMock);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const fileInput = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      fileInput.removeAttribute('required');
+      setInputFile(fileInput, new File(['deck'], 'first.docx'));
+      fireEvent.change(fileInput);
+      await act(async () => {});
+      setInputFile(fileInput, new File(['deck'], 'second.docx'));
+      fireEvent.change(fileInput);
+      await act(async () => {});
+      const uploadCalls = fetchMock.mock.calls.filter(
+        ([url]) => url === '/api/upload/file'
+      );
+      expect(uploadCalls).toHaveLength(1);
+    });
+
+    it('does not fire upload_guardrail_shown while a conversion is in flight', async () => {
+      const fetchMock = pendingFetch();
+      vi.stubGlobal('fetch', fetchMock);
+      const trackMock = vi.mocked(track);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const fileInput = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      fileInput.removeAttribute('required');
+      setInputFile(fileInput, new File(['deck'], 'first.docx'));
+      fireEvent.change(fileInput);
+      await act(async () => {});
+      trackMock.mockClear();
+      setInputFile(
+        fileInput,
+        new File(['# notes'], 'notes.md', { type: 'text/markdown' })
+      );
+      fireEvent.change(fileInput);
+      await act(async () => {});
+      const impressions = trackMock.mock.calls.filter(
+        ([event]) => event === 'upload_guardrail_shown'
+      );
+      expect(impressions).toEqual([]);
     });
   });
 });

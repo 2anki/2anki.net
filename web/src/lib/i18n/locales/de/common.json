@@ -239,6 +239,7 @@
     "overSplit": "Viele Kartenvorderseiten bestehen nur aus ein oder zwei Wörtern, was meist bedeutet, dass die Datei mitten im Satz getrennt wurde. Sieh den Stapel vor dem Lernen durch oder lade die ursprüngliche Word- oder Notion-Datei hoch, um sauberere Karten zu erhalten.",
     "validation": {
       "continue": "Trotzdem konvertieren",
+      "pickDifferent": "Andere Datei wählen",
       "markdown": {
         "title": "Notion-Markdown lässt deine Toggles weg",
         "body": "Der Markdown-Export von Notion lässt Toggle-Blöcke weg — genau den Teil, aus dem 2anki Karten macht — daher entstehen aus dieser Datei womöglich kaum oder keine Karten. Exportiere stattdessen als HTML: Öffne die Seite in Notion → ••• (oben rechts) → Exportieren → Exportformat auf HTML setzen und diese Datei hochladen. Eine einfache Markdown-Datei, die nicht aus Notion stammt, funktioniert weiterhin — Karten entstehen aus Aufzählungspaaren."
