@@ -13,7 +13,7 @@ describe('GetBusinessMetricsUseCase', () => {
       churn_30d_pct: 2.1,
       failed_payments_7d: 4,
       new_paid_conversions_7d: 11,
-      pass_sales_7d: { day_passes: 0, week_passes: 0 },
+      pass_sales_7d: { day_passes: 0, week_passes: 0, semester_passes: 0 },
       mrr_timeseries: [],
       active_subs_timeseries: [],
       conversions_vs_churn_weekly: [],

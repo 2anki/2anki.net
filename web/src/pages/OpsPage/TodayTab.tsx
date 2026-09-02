@@ -256,6 +256,13 @@ export default function TodayTab() {
         formatInteger
       ),
     },
+    {
+      title: 'Semester passes / wk',
+      value: formatNumberOrDash(
+        businessData?.pass_sales_7d?.semester_passes ?? null,
+        formatInteger
+      ),
+    },
     { title: 'Job p95', value: formatMs(p95) },
     {
       title: 'Return rate 7d',
