@@ -10,6 +10,7 @@ import { INotionRepository } from '../data_layer/NotionRespository';
 import { IEmailService } from '../services/EmailService/EmailService';
 import UsersRepository from '../data_layer/UsersRepository';
 import { buildNativeOAuthState } from '../services/NotionService/nativeOAuthState';
+import { WORKER_INTERRUPTED_REASON } from '../lib/workerTermination';
 
 jest.mock('../lib/conversionPool', () => ({
   __esModule: true,
@@ -392,8 +393,9 @@ describe('NotionController', () => {
       });
     });
 
-    it('fires runConversion without awaiting and catches worker rejections', async () => {
+    it('fires runConversion without awaiting and logs worker rejections with the request id, job id, and owner', async () => {
       setupConvertMocks();
+      res.locals = { owner: 'owner1', requestId: 'req-abc-123' };
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
@@ -406,8 +408,63 @@ describe('NotionController', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 10));
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'notion convert worker:',
-        workerError
+        '[notion/convert] worker failed',
+        expect.objectContaining({
+          requestId: 'req-abc-123',
+          jobId: 77,
+          owner: 'owner1',
+          error: workerError,
+        })
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('marks the job interrupted when the worker is killed by a pool drain', async () => {
+      setupConvertMocks();
+      const updateJobStatus = jest.fn().mockResolvedValue(undefined);
+      (JobRepository as unknown as jest.Mock).mockImplementation(() => ({
+        updateJobStatus,
+      }));
+      const consoleInfoSpy = jest
+        .spyOn(console, 'info')
+        .mockImplementation(() => undefined);
+      (runConversion as jest.Mock).mockRejectedValue(
+        new Error('Terminating worker thread')
+      );
+
+      await controller.convert(req as express.Request, res as express.Response);
+
+      expect(res.status).toHaveBeenCalledWith(202);
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(updateJobStatus).toHaveBeenCalledWith(
+        'page-abc',
+        'owner1',
+        'interrupted',
+        WORKER_INTERRUPTED_REASON
+      );
+      consoleInfoSpy.mockRestore();
+    });
+
+    it('logs the request id and owner when the enqueue itself fails', async () => {
+      setupConvertMocks();
+      res.locals = { owner: 'owner1', requestId: 'req-enqueue-9' };
+      (FindOrCreateJobUseCase as jest.Mock).mockImplementation(() => ({
+        execute: jest.fn().mockRejectedValue(new Error('db down')),
+      }));
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      await controller.convert(req as express.Request, res as express.Response);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[notion/convert] enqueue failed',
+        expect.objectContaining({
+          requestId: 'req-enqueue-9',
+          owner: 'owner1',
+        })
       );
       consoleErrorSpy.mockRestore();
     });

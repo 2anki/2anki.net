@@ -162,7 +162,10 @@ describe('performConversion — heavy pipeline', () => {
       baseRequest.owner,
       expect.any(String)
     );
-    expect(errorSpy).toHaveBeenCalledWith(boom);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/^\[conversion\] job=42 request=none failed$/),
+      expect.objectContaining({ error: boom })
+    );
   });
 
   it('marks job as failed when no decks are created', async () => {
@@ -962,6 +965,146 @@ describe('performConversion — workspace cleanup', () => {
       expect.objectContaining({
         props: expect.objectContaining({ source: 'notion' }),
       })
+    );
+  });
+});
+
+describe('performConversion — log correlation', () => {
+  let errorSpy: jest.SpyInstance;
+  let infoSpy: jest.SpyInstance;
+  let setJobFailedExecute: jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    setJobFailedExecute = jest.fn().mockResolvedValue(undefined);
+    (SetJobFailedUseCase as jest.Mock).mockImplementation(() => ({
+      execute: setJobFailedExecute,
+    }));
+    (NotionRepository as jest.Mock).mockImplementation(() => ({
+      markTokenInvalid: jest.fn().mockResolvedValue(undefined),
+      setReconnectEmailSent: jest.fn().mockResolvedValue(false),
+    }));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  function mockSuccessfulPipeline(): void {
+    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue({
+        ws: {},
+        exporter: {},
+        settings: {},
+        bl: {},
+        rules: {},
+      }),
+    }));
+    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+    }));
+    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue(undefined),
+    }));
+    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest
+        .fn()
+        .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+    }));
+    (NotifyUserUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue(undefined),
+    }));
+    (CompleteJobUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockResolvedValue(undefined),
+    }));
+  }
+
+  it('stamps the start line with the [conversion] prefix and the db job id, keeping the raw page id out of the message', async () => {
+    mockSuccessfulPipeline();
+    const injectionId = 'page\ninjected-log-line';
+
+    await performConversion(mockDatabase, {
+      ...baseRequest,
+      id: injectionId,
+      jobDbId: 42,
+      requestId: 'req-start-1',
+    });
+
+    const startCall = infoSpy.mock.calls.find(
+      (call) =>
+        typeof call[0] === 'string' &&
+        call[0].startsWith('[conversion] job=42') &&
+        call[0].endsWith('started')
+    );
+    expect(startCall).toBeDefined();
+    expect(startCall?.[0]).toBe(
+      '[conversion] job=42 request=req-start-1 started'
+    );
+    expect(startCall?.[0]).not.toContain('injected-log-line');
+    expect(startCall?.[1]).toEqual({ pageId: injectionId });
+  });
+
+  it('emits a completion line carrying the db job id and request id so duration can be derived', async () => {
+    mockSuccessfulPipeline();
+
+    await performConversion(mockDatabase, {
+      ...baseRequest,
+      jobDbId: 42,
+      requestId: 'req-done-2',
+    });
+
+    const completedCall = infoSpy.mock.calls.find(
+      (call) =>
+        typeof call[0] === 'string' &&
+        call[0].startsWith('[conversion] job=42 request=req-done-2 completed')
+    );
+    expect(completedCall).toBeDefined();
+    expect(completedCall?.[0]).toContain('cards=3');
+    expect(completedCall?.[0]).toContain('duration_ms=');
+  });
+
+  it('hoists the request id into the failure message string, not onto its own object key', async () => {
+    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockRejectedValue(new Error('random error')),
+    }));
+
+    await performConversion(mockDatabase, {
+      ...baseRequest,
+      jobDbId: 42,
+      requestId: 'req-fail-3',
+    });
+
+    const failedCall = errorSpy.mock.calls.find(
+      (call) =>
+        typeof call[0] === 'string' && call[0].startsWith('[conversion] job=42')
+    );
+    expect(failedCall?.[0]).toBe(
+      '[conversion] job=42 request=req-fail-3 failed'
+    );
+    expect(failedCall?.[1]).not.toHaveProperty('requestId');
+  });
+
+  it('still marks the job failed when marking the notion token invalid throws', async () => {
+    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockRejectedValue(makeUnauthorizedError()),
+    }));
+    (NotionRepository as jest.Mock).mockImplementation(() => ({
+      markTokenInvalid: jest.fn().mockRejectedValue(new Error('db blip')),
+      setReconnectEmailSent: jest.fn().mockResolvedValue(false),
+    }));
+
+    await performConversion(mockDatabase, {
+      ...baseRequest,
+      owner: '42',
+      jobDbId: 42,
+    });
+
+    expect(setJobFailedExecute).toHaveBeenCalledWith(
+      baseRequest.id,
+      '42',
+      NOTION_TOKEN_EXPIRED_REASON
     );
   });
 });

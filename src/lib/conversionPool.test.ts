@@ -1,6 +1,11 @@
 jest.mock('./storage/jobs/helpers/performConversion', () => ({
   __esModule: true,
   default: jest.fn().mockResolvedValue(undefined),
+  conversionLogPrefix: jest.fn(
+    (fields: { jobDbId: string | number; requestId?: string }) =>
+      `[conversion] job=${fields.jobDbId} request=${fields.requestId ?? 'none'}`
+  ),
+  trackConversionFailed: jest.fn(),
 }));
 
 const mockPoolRun = jest.fn();
@@ -25,7 +30,9 @@ jest.mock('piscina', () => {
   return { __esModule: true, default: fakePiscina };
 });
 
-import performConversion from './storage/jobs/helpers/performConversion';
+import performConversion, {
+  trackConversionFailed,
+} from './storage/jobs/helpers/performConversion';
 import NotionRepository from '../data_layer/NotionRespository';
 import BlocksCacheRepository from '../data_layer/BlocksCacheRepository';
 import JobRepository from '../data_layer/JobRepository';
@@ -166,6 +173,67 @@ describe('runConversionInWorker', () => {
       baseRequest.id,
       baseRequest.owner,
       NOTION_TOKEN_EXPIRED_REASON
+    );
+  });
+
+  it('logs a stamped line and tracks conversion_failed when the Notion token has expired', async () => {
+    (NotionRepository as jest.Mock).mockImplementation(() => ({
+      getNotionToken: jest.fn().mockResolvedValue(null),
+    }));
+    const infoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    const fakeKnex = {} as unknown as Parameters<typeof performConversion>[0];
+
+    await runConversionInWorker(
+      { ...baseRequest, requestId: 'req-expired-1' },
+      () => fakeKnex
+    );
+
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '[conversion] job=99 request=req-expired-1 notion token expired'
+      ),
+      { pageId: baseRequest.id }
+    );
+    expect(trackConversionFailed).toHaveBeenCalledWith(
+      baseRequest.owner,
+      baseRequest.anonId,
+      baseRequest.type,
+      null,
+      { reason: 'notion_token_expired' }
+    );
+    infoSpy.mockRestore();
+  });
+
+  it('forwards every worker-request field into performConversion via a structural spread', async () => {
+    const fakeKnex = {} as unknown as Parameters<typeof performConversion>[0];
+    const fullRequest = {
+      ...baseRequest,
+      frontField: 'Front',
+      backField: 'Back',
+      anonId: 'anon-1',
+      signupOrigin: '/pricing',
+      requestId: 'req-spread-1',
+    };
+
+    await runConversionInWorker(fullRequest, () => fakeKnex);
+
+    const [, request] = (performConversion as jest.Mock).mock.calls[0];
+    expect(request).toEqual(
+      expect.objectContaining({
+        id: fullRequest.id,
+        owner: fullRequest.owner,
+        isPaying: fullRequest.isPaying,
+        type: fullRequest.type,
+        title: fullRequest.title,
+        jobDbId: fullRequest.jobDbId,
+        frontField: 'Front',
+        backField: 'Back',
+        anonId: 'anon-1',
+        signupOrigin: '/pricing',
+        requestId: 'req-spread-1',
+      })
     );
   });
 

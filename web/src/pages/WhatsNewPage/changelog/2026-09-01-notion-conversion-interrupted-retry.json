@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-01-notion-conversion-interrupted-retry",
+  "date": "2026-09-01",
+  "type": "fix",
+  "title": "A Notion conversion caught by a server restart now tells you to convert again right away"
+}

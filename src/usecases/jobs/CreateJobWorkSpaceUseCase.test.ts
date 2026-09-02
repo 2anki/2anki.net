@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { CreateJobWorkSpaceUseCase } from './CreateJobWorkSpaceUseCase';
 import JobRepository from '../../data_layer/JobRepository';
 import { ISettingsRepository } from '../../data_layer/SettingsRepository';
@@ -77,6 +80,36 @@ describe('CreateJobWorkSpaceUseCase', () => {
       'user-7',
       'page-42'
     );
+  });
+
+  it('removes the created workspace directory when settings load rejects', async () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cjws-orphan-'));
+    const previousBase = process.env.WORKSPACE_BASE;
+    process.env.WORKSPACE_BASE = base;
+    const rejectingSettings: ISettingsRepository = {
+      ...settingsRepository,
+      load: jest.fn().mockRejectedValue(new Error('settings db down')),
+    };
+    const useCase = new CreateJobWorkSpaceUseCase(
+      jobRepository,
+      rejectingSettings,
+      parserRulesRepository
+    );
+
+    await expect(
+      useCase.execute({
+        id: 'orphan-page',
+        owner: 'orphan-owner',
+        api: mockApi,
+        jobRepository,
+        isPaying: false,
+      })
+    ).rejects.toThrow('settings db down');
+
+    expect(fs.readdirSync(base)).toEqual([]);
+
+    process.env.WORKSPACE_BASE = previousBase;
+    fs.rmSync(base, { recursive: true, force: true });
   });
 
   it('throws when the job-status update fails', async () => {
