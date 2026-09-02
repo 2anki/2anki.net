@@ -388,6 +388,36 @@ describe('PricingPage internal event tracking', () => {
     });
   });
 
+  it('tracks paywall_upgrade_clicked with plan=semester_pass and starts checkout', async () => {
+    const { track } = await import('../../lib/analytics/track');
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+    mockStartPassCheckout.mockClear();
+    mockStartPassCheckout.mockResolvedValue({
+      url: 'https://checkout.stripe.com/semester',
+    });
+    Object.defineProperty(globalThis, 'location', {
+      writable: true,
+      value: { href: '' },
+    });
+
+    renderAt('/pricing', { isLoggedIn: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Get Semester Pass' }));
+
+    await waitFor(() => {
+      expect(trackMock).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+        surface: 'pricing_page',
+        plan: 'semester_pass',
+        variant: 'minimal',
+      });
+    });
+    expect(mockStartPassCheckout).toHaveBeenCalledWith(
+      '120d',
+      'minimal',
+      'pricing_page'
+    );
+  });
+
   it('tracks paywall_upgrade_clicked with plan=unlimited when Upgrade button is clicked', async () => {
     const { track } = await import('../../lib/analytics/track');
     const trackMock = vi.mocked(track);

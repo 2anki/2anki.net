@@ -70,7 +70,8 @@ export class ValidateAnonymousPassUseCase {
       const isPaidAnonymousPass =
         session.payment_status === 'paid' &&
         meta.pass_anonymous === '1' &&
-        (passKind === '24h' || passKind === '7d');
+        passKind != null &&
+        isAnonymousPassKind(passKind);
       if (!isPaidAnonymousPass) {
         return { valid: false };
       }

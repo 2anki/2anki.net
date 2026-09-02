@@ -18,12 +18,13 @@ export const PRICING_FAQ: PricingFaqItem[] = [
   },
   {
     question: 'Is there a one-time payment option?',
-    answer: `Day Pass (${PASS_PRICES['24h']}) gives 24 hours of unlimited access. Week Pass (${PASS_PRICES['7d']}) gives 7 days. Both are one-time payments, no subscription required.`,
+    answer: `Day Pass (${PASS_PRICES['24h']}) gives 24 hours of unlimited access. Week Pass (${PASS_PRICES['7d']}) gives 7 days. Semester Pass (${PASS_PRICES['120d']}) gives about 4 months. All are one-time payments, no subscription required.`,
     questionKey: 'faq.q2.question',
     answerKey: 'faq.q2.answer',
     answerValues: {
       dayPrice: PASS_PRICES['24h'],
       weekPrice: PASS_PRICES['7d'],
+      semesterPrice: PASS_PRICES['120d'],
     },
   },
   {

@@ -40,7 +40,7 @@
     },
     "q2": {
       "question": "Existe-t-il une option de paiement unique ?",
-      "answer": "Day Pass ({{dayPrice}}) donne 24 heures d'accès illimité. Week Pass ({{weekPrice}}) donne 7 jours. Les deux sont des paiements uniques, sans abonnement."
+      "answer": "Day Pass ({{dayPrice}}) donne 24 heures d'accès illimité. Week Pass ({{weekPrice}}) donne 7 jours. Semester Pass ({{semesterPrice}}) donne environ 4 mois. Tous sont des paiements uniques, sans abonnement."
     },
     "q3": {
       "question": "Qu'est-ce que le forfait Unlimited ?",

@@ -372,7 +372,9 @@
       "week1": "— 1 semana",
       "redirecting": "Redirigiendo…",
       "getDayPass": "Consigue el Day Pass",
-      "getWeekPass": "Consigue el Week Pass"
+      "getWeekPass": "Consigue el Week Pass",
+      "semester4mo": "— 4 meses",
+      "getSemesterPass": "Consigue el Semester Pass"
     },
     "unlimited": {
       "mostPopular": "El más popular",

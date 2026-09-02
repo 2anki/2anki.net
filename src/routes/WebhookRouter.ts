@@ -20,7 +20,11 @@ import AnonymousPassRepository from '../data_layer/AnonymousPassRepository';
 import PassClaimTokensRepository from '../data_layer/PassClaimTokensRepository';
 import { SendAnonymousPassClaimEmailUseCase } from '../usecases/passes/SendAnonymousPassClaimEmailUseCase';
 import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
-import { PASS_CLAIM_WINDOW_MS } from '../usecases/passes/passDurations';
+import {
+  PASS_CLAIM_WINDOW_MS,
+  PASS_DURATION_MS,
+  isAnonymousPassKind,
+} from '../usecases/passes/passDurations';
 import TokenRepository from '../data_layer/TokenRepository';
 import AuthenticationService from '../services/AuthenticationService';
 import UsersService from '../services/UsersService';
@@ -35,9 +39,6 @@ import { SendAbandonedCheckoutRecoveryOnExpiryUseCase } from '../usecases/ops/Se
 import { UserVisibleErrorsRepository } from '../data_layer/UserVisibleErrorsRepository';
 import { RecordUserVisibleErrorUseCase } from '../usecases/observability/RecordUserVisibleErrorUseCase';
 import { recordStripeWebhook } from '../services/stripeWebhookTimestamp';
-
-const DURATION_24H_MS = 24 * 60 * 60 * 1000;
-const DURATION_7D_MS = 7 * 24 * 60 * 60 * 1000;
 
 const WebhooksRouter = () => {
   const router = express.Router();
@@ -378,13 +379,12 @@ const WebhooksRouter = () => {
             },
           });
 
-          if (passKind === '24h' || passKind === '7d') {
+          if (passKind != null && isAnonymousPassKind(passKind)) {
             const paymentIntentId =
               typeof session.payment_intent === 'string'
                 ? session.payment_intent
                 : null;
-            const durationMs =
-              passKind === '24h' ? DURATION_24H_MS : DURATION_7D_MS;
+            const durationMs = PASS_DURATION_MS[passKind];
             const now = new Date();
 
             if (sessionMeta.pass_anonymous === '1') {

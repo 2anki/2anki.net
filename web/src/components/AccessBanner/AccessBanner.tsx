@@ -29,11 +29,12 @@ function formatTimeRemaining(ms: number, t: TFunction): string {
   return t('accessBanner.aboutHours', { count: hours });
 }
 
-type PassKind = '24h' | '7d' | 'unlimited';
+type PassKind = '24h' | '7d' | '120d' | 'unlimited';
 
 const PASS_LABELS: Record<PassKind, string> = {
   '24h': 'Day Pass',
   '7d': 'Week Pass',
+  '120d': 'Semester Pass',
   unlimited: 'Unlimited',
 };
 

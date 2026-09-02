@@ -637,11 +637,11 @@ export class Backend {
   }
 
   async startPassCheckout(
-    kind: '24h' | '7d',
+    kind: '24h' | '7d' | '120d',
     variant?: string,
     surface?: string
   ): Promise<{ url: string } | { status: 'unavailable' | 'error' }> {
-    const path = kind === '24h' ? 'checkout/pass/24h' : 'checkout/pass/7d';
+    const path = `checkout/pass/${kind}`;
     try {
       const response = await post(`${this.baseURL}${path}`, {
         variant,

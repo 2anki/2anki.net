@@ -22,7 +22,7 @@ describe('PassWinbackRepository generated SQL (postgres dialect)', () => {
     const sql = repo.buildExpiredPassBuyersQuery(CAMPAIGN, 500).toString();
 
     expect(sql).toContain('users.patreon IS NOT TRUE');
-    expect(sql).toContain(`"user_passes"."kind" in ('24h', '7d')`);
+    expect(sql).toContain(`"user_passes"."kind" in ('24h', '7d', '120d')`);
     expect(sql).toContain('user_passes.expires_at > now()');
     expect(sql).toContain(
       'subscriptions.email = users.email OR subscriptions.linked_email = users.email'
@@ -33,6 +33,14 @@ describe('PassWinbackRepository generated SQL (postgres dialect)', () => {
       `"pass_winback_notifications"."campaign" = '${CAMPAIGN}'`
     );
     expect(sql).toContain('limit 500');
+  });
+
+  it('includes lapsed Semester Pass (120d) buyers in the audience', () => {
+    const repo = new PassWinbackRepository(pg);
+    const sql = repo.buildExpiredPassBuyersQuery(CAMPAIGN, 500).toString();
+
+    expect(sql).toContain('120d');
+    expect(sql).toContain(`"user_passes"."kind" in ('24h', '7d', '120d')`);
   });
 
   it('scopes the already-notified exclusion to the given campaign', () => {

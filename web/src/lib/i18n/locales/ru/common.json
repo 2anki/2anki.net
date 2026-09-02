@@ -378,7 +378,9 @@
       "week1": "— 1 неделя",
       "redirecting": "Перенаправляем…",
       "getDayPass": "Купить Day Pass",
-      "getWeekPass": "Купить Week Pass"
+      "getWeekPass": "Купить Week Pass",
+      "semester4mo": "— 4 месяца",
+      "getSemesterPass": "Купить Semester Pass"
     },
     "unlimited": {
       "mostPopular": "Самый популярный",

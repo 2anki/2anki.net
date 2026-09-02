@@ -40,7 +40,7 @@
     },
     "q2": {
       "question": "Есть ли вариант разовой оплаты?",
-      "answer": "Day Pass ({{dayPrice}}) даёт 24 часа безлимитного доступа. Week Pass ({{weekPrice}}) даёт 7 дней. Оба — разовые платежи, без подписки."
+      "answer": "Day Pass ({{dayPrice}}) даёт 24 часа безлимитного доступа. Week Pass ({{weekPrice}}) даёт 7 дней. Semester Pass ({{semesterPrice}}) даёт около 4 месяцев. Все — разовые платежи, без подписки."
     },
     "q3": {
       "question": "Что такое план Unlimited?",

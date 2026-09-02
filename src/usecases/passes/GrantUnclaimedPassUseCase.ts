@@ -4,11 +4,7 @@ import type {
   PassKind,
 } from '../../data_layer/UserPassRepository';
 import type { EventsSink } from '../../services/events/EventsSink';
-
-const DURATION_MS: Record<'24h' | '7d', number> = {
-  '24h': 24 * 60 * 60 * 1000,
-  '7d': 7 * 24 * 60 * 60 * 1000,
-};
+import { PASS_DURATION_MS, isAnonymousPassKind } from './passDurations';
 
 export interface UsersByEmailRepository {
   getByEmail(email: string): Promise<{ id: number | string } | undefined>;
@@ -39,7 +35,7 @@ export class GrantUnclaimedPassUseCase {
     now: Date = new Date()
   ): Promise<GrantUnclaimedPassOutcome> {
     const pass = await this.anonPassRepo.findById(input.anonymousPassId);
-    if (pass == null || (pass.kind !== '24h' && pass.kind !== '7d')) {
+    if (pass == null || !isAnonymousPassKind(pass.kind)) {
       return { success: false, reason: 'pass_not_found' };
     }
 
@@ -60,7 +56,7 @@ export class GrantUnclaimedPassUseCase {
       }
     }
 
-    const expiresAt = new Date(now.getTime() + DURATION_MS[pass.kind]);
+    const expiresAt = new Date(now.getTime() + PASS_DURATION_MS[pass.kind]);
     const granted = await this.userPassRepo.upsertWithAbsoluteExpiry(
       userId,
       pass.kind,

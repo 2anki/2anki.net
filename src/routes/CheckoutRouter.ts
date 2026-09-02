@@ -173,6 +173,27 @@ const CheckoutRouter = () => {
     }
   );
 
+  router.post(
+    '/api/checkout/pass/120d',
+    optionalAuthMiddleware,
+    express.json(),
+    (req, res) => {
+      const pass120dPriceId = process.env.PASS_120D_PRICE_ID ?? '';
+      if (pass120dPriceId === '') {
+        return res
+          .status(503)
+          .json({ message: 'Semester Pass is not available right now.' });
+      }
+      const useCase = new CreatePassCheckoutUseCase(
+        getStripe(),
+        pass120dPriceId,
+        '120d'
+      );
+      const controller = new PassCheckoutController(useCase);
+      return controller.createSession(req, res);
+    }
+  );
+
   /**
    * @swagger
    * /checkout/resume:

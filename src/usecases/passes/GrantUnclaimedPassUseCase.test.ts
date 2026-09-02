@@ -62,6 +62,37 @@ describe('GrantUnclaimedPassUseCase', () => {
     );
   });
 
+  it('claims an anonymous Semester Pass (120d) to the user', async () => {
+    const anonRepo = new InMemoryAnonymousPassRepository();
+    const pass = await anonRepo.insert({
+      stripeSessionId: 'cs_semester',
+      kind: '120d',
+      expiresAt: new Date('2026-08-01T00:00:00Z'),
+      paymentIntentId: 'pi_semester',
+    });
+    const userPassRepo = new UserPassMem();
+    const useCase = new GrantUnclaimedPassUseCase(
+      anonRepo,
+      userPassRepo,
+      makeUsersRepo(77),
+      makeEventsSink()
+    );
+
+    const outcome = await useCase.execute(
+      { anonymousPassId: pass.id, email: 'student@example.com' },
+      NOW
+    );
+
+    expect(outcome).toEqual({
+      success: true,
+      userId: 77,
+      kind: '120d',
+      expiresAt: new Date(NOW.getTime() + 120 * 24 * 60 * 60 * 1000),
+    });
+    const activeUserPass = await userPassRepo.findActive(77, NOW);
+    expect(activeUserPass?.kind).toBe('120d');
+  });
+
   it('returns pass_not_found for a missing pass id', async () => {
     const useCase = new GrantUnclaimedPassUseCase(
       new InMemoryAnonymousPassRepository(),

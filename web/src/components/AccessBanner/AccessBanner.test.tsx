@@ -50,6 +50,17 @@ describe('AccessBanner', () => {
     expect(screen.getByText(/Convert as much as you want/)).toBeInTheDocument();
   });
 
+  it('labels an active Semester Pass by its plan name', () => {
+    render(
+      <AccessBanner
+        passExpiresAt={FUTURE_2H.toISOString()}
+        passKind="120d"
+        now={NOW}
+      />
+    );
+    expect(screen.getByText(/Semester Pass active/)).toBeInTheDocument();
+  });
+
   it('formats the expiry date in English regardless of system locale', () => {
     render(
       <AccessBanner

@@ -9,7 +9,12 @@ export interface Entitlement {
   planSource: PlanSource;
 }
 
-const PASS_KINDS: ReadonlySet<PassKind> = new Set(['24h', '7d', 'unlimited']);
+const PASS_KINDS: ReadonlySet<PassKind> = new Set([
+  '24h',
+  '7d',
+  '120d',
+  'unlimited',
+]);
 const PLAN_SOURCES: ReadonlySet<Exclude<PlanSource, null>> = new Set([
   'stripe',
   'apple',
