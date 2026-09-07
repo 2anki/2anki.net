@@ -49,6 +49,23 @@ describe('ProcessSendgridEventsUseCase', () => {
     });
   });
 
+  it('does not track a duplicate sg_event_id twice', async () => {
+    const repo = new InMemorySuppressionEventsRepository();
+    const useCase = new ProcessSendgridEventsUseCase(repo);
+    const event = {
+      email: address,
+      event: 'delivered' as const,
+      sg_event_id: 'evt-dup',
+      timestamp: 1_780_000_000,
+      category: 'deck-ready',
+    };
+
+    const result = await useCase.execute([event, event]);
+
+    expect(result.duplicates).toBe(1);
+    expect(trackMock).toHaveBeenCalledTimes(1);
+  });
+
   it('persists a hard-suppression event and suppresses the address', async () => {
     const repo = new InMemorySuppressionEventsRepository();
     const useCase = new ProcessSendgridEventsUseCase(repo);

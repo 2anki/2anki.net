@@ -69,7 +69,7 @@ export function shapeEmailDeliveryCounts(
   for (const { category, event_type, count } of counts) {
     const row = byCategory.get(category) ?? emptyCategory(category);
     if (COUNTED_TYPES.has(event_type)) {
-      row[event_type as CountedType] = count;
+      row[event_type as CountedType] += count;
     }
     byCategory.set(category, row);
   }

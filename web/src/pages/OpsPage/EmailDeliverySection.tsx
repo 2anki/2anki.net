@@ -74,46 +74,56 @@ export default function EmailDeliverySection() {
         subtitle={`SendGrid events per template category — badge marks ${EMAIL_FAILURE_RATE_ALERT_PCT}%+ failure with ${EMAIL_FAILURE_MIN_ATTEMPTS}+ attempts`}
         isLoading={isLoading}
         isEmpty={(data?.by_category.length ?? 0) === 0}
-        emptyText="No delivery events recorded in this window yet — tracking starts with this deploy."
+        emptyText="No delivery events recorded in this window."
         autoHeight
       >
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Template</th>
-              <th>Delivered</th>
-              <th>Bounce</th>
-              <th>Dropped</th>
-              <th>Blocked</th>
-              <th>Deferred</th>
-              <th>Spam</th>
-              <th>Failure</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(data?.by_category ?? []).map((row) => (
-              <tr key={row.category}>
-                <td>
-                  {row.category}
-                  {isFailing(row) && (
-                    <span className={styles.spendAlertBadge}>
-                      {row.failure_rate}% failing
-                    </span>
-                  )}
-                </td>
-                <td className={styles.numeric}>{formatCount(row.delivered)}</td>
-                <td className={styles.numeric}>{formatCount(row.bounce)}</td>
-                <td className={styles.numeric}>{formatCount(row.dropped)}</td>
-                <td className={styles.numeric}>{formatCount(row.blocked)}</td>
-                <td className={styles.numeric}>{formatCount(row.deferred)}</td>
-                <td className={styles.numeric}>
-                  {formatCount(row.spamreport)}
-                </td>
-                <td className={styles.numeric}>{row.failure_rate}%</td>
+        <div className={styles.tableScroll}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Template</th>
+                <th>Delivered</th>
+                <th>Bounce</th>
+                <th>Dropped</th>
+                <th>Blocked</th>
+                <th>Deferred</th>
+                <th>Spam</th>
+                <th>Unsub</th>
+                <th>Failure</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(data?.by_category ?? []).map((row) => (
+                <tr key={row.category}>
+                  <td>
+                    {row.category}
+                    {isFailing(row) && (
+                      <span className={styles.spendAlertBadge}>
+                        {row.failure_rate}% failing
+                      </span>
+                    )}
+                  </td>
+                  <td className={styles.numeric}>
+                    {formatCount(row.delivered)}
+                  </td>
+                  <td className={styles.numeric}>{formatCount(row.bounce)}</td>
+                  <td className={styles.numeric}>{formatCount(row.dropped)}</td>
+                  <td className={styles.numeric}>{formatCount(row.blocked)}</td>
+                  <td className={styles.numeric}>
+                    {formatCount(row.deferred)}
+                  </td>
+                  <td className={styles.numeric}>
+                    {formatCount(row.spamreport)}
+                  </td>
+                  <td className={styles.numeric}>
+                    {formatCount(row.unsubscribe)}
+                  </td>
+                  <td className={styles.numeric}>{row.failure_rate}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </ChartPanel>
     </>
   );
