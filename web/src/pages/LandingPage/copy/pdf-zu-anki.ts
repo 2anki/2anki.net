@@ -66,7 +66,7 @@ const pdfZuAnkiCopy: LandingCopy = {
     },
     {
       q: 'Wie entscheidet 2anki, was zur Karte wird?',
-      a: 'Überschriften werden zu Deck- und Tag-Namen. Aufzählungspunkte und kurze Absätze werden zur Kartenvorderseite; die nächste Zeile oder Einrückung zur Rückseite. Du kannst die Karten danach in Anki bearbeiten — wir sperren nichts.',
+      a: 'Überschriften werden zu Deck- und Tag-Namen. Aufzählungspunkte und kurze Absätze werden zur Kartenvorderseite; die nächste Zeile oder Einrückung zur Rückseite. Du kannst die Karten danach in Anki frei bearbeiten.',
     },
     {
       q: 'Kann ich ein ganzes Lehrbuch hochladen?',

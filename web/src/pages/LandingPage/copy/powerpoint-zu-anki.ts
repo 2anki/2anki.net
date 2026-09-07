@@ -17,7 +17,7 @@ const powerpointZuAnkiCopy: LandingCopy = {
   steps: [
     {
       title: 'Folien hochladen',
-      body: 'Zieh deine .pptx hierher — native PowerPoint oder ein Google-Slides-Export.',
+      body: 'Zieh deine .pptx hierher — eine native PowerPoint-Datei oder ein Google-Slides-Export.',
     },
     {
       title: '2anki liest deine Folien',
@@ -66,7 +66,7 @@ const powerpointZuAnkiCopy: LandingCopy = {
     },
     {
       q: 'Werden meine Referentennotizen übernommen?',
-      a: '2anki liest den Text auf den Folien selbst, deshalb werden Notizen, die nur im Referentennotizen-Bereich stehen, nicht erfasst. Schreib alles, was auf eine Karte soll, vor dem Hochladen direkt auf die Folie.',
+      a: '2anki liest den Text auf den Folien selbst, deshalb werden Notizen, die nur im Notizenbereich stehen, nicht erfasst. Schreib alles, was auf eine Karte soll, vor dem Hochladen direkt auf die Folie.',
     },
     {
       q: 'Ich habe meine Folien in Google Slides erstellt — geht das?',
@@ -74,7 +74,7 @@ const powerpointZuAnkiCopy: LandingCopy = {
     },
     {
       q: 'Was passiert mit Folien, die nur aus einem Bild bestehen?',
-      a: 'Folien ohne Text — ein bildfüllendes Diagramm oder Foto — haben nichts, was wir lesen könnten, und erzeugen daher keine Karte. Füge dieser Folie einen Titel oder eine Zeile Text hinzu, wenn sie zur Karte werden soll. Wird ein Blocktyp nicht so übernommen, wie du es dir wünschst, schick uns die Datei an support@2anki.net.',
+      a: 'Folien ohne Text — ein bildfüllendes Diagramm oder Foto — haben nichts, was wir lesen könnten, und erzeugen daher keine Karte. Füge dieser Folie einen Titel oder eine Zeile Text hinzu, wenn sie zur Karte werden soll. Wird etwas nicht so übernommen, wie du es dir wünschst, schick uns die Datei an support@2anki.net.',
     },
   ],
   relatedLinks: [
