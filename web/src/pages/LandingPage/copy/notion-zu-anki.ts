@@ -83,7 +83,7 @@ const notionZuAnkiCopy: LandingCopy = {
     },
   ],
   relatedLinks: [
-    { label: 'Karten aus einem PDF', href: '/pdf-to-anki' },
+    { label: 'Karten aus einem PDF', href: '/pdf-zu-anki' },
     { label: 'Automatische Synchronisierung', href: '/pricing' },
     { label: 'Alle Konverter ansehen', href: '/convert' },
   ],

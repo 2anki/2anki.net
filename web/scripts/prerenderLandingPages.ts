@@ -2,6 +2,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import notionCopy from '../src/pages/LandingPage/copy/notion';
 import notionZuAnkiCopy from '../src/pages/LandingPage/copy/notion-zu-anki';
+import pdfZuAnkiCopy from '../src/pages/LandingPage/copy/pdf-zu-anki';
+import powerpointZuAnkiCopy from '../src/pages/LandingPage/copy/powerpoint-zu-anki';
 import quizletCopy from '../src/pages/LandingPage/copy/quizlet';
 import markdownCopy from '../src/pages/LandingPage/copy/markdown';
 import pdfCopy from '../src/pages/LandingPage/copy/pdf';
@@ -33,6 +35,8 @@ import {
 const LANDING_COPIES: LandingCopy[] = [
   notionCopy,
   notionZuAnkiCopy,
+  pdfZuAnkiCopy,
+  powerpointZuAnkiCopy,
   quizletCopy,
   markdownCopy,
   pdfCopy,

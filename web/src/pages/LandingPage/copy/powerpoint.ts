@@ -1,6 +1,11 @@
 import type { LandingCopy } from '../types';
 
 const powerpointCopy: LandingCopy = {
+  alternates: [
+    { hreflang: 'en', href: 'https://2anki.net/powerpoint-to-anki/' },
+    { hreflang: 'de', href: 'https://2anki.net/powerpoint-zu-anki/' },
+    { hreflang: 'x-default', href: 'https://2anki.net/powerpoint-to-anki/' },
+  ],
   relatedLinks: [
     { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
     {

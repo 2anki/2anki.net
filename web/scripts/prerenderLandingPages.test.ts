@@ -10,6 +10,8 @@ import {
 } from './prerenderLandingPages';
 import notionCopy from '../src/pages/LandingPage/copy/notion';
 import notionZuAnkiCopy from '../src/pages/LandingPage/copy/notion-zu-anki';
+import pdfZuAnkiCopy from '../src/pages/LandingPage/copy/pdf-zu-anki';
+import powerpointZuAnkiCopy from '../src/pages/LandingPage/copy/powerpoint-zu-anki';
 import { ANSWERS_PAGES } from '../src/pages/AnswersPage/answersConfig';
 
 let buildDir: string;
@@ -52,13 +54,17 @@ beforeEach(() => {
 describe('emitLandingPages', () => {
   it('writes one HTML file per landing path', () => {
     const files = emitLandingPages(buildDir);
-    expect(files).toHaveLength(42);
+    expect(files).toHaveLength(44);
     expect(files.some((p) => p.endsWith('notion-to-anki/index.html'))).toBe(
       true
     );
     expect(files.some((p) => p.endsWith('notion-zu-anki/index.html'))).toBe(
       true
     );
+    expect(files.some((p) => p.endsWith('pdf-zu-anki/index.html'))).toBe(true);
+    expect(
+      files.some((p) => p.endsWith('powerpoint-zu-anki/index.html'))
+    ).toBe(true);
     expect(files.some((p) => p.endsWith('anki-for-japanese/index.html'))).toBe(
       true
     );
@@ -330,6 +336,89 @@ describe('emitLandingPages German hreflang twin', () => {
     expect(body).toContain('Physikum');
   });
 });
+
+describe.each([
+  {
+    name: 'pdf',
+    copy: pdfZuAnkiCopy,
+    germanSlug: 'pdf-zu-anki',
+    englishSlug: 'pdf-to-anki',
+  },
+  {
+    name: 'powerpoint',
+    copy: powerpointZuAnkiCopy,
+    germanSlug: 'powerpoint-zu-anki',
+    englishSlug: 'powerpoint-to-anki',
+  },
+])(
+  'emitLandingPages German hreflang twin ($name)',
+  ({ copy, germanSlug, englishSlug }) => {
+    const hreflangEn = `<link rel="alternate" hreflang="en" href="https://2anki.net/${englishSlug}/">`;
+    const hreflangDe = `<link rel="alternate" hreflang="de" href="https://2anki.net/${germanSlug}/">`;
+    const hreflangXDefault = `<link rel="alternate" hreflang="x-default" href="https://2anki.net/${englishSlug}/">`;
+
+    const readGerman = (): string => {
+      emitLandingPages(buildDir);
+      return readFileSync(join(buildDir, germanSlug, 'index.html'), 'utf8');
+    };
+
+    const readEnglish = (): string => {
+      emitLandingPages(buildDir);
+      return readFileSync(join(buildDir, englishSlug, 'index.html'), 'utf8');
+    };
+
+    it('prerenders the authored German title', () => {
+      expect(readGerman()).toContain(`<title>${copy.title}</title>`);
+    });
+
+    it('sets the html lang attribute to de on the German page', () => {
+      expect(readGerman()).toContain('<html lang="de">');
+      expect(readGerman()).not.toContain('<html lang="en">');
+    });
+
+    it('self-canonicals the German page to itself, not the English page', () => {
+      expect(readGerman()).toContain(
+        `<link rel="canonical" href="https://2anki.net/${germanSlug}/">`
+      );
+    });
+
+    it('emits a single de_DE og:locale, replacing the base en_US one', () => {
+      const html = readGerman();
+      expect(html).toContain('<meta property="og:locale" content="de_DE">');
+      expect(html).not.toContain('<meta property="og:locale" content="en_US">');
+      expect(countMatches(html, /<meta\s+property="og:locale"/g)).toBe(1);
+    });
+
+    it('carries the full hreflang triplet on the German page', () => {
+      const html = readGerman();
+      expect(html).toContain(hreflangEn);
+      expect(html).toContain(hreflangDe);
+      expect(html).toContain(hreflangXDefault);
+    });
+
+    it('carries the identical hreflang triplet on the English page', () => {
+      const html = readEnglish();
+      expect(html).toContain(hreflangEn);
+      expect(html).toContain(hreflangDe);
+      expect(html).toContain(hreflangXDefault);
+    });
+
+    it('leaves the English page lang unchanged and out of German locale', () => {
+      const html = readEnglish();
+      expect(html).toContain('<html lang="en">');
+      expect(html).not.toContain('<html lang="de">');
+      expect(html).toContain('<meta property="og:locale" content="en_US">');
+      expect(html).not.toContain('<meta property="og:locale" content="de_DE">');
+    });
+
+    it('renders the German med-exam framing in the crawlable body', () => {
+      const html = readGerman();
+      const body = html.slice(html.indexOf('<div id="root">'));
+      expect(body).toContain('Für Medizin, Pflege und Examen gebaut');
+      expect(body).toContain('Physikum');
+    });
+  }
+);
 
 describe('emitMetaOnlyPages', () => {
   it('writes one HTML file per meta-only route', () => {

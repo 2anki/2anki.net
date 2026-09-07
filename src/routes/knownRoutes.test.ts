@@ -10,6 +10,8 @@ describe('isKnownAppRoute', () => {
     '/notion-marketplace',
     '/notion-to-anki',
     '/notion-zu-anki',
+    '/pdf-zu-anki',
+    '/powerpoint-zu-anki',
     '/quizlet-to-anki',
     '/convert/csv-to-anki',
     '/answers/fsrs-explained',
