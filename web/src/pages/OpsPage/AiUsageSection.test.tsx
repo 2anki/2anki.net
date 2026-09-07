@@ -50,6 +50,26 @@ const sampleResponse: AiUsageResponse = {
     },
   ],
   by_day: [],
+  by_user: [
+    {
+      key: '18996',
+      calls: 174,
+      cost_usd: 53.12,
+      input_tokens: 3_000_000,
+      output_tokens: 800_000,
+      cache_creation_tokens: 100_000,
+      cache_read_tokens: 500_000,
+    },
+    {
+      key: '20676',
+      calls: 7,
+      cost_usd: 2.31,
+      input_tokens: 100_000,
+      output_tokens: 20_000,
+      cache_creation_tokens: 0,
+      cache_read_tokens: 0,
+    },
+  ],
 };
 
 describe('AiUsageSection', () => {
@@ -80,6 +100,17 @@ describe('AiUsageSection', () => {
       '/api/ops/ai-usage?window=30d',
       expect.objectContaining({ credentials: 'include' })
     );
+  });
+
+  test('renders the per-user table and badges spenders over the alert threshold', async () => {
+    renderSection();
+
+    await waitFor(() => {
+      expect(screen.getByText('18996')).toBeInTheDocument();
+    });
+    expect(screen.getByText('20676')).toBeInTheDocument();
+    expect(screen.getByText('$53.12')).toBeInTheDocument();
+    expect(screen.getAllByText('over $25')).toHaveLength(1);
   });
 
   test('shows an error banner when the endpoint fails', async () => {

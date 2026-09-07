@@ -42,6 +42,21 @@ describe('jobFailureReasonFromError', () => {
     expect(reason).toBe(EMPTY_DECK_FAILURE_REASON);
   });
 
+  it('surfaces the spend-cap message by rehydrated name', () => {
+    const err = new Error(
+      'AI processing is paused for this account after unusually high usage (user 42, $51.00 of AI processing cost in 24h). Contact support@2anki.net.'
+    );
+    err.name = 'AiSpendCapError';
+    expect(jobFailureReasonFromError(err, 'job-9')).toBe(err.message);
+  });
+
+  it('surfaces the spend-cap message when re-wrapped as a plain Error', () => {
+    const err = new Error(
+      'AI processing is paused for this account after unusually high usage (user 42, $51.00 of AI processing cost in 24h). Contact support@2anki.net.'
+    );
+    expect(jobFailureReasonFromError(err, 'job-10')).toBe(err.message);
+  });
+
   it('surfaces the actionable large-section message instead of a generic reason', () => {
     const reason = jobFailureReasonFromError(
       new ClaudeLargeSectionError(),

@@ -1211,3 +1211,15 @@
   color: var(--color-text-primary);
   text-align: right;
 }
+
+.spendAlertBadge {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-danger, #dc2626);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-danger, #dc2626);
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+}

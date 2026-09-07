@@ -21,4 +21,7 @@ export interface AiUsageResponse {
   by_surface: AiUsageGroup[];
   by_model: AiUsageGroup[];
   by_day: AiUsageGroup[];
+  by_user: AiUsageGroup[];
 }
+
+export const AI_SPEND_USER_ALERT_USD = 25;

@@ -9,23 +9,26 @@ export interface AiUsageMetricsResponse {
   by_surface: AiUsageGroup[];
   by_model: AiUsageGroup[];
   by_day: AiUsageGroup[];
+  by_user: AiUsageGroup[];
 }
 
 export class AiUsageMetricsService {
   constructor(private readonly deps: { repo: IAiUsageMetricsRepository }) {}
 
   async getMetrics(since: Date): Promise<AiUsageMetricsResponse> {
-    const [totals, bySurface, byModel, byDay] = await Promise.all([
+    const [totals, bySurface, byModel, byDay, byUser] = await Promise.all([
       this.deps.repo.totalsSince(since),
       this.deps.repo.totalsBySurface(since),
       this.deps.repo.totalsByModel(since),
       this.deps.repo.totalsByDay(since),
+      this.deps.repo.totalsByUser(since),
     ]);
     return {
       totals,
       by_surface: bySurface,
       by_model: byModel,
       by_day: byDay,
+      by_user: byUser,
     };
   }
 }

@@ -8,6 +8,7 @@ import { splitByHeadings } from '../cardStyle/headingDriven/splitByHeadings';
 import { getCardStylePromptFragment } from './getCardStylePromptFragment';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
 import { recordClaudeUsage } from './recordClaudeUsage';
+import { guardAiSpend } from './aiSpendGuard';
 import { computeUsageCostUsd } from './pricing';
 import { getCardSizePromptSuffix, validateCardSize } from './cardSize';
 import {
@@ -916,6 +917,7 @@ async function generateDeckInfoFromChunk(
   const tChunk0 = Date.now();
   const userId = attribution?.userId;
   const requestId = attribution?.requestId;
+  await guardAiSpend(userId);
   const client = getAnthropicClient();
 
   const cardStyleFragment = getCardStylePromptFragment(cardStyle);
