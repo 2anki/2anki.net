@@ -41,6 +41,15 @@ export { FREE_USER_MAX_UPLOAD_SIZE } from './misc/getUploadLimits';
 // (pageCount > limit → PDF_EXCEEDS_MAX_PAGE_LIMIT).
 export { PDF_FREE_MAX_PAGES } from '../infrastracture/adapters/fileConversion/convertPDFToImages';
 
+// Per-user AI spend guardrails — enforced in lib/claude/aiSpendGuard
+// (guardAiSpend, called before every metered Claude call). The daily cap
+// throws AiSpendCapError (runaway/scripted protection); the alert threshold
+// only emails ops. The why-behind-each-value comments live in aiSpendGuard.
+export {
+  AI_SPEND_DAILY_CAP_USD,
+  AI_SPEND_ALERT_THRESHOLD_USD,
+} from './claude/aiSpendGuard';
+
 // Claude input-chunk budgets — enforced in ClaudeService.chunkHtmlByDetails.
 // CHUNK_SIZE is the default HTML chunk length; past GIANT_INPUT_THRESHOLD the
 // chunks drop to GIANT_INPUT_CHUNK_SIZE; CHUNK_MAX_TOKENS caps each chunk's

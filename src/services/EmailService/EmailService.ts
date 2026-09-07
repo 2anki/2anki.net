@@ -97,6 +97,11 @@ export interface IEmailService {
   sendAbandonedCheckoutRecoveryEmail(to: string, token: string): Promise<void>;
   sendPassWinbackEmail(to: string, token: string): Promise<void>;
   sendParserCanaryAlert(to: string, summary: string): Promise<void>;
+  sendAiSpendAlertEmail(
+    to: string,
+    subject: string,
+    body: string
+  ): Promise<void>;
   sendNotionReconnectEmail(email: string): Promise<void>;
   sendSubscriptionClaimConfirmation(
     to: string,
@@ -925,6 +930,27 @@ export class EmailService implements IEmailService {
     }
   }
 
+  async sendAiSpendAlertEmail(
+    to: string,
+    subject: string,
+    body: string
+  ): Promise<void> {
+    const msg = {
+      to,
+      from: this.defaultSender,
+      subject,
+      text: body,
+      replyTo: 'support@2anki.net',
+      categories: [EMAIL_CATEGORIES.aiSpendAlert],
+    };
+    try {
+      await sgMail.send(msg);
+    } catch (error) {
+      console.error('[ai-spend-guard] failed to send alert email:', error);
+      throw error;
+    }
+  }
+
   async sendNotionReconnectEmail(email: string): Promise<void> {
     const ctaUrl = `${process.env.DOMAIN ?? 'https://2anki.net'}/notion`;
     const markup = NOTION_RECONNECT_TEMPLATE.replace('{{ctaUrl}}', ctaUrl);
@@ -1170,6 +1196,14 @@ export class UnimplementedEmailService implements IEmailService {
 
   async sendNotionReconnectEmail(email: string): Promise<void> {
     console.info('sendNotionReconnectEmail not handled', email);
+  }
+
+  async sendAiSpendAlertEmail(
+    to: string,
+    subject: string,
+    _body: string
+  ): Promise<void> {
+    console.info('sendAiSpendAlertEmail not handled', to, subject);
   }
 
   async sendSubscriptionClaimConfirmation(

@@ -5,6 +5,7 @@ import { escapeAttribute } from '../notion-render/escape';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
 import { VisionMediaType } from './countVisionTokens';
 import { recordClaudeUsage } from './recordClaudeUsage';
+import { guardAiSpend } from './aiSpendGuard';
 import {
   DeckInfo,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
@@ -124,6 +125,7 @@ async function visionCardsForPage(
   pageIndex: number,
   userId?: number | null
 ): Promise<CompactDeck[]> {
+  await guardAiSpend(userId);
   const client = getAnthropicClient();
 
   const callVision = (maxTokens: number) =>

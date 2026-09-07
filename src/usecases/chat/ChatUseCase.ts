@@ -5,6 +5,7 @@ import type {
   IConversationsRepository,
 } from '../../data_layer/ConversationsRepository';
 import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
+import { guardAiSpend } from '../../lib/claude/aiSpendGuard';
 import { chatAttachmentKey } from '../../lib/storage/chatAttachmentKeys';
 import type { IChatAttachmentsRepository } from '../../data_layer/ChatAttachmentsRepository';
 import {
@@ -805,6 +806,8 @@ export class ChatUseCase {
       ...historyMessages.map((m) => ({ role: m.role, content: m.content })),
       { role: 'user', content: userContent },
     ];
+
+    await guardAiSpend(user.owner);
 
     const stream = this.anthropic.messages.stream({
       model: MODEL,

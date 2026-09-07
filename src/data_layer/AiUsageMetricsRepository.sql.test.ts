@@ -56,6 +56,34 @@ describe('AiUsageMetricsRepository generated SQL', () => {
       `select to_char(date_trunc('day', created_at), 'YYYY-MM-DD') as key, ${SUMS} from "events" where "name" = ? and "created_at" >= ? group by date_trunc('day', created_at) order by date_trunc('day', created_at)`
     );
   });
+  it('groups by user id ordered by spend, capped to the top rows', () => {
+    const { sql, bindings } = repository.buildByUserQuery(since).toSQL();
+
+    expect(sql).toBe(
+      `select user_id::text as key, ${SUMS} from "events" where "name" = ? and "created_at" >= ? group by "user_id" order by cost_usd desc limit ?`
+    );
+    expect(bindings).toEqual(['ai_usage_recorded', since, 20]);
+  });
+
+  it('sums a single user cost over the window', () => {
+    const { sql, bindings } = repository.buildUserCostQuery(42, since).toSQL();
+
+    expect(sql).toBe(
+      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and "user_id" = ?`
+    );
+    expect(bindings).toEqual(['ai_usage_recorded', since, 42]);
+  });
+
+  it('counts named events for a user over the window', () => {
+    const { sql, bindings } = repository
+      .buildEventCountQuery('ai_spend_alert_sent', 42, since)
+      .toSQL();
+
+    expect(sql).toBe(
+      `select count(*) as "count" from "events" where "name" = ? and "user_id" = ? and "created_at" >= ?`
+    );
+    expect(bindings).toEqual(['ai_spend_alert_sent', 42, since]);
+  });
 });
 
 describe('row mapping', () => {

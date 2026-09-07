@@ -125,6 +125,7 @@ export const EMAIL_CATEGORIES = {
   subscriptionScheduledCancellation: 'subscription-scheduled-cancellation',
   subscriptionResumingSoon: 'resuming-soon',
   parserCanary: 'parser-canary',
+  aiSpendAlert: 'ai-spend-alert',
   notionReconnect: 'notion-reconnect',
   priceLockIn: 'price-lock-in',
   subscriptionRecovery: 'subscription-recovery',

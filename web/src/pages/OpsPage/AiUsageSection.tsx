@@ -2,7 +2,12 @@ import { useState } from 'react';
 
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
-import { AI_USAGE_WINDOWS, AiUsageGroup, AiUsageWindow } from './aiUsageTypes';
+import {
+  AI_SPEND_USER_ALERT_USD,
+  AI_USAGE_WINDOWS,
+  AiUsageGroup,
+  AiUsageWindow,
+} from './aiUsageTypes';
 import { formatCount } from './opsHelpers';
 import { useAiUsage } from './useAiUsage';
 import MetricCard from './MetricCard';
@@ -25,9 +30,14 @@ const formatUsd = (value: number): string =>
 interface GroupTableProps {
   label: string;
   rows: AiUsageGroup[];
+  highlightAboveUsd?: number;
 }
 
-function GroupTable({ label, rows }: Readonly<GroupTableProps>) {
+function GroupTable({
+  label,
+  rows,
+  highlightAboveUsd,
+}: Readonly<GroupTableProps>) {
   return (
     <table className={styles.table}>
       <thead>
@@ -40,15 +50,30 @@ function GroupTable({ label, rows }: Readonly<GroupTableProps>) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
-          <tr key={row.key}>
-            <td>{row.key}</td>
-            <td className={styles.numeric}>{formatCount(row.calls)}</td>
-            <td className={styles.numeric}>{formatCount(row.input_tokens)}</td>
-            <td className={styles.numeric}>{formatCount(row.output_tokens)}</td>
-            <td className={styles.numeric}>{formatUsd(row.cost_usd)}</td>
-          </tr>
-        ))}
+        {rows.map((row) => {
+          const overThreshold =
+            highlightAboveUsd != null && row.cost_usd >= highlightAboveUsd;
+          return (
+            <tr key={row.key}>
+              <td>
+                {row.key}
+                {overThreshold && (
+                  <span className={styles.spendAlertBadge}>
+                    over ${highlightAboveUsd}
+                  </span>
+                )}
+              </td>
+              <td className={styles.numeric}>{formatCount(row.calls)}</td>
+              <td className={styles.numeric}>
+                {formatCount(row.input_tokens)}
+              </td>
+              <td className={styles.numeric}>
+                {formatCount(row.output_tokens)}
+              </td>
+              <td className={styles.numeric}>{formatUsd(row.cost_usd)}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
@@ -143,6 +168,21 @@ export default function AiUsageSection() {
           autoHeight
         >
           <GroupTable label="Day" rows={data?.by_day ?? []} />
+        </ChartPanel>
+
+        <ChartPanel
+          title="Spend by user"
+          subtitle={`Top spenders — rows over $${AI_SPEND_USER_ALERT_USD} also email an alert`}
+          isLoading={isLoading}
+          isEmpty={(data?.by_user?.length ?? 0) === 0}
+          emptyText="No AI calls recorded in this window."
+          autoHeight
+        >
+          <GroupTable
+            label="User"
+            rows={data?.by_user ?? []}
+            highlightAboveUsd={AI_SPEND_USER_ALERT_USD}
+          />
         </ChartPanel>
       </div>
     </>

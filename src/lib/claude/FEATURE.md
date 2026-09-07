@@ -44,6 +44,8 @@ The claude lib converts HTML content into Anki flashcards using the Anthropic AP
 
 ---
 
+**Spend guardrails:** `guardAiSpend(userId)` from `aiSpendGuard.ts` runs before the metered calls on the three surfaces that carry ~98% of spend — every conversion chunk (`generateDeckInfoFromChunk`), every PDF vision page (`visionCardsForPage`), and every chat turn (`ChatUseCase`). Two thresholds, both cataloged in `src/lib/limits.ts`: `AI_SPEND_DAILY_CAP_USD` (50 — trailing-24h runaway breaker, throws `AiSpendCapError` with `status: 429`; protects against a billing retry loop or a scripted client, sits ~8× above the heaviest human month on record so no legitimate user reaches it) and `AI_SPEND_ALERT_THRESHOLD_USD` (25 — trailing-30d watch alert, emails `SUPPORT_CC_ADDRESS` via `sendAiSpendAlertEmail`, no enforcement). Notifications dedup through `ai_spend_cap_tripped` (24h) / `ai_spend_alert_sent` (7d) events in the `events` table. The guard **fails open** on any read/notify error — a metrics or SendGrid outage must never block a paying conversion — and skips anonymous callers (`userId == null`), whose spend is bounded by the paid gates instead. Per-user spend reads come from `AiUsageMetricsRepository.userCostSince` over the same `ai_usage_recorded` events; the ops System tab renders the per-user table (`totalsByUser`, top 20) with an "over $25" badge.
+
 ## Heading-driven contract (`cardStyle: 'heading-driven'`)
 
 `generateDeckInfo` accepts an optional fifth argument `cardStyle?: string`. When `cardStyle === 'heading-driven'`:

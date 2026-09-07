@@ -33,6 +33,12 @@ export interface IAiUsageMetricsRepository {
   totalsBySurface(since: Date): Promise<AiUsageGroup[]>;
   totalsByModel(since: Date): Promise<AiUsageGroup[]>;
   totalsByDay(since: Date): Promise<AiUsageGroup[]>;
+  totalsByUser(since: Date): Promise<AiUsageGroup[]>;
+}
+
+export interface IAiSpendReader {
+  userCostSince(userId: number, since: Date): Promise<number>;
+  eventCountSince(name: string, userId: number, since: Date): Promise<number>;
 }
 
 export function mapAiUsageTotalsRow(
@@ -55,7 +61,11 @@ export function mapAiUsageGroupRows(rows: AiUsageGroupRow[]): AiUsageGroup[] {
   }));
 }
 
-export class AiUsageMetricsRepository implements IAiUsageMetricsRepository {
+const TOP_USER_ROWS = 20;
+
+export class AiUsageMetricsRepository
+  implements IAiUsageMetricsRepository, IAiSpendReader
+{
   constructor(private readonly database: Knex) {}
 
   private usageSums(): Knex.Raw[] {
@@ -106,6 +116,36 @@ export class AiUsageMetricsRepository implements IAiUsageMetricsRepository {
       .orderByRaw('cost_usd desc');
   }
 
+  buildByUserQuery(since: Date): Knex.QueryBuilder {
+    return this.baseQuery(since)
+      .select(this.database.raw('user_id::text as key'), ...this.usageSums())
+      .groupBy('user_id')
+      .orderByRaw('cost_usd desc')
+      .limit(TOP_USER_ROWS);
+  }
+
+  buildUserCostQuery(userId: number, since: Date): Knex.QueryBuilder {
+    return this.baseQuery(since)
+      .where('user_id', userId)
+      .select(
+        this.database.raw(
+          "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
+        )
+      );
+  }
+
+  buildEventCountQuery(
+    name: string,
+    userId: number,
+    since: Date
+  ): Knex.QueryBuilder {
+    return this.database('events')
+      .where('name', name)
+      .where('user_id', userId)
+      .where('created_at', '>=', since)
+      .count('* as count');
+  }
+
   buildByDayQuery(since: Date): Knex.QueryBuilder {
     return this.baseQuery(since)
       .select(
@@ -133,6 +173,31 @@ export class AiUsageMetricsRepository implements IAiUsageMetricsRepository {
   async totalsByModel(since: Date): Promise<AiUsageGroup[]> {
     const rows = (await this.buildByModelQuery(since)) as AiUsageGroupRow[];
     return mapAiUsageGroupRows(rows);
+  }
+
+  async totalsByUser(since: Date): Promise<AiUsageGroup[]> {
+    const rows = (await this.buildByUserQuery(since)) as AiUsageGroupRow[];
+    return mapAiUsageGroupRows(rows);
+  }
+
+  async userCostSince(userId: number, since: Date): Promise<number> {
+    const row = (await this.buildUserCostQuery(userId, since).first()) as
+      | { cost_usd: number | string }
+      | undefined;
+    return Number(row?.cost_usd ?? 0);
+  }
+
+  async eventCountSince(
+    name: string,
+    userId: number,
+    since: Date
+  ): Promise<number> {
+    const row = (await this.buildEventCountQuery(
+      name,
+      userId,
+      since
+    ).first()) as { count: number | string } | undefined;
+    return Number(row?.count ?? 0);
   }
 
   async totalsByDay(since: Date): Promise<AiUsageGroup[]> {

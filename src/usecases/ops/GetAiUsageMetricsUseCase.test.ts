@@ -28,6 +28,9 @@ function makeUseCase() {
       { key: 'claude-sonnet-5', ...emptyTotals, calls: 3, cost_usd: 1.25 },
     ],
     totalsByDay: async () => [],
+    totalsByUser: async () => [
+      { key: '42', ...emptyTotals, calls: 1, cost_usd: 0.25 },
+    ],
   };
   const useCase = new GetAiUsageMetricsUseCase(
     new AiUsageMetricsService({ repo })
@@ -58,6 +61,7 @@ describe('GetAiUsageMetricsUseCase', () => {
         { key: 'claude-sonnet-5', ...emptyTotals, calls: 3, cost_usd: 1.25 },
       ],
       by_day: [],
+      by_user: [{ key: '42', ...emptyTotals, calls: 1, cost_usd: 0.25 }],
     });
     expect(sinceDates[0]).toEqual(new Date('2026-07-14T12:00:00.000Z'));
   });
