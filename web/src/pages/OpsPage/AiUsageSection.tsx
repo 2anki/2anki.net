@@ -172,7 +172,7 @@ export default function AiUsageSection() {
 
         <ChartPanel
           title="Spend by user"
-          subtitle={`Top spenders — rows over $${AI_SPEND_USER_ALERT_USD} also email an alert`}
+          subtitle={`Top spenders — badge marks $${AI_SPEND_USER_ALERT_USD}+ in this window; the alert email watches trailing 30 days`}
           isLoading={isLoading}
           isEmpty={(data?.by_user?.length ?? 0) === 0}
           emptyText="No AI calls recorded in this window."

@@ -172,6 +172,15 @@ export function jobFailureReasonFromError(
   if (hasName(error, 'PythonZeroCardsError')) {
     return EMPTY_DECK_FAILURE_REASON;
   }
+  // The worker serializes errors down to {message, name} and the multi-chunk
+  // path re-wraps into a plain Error carrying only the message, so match both.
+  if (
+    error instanceof Error &&
+    (error.name === 'AiSpendCapError' ||
+      error.message.includes('AI processing is paused for this account'))
+  ) {
+    return error.message;
+  }
   if (
     error instanceof ClaudeLargeSectionError ||
     hasName(error, 'ClaudeLargeSectionError')

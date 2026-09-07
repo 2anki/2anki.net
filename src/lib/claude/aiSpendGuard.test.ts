@@ -66,7 +66,11 @@ describe('guardAiSpend', () => {
       costByWindow: { '1d': AI_SPEND_DAILY_CAP_USD, '30d': 80 },
     });
 
-    await expect(guardAiSpend(42, deps)).rejects.toThrow(AiSpendCapError);
+    await expect(guardAiSpend(42, deps)).rejects.toMatchObject({
+      name: 'AiSpendCapError',
+      status: 429,
+      code: 'ai_spend_capped',
+    });
     expect(trackMock).toHaveBeenCalledWith('ai_spend_cap_tripped', {
       userId: 42,
       props: {},

@@ -1,4 +1,5 @@
 import { track } from '../../services/events/track';
+import { HttpCodedError } from '../errors/HttpCodedError';
 import type { IAiSpendReader } from '../../data_layer/AiUsageMetricsRepository';
 
 // $50 of AI spend by one user inside 24 hours is roughly eight times the
@@ -19,15 +20,15 @@ const CAP_DEDUP_MS = DAY_MS;
 const ALERT_EVENT = 'ai_spend_alert_sent';
 const CAP_EVENT = 'ai_spend_cap_tripped';
 
-export class AiSpendCapError extends Error {
-  readonly status = 429;
-
+export class AiSpendCapError extends HttpCodedError {
   constructor(userId: number, costUsd: number) {
     super(
       `AI processing is paused for this account after unusually high usage ` +
-        `(user ${userId}, $${costUsd.toFixed(2)} in 24h). Contact support@2anki.net.`
+        `(user ${userId}, $${costUsd.toFixed(2)} of AI processing cost in ` +
+        `24h). Contact support@2anki.net.`,
+      429,
+      'ai_spend_capped'
     );
-    this.name = 'AiSpendCapError';
   }
 }
 

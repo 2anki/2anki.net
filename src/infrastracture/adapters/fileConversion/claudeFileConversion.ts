@@ -2,6 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import type { BetaContentBlockParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 
 import { recordClaudeUsage } from '../../../lib/claude/recordClaudeUsage';
+import { guardAiSpend } from '../../../lib/claude/aiSpendGuard';
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
 // A cap, not a charge — output is billed on tokens actually generated, so a
@@ -62,6 +63,7 @@ export async function convertWithClaude(
   userContent: Anthropic.ContentBlockParam[],
   options: ConvertOptions = {}
 ): Promise<string> {
+  await guardAiSpend(options.userId);
   const systemBlock: Anthropic.Beta.BetaTextBlockParam & {
     cache_control: { type: 'ephemeral' };
   } = {
