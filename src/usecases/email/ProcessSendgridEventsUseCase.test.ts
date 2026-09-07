@@ -8,9 +8,46 @@ import {
   ProcessSendgridEventsUseCase,
   SendgridEventProcessingError,
 } from './ProcessSendgridEventsUseCase';
+import { track } from '../../services/events/track';
+
+jest.mock('../../services/events/track', () => ({
+  track: jest.fn(),
+}));
+
+const trackMock = track as jest.Mock;
 
 describe('ProcessSendgridEventsUseCase', () => {
   const address = 'bounced@example.com';
+
+  beforeEach(() => {
+    trackMock.mockReset();
+  });
+
+  it('tracks an email_delivery_event with category and type per recorded event', async () => {
+    const repo = new InMemorySuppressionEventsRepository();
+    const useCase = new ProcessSendgridEventsUseCase(repo);
+
+    await useCase.execute([
+      {
+        email: address,
+        event: 'delivered',
+        sg_event_id: 'evt-track-1',
+        timestamp: 1_780_000_000,
+        category: ['magic-link-login'],
+      },
+      {
+        email: address,
+        event: 'open',
+        sg_event_id: 'evt-track-2',
+        timestamp: 1_780_000_000,
+      },
+    ]);
+
+    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(trackMock).toHaveBeenCalledWith('email_delivery_event', {
+      props: { category: 'magic-link-login', event_type: 'delivered' },
+    });
+  });
 
   it('persists a hard-suppression event and suppresses the address', async () => {
     const repo = new InMemorySuppressionEventsRepository();

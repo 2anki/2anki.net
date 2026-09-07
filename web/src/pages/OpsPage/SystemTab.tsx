@@ -1,6 +1,7 @@
 import EngineeringTab from './EngineeringTab';
 import PerformanceTab from './PerformanceTab';
 import AiUsageSection from './AiUsageSection';
+import EmailDeliverySection from './EmailDeliverySection';
 import styles from './OpsPage.module.css';
 
 export default function SystemTab() {
@@ -14,6 +15,16 @@ export default function SystemTab() {
           AI usage
         </h2>
         <AiUsageSection />
+      </section>
+
+      <section
+        className={styles.compositeSection}
+        aria-labelledby="system-email-delivery"
+      >
+        <h2 id="system-email-delivery" className={styles.compositeHeading}>
+          Email delivery
+        </h2>
+        <EmailDeliverySection />
       </section>
 
       <section
