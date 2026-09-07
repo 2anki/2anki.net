@@ -68,6 +68,8 @@ const LANDING_SLUGS = new Set<string>([
   'quizlet-to-anki',
   'markdown-to-anki',
   'pdf-to-anki',
+  'pdf-zu-anki',
+  'powerpoint-zu-anki',
   'anki-to-notion',
   'usmle-anki',
   'step1-anki',

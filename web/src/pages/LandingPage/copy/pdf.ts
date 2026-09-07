@@ -2,6 +2,11 @@ import type { LandingCopy } from '../types';
 import { ankiFidelityProof } from './ankiFidelityProof';
 
 const pdfCopy: LandingCopy = {
+  alternates: [
+    { hreflang: 'en', href: 'https://2anki.net/pdf-to-anki/' },
+    { hreflang: 'de', href: 'https://2anki.net/pdf-zu-anki/' },
+    { hreflang: 'x-default', href: 'https://2anki.net/pdf-to-anki/' },
+  ],
   relatedLinks: [
     { label: 'Convert PowerPoint slides to Anki', href: '/powerpoint-to-anki' },
     {
