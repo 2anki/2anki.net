@@ -60,6 +60,9 @@ import { GetCancelFunnelUseCase } from '../usecases/ops/GetCancelFunnelUseCase';
 import { CancelFunnelService } from '../services/ops/CancelFunnelService';
 import { GetAiUsageMetricsUseCase } from '../usecases/ops/GetAiUsageMetricsUseCase';
 import { AiUsageMetricsService } from '../services/ops/AiUsageMetricsService';
+import { GetEmailDeliveryMetricsUseCase } from '../usecases/ops/GetEmailDeliveryMetricsUseCase';
+import { EmailDeliveryMetricsService } from '../services/ops/EmailDeliveryMetricsService';
+import { EmailDeliveryMetricsRepository } from '../data_layer/EmailDeliveryMetricsRepository';
 import { AiUsageMetricsRepository } from '../data_layer/AiUsageMetricsRepository';
 import { GetLandingPageYieldUseCase } from '../usecases/ops/GetLandingPageYieldUseCase';
 import { LandingPageYieldService } from '../services/ops/LandingPageYieldService';
@@ -235,7 +238,12 @@ const OpsRouter = () => {
       new UsersRepository(database),
       new UserPreferencesRepository(database)
     ),
-    new ChangeUserEmailUseCase(new UsersRepository(database), getEventsSink())
+    new ChangeUserEmailUseCase(new UsersRepository(database), getEventsSink()),
+    new GetEmailDeliveryMetricsUseCase(
+      new EmailDeliveryMetricsService({
+        repo: new EmailDeliveryMetricsRepository(database),
+      })
+    )
   );
 
   /**
@@ -794,6 +802,37 @@ const OpsRouter = () => {
    */
   router.get('/api/ops/ai-usage', RequireOpsAccess, (req, res) =>
     controller.getAiUsage(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/ops/email-delivery:
+   *   get:
+   *     summary: Per-template email delivery and failure rates
+   *     description: |
+   *       Groups SendGrid delivery events by template category (delivered,
+   *       bounce, dropped, blocked, deferred, spamreport, unsubscribe) over the
+   *       window and reports a failure rate per category. Data accrues from the
+   *       first deploy of the email_delivery_event tracking; earlier sends are
+   *       not represented. Defaults to the last 30 days; pass
+   *       ?window=7d|14d|30d|60d|90d.
+   *       Internal endpoint locked to the ops owner — returns 404 for everyone else.
+   *     tags: [Ops]
+   *     parameters:
+   *       - in: query
+   *         name: window
+   *         required: false
+   *         schema:
+   *           type: string
+   *           enum: [7d, 14d, 30d, 60d, 90d]
+   *     responses:
+   *       200:
+   *         description: Email delivery payload
+   *       404:
+   *         description: Not the ops owner
+   */
+  router.get('/api/ops/email-delivery', RequireOpsAccess, (req, res) =>
+    controller.getEmailDelivery(req, res)
   );
 
   /**

@@ -4,6 +4,7 @@ import {
   SuppressionEventType,
 } from '../../data_layer/SuppressionEventsRepository';
 import { emailHash } from '../../lib/emailHash';
+import { track } from '../../services/events/track';
 
 const TRACKED_EVENT_TYPES: ReadonlySet<string> = new Set([
   'bounce',
@@ -104,6 +105,9 @@ export class ProcessSendgridEventsUseCase {
         const category = normalizeCategory(event.category) ?? UNCATEGORIZED;
         const byEventType = (result.categories[category] ??= {});
         byEventType[eventType] = (byEventType[eventType] ?? 0) + 1;
+        track('email_delivery_event', {
+          props: { category, event_type: eventType },
+        });
       } catch (err) {
         if (err instanceof DuplicateSuppressionEventError) {
           result.duplicates += 1;

@@ -26,6 +26,7 @@ import { GetCustomerSignalsUseCase } from '../usecases/ops/GetCustomerSignalsUse
 import { GetPassUnlockMonitorUseCase } from '../usecases/ops/GetPassUnlockMonitorUseCase';
 import { GetPaidValueMonitorUseCase } from '../usecases/ops/GetPaidValueMonitorUseCase';
 import { GetAiUsageMetricsUseCase } from '../usecases/ops/GetAiUsageMetricsUseCase';
+import { GetEmailDeliveryMetricsUseCase } from '../usecases/ops/GetEmailDeliveryMetricsUseCase';
 import { SetChatAttachmentsLifecycleUseCase } from '../usecases/ops/SetChatAttachmentsLifecycleUseCase';
 import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
 import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
@@ -59,7 +60,8 @@ class OpsController {
     private readonly setChatAttachmentsLifecycleUseCase?: SetChatAttachmentsLifecycleUseCase,
     private readonly grantUnclaimedPassUseCase?: GrantUnclaimedPassUseCase,
     private readonly setBlockIdIdentityUseCase?: SetBlockIdIdentityUseCase,
-    private readonly changeUserEmailUseCase?: ChangeUserEmailUseCase
+    private readonly changeUserEmailUseCase?: ChangeUserEmailUseCase,
+    private readonly getEmailDeliveryMetricsUseCase?: GetEmailDeliveryMetricsUseCase
   ) {}
 
   async changeUserEmail(req: express.Request, res: express.Response) {
@@ -162,6 +164,26 @@ class OpsController {
     } catch (error) {
       console.error('[ops] getAiUsage failed', error);
       res.status(500).json({ message: 'Failed to load AI usage metrics' });
+    }
+  }
+
+  async getEmailDelivery(req: express.Request, res: express.Response) {
+    if (this.getEmailDeliveryMetricsUseCase == null) {
+      res
+        .status(500)
+        .json({ message: 'Email delivery metrics not configured' });
+      return;
+    }
+    try {
+      const window =
+        typeof req.query.window === 'string' ? req.query.window : undefined;
+      const result = await this.getEmailDeliveryMetricsUseCase.execute(window);
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ops] getEmailDelivery failed', error);
+      res
+        .status(500)
+        .json({ message: 'Failed to load email delivery metrics' });
     }
   }
 

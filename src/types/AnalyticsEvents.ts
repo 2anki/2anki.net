@@ -131,6 +131,7 @@ export const KNOWN_EVENTS = new Set([
   'thin_deck_notice_shown',
   'mindmap_export_excluded_nodes',
   'ai_usage_recorded',
+  'email_delivery_event',
   'ai_spend_alert_sent',
   'ai_spend_cap_tripped',
   'pass_claim_email_sent',
