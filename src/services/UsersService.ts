@@ -220,7 +220,8 @@ class UsersService {
     email: string,
     purpose: 'login' | 'password_reset',
     signupOrigin?: string | null,
-    redirect?: string
+    redirect?: string,
+    telemetry?: Omit<RegisterTelemetry, 'method'>
   ): Promise<void> {
     if (this.magicTokenRepository == null) {
       return;
@@ -245,7 +246,7 @@ class UsersService {
         placeholderPassword,
         email,
         signupOrigin ?? 'magic_link',
-        { method: 'magic_link' }
+        { method: 'magic_link', ...telemetry }
       );
       user = await this.repository.getByEmail(email.toLowerCase());
       if (user?.id == null) {

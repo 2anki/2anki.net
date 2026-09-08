@@ -53,6 +53,12 @@ function readFirstTouchCookie(req: express.Request): FirstTouchAttribution {
   return parseFirstTouch(cookies?.first_touch);
 }
 
+function readAnonIdCookie(req: express.Request): string | null {
+  const cookies = req.cookies as Record<string, unknown> | undefined;
+  const anonId = cookies?.anon_id;
+  return typeof anonId === 'string' && anonId.length > 0 ? anonId : null;
+}
+
 class UsersController {
   constructor(
     private readonly userService: UsersService,
@@ -242,8 +248,6 @@ class UsersController {
     const signupOrigin =
       firstTouch.signupOrigin ?? parseSignupOrigin(req.body.source);
     try {
-      const cookies = req.cookies as Record<string, unknown> | undefined;
-      const anonId = cookies?.anon_id;
       await this.userService.register(
         name ?? '',
         password,
@@ -251,8 +255,7 @@ class UsersController {
         signupOrigin,
         {
           method: 'password',
-          anonymousId:
-            typeof anonId === 'string' && anonId.length > 0 ? anonId : null,
+          anonymousId: readAnonIdCookie(req),
           referrer: firstTouch.signupReferrer,
         }
       );
@@ -720,7 +723,11 @@ class UsersController {
         hashedPassword,
         email,
         readFirstTouchCookie(req).signupOrigin ?? 'google',
-        { method: 'google', referrer: readFirstTouchCookie(req).signupReferrer }
+        {
+          method: 'google',
+          anonymousId: readAnonIdCookie(req),
+          referrer: readFirstTouchCookie(req).signupReferrer,
+        }
       );
       user = await this.userService.getUserFrom(email);
     }
@@ -836,6 +843,7 @@ class UsersController {
           readFirstTouchCookie(req).signupOrigin ?? 'microsoft',
           {
             method: 'microsoft',
+            anonymousId: readAnonIdCookie(req),
             referrer: readFirstTouchCookie(req).signupReferrer,
           }
         );
@@ -1079,6 +1087,7 @@ class UsersController {
           readFirstTouchCookie(req).signupOrigin ?? 'apple',
           {
             method: 'apple',
+            anonymousId: readAnonIdCookie(req),
             referrer: readFirstTouchCookie(req).signupReferrer,
           }
         );
@@ -1202,6 +1211,7 @@ class UsersController {
         readFirstTouchCookie(req).signupOrigin ?? 'notion_oauth',
         {
           method: 'notion_oauth',
+          anonymousId: readAnonIdCookie(req),
           referrer: readFirstTouchCookie(req).signupReferrer,
         }
       );
@@ -1272,7 +1282,11 @@ class UsersController {
         email.trim(),
         purpose,
         readFirstTouchCookie(req).signupOrigin,
-        redirect
+        redirect,
+        {
+          anonymousId: readAnonIdCookie(req),
+          referrer: readFirstTouchCookie(req).signupReferrer,
+        }
       );
     } catch (error) {
       if (error instanceof MagicLinkRateLimitError) {

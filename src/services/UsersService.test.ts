@@ -124,12 +124,13 @@ describe('UsersService.register', () => {
 
     await service.register('Alex', 'hashed', 'al@example.com', 'google', {
       method: 'google',
+      anonymousId: 'anon-xyz-9',
       referrer: 'https://google.com',
     });
 
     expect(trackMock).toHaveBeenCalledWith('account_created', {
       userId: 1,
-      anonymousId: null,
+      anonymousId: 'anon-xyz-9',
       props: {
         signup_origin: 'google',
         signup_referrer: 'https://google.com',

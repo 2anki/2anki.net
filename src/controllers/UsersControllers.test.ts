@@ -643,7 +643,8 @@ describe('UsersController.requestMagicLink', () => {
       'al@example.com',
       'login',
       null,
-      undefined
+      undefined,
+      expect.objectContaining({ anonymousId: null })
     );
   });
 
@@ -662,7 +663,8 @@ describe('UsersController.requestMagicLink', () => {
       'al@example.com',
       'login',
       null,
-      '/upload'
+      '/upload',
+      expect.objectContaining({ anonymousId: null })
     );
   });
 
@@ -685,7 +687,8 @@ describe('UsersController.requestMagicLink', () => {
       'al@example.com',
       'login',
       null,
-      undefined
+      undefined,
+      expect.objectContaining({ anonymousId: null })
     );
   });
 
