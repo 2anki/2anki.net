@@ -187,8 +187,8 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
     `.claude/docs/browser-attestation.md` (out-clause when there's no runtime-visible effect —
     don't claim a check you didn't run). Link the issue.
 12. Tier 1 and Tier 2: run `/ship <n>`. It reviews, waits for green, merges, watches the deploy,
-    verifies prod. A rail hit or a third
-    review round leaves the PR ready for Alexander — log it as `PR` not `SHIPPED`. Tier 3 stays draft.
+    verifies prod. A rail hit or a third review round leaves the PR ready for Alexander — log it
+    as `PR` not `SHIPPED`. Tier 3 stays draft.
 
 ## Between issues — cleanup
 - `git checkout main && git pull --ff-only`.

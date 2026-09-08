@@ -66,7 +66,7 @@ MERGE_SHA=$(gh pr view <n> --json mergeCommit --jq .mergeCommit.oid)
 
 ## 5. Watch the deploy
 
-A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.md'`) — report "merged, no deploy" and go to step 8.
+A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.md'`) — report "merged, no deploy" and go to Report.
 
 ```bash
 gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion
