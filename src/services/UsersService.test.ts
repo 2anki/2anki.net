@@ -8,6 +8,12 @@ import type AuthenticationService from './AuthenticationService';
 import { InMemoryMagicTokenRepository } from '../data_layer/MagicTokenRepository';
 
 jest.mock('../lib/misc/hashToken', () => (s: string) => `hashed:${s}`);
+jest.mock('./events/track', () => ({
+  track: jest.fn(),
+}));
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const trackMock = require('./events/track').track as jest.Mock;
 
 function buildEmailService(
   overrides: Partial<IEmailService> = {}
@@ -109,6 +115,41 @@ describe('UsersService.register', () => {
       'al@example.com',
       '/notion-to-anki'
     );
+  });
+
+  it('fires account_created with method and origin for every creation path', async () => {
+    trackMock.mockReset();
+    const repository = buildRegisterRepository();
+    const service = new UsersService(repository, buildEmailService());
+
+    await service.register('Alex', 'hashed', 'al@example.com', 'google', {
+      method: 'google',
+      referrer: 'https://google.com',
+    });
+
+    expect(trackMock).toHaveBeenCalledWith('account_created', {
+      userId: 1,
+      anonymousId: null,
+      props: {
+        signup_origin: 'google',
+        signup_referrer: 'https://google.com',
+        method: 'google',
+      },
+    });
+  });
+
+  it('fires account_created with method unknown when no telemetry is given', async () => {
+    trackMock.mockReset();
+    const repository = buildRegisterRepository();
+    const service = new UsersService(repository, buildEmailService());
+
+    await service.register('Alex', 'hashed', 'al@example.com');
+
+    expect(trackMock).toHaveBeenCalledWith('account_created', {
+      userId: 1,
+      anonymousId: null,
+      props: { method: 'unknown' },
+    });
   });
 });
 

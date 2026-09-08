@@ -41,7 +41,6 @@ import NotionRepository from '../data_layer/NotionRespository';
 import hashToken from '../lib/misc/hashToken';
 import { extractCountryFromRequest } from '../lib/http/extractCountryFromRequest';
 import { RecordUserVisibleErrorUseCase } from '../usecases/observability/RecordUserVisibleErrorUseCase';
-import { track } from '../services/events/track';
 import { mapEntitlement } from './helpers/mapEntitlement';
 import { hasAnkifyAccess } from '../lib/ankify/access';
 import EmailChangeTokenRepository from '../data_layer/EmailChangeTokenRepository';
@@ -52,20 +51,6 @@ import type { IEmailService } from '../services/EmailService/EmailService';
 function readFirstTouchCookie(req: express.Request): FirstTouchAttribution {
   const cookies = req.cookies as Record<string, unknown> | undefined;
   return parseFirstTouch(cookies?.first_touch);
-}
-
-function buildSignupProps(
-  signupOrigin: string | null,
-  signupReferrer: string | null
-): Record<string, string> {
-  const props: Record<string, string> = {};
-  if (signupOrigin != null) {
-    props.signup_origin = signupOrigin;
-  }
-  if (signupReferrer != null) {
-    props.signup_referrer = signupReferrer;
-  }
-  return props;
 }
 
 class UsersController {
@@ -257,22 +242,22 @@ class UsersController {
     const signupOrigin =
       firstTouch.signupOrigin ?? parseSignupOrigin(req.body.source);
     try {
+      const cookies = req.cookies as Record<string, unknown> | undefined;
+      const anonId = cookies?.anon_id;
       await this.userService.register(
         name ?? '',
         password,
         email,
-        signupOrigin
+        signupOrigin,
+        {
+          method: 'password',
+          anonymousId:
+            typeof anonId === 'string' && anonId.length > 0 ? anonId : null,
+          referrer: firstTouch.signupReferrer,
+        }
       );
       const newUser = await this.userService.getUserFrom(email);
       if (newUser) {
-        const cookies = req.cookies as Record<string, unknown> | undefined;
-        const anonId = cookies?.anon_id;
-        track('account_created', {
-          userId: Number(newUser.id),
-          anonymousId:
-            typeof anonId === 'string' && anonId.length > 0 ? anonId : null,
-          props: buildSignupProps(signupOrigin, firstTouch.signupReferrer),
-        });
         try {
           const country = extractCountryFromRequest(req);
           if (country != null) {
@@ -734,7 +719,8 @@ class UsersController {
         name ?? email,
         hashedPassword,
         email,
-        readFirstTouchCookie(req).signupOrigin ?? 'google'
+        readFirstTouchCookie(req).signupOrigin ?? 'google',
+        { method: 'google', referrer: readFirstTouchCookie(req).signupReferrer }
       );
       user = await this.userService.getUserFrom(email);
     }
@@ -847,7 +833,11 @@ class UsersController {
           name ?? email,
           hashedPassword,
           email,
-          readFirstTouchCookie(req).signupOrigin ?? 'microsoft'
+          readFirstTouchCookie(req).signupOrigin ?? 'microsoft',
+          {
+            method: 'microsoft',
+            referrer: readFirstTouchCookie(req).signupReferrer,
+          }
         );
         user = await this.userService.getUserFrom(email);
         isNewUser = true;
@@ -1086,7 +1076,11 @@ class UsersController {
           rawName ?? email,
           hashedPassword,
           email,
-          readFirstTouchCookie(req).signupOrigin ?? 'apple'
+          readFirstTouchCookie(req).signupOrigin ?? 'apple',
+          {
+            method: 'apple',
+            referrer: readFirstTouchCookie(req).signupReferrer,
+          }
         );
         user = await this.userService.getUserFrom(email);
         isNewUser = true;
@@ -1205,7 +1199,11 @@ class UsersController {
         name,
         hashedPassword,
         email,
-        readFirstTouchCookie(req).signupOrigin ?? 'notion_oauth'
+        readFirstTouchCookie(req).signupOrigin ?? 'notion_oauth',
+        {
+          method: 'notion_oauth',
+          referrer: readFirstTouchCookie(req).signupReferrer,
+        }
       );
       user = await this.userService.getUserFrom(email);
     }
