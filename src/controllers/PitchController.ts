@@ -8,6 +8,7 @@ const VALID_PLACEMENTS: PitchPlacement[] = [
   'convert_success',
   'account_banner',
   'producer_prompt',
+  'post_download_nudge',
 ];
 
 export class PitchController {

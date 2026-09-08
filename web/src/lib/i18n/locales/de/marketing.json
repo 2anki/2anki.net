@@ -177,15 +177,12 @@
     "fullPrefix": "Unabhängig seit 2020. Gebaut von ",
     "fullSuffix": " und seinen Beitragenden, finanziert von den Menschen, die es nutzen — nicht von Investoren."
   },
-  "upsell": {
-    "aria": "Weitermachen ohne das Monatslimit",
-    "headlineDownloads": "Konvertierst du diesen Monat mehr?",
-    "headlineUpload": "Mehr Seiten zu konvertieren?",
-    "bodyDownloads": "Ein Day Pass hebt die 100-Karten-Grenze für 24 Stunden auf — kein Abo.",
-    "bodyUpload": "Ein Pass hebt das monatliche 100-Karten-Limit auf — für einen Tag oder eine Woche, kein Abo.",
-    "startingCheckout": "Checkout wird gestartet",
-    "getDayPass": "Day Pass holen — {{price}}",
-    "seePlans": "Tarife ansehen"
+  "postDownloadNudge": {
+    "aria": "Bezahlte Tarife ansehen",
+    "dismiss": "Ausblenden",
+    "headline": "Gefällt dir 2anki?",
+    "body": "Du nutzt den Gratis-Tarif — {{limit}} Karten pro Monat. Wenn du mehr willst, sieh dir an, was ein bezahlter Tarif dazugibt.",
+    "cta": "Tarife ansehen"
   },
   "feedback": {
     "thanks": "Danke — Feedback erhalten.",

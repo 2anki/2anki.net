@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { CreateAccountNotice } from '../../components/CreateAccountNotice/CreateAccountNotice';
-import { UpsellCard } from '../../components/UpsellCard';
+import { PostDownloadNudge } from '../../components/PostDownloadNudge';
 import sharedStyles from '../../styles/shared.module.css';
 
 const queryClient = new QueryClient({
@@ -42,7 +42,7 @@ export default function UploadSuccessPreviewPage() {
           <CreateAccountNotice />
         </Variant>
         <Variant title="Logged-in free — pass upsell">
-          <UpsellCard surface="upload_success_upsell" />
+          <PostDownloadNudge page="upload" />
         </Variant>
         <Variant title="Paying — no card">
           <p>(nothing renders)</p>

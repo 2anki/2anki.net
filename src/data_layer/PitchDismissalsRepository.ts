@@ -3,7 +3,8 @@ import { Knex } from 'knex';
 export type PitchPlacement =
   | 'convert_success'
   | 'account_banner'
-  | 'producer_prompt';
+  | 'producer_prompt'
+  | 'post_download_nudge';
 
 export interface PitchDismissal {
   id: number;

@@ -38,7 +38,7 @@ import { fireAnalyticsEvent } from '../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../lib/analytics/track';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
-import { UpsellCard } from '../../components/UpsellCard';
+import { PostDownloadNudge } from '../../components/PostDownloadNudge';
 import JobResponse from '../../schemas/public/JobResponse';
 import {
   ThinDeckNotice,
@@ -1055,7 +1055,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                 </div>
                 {showUpgradeFooter && !isGloballyEmpty && (
                   <div className={styles.upgradeFooter}>
-                    <UpsellCard surface="downloads_upsell" hideForAnonymous />
+                    <PostDownloadNudge page="downloads" />
                   </div>
                 )}
               </div>

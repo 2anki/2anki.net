@@ -78,7 +78,46 @@ describe('ShouldShowAutoSyncPitchUseCase', () => {
       convertSuccess: false,
       accountBanner: false,
       producerPrompt: true,
+      postDownloadNudge: false,
     });
+  });
+
+  it('returns postDownloadNudge true for a free user with no dismissal', async () => {
+    const useCase = new ShouldShowAutoSyncPitchUseCase(
+      makeJobRepo([]),
+      makeDismissalRepo([]),
+      'prod-auto-sync-id'
+    );
+    const result = await useCase.execute({
+      user: null,
+      subscriptions: [],
+      userId: 'u1',
+      objectId: '',
+      jobType: null,
+    });
+    expect(result.postDownloadNudge).toBe(true);
+  });
+
+  it('returns postDownloadNudge false once post_download_nudge is dismissed', async () => {
+    const useCase = new ShouldShowAutoSyncPitchUseCase(
+      makeJobRepo([]),
+      makeDismissalRepo([
+        {
+          user_id: 'u1',
+          placement: 'post_download_nudge',
+          dismissed_at: new Date(),
+        },
+      ]),
+      'prod-auto-sync-id'
+    );
+    const result = await useCase.execute({
+      user: null,
+      subscriptions: [],
+      userId: 'u1',
+      objectId: '',
+      jobType: null,
+    });
+    expect(result.postDownloadNudge).toBe(false);
   });
 
   it('shows the producer prompt even for ankify-access users when not dismissed', async () => {

@@ -46,6 +46,7 @@ interface PitchResult {
   convertSuccess: boolean;
   accountBanner: boolean;
   producerPrompt: boolean;
+  postDownloadNudge: boolean;
 }
 
 export class ShouldShowAutoSyncPitchUseCase {
@@ -58,10 +59,18 @@ export class ShouldShowAutoSyncPitchUseCase {
   async execute(params: ExecuteParams): Promise<PitchResult> {
     const { user, subscriptions, userId, objectId, jobType } = params;
 
-    const producerPrompt = await this.checkProducerPrompt(userId);
+    const [producerPrompt, postDownloadNudge] = await Promise.all([
+      this.checkProducerPrompt(userId),
+      this.checkPostDownloadNudge(userId),
+    ]);
 
     if (hasAnkifyAccess(user, subscriptions, this.autoSyncProductId)) {
-      return { convertSuccess: false, accountBanner: false, producerPrompt };
+      return {
+        convertSuccess: false,
+        accountBanner: false,
+        producerPrompt,
+        postDownloadNudge: false,
+      };
     }
 
     const [convertSuccess, accountBanner] = await Promise.all([
@@ -69,7 +78,7 @@ export class ShouldShowAutoSyncPitchUseCase {
       this.checkAccountBanner(userId),
     ]);
 
-    return { convertSuccess, accountBanner, producerPrompt };
+    return { convertSuccess, accountBanner, producerPrompt, postDownloadNudge };
   }
 
   private async checkProducerPrompt(userId: string): Promise<boolean> {
@@ -77,6 +86,18 @@ export class ShouldShowAutoSyncPitchUseCase {
       userId,
       'producer_prompt',
       MS_100_YEARS
+    );
+    return dismissed == null;
+  }
+
+  // Dismissal is the only server-side condition: the client already gates on
+  // plan (paying users never render the nudge) and the moment itself (a
+  // successful conversion) is the frequency cap.
+  private async checkPostDownloadNudge(userId: string): Promise<boolean> {
+    const dismissed = await this.dismissalRepo.findActiveDismissal(
+      userId,
+      'post_download_nudge',
+      MS_60_DAYS
     );
     return dismissed == null;
   }
