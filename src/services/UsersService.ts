@@ -10,6 +10,21 @@ import { IEmailService } from './EmailService/EmailService';
 import type { IMagicTokenRepository } from '../data_layer/MagicTokenRepository';
 import hashToken from '../lib/misc/hashToken';
 import { isResetTokenLive } from '../lib/User/isResetTokenLive';
+import { track } from './events/track';
+
+// Who signed up how, threaded into the account_created event at the single
+// creation choke point in register().
+export interface RegisterTelemetry {
+  method:
+    | 'password'
+    | 'google'
+    | 'microsoft'
+    | 'apple'
+    | 'notion_oauth'
+    | 'magic_link';
+  anonymousId?: string | null;
+  referrer?: string | null;
+}
 
 const MAGIC_LINK_RATE_LIMIT = 5;
 const MAGIC_LINK_RATE_WINDOW_MS = 60 * 60 * 1000;
@@ -110,18 +125,40 @@ class UsersService {
     name: string,
     password: string,
     email: string,
-    signupOrigin?: string | null
+    signupOrigin?: string | null,
+    telemetry?: RegisterTelemetry
   ) {
     const normalizedEmail = email.toLowerCase();
     const trimmedName = name?.trim() ?? '';
     const resolvedName =
       trimmedName.length > 0 ? trimmedName : normalizedEmail.split('@')[0];
-    return this.repository.createUserAndSeedFromTombstone(
+    const inserted = await this.repository.createUserAndSeedFromTombstone(
       resolvedName,
       password,
       normalizedEmail,
       signupOrigin ?? null
     );
+    // account_created must fire for EVERY creation path (password, all four
+    // OAuth providers, magic-link) or the signup funnel undercounts — it sat
+    // on the password path alone for months and missed ~84% of signups. The
+    // event lives here, at the single choke point, so a new path can't forget.
+    const userId = Number(inserted[0]?.id);
+    if (Number.isFinite(userId)) {
+      const props: Record<string, string> = {};
+      if (signupOrigin != null) {
+        props.signup_origin = signupOrigin;
+      }
+      if (telemetry?.referrer != null) {
+        props.signup_referrer = telemetry.referrer;
+      }
+      props.method = telemetry?.method ?? 'unknown';
+      track('account_created', {
+        userId,
+        anonymousId: telemetry?.anonymousId ?? null,
+        props,
+      });
+    }
+    return inserted;
   }
 
   deleteUser(owner: any) {
@@ -183,7 +220,8 @@ class UsersService {
     email: string,
     purpose: 'login' | 'password_reset',
     signupOrigin?: string | null,
-    redirect?: string
+    redirect?: string,
+    telemetry?: Omit<RegisterTelemetry, 'method'>
   ): Promise<void> {
     if (this.magicTokenRepository == null) {
       return;
@@ -207,7 +245,8 @@ class UsersService {
         '',
         placeholderPassword,
         email,
-        signupOrigin ?? 'magic_link'
+        signupOrigin ?? 'magic_link',
+        { method: 'magic_link', ...telemetry }
       );
       user = await this.repository.getByEmail(email.toLowerCase());
       if (user?.id == null) {

@@ -41,7 +41,6 @@ import NotionRepository from '../data_layer/NotionRespository';
 import hashToken from '../lib/misc/hashToken';
 import { extractCountryFromRequest } from '../lib/http/extractCountryFromRequest';
 import { RecordUserVisibleErrorUseCase } from '../usecases/observability/RecordUserVisibleErrorUseCase';
-import { track } from '../services/events/track';
 import { mapEntitlement } from './helpers/mapEntitlement';
 import { hasAnkifyAccess } from '../lib/ankify/access';
 import EmailChangeTokenRepository from '../data_layer/EmailChangeTokenRepository';
@@ -54,18 +53,10 @@ function readFirstTouchCookie(req: express.Request): FirstTouchAttribution {
   return parseFirstTouch(cookies?.first_touch);
 }
 
-function buildSignupProps(
-  signupOrigin: string | null,
-  signupReferrer: string | null
-): Record<string, string> {
-  const props: Record<string, string> = {};
-  if (signupOrigin != null) {
-    props.signup_origin = signupOrigin;
-  }
-  if (signupReferrer != null) {
-    props.signup_referrer = signupReferrer;
-  }
-  return props;
+function readAnonIdCookie(req: express.Request): string | null {
+  const cookies = req.cookies as Record<string, unknown> | undefined;
+  const anonId = cookies?.anon_id;
+  return typeof anonId === 'string' && anonId.length > 0 ? anonId : null;
 }
 
 class UsersController {
@@ -261,18 +252,15 @@ class UsersController {
         name ?? '',
         password,
         email,
-        signupOrigin
+        signupOrigin,
+        {
+          method: 'password',
+          anonymousId: readAnonIdCookie(req),
+          referrer: firstTouch.signupReferrer,
+        }
       );
       const newUser = await this.userService.getUserFrom(email);
       if (newUser) {
-        const cookies = req.cookies as Record<string, unknown> | undefined;
-        const anonId = cookies?.anon_id;
-        track('account_created', {
-          userId: Number(newUser.id),
-          anonymousId:
-            typeof anonId === 'string' && anonId.length > 0 ? anonId : null,
-          props: buildSignupProps(signupOrigin, firstTouch.signupReferrer),
-        });
         try {
           const country = extractCountryFromRequest(req);
           if (country != null) {
@@ -734,7 +722,12 @@ class UsersController {
         name ?? email,
         hashedPassword,
         email,
-        readFirstTouchCookie(req).signupOrigin ?? 'google'
+        readFirstTouchCookie(req).signupOrigin ?? 'google',
+        {
+          method: 'google',
+          anonymousId: readAnonIdCookie(req),
+          referrer: readFirstTouchCookie(req).signupReferrer,
+        }
       );
       user = await this.userService.getUserFrom(email);
     }
@@ -847,7 +840,12 @@ class UsersController {
           name ?? email,
           hashedPassword,
           email,
-          readFirstTouchCookie(req).signupOrigin ?? 'microsoft'
+          readFirstTouchCookie(req).signupOrigin ?? 'microsoft',
+          {
+            method: 'microsoft',
+            anonymousId: readAnonIdCookie(req),
+            referrer: readFirstTouchCookie(req).signupReferrer,
+          }
         );
         user = await this.userService.getUserFrom(email);
         isNewUser = true;
@@ -1086,7 +1084,12 @@ class UsersController {
           rawName ?? email,
           hashedPassword,
           email,
-          readFirstTouchCookie(req).signupOrigin ?? 'apple'
+          readFirstTouchCookie(req).signupOrigin ?? 'apple',
+          {
+            method: 'apple',
+            anonymousId: readAnonIdCookie(req),
+            referrer: readFirstTouchCookie(req).signupReferrer,
+          }
         );
         user = await this.userService.getUserFrom(email);
         isNewUser = true;
@@ -1205,7 +1208,12 @@ class UsersController {
         name,
         hashedPassword,
         email,
-        readFirstTouchCookie(req).signupOrigin ?? 'notion_oauth'
+        readFirstTouchCookie(req).signupOrigin ?? 'notion_oauth',
+        {
+          method: 'notion_oauth',
+          anonymousId: readAnonIdCookie(req),
+          referrer: readFirstTouchCookie(req).signupReferrer,
+        }
       );
       user = await this.userService.getUserFrom(email);
     }
@@ -1274,7 +1282,11 @@ class UsersController {
         email.trim(),
         purpose,
         readFirstTouchCookie(req).signupOrigin,
-        redirect
+        redirect,
+        {
+          anonymousId: readAnonIdCookie(req),
+          referrer: readFirstTouchCookie(req).signupReferrer,
+        }
       );
     } catch (error) {
       if (error instanceof MagicLinkRateLimitError) {

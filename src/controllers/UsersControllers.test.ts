@@ -171,11 +171,16 @@ describe('UsersController.register', () => {
 
     await controller.register(req, res, next);
 
-    expect(trackMock).toHaveBeenCalledWith('account_created', {
-      userId: 1,
-      anonymousId: 'anon-abc-123',
-      props: { signup_origin: '/notion-to-anki' },
-    });
+    expect(register).toHaveBeenCalledWith(
+      '',
+      'hashed',
+      'jane.doe@example.com',
+      '/notion-to-anki',
+      expect.objectContaining({
+        method: 'password',
+        anonymousId: 'anon-abc-123',
+      })
+    );
   });
 
   it('emits signup_origin and signup_referrer from the first_touch cookie', async () => {
@@ -197,19 +202,16 @@ describe('UsersController.register', () => {
 
     await controller.register(req, res, next);
 
-    expect(trackMock).toHaveBeenCalledWith('account_created', {
-      userId: 1,
-      anonymousId: 'anon-abc-123',
-      props: {
-        signup_origin: '/pdf-to-anki',
-        signup_referrer: 'chatgpt.com',
-      },
-    });
     expect(register).toHaveBeenCalledWith(
       '',
       'hashed',
       'jane.doe@example.com',
-      '/pdf-to-anki'
+      '/pdf-to-anki',
+      expect.objectContaining({
+        method: 'password',
+        anonymousId: 'anon-abc-123',
+        referrer: 'chatgpt.com',
+      })
     );
   });
 
@@ -232,11 +234,13 @@ describe('UsersController.register', () => {
 
     await controller.register(req, res, next);
 
-    expect(trackMock).toHaveBeenCalledWith('account_created', {
-      userId: 1,
-      anonymousId: null,
-      props: { signup_origin: '/markdown-to-anki' },
-    });
+    expect(register).toHaveBeenCalledWith(
+      '',
+      'hashed',
+      'jane.doe@example.com',
+      '/markdown-to-anki',
+      expect.objectContaining({ method: 'password', anonymousId: null })
+    );
   });
 
   it('emits account_created with a null anonymous id when no anon_id cookie is present', async () => {
@@ -252,9 +256,12 @@ describe('UsersController.register', () => {
 
     await controller.register(req, res, next);
 
-    expect(trackMock).toHaveBeenCalledWith(
-      'account_created',
-      expect.objectContaining({ userId: 1, anonymousId: null })
+    expect(register).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      null,
+      expect.objectContaining({ method: 'password', anonymousId: null })
     );
   });
 
@@ -274,6 +281,7 @@ describe('UsersController.register', () => {
     await controller.register(req, res, next);
 
     expect(trackMock).not.toHaveBeenCalled();
+    expect(register).not.toHaveBeenCalled();
   });
 
   it('rejects requests missing both email and password with 400', async () => {
@@ -361,7 +369,8 @@ describe('UsersController.register', () => {
       'Alex',
       'hashed',
       'alex@example.com',
-      null
+      null,
+      expect.objectContaining({ method: 'password' })
     );
     expect(res.status).toHaveBeenCalledWith(200);
   });
@@ -386,7 +395,8 @@ describe('UsersController.register', () => {
       expect.any(String),
       'hashed',
       'al@example.com',
-      '/notion-to-anki'
+      '/notion-to-anki',
+      expect.objectContaining({ method: 'password' })
     );
   });
 
@@ -410,7 +420,8 @@ describe('UsersController.register', () => {
       expect.any(String),
       'hashed',
       'al@example.com',
-      null
+      null,
+      expect.objectContaining({ method: 'password' })
     );
   });
 
@@ -632,7 +643,8 @@ describe('UsersController.requestMagicLink', () => {
       'al@example.com',
       'login',
       null,
-      undefined
+      undefined,
+      expect.objectContaining({ anonymousId: null })
     );
   });
 
@@ -651,7 +663,8 @@ describe('UsersController.requestMagicLink', () => {
       'al@example.com',
       'login',
       null,
-      '/upload'
+      '/upload',
+      expect.objectContaining({ anonymousId: null })
     );
   });
 
@@ -674,7 +687,8 @@ describe('UsersController.requestMagicLink', () => {
       'al@example.com',
       'login',
       null,
-      undefined
+      undefined,
+      expect.objectContaining({ anonymousId: null })
     );
   });
 
@@ -1083,7 +1097,8 @@ describe('UsersController.loginWithGoogle', () => {
       expect.any(String),
       expect.any(String),
       'g@example.com',
-      'google'
+      'google',
+      expect.objectContaining({ method: 'google' })
     );
   });
 
@@ -1236,7 +1251,8 @@ describe('UsersController.loginWithMicrosoft', () => {
       expect.any(String),
       expect.any(String),
       'm@example.com',
-      'microsoft'
+      'microsoft',
+      expect.objectContaining({ method: 'microsoft' })
     );
     expect(MockedOauthIdentitiesRepo.prototype.link).toHaveBeenCalledWith(
       'microsoft',
@@ -1469,7 +1485,8 @@ describe('UsersController.loginWithApple', () => {
       expect.any(String),
       expect.any(String),
       'apple@example.com',
-      'apple'
+      'apple',
+      expect.objectContaining({ method: 'apple' })
     );
     expect(MockedOauthIdentitiesRepo.prototype.link).toHaveBeenCalledWith(
       'apple',
@@ -2178,7 +2195,8 @@ describe('UsersController.loginWithNotion', () => {
       expect.any(String),
       expect.any(String),
       'n@example.com',
-      'notion_oauth'
+      'notion_oauth',
+      expect.objectContaining({ method: 'notion_oauth' })
     );
   });
 
@@ -3023,7 +3041,8 @@ describe('UsersController.loginWithAppleNative', () => {
       expect.any(String),
       expect.any(String),
       'native-apple@example.com',
-      'apple'
+      'apple',
+      expect.objectContaining({ method: 'apple' })
     );
     expect(MockedOauthIdentitiesRepo.prototype.link).toHaveBeenCalledWith(
       'apple',
@@ -3085,7 +3104,8 @@ describe('UsersController.loginWithAppleNative', () => {
       'Jane Doe',
       expect.any(String),
       'native-apple@example.com',
-      'apple'
+      'apple',
+      expect.objectContaining({ method: 'apple' })
     );
   });
 
@@ -3100,7 +3120,8 @@ describe('UsersController.loginWithAppleNative', () => {
       'native-apple@example.com',
       expect.any(String),
       'native-apple@example.com',
-      'apple'
+      'apple',
+      expect.objectContaining({ method: 'apple' })
     );
   });
 });
