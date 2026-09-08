@@ -511,7 +511,9 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
           )
           .min(1)
           .max(500)
-          .describe('The Basic front/back cards to put in the deck.'),
+          .describe(
+            "The Basic front/back cards to put in the deck. Preserve the source's own card boundaries: a table row or a question/answer pair is ONE card — keep its whole answer (bullet lists included) together on the back, never one card per bullet."
+          ),
         deckName: z
           .string()
           .optional()

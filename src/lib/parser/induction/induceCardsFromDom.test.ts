@@ -1,5 +1,9 @@
 import * as cheerio from 'cheerio';
-import { induceCardsFromDom, domPlainTextLength } from './induceCardsFromDom';
+import {
+  induceCardsFromDom,
+  domPlainTextLength,
+  hasDominantTable,
+} from './induceCardsFromDom';
 
 function load(inner: string) {
   return cheerio.load(`<div class="page-body">${inner}</div>`);
@@ -243,5 +247,54 @@ describe('induceCardsFromDom', () => {
   it('measures the plain-text length of the page body', () => {
     const dom = load(`<p>abcdef</p>`);
     expect(domPlainTextLength(dom)).toBe(6);
+  });
+});
+
+describe('hasDominantTable', () => {
+  const qaTable =
+    '<table><thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>' +
+    '<tr><td>What maintains balance?</td><td><ul><li>Feedback loops</li><li>Receptors</li></ul></td></tr>' +
+    '<tr><td>What is a set point?</td><td><ul><li>The target value</li><li>Defended by loops</li></ul></td></tr>' +
+    '</tbody></table>';
+
+  it('accepts a body that is one two-column table with two data rows', () => {
+    expect(hasDominantTable(load(qaTable))).toBe(true);
+  });
+
+  it('rejects a table drowned out by surrounding prose', () => {
+    const prose = `<p>${'Long narrative prose about the topic. '.repeat(60)}</p>`;
+    expect(hasDominantTable(load(`${qaTable}${prose}`))).toBe(false);
+  });
+
+  it('rejects a body with two top-level tables', () => {
+    expect(hasDominantTable(load(`${qaTable}${qaTable}`))).toBe(false);
+  });
+
+  it('counts a nested table as part of its enclosing one', () => {
+    const nested =
+      '<table><tbody>' +
+      '<tr><td>Outer prompt</td><td><table><tbody><tr><td>inner</td><td>cell</td></tr></tbody></table></td></tr>' +
+      '<tr><td>Second prompt</td><td>Second answer</td></tr>' +
+      '</tbody></table>';
+    expect(hasDominantTable(load(nested))).toBe(true);
+  });
+
+  it('rejects a table with only one data row', () => {
+    const oneRow =
+      '<table><thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>' +
+      '<tr><td>Lone prompt</td><td>Lone answer</td></tr></tbody></table>';
+    expect(hasDominantTable(load(oneRow))).toBe(false);
+  });
+
+  it('rejects a header-only table', () => {
+    const headerOnly =
+      '<table><thead><tr><th>Question</th><th>Answer</th></tr></thead></table>';
+    expect(hasDominantTable(load(headerOnly))).toBe(false);
+  });
+
+  it('rejects single-cell rows (no answer column to map)', () => {
+    const singleColumn =
+      '<table><tbody><tr><td>Only cell</td></tr><tr><td>Another cell</td></tr></tbody></table>';
+    expect(hasDominantTable(load(singleColumn))).toBe(false);
   });
 });

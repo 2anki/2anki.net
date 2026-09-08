@@ -83,6 +83,7 @@ import { runInduction } from './induction/rankCandidates';
 import { scoreCandidateDeck } from './scoreCandidateDeck';
 import {
   domPlainTextLength,
+  hasDominantTable,
   induceCardsFromDom,
   UPLOAD_CANDIDATE_RULES,
 } from './induction/induceCardsFromDom';
@@ -480,6 +481,12 @@ export class DeckParser {
 
     const disableIndentedBullets = this.settings.disableIndentedBulletPoints;
     if (cards.length === 0) {
+      const tableNotes = this.induceDominantTableCards(dom);
+      if (tableNotes != null) {
+        cards.push(...tableNotes);
+      }
+    }
+    if (cards.length === 0) {
       const overlappingPageNotes = this.buildPageListOverlappingNotes(dom);
       const overlappingParagraphNotes =
         overlappingPageNotes.length > 0
@@ -647,6 +654,32 @@ export class DeckParser {
       return rules.filter((rule) => rule !== 'heading');
     }
     return rules;
+  }
+
+  // Runs first when the normal HTML parse produced zero cards. A document whose
+  // body is one dominant table is a deliberate two-column layout — its rows are
+  // the card boundary the author drew — so it routes straight to the columns
+  // rule, ahead of the per-bullet fan-out and without the rescue's minimum-card
+  // floor: a two-row Q/A table must ship two row cards, not six bullet
+  // fragments (#4366). Anything short of the dominance predicate falls through
+  // to the existing pipeline unchanged.
+  private induceDominantTableCards(dom: cheerio.CheerioAPI): Note[] | null {
+    if (this.uploadCandidateRules().length === 0) {
+      return null;
+    }
+    if (!hasDominantTable(dom)) {
+      return null;
+    }
+    const notes = induceCardsFromDom(dom, 'columns');
+    if (notes.length < 2) {
+      return null;
+    }
+    this.recordInducedRule({
+      rule: 'columns',
+      outcome: 'rescue_shipped',
+      score: scoreCandidateDeck(notes, domPlainTextLength(dom)),
+    });
+    return notes;
   }
 
   // Runs only when the normal HTML parse produced zero cards. It re-derives the
