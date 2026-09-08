@@ -403,6 +403,22 @@ describe('DeckParser dominant table documents', () => {
     expect(parser.inducedRule).toMatchObject({ outcome: 'rescue_rejected' });
   });
 
+  it('does not append fan-out lists when disable-indented-bullets is on', () => {
+    const strayList = '<ul class="bulleted-list"><li>stray note</li></ul>';
+    const parser = parse(
+      page(`${qaTable(FOUR_ROWS)}${strayList}`),
+      new CardOption({ 'disable-indented-bullets': 'true' })
+    );
+
+    const cards = parser.payload[0].cards;
+    expect(cards).toHaveLength(4);
+    expect(cards.map((card) => card.name).join(' ')).not.toContain('stray');
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'columns',
+      outcome: 'rescue_shipped',
+    });
+  });
+
   it('leaves a wide data matrix to the existing pipeline', () => {
     const timetable =
       '<table><thead><tr><th>Time</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th></tr></thead><tbody>' +

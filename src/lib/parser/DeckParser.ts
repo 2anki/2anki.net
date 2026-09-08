@@ -483,21 +483,21 @@ export class DeckParser {
     const disableIndentedBullets = this.settings.disableIndentedBulletPoints;
     if (cards.length === 0) {
       const tableNotes = this.induceDominantTableCards(dom);
-      if (tableNotes != null) {
-        cards.push(...tableNotes);
-      }
-    }
-    if (cards.length === 0) {
-      const overlappingPageNotes = this.buildPageListOverlappingNotes(dom);
+      const overlappingPageNotes =
+        tableNotes != null ? [] : this.buildPageListOverlappingNotes(dom);
       const overlappingParagraphNotes =
-        overlappingPageNotes.length > 0
+        tableNotes != null || overlappingPageNotes.length > 0
           ? []
           : this.buildPageParagraphOverlappingNotes(dom);
       const overlappingLineNotes =
-        overlappingPageNotes.length > 0 || overlappingParagraphNotes.length > 0
+        tableNotes != null ||
+        overlappingPageNotes.length > 0 ||
+        overlappingParagraphNotes.length > 0
           ? []
           : this.buildPageLinesOverlappingNotes(dom);
-      if (overlappingPageNotes.length > 0) {
+      if (tableNotes != null) {
+        cards.push(...tableNotes);
+      } else if (overlappingPageNotes.length > 0) {
         cards.push(...overlappingPageNotes);
       } else if (overlappingParagraphNotes.length > 0) {
         cards.push(...overlappingParagraphNotes);
