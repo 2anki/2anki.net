@@ -17,7 +17,6 @@ interface PostDownloadNudgeProps {
 }
 
 export function PostDownloadNudge({ page }: PostDownloadNudgeProps) {
-  const { t } = useTranslation('marketing');
   const { data } = useUserLocals();
   const [eligible, setEligible] = useState<boolean | null>(null);
   const [hidden, setHidden] = useState(false);
