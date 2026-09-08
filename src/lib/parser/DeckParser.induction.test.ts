@@ -275,3 +275,162 @@ describe('DeckParser degenerate-yield rescue', () => {
     expect(fronts).toContain('Toggle question 1?');
   });
 });
+
+// The reported shape behind #4366: a document whose body is one two-column
+// Question/Answer table with a bullet list inside each answer cell. The row is
+// the card boundary the author already drew; the parser must never fan the
+// answer bullets out into per-bullet cards, whatever the row count.
+const qaTable = (rows: Array<[string, string[]]>): string => {
+  const body = rows
+    .map(
+      ([question, bullets]) =>
+        `<tr><td>${question}</td><td><ul>${bullets
+          .map((bullet) => `<li>${bullet}</li>`)
+          .join('')}</ul></td></tr>`
+    )
+    .join('');
+  return `<table><thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>${body}</tbody></table>`;
+};
+
+const TWO_ROWS: Array<[string, string[]]> = [
+  [
+    'What maintains a stable internal environment?',
+    ['Negative feedback loops', 'Receptors detect change', 'Effectors respond'],
+  ],
+  [
+    'What is a set point?',
+    ['The target value', 'Defended by feedback', 'Varies per variable'],
+  ],
+];
+
+const FOUR_ROWS: Array<[string, string[]]> = [
+  ...TWO_ROWS,
+  [
+    'What do receptors do?',
+    ['Detect stimuli', 'Signal the control center', 'Monitor conditions'],
+  ],
+  [
+    'What do effectors do?',
+    ['Carry out the response', 'Muscles and glands', 'Restore the set point'],
+  ],
+];
+
+describe('DeckParser dominant table documents', () => {
+  it('maps a two-row Q/A table to one card per row instead of per-bullet fan-out', () => {
+    const parser = parse(page(qaTable(TWO_ROWS)), new CardOption({}));
+
+    const cards = parser.payload[0].cards;
+    expect(cards).toHaveLength(2);
+    expect(cards[0].name).toContain('stable internal environment');
+    expect(cards[0].back).toContain('Negative feedback loops');
+    expect(cards[0].back).toContain('Effectors respond');
+    expect(cards[1].back).toContain('Defended by feedback');
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'columns',
+      outcome: 'rescue_shipped',
+    });
+  });
+
+  it('maps a four-row Q/A table to one card per row', () => {
+    const parser = parse(page(qaTable(FOUR_ROWS)), new CardOption({}));
+
+    const cards = parser.payload[0].cards;
+    expect(cards).toHaveLength(4);
+    expect(cards[3].name).toContain('effectors');
+    expect(cards[3].back).toContain('Restore the set point');
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'columns',
+      outcome: 'rescue_shipped',
+    });
+  });
+
+  it('still maps rows when the table sits inside a wrapper div', () => {
+    const parser = parse(
+      page(`<div>${qaTable(TWO_ROWS)}</div>`),
+      new CardOption({})
+    );
+
+    expect(parser.payload[0].cards).toHaveLength(2);
+    expect(parser.inducedRule).toMatchObject({ rule: 'columns' });
+  });
+
+  it('does not hijack a document where the table is incidental to prose', () => {
+    const smallTable =
+      '<table><tbody><tr><td>mol</td><td>unit of amount</td></tr><tr><td>K</td><td>unit of temperature</td></tr></tbody></table>';
+    const parser = parse(
+      page(`${smallTable}${bigHeadingSections(8)}`),
+      new CardOption({ cherry: 'false' })
+    );
+
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
+    const fronts = parser.payload[0].cards.map((card) => card.name).join(' ');
+    expect(fronts).toContain('Section question 1?');
+  });
+
+  it('ignores a single-column table (no answer side to map)', () => {
+    const singleColumn =
+      '<table><tbody><tr><td>Only one cell</td></tr><tr><td>Another lone cell</td></tr></tbody></table>';
+    const parser = parse(page(singleColumn), new CardOption({}));
+
+    expect(
+      parser.inducedRule == null || parser.inducedRule.rule !== 'columns'
+    ).toBe(true);
+  });
+
+  it('leaves cherry-picked conversions alone even for a dominant table', () => {
+    const parser = parse(
+      page(qaTable(FOUR_ROWS)),
+      new CardOption({ cherry: 'true' })
+    );
+
+    expect(parser.inducedRule).toBeUndefined();
+  });
+
+  it('fails honest on a dominant table with repeated fronts (floor guard)', () => {
+    const planner =
+      '<table><thead><tr><th>Day</th><th>Task</th></tr></thead><tbody>' +
+      '<tr><td>Monday</td><td>Study cardiology chapter one</td></tr>' +
+      '<tr><td>Monday</td><td>Review pharmacology flashcards</td></tr>' +
+      '<tr><td>Monday</td><td>Practice ECG interpretation</td></tr>' +
+      '<tr><td>Monday</td><td>Read renal physiology notes</td></tr>' +
+      '</tbody></table>';
+    const parser = parse(page(planner), new CardOption({}));
+
+    expect(parser.payload[0].cards).toHaveLength(0);
+    expect(parser.inducedRule).toMatchObject({ outcome: 'rescue_rejected' });
+  });
+
+  it('does not append fan-out lists when disable-indented-bullets is on', () => {
+    const strayList = '<ul class="bulleted-list"><li>stray note</li></ul>';
+    const parser = parse(
+      page(`${qaTable(FOUR_ROWS)}${strayList}`),
+      new CardOption({ 'disable-indented-bullets': 'true' })
+    );
+
+    const cards = parser.payload[0].cards;
+    expect(cards).toHaveLength(4);
+    expect(cards.map((card) => card.name).join(' ')).not.toContain('stray');
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'columns',
+      outcome: 'rescue_shipped',
+    });
+  });
+
+  it('leaves a wide data matrix to the existing pipeline', () => {
+    const timetable =
+      '<table><thead><tr><th>Time</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th></tr></thead><tbody>' +
+      '<tr><td>09:00</td><td>Maths</td><td>English</td><td>Biology</td><td>History</td></tr>' +
+      '<tr><td>10:00</td><td>Physics</td><td>Art</td><td>Maths</td><td>English</td></tr>' +
+      '</tbody></table>';
+    const parser = parse(page(timetable), new CardOption({}));
+
+    expect(parser.payload[0].cards).toHaveLength(0);
+    expect(
+      parser.inducedRule == null ||
+        parser.inducedRule.outcome === 'rescue_rejected'
+    ).toBe(true);
+  });
+});

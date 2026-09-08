@@ -371,6 +371,62 @@ function runRule(dom: CheerioAPI, rule: InducedRule): Note[] {
   }
 }
 
+// True when the document body is, in substance, one table: a single
+// non-nested table holding at least 80% of the body's visible text, with two or
+// more data rows of exactly two cells. A wider matrix (a timetable, a
+// multi-column dataset) is not a Q/A pairing and is left to the rescue's full
+// quality floor. That shape is a deliberate two-column
+// layout — the rows are the card boundary the author already drew — so the
+// caller may route it straight to the columns rule instead of letting the
+// bullet fan-out or the rescue's minimum-card floor decide. A table that is
+// incidental to surrounding prose fails the dominance share and is left alone.
+const DOMINANT_TABLE_MIN_TEXT_SHARE = 0.8;
+const DOMINANT_TABLE_MIN_DATA_ROWS = 2;
+
+export function hasDominantTable(dom: CheerioAPI): boolean {
+  const tables = dom('table')
+    .toArray()
+    .filter(
+      (table): table is Element =>
+        (table as Element).type === 'tag' &&
+        dom(table).parents('table').length === 0
+    );
+  if (tables.length !== 1) {
+    return false;
+  }
+  const table = tables[0];
+  const totalTextLength = domPlainTextLength(dom);
+  if (totalTextLength === 0) {
+    return false;
+  }
+  const tableTextLength = dom(table).text().trim().length;
+  if (tableTextLength / totalTextLength < DOMINANT_TABLE_MIN_TEXT_SHARE) {
+    return false;
+  }
+  let dataRows = 0;
+  let wideRows = 0;
+  dom(table)
+    .find('tr')
+    .each((_index, row) => {
+      if (dom(row).closest('table').get(0) !== table) {
+        return;
+      }
+      const cells = dom(row)
+        .children('td,th')
+        .toArray()
+        .filter((cell): cell is Element => (cell as Element).type === 'tag');
+      if (cells.length < 2 || isHeaderRow(dom, row, cells)) {
+        return;
+      }
+      if (cells.length === 2) {
+        dataRows += 1;
+      } else {
+        wideRows += 1;
+      }
+    });
+  return wideRows === 0 && dataRows >= DOMINANT_TABLE_MIN_DATA_ROWS;
+}
+
 export function domPlainTextLength(dom: CheerioAPI): number {
   const pageBody: Cheerio<Element> = dom('.page-body');
   const scope = pageBody.length > 0 ? pageBody : dom('body');

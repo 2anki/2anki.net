@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-08-table-rows-become-cards",
+  "date": "2026-09-08",
+  "type": "fix",
+  "title": "A document built as a question/answer table now becomes one card per row — bullets stay together on the back"
+}

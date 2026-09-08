@@ -80,9 +80,11 @@ import {
   mergeInducedRescue,
 } from './induction/candidateRules';
 import { runInduction } from './induction/rankCandidates';
+import { clearsQualityFloorExceptCount } from './induction/qualityFloor';
 import { scoreCandidateDeck } from './scoreCandidateDeck';
 import {
   domPlainTextLength,
+  hasDominantTable,
   induceCardsFromDom,
   UPLOAD_CANDIDATE_RULES,
 } from './induction/induceCardsFromDom';
@@ -480,16 +482,22 @@ export class DeckParser {
 
     const disableIndentedBullets = this.settings.disableIndentedBulletPoints;
     if (cards.length === 0) {
-      const overlappingPageNotes = this.buildPageListOverlappingNotes(dom);
+      const tableNotes = this.induceDominantTableCards(dom);
+      const overlappingPageNotes =
+        tableNotes != null ? [] : this.buildPageListOverlappingNotes(dom);
       const overlappingParagraphNotes =
-        overlappingPageNotes.length > 0
+        tableNotes != null || overlappingPageNotes.length > 0
           ? []
           : this.buildPageParagraphOverlappingNotes(dom);
       const overlappingLineNotes =
-        overlappingPageNotes.length > 0 || overlappingParagraphNotes.length > 0
+        tableNotes != null ||
+        overlappingPageNotes.length > 0 ||
+        overlappingParagraphNotes.length > 0
           ? []
           : this.buildPageLinesOverlappingNotes(dom);
-      if (overlappingPageNotes.length > 0) {
+      if (tableNotes != null) {
+        cards.push(...tableNotes);
+      } else if (overlappingPageNotes.length > 0) {
         cards.push(...overlappingPageNotes);
       } else if (overlappingParagraphNotes.length > 0) {
         cards.push(...overlappingParagraphNotes);
@@ -647,6 +655,37 @@ export class DeckParser {
       return rules.filter((rule) => rule !== 'heading');
     }
     return rules;
+  }
+
+  // Runs first when the normal HTML parse produced zero cards. A document whose
+  // body is one dominant table is a deliberate two-column layout — its rows are
+  // the card boundary the author drew — so it routes straight to the columns
+  // rule, ahead of the per-bullet fan-out and exempt from FLOOR_MIN_CARDS only:
+  // a two-row Q/A table must ship two row cards, not six bullet fragments
+  // (#4366). The rest of the quality floor still applies — a dominant table of
+  // repeated fronts or blank backs fails honest exactly as before. Anything short of the dominance predicate falls through
+  // to the existing pipeline unchanged.
+  private induceDominantTableCards(dom: cheerio.CheerioAPI): Note[] | null {
+    if (this.uploadCandidateRules().length === 0) {
+      return null;
+    }
+    if (!hasDominantTable(dom)) {
+      return null;
+    }
+    const notes = induceCardsFromDom(dom, 'columns');
+    if (notes.length < 2) {
+      return null;
+    }
+    const score = scoreCandidateDeck(notes, domPlainTextLength(dom));
+    if (!clearsQualityFloorExceptCount(notes, score)) {
+      return null;
+    }
+    this.recordInducedRule({
+      rule: 'columns',
+      outcome: 'rescue_shipped',
+      score,
+    });
+    return notes;
   }
 
   // Runs only when the normal HTML parse produced zero cards. It re-derives the
