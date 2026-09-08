@@ -18,6 +18,16 @@ export function clearsQualityFloor(
   if (score.cardCount < FLOOR_MIN_CARDS) {
     return false;
   }
+  return clearsQualityFloorExceptCount(cards, score);
+}
+
+// The floor minus FLOOR_MIN_CARDS, for the dominant-table branch: an explicit
+// two-column table legitimately yields two cards, but a table of repeated
+// fronts or blank backs is still the bad deck the floor exists to reject.
+export function clearsQualityFloorExceptCount(
+  cards: readonly ScorableCard[],
+  score: DeckScore
+): boolean {
   if (detectOverSplit(cards.map((card) => card.name))) {
     return false;
   }

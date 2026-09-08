@@ -292,6 +292,15 @@ describe('hasDominantTable', () => {
     expect(hasDominantTable(load(headerOnly))).toBe(false);
   });
 
+  it('rejects a wide data matrix (rows of three or more cells)', () => {
+    const timetable =
+      '<table><tbody>' +
+      '<tr><td>09:00</td><td>Maths</td><td>English</td><td>Biology</td></tr>' +
+      '<tr><td>10:00</td><td>Physics</td><td>Art</td><td>Maths</td></tr>' +
+      '</tbody></table>';
+    expect(hasDominantTable(load(timetable))).toBe(false);
+  });
+
   it('rejects single-cell rows (no answer column to map)', () => {
     const singleColumn =
       '<table><tbody><tr><td>Only cell</td></tr><tr><td>Another cell</td></tr></tbody></table>';

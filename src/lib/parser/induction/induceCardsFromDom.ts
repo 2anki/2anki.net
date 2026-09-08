@@ -373,7 +373,9 @@ function runRule(dom: CheerioAPI, rule: InducedRule): Note[] {
 
 // True when the document body is, in substance, one table: a single
 // non-nested table holding at least 80% of the body's visible text, with two or
-// more data rows of two or more cells. That shape is a deliberate two-column
+// more data rows of exactly two cells. A wider matrix (a timetable, a
+// multi-column dataset) is not a Q/A pairing and is left to the rescue's full
+// quality floor. That shape is a deliberate two-column
 // layout — the rows are the card boundary the author already drew — so the
 // caller may route it straight to the columns rule instead of letting the
 // bullet fan-out or the rescue's minimum-card floor decide. A table that is
@@ -402,6 +404,7 @@ export function hasDominantTable(dom: CheerioAPI): boolean {
     return false;
   }
   let dataRows = 0;
+  let wideRows = 0;
   dom(table)
     .find('tr')
     .each((_index, row) => {
@@ -412,11 +415,16 @@ export function hasDominantTable(dom: CheerioAPI): boolean {
         .children('td,th')
         .toArray()
         .filter((cell): cell is Element => (cell as Element).type === 'tag');
-      if (cells.length >= 2 && !isHeaderRow(dom, row, cells)) {
+      if (cells.length < 2 || isHeaderRow(dom, row, cells)) {
+        return;
+      }
+      if (cells.length === 2) {
         dataRows += 1;
+      } else {
+        wideRows += 1;
       }
     });
-  return dataRows >= DOMINANT_TABLE_MIN_DATA_ROWS;
+  return wideRows === 0 && dataRows >= DOMINANT_TABLE_MIN_DATA_ROWS;
 }
 
 export function domPlainTextLength(dom: CheerioAPI): number {

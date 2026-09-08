@@ -388,4 +388,33 @@ describe('DeckParser dominant table documents', () => {
 
     expect(parser.inducedRule).toBeUndefined();
   });
+
+  it('fails honest on a dominant table with repeated fronts (floor guard)', () => {
+    const planner =
+      '<table><thead><tr><th>Day</th><th>Task</th></tr></thead><tbody>' +
+      '<tr><td>Monday</td><td>Study cardiology chapter one</td></tr>' +
+      '<tr><td>Monday</td><td>Review pharmacology flashcards</td></tr>' +
+      '<tr><td>Monday</td><td>Practice ECG interpretation</td></tr>' +
+      '<tr><td>Monday</td><td>Read renal physiology notes</td></tr>' +
+      '</tbody></table>';
+    const parser = parse(page(planner), new CardOption({}));
+
+    expect(parser.payload[0].cards).toHaveLength(0);
+    expect(parser.inducedRule).toMatchObject({ outcome: 'rescue_rejected' });
+  });
+
+  it('leaves a wide data matrix to the existing pipeline', () => {
+    const timetable =
+      '<table><thead><tr><th>Time</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th></tr></thead><tbody>' +
+      '<tr><td>09:00</td><td>Maths</td><td>English</td><td>Biology</td><td>History</td></tr>' +
+      '<tr><td>10:00</td><td>Physics</td><td>Art</td><td>Maths</td><td>English</td></tr>' +
+      '</tbody></table>';
+    const parser = parse(page(timetable), new CardOption({}));
+
+    expect(parser.payload[0].cards).toHaveLength(0);
+    expect(
+      parser.inducedRule == null ||
+        parser.inducedRule.outcome === 'rescue_rejected'
+    ).toBe(true);
+  });
 });

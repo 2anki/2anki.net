@@ -80,6 +80,7 @@ import {
   mergeInducedRescue,
 } from './induction/candidateRules';
 import { runInduction } from './induction/rankCandidates';
+import { clearsQualityFloorExceptCount } from './induction/qualityFloor';
 import { scoreCandidateDeck } from './scoreCandidateDeck';
 import {
   domPlainTextLength,
@@ -659,9 +660,10 @@ export class DeckParser {
   // Runs first when the normal HTML parse produced zero cards. A document whose
   // body is one dominant table is a deliberate two-column layout — its rows are
   // the card boundary the author drew — so it routes straight to the columns
-  // rule, ahead of the per-bullet fan-out and without the rescue's minimum-card
-  // floor: a two-row Q/A table must ship two row cards, not six bullet
-  // fragments (#4366). Anything short of the dominance predicate falls through
+  // rule, ahead of the per-bullet fan-out and exempt from FLOOR_MIN_CARDS only:
+  // a two-row Q/A table must ship two row cards, not six bullet fragments
+  // (#4366). The rest of the quality floor still applies — a dominant table of
+  // repeated fronts or blank backs fails honest exactly as before. Anything short of the dominance predicate falls through
   // to the existing pipeline unchanged.
   private induceDominantTableCards(dom: cheerio.CheerioAPI): Note[] | null {
     if (this.uploadCandidateRules().length === 0) {
@@ -674,10 +676,14 @@ export class DeckParser {
     if (notes.length < 2) {
       return null;
     }
+    const score = scoreCandidateDeck(notes, domPlainTextLength(dom));
+    if (!clearsQualityFloorExceptCount(notes, score)) {
+      return null;
+    }
     this.recordInducedRule({
       rule: 'columns',
       outcome: 'rescue_shipped',
-      score: scoreCandidateDeck(notes, domPlainTextLength(dom)),
+      score,
     });
     return notes;
   }
