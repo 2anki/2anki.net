@@ -2,14 +2,10 @@ import express from 'express';
 import { DismissPitchUseCase } from '../usecases/pitches/DismissPitchUseCase';
 import { ShouldShowAutoSyncPitchUseCase } from '../usecases/pitches/ShouldShowAutoSyncPitchUseCase';
 import SubscriptionService from '../services/SubscriptionService';
-import type { PitchPlacement } from '../data_layer/PitchDismissalsRepository';
-
-const VALID_PLACEMENTS: PitchPlacement[] = [
-  'convert_success',
-  'account_banner',
-  'producer_prompt',
-  'post_download_nudge',
-];
+import {
+  PITCH_PLACEMENTS,
+  type PitchPlacement,
+} from '../data_layer/PitchDismissalsRepository';
 
 export class PitchController {
   constructor(
@@ -23,7 +19,7 @@ export class PitchController {
 
     if (
       typeof placement !== 'string' ||
-      !VALID_PLACEMENTS.includes(placement as PitchPlacement)
+      !PITCH_PLACEMENTS.includes(placement as PitchPlacement)
     ) {
       res.status(400).json({ message: 'Invalid placement' });
       return;

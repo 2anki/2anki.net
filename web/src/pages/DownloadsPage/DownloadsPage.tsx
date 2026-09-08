@@ -1054,7 +1054,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                   </table>
                 </div>
                 {showUpgradeFooter && !isGloballyEmpty && (
-                  <div className={styles.upgradeFooter}>
+                  <div className={styles.nudgeSlot}>
                     <PostDownloadNudge page="downloads" />
                   </div>
                 )}

@@ -181,7 +181,7 @@
     "aria": "Ver planes de pago",
     "dismiss": "Descartar",
     "headline": "¿Te gusta 2anki?",
-    "body": "Estás en el plan gratuito: {{limit}} tarjetas al mes. Cuando quieras más, mira lo que añade un plan de pago.",
+    "body": "Estás en el plan gratuito — {{limit}} tarjetas al mes. Cuando quieras más, mira lo que añade un plan de pago.",
     "cta": "Ver planes"
   },
   "feedback": {

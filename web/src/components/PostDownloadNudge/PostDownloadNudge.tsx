@@ -64,12 +64,39 @@ export function PostDownloadNudge({ page }: PostDownloadNudgeProps) {
       .catch(() => {});
   };
 
+  const ctaClick = () =>
+    track('paywall_upgrade_clicked', {
+      surface: SURFACE,
+      page,
+      plan: 'see_plans',
+    });
+
+  return (
+    <PostDownloadNudgeCard limit={limit} onDismiss={dismiss} onCta={ctaClick} />
+  );
+}
+
+// Presentational half, exported so the /dev/upload-success-preview route can
+// render the card with injected state instead of going through the
+// auth+eligibility gate (which renders nothing in a dev context).
+interface PostDownloadNudgeCardProps {
+  readonly limit: number;
+  readonly onDismiss?: () => void;
+  readonly onCta?: () => void;
+}
+
+export function PostDownloadNudgeCard({
+  limit,
+  onDismiss,
+  onCta,
+}: PostDownloadNudgeCardProps) {
+  const { t } = useTranslation('marketing');
   return (
     <section className={styles.card} aria-label={t('postDownloadNudge.aria')}>
       <button
         type="button"
         className={styles.close}
-        onClick={dismiss}
+        onClick={onDismiss}
         aria-label={t('postDownloadNudge.dismiss')}
       >
         ×
@@ -79,13 +106,7 @@ export function PostDownloadNudge({ page }: PostDownloadNudgeProps) {
       <Link
         className={styles.cta}
         to="/pricing?source=post_download_nudge"
-        onClick={() =>
-          track('paywall_upgrade_clicked', {
-            surface: SURFACE,
-            page,
-            plan: 'see_plans',
-          })
-        }
+        onClick={onCta}
       >
         {t('postDownloadNudge.cta')}
       </Link>

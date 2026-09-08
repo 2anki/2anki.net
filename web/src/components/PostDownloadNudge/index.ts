@@ -1,1 +1,1 @@
-export { PostDownloadNudge } from './PostDownloadNudge';
+export { PostDownloadNudge, PostDownloadNudgeCard } from './PostDownloadNudge';

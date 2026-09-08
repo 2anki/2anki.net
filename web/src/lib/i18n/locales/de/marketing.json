@@ -181,7 +181,7 @@
     "aria": "Bezahlte Tarife ansehen",
     "dismiss": "Ausblenden",
     "headline": "Gefällt dir 2anki?",
-    "body": "Du nutzt den Gratis-Tarif — {{limit}} Karten pro Monat. Wenn du mehr willst, sieh dir an, was ein bezahlter Tarif dazugibt.",
+    "body": "Du nutzt den kostenlosen Tarif — {{limit}} Karten pro Monat. Wenn du mehr willst, sieh dir an, was ein bezahlter Tarif zusätzlich bietet.",
     "cta": "Tarife ansehen"
   },
   "feedback": {

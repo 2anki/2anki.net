@@ -38,7 +38,7 @@ const PitchRouter = () => {
    *             properties:
    *               placement:
    *                 type: string
-   *                 enum: [convert_success, account_banner]
+   *                 enum: [convert_success, account_banner, producer_prompt, post_download_nudge]
    *     responses:
    *       204:
    *         description: Dismissal recorded

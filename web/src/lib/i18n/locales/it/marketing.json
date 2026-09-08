@@ -181,7 +181,7 @@
     "aria": "Vedi i piani a pagamento",
     "dismiss": "Chiudi",
     "headline": "Ti piace 2anki?",
-    "body": "Sei sul piano gratuito: {{limit}} carte al mese. Quando ne vorrai di più, guarda cosa aggiunge un piano a pagamento.",
+    "body": "Sei sul piano gratuito — {{limit}} carte al mese. Quando ne vorrai di più, guarda cosa aggiunge un piano a pagamento.",
     "cta": "Vedi i piani"
   },
   "feedback": {

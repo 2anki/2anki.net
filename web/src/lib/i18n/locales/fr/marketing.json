@@ -180,8 +180,8 @@
   "postDownloadNudge": {
     "aria": "Voir les offres payantes",
     "dismiss": "Fermer",
-    "headline": "2anki vous plaît ?",
-    "body": "Vous êtes sur l'offre gratuite — {{limit}} cartes par mois. Quand vous en voudrez plus, découvrez ce qu'ajoute une offre payante.",
+    "headline": "2anki te plaît ?",
+    "body": "Tu es sur l'offre gratuite — {{limit}} cartes par mois. Quand tu en voudras plus, découvre ce qu'ajoute une offre payante.",
     "cta": "Voir les offres"
   },
   "feedback": {

@@ -166,27 +166,14 @@
   background: var(--color-danger-light);
 }
 
-.upgradeFooter {
-  border-top: 1px solid var(--color-border-light);
-  padding: 0.875rem 1rem;
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+.nudgeSlot {
+  margin-top: 1rem;
 }
 
 .makeAnotherDeck {
   display: flex;
   justify-content: center;
   margin-top: 1.5rem;
-}
-
-.upgradeFooter a {
-  color: var(--color-primary);
-  font-weight: var(--font-medium);
-  text-decoration: none;
-}
-
-.upgradeFooter a:hover {
-  text-decoration: underline;
 }
 
 .failedRow {
