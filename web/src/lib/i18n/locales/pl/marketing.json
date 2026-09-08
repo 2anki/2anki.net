@@ -183,15 +183,12 @@
     "fullPrefix": "Niezależne od 2020. Tworzone przez ",
     "fullSuffix": " i jego współtwórców, finansowane przez ludzi, którzy z niego korzystają — nie inwestorów."
   },
-  "upsell": {
-    "aria": "Kontynuuj bez miesięcznego limitu",
-    "headlineDownloads": "Konwertujesz więcej w tym miesiącu?",
-    "headlineUpload": "Więcej stron do przekonwertowania?",
-    "bodyDownloads": "Day Pass znosi limit 100 kart na 24 godziny — bez subskrypcji.",
-    "bodyUpload": "Pass znosi miesięczny limit 100 kart — na dzień lub tydzień, bez subskrypcji.",
-    "startingCheckout": "Rozpoczynanie płatności",
-    "getDayPass": "Kup Day Pass — {{price}}",
-    "seePlans": "Zobacz plany"
+  "postDownloadNudge": {
+    "aria": "Zobacz płatne plany",
+    "dismiss": "Zamknij",
+    "headline": "Podoba Ci się 2anki?",
+    "body": "Korzystasz z darmowego planu — {{limit}} kart miesięcznie. Gdy zechcesz więcej, zobacz, co daje płatny plan.",
+    "cta": "Zobacz plany"
   },
   "feedback": {
     "thanks": "Dzięki — opinia przyjęta.",

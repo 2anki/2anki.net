@@ -177,15 +177,12 @@
     "fullPrefix": "Independente desde 2020. Construído por ",
     "fullSuffix": " e seus colaboradores, e financiado por quem usa — não por investidores."
   },
-  "upsell": {
-    "aria": "Continue sem o limite mensal",
-    "headlineDownloads": "Convertendo mais neste mês?",
-    "headlineUpload": "Mais páginas para converter?",
-    "bodyDownloads": "Um Day Pass tira o limite de 100 cartões por 24 horas — sem assinatura.",
-    "bodyUpload": "Um passe tira o limite mensal de 100 cartões — por um dia ou uma semana, sem assinatura.",
-    "startingCheckout": "Iniciando o checkout",
-    "getDayPass": "Obter Day Pass — {{price}}",
-    "seePlans": "Ver planos"
+  "postDownloadNudge": {
+    "aria": "Ver planos pagos",
+    "dismiss": "Dispensar",
+    "headline": "Está gostando do 2anki?",
+    "body": "Você está no plano gratuito — {{limit}} cartões por mês. Quando quiser mais, veja o que um plano pago acrescenta.",
+    "cta": "Ver planos"
   },
   "feedback": {
     "thanks": "Obrigado — feedback recebido.",

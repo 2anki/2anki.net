@@ -174,15 +174,12 @@
     "fullPrefix": "2020 年から独立。",
     "fullSuffix": " とその貢献者によって作られ、投資家ではなく、使う人々によって支えられています。"
   },
-  "upsell": {
-    "aria": "月間上限なしで続ける",
-    "headlineDownloads": "今月はもっと変換しますか？",
-    "headlineUpload": "変換したいページがまだありますか？",
-    "bodyDownloads": "Day Pass なら 100 枚の上限を 24 時間解除 — サブスクリプションなし。",
-    "bodyUpload": "パスなら 100 枚の月間上限を解除 — 1 日または 1 週間、サブスクリプションなし。",
-    "startingCheckout": "チェックアウトを開始しています",
-    "getDayPass": "Get Day Pass — {{price}}",
-    "seePlans": "プランを見る"
+  "postDownloadNudge": {
+    "aria": "有料プランを見る",
+    "dismiss": "閉じる",
+    "headline": "2anki は役に立っていますか？",
+    "body": "現在は無料プラン（月{{limit}}枚まで）です。もっと使いたくなったら、有料プランでできることをご覧ください。",
+    "cta": "プランを見る"
   },
   "feedback": {
     "thanks": "ありがとうございます — フィードバックを受け取りました。",

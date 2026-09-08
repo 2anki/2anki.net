@@ -1,1 +1,0 @@
-export { UpsellCard } from './UpsellCard';

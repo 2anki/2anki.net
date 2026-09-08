@@ -177,15 +177,12 @@
     "fullPrefix": "Independent since 2020. Built by ",
     "fullSuffix": " and its contributors, and funded by the people who use it — not investors."
   },
-  "upsell": {
-    "aria": "Keep going without the monthly cap",
-    "headlineDownloads": "Converting more this month?",
-    "headlineUpload": "More pages to convert?",
-    "bodyDownloads": "A Day Pass lifts the 100-card limit for 24 hours — no subscription.",
-    "bodyUpload": "A pass lifts the 100-card monthly cap — for a day or a week, no subscription.",
-    "startingCheckout": "Starting checkout",
-    "getDayPass": "Get Day Pass — {{price}}",
-    "seePlans": "See plans"
+  "postDownloadNudge": {
+    "aria": "See paid plans",
+    "dismiss": "Dismiss",
+    "headline": "Enjoying 2anki?",
+    "body": "You're on the free plan — {{limit}} cards a month. Whenever you want more, see what a paid plan adds.",
+    "cta": "See plans"
   },
   "feedback": {
     "thanks": "Thanks — feedback received.",

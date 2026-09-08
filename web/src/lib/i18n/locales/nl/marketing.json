@@ -177,15 +177,12 @@
     "fullPrefix": "Onafhankelijk sinds 2020. Gebouwd door ",
     "fullSuffix": " en zijn bijdragers, en gefinancierd door de mensen die het gebruiken — niet door investeerders."
   },
-  "upsell": {
-    "aria": "Ga door zonder de maandlimiet",
-    "headlineDownloads": "Deze maand meer aan het omzetten?",
-    "headlineUpload": "Meer pagina's om om te zetten?",
-    "bodyDownloads": "Een Day Pass haalt de 100-kaartenlimiet 24 uur weg — geen abonnement.",
-    "bodyUpload": "Een pass haalt de maandelijkse 100-kaartenlimiet weg — voor een dag of een week, geen abonnement.",
-    "startingCheckout": "Afrekenen starten",
-    "getDayPass": "Day Pass kopen — {{price}}",
-    "seePlans": "Bekijk abonnementen"
+  "postDownloadNudge": {
+    "aria": "Bekijk betaalde abonnementen",
+    "dismiss": "Sluiten",
+    "headline": "Bevalt 2anki?",
+    "body": "Je gebruikt het gratis abonnement — {{limit}} kaarten per maand. Wil je meer, bekijk dan wat een betaald abonnement toevoegt.",
+    "cta": "Bekijk abonnementen"
   },
   "feedback": {
     "thanks": "Bedankt — feedback ontvangen.",

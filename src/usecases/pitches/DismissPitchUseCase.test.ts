@@ -64,6 +64,16 @@ describe('DismissPitchUseCase', () => {
     });
   });
 
+  it('saves a dismissal for the post download nudge placement', async () => {
+    const repo = makeInMemoryDismissalRepo();
+    const useCase = new DismissPitchUseCase(repo);
+    await useCase.execute('u1', 'post_download_nudge');
+    expect(repo.store[0]).toMatchObject({
+      user_id: 'u1',
+      placement: 'post_download_nudge',
+    });
+  });
+
   it('throws when placement value is invalid', async () => {
     const repo = makeInMemoryDismissalRepo();
     const useCase = new DismissPitchUseCase(repo);

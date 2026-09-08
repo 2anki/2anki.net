@@ -1,9 +1,13 @@
 import { Knex } from 'knex';
 
-export type PitchPlacement =
-  | 'convert_success'
-  | 'account_banner'
-  | 'producer_prompt';
+export const PITCH_PLACEMENTS = [
+  'convert_success',
+  'account_banner',
+  'producer_prompt',
+  'post_download_nudge',
+] as const;
+
+export type PitchPlacement = (typeof PITCH_PLACEMENTS)[number];
 
 export interface PitchDismissal {
   id: number;

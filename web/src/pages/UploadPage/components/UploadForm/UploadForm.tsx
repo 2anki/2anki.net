@@ -44,7 +44,7 @@ import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
-import { UpsellCard } from '../../../../components/UpsellCard';
+import { PostDownloadNudge } from '../../../../components/PostDownloadNudge';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
 import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
@@ -1133,9 +1133,7 @@ function UploadForm({
       {successOffer === 'anon_signup' && (
         <CreateAccountNotice deckName={deckName} />
       )}
-      {successOffer === 'upsell' && (
-        <UpsellCard surface="upload_success_upsell" hideForAnonymous />
-      )}
+      {successOffer === 'upsell' && <PostDownloadNudge page="upload" />}
       <button
         type="button"
         className={sharedStyles.btnSecondary}

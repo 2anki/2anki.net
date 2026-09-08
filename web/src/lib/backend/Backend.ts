@@ -1316,6 +1316,7 @@ export interface PitchEligibility {
   convertSuccess: boolean;
   accountBanner: boolean;
   producerPrompt: boolean;
+  postDownloadNudge: boolean;
 }
 
 export interface DropboxUpload {
