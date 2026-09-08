@@ -1,5 +1,5 @@
 ---
-description: Merge and deploy a finished PR unattended — review agent → gate → merge → watch deploy → verify prod → digest
+description: Merge and deploy a finished PR unattended — review agent → gate → merge → watch deploy → verify prod
 argument-hint: <PR number or URL>
 allowed-tools: Bash, Read, Grep, Glob, Agent, Monitor, ScheduleWakeup
 ---
@@ -80,7 +80,7 @@ Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the merg
 curl -fsS https://2anki.net/api/version | jq -r .sha
 ```
 
-Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 8.
+Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → Report.
 
 ## 7. Failure → revert
 
@@ -93,34 +93,8 @@ If the deploy run failed, `/api/version` does not report the merge SHA after the
 5. Comment the revert PR URL on the deploy-failure issue the workflow opened (`gh issue list --repo 2anki/2anki.net --search "Production deploy failed" --state open` — the search API does not follow the `2anki/server` rename, so list/search calls use the canonical name).
 6. Reopen the original issue if the PR had closed one, with one line on what failed.
 
-## 8. Digest
-
-Find or create today's digest issue and append one comment:
-
-```bash
-TODAY=$(date -u +%Y-%m-%d)
-ISSUE=$(gh issue list --repo 2anki/2anki.net --label shipped-digest --state open --search "\"Shipped $TODAY\" in:title" --json number --jq '.[0].number // empty')
-if [ -z "$ISSUE" ]; then
-  URL=$(gh issue create --repo 2anki/server --title "Shipped $TODAY" --label shipped-digest --body "Everything agents merged and deployed today. One comment per PR; override any decision by replying or opening a follow-up.")
-  ISSUE=${URL##*/}
-fi
-gh issue comment "$ISSUE" --repo 2anki/server --body-file /tmp/ship-digest.md
-```
-
-`/tmp/ship-digest.md` shape:
-
-```
-### <PR title> — https://github.com/2anki/server/pull/<n>
-**Needs you:** <the one manual step only Alexander can do, or omit this line>
-<one line: what changed and why>
-<the PR body's `## Decisions` block verbatim, if present>
-Deploy: <merge sha short> · <"healthy" | "no deploy (docs only)" | "reverted via #<m>">
-```
-
-Any step only Alexander can do (flip an ops switch for a user, confirm a fix on a specific account, change a Stripe or prod setting) goes on the `**Needs you:**` line at the top of the entry, never only inside the `Decisions` block — the block is a review, the line is a to-do (2026-08-28: the #4262 ops-switch step sat inside `Decisions` and was found by accident). Alexander closes the day's issue once read; closed means reviewed, so never close a digest issue from an agent.
-
-`gh issue create` prints the new issue's URL, hence `${URL##*/}` for the number. The `shipped-digest` label exists (created 2026-08-26); if it ever goes missing, `--label` errors — recreate it with `gh label create shipped-digest --repo 2anki/server --color 0E8A16 --description "Daily digest of agent-merged PRs"`.
-
 ## Report
 
 End with two lines: the PR URL, and the deploy verdict (`healthy <sha>` / `no deploy` / `reverted → <revert PR URL>` / `rail — waiting for Alexander`).
+
+Trio calls stay in the PR body under `## Decisions`; Alexander overrides one by commenting on the merged PR or opening a follow-up. If the PR leaves a step only Alexander can do (flip an ops switch for a user, confirm a fix on a specific account, change a Stripe or prod setting), open one issue for it — `gh issue create --repo 2anki/server --title "Needs you: <step>"` with the PR link in the body — and print its URL as a third line. Do not create a daily `Shipped <date>` digest issue: those were dropped 2026-09-08 because they duplicated the merged-PR list and added an issue a day to close.

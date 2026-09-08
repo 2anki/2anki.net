@@ -44,7 +44,7 @@ When `$ARGUMENTS` is a PR number or URL (or you can find a draft PR titled `spec
    ```
    Update the PR body to the engineer template in `.claude/agents/engineer.md` (What / Why / How / Measuring success / Testing / Risks / Goal alignment). Keep the link to the trio synthesis if it was useful.
    **Flip ready only when every CI check on the branch is COMPLETED and green** (`gh pr view <n> --json statusCheckRollup`) — a ready PR with a check still running can meet a "merge if ready" while secretly red (#3908). If the spec came from a GitHub issue, the PR body carries `Closes #<issue>` so the merge auto-closes it.
-10. **Ship it.** Run `/ship <n>` — review agent, gate, merge, deploy watch, prod verification, digest. A hard-rail PR stops at ready and waits for Alexander.
+10. **Ship it.** Run `/ship <n>` — review agent, gate, merge, deploy watch, prod verification. A hard-rail PR stops at ready and waits for Alexander.
 11. **Print the PR link.** End your reply with the full `https://github.com/2anki/server/pull/<n>` URL and the deploy verdict as the last lines.
 
 Before merging:

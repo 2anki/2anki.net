@@ -1,6 +1,6 @@
 # Autonomous shipping
 
-Agents merge and deploy their own non-rail PRs through `/ship`. Alexander reviews only hard-rail PRs and reads a daily digest. Decided 2026-08-26 (PR #4244); this doc is the reference the rules point at.
+Agents merge and deploy their own non-rail PRs through `/ship`. Alexander reviews only hard-rail PRs and the merged-PR list. Decided 2026-08-26 (PR #4244); this doc is the reference the rules point at.
 
 ## Why it is safe to let agents merge
 
@@ -33,13 +33,13 @@ Why not CODEOWNERS: agents run under Alexander's `gh` auth and he authors most P
 
 ## `/ship` in one paragraph
 
-Preflight (draft? rail? rebased?) → review agent (`/review-pr` fan-out; two fix rounds max) posts the marker → wait for the rollup and for `sonar_gate.py --wait 300` → `gh pr merge --squash --delete-branch` (hooks re-verify) → find the deploy run for the merge SHA and watch it → `curl /api/version` must report the merge SHA, then `/deploy-status` → on failure, `git revert` on a `revert/<slug>` branch shipped through the same command (review agent skipped for a mechanical revert), comment on the deploy-failure issue → append to today's `Shipped <date>` issue (label `shipped-digest`). Full steps: `.claude/commands/ship.md`.
+Preflight (draft? rail? rebased?) → review agent (`/review-pr` fan-out; two fix rounds max) posts the marker → wait for the rollup and for `sonar_gate.py --wait 300` → `gh pr merge --squash --delete-branch` (hooks re-verify) → find the deploy run for the merge SHA and watch it → `curl /api/version` must report the merge SHA, then `/deploy-status` → on failure, `git revert` on a `revert/<slug>` branch shipped through the same command (review agent skipped for a mechanical revert), comment on the deploy-failure issue. Full steps: `.claude/commands/ship.md`.
 
 Sanctioned carve-outs inside `/ship` only: starting `pnpm dev` for the browser attestation (kill it after), and the read-only `/deploy-status` SSH.
 
-## The digest
+## Decisions and manual steps
 
-One GitHub issue per UTC day, `Shipped YYYY-MM-DD`, label `shipped-digest`, one comment per merged PR: link, one line what/why, the PR body's `## Decisions` block verbatim, deploy verdict. This is where Alexander overrides a trio call — reply on the issue or open a follow-up. Trio decisions therefore **must** land in the PR body under `## Decisions` (the `overnight-prs` format), or the digest has nothing to surface. An entry that leaves a manual step for Alexander carries it as a `**Needs you:**` first line, separate from the decisions. He closes the day's issue once read — closed means reviewed — so agents never close one.
+Trio decisions land in the PR body under `## Decisions` (the `overnight-prs` format). The merged PR is where Alexander overrides a call — comment on it or open a follow-up. A step only Alexander can do (an ops switch for a user, a Stripe or prod setting, confirming a fix on a specific account) gets its own `Needs you: <step>` issue linking the PR, so the to-do outlives the ship report. The daily `Shipped <date>` digest issues (label `shipped-digest`, 2026-08-26 to 2026-09-08) were dropped: they duplicated `gh pr list --state merged` and cost an issue a day to close. Agents never create one.
 
 ## Throughput
 

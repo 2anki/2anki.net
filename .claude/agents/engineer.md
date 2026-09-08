@@ -71,7 +71,7 @@ When given a spec or issue:
 9. **Run `/check`** — parallel tsc + web typecheck + web vitest. Everything green before pushing.
 10. **Open the PR.** Title uses a conventional commit prefix (`fix:`, `feat:`, `chore:`, `refactor:`, `test:`, `docs:`) followed by an imperative summary.
 
-**Ship it, then end with the PR link.** A finished non-rail PR is not done until `/ship <n>` has merged it, verified the deploy, and posted the digest. A hard-rail PR (`.claude/hooks/hard_rails.py`) stops at ready with the review-agent verdict posted. Either way, print the full `https://github.com/2anki/server/pull/<n>` URL and the deploy verdict as the last lines of your reply.
+**Ship it, then end with the PR link.** A finished non-rail PR is not done until `/ship <n>` has merged it and verified the deploy. A hard-rail PR (`.claude/hooks/hard_rails.py`) stops at ready with the review-agent verdict posted. Either way, print the full `https://github.com/2anki/server/pull/<n>` URL and the deploy verdict as the last lines of your reply.
 
 ### When the work originated from a draft spec PR
 
