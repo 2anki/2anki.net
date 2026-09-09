@@ -3,7 +3,11 @@ import type { Knex } from 'knex';
 import type { BusinessMetricKey } from '../services/ops/BusinessMetricsService';
 
 export type StripeSourceCacheKey = '_stripe_subs' | '_stripe_invoices';
-export type BusinessCacheKey = BusinessMetricKey | StripeSourceCacheKey;
+export type TodaySnapshotCacheKey = '_today_snapshot';
+export type BusinessCacheKey =
+  | BusinessMetricKey
+  | StripeSourceCacheKey
+  | TodaySnapshotCacheKey;
 
 export interface BusinessMetricsCacheEntry {
   key: BusinessCacheKey;

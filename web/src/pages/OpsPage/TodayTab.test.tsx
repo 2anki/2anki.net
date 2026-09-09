@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import TodayTab from './TodayTab';
+import { ScoreRow, TodaySnapshotResponse } from './todayTypes';
 
 const mockListContactMessages = vi.fn();
 
@@ -14,61 +15,61 @@ vi.mock('../../lib/backend/get2ankiApi', () => ({
   }),
 }));
 
-const healthyBusiness = {
+const row = (overrides: Partial<ScoreRow>): ScoreRow => ({
+  id: 'row',
+  lever: 'revenue',
+  label: 'Row',
+  format: 'count',
+  window_label: '7d',
+  value: 1,
+  delta: null,
+  delta_good: null,
+  target: null,
+  target_direction: null,
+  status: 'none',
+  link: '/ops/business',
+  ...overrides,
+});
+
+const snapshot = (
+  rows: ScoreRow[],
+  overrides: Partial<TodaySnapshotResponse> = {}
+): TodaySnapshotResponse => ({
+  rows,
+  as_of: '2026-09-09T10:00:00.000Z',
+  cache_age_seconds: 0,
+  stale: false,
+  errors: [],
+  ...overrides,
+});
+
+const business = {
   mrr_usd: 1823,
   net_new_mrr_mtd_usd: 40,
   active_paying_subs: 759,
-  churn_30d_pct: 18.2,
+  churn_30d_pct: 9.1,
   failed_payments_7d: 3,
   new_paid_conversions_7d: 16,
   pass_sales_7d: { day_passes: 4, week_passes: 1 },
   mrr_timeseries: null,
   active_subs_timeseries: null,
   conversions_vs_churn_weekly: null,
-  failed_payments_weekly: [
-    { week: '2026-06-01', count: 2 },
-    { week: '2026-06-08', count: 2 },
-    { week: '2026-06-15', count: 2 },
-    { week: '2026-06-22', count: 2 },
-  ],
+  failed_payments_weekly: null,
   cancellation_reasons_top: null,
-  cancellation_comments_recent: [],
+  cancellation_comments_recent: [
+    {
+      created_at: '2026-09-08T00:00:00Z',
+      reason: 'too_expensive',
+      comment: 'loved it but rent',
+    },
+  ],
   emoji_feedback_ratings: null,
   emoji_feedback_comments: null,
   reengagement_reasons_top: null,
   reengagement_comments_recent: null,
   signup_countries_90d: null,
-  as_of: '2026-07-06T00:00:00Z',
+  as_of: '2026-09-09T00:00:00Z',
   cache_age_seconds: 5,
-};
-
-const healthyConversion = {
-  free_conversions_7d: 824,
-  paid_conversions_7d: 137,
-  free_conversion_success_rate_7d: 96.4,
-  paid_conversion_success_rate_7d: 97.2,
-  free_blocked_by_plan_7d: 40,
-  paid_blocked_by_plan_7d: 0,
-  conversion_errors_7d_top_reasons: null,
-  failed_conversions_weekly: null,
-  time_to_first_deck_median_minutes_30d: 42,
-  upload_to_download_rate_7d: 25.4,
-};
-
-const healthyPerformance = {
-  generated_at: '2026-07-06T00:00:00Z',
-  durations: [
-    { window: '24h', p50_ms: 800, p95_ms: 4200, p99_ms: 9000, count: 100 },
-  ],
-  status_breakdown_24h: [],
-  slowest_jobs_24h: [],
-  signup_countries_7d: [],
-};
-
-const healthyReturnRate = {
-  overall: { '7d': 32.1, '14d': 40, '30d': 45 },
-  by_source_type: null,
-  as_of: '2026-07-06T00:00:00Z',
 };
 
 const jsonResponse = (body: unknown) => ({
@@ -76,35 +77,24 @@ const jsonResponse = (body: unknown) => ({
   status: 200,
   statusText: 'OK',
   json: async () => body,
-  text: async () => JSON.stringify(body),
 });
 
-interface RouteOverrides {
-  errorGroups?: unknown;
-  business?: unknown;
-}
-
-const installFetch = (overrides: RouteOverrides = {}) => {
+const installFetch = (today: TodaySnapshotResponse | Error) => {
   globalThis.fetch = vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
-    if (url.includes('/api/ops/errors')) {
-      return Promise.resolve(
-        jsonResponse(overrides.errorGroups ?? { groups: [], totalGroups: 0 })
-      );
+    if (url.includes('/api/ops/today')) {
+      if (today instanceof Error) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          json: async () => ({ message: today.message }),
+        });
+      }
+      return Promise.resolve(jsonResponse(today));
     }
     if (url.includes('/api/ops/business/metrics')) {
-      return Promise.resolve(
-        jsonResponse(overrides.business ?? healthyBusiness)
-      );
-    }
-    if (url.includes('/api/ops/conversion/metrics')) {
-      return Promise.resolve(jsonResponse(healthyConversion));
-    }
-    if (url.includes('/api/ops/performance/metrics')) {
-      return Promise.resolve(jsonResponse(healthyPerformance));
-    }
-    if (url.includes('/api/ops/return-rate/metrics')) {
-      return Promise.resolve(jsonResponse(healthyReturnRate));
+      return Promise.resolve(jsonResponse(business));
     }
     return Promise.reject(new Error(`unexpected fetch: ${url}`));
   }) as unknown as typeof fetch;
@@ -127,85 +117,142 @@ describe('TodayTab', () => {
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
-    mockListContactMessages.mockResolvedValue([]);
+    mockListContactMessages.mockResolvedValue([
+      {
+        id: 1,
+        name: 'A user',
+        email: 'user@example.com',
+        message: 'Cards stopped syncing after I renamed the page',
+        created_at: '2026-09-08T00:00:00Z',
+        is_acknowledged: false,
+        attachments: [],
+      },
+    ]);
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
-  test('shows the calm empty state when no rule fires', async () => {
-    installFetch();
+  test('renders the scoreboard sorted with attention rows first and a divider', async () => {
+    installFetch(
+      snapshot([
+        row({
+          id: 'new_paid_7d',
+          label: 'New paid',
+          value: 15,
+          target: 70,
+          target_direction: 'at_least',
+          status: 'red',
+        }),
+        row({
+          id: 'conversion_success_7d_pct',
+          label: 'Conversion success',
+          format: 'percent',
+          value: 88,
+          target: 90,
+          target_direction: 'at_least',
+          status: 'amber',
+          link: '/ops/growth',
+        }),
+        row({
+          id: 'pass_sales_7d',
+          label: 'Pass sales',
+          value: 23,
+          target: 23,
+          target_direction: 'at_least',
+          status: 'green',
+        }),
+      ])
+    );
+
+    renderTab();
+
+    expect(await screen.findByText('2 need attention')).toBeInTheDocument();
+    expect(screen.getByText('≥70')).toBeInTheDocument();
+    expect(screen.getByText('88.0%')).toBeInTheDocument();
+    expect(screen.getByText('≥90.0%')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /New paid/ })).toHaveAttribute(
+      'href',
+      '/ops/business'
+    );
+    expect(
+      screen.getByRole('link', { name: /Conversion success/ })
+    ).toHaveAttribute('href', '/ops/growth');
+
+    const rows = screen
+      .getAllByRole('listitem')
+      .filter((li) => li.hasAttribute('data-status'));
+    expect(rows.map((li) => li.getAttribute('data-status'))).toEqual([
+      'red',
+      'amber',
+      'green',
+    ]);
+    expect(
+      screen.getAllByRole('button', { name: /Copy for Claude/ })
+    ).toHaveLength(2);
+  });
+
+  test('says nothing needs you when every row is green', async () => {
+    installFetch(
+      snapshot([
+        row({ id: 'pass_sales_7d', label: 'Pass sales', status: 'green' }),
+      ])
+    );
+
     renderTab();
 
     expect(
       await screen.findByText('Nothing needs you today.')
     ).toBeInTheDocument();
-    expect(screen.getByText('Healthy')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Copy for Claude/ })
+    ).toBeNull();
   });
 
-  test('shows day and week pass sales in the healthy strip', async () => {
-    installFetch();
+  test('marks a stale snapshot and lists a failed source', async () => {
+    installFetch(
+      snapshot([row({ id: 'pass_sales_7d', label: 'Pass sales' })], {
+        stale: true,
+        errors: [{ source: 'pass_unlock', message: 'stripe timeout' }],
+      })
+    );
+
     renderTab();
 
-    expect(await screen.findByText('Day passes / wk')).toBeInTheDocument();
-    expect(screen.getByText('Week passes / wk')).toBeInTheDocument();
-    expect(screen.getByText('4')).toBeInTheDocument();
-  });
-
-  test('renders an attention row with a copy button when errors are unresolved', async () => {
-    installFetch({
-      errorGroups: {
-        groups: [
-          {
-            message_hash: 'abc',
-            message: 'TypeError: x is undefined',
-            stack: null,
-            url: null,
-            release: null,
-            source: 'server',
-            user_id: null,
-            user_agent: null,
-            first_seen: '2026-07-01T00:00:00Z',
-            last_seen: '2026-07-06T00:00:00Z',
-            occurrences: 7,
-            resolved: false,
-            resolved_at: null,
-          },
-        ],
-        totalGroups: 1,
-      },
-    });
-    renderTab();
-
+    expect(await screen.findByText(/stale/)).toBeInTheDocument();
     expect(
-      await screen.findByText('Unresolved error groups')
-    ).toBeInTheDocument();
-    expect(screen.getByText('7 occurrences')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Copy for Claude Code' })
+      screen.getByText('pass_unlock unavailable: stripe timeout')
     ).toBeInTheDocument();
   });
 
-  it('shows recent emoji feedback comments in the voice block', async () => {
-    installFetch({
-      business: {
-        ...healthyBusiness,
-        emoji_feedback_comments: [
-          {
-            rating: 2,
-            comment: 'The deck came out empty',
-            page: '/upload',
-            created_at: '2026-07-08T09:00:00Z',
-          },
-        ],
-      },
-    });
+  test('shows the snapshot error banner when the endpoint fails', async () => {
+    installFetch(new Error('Failed to load the today snapshot'));
+
     renderTab();
 
     expect(
-      await screen.findByText(/The deck came out empty/)
+      await screen.findByText(
+        '/api/ops/today failed: Failed to load the today snapshot'
+      )
     ).toBeInTheDocument();
+  });
+
+  test('previews unread messages and cancellation comments in voice of user', async () => {
+    installFetch(snapshot([]));
+
+    renderTab();
+
+    expect(
+      await screen.findByText('Cards stopped syncing after I renamed the page')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Cancelled — too_expensive: loved it but rent')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Unread messages')).toHaveAttribute(
+      'href',
+      '/ops/messages'
+    );
   });
 });

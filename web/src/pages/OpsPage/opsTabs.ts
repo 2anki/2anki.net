@@ -9,21 +9,17 @@ const childRoute =
   (path: string): boolean =>
     path.startsWith(prefix);
 
-const systemTab: OpsTab = {
-  to: '/ops/system',
-  label: 'System',
+const todayTab: OpsTab = {
+  to: '/ops/today',
+  label: 'Today',
   match: (path) =>
     path === '/ops' ||
     path.startsWith('/ops?') ||
-    path.startsWith('/ops/system'),
+    path.startsWith('/ops/today'),
 };
 
 export const OPS_TABS: OpsTab[] = [
-  {
-    to: '/ops/today',
-    label: 'Today',
-    match: childRoute('/ops/today'),
-  },
+  todayTab,
   {
     to: '/ops/growth',
     label: 'Growth',
@@ -34,7 +30,11 @@ export const OPS_TABS: OpsTab[] = [
     label: 'Business',
     match: childRoute('/ops/business'),
   },
-  systemTab,
+  {
+    to: '/ops/system',
+    label: 'System',
+    match: childRoute('/ops/system'),
+  },
   {
     to: '/ops/errors',
     label: 'Errors',
