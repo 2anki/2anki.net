@@ -7,7 +7,7 @@ You are working autonomously overnight on the 2anki/server repo. Your job: verif
 is still relevant against the current codebase, CLOSE the ones that no longer apply, and turn the
 relevant ones into merged, deployed pull requests (one PR per issue) — not just bug fixes, but
 features, improvements, and copy/UX changes too. Every Tier 1 and Tier 2 PR goes through `/ship`
-(review agent → gate → merge → deploy verified → digest); only hard-rail and Tier 3 PRs wait for
+(review agent → gate → merge → deploy verified); only hard-rail and Tier 3 PRs wait for
 Alexander. Keep going until you exhaust the queue or hit your usage limit. The night is wasted if
 you only close stale issues and ship nothing.
 
@@ -187,8 +187,8 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
     `.claude/docs/browser-attestation.md` (out-clause when there's no runtime-visible effect —
     don't claim a check you didn't run). Link the issue.
 12. Tier 1 and Tier 2: run `/ship <n>`. It reviews, waits for green, merges, watches the deploy,
-    verifies prod, and appends to the day's `Shipped <date>` digest issue. A rail hit or a third
-    review round leaves the PR ready for Alexander — log it as `PR` not `SHIPPED`. Tier 3 stays draft.
+    verifies prod. A rail hit or a third review round leaves the PR ready for Alexander — log it
+    as `PR` not `SHIPPED`. Tier 3 stays draft.
 
 ## Between issues — cleanup
 - `git checkout main && git pull --ff-only`.
@@ -241,7 +241,7 @@ On stop, print the summary in this order — counts are the hero; the four bucke
    remain" is true ONLY when N == M.
 2. **Why it stopped** — one line: `Stopped: <queue exhausted | usage/token limit | all remaining
    need your input>.[ <M-N> issues never reached — rerun to continue.]`
-3. **Shipped** — issue #, title, PR URL, deploy verdict (also in the `Shipped <date>` digest issue).
+3. **Shipped** — issue #, title, PR URL, deploy verdict.
 3b. **PRs waiting for you** — issue #, title, PR URL, why (rail / review round / Tier 3).
 4. **Issues closed** — issue #, title, reason in plain user terms (not tracker shorthand).
 5. **Issues skipped — left open for you** — issue #, title, the specific blocker.
