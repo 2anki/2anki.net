@@ -282,13 +282,14 @@
 }
 
 .sectionSummaryTitle {
+  margin: 0;
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
   color: var(--color-text-primary);
 }
 
 .sectionSummaryTitle::before {
-  content: '▸';
+  content: '▸' / '';
   display: inline-block;
   width: 1rem;
   color: var(--color-text-tertiary);

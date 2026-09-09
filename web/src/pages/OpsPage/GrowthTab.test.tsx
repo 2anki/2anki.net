@@ -46,7 +46,9 @@ describe('GrowthTab', () => {
       'Customer signals',
       'Return rate',
     ]) {
-      expect(screen.getByText(title)).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { level: 2, name: title })
+      ).toBeInTheDocument();
     }
     expect(document.querySelectorAll('details')).toHaveLength(5);
     expect(document.querySelectorAll('details[open]')).toHaveLength(0);

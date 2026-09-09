@@ -11,6 +11,12 @@ import {
 } from './todayScore';
 import { ScoreRow } from './todayTypes';
 
+interface SectionState {
+  open: boolean;
+  mounted: boolean;
+  openedForHash: string | null;
+}
+
 interface CollapsibleSectionProps {
   slug: string;
   title: string;
@@ -26,17 +32,24 @@ export default function CollapsibleSection({
 }: Readonly<CollapsibleSectionProps>) {
   const { hash } = useLocation();
   const targeted = hash === `#${slug}`;
-  const [toggledOpen, setToggledOpen] = useState(false);
-  const [everOpened, setEverOpened] = useState(false);
+  const [state, setState] = useState<SectionState>({
+    open: targeted,
+    mounted: targeted,
+    openedForHash: targeted ? hash : null,
+  });
   const element = useRef<HTMLDetailsElement>(null);
-  const open = toggledOpen || targeted;
-  const mounted = everOpened || targeted;
+
+  if (targeted && state.openedForHash !== hash) {
+    setState({ open: true, mounted: true, openedForHash: hash });
+  }
 
   useEffect(() => {
     if (targeted) {
       element.current?.scrollIntoView?.({ block: 'start' });
     }
   }, [targeted]);
+
+  const { open, mounted } = state;
 
   const status = summary?.status ?? 'none';
 
@@ -48,18 +61,21 @@ export default function CollapsibleSection({
       open={open}
       onToggle={(event) => {
         const next = event.currentTarget.open;
-        setToggledOpen(next);
-        if (next) setEverOpened(true);
+        setState((current) => ({
+          ...current,
+          open: next,
+          mounted: current.mounted || next,
+        }));
       }}
     >
       <summary className={styles.sectionSummary} data-status={status}>
         <span className={styles.scoreBar} aria-hidden="true" />
-        <span className={styles.sectionSummaryTitle}>
+        <h2 className={styles.sectionSummaryTitle}>
           {title}
           {summary != null && status !== 'none' && (
             <span className={sharedStyles.srOnly}>, status {status}</span>
           )}
-        </span>
+        </h2>
         {summary == null ? (
           <span className={styles.sectionSummaryMetric} />
         ) : (
@@ -67,7 +83,7 @@ export default function CollapsibleSection({
             <span className={styles.sectionSummaryMetric}>
               {summary.label}
               <span aria-hidden="true"> · </span>
-              <span className={sharedStyles.srOnly}>, window </span>
+              <span className={sharedStyles.srOnly}>, </span>
               {summary.window_label}
             </span>
             <span className={styles.scoreValue}>

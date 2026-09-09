@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import CollapsibleSection from './CollapsibleSection';
 import { ScoreRow } from './todayTypes';
@@ -34,6 +34,12 @@ const renderAt = (
   );
 
 describe('CollapsibleSection', () => {
+  const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+
+  afterEach(() => {
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+  });
+
   test('starts collapsed and does not mount its body', () => {
     renderAt('/ops/growth');
     expect(screen.getByText('Upload funnel')).toBeInTheDocument();
@@ -59,6 +65,17 @@ describe('CollapsibleSection', () => {
     expect(document.querySelector('details')).toHaveAttribute('open');
     expect(screen.getByTestId('body')).toBeInTheDocument();
     expect(scrollIntoView).toHaveBeenCalled();
+  });
+
+  test('lets the user close a section the hash opened', () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    renderAt('/ops/growth#upload-funnel');
+    const details = document.querySelector('details') as HTMLDetailsElement;
+    expect(details).toHaveAttribute('open');
+    details.open = false;
+    fireEvent(details, new Event('toggle'));
+    expect(details).not.toHaveAttribute('open');
+    expect(screen.getByTestId('body')).toBeInTheDocument();
   });
 
   test('shows the headline metric, value and target in the summary row', () => {
