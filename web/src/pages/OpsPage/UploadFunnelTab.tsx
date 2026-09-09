@@ -2,7 +2,8 @@ import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
 import { buildClaudePrompt } from './buildClaudePrompt';
 import CopyForClaudeButton from './CopyForClaudeButton';
-import { UPLOAD_FUNNEL_WINDOWS, useUploadFunnel } from './useUploadFunnel';
+import { useOpsWindow } from './opsWindow';
+import { useUploadFunnel } from './useUploadFunnel';
 import {
   UploadFunnelOriginBreakdown,
   UploadFunnelStages,
@@ -104,8 +105,8 @@ interface RateHero {
 }
 
 export default function UploadFunnelTab() {
-  const { data, loading, error, window, setWindow, refresh } =
-    useUploadFunnel();
+  const window = useOpsWindow();
+  const { data, error, isLoading } = useUploadFunnel(window);
 
   const stages = data?.stages ?? null;
 
@@ -148,36 +149,6 @@ export default function UploadFunnelTab() {
 
       <div className={styles.tabHeader}>
         <div className={styles.controls}>
-          <label
-            htmlFor="upload-funnel-window"
-            className={styles.controlsLabel}
-          >
-            Window
-          </label>
-          <select
-            id="upload-funnel-window"
-            className={`${sharedStyles.select} ${styles.windowSelect}`}
-            value={window}
-            onChange={(e) =>
-              setWindow(
-                e.target.value as (typeof UPLOAD_FUNNEL_WINDOWS)[number]
-              )
-            }
-          >
-            {UPLOAD_FUNNEL_WINDOWS.map((w) => (
-              <option key={w} value={w}>
-                {w}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className={sharedStyles.btnSmall}
-            onClick={refresh}
-            disabled={loading}
-          >
-            {loading ? 'Reading' : 'Refresh'}
-          </button>
           <CopyForClaudeButton
             getText={() =>
               data == null ? '' : buildClaudePrompt('upload-funnel', data)
@@ -185,16 +156,11 @@ export default function UploadFunnelTab() {
             disabled={data == null}
           />
         </div>
-        {data != null && (
-          <p className={styles.refreshHint}>
-            as of {new Date(data.as_of).toLocaleString()}
-          </p>
-        )}
       </div>
 
       {error != null && (
         <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
-          {error}
+          {error.message}
         </div>
       )}
 
@@ -251,7 +217,7 @@ export default function UploadFunnelTab() {
         </>
       )}
 
-      {loading && data == null && (
+      {isLoading && data == null && (
         <p className={styles.emptyHint}>Reading the funnel</p>
       )}
     </>

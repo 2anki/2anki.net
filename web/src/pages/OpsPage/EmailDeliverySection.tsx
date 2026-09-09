@@ -1,25 +1,14 @@
-import { useState } from 'react';
-
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
 import {
-  EMAIL_DELIVERY_WINDOWS,
   EMAIL_FAILURE_MIN_ATTEMPTS,
   EMAIL_FAILURE_RATE_ALERT_PCT,
   EmailDeliveryCategory,
-  EmailDeliveryWindow,
 } from './emailDeliveryTypes';
 import { formatCount } from './opsHelpers';
+import { useOpsWindow } from './opsWindow';
 import { useEmailDelivery } from './useEmailDelivery';
 import ChartPanel from './charts/ChartPanel';
-
-const WINDOW_LABEL: Record<EmailDeliveryWindow, string> = {
-  '7d': 'Last 7 days',
-  '14d': 'Last 14 days',
-  '30d': 'Last 30 days',
-  '60d': 'Last 60 days',
-  '90d': 'Last 90 days',
-};
 
 function attempts(row: EmailDeliveryCategory): number {
   return row.delivered + row.bounce + row.dropped + row.blocked;
@@ -33,36 +22,11 @@ function isFailing(row: EmailDeliveryCategory): boolean {
 }
 
 export default function EmailDeliverySection() {
-  const [window, setWindow] = useState<EmailDeliveryWindow>('30d');
+  const window = useOpsWindow();
   const { data, error, isLoading } = useEmailDelivery(window);
 
   return (
     <>
-      <div className={styles.tabHeader}>
-        <div className={styles.controls}>
-          <label
-            className={styles.controlsLabel}
-            htmlFor="email-delivery-window"
-          >
-            Window
-          </label>
-          <select
-            id="email-delivery-window"
-            className={`${sharedStyles.select} ${styles.windowSelect}`}
-            value={window}
-            onChange={(event) =>
-              setWindow(event.target.value as EmailDeliveryWindow)
-            }
-          >
-            {EMAIL_DELIVERY_WINDOWS.map((value) => (
-              <option key={value} value={value}>
-                {WINDOW_LABEL[value]}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {error != null && (
         <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
           /api/ops/email-delivery failed: {error.message}

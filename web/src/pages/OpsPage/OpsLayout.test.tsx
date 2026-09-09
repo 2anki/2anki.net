@@ -1,24 +1,44 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, test } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import OpsLayout from './OpsLayout';
+import { useOpsWindow } from './opsWindow';
 
-const renderAt = (path: string) =>
-  render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path="/ops" element={<OpsLayout />}>
-          <Route index element={<div data-testid="engineering">eng</div>} />
-          <Route
-            path="business"
-            element={<div data-testid="business">biz</div>}
-          />
-        </Route>
-      </Routes>
-    </MemoryRouter>
+function WindowProbe() {
+  const window = useOpsWindow();
+  const location = useLocation();
+  return (
+    <div>
+      <span data-testid="window">{window}</span>
+      <span data-testid="search">{location.search}</span>
+    </div>
   );
+}
+
+const renderAt = (path: string) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/ops" element={<OpsLayout />}>
+            <Route index element={<div data-testid="engineering">eng</div>} />
+            <Route
+              path="business"
+              element={<div data-testid="business">biz</div>}
+            />
+            <Route path="growth" element={<WindowProbe />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+};
 
 describe('OpsLayout', () => {
   test('renders the Ops heading and the active section breadcrumb', () => {
@@ -47,5 +67,57 @@ describe('OpsLayout', () => {
     expect(
       screen.queryByRole('navigation', { name: 'Ops sections' })
     ).not.toBeInTheDocument();
+  });
+
+  test('defaults the shared window to 30d and offers 7d, 30d, 90d', () => {
+    renderAt('/ops/growth');
+    const group = screen.getByRole('group', { name: 'Window' });
+    expect(group).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '30d' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: '7d' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+    expect(screen.getByRole('button', { name: '90d' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+    expect(screen.getByTestId('window')).toHaveTextContent('30d');
+  });
+
+  test('reads the window from the URL and ignores values outside the vocabulary', () => {
+    renderAt('/ops/growth?window=90d');
+    expect(screen.getByTestId('window')).toHaveTextContent('90d');
+    expect(screen.getByRole('button', { name: '90d' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  test('falls back to 30d for a window outside the vocabulary', () => {
+    renderAt('/ops/growth?window=24h');
+    expect(screen.getByTestId('window')).toHaveTextContent('30d');
+  });
+
+  test('changing the window updates the URL and the shared context', () => {
+    renderAt('/ops/growth?eng_window=1h');
+    fireEvent.click(screen.getByRole('button', { name: '7d' }));
+    expect(screen.getByTestId('window')).toHaveTextContent('7d');
+    expect(screen.getByTestId('search')).toHaveTextContent(
+      'eng_window=1h&window=7d'
+    );
+    expect(screen.getByRole('button', { name: '7d' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  test('renders one freshness line with a Refresh button', () => {
+    renderAt('/ops');
+    expect(screen.getByText(/updated/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled();
   });
 });

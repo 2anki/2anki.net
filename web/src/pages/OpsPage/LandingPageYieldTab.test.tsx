@@ -1,9 +1,24 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import LandingPageYieldTab from './LandingPageYieldTab';
 import { LandingPageYieldResponse } from './landingPageYieldTypes';
+import { OpsWindow, OpsWindowContext } from './opsWindow';
+
+const renderTab = (window: OpsWindow = '30d') => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <OpsWindowContext.Provider value={window}>
+        <LandingPageYieldTab />
+      </OpsWindowContext.Provider>
+    </QueryClientProvider>
+  );
+};
 
 const mockFetch = (payload: LandingPageYieldResponse) => {
   (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -41,7 +56,7 @@ describe('LandingPageYieldTab', () => {
       as_of: '2026-06-30T00:00:00.000Z',
     });
 
-    render(<LandingPageYieldTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(screen.getByText('/pdf-to-anki')).toBeInTheDocument()
@@ -67,7 +82,7 @@ describe('LandingPageYieldTab', () => {
       as_of: '2026-06-30T00:00:00.000Z',
     });
 
-    render(<LandingPageYieldTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(screen.getByText('Direct / unknown')).toBeInTheDocument()
@@ -81,13 +96,32 @@ describe('LandingPageYieldTab', () => {
       as_of: '2026-06-30T00:00:00.000Z',
     });
 
-    render(<LandingPageYieldTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(
         screen.getByText('No signups in this window yet.')
       ).toBeInTheDocument()
     );
+  });
+
+  test('reads the shared ops window for its fetch', async () => {
+    mockFetch({
+      pages: [],
+      since: '2026-06-01T00:00:00.000Z',
+      as_of: '2026-06-30T00:00:00.000Z',
+    });
+
+    renderTab('90d');
+
+    await waitFor(() =>
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        '/api/ops/growth/landing-page-yield?window=90d',
+        expect.objectContaining({ credentials: 'include' })
+      )
+    );
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
   });
 
   test('renders the server error message in the danger banner', async () => {
@@ -98,7 +132,7 @@ describe('LandingPageYieldTab', () => {
       error: 'relation "user_passes" does not exist',
     });
 
-    render(<LandingPageYieldTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(

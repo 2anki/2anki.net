@@ -1,9 +1,24 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import UploadFunnelTab, { formatCount, formatRate } from './UploadFunnelTab';
 import { UploadFunnelResponse } from './uploadFunnelTypes';
+import { OpsWindow, OpsWindowContext } from './opsWindow';
+
+const renderTab = (window: OpsWindow = '30d') => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <OpsWindowContext.Provider value={window}>
+        <UploadFunnelTab />
+      </OpsWindowContext.Provider>
+    </QueryClientProvider>
+  );
+};
 
 const THIN_SPACE = '\u2009';
 
@@ -86,7 +101,7 @@ describe('UploadFunnelTab', () => {
       as_of: '2026-05-30T00:00:00.000Z',
     });
 
-    render(<UploadFunnelTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(
@@ -143,13 +158,36 @@ describe('UploadFunnelTab', () => {
       as_of: '2026-05-30T00:00:00.000Z',
     });
 
-    render(<UploadFunnelTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(screen.getByText('No uploads in this window')).toBeInTheDocument()
     );
     expect(screen.getAllByText('No downloads in this window')).toHaveLength(2);
     expect(screen.getAllByText('0.0%')).toHaveLength(3);
+  });
+
+  test('reads the shared ops window for its fetch', async () => {
+    mockFetch({
+      stages: null,
+      by_origin: [],
+      upload_to_download_rate_pct: 0,
+      download_to_signup_rate_pct: 0,
+      download_to_paid_rate_pct: 0,
+      since: '2026-05-01T00:00:00.000Z',
+      as_of: '2026-05-30T00:00:00.000Z',
+    });
+
+    renderTab('7d');
+
+    await waitFor(() =>
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        '/api/ops/upload-funnel?window=7d',
+        expect.objectContaining({ credentials: 'include' })
+      )
+    );
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
   });
 
   test('renders the server error message in the danger banner', async () => {
@@ -164,7 +202,7 @@ describe('UploadFunnelTab', () => {
       error: 'relation "events" does not exist',
     });
 
-    render(<UploadFunnelTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(

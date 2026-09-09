@@ -6,6 +6,7 @@ import {
   within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import CustomerSignalsTab from './CustomerSignalsTab';
@@ -13,6 +14,20 @@ import {
   CustomerSignalRow,
   CustomerSignalsResponse,
 } from './customerSignalsTypes';
+import { OpsWindow, OpsWindowContext } from './opsWindow';
+
+const renderTab = (window: OpsWindow = '30d') => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <OpsWindowContext.Provider value={window}>
+        <CustomerSignalsTab />
+      </OpsWindowContext.Provider>
+    </QueryClientProvider>
+  );
+};
 
 const mockFetch = (payload: CustomerSignalsResponse) => {
   (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -61,7 +76,7 @@ describe('CustomerSignalsTab', () => {
       ])
     );
 
-    render(<CustomerSignalsTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(
@@ -100,7 +115,7 @@ describe('CustomerSignalsTab', () => {
       ])
     );
 
-    render(<CustomerSignalsTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(screen.getByText('Notion export unreadable')).toBeInTheDocument()
@@ -138,7 +153,7 @@ describe('CustomerSignalsTab', () => {
       ])
     );
 
-    render(<CustomerSignalsTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(screen.getByText('converged pain')).toBeInTheDocument()
@@ -167,7 +182,7 @@ describe('CustomerSignalsTab', () => {
       ])
     );
 
-    render(<CustomerSignalsTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(
@@ -180,13 +195,28 @@ describe('CustomerSignalsTab', () => {
   test('shows the empty state when there is no signal', async () => {
     mockFetch(response([]));
 
-    render(<CustomerSignalsTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(
         screen.getByText('No customer signal in this window yet.')
       ).toBeInTheDocument()
     );
+  });
+
+  test('reads the shared ops window and keeps only bucket and sort controls', async () => {
+    mockFetch(response([]));
+
+    renderTab('7d');
+
+    await waitFor(() =>
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        '/api/ops/growth/customer-signals?window=7d',
+        expect.objectContaining({ credentials: 'include' })
+      )
+    );
+    expect(screen.getAllByRole('combobox')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
   });
 
   test('renders the server error message in the danger banner', async () => {
@@ -197,7 +227,7 @@ describe('CustomerSignalsTab', () => {
       error: 'relation "cancellation_feedback" does not exist',
     });
 
-    render(<CustomerSignalsTab />);
+    renderTab();
 
     await waitFor(() =>
       expect(
