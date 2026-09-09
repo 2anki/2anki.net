@@ -19,7 +19,8 @@ export function OpsWindowControl({
   onChange,
 }: Readonly<OpsWindowControlProps>) {
   return (
-    <div role="group" aria-label="Window" className={styles.segmented}>
+    <fieldset className={styles.segmented}>
+      <legend className={sharedStyles.srOnly}>Window</legend>
       {OPS_WINDOWS.map((value) => (
         <button
           key={value}
@@ -32,7 +33,7 @@ export function OpsWindowControl({
           {value}
         </button>
       ))}
-    </div>
+    </fieldset>
   );
 }
 
