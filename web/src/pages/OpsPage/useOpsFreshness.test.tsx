@@ -1,5 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from '@tanstack/react-query';
 import { ReactNode } from 'react';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -52,33 +56,45 @@ describe('useOpsFreshness', () => {
     expect(result.current.ageMs).toBeLessThan(5_000);
   });
 
-  test('refresh refetches only active ops queries', async () => {
+  test('refresh refetches active ops queries and leaves other queries alone', async () => {
     const queryClient = makeClient();
     const opsFetch = vi.fn().mockResolvedValue({ ok: true });
     const otherFetch = vi.fn().mockResolvedValue({ ok: true });
     const { result } = renderHook(
       () => {
-        const freshness = useOpsFreshness();
-        return freshness;
+        useQuery({
+          queryKey: ['ops-upload-funnel', '30d'],
+          queryFn: opsFetch,
+          staleTime: Infinity,
+        });
+        useQuery({
+          queryKey: ['subscriptions'],
+          queryFn: otherFetch,
+          staleTime: Infinity,
+        });
+        return useOpsFreshness();
       },
       { wrapper: wrapperFor(queryClient) }
     );
-    await queryClient.prefetchQuery({
-      queryKey: ['ops-upload-funnel', '30d'],
-      queryFn: opsFetch,
-    });
-    await queryClient.prefetchQuery({
-      queryKey: ['subscriptions'],
-      queryFn: otherFetch,
-    });
-    expect(opsFetch).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(opsFetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(otherFetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.fetching).toBe(false));
 
     act(() => {
       result.current.refresh();
     });
 
+    await waitFor(() => expect(opsFetch).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(result.current.fetching).toBe(false));
     expect(otherFetch).toHaveBeenCalledTimes(1);
-    expect(isOpsQuery(queryClient.getQueryCache().getAll()[0])).toBe(true);
+  });
+
+  test('isOpsQuery matches only ops-prefixed keys', () => {
+    const queryClient = makeClient();
+    queryClient.setQueryData(['ops-errors'], []);
+    queryClient.setQueryData(['subscriptions'], []);
+    const [ops, other] = queryClient.getQueryCache().getAll();
+    expect(isOpsQuery(ops)).toBe(true);
+    expect(isOpsQuery(other)).toBe(false);
   });
 });

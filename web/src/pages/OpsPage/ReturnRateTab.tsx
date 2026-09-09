@@ -71,7 +71,7 @@ export default function ReturnRateTab() {
       </div>
 
       <p className={styles.subtitle}>
-        second conversion within N days · 90-day cohort window
+        Second conversion within N days · 90-day cohort window
       </p>
 
       {error != null && (

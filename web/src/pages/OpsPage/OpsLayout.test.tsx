@@ -73,28 +73,25 @@ describe('OpsLayout', () => {
     renderAt('/ops/growth');
     const group = screen.getByRole('group', { name: 'Window' });
     expect(group).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '30d' })).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
-    expect(screen.getByRole('button', { name: '7d' })).toHaveAttribute(
-      'aria-pressed',
-      'false'
-    );
-    expect(screen.getByRole('button', { name: '90d' })).toHaveAttribute(
+    expect(
+      screen.getByRole('button', { name: 'Last 30 days' })
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Last 7 days' })).toHaveAttribute(
       'aria-pressed',
       'false'
     );
+    expect(
+      screen.getByRole('button', { name: 'Last 90 days' })
+    ).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByTestId('window')).toHaveTextContent('30d');
   });
 
   test('reads the window from the URL and ignores values outside the vocabulary', () => {
     renderAt('/ops/growth?window=90d');
     expect(screen.getByTestId('window')).toHaveTextContent('90d');
-    expect(screen.getByRole('button', { name: '90d' })).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
+    expect(
+      screen.getByRole('button', { name: 'Last 90 days' })
+    ).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('falls back to 30d for a window outside the vocabulary', () => {
@@ -104,12 +101,12 @@ describe('OpsLayout', () => {
 
   test('changing the window updates the URL and the shared context', () => {
     renderAt('/ops/growth?eng_window=1h');
-    fireEvent.click(screen.getByRole('button', { name: '7d' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Last 7 days' }));
     expect(screen.getByTestId('window')).toHaveTextContent('7d');
     expect(screen.getByTestId('search')).toHaveTextContent(
       'eng_window=1h&window=7d'
     );
-    expect(screen.getByRole('button', { name: '7d' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Last 7 days' })).toHaveAttribute(
       'aria-pressed',
       'true'
     );
@@ -117,7 +114,7 @@ describe('OpsLayout', () => {
 
   test('renders one freshness line with a Refresh button', () => {
     renderAt('/ops');
-    expect(screen.getByText(/updated/)).toBeInTheDocument();
+    expect(screen.getByText(/Updated/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled();
   });
 });

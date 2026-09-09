@@ -64,7 +64,7 @@
 
 .segment[aria-pressed='true'] {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg-primary);
 }
 
 .segment:focus-visible {
