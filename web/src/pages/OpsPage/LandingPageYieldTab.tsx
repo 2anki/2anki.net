@@ -57,7 +57,6 @@ export default function LandingPageYieldTab() {
 
   return (
     <>
-      <p className={styles.panelTitle}>Landing page yield</p>
       <p className={styles.panelSubtitle}>
         Signups and paid conversions per landing page, by where the account
         first arrived.

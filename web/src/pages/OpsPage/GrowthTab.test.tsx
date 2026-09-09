@@ -6,13 +6,13 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import GrowthTab from './GrowthTab';
 
-const renderTab = () => {
+const renderTab = (path = '/ops/growth') => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <GrowthTab />
       </MemoryRouter>
     </QueryClientProvider>
@@ -36,17 +36,29 @@ describe('GrowthTab', () => {
     vi.restoreAllMocks();
   });
 
-  test('stacks the conversions, upload funnel, and return rate sections', () => {
+  test('lists every growth section collapsed, with only the summaries mounted', () => {
     renderTab();
 
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Conversions' })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Upload funnel' })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Return rate' })
-    ).toBeInTheDocument();
+    for (const title of [
+      'Conversions',
+      'Upload funnel',
+      'Landing page yield',
+      'Customer signals',
+      'Return rate',
+    ]) {
+      expect(screen.getByText(title)).toBeInTheDocument();
+    }
+    expect(document.querySelectorAll('details')).toHaveLength(5);
+    expect(document.querySelectorAll('details[open]')).toHaveLength(0);
+    expect(screen.queryByText('Upload to download')).toBeNull();
+  });
+
+  test('opens only the section named in the hash', () => {
+    renderTab('/ops/growth#return-rate');
+    expect(document.querySelectorAll('details[open]')).toHaveLength(1);
+    expect(document.querySelector('details[open]')).toHaveAttribute(
+      'id',
+      'return-rate'
+    );
   });
 });

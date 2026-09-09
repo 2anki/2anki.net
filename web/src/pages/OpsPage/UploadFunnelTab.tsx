@@ -142,7 +142,6 @@ export default function UploadFunnelTab() {
 
   return (
     <>
-      <p className={styles.panelTitle}>Upload funnel</p>
       <p className={styles.panelSubtitle}>
         Distinct-identity counts per stage, from upload through signup to paid.
       </p>

@@ -240,6 +240,90 @@
   padding-top: 1.5rem;
 }
 
+.collapsible {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+}
+
+.collapsible + .collapsible {
+  margin-top: 0.375rem;
+}
+
+.sectionSummary {
+  display: grid;
+  grid-template-columns: 3px minmax(0, 1fr) auto auto auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.625rem 0.75rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.sectionSummary::-webkit-details-marker {
+  display: none;
+}
+
+.sectionSummary::before {
+  content: '';
+  order: -1;
+}
+
+.sectionSummary[data-status='red'] .scoreBar {
+  background: var(--color-danger);
+}
+
+.sectionSummary[data-status='amber'] .scoreBar {
+  background: var(--color-warning);
+}
+
+.sectionSummary[data-status='green'] .scoreBar {
+  background: var(--color-success);
+}
+
+.sectionSummaryTitle {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+}
+
+.sectionSummaryTitle::before {
+  content: '▸';
+  display: inline-block;
+  width: 1rem;
+  color: var(--color-text-tertiary);
+  transition: transform 120ms ease;
+}
+
+.collapsible[open] .sectionSummaryTitle::before {
+  transform: rotate(90deg);
+}
+
+.sectionSummaryMetric {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.collapsibleBody {
+  padding: 0.5rem 1rem 1.25rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+@media (max-width: 640px) {
+  .sectionSummary {
+    grid-template-columns: 3px minmax(0, 1fr) auto auto;
+  }
+
+  .sectionSummary .scoreTarget,
+  .sectionSummary .sectionSummaryMetric {
+    display: none;
+  }
+}
+
 .compositeHeading {
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);

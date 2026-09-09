@@ -1,62 +1,42 @@
+import CollapsibleSection from './CollapsibleSection';
 import ConversionsTab from './ConversionsTab';
+import CustomerSignalsTab from './CustomerSignalsTab';
+import LandingPageYieldTab from './LandingPageYieldTab';
 import ReturnRateTab from './ReturnRateTab';
 import UploadFunnelTab from './UploadFunnelTab';
-import LandingPageYieldTab from './LandingPageYieldTab';
-import CustomerSignalsTab from './CustomerSignalsTab';
-import styles from './OpsPage.module.css';
+import { useSectionSummaries } from './useSectionSummary';
 
 export default function GrowthTab() {
+  const summaryFor = useSectionSummaries();
   return (
     <>
-      <section
-        className={styles.compositeSection}
-        aria-labelledby="growth-conversions"
+      <CollapsibleSection
+        slug="conversions"
+        title="Conversions"
+        summary={summaryFor('conversion_success_7d_pct')}
       >
-        <h2 id="growth-conversions" className={styles.compositeHeading}>
-          Conversions
-        </h2>
         <ConversionsTab />
-      </section>
-
-      <section
-        className={styles.compositeSection}
-        aria-labelledby="growth-upload-funnel"
+      </CollapsibleSection>
+      <CollapsibleSection
+        slug="upload-funnel"
+        title="Upload funnel"
+        summary={summaryFor('upload_to_download_7d')}
       >
-        <h2 id="growth-upload-funnel" className={styles.compositeHeading}>
-          Upload funnel
-        </h2>
         <UploadFunnelTab />
-      </section>
-
-      <section
-        className={styles.compositeSection}
-        aria-labelledby="growth-landing-page-yield"
+      </CollapsibleSection>
+      <CollapsibleSection
+        slug="landing-page-yield"
+        title="Landing page yield"
+        summary={summaryFor('signups_7d')}
       >
-        <h2 id="growth-landing-page-yield" className={styles.compositeHeading}>
-          Landing page yield
-        </h2>
         <LandingPageYieldTab />
-      </section>
-
-      <section
-        className={styles.compositeSection}
-        aria-labelledby="growth-customer-signals"
-      >
-        <h2 id="growth-customer-signals" className={styles.compositeHeading}>
-          Customer signals
-        </h2>
+      </CollapsibleSection>
+      <CollapsibleSection slug="customer-signals" title="Customer signals">
         <CustomerSignalsTab />
-      </section>
-
-      <section
-        className={styles.compositeSection}
-        aria-labelledby="growth-return-rate"
-      >
-        <h2 id="growth-return-rate" className={styles.compositeHeading}>
-          Return rate
-        </h2>
+      </CollapsibleSection>
+      <CollapsibleSection slug="return-rate" title="Return rate">
         <ReturnRateTab />
-      </section>
+      </CollapsibleSection>
     </>
   );
 }

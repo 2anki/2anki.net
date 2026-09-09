@@ -1,51 +1,30 @@
+import AiUsageSection from './AiUsageSection';
+import CollapsibleSection from './CollapsibleSection';
+import EmailDeliverySection from './EmailDeliverySection';
 import EngineeringTab from './EngineeringTab';
 import PerformanceTab from './PerformanceTab';
-import AiUsageSection from './AiUsageSection';
-import EmailDeliverySection from './EmailDeliverySection';
-import styles from './OpsPage.module.css';
+import { useSectionSummaries } from './useSectionSummary';
 
 export default function SystemTab() {
+  const summaryFor = useSectionSummaries();
   return (
     <>
-      <section
-        className={styles.compositeSection}
-        aria-labelledby="system-ai-usage"
+      <CollapsibleSection
+        slug="engineering"
+        title="Engineering"
+        summary={summaryFor('unresolved_error_groups')}
       >
-        <h2 id="system-ai-usage" className={styles.compositeHeading}>
-          AI usage
-        </h2>
-        <AiUsageSection />
-      </section>
-
-      <section
-        className={styles.compositeSection}
-        aria-labelledby="system-email-delivery"
-      >
-        <h2 id="system-email-delivery" className={styles.compositeHeading}>
-          Email delivery
-        </h2>
-        <EmailDeliverySection />
-      </section>
-
-      <section
-        className={styles.compositeSection}
-        aria-labelledby="system-engineering"
-      >
-        <h2 id="system-engineering" className={styles.compositeHeading}>
-          Engineering
-        </h2>
         <EngineeringTab />
-      </section>
-
-      <section
-        className={styles.compositeSection}
-        aria-labelledby="system-performance"
-      >
-        <h2 id="system-performance" className={styles.compositeHeading}>
-          Performance
-        </h2>
+      </CollapsibleSection>
+      <CollapsibleSection slug="performance" title="Performance">
         <PerformanceTab />
-      </section>
+      </CollapsibleSection>
+      <CollapsibleSection slug="ai-usage" title="AI usage">
+        <AiUsageSection />
+      </CollapsibleSection>
+      <CollapsibleSection slug="email-delivery" title="Email delivery">
+        <EmailDeliverySection />
+      </CollapsibleSection>
     </>
   );
 }

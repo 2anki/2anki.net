@@ -117,7 +117,6 @@ export default function CustomerSignalsTab() {
 
   return (
     <>
-      <p className={styles.panelTitle}>Customer signals</p>
       <p className={styles.panelSubtitle}>
         Evidence-ranked feature discovery. First-party voice — cancellation
         reasons and comments, deck-ready feedback — plus revealed pain from
