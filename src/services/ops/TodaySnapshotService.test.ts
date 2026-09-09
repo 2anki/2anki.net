@@ -152,7 +152,7 @@ describe('buildScoreRows', () => {
       target: 70,
       target_direction: 'at_least',
       status: 'red',
-      link: '/ops/business',
+      link: '/ops/business#revenue',
     });
   });
 
@@ -191,7 +191,7 @@ describe('buildScoreRows', () => {
     expect(byId.missing_pass_unlocks_7d).toMatchObject({
       value: 1,
       status: 'red',
-      link: '/ops/commands',
+      link: '/ops/business#pass-unlocks',
     });
     expect(byId.zero_value_paid_7d).toMatchObject({
       value: 3,

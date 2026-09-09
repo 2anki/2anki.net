@@ -157,4 +157,64 @@ describe('CommandsTab — change account email', () => {
       expect.anything()
     );
   });
+
+  test('keeps the delete button locked until a dry run finds candidates, then confirms with the count', async () => {
+    const confirmSpy = vi
+      .spyOn(globalThis, 'confirm')
+      .mockImplementation(() => true);
+    mockFetch((url) =>
+      url.includes('dryRun=true')
+        ? { count: 42, dryRun: true }
+        : { count: 42, dryRun: false }
+    );
+    renderTab();
+
+    const deleteButton = screen.getByRole('button', {
+      name: 'Delete inactive accounts',
+    });
+    expect(deleteButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Check candidates' }));
+    expect(
+      await screen.findByText('42 accounts would be deleted.')
+    ).toBeInTheDocument();
+    expect(deleteButton).toBeEnabled();
+
+    fireEvent.click(deleteButton);
+    expect(confirmSpy).toHaveBeenCalledWith(
+      'Permanently delete 42 accounts? This cannot be undone.'
+    );
+    expect(await screen.findByText('Deleted 42 accounts.')).toBeInTheDocument();
+    expect(deleteButton).toBeDisabled();
+  });
+
+  test('keeps the delete button locked when the dry run finds nothing', async () => {
+    mockFetch(() => ({ count: 0, dryRun: true }));
+    renderTab();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Check candidates' }));
+    expect(
+      await screen.findByText('0 accounts would be deleted.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Delete inactive accounts' })
+    ).toBeDisabled();
+  });
+
+  test('groups commands by intent and no longer hosts the monitors', () => {
+    mockFetch(() => ({}));
+    renderTab();
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: /Support a user/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: /Run a job/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: /^Site/ })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Check passes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Check value' })).toBeNull();
+  });
 });

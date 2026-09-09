@@ -72,14 +72,20 @@ function VoiceOfUserBlock({
         ))}
         {recentCancellations.map((c) => (
           <li key={`${c.created_at}-${c.reason}`} className={styles.voiceRow}>
-            <Link to="/ops/business" className={styles.voicePreview}>
+            <Link
+              to="/ops/business#cancellations"
+              className={styles.voicePreview}
+            >
               Cancelled — {c.reason}: {c.comment}
             </Link>
           </li>
         ))}
         {recentEmoji.map((e) => (
           <li key={`${e.created_at}-${e.page}`} className={styles.voiceRow}>
-            <Link to="/ops/business" className={styles.voicePreview}>
+            <Link
+              to="/ops/business#emoji-feedback"
+              className={styles.voicePreview}
+            >
               {EMOJI_BY_RATING[e.rating] ?? e.rating} {e.comment} — {e.page}
             </Link>
           </li>

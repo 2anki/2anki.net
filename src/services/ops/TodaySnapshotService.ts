@@ -175,7 +175,7 @@ const failedPaymentsSpec = (
     value: latest,
     prior: priorAvg,
     target,
-    link: '/ops/business',
+    link: '/ops/business#revenue',
   };
 };
 
@@ -212,7 +212,7 @@ export function buildScoreRows(inputs: TodaySnapshotInputs): ScoreRow[] {
       window_label: '7d',
       value: business?.signups_7d ?? null,
       target: TODAY_TARGETS.signups_7d,
-      link: '/ops/growth',
+      link: '/ops/growth#landing-page-yield',
     },
     {
       id: 'upload_to_download_7d',
@@ -222,7 +222,7 @@ export function buildScoreRows(inputs: TodaySnapshotInputs): ScoreRow[] {
       window_label: '7d',
       value: conversion?.upload_to_download_rate_7d ?? null,
       target: null,
-      link: '/ops/growth',
+      link: '/ops/growth#upload-funnel',
     },
     {
       id: 'new_paid_7d',
@@ -232,7 +232,7 @@ export function buildScoreRows(inputs: TodaySnapshotInputs): ScoreRow[] {
       window_label: '7d',
       value: business?.new_paid_conversions_7d ?? null,
       target: TODAY_TARGETS.new_paid_7d,
-      link: '/ops/business',
+      link: '/ops/business#revenue',
     },
     {
       id: 'pass_sales_7d',
@@ -242,7 +242,7 @@ export function buildScoreRows(inputs: TodaySnapshotInputs): ScoreRow[] {
       window_label: '7d',
       value: sumPassSales(business?.pass_sales_7d ?? null),
       target: TODAY_TARGETS.pass_sales_7d,
-      link: '/ops/business',
+      link: '/ops/business#revenue',
     },
     failedPaymentsSpec(business),
     {
@@ -253,7 +253,7 @@ export function buildScoreRows(inputs: TodaySnapshotInputs): ScoreRow[] {
       window_label: '30d',
       value: business?.churn_30d_pct ?? null,
       target: TODAY_TARGETS.churn_30d_pct,
-      link: '/ops/business',
+      link: '/ops/business#cancellations',
     },
     {
       id: 'conversion_success_7d_pct',
@@ -266,7 +266,7 @@ export function buildScoreRows(inputs: TodaySnapshotInputs): ScoreRow[] {
         conversion?.paid_conversion_success_rate_7d ?? null
       ),
       target: TODAY_TARGETS.conversion_success_7d_pct,
-      link: '/ops/growth',
+      link: '/ops/growth#conversions',
     },
     {
       id: 'unresolved_error_groups',
@@ -286,7 +286,7 @@ export function buildScoreRows(inputs: TodaySnapshotInputs): ScoreRow[] {
       window_label: '7d',
       value: inputs.passUnlock?.missing ?? null,
       target: TODAY_TARGETS.missing_pass_unlocks_7d,
-      link: '/ops/commands',
+      link: '/ops/business#pass-unlocks',
     },
     {
       id: 'zero_value_paid_7d',
@@ -296,7 +296,7 @@ export function buildScoreRows(inputs: TodaySnapshotInputs): ScoreRow[] {
       window_label: '7d',
       value: zeroValuePaid(inputs.paidValue),
       target: TODAY_TARGETS.zero_value_paid_7d,
-      link: '/ops/commands',
+      link: '/ops/business#paid-value',
     },
   ];
   return specs
