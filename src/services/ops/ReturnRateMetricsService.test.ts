@@ -37,8 +37,15 @@ describe('ReturnRateMetricsService — generated SQL', () => {
         'MAX(created_at) as last_success_at from "events" ' +
         'where "name" = \'conversion_succeeded\' and "created_at" >= \'<CUTOFF>\' ' +
         'and COALESCE(user_id::text, anonymous_id) IS NOT NULL ' +
-        "group by COALESCE(user_id::text, anonymous_id), COALESCE(props->>'source', 'unknown')"
+        'group by 1, 2'
     );
+  });
+
+  it('groups the cohort by output position so the source expression binds once', () => {
+    const { sql, bindings } = service.buildCohortQuery(NOW).toSQL().toNative();
+    expect(sql).toContain('group by 1, 2');
+    expect(sql).not.toMatch(/group by .*\$/);
+    expect(bindings).toHaveLength(3);
   });
 
   it('builds the returns query as a single scan with a LEAD window, never a correlated subquery', () => {

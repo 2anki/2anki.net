@@ -181,10 +181,7 @@ export class ReturnRateMetricsService {
         ]),
         this.database.raw('MAX(created_at) as last_success_at')
       )
-      .groupByRaw(
-        "COALESCE(user_id::text, anonymous_id), COALESCE(props->>'source', ?)",
-        [UNKNOWN_SOURCE]
-      );
+      .groupByRaw('1, 2');
   }
 
   buildReturnsQuery(now: Date): Knex.QueryBuilder {
