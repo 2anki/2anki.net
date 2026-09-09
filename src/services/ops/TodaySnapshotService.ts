@@ -345,8 +345,7 @@ export class TodaySnapshotService {
 
   private async loadCached(): Promise<BusinessMetricsCacheEntry | null> {
     try {
-      const entries = await this.cache.loadAll();
-      return entries.find((e) => e.key === TODAY_SNAPSHOT_CACHE_KEY) ?? null;
+      return await this.cache.load(TODAY_SNAPSHOT_CACHE_KEY);
     } catch (error) {
       console.error('[ops] today snapshot cache load failed', error);
       return null;

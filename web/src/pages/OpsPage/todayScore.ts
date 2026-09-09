@@ -46,3 +46,10 @@ export const buildScoreCopyText = (row: ScoreRow): string =>
     '',
     'Repo: 2anki/server. Investigate the likely cause and propose the smallest fix.',
   ].join('\n');
+
+export const describeDelta = (row: ScoreRow): string => {
+  if (row.delta == null) return 'no change data';
+  const change = `change ${formatScoreDelta(row).replace('−', 'minus ')}`;
+  if (row.delta_good == null) return change;
+  return `${change}, ${row.delta_good ? 'better' : 'worse'}`;
+};

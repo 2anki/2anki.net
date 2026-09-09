@@ -18,6 +18,7 @@ export interface BusinessMetricsCacheEntry {
 
 export interface IBusinessMetricsCacheRepository {
   loadAll(): Promise<BusinessMetricsCacheEntry[]>;
+  load(key: BusinessCacheKey): Promise<BusinessMetricsCacheEntry | null>;
   upsertMany(entries: BusinessMetricsCacheEntry[]): Promise<void>;
 }
 
@@ -28,6 +29,13 @@ interface BusinessMetricsCacheRow {
   expires_at: Date | string;
 }
 
+const toEntry = (row: BusinessMetricsCacheRow): BusinessMetricsCacheEntry => ({
+  key: row.metric_key as BusinessCacheKey,
+  value: row.value,
+  cachedAt: new Date(row.cached_at),
+  expiresAt: new Date(row.expires_at),
+});
+
 export class BusinessMetricsCacheRepository implements IBusinessMetricsCacheRepository {
   private readonly table = 'business_metrics_cache';
 
@@ -37,12 +45,21 @@ export class BusinessMetricsCacheRepository implements IBusinessMetricsCacheRepo
     const rows = await this.database<BusinessMetricsCacheRow>(
       this.table
     ).select('metric_key', 'value', 'cached_at', 'expires_at');
-    return rows.map((row) => ({
-      key: row.metric_key as BusinessCacheKey,
-      value: row.value,
-      cachedAt: new Date(row.cached_at),
-      expiresAt: new Date(row.expires_at),
-    }));
+    return rows.map(toEntry);
+  }
+
+  buildLoadQuery(key: BusinessCacheKey): Knex.QueryBuilder {
+    return this.database<BusinessMetricsCacheRow>(this.table)
+      .select('metric_key', 'value', 'cached_at', 'expires_at')
+      .where('metric_key', key)
+      .first();
+  }
+
+  async load(key: BusinessCacheKey): Promise<BusinessMetricsCacheEntry | null> {
+    const row = (await this.buildLoadQuery(key)) as
+      | BusinessMetricsCacheRow
+      | undefined;
+    return row == null ? null : toEntry(row);
   }
 
   async upsertMany(entries: BusinessMetricsCacheEntry[]): Promise<void> {
@@ -68,6 +85,11 @@ export class InMemoryBusinessMetricsCacheRepository implements IBusinessMetricsC
 
   async loadAll(): Promise<BusinessMetricsCacheEntry[]> {
     return Array.from(this.entries.values()).map((entry) => ({ ...entry }));
+  }
+
+  async load(key: BusinessCacheKey): Promise<BusinessMetricsCacheEntry | null> {
+    const entry = this.entries.get(key);
+    return entry == null ? null : { ...entry };
   }
 
   async upsertMany(entries: BusinessMetricsCacheEntry[]): Promise<void> {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildScoreCopyText,
+  describeDelta,
   formatScoreDelta,
   formatScoreTarget,
   formatScoreValue,
@@ -55,6 +56,16 @@ describe('todayScore formatting', () => {
       '−2.3 pts'
     );
     expect(formatScoreDelta(row({ delta: null }))).toBe('—');
+  });
+
+  it('describes the delta for screen readers with its direction', () => {
+    expect(describeDelta(row({ delta: 7, delta_good: false }))).toBe(
+      'change +7, worse'
+    );
+    expect(
+      describeDelta(row({ format: 'percent', delta: -0.5, delta_good: true }))
+    ).toBe('change minus 0.5 pts, better');
+    expect(describeDelta(row({ delta: null }))).toBe('no change data');
   });
 
   it('treats red and amber as needing attention', () => {

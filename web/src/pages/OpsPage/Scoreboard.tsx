@@ -6,6 +6,7 @@ import CopyForClaudeButton from './CopyForClaudeButton';
 import styles from './OpsPage.module.css';
 import {
   buildScoreCopyText,
+  describeDelta,
   formatScoreDelta,
   formatScoreTarget,
   formatScoreValue,
@@ -20,12 +21,20 @@ function ScoreLine({ row }: Readonly<{ row: ScoreRow }>) {
       <span className={styles.scoreBar} aria-hidden="true" />
       <Link to={row.link} className={styles.scoreLabel}>
         {row.label}
-        <span className={styles.scoreWindow}> · {row.window_label}</span>
+        <span className={styles.scoreWindow}>
+          <span aria-hidden="true"> · </span>
+          <span className={sharedStyles.srOnly}>, window </span>
+          {row.window_label}
+        </span>
+        {row.status !== 'none' && (
+          <span className={sharedStyles.srOnly}>, status {row.status}</span>
+        )}
       </Link>
       <span className={styles.scoreValue}>{formatScoreValue(row)}</span>
       <span
         className={styles.scoreDelta}
         data-good={row.delta_good == null ? undefined : String(row.delta_good)}
+        aria-label={describeDelta(row)}
       >
         {formatScoreDelta(row)}
       </span>
