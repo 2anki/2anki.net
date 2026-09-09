@@ -2,10 +2,8 @@ import { useMemo, useState } from 'react';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
 import { formatCount } from './opsHelpers';
-import {
-  CUSTOMER_SIGNALS_WINDOWS,
-  useCustomerSignals,
-} from './useCustomerSignals';
+import { useOpsWindow } from './opsWindow';
+import { useCustomerSignals } from './useCustomerSignals';
 import {
   CustomerSignalBucket,
   CustomerSignalRow,
@@ -101,8 +99,8 @@ function renderRows(signals: CustomerSignalRow[]) {
 }
 
 export default function CustomerSignalsTab() {
-  const { data, loading, error, window, setWindow, refresh } =
-    useCustomerSignals();
+  const window = useOpsWindow();
+  const { data, error, isLoading } = useCustomerSignals(window);
   const [bucketFilter, setBucketFilter] = useState<BucketFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('convergence');
 
@@ -130,28 +128,6 @@ export default function CustomerSignalsTab() {
 
       <div className={styles.tabHeader}>
         <div className={styles.controls}>
-          <label
-            htmlFor="customer-signals-window"
-            className={styles.controlsLabel}
-          >
-            Window
-          </label>
-          <select
-            id="customer-signals-window"
-            className={`${sharedStyles.select} ${styles.windowSelect}`}
-            value={window}
-            onChange={(e) =>
-              setWindow(
-                e.target.value as (typeof CUSTOMER_SIGNALS_WINDOWS)[number]
-              )
-            }
-          >
-            {CUSTOMER_SIGNALS_WINDOWS.map((w) => (
-              <option key={w} value={w}>
-                {w}
-              </option>
-            ))}
-          </select>
           <label
             htmlFor="customer-signals-bucket"
             className={styles.controlsLabel}
@@ -185,25 +161,12 @@ export default function CustomerSignalsTab() {
             <option value="convergence">Convergence</option>
             <option value="count">Count</option>
           </select>
-          <button
-            type="button"
-            className={sharedStyles.btnSmall}
-            onClick={refresh}
-            disabled={loading}
-          >
-            {loading ? 'Reading' : 'Refresh'}
-          </button>
         </div>
-        {data != null && (
-          <p className={styles.refreshHint}>
-            as of {new Date(data.as_of).toLocaleString()}
-          </p>
-        )}
       </div>
 
       {error != null && (
         <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
-          {error}
+          {error.message}
         </div>
       )}
 
@@ -215,7 +178,7 @@ export default function CustomerSignalsTab() {
 
       {visibleSignals != null && renderRows(visibleSignals)}
 
-      {loading && data == null && (
+      {isLoading && data == null && (
         <p className={styles.emptyHint}>Reading customer signals</p>
       )}
     </>

@@ -1,5 +1,3 @@
-import { useMemo } from 'react';
-
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
 import ChartPanel from './charts/ChartPanel';
@@ -56,26 +54,13 @@ const renderBySourceType = (rows: ReturnRateBySourceType[]) => {
 };
 
 export default function ReturnRateTab() {
-  const { data, error, isLoading, isFetching, refetch } =
-    useReturnRateMetrics();
+  const { data, error, isLoading } = useReturnRateMetrics();
   const isInitial = isLoading && data == null;
-  const refreshing = isFetching && !isLoading;
-  const generated = useMemo(() => {
-    if (data?.as_of == null) return '—';
-    return new Date(data.as_of).toLocaleTimeString();
-  }, [data?.as_of]);
 
   return (
     <>
       <div className={styles.tabHeader}>
         <div className={styles.controls}>
-          <button
-            type="button"
-            className={`${sharedStyles.btnSmall} ${styles.refreshButton}`}
-            onClick={() => refetch()}
-          >
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
           <CopyForClaudeButton
             getText={() =>
               data == null ? '' : buildClaudePrompt('return-rate', data)
@@ -86,9 +71,7 @@ export default function ReturnRateTab() {
       </div>
 
       <p className={styles.subtitle}>
-        <span>Updated {generated}</span>
-        <span className={styles.subtitleSeparator}>·</span>
-        <span>second conversion within N days · 90-day cohort window</span>
+        Second conversion within N days · 90-day cohort window
       </p>
 
       {error != null && (

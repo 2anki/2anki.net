@@ -266,6 +266,26 @@ describe('Sidebar Ops folder', () => {
     );
   });
 
+  it('carries the shared ops window across ops rows', () => {
+    renderSidebar({ ops: true, pathname: '/ops/growth?window=90d' });
+    expect(screen.getByRole('link', { name: 'Business' })).toHaveAttribute(
+      'href',
+      '/ops/business?window=90d'
+    );
+    expect(screen.getByRole('link', { name: 'Errors' })).toHaveAttribute(
+      'href',
+      '/ops/errors?window=90d'
+    );
+  });
+
+  it('drops a window outside the vocabulary from ops row links', () => {
+    renderSidebar({ ops: true, pathname: '/ops/system?window=24h' });
+    expect(screen.getByRole('link', { name: 'Business' })).toHaveAttribute(
+      'href',
+      '/ops/business'
+    );
+  });
+
   it('lists the seven consolidated rows and none of the retired ones', () => {
     renderSidebar({ ops: true, pathname: '/ops/errors' });
     for (const [label, href] of [

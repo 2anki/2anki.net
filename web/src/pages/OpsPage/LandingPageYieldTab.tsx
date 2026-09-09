@@ -1,10 +1,8 @@
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
 import { formatCount } from './opsHelpers';
-import {
-  LANDING_PAGE_YIELD_WINDOWS,
-  useLandingPageYield,
-} from './useLandingPageYield';
+import { useOpsWindow } from './opsWindow';
+import { useLandingPageYield } from './useLandingPageYield';
 import { LandingPageYieldEntry } from './landingPageYieldTypes';
 
 const DIRECT_LABEL = 'Direct / unknown';
@@ -52,8 +50,8 @@ function renderRows(pages: LandingPageYieldEntry[]) {
 }
 
 export default function LandingPageYieldTab() {
-  const { data, loading, error, window, setWindow, refresh } =
-    useLandingPageYield();
+  const window = useOpsWindow();
+  const { data, error, isLoading } = useLandingPageYield(window);
 
   const pages = data?.pages ?? null;
 
@@ -65,49 +63,9 @@ export default function LandingPageYieldTab() {
         first arrived.
       </p>
 
-      <div className={styles.tabHeader}>
-        <div className={styles.controls}>
-          <label
-            htmlFor="landing-page-yield-window"
-            className={styles.controlsLabel}
-          >
-            Window
-          </label>
-          <select
-            id="landing-page-yield-window"
-            className={`${sharedStyles.select} ${styles.windowSelect}`}
-            value={window}
-            onChange={(e) =>
-              setWindow(
-                e.target.value as (typeof LANDING_PAGE_YIELD_WINDOWS)[number]
-              )
-            }
-          >
-            {LANDING_PAGE_YIELD_WINDOWS.map((w) => (
-              <option key={w} value={w}>
-                {w}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className={sharedStyles.btnSmall}
-            onClick={refresh}
-            disabled={loading}
-          >
-            {loading ? 'Reading' : 'Refresh'}
-          </button>
-        </div>
-        {data != null && (
-          <p className={styles.refreshHint}>
-            as of {new Date(data.as_of).toLocaleString()}
-          </p>
-        )}
-      </div>
-
       {error != null && (
         <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
-          {error}
+          {error.message}
         </div>
       )}
 
@@ -124,7 +82,7 @@ export default function LandingPageYieldTab() {
         Anonymous passes bought without an account can't be traced to a page.
       </p>
 
-      {loading && data == null && (
+      {isLoading && data == null && (
         <p className={styles.emptyHint}>Reading landing page yield</p>
       )}
     </>

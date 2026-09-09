@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
@@ -222,35 +222,11 @@ const renderCountries = (
 };
 
 export default function PerformanceTab() {
-  const { data, error, isLoading, isFetching, refetch } =
-    usePerformanceMetrics();
+  const { data, error, isLoading } = usePerformanceMetrics();
   const isInitial = isLoading && data == null;
-  const refreshing = isFetching && !isLoading;
-  const generated = useMemo(() => {
-    if (data?.generated_at == null) return '—';
-    return new Date(data.generated_at).toLocaleTimeString();
-  }, [data?.generated_at]);
 
   return (
     <>
-      <div className={styles.tabHeader}>
-        <div className={styles.controls}>
-          <button
-            type="button"
-            className={`${sharedStyles.btnSmall} ${styles.refreshButton}`}
-            onClick={() => refetch()}
-          >
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
-        </div>
-      </div>
-
-      <p className={styles.subtitle}>
-        <span>Updated {generated}</span>
-        <span className={styles.subtitleSeparator}>·</span>
-        <span>auto-refresh every 30s</span>
-      </p>
-
       {error != null && (
         <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
           /api/ops/performance/metrics failed: {error.message}. Last good data

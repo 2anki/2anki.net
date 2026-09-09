@@ -28,6 +28,7 @@ import SettingsIcon from '../icons/SettingsIcon';
 import WrenchIcon from '../icons/WrenchIcon';
 import ShareIcon from '../icons/ShareIcon';
 import { OPS_TABS } from '../../pages/OpsPage/opsTabs';
+import { OPS_WINDOW_PARAM, isOpsWindow } from '../../pages/OpsPage/opsWindow';
 import { ThemeSwitcher } from '../ThemeSwitcher/ThemeSwitcher';
 import { ThemeToggle } from '../ThemeSwitcher/ThemeToggle';
 import { LanguagePicker } from '../LanguagePicker/LanguagePicker';
@@ -143,6 +144,10 @@ function OpsSidebarFolder({
   const opsActive = pathname === '/ops' || pathname.startsWith('/ops/');
   const [open, setOpen] = useState(opsActive);
   const expanded = open || opsActive;
+  const { search } = useLocation();
+  const opsWindow = new URLSearchParams(search).get(OPS_WINDOW_PARAM);
+  const withOpsWindow = (to: string): string =>
+    isOpsWindow(opsWindow) ? `${to}?${OPS_WINDOW_PARAM}=${opsWindow}` : to;
 
   if (collapsed) {
     return (
@@ -187,7 +192,7 @@ function OpsSidebarFolder({
           {OPS_TABS.map((tab) => (
             <SidebarRow
               key={tab.to}
-              href={tab.to}
+              href={withOpsWindow(tab.to)}
               pathname={pathname}
               active={tab.match(pathname)}
               onClick={onNavigate}

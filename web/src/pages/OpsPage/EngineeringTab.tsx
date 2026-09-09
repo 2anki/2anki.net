@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import sharedStyles from '../../styles/shared.module.css';
@@ -8,7 +8,7 @@ import {
   OpsMetricsResponse,
   OpsMetricsWindow,
 } from './opsTypes';
-import { formatBytes, formatClock, formatCount } from './opsHelpers';
+import { formatBytes, formatCount } from './opsHelpers';
 import { buildClaudePrompt } from './buildClaudePrompt';
 import CopyForClaudeButton from './CopyForClaudeButton';
 import { useOpsMetrics } from './useOpsMetrics';
@@ -24,6 +24,8 @@ import ErrorRateChart from './charts/ErrorRateChart';
 import UnsupportedBlocksTable from './charts/UnsupportedBlocksTable';
 import ConversionOutputTable from './charts/ConversionOutputTable';
 import ParsePathSignaturesTable from './charts/ParsePathSignaturesTable';
+
+export const ENGINEERING_WINDOW_PARAM = 'eng_window';
 
 const WINDOW_LABEL: Record<OpsMetricsWindow, string> = {
   '1h': 'Last 1 hour',
@@ -68,42 +70,34 @@ const resolveStorageFootnote = (
 
 export default function EngineeringTab() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const queryWindow = searchParams.get('window');
+  const queryWindow = searchParams.get(ENGINEERING_WINDOW_PARAM);
   const window: OpsMetricsWindow = isMetricsWindow(queryWindow)
     ? queryWindow
     : '24h';
 
-  const [lastSuccessAt, setLastSuccessAt] = useState<Date | null>(null);
   const [lastSnapshot, setLastSnapshot] = useState<OpsMetricsResponse | null>(
     null
   );
 
-  const { data, error, isLoading, isFetching, refetch } = useOpsMetrics(window);
+  const { data, error, isLoading } = useOpsMetrics(window);
   const mindmapStorage = useMindmapStorage();
 
   useEffect(() => {
     if (data != null) {
       setLastSnapshot(data);
-      setLastSuccessAt(new Date());
     }
   }, [data]);
 
   const onWindowChange = (next: OpsMetricsWindow) => {
     const params = new URLSearchParams(searchParams);
-    params.set('window', next);
+    params.set(ENGINEERING_WINDOW_PARAM, next);
     setSearchParams(params, { replace: true });
   };
 
   const visible = data ?? lastSnapshot;
   const showInitialSkeleton = isLoading && visible == null;
-  const refreshing = isFetching && !isLoading;
   const isEmpty = visible != null && !hasAnyData(visible);
   const suffix = WINDOW_CHART_SUFFIX[window];
-
-  const subtitleClock = useMemo(() => {
-    if (lastSuccessAt == null) return '—';
-    return formatClock(lastSuccessAt);
-  }, [lastSuccessAt]);
 
   const storageValue =
     mindmapStorage.data == null
@@ -135,13 +129,6 @@ export default function EngineeringTab() {
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            className={`${sharedStyles.btnSmall} ${styles.refreshButton}`}
-            onClick={() => refetch()}
-          >
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
           <CopyForClaudeButton
             getText={() =>
               visible == null ? '' : buildClaudePrompt('engineering', visible)
@@ -150,12 +137,6 @@ export default function EngineeringTab() {
           />
         </div>
       </div>
-
-      <p className={styles.subtitle}>
-        <span>Updated {subtitleClock}</span>
-        <span className={styles.subtitleSeparator}>·</span>
-        <span>auto-refresh every 30s</span>
-      </p>
 
       {error != null && (
         <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
