@@ -53,13 +53,19 @@ describe('OPS_TABS', () => {
     expect(new Set(paths).size).toBe(paths.length);
   });
 
-  it('matches the System row on /ops, /ops/system, and query strings, not other children', () => {
+  it('matches the Today row on /ops, /ops/today, and query strings, not other children', () => {
+    const today = OPS_TABS.find((tab) => tab.to === '/ops/today');
+    expect(today?.match('/ops')).toBe(true);
+    expect(today?.match('/ops/today')).toBe(true);
+    expect(today?.match('/ops?window=7d')).toBe(true);
+    expect(today?.match('/ops/errors')).toBe(false);
+    expect(today?.match('/ops/system')).toBe(false);
+  });
+
+  it('matches the System row only on its own route', () => {
     const system = OPS_TABS.find((tab) => tab.to === '/ops/system');
-    expect(system?.match('/ops')).toBe(true);
     expect(system?.match('/ops/system')).toBe(true);
-    expect(system?.match('/ops?window=24h')).toBe(true);
-    expect(system?.match('/ops/errors')).toBe(false);
-    expect(system?.match('/ops/growth')).toBe(false);
+    expect(system?.match('/ops')).toBe(false);
   });
 
   it('matches a child row only on its own route', () => {

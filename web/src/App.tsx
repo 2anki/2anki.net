@@ -548,7 +548,7 @@ function AppContent({
               element={requireAuth(<AnkifyHistoryPage />)}
             />
             <Route path="/ops" element={requireAuth(<OpsLayout />)}>
-              <Route index element={<SystemTab />} />
+              <Route index element={<TodayTab />} />
               <Route path="today" element={<TodayTab />} />
               <Route path="growth" element={<GrowthTab />} />
               <Route path="business" element={<BusinessTab />} />

@@ -87,6 +87,9 @@ import { OrphanedSubscriptionsRepository } from '../data_layer/OrphanedSubscript
 import { SubscriptionRecoveryNotificationsRepository } from '../data_layer/SubscriptionRecoveryNotificationsRepository';
 import { GetOrphanedSubscriptionsUseCase } from '../usecases/ops/GetOrphanedSubscriptionsUseCase';
 import { ReconcileOrphanedSubscriptionsUseCase } from '../usecases/ops/ReconcileOrphanedSubscriptionsUseCase';
+import { ErrorEventRepository } from '../data_layer/ErrorEventRepository';
+import { TodaySnapshotService } from '../services/ops/TodaySnapshotService';
+import { GetTodaySnapshotUseCase } from '../usecases/ops/GetTodaySnapshotUseCase';
 
 const OpsRouter = () => {
   const router = express.Router();
@@ -122,6 +125,30 @@ const OpsRouter = () => {
   const performanceMetricsService = new PerformanceMetricsService(
     database,
     new UserVisibleErrorsRepository(database)
+  );
+
+  const passUnlockMonitorService = new PassUnlockMonitorService({
+    userPasses: new UserPassRepository(database),
+    anonymousPasses: new AnonymousPassRepository(database),
+  });
+  const paidValueMonitorService = new PaidValueMonitorService({
+    userPasses: new UserPassRepository(database),
+    anonymousPasses: new AnonymousPassRepository(database),
+    subscriptions: new PaidValueSubscriptionsRepository(database),
+    events: new EventsMetricsRepository(database),
+  });
+  const errorEventRepository = new ErrorEventRepository(database);
+  const todaySnapshotService = new TodaySnapshotService(
+    {
+      business: () => businessMetricsService.getMetrics(),
+      conversion: () => conversionMetricsService.getMetrics(),
+      unresolvedErrorGroups: () =>
+        errorEventRepository.countGroups(undefined, 'unresolved'),
+      passUnlock: (since, now) =>
+        passUnlockMonitorService.getStatus(since, now),
+      paidValue: (since, now) => paidValueMonitorService.getStatus(since, now),
+    },
+    new BusinessMetricsCacheRepository(database)
   );
 
   const showcaseRepo = new ShowcaseRepository(database);
@@ -196,12 +223,7 @@ const OpsRouter = () => {
         behavioralDropoff: new BehavioralDropoffRepository(database),
       })
     ),
-    new GetPassUnlockMonitorUseCase(
-      new PassUnlockMonitorService({
-        userPasses: new UserPassRepository(database),
-        anonymousPasses: new AnonymousPassRepository(database),
-      })
-    ),
+    new GetPassUnlockMonitorUseCase(passUnlockMonitorService),
     new SendPassWinbackUseCase(
       new PassWinbackRepository(database),
       emailService,
@@ -214,14 +236,7 @@ const OpsRouter = () => {
     new GetCancelFunnelUseCase(
       new CancelFunnelService({ eventsRepo: new EventsRepository(database) })
     ),
-    new GetPaidValueMonitorUseCase(
-      new PaidValueMonitorService({
-        userPasses: new UserPassRepository(database),
-        anonymousPasses: new AnonymousPassRepository(database),
-        subscriptions: new PaidValueSubscriptionsRepository(database),
-        events: new EventsMetricsRepository(database),
-      })
-    ),
+    new GetPaidValueMonitorUseCase(paidValueMonitorService),
     new GetAiUsageMetricsUseCase(
       new AiUsageMetricsService({
         repo: new AiUsageMetricsRepository(database),
@@ -243,7 +258,25 @@ const OpsRouter = () => {
       new EmailDeliveryMetricsService({
         repo: new EmailDeliveryMetricsRepository(database),
       })
-    )
+    ),
+    new GetTodaySnapshotUseCase(todaySnapshotService)
+  );
+
+  /**
+   * @swagger
+   * /api/ops/today:
+   *   get:
+   *     summary: Today scoreboard — targeted rows across acquisition, revenue, retention and health
+   *     description: Internal endpoint locked to the ops owner. Composes already-instrumented sources into one server-scored snapshot cached for five minutes. Returns 404 for everyone else.
+   *     tags: [Ops]
+   *     responses:
+   *       200:
+   *         description: Today snapshot payload
+   *       404:
+   *         description: Not the ops owner
+   */
+  router.get('/api/ops/today', RequireOpsAccess, (req, res) =>
+    controller.getTodaySnapshot(req, res)
   );
 
   /**

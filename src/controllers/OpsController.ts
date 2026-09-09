@@ -31,6 +31,7 @@ import { SetChatAttachmentsLifecycleUseCase } from '../usecases/ops/SetChatAttac
 import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
 import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
 import { ChangeUserEmailUseCase } from '../usecases/ops/ChangeUserEmailUseCase';
+import { GetTodaySnapshotUseCase } from '../usecases/ops/GetTodaySnapshotUseCase';
 
 class OpsController {
   constructor(
@@ -61,7 +62,8 @@ class OpsController {
     private readonly grantUnclaimedPassUseCase?: GrantUnclaimedPassUseCase,
     private readonly setBlockIdIdentityUseCase?: SetBlockIdIdentityUseCase,
     private readonly changeUserEmailUseCase?: ChangeUserEmailUseCase,
-    private readonly getEmailDeliveryMetricsUseCase?: GetEmailDeliveryMetricsUseCase
+    private readonly getEmailDeliveryMetricsUseCase?: GetEmailDeliveryMetricsUseCase,
+    private readonly getTodaySnapshotUseCase?: GetTodaySnapshotUseCase
   ) {}
 
   async changeUserEmail(req: express.Request, res: express.Response) {
@@ -279,6 +281,20 @@ class OpsController {
     } catch (error) {
       console.error('[ops] getBusinessMetrics failed', error);
       res.status(500).json({ message: 'Failed to load business metrics' });
+    }
+  }
+
+  async getTodaySnapshot(_req: express.Request, res: express.Response) {
+    if (this.getTodaySnapshotUseCase == null) {
+      res.status(500).json({ message: 'Today snapshot not configured' });
+      return;
+    }
+    try {
+      const result = await this.getTodaySnapshotUseCase.execute();
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ops] getTodaySnapshot failed', error);
+      res.status(500).json({ message: 'Failed to load the today snapshot' });
     }
   }
 

@@ -332,9 +332,9 @@ describe('Sidebar Ops folder', () => {
     );
   });
 
-  it('marks System active on the /ops index', () => {
+  it('marks Today active on the /ops index', () => {
     renderSidebar({ ops: true, pathname: '/ops' });
-    expect(screen.getByRole('link', { name: 'System' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Today' })).toHaveAttribute(
       'aria-current',
       'page'
     );

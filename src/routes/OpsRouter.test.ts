@@ -188,6 +188,37 @@ jest.mock('../services/ops/ConversionMetricsService', () => {
   };
 });
 
+jest.mock('../services/ops/TodaySnapshotService', () => {
+  return {
+    TodaySnapshotService: class {
+      async getSnapshot() {
+        return {
+          rows: [
+            {
+              id: 'new_paid_7d',
+              lever: 'revenue',
+              label: 'New paid',
+              format: 'count',
+              window_label: '7d',
+              value: 15,
+              delta: null,
+              delta_good: null,
+              target: 70,
+              target_direction: 'at_least',
+              status: 'red',
+              link: '/ops/business',
+            },
+          ],
+          as_of: '2026-09-09T10:00:00.000Z',
+          cache_age_seconds: 0,
+          stale: false,
+          errors: [],
+        };
+      }
+    },
+  };
+});
+
 jest.mock('../lib/storage/StorageHandler', () => {
   return {
     __esModule: true,
@@ -447,6 +478,36 @@ describe('OpsRouter /api/ops/upload-funnel', () => {
           ],
           since: expect.any(String),
           as_of: expect.any(String),
+        })
+      );
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe('OpsRouter /api/ops/today', () => {
+  it('returns 404 for non-owner callers', async () => {
+    const { url, close } = await startServer(false);
+    try {
+      const response = await fetch(`${url}/api/ops/today`);
+      expect(response.status).toBe(404);
+    } finally {
+      await close();
+    }
+  });
+
+  it('returns the scored snapshot for the ops owner', async () => {
+    const { url, close } = await startServer(true);
+    try {
+      const response = await fetch(`${url}/api/ops/today`);
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body).toEqual(
+        expect.objectContaining({
+          as_of: '2026-09-09T10:00:00.000Z',
+          stale: false,
+          rows: [expect.objectContaining({ id: 'new_paid_7d', status: 'red' })],
         })
       );
     } finally {
