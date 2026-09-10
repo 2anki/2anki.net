@@ -25,6 +25,10 @@ import MrrTimeseriesChart from './charts/MrrTimeseriesChart';
 import ReEngagementCommentsList from './charts/ReEngagementCommentsList';
 import ReEngagementReasonsChart from './charts/ReEngagementReasonsChart';
 import SignupCountriesChart from './charts/SignupCountriesChart';
+import CollapsibleSection from './CollapsibleSection';
+import PaidValueMonitorTab from './PaidValueMonitorTab';
+import PassUnlockMonitorTab from './PassUnlockMonitorTab';
+import { useSectionSummaries } from './useSectionSummary';
 import styles from './OpsPage.module.css';
 import { useBusinessMetrics } from './useBusinessMetrics';
 import { useCancelFunnel } from './useCancelFunnel';
@@ -41,10 +45,27 @@ const buildMrrFootnote = (
   return `as of ${clock} (cache ${formatCacheAge(cacheAgeSeconds)})`;
 };
 
+function CancelFunnelPanel() {
+  const { data: cancelFunnel, isLoading } = useCancelFunnel();
+  return (
+    <ChartPanel
+      title="Cancel-flow funnel, last 30 days"
+      subtitle="How many cancels the pause offer saves"
+      isLoading={isLoading && cancelFunnel == null}
+      isEmpty={
+        cancelFunnel?.stages == null || cancelFunnel.stages.cancel_started === 0
+      }
+      emptyText="No cancel-flow activity in this window."
+      autoHeight
+    >
+      <CancelFunnelChart data={cancelFunnel ?? null} />
+    </ChartPanel>
+  );
+}
+
 export default function BusinessTab() {
+  const summaryFor = useSectionSummaries();
   const { data, error, isLoading, isFetching } = useBusinessMetrics();
-  const { data: cancelFunnel, isLoading: cancelFunnelLoading } =
-    useCancelFunnel();
   const [lastSnapshot, setLastSnapshot] =
     useState<BusinessMetricsResponse | null>(null);
 
@@ -137,15 +158,10 @@ export default function BusinessTab() {
         />
       </div>
 
-      <section className={styles.section} aria-labelledby="biz-section-emoji">
-        <header className={styles.sectionHeader}>
-          <h2 id="biz-section-emoji" className={styles.sectionTitle}>
-            Emoji feedback
-          </h2>
-          <p className={styles.sectionHint}>
-            Ratings and comments from the in-app emoji widget
-          </p>
-        </header>
+      <CollapsibleSection slug="emoji-feedback" title="Emoji feedback">
+        <p className={styles.sectionHint}>
+          Ratings and comments from the in-app emoji widget
+        </p>
         <div className={styles.grid}>
           <ChartPanel
             title="Emoji feedback, last 30 days"
@@ -170,17 +186,16 @@ export default function BusinessTab() {
             />
           </ChartPanel>
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section className={styles.section} aria-labelledby="biz-section-revenue">
-        <header className={styles.sectionHeader}>
-          <h2 id="biz-section-revenue" className={styles.sectionTitle}>
-            Revenue & subscriptions
-          </h2>
-          <p className={styles.sectionHint}>
-            MRR, active subs, churn, failed payments
-          </p>
-        </header>
+      <CollapsibleSection
+        slug="revenue"
+        title="Revenue & subscriptions"
+        summary={summaryFor('new_paid_7d')}
+      >
+        <p className={styles.sectionHint}>
+          MRR, active subs, churn, failed payments
+        </p>
         <div className={styles.grid}>
           <ChartPanel
             title="MRR, last 90 days"
@@ -224,34 +239,16 @@ export default function BusinessTab() {
             />
           </ChartPanel>
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section
-        className={styles.section}
-        aria-labelledby="biz-section-cancellations"
+      <CollapsibleSection
+        slug="cancellations"
+        title="Why users cancel"
+        summary={summaryFor('churn_30d_pct')}
       >
-        <header className={styles.sectionHeader}>
-          <h2 id="biz-section-cancellations" className={styles.sectionTitle}>
-            Why users cancel
-          </h2>
-          <p className={styles.sectionHint}>
-            Cancel-survey reasons and comments
-          </p>
-        </header>
+        <p className={styles.sectionHint}>Cancel-survey reasons and comments</p>
         <div className={styles.grid}>
-          <ChartPanel
-            title="Cancel-flow funnel, last 30 days"
-            subtitle="How many cancels the pause offer saves"
-            isLoading={cancelFunnelLoading && cancelFunnel == null}
-            isEmpty={
-              cancelFunnel?.stages == null ||
-              cancelFunnel.stages.cancel_started === 0
-            }
-            emptyText="No cancel-flow activity in this window."
-            autoHeight
-          >
-            <CancelFunnelChart data={cancelFunnel ?? null} />
-          </ChartPanel>
+          <CancelFunnelPanel />
 
           <ChartPanel
             title="Why users cancel, last 90 days"
@@ -276,20 +273,12 @@ export default function BusinessTab() {
             />
           </ChartPanel>
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section
-        className={styles.section}
-        aria-labelledby="biz-section-reengagement"
-      >
-        <header className={styles.sectionHeader}>
-          <h2 id="biz-section-reengagement" className={styles.sectionTitle}>
-            Re-engagement feedback
-          </h2>
-          <p className={styles.sectionHint}>
-            Why people stop engaging after a re-engagement email
-          </p>
-        </header>
+      <CollapsibleSection slug="reengagement" title="Re-engagement feedback">
+        <p className={styles.sectionHint}>
+          Why people stop engaging after a re-engagement email
+        </p>
         <div className={styles.grid}>
           <ChartPanel
             title="Why people stop, last 90 days"
@@ -314,18 +303,10 @@ export default function BusinessTab() {
             />
           </ChartPanel>
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section
-        className={styles.section}
-        aria-labelledby="biz-section-geography"
-      >
-        <header className={styles.sectionHeader}>
-          <h2 id="biz-section-geography" className={styles.sectionTitle}>
-            Geography
-          </h2>
-          <p className={styles.sectionHint}>Where new signups come from</p>
-        </header>
+      <CollapsibleSection slug="geography" title="Geography">
+        <p className={styles.sectionHint}>Where new signups come from</p>
         <div className={styles.grid}>
           <ChartPanel
             title="Signups by country, last 90 days"
@@ -339,7 +320,23 @@ export default function BusinessTab() {
             />
           </ChartPanel>
         </div>
-      </section>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        slug="pass-unlocks"
+        title="Pass unlocks"
+        summary={summaryFor('missing_pass_unlocks_7d')}
+      >
+        <PassUnlockMonitorTab />
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        slug="paid-value"
+        title="Paid value"
+        summary={summaryFor('zero_value_paid_7d')}
+      >
+        <PaidValueMonitorTab />
+      </CollapsibleSection>
     </>
   );
 }

@@ -325,6 +325,28 @@
   }
 }
 
+.commandGroupHeading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 2rem 0 0.75rem;
+}
+
+.commandGroupTitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.commandGroupHint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
 .compositeHeading {
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);

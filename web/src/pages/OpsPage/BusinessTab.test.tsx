@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -7,17 +7,26 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import BusinessTab from './BusinessTab';
 import { BusinessMetricsResponse } from './businessTypes';
 
+const openAllSections = () => {
+  for (const details of document.querySelectorAll('details')) {
+    details.open = true;
+    fireEvent(details, new Event('toggle'));
+  }
+};
+
 const renderTab = () => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
+  const result = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <BusinessTab />
       </MemoryRouter>
     </QueryClientProvider>
   );
+  openAllSections();
+  return result;
 };
 
 const buildSampleMetrics = (
@@ -103,6 +112,30 @@ describe('BusinessTab', () => {
   afterEach(() => {
     globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
+  });
+
+  test('lists every business section collapsed until opened, including the paid access checks', () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({}),
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <BusinessTab />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    expect(document.querySelectorAll('details')).toHaveLength(7);
+    expect(document.querySelectorAll('details[open]')).toHaveLength(0);
+    expect(screen.getByText('Pass unlocks')).toBeInTheDocument();
+    expect(screen.getByText('Paid value')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Check passes' })).toBeNull();
   });
 
   test('renders all six big-number cards from the response', async () => {
@@ -258,6 +291,20 @@ describe('BusinessTab', () => {
     let businessCallCount = 0;
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(
       async (url: string) => {
+        if (typeof url === 'string' && url.includes('/api/ops/today')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({
+              rows: [],
+              as_of: '',
+              cache_age_seconds: 0,
+              stale: false,
+              errors: [],
+            }),
+          };
+        }
         if (typeof url === 'string' && url.includes('cancel-funnel')) {
           return {
             ok: true,

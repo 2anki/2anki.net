@@ -18,8 +18,6 @@ import {
   OrphanedSubscriptionsResponse,
   ReconcileOrphanedSubscriptionsResponse,
 } from './orphanedSubscriptions';
-import PassUnlockMonitorTab from './PassUnlockMonitorTab';
-import PaidValueMonitorTab from './PaidValueMonitorTab';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -59,6 +57,7 @@ export default function CommandsTab() {
   const [syncMessage, setSyncMessage] = useState('');
   const [deleteStatus, setDeleteStatus] = useState<Status>('idle');
   const [deleteMessage, setDeleteMessage] = useState('');
+  const [deleteCandidates, setDeleteCandidates] = useState<number | null>(null);
   const [orphanStatus, setOrphanStatus] = useState<Status>('idle');
   const [orphanMessage, setOrphanMessage] = useState('');
   const [orphans, setOrphans] = useState<
@@ -218,13 +217,23 @@ export default function CommandsTab() {
   };
 
   const runDelete = async (dryRun: boolean) => {
+    if (
+      !dryRun &&
+      !globalThis.confirm(
+        `Permanently delete ${deleteCandidates} account${deleteCandidates === 1 ? '' : 's'}? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
     setDeleteStatus('loading');
     setDeleteMessage('');
     try {
       const result = await deleteInactiveUsers(dryRun);
       setDeleteStatus('success');
       setDeleteMessage(formatDeleteResult(result));
+      setDeleteCandidates(dryRun ? result.count : null);
     } catch (error) {
+      setDeleteCandidates(null);
       setDeleteStatus('error');
       setDeleteMessage(
         error instanceof Error ? error.message : 'Unknown error'
@@ -291,8 +300,13 @@ export default function CommandsTab() {
         Manual ops actions. Run dry-run first to validate counts before sending.
       </p>
 
+      <div className={styles.commandGroupHeading}>
+        <h2 className={styles.commandGroupTitle}>Support a user</h2>
+        <p className={styles.commandGroupHint}>targets one account</p>
+      </div>
+
       <section className={`${sharedStyles.surface} ${styles.card}`}>
-        <h2 className={styles.cardTitle}>Grant unclaimed pass</h2>
+        <h3 className={styles.cardTitle}>Grant unclaimed pass</h3>
         <p className={styles.panelSubtitle}>
           Attaches an unclaimed anonymous pass to an account by email and grants
           the full duration from now — for a buyer whose checkout redirect never
@@ -339,7 +353,7 @@ export default function CommandsTab() {
       )}
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
-        <h2 className={styles.cardTitle}>Match cards to Notion blocks</h2>
+        <h3 className={styles.cardTitle}>Match cards to Notion blocks</h3>
         <p className={styles.panelSubtitle}>
           Turns &quot;Match cards to their Notion blocks&quot; on or off for an
           account&apos;s future uploads, saved to their card options. Use when a
@@ -387,7 +401,7 @@ export default function CommandsTab() {
       )}
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
-        <h2 className={styles.cardTitle}>Change account email</h2>
+        <h3 className={styles.cardTitle}>Change account email</h3>
         <p className={styles.panelSubtitle}>
           Moves a user&apos;s login email to a new address (matched
           case-insensitively) and re-links their subscription in one step. For
@@ -433,8 +447,15 @@ export default function CommandsTab() {
         </div>
       )}
 
+      <div className={styles.commandGroupHeading}>
+        <h2 className={styles.commandGroupTitle}>Run a job</h2>
+        <p className={styles.commandGroupHint}>
+          batch email or cleanup, capped per run
+        </p>
+      </div>
+
       <section className={`${sharedStyles.surface} ${styles.card}`}>
-        <h2 className={styles.cardTitle}>Inactivity warnings</h2>
+        <h3 className={styles.cardTitle}>Inactivity warnings</h3>
         <p className={styles.panelSubtitle}>
           Finds free accounts inactive for 6+ months (excludes lifetime and
           active subscribers) and sends a deletion warning email. Capped at 500
@@ -472,7 +493,7 @@ export default function CommandsTab() {
       )}
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
-        <h2 className={styles.cardTitle}>Pass win-back</h2>
+        <h3 className={styles.cardTitle}>Pass win-back</h3>
         <p className={styles.panelSubtitle}>
           Emails lapsed Day/Week pass buyers whose pass expired with no active
           pass or subscription a seasonal nudge to come back. Excludes opted-out
@@ -519,8 +540,13 @@ export default function CommandsTab() {
         </div>
       )}
 
+      <div className={styles.commandGroupHeading}>
+        <h2 className={styles.commandGroupTitle}>Site</h2>
+        <p className={styles.commandGroupHint}>billing and storage plumbing</p>
+      </div>
+
       <section className={`${sharedStyles.surface} ${styles.card}`}>
-        <h2 className={styles.cardTitle}>Stripe subscriptions</h2>
+        <h3 className={styles.cardTitle}>Stripe subscriptions</h3>
         <p className={styles.panelSubtitle}>
           Pulls active Stripe subscriptions into the database and reconciles
           each active row against Stripe. Use this to provision a paying user
@@ -551,13 +577,14 @@ export default function CommandsTab() {
       )}
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
-        <h2 className={styles.cardTitle}>Delete inactive accounts</h2>
+        <h3 className={styles.cardTitle}>Delete inactive accounts</h3>
         <p className={styles.panelSubtitle}>
           Permanently deletes free accounts that were warned 14+ days ago and
           have not logged in since, plus inactive free accounts whose email
           address hard-bounced or was dropped — the warning email can never
           reach them. Excludes lifetime and active subscribers. Capped at 100
-          per run. Check candidates first — deletion cannot be undone.
+          per run. Check candidates first — the delete button unlocks only after
+          a check in this session finds accounts, and deletion cannot be undone.
         </p>
         <div className={styles.controls}>
           <button
@@ -572,7 +599,11 @@ export default function CommandsTab() {
             type="button"
             className={sharedStyles.btnDanger}
             onClick={() => runDelete(false)}
-            disabled={deleteStatus === 'loading'}
+            disabled={
+              deleteStatus === 'loading' ||
+              deleteCandidates == null ||
+              deleteCandidates === 0
+            }
           >
             Delete inactive accounts
           </button>
@@ -591,7 +622,7 @@ export default function CommandsTab() {
       )}
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
-        <h2 className={styles.cardTitle}>Chat attachment expiry</h2>
+        <h3 className={styles.cardTitle}>Chat attachment expiry</h3>
         <p className={styles.panelSubtitle}>
           Applies the 90-day expiry rule for persisted chat attachments to the
           storage bucket. Idempotent — existing lifecycle rules are kept, only
@@ -624,7 +655,7 @@ export default function CommandsTab() {
       )}
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
-        <h2 className={styles.cardTitle}>Orphaned subscriptions</h2>
+        <h3 className={styles.cardTitle}>Orphaned subscriptions</h3>
         <p className={styles.panelSubtitle}>
           Finds active subscriptions where the paid email, linked email, and
           Stripe customer id match no account — so the payer is not getting
@@ -672,9 +703,6 @@ export default function CommandsTab() {
           {orphanMessage}
         </div>
       )}
-
-      <PassUnlockMonitorTab />
-      <PaidValueMonitorTab />
     </>
   );
 }
