@@ -861,8 +861,146 @@ const claudeToAnki: AnswerConfig = {
       href: '/documentation/reference/mcp?ref=ai',
     },
     {
+      label: 'Make Anki flashcards in ChatGPT',
+      href: '/answers/chatgpt-to-anki?ref=ai',
+    },
+    {
+      label: 'Make Anki flashcards in Gemini',
+      href: '/answers/gemini-to-anki?ref=ai',
+    },
+    {
       label: 'Turn handwritten notes into Anki flashcards',
       href: '/answers/handwritten-notes-to-anki?ref=ai',
+    },
+    { label: 'Pricing', href: '/pricing?ref=ai' },
+  ],
+};
+
+const chatgptToAnki: AnswerConfig = {
+  slug: 'chatgpt-to-anki',
+  title: 'How to make Anki flashcards in ChatGPT | 2anki',
+  description:
+    'Turn on ChatGPT developer mode, add the 2anki connector, ask for flashcards, and get a download link for a ready .apkg deck you open in Anki.',
+  h1: 'Turn ChatGPT conversations into Anki flashcards',
+  intro:
+    '2anki runs a hosted MCP connector. Turn on developer mode in ChatGPT, add https://2anki.net/mcp, then ask for flashcards on any topic or paste in your notes — ChatGPT hands back a download link for a ready .apkg deck you open in Anki.',
+  sections: [
+    {
+      heading: 'What the MCP connector is',
+      body: '2anki runs a hosted MCP connector at https://2anki.net/mcp. ChatGPT reaches it once you turn on developer mode and add it as a connector, which takes a paid ChatGPT plan. From then on you ask ChatGPT for flashcards the same way you ask it anything else, and it builds the deck through 2anki and returns a download link. Nothing runs on your machine; the connector talks to 2anki directly. The same connector works in Claude and in Gemini clients that support MCP servers — see those guides.',
+    },
+    {
+      heading: 'Add the connector and ask for cards',
+      body: 'In ChatGPT, open Settings → Apps & Connectors → Advanced settings and turn on developer mode. Back under Apps & Connectors, choose Create, enter https://2anki.net/mcp as the MCP server URL, and pick OAuth. Sign in when prompted so the deck lands in your account. Then start a message, add the 2anki connector from the tools menu in the message composer, and ask — "make 20 cards on the Krebs cycle" or "turn these notes into cloze cards" — then download the .apkg ChatGPT links back. The full walkthrough, with screenshots, is in the docs guide.',
+    },
+    {
+      heading: 'What you can ask for',
+      body: 'Text and notes become a deck — paste a chapter, a list of terms, or a summary and get question-and-answer cards. A photo becomes cards — attach an image of your notes and ChatGPT reads the page. You can ask for specific note types, including cloze deletions, and organise a large topic into subdecks. Preview the cards in the chat before you download the .apkg, so nothing lands in Anki that you did not check.',
+    },
+    {
+      heading: 'Connector access',
+      body: 'The hosted connector is open to every signed-in 2anki account — add it and approve the consent screen once, no request needed. The ChatGPT side needs developer mode, which is part of a paid ChatGPT plan. Either way it builds decks through the same 2anki account, so anything you make in the connector shows up alongside your uploads.',
+    },
+    {
+      heading: 'What it costs',
+      body: 'The free plan converts 100 cards a month, whether you build them through the connector or upload files directly. Unlimited removes the cap. It is the same account and the same decks — the connector is another way in, not a separate product or a separate bill.',
+    },
+  ],
+  faqs: [
+    {
+      q: 'Does the 2anki connector work in ChatGPT?',
+      a: 'Yes, on a paid ChatGPT plan — developer mode is a paid feature. Turn it on under Settings → Apps & Connectors → Advanced settings, choose Create, enter https://2anki.net/mcp, and pick OAuth. Then add 2anki from the tools menu and ask for flashcards. It also works in Claude.',
+    },
+    {
+      q: 'Can it read a photo of my notes?',
+      a: 'Yes. Attach an image in the chat and ask for cards. ChatGPT reads the page and drafts cards you preview before downloading the .apkg.',
+    },
+    {
+      q: 'What do I get back?',
+      a: 'A download link for a standard .apkg deck. Open it in Anki with a double-click — no add-on required. The cards work with FSRS or SM-2, whichever scheduling you have enabled.',
+    },
+  ],
+  relatedLinks: [
+    {
+      label: 'Set up 2anki in ChatGPT — full walkthrough',
+      href: '/documentation/start-here/use-in-claude?ref=ai',
+    },
+    {
+      label: 'MCP connector reference',
+      href: '/documentation/reference/mcp?ref=ai',
+    },
+    {
+      label: 'Make Anki flashcards in Claude',
+      href: '/answers/claude-to-anki?ref=ai',
+    },
+    {
+      label: 'Make Anki flashcards in Gemini',
+      href: '/answers/gemini-to-anki?ref=ai',
+    },
+    { label: 'Pricing', href: '/pricing?ref=ai' },
+  ],
+};
+
+const geminiToAnki: AnswerConfig = {
+  slug: 'gemini-to-anki',
+  title: 'How to make Anki flashcards with Gemini | 2anki',
+  description:
+    'Use Gemini to draft flashcards, then turn them into an Anki deck with 2anki — add the MCP connector if your Gemini client supports it, or upload the answer.',
+  h1: 'Turn Gemini answers into Anki flashcards',
+  intro:
+    "Gemini is good at drafting flashcards; 2anki turns them into a deck you study in Anki. If your Gemini client supports MCP servers, add https://2anki.net/mcp and ask for a deck directly. If it does not, copy Gemini's answer into a file and upload it to 2anki — either way you get a .apkg you open in Anki.",
+  sections: [
+    {
+      heading: 'What the MCP connector is',
+      body: '2anki runs a hosted MCP connector at https://2anki.net/mcp. Any AI assistant that can connect to an MCP server can reach it, sign in once, and build decks through your 2anki account. Claude and ChatGPT have step-by-step guides today — see those. Whether Gemini can add the connector depends on the client you use, which the next section covers; the URL is the same for every assistant that can add it.',
+    },
+    {
+      heading: 'If your Gemini client supports MCP servers',
+      body: 'Some Gemini clients can add a custom MCP server. If yours does, add https://2anki.net/mcp as the server, sign in to 2anki, and approve the consent screen once. Then ask Gemini for flashcards — "make 20 cards on the Krebs cycle" or "turn these notes into cloze cards" — and it hands back a download link for the .apkg. If you cannot find where to add an MCP server in your Gemini app, use the copy-and-upload path below instead.',
+    },
+    {
+      heading: 'The copy-and-upload path that always works',
+      body: 'This path works with any version of Gemini. Ask Gemini to write your cards as a Markdown list or a two-column table — the question, then the answer. Copy its reply into a plain text file, save it as .md or .csv, and upload it at 2anki.net. 2anki reads the structure and hands back a .apkg deck. It is a step longer than a connector, but it needs nothing beyond a Gemini answer and one file upload.',
+    },
+    {
+      heading: 'What you can ask Gemini for',
+      body: 'Ask for a specific count, a specific note type, or cloze deletions — "40 basic cards", "cloze cards", or "one card per key term". For clean uploads, ask Gemini to format the answer as a Markdown list or a term-and-definition table. Paste in a chapter, a list of terms, or a summary and let Gemini shape it into question-and-answer pairs before you convert.',
+    },
+    {
+      heading: 'What it costs',
+      body: 'The free plan converts 100 cards a month, whether a connector builds them or you upload a file yourself. Unlimited removes the cap. It is the same account and the same decks — Gemini is another way to draft the cards, not a separate product or a separate bill.',
+    },
+  ],
+  faqs: [
+    {
+      q: 'Does the 2anki connector work in Gemini?',
+      a: 'It depends on your Gemini client. If your version of Gemini can add a custom MCP server, add https://2anki.net/mcp and ask for flashcards directly. If it cannot, ask Gemini to write the cards as a Markdown list or a table and upload that file to 2anki — that path works with any version.',
+    },
+    {
+      q: 'Can Gemini turn a photo of my notes into cards?',
+      a: "Attach the photo in the chat and Gemini can draft cards from what it reads; upload that answer to 2anki. To convert the image itself, skip Gemini and upload the photo to 2anki's photo-to-deck tool, which reads the page and drafts cards you review.",
+    },
+    {
+      q: 'What do I get back?',
+      a: 'A .apkg deck — as a download link from a connector, or as a finished deck from the upload. Open it in Anki with a double-click, no add-on required. The cards work with FSRS or SM-2, whichever scheduling you have enabled.',
+    },
+  ],
+  relatedLinks: [
+    {
+      label: 'MCP connector reference',
+      href: '/documentation/reference/mcp?ref=ai',
+    },
+    {
+      label: 'Markdown to Anki converter',
+      href: '/convert/markdown-to-anki?ref=ai',
+    },
+    {
+      label: 'Make Anki flashcards in Claude',
+      href: '/answers/claude-to-anki?ref=ai',
+    },
+    {
+      label: 'Make Anki flashcards in ChatGPT',
+      href: '/answers/chatgpt-to-anki?ref=ai',
     },
     { label: 'Pricing', href: '/pricing?ref=ai' },
   ],
@@ -884,4 +1022,6 @@ export const ANSWERS_PAGES: ReadonlyMap<string, AnswerConfig> = new Map([
   ['language-app-to-anki', languageAppToAnki],
   ['obsidian-to-anki', obsidianToAnki],
   ['claude-to-anki', claudeToAnki],
+  ['chatgpt-to-anki', chatgptToAnki],
+  ['gemini-to-anki', geminiToAnki],
 ]);

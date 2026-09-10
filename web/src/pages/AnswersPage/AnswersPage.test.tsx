@@ -138,6 +138,8 @@ describe('AnswersPage', () => {
     'language-app-to-anki',
     'obsidian-to-anki',
     'claude-to-anki',
+    'chatgpt-to-anki',
+    'gemini-to-anki',
   ])('renders the %s page', (slug) => {
     const config = ANSWERS_PAGES.get(slug)!;
     renderAtSlug(slug);
