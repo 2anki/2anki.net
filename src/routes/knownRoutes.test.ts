@@ -18,6 +18,8 @@ describe('isKnownAppRoute', () => {
     '/answers/pdf-to-anki',
     '/answers/convert-notion-to-anki',
     '/answers/claude-to-anki',
+    '/answers/chatgpt-to-anki',
+    '/answers/gemini-to-anki',
     '/account',
     '/account/claim',
     '/ankify',

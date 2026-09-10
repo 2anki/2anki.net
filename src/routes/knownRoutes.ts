@@ -128,6 +128,8 @@ const ANSWERS_SLUGS = new Set<string>([
   'language-app-to-anki',
   'obsidian-to-anki',
   'claude-to-anki',
+  'chatgpt-to-anki',
+  'gemini-to-anki',
 ]);
 
 const PARAM_PREFIXES = [
