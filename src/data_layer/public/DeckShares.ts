@@ -22,12 +22,6 @@ export default interface DeckShares {
 
   view_count: number;
 
-  is_public: boolean;
-
-  title: string | null;
-
-  card_count: number | null;
-
   last_viewed_at: Date | null;
 }
 
@@ -50,13 +44,6 @@ export interface DeckSharesInitializer {
   /** Default value: 0 */
   view_count?: number;
 
-  /** Default value: false */
-  is_public?: boolean;
-
-  title?: string | null;
-
-  card_count?: number | null;
-
   last_viewed_at?: Date | null;
 }
 
@@ -75,12 +62,6 @@ export interface DeckSharesMutator {
   revoked_at?: Date | null;
 
   view_count?: number;
-
-  is_public?: boolean;
-
-  title?: string | null;
-
-  card_count?: number | null;
 
   last_viewed_at?: Date | null;
 }
