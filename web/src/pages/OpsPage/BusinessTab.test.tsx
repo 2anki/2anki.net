@@ -105,6 +105,15 @@ const buildSampleMetrics = (
 describe('BusinessTab', () => {
   const originalFetch = globalThis.fetch;
 
+  beforeEach(() => {
+    globalThis.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
   test('lists every business section collapsed until opened, including the paid access checks', () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -127,15 +136,6 @@ describe('BusinessTab', () => {
     expect(screen.getByText('Pass unlocks')).toBeInTheDocument();
     expect(screen.getByText('Paid value')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Check passes' })).toBeNull();
-  });
-
-  beforeEach(() => {
-    globalThis.fetch = vi.fn();
-  });
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-    vi.restoreAllMocks();
   });
 
   test('renders all six big-number cards from the response', async () => {
