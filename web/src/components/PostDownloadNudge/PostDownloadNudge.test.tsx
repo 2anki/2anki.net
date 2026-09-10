@@ -74,7 +74,7 @@ describe('PostDownloadNudge', () => {
       'href',
       '/pricing?source=post_download_nudge'
     );
-    expect(trackMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(trackMock).toHaveBeenCalledTimes(1));
     expect(trackMock).toHaveBeenCalledWith('paywall_shown', {
       surface: 'post_download_nudge',
       page: 'upload',
