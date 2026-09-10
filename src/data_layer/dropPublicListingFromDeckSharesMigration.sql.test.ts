@@ -37,17 +37,15 @@ describe('20261014000000 drop public listing from deck_shares DDL shape', () => 
     },
   });
 
-  it('runs outside a transaction so the concurrent index drop is allowed', () => {
-    expect(migration.config).toEqual({ transaction: false });
+  it('runs inside the default transaction so a partial failure rolls back', () => {
+    expect(migration.config).toBeUndefined();
   });
 
   it('drops the partial listing index before the columns it filters on', async () => {
     await migration.up(recordingKnex());
 
     const indexDrop = capturedSql.findIndex((sql) =>
-      sql.includes(
-        'DROP INDEX CONCURRENTLY IF EXISTS deck_shares_public_listing_idx'
-      )
+      sql.includes('DROP INDEX IF EXISTS deck_shares_public_listing_idx')
     );
     const columnDrop = capturedSql.findIndex((sql) =>
       sql.includes('drop column "is_public"')
@@ -76,7 +74,7 @@ describe('20261014000000 drop public listing from deck_shares DDL shape', () => 
     expect(joined).toContain('add column "title" varchar(120)');
     expect(joined).toContain('add column "card_count" integer');
     expect(capturedSql[capturedSql.length - 1]).toContain(
-      'CREATE INDEX CONCURRENTLY IF NOT EXISTS deck_shares_public_listing_idx'
+      'CREATE INDEX IF NOT EXISTS deck_shares_public_listing_idx'
     );
   });
 });
