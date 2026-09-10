@@ -138,7 +138,7 @@ def run_oxfmt_check(files, project_dir):
     if result.returncode == 0:
         return True
     output = result.stdout or result.stderr or "(no output)"
-    if ALL_FILES_IGNORED.search(output):
+    if result.returncode == 2 and ALL_FILES_IGNORED.search(output):
         return True
     if NOT_INSTALLED.search(output):
         sys.stderr.write(
