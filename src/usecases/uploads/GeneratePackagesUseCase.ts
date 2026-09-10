@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { MessageChannel } from 'node:worker_threads';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
+import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import Package from '../../lib/parser/Package';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import { UploadedFile } from '../../lib/storage/types';
@@ -52,6 +53,7 @@ function buildWorkerError(failure: UploadGenerationFailure): Error {
 
 export interface GenerationContext {
   knownGuids?: KnownGuids;
+  uploadIdentity?: UploadIdentityContext;
   existingCardFingerprints?: string[];
   requestId?: string;
 }
@@ -66,7 +68,8 @@ class GeneratePackagesUseCase {
     userId: number | null = null,
     context: GenerationContext = {}
   ): Promise<PackageResult> {
-    const { knownGuids, existingCardFingerprints, requestId } = context;
+    const { knownGuids, uploadIdentity, existingCardFingerprints, requestId } =
+      context;
     ensureUploadBytes(files);
     const unavailable = findUnavailableUpload(files);
     if (unavailable) {
@@ -85,6 +88,7 @@ class GeneratePackagesUseCase {
           enqueuedAt,
           userId,
           knownGuids,
+          uploadIdentity,
           existingCardFingerprints,
           requestId,
           progressPort: channel?.port2,

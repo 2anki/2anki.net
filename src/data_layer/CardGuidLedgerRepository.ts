@@ -3,11 +3,21 @@ import type { Knex } from 'knex';
 import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
 import type { UsersId } from './public/Users';
 
+export interface UploadIdentityRow {
+  guid: string;
+  sourcePageId: string | null;
+}
+
 export interface ICardGuidLedgerRepository {
   getAllForOwner(owner: number): Promise<Record<string, string>>;
+  getUploadIdentityForOwner(
+    owner: number
+  ): Promise<Record<string, UploadIdentityRow>>;
   record(owner: number, entries: IssuedCardGuid[]): Promise<void>;
   reissue(owner: number, entries: IssuedCardGuid[]): Promise<void>;
 }
+
+const UPLOAD_IDENTITY_BLOCK_PREFIX = 'u:%';
 
 const MAX_ID_LENGTH = 255;
 const INSERT_CHUNK_SIZE = 500;
@@ -28,6 +38,27 @@ export class CardGuidLedgerRepository implements ICardGuidLedgerRepository {
       known[row.block_id] = row.guid;
     }
     return known;
+  }
+
+  async getUploadIdentityForOwner(
+    owner: number
+  ): Promise<Record<string, UploadIdentityRow>> {
+    const rows: Array<{
+      block_id: string;
+      guid: string;
+      source_page_id: string | null;
+    }> = await this.database(this.table)
+      .select('block_id', 'guid', 'source_page_id')
+      .where({ owner: owner as UsersId })
+      .andWhere('block_id', 'like', UPLOAD_IDENTITY_BLOCK_PREFIX);
+    const identity: Record<string, UploadIdentityRow> = {};
+    for (const row of rows) {
+      identity[row.block_id] = {
+        guid: row.guid,
+        sourcePageId: row.source_page_id,
+      };
+    }
+    return identity;
   }
 
   async record(owner: number, entries: IssuedCardGuid[]): Promise<void> {

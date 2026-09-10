@@ -3,6 +3,7 @@ import path from 'node:path';
 import pLimit from 'p-limit';
 import { collectIssuedGuids } from '../../lib/anki/collectIssuedGuids';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
+import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import { ZipHandler } from '../../lib/zip/zip';
 import {
@@ -82,7 +83,8 @@ async function buildDeckBatch(
   settings: CardOption,
   paying: boolean,
   workspace: Workspace,
-  knownGuids?: KnownGuids
+  knownGuids?: KnownGuids,
+  uploadIdentity?: UploadIdentityContext
 ): Promise<BatchOutcome> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -100,6 +102,7 @@ async function buildDeckBatch(
             noLimits: paying,
             workspace: deckSubWorkspace,
             knownGuids,
+            uploadIdentity,
           },
           deckSubWorkspace,
           workspace
@@ -167,11 +170,15 @@ async function buildDeckBatch(
       pkg.engine = result.engine;
       pkg.score = result.score;
       pkg.inducedRule = result.inducedRule;
-      pkg.guidEntries = collectIssuedGuids(
-        path.dirname(result.deckInfoPath),
-        result.deck,
-        knownGuids
-      );
+      pkg.guidEntries = [
+        ...collectIssuedGuids(
+          path.dirname(result.deckInfoPath),
+          result.deck,
+          knownGuids
+        ),
+        ...(result.guidEntries ?? []),
+      ];
+      pkg.uploadIdentityStats = result.uploadIdentityStats;
       pkg.expiredNotionImageCount = result.expiredNotionImageCount ?? 0;
       packages.push(pkg);
       if (result.warning) warnings.push(result.warning);
@@ -184,7 +191,8 @@ async function buildDeckBatch(
     settings,
     paying,
     workspace,
-    knownGuids
+    knownGuids,
+    uploadIdentity
   );
   packages.push(...stragglerOutcomes.packages);
   warnings.push(...stragglerOutcomes.warnings);
@@ -200,7 +208,8 @@ async function buildStragglerDecks(
   settings: CardOption,
   paying: boolean,
   workspace: Workspace,
-  knownGuids?: KnownGuids
+  knownGuids?: KnownGuids,
+  uploadIdentity?: UploadIdentityContext
 ): Promise<BatchOutcome> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -222,6 +231,7 @@ async function buildStragglerDecks(
           noLimits: paying,
           workspace,
           knownGuids,
+          uploadIdentity,
         })
       );
     } catch {
@@ -244,6 +254,7 @@ async function buildStragglerDecks(
       pkg.score = outcome.score;
       pkg.inducedRule = outcome.inducedRule;
       pkg.guidEntries = outcome.guidEntries;
+      pkg.uploadIdentityStats = outcome.uploadIdentityStats;
       pkg.expiredNotionImageCount = outcome.expiredNotionImageCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
@@ -328,7 +339,8 @@ async function buildAllInOneSlot(
   paying: boolean,
   workspace: Workspace,
   cap: number,
-  knownGuids?: KnownGuids
+  knownGuids?: KnownGuids,
+  uploadIdentity?: UploadIdentityContext
 ): Promise<PackageResult> {
   const limit = pLimit(cap);
   const settled = await Promise.allSettled(
@@ -349,6 +361,7 @@ async function buildAllInOneSlot(
             noLimits: paying,
             workspace: deckWorkspace,
             knownGuids,
+            uploadIdentity,
           });
           await liftDecksToParent(deckWorkspace, workspace);
           return result;
@@ -383,6 +396,7 @@ async function buildAllInOneSlot(
       pkg.score = outcome.score;
       pkg.inducedRule = outcome.inducedRule;
       pkg.guidEntries = outcome.guidEntries;
+      pkg.uploadIdentityStats = outcome.uploadIdentityStats;
       pkg.expiredNotionImageCount = outcome.expiredNotionImageCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
@@ -408,6 +422,7 @@ function appendConversionFailureWarning(
 
 export interface GetPackagesFromZipOptions {
   knownGuids?: KnownGuids;
+  uploadIdentity?: UploadIdentityContext;
   requestId?: string;
   crossFileDedup?: CrossFileDedupState;
 }
@@ -421,7 +436,7 @@ export const getPackagesFromZip = async (
   userId: number | null = null,
   options: GetPackagesFromZipOptions = {}
 ): Promise<PackageResult> => {
-  const { knownGuids, requestId, crossFileDedup } = options;
+  const { knownGuids, uploadIdentity, requestId, crossFileDedup } = options;
   if (!fileContents) {
     return { packages: [] };
   }
@@ -472,7 +487,8 @@ export const getPackagesFromZip = async (
       paying,
       workspace,
       cap,
-      knownGuids
+      knownGuids,
+      uploadIdentity
     );
   }
 
@@ -488,7 +504,8 @@ export const getPackagesFromZip = async (
           effectiveSettings,
           paying,
           workspace,
-          knownGuids
+          knownGuids,
+          uploadIdentity
         )
       )
     )

@@ -100,6 +100,39 @@ describe('CardGuidLedgerRepository SQL generation', () => {
     expect(known).toEqual({ 'block-a': 'guid-a', 'block-b': 'guid-b' });
   });
 
+  it('getUploadIdentityForOwner filters u: rows and returns guid + source', async () => {
+    const rows = [
+      { block_id: 'u:abc', guid: 'guid-a', source_page_id: 'hash:fp' },
+      { block_id: 'u:def', guid: 'guid-b', source_page_id: null },
+    ];
+    let capturedWhere: unknown;
+    const captured: unknown[] = [];
+    const fake = {
+      select: () => ({
+        where(condition: unknown) {
+          capturedWhere = condition;
+          return {
+            andWhere: async (...args: unknown[]) => {
+              captured.push(args);
+              return rows;
+            },
+          };
+        },
+      }),
+    };
+    const database = (() => fake) as unknown as knex.Knex;
+    const repo = new CardGuidLedgerRepository(database);
+
+    const identity = await repo.getUploadIdentityForOwner(7);
+
+    expect(capturedWhere).toEqual({ owner: 7 });
+    expect(captured[0]).toEqual(['block_id', 'like', 'u:%']);
+    expect(identity).toEqual({
+      'u:abc': { guid: 'guid-a', sourcePageId: 'hash:fp' },
+      'u:def': { guid: 'guid-b', sourcePageId: null },
+    });
+  });
+
   it('record maps entries to snake_case rows and skips empty input', async () => {
     const captured: unknown[] = [];
     const fake = {

@@ -17,6 +17,11 @@ import CardOption from '../lib/parser/Settings';
 import Workspace from '../lib/parser/WorkSpace';
 import { logEmptyBackAttribution } from '../lib/parser/logEmptyBackAttribution';
 import type { IssuedCardGuid, KnownGuids } from '../lib/anki/guidLedgerTypes';
+import { buildUploadIdentityLedger } from '../lib/anki/uploadCardIdentity';
+import type {
+  UploadIdentityContext,
+  UploadIdentityStats,
+} from '../lib/parser/DeckParser';
 import StorageHandler from '../lib/storage/StorageHandler';
 import { UploadedFile } from '../lib/storage/types';
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';
@@ -455,6 +460,47 @@ class UploadService {
       console.warn('[UploadService] card guid ledger read failed', error);
       return undefined;
     }
+  }
+
+  private async loadUploadIdentityLedger(
+    ownerId: number | null
+  ): Promise<UploadIdentityContext | undefined> {
+    if (ownerId == null) {
+      return undefined;
+    }
+    try {
+      const rows =
+        await this.cardGuidLedgerRepository.getUploadIdentityForOwner(ownerId);
+      return { owner: ownerId, ledger: buildUploadIdentityLedger(rows) };
+    } catch (error) {
+      console.warn('[UploadService] upload identity ledger read failed', error);
+      return undefined;
+    }
+  }
+
+  private recordUploadIdentityMetric(
+    packages: { uploadIdentityStats?: UploadIdentityStats }[],
+    ownerId: number | null
+  ): void {
+    if (ownerId == null) {
+      return;
+    }
+    const withStats = packages.filter((p) => p.uploadIdentityStats != null);
+    if (withStats.length === 0) {
+      return;
+    }
+    const totals = withStats.reduce(
+      (acc, p) => ({
+        replayed: acc.replayed + (p.uploadIdentityStats?.replayed ?? 0),
+        issued: acc.issued + (p.uploadIdentityStats?.issued ?? 0),
+        guarded: acc.guarded + (p.uploadIdentityStats?.guarded ?? 0),
+      }),
+      { replayed: 0, issued: 0, guarded: 0 }
+    );
+    track('upload_identity_replayed', {
+      userId: ownerId,
+      props: totals,
+    });
   }
 
   private async loadExistingCardFingerprints(
@@ -1037,6 +1083,7 @@ class UploadService {
     const ownerId =
       Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null;
     const knownGuids = await this.loadKnownGuids(ownerId);
+    const uploadIdentity = await this.loadUploadIdentityLedger(ownerId);
     const existingCardFingerprints = await this.loadExistingCardFingerprints(
       ownerId,
       settings,
@@ -1054,12 +1101,14 @@ class UploadService {
         ownerId,
         {
           knownGuids,
+          uploadIdentity,
           existingCardFingerprints,
           requestId: res.locals.requestId,
         }
       )
       .then(async ({ packages, cardFingerprints }) => {
         this.recordIssuedGuids(packages, ownerId, settings);
+        this.recordUploadIdentityMetric(packages, ownerId);
         this.recordCardFingerprints(ownerId, cardFingerprints);
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
         // Scores record either way. The conversion-output stats below stay
@@ -1234,6 +1283,7 @@ class UploadService {
         ? syncOwnerNumeric
         : null;
     const knownGuids = await this.loadKnownGuids(syncOwnerId);
+    const uploadIdentity = await this.loadUploadIdentityLedger(syncOwnerId);
     const existingCardFingerprints = await this.loadExistingCardFingerprints(
       syncOwnerId,
       settings,
@@ -1246,9 +1296,15 @@ class UploadService {
       ws,
       undefined,
       syncOwnerId,
-      { knownGuids, existingCardFingerprints, requestId: res.locals.requestId }
+      {
+        knownGuids,
+        uploadIdentity,
+        existingCardFingerprints,
+        requestId: res.locals.requestId,
+      }
     );
     this.recordIssuedGuids(packages, syncOwnerId, settings);
+    this.recordUploadIdentityMetric(packages, syncOwnerId);
     this.recordCardFingerprints(syncOwnerId, cardFingerprints);
 
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);

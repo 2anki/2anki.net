@@ -715,6 +715,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       name: string;
       cardCount: number;
       guidEntries?: IssuedCardGuid[];
+      uploadIdentityStats?: {
+        replayed: number;
+        issued: number;
+        guarded: number;
+      };
     }>,
     warnings?: string[]
   ) {
@@ -824,6 +829,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     mockPackages([{ name: 'deck', cardCount: 1, guidEntries }]);
     const guidLedger = {
       getAllForOwner: jest.fn().mockResolvedValue({ 'block-a': 'old-guid' }),
+      getUploadIdentityForOwner: jest.fn().mockResolvedValue({}),
       record: jest.fn().mockResolvedValue(undefined),
       reissue: jest.fn().mockResolvedValue(undefined),
     };
@@ -853,6 +859,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     mockPackages([{ name: 'deck', cardCount: 1, guidEntries }]);
     const guidLedger = {
       getAllForOwner: jest.fn().mockResolvedValue({}),
+      getUploadIdentityForOwner: jest.fn().mockResolvedValue({}),
       record: jest.fn().mockResolvedValue(undefined),
       reissue: jest.fn().mockResolvedValue(undefined),
     };
@@ -871,6 +878,68 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
 
     expect(guidLedger.record).toHaveBeenCalledWith(42, guidEntries);
     expect(guidLedger.reissue).not.toHaveBeenCalled();
+  });
+
+  it('emits upload_identity_replayed with the summed counts for a signed-in upload', async () => {
+    mockPackages([
+      {
+        name: 'deck',
+        cardCount: 3,
+        uploadIdentityStats: { replayed: 1, issued: 2, guarded: 0 },
+      },
+      {
+        name: 'deck-2',
+        cardCount: 1,
+        uploadIdentityStats: { replayed: 0, issued: 1, guarded: 1 },
+      },
+    ]);
+    const guidLedger = {
+      getAllForOwner: jest.fn().mockResolvedValue({}),
+      getUploadIdentityForOwner: jest
+        .fn()
+        .mockResolvedValue({ 'u:abc': { guid: 'g', sourcePageId: 'h:f' } }),
+      record: jest.fn().mockResolvedValue(undefined),
+      reissue: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ guidLedger })
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(guidLedger.getUploadIdentityForOwner).toHaveBeenCalledWith(42);
+    expect(trackMock).toHaveBeenCalledWith('upload_identity_replayed', {
+      userId: 42,
+      props: { replayed: 1, issued: 3, guarded: 1 },
+    });
+  });
+
+  it('does not emit upload_identity_replayed when no package carries identity stats', async () => {
+    mockPackages([{ name: 'deck', cardCount: 3 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'upload_identity_replayed',
+      expect.anything()
+    );
   });
 
   it('sends the deck and increments card usage for a logged-in free user under the limit', async () => {
@@ -3614,6 +3683,7 @@ describe('UploadService.handleUpload — stored card options', () => {
   function buildGuidLedger() {
     return {
       getAllForOwner: jest.fn().mockResolvedValue({ 'block-a': 'old-guid' }),
+      getUploadIdentityForOwner: jest.fn().mockResolvedValue({}),
       record: jest.fn().mockResolvedValue(undefined),
       reissue: jest.fn().mockResolvedValue(undefined),
     };

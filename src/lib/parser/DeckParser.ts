@@ -7,7 +7,15 @@ import {
   collectRekeyedGuids,
 } from '../anki/collectIssuedGuids';
 import type { IssuedCardGuid, KnownGuids } from '../anki/guidLedgerTypes';
+import {
+  hashSourceKey,
+  packIdentitySource,
+  resolveUploadCardGuid,
+  uploadIdentityKey,
+  type UploadIdentityLedger,
+} from '../anki/uploadCardIdentity';
 import sanitizeTags from '../anki/sanitizeTags';
+import { cardFingerprint } from '../claude/ClaudeService';
 import type { CrossFileDedupState } from '../claude/ClaudeService';
 import { File } from '../zip/zip';
 import Deck from './Deck';
@@ -118,7 +126,22 @@ export interface DeckParserInput {
   userId?: number | null;
   requestId?: string;
   knownGuids?: KnownGuids;
+  uploadIdentity?: UploadIdentityContext;
   crossFileDedup?: CrossFileDedupState;
+}
+
+// Present only for signed-in uploads of a format whose fronts are stable
+// (markdown, plain HTML, CSV, xlsx). Its absence is the safe default: every
+// other conversion is byte-identical to today.
+export interface UploadIdentityContext {
+  owner: number;
+  ledger: UploadIdentityLedger;
+}
+
+export interface UploadIdentityStats {
+  issued: number;
+  replayed: number;
+  guarded: number;
 }
 
 function hasNestedBullets(content: string | undefined): boolean {
@@ -158,7 +181,19 @@ export class DeckParser {
 
   private readonly knownGuids?: KnownGuids;
 
+  private readonly uploadIdentity?: UploadIdentityContext;
+
+  private readonly uploadSourceKeyHash: string;
+
   issuedGuidEntries: IssuedCardGuid[] = [];
+
+  uploadIdentityEntries: IssuedCardGuid[] = [];
+
+  uploadIdentityStats: UploadIdentityStats = {
+    issued: 0,
+    replayed: 0,
+    guarded: 0,
+  };
 
   inducedRule?: InducedRescue;
 
@@ -179,6 +214,8 @@ export class DeckParser {
     this.settings = input.settings;
     this.files = input.files || [];
     this.knownGuids = input.knownGuids;
+    this.uploadIdentity = input.uploadIdentity;
+    this.uploadSourceKeyHash = hashSourceKey(input.name);
     this.firstDeckName = input.name;
     this.noLimits = input.noLimits;
     this.usedHeuristic = false;
@@ -1365,6 +1402,7 @@ export class DeckParser {
 
     this.markUploadDecks();
     this.applyLedgerGuids();
+    this.applyUploadIdentityGuids();
     this.payload[0].settings = this.settings;
     this.customExporter.configure(this.payload);
   }
@@ -1420,6 +1458,53 @@ export class DeckParser {
     }
   }
 
+  // The upload-identity path for signed-in, non-Notion uploads. It computes a
+  // content-stable identity key (front + card type, deck name excluded), sets
+  // the guid python then honours unconditionally, and runs the ambiguity guard
+  // against the ledger so a re-upload replays the same guid instead of adding a
+  // duplicate. Notion cards keep the block-id path above; anonymous uploads and
+  // ineligible formats never reach here, so their output is unchanged.
+  private applyUploadIdentityGuids(): void {
+    if (this.uploadIdentity == null) {
+      return;
+    }
+    const { owner, ledger } = this.uploadIdentity;
+    const ordinals = new Map<string, number>();
+    for (const deck of this.payload) {
+      for (const card of deck.cards) {
+        if (card.notionId != null) {
+          continue;
+        }
+        const baseKey = uploadIdentityKey(card);
+        const ordinal = (ordinals.get(baseKey) ?? 0) + 1;
+        ordinals.set(baseKey, ordinal);
+        const identityKey =
+          ordinal > 1 ? uploadIdentityKey(card, ordinal) : baseKey;
+        const fingerprint = cardFingerprint(card);
+        const resolved = resolveUploadCardGuid({
+          owner,
+          identityKey,
+          sourceKeyHash: this.uploadSourceKeyHash,
+          fingerprint,
+          stored: ledger[identityKey],
+        });
+        card.identityKey = identityKey;
+        card.guid = resolved.guid;
+        this.uploadIdentityStats[resolved.decision] += 1;
+        if (resolved.decision === 'issued') {
+          this.uploadIdentityEntries.push({
+            blockId: identityKey,
+            guid: resolved.guid,
+            sourcePageId: packIdentitySource(
+              this.uploadSourceKeyHash,
+              fingerprint
+            ),
+          });
+        }
+      }
+    }
+  }
+
   async build(ws: Workspace): Promise<Buffer> {
     if (ws.location !== this.workspace.location) {
       console.debug('workspace location changed for build');
@@ -1434,10 +1519,11 @@ export class DeckParser {
   }
 
   private collectGuidEntries(location: string): IssuedCardGuid[] {
-    if (this.knownGuids != null && this.settings.blockIdIdentity) {
-      return collectRekeyedGuids(location, this.payload, this.knownGuids);
-    }
-    return collectIssuedGuids(location, this.payload, this.knownGuids);
+    const notionEntries =
+      this.knownGuids != null && this.settings.blockIdIdentity
+        ? collectRekeyedGuids(location, this.payload, this.knownGuids)
+        : collectIssuedGuids(location, this.payload, this.knownGuids);
+    return [...notionEntries, ...this.uploadIdentityEntries];
   }
 
   async writeDeckInfo(ws: Workspace): Promise<string> {
@@ -1465,6 +1551,8 @@ export class DeckParser {
     }
 
     this.markUploadDecks();
+    this.applyUploadIdentityGuids();
+    this.issuedGuidEntries = this.uploadIdentityEntries;
     this.payload[0].settings = this.settings;
     this.customExporter.configure(this.payload);
 
