@@ -47,7 +47,7 @@ const ChatRouter = () => {
   const controller = new ChatController(useCase);
   const consentUseCase = new SetChatConsentUseCase(usersRepo);
   const consentController = new ChatConsentController(consentUseCase);
-  const deckUseCase = new ChatDeckUseCase();
+  const deckUseCase = new ChatDeckUseCase(usersRepo);
   const deckController = new ChatDeckController(deckUseCase);
   const tagCardsUseCase = new TagCardsUseCase(anthropic, messagesRepo);
   const tagCardsController = new TagCardsController(tagCardsUseCase);

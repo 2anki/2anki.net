@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import ChatDeckController from './ChatDeckController';
+import { MonthlyLimitError } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 
 function buildRes(): Response {
   return {
@@ -155,6 +156,8 @@ describe('ChatDeckController.generate', () => {
       ],
       deckName: 'Quiz',
       templateSlug: null,
+      userId: 42,
+      isPaying: false,
     });
     expect(res.send).toHaveBeenCalledWith(fakeBuffer);
   });
@@ -212,6 +215,8 @@ describe('ChatDeckController.generate', () => {
       cards: validCards,
       deckName: 'My Deck',
       templateSlug: null,
+      userId: 42,
+      isPaying: false,
     });
     expect(res.setHeader).toHaveBeenCalledWith(
       'Content-Type',
@@ -222,5 +227,30 @@ describe('ChatDeckController.generate', () => {
       'attachment; filename="My Deck.apkg"; filename*=UTF-8\'\'My%20Deck.apkg'
     );
     expect(res.send).toHaveBeenCalledWith(fakeBuffer);
+  });
+
+  it('maps a MonthlyLimitError to a 402 with the monthly_limit shape and sends no deck', async () => {
+    const resetOn = '2026-10-01T00:00:00.000Z';
+    const useCase = {
+      execute: jest
+        .fn()
+        .mockRejectedValue(new MonthlyLimitError(100, 100, 2, resetOn)),
+    };
+    const controller = new ChatDeckController(useCase as never);
+    const res = buildRes();
+
+    await controller.generate(
+      buildReq({ cards: validCards, deckName: 'My Deck' }),
+      res
+    );
+
+    expect(res.status).toHaveBeenCalledWith(402);
+    expect(res.json).toHaveBeenCalledWith({
+      code: 'monthly_limit',
+      cards_used: 100,
+      limit: 100,
+      reset_on: resetOn,
+    });
+    expect(res.send).not.toHaveBeenCalled();
   });
 });

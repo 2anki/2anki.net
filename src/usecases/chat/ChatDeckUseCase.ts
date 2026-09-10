@@ -3,6 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import CustomExporter from '../../lib/parser/exporters/CustomExporter';
+import UsersRepository from '../../data_layer/UsersRepository';
+import { CheckMonthlyCardLimitUseCase } from '../users/CheckMonthlyCardLimitUseCase';
 import { templateForbidsCloze } from './chatTemplates';
 
 export interface ChatDeckCard {
@@ -19,6 +21,8 @@ export interface ChatDeckInput {
   cards: ChatDeckCard[];
   deckName: string;
   templateSlug?: string | null;
+  userId: string | number;
+  isPaying: boolean;
 }
 
 function isMcqCard(card: ChatDeckCard): boolean {
@@ -91,8 +95,16 @@ function expandForTemplate(
 }
 
 export class ChatDeckUseCase {
+  constructor(private readonly usersRepository: UsersRepository) {}
+
   async execute(input: ChatDeckInput): Promise<Buffer> {
-    const { cards, deckName, templateSlug } = input;
+    const { cards, deckName, templateSlug, userId, isPaying } = input;
+    const cardCount = cards.length;
+    await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
+      userId,
+      candidateCardCount: cardCount,
+      isPaying,
+    });
     const workspaceDir = path.join(os.tmpdir(), `chat-deck-${randomUUID()}`);
     fs.mkdirSync(workspaceDir, { recursive: true });
 
@@ -147,7 +159,9 @@ export class ChatDeckUseCase {
 
       const exporter = new CustomExporter(deckName, workspaceDir);
       exporter.configure(deckInfo as never);
-      return await exporter.save();
+      const buffer = await exporter.save();
+      await this.usersRepository.incrementCardUsage(userId, cardCount);
+      return buffer;
     } finally {
       fs.rmSync(workspaceDir, { recursive: true, force: true });
     }

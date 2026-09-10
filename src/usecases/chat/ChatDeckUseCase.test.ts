@@ -7,8 +7,23 @@ import {
   type ChatDeckCard,
 } from './ChatDeckUseCase';
 import CustomExporter from '../../lib/parser/exporters/CustomExporter';
+import UsersRepository from '../../data_layer/UsersRepository';
+import { MonthlyLimitError } from '../users/CheckMonthlyCardLimitUseCase';
 
 jest.mock('../../lib/parser/exporters/CustomExporter');
+
+const usersRepo = {
+  getCardUsage: jest
+    .fn()
+    .mockResolvedValue({ cards_used: 0, month_started_at: null }),
+  incrementCardUsage: jest.fn().mockResolvedValue(0),
+} as unknown as UsersRepository;
+
+const OWNER = { userId: 42, isPaying: true } as const;
+
+function buildDeckUseCase(repo: UsersRepository = usersRepo) {
+  return new ChatDeckUseCase(repo);
+}
 
 describe('stripClozeFromStem', () => {
   it('replaces a single cloze span with a blank', () => {
@@ -50,8 +65,9 @@ describe('ChatDeckUseCase.execute MCQ handling', () => {
   });
 
   it('passes mcq:true with options and correctIndices to the exporter for MCQ cards', async () => {
-    const useCase = new ChatDeckUseCase();
+    const useCase = buildDeckUseCase();
     await useCase.execute({
+      ...OWNER,
       deckName: 'Quiz',
       cards: [
         {
@@ -83,8 +99,9 @@ describe('ChatDeckUseCase.execute MCQ handling', () => {
   });
 
   it('keeps basic shape for cards without MCQ fields', async () => {
-    const useCase = new ChatDeckUseCase();
+    const useCase = buildDeckUseCase();
     await useCase.execute({
+      ...OWNER,
       deckName: 'Mix',
       cards: [{ front: 'Q', back: 'A' }],
     });
@@ -98,8 +115,9 @@ describe('ChatDeckUseCase.execute MCQ handling', () => {
   });
 
   it('passes per-card tags through to the exporter', async () => {
-    const useCase = new ChatDeckUseCase();
+    const useCase = buildDeckUseCase();
     await useCase.execute({
+      ...OWNER,
       deckName: 'Tagged',
       cards: [
         { front: 'Capital?', back: 'Oslo', tags: ['geography', 'norway'] },
@@ -126,8 +144,9 @@ describe('ChatDeckUseCase.execute basic-and-reversed template', () => {
   });
 
   it('duplicates cards with swapped front/back when templateSlug is basic-and-reversed', async () => {
-    const useCase = new ChatDeckUseCase();
+    const useCase = buildDeckUseCase();
     await useCase.execute({
+      ...OWNER,
       deckName: 'Reversed',
       templateSlug: 'basic-and-reversed',
       cards: [{ front: 'Q', back: 'A' }],
@@ -143,8 +162,9 @@ describe('ChatDeckUseCase.execute basic-and-reversed template', () => {
   });
 
   it('does not add reversed card when back is empty', async () => {
-    const useCase = new ChatDeckUseCase();
+    const useCase = buildDeckUseCase();
     await useCase.execute({
+      ...OWNER,
       deckName: 'Empty back set',
       templateSlug: 'basic-and-reversed',
       cards: [{ front: 'A standalone prompt with no answer', back: '' }],
@@ -158,8 +178,9 @@ describe('ChatDeckUseCase.execute basic-and-reversed template', () => {
   });
 
   it('does not expand when templateSlug is basic', async () => {
-    const useCase = new ChatDeckUseCase();
+    const useCase = buildDeckUseCase();
     await useCase.execute({
+      ...OWNER,
       deckName: 'Basic set',
       templateSlug: 'basic',
       cards: [{ front: 'Q', back: 'A' }],
@@ -183,8 +204,9 @@ describe('ChatDeckUseCase.execute cloze content under a basic template label', (
   });
 
   it('exports a normalized basic card when stray cloze content arrives under templateSlug basic', async () => {
-    const useCase = new ChatDeckUseCase();
+    const useCase = buildDeckUseCase();
     await useCase.execute({
+      ...OWNER,
       deckName: 'Mismatched',
       templateSlug: 'basic',
       cards: [{ front: 'The capital of France is {{c1::Paris}}.', back: '' }],
@@ -202,8 +224,9 @@ describe('ChatDeckUseCase.execute cloze content under a basic template label', (
   });
 
   it('normalizes stray cloze when templateSlug is basic-and-reversed', async () => {
-    const useCase = new ChatDeckUseCase();
+    const useCase = buildDeckUseCase();
     await useCase.execute({
+      ...OWNER,
       deckName: 'Reversed mismatch',
       templateSlug: 'basic-and-reversed',
       cards: [{ front: 'The capital of France is {{c1::Paris}}.', back: '' }],
@@ -221,8 +244,9 @@ describe('ChatDeckUseCase.execute cloze content under a basic template label', (
   });
 
   it('keeps cloze:true when templateSlug is cloze', async () => {
-    const useCase = new ChatDeckUseCase();
+    const useCase = buildDeckUseCase();
     await useCase.execute({
+      ...OWNER,
       deckName: 'Cloze deck',
       templateSlug: 'cloze',
       cards: [{ front: 'The capital of France is {{c1::Paris}}.', back: '' }],
@@ -382,5 +406,98 @@ describe('transformBlankToCloze', () => {
       front: 'Two underscores too: {{c1::still works}}',
       back: '',
     });
+  });
+});
+
+describe('ChatDeckUseCase.execute monthly card limit', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (CustomExporter as unknown as jest.Mock).mockImplementation(() => ({
+      configure: jest.fn(),
+      save: jest.fn().mockResolvedValue(Buffer.from('apkg')),
+    }));
+  });
+
+  function buildRepo(cardsUsed: number) {
+    return {
+      getCardUsage: jest
+        .fn()
+        .mockResolvedValue({ cards_used: cardsUsed, month_started_at: null }),
+      incrementCardUsage: jest.fn().mockResolvedValue(0),
+    } as unknown as UsersRepository;
+  }
+
+  const twoCards: ChatDeckCard[] = [
+    { front: 'Q1', back: 'A1' },
+    { front: 'Q2', back: 'A2' },
+  ];
+
+  it('throws MonthlyLimitError for a free user over the cap and does not build or record usage', async () => {
+    const repo = buildRepo(99);
+    const useCase = buildDeckUseCase(repo);
+
+    await expect(
+      useCase.execute({
+        deckName: 'Over the cap',
+        cards: twoCards,
+        userId: 42,
+        isPaying: false,
+      })
+    ).rejects.toBeInstanceOf(MonthlyLimitError);
+
+    expect(CustomExporter).not.toHaveBeenCalled();
+    expect(repo.incrementCardUsage).not.toHaveBeenCalled();
+  });
+
+  it('carries cards_used, limit, and reset_on on the thrown MonthlyLimitError', async () => {
+    const repo = buildRepo(99);
+    const useCase = buildDeckUseCase(repo);
+
+    const error = await useCase
+      .execute({
+        deckName: 'Over the cap',
+        cards: twoCards,
+        userId: 42,
+        isPaying: false,
+      })
+      .catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(MonthlyLimitError);
+    const limitError = error as MonthlyLimitError;
+    expect(limitError.cards_used).toBe(99);
+    expect(limitError.limit).toBe(100);
+    expect(typeof limitError.reset_on).toBe('string');
+  });
+
+  it('builds and records the request card count for a free user under the cap', async () => {
+    const repo = buildRepo(10);
+    const useCase = buildDeckUseCase(repo);
+
+    const buffer = await useCase.execute({
+      deckName: 'Under the cap',
+      cards: twoCards,
+      userId: 42,
+      isPaying: false,
+    });
+
+    expect(buffer).toEqual(Buffer.from('apkg'));
+    expect(CustomExporter).toHaveBeenCalledTimes(1);
+    expect(repo.incrementCardUsage).toHaveBeenCalledWith(42, 2);
+  });
+
+  it('builds and records usage for a paying user already over the cap', async () => {
+    const repo = buildRepo(500);
+    const useCase = buildDeckUseCase(repo);
+
+    const buffer = await useCase.execute({
+      deckName: 'Paying over the cap',
+      cards: twoCards,
+      userId: 42,
+      isPaying: true,
+    });
+
+    expect(buffer).toEqual(Buffer.from('apkg'));
+    expect(repo.getCardUsage).not.toHaveBeenCalled();
+    expect(repo.incrementCardUsage).toHaveBeenCalledWith(42, 2);
   });
 });
