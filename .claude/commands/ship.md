@@ -52,17 +52,26 @@ python3 .claude/hooks/sonar_gate.py --pr <n> --sha "$HEAD" --wait 300
 
 Open findings → fix on the branch, restart from step 1.
 
-## 4. Merge
+## 4. Merge (through the merge queue)
+
+`main` merges through GitHub's merge queue (squash strategy set by the queue rule; `--delete-branch` is rejected while the queue is on). `gh pr merge` **enqueues** — it does not merge, and `mergeCommit` stays `null` until the queue lands the PR.
 
 ```bash
-gh pr merge <n> --repo 2anki/server --squash --delete-branch
+gh pr merge <n> --repo 2anki/server --squash
 ```
 
-The `check-merge-status.py`, `check-browser-attestation.py`, and `check-changelog-on-merge.py` hooks re-verify everything. A deny prints the reason — act on it, never bypass. Record the merge SHA:
+The `check-merge-status.py`, `check-browser-attestation.py`, and `check-changelog-on-merge.py` hooks re-verify everything before the enqueue. A deny prints the reason — act on it, never bypass.
+
+Then wait for the queue. The queue builds `main` + the PR on a `gh-readonly-queue/main/pr-<n>-<sha>` branch and runs the required workflows there; that takes about seven minutes when the queue is idle. Poll with `Monitor` (60 s interval) on:
 
 ```bash
-MERGE_SHA=$(gh pr view <n> --json mergeCommit --jq .mergeCommit.oid)
+gh api graphql -f query='{ repository(owner:"2anki", name:"2anki.net") { pullRequest(number:<n>) { state mergeCommit { oid } mergeQueueEntry { state position } } } }'
 ```
+
+- `state: MERGED` → record `MERGE_SHA` from `mergeCommit.oid` and continue.
+- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake — stop and report.
+
+Never delete the branch by hand before the queue has merged; the queue needs it.
 
 ## 5. Watch the deploy
 
@@ -72,7 +81,7 @@ A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.m
 gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion
 ```
 
-Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the merge; `ScheduleWakeup` 60s if not yet listed). Then `gh run watch <id> --exit-status` — deploys take 6–10 minutes; prefer `ScheduleWakeup` 270s over holding the shell.
+Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the queue merge; `ScheduleWakeup` 60s if not yet listed). Then `gh run watch <id> --exit-status` — deploys take 6–10 minutes; prefer `ScheduleWakeup` 270s or a `Monitor` over holding the shell.
 
 ## 6. Verify prod
 
