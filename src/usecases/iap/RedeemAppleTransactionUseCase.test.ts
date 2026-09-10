@@ -88,6 +88,12 @@ describe('RedeemAppleTransactionUseCase', () => {
       message: 'Week Pass active — unlimited cards for the next 7 days',
       durationMs: 7 * DAY_MS,
     },
+    {
+      productId: 'semesterpass.120d',
+      kind: '120d',
+      message: 'Semester Pass active — unlimited cards for the next 120 days',
+      durationMs: 120 * DAY_MS,
+    },
   ])(
     'grants $kind for a valid $productId transaction',
     async ({ productId, kind, message, durationMs }) => {
