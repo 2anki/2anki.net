@@ -292,6 +292,12 @@ const ChatRouter = () => {
    *               $ref: '#/components/schemas/Error'
    *       401:
    *         description: Authentication required
+   *       402:
+   *         description: |
+   *           Free monthly card allowance exceeded. Body is
+   *           `{ code: 'monthly_limit', cards_used, limit, reset_on }`, the
+   *           same shape the upload and Notion conversion paths return.
+   *           Paying users are exempt.
    */
   router.post('/api/chat/deck', RequireAuthentication, (req, res) =>
     deckController.generate(req, res)
