@@ -3,7 +3,7 @@ import type { PassKind } from '../../data_layer/UserPassRepository';
 export interface ConsumableProduct {
   kind: 'consumable';
   productId: string;
-  passKind: Extract<PassKind, '24h' | '7d'>;
+  passKind: Extract<PassKind, '24h' | '7d' | '120d'>;
   durationMs: number;
   successMessage: string;
 }
@@ -33,6 +33,14 @@ export const APPLE_PRODUCTS: Record<string, AppleProduct> = {
     passKind: '7d',
     durationMs: 7 * DAY_MS,
     successMessage: 'Week Pass active — unlimited cards for the next 7 days',
+  },
+  'semesterpass.120d': {
+    kind: 'consumable',
+    productId: 'semesterpass.120d',
+    passKind: '120d',
+    durationMs: 120 * DAY_MS,
+    successMessage:
+      'Semester Pass active — unlimited cards for the next 120 days',
   },
   'unlimited.monthly': {
     kind: 'subscription',
