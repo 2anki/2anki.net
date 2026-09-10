@@ -1,8 +1,14 @@
 import getDeckFilename from '../../../lib/anki/getDeckFilename';
 import type { IssuedCardGuid } from '../../../lib/anki/guidLedgerTypes';
-import { DeckParser, DeckParserInput } from '../../../lib/parser/DeckParser';
+import {
+  DeckParser,
+  DeckParserInput,
+  UploadIdentityContext,
+  UploadIdentityStats,
+} from '../../../lib/parser/DeckParser';
 import Deck from '../../../lib/parser/Deck';
 import {
+  isCSVFile,
   isHTMLFile,
   isImageFile,
   isMarkdownFile,
@@ -75,6 +81,49 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
+// Upload card identity only applies to formats whose card fronts are stable
+// enough to key on: markdown, plain HTML, CSV and xlsx. PDF text extraction and
+// AI-generated fronts are non-deterministic, and Notion exports keep the
+// block-id path, so those never opt in. Absence of the context is the safe
+// default — the parser skips the whole path.
+function eligibleUploadIdentity(
+  input: DeckParserInput
+): UploadIdentityContext | undefined {
+  if (input.uploadIdentity == null) {
+    return undefined;
+  }
+  const name = input.name;
+  const eligible =
+    isMarkdownFile(name) ||
+    isHTMLFile(name) ||
+    isXLSXFile(name) ||
+    Boolean(isCSVFile(name));
+  return eligible ? input.uploadIdentity : undefined;
+}
+
+function newDeckParser(
+  input: DeckParserInput,
+  allFiles: DeckParserInput['files']
+): DeckParser {
+  return new DeckParser({
+    ...input,
+    files: allFiles,
+    uploadIdentity: eligibleUploadIdentity(input),
+  });
+}
+
+// The parser always holds a zeroed stats object; only surface it when the
+// identity path actually ran, so a signed-in PDF or Notion export upload does
+// not emit a noisy all-zero upload_identity_replayed event.
+function uploadIdentityStatsFor(
+  input: DeckParserInput,
+  parser: DeckParser
+): UploadIdentityStats | undefined {
+  return eligibleUploadIdentity(input) == null
+    ? undefined
+    : parser.uploadIdentityStats;
+}
+
 function dedupeFilesByName(
   files: DeckParserInput['files']
 ): DeckParserInput['files'] {
@@ -102,6 +151,7 @@ interface PrepareDeckResult {
   score?: DeckScore;
   inducedRule?: InducedRescue;
   guidEntries?: IssuedCardGuid[];
+  uploadIdentityStats?: UploadIdentityStats;
 }
 
 // A rejected rescue must not ride a deck that still shipped through a later
@@ -735,7 +785,7 @@ export async function PrepareDeck(
     );
   }
 
-  const parser = new DeckParser({ ...input, files: allFiles });
+  const parser = newDeckParser(input, allFiles);
 
   if (parser.totalCardCount() === 0) {
     if (convertedFiles.length > 0) {
@@ -771,6 +821,7 @@ export async function PrepareDeck(
           parser.totalCardCount()
         ),
         guidEntries: parser.issuedGuidEntries,
+        uploadIdentityStats: uploadIdentityStatsFor(input, parser),
       };
     }
   }
@@ -803,6 +854,7 @@ export async function PrepareDeck(
       parser.totalCardCount()
     ),
     guidEntries: parser.issuedGuidEntries,
+    uploadIdentityStats: uploadIdentityStatsFor(input, parser),
   };
 }
 
@@ -823,6 +875,8 @@ export interface DeckInfoOnlyResult {
   engine?: ConversionEngine;
   score?: DeckScore;
   inducedRule?: InducedRescue;
+  guidEntries?: IssuedCardGuid[];
+  uploadIdentityStats?: UploadIdentityStats;
   needsIndividualBuild: boolean;
 }
 
@@ -840,7 +894,7 @@ export async function prepareDeckInfoOnly(
   const convertedFiles = results.flatMap((r) => (r ? [r] : []));
   const allFiles = assembleParserFiles(files, convertedFiles);
 
-  const parser = new DeckParser({ ...input, files: allFiles });
+  const parser = newDeckParser(input, allFiles);
 
   if (parser.totalCardCount() === 0) {
     if (convertedFiles.length > 0) {
@@ -900,6 +954,8 @@ export async function prepareDeckInfoOnly(
       parser.inducedRule,
       parser.totalCardCount()
     ),
+    guidEntries: parser.uploadIdentityEntries,
+    uploadIdentityStats: uploadIdentityStatsFor(input, parser),
     needsIndividualBuild: false,
   };
 }

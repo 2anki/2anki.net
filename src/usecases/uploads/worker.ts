@@ -1,5 +1,6 @@
 import { UploadedFile } from '../../lib/storage/types';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
+import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import Package from '../../lib/parser/Package';
 import fs from 'fs';
@@ -180,7 +181,8 @@ async function processFile(
   userId: number | null,
   knownGuids?: KnownGuids,
   crossFileDedup?: CrossFileDedupState,
-  requestId?: string
+  requestId?: string,
+  uploadIdentity?: UploadIdentityContext
 ): Promise<FileResult> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -257,6 +259,7 @@ async function processFile(
       userId,
       requestId,
       knownGuids,
+      uploadIdentity,
       crossFileDedup,
     });
 
@@ -280,6 +283,7 @@ async function processFile(
       singleFilePackage.score = d.score;
       singleFilePackage.inducedRule = d.inducedRule;
       singleFilePackage.guidEntries = d.guidEntries;
+      singleFilePackage.uploadIdentityStats = d.uploadIdentityStats;
       singleFilePackage.expiredNotionImageCount =
         d.expiredNotionImageCount ?? 0;
       packages.push(singleFilePackage);
@@ -293,7 +297,7 @@ async function processFile(
       workspace,
       onProgress,
       userId,
-      { knownGuids, requestId, crossFileDedup }
+      { knownGuids, uploadIdentity, requestId, crossFileDedup }
     );
     packages.push(...result.packages);
     if (result.warnings) warnings.push(...result.warnings);
@@ -318,6 +322,7 @@ async function doGenerationWork(
     enqueuedAt,
     userId,
     knownGuids,
+    uploadIdentity,
     existingCardFingerprints,
     requestId,
   } = task;
@@ -347,7 +352,8 @@ async function doGenerationWork(
       userId,
       knownGuids,
       crossFileDedup,
-      requestId
+      requestId,
+      uploadIdentity
     );
     packages = packages.concat(result.packages);
     warnings.push(...result.warnings);

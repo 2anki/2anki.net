@@ -431,7 +431,7 @@ function splitChunkInHalf(html: string): string[] {
   return [html.slice(0, splitAt), html.slice(splitAt)];
 }
 
-function normalizeCardText(text: string): string {
+export function normalizeCardText(text: string): string {
   return text
     .replace(/<[^>]*>/g, ' ')
     .toLowerCase()

@@ -1,4 +1,5 @@
 import type { IssuedCardGuid } from '../anki/guidLedgerTypes';
+import type { UploadIdentityStats } from './DeckParser';
 import type { ConversionEngine } from './conversionEngine';
 import type { InducedRescue } from './induction/candidateRules';
 import type { DeckScore } from './scoreCandidateDeck';
@@ -31,6 +32,10 @@ class Package {
   // Card GUIDs issued during this conversion that the user's ledger does not
   // hold yet. The parent process persists them — no database in the worker.
   guidEntries?: IssuedCardGuid[];
+
+  // Shadow-read counts for the upload card-identity path. Summed across an
+  // upload's packages and emitted as one `upload_identity_replayed` event.
+  uploadIdentityStats?: UploadIdentityStats;
 
   // Set when the empty-deck structure rescue ran. Carries the winning (or
   // best-attempted) rule so the corpus records which structure rescued the
