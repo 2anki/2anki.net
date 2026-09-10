@@ -220,7 +220,7 @@ export default function CommandsTab() {
     if (
       !dryRun &&
       !globalThis.confirm(
-        `Permanently delete ${deleteCandidates ?? 0} account${deleteCandidates === 1 ? '' : 's'}? This cannot be undone.`
+        `Permanently delete ${deleteCandidates} account${deleteCandidates === 1 ? '' : 's'}? This cannot be undone.`
       )
     ) {
       return;
@@ -233,6 +233,7 @@ export default function CommandsTab() {
       setDeleteMessage(formatDeleteResult(result));
       setDeleteCandidates(dryRun ? result.count : null);
     } catch (error) {
+      setDeleteCandidates(null);
       setDeleteStatus('error');
       setDeleteMessage(
         error instanceof Error ? error.message : 'Unknown error'
@@ -299,10 +300,10 @@ export default function CommandsTab() {
         Manual ops actions. Run dry-run first to validate counts before sending.
       </p>
 
-      <h2 className={styles.commandGroupHeading}>
-        Support a user
-        <span className={styles.commandGroupHint}>targets one account</span>
-      </h2>
+      <div className={styles.commandGroupHeading}>
+        <h2 className={styles.commandGroupTitle}>Support a user</h2>
+        <p className={styles.commandGroupHint}>targets one account</p>
+      </div>
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
         <h3 className={styles.cardTitle}>Grant unclaimed pass</h3>
@@ -446,12 +447,12 @@ export default function CommandsTab() {
         </div>
       )}
 
-      <h2 className={styles.commandGroupHeading}>
-        Run a job
-        <span className={styles.commandGroupHint}>
+      <div className={styles.commandGroupHeading}>
+        <h2 className={styles.commandGroupTitle}>Run a job</h2>
+        <p className={styles.commandGroupHint}>
           batch email or cleanup, capped per run
-        </span>
-      </h2>
+        </p>
+      </div>
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
         <h3 className={styles.cardTitle}>Inactivity warnings</h3>
@@ -539,12 +540,10 @@ export default function CommandsTab() {
         </div>
       )}
 
-      <h2 className={styles.commandGroupHeading}>
-        Site
-        <span className={styles.commandGroupHint}>
-          billing and storage plumbing
-        </span>
-      </h2>
+      <div className={styles.commandGroupHeading}>
+        <h2 className={styles.commandGroupTitle}>Site</h2>
+        <p className={styles.commandGroupHint}>billing and storage plumbing</p>
+      </div>
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
         <h3 className={styles.cardTitle}>Stripe subscriptions</h3>

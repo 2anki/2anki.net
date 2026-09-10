@@ -330,6 +330,10 @@
   align-items: baseline;
   gap: 0.75rem;
   margin: 2rem 0 0.75rem;
+}
+
+.commandGroupTitle {
+  margin: 0;
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   letter-spacing: 0.04em;
@@ -338,10 +342,8 @@
 }
 
 .commandGroupHint {
+  margin: 0;
   font-size: var(--text-xs);
-  font-weight: var(--font-normal);
-  letter-spacing: 0;
-  text-transform: none;
   color: var(--color-text-tertiary);
 }
 

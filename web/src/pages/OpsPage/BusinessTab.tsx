@@ -45,11 +45,27 @@ const buildMrrFootnote = (
   return `as of ${clock} (cache ${formatCacheAge(cacheAgeSeconds)})`;
 };
 
+function CancelFunnelPanel() {
+  const { data: cancelFunnel, isLoading } = useCancelFunnel();
+  return (
+    <ChartPanel
+      title="Cancel-flow funnel, last 30 days"
+      subtitle="How many cancels the pause offer saves"
+      isLoading={isLoading && cancelFunnel == null}
+      isEmpty={
+        cancelFunnel?.stages == null || cancelFunnel.stages.cancel_started === 0
+      }
+      emptyText="No cancel-flow activity in this window."
+      autoHeight
+    >
+      <CancelFunnelChart data={cancelFunnel ?? null} />
+    </ChartPanel>
+  );
+}
+
 export default function BusinessTab() {
   const summaryFor = useSectionSummaries();
   const { data, error, isLoading, isFetching } = useBusinessMetrics();
-  const { data: cancelFunnel, isLoading: cancelFunnelLoading } =
-    useCancelFunnel();
   const [lastSnapshot, setLastSnapshot] =
     useState<BusinessMetricsResponse | null>(null);
 
@@ -232,19 +248,7 @@ export default function BusinessTab() {
       >
         <p className={styles.sectionHint}>Cancel-survey reasons and comments</p>
         <div className={styles.grid}>
-          <ChartPanel
-            title="Cancel-flow funnel, last 30 days"
-            subtitle="How many cancels the pause offer saves"
-            isLoading={cancelFunnelLoading && cancelFunnel == null}
-            isEmpty={
-              cancelFunnel?.stages == null ||
-              cancelFunnel.stages.cancel_started === 0
-            }
-            emptyText="No cancel-flow activity in this window."
-            autoHeight
-          >
-            <CancelFunnelChart data={cancelFunnel ?? null} />
-          </ChartPanel>
+          <CancelFunnelPanel />
 
           <ChartPanel
             title="Why users cancel, last 90 days"

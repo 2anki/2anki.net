@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -188,6 +188,28 @@ describe('CommandsTab — change account email', () => {
     expect(deleteButton).toBeDisabled();
   });
 
+  test('re-locks the delete button when a later dry run fails', async () => {
+    let calls = 0;
+    mockFetch(() => {
+      calls += 1;
+      if (calls === 1) return { count: 3, dryRun: true };
+      throw new Error('db down');
+    });
+    renderTab();
+
+    const check = screen.getByRole('button', { name: 'Check candidates' });
+    fireEvent.click(check);
+    expect(
+      await screen.findByText('3 accounts would be deleted.')
+    ).toBeInTheDocument();
+    fireEvent.click(check);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Delete inactive accounts' })
+      ).toBeDisabled()
+    );
+  });
+
   test('keeps the delete button locked when the dry run finds nothing', async () => {
     mockFetch(() => ({ count: 0, dryRun: true }));
     renderTab();
@@ -206,7 +228,7 @@ describe('CommandsTab — change account email', () => {
     renderTab();
 
     expect(
-      screen.getByRole('heading', { level: 2, name: /Support a user/ })
+      screen.getByRole('heading', { level: 2, name: 'Support a user' })
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { level: 2, name: /Run a job/ })
