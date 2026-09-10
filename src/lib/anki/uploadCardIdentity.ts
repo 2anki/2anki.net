@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 
 import { normalizeCardText } from '../claude/ClaudeService';
 import { guidFor } from './guid';
