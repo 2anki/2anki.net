@@ -33,7 +33,7 @@ Why not CODEOWNERS: agents run under Alexander's `gh` auth and he authors most P
 
 ## `/ship` in one paragraph
 
-Preflight (draft? rail? rebased?) → review agent (`/review-pr` fan-out; two fix rounds max) posts the marker → wait for the rollup and for `sonar_gate.py --wait 300` → `gh pr merge --squash --delete-branch` (hooks re-verify) → find the deploy run for the merge SHA and watch it → `curl /api/version` must report the merge SHA, then `/deploy-status` → on failure, `git revert` on a `revert/<slug>` branch shipped through the same command (review agent skipped for a mechanical revert), comment on the deploy-failure issue. Full steps: `.claude/commands/ship.md`.
+Preflight (draft? rail? rebased?) → review agent (`/review-pr` fan-out; two fix rounds max) posts the marker → wait for the rollup and for `sonar_gate.py --wait 300` → `gh pr merge --squash` enqueues in the merge queue (hooks re-verify; `--delete-branch` is rejected while the queue is on) → poll the PR until `state: MERGED` (a dequeue means a required job failed on the `gh-readonly-queue/…` branch; one retry for a diff-unrelated flake, then stop) → find the deploy run for the merge SHA and watch it → `curl /api/version` must report the merge SHA, then `/deploy-status` → on failure, `git revert` on a `revert/<slug>` branch shipped through the same command (review agent skipped for a mechanical revert), comment on the deploy-failure issue. Full steps: `.claude/commands/ship.md`.
 
 Sanctioned carve-outs inside `/ship` only: starting `pnpm dev` for the browser attestation (kill it after), and the read-only `/deploy-status` SSH.
 
@@ -43,7 +43,7 @@ Trio decisions land in the PR body under `## Decisions` (the `overnight-prs` for
 
 ## Throughput
 
-Docs-only pushes (`.claude/**`, `Documentation/**`, `*.md` outside `src/` and `web/` — oxfmt formats Markdown under both, so those stay code) still run every required job, but each job asks `.github/actions/changes` first and finishes in seconds when nothing needs building — a `paths-ignore` would leave the required checks unreported and the PR blocked forever. `strict: true` means a PR behind `main` must rebase and re-run CI before it can merge; two concurrent `/ship` runs serialize at roughly ten minutes per PR. Dependabot PRs behind `main` need `@dependabot rebase`. If this hurts, the next step is GitHub's merge queue (workflows would need the `merge_group` trigger) — not loosening `strict`.
+Docs-only pushes (`.claude/**`, `Documentation/**`, `*.md` outside `src/` and `web/` — oxfmt formats Markdown under both, so those stay code) still run every required job, but each job asks `.github/actions/changes` first and finishes in seconds when nothing needs building — a `paths-ignore` would leave the required checks unreported and the PR blocked forever. `strict: true` means a PR behind `main` must rebase and re-run CI before it can merge; two concurrent `/ship` runs serialize at roughly ten minutes per PR. Dependabot PRs behind `main` need `@dependabot rebase`. The merge queue is now on (since 2026-09-10): the required workflows run on the queue's `gh-readonly-queue/main/pr-<n>-<sha>` push branch, so no `merge_group` trigger was needed, and a PR behind `main` no longer has to rebase — the queue builds it on top of `main` itself. `gh pr merge` therefore enqueues rather than merges; `/ship` step 4 describes the wait and the dequeue handling.
 
 ## Rolling it out / rolling it back
 
