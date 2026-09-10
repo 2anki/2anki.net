@@ -8,7 +8,6 @@ import { formatCount } from './opsHelpers';
 import {
   JobDurationPercentiles,
   PerformanceMetricsResponse,
-  SignupCountryBreakdownItem,
 } from './performanceTypes';
 
 interface JobIdCellProps {
@@ -60,8 +59,6 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: '#9ca3af',
   interrupted: '#f59e0b',
 };
-
-const COUNTRY_BAR_COLOR = '#3b82f6';
 
 const renderDurationsTable = (rows: JobDurationPercentiles[]) => (
   <div className={styles.tableScroll}>
@@ -176,51 +173,6 @@ const renderSlowestJobs = (
   );
 };
 
-const renderCountries = (
-  rows: SignupCountryBreakdownItem[],
-  othersCount: number
-) => {
-  if (rows.length === 0) {
-    return (
-      <p className={styles.emptyHint}>
-        No countries captured yet. New signups populate this within minutes.
-      </p>
-    );
-  }
-  const max = Math.max(...rows.map((row) => row.count));
-  return (
-    <ul className={styles.statusList} aria-label="Signup country breakdown">
-      {rows.map((row) => {
-        const pct = max === 0 ? 0 : (row.count / max) * 100;
-        return (
-          <li key={row.country} className={styles.statusRow}>
-            <span className={styles.statusLabel}>{row.country}</span>
-            <span className={styles.statusBarWrap}>
-              <span
-                className={styles.statusBar}
-                style={{
-                  width: `${pct}%`,
-                  backgroundColor: COUNTRY_BAR_COLOR,
-                }}
-              />
-            </span>
-            <span className={styles.numeric}>{formatCount(row.count)}</span>
-          </li>
-        );
-      })}
-      {othersCount > 0 && (
-        <li className={styles.statusRow}>
-          <span className={`${styles.statusLabel} ${styles.numericMuted}`}>
-            +{othersCount} others
-          </span>
-          <span className={styles.statusBarWrap} />
-          <span className={styles.numericMuted}>—</span>
-        </li>
-      )}
-    </ul>
-  );
-};
-
 export default function PerformanceTab() {
   const { data, error, isLoading } = usePerformanceMetrics();
   const isInitial = isLoading && data == null;
@@ -264,21 +216,6 @@ export default function PerformanceTab() {
           autoHeight
         >
           {data != null && renderSlowestJobs(data.slowest_jobs_24h)}
-        </ChartPanel>
-
-        <ChartPanel
-          title="Signup countries, last 7d"
-          subtitle="ISO 3166 codes from CloudFront-Viewer-Country at signup"
-          isLoading={isInitial}
-          isEmpty={(data?.signup_countries_7d.length ?? 0) === 0}
-          emptyText="No countries captured yet."
-          autoHeight
-        >
-          {data != null &&
-            renderCountries(
-              data.signup_countries_7d,
-              data.signup_countries_7d_others ?? 0
-            )}
         </ChartPanel>
       </div>
     </>

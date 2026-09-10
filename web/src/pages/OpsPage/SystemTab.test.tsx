@@ -36,14 +36,18 @@ describe('SystemTab', () => {
     vi.restoreAllMocks();
   });
 
-  test('stacks the engineering and performance sections', () => {
+  test('lists every system section collapsed', () => {
     renderTab();
 
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Engineering' })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Performance' })
-    ).toBeInTheDocument();
+    for (const title of [
+      'Engineering',
+      'Performance',
+      'AI usage',
+      'Email delivery',
+    ]) {
+      expect(screen.getByText(title)).toBeInTheDocument();
+    }
+    expect(document.querySelectorAll('details')).toHaveLength(4);
+    expect(document.querySelectorAll('details[open]')).toHaveLength(0);
   });
 });
