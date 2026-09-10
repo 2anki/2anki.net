@@ -23,7 +23,9 @@ Two gates:
 
 Skips pushes to main/master (safety.py owns those). oxfmt applies its own
 ignorePatterns from .oxfmtrc.json (templates, fixtures, generated, etc.), so we
-don't re-implement that filter here.
+don't re-implement that filter here — but when EVERY passed file is ignored,
+oxfmt exits 2 with "Expected at least one target file"; that is treated as
+clean, not as a format failure (kanel-regenerated data_layer/public files).
 
 Bypass: CLAUDE_SKIP_FORMAT_CHECK=1 git push ...   (env var, or inline in the
         command string — both honored, mirroring the typecheck hook).
@@ -45,6 +47,14 @@ PROTECTED_BRANCH = re.compile(r"\b(main|master)\b")
 SKIP_IN_COMMAND = re.compile(r"\bCLAUDE_SKIP_FORMAT_CHECK=1\b")
 NOT_INSTALLED = re.compile(
     r"command not found|ENOENT|not found|No such file|not be found",
+    re.IGNORECASE,
+)
+# oxfmt exits 2 (not 0) when every file passed explicitly is excluded by the
+# config's ignorePatterns — e.g. a push whose only formattable change is a
+# kanel-regenerated src/data_layer/public/*.ts. CI never sees those files, so
+# this is a clean result, not a format failure.
+ALL_FILES_IGNORED = re.compile(
+    r"All matched files may have been excluded by ignore rules",
     re.IGNORECASE,
 )
 
@@ -128,6 +138,8 @@ def run_oxfmt_check(files, project_dir):
     if result.returncode == 0:
         return True
     output = result.stdout or result.stderr or "(no output)"
+    if ALL_FILES_IGNORED.search(output):
+        return True
     if NOT_INSTALLED.search(output):
         sys.stderr.write(
             "[pre-push-format] oxfmt isn't installed in this checkout "

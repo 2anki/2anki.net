@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import unittest
+import unittest.mock
 from unittest.mock import patch
 
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -166,6 +167,31 @@ class TestFormatGate(unittest.TestCase):
         )
         self.assertEqual(result["result"], "allow")
         self.assertTrue(result["oxfmt_called"])
+
+
+class TestOxfmtOutputClassification(unittest.TestCase):
+    def test_all_files_ignored_by_config_is_clean(self):
+        completed = unittest.mock.Mock(
+            returncode=2,
+            stdout="Checking formatting...\n\nExpected at least one target "
+            "file. All matched files may have been excluded by ignore rules.\n",
+            stderr="",
+        )
+        with patch.object(hook.subprocess, "run", return_value=completed):
+            result = hook.run_oxfmt_check(
+                ["src/data_layer/public/DeckShares.ts"], "/tmp"
+            )
+        self.assertIs(result, True)
+
+    def test_real_format_diff_is_returned_as_output(self):
+        completed = unittest.mock.Mock(
+            returncode=1,
+            stdout="Checking formatting...\n[warn] src/server.ts\n",
+            stderr="",
+        )
+        with patch.object(hook.subprocess, "run", return_value=completed):
+            result = hook.run_oxfmt_check(["src/server.ts"], "/tmp")
+        self.assertIn("src/server.ts", result)
 
 
 class TestFormattableFilter(unittest.TestCase):
