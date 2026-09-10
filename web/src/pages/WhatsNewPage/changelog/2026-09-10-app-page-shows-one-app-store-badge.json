@@ -2,5 +2,5 @@
   "id": "2026-09-10-app-page-shows-one-app-store-badge",
   "date": "2026-09-10",
   "type": "fix",
-  "title": "The app page shows one App Store badge, matched to your theme, instead of two side by side"
+  "title": "App page shows one App Store badge, matched to your theme"
 }
