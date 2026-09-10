@@ -332,6 +332,11 @@ async function liftDecksToParent(from: Workspace, to: Workspace) {
   }
 }
 
+interface CardIdentitySources {
+  knownGuids?: KnownGuids;
+  uploadIdentity?: UploadIdentityContext;
+}
+
 async function buildAllInOneSlot(
   supportedFileNames: string[],
   zipHandler: ZipHandler,
@@ -339,8 +344,7 @@ async function buildAllInOneSlot(
   paying: boolean,
   workspace: Workspace,
   cap: number,
-  knownGuids?: KnownGuids,
-  uploadIdentity?: UploadIdentityContext
+  { knownGuids, uploadIdentity }: CardIdentitySources
 ): Promise<PackageResult> {
   const limit = pLimit(cap);
   const settled = await Promise.allSettled(
@@ -487,8 +491,7 @@ export const getPackagesFromZip = async (
       paying,
       workspace,
       cap,
-      knownGuids,
-      uploadIdentity
+      { knownGuids, uploadIdentity }
     );
   }
 

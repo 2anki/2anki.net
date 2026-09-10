@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 
-import { cardFingerprint, normalizeCardText } from '../claude/ClaudeService';
+import { normalizeCardText } from '../claude/ClaudeService';
 import { guidFor } from './guid';
 
 // Upload-deck card identity. A signed-in re-upload of an edited markdown, HTML,
@@ -61,12 +61,12 @@ export function uploadIdentityKey(
 // filename, never the filename itself.
 export function hashSourceKey(filename: string): string {
   const base = filename
-    .replace(/\\/g, '/')
+    .replaceAll('\\', '/')
     .split('/')
     .pop()!
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, ' ');
+    .replaceAll(/\s+/g, ' ');
   return createHash('sha256').update(base).digest('hex');
 }
 
