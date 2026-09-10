@@ -61,6 +61,12 @@ function resolveFailureMessage(error: unknown): string {
       return 'Notion is rate-limiting this account. Try again in a minute.';
     }
     if (
+      error.code === APIErrorCode.ValidationError &&
+      error.message.includes('archived ancestor')
+    ) {
+      return 'The Notion page you picked is in the trash. Restore it in Notion or pick a different destination page.';
+    }
+    if (
       error.code === APIErrorCode.InternalServerError ||
       error.code === APIErrorCode.ServiceUnavailable ||
       error.code === APIErrorCode.GatewayTimeout
