@@ -3,7 +3,10 @@ import {
   ChatDeckUseCase,
   type ChatDeckCard,
 } from '../usecases/chat/ChatDeckUseCase';
+import { MonthlyLimitError } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 import { buildContentDisposition } from '../lib/buildContentDisposition';
+import { getOwner } from '../lib/User/getOwner';
+import { isPaying } from '../lib/isPaying';
 
 const MAX_DECK_NAME_LENGTH = 120;
 const MAX_CARDS = 200;
@@ -127,11 +130,27 @@ class ChatDeckController {
     const templateSlug =
       typeof rawTemplateSlug === 'string' ? rawTemplateSlug : null;
 
-    const buffer = await this.useCase.execute({
-      cards: parsedCards as ChatDeckCard[],
-      deckName,
-      templateSlug,
-    });
+    let buffer: Buffer;
+    try {
+      buffer = await this.useCase.execute({
+        cards: parsedCards as ChatDeckCard[],
+        deckName,
+        templateSlug,
+        userId: getOwner(res),
+        isPaying: isPaying(res.locals),
+      });
+    } catch (error) {
+      if (error instanceof MonthlyLimitError) {
+        res.status(402).json({
+          code: 'monthly_limit',
+          cards_used: error.cards_used,
+          limit: error.limit,
+          reset_on: error.reset_on,
+        });
+        return;
+      }
+      throw error;
+    }
 
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader(
