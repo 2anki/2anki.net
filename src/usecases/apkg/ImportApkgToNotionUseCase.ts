@@ -43,30 +43,40 @@ const SQLITE_ERROR_CODES = new Set([
   'SQLITE_CANTOPEN',
 ]);
 
+const NOTION_OUTAGE_MESSAGE =
+  'Notion is having issues. Try again in a few minutes.';
+
+const NOTION_ERROR_MESSAGES: Partial<Record<APIErrorCode, string>> = {
+  [APIErrorCode.Unauthorized]:
+    'Notion sign-in expired. Reconnect Notion and try again.',
+  [APIErrorCode.RestrictedResource]:
+    "2anki can't write to this Notion page. Share it with the 2anki integration.",
+  [APIErrorCode.ObjectNotFound]:
+    'The Notion page is gone. Pick a different destination page.',
+  [APIErrorCode.RateLimited]:
+    'Notion is rate-limiting this account. Try again in a minute.',
+  [APIErrorCode.InternalServerError]: NOTION_OUTAGE_MESSAGE,
+  [APIErrorCode.ServiceUnavailable]: NOTION_OUTAGE_MESSAGE,
+  [APIErrorCode.GatewayTimeout]: NOTION_OUTAGE_MESSAGE,
+};
+
+function resolveNotionFailureMessage(error: APIResponseError): string | null {
+  if (
+    error.code === APIErrorCode.ValidationError &&
+    error.message.includes('archived ancestor')
+  ) {
+    return 'The Notion page you picked is in the trash. Restore it in Notion or pick a different destination page.';
+  }
+  return NOTION_ERROR_MESSAGES[error.code] ?? null;
+}
+
 function resolveFailureMessage(error: unknown): string {
   if (error instanceof Error && error.message.includes('Upgrade')) {
     return error.message;
   }
   if (error instanceof APIResponseError) {
-    if (error.code === APIErrorCode.Unauthorized) {
-      return 'Notion sign-in expired. Reconnect Notion and try again.';
-    }
-    if (error.code === APIErrorCode.RestrictedResource) {
-      return "2anki can't write to this Notion page. Share it with the 2anki integration.";
-    }
-    if (error.code === APIErrorCode.ObjectNotFound) {
-      return 'The Notion page is gone. Pick a different destination page.';
-    }
-    if (error.code === APIErrorCode.RateLimited) {
-      return 'Notion is rate-limiting this account. Try again in a minute.';
-    }
-    if (
-      error.code === APIErrorCode.InternalServerError ||
-      error.code === APIErrorCode.ServiceUnavailable ||
-      error.code === APIErrorCode.GatewayTimeout
-    ) {
-      return 'Notion is having issues. Try again in a few minutes.';
-    }
+    const notionMessage = resolveNotionFailureMessage(error);
+    if (notionMessage != null) return notionMessage;
   }
   const errorCode = (error as { code?: string })?.code;
   if (typeof errorCode === 'string' && SQLITE_ERROR_CODES.has(errorCode)) {
