@@ -68,20 +68,26 @@
 }
 
 .badge img {
-  display: block;
   height: 52px;
   width: auto;
 }
 
-.badgeDark {
+/* One badge at a time. Both selectors carry the same specificity as the
+   theme overrides below minus the attribute, so the theme always wins and
+   `.badge img` never re-shows the hidden variant. */
+.badge .badgeLight {
+  display: block;
+}
+
+.badge .badgeDark {
   display: none;
 }
 
-[data-theme='dark'] .badgeLight {
+[data-theme='dark'] .badge .badgeLight {
   display: none;
 }
 
-[data-theme='dark'] .badgeDark {
+[data-theme='dark'] .badge .badgeDark {
   display: block;
 }
 
