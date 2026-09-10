@@ -2,5 +2,5 @@
   "id": "2026-09-10-re-uploading-an-edited-file-updates-your-cards",
   "date": "2026-09-10",
   "type": "feature",
-  "title": "Re-converting an edited markdown, HTML, CSV, or xlsx file updates your existing cards instead of adding duplicates when signed in"
+  "title": "Re-converting an edited markdown, HTML, or CSV file updates your existing cards instead of adding duplicates — when signed in"
 }

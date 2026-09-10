@@ -10,7 +10,7 @@ import type { IssuedCardGuid, KnownGuids } from '../anki/guidLedgerTypes';
 import {
   hashSourceKey,
   packIdentitySource,
-  resolveUploadCardGuid,
+  resolveUploadIdentityGroup,
   uploadIdentityKey,
   type UploadIdentityLedger,
 } from '../anki/uploadCardIdentity';
@@ -1469,39 +1469,49 @@ export class DeckParser {
       return;
     }
     const { owner, ledger } = this.uploadIdentity;
-    const ordinals = new Map<string, number>();
+    const groups = new Map<
+      string,
+      Array<{ card: Note; fingerprint: string }>
+    >();
     for (const deck of this.payload) {
       for (const card of deck.cards) {
         if (card.notionId != null) {
           continue;
         }
         const baseKey = uploadIdentityKey(card);
-        const ordinal = (ordinals.get(baseKey) ?? 0) + 1;
-        ordinals.set(baseKey, ordinal);
-        const identityKey =
-          ordinal > 1 ? uploadIdentityKey(card, ordinal) : baseKey;
-        const fingerprint = cardFingerprint(card);
-        const resolved = resolveUploadCardGuid({
-          owner,
-          identityKey,
-          sourceKeyHash: this.uploadSourceKeyHash,
-          fingerprint,
-          stored: ledger[identityKey],
-        });
-        card.identityKey = identityKey;
-        card.guid = resolved.guid;
-        this.uploadIdentityStats[resolved.decision] += 1;
-        if (resolved.decision === 'issued') {
-          this.uploadIdentityEntries.push({
-            blockId: identityKey,
-            guid: resolved.guid,
-            sourcePageId: packIdentitySource(
-              this.uploadSourceKeyHash,
-              fingerprint
-            ),
-          });
-        }
+        const members = groups.get(baseKey) ?? [];
+        members.push({ card, fingerprint: cardFingerprint(card) });
+        groups.set(baseKey, members);
       }
+    }
+    for (const members of groups.values()) {
+      const resolved = resolveUploadIdentityGroup({
+        owner,
+        sourceKeyHash: this.uploadSourceKeyHash,
+        keyForOrdinal: (ordinal) => uploadIdentityKey(members[0].card, ordinal),
+        cards: members,
+        ledger,
+      });
+      members.forEach(({ card, fingerprint }, index) => {
+        const { identityKey, guid, decision } = resolved[index];
+        card.guid = guid;
+        this.uploadIdentityStats[decision] += 1;
+        if (decision === 'guarded') {
+          return;
+        }
+        // Replayed rows are written too, so the stored fingerprint and file
+        // hash always describe the card's latest upload — otherwise an answer
+        // edit followed by a rename (two ordinary re-imports) would trip the
+        // guard against a stale row and duplicate the card.
+        this.uploadIdentityEntries.push({
+          blockId: identityKey,
+          guid,
+          sourcePageId: packIdentitySource(
+            this.uploadSourceKeyHash,
+            fingerprint
+          ),
+        });
+      });
     }
   }
 

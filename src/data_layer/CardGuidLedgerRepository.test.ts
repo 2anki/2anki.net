@@ -84,13 +84,14 @@ describe('CardGuidLedgerRepository SQL generation', () => {
     expect(total).toBe(1001);
   });
 
-  it('getAllForOwner returns a block_id to guid record', async () => {
+  it('getAllForOwner returns a block_id to guid record without upload rows', async () => {
     const rows = [
       { block_id: 'block-a', guid: 'guid-a' },
       { block_id: 'block-b', guid: 'guid-b' },
     ];
+    const whereNot = jest.fn().mockResolvedValue(rows);
     const fake = {
-      select: () => ({ where: async () => rows }),
+      select: () => ({ where: () => ({ whereNot }) }),
     };
     const database = (() => fake) as unknown as knex.Knex;
     const repo = new CardGuidLedgerRepository(database);
@@ -98,6 +99,7 @@ describe('CardGuidLedgerRepository SQL generation', () => {
     const known = await repo.getAllForOwner(7);
 
     expect(known).toEqual({ 'block-a': 'guid-a', 'block-b': 'guid-b' });
+    expect(whereNot).toHaveBeenCalledWith('block_id', 'like', 'u:%');
   });
 
   it('getUploadIdentityForOwner filters u: rows and returns guid + source', async () => {

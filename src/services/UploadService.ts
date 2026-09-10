@@ -17,7 +17,10 @@ import CardOption from '../lib/parser/Settings';
 import Workspace from '../lib/parser/WorkSpace';
 import { logEmptyBackAttribution } from '../lib/parser/logEmptyBackAttribution';
 import type { IssuedCardGuid, KnownGuids } from '../lib/anki/guidLedgerTypes';
-import { buildUploadIdentityLedger } from '../lib/anki/uploadCardIdentity';
+import {
+  UPLOAD_IDENTITY_PREFIX,
+  buildUploadIdentityLedger,
+} from '../lib/anki/uploadCardIdentity';
 import type {
   UploadIdentityContext,
   UploadIdentityStats,
@@ -545,6 +548,21 @@ class UploadService {
       return;
     }
     const entries = packages.flatMap((p) => p.guidEntries ?? []);
+    const uploadIdentityEntries = entries.filter((entry) =>
+      entry.blockId.startsWith(UPLOAD_IDENTITY_PREFIX)
+    );
+    const notionEntries = entries.filter(
+      (entry) => !entry.blockId.startsWith(UPLOAD_IDENTITY_PREFIX)
+    );
+    this.writeNotionGuidEntries(notionEntries, ownerId, settings);
+    this.writeUploadIdentityEntries(uploadIdentityEntries, ownerId);
+  }
+
+  private writeNotionGuidEntries(
+    entries: IssuedCardGuid[],
+    ownerId: number,
+    settings: CardOption
+  ): void {
     if (entries.length === 0) {
       return;
     }
@@ -558,6 +576,24 @@ class UploadService {
       : this.cardGuidLedgerRepository.record(ownerId, entries);
     write.catch((error) => {
       console.warn('[UploadService] card guid ledger write failed', error);
+    });
+  }
+
+  // Upload identity rows always merge: a replayed card carries its latest
+  // fingerprint and file hash so the ambiguity guard never judges against a
+  // stale row.
+  private writeUploadIdentityEntries(
+    entries: IssuedCardGuid[],
+    ownerId: number
+  ): void {
+    if (entries.length === 0) {
+      return;
+    }
+    this.cardGuidLedgerRepository.reissue(ownerId, entries).catch((error) => {
+      console.warn(
+        '[UploadService] upload identity ledger write failed',
+        error
+      );
     });
   }
 

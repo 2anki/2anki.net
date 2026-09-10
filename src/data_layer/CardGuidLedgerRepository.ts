@@ -32,7 +32,8 @@ export class CardGuidLedgerRepository implements ICardGuidLedgerRepository {
       this.table
     )
       .select('block_id', 'guid')
-      .where({ owner: owner as UsersId });
+      .where({ owner: owner as UsersId })
+      .whereNot('block_id', 'like', UPLOAD_IDENTITY_BLOCK_PREFIX);
     const known: Record<string, string> = {};
     for (const row of rows) {
       known[row.block_id] = row.guid;

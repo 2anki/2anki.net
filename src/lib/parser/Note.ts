@@ -31,8 +31,6 @@ export default class Note {
 
   sourcePageId?: string;
 
-  identityKey?: string;
-
   mcq = false;
 
   options: string[] = [];

@@ -852,6 +852,43 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     expect(guidLedger.record).not.toHaveBeenCalled();
   });
 
+  it('merges upload identity rows and records Notion rows separately', async () => {
+    const notionEntry = {
+      blockId: 'block-a',
+      sourcePageId: 'page-1',
+      guid: 'content-guid-a',
+    };
+    const uploadEntry = {
+      blockId: 'u:front-key',
+      sourcePageId: 'hash:fingerprint',
+      guid: 'upload-guid',
+    };
+    mockPackages([
+      { name: 'deck', cardCount: 2, guidEntries: [notionEntry, uploadEntry] },
+    ]);
+    const guidLedger = {
+      getAllForOwner: jest.fn().mockResolvedValue({}),
+      getUploadIdentityForOwner: jest.fn().mockResolvedValue({}),
+      record: jest.fn().mockResolvedValue(undefined),
+      reissue: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ guidLedger })
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(guidLedger.record).toHaveBeenCalledWith(42, [notionEntry]);
+    expect(guidLedger.reissue).toHaveBeenCalledWith(42, [uploadEntry]);
+  });
+
   it('pins new guids through the insert-only record path by default', async () => {
     const guidEntries = [
       { blockId: 'block-a', sourcePageId: 'page-1', guid: 'content-guid-a' },

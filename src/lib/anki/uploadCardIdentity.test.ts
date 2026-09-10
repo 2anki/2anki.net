@@ -5,7 +5,7 @@ import {
   buildUploadIdentityLedger,
   hashSourceKey,
   packIdentitySource,
-  resolveUploadCardGuid,
+  resolveUploadIdentityGroup,
   unpackIdentitySource,
   uploadCardType,
   uploadIdentityKey,
@@ -76,77 +76,159 @@ describe('pack/unpack identity source', () => {
   });
 });
 
-describe('resolveUploadCardGuid', () => {
-  const identityKey = uploadIdentityKey({ name: 'Front', back: 'Back' });
+describe('resolveUploadIdentityGroup', () => {
+  const front = { name: 'Front' };
+  const keyFor = (ordinal: number) => uploadIdentityKey(front, ordinal);
   const sourceKeyHash = hashSourceKey('notes.md');
-  const fingerprint = cardFingerprint({ name: 'Front', back: 'Back' });
+  const fp = (back: string) => cardFingerprint({ name: 'Front', back });
 
-  it('issues guidFor(owner, identityKey) on first sight', () => {
-    const result = resolveUploadCardGuid({
+  it('issues guidFor(owner, key) for every card on first sight', () => {
+    const resolved = resolveUploadIdentityGroup({
       owner: OWNER,
-      identityKey,
       sourceKeyHash,
-      fingerprint,
+      keyForOrdinal: keyFor,
+      cards: [{ fingerprint: fp('a') }, { fingerprint: fp('b') }],
+      ledger: {},
     });
-    expect(result).toEqual({
-      decision: 'issued',
-      guid: guidFor(OWNER, identityKey),
-    });
+    expect(resolved).toEqual([
+      {
+        identityKey: keyFor(1),
+        guid: guidFor(OWNER, keyFor(1)),
+        decision: 'issued',
+      },
+      {
+        identityKey: keyFor(2),
+        guid: guidFor(OWNER, keyFor(2)),
+        decision: 'issued',
+      },
+    ]);
   });
 
   it('replays the stored guid when the answer was edited in the same file', () => {
-    const stored = {
-      guid: 'STORED',
-      sourceKeyHash,
-      fingerprint: cardFingerprint({ name: 'Front', back: 'old answer' }),
-    };
-    const result = resolveUploadCardGuid({
+    const resolved = resolveUploadIdentityGroup({
       owner: OWNER,
-      identityKey,
       sourceKeyHash,
-      fingerprint: cardFingerprint({ name: 'Front', back: 'new answer' }),
-      stored,
+      keyForOrdinal: keyFor,
+      cards: [{ fingerprint: fp('new answer') }],
+      ledger: {
+        [keyFor(1)]: { guid: 'STORED', sourceKeyHash, fingerprint: fp('old') },
+      },
     });
-    expect(result).toEqual({ decision: 'replayed', guid: 'STORED' });
+    expect(resolved).toEqual([
+      { identityKey: keyFor(1), guid: 'STORED', decision: 'replayed' },
+    ]);
   });
 
   it('replays the stored guid when the file was renamed', () => {
-    const stored = {
-      guid: 'STORED',
-      sourceKeyHash: hashSourceKey('old-name.md'),
-      fingerprint,
-    };
-    const result = resolveUploadCardGuid({
+    const resolved = resolveUploadIdentityGroup({
       owner: OWNER,
-      identityKey,
       sourceKeyHash: hashSourceKey('new-name.md'),
-      fingerprint,
-      stored,
+      keyForOrdinal: keyFor,
+      cards: [{ fingerprint: fp('same') }],
+      ledger: {
+        [keyFor(1)]: {
+          guid: 'STORED',
+          sourceKeyHash: hashSourceKey('old-name.md'),
+          fingerprint: fp('same'),
+        },
+      },
     });
-    expect(result).toEqual({ decision: 'replayed', guid: 'STORED' });
+    expect(resolved[0]).toEqual({
+      identityKey: keyFor(1),
+      guid: 'STORED',
+      decision: 'replayed',
+    });
   });
 
   it('issues a fresh guarded guid when both filename and answer changed', () => {
-    const stored = {
-      guid: 'STORED',
-      sourceKeyHash: hashSourceKey('old-name.md'),
-      fingerprint: cardFingerprint({ name: 'Front', back: 'old answer' }),
-    };
-    const editedFingerprint = cardFingerprint({
-      name: 'Front',
-      back: 'new answer',
-    });
-    const result = resolveUploadCardGuid({
+    const resolved = resolveUploadIdentityGroup({
       owner: OWNER,
-      identityKey,
       sourceKeyHash: hashSourceKey('new-name.md'),
-      fingerprint: editedFingerprint,
-      stored,
+      keyForOrdinal: keyFor,
+      cards: [{ fingerprint: fp('new answer') }],
+      ledger: {
+        [keyFor(1)]: {
+          guid: 'STORED',
+          sourceKeyHash: hashSourceKey('old-name.md'),
+          fingerprint: fp('old answer'),
+        },
+      },
     });
-    expect(result.decision).toBe('guarded');
-    expect(result.guid).toBe(guidFor(OWNER, identityKey, editedFingerprint));
-    expect(result.guid).not.toBe('STORED');
-    expect(result.guid).not.toBe(guidFor(OWNER, identityKey));
+    expect(resolved[0].decision).toBe('guarded');
+    expect(resolved[0].guid).toBe(guidFor(OWNER, keyFor(1), fp('new answer')));
+    expect(resolved[0].guid).not.toBe('STORED');
+    expect(resolved[0].guid).not.toBe(guidFor(OWNER, keyFor(1)));
+  });
+
+  it('matches identical fronts to their stored rows by answer, not position', () => {
+    const ledger = {
+      [keyFor(1)]: { guid: 'G-A', sourceKeyHash, fingerprint: fp('A') },
+      [keyFor(2)]: { guid: 'G-B', sourceKeyHash, fingerprint: fp('B') },
+      [keyFor(3)]: { guid: 'G-C', sourceKeyHash, fingerprint: fp('C') },
+    };
+    const resolved = resolveUploadIdentityGroup({
+      owner: OWNER,
+      sourceKeyHash: hashSourceKey('renamed.md'),
+      keyForOrdinal: keyFor,
+      cards: [
+        { fingerprint: fp('C') },
+        { fingerprint: fp('A') },
+        { fingerprint: fp('B') },
+      ],
+      ledger,
+    });
+    expect(resolved.map((r) => r.guid)).toEqual(['G-C', 'G-A', 'G-B']);
+    expect(resolved.map((r) => r.identityKey)).toEqual([
+      keyFor(3),
+      keyFor(1),
+      keyFor(2),
+    ]);
+    expect(resolved.every((r) => r.decision === 'replayed')).toBe(true);
+  });
+
+  it('forks an edited answer inside an identical-front group instead of guessing', () => {
+    const ledger = {
+      [keyFor(1)]: { guid: 'G-A', sourceKeyHash, fingerprint: fp('A') },
+      [keyFor(2)]: { guid: 'G-B', sourceKeyHash, fingerprint: fp('B') },
+    };
+    const resolved = resolveUploadIdentityGroup({
+      owner: OWNER,
+      sourceKeyHash,
+      keyForOrdinal: keyFor,
+      cards: [{ fingerprint: fp('A') }, { fingerprint: fp('B, edited') }],
+      ledger,
+    });
+    expect(resolved[0]).toEqual({
+      identityKey: keyFor(1),
+      guid: 'G-A',
+      decision: 'replayed',
+    });
+    expect(resolved[1].decision).toBe('guarded');
+    expect(resolved[1].identityKey).toBe(keyFor(2));
+    expect(resolved[1].guid).not.toBe('G-B');
+  });
+
+  it('gives new copies of a known front the next free ordinals', () => {
+    const ledger = {
+      [keyFor(1)]: { guid: 'G-A', sourceKeyHash, fingerprint: fp('A') },
+    };
+    const resolved = resolveUploadIdentityGroup({
+      owner: OWNER,
+      sourceKeyHash,
+      keyForOrdinal: keyFor,
+      cards: [{ fingerprint: fp('new') }, { fingerprint: fp('A') }],
+      ledger,
+    });
+    expect(resolved[1]).toEqual({
+      identityKey: keyFor(1),
+      guid: 'G-A',
+      decision: 'replayed',
+    });
+    expect(resolved[0]).toEqual({
+      identityKey: keyFor(2),
+      guid: guidFor(OWNER, keyFor(2)),
+      decision: 'issued',
+    });
   });
 });
 

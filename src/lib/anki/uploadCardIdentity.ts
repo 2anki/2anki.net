@@ -132,41 +132,122 @@ export function buildUploadIdentityLedger(
 
 export type UploadIdentityDecision = 'issued' | 'replayed' | 'guarded';
 
-export interface ResolveUploadCardGuidParams {
-  owner: number;
-  identityKey: string;
-  sourceKeyHash: string;
+export interface UploadIdentityGroupCard {
   fingerprint: string;
-  stored?: StoredUploadIdentity;
 }
 
-export interface ResolvedUploadCardGuid {
+export interface ResolvedUploadIdentity {
+  identityKey: string;
   guid: string;
   decision: UploadIdentityDecision;
 }
 
-// The ambiguity guard. On first sight the guid is the deterministic
-// guidFor(owner, identityKey). On a ledger hit we replay the stored guid when
-// the answer is unchanged (fingerprint match — a rename or reorder) OR the file
-// is unchanged (sourceKey match — an answer edit). When BOTH the filename and
-// the answer changed, the card is probably a different fact that happens to
-// share a question, so we issue a fresh guid — a visible duplicate beats
-// silently overwriting an unrelated card.
-export function resolveUploadCardGuid(
-  params: ResolveUploadCardGuidParams
-): ResolvedUploadCardGuid {
-  const { owner, identityKey, sourceKeyHash, fingerprint, stored } = params;
-  if (stored == null) {
-    return { decision: 'issued', guid: guidFor(owner, identityKey) };
+export interface ResolveUploadIdentityGroupParams {
+  owner: number;
+  sourceKeyHash: string;
+  keyForOrdinal: (ordinal: number) => string;
+  cards: UploadIdentityGroupCard[];
+  ledger: UploadIdentityLedger;
+}
+
+interface IdentityCandidate {
+  key: string;
+  stored?: StoredUploadIdentity;
+}
+
+// Candidate keys for one front: every consecutive stored ordinal, plus enough
+// free ordinals that each card in the group can take one.
+function identityCandidates(
+  keyForOrdinal: (ordinal: number) => string,
+  ledger: UploadIdentityLedger,
+  cardCount: number
+): IdentityCandidate[] {
+  const candidates: IdentityCandidate[] = [];
+  let ordinal = 1;
+  for (;;) {
+    const key = keyForOrdinal(ordinal);
+    const stored = ledger[key];
+    candidates.push({ key, stored });
+    if (stored == null && candidates.length >= cardCount) {
+      return candidates;
+    }
+    ordinal += 1;
   }
-  if (
-    stored.fingerprint === fingerprint ||
-    stored.sourceKeyHash === sourceKeyHash
-  ) {
-    return { decision: 'replayed', guid: stored.guid };
-  }
-  return {
-    decision: 'guarded',
-    guid: guidFor(owner, identityKey, fingerprint),
-  };
+}
+
+// The ambiguity guard, resolved per front rather than per card so identical
+// fronts follow their content, not their position. Every card in the group
+// shares one base key; the group is the cards with that front in this upload.
+//
+// 1. A card whose back is unchanged claims the stored row with the same
+//    fingerprint (a rename or a reorder — including reorders among cards that
+//    share a front, which positional ordinals would silently cross-wire).
+// 2. A card whose back changed replays only when nothing else could be meant:
+//    it is the sole card with this front in the upload, exactly one row is
+//    stored, and the file is the same (an answer edit in place).
+// 3. Anything else that lands on a stored row is a different fact that happens
+//    to share a question — issue a fresh guid. A visible duplicate beats
+//    overwriting the wrong card's review history.
+// 4. A card that lands on a free key is new: guidFor(owner, key).
+export function resolveUploadIdentityGroup(
+  params: ResolveUploadIdentityGroupParams
+): ResolvedUploadIdentity[] {
+  const { owner, sourceKeyHash, keyForOrdinal, cards, ledger } = params;
+  const candidates = identityCandidates(keyForOrdinal, ledger, cards.length);
+  const claimed = new Set<number>();
+  const resolved: Array<ResolvedUploadIdentity | undefined> = new Array(
+    cards.length
+  );
+
+  cards.forEach((card, index) => {
+    const match = candidates.findIndex(
+      (candidate, position) =>
+        !claimed.has(position) &&
+        candidate.stored?.fingerprint === card.fingerprint
+    );
+    if (match < 0) {
+      return;
+    }
+    claimed.add(match);
+    resolved[index] = {
+      identityKey: candidates[match].key,
+      guid: candidates[match].stored!.guid,
+      decision: 'replayed',
+    };
+  });
+
+  const storedCount = candidates.filter((c) => c.stored != null).length;
+  const answerEditIsUnambiguous = cards.length === 1 && storedCount === 1;
+
+  cards.forEach((card, index) => {
+    if (resolved[index] != null) {
+      return;
+    }
+    const position = candidates.findIndex((_, i) => !claimed.has(i));
+    claimed.add(position);
+    const { key, stored } = candidates[position];
+    if (stored == null) {
+      resolved[index] = {
+        identityKey: key,
+        guid: guidFor(owner, key),
+        decision: 'issued',
+      };
+      return;
+    }
+    if (answerEditIsUnambiguous && stored.sourceKeyHash === sourceKeyHash) {
+      resolved[index] = {
+        identityKey: key,
+        guid: stored.guid,
+        decision: 'replayed',
+      };
+      return;
+    }
+    resolved[index] = {
+      identityKey: key,
+      guid: guidFor(owner, key, card.fingerprint),
+      decision: 'guarded',
+    };
+  });
+
+  return resolved as ResolvedUploadIdentity[];
 }
