@@ -4,7 +4,7 @@ import json
 import os
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 spec = importlib.util.spec_from_file_location(
@@ -166,6 +166,44 @@ class TestFormatGate(unittest.TestCase):
         )
         self.assertEqual(result["result"], "allow")
         self.assertTrue(result["oxfmt_called"])
+
+
+class TestOxfmtOutputClassification(unittest.TestCase):
+    def test_all_files_ignored_by_config_is_clean(self):
+        completed = Mock(
+            returncode=2,
+            stdout="Checking formatting...\n\nExpected at least one target "
+            "file. All matched files may have been excluded by ignore rules.\n",
+            stderr="",
+        )
+        with patch.object(hook.subprocess, "run", return_value=completed):
+            result = hook.run_oxfmt_check(
+                ["src/data_layer/public/DeckShares.ts"], "/tmp"
+            )
+        self.assertIs(result, True)
+
+    def test_real_format_diff_is_returned_as_output(self):
+        completed = Mock(
+            returncode=1,
+            stdout="Checking formatting...\n\nsrc/server.ts (4ms)\n"
+            "Format issues found in above 1 files.\n",
+            stderr="",
+        )
+        with patch.object(hook.subprocess, "run", return_value=completed):
+            result = hook.run_oxfmt_check(["src/server.ts"], "/tmp")
+        self.assertIn("src/server.ts", result)
+
+
+    def test_ignored_sentence_without_exit_two_is_not_clean(self):
+        completed = Mock(
+            returncode=1,
+            stdout="src/All matched files may have been excluded by ignore "
+            "rules.ts (1ms)\nFormat issues found in above 1 files.\n",
+            stderr="",
+        )
+        with patch.object(hook.subprocess, "run", return_value=completed):
+            result = hook.run_oxfmt_check(["src/x.ts"], "/tmp")
+        self.assertIsInstance(result, str)
 
 
 class TestFormattableFilter(unittest.TestCase):
