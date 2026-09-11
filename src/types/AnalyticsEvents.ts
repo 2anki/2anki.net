@@ -21,6 +21,7 @@ export const KNOWN_EVENTS = new Set([
   'email_clicked',
   'email_batch_sent',
   'vision_photo_converted',
+  'happy_score_ask_shown',
   'photo_entry_point_viewed',
   'photo_entry_point_clicked',
   'photo_upload_started',

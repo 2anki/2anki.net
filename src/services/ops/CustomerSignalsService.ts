@@ -304,6 +304,14 @@ function toCancelCommentRows(
     }));
 }
 
+const REASON_TAG = /^\[([a-z_]+)\]\s*/;
+
+function emojiRowLabel(row: EmojiFeedbackCommentEntry): string {
+  const base = `Deck-ready rating ${row.rating}`;
+  const tag = REASON_TAG.exec(row.comment)?.[1];
+  return tag == null ? base : `${base} · ${tag.replaceAll('_', ' ')}`;
+}
+
 function toEmojiCommentRows(
   comments: EmojiFeedbackCommentEntry[],
   since: Date
@@ -313,7 +321,7 @@ function toEmojiCommentRows(
     .slice(0, SAMPLE_LIMIT)
     .map((row) => ({
       source: 'emoji_feedback' as const,
-      label: `Deck-ready rating ${row.rating}`,
+      label: emojiRowLabel(row),
       count: 1,
       bucket: 'unknown' as const,
       sampleQuote: truncateQuote(row.comment),

@@ -2,6 +2,7 @@ jest.mock('../../lib/integrations/stripe', () => ({
   getStripe: jest.fn(),
 }));
 
+import { InMemoryEmojiFeedbackRepository } from '../../data_layer/EmojiFeedbackRepository';
 import {
   BusinessMetricsService,
   BusinessMetricsServiceDeps,
@@ -150,6 +151,59 @@ describe('BusinessMetricsService', () => {
     expect(response.pass_sales_7d).toEqual({ day_passes: 5, week_passes: 2 });
     const since = passSalesSince.mock.calls[0][0] as Date;
     expect(Date.now() - since.getTime()).toBe(7 * 24 * 60 * 60 * 1000);
+  });
+
+  it('computes happy score for 7, 30 and 90 day windows with asks from the events repo', async () => {
+    const emoji = new InMemoryEmojiFeedbackRepository();
+    for (let i = 0; i < 12; i += 1) {
+      await emoji.insert({ rating: 5, comment: null, page: 'p', email: null });
+    }
+    for (let i = 0; i < 3; i += 1) {
+      await emoji.insert({ rating: 1, comment: null, page: 'p', email: null });
+    }
+    const countByName = jest.fn(async (name: string, since: Date) => {
+      expect(name).toBe('happy_score_ask_shown');
+      const days = Math.round((NOW_MS - since.getTime()) / 86_400_000);
+      return days * 10;
+    });
+    const { service } = buildService(
+      {},
+      {
+        emojiFeedbackRepository: emoji,
+        happyScoreAskRepository: { countByName },
+      }
+    );
+
+    const response = await service.getMetrics();
+
+    expect(response.happy_score).toEqual([
+      expect.objectContaining({
+        window: '7d',
+        love: 12,
+        low: 3,
+        n: 15,
+        score_pct: 80,
+        asks: 70,
+        response_rate_pct: 21.4,
+      }),
+      expect.objectContaining({ window: '30d', asks: 300, score_pct: 80 }),
+      expect.objectContaining({ window: '90d', asks: 900, score_pct: 80 }),
+    ]);
+  });
+
+  it('reports happy score windows with unknown asks when no events repo is injected', async () => {
+    const { service } = buildService();
+    const response = await service.getMetrics();
+    expect(response.happy_score).toEqual([
+      expect.objectContaining({
+        window: '7d',
+        n: 0,
+        score_pct: null,
+        asks: null,
+      }),
+      expect.objectContaining({ window: '30d', asks: null }),
+      expect.objectContaining({ window: '90d', asks: null }),
+    ]);
   });
 
   it('returns null pass sales without a repository', async () => {

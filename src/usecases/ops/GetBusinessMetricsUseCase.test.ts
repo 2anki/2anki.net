@@ -22,6 +22,7 @@ describe('GetBusinessMetricsUseCase', () => {
       cancellation_comments_recent: [],
       emoji_feedback_ratings: [],
       emoji_feedback_comments: [],
+      happy_score: [],
       reengagement_reasons_top: [],
       reengagement_comments_recent: [],
       signup_countries_90d: [],

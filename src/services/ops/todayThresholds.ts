@@ -10,6 +10,7 @@ export const TODAY_TARGETS = {
   pass_sales_7d: { at_least: 23 },
   churn_30d_pct: { at_most: 7 },
   conversion_success_7d_pct: { at_least: 90 },
+  happy_score_90d_pct: { at_least: 60 },
   unresolved_error_groups: { at_most: 0 },
   missing_pass_unlocks_7d: { at_most: 0 },
   zero_value_paid_7d: { at_most: 0, missedSeverity: 'amber' },

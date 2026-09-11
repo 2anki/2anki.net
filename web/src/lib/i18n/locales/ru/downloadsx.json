@@ -14,7 +14,11 @@
     "sending": "Отправка",
     "received": "Отзыв получен.",
     "error": "Не удалось отправить.",
-    "tryAgain": "Повторить"
+    "tryAgain": "Повторить",
+    "reasonImagesMissing": "Нет изображений",
+    "reasonWrongCards": "Неправильные карточки",
+    "reasonTooFewCards": "Слишком мало карточек",
+    "reasonOther": "Другое"
   },
   "ankify": {
     "sending": "Отправка в ваш Anki…",

@@ -72,6 +72,7 @@ const buildSampleMetrics = (
     { rating: 4, count: 5 },
     { rating: 5, count: 3 },
   ],
+  happy_score: null,
   emoji_feedback_comments: [
     {
       rating: 5,
@@ -131,7 +132,7 @@ describe('BusinessTab', () => {
         </MemoryRouter>
       </QueryClientProvider>
     );
-    expect(document.querySelectorAll('details')).toHaveLength(7);
+    expect(document.querySelectorAll('details')).toHaveLength(8);
     expect(document.querySelectorAll('details[open]')).toHaveLength(0);
     expect(screen.getByText('Pass unlocks')).toBeInTheDocument();
     expect(screen.getByText('Paid value')).toBeInTheDocument();

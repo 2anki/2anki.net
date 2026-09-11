@@ -73,6 +73,35 @@
   border-color: var(--color-text-tertiary);
 }
 
+.reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.reason {
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-full, 999px);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.reason:hover {
+  border-color: var(--color-text-tertiary);
+}
+
+.reasonSelected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-text-on-primary, white);
+}
+
 .textarea {
   width: 100%;
   padding: 0.625rem 0.75rem;
