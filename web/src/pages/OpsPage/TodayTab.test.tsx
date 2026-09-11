@@ -64,6 +64,7 @@ const business = {
     },
   ],
   emoji_feedback_ratings: null,
+  happy_score: null,
   emoji_feedback_comments: null,
   reengagement_reasons_top: null,
   reengagement_comments_recent: null,

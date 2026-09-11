@@ -34,6 +34,7 @@ const business = (
     cancellation_comments_recent: null,
     emoji_feedback_ratings: null,
     emoji_feedback_comments: null,
+    happy_score: null,
     reengagement_reasons_top: null,
     reengagement_comments_recent: null,
     signup_countries_90d: null,
@@ -204,6 +205,70 @@ describe('buildScoreRows', () => {
     });
   });
 
+  it('reads the 90-day happy score off the business metrics', () => {
+    const rows = buildScoreRows({
+      business: business({
+        happy_score: [
+          {
+            window: '7d',
+            love: 2,
+            low: 1,
+            n: 3,
+            score_pct: null,
+            asks: 20,
+            response_rate_pct: 15,
+          },
+          {
+            window: '90d',
+            love: 40,
+            low: 20,
+            n: 60,
+            score_pct: 66.7,
+            asks: 500,
+            response_rate_pct: 12,
+          },
+        ],
+      }),
+      conversion: null,
+      unresolvedErrorGroups: null,
+      passUnlock: null,
+      paidValue: null,
+    });
+    const row = rows.find((r) => r.id === 'happy_score_90d_pct');
+    expect(row).toMatchObject({
+      value: 66.7,
+      target: 60,
+      status: 'green',
+      lever: 'health',
+      window_label: '90d',
+      link: '/ops/business#happy-score',
+    });
+  });
+
+  it('leaves the happy score row unscored while the sample is too small', () => {
+    const rows = buildScoreRows({
+      business: business({
+        happy_score: [
+          {
+            window: '90d',
+            love: 5,
+            low: 2,
+            n: 7,
+            score_pct: null,
+            asks: null,
+            response_rate_pct: null,
+          },
+        ],
+      }),
+      conversion: null,
+      unresolvedErrorGroups: null,
+      passUnlock: null,
+      paidValue: null,
+    });
+    const row = rows.find((r) => r.id === 'happy_score_90d_pct');
+    expect(row).toMatchObject({ value: null, status: 'none' });
+  });
+
   it('renders every row with a null value when a source is missing', () => {
     const empty = buildScoreRows({
       business: null,
@@ -212,7 +277,7 @@ describe('buildScoreRows', () => {
       passUnlock: null,
       paidValue: null,
     });
-    expect(empty).toHaveLength(10);
+    expect(empty).toHaveLength(11);
     for (const row of empty) {
       expect(row.value).toBeNull();
       expect(row.status).toBe('none');
@@ -248,7 +313,7 @@ describe('TodaySnapshotService', () => {
       () => t0
     );
     const snapshot = await service.getSnapshot();
-    expect(snapshot.rows).toHaveLength(10);
+    expect(snapshot.rows).toHaveLength(11);
     expect(snapshot).toMatchObject({
       as_of: t0.toISOString(),
       cache_age_seconds: 0,
@@ -340,7 +405,7 @@ describe('TodaySnapshotService', () => {
     const stale = await service.getSnapshot();
     expect(stale.stale).toBe(true);
     expect(stale.cache_age_seconds).toBe(600);
-    expect(stale.rows).toHaveLength(10);
+    expect(stale.rows).toHaveLength(11);
   });
 
   it('throws when every source fails and nothing is cached', async () => {

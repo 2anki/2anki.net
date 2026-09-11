@@ -110,6 +110,7 @@ const OpsRouter = () => {
     cacheRepository: new BusinessMetricsCacheRepository(database),
     cancellationRepository: new CancellationFeedbackRepository(database),
     emojiFeedbackRepository: new EmojiFeedbackRepository(database),
+    happyScoreAskRepository: new EventsRepository(database),
     reengagementRepository: new ReEngagementFeedbackRepository(database),
     signupCountryRepository: new UsersRepository(database),
     signupCountsRepository: new UsersRepository(database),

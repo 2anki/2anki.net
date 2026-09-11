@@ -14,7 +14,11 @@
     "sending": "Bezig met verzenden",
     "received": "Feedback ontvangen.",
     "error": "Kon dat niet verzenden.",
-    "tryAgain": "Opnieuw proberen"
+    "tryAgain": "Opnieuw proberen",
+    "reasonImagesMissing": "Afbeeldingen ontbreken",
+    "reasonWrongCards": "Verkeerde kaarten",
+    "reasonTooFewCards": "Te weinig kaarten",
+    "reasonOther": "Iets anders"
   },
   "ankify": {
     "sending": "Verzenden naar je Anki…",

@@ -14,7 +14,11 @@
     "sending": "送信中",
     "received": "フィードバックを受け取りました。",
     "error": "送信できませんでした。",
-    "tryAgain": "再試行"
+    "tryAgain": "再試行",
+    "reasonImagesMissing": "画像がない",
+    "reasonWrongCards": "カードが間違っている",
+    "reasonTooFewCards": "カードが少なすぎる",
+    "reasonOther": "その他"
   },
   "ankify": {
     "sending": "あなたの Anki に送信中…",

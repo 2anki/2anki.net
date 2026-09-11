@@ -22,8 +22,11 @@ vi.mock('../../../lib/analytics/track', () => ({
 }));
 
 import {
+  ANSWERED_SUPPRESSION_MS,
   DeckFeedbackPrompt,
+  DISMISSED_SUPPRESSION_MS,
   isDeckFeedbackSuppressed,
+  tagComment,
 } from './DeckFeedbackPrompt';
 
 const SUPPRESSED_UNTIL_KEY = '2anki_deck_feedback_suppressed_until';
@@ -147,10 +150,80 @@ describe('DeckFeedbackPrompt', () => {
     expect(await screen.findByText('Feedback received.')).toBeInTheDocument();
   });
 
-  it('writes a 14-day suppression timestamp on dismiss', () => {
+  it('fires the ask event once when the prompt is shown', () => {
     render(<DeckFeedbackPrompt />);
+    expect(mockTrack).toHaveBeenCalledTimes(1);
+    expect(mockTrack).toHaveBeenCalledWith('happy_score_ask_shown');
+  });
+
+  it('tags the comment with the reason chip the user picked', async () => {
+    render(<DeckFeedbackPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: 'Something was off' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Images missing' }));
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'captions vanished' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => {
+      expect(submitEmojiFeedback).toHaveBeenCalledWith(
+        1,
+        'downloads/deck_done',
+        '[images_missing] captions vanished'
+      );
+    });
+  });
+
+  it('sends the reason tag alone when the user picks a chip and skips the text', async () => {
+    render(<DeckFeedbackPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: 'Something was off' }));
+    const chip = screen.getByRole('button', { name: 'Too few cards' });
+    fireEvent.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    await waitFor(() => {
+      expect(submitEmojiFeedback).toHaveBeenCalledWith(
+        1,
+        'downloads/deck_done',
+        '[too_few_cards]'
+      );
+    });
+  });
+
+  it('shows no reason chips on the positive path', () => {
+    render(<DeckFeedbackPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, it worked' }));
+    expect(
+      screen.queryByRole('button', { name: 'Images missing' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('suppresses for 90 days on dismiss and 180 days on an answer', async () => {
+    const now = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const { unmount } = render(<DeckFeedbackPrompt />);
     fireEvent.click(screen.getByLabelText('Dismiss'));
-    expect(isDeckFeedbackSuppressed()).toBe(true);
+    expect(localStorage.getItem(SUPPRESSED_UNTIL_KEY)).toBe(
+      String(now + DISMISSED_SUPPRESSION_MS)
+    );
+    unmount();
+    localStorage.clear();
+    render(<DeckFeedbackPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, it worked' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    await waitFor(() => {
+      expect(localStorage.getItem(SUPPRESSED_UNTIL_KEY)).toBe(
+        String(now + ANSWERED_SUPPRESSION_MS)
+      );
+    });
+    vi.restoreAllMocks();
+  });
+
+  it('tagComment trims, caps, and prefixes', () => {
+    expect(tagComment(null, '  hi  ')).toBe('hi');
+    expect(tagComment('other', '')).toBe('[other]');
+    expect(tagComment('wrong_cards', 'x'.repeat(2500))).toHaveLength(
+      '[wrong_cards] '.length + 2000
+    );
   });
 
   it('writes the suppression timestamp on successful submit', async () => {

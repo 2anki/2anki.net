@@ -14,7 +14,11 @@
     "sending": "Enviando",
     "received": "Feedback recebido.",
     "error": "Não foi possível enviar.",
-    "tryAgain": "Tentar de novo"
+    "tryAgain": "Tentar de novo",
+    "reasonImagesMissing": "Imagens faltando",
+    "reasonWrongCards": "Cartões errados",
+    "reasonTooFewCards": "Poucos cartões",
+    "reasonOther": "Outra coisa"
   },
   "ankify": {
     "sending": "Enviando para o seu Anki…",

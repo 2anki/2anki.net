@@ -269,6 +269,18 @@ export function buildScoreRows(inputs: TodaySnapshotInputs): ScoreRow[] {
       link: '/ops/growth#conversions',
     },
     {
+      id: 'happy_score_90d_pct',
+      lever: 'health',
+      label: 'Happy score (users who rated a finished deck)',
+      format: 'percent',
+      window_label: '90d',
+      value:
+        business?.happy_score?.find((w) => w.window === '90d')?.score_pct ??
+        null,
+      target: TODAY_TARGETS.happy_score_90d_pct,
+      link: '/ops/business#happy-score',
+    },
+    {
       id: 'unresolved_error_groups',
       lever: 'health',
       label: 'Unresolved error groups',

@@ -1,15 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { track } from '../../../lib/analytics/track';
 import { get2ankiApi } from '../../../lib/backend/get2ankiApi';
 import styles from './DeckFeedbackPrompt.module.css';
 
 const SUPPRESSED_UNTIL_KEY = '2anki_deck_feedback_suppressed_until';
-const SUPPRESSION_MS = 14 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+export const DISMISSED_SUPPRESSION_MS = 90 * DAY_MS;
+export const ANSWERED_SUPPRESSION_MS = 180 * DAY_MS;
+export const HAPPY_SCORE_ASK_EVENT = 'happy_score_ask_shown';
 const FEEDBACK_PAGE = 'downloads/deck_done';
 const POSITIVE_RATING = 5;
 const NEGATIVE_RATING = 1;
 const COMMENT_MAX = 2000;
+
+export const NEGATIVE_REASONS = [
+  { tag: 'images_missing', labelKey: 'feedback.reasonImagesMissing' },
+  { tag: 'wrong_cards', labelKey: 'feedback.reasonWrongCards' },
+  { tag: 'too_few_cards', labelKey: 'feedback.reasonTooFewCards' },
+  { tag: 'other', labelKey: 'feedback.reasonOther' },
+] as const;
+
+type ReasonTag = (typeof NEGATIVE_REASONS)[number]['tag'];
+
+export function tagComment(reason: ReasonTag | null, comment: string): string {
+  const text = comment.slice(0, COMMENT_MAX).trim();
+  if (reason == null) return text;
+  return text.length > 0 ? `[${reason}] ${text}` : `[${reason}]`;
+}
 
 type Stage =
   | { kind: 'prompt' }
@@ -18,9 +37,9 @@ type Stage =
   | { kind: 'sent'; rating: number }
   | { kind: 'error'; retry: () => void };
 
-function suppressForWindow(): void {
+function suppressFor(durationMs: number): void {
   try {
-    const until = Date.now() + SUPPRESSION_MS;
+    const until = Date.now() + durationMs;
     localStorage.setItem(SUPPRESSED_UNTIL_KEY, String(until));
   } catch {
     // localStorage may be disabled. Best-effort suppression only.
@@ -43,12 +62,17 @@ export function DeckFeedbackPrompt() {
   const { t } = useTranslation('downloadsx');
   const [stage, setStage] = useState<Stage>({ kind: 'prompt' });
   const [comment, setComment] = useState('');
+  const [reason, setReason] = useState<ReasonTag | null>(null);
   const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    track(HAPPY_SCORE_ASK_EVENT);
+  }, []);
 
   if (dismissed) return null;
 
   const handleDismiss = () => {
-    suppressForWindow();
+    suppressFor(DISMISSED_SUPPRESSION_MS);
     setDismissed(true);
   };
 
@@ -60,7 +84,7 @@ export function DeckFeedbackPrompt() {
         FEEDBACK_PAGE,
         withComment != null && withComment.length > 0 ? withComment : undefined
       );
-      suppressForWindow();
+      suppressFor(ANSWERED_SUPPRESSION_MS);
       setStage({ kind: 'sent', rating });
     } catch {
       setStage({
@@ -78,12 +102,15 @@ export function DeckFeedbackPrompt() {
     setStage({ kind: 'follow-up', rating: NEGATIVE_RATING });
   };
 
+  const reasonFor = (rating: number): ReasonTag | null =>
+    rating === NEGATIVE_RATING ? reason : null;
+
   const handleSend = (rating: number) => {
-    void sendRating(rating, comment.slice(0, COMMENT_MAX));
+    void sendRating(rating, tagComment(reasonFor(rating), comment));
   };
 
   const handleSkip = (rating: number) => {
-    void sendRating(rating);
+    void sendRating(rating, tagComment(reasonFor(rating), ''));
   };
 
   return (
@@ -126,6 +153,25 @@ export function DeckFeedbackPrompt() {
               ? t('feedback.followUpPositive')
               : t('feedback.followUpNegative')}
           </label>
+          {stage.rating === NEGATIVE_RATING && (
+            <div className={styles.reasons}>
+              {NEGATIVE_REASONS.map((item) => (
+                <button
+                  key={item.tag}
+                  type="button"
+                  className={`${styles.reason} ${reason === item.tag ? styles.reasonSelected : ''}`}
+                  aria-pressed={reason === item.tag}
+                  onClick={() =>
+                    setReason((current) =>
+                      current === item.tag ? null : item.tag
+                    )
+                  }
+                >
+                  {t(item.labelKey)}
+                </button>
+              ))}
+            </div>
+          )}
           <textarea
             id="deck-feedback-comment"
             className={styles.textarea}

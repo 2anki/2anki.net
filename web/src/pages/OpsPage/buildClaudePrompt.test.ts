@@ -35,6 +35,7 @@ function makeBusiness(
       },
     ],
     emoji_feedback_ratings: [{ rating: 5, count: 3 }],
+    happy_score: null,
     emoji_feedback_comments: [],
     reengagement_reasons_top: [],
     reengagement_comments_recent: [],
@@ -205,6 +206,7 @@ describe('buildClaudePrompt — business', () => {
       makeBusiness({
         cancellation_comments_recent: [],
         reengagement_comments_recent: [],
+        happy_score: null,
         emoji_feedback_comments: [],
       })
     );

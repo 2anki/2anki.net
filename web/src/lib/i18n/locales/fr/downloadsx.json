@@ -14,7 +14,11 @@
     "sending": "Envoi en cours",
     "received": "Retour reçu.",
     "error": "Impossible d'envoyer.",
-    "tryAgain": "Réessayer"
+    "tryAgain": "Réessayer",
+    "reasonImagesMissing": "Images manquantes",
+    "reasonWrongCards": "Mauvaises cartes",
+    "reasonTooFewCards": "Trop peu de cartes",
+    "reasonOther": "Autre chose"
   },
   "ankify": {
     "sending": "Envoi vers votre Anki…",

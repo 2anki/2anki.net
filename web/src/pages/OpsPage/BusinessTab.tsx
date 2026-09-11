@@ -158,6 +158,53 @@ export default function BusinessTab() {
         />
       </div>
 
+      <CollapsibleSection
+        slug="happy-score"
+        title="Happy score"
+        summary={summaryFor('happy_score_90d_pct')}
+      >
+        <p className={styles.sectionHint}>
+          Share of deck-done ratings that were positive, among users who
+          answered. Hidden under 10 answers. Response rate needs the ask event,
+          which ships with this table.
+        </p>
+        <div className={styles.tableScroll}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Window</th>
+                <th className={styles.numeric}>Happy</th>
+                <th className={styles.numeric}>Positive</th>
+                <th className={styles.numeric}>Negative</th>
+                <th className={styles.numeric}>Asked</th>
+                <th className={styles.numeric}>Response rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(visible?.happy_score ?? []).map((w) => (
+                <tr key={w.window}>
+                  <td>{w.window}</td>
+                  <td className={styles.numeric}>
+                    {formatNumberOrDash(w.score_pct, formatPercentOneDecimal)}
+                  </td>
+                  <td className={styles.numeric}>{formatInteger(w.love)}</td>
+                  <td className={styles.numeric}>{formatInteger(w.low)}</td>
+                  <td className={styles.numeric}>
+                    {formatNumberOrDash(w.asks, formatInteger)}
+                  </td>
+                  <td className={styles.numeric}>
+                    {formatNumberOrDash(
+                      w.response_rate_pct,
+                      formatPercentOneDecimal
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CollapsibleSection>
+
       <CollapsibleSection slug="emoji-feedback" title="Emoji feedback">
         <p className={styles.sectionHint}>
           Ratings and comments from the in-app emoji widget

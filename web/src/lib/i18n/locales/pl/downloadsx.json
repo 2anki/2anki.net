@@ -14,7 +14,11 @@
     "sending": "Wysyłanie",
     "received": "Opinia otrzymana.",
     "error": "Nie udało się wysłać.",
-    "tryAgain": "Spróbuj ponownie"
+    "tryAgain": "Spróbuj ponownie",
+    "reasonImagesMissing": "Brak obrazów",
+    "reasonWrongCards": "Błędne karty",
+    "reasonTooFewCards": "Za mało kart",
+    "reasonOther": "Coś innego"
   },
   "ankify": {
     "sending": "Wysyłanie do Twojego Anki…",

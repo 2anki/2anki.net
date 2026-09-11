@@ -13,6 +13,7 @@ export type BusinessMetricKey =
   | 'cancellation_comments_recent'
   | 'emoji_feedback_ratings'
   | 'emoji_feedback_comments'
+  | 'happy_score'
   | 'reengagement_reasons_top'
   | 'reengagement_comments_recent'
   | 'signup_countries_90d';
@@ -66,6 +67,18 @@ export interface EmojiFeedbackCommentPoint {
   created_at: string;
 }
 
+export type HappyScoreWindowLabel = '7d' | '30d' | '90d';
+
+export interface HappyScoreWindow {
+  window: HappyScoreWindowLabel;
+  love: number;
+  low: number;
+  n: number;
+  score_pct: number | null;
+  asks: number | null;
+  response_rate_pct: number | null;
+}
+
 export interface ReEngagementReasonPoint {
   stopped_reason: string;
   count: number;
@@ -103,6 +116,7 @@ export interface BusinessMetricsResponse {
   cancellation_comments_recent: CancellationCommentPoint[] | null;
   emoji_feedback_ratings: EmojiFeedbackRatingPoint[] | null;
   emoji_feedback_comments: EmojiFeedbackCommentPoint[] | null;
+  happy_score: HappyScoreWindow[] | null;
   reengagement_reasons_top: ReEngagementReasonPoint[] | null;
   reengagement_comments_recent: ReEngagementCommentPoint[] | null;
   signup_countries_90d: SignupCountryPoint[] | null;

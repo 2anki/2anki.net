@@ -242,6 +242,24 @@ describe('CustomerSignalsService', () => {
     expect(highRating?.convergence).toBe(1);
   });
 
+  it('labels a low rating with the reason chip the user picked', async () => {
+    const service = buildService({
+      emojiComments: [
+        {
+          rating: 1,
+          comment: '[images_missing] captions did not come through',
+          page: 'downloads/deck_done',
+          created_at: '2026-06-16T00:00:00.000Z',
+        },
+      ],
+    });
+
+    const result = await service.getSignals(since);
+
+    const row = find(result.signals, (r) => r.source === 'emoji_feedback');
+    expect(row?.label).toBe('Deck-ready rating 1 · images missing');
+  });
+
   it('maps buckets for structured signals and truncates verbatim quotes', async () => {
     const longComment = 'x'.repeat(250);
     const service = buildService({

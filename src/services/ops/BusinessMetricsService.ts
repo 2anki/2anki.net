@@ -22,6 +22,12 @@ import {
   InMemoryEmojiFeedbackRepository,
 } from '../../data_layer/EmojiFeedbackRepository';
 import {
+  computeHappyScore,
+  HAPPY_SCORE_ASK_EVENT,
+  HAPPY_SCORE_WINDOWS,
+  HappyScoreWindow,
+} from '../../lib/happyScore';
+import {
   IReEngagementFeedbackRepository,
   InMemoryReEngagementFeedbackRepository,
   ReEngagementCommentEntry,
@@ -56,6 +62,7 @@ export type BusinessMetricKey =
   | 'cancellation_comments_recent'
   | 'emoji_feedback_ratings'
   | 'emoji_feedback_comments'
+  | 'happy_score'
   | 'reengagement_reasons_top'
   | 'reengagement_comments_recent'
   | 'signup_countries_90d'
@@ -106,6 +113,7 @@ export interface BusinessMetricsResponse {
   cancellation_comments_recent: CancellationCommentEntry[] | null;
   emoji_feedback_ratings: EmojiFeedbackRatingCount[] | null;
   emoji_feedback_comments: EmojiFeedbackCommentEntry[] | null;
+  happy_score: HappyScoreWindow[] | null;
   reengagement_reasons_top: ReEngagementReasonCount[] | null;
   reengagement_comments_recent: ReEngagementCommentEntry[] | null;
   signup_countries_90d: SignupCountryCount[] | null;
@@ -129,12 +137,17 @@ export const SIGNUP_COUNTRIES_LIMIT = 10;
 export const SIGNUPS_24H_LOOKBACK_DAYS = 1;
 export const SIGNUPS_7D_LOOKBACK_DAYS = 7;
 
+export interface IHappyScoreAskRepository {
+  countByName(name: string, since: Date): Promise<number>;
+}
+
 export interface BusinessMetricsServiceDeps {
   stripeFactory?: () => Stripe;
   cacheTtlMs?: number;
   cacheRepository?: IBusinessMetricsCacheRepository;
   cancellationRepository?: ICancellationFeedbackRepository;
   emojiFeedbackRepository?: IEmojiFeedbackRepository;
+  happyScoreAskRepository?: IHappyScoreAskRepository;
   reengagementRepository?: IReEngagementFeedbackRepository;
   signupCountryRepository?: ISignupCountryRepository;
   signupCountsRepository?: IUserSignupCountsRepository;
@@ -217,6 +230,8 @@ export class BusinessMetricsService {
 
   private readonly emojiFeedbackRepository: IEmojiFeedbackRepository;
 
+  private readonly happyScoreAskRepository: IHappyScoreAskRepository | null;
+
   private readonly reengagementRepository: IReEngagementFeedbackRepository;
 
   private readonly signupCountryRepository: ISignupCountryRepository | null;
@@ -239,6 +254,7 @@ export class BusinessMetricsService {
       new InMemoryCancellationFeedbackRepository();
     this.emojiFeedbackRepository =
       deps.emojiFeedbackRepository ?? new InMemoryEmojiFeedbackRepository();
+    this.happyScoreAskRepository = deps.happyScoreAskRepository ?? null;
     this.reengagementRepository =
       deps.reengagementRepository ??
       new InMemoryReEngagementFeedbackRepository();
@@ -339,6 +355,7 @@ export class BusinessMetricsService {
       emoji_feedback_comments: dbValueByKey.get('emoji_feedback_comments') as
         | EmojiFeedbackCommentEntry[]
         | null,
+      happy_score: dbValueByKey.get('happy_score') as HappyScoreWindow[] | null,
       reengagement_reasons_top: dbValueByKey.get('reengagement_reasons_top') as
         | ReEngagementReasonCount[]
         | null,
@@ -394,6 +411,24 @@ export class BusinessMetricsService {
     }
   }
 
+  private async fetchHappyScoreWindows(now: Date): Promise<HappyScoreWindow[]> {
+    return Promise.all(
+      HAPPY_SCORE_WINDOWS.map(async ({ label, days }) => {
+        const since = new Date(now.getTime() - days * SECONDS_PER_DAY * 1000);
+        const [counts, asks] = await Promise.all([
+          this.emojiFeedbackRepository.countByRating(since),
+          this.happyScoreAskRepository == null
+            ? Promise.resolve(null)
+            : this.happyScoreAskRepository.countByName(
+                HAPPY_SCORE_ASK_EVENT,
+                since
+              ),
+        ]);
+        return computeHappyScore(label, counts, asks);
+      })
+    );
+  }
+
   private buildDbMetricTasks(
     now: Date
   ): Array<{ key: BusinessMetricKey; fetch: () => Promise<unknown> }> {
@@ -434,6 +469,10 @@ export class BusinessMetricsService {
           this.emojiFeedbackRepository.recentComments(
             EMOJI_FEEDBACK_COMMENTS_LIMIT
           ),
+      },
+      {
+        key: 'happy_score',
+        fetch: () => this.fetchHappyScoreWindows(now),
       },
       {
         key: 'reengagement_reasons_top',
