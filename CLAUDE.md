@@ -14,16 +14,14 @@ A strategy issue may be *filed* in `2anki/server` for tracking (e.g. #3582 ASO, 
 
 ## Goal
 
-Mission: give people the simplest, fastest way to turn what they're studying into beautiful Anki flashcards. Drop something in, get a clean deck back.
-Scale: grow 2anki.net past 300K users.
-Revenue: retention and per-user value are the levers; user count follows. The system sat at its mathematical ceiling (adds ÷ churn) until the June 2026 reprice; never again let user-count work crowd out revenue work. No MRR target is tracked (decision 2026-07-19).
-Allocation: every week ships at least one acquisition-facing change — landing pages, SEO, onboarding, or signup/first-conversion friction — and it ships **before** any new product surface starts that week. Acquisition is the only lane that creates users; starve it and the 300K goal stalls no matter how much else moves. History note: 2026 ran 6% acquisition work and 2023-25 ran 0% across 36 months — both starved the only lane that makes users.
-Every PR is checked against all three — does it make the experience simpler/faster/more beautiful, does it move us toward scale, and does it (for user-facing changes) state which funnel or revenue metric it should move?
+Be the go-to place on the web to create beautiful Anki flashcards, fast and easy. Drop something in, get a clean deck back.
+That is the whole goal — no user-count target, no revenue target, no weekly allocation quota (all retired 2026-09-11).
+Every PR is checked against it: does this make creating flashcards on 2anki.net simpler, faster, or more beautiful? If it does none of the three, the PR body says why it still earns its place.
 
 ## Memory & sensitive data
 
 - **Do not use the file-based memory system in this project.** The harness memory under `~/.claude/projects/.../memory/` is retired here. Persist durable facts in `CLAUDE.md`, `.claude/rules/*`, or the relevant `FEATURE.md` — anything worth remembering lives in the repo, versioned and reviewable, not in per-machine local memory. Do not write new memory files; if you find yourself wanting to, add a repo doc instead.
-- **Never store sensitive or live data** (one sanctioned exception: the weekly-retro business-baseline block below, which exists precisely so sessions stop re-deriving those numbers — update it only at retros). Business metrics (MRR, ARPU, churn, sub counts), pricing, Stripe/prod settings, individual subscriber or reporter identifiers — retrieve these from production when needed (prod psql, Stripe dashboard/MCP, `/api/ops/*`, `/deploy-status`), never commit them to the repo or a local file. They go stale and they leak.
+- **Never store sensitive or live data.** Business metrics (MRR, ARPU, churn, sub counts), pricing, Stripe/prod settings, individual subscriber or reporter identifiers — retrieve these from production when needed (prod psql, Stripe dashboard/MCP, `/api/ops/*`, `/deploy-status`), never commit them to the repo or a local file. They go stale and they leak.
 
 ## Design Context
 - **Register**: product
@@ -34,11 +32,6 @@ Every PR is checked against all three — does it make the experience simpler/fa
 - **DNA**: Swiss Panel — Swiss/International layout + a monospaced tabular data voice; signature move = the right-hand mono data column. See DESIGN.md.
 - **Color**: reuse `web/src/styles/base.css` tokens (5 themes), one blue accent + the status triad — no new ramp
 - **Constraints**: React, WCAG AA, the 5-theme token system, product restraint (one signature move exempt)
-
-### Business baseline (as of 2026-08-11 — weekly-retro updates this block)
-
-729 paying subs · 15 new paid/wk · 23 pass sales/wk · 9.1%/mo churn (DB approximation: 66 cancels/30d ÷ 729 active; 78% lifecycle per last-14d cancel reasons, not price) · 14,460 registered (down 390 from 2026-08-04 — inactive-user deletion outpacing 216 gross signups/wk, not churn). MRR/ARPU no longer tracked here (decision 2026-07-19) — dollar figures read off the Stripe dashboard when needed. Funnel events at `/api/ops/metrics`.
-Pricing v2 shipped 2026-06-10: $7.99/mo + $64/yr for new members, legacy $6/$60 lock-in until 21 Jun (annual is offered, NOT the checkout default — corrected 2026-08-18). Scheduled reads: v2 funnel week of 15 Jun (targets: ≥70 new paid/wk, page→checkout ≥10%, checkout→paid ≥50%); minimal-layout CTR guardrail 24 Jun.
 
 ## Entry points
 
@@ -196,7 +189,7 @@ For any task that changes user-facing behavior, invoke `pm`, `designer`, and `en
 - Where they agree
 - Where they conflict, and how the conflict was resolved
 - The resulting plan
-- Expected MRR/funnel impact — which metric should move, where it is read, and when (one line; "none — internal" is a valid answer, silence is not)
+- Which of simpler / faster / more beautiful this serves, and the metric that would show it moved — where it is read, and when (one line; "none — internal" is a valid answer, silence is not)
 
 **When the trio disagrees on a visual direction, don't pick silently — ship a preview.** Build a `/dev/<surface>-preview` route that renders each candidate side by side with prefilled state for every variant the surface supports (free / paid / lifetime user, loading / error / empty, etc.). Use direct prop injection on the existing components — don't re-mock the data hooks. No auth gate, no nav link, no analytics. Push it as part of the draft PR so the user can open it locally with `pnpm dev` and choose from visuals. The preview route stays in the repo after merge as a regression check; remove only if the surface is deleted. Example: `/dev/account-preview` and `/dev/notion-preview` shipped with `style/account-redesign`.
 

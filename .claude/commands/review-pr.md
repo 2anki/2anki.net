@@ -101,7 +101,7 @@ Pipe a single comment with this shape:
 ```
 **Verdict**: approve | request-changes | comment-only
 
-<one-line summary tied to the goal: simpler/faster/more beautiful, or scale toward 300K>
+<one-line summary tied to the goal: simpler, faster, or more beautiful>
 
 ### Blocking
 - …

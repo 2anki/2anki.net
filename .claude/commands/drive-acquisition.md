@@ -4,9 +4,7 @@ argument-hint: optional — issue numbers to prioritize, or an acquisition sub-a
 ---
 
 Work through 2anki/server GitHub issues to drive ACQUISITION — getting a
-first-time visitor to a finished deck, signed up, and converted. That is the
-binding constraint from the latest weekly retro (new paid conversions collapsed
-from ~28/wk to ~3/wk; signups ~7.6/day). Everything you touch must plausibly
+first-time visitor to a finished deck, signed up, and converted. Everything you touch must plausibly
 reduce friction somewhere on: landing page → first upload → preview → download →
 signup → paid. Work autonomously; do not wait on me between issues.
 

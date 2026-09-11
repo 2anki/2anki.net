@@ -1,6 +1,6 @@
 This is a living document that will be updated over time.
 
-Mission: give people the simplest, fastest way to turn what they're studying into beautiful Anki flashcards. Scale 2anki.net past 300K users.
+Goal: be the go-to place on the web to create beautiful Anki flashcards, fast and easy.
 
 🟢 = shipped | 🟡 = in progress | 🔴 = planned
 
@@ -73,7 +73,7 @@ Mission: give people the simplest, fastest way to turn what they're studying int
 - 🟢 Prerendered static HTML for landing pages — shipped (`web/scripts/prerenderLandingPages.ts`)
 - 🟢 `sitemap.xml` and `robots.txt` — shipped
 
-## Phase 3 — Scale to 300K
+## Phase 3 — Become the go-to place
 
 - 🔴 Retention experiments informed by cancellation feedback (top themes: "I don't use it enough", "I finished what I needed")
 - 🔴 Blog at `/blog` for SEO content (deferred until landing pages prove the channel)
@@ -93,6 +93,4 @@ Mission: give people the simplest, fastest way to turn what they're studying int
 
 ## Current numbers
 
-Live numbers are NOT tracked here — the maintained business baseline is the dated block in CLAUDE.md (weekly-retro updates), and dollar figures read off the Stripe dashboard (MRR is deliberately untracked, decision 2026-07-19).
-
-See `Documentation/retros/` for weekly retro history.
+Live numbers are NOT tracked in the repo — read them from `/ops` (the Today scoreboard) or the Stripe dashboard. Weekly reflection runs via `/reflect` and writes lessons, never numbers, back into the repo.

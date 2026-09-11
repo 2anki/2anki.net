@@ -23,7 +23,7 @@ A leak is the largest absolute drop-off between two adjacent stages — the gap 
 
 ## Churn (the back door)
 
-Acquisition is only half the job: most churn is lifecycle ("finished what I needed"), not price. Read the live churn rate, lifecycle share, and turnover horizon from the business-baseline block in `CLAUDE.md` (weekly-retro maintains it) rather than a frozen number — those move week to week. Alongside the funnel, report:
+Acquisition is only half the job: most churn is lifecycle ("finished what I needed"), not price. Read the live churn rate and lifecycle share from production each time rather than a frozen number — those move week to week. Alongside the funnel, report:
 
 1. **30d churn rate** — cancelled or lapsed paying users ÷ paying users at period start (`subscriptions` rows flipping inactive; `users.patreon` excluded).
 2. **Cancel-flow funnel** — account page visits → cancel clicks → completed cancellations (events + `cancellation-feedback` rows where present).
@@ -37,7 +37,7 @@ Once a month, report usage events per 2026-era surface — chat, mindmaps, photo
 
 ## Workflow
 
-1. **Pull last 7 days + the prior 7 days.** Distinct users per stage. Read production aggregates — local dev has no real data, so never use the local dev DB for business numbers. Get them from the ops endpoints (`/api/ops/business/metrics`, `/api/ops/metrics`) with Alexander's authenticated session; if no authenticated path is wired into this environment, ask Alexander to paste the JSON (mirroring `.claude/commands/weekly-retro.md`). For aggregate-only queries, read-only `psql` over SSH against the prod box (the `/deploy-status` pattern) is acceptable. If no production source is reachable, surface that and stop.
+1. **Pull last 7 days + the prior 7 days.** Distinct users per stage. Read production aggregates — local dev has no real data, so never use the local dev DB for business numbers. Get them from the ops endpoints (`/api/ops/business/metrics`, `/api/ops/metrics`) with Alexander's authenticated session; if no authenticated path is wired into this environment, ask Alexander to paste the JSON. For aggregate-only queries, read-only `psql` over SSH against the prod box (the `/deploy-status` pattern) is acceptable. If no production source is reachable, surface that and stop.
 2. **Compute drop-off** at each transition, last week and prior week.
 3. **Compute week-over-week delta** on each drop-off.
 4. **Name the biggest leak** — the transition with the highest absolute drop-off last week.
@@ -61,7 +61,6 @@ Once a month, report usage events per 2026-era surface — chat, mindmaps, photo
 **Recommendation:** Spec a landing-page conversion experiment — that's the biggest hole and it just got bigger.
 
 **Churn:** 30d churn X% (prior Y%); cancellations skew <new|old> subscribers. <One-line read.>
-**MRR:** $X (Δ $Y vs prior week).
 ```
 
 One row per transition. No commentary outside the single-line statements.

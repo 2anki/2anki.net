@@ -2,6 +2,8 @@
 
 A living doc, not an in-flight spec. The chat composer file-attachment PR (#2262) explicitly deferred, hard-cut, or out-scoped 13 items; this file is the single source of truth for what's next, what's frozen, and what won't ship.
 
+**Status check (2026-09-11):** #13 (multipart history bug) shipped — `parseHistory` in `src/controllers/ChatController.ts` parses the stringified field. #1 (attachment persistence) shipped — `chat_attachments` table (migration 2026-08-14) and `ChatAttachmentsRepository`. #3 pins, #4 model picker, #9 page range, #11 thumbnails: not shipped, triggers unchanged. The P0/P1 sections below are kept as the record of why; treat them as done.
+
 **Why this lives here, not in `Documentation/specs/`**: spec docs auto-graduate to implementation under the spec lifecycle (`CLAUDE.md > Spec lifecycle`). A roadmap survives across PRs and shouldn't get deleted when one of its items ships. Same pattern as `Documentation/ankify/notion-webhooks-deferred.md`.
 
 ---

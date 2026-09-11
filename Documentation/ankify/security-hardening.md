@@ -1,6 +1,6 @@
 # Ankify security hardening — spec
 
-Status: **partially shipped** as of 2026-05-08 via PR #2042. Tracks the work that needs to land before onboarding user #2 to `/ankify`.
+Status: **partially shipped** as of 2026-05-08 via PR #2042. Written when `/ankify` was gated to a hard-coded email allowlist; that gate is gone — access is now `hasAnkifyAccess` (`src/lib/ankify/access.ts`: lifetime `patreon`, per-user `ankify_access` comp, or an active Auto-Sync subscription) and Ankify is sold as Auto Sync. Read every "allowlist" below as that gate. The per-slice table was last verified 2026-05-08; re-check slice status against the prod box before relying on it (2026-09-11 note).
 
 ## Per-slice status (read this first)
 
