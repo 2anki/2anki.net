@@ -254,6 +254,16 @@
       "markdownZip": {
         "title": "Markdown z Notion pomija przełączniki",
         "body": "Eksport Markdown z Notion pomija bloki toggle — czyli tę część, którą 2anki zamienia na fiszki — więc ten eksport może utworzyć niewiele fiszek lub żadnej. Wyeksportuj ponownie jako HTML: w Notion otwórz stronę → ••• (w prawym górnym rogu) → Eksportuj → ustaw HTML jako format eksportu i prześlij ten plik. Zwykły plik Markdown, który nie pochodzi z Notion, nadal działa — fiszki powstają z par punktów listy."
+      },
+      "unbundledMany": {
+        "title": "Przeciągnij cały folder, żeby dołączyć obrazy",
+        "body": "Twoja przeglądarka rozpakowała eksport z Notion, więc obrazy leżą teraz w folderze obok tych plików. Przeciągnij ten cały folder na tę stronę, a 2anki złoży wszystko z powrotem razem z obrazami.",
+        "continue": "Kontynuuj z tymi plikami"
+      },
+      "unbundledSingle": {
+        "title": "Obrazy nie zostaną dołączone",
+        "body": "Pojedynczy plik HTML nie zawiera obrazów. Jeśli pochodzi z Notion, przeciągnij cały folder eksportu lub plik zip na tę stronę, a 2anki dołączy obrazy.",
+        "continue": "Kontynuuj bez obrazów"
       }
     }
   },

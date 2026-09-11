@@ -75,21 +75,34 @@ describe('detectUploadIssues', () => {
     expect(result!.continueLabel).toBe('translated:upload.validation.continue');
   });
 
-  it('returns warning for a single html file', () => {
-    const result = detectUploadIssues([fakeFile('page.html')]);
-    expect(result).not.toBeNull();
-    expect(result!.status).toBe('warning');
-    expect(result!.title.toLowerCase()).toContain('images');
+  it('returns the single-html warning resolved through the translator', () => {
+    const result = detectUploadIssues(
+      [fakeFile('page.html')],
+      false,
+      (key) => `translated:${key}`
+    );
+    expect(result).toEqual({
+      status: 'warning',
+      title: 'translated:upload.validation.unbundledSingle.title',
+      body: 'translated:upload.validation.unbundledSingle.body',
+      continueLabel: 'translated:upload.validation.unbundledSingle.continue',
+      code: 'unbundled_html',
+    });
   });
 
-  it('returns warning for multiple html files', () => {
-    const result = detectUploadIssues([
-      fakeFile('page1.html'),
-      fakeFile('page2.html'),
-    ]);
-    expect(result).not.toBeNull();
-    expect(result!.status).toBe('warning');
-    expect(result!.title).toContain('HTML');
+  it('returns the unpacked-export warning for multiple html files', () => {
+    const result = detectUploadIssues(
+      [fakeFile('page1.html'), fakeFile('page2.html')],
+      false,
+      (key) => `translated:${key}`
+    );
+    expect(result).toEqual({
+      status: 'warning',
+      title: 'translated:upload.validation.unbundledMany.title',
+      body: 'translated:upload.validation.unbundledMany.body',
+      continueLabel: 'translated:upload.validation.unbundledMany.continue',
+      code: 'unbundled_html',
+    });
   });
 
   it('returns null for csv files', () => {
