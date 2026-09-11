@@ -2,7 +2,7 @@
 
 **Outcome**: Al opens `/ops/business` and within 5 seconds knows: are we earning more this month than last, are paying users churning, and are payments failing. Six numbers, one screen, ≤15 min stale. The Engineering tab stays at `/ops`, unchanged.
 
-**Goal alignment**: The 300K-user goal is gated on a sustainable revenue floor. Right now Al checks Stripe's dashboard manually; that friction means we look at it weekly instead of daily. Same-tab visibility makes "is this PR earning its complexity?" a daily question.
+**Goal alignment**: The product only stays the go-to place if the business under it is healthy. Right now Al checks Stripe's dashboard manually; that friction means we look at it weekly instead of daily. Same-tab visibility makes "is this PR earning its complexity?" a daily question.
 
 **Problem**: Engineering signals (latency, errors) and business signals (MRR, churn, failed payments) currently live in two different tools. We have no view that answers "are we growing?" alongside "are we healthy?" — and qualitative user feedback doesn't aggregate into a number, so it doesn't belong on this dashboard.
 

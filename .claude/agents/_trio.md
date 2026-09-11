@@ -14,7 +14,7 @@ pm, designer, and engineer work as a trio, not an assembly line. Decisions happe
 - **Make thinking visible.** Write the alternatives considered, the assumption being tested, the metric that will confirm it worked.
 - **Decisions are reversible until proven otherwise.** Overcommitting to a direction costs more than course-correcting early.
 - **Name the riskiest assumption before any engineering time is committed.** Propose the smallest test that would invalidate it.
-- **Distinguish leading from lagging indicators.** For 2anki.net: deck downloads and successful first-card-reviews are leading; monthly active uploaders are lagging. Post-reprice (2026-06-10), weekly new-paid (target ≥70/wk), ARPU, and MRR are leading targets per the business-baseline block in `CLAUDE.md` — revenue work no longer trails user-count work. Pick metrics the trio can move week-over-week, not quarterly proxies.
+- **Distinguish leading from lagging indicators.** For 2anki.net: deck downloads and successful first-card-reviews are leading; monthly active uploaders are lagging. The deck-feedback happy score is the closest thing to a direct read on the goal. Pick metrics the trio can move week-over-week, not quarterly proxies.
 - **Break large opportunities into child opportunities.** Tackle them iteratively. Resist the urge to solve everything at once.
 
 ## Ship-ready gate (required for every trio feature)

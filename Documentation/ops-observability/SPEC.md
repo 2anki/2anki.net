@@ -2,7 +2,7 @@
 
 **Outcome**: Al opens `/ops` and within 5 seconds knows: are requests slow, which endpoints/services are slowest, are errors spiking, and how often we hit Claude/Notion. All inbound requests and outbound external API calls are persisted in Postgres with method, path/service, status, and duration. Zero visibility becomes "open dashboard, see truth."
 
-**Goal alignment**: Scaling to 300K users requires we know what breaks and what's slow before users tell us. This is the foundation that lets every later perf/reliability bet be data-driven instead of vibes-driven. Critical constraint: this feature is internal — it must NOT degrade user-facing latency. Mitigation: writes are fire-and-forget (`void persist().catch(log)`), batched via an in-memory queue flushed every 5s or 100 rows (whichever first), and the middleware itself only captures timestamps + finalizes on `res.on('finish')` — no blocking work in the request path.
+**Goal alignment**: Being the go-to place for fast, beautiful flashcards means knowing what breaks and what's slow before users tell us. This is the foundation that lets every later perf/reliability bet be data-driven instead of vibes-driven. Critical constraint: this feature is internal — it must NOT degrade user-facing latency. Mitigation: writes are fire-and-forget (`void persist().catch(log)`), batched via an in-memory queue flushed every 5s or 100 rows (whichever first), and the middleware itself only captures timestamps + finalizes on `res.on('finish')` — no blocking work in the request path.
 
 ## Scope (what we ARE building)
 

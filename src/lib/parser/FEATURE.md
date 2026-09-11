@@ -1,6 +1,6 @@
 # parser — Notion → Anki conversion
 
-The hot path. Every Notion page, HTML export, markdown file, or zip the user uploads ends up running through this directory. Performance and correctness here directly move the 300K-user goal.
+The hot path. Every Notion page, HTML export, markdown file, or zip the user uploads ends up running through this directory. Performance and correctness here are the goal itself: a fast, clean deck from whatever was dropped in.
 
 ## Entry points
 
