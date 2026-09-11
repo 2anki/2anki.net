@@ -248,6 +248,16 @@
       "markdownZip": {
         "title": "Notion-Markdown lässt deine Toggles weg",
         "body": "Der Markdown-Export von Notion lässt Toggle-Blöcke weg — genau den Teil, aus dem 2anki Karten macht — daher entstehen aus diesem Export womöglich kaum oder keine Karten. Exportiere stattdessen als HTML: Öffne die Seite in Notion → ••• (oben rechts) → Exportieren → Exportformat auf HTML setzen und diese Datei hochladen. Eine einfache Markdown-Datei, die nicht aus Notion stammt, funktioniert weiterhin — Karten entstehen aus Aufzählungspaaren."
+      },
+      "unbundledMany": {
+        "title": "Zieh den ganzen Ordner hierher, damit die Bilder dabei sind",
+        "body": "Dein Browser hat den Notion-Export entpackt, deshalb liegen die Bilder jetzt in einem Ordner neben diesen Dateien. Zieh diesen ganzen Ordner auf diese Seite und 2anki setzt alles wieder zusammen, Bilder inklusive.",
+        "continue": "Mit diesen Dateien fortfahren"
+      },
+      "unbundledSingle": {
+        "title": "Bilder werden nicht übernommen",
+        "body": "Eine einzelne HTML-Datei enthält keine Bilder. Wenn sie aus Notion stammt, zieh den ganzen Export-Ordner oder die Zip-Datei auf diese Seite und 2anki nimmt die Bilder mit.",
+        "continue": "Ohne Bilder fortfahren"
       }
     }
   },

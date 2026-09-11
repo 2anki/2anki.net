@@ -248,6 +248,16 @@
       "markdownZip": {
         "title": "Il Markdown di Notion elimina i toggle",
         "body": "L'esportazione in Markdown di Notion tralascia i blocchi toggle — la parte che 2anki trasforma in carte — quindi questa esportazione potrebbe creare poche carte o nessuna. Riesporta come HTML: in Notion, apri la pagina → ••• (in alto a destra) → Esporta → imposta HTML come formato di esportazione, poi carica quel file. Un semplice file Markdown che non proviene da Notion funziona comunque — le carte nascono da coppie di punti elenco."
+      },
+      "unbundledMany": {
+        "title": "Trascina l'intera cartella per includere le immagini",
+        "body": "Il browser ha decompresso l'esportazione di Notion, quindi le immagini ora si trovano in una cartella accanto a questi file. Trascina quell'intera cartella su questa pagina e 2anki la rimette insieme, immagini incluse.",
+        "continue": "Continua con questi file"
+      },
+      "unbundledSingle": {
+        "title": "Le immagini non saranno incluse",
+        "body": "Un singolo file HTML non contiene immagini. Se viene da Notion, trascina l'intera cartella di esportazione o lo zip su questa pagina e 2anki include le immagini.",
+        "continue": "Continua senza immagini"
       }
     }
   },

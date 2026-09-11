@@ -66,9 +66,9 @@ export function detectUploadIssues(
   if (htmlFiles.length >= 2) {
     return {
       status: 'warning',
-      title: 'Multiple HTML files — images may be missing',
-      body: 'Safari sometimes unpacks Notion exports and leaves images behind. Re-download the zip from Notion in a different browser, or find the original zip in Downloads and upload that.',
-      continueLabel: 'Continue with these files',
+      title: translate(t, 'upload.validation.unbundledMany.title'),
+      body: translate(t, 'upload.validation.unbundledMany.body'),
+      continueLabel: translate(t, 'upload.validation.unbundledMany.continue'),
       code: 'unbundled_html',
     };
   }
@@ -87,9 +87,9 @@ export function detectUploadIssues(
   if (fileArray.length === 1 && htmlFiles.length === 1) {
     return {
       status: 'warning',
-      title: 'Images won’t be included',
-      body: "A single HTML file doesn't include images. If this came from Notion, download the zip export instead — it bundles the images.",
-      continueLabel: 'Continue without images',
+      title: translate(t, 'upload.validation.unbundledSingle.title'),
+      body: translate(t, 'upload.validation.unbundledSingle.body'),
+      continueLabel: translate(t, 'upload.validation.unbundledSingle.continue'),
       code: 'unbundled_html',
     };
   }

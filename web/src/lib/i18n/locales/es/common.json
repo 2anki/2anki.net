@@ -248,6 +248,16 @@
       "markdownZip": {
         "title": "El Markdown de Notion pierde tus toggles",
         "body": "La exportación a Markdown de Notion omite los bloques de toggle — la parte que 2anki convierte en tarjetas — así que esta exportación puede generar pocas tarjetas o ninguna. Vuelve a exportar como HTML: en Notion, abre la página → ••• (arriba a la derecha) → Exportar → elige HTML como formato de exportación y sube ese archivo. Un archivo Markdown normal que no venga de Notion sigue funcionando — las tarjetas se crean a partir de pares de viñetas."
+      },
+      "unbundledMany": {
+        "title": "Arrastra la carpeta completa para incluir las imágenes",
+        "body": "Tu navegador descomprimió la exportación de Notion, así que las imágenes están ahora en una carpeta junto a estos archivos. Arrastra esa carpeta completa a esta página y 2anki la vuelve a montar, con imágenes incluidas.",
+        "continue": "Continuar con estos archivos"
+      },
+      "unbundledSingle": {
+        "title": "Las imágenes no se incluirán",
+        "body": "Un archivo HTML suelto no lleva imágenes. Si viene de Notion, arrastra la carpeta de exportación completa o el zip a esta página y 2anki incluye las imágenes.",
+        "continue": "Continuar sin imágenes"
       }
     }
   },

@@ -248,6 +248,16 @@
       "markdownZip": {
         "title": "Notion-Markdown laat je toggles vallen",
         "body": "De Markdown-export van Notion laat toggle-blokken weg — precies het deel dat 2anki in kaarten omzet — dus deze export maakt mogelijk weinig of geen kaarten. Exporteer opnieuw als HTML: open de pagina in Notion → ••• (rechtsboven) → Exporteren → stel HTML in als exportformaat en upload dat bestand. Een gewoon Markdown-bestand dat niet van Notion komt werkt nog steeds — kaarten komen uit paren opsommingstekens."
+      },
+      "unbundledMany": {
+        "title": "Sleep de hele map hierheen om de afbeeldingen mee te nemen",
+        "body": "Je browser heeft de Notion-export uitgepakt, dus de afbeeldingen staan nu in een map naast deze bestanden. Sleep die hele map naar deze pagina en 2anki zet alles weer in elkaar, inclusief afbeeldingen.",
+        "continue": "Doorgaan met deze bestanden"
+      },
+      "unbundledSingle": {
+        "title": "Afbeeldingen worden niet meegenomen",
+        "body": "Een los HTML-bestand bevat geen afbeeldingen. Komt het uit Notion, sleep dan de hele exportmap of de zip naar deze pagina en 2anki neemt de afbeeldingen mee.",
+        "continue": "Doorgaan zonder afbeeldingen"
       }
     }
   },

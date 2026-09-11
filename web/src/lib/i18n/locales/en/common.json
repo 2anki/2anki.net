@@ -248,6 +248,16 @@
       "markdownZip": {
         "title": "Notion Markdown drops your toggles",
         "body": "Notion's Markdown export leaves out toggle blocks — the part 2anki turns into cards — so this export may make few or no cards. Re-export as HTML: in Notion, open the page → ••• (top right) → Export → set Export format to HTML, then upload that. A plain Markdown file that isn't from Notion still works — cards come from bullet pairs."
+      },
+      "unbundledMany": {
+        "title": "Drop the whole folder to include the images",
+        "body": "Your browser unpacked the Notion export, so the images now sit in a folder next to these files. Drop that whole folder onto this page and 2anki packs it back together, images included.",
+        "continue": "Continue with these files"
+      },
+      "unbundledSingle": {
+        "title": "Images won't be included",
+        "body": "A single HTML file carries no images. If it came from Notion, drop the whole export folder or the zip onto this page and 2anki includes the images.",
+        "continue": "Continue without images"
       }
     }
   },

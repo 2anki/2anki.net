@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-11-unpacked-notion-export-warning-points-at-folder-drop",
+  "date": "2026-09-11",
+  "type": "fix",
+  "title": "When your browser unpacks a Notion export, the upload page now tells you to drop the whole folder"
+}
