@@ -3971,3 +3971,75 @@ describe('UploadService.handleSyncUpload — persisted copy for a signed-in owne
     );
   });
 });
+
+describe('UploadService.handleUpload — image drops without a vision path (#4400)', () => {
+  const imageFile = (name: string) =>
+    ({
+      originalname: name,
+      mimetype: 'image/png',
+      size: 2048,
+      path: `/tmp/${name}`,
+    }) as unknown as Express.Multer.File;
+
+  it('answers an anonymous photo drop with the Photo to Deck pointer before any parse', async () => {
+    const execute = jest.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({ execute }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      files: [imageFile('lecture-page.png')],
+      cookies: { anon_id: 'anon-photo' },
+    } as Partial<express.Request>);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    expect((capturedJson() as { code: string }).code).toBe(
+      'image_only_no_text'
+    );
+    expect(execute).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.anything()
+    );
+    expect(trackMock).toHaveBeenCalledWith(
+      'image_only_no_text_shown',
+      expect.objectContaining({ anonymousId: 'anon-photo' })
+    );
+  });
+
+  it('answers a signed-in multi-photo drop the same way instead of parsing', async () => {
+    const execute = jest.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({ execute }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      files: [imageFile('one.png'), imageFile('two.png')],
+    } as Partial<express.Request>);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+    res.locals.owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    expect((capturedJson() as { code: string }).code).toBe(
+      'image_only_no_text'
+    );
+    expect(execute).not.toHaveBeenCalled();
+  });
+});
