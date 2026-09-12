@@ -763,3 +763,29 @@ describe('getPackagesFromZip — encrypted PDFs', () => {
     );
   });
 });
+
+describe('getPackagesFromZip — Anki package renamed as zip', () => {
+  it('rejects the upload before any conversion runs', async () => {
+    const fileNames = ['collection.anki2', 'media', '0', '1', '2'];
+    mockZipHandlerClass.mockImplementation(() => ({
+      build: jest.fn().mockResolvedValue(undefined),
+      getFileNames: jest.fn().mockReturnValue(fileNames),
+      files: fileNames.map((name) => ({ name, contents: 'x' })),
+    }));
+
+    const settings = new CardOption({});
+    const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
+
+    await expect(
+      getPackagesFromZip(
+        Buffer.from('fake-zip') as unknown as Uint8Array,
+        false,
+        settings,
+        workspace
+      )
+    ).rejects.toThrow(/already an Anki deck/);
+
+    expect(mockPrepareDeck).not.toHaveBeenCalled();
+    expect(mockPrepareDeckInfoOnly).not.toHaveBeenCalled();
+  });
+});

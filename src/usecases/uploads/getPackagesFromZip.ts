@@ -18,6 +18,7 @@ import Workspace from '../../lib/parser/WorkSpace';
 import { getMaxUploadCount } from '../../lib/misc/getMaxUploadCount';
 
 import { isZipContentFileSupported } from './isZipContentFileSupported';
+import { ANKI_PACKAGE_ZIP_MESSAGE, isAnkiPackageZip } from './isAnkiPackageZip';
 import { convertAnkiAppDecksFromZip } from './convertAnkiAppDecksFromZip';
 import { getRelevantFiles } from './getRelevantFiles';
 import { enableMarkdownForMarkdownUploads } from './enableMarkdownForMarkdownUploads';
@@ -452,6 +453,10 @@ export const getPackagesFromZip = async (
     settings,
     workspace.location
   );
+
+  if (isAnkiPackageZip(zipHandler.getFileNames())) {
+    throw new Error(ANKI_PACKAGE_ZIP_MESSAGE);
+  }
 
   const ankiAppResult = await convertAnkiAppDecksFromZip(
     zipHandler.files,

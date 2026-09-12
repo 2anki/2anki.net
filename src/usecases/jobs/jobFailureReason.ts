@@ -187,6 +187,9 @@ export function jobFailureReasonFromError(
   ) {
     return (error as Error).message;
   }
+  if (error instanceof Error && /already an Anki deck/.test(error.message)) {
+    return error.message;
+  }
   if (
     error instanceof EmptyContentError ||
     hasName(error, 'EmptyContentError')
