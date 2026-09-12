@@ -76,7 +76,7 @@ import { writePdfImageFallbackMarker } from '../infrastracture/adapters/fileConv
 import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
-import UploadService from './UploadService';
+import UploadService, { resolveUploadWarning } from './UploadService';
 import { track } from './events/track';
 
 const trackMock = track as jest.Mock;
@@ -4041,5 +4041,22 @@ describe('UploadService.handleUpload — image drops without a vision path (#440
       'image_only_no_text'
     );
     expect(execute).not.toHaveBeenCalled();
+describe('resolveUploadWarning — stray cloze markup', () => {
+  it('turns the coded count into user copy, summing across decks', () => {
+    expect(resolveUploadWarning(['stray-cloze:2', 'stray-cloze:1'])).toBe(
+      '3 cards contain cloze syntax like {{c1::…}} but cloze mode is off, so the braces show on the card. Turn on cloze mode and convert again.'
+    );
+  });
+
+  it('uses the singular for one card', () => {
+    expect(resolveUploadWarning(['stray-cloze:1'])).toMatch(
+      /^1 card contains cloze syntax/
+    );
+  });
+
+  it('keeps the markdown heuristic warning ahead of stray cloze', () => {
+    expect(
+      resolveUploadWarning(['stray-cloze:1', 'markdown-heuristic'])
+    ).toMatch(/heuristic detection/);
   });
 });

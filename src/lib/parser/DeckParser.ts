@@ -28,6 +28,7 @@ import Workspace from './WorkSpace';
 import CustomExporter from './exporters/CustomExporter';
 import handleClozeDeletions from './helpers/handleClozeDeletions';
 import hasInlineClozeCode from './helpers/hasInlineClozeCode';
+import hasClozeMarkup from './helpers/hasClozeMarkup';
 import handleOverlappingCloze, {
   OverlappingClozeStyle,
 } from './helpers/handleOverlappingCloze';
@@ -179,6 +180,10 @@ export class DeckParser {
 
   emptyBackCount: number;
 
+  // Basic-mode cards that carry {{cN::…}} markup; Anki renders the braces
+  // literally, so the conversion report warns and offers cloze mode (#4402).
+  strayClozeCount: number;
+
   private readonly knownGuids?: KnownGuids;
 
   private readonly uploadIdentity?: UploadIdentityContext;
@@ -222,6 +227,7 @@ export class DeckParser {
     this.droppedImageCount = 0;
     this.expiredNotionImageCount = 0;
     this.emptyBackCount = 0;
+    this.strayClozeCount = 0;
     this.sawUnclassifiedParse = false;
     this.payload = [];
     this.workspace = input.workspace ?? new Workspace(true, 'fs');
@@ -1110,6 +1116,12 @@ export class DeckParser {
 
     card.enableInput = this.settings.useInput;
     card.cloze = this.settings.isCloze;
+    if (
+      !card.cloze &&
+      (hasClozeMarkup(card.name) || hasClozeMarkup(card.back))
+    ) {
+      this.strayClozeCount += 1;
+    }
 
     if (card.cloze) {
       const headerHasCloze = hasInlineClozeCode(card.name);
@@ -1339,6 +1351,7 @@ export class DeckParser {
     }
 
     this.emptyBackCount = 0;
+    this.strayClozeCount = 0;
     for (const d of this.payload) {
       const deck = d;
       deck.id = get16DigitRandomId();
