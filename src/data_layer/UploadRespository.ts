@@ -70,6 +70,17 @@ class UploadRepository implements IUploadRepository {
     return this.database(this.table).del().where({ owner, key });
   }
 
+  async getAllUploadReferences(): Promise<
+    { id: number; key: string; owner: number }[]
+  > {
+    const rows = await this.database<Uploads>(this.table)
+      .select('id', 'key', 'owner')
+      .whereNotNull('key');
+    return rows
+      .filter((row) => typeof row.key === 'string' && row.key.length > 0)
+      .map((row) => ({ id: row.id, key: row.key, owner: row.owner }));
+  }
+
   getUploadsByOwner(owner: number): Promise<Uploads[]> {
     if (owner == null) {
       console.warn('[UploadRepository] getUploadsByOwner called with no owner');

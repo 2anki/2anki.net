@@ -90,6 +90,8 @@ import { ReconcileOrphanedSubscriptionsUseCase } from '../usecases/ops/Reconcile
 import { ErrorEventRepository } from '../data_layer/ErrorEventRepository';
 import { TodaySnapshotService } from '../services/ops/TodaySnapshotService';
 import { GetTodaySnapshotUseCase } from '../usecases/ops/GetTodaySnapshotUseCase';
+import { PruneDeadUploadsUseCase } from '../usecases/ops/PruneDeadUploadsUseCase';
+import UploadRepository from '../data_layer/UploadRespository';
 
 const OpsRouter = () => {
   const router = express.Router();
@@ -260,7 +262,8 @@ const OpsRouter = () => {
         repo: new EmailDeliveryMetricsRepository(database),
       })
     ),
-    new GetTodaySnapshotUseCase(todaySnapshotService)
+    new GetTodaySnapshotUseCase(todaySnapshotService),
+    new PruneDeadUploadsUseCase(new UploadRepository(database), storageHandler)
   );
 
   /**
@@ -467,6 +470,38 @@ const OpsRouter = () => {
    */
   router.post('/api/ops/delete-inactive-users', RequireOpsAccess, (req, res) =>
     controller.deleteInactiveUsers(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/ops/prune-dead-uploads:
+   *   post:
+   *     summary: Delete uploads rows whose bucket object no longer exists
+   *     description: |
+   *       Lists the storage bucket once and removes uploads rows whose key has no
+   *       object and is not a reserved-prefix key (mindmaps/, io-drafts/, assets/) —
+   *       the dead rows the pre-#3881 orphan sweep left behind when it deleted the
+   *       objects but not the rows. Owners of those rows see decks in their list that
+   *       404 on download. Pass dryRun:false in the body to delete; omit it or pass
+   *       dryRun:true to count the missing-key rows and return up to five sample keys.
+   *       Internal endpoint locked to the ops owner — returns 404 for everyone else.
+   *     tags: [Ops]
+   *     requestBody:
+   *       required: false
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               dryRun: { type: boolean }
+   *     responses:
+   *       200:
+   *         description: Dry-run count with sample keys, or the deleted-row count
+   *       404:
+   *         description: Not the ops owner
+   */
+  router.post('/api/ops/prune-dead-uploads', RequireOpsAccess, (req, res) =>
+    controller.pruneDeadUploads(req, res)
   );
 
   /**

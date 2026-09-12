@@ -240,3 +240,60 @@ describe('CommandsTab — change account email', () => {
     expect(screen.queryByRole('button', { name: 'Check value' })).toBeNull();
   });
 });
+
+describe('CommandsTab — prune dead upload rows', () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  test('keeps the prune button locked until a check finds dead rows, then confirms with the count', async () => {
+    const confirmSpy = vi
+      .spyOn(globalThis, 'confirm')
+      .mockImplementation(() => true);
+    mockFetch((_url, init) => {
+      const body = init?.body ? JSON.parse(init.body as string) : {};
+      return body.dryRun
+        ? { dryRun: true, missingRows: 5, sampleKeys: ['decks/a.apkg'] }
+        : { dryRun: false, deleted: 5 };
+    });
+    renderTab();
+
+    const pruneButton = screen.getByRole('button', { name: 'Prune dead rows' });
+    expect(pruneButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Check dead rows' }));
+    expect(
+      await screen.findByText(
+        '5 upload rows point at a deleted file and would be removed.'
+      )
+    ).toBeInTheDocument();
+    expect(pruneButton).toBeEnabled();
+
+    fireEvent.click(pruneButton);
+    expect(confirmSpy).toHaveBeenCalledWith(
+      'Remove 5 dead upload rows? The files are already gone; this only clears the rows that 404 on download.'
+    );
+    expect(
+      await screen.findByText('Removed 5 dead upload rows.')
+    ).toBeInTheDocument();
+    expect(pruneButton).toBeDisabled();
+  });
+
+  test('keeps the prune button locked when the check finds nothing', async () => {
+    mockFetch(() => ({ dryRun: true, missingRows: 0, sampleKeys: [] }));
+    renderTab();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Check dead rows' }));
+    expect(
+      await screen.findByText(
+        '0 upload rows point at a deleted file and would be removed.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Prune dead rows' })
+    ).toBeDisabled();
+  });
+});
