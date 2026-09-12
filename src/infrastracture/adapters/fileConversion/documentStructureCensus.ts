@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { logFileLabel } from '../../../lib/logging/logFileLabel';
 import { unzipSync } from 'fflate';
 
 import { convertDocxToHTML } from './convertDocxToHTML';
@@ -35,7 +36,6 @@ export interface ZipStructureCensus {
 }
 
 const ZIP_CENSUS_MAX_ENTRIES = 50;
-const ZIP_CENSUS_MAX_NAME = 120;
 
 // Central-directory walk only — the filter always returns false, so no entry
 // ever inflates and a zip bomb cannot hurt the diagnostics path.
@@ -66,7 +66,7 @@ export function censusZipEntries(buffer: Buffer): ZipStructureCensus {
   const nested = all.filter((e) => /\.zip$/i.test(e.name));
   const flat = all.filter((e) => !/\.zip$/i.test(e.name));
   const entries = all.slice(0, ZIP_CENSUS_MAX_ENTRIES).map((e) => ({
-    name: e.name.slice(0, ZIP_CENSUS_MAX_NAME),
+    name: logFileLabel(e.name),
     size: e.size,
     supported: Boolean(isZipContentFileSupported(e.name)),
   }));

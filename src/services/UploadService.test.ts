@@ -542,7 +542,7 @@ describe('UploadService.handleUpload — error paths', () => {
       expect(capturedStatus()).toBe(400);
       expect(errorSpy).not.toHaveBeenCalled();
       expect(infoSpy).toHaveBeenCalledWith(
-        expect.stringContaining('<details>')
+        expect.stringContaining('<details=true')
       );
     } finally {
       infoSpy.mockRestore();

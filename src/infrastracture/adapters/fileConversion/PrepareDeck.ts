@@ -50,6 +50,10 @@ import type { InducedRescue } from '../../../lib/parser/induction/candidateRules
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import Workspace from '../../../lib/parser/WorkSpace';
 import path from 'path';
+import {
+  logFileLabel,
+  summarizeFileNames,
+} from '../../../lib/logging/logFileLabel';
 import { writeWorkspaceFile } from './writeWorkspaceFile';
 import { writePdfImageFallbackMarker } from './pdfImageFallbackMarker';
 import { mediaFilesForHtmlFile } from './mediaFilesForHtmlFile';
@@ -175,9 +179,8 @@ async function convertFile(
   if (!file.contents) return null;
 
   console.info('[PrepareDeck] convertFile start', {
-    name: file.name,
+    file: logFileLabel(file.name),
     workspaceLocation: input.workspace.location,
-    mimetype: file.name.split('.').pop() ?? 'unknown',
   });
 
   const t0 = Date.now();
@@ -743,16 +746,12 @@ export async function PrepareDeck(
 
   const files = dedupeFilesByName(input.files);
 
-  console.info('[PrepareDeck] received', {
-    count: files.length,
-    names: files.map((f) => f.name),
-    sources: files.map((f) => f.name.slice(0, 60)),
-  });
+  const fileSummary = summarizeFileNames(files.map((f) => f.name));
+  console.info('[PrepareDeck] received', fileSummary);
 
   console.log('[PrepareDeck] start', {
-    name: input.name,
+    name: logFileLabel(input.name),
     fileCount: files.length,
-    fileNames: files.map((f) => f.name),
     claudeEnabled: input.settings.claudeAIFlashcards,
     noLimits: input.noLimits,
   });
