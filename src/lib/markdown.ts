@@ -32,9 +32,9 @@ const IMAGE_SRC_SCHEME_RE = /^(?:data:image\/|https?:\/\/|[^:]*$)/i;
 
 const decodeAttributeEntities = (text: string): string =>
   text
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&');
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&amp;', '&');
 
 const attributeValue = (attributes: string, name: string): string | null => {
   const match = new RegExp(`\\b${name}=(?:"([^"]*)"|'([^']*)')`, 'i').exec(
@@ -51,8 +51,8 @@ const restoreEscapedImages = (html: string): string =>
     if (!src || !IMAGE_SRC_SCHEME_RE.test(src)) return whole;
     const alt = attributeValue(attributes, 'alt');
     const altAttribute =
-      alt == null ? '' : ` alt="${alt.replace(/"/g, '&quot;')}"`;
-    return `<img src="${src.replace(/"/g, '&quot;')}"${altAttribute}>`;
+      alt == null ? '' : ` alt="${alt.replaceAll('"', '&quot;')}"`;
+    return `<img src="${src.replaceAll('"', '&quot;')}"${altAttribute}>`;
   });
 
 export const markdownToHTML = (
