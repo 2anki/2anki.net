@@ -1,4 +1,5 @@
 import {
+  isCSVFile,
   hasMarkdownFileName,
   isCompressedFile,
   isAnkiDeckFile,
@@ -85,4 +86,16 @@ test('isAnkiAppExportXml rejects non-deck content', () => {
   expect(isAnkiAppExportXml('<decks><deck/></decks>')).toBe(false);
   expect(isAnkiAppExportXml('plain text')).toBe(false);
   expect(isAnkiAppExportXml(Buffer.from([0x50, 0x4b, 0x03, 0x04]))).toBe(false);
+});
+
+test('isCSVFile accepts .csv and .tsv regardless of case', () => {
+  expect(Boolean(isCSVFile('cards.csv'))).toBe(true);
+  expect(Boolean(isCSVFile('cards.TSV'))).toBe(true);
+  expect(Boolean(isCSVFile('cards.tsv'))).toBe(true);
+});
+
+test('isCSVFile rejects other extensions and bare names', () => {
+  expect(Boolean(isCSVFile('cards.txt'))).toBe(false);
+  expect(Boolean(isCSVFile('csv'))).toBe(false);
+  expect(Boolean(isCSVFile('mycsv'))).toBe(false);
 });

@@ -9,6 +9,7 @@ export default function getAcceptedContentTypes(): string {
     '.zip',
     '.html',
     '.csv',
+    '.tsv',
     '.md',
     '.pdf',
     '.ppt',

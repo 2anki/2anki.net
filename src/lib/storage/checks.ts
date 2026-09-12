@@ -22,7 +22,7 @@ export const isImageFileEmbedable = (url: string) => {
   return isLocalPath && !hasTraversal;
 };
 
-export const isCSVFile = (fileName: string) => /.csv$/i.exec(fileName);
+export const isCSVFile = (fileName: string) => /\.(csv|tsv)$/i.exec(fileName);
 
 export const isDocxFile = (fileName: string) => /\.(docx|doc)$/i.exec(fileName);
 
