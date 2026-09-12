@@ -6,3 +6,7 @@ pylint>=4.0.5
 ftfy~=6.3.1
 pytest
 mock
+# Test-only: Anki's own importer drives tests/test_anki_import.py to prove generated
+# decks import and re-import cleanly. The marker keeps this ~10MB rslib wheel off the
+# prod base image (Python 3.10) and off CI's Python 3.14 row, where the test importorskips.
+anki==26.8.1; python_version >= "3.11" and python_version < "3.14"
