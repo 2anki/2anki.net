@@ -1099,6 +1099,13 @@ export class DeckParser {
     }
   }
 
+  private noteStrayClozeMarkup(card: Note): void {
+    if (card.cloze) return;
+    if (hasClozeMarkup(card.name) || hasClozeMarkup(card.back)) {
+      this.strayClozeCount += 1;
+    }
+  }
+
   private async transformCard(
     card: Note,
     counter: number,
@@ -1116,12 +1123,7 @@ export class DeckParser {
 
     card.enableInput = this.settings.useInput;
     card.cloze = this.settings.isCloze;
-    if (
-      !card.cloze &&
-      (hasClozeMarkup(card.name) || hasClozeMarkup(card.back))
-    ) {
-      this.strayClozeCount += 1;
-    }
+    this.noteStrayClozeMarkup(card);
 
     if (card.cloze) {
       const headerHasCloze = hasInlineClozeCode(card.name);

@@ -4041,6 +4041,9 @@ describe('UploadService.handleUpload — image drops without a vision path (#440
       'image_only_no_text'
     );
     expect(execute).not.toHaveBeenCalled();
+  });
+});
+
 describe('resolveUploadWarning — stray cloze markup', () => {
   it('turns the coded count into user copy, summing across decks', () => {
     expect(resolveUploadWarning(['stray-cloze:2', 'stray-cloze:1'])).toBe(
