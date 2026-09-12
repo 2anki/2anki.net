@@ -5,12 +5,12 @@
   "front": "<div class=\"breadcrumb\">{{#H1}}<span class=\"crumb\">{{H1}}</span>{{/H1}}{{#H2}}<span class=\"crumb-sep\">›</span><span class=\"crumb\">{{H2}}</span>{{/H2}}{{#H3}}<span class=\"crumb-sep\">›</span><span class=\"crumb\">{{H3}}</span>{{/H3}}</div><span class=\"front-text-pre\">{{Question}}</span>",
   "back": "<div class=\"breadcrumb\">{{#H1}}<span class=\"crumb\">{{H1}}</span>{{/H1}}{{#H2}}<span class=\"crumb-sep\">›</span><span class=\"crumb\">{{H2}}</span>{{/H2}}{{#H3}}<span class=\"crumb-sep\">›</span><span class=\"crumb\">{{H3}}</span>{{/H3}}</div><span class=\"front-text-post\">{{Question}}</span><hr id=\"answer\"><span class=\"back-text\">{{Answer}}</span>",
   "fields": [
-    { "name": "H1" },
-    { "name": "H2" },
-    { "name": "H3" },
-    { "name": "Question" },
-    { "name": "Answer" },
-    { "name": "MyMedia" }
+    { "name": "H1", "id": 2804072675719 },
+    { "name": "H2", "id": 3357016820862 },
+    { "name": "H3", "id": 4473914975785 },
+    { "name": "Question", "id": 3547096178560 },
+    { "name": "Answer", "id": 415793301402 },
+    { "name": "MyMedia", "id": 9990735606030 }
   ],
   "styling": ".breadcrumb {\n  font-size: 0.8rem;\n  color: gray;\n  margin-bottom: 12px;\n}\n\n.breadcrumb .crumb-sep {\n  margin: 0 6px;\n}\n\n.breadcrumb .crumb-sep:first-child {\n  display: none;\n}\n\n.front-text-pre {\n  font-size: 1.5rem;\n}\n\n.front-text-post {\n  color: gray;\n  font-size: 1rem;\n}\n\n.back-text {\n  font-size: 1.5rem;\n}\n"
 }

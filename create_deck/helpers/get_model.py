@@ -5,6 +5,7 @@ from genanki import Model
 
 from .get_model_id import get_model_id
 from .get_template import get_template
+from .n2a_model import N2AModel
 
 MODEL_INFO = {
     "cloze": {
@@ -170,7 +171,7 @@ def get_model(descriptor, mcq_settings=None, front_lang="", back_lang=""):
         qfmt = _apply_front_tts(qfmt, model_type, front_lang)
         afmt = _apply_back_tts(afmt, model_type, back_lang)
 
-    return Model(
+    return N2AModel(
         model_id, name,
         fields=template_file.get("fields"),
         templates=[
@@ -220,7 +221,7 @@ def get_custom_model(model_name, field_names, is_cloze, css):
         afmt = "".join(afmt_parts)
         model_type = Model.FRONT_BACK
 
-    return Model(
+    return N2AModel(
         safe_id,
         model_name,
         fields=safe_fields,

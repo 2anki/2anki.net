@@ -1,6 +1,12 @@
 {
   "name": "Image Occlusion",
-  "fields": [{"name": "Occlusion"}, {"name": "Image"}, {"name": "Header"}, {"name": "Back Extra"}, {"name": "Comments"}],
+  "fields": [
+    {"name": "Occlusion", "id": 6731693662206},
+    {"name": "Image", "id": 3392765038783},
+    {"name": "Header", "id": 4130222437756},
+    {"name": "Back Extra", "id": 6934513617517},
+    {"name": "Comments", "id": 8572844642163}
+  ],
   "front": "{{#Header}}<div>{{Header}}</div>{{/Header}}\n<div style=\"display: none\">{{cloze:Occlusion}}</div>\n<div id=\"err\"></div>\n<div id=\"image-occlusion-container\">\n{{Image}}\n<canvas id=\"image-occlusion-canvas\"></canvas>\n</div>\n<script>\ntry {\n    anki.imageOcclusion.setup();\n} catch (exc) {\n    document.getElementById(\"err\").innerHTML = `Error loading image occlusion.<br><br>${exc}`;\n}\n</script>",
   "back": "{{#Header}}<div>{{Header}}</div>{{/Header}}\n<div style=\"display: none\">{{cloze:Occlusion}}</div>\n<div id=\"err\"></div>\n<div id=\"image-occlusion-container\">\n{{Image}}\n<canvas id=\"image-occlusion-canvas\"></canvas>\n</div>\n<script>\ntry {\n    anki.imageOcclusion.setup();\n} catch (exc) {\n    document.getElementById(\"err\").innerHTML = `Error loading image occlusion.<br><br>${exc}`;\n}\n</script>\n<div><button id=\"toggle\">Toggle Masks</button></div>\n{{#Back Extra}}<div>{{Back Extra}}</div>{{/Back Extra}}",
   "styling": "#image-occlusion-canvas {\n    --inactive-shape-color: #ffeba2;\n    --active-shape-color: #ff8e8e;\n    --inactive-shape-border: 1px #212121;\n    --active-shape-border: 1px #212121;\n    --highlight-shape-color: #ff8e8e00;\n    --highlight-shape-border: 1px #ff8e8e;\n}\n.card { font-family: arial; font-size: 20px; text-align: center; color: black; background-color: white; }"
