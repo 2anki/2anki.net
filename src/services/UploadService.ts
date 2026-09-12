@@ -913,6 +913,9 @@ class UploadService {
       if (owner != null && files.length === 1 && isImageOnlyUpload(files)) {
         return await this.handleImageUpload(req, res, String(owner), paying);
       }
+      if (isImageOnlyUpload(files)) {
+        return this.respondImageOnlyNoText(req, res, files);
+      }
 
       if (owner != null && paying && settings.claudeAIFlashcards) {
         return await this.handleAsyncUpload(
@@ -979,19 +982,7 @@ class UploadService {
           return res.status(400).json(body);
         }
         if (isImageOnlyUpload(files)) {
-          const owner = getOwner(res);
-          track('image_only_no_text_shown', {
-            userId: owner != null ? Number(owner) : null,
-            anonymousId: this.resolveAnonId(req),
-            props: { source: this.resolveUploadSource(req) },
-          });
-          const body: ImageOnlyResponse = {
-            code: 'image_only_no_text',
-            message: IMAGE_ONLY_NO_TEXT_MESSAGE,
-            filename,
-            photoToDeckUrl: '/photo-to-deck',
-          };
-          return res.status(400).json(body);
+          return this.respondImageOnlyNoText(req, res, files);
         }
         const body: EmptyDeckResponse = {
           code: 'empty_export',
@@ -1616,6 +1607,30 @@ class UploadService {
       },
     });
     return res.status(200).send(apkg);
+  }
+
+  // Photos never parse as text. Anonymous drops and multi-photo drops have
+  // no vision path on this surface, so answer with the Photo to Deck pointer
+  // before any parse runs; the parse used to run first and file the attempt
+  // as an empty deck in the funnel (#4400).
+  private respondImageOnlyNoText(
+    req: express.Request,
+    res: express.Response,
+    files: UploadedFile[] | undefined
+  ) {
+    const owner = getOwner(res);
+    track('image_only_no_text_shown', {
+      userId: owner != null ? Number(owner) : null,
+      anonymousId: this.resolveAnonId(req),
+      props: { source: this.resolveUploadSource(req) },
+    });
+    const body: ImageOnlyResponse = {
+      code: 'image_only_no_text',
+      message: IMAGE_ONLY_NO_TEXT_MESSAGE,
+      filename: files?.[0]?.originalname ?? 'your file',
+      photoToDeckUrl: '/photo-to-deck',
+    };
+    return res.status(400).json(body);
   }
 
   private respondToImageConversionError(
