@@ -155,7 +155,7 @@ const STRAY_CLOZE_WARNING_RE = /^stray-cloze:(\d+)$/;
 
 function strayClozeWarning(count: number): string {
   const subject = count === 1 ? '1 card contains' : `${count} cards contain`;
-  return `${subject} cloze syntax like {{c1::…}} but cloze mode is off, so the braces show on the card. Turn on cloze mode and convert again.`;
+  return `${subject} cloze syntax like {{c1::text}} but cloze mode is off, so the braces show on the card. Turn on cloze mode and convert again.`;
 }
 
 export function resolveUploadWarning(

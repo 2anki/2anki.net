@@ -12,7 +12,7 @@ describe('hasClozeMarkup', () => {
   it.each([
     ['plain text'],
     ['{{cloze}} template token'],
-    ['{{c1:: }}'.replace(' ', '')],
+    ['{{c1::}}'],
     [undefined],
   ])('ignores %s', (text) => {
     expect(hasClozeMarkup(text as string | undefined)).toBe(false);

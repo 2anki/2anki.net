@@ -4044,7 +4044,7 @@ describe('UploadService.handleUpload — image drops without a vision path (#440
 describe('resolveUploadWarning — stray cloze markup', () => {
   it('turns the coded count into user copy, summing across decks', () => {
     expect(resolveUploadWarning(['stray-cloze:2', 'stray-cloze:1'])).toBe(
-      '3 cards contain cloze syntax like {{c1::…}} but cloze mode is off, so the braces show on the card. Turn on cloze mode and convert again.'
+      '3 cards contain cloze syntax like {{c1::text}} but cloze mode is off, so the braces show on the card. Turn on cloze mode and convert again.'
     );
   });
 
