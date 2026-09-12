@@ -225,4 +225,37 @@ describe('markdownToHTML', () => {
       expect(result).toContain('&lt;blockquote&gt;');
     });
   });
+
+  describe('raw <img> tags in markdown (regression: #4403)', () => {
+    it('restores an inline base64 image instead of escaping it into text', () => {
+      const src = 'data:image/png;base64,iVBORw0KGgo=';
+      const result = markdownToHTML(`Look: <img src="${src}" alt="cell">`);
+      expect(result).toContain(`<img src="${src}" alt="cell">`);
+      expect(result).not.toContain('&lt;img');
+    });
+
+    it('restores a relative image path so the zip embed step can pick it up', () => {
+      const result = markdownToHTML("<img src='images/heart.png'>");
+      expect(result).toContain('<img src="images/heart.png">');
+    });
+
+    it('keeps only src and alt, dropping event handler attributes', () => {
+      const result = markdownToHTML(
+        '<img src="x.png" onerror="alert(1)" alt="a">'
+      );
+      expect(result).toContain('<img src="x.png" alt="a">');
+      expect(result).not.toContain('onerror');
+    });
+
+    it('leaves an image with a script scheme escaped', () => {
+      const result = markdownToHTML('<img src="javascript:alert(1)">');
+      expect(result).not.toContain('<img');
+      expect(result).toContain('&lt;img');
+    });
+
+    it('restores images in the inline (front) render too', () => {
+      const result = markdownToInlineHTML('<img src="a.png">');
+      expect(result).toContain('<img src="a.png">');
+    });
+  });
 });
