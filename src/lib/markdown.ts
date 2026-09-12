@@ -36,10 +36,11 @@ const decodeAttributeEntities = (text: string): string =>
     .replaceAll('&#39;', "'")
     .replaceAll('&amp;', '&');
 
-const attributeValue = (attributes: string, name: string): string | null => {
-  const match = new RegExp(`\\b${name}=(?:"([^"]*)"|'([^']*)')`, 'i').exec(
-    attributes
-  );
+const SRC_ATTRIBUTE_RE = /\bsrc=(?:"([^"]*)"|'([^']*)')/i;
+const ALT_ATTRIBUTE_RE = /\balt=(?:"([^"]*)"|'([^']*)')/i;
+
+const attributeValue = (attributes: string, re: RegExp): string | null => {
+  const match = re.exec(attributes);
   if (!match) return null;
   return match[1] ?? match[2] ?? '';
 };
@@ -47,9 +48,9 @@ const attributeValue = (attributes: string, name: string): string | null => {
 const restoreEscapedImages = (html: string): string =>
   html.replace(ESCAPED_IMG_RE, (whole, rawAttributes: string) => {
     const attributes = decodeAttributeEntities(rawAttributes);
-    const src = attributeValue(attributes, 'src');
+    const src = attributeValue(attributes, SRC_ATTRIBUTE_RE);
     if (!src || !IMAGE_SRC_SCHEME_RE.test(src)) return whole;
-    const alt = attributeValue(attributes, 'alt');
+    const alt = attributeValue(attributes, ALT_ATTRIBUTE_RE);
     const altAttribute =
       alt == null ? '' : ` alt="${alt.replaceAll('"', '&quot;')}"`;
     return `<img src="${src.replaceAll('"', '&quot;')}"${altAttribute}>`;
