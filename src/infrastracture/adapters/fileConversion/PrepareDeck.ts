@@ -172,6 +172,19 @@ function shippedInducedRule(
   return induced;
 }
 
+// One coded warning per deck; UploadService turns the code into copy. The
+// markdown heuristic outranks stray cloze markup because it questions the
+// whole deck, not a handful of cards.
+export function parserWarning(parser: {
+  usedHeuristic: boolean;
+  strayClozeCount: number;
+}): string | undefined {
+  if (parser.usedHeuristic) return 'markdown-heuristic';
+  if (parser.strayClozeCount > 0)
+    return `stray-cloze:${parser.strayClozeCount}`;
+  return undefined;
+}
+
 async function convertFile(
   file: DeckParserInput['files'][number],
   input: DeckParserInput
@@ -799,7 +812,7 @@ export async function PrepareDeck(
         cardCount: parser.totalCardCount(),
         mcqCount: 0,
         mcqSkippedCount: 0,
-        warning: parser.usedHeuristic ? 'markdown-heuristic' : undefined,
+        warning: parserWarning(parser),
         droppedImageCount: parser.droppedImageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
@@ -838,7 +851,7 @@ export async function PrepareDeck(
     cardCount: parser.totalCardCount(),
     mcqCount,
     mcqSkippedCount,
-    warning: parser.usedHeuristic ? 'markdown-heuristic' : undefined,
+    warning: parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,
@@ -909,7 +922,7 @@ export async function prepareDeckInfoOnly(
         cardCount: 0,
         mcqCount: 0,
         mcqSkippedCount: 0,
-        warning: parser.usedHeuristic ? 'markdown-heuristic' : undefined,
+        warning: parserWarning(parser),
         droppedImageCount: parser.droppedImageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
@@ -939,7 +952,7 @@ export async function prepareDeckInfoOnly(
     cardCount: parser.totalCardCount(),
     mcqCount,
     mcqSkippedCount,
-    warning: parser.usedHeuristic ? 'markdown-heuristic' : undefined,
+    warning: parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,

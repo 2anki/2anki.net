@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-12-warn-when-cloze-syntax-found-with-cloze-off",
+  "date": "2026-09-12",
+  "type": "fix",
+  "title": "Conversion warns when cards contain cloze syntax but cloze mode is off"
+}

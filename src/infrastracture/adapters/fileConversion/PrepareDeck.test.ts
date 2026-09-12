@@ -1,4 +1,4 @@
-import { PrepareDeck, prepareDeckInfoOnly } from './PrepareDeck';
+import { PrepareDeck, parserWarning, prepareDeckInfoOnly } from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 
 jest.mock('../../../lib/claude/ClaudeService', () => {
@@ -998,5 +998,25 @@ describe('assembleParserFiles — both build paths share one file set', () => {
     const all = assembleParserFiles([original], []);
 
     expect(all).toEqual([original]);
+  });
+});
+
+describe('parserWarning', () => {
+  it('reports stray cloze markup as a coded count', () => {
+    expect(parserWarning({ usedHeuristic: false, strayClozeCount: 3 })).toBe(
+      'stray-cloze:3'
+    );
+  });
+
+  it('lets the markdown heuristic outrank stray cloze markup', () => {
+    expect(parserWarning({ usedHeuristic: true, strayClozeCount: 3 })).toBe(
+      'markdown-heuristic'
+    );
+  });
+
+  it('is silent when nothing happened', () => {
+    expect(
+      parserWarning({ usedHeuristic: false, strayClozeCount: 0 })
+    ).toBeUndefined();
   });
 });

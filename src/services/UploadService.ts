@@ -151,7 +151,16 @@ interface BatchUploadResponse {
 const MARKDOWN_HEURISTIC_WARNING =
   'Your Markdown file was processed using heuristic detection. For reliable results, use the nested bullet format or enable Claude AI in settings.';
 
-function resolveUploadWarning(warnings: string[] | undefined): string | null {
+const STRAY_CLOZE_WARNING_RE = /^stray-cloze:(\d+)$/;
+
+function strayClozeWarning(count: number): string {
+  const subject = count === 1 ? '1 card contains' : `${count} cards contain`;
+  return `${subject} cloze syntax like {{c1::text}} but cloze mode is off, so the braces show on the card. Turn on cloze mode and convert again.`;
+}
+
+export function resolveUploadWarning(
+  warnings: string[] | undefined
+): string | null {
   if (!warnings || warnings.length === 0) return null;
   const passwordWarning = warnings.find((w) =>
     w.includes('password-protected')
@@ -160,6 +169,12 @@ function resolveUploadWarning(warnings: string[] | undefined): string | null {
   if (warnings.includes('markdown-heuristic')) {
     return MARKDOWN_HEURISTIC_WARNING;
   }
+  let strayCloze = 0;
+  for (const warning of warnings) {
+    const match = STRAY_CLOZE_WARNING_RE.exec(warning);
+    if (match) strayCloze += Number(match[1]);
+  }
+  if (strayCloze > 0) return strayClozeWarning(strayCloze);
   return null;
 }
 
