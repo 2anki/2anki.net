@@ -32,6 +32,7 @@ import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPass
 import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
 import { ChangeUserEmailUseCase } from '../usecases/ops/ChangeUserEmailUseCase';
 import { GetTodaySnapshotUseCase } from '../usecases/ops/GetTodaySnapshotUseCase';
+import { PruneDeadUploadsUseCase } from '../usecases/ops/PruneDeadUploadsUseCase';
 
 class OpsController {
   constructor(
@@ -63,7 +64,8 @@ class OpsController {
     private readonly setBlockIdIdentityUseCase?: SetBlockIdIdentityUseCase,
     private readonly changeUserEmailUseCase?: ChangeUserEmailUseCase,
     private readonly getEmailDeliveryMetricsUseCase?: GetEmailDeliveryMetricsUseCase,
-    private readonly getTodaySnapshotUseCase?: GetTodaySnapshotUseCase
+    private readonly getTodaySnapshotUseCase?: GetTodaySnapshotUseCase,
+    private readonly pruneDeadUploadsUseCase?: PruneDeadUploadsUseCase
   ) {}
 
   async changeUserEmail(req: express.Request, res: express.Response) {
@@ -419,6 +421,22 @@ class OpsController {
     } catch (error) {
       console.error('[ops] deleteInactiveUsers failed', error);
       res.status(500).json({ message: 'Failed to run inactive user deletion' });
+    }
+  }
+
+  async pruneDeadUploads(req: express.Request, res: express.Response) {
+    if (this.pruneDeadUploadsUseCase == null) {
+      res.status(500).json({ message: 'Dead upload prune not configured' });
+      return;
+    }
+    try {
+      const body = req.body as { dryRun?: unknown };
+      const dryRun = body?.dryRun !== false;
+      const result = await this.pruneDeadUploadsUseCase.execute(dryRun);
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ops] pruneDeadUploads failed', error);
+      res.status(500).json({ message: 'Failed to prune dead uploads' });
     }
   }
 

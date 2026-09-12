@@ -41,6 +41,30 @@ describe('UploadRepository owner guards', () => {
   });
 });
 
+describe('UploadRepository.getAllUploadReferences', () => {
+  it('returns id, key and owner for rows with a non-empty key', async () => {
+    const dbRows = [
+      { id: 1, key: 'decks/a.apkg', owner: 10 },
+      { id: 2, key: null, owner: 20 },
+      { id: 3, key: '', owner: 30 },
+      { id: 4, key: 'decks/b.apkg', owner: 40 },
+    ];
+    const db = () => ({
+      select: () => ({
+        whereNotNull: () => Promise.resolve(dbRows),
+      }),
+    });
+    const repo = new UploadRepository(db as unknown as never);
+
+    const result = await repo.getAllUploadReferences();
+
+    expect(result).toEqual([
+      { id: 1, key: 'decks/a.apkg', owner: 10 },
+      { id: 4, key: 'decks/b.apkg', owner: 40 },
+    ]);
+  });
+});
+
 describe('UploadRepository.findByObjectId', () => {
   it('returns null and skips the query when the object id is null', async () => {
     let queried = false;

@@ -8,6 +8,7 @@ import { setBlockIdIdentity } from './setBlockIdIdentity';
 import { changeUserEmail } from './changeUserEmail';
 import { setChatAttachmentsLifecycle } from './setChatAttachmentsLifecycle';
 import { sendPassWinback } from './sendPassWinback';
+import { pruneDeadUploads } from './pruneDeadUploads';
 import {
   deleteInactiveUsers,
   DeleteInactiveUsersResponse,
@@ -79,6 +80,44 @@ export default function CommandsTab() {
   const [emailChangeNew, setEmailChangeNew] = useState('');
   const [emailChangeStatus, setEmailChangeStatus] = useState<Status>('idle');
   const [emailChangeMessage, setEmailChangeMessage] = useState('');
+  const [pruneStatus, setPruneStatus] = useState<Status>('idle');
+  const [pruneMessage, setPruneMessage] = useState('');
+  const [pruneMissing, setPruneMissing] = useState<number | null>(null);
+  const [pruneSampleKeys, setPruneSampleKeys] = useState<string[]>([]);
+
+  const runPrune = async (dryRun: boolean) => {
+    if (
+      !dryRun &&
+      !globalThis.confirm(
+        `Remove ${pruneMissing} dead upload row${pruneMissing === 1 ? '' : 's'}? The files are already gone; this only clears the rows that 404 on download.`
+      )
+    ) {
+      return;
+    }
+    setPruneStatus('loading');
+    setPruneMessage('');
+    try {
+      const result = await pruneDeadUploads(dryRun);
+      setPruneStatus('success');
+      if (result.dryRun) {
+        setPruneMissing(result.missingRows);
+        setPruneSampleKeys(result.sampleKeys);
+        setPruneMessage(
+          `${result.missingRows} upload row${result.missingRows === 1 ? '' : 's'} point at a deleted file and would be removed.`
+        );
+      } else {
+        setPruneMissing(null);
+        setPruneSampleKeys([]);
+        setPruneMessage(
+          `Removed ${result.deleted} dead upload row${result.deleted === 1 ? '' : 's'}.`
+        );
+      }
+    } catch (error) {
+      setPruneMissing(null);
+      setPruneStatus('error');
+      setPruneMessage(error instanceof Error ? error.message : 'Unknown error');
+    }
+  };
 
   const runWinback = async (dryRun: boolean) => {
     const campaign = winbackCampaign.trim();
@@ -651,6 +690,59 @@ export default function CommandsTab() {
       {lifecycleStatus === 'error' && lifecycleMessage && (
         <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
           {lifecycleMessage}
+        </div>
+      )}
+
+      <section className={`${sharedStyles.surface} ${styles.card}`}>
+        <h3 className={styles.cardTitle}>Prune dead upload rows</h3>
+        <p className={styles.panelSubtitle}>
+          Finds uploads rows whose bucket object the old orphan sweep deleted
+          before it was restricted to unreferenced keys. Those rows still show
+          up in a user&apos;s deck list but 404 on download. Reserved-prefix
+          keys (mindmaps, drafts) are left alone. Check first — the prune button
+          unlocks only after a check in this session finds rows.
+        </p>
+        <div className={styles.controls}>
+          <button
+            type="button"
+            className={sharedStyles.btnSmall}
+            onClick={() => runPrune(true)}
+            disabled={pruneStatus === 'loading'}
+          >
+            {pruneStatus === 'loading' ? 'Working…' : 'Check dead rows'}
+          </button>
+          <button
+            type="button"
+            className={sharedStyles.btnDanger}
+            onClick={() => runPrune(false)}
+            disabled={
+              pruneStatus === 'loading' ||
+              pruneMissing == null ||
+              pruneMissing === 0
+            }
+          >
+            Prune dead rows
+          </button>
+        </div>
+        {pruneSampleKeys.length > 0 && (
+          <ul className={styles.panelSubtitle}>
+            {pruneSampleKeys.map((key) => (
+              <li key={key} data-hj-suppress style={{ fontWeight: 500 }}>
+                {key}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {pruneStatus === 'success' && pruneMessage && (
+        <div className={`${sharedStyles.alertSuccess} ${styles.banner}`}>
+          {pruneMessage}
+        </div>
+      )}
+      {pruneStatus === 'error' && pruneMessage && (
+        <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
+          {pruneMessage}
         </div>
       )}
 
