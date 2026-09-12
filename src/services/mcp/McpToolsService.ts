@@ -82,7 +82,7 @@ function monthlyLimitResult(
 ): ConvertResult {
   track('paywall_shown', {
     userId: ownerToUserId(owner),
-    props: { surface: 'mcp', kind: 'card_count' },
+    props: { source: 'mcp', surface: 'mcp', kind: 'card_count' },
   });
   const next_step: McpNextStep = { upgrade_url: UPGRADE_URL };
   let message = MONTHLY_LIMIT_MESSAGE;

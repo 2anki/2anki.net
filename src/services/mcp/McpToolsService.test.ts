@@ -492,12 +492,43 @@ describe('McpToolsService.convertToDeck', () => {
     expect(trackMock).toHaveBeenCalledWith(
       'paywall_shown',
       expect.objectContaining({
-        props: { surface: 'mcp', kind: 'card_count' },
+        props: { source: 'mcp', surface: 'mcp', kind: 'card_count' },
       })
     );
     expect((result as { message: string }).message).toContain(
       'https://2anki.net/pricing?from=mcp'
     );
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it('tells create_deck callers how many cards the limit held back', async () => {
+    const uploadEntry: UploadEntrypoint = (_req, res) => {
+      res.redirect('/limit?kind=card_count');
+    };
+    const { service, persist } = makeService({ uploadEntry });
+    trackMock.mockClear();
+    const result = await service.createDeck(
+      [
+        { front: 'What is ATP?', back: 'Energy currency.' },
+        { front: 'What is DNA?', back: 'Heredity molecule.' },
+      ],
+      'Biochemistry',
+      undefined,
+      'owner-9',
+      {}
+    );
+    expect(result).toMatchObject({
+      kind: 'error',
+      code: 'monthly_limit',
+      next_step: {
+        upgrade_url: 'https://2anki.net/pricing?from=mcp',
+        cards_held_back: 2,
+      },
+    });
+    expect((result as { message: string }).message).toMatch(
+      /2 cards were held back — none were created\.$/
+    );
+    expect(trackMock).toHaveBeenCalledTimes(1);
     expect(persist).not.toHaveBeenCalled();
   });
 
@@ -1289,7 +1320,7 @@ describe('McpToolsService.createDeck with subdecks', () => {
       'paywall_shown',
       expect.objectContaining({
         userId: null,
-        props: { surface: 'mcp', kind: 'card_count' },
+        props: { source: 'mcp', surface: 'mcp', kind: 'card_count' },
       })
     );
     expect(persist).not.toHaveBeenCalled();
