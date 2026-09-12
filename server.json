@@ -1,0 +1,19 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "net.2anki/mcp",
+  "title": "2anki",
+  "description": "Turn text, files, URLs, or photos into Anki flashcard decks from your AI assistant.",
+  "version": "1.0.0",
+  "websiteUrl": "https://2anki.net/documentation/reference/mcp",
+  "repository": {
+    "url": "https://github.com/2anki/server",
+    "source": "github",
+    "id": "256559677"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://2anki.net/mcp"
+    }
+  ]
+}
