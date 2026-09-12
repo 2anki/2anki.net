@@ -137,11 +137,11 @@ describe('censusUploadedFile — zip archives (#4029)', () => {
     expect(entries).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: 'Private & Shared/Bony Page abc123.html',
+          name: expect.stringMatching(/^html:[0-9a-f]{8}$/),
           supported: true,
         }),
         expect.objectContaining({
-          name: 'assets/photo.png',
+          name: expect.stringMatching(/^png:[0-9a-f]{8}$/),
           supported: false,
         }),
       ])
