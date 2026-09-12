@@ -9,16 +9,21 @@ describe('apkgOversizeWarning', () => {
     expect(apkgOversizeWarning(12_345)).toBeNull();
   });
 
-  it('codes the rounded size in megabytes above the limit', () => {
-    expect(apkgOversizeWarning(105 * 1024 * 1024)).toBe('apkg-over-100mb:105');
+  it('codes the size to a tenth of a megabyte, rounded up', () => {
+    expect(apkgOversizeWarning(105 * 1024 * 1024)).toBe(
+      'apkg-over-100mb:105.0'
+    );
     expect(apkgOversizeWarning(100 * 1024 * 1024 + 1)).toBe(
-      'apkg-over-100mb:100'
+      'apkg-over-100mb:100.1'
+    );
+    expect(apkgOversizeWarning(210.44 * 1024 * 1024)).toBe(
+      'apkg-over-100mb:210.5'
     );
   });
 
-  it('renders the user sentence with the size and the one action', () => {
-    expect(apkgOversizeWarningText(210)).toBe(
-      "This deck is 210 MB. AnkiWeb won't sync packages over 100 MB, so split it into smaller decks before syncing."
+  it('renders the user sentence with one decimal and the one action', () => {
+    expect(apkgOversizeWarningText(210.4)).toBe(
+      "This deck is 210.4 MB. AnkiWeb won't sync packages over 100 MB, so split it into smaller decks before syncing."
     );
   });
 });
