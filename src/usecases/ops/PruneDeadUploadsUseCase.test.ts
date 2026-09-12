@@ -2,6 +2,7 @@ import {
   IPruneStorageHandler,
   IPruneUploadRepository,
   PruneDeadUploadsUseCase,
+  UnsafeBucketListingError,
   UploadReference,
 } from './PruneDeadUploadsUseCase';
 
@@ -52,7 +53,10 @@ describe('PruneDeadUploadsUseCase', () => {
       owner: 99,
     }));
     const { repo } = makeRepository(many);
-    const useCase = new PruneDeadUploadsUseCase(repo, makeStorage([]));
+    const useCase = new PruneDeadUploadsUseCase(
+      repo,
+      makeStorage(['decks/unrelated-live.apkg'])
+    );
 
     const result = await useCase.execute(true);
 
@@ -72,5 +76,29 @@ describe('PruneDeadUploadsUseCase', () => {
     expect(deleteUpload).toHaveBeenCalledWith(30, 'decks/missing-2.apkg');
     expect(deleteUpload).not.toHaveBeenCalledWith(10, 'decks/exists-1.apkg');
     expect(deleteUpload).not.toHaveBeenCalledWith(40, 'mindmaps/reserved.png');
+  });
+
+  it('refuses to judge rows when the bucket listing is empty', async () => {
+    const { repo, deleteUpload } = makeRepository(rows);
+    const useCase = new PruneDeadUploadsUseCase(repo, makeStorage([]));
+
+    await expect(useCase.execute(false)).rejects.toBeInstanceOf(
+      UnsafeBucketListingError
+    );
+    await expect(useCase.execute(true)).rejects.toBeInstanceOf(
+      UnsafeBucketListingError
+    );
+    expect(deleteUpload).not.toHaveBeenCalled();
+  });
+
+  it('refuses to judge rows when the bucket listing hit the paging cap', async () => {
+    const { repo, deleteUpload } = makeRepository(rows);
+    const capped = Array.from({ length: 100_000 }, (_, i) => `decks/${i}.apkg`);
+    const useCase = new PruneDeadUploadsUseCase(repo, makeStorage(capped));
+
+    await expect(useCase.execute(false)).rejects.toBeInstanceOf(
+      UnsafeBucketListingError
+    );
+    expect(deleteUpload).not.toHaveBeenCalled();
   });
 });

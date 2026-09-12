@@ -32,7 +32,10 @@ import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPass
 import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
 import { ChangeUserEmailUseCase } from '../usecases/ops/ChangeUserEmailUseCase';
 import { GetTodaySnapshotUseCase } from '../usecases/ops/GetTodaySnapshotUseCase';
-import { PruneDeadUploadsUseCase } from '../usecases/ops/PruneDeadUploadsUseCase';
+import {
+  PruneDeadUploadsUseCase,
+  UnsafeBucketListingError,
+} from '../usecases/ops/PruneDeadUploadsUseCase';
 
 class OpsController {
   constructor(
@@ -435,6 +438,10 @@ class OpsController {
       const result = await this.pruneDeadUploadsUseCase.execute(dryRun);
       res.status(200).json(result);
     } catch (error) {
+      if (error instanceof UnsafeBucketListingError) {
+        res.status(409).json({ message: error.message });
+        return;
+      }
       console.error('[ops] pruneDeadUploads failed', error);
       res.status(500).json({ message: 'Failed to prune dead uploads' });
     }

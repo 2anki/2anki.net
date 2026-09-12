@@ -22,6 +22,20 @@ export type PruneDeadUploadsResult =
 const MAX_KEYS = 100_000;
 const SAMPLE_LIMIT = 5;
 
+// A listing that came back empty, or that hit the paging cap, cannot tell a
+// dead row from a live one; every row would look dead and a live run would
+// delete real decks. Refuse rather than guess.
+export class UnsafeBucketListingError extends Error {
+  constructor(reason: 'empty' | 'truncated') {
+    super(
+      reason === 'empty'
+        ? 'The bucket listing came back empty, so no row can be judged dead.'
+        : 'The bucket listing hit the paging cap, so rows past it cannot be judged.'
+    );
+    this.name = 'UnsafeBucketListingError';
+  }
+}
+
 export class PruneDeadUploadsUseCase {
   constructor(
     private readonly uploads: IPruneUploadRepository,
@@ -37,6 +51,13 @@ export class PruneDeadUploadsUseCase {
           (key): key is string => typeof key === 'string' && key.length > 0
         )
     );
+
+    if (existingKeys.size === 0) {
+      throw new UnsafeBucketListingError('empty');
+    }
+    if (storedFiles.length >= MAX_KEYS) {
+      throw new UnsafeBucketListingError('truncated');
+    }
 
     const rows = await this.uploads.getAllUploadReferences();
     const deadRows = rows.filter(
