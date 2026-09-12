@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-12-reuploading-a-deck-keeps-updating-your-existing-anki-cards",
+  "date": "2026-09-12",
+  "type": "fix",
+  "title": "Re-uploading a deck keeps updating your existing cards in Anki even after 2anki changes a card layout"
+}
