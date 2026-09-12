@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-12-inline-images-in-markdown-render-as-images",
+  "date": "2026-09-12",
+  "type": "fix",
+  "title": "Markdown files with HTML image tags keep the picture on the card instead of showing raw code"
+}

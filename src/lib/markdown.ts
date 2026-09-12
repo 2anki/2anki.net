@@ -23,14 +23,47 @@ const ESCAPED_CARD_SAFE_TAG_RE = new RegExp(
 const restoreCardSafeTags = (html: string): string =>
   html.replace(ESCAPED_CARD_SAFE_TAG_RE, '<$1>');
 
+// markdown-it runs with html:false, so a raw <img> in a document arrives as
+// escaped text and Anki shows the base64 of an inline image as a wall of
+// characters (#4403). Rebuild the tag from src and alt only; every other
+// attribute (event handlers included) stays dropped.
+const ESCAPED_IMG_RE = /&lt;img\b([^&]*?(?:&(?!gt;)[^&]*?)*)\/?&gt;/gi;
+const IMAGE_SRC_SCHEME_RE = /^(?:data:image\/|https?:\/\/|[^:]*$)/i;
+
+const decodeAttributeEntities = (text: string): string =>
+  text
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&amp;', '&');
+
+const SRC_ATTRIBUTE_RE = /\bsrc=(?:"([^"]*)"|'([^']*)')/i;
+const ALT_ATTRIBUTE_RE = /\balt=(?:"([^"]*)"|'([^']*)')/i;
+
+const attributeValue = (attributes: string, re: RegExp): string | null => {
+  const match = re.exec(attributes);
+  if (!match) return null;
+  return match[1] ?? match[2] ?? '';
+};
+
+const restoreEscapedImages = (html: string): string =>
+  html.replace(ESCAPED_IMG_RE, (whole, rawAttributes: string) => {
+    const attributes = decodeAttributeEntities(rawAttributes);
+    const src = attributeValue(attributes, SRC_ATTRIBUTE_RE);
+    if (!src || !IMAGE_SRC_SCHEME_RE.test(src)) return whole;
+    const alt = attributeValue(attributes, ALT_ATTRIBUTE_RE);
+    const altAttribute =
+      alt == null ? '' : ` alt="${alt.replaceAll('"', '&quot;')}"`;
+    return `<img src="${src.replaceAll('"', '&quot;')}"${altAttribute}>`;
+  });
+
 export const markdownToHTML = (
   html: string,
   trimWhitespace: boolean = false
 ) => {
   const stripped = html.replace(ASIDE_TAG_RE, '');
   const input = trimWhitespace ? stripped.trim() : stripped;
-  return restoreCardSafeTags(md.render(input));
+  return restoreEscapedImages(restoreCardSafeTags(md.render(input)));
 };
 
 export const markdownToInlineHTML = (text: string) =>
-  restoreCardSafeTags(md.renderInline(text));
+  restoreEscapedImages(restoreCardSafeTags(md.renderInline(text)));
