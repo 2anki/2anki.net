@@ -452,3 +452,13 @@ describe('jobFailureReasonFromError on worker-flattened errors', () => {
     expect(reason).toMatch(/Job ID job-2/);
   });
 });
+
+describe('jobFailureReasonFromError — Anki deck uploads', () => {
+  it('passes the already-an-Anki-deck message through to the user', () => {
+    const message =
+      "This zip contains an Anki package, so it's already an Anki deck. 2anki converts source files like Notion HTML exports, not existing decks.";
+    expect(jobFailureReasonFromError(new Error(message), 'job-1')).toBe(
+      message
+    );
+  });
+});

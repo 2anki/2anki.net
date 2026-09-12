@@ -53,3 +53,22 @@ test('includes sibling image files for markdown in flat zip structure', () => {
 
   expect(result.length).toBe(3);
 });
+
+test('does not treat extensionless root entries as sibling images', () => {
+  const mdName = 'Notes.md';
+  const allFiles = [
+    { name: mdName, contents: '# Title' },
+    { name: 'image.png', contents: 'fake-image' },
+    { name: 'photo.webp', contents: 'fake-image' },
+    { name: '0', contents: 'binary' },
+    { name: 'media', contents: '{}' },
+  ];
+
+  const result = getRelevantFiles(mdName, allFiles);
+
+  expect(result.map((f) => f.name)).toEqual([
+    mdName,
+    'image.png',
+    'photo.webp',
+  ]);
+});

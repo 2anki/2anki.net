@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-12-zip-containing-anki-deck-gets-a-clear-message",
+  "date": "2026-09-12",
+  "type": "fix",
+  "title": "Zip uploads that hold an Anki deck get a clear message instead of an empty deck"
+}
