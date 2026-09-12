@@ -356,3 +356,19 @@ describe('FallbackParser deck naming', () => {
     expect(decks[0].name).toBe('vocab');
   });
 });
+
+describe('FallbackParser TSV uploads', () => {
+  it('reads a tab-separated .tsv file as cards', () => {
+    const tsv = 'front\tback\nHola\tHello\nAdiós\tGoodbye';
+    const parser = new FallbackParser([
+      { name: 'vocab.tsv', contents: Buffer.from(tsv) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].cards).toHaveLength(2);
+    expect(decks[0].cards[0].name).toBe('Hola');
+    expect(decks[0].cards[0].back).toBe('Hello');
+    expect(decks[0].cards[1].name).toBe('Adiós');
+    expect(decks[0].cards[1].back).toBe('Goodbye');
+  });
+});

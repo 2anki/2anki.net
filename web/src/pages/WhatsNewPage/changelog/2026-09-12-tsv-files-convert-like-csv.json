@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-12-tsv-files-convert-like-csv",
+  "date": "2026-09-12",
+  "type": "fix",
+  "title": "Tab-separated .tsv files convert to decks the same way .csv files do"
+}
