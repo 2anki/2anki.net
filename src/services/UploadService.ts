@@ -27,6 +27,11 @@ import type {
 } from '../lib/parser/DeckParser';
 import StorageHandler from '../lib/storage/StorageHandler';
 import { logFileLabel } from '../lib/logging/logFileLabel';
+import {
+  APKG_OVERSIZE_WARNING_RE,
+  apkgOversizeWarning,
+  apkgOversizeWarningText,
+} from '../lib/upload/apkgOversizeWarning';
 import { UploadedFile } from '../lib/storage/types';
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';
 import { toText } from './NotionService/BlockHandler/helpers/deckNameToText';
@@ -162,6 +167,10 @@ export function resolveUploadWarning(
   warnings: string[] | undefined
 ): string | null {
   if (!warnings || warnings.length === 0) return null;
+  for (const warning of warnings) {
+    const oversize = APKG_OVERSIZE_WARNING_RE.exec(warning);
+    if (oversize) return apkgOversizeWarningText(Number(oversize[1]));
+  }
   const passwordWarning = warnings.find((w) =>
     w.includes('password-protected')
   );
@@ -1432,6 +1441,10 @@ class UploadService {
         throw new Error(`Could not produce APKG for ${name}`);
       }
       const plen = Buffer.byteLength(apkg);
+      const oversizeWarning = apkgOversizeWarning(plen);
+      const syncWarnings = oversizeWarning
+        ? [...(warnings ?? []), oversizeWarning]
+        : warnings;
       const downloadKey =
         owner == null
           ? null
@@ -1487,7 +1500,7 @@ class UploadService {
         res.set('X-Structure-Rescued', rescuedRule);
         exposedHeaders.push('X-Structure-Rescued');
       }
-      const warningText = resolveUploadWarning(warnings);
+      const warningText = resolveUploadWarning(syncWarnings);
       if (warningText) {
         res.set('X-Warning', warningText);
         exposedHeaders.push('X-Warning');

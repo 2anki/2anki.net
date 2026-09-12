@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-12-warn-when-a-deck-is-too-big-for-ankiweb-sync",
+  "date": "2026-09-12",
+  "type": "feature",
+  "title": "Decks over 100 MB come with a warning that AnkiWeb will not sync them"
+}
