@@ -4063,3 +4063,13 @@ describe('resolveUploadWarning — stray cloze markup', () => {
     ).toMatch(/heuristic detection/);
   });
 });
+
+describe('resolveUploadWarning — package over the AnkiWeb sync limit', () => {
+  it('turns the coded size into the sync warning and ranks it first', () => {
+    expect(
+      resolveUploadWarning(['markdown-heuristic', 'apkg-over-100mb:210'])
+    ).toBe(
+      "This deck is 210 MB. AnkiWeb won't sync packages over 100 MB, so split it into smaller decks before syncing."
+    );
+  });
+});
