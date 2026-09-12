@@ -169,6 +169,10 @@ function basicPreview(cards: SampleInput[]): Partial<ApkgPreviewService> {
   return makePreview(basicNoteTypes(), cards);
 }
 
+jest.mock('../events/track', () => ({ track: jest.fn() }));
+import { track } from '../events/track';
+const trackMock = track as jest.Mock;
+
 describe('McpToolsService.listMyDecks', () => {
   it('maps jobs to owner-scoped summaries with download URLs', async () => {
     const { service } = makeService({
@@ -475,13 +479,22 @@ describe('McpToolsService.convertToDeck', () => {
       res.redirect('/limit?kind=card_count');
     };
     const { service, persist } = makeService({ uploadEntry });
+    trackMock.mockClear();
     const result = await service.convertToDeck({ text: 'x' }, 'owner', {});
     expect(result).toEqual({
       kind: 'error',
       code: 'monthly_limit',
       message:
         "You've reached your free limit of 100 cards this month, so this deck wasn't created. Upgrade to Unlimited to keep converting, or wait for your limit to reset next month. Upgrade: https://2anki.net/pricing?from=mcp",
+      next_step: { upgrade_url: 'https://2anki.net/pricing?from=mcp' },
     });
+    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(trackMock).toHaveBeenCalledWith(
+      'paywall_shown',
+      expect.objectContaining({
+        props: { surface: 'mcp', kind: 'card_count' },
+      })
+    );
     expect((result as { message: string }).message).toContain(
       'https://2anki.net/pricing?from=mcp'
     );
@@ -1261,14 +1274,23 @@ describe('McpToolsService.createDeck with subdecks', () => {
       'owner-9',
       {}
     );
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       kind: 'error',
       code: 'monthly_limit',
-      message:
-        "You've reached your free limit of 100 cards this month, so this deck wasn't created. Upgrade to Unlimited to keep converting, or wait for your limit to reset next month. Upgrade: https://2anki.net/pricing?from=mcp",
+      next_step: {
+        upgrade_url: 'https://2anki.net/pricing?from=mcp',
+        cards_held_back: expect.any(Number),
+      },
     });
-    expect((result as { message: string }).message).toContain(
-      'https://2anki.net/pricing?from=mcp'
+    const message = (result as { message: string }).message;
+    expect(message).toContain('https://2anki.net/pricing?from=mcp');
+    expect(message).toMatch(/\d+ cards were held back — none were created\.$/);
+    expect(trackMock).toHaveBeenCalledWith(
+      'paywall_shown',
+      expect.objectContaining({
+        userId: null,
+        props: { surface: 'mcp', kind: 'card_count' },
+      })
     );
     expect(persist).not.toHaveBeenCalled();
     expect(incrementCardUsage).not.toHaveBeenCalled();

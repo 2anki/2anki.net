@@ -1,4 +1,5 @@
 import express from 'express';
+import { track } from '../events/track';
 import { randomUUID } from 'node:crypto';
 import imageSize from 'image-size';
 
@@ -62,6 +63,35 @@ const MONTHLY_LIMIT_CODE = 'monthly_limit';
 const MONTHLY_LIMIT_MESSAGE =
   "You've reached your free limit of 100 cards this month, so this deck wasn't created. Upgrade to Unlimited to keep converting, or wait for your limit to reset next month. Upgrade: https://2anki.net/pricing?from=mcp";
 const CARD_LIMIT_REDIRECT_PREFIX = '/limit?kind=card_count';
+const UPGRADE_URL = 'https://2anki.net/pricing?from=mcp';
+
+// MCP owners are the OAuth user id as a string; anything else has no user row.
+function ownerToUserId(owner: string): number | null {
+  const id = Number(owner);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function heldBackSentence(count: number): string {
+  if (count === 1) return " 1 card was held back — it wasn't created.";
+  return ` ${count} cards were held back — none were created.`;
+}
+
+function monthlyLimitResult(
+  owner: string,
+  cardsHeldBack?: number
+): ConvertResult {
+  track('paywall_shown', {
+    userId: ownerToUserId(owner),
+    props: { surface: 'mcp', kind: 'card_count' },
+  });
+  const next_step: McpNextStep = { upgrade_url: UPGRADE_URL };
+  let message = MONTHLY_LIMIT_MESSAGE;
+  if (cardsHeldBack != null && cardsHeldBack > 0) {
+    next_step.cards_held_back = cardsHeldBack;
+    message += heldBackSentence(cardsHeldBack);
+  }
+  return { kind: 'error', code: MONTHLY_LIMIT_CODE, message, next_step };
+}
 const OVER_SIZE_MESSAGE =
   'These cards are over the 5 MB limit. Split into smaller decks.';
 const NO_CARD_CODES = new Set(['markdown_likely_lossy', 'empty_export']);
@@ -196,7 +226,15 @@ export type ConvertResult =
       ignored?: IgnoredOption[];
       summary: string;
     }
-  | { kind: 'error'; message: string; code?: string };
+  | { kind: 'error'; message: string; code?: string; next_step?: McpNextStep };
+
+// Attached to a monthly-limit error so the assistant can relay the way past
+// the cap in the same turn (#4393). The link is the pricing page already in
+// the message; no checkout deep link, which would need payment code.
+export interface McpNextStep {
+  cards_held_back?: number;
+  upgrade_url: string;
+}
 
 export interface ConvertInput {
   url?: string;
@@ -498,7 +536,7 @@ export class McpToolsService {
       deckName: title,
       ...mcpOptionsToCardSettings(options),
     });
-    const result = await this.mapUploadResult(res, owner, title);
+    const result = await this.mapUploadResult(res, owner, title, cards.length);
     if (result.kind === 'error') {
       return this.everyBackEmpty(cards)
         ? { ...result, message: EMPTY_BACK_MESSAGE }
@@ -553,11 +591,7 @@ export class McpToolsService {
       });
     } catch (error) {
       if (error instanceof MonthlyLimitError) {
-        return {
-          kind: 'error',
-          code: MONTHLY_LIMIT_CODE,
-          message: MONTHLY_LIMIT_MESSAGE,
-        };
+        return monthlyLimitResult(owner, totalCards);
       }
       throw error;
     }
@@ -769,7 +803,8 @@ export class McpToolsService {
   private async mapUploadResult(
     res: CapturingResponse,
     owner: string,
-    fallbackTitle: string
+    fallbackTitle: string,
+    candidateCards?: number
   ): Promise<ConvertResult> {
     if (res.statusCode === 202 && this.isJobBody(res.body)) {
       return {
@@ -794,11 +829,7 @@ export class McpToolsService {
       return this.persistDeckResult(res.bodyBuffer, res, owner, fallbackTitle);
     }
     if (res.redirectedTo?.startsWith(CARD_LIMIT_REDIRECT_PREFIX)) {
-      return {
-        kind: 'error',
-        code: MONTHLY_LIMIT_CODE,
-        message: MONTHLY_LIMIT_MESSAGE,
-      };
+      return monthlyLimitResult(owner, candidateCards);
     }
     const code = this.errorCode(res.body);
     return {

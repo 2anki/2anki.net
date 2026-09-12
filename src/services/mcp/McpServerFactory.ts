@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { McpToolsService } from './McpToolsService';
+import type { McpNextStep } from './McpToolsService';
 import {
   McpConvertOptions,
   McpCreateDeckOptions,
@@ -171,10 +172,16 @@ const DECK_RESULT_SHAPE = {
   message: z.string().optional(),
 };
 
-function errorResult(message: string, code = 'error'): ToolResult {
+function errorResult(
+  message: string,
+  code = 'error',
+  nextStep?: McpNextStep
+): ToolResult {
+  const structuredContent: Record<string, unknown> = { code, message };
+  if (nextStep) structuredContent.next_step = { ...nextStep };
   return {
     content: [{ type: 'text', text: message }],
-    structuredContent: { code, message },
+    structuredContent,
     isError: true,
   };
 }
@@ -462,7 +469,11 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
           result.code,
           inputProps
         );
-        return errorResult(result.message, result.code ?? 'convert_failed');
+        return errorResult(
+          result.message,
+          result.code ?? 'convert_failed',
+          result.next_step
+        );
       }
       context.recordToolResult('convert_to_deck', true, undefined, inputProps);
       const raw = result as unknown as Record<string, unknown>;
@@ -556,7 +567,11 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
       );
       if (result.kind === 'error') {
         context.recordToolResult('create_deck', false, result.code);
-        return errorResult(result.message, result.code ?? 'create_failed');
+        return errorResult(
+          result.message,
+          result.code ?? 'create_failed',
+          result.next_step
+        );
       }
       const subdeckCount =
         result.kind === 'deck' && result.applied?.subdecks != null
