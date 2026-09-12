@@ -26,6 +26,7 @@ import type {
   UploadIdentityStats,
 } from '../lib/parser/DeckParser';
 import StorageHandler from '../lib/storage/StorageHandler';
+import { logFileLabel } from '../lib/logging/logFileLabel';
 import { UploadedFile } from '../lib/storage/types';
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';
 import { toText } from './NotionService/BlockHandler/helpers/deckNameToText';
@@ -334,7 +335,7 @@ function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
   console.info('[no-package] Zero packages produced. File diagnostics:');
   for (const file of uploadedFiles ?? []) {
     console.info(
-      `  name=${file.originalname} mimetype=${file.mimetype} size=${file.size}`
+      `  file=${logFileLabel(file.originalname)} mimetype=${file.mimetype} size=${file.size}`
     );
     try {
       const contents = file.path ? fs.readFileSync(file.path) : file.buffer;
@@ -351,7 +352,6 @@ function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
         const hasDisplayContents = head.includes('display:contents');
         const hasToggleClass = head.includes('class="toggle"');
         const hasDetails = head.includes('<details');
-        console.info(`  snippet=${JSON.stringify(head.slice(0, 300))}`);
         console.info(
           `  display:contents=${hasDisplayContents} .toggle=${hasToggleClass} <details=${hasDetails}`
         );
@@ -363,7 +363,7 @@ function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
         .then((census) => {
           if (census != null) {
             console.info(
-              `  census=${JSON.stringify(census)} name=${file.originalname}`
+              `  census=${JSON.stringify(census)} file=${logFileLabel(file.originalname)}`
             );
           }
         })

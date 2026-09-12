@@ -721,8 +721,8 @@ describe('PrepareDeck — duplicate-name dedup', () => {
       '[PrepareDeck] received',
       expect.objectContaining({
         count: 1,
-        names: ['anatomy.pdf'],
-        sources: ['anatomy.pdf'],
+        extensions: { pdf: 1 },
+        sample: [expect.stringMatching(/^pdf:[0-9a-f]{8}$/)],
       })
     );
   });
