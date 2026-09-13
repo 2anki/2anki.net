@@ -15,7 +15,11 @@ export interface SubscriptionPlanInputs {
 }
 
 export interface PlanInputs {
-  pass: { kind: string; expiresAt: Date } | null;
+  pass: {
+    kind: string;
+    earliestExpiresAt: Date;
+    latestExpiresAt: Date;
+  } | null;
   subscription: SubscriptionPlanInputs | null;
   patreon: boolean;
   ankifyAccess: boolean;
@@ -41,14 +45,20 @@ export const LIFETIME_CREDITS = 300;
 const LEGACY_UNIT_AMOUNT_CEILING = 200;
 const ROLLING_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
+// Stacking a second pass onto an active one adds a row whose expiry is the
+// prior expiry plus the duration, so anchoring the window on the latest expiry
+// minus the duration slides it forward and lets earlier spend drop out of it.
+// Anchor on the earliest still-active pass instead; the window runs from that
+// pass's purchase time to the latest stacked expiry.
 function passAllowance(
   kind: AnonymousPassKind,
-  expiresAt: Date
+  earliestExpiresAt: Date,
+  latestExpiresAt: Date
 ): AiCreditAllowance {
   return {
     credits: PASS_CREDITS[kind],
-    windowStart: new Date(expiresAt.getTime() - PASS_DURATION_MS[kind]),
-    windowEnd: expiresAt,
+    windowStart: new Date(earliestExpiresAt.getTime() - PASS_DURATION_MS[kind]),
+    windowEnd: latestExpiresAt,
     resets: 'pass',
   };
 }
@@ -131,7 +141,11 @@ export function resolveAllowance(
   }
   const pass = inputs.pass;
   if (pass != null && isAnonymousPassKind(pass.kind)) {
-    return passAllowance(pass.kind, pass.expiresAt);
+    return passAllowance(
+      pass.kind,
+      pass.earliestExpiresAt,
+      pass.latestExpiresAt
+    );
   }
   if (pass?.kind === 'unlimited') {
     return rollingAllowance(SUBSCRIPTION_CREDITS, now);

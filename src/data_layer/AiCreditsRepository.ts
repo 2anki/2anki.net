@@ -77,10 +77,9 @@ export class AiCreditsRepository implements IAiCreditsPlanReader {
       return null;
     }
 
-    const activePass = await new UserPassRepository(this.database).findActive(
-      userId,
-      now
-    );
+    const passWindow = await new UserPassRepository(
+      this.database
+    ).findActivePassWindow(userId, now);
 
     const subscriptionRow = (await this.buildActiveSubscriptionQuery(
       user.email
@@ -88,8 +87,12 @@ export class AiCreditsRepository implements IAiCreditsPlanReader {
 
     return {
       pass:
-        activePass != null
-          ? { kind: activePass.kind, expiresAt: activePass.expires_at }
+        passWindow != null
+          ? {
+              kind: passWindow.kind,
+              earliestExpiresAt: passWindow.earliestExpiresAt,
+              latestExpiresAt: passWindow.latestExpiresAt,
+            }
           : null,
       subscription:
         subscriptionRow != null

@@ -23,7 +23,10 @@ describe('resolveAllowance', () => {
     (kind, credits, durationMs) => {
       const expiresAt = new Date('2026-05-20T00:00:00.000Z');
       const result = resolveAllowance(
-        { ...emptyInputs, pass: { kind, expiresAt } },
+        {
+          ...emptyInputs,
+          pass: { kind, earliestExpiresAt: expiresAt, latestExpiresAt: expiresAt },
+        },
         NOW
       );
       expect(result).toEqual({
@@ -34,6 +37,26 @@ describe('resolveAllowance', () => {
       });
     }
   );
+
+  it('anchors a stacked pass window on the earliest active pass, not the stacked expiry', () => {
+    const earliest = new Date('2026-05-20T00:00:00.000Z');
+    const latest = new Date('2026-05-21T00:00:00.000Z');
+    const result = resolveAllowance(
+      {
+        ...emptyInputs,
+        pass: {
+          kind: '24h',
+          earliestExpiresAt: earliest,
+          latestExpiresAt: latest,
+        },
+      },
+      NOW
+    );
+    const dayMs = 24 * 60 * 60 * 1000;
+    expect(result?.windowStart).toEqual(new Date(earliest.getTime() - dayMs));
+    expect(result?.windowEnd).toEqual(latest);
+    expect(result?.credits).toBe(300);
+  });
 
   it('gives an active monthly subscription 300 credits over the current month', () => {
     const periodStart = new Date('2026-05-01T00:00:00.000Z');
@@ -138,7 +161,8 @@ describe('resolveAllowance', () => {
         ...emptyInputs,
         pass: {
           kind: 'unlimited',
-          expiresAt: new Date('2026-06-01T00:00:00.000Z'),
+          earliestExpiresAt: new Date('2026-06-01T00:00:00.000Z'),
+          latestExpiresAt: new Date('2026-06-01T00:00:00.000Z'),
         },
       },
       NOW
