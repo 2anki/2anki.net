@@ -202,7 +202,7 @@ function extractStyleFromHtml(html: string): string {
     .replaceAll('list-style-type: none;', '');
 }
 
-function stripHtmlBoilerplate(html: string): string {
+export function stripHtmlBoilerplate(html: string): string {
   const $ = cheerio.load(html);
   $('style, script, head, link[rel="stylesheet"]').remove();
   const body = $('body');

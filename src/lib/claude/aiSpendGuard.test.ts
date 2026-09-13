@@ -3,6 +3,7 @@ import {
   AiBudgetDeps,
   AiCreditsExhaustedError,
   assertAiBudget,
+  decideConversionBudget,
   getAiBudgetStatus,
   hasAiCreditsForConversion,
 } from './aiSpendGuard';
@@ -132,6 +133,18 @@ describe('assertAiBudget', () => {
     expect(deps.sendAlert).toHaveBeenCalled();
   });
 
+  it('still fires the watch alert when the user is also exhausted', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(0),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+    await expect(assertAiBudget(42, deps)).rejects.toBeInstanceOf(
+      AiCreditsExhaustedError
+    );
+    await flushAsync();
+    expect(deps.sendAlert).toHaveBeenCalled();
+  });
+
   it('fails open when the balance read throws', async () => {
     const deps = makeDeps({});
     (deps.computeBalance as jest.Mock).mockRejectedValue(new Error('db down'));
@@ -168,6 +181,69 @@ describe('hasAiCreditsForConversion', () => {
 describe('getAiBudgetStatus', () => {
   it('returns not-exhausted with a null balance for anonymous callers', async () => {
     const status = await getAiBudgetStatus(null, undefined, makeDeps({}));
-    expect(status).toEqual({ exhausted: false, balance: null });
+    expect(status).toEqual({ exhausted: false, reason: null, balance: null });
+  });
+
+  it('marks exhaustion at the rounded-credits boundary, not raw credits', async () => {
+    const status = await getAiBudgetStatus(
+      42,
+      undefined,
+      makeDeps({ balance: balanceWith(0.4) })
+    );
+    expect(status.exhausted).toBe(true);
+    expect(status.reason).toBe('zero');
+  });
+});
+
+describe('decideConversionBudget', () => {
+  it('proceeds and marks pre-checked when an estimate is covered', async () => {
+    const deps = makeDeps({ balance: balanceWith(180) });
+    const decision = await decideConversionBudget(
+      42,
+      { costUsd: 0.5, estimated: true },
+      deps
+    );
+    expect(decision).toEqual({
+      proceed: true,
+      reason: null,
+      neededCredits: 50,
+      availableCredits: 180,
+      budgetPreChecked: true,
+    });
+  });
+
+  it('does not pre-check a run whose cost could not be estimated', async () => {
+    const deps = makeDeps({ balance: balanceWith(180) });
+    const decision = await decideConversionBudget(
+      42,
+      { costUsd: 0, estimated: false },
+      deps
+    );
+    expect(decision.proceed).toBe(true);
+    expect(decision.budgetPreChecked).toBe(false);
+  });
+
+  it('refuses with the estimate reason and needed/available when short', async () => {
+    const deps = makeDeps({ balance: balanceWith(50) });
+    const decision = await decideConversionBudget(
+      42,
+      { costUsd: 1, estimated: true },
+      deps
+    );
+    expect(decision.proceed).toBe(false);
+    expect(decision.reason).toBe('estimate');
+    expect(decision.neededCredits).toBe(100);
+    expect(decision.availableCredits).toBe(50);
+  });
+
+  it('refuses with the zero reason at an empty balance', async () => {
+    const deps = makeDeps({ balance: balanceWith(0) });
+    const decision = await decideConversionBudget(
+      42,
+      { costUsd: 0.1, estimated: true },
+      deps
+    );
+    expect(decision.proceed).toBe(false);
+    expect(decision.reason).toBe('zero');
   });
 });

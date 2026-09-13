@@ -4146,4 +4146,21 @@ describe('resolveUploadWarning — AI credits exhausted', () => {
       resolveUploadWarning(['ai-credits-exhausted', 'apkg-over-100mb:210.4'])
     ).toMatch(/AnkiWeb won't sync/);
   });
+
+  it('keeps the locked-PDF notice ahead of the credits notice', () => {
+    expect(
+      resolveUploadWarning([
+        'ai-credits-exhausted',
+        'This PDF is password-protected.',
+      ])
+    ).toMatch(/password-protected/);
+  });
+
+  it('renders the estimate-short warning with needed and available credits', () => {
+    expect(
+      resolveUploadWarning(['markdown-heuristic', 'ai-credits-short:120:40'])
+    ).toBe(
+      'This file needs about 120 AI credits and you have 40, so it was built without AI.'
+    );
+  });
 });

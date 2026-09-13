@@ -113,6 +113,8 @@ import {
 import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
   AI_CREDITS_EXHAUSTED_WARNING_TEXT,
+  includesAiCreditsWarning,
+  resolveAiCreditsShortWarning,
 } from '../lib/claude/aiCredits/uploadWarning';
 import {
   AiCreditsExhaustedError,
@@ -185,13 +187,17 @@ export function resolveUploadWarning(
     const oversize = APKG_OVERSIZE_WARNING_RE.exec(warning);
     if (oversize) return apkgOversizeWarningText(Number(oversize[1]));
   }
-  if (warnings.includes(AI_CREDITS_EXHAUSTED_WARNING_CODE)) {
-    return AI_CREDITS_EXHAUSTED_WARNING_TEXT;
-  }
   const passwordWarning = warnings.find((w) =>
     w.includes('password-protected')
   );
   if (passwordWarning) return passwordWarning;
+  if (warnings.includes(AI_CREDITS_EXHAUSTED_WARNING_CODE)) {
+    return AI_CREDITS_EXHAUSTED_WARNING_TEXT;
+  }
+  for (const warning of warnings) {
+    const shortText = resolveAiCreditsShortWarning(warning);
+    if (shortText) return shortText;
+  }
   let duplicateGuids = 0;
   for (const warning of warnings) {
     const match = DUPLICATE_GUID_WARNING_RE.exec(warning);
@@ -1410,6 +1416,12 @@ class UploadService {
 
     if (totalCards === 0) {
       logNoPackageDiagnostics(req.files as UploadedFile[]);
+      // An empty deck because AI credits ran out (e.g. an image with nothing
+      // the standard parser can read) surfaces the credits stop, not a generic
+      // "no cards" error, and never re-attempts the (also blocked) AI fallback.
+      if (includesAiCreditsWarning(warnings)) {
+        throw new AiCreditsExhaustedError();
+      }
       const ownerId = owner != null ? Number(owner) : null;
       if (this.canFallBackToClaude(req, ownerId, paying)) {
         track('ai_fallback_triggered', {

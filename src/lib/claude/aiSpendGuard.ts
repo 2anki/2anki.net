@@ -41,8 +41,11 @@ export interface AiBudgetDeps {
   now?: () => Date;
 }
 
+export type AiBudgetExhaustionReason = 'zero' | 'estimate';
+
 export interface AiBudgetStatus {
   exhausted: boolean;
+  reason: AiBudgetExhaustionReason | null;
   balance: AiCreditBalance | null;
 }
 
@@ -84,13 +87,18 @@ async function readStatus(
   const now = deps.now?.() ?? new Date();
   const balance = await deps.computeBalance(userId, now);
   if (balance == null) {
-    return { exhausted: false, balance: null };
+    return { exhausted: false, reason: null, balance: null };
+  }
+  // Boundary matches the number the user sees: the rounded `credits`, not
+  // `rawCredits`, so "0 AI credits left" and "out of credits" always agree.
+  if (balance.credits <= 0) {
+    return { exhausted: true, reason: 'zero', balance };
   }
   const remainingUsd = balance.rawCredits * CREDIT_UNIT_USD;
-  const exhausted =
-    balance.rawCredits <= 0 ||
-    (estimatedCostUsd != null && estimatedCostUsd > remainingUsd);
-  return { exhausted, balance };
+  if (estimatedCostUsd != null && estimatedCostUsd > remainingUsd) {
+    return { exhausted: true, reason: 'estimate', balance };
+  }
+  return { exhausted: false, reason: null, balance };
 }
 
 // Reads the caller's credit balance, failing open (never blocks a paying
@@ -103,13 +111,13 @@ export async function getAiBudgetStatus(
   deps?: AiBudgetDeps
 ): Promise<AiBudgetStatus> {
   if (userId == null) {
-    return { exhausted: false, balance: null };
+    return { exhausted: false, reason: null, balance: null };
   }
   try {
     return await readStatus(userId, estimatedCostUsd, deps ?? defaultDeps());
   } catch (error) {
     console.error('[ai-credits] balance read failed, failing open', error);
-    return { exhausted: false, balance: null };
+    return { exhausted: false, reason: null, balance: null };
   }
 }
 
@@ -184,17 +192,68 @@ export async function assertAiBudget(
     return;
   }
   const status = await getAiBudgetStatus(userId, undefined, resolved);
-  if (status.exhausted && status.balance != null) {
-    await fireExhaustedOnce(resolved, userId, status.balance.windowStart);
-    throw new AiCreditsExhaustedError();
-  }
   // The watch alert is an ops signal, not part of the paying call's critical
   // path, so it runs detached — a slow or failing email never delays or breaks
-  // a conversion.
+  // a conversion. It fires before the exhausted throw so a user who is both
+  // over the alert threshold and out of credits still trips it.
   const now = resolved.now?.() ?? new Date();
   void maybeNotifyAlert(resolved, userId, now).catch((error) =>
     console.error('[ai-credits] spend alert check failed', error)
   );
+  if (status.exhausted && status.balance != null) {
+    await fireExhaustedOnce(resolved, userId, status.balance.windowStart);
+    throw new AiCreditsExhaustedError();
+  }
+}
+
+export interface ConversionBudgetDecision {
+  // false → build with the standard parser instead of AI.
+  proceed: boolean;
+  reason: AiBudgetExhaustionReason | null;
+  neededCredits: number;
+  availableCredits: number;
+  // Only true when the run was actually estimated and the balance covers it,
+  // so the per-call guard is a no-op; an un-estimated run keeps its guard.
+  budgetPreChecked: boolean;
+}
+
+// Start-of-conversion decision for the upload path. Refuses a run the balance
+// cannot cover (at zero, or the estimate exceeds the remaining balance) and
+// reports why plus the needed/available credits so the caller can pick the
+// right warning. Fails open on a read error. Anonymous callers always proceed.
+export async function decideConversionBudget(
+  userId: number | null | undefined,
+  estimate: { costUsd: number; estimated: boolean },
+  deps?: AiBudgetDeps
+): Promise<ConversionBudgetDecision> {
+  const neededCredits = Math.ceil(estimate.costUsd / CREDIT_UNIT_USD);
+  if (userId == null) {
+    return {
+      proceed: true,
+      reason: null,
+      neededCredits,
+      availableCredits: 0,
+      budgetPreChecked: false,
+    };
+  }
+  const status = await getAiBudgetStatus(userId, estimate.costUsd, deps);
+  const availableCredits = status.balance?.credits ?? 0;
+  if (status.exhausted) {
+    return {
+      proceed: false,
+      reason: status.reason,
+      neededCredits,
+      availableCredits,
+      budgetPreChecked: false,
+    };
+  }
+  return {
+    proceed: true,
+    reason: null,
+    neededCredits,
+    availableCredits,
+    budgetPreChecked: estimate.estimated,
+  };
 }
 
 // Start-of-conversion pre-check for the upload path. Returns false only when a

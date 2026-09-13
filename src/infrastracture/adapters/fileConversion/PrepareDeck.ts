@@ -28,9 +28,12 @@ import {
   PdfHtmlImage,
 } from './convertPdfTextToHtml';
 import { extractPdfImages } from '../../../lib/pdf/extractPdfImages';
-import { hasAiCreditsForConversion } from '../../../lib/claude/aiSpendGuard';
-import { estimatePromptedBytes } from '../../../lib/claude/aiCredits/promptedBytes';
-import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
+import { decideConversionBudget } from '../../../lib/claude/aiSpendGuard';
+import { estimateAiConversionCostUsd } from '../../../lib/claude/aiCredits/conversionCostEstimate';
+import {
+  AI_CREDITS_EXHAUSTED_WARNING_CODE,
+  buildAiCreditsShortWarning,
+} from '../../../lib/claude/aiCredits/uploadWarning';
 import { buildPdfPasswordSentinel } from '../../../lib/pdf/pdfPasswordSentinel';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
 import { convertDocxToHTML } from './convertDocxToHTML';
@@ -779,18 +782,34 @@ function usesAiSettings(settings: DeckParserInput['settings']): boolean {
   );
 }
 
-async function resolveAiCreditsExhausted(
+interface ResolvedAiGate extends AiConversionGate {
+  warning?: string;
+}
+
+async function resolveAiConversionGate(
   input: DeckParserInput,
   files: DeckParserInput['files']
-): Promise<boolean> {
+): Promise<ResolvedAiGate> {
   if (!(input.noLimits && usesAiSettings(input.settings))) {
-    return false;
+    return { exhausted: false, preChecked: false };
   }
-  const estimatedBytes = estimatePromptedBytes(files);
-  return !(await hasAiCreditsForConversion(
-    input.userId ?? null,
-    estimatedBytes
-  ));
+  const estimate = await estimateAiConversionCostUsd(
+    files,
+    input.settings,
+    input.workspace.location
+  );
+  const decision = await decideConversionBudget(input.userId ?? null, estimate);
+  if (decision.proceed) {
+    return { exhausted: false, preChecked: decision.budgetPreChecked };
+  }
+  const warning =
+    decision.reason === 'estimate'
+      ? buildAiCreditsShortWarning(
+          decision.neededCredits,
+          decision.availableCredits
+        )
+      : AI_CREDITS_EXHAUSTED_WARNING_CODE;
+  return { exhausted: true, preChecked: false, warning };
 }
 
 export async function PrepareDeck(
@@ -810,7 +829,8 @@ export async function PrepareDeck(
     noLimits: input.noLimits,
   });
 
-  const aiCreditsExhausted = await resolveAiCreditsExhausted(input, files);
+  const aiGate = await resolveAiConversionGate(input, files);
+  const aiCreditsExhausted = aiGate.exhausted;
   if (aiCreditsExhausted) {
     console.log('[PrepareDeck] AI credits exhausted, building without AI', {
       name: logFileLabel(input.name),
@@ -824,7 +844,7 @@ export async function PrepareDeck(
     (file) =>
       convertFile(file, input, {
         exhausted: aiCreditsExhausted,
-        preChecked: true,
+        preChecked: aiGate.preChecked,
       })
   );
   const convertedFiles = results.flatMap((r) => (r ? [r] : []));
@@ -868,9 +888,7 @@ export async function PrepareDeck(
         cardCount: parser.totalCardCount(),
         mcqCount: 0,
         mcqSkippedCount: 0,
-        warning: aiCreditsExhausted
-          ? AI_CREDITS_EXHAUSTED_WARNING_CODE
-          : parserWarning(parser),
+        warning: aiGate.warning ?? parserWarning(parser),
         droppedImageCount: parser.droppedImageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
@@ -909,9 +927,7 @@ export async function PrepareDeck(
     cardCount: parser.totalCardCount(),
     mcqCount,
     mcqSkippedCount,
-    warning: aiCreditsExhausted
-      ? AI_CREDITS_EXHAUSTED_WARNING_CODE
-      : parserWarning(parser),
+    warning: aiGate.warning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,
@@ -958,10 +974,15 @@ export async function prepareDeckInfoOnly(
   outputWorkspace: Workspace
 ): Promise<DeckInfoOnlyResult> {
   const files = dedupeFilesByName(input.files);
+  const aiGate = await resolveAiConversionGate(input, files);
   const results = await mapWithConcurrency(
     files,
     FILE_CONVERSION_CONCURRENCY,
-    (file) => convertFile(file, input, { exhausted: false, preChecked: false })
+    (file) =>
+      convertFile(file, input, {
+        exhausted: aiGate.exhausted,
+        preChecked: aiGate.preChecked,
+      })
   );
   const convertedFiles = results.flatMap((r) => (r ? [r] : []));
   const allFiles = assembleParserFiles(files, convertedFiles);
@@ -982,7 +1003,7 @@ export async function prepareDeckInfoOnly(
         cardCount: 0,
         mcqCount: 0,
         mcqSkippedCount: 0,
-        warning: parserWarning(parser),
+        warning: aiGate.warning ?? parserWarning(parser),
         droppedImageCount: parser.droppedImageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
@@ -1012,7 +1033,7 @@ export async function prepareDeckInfoOnly(
     cardCount: parser.totalCardCount(),
     mcqCount,
     mcqSkippedCount,
-    warning: parserWarning(parser),
+    warning: aiGate.warning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,
