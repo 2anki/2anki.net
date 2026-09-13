@@ -188,15 +188,6 @@ export function parserWarning(parser: {
   return undefined;
 }
 
-function warningForParserDeck(
-  aiCreditsExhausted: boolean,
-  parser: { usedHeuristic: boolean; strayClozeCount: number }
-): string | undefined {
-  return aiCreditsExhausted
-    ? AI_CREDITS_EXHAUSTED_WARNING_CODE
-    : parserWarning(parser);
-}
-
 // exhausted: the start-of-conversion pre-check found no credits, so the AI
 // vision branches are skipped and the file goes to the standard parser.
 // preChecked: a pre-check already ran, so the per-call guard inside the vision
@@ -877,7 +868,9 @@ export async function PrepareDeck(
         cardCount: parser.totalCardCount(),
         mcqCount: 0,
         mcqSkippedCount: 0,
-        warning: warningForParserDeck(aiCreditsExhausted, parser),
+        warning: aiCreditsExhausted
+          ? AI_CREDITS_EXHAUSTED_WARNING_CODE
+          : parserWarning(parser),
         droppedImageCount: parser.droppedImageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
@@ -916,7 +909,9 @@ export async function PrepareDeck(
     cardCount: parser.totalCardCount(),
     mcqCount,
     mcqSkippedCount,
-    warning: warningForParserDeck(aiCreditsExhausted, parser),
+    warning: aiCreditsExhausted
+      ? AI_CREDITS_EXHAUSTED_WARNING_CODE
+      : parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,

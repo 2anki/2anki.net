@@ -78,16 +78,22 @@ interface BatchOutcome {
   failedFiles: string[];
 }
 
+interface BatchBuildContext {
+  settings: CardOption;
+  paying: boolean;
+  workspace: Workspace;
+  userId: number | null;
+  knownGuids?: KnownGuids;
+  uploadIdentity?: UploadIdentityContext;
+}
+
 async function buildDeckBatch(
   fileNames: string[],
   zipHandler: ZipHandler,
-  settings: CardOption,
-  paying: boolean,
-  workspace: Workspace,
-  userId: number | null,
-  knownGuids?: KnownGuids,
-  uploadIdentity?: UploadIdentityContext
+  ctx: BatchBuildContext
 ): Promise<BatchOutcome> {
+  const { settings, paying, workspace, userId, knownGuids, uploadIdentity } =
+    ctx;
   const packages: Package[] = [];
   const warnings: string[] = [];
 
@@ -191,12 +197,7 @@ async function buildDeckBatch(
   const stragglerOutcomes = await buildStragglerDecks(
     stragglers,
     zipHandler,
-    settings,
-    paying,
-    workspace,
-    userId,
-    knownGuids,
-    uploadIdentity
+    ctx
   );
   packages.push(...stragglerOutcomes.packages);
   warnings.push(...stragglerOutcomes.warnings);
@@ -209,13 +210,10 @@ async function buildDeckBatch(
 async function buildStragglerDecks(
   stragglers: { inputFileName: string }[],
   zipHandler: ZipHandler,
-  settings: CardOption,
-  paying: boolean,
-  workspace: Workspace,
-  userId: number | null,
-  knownGuids?: KnownGuids,
-  uploadIdentity?: UploadIdentityContext
+  ctx: BatchBuildContext
 ): Promise<BatchOutcome> {
+  const { settings, paying, workspace, userId, knownGuids, uploadIdentity } =
+    ctx;
   const packages: Package[] = [];
   const warnings: string[] = [];
   const lockedPdfs: string[] = [];
@@ -338,21 +336,14 @@ async function liftDecksToParent(from: Workspace, to: Workspace) {
   }
 }
 
-interface CardIdentitySources {
-  knownGuids?: KnownGuids;
-  uploadIdentity?: UploadIdentityContext;
-}
-
 async function buildAllInOneSlot(
   supportedFileNames: string[],
   zipHandler: ZipHandler,
-  settings: CardOption,
-  paying: boolean,
-  workspace: Workspace,
   cap: number,
-  userId: number | null,
-  { knownGuids, uploadIdentity }: CardIdentitySources
+  ctx: BatchBuildContext
 ): Promise<PackageResult> {
+  const { settings, paying, workspace, userId, knownGuids, uploadIdentity } =
+    ctx;
   const limit = pLimit(cap);
   const settled = await Promise.allSettled(
     supportedFileNames.map((fileName) =>
@@ -494,18 +485,17 @@ export const getPackagesFromZip = async (
 
   const cap = resolvePerWorkerPythonCap();
   const batchSize = Math.ceil(supportedFileNames.length / cap);
+  const batchCtx: BatchBuildContext = {
+    settings: effectiveSettings,
+    paying,
+    workspace,
+    userId,
+    knownGuids,
+    uploadIdentity,
+  };
 
   if (supportedFileNames.length <= 1 || batchSize <= 1) {
-    return buildAllInOneSlot(
-      supportedFileNames,
-      zipHandler,
-      effectiveSettings,
-      paying,
-      workspace,
-      cap,
-      userId,
-      { knownGuids, uploadIdentity }
-    );
+    return buildAllInOneSlot(supportedFileNames, zipHandler, cap, batchCtx);
   }
 
   const chunks = chunkArray(supportedFileNames, batchSize);
@@ -513,18 +503,7 @@ export const getPackagesFromZip = async (
 
   const settledChunks = await Promise.allSettled(
     chunks.map((chunk) =>
-      limit(() =>
-        buildDeckBatch(
-          chunk,
-          zipHandler,
-          effectiveSettings,
-          paying,
-          workspace,
-          userId,
-          knownGuids,
-          uploadIdentity
-        )
-      )
+      limit(() => buildDeckBatch(chunk, zipHandler, batchCtx))
     )
   );
 

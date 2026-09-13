@@ -3,9 +3,8 @@ import {
   AiCreditBalanceReaders,
 } from '../../lib/claude/aiCredits/balance';
 import { CreditWindowReset } from '../../lib/claude/aiCredits/allowance';
-import { createAiCreditReaders } from '../../data_layer/createAiCreditReaders';
 
-export { createAiCreditReaders };
+export { createAiCreditReaders } from '../../data_layer/createAiCreditReaders';
 
 export interface AiCreditsResponse {
   credits: number;
