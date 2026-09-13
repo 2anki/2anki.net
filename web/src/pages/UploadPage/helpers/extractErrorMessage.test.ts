@@ -44,6 +44,15 @@ describe('extractErrorMessage', () => {
     expect(result.message).toContain('.zip');
   });
 
+  test('passes the ai_credits_exhausted code through so its copy is reachable', async () => {
+    const response = jsonResponse({
+      code: 'ai_credits_exhausted',
+      message: "You're out of AI credits.",
+    });
+    const result = await extractErrorMessage(response);
+    expect(result.code).toBe('ai_credits_exhausted');
+  });
+
   test('strips HTML tags from plain-text error response', async () => {
     const response = textResponse(
       '<p>Could not create a deck using your file</p>'

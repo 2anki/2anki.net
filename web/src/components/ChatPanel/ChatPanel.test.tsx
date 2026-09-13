@@ -483,6 +483,22 @@ describe('ChatPanel — add tags feedback', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/Tags added to/)).not.toBeInTheDocument();
   });
+
+  it('shows the calm credits notice, not an error, when tagging hits 402', async () => {
+    mockPost.mockResolvedValueOnce({
+      ok: false,
+      status: 402,
+      json: () => Promise.resolve({ code: 'ai_credits_exhausted' }),
+    });
+    renderChatPanel({ initialMessages: taggableMessages });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add tags' }));
+
+    expect(await screen.findByText(/out of AI credits/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText("Couldn't add tags. Try again.")
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe('ChatPanel — aria-live', () => {

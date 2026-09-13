@@ -946,12 +946,18 @@ export default function ChatPanel({
     const cardsToTag = target.cards;
     setTaggingIdx(messageIdx);
     setNetworkError(null);
+    setAiCreditsExhausted(false);
     setSuccessMessage(null);
     try {
       const response = await post('/api/chat/tag-cards', {
         cards: cardsToTag.map((c) => ({ front: c.front, back: c.back })),
         conversationId: activeConversationId,
       });
+      if (response.status === 402) {
+        setAiCreditsExhausted(true);
+        refetchUserLocals();
+        return;
+      }
       if (!response.ok) {
         setNetworkError(t('errors.addTags'));
         return;
