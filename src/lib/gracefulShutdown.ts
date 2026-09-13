@@ -6,6 +6,7 @@ import {
   POOL_CLOSE_TIMEOUT_MS,
 } from './conversionPool';
 import { clearSchedulerTimers } from './scheduling/timerRegistry';
+import { getEventsSink } from '../services/events/eventsSinkInstance';
 
 // pm2 sends SIGINT then escalates to SIGKILL after kill_timeout
 // (ecosystem.blue-green.config.js). Blue-green puts the new color live before
@@ -36,7 +37,11 @@ export function resetGracefulShutdownStateForTesting(): void {
   shuttingDown = false;
 }
 
-type DrainPhase = 'HTTP server' | 'Conversion pool' | 'Database pool';
+type DrainPhase =
+  | 'HTTP server'
+  | 'Events sink'
+  | 'Conversion pool'
+  | 'Database pool';
 
 export function describeActiveResources(): Record<string, number> {
   const tally: Record<string, number> = {};
@@ -121,6 +126,14 @@ export async function gracefulShutdown(
     closeBudget.unref();
     await closed;
     clearTimeout(closeBudget);
+  });
+
+  await timedPhase('Events sink', async () => {
+    try {
+      await getEventsSink().drain();
+    } catch (err) {
+      console.error('Events sink drain failed:', err);
+    }
   });
 
   phase = 'Conversion pool';

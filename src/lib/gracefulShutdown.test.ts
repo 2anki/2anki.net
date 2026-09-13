@@ -235,6 +235,7 @@ describe('gracefulShutdown', () => {
       .filter((m) => / drained in \d+ms$/.test(m));
     expect(phases).toEqual([
       expect.stringMatching(/^HTTP server drained in \d+ms$/),
+      expect.stringMatching(/^Events sink drained in \d+ms$/),
       expect.stringMatching(/^Conversion pool drained in \d+ms$/),
       expect.stringMatching(/^Database pool drained in \d+ms$/),
     ]);

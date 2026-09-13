@@ -19,12 +19,19 @@ function isForeignKeyViolation(error: unknown): boolean {
   );
 }
 
+// The paywall reads this ledger to enforce credit balances, so its rows must
+// not sit in the 5-second buffer where a crash or deploy drops them. They are
+// written immediately with one retry instead of buffered.
+const DURABLE_EVENT_NAMES = new Set(['ai_usage_recorded']);
+
 export class EventsSink {
   private buffer: EventRow[] = [];
 
   private intervalHandle: NodeJS.Timeout | null = null;
 
   private pendingFlush: Promise<void> | null = null;
+
+  private pendingDurable = new Set<Promise<void>>();
 
   constructor(
     private readonly repository: IEventsRepository,
@@ -52,8 +59,38 @@ export class EventsSink {
   }
 
   record(row: EventRow) {
+    if (DURABLE_EVENT_NAMES.has(row.name)) {
+      const durable = this.recordDurable(row).finally(() =>
+        this.pendingDurable.delete(durable)
+      );
+      this.pendingDurable.add(durable);
+      return;
+    }
     this.buffer.push(row);
     this.maybeFlush();
+  }
+
+  private async recordDurable(row: EventRow): Promise<void> {
+    try {
+      await this.repository.insertEvents([row]);
+    } catch (error) {
+      try {
+        await this.repository.insertEvents([row]);
+      } catch (retryError) {
+        console.error(
+          `[events] durable insert of "${row.name}" failed after retry:`,
+          retryError
+        );
+      }
+    }
+  }
+
+  // Stop the timer and settle everything in flight so a shutdown drain does not
+  // lose the buffered funnel events or an in-flight durable usage write.
+  async drain(): Promise<void> {
+    this.stop();
+    await this.flush();
+    await Promise.allSettled([...this.pendingDurable]);
   }
 
   async flush(): Promise<void> {
