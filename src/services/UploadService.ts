@@ -32,6 +32,12 @@ import {
   apkgOversizeWarning,
   apkgOversizeWarningText,
 } from '../lib/upload/apkgOversizeWarning';
+import {
+  DUPLICATE_GUID_WARNING_RE,
+  duplicateGuidWarning,
+  duplicateGuidWarningText,
+} from '../lib/upload/duplicateGuidWarning';
+import { countDuplicateGuids } from '../lib/anki/countDuplicateGuids';
 import { UploadedFile } from '../lib/storage/types';
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';
 import { toText } from './NotionService/BlockHandler/helpers/deckNameToText';
@@ -175,6 +181,12 @@ export function resolveUploadWarning(
     w.includes('password-protected')
   );
   if (passwordWarning) return passwordWarning;
+  let duplicateGuids = 0;
+  for (const warning of warnings) {
+    const match = DUPLICATE_GUID_WARNING_RE.exec(warning);
+    if (match) duplicateGuids += Number(match[1]);
+  }
+  if (duplicateGuids > 0) return duplicateGuidWarningText(duplicateGuids);
   if (warnings.includes('markdown-heuristic')) {
     return MARKDOWN_HEURISTIC_WARNING;
   }
@@ -1441,10 +1453,14 @@ class UploadService {
         throw new Error(`Could not produce APKG for ${name}`);
       }
       const plen = Buffer.byteLength(apkg);
-      const oversizeWarning = apkgOversizeWarning(plen);
-      const syncWarnings = oversizeWarning
-        ? [...(warnings ?? []), oversizeWarning]
-        : warnings;
+      const builtWarnings = [
+        apkgOversizeWarning(plen),
+        duplicateGuidWarning(countDuplicateGuids(ws.location)),
+      ].filter((w): w is string => w != null);
+      const syncWarnings =
+        builtWarnings.length > 0
+          ? [...(warnings ?? []), ...builtWarnings]
+          : warnings;
       const downloadKey =
         owner == null
           ? null
