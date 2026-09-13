@@ -1,6 +1,6 @@
 # Spec: Prepaid AI credits, part 2 of 2 (credit pack purchase and copy)
 
-Issue: https://github.com/2anki/server/issues/4425. Depends on [ai-credits-1.md](ai-credits-1.md) being merged. Gets its own spec PR when part 1 lands; do not implement on the part 1 branch.
+Issue: https://github.com/2anki/server/issues/4425. Depends on [ai-credits-1.md](https://github.com/2anki/server/blob/c947ab25eba0/Documentation/specs/ai-credits-1.md) being merged. Gets its own spec PR when part 1 lands; do not implement on the part 1 branch.
 
 ### Trio synthesis
 - PM: one pack, one price, prepaid, revenue recognized on consumption; no pricing-page card.

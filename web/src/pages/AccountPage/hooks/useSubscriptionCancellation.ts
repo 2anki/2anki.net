@@ -7,6 +7,7 @@ import {
   CancelMode,
 } from '../../../lib/backend/cancelSubscription';
 import { CancellationReason } from '../components/cancellationReasons';
+import { formatLongDate } from '../utils/formatLongDate';
 
 export function useSubscriptionCancellation(onSuccess?: () => void) {
   const { t } = useTranslation('account');
@@ -16,11 +17,7 @@ export function useSubscriptionCancellation(onSuccess?: () => void) {
 
   const formatPeriodEnd = (seconds: number | null | undefined): string => {
     if (!seconds) return t('subscription.billingPeriodEndFallback');
-    return new Date(seconds * 1000).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return formatLongDate(new Date(seconds * 1000));
   };
 
   const { mutate, isPending: isCancelling } = useMutation({

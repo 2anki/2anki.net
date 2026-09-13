@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useAiCredits } from '../../../lib/hooks/useAiCredits';
+import { formatLongDate } from '../utils/formatLongDate';
 import styles from '../AccountPage.module.css';
 
 export function AiCreditsAccountLine() {
@@ -16,11 +17,7 @@ export function AiCreditsAccountLine() {
 
   const validThrough =
     credits.windowEnd != null
-      ? new Date(credits.windowEnd).toLocaleDateString(i18n.language, {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-        })
+      ? formatLongDate(new Date(credits.windowEnd), i18n.language)
       : null;
 
   return (
