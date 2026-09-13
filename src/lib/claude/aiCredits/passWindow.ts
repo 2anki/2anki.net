@@ -1,3 +1,8 @@
+import {
+  PASS_DURATION_MS,
+  isAnonymousPassKind,
+} from '../../../usecases/passes/passDurations';
+
 export interface ActivePassRow {
   kind: string;
   expiresAt: Date;
@@ -5,15 +10,20 @@ export interface ActivePassRow {
 
 export interface ActivePassWindow {
   kind: string;
-  earliestExpiresAt: Date;
-  latestExpiresAt: Date;
+  windowStart: Date;
+  windowEnd: Date;
 }
 
-// The pass that decides the plan is the latest-expiring active row (matching
-// findActive); its earliest still-active sibling of the same kind anchors the
-// credit window on purchase time so stacking never resets the balance.
+// The plan (credits, and whether it is an Apple unlimited pass) follows the
+// latest-expiring active row. The spend window is anchored on the earliest
+// purchase across ALL active rows — `expiresAt − duration` for every anonymous
+// pass, including a different kind stacked on top — so a stacked or mixed pass
+// never pushes the window into the future where earlier spend stops counting.
+// The anchor is clamped to now so a freshly stacked set never starts ahead of
+// the clock.
 export function pickActivePassWindow(
-  rows: ActivePassRow[]
+  rows: ActivePassRow[],
+  now: Date
 ): ActivePassWindow | null {
   if (rows.length === 0) {
     return null;
@@ -24,11 +34,14 @@ export function pickActivePassWindow(
       relevant = row;
     }
   }
-  const sameKind = rows.filter((row) => row.kind === relevant.kind);
-  const expiries = sameKind.map((row) => row.expiresAt.getTime());
-  return {
-    kind: relevant.kind,
-    earliestExpiresAt: new Date(Math.min(...expiries)),
-    latestExpiresAt: new Date(Math.max(...expiries)),
-  };
+  const windowEnd = relevant.expiresAt;
+  let earliest = windowEnd.getTime();
+  for (const row of rows) {
+    if (isAnonymousPassKind(row.kind)) {
+      const start = row.expiresAt.getTime() - PASS_DURATION_MS[row.kind];
+      earliest = Math.min(earliest, start);
+    }
+  }
+  const windowStart = new Date(Math.min(earliest, now.getTime()));
+  return { kind: relevant.kind, windowStart, windowEnd };
 }

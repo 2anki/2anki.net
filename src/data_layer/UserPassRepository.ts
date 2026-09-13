@@ -88,7 +88,8 @@ export class UserPassRepository implements IUserPassRepository {
           row.expires_at instanceof Date
             ? row.expires_at
             : new Date(row.expires_at),
-      }))
+      })),
+      now
     );
   }
 

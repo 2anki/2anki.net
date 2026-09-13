@@ -26,6 +26,19 @@ describe('parseSubscriptionPayload', () => {
     });
   });
 
+  it('falls back to a top-level billing period when the item has none', () => {
+    const result = parseSubscriptionPayload({
+      current_period_start: 1_746_057_600,
+      current_period_end: 1_748_736_000,
+      items: { data: [{ price: { unit_amount: 799 } }] },
+    });
+    expect(result).toEqual({
+      periodStart: new Date(1_746_057_600 * 1000),
+      periodEnd: new Date(1_748_736_000 * 1000),
+      unitAmount: 799,
+    });
+  });
+
   it('parses a JSON string payload', () => {
     const result = parseSubscriptionPayload(
       JSON.stringify({ items: { data: [{ price: { unit_amount: 200 } }] } })

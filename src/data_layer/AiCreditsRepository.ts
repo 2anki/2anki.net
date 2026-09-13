@@ -10,6 +10,8 @@ export interface IAiCreditsPlanReader {
 }
 
 interface StripePayloadShape {
+  current_period_start?: number | null;
+  current_period_end?: number | null;
   items?: {
     data?: Array<{
       current_period_start?: number | null;
@@ -41,9 +43,24 @@ export function parseSubscriptionPayload(
   }
   const item = parsed?.items?.data?.[0];
   const unitAmount = item?.price?.unit_amount;
+  // Newer webhook payloads moved current_period_* onto the item; older stored
+  // rows still carry it at the top level. Read the item first, fall back to the
+  // top level, and log when neither carries a period (the resolver then uses a
+  // rolling window).
+  const periodStart = toDate(
+    item?.current_period_start ?? parsed?.current_period_start
+  );
+  const periodEnd = toDate(
+    item?.current_period_end ?? parsed?.current_period_end
+  );
+  if (parsed != null && periodStart == null && periodEnd == null) {
+    console.warn(
+      '[ai-credits] subscription payload carries no billing period; using a rolling window'
+    );
+  }
   return {
-    periodStart: toDate(item?.current_period_start),
-    periodEnd: toDate(item?.current_period_end),
+    periodStart,
+    periodEnd,
     unitAmount: typeof unitAmount === 'number' ? unitAmount : null,
   };
 }
@@ -88,8 +105,8 @@ export class AiCreditsRepository implements IAiCreditsPlanReader {
         passWindow != null
           ? {
               kind: passWindow.kind,
-              earliestExpiresAt: passWindow.earliestExpiresAt,
-              latestExpiresAt: passWindow.latestExpiresAt,
+              windowStart: passWindow.windowStart,
+              windowEnd: passWindow.windowEnd,
             }
           : null,
       subscription:

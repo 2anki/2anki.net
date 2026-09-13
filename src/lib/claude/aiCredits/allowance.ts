@@ -1,5 +1,4 @@
 import {
-  PASS_DURATION_MS,
   AnonymousPassKind,
   isAnonymousPassKind,
 } from '../../../usecases/passes/passDurations';
@@ -16,8 +15,8 @@ export interface SubscriptionPlanInputs {
 export interface PlanInputs {
   pass: {
     kind: string;
-    earliestExpiresAt: Date;
-    latestExpiresAt: Date;
+    windowStart: Date;
+    windowEnd: Date;
   } | null;
   subscription: SubscriptionPlanInputs | null;
   patreon: boolean;
@@ -44,20 +43,18 @@ export const LIFETIME_CREDITS = 300;
 const LEGACY_UNIT_AMOUNT_CEILING = 200;
 const ROLLING_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
-// Stacking a second pass onto an active one adds a row whose expiry is the
-// prior expiry plus the duration, so anchoring the window on the latest expiry
-// minus the duration slides it forward and lets earlier spend drop out of it.
-// Anchor on the earliest still-active pass instead; the window runs from that
-// pass's purchase time to the latest stacked expiry.
+// The pass window is already resolved upstream (pickActivePassWindow anchors it
+// on the earliest active purchase and clamps to now), so the allowance just
+// carries it through with the kind's credits.
 function passAllowance(
   kind: AnonymousPassKind,
-  earliestExpiresAt: Date,
-  latestExpiresAt: Date
+  windowStart: Date,
+  windowEnd: Date
 ): AiCreditAllowance {
   return {
     credits: PASS_CREDITS[kind],
-    windowStart: new Date(earliestExpiresAt.getTime() - PASS_DURATION_MS[kind]),
-    windowEnd: latestExpiresAt,
+    windowStart,
+    windowEnd,
     resets: 'pass',
   };
 }
@@ -86,31 +83,65 @@ function rollingAllowance(credits: number, now: Date): AiCreditAllowance {
   };
 }
 
+function addMonthsUtc(date: Date, months: number): Date {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth() + months,
+      date.getUTCDate(),
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds(),
+      date.getUTCMilliseconds()
+    )
+  );
+}
+
 function startOfNextMonthUtc(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 }
 
-// Every plan draws its credits over a monthly window, not the whole billing
-// period: an annual subscriber gets 300 a month, not 300 a year. The month is
-// clipped to the period so the window never runs past when the plan renews.
-function monthlyWindowClippedToPeriod(
+// One reset cadence, anchored on the billing day: the window is the n-th month
+// from periodStart that contains now, clipped to periodEnd. A monthly plan's
+// single month equals its whole period; an annual plan gets a fresh window each
+// billing-day anniversary. Anchoring on the calendar month AND the period was
+// the double-reset bug for anyone who renews off the 1st.
+function subscriptionMonthlyWindow(
   credits: number,
-  periodStart: Date | null,
-  periodEnd: Date | null,
+  periodStart: Date,
+  periodEnd: Date,
+  now: Date
+): AiCreditAllowance {
+  let months =
+    (now.getUTCFullYear() - periodStart.getUTCFullYear()) * 12 +
+    (now.getUTCMonth() - periodStart.getUTCMonth());
+  if (addMonthsUtc(periodStart, months).getTime() > now.getTime()) {
+    months -= 1;
+  }
+  const windowStart = addMonthsUtc(periodStart, months);
+  const nextAnniversary = addMonthsUtc(periodStart, months + 1);
+  const windowEnd =
+    nextAnniversary.getTime() < periodEnd.getTime()
+      ? nextAnniversary
+      : periodEnd;
+  return { credits, windowStart, windowEnd, resets: 'period' };
+}
+
+// A calendar-month window, optionally clipped to a plan end (the Apple
+// unlimited pass anchors on its own expiry). Single cadence: the calendar month.
+function calendarMonthWindow(
+  credits: number,
   now: Date,
-  resets: CreditWindowReset
+  resets: CreditWindowReset,
+  clipEnd: Date | null
 ): AiCreditAllowance {
   const monthStart = startOfMonthUtc(now);
   const monthEnd = startOfNextMonthUtc(now);
-  const windowStart =
-    periodStart != null && periodStart.getTime() > monthStart.getTime()
-      ? periodStart
-      : monthStart;
   const windowEnd =
-    periodEnd != null && periodEnd.getTime() < monthEnd.getTime()
-      ? periodEnd
+    clipEnd != null && clipEnd.getTime() < monthEnd.getTime()
+      ? clipEnd
       : monthEnd;
-  return { credits, windowStart, windowEnd, resets };
+  return { credits, windowStart: monthStart, windowEnd, resets };
 }
 
 function subscriptionAllowance(
@@ -122,12 +153,11 @@ function subscriptionAllowance(
       ? LEGACY_SUBSCRIPTION_CREDITS
       : SUBSCRIPTION_CREDITS;
   if (periodIsCurrent(sub.periodStart, sub.periodEnd, now)) {
-    return monthlyWindowClippedToPeriod(
+    return subscriptionMonthlyWindow(
       credits,
       sub.periodStart,
-      sub.periodEnd,
-      now,
-      'period'
+      sub.periodEnd as Date,
+      now
     );
   }
   return rollingAllowance(credits, now);
@@ -142,29 +172,18 @@ export function resolveAllowance(
   }
   const pass = inputs.pass;
   if (pass != null && isAnonymousPassKind(pass.kind)) {
-    return passAllowance(
-      pass.kind,
-      pass.earliestExpiresAt,
-      pass.latestExpiresAt
-    );
+    return passAllowance(pass.kind, pass.windowStart, pass.windowEnd);
   }
   if (pass?.kind === 'unlimited') {
-    return monthlyWindowClippedToPeriod(
+    return calendarMonthWindow(
       SUBSCRIPTION_CREDITS,
-      null,
-      pass.latestExpiresAt,
       now,
-      'period'
+      'period',
+      pass.windowEnd
     );
   }
   if (inputs.patreon || inputs.ankifyAccess) {
-    return monthlyWindowClippedToPeriod(
-      LIFETIME_CREDITS,
-      null,
-      null,
-      now,
-      'month'
-    );
+    return calendarMonthWindow(LIFETIME_CREDITS, now, 'month', null);
   }
   return null;
 }
