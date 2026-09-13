@@ -77,13 +77,12 @@ export class AiCreditsRepository implements IAiCreditsPlanReader {
       return null;
     }
 
-    const passWindow = await new UserPassRepository(
-      this.database
-    ).findActivePassWindow(userId, now);
-
-    const subscriptionRow = (await this.buildActiveSubscriptionQuery(
-      user.email
-    ).first()) as { payload: unknown } | undefined;
+    const [passWindow, subscriptionRow] = await Promise.all([
+      new UserPassRepository(this.database).findActivePassWindow(userId, now),
+      this.buildActiveSubscriptionQuery(user.email).first() as Promise<
+        { payload: unknown } | undefined
+      >,
+    ]);
 
     return {
       pass:

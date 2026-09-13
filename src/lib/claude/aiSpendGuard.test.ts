@@ -14,6 +14,10 @@ jest.mock('../../services/events/track', () => ({ track: jest.fn() }));
 const trackMock = track as jest.Mock;
 const NOW = new Date('2026-09-07T12:00:00.000Z');
 
+// The watch alert runs detached from assertAiBudget, so tests that assert on it
+// flush the microtask/timer queue before checking the alert side-effects.
+const flushAsync = () => new Promise((resolve) => setImmediate(resolve));
+
 function balanceWith(rawCredits: number): AiCreditBalance {
   return {
     rawCredits,
@@ -91,6 +95,7 @@ describe('assertAiBudget', () => {
       cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
     });
     await assertAiBudget(42, deps);
+    await flushAsync();
     expect(trackMock).toHaveBeenCalledWith('ai_spend_alert_sent', {
       userId: 42,
       props: {},
@@ -99,6 +104,32 @@ describe('assertAiBudget', () => {
       expect.stringContaining('crossed $25 in 30 days'),
       expect.stringContaining('User 42')
     );
+  });
+
+  it('dedupes the watch alert inside seven days', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(180),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+      eventCount: 1,
+    });
+    await assertAiBudget(42, deps);
+    await flushAsync();
+    expect(deps.sendAlert).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalledWith('ai_spend_alert_sent', {
+      userId: 42,
+      props: {},
+    });
+  });
+
+  it('fails open when the alert email throws', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(180),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+    (deps.sendAlert as jest.Mock).mockRejectedValue(new Error('smtp down'));
+    await expect(assertAiBudget(42, deps)).resolves.toBeUndefined();
+    await flushAsync();
+    expect(deps.sendAlert).toHaveBeenCalled();
   });
 
   it('fails open when the balance read throws', async () => {

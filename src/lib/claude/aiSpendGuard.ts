@@ -53,29 +53,19 @@ function defaultDeps(): AiBudgetDeps {
     AiUsageMetricsRepository,
   } = require('../../data_layer/AiUsageMetricsRepository');
   const {
-    AiCreditsRepository,
-  } = require('../../data_layer/AiCreditsRepository');
-  const {
-    AiCreditGrantsRepository,
-  } = require('../../data_layer/AiCreditGrantsRepository');
+    createAiCreditReaders,
+  } = require('../../data_layer/createAiCreditReaders');
   const {
     getDefaultEmailService,
   } = require('../../services/EmailService/EmailService');
   const { SUPPORT_CC_ADDRESS } = require('../constants');
   /* eslint-enable @typescript-eslint/no-var-requires */
   const database = getDatabase();
+  const readers = createAiCreditReaders(database);
   const usage = new AiUsageMetricsRepository(database);
-  const plans = new AiCreditsRepository(database);
-  const grants = new AiCreditGrantsRepository(database);
   return {
     computeBalance: (userId: number, now: Date) =>
-      computeAiCreditBalance(userId, now, {
-        getPlanInputs: (id: number, at: Date) => plans.getPlanInputs(id, at),
-        sumActiveCredits: (id: number, at: Date) =>
-          grants.sumActiveCredits(id, at),
-        userCostSince: (id: number, since: Date) =>
-          usage.userCostSince(id, since),
-      }),
+      computeAiCreditBalance(userId, now, readers),
     reader: usage,
     sendAlert: (subject: string, body: string) =>
       getDefaultEmailService().sendAiSpendAlertEmail(
@@ -186,18 +176,25 @@ export async function assertAiBudget(
   if (userId == null) {
     return;
   }
-  const resolved = deps ?? defaultDeps();
+  let resolved: AiBudgetDeps;
+  try {
+    resolved = deps ?? defaultDeps();
+  } catch (error) {
+    console.error('[ai-credits] guard init failed, failing open', error);
+    return;
+  }
   const status = await getAiBudgetStatus(userId, undefined, resolved);
   if (status.exhausted && status.balance != null) {
     await fireExhaustedOnce(resolved, userId, status.balance.windowStart);
     throw new AiCreditsExhaustedError();
   }
-  try {
-    const now = resolved.now?.() ?? new Date();
-    await maybeNotifyAlert(resolved, userId, now);
-  } catch (error) {
-    console.error('[ai-credits] spend alert check failed', error);
-  }
+  // The watch alert is an ops signal, not part of the paying call's critical
+  // path, so it runs detached — a slow or failing email never delays or breaks
+  // a conversion.
+  const now = resolved.now?.() ?? new Date();
+  void maybeNotifyAlert(resolved, userId, now).catch((error) =>
+    console.error('[ai-credits] spend alert check failed', error)
+  );
 }
 
 // Start-of-conversion pre-check for the upload path. Returns false only when a

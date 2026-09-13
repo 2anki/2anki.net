@@ -30,8 +30,10 @@ export async function computeAiCreditBalance(
   if (allowance == null) {
     return null;
   }
-  const grantCredits = await readers.sumActiveCredits(userId, now);
-  const spendUsd = await readers.userCostSince(userId, allowance.windowStart);
+  const [grantCredits, spendUsd] = await Promise.all([
+    readers.sumActiveCredits(userId, now),
+    readers.userCostSince(userId, allowance.windowStart),
+  ]);
   const spentCredits = spendUsd / CREDIT_UNIT_USD;
   const rawCredits = allowance.credits + grantCredits - spentCredits;
   return {
