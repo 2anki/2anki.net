@@ -1,5 +1,6 @@
 import { setupTests } from '../../test/configure-jest';
 import { parseApkgNotes } from '../../services/ApkgPreviewService/parseApkgNotes';
+import { countDuplicateGuids } from '../anki/countDuplicateGuids';
 import CardOption from './Settings/CardOption';
 import { DeckParser } from './DeckParser';
 import Workspace from './WorkSpace';
@@ -168,7 +169,7 @@ describeWithPython('the shipped apkg keeps prod-compatible GUIDs', () => {
     });
     const apkg = await parser.build(workspace);
     const parsed = await parseApkgNotes(apkg);
-    return { guids: parsed.notes.map((n) => n.guid), parser };
+    return { guids: parsed.notes.map((n) => n.guid), parser, workspace };
   }
 
   const withId = detailsToggle(BLOCK_ID, 'Same question', '<p>Same answer</p>');
@@ -191,6 +192,13 @@ describeWithPython('the shipped apkg keeps prod-compatible GUIDs', () => {
     });
     expect(renamed.guids).toEqual([seeded]);
     expect(renamed.parser.issuedGuidEntries).toEqual([]);
+  });
+
+  it('collapses two toggles with the same question onto one guid, and the sidecar counts the loss', async () => {
+    const twice = await buildApkg(withoutId + withoutId, 'Deck One');
+    expect(twice.guids).toHaveLength(2);
+    expect(twice.guids[0]).toBe(twice.guids[1]);
+    expect(countDuplicateGuids(twice.workspace.location)).toBe(1);
   });
 });
 

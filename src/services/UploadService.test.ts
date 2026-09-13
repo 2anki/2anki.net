@@ -1341,6 +1341,40 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     expect(res.set).toHaveBeenCalledWith('X-Warning', lockedWarning);
   });
 
+  it('warns on X-Warning when notes in the built package share a guid', async () => {
+    const previousLocation = mockWorkspaceLocation;
+    mockWorkspaceLocation = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'upload-dup-guid-')
+    );
+    fs.writeFileSync(
+      path.join(mockWorkspaceLocation, 'guids.json'),
+      JSON.stringify([
+        { notionId: null, guid: 'same' },
+        { notionId: null, guid: 'same' },
+        { notionId: null, guid: 'other' },
+      ])
+    );
+    mockPackages([{ name: 'notes.html', cardCount: 3 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res, capturedStatus } = buildResponse();
+
+    await service.handleUpload(req, res);
+    mockWorkspaceLocation = previousLocation;
+
+    expect(capturedStatus()).toBe(200);
+    expect(res.set).toHaveBeenCalledWith(
+      'X-Warning',
+      expect.stringMatching(/^1 card repeats the question/)
+    );
+  });
+
   it('sends the deck for an anonymous conversion at or under 21 cards without incrementing usage', async () => {
     mockPackages([{ name: 'deck', cardCount: 21 }]);
     const usersRepo = buildUsersRepo();
@@ -4071,5 +4105,26 @@ describe('resolveUploadWarning — package over the AnkiWeb sync limit', () => {
     ).toBe(
       "This deck is 210.4 MB. AnkiWeb won't sync packages over 100 MB, so split it into smaller decks before syncing."
     );
+  });
+});
+
+describe('resolveUploadWarning — notes sharing a guid', () => {
+  it('turns the coded count into user copy, summing across packages', () => {
+    expect(
+      resolveUploadWarning(['duplicate-guid:2', 'duplicate-guid:1'])
+    ).toMatch(/^3 cards repeat the question/);
+  });
+
+  it('ranks below the sync-size warning and above the markdown heuristic', () => {
+    expect(
+      resolveUploadWarning(['duplicate-guid:1', 'apkg-over-100mb:210.4'])
+    ).toMatch(/^This deck is 210.4 MB/);
+    expect(
+      resolveUploadWarning([
+        'markdown-heuristic',
+        'stray-cloze:2',
+        'duplicate-guid:1',
+      ])
+    ).toMatch(/^1 card repeats the question/);
   });
 });

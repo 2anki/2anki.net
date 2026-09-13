@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-13-warn-when-cards-repeat-a-question",
+  "date": "2026-09-13",
+  "type": "feature",
+  "title": "A deck where cards repeat a question now warns that Anki keeps only one of each"
+}
