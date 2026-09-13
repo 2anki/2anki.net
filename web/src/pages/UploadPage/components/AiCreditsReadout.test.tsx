@@ -52,7 +52,9 @@ describe('AiCreditsReadout', () => {
   it('tells the user the next deck is built without AI at zero', () => {
     render(<AiCreditsReadout credits={state({ credits: 0 })} />);
     expect(
-      screen.getByText('0 AI credits left. Your next deck is built without AI.')
+      screen.getByText(
+        '0 AI credits left. Your next deck builds without AI until your credits reset.'
+      )
     ).toBeInTheDocument();
   });
 });
