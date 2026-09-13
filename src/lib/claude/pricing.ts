@@ -34,6 +34,17 @@ export function resolveModelPricing(
   return match != null ? MODEL_PRICES[match] : SONNET_PRICING;
 }
 
+const BYTES_PER_TOKEN = 4;
+
+export function estimateConversionCostUsd(
+  bytes: number,
+  model?: string | null
+): number {
+  const tokens = bytes / BYTES_PER_TOKEN;
+  const pricing = resolveModelPricing(model);
+  return (tokens / 1_000_000) * pricing.inputPerMillion;
+}
+
 export function computeUsageCostUsd(
   model: string | undefined | null,
   usage: ClaudeUsage | undefined | null
