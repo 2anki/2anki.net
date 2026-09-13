@@ -8,24 +8,17 @@ export interface AiCreditsState extends AiCreditsResponse {
 }
 
 export const useAiCredits = (enabled: boolean): AiCreditsState | null => {
-  const { data, isFetching } = useQuery({
+  const { data } = useQuery({
     queryKey: AI_CREDITS_QUERY_KEY,
     queryFn: getAiCredits,
     enabled,
   });
 
-  if (!enabled) {
+  // No synthesized zero balance: while fetching, on a failed fetch, or for a
+  // user with no plan, getAiCredits resolves null and the readout renders
+  // nothing rather than claiming "0 AI credits left".
+  if (!enabled || data == null) {
     return null;
-  }
-
-  if (data == null) {
-    return {
-      credits: 0,
-      allowance: 0,
-      windowEnd: null,
-      resets: 'period',
-      loading: isFetching,
-    };
   }
 
   return { ...data, loading: false };

@@ -26,6 +26,18 @@ describe('AiCreditsReadout', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('renders nothing when there is no data', () => {
+    const { container } = render(<AiCreditsReadout credits={null} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('renders nothing for a user with no allowance', () => {
+    const { container } = render(
+      <AiCreditsReadout credits={state({ allowance: 0, credits: 0 })} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('shows the remaining count above the low threshold', () => {
     render(<AiCreditsReadout credits={state({ credits: 180 })} />);
     expect(screen.getByText('180 AI credits left.')).toBeInTheDocument();

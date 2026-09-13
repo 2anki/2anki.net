@@ -11,7 +11,7 @@ interface Props {
 export function AiCreditsReadout({ credits }: Props) {
   const { t } = useTranslation('aicredits');
 
-  if (credits == null || credits.loading) {
+  if (credits == null || credits.loading || credits.allowance === 0) {
     return null;
   }
 
