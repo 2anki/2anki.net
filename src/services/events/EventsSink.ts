@@ -73,7 +73,7 @@ export class EventsSink {
   private async recordDurable(row: EventRow): Promise<void> {
     try {
       await this.repository.insertEvents([row]);
-    } catch (error) {
+    } catch {
       try {
         await this.repository.insertEvents([row]);
       } catch (retryError) {
@@ -90,7 +90,7 @@ export class EventsSink {
   async drain(): Promise<void> {
     this.stop();
     await this.flush();
-    await Promise.allSettled([...this.pendingDurable]);
+    await Promise.allSettled(this.pendingDurable);
   }
 
   async flush(): Promise<void> {
