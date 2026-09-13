@@ -35,7 +35,7 @@ describe('resolveAllowance', () => {
     }
   );
 
-  it('gives an active subscription 300 credits over its item-level period', () => {
+  it('gives an active monthly subscription 300 credits over the current month', () => {
     const periodStart = new Date('2026-05-01T00:00:00.000Z');
     const periodEnd = new Date('2026-06-01T00:00:00.000Z');
     const result = resolveAllowance(
@@ -54,6 +54,27 @@ describe('resolveAllowance', () => {
       credits: 300,
       windowStart: periodStart,
       windowEnd: periodEnd,
+      resets: 'period',
+    });
+  });
+
+  it('gives an annual subscription 300 credits for the current month, not the year', () => {
+    const result = resolveAllowance(
+      {
+        ...emptyInputs,
+        subscription: {
+          active: true,
+          periodStart: new Date('2026-01-01T00:00:00.000Z'),
+          periodEnd: new Date('2027-01-01T00:00:00.000Z'),
+          unitAmount: 6400,
+        },
+      },
+      NOW
+    );
+    expect(result).toEqual({
+      credits: 300,
+      windowStart: new Date('2026-05-01T00:00:00.000Z'),
+      windowEnd: new Date('2026-06-01T00:00:00.000Z'),
       resets: 'period',
     });
   });

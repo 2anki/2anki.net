@@ -3,6 +3,7 @@ import {
   AnonymousPassKind,
   isAnonymousPassKind,
 } from '../../../usecases/passes/passDurations';
+import { startOfMonthUtc } from '../../User/startOfMonthUtc';
 
 export type CreditWindowReset = 'period' | 'pass' | 'month';
 
@@ -74,6 +75,33 @@ function rollingAllowance(credits: number, now: Date): AiCreditAllowance {
   };
 }
 
+function startOfNextMonthUtc(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+}
+
+// Every plan draws its credits over a monthly window, not the whole billing
+// period: an annual subscriber gets 300 a month, not 300 a year. The month is
+// clipped to the period so the window never runs past when the plan renews.
+function monthlyWindowClippedToPeriod(
+  credits: number,
+  periodStart: Date | null,
+  periodEnd: Date | null,
+  now: Date,
+  resets: CreditWindowReset
+): AiCreditAllowance {
+  const monthStart = startOfMonthUtc(now);
+  const monthEnd = startOfNextMonthUtc(now);
+  const windowStart =
+    periodStart != null && periodStart.getTime() > monthStart.getTime()
+      ? periodStart
+      : monthStart;
+  const windowEnd =
+    periodEnd != null && periodEnd.getTime() < monthEnd.getTime()
+      ? periodEnd
+      : monthEnd;
+  return { credits, windowStart, windowEnd, resets };
+}
+
 function subscriptionAllowance(
   sub: SubscriptionPlanInputs,
   now: Date
@@ -83,25 +111,15 @@ function subscriptionAllowance(
       ? LEGACY_SUBSCRIPTION_CREDITS
       : SUBSCRIPTION_CREDITS;
   if (periodIsCurrent(sub.periodStart, sub.periodEnd, now)) {
-    return {
+    return monthlyWindowClippedToPeriod(
       credits,
-      windowStart: sub.periodStart,
-      windowEnd: sub.periodEnd as Date,
-      resets: 'period',
-    };
+      sub.periodStart,
+      sub.periodEnd,
+      now,
+      'period'
+    );
   }
   return rollingAllowance(credits, now);
-}
-
-function calendarMonthAllowance(credits: number, now: Date): AiCreditAllowance {
-  return {
-    credits,
-    windowStart: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
-    windowEnd: new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
-    ),
-    resets: 'month',
-  };
 }
 
 export function resolveAllowance(
@@ -119,7 +137,13 @@ export function resolveAllowance(
     return rollingAllowance(SUBSCRIPTION_CREDITS, now);
   }
   if (inputs.patreon || inputs.ankifyAccess) {
-    return calendarMonthAllowance(LIFETIME_CREDITS, now);
+    return monthlyWindowClippedToPeriod(
+      LIFETIME_CREDITS,
+      null,
+      null,
+      now,
+      'month'
+    );
   }
   return null;
 }
