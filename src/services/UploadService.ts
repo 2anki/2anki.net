@@ -179,6 +179,17 @@ function strayClozeWarning(count: number): string {
   return `${subject} cloze syntax like {{c1::text}} but cloze mode is off, so the braces show on the card. Turn on cloze mode and convert again.`;
 }
 
+function aiCreditsWarningText(warnings: string[]): string | null {
+  if (warnings.includes(AI_CREDITS_EXHAUSTED_WARNING_CODE)) {
+    return AI_CREDITS_EXHAUSTED_WARNING_TEXT;
+  }
+  for (const warning of warnings) {
+    const shortText = resolveAiCreditsShortWarning(warning);
+    if (shortText) return shortText;
+  }
+  return null;
+}
+
 export function resolveUploadWarning(
   warnings: string[] | undefined
 ): string | null {
@@ -191,13 +202,8 @@ export function resolveUploadWarning(
     w.includes('password-protected')
   );
   if (passwordWarning) return passwordWarning;
-  if (warnings.includes(AI_CREDITS_EXHAUSTED_WARNING_CODE)) {
-    return AI_CREDITS_EXHAUSTED_WARNING_TEXT;
-  }
-  for (const warning of warnings) {
-    const shortText = resolveAiCreditsShortWarning(warning);
-    if (shortText) return shortText;
-  }
+  const creditsWarning = aiCreditsWarningText(warnings);
+  if (creditsWarning) return creditsWarning;
   let duplicateGuids = 0;
   for (const warning of warnings) {
     const match = DUPLICATE_GUID_WARNING_RE.exec(warning);

@@ -1240,9 +1240,9 @@ export default function ChatPanel({
                     </p>
                   )}
                   {aiCreditsExhausted && (
-                    <p className={styles.aiCreditsNotice} role="status">
+                    <output className={styles.aiCreditsNotice}>
                       {t('aiCreditsExhausted')}
-                    </p>
+                    </output>
                   )}
                 </div>
               </>
@@ -1366,9 +1366,9 @@ export default function ChatPanel({
                 </p>
               )}
               {aiCreditsExhausted && (
-                <p className={styles.aiCreditsNotice} role="status">
+                <output className={styles.aiCreditsNotice}>
                   {t('aiCreditsExhausted')}
-                </p>
+                </output>
               )}
               {successMessage != null && (
                 <p className={styles.successMessage} role="status">

@@ -31,7 +31,7 @@ export class EventsSink {
 
   private pendingFlush: Promise<void> | null = null;
 
-  private pendingDurable = new Set<Promise<void>>();
+  private readonly pendingDurable = new Set<Promise<void>>();
 
   constructor(
     private readonly repository: IEventsRepository,

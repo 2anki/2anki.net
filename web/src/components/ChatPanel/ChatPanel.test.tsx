@@ -674,7 +674,8 @@ describe('ChatPanel', () => {
     });
     const notice = await screen.findByText(/out of AI credits/i);
     expect(notice).toBeInTheDocument();
-    expect(notice).toHaveAttribute('role', 'status');
+    expect(notice.tagName).toBe('OUTPUT');
+    expect(screen.getByRole('status')).toHaveTextContent(/out of AI credits/i);
   });
 
   it('swaps to the upgrade panel when the server answers 402', async () => {
