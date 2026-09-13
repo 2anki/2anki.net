@@ -25,7 +25,11 @@ describe('resolveAllowance', () => {
       const result = resolveAllowance(
         {
           ...emptyInputs,
-          pass: { kind, earliestExpiresAt: expiresAt, latestExpiresAt: expiresAt },
+          pass: {
+            kind,
+            earliestExpiresAt: expiresAt,
+            latestExpiresAt: expiresAt,
+          },
         },
         NOW
       );

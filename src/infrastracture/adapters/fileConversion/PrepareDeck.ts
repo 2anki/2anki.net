@@ -966,8 +966,7 @@ export async function prepareDeckInfoOnly(
   const results = await mapWithConcurrency(
     files,
     FILE_CONVERSION_CONCURRENCY,
-    (file) =>
-      convertFile(file, input, { exhausted: false, preChecked: false })
+    (file) => convertFile(file, input, { exhausted: false, preChecked: false })
   );
   const convertedFiles = results.flatMap((r) => (r ? [r] : []));
   const allFiles = assembleParserFiles(files, convertedFiles);

@@ -28,7 +28,8 @@ export class GetAiCreditsUseCase {
     return {
       credits: balance.credits,
       allowance: balance.allowance,
-      windowEnd: balance.windowEnd != null ? balance.windowEnd.toISOString() : null,
+      windowEnd:
+        balance.windowEnd != null ? balance.windowEnd.toISOString() : null,
       resets: balance.resets,
     };
   }
