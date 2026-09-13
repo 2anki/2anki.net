@@ -2,7 +2,7 @@ import { isHTMLFile, isMarkdownFile } from '../../storage/checks';
 
 export interface PromptedFile {
   name: string;
-  contents?: Buffer | string | null;
+  contents?: Buffer | Uint8Array | string | null;
 }
 
 // The start-of-conversion pre-check estimates cost from what actually reaches
