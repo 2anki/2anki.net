@@ -1365,8 +1365,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const req = buildRequest();
     const { res, capturedStatus } = buildResponse();
 
-    await service.handleUpload(req, res);
-    mockWorkspaceLocation = previousLocation;
+    try {
+      await service.handleUpload(req, res);
+    } finally {
+      mockWorkspaceLocation = previousLocation;
+    }
 
     expect(capturedStatus()).toBe(200);
     expect(res.set).toHaveBeenCalledWith(

@@ -10,7 +10,7 @@ export function duplicateGuidWarning(dropped: number): string | null {
 
 export function duplicateGuidWarningText(dropped: number): string {
   if (dropped === 1) {
-    return '1 card repeats the question of another card in the same deck, so Anki keeps only the first and you import 1 card fewer than you see here. Give it a different question and convert again.';
+    return '1 card repeats the question of another card in the same deck, so Anki keeps only the first. You import 1 card fewer than you see here. Give it a different question and convert again.';
   }
-  return `${dropped} cards repeat the question of another card in the same deck, so Anki keeps only the first of each and you import ${dropped} cards fewer than you see here. Make the repeated questions different and convert again.`;
+  return `${dropped} cards repeat the question of another card in the same deck, so Anki keeps only the first of each. You import ${dropped} cards fewer than you see here. Make the repeated questions different and convert again.`;
 }
