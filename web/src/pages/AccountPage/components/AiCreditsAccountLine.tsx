@@ -17,7 +17,9 @@ export function AiCreditsAccountLine() {
 
   const validThrough =
     credits.windowEnd != null
-      ? formatLongDate(new Date(credits.windowEnd), i18n.language)
+      ? // The window end is a UTC-midnight boundary; format it in UTC so a user
+        // west of UTC does not see the reset date a day early.
+        formatLongDate(new Date(credits.windowEnd), i18n.language, 'UTC')
       : null;
 
   return (
