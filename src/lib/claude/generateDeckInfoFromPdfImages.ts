@@ -5,7 +5,7 @@ import { escapeAttribute } from '../notion-render/escape';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
 import { VisionMediaType } from './countVisionTokens';
 import { recordClaudeUsage } from './recordClaudeUsage';
-import { guardAiSpend } from './aiSpendGuard';
+import { assertAiBudget } from './aiSpendGuard';
 import {
   DeckInfo,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
@@ -125,7 +125,6 @@ async function visionCardsForPage(
   pageIndex: number,
   userId?: number | null
 ): Promise<CompactDeck[]> {
-  await guardAiSpend(userId);
   const client = getAnthropicClient();
 
   const callVision = (maxTokens: number) =>
@@ -261,6 +260,7 @@ export async function generateDeckInfoFromPdfImages(
   userId?: number | null
 ): Promise<DeckInfo[]> {
   const t0 = Date.now();
+  await assertAiBudget(userId);
   const images = resolvePageImages(htmlContent, context.mediaBaseDir);
 
   if (images.length === 0) {

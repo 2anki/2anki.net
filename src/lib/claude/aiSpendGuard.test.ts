@@ -1,36 +1,42 @@
 import {
   AI_SPEND_ALERT_THRESHOLD_USD,
-  AI_SPEND_DAILY_CAP_USD,
-  AiSpendCapError,
-  AiSpendGuardDeps,
-  guardAiSpend,
+  AiBudgetDeps,
+  AiCreditsExhaustedError,
+  assertAiBudget,
+  getAiBudgetStatus,
+  hasAiCreditsForConversion,
 } from './aiSpendGuard';
+import { AiCreditBalance } from './aiCredits/balance';
 import { track } from '../../services/events/track';
 
-jest.mock('../../services/events/track', () => ({
-  track: jest.fn(),
-}));
+jest.mock('../../services/events/track', () => ({ track: jest.fn() }));
 
 const trackMock = track as jest.Mock;
-
 const NOW = new Date('2026-09-07T12:00:00.000Z');
 
+function balanceWith(rawCredits: number): AiCreditBalance {
+  return {
+    rawCredits,
+    credits: Math.max(0, Math.round(rawCredits)),
+    allowance: 300,
+    windowStart: new Date('2026-09-01T00:00:00.000Z'),
+    windowEnd: new Date('2026-10-01T00:00:00.000Z'),
+    resets: 'period',
+  };
+}
+
 function makeDeps(overrides: {
-  costByWindow?: Record<string, number>;
+  balance?: AiCreditBalance | null;
+  cost30d?: number;
   eventCount?: number;
-}): AiSpendGuardDeps & {
+}): AiBudgetDeps & {
   sendAlert: jest.Mock;
   reader: { userCostSince: jest.Mock; eventCountSince: jest.Mock };
 } {
-  const costByWindow = overrides.costByWindow ?? {};
   return {
+    computeBalance: jest.fn().mockResolvedValue(overrides.balance ?? null),
     reader: {
-      userCostSince: jest.fn((_userId: number, since: Date) => {
-        const days = Math.round(
-          (NOW.getTime() - since.getTime()) / (24 * 60 * 60 * 1000)
-        );
-        return Promise.resolve(costByWindow[`${days}d`] ?? 0);
-      }),
+      userCostSince: jest.fn().mockResolvedValue(overrides.cost30d ?? 0),
       eventCountSince: jest.fn().mockResolvedValue(overrides.eventCount ?? 0),
     },
     sendAlert: jest.fn().mockResolvedValue(undefined),
@@ -38,101 +44,99 @@ function makeDeps(overrides: {
   };
 }
 
-describe('guardAiSpend', () => {
+describe('assertAiBudget', () => {
   beforeEach(() => {
     trackMock.mockReset();
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
   });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
+  afterEach(() => jest.restoreAllMocks());
 
   it('does nothing for anonymous callers', async () => {
     const deps = makeDeps({});
-    await guardAiSpend(null, deps);
-    expect(deps.reader.userCostSince).not.toHaveBeenCalled();
+    await assertAiBudget(null, deps);
+    expect(deps.computeBalance).not.toHaveBeenCalled();
   });
 
-  it('passes a user under both thresholds without notifying', async () => {
-    const deps = makeDeps({ costByWindow: { '1d': 2, '30d': 10 } });
-    await guardAiSpend(42, deps);
+  it('passes a user with credits remaining without notifying', async () => {
+    const deps = makeDeps({ balance: balanceWith(180), cost30d: 3 });
+    await assertAiBudget(42, deps);
     expect(deps.sendAlert).not.toHaveBeenCalled();
     expect(trackMock).not.toHaveBeenCalled();
   });
 
-  it('throws AiSpendCapError at the daily cap and records the trip', async () => {
-    const deps = makeDeps({
-      costByWindow: { '1d': AI_SPEND_DAILY_CAP_USD, '30d': 80 },
+  it('throws AiCreditsExhaustedError at zero and fires the event once', async () => {
+    const deps = makeDeps({ balance: balanceWith(-2) });
+    await expect(assertAiBudget(42, deps)).rejects.toMatchObject({
+      name: 'AiCreditsExhaustedError',
+      status: 402,
+      code: 'ai_credits_exhausted',
     });
-
-    await expect(guardAiSpend(42, deps)).rejects.toMatchObject({
-      name: 'AiSpendCapError',
-      status: 429,
-      code: 'ai_spend_capped',
-    });
-    expect(trackMock).toHaveBeenCalledWith('ai_spend_cap_tripped', {
+    expect(trackMock).toHaveBeenCalledWith('ai_credits_exhausted', {
       userId: 42,
       props: {},
     });
-    expect(deps.sendAlert).toHaveBeenCalledWith(
-      expect.stringContaining('breaker tripped — user 42'),
-      expect.stringContaining('$50.00')
-    );
   });
 
-  it('does not re-notify a breaker trip inside the dedup window but still throws', async () => {
-    const deps = makeDeps({
-      costByWindow: { '1d': 60, '30d': 80 },
-      eventCount: 1,
-    });
-
-    await expect(guardAiSpend(42, deps)).rejects.toThrow(AiSpendCapError);
+  it('still throws but does not re-fire the event inside the same window', async () => {
+    const deps = makeDeps({ balance: balanceWith(0), eventCount: 1 });
+    await expect(assertAiBudget(42, deps)).rejects.toThrow(
+      AiCreditsExhaustedError
+    );
     expect(trackMock).not.toHaveBeenCalled();
-    expect(deps.sendAlert).not.toHaveBeenCalled();
   });
 
   it('emails the watch alert once when 30d spend crosses the threshold', async () => {
     const deps = makeDeps({
-      costByWindow: { '1d': 1, '30d': AI_SPEND_ALERT_THRESHOLD_USD },
+      balance: balanceWith(180),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
     });
-
-    await guardAiSpend(42, deps);
-
+    await assertAiBudget(42, deps);
     expect(trackMock).toHaveBeenCalledWith('ai_spend_alert_sent', {
       userId: 42,
       props: {},
     });
     expect(deps.sendAlert).toHaveBeenCalledWith(
       expect.stringContaining('crossed $25 in 30 days'),
-      expect.stringContaining('user 42'.replace('user', 'User'))
+      expect.stringContaining('User 42')
     );
   });
 
-  it('dedupes the watch alert inside seven days', async () => {
-    const deps = makeDeps({
-      costByWindow: { '1d': 1, '30d': 40 },
-      eventCount: 1,
-    });
-
-    await guardAiSpend(42, deps);
-
-    expect(trackMock).not.toHaveBeenCalled();
-    expect(deps.sendAlert).not.toHaveBeenCalled();
-  });
-
-  it('fails open when the spend read throws', async () => {
+  it('fails open when the balance read throws', async () => {
     const deps = makeDeps({});
-    deps.reader.userCostSince.mockRejectedValue(new Error('db down'));
-
-    await expect(guardAiSpend(42, deps)).resolves.toBeUndefined();
+    (deps.computeBalance as jest.Mock).mockRejectedValue(new Error('db down'));
+    await expect(assertAiBudget(42, deps)).resolves.toBeUndefined();
     expect(deps.sendAlert).not.toHaveBeenCalled();
   });
+});
 
-  it('fails open when the alert email throws', async () => {
-    const deps = makeDeps({ costByWindow: { '1d': 1, '30d': 30 } });
-    deps.sendAlert.mockRejectedValue(new Error('sendgrid down'));
+describe('hasAiCreditsForConversion', () => {
+  it('allows a conversion the remaining balance can cover', async () => {
+    const deps = makeDeps({ balance: balanceWith(180) });
+    expect(await hasAiCreditsForConversion(42, 1000, deps)).toBe(true);
+  });
 
-    await expect(guardAiSpend(42, deps)).resolves.toBeUndefined();
+  it('blocks a conversion whose estimate exceeds the remaining balance', async () => {
+    const deps = makeDeps({ balance: balanceWith(1) });
+    const hugeBytes = 500 * 1024 * 1024;
+    expect(await hasAiCreditsForConversion(42, hugeBytes, deps)).toBe(false);
+  });
+
+  it('allows anonymous callers (the AI gate governs access)', async () => {
+    const deps = makeDeps({});
+    expect(await hasAiCreditsForConversion(null, 1000, deps)).toBe(true);
+  });
+
+  it('fails open when the balance read throws', async () => {
+    const deps = makeDeps({});
+    (deps.computeBalance as jest.Mock).mockRejectedValue(new Error('db down'));
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    expect(await hasAiCreditsForConversion(42, 1000, deps)).toBe(true);
+  });
+});
+
+describe('getAiBudgetStatus', () => {
+  it('returns not-exhausted with a null balance for anonymous callers', async () => {
+    const status = await getAiBudgetStatus(null, undefined, makeDeps({}));
+    expect(status).toEqual({ exhausted: false, balance: null });
   });
 });

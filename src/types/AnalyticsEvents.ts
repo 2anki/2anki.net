@@ -135,7 +135,7 @@ export const KNOWN_EVENTS = new Set([
   'ai_usage_recorded',
   'email_delivery_event',
   'ai_spend_alert_sent',
-  'ai_spend_cap_tripped',
+  'ai_credits_exhausted',
   'pass_claim_email_sent',
   'anonymous_pass_claimed',
   'ops_user_email_changed',

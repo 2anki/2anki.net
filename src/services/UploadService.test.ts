@@ -4131,3 +4131,19 @@ describe('resolveUploadWarning — notes sharing a guid', () => {
     ).toMatch(/^1 card repeats the question/);
   });
 });
+
+describe('resolveUploadWarning — AI credits exhausted', () => {
+  it('explains the deck was built without AI and ranks above markdown', () => {
+    expect(
+      resolveUploadWarning(['markdown-heuristic', 'ai-credits-exhausted'])
+    ).toBe(
+      "You're out of AI credits, so this deck was built without AI. Add credits to use AI on the next upload."
+    );
+  });
+
+  it('keeps the oversize warning ahead of the credits notice', () => {
+    expect(
+      resolveUploadWarning(['ai-credits-exhausted', 'apkg-over-100mb:210.4'])
+    ).toMatch(/AnkiWeb won't sync/);
+  });
+});

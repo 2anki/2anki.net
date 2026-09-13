@@ -10,6 +10,7 @@ import {
   normalizeTag,
 } from '../../lib/claude/ClaudeService';
 import { ANKI_MATH_FRAGMENT } from '../../lib/claude/ankiMathFragment';
+import { assertAiBudget } from '../../lib/claude/aiSpendGuard';
 import {
   countVisionTokens,
   VISION_TOKEN_CEILING,
@@ -608,6 +609,8 @@ export class PhotoToFlashcardsUseCase {
     if (tokens > ceiling) {
       throw makePayloadTooLargeError();
     }
+
+    await assertAiBudget(userId);
 
     const client = getAnthropicClient();
     const mcqEnabled = (input.mcqEnabled ?? false) && input.isPaying;

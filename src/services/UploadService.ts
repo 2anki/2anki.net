@@ -110,6 +110,10 @@ import {
   isPdfPasswordSentinel,
   parsePdfPasswordSentinel,
 } from '../lib/pdf/pdfPasswordSentinel';
+import {
+  AI_CREDITS_EXHAUSTED_WARNING_CODE,
+  AI_CREDITS_EXHAUSTED_WARNING_TEXT,
+} from '../lib/claude/aiCredits/uploadWarning';
 
 interface EmptyDeckResponse {
   code: 'empty_export';
@@ -176,6 +180,9 @@ export function resolveUploadWarning(
   for (const warning of warnings) {
     const oversize = APKG_OVERSIZE_WARNING_RE.exec(warning);
     if (oversize) return apkgOversizeWarningText(Number(oversize[1]));
+  }
+  if (warnings.includes(AI_CREDITS_EXHAUSTED_WARNING_CODE)) {
+    return AI_CREDITS_EXHAUSTED_WARNING_TEXT;
   }
   const passwordWarning = warnings.find((w) =>
     w.includes('password-protected')

@@ -28,6 +28,8 @@ import {
   PdfHtmlImage,
 } from './convertPdfTextToHtml';
 import { extractPdfImages } from '../../../lib/pdf/extractPdfImages';
+import { hasAiCreditsForConversion } from '../../../lib/claude/aiSpendGuard';
+import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 import { buildPdfPasswordSentinel } from '../../../lib/pdf/pdfPasswordSentinel';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
 import { convertDocxToHTML } from './convertDocxToHTML';
@@ -185,6 +187,15 @@ export function parserWarning(parser: {
   return undefined;
 }
 
+function creditsAwareWarning(
+  parser: Parameters<typeof parserWarning>[0],
+  aiCreditsExhausted: boolean
+): string | undefined {
+  return aiCreditsExhausted
+    ? AI_CREDITS_EXHAUSTED_WARNING_CODE
+    : parserWarning(parser);
+}
+
 async function convertFile(
   file: DeckParserInput['files'][number],
   input: DeckParserInput
@@ -247,7 +258,8 @@ async function convertFile(
   if (
     isImageFile(file.name) &&
     input.settings.imageQuizHtmlToAnki &&
-    input.noLimits
+    input.noLimits &&
+    !input.aiCreditsExhausted
   ) {
     const result = {
       name: `${file.name}.html`,
@@ -269,7 +281,8 @@ async function convertFile(
     isPDFFile(file.name) &&
     input.noLimits &&
     input.settings.vertexAIPDFQuestions &&
-    input.settings.processPDFs !== false
+    input.settings.processPDFs !== false &&
+    !input.aiCreditsExhausted
   ) {
     const result = {
       name: `${file.name}.html`,
@@ -752,6 +765,31 @@ async function buildClaudeDeck(
   };
 }
 
+function usesAiSettings(settings: DeckParserInput['settings']): boolean {
+  return (
+    settings.claudeAIFlashcards ||
+    settings.vertexAIPDFQuestions ||
+    settings.imageQuizHtmlToAnki
+  );
+}
+
+async function resolveAiCreditsExhausted(
+  input: DeckParserInput,
+  files: DeckParserInput['files']
+): Promise<boolean> {
+  if (!(input.noLimits && usesAiSettings(input.settings))) {
+    return false;
+  }
+  const estimatedBytes = files.reduce(
+    (sum, f) => sum + (f.contents?.length ?? 0),
+    0
+  );
+  return !(await hasAiCreditsForConversion(
+    input.userId ?? null,
+    estimatedBytes
+  ));
+}
+
 export async function PrepareDeck(
   input: DeckParserInput
 ): Promise<PrepareDeckResult | undefined> {
@@ -769,11 +807,19 @@ export async function PrepareDeck(
     noLimits: input.noLimits,
   });
 
+  const aiCreditsExhausted = await resolveAiCreditsExhausted(input, files);
+  const conversionInput: DeckParserInput = { ...input, aiCreditsExhausted };
+  if (aiCreditsExhausted) {
+    console.log('[PrepareDeck] AI credits exhausted, building without AI', {
+      name: logFileLabel(input.name),
+    });
+  }
+
   const tConvert = Date.now();
   const results = await mapWithConcurrency(
     files,
     FILE_CONVERSION_CONCURRENCY,
-    (file) => convertFile(file, input)
+    (file) => convertFile(file, conversionInput)
   );
   const convertedFiles = results.flatMap((r) => (r ? [r] : []));
   console.log('[PrepareDeck] file conversions done', {
@@ -787,9 +833,13 @@ export async function PrepareDeck(
 
   const allFiles = assembleParserFiles(files, convertedFiles);
 
-  if (input.settings.claudeAIFlashcards && input.noLimits) {
+  if (
+    input.settings.claudeAIFlashcards &&
+    input.noLimits &&
+    !aiCreditsExhausted
+  ) {
     return buildClaudeDeck(
-      input,
+      conversionInput,
       allFiles,
       convertedFiles,
       pdfImageFallbackNames,
@@ -797,7 +847,7 @@ export async function PrepareDeck(
     );
   }
 
-  const parser = newDeckParser(input, allFiles);
+  const parser = newDeckParser(conversionInput, allFiles);
 
   if (parser.totalCardCount() === 0) {
     if (convertedFiles.length > 0) {
@@ -812,7 +862,7 @@ export async function PrepareDeck(
         cardCount: parser.totalCardCount(),
         mcqCount: 0,
         mcqSkippedCount: 0,
-        warning: parserWarning(parser),
+        warning: creditsAwareWarning(parser, aiCreditsExhausted),
         droppedImageCount: parser.droppedImageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
@@ -851,7 +901,7 @@ export async function PrepareDeck(
     cardCount: parser.totalCardCount(),
     mcqCount,
     mcqSkippedCount,
-    warning: parserWarning(parser),
+    warning: creditsAwareWarning(parser, aiCreditsExhausted),
     droppedImageCount: parser.droppedImageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,

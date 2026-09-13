@@ -5,7 +5,7 @@ import type {
   IConversationsRepository,
 } from '../../data_layer/ConversationsRepository';
 import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
-import { guardAiSpend } from '../../lib/claude/aiSpendGuard';
+import { assertAiBudget } from '../../lib/claude/aiSpendGuard';
 import { chatAttachmentKey } from '../../lib/storage/chatAttachmentKeys';
 import type { IChatAttachmentsRepository } from '../../data_layer/ChatAttachmentsRepository';
 import {
@@ -807,7 +807,7 @@ export class ChatUseCase {
       { role: 'user', content: userContent },
     ];
 
-    await guardAiSpend(user.owner);
+    await assertAiBudget(user.owner);
 
     const stream = this.anthropic.messages.stream({
       model: MODEL,

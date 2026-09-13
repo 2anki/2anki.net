@@ -1,5 +1,6 @@
 import { getAnthropicClient } from '../../lib/claude/ClaudeService';
 import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
+import { assertAiBudget } from '../../lib/claude/aiSpendGuard';
 
 const MODEL = 'claude-sonnet-5';
 const MAX_TOKENS = 8192;
@@ -257,6 +258,7 @@ async function askClaude(
   messages: ClaudeMessage[],
   userId?: number | null
 ): Promise<string> {
+  await assertAiBudget(userId ?? null);
   const client = getAnthropicClient();
   const response = await client.messages.create({
     model: MODEL,

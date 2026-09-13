@@ -1,56 +1,76 @@
 import { track } from '../../services/events/track';
 import { HttpCodedError } from '../errors/HttpCodedError';
 import type { IAiSpendReader } from '../../data_layer/AiUsageMetricsRepository';
-
-// $50 of AI spend by one user inside 24 hours is roughly eight times the
-// heaviest human month on record — only a scripted client or a billing retry
-// loop gets there. The breaker exists to stop a runaway while unattended, not
-// to meter heavy legitimate use.
-export const AI_SPEND_DAILY_CAP_USD = 50;
+import { computeAiCreditBalance, AiCreditBalance, CREDIT_UNIT_USD } from './aiCredits/balance';
+import { estimateConversionCostUsd } from './pricing';
 
 // A user crossing $25 in 30 days costs more than triple the subscription
-// price — worth a human look, not enforcement.
+// price — worth a human look, not enforcement. Kept as an ops signal; part 2's
+// credit packs are the only realistic way to reach it now that plan allowances
+// cap ordinary spend.
 export const AI_SPEND_ALERT_THRESHOLD_USD = 25;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ALERT_WINDOW_MS = 30 * DAY_MS;
 const ALERT_DEDUP_MS = 7 * DAY_MS;
-const CAP_DEDUP_MS = DAY_MS;
 
 const ALERT_EVENT = 'ai_spend_alert_sent';
-const CAP_EVENT = 'ai_spend_cap_tripped';
+const EXHAUSTED_EVENT = 'ai_credits_exhausted';
 
-export class AiSpendCapError extends HttpCodedError {
-  constructor(userId: number, costUsd: number) {
+export class AiCreditsExhaustedError extends HttpCodedError {
+  constructor() {
     super(
-      `AI processing is paused for this account after unusually high usage ` +
-        `(user ${userId}, $${costUsd.toFixed(2)} of AI processing cost in ` +
-        `24h). Contact support@2anki.net.`,
-      429,
-      'ai_spend_capped'
+      "You're out of AI credits. Add credits to keep using AI.",
+      402,
+      'ai_credits_exhausted'
     );
   }
 }
 
-export interface AiSpendGuardDeps {
+export interface AiBudgetDeps {
+  computeBalance: (
+    userId: number,
+    now: Date
+  ) => Promise<AiCreditBalance | null>;
   reader: IAiSpendReader;
   sendAlert: (subject: string, body: string) => Promise<void>;
   now?: () => Date;
 }
 
-function defaultDeps(): AiSpendGuardDeps {
+export interface AiBudgetStatus {
+  exhausted: boolean;
+  balance: AiCreditBalance | null;
+}
+
+function defaultDeps(): AiBudgetDeps {
   /* eslint-disable @typescript-eslint/no-var-requires */
   const { getDatabase } = require('../../data_layer');
   const {
     AiUsageMetricsRepository,
   } = require('../../data_layer/AiUsageMetricsRepository');
+  const { AiCreditsRepository } = require('../../data_layer/AiCreditsRepository');
+  const {
+    AiCreditGrantsRepository,
+  } = require('../../data_layer/AiCreditGrantsRepository');
   const {
     getDefaultEmailService,
   } = require('../../services/EmailService/EmailService');
   const { SUPPORT_CC_ADDRESS } = require('../constants');
   /* eslint-enable @typescript-eslint/no-var-requires */
+  const database = getDatabase();
+  const usage = new AiUsageMetricsRepository(database);
+  const plans = new AiCreditsRepository(database);
+  const grants = new AiCreditGrantsRepository(database);
   return {
-    reader: new AiUsageMetricsRepository(getDatabase()),
+    computeBalance: (userId: number, now: Date) =>
+      computeAiCreditBalance(userId, now, {
+        getPlanInputs: (id: number, at: Date) => plans.getPlanInputs(id, at),
+        sumActiveCredits: (id: number, at: Date) =>
+          grants.sumActiveCredits(id, at),
+        userCostSince: (id: number, since: Date) =>
+          usage.userCostSince(id, since),
+      }),
+    reader: usage,
     sendAlert: (subject: string, body: string) =>
       getDefaultEmailService().sendAiSpendAlertEmail(
         SUPPORT_CC_ADDRESS,
@@ -60,93 +80,135 @@ function defaultDeps(): AiSpendGuardDeps {
   };
 }
 
-async function maybeNotify(
-  deps: AiSpendGuardDeps,
-  event: typeof ALERT_EVENT | typeof CAP_EVENT,
+async function readStatus(
   userId: number,
-  dedupMs: number,
-  subject: string,
-  body: string
-): Promise<void> {
+  estimatedCostUsd: number | undefined,
+  deps: AiBudgetDeps
+): Promise<AiBudgetStatus> {
   const now = deps.now?.() ?? new Date();
-  const dedupSince = new Date(now.getTime() - dedupMs);
+  const balance = await deps.computeBalance(userId, now);
+  if (balance == null) {
+    return { exhausted: false, balance: null };
+  }
+  const remainingUsd = balance.rawCredits * CREDIT_UNIT_USD;
+  const exhausted =
+    balance.rawCredits <= 0 ||
+    (estimatedCostUsd != null && estimatedCostUsd > remainingUsd);
+  return { exhausted, balance };
+}
+
+// Reads the caller's credit balance, failing open (never blocks a paying
+// conversion on a metrics outage). `estimatedCostUsd` lets the start-of-
+// conversion pre-check reject a run it cannot afford; omit it for a bare
+// at-zero check.
+export async function getAiBudgetStatus(
+  userId: number | null | undefined,
+  estimatedCostUsd: number | undefined,
+  deps?: AiBudgetDeps
+): Promise<AiBudgetStatus> {
+  if (userId == null) {
+    return { exhausted: false, balance: null };
+  }
+  try {
+    return await readStatus(userId, estimatedCostUsd, deps ?? defaultDeps());
+  } catch (error) {
+    console.error('[ai-credits] balance read failed, failing open', error);
+    return { exhausted: false, balance: null };
+  }
+}
+
+async function fireExhaustedOnce(
+  deps: AiBudgetDeps,
+  userId: number,
+  windowStart: Date
+): Promise<void> {
+  try {
+    const already = await deps.reader.eventCountSince(
+      EXHAUSTED_EVENT,
+      userId,
+      windowStart
+    );
+    if (already === 0) {
+      track(EXHAUSTED_EVENT, { userId, props: {} });
+    }
+  } catch (error) {
+    console.error('[ai-credits] exhausted-event dedup failed', error);
+  }
+}
+
+async function maybeNotifyAlert(
+  deps: AiBudgetDeps,
+  userId: number,
+  now: Date
+): Promise<void> {
+  const cost30d = await deps.reader.userCostSince(
+    userId,
+    new Date(now.getTime() - ALERT_WINDOW_MS)
+  );
+  if (cost30d < AI_SPEND_ALERT_THRESHOLD_USD) {
+    return;
+  }
+  const dedupSince = new Date(now.getTime() - ALERT_DEDUP_MS);
   const alreadySent = await deps.reader.eventCountSince(
-    event,
+    ALERT_EVENT,
     userId,
     dedupSince
   );
   if (alreadySent > 0) {
     return;
   }
-  track(event, { userId, props: {} });
-  await deps.sendAlert(subject, body);
+  track(ALERT_EVENT, { userId, props: {} });
+  await deps.sendAlert(
+    `[2anki] AI spend alert — user ${userId} crossed $${AI_SPEND_ALERT_THRESHOLD_USD} in 30 days`,
+    `User ${userId} is at $${cost30d.toFixed(2)} of AI spend over the ` +
+      `trailing 30 days (alert threshold $${AI_SPEND_ALERT_THRESHOLD_USD}). ` +
+      `No enforcement has happened — this is the watch signal. Per-user ` +
+      `breakdown: /ops AI usage.`
+  );
 }
 
-/**
- * Pre-call guard for every metered Claude surface. Throws AiSpendCapError when
- * the user's trailing-24h spend crossed the runaway cap; separately emails an
- * ops alert (deduped to one per week) when trailing-30d spend crosses the
- * watch threshold. Fails open on any read/notify error — a metrics outage must
- * never block a paying conversion.
- */
-export async function guardAiSpend(
+// Pre-call guard for every metered Claude surface. Throws
+// AiCreditsExhaustedError once the caller's plan allowance is spent; the
+// interactive surfaces render that as a calm stop, and the upload path
+// pre-empts it with a standard-parser fallback so a conversion never hard-
+// fails at zero. Fails open on a read error. Skips anonymous callers, which
+// the isPaying AI gate already excludes.
+export async function assertAiBudget(
   userId: number | null | undefined,
-  deps?: AiSpendGuardDeps
+  deps?: AiBudgetDeps
 ): Promise<void> {
   if (userId == null) {
     return;
   }
-  let resolved: AiSpendGuardDeps;
-  let cost24h: number;
+  const resolved = deps ?? defaultDeps();
+  const status = await getAiBudgetStatus(userId, undefined, resolved);
+  if (status.exhausted && status.balance != null) {
+    await fireExhaustedOnce(resolved, userId, status.balance.windowStart);
+    throw new AiCreditsExhaustedError();
+  }
   try {
-    resolved = deps ?? defaultDeps();
     const now = resolved.now?.() ?? new Date();
-    cost24h = await resolved.reader.userCostSince(
-      userId,
-      new Date(now.getTime() - DAY_MS)
-    );
+    await maybeNotifyAlert(resolved, userId, now);
   } catch (error) {
-    console.error('[ai-spend-guard] spend read failed, failing open', error);
-    return;
+    console.error('[ai-credits] spend alert check failed', error);
   }
-  const now = resolved.now?.() ?? new Date();
+}
 
-  if (cost24h >= AI_SPEND_DAILY_CAP_USD) {
-    maybeNotify(
-      resolved,
-      CAP_EVENT,
-      userId,
-      CAP_DEDUP_MS,
-      `[2anki] AI spend breaker tripped — user ${userId}`,
-      `User ${userId} hit $${cost24h.toFixed(2)} of AI spend in 24h ` +
-        `(cap $${AI_SPEND_DAILY_CAP_USD}). Their AI calls are blocked until ` +
-        `the trailing 24h drops under the cap. Likely a runaway loop or a ` +
-        `scripted client — check /ops AI usage.`
-    ).catch((error) =>
-      console.error('[ai-spend-guard] breaker notification failed', error)
-    );
-    throw new AiSpendCapError(userId, cost24h);
+// Start-of-conversion pre-check for the upload path. Returns false only when a
+// paying user's remaining balance cannot cover the byte-size cost estimate, so
+// the caller can build the deck with the standard parser instead. Fails open.
+export async function hasAiCreditsForConversion(
+  userId: number | null | undefined,
+  estimatedBytes: number,
+  deps?: AiBudgetDeps
+): Promise<boolean> {
+  if (userId == null) {
+    return true;
   }
-
-  try {
-    const cost30d = await resolved.reader.userCostSince(
-      userId,
-      new Date(now.getTime() - ALERT_WINDOW_MS)
-    );
-    if (cost30d >= AI_SPEND_ALERT_THRESHOLD_USD) {
-      await maybeNotify(
-        resolved,
-        ALERT_EVENT,
-        userId,
-        ALERT_DEDUP_MS,
-        `[2anki] AI spend alert — user ${userId} crossed $${AI_SPEND_ALERT_THRESHOLD_USD} in 30 days`,
-        `User ${userId} is at $${cost30d.toFixed(2)} of AI spend over the ` +
-          `trailing 30 days (alert threshold ` +
-          `$${AI_SPEND_ALERT_THRESHOLD_USD}). No enforcement has happened — ` +
-          `this is the watch signal. Per-user breakdown: /ops AI usage.`
-      );
-    }
-  } catch (error) {
-    console.error('[ai-spend-guard] alert check failed', error);
-  }
+  const status = await getAiBudgetStatus(
+    userId,
+    estimateConversionCostUsd(estimatedBytes),
+    deps
+  );
+  return !status.exhausted;
 }

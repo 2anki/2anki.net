@@ -1,5 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
+import { assertAiBudget } from '../../lib/claude/aiSpendGuard';
 import type { IChatMessagesRepository } from '../../data_layer/ChatMessagesRepository';
 import {
   rewriteAssistantContentWithTaggedCards,
@@ -101,6 +102,8 @@ export class TagCardsUseCase {
       front: c.front,
       back: c.back,
     }));
+
+    await assertAiBudget(input.userId ?? null);
 
     const message = await this.anthropic.messages.create({
       model: TAGGING_MODEL,

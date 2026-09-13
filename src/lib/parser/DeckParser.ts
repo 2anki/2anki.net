@@ -129,6 +129,7 @@ export interface DeckParserInput {
   knownGuids?: KnownGuids;
   uploadIdentity?: UploadIdentityContext;
   crossFileDedup?: CrossFileDedupState;
+  aiCreditsExhausted?: boolean;
 }
 
 // Present only for signed-in uploads of a format whose fronts are stable

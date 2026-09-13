@@ -176,8 +176,8 @@ export function jobFailureReasonFromError(
   // path re-wraps into a plain Error carrying only the message, so match both.
   if (
     error instanceof Error &&
-    (error.name === 'AiSpendCapError' ||
-      error.message.includes('AI processing is paused for this account'))
+    (error.name === 'AiCreditsExhaustedError' ||
+      error.message.includes("You're out of AI credits"))
   ) {
     return error.message;
   }
