@@ -4137,7 +4137,7 @@ describe('resolveUploadWarning — AI credits exhausted', () => {
     expect(
       resolveUploadWarning(['markdown-heuristic', 'ai-credits-exhausted'])
     ).toBe(
-      "You're out of AI credits, so this deck was built without AI. Add credits to use AI on the next upload."
+      "You're out of AI credits, so this deck was built without AI. AI credits come back when your allowance resets."
     );
   });
 

@@ -24,7 +24,7 @@ const EXHAUSTED_EVENT = 'ai_credits_exhausted';
 export class AiCreditsExhaustedError extends HttpCodedError {
   constructor() {
     super(
-      "You're out of AI credits. Add credits to keep using AI.",
+      "You're out of AI credits. AI returns when your allowance resets.",
       402,
       'ai_credits_exhausted'
     );
