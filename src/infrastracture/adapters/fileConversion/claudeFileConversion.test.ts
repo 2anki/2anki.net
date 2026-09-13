@@ -1,5 +1,12 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { convertWithClaude, FileConversionError } from './claudeFileConversion';
+import { assertAiBudget } from '../../../lib/claude/aiSpendGuard';
+
+jest.mock('../../../lib/claude/aiSpendGuard', () => ({
+  assertAiBudget: jest.fn().mockResolvedValue(undefined),
+}));
+
+const assertAiBudgetMock = assertAiBudget as jest.Mock;
 
 // The SDK rejects a non-streaming request whose max_tokens implies more than
 // ten minutes of work: 60min * max_tokens / 128000 > 10min. Anything above this
@@ -33,6 +40,32 @@ const makeFailingMock = (message: string) => {
     beta: { messages: { stream, create: jest.fn() } },
   };
 };
+
+describe('convertWithClaude budget guard', () => {
+  beforeEach(() => assertAiBudgetMock.mockClear());
+
+  it('checks the budget when the conversion has not pre-checked', async () => {
+    const mock = makeAnthropicMock('<p>ok</p>');
+    await convertWithClaude(
+      mock as unknown as Anthropic,
+      'system prompt',
+      [{ type: 'text', text: 'user text' }],
+      { userId: 7 }
+    );
+    expect(assertAiBudgetMock).toHaveBeenCalledWith(7);
+  });
+
+  it('skips the guard once the conversion has started with AI', async () => {
+    const mock = makeAnthropicMock('<p>ok</p>');
+    await convertWithClaude(
+      mock as unknown as Anthropic,
+      'system prompt',
+      [{ type: 'text', text: 'user text' }],
+      { userId: 7, budgetPreChecked: true }
+    );
+    expect(assertAiBudgetMock).not.toHaveBeenCalled();
+  });
+});
 
 describe('convertWithClaude', () => {
   it('returns the text content from the API response', async () => {

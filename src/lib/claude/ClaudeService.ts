@@ -1114,6 +1114,7 @@ export interface GenerateDeckInfoOptions {
   comprehensive?: boolean;
   pdfImageFallback?: PdfImageFallbackContext;
   conversionResultCache?: ConversionResultCacheStore<DeckInfo[]>;
+  budgetPreChecked?: boolean;
 }
 
 // Who to bill and which request started it: the pair every [Claude] and
@@ -1471,11 +1472,17 @@ async function generateDeckInfoUncached(
       options.pdfImageFallback,
       userInstructions,
       onProgress,
-      options.userId
+      options.userId,
+      options.budgetPreChecked
     );
   }
 
-  await assertAiBudget(options?.userId);
+  // A conversion that passed the start-of-conversion pre-check finishes with
+  // AI: the per-file guard is a no-op so a mid-job balance dip never fails a
+  // multi-file upload that already started.
+  if (options?.budgetPreChecked !== true) {
+    await assertAiBudget(options?.userId);
+  }
 
   if (isImageOnlyContent(htmlContent)) {
     console.info('[Claude] Skipping conversion: image-only input', {

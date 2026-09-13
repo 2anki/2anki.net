@@ -206,6 +206,17 @@ describe('classifyUploadError', () => {
     expect(result.title).toBe('Something broke.');
   });
 
+  test('ai_credits_exhausted returns reset copy without an add-credits prompt', () => {
+    const body: UploadErrorBody = {
+      code: 'ai_credits_exhausted',
+      message: "You're out of AI credits.",
+    };
+    const result = classifyUploadError(body);
+    expect(result.title).toBe("You're out of AI credits.");
+    expect(result.detail).toMatch(/resets/i);
+    expect(result.detail).not.toMatch(/add credits/i);
+  });
+
   test('malformed_notion returns specific copy (not the server message)', () => {
     const body: UploadErrorBody = {
       code: 'malformed_notion',

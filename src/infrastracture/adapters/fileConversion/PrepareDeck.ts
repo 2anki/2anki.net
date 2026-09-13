@@ -257,7 +257,8 @@ async function convertFile(
       name: `${file.name}.html`,
       contents: await convertImageToHTML(
         file.contents?.toString('base64'),
-        input.userId ?? null
+        input.userId ?? null,
+        true
       ),
     };
     console.log('[PrepareDeck] convertFile image', {
@@ -282,7 +283,8 @@ async function convertFile(
         await convertPDFToHTML(
           (file.contents as Buffer).toString('base64'),
           input.settings.userInstructions,
-          input.userId ?? null
+          input.userId ?? null,
+          true
         )
       ),
     };
@@ -640,6 +642,7 @@ async function buildClaudeDeck(
     requestId: input.requestId,
     comprehensive: input.settings.aiComprehensive,
     conversionResultCache: getConversionResultCache(),
+    budgetPreChecked: true,
   };
   const optionsForFile = (f: (typeof htmlFiles)[number]) =>
     pdfImageFallbackNames.has(f.name)

@@ -114,6 +114,10 @@ import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
   AI_CREDITS_EXHAUSTED_WARNING_TEXT,
 } from '../lib/claude/aiCredits/uploadWarning';
+import {
+  AiCreditsExhaustedError,
+  hasAiCreditsForConversion,
+} from '../lib/claude/aiSpendGuard';
 
 interface EmptyDeckResponse {
   code: 'empty_export';
@@ -810,13 +814,28 @@ class UploadService {
     const settings = loadPersistedConversionSettings(workspaceDir);
     const fallbackNames = loadPdfImageFallbackNames(workspaceDir);
     const ownerNumeric = Number(owner);
+    const userId =
+      Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null;
+
+    // This deferred Claude stage has no standard-parser fallback, so it stops
+    // cleanly at zero rather than hard-failing mid-loop. Pre-check once from the
+    // HTML text size; once past it the per-file guard is a no-op so a started
+    // conversion finishes with AI.
+    const estimatedBytes = htmlFiles.reduce(
+      (sum, file) => sum + fs.statSync(file).size,
+      0
+    );
+    if (!(await hasAiCreditsForConversion(userId, estimatedBytes))) {
+      throw new AiCreditsExhaustedError();
+    }
+
     const generateOptions = {
       isPaying: paying,
-      userId:
-        Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null,
+      userId,
       requestId,
       comprehensive: settings?.aiComprehensive,
       conversionResultCache: getConversionResultCache(),
+      budgetPreChecked: true,
     };
 
     const deckInfoArrays: DeckInfo[][] = [];

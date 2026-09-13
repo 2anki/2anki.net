@@ -17,6 +17,7 @@ export type UploadErrorCode =
   | 'notion_object_not_found'
   | 'apkg_too_large_for_anki'
   | 'zip_invalid'
+  | 'ai_credits_exhausted'
   | 'unknown';
 
 export interface UploadErrorBody {

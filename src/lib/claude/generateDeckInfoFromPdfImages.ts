@@ -257,10 +257,13 @@ export async function generateDeckInfoFromPdfImages(
   context: PdfImageFallbackContext,
   userInstructions?: string,
   onProgress?: (step: string) => void,
-  userId?: number | null
+  userId?: number | null,
+  budgetPreChecked?: boolean
 ): Promise<DeckInfo[]> {
   const t0 = Date.now();
-  await assertAiBudget(userId);
+  if (budgetPreChecked !== true) {
+    await assertAiBudget(userId);
+  }
   const images = resolvePageImages(htmlContent, context.mediaBaseDir);
 
   if (images.length === 0) {
