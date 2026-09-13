@@ -32,8 +32,7 @@ export function AiCreditsAccountLine() {
               date: validThrough,
             })
           : t('plan', { count: credits.credits })}
-      </span>{' '}
-      <a href="/pricing">{t('addCredits')}</a>
+      </span>
     </p>
   );
 }

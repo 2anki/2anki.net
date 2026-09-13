@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { AiCreditsState } from '../../../lib/hooks/useAiCredits';
 import pageStyles from '../UploadPage.module.css';
 
@@ -34,12 +33,6 @@ export function AiCreditsReadout({ credits }: Props) {
       >
         {t('left', { count: credits.credits })}
       </span>
-      {low && (
-        <>
-          {' '}
-          <Link to="/pricing">{t('addCredits')}</Link>
-        </>
-      )}
     </span>
   );
 }

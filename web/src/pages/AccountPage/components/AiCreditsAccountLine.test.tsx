@@ -34,15 +34,13 @@ describe('AiCreditsAccountLine', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows the balance, valid-through date, and an add-credits link', () => {
+  it('shows the balance and valid-through date without a buy link', () => {
     mockHook.mockReturnValue(state({ credits: 180 }));
     render(<AiCreditsAccountLine />);
     expect(
       screen.getByText(/180 AI credits, valid through/)
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: 'Add credits' })
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('link')).toBeNull();
   });
 
   it('reads zero when the balance is spent', () => {
