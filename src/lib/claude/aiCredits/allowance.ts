@@ -28,7 +28,7 @@ export interface PlanInputs {
 export interface AiCreditAllowance {
   credits: number;
   windowStart: Date;
-  windowEnd: Date;
+  windowEnd: Date | null;
   resets: CreditWindowReset;
 }
 
@@ -76,11 +76,13 @@ function periodIsCurrent(
   );
 }
 
+// No period means no honest reset date, so windowEnd is null rather than a
+// fabricated now-plus-30-days the account line would show as "valid through".
 function rollingAllowance(credits: number, now: Date): AiCreditAllowance {
   return {
     credits,
     windowStart: new Date(now.getTime() - ROLLING_WINDOW_MS),
-    windowEnd: new Date(now.getTime() + ROLLING_WINDOW_MS),
+    windowEnd: null,
     resets: 'period',
   };
 }
@@ -148,7 +150,13 @@ export function resolveAllowance(
     );
   }
   if (pass?.kind === 'unlimited') {
-    return rollingAllowance(SUBSCRIPTION_CREDITS, now);
+    return monthlyWindowClippedToPeriod(
+      SUBSCRIPTION_CREDITS,
+      null,
+      pass.latestExpiresAt,
+      now,
+      'period'
+    );
   }
   if (inputs.patreon || inputs.ankifyAccess) {
     return monthlyWindowClippedToPeriod(

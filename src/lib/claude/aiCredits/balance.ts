@@ -7,7 +7,7 @@ export interface AiCreditBalance {
   credits: number;
   allowance: number;
   windowStart: Date;
-  windowEnd: Date;
+  windowEnd: Date | null;
   resets: CreditWindowReset;
 }
 

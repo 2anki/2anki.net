@@ -39,6 +39,24 @@ describe('GetAiCreditsUseCase', () => {
     });
   });
 
+  it('serializes a null window end for a rolling (period-less) subscription', async () => {
+    const rollingInputs: PlanInputs = {
+      pass: null,
+      subscription: {
+        active: true,
+        periodStart: null,
+        periodEnd: null,
+        unitAmount: 799,
+      },
+      patreon: false,
+      ankifyAccess: false,
+    };
+    const useCase = new GetAiCreditsUseCase(readers(rollingInputs));
+    const result = await useCase.execute(42, NOW);
+    expect(result.windowEnd).toBeNull();
+    expect(result.credits).toBe(300);
+  });
+
   it('returns an empty allowance for a user with no plan', async () => {
     const useCase = new GetAiCreditsUseCase(readers(null));
     const result = await useCase.execute(42, NOW);

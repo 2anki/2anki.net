@@ -134,6 +134,7 @@ describe('resolveAllowance', () => {
     const rollingMs = 30 * 24 * 60 * 60 * 1000;
     expect(result?.credits).toBe(300);
     expect(result?.windowStart).toEqual(new Date(NOW.getTime() - rollingMs));
+    expect(result?.windowEnd).toBeNull();
     expect(result?.resets).toBe('period');
   });
 
@@ -153,9 +154,10 @@ describe('resolveAllowance', () => {
     const rollingMs = 30 * 24 * 60 * 60 * 1000;
     expect(result?.credits).toBe(300);
     expect(result?.windowStart).toEqual(new Date(NOW.getTime() - rollingMs));
+    expect(result?.windowEnd).toBeNull();
   });
 
-  it('gives an Apple unlimited pass the Unlimited allowance over a rolling window', () => {
+  it('anchors an Apple unlimited pass on its own expiry, clipped to the month', () => {
     const result = resolveAllowance(
       {
         ...emptyInputs,
@@ -167,8 +169,27 @@ describe('resolveAllowance', () => {
       },
       NOW
     );
-    expect(result?.credits).toBe(300);
-    expect(result?.resets).toBe('period');
+    expect(result).toEqual({
+      credits: 300,
+      windowStart: new Date('2026-05-01T00:00:00.000Z'),
+      windowEnd: new Date('2026-06-01T00:00:00.000Z'),
+      resets: 'period',
+    });
+  });
+
+  it('clips an Apple unlimited window to a mid-month expiry', () => {
+    const result = resolveAllowance(
+      {
+        ...emptyInputs,
+        pass: {
+          kind: 'unlimited',
+          earliestExpiresAt: new Date('2026-05-20T00:00:00.000Z'),
+          latestExpiresAt: new Date('2026-05-20T00:00:00.000Z'),
+        },
+      },
+      NOW
+    );
+    expect(result?.windowEnd).toEqual(new Date('2026-05-20T00:00:00.000Z'));
   });
 
   it('gives a lifetime (patreon) user 300 credits over the calendar month', () => {
