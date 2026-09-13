@@ -9,7 +9,9 @@ import { storePassToken } from '../../lib/anonymousPass';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
 import useQuery from '../../lib/hooks/useQuery';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { useAiCredits } from '../../lib/hooks/useAiCredits';
 import styles from '../../styles/shared.module.css';
+import { AiCreditsReadout } from './components/AiCreditsReadout';
 import { ExploreCard } from './components/ExploreCard/ExploreCard';
 import { OnboardingTour } from './components/OnboardingTour/OnboardingTour';
 import { RecentSources } from './components/RecentSources/RecentSources';
@@ -77,6 +79,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
 
   const isAiOn = isPaying && aiFlag;
   const aiBadgeState = deriveAiBadgeState(isSignedIn, isPaying, isAiOn);
+  const aiCredits = useAiCredits(aiBadgeState === 'on');
 
   const toggleAi = () => {
     const next = !isAiOn;
@@ -179,6 +182,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               </Link>
               <span>.</span>
             </span>
+            <AiCreditsReadout credits={aiCredits} />
           </>
         )}
         {aiBadgeState === 'off' && (

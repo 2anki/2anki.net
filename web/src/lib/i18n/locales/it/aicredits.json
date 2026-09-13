@@ -1,0 +1,11 @@
+{
+  "left_one": "{{count}} credito IA rimasto.",
+  "left_other": "{{count}} crediti IA rimasti.",
+  "zero": "0 crediti IA. Il tuo prossimo mazzo sarà creato senza IA.",
+  "addCredits": "Aggiungi crediti",
+  "plan_one": "{{count}} credito IA.",
+  "plan_other": "{{count}} crediti IA.",
+  "planValid_one": "{{count}} credito IA, valido fino al {{date}}.",
+  "planValid_other": "{{count}} crediti IA, validi fino al {{date}}.",
+  "planZero": "0 crediti IA."
+}

@@ -1,0 +1,11 @@
+{
+  "left_one": "Nog {{count}} AI-credit over.",
+  "left_other": "Nog {{count}} AI-credits over.",
+  "zero": "0 AI-credits over. Je volgende deck wordt zonder AI gemaakt.",
+  "addCredits": "Credits toevoegen",
+  "plan_one": "{{count}} AI-credit.",
+  "plan_other": "{{count}} AI-credits.",
+  "planValid_one": "{{count}} AI-credit, geldig tot {{date}}.",
+  "planValid_other": "{{count}} AI-credits, geldig tot {{date}}.",
+  "planZero": "0 AI-credits."
+}

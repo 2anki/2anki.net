@@ -1,0 +1,17 @@
+{
+  "left_one": "Остался {{count}} кредит ИИ.",
+  "left_few": "Осталось {{count}} кредита ИИ.",
+  "left_many": "Осталось {{count}} кредитов ИИ.",
+  "left_other": "Осталось {{count}} кредитов ИИ.",
+  "zero": "0 кредитов ИИ. Следующая колода будет создана без ИИ.",
+  "addCredits": "Добавить кредиты",
+  "plan_one": "{{count}} кредит ИИ.",
+  "plan_few": "{{count}} кредита ИИ.",
+  "plan_many": "{{count}} кредитов ИИ.",
+  "plan_other": "{{count}} кредитов ИИ.",
+  "planValid_one": "{{count}} кредит ИИ, действует до {{date}}.",
+  "planValid_few": "{{count}} кредита ИИ, действуют до {{date}}.",
+  "planValid_many": "{{count}} кредитов ИИ, действуют до {{date}}.",
+  "planValid_other": "{{count}} кредитов ИИ, действуют до {{date}}.",
+  "planZero": "0 кредитов ИИ."
+}

@@ -1,0 +1,17 @@
+{
+  "left_one": "Pozostał {{count}} kredyt AI.",
+  "left_few": "Pozostały {{count}} kredyty AI.",
+  "left_many": "Pozostało {{count}} kredytów AI.",
+  "left_other": "Pozostało {{count}} kredytów AI.",
+  "zero": "0 kredytów AI. Następna talia powstanie bez AI.",
+  "addCredits": "Dodaj kredyty",
+  "plan_one": "{{count}} kredyt AI.",
+  "plan_few": "{{count}} kredyty AI.",
+  "plan_many": "{{count}} kredytów AI.",
+  "plan_other": "{{count}} kredytów AI.",
+  "planValid_one": "{{count}} kredyt AI, ważny do {{date}}.",
+  "planValid_few": "{{count}} kredyty AI, ważne do {{date}}.",
+  "planValid_many": "{{count}} kredytów AI, ważne do {{date}}.",
+  "planValid_other": "{{count}} kredytów AI, ważne do {{date}}.",
+  "planZero": "0 kredytów AI."
+}

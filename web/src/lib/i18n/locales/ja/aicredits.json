@@ -1,0 +1,8 @@
+{
+  "left_other": "AIクレジットの残りは{{count}}です。",
+  "zero": "AIクレジットが残っていません。次のデッキはAIなしで作成されます。",
+  "addCredits": "クレジットを追加",
+  "plan_other": "AIクレジット{{count}}。",
+  "planValid_other": "AIクレジット{{count}}、{{date}}まで有効。",
+  "planZero": "AIクレジットは0です。"
+}
