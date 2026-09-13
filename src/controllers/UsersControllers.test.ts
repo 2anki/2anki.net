@@ -3268,3 +3268,16 @@ describe('UsersController.newPassword', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 });
+
+describe('UsersController.getAiCredits', () => {
+  it('returns 401 without an authenticated owner', async () => {
+    const { controller } = buildController();
+    const res = buildRes();
+    (res as unknown as { locals: Record<string, unknown> }).locals = {};
+    await controller.getAiCredits({} as express.Request, res);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'Authentication required',
+    });
+  });
+});

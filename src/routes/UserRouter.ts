@@ -756,6 +756,41 @@ const UserRouter = () => {
 
   /**
    * @swagger
+   * /api/ai/credits:
+   *   get:
+   *     summary: Get the current user's AI credit balance
+   *     description: Returns remaining AI credits, the plan allowance, when the window ends, and how it resets
+   *     tags: [Users]
+   *     security:
+   *       - bearerAuth: []
+   *       - cookieAuth: []
+   *     responses:
+   *       200:
+   *         description: AI credit balance retrieved
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 credits:
+   *                   type: integer
+   *                 allowance:
+   *                   type: integer
+   *                 windowEnd:
+   *                   type: string
+   *                   nullable: true
+   *                 resets:
+   *                   type: string
+   *                   enum: [period, pass, month]
+   *       401:
+   *         description: Authentication required
+   */
+  router.get('/api/ai/credits', RequireAuthentication, (req, res) =>
+    controller.getAiCredits(req, res)
+  );
+
+  /**
+   * @swagger
    * /api/users/debug/locals:
    *   get:
    *     summary: Get debug information
