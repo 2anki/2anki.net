@@ -94,6 +94,57 @@ describe('getPackagesFromZip — batch concurrency', () => {
     expect(result.packages).toHaveLength(fileCount);
   });
 
+  it('threads the userId into every deck conversion so zip uploads are guarded', async () => {
+    const fileNames = ['a.html', 'b.html', 'c.html', 'd.html'];
+
+    mockZipHandlerClass.mockImplementation(() => ({
+      build: jest.fn().mockResolvedValue(undefined),
+      getFileNames: jest.fn().mockReturnValue(fileNames),
+      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+    }));
+
+    mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        deckInfoPath: `/fake/${name}/deck_info.json`,
+        outputPath: `/fake/${name}/out.apkg`,
+        name,
+        inputFileName: name,
+        deck: [],
+        cardCount: 1,
+        needsIndividualBuild: false,
+      })
+    );
+
+    mockCardGeneratorClass.mockImplementation(() => ({
+      runBatch: jest
+        .fn()
+        .mockImplementation((entries: Array<{ output: string }>) =>
+          Promise.resolve(entries.map((e) => e.output))
+        ),
+    }));
+
+    jest
+      .spyOn(require('node:fs'), 'readFileSync')
+      .mockReturnValue(Buffer.from('fake-apkg'));
+
+    const settings = new CardOption({});
+    const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
+
+    await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      true,
+      settings,
+      workspace,
+      undefined,
+      4242
+    );
+
+    expect(mockPrepareDeckInfoOnly).toHaveBeenCalled();
+    for (const call of mockPrepareDeckInfoOnly.mock.calls) {
+      expect(call[0].userId).toBe(4242);
+    }
+  });
+
   const previousMaxPython = process.env.MAX_PYTHON_WORKERS;
   const previousConversionWorkers = process.env.CONVERSION_WORKERS;
 

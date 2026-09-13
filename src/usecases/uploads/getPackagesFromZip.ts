@@ -84,6 +84,7 @@ async function buildDeckBatch(
   settings: CardOption,
   paying: boolean,
   workspace: Workspace,
+  userId: number | null,
   knownGuids?: KnownGuids,
   uploadIdentity?: UploadIdentityContext
 ): Promise<BatchOutcome> {
@@ -102,6 +103,7 @@ async function buildDeckBatch(
             settings,
             noLimits: paying,
             workspace: deckSubWorkspace,
+            userId,
             knownGuids,
             uploadIdentity,
           },
@@ -192,6 +194,7 @@ async function buildDeckBatch(
     settings,
     paying,
     workspace,
+    userId,
     knownGuids,
     uploadIdentity
   );
@@ -209,6 +212,7 @@ async function buildStragglerDecks(
   settings: CardOption,
   paying: boolean,
   workspace: Workspace,
+  userId: number | null,
   knownGuids?: KnownGuids,
   uploadIdentity?: UploadIdentityContext
 ): Promise<BatchOutcome> {
@@ -231,6 +235,7 @@ async function buildStragglerDecks(
           settings,
           noLimits: paying,
           workspace,
+          userId,
           knownGuids,
           uploadIdentity,
         })
@@ -345,6 +350,7 @@ async function buildAllInOneSlot(
   paying: boolean,
   workspace: Workspace,
   cap: number,
+  userId: number | null,
   { knownGuids, uploadIdentity }: CardIdentitySources
 ): Promise<PackageResult> {
   const limit = pLimit(cap);
@@ -365,6 +371,7 @@ async function buildAllInOneSlot(
             settings,
             noLimits: paying,
             workspace: deckWorkspace,
+            userId,
             knownGuids,
             uploadIdentity,
           });
@@ -496,6 +503,7 @@ export const getPackagesFromZip = async (
       paying,
       workspace,
       cap,
+      userId,
       { knownGuids, uploadIdentity }
     );
   }
@@ -512,6 +520,7 @@ export const getPackagesFromZip = async (
           effectiveSettings,
           paying,
           workspace,
+          userId,
           knownGuids,
           uploadIdentity
         )

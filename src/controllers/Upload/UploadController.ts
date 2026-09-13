@@ -322,7 +322,8 @@ class UploadController {
       credential,
       paying,
       settings,
-      workspace
+      workspace,
+      Number(getOwner(res)) || null
     );
 
     if ('needsCredential' in outcome) {
