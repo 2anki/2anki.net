@@ -8,7 +8,6 @@ import { startOfMonthUtc } from '../../User/startOfMonthUtc';
 export type CreditWindowReset = 'period' | 'pass' | 'month';
 
 export interface SubscriptionPlanInputs {
-  active: boolean;
   periodStart: Date | null;
   periodEnd: Date | null;
   unitAmount: number | null;
@@ -138,7 +137,7 @@ export function resolveAllowance(
   inputs: PlanInputs,
   now: Date
 ): AiCreditAllowance | null {
-  if (inputs.subscription?.active === true) {
+  if (inputs.subscription != null) {
     return subscriptionAllowance(inputs.subscription, now);
   }
   const pass = inputs.pass;

@@ -42,7 +42,6 @@ export function parseSubscriptionPayload(
   const item = parsed?.items?.data?.[0];
   const unitAmount = item?.price?.unit_amount;
   return {
-    active: true,
     periodStart: toDate(item?.current_period_start),
     periodEnd: toDate(item?.current_period_end),
     unitAmount: typeof unitAmount === 'number' ? unitAmount : null,

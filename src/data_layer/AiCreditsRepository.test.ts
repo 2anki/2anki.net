@@ -20,7 +20,6 @@ describe('parseSubscriptionPayload', () => {
       },
     });
     expect(result).toEqual({
-      active: true,
       periodStart: new Date(1_746_057_600 * 1000),
       periodEnd: new Date(1_748_736_000 * 1000),
       unitAmount: 799,
@@ -38,7 +37,6 @@ describe('parseSubscriptionPayload', () => {
   it('returns null period and amount for an unparseable payload', () => {
     const result = parseSubscriptionPayload('not json');
     expect(result).toEqual({
-      active: true,
       periodStart: null,
       periodEnd: null,
       unitAmount: null,

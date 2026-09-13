@@ -7,7 +7,6 @@ const NOW = new Date('2026-05-12T12:00:00.000Z');
 const subscriberInputs: PlanInputs = {
   pass: null,
   subscription: {
-    active: true,
     periodStart: new Date('2026-05-01T00:00:00.000Z'),
     periodEnd: new Date('2026-06-01T00:00:00.000Z'),
     unitAmount: 799,
@@ -43,7 +42,6 @@ describe('GetAiCreditsUseCase', () => {
     const rollingInputs: PlanInputs = {
       pass: null,
       subscription: {
-        active: true,
         periodStart: null,
         periodEnd: null,
         unitAmount: 799,

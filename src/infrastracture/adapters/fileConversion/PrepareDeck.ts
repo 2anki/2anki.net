@@ -188,9 +188,29 @@ export function parserWarning(parser: {
   return undefined;
 }
 
+function warningForParserDeck(
+  aiCreditsExhausted: boolean,
+  parser: { usedHeuristic: boolean; strayClozeCount: number }
+): string | undefined {
+  return aiCreditsExhausted
+    ? AI_CREDITS_EXHAUSTED_WARNING_CODE
+    : parserWarning(parser);
+}
+
+// exhausted: the start-of-conversion pre-check found no credits, so the AI
+// vision branches are skipped and the file goes to the standard parser.
+// preChecked: a pre-check already ran, so the per-call guard inside the vision
+// converters is a no-op (a started conversion finishes with AI); when no
+// pre-check ran (the zip batch path) the inner guard still runs.
+interface AiConversionGate {
+  exhausted: boolean;
+  preChecked: boolean;
+}
+
 async function convertFile(
   file: DeckParserInput['files'][number],
-  input: DeckParserInput
+  input: DeckParserInput,
+  aiGate: AiConversionGate
 ): Promise<ConvertedFile | null> {
   if (!file.contents) return null;
 
@@ -251,14 +271,14 @@ async function convertFile(
     isImageFile(file.name) &&
     input.settings.imageQuizHtmlToAnki &&
     input.noLimits &&
-    !input.aiCreditsExhausted
+    !aiGate.exhausted
   ) {
     const result = {
       name: `${file.name}.html`,
       contents: await convertImageToHTML(
         file.contents?.toString('base64'),
         input.userId ?? null,
-        true
+        aiGate.preChecked
       ),
     };
     console.log('[PrepareDeck] convertFile image', {
@@ -275,7 +295,7 @@ async function convertFile(
     input.noLimits &&
     input.settings.vertexAIPDFQuestions &&
     input.settings.processPDFs !== false &&
-    !input.aiCreditsExhausted
+    !aiGate.exhausted
   ) {
     const result = {
       name: `${file.name}.html`,
@@ -284,7 +304,7 @@ async function convertFile(
           (file.contents as Buffer).toString('base64'),
           input.settings.userInstructions,
           input.userId ?? null,
-          true
+          aiGate.preChecked
         )
       ),
     };
@@ -800,7 +820,6 @@ export async function PrepareDeck(
   });
 
   const aiCreditsExhausted = await resolveAiCreditsExhausted(input, files);
-  const conversionInput: DeckParserInput = { ...input, aiCreditsExhausted };
   if (aiCreditsExhausted) {
     console.log('[PrepareDeck] AI credits exhausted, building without AI', {
       name: logFileLabel(input.name),
@@ -811,7 +830,11 @@ export async function PrepareDeck(
   const results = await mapWithConcurrency(
     files,
     FILE_CONVERSION_CONCURRENCY,
-    (file) => convertFile(file, conversionInput)
+    (file) =>
+      convertFile(file, input, {
+        exhausted: aiCreditsExhausted,
+        preChecked: true,
+      })
   );
   const convertedFiles = results.flatMap((r) => (r ? [r] : []));
   console.log('[PrepareDeck] file conversions done', {
@@ -831,7 +854,7 @@ export async function PrepareDeck(
     !aiCreditsExhausted
   ) {
     return buildClaudeDeck(
-      conversionInput,
+      input,
       allFiles,
       convertedFiles,
       pdfImageFallbackNames,
@@ -839,7 +862,7 @@ export async function PrepareDeck(
     );
   }
 
-  const parser = newDeckParser(conversionInput, allFiles);
+  const parser = newDeckParser(input, allFiles);
 
   if (parser.totalCardCount() === 0) {
     if (convertedFiles.length > 0) {
@@ -854,9 +877,7 @@ export async function PrepareDeck(
         cardCount: parser.totalCardCount(),
         mcqCount: 0,
         mcqSkippedCount: 0,
-        warning: aiCreditsExhausted
-          ? AI_CREDITS_EXHAUSTED_WARNING_CODE
-          : parserWarning(parser),
+        warning: warningForParserDeck(aiCreditsExhausted, parser),
         droppedImageCount: parser.droppedImageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
@@ -895,9 +916,7 @@ export async function PrepareDeck(
     cardCount: parser.totalCardCount(),
     mcqCount,
     mcqSkippedCount,
-    warning: aiCreditsExhausted
-      ? AI_CREDITS_EXHAUSTED_WARNING_CODE
-      : parserWarning(parser),
+    warning: warningForParserDeck(aiCreditsExhausted, parser),
     droppedImageCount: parser.droppedImageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,
@@ -947,7 +966,8 @@ export async function prepareDeckInfoOnly(
   const results = await mapWithConcurrency(
     files,
     FILE_CONVERSION_CONCURRENCY,
-    (file) => convertFile(file, input)
+    (file) =>
+      convertFile(file, input, { exhausted: false, preChecked: false })
   );
   const convertedFiles = results.flatMap((r) => (r ? [r] : []));
   const allFiles = assembleParserFiles(files, convertedFiles);

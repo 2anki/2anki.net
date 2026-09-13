@@ -65,7 +65,6 @@ describe('resolveAllowance', () => {
       {
         ...emptyInputs,
         subscription: {
-          active: true,
           periodStart,
           periodEnd,
           unitAmount: 799,
@@ -86,7 +85,6 @@ describe('resolveAllowance', () => {
       {
         ...emptyInputs,
         subscription: {
-          active: true,
           periodStart: new Date('2026-01-01T00:00:00.000Z'),
           periodEnd: new Date('2027-01-01T00:00:00.000Z'),
           unitAmount: 6400,
@@ -107,7 +105,6 @@ describe('resolveAllowance', () => {
       {
         ...emptyInputs,
         subscription: {
-          active: true,
           periodStart: new Date('2026-05-01T00:00:00.000Z'),
           periodEnd: new Date('2026-06-01T00:00:00.000Z'),
           unitAmount: 200,
@@ -123,7 +120,6 @@ describe('resolveAllowance', () => {
       {
         ...emptyInputs,
         subscription: {
-          active: true,
           periodStart: new Date('2026-01-01T00:00:00.000Z'),
           periodEnd: new Date('2026-02-01T00:00:00.000Z'),
           unitAmount: 799,
@@ -143,7 +139,6 @@ describe('resolveAllowance', () => {
       {
         ...emptyInputs,
         subscription: {
-          active: true,
           periodStart: null,
           periodEnd: null,
           unitAmount: null,
@@ -217,7 +212,6 @@ describe('resolveAllowance', () => {
         ...emptyInputs,
         patreon: true,
         subscription: {
-          active: true,
           periodStart: new Date('2026-05-01T00:00:00.000Z'),
           periodEnd: new Date('2026-06-01T00:00:00.000Z'),
           unitAmount: 200,
