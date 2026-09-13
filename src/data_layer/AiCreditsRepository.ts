@@ -67,7 +67,11 @@ export class AiCreditsRepository implements IAiCreditsPlanReader {
     const user = (await this.database('users')
       .where({ id: userId })
       .first('email', 'patreon', 'ankify_access')) as
-      | { email: string; patreon: boolean | null; ankify_access: boolean | null }
+      | {
+          email: string;
+          patreon: boolean | null;
+          ankify_access: boolean | null;
+        }
       | undefined;
     if (user == null) {
       return null;

@@ -1,7 +1,11 @@
 import { track } from '../../services/events/track';
 import { HttpCodedError } from '../errors/HttpCodedError';
 import type { IAiSpendReader } from '../../data_layer/AiUsageMetricsRepository';
-import { computeAiCreditBalance, AiCreditBalance, CREDIT_UNIT_USD } from './aiCredits/balance';
+import {
+  computeAiCreditBalance,
+  AiCreditBalance,
+  CREDIT_UNIT_USD,
+} from './aiCredits/balance';
 import { estimateConversionCostUsd } from './pricing';
 
 // A user crossing $25 in 30 days costs more than triple the subscription
@@ -48,7 +52,9 @@ function defaultDeps(): AiBudgetDeps {
   const {
     AiUsageMetricsRepository,
   } = require('../../data_layer/AiUsageMetricsRepository');
-  const { AiCreditsRepository } = require('../../data_layer/AiCreditsRepository');
+  const {
+    AiCreditsRepository,
+  } = require('../../data_layer/AiCreditsRepository');
   const {
     AiCreditGrantsRepository,
   } = require('../../data_layer/AiCreditGrantsRepository');

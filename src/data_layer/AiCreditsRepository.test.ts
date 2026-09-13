@@ -49,7 +49,9 @@ describe('parseSubscriptionPayload', () => {
 describe('AiCreditsRepository generated SQL', () => {
   it('finds the active subscription by linked or payer email', () => {
     const repo = new AiCreditsRepository(pg);
-    const sql = repo.buildActiveSubscriptionQuery('User@Example.com').toString();
+    const sql = repo
+      .buildActiveSubscriptionQuery('User@Example.com')
+      .toString();
     expect(sql).toContain('from "subscriptions"');
     expect(sql).toContain('"linked_email" = \'user@example.com\'');
     expect(sql).toContain('"email" = \'user@example.com\'');

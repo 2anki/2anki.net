@@ -29,11 +29,7 @@ const subscriberInputs: PlanInputs = {
 
 describe('computeAiCreditBalance', () => {
   it('returns null when the user has no allowance', async () => {
-    const result = await computeAiCreditBalance(
-      1,
-      NOW,
-      readersFor(null, 0)
-    );
+    const result = await computeAiCreditBalance(1, NOW, readersFor(null, 0));
     expect(result).toBeNull();
   });
 

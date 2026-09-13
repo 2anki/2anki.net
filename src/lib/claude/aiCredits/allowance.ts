@@ -93,15 +93,10 @@ function subscriptionAllowance(
   return rollingAllowance(credits, now);
 }
 
-function calendarMonthAllowance(
-  credits: number,
-  now: Date
-): AiCreditAllowance {
+function calendarMonthAllowance(credits: number, now: Date): AiCreditAllowance {
   return {
     credits,
-    windowStart: new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
-    ),
+    windowStart: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
     windowEnd: new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
     ),
