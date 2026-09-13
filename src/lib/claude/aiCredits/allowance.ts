@@ -115,7 +115,7 @@ export function resolveAllowance(
   if (pass != null && isAnonymousPassKind(pass.kind)) {
     return passAllowance(pass.kind, pass.expiresAt);
   }
-  if (pass != null && pass.kind === 'unlimited') {
+  if (pass?.kind === 'unlimited') {
     return rollingAllowance(SUBSCRIPTION_CREDITS, now);
   }
   if (inputs.patreon || inputs.ankifyAccess) {

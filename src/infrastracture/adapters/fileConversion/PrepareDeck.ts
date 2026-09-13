@@ -187,15 +187,6 @@ export function parserWarning(parser: {
   return undefined;
 }
 
-function creditsAwareWarning(
-  parser: Parameters<typeof parserWarning>[0],
-  aiCreditsExhausted: boolean
-): string | undefined {
-  return aiCreditsExhausted
-    ? AI_CREDITS_EXHAUSTED_WARNING_CODE
-    : parserWarning(parser);
-}
-
 async function convertFile(
   file: DeckParserInput['files'][number],
   input: DeckParserInput
@@ -862,7 +853,9 @@ export async function PrepareDeck(
         cardCount: parser.totalCardCount(),
         mcqCount: 0,
         mcqSkippedCount: 0,
-        warning: creditsAwareWarning(parser, aiCreditsExhausted),
+        warning: aiCreditsExhausted
+          ? AI_CREDITS_EXHAUSTED_WARNING_CODE
+          : parserWarning(parser),
         droppedImageCount: parser.droppedImageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
@@ -901,7 +894,9 @@ export async function PrepareDeck(
     cardCount: parser.totalCardCount(),
     mcqCount,
     mcqSkippedCount,
-    warning: creditsAwareWarning(parser, aiCreditsExhausted),
+    warning: aiCreditsExhausted
+      ? AI_CREDITS_EXHAUSTED_WARNING_CODE
+      : parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,
