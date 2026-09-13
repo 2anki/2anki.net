@@ -639,6 +639,28 @@ describe('ChatPanel', () => {
     });
   });
 
+  it('refetches user locals when the stream reports ai_credits_exhausted', async () => {
+    mockPost.mockResolvedValueOnce(
+      makeSseResponse([
+        { event: 'error', data: { type: 'ai_credits_exhausted' } },
+      ])
+    );
+
+    renderChatPanel();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message input' }), {
+      target: { value: 'Help me' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+    await waitFor(() => {
+      expect(consentedLocals.refetch).toHaveBeenCalled();
+    });
+    expect(
+      screen.queryByRole('alert', { name: /something went wrong/i })
+    ).not.toBeInTheDocument();
+  });
+
   it('swaps to the upgrade panel when the server answers 402', async () => {
     mockPost.mockResolvedValueOnce({
       ok: false,

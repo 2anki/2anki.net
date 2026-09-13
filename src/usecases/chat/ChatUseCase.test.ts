@@ -18,7 +18,18 @@ jest.mock(
   })
 );
 
+jest.mock('../../lib/claude/aiSpendGuard', () => {
+  const actual = jest.requireActual('../../lib/claude/aiSpendGuard');
+  return { ...actual, assertAiBudget: jest.fn().mockResolvedValue(undefined) };
+});
+
 import { convertDocxToHTML } from '../../infrastracture/adapters/fileConversion/convertDocxToHTML';
+import {
+  assertAiBudget,
+  AiCreditsExhaustedError,
+} from '../../lib/claude/aiSpendGuard';
+
+const assertAiBudgetMock = assertAiBudget as jest.Mock;
 
 const mockedConvertDocx = convertDocxToHTML as jest.MockedFunction<
   typeof convertDocxToHTML
@@ -1439,6 +1450,34 @@ describe('ChatUseCase', () => {
       }
       return conversationId;
     }
+
+    it('checks the AI budget before deleting the previous reply', async () => {
+      const { messagesRepo, conversationsRepo, useCase } =
+        buildUseCase('unused');
+      const conversationId = await seedConversation(
+        messagesRepo,
+        conversationsRepo,
+        PATREON_USER.owner
+      );
+      assertAiBudgetMock.mockRejectedValueOnce(new AiCreditsExhaustedError());
+
+      await expect(
+        useCase.regenerate({
+          user: PATREON_USER,
+          conversationId,
+          templateSlug: null,
+        })
+      ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+
+      const assistantContents = messagesRepo
+        .getAll()
+        .filter(
+          (r) => r.conversation_id === conversationId && r.role === 'assistant'
+        )
+        .map((r) => r.content);
+      expect(assistantContents).toEqual(['old assistant reply']);
+      assertAiBudgetMock.mockResolvedValue(undefined);
+    });
 
     it('deletes the last assistant message and streams a fresh turn', async () => {
       const { messagesRepo, conversationsRepo, useCase } = buildUseCase(

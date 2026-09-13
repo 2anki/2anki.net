@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 
 import TemplatesController from './TemplatesController';
+import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 
 jest.mock('../lib/templates/exportNoteTypeToApkg', () => ({
   exportNoteTypeToApkg: jest.fn(),
@@ -84,6 +85,23 @@ describe('TemplatesController.aiGenerate', () => {
     const res = buildRes();
     await controller.aiGenerate(buildReq({ prompt: 'hi' }), res);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it('returns a coded 402 when the AI budget is exhausted', async () => {
+    const aiUseCase = {
+      generate: jest.fn().mockRejectedValue(new AiCreditsExhaustedError()),
+      modify: jest.fn(),
+    };
+    const controller = new TemplatesController(
+      buildService() as never,
+      aiUseCase as never
+    );
+    const res = buildRes();
+    await controller.aiGenerate(buildReq({ prompt: 'hi' }), res);
+    expect(res.status).toHaveBeenCalledWith(402);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'ai_credits_exhausted' })
+    );
   });
 });
 

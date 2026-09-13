@@ -551,6 +551,8 @@ export class ChatUseCase {
     const { user, content, conversationHistory, onToken } = input;
     const attachments = input.attachments ?? [];
 
+    await assertAiBudget(user.owner);
+
     let conversationId: number;
     if (input.conversationId != null) {
       const existing = await this.conversationsRepo.findForUser({
@@ -716,6 +718,8 @@ export class ChatUseCase {
   }): Promise<SendMessageResult> {
     const { user, onToken } = input;
 
+    await assertAiBudget(user.owner);
+
     const conversation = await this.conversationsRepo.findForUser({
       userId: user.owner,
       conversationId: input.conversationId,
@@ -806,8 +810,6 @@ export class ChatUseCase {
       ...historyMessages.map((m) => ({ role: m.role, content: m.content })),
       { role: 'user', content: userContent },
     ];
-
-    await assertAiBudget(user.owner);
 
     const stream = this.anthropic.messages.stream({
       model: MODEL,

@@ -5,6 +5,7 @@ import {
   ChatAttachmentsNotReplayableError,
   McqExtractionFailedError,
 } from '../usecases/chat/ChatUseCase';
+import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 
 function buildRes(
   owner = 42,
@@ -235,6 +236,18 @@ describe('ChatController.sendMessage', () => {
       event: 'error',
       data: { type: 'conversation_not_found' },
     });
+  });
+
+  it('sends ai_credits_exhausted error event when the budget is spent', async () => {
+    const { execute, controller, res } = buildMocks();
+    execute.mockRejectedValueOnce(new AiCreditsExhaustedError());
+    await controller.sendMessage(buildReq({ content: 'Hi' }), res);
+    const events = writtenEvents(res);
+    expect(events).toContainEqual({
+      event: 'error',
+      data: { type: 'ai_credits_exhausted' },
+    });
+    expect(res.end).toHaveBeenCalled();
   });
 });
 

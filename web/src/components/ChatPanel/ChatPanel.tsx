@@ -51,7 +51,8 @@ interface ApiErrorPayload {
     | 'server_error'
     | 'conversation_not_found'
     | 'consent_required'
-    | 'attachments_not_replayable';
+    | 'attachments_not_replayable'
+    | 'ai_credits_exhausted';
 }
 
 export interface ChatPanelProps {
@@ -894,6 +895,10 @@ export default function ChatPanel({
 
     const handleSseError = (data: string) => {
       const err = JSON.parse(data) as ApiErrorPayload;
+      if (err.type === 'ai_credits_exhausted') {
+        refetchUserLocals();
+        return;
+      }
       if (err.type === 'conversation_not_found') {
         setNetworkError(t('errors.conversationGone'));
         setActiveConversationId(null);
@@ -1089,6 +1094,10 @@ export default function ChatPanel({
 
     const handleRegenError = (data: string) => {
       const err = JSON.parse(data) as ApiErrorPayload;
+      if (err.type === 'ai_credits_exhausted') {
+        refetchUserLocals();
+        return;
+      }
       if (err.type === 'conversation_not_found') {
         setNetworkError(t('errors.conversationGone'));
         setActiveConversationId(null);
