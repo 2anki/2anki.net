@@ -120,5 +120,6 @@
     "body": "Przejdź na płatny plan, aby tworzyć fiszki na czacie.",
     "keepReading": "Twoje wcześniejsze czaty nadal możesz tu czytać.",
     "seePlans": "Zobacz plany"
-  }
+  },
+  "aiCreditsExhausted": "Skończyły Ci się kredyty AI. Wrócą, gdy Twój limit się odnowi."
 }

@@ -1,8 +1,7 @@
 {
   "left_one": "Resta {{count}} crédito de IA.",
   "left_other": "Restam {{count}} créditos de IA.",
-  "zero": "0 créditos de IA. Seu próximo baralho será criado sem IA.",
-  "addCredits": "Adicionar créditos",
+  "zero": "0 créditos de IA. Seu próximo baralho será criado sem IA até que seus créditos sejam redefinidos.",
   "plan_one": "{{count}} crédito de IA.",
   "plan_other": "{{count}} créditos de IA.",
   "planValid_one": "{{count}} crédito de IA, válido até {{date}}.",

@@ -44,7 +44,7 @@ describe('jobFailureReasonFromError', () => {
 
   it('surfaces the out-of-credits message by rehydrated name', () => {
     const err = new Error(
-      "You're out of AI credits. AI returns when your allowance resets."
+      "You're out of AI credits. They come back when your allowance resets."
     );
     err.name = 'AiCreditsExhaustedError';
     expect(jobFailureReasonFromError(err, 'job-9')).toBe(err.message);
@@ -52,7 +52,7 @@ describe('jobFailureReasonFromError', () => {
 
   it('surfaces the out-of-credits message when re-wrapped as a plain Error', () => {
     const err = new Error(
-      "You're out of AI credits. AI returns when your allowance resets."
+      "You're out of AI credits. They come back when your allowance resets."
     );
     expect(jobFailureReasonFromError(err, 'job-10')).toBe(err.message);
   });

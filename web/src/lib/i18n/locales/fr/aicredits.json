@@ -1,8 +1,7 @@
 {
   "left_one": "{{count}} crédit IA restant.",
   "left_other": "{{count}} crédits IA restants.",
-  "zero": "0 crédit IA. Votre prochain paquet sera créé sans IA.",
-  "addCredits": "Ajouter des crédits",
+  "zero": "0 crédit IA. Votre prochain paquet sera créé sans IA jusqu'à la réinitialisation de vos crédits.",
   "plan_one": "{{count}} crédit IA.",
   "plan_other": "{{count}} crédits IA.",
   "planValid_one": "{{count}} crédit IA, valable jusqu'au {{date}}.",

@@ -110,5 +110,6 @@
     "body": "Passa a un piano a pagamento per creare flashcard chattando.",
     "keepReading": "Le tue chat passate restano qui da leggere.",
     "seePlans": "Vedi i piani"
-  }
+  },
+  "aiCreditsExhausted": "Hai esaurito i crediti IA. Tornano quando la tua quota si azzera."
 }

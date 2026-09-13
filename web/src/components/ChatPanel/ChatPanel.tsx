@@ -664,6 +664,7 @@ export default function ChatPanel({
   const [regeneratingIdx, setRegeneratingIdx] = useState<number | null>(null);
   const [taggingIdx, setTaggingIdx] = useState<number | null>(null);
   const [networkError, setNetworkError] = useState<string | null>(null);
+  const [aiCreditsExhausted, setAiCreditsExhausted] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [chips, setChips] = useState<AttachmentChip[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -801,6 +802,7 @@ export default function ChatPanel({
     setInputValue('');
     setChips([]);
     setNetworkError(null);
+    setAiCreditsExhausted(false);
     setIsLoading(true);
     setStreamingText('');
     setUserScrolledAway(false);
@@ -896,6 +898,7 @@ export default function ChatPanel({
     const handleSseError = (data: string) => {
       const err = JSON.parse(data) as ApiErrorPayload;
       if (err.type === 'ai_credits_exhausted') {
+        setAiCreditsExhausted(true);
         refetchUserLocals();
         return;
       }
@@ -1032,6 +1035,7 @@ export default function ChatPanel({
     setRegeneratingIdx(targetIdx);
     setIsLoading(true);
     setNetworkError(null);
+    setAiCreditsExhausted(false);
     setStreamingText('');
     setUserScrolledAway(false);
 
@@ -1095,6 +1099,7 @@ export default function ChatPanel({
     const handleRegenError = (data: string) => {
       const err = JSON.parse(data) as ApiErrorPayload;
       if (err.type === 'ai_credits_exhausted') {
+        setAiCreditsExhausted(true);
         refetchUserLocals();
         return;
       }
@@ -1228,6 +1233,11 @@ export default function ChatPanel({
                       {networkError}
                     </p>
                   )}
+                  {aiCreditsExhausted && (
+                    <p className={styles.aiCreditsNotice} role="status">
+                      {t('aiCreditsExhausted')}
+                    </p>
+                  )}
                 </div>
               </>
             ) : (
@@ -1347,6 +1357,11 @@ export default function ChatPanel({
               {networkError != null && (
                 <p className={styles.networkError} role="alert">
                   {networkError}
+                </p>
+              )}
+              {aiCreditsExhausted && (
+                <p className={styles.aiCreditsNotice} role="status">
+                  {t('aiCreditsExhausted')}
                 </p>
               )}
               {successMessage != null && (

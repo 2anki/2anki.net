@@ -639,7 +639,7 @@ describe('ChatPanel', () => {
     });
   });
 
-  it('refetches user locals when the stream reports ai_credits_exhausted', async () => {
+  it('shows a calm notice and refetches locals on ai_credits_exhausted', async () => {
     mockPost.mockResolvedValueOnce(
       makeSseResponse([
         { event: 'error', data: { type: 'ai_credits_exhausted' } },
@@ -656,9 +656,9 @@ describe('ChatPanel', () => {
     await waitFor(() => {
       expect(consentedLocals.refetch).toHaveBeenCalled();
     });
-    expect(
-      screen.queryByRole('alert', { name: /something went wrong/i })
-    ).not.toBeInTheDocument();
+    const notice = await screen.findByText(/out of AI credits/i);
+    expect(notice).toBeInTheDocument();
+    expect(notice).toHaveAttribute('role', 'status');
   });
 
   it('swaps to the upgrade panel when the server answers 402', async () => {

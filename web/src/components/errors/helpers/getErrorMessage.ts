@@ -282,7 +282,7 @@ const UPLOAD_CODE_DEFAULTS: Partial<
   ai_credits_exhausted: {
     title: "You're out of AI credits.",
     detail:
-      'AI comes back when your allowance resets. Turn off AI in settings to convert now with the standard parser.',
+      'AI credits come back when your allowance resets. Turn off Claude cards to convert now with the standard parser.',
   },
 };
 
