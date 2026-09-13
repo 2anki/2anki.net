@@ -29,6 +29,7 @@ import {
 } from './convertPdfTextToHtml';
 import { extractPdfImages } from '../../../lib/pdf/extractPdfImages';
 import { hasAiCreditsForConversion } from '../../../lib/claude/aiSpendGuard';
+import { estimatePromptedBytes } from '../../../lib/claude/aiCredits/promptedBytes';
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 import { buildPdfPasswordSentinel } from '../../../lib/pdf/pdfPasswordSentinel';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
@@ -771,10 +772,7 @@ async function resolveAiCreditsExhausted(
   if (!(input.noLimits && usesAiSettings(input.settings))) {
     return false;
   }
-  const estimatedBytes = files.reduce(
-    (sum, f) => sum + (f.contents?.length ?? 0),
-    0
-  );
+  const estimatedBytes = estimatePromptedBytes(files);
   return !(await hasAiCreditsForConversion(
     input.userId ?? null,
     estimatedBytes
