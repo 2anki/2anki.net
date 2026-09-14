@@ -1,4 +1,15 @@
-import { computeUsageCostUsd, resolveModelPricing } from './pricing';
+import {
+  computeUsageCostUsd,
+  estimateConversionCostUsd,
+  resolveModelPricing,
+} from './pricing';
+
+describe('estimateConversionCostUsd', () => {
+  it('includes an output term so the estimate is not a ~3x undercount', () => {
+    // 1M input tokens: input 1M * $3 + output 0.4M * $15 = $3 + $6 = $9.
+    expect(estimateConversionCostUsd(4_000_000)).toBeCloseTo(9, 5);
+  });
+});
 
 describe('resolveModelPricing', () => {
   it('matches dated model ids by prefix', () => {

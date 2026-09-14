@@ -6,7 +6,7 @@ const PNG_1X1 = Buffer.from(
 );
 
 describe('estimateAiConversionCostUsd', () => {
-  it('prices HTML/Markdown text and marks the run estimated', async () => {
+  it('prices HTML/Markdown text when Claude cards is on', async () => {
     const result = await estimateAiConversionCostUsd(
       [
         {
@@ -15,11 +15,20 @@ describe('estimateAiConversionCostUsd', () => {
         },
         { name: 'more.md', contents: 'b'.repeat(2000) },
       ],
-      {},
+      { claudeAIFlashcards: true },
       '/tmp'
     );
     expect(result.estimated).toBe(true);
     expect(result.costUsd).toBeGreaterThan(0);
+  });
+
+  it('does not price HTML text when Claude cards is off', async () => {
+    const result = await estimateAiConversionCostUsd(
+      [{ name: 'notes.html', contents: 'a'.repeat(4000) }],
+      {},
+      '/tmp'
+    );
+    expect(result).toEqual({ costUsd: 0, estimated: false });
   });
 
   it('does not count a binary file when its vision setting is off', async () => {

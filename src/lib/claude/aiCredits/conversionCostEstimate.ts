@@ -32,6 +32,7 @@ export interface ConversionCostEstimate {
 }
 
 export interface EstimateSettings {
+  claudeAIFlashcards?: boolean;
   vertexAIPDFQuestions?: boolean;
   imageQuizHtmlToAnki?: boolean;
 }
@@ -80,6 +81,15 @@ export async function estimateAiConversionCostUsd(
   settings: EstimateSettings,
   workspaceLocation: string
 ): Promise<ConversionCostEstimate> {
+  // Only price what each flag will actually prompt: HTML/Markdown text when
+  // Claude cards is on, PDF pages when the vertex vision path or Claude cards
+  // is on, and images when the image quiz is on. A file whose format is not
+  // prompted contributes nothing.
+  const textPrompted = settings.claudeAIFlashcards === true;
+  const pdfPrompted =
+    settings.vertexAIPDFQuestions === true ||
+    settings.claudeAIFlashcards === true;
+  const imagePrompted = settings.imageQuizHtmlToAnki === true;
   let costUsd = 0;
   let estimated = false;
   for (const file of files) {
@@ -87,11 +97,11 @@ export async function estimateAiConversionCostUsd(
     if (contents == null) {
       continue;
     }
-    if (isHTMLFile(file.name) || isMarkdownFile(file.name)) {
+    if (textPrompted && (isHTMLFile(file.name) || isMarkdownFile(file.name))) {
       const text = stripHtmlBoilerplate(toText(contents));
       costUsd += estimateConversionCostUsd(Buffer.byteLength(text));
       estimated = true;
-    } else if (isPDFFile(file.name) && settings.vertexAIPDFQuestions === true) {
+    } else if (pdfPrompted && isPDFFile(file.name)) {
       const pdfCost = await pdfVisionCostUsd(
         Buffer.from(contents as Buffer),
         workspaceLocation
@@ -100,10 +110,7 @@ export async function estimateAiConversionCostUsd(
         costUsd += pdfCost;
         estimated = true;
       }
-    } else if (
-      isImageFile(file.name) &&
-      settings.imageQuizHtmlToAnki === true
-    ) {
+    } else if (imagePrompted && isImageFile(file.name)) {
       const imageCost = imageVisionCostUsd(Buffer.from(contents as Buffer));
       if (imageCost != null) {
         costUsd += imageCost;

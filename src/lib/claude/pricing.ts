@@ -35,14 +35,23 @@ export function resolveModelPricing(
 }
 
 const BYTES_PER_TOKEN = 4;
+// Card generation emits roughly two output tokens for every five input tokens.
+// Priced at the output rate this roughly triples an input-only estimate, so the
+// pre-check no longer undercounts by ~3× (a quality fix — the always-on guard
+// is the safety net).
+const OUTPUT_TOKEN_RATIO = 0.4;
 
 export function estimateConversionCostUsd(
   bytes: number,
   model?: string | null
 ): number {
-  const tokens = bytes / BYTES_PER_TOKEN;
+  const inputTokens = bytes / BYTES_PER_TOKEN;
+  const outputTokens = inputTokens * OUTPUT_TOKEN_RATIO;
   const pricing = resolveModelPricing(model);
-  return (tokens / 1_000_000) * pricing.inputPerMillion;
+  return (
+    (inputTokens / 1_000_000) * pricing.inputPerMillion +
+    (outputTokens / 1_000_000) * pricing.outputPerMillion
+  );
 }
 
 export function computeUsageCostUsd(
