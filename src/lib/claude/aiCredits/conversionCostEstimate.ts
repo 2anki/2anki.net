@@ -72,6 +72,39 @@ async function pdfVisionCostUsd(
   }
 }
 
+// Only price what each flag will actually prompt: HTML/Markdown text when Claude
+// cards is on, PDF pages when the vertex vision path or Claude cards is on, and
+// images when the image quiz is on. Returns null for a file whose format is not
+// prompted or cannot be estimated (a binary whose vision counter failed).
+async function fileCostUsd(
+  file: EstimateFile,
+  settings: EstimateSettings,
+  workspaceLocation: string
+): Promise<number | null> {
+  const contents = file.contents;
+  if (contents == null) {
+    return null;
+  }
+  if (
+    settings.claudeAIFlashcards === true &&
+    (isHTMLFile(file.name) || isMarkdownFile(file.name))
+  ) {
+    const text = stripHtmlBoilerplate(toText(contents));
+    return estimateConversionCostUsd(Buffer.byteLength(text));
+  }
+  if (
+    isPDFFile(file.name) &&
+    (settings.vertexAIPDFQuestions === true ||
+      settings.claudeAIFlashcards === true)
+  ) {
+    return pdfVisionCostUsd(Buffer.from(contents as Buffer), workspaceLocation);
+  }
+  if (settings.imageQuizHtmlToAnki === true && isImageFile(file.name)) {
+    return imageVisionCostUsd(Buffer.from(contents as Buffer));
+  }
+  return null;
+}
+
 // Estimates the AI cost of a conversion from what actually reaches Claude:
 // stripped HTML/Markdown text priced by tokens, PDF pages × the vision ceiling,
 // and images by their vision token count. Binary size never counts, and a file
@@ -81,41 +114,13 @@ export async function estimateAiConversionCostUsd(
   settings: EstimateSettings,
   workspaceLocation: string
 ): Promise<ConversionCostEstimate> {
-  // Only price what each flag will actually prompt: HTML/Markdown text when
-  // Claude cards is on, PDF pages when the vertex vision path or Claude cards
-  // is on, and images when the image quiz is on. A file whose format is not
-  // prompted contributes nothing.
-  const textPrompted = settings.claudeAIFlashcards === true;
-  const pdfPrompted =
-    settings.vertexAIPDFQuestions === true ||
-    settings.claudeAIFlashcards === true;
-  const imagePrompted = settings.imageQuizHtmlToAnki === true;
   let costUsd = 0;
   let estimated = false;
   for (const file of files) {
-    const contents = file.contents;
-    if (contents == null) {
-      continue;
-    }
-    if (textPrompted && (isHTMLFile(file.name) || isMarkdownFile(file.name))) {
-      const text = stripHtmlBoilerplate(toText(contents));
-      costUsd += estimateConversionCostUsd(Buffer.byteLength(text));
+    const cost = await fileCostUsd(file, settings, workspaceLocation);
+    if (cost != null) {
+      costUsd += cost;
       estimated = true;
-    } else if (pdfPrompted && isPDFFile(file.name)) {
-      const pdfCost = await pdfVisionCostUsd(
-        Buffer.from(contents as Buffer),
-        workspaceLocation
-      );
-      if (pdfCost != null) {
-        costUsd += pdfCost;
-        estimated = true;
-      }
-    } else if (imagePrompted && isImageFile(file.name)) {
-      const imageCost = imageVisionCostUsd(Buffer.from(contents as Buffer));
-      if (imageCost != null) {
-        costUsd += imageCost;
-        estimated = true;
-      }
     }
   }
   return { costUsd, estimated };
