@@ -212,9 +212,6 @@ export interface ConversionBudgetDecision {
   reason: AiBudgetExhaustionReason | null;
   neededCredits: number;
   availableCredits: number;
-  // Only true when the run was actually estimated and the balance covers it,
-  // so the per-call guard is a no-op; an un-estimated run keeps its guard.
-  budgetPreChecked: boolean;
 }
 
 // Start-of-conversion decision for the upload path. Refuses a run the balance
@@ -233,7 +230,6 @@ export async function decideConversionBudget(
       reason: null,
       neededCredits,
       availableCredits: 0,
-      budgetPreChecked: false,
     };
   }
   const status = await getAiBudgetStatus(userId, estimate.costUsd, deps);
@@ -244,7 +240,6 @@ export async function decideConversionBudget(
       reason: status.reason,
       neededCredits,
       availableCredits,
-      budgetPreChecked: false,
     };
   }
   return {
@@ -252,7 +247,6 @@ export async function decideConversionBudget(
     reason: null,
     neededCredits,
     availableCredits,
-    budgetPreChecked: estimate.estimated,
   };
 }
 

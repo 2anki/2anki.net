@@ -51,7 +51,6 @@ export class FileConversionError extends Error {
 interface ConvertOptions {
   pdf?: boolean;
   userId?: number | null;
-  budgetPreChecked?: boolean;
 }
 
 function getModel(): string {
@@ -64,12 +63,7 @@ export async function convertWithClaude(
   userContent: Anthropic.ContentBlockParam[],
   options: ConvertOptions = {}
 ): Promise<string> {
-  // A conversion that already passed the start-of-conversion pre-check finishes
-  // with AI: skip the per-call guard so a mid-job balance dip from a concurrent
-  // conversion never hard-fails a run that has already started.
-  if (options.budgetPreChecked !== true) {
-    await assertAiBudget(options.userId);
-  }
+  await assertAiBudget(options.userId);
   const systemBlock: Anthropic.Beta.BetaTextBlockParam & {
     cache_control: { type: 'ephemeral' };
   } = {

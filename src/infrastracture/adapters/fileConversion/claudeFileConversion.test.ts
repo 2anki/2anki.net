@@ -44,7 +44,7 @@ const makeFailingMock = (message: string) => {
 describe('convertWithClaude budget guard', () => {
   beforeEach(() => assertAiBudgetMock.mockClear());
 
-  it('checks the budget when the conversion has not pre-checked', async () => {
+  it('checks the budget before every Claude call (never disabled)', async () => {
     const mock = makeAnthropicMock('<p>ok</p>');
     await convertWithClaude(
       mock as unknown as Anthropic,
@@ -53,17 +53,6 @@ describe('convertWithClaude budget guard', () => {
       { userId: 7 }
     );
     expect(assertAiBudgetMock).toHaveBeenCalledWith(7);
-  });
-
-  it('skips the guard once the conversion has started with AI', async () => {
-    const mock = makeAnthropicMock('<p>ok</p>');
-    await convertWithClaude(
-      mock as unknown as Anthropic,
-      'system prompt',
-      [{ type: 'text', text: 'user text' }],
-      { userId: 7, budgetPreChecked: true }
-    );
-    expect(assertAiBudgetMock).not.toHaveBeenCalled();
   });
 });
 

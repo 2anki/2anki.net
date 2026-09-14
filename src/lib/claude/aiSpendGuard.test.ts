@@ -196,7 +196,7 @@ describe('getAiBudgetStatus', () => {
 });
 
 describe('decideConversionBudget', () => {
-  it('proceeds and marks pre-checked when an estimate is covered', async () => {
+  it('proceeds when an estimate is covered', async () => {
     const deps = makeDeps({ balance: balanceWith(180) });
     const decision = await decideConversionBudget(
       42,
@@ -208,11 +208,10 @@ describe('decideConversionBudget', () => {
       reason: null,
       neededCredits: 50,
       availableCredits: 180,
-      budgetPreChecked: true,
     });
   });
 
-  it('does not pre-check a run whose cost could not be estimated', async () => {
+  it('proceeds for a run whose cost could not be estimated', async () => {
     const deps = makeDeps({ balance: balanceWith(180) });
     const decision = await decideConversionBudget(
       42,
@@ -220,7 +219,6 @@ describe('decideConversionBudget', () => {
       deps
     );
     expect(decision.proceed).toBe(true);
-    expect(decision.budgetPreChecked).toBe(false);
   });
 
   it('refuses with the estimate reason and needed/available when short', async () => {

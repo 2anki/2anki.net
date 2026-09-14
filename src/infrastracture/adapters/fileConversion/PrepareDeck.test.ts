@@ -1,5 +1,7 @@
 import { PrepareDeck, parserWarning, prepareDeckInfoOnly } from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
+import { AiCreditsExhaustedError } from '../../../lib/claude/aiSpendGuard';
+import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 
 jest.mock('../../../lib/claude/ClaudeService', () => {
   const actual = jest.requireActual('../../../lib/claude/ClaudeService');
@@ -121,6 +123,52 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
     expect(result?.name).toContain('My Deck');
     expect(result?.apkg).toEqual(Buffer.from('fake-apkg'));
+  });
+
+  it('never fails when the credit guard trips mid-run; ships AI + parser fallback with the warning', async () => {
+    const deckArray = [
+      {
+        name: 'Covered Deck',
+        image: '',
+        style: null,
+        id: 123456789012345,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Front',
+            back: 'Back',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ];
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('two')) {
+        throw new AiCreditsExhaustedError();
+      }
+      return deckArray;
+    });
+
+    const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
+    const result = await PrepareDeck({
+      name: 'one.html',
+      files: [
+        { name: 'one.html', contents: '<p>one</p>' },
+        { name: 'two.html', contents: '<p>two</p>' },
+      ],
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.warning).toBe(AI_CREDITS_EXHAUSTED_WARNING_CODE);
+    expect(result?.cardCount).toBeGreaterThanOrEqual(1);
   });
 
   it('does not invoke ClaudeService when noLimits is false', async () => {

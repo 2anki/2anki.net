@@ -829,10 +829,10 @@ class UploadService {
     const userId =
       Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null;
 
-    // This deferred Claude stage has no standard-parser fallback, so it stops
-    // cleanly at zero rather than hard-failing mid-loop. Pre-check once from the
-    // HTML text size; once past it the per-file guard is a no-op so a started
-    // conversion finishes with AI.
+    // This deferred Claude stage has no standard-parser fallback. Pre-check
+    // once from the HTML text size so it stops cleanly at zero; if a later file
+    // trips the always-on per-call guard, stop issuing calls and ship the files
+    // already produced rather than failing the whole job.
     const estimatedBytes = htmlFiles.reduce(
       (sum, file) => sum + fs.statSync(file).size,
       0
@@ -847,10 +847,10 @@ class UploadService {
       requestId,
       comprehensive: settings?.aiComprehensive,
       conversionResultCache: getConversionResultCache(),
-      budgetPreChecked: true,
     };
 
     const deckInfoArrays: DeckInfo[][] = [];
+    let creditGuardTripped = false;
     for (const htmlFile of htmlFiles) {
       const content = await fs.promises.readFile(htmlFile, 'utf8');
       const options = matchesPdfImageFallback(
@@ -866,22 +866,36 @@ class UploadService {
             },
           }
         : generateOptions;
-      const deckInfo = await generateDeckInfo(
-        content,
-        mediaFiles,
-        settings?.userInstructions,
-        onProgress,
-        settings?.cardStyle || undefined,
-        settings?.cardSize,
-        settings?.fieldMapping,
-        options
-      );
-      deckInfoArrays.push(deckInfo);
+      try {
+        deckInfoArrays.push(
+          await generateDeckInfo(
+            content,
+            mediaFiles,
+            settings?.userInstructions,
+            onProgress,
+            settings?.cardStyle || undefined,
+            settings?.cardSize,
+            settings?.fieldMapping,
+            options
+          )
+        );
+      } catch (error) {
+        if (error instanceof AiCreditsExhaustedError) {
+          console.info(
+            '[UploadService] Claude restart hit the credit guard mid-loop, shipping what was produced'
+          );
+          creditGuardTripped = true;
+          break;
+        }
+        throw error;
+      }
     }
 
     const deckInfo = deckInfoArrays.flat().filter((d) => d.cards.length > 0);
     if (deckInfo.length === 0) {
-      throw new Error('No packages produced');
+      throw creditGuardTripped
+        ? new AiCreditsExhaustedError()
+        : new Error('No packages produced');
     }
 
     const totalCards = deckInfo.reduce((sum, d) => sum + d.cards.length, 0);
@@ -1207,10 +1221,21 @@ class UploadService {
           requestId: res.locals.requestId,
         }
       )
-      .then(async ({ packages, cardFingerprints }) => {
+      .then(async ({ packages, warnings, cardFingerprints }) => {
         this.recordIssuedGuids(packages, ownerId, settings);
         this.recordUploadIdentityMetric(packages, ownerId);
         this.recordCardFingerprints(ownerId, cardFingerprints);
+        // The async upload becomes an `uploads` row (the job is deleted on
+        // promotion), and `uploads` has no per-upload notice column, so a
+        // fallback warning cannot reach the Downloads page without a new column
+        // — deferred rather than adding a second migration to this PR. Surface
+        // it in the logs so a credits-driven fallback is not silent.
+        if (includesAiCreditsWarning(warnings)) {
+          console.info(
+            '[UploadService] async upload fell back to the parser on AI credits',
+            { jobId: ws.id }
+          );
+        }
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
         // Scores record either way. The conversion-output stats below stay
         // behind the gate — they count delivered cards — but a conversion that
@@ -1410,12 +1435,23 @@ class UploadService {
 
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
     const authenticated = hasSessionToken(req);
+    const syncOwnerIdOrNull = owner != null ? Number(owner) : null;
+
+    // An upload that fell back off AI credits fires the exhausted event the
+    // pre-check does not (only the per-call guard fires it), so the day-7
+    // distinct-user metric counts these too.
+    if (includesAiCreditsWarning(warnings)) {
+      track('ai_credits_exhausted', {
+        userId: syncOwnerIdOrNull,
+        props: {},
+      });
+    }
 
     // Before the empty-deck throw, so a document that produced nothing still
     // lands a row — that population is the one a rescue has to clear.
     this.recordDeckScores(
       packages,
-      owner != null ? Number(owner) : null,
+      syncOwnerIdOrNull,
       this.resolveScoreSource(req, res),
       uploadInputFormat(req.files as UploadedFile[])
     );
@@ -1426,6 +1462,14 @@ class UploadService {
       // the standard parser can read) surfaces the credits stop, not a generic
       // "no cards" error, and never re-attempts the (also blocked) AI fallback.
       if (includesAiCreditsWarning(warnings)) {
+        track('conversion_failed', {
+          userId: syncOwnerIdOrNull,
+          anonymousId: this.resolveAnonId(req),
+          props: {
+            ...this.baseFunnelProps(req),
+            reason: 'ai_credits_exhausted',
+          },
+        });
         throw new AiCreditsExhaustedError();
       }
       const ownerId = owner != null ? Number(owner) : null;
