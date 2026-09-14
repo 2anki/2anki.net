@@ -3,7 +3,7 @@ import { resolveAllowance, PlanInputs } from './allowance';
 const NOW = new Date('2026-05-12T12:00:00.000Z');
 
 const emptyInputs: PlanInputs = {
-  pass: null,
+  passes: [],
   subscription: null,
   patreon: false,
   ankifyAccess: false,
@@ -15,26 +15,53 @@ describe('resolveAllowance', () => {
   });
 
   it.each([
-    ['24h', 300],
-    ['7d', 500],
-    ['120d', 1500],
+    ['24h', 300, new Date('2026-05-13T00:00:00.000Z')],
+    ['7d', 500, new Date('2026-05-15T00:00:00.000Z')],
+    ['120d', 1500, new Date('2026-08-01T00:00:00.000Z')],
   ] as const)(
-    'carries a resolved %s pass window through with %d credits',
-    (kind, credits) => {
-      const windowStart = new Date('2026-05-11T00:00:00.000Z');
-      const windowEnd = new Date('2026-05-20T00:00:00.000Z');
+    'gives an active %s pass %d credits over its own window',
+    (kind, credits, expiresAt) => {
       const result = resolveAllowance(
-        { ...emptyInputs, pass: { kind, windowStart, windowEnd } },
+        { ...emptyInputs, passes: [{ kind, expiresAt }] },
         NOW
       );
-      expect(result).toEqual({
-        credits,
-        windowStart,
-        windowEnd,
-        resets: 'pass',
-      });
+      expect(result?.credits).toBe(credits);
+      expect(result?.windowEnd).toEqual(expiresAt);
+      expect(result?.resets).toBe('pass');
     }
   );
+
+  it('sums two active passes and anchors the window on the earliest start', () => {
+    const result = resolveAllowance(
+      {
+        ...emptyInputs,
+        passes: [
+          { kind: '7d', expiresAt: new Date('2026-05-14T00:00:00.000Z') },
+          { kind: '7d', expiresAt: new Date('2026-05-16T00:00:00.000Z') },
+        ],
+      },
+      NOW
+    );
+    expect(result).toEqual({
+      credits: 1000,
+      windowStart: new Date('2026-05-07T00:00:00.000Z'),
+      windowEnd: new Date('2026-05-16T00:00:00.000Z'),
+      resets: 'pass',
+    });
+  });
+
+  it('ignores a pass whose window has not started yet', () => {
+    const result = resolveAllowance(
+      {
+        ...emptyInputs,
+        passes: [
+          { kind: '24h', expiresAt: new Date('2026-05-20T00:00:00.000Z') },
+        ],
+      },
+      NOW
+    );
+    expect(result).toBeNull();
+  });
 
   it('gives an active monthly subscription 300 credits over its whole period', () => {
     const periodStart = new Date('2026-05-01T00:00:00.000Z');
@@ -74,9 +101,7 @@ describe('resolveAllowance', () => {
     expect(result?.windowEnd).toEqual(new Date('2026-02-28T00:00:00.000Z'));
   });
 
-  it('sums subscription and active pass credits over the pass window', () => {
-    const passStart = new Date('2026-05-11T00:00:00.000Z');
-    const passEnd = new Date('2026-05-12T00:00:00.000Z');
+  it('gives a subscriber who also holds a pass the subscription allowance only', () => {
     const result = resolveAllowance(
       {
         ...emptyInputs,
@@ -85,15 +110,17 @@ describe('resolveAllowance', () => {
           periodEnd: new Date('2026-06-01T00:00:00.000Z'),
           unitAmount: 799,
         },
-        pass: { kind: '24h', windowStart: passStart, windowEnd: passEnd },
+        passes: [
+          { kind: '24h', expiresAt: new Date('2026-05-13T00:00:00.000Z') },
+        ],
       },
       NOW
     );
     expect(result).toEqual({
-      credits: 600,
-      windowStart: passStart,
-      windowEnd: passEnd,
-      resets: 'pass',
+      credits: 300,
+      windowStart: new Date('2026-05-01T00:00:00.000Z'),
+      windowEnd: new Date('2026-06-01T00:00:00.000Z'),
+      resets: 'period',
     });
   });
 
@@ -187,15 +214,16 @@ describe('resolveAllowance', () => {
     expect(result?.windowEnd).toBeNull();
   });
 
-  it('anchors an Apple unlimited pass on its own expiry, clipped to the month', () => {
+  it('anchors an Apple unlimited pass on the month, clipped to its expiry', () => {
     const result = resolveAllowance(
       {
         ...emptyInputs,
-        pass: {
-          kind: 'unlimited',
-          windowStart: new Date('2026-05-01T00:00:00.000Z'),
-          windowEnd: new Date('2026-06-01T00:00:00.000Z'),
-        },
+        passes: [
+          {
+            kind: 'unlimited',
+            expiresAt: new Date('2026-06-01T00:00:00.000Z'),
+          },
+        ],
       },
       NOW
     );
@@ -211,11 +239,12 @@ describe('resolveAllowance', () => {
     const result = resolveAllowance(
       {
         ...emptyInputs,
-        pass: {
-          kind: 'unlimited',
-          windowStart: new Date('2026-05-01T00:00:00.000Z'),
-          windowEnd: new Date('2026-05-20T00:00:00.000Z'),
-        },
+        passes: [
+          {
+            kind: 'unlimited',
+            expiresAt: new Date('2026-05-20T00:00:00.000Z'),
+          },
+        ],
       },
       NOW
     );

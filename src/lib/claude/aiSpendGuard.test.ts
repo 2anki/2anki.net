@@ -3,9 +3,7 @@ import {
   AiBudgetDeps,
   AiCreditsExhaustedError,
   assertAiBudget,
-  decideConversionBudget,
   getAiBudgetStatus,
-  hasAiCreditsForConversion,
 } from './aiSpendGuard';
 import { AiCreditBalance } from './aiCredits/balance';
 import { track } from '../../services/events/track';
@@ -15,8 +13,8 @@ jest.mock('../../services/events/track', () => ({ track: jest.fn() }));
 const trackMock = track as jest.Mock;
 const NOW = new Date('2026-09-07T12:00:00.000Z');
 
-// The watch alert runs detached from assertAiBudget, so tests that assert on it
-// flush the microtask/timer queue before checking the alert side-effects.
+// The watch alert and the exhausted-event fire both run detached, so tests that
+// assert on them flush the microtask/timer queue first.
 const flushAsync = () => new Promise((resolve) => setImmediate(resolve));
 
 function balanceWith(rawCredits: number): AiCreditBalance {
@@ -65,6 +63,7 @@ describe('assertAiBudget', () => {
   it('passes a user with credits remaining without notifying', async () => {
     const deps = makeDeps({ balance: balanceWith(180), cost30d: 3 });
     await assertAiBudget(42, deps);
+    await flushAsync();
     expect(deps.sendAlert).not.toHaveBeenCalled();
     expect(trackMock).not.toHaveBeenCalled();
   });
@@ -76,6 +75,7 @@ describe('assertAiBudget', () => {
       status: 402,
       code: 'ai_credits_exhausted',
     });
+    await flushAsync();
     expect(trackMock).toHaveBeenCalledWith('ai_credits_exhausted', {
       userId: 42,
       props: {},
@@ -87,6 +87,7 @@ describe('assertAiBudget', () => {
     await expect(assertAiBudget(42, deps)).rejects.toThrow(
       AiCreditsExhaustedError
     );
+    await flushAsync();
     expect(trackMock).not.toHaveBeenCalled();
   });
 
@@ -149,99 +150,56 @@ describe('assertAiBudget', () => {
     const deps = makeDeps({});
     (deps.computeBalance as jest.Mock).mockRejectedValue(new Error('db down'));
     await expect(assertAiBudget(42, deps)).resolves.toBeUndefined();
+    await flushAsync();
     expect(deps.sendAlert).not.toHaveBeenCalled();
   });
 });
 
-describe('hasAiCreditsForConversion', () => {
-  it('allows a conversion the remaining balance can cover', async () => {
-    const deps = makeDeps({ balance: balanceWith(180) });
-    expect(await hasAiCreditsForConversion(42, 1000, deps)).toBe(true);
-  });
-
-  it('blocks a conversion whose estimate exceeds the remaining balance', async () => {
-    const deps = makeDeps({ balance: balanceWith(1) });
-    const hugeBytes = 500 * 1024 * 1024;
-    expect(await hasAiCreditsForConversion(42, hugeBytes, deps)).toBe(false);
-  });
-
-  it('allows anonymous callers (the AI gate governs access)', async () => {
-    const deps = makeDeps({});
-    expect(await hasAiCreditsForConversion(null, 1000, deps)).toBe(true);
-  });
-
-  it('fails open when the balance read throws', async () => {
-    const deps = makeDeps({});
-    (deps.computeBalance as jest.Mock).mockRejectedValue(new Error('db down'));
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    expect(await hasAiCreditsForConversion(42, 1000, deps)).toBe(true);
-  });
-});
-
 describe('getAiBudgetStatus', () => {
+  beforeEach(() => {
+    trackMock.mockReset();
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
   it('returns not-exhausted with a null balance for anonymous callers', async () => {
-    const status = await getAiBudgetStatus(null, undefined, makeDeps({}));
-    expect(status).toEqual({ exhausted: false, reason: null, balance: null });
+    const status = await getAiBudgetStatus(null, makeDeps({}));
+    expect(status).toEqual({ exhausted: false, balance: null });
+  });
+
+  it('proceeds for a user with credits remaining and fires nothing', async () => {
+    const status = await getAiBudgetStatus(
+      42,
+      makeDeps({ balance: balanceWith(180) })
+    );
+    expect(status.exhausted).toBe(false);
+    await flushAsync();
+    expect(trackMock).not.toHaveBeenCalled();
   });
 
   it('marks exhaustion at the rounded-credits boundary, not raw credits', async () => {
     const status = await getAiBudgetStatus(
       42,
-      undefined,
       makeDeps({ balance: balanceWith(0.4) })
     );
     expect(status.exhausted).toBe(true);
-    expect(status.reason).toBe('zero');
   });
-});
 
-describe('decideConversionBudget', () => {
-  it('proceeds when an estimate is covered', async () => {
-    const deps = makeDeps({ balance: balanceWith(180) });
-    const decision = await decideConversionBudget(
-      42,
-      { costUsd: 0.5, estimated: true },
-      deps
-    );
-    expect(decision).toEqual({
-      proceed: true,
-      reason: null,
-      neededCredits: 50,
-      availableCredits: 180,
+  it('fires the exhausted event once per window from the reader', async () => {
+    await getAiBudgetStatus(42, makeDeps({ balance: balanceWith(0) }));
+    await flushAsync();
+    expect(trackMock).toHaveBeenCalledWith('ai_credits_exhausted', {
+      userId: 42,
+      props: {},
     });
   });
 
-  it('proceeds for a run whose cost could not be estimated', async () => {
-    const deps = makeDeps({ balance: balanceWith(180) });
-    const decision = await decideConversionBudget(
+  it('does not re-fire the exhausted event inside the same window', async () => {
+    await getAiBudgetStatus(
       42,
-      { costUsd: 0, estimated: false },
-      deps
+      makeDeps({ balance: balanceWith(0), eventCount: 1 })
     );
-    expect(decision.proceed).toBe(true);
-  });
-
-  it('refuses with the estimate reason and needed/available when short', async () => {
-    const deps = makeDeps({ balance: balanceWith(50) });
-    const decision = await decideConversionBudget(
-      42,
-      { costUsd: 1, estimated: true },
-      deps
-    );
-    expect(decision.proceed).toBe(false);
-    expect(decision.reason).toBe('estimate');
-    expect(decision.neededCredits).toBe(100);
-    expect(decision.availableCredits).toBe(50);
-  });
-
-  it('refuses with the zero reason at an empty balance', async () => {
-    const deps = makeDeps({ balance: balanceWith(0) });
-    const decision = await decideConversionBudget(
-      42,
-      { costUsd: 0.1, estimated: true },
-      deps
-    );
-    expect(decision.proceed).toBe(false);
-    expect(decision.reason).toBe('zero');
+    await flushAsync();
+    expect(trackMock).not.toHaveBeenCalled();
   });
 });

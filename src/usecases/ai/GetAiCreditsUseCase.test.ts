@@ -5,7 +5,7 @@ import { PlanInputs } from '../../lib/claude/aiCredits/allowance';
 const NOW = new Date('2026-05-12T12:00:00.000Z');
 
 const subscriberInputs: PlanInputs = {
-  pass: null,
+  passes: [],
   subscription: {
     periodStart: new Date('2026-05-01T00:00:00.000Z'),
     periodEnd: new Date('2026-06-01T00:00:00.000Z'),
@@ -40,7 +40,7 @@ describe('GetAiCreditsUseCase', () => {
 
   it('serializes a null window end for a rolling (period-less) subscription', async () => {
     const rollingInputs: PlanInputs = {
-      pass: null,
+      passes: [],
       subscription: {
         periodStart: null,
         periodEnd: null,

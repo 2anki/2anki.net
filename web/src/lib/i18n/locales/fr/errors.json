@@ -106,8 +106,8 @@
       "detail": "Assure-toi que c'est l'export Markdown & CSV de Notion, pas l'export HTML."
     },
     "ai_credits_exhausted": {
-      "title": "Vous n'avez plus de crédits IA.",
-      "detail": "Les crédits IA reviennent à la réinitialisation de votre quota. Désactivez les cartes Claude pour convertir maintenant avec l'analyseur standard."
+      "title": "Tu n'as plus de crédits IA.",
+      "detail": "Les crédits IA reviennent à la réinitialisation de ton quota. Désactive les cartes Claude pour convertir maintenant avec l'analyseur standard."
     }
   },
   "presenter": {

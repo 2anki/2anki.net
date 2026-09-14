@@ -917,6 +917,7 @@ async function generateDeckInfoFromChunk(
   const tChunk0 = Date.now();
   const userId = attribution?.userId;
   const requestId = attribution?.requestId;
+  await assertAiBudget(userId);
   const client = getAnthropicClient();
 
   const cardStyleFragment = getCardStylePromptFragment(cardStyle);

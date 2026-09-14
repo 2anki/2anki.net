@@ -93,22 +93,15 @@ export class AiCreditsRepository implements IAiCreditsPlanReader {
       return null;
     }
 
-    const [passWindow, subscriptionRow] = await Promise.all([
-      new UserPassRepository(this.database).findActivePassWindow(userId, now),
+    const [passes, subscriptionRow] = await Promise.all([
+      new UserPassRepository(this.database).findActivePasses(userId, now),
       this.buildActiveSubscriptionQuery(user.email).first() as Promise<
         { payload: unknown } | undefined
       >,
     ]);
 
     return {
-      pass:
-        passWindow != null
-          ? {
-              kind: passWindow.kind,
-              windowStart: passWindow.windowStart,
-              windowEnd: passWindow.windowEnd,
-            }
-          : null,
+      passes,
       subscription:
         subscriptionRow != null
           ? parseSubscriptionPayload(subscriptionRow.payload)

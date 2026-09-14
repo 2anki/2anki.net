@@ -125,7 +125,7 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     expect(result?.apkg).toEqual(Buffer.from('fake-apkg'));
   });
 
-  it('never fails when the credit guard trips mid-run; ships AI + parser fallback with the warning', async () => {
+  it('never fails when the credit guard trips mid-run; ships the produced cards with the warning', async () => {
     const deckArray = [
       {
         name: 'Covered Deck',

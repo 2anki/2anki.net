@@ -1,5 +1,6 @@
 import {
   AnonymousPassKind,
+  PASS_DURATION_MS,
   isAnonymousPassKind,
 } from '../../../usecases/passes/passDurations';
 import {
@@ -15,12 +16,16 @@ export interface SubscriptionPlanInputs {
   unitAmount: number | null;
 }
 
+// One row per purchased pass that has not yet expired. Each row carries its own
+// window ([expiresAt − duration, expiresAt]) and its own credits — no stacking
+// arithmetic across rows, no created_at.
+export interface ActivePassRow {
+  kind: string;
+  expiresAt: Date;
+}
+
 export interface PlanInputs {
-  pass: {
-    kind: string;
-    windowStart: Date;
-    windowEnd: Date;
-  } | null;
+  passes: ActivePassRow[];
   subscription: SubscriptionPlanInputs | null;
   patreon: boolean;
   ankifyAccess: boolean;
@@ -46,20 +51,58 @@ export const LIFETIME_CREDITS = 300;
 const LEGACY_UNIT_AMOUNT_CEILING = 200;
 const ROLLING_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
-// The pass window is already resolved upstream (pickActivePassWindow anchors it
-// on the earliest active purchase and clamps to now), so the allowance just
-// carries it through with the kind's credits.
-function passAllowance(
-  kind: AnonymousPassKind,
-  windowStart: Date,
-  windowEnd: Date
-): AiCreditAllowance {
+// Each anonymous pass row active now contributes its own credits over its own
+// [expiresAt − duration, expiresAt] window. Credits are summed across the rows
+// whose window contains now; spend counts from the earliest such start and the
+// window ends at the latest such expiry. A row not yet started or already
+// expired contributes nothing.
+function anonymousPassAllowance(
+  passes: ActivePassRow[],
+  now: Date
+): AiCreditAllowance | null {
+  let credits = 0;
+  let windowStart: number | null = null;
+  let windowEnd: number | null = null;
+  for (const row of passes) {
+    if (!isAnonymousPassKind(row.kind)) {
+      continue;
+    }
+    const end = row.expiresAt.getTime();
+    const start = end - PASS_DURATION_MS[row.kind];
+    if (start > now.getTime() || now.getTime() >= end) {
+      continue;
+    }
+    credits += PASS_CREDITS[row.kind];
+    windowStart = windowStart == null ? start : Math.min(windowStart, start);
+    windowEnd = windowEnd == null ? end : Math.max(windowEnd, end);
+  }
+  if (windowStart == null || windowEnd == null) {
+    return null;
+  }
   return {
-    credits: PASS_CREDITS[kind],
-    windowStart,
-    windowEnd,
+    credits,
+    windowStart: new Date(windowStart),
+    windowEnd: new Date(windowEnd),
     resets: 'pass',
   };
+}
+
+function unlimitedPassAllowance(
+  passes: ActivePassRow[],
+  now: Date
+): AiCreditAllowance | null {
+  const active = passes.find(
+    (row) => row.kind === 'unlimited' && row.expiresAt.getTime() > now.getTime()
+  );
+  if (active == null) {
+    return null;
+  }
+  return calendarMonthWindow(
+    SUBSCRIPTION_CREDITS,
+    now,
+    'period',
+    active.expiresAt
+  );
 }
 
 function periodIsCurrent(
@@ -174,48 +217,26 @@ function subscriptionAllowance(
 }
 
 function passAllowanceOf(
-  pass: PlanInputs['pass'],
+  passes: ActivePassRow[],
   now: Date
 ): AiCreditAllowance | null {
-  if (pass == null) {
-    return null;
-  }
-  if (isAnonymousPassKind(pass.kind)) {
-    return passAllowance(pass.kind, pass.windowStart, pass.windowEnd);
-  }
-  if (pass.kind === 'unlimited') {
-    return calendarMonthWindow(
-      SUBSCRIPTION_CREDITS,
-      now,
-      'period',
-      pass.windowEnd
-    );
-  }
-  return null;
+  return (
+    anonymousPassAllowance(passes, now) ?? unlimitedPassAllowance(passes, now)
+  );
 }
 
+// Precedence, not summing: an active subscription wins over any pass (the
+// subscription allowance already covers the paying user), a pass wins over the
+// lifetime comp, and lifetime is the floor. A subscriber who also bought a pass
+// draws the subscription allowance only.
 export function resolveAllowance(
   inputs: PlanInputs,
   now: Date
 ): AiCreditAllowance | null {
-  const subscription =
-    inputs.subscription != null
-      ? subscriptionAllowance(inputs.subscription, now)
-      : null;
-  const pass = passAllowanceOf(inputs.pass, now);
-  // A subscriber who also bought a pass paid for both: sum the credits over the
-  // active pass window rather than handing back only the subscription.
-  if (subscription != null && pass != null) {
-    return {
-      credits: subscription.credits + pass.credits,
-      windowStart: pass.windowStart,
-      windowEnd: pass.windowEnd,
-      resets: pass.resets,
-    };
+  if (inputs.subscription != null) {
+    return subscriptionAllowance(inputs.subscription, now);
   }
-  if (subscription != null) {
-    return subscription;
-  }
+  const pass = passAllowanceOf(inputs.passes, now);
   if (pass != null) {
     return pass;
   }

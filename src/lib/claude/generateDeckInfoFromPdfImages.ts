@@ -125,6 +125,7 @@ async function visionCardsForPage(
   pageIndex: number,
   userId?: number | null
 ): Promise<CompactDeck[]> {
+  await assertAiBudget(userId);
   const client = getAnthropicClient();
 
   const callVision = (maxTokens: number) =>

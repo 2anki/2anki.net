@@ -1,12 +1,7 @@
 import { track } from '../../services/events/track';
 import { HttpCodedError } from '../errors/HttpCodedError';
 import type { IAiSpendReader } from '../../data_layer/AiUsageMetricsRepository';
-import {
-  computeAiCreditBalance,
-  AiCreditBalance,
-  CREDIT_UNIT_USD,
-} from './aiCredits/balance';
-import { estimateConversionCostUsd } from './pricing';
+import { computeAiCreditBalance, AiCreditBalance } from './aiCredits/balance';
 
 // A user crossing $25 in 30 days costs more than triple the subscription
 // price — worth a human look, not enforcement. Kept as an ops signal; part 2's
@@ -41,11 +36,8 @@ export interface AiBudgetDeps {
   now?: () => Date;
 }
 
-export type AiBudgetExhaustionReason = 'zero' | 'estimate';
-
 export interface AiBudgetStatus {
   exhausted: boolean;
-  reason: AiBudgetExhaustionReason | null;
   balance: AiCreditBalance | null;
 }
 
@@ -79,64 +71,54 @@ function defaultDeps(): AiBudgetDeps {
   };
 }
 
-async function readStatus(
-  userId: number,
-  estimatedCostUsd: number | undefined,
-  deps: AiBudgetDeps
-): Promise<AiBudgetStatus> {
-  const now = deps.now?.() ?? new Date();
-  const balance = await deps.computeBalance(userId, now);
-  if (balance == null) {
-    return { exhausted: false, reason: null, balance: null };
-  }
-  // Boundary matches the number the user sees: the rounded `credits`, not
-  // `rawCredits`, so "0 AI credits left" and "out of credits" always agree.
-  if (balance.credits <= 0) {
-    return { exhausted: true, reason: 'zero', balance };
-  }
-  const remainingUsd = balance.rawCredits * CREDIT_UNIT_USD;
-  if (estimatedCostUsd != null && estimatedCostUsd > remainingUsd) {
-    return { exhausted: true, reason: 'estimate', balance };
-  }
-  return { exhausted: false, reason: null, balance };
-}
-
-// Reads the caller's credit balance, failing open (never blocks a paying
-// conversion on a metrics outage). `estimatedCostUsd` lets the start-of-
-// conversion pre-check reject a run it cannot afford; omit it for a bare
-// at-zero check.
-export async function getAiBudgetStatus(
-  userId: number | null | undefined,
-  estimatedCostUsd: number | undefined,
-  deps?: AiBudgetDeps
-): Promise<AiBudgetStatus> {
-  if (userId == null) {
-    return { exhausted: false, reason: null, balance: null };
-  }
-  try {
-    return await readStatus(userId, estimatedCostUsd, deps ?? defaultDeps());
-  } catch (error) {
-    console.error('[ai-credits] balance read failed, failing open', error);
-    return { exhausted: false, reason: null, balance: null };
-  }
-}
-
-async function fireExhaustedOnce(
+// Fires the exhausted event at most once per allowance window. Detached and
+// deduped by the ledger so any observer of a ≤ 0 balance — the pre-check, the
+// per-chunk guard, the per-page guard — records exactly one event per window.
+function fireExhaustedOnce(
   deps: AiBudgetDeps,
   userId: number,
   windowStart: Date
-): Promise<void> {
-  try {
-    const already = await deps.reader.eventCountSince(
-      EXHAUSTED_EVENT,
-      userId,
-      windowStart
+): void {
+  void deps.reader
+    .eventCountSince(EXHAUSTED_EVENT, userId, windowStart)
+    .then((already) => {
+      if (already === 0) {
+        track(EXHAUSTED_EVENT, { userId, props: {} });
+      }
+    })
+    .catch((error) =>
+      console.error('[ai-credits] exhausted-event dedup failed', error)
     );
-    if (already === 0) {
-      track(EXHAUSTED_EVENT, { userId, props: {} });
+}
+
+// Reads the caller's credit balance and, when it is spent, records the
+// exhausted event once per window. This is the single place the event fires;
+// the badge read (computeAiCreditBalance) never does. Fails open — a metrics
+// outage never blocks a paying conversion.
+export async function getAiBudgetStatus(
+  userId: number | null | undefined,
+  deps?: AiBudgetDeps
+): Promise<AiBudgetStatus> {
+  if (userId == null) {
+    return { exhausted: false, balance: null };
+  }
+  try {
+    const resolved = deps ?? defaultDeps();
+    const now = resolved.now?.() ?? new Date();
+    const balance = await resolved.computeBalance(userId, now);
+    if (balance == null) {
+      return { exhausted: false, balance: null };
     }
+    // Boundary matches the number the user sees: the rounded `credits`, not
+    // `rawCredits`, so "0 AI credits left" and "out of credits" always agree.
+    if (balance.credits <= 0) {
+      fireExhaustedOnce(resolved, userId, balance.windowStart);
+      return { exhausted: true, balance };
+    }
+    return { exhausted: false, balance };
   } catch (error) {
-    console.error('[ai-credits] exhausted-event dedup failed', error);
+    console.error('[ai-credits] balance read failed, failing open', error);
+    return { exhausted: false, balance: null };
   }
 }
 
@@ -173,10 +155,10 @@ async function maybeNotifyAlert(
 
 // Pre-call guard for every metered Claude surface. Throws
 // AiCreditsExhaustedError once the caller's plan allowance is spent; the
-// interactive surfaces render that as a calm stop, and the upload path
-// pre-empts it with a standard-parser fallback so a conversion never hard-
-// fails at zero. Fails open on a read error. Skips anonymous callers, which
-// the isPaying AI gate already excludes.
+// interactive surfaces render that as a calm stop, and the upload path catches
+// it to ship what was produced so a conversion never hard-fails at zero. Fails
+// open on a read error. Skips anonymous callers, which the isPaying AI gate
+// already excludes.
 export async function assertAiBudget(
   userId: number | null | undefined,
   deps?: AiBudgetDeps
@@ -191,80 +173,15 @@ export async function assertAiBudget(
     console.error('[ai-credits] guard init failed, failing open', error);
     return;
   }
-  const status = await getAiBudgetStatus(userId, undefined, resolved);
+  const status = await getAiBudgetStatus(userId, resolved);
   // The watch alert is an ops signal, not part of the paying call's critical
   // path, so it runs detached — a slow or failing email never delays or breaks
-  // a conversion. It fires before the exhausted throw so a user who is both
-  // over the alert threshold and out of credits still trips it.
+  // a conversion.
   const now = resolved.now?.() ?? new Date();
   void maybeNotifyAlert(resolved, userId, now).catch((error) =>
     console.error('[ai-credits] spend alert check failed', error)
   );
-  if (status.exhausted && status.balance != null) {
-    await fireExhaustedOnce(resolved, userId, status.balance.windowStart);
+  if (status.exhausted) {
     throw new AiCreditsExhaustedError();
   }
-}
-
-export interface ConversionBudgetDecision {
-  // false → build with the standard parser instead of AI.
-  proceed: boolean;
-  reason: AiBudgetExhaustionReason | null;
-  neededCredits: number;
-  availableCredits: number;
-}
-
-// Start-of-conversion decision for the upload path. Refuses a run the balance
-// cannot cover (at zero, or the estimate exceeds the remaining balance) and
-// reports why plus the needed/available credits so the caller can pick the
-// right warning. Fails open on a read error. Anonymous callers always proceed.
-export async function decideConversionBudget(
-  userId: number | null | undefined,
-  estimate: { costUsd: number; estimated: boolean },
-  deps?: AiBudgetDeps
-): Promise<ConversionBudgetDecision> {
-  const neededCredits = Math.ceil(estimate.costUsd / CREDIT_UNIT_USD);
-  if (userId == null) {
-    return {
-      proceed: true,
-      reason: null,
-      neededCredits,
-      availableCredits: 0,
-    };
-  }
-  const status = await getAiBudgetStatus(userId, estimate.costUsd, deps);
-  const availableCredits = status.balance?.credits ?? 0;
-  if (status.exhausted) {
-    return {
-      proceed: false,
-      reason: status.reason,
-      neededCredits,
-      availableCredits,
-    };
-  }
-  return {
-    proceed: true,
-    reason: null,
-    neededCredits,
-    availableCredits,
-  };
-}
-
-// Start-of-conversion pre-check for the upload path. Returns false only when a
-// paying user's remaining balance cannot cover the byte-size cost estimate, so
-// the caller can build the deck with the standard parser instead. Fails open.
-export async function hasAiCreditsForConversion(
-  userId: number | null | undefined,
-  estimatedBytes: number,
-  deps?: AiBudgetDeps
-): Promise<boolean> {
-  if (userId == null) {
-    return true;
-  }
-  const status = await getAiBudgetStatus(
-    userId,
-    estimateConversionCostUsd(estimatedBytes),
-    deps
-  );
-  return !status.exhausted;
 }

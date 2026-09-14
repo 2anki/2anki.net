@@ -16,7 +16,7 @@ function readersFor(
 }
 
 const subscriberInputs: PlanInputs = {
-  pass: null,
+  passes: [],
   subscription: {
     periodStart: new Date('2026-05-01T00:00:00.000Z'),
     periodEnd: new Date('2026-06-01T00:00:00.000Z'),

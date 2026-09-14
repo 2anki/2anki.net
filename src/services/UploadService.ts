@@ -114,11 +114,10 @@ import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
   AI_CREDITS_EXHAUSTED_WARNING_TEXT,
   includesAiCreditsWarning,
-  resolveAiCreditsShortWarning,
 } from '../lib/claude/aiCredits/uploadWarning';
 import {
   AiCreditsExhaustedError,
-  hasAiCreditsForConversion,
+  getAiBudgetStatus,
 } from '../lib/claude/aiSpendGuard';
 
 interface EmptyDeckResponse {
@@ -182,10 +181,6 @@ function strayClozeWarning(count: number): string {
 function aiCreditsWarningText(warnings: string[]): string | null {
   if (warnings.includes(AI_CREDITS_EXHAUSTED_WARNING_CODE)) {
     return AI_CREDITS_EXHAUSTED_WARNING_TEXT;
-  }
-  for (const warning of warnings) {
-    const shortText = resolveAiCreditsShortWarning(warning);
-    if (shortText) return shortText;
   }
   return null;
 }
@@ -829,15 +824,12 @@ class UploadService {
     const userId =
       Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null;
 
-    // This deferred Claude stage has no standard-parser fallback. Pre-check
-    // once from the HTML text size so it stops cleanly at zero; if a later file
-    // trips the always-on per-call guard, stop issuing calls and ship the files
-    // already produced rather than failing the whole job.
-    const estimatedBytes = htmlFiles.reduce(
-      (sum, file) => sum + fs.statSync(file).size,
-      0
-    );
-    if (!(await hasAiCreditsForConversion(userId, estimatedBytes))) {
+    // This deferred Claude stage has no standard-parser fallback. Pre-check the
+    // balance so it stops cleanly at zero; if a later file trips the always-on
+    // per-call guard, stop issuing calls and ship the files already produced
+    // rather than failing the whole job.
+    const preCheck = await getAiBudgetStatus(userId);
+    if (preCheck.exhausted) {
       throw new AiCreditsExhaustedError();
     }
 
@@ -1437,15 +1429,9 @@ class UploadService {
     const authenticated = hasSessionToken(req);
     const syncOwnerIdOrNull = owner != null ? Number(owner) : null;
 
-    // An upload that fell back off AI credits fires the exhausted event the
-    // pre-check does not (only the per-call guard fires it), so the day-7
-    // distinct-user metric counts these too.
-    if (includesAiCreditsWarning(warnings)) {
-      track('ai_credits_exhausted', {
-        userId: syncOwnerIdOrNull,
-        props: {},
-      });
-    }
+    // The exhausted event fires once per window from the balance reader
+    // (getAiBudgetStatus) the moment it observes a ≤ 0 balance — the pre-check
+    // and every per-call guard go through it — so this path does not fire it.
 
     // Before the empty-deck throw, so a document that produced nothing still
     // lands a row — that population is the one a rescue has to clear.
@@ -1788,8 +1774,11 @@ class UploadService {
         reason: `image_${e.code ?? status}`,
       },
     });
+    // Pass a coded error's own code through: a single-image drop at zero AI
+    // credits surfaces `ai_credits_exhausted`, not a generic conversion failure,
+    // so the client renders the calm credits stop.
     const body: Record<string, unknown> = {
-      code: 'image_conversion_failed',
+      code: e.code ?? 'image_conversion_failed',
       message: e.message,
     };
     if (e.used != null) {

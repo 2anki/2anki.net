@@ -4155,12 +4155,4 @@ describe('resolveUploadWarning — AI credits exhausted', () => {
       ])
     ).toMatch(/password-protected/);
   });
-
-  it('renders the estimate-short warning with needed and available credits', () => {
-    expect(
-      resolveUploadWarning(['markdown-heuristic', 'ai-credits-short:120:40'])
-    ).toBe(
-      'This file needs about 120 AI credits and you have 40, so it was built without AI.'
-    );
-  });
 });

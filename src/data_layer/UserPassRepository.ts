@@ -1,8 +1,5 @@
 import type { Knex } from 'knex';
-import {
-  pickActivePassWindow,
-  ActivePassWindow,
-} from '../lib/claude/aiCredits/passWindow';
+import { ActivePassRow } from '../lib/claude/aiCredits/allowance';
 
 export type PassKind = '24h' | '7d' | '120d' | 'unlimited';
 
@@ -73,24 +70,18 @@ export class UserPassRepository implements IUserPassRepository {
     return row ? toUserPass(row) : null;
   }
 
-  async findActivePassWindow(
-    userId: number,
-    now: Date
-  ): Promise<ActivePassWindow | null> {
+  async findActivePasses(userId: number, now: Date): Promise<ActivePassRow[]> {
     const rows = await this.database<UserPassRow>(this.table)
       .where('user_id', userId)
       .where('expires_at', '>', now)
       .select('kind', 'expires_at');
-    return pickActivePassWindow(
-      rows.map((row) => ({
-        kind: row.kind,
-        expiresAt:
-          row.expires_at instanceof Date
-            ? row.expires_at
-            : new Date(row.expires_at),
-      })),
-      now
-    );
+    return rows.map((row) => ({
+      kind: row.kind,
+      expiresAt:
+        row.expires_at instanceof Date
+          ? row.expires_at
+          : new Date(row.expires_at),
+    }));
   }
 
   async existsByPaymentIntentId(paymentIntentId: string): Promise<boolean> {
