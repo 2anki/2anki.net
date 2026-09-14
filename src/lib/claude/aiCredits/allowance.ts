@@ -2,7 +2,10 @@ import {
   AnonymousPassKind,
   isAnonymousPassKind,
 } from '../../../usecases/passes/passDurations';
-import { startOfMonthUtc } from '../../User/startOfMonthUtc';
+import {
+  startOfMonthUtc,
+  startOfNextMonthUtc,
+} from '../../User/startOfMonthUtc';
 
 export type CreditWindowReset = 'period' | 'pass' | 'month';
 
@@ -83,22 +86,26 @@ function rollingAllowance(credits: number, now: Date): AiCreditAllowance {
   };
 }
 
+// Adds whole months, clamping the day of month so a day 29-31 anchor never
+// overflows into the next month (Jan 31 + 1 month → Feb 28, not Mar 3).
 function addMonthsUtc(date: Date, months: number): Date {
+  const targetYear = date.getUTCFullYear();
+  const targetMonth = date.getUTCMonth() + months;
+  const lastDayOfTarget = new Date(
+    Date.UTC(targetYear, targetMonth + 1, 0)
+  ).getUTCDate();
+  const day = Math.min(date.getUTCDate(), lastDayOfTarget);
   return new Date(
     Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth() + months,
-      date.getUTCDate(),
+      targetYear,
+      targetMonth,
+      day,
       date.getUTCHours(),
       date.getUTCMinutes(),
       date.getUTCSeconds(),
       date.getUTCMilliseconds()
     )
   );
-}
-
-function startOfNextMonthUtc(now: Date): Date {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 }
 
 // One reset cadence, anchored on the billing day: the window is the n-th month
@@ -118,7 +125,10 @@ function subscriptionMonthlyWindow(
   if (addMonthsUtc(periodStart, months).getTime() > now.getTime()) {
     months -= 1;
   }
-  const windowStart = addMonthsUtc(periodStart, months);
+  const anniversary = addMonthsUtc(periodStart, months);
+  // Clamp to now so a day-clamp rounding can never start the window ahead of
+  // the clock (mirrors the pass path).
+  const windowStart = anniversary.getTime() > now.getTime() ? now : anniversary;
   const nextAnniversary = addMonthsUtc(periodStart, months + 1);
   const windowEnd =
     nextAnniversary.getTime() < periodEnd.getTime()
@@ -163,24 +173,51 @@ function subscriptionAllowance(
   return rollingAllowance(credits, now);
 }
 
-export function resolveAllowance(
-  inputs: PlanInputs,
+function passAllowanceOf(
+  pass: PlanInputs['pass'],
   now: Date
 ): AiCreditAllowance | null {
-  if (inputs.subscription != null) {
-    return subscriptionAllowance(inputs.subscription, now);
+  if (pass == null) {
+    return null;
   }
-  const pass = inputs.pass;
-  if (pass != null && isAnonymousPassKind(pass.kind)) {
+  if (isAnonymousPassKind(pass.kind)) {
     return passAllowance(pass.kind, pass.windowStart, pass.windowEnd);
   }
-  if (pass?.kind === 'unlimited') {
+  if (pass.kind === 'unlimited') {
     return calendarMonthWindow(
       SUBSCRIPTION_CREDITS,
       now,
       'period',
       pass.windowEnd
     );
+  }
+  return null;
+}
+
+export function resolveAllowance(
+  inputs: PlanInputs,
+  now: Date
+): AiCreditAllowance | null {
+  const subscription =
+    inputs.subscription != null
+      ? subscriptionAllowance(inputs.subscription, now)
+      : null;
+  const pass = passAllowanceOf(inputs.pass, now);
+  // A subscriber who also bought a pass paid for both: sum the credits over the
+  // active pass window rather than handing back only the subscription.
+  if (subscription != null && pass != null) {
+    return {
+      credits: subscription.credits + pass.credits,
+      windowStart: pass.windowStart,
+      windowEnd: pass.windowEnd,
+      resets: pass.resets,
+    };
+  }
+  if (subscription != null) {
+    return subscription;
+  }
+  if (pass != null) {
+    return pass;
   }
   if (inputs.patreon || inputs.ankifyAccess) {
     return calendarMonthWindow(LIFETIME_CREDITS, now, 'month', null);

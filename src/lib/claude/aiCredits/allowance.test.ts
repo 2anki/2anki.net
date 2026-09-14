@@ -58,6 +58,45 @@ describe('resolveAllowance', () => {
     });
   });
 
+  it('clamps a day-31 billing anchor to the short month without overflowing', () => {
+    const result = resolveAllowance(
+      {
+        ...emptyInputs,
+        subscription: {
+          periodStart: new Date('2026-01-31T00:00:00.000Z'),
+          periodEnd: new Date('2027-01-31T00:00:00.000Z'),
+          unitAmount: 6400,
+        },
+      },
+      new Date('2026-02-15T12:00:00.000Z')
+    );
+    expect(result?.windowStart).toEqual(new Date('2026-01-31T00:00:00.000Z'));
+    expect(result?.windowEnd).toEqual(new Date('2026-02-28T00:00:00.000Z'));
+  });
+
+  it('sums subscription and active pass credits over the pass window', () => {
+    const passStart = new Date('2026-05-11T00:00:00.000Z');
+    const passEnd = new Date('2026-05-12T00:00:00.000Z');
+    const result = resolveAllowance(
+      {
+        ...emptyInputs,
+        subscription: {
+          periodStart: new Date('2026-05-01T00:00:00.000Z'),
+          periodEnd: new Date('2026-06-01T00:00:00.000Z'),
+          unitAmount: 799,
+        },
+        pass: { kind: '24h', windowStart: passStart, windowEnd: passEnd },
+      },
+      NOW
+    );
+    expect(result).toEqual({
+      credits: 600,
+      windowStart: passStart,
+      windowEnd: passEnd,
+      resets: 'pass',
+    });
+  });
+
   it('does not double-reset a monthly subscription that renews off the 1st', () => {
     const periodStart = new Date('2026-05-08T00:00:00.000Z');
     const periodEnd = new Date('2026-06-08T00:00:00.000Z');
