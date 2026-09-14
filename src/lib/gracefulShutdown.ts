@@ -128,20 +128,24 @@ export async function gracefulShutdown(
     clearTimeout(closeBudget);
   });
 
-  await timedPhase('Events sink', async () => {
-    try {
-      await getEventsSink().drain();
-    } catch (err) {
-      console.error('Events sink drain failed:', err);
-    }
-  });
-
   phase = 'Conversion pool';
   await timedPhase('Conversion pool', async () => {
     try {
       await shutdownConversionPool({ timeoutMs: POOL_DRAIN_TIMEOUT_MS });
     } catch (err) {
       console.error('Conversion pool drain failed:', err);
+    }
+  });
+
+  // After the pool so the worker threads have finished flushing their own usage
+  // rows into the main-thread sink; before the DB pool closes so the drained
+  // rows still have a connection to land on.
+  phase = 'Events sink';
+  await timedPhase('Events sink', async () => {
+    try {
+      await getEventsSink().drain();
+    } catch (err) {
+      console.error('Events sink drain failed:', err);
     }
   });
 

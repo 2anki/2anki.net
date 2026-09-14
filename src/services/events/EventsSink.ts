@@ -85,12 +85,19 @@ export class EventsSink {
     }
   }
 
+  // Settle in-flight durable writes without stopping the sink — a worker thread
+  // awaits this before its task resolves so a usage row lands before the thread
+  // goes idle or is torn down on pool drain.
+  async flushDurable(): Promise<void> {
+    await Promise.allSettled(this.pendingDurable);
+  }
+
   // Stop the timer and settle everything in flight so a shutdown drain does not
   // lose the buffered funnel events or an in-flight durable usage write.
   async drain(): Promise<void> {
     this.stop();
     await this.flush();
-    await Promise.allSettled(this.pendingDurable);
+    await this.flushDurable();
   }
 
   async flush(): Promise<void> {

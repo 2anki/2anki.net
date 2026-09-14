@@ -1,3 +1,4 @@
+import { getEventsSink } from '../../services/events/eventsSinkInstance';
 import { UploadedFile } from '../../lib/storage/types';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
@@ -397,6 +398,9 @@ export async function runUploadGenerationInWorker(
       task,
       onProgress
     );
+    // Land any ai_usage_recorded rows this worker wrote before the task
+    // resolves and the thread can be reused or torn down (#paywall ledger).
+    await getEventsSink().flushDurable();
     return { ok: true, packages, warnings, cardFingerprints };
   } catch (err) {
     return {
