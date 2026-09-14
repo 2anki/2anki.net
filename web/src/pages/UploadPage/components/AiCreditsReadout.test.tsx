@@ -10,20 +10,12 @@ const state = (over: Partial<AiCreditsState>): AiCreditsState => ({
   allowance: 300,
   windowEnd: null,
   resets: 'period',
-  loading: false,
   ...over,
 });
 
 describe('AiCreditsReadout', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
-  });
-
-  it('renders nothing while loading', () => {
-    const { container } = render(
-      <AiCreditsReadout credits={state({ loading: true })} />
-    );
-    expect(container).toBeEmptyDOMElement();
   });
 
   it('renders nothing when there is no data', () => {

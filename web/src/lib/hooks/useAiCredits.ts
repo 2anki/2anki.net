@@ -3,9 +3,7 @@ import { getAiCredits, AiCreditsResponse } from '../backend/getAiCredits';
 
 export const AI_CREDITS_QUERY_KEY = ['aiCredits'] as const;
 
-export interface AiCreditsState extends AiCreditsResponse {
-  loading: boolean;
-}
+export type AiCreditsState = AiCreditsResponse;
 
 export const useAiCredits = (enabled: boolean): AiCreditsState | null => {
   const { data } = useQuery({
@@ -21,5 +19,5 @@ export const useAiCredits = (enabled: boolean): AiCreditsState | null => {
     return null;
   }
 
-  return { ...data, loading: false };
+  return data;
 };

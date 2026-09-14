@@ -87,7 +87,7 @@ describe('TemplatesController.aiGenerate', () => {
     expect(res.status).toHaveBeenCalledWith(500);
   });
 
-  it('returns a coded 402 when the AI budget is exhausted', async () => {
+  it('rethrows the coded credit error for the ErrorHandler to map (402)', async () => {
     const aiUseCase = {
       generate: jest.fn().mockRejectedValue(new AiCreditsExhaustedError()),
       modify: jest.fn(),
@@ -97,11 +97,10 @@ describe('TemplatesController.aiGenerate', () => {
       aiUseCase as never
     );
     const res = buildRes();
-    await controller.aiGenerate(buildReq({ prompt: 'hi' }), res);
-    expect(res.status).toHaveBeenCalledWith(402);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'ai_credits_exhausted' })
-    );
+    await expect(
+      controller.aiGenerate(buildReq({ prompt: 'hi' }), res)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    expect(res.status).not.toHaveBeenCalledWith(500);
   });
 });
 

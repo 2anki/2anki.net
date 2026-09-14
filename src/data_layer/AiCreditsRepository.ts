@@ -54,7 +54,7 @@ export function parseSubscriptionPayload(
     item?.current_period_end ?? parsed?.current_period_end
   );
   if (parsed != null && periodStart == null && periodEnd == null) {
-    console.warn(
+    console.info(
       '[ai-credits] subscription payload carries no billing period; using a rolling window'
     );
   }

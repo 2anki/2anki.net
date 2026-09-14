@@ -18,7 +18,6 @@ const state = (over: Partial<AiCreditsState>): AiCreditsState => ({
   allowance: 300,
   windowEnd: '2027-05-12T00:00:00.000Z',
   resets: 'period',
-  loading: false,
   ...over,
 });
 

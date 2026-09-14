@@ -7,7 +7,7 @@ export function AiCreditsAccountLine() {
   const { t, i18n } = useTranslation('aicredits');
   const credits = useAiCredits(true);
 
-  if (credits == null || credits.loading || credits.allowance === 0) {
+  if (credits == null || credits.allowance === 0) {
     return null;
   }
 

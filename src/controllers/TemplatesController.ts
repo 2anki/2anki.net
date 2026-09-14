@@ -18,7 +18,7 @@ import {
   NoteTypeStarterInput,
 } from '../usecases/ai/AINoteTypeUseCase';
 import TemplatesService from '../services/TemplatesService';
-import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
+import { HttpCodedError } from '../lib/errors/HttpCodedError';
 
 const EMPTY_USER_PAYLOAD = { templates: [], hiddenIds: [] } as const;
 
@@ -163,11 +163,8 @@ class TemplatesController {
       );
       res.json(result);
     } catch (error) {
-      if (error instanceof AiCreditsExhaustedError) {
-        res
-          .status(error.status)
-          .json({ code: error.code, error: error.message });
-        return;
+      if (error instanceof HttpCodedError) {
+        throw error;
       }
       console.error('AI generation failed:', error);
       res.status(500).json({ error: 'AI generation failed' });
@@ -199,11 +196,8 @@ class TemplatesController {
       );
       res.json(result);
     } catch (error) {
-      if (error instanceof AiCreditsExhaustedError) {
-        res
-          .status(error.status)
-          .json({ code: error.code, error: error.message });
-        return;
+      if (error instanceof HttpCodedError) {
+        throw error;
       }
       console.error('AI modify failed:', error);
       res.status(500).json({ error: 'AI modify failed' });

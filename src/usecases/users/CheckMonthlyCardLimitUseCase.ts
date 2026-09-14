@@ -1,4 +1,5 @@
 import UsersRepository from '../../data_layer/UsersRepository';
+import { startOfNextMonthUtc } from '../../lib/User/startOfMonthUtc';
 
 export const MONTHLY_CARD_LIMIT = 100;
 
@@ -35,10 +36,6 @@ interface CheckArgs {
   now?: Date;
 }
 
-function nextMonthBoundary(now: Date): Date {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-}
-
 export class CheckMonthlyCardLimitUseCase {
   constructor(private readonly userRepository: UsersRepository) {}
 
@@ -57,7 +54,7 @@ export class CheckMonthlyCardLimitUseCase {
         cards_used,
         MONTHLY_CARD_LIMIT,
         candidateCardCount,
-        nextMonthBoundary(now).toISOString()
+        startOfNextMonthUtc(now).toISOString()
       );
     }
   }
