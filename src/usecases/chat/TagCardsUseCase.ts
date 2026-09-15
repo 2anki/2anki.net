@@ -1,6 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
-import { assertAiBudget } from '../../lib/claude/aiSpendGuard';
+import { withAiBudget } from '../../lib/claude/aiSpendGuard';
 import type { IChatMessagesRepository } from '../../data_layer/ChatMessagesRepository';
 import {
   rewriteAssistantContentWithTaggedCards,
@@ -103,31 +103,33 @@ export class TagCardsUseCase {
       back: c.back,
     }));
 
-    await assertAiBudget(input.userId ?? null);
+    const message = await withAiBudget(input.userId ?? null, async () => {
+      const created = await this.anthropic.messages.create({
+        model: TAGGING_MODEL,
+        max_tokens: MAX_TOKENS,
+        system: [
+          {
+            type: 'text',
+            text: TAGGING_SYSTEM_PROMPT,
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+        messages: [
+          {
+            role: 'user',
+            content: `Tag these ${userPayload.length} cards:\n\n${JSON.stringify(userPayload)}`,
+          },
+        ],
+      });
 
-    const message = await this.anthropic.messages.create({
-      model: TAGGING_MODEL,
-      max_tokens: MAX_TOKENS,
-      system: [
-        {
-          type: 'text',
-          text: TAGGING_SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      messages: [
-        {
-          role: 'user',
-          content: `Tag these ${userPayload.length} cards:\n\n${JSON.stringify(userPayload)}`,
-        },
-      ],
-    });
+      recordClaudeUsage({
+        surface: 'chat_tagging',
+        model: created.model,
+        usage: created.usage,
+        userId: input.userId ?? null,
+      });
 
-    recordClaudeUsage({
-      surface: 'chat_tagging',
-      model: message.model,
-      usage: message.usage,
-      userId: input.userId ?? null,
+      return created;
     });
 
     const text = message.content

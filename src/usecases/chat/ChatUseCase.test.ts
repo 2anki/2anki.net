@@ -20,16 +20,25 @@ jest.mock(
 
 jest.mock('../../lib/claude/aiSpendGuard', () => {
   const actual = jest.requireActual('../../lib/claude/aiSpendGuard');
-  return { ...actual, assertAiBudget: jest.fn().mockResolvedValue(undefined) };
+  return {
+    ...actual,
+    withAiBudget: jest.fn(
+      (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
+    ),
+  };
 });
 
 import { convertDocxToHTML } from '../../infrastracture/adapters/fileConversion/convertDocxToHTML';
 import {
-  assertAiBudget,
+  withAiBudget,
   AiCreditsExhaustedError,
 } from '../../lib/claude/aiSpendGuard';
 
-const assertAiBudgetMock = assertAiBudget as jest.Mock;
+const withAiBudgetMock = withAiBudget as jest.Mock;
+const runCallbackImpl = (
+  _userId: number | null | undefined,
+  run: () => Promise<unknown>
+) => run();
 
 const mockedConvertDocx = convertDocxToHTML as jest.MockedFunction<
   typeof convertDocxToHTML
@@ -123,6 +132,24 @@ describe('ChatUseCase', () => {
         conversationHistory: [],
       });
       expect(result.content).toBe('Paid response');
+    });
+  });
+
+  describe('AI budget reservation guard', () => {
+    it('refuses execute through withAiBudget without inserting a user message', async () => {
+      const { messagesRepo, useCase } = buildUseCase('unused');
+      withAiBudgetMock.mockRejectedValueOnce(new AiCreditsExhaustedError());
+
+      await expect(
+        useCase.execute({
+          user: PATREON_USER,
+          content: 'question',
+          conversationHistory: [],
+        })
+      ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+
+      expect(messagesRepo.getAll()).toHaveLength(0);
+      withAiBudgetMock.mockImplementation(runCallbackImpl);
     });
   });
 
@@ -1459,7 +1486,7 @@ describe('ChatUseCase', () => {
         conversationsRepo,
         PATREON_USER.owner
       );
-      assertAiBudgetMock.mockRejectedValueOnce(new AiCreditsExhaustedError());
+      withAiBudgetMock.mockRejectedValueOnce(new AiCreditsExhaustedError());
 
       await expect(
         useCase.regenerate({
@@ -1476,7 +1503,7 @@ describe('ChatUseCase', () => {
         )
         .map((r) => r.content);
       expect(assistantContents).toEqual(['old assistant reply']);
-      assertAiBudgetMock.mockResolvedValue(undefined);
+      withAiBudgetMock.mockImplementation(runCallbackImpl);
     });
 
     it('deletes the last assistant message and streams a fresh turn', async () => {

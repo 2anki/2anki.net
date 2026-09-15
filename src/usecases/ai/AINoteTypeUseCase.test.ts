@@ -9,6 +9,27 @@ jest.mock('../../lib/claude/ClaudeService', () => ({
   getAnthropicClient: jest.fn(),
 }));
 
+jest.mock('../../lib/claude/aiSpendGuard', () => {
+  const actual = jest.requireActual('../../lib/claude/aiSpendGuard');
+  return {
+    ...actual,
+    withAiBudget: jest.fn(
+      (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
+    ),
+  };
+});
+
+import {
+  withAiBudget,
+  AiCreditsExhaustedError,
+} from '../../lib/claude/aiSpendGuard';
+
+const withAiBudgetMock = withAiBudget as jest.Mock;
+const runCallbackImpl = (
+  _userId: number | null | undefined,
+  run: () => Promise<unknown>
+) => run();
+
 const { extractJsonBlock } = __test__;
 
 describe('extractJsonBlock', () => {
@@ -171,6 +192,17 @@ describe('AINoteTypeUseCase system prompt caching', () => {
       type: 'text',
       cache_control: { type: 'ephemeral' },
     });
+  });
+
+  it('refuses the note-type call when the reservation guard is exhausted', async () => {
+    withAiBudgetMock.mockRejectedValueOnce(new AiCreditsExhaustedError());
+    const useCase = new AINoteTypeUseCase();
+
+    await expect(
+      useCase.generate('a flashcard for the krebs cycle', 7)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    expect(mockCreate).not.toHaveBeenCalled();
+    withAiBudgetMock.mockImplementation(runCallbackImpl);
   });
 
   it('emits a [claude-usage] log line for the note_type_ai surface', async () => {

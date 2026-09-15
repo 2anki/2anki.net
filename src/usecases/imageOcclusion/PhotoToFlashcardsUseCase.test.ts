@@ -26,6 +26,27 @@ jest.mock('../../services/events/track', () => ({
   track: jest.fn(),
 }));
 
+jest.mock('../../lib/claude/aiSpendGuard', () => {
+  const actual = jest.requireActual('../../lib/claude/aiSpendGuard');
+  return {
+    ...actual,
+    withAiBudget: jest.fn(
+      (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
+    ),
+  };
+});
+
+import {
+  withAiBudget,
+  AiCreditsExhaustedError,
+} from '../../lib/claude/aiSpendGuard';
+
+const withAiBudgetMock = withAiBudget as jest.Mock;
+const runCallbackImpl = (
+  _userId: number | null | undefined,
+  run: () => Promise<unknown>
+) => run();
+
 function setupFsMocks() {
   (mockFs.mkdirSync as jest.Mock).mockImplementation(() => undefined);
   (mockFs.existsSync as jest.Mock).mockReturnValue(false);
@@ -97,6 +118,20 @@ describe('PhotoToFlashcardsUseCase', () => {
     });
     setupFsMocks();
     setupPythonMock();
+  });
+
+  describe('AI budget reservation guard', () => {
+    it('refuses the vision call when the reservation guard is exhausted', async () => {
+      const events = makeEventsStub(0);
+      withAiBudgetMock.mockRejectedValueOnce(new AiCreditsExhaustedError());
+      const useCase = new PhotoToFlashcardsUseCase(events);
+
+      await expect(
+        useCase.execute({ ...BASE_INPUT, owner: '7', isPaying: true })
+      ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+      expect(mockMessageCreate).not.toHaveBeenCalled();
+      withAiBudgetMock.mockImplementation(runCallbackImpl);
+    });
   });
 
   describe('free quota', () => {

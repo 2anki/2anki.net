@@ -5,7 +5,7 @@ import type {
   IConversationsRepository,
 } from '../../data_layer/ConversationsRepository';
 import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
-import { assertAiBudget } from '../../lib/claude/aiSpendGuard';
+import { withAiBudget } from '../../lib/claude/aiSpendGuard';
 import { chatAttachmentKey } from '../../lib/storage/chatAttachmentKeys';
 import type { IChatAttachmentsRepository } from '../../data_layer/ChatAttachmentsRepository';
 import {
@@ -551,73 +551,73 @@ export class ChatUseCase {
     const { user, content, conversationHistory, onToken } = input;
     const attachments = input.attachments ?? [];
 
-    await assertAiBudget(user.owner);
-
-    let conversationId: number;
-    if (input.conversationId != null) {
-      const existing = await this.conversationsRepo.findForUser({
-        userId: user.owner,
-        conversationId: input.conversationId,
-      });
-      if (existing == null) {
-        throw new ChatConversationNotFoundError();
+    return withAiBudget(user.owner, async () => {
+      let conversationId: number;
+      if (input.conversationId != null) {
+        const existing = await this.conversationsRepo.findForUser({
+          userId: user.owner,
+          conversationId: input.conversationId,
+        });
+        if (existing == null) {
+          throw new ChatConversationNotFoundError();
+        }
+        conversationId = existing.id;
+      } else {
+        conversationId = await this.conversationsRepo.create({
+          userId: user.owner,
+          title: buildAutoTitle(content),
+        });
       }
-      conversationId = existing.id;
-    } else {
-      conversationId = await this.conversationsRepo.create({
-        userId: user.owner,
-        title: buildAutoTitle(content),
-      });
-    }
 
-    const attachmentBlocks = buildAttachmentBlocks(attachments);
-    const extractedText = await extractAttachmentText(attachments);
-    const attachmentTextBlock = buildAttachmentTextBlock(extractedText);
-    const promptText =
-      attachmentTextBlock.length > 0
-        ? `${attachmentTextBlock}\n\n${content}`
-        : content;
-    const userContent: Anthropic.MessageParam['content'] =
-      attachmentBlocks.length > 0
-        ? [...attachmentBlocks, { type: 'text', text: promptText }]
-        : promptText;
-
-    const historyMessages = await this.assembleHistory({
-      userId: user.owner,
-      conversationId,
-      isExistingConversation: input.conversationId != null,
-      clientHistory: conversationHistory,
-    });
-
-    const userMessageId = await this.messagesRepo.insert({
-      userId: user.owner,
-      conversationId,
-      role: 'user',
-      content,
-      attachmentText:
+      const attachmentBlocks = buildAttachmentBlocks(attachments);
+      const extractedText = await extractAttachmentText(attachments);
+      const attachmentTextBlock = buildAttachmentTextBlock(extractedText);
+      const promptText =
         attachmentTextBlock.length > 0
-          ? capAttachmentTextForHistory(attachmentTextBlock)
-          : null,
-      hadBinaryAttachments: attachmentBlocks.length > 0,
-    });
+          ? `${attachmentTextBlock}\n\n${content}`
+          : content;
+      const userContent: Anthropic.MessageParam['content'] =
+        attachmentBlocks.length > 0
+          ? [...attachmentBlocks, { type: 'text', text: promptText }]
+          : promptText;
 
-    const result = await this.streamAssistantTurn({
-      user,
-      conversationId,
-      templateSlug: input.templateSlug,
-      historyMessages,
-      userContent,
-      onToken,
-    });
+      const historyMessages = await this.assembleHistory({
+        userId: user.owner,
+        conversationId,
+        isExistingConversation: input.conversationId != null,
+        clientHistory: conversationHistory,
+      });
 
-    await this.persistTurnAttachments({
-      userId: user.owner,
-      conversationId,
-      messageId: userMessageId,
-      attachments,
-    });
+      const userMessageId = await this.messagesRepo.insert({
+        userId: user.owner,
+        conversationId,
+        role: 'user',
+        content,
+        attachmentText:
+          attachmentTextBlock.length > 0
+            ? capAttachmentTextForHistory(attachmentTextBlock)
+            : null,
+        hadBinaryAttachments: attachmentBlocks.length > 0,
+      });
 
-    return result;
+      const result = await this.streamAssistantTurn({
+        user,
+        conversationId,
+        templateSlug: input.templateSlug,
+        historyMessages,
+        userContent,
+        onToken,
+      });
+
+      await this.persistTurnAttachments({
+        userId: user.owner,
+        conversationId,
+        messageId: userMessageId,
+        attachments,
+      });
+
+      return result;
+    });
   }
 
   // Best-effort by design: a failed upload degrades regenerate on this turn
@@ -718,63 +718,63 @@ export class ChatUseCase {
   }): Promise<SendMessageResult> {
     const { user, onToken } = input;
 
-    await assertAiBudget(user.owner);
-
-    const conversation = await this.conversationsRepo.findForUser({
-      userId: user.owner,
-      conversationId: input.conversationId,
-    });
-    if (conversation == null) {
-      throw new ChatConversationNotFoundError();
-    }
-
-    const latestAssistant =
-      await this.messagesRepo.findLatestAssistantInConversation({
+    return withAiBudget(user.owner, async () => {
+      const conversation = await this.conversationsRepo.findForUser({
         userId: user.owner,
-        conversationId: conversation.id,
+        conversationId: input.conversationId,
       });
-
-    const { historyHead, lastTurn } = selectReplayTurns(
-      conversation.messages,
-      latestAssistant?.id
-    );
-
-    const foldedLastTurnText =
-      lastTurn != null
-        ? foldAttachmentIntoContent(lastTurn.content, lastTurn.attachmentText)
-        : '';
-    let userContent: Anthropic.MessageParam['content'] = foldedLastTurnText;
-    if (lastTurn?.hadBinaryAttachments) {
-      const replayed = await this.loadReplayAttachments({
-        userId: user.owner,
-        messageId: lastTurn.id,
-      });
-      if (replayed == null) {
-        throw new ChatAttachmentsNotReplayableError();
+      if (conversation == null) {
+        throw new ChatConversationNotFoundError();
       }
-      userContent = [
-        ...buildAttachmentBlocks(replayed),
-        { type: 'text', text: foldedLastTurnText },
-      ];
-    }
 
-    if (latestAssistant != null) {
-      await this.messagesRepo.deleteById({
-        userId: user.owner,
-        messageId: latestAssistant.id,
+      const latestAssistant =
+        await this.messagesRepo.findLatestAssistantInConversation({
+          userId: user.owner,
+          conversationId: conversation.id,
+        });
+
+      const { historyHead, lastTurn } = selectReplayTurns(
+        conversation.messages,
+        latestAssistant?.id
+      );
+
+      const foldedLastTurnText =
+        lastTurn != null
+          ? foldAttachmentIntoContent(lastTurn.content, lastTurn.attachmentText)
+          : '';
+      let userContent: Anthropic.MessageParam['content'] = foldedLastTurnText;
+      if (lastTurn?.hadBinaryAttachments) {
+        const replayed = await this.loadReplayAttachments({
+          userId: user.owner,
+          messageId: lastTurn.id,
+        });
+        if (replayed == null) {
+          throw new ChatAttachmentsNotReplayableError();
+        }
+        userContent = [
+          ...buildAttachmentBlocks(replayed),
+          { type: 'text', text: foldedLastTurnText },
+        ];
+      }
+
+      if (latestAssistant != null) {
+        await this.messagesRepo.deleteById({
+          userId: user.owner,
+          messageId: latestAssistant.id,
+        });
+      }
+
+      return this.streamAssistantTurn({
+        user,
+        conversationId: conversation.id,
+        templateSlug: input.templateSlug,
+        historyMessages: historyHead.map((m) => ({
+          role: m.role,
+          content: foldAttachmentIntoContent(m.content, m.attachmentText),
+        })),
+        userContent,
+        onToken,
       });
-    }
-
-    return this.streamAssistantTurn({
-      user,
-      conversationId: conversation.id,
-      templateSlug: input.templateSlug,
-      historyMessages: historyHead.map((m) => ({
-        role: m.role,
-        content: foldAttachmentIntoContent(m.content, m.attachmentText),
-      })),
-      userContent,
-      onToken,
     });
   }
 
