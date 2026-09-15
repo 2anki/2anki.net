@@ -4,8 +4,14 @@ import {
   AiCreditsExhaustedError,
   assertAiBudget,
   getAiBudgetStatus,
+  withAiBudget,
 } from './aiSpendGuard';
 import { AiCreditBalance } from './aiCredits/balance';
+import {
+  RESERVED_CREDITS_PER_INFLIGHT_CALL,
+  reservedCreditsFor,
+  resetInflightReservations,
+} from './aiCredits/inflightReservations';
 import { track } from '../../services/events/track';
 
 jest.mock('../../services/events/track', () => ({ track: jest.fn() }));
@@ -152,6 +158,77 @@ describe('assertAiBudget', () => {
     await expect(assertAiBudget(42, deps)).resolves.toBeUndefined();
     await flushAsync();
     expect(deps.sendAlert).not.toHaveBeenCalled();
+  });
+});
+
+describe('withAiBudget', () => {
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+  beforeEach(() => {
+    trackMock.mockReset();
+    resetInflightReservations();
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('runs the call without a balance check for anonymous callers', async () => {
+    const deps = makeDeps({});
+    const result = await withAiBudget(null, async () => 'ok', deps);
+    expect(result).toBe('ok');
+    expect(deps.computeBalance).not.toHaveBeenCalled();
+  });
+
+  it('runs the call and releases the reservation when credits remain', async () => {
+    const deps = makeDeps({ balance: balanceWith(180) });
+    const result = await withAiBudget(42, async () => 'ok', deps);
+    expect(result).toBe('ok');
+    expect(reservedCreditsFor(42)).toBe(0);
+  });
+
+  it('throws without running the call when the balance is spent', async () => {
+    const deps = makeDeps({ balance: balanceWith(0) });
+    const run = jest.fn().mockResolvedValue('ok');
+    await expect(withAiBudget(42, run, deps)).rejects.toBeInstanceOf(
+      AiCreditsExhaustedError
+    );
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it('bounds concurrency: a second call is refused while the balance is fully reserved', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(RESERVED_CREDITS_PER_INFLIGHT_CALL),
+    });
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const first = withAiBudget(42, async () => {
+      await gate;
+      return 'first';
+    }, deps);
+    await flush();
+    expect(reservedCreditsFor(42)).toBe(RESERVED_CREDITS_PER_INFLIGHT_CALL);
+
+    const second = jest.fn().mockResolvedValue('second');
+    await expect(withAiBudget(42, second, deps)).rejects.toBeInstanceOf(
+      AiCreditsExhaustedError
+    );
+    expect(second).not.toHaveBeenCalled();
+
+    release();
+    await expect(first).resolves.toBe('first');
+    expect(reservedCreditsFor(42)).toBe(0);
+  });
+
+  it('releases the reservation when the call throws', async () => {
+    const deps = makeDeps({ balance: balanceWith(180) });
+    await expect(
+      withAiBudget(42, async () => {
+        throw new Error('boom');
+      }, deps)
+    ).rejects.toThrow('boom');
+    expect(reservedCreditsFor(42)).toBe(0);
   });
 });
 

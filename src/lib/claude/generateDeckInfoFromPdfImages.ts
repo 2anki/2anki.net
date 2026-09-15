@@ -5,8 +5,13 @@ import { escapeAttribute } from '../notion-render/escape';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
 import { VisionMediaType } from './countVisionTokens';
 import { recordClaudeUsage } from './recordClaudeUsage';
-import { assertAiBudget } from './aiSpendGuard';
 import {
+  AiCreditsExhaustedError,
+  assertAiBudget,
+  withAiBudget,
+} from './aiSpendGuard';
+import {
+  AiCreditsTrippedWithSalvage,
   DeckInfo,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
   EmptyContentError,
@@ -125,7 +130,6 @@ async function visionCardsForPage(
   pageIndex: number,
   userId?: number | null
 ): Promise<CompactDeck[]> {
-  await assertAiBudget(userId);
   const client = getAnthropicClient();
 
   const callVision = (maxTokens: number) =>
@@ -197,15 +201,21 @@ async function visionCardsForPage(
   }
 }
 
+interface PageVisionResult {
+  compactDecks: CompactDeck[];
+  tripped: boolean;
+}
+
 async function runPagesWithConcurrency(
   images: ResolvedPageImage[],
   prompt: string,
   attachPageImages: boolean,
   onProgress?: (step: string) => void,
   userId?: number | null
-): Promise<CompactDeck[]> {
+): Promise<PageVisionResult> {
   const compactDecks: CompactDeck[] = [];
   const failures: unknown[] = [];
+  let tripped = false;
   let cursor = 0;
 
   // A page that fails terminally used to reject its worker, which rejected the
@@ -218,17 +228,21 @@ async function runPagesWithConcurrency(
       if (index >= images.length) return;
       onProgress?.(`claude:vision:page:${index + 1}:${images.length}`);
       try {
-        const decks = await visionCardsForPage(
-          images[index],
-          prompt,
-          index,
-          userId
+        const decks = await withAiBudget(userId, () =>
+          visionCardsForPage(images[index], prompt, index, userId)
         );
         const attributed = attachPageImages
           ? attachPageImageToCompactDecks(decks, images[index].relPath)
           : decks;
         compactDecks.push(...attributed);
       } catch (err) {
+        // A credit trip is not a page failure — it means the balance ran out
+        // mid-run. Flag it so the caller ships the pages produced so far with
+        // the credits warning instead of masking it as a partial success.
+        if (err instanceof AiCreditsExhaustedError) {
+          tripped = true;
+          continue;
+        }
         failures.push(err);
         console.warn('[Claude] PDF page vision failed; keeping other pages', {
           pageIndex: index,
@@ -241,7 +255,7 @@ async function runPagesWithConcurrency(
   const workerCount = Math.min(PDF_PAGE_VISION_CONCURRENCY, images.length);
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
-  if (failures.length === images.length && failures.length > 0) {
+  if (!tripped && failures.length === images.length && failures.length > 0) {
     throw failures[0];
   }
   if (failures.length > 0) {
@@ -250,7 +264,7 @@ async function runPagesWithConcurrency(
       pageCount: images.length,
     });
   }
-  return compactDecks;
+  return { compactDecks, tripped };
 }
 
 export async function generateDeckInfoFromPdfImages(
@@ -277,7 +291,7 @@ export async function generateDeckInfoFromPdfImages(
 
   const attachPageImages = context.attachPageImages ?? true;
   const prompt = buildPdfPageVisionPrompt(userInstructions);
-  const compactDecks = await runPagesWithConcurrency(
+  const { compactDecks, tripped } = await runPagesWithConcurrency(
     images,
     prompt,
     attachPageImages,
@@ -297,8 +311,16 @@ export async function generateDeckInfoFromPdfImages(
     pageCount: images.length,
     totalDecks: deckInfo.length,
     totalCards,
+    tripped,
     totalMs: Date.now() - t0,
   });
+
+  // The credit guard tripped partway through the pages: propagate the trip
+  // carrying the cards produced so far so the upload attaches the credits
+  // warning instead of shipping a silent partial deck.
+  if (tripped) {
+    throw new AiCreditsTrippedWithSalvage(deckInfo);
+  }
 
   if (totalCards === 0) {
     throw new EmptyContentError(EMPTY_CONTENT_UPLOAD_MESSAGE);

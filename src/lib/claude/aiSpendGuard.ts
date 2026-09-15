@@ -2,6 +2,12 @@ import { track } from '../../services/events/track';
 import { HttpCodedError } from '../errors/HttpCodedError';
 import type { IAiSpendReader } from '../../data_layer/AiUsageMetricsRepository';
 import { computeAiCreditBalance, AiCreditBalance } from './aiCredits/balance';
+import {
+  RESERVED_CREDITS_PER_INFLIGHT_CALL,
+  releaseInflightCredits,
+  reserveInflightCredits,
+  reservedCreditsFor,
+} from './aiCredits/inflightReservations';
 
 // A user crossing $25 in 30 days costs more than triple the subscription
 // price — worth a human look, not enforcement. Kept as an ops signal; part 2's
@@ -153,6 +159,17 @@ async function maybeNotifyAlert(
   );
 }
 
+// The caller has no capacity for another metered call when the recorded
+// balance, less the credits already reserved by in-flight calls, is spent.
+// Subtracting reservations is what stops N concurrent chunks or pages from all
+// passing on the same pre-call balance and overshooting the allowance N-fold.
+function isBudgetSpent(status: AiBudgetStatus, userId: number): boolean {
+  if (status.balance == null) {
+    return status.exhausted;
+  }
+  return status.balance.credits - reservedCreditsFor(userId) <= 0;
+}
+
 // Pre-call guard for every metered Claude surface. Throws
 // AiCreditsExhaustedError once the caller's plan allowance is spent; the
 // interactive surfaces render that as a calm stop, and the upload path catches
@@ -181,7 +198,43 @@ export async function assertAiBudget(
   void maybeNotifyAlert(resolved, userId, now).catch((error) =>
     console.error('[ai-credits] spend alert check failed', error)
   );
-  if (status.exhausted) {
+  if (isBudgetSpent(status, userId)) {
     throw new AiCreditsExhaustedError();
+  }
+}
+
+// The concurrency-safe form of the guard for the metered call sites that fan
+// out (every chunk, every PDF page). It admits the call only if the balance,
+// less in-flight reservations, is still positive, then reserves a conservative
+// slice for the duration of the call and releases it when the call settles. The
+// check-and-reserve runs synchronously after the balance read, so two
+// concurrent admissions coordinate through the reservation ledger even when
+// they read the same pre-call balance. Reservations live in one process; a
+// second conversion for the same user in another worker thread does not share
+// them, so overshoot is bounded per process, not eliminated cluster-wide.
+export async function withAiBudget<T>(
+  userId: number | null | undefined,
+  run: () => Promise<T>,
+  deps?: AiBudgetDeps
+): Promise<T> {
+  if (userId == null) {
+    return run();
+  }
+  let resolved: AiBudgetDeps;
+  try {
+    resolved = deps ?? defaultDeps();
+  } catch (error) {
+    console.error('[ai-credits] guard init failed, failing open', error);
+    return run();
+  }
+  const status = await getAiBudgetStatus(userId, resolved);
+  if (isBudgetSpent(status, userId)) {
+    throw new AiCreditsExhaustedError();
+  }
+  reserveInflightCredits(userId, RESERVED_CREDITS_PER_INFLIGHT_CALL);
+  try {
+    return await run();
+  } finally {
+    releaseInflightCredits(userId, RESERVED_CREDITS_PER_INFLIGHT_CALL);
   }
 }

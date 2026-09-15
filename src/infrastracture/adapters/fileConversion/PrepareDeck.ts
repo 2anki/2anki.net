@@ -39,6 +39,7 @@ import { convertDocxToHTML } from './convertDocxToHTML';
 import { createWorkspaceDocxImageMediaSink } from './docxImageMediaSink';
 import {
   generateDeckInfo,
+  AiCreditsTrippedWithSalvage,
   DeckInfo,
   CrossFileDedupState,
   createCrossFileDedupState,
@@ -596,6 +597,13 @@ async function runClaudeConversion(
         );
       } catch (error) {
         if (error instanceof AiCreditsExhaustedError) {
+          const salvaged =
+            error instanceof AiCreditsTrippedWithSalvage
+              ? error.salvagedDecks
+              : [];
+          deckInfoArrays.push(
+            absorbFileIntoCrossFileDedup(crossFileDedup, salvaged)
+          );
           tripped = true;
           break;
         }
@@ -618,7 +626,9 @@ async function runClaudeConversion(
       } catch (error) {
         if (error instanceof AiCreditsExhaustedError) {
           tripped = true;
-          return [] as DeckInfo[];
+          return error instanceof AiCreditsTrippedWithSalvage
+            ? error.salvagedDecks
+            : ([] as DeckInfo[]);
         }
         throw error;
       }
