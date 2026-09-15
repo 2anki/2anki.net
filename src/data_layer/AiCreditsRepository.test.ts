@@ -58,7 +58,7 @@ describe('parseSubscriptionPayload', () => {
 });
 
 describe('AiCreditsRepository generated SQL', () => {
-  it('finds the active subscription by linked or payer email', () => {
+  it('finds the active subscriptions by linked or payer email', () => {
     const repo = new AiCreditsRepository(pg);
     const sql = repo
       .buildActiveSubscriptionQuery('User@Example.com')
@@ -67,5 +67,12 @@ describe('AiCreditsRepository generated SQL', () => {
     expect(sql).toContain('"linked_email" = \'user@example.com\'');
     expect(sql).toContain('"email" = \'user@example.com\'');
     expect(sql).toContain('"active" = true');
+  });
+
+  it('reads every active row, not one cherry-picked by updated_at', () => {
+    const repo = new AiCreditsRepository(pg);
+    const sql = repo.buildActiveSubscriptionQuery('user@example.com').toString();
+    expect(sql).not.toContain('order by');
+    expect(sql).not.toContain('limit');
   });
 });

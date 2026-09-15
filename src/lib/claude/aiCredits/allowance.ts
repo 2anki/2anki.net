@@ -26,7 +26,7 @@ export interface ActivePassRow {
 
 export interface PlanInputs {
   passes: ActivePassRow[];
-  subscription: SubscriptionPlanInputs | null;
+  subscriptions: SubscriptionPlanInputs[];
   patreon: boolean;
   ankifyAccess: boolean;
 }
@@ -225,20 +225,47 @@ function passAllowanceOf(
   );
 }
 
-// Precedence, not summing: an active subscription wins over any pass (the
-// subscription allowance already covers the paying user), a pass wins over the
-// lifetime comp, and lifetime is the floor. A subscriber who also bought a pass
-// draws the subscription allowance only.
+// Picks the allowance that grants more credits, breaking ties in favour of the
+// first argument. Not summing — each candidate carries its own window and spend
+// is only ever counted against that one window.
+function betterAllowance(
+  a: AiCreditAllowance | null,
+  b: AiCreditAllowance | null
+): AiCreditAllowance | null {
+  if (a == null) {
+    return b;
+  }
+  if (b == null) {
+    return a;
+  }
+  return b.credits > a.credits ? b : a;
+}
+
+// Evaluates every active subscription row and keeps the one granting the most
+// credits, so a stale legacy row never hides the real plan's allowance.
+function bestSubscriptionAllowance(
+  subscriptions: SubscriptionPlanInputs[],
+  now: Date
+): AiCreditAllowance | null {
+  return subscriptions.reduce<AiCreditAllowance | null>(
+    (best, sub) => betterAllowance(best, subscriptionAllowance(sub, now)),
+    null
+  );
+}
+
+// The paying tiers do not sum: a subscriber who also holds a pass draws
+// whichever grants more credits (a 1500-credit pass beats a legacy $2 sub's
+// 100), never both. Lifetime is the floor, used only when no active
+// subscription or pass applies.
 export function resolveAllowance(
   inputs: PlanInputs,
   now: Date
 ): AiCreditAllowance | null {
-  if (inputs.subscription != null) {
-    return subscriptionAllowance(inputs.subscription, now);
-  }
+  const subscription = bestSubscriptionAllowance(inputs.subscriptions, now);
   const pass = passAllowanceOf(inputs.passes, now);
-  if (pass != null) {
-    return pass;
+  const paid = betterAllowance(subscription, pass);
+  if (paid != null) {
+    return paid;
   }
   if (inputs.patreon || inputs.ankifyAccess) {
     return calendarMonthWindow(LIFETIME_CREDITS, now, 'month', null);

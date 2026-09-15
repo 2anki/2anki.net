@@ -47,6 +47,7 @@ import { extractCountryFromRequest } from '../lib/http/extractCountryFromRequest
 import { RecordUserVisibleErrorUseCase } from '../usecases/observability/RecordUserVisibleErrorUseCase';
 import { mapEntitlement } from './helpers/mapEntitlement';
 import { hasAnkifyAccess } from '../lib/ankify/access';
+import { getOwnerId } from '../lib/User/getOwner';
 import EmailChangeTokenRepository from '../data_layer/EmailChangeTokenRepository';
 import { RequestEmailChangeUseCase } from '../usecases/users/RequestEmailChangeUseCase';
 import { ConfirmEmailChangeUseCase } from '../usecases/users/ConfirmEmailChangeUseCase';
@@ -660,13 +661,13 @@ class UsersController {
   }
 
   async getAiCredits(_req: express.Request, res: express.Response) {
-    const { owner } = res.locals;
-    if (!owner) {
+    const ownerId = getOwnerId(res);
+    if (ownerId == null) {
       return res.status(401).json({ message: 'Authentication required' });
     }
     try {
       const useCase = new GetAiCreditsUseCase(createAiCreditReaders(this.db));
-      const result = await useCase.execute(Number(owner));
+      const result = await useCase.execute(ownerId);
       return res.status(200).json(result);
     } catch (error) {
       console.info('Get AI credits failed');

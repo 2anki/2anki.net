@@ -17,11 +17,13 @@ function readersFor(
 
 const subscriberInputs: PlanInputs = {
   passes: [],
-  subscription: {
-    periodStart: new Date('2026-05-01T00:00:00.000Z'),
-    periodEnd: new Date('2026-06-01T00:00:00.000Z'),
-    unitAmount: 799,
-  },
+  subscriptions: [
+    {
+      periodStart: new Date('2026-05-01T00:00:00.000Z'),
+      periodEnd: new Date('2026-06-01T00:00:00.000Z'),
+      unitAmount: 799,
+    },
+  ],
   patreon: false,
   ankifyAccess: false,
 };

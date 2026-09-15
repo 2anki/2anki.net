@@ -398,9 +398,6 @@ export async function runUploadGenerationInWorker(
       task,
       onProgress
     );
-    // Land any ai_usage_recorded rows this worker wrote before the task
-    // resolves and the thread can be reused or torn down (#paywall ledger).
-    await getEventsSink().flushDurable();
     return { ok: true, packages, warnings, cardFingerprints };
   } catch (err) {
     return {
@@ -413,6 +410,14 @@ export async function runUploadGenerationInWorker(
       },
     };
   } finally {
+    // A job that made billable Claude calls and then failed still recorded
+    // ai_usage_recorded rows; drain them on both the success and error paths
+    // before the thread is reused or torn down so that spend is never lost.
+    try {
+      await getEventsSink().flushDurable();
+    } catch (flushError) {
+      console.error('[uploads] durable spend flush on worker exit failed', flushError);
+    }
     task.progressPort?.close();
   }
 }

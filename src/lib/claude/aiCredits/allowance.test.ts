@@ -4,7 +4,7 @@ const NOW = new Date('2026-05-12T12:00:00.000Z');
 
 const emptyInputs: PlanInputs = {
   passes: [],
-  subscription: null,
+  subscriptions: [],
   patreon: false,
   ankifyAccess: false,
 };
@@ -69,11 +69,13 @@ describe('resolveAllowance', () => {
     const result = resolveAllowance(
       {
         ...emptyInputs,
-        subscription: {
-          periodStart,
-          periodEnd,
-          unitAmount: 799,
-        },
+        subscriptions: [
+          {
+            periodStart,
+            periodEnd,
+            unitAmount: 799,
+          },
+        ],
       },
       NOW
     );
@@ -89,11 +91,13 @@ describe('resolveAllowance', () => {
     const result = resolveAllowance(
       {
         ...emptyInputs,
-        subscription: {
-          periodStart: new Date('2026-01-31T00:00:00.000Z'),
-          periodEnd: new Date('2027-01-31T00:00:00.000Z'),
-          unitAmount: 6400,
-        },
+        subscriptions: [
+          {
+            periodStart: new Date('2026-01-31T00:00:00.000Z'),
+            periodEnd: new Date('2027-01-31T00:00:00.000Z'),
+            unitAmount: 6400,
+          },
+        ],
       },
       new Date('2026-02-15T12:00:00.000Z')
     );
@@ -101,15 +105,17 @@ describe('resolveAllowance', () => {
     expect(result?.windowEnd).toEqual(new Date('2026-02-28T00:00:00.000Z'));
   });
 
-  it('gives a subscriber who also holds a pass the subscription allowance only', () => {
+  it('gives a subscriber who also holds an equal-or-smaller pass the subscription allowance', () => {
     const result = resolveAllowance(
       {
         ...emptyInputs,
-        subscription: {
-          periodStart: new Date('2026-05-01T00:00:00.000Z'),
-          periodEnd: new Date('2026-06-01T00:00:00.000Z'),
-          unitAmount: 799,
-        },
+        subscriptions: [
+          {
+            periodStart: new Date('2026-05-01T00:00:00.000Z'),
+            periodEnd: new Date('2026-06-01T00:00:00.000Z'),
+            unitAmount: 799,
+          },
+        ],
         passes: [
           { kind: '24h', expiresAt: new Date('2026-05-13T00:00:00.000Z') },
         ],
@@ -124,13 +130,79 @@ describe('resolveAllowance', () => {
     });
   });
 
+  it('gives a legacy $2 subscriber who buys a larger pass the pass allowance', () => {
+    const result = resolveAllowance(
+      {
+        ...emptyInputs,
+        subscriptions: [
+          {
+            periodStart: new Date('2026-05-01T00:00:00.000Z'),
+            periodEnd: new Date('2026-06-01T00:00:00.000Z'),
+            unitAmount: 200,
+          },
+        ],
+        passes: [
+          { kind: '120d', expiresAt: new Date('2026-08-01T00:00:00.000Z') },
+        ],
+      },
+      NOW
+    );
+    expect(result?.credits).toBe(1500);
+    expect(result?.resets).toBe('pass');
+    expect(result?.windowEnd).toEqual(new Date('2026-08-01T00:00:00.000Z'));
+  });
+
+  it('gives a standard subscriber who buys a 7d pass the larger pass allowance', () => {
+    const result = resolveAllowance(
+      {
+        ...emptyInputs,
+        subscriptions: [
+          {
+            periodStart: new Date('2026-05-01T00:00:00.000Z'),
+            periodEnd: new Date('2026-06-01T00:00:00.000Z'),
+            unitAmount: 799,
+          },
+        ],
+        passes: [
+          { kind: '7d', expiresAt: new Date('2026-05-15T00:00:00.000Z') },
+        ],
+      },
+      NOW
+    );
+    expect(result?.credits).toBe(500);
+    expect(result?.resets).toBe('pass');
+  });
+
+  it('keeps the best of several active subscription rows', () => {
+    const result = resolveAllowance(
+      {
+        ...emptyInputs,
+        subscriptions: [
+          {
+            periodStart: new Date('2026-05-01T00:00:00.000Z'),
+            periodEnd: new Date('2026-06-01T00:00:00.000Z'),
+            unitAmount: 200,
+          },
+          {
+            periodStart: new Date('2026-05-01T00:00:00.000Z'),
+            periodEnd: new Date('2026-06-01T00:00:00.000Z'),
+            unitAmount: 799,
+          },
+        ],
+      },
+      NOW
+    );
+    expect(result?.credits).toBe(300);
+    expect(result?.resets).toBe('period');
+  });
+
   it('does not double-reset a monthly subscription that renews off the 1st', () => {
     const periodStart = new Date('2026-05-08T00:00:00.000Z');
     const periodEnd = new Date('2026-06-08T00:00:00.000Z');
     const result = resolveAllowance(
       {
         ...emptyInputs,
-        subscription: { periodStart, periodEnd, unitAmount: 799 },
+        subscriptions: [{ periodStart, periodEnd, unitAmount: 799 }],
       },
       NOW
     );
@@ -146,11 +218,13 @@ describe('resolveAllowance', () => {
     const result = resolveAllowance(
       {
         ...emptyInputs,
-        subscription: {
-          periodStart: new Date('2026-01-01T00:00:00.000Z'),
-          periodEnd: new Date('2027-01-01T00:00:00.000Z'),
-          unitAmount: 6400,
-        },
+        subscriptions: [
+          {
+            periodStart: new Date('2026-01-01T00:00:00.000Z'),
+            periodEnd: new Date('2027-01-01T00:00:00.000Z'),
+            unitAmount: 6400,
+          },
+        ],
       },
       NOW
     );
@@ -166,11 +240,13 @@ describe('resolveAllowance', () => {
     const result = resolveAllowance(
       {
         ...emptyInputs,
-        subscription: {
-          periodStart: new Date('2026-05-01T00:00:00.000Z'),
-          periodEnd: new Date('2026-06-01T00:00:00.000Z'),
-          unitAmount: 200,
-        },
+        subscriptions: [
+          {
+            periodStart: new Date('2026-05-01T00:00:00.000Z'),
+            periodEnd: new Date('2026-06-01T00:00:00.000Z'),
+            unitAmount: 200,
+          },
+        ],
       },
       NOW
     );
@@ -181,11 +257,13 @@ describe('resolveAllowance', () => {
     const result = resolveAllowance(
       {
         ...emptyInputs,
-        subscription: {
-          periodStart: new Date('2026-01-01T00:00:00.000Z'),
-          periodEnd: new Date('2026-02-01T00:00:00.000Z'),
-          unitAmount: 799,
-        },
+        subscriptions: [
+          {
+            periodStart: new Date('2026-01-01T00:00:00.000Z'),
+            periodEnd: new Date('2026-02-01T00:00:00.000Z'),
+            unitAmount: 799,
+          },
+        ],
       },
       NOW
     );
@@ -200,11 +278,13 @@ describe('resolveAllowance', () => {
     const result = resolveAllowance(
       {
         ...emptyInputs,
-        subscription: {
-          periodStart: null,
-          periodEnd: null,
-          unitAmount: null,
-        },
+        subscriptions: [
+          {
+            periodStart: null,
+            periodEnd: null,
+            unitAmount: null,
+          },
+        ],
       },
       NOW
     );
@@ -275,11 +355,13 @@ describe('resolveAllowance', () => {
       {
         ...emptyInputs,
         patreon: true,
-        subscription: {
-          periodStart: new Date('2026-05-01T00:00:00.000Z'),
-          periodEnd: new Date('2026-06-01T00:00:00.000Z'),
-          unitAmount: 200,
-        },
+        subscriptions: [
+          {
+            periodStart: new Date('2026-05-01T00:00:00.000Z'),
+            periodEnd: new Date('2026-06-01T00:00:00.000Z'),
+            unitAmount: 200,
+          },
+        ],
       },
       NOW
     );

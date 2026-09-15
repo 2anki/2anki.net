@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 
 import { buildContentDisposition } from '../lib/buildContentDisposition';
-import { getOwner } from '../lib/User/getOwner';
+import { getOwner, getOwnerId } from '../lib/User/getOwner';
 import {
   AnkiNoteType,
   exportNoteTypeToApkg,
@@ -157,10 +157,7 @@ class TemplatesController {
       return;
     }
     try {
-      const result = await this.aiUseCase.generate(
-        prompt,
-        Number(getOwner(res)) || null
-      );
+      const result = await this.aiUseCase.generate(prompt, getOwnerId(res));
       res.json(result);
     } catch (error) {
       if (error instanceof HttpCodedError) {
@@ -192,7 +189,7 @@ class TemplatesController {
         starter,
         instruction,
         history,
-        Number(getOwner(res)) || null
+        getOwnerId(res)
       );
       res.json(result);
     } catch (error) {

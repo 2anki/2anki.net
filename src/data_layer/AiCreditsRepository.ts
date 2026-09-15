@@ -68,6 +68,10 @@ export function parseSubscriptionPayload(
 export class AiCreditsRepository implements IAiCreditsPlanReader {
   constructor(private readonly database: Knex) {}
 
+  // Mirrors SubscriptionService.getUserActiveSubscriptions: every active row
+  // for the payer or linked email, not one cherry-picked by updated_at. The
+  // allowance resolver evaluates them all and keeps the best, so a stale legacy
+  // row can never mask the real plan the rest of the app reports.
   buildActiveSubscriptionQuery(email: string): Knex.QueryBuilder {
     const normalized = email.toLowerCase();
     return this.database('subscriptions')
@@ -75,7 +79,6 @@ export class AiCreditsRepository implements IAiCreditsPlanReader {
         this.where({ linked_email: normalized }).orWhere({ email: normalized });
       })
       .andWhere({ active: true })
-      .orderBy('updated_at', 'desc')
       .select('payload');
   }
 
@@ -93,19 +96,18 @@ export class AiCreditsRepository implements IAiCreditsPlanReader {
       return null;
     }
 
-    const [passes, subscriptionRow] = await Promise.all([
+    const [passes, subscriptionRows] = await Promise.all([
       new UserPassRepository(this.database).findActivePasses(userId, now),
-      this.buildActiveSubscriptionQuery(user.email).first() as Promise<
-        { payload: unknown } | undefined
+      this.buildActiveSubscriptionQuery(user.email) as Promise<
+        Array<{ payload: unknown }>
       >,
     ]);
 
     return {
       passes,
-      subscription:
-        subscriptionRow != null
-          ? parseSubscriptionPayload(subscriptionRow.payload)
-          : null,
+      subscriptions: subscriptionRows.map((row) =>
+        parseSubscriptionPayload(row.payload)
+      ),
       patreon: user.patreon === true,
       ankifyAccess: user.ankify_access === true,
     };
