@@ -1,14 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PhotoToFlashcardsPage } from './PhotoToFlashcardsPage';
 import { prepareImageForVision } from '../../lib/image/prepareImageForVision';
 
-function renderPage() {
+function renderPage(
+  queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+) {
   return render(
-    <MemoryRouter>
-      <PhotoToFlashcardsPage />
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <PhotoToFlashcardsPage />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -306,6 +313,38 @@ describe('PhotoToFlashcardsPage', () => {
         )
       ).toBeTruthy();
     });
+  });
+
+  it('shows the out-of-credits message and refreshes the credits badge on 402', async () => {
+    setLocals({ paying: true });
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: 'ai_credits_exhausted',
+          message:
+            "You're out of AI credits. They come back when your allowance resets.",
+        }),
+        { status: 402, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    renderPage(queryClient);
+    const input = document.getElementById(
+      'photo-file-input'
+    ) as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [makePhoto()] } });
+    fireEvent.click(screen.getByText('Get cards'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/You're out of AI credits/)).toBeTruthy();
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['aiCredits'] });
   });
 
   it('shows the too-large message on 413', async () => {

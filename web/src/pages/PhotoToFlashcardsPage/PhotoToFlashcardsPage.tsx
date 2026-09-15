@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { AI_CREDITS_QUERY_KEY } from '../../lib/hooks/useAiCredits';
 import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
 import { track } from '../../lib/analytics/track';
 import styles from '../../styles/shared.module.css';
@@ -99,6 +101,7 @@ function validatePhoto(file: File): string | null {
 export function PhotoToFlashcardsPage() {
   const { t } = useTranslation('tools');
   const { data } = useUserLocals();
+  const queryClient = useQueryClient();
   const isPaying = isPayingUser(data?.locals);
 
   const [deckName, setDeckName] = useState('');
@@ -284,6 +287,11 @@ export function PhotoToFlashcardsPage() {
       if (body.code === 'no_ready_made_questions') {
         return { noQuestions: true };
       }
+      return { error: body.message ?? t('photo.genericReadError') };
+    }
+    if (res.status === 402) {
+      const body = (await res.json().catch(() => ({}))) as { message?: string };
+      queryClient.invalidateQueries({ queryKey: AI_CREDITS_QUERY_KEY });
       return { error: body.message ?? t('photo.genericReadError') };
     }
     if (!res.ok) {
