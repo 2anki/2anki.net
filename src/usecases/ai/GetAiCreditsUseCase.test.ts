@@ -6,11 +6,13 @@ const NOW = new Date('2026-05-12T12:00:00.000Z');
 
 const subscriberInputs: PlanInputs = {
   passes: [],
-  subscription: {
-    periodStart: new Date('2026-05-01T00:00:00.000Z'),
-    periodEnd: new Date('2026-06-01T00:00:00.000Z'),
-    unitAmount: 799,
-  },
+  subscriptions: [
+    {
+      periodStart: new Date('2026-05-01T00:00:00.000Z'),
+      periodEnd: new Date('2026-06-01T00:00:00.000Z'),
+      unitAmount: 799,
+    },
+  ],
   patreon: false,
   ankifyAccess: false,
 };
@@ -41,11 +43,13 @@ describe('GetAiCreditsUseCase', () => {
   it('serializes a null window end for a rolling (period-less) subscription', async () => {
     const rollingInputs: PlanInputs = {
       passes: [],
-      subscription: {
-        periodStart: null,
-        periodEnd: null,
-        unitAmount: 799,
-      },
+      subscriptions: [
+        {
+          periodStart: null,
+          periodEnd: null,
+          unitAmount: 799,
+        },
+      ],
       patreon: false,
       ankifyAccess: false,
     };

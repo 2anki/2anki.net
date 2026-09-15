@@ -8,10 +8,16 @@ vi.mock('../../../lib/hooks/useAiCredits', () => ({
   useAiCredits: vi.fn(),
 }));
 
+vi.mock('../utils/formatLongDate', () => ({
+  formatLongDate: vi.fn(() => 'a date'),
+}));
+
 import { useAiCredits } from '../../../lib/hooks/useAiCredits';
+import { formatLongDate } from '../utils/formatLongDate';
 import { AiCreditsAccountLine } from './AiCreditsAccountLine';
 
 const mockHook = vi.mocked(useAiCredits);
+const mockFormat = vi.mocked(formatLongDate);
 
 const state = (over: Partial<AiCreditsState>): AiCreditsState => ({
   credits: 180,
@@ -25,6 +31,8 @@ describe('AiCreditsAccountLine', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
     mockHook.mockReset();
+    mockFormat.mockClear();
+    mockFormat.mockReturnValue('a date');
   });
 
   it('renders nothing for a plan without an allowance', () => {
@@ -46,5 +54,23 @@ describe('AiCreditsAccountLine', () => {
     mockHook.mockReturnValue(state({ credits: 0 }));
     render(<AiCreditsAccountLine />);
     expect(screen.getByText('0 AI credits.')).toBeInTheDocument();
+  });
+
+  it('formats a calendar-month reset in UTC', () => {
+    mockHook.mockReturnValue(state({ resets: 'month' }));
+    render(<AiCreditsAccountLine />);
+    expect(mockFormat).toHaveBeenCalledWith(expect.any(Date), 'en', 'UTC');
+  });
+
+  it('formats a period reset in local time, not forced UTC', () => {
+    mockHook.mockReturnValue(state({ resets: 'period' }));
+    render(<AiCreditsAccountLine />);
+    expect(mockFormat).toHaveBeenCalledWith(expect.any(Date), 'en', undefined);
+  });
+
+  it('formats a pass reset in local time, not forced UTC', () => {
+    mockHook.mockReturnValue(state({ resets: 'pass' }));
+    render(<AiCreditsAccountLine />);
+    expect(mockFormat).toHaveBeenCalledWith(expect.any(Date), 'en', undefined);
   });
 });

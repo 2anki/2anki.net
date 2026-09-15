@@ -15,11 +15,14 @@ export function AiCreditsAccountLine() {
     return <p className={styles.planMeta}>{t('planZero')}</p>;
   }
 
+  // Only the calendar-month window ends on a UTC-midnight boundary, so format
+  // that one in UTC to avoid a day-early reset west of UTC. The period and pass
+  // windows carry the exact Stripe/pass timestamp, which is rendered in the
+  // user's local time.
+  const timeZone = credits.resets === 'month' ? 'UTC' : undefined;
   const validThrough =
     credits.windowEnd != null
-      ? // The window end is a UTC-midnight boundary; format it in UTC so a user
-        // west of UTC does not see the reset date a day early.
-        formatLongDate(new Date(credits.windowEnd), i18n.language, 'UTC')
+      ? formatLongDate(new Date(credits.windowEnd), i18n.language, timeZone)
       : null;
 
   return (
