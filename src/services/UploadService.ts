@@ -358,6 +358,62 @@ function walkMediaFiles(dir: string): string[] {
   return results;
 }
 
+async function runClaudeRestartFiles(
+  htmlFiles: string[],
+  mediaFiles: string[],
+  workspaceDir: string,
+  fallbackNames: Set<string>,
+  settings: CardOption | null,
+  generateOptions: Parameters<typeof generateDeckInfo>[7],
+  onProgress: (step: string) => Promise<void>
+): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
+  const deckInfoArrays: DeckInfo[][] = [];
+  let tripped = false;
+  for (const htmlFile of htmlFiles) {
+    const content = await fs.promises.readFile(htmlFile, 'utf8');
+    const options = matchesPdfImageFallback(
+      htmlFile,
+      workspaceDir,
+      fallbackNames
+    )
+      ? {
+          ...generateOptions,
+          pdfImageFallback: {
+            mediaBaseDir: workspaceDir,
+            attachPageImages: settings?.embedImages ?? true,
+          },
+        }
+      : generateOptions;
+    try {
+      deckInfoArrays.push(
+        await generateDeckInfo(
+          content,
+          mediaFiles,
+          settings?.userInstructions,
+          onProgress,
+          settings?.cardStyle || undefined,
+          settings?.cardSize,
+          settings?.fieldMapping,
+          options
+        )
+      );
+    } catch (error) {
+      if (error instanceof AiCreditsExhaustedError) {
+        console.info(
+          '[UploadService] Claude restart hit the credit guard mid-loop, shipping what was produced'
+        );
+        if (error instanceof AiCreditsTrippedWithSalvage) {
+          deckInfoArrays.push(error.salvagedDecks);
+        }
+        tripped = true;
+        break;
+      }
+      throw error;
+    }
+  }
+  return { deckInfoArrays, tripped };
+}
+
 // A restart of a PDF-image-fallback job re-reads the page images the original
 // conversion rendered into the workspace. The 2h tmp reaper can remove those
 // images while the workspace dir (and its restart-refreshed HTML) survives, so
@@ -842,54 +898,19 @@ class UploadService {
       conversionResultCache: getConversionResultCache(),
     };
 
-    const deckInfoArrays: DeckInfo[][] = [];
-    let creditGuardTripped = false;
-    for (const htmlFile of htmlFiles) {
-      const content = await fs.promises.readFile(htmlFile, 'utf8');
-      const options = matchesPdfImageFallback(
-        htmlFile,
-        workspaceDir,
-        fallbackNames
-      )
-        ? {
-            ...generateOptions,
-            pdfImageFallback: {
-              mediaBaseDir: workspaceDir,
-              attachPageImages: settings?.embedImages ?? true,
-            },
-          }
-        : generateOptions;
-      try {
-        deckInfoArrays.push(
-          await generateDeckInfo(
-            content,
-            mediaFiles,
-            settings?.userInstructions,
-            onProgress,
-            settings?.cardStyle || undefined,
-            settings?.cardSize,
-            settings?.fieldMapping,
-            options
-          )
-        );
-      } catch (error) {
-        if (error instanceof AiCreditsExhaustedError) {
-          console.info(
-            '[UploadService] Claude restart hit the credit guard mid-loop, shipping what was produced'
-          );
-          if (error instanceof AiCreditsTrippedWithSalvage) {
-            deckInfoArrays.push(error.salvagedDecks);
-          }
-          creditGuardTripped = true;
-          break;
-        }
-        throw error;
-      }
-    }
+    const { deckInfoArrays, tripped } = await runClaudeRestartFiles(
+      htmlFiles,
+      mediaFiles,
+      workspaceDir,
+      fallbackNames,
+      settings,
+      generateOptions,
+      onProgress
+    );
 
     const deckInfo = deckInfoArrays.flat().filter((d) => d.cards.length > 0);
     if (deckInfo.length === 0) {
-      throw creditGuardTripped
+      throw tripped
         ? new AiCreditsExhaustedError()
         : new Error('No packages produced');
     }

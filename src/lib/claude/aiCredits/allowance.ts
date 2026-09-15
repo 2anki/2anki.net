@@ -173,9 +173,7 @@ function subscriptionMonthlyWindow(
   // the clock (mirrors the pass path). Clone now so the returned window never
   // aliases the caller's Date instance.
   const windowStart =
-    anniversary.getTime() > now.getTime()
-      ? new Date(now.getTime())
-      : anniversary;
+    anniversary.getTime() > now.getTime() ? new Date(now) : anniversary;
   const nextAnniversary = addMonthsUtc(periodStart, months + 1);
   const windowEnd =
     nextAnniversary.getTime() < periodEnd.getTime()
