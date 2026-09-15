@@ -1,6 +1,27 @@
 import { parseTagsResponse, TagCardsUseCase } from './TagCardsUseCase';
 import { InMemoryChatMessagesRepository } from '../../data_layer/ChatMessagesRepository';
 
+jest.mock('../../lib/claude/aiSpendGuard', () => {
+  const actual = jest.requireActual('../../lib/claude/aiSpendGuard');
+  return {
+    ...actual,
+    withAiBudget: jest.fn(
+      (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
+    ),
+  };
+});
+
+import {
+  withAiBudget,
+  AiCreditsExhaustedError,
+} from '../../lib/claude/aiSpendGuard';
+
+const withAiBudgetMock = withAiBudget as jest.Mock;
+const runCallbackImpl = (
+  _userId: number | null | undefined,
+  run: () => Promise<unknown>
+) => run();
+
 describe('parseTagsResponse', () => {
   it('returns one normalized list per card', () => {
     const out = parseTagsResponse(
@@ -65,6 +86,20 @@ describe('TagCardsUseCase', () => {
     const useCase = new TagCardsUseCase(anthropic);
     const result = await useCase.execute({ cards: [] });
     expect(result).toEqual({ tags: [] });
+  });
+
+  it('refuses the tagging call when the reservation guard is exhausted', async () => {
+    const anthropic = makeAnthropic('[["geography"]]');
+    const create = (anthropic.messages as unknown as { create: jest.Mock })
+      .create;
+    withAiBudgetMock.mockRejectedValueOnce(new AiCreditsExhaustedError());
+    const useCase = new TagCardsUseCase(anthropic);
+
+    await expect(
+      useCase.execute({ cards: [{ front: 'q', back: 'a' }], userId: 7 })
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    expect(create).not.toHaveBeenCalled();
+    withAiBudgetMock.mockImplementation(runCallbackImpl);
   });
 
   it('calls Anthropic with haiku and returns parsed tags', async () => {

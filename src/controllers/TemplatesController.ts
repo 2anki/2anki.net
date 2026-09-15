@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 
 import { buildContentDisposition } from '../lib/buildContentDisposition';
-import { getOwner } from '../lib/User/getOwner';
+import { getOwner, getOwnerId } from '../lib/User/getOwner';
 import {
   AnkiNoteType,
   exportNoteTypeToApkg,
@@ -18,6 +18,7 @@ import {
   NoteTypeStarterInput,
 } from '../usecases/ai/AINoteTypeUseCase';
 import TemplatesService from '../services/TemplatesService';
+import { HttpCodedError } from '../lib/errors/HttpCodedError';
 
 const EMPTY_USER_PAYLOAD = { templates: [], hiddenIds: [] } as const;
 
@@ -156,12 +157,12 @@ class TemplatesController {
       return;
     }
     try {
-      const result = await this.aiUseCase.generate(
-        prompt,
-        Number(getOwner(res)) || null
-      );
+      const result = await this.aiUseCase.generate(prompt, getOwnerId(res));
       res.json(result);
     } catch (error) {
+      if (error instanceof HttpCodedError) {
+        throw error;
+      }
       console.error('AI generation failed:', error);
       res.status(500).json({ error: 'AI generation failed' });
     }
@@ -188,10 +189,13 @@ class TemplatesController {
         starter,
         instruction,
         history,
-        Number(getOwner(res)) || null
+        getOwnerId(res)
       );
       res.json(result);
     } catch (error) {
+      if (error instanceof HttpCodedError) {
+        throw error;
+      }
       console.error('AI modify failed:', error);
       res.status(500).json({ error: 'AI modify failed' });
     }

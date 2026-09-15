@@ -172,6 +172,7 @@ export async function aiModifyNoteType(
 }
 
 interface AiErrorBody {
+  message?: unknown;
   error?: unknown;
 }
 
@@ -182,6 +183,16 @@ function fallbackMessageFor(status: number): string {
   return "The change couldn't be applied. Try rephrasing your request.";
 }
 
+function serverMessageFrom(data: AiErrorBody): string | null {
+  if (typeof data.message === 'string' && data.message.length > 0) {
+    return data.message;
+  }
+  if (typeof data.error === 'string' && data.error.length > 0) {
+    return data.error;
+  }
+  return null;
+}
+
 async function aiError(response: Response): Promise<Error> {
   let data: AiErrorBody = {};
   try {
@@ -190,8 +201,6 @@ async function aiError(response: Response): Promise<Error> {
     // ignore
   }
   const message =
-    typeof data.error === 'string'
-      ? data.error
-      : fallbackMessageFor(response.status);
+    serverMessageFrom(data) ?? fallbackMessageFor(response.status);
   return new Error(message);
 }

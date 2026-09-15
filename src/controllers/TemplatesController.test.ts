@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 
 import TemplatesController from './TemplatesController';
+import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 
 jest.mock('../lib/templates/exportNoteTypeToApkg', () => ({
   exportNoteTypeToApkg: jest.fn(),
@@ -84,6 +85,22 @@ describe('TemplatesController.aiGenerate', () => {
     const res = buildRes();
     await controller.aiGenerate(buildReq({ prompt: 'hi' }), res);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it('rethrows the coded credit error for the ErrorHandler to map (402)', async () => {
+    const aiUseCase = {
+      generate: jest.fn().mockRejectedValue(new AiCreditsExhaustedError()),
+      modify: jest.fn(),
+    };
+    const controller = new TemplatesController(
+      buildService() as never,
+      aiUseCase as never
+    );
+    const res = buildRes();
+    await expect(
+      controller.aiGenerate(buildReq({ prompt: 'hi' }), res)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    expect(res.status).not.toHaveBeenCalledWith(500);
   });
 });
 

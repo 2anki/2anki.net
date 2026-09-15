@@ -1,0 +1,10 @@
+{
+  "left_one": "Te queda {{count}} crédito de IA.",
+  "left_other": "Te quedan {{count}} créditos de IA.",
+  "zero": "0 créditos de IA. Tu próximo mazo se creará sin IA hasta que se restablezcan tus créditos.",
+  "plan_one": "{{count}} crédito de IA.",
+  "plan_other": "{{count}} créditos de IA.",
+  "planValid_one": "{{count}} crédito de IA, válido hasta el {{date}}.",
+  "planValid_other": "{{count}} créditos de IA, válidos hasta el {{date}}.",
+  "planZero": "0 créditos de IA."
+}

@@ -483,6 +483,22 @@ describe('ChatPanel — add tags feedback', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/Tags added to/)).not.toBeInTheDocument();
   });
+
+  it('shows the calm credits notice, not an error, when tagging hits 402', async () => {
+    mockPost.mockResolvedValueOnce({
+      ok: false,
+      status: 402,
+      json: () => Promise.resolve({ code: 'ai_credits_exhausted' }),
+    });
+    renderChatPanel({ initialMessages: taggableMessages });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add tags' }));
+
+    expect(await screen.findByText(/out of AI credits/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText("Couldn't add tags. Try again.")
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe('ChatPanel — aria-live', () => {
@@ -637,6 +653,29 @@ describe('ChatPanel', () => {
         })
       ).toBeInTheDocument();
     });
+  });
+
+  it('shows a calm notice and refetches locals on ai_credits_exhausted', async () => {
+    mockPost.mockResolvedValueOnce(
+      makeSseResponse([
+        { event: 'error', data: { type: 'ai_credits_exhausted' } },
+      ])
+    );
+
+    renderChatPanel();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message input' }), {
+      target: { value: 'Help me' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+    await waitFor(() => {
+      expect(consentedLocals.refetch).toHaveBeenCalled();
+    });
+    const notice = await screen.findByText(/out of AI credits/i);
+    expect(notice).toBeInTheDocument();
+    expect(notice.tagName).toBe('OUTPUT');
+    expect(screen.getByRole('status')).toHaveTextContent(/out of AI credits/i);
   });
 
   it('swaps to the upgrade panel when the server answers 402', async () => {

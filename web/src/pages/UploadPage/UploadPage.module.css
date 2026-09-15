@@ -108,3 +108,43 @@
   color: var(--color-text-link-hover);
   text-decoration: underline;
 }
+
+/* ── AI credits readout (upload AI badge, "on" state) ── */
+
+@keyframes aiCreditsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.aiCreditsLine {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  animation: aiCreditsFadeIn 160ms ease-out;
+}
+
+.aiCreditsCount {
+  font-variant-numeric: tabular-nums;
+  transition: color 400ms ease;
+}
+
+.aiCreditsWarning {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-medium);
+  color: var(--color-warning-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aiCreditsLine,
+  .aiCreditsCount {
+    animation: none !important;
+    transition: none !important;
+  }
+}

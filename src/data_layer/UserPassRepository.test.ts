@@ -62,6 +62,52 @@ describe('InMemoryUserPassRepository', () => {
     });
   });
 
+  describe('findActivePasses', () => {
+    it('returns every active pass as a kind/expiry row, skipping expired ones', async () => {
+      const soon = new Date(NOW.getTime() + DURATION_24H);
+      const later = new Date(NOW.getTime() + DURATION_7D);
+      const expiredAt = new Date(NOW.getTime() - 1000);
+      repo.seed({
+        user_id: 1,
+        kind: '24h',
+        expires_at: soon,
+        stripe_payment_intent_id: 'pi_1',
+      });
+      repo.seed({
+        user_id: 1,
+        kind: '7d',
+        expires_at: later,
+        stripe_payment_intent_id: 'pi_2',
+      });
+      repo.seed({
+        user_id: 1,
+        kind: '24h',
+        expires_at: expiredAt,
+        stripe_payment_intent_id: 'pi_expired',
+      });
+
+      const rows = await repo.findActivePasses(1, NOW);
+
+      expect(rows).toEqual([
+        { kind: '24h', expiresAt: soon },
+        { kind: '7d', expiresAt: later },
+      ]);
+    });
+
+    it('does not return passes belonging to a different user', async () => {
+      repo.seed({
+        user_id: 2,
+        kind: '24h',
+        expires_at: new Date(NOW.getTime() + DURATION_24H),
+        stripe_payment_intent_id: 'pi_1',
+      });
+
+      const rows = await repo.findActivePasses(1, NOW);
+
+      expect(rows).toEqual([]);
+    });
+  });
+
   describe('existsByPaymentIntentId', () => {
     it('returns false when no pass matches the payment intent', async () => {
       const exists = await repo.existsByPaymentIntentId('pi_absent');

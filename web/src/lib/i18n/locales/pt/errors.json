@@ -104,6 +104,10 @@
     "zip_invalid": {
       "title": "Não foi possível ler este zip.",
       "detail": "Confira se é a exportação em Markdown & CSV do Notion, não a exportação em HTML."
+    },
+    "ai_credits_exhausted": {
+      "title": "Você ficou sem créditos de IA.",
+      "detail": "Os créditos de IA voltam quando sua franquia é redefinida. Desative os cartões do Claude para converter agora com o analisador padrão."
     }
   },
   "presenter": {

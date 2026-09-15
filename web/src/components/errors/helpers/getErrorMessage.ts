@@ -279,6 +279,11 @@ const UPLOAD_CODE_DEFAULTS: Partial<
     detail:
       "Make sure it's the Markdown & CSV export from Notion, not the HTML export.",
   },
+  ai_credits_exhausted: {
+    title: "You're out of AI credits.",
+    detail:
+      'AI credits come back when your allowance resets. Turn off Claude cards to convert now with the standard parser.',
+  },
 };
 
 function localizeUploadCode(

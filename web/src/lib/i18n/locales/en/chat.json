@@ -110,5 +110,6 @@
     "body": "Upgrade to make flashcards by chatting.",
     "keepReading": "Your past chats stay here to read.",
     "seePlans": "See plans"
-  }
+  },
+  "aiCreditsExhausted": "You're out of AI credits. They come back when your allowance resets."
 }

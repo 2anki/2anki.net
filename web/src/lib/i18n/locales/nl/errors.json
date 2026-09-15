@@ -104,6 +104,10 @@
     "zip_invalid": {
       "title": "Kon deze zip niet lezen.",
       "detail": "Zorg dat het de Markdown- & CSV-export uit Notion is, niet de HTML-export."
+    },
+    "ai_credits_exhausted": {
+      "title": "Je AI-credits zijn op.",
+      "detail": "AI-credits komen terug wanneer je tegoed wordt gereset. Schakel Claude-kaarten uit om nu met de standaardparser te converteren."
     }
   },
   "presenter": {

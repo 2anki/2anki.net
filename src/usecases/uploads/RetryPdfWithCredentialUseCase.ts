@@ -23,7 +23,8 @@ export class RetryPdfWithCredentialUseCase {
     credential: string,
     paying: boolean,
     settings: CardOption,
-    workspace: Workspace
+    workspace: Workspace,
+    userId: number | null = null
   ): Promise<RetryPdfOutcome> {
     try {
       const result = await PrepareDeck({
@@ -32,6 +33,7 @@ export class RetryPdfWithCredentialUseCase {
         settings,
         noLimits: paying,
         workspace,
+        userId,
         pdfCredential: credential,
       });
 

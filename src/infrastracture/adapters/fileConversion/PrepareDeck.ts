@@ -28,12 +28,18 @@ import {
   PdfHtmlImage,
 } from './convertPdfTextToHtml';
 import { extractPdfImages } from '../../../lib/pdf/extractPdfImages';
+import {
+  AiCreditsExhaustedError,
+  getAiBudgetStatus,
+} from '../../../lib/claude/aiSpendGuard';
+import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 import { buildPdfPasswordSentinel } from '../../../lib/pdf/pdfPasswordSentinel';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
 import { convertDocxToHTML } from './convertDocxToHTML';
 import { createWorkspaceDocxImageMediaSink } from './docxImageMediaSink';
 import {
   generateDeckInfo,
+  AiCreditsTrippedWithSalvage,
   DeckInfo,
   CrossFileDedupState,
   createCrossFileDedupState,
@@ -185,9 +191,43 @@ export function parserWarning(parser: {
   return undefined;
 }
 
+// Shared across a single upload's file conversions. `exhausted` is the
+// start-of-conversion pre-check verdict (at zero → skip the AI vision branches
+// from the start); `tripped` is set when the always-on per-call guard fires
+// mid-run so the caller attaches the credits warning. Both drive the same
+// warning code — the deck ships, the job never fails.
+interface AiConversionState {
+  exhausted: boolean;
+  tripped: boolean;
+}
+
+// A mid-run guard trip inside a vision/quiz conversion skips that file and flags
+// the credits warning rather than failing the whole upload; any other error
+// propagates.
+async function runVisionConversion(
+  ai: AiConversionState,
+  produce: () => Promise<ConvertedFile>
+): Promise<ConvertedFile | null> {
+  try {
+    return await produce();
+  } catch (error) {
+    if (error instanceof AiCreditsExhaustedError) {
+      ai.tripped = true;
+      return null;
+    }
+    throw error;
+  }
+}
+
+// The start-of-conversion pre-check decided the early fallback: when exhausted,
+// the AI vision branches are skipped and the file goes to the standard parser.
+// The per-call guard inside every Claude call is never disabled, so a mid-job
+// balance dip trips it; the vision/quiz branches catch that, skip the file, and
+// flag the credits warning rather than failing the whole conversion.
 async function convertFile(
   file: DeckParserInput['files'][number],
-  input: DeckParserInput
+  input: DeckParserInput,
+  ai: AiConversionState
 ): Promise<ConvertedFile | null> {
   if (!file.contents) return null;
 
@@ -247,20 +287,23 @@ async function convertFile(
   if (
     isImageFile(file.name) &&
     input.settings.imageQuizHtmlToAnki &&
-    input.noLimits
+    input.noLimits &&
+    !ai.exhausted
   ) {
-    const result = {
-      name: `${file.name}.html`,
-      contents: await convertImageToHTML(
-        file.contents?.toString('base64'),
-        input.userId ?? null
-      ),
-    };
-    console.log('[PrepareDeck] convertFile image', {
-      file: file.name,
-      durationMs: Date.now() - t0,
+    return runVisionConversion(ai, async () => {
+      const result = {
+        name: `${file.name}.html`,
+        contents: await convertImageToHTML(
+          (file.contents as Buffer).toString('base64'),
+          input.userId ?? null
+        ),
+      };
+      console.log('[PrepareDeck] convertFile image', {
+        file: file.name,
+        durationMs: Date.now() - t0,
+      });
+      return result;
     });
-    return result;
   }
 
   if (!isPDFFile(file.name) && !isPPTFile(file.name)) return null;
@@ -269,23 +312,26 @@ async function convertFile(
     isPDFFile(file.name) &&
     input.noLimits &&
     input.settings.vertexAIPDFQuestions &&
-    input.settings.processPDFs !== false
+    input.settings.processPDFs !== false &&
+    !ai.exhausted
   ) {
-    const result = {
-      name: `${file.name}.html`,
-      contents: Buffer.from(
-        await convertPDFToHTML(
-          (file.contents as Buffer).toString('base64'),
-          input.settings.userInstructions,
-          input.userId ?? null
-        )
-      ),
-    };
-    console.log('[PrepareDeck] convertFile pdf→html (vertex)', {
-      file: file.name,
-      durationMs: Date.now() - t0,
+    return runVisionConversion(ai, async () => {
+      const result = {
+        name: `${file.name}.html`,
+        contents: Buffer.from(
+          await convertPDFToHTML(
+            (file.contents as Buffer).toString('base64'),
+            input.settings.userInstructions,
+            input.userId ?? null
+          )
+        ),
+      };
+      console.log('[PrepareDeck] convertFile pdf→html (vertex)', {
+        file: file.name,
+        durationMs: Date.now() - t0,
+      });
+      return result;
     });
-    return result;
   }
 
   if (isPPTFile(file.name)) {
@@ -510,6 +556,86 @@ interface ClaudeConversionResult {
   deckInfoArrays: DeckInfo[][];
   crossFileDedup: CrossFileDedupState | undefined;
   ownsDedup: boolean;
+  // The credit guard tripped mid-run; the caller ships the cards produced so
+  // far and attaches the credits warning.
+  tripped: boolean;
+}
+
+// The per-call guard can trip mid-run when a concurrent conversion drains the
+// balance. When it does, stop issuing Claude calls and ship the cards produced
+// so far — the deck carries a credits warning and the job never fails. There is
+// no standard-parser recovery of the untouched files: a partial AI deck with a
+// warning beats mixing two engines' output in one deck.
+function salvagedDecksOf(error: AiCreditsExhaustedError): DeckInfo[] {
+  return error instanceof AiCreditsTrippedWithSalvage
+    ? error.salvagedDecks
+    : [];
+}
+
+async function runCrossFileDedupConversion(
+  htmlFiles: DeckParserInput['files'],
+  generateForFile: (
+    file: DeckParserInput['files'][number],
+    instructions?: string
+  ) => Promise<DeckInfo[]>,
+  userInstructions: string | undefined,
+  cardSize: string | undefined,
+  crossFileDedup: CrossFileDedupState
+): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
+  const deckInfoArrays: DeckInfo[][] = [];
+  let tripped = false;
+  for (const file of htmlFiles) {
+    if (tripped) break;
+    const instructions = composeCrossFileInstructions(
+      crossFileDedup.fronts,
+      userInstructions,
+      cardSize
+    );
+    try {
+      const decks = await generateForFile(file, instructions);
+      deckInfoArrays.push(absorbFileIntoCrossFileDedup(crossFileDedup, decks));
+    } catch (error) {
+      if (error instanceof AiCreditsExhaustedError) {
+        deckInfoArrays.push(
+          absorbFileIntoCrossFileDedup(crossFileDedup, salvagedDecksOf(error))
+        );
+        tripped = true;
+        break;
+      }
+      throw error;
+    }
+  }
+  return { deckInfoArrays, tripped };
+}
+
+async function runConcurrentClaudeConversion(
+  htmlFiles: DeckParserInput['files'],
+  generateForFile: (
+    file: DeckParserInput['files'][number],
+    instructions?: string
+  ) => Promise<DeckInfo[]>,
+  userInstructions: string | undefined
+): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
+  let tripped = false;
+  const perFile = await mapWithConcurrency(
+    htmlFiles,
+    HTML_GENERATION_CONCURRENCY,
+    async (file) => {
+      if (tripped) {
+        return [] as DeckInfo[];
+      }
+      try {
+        return await generateForFile(file, userInstructions);
+      } catch (error) {
+        if (error instanceof AiCreditsExhaustedError) {
+          tripped = true;
+          return salvagedDecksOf(error);
+        }
+        throw error;
+      }
+    }
+  );
+  return { deckInfoArrays: perFile, tripped };
 }
 
 async function runClaudeConversion(
@@ -526,26 +652,21 @@ async function runClaudeConversion(
   const crossFileDedup =
     threadedDedup ?? (ownsDedup ? createCrossFileDedupState() : undefined);
 
-  if (crossFileDedup) {
-    const deckInfoArrays: DeckInfo[][] = [];
-    for (const file of htmlFiles) {
-      const instructions = composeCrossFileInstructions(
-        crossFileDedup.fronts,
+  const { deckInfoArrays, tripped } = crossFileDedup
+    ? await runCrossFileDedupConversion(
+        htmlFiles,
+        generateForFile,
         userInstructions,
-        cardSize
+        cardSize,
+        crossFileDedup
+      )
+    : await runConcurrentClaudeConversion(
+        htmlFiles,
+        generateForFile,
+        userInstructions
       );
-      const decks = await generateForFile(file, instructions);
-      deckInfoArrays.push(absorbFileIntoCrossFileDedup(crossFileDedup, decks));
-    }
-    return { deckInfoArrays, crossFileDedup, ownsDedup };
-  }
 
-  const deckInfoArrays = await mapWithConcurrency(
-    htmlFiles,
-    HTML_GENERATION_CONCURRENCY,
-    (file) => generateForFile(file, userInstructions)
-  );
-  return { deckInfoArrays, crossFileDedup, ownsDedup };
+  return { deckInfoArrays, crossFileDedup, ownsDedup, tripped };
 }
 
 function emitCrossFileConversionEvent(
@@ -561,6 +682,88 @@ function emitCrossFileConversionEvent(
       cross_file_duplicates_suppressed: state.suppressed,
     },
   });
+}
+
+// The standard-parser build, shared by the non-AI branch and the AI branch's
+// zero-card fallback. Any aiWarning (an at-zero pre-check or a mid-run trip)
+// rides along so the user still learns the deck was built without AI.
+async function buildParserResult(
+  input: DeckParserInput,
+  allFiles: DeckParserInput['files'],
+  convertedFiles: ConvertedFile[],
+  aiWarning: string | undefined
+): Promise<PrepareDeckResult> {
+  const parser = newDeckParser(input, allFiles);
+
+  if (parser.totalCardCount() === 0) {
+    if (convertedFiles.length > 0) {
+      const htmlFile = convertedFiles.find((file) => isHTMLFile(file.name));
+      parser.processFirstFile(htmlFile?.name ?? input.name);
+    } else {
+      const apkg = await parser.tryExperimental();
+      return {
+        name: getDeckFilename(parser.name ?? input.name),
+        apkg,
+        deck: parser.payload,
+        cardCount: parser.totalCardCount(),
+        mcqCount: 0,
+        mcqSkippedCount: 0,
+        warning: aiWarning ?? parserWarning(parser),
+        droppedImageCount: parser.droppedImageCount,
+        expiredNotionImageCount: parser.expiredNotionImageCount,
+        emptyBackCount: parser.emptyBackCount,
+        // This is the branch a document takes when nothing recognised it, so it
+        // is exactly the population a rescue has to clear. Without a score here
+        // the corpus is made only of successes, and a floor calibrated on
+        // successes cannot judge a failure.
+        engine: 'parser',
+        score: scoreCandidateDeck(
+          parser.payload.flatMap((deck) => deck.cards),
+          allFiles.reduce(
+            (sum, f) => sum + (f.size ?? f.contents?.length ?? 0),
+            0
+          )
+        ),
+        inducedRule: shippedInducedRule(
+          parser.inducedRule,
+          parser.totalCardCount()
+        ),
+        guidEntries: parser.issuedGuidEntries,
+        uploadIdentityStats: uploadIdentityStatsFor(input, parser),
+      };
+    }
+  }
+
+  const mcqCount = parser.payload.reduce((sum, d) => sum + d.mcqCount, 0);
+  const mcqSkippedCount = parser.payload.reduce(
+    (sum, d) => sum + d.mcqSkippedCount,
+    0
+  );
+  const apkg = await parser.build(input.workspace);
+  return {
+    name: getDeckFilename(parser.name),
+    apkg,
+    deck: parser.payload,
+    cardCount: parser.totalCardCount(),
+    mcqCount,
+    mcqSkippedCount,
+    warning: aiWarning ?? parserWarning(parser),
+    droppedImageCount: parser.droppedImageCount,
+    expiredNotionImageCount: parser.expiredNotionImageCount,
+    emptyBackCount: parser.emptyBackCount,
+    parsePath: parser.parsePathSignature(),
+    engine: 'parser',
+    score: scoreCandidateDeck(
+      parser.payload.flatMap((deck) => deck.cards),
+      allFiles.reduce((sum, f) => sum + (f.size ?? f.contents?.length ?? 0), 0)
+    ),
+    inducedRule: shippedInducedRule(
+      parser.inducedRule,
+      parser.totalCardCount()
+    ),
+    guidEntries: parser.issuedGuidEntries,
+    uploadIdentityStats: uploadIdentityStatsFor(input, parser),
+  };
 }
 
 async function buildClaudeDeck(
@@ -668,7 +871,7 @@ async function buildClaudeDeck(
       optionsForFile(f)
     );
 
-  const { deckInfoArrays, crossFileDedup, ownsDedup } =
+  const { deckInfoArrays, crossFileDedup, ownsDedup, tripped } =
     await runClaudeConversion(
       htmlFiles,
       generateForFile,
@@ -681,7 +884,7 @@ async function buildClaudeDeck(
     emitCrossFileConversionEvent(input.userId ?? null, crossFileDedup);
   }
 
-  const deckInfo = deckInfoArrays.flatMap((decks, i) => {
+  const aiDecks = deckInfoArrays.flatMap((decks, i) => {
     const prefix = deckPrefixFromFilePath(htmlFiles[i].name);
     return decks
       .filter((d) => d.cards.length > 0)
@@ -690,6 +893,20 @@ async function buildClaudeDeck(
         name: prefix ? `${prefix}::${d.name}` : d.name,
       }));
   });
+
+  // The credit guard tripped mid-run: ship the cards produced so far and flag
+  // the credits warning. No standard-parser recovery of the untouched files —
+  // a partial AI deck with a warning beats mixing engines in one deck.
+  const creditsWarning = tripped
+    ? AI_CREDITS_EXHAUSTED_WARNING_CODE
+    : undefined;
+  if (tripped) {
+    console.info(
+      '[PrepareDeck] Claude branch: credit guard tripped, shipping produced cards'
+    );
+  }
+
+  const deckInfo = aiDecks as unknown as Deck[];
   console.log('[PrepareDeck] Claude branch: generateDeckInfo done', {
     durationMs: Date.now() - tClaude,
     htmlFilesProcessed: htmlFiles.length,
@@ -697,20 +914,29 @@ async function buildClaudeDeck(
     totalCards: deckInfo.reduce((sum, d) => sum + d.cards.length, 0),
   });
 
-  // A file whose cards were all covered by earlier files of the same upload
-  // has nothing left to export. Running the Python exporter on an empty deck
-  // throws PythonZeroCardsError, which — with no per-file catch in the worker
-  // loop — would fail the whole upload and discard the earlier files' decks.
-  // Return no deck instead; the earlier files carry the upload.
-  if (crossFileDedup && deckInfo.length === 0) {
-    console.info(
-      '[PrepareDeck] Claude branch: file fully covered by earlier files',
-      {
-        suppressed: crossFileDedup.suppressed,
-        filesProcessed: crossFileDedup.filesProcessed,
-      }
-    );
-    return undefined;
+  // An empty AI deck must never reach the Python exporter — a zero-card deck
+  // throws PythonZeroCardsError and fails the whole upload.
+  if (deckInfo.length === 0) {
+    // In a multi-file upload a later file whose cards were all covered by
+    // earlier files has nothing of its own to export; drop it and let the
+    // earlier files carry the upload.
+    if (crossFileDedup && !tripped) {
+      console.info(
+        '[PrepareDeck] Claude branch: file fully covered by earlier files',
+        {
+          suppressed: crossFileDedup.suppressed,
+          filesProcessed: crossFileDedup.filesProcessed,
+        }
+      );
+      return undefined;
+    }
+    // A single-file upload whose only chunk tripped mid-run (or an AI pass that
+    // produced nothing) falls back to the standard parser and carries the
+    // credits warning, so the upload degrades gracefully instead of crashing.
+    console.info('[PrepareDeck] Claude branch: no AI cards, parser fallback', {
+      tripped,
+    });
+    return buildParserResult(input, allFiles, convertedFiles, creditsWarning);
   }
 
   const deckName =
@@ -718,7 +944,7 @@ async function buildClaudeDeck(
       ? deckInfo[0].name
       : (input.name ?? deckInfo[0]?.name ?? 'Untitled Deck');
   const exporter = new CustomExporter(deckName, input.workspace.location);
-  exporter.configure(deckInfo as unknown as Deck[]);
+  exporter.configure(deckInfo);
   const tExport = Date.now();
   const apkg = await exporter.save();
   const claudeCardCount = deckInfo.reduce((sum, d) => sum + d.cards.length, 0);
@@ -733,6 +959,7 @@ async function buildClaudeDeck(
     apkg,
     deck: [],
     cardCount: claudeCardCount,
+    warning: creditsWarning,
     // The Claude branch returns deck: [], so a caller that scores from `deck`
     // measures nothing on every AI conversion. Scored here, where the cards
     // still exist.
@@ -752,6 +979,60 @@ async function buildClaudeDeck(
   };
 }
 
+// Whether this upload's actual files will reach Claude, not merely whether an
+// AI toggle is persisted on the account. claudeAIFlashcards routes every file
+// through the AI branch; the vision toggles only reach Claude when a matching
+// file type is present. Gating the pre-check on this keeps a plain
+// markdown/HTML upload from getting a false "built without AI" credits notice
+// when a PDF/image toggle happens to be left on.
+export function conversionInvokesAi(
+  settings: DeckParserInput['settings'],
+  files: DeckParserInput['files']
+): boolean {
+  if (settings.claudeAIFlashcards) {
+    return true;
+  }
+  if (
+    settings.imageQuizHtmlToAnki &&
+    files.some((file) => isImageFile(file.name))
+  ) {
+    return true;
+  }
+  if (
+    settings.vertexAIPDFQuestions &&
+    settings.processPDFs !== false &&
+    files.some((file) => isPDFFile(file.name))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+interface ResolvedAiGate {
+  exhausted: boolean;
+  warning?: string;
+}
+
+// The start-of-conversion pre-check is one question: is the balance already at
+// zero for a conversion that will actually invoke Claude. If so the deck builds
+// with the standard parser and carries the credits warning; otherwise the
+// conversion proceeds and the always-on per-call guard catches any mid-run dip.
+// No cost estimate — the guard is the safety net.
+async function resolveAiConversionGate(
+  input: DeckParserInput,
+  files: DeckParserInput['files']
+): Promise<ResolvedAiGate> {
+  const willInvokeAi =
+    input.noLimits && conversionInvokesAi(input.settings, files);
+  if (willInvokeAi) {
+    const status = await getAiBudgetStatus(input.userId ?? null);
+    if (status.exhausted) {
+      return { exhausted: true, warning: AI_CREDITS_EXHAUSTED_WARNING_CODE };
+    }
+  }
+  return { exhausted: false };
+}
+
 export async function PrepareDeck(
   input: DeckParserInput
 ): Promise<PrepareDeckResult | undefined> {
@@ -769,11 +1050,23 @@ export async function PrepareDeck(
     noLimits: input.noLimits,
   });
 
+  const aiGate = await resolveAiConversionGate(input, files);
+  const aiCreditsExhausted = aiGate.exhausted;
+  if (aiCreditsExhausted) {
+    console.info('[PrepareDeck] AI credits exhausted, building without AI', {
+      name: logFileLabel(input.name),
+    });
+  }
+  const ai: AiConversionState = {
+    exhausted: aiCreditsExhausted,
+    tripped: false,
+  };
+
   const tConvert = Date.now();
   const results = await mapWithConcurrency(
     files,
     FILE_CONVERSION_CONCURRENCY,
-    (file) => convertFile(file, input)
+    (file) => convertFile(file, input, ai)
   );
   const convertedFiles = results.flatMap((r) => (r ? [r] : []));
   console.log('[PrepareDeck] file conversions done', {
@@ -787,7 +1080,11 @@ export async function PrepareDeck(
 
   const allFiles = assembleParserFiles(files, convertedFiles);
 
-  if (input.settings.claudeAIFlashcards && input.noLimits) {
+  if (
+    input.settings.claudeAIFlashcards &&
+    input.noLimits &&
+    !aiCreditsExhausted
+  ) {
     return buildClaudeDeck(
       input,
       allFiles,
@@ -797,77 +1094,13 @@ export async function PrepareDeck(
     );
   }
 
-  const parser = newDeckParser(input, allFiles);
+  // At-zero pre-check or a mid-run vision-branch trip both fall back to the
+  // parser carrying the credits warning.
+  const aiWarning =
+    aiGate.warning ??
+    (ai.tripped ? AI_CREDITS_EXHAUSTED_WARNING_CODE : undefined);
 
-  if (parser.totalCardCount() === 0) {
-    if (convertedFiles.length > 0) {
-      const htmlFile = convertedFiles.find((file) => isHTMLFile(file.name));
-      parser.processFirstFile(htmlFile?.name ?? input.name);
-    } else {
-      const apkg = await parser.tryExperimental();
-      return {
-        name: getDeckFilename(parser.name ?? input.name),
-        apkg,
-        deck: parser.payload,
-        cardCount: parser.totalCardCount(),
-        mcqCount: 0,
-        mcqSkippedCount: 0,
-        warning: parserWarning(parser),
-        droppedImageCount: parser.droppedImageCount,
-        expiredNotionImageCount: parser.expiredNotionImageCount,
-        emptyBackCount: parser.emptyBackCount,
-        // This is the branch a document takes when nothing recognised it, so it
-        // is exactly the population a rescue has to clear. Without a score here
-        // the corpus is made only of successes, and a floor calibrated on
-        // successes cannot judge a failure.
-        engine: 'parser',
-        score: scoreCandidateDeck(
-          parser.payload.flatMap((deck) => deck.cards),
-          allFiles.reduce(
-            (sum, f) => sum + (f.size ?? f.contents?.length ?? 0),
-            0
-          )
-        ),
-        inducedRule: shippedInducedRule(
-          parser.inducedRule,
-          parser.totalCardCount()
-        ),
-        guidEntries: parser.issuedGuidEntries,
-        uploadIdentityStats: uploadIdentityStatsFor(input, parser),
-      };
-    }
-  }
-
-  const mcqCount = parser.payload.reduce((sum, d) => sum + d.mcqCount, 0);
-  const mcqSkippedCount = parser.payload.reduce(
-    (sum, d) => sum + d.mcqSkippedCount,
-    0
-  );
-  const apkg = await parser.build(input.workspace);
-  return {
-    name: getDeckFilename(parser.name),
-    apkg,
-    deck: parser.payload,
-    cardCount: parser.totalCardCount(),
-    mcqCount,
-    mcqSkippedCount,
-    warning: parserWarning(parser),
-    droppedImageCount: parser.droppedImageCount,
-    expiredNotionImageCount: parser.expiredNotionImageCount,
-    emptyBackCount: parser.emptyBackCount,
-    parsePath: parser.parsePathSignature(),
-    engine: 'parser',
-    score: scoreCandidateDeck(
-      parser.payload.flatMap((deck) => deck.cards),
-      allFiles.reduce((sum, f) => sum + (f.size ?? f.contents?.length ?? 0), 0)
-    ),
-    inducedRule: shippedInducedRule(
-      parser.inducedRule,
-      parser.totalCardCount()
-    ),
-    guidEntries: parser.issuedGuidEntries,
-    uploadIdentityStats: uploadIdentityStatsFor(input, parser),
-  };
+  return buildParserResult(input, allFiles, convertedFiles, aiWarning);
 }
 
 export interface DeckInfoOnlyResult {
@@ -898,13 +1131,21 @@ export async function prepareDeckInfoOnly(
   outputWorkspace: Workspace
 ): Promise<DeckInfoOnlyResult> {
   const files = dedupeFilesByName(input.files);
+  const aiGate = await resolveAiConversionGate(input, files);
+  const ai: AiConversionState = {
+    exhausted: aiGate.exhausted,
+    tripped: false,
+  };
   const results = await mapWithConcurrency(
     files,
     FILE_CONVERSION_CONCURRENCY,
-    (file) => convertFile(file, input)
+    (file) => convertFile(file, input, ai)
   );
   const convertedFiles = results.flatMap((r) => (r ? [r] : []));
   const allFiles = assembleParserFiles(files, convertedFiles);
+  const aiWarning =
+    aiGate.warning ??
+    (ai.tripped ? AI_CREDITS_EXHAUSTED_WARNING_CODE : undefined);
 
   const parser = newDeckParser(input, allFiles);
 
@@ -922,7 +1163,7 @@ export async function prepareDeckInfoOnly(
         cardCount: 0,
         mcqCount: 0,
         mcqSkippedCount: 0,
-        warning: parserWarning(parser),
+        warning: aiWarning ?? parserWarning(parser),
         droppedImageCount: parser.droppedImageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
@@ -952,7 +1193,7 @@ export async function prepareDeckInfoOnly(
     cardCount: parser.totalCardCount(),
     mcqCount,
     mcqSkippedCount,
-    warning: parserWarning(parser),
+    warning: aiWarning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,

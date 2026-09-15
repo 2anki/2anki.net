@@ -12,6 +12,7 @@ import { CancellationReason } from './cancellationReasons';
 import { ClaimSubscription } from './ClaimSubscription';
 import styles from '../AccountPage.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
+import { formatLongDate } from '../utils/formatLongDate';
 
 type CancellationReasonInput = CancellationReason | '';
 
@@ -52,11 +53,7 @@ const canRenderSubscriptionSection = (locals: LocalsData): boolean =>
 
 const formatDate = (seconds: number | null, unknownLabel: string): string => {
   if (!seconds) return unknownLabel;
-  return new Date(seconds * 1000).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  return formatLongDate(new Date(seconds * 1000));
 };
 
 const V2_MONTHLY_AMOUNT = 799;

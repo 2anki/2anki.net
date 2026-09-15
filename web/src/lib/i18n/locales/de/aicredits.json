@@ -1,0 +1,10 @@
+{
+  "left_one": "Noch {{count}} KI-Credit übrig.",
+  "left_other": "Noch {{count}} KI-Credits übrig.",
+  "zero": "0 KI-Credits übrig. Dein nächstes Deck wird ohne KI erstellt, bis deine Credits zurückgesetzt werden.",
+  "plan_one": "{{count}} KI-Credit.",
+  "plan_other": "{{count}} KI-Credits.",
+  "planValid_one": "{{count}} KI-Credit, gültig bis {{date}}.",
+  "planValid_other": "{{count}} KI-Credits, gültig bis {{date}}.",
+  "planZero": "0 KI-Credits."
+}

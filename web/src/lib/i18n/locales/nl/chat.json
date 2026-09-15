@@ -110,5 +110,6 @@
     "body": "Upgrade om flashcards te maken via de chat.",
     "keepReading": "Je eerdere chats blijven hier leesbaar.",
     "seePlans": "Bekijk abonnementen"
-  }
+  },
+  "aiCreditsExhausted": "Je AI-credits zijn op. Ze komen terug wanneer je tegoed wordt gereset."
 }

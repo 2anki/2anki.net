@@ -106,6 +106,7 @@ export const KNOWN_EVENTS = new Set([
   'pass_account_email_autolinked',
   'email_change_requested',
   'email_change_confirmed',
+  'ai_credits_exhausted',
 ] as const);
 
 export type KnownEvent = typeof KNOWN_EVENTS extends Set<infer T> ? T : never;

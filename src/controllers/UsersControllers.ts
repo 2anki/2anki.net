@@ -33,6 +33,10 @@ import {
   MagicLinkSuppressedError,
 } from '../services/UsersService';
 import { MONTHLY_CARD_LIMIT } from '../lib/limits';
+import {
+  GetAiCreditsUseCase,
+  createAiCreditReaders,
+} from '../usecases/ai/GetAiCreditsUseCase';
 import UsersRepository from '../data_layer/UsersRepository';
 import OauthIdentitiesRepository from '../data_layer/OauthIdentitiesRepository';
 import { UsersId } from '../data_layer/public/Users';
@@ -43,6 +47,7 @@ import { extractCountryFromRequest } from '../lib/http/extractCountryFromRequest
 import { RecordUserVisibleErrorUseCase } from '../usecases/observability/RecordUserVisibleErrorUseCase';
 import { mapEntitlement } from './helpers/mapEntitlement';
 import { hasAnkifyAccess } from '../lib/ankify/access';
+import { getOwnerId } from '../lib/User/getOwner';
 import EmailChangeTokenRepository from '../data_layer/EmailChangeTokenRepository';
 import { RequestEmailChangeUseCase } from '../usecases/users/RequestEmailChangeUseCase';
 import { ConfirmEmailChangeUseCase } from '../usecases/users/ConfirmEmailChangeUseCase';
@@ -652,6 +657,22 @@ class UsersController {
       console.info('Get card usage failed');
       console.error(error);
       return res.status(500).json({ message: 'Failed to load card usage' });
+    }
+  }
+
+  async getAiCredits(_req: express.Request, res: express.Response) {
+    const ownerId = getOwnerId(res);
+    if (ownerId == null) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    try {
+      const useCase = new GetAiCreditsUseCase(createAiCreditReaders(this.db));
+      const result = await useCase.execute(ownerId);
+      return res.status(200).json(result);
+    } catch (error) {
+      console.info('Get AI credits failed');
+      console.error(error);
+      return res.status(500).json({ message: 'Failed to load AI credits' });
     }
   }
 

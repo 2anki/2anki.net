@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import styles from '../AccountPage.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
 import { PauseMonths } from '../../../lib/backend/pauseSubscription';
+import { formatLongDate } from '../utils/formatLongDate';
 
 const PAUSE_LENGTHS: PauseMonths[] = [1, 2, 3];
 
@@ -12,12 +13,7 @@ const addMonths = (from: Date, months: number): Date => {
   return next;
 };
 
-const formatDate = (date: Date): string =>
-  date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+const formatDate = (date: Date): string => formatLongDate(date);
 
 interface PauseCardProps {
   readonly planLabel: string | null;

@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import { ActivePassRow } from '../lib/claude/aiCredits/allowance';
 
 export type PassKind = '24h' | '7d' | '120d' | 'unlimited';
 
@@ -19,6 +20,7 @@ export interface UserPassWindowRow {
 
 export interface IUserPassRepository {
   findActive(userId: number, now: Date): Promise<UserPass | null>;
+  findActivePasses(userId: number, now: Date): Promise<ActivePassRow[]>;
   upsertWithExtension(
     userId: number,
     kind: PassKind,
@@ -67,6 +69,20 @@ export class UserPassRepository implements IUserPassRepository {
       .orderBy('expires_at', 'desc')
       .first();
     return row ? toUserPass(row) : null;
+  }
+
+  async findActivePasses(userId: number, now: Date): Promise<ActivePassRow[]> {
+    const rows = await this.database<UserPassRow>(this.table)
+      .where('user_id', userId)
+      .where('expires_at', '>', now)
+      .select('kind', 'expires_at');
+    return rows.map((row) => ({
+      kind: row.kind,
+      expiresAt:
+        row.expires_at instanceof Date
+          ? row.expires_at
+          : new Date(row.expires_at),
+    }));
   }
 
   async existsByPaymentIntentId(paymentIntentId: string): Promise<boolean> {
@@ -193,6 +209,12 @@ export class InMemoryUserPassRepository implements IUserPassRepository {
       .filter((r) => r.user_id === userId && r.expires_at > now)
       .sort((a, b) => b.expires_at.getTime() - a.expires_at.getTime());
     return active[0] ?? null;
+  }
+
+  async findActivePasses(userId: number, now: Date): Promise<ActivePassRow[]> {
+    return this.rows
+      .filter((r) => r.user_id === userId && r.expires_at > now)
+      .map((r) => ({ kind: r.kind, expiresAt: r.expires_at }));
   }
 
   async existsByPaymentIntentId(paymentIntentId: string): Promise<boolean> {

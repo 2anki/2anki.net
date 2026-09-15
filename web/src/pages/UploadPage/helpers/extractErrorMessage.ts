@@ -17,6 +17,7 @@ function isValidCode(value: unknown): value is UploadErrorCode {
     value === 'password_protected_pdf' ||
     value === 'empty_export' ||
     value === 'image_only_no_text' ||
+    value === 'ai_credits_exhausted' ||
     value === 'unknown'
   );
 }

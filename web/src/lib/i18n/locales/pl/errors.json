@@ -104,6 +104,10 @@
     "zip_invalid": {
       "title": "Nie udało się odczytać tego pliku zip.",
       "detail": "Upewnij się, że to eksport Markdown i CSV z Notion, a nie eksport HTML."
+    },
+    "ai_credits_exhausted": {
+      "title": "Skończyły Ci się kredyty AI.",
+      "detail": "Kredyty AI wracają, gdy Twój limit się odnowi. Wyłącz karty Claude, aby przekonwertować teraz standardowym parserem."
     }
   },
   "presenter": {

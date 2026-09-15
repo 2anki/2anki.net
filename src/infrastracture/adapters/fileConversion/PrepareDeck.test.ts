@@ -1,5 +1,12 @@
-import { PrepareDeck, parserWarning, prepareDeckInfoOnly } from './PrepareDeck';
+import {
+  PrepareDeck,
+  parserWarning,
+  prepareDeckInfoOnly,
+  conversionInvokesAi,
+} from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
+import { AiCreditsExhaustedError } from '../../../lib/claude/aiSpendGuard';
+import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 
 jest.mock('../../../lib/claude/ClaudeService', () => {
   const actual = jest.requireActual('../../../lib/claude/ClaudeService');
@@ -121,6 +128,76 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
     expect(result?.name).toContain('My Deck');
     expect(result?.apkg).toEqual(Buffer.from('fake-apkg'));
+  });
+
+  it('never fails when the credit guard trips mid-run; ships the produced cards with the warning', async () => {
+    const deckArray = [
+      {
+        name: 'Covered Deck',
+        image: '',
+        style: null,
+        id: 123456789012345,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Front',
+            back: 'Back',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ];
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('two')) {
+        throw new AiCreditsExhaustedError();
+      }
+      return deckArray;
+    });
+
+    const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
+    const result = await PrepareDeck({
+      name: 'one.html',
+      files: [
+        { name: 'one.html', contents: '<p>one</p>' },
+        { name: 'two.html', contents: '<p>two</p>' },
+      ],
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.warning).toBe(AI_CREDITS_EXHAUSTED_WARNING_CODE);
+    expect(result?.cardCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it('falls back to the parser (not a crash) when a single-file AI conversion produces no cards', async () => {
+    generateDeckInfo.mockRejectedValue(new AiCreditsExhaustedError());
+
+    const html = `<html><head><title>Notes</title></head>
+<body><article class="page sans"><header><h1 class="page-title">Notes</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>What is glycolysis?</summary>
+<p>Glucose breakdown</p></details></li></ul>
+</div></article></body></html>`;
+
+    const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
+    const result = await PrepareDeck({
+      name: 'notes.html',
+      files: [{ name: 'notes.html', contents: html }],
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.engine).toBe('parser');
+    expect(result?.warning).toBe(AI_CREDITS_EXHAUSTED_WARNING_CODE);
+    expect(result?.cardCount).toBeGreaterThanOrEqual(1);
   });
 
   it('does not invoke ClaudeService when noLimits is false', async () => {
@@ -1018,5 +1095,66 @@ describe('parserWarning', () => {
     expect(
       parserWarning({ usedHeuristic: false, strayClozeCount: 0 })
     ).toBeUndefined();
+  });
+});
+
+describe('conversionInvokesAi', () => {
+  const withToggle = (key: string) => makeSettings({ [key]: 'true' });
+  const file = (name: string) => ({ name, contents: 'x' });
+
+  it('is true when claudeAIFlashcards is on for any file type', () => {
+    expect(
+      conversionInvokesAi(withToggle('claude-ai-flashcards'), [
+        file('notes.md'),
+      ])
+    ).toBe(true);
+  });
+
+  it('is false for a markdown upload when only the PDF toggle is on', () => {
+    expect(
+      conversionInvokesAi(withToggle('vertex-ai-pdf-questions'), [
+        file('notes.md'),
+      ])
+    ).toBe(false);
+  });
+
+  it('is true when the PDF toggle is on and the upload has a PDF', () => {
+    expect(
+      conversionInvokesAi(withToggle('vertex-ai-pdf-questions'), [
+        file('lecture.pdf'),
+      ])
+    ).toBe(true);
+  });
+
+  it('is false when the PDF toggle is on but PDF processing is disabled', () => {
+    expect(
+      conversionInvokesAi(
+        makeSettings({
+          'vertex-ai-pdf-questions': 'true',
+          'process-pdfs': 'false',
+        }),
+        [file('lecture.pdf')]
+      )
+    ).toBe(false);
+  });
+
+  it('is false for an html upload when only the image toggle is on', () => {
+    expect(
+      conversionInvokesAi(withToggle('image-quiz-html-to-anki'), [
+        file('page.html'),
+      ])
+    ).toBe(false);
+  });
+
+  it('is true when the image toggle is on and the upload has an image', () => {
+    expect(
+      conversionInvokesAi(withToggle('image-quiz-html-to-anki'), [
+        file('scan.png'),
+      ])
+    ).toBe(true);
+  });
+
+  it('is false when no AI toggle is set', () => {
+    expect(conversionInvokesAi(makeSettings(), [file('notes.md')])).toBe(false);
   });
 });

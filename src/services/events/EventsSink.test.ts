@@ -145,6 +145,33 @@ describe('EventsSink', () => {
     expect(repo.insertEvents).toHaveBeenCalledTimes(1);
   });
 
+  it('writes ai_usage_recorded immediately instead of buffering it', async () => {
+    const { repo, inserted } = makeFakeRepository();
+    const sink = new EventsSink(repo, { flushThreshold: 100 });
+    sink.record({ ...baseRow, name: 'ai_usage_recorded' });
+    await sink.drain();
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0][0].name).toBe('ai_usage_recorded');
+  });
+
+  it('retries a failed durable insert once', async () => {
+    const { repo } = makeFakeRepository();
+    (repo.insertEvents as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const sink = new EventsSink(repo, { flushThreshold: 100 });
+    sink.record({ ...baseRow, name: 'ai_usage_recorded' });
+    await sink.drain();
+    expect(repo.insertEvents).toHaveBeenCalledTimes(2);
+  });
+
+  it('drains buffered funnel events on shutdown', async () => {
+    const { repo, inserted } = makeFakeRepository();
+    const sink = new EventsSink(repo, { flushThreshold: 100 });
+    sink.record(baseRow);
+    await sink.drain();
+    expect(inserted).toHaveLength(1);
+  });
+
   it('start is idempotent — a second start adds no second timer', () => {
     // This test previously called start twice and stop once with no assertion,
     // so it passed no matter what start() did. A leaked second interval would

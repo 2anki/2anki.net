@@ -51,7 +51,8 @@ interface ApiErrorPayload {
     | 'server_error'
     | 'conversation_not_found'
     | 'consent_required'
-    | 'attachments_not_replayable';
+    | 'attachments_not_replayable'
+    | 'ai_credits_exhausted';
 }
 
 export interface ChatPanelProps {
@@ -663,6 +664,7 @@ export default function ChatPanel({
   const [regeneratingIdx, setRegeneratingIdx] = useState<number | null>(null);
   const [taggingIdx, setTaggingIdx] = useState<number | null>(null);
   const [networkError, setNetworkError] = useState<string | null>(null);
+  const [aiCreditsExhausted, setAiCreditsExhausted] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [chips, setChips] = useState<AttachmentChip[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -800,6 +802,7 @@ export default function ChatPanel({
     setInputValue('');
     setChips([]);
     setNetworkError(null);
+    setAiCreditsExhausted(false);
     setIsLoading(true);
     setStreamingText('');
     setUserScrolledAway(false);
@@ -894,6 +897,11 @@ export default function ChatPanel({
 
     const handleSseError = (data: string) => {
       const err = JSON.parse(data) as ApiErrorPayload;
+      if (err.type === 'ai_credits_exhausted') {
+        setAiCreditsExhausted(true);
+        refetchUserLocals();
+        return;
+      }
       if (err.type === 'conversation_not_found') {
         setNetworkError(t('errors.conversationGone'));
         setActiveConversationId(null);
@@ -938,12 +946,18 @@ export default function ChatPanel({
     const cardsToTag = target.cards;
     setTaggingIdx(messageIdx);
     setNetworkError(null);
+    setAiCreditsExhausted(false);
     setSuccessMessage(null);
     try {
       const response = await post('/api/chat/tag-cards', {
         cards: cardsToTag.map((c) => ({ front: c.front, back: c.back })),
         conversationId: activeConversationId,
       });
+      if (response.status === 402) {
+        setAiCreditsExhausted(true);
+        refetchUserLocals();
+        return;
+      }
       if (!response.ok) {
         setNetworkError(t('errors.addTags'));
         return;
@@ -1027,6 +1041,7 @@ export default function ChatPanel({
     setRegeneratingIdx(targetIdx);
     setIsLoading(true);
     setNetworkError(null);
+    setAiCreditsExhausted(false);
     setStreamingText('');
     setUserScrolledAway(false);
 
@@ -1089,6 +1104,11 @@ export default function ChatPanel({
 
     const handleRegenError = (data: string) => {
       const err = JSON.parse(data) as ApiErrorPayload;
+      if (err.type === 'ai_credits_exhausted') {
+        setAiCreditsExhausted(true);
+        refetchUserLocals();
+        return;
+      }
       if (err.type === 'conversation_not_found') {
         setNetworkError(t('errors.conversationGone'));
         setActiveConversationId(null);
@@ -1219,6 +1239,11 @@ export default function ChatPanel({
                       {networkError}
                     </p>
                   )}
+                  {aiCreditsExhausted && (
+                    <output className={styles.aiCreditsNotice}>
+                      {t('aiCreditsExhausted')}
+                    </output>
+                  )}
                 </div>
               </>
             ) : (
@@ -1339,6 +1364,11 @@ export default function ChatPanel({
                 <p className={styles.networkError} role="alert">
                   {networkError}
                 </p>
+              )}
+              {aiCreditsExhausted && (
+                <output className={styles.aiCreditsNotice}>
+                  {t('aiCreditsExhausted')}
+                </output>
               )}
               {successMessage != null && (
                 <p className={styles.successMessage} role="status">

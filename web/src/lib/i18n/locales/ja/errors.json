@@ -104,6 +104,10 @@
     "zip_invalid": {
       "title": "この zip を読み取れませんでした。",
       "detail": "Notion の HTML エクスポートではなく、Markdown & CSV エクスポートであることを確認してください。"
+    },
+    "ai_credits_exhausted": {
+      "title": "AIクレジットを使い切りました。",
+      "detail": "AIクレジットは割り当てがリセットされると戻ります。標準パーサーで今すぐ変換するには、Claudeカードをオフにしてください。"
     }
   },
   "presenter": {

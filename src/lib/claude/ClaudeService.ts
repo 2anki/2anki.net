@@ -8,7 +8,11 @@ import { splitByHeadings } from '../cardStyle/headingDriven/splitByHeadings';
 import { getCardStylePromptFragment } from './getCardStylePromptFragment';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
 import { recordClaudeUsage } from './recordClaudeUsage';
-import { guardAiSpend } from './aiSpendGuard';
+import {
+  AiCreditsExhaustedError,
+  assertAiBudget,
+  withAiBudget,
+} from './aiSpendGuard';
 import { computeUsageCostUsd } from './pricing';
 import { getCardSizePromptSuffix, validateCardSize } from './cardSize';
 import {
@@ -202,7 +206,7 @@ function extractStyleFromHtml(html: string): string {
     .replaceAll('list-style-type: none;', '');
 }
 
-function stripHtmlBoilerplate(html: string): string {
+export function stripHtmlBoilerplate(html: string): string {
   const $ = cheerio.load(html);
   $('style, script, head, link[rel="stylesheet"]').remove();
   const body = $('body');
@@ -640,6 +644,18 @@ export class ClaudeTruncatedError extends Error {
   }
 }
 
+// Thrown when the credit guard trips partway through a fan-out (some chunks or
+// pages done, the rest refused). It is an AiCreditsExhaustedError so the upload
+// path already treats it as a trip, and it carries the decks produced so far so
+// the conversion ships those cards with the credits warning instead of losing
+// them or masking the trip as a plain partial success.
+export class AiCreditsTrippedWithSalvage extends AiCreditsExhaustedError {
+  constructor(readonly salvagedDecks: DeckInfo[] = []) {
+    super();
+    this.name = 'AiCreditsTrippedWithSalvage';
+  }
+}
+
 const STRAY_CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g;
 
 function escapeStrayControlChars(text: string): string {
@@ -917,7 +933,6 @@ async function generateDeckInfoFromChunk(
   const tChunk0 = Date.now();
   const userId = attribution?.userId;
   const requestId = attribution?.requestId;
-  await guardAiSpend(userId);
   const client = getAnthropicClient();
 
   const cardStyleFragment = getCardStylePromptFragment(cardStyle);
@@ -1169,6 +1184,15 @@ async function runWithSemaphore<T>(
   return results;
 }
 
+function settledTrippedOnCredits<T>(
+  results: PromiseSettledResult<T>[]
+): boolean {
+  return results.some(
+    (r) =>
+      r.status === 'rejected' && r.reason instanceof AiCreditsExhaustedError
+  );
+}
+
 function totalCardCount(decks: DeckInfo[]): number {
   return decks.reduce((sum, d) => sum + d.cards.length, 0);
 }
@@ -1393,6 +1417,12 @@ async function runChunks(
     });
   }
 
+  // A credit trip on any chunk must surface as a trip so the upload attaches the
+  // credits warning; carry the chunks that finished so they still ship.
+  if (settledTrippedOnCredits(settled)) {
+    throw new AiCreditsTrippedWithSalvage(succeeded.flat());
+  }
+
   if (succeeded.length === 0) {
     throw new Error(failures[0]?.reason ?? 'All Claude chunks failed');
   }
@@ -1476,6 +1506,8 @@ async function generateDeckInfoUncached(
     );
   }
 
+  await assertAiBudget(options?.userId);
+
   if (isImageOnlyContent(htmlContent)) {
     console.info('[Claude] Skipping conversion: image-only input', {
       originalBytes: htmlContent.length,
@@ -1528,19 +1560,21 @@ async function generateDeckInfoUncached(
             runChunkWithTruncationRetry(
               `<h1>${chunk.anchor}</h1>\n${chunk.bodyChunk}`,
               (content) =>
-                generateDeckInfoFromChunk(
-                  content,
-                  pageStyle,
-                  availableMediaFiles,
-                  userInstructions,
-                  i,
-                  chunks.length,
-                  onProgress,
-                  cardStyle,
-                  cardSize,
-                  fieldMapping,
-                  undefined,
-                  spendAttributionOf(options)
+                withAiBudget(options?.userId, () =>
+                  generateDeckInfoFromChunk(
+                    content,
+                    pageStyle,
+                    availableMediaFiles,
+                    userInstructions,
+                    i,
+                    chunks.length,
+                    onProgress,
+                    cardStyle,
+                    cardSize,
+                    fieldMapping,
+                    undefined,
+                    spendAttributionOf(options)
+                  )
                 )
             )
         )
@@ -1611,19 +1645,21 @@ async function generateDeckInfoUncached(
     chunks.map(
       (chunk, i) => () =>
         runChunkWithTruncationRetry(chunk, (content) =>
-          generateDeckInfoFromChunk(
-            content,
-            pageStyle,
-            availableMediaFiles,
-            userInstructions,
-            i,
-            chunks.length,
-            onProgress,
-            cardStyle,
-            cardSize,
-            fieldMapping,
-            undefined,
-            spendAttributionOf(options)
+          withAiBudget(options?.userId, () =>
+            generateDeckInfoFromChunk(
+              content,
+              pageStyle,
+              availableMediaFiles,
+              userInstructions,
+              i,
+              chunks.length,
+              onProgress,
+              cardStyle,
+              cardSize,
+              fieldMapping,
+              undefined,
+              spendAttributionOf(options)
+            )
           )
         )
     )
@@ -1666,19 +1702,21 @@ async function runFloorV1(
     chunks.map(
       (chunk, i) => () =>
         runChunkWithTruncationRetry(chunk, (content) =>
-          generateDeckInfoFromChunk(
-            content,
-            pageStyle,
-            availableMediaFiles,
-            userInstructions,
-            i,
-            chunks.length,
-            onProgress,
-            cardStyle,
-            cardSize,
-            fieldMapping,
-            collect,
-            attribution
+          withAiBudget(attribution?.userId, () =>
+            generateDeckInfoFromChunk(
+              content,
+              pageStyle,
+              availableMediaFiles,
+              userInstructions,
+              i,
+              chunks.length,
+              onProgress,
+              cardStyle,
+              cardSize,
+              fieldMapping,
+              collect,
+              attribution
+            )
           )
         ).then((decks) => stampChunkIndex(decks, i))
     ),
@@ -1696,6 +1734,10 @@ async function runFloorV1(
       });
     }
   });
+
+  if (settledTrippedOnCredits(firstRoundResults)) {
+    throw new AiCreditsTrippedWithSalvage(mergeDeckInfoArrays(initialDecks));
+  }
 
   let merged = mergeDeckInfoArrays(initialDecks);
   let topUpRounds = 0;
@@ -1718,19 +1760,21 @@ async function runFloorV1(
       targetChunks.map(
         (idx) => () =>
           runChunkWithTruncationRetry(chunks[idx], (content) =>
-            generateDeckInfoFromChunk(
-              content,
-              pageStyle,
-              availableMediaFiles,
-              combinedInstructions,
-              idx,
-              chunks.length,
-              onProgress,
-              cardStyle,
-              cardSize,
-              fieldMapping,
-              collect,
-              attribution
+            withAiBudget(attribution?.userId, () =>
+              generateDeckInfoFromChunk(
+                content,
+                pageStyle,
+                availableMediaFiles,
+                combinedInstructions,
+                idx,
+                chunks.length,
+                onProgress,
+                cardStyle,
+                cardSize,
+                fieldMapping,
+                collect,
+                attribution
+              )
             )
           ).then((decks) => stampChunkIndex(decks, idx))
       ),
@@ -1749,6 +1793,12 @@ async function runFloorV1(
         });
       }
     });
+
+    if (settledTrippedOnCredits(topUpResults)) {
+      throw new AiCreditsTrippedWithSalvage(
+        mergeDeckInfoArrays([...initialDecks, ...newDecks])
+      );
+    }
 
     merged = mergeDeckInfoArrays([...initialDecks, ...newDecks]);
     initialDecks.push(...newDecks);

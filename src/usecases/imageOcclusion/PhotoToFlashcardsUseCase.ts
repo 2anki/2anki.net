@@ -10,6 +10,7 @@ import {
   normalizeTag,
 } from '../../lib/claude/ClaudeService';
 import { ANKI_MATH_FRAGMENT } from '../../lib/claude/ankiMathFragment';
+import { withAiBudget } from '../../lib/claude/aiSpendGuard';
 import {
   countVisionTokens,
   VISION_TOKEN_CEILING,
@@ -643,30 +644,33 @@ export class PhotoToFlashcardsUseCase {
         ],
       });
 
-    let response = await createVisionMessage(VISION_MAX_TOKENS);
-    recordClaudeUsage({
-      surface: input.usageSurface ?? 'photo_to_deck',
-      model: response.model,
-      usage: response.usage,
-      userId,
-    });
-    if (response.stop_reason === 'max_tokens') {
-      console.warn(
-        '[Claude] Vision response truncated at max_tokens, retrying',
-        {
-          source: 'photo',
-          maxTokens: VISION_MAX_TOKENS,
-          retryMaxTokens: VISION_RETRY_MAX_TOKENS,
-        }
-      );
-      response = await createVisionMessage(VISION_RETRY_MAX_TOKENS);
+    const response = await withAiBudget(userId, async () => {
+      let visionResponse = await createVisionMessage(VISION_MAX_TOKENS);
       recordClaudeUsage({
         surface: input.usageSurface ?? 'photo_to_deck',
-        model: response.model,
-        usage: response.usage,
+        model: visionResponse.model,
+        usage: visionResponse.usage,
         userId,
       });
-    }
+      if (visionResponse.stop_reason === 'max_tokens') {
+        console.warn(
+          '[Claude] Vision response truncated at max_tokens, retrying',
+          {
+            source: 'photo',
+            maxTokens: VISION_MAX_TOKENS,
+            retryMaxTokens: VISION_RETRY_MAX_TOKENS,
+          }
+        );
+        visionResponse = await createVisionMessage(VISION_RETRY_MAX_TOKENS);
+        recordClaudeUsage({
+          surface: input.usageSurface ?? 'photo_to_deck',
+          model: visionResponse.model,
+          usage: visionResponse.usage,
+          userId,
+        });
+      }
+      return visionResponse;
+    });
 
     const rawText = response.content
       .filter((b) => b.type === 'text')

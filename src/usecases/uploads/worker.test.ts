@@ -18,6 +18,7 @@ import {
 } from '../../lib/claude/ClaudeService';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import { getPackagesFromZip } from './getPackagesFromZip';
+import { getEventsSink } from '../../services/events/eventsSinkInstance';
 
 jest.mock('fs');
 jest.mock('../../lib/parser/WorkSpace');
@@ -261,6 +262,24 @@ describe('runUploadGenerationInWorker', () => {
     await runUploadGenerationInWorker(makeTask(file, port));
 
     expect(port.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('drains recorded spend even when generation throws', async () => {
+    const flushSpy = jest
+      .spyOn(getEventsSink(), 'flushDurable')
+      .mockResolvedValue(undefined);
+    const file = makeFile({
+      originalname: 'existing.apkg',
+      filename: 'existing.apkg',
+      path: '',
+      buffer: Buffer.from('not really a deck'),
+    });
+
+    const result = await runUploadGenerationInWorker(makeTask(file));
+
+    expect(result.ok).toBe(false);
+    expect(flushSpy).toHaveBeenCalledTimes(1);
+    flushSpy.mockRestore();
   });
 
   it('returns a success result with empty packages for an unsupported file type', async () => {

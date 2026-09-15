@@ -42,17 +42,17 @@ describe('jobFailureReasonFromError', () => {
     expect(reason).toBe(EMPTY_DECK_FAILURE_REASON);
   });
 
-  it('surfaces the spend-cap message by rehydrated name', () => {
+  it('surfaces the out-of-credits message by rehydrated name', () => {
     const err = new Error(
-      'AI processing is paused for this account after unusually high usage (user 42, $51.00 of AI processing cost in 24h). Contact support@2anki.net.'
+      "You're out of AI credits. They come back when your allowance resets."
     );
-    err.name = 'AiSpendCapError';
+    err.name = 'AiCreditsExhaustedError';
     expect(jobFailureReasonFromError(err, 'job-9')).toBe(err.message);
   });
 
-  it('surfaces the spend-cap message when re-wrapped as a plain Error', () => {
+  it('surfaces the out-of-credits message when re-wrapped as a plain Error', () => {
     const err = new Error(
-      'AI processing is paused for this account after unusually high usage (user 42, $51.00 of AI processing cost in 24h). Contact support@2anki.net.'
+      "You're out of AI credits. They come back when your allowance resets."
     );
     expect(jobFailureReasonFromError(err, 'job-10')).toBe(err.message);
   });

@@ -18,7 +18,27 @@ jest.mock(
   })
 );
 
+jest.mock('../../lib/claude/aiSpendGuard', () => {
+  const actual = jest.requireActual('../../lib/claude/aiSpendGuard');
+  return {
+    ...actual,
+    withAiBudget: jest.fn(
+      (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
+    ),
+  };
+});
+
 import { convertDocxToHTML } from '../../infrastracture/adapters/fileConversion/convertDocxToHTML';
+import {
+  withAiBudget,
+  AiCreditsExhaustedError,
+} from '../../lib/claude/aiSpendGuard';
+
+const withAiBudgetMock = withAiBudget as jest.Mock;
+const runCallbackImpl = (
+  _userId: number | null | undefined,
+  run: () => Promise<unknown>
+) => run();
 
 const mockedConvertDocx = convertDocxToHTML as jest.MockedFunction<
   typeof convertDocxToHTML
@@ -112,6 +132,24 @@ describe('ChatUseCase', () => {
         conversationHistory: [],
       });
       expect(result.content).toBe('Paid response');
+    });
+  });
+
+  describe('AI budget reservation guard', () => {
+    it('refuses execute through withAiBudget without inserting a user message', async () => {
+      const { messagesRepo, useCase } = buildUseCase('unused');
+      withAiBudgetMock.mockRejectedValueOnce(new AiCreditsExhaustedError());
+
+      await expect(
+        useCase.execute({
+          user: PATREON_USER,
+          content: 'question',
+          conversationHistory: [],
+        })
+      ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+
+      expect(messagesRepo.getAll()).toHaveLength(0);
+      withAiBudgetMock.mockImplementation(runCallbackImpl);
     });
   });
 
@@ -1439,6 +1477,34 @@ describe('ChatUseCase', () => {
       }
       return conversationId;
     }
+
+    it('checks the AI budget before deleting the previous reply', async () => {
+      const { messagesRepo, conversationsRepo, useCase } =
+        buildUseCase('unused');
+      const conversationId = await seedConversation(
+        messagesRepo,
+        conversationsRepo,
+        PATREON_USER.owner
+      );
+      withAiBudgetMock.mockRejectedValueOnce(new AiCreditsExhaustedError());
+
+      await expect(
+        useCase.regenerate({
+          user: PATREON_USER,
+          conversationId,
+          templateSlug: null,
+        })
+      ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+
+      const assistantContents = messagesRepo
+        .getAll()
+        .filter(
+          (r) => r.conversation_id === conversationId && r.role === 'assistant'
+        )
+        .map((r) => r.content);
+      expect(assistantContents).toEqual(['old assistant reply']);
+      withAiBudgetMock.mockImplementation(runCallbackImpl);
+    });
 
     it('deletes the last assistant message and streams a fresh turn', async () => {
       const { messagesRepo, conversationsRepo, useCase } = buildUseCase(

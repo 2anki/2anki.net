@@ -1,5 +1,6 @@
 import { getAnthropicClient } from '../../lib/claude/ClaudeService';
 import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
+import { withAiBudget } from '../../lib/claude/aiSpendGuard';
 
 const MODEL = 'claude-sonnet-5';
 const MAX_TOKENS = 8192;
@@ -258,28 +259,30 @@ async function askClaude(
   userId?: number | null
 ): Promise<string> {
   const client = getAnthropicClient();
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
-    system: [
-      {
-        type: 'text',
-        text: SYSTEM_PROMPT,
-        cache_control: { type: 'ephemeral' },
-      },
-    ],
-    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+  return withAiBudget(userId ?? null, async () => {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      system: [
+        {
+          type: 'text',
+          text: SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    });
+    recordClaudeUsage({
+      surface: 'note_type_ai',
+      model: response.model,
+      usage: response.usage,
+      userId,
+    });
+    return response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => ('text' in b ? b.text : ''))
+      .join('');
   });
-  recordClaudeUsage({
-    surface: 'note_type_ai',
-    model: response.model,
-    usage: response.usage,
-    userId,
-  });
-  return response.content
-    .filter((b) => b.type === 'text')
-    .map((b) => ('text' in b ? b.text : ''))
-    .join('');
 }
 
 export class AINoteTypeUseCase {

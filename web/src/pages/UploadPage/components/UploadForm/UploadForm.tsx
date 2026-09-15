@@ -40,6 +40,7 @@ import {
   useCardUsage,
   CARD_USAGE_QUERY_KEY,
 } from '../../../../lib/hooks/useCardUsage';
+import { AI_CREDITS_QUERY_KEY } from '../../../../lib/hooks/useAiCredits';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
@@ -558,6 +559,7 @@ function UploadForm({
     if (zoneState === 'success' && downloadLink && !showFallback) {
       globalThis.sessionStorage?.removeItem('upload_pending_filename');
       queryClient.invalidateQueries({ queryKey: CARD_USAGE_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: AI_CREDITS_QUERY_KEY });
       // A recovered download is a server copy behind a visible button: the
       // user just watched one download fail, so it waits for their click.
       if (downloadRecovered) {

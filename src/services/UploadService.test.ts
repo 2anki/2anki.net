@@ -77,6 +77,10 @@ import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoT
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import UploadService, { resolveUploadWarning } from './UploadService';
+import {
+  AiCreditsTrippedWithSalvage,
+  DeckInfo,
+} from '../lib/claude/ClaudeService';
 import { track } from './events/track';
 
 const trackMock = track as jest.Mock;
@@ -3318,6 +3322,101 @@ describe('UploadService.restartClaudeJob — card-limit enforcement', () => {
   });
 });
 
+describe('UploadService.restartClaudeJob — mid-loop credit trip with salvage', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  let db: Knex;
+  let workspaceBase: string;
+
+  beforeAll(() => {
+    workspaceBase = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'restart-salvage-base-')
+    );
+    process.env.WORKSPACE_BASE = workspaceBase;
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+    fs.rmSync(workspaceBase, { recursive: true, force: true });
+  });
+
+  beforeEach(async () => {
+    mockGenerateDeckInfo.mockReset();
+    mockStorageUploadFile.mockClear();
+    db = knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await db.schema.createTable('jobs', (t) => {
+      t.increments('id');
+      t.string('owner').notNullable();
+      t.string('object_id').notNullable();
+      t.string('title');
+      t.string('type');
+      t.string('status');
+      t.timestamp('created_at').defaultTo(db.fn.now());
+      t.timestamp('last_edited_time');
+      t.string('job_reason_failure');
+      t.integer('card_count');
+    });
+    const workspaceDir = path.join(workspaceBase, 'job-obj-salvage');
+    fs.mkdirSync(workspaceDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(workspaceDir, 'page.html'),
+      '<html><body>Q/A</body></html>'
+    );
+    fs.writeFileSync(path.join(workspaceDir, 'deck.apkg'), Buffer.from('apkg'));
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  async function waitForUpload(): Promise<void> {
+    for (let i = 0; i < 200; i++) {
+      if (mockStorageUploadFile.mock.calls.length > 0) {
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 10));
+    }
+  }
+
+  it('ships the cards salvaged before the trip instead of discarding them', async () => {
+    await db('jobs').insert({
+      owner: '42',
+      object_id: 'job-obj-salvage',
+      title: 'Deck',
+      type: 'claude',
+      status: 'done',
+      last_edited_time: new Date(),
+    });
+    mockGenerateDeckInfo.mockRejectedValue(
+      new AiCreditsTrippedWithSalvage([
+        { name: 'Deck', cards: [{ front: 'q', back: 'a' }] },
+      ] as unknown as DeckInfo[])
+    );
+
+    const service = new UploadService(
+      buildRepository(),
+      new JobRepository(db),
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = {
+      params: { jobId: 'job-obj-salvage' },
+      body: {},
+    } as unknown as express.Request;
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+
+    await service.restartClaudeJob(req, res);
+    await waitForUpload();
+
+    expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('UploadService.handleUpload — signup_origin attribution', () => {
   const originalWorkspaceBase = process.env.WORKSPACE_BASE;
 
@@ -4129,5 +4228,30 @@ describe('resolveUploadWarning — notes sharing a guid', () => {
         'duplicate-guid:1',
       ])
     ).toMatch(/^1 card repeats the question/);
+  });
+});
+
+describe('resolveUploadWarning — AI credits exhausted', () => {
+  it('explains the deck was built without AI and ranks above markdown', () => {
+    expect(
+      resolveUploadWarning(['markdown-heuristic', 'ai-credits-exhausted'])
+    ).toBe(
+      "You're out of AI credits, so this deck was built without AI. AI credits come back when your allowance resets."
+    );
+  });
+
+  it('keeps the oversize warning ahead of the credits notice', () => {
+    expect(
+      resolveUploadWarning(['ai-credits-exhausted', 'apkg-over-100mb:210.4'])
+    ).toMatch(/AnkiWeb won't sync/);
+  });
+
+  it('keeps the locked-PDF notice ahead of the credits notice', () => {
+    expect(
+      resolveUploadWarning([
+        'ai-credits-exhausted',
+        'This PDF is password-protected.',
+      ])
+    ).toMatch(/password-protected/);
   });
 });

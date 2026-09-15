@@ -110,5 +110,6 @@
     "body": "Faça upgrade para criar flashcards conversando.",
     "keepReading": "Suas conversas anteriores continuam aqui para leitura.",
     "seePlans": "Ver planos"
-  }
+  },
+  "aiCreditsExhausted": "Você ficou sem créditos de IA. Eles voltam quando sua franquia é redefinida."
 }

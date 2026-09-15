@@ -90,6 +90,7 @@ import {
   ClaudeParseError,
   ClaudeLargeSectionError,
   ImageOnlyContentError,
+  AiCreditsTrippedWithSalvage,
 } from '../lib/claude/ClaudeService';
 import CustomExporter from '../lib/parser/exporters/CustomExporter';
 import Deck from '../lib/parser/Deck';
@@ -110,6 +111,15 @@ import {
   isPdfPasswordSentinel,
   parsePdfPasswordSentinel,
 } from '../lib/pdf/pdfPasswordSentinel';
+import {
+  AI_CREDITS_EXHAUSTED_WARNING_CODE,
+  AI_CREDITS_EXHAUSTED_WARNING_TEXT,
+  includesAiCreditsWarning,
+} from '../lib/claude/aiCredits/uploadWarning';
+import {
+  AiCreditsExhaustedError,
+  getAiBudgetStatus,
+} from '../lib/claude/aiSpendGuard';
 
 interface EmptyDeckResponse {
   code: 'empty_export';
@@ -169,6 +179,13 @@ function strayClozeWarning(count: number): string {
   return `${subject} cloze syntax like {{c1::text}} but cloze mode is off, so the braces show on the card. Turn on cloze mode and convert again.`;
 }
 
+function aiCreditsWarningText(warnings: string[]): string | null {
+  if (warnings.includes(AI_CREDITS_EXHAUSTED_WARNING_CODE)) {
+    return AI_CREDITS_EXHAUSTED_WARNING_TEXT;
+  }
+  return null;
+}
+
 export function resolveUploadWarning(
   warnings: string[] | undefined
 ): string | null {
@@ -181,6 +198,8 @@ export function resolveUploadWarning(
     w.includes('password-protected')
   );
   if (passwordWarning) return passwordWarning;
+  const creditsWarning = aiCreditsWarningText(warnings);
+  if (creditsWarning) return creditsWarning;
   let duplicateGuids = 0;
   for (const warning of warnings) {
     const match = DUPLICATE_GUID_WARNING_RE.exec(warning);
@@ -337,6 +356,62 @@ function walkMediaFiles(dir: string): string[] {
     }
   }
   return results;
+}
+
+async function runClaudeRestartFiles(
+  htmlFiles: string[],
+  mediaFiles: string[],
+  workspaceDir: string,
+  fallbackNames: Set<string>,
+  settings: CardOption | null,
+  generateOptions: Parameters<typeof generateDeckInfo>[7],
+  onProgress: (step: string) => Promise<void>
+): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
+  const deckInfoArrays: DeckInfo[][] = [];
+  let tripped = false;
+  for (const htmlFile of htmlFiles) {
+    const content = await fs.promises.readFile(htmlFile, 'utf8');
+    const options = matchesPdfImageFallback(
+      htmlFile,
+      workspaceDir,
+      fallbackNames
+    )
+      ? {
+          ...generateOptions,
+          pdfImageFallback: {
+            mediaBaseDir: workspaceDir,
+            attachPageImages: settings?.embedImages ?? true,
+          },
+        }
+      : generateOptions;
+    try {
+      deckInfoArrays.push(
+        await generateDeckInfo(
+          content,
+          mediaFiles,
+          settings?.userInstructions,
+          onProgress,
+          settings?.cardStyle || undefined,
+          settings?.cardSize,
+          settings?.fieldMapping,
+          options
+        )
+      );
+    } catch (error) {
+      if (error instanceof AiCreditsExhaustedError) {
+        console.info(
+          '[UploadService] Claude restart hit the credit guard mid-loop, shipping what was produced'
+        );
+        if (error instanceof AiCreditsTrippedWithSalvage) {
+          deckInfoArrays.push(error.salvagedDecks);
+        }
+        tripped = true;
+        break;
+      }
+      throw error;
+    }
+  }
+  return { deckInfoArrays, tripped };
 }
 
 // A restart of a PDF-image-fallback job re-reads the page images the original
@@ -803,47 +878,41 @@ class UploadService {
     const settings = loadPersistedConversionSettings(workspaceDir);
     const fallbackNames = loadPdfImageFallbackNames(workspaceDir);
     const ownerNumeric = Number(owner);
+    const userId =
+      Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null;
+
+    // This deferred Claude stage has no standard-parser fallback. Pre-check the
+    // balance so it stops cleanly at zero; if a later file trips the always-on
+    // per-call guard, stop issuing calls and ship the files already produced
+    // rather than failing the whole job.
+    const preCheck = await getAiBudgetStatus(userId);
+    if (preCheck.exhausted) {
+      throw new AiCreditsExhaustedError();
+    }
+
     const generateOptions = {
       isPaying: paying,
-      userId:
-        Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null,
+      userId,
       requestId,
       comprehensive: settings?.aiComprehensive,
       conversionResultCache: getConversionResultCache(),
     };
 
-    const deckInfoArrays: DeckInfo[][] = [];
-    for (const htmlFile of htmlFiles) {
-      const content = await fs.promises.readFile(htmlFile, 'utf8');
-      const options = matchesPdfImageFallback(
-        htmlFile,
-        workspaceDir,
-        fallbackNames
-      )
-        ? {
-            ...generateOptions,
-            pdfImageFallback: {
-              mediaBaseDir: workspaceDir,
-              attachPageImages: settings?.embedImages ?? true,
-            },
-          }
-        : generateOptions;
-      const deckInfo = await generateDeckInfo(
-        content,
-        mediaFiles,
-        settings?.userInstructions,
-        onProgress,
-        settings?.cardStyle || undefined,
-        settings?.cardSize,
-        settings?.fieldMapping,
-        options
-      );
-      deckInfoArrays.push(deckInfo);
-    }
+    const { deckInfoArrays, tripped } = await runClaudeRestartFiles(
+      htmlFiles,
+      mediaFiles,
+      workspaceDir,
+      fallbackNames,
+      settings,
+      generateOptions,
+      onProgress
+    );
 
     const deckInfo = deckInfoArrays.flat().filter((d) => d.cards.length > 0);
     if (deckInfo.length === 0) {
-      throw new Error('No packages produced');
+      throw tripped
+        ? new AiCreditsExhaustedError()
+        : new Error('No packages produced');
     }
 
     const totalCards = deckInfo.reduce((sum, d) => sum + d.cards.length, 0);
@@ -1169,10 +1238,21 @@ class UploadService {
           requestId: res.locals.requestId,
         }
       )
-      .then(async ({ packages, cardFingerprints }) => {
+      .then(async ({ packages, warnings, cardFingerprints }) => {
         this.recordIssuedGuids(packages, ownerId, settings);
         this.recordUploadIdentityMetric(packages, ownerId);
         this.recordCardFingerprints(ownerId, cardFingerprints);
+        // The async upload becomes an `uploads` row (the job is deleted on
+        // promotion), and `uploads` has no per-upload notice column, so a
+        // fallback warning cannot reach the Downloads page without a new column
+        // — deferred rather than adding a second migration to this PR. Surface
+        // it in the logs so a credits-driven fallback is not silent.
+        if (includesAiCreditsWarning(warnings)) {
+          console.info(
+            '[UploadService] async upload fell back to the parser on AI credits',
+            { jobId: ws.id }
+          );
+        }
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
         // Scores record either way. The conversion-output stats below stay
         // behind the gate — they count delivered cards — but a conversion that
@@ -1372,18 +1452,37 @@ class UploadService {
 
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
     const authenticated = hasSessionToken(req);
+    const syncOwnerIdOrNull = owner != null ? Number(owner) : null;
+
+    // The exhausted event fires once per window from the balance reader
+    // (getAiBudgetStatus) the moment it observes a ≤ 0 balance — the pre-check
+    // and every per-call guard go through it — so this path does not fire it.
 
     // Before the empty-deck throw, so a document that produced nothing still
     // lands a row — that population is the one a rescue has to clear.
     this.recordDeckScores(
       packages,
-      owner != null ? Number(owner) : null,
+      syncOwnerIdOrNull,
       this.resolveScoreSource(req, res),
       uploadInputFormat(req.files as UploadedFile[])
     );
 
     if (totalCards === 0) {
       logNoPackageDiagnostics(req.files as UploadedFile[]);
+      // An empty deck because AI credits ran out (e.g. an image with nothing
+      // the standard parser can read) surfaces the credits stop, not a generic
+      // "no cards" error, and never re-attempts the (also blocked) AI fallback.
+      if (includesAiCreditsWarning(warnings)) {
+        track('conversion_failed', {
+          userId: syncOwnerIdOrNull,
+          anonymousId: this.resolveAnonId(req),
+          props: {
+            ...this.baseFunnelProps(req),
+            reason: 'ai_credits_exhausted',
+          },
+        });
+        throw new AiCreditsExhaustedError();
+      }
       const ownerId = owner != null ? Number(owner) : null;
       if (this.canFallBackToClaude(req, ownerId, paying)) {
         track('ai_fallback_triggered', {
@@ -1700,8 +1799,11 @@ class UploadService {
         reason: `image_${e.code ?? status}`,
       },
     });
+    // Pass a coded error's own code through: a single-image drop at zero AI
+    // credits surfaces `ai_credits_exhausted`, not a generic conversion failure,
+    // so the client renders the calm credits stop.
     const body: Record<string, unknown> = {
-      code: 'image_conversion_failed',
+      code: e.code ?? 'image_conversion_failed',
       message: e.message,
     };
     if (e.used != null) {

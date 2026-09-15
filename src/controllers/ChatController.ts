@@ -8,6 +8,7 @@ import {
 import type { ChatAttachment } from '../usecases/chat/buildAttachmentBlocks';
 import { detectFileMime } from '../lib/detectFileMime';
 import { getSafeFilename } from '../lib/getSafeFilename';
+import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 
 const MAX_CONTENT_LENGTH = 100_000;
 const MAX_FILE_COUNT = 5;
@@ -170,7 +171,9 @@ function parseHistory(raw: unknown): HistoryEntry[] {
 }
 
 function emitChatError(res: Response, err: unknown): void {
-  if (err instanceof ChatConversationNotFoundError) {
+  if (err instanceof AiCreditsExhaustedError) {
+    sseWrite(res, 'error', { type: 'ai_credits_exhausted' });
+  } else if (err instanceof ChatConversationNotFoundError) {
     sseWrite(res, 'error', { type: 'conversation_not_found' });
   } else if (err instanceof McqExtractionFailedError) {
     sseWrite(res, 'error', { type: 'mcq_extraction_failed' });

@@ -7,9 +7,11 @@ import {
   generateDeckInfoFromPdfImages,
 } from './generateDeckInfoFromPdfImages';
 import {
+  AiCreditsTrippedWithSalvage,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
   expandCompactDeckInfo,
 } from './ClaudeService';
+import { AiCreditsExhaustedError } from './aiSpendGuard';
 
 const mockCreateFn = jest.fn();
 
@@ -187,6 +189,42 @@ describe('generateDeckInfoFromPdfImages', () => {
     await expect(
       generateDeckInfoFromPdfImages(html, { mediaBaseDir: baseDir })
     ).rejects.toThrow('overloaded_error');
+  });
+
+  it('propagates a mid-run credit trip carrying the pages produced so far', async () => {
+    mockCreateFn
+      .mockRejectedValueOnce(new AiCreditsExhaustedError())
+      .mockResolvedValue(
+        visionResponse(
+          JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+        )
+      );
+
+    let thrown: unknown;
+    try {
+      await generateDeckInfoFromPdfImages(html, { mediaBaseDir: baseDir });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(AiCreditsTrippedWithSalvage);
+    const salvaged = (thrown as AiCreditsTrippedWithSalvage).salvagedDecks;
+    const totalCards = salvaged.reduce((sum, d) => sum + d.cards.length, 0);
+    expect(totalCards).toBeGreaterThan(0);
+  });
+
+  it('propagates a credit trip with no salvage when every page trips', async () => {
+    mockCreateFn.mockRejectedValue(new AiCreditsExhaustedError());
+
+    let thrown: unknown;
+    try {
+      await generateDeckInfoFromPdfImages(html, { mediaBaseDir: baseDir });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(AiCreditsTrippedWithSalvage);
+    expect((thrown as AiCreditsTrippedWithSalvage).salvagedDecks).toEqual([]);
   });
 
   it('attaches each page image to its cards as media and an image on the back', async () => {

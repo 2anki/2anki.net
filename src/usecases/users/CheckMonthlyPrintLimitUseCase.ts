@@ -1,4 +1,5 @@
 import UsersRepository from '../../data_layer/UsersRepository';
+import { startOfNextMonthUtc } from '../../lib/User/startOfMonthUtc';
 
 export const MONTHLY_PRINT_LIMIT = 1;
 
@@ -19,10 +20,6 @@ interface CheckArgs {
   now?: Date;
 }
 
-function nextMonthBoundary(now: Date): Date {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-}
-
 export class CheckMonthlyPrintLimitUseCase {
   constructor(private readonly userRepository: UsersRepository) {}
 
@@ -38,7 +35,7 @@ export class CheckMonthlyPrintLimitUseCase {
       throw new MonthlyPrintLimitError(
         prints_used,
         MONTHLY_PRINT_LIMIT,
-        nextMonthBoundary(now).toISOString()
+        startOfNextMonthUtc(now).toISOString()
       );
     }
   }
