@@ -1,4 +1,9 @@
-import { PrepareDeck, parserWarning, prepareDeckInfoOnly } from './PrepareDeck';
+import {
+  PrepareDeck,
+  parserWarning,
+  prepareDeckInfoOnly,
+  conversionInvokesAi,
+} from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import { AiCreditsExhaustedError } from '../../../lib/claude/aiSpendGuard';
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
@@ -167,6 +172,30 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     });
 
     expect(result).toBeDefined();
+    expect(result?.warning).toBe(AI_CREDITS_EXHAUSTED_WARNING_CODE);
+    expect(result?.cardCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it('falls back to the parser (not a crash) when a single-file AI conversion produces no cards', async () => {
+    generateDeckInfo.mockRejectedValue(new AiCreditsExhaustedError());
+
+    const html = `<html><head><title>Notes</title></head>
+<body><article class="page sans"><header><h1 class="page-title">Notes</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>What is glycolysis?</summary>
+<p>Glucose breakdown</p></details></li></ul>
+</div></article></body></html>`;
+
+    const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
+    const result = await PrepareDeck({
+      name: 'notes.html',
+      files: [{ name: 'notes.html', contents: html }],
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.engine).toBe('parser');
     expect(result?.warning).toBe(AI_CREDITS_EXHAUSTED_WARNING_CODE);
     expect(result?.cardCount).toBeGreaterThanOrEqual(1);
   });
@@ -1066,5 +1095,54 @@ describe('parserWarning', () => {
     expect(
       parserWarning({ usedHeuristic: false, strayClozeCount: 0 })
     ).toBeUndefined();
+  });
+});
+
+describe('conversionInvokesAi', () => {
+  const withToggle = (key: string) => makeSettings({ [key]: 'true' });
+  const file = (name: string) => ({ name, contents: 'x' });
+
+  it('is true when claudeAIFlashcards is on for any file type', () => {
+    expect(
+      conversionInvokesAi(withToggle('claude-ai-flashcards'), [
+        file('notes.md'),
+      ])
+    ).toBe(true);
+  });
+
+  it('is false for a markdown upload when only the PDF toggle is on', () => {
+    expect(
+      conversionInvokesAi(withToggle('vertex-ai-pdf-questions'), [
+        file('notes.md'),
+      ])
+    ).toBe(false);
+  });
+
+  it('is true when the PDF toggle is on and the upload has a PDF', () => {
+    expect(
+      conversionInvokesAi(withToggle('vertex-ai-pdf-questions'), [
+        file('lecture.pdf'),
+      ])
+    ).toBe(true);
+  });
+
+  it('is false for an html upload when only the image toggle is on', () => {
+    expect(
+      conversionInvokesAi(withToggle('image-quiz-html-to-anki'), [
+        file('page.html'),
+      ])
+    ).toBe(false);
+  });
+
+  it('is true when the image toggle is on and the upload has an image', () => {
+    expect(
+      conversionInvokesAi(withToggle('image-quiz-html-to-anki'), [
+        file('scan.png'),
+      ])
+    ).toBe(true);
+  });
+
+  it('is false when no AI toggle is set', () => {
+    expect(conversionInvokesAi(makeSettings(), [file('notes.md')])).toBe(false);
   });
 });
