@@ -311,8 +311,26 @@ describe('resolveAllowance', () => {
       credits: 300,
       windowStart: new Date('2026-05-01T00:00:00.000Z'),
       windowEnd: new Date('2026-06-01T00:00:00.000Z'),
-      resets: 'period',
+      resets: 'month',
     });
+  });
+
+  it('keeps the greater of an anonymous pass and a coexisting unlimited pass', () => {
+    const result = resolveAllowance(
+      {
+        ...emptyInputs,
+        passes: [
+          { kind: '7d', expiresAt: new Date('2026-05-15T00:00:00.000Z') },
+          {
+            kind: 'unlimited',
+            expiresAt: new Date('2026-06-01T00:00:00.000Z'),
+          },
+        ],
+      },
+      NOW
+    );
+    expect(result?.credits).toBe(500);
+    expect(result?.resets).toBe('pass');
   });
 
   it('clips an Apple unlimited window to a mid-month expiry', () => {

@@ -100,7 +100,7 @@ function unlimitedPassAllowance(
   return calendarMonthWindow(
     SUBSCRIPTION_CREDITS,
     now,
-    'period',
+    'month',
     active.expiresAt
   );
 }
@@ -170,8 +170,12 @@ function subscriptionMonthlyWindow(
   }
   const anniversary = addMonthsUtc(periodStart, months);
   // Clamp to now so a day-clamp rounding can never start the window ahead of
-  // the clock (mirrors the pass path).
-  const windowStart = anniversary.getTime() > now.getTime() ? now : anniversary;
+  // the clock (mirrors the pass path). Clone now so the returned window never
+  // aliases the caller's Date instance.
+  const windowStart =
+    anniversary.getTime() > now.getTime()
+      ? new Date(now.getTime())
+      : anniversary;
   const nextAnniversary = addMonthsUtc(periodStart, months + 1);
   const windowEnd =
     nextAnniversary.getTime() < periodEnd.getTime()
@@ -220,8 +224,9 @@ function passAllowanceOf(
   passes: ActivePassRow[],
   now: Date
 ): AiCreditAllowance | null {
-  return (
-    anonymousPassAllowance(passes, now) ?? unlimitedPassAllowance(passes, now)
+  return betterAllowance(
+    anonymousPassAllowance(passes, now),
+    unlimitedPassAllowance(passes, now)
   );
 }
 
