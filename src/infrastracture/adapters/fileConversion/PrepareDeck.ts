@@ -566,6 +566,78 @@ interface ClaudeConversionResult {
 // so far — the deck carries a credits warning and the job never fails. There is
 // no standard-parser recovery of the untouched files: a partial AI deck with a
 // warning beats mixing two engines' output in one deck.
+function salvagedDecksOf(error: AiCreditsExhaustedError): DeckInfo[] {
+  return error instanceof AiCreditsTrippedWithSalvage
+    ? error.salvagedDecks
+    : [];
+}
+
+async function runCrossFileDedupConversion(
+  htmlFiles: DeckParserInput['files'],
+  generateForFile: (
+    file: DeckParserInput['files'][number],
+    instructions?: string
+  ) => Promise<DeckInfo[]>,
+  userInstructions: string | undefined,
+  cardSize: string | undefined,
+  crossFileDedup: CrossFileDedupState
+): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
+  const deckInfoArrays: DeckInfo[][] = [];
+  let tripped = false;
+  for (const file of htmlFiles) {
+    if (tripped) break;
+    const instructions = composeCrossFileInstructions(
+      crossFileDedup.fronts,
+      userInstructions,
+      cardSize
+    );
+    try {
+      const decks = await generateForFile(file, instructions);
+      deckInfoArrays.push(absorbFileIntoCrossFileDedup(crossFileDedup, decks));
+    } catch (error) {
+      if (error instanceof AiCreditsExhaustedError) {
+        deckInfoArrays.push(
+          absorbFileIntoCrossFileDedup(crossFileDedup, salvagedDecksOf(error))
+        );
+        tripped = true;
+        break;
+      }
+      throw error;
+    }
+  }
+  return { deckInfoArrays, tripped };
+}
+
+async function runConcurrentClaudeConversion(
+  htmlFiles: DeckParserInput['files'],
+  generateForFile: (
+    file: DeckParserInput['files'][number],
+    instructions?: string
+  ) => Promise<DeckInfo[]>,
+  userInstructions: string | undefined
+): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
+  let tripped = false;
+  const perFile = await mapWithConcurrency(
+    htmlFiles,
+    HTML_GENERATION_CONCURRENCY,
+    async (file) => {
+      if (tripped) {
+        return [] as DeckInfo[];
+      }
+      try {
+        return await generateForFile(file, userInstructions);
+      } catch (error) {
+        if (error instanceof AiCreditsExhaustedError) {
+          tripped = true;
+          return salvagedDecksOf(error);
+        }
+        throw error;
+      }
+    }
+  );
+  return { deckInfoArrays: perFile, tripped };
+}
+
 async function runClaudeConversion(
   htmlFiles: DeckParserInput['files'],
   generateForFile: (
@@ -580,61 +652,21 @@ async function runClaudeConversion(
   const crossFileDedup =
     threadedDedup ?? (ownsDedup ? createCrossFileDedupState() : undefined);
 
-  if (crossFileDedup) {
-    const deckInfoArrays: DeckInfo[][] = [];
-    let tripped = false;
-    for (const file of htmlFiles) {
-      if (tripped) break;
-      const instructions = composeCrossFileInstructions(
-        crossFileDedup.fronts,
+  const { deckInfoArrays, tripped } = crossFileDedup
+    ? await runCrossFileDedupConversion(
+        htmlFiles,
+        generateForFile,
         userInstructions,
-        cardSize
+        cardSize,
+        crossFileDedup
+      )
+    : await runConcurrentClaudeConversion(
+        htmlFiles,
+        generateForFile,
+        userInstructions
       );
-      try {
-        const decks = await generateForFile(file, instructions);
-        deckInfoArrays.push(
-          absorbFileIntoCrossFileDedup(crossFileDedup, decks)
-        );
-      } catch (error) {
-        if (error instanceof AiCreditsExhaustedError) {
-          const salvaged =
-            error instanceof AiCreditsTrippedWithSalvage
-              ? error.salvagedDecks
-              : [];
-          deckInfoArrays.push(
-            absorbFileIntoCrossFileDedup(crossFileDedup, salvaged)
-          );
-          tripped = true;
-          break;
-        }
-        throw error;
-      }
-    }
-    return { deckInfoArrays, crossFileDedup, ownsDedup, tripped };
-  }
 
-  let tripped = false;
-  const perFile = await mapWithConcurrency(
-    htmlFiles,
-    HTML_GENERATION_CONCURRENCY,
-    async (file) => {
-      if (tripped) {
-        return [] as DeckInfo[];
-      }
-      try {
-        return await generateForFile(file, userInstructions);
-      } catch (error) {
-        if (error instanceof AiCreditsExhaustedError) {
-          tripped = true;
-          return error instanceof AiCreditsTrippedWithSalvage
-            ? error.salvagedDecks
-            : ([] as DeckInfo[]);
-        }
-        throw error;
-      }
-    }
-  );
-  return { deckInfoArrays: perFile, crossFileDedup, ownsDedup, tripped };
+  return { deckInfoArrays, crossFileDedup, ownsDedup, tripped };
 }
 
 function emitCrossFileConversionEvent(
