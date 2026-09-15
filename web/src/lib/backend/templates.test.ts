@@ -88,13 +88,17 @@ describe('aiModifyNoteType error handling', () => {
     );
   });
 
-  it('surfaces the 402 paid-plan message as a plain error', async () => {
+  it('surfaces the coded 402 credits-exhausted message from the message field', async () => {
     vi.mocked(globalThis.fetch).mockResolvedValue(
-      jsonResponse(402, { error: 'upgrade required' })
+      jsonResponse(402, {
+        code: 'ai_credits_exhausted',
+        message:
+          "You're out of AI credits. They come back when your allowance resets.",
+      })
     );
 
     await expect(aiModifyNoteType(starter, 'x', [])).rejects.toThrow(
-      'upgrade required'
+      "You're out of AI credits. They come back when your allowance resets."
     );
   });
 
