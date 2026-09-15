@@ -5,7 +5,7 @@ export const getOwner = (response?: express.Response) =>
 
 export function getOwnerId(response?: express.Response): number | null {
   const raw = getOwner(response);
-  if (raw == null) {
+  if (raw == null || raw === '') {
     return null;
   }
   const id = Number(raw);

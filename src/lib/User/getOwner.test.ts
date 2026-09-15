@@ -48,4 +48,8 @@ describe('getOwnerId', () => {
   test('returns null for a non-numeric owner', () => {
     expect(getOwnerId(mockResponse('not-a-number'))).toBeNull();
   });
+
+  test('returns null for an empty-string owner instead of a synthetic 0', () => {
+    expect(getOwnerId(mockResponse(''))).toBeNull();
+  });
 });
