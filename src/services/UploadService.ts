@@ -90,6 +90,7 @@ import {
   ClaudeParseError,
   ClaudeLargeSectionError,
   ImageOnlyContentError,
+  AiCreditsTrippedWithSalvage,
 } from '../lib/claude/ClaudeService';
 import CustomExporter from '../lib/parser/exporters/CustomExporter';
 import Deck from '../lib/parser/Deck';
@@ -876,6 +877,9 @@ class UploadService {
           console.info(
             '[UploadService] Claude restart hit the credit guard mid-loop, shipping what was produced'
           );
+          if (error instanceof AiCreditsTrippedWithSalvage) {
+            deckInfoArrays.push(error.salvagedDecks);
+          }
           creditGuardTripped = true;
           break;
         }
