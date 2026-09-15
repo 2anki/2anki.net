@@ -968,6 +968,7 @@ export function conversionInvokesAi(
   }
   if (
     settings.vertexAIPDFQuestions &&
+    settings.processPDFs !== false &&
     files.some((file) => isPDFFile(file.name))
   ) {
     return true;

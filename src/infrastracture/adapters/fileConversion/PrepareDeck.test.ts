@@ -1126,6 +1126,18 @@ describe('conversionInvokesAi', () => {
     ).toBe(true);
   });
 
+  it('is false when the PDF toggle is on but PDF processing is disabled', () => {
+    expect(
+      conversionInvokesAi(
+        makeSettings({
+          'vertex-ai-pdf-questions': 'true',
+          'process-pdfs': 'false',
+        }),
+        [file('lecture.pdf')]
+      )
+    ).toBe(false);
+  });
+
   it('is false for an html upload when only the image toggle is on', () => {
     expect(
       conversionInvokesAi(withToggle('image-quiz-html-to-anki'), [
