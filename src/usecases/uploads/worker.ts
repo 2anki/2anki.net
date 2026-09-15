@@ -416,7 +416,10 @@ export async function runUploadGenerationInWorker(
     try {
       await getEventsSink().flushDurable();
     } catch (flushError) {
-      console.error('[uploads] durable spend flush on worker exit failed', flushError);
+      console.error(
+        '[uploads] durable spend flush on worker exit failed',
+        flushError
+      );
     }
     task.progressPort?.close();
   }

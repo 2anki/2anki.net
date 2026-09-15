@@ -725,7 +725,10 @@ async function buildParserResult(
       parser.payload.flatMap((deck) => deck.cards),
       allFiles.reduce((sum, f) => sum + (f.size ?? f.contents?.length ?? 0), 0)
     ),
-    inducedRule: shippedInducedRule(parser.inducedRule, parser.totalCardCount()),
+    inducedRule: shippedInducedRule(
+      parser.inducedRule,
+      parser.totalCardCount()
+    ),
     guidEntries: parser.issuedGuidEntries,
     uploadIdentityStats: uploadIdentityStatsFor(input, parser),
   };

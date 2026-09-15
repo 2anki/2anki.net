@@ -203,10 +203,14 @@ describe('withAiBudget', () => {
       release = resolve;
     });
 
-    const first = withAiBudget(42, async () => {
-      await gate;
-      return 'first';
-    }, deps);
+    const first = withAiBudget(
+      42,
+      async () => {
+        await gate;
+        return 'first';
+      },
+      deps
+    );
     await flush();
     expect(reservedCreditsFor(42)).toBe(RESERVED_CREDITS_PER_INFLIGHT_CALL);
 
@@ -224,9 +228,13 @@ describe('withAiBudget', () => {
   it('releases the reservation when the call throws', async () => {
     const deps = makeDeps({ balance: balanceWith(180) });
     await expect(
-      withAiBudget(42, async () => {
-        throw new Error('boom');
-      }, deps)
+      withAiBudget(
+        42,
+        async () => {
+          throw new Error('boom');
+        },
+        deps
+      )
     ).rejects.toThrow('boom');
     expect(reservedCreditsFor(42)).toBe(0);
   });

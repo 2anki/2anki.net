@@ -71,7 +71,9 @@ describe('AiCreditsRepository generated SQL', () => {
 
   it('reads every active row, not one cherry-picked by updated_at', () => {
     const repo = new AiCreditsRepository(pg);
-    const sql = repo.buildActiveSubscriptionQuery('user@example.com').toString();
+    const sql = repo
+      .buildActiveSubscriptionQuery('user@example.com')
+      .toString();
     expect(sql).not.toContain('order by');
     expect(sql).not.toContain('limit');
   });

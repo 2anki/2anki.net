@@ -32,7 +32,9 @@ async function createSchema(db: Knex): Promise<void> {
 }
 
 function subPayload(unitAmount: number): string {
-  return JSON.stringify({ items: { data: [{ price: { unit_amount: unitAmount } }] } });
+  return JSON.stringify({
+    items: { data: [{ price: { unit_amount: unitAmount } }] },
+  });
 }
 
 describe('createAiCreditReaders', () => {

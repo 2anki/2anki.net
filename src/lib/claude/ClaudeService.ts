@@ -1188,7 +1188,8 @@ function settledTrippedOnCredits<T>(
   results: PromiseSettledResult<T>[]
 ): boolean {
   return results.some(
-    (r) => r.status === 'rejected' && r.reason instanceof AiCreditsExhaustedError
+    (r) =>
+      r.status === 'rejected' && r.reason instanceof AiCreditsExhaustedError
   );
 }
 
