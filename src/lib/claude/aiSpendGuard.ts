@@ -228,7 +228,17 @@ export async function withAiBudget<T>(
     return run();
   }
   const status = await getAiBudgetStatus(userId, resolved);
+  const now = resolved.now?.() ?? new Date();
+  void maybeNotifyAlert(resolved, userId, now).catch((error) =>
+    console.error('[ai-credits] spend alert check failed', error)
+  );
   if (isBudgetSpent(status, userId)) {
+    // getAiBudgetStatus already fires the event when the raw balance is spent;
+    // the reservation-throttled stop (positive balance, no headroom left) is
+    // the case it never sees, so record it here.
+    if (status.balance != null && status.balance.credits > 0) {
+      fireExhaustedOnce(resolved, userId, status.balance.windowStart);
+    }
     throw new AiCreditsExhaustedError();
   }
   reserveInflightCredits(userId, RESERVED_CREDITS_PER_INFLIGHT_CALL);

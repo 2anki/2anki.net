@@ -238,6 +238,56 @@ describe('withAiBudget', () => {
     ).rejects.toThrow('boom');
     expect(reservedCreditsFor(42)).toBe(0);
   });
+
+  it('emails the watch alert once when 30d spend crosses the threshold', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(180),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+    await withAiBudget(42, async () => 'ok', deps);
+    await flush();
+    expect(trackMock).toHaveBeenCalledWith('ai_spend_alert_sent', {
+      userId: 42,
+      props: {},
+    });
+    expect(deps.sendAlert).toHaveBeenCalledWith(
+      expect.stringContaining('crossed $25 in 30 days'),
+      expect.stringContaining('User 42')
+    );
+  });
+
+  it('records the exhausted event when a call is refused by the reservation', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(RESERVED_CREDITS_PER_INFLIGHT_CALL),
+    });
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const first = withAiBudget(
+      42,
+      async () => {
+        await gate;
+        return 'first';
+      },
+      deps
+    );
+    await flush();
+
+    const second = jest.fn().mockResolvedValue('second');
+    await expect(withAiBudget(42, second, deps)).rejects.toBeInstanceOf(
+      AiCreditsExhaustedError
+    );
+    await flush();
+    expect(trackMock).toHaveBeenCalledWith('ai_credits_exhausted', {
+      userId: 42,
+      props: {},
+    });
+
+    release();
+    await first;
+  });
 });
 
 describe('getAiBudgetStatus', () => {
