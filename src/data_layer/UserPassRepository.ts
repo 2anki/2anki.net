@@ -20,6 +20,7 @@ export interface UserPassWindowRow {
 
 export interface IUserPassRepository {
   findActive(userId: number, now: Date): Promise<UserPass | null>;
+  findActivePasses(userId: number, now: Date): Promise<ActivePassRow[]>;
   upsertWithExtension(
     userId: number,
     kind: PassKind,
@@ -208,6 +209,12 @@ export class InMemoryUserPassRepository implements IUserPassRepository {
       .filter((r) => r.user_id === userId && r.expires_at > now)
       .sort((a, b) => b.expires_at.getTime() - a.expires_at.getTime());
     return active[0] ?? null;
+  }
+
+  async findActivePasses(userId: number, now: Date): Promise<ActivePassRow[]> {
+    return this.rows
+      .filter((r) => r.user_id === userId && r.expires_at > now)
+      .map((r) => ({ kind: r.kind, expiresAt: r.expires_at }));
   }
 
   async existsByPaymentIntentId(paymentIntentId: string): Promise<boolean> {
