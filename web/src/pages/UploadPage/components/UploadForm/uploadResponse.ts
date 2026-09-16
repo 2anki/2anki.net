@@ -31,8 +31,11 @@ export function parseNonNegativeIntHeader(
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
+export const AI_CREDITS_WARNING_CODE = 'ai-credits-exhausted';
+
 export interface ConversionSuccessHandlers {
   setWarningMessage: (value: string | null) => void;
+  setWarningCode: (value: string | null) => void;
   setDeckName: (value: string) => void;
   setCardCount: (value: number | null) => void;
   setMcqCount: (value: number) => void;
@@ -98,6 +101,7 @@ export async function applyConversionSuccess(
   }
 
   handlers.setWarningMessage(response.headers.get('X-Warning'));
+  handlers.setWarningCode(response.headers.get('X-Warning-Code'));
   handlers.setDeckName(resolveDeckName(response.headers));
   const count = parseCardCountHeader(response.headers);
   handlers.setCardCount(count);

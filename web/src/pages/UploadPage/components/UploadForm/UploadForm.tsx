@@ -13,8 +13,10 @@ import getAcceptedContentTypes from '../../helpers/getAcceptedContentTypes';
 import { extractErrorMessage } from '../../helpers/extractErrorMessage';
 import {
   applyConversionSuccess,
+  AI_CREDITS_WARNING_CODE,
   type ConversionSuccessHandlers,
 } from './uploadResponse';
+import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
 import { EmptyBackNotice } from '../../../DownloadsPage/components/EmptyBackNotice';
@@ -310,6 +312,8 @@ function UploadForm({
     setMcqShowAnswer,
     warningMessage,
     setWarningMessage,
+    warningCode,
+    setWarningCode,
     limitInfo,
     setLimitInfo,
     localError,
@@ -375,6 +379,7 @@ function UploadForm({
 
   const conversionSuccessHandlers: ConversionSuccessHandlers = {
     setWarningMessage,
+    setWarningCode,
     setDeckName,
     setCardCount,
     setMcqCount,
@@ -1105,7 +1110,12 @@ function UploadForm({
         </p>
       )}
       {warningMessage && (
-        <p className={formStyles.warningInline}>{warningMessage}</p>
+        <p className={formStyles.warningInline}>
+          {warningMessage}
+          {warningCode === AI_CREDITS_WARNING_CODE && (
+            <BuyCreditsButton source="credits_conversion" variant="link" />
+          )}
+        </p>
       )}
       {droppedImageCount > 0 && (
         <div className={formStyles.warningInline}>
@@ -1166,7 +1176,7 @@ function UploadForm({
 
   const renderMultiDeckState = () => {
     if (batchResult == null) return null;
-    const { decks, bulkUrl, deckCount, warning } = batchResult;
+    const { decks, bulkUrl, deckCount, warning, warningCode } = batchResult;
     const onDeckDownload = () => {
       fireAnalyticsEvent('deck_downloaded');
       track('deck_downloaded');
@@ -1177,7 +1187,14 @@ function UploadForm({
         <p className={formStyles.successPrimary}>
           {t('upload.form.decksReady', { count: deckCount })}
         </p>
-        {warning && <p className={formStyles.warningInline}>{warning}</p>}
+        {warning && (
+          <p className={formStyles.warningInline}>
+            {warning}
+            {warningCode === AI_CREDITS_WARNING_CODE && (
+              <BuyCreditsButton source="credits_conversion" variant="link" />
+            )}
+          </p>
+        )}
         {droppedImageCount > 0 && (
           <div className={formStyles.warningInline}>
             <ImageDropNotice

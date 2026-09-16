@@ -24,5 +24,10 @@
   "remainingValid_one": "Pozostał {{count}}, ważny do {{date}}.",
   "remainingValid_few": "Pozostały {{count}}, ważne do {{date}}.",
   "remainingValid_many": "Pozostało {{count}}, ważne do {{date}}.",
-  "remainingValid_other": "Pozostało {{count}}, ważne do {{date}}."
+  "remainingValid_other": "Pozostało {{count}}, ważne do {{date}}.",
+  "buy": "Kup 250 kredytów za 5 $",
+  "buyShort": "Kup kredyty",
+  "buyPending": "Rozpoczynanie płatności",
+  "buyError": "Nie udało się rozpocząć płatności. Spróbuj ponownie.",
+  "confirmation": "Dodano 250 kredytów. Ważne do {{date}}."
 }

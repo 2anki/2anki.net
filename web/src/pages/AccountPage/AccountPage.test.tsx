@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AccountPage from './AccountPage';
 
 vi.mock('../../lib/hooks/useUserLocals', () => ({
@@ -32,11 +33,14 @@ const mockUseSubscriptionStatus = useSubscriptionStatus as ReturnType<
   typeof vi.fn
 >;
 
-function renderAccountPage() {
+function renderAccountPage(initialEntry = '/account') {
+  const queryClient = new QueryClient();
   return render(
-    <MemoryRouter>
-      <AccountPage />
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <AccountPage />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -85,5 +89,27 @@ describe('AccountPage ClaimSubscription gate', () => {
     renderAccountPage();
 
     expect(screen.queryByText('Paid with a different email?')).toBeNull();
+  });
+
+  it('confirms the purchase when returning with ?credits=added', () => {
+    mockUseSubscriptionStatus.mockReturnValue({
+      subscriptionType: 'subscriber',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage('/account?credits=added');
+
+    expect(screen.getByText(/250 credits added\./)).toBeInTheDocument();
+  });
+
+  it('shows no purchase confirmation on a plain account visit', () => {
+    mockUseSubscriptionStatus.mockReturnValue({
+      subscriptionType: 'subscriber',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage();
+
+    expect(screen.queryByText(/250 credits added\./)).toBeNull();
   });
 });

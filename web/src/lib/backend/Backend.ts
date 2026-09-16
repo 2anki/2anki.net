@@ -665,6 +665,31 @@ export class Backend {
     }
   }
 
+  async startCreditPackCheckout(
+    source: string
+  ): Promise<{ url: string } | { status: 'unavailable' | 'error' }> {
+    try {
+      const response = await post(`${this.baseURL}checkout/credit-pack`, {
+        source,
+      });
+      if (response.status === 503) {
+        return { status: 'unavailable' };
+      }
+      if (!response.ok) {
+        return { status: 'error' };
+      }
+      const body = (await response.json().catch(() => null)) as {
+        url?: string;
+      } | null;
+      if (body?.url != null) {
+        return { url: body.url };
+      }
+      return { status: 'error' };
+    } catch {
+      return { status: 'error' };
+    }
+  }
+
   async listAnkifyClients(): Promise<AnkifyClient[]> {
     const result = await get(`${this.baseURL}ankify/clients`);
     return result ?? [];

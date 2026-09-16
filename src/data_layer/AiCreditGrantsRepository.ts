@@ -4,7 +4,20 @@ export interface IAiCreditGrantsReader {
   sumActiveCredits(userId: number, now: Date): Promise<number>;
 }
 
-export class AiCreditGrantsRepository implements IAiCreditGrantsReader {
+export interface AiCreditPackGrant {
+  userId: number;
+  amountCredits: number;
+  expiresAt: Date;
+  stripeSessionId: string;
+}
+
+export interface IAiCreditGrantsWriter {
+  insertPackGrant(grant: AiCreditPackGrant): Promise<boolean>;
+}
+
+export class AiCreditGrantsRepository
+  implements IAiCreditGrantsReader, IAiCreditGrantsWriter
+{
   private readonly table = 'ai_credit_grants';
 
   constructor(private readonly database: Knex) {}
@@ -21,6 +34,25 @@ export class AiCreditGrantsRepository implements IAiCreditGrantsReader {
       | { credits: number | string | null }
       | undefined;
     return Number(row?.credits ?? 0);
+  }
+
+  buildInsertPackGrantQuery(grant: AiCreditPackGrant): Knex.QueryBuilder {
+    return this.database(this.table)
+      .insert({
+        user_id: grant.userId,
+        source: 'pack',
+        amount_credits: grant.amountCredits,
+        expires_at: grant.expiresAt,
+        stripe_session_id: grant.stripeSessionId,
+      })
+      .onConflict('stripe_session_id')
+      .ignore()
+      .returning('id');
+  }
+
+  async insertPackGrant(grant: AiCreditPackGrant): Promise<boolean> {
+    const inserted = (await this.buildInsertPackGrantQuery(grant)) as unknown[];
+    return inserted.length > 0;
   }
 }
 

@@ -12,5 +12,10 @@
   "remaining_one": "Nog {{count}} over.",
   "remaining_other": "Nog {{count}} over.",
   "remainingValid_one": "Nog {{count}} over, geldig tot {{date}}.",
-  "remainingValid_other": "Nog {{count}} over, geldig tot {{date}}."
+  "remainingValid_other": "Nog {{count}} over, geldig tot {{date}}.",
+  "buy": "Koop 250 credits voor $ 5",
+  "buyShort": "Credits kopen",
+  "buyPending": "Afrekenen starten",
+  "buyError": "Kon het afrekenen niet starten. Probeer het opnieuw.",
+  "confirmation": "250 credits toegevoegd. Geldig tot {{date}}."
 }

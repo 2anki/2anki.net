@@ -12,5 +12,10 @@
   "remaining_one": "Noch {{count}} übrig.",
   "remaining_other": "Noch {{count}} übrig.",
   "remainingValid_one": "Noch {{count}} übrig, gültig bis {{date}}.",
-  "remainingValid_other": "Noch {{count}} übrig, gültig bis {{date}}."
+  "remainingValid_other": "Noch {{count}} übrig, gültig bis {{date}}.",
+  "buy": "250 Credits für 5 $ kaufen",
+  "buyShort": "Credits kaufen",
+  "buyPending": "Bezahlung wird gestartet",
+  "buyError": "Bezahlung konnte nicht gestartet werden. Bitte erneut versuchen.",
+  "confirmation": "250 Credits hinzugefügt. Gültig bis {{date}}."
 }

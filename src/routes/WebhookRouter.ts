@@ -39,6 +39,14 @@ import { SendAbandonedCheckoutRecoveryOnExpiryUseCase } from '../usecases/ops/Se
 import { UserVisibleErrorsRepository } from '../data_layer/UserVisibleErrorsRepository';
 import { RecordUserVisibleErrorUseCase } from '../usecases/observability/RecordUserVisibleErrorUseCase';
 import { recordStripeWebhook } from '../services/stripeWebhookTimestamp';
+import { AiCreditGrantsRepository } from '../data_layer/AiCreditGrantsRepository';
+import {
+  CREDIT_PACK_CREDITS,
+  CREDIT_PACK_EXPIRY_DAYS,
+  CREDIT_PACK_PRICE_CENTS,
+} from '../usecases/checkout/creditPack';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const WebhooksRouter = () => {
   const router = express.Router();
@@ -510,6 +518,59 @@ const WebhooksRouter = () => {
               });
             } catch (passError) {
               console.error('pass.webhook.grant_failed', passError);
+            }
+            response.send();
+            return;
+          }
+
+          if (sessionMeta.credit_pack === '1') {
+            const rawCreditUserId = sessionMeta.user_id;
+            const creditUserId =
+              rawCreditUserId == null
+                ? Number.NaN
+                : Number.parseInt(rawCreditUserId, 10);
+            if (Number.isNaN(creditUserId) || creditUserId <= 0) {
+              console.warn('credits.webhook.missing_metadata', {
+                raw_user_id: rawCreditUserId,
+              });
+              response.send();
+              return;
+            }
+            const amountTotal = session.amount_total ?? 0;
+            if (amountTotal < CREDIT_PACK_PRICE_CENTS) {
+              console.warn('credits.webhook.amount_mismatch', {
+                user_id: creditUserId,
+                amount_total: amountTotal,
+              });
+              response.send();
+              return;
+            }
+            const now = new Date();
+            const expiresAt = new Date(
+              now.getTime() + CREDIT_PACK_EXPIRY_DAYS * DAY_MS
+            );
+            try {
+              const grantsRepo = new AiCreditGrantsRepository(getDatabase());
+              const granted = await grantsRepo.insertPackGrant({
+                userId: creditUserId,
+                amountCredits: CREDIT_PACK_CREDITS,
+                expiresAt,
+                stripeSessionId: session.id,
+              });
+              console.info('credits.granted', {
+                user_id: creditUserId,
+                amount_credits: CREDIT_PACK_CREDITS,
+                expires_at: expiresAt.toISOString(),
+                inserted: granted,
+              });
+              if (granted) {
+                track('credits_purchase_completed', {
+                  userId: creditUserId,
+                  props: { credits: CREDIT_PACK_CREDITS },
+                });
+              }
+            } catch (creditsError) {
+              console.error('credits.webhook.grant_failed', creditsError);
             }
             response.send();
             return;

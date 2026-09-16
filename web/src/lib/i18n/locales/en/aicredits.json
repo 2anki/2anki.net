@@ -12,5 +12,10 @@
   "remaining_one": "{{count}} left.",
   "remaining_other": "{{count}} left.",
   "remainingValid_one": "{{count}} left, valid through {{date}}.",
-  "remainingValid_other": "{{count}} left, valid through {{date}}."
+  "remainingValid_other": "{{count}} left, valid through {{date}}.",
+  "buy": "Buy 250 credits for $5",
+  "buyShort": "Buy credits",
+  "buyPending": "Starting checkout",
+  "buyError": "Couldn't start checkout. Try again.",
+  "confirmation": "250 credits added. Valid through {{date}}."
 }
