@@ -1502,7 +1502,8 @@ async function generateDeckInfoUncached(
       options.pdfImageFallback,
       userInstructions,
       onProgress,
-      options.userId
+      options.userId,
+      options.requestId
     );
   }
 

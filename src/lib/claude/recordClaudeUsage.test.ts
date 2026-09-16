@@ -48,6 +48,35 @@ describe('recordClaudeUsage', () => {
     });
   });
 
+  it('persists the request id in the tracked props when one is known', () => {
+    recordClaudeUsage({
+      surface: 'conversion',
+      model: 'claude-sonnet-5',
+      usage: { input_tokens: 100, output_tokens: 50 },
+      userId: 42,
+      requestId: '0f1e2d3c-4b5a-4697-8877-665544332211',
+    });
+
+    expect(trackMock).toHaveBeenCalledWith('ai_usage_recorded', {
+      userId: 42,
+      props: expect.objectContaining({
+        request_id: '0f1e2d3c-4b5a-4697-8877-665544332211',
+      }),
+    });
+  });
+
+  it('omits request_id from the tracked props when none is known', () => {
+    recordClaudeUsage({
+      surface: 'conversion',
+      model: 'claude-sonnet-5',
+      usage: { input_tokens: 100, output_tokens: 50 },
+      userId: 42,
+    });
+
+    const props = trackMock.mock.calls[0][1].props as Record<string, unknown>;
+    expect(props).not.toHaveProperty('request_id');
+  });
+
   it('logs a claude-usage line with surface, model, user, and cost', () => {
     recordClaudeUsage({
       surface: 'file_conversion',

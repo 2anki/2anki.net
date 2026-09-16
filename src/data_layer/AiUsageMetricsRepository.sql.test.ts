@@ -74,6 +74,17 @@ describe('AiUsageMetricsRepository generated SQL', () => {
     expect(bindings).toEqual(['ai_usage_recorded', since, 42]);
   });
 
+  it('sums one request cost for a user, bounded to a start time', () => {
+    const { sql, bindings } = repository
+      .buildCostByRequestQuery(42, 'req-abc', since)
+      .toSQL();
+
+    expect(sql).toBe(
+      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and "user_id" = ? and props->>'request_id' = ?`
+    );
+    expect(bindings).toEqual(['ai_usage_recorded', since, 42, 'req-abc']);
+  });
+
   it('counts named events for a user over the window', () => {
     const { sql, bindings } = repository
       .buildEventCountQuery('ai_spend_alert_sent', 42, since)

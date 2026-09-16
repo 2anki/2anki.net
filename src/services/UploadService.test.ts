@@ -1124,6 +1124,81 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it('sets X-Credits-Used from the request cost on a single-deck sync upload', async () => {
+    mockPackages([{ name: 'deck', cardCount: 12 }]);
+    const costByRequestId = jest.fn().mockResolvedValue(0.88);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ aiRequestCost: { costByRequestId } })
+    );
+    const req = buildRequest();
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).requestId = 'req-abc';
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(costByRequestId).toHaveBeenCalledWith(
+      42,
+      'req-abc',
+      expect.any(Date)
+    );
+    expect(res.set).toHaveBeenCalledWith('X-Credits-Used', '88');
+  });
+
+  it('omits X-Credits-Used when the conversion recorded no AI cost', async () => {
+    mockPackages([{ name: 'deck', cardCount: 12 }]);
+    const costByRequestId = jest.fn().mockResolvedValue(0);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ aiRequestCost: { costByRequestId } })
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).requestId = 'req-abc';
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Credits-Used',
+      expect.anything()
+    );
+  });
+
+  it('fails open, still returning the deck, when the cost lookup rejects', async () => {
+    mockPackages([{ name: 'deck', cardCount: 12 }]);
+    const costByRequestId = jest
+      .fn()
+      .mockRejectedValue(new Error('metrics unavailable'));
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ aiRequestCost: { costByRequestId } })
+    );
+    const req = buildRequest();
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).requestId = 'req-abc';
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Credits-Used',
+      expect.anything()
+    );
+  });
+
   it('sets X-Expired-Notion-Assets to the summed expired-image count on a single-deck sync upload', async () => {
     MockGeneratePackagesUseCase.mockImplementation(
       () =>

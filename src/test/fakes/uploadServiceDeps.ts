@@ -4,6 +4,7 @@ import type { IParsePathSignatureRepository } from '../../data_layer/ParsePathSi
 import type { IConversionRuleScoresRepository } from '../../data_layer/ConversionRuleScoresRepository';
 import type { ICardGuidLedgerRepository } from '../../data_layer/CardGuidLedgerRepository';
 import type { IAiCardFingerprintRepository } from '../../data_layer/AiCardFingerprintRepository';
+import type { IAiRequestCostReader } from '../../data_layer/AiUsageMetricsRepository';
 import type { PhotoToFlashcardsUseCase } from '../../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 
 export type UploadServiceDeps = [
@@ -14,6 +15,7 @@ export type UploadServiceDeps = [
   ICardGuidLedgerRepository,
   IAiCardFingerprintRepository,
   PhotoToFlashcardsUseCase,
+  IAiRequestCostReader,
 ];
 
 export interface UploadServiceDepOverrides {
@@ -24,6 +26,7 @@ export interface UploadServiceDepOverrides {
   guidLedger?: ICardGuidLedgerRepository;
   aiFingerprints?: IAiCardFingerprintRepository;
   photoToFlashcards?: PhotoToFlashcardsUseCase;
+  aiRequestCost?: IAiRequestCostReader;
 }
 
 export function fakeUploadServiceDeps(
@@ -69,5 +72,8 @@ export function fakeUploadServiceDeps(
             )
           ),
       } as unknown as PhotoToFlashcardsUseCase),
+    overrides.aiRequestCost ?? {
+      costByRequestId: jest.fn().mockResolvedValue(0),
+    },
   ];
 }

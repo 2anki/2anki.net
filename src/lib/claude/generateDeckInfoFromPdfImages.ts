@@ -128,7 +128,8 @@ async function visionCardsForPage(
   image: ResolvedPageImage,
   prompt: string,
   pageIndex: number,
-  userId?: number | null
+  userId?: number | null,
+  requestId?: string
 ): Promise<CompactDeck[]> {
   const client = getAnthropicClient();
 
@@ -168,6 +169,7 @@ async function visionCardsForPage(
     model: response.model,
     usage: response.usage,
     userId,
+    requestId,
   });
   if (response.stop_reason === 'max_tokens') {
     console.warn('[Claude] PDF page vision truncated, retrying', {
@@ -181,6 +183,7 @@ async function visionCardsForPage(
       model: response.model,
       usage: response.usage,
       userId,
+      requestId,
     });
   }
 
@@ -211,7 +214,8 @@ async function runPagesWithConcurrency(
   prompt: string,
   attachPageImages: boolean,
   onProgress?: (step: string) => void,
-  userId?: number | null
+  userId?: number | null,
+  requestId?: string
 ): Promise<PageVisionResult> {
   const compactDecks: CompactDeck[] = [];
   const failures: unknown[] = [];
@@ -229,7 +233,7 @@ async function runPagesWithConcurrency(
       onProgress?.(`claude:vision:page:${index + 1}:${images.length}`);
       try {
         const decks = await withAiBudget(userId, () =>
-          visionCardsForPage(images[index], prompt, index, userId)
+          visionCardsForPage(images[index], prompt, index, userId, requestId)
         );
         const attributed = attachPageImages
           ? attachPageImageToCompactDecks(decks, images[index].relPath)
@@ -272,7 +276,8 @@ export async function generateDeckInfoFromPdfImages(
   context: PdfImageFallbackContext,
   userInstructions?: string,
   onProgress?: (step: string) => void,
-  userId?: number | null
+  userId?: number | null,
+  requestId?: string
 ): Promise<DeckInfo[]> {
   const t0 = Date.now();
   await assertAiBudget(userId);
@@ -296,7 +301,8 @@ export async function generateDeckInfoFromPdfImages(
     prompt,
     attachPageImages,
     onProgress,
-    userId
+    userId,
+    requestId
   );
   const deckInfo = mergeDeckInfoArrays(
     expandCompactDeckInfo(
