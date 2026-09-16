@@ -8,12 +8,12 @@ vi.mock('../../../lib/hooks/useAiCredits', () => ({
   useAiCredits: vi.fn(),
 }));
 
-vi.mock('../utils/formatLongDate', () => ({
+vi.mock('../../../lib/formatLongDate', () => ({
   formatLongDate: vi.fn(() => 'a date'),
 }));
 
 import { useAiCredits } from '../../../lib/hooks/useAiCredits';
-import { formatLongDate } from '../utils/formatLongDate';
+import { formatLongDate } from '../../../lib/formatLongDate';
 import { AiCreditsAccountLine } from './AiCreditsAccountLine';
 
 const mockHook = vi.mocked(useAiCredits);

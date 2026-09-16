@@ -33,6 +33,12 @@ vi.mock('../../lib/backend/getCardUsage', () => ({
   }),
 }));
 
+import { getAiCredits } from '../../lib/backend/getAiCredits';
+
+vi.mock('../../lib/backend/getAiCredits', () => ({
+  getAiCredits: vi.fn().mockResolvedValue(null),
+}));
+
 interface SidebarRenderOpts {
   pathname?: string;
   patreon?: boolean;
@@ -475,6 +481,116 @@ describe('Sidebar cards-used counter', () => {
     renderSidebar({ locals: null });
     await new Promise((r) => setTimeout(r, 10));
     expect(getCardUsage).not.toHaveBeenCalled();
+  });
+});
+
+describe('Sidebar AI credits line', () => {
+  beforeEach(() => {
+    vi.mocked(getAiCredits).mockReset();
+    vi.mocked(track).mockClear();
+  });
+
+  it('renders nothing for a user with no allowance and no credits', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue(null);
+    renderSidebar();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(screen.queryByText(/AI credit/)).not.toBeInTheDocument();
+  });
+
+  it('shows the balance for a subscriber with credits', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      credits: 312,
+      used: 0,
+      allowance: 500,
+      usable: true,
+      windowEnd: null,
+      resets: 'period',
+    });
+    renderSidebar({ subscriber: true });
+    await waitFor(() =>
+      expect(screen.getByText('312 AI credits left.')).toBeInTheDocument()
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Buy credits' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a buy-credits link when the balance is low', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      credits: 10,
+      used: 490,
+      allowance: 500,
+      usable: true,
+      windowEnd: null,
+      resets: 'period',
+    });
+    renderSidebar({ subscriber: true });
+    await waitFor(() =>
+      expect(screen.getByText('10 AI credits left.')).toBeInTheDocument()
+    );
+    expect(screen.getByRole('link', { name: 'Buy credits' })).toHaveAttribute(
+      'href',
+      '/account'
+    );
+  });
+
+  it('shows the zero-state copy with a buy link when exhausted', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      credits: 0,
+      used: 500,
+      allowance: 500,
+      usable: true,
+      windowEnd: null,
+      resets: 'period',
+    });
+    renderSidebar({ subscriber: true });
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Your next deck builds without AI/)
+      ).toBeInTheDocument()
+    );
+    expect(
+      screen.getByRole('link', { name: 'Buy credits' })
+    ).toBeInTheDocument();
+  });
+
+  it('shows a paused balance for a lapsed plan with an unexpired pack, no buy link', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      credits: 120,
+      used: 0,
+      allowance: 0,
+      usable: false,
+      windowEnd: '2026-12-01T00:00:00.000Z',
+      resets: 'pass',
+    });
+    renderSidebar();
+    await waitFor(() =>
+      expect(screen.getByText(/120 AI credits, paused/)).toBeInTheDocument()
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Buy credits' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('fires the sidebar analytics event when the buy link is clicked', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      credits: 0,
+      used: 500,
+      allowance: 500,
+      usable: true,
+      windowEnd: null,
+      resets: 'period',
+    });
+    renderSidebar({ subscriber: true });
+    const link = await screen.findByRole('link', { name: 'Buy credits' });
+    fireEvent.click(link);
+    expect(track).toHaveBeenCalledWith('credits_sidebar_link_clicked');
+  });
+
+  it('does not call getAiCredits when locals is null (unauthenticated visitor)', async () => {
+    renderSidebar({ locals: null });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(getAiCredits).not.toHaveBeenCalled();
   });
 });
 

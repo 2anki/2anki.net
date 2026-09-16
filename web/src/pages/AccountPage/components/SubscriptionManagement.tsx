@@ -12,7 +12,7 @@ import { CancellationReason } from './cancellationReasons';
 import { ClaimSubscription } from './ClaimSubscription';
 import styles from '../AccountPage.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
-import { formatLongDate } from '../utils/formatLongDate';
+import { formatLongDate } from '../../../lib/formatLongDate';
 
 type CancellationReasonInput = CancellationReason | '';
 

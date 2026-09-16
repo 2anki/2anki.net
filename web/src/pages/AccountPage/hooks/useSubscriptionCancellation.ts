@@ -7,7 +7,7 @@ import {
   CancelMode,
 } from '../../../lib/backend/cancelSubscription';
 import { CancellationReason } from '../components/cancellationReasons';
-import { formatLongDate } from '../utils/formatLongDate';
+import { formatLongDate } from '../../../lib/formatLongDate';
 
 export function useSubscriptionCancellation(onSuccess?: () => void) {
   const { t } = useTranslation('account');
