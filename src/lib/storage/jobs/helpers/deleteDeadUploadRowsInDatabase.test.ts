@@ -110,7 +110,7 @@ describe('deleteDeadUploadRowsInDatabase', () => {
 
     expect(insert).toHaveBeenCalledTimes(1);
     expect(insert.mock.calls[0][0].source).toBe('server');
-    expect((await remainingKeys()).length).toBe(130);
+    expect(await remainingKeys()).toHaveLength(130);
 
     infoSpy.mockRestore();
     errorSpy.mockRestore();
@@ -141,7 +141,7 @@ describe('deleteDeadUploadRowsInDatabase', () => {
 
     expect(insert).not.toHaveBeenCalled();
     expect(await remainingKeys()).not.toContain('decks/gone-1.apkg');
-    expect((await remainingKeys()).length).toBe(129);
+    expect(await remainingKeys()).toHaveLength(129);
 
     infoSpy.mockRestore();
   });
