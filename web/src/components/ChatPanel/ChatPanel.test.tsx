@@ -678,6 +678,26 @@ describe('ChatPanel', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/out of AI credits/i);
   });
 
+  it('offers a buy-credits link in the exhausted notice', async () => {
+    mockPost.mockResolvedValueOnce(
+      makeSseResponse([
+        { event: 'error', data: { type: 'ai_credits_exhausted' } },
+      ])
+    );
+
+    renderChatPanel();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message input' }), {
+      target: { value: 'Help me' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+    const buyButton = await screen.findByRole('button', {
+      name: 'Buy 250 credits for $5',
+    });
+    expect(buyButton).toBeInTheDocument();
+  });
+
   it('swaps to the upgrade panel when the server answers 402', async () => {
     mockPost.mockResolvedValueOnce({
       ok: false,

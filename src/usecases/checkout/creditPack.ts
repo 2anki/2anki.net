@@ -6,6 +6,7 @@ const CREDIT_PACK_SOURCES = [
   'credits_conversion',
   'credits_badge',
   'credits_account',
+  'credits_chat',
 ] as const;
 
 export type CreditPackSource = (typeof CREDIT_PACK_SOURCES)[number];
@@ -27,6 +28,7 @@ const SOURCE_PATHS: Record<CreditPackSource, string> = {
   credits_conversion: '/upload',
   credits_badge: '/upload',
   credits_account: '/account',
+  credits_chat: '/chat',
 };
 
 export function resolveCreditPackRedirect(

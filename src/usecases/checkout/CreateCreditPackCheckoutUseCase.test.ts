@@ -68,6 +68,21 @@ describe('CreateCreditPackCheckoutUseCase', () => {
     );
   });
 
+  it('sends the chat buyer back to /chat with the credits flag', async () => {
+    process.env.APP_URL = 'https://staging.2anki.net';
+    mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
+
+    const uc = new CreateCreditPackCheckoutUseCase(makeStripe(), 'price_pack');
+    await uc.execute({ userId: 1, source: 'credits_chat' });
+
+    expect(mockStripeCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success_url: 'https://staging.2anki.net/chat?credits=added',
+        cancel_url: 'https://staging.2anki.net/chat',
+      })
+    );
+  });
+
   it('falls back to a safe /upload redirect when the source is missing', async () => {
     process.env.APP_URL = 'https://staging.2anki.net';
     mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });

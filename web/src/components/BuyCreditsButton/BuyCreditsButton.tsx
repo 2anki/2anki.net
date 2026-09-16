@@ -12,7 +12,8 @@ import styles from './BuyCreditsButton.module.css';
 export type CreditPackSource =
   | 'credits_conversion'
   | 'credits_badge'
-  | 'credits_account';
+  | 'credits_account'
+  | 'credits_chat';
 
 interface Props {
   readonly source: CreditPackSource;
