@@ -7,7 +7,9 @@
     "unlimited": "Bez limitu",
     "photoPerMonth": "5 / mies.",
     "imagesQty": "3 obrazy",
-    "printsPerMonth": "1 / mies."
+    "printsPerMonth": "1 / mies.",
+    "creditsPass": "300 / 500",
+    "creditsMonth": "300 / mies."
   },
   "groups": {
     "conversionLimits": "Limity konwersji",
@@ -22,6 +24,7 @@
     "pdfPagesPerFile": "Strony PDF na plik",
     "maxUploadSize": "Maksymalny rozmiar przesyłania",
     "ankiNotionNotes": "Notatki Anki → Notion",
+    "aiCredits": "Kredyty AI",
     "aiFlashcards": "Fiszki AI z plików PDF i dokumentów",
     "photoToDeck": "Zdjęcie na talię (Claude Vision)",
     "aiMcq": "Test wielokrotnego wyboru AI (MCQ)",
@@ -40,15 +43,15 @@
     },
     "q2": {
       "question": "Czy jest opcja jednorazowej płatności?",
-      "answer": "Day Pass ({{dayPrice}}) daje 24 godziny nieograniczonego dostępu. Week Pass ({{weekPrice}}) daje 7 dni. Semester Pass ({{semesterPrice}}) daje około 4 miesiące. Wszystkie to płatności jednorazowe, bez subskrypcji."
+      "answer": "Day Pass ({{dayPrice}}) znosi darmowe limity na 24 godziny i zawiera 300 kredytów AI. Week Pass ({{weekPrice}}) obejmuje 7 dni z 500 kredytami. Semester Pass ({{semesterPrice}}) obejmuje około 4 miesiące z 1500 kredytami. Kredyty pokrywają funkcje AI, takie jak fiszki, MCQ i zdjęcie na talię; gdy się skończą, talia nadal powstaje bez AI. Wszystkie to płatności jednorazowe, bez subskrypcji."
     },
     "q3": {
       "question": "Czym jest plan Unlimited?",
-      "answer": "Unlimited usuwa limit 100 kart, dodaje obsługę PDF, pozwala uruchamiać wiele konwersji naraz i obejmuje importy z Anki do Notion do 10 000 notatek każdy. Ceny znajdziesz na kartach powyżej."
+      "answer": "Unlimited usuwa limit 100 kart, dodaje obsługę PDF, pozwala uruchamiać wiele konwersji naraz i obejmuje importy z Anki do Notion do 10 000 notatek każdy — wszystko bez miesięcznego limitu. Funkcje AI działają na 300 kredytach miesięcznie; gdy się skończą, talia nadal powstaje bez AI. Ceny znajdziesz na kartach powyżej."
     },
     "q4": {
       "question": "Czy jest plan Lifetime?",
-      "answer": "Już nie. Lifetime jest zamknięty dla nowych użytkowników. Jeśli masz już Lifetime, Twój dostęp i wszystkie funkcje pozostają dokładnie takie same. Aby uzyskać nieograniczony dostęp, skorzystaj z planu Unlimited na kartach powyżej."
+      "answer": "Już nie. Lifetime jest zamknięty dla nowych użytkowników. Jeśli masz już Lifetime, Twój dostęp i wszystkie funkcje pozostają dokładnie takie same. Aby uzyskać plan ciągły, skorzystaj z planu Unlimited na kartach powyżej."
     },
     "q5": {
       "question": "Czy mogę anulować w dowolnym momencie?",

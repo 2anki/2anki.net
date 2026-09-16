@@ -7,7 +7,9 @@
     "unlimited": "Ilimitado",
     "photoPerMonth": "5 / mês",
     "imagesQty": "3 imagens",
-    "printsPerMonth": "1 / mês"
+    "printsPerMonth": "1 / mês",
+    "creditsPass": "300 / 500",
+    "creditsMonth": "300 / mês"
   },
   "groups": {
     "conversionLimits": "Limites de conversão",
@@ -22,6 +24,7 @@
     "pdfPagesPerFile": "Páginas PDF por arquivo",
     "maxUploadSize": "Tamanho máximo de envio",
     "ankiNotionNotes": "Notas do Anki → Notion",
+    "aiCredits": "Créditos de IA",
     "aiFlashcards": "Flashcards com IA a partir de PDFs e documentos",
     "photoToDeck": "Foto para baralho (Claude Vision)",
     "aiMcq": "Múltipla escolha com IA (MCQ)",
@@ -40,15 +43,15 @@
     },
     "q2": {
       "question": "Existe opção de pagamento único?",
-      "answer": "Day Pass ({{dayPrice}}) dá 24 horas de acesso ilimitado. Week Pass ({{weekPrice}}) dá 7 dias. Semester Pass ({{semesterPrice}}) dá cerca de 4 meses. Todos são pagamentos únicos, sem assinatura."
+      "answer": "Day Pass ({{dayPrice}}) suspende os limites gratuitos por 24 horas e inclui 300 créditos de IA. Week Pass ({{weekPrice}}) cobre 7 dias com 500 créditos. Semester Pass ({{semesterPrice}}) cobre cerca de 4 meses com 1500 créditos. Os créditos cobrem recursos de IA como flashcards, MCQ e foto para baralho; quando acabam, o baralho continua sendo criado sem IA. Todos são pagamentos únicos, sem assinatura."
     },
     "q3": {
       "question": "O que é o plano Unlimited?",
-      "answer": "Unlimited remove o limite de 100 cartões, adiciona suporte a PDF, permite várias conversões ao mesmo tempo e inclui importações do Anki para o Notion de até 10.000 notas cada. Os preços estão nos cartões acima."
+      "answer": "Unlimited remove o limite de 100 cartões, adiciona suporte a PDF, permite várias conversões ao mesmo tempo e inclui importações do Anki para o Notion de até 10.000 notas cada — tudo sem limite mensal. Os recursos de IA funcionam com 300 créditos por mês; quando acabam, o baralho continua sendo criado sem IA. Os preços estão nos cartões acima."
     },
     "q4": {
       "question": "Existe um plano Lifetime?",
-      "answer": "Não mais. O Lifetime está fechado para novos membros. Se você já tem Lifetime, seu acesso e todos os recursos continuam exatamente como estão. Para acesso ilimitado, use o plano Unlimited nos cartões acima."
+      "answer": "Não mais. O Lifetime está fechado para novos membros. Se você já tem Lifetime, seu acesso e todos os recursos continuam exatamente como estão. Para um plano contínuo, use o plano Unlimited nos cartões acima."
     },
     "q5": {
       "question": "Posso cancelar quando quiser?",

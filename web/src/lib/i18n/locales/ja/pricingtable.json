@@ -7,7 +7,9 @@
     "unlimited": "無制限",
     "photoPerMonth": "5 / 月",
     "imagesQty": "3枚",
-    "printsPerMonth": "1 / 月"
+    "printsPerMonth": "1 / 月",
+    "creditsPass": "300 / 500",
+    "creditsMonth": "300 / 月"
   },
   "groups": {
     "conversionLimits": "変換の上限",
@@ -22,6 +24,7 @@
     "pdfPagesPerFile": "ファイルあたりのPDFページ数",
     "maxUploadSize": "最大アップロードサイズ",
     "ankiNotionNotes": "Anki → Notion のノート",
+    "aiCredits": "AIクレジット",
     "aiFlashcards": "PDFや文書からのAIフラッシュカード",
     "photoToDeck": "写真からデッキ（Claude Vision）",
     "aiMcq": "AI多肢選択（MCQ）",
@@ -40,15 +43,15 @@
     },
     "q2": {
       "question": "一回払いのオプションはありますか？",
-      "answer": "Day Pass（{{dayPrice}}）で24時間の無制限アクセス、Week Pass（{{weekPrice}}）で7日間、Semester Pass（{{semesterPrice}}）で約4か月です。いずれも一回払いで、サブスクリプションは不要です。"
+      "answer": "Day Pass（{{dayPrice}}）は24時間、無料プランの上限を解除し、300 AIクレジットが付きます。Week Pass（{{weekPrice}}）は7日間で500クレジット、Semester Pass（{{semesterPrice}}）は約4か月で1500クレジットです。クレジットはフラッシュカード、MCQ、写真からデッキ作成などのAI機能に使われ、なくなってもデッキはAIなしで作成されます。いずれも一回払いで、サブスクリプションは不要です。"
     },
     "q3": {
       "question": "Unlimited プランとは何ですか？",
-      "answer": "Unlimited は100枚の上限を解除し、PDF対応を追加し、複数の変換を同時に実行でき、Anki から Notion へのインポート（1回につき最大10,000ノート）を含みます。価格は上のカードに記載されています。"
+      "answer": "Unlimited は100枚の上限を解除し、PDF対応を追加し、複数の変換を同時に実行でき、Anki から Notion へのインポート（1回につき最大10,000ノート）を月の上限なしで含みます。AI機能は月300クレジットで動作し、なくなってもデッキはAIなしで作成されます。価格は上のカードに記載されています。"
     },
     "q4": {
       "question": "Lifetime プランはありますか？",
-      "answer": "いまはありません。Lifetime は新規メンバーには提供を終了しました。すでに Lifetime をお持ちの場合、アクセスとすべての機能はそのまま変わりません。無制限に使うには、上のカードにある Unlimited プランをご利用ください。"
+      "answer": "いまはありません。Lifetime は新規メンバーには提供を終了しました。すでに Lifetime をお持ちの場合、アクセスとすべての機能はそのまま変わりません。継続的なプランをお探しなら、上のカードにある Unlimited プランをご利用ください。"
     },
     "q5": {
       "question": "いつでも解約できますか？",
