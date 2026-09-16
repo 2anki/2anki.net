@@ -3,6 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../lib/hooks/useTheme';
 import { useCardUsage } from '../../lib/hooks/useCardUsage';
+import { useAiCredits } from '../../lib/hooks/useAiCredits';
+import { track } from '../../lib/analytics/track';
+import { formatLongDate } from '../../pages/AccountPage/utils/formatLongDate';
 import {
   getPlanLabel,
   isPayingUser,
@@ -58,6 +61,56 @@ function CardUsageCounter({ used, limit }: Readonly<CardUsageCounterProps>) {
       {atLimit && (
         <Link to="/pricing?from=limit" className={styles.identityUsageUpgrade}>
           Upgrade for unlimited
+        </Link>
+      )}
+    </span>
+  );
+}
+
+const LOW_CREDITS_THRESHOLD = 25;
+
+function AiCreditsSidebarLine({ enabled }: Readonly<{ enabled: boolean }>) {
+  const { t, i18n } = useTranslation('aicredits');
+  const credits = useAiCredits(enabled);
+
+  if (credits == null) {
+    return null;
+  }
+
+  if (!credits.usable) {
+    if (credits.credits > 0 && credits.windowEnd != null) {
+      const pausedThrough = formatLongDate(
+        new Date(credits.windowEnd),
+        i18n.language
+      );
+      return (
+        <span
+          className={`${styles.identityUsage} ${styles.identityUsageWarning} ${styles.identityAiCredits}`}
+        >
+          {t('paused', { count: credits.credits, date: pausedThrough })}
+        </span>
+      );
+    }
+    return null;
+  }
+
+  const low = credits.credits <= LOW_CREDITS_THRESHOLD;
+  return (
+    <span
+      className={
+        low
+          ? `${styles.identityUsage} ${styles.identityUsageWarning} ${styles.identityAiCredits}`
+          : `${styles.identityUsage} ${styles.identityAiCredits}`
+      }
+    >
+      {credits.credits <= 0 ? t('zero') : t('left', { count: credits.credits })}
+      {low && (
+        <Link
+          to="/account"
+          onClick={() => track('credits_sidebar_link_clicked')}
+          className={styles.identityUsageUpgrade}
+        >
+          {t('buyShort')}
         </Link>
       )}
     </span>
@@ -462,6 +515,7 @@ export function Sidebar({
               limit={usage.cards_limit}
             />
           )}
+          <AiCreditsSidebarLine enabled={isLoggedIn} />
         </div>
         <div className={styles.sidebarGroup}>
           <SidebarRow
