@@ -126,6 +126,8 @@
       "deckReady": "Dein Stapel ist fertig",
       "savedToDownloads": "{{deckName}} wurde in deinen Downloads gespeichert",
       "downloadRecoveredNote": "Dein Download wurde nicht fertig — der Stapel ist in deinen Downloads gespeichert.",
+      "creditsUsed_one": "Dieses Deck hat {{count}} KI-Credit verbraucht.",
+      "creditsUsed_other": "Dieses Deck hat {{count}} KI-Credits verbraucht.",
       "downloadDeck": "Stapel herunterladen",
       "makeAnother": "Noch einen Stapel erstellen",
       "fallbackDownload": "Datei nicht erhalten? Lade sie hier herunter.",

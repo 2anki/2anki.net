@@ -20,6 +20,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setExpiredNotionImageCount: vi.fn(),
     setEmptyBackCount: vi.fn(),
     setOverSplit: vi.fn(),
+    setCreditsUsed: vi.fn(),
     setDownloadLink: vi.fn(),
     setProgressWidth: vi.fn(),
     setBatchResult: vi.fn(),
@@ -131,6 +132,25 @@ describe('applyConversionSuccess', () => {
     await applyConversionSuccess(singleDeckResponse(), handlers);
 
     expect(handlers.setExpiredNotionImageCount).toHaveBeenCalledWith(0);
+  });
+
+  it('reads AI credits used from the X-Credits-Used header on a single deck', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({ 'X-Credits-Used': '88' }),
+      handlers
+    );
+
+    expect(handlers.setCreditsUsed).toHaveBeenCalledWith(88);
+  });
+
+  it('sets AI credits used to 0 when the X-Credits-Used header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setCreditsUsed).toHaveBeenCalledWith(0);
   });
 
   it('reads the empty-back count from the X-Empty-Back-Count header on a single deck', async () => {

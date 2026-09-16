@@ -70,7 +70,9 @@ describe('AiCreditsAccountLine', () => {
   });
 
   it('drops the valid-through date from the remaining clause when none is set', () => {
-    mockHook.mockReturnValue(state({ credits: 212, used: 88, windowEnd: null }));
+    mockHook.mockReturnValue(
+      state({ credits: 212, used: 88, windowEnd: null })
+    );
     render(<AiCreditsAccountLine />);
     expect(
       screen.getByText('88 AI credits used this period.')

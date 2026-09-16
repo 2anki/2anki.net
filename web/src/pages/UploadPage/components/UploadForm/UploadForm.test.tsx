@@ -449,6 +449,67 @@ describe('UploadForm analytics events', () => {
     expect(gtag).not.toHaveBeenCalledWith('event', 'conversion_success');
   });
 
+  it('shows the AI credits used when the X-Credits-Used header is present', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': '5',
+          'X-Credits-Used': '88',
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(
+      screen.getByText('This deck used 88 AI credits.')
+    ).toBeInTheDocument();
+  });
+
+  it('shows no AI-credits line when the X-Credits-Used header is absent', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': '5',
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(screen.queryByText(/AI credit/)).toBeNull();
+  });
+
   it('shows the structure-rescue notice when the X-Structure-Rescued header is present', async () => {
     vi.stubGlobal(
       'fetch',
