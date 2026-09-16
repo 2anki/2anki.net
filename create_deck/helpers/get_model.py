@@ -183,6 +183,7 @@ def get_model(descriptor, mcq_settings=None, front_lang="", back_lang=""):
         ],
         css=css,
         model_type=model_info.get("model_type"),
+        original_stock_kind=template_file.get("originalStockKind"),
     )
 
 

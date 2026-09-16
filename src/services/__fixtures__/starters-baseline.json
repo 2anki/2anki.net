@@ -128,7 +128,7 @@
       "description": "Anki's image-occlusion note type, kept in sync with the 2anki conversion target",
       "baseType": "cloze",
       "noteType": {
-        "name": "Image Occlusion",
+        "name": "2anki Image Occlusion",
         "type": 1,
         "tmpls": [
           {

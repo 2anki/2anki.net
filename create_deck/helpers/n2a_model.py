@@ -22,6 +22,11 @@ Id sources, by notetype kind:
 
 `originalId` is set to the notetype id. genanki's to_json passes field/template
 ids through but never emits notetype-level extras, so originalId is added here.
+
+`originalStockKind` is Anki's marker for notetypes derived from a built-in stock
+kind. Anki only lets its mask editor edit an Image Occlusion note when the
+notetype reports the Image Occlusion stock kind, so shipped notetypes that mirror
+a stock kind carry `original_stock_kind` and it is emitted alongside originalId.
 """
 import hashlib
 
@@ -42,9 +47,13 @@ def stable_entry_id(notetype_name, entry_name):
 
 class N2AModel(Model):
     """
-    Model that guarantees a stable `id` on every field and template and sets
-    `originalId` to the notetype id.
+    Model that guarantees a stable `id` on every field and template, sets
+    `originalId` to the notetype id, and optionally reports an Anki stock kind.
     """
+
+    def __init__(self, *args, original_stock_kind=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.original_stock_kind = original_stock_kind
 
     def to_json(self, timestamp, deck_id):
         data = super().to_json(timestamp, deck_id)
@@ -53,4 +62,6 @@ class N2AModel(Model):
         for template in data["tmpls"]:
             template.setdefault("id", stable_entry_id(self.name, template["name"]))
         data["originalId"] = self.model_id
+        if self.original_stock_kind is not None:
+            data["originalStockKind"] = self.original_stock_kind
         return data

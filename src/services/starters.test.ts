@@ -114,6 +114,12 @@ describe('conversion starters', () => {
     expect(findStarter('official-n2a-io').noteType.type).toBe(1);
   });
 
+  it('names the image-occlusion note type distinctly from Anki stock', () => {
+    expect(findStarter('official-n2a-io').noteType.name).toBe(
+      '2anki Image Occlusion'
+    );
+  });
+
   it('keeps the Anki template HTML in qfmt/afmt', () => {
     const basic = findStarter('official-n2a-basic');
     expect(basic.noteType.tmpls[0].qfmt).toContain('{{Front}}');
