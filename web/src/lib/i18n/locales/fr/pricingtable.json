@@ -7,7 +7,9 @@
     "unlimited": "Illimité",
     "photoPerMonth": "5 / mois",
     "imagesQty": "3 images",
-    "printsPerMonth": "1 / mois"
+    "printsPerMonth": "1 / mois",
+    "creditsPass": "300 / 500",
+    "creditsMonth": "300 / mois"
   },
   "groups": {
     "conversionLimits": "Limites de conversion",
@@ -22,6 +24,7 @@
     "pdfPagesPerFile": "Pages PDF par fichier",
     "maxUploadSize": "Taille d'envoi maximale",
     "ankiNotionNotes": "Notes Anki → Notion",
+    "aiCredits": "Crédits IA",
     "aiFlashcards": "Cartes IA depuis des PDF et documents",
     "photoToDeck": "Photo vers paquet (Claude Vision)",
     "aiMcq": "QCM par IA (MCQ)",
@@ -40,15 +43,15 @@
     },
     "q2": {
       "question": "Existe-t-il une option de paiement unique ?",
-      "answer": "Day Pass ({{dayPrice}}) donne 24 heures d'accès illimité. Week Pass ({{weekPrice}}) donne 7 jours. Semester Pass ({{semesterPrice}}) donne environ 4 mois. Tous sont des paiements uniques, sans abonnement."
+      "answer": "Day Pass ({{dayPrice}}) lève les limites gratuites pendant 24 heures et inclut 300 crédits IA. Week Pass ({{weekPrice}}) couvre 7 jours avec 500 crédits. Semester Pass ({{semesterPrice}}) couvre environ 4 mois avec 1500 crédits. Les crédits couvrent les fonctionnalités IA comme les cartes, le QCM et photo vers paquet ; une fois épuisés, votre paquet continue d'être créé sans IA. Tous sont des paiements uniques, sans abonnement."
     },
     "q3": {
       "question": "Qu'est-ce que le forfait Unlimited ?",
-      "answer": "Unlimited supprime la limite de 100 cartes, ajoute la prise en charge du PDF, permet plusieurs conversions à la fois et inclut des imports Anki vers Notion jusqu’à 10 000 notes chacun. Les tarifs figurent sur les cartes ci-dessus."
+      "answer": "Unlimited supprime la limite de 100 cartes, ajoute la prise en charge du PDF, permet plusieurs conversions à la fois et inclut des imports Anki vers Notion jusqu’à 10 000 notes chacun — sans plafond mensuel. Les fonctionnalités IA fonctionnent avec 300 crédits par mois ; une fois épuisés, votre paquet continue d'être créé sans IA. Les tarifs figurent sur les cartes ci-dessus."
     },
     "q4": {
       "question": "Existe-t-il un plan Lifetime ?",
-      "answer": "Plus maintenant. Lifetime est fermé aux nouveaux membres. Si vous avez déjà Lifetime, votre accès et toutes les fonctionnalités restent exactement les mêmes. Pour un accès illimité, utilisez le plan Unlimited sur les cartes ci-dessus."
+      "answer": "Plus maintenant. Lifetime est fermé aux nouveaux membres. Si vous avez déjà Lifetime, votre accès et toutes les fonctionnalités restent exactement les mêmes. Pour un forfait continu, utilisez le plan Unlimited sur les cartes ci-dessus."
     },
     "q5": {
       "question": "Puis-je annuler à tout moment ?",

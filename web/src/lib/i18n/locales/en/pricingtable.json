@@ -7,7 +7,9 @@
     "unlimited": "Unlimited",
     "photoPerMonth": "5 / mo",
     "imagesQty": "3 images",
-    "printsPerMonth": "1 / mo"
+    "printsPerMonth": "1 / mo",
+    "creditsPass": "300 / 500",
+    "creditsMonth": "300 / mo"
   },
   "groups": {
     "conversionLimits": "Conversion limits",
@@ -22,6 +24,7 @@
     "pdfPagesPerFile": "PDF pages per file",
     "maxUploadSize": "Max upload size",
     "ankiNotionNotes": "Anki → Notion notes",
+    "aiCredits": "AI credits",
     "aiFlashcards": "AI flashcards from PDFs and docs",
     "photoToDeck": "Photo to deck (Claude Vision)",
     "aiMcq": "AI multiple choice (MCQ)",
@@ -40,15 +43,15 @@
     },
     "q2": {
       "question": "Is there a one-time payment option?",
-      "answer": "Day Pass ({{dayPrice}}) gives 24 hours of unlimited access. Week Pass ({{weekPrice}}) gives 7 days. Semester Pass ({{semesterPrice}}) gives about 4 months. All are one-time payments, no subscription required."
+      "answer": "Day Pass ({{dayPrice}}) lifts the free limits for 24 hours and includes 300 AI credits. Week Pass ({{weekPrice}}) covers 7 days with 500 credits. Semester Pass ({{semesterPrice}}) covers about 4 months with 1500 credits. Credits cover AI features like flashcards, MCQ, and photo to deck; when they run out, decks still build without AI. All are one-time payments, no subscription required."
     },
     "q3": {
       "question": "What is the Unlimited plan?",
-      "answer": "Unlimited removes the 100-card limit, adds PDF support, lets you run multiple conversions at once, and includes Anki to Notion imports of up to 10,000 notes each. Pricing is on the cards above."
+      "answer": "Unlimited removes the 100-card limit, adds PDF support, lets you run multiple conversions at once, and includes Anki to Notion imports of up to 10,000 notes each — all with no monthly cap. AI features run on 300 credits a month; when those run out, decks still build without AI. Pricing is on the cards above."
     },
     "q4": {
       "question": "Is there a lifetime plan?",
-      "answer": "Not anymore. Lifetime is closed to new members. If you already have Lifetime, your access and every feature stay exactly as they are. For unlimited access, use the Unlimited plan on the cards above."
+      "answer": "Not anymore. Lifetime is closed to new members. If you already have Lifetime, your access and every feature stay exactly as they are. For an ongoing plan, use the Unlimited plan on the cards above."
     },
     "q5": {
       "question": "Can I cancel anytime?",

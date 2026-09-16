@@ -81,12 +81,16 @@ export function ComparisonTable({
       name: t('groups.ai'),
       rows: [
         {
+          label: t('rows.aiCredits'),
+          values: [false, t('cells.creditsPass'), t('cells.creditsMonth')],
+        },
+        {
           label: t('rows.aiFlashcards'),
           values: [false, true, true],
         },
         {
           label: t('rows.photoToDeck'),
-          values: [t('cells.photoPerMonth'), unlimited, unlimited],
+          values: [t('cells.photoPerMonth'), true, true],
         },
         {
           label: t('rows.aiMcq'),
@@ -94,7 +98,7 @@ export function ComparisonTable({
         },
         {
           label: t('rows.aiCardTemplate'),
-          values: ['3', unlimited, unlimited],
+          values: ['3', true, true],
         },
       ],
     },

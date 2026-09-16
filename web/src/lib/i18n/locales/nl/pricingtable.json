@@ -7,7 +7,9 @@
     "unlimited": "Onbeperkt",
     "photoPerMonth": "5 / mnd",
     "imagesQty": "3 afbeeldingen",
-    "printsPerMonth": "1 / mnd"
+    "printsPerMonth": "1 / mnd",
+    "creditsPass": "300 / 500",
+    "creditsMonth": "300 / mnd"
   },
   "groups": {
     "conversionLimits": "Conversielimieten",
@@ -22,6 +24,7 @@
     "pdfPagesPerFile": "PDF-pagina's per bestand",
     "maxUploadSize": "Maximale uploadgrootte",
     "ankiNotionNotes": "Anki → Notion notities",
+    "aiCredits": "AI-credits",
     "aiFlashcards": "AI-flashcards uit PDF's en documenten",
     "photoToDeck": "Foto naar deck (Claude Vision)",
     "aiMcq": "AI-meerkeuze (MCQ)",
@@ -40,15 +43,15 @@
     },
     "q2": {
       "question": "Is er een eenmalige betaaloptie?",
-      "answer": "Day Pass ({{dayPrice}}) geeft 24 uur onbeperkte toegang. Week Pass ({{weekPrice}}) geeft 7 dagen. Semester Pass ({{semesterPrice}}) geeft ongeveer 4 maanden. Alle zijn eenmalige betalingen, geen abonnement nodig."
+      "answer": "Day Pass ({{dayPrice}}) heft de gratis limieten 24 uur lang op en bevat 300 AI-credits. Week Pass ({{weekPrice}}) geldt 7 dagen met 500 credits. Semester Pass ({{semesterPrice}}) geldt ongeveer 4 maanden met 1500 credits. Credits dekken AI-functies zoals flashcards, MCQ en foto naar deck; als ze op zijn, wordt je deck nog steeds zonder AI gemaakt. Alle zijn eenmalige betalingen, geen abonnement nodig."
     },
     "q3": {
       "question": "Wat is het Unlimited-abonnement?",
-      "answer": "Unlimited verwijdert de limiet van 100 kaarten, voegt PDF-ondersteuning toe, laat je meerdere conversies tegelijk uitvoeren en bevat Anki-naar-Notion-imports tot 10.000 notities per import. De prijzen staan op de kaarten hierboven."
+      "answer": "Unlimited verwijdert de limiet van 100 kaarten, voegt PDF-ondersteuning toe, laat je meerdere conversies tegelijk uitvoeren en bevat Anki-naar-Notion-imports tot 10.000 notities per import — allemaal zonder maandelijkse limiet. AI-functies draaien op 300 credits per maand; als ze op zijn, wordt je deck nog steeds zonder AI gemaakt. De prijzen staan op de kaarten hierboven."
     },
     "q4": {
       "question": "Is er een Lifetime-abonnement?",
-      "answer": "Niet meer. Lifetime is gesloten voor nieuwe leden. Als je al Lifetime hebt, blijven je toegang en alle functies precies hetzelfde. Voor onbeperkte toegang gebruik je het Unlimited-plan op de kaarten hierboven."
+      "answer": "Niet meer. Lifetime is gesloten voor nieuwe leden. Als je al Lifetime hebt, blijven je toegang en alle functies precies hetzelfde. Voor een doorlopend plan gebruik je het Unlimited-plan op de kaarten hierboven."
     },
     "q5": {
       "question": "Kan ik altijd opzeggen?",
