@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useAiCredits } from '../../../lib/hooks/useAiCredits';
 import { BuyCreditsButton } from '../../../components/BuyCreditsButton/BuyCreditsButton';
-import { formatLongDate } from '../../../lib/formatLongDate';
+import { formatLongDate } from '../utils/formatLongDate';
 import styles from '../AccountPage.module.css';
 
 export function AiCreditsAccountLine() {

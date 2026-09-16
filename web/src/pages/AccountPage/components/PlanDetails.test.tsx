@@ -8,7 +8,7 @@ vi.mock('../../../lib/hooks/useAiCredits', () => ({
   useAiCredits: vi.fn(),
 }));
 
-vi.mock('../../../lib/formatLongDate', () => ({
+vi.mock('../utils/formatLongDate', () => ({
   formatLongDate: vi.fn(() => 'a date'),
 }));
 

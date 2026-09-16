@@ -5,7 +5,7 @@ import { useTheme } from '../../lib/hooks/useTheme';
 import { useCardUsage } from '../../lib/hooks/useCardUsage';
 import { useAiCredits } from '../../lib/hooks/useAiCredits';
 import { track } from '../../lib/analytics/track';
-import { formatLongDate } from '../../lib/formatLongDate';
+import { formatLongDate } from '../../pages/AccountPage/utils/formatLongDate';
 import {
   getPlanLabel,
   isPayingUser,
