@@ -74,6 +74,10 @@ jest.mock('./deleteDanglingUploadsInBucket', () => ({
   deleteDanglingUploadsInBucket: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('./deleteDeadUploadRowsInDatabase', () => ({
+  deleteDeadUploadRowsInDatabase: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('../../StorageHandler', () => {
   return {
     __esModule: true,
@@ -82,6 +86,7 @@ jest.mock('../../StorageHandler', () => {
 });
 
 import StorageHandler from '../../StorageHandler';
+import { deleteDeadUploadRowsInDatabase } from './deleteDeadUploadRowsInDatabase';
 
 describe('deleteResolvedFeedbackAttachments (via deleteOldUploads)', () => {
   beforeEach(() => {
@@ -142,5 +147,16 @@ describe('deleteResolvedFeedbackAttachments (via deleteOldUploads)', () => {
     await deleteOldUploads(dbFn);
 
     expect(deleteWhereChain.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs the dead-upload-row backstop as part of the daily sweep', async () => {
+    const storage = makeStorage();
+    (StorageHandler as unknown as jest.Mock).mockImplementation(() => storage);
+    const { dbFn } = makeDb([]);
+
+    await deleteOldUploads(dbFn);
+
+    expect(deleteDeadUploadRowsInDatabase).toHaveBeenCalledTimes(1);
+    expect(deleteDeadUploadRowsInDatabase).toHaveBeenCalledWith(dbFn, storage);
   });
 });
