@@ -85,7 +85,7 @@ function AiCreditsSidebarLine({ enabled }: Readonly<{ enabled: boolean }>) {
       );
       return (
         <span
-          className={`${styles.identityUsage} ${styles.identityUsageWarning}`}
+          className={`${styles.identityUsage} ${styles.identityUsageWarning} ${styles.identityAiCredits}`}
         >
           {t('paused', { count: credits.credits, date: pausedThrough })}
         </span>
@@ -96,18 +96,14 @@ function AiCreditsSidebarLine({ enabled }: Readonly<{ enabled: boolean }>) {
 
   const low = credits.credits <= LOW_CREDITS_THRESHOLD;
   return (
-    <>
-      <span
-        className={
-          low
-            ? `${styles.identityUsage} ${styles.identityUsageWarning}`
-            : styles.identityUsage
-        }
-      >
-        {credits.credits <= 0
-          ? t('zero')
-          : t('left', { count: credits.credits })}
-      </span>
+    <span
+      className={
+        low
+          ? `${styles.identityUsage} ${styles.identityUsageWarning} ${styles.identityAiCredits}`
+          : `${styles.identityUsage} ${styles.identityAiCredits}`
+      }
+    >
+      {credits.credits <= 0 ? t('zero') : t('left', { count: credits.credits })}
       {low && (
         <Link
           to="/account"
@@ -117,7 +113,7 @@ function AiCreditsSidebarLine({ enabled }: Readonly<{ enabled: boolean }>) {
           {t('buyShort')}
         </Link>
       )}
-    </>
+    </span>
   );
 }
 

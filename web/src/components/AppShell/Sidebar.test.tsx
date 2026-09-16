@@ -490,8 +490,22 @@ describe('Sidebar AI credits line', () => {
     vi.mocked(track).mockClear();
   });
 
-  it('renders nothing for a user with no allowance and no credits', async () => {
+  it('renders nothing when the fetch fails or resolves null', async () => {
     vi.mocked(getAiCredits).mockResolvedValue(null);
+    renderSidebar();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(screen.queryByText(/AI credit/)).not.toBeInTheDocument();
+  });
+
+  it('renders nothing for a free user with no plan (the real zero-allowance shape)', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      credits: 0,
+      used: 0,
+      allowance: 0,
+      usable: false,
+      windowEnd: null,
+      resets: 'month',
+    });
     renderSidebar();
     await new Promise((r) => setTimeout(r, 10));
     expect(screen.queryByText(/AI credit/)).not.toBeInTheDocument();

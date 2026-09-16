@@ -384,6 +384,10 @@
   color: var(--color-warning);
 }
 
+.identityUsage + .identityAiCredits {
+  margin-top: 0.5rem;
+}
+
 .identityUsageUpgrade {
   display: block;
   font-size: var(--text-sm);
