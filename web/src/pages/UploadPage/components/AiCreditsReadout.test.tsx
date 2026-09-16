@@ -31,23 +31,29 @@ describe('AiCreditsReadout', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows the remaining count above the low threshold', () => {
+  it('shows the remaining count with no buy action above the low threshold', () => {
     render(<AiCreditsReadout credits={state({ credits: 180 })} />);
     expect(screen.getByText('180 AI credits left.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Buy credits' })).toBeNull();
   });
 
-  it('shows the low balance without a buy link (until part 2)', () => {
+  it('offers a compact buy action at a low balance', () => {
     render(<AiCreditsReadout credits={state({ credits: 20 })} />);
     expect(screen.getByText('20 AI credits left.')).toBeInTheDocument();
-    expect(screen.queryByRole('link')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Buy credits' })
+    ).toBeInTheDocument();
   });
 
-  it('tells the user the next deck is built without AI at zero', () => {
+  it('offers a compact buy action at zero and explains the fallback', () => {
     render(<AiCreditsReadout credits={state({ credits: 0 })} />);
     expect(
       screen.getByText(
         '0 AI credits left. Your next deck builds without AI until your credits reset.'
       )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Buy credits' })
     ).toBeInTheDocument();
   });
 });

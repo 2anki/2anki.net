@@ -42,13 +42,15 @@ describe('AiCreditsAccountLine', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows the balance and valid-through date without a buy link', () => {
+  it('shows the balance, valid-through date, and a buy action', () => {
     mockHook.mockReturnValue(state({ credits: 180 }));
     render(<AiCreditsAccountLine />);
     expect(
       screen.getByText(/180 AI credits, valid through/)
     ).toBeInTheDocument();
-    expect(screen.queryByRole('link')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Buy 250 credits for $5' })
+    ).toBeInTheDocument();
   });
 
   it('adds a used-this-period clause once spend is recorded', () => {
@@ -89,10 +91,13 @@ describe('AiCreditsAccountLine', () => {
     expect(screen.queryByText(/used this period/)).toBeNull();
   });
 
-  it('reads zero when the balance is spent', () => {
+  it('reads zero and still offers a buy action when the balance is spent', () => {
     mockHook.mockReturnValue(state({ credits: 0 }));
     render(<AiCreditsAccountLine />);
     expect(screen.getByText('0 AI credits.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Buy 250 credits for $5' })
+    ).toBeInTheDocument();
   });
 
   it('formats a calendar-month reset in UTC', () => {

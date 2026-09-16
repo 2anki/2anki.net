@@ -12,6 +12,7 @@ type AnalyticsGlobals = {
 function buildHandlers(): ConversionSuccessHandlers {
   return {
     setWarningMessage: vi.fn(),
+    setWarningCode: vi.fn(),
     setDeckName: vi.fn(),
     setCardCount: vi.fn(),
     setMcqCount: vi.fn(),

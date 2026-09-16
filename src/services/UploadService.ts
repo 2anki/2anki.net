@@ -165,6 +165,7 @@ interface BatchUploadResponse {
   decks: BatchDeckResult[];
   bulkUrl: string;
   warning?: string;
+  warningCode?: string;
   droppedImageCount?: number;
   expiredNotionImageCount?: number;
   emptyBackCount?: number;
@@ -1642,6 +1643,10 @@ class UploadService {
       if (warningText) {
         res.set('X-Warning', warningText);
         exposedHeaders.push('X-Warning');
+        if (includesAiCreditsWarning(syncWarnings)) {
+          res.set('X-Warning-Code', AI_CREDITS_EXHAUSTED_WARNING_CODE);
+          exposedHeaders.push('X-Warning-Code');
+        }
       }
       if (downloadKey != null) {
         res.set('X-Download-Key', downloadKey);
@@ -1700,7 +1705,10 @@ class UploadService {
           sumDroppedImages(packages),
           totalEmptyBackCount,
           shippedRescueRule(packages),
-          sumExpiredNotionImages(packages)
+          sumExpiredNotionImages(packages),
+          includesAiCreditsWarning(warnings)
+            ? AI_CREDITS_EXHAUSTED_WARNING_CODE
+            : null
         )
       );
   }
@@ -1854,7 +1862,8 @@ class UploadService {
     droppedImageCount = 0,
     emptyBackCount = 0,
     structureRescuedRule?: string,
-    expiredNotionImageCount = 0
+    expiredNotionImageCount = 0,
+    warningCode: string | null = null
   ): Promise<BatchUploadResponse> {
     const apkgFilenames = (await fs.promises.readdir(ws.location)).filter(
       (filename) => filename.endsWith('.apkg')
@@ -1871,6 +1880,7 @@ class UploadService {
       decks,
       bulkUrl: `/download/${ws.id}/bulk`,
       ...(warning ? { warning } : {}),
+      ...(warningCode ? { warningCode } : {}),
       ...(droppedImageCount > 0 ? { droppedImageCount } : {}),
       ...(expiredNotionImageCount > 0 ? { expiredNotionImageCount } : {}),
       ...(emptyBackCount > 0 ? { emptyBackCount } : {}),

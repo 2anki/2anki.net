@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { track } from '../../lib/analytics/track';
@@ -9,7 +10,11 @@ import { storePassToken } from '../../lib/anonymousPass';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
 import useQuery from '../../lib/hooks/useQuery';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
-import { useAiCredits } from '../../lib/hooks/useAiCredits';
+import {
+  useAiCredits,
+  AI_CREDITS_QUERY_KEY,
+} from '../../lib/hooks/useAiCredits';
+import { formatCreditPackExpiry } from '../../lib/credits/formatCreditPackExpiry';
 import styles from '../../styles/shared.module.css';
 import { AiCreditsReadout } from './components/AiCreditsReadout';
 import { ExploreCard } from './components/ExploreCard/ExploreCard';
@@ -53,10 +58,15 @@ function isFreshSignup(
 
 export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const { t } = useTranslation();
+  const { t: tCredits, i18n } = useTranslation('aicredits');
   const query = useQuery();
   const view = query.get('view');
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
+  const [creditsConfirmation, setCreditsConfirmation] = useState<string | null>(
+    null
+  );
   const [reattachFilename, setReattachFilename] = useState<string | null>(
     () => {
       const stored = globalThis.sessionStorage?.getItem(REATTACH_KEY) ?? null;
@@ -130,6 +140,21 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     }
   }, [searchParams, navigate]);
 
+  useEffect(() => {
+    if (searchParams.get('credits') === 'added') {
+      setCreditsConfirmation(
+        tCredits('confirmation', {
+          date: formatCreditPackExpiry(i18n.language),
+        })
+      );
+      queryClient.invalidateQueries({ queryKey: AI_CREDITS_QUERY_KEY });
+      const next = new URLSearchParams(searchParams);
+      next.delete('credits');
+      const qs = next.toString();
+      navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
+    }
+  }, [searchParams, navigate, queryClient, tCredits, i18n.language]);
+
   if (
     view === 'template' ||
     view === 'deck-options' ||
@@ -151,6 +176,15 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
         createdAt={userLocals?.user?.created_at ?? null}
         onboardedAt={userLocals?.user?.onboarded_at ?? null}
       />
+      {creditsConfirmation != null && (
+        <div
+          className={pageStyles.reattachBanner}
+          role="status"
+          aria-live="polite"
+        >
+          <span>{creditsConfirmation}</span>
+        </div>
+      )}
       {reattachFilename != null && (
         <div className={pageStyles.reattachBanner} role="status">
           <span>{t('upload.page.reattachPrefix')} </span>

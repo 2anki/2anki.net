@@ -6,5 +6,10 @@
   "planZero": "AIクレジットは0です。",
   "usedThisPeriod_other": "今期はAIクレジットを{{count}}使用しました。",
   "remaining_other": "残りは{{count}}です。",
-  "remainingValid_other": "残りは{{count}}、{{date}}まで有効。"
+  "remainingValid_other": "残りは{{count}}、{{date}}まで有効。",
+  "buy": "250クレジットを5ドルで購入",
+  "buyShort": "クレジットを購入",
+  "buyPending": "決済を開始しています",
+  "buyError": "決済を開始できませんでした。もう一度お試しください。",
+  "confirmation": "250クレジットを追加しました。{{date}}まで有効です。"
 }

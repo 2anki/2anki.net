@@ -7,6 +7,8 @@ import ResumeCheckoutController from '../controllers/ResumeCheckoutController';
 import UnlimitedCheckoutController from '../controllers/UnlimitedCheckoutController';
 import { AutoSyncCheckoutUseCase } from '../usecases/checkout/AutoSyncCheckoutUseCase';
 import { CreatePassCheckoutUseCase } from '../usecases/checkout/CreatePassCheckoutUseCase';
+import { CreateCreditPackCheckoutUseCase } from '../usecases/checkout/CreateCreditPackCheckoutUseCase';
+import CreditPackCheckoutController from '../controllers/CreditPackCheckoutController';
 import { ResumeAbandonedCheckoutUseCase } from '../usecases/checkout/ResumeAbandonedCheckoutUseCase';
 import { UnlimitedCheckoutUseCase } from '../usecases/checkout/UnlimitedCheckoutUseCase';
 import { getStripe } from '../lib/integrations/stripe';
@@ -73,6 +75,27 @@ const CheckoutRouter = () => {
         maxSubscribers
       );
       const controller = new AutoSyncCheckoutController(useCase);
+      return controller.createSession(req, res);
+    }
+  );
+
+  const creditPackPriceId = process.env.CREDIT_PACK_PRICE_ID ?? '';
+
+  router.post(
+    '/api/checkout/credit-pack',
+    RequireAuthentication,
+    express.json(),
+    (req, res) => {
+      if (creditPackPriceId === '') {
+        return res
+          .status(503)
+          .json({ message: 'Credit packs are not available right now.' });
+      }
+      const useCase = new CreateCreditPackCheckoutUseCase(
+        getStripe(),
+        creditPackPriceId
+      );
+      const controller = new CreditPackCheckoutController(useCase);
       return controller.createSession(req, res);
     }
   );

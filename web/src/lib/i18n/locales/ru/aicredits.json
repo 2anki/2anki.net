@@ -24,5 +24,10 @@
   "remainingValid_one": "Остался {{count}}, действует до {{date}}.",
   "remainingValid_few": "Осталось {{count}}, действуют до {{date}}.",
   "remainingValid_many": "Осталось {{count}}, действуют до {{date}}.",
-  "remainingValid_other": "Осталось {{count}}, действуют до {{date}}."
+  "remainingValid_other": "Осталось {{count}}, действуют до {{date}}.",
+  "buy": "Купить 250 кредитов за $5",
+  "buyShort": "Купить кредиты",
+  "buyPending": "Открываем оплату",
+  "buyError": "Не удалось открыть оплату. Попробуйте ещё раз.",
+  "confirmation": "Добавлено 250 кредитов. Действуют до {{date}}."
 }

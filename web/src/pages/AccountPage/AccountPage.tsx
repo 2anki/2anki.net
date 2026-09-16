@@ -1,6 +1,10 @@
+import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { AI_CREDITS_QUERY_KEY } from '../../lib/hooks/useAiCredits';
+import { formatCreditPackExpiry } from '../../lib/credits/formatCreditPackExpiry';
 import { SkeletonPage } from '../../components/Skeleton/Skeleton';
 import { useSubscriptionStatus } from './hooks';
 import {
@@ -17,14 +21,23 @@ import styles from './AccountPage.module.css';
 
 export default function AccountPage() {
   const { t } = useTranslation();
+  const { t: tCredits, i18n } = useTranslation('aicredits');
   const { isLoading, data, refetch } = useUserLocals();
   const { subscriptionType, hasActivePlan } = useSubscriptionStatus(
     data?.locals
   );
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const justSubscribed = searchParams.get('subscribed') === '1';
   const justVerified = searchParams.get('verified') === '1';
   const justChangedEmail = searchParams.get('email_changed') === '1';
+  const justBoughtCredits = searchParams.get('credits') === 'added';
+
+  useEffect(() => {
+    if (justBoughtCredits) {
+      queryClient.invalidateQueries({ queryKey: AI_CREDITS_QUERY_KEY });
+    }
+  }, [justBoughtCredits, queryClient]);
 
   const dismissParam = (key: string) => {
     const next = new URLSearchParams(searchParams);
@@ -61,6 +74,27 @@ export default function AccountPage() {
             type="button"
             className={sharedStyles.btnGhost}
             onClick={() => dismissParam('subscribed')}
+          >
+            {t('account.dismiss')}
+          </button>
+        </div>
+      )}
+
+      {justBoughtCredits && (
+        <div
+          className={sharedStyles.alertSuccess}
+          role="status"
+          aria-live="polite"
+        >
+          <p>
+            {tCredits('confirmation', {
+              date: formatCreditPackExpiry(i18n.language),
+            })}
+          </p>
+          <button
+            type="button"
+            className={sharedStyles.btnGhost}
+            onClick={() => dismissParam('credits')}
           >
             {t('account.dismiss')}
           </button>

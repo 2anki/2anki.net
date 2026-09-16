@@ -27,6 +27,7 @@ export interface BatchResult {
   decks: BatchDeck[];
   bulkUrl: string;
   warning?: string;
+  warningCode?: string;
   droppedImageCount?: number;
   expiredNotionImageCount?: number;
   emptyBackCount?: number;
@@ -64,6 +65,7 @@ export function useUploadFormState(onReset: () => void) {
   const [mcqDrawerOpen, setMcqDrawerOpen] = useState(false);
   const [mcqShowAnswer, setMcqShowAnswer] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [warningCode, setWarningCode] = useState<string | null>(null);
   const [limitInfo, setLimitInfo] = useState<LimitInfo | null>(null);
   const [localError, setLocalError] = useState<UploadErrorBody | null>(null);
   const [progressWidth, setProgressWidth] = useState(10);
@@ -104,6 +106,7 @@ export function useUploadFormState(onReset: () => void) {
     setMcqDrawerOpen(false);
     setMcqShowAnswer(false);
     setWarningMessage(null);
+    setWarningCode(null);
     setLimitInfo(null);
     setLocalError(null);
     setProgressWidth(10);
@@ -159,6 +162,8 @@ export function useUploadFormState(onReset: () => void) {
     setMcqShowAnswer,
     warningMessage,
     setWarningMessage,
+    warningCode,
+    setWarningCode,
     limitInfo,
     setLimitInfo,
     localError,

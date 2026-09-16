@@ -139,6 +139,13 @@ jest.mock('../data_layer/UsersRepository', () =>
   }))
 );
 
+const mockInsertPackGrant = jest.fn();
+jest.mock('../data_layer/AiCreditGrantsRepository', () => ({
+  AiCreditGrantsRepository: jest.fn().mockImplementation(() => ({
+    insertPackGrant: mockInsertPackGrant,
+  })),
+}));
+
 jest.mock('../lib/misc/hashToken', () => (s: string) => `hashed:${s}`);
 
 jest.mock('../services/GA4Service', () => ({
@@ -842,6 +849,138 @@ describe('WebhookRouter — checkout_completed funnel join', () => {
       (c) => c[0] === 'checkout_completed'
     );
     expect(call?.[1].props.surface).toBeUndefined();
+  });
+});
+
+describe('WebhookRouter — credit pack grant', () => {
+  let server: http.Server;
+  let url: string;
+
+  beforeAll(async () => {
+    ({ server, url } = await buildServer());
+  });
+
+  afterAll(() => server.close());
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockInsertPackGrant.mockResolvedValue(true);
+  });
+
+  function makeCreditPackEvent(overrides: Record<string, unknown> = {}) {
+    return {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_pack_1',
+          amount_total: 500,
+          currency: 'usd',
+          customer: 'cus_abc',
+          payment_intent: 'pi_pack_1',
+          metadata: { credit_pack: '1', user_id: '42' },
+          ...overrides,
+        },
+      },
+    };
+  }
+
+  function postWebhook() {
+    return fetch(`${url}/webhook`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': 'sig_test',
+      },
+      body: JSON.stringify({}),
+    });
+  }
+
+  it('grants 250 credits with a 90-day expiry keyed on the session id', async () => {
+    mockWebhookEvent = makeCreditPackEvent();
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    expect(mockInsertPackGrant).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 42,
+        amountCredits: 250,
+        stripeSessionId: 'cs_pack_1',
+      })
+    );
+    const { expiresAt } = mockInsertPackGrant.mock.calls[0][0] as {
+      expiresAt: Date;
+    };
+    const daysOut = (expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000);
+    expect(daysOut).toBeGreaterThan(89);
+    expect(daysOut).toBeLessThanOrEqual(90);
+  });
+
+  it('records the purchase event only when a row was actually inserted', async () => {
+    mockWebhookEvent = makeCreditPackEvent();
+
+    await postWebhook();
+
+    expect(mockTrack).toHaveBeenCalledWith(
+      'credits_purchase_completed',
+      expect.objectContaining({ userId: 42, props: { credits: 250 } })
+    );
+  });
+
+  it('inserts once and does not double-count when the webhook is redelivered', async () => {
+    mockWebhookEvent = makeCreditPackEvent();
+    mockInsertPackGrant
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+
+    await postWebhook();
+    await postWebhook();
+
+    expect(mockInsertPackGrant).toHaveBeenCalledTimes(2);
+    expect(
+      mockTrack.mock.calls.filter(
+        ([name]) => name === 'credits_purchase_completed'
+      )
+    ).toHaveLength(1);
+  });
+
+  it('skips the grant when user_id metadata is missing', async () => {
+    mockWebhookEvent = makeCreditPackEvent({ metadata: { credit_pack: '1' } });
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    expect(mockInsertPackGrant).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it('skips the grant when amount_total is below the pack price', async () => {
+    mockWebhookEvent = makeCreditPackEvent({ amount_total: 100 });
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    expect(mockInsertPackGrant).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it('does not grant a pack for a non-pack lifetime session', async () => {
+    mockWebhookEvent = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_lifetime',
+          amount_total: 9600,
+          currency: 'usd',
+          customer: 'cus_abc',
+          payment_intent: null,
+          metadata: { user_id: '1' },
+        },
+      },
+    };
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    expect(mockInsertPackGrant).not.toHaveBeenCalled();
   });
 });
 
