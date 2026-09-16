@@ -35,8 +35,9 @@ from helpers.write_apkg import _write_new_apkg
 from backend.utils.email_error_alert import send_error_email
 
 
-IO_MODEL_NAME = "Image Occlusion"
-IO_MODEL_ID = get_model_id(IO_MODEL_NAME)
+IO_MODEL_NAME = "2anki Image Occlusion"
+LEGACY_IO_MODEL_NAME = "Image Occlusion"
+IO_MODEL_ID = get_model_id(LEGACY_IO_MODEL_NAME)
 
 
 def build_io_notes(image_entry, occlude_inactive, media_files):

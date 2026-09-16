@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-16-io-mask-editor",
+  "date": "2026-09-16",
+  "type": "fix",
+  "title": "Image Occlusion decks open in Anki's built-in mask editor, so you can add and edit masks after importing"
+}

@@ -1,11 +1,12 @@
 {
-  "name": "Image Occlusion",
+  "name": "2anki Image Occlusion",
+  "originalStockKind": 6,
   "fields": [
-    {"name": "Occlusion", "id": 6731693662206},
-    {"name": "Image", "id": 3392765038783},
-    {"name": "Header", "id": 4130222437756},
-    {"name": "Back Extra", "id": 6934513617517},
-    {"name": "Comments", "id": 8572844642163}
+    {"name": "Occlusion", "id": 6731693662206, "tag": 0, "preventDeletion": true},
+    {"name": "Image", "id": 3392765038783, "tag": 1, "preventDeletion": true},
+    {"name": "Header", "id": 4130222437756, "tag": 2, "preventDeletion": true},
+    {"name": "Back Extra", "id": 6934513617517, "tag": 3, "preventDeletion": true},
+    {"name": "Comments", "id": 8572844642163, "tag": 4}
   ],
   "front": "{{#Header}}<div>{{Header}}</div>{{/Header}}\n<div style=\"display: none\">{{cloze:Occlusion}}</div>\n<div id=\"err\"></div>\n<div id=\"image-occlusion-container\">\n{{Image}}\n<canvas id=\"image-occlusion-canvas\"></canvas>\n</div>\n<script>\ntry {\n    anki.imageOcclusion.setup();\n} catch (exc) {\n    document.getElementById(\"err\").innerHTML = `Error loading image occlusion.<br><br>${exc}`;\n}\n</script>",
   "back": "{{#Header}}<div>{{Header}}</div>{{/Header}}\n<div style=\"display: none\">{{cloze:Occlusion}}</div>\n<div id=\"err\"></div>\n<div id=\"image-occlusion-container\">\n{{Image}}\n<canvas id=\"image-occlusion-canvas\"></canvas>\n</div>\n<script>\ntry {\n    anki.imageOcclusion.setup();\n} catch (exc) {\n    document.getElementById(\"err\").innerHTML = `Error loading image occlusion.<br><br>${exc}`;\n}\n</script>\n<div><button id=\"toggle\">Toggle Masks</button></div>\n{{#Back Extra}}<div>{{Back Extra}}</div>{{/Back Extra}}",
