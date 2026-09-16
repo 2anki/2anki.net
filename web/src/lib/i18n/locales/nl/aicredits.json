@@ -7,6 +7,8 @@
   "planValid_one": "{{count}} AI-credit, geldig tot {{date}}.",
   "planValid_other": "{{count}} AI-credits, geldig tot {{date}}.",
   "planZero": "0 AI-credits.",
+  "paused_one": "{{count}} AI-credit, gepauzeerd. Abonneer je opnieuw om het vóór {{date}} te gebruiken.",
+  "paused_other": "{{count}} AI-credits, gepauzeerd. Abonneer je opnieuw om ze vóór {{date}} te gebruiken.",
   "usedThisPeriod_one": "{{count}} AI-credit deze periode gebruikt.",
   "usedThisPeriod_other": "{{count}} AI-credits deze periode gebruikt.",
   "remaining_one": "Nog {{count}} over.",

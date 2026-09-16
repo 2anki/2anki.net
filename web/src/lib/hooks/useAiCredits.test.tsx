@@ -33,6 +33,7 @@ describe('useAiCredits', () => {
       credits: 42,
       used: 8,
       allowance: 300,
+      usable: true,
       windowEnd: null,
       resets: 'period',
     });
@@ -46,6 +47,7 @@ describe('useAiCredits', () => {
         credits: 42,
         used: 8,
         allowance: 300,
+        usable: true,
         windowEnd: null,
         resets: 'period',
       })

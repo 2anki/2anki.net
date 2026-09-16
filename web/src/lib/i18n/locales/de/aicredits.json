@@ -7,6 +7,8 @@
   "planValid_one": "{{count}} KI-Credit, gültig bis {{date}}.",
   "planValid_other": "{{count}} KI-Credits, gültig bis {{date}}.",
   "planZero": "0 KI-Credits.",
+  "paused_one": "{{count}} KI-Credit, pausiert. Abonniere erneut, um ihn vor {{date}} zu nutzen.",
+  "paused_other": "{{count}} KI-Credits, pausiert. Abonniere erneut, um sie vor {{date}} zu nutzen.",
   "usedThisPeriod_one": "{{count}} KI-Credit in diesem Zeitraum verbraucht.",
   "usedThisPeriod_other": "{{count}} KI-Credits in diesem Zeitraum verbraucht.",
   "remaining_one": "Noch {{count}} übrig.",

@@ -9,6 +9,7 @@ const state = (over: Partial<AiCreditsState>): AiCreditsState => ({
   credits: 180,
   used: 0,
   allowance: 300,
+  usable: true,
   windowEnd: null,
   resets: 'period',
   ...over,

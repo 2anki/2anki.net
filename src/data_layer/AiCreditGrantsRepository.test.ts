@@ -15,6 +15,19 @@ describe('AiCreditGrantsRepository generated SQL', () => {
     expect(sql).toContain('"credits"');
   });
 
+  it('spans the earliest anchor to the latest expiry of unexpired grants', () => {
+    const repo = new AiCreditGrantsRepository(pg);
+    const now = new Date('2026-05-12T00:00:00.000Z');
+    const sql = repo.buildActiveGrantWindowQuery(42, now).toString();
+    expect(sql).toContain('from "ai_credit_grants"');
+    expect(sql).toContain('"user_id" = 42');
+    expect(sql).toContain('"expires_at" >');
+    expect(sql).toContain('min("created_at")');
+    expect(sql).toContain('"window_start"');
+    expect(sql).toContain('max("expires_at")');
+    expect(sql).toContain('"window_end"');
+  });
+
   it('inserts a pack grant that ignores a duplicate stripe session id', () => {
     const repo = new AiCreditGrantsRepository(pg);
     const sql = repo

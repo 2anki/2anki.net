@@ -19,11 +19,14 @@ const subscriberInputs: PlanInputs = {
 
 function readers(
   inputs: PlanInputs | null,
-  spendUsd = 0
+  spendUsd = 0,
+  grantCredits = 0,
+  grantWindow: { windowStart: Date; windowEnd: Date } | null = null
 ): AiCreditBalanceReaders {
   return {
     getPlanInputs: async () => inputs,
-    sumActiveCredits: async () => 0,
+    sumActiveCredits: async () => grantCredits,
+    activeGrantWindow: async () => grantWindow,
     userCostSince: async () => spendUsd,
   };
 }
@@ -36,6 +39,7 @@ describe('GetAiCreditsUseCase', () => {
       credits: 180,
       used: 120,
       allowance: 300,
+      usable: true,
       windowEnd: '2026-06-01T00:00:00.000Z',
       resets: 'period',
     });
@@ -67,8 +71,34 @@ describe('GetAiCreditsUseCase', () => {
       credits: 0,
       used: 0,
       allowance: 0,
+      usable: false,
       windowEnd: null,
       resets: 'month',
+    });
+  });
+
+  it('marks a grant-only balance not usable while the plan is lapsed', async () => {
+    const lapsedInputs: PlanInputs = {
+      passes: [],
+      subscriptions: [],
+      patreon: false,
+      ankifyAccess: false,
+    };
+    const grantWindow = {
+      windowStart: new Date('2026-04-20T00:00:00.000Z'),
+      windowEnd: new Date('2026-07-19T00:00:00.000Z'),
+    };
+    const useCase = new GetAiCreditsUseCase(
+      readers(lapsedInputs, 1, 250, grantWindow)
+    );
+    const result = await useCase.execute(42, NOW);
+    expect(result).toEqual({
+      credits: 150,
+      used: 100,
+      allowance: 0,
+      usable: false,
+      windowEnd: '2026-07-19T00:00:00.000Z',
+      resets: 'pass',
     });
   });
 });

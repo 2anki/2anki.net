@@ -8,7 +8,22 @@ export function AiCreditsAccountLine() {
   const { t, i18n } = useTranslation('aicredits');
   const credits = useAiCredits(true);
 
-  if (credits == null || credits.allowance === 0) {
+  if (credits == null) {
+    return null;
+  }
+
+  if (!credits.usable) {
+    if (credits.credits > 0 && credits.windowEnd != null) {
+      const pausedThrough = formatLongDate(
+        new Date(credits.windowEnd),
+        i18n.language
+      );
+      return (
+        <p className={styles.planMeta}>
+          {t('paused', { count: credits.credits, date: pausedThrough })}
+        </p>
+      );
+    }
     return null;
   }
 

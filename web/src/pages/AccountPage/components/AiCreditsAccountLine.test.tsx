@@ -23,6 +23,7 @@ const state = (over: Partial<AiCreditsState>): AiCreditsState => ({
   credits: 180,
   used: 0,
   allowance: 300,
+  usable: true,
   windowEnd: '2027-05-12T00:00:00.000Z',
   resets: 'period',
   ...over,
@@ -36,8 +37,49 @@ describe('AiCreditsAccountLine', () => {
     mockFormat.mockReturnValue('a date');
   });
 
-  it('renders nothing for a plan without an allowance', () => {
-    mockHook.mockReturnValue(state({ allowance: 0 }));
+  it('renders nothing with no plan and no grant credits', () => {
+    mockHook.mockReturnValue(state({ usable: false, credits: 0 }));
+    const { container } = render(<AiCreditsAccountLine />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('shows a paused line when grant credits remain without an active plan', () => {
+    mockHook.mockReturnValue(
+      state({
+        usable: false,
+        allowance: 0,
+        credits: 180,
+        windowEnd: '2026-11-18T00:00:00.000Z',
+        resets: 'pass',
+      })
+    );
+    render(<AiCreditsAccountLine />);
+    expect(
+      screen.getByText(
+        '180 AI credits, paused. Resubscribe to use them before a date.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Buy 250 credits for $5' })
+    ).toBeNull();
+  });
+
+  it('pluralizes the paused line for a single credit', () => {
+    mockHook.mockReturnValue(
+      state({ usable: false, allowance: 0, credits: 1, resets: 'pass' })
+    );
+    render(<AiCreditsAccountLine />);
+    expect(
+      screen.getByText(
+        '1 AI credit, paused. Resubscribe to use it before a date.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('renders nothing when not usable and no window end is set', () => {
+    mockHook.mockReturnValue(
+      state({ usable: false, allowance: 0, credits: 180, windowEnd: null })
+    );
     const { container } = render(<AiCreditsAccountLine />);
     expect(container).toBeEmptyDOMElement();
   });

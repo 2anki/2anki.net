@@ -11,6 +11,7 @@ export function createAiCreditReaders(db: Knex): AiCreditBalanceReaders {
   return {
     getPlanInputs: (userId, now) => plans.getPlanInputs(userId, now),
     sumActiveCredits: (userId, now) => grants.sumActiveCredits(userId, now),
+    activeGrantWindow: (userId, now) => grants.activeGrantWindow(userId, now),
     userCostSince: (userId, since) => usage.userCostSince(userId, since),
   };
 }
