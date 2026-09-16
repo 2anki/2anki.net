@@ -6,5 +6,11 @@
   "plan_other": "{{count}} AI credits.",
   "planValid_one": "{{count}} AI credit, valid through {{date}}.",
   "planValid_other": "{{count}} AI credits, valid through {{date}}.",
-  "planZero": "0 AI credits."
+  "planZero": "0 AI credits.",
+  "usedThisPeriod_one": "{{count}} AI credit used this period.",
+  "usedThisPeriod_other": "{{count}} AI credits used this period.",
+  "remaining_one": "{{count}} left.",
+  "remaining_other": "{{count}} left.",
+  "remainingValid_one": "{{count}} left, valid through {{date}}.",
+  "remainingValid_other": "{{count}} left, valid through {{date}}."
 }

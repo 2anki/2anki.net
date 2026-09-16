@@ -5,6 +5,7 @@ export const CREDIT_UNIT_USD = 0.01;
 export interface AiCreditBalance {
   rawCredits: number;
   credits: number;
+  spent: number;
   allowance: number;
   windowStart: Date;
   windowEnd: Date | null;
@@ -39,6 +40,7 @@ export async function computeAiCreditBalance(
   return {
     rawCredits,
     credits: Math.max(0, Math.round(rawCredits)),
+    spent: Math.max(0, Math.round(spentCredits)),
     allowance: allowance.credits,
     windowStart: allowance.windowStart,
     windowEnd: allowance.windowEnd,

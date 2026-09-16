@@ -46,6 +46,24 @@ describe('computeAiCreditBalance', () => {
     expect(result?.resets).toBe('period');
   });
 
+  it('reports spend converted to whole credits used', async () => {
+    const result = await computeAiCreditBalance(
+      1,
+      NOW,
+      readersFor(subscriberInputs, 1.2)
+    );
+    expect(result?.spent).toBe(120);
+  });
+
+  it('floors reported spend at zero when nothing was spent', async () => {
+    const result = await computeAiCreditBalance(
+      1,
+      NOW,
+      readersFor(subscriberInputs, 0)
+    );
+    expect(result?.spent).toBe(0);
+  });
+
   it('adds unexpired grant credits to the balance', async () => {
     const result = await computeAiCreditBalance(
       1,

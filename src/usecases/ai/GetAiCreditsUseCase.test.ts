@@ -34,6 +34,7 @@ describe('GetAiCreditsUseCase', () => {
     const result = await useCase.execute(42, NOW);
     expect(result).toEqual({
       credits: 180,
+      used: 120,
       allowance: 300,
       windowEnd: '2026-06-01T00:00:00.000Z',
       resets: 'period',
@@ -64,6 +65,7 @@ describe('GetAiCreditsUseCase', () => {
     const result = await useCase.execute(42, NOW);
     expect(result).toEqual({
       credits: 0,
+      used: 0,
       allowance: 0,
       windowEnd: null,
       resets: 'month',

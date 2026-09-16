@@ -12,5 +12,17 @@
   "planValid_few": "{{count}} кредита ИИ, действуют до {{date}}.",
   "planValid_many": "{{count}} кредитов ИИ, действуют до {{date}}.",
   "planValid_other": "{{count}} кредитов ИИ, действуют до {{date}}.",
-  "planZero": "0 кредитов ИИ."
+  "planZero": "0 кредитов ИИ.",
+  "usedThisPeriod_one": "{{count}} кредит ИИ использован за этот период.",
+  "usedThisPeriod_few": "{{count}} кредита ИИ использовано за этот период.",
+  "usedThisPeriod_many": "{{count}} кредитов ИИ использовано за этот период.",
+  "usedThisPeriod_other": "{{count}} кредитов ИИ использовано за этот период.",
+  "remaining_one": "Остался {{count}}.",
+  "remaining_few": "Осталось {{count}}.",
+  "remaining_many": "Осталось {{count}}.",
+  "remaining_other": "Осталось {{count}}.",
+  "remainingValid_one": "Остался {{count}}, действует до {{date}}.",
+  "remainingValid_few": "Осталось {{count}}, действуют до {{date}}.",
+  "remainingValid_many": "Осталось {{count}}, действуют до {{date}}.",
+  "remainingValid_other": "Осталось {{count}}, действуют до {{date}}."
 }

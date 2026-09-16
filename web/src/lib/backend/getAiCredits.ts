@@ -4,6 +4,7 @@ export type AiCreditsReset = 'period' | 'pass' | 'month';
 
 export interface AiCreditsResponse {
   credits: number;
+  used: number;
   allowance: number;
   windowEnd: string | null;
   resets: AiCreditsReset;

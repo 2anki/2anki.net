@@ -31,6 +31,7 @@ describe('useAiCredits', () => {
   it('returns the balance once the query resolves', async () => {
     vi.mocked(getAiCredits).mockResolvedValue({
       credits: 42,
+      used: 8,
       allowance: 300,
       windowEnd: null,
       resets: 'period',
@@ -43,6 +44,7 @@ describe('useAiCredits', () => {
     await waitFor(() =>
       expect(result.current).toEqual({
         credits: 42,
+        used: 8,
         allowance: 300,
         windowEnd: null,
         resets: 'period',
