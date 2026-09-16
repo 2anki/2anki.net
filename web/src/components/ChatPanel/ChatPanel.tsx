@@ -11,6 +11,7 @@ import {
   suggestDeckName,
 } from '../../lib/chat/templates';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { BuyCreditsButton } from '../BuyCreditsButton/BuyCreditsButton';
 import { isPayingUser } from '../NavigationBar/helpers/getPlanLabel';
 import sharedStyles from '../../styles/shared.module.css';
 import { compressImageForUpload } from '../../lib/image/compressImageForUpload';
@@ -1241,7 +1242,8 @@ export default function ChatPanel({
                   )}
                   {aiCreditsExhausted && (
                     <output className={styles.aiCreditsNotice}>
-                      {t('aiCreditsExhausted')}
+                      {t('aiCreditsExhausted')}{' '}
+                      <BuyCreditsButton source="credits_chat" variant="link" />
                     </output>
                   )}
                 </div>
@@ -1367,7 +1369,8 @@ export default function ChatPanel({
               )}
               {aiCreditsExhausted && (
                 <output className={styles.aiCreditsNotice}>
-                  {t('aiCreditsExhausted')}
+                  {t('aiCreditsExhausted')}{' '}
+                  <BuyCreditsButton source="credits_chat" variant="link" />
                 </output>
               )}
               {successMessage != null && (
