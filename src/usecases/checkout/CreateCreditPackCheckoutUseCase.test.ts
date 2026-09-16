@@ -38,50 +38,30 @@ describe('CreateCreditPackCheckoutUseCase', () => {
     );
   });
 
-  it('sends the account buyer back to /account with the credits flag', async () => {
-    process.env.APP_URL = 'https://staging.2anki.net';
-    mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
+  it.each([
+    ['credits_account', '/account'],
+    ['credits_conversion', '/upload'],
+    ['credits_chat', '/chat'],
+  ] as const)(
+    'sends the %s buyer back to %s with the credits flag',
+    async (source, path) => {
+      process.env.APP_URL = 'https://staging.2anki.net';
+      mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
 
-    const uc = new CreateCreditPackCheckoutUseCase(makeStripe(), 'price_pack');
-    await uc.execute({ userId: 1, source: 'credits_account' });
+      const uc = new CreateCreditPackCheckoutUseCase(
+        makeStripe(),
+        'price_pack'
+      );
+      await uc.execute({ userId: 1, source });
 
-    expect(mockStripeCreateSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        success_url: 'https://staging.2anki.net/account?credits=added',
-        cancel_url: 'https://staging.2anki.net/account',
-      })
-    );
-  });
-
-  it('sends the upload-surface buyers back to /upload', async () => {
-    process.env.APP_URL = 'https://staging.2anki.net';
-    mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
-
-    const uc = new CreateCreditPackCheckoutUseCase(makeStripe(), 'price_pack');
-    await uc.execute({ userId: 1, source: 'credits_conversion' });
-
-    expect(mockStripeCreateSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        success_url: 'https://staging.2anki.net/upload?credits=added',
-        cancel_url: 'https://staging.2anki.net/upload',
-      })
-    );
-  });
-
-  it('sends the chat buyer back to /chat with the credits flag', async () => {
-    process.env.APP_URL = 'https://staging.2anki.net';
-    mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
-
-    const uc = new CreateCreditPackCheckoutUseCase(makeStripe(), 'price_pack');
-    await uc.execute({ userId: 1, source: 'credits_chat' });
-
-    expect(mockStripeCreateSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        success_url: 'https://staging.2anki.net/chat?credits=added',
-        cancel_url: 'https://staging.2anki.net/chat',
-      })
-    );
-  });
+      expect(mockStripeCreateSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success_url: `https://staging.2anki.net${path}?credits=added`,
+          cancel_url: `https://staging.2anki.net${path}`,
+        })
+      );
+    }
+  );
 
   it('falls back to a safe /upload redirect when the source is missing', async () => {
     process.env.APP_URL = 'https://staging.2anki.net';
