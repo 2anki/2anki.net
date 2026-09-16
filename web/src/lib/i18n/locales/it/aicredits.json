@@ -7,6 +7,8 @@
   "planValid_one": "{{count}} credito IA, valido fino al {{date}}.",
   "planValid_other": "{{count}} crediti IA, validi fino al {{date}}.",
   "planZero": "0 crediti IA.",
+  "paused_one": "{{count}} credito IA, in pausa. Riabbonati per usarlo entro il {{date}}.",
+  "paused_other": "{{count}} crediti IA, in pausa. Riabbonati per usarli entro il {{date}}.",
   "usedThisPeriod_one": "{{count}} credito IA usato in questo periodo.",
   "usedThisPeriod_other": "{{count}} crediti IA usati in questo periodo.",
   "remaining_one": "{{count}} rimasto.",

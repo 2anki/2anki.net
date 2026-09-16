@@ -6,6 +6,7 @@ export interface AiCreditsResponse {
   credits: number;
   used: number;
   allowance: number;
+  usable: boolean;
   windowEnd: string | null;
   resets: AiCreditsReset;
 }
@@ -18,7 +19,7 @@ export const getAiCredits = async (): Promise<AiCreditsResponse | null> => {
       typeof data.credits === 'number' &&
       typeof data.allowance === 'number'
     ) {
-      return data as AiCreditsResponse;
+      return { ...data, usable: data.usable === true } as AiCreditsResponse;
     }
     return null;
   } catch {

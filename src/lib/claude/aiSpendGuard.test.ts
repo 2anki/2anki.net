@@ -330,6 +330,23 @@ describe('getAiBudgetStatus', () => {
     });
   });
 
+  it('exhausts a free user who spent a grant with no active plan', async () => {
+    const grantOnlyBalance: AiCreditBalance = {
+      rawCredits: 0,
+      credits: 0,
+      spent: 250,
+      allowance: 0,
+      windowStart: new Date('2026-08-20T00:00:00.000Z'),
+      windowEnd: new Date('2026-11-18T00:00:00.000Z'),
+      resets: 'pass',
+    };
+    const status = await getAiBudgetStatus(
+      42,
+      makeDeps({ balance: grantOnlyBalance })
+    );
+    expect(status.exhausted).toBe(true);
+  });
+
   it('does not re-fire the exhausted event inside the same window', async () => {
     await getAiBudgetStatus(
       42,

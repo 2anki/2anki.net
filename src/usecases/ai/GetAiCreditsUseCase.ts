@@ -10,6 +10,7 @@ export interface AiCreditsResponse {
   credits: number;
   used: number;
   allowance: number;
+  usable: boolean;
   windowEnd: string | null;
   resets: CreditWindowReset;
 }
@@ -27,6 +28,7 @@ export class GetAiCreditsUseCase {
         credits: 0,
         used: 0,
         allowance: 0,
+        usable: false,
         windowEnd: null,
         resets: 'month',
       };
@@ -35,6 +37,7 @@ export class GetAiCreditsUseCase {
       credits: balance.credits,
       used: balance.spent,
       allowance: balance.allowance,
+      usable: balance.allowance > 0,
       windowEnd:
         balance.windowEnd != null ? balance.windowEnd.toISOString() : null,
       resets: balance.resets,

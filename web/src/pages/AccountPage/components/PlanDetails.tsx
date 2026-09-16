@@ -33,6 +33,7 @@ export function PlanDetails({ subscriptionType }: PlanDetailsProps) {
     <section className={styles.section}>
       <p className={styles.planTier}>{t('planDetails.free')}</p>
       <p className={styles.planMeta}>{t('planDetails.freeMeta')}</p>
+      <AiCreditsAccountLine />
       <a href="/pricing" className={styles.primaryButton}>
         {t('planDetails.seePlans')}
       </a>

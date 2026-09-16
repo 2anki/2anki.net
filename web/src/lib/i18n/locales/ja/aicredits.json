@@ -4,6 +4,7 @@
   "plan_other": "AIクレジット{{count}}。",
   "planValid_other": "AIクレジット{{count}}、{{date}}まで有効。",
   "planZero": "AIクレジットは0です。",
+  "paused_other": "AIクレジット{{count}}、一時停止中。{{date}}までに使うには再登録してください。",
   "usedThisPeriod_other": "今期はAIクレジットを{{count}}使用しました。",
   "remaining_other": "残りは{{count}}です。",
   "remainingValid_other": "残りは{{count}}、{{date}}まで有効。",
