@@ -27,6 +27,7 @@ function balanceWith(rawCredits: number): AiCreditBalance {
   return {
     rawCredits,
     credits: Math.max(0, Math.round(rawCredits)),
+    spent: Math.max(0, Math.round(300 - rawCredits)),
     allowance: 300,
     windowStart: new Date('2026-09-01T00:00:00.000Z'),
     windowEnd: new Date('2026-10-01T00:00:00.000Z'),

@@ -41,6 +41,14 @@ export interface IAiSpendReader {
   eventCountSince(name: string, userId: number, since: Date): Promise<number>;
 }
 
+export interface IAiRequestCostReader {
+  costByRequestId(
+    userId: number,
+    requestId: string,
+    since: Date
+  ): Promise<number>;
+}
+
 export function mapAiUsageTotalsRow(
   row: AiUsageTotalsRow | undefined
 ): AiUsageTotals {
@@ -64,7 +72,7 @@ export function mapAiUsageGroupRows(rows: AiUsageGroupRow[]): AiUsageGroup[] {
 const TOP_USER_ROWS = 20;
 
 export class AiUsageMetricsRepository
-  implements IAiUsageMetricsRepository, IAiSpendReader
+  implements IAiUsageMetricsRepository, IAiSpendReader, IAiRequestCostReader
 {
   constructor(private readonly database: Knex) {}
 
@@ -134,6 +142,21 @@ export class AiUsageMetricsRepository
       );
   }
 
+  buildCostByRequestQuery(
+    userId: number,
+    requestId: string,
+    since: Date
+  ): Knex.QueryBuilder {
+    return this.baseQuery(since)
+      .where('user_id', userId)
+      .whereRaw("props->>'request_id' = ?", [requestId])
+      .select(
+        this.database.raw(
+          "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
+        )
+      );
+  }
+
   buildEventCountQuery(
     name: string,
     userId: number,
@@ -184,6 +207,19 @@ export class AiUsageMetricsRepository
     const row = (await this.buildUserCostQuery(userId, since).first()) as
       | { cost_usd: number | string }
       | undefined;
+    return Number(row?.cost_usd ?? 0);
+  }
+
+  async costByRequestId(
+    userId: number,
+    requestId: string,
+    since: Date
+  ): Promise<number> {
+    const row = (await this.buildCostByRequestQuery(
+      userId,
+      requestId,
+      since
+    ).first()) as { cost_usd: number | string } | undefined;
     return Number(row?.cost_usd ?? 0);
   }
 

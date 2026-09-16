@@ -12,5 +12,17 @@
   "planValid_few": "{{count}} kredyty AI, ważne do {{date}}.",
   "planValid_many": "{{count}} kredytów AI, ważne do {{date}}.",
   "planValid_other": "{{count}} kredytów AI, ważne do {{date}}.",
-  "planZero": "0 kredytów AI."
+  "planZero": "0 kredytów AI.",
+  "usedThisPeriod_one": "{{count}} kredyt AI zużyty w tym okresie.",
+  "usedThisPeriod_few": "{{count}} kredyty AI zużyte w tym okresie.",
+  "usedThisPeriod_many": "{{count}} kredytów AI zużytych w tym okresie.",
+  "usedThisPeriod_other": "{{count}} kredytów AI zużytych w tym okresie.",
+  "remaining_one": "Pozostał {{count}}.",
+  "remaining_few": "Pozostały {{count}}.",
+  "remaining_many": "Pozostało {{count}}.",
+  "remaining_other": "Pozostało {{count}}.",
+  "remainingValid_one": "Pozostał {{count}}, ważny do {{date}}.",
+  "remainingValid_few": "Pozostały {{count}}, ważne do {{date}}.",
+  "remainingValid_many": "Pozostało {{count}}, ważne do {{date}}.",
+  "remainingValid_other": "Pozostało {{count}}, ważne do {{date}}."
 }

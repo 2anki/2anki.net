@@ -51,6 +51,7 @@ export class FileConversionError extends Error {
 interface ConvertOptions {
   pdf?: boolean;
   userId?: number | null;
+  requestId?: string;
 }
 
 function getModel(): string {
@@ -94,6 +95,7 @@ export async function convertWithClaude(
           model: response.model,
           usage: response.usage,
           userId: options.userId,
+          requestId: options.requestId,
         });
         assertNotTruncated(response.stop_reason);
         return joinTextBlocks(response.content);
@@ -112,6 +114,7 @@ export async function convertWithClaude(
         model: response.model,
         usage: response.usage,
         userId: options.userId,
+        requestId: options.requestId,
       });
       assertNotTruncated(response.stop_reason);
       return joinTextBlocks(response.content);

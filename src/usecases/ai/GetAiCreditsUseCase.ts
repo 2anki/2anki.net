@@ -8,6 +8,7 @@ export { createAiCreditReaders } from '../../data_layer/createAiCreditReaders';
 
 export interface AiCreditsResponse {
   credits: number;
+  used: number;
   allowance: number;
   windowEnd: string | null;
   resets: CreditWindowReset;
@@ -22,10 +23,17 @@ export class GetAiCreditsUseCase {
   ): Promise<AiCreditsResponse> {
     const balance = await computeAiCreditBalance(userId, now, this.readers);
     if (balance == null) {
-      return { credits: 0, allowance: 0, windowEnd: null, resets: 'month' };
+      return {
+        credits: 0,
+        used: 0,
+        allowance: 0,
+        windowEnd: null,
+        resets: 'month',
+      };
     }
     return {
       credits: balance.credits,
+      used: balance.spent,
       allowance: balance.allowance,
       windowEnd:
         balance.windowEnd != null ? balance.windowEnd.toISOString() : null,

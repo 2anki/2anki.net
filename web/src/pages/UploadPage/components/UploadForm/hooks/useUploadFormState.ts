@@ -58,6 +58,7 @@ export function useUploadFormState(onReset: () => void) {
     useState<number>(0);
   const [emptyBackCount, setEmptyBackCount] = useState<number>(0);
   const [overSplit, setOverSplit] = useState(false);
+  const [creditsUsed, setCreditsUsed] = useState<number>(0);
   const [structureRescuedRule, setStructureRescuedRule] =
     useState<StructureRescueRule | null>(null);
   const [mcqDrawerOpen, setMcqDrawerOpen] = useState(false);
@@ -98,6 +99,7 @@ export function useUploadFormState(onReset: () => void) {
     setExpiredNotionImageCount(0);
     setEmptyBackCount(0);
     setOverSplit(false);
+    setCreditsUsed(0);
     setStructureRescuedRule(null);
     setMcqDrawerOpen(false);
     setMcqShowAnswer(false);
@@ -147,6 +149,8 @@ export function useUploadFormState(onReset: () => void) {
     setEmptyBackCount,
     overSplit,
     setOverSplit,
+    creditsUsed,
+    setCreditsUsed,
     structureRescuedRule,
     setStructureRescuedRule,
     mcqDrawerOpen,

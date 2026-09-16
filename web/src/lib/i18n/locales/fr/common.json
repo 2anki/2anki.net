@@ -126,6 +126,8 @@
       "deckReady": "Ton paquet est prêt",
       "savedToDownloads": "{{deckName}} a été enregistré dans tes téléchargements",
       "downloadRecoveredNote": "Ton téléchargement ne s'est pas terminé — le paquet est enregistré dans tes téléchargements.",
+      "creditsUsed_one": "Ce paquet a utilisé {{count}} crédit IA.",
+      "creditsUsed_other": "Ce paquet a utilisé {{count}} crédits IA.",
       "downloadDeck": "Télécharger le paquet",
       "makeAnother": "Créer un autre paquet",
       "fallbackDownload": "Tu n'as pas reçu le fichier ? Télécharge-le ici.",

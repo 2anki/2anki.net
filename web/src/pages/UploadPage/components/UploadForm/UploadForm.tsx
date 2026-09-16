@@ -300,6 +300,8 @@ function UploadForm({
     emptyBackCount,
     setEmptyBackCount,
     setOverSplit,
+    creditsUsed,
+    setCreditsUsed,
     structureRescuedRule,
     setStructureRescuedRule,
     mcqDrawerOpen,
@@ -381,6 +383,7 @@ function UploadForm({
     setExpiredNotionImageCount,
     setEmptyBackCount,
     setOverSplit,
+    setCreditsUsed,
     setDownloadLink,
     setProgressWidth,
     setBatchResult,
@@ -1095,6 +1098,11 @@ function UploadForm({
             {t('upload.form.savedToDownloads', { deckName })}
           </p>
         )
+      )}
+      {creditsUsed > 0 && (
+        <p className={formStyles.successSecondary}>
+          {t('upload.form.creditsUsed', { count: creditsUsed })}
+        </p>
       )}
       {warningMessage && (
         <p className={formStyles.warningInline}>{warningMessage}</p>

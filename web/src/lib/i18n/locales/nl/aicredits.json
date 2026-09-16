@@ -6,5 +6,11 @@
   "plan_other": "{{count}} AI-credits.",
   "planValid_one": "{{count}} AI-credit, geldig tot {{date}}.",
   "planValid_other": "{{count}} AI-credits, geldig tot {{date}}.",
-  "planZero": "0 AI-credits."
+  "planZero": "0 AI-credits.",
+  "usedThisPeriod_one": "{{count}} AI-credit deze periode gebruikt.",
+  "usedThisPeriod_other": "{{count}} AI-credits deze periode gebruikt.",
+  "remaining_one": "Nog {{count}} over.",
+  "remaining_other": "Nog {{count}} over.",
+  "remainingValid_one": "Nog {{count}} over, geldig tot {{date}}.",
+  "remainingValid_other": "Nog {{count}} over, geldig tot {{date}}."
 }

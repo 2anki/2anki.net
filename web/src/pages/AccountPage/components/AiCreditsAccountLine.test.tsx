@@ -21,6 +21,7 @@ const mockFormat = vi.mocked(formatLongDate);
 
 const state = (over: Partial<AiCreditsState>): AiCreditsState => ({
   credits: 180,
+  used: 0,
   allowance: 300,
   windowEnd: '2027-05-12T00:00:00.000Z',
   resets: 'period',
@@ -48,6 +49,44 @@ describe('AiCreditsAccountLine', () => {
       screen.getByText(/180 AI credits, valid through/)
     ).toBeInTheDocument();
     expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('adds a used-this-period clause once spend is recorded', () => {
+    mockHook.mockReturnValue(state({ credits: 212, used: 88 }));
+    render(<AiCreditsAccountLine />);
+    expect(
+      screen.getByText('88 AI credits used this period.')
+    ).toBeInTheDocument();
+    expect(screen.getByText(/212 left, valid through/)).toBeInTheDocument();
+  });
+
+  it('pluralizes each count independently in the used-this-period line', () => {
+    mockHook.mockReturnValue(state({ credits: 1, used: 1 }));
+    render(<AiCreditsAccountLine />);
+    expect(
+      screen.getByText('1 AI credit used this period.')
+    ).toBeInTheDocument();
+    expect(screen.getByText(/1 left, valid through/)).toBeInTheDocument();
+  });
+
+  it('drops the valid-through date from the remaining clause when none is set', () => {
+    mockHook.mockReturnValue(
+      state({ credits: 212, used: 88, windowEnd: null })
+    );
+    render(<AiCreditsAccountLine />);
+    expect(
+      screen.getByText('88 AI credits used this period.')
+    ).toBeInTheDocument();
+    expect(screen.getByText('212 left.')).toBeInTheDocument();
+  });
+
+  it('keeps the unchanged balance line when nothing has been spent', () => {
+    mockHook.mockReturnValue(state({ credits: 180, used: 0 }));
+    render(<AiCreditsAccountLine />);
+    expect(
+      screen.getByText(/180 AI credits, valid through/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/used this period/)).toBeNull();
   });
 
   it('reads zero when the balance is spent', () => {

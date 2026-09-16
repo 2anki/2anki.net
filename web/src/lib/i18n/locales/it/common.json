@@ -126,6 +126,8 @@
       "deckReady": "Il tuo mazzo è pronto",
       "savedToDownloads": "{{deckName}} è stato salvato nei tuoi download",
       "downloadRecoveredNote": "Il download non è stato completato — il mazzo è salvato nei tuoi download.",
+      "creditsUsed_one": "Questo mazzo ha usato {{count}} credito IA.",
+      "creditsUsed_other": "Questo mazzo ha usato {{count}} crediti IA.",
       "downloadDeck": "Scarica il mazzo",
       "makeAnother": "Crea un altro mazzo",
       "fallbackDownload": "Non hai ricevuto il file? Scaricalo qui.",

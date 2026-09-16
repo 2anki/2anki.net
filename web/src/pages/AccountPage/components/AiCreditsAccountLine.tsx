@@ -25,6 +25,19 @@ export function AiCreditsAccountLine() {
       ? formatLongDate(new Date(credits.windowEnd), i18n.language, timeZone)
       : null;
 
+  if (credits.used > 0) {
+    return (
+      <p className={styles.planMeta}>
+        <span className={styles.aiCreditsCount}>
+          {t('usedThisPeriod', { count: credits.used })}
+        </span>{' '}
+        {validThrough != null
+          ? t('remainingValid', { count: credits.credits, date: validThrough })
+          : t('remaining', { count: credits.credits })}
+      </p>
+    );
+  }
+
   return (
     <p className={styles.planMeta}>
       <span className={styles.aiCreditsCount}>

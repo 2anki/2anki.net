@@ -7,6 +7,7 @@ import { AiCreditsState } from '../../../lib/hooks/useAiCredits';
 
 const state = (over: Partial<AiCreditsState>): AiCreditsState => ({
   credits: 180,
+  used: 0,
   allowance: 300,
   windowEnd: null,
   resets: 'period',

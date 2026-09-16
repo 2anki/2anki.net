@@ -125,6 +125,7 @@
       "deckReady": "デッキの準備ができました",
       "savedToDownloads": "{{deckName}} をダウンロードに保存しました",
       "downloadRecoveredNote": "ダウンロードが完了しませんでしたが、デッキはダウンロード一覧に保存されています。",
+      "creditsUsed_other": "このデッキはAIクレジットを{{count}}使用しました。",
       "downloadDeck": "デッキをダウンロード",
       "makeAnother": "別のデッキを作る",
       "fallbackDownload": "ファイルが届きませんでしたか？こちらからダウンロードできます。",

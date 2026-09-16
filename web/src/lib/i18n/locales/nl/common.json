@@ -126,6 +126,8 @@
       "deckReady": "Je deck is klaar",
       "savedToDownloads": "{{deckName}} is opgeslagen in je downloads",
       "downloadRecoveredNote": "Je download is niet afgerond — het deck staat opgeslagen bij je downloads.",
+      "creditsUsed_one": "Dit deck gebruikte {{count}} AI-credit.",
+      "creditsUsed_other": "Dit deck gebruikte {{count}} AI-credits.",
       "downloadDeck": "Deck downloaden",
       "makeAnother": "Nog een deck maken",
       "fallbackDownload": "Bestand niet ontvangen? Download het hier.",

@@ -295,7 +295,8 @@ async function convertFile(
         name: `${file.name}.html`,
         contents: await convertImageToHTML(
           (file.contents as Buffer).toString('base64'),
-          input.userId ?? null
+          input.userId ?? null,
+          input.requestId
         ),
       };
       console.log('[PrepareDeck] convertFile image', {
@@ -322,7 +323,8 @@ async function convertFile(
           await convertPDFToHTML(
             (file.contents as Buffer).toString('base64'),
             input.settings.userInstructions,
-            input.userId ?? null
+            input.userId ?? null,
+            input.requestId
           )
         ),
       };

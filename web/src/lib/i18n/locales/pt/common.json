@@ -126,6 +126,8 @@
       "deckReady": "Seu baralho está pronto",
       "savedToDownloads": "{{deckName}} foi salvo nos seus downloads",
       "downloadRecoveredNote": "Seu download não terminou — o baralho está salvo nos seus downloads.",
+      "creditsUsed_one": "Este baralho usou {{count}} crédito de IA.",
+      "creditsUsed_other": "Este baralho usou {{count}} créditos de IA.",
       "downloadDeck": "Baixar baralho",
       "makeAnother": "Criar outro baralho",
       "fallbackDownload": "Não recebeu o arquivo? Baixe aqui.",

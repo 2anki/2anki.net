@@ -41,6 +41,7 @@ export interface ConversionSuccessHandlers {
   setExpiredNotionImageCount: (value: number) => void;
   setEmptyBackCount: (value: number) => void;
   setOverSplit: (value: boolean) => void;
+  setCreditsUsed: (value: number) => void;
   setDownloadLink: (value: string | null) => void;
   setProgressWidth: (value: number) => void;
   setBatchResult: (value: BatchResult) => void;
@@ -116,6 +117,9 @@ export async function applyConversionSuccess(
     parseNonNegativeIntHeader(response.headers, 'X-Empty-Back-Count')
   );
   handlers.setOverSplit(response.headers.get('X-Over-Split') === '1');
+  handlers.setCreditsUsed(
+    parseNonNegativeIntHeader(response.headers, 'X-Credits-Used')
+  );
   handlers.setStructureRescuedRule(
     parseStructureRescuedValue(response.headers.get('X-Structure-Rescued'))
   );

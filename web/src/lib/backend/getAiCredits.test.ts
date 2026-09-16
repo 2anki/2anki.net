@@ -9,9 +9,10 @@ describe('getAiCredits', () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => vi.restoreAllMocks());
 
-  it('returns the parsed balance when the shape is valid', async () => {
+  it('returns the parsed balance, carrying period usage, when the shape is valid', async () => {
     vi.mocked(get).mockResolvedValue({
-      credits: 180,
+      credits: 212,
+      used: 88,
       allowance: 300,
       windowEnd: '2026-06-01T00:00:00.000Z',
       resets: 'period',
@@ -21,7 +22,8 @@ describe('getAiCredits', () => {
 
     expect(get).toHaveBeenCalledWith('/api/ai/credits');
     expect(result).toEqual({
-      credits: 180,
+      credits: 212,
+      used: 88,
       allowance: 300,
       windowEnd: '2026-06-01T00:00:00.000Z',
       resets: 'period',

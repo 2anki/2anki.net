@@ -31,6 +31,7 @@ export function recordClaudeUsage(options: RecordClaudeUsageOptions): void {
         surface,
         model: model ?? 'unknown',
         cost_usd: costUsd,
+        ...(requestId != null ? { request_id: requestId } : {}),
         ...(durationMs != null ? { duration_ms: durationMs } : {}),
         usage: {
           input_tokens: input,

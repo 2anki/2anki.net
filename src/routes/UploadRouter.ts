@@ -34,6 +34,7 @@ import { ConversionRuleScoresRepository } from '../data_layer/ConversionRuleScor
 import { CardGuidLedgerRepository } from '../data_layer/CardGuidLedgerRepository';
 import { AiCardFingerprintRepository } from '../data_layer/AiCardFingerprintRepository';
 import { EventsRepository } from '../data_layer/EventsRepository';
+import { AiUsageMetricsRepository } from '../data_layer/AiUsageMetricsRepository';
 import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import NotionTopLevelPagesRepository from '../data_layer/NotionTopLevelPagesRepository';
 import { GetRecentSourcesUseCase } from '../usecases/uploads/GetRecentSourcesUseCase';
@@ -54,7 +55,8 @@ const UploadRouter = () => {
     new ConversionRuleScoresRepository(database),
     new CardGuidLedgerRepository(database),
     new AiCardFingerprintRepository(database),
-    new PhotoToFlashcardsUseCase(new EventsRepository(database))
+    new PhotoToFlashcardsUseCase(new EventsRepository(database)),
+    new AiUsageMetricsRepository(database)
   );
   const jobController = new JobController(
     jobService,

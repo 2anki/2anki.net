@@ -11,6 +11,8 @@ import { IConversionOutputStatsRepository } from '../data_layer/ConversionOutput
 import { IParsePathSignatureRepository } from '../data_layer/ParsePathSignatureRepository';
 import { ICardGuidLedgerRepository } from '../data_layer/CardGuidLedgerRepository';
 import { IAiCardFingerprintRepository } from '../data_layer/AiCardFingerprintRepository';
+import { IAiRequestCostReader } from '../data_layer/AiUsageMetricsRepository';
+import { CREDIT_UNIT_USD } from '../lib/claude/aiCredits/balance';
 import { getConversionResultCache } from '../data_layer/ConversionResultCacheRepository';
 import ErrorHandler from '../routes/middleware/ErrorHandler';
 import CardOption from '../lib/parser/Settings';
@@ -502,8 +504,28 @@ class UploadService {
     private readonly conversionRuleScoresRepository: IConversionRuleScoresRepository,
     private readonly cardGuidLedgerRepository: ICardGuidLedgerRepository,
     private readonly aiCardFingerprintRepository: IAiCardFingerprintRepository,
-    private readonly photoToFlashcardsUseCase: PhotoToFlashcardsUseCase
+    private readonly photoToFlashcardsUseCase: PhotoToFlashcardsUseCase,
+    private readonly aiRequestCostReader: IAiRequestCostReader
   ) {}
+
+  private async resolveSyncCreditsUsed(
+    userId: number | null,
+    requestId: string | undefined,
+    since: Date
+  ): Promise<number> {
+    if (userId == null || requestId == null) return 0;
+    try {
+      const cost = await this.aiRequestCostReader.costByRequestId(
+        userId,
+        requestId,
+        since
+      );
+      return Math.max(0, Math.round(cost / CREDIT_UNIT_USD));
+    } catch (error) {
+      console.error('[UploadService] AI credit usage lookup failed', error);
+      return 0;
+    }
+  }
 
   // Every conversion is scored, not just fallbacks — without the baseline there
   // is nothing to compare a rescued deck against. Fire and forget: a metrics
@@ -1413,6 +1435,7 @@ class UploadService {
     paying: boolean
   ) {
     const owner = getOwner(res);
+    const conversionStart = new Date();
     track('conversion_started', {
       userId: owner != null ? Number(owner) : null,
       anonymousId: this.resolveAnonId(req),
@@ -1623,6 +1646,15 @@ class UploadService {
       if (downloadKey != null) {
         res.set('X-Download-Key', downloadKey);
         exposedHeaders.push('X-Download-Key');
+      }
+      const creditsUsed = await this.resolveSyncCreditsUsed(
+        syncOwnerId,
+        res.locals.requestId,
+        conversionStart
+      );
+      if (creditsUsed > 0) {
+        res.set('X-Credits-Used', creditsUsed.toString());
+        exposedHeaders.push('X-Credits-Used');
       }
       res.set('Access-Control-Expose-Headers', exposedHeaders.join(', '));
       first.name = toText(first.name);
