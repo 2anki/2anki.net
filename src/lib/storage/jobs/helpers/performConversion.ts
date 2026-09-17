@@ -399,6 +399,7 @@ export default async function performConversion(
         forbiddenBlockCount: api.forbiddenBlockCount,
         unsupportedBlockTypeCounts: bl.unsupportedBlockTypeCounts,
         truncation: bl.truncation,
+        apkgSizeMegabytes: size,
       })
     );
 

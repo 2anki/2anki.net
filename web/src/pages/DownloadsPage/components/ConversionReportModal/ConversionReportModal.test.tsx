@@ -96,6 +96,31 @@ describe('ConversionReportModal', () => {
     expect(screen.getAllByText('Skipped')).not.toHaveLength(0);
   });
 
+  it('renders the oversized-package entry with a note tone, not a skipped one', async () => {
+    mockGetJobReport.mockResolvedValue({
+      summary: { blocks_seen: 52, cards_created: 34, blocks_skipped: 0 },
+      entries: [
+        {
+          stage: 'output',
+          reason_code: 'oversized_package',
+          human_reason:
+            "The package is 142.7 MB, over AnkiWeb's 100 MB sync limit",
+          count: 1,
+        },
+      ],
+    });
+
+    render(<ConversionReportModal job={buildJob()} onClose={vi.fn()} />);
+
+    expect(
+      await screen.findByText(
+        "This deck is over 100 MB. AnkiWeb won't sync files that large — it still imports into Anki on your computer."
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText('Note')).toBeInTheDocument();
+    expect(screen.queryByText('Skipped')).not.toBeInTheDocument();
+  });
+
   it('renders the clean line when the report has no entries', async () => {
     mockGetJobReport.mockResolvedValue({
       summary: { blocks_seen: 52, cards_created: 34, blocks_skipped: 0 },

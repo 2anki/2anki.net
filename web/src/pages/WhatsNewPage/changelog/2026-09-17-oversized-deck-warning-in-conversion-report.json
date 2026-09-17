@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-17-oversized-deck-warning-in-conversion-report",
+  "date": "2026-09-17",
+  "type": "feature",
+  "title": "Conversion report warns when a synced deck is too big for AnkiWeb to sync"
+}

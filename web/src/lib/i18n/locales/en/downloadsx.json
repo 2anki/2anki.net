@@ -124,6 +124,7 @@
     "reasonEmptyBack_one": "{{count}} toggle had no answer inside, so no card was made from it. Add the answer inside the toggle, then convert again.",
     "reasonEmptyBack_other": "{{count}} toggles had no answer inside, so no cards were made from them. Add the answer inside each toggle, then convert again.",
     "reasonTruncated": "The conversion stopped before the end of the page.",
+    "reasonOversize": "This deck is over 100 MB. AnkiWeb won't sync files that large — it still imports into Anki on your computer.",
     "reasonUnsupported_one": "{{count}} {{type}} block can't become cards yet.",
     "reasonUnsupported_other": "{{count}} {{type}} blocks can't become cards yet.",
     "omitted_one": "{{count}} more block was skipped for other reasons.",

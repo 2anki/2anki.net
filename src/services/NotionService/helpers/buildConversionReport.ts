@@ -35,9 +35,15 @@ export interface ConversionReportInput {
   forbiddenBlockCount: number;
   unsupportedBlockTypeCounts?: Map<string, number>;
   truncation?: ConversionTruncation;
+  apkgSizeMegabytes?: number;
 }
 
 export const MAX_REPORT_ENTRIES = 50;
+
+// AnkiWeb refuses to sync a package over 100 MB (see apkgOversizeWarning.ts,
+// which flags the same limit on the one-shot upload response path — this
+// mirrors it for the persisted job-based conversion report).
+const APKG_SYNC_LIMIT_MB = 100;
 
 export function buildConversionReport(
   input: ConversionReportInput
@@ -81,6 +87,17 @@ export function buildConversionReport(
       stage: 'output',
       reason_code: 'truncated',
       human_reason: 'The conversion stopped before the end of the page',
+      count: 1,
+    });
+  }
+  if (
+    input.apkgSizeMegabytes != null &&
+    input.apkgSizeMegabytes > APKG_SYNC_LIMIT_MB
+  ) {
+    push({
+      stage: 'output',
+      reason_code: 'oversized_package',
+      human_reason: `The package is ${input.apkgSizeMegabytes.toFixed(1)} MB, over AnkiWeb's 100 MB sync limit`,
       count: 1,
     });
   }

@@ -41,7 +41,10 @@ function entryTone(entry: ConversionReportEntry): ReportTone {
   if (entry.reason_code === 'blocks_forbidden') {
     return 'failed';
   }
-  if (entry.reason_code === 'truncated') {
+  if (
+    entry.reason_code === 'truncated' ||
+    entry.reason_code === 'oversized_package'
+  ) {
     return 'note';
   }
   return 'skipped';
@@ -60,6 +63,9 @@ function entryCopy(t: TFunction, entry: ConversionReportEntry): string {
   }
   if (code === 'truncated') {
     return t('report.reasonTruncated');
+  }
+  if (code === 'oversized_package') {
+    return t('report.reasonOversize');
   }
   if (code.startsWith(UNSUPPORTED_PREFIX)) {
     return t('report.reasonUnsupported', {

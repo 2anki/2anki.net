@@ -124,6 +124,7 @@
     "reasonEmptyBack_one": "{{count}} toggle n'avait pas de réponse à l'intérieur, donc aucune carte n'en a été créée. Ajoute la réponse dans le toggle, puis convertis à nouveau.",
     "reasonEmptyBack_other": "{{count}} toggles n'avaient pas de réponse à l'intérieur, donc aucune carte n'en a été créée. Ajoute la réponse dans les toggles, puis convertis à nouveau.",
     "reasonTruncated": "La conversion s'est arrêtée avant la fin de la page.",
+    "reasonOversize": "Ce paquet dépasse 100 Mo. AnkiWeb ne synchronise pas les fichiers aussi volumineux — il s'importe quand même dans Anki sur ton ordinateur.",
     "reasonUnsupported_one": "{{count}} bloc {{type}} ne peut pas encore devenir des cartes.",
     "reasonUnsupported_other": "{{count}} blocs {{type}} ne peuvent pas encore devenir des cartes.",
     "omitted_one": "{{count}} bloc de plus a été ignoré pour d'autres raisons.",

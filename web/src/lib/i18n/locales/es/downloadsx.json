@@ -124,6 +124,7 @@
     "reasonEmptyBack_one": "{{count}} toggle no tenía respuesta dentro, así que no se creó ninguna tarjeta con él. Añade la respuesta dentro del toggle y convierte de nuevo.",
     "reasonEmptyBack_other": "{{count}} toggles no tenían respuesta dentro, así que no se crearon tarjetas con ellos. Añade la respuesta dentro de cada toggle y convierte de nuevo.",
     "reasonTruncated": "La conversión se detuvo antes del final de la página.",
+    "reasonOversize": "Este mazo pesa más de 100 MB. AnkiWeb no sincroniza archivos tan grandes — aun así se puede importar en Anki en tu computadora.",
     "reasonUnsupported_one": "{{count}} bloque {{type}} aún no puede convertirse en tarjetas.",
     "reasonUnsupported_other": "{{count}} bloques {{type}} aún no pueden convertirse en tarjetas.",
     "omitted_one": "{{count}} bloque más se omitió por otros motivos.",
