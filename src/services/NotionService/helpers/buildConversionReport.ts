@@ -36,6 +36,7 @@ export interface ConversionReportInput {
   unsupportedBlockTypeCounts?: Map<string, number>;
   truncation?: ConversionTruncation;
   apkgSizeMegabytes?: number;
+  duplicateGuidCount?: number;
 }
 
 export const MAX_REPORT_ENTRIES = 50;
@@ -81,6 +82,13 @@ export function buildConversionReport(
     reason_code: 'assets_dropped',
     human_reason: 'Images or files that could not be included',
     count: input.droppedAssetCount,
+  });
+  push({
+    stage: 'card',
+    reason_code: 'duplicate_guid',
+    human_reason:
+      'Cards that repeat the question of another card in the same deck, so Anki keeps only the first',
+    count: input.duplicateGuidCount ?? 0,
   });
   if (input.truncation != null) {
     push({

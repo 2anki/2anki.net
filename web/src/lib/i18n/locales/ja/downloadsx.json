@@ -107,6 +107,7 @@
     "toneSkipped": "スキップ",
     "toneFailed": "変換できませんでした",
     "reasonEmptyBack_other": "{{count}}個のトグルに答えがなかったため、カードは作成されませんでした。トグルの中に答えを書いてから、もう一度変換してください。",
+    "reasonDuplicateGuid_other": "{{count}}枚のカードが、このデッキ内の別のカードと同じ質問になっています。Ankiは最初の1枚だけを残し、残りをスキップします。質問の文言を変えてから、もう一度変換してください。",
     "reasonTruncated": "変換はページの途中で停止しました。",
     "reasonOversize": "このデッキは100MBを超えています。AnkiWebはこのサイズのファイルを同期できませんが、パソコンのAnkiへのインポートは可能です。",
     "reasonUnsupported_other": "{{count}}個の{{type}}ブロックはまだカードにできません。",

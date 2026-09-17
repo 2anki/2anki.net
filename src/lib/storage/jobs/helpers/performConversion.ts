@@ -18,6 +18,7 @@ import { persistJobFailureWithRetry } from './persistJobFailureWithRetry';
 import { BuildDeckForJobUseCase } from '../../../../usecases/jobs/BuildDeckForJobUseCase';
 import { CompleteJobUseCase } from '../../../../usecases/jobs/CompleteJobUseCase';
 import { buildConversionReport } from '../../../../services/NotionService/helpers/buildConversionReport';
+import { countDuplicateGuids } from '../../../anki/countDuplicateGuids';
 import { NotifyUserUseCase } from '../../../../usecases/jobs/NotifyUserUseCase';
 import {
   EMPTY_DECK_FAILURE_REASON,
@@ -400,6 +401,7 @@ export default async function performConversion(
         unsupportedBlockTypeCounts: bl.unsupportedBlockTypeCounts,
         truncation: bl.truncation,
         apkgSizeMegabytes: size,
+        duplicateGuidCount: countDuplicateGuids(ws.location),
       })
     );
 

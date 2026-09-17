@@ -93,6 +93,21 @@ describe('buildConversionReport', () => {
     ]);
   });
 
+  it('flags notes Anki will drop for a duplicate guid', () => {
+    const report = buildConversionReport({
+      ...baseInput,
+      duplicateGuidCount: 3,
+    });
+
+    expect(report.entries).toEqual([
+      expect.objectContaining({
+        stage: 'card',
+        reason_code: 'duplicate_guid',
+        count: 3,
+      }),
+    ]);
+  });
+
   it('does not flag a package at or under the size limit', () => {
     const atLimit = buildConversionReport({
       ...baseInput,
@@ -107,11 +122,29 @@ describe('buildConversionReport', () => {
     expect(underLimit.entries).toEqual([]);
   });
 
+  it('does not flag a package with no duplicate guids', () => {
+    const report = buildConversionReport({
+      ...baseInput,
+      duplicateGuidCount: 0,
+    });
+
+    expect(report.entries).toEqual([]);
+  });
+
   it('excludes the oversized-package entry from blocks_skipped', () => {
     const report = buildConversionReport({
       ...baseInput,
       emptyBackCount: 2,
       apkgSizeMegabytes: 150,
+    });
+
+    expect(report.summary.blocks_skipped).toBe(2);
+  });
+
+  it('counts the duplicate-guid entry toward blocks_skipped', () => {
+    const report = buildConversionReport({
+      ...baseInput,
+      duplicateGuidCount: 2,
     });
 
     expect(report.summary.blocks_skipped).toBe(2);

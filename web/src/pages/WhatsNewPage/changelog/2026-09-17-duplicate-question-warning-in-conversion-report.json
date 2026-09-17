@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-17-duplicate-question-warning-in-conversion-report",
+  "date": "2026-09-17",
+  "type": "feature",
+  "title": "Conversion report flags cards that repeat another card's question"
+}

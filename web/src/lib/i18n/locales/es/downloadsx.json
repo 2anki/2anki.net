@@ -123,6 +123,8 @@
     "toneFailed": "No se pudo convertir",
     "reasonEmptyBack_one": "{{count}} toggle no tenía respuesta dentro, así que no se creó ninguna tarjeta con él. Añade la respuesta dentro del toggle y convierte de nuevo.",
     "reasonEmptyBack_other": "{{count}} toggles no tenían respuesta dentro, así que no se crearon tarjetas con ellos. Añade la respuesta dentro de cada toggle y convierte de nuevo.",
+    "reasonDuplicateGuid_one": "1 tarjeta repite la pregunta de otra tarjeta en este mazo. Anki conserva solo la primera y omite esta. Dale una pregunta diferente y convierte de nuevo.",
+    "reasonDuplicateGuid_other": "{{count}} tarjetas repiten la pregunta de otra tarjeta en este mazo. Anki conserva solo la primera de cada grupo y omite el resto. Cambia el texto de las preguntas repetidas y convierte de nuevo.",
     "reasonTruncated": "La conversión se detuvo antes del final de la página.",
     "reasonOversize": "Este mazo pesa más de 100 MB. AnkiWeb no sincroniza archivos tan grandes — aun así se puede importar en Anki en tu computadora.",
     "reasonUnsupported_one": "{{count}} bloque {{type}} aún no puede convertirse en tarjetas.",

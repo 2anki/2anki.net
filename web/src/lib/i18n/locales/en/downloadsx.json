@@ -123,6 +123,8 @@
     "toneFailed": "Couldn't convert",
     "reasonEmptyBack_one": "{{count}} toggle had no answer inside, so no card was made from it. Add the answer inside the toggle, then convert again.",
     "reasonEmptyBack_other": "{{count}} toggles had no answer inside, so no cards were made from them. Add the answer inside each toggle, then convert again.",
+    "reasonDuplicateGuid_one": "1 card repeats the question of another card in this deck. Anki keeps only the first and skips this one. Give it a different question, then convert again.",
+    "reasonDuplicateGuid_other": "{{count}} cards repeat the question of another card in this deck. Anki keeps only the first of each and skips the rest. Give the repeated questions different wording, then convert again.",
     "reasonTruncated": "The conversion stopped before the end of the page.",
     "reasonOversize": "This deck is over 100 MB. AnkiWeb won't sync files that large — it still imports into Anki on your computer.",
     "reasonUnsupported_one": "{{count}} {{type}} block can't become cards yet.",

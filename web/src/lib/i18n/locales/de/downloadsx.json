@@ -123,6 +123,8 @@
     "toneFailed": "Nicht umwandelbar",
     "reasonEmptyBack_one": "{{count}} Toggle hatte keine Antwort darin, deshalb wurde daraus keine Karte. Schreib die Antwort in den Toggle und wandle die Seite erneut um.",
     "reasonEmptyBack_other": "{{count}} Toggles hatten keine Antwort darin, deshalb wurden daraus keine Karten. Schreib die Antwort in die Toggles und wandle die Seite erneut um.",
+    "reasonDuplicateGuid_one": "1 Karte wiederholt die Frage einer anderen Karte in diesem Stapel. Anki behält nur die erste und überspringt diese. Gib ihr eine andere Frage und wandle die Seite erneut um.",
+    "reasonDuplicateGuid_other": "{{count}} Karten wiederholen die Frage einer anderen Karte in diesem Stapel. Anki behält nur die erste jeder Gruppe und überspringt den Rest. Formuliere die wiederholten Fragen unterschiedlich und wandle die Seite erneut um.",
     "reasonTruncated": "Die Umwandlung endete vor dem Ende der Seite.",
     "reasonOversize": "Dieser Stapel ist über 100 MB groß. AnkiWeb synchronisiert keine so großen Dateien — auf deinem Computer lässt er sich trotzdem in Anki importieren.",
     "reasonUnsupported_one": "{{count}} {{type}}-Block kann noch nicht zu Karten werden.",

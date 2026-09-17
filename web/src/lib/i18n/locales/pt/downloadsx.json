@@ -123,6 +123,8 @@
     "toneFailed": "Não foi possível converter",
     "reasonEmptyBack_one": "{{count}} toggle não tinha resposta dentro, então nenhum cartão foi criado a partir dele. Adicione a resposta dentro do toggle e converta de novo.",
     "reasonEmptyBack_other": "{{count}} toggles não tinham resposta dentro, então nenhum cartão foi criado a partir deles. Adicione a resposta dentro dos toggles e converta de novo.",
+    "reasonDuplicateGuid_one": "1 cartão repete a pergunta de outro cartão neste baralho. O Anki mantém apenas o primeiro e ignora este. Dê a ele uma pergunta diferente e converta de novo.",
+    "reasonDuplicateGuid_other": "{{count}} cartões repetem a pergunta de outro cartão neste baralho. O Anki mantém apenas o primeiro de cada grupo e ignora o restante. Mude o texto das perguntas repetidas e converta de novo.",
     "reasonTruncated": "A conversão parou antes do fim da página.",
     "reasonOversize": "Este baralho tem mais de 100 MB. O AnkiWeb não sincroniza arquivos tão grandes — ele ainda importa no Anki no seu computador.",
     "reasonUnsupported_one": "{{count}} bloco {{type}} ainda não pode virar cartões.",
