@@ -119,6 +119,31 @@
   cursor: not-allowed;
 }
 
+.renameSave[aria-busy='true']::after {
+  content: '';
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 0.4em;
+  vertical-align: -0.1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: cardPreviewSpin 0.6s linear infinite;
+}
+
+@keyframes cardPreviewSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .renameSave[aria-busy='true']::after {
+    animation: none;
+  }
+}
+
 .renameCancel {
   padding: 0.375rem 0.75rem;
   font-size: var(--text-xs);

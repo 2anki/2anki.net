@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-17-chat-deck-save-again-waits-for-the-first-save",
+  "date": "2026-09-17",
+  "type": "fix",
+  "title": "Save again on a chat deck waits until the first download finishes"
+}

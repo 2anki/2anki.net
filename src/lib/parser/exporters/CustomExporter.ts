@@ -10,6 +10,26 @@ import { DeckTooLargeError } from './DeckTooLargeError';
 
 const FRONT_SAMPLE_LIMIT = 25;
 
+// The Python subprocess prints the .apkg path on close, but a slow tmpfs can
+// still be finishing the write when we go to read it. A couple of short
+// waits give that write a chance to land before we fail; if the file is
+// truly missing, the real fs.promises.readFile below still throws its
+// natural ENOENT (tagged with code/errno so ErrorHandler routes it as an
+// internal fault instead of leaking the path to the client as a 400).
+const APKG_READ_RETRY_DELAYS_MS = [100, 250];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function readGeneratedApkg(apkgPath: string): Promise<Buffer> {
+  for (const delay of APKG_READ_RETRY_DELAYS_MS) {
+    if (fs.existsSync(apkgPath)) break;
+    await sleep(delay);
+  }
+  return fs.promises.readFile(apkgPath);
+}
+
 function applyAutoDetectedLang(payload: Deck[]): void {
   if (payload.length === 0) return;
   const settings = payload[0].settings;
@@ -73,7 +93,7 @@ class CustomExporter {
       return fs.promises.readFile(this.getPayloadInfoPath());
     }
     const apkgPath = (await gen.run()) as string;
-    return fs.promises.readFile(apkgPath);
+    return readGeneratedApkg(apkgPath);
   }
 
   deckInfoPath(): string {

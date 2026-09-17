@@ -24,7 +24,7 @@ function isMcqCard(card: ChatCard): boolean {
 
 interface CardPreviewProps {
   cards: ChatCard[];
-  onSave?: (deckName: string) => void;
+  onSave?: (deckName: string) => Promise<void> | void;
   template?: ChatCardTemplate;
   onTemplateChange?: (slug: ChatCardTemplate) => void;
   templateDisabled?: boolean;
@@ -137,6 +137,7 @@ export default function CardPreview({
   );
   const [savedName, setSavedName] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -172,16 +173,25 @@ export default function CardPreview({
   }
 
   function cancelNaming() {
+    if (isSaving) return;
     setSaveState(savedName == null ? 'idle' : 'saved');
   }
 
-  function commitSave() {
-    if (onSave == null) return;
+  async function commitSave() {
+    if (onSave == null || isSaving) return;
     const sanitized = sanitizeFilename(deckNameDraft.trim());
     if (sanitized.length === 0) return;
-    setSavedName(sanitized);
-    setSaveState('saved');
-    onSave(sanitized);
+    setIsSaving(true);
+    try {
+      await onSave(sanitized);
+      setSavedName(sanitized);
+      setSaveState('saved');
+    } catch {
+      // onSave surfaces its own network error; keep the naming row open
+      // so the user can retry instead of showing a false "saved" state.
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -254,7 +264,8 @@ export default function CardPreview({
               type="button"
               className={styles.renameSave}
               onClick={commitSave}
-              disabled={deckNameDraft.trim().length === 0}
+              disabled={deckNameDraft.trim().length === 0 || isSaving}
+              aria-busy={isSaving}
             >
               {t('cardPreview.save')}
             </button>
@@ -262,6 +273,7 @@ export default function CardPreview({
               type="button"
               className={styles.renameCancel}
               onClick={cancelNaming}
+              disabled={isSaving}
             >
               {t('cardPreview.cancel')}
             </button>
