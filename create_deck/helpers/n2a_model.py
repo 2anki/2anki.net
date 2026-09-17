@@ -27,12 +27,29 @@ ids through but never emits notetype-level extras, so originalId is added here.
 kind. Anki only lets its mask editor edit an Image Occlusion note when the
 notetype reports the Image Occlusion stock kind, so shipped notetypes that mirror
 a stock kind carry `original_stock_kind` and it is emitted alongside originalId.
+
+Notetype `mod` (see #4407): stock genanki stamps the notetype with the export
+timestamp on every write, so re-uploading a deck always looks "newer" than the
+copy already in the user's collection and Anki overwrites any CSS or template
+edit the user made there. We pin notetype `mod` to a constant instead, bumped
+only when a shipped template or CSS actually changes -- an unrelated re-export
+minutes later then carries the *same* mod and no longer clobbers local edits.
+The constant must stay >= every mod value already sitting in a returning
+user's collection (all of them are past export timestamps, so any timestamp
+at or after this line was written satisfies that). Note-level `mod` is
+unaffected by this -- that's #4445, gated on a migration.
 """
 import hashlib
 
 from genanki import Model
 
 _ID_SPACE = 10 ** 13
+
+# Bump this whenever a shipped notetype's template or CSS changes. Anki only
+# overwrites the local copy when the incoming mod is newer, so a re-export
+# with the same constant leaves a returning user's own template/CSS edits
+# alone; bumping it is what pushes a real 2anki-side template fix to them.
+NOTETYPE_MOD = 1789650998
 
 
 def stable_entry_id(notetype_name, entry_name):
@@ -64,4 +81,5 @@ class N2AModel(Model):
         data["originalId"] = self.model_id
         if self.original_stock_kind is not None:
             data["originalStockKind"] = self.original_stock_kind
+        data["mod"] = NOTETYPE_MOD
         return data

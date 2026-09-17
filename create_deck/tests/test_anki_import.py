@@ -80,6 +80,14 @@ def _collection_db_name(extract_dir: Path) -> str:
 
 
 def _strip_notetype_ids(apkg_path: str, out_path: str) -> str:
+    """
+    Rewrites the packaged notetypes to look like a pre-#4407 collection: no
+    field/template/original ids, and a notetype `mod` older than the shared
+    NOTETYPE_MOD constant. Both an old collection's real export-time mod and
+    a freshly-built one carry the same frozen constant today, so without
+    backdating mod here a re-export in this test would tie (not beat) the
+    local copy and Anki would skip the field-id write it's meant to prove.
+    """
     extract_dir = Path(out_path).with_suffix(".extract")
     extract_dir.mkdir()
     with zipfile.ZipFile(apkg_path) as archive:
@@ -90,6 +98,7 @@ def _strip_notetype_ids(apkg_path: str, out_path: str) -> str:
         models = json.loads(connection.execute("SELECT models FROM col").fetchone()[0])
         for notetype in models.values():
             notetype.pop("originalId", None)
+            notetype["mod"] = 1
             for field in notetype["flds"]:
                 field.pop("id", None)
             for template in notetype["tmpls"]:
@@ -266,5 +275,43 @@ def test_reimport_with_ids_is_all_duplicate(tmp_path):
         assert len(second.updated) == 0
         assert len(second.conflicting) == 0
         assert len(second.duplicate) == second.found_notes
+    finally:
+        collection.close()
+
+
+def test_reexport_does_not_clobber_a_users_local_css_edit(tmp_path):
+    """
+    The #4407 regression: stock genanki stamps notetype `mod` with the
+    export timestamp on every write, so a plain re-upload always looked
+    newer than the user's collection and Anki overwrote any CSS edit the
+    user made there. N2AModel pins `mod` to a shared constant instead, so
+    a same-version re-export must leave the user's edit alone.
+    """
+    build_dir = tmp_path / "build"
+    build_dir.mkdir()
+    apkg = _build_apkg(build_dir)
+
+    collection_path = str(tmp_path / "collection.anki2")
+    collection = Collection(collection_path)
+    try:
+        _import(collection, apkg)
+        notetype_id = _n2a_notetype_ids(collection)[0]
+        notetype = collection.models.get(notetype_id)
+        notetype["css"] = "/* user's own edit */ .card { color: red; }"
+        collection.models.update_dict(notetype)
+    finally:
+        collection.close()
+
+    time.sleep(NOTE_MOD_ADVANCE_SECONDS)
+
+    reexport_dir = tmp_path / "reexport"
+    reexport_dir.mkdir()
+    reexport_apkg = _build_apkg(reexport_dir)
+
+    collection = Collection(collection_path)
+    try:
+        _import(collection, reexport_apkg)
+        notetype = collection.models.get(notetype_id)
+        assert "user's own edit" in notetype["css"]
     finally:
         collection.close()
