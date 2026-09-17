@@ -694,12 +694,14 @@ export default function CommandsTab() {
       )}
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
-        <h3 className={styles.cardTitle}>Prune dead upload rows</h3>
+        <h3 className={styles.cardTitle}>Verify dead upload rows</h3>
         <p className={styles.panelSubtitle}>
-          Finds uploads rows whose bucket object the old orphan sweep deleted
-          before it was restricted to unreferenced keys. Those rows still show
-          up in a user&apos;s deck list but 404 on download. Reserved-prefix
-          keys (mindmaps, drafts) are left alone. Check first — the prune button
+          The daily self-heal removes these automatically; use this to
+          spot-check between sweeps or clear rows immediately. Finds upload rows
+          whose bucket object the old orphan sweep deleted before it was
+          restricted to unreferenced keys. Those rows still show up in a
+          user&apos;s deck list but 404 on download. Reserved-prefix keys
+          (mindmaps, drafts) are left alone. Check first — the prune button
           unlocks only after a check in this session finds rows.
         </p>
         <div className={styles.controls}>

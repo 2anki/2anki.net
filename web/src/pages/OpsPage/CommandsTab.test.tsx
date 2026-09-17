@@ -249,6 +249,17 @@ describe('CommandsTab — prune dead upload rows', () => {
     vi.restoreAllMocks();
   });
 
+  test('frames the panel as a between-sweeps check, not the primary cleanup', () => {
+    renderTab();
+
+    expect(
+      screen.getByRole('heading', { name: 'Verify dead upload rows' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/daily self-heal removes these automatically/i)
+    ).toBeInTheDocument();
+  });
+
   test('keeps the prune button locked until a check finds dead rows, then confirms with the count', async () => {
     const confirmSpy = vi
       .spyOn(globalThis, 'confirm')

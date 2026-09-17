@@ -478,6 +478,10 @@ const OpsRouter = () => {
    *   post:
    *     summary: Delete uploads rows whose bucket object no longer exists
    *     description: |
+   *       Manual, on-demand verification and override — the daily self-heal
+   *       (deleteDeadUploadRowsInDatabase) already removes these rows automatically
+   *       on a schedule. Use this between sweeps to spot-check a specific report or
+   *       clear rows immediately instead of waiting for the next run.
    *       Lists the storage bucket once and removes uploads rows whose key has no
    *       object and is not a reserved-prefix key (mindmaps/, io-drafts/, assets/) —
    *       the dead rows the pre-#3881 orphan sweep left behind when it deleted the
