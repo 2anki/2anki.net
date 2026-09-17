@@ -10,6 +10,7 @@ const isClientAbort = (error: Error): boolean => {
   const type = (error as { type?: string }).type;
   return (
     error.message === 'Request aborted' ||
+    error.message === 'Unexpected end of form' ||
     type === 'request.aborted' ||
     code === 'ECONNABORTED' ||
     code === 'ECONNRESET'

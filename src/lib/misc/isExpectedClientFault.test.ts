@@ -36,6 +36,12 @@ describe('isExpectedClientFault', () => {
     expect(isExpectedClientFault(err)).toBe(true);
   });
 
+  it('returns true for a busboy truncated-upload abort', () => {
+    expect(isExpectedClientFault(new Error('Unexpected end of form'))).toBe(
+      true
+    );
+  });
+
   it('returns false for an ordinary error', () => {
     expect(isExpectedClientFault(new Error('database exploded'))).toBe(false);
   });
