@@ -95,7 +95,10 @@ const CheckoutRouter = () => {
         getStripe(),
         creditPackPriceId
       );
-      const controller = new CreditPackCheckoutController(useCase);
+      const controller = new CreditPackCheckoutController(
+        useCase,
+        new UsersRepository(getDatabase())
+      );
       return controller.createSession(req, res);
     }
   );

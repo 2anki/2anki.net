@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { track } from '../../lib/analytics/track';
@@ -35,6 +35,10 @@ export function BuyCreditsButton({ source, variant, compact = false }: Props) {
   const { t } = useTranslation('aicredits');
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    track('credits_buy_shown', { source });
+  }, [source]);
 
   const onClick = async () => {
     if (pending) return;
