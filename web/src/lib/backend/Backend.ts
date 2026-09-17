@@ -175,7 +175,7 @@ export class Backend {
     const response = await del(
       `${this.baseURL}users/me/preferences/card-options`
     );
-    if (response != null && response.status === UNAUTHORIZED) {
+    if (response?.status === UNAUTHORIZED) {
       redirectToLogin();
       throw this.authRequiredError('DELETE');
     }
