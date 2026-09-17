@@ -36,6 +36,14 @@ describe('BuyCreditsButton', () => {
     ).toBeInTheDocument();
   });
 
+  it('tracks an impression with the source when it renders', () => {
+    render(<BuyCreditsButton source="credits_badge" variant="link" compact />);
+
+    expect(track).toHaveBeenCalledWith('credits_buy_shown', {
+      source: 'credits_badge',
+    });
+  });
+
   it('tracks the click and starts checkout with the source', async () => {
     startCreditPackCheckout.mockResolvedValue('redirecting');
     render(<BuyCreditsButton source="credits_conversion" variant="link" />);
