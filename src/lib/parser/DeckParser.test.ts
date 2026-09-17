@@ -801,6 +801,56 @@ test('a bold-marked answer still takes priority over the plain-back fallback', a
   expect(card.name).not.toContain('<strong>');
 });
 
+test('a bold answer with nested inline formatting stores plain text, not markup', async () => {
+  const html = `<html><head><title>Cells</title></head><body><article class="page sans"><header><h1 class="page-title">Cells</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>The powerhouse of the cell is the <strong>mito<em>chondrion</em></strong></summary><p>Found in eukaryotic cells</p></details></li></ul>
+</div></article></body></html>`;
+
+  const workspace = new Workspace(true, 'fs');
+  const parser = new DeckParser({
+    name: 'cells.html',
+    settings: new CardOption({
+      cherry: 'false',
+      cloze: 'false',
+      'enable-input': 'true',
+    }),
+    files: [{ name: 'cells.html', contents: html }],
+    noLimits: true,
+    workspace,
+  });
+  await parser.build(workspace);
+
+  const card = parser.payload[0].cards[0];
+  expect(card.enableInput).toBe(true);
+  expect(card.answer).toBe('mitochondrion');
+  expect(card.answer).not.toContain('<em>');
+});
+
+test('a whitespace-only bold span never ships as an input card', async () => {
+  const html = `<html><head><title>Cells</title></head><body><article class="page sans"><header><h1 class="page-title">Cells</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>The powerhouse of the cell is the <strong>   </strong></summary><p>Mitochondria produce ATP through cellular respiration</p></details></li></ul>
+</div></article></body></html>`;
+
+  const workspace = new Workspace(true, 'fs');
+  const parser = new DeckParser({
+    name: 'cells.html',
+    settings: new CardOption({
+      cherry: 'false',
+      cloze: 'false',
+      'enable-input': 'true',
+    }),
+    files: [{ name: 'cells.html', contents: html }],
+    noLimits: true,
+    workspace,
+  });
+  await parser.build(workspace);
+
+  const card = parser.payload[0].cards[0];
+  expect(card.enableInput).toBe(false);
+  expect(card.answer).toBe('');
+  expect(card.isValidBasicNote()).toBe(true);
+});
+
 test('an empty bold span never ships as an input card with nothing to type against', async () => {
   const html = `<html><head><title>Cells</title></head><body><article class="page sans"><header><h1 class="page-title">Cells</h1></header><div class="page-body">
 <ul class="toggle"><li><details open=""><summary>The powerhouse of the cell is the <strong></strong></summary><p>Mitochondria produce ATP through cellular respiration</p></details></li></ul>
