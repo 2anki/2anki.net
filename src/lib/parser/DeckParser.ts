@@ -821,10 +821,17 @@ export class DeckParser {
     let answer = '';
     underlines.each((_i, elem) => {
       const v = dom(elem).html();
-      if (v) {
+      // The typed-answer comparison needs plain text: a bold span that also
+      // carries nested formatting (an italic word, an inline color span)
+      // has innerHTML like "mito<em>chondrion</em>", which never matches
+      // whatever the user actually types. Trimmed .text() also skips a
+      // whitespace-only bold span, which innerHTML alone treats as an
+      // answer.
+      const text = dom(elem).text().trim();
+      if (v && text) {
         const old = `<strong>${v}</strong>`;
         mangle = replaceAll(mangle, old, inline ? v : '{{type:Input}}');
-        answer = v;
+        answer = text;
       }
     });
     return { mangle, answer };
@@ -1106,6 +1113,27 @@ export class DeckParser {
     }
   }
 
+  // A bold span with no text (or a mismatched replace) leaves answer empty
+  // — only flip to the input note type when there's an actual word to type,
+  // so an unmatched **bold** never ships as an Input card with nothing to
+  // compare the typed answer against.
+  private applyInputAnswer(card: Note): void {
+    if (!this.settings.useInput) return;
+    if (card.name.includes('<strong>')) {
+      const inputInfo = this.treatBoldAsInput(card.name, false);
+      if (!inputInfo.answer) return;
+      card.name = inputInfo.mangle;
+      card.answer = inputInfo.answer;
+      card.enableInput = true;
+      return;
+    }
+    if (!card.cloze && isTypableAnswer(card.back)) {
+      card.answer = typableAnswerText(card.back);
+      card.name = `${card.name}{{type:Input}}`;
+      card.enableInput = true;
+    }
+  }
+
   private async transformCard(
     card: Note,
     counter: number,
@@ -1121,7 +1149,6 @@ export class DeckParser {
       return;
     }
 
-    card.enableInput = this.settings.useInput;
     card.cloze = this.settings.isCloze;
     this.noteStrayClozeMarkup(card);
 
@@ -1146,18 +1173,7 @@ export class DeckParser {
       }
     }
 
-    if (this.settings.useInput && card.name.includes('<strong>')) {
-      const inputInfo = this.treatBoldAsInput(card.name, false);
-      card.name = inputInfo.mangle;
-      card.answer = inputInfo.answer;
-    } else if (
-      this.settings.useInput &&
-      !card.cloze &&
-      isTypableAnswer(card.back)
-    ) {
-      card.answer = typableAnswerText(card.back);
-      card.name = `${card.name}{{type:Input}}`;
-    }
+    this.applyInputAnswer(card);
 
     card.media = [];
     await this.embedCardImages(card, ws);

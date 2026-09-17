@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-17-input-cards-from-bold-text-get-a-real-typed-answer",
+  "date": "2026-09-17",
+  "type": "fix",
+  "title": "Input cards built from bolded text always get a real answer to type against"
+}
