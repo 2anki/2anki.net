@@ -821,10 +821,17 @@ export class DeckParser {
     let answer = '';
     underlines.each((_i, elem) => {
       const v = dom(elem).html();
-      if (v) {
+      // The typed-answer comparison needs plain text: a bold span that also
+      // carries nested formatting (an italic word, an inline color span)
+      // has innerHTML like "mito<em>chondrion</em>", which never matches
+      // whatever the user actually types. Trimmed .text() also skips a
+      // whitespace-only bold span, which innerHTML alone treats as an
+      // answer.
+      const text = dom(elem).text().trim();
+      if (v && text) {
         const old = `<strong>${v}</strong>`;
         mangle = replaceAll(mangle, old, inline ? v : '{{type:Input}}');
-        answer = v;
+        answer = text;
       }
     });
     return { mangle, answer };
@@ -1121,7 +1128,6 @@ export class DeckParser {
       return;
     }
 
-    card.enableInput = this.settings.useInput;
     card.cloze = this.settings.isCloze;
     this.noteStrayClozeMarkup(card);
 
@@ -1148,8 +1154,15 @@ export class DeckParser {
 
     if (this.settings.useInput && card.name.includes('<strong>')) {
       const inputInfo = this.treatBoldAsInput(card.name, false);
-      card.name = inputInfo.mangle;
-      card.answer = inputInfo.answer;
+      // A bold span with no text (or a mismatched replace) leaves answer
+      // empty — only flip to the input note type when there's an actual
+      // word to type, so an unmatched **bold** never ships as an Input
+      // card with nothing to compare the typed answer against.
+      if (inputInfo.answer) {
+        card.name = inputInfo.mangle;
+        card.answer = inputInfo.answer;
+        card.enableInput = true;
+      }
     } else if (
       this.settings.useInput &&
       !card.cloze &&
@@ -1157,6 +1170,7 @@ export class DeckParser {
     ) {
       card.answer = typableAnswerText(card.back);
       card.name = `${card.name}{{type:Input}}`;
+      card.enableInput = true;
     }
 
     card.media = [];
