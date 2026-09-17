@@ -1,5 +1,5 @@
 {
-  "id": "2026-09-17-favorite-and-reset-prompt-sign-in-on-expired-session",
+  "id": "2026-09-17-favorite-and-reset-prompt-you-to-sign-in-again",
   "date": "2026-09-17",
   "type": "fix",
   "title": "Favoriting a page or resetting card options prompts you to sign in again if your session expired"
