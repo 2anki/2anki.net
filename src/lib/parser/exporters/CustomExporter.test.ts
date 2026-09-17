@@ -178,9 +178,23 @@ describe('CustomExporter.save', () => {
   const MockCardGenerator = CardGenerator as jest.MockedClass<
     typeof CardGenerator
   >;
+  // CI sets SKIP_CREATE_DECK=true tree-wide so most suites skip the Python
+  // packaging step; these tests exercise that real (mocked-CardGenerator)
+  // path specifically, so the flag must be off here regardless of the
+  // ambient CI environment.
+  const originalSkipCreateDeck = process.env.SKIP_CREATE_DECK;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    delete process.env.SKIP_CREATE_DECK;
+  });
+
+  afterAll(() => {
+    if (originalSkipCreateDeck === undefined) {
+      delete process.env.SKIP_CREATE_DECK;
+    } else {
+      process.env.SKIP_CREATE_DECK = originalSkipCreateDeck;
+    }
   });
 
   function mockGenRun(apkgPath: string) {
