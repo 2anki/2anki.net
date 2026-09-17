@@ -168,7 +168,17 @@ function isInternalFault(err: Error): boolean {
     return true;
   }
   const code = (err as { code?: unknown }).code;
-  return typeof code === 'string' && SQLSTATE_RE.test(code);
+  if (typeof code === 'string' && SQLSTATE_RE.test(code)) {
+    return true;
+  }
+  // Node's filesystem/OS errors (ENOENT, EACCES, ENOSPC, ...) always carry
+  // both a string `code` and a numeric `errno` — a signal no deliberate
+  // upload-shape error sets. A missing/unreadable file on our own disk is
+  // our bug, not something to hand the raw path back to the client as a 400.
+  return (
+    typeof code === 'string' &&
+    typeof (err as { errno?: unknown }).errno === 'number'
+  );
 }
 
 function toMulterErrorBody(err: multer.MulterError): {

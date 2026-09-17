@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, expect, it, vi } from 'vitest';
 import CardPreview from './CardPreview';
@@ -106,30 +106,84 @@ describe('CardPreview', () => {
       expect(onSave).toHaveBeenCalledWith('My Deck');
     });
 
-    it('transitions to saved state after clicking Save', () => {
+    it('transitions to saved state after clicking Save', async () => {
       render(<CardPreview cards={makeCards(3)} onSave={vi.fn()} />);
       fireEvent.click(screen.getByRole('button', { name: 'Download deck' }));
       fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-      expect(screen.getByText(/Saved as/)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText(/Saved as/)).toBeInTheDocument();
+      });
       expect(
         screen.getByRole('button', { name: 'Save again' })
       ).toBeInTheDocument();
     });
 
-    it('shows saved file name with .apkg extension in saved state', () => {
+    it('shows saved file name with .apkg extension in saved state', async () => {
       render(<CardPreview cards={makeCards(3)} onSave={vi.fn()} />);
       fireEvent.click(screen.getByRole('button', { name: 'Download deck' }));
       const input = screen.getByRole('textbox', { name: 'Deck name' });
       fireEvent.change(input, { target: { value: 'Biology' } });
       fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-      expect(screen.getByText('Saved as Biology.apkg')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Saved as Biology.apkg')).toBeInTheDocument();
+      });
     });
 
-    it('returns to naming state when Save again is clicked', () => {
+    it('returns to naming state when Save again is clicked', async () => {
       render(<CardPreview cards={makeCards(3)} onSave={vi.fn()} />);
       fireEvent.click(screen.getByRole('button', { name: 'Download deck' }));
       fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Save again' }));
+      const saveAgain = await screen.findByRole('button', {
+        name: 'Save again',
+      });
+      fireEvent.click(saveAgain);
+      expect(
+        screen.getByRole('textbox', { name: 'Deck name' })
+      ).toBeInTheDocument();
+    });
+
+    it('disables Save and Cancel while a save is in flight, and re-enables after it resolves', async () => {
+      let resolveSave: () => void = () => {};
+      const onSave = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSave = resolve;
+          })
+      );
+      render(<CardPreview cards={makeCards(3)} onSave={onSave} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Download deck' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+      });
+      expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute(
+        'aria-busy',
+        'true'
+      );
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+      expect(onSave).toHaveBeenCalledTimes(1);
+
+      // A second click while saving must not fire a second request.
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(onSave).toHaveBeenCalledTimes(1);
+
+      resolveSave();
+      await waitFor(() => {
+        expect(screen.getByText(/Saved as/)).toBeInTheDocument();
+      });
+    });
+
+    it('stays on the naming row instead of showing a false "saved" state when onSave rejects', async () => {
+      const onSave = vi.fn().mockRejectedValue(new Error('network down'));
+      render(<CardPreview cards={makeCards(3)} onSave={onSave} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Download deck' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+      });
+      expect(screen.queryByText(/Saved as/)).not.toBeInTheDocument();
       expect(
         screen.getByRole('textbox', { name: 'Deck name' })
       ).toBeInTheDocument();

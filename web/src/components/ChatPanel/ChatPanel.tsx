@@ -282,7 +282,7 @@ function AssistantMessage({
   conversationTitle,
 }: {
   message: Message;
-  onSave?: (cards: ChatCard[], deckName: string) => void;
+  onSave?: (cards: ChatCard[], deckName: string) => Promise<void> | void;
   template?: ChatCardTemplate;
   onTemplateChange?: (slug: ChatCardTemplate) => void;
   showSelectorWithoutCards?: boolean;
@@ -932,11 +932,17 @@ export default function ChatPanel({
     }
   }
 
-  function handleSaveAsDeck(cards: ChatCard[], deckName: string) {
+  async function handleSaveAsDeck(
+    cards: ChatCard[],
+    deckName: string
+  ): Promise<void> {
     const templateForCards = effectiveTemplateForCards(cards, activeTemplate);
-    downloadDeck(cards, deckName, templateForCards).catch(() => {
+    try {
+      await downloadDeck(cards, deckName, templateForCards);
+    } catch {
       setNetworkError(t('errors.deckGenerate'));
-    });
+      throw new Error('Deck generation failed');
+    }
   }
 
   async function handleAddTags(messageIdx: number) {

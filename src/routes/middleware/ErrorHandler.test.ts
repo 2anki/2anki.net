@@ -382,6 +382,25 @@ describe('ErrorHandler', () => {
     errorSpy.mockRestore();
   });
 
+  test('a filesystem ENOENT error responds 500 without leaking the internal path', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeResponse(false);
+    const req = makeRequest();
+
+    const fsError = Object.assign(
+      new Error(
+        "ENOENT: no such file or directory, open '/tmp/chat-deck-abc/deck.apkg'"
+      ),
+      { code: 'ENOENT', errno: -2 }
+    );
+    await ErrorHandler(res as unknown as express.Response, req, fsError);
+
+    expect(res.statusCode).toBe(500);
+    const body = res.body as { code: string; message: string };
+    expect(body.message).not.toContain('/tmp/chat-deck-abc');
+    errorSpy.mockRestore();
+  });
+
   test('an over-long form field responds 413 with a friendly message', async () => {
     const res = makeResponse(false);
     const req = makeRequest();

@@ -7,6 +7,9 @@ import { DeckTooLargeError } from './DeckTooLargeError';
 import Deck from '../Deck';
 import Note from '../Note';
 import CardOption from '../Settings';
+import CardGenerator from '../../anki/CardGenerator';
+
+jest.mock('../../anki/CardGenerator');
 
 function tempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'custom-exporter-test-'));
@@ -168,6 +171,64 @@ describe('CustomExporter.configure', () => {
     );
     expect(parsed[0].settings.frontLang).toBe('');
     expect(parsed[0].settings.ttsManualLang).toBe('es_ES');
+  });
+});
+
+describe('CustomExporter.save', () => {
+  const MockCardGenerator = CardGenerator as jest.MockedClass<
+    typeof CardGenerator
+  >;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  function mockGenRun(apkgPath: string) {
+    MockCardGenerator.mockImplementation(
+      () =>
+        ({
+          run: jest.fn().mockResolvedValue(apkgPath),
+        }) as unknown as InstanceType<typeof CardGenerator>
+    );
+  }
+
+  it('reads back the apkg CardGenerator reports', async () => {
+    const dir = tempDir();
+    const apkgPath = path.join(dir, 'deck.apkg');
+    fs.writeFileSync(apkgPath, 'apkg-bytes');
+    mockGenRun(apkgPath);
+    const exporter = new CustomExporter('test-deck', dir);
+
+    const buffer = await exporter.save();
+
+    expect(buffer.toString('utf8')).toBe('apkg-bytes');
+  });
+
+  it('waits for a slow-to-appear apkg instead of failing immediately', async () => {
+    const dir = tempDir();
+    const apkgPath = path.join(dir, 'deck.apkg');
+    mockGenRun(apkgPath);
+    const exporter = new CustomExporter('test-deck', dir);
+
+    setTimeout(() => fs.writeFileSync(apkgPath, 'late-bytes'), 150);
+    const buffer = await exporter.save();
+
+    expect(buffer.toString('utf8')).toBe('late-bytes');
+  });
+
+  it('rejects with a real, code-tagged ENOENT when the apkg never appears', async () => {
+    const dir = tempDir();
+    const apkgPath = path.join(dir, 'never-written.apkg');
+    mockGenRun(apkgPath);
+    const exporter = new CustomExporter('test-deck', dir);
+
+    const error = (await exporter
+      .save()
+      .catch((e) => e)) as NodeJS.ErrnoException;
+
+    expect(error.code).toBe('ENOENT');
+    expect(typeof error.errno).toBe('number');
+    expect(error.message).toContain('never-written.apkg');
   });
 });
 
