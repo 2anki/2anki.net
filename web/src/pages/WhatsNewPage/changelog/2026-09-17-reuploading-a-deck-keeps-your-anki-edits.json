@@ -2,5 +2,5 @@
   "id": "2026-09-17-reuploading-a-deck-keeps-your-anki-edits",
   "date": "2026-09-17",
   "type": "fix",
-  "title": "Re-uploading a deck no longer overwrites the card style you edited in Anki"
+  "title": "Re-uploading a deck keeps the card style you edited in Anki"
 }
