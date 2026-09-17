@@ -123,6 +123,8 @@
     "toneFailed": "Conversion impossible",
     "reasonEmptyBack_one": "{{count}} toggle n'avait pas de réponse à l'intérieur, donc aucune carte n'en a été créée. Ajoute la réponse dans le toggle, puis convertis à nouveau.",
     "reasonEmptyBack_other": "{{count}} toggles n'avaient pas de réponse à l'intérieur, donc aucune carte n'en a été créée. Ajoute la réponse dans les toggles, puis convertis à nouveau.",
+    "reasonDuplicateGuid_one": "1 carte répète la question d'une autre carte dans ce paquet. Anki ne garde que la première et ignore celle-ci. Donne-lui une question différente, puis convertis à nouveau.",
+    "reasonDuplicateGuid_other": "{{count}} cartes répètent la question d'une autre carte dans ce paquet. Anki ne garde que la première de chaque groupe et ignore les autres. Change le texte des questions répétées, puis convertis à nouveau.",
     "reasonTruncated": "La conversion s'est arrêtée avant la fin de la page.",
     "reasonOversize": "Ce paquet dépasse 100 Mo. AnkiWeb ne synchronise pas les fichiers aussi volumineux — il s'importe quand même dans Anki sur ton ordinateur.",
     "reasonUnsupported_one": "{{count}} bloc {{type}} ne peut pas encore devenir des cartes.",

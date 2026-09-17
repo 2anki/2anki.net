@@ -123,6 +123,8 @@
     "toneFailed": "Kon niet converteren",
     "reasonEmptyBack_one": "{{count}} toggle had geen antwoord erin, dus er is geen kaart van gemaakt. Zet het antwoord in de toggle en converteer opnieuw.",
     "reasonEmptyBack_other": "{{count}} toggles hadden geen antwoord erin, dus er zijn geen kaarten van gemaakt. Zet het antwoord in de toggles en converteer opnieuw.",
+    "reasonDuplicateGuid_one": "1 kaart herhaalt de vraag van een andere kaart in dit pakket. Anki bewaart alleen de eerste en slaat deze over. Geef hem een andere vraag en converteer opnieuw.",
+    "reasonDuplicateGuid_other": "{{count}} kaarten herhalen de vraag van een andere kaart in dit pakket. Anki bewaart alleen de eerste van elke groep en slaat de rest over. Verander de tekst van de herhaalde vragen en converteer opnieuw.",
     "reasonTruncated": "De conversie stopte voor het einde van de pagina.",
     "reasonOversize": "Dit pakket is groter dan 100 MB. AnkiWeb synchroniseert geen zulke grote bestanden — het importeert nog wel in Anki op je computer.",
     "reasonUnsupported_one": "{{count}} {{type}}-blok kan nog geen kaarten worden.",

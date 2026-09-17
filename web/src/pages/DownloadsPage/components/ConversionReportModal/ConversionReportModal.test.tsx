@@ -121,6 +121,30 @@ describe('ConversionReportModal', () => {
     expect(screen.queryByText('Skipped')).not.toBeInTheDocument();
   });
 
+  it('renders the duplicate-guid entry as skipped, with the repeated-question copy', async () => {
+    mockGetJobReport.mockResolvedValue({
+      summary: { blocks_seen: 52, cards_created: 34, blocks_skipped: 3 },
+      entries: [
+        {
+          stage: 'card',
+          reason_code: 'duplicate_guid',
+          human_reason:
+            'Cards that repeat the question of another card in the same deck, so Anki keeps only the first',
+          count: 3,
+        },
+      ],
+    });
+
+    render(<ConversionReportModal job={buildJob()} onClose={vi.fn()} />);
+
+    expect(
+      await screen.findByText(
+        '3 cards repeat the question of another card in this deck. Anki keeps only the first of each and skips the rest. Give the repeated questions different wording, then convert again.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Skipped')).not.toHaveLength(0);
+  });
+
   it('renders the clean line when the report has no entries', async () => {
     mockGetJobReport.mockResolvedValue({
       summary: { blocks_seen: 52, cards_created: 34, blocks_skipped: 0 },
