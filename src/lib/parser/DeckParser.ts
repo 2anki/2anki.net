@@ -1113,6 +1113,27 @@ export class DeckParser {
     }
   }
 
+  // A bold span with no text (or a mismatched replace) leaves answer empty
+  // — only flip to the input note type when there's an actual word to type,
+  // so an unmatched **bold** never ships as an Input card with nothing to
+  // compare the typed answer against.
+  private applyInputAnswer(card: Note): void {
+    if (!this.settings.useInput) return;
+    if (card.name.includes('<strong>')) {
+      const inputInfo = this.treatBoldAsInput(card.name, false);
+      if (!inputInfo.answer) return;
+      card.name = inputInfo.mangle;
+      card.answer = inputInfo.answer;
+      card.enableInput = true;
+      return;
+    }
+    if (!card.cloze && isTypableAnswer(card.back)) {
+      card.answer = typableAnswerText(card.back);
+      card.name = `${card.name}{{type:Input}}`;
+      card.enableInput = true;
+    }
+  }
+
   private async transformCard(
     card: Note,
     counter: number,
@@ -1152,26 +1173,7 @@ export class DeckParser {
       }
     }
 
-    if (this.settings.useInput && card.name.includes('<strong>')) {
-      const inputInfo = this.treatBoldAsInput(card.name, false);
-      // A bold span with no text (or a mismatched replace) leaves answer
-      // empty — only flip to the input note type when there's an actual
-      // word to type, so an unmatched **bold** never ships as an Input
-      // card with nothing to compare the typed answer against.
-      if (inputInfo.answer) {
-        card.name = inputInfo.mangle;
-        card.answer = inputInfo.answer;
-        card.enableInput = true;
-      }
-    } else if (
-      this.settings.useInput &&
-      !card.cloze &&
-      isTypableAnswer(card.back)
-    ) {
-      card.answer = typableAnswerText(card.back);
-      card.name = `${card.name}{{type:Input}}`;
-      card.enableInput = true;
-    }
+    this.applyInputAnswer(card);
 
     card.media = [];
     await this.embedCardImages(card, ws);
