@@ -124,6 +124,7 @@
     "reasonEmptyBack_one": "{{count}} toggle had geen antwoord erin, dus er is geen kaart van gemaakt. Zet het antwoord in de toggle en converteer opnieuw.",
     "reasonEmptyBack_other": "{{count}} toggles hadden geen antwoord erin, dus er zijn geen kaarten van gemaakt. Zet het antwoord in de toggles en converteer opnieuw.",
     "reasonTruncated": "De conversie stopte voor het einde van de pagina.",
+    "reasonOversize": "Dit pakket is groter dan 100 MB. AnkiWeb synchroniseert geen zulke grote bestanden — het importeert nog wel in Anki op je computer.",
     "reasonUnsupported_one": "{{count}} {{type}}-blok kan nog geen kaarten worden.",
     "reasonUnsupported_other": "{{count}} {{type}}-blokken kunnen nog geen kaarten worden.",
     "omitted_one": "{{count}} ander blok is om andere redenen overgeslagen.",

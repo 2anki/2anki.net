@@ -156,6 +156,7 @@
     "reasonEmptyBack_many": "{{count}} przełączników nie miało w środku odpowiedzi, więc nie powstały z nich fiszki. Dodaj odpowiedzi w przełącznikach i przekonwertuj ponownie.",
     "reasonEmptyBack_other": "{{count}} przełącznika nie miało w środku odpowiedzi, więc nie powstały z nich fiszki. Dodaj odpowiedzi w przełącznikach i przekonwertuj ponownie.",
     "reasonTruncated": "Konwersja zatrzymała się przed końcem strony.",
+    "reasonOversize": "Ta talia waży ponad 100 MB. AnkiWeb nie synchronizuje tak dużych plików — nadal można ją zaimportować do Anki na komputerze.",
     "reasonUnsupported_one": "{{count}} blok {{type}} nie może jeszcze stać się fiszkami.",
     "reasonUnsupported_few": "{{count}} bloki {{type}} nie mogą jeszcze stać się fiszkami.",
     "reasonUnsupported_many": "{{count}} bloków {{type}} nie może jeszcze stać się fiszkami.",

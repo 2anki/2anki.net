@@ -78,6 +78,45 @@ describe('buildConversionReport', () => {
     expect(report.entries[0].reason_code).toBe('empty_back');
   });
 
+  it('flags a package over the AnkiWeb sync size limit', () => {
+    const report = buildConversionReport({
+      ...baseInput,
+      apkgSizeMegabytes: 142.7,
+    });
+
+    expect(report.entries).toEqual([
+      expect.objectContaining({
+        stage: 'output',
+        reason_code: 'oversized_package',
+        count: 1,
+      }),
+    ]);
+  });
+
+  it('does not flag a package at or under the size limit', () => {
+    const atLimit = buildConversionReport({
+      ...baseInput,
+      apkgSizeMegabytes: 100,
+    });
+    const underLimit = buildConversionReport({
+      ...baseInput,
+      apkgSizeMegabytes: 5,
+    });
+
+    expect(atLimit.entries).toEqual([]);
+    expect(underLimit.entries).toEqual([]);
+  });
+
+  it('excludes the oversized-package entry from blocks_skipped', () => {
+    const report = buildConversionReport({
+      ...baseInput,
+      emptyBackCount: 2,
+      apkgSizeMegabytes: 150,
+    });
+
+    expect(report.summary.blocks_skipped).toBe(2);
+  });
+
   it('caps distinct entries and tallies the overflow', () => {
     const types = new Map<string, number>();
     for (let i = 0; i < MAX_REPORT_ENTRIES + 10; i++) {
