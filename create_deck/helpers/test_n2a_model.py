@@ -1,7 +1,7 @@
 """Tests for the stable field/template id and originalId hook in N2AModel."""
 from genanki import Model
 
-from helpers.n2a_model import N2AModel, stable_entry_id
+from helpers.n2a_model import N2AModel, NOTETYPE_MOD, stable_entry_id
 
 
 def _build_json():
@@ -44,3 +44,27 @@ def test_to_json_sets_template_id():
 def test_to_json_sets_original_id_to_notetype_id():
     data = _build_json()
     assert data["originalId"] == 2020
+
+
+def test_to_json_pins_notetype_mod_to_the_shared_constant():
+    data = _build_json()
+    assert data["mod"] == NOTETYPE_MOD
+    # The export timestamp passed to to_json must not leak through -- that
+    # would put re-uploads back to "always newer than the user's edits".
+    assert data["mod"] != 1_700_000_000
+
+
+def test_to_json_pins_the_same_mod_across_different_export_timestamps():
+    model = N2AModel(
+        2020,
+        "n2a-basic",
+        fields=[{"name": "Front"}, {"name": "Back"}],
+        templates=[
+            {"name": "n2a-basic", "qfmt": "{{Front}}", "afmt": "{{FrontSide}}{{Back}}"}
+        ],
+        css="",
+        model_type=Model.FRONT_BACK,
+    )
+    first = model.to_json(1_600_000_000, 1)
+    second = model.to_json(1_800_000_000, 1)
+    assert first["mod"] == second["mod"] == NOTETYPE_MOD
