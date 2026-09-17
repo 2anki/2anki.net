@@ -1,5 +1,9 @@
 import { FavoritesRepository } from '../data_layer/FavoritesRepository';
-import { NewFavorite, isValidFavoriteInput } from '../entities/favorites';
+import {
+  NewFavorite,
+  isValidFavoriteInput,
+  resolveFavoriteType,
+} from '../entities/favorites';
 import AddToFavoritesUseCase from '../usecases/favorites/AddToFavoritesUseCase';
 import DeleteFavoriteUseCase from '../usecases/favorites/DeleteFavoriteUseCase';
 
@@ -7,12 +11,13 @@ class FavoriteService {
   constructor(private repository: FavoritesRepository) {}
 
   async create(newFavorite: NewFavorite): Promise<boolean> {
-    if (!isValidFavoriteInput(newFavorite.object_id, newFavorite.type)) {
+    const type = resolveFavoriteType(newFavorite.type);
+    if (!isValidFavoriteInput(newFavorite.object_id, type)) {
       return false;
     }
 
     const useCase = new AddToFavoritesUseCase(this.repository);
-    await useCase.execute(newFavorite);
+    await useCase.execute({ ...newFavorite, type });
     return true;
   }
 
