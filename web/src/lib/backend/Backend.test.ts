@@ -233,6 +233,17 @@ describe('Backend', () => {
 
       await expect(backend.resetUserCardOptions()).resolves.toBeUndefined();
     });
+
+    it('redirects to login and throws a tagged 401 on an expired session', async () => {
+      const mockResponse = createMockResponse(401, false);
+      vi.mocked(api.del).mockResolvedValue(mockResponse);
+
+      const error = await backend.resetUserCardOptions().catch((e) => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as { status?: number }).status).toBe(401);
+      expect(api.redirectToLogin).toHaveBeenCalled();
+    });
   });
 
   describe('getCheckoutPrices', () => {
@@ -460,17 +471,23 @@ describe('Backend', () => {
   });
 
   describe('favorites on an expired session', () => {
-    it('addFavorite redirects to login on 401 instead of failing the toggle', async () => {
+    it('addFavorite redirects to login and throws a tagged 401 on an expired session', async () => {
       vi.mocked(api.post).mockResolvedValue(createMockResponse(401, false));
 
-      await expect(backend.addFavorite('page-1', 'page')).resolves.toBe(false);
+      const error = await backend.addFavorite('page-1', 'page').catch((e) => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as { status?: number }).status).toBe(401);
       expect(api.redirectToLogin).toHaveBeenCalled();
     });
 
-    it('deleteFavorite redirects to login on 401', async () => {
+    it('deleteFavorite redirects to login and throws a tagged 401 on an expired session', async () => {
       vi.mocked(api.post).mockResolvedValue(createMockResponse(401, false));
 
-      await expect(backend.deleteFavorite('page-1')).resolves.toBe(false);
+      const error = await backend.deleteFavorite('page-1').catch((e) => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as { status?: number }).status).toBe(401);
       expect(api.redirectToLogin).toHaveBeenCalled();
     });
 

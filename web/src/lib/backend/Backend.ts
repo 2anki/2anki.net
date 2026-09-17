@@ -175,6 +175,10 @@ export class Backend {
     const response = await del(
       `${this.baseURL}users/me/preferences/card-options`
     );
+    if (response != null && response.status === UNAUTHORIZED) {
+      redirectToLogin();
+      throw this.authRequiredError('DELETE');
+    }
     if (response != null && !response.ok) {
       throw new Error(`Failed to reset card options: ${response.status}`);
     }
@@ -473,11 +477,26 @@ export class Backend {
     return post(link, { id, type, title, ...fieldMapping });
   }
 
+  // A 401 here is an expired/invalid session, not a failed toggle — tag it
+  // and redirect the same way the search fix at searchFailure() above does,
+  // so classifyError shows "Session expired" instead of a generic failure
+  // and reportClientError's expected-client-fault filter keeps it out of
+  // /ops/errors.
+  private authRequiredError(method: string): Error {
+    const error = new Error('Authentication required') as Error & {
+      status?: number;
+      method?: string;
+    };
+    error.status = UNAUTHORIZED;
+    error.method = method;
+    return error;
+  }
+
   async addFavorite(id: string, type: string | null): Promise<boolean> {
     const response = await post(`${this.baseURL}favorite/create`, { id, type });
     if (response.status === UNAUTHORIZED) {
       redirectToLogin();
-      return false;
+      throw this.authRequiredError('POST');
     }
     return response.status === OK;
   }
@@ -486,7 +505,7 @@ export class Backend {
     const response = await post(`${this.baseURL}favorite/remove`, { id });
     if (response.status === UNAUTHORIZED) {
       redirectToLogin();
-      return false;
+      throw this.authRequiredError('POST');
     }
     return response.status === OK;
   }
