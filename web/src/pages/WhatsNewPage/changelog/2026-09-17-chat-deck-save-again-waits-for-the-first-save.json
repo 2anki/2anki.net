@@ -2,5 +2,5 @@
   "id": "2026-09-17-chat-deck-save-again-waits-for-the-first-save",
   "date": "2026-09-17",
   "type": "fix",
-  "title": "Chat deck downloads no longer glitch when you click Save again before the first one finishes"
+  "title": "Save again on a chat deck waits until the first download finishes"
 }
