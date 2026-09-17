@@ -144,6 +144,43 @@ describe('CardOptionsForm reset for the account-default view', () => {
     });
     expect(setError).not.toHaveBeenCalled();
   });
+
+  it('passes a tagged 401 straight through so a login prompt can be shown', async () => {
+    const authError = new Error('Authentication required') as Error & {
+      status?: number;
+    };
+    authError.status = 401;
+    mockResetUserCardOptions.mockRejectedValue(authError);
+    const onReset = vi.fn();
+    const setError = vi.fn();
+    renderForm(true, { onReset, setError });
+    const resetButton = await screen.findByRole('button', {
+      name: 'Reset to defaults',
+    });
+    fireEvent.click(resetButton);
+    await waitFor(() => {
+      expect(setError).toHaveBeenCalledWith(authError);
+    });
+    expect(onReset).not.toHaveBeenCalled();
+  });
+
+  it('falls back to a generic reset error for a non-auth failure', async () => {
+    mockResetUserCardOptions.mockRejectedValue(new Error('boom'));
+    const onReset = vi.fn();
+    const setError = vi.fn();
+    renderForm(true, { onReset, setError });
+    const resetButton = await screen.findByRole('button', {
+      name: 'Reset to defaults',
+    });
+    fireEvent.click(resetButton);
+    await waitFor(() => {
+      expect(setError).toHaveBeenCalledTimes(1);
+    });
+    const [calledWith] = setError.mock.calls[0];
+    expect(calledWith).toBeInstanceOf(Error);
+    expect((calledWith as Error).message).not.toBe('boom');
+    expect(onReset).not.toHaveBeenCalled();
+  });
 });
 
 describe('CardOptionsForm reset clears all stored card options', () => {

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { isPayingUser } from '../NavigationBar/helpers/getPlanLabel';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
+import { UNAUTHORIZED } from '../../lib/backend/http';
 import { resetStoredCardOptions } from '../../lib/data_layer/resetStoredCardOptions';
 import { getLocalStorageBooleanValue } from '../../lib/data_layer/getLocalStorageBooleanValue';
 import { getLocalStorageValue } from '../../lib/data_layer/getLocalStorageValue';
@@ -689,8 +690,13 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       } else if (isLoggedIn) {
         try {
           await get2ankiApi().resetUserCardOptions();
-        } catch {
-          setError(new Error(t('cardOptions.resetError')));
+        } catch (error) {
+          const status = (error as { status?: number } | undefined)?.status;
+          setError(
+            status === UNAUTHORIZED
+              ? error
+              : new Error(t('cardOptions.resetError'))
+          );
           return;
         }
       }
