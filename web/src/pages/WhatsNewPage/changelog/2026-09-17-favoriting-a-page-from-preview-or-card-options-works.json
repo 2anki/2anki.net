@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-17-favoriting-a-page-from-preview-or-card-options-works",
+  "date": "2026-09-17",
+  "type": "fix",
+  "title": "Starring a page from Preview, Card Options, or an Ankify workspace saves the favorite instead of failing"
+}
