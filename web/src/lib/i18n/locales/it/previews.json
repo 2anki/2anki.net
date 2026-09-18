@@ -92,8 +92,11 @@
     "loadingMoreCards": "Caricamento di altre schede"
   },
   "share": {
+    "loading": "Caricamento…",
     "creatingLink": "Creazione del link…",
-    "unableToCreateLink": "Impossibile creare il link.",
+    "createLink": "Crea link di condivisione",
+    "createFailed": "Impossibile creare il link. Riprova.",
+    "tryAgain": "Riprova",
     "shareLink": "Link di condivisione",
     "copyLink": "Copia il link",
     "helper": "Chiunque abbia il link può visualizzare in anteprima le schede e scaricare il mazzo. Non può modificarlo.",
@@ -103,6 +106,15 @@
     "share": "Condividi",
     "shareThisDeck": "Condividi questo mazzo",
     "linkCopied": "Link copiato"
+  },
+  "sharedDeck": {
+    "sharedVia": "Condiviso tramite 2anki",
+    "cardCount_one": "{{count}} scheda",
+    "cardCount_other": "{{count}} schede",
+    "previewCap": "Visualizzazione di {{shown}} di {{total}} schede",
+    "makeYourOwn": "Crea il tuo mazzo",
+    "download": "Scarica il mazzo (.apkg)",
+    "valueLine": "2anki trasforma le tue pagine Notion, i PDFs e gli appunti in mazzi Anki. Inizia gratis."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

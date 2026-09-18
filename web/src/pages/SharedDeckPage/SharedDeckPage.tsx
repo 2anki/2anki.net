@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SkeletonList } from '../../components/Skeleton/Skeleton';
 import { EmptyState } from '../../components/EmptyState/EmptyState';
 import { CardFrame } from '../PreviewApkgPage/CardFrame';
@@ -8,6 +9,8 @@ import { useSharedDeckMeta, useSharedDeckStream } from './useSharedDeckStream';
 import { track } from '../../lib/analytics/track';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
 import styles from './SharedDeckPage.module.css';
+
+const PREVIEW_CAP = 8;
 
 function truncateDeckName(name: string): string {
   if (name.length <= 40) return name;
@@ -35,8 +38,8 @@ function DeletedPage() {
 }
 
 export default function SharedDeckPage() {
+  const { t } = useTranslation('previews');
   const { token } = useParams<{ token: string }>();
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const viewTrackedRef = useRef(false);
 
   const meta = useSharedDeckMeta(token);
@@ -62,30 +65,13 @@ export default function SharedDeckPage() {
       meta.error?.message?.toLowerCase().includes('deleted')) &&
     !meta.data;
 
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const node = sentinelRef.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0]?.isIntersecting &&
-          stream.hasNextPage &&
-          !stream.isFetchingNextPage
-        ) {
-          stream.fetchNextPage();
-        }
-      },
-      { rootMargin: '400px 0px' }
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [stream]);
-
   const cards = useMemo(
     () => stream.data?.pages.flatMap((page) => page.cards) ?? [],
     [stream.data]
   );
+  const displayCards = cards.slice(0, PREVIEW_CAP);
 
+  const totalCards = meta.data?.totalCards ?? 0;
   const decks = Array.isArray(meta.data?.decks) ? meta.data.decks : [];
   const firstDeckName = decks[0]?.fullName ?? 'Shared deck';
   const headerName = truncateDeckName(firstDeckName);
@@ -125,14 +111,21 @@ export default function SharedDeckPage() {
         <a href="https://2anki.net" className={styles.wordmark}>
           2anki
         </a>
-        <span
-          className={styles.deckName}
-          title={firstDeckName}
-          data-hj-suppress
-        >
-          {headerName}
-        </span>
-        <span className={styles.tagline}>Shared via 2anki</span>
+        <div className={styles.headerCenter}>
+          <span
+            className={styles.deckName}
+            title={firstDeckName}
+            data-hj-suppress
+          >
+            {headerName}
+          </span>
+          {totalCards > 0 && (
+            <span className={styles.cardCount}>
+              {t('sharedDeck.cardCount', { count: totalCards })}
+            </span>
+          )}
+        </div>
+        <span className={styles.tagline}>{t('sharedDeck.sharedVia')}</span>
       </header>
 
       <div className={styles.content}>
@@ -147,35 +140,41 @@ export default function SharedDeckPage() {
                 description="This deck has no cards to preview."
               />
             )}
-            {cards.map((card) => (
+            {displayCards.map((card) => (
               <CardFrame key={card.id} card={card} />
             ))}
           </div>
         )}
 
-        <div ref={sentinelRef} className={styles.sentinel} aria-hidden="true" />
-
-        {stream.isFetchingNextPage && (
-          <div className={styles.loadingRow}>Loading more…</div>
+        {totalCards > PREVIEW_CAP && (
+          <p className={styles.previewCap}>
+            {t('sharedDeck.previewCap', {
+              shown: displayCards.length,
+              total: totalCards,
+            })}
+          </p>
         )}
       </div>
 
       {downloadUrl != null && (
-        <div className={styles.downloadRow}>
-          <a
-            href={downloadUrl}
-            className={styles.downloadButton}
-            onClick={() => track('shared_deck_downloaded')}
-          >
-            Download deck
-          </a>
-          <a
-            href="/upload"
-            className={styles.remixButton}
-            onClick={() => track('shared_deck_convert_clicked')}
-          >
-            Make your own deck
-          </a>
+        <div className={styles.actionBar}>
+          <div className={styles.actionBarInner}>
+            <a
+              href="/upload"
+              className={styles.primaryCta}
+              onClick={() => track('shared_deck_convert_clicked')}
+            >
+              {t('sharedDeck.makeYourOwn')}
+            </a>
+            <p className={styles.valueLine}>{t('sharedDeck.valueLine')}</p>
+            <a
+              href={downloadUrl}
+              className={styles.secondaryCta}
+              onClick={() => track('shared_deck_downloaded')}
+            >
+              {t('sharedDeck.download')}
+            </a>
+          </div>
         </div>
       )}
     </div>

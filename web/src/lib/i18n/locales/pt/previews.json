@@ -92,8 +92,11 @@
     "loadingMoreCards": "A carregar mais cartões"
   },
   "share": {
+    "loading": "A carregar…",
     "creatingLink": "A criar ligação…",
-    "unableToCreateLink": "Não foi possível criar a ligação.",
+    "createLink": "Criar ligação de partilha",
+    "createFailed": "Não foi possível criar a ligação. Tenta novamente.",
+    "tryAgain": "Tentar novamente",
     "shareLink": "Ligação de partilha",
     "copyLink": "Copiar ligação",
     "helper": "Qualquer pessoa com a ligação pode pré-visualizar os cartões e transferir o baralho. Não o pode editar.",
@@ -103,6 +106,15 @@
     "share": "Partilhar",
     "shareThisDeck": "Partilhar este baralho",
     "linkCopied": "Ligação copiada"
+  },
+  "sharedDeck": {
+    "sharedVia": "Partilhado através do 2anki",
+    "cardCount_one": "{{count}} cartão",
+    "cardCount_other": "{{count}} cartões",
+    "previewCap": "A mostrar {{shown}} de {{total}} cartões",
+    "makeYourOwn": "Cria o teu próprio baralho",
+    "download": "Transferir baralho (.apkg)",
+    "valueLine": "O 2anki transforma as tuas páginas do Notion, PDFs e notas em baralhos do Anki. Começa grátis."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

@@ -29,13 +29,28 @@
   color: var(--color-text-primary);
 }
 
+.headerCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
 .deckName {
   font-weight: 500;
   font-size: var(--text-base);
   color: var(--color-text-primary);
   text-align: center;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardCount {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
   white-space: nowrap;
 }
 
@@ -55,16 +70,58 @@
   gap: 1.5rem;
 }
 
-.downloadRow {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
+.previewCap {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
 }
 
-.remixButton {
-  display: inline-block;
+.actionBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--color-bg-primary);
+  border-top: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  padding: 1rem 1.5rem;
+}
+
+.actionBarInner {
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.primaryCta {
+  display: block;
+  padding: 0.75rem 2rem;
+  background: var(--color-primary);
+  color: var(--color-bg-primary);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  font-weight: var(--font-semibold);
+  font-size: var(--text-base);
+  text-align: center;
+}
+
+.primaryCta:hover {
+  background: var(--color-primary-hover);
+}
+
+.valueLine {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.secondaryCta {
+  display: block;
   padding: 0.5rem 1.5rem;
   background: transparent;
   border: 1px solid var(--color-border);
@@ -73,37 +130,11 @@
   text-decoration: none;
   font-weight: var(--font-medium);
   font-size: var(--text-sm);
+  text-align: center;
 }
 
-.remixButton:hover {
+.secondaryCta:hover {
   background: var(--color-bg-secondary);
-}
-
-.downloadButton {
-  display: inline-block;
-  padding: 0.75rem 2rem;
-  background: var(--color-primary);
-  color: var(--color-bg-primary);
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  font-weight: var(--font-medium);
-  font-size: var(--text-base);
-}
-
-.downloadButton:hover {
-  background: var(--color-primary-hover);
-}
-
-.sentinel {
-  height: 1px;
-}
-
-.loadingRow {
-  display: flex;
-  justify-content: center;
-  padding: 1rem 0;
-  color: var(--color-text-secondary);
-  font-size: var(--text-sm);
 }
 
 .errorPage {

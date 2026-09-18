@@ -59,7 +59,7 @@ describe('SharePopover', () => {
     });
   });
 
-  it('creates a new share when no active share exists', async () => {
+  it('does not create a share on open — only on explicit Create share link click', async () => {
     vi.mocked(sharedDeckLib.getActiveSharesForUploadKey).mockResolvedValue(
       null
     );
@@ -71,12 +71,50 @@ describe('SharePopover', () => {
     render(<SharePopover uploadKey="test.apkg" />);
     fireEvent.click(screen.getByRole('button', { name: 'Share' }));
 
+    await screen.findByRole('button', { name: 'Create share link' });
+    expect(sharedDeckLib.createDeckShare).not.toHaveBeenCalled();
+    expect(mockTrack).not.toHaveBeenCalledWith('share_link_created');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create share link' }));
+
     await waitFor(() => {
       expect(sharedDeckLib.createDeckShare).toHaveBeenCalledWith('test.apkg');
     });
     await waitFor(() => {
       expect(mockTrack).toHaveBeenCalledWith('share_link_created');
     });
+    const input = (await screen.findByRole('textbox', {
+      name: 'Share link',
+    })) as HTMLInputElement;
+    expect(input.value).toBe('https://2anki.net/s/new-token');
+  });
+
+  it('shows recovery copy and retries when create fails', async () => {
+    vi.mocked(sharedDeckLib.getActiveSharesForUploadKey).mockResolvedValue(
+      null
+    );
+    vi.mocked(sharedDeckLib.createDeckShare)
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({
+        token: 'retry-token',
+        url: 'https://2anki.net/s/retry-token',
+      });
+
+    render(<SharePopover uploadKey="test.apkg" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create share link' })
+    );
+
+    await screen.findByText("Couldn't create the link. Try again.");
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    const input = (await screen.findByRole('textbox', {
+      name: 'Share link',
+    })) as HTMLInputElement;
+    expect(input.value).toBe('https://2anki.net/s/retry-token');
   });
 
   it('does not track share_link_created when reusing an active share', async () => {

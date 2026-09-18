@@ -92,8 +92,11 @@
     "loadingMoreCards": "Chargement de plus de cartes"
   },
   "share": {
+    "loading": "Chargement…",
     "creatingLink": "Création du lien…",
-    "unableToCreateLink": "Impossible de créer le lien.",
+    "createLink": "Créer un lien de partage",
+    "createFailed": "Impossible de créer le lien. Réessaie.",
+    "tryAgain": "Réessayer",
     "shareLink": "Lien de partage",
     "copyLink": "Copier le lien",
     "helper": "Toute personne disposant du lien peut prévisualiser les cartes et télécharger le paquet. Elle ne peut pas le modifier.",
@@ -103,6 +106,15 @@
     "share": "Partager",
     "shareThisDeck": "Partager ce paquet",
     "linkCopied": "Lien copié"
+  },
+  "sharedDeck": {
+    "sharedVia": "Partagé via 2anki",
+    "cardCount_one": "{{count}} carte",
+    "cardCount_other": "{{count}} cartes",
+    "previewCap": "Affichage de {{shown}} sur {{total}} cartes",
+    "makeYourOwn": "Crée ton propre paquet",
+    "download": "Télécharger le paquet (.apkg)",
+    "valueLine": "2anki transforme tes pages Notion, PDFs et notes en paquets Anki. Gratuit pour commencer."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

@@ -92,7 +92,7 @@ describe('SharedDeckPage', () => {
 
     renderPage('active-token');
 
-    await screen.findByText('Download deck');
+    await screen.findByText('Make your own deck');
     expect(screen.getByText('2anki')).toBeInTheDocument();
   });
 
@@ -109,8 +109,8 @@ describe('SharedDeckPage', () => {
 
     renderPage('my-token');
 
-    await screen.findByText('Download deck');
-    const link = screen.getByRole('link', { name: 'Download deck' });
+    await screen.findByText('Make your own deck');
+    const link = screen.getByRole('link', { name: 'Download deck (.apkg)' });
     expect(link).toHaveAttribute('href', '/api/shares/my-token/download');
   });
 
@@ -127,7 +127,7 @@ describe('SharedDeckPage', () => {
 
     renderPage('view-token');
 
-    await screen.findByText('Download deck');
+    await screen.findByText('Make your own deck');
     await waitFor(() => {
       expect(
         mockTrack.mock.calls.filter(([name]) => name === 'shared_deck_viewed')
@@ -148,7 +148,7 @@ describe('SharedDeckPage', () => {
 
     renderPage('origin-token');
 
-    await screen.findByText('Download deck');
+    await screen.findByText('Make your own deck');
     expect(globalThis.sessionStorage.getItem('signup_origin')).toBe(
       '/shared-deck'
     );
@@ -167,11 +167,46 @@ describe('SharedDeckPage', () => {
 
     renderPage('click-token');
 
-    await screen.findByText('Download deck');
-    fireEvent.click(screen.getByRole('link', { name: 'Download deck' }));
+    await screen.findByText('Make your own deck');
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Download deck (.apkg)' })
+    );
     fireEvent.click(screen.getByRole('link', { name: 'Make your own deck' }));
 
     expect(mockTrack).toHaveBeenCalledWith('shared_deck_downloaded');
     expect(mockTrack).toHaveBeenCalledWith('shared_deck_convert_clicked');
+  });
+
+  it('caps the preview at 8 cards and shows the count without fetching more', async () => {
+    const cards = Array.from({ length: 20 }, (_, i) => ({
+      id: i + 1,
+      ord: 0,
+      templateName: 'Basic',
+      deckName: 'Biology',
+      deckPath: ['Biology'],
+      noteTypeName: 'Basic',
+      css: '',
+      front: `<p>Front ${i + 1}</p>`,
+      back: `<p>Back ${i + 1}</p>`,
+    }));
+    vi.mocked(sharedDeckLib.getSharedDeckMeta).mockResolvedValue({
+      totalCards: 20,
+      decks: [{ id: 1, fullName: 'Biology', path: ['Biology'], cardCount: 20 }],
+    });
+    vi.mocked(sharedDeckLib.getSharedDeckBatch).mockResolvedValue({
+      cards,
+      nextCursor: 21,
+      total: 20,
+    });
+
+    const { container } = renderPage('big-token');
+
+    await screen.findByText('Make your own deck');
+    await waitFor(() => {
+      expect(container.querySelectorAll('iframe')).toHaveLength(8);
+    });
+    expect(screen.getByText('Showing 8 of 20 cards')).toBeInTheDocument();
+    expect(screen.getByText('20 cards')).toBeInTheDocument();
+    expect(screen.queryByText('Loading more…')).not.toBeInTheDocument();
   });
 });

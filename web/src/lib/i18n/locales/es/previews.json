@@ -92,8 +92,11 @@
     "loadingMoreCards": "Cargando más tarjetas"
   },
   "share": {
+    "loading": "Cargando…",
     "creatingLink": "Creando enlace…",
-    "unableToCreateLink": "No se pudo crear el enlace.",
+    "createLink": "Crear enlace para compartir",
+    "createFailed": "No se pudo crear el enlace. Inténtalo de nuevo.",
+    "tryAgain": "Intentar de nuevo",
     "shareLink": "Enlace para compartir",
     "copyLink": "Copiar enlace",
     "helper": "Cualquier persona con el enlace puede previsualizar las tarjetas y descargar el mazo. No puede editarlo.",
@@ -103,6 +106,15 @@
     "share": "Compartir",
     "shareThisDeck": "Compartir este mazo",
     "linkCopied": "Enlace copiado"
+  },
+  "sharedDeck": {
+    "sharedVia": "Compartido con 2anki",
+    "cardCount_one": "{{count}} tarjeta",
+    "cardCount_other": "{{count}} tarjetas",
+    "previewCap": "Mostrando {{shown}} de {{total}} tarjetas",
+    "makeYourOwn": "Crea tu propio mazo",
+    "download": "Descargar mazo (.apkg)",
+    "valueLine": "2anki convierte tus páginas de Notion, PDFs y notas en mazos de Anki. Empieza gratis."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

@@ -13,10 +13,13 @@ interface SharePopoverProps {
   uploadKey: string;
 }
 
+type ShareStatus = 'loading' | 'consent' | 'creating' | 'ready' | 'error';
+
 interface PopoverBodyProps {
-  loading: boolean;
+  status: ShareStatus;
   share: ActiveShare | null;
   showConfirm: boolean;
+  onCreate: () => void;
   onCopy: () => void;
   onStopRequest: () => void;
   onStopConfirm: () => void;
@@ -24,22 +27,52 @@ interface PopoverBodyProps {
 }
 
 function PopoverBody({
-  loading,
+  status,
   share,
   showConfirm,
+  onCreate,
   onCopy,
   onStopRequest,
   onStopConfirm,
   onKeepSharing,
 }: Readonly<PopoverBodyProps>) {
   const { t } = useTranslation('previews');
-  if (loading) {
+  if (status === 'loading') {
+    return <p className={styles.loadingText}>{t('share.loading')}</p>;
+  }
+  if (status === 'creating') {
     return <p className={styles.loadingText}>{t('share.creatingLink')}</p>;
   }
-  if (share == null) {
+  if (status === 'consent') {
     return (
-      <p className={styles.loadingText}>{t('share.unableToCreateLink')}</p>
+      <>
+        <p className={styles.helperText}>{t('share.helper')}</p>
+        <button
+          type="button"
+          className={styles.createButton}
+          onClick={onCreate}
+        >
+          {t('share.createLink')}
+        </button>
+      </>
     );
+  }
+  if (status === 'error') {
+    return (
+      <>
+        <p className={styles.errorText}>{t('share.createFailed')}</p>
+        <button
+          type="button"
+          className={styles.createButton}
+          onClick={onCreate}
+        >
+          {t('share.tryAgain')}
+        </button>
+      </>
+    );
+  }
+  if (share == null) {
+    return <p className={styles.loadingText}>{t('share.loading')}</p>;
   }
   return (
     <>
@@ -94,37 +127,27 @@ export function SharePopover({ uploadKey }: Readonly<SharePopoverProps>) {
   const { t } = useTranslation('previews');
   const [open, setOpen] = useState(false);
   const [share, setShare] = useState<ActiveShare | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<ShareStatus>('loading');
   const [showConfirm, setShowConfirm] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open || loading) return;
+    if (!open) return;
     let cancelled = false;
-    setLoading(true);
+    setStatus('loading');
     getActiveSharesForUploadKey(uploadKey)
       .then((existing) => {
         if (cancelled) return;
         if (existing == null) {
-          return createDeckShare(uploadKey).then((result) => {
-            track('share_link_created');
-            if (cancelled) return;
-            setShare({
-              token: result.token,
-              upload_key: uploadKey,
-              url: result.url,
-              created_at: new Date().toISOString(),
-              view_count: 0,
-            });
-          });
+          setStatus('consent');
         } else {
           setShare(existing);
+          setStatus('ready');
         }
       })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+      .catch(() => {
+        if (!cancelled) setStatus('consent');
       });
     return () => {
       cancelled = true;
@@ -146,6 +169,24 @@ export function SharePopover({ uploadKey }: Readonly<SharePopoverProps>) {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
+
+  const createLink = async () => {
+    setStatus('creating');
+    try {
+      const result = await createDeckShare(uploadKey);
+      track('share_link_created');
+      setShare({
+        token: result.token,
+        upload_key: uploadKey,
+        url: result.url,
+        created_at: new Date().toISOString(),
+        view_count: 0,
+      });
+      setStatus('ready');
+    } catch {
+      setStatus('error');
+    }
+  };
 
   const copyLink = async () => {
     if (share == null) return;
@@ -192,9 +233,10 @@ export function SharePopover({ uploadKey }: Readonly<SharePopoverProps>) {
           >
             <p className={styles.popoverTitle}>{t('share.shareThisDeck')}</p>
             <PopoverBody
-              loading={loading}
+              status={status}
               share={share}
               showConfirm={showConfirm}
+              onCreate={createLink}
               onCopy={copyLink}
               onStopRequest={() => setShowConfirm(true)}
               onStopConfirm={stopSharing}

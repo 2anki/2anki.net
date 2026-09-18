@@ -3,9 +3,9 @@ title: Share a deck with a link
 description: Turn any converted deck into a link anyone can open — no account needed.
 ---
 
-Open a converted deck in **Deck preview** and click **Share** in the top-right corner.
+Open a converted deck in **Deck preview** and click **Share** in the top-right corner, then **Create share link**.
 
-2anki generates an unguessable link. Anyone who has the link can:
+2anki generates an unguessable link only after you click **Create share link**. Anyone who has the link can:
 
 - Preview all the cards in a browser
 - Download the `.apkg` to import into Anki
