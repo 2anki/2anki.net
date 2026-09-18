@@ -82,8 +82,11 @@
     "loadingMoreCards": "さらにカードを読み込み中"
   },
   "share": {
+    "loading": "読み込み中…",
     "creatingLink": "リンクを作成中…",
-    "unableToCreateLink": "リンクを作成できませんでした。",
+    "createLink": "共有リンクを作成",
+    "createFailed": "リンクを作成できませんでした。もう一度お試しください。",
+    "tryAgain": "もう一度試す",
     "shareLink": "共有リンク",
     "copyLink": "リンクをコピー",
     "helper": "リンクを知っている人は誰でもカードをプレビューし、デッキをダウンロードできます。編集はできません。",
@@ -93,6 +96,14 @@
     "share": "共有",
     "shareThisDeck": "このデッキを共有",
     "linkCopied": "リンクをコピーしました"
+  },
+  "sharedDeck": {
+    "sharedVia": "2ankiで共有",
+    "cardCount_other": "{{count}}枚のカード",
+    "previewCap": "{{total}}枚中{{shown}}枚のカードを表示",
+    "makeYourOwn": "自分のデッキを作る",
+    "download": "デッキをダウンロード（.apkg）",
+    "valueLine": "2ankiはあなたのNotionページ、PDFs、メモをAnkiデッキに変換します。無料で始められます。"
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}}（{{side}}）",

@@ -92,8 +92,11 @@
     "loadingMoreCards": "Weitere Karten werden geladen"
   },
   "share": {
+    "loading": "Wird geladen…",
     "creatingLink": "Link wird erstellt…",
-    "unableToCreateLink": "Link konnte nicht erstellt werden.",
+    "createLink": "Teilen-Link erstellen",
+    "createFailed": "Der Link konnte nicht erstellt werden. Versuch es erneut.",
+    "tryAgain": "Erneut versuchen",
     "shareLink": "Teilen-Link",
     "copyLink": "Link kopieren",
     "helper": "Alle mit dem Link können die Karten ansehen und den Stapel herunterladen. Bearbeiten können sie ihn nicht.",
@@ -103,6 +106,15 @@
     "share": "Teilen",
     "shareThisDeck": "Diesen Stapel teilen",
     "linkCopied": "Link kopiert"
+  },
+  "sharedDeck": {
+    "sharedVia": "Geteilt über 2anki",
+    "cardCount_one": "{{count}} Karte",
+    "cardCount_other": "{{count}} Karten",
+    "previewCap": "{{shown}} von {{total}} Karten werden angezeigt",
+    "makeYourOwn": "Erstelle deinen eigenen Stapel",
+    "download": "Stapel herunterladen (.apkg)",
+    "valueLine": "2anki verwandelt deine Notion-Seiten, PDFs und Notizen in Anki-Stapel. Kostenlos starten."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

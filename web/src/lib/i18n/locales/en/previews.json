@@ -92,8 +92,11 @@
     "loadingMoreCards": "Loading more cards"
   },
   "share": {
+    "loading": "Loading…",
     "creatingLink": "Creating link…",
-    "unableToCreateLink": "Unable to create link.",
+    "createLink": "Create share link",
+    "createFailed": "Couldn't create the link. Try again.",
+    "tryAgain": "Try again",
     "shareLink": "Share link",
     "copyLink": "Copy link",
     "helper": "Anyone with the link can preview the cards and download the deck. They can't edit it.",
@@ -103,6 +106,15 @@
     "share": "Share",
     "shareThisDeck": "Share this deck",
     "linkCopied": "Link copied"
+  },
+  "sharedDeck": {
+    "sharedVia": "Shared via 2anki",
+    "cardCount_one": "{{count}} card",
+    "cardCount_other": "{{count}} cards",
+    "previewCap": "Showing {{shown}} of {{total}} cards",
+    "makeYourOwn": "Make your own deck",
+    "download": "Download deck (.apkg)",
+    "valueLine": "2anki turns your Notion pages, PDFs, and notes into Anki decks. Free to start."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

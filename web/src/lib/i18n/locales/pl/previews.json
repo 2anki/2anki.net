@@ -112,8 +112,11 @@
     "loadingMoreCards": "Ładowanie kolejnych kart"
   },
   "share": {
+    "loading": "Ładowanie…",
     "creatingLink": "Tworzenie linku…",
-    "unableToCreateLink": "Nie udało się utworzyć linku.",
+    "createLink": "Utwórz link do udostępniania",
+    "createFailed": "Nie udało się utworzyć linku. Spróbuj ponownie.",
+    "tryAgain": "Spróbuj ponownie",
     "shareLink": "Link do udostępniania",
     "copyLink": "Kopiuj link",
     "helper": "Każdy, kto ma link, może zobaczyć podgląd kart i pobrać talię. Nie może jej edytować.",
@@ -123,6 +126,17 @@
     "share": "Udostępnij",
     "shareThisDeck": "Udostępnij tę talię",
     "linkCopied": "Skopiowano link"
+  },
+  "sharedDeck": {
+    "sharedVia": "Udostępniono przez 2anki",
+    "cardCount_one": "{{count}} karta",
+    "cardCount_few": "{{count}} karty",
+    "cardCount_many": "{{count}} kart",
+    "cardCount_other": "{{count}} karty",
+    "previewCap": "Wyświetlanie {{shown}} z {{total}} kart",
+    "makeYourOwn": "Stwórz własną talię",
+    "download": "Pobierz talię (.apkg)",
+    "valueLine": "2anki zamienia Twoje strony Notion, PDFs i notatki w talie Anki. Zacznij za darmo."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

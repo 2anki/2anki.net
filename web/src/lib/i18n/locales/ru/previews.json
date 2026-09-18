@@ -112,8 +112,11 @@
     "loadingMoreCards": "Загрузка ещё карточек"
   },
   "share": {
+    "loading": "Загрузка…",
     "creatingLink": "Создание ссылки…",
-    "unableToCreateLink": "Не удалось создать ссылку.",
+    "createLink": "Создать ссылку для доступа",
+    "createFailed": "Не удалось создать ссылку. Попробуйте ещё раз.",
+    "tryAgain": "Повторить",
     "shareLink": "Ссылка для доступа",
     "copyLink": "Копировать ссылку",
     "helper": "Любой, у кого есть ссылка, может просмотреть карточки и скачать колоду. Редактировать её нельзя.",
@@ -123,6 +126,17 @@
     "share": "Поделиться",
     "shareThisDeck": "Поделиться этой колодой",
     "linkCopied": "Ссылка скопирована"
+  },
+  "sharedDeck": {
+    "sharedVia": "Отправлено через 2anki",
+    "cardCount_one": "{{count}} карта",
+    "cardCount_few": "{{count}} карты",
+    "cardCount_many": "{{count}} карт",
+    "cardCount_other": "{{count}} карты",
+    "previewCap": "Показано {{shown}} из {{total}} карточек",
+    "makeYourOwn": "Создайте свою колоду",
+    "download": "Скачать колоду (.apkg)",
+    "valueLine": "2anki превращает ваши страницы Notion, PDFs и заметки в колоды Anki. Начните бесплатно."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

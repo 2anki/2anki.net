@@ -92,8 +92,11 @@
     "loadingMoreCards": "Meer kaarten laden"
   },
   "share": {
+    "loading": "Laden…",
     "creatingLink": "Link maken…",
-    "unableToCreateLink": "Kan geen link maken.",
+    "createLink": "Deellink maken",
+    "createFailed": "Kan geen link maken. Probeer het opnieuw.",
+    "tryAgain": "Opnieuw proberen",
     "shareLink": "Deellink",
     "copyLink": "Link kopiëren",
     "helper": "Iedereen met de link kan de kaarten bekijken en het deck downloaden. Bewerken kan niet.",
@@ -103,6 +106,15 @@
     "share": "Delen",
     "shareThisDeck": "Dit deck delen",
     "linkCopied": "Link gekopieerd"
+  },
+  "sharedDeck": {
+    "sharedVia": "Gedeeld via 2anki",
+    "cardCount_one": "{{count}} kaart",
+    "cardCount_other": "{{count}} kaarten",
+    "previewCap": "{{shown}} van {{total}} kaarten worden getoond",
+    "makeYourOwn": "Maak je eigen deck",
+    "download": "Deck downloaden (.apkg)",
+    "valueLine": "2anki zet je Notion-pagina's, PDFs en notities om in Anki-decks. Gratis te starten."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",
