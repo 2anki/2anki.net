@@ -491,42 +491,28 @@
   margin: 0 auto;
 }
 
-.apkgRedirectPrimary,
-.apkgRedirectSecondary {
+.apkgRedirectPrimary {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
-  padding: 1rem 1.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
   border-radius: var(--radius-lg);
-  text-align: left;
+  text-align: center;
   text-decoration: none;
+  background: var(--color-primary);
+  color: var(--color-bg-primary);
+  border: 1px solid var(--color-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
   transition:
     transform var(--transition-fast),
     box-shadow var(--transition-fast),
     background-color var(--transition-fast);
 }
 
-.apkgRedirectPrimary {
-  background: var(--color-primary);
-  color: var(--color-bg-primary);
-  border: 1px solid var(--color-primary);
-}
-
 .apkgRedirectPrimary:hover {
   background: var(--color-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.apkgRedirectSecondary {
-  background: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-}
-
-.apkgRedirectSecondary:hover {
-  border-color: var(--color-primary);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -536,11 +522,19 @@
   font-weight: var(--font-semibold);
 }
 
-.apkgRedirectActionHint {
+.apkgRedirectFootnote {
   font-size: var(--text-sm);
-  opacity: 0.85;
-  font-weight: var(--font-normal);
-  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+  margin: 0.75rem 0 0;
+}
+
+.apkgRedirectFootnoteLink {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+}
+
+.apkgRedirectFootnoteLink:hover {
+  color: var(--color-primary);
 }
 
 .validationIcon {

@@ -903,6 +903,12 @@ function UploadForm({
     localError != null &&
     /already an Anki deck/i.test(localError.message);
 
+  useEffect(() => {
+    if (isExistingApkgReject) {
+      track('apkg_reject_shown');
+    }
+  }, [isExistingApkgReject]);
+
   const zoneClassName = [
     formStyles.dropZone,
     dropHover && zoneState === 'idle' ? formStyles.dropZoneActive : '',
@@ -1509,28 +1515,34 @@ function UploadForm({
       return (
         <div className={formStyles.stateContent}>
           <p className={formStyles.apkgRedirectHeading}>
-            That&apos;s already an Anki deck
+            {t('upload.form.apkgRejectHeading')}
           </p>
           <p className={formStyles.apkgRedirectIntro}>
-            Print it as a PDF for offline study.
+            {t('upload.form.apkgRejectBody')}
           </p>
           <div className={formStyles.apkgRedirectActions}>
-            <Link to="/print" className={formStyles.apkgRedirectPrimary}>
-              <span className={formStyles.apkgRedirectActionLabel}>
-                Print as PDF →
-              </span>
-              <span className={formStyles.apkgRedirectActionHint}>
-                Export your deck as a printable PDF for offline study.
-              </span>
-            </Link>
+            <button
+              type="button"
+              className={formStyles.apkgRedirectPrimary}
+              onClick={() => {
+                resetForm();
+                fileInputRef.current?.click();
+              }}
+            >
+              {t('upload.form.apkgRejectPrimary')}
+            </button>
           </div>
-          <button
-            type="button"
-            className={formStyles.resetLink}
-            onClick={resetForm}
-          >
-            Pick a different file
-          </button>
+          <p className={formStyles.apkgRedirectFootnote}>
+            {t('upload.form.apkgRejectSecondaryPrefix')}
+            <Link
+              to="/print"
+              className={formStyles.apkgRedirectFootnoteLink}
+              onClick={() => track('apkg_print_cta_clicked')}
+            >
+              {t('upload.form.apkgRejectPrintLink')}
+            </Link>
+            {t('upload.form.apkgRejectSecondarySuffix')}
+          </p>
         </div>
       );
     }
