@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-18-print-too-large",
+  "date": "2026-09-18",
+  "type": "fix",
+  "title": "Printing a very large deck to PDF now says the deck is too large, instead of \"PDF generation failed\""
+}

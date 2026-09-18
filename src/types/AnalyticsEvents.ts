@@ -62,6 +62,7 @@ export const KNOWN_EVENTS = new Set([
   'upload_guardrail_overridden',
   'cancel_during_generating',
   'pdf_print_options_used',
+  'pdf_render_timed_out',
   'ai_conversion_completed',
   'ai_fallback_triggered',
   'feature_flag_changed',
