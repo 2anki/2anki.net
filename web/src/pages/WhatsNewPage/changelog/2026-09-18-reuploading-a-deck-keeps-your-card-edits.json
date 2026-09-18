@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-18-reuploading-a-deck-keeps-your-card-edits",
+  "date": "2026-09-18",
+  "type": "fix",
+  "title": "Re-uploading a deck keeps the changes you made to individual cards inside Anki"
+}
