@@ -3,9 +3,9 @@ title: Ein Deck per Link teilen
 description: Verwandle jedes konvertierte Deck in einen Link, den jeder öffnen kann — kein Konto nötig.
 ---
 
-Öffne ein konvertiertes Deck in der **Deck-Vorschau** und klick oben rechts auf **Share**.
+Öffne ein konvertiertes Deck in der **Deck-Vorschau** und klick oben rechts auf **Share**, dann auf **Create share link**.
 
-2anki erzeugt einen nicht erratbaren Link. Jeder, der den Link hat, kann:
+2anki erzeugt einen nicht erratbaren Link erst, wenn du auf **Create share link** klickst. Jeder, der den Link hat, kann:
 
 - Alle Karten im Browser als Vorschau ansehen
 - Die `.apkg` herunterladen, um sie in Anki zu importieren
