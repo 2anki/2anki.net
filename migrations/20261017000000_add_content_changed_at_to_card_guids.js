@@ -1,6 +1,6 @@
 exports.up = async (knex) => {
   await knex.schema.alterTable('card_guids', (table) => {
-    table.timestamp('content_changed_at');
+    table.timestamp('content_changed_at', { useTz: true });
   });
 };
 
