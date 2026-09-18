@@ -6,6 +6,9 @@ import type { UsersId } from './public/Users';
 export interface UploadIdentityRow {
   guid: string;
   sourcePageId: string | null;
+  // Epoch seconds, converted from the stored timestamptz — null before
+  // #4445 or when a row has never carried a content hash comparison.
+  contentChangedAt: number | null;
 }
 
 export interface ICardGuidLedgerRepository {
@@ -48,8 +51,9 @@ export class CardGuidLedgerRepository implements ICardGuidLedgerRepository {
       block_id: string;
       guid: string;
       source_page_id: string | null;
+      content_changed_at: Date | null;
     }> = await this.database(this.table)
-      .select('block_id', 'guid', 'source_page_id')
+      .select('block_id', 'guid', 'source_page_id', 'content_changed_at')
       .where({ owner: owner as UsersId })
       .andWhere('block_id', 'like', UPLOAD_IDENTITY_BLOCK_PREFIX);
     const identity: Record<string, UploadIdentityRow> = {};
@@ -57,6 +61,10 @@ export class CardGuidLedgerRepository implements ICardGuidLedgerRepository {
       identity[row.block_id] = {
         guid: row.guid,
         sourcePageId: row.source_page_id,
+        contentChangedAt:
+          row.content_changed_at == null
+            ? null
+            : Math.floor(row.content_changed_at.getTime() / 1000),
       };
     }
     return identity;
@@ -76,7 +84,7 @@ export class CardGuidLedgerRepository implements ICardGuidLedgerRepository {
       await this.database(this.table)
         .insert(batch)
         .onConflict(['owner', 'block_id'])
-        .merge(['guid', 'source_page_id']);
+        .merge(['guid', 'source_page_id', 'content_changed_at']);
     }
   }
 
@@ -97,6 +105,10 @@ export class CardGuidLedgerRepository implements ICardGuidLedgerRepository {
         block_id: entry.blockId,
         source_page_id: entry.sourcePageId ?? null,
         guid: entry.guid,
+        content_changed_at:
+          entry.contentChangedAt == null
+            ? null
+            : new Date(entry.contentChangedAt * 1000),
       }));
     if (rows.length < entries.length) {
       console.warn(

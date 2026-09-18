@@ -31,6 +31,11 @@ export default class Note {
 
   sourcePageId?: string;
 
+  // Epoch seconds to pin as this note's Anki mod (see uploadCardIdentity.ts,
+  // #4445). Only set on the signed-in upload-identity path; every other card
+  // exports with genanki's default export-timestamp mod.
+  mod?: number;
+
   mcq = false;
 
   options: string[] = [];

@@ -58,6 +58,7 @@ function ledgerFrom(entries: IssuedCardGuid[]): UploadIdentityLedger {
     ledger[entry.blockId] = {
       guid: entry.guid,
       ...unpackIdentitySource(entry.sourcePageId),
+      contentChangedAt: entry.contentChangedAt ?? null,
     };
   }
   return ledger;
@@ -89,8 +90,10 @@ describe('upload card identity for signed-in non-Notion uploads', () => {
         blockId: identityKey,
         guid: card.guid,
         sourcePageId: expect.any(String),
+        contentChangedAt: expect.any(Number),
       },
     ]);
+    expect(card.mod).toBe(parser.uploadIdentityEntries[0].contentChangedAt);
   });
 
   it('replays the stored guid when the answer was edited in the same file', async () => {
@@ -111,6 +114,58 @@ describe('upload card identity for signed-in non-Notion uploads', () => {
       issued: 0,
       replayed: 1,
       guarded: 0,
+    });
+  });
+
+  describe('note mod', () => {
+    const FIRST_EXPORT_MS = 1_700_000_000_000;
+    const SECOND_EXPORT_MS = 1_700_000_600_000;
+    let nowSpy: jest.SpiedFunction<typeof Date.now>;
+
+    beforeEach(() => {
+      nowSpy = jest.spyOn(Date, 'now');
+    });
+
+    afterEach(() => {
+      nowSpy.mockRestore();
+    });
+
+    it('holds the note mod across a re-import with unchanged content', async () => {
+      nowSpy.mockReturnValueOnce(FIRST_EXPORT_MS);
+      const discovery = await parse(
+        wrap(plainToggle('What is X?', '<p>Answer</p>')),
+        { uploadIdentity: { owner: OWNER, ledger: {} } }
+      );
+      const seededMod = discovery.payload[0].cards[0].mod;
+      expect(seededMod).toBe(Math.floor(FIRST_EXPORT_MS / 1000));
+      const ledger = ledgerFrom(discovery.uploadIdentityEntries);
+
+      nowSpy.mockReturnValueOnce(SECOND_EXPORT_MS);
+      const reimport = await parse(
+        wrap(plainToggle('What is X?', '<p>Answer</p>')),
+        { uploadIdentity: { owner: OWNER, ledger } }
+      );
+      expect(reimport.payload[0].cards[0].mod).toBe(seededMod);
+    });
+
+    it('bumps the note mod to the later export time when the answer changed', async () => {
+      nowSpy.mockReturnValueOnce(FIRST_EXPORT_MS);
+      const discovery = await parse(
+        wrap(plainToggle('What is X?', '<p>First answer</p>')),
+        { uploadIdentity: { owner: OWNER, ledger: {} } }
+      );
+      const seededMod = discovery.payload[0].cards[0].mod;
+      const ledger = ledgerFrom(discovery.uploadIdentityEntries);
+
+      nowSpy.mockReturnValueOnce(SECOND_EXPORT_MS);
+      const edited = await parse(
+        wrap(plainToggle('What is X?', '<p>Edited answer</p>')),
+        { uploadIdentity: { owner: OWNER, ledger } }
+      );
+      expect(edited.payload[0].cards[0].mod).toBe(
+        Math.floor(SECOND_EXPORT_MS / 1000)
+      );
+      expect(edited.payload[0].cards[0].mod).not.toBe(seededMod);
     });
   });
 
@@ -254,6 +309,7 @@ describe('upload card identity for signed-in non-Notion uploads', () => {
         guid: 'STORED-GUID',
         sourceKeyHash: hashSourceKey('old-name.html'),
         fingerprint: 'a-different-answer-fingerprint',
+        contentChangedAt: 1_600_000_000,
       },
     };
     const parser = await parse(
