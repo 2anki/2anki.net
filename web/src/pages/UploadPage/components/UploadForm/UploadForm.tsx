@@ -52,6 +52,7 @@ import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/
 import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
+import DocsLink from './DocsLink';
 import sharedStyles from '../../../../styles/shared.module.css';
 import {
   collectDroppedEntries,
@@ -1285,7 +1286,7 @@ function UploadForm({
             i18nKey="upload.form.emptyGoogleDoc"
             components={{
               exampleLink: (
-                <a href="/documentation/help/common-problems#my-google-doc-converted-to-0-cards" />
+                <DocsLink href="/documentation/help/common-problems#my-google-doc-converted-to-0-cards" />
               ),
             }}
           />
@@ -1309,7 +1310,9 @@ function UploadForm({
             t={t}
             i18nKey="upload.form.emptyTextFile"
             components={{
-              problemsLink: <a href="/documentation/help/common-problems" />,
+              problemsLink: (
+                <DocsLink href="/documentation/help/common-problems" />
+              ),
             }}
           />
         </p>
