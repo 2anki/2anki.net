@@ -22,6 +22,22 @@ import {
 const MAX_CACHE_ENTRIES = 8;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
+// 2anki's own n2a-mcq note type builds its option list client-side from
+// this raw string (split on `<br>`) via a script the PDF/preview/share
+// surfaces strip for security — so it has to be rendered statically here.
+const MCQ_OPTION_SPLIT_REGEX = /<br\s*\/?>/gi; // NOSONAR
+
+function splitMcqField(raw: string): string[] {
+  return raw
+    .split(MCQ_OPTION_SPLIT_REGEX)
+    .map((option) => option.trim())
+    .filter((option) => option.length > 0);
+}
+
+function mcqPlainText(html: string): string {
+  return html.replace(/<[^>]+>/g, '').trim();
+}
+
 export interface ParsedApkg {
   collection: NormalizedCollection;
   mediaMap: Map<string, string>;
@@ -147,6 +163,75 @@ export default class ApkgPreviewService {
     };
   }
 
+  private isMcqNoteType(noteType: NoteType): boolean {
+    const names = new Set(noteType.fields.map((f) => f.name));
+    return names.has('Multiple Choice') && names.has('Correct Answer');
+  }
+
+  private renderMcqCard(
+    card: { id: number; ord: number },
+    note: Note,
+    noteType: NoteType,
+    deck: { id: number; name: string } | undefined,
+    mediaMap: Map<string, string>,
+    mediaBaseUrl: string
+  ): RenderedCard {
+    const fieldMap = buildFieldMap(note.fields, noteType);
+    const question = fieldMap.get('Question') ?? '';
+    const options = splitMcqField(fieldMap.get('Multiple Choice') ?? '');
+    const correctOptions = splitMcqField(fieldMap.get('Correct Answer') ?? '');
+    const correctPlainText = new Set(correctOptions.map(mcqPlainText));
+    const extra = fieldMap.get('Extra') ?? '';
+    const matchedAny = options.some((option) =>
+      correctPlainText.has(mcqPlainText(option))
+    );
+
+    const renderOptionList = (revealAnswer: boolean): string => {
+      const items = options
+        .map((option) => {
+          const isCorrect =
+            revealAnswer && correctPlainText.has(mcqPlainText(option));
+          return isCorrect
+            ? `<li><mark>✓ <strong>${option}</strong></mark></li>`
+            : `<li>${option}</li>`;
+        })
+        .join('');
+      return `<ol class="mcq-options">${items}</ol>`;
+    };
+
+    const frontHtml = `<div class="mcq-question">${question}</div>${renderOptionList(false)}`;
+    let backHtml = `<div class="mcq-question">${question}</div>${renderOptionList(true)}`;
+    if (!matchedAny && correctOptions.length > 0) {
+      backHtml += `<div class="mcq-answer-fallback">Correct answer: ${correctOptions.join(', ')}</div>`;
+    }
+    if (mcqPlainText(extra).length > 0) {
+      backHtml += `<div class="mcq-extra">${extra}</div>`;
+    }
+
+    const front = rewriteMediaRefs(
+      sanitizeCardHtml(frontHtml),
+      mediaMap,
+      mediaBaseUrl
+    );
+    const back = rewriteMediaRefs(
+      sanitizeCardHtml(backHtml),
+      mediaMap,
+      mediaBaseUrl
+    );
+    const deckPath = deck?.name ? deck.name.split('::') : [];
+    return {
+      id: card.id,
+      ord: card.ord,
+      templateName: noteType.templates[0]?.name ?? '',
+      deckName: deck?.name ?? '',
+      deckPath,
+      noteTypeName: noteType.name,
+      css: sanitizeCss(noteType.css),
+      front,
+      back,
+    };
+  }
+
   private renderCard(
     parsed: ParsedApkg,
     cardId: number,
@@ -187,6 +272,17 @@ export default class ApkgPreviewService {
 
     if (this.isImageOcclusionTemplate(template.qfmt)) {
       return this.renderIoCard(
+        card,
+        note,
+        noteType,
+        deck,
+        parsed.mediaMap,
+        mediaBaseUrl
+      );
+    }
+
+    if (this.isMcqNoteType(noteType)) {
+      return this.renderMcqCard(
         card,
         note,
         noteType,
