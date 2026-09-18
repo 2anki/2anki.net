@@ -19,6 +19,8 @@ export default interface CardGuids {
   guid: string;
 
   created_at: Date;
+
+  content_changed_at: Date | null;
 }
 
 /** Represents the initializer for the table public.card_guids */
@@ -36,6 +38,8 @@ export interface CardGuidsInitializer {
 
   /** Default value: CURRENT_TIMESTAMP */
   created_at?: Date;
+
+  content_changed_at?: Date | null;
 }
 
 /** Represents the mutator for the table public.card_guids */
@@ -51,4 +55,6 @@ export interface CardGuidsMutator {
   guid?: string;
 
   created_at?: Date;
+
+  content_changed_at?: Date | null;
 }
