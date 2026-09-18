@@ -75,7 +75,7 @@ Never delete the branch by hand before the queue has merged; the queue needs it.
 
 ## 5. Watch the deploy
 
-A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.md'`) — report "merged, no deploy" and go to Report.
+A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.md'`) — go to step 7 (local cleanup still applies; it'll report "merged, no deploy" from there).
 
 ```bash
 gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion
@@ -89,9 +89,15 @@ Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the queu
 curl -fsS https://2anki.net/api/version | jq -r .sha
 ```
 
-Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → Report.
+Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 7.
 
-## 7. Failure → revert
+## 7. Local cleanup
+
+Runs on the success path only (healthy deploy, or a merge with no deploy) — skip if you're headed to step 8 instead. "Merge" here means the queue's `state: MERGED` from step 4, never the enqueue moment; the branch only exists to delete once that's confirmed.
+
+If this checkout is still on the just-merged branch: `git checkout main && git pull --ff-only`, then `git branch -D <branch>` (squash-merges leave the tip unreachable from main, so `-d` refuses), `git fetch --prune origin`, and `git worktree remove <path>` if a dedicated worktree carried this PR. Skip silently if the checkout is already on a different branch — nothing to clean up here.
+
+## 8. Failure → revert
 
 If the deploy run failed, `/api/version` does not report the merge SHA after the run finished, or `/deploy-status` says "broken":
 
