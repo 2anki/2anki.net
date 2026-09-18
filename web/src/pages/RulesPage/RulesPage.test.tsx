@@ -5,6 +5,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import RulesPage from './RulesPage';
+import { CardOptionsForm } from '../../components/CardOptionsForm/CardOptionsForm';
 
 vi.mock('../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: () => mockApi,
@@ -26,10 +27,10 @@ const mockApi = {
   saveRules: vi.fn(),
 };
 
-function renderPage(id = 'page-abc') {
+function renderPage(id = 'page-abc', search = '') {
   return render(
     <HelmetProvider>
-      <MemoryRouter initialEntries={[`/rules/${id}`]}>
+      <MemoryRouter initialEntries={[`/rules/${id}${search}`]}>
         <Routes>
           <Route
             path="/rules/:id"
@@ -53,6 +54,38 @@ describe('RulesPage meta', () => {
     const meta = document.querySelector('meta[name="robots"]');
     expect(meta).not.toBeNull();
     expect(meta?.getAttribute('content')).toBe('noindex, nofollow');
+  });
+});
+
+describe('RulesPage page title handoff', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockApi.getRules.mockResolvedValue(null);
+    mockApi.getFavorites.mockResolvedValue([]);
+  });
+
+  function lastFormPageTitle(): unknown {
+    const calls = vi.mocked(CardOptionsForm).mock.calls;
+    const props = calls.at(-1)?.[0] as { pageTitle?: string | null };
+    return props.pageTitle;
+  }
+
+  it('hands the card options form no page title when the URL carries none', async () => {
+    renderPage('page-abc');
+    await waitFor(() =>
+      expect(screen.getByTestId('card-options-form')).toBeInTheDocument()
+    );
+
+    expect(lastFormPageTitle() ?? null).toBeNull();
+  });
+
+  it('hands the card options form the title from the URL', async () => {
+    renderPage('page-abc', '?title=HTML%20test');
+    await waitFor(() =>
+      expect(screen.getByTestId('card-options-form')).toBeInTheDocument()
+    );
+
+    expect(lastFormPageTitle()).toBe('HTML test');
   });
 });
 

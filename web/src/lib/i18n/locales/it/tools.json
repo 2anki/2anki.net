@@ -300,7 +300,6 @@
   "rules": {
     "headingWithTitle": "Regole per {{title}}",
     "heading": "Regole",
-    "thisPage": "questa pagina",
     "backToNotion": "← Torna a Notion",
     "backToPreview": "← Torna all'anteprima",
     "back": "← Indietro",

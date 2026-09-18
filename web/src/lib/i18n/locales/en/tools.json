@@ -300,7 +300,6 @@
   "rules": {
     "headingWithTitle": "Rules for {{title}}",
     "heading": "Rules",
-    "thisPage": "this page",
     "backToNotion": "← Back to Notion",
     "backToPreview": "← Back to preview",
     "back": "← Back",

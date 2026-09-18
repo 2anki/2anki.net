@@ -8,6 +8,7 @@ import CardOption from '../../lib/parser/Settings/CardOption';
 import { unwrapStoredSettingsPayload } from '../../lib/parser/Settings/unwrapStoredSettingsPayload';
 import { CardOptionDetail } from './CardOptionDetail';
 import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
+import { isPlaceholderPageTitle } from './isPlaceholderPageTitle';
 
 interface DeleteAllUseCase {
   execute(owner: string): Promise<void>;
@@ -84,7 +85,10 @@ class CardOptionsController {
       const rows = await this.service.getAllByOwner(owner);
 
       const enriched = await Promise.all(
-        rows.map(async (r) => {
+        rows.map(async (row) => {
+          const r = isPlaceholderPageTitle(row.title)
+            ? { ...row, title: null }
+            : row;
           if (r.title != null || !this.notionService) return r;
           try {
             const api = await this.notionService.getNotionAPI(owner);
