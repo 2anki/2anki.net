@@ -3,7 +3,9 @@ import { APIErrorCode, APIResponseError } from '@notionhq/client';
 import ApkgController from './ApkgController';
 import DownloadService from '../services/DownloadService';
 import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewService';
-import PdfRenderService from '../services/PdfRenderService';
+import PdfRenderService, {
+  PdfRenderTimeoutError,
+} from '../services/PdfRenderService';
 import { NotionService } from '../services/NotionService/NotionService';
 import JobRepository from '../data_layer/JobRepository';
 import ImportApkgToNotionUseCase from '../usecases/apkg/ImportApkgToNotionUseCase';
@@ -346,6 +348,41 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
     expect(res.json).toHaveBeenCalledWith({ message: 'Invalid .apkg file' });
     expect(errorSpy).not.toHaveBeenCalled();
     errorSpy.mockRestore();
+  });
+
+  it('answers 400 with a too-large message when the PDF render times out', async () => {
+    (ExportApkgToPdfUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockRejectedValue(new PdfRenderTimeoutError()),
+    }));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const controller = makeController();
+    const req = makeReq({ body: {} }) as Request;
+    const res = makePdfRes({ owner: 42 });
+
+    await controller.exportPdf(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message:
+        'This deck is too large to turn into a PDF in time. Split it into smaller decks in Anki and print them one at a time.',
+    });
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it('tracks pdf_render_timed_out for the owner when the render times out', async () => {
+    (ExportApkgToPdfUseCase as jest.Mock).mockImplementation(() => ({
+      execute: jest.fn().mockRejectedValue(new PdfRenderTimeoutError()),
+    }));
+    const controller = makeController();
+    const req = makeReq({ body: {} }) as Request;
+    const res = makePdfRes({ owner: 42 });
+
+    await controller.exportPdf(req, res);
+
+    expect(trackMock).toHaveBeenCalledWith('pdf_render_timed_out', {
+      userId: 42,
+    });
   });
 
   it('fires the event with all four booleans false when every option is default', async () => {

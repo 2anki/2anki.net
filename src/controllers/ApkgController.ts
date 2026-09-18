@@ -6,7 +6,9 @@ import StorageHandler from '../lib/storage/StorageHandler';
 import DownloadService from '../services/DownloadService';
 import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewService';
 import ApkgToNotionBlocksService from '../services/ApkgToNotionBlocksService';
-import PdfRenderService from '../services/PdfRenderService';
+import PdfRenderService, {
+  PdfRenderTimeoutError,
+} from '../services/PdfRenderService';
 import ExportApkgToPdfUseCase, {
   CardLimitExceededError,
   DEFAULT_PDF_OPTIONS,
@@ -574,6 +576,13 @@ function csvNoteLimitFor(owner: unknown, paying: boolean): number | null {
 function sendPdfExportError(res: Response, error: unknown): void {
   if (sendApkgTooLarge(res, error)) return;
   if (error instanceof CardLimitExceededError) {
+    res.status(400).json({ message: error.message });
+    return;
+  }
+  if (error instanceof PdfRenderTimeoutError) {
+    track('pdf_render_timed_out', {
+      userId: typeof res.locals.owner === 'number' ? res.locals.owner : null,
+    });
     res.status(400).json({ message: error.message });
     return;
   }

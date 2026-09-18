@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import puppeteer, { TimeoutError } from 'puppeteer';
 import type { PdfOptions } from '../usecases/apkg/ExportApkgToPdfUseCase';
 
 const PDF_TIMEOUT_MS = 30_000;
@@ -9,6 +9,15 @@ const MARGIN_VALUES: Record<string, string> = {
   normal: '1cm',
   wide: '2cm',
 };
+
+export class PdfRenderTimeoutError extends Error {
+  constructor() {
+    super(
+      'This deck is too large to turn into a PDF in time. Split it into smaller decks in Anki and print them one at a time.'
+    );
+    this.name = 'PdfRenderTimeoutError';
+  }
+}
 
 export default class PdfRenderService {
   async renderHtml(html: string, options?: PdfOptions): Promise<Buffer> {
@@ -49,6 +58,11 @@ export default class PdfRenderService {
         timeout: PDF_TIMEOUT_MS,
       });
       return Buffer.from(pdf);
+    } catch (error) {
+      if (error instanceof TimeoutError) {
+        throw new PdfRenderTimeoutError();
+      }
+      throw error;
     } finally {
       await browser.close();
     }
