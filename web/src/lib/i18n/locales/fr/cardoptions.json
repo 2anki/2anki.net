@@ -1,0 +1,133 @@
+{
+  "premiumBadge": "Premium",
+  "options": {
+    "add-notion-link": {
+      "label": "Ajouter un lien Notion",
+      "description": "Ajoute sur chaque carte un lien vers la page Notion."
+    },
+    "block-id-identity": {
+      "label": "Associer les cartes à leurs blocs Notion",
+      "description": "Activé, téléverser à nouveau la page associe tes cartes à bascule à leurs blocs Notion et les met à jour sur place. Active-le pour les paquets que tu as créés pour la première fois avant juillet 2026. Désactivé pour les paquets plus récents."
+    },
+    "all": {
+      "label": "Utiliser toutes les listes à bascule",
+      "description": "Récupère les bascules partout sur la page, y compris les imbriquées. Désactivé, seules les bascules de premier niveau deviennent des cartes."
+    },
+    "paragraph": {
+      "label": "Utiliser du texte brut pour le verso",
+      "description": "Supprime la mise en forme du verso de chaque carte et ne garde que le texte. À utiliser quand les couleurs et les styles distraient pendant la révision."
+    },
+    "cherry": {
+      "label": "Cherry-pick avec l'emoji 🍒",
+      "description": "Ne crée des cartes qu'à partir des bascules qui contiennent 🍒 dans l'en-tête ou le corps. À utiliser pour publier quelques cartes d'une longue page."
+    },
+    "avocado": {
+      "label": "Ignorer les bascules avec l'emoji 🥑",
+      "description": "Ignore toute bascule marquée avec 🥑. À utiliser pour exclure des brouillons ou des notes sans modifier la page."
+    },
+    "tags": {
+      "label": "Traiter le texte barré comme des étiquettes",
+      "description": "Transforme le texte barré en étiquettes Anki. Un texte barré au niveau de la page devient une étiquette globale ; dans une bascule, il n'étiquette que cette carte."
+    },
+    "section-tags": {
+      "label": "Étiqueter une section entière",
+      "description": "Barre une ligne sous une bascule parente pour étiqueter toutes les cartes imbriquées en dessous — une section entière d'un coup. Nécessite le mode Cherry-pick."
+    },
+    "cloze": {
+      "label": "Cartes Cloze",
+      "description": "Crée des cartes Cloze à partir du code en ligne et de la syntaxe {{c1::}} dans tes bascules."
+    },
+    "cloze-from-toggle-content": {
+      "label": "Les bascules de code en ligne deviennent des cloze",
+      "description": "Quand le contenu d'une bascule contient du code en ligne, masque le code comme un cloze et utilise l'en-tête de la bascule comme indice. Fonctionne uniquement quand les cartes Cloze sont activées."
+    },
+    "group-cloze-per-toggle": {
+      "label": "Grouper les trous de cloze par bascule",
+      "description": "Quand une bascule Notion contient plusieurs trous ::, mets-les tous sur une seule carte et révèle-les ensemble. Désactivé par défaut — chaque :: crée sa propre carte."
+    },
+    "remove-deck-name-numbering": {
+      "label": "Supprimer la numérotation des noms de paquets",
+      "description": "Supprime un numéro en début de nom comme \"3. \" ou \"03 - \" dans les noms de paquets et de sous-paquets. Désactivé par défaut — les titres comme 3D Anatomy qui commencent seulement par un chiffre ne sont jamais modifiés."
+    },
+    "enable-input": {
+      "label": "Traiter le gras comme saisie",
+      "description": "Masque les mots en gras au recto de la carte pour que tu les saisisses pendant la révision. Utile pour le vocabulaire et le rappel de réponses exactes."
+    },
+    "basic-reversed": {
+      "label": "Basic et inversée",
+      "description": "Crée deux cartes par bascule : question vers réponse, et réponse vers question."
+    },
+    "reversed": {
+      "label": "Inversée uniquement",
+      "description": "Crée uniquement la carte inversée, en échangeant recto et verso. Utile quand le verso est une image que tu veux voir en premier."
+    },
+    "no-underline": {
+      "label": "Supprimer les soulignements",
+      "description": "Retire la mise en forme soulignée du texte des cartes. Active-le si des soulignements Notion apparaissent là où tu n'en veux pas."
+    },
+    "max-one-toggle-per-card": {
+      "label": "Maximum une bascule par carte",
+      "description": "Garde chaque carte centrée sur une seule bascule. Combine avec Utiliser toutes les listes à bascule pour transformer chaque bascule imbriquée en carte à part."
+    },
+    "remove-mp3-links": {
+      "label": "Retirer les liens MP3 des fichiers audio",
+      "description": "Masque les URL MP3 brutes sur les cartes tout en gardant l'audio lisible."
+    },
+    "perserve-newlines": {
+      "label": "Conserver les retours à la ligne dans l'en-tête et le corps des bascules",
+      "description": "Garde les sauts de ligne faits avec Maj+Entrée dans les bascules. S'applique à tous les types de cartes."
+    },
+    "process-pdfs": {
+      "label": "Traiter les fichiers PDF",
+      "description": "Convertit en cartes les PDF trouvés dans les ZIP téléversés. Désactive-le pour les ignorer et terminer plus vite les téléversements de ZIP."
+    },
+    "pdf-extract-text": {
+      "label": "Extraire le texte des PDF",
+      "description": "Transforme le texte d'un PDF en cartes. Laisse-le désactivé pour afficher chaque page comme une image — page 1 au recto, page 2 au verso."
+    },
+    "pdf-page-pairs": {
+      "label": "Deux pages font une carte",
+      "description": "Pour les PDF organisés recto puis verso — la page 1 est le recto de la carte, la page 2 son verso. 2anki transforme toutes les 2 pages en une carte image."
+    },
+    "download-pdfs": {
+      "label": "Télécharger les PDF comme médias Anki",
+      "description": "Désactivé : les PDF apparaissent comme des liens cliquables. Activé : les PDF sont inclus dans le .apkg, ce qui alourdit beaucoup le fichier du paquet."
+    },
+    "markdown-nested-bullet-points": {
+      "label": "Puces imbriquées en Markdown",
+      "description": "Transforme les puces et leurs sous-puces en cartes recto-verso. Recommandé pour les exports Obsidian."
+    },
+    "split-sections-into-decks": {
+      "label": "Diviser chaque section en son propre paquet",
+      "description": "Activé, chaque titre, bascule et liste de la page devient son propre paquet au lieu que toutes les cartes se retrouvent dans un seul."
+    },
+    "vertex-ai-pdf-questions": {
+      "label": "Générer des questions à partir des PDF téléversés",
+      "description": "Rédige des questions à partir de ton PDF avec Claude (Anthropic). Le contenu de ton PDF est envoyé à Anthropic pour traitement."
+    },
+    "disable-indented-bullets": {
+      "label": "Désactiver les puces indentées",
+      "description": "Garde les puces indentées rattachées à leur parent au lieu d'en faire des cartes séparées."
+    },
+    "image-quiz-html-to-anki": {
+      "label": "Convertir les quiz d'images HTML en cartes Anki",
+      "description": "Utilise l'OCR pour extraire les images et les réponses des quiz HTML et en faire des cartes."
+    },
+    "embed-images": {
+      "label": "Intégrer les images dans les cartes",
+      "description": "Intègre les octets des images dans le paquet pour que les cartes s'affichent hors ligne. Désactive-le pour un paquet plus léger quand les images font dépasser la limite de taille du téléversement."
+    },
+    "claude-ai-flashcards": {
+      "label": "Générer des cartes avec Claude AI",
+      "description": "Utilise Claude AI pour rédiger des cartes à partir de ton contenu. Donne de meilleurs résultats sur les documents denses ou non structurés."
+    },
+    "ai-comprehensive": {
+      "label": "Mode IA exhaustif",
+      "description": "Lit chaque section des longs documents pour que rien d'important ne soit ignoré. Idéal pour étudier en profondeur une matière dense. Prend plus de temps. Offres payantes uniquement."
+    },
+    "share-files-for-debugging": {
+      "label": "Partager les fichiers pour le débogage quand la conversion échoue",
+      "description": "Quand une conversion échoue, envoie les fichiers téléversés et les détails de l'erreur à l'équipe 2anki pour enquêter. Désactivé par défaut pour garder tes notes privées."
+    }
+  }
+}

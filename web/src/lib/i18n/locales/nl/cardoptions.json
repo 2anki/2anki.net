@@ -1,0 +1,133 @@
+{
+  "premiumBadge": "Premium",
+  "options": {
+    "add-notion-link": {
+      "label": "Notion-link toevoegen",
+      "description": "Voeg op elke kaart een link terug naar de Notion-pagina toe."
+    },
+    "block-id-identity": {
+      "label": "Kaarten koppelen aan hun Notion-blokken",
+      "description": "Aan: als je de pagina opnieuw uploadt, worden je togglekaarten aan hun Notion-blokken gekoppeld en ter plekke bijgewerkt. Zet dit aan voor decks die je vóór juli 2026 voor het eerst hebt gebouwd. Uit voor nieuwere decks."
+    },
+    "all": {
+      "label": "Alle togglelijsten gebruiken",
+      "description": "Haal toggles van overal op de pagina op, ook geneste. Uit: alleen toggles op het hoogste niveau worden kaarten."
+    },
+    "paragraph": {
+      "label": "Platte tekst gebruiken voor de achterkant",
+      "description": "Haal de opmaak van de achterkant van elke kaart weg en houd alleen de tekst. Gebruik dit als kleuren en stijlen afleiden bij het herhalen."
+    },
+    "cherry": {
+      "label": "Cherry-pick met de emoji 🍒",
+      "description": "Maak alleen kaarten van toggles met 🍒 in de titel of inhoud. Gebruik dit om een paar kaarten uit een lange pagina te publiceren."
+    },
+    "avocado": {
+      "label": "Toggles met de emoji 🥑 overslaan",
+      "description": "Negeer elke toggle die met 🥑 is gemarkeerd. Gebruik dit om concepten of notities uit te sluiten zonder de pagina te bewerken."
+    },
+    "tags": {
+      "label": "Doorgestreepte tekst als tags behandelen",
+      "description": "Zet doorgestreepte tekst om in Anki-tags. Doorgestreepte tekst op paginaniveau wordt een globale tag; binnen een toggle krijgt alleen die kaart de tag."
+    },
+    "section-tags": {
+      "label": "Een hele sectie taggen",
+      "description": "Streep een regel onder een bovenliggende toggle door om elke kaart daaronder te taggen — zo tag je een hele sectie in één keer. Vereist Cherry-pick."
+    },
+    "cloze": {
+      "label": "Cloze-verwijdering",
+      "description": "Maak cloze-kaarten van inline code en {{c1::}}-syntax in je toggles."
+    },
+    "cloze-from-toggle-content": {
+      "label": "Inline code-toggles worden cloze",
+      "description": "Als de inhoud van een toggle inline code bevat, verberg de code dan als cloze en gebruik de toggletitel als hint. Werkt alleen als Cloze-verwijdering aan staat."
+    },
+    "group-cloze-per-toggle": {
+      "label": "Groepeer cloze-lacunes per toggle",
+      "description": "Als één Notion-toggle meerdere :: lacunes bevat, zet ze dan allemaal op één kaart en onthul ze samen. Standaard uit — elke :: maakt zijn eigen kaart."
+    },
+    "remove-deck-name-numbering": {
+      "label": "Nummering uit decknamen verwijderen",
+      "description": "Verwijdert een voorloopnummer zoals \"3. \" of \"03 - \" uit deck- en subdecknamen. Standaard uit — titels zoals 3D Anatomy die alleen met een cijfer beginnen, worden nooit gewijzigd."
+    },
+    "enable-input": {
+      "label": "Vetgedrukte tekst als getypt antwoord behandelen",
+      "description": "Verberg vetgedrukte woorden op de voorkant van de kaart, zodat je ze tijdens het herhalen intypt. Handig voor woordenschat en het exact onthouden van antwoorden."
+    },
+    "basic-reversed": {
+      "label": "Basic en omgekeerd",
+      "description": "Maak twee kaarten per toggle: van vraag naar antwoord en van antwoord naar vraag."
+    },
+    "reversed": {
+      "label": "Alleen omgekeerd",
+      "description": "Maak alleen de omgekeerde kaart, met voor- en achterkant verwisseld. Handig als de achterkant een afbeelding is die je eerst wilt zien."
+    },
+    "no-underline": {
+      "label": "Onderstrepingen verwijderen",
+      "description": "Haal de onderstreping uit de kaarttekst. Zet dit aan als Notion-onderstrepingen verschijnen waar je ze niet wilt."
+    },
+    "max-one-toggle-per-card": {
+      "label": "Maximaal één toggle per kaart",
+      "description": "Houd elke kaart gericht op één toggle. Combineer met Alle togglelijsten gebruiken om van elke geneste toggle een eigen kaart te maken."
+    },
+    "remove-mp3-links": {
+      "label": "MP3-links uit audiobestanden verwijderen",
+      "description": "Verberg ruwe MP3-URL's op kaarten terwijl de audio afspeelbaar blijft."
+    },
+    "perserve-newlines": {
+      "label": "Regeleinden behouden in toggletitel en inhoud",
+      "description": "Behoud regeleinden die met Shift+Enter in toggles zijn gemaakt. Geldt voor elk kaarttype."
+    },
+    "process-pdfs": {
+      "label": "PDF-bestanden verwerken",
+      "description": "Zet PDF's uit ZIP-uploads om in kaarten. Zet uit om ze over te slaan en ZIP-uploads sneller af te ronden."
+    },
+    "pdf-extract-text": {
+      "label": "Tekst uit PDF's halen",
+      "description": "Zet de tekst in een PDF om in kaarten. Laat uit om elke pagina als afbeelding weer te geven — pagina 1 op de voorkant, pagina 2 op de achterkant."
+    },
+    "pdf-page-pairs": {
+      "label": "Twee pagina's maken één kaart",
+      "description": "Voor PDF's met eerst de voorkant en dan de achterkant — pagina 1 is de voorkant van de kaart, pagina 2 de achterkant. 2anki maakt van elke 2 pagina's één afbeeldingskaart."
+    },
+    "download-pdfs": {
+      "label": "PDF's downloaden als Anki-media",
+      "description": "Uit: PDF's verschijnen als klikbare links. Aan: PDF's worden in de .apkg gebundeld, waardoor het deckbestand veel groter wordt."
+    },
+    "markdown-nested-bullet-points": {
+      "label": "Geneste opsommingstekens in Markdown",
+      "description": "Zet opsommingstekens en hun subpunten om in kaarten met voor- en achterkant. Aanbevolen voor Obsidian-exports."
+    },
+    "split-sections-into-decks": {
+      "label": "Elke sectie in een eigen deck splitsen",
+      "description": "Aan: elke kop, toggle en lijst op de pagina wordt een eigen deck in plaats van dat alle kaarten in één deck belanden."
+    },
+    "vertex-ai-pdf-questions": {
+      "label": "Vragen genereren uit PDF-uploads",
+      "description": "Maakt conceptvragen van je PDF met Claude (Anthropic). De inhoud van je PDF wordt ter verwerking naar Anthropic gestuurd."
+    },
+    "disable-indented-bullets": {
+      "label": "Ingesprongen opsommingstekens uitschakelen",
+      "description": "Houd ingesprongen opsommingstekens bij hun bovenliggende punt in plaats van er aparte kaarten van te maken."
+    },
+    "image-quiz-html-to-anki": {
+      "label": "Afbeeldingsquiz-HTML omzetten naar Anki-kaarten",
+      "description": "Gebruik OCR om afbeeldingen en antwoorden uit HTML-quizzen te halen en er kaarten van te maken."
+    },
+    "embed-images": {
+      "label": "Afbeeldingen in kaarten insluiten",
+      "description": "Sluit de afbeeldingsdata in het deck in, zodat kaarten offline worden weergegeven. Zet uit voor een lichter deck als afbeeldingen de upload boven de maximale grootte duwen."
+    },
+    "claude-ai-flashcards": {
+      "label": "Flashcards genereren met Claude AI",
+      "description": "Gebruik Claude AI om kaarten uit je inhoud te schrijven. Geeft sterkere resultaten bij informatiedichte of ongestructureerde documenten."
+    },
+    "ai-comprehensive": {
+      "label": "Volledige AI-modus",
+      "description": "Leest elke sectie van lange documenten, zodat niets belangrijks wordt overgeslagen. Het best voor grondig studeren van informatiedichte stof. Het maken duurt langer. Alleen voor betaalde abonnementen."
+    },
+    "share-files-for-debugging": {
+      "label": "Bestanden delen voor debuggen als de conversie mislukt",
+      "description": "Bij een mislukte conversie worden de geüploade bestanden en foutdetails naar het 2anki-team gestuurd om te onderzoeken. Standaard uit om je notities privé te houden."
+    }
+  }
+}

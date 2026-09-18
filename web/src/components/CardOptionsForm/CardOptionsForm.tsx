@@ -334,6 +334,15 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
     ref
   ) {
     const { t } = useTranslation();
+    const optionLabel = (option: CardOption) =>
+      t(`cardoptions:options.${option.key}.label`, {
+        defaultValue: option.label,
+      });
+    const optionDescription = (option: CardOption) =>
+      t(`cardoptions:options.${option.key}.description`, {
+        defaultValue: option.description,
+      });
+    const premiumBadge = t('cardoptions:premiumBadge');
     const { isLoading, isError, options, loadingDefaultsError } =
       useSettingsCardsOptions(pageId);
     const { data: userLocals } = useUserLocals();
@@ -1095,10 +1104,10 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                 <LocalCheckbox
                   key={o.key}
                   defaultValue={checkboxValues[o.key] ?? false}
-                  label={o.label}
-                  description={o.description}
+                  label={optionLabel(o)}
+                  description={optionDescription(o)}
                   onChecked={(checked) => toggleCheckbox(o.key, checked)}
-                  badge={PREMIUM_KEYS.has(o.key) ? 'Premium' : undefined}
+                  badge={PREMIUM_KEYS.has(o.key) ? premiumBadge : undefined}
                 />
               ))}
             </div>
@@ -1135,10 +1144,10 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                     <LocalCheckbox
                       key={o.key}
                       defaultValue={checkboxValues[o.key] ?? false}
-                      label={o.label}
-                      description={o.description}
+                      label={optionLabel(o)}
+                      description={optionDescription(o)}
                       onChecked={(checked) => toggleCheckbox(o.key, checked)}
-                      badge={PREMIUM_KEYS.has(o.key) ? 'Premium' : undefined}
+                      badge={PREMIUM_KEYS.has(o.key) ? premiumBadge : undefined}
                     />
                   ))}
                   {isPdfAiGroup &&
@@ -1186,9 +1195,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
               {isFilteringGroup && sectionTagsOption && (
                 <GatedToggleRow
                   id="section-tags"
-                  heading={sectionTagsOption.label}
-                  label={sectionTagsOption.label}
-                  helperText={sectionTagsOption.description}
+                  heading={optionLabel(sectionTagsOption)}
+                  label={optionLabel(sectionTagsOption)}
+                  helperText={optionDescription(sectionTagsOption)}
                   prerequisiteHelperText={t('cardOptions.prereq.cherry')}
                   checked={checkboxValues['section-tags'] ?? false}
                   enabled={checkboxValues['cherry'] ?? false}

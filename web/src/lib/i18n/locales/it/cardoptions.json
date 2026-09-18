@@ -1,0 +1,133 @@
+{
+  "premiumBadge": "Premium",
+  "options": {
+    "add-notion-link": {
+      "label": "Aggiungi link Notion",
+      "description": "Aggiunge su ogni carta un link di ritorno alla pagina Notion."
+    },
+    "block-id-identity": {
+      "label": "Abbina le carte ai loro blocchi Notion",
+      "description": "Se attivo, ricaricando la pagina le tue carte toggle vengono abbinate ai loro blocchi Notion e aggiornate sul posto. Attivalo per i mazzi che hai creato per la prima volta prima di luglio 2026. Lascialo disattivato per i mazzi più recenti."
+    },
+    "all": {
+      "label": "Usa tutti gli elenchi toggle",
+      "description": "Prende i toggle da qualsiasi punto della pagina, anche quelli annidati. Se disattivato, solo i toggle di primo livello diventano carte."
+    },
+    "paragraph": {
+      "label": "Usa testo semplice per il retro",
+      "description": "Rimuove la formattazione dal retro di ogni carta e mantiene solo il testo. Usalo quando colori e stili distraggono durante il ripasso."
+    },
+    "cherry": {
+      "label": "Selezione mirata con l'emoji 🍒",
+      "description": "Crea carte solo dai toggle che contengono 🍒 nell'intestazione o nel corpo. Usalo per pubblicare poche carte da una pagina lunga."
+    },
+    "avocado": {
+      "label": "Salta i toggle con l'emoji 🥑",
+      "description": "Ignora ogni toggle contrassegnato con 🥑. Usalo per escludere bozze o appunti senza modificare la pagina."
+    },
+    "tags": {
+      "label": "Tratta il testo barrato come tag",
+      "description": "Trasforma il testo barrato in tag di Anki. Il barrato a livello di pagina diventa un tag globale; dentro un toggle assegna il tag solo a quella carta."
+    },
+    "section-tags": {
+      "label": "Tagga un'intera sezione",
+      "description": "Barra una riga sotto un toggle genitore per taggare ogni carta annidata al suo interno — tagga un'intera sezione in una volta. Richiede la modalità Selezione mirata."
+    },
+    "cloze": {
+      "label": "Cancellazione cloze",
+      "description": "Crea carte cloze dal codice in linea e dalla sintassi {{c1::}} nei tuoi toggle."
+    },
+    "cloze-from-toggle-content": {
+      "label": "Il codice in linea nei toggle diventa cloze",
+      "description": "Quando il contenuto di un toggle contiene codice in linea, nascondilo come cloze e usa l'intestazione del toggle come suggerimento. Funziona solo con la cancellazione cloze attiva."
+    },
+    "group-cloze-per-toggle": {
+      "label": "Raggruppa le cloze per toggle",
+      "description": "Quando un toggle di Notion contiene più spazi ::, mettili tutti su un'unica carta e rivelali insieme. Disattivato di default — ogni :: crea la sua carta."
+    },
+    "remove-deck-name-numbering": {
+      "label": "Rimuovi la numerazione dai nomi dei mazzi",
+      "description": "Rimuove un numero iniziale come \"3. \" o \"03 - \" dai nomi di mazzi e sotto-mazzi. Disattivato di default — i titoli come 3D Anatomy che iniziano solo con un numero non vengono mai modificati."
+    },
+    "enable-input": {
+      "label": "Tratta il grassetto come risposta da digitare",
+      "description": "Nasconde le parole in grassetto sul fronte della carta così le digiti durante il ripasso. Utile per il vocabolario e per ricordare risposte esatte."
+    },
+    "basic-reversed": {
+      "label": "Basic e inversa",
+      "description": "Crea due carte per toggle: dalla domanda alla risposta e dalla risposta alla domanda."
+    },
+    "reversed": {
+      "label": "Solo inversa",
+      "description": "Crea solo la carta inversa, scambiando fronte e retro. Utile quando il retro è un'immagine che vuoi vedere per prima."
+    },
+    "no-underline": {
+      "label": "Rimuovi le sottolineature",
+      "description": "Toglie la sottolineatura dal testo delle carte. Attivalo se le sottolineature di Notion compaiono dove non le vuoi."
+    },
+    "max-one-toggle-per-card": {
+      "label": "Massimo un toggle per carta",
+      "description": "Mantiene ogni carta concentrata su un solo toggle. Combinalo con Usa tutti gli elenchi toggle per trasformare ogni toggle annidato in una carta a sé."
+    },
+    "remove-mp3-links": {
+      "label": "Rimuovi i link MP3 dai file audio",
+      "description": "Nasconde gli URL MP3 grezzi sulle carte lasciando l'audio riproducibile."
+    },
+    "perserve-newlines": {
+      "label": "Mantieni gli a capo nell'intestazione e nel corpo del toggle",
+      "description": "Mantiene le interruzioni di riga inserite con Shift+Invio dentro i toggle. Vale per ogni tipo di carta."
+    },
+    "process-pdfs": {
+      "label": "Elabora i file PDF",
+      "description": "Converte in carte i PDF trovati dentro i caricamenti ZIP. Disattivalo per saltarli e completare più in fretta i caricamenti ZIP."
+    },
+    "pdf-extract-text": {
+      "label": "Estrai il testo dai PDF",
+      "description": "Trasforma in carte il testo dentro un PDF. Lascialo disattivato per rendere ogni pagina come immagine — pagina 1 sul fronte, pagina 2 sul retro."
+    },
+    "pdf-page-pairs": {
+      "label": "Due pagine fanno una carta",
+      "description": "Per i PDF impaginati con prima il fronte e poi il retro — la pagina 1 è il fronte della carta, la pagina 2 il retro. 2anki trasforma ogni 2 pagine in una carta immagine."
+    },
+    "download-pdfs": {
+      "label": "Scarica i PDF come media di Anki",
+      "description": "Disattivato: i PDF appaiono come link cliccabili. Attivato: i PDF vengono inclusi nel file .apkg, che rende il mazzo molto più grande."
+    },
+    "markdown-nested-bullet-points": {
+      "label": "Punti elenco annidati in Markdown",
+      "description": "Trasforma i punti elenco e i loro sotto-punti in carte fronte-retro. Consigliato per gli export di Obsidian."
+    },
+    "split-sections-into-decks": {
+      "label": "Dividi ogni sezione nel suo mazzo",
+      "description": "Se attivo, ogni titolo, toggle ed elenco della pagina diventa un mazzo a sé invece di far finire tutte le carte in uno solo."
+    },
+    "vertex-ai-pdf-questions": {
+      "label": "Genera domande dai PDF caricati",
+      "description": "Prepara bozze di domande dal tuo PDF usando Claude (Anthropic). Il contenuto del tuo PDF viene inviato ad Anthropic per l'elaborazione."
+    },
+    "disable-indented-bullets": {
+      "label": "Disattiva i punti elenco rientrati",
+      "description": "Mantiene i punti elenco rientrati legati al loro genitore invece di trasformarli in carte separate."
+    },
+    "image-quiz-html-to-anki": {
+      "label": "Converti i quiz HTML con immagini in carte Anki",
+      "description": "Usa l'OCR per estrarre immagini e risposte dai quiz HTML e trasformarli in carte."
+    },
+    "embed-images": {
+      "label": "Incorpora le immagini nelle carte",
+      "description": "Inserisce i byte delle immagini nel mazzo così le carte si vedono anche offline. Disattivalo per ottenere un mazzo più leggero quando le immagini fanno superare il limite di dimensione del caricamento."
+    },
+    "claude-ai-flashcards": {
+      "label": "Genera flashcard con Claude AI",
+      "description": "Usa Claude AI per preparare le carte dal tuo contenuto. Dà risultati migliori con documenti densi o poco strutturati."
+    },
+    "ai-comprehensive": {
+      "label": "Modalità IA completa",
+      "description": "Legge ogni sezione dei documenti lunghi così nulla di importante viene saltato. Ideale per studiare a fondo materiale denso. Richiede più tempo per la creazione. Solo piani a pagamento."
+    },
+    "share-files-for-debugging": {
+      "label": "Condividi i file per il debug quando la conversione fallisce",
+      "description": "Se una conversione fallisce, invia i file caricati e i dettagli dell'errore al team di 2anki per indagare. Disattivato di default per mantenere private le tue note."
+    }
+  }
+}
