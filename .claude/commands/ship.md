@@ -75,7 +75,7 @@ Never delete the branch by hand before the queue has merged; the queue needs it.
 
 ## 5. Watch the deploy
 
-A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.md'`) — report "merged, no deploy" and go to Report.
+A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.md'`) — go to step 7 (local cleanup still applies; it'll report "merged, no deploy" from there).
 
 ```bash
 gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion
