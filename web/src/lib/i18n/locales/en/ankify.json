@@ -27,7 +27,8 @@
     "notConnectedOpenAnki": "Anki isn't connected. Open Anki on your computer and try again.",
     "notConnected": "Anki isn't connected.",
     "noDecks": "No decks to review yet. Sync a Notion page to start building cards.",
-    "pickDeck": "Pick a deck to study its due and new cards without opening Anki."
+    "pickDeck": "Pick a deck to study its due and new cards without opening Anki.",
+    "showQuestion": "Show question"
   },
   "subscriptions": {
     "tabsLabel": "Decks",

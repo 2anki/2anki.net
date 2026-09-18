@@ -27,7 +27,8 @@
     "notConnectedOpenAnki": "Anki n'est pas connecté. Ouvre Anki sur ton ordinateur et réessaie.",
     "notConnected": "Anki n'est pas connecté.",
     "noDecks": "Aucun paquet à réviser pour l'instant. Synchronise une page Notion pour commencer à créer des cartes.",
-    "pickDeck": "Choisis un paquet pour étudier ses cartes à réviser et nouvelles sans ouvrir Anki."
+    "pickDeck": "Choisis un paquet pour étudier ses cartes à réviser et nouvelles sans ouvrir Anki.",
+    "showQuestion": "Afficher la question"
   },
   "subscriptions": {
     "tabsLabel": "Paquets",

@@ -27,7 +27,8 @@
     "notConnectedOpenAnki": "Anki no está conectado. Abre Anki en tu ordenador e inténtalo de nuevo.",
     "notConnected": "Anki no está conectado.",
     "noDecks": "Aún no hay mazos para repasar. Sincroniza una página de Notion para empezar a crear tarjetas.",
-    "pickDeck": "Elige un mazo para estudiar sus tarjetas pendientes y nuevas sin abrir Anki."
+    "pickDeck": "Elige un mazo para estudiar sus tarjetas pendientes y nuevas sin abrir Anki.",
+    "showQuestion": "Mostrar pregunta"
   },
   "subscriptions": {
     "tabsLabel": "Mazos",

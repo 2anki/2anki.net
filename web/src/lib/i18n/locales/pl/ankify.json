@@ -29,7 +29,8 @@
     "notConnectedOpenAnki": "Anki nie jest połączone. Otwórz Anki na komputerze i spróbuj ponownie.",
     "notConnected": "Anki nie jest połączone.",
     "noDecks": "Brak talii do powtórki. Zsynchronizuj stronę Notion, aby zacząć tworzyć karty.",
-    "pickDeck": "Wybierz talię, aby uczyć się jej kart do powtórki i nowych bez otwierania Anki."
+    "pickDeck": "Wybierz talię, aby uczyć się jej kart do powtórki i nowych bez otwierania Anki.",
+    "showQuestion": "Pokaż pytanie"
   },
   "subscriptions": {
     "tabsLabel": "Talie",

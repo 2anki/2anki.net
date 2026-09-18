@@ -114,7 +114,13 @@
     "previewCap": "Affichage de {{shown}} sur {{total}} cartes",
     "makeYourOwn": "Crée ton propre paquet",
     "download": "Télécharger le paquet (.apkg)",
-    "valueLine": "2anki transforme tes pages Notion, PDFs et notes en paquets Anki. Gratuit pour commencer."
+    "valueLine": "2anki transforme tes pages Notion, PDFs et notes en paquets Anki. Gratuit pour commencer.",
+    "linkInactive": "Ce lien n'est plus actif.",
+    "linkInactiveHint": "Demande-leur un nouveau lien, ou crée ton propre paquet sur 2anki.net.",
+    "deckUnavailable": "Ce paquet n'est plus disponible.",
+    "deckUnavailableHint": "Crée ton propre paquet sur 2anki.net.",
+    "emptyTitle": "Paquet vide",
+    "emptyDescription": "Ce paquet n'a aucune carte à prévisualiser."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

@@ -114,7 +114,13 @@
     "previewCap": "Mostrando {{shown}} de {{total}} tarjetas",
     "makeYourOwn": "Crea tu propio mazo",
     "download": "Descargar mazo (.apkg)",
-    "valueLine": "2anki convierte tus páginas de Notion, PDFs y notas en mazos de Anki. Empieza gratis."
+    "valueLine": "2anki convierte tus páginas de Notion, PDFs y notas en mazos de Anki. Empieza gratis.",
+    "linkInactive": "Este enlace ya no está activo.",
+    "linkInactiveHint": "Pídeles uno nuevo o crea tu propio mazo en 2anki.net.",
+    "deckUnavailable": "Este mazo ya no está disponible.",
+    "deckUnavailableHint": "Crea tu propio mazo en 2anki.net.",
+    "emptyTitle": "Mazo vacío",
+    "emptyDescription": "Este mazo no tiene tarjetas para previsualizar."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

@@ -4,7 +4,9 @@
     "menu": "menu",
     "logoAlt": "Logo 2anki",
     "openNavigation": "Ouvrir la navigation",
-    "home": "Accueil 2anki"
+    "home": "Accueil 2anki",
+    "skipToContent": "Aller au contenu",
+    "sidebarLabel": "Navigation principale"
   },
   "theme": {
     "appearance": "Apparence",

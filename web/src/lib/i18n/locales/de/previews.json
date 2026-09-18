@@ -114,7 +114,13 @@
     "previewCap": "{{shown}} von {{total}} Karten werden angezeigt",
     "makeYourOwn": "Erstelle deinen eigenen Stapel",
     "download": "Stapel herunterladen (.apkg)",
-    "valueLine": "2anki verwandelt deine Notion-Seiten, PDFs und Notizen in Anki-Stapel. Kostenlos starten."
+    "valueLine": "2anki verwandelt deine Notion-Seiten, PDFs und Notizen in Anki-Stapel. Kostenlos starten.",
+    "linkInactive": "Dieser Link ist nicht mehr aktiv.",
+    "linkInactiveHint": "Frag nach einem neuen oder erstelle deinen eigenen Stapel auf 2anki.net.",
+    "deckUnavailable": "Dieser Stapel ist nicht mehr verfügbar.",
+    "deckUnavailableHint": "Erstelle deinen eigenen Stapel auf 2anki.net.",
+    "emptyTitle": "Leerer Stapel",
+    "emptyDescription": "Dieser Stapel hat keine Karten für die Vorschau."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

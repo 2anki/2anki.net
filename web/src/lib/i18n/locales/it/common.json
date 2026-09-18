@@ -27,7 +27,8 @@
     "contact": "Contatti",
     "privacy": "Privacy",
     "terms": "Termini",
-    "about": "Chi siamo"
+    "about": "Chi siamo",
+    "cardsThisMonth": "{{limit}} carte questo mese"
   },
   "account": {
     "title": "Account",
@@ -181,7 +182,28 @@
       "liveLockedPdf": "Questo PDF è protetto da password. Inserisci la password per continuare.",
       "pdfPasswordAria": "Password del PDF",
       "changeSourceAria": "Cambia sorgente di caricamento",
-      "uploadFileAria": "Carica file"
+      "uploadFileAria": "Carica file",
+      "mcqPreviewHeading": "Anteprima",
+      "mcqAnswerNote": "Apri il mazzo scaricato in Anki per vedere la domanda completa e la risposta corretta evidenziata.",
+      "mcqSummary_one": "Il tuo mazzo contiene {{count}} carta a scelta multipla. Ogni carta mostra il testo di una domanda con opzioni etichettate — tocca quella corretta in Anki per rivelare la risposta.",
+      "mcqSummary_other": "Il tuo mazzo contiene {{count}} carte a scelta multipla. Ogni carta mostra il testo di una domanda con opzioni etichettate — tocca quella corretta in Anki per rivelare la risposta.",
+      "mcqSkipped": "Saltate: {{count}}, nessuna risposta contrassegnata",
+      "mcqSkippedHint": "Contrassegna l'opzione corretta in Notion per mostrarle come scelta multipla. Usa una casella di controllo di Notion oppure metti in grassetto il punto elenco corretto.",
+      "emptyMarkdownLossy": "Le esportazioni in Markdown di Notion appiattiscono i toggle — riesporta questa pagina come HTML e i toggle diventano carte.",
+      "emptyGoogleDoc": "Il tuo Documento è stato convertito, ma non abbiamo trovato la struttura a punti che trasformiamo in carte. Riorganizza il tuo Documento in modo che ogni domanda sia un punto elenco di primo livello con la risposta indentata sotto, poi riprova. <exampleLink>Vedi un esempio funzionante</exampleLink>",
+      "emptySheet": "Un Foglio ha bisogno di una colonna di domande e di una colonna di risposte. Assicurati che il tuo Foglio abbia almeno due colonne, poi riprova.",
+      "emptySlides": "Le Presentazioni hanno bisogno di un titolo e di punti elenco per ogni slide per produrre carte. Aggiungi titoli e punti elenco alle tue slide, poi riprova.",
+      "emptyTextFile": "Nessuna carta in questo file. Per un file di testo, metti una carta per riga come domanda - risposta oppure domanda = risposta, separa le due con un tab, o usa un elenco puntato. Vedi i <problemsLink>problemi comuni</problemsLink> per i formati che funzionano.",
+      "lockedBadge": "Bloccato",
+      "lockedHeadline": "Questo PDF è protetto da password",
+      "passwordPlaceholder": "Inserisci la password",
+      "unlock": "Sblocca",
+      "unlockFailed": "Il file non si è aperto. Controlla eventuali errori di battitura e riprova.",
+      "lockedHint": "Sei ancora bloccato? Alcuni PDF hanno una protezione riservata al proprietario che non si può inserire qui — apri il file in Preview o Adobe Reader, salva una copia e carica quella.",
+      "skipFile": "Salta questo file",
+      "askClaude": "Chiedi a Claude di questo file",
+      "readErrorTitle": "Qualcosa si è rotto durante la lettura di questo file.",
+      "readErrorDetail": "Riprova, oppure invia il file a support@2anki.net così sistemiamo il parser."
     },
     "page": {
       "title": "Converti i tuoi appunti",
@@ -495,7 +517,8 @@
       "blocksSkipped_one": "{{count}} blocco saltato",
       "blocksSkipped_other": "{{count}} blocchi saltati",
       "structureGuessed": "Struttura dedotta",
-      "columnsGuessed": "Colonne dedotte"
+      "columnsGuessed": "Colonne dedotte",
+      "sharedTooltip": "Condiviso — clicca per aprire l'anteprima"
     },
     "done": "Fatto",
     "openInNotion": "Apri in Notion",
@@ -772,5 +795,8 @@
       "clozePlaceholder": "Predefinito: n2a-cloze",
       "inputPlaceholder": "Predefinito: n2a-input"
     }
+  },
+  "favoritesPage": {
+    "subtitle": "Pagine che hai aggiunto ai preferiti per un accesso rapido."
   }
 }

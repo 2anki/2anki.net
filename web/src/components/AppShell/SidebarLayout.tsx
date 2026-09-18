@@ -1,4 +1,5 @@
 import React, { ReactNode, Suspense, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Sidebar, SidebarFeatures, SidebarLocals } from './Sidebar';
 import { MobileTopBar } from './MobileTopBar';
 import { SkeletonPage } from '../Skeleton/Skeleton';
@@ -24,6 +25,7 @@ export function SidebarLayout({
   error,
   children,
 }: Readonly<SidebarLayoutProps>) {
+  const { t } = useTranslation('chrome');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function SidebarLayout({
   return (
     <div className={styles.shell} data-shell>
       <a href="#main-content" className={styles.skipLink}>
-        Skip to content
+        {t('nav.skipToContent')}
       </a>
       <Sidebar
         email={email}

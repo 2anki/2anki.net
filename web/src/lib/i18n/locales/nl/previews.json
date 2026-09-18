@@ -114,7 +114,13 @@
     "previewCap": "{{shown}} van {{total}} kaarten worden getoond",
     "makeYourOwn": "Maak je eigen deck",
     "download": "Deck downloaden (.apkg)",
-    "valueLine": "2anki zet je Notion-pagina's, PDFs en notities om in Anki-decks. Gratis te starten."
+    "valueLine": "2anki zet je Notion-pagina's, PDFs en notities om in Anki-decks. Gratis te starten.",
+    "linkInactive": "Deze link is niet meer actief.",
+    "linkInactiveHint": "Vraag om een nieuwe, of maak je eigen deck op 2anki.net.",
+    "deckUnavailable": "Dit deck is niet meer beschikbaar.",
+    "deckUnavailableHint": "Maak je eigen deck op 2anki.net.",
+    "emptyTitle": "Leeg deck",
+    "emptyDescription": "Dit deck heeft geen kaarten om te bekijken."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

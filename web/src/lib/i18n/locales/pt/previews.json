@@ -114,7 +114,13 @@
     "previewCap": "A mostrar {{shown}} de {{total}} cartões",
     "makeYourOwn": "Cria o teu próprio baralho",
     "download": "Transferir baralho (.apkg)",
-    "valueLine": "O 2anki transforma as tuas páginas do Notion, PDFs e notas em baralhos do Anki. Começa grátis."
+    "valueLine": "O 2anki transforma as tuas páginas do Notion, PDFs e notas em baralhos do Anki. Começa grátis.",
+    "linkInactive": "Este link não está mais ativo.",
+    "linkInactiveHint": "Peça um novo a quem compartilhou, ou crie seu próprio baralho no 2anki.net.",
+    "deckUnavailable": "Este baralho não está mais disponível.",
+    "deckUnavailableHint": "Crie seu próprio baralho no 2anki.net.",
+    "emptyTitle": "Baralho vazio",
+    "emptyDescription": "Este baralho não tem cartões para pré-visualizar."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

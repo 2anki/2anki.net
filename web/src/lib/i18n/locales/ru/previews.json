@@ -136,7 +136,13 @@
     "previewCap": "Показано {{shown}} из {{total}} карточек",
     "makeYourOwn": "Создайте свою колоду",
     "download": "Скачать колоду (.apkg)",
-    "valueLine": "2anki превращает ваши страницы Notion, PDFs и заметки в колоды Anki. Начните бесплатно."
+    "valueLine": "2anki превращает ваши страницы Notion, PDFs и заметки в колоды Anki. Начните бесплатно.",
+    "linkInactive": "Эта ссылка больше не активна.",
+    "linkInactiveHint": "Попроси у них новую или создай свою колоду на 2anki.net.",
+    "deckUnavailable": "Эта колода больше недоступна.",
+    "deckUnavailableHint": "Создай свою колоду на 2anki.net.",
+    "emptyTitle": "Пустая колода",
+    "emptyDescription": "В этой колоде нет карточек для предпросмотра."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

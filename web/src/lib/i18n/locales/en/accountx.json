@@ -128,6 +128,8 @@
     "benefitCancel": "Cancel anytime",
     "upgradeToUnlimited": "Upgrade to Unlimited",
     "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net.",
-    "backToUpload": "Back to upload"
+    "backToUpload": "Back to upload",
+    "headline": "You reached {{limit}} cards this month",
+    "pageTitle": "You reached your monthly limit | 2anki"
   }
 }

@@ -27,7 +27,8 @@
     "notConnectedOpenAnki": "Anki ist nicht verbunden. Öffne Anki auf deinem Computer und versuch es erneut.",
     "notConnected": "Anki ist nicht verbunden.",
     "noDecks": "Noch keine Stapel zum Wiederholen. Synchronisiere eine Notion-Seite, um Karten aufzubauen.",
-    "pickDeck": "Wähle einen Stapel, um seine fälligen und neuen Karten zu lernen, ohne Anki zu öffnen."
+    "pickDeck": "Wähle einen Stapel, um seine fälligen und neuen Karten zu lernen, ohne Anki zu öffnen.",
+    "showQuestion": "Frage zeigen"
   },
   "subscriptions": {
     "tabsLabel": "Stapel",

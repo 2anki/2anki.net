@@ -4,7 +4,9 @@
     "menu": "menu",
     "logoAlt": "Logo 2anki",
     "openNavigation": "Otwórz nawigację",
-    "home": "Strona główna 2anki"
+    "home": "Strona główna 2anki",
+    "skipToContent": "Przejdź do treści",
+    "sidebarLabel": "Nawigacja główna"
   },
   "theme": {
     "appearance": "Wygląd",

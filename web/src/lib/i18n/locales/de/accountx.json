@@ -104,7 +104,9 @@
     "benefitCancel": "Jederzeit kündbar",
     "upgradeToUnlimited": "Auf Unlimited upgraden",
     "checkoutError": "Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.",
-    "backToUpload": "Zurück zum Upload"
+    "backToUpload": "Zurück zum Upload",
+    "headline": "Du hast diesen Monat {{limit}} Karten erreicht",
+    "pageTitle": "Du hast dein monatliches Limit erreicht | 2anki"
   },
   "emailChange": {
     "toggle": "E-Mail-Adresse ändern",

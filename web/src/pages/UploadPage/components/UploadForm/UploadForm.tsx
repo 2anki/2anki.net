@@ -1,5 +1,5 @@
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -1015,35 +1015,33 @@ function UploadForm({
 
   const renderMcqDrawer = () => (
     <div className={formStyles.mcqDrawer}>
-      <p className={formStyles.mcqDrawerHeading}>Preview</p>
+      <p className={formStyles.mcqDrawerHeading}>
+        {t('upload.form.mcqPreviewHeading')}
+      </p>
       {mcqShowAnswer ? (
         <>
           <p className={formStyles.mcqDrawerQuestion}>
-            Open your downloaded deck in Anki to see the full question and
-            correct answer highlighted.
+            {t('upload.form.mcqAnswerNote')}
           </p>
           <button
             type="button"
             className={formStyles.mcqDrawerToggle}
             onClick={() => setMcqShowAnswer(false)}
           >
-            Show question
+            {t('ankify:reviewer.showQuestion')}
           </button>
         </>
       ) : (
         <>
           <p className={formStyles.mcqDrawerQuestion}>
-            Your deck contains {mcqCount} multiple-choice{' '}
-            {mcqCount === 1 ? 'card' : 'cards'}. Each card shows a question stem
-            with labelled options — tap the correct one in Anki to reveal the
-            answer.
+            {t('upload.form.mcqSummary', { count: mcqCount })}
           </p>
           <button
             type="button"
             className={formStyles.mcqDrawerToggle}
             onClick={() => setMcqShowAnswer(true)}
           >
-            Show answer
+            {t('ankify:reviewer.showAnswer')}
           </button>
         </>
       )}
@@ -1077,9 +1075,10 @@ function UploadForm({
             {mcqSkippedCount > 0 && (
               <span
                 className={formStyles.mcqSkipped}
-                title="Mark the correct option in Notion to render these as multiple choice. Use a Notion checkbox or bold the correct bullet."
+                title={t('upload.form.mcqSkippedHint')}
               >
-                &nbsp;&mdash;&nbsp;{mcqSkippedCount} skipped, no answer marked
+                &nbsp;&mdash;&nbsp;
+                {t('upload.form.mcqSkipped', { count: mcqSkippedCount })}
               </span>
             )}
           </button>
@@ -1274,47 +1273,45 @@ function UploadForm({
     if (localError?.code === 'markdown_likely_lossy') {
       return (
         <p className={formStyles.emptyBody}>
-          Notion Markdown exports flatten toggles — re-export this page as HTML
-          and the toggles become flashcards.
+          {t('upload.form.emptyMarkdownLossy')}
         </p>
       );
     }
     if (driveMimeType === 'application/vnd.google-apps.document') {
       return (
         <p className={formStyles.emptyBody}>
-          Your Doc converted, but we didn't see the bullet shape we turn into
-          cards. Restructure your Doc so each question is a top-level bullet
-          with its answer indented underneath, then try again.{' '}
-          <a href="/documentation/help/common-problems#my-google-doc-converted-to-0-cards">
-            See a working example
-          </a>
+          <Trans
+            t={t}
+            i18nKey="upload.form.emptyGoogleDoc"
+            components={{
+              exampleLink: (
+                <a href="/documentation/help/common-problems#my-google-doc-converted-to-0-cards" />
+              ),
+            }}
+          />
         </p>
       );
     }
     if (driveMimeType === 'application/vnd.google-apps.spreadsheet') {
       return (
-        <p className={formStyles.emptyBody}>
-          Sheets need a column of questions and a column of answers. Make sure
-          your Sheet has at least two columns, then try again.
-        </p>
+        <p className={formStyles.emptyBody}>{t('upload.form.emptySheet')}</p>
       );
     }
     if (driveMimeType === 'application/vnd.google-apps.presentation') {
       return (
-        <p className={formStyles.emptyBody}>
-          Slides need a title and bullets per slide to produce cards. Add titles
-          and bullet points to your slides, then try again.
-        </p>
+        <p className={formStyles.emptyBody}>{t('upload.form.emptySlides')}</p>
       );
     }
     if (/\.txt$/i.test(currentFilename())) {
       return (
         <p className={formStyles.emptyBody}>
-          No cards in this file. For a text file, put one card per line as
-          question - answer or question = answer, separate the two with a tab,
-          or use a bullet list. See{' '}
-          <a href="/documentation/help/common-problems">common problems</a> for
-          the formats that work.
+          <Trans
+            t={t}
+            i18nKey="upload.form.emptyTextFile"
+            components={{
+              problemsLink: <a href="/documentation/help/common-problems" />,
+            }}
+          />
         </p>
       );
     }
@@ -1435,7 +1432,7 @@ function UploadForm({
                 saveFilenameForReattach(limitInfo?.filename ?? null)
               }
             >
-              Create a free account
+              {t('accountx:limit.signUpFree')}
             </Link>
           ) : (
             <>
@@ -1462,7 +1459,7 @@ function UploadForm({
             className={formStyles.resetLink}
             onClick={resetForm}
           >
-            Try a different file
+            {t('upload.form.tryDifferent')}
           </button>
         </div>
       </div>
@@ -1549,9 +1546,8 @@ function UploadForm({
     const classified = localError
       ? classifyUploadError(localError)
       : {
-          title: 'Something broke while reading this file.',
-          detail:
-            'Try again, or send the file to support@2anki.net so we can fix the parser.',
+          title: t('upload.form.readErrorTitle'),
+          detail: t('upload.form.readErrorDetail'),
         };
     const errorText = classified.detail
       ? `${classified.title} ${classified.detail}`
@@ -1641,9 +1637,7 @@ function UploadForm({
 
       const newAttemptCount = pdfAttemptCount + 1;
       setPdfAttemptCount(newAttemptCount);
-      setPdfUnlockError(
-        "That didn't open the file. Check for typos and try again."
-      );
+      setPdfUnlockError(t('upload.form.unlockFailed'));
       setZoneState('lockedPdf');
     } catch (error) {
       setPdfUnlockError(toFriendlyThrownError(error).message);
@@ -1668,18 +1662,20 @@ function UploadForm({
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
       </span>
-      <div className={formStyles.lockedBadge}>Locked</div>
+      <div className={formStyles.lockedBadge}>
+        {t('upload.form.lockedBadge')}
+      </div>
       <p className={formStyles.lockedFilename} data-hj-suppress>
         {lockedPdfInfo?.filename}
       </p>
       <p className={formStyles.lockedHeadline}>
-        This PDF is password-protected
+        {t('upload.form.lockedHeadline')}
       </p>
       <div className={formStyles.lockedInputRow}>
         <input
           type="password"
           className={formStyles.lockedInput}
-          placeholder="Enter password"
+          placeholder={t('upload.form.passwordPlaceholder')}
           value={pdfCredential}
           autoFocus
           onChange={(e) => setPdfCredential(e.target.value)}
@@ -1694,7 +1690,7 @@ function UploadForm({
           onClick={handleUnlock}
           disabled={!pdfCredential.trim()}
         >
-          Unlock
+          {t('upload.form.unlock')}
         </button>
       </div>
       {pdfUnlockError && (
@@ -1703,18 +1699,14 @@ function UploadForm({
         </p>
       )}
       {pdfAttemptCount >= 3 && (
-        <p className={formStyles.lockedHint}>
-          Still stuck? Some PDFs have owner-only protection that can't be
-          entered here — open the file in Preview or Adobe Reader, save a copy,
-          and upload that.
-        </p>
+        <p className={formStyles.lockedHint}>{t('upload.form.lockedHint')}</p>
       )}
       <button
         type="button"
         className={formStyles.resetLink}
         onClick={resetForm}
       >
-        Skip this file
+        {t('upload.form.skipFile')}
       </button>
     </div>
   );
@@ -1906,7 +1898,7 @@ function UploadForm({
             >
               ›
             </i>
-            Ask Claude about this file
+            {t('upload.form.askClaude')}
           </button>
           {showInlineChat && (
             <section

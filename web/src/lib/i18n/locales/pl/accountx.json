@@ -108,7 +108,9 @@
     "benefitCancel": "Anuluj w dowolnym momencie",
     "upgradeToUnlimited": "Przejdź na Unlimited",
     "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie lub napisz na support@2anki.net.",
-    "backToUpload": "Powrót do przesyłania"
+    "backToUpload": "Powrót do przesyłania",
+    "headline": "Osiągnąłeś {{limit}} kart w tym miesiącu",
+    "pageTitle": "Osiągnąłeś miesięczny limit | 2anki"
   },
   "emailChange": {
     "toggle": "Zmień adres e-mail",

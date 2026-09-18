@@ -27,7 +27,8 @@
     "notConnectedOpenAnki": "Anki non è connesso. Apri Anki sul tuo computer e riprova.",
     "notConnected": "Anki non è connesso.",
     "noDecks": "Ancora nessun mazzo da ripassare. Sincronizza una pagina di Notion per iniziare a creare carte.",
-    "pickDeck": "Scegli un mazzo per studiarne le carte da ripassare e nuove senza aprire Anki."
+    "pickDeck": "Scegli un mazzo per studiarne le carte da ripassare e nuove senza aprire Anki.",
+    "showQuestion": "Mostra la domanda"
   },
   "subscriptions": {
     "tabsLabel": "Mazzi",

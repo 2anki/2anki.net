@@ -27,7 +27,8 @@
     "contact": "Contact",
     "privacy": "Privacy",
     "terms": "Voorwaarden",
-    "about": "Over ons"
+    "about": "Over ons",
+    "cardsThisMonth": "{{limit}} kaarten deze maand"
   },
   "account": {
     "title": "Account",
@@ -181,7 +182,28 @@
       "liveLockedPdf": "Deze PDF is met een wachtwoord beveiligd. Voer het wachtwoord in om door te gaan.",
       "pdfPasswordAria": "PDF-wachtwoord",
       "changeSourceAria": "Uploadbron wijzigen",
-      "uploadFileAria": "Bestand uploaden"
+      "uploadFileAria": "Bestand uploaden",
+      "mcqPreviewHeading": "Voorbeeld",
+      "mcqAnswerNote": "Open je gedownloade deck in Anki om de volledige vraag en het juiste antwoord gemarkeerd te zien.",
+      "mcqSummary_one": "Je deck bevat {{count}} meerkeuzekaart. Elke kaart toont een vraag met gelabelde opties — tik in Anki op de juiste om het antwoord te onthullen.",
+      "mcqSummary_other": "Je deck bevat {{count}} meerkeuzekaarten. Elke kaart toont een vraag met gelabelde opties — tik in Anki op de juiste om het antwoord te onthullen.",
+      "mcqSkipped": "{{count}} overgeslagen, geen antwoord gemarkeerd",
+      "mcqSkippedHint": "Markeer de juiste optie in Notion om deze als meerkeuze weer te geven. Gebruik een selectievakje in Notion of maak de juiste bullet vetgedrukt.",
+      "emptyMarkdownLossy": "Notion Markdown-exports maken toggles plat — exporteer deze pagina opnieuw als HTML en de toggles worden flashcards.",
+      "emptyGoogleDoc": "Je Doc is geconverteerd, maar we zagen niet de bulletstructuur die we in kaarten omzetten. Structureer je Doc zo dat elke vraag een bovenste bullet is met het antwoord ingesprongen eronder en probeer het opnieuw. <exampleLink>Bekijk een werkend voorbeeld</exampleLink>",
+      "emptySheet": "Voor Sheets zijn een kolom met vragen en een kolom met antwoorden nodig. Zorg dat je Sheet minstens twee kolommen heeft en probeer het opnieuw.",
+      "emptySlides": "Voor Slides zijn een titel en bullets per slide nodig om kaarten te maken. Voeg titels en bullets toe aan je slides en probeer het opnieuw.",
+      "emptyTextFile": "Geen kaarten in dit bestand. Zet bij een tekstbestand één kaart per regel als vraag - antwoord of vraag = antwoord, scheid de twee met een tab, of gebruik een bulletlijst. Zie <problemsLink>veelvoorkomende problemen</problemsLink> voor de formaten die werken.",
+      "lockedBadge": "Vergrendeld",
+      "lockedHeadline": "Deze PDF is met een wachtwoord beveiligd",
+      "passwordPlaceholder": "Voer wachtwoord in",
+      "unlock": "Ontgrendelen",
+      "unlockFailed": "Dat opende het bestand niet. Controleer op typfouten en probeer het opnieuw.",
+      "lockedHint": "Nog steeds vast? Sommige PDF's hebben beveiliging die alleen de eigenaar kan opheffen en die hier niet kan worden ingevoerd — open het bestand in Preview of Adobe Reader, sla een kopie op en upload die.",
+      "skipFile": "Dit bestand overslaan",
+      "askClaude": "Vraag Claude over dit bestand",
+      "readErrorTitle": "Er ging iets mis bij het lezen van dit bestand.",
+      "readErrorDetail": "Probeer het opnieuw, of stuur het bestand naar support@2anki.net zodat we de parser kunnen repareren."
     },
     "page": {
       "title": "Zet je notities om",
@@ -495,7 +517,8 @@
       "blocksSkipped_one": "{{count}} blok overgeslagen",
       "blocksSkipped_other": "{{count}} blokken overgeslagen",
       "structureGuessed": "Structuur geraden",
-      "columnsGuessed": "Kolommen geraden"
+      "columnsGuessed": "Kolommen geraden",
+      "sharedTooltip": "Gedeeld — klik om het voorbeeld te openen"
     },
     "done": "Klaar",
     "openInNotion": "Openen in Notion",
@@ -772,5 +795,8 @@
       "clozePlaceholder": "Standaard n2a-cloze",
       "inputPlaceholder": "Standaard n2a-input"
     }
+  },
+  "favoritesPage": {
+    "subtitle": "Pagina's die je een ster hebt gegeven voor snelle toegang."
   }
 }

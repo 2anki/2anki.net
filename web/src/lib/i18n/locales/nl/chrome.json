@@ -4,7 +4,9 @@
     "menu": "menu",
     "logoAlt": "2anki-logo",
     "openNavigation": "Navigatie openen",
-    "home": "2anki home"
+    "home": "2anki home",
+    "skipToContent": "Ga naar inhoud",
+    "sidebarLabel": "Hoofdnavigatie"
   },
   "theme": {
     "appearance": "Weergave",

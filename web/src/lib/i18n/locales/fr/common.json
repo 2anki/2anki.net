@@ -27,7 +27,8 @@
     "contact": "Contact",
     "privacy": "Confidentialité",
     "terms": "Conditions",
-    "about": "À propos"
+    "about": "À propos",
+    "cardsThisMonth": "{{limit}} cartes ce mois-ci"
   },
   "account": {
     "title": "Compte",
@@ -181,7 +182,28 @@
       "liveLockedPdf": "Ce PDF est protégé par mot de passe. Saisis le mot de passe pour continuer.",
       "pdfPasswordAria": "Mot de passe du PDF",
       "changeSourceAria": "Changer la source d'envoi",
-      "uploadFileAria": "Envoyer le fichier"
+      "uploadFileAria": "Envoyer le fichier",
+      "mcqPreviewHeading": "Aperçu",
+      "mcqAnswerNote": "Ouvre ton paquet téléchargé dans Anki pour voir la question complète et la bonne réponse en surbrillance.",
+      "mcqSummary_one": "Ton paquet contient {{count}} carte à choix multiple. Chaque carte affiche un énoncé de question avec des options étiquetées — appuie sur la bonne dans Anki pour révéler la réponse.",
+      "mcqSummary_other": "Ton paquet contient {{count}} cartes à choix multiple. Chaque carte affiche un énoncé de question avec des options étiquetées — appuie sur la bonne dans Anki pour révéler la réponse.",
+      "mcqSkipped": "Ignorés : {{count}}, aucune réponse marquée",
+      "mcqSkippedHint": "Marque la bonne option dans Notion pour les convertir en choix multiple. Utilise une case à cocher Notion ou mets la bonne puce en gras.",
+      "emptyMarkdownLossy": "Les exports Markdown de Notion aplatissent les toggles — réexporte cette page en HTML et les toggles deviennent des cartes.",
+      "emptyGoogleDoc": "Ton Doc a été converti, mais nous n'avons pas trouvé la structure de puces que nous transformons en cartes. Restructure ton Doc pour que chaque question soit une puce de premier niveau avec sa réponse en retrait en dessous, puis réessaie. <exampleLink>Voir un exemple qui fonctionne</exampleLink>",
+      "emptySheet": "Les Feuilles ont besoin d'une colonne de questions et d'une colonne de réponses. Vérifie que ta Feuille a au moins deux colonnes, puis réessaie.",
+      "emptySlides": "Les Présentations ont besoin d'un titre et de puces par diapositive pour produire des cartes. Ajoute des titres et des puces à tes diapositives, puis réessaie.",
+      "emptyTextFile": "Aucune carte dans ce fichier. Pour un fichier texte, mets une carte par ligne sous la forme question - réponse ou question = réponse, sépare les deux par une tabulation, ou utilise une liste à puces. Consulte les <problemsLink>problèmes courants</problemsLink> pour connaître les formats qui fonctionnent.",
+      "lockedBadge": "Verrouillé",
+      "lockedHeadline": "Ce PDF est protégé par mot de passe",
+      "passwordPlaceholder": "Saisis le mot de passe",
+      "unlock": "Déverrouiller",
+      "unlockFailed": "Le fichier ne s'est pas ouvert. Vérifie qu'il n'y a pas de faute de frappe, puis réessaie.",
+      "lockedHint": "Toujours bloqué ? Certains PDF ont une protection réservée au propriétaire qui ne peut pas être saisie ici — ouvre le fichier dans Preview ou Adobe Reader, enregistre une copie et téléverse-la.",
+      "skipFile": "Passer ce fichier",
+      "askClaude": "Demander à Claude au sujet de ce fichier",
+      "readErrorTitle": "Une erreur est survenue lors de la lecture de ce fichier.",
+      "readErrorDetail": "Réessaie, ou envoie le fichier à support@2anki.net pour qu'on corrige l'analyseur."
     },
     "page": {
       "title": "Convertis tes notes",
@@ -495,7 +517,8 @@
       "blocksSkipped_one": "{{count}} bloc ignoré",
       "blocksSkipped_other": "{{count}} blocs ignorés",
       "structureGuessed": "Structure devinée",
-      "columnsGuessed": "Colonnes devinées"
+      "columnsGuessed": "Colonnes devinées",
+      "sharedTooltip": "Partagé — clique pour ouvrir l'aperçu"
     },
     "done": "Terminé",
     "openInNotion": "Ouvrir dans Notion",
@@ -772,5 +795,8 @@
       "clozePlaceholder": "Par défaut n2a-cloze",
       "inputPlaceholder": "Par défaut n2a-input"
     }
+  },
+  "favoritesPage": {
+    "subtitle": "Les pages que tu as ajoutées aux favoris pour y accéder rapidement."
   }
 }

@@ -114,7 +114,13 @@
     "previewCap": "Visualizzazione di {{shown}} di {{total}} schede",
     "makeYourOwn": "Crea il tuo mazzo",
     "download": "Scarica il mazzo (.apkg)",
-    "valueLine": "2anki trasforma le tue pagine Notion, i PDFs e gli appunti in mazzi Anki. Inizia gratis."
+    "valueLine": "2anki trasforma le tue pagine Notion, i PDFs e gli appunti in mazzi Anki. Inizia gratis.",
+    "linkInactive": "Questo link non è più attivo.",
+    "linkInactiveHint": "Chiedine uno nuovo a chi lo ha condiviso, oppure crea il tuo mazzo su 2anki.net.",
+    "deckUnavailable": "Questo mazzo non è più disponibile.",
+    "deckUnavailableHint": "Crea il tuo mazzo su 2anki.net.",
+    "emptyTitle": "Mazzo vuoto",
+    "emptyDescription": "Questo mazzo non ha schede da visualizzare in anteprima."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",
