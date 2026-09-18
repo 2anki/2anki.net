@@ -128,6 +128,8 @@ export const KNOWN_EVENTS = new Set([
   'mcp_deck_download',
   'image_only_photo_deck_shown',
   'image_only_photo_deck_clicked',
+  'apkg_reject_shown',
+  'apkg_print_cta_clicked',
   'ankify_decklist_sorted',
   'empty_back_notice_shown',
   'thin_deck_notice_shown',
