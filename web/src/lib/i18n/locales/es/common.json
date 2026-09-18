@@ -187,7 +187,7 @@
       "mcqAnswerNote": "Abre tu mazo descargado en Anki para ver la pregunta completa y la respuesta correcta resaltada.",
       "mcqSummary_one": "Tu mazo contiene {{count}} tarjeta de opción múltiple. Cada tarjeta muestra el enunciado de una pregunta con opciones etiquetadas — toca la correcta en Anki para ver la respuesta.",
       "mcqSummary_other": "Tu mazo contiene {{count}} tarjetas de opción múltiple. Cada tarjeta muestra el enunciado de una pregunta con opciones etiquetadas — toca la correcta en Anki para ver la respuesta.",
-      "mcqSkipped": "{{count}} omitidas, sin respuesta marcada",
+      "mcqSkipped": "Omitidas: {{count}}, sin respuesta marcada",
       "mcqSkippedHint": "Marca la opción correcta en Notion para que se conviertan en opción múltiple. Usa una casilla de Notion o pon en negrita la viñeta correcta.",
       "emptyMarkdownLossy": "Las exportaciones a Markdown de Notion aplanan los toggles — vuelve a exportar esta página como HTML y los toggles se convierten en tarjetas.",
       "emptyGoogleDoc": "Tu Doc se convirtió, pero no vimos el formato de viñetas que convertimos en tarjetas. Reorganiza tu Doc para que cada pregunta sea una viñeta de nivel superior con su respuesta con sangría debajo e inténtalo de nuevo. <exampleLink>Ver un ejemplo que funciona</exampleLink>",
