@@ -1,0 +1,133 @@
+{
+  "premiumBadge": "Premium",
+  "options": {
+    "add-notion-link": {
+      "label": "Añadir enlace a Notion",
+      "description": "Añade en cada tarjeta un enlace de vuelta a la página de Notion."
+    },
+    "block-id-identity": {
+      "label": "Emparejar las tarjetas con sus bloques de Notion",
+      "description": "Activado, al volver a subir la página tus tarjetas de alternancia se emparejan con sus bloques de Notion y se actualizan en el sitio. Actívalo para los mazos que creaste por primera vez antes de julio de 2026. Desactivado para los mazos más nuevos."
+    },
+    "all": {
+      "label": "Usar todas las listas de alternancias",
+      "description": "Toma las alternancias de cualquier parte de la página, incluidas las anidadas. Desactivado, solo las alternancias de primer nivel se convierten en tarjetas."
+    },
+    "paragraph": {
+      "label": "Usar texto sin formato en el reverso",
+      "description": "Quita el formato del reverso de cada tarjeta y conserva solo el texto. Úsalo cuando los colores y estilos distraigan durante el repaso."
+    },
+    "cherry": {
+      "label": "Selección manual con el emoji 🍒",
+      "description": "Solo crea tarjetas a partir de las alternancias que contengan 🍒 en el encabezado o en el cuerpo. Úsalo para publicar unas pocas tarjetas de una página larga."
+    },
+    "avocado": {
+      "label": "Omitir alternancias con el emoji 🥑",
+      "description": "Ignora cualquier alternancia marcada con 🥑. Úsalo para excluir borradores o notas sin editar la página."
+    },
+    "tags": {
+      "label": "Tratar el texto tachado como etiquetas",
+      "description": "Convierte el texto tachado en etiquetas de Anki. El tachado a nivel de página se convierte en una etiqueta global; dentro de una alternancia, etiqueta solo esa tarjeta."
+    },
+    "section-tags": {
+      "label": "Etiquetar una sección entera",
+      "description": "Tacha una línea bajo una alternancia principal para etiquetar todas las tarjetas anidadas debajo — etiqueta una sección entera de una vez. Requiere el modo de selección manual."
+    },
+    "cloze": {
+      "label": "Borrado por oclusión (Cloze)",
+      "description": "Crea tarjetas cloze a partir del código en línea y de la sintaxis {{c1::}} en tus alternancias."
+    },
+    "cloze-from-toggle-content": {
+      "label": "El código en línea de las alternancias se convierte en cloze",
+      "description": "Cuando el contenido de una alternancia contiene código en línea, oculta el código como un cloze y usa el encabezado de la alternancia como pista. Solo funciona cuando el borrado por oclusión (Cloze) está activado."
+    },
+    "group-cloze-per-toggle": {
+      "label": "Agrupar los huecos de cloze por alternancia",
+      "description": "Cuando una alternancia de Notion contiene varios huecos ::, ponlos todos en una sola tarjeta y revélalos juntos. Desactivado por defecto — cada :: crea su propia tarjeta."
+    },
+    "remove-deck-name-numbering": {
+      "label": "Quitar la numeración de los nombres de mazos",
+      "description": "Quita un número inicial como \"3. \" o \"03 - \" de los nombres de mazos y submazos. Desactivado por defecto — los títulos como 3D Anatomy que solo empiezan por un número nunca se cambian."
+    },
+    "enable-input": {
+      "label": "Tratar el texto en negrita como respuesta escrita",
+      "description": "Oculta las palabras en negrita del anverso de la tarjeta para que las escribas durante el repaso. Útil para vocabulario y para recordar respuestas exactas."
+    },
+    "basic-reversed": {
+      "label": "Básica e invertida",
+      "description": "Crea dos tarjetas por alternancia: de pregunta a respuesta y de respuesta a pregunta."
+    },
+    "reversed": {
+      "label": "Solo invertida",
+      "description": "Crea solo la tarjeta invertida, intercambiando anverso y reverso. Útil cuando el reverso es una imagen que quieres ver primero."
+    },
+    "no-underline": {
+      "label": "Quitar subrayados",
+      "description": "Quita el formato de subrayado del texto de las tarjetas. Actívalo si los subrayados de Notion aparecen donde no los quieres."
+    },
+    "max-one-toggle-per-card": {
+      "label": "Máximo una alternancia por tarjeta",
+      "description": "Mantén cada tarjeta centrada en una sola alternancia. Combínalo con Usar todas las listas de alternancias para convertir cada alternancia anidada en su propia tarjeta."
+    },
+    "remove-mp3-links": {
+      "label": "Quitar los enlaces MP3 de los archivos de audio",
+      "description": "Oculta las URL de MP3 sin procesar en las tarjetas y mantiene el audio reproducible."
+    },
+    "perserve-newlines": {
+      "label": "Conservar los saltos de línea en el encabezado y el cuerpo de la alternancia",
+      "description": "Mantén los saltos de línea hechos con Shift+Enter dentro de las alternancias. Se aplica a todos los tipos de tarjeta."
+    },
+    "process-pdfs": {
+      "label": "Procesar archivos PDF",
+      "description": "Convierte en tarjetas los PDF que hay dentro de las subidas de ZIP. Desactívalo para omitirlos y terminar antes las subidas de ZIP."
+    },
+    "pdf-extract-text": {
+      "label": "Extraer texto de los PDF",
+      "description": "Convierte el texto de un PDF en tarjetas. Déjalo desactivado para mostrar cada página como una imagen — la página 1 en el anverso, la página 2 en el reverso."
+    },
+    "pdf-page-pairs": {
+      "label": "Dos páginas forman una tarjeta",
+      "description": "Para PDF organizados con anverso y luego reverso — la página 1 es el anverso de la tarjeta y la página 2 su reverso. 2anki convierte cada 2 páginas en una tarjeta de imagen."
+    },
+    "download-pdfs": {
+      "label": "Descargar los PDF como multimedia de Anki",
+      "description": "Desactivado: los PDF aparecen como enlaces en los que se puede hacer clic. Activado: los PDF se incluyen en el .apkg, lo que hace el archivo del mazo mucho más grande."
+    },
+    "markdown-nested-bullet-points": {
+      "label": "Viñetas anidadas de Markdown",
+      "description": "Convierte las viñetas y sus subviñetas en tarjetas de anverso y reverso. Recomendado para exportaciones de Obsidian."
+    },
+    "split-sections-into-decks": {
+      "label": "Dividir cada sección en su propio mazo",
+      "description": "Activado, cada encabezado, alternancia y lista de la página se convierte en su propio mazo, en lugar de que todas las tarjetas acaben en uno."
+    },
+    "vertex-ai-pdf-questions": {
+      "label": "Generar preguntas a partir de los PDF subidos",
+      "description": "Redacta preguntas a partir de tu PDF con Claude (Anthropic). El contenido de tu PDF se envía a Anthropic para su procesamiento."
+    },
+    "disable-indented-bullets": {
+      "label": "Desactivar las viñetas con sangría",
+      "description": "Mantiene las viñetas con sangría unidas a su viñeta principal en lugar de convertirse en tarjetas separadas."
+    },
+    "image-quiz-html-to-anki": {
+      "label": "Convertir cuestionarios de imagen en HTML a tarjetas de Anki",
+      "description": "Usa OCR para extraer imágenes y respuestas de los cuestionarios en HTML y convertirlos en tarjetas."
+    },
+    "embed-images": {
+      "label": "Incrustar imágenes en las tarjetas",
+      "description": "Incluye los bytes de las imágenes en el mazo para que las tarjetas se vean sin conexión. Desactívalo para crear un mazo más ligero cuando las imágenes hagan que la subida supere el límite de tamaño."
+    },
+    "claude-ai-flashcards": {
+      "label": "Generar tarjetas con Claude AI",
+      "description": "Usa Claude AI para redactar tarjetas a partir de tu contenido. Da mejores resultados con documentos densos o sin estructura."
+    },
+    "ai-comprehensive": {
+      "label": "Modo de IA exhaustivo",
+      "description": "Lee cada sección de los documentos largos para que no se omita nada importante. Ideal para estudiar a fondo material denso. Tarda más en crearse. Solo planes de pago."
+    },
+    "share-files-for-debugging": {
+      "label": "Compartir archivos para depuración cuando falla la conversión",
+      "description": "Si una conversión falla, envía los archivos subidos y los detalles del error al equipo de 2anki para investigarlo. Desactivado por defecto para mantener tus notas privadas."
+    }
+  }
+}

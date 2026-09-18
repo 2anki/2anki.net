@@ -1,0 +1,133 @@
+{
+  "premiumBadge": "Premium",
+  "options": {
+    "add-notion-link": {
+      "label": "Notion-Link hinzufügen",
+      "description": "Füge auf jeder Karte einen Link zurück zur Notion-Seite hinzu."
+    },
+    "block-id-identity": {
+      "label": "Karten ihren Notion-Blöcken zuordnen",
+      "description": "An: Ein erneuter Upload der Seite ordnet deine Toggle-Karten wieder ihren Notion-Blöcken zu und aktualisiert sie an Ort und Stelle. Aktiviere die Option für Stapel, die du vor Juli 2026 erstmals erstellt hast. Für neuere Stapel aus."
+    },
+    "all": {
+      "label": "Alle Toggle-Listen verwenden",
+      "description": "Übernimm Toggles von überall auf der Seite, auch verschachtelte. Aus: Nur Toggles der obersten Ebene werden zu Karten."
+    },
+    "paragraph": {
+      "label": "Reinen Text für die Rückseite verwenden",
+      "description": "Entferne die Formatierung von der Rückseite jeder Karte und behalte nur den Text. Nutze das, wenn Farben und Stile beim Wiederholen ablenken."
+    },
+    "cherry": {
+      "label": "Cherry-Pick mit 🍒-Emoji",
+      "description": "Erstelle Karten nur aus Toggles, die 🍒 im Titel oder Inhalt enthalten. Nutze das, um ein paar Karten aus einer langen Seite zu veröffentlichen."
+    },
+    "avocado": {
+      "label": "Toggles mit dem 🥑-Emoji überspringen",
+      "description": "Ignoriere jeden Toggle, der mit 🥑 markiert ist. Nutze das, um Entwürfe oder Notizen auszuschließen, ohne die Seite zu bearbeiten."
+    },
+    "tags": {
+      "label": "Durchgestrichenes als Anki-Tags behandeln",
+      "description": "Wandle durchgestrichenen Text in Anki-Tags um. Durchgestrichener Text auf Seitenebene wird zu einem globalen Anki-Tag; innerhalb eines Toggles erhält nur diese Karte den Anki-Tag."
+    },
+    "section-tags": {
+      "label": "Einen ganzen Abschnitt mit Anki-Tag versehen",
+      "description": "Streiche eine Zeile unter einem übergeordneten Toggle durch, um jede darin verschachtelte Karte mit einem Anki-Tag zu versehen — einen ganzen Abschnitt auf einmal. Erfordert den Cherry-Pick-Modus."
+    },
+    "cloze": {
+      "label": "Cloze-Löschung",
+      "description": "Erstelle Cloze-Karten aus Inline-Code und {{c1::}}-Syntax in deinen Toggles."
+    },
+    "cloze-from-toggle-content": {
+      "label": "Inline-Code-Toggles werden zu Cloze",
+      "description": "Wenn der Inhalt eines Toggles Inline-Code enthält, blende den Code als Cloze aus und nutze den Toggle-Titel als Hinweis. Funktioniert nur, wenn Cloze-Löschung aktiviert ist."
+    },
+    "group-cloze-per-toggle": {
+      "label": "Cloze-Lücken pro Toggle gruppieren",
+      "description": "Wenn ein Notion-Toggle mehrere ::-Lücken enthält, kommen alle auf eine einzelne Karte und werden zusammen aufgedeckt. Standardmäßig aus — jedes :: erzeugt eine eigene Karte."
+    },
+    "remove-deck-name-numbering": {
+      "label": "Nummerierung aus Stapelnamen entfernen",
+      "description": "Entfernt eine führende Zahl wie “3. ” oder “03 - ” aus Stapel- und Unterstapelnamen. Standardmäßig aus — Titel wie 3D Anatomy, die nur mit einer Zahl beginnen, werden nie geändert."
+    },
+    "enable-input": {
+      "label": "Fetten Text zum Eintippen nutzen",
+      "description": "Blende fette Wörter auf der Vorderseite der Karte aus, damit du sie beim Wiederholen eintippst. Nützlich für Vokabeln und das Abrufen exakter Antworten."
+    },
+    "basic-reversed": {
+      "label": "Basic und umgekehrt",
+      "description": "Erstelle pro Toggle zwei Karten: Frage zu Antwort und Antwort zu Frage."
+    },
+    "reversed": {
+      "label": "Nur umgekehrt",
+      "description": "Erstelle nur die umgekehrte Karte und tausche Vorder- und Rückseite. Nützlich, wenn die Rückseite ein Bild ist, das du zuerst sehen willst."
+    },
+    "no-underline": {
+      "label": "Unterstreichungen entfernen",
+      "description": "Entferne Unterstreichungen aus dem Kartentext. Aktiviere das, wenn Notion-Unterstreichungen dort auftauchen, wo du sie nicht willst."
+    },
+    "max-one-toggle-per-card": {
+      "label": "Maximal ein Toggle pro Karte",
+      "description": "Halte jede Karte auf einen einzelnen Toggle fokussiert. Kombiniere das mit Alle Toggle-Listen verwenden, damit jeder verschachtelte Toggle eine eigene Karte wird."
+    },
+    "remove-mp3-links": {
+      "label": "MP3-Links aus Audiodateien entfernen",
+      "description": "Blende rohe MP3-URLs auf Karten aus, das Audio bleibt abspielbar."
+    },
+    "perserve-newlines": {
+      "label": "Zeilenumbrüche in Toggle-Titel und -Inhalt beibehalten",
+      "description": "Behalte Zeilenumbrüche, die du mit Shift+Enter in Toggles machst. Gilt für jeden Kartentyp."
+    },
+    "process-pdfs": {
+      "label": "PDF-Dateien verarbeiten",
+      "description": "Wandle PDFs aus ZIP-Uploads in Karten um. Schalte die Option aus, um sie zu überspringen und ZIP-Uploads schneller abzuschließen."
+    },
+    "pdf-extract-text": {
+      "label": "Text aus PDFs extrahieren",
+      "description": "Wandle den Text in einem PDF in Karten um. Lass die Option aus, um jede Seite als Bild darzustellen — Seite 1 auf der Vorderseite, Seite 2 auf der Rückseite."
+    },
+    "pdf-page-pairs": {
+      "label": "Zwei Seiten ergeben eine Karte",
+      "description": "Für PDFs mit erst Vorder-, dann Rückseite — Seite 1 ist die Kartenvorderseite, Seite 2 ihre Rückseite. 2anki macht aus je 2 Seiten eine Bildkarte."
+    },
+    "download-pdfs": {
+      "label": "PDFs als Anki-Medien herunterladen",
+      "description": "Aus: PDFs erscheinen als anklickbare Links. An: PDFs werden in die .apkg gepackt, wodurch die Stapeldatei deutlich größer wird."
+    },
+    "markdown-nested-bullet-points": {
+      "label": "Verschachtelte Markdown-Aufzählungspunkte",
+      "description": "Wandle Aufzählungspunkte und ihre Unterpunkte in Karten mit Vorder- und Rückseite um. Empfohlen für Obsidian-Exporte."
+    },
+    "split-sections-into-decks": {
+      "label": "Jeden Abschnitt in einen eigenen Stapel aufteilen",
+      "description": "Wenn aktiviert, wird jede Überschrift, jeder Toggle und jede Liste auf der Seite zu einem eigenen Stapel, statt dass alle Karten in einem landen."
+    },
+    "vertex-ai-pdf-questions": {
+      "label": "Fragen aus PDF-Uploads erzeugen",
+      "description": "Entwirft Fragen aus deinem PDF mit Claude (Anthropic). Der Inhalt deines PDFs wird zur Verarbeitung an Anthropic gesendet."
+    },
+    "disable-indented-bullets": {
+      "label": "Eingerückte Aufzählungspunkte deaktivieren",
+      "description": "Lass eingerückte Aufzählungspunkte an ihrem übergeordneten Punkt hängen, statt eigene Karten zu werden."
+    },
+    "image-quiz-html-to-anki": {
+      "label": "Bild-Quiz-HTML in Anki-Karten umwandeln",
+      "description": "Nutze OCR, um Bilder und Antworten aus HTML-Quiz zu ziehen und daraus Karten zu machen."
+    },
+    "embed-images": {
+      "label": "Bilder in Karten einbetten",
+      "description": "Packe die Bilddaten in den Stapel, damit Karten offline dargestellt werden. Schalte das aus, um einen schlankeren Stapel zu liefern, wenn Bilder den Upload über das Größenlimit treiben."
+    },
+    "claude-ai-flashcards": {
+      "label": "Karteikarten mit Claude AI erstellen",
+      "description": "Nutze Claude AI, um Karten aus deinen Inhalten zu entwerfen. Liefert bessere Ergebnisse bei dichten oder unstrukturierten Dokumenten."
+    },
+    "ai-comprehensive": {
+      "label": "Umfassender KI-Modus",
+      "description": "Liest jeden Abschnitt langer Dokumente, damit nichts Wichtiges übersprungen wird. Am besten für gründliches Lernen von dichtem Material. Die Erstellung dauert länger. Nur in bezahlten Tarifen."
+    },
+    "share-files-for-debugging": {
+      "label": "Dateien zur Fehlersuche teilen, wenn die Konvertierung fehlschlägt",
+      "description": "Bei einer fehlgeschlagenen Konvertierung werden die hochgeladenen Dateien und Fehlerdetails zur Untersuchung an das 2anki-Team gesendet. Standardmäßig aus, damit deine Notizen privat bleiben."
+    }
+  }
+}

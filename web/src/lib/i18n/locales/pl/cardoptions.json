@@ -1,0 +1,133 @@
+{
+  "premiumBadge": "Premium",
+  "options": {
+    "add-notion-link": {
+      "label": "Dodaj link do Notion",
+      "description": "Dodaj na każdej karcie link z powrotem do strony Notion."
+    },
+    "block-id-identity": {
+      "label": "Dopasuj karty do ich bloków Notion",
+      "description": "Włączone: ponowne przesłanie strony dopasowuje Twoje karty z list rozwijanych do ich bloków Notion i aktualizuje je na miejscu. Włącz dla talii utworzonych po raz pierwszy przed lipcem 2026. Dla nowszych talii wyłączone."
+    },
+    "all": {
+      "label": "Użyj wszystkich list rozwijanych",
+      "description": "Pobieraj listy rozwijane z całej strony, także zagnieżdżone. Wyłączone: kartami stają się tylko listy rozwijane najwyższego poziomu."
+    },
+    "paragraph": {
+      "label": "Użyj zwykłego tekstu na tyle",
+      "description": "Usuń formatowanie z tyłu każdej karty i zostaw tylko tekst. Użyj, gdy kolory i style rozpraszają podczas powtórki."
+    },
+    "cherry": {
+      "label": "Wybór selektywny przez emoji 🍒",
+      "description": "Twórz karty tylko z list rozwijanych zawierających 🍒 w nagłówku lub treści. Użyj, aby opublikować kilka kart z długiej strony."
+    },
+    "avocado": {
+      "label": "Pomiń listy rozwijane z emoji 🥑",
+      "description": "Ignoruj każdą listę rozwijaną oznaczoną 🥑. Użyj, aby wykluczyć szkice lub notatki bez edytowania strony."
+    },
+    "tags": {
+      "label": "Traktuj przekreślenie jako tagi",
+      "description": "Zamień przekreślony tekst w tagi Anki. Przekreślenie na poziomie strony staje się tagiem globalnym; wewnątrz listy rozwijanej taguje tylko tę kartę."
+    },
+    "section-tags": {
+      "label": "Otaguj całą sekcję",
+      "description": "Przekreśl wiersz pod nadrzędną listą rozwijaną, aby otagować każdą kartę zagnieżdżoną pod nią — całą sekcję naraz. Wymaga trybu „Wybór selektywny”."
+    },
+    "cloze": {
+      "label": "Luki cloze",
+      "description": "Twórz karty cloze z kodu w tekście i składni {{c1::}} w Twoich listach rozwijanych."
+    },
+    "cloze-from-toggle-content": {
+      "label": "Kod w liście rozwijanej staje się cloze",
+      "description": "Gdy zawartość listy rozwijanej zawiera kod w tekście, ukryj kod jako cloze, a nagłówek listy użyj jako podpowiedzi. Działa tylko przy włączonej opcji Luki cloze."
+    },
+    "group-cloze-per-toggle": {
+      "label": "Grupuj luki cloze w liście rozwijanej",
+      "description": "Gdy jedna lista rozwijana Notion zawiera kilka luk ::, umieść je wszystkie na jednej karcie i odsłaniaj razem. Domyślnie wyłączone — każde :: tworzy osobną kartę."
+    },
+    "remove-deck-name-numbering": {
+      "label": "Usuń numerację z nazw talii",
+      "description": "Usuwa początkowy numer, taki jak \"3. \" lub \"03 - \", z nazw talii i podtalii. Domyślnie wyłączone — tytuły takie jak 3D Anatomy, które tylko zaczynają się od liczby, nigdy nie są zmieniane."
+    },
+    "enable-input": {
+      "label": "Traktuj pogrubiony tekst jako odpowiedź do wpisania",
+      "description": "Ukryj pogrubione słowa na przodzie karty, aby wpisywać je podczas powtórki. Przydatne przy słownictwie i przypominaniu dokładnych odpowiedzi."
+    },
+    "basic-reversed": {
+      "label": "Podstawowa i odwrócona",
+      "description": "Twórz dwie karty na listę rozwijaną: od pytania do odpowiedzi i od odpowiedzi do pytania."
+    },
+    "reversed": {
+      "label": "Tylko odwrócona",
+      "description": "Twórz tylko kartę odwróconą, zamieniając przód z tyłem. Przydatne, gdy tyłem jest obraz, który chcesz zobaczyć jako pierwszy."
+    },
+    "no-underline": {
+      "label": "Usuń podkreślenia",
+      "description": "Usuń formatowanie podkreślenia z tekstu kart. Włącz, jeśli podkreślenia z Notion pojawiają się tam, gdzie ich nie chcesz."
+    },
+    "max-one-toggle-per-card": {
+      "label": "Maksymalnie jedna lista rozwijana na kartę",
+      "description": "Każda karta skupia się na jednej liście rozwijanej. Połącz z opcją Użyj wszystkich list rozwijanych, aby każda zagnieżdżona lista rozwijana stała się osobną kartą."
+    },
+    "remove-mp3-links": {
+      "label": "Usuń linki MP3 z plików audio",
+      "description": "Ukryj surowe adresy URL MP3 na kartach, zachowując możliwość odtwarzania dźwięku."
+    },
+    "perserve-newlines": {
+      "label": "Zachowaj nowe wiersze w nagłówku i treści listy rozwijanej",
+      "description": "Zachowaj podziały wierszy wstawione przez Shift+Enter wewnątrz list rozwijanych. Dotyczy każdego typu karty."
+    },
+    "process-pdfs": {
+      "label": "Przetwarzaj pliki PDF",
+      "description": "Zamieniaj pliki PDF znalezione w przesłanych plikach ZIP na karty. Wyłącz, aby je pominąć i szybciej kończyć przesyłanie plików ZIP."
+    },
+    "pdf-extract-text": {
+      "label": "Wyodrębnij tekst z plików PDF",
+      "description": "Zamień tekst z pliku PDF na karty. Zostaw wyłączone, aby wyrenderować każdą stronę jako obraz — strona 1 na przodzie, strona 2 na tyle."
+    },
+    "pdf-page-pairs": {
+      "label": "Dwie strony tworzą jedną kartę",
+      "description": "Dla plików PDF ułożonych jako przód, potem tył — strona 1 to przód karty, strona 2 to jej tył. 2anki zamienia każde 2 strony w jedną kartę z obrazem."
+    },
+    "download-pdfs": {
+      "label": "Pobieraj pliki PDF jako multimedia Anki",
+      "description": "Wyłączone: pliki PDF pojawiają się jako klikalne linki. Włączone: pliki PDF są dołączane do pliku .apkg, co znacznie zwiększa rozmiar talii."
+    },
+    "markdown-nested-bullet-points": {
+      "label": "Zagnieżdżone punkty w Markdown",
+      "description": "Zamień punkty i ich podpunkty w karty z przodem i tyłem. Zalecane dla eksportów z Obsidian."
+    },
+    "split-sections-into-decks": {
+      "label": "Podziel każdą sekcję na osobną talię",
+      "description": "Gdy włączone, każdy nagłówek, lista rozwijana i lista na stronie staje się osobną talią, zamiast wszystkich kart w jednej."
+    },
+    "vertex-ai-pdf-questions": {
+      "label": "Generuj pytania z przesłanych plików PDF",
+      "description": "Tworzy szkice pytań z Twojego pliku PDF za pomocą Claude (Anthropic). Zawartość Twojego pliku PDF jest wysyłana do Anthropic w celu przetworzenia."
+    },
+    "disable-indented-bullets": {
+      "label": "Wyłącz wcięte punkty",
+      "description": "Zostaw wcięte punkty przypisane do ich rodzica, zamiast tworzyć z nich osobne karty."
+    },
+    "image-quiz-html-to-anki": {
+      "label": "Konwertuj quizy HTML z obrazami na karty Anki",
+      "description": "Użyj OCR, aby wyciągnąć obrazy i odpowiedzi z quizów HTML i zamienić je w karty."
+    },
+    "embed-images": {
+      "label": "Osadzaj obrazy w kartach",
+      "description": "Zapisz dane obrazów w talii, aby karty wyświetlały się offline. Wyłącz, aby otrzymać lżejszą talię, gdy obrazy powodują przekroczenie limitu rozmiaru przesyłania."
+    },
+    "claude-ai-flashcards": {
+      "label": "Generuj fiszki za pomocą Claude AI",
+      "description": "Użyj Claude AI, aby naszkicować karty z Twoich treści. Daje lepsze wyniki przy gęstych lub nieustrukturyzowanych dokumentach."
+    },
+    "ai-comprehensive": {
+      "label": "Kompleksowy tryb AI",
+      "description": "Czyta każdą sekcję długich dokumentów, aby nic ważnego nie zostało pominięte. Najlepszy do gruntownej nauki gęstego materiału. Tworzenie trwa dłużej. Tylko w płatnych planach."
+    },
+    "share-files-for-debugging": {
+      "label": "Udostępniaj pliki do debugowania, gdy konwersja się nie powiedzie",
+      "description": "Gdy konwersja się nie powiedzie, wyślij przesłane pliki i szczegóły błędu zespołowi 2anki do zbadania. Domyślnie wyłączone, aby Twoje notatki pozostały prywatne."
+    }
+  }
+}

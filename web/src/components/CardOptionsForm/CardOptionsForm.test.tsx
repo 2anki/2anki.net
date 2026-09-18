@@ -192,7 +192,7 @@ describe('CardOptionsForm reset clears all stored card options', () => {
     mockGetSettingsCardOptions.mockResolvedValue([
       new CardOptionModel(
         'cloze',
-        'Cloze deletion cards',
+        'Cloze deletion',
         'Turn code spans into cloze deletions.',
         true
       ),
@@ -360,7 +360,7 @@ describe('CardOptionsForm overlapping cloze picker', () => {
     mockGetSettingsCardOptions.mockResolvedValue([
       new CardOptionModel(
         'cloze',
-        'Cloze deletion cards',
+        'Cloze deletion',
         'Turn code spans into cloze deletions.',
         true
       ),
@@ -385,7 +385,7 @@ describe('CardOptionsForm overlapping cloze picker', () => {
   it('disables the picker when cloze is turned off', async () => {
     renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
     const cloze = await screen.findByRole('checkbox', {
-      name: 'Cloze deletion cards',
+      name: 'Cloze deletion',
     });
     fireEvent.click(cloze);
 
@@ -427,7 +427,7 @@ describe('CardOptionsForm manual TTS picker', () => {
     mockGetSettingsCardOptions.mockResolvedValue([
       new CardOptionModel(
         'cloze',
-        'Cloze deletion cards',
+        'Cloze deletion',
         'Turn code spans into cloze deletions.',
         true
       ),
@@ -473,7 +473,7 @@ describe('CardOptionsForm inline-code-toggles-become-cloze sub-option', () => {
     mockGetSettingsCardOptions.mockResolvedValue([
       new CardOptionModel(
         'cloze',
-        'Cloze deletion cards',
+        'Cloze deletion',
         'Turn code spans into cloze deletions.',
         true
       ),
@@ -505,7 +505,7 @@ describe('CardOptionsForm inline-code-toggles-become-cloze sub-option', () => {
   it('disables the toggle when cloze is turned off', async () => {
     renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
     const cloze = await screen.findByRole('checkbox', {
-      name: 'Cloze deletion cards',
+      name: 'Cloze deletion',
     });
     fireEvent.click(cloze);
 
@@ -531,7 +531,7 @@ describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
     mockGetSettingsCardOptions.mockResolvedValue([
       new CardOptionModel(
         'cherry',
-        'Only convert toggles with the 🍒 emoji',
+        'Cherry-pick using 🍒 emoji',
         'Cherry-pick which toggles become cards.',
         false
       ),
@@ -556,7 +556,7 @@ describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
   it('enables the section-tags toggle once cherry-pick is turned on', async () => {
     renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
     const cherry = await screen.findByRole('checkbox', {
-      name: 'Only convert toggles with the 🍒 emoji',
+      name: 'Cherry-pick using 🍒 emoji',
     });
     fireEvent.click(cherry);
 
@@ -1099,7 +1099,7 @@ describe('CardOptionsForm AI instruction presets outside the AI group', () => {
     mockGetSettingsCardOptions.mockResolvedValue([
       new CardOptionModel(
         'cloze',
-        'Cloze deletion cards',
+        'Cloze deletion',
         'Turn code spans into cloze deletions.',
         true
       ),
@@ -1108,7 +1108,7 @@ describe('CardOptionsForm AI instruction presets outside the AI group', () => {
 
   it('does not render the preset chips when the AI group is absent', async () => {
     renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
-    await screen.findByRole('checkbox', { name: 'Cloze deletion cards' });
+    await screen.findByRole('checkbox', { name: 'Cloze deletion' });
     expect(
       screen.queryByRole('group', { name: 'Instruction starting points' })
     ).toBeNull();
