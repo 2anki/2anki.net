@@ -300,7 +300,6 @@
   "rules": {
     "headingWithTitle": "Regels voor {{title}}",
     "heading": "Regels",
-    "thisPage": "deze pagina",
     "backToNotion": "← Terug naar Notion",
     "backToPreview": "← Terug naar voorbeeld",
     "back": "← Terug",

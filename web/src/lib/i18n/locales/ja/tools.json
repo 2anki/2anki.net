@@ -292,7 +292,6 @@
   "rules": {
     "headingWithTitle": "{{title}} のルール",
     "heading": "ルール",
-    "thisPage": "このページ",
     "backToNotion": "← Notion に戻る",
     "backToPreview": "← プレビューに戻る",
     "back": "← 戻る",

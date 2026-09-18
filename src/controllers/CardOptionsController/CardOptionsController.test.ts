@@ -1,6 +1,12 @@
 import { IServiceSettings } from '../../services/SettingsService';
 import CardOptionsController from './CardOptionsController';
 import { SettingsInitializer } from '../../data_layer/public/Settings';
+import { NotionService } from '../../services/NotionService/NotionService';
+import { getNotionObjectTitle } from 'get-notion-object-title';
+
+jest.mock('get-notion-object-title', () => ({
+  getNotionObjectTitle: jest.fn(),
+}));
 
 const FLAT_OPTIONS = {
   deckName: 'My Custom Deck',
@@ -197,6 +203,108 @@ describe('CardOptionsController.listSettings', () => {
         { pageId: 'page-xyz', title: null, updatedAt: null },
       ],
     });
+  });
+});
+
+describe('CardOptionsController.listSettings placeholder titles', () => {
+  const getTitleMock = getNotionObjectTitle as jest.Mock;
+
+  function makeMockRes() {
+    return {
+      locals: { owner: 'user-1' },
+      json: jest.fn(),
+      status: jest.fn().mockReturnValue({ send: jest.fn() }),
+    } as unknown as import('express').Response;
+  }
+
+  function makeService(storedTitle: string | null) {
+    const service = new FakeSettingsService();
+    service.getAllByOwner = () =>
+      Promise.resolve([
+        {
+          object_id: 'page-1',
+          title: storedTitle,
+          updated_at: new Date('2026-01-01'),
+        },
+      ]);
+    const updateTitle = jest.spyOn(service, 'updateTitle');
+    return { service, updateTitle };
+  }
+
+  function makeNotion(getPage: jest.Mock) {
+    const getNotionAPI = jest.fn().mockResolvedValue({ getPage });
+    return {
+      notion: { getNotionAPI } as unknown as NotionService,
+      getNotionAPI,
+    };
+  }
+
+  beforeEach(() => {
+    getTitleMock.mockReset();
+  });
+
+  it.each([
+    'this page',
+    'esta página',
+    'cette page',
+    'diese Seite',
+    'ta strona',
+    'questa pagina',
+    'deze pagina',
+    'このページ',
+    'эта страница',
+  ])('re-resolves the stored placeholder "%s" from Notion', async (stored) => {
+    getTitleMock.mockReturnValue('HTML test');
+    const { service, updateTitle } = makeService(stored);
+    const { notion } = makeNotion(jest.fn().mockResolvedValue({}));
+    const controller = new CardOptionsController(service, notion);
+    const res = makeMockRes();
+
+    await controller.listSettings({} as import('express').Request, res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      items: [
+        {
+          pageId: 'page-1',
+          title: 'HTML test',
+          updatedAt: new Date('2026-01-01').toISOString(),
+        },
+      ],
+    });
+    expect(updateTitle).toHaveBeenCalledWith('page-1', 'HTML test');
+  });
+
+  it('reports no title rather than the placeholder when Notion cannot be reached', async () => {
+    const { service, updateTitle } = makeService('this page');
+    const { notion } = makeNotion(
+      jest.fn().mockRejectedValue(new Error('403'))
+    );
+    const controller = new CardOptionsController(service, notion);
+    const res = makeMockRes();
+
+    await controller.listSettings({} as import('express').Request, res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      items: [
+        {
+          pageId: 'page-1',
+          title: null,
+          updatedAt: new Date('2026-01-01').toISOString(),
+        },
+      ],
+    });
+    expect(updateTitle).not.toHaveBeenCalled();
+  });
+
+  it('does not call Notion for a row that already has a real title', async () => {
+    const { service } = makeService('Organic Chemistry');
+    const { notion, getNotionAPI } = makeNotion(jest.fn());
+    const controller = new CardOptionsController(service, notion);
+    const res = makeMockRes();
+
+    await controller.listSettings({} as import('express').Request, res);
+
+    expect(getNotionAPI).not.toHaveBeenCalled();
   });
 });
 

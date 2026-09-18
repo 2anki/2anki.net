@@ -316,7 +316,6 @@
   "rules": {
     "headingWithTitle": "Правила для {{title}}",
     "heading": "Правила",
-    "thisPage": "эта страница",
     "backToNotion": "← Назад к Notion",
     "backToPreview": "← Назад к предпросмотру",
     "back": "← Назад",

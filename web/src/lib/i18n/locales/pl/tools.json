@@ -316,7 +316,6 @@
   "rules": {
     "headingWithTitle": "Reguły dla {{title}}",
     "heading": "Reguły",
-    "thisPage": "ta strona",
     "backToNotion": "← Wróć do Notion",
     "backToPreview": "← Wróć do podglądu",
     "back": "← Wstecz",
