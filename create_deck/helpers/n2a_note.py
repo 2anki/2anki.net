@@ -47,7 +47,7 @@ class N2ANote(Note):
             self.model.model_id,          # mid
             int(note_mod),                 # mod
             -1,                           # usn
-            self._format_tags(),          # TODO tags
+            self._format_tags(),          # tags
             self._format_fields(),        # flds
             self.sort_field,              # sfld
             0,                            # csum, can be ignored
