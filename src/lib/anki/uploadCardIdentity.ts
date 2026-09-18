@@ -102,6 +102,12 @@ export interface StoredUploadIdentity {
   guid: string;
   sourceKeyHash: string;
   fingerprint: string;
+  // The time this identity key's content last changed, in epoch seconds —
+  // null for a row written before #4445 or one whose content has never been
+  // re-observed. Feeds the exported note's Anki mod (see DeckParser) so a
+  // re-upload with unchanged content carries no newer timestamp than what a
+  // user may have already edited locally.
+  contentChangedAt: number | null;
 }
 
 export type UploadIdentityLedger = Record<string, StoredUploadIdentity>;
@@ -109,6 +115,7 @@ export type UploadIdentityLedger = Record<string, StoredUploadIdentity>;
 interface RawLedgerRow {
   guid: string;
   sourcePageId: string | null;
+  contentChangedAt?: number | null;
 }
 
 // Turns the per-owner card_guids rows into the guard's lookup table, keeping
@@ -125,7 +132,12 @@ export function buildUploadIdentityLedger(
     const { sourceKeyHash, fingerprint } = unpackIdentitySource(
       row.sourcePageId
     );
-    ledger[blockId] = { guid: row.guid, sourceKeyHash, fingerprint };
+    ledger[blockId] = {
+      guid: row.guid,
+      sourceKeyHash,
+      fingerprint,
+      contentChangedAt: row.contentChangedAt ?? null,
+    };
   }
   return ledger;
 }
@@ -140,6 +152,12 @@ export interface ResolvedUploadIdentity {
   identityKey: string;
   guid: string;
   decision: UploadIdentityDecision;
+  // Epoch seconds to stamp as this note's Anki mod. Held at the stored value
+  // when the card's fingerprint exactly matches what was last stored (content
+  // unchanged); bumped to `now` in every other case (first sighting, an
+  // in-place answer edit, or a guarded fork) since each of those means the
+  // content a returning user would see actually changed.
+  contentChangedAt: number;
 }
 
 export interface ResolveUploadIdentityGroupParams {
@@ -148,6 +166,7 @@ export interface ResolveUploadIdentityGroupParams {
   keyForOrdinal: (ordinal: number) => string;
   cards: UploadIdentityGroupCard[];
   ledger: UploadIdentityLedger;
+  now: number;
 }
 
 interface IdentityCandidate {
@@ -192,7 +211,7 @@ function identityCandidates(
 export function resolveUploadIdentityGroup(
   params: ResolveUploadIdentityGroupParams
 ): ResolvedUploadIdentity[] {
-  const { owner, sourceKeyHash, keyForOrdinal, cards, ledger } = params;
+  const { owner, sourceKeyHash, keyForOrdinal, cards, ledger, now } = params;
   const candidates = identityCandidates(keyForOrdinal, ledger, cards.length);
   const claimed = new Set<number>();
   const resolved: Array<ResolvedUploadIdentity | undefined> = new Array(
@@ -209,10 +228,12 @@ export function resolveUploadIdentityGroup(
       return;
     }
     claimed.add(match);
+    const stored = candidates[match].stored!;
     resolved[index] = {
       identityKey: candidates[match].key,
-      guid: candidates[match].stored!.guid,
+      guid: stored.guid,
       decision: 'replayed',
+      contentChangedAt: stored.contentChangedAt ?? now,
     };
   });
 
@@ -231,6 +252,7 @@ export function resolveUploadIdentityGroup(
         identityKey: key,
         guid: guidFor(owner, key),
         decision: 'issued',
+        contentChangedAt: now,
       };
       return;
     }
@@ -239,6 +261,7 @@ export function resolveUploadIdentityGroup(
         identityKey: key,
         guid: stored.guid,
         decision: 'replayed',
+        contentChangedAt: now,
       };
       return;
     }
@@ -246,6 +269,7 @@ export function resolveUploadIdentityGroup(
       identityKey: key,
       guid: guidFor(owner, key, card.fingerprint),
       decision: 'guarded',
+      contentChangedAt: now,
     };
   });
 

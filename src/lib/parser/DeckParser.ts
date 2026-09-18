@@ -1500,6 +1500,7 @@ export class DeckParser {
       return;
     }
     const { owner, ledger } = this.uploadIdentity;
+    const now = Math.floor(Date.now() / 1000);
     const groups = new Map<
       string,
       Array<{ card: Note; fingerprint: string }>
@@ -1522,10 +1523,13 @@ export class DeckParser {
         keyForOrdinal: (ordinal) => uploadIdentityKey(members[0].card, ordinal),
         cards: members,
         ledger,
+        now,
       });
       members.forEach(({ card, fingerprint }, index) => {
-        const { identityKey, guid, decision } = resolved[index];
+        const { identityKey, guid, decision, contentChangedAt } =
+          resolved[index];
         card.guid = guid;
+        card.mod = contentChangedAt;
         this.uploadIdentityStats[decision] += 1;
         if (decision === 'guarded') {
           return;
@@ -1541,6 +1545,7 @@ export class DeckParser {
             this.uploadSourceKeyHash,
             fingerprint
           ),
+          contentChangedAt,
         });
       });
     }

@@ -45,12 +45,17 @@ describe('CardGuidLedgerRepository SQL generation', () => {
     expect(calls[0].ignored).toBe(true);
   });
 
-  it('reissue upserts the guid on conflict instead of ignoring it', async () => {
+  it('reissue upserts the guid and content_changed_at on conflict instead of ignoring it', async () => {
     const calls: CapturedInsert[] = [];
     const repo = new CardGuidLedgerRepository(captureDatabase(calls));
 
     await repo.reissue(7, [
-      { blockId: 'block-a', sourcePageId: 'page-1', guid: 'block-guid-a' },
+      {
+        blockId: 'block-a',
+        sourcePageId: 'page-1',
+        guid: 'block-guid-a',
+        contentChangedAt: 1_700_000_000,
+      },
     ]);
 
     expect(calls).toHaveLength(1);
@@ -60,10 +65,15 @@ describe('CardGuidLedgerRepository SQL generation', () => {
         block_id: 'block-a',
         source_page_id: 'page-1',
         guid: 'block-guid-a',
+        content_changed_at: new Date(1_700_000_000 * 1000),
       },
     ]);
     expect(calls[0].conflictColumns).toEqual(['owner', 'block_id']);
-    expect(calls[0].mergedColumns).toEqual(['guid', 'source_page_id']);
+    expect(calls[0].mergedColumns).toEqual([
+      'guid',
+      'source_page_id',
+      'content_changed_at',
+    ]);
     expect(calls[0].ignored).toBe(false);
   });
 
@@ -102,10 +112,20 @@ describe('CardGuidLedgerRepository SQL generation', () => {
     expect(whereNot).toHaveBeenCalledWith('block_id', 'like', 'u:%');
   });
 
-  it('getUploadIdentityForOwner filters u: rows and returns guid + source', async () => {
+  it('getUploadIdentityForOwner filters u: rows and returns guid + source + content_changed_at', async () => {
     const rows = [
-      { block_id: 'u:abc', guid: 'guid-a', source_page_id: 'hash:fp' },
-      { block_id: 'u:def', guid: 'guid-b', source_page_id: null },
+      {
+        block_id: 'u:abc',
+        guid: 'guid-a',
+        source_page_id: 'hash:fp',
+        content_changed_at: new Date(1_700_000_000 * 1000),
+      },
+      {
+        block_id: 'u:def',
+        guid: 'guid-b',
+        source_page_id: null,
+        content_changed_at: null,
+      },
     ];
     let capturedWhere: unknown;
     const captured: unknown[] = [];
@@ -130,8 +150,12 @@ describe('CardGuidLedgerRepository SQL generation', () => {
     expect(capturedWhere).toEqual({ owner: 7 });
     expect(captured[0]).toEqual(['block_id', 'like', 'u:%']);
     expect(identity).toEqual({
-      'u:abc': { guid: 'guid-a', sourcePageId: 'hash:fp' },
-      'u:def': { guid: 'guid-b', sourcePageId: null },
+      'u:abc': {
+        guid: 'guid-a',
+        sourcePageId: 'hash:fp',
+        contentChangedAt: 1_700_000_000,
+      },
+      'u:def': { guid: 'guid-b', sourcePageId: null, contentChangedAt: null },
     });
   });
 
@@ -153,7 +177,13 @@ describe('CardGuidLedgerRepository SQL generation', () => {
       { blockId: 'block-a', sourcePageId: undefined, guid: 'guid-a' },
     ]);
     expect(captured[0]).toEqual([
-      { owner: 7, block_id: 'block-a', source_page_id: null, guid: 'guid-a' },
+      {
+        owner: 7,
+        block_id: 'block-a',
+        source_page_id: null,
+        guid: 'guid-a',
+        content_changed_at: null,
+      },
     ]);
   });
 });
