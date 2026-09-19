@@ -81,7 +81,7 @@ describe('NotionLandingPage', () => {
 
   it('includes ?ref=notion-marketplace in the Pro CTA href', () => {
     renderPage();
-    const unlimitedLink = screen.getByRole('link', { name: /get pro/i });
+    const unlimitedLink = screen.getByRole('link', { name: /^get pro$/i });
     expect(unlimitedLink.getAttribute('href')).toContain(
       'ref=notion-marketplace'
     );

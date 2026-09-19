@@ -71,7 +71,7 @@ const ankiToNotionCopy: LandingCopy = {
     },
     {
       q: 'How big can my deck be?',
-      a: 'Free: 1 000 cards per import. Pro: up to 5,000 cards per import. For very large decks we split across multiple Notion pages automatically.',
+      a: 'Free: 1 000 cards per import. Pro: up to 10,000 notes per import. For very large decks we split across multiple Notion pages automatically.',
     },
   ],
 };

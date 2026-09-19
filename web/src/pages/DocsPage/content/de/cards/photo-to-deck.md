@@ -5,7 +5,7 @@ description: Fotografiere oder lade ein Foto deiner Notizen hoch — Lehrbuchsei
 
 Foto zu Deck nimmt ein einzelnes Bild und schickt es an Claudes Vision-Modell, das den Inhalt liest und Frage-und-Antwort-Karten zurückgibt. Die Seite liegt unter [2anki.net/photo-to-deck](https://2anki.net/photo-to-deck).
 
-**Plan:** Der kostenlose Plan bekommt 5 Fotos pro Monat. Kostenpflichtige Pläne sind unbegrenzt.
+**Plan:** Der kostenlose Plan bekommt 5 Fotos pro Monat. Kostenpflichtige Pläne nutzen KI-Credits.
 
 ## Wann du das nutzt
 

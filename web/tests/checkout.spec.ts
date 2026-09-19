@@ -41,7 +41,7 @@ const routePrices = (
     })
   );
 
-test.describe('Unlimited checkout', () => {
+test.describe('Pro checkout', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('**/api/users/debug/locals**', (route) =>
       route.fulfill({
@@ -87,7 +87,7 @@ test.describe('Unlimited checkout', () => {
     ).toBeVisible();
   });
 
-  test('Get Unlimited starts a monthly checkout by default', async ({
+  test('Get Pro starts a monthly checkout by default', async ({
     page,
   }) => {
     await routePrices(page, v2Prices);
@@ -103,7 +103,7 @@ test.describe('Unlimited checkout', () => {
 
     await page.goto('/pricing');
     await page
-      .getByRole('button', { name: 'Get Unlimited — billed monthly' })
+      .getByRole('button', { name: 'Get Pro — billed monthly' })
       .click();
 
     await expect.poll(() => checkoutBody.interval).toBe('month');
@@ -126,7 +126,7 @@ test.describe('Unlimited checkout', () => {
     await page.goto('/pricing');
     await page.getByRole('radio', { name: /Yearly/ }).click();
     await page
-      .getByRole('button', { name: 'Get Unlimited — billed yearly' })
+      .getByRole('button', { name: 'Get Pro — billed yearly' })
       .click();
 
     await expect.poll(() => checkoutBody.interval).toBe('year');
