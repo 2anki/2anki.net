@@ -45,8 +45,10 @@ export interface PaidValueEventRow {
   createdAt: Date;
 }
 
+type PostgresNumeric = number | string | null;
+
 export interface MedianMinutesRow {
-  median_minutes: number | string | null;
+  median_minutes: PostgresNumeric;
 }
 
 export interface UploadToDownloadRateRow {
@@ -55,9 +57,9 @@ export interface UploadToDownloadRateRow {
 }
 
 export interface ConversionOutcomesRow {
-  succeeded: number | string | null;
-  technical_failed: number | string | null;
-  plan_blocked: number | string | null;
+  succeeded: PostgresNumeric;
+  technical_failed: PostgresNumeric;
+  plan_blocked: PostgresNumeric;
 }
 
 const PAID_CUSTOMER_FILTER =
