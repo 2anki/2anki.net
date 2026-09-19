@@ -75,6 +75,8 @@ import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase
 import { writePdfImageFallbackMarker } from '../infrastracture/adapters/fileConversion/pdfImageFallbackMarker';
 import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
+import { MonthlyLimitError } from '../usecases/users/CheckMonthlyCardLimitUseCase';
+import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import UploadService, { resolveUploadWarning } from './UploadService';
 import {
@@ -4328,5 +4330,212 @@ describe('resolveUploadWarning — AI credits exhausted', () => {
         'This PDF is password-protected.',
       ])
     ).toMatch(/password-protected/);
+  });
+});
+
+describe('UploadService.handleUpload — failure events for the success-rate tile', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'upload-service-test');
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+  });
+
+  beforeEach(() => {
+    MockGeneratePackagesUseCase.mockClear();
+    trackMock.mockClear();
+  });
+
+  function failWith(error: Error) {
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockRejectedValue(error),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+  }
+
+  function buildService(jobRepository: JobRepository = {} as JobRepository) {
+    return new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+  }
+
+  const conversionFailedReasons = () =>
+    trackMock.mock.calls
+      .filter(([name]) => name === 'conversion_failed')
+      .map(([, payload]) => payload.props.reason);
+
+  it.each([
+    [
+      'a parser crash',
+      Object.assign(new Error('parser crashed'), { code: 'PARSER_CRASH' }),
+      'parser_crash',
+    ],
+    [
+      'a worker timeout',
+      Object.assign(new Error('worker timed out'), { code: 'WORKER_TIMEOUT' }),
+      'worker_timeout',
+    ],
+    ['an unclassified error', new Error('something broke'), 'unknown'],
+  ])(
+    'records %s from a synchronous upload as conversion_failed',
+    async (_label, error, reason) => {
+      failWith(error);
+      const req = buildRequest({
+        cookies: { anon_id: 'anon-failed' },
+      } as Partial<express.Request>);
+      const { res } = buildResponse();
+
+      await buildService().handleUpload(req, res);
+
+      expect(trackMock).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          anonymousId: 'anon-failed',
+          userId: null,
+          props: expect.objectContaining({ reason, source: 'upload' }),
+        })
+      );
+    }
+  );
+
+  it('records an unreadable PDF as pdf_unreadable', async () => {
+    failWith(new Error('pdfinfo_failed code=1'));
+    const { res } = buildResponse();
+
+    await buildService().handleUpload(buildRequest(), res);
+
+    expect(conversionFailedReasons()).toEqual(['pdf_unreadable']);
+  });
+
+  it('records an unreadable docx as docx_parse_failed', async () => {
+    failWith(new Error('docx_parse_failed: not a zip'));
+    const { res } = buildResponse();
+
+    await buildService().handleUpload(buildRequest(), res);
+
+    expect(conversionFailedReasons()).toEqual(['docx_parse_failed']);
+  });
+
+  it.each([
+    [
+      'a client that hung up mid upload',
+      Object.assign(new Error('request aborted'), {
+        type: 'entity.parse.failed',
+      }),
+    ],
+    [
+      'a file with no content',
+      Object.assign(new Error('nothing to convert'), {
+        name: 'EmptyContentError',
+      }),
+    ],
+  ])('does not count %s as a technical failure', async (_label, error) => {
+    failWith(error);
+    const { res } = buildResponse();
+
+    await buildService().handleUpload(buildRequest(), res);
+
+    expect(conversionFailedReasons()).toEqual([]);
+  });
+
+  describe('asynchronous AI uploads', () => {
+    function buildJobRepo(): JobRepository {
+      return {
+        create: jest.fn().mockResolvedValue(undefined),
+        updateJobStatus: jest.fn().mockResolvedValue(undefined),
+      } as unknown as JobRepository;
+    }
+
+    function buildAiRequest() {
+      return buildRequest({
+        files: [
+          {
+            originalname: 'chapter.pdf',
+            mimetype: 'application/pdf',
+            size: 10,
+            buffer: Buffer.from('bytes'),
+          },
+        ],
+        body: { 'claude-ai-flashcards': 'true' },
+      } as unknown as Partial<express.Request>);
+    }
+
+    function buildPayingResponse() {
+      const built = buildResponse();
+      (built.res.locals as Record<string, unknown>).owner = 42;
+      (built.res.locals as Record<string, unknown>).patreon = true;
+      return built;
+    }
+
+    const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+    it('records an unexpected background failure for the signed-in owner', async () => {
+      failWith(
+        Object.assign(new Error('parser crashed'), { code: 'PARSER_CRASH' })
+      );
+      const { res } = buildPayingResponse();
+
+      await buildService(buildJobRepo()).handleUpload(buildAiRequest(), res);
+      await settle();
+
+      expect(trackMock).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          userId: 42,
+          props: expect.objectContaining({ reason: 'parser_crash' }),
+        })
+      );
+    });
+
+    it('does not count an empty deck as a technical failure', async () => {
+      failWith(new EmptyDeckError());
+      const { res } = buildPayingResponse();
+
+      await buildService(buildJobRepo()).handleUpload(buildAiRequest(), res);
+      await settle();
+
+      expect(conversionFailedReasons()).toEqual([]);
+    });
+
+    it('records a monthly limit hit in the background as a plan block, not a technical failure', async () => {
+      failWith(new MonthlyLimitError(105, 100, 20, '2026-10-01'));
+      const { res } = buildPayingResponse();
+
+      await buildService(buildJobRepo()).handleUpload(buildAiRequest(), res);
+      await settle();
+
+      expect(conversionFailedReasons()).toEqual(['monthly_limit']);
+    });
+
+    it('records a credits error that lost its class across the worker boundary as ai_credits_exhausted', async () => {
+      failWith(
+        Object.assign(new Error("You're out of AI credits."), {
+          name: 'AiCreditsExhaustedError',
+        })
+      );
+      const { res } = buildPayingResponse();
+
+      await buildService(buildJobRepo()).handleUpload(buildAiRequest(), res);
+      await settle();
+
+      expect(conversionFailedReasons()).toEqual(['ai_credits_exhausted']);
+    });
+  });
+
+  it('adds no second event for a credits error the synchronous path already tracked', async () => {
+    failWith(new AiCreditsExhaustedError());
+    const { res } = buildResponse();
+
+    await buildService().handleUpload(buildRequest(), res);
+
+    expect(conversionFailedReasons()).toEqual([]);
   });
 });

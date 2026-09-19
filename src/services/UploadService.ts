@@ -74,6 +74,7 @@ import type {
 import type { ConversionEngine } from '../lib/parser/conversionEngine';
 import {
   MARKDOWN_LIKELY_LOSSY_REASON,
+  jobFailureReasonCode,
   jobFailureReasonFromError,
 } from '../usecases/jobs/jobFailureReason';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
@@ -443,6 +444,20 @@ function resolveAsyncFailureReason(err: unknown, jobId: string): string {
   // driver text reached the downloads page verbatim — a user was once shown an
   // Anthropic SDK error complete with a link to its GitHub repo.
   return jobFailureReasonFromError(err, jobId);
+}
+
+function uploadFailureReason(err: unknown): string {
+  if (err instanceof MonthlyLimitError) {
+    return 'monthly_limit';
+  }
+  if (
+    err instanceof Error &&
+    (err.name === 'AiCreditsExhaustedError' ||
+      err.message.includes("You're out of AI credits"))
+  ) {
+    return 'ai_credits_exhausted';
+  }
+  return jobFailureReasonCode(err);
 }
 
 function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
@@ -1157,6 +1172,7 @@ class UploadService {
         err instanceof Error &&
         /^pdfinfo_(failed|spawn_failed)/.test(err.message)
       ) {
+        this.trackUploadFailed(req, res, 'pdf_unreadable');
         return res.status(400).json({
           code: 'pdf_processing_failed',
           message:
@@ -1166,12 +1182,16 @@ class UploadService {
         err instanceof Error &&
         /^docx_parse_failed/.test(err.message)
       ) {
+        this.trackUploadFailed(req, res, 'docx_parse_failed');
         return res.status(400).json({
           code: 'docx_processing_failed',
           message:
             "We couldn't read this .docx. It may have been renamed from another format. Try re-exporting it from Word or Google Docs.",
         });
       } else {
+        if (!isExpectedClientFault(err as Error)) {
+          this.trackUploadFailed(req, res, uploadFailureReason(err));
+        }
         return ErrorHandler(res, req, err as Error);
       }
     }
@@ -1358,6 +1378,7 @@ class UploadService {
             message,
             err,
           });
+          this.trackUploadFailed(req, res, uploadFailureReason(err));
         }
         const reason = resolveAsyncFailureReason(err, ws.id);
         await this.jobRepository.updateJobStatus(
@@ -1902,6 +1923,19 @@ class UploadService {
   private resolvePersistedSource(req: express.Request): UploadSource | null {
     const body = req.body as Record<string, unknown> | undefined;
     return validateUploadSource(body?.source);
+  }
+
+  private trackUploadFailed(
+    req: express.Request,
+    res: express.Response,
+    reason: string
+  ): void {
+    const owner = getOwner(res);
+    track('conversion_failed', {
+      userId: owner != null ? Number(owner) : null,
+      anonymousId: this.resolveAnonId(req),
+      props: { ...this.baseFunnelProps(req), reason },
+    });
   }
 
   private baseFunnelProps(req: express.Request): Record<string, unknown> {
