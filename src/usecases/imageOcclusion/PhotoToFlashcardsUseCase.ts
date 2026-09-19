@@ -294,7 +294,7 @@ function makeFreeQuotaReachedError(
   limit: number;
 } {
   const err = new Error(
-    `Free plan is ${limit} photos per month. You've used ${used}. Upgrade for unlimited.`
+    `Free plan is ${limit} photos per month. You've used ${used}. Paid plans include AI credits for more.`
   ) as Error & { status: number; used: number; limit: number };
   err.status = 429;
   err.used = used;

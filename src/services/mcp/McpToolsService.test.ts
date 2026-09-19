@@ -1166,7 +1166,9 @@ describe('McpToolsService.photoToDeck', () => {
 
   it('surfaces a quota-exceeded error from the vision use case', async () => {
     const quotaError = Object.assign(
-      new Error('Free plan is 5 photos per month. Upgrade for unlimited.'),
+      new Error(
+        'Free plan is 5 photos per month. Paid plans include AI credits for more.'
+      ),
       { status: 429 }
     );
     const generateCards = jest.fn(async () => {

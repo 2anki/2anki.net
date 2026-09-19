@@ -3865,7 +3865,7 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
   it('surfaces the vision quota error with its status instead of a silent failure', async () => {
     const quotaError = Object.assign(
       new Error(
-        "Free plan is 5 photos per month. You've used 5. Upgrade for unlimited."
+        "Free plan is 5 photos per month. You've used 5. Paid plans include AI credits for more."
       ),
       { status: 429, used: 5, limit: 5 }
     );

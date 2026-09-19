@@ -148,6 +148,18 @@ describe('PhotoToFlashcardsUseCase', () => {
       expect(mockMessageCreate).not.toHaveBeenCalled();
     });
 
+    it('names the AI-credit path in the quota message, never "unlimited"', async () => {
+      const events = makeEventsStub(FREE_PHOTO_QUOTA_PER_MONTH);
+      const useCase = new PhotoToFlashcardsUseCase(events);
+      const error = (await useCase
+        .execute({ ...BASE_INPUT, isPaying: false })
+        .catch((e) => e)) as Error;
+      expect(error.message).toBe(
+        "Free plan is 5 photos per month. You've used 5. Paid plans include AI credits for more."
+      );
+      expect(error.message).not.toMatch(/unlimited/i);
+    });
+
     it('lets a free user through when under the limit', async () => {
       const events = makeEventsStub(FREE_PHOTO_QUOTA_PER_MONTH - 1);
       const useCase = new PhotoToFlashcardsUseCase(events);
