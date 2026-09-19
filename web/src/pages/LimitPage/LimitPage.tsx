@@ -154,11 +154,13 @@ export function LimitPage() {
   return (
     <div className={styles.page}>
       <Helmet>
-        <title>You reached your monthly limit | 2anki</title>
+        <title>{t('limit.pageTitle')}</title>
       </Helmet>
 
       <header className={styles.header}>
-        <h1 className={styles.heading}>You reached 100 cards this month</h1>
+        <h1 className={styles.heading}>
+          {t('limit.headline', { limit: FREE_MONTHLY_CARDS })}
+        </h1>
         <p className={styles.subheading}>{t('limit.upgradeSubheading')}</p>
       </header>
 

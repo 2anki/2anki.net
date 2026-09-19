@@ -18,21 +18,21 @@ function truncateDeckName(name: string): string {
 }
 
 function RevokedPage() {
+  const { t } = useTranslation('previews');
   return (
     <div className={styles.errorPage}>
-      <p className={styles.errorTitle}>This link is no longer active.</p>
-      <p className={styles.errorSub}>
-        Ask them for a new one, or make your own deck on 2anki.net.
-      </p>
+      <p className={styles.errorTitle}>{t('sharedDeck.linkInactive')}</p>
+      <p className={styles.errorSub}>{t('sharedDeck.linkInactiveHint')}</p>
     </div>
   );
 }
 
 function DeletedPage() {
+  const { t } = useTranslation('previews');
   return (
     <div className={styles.errorPage}>
-      <p className={styles.errorTitle}>This deck is no longer available.</p>
-      <p className={styles.errorSub}>Make your own deck on 2anki.net.</p>
+      <p className={styles.errorTitle}>{t('sharedDeck.deckUnavailable')}</p>
+      <p className={styles.errorSub}>{t('sharedDeck.deckUnavailableHint')}</p>
     </div>
   );
 }
@@ -136,8 +136,8 @@ export default function SharedDeckPage() {
             {cards.length === 0 && !stream.isLoading && (
               <EmptyState
                 icon="🃏"
-                title="Empty deck"
-                description="This deck has no cards to preview."
+                title={t('sharedDeck.emptyTitle')}
+                description={t('sharedDeck.emptyDescription')}
               />
             )}
             {displayCards.map((card) => (

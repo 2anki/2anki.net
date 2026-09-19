@@ -27,7 +27,8 @@
     "contact": "Kontakt",
     "privacy": "Datenschutz",
     "terms": "Nutzungsbedingungen",
-    "about": "Über uns"
+    "about": "Über uns",
+    "cardsThisMonth": "{{limit}} Karten diesen Monat"
   },
   "account": {
     "title": "Konto",
@@ -181,7 +182,28 @@
       "liveLockedPdf": "Dieses PDF ist passwortgeschützt. Gib das Passwort ein, um fortzufahren.",
       "pdfPasswordAria": "PDF-Passwort",
       "changeSourceAria": "Upload-Quelle ändern",
-      "uploadFileAria": "Datei hochladen"
+      "uploadFileAria": "Datei hochladen",
+      "mcqPreviewHeading": "Vorschau",
+      "mcqAnswerNote": "Öffne deinen heruntergeladenen Stapel in Anki, um die vollständige Frage und die hervorgehobene richtige Antwort zu sehen.",
+      "mcqSummary_one": "Dein Stapel enthält {{count}} Multiple-Choice-Karte. Jede Karte zeigt eine Frage mit beschrifteten Optionen — tippe in Anki auf die richtige, um die Antwort aufzudecken.",
+      "mcqSummary_other": "Dein Stapel enthält {{count}} Multiple-Choice-Karten. Jede Karte zeigt eine Frage mit beschrifteten Optionen — tippe in Anki auf die richtige, um die Antwort aufzudecken.",
+      "mcqSkipped": "{{count}} übersprungen, keine Antwort markiert",
+      "mcqSkippedHint": "Markiere die richtige Option in Notion, damit diese als Multiple Choice dargestellt werden. Nutze ein Notion-Kontrollkästchen oder setze den richtigen Aufzählungspunkt fett.",
+      "emptyMarkdownLossy": "Notion-Markdown-Exporte flachen Toggles ab — exportiere diese Seite erneut als HTML, dann werden die Toggles zu Karteikarten.",
+      "emptyGoogleDoc": "Dein Doc wurde konvertiert, aber wir haben nicht die Aufzählungsstruktur gefunden, aus der wir Karten machen. Strukturiere dein Doc so, dass jede Frage ein Aufzählungspunkt der obersten Ebene ist und die Antwort eingerückt darunter steht, und versuche es dann erneut. <exampleLink>Ein funktionierendes Beispiel ansehen</exampleLink>",
+      "emptySheet": "Sheets brauchen eine Spalte mit Fragen und eine Spalte mit Antworten. Prüfe, ob dein Sheet mindestens zwei Spalten hat, und versuche es dann erneut.",
+      "emptySlides": "Slides brauchen pro Folie einen Titel und Aufzählungspunkte, damit Karten entstehen. Füge deinen Folien Titel und Aufzählungspunkte hinzu und versuche es dann erneut.",
+      "emptyTextFile": "Keine Karten in dieser Datei. Schreibe bei einer Textdatei eine Karte pro Zeile als Frage - Antwort oder Frage = Antwort, trenne beides mit einem Tabulator, oder nutze eine Aufzählungsliste. Siehe <problemsLink>häufige Probleme</problemsLink> für die Formate, die funktionieren.",
+      "lockedBadge": "Gesperrt",
+      "lockedHeadline": "Dieses PDF ist passwortgeschützt",
+      "passwordPlaceholder": "Passwort eingeben",
+      "unlock": "Entsperren",
+      "unlockFailed": "Damit ließ sich die Datei nicht öffnen. Prüfe auf Tippfehler und versuche es erneut.",
+      "lockedHint": "Immer noch nichts? Manche PDFs haben einen Besitzerschutz, der hier nicht eingegeben werden kann — öffne die Datei in Preview oder Adobe Reader, speichere eine Kopie und lade diese hoch.",
+      "skipFile": "Diese Datei überspringen",
+      "askClaude": "Claude zu dieser Datei fragen",
+      "readErrorTitle": "Beim Lesen dieser Datei ist etwas schiefgelaufen.",
+      "readErrorDetail": "Versuch es erneut oder sende die Datei an support@2anki.net, damit wir den Parser reparieren können."
     },
     "page": {
       "title": "Konvertiere deine Notizen",
@@ -495,7 +517,8 @@
       "blocksSkipped_one": "{{count}} Block übersprungen",
       "blocksSkipped_other": "{{count}} Blöcke übersprungen",
       "structureGuessed": "Struktur geraten",
-      "columnsGuessed": "Spalten geraten"
+      "columnsGuessed": "Spalten geraten",
+      "sharedTooltip": "Geteilt — klicken, um die Vorschau zu öffnen"
     },
     "done": "Fertig",
     "openInNotion": "In Notion öffnen",
@@ -772,5 +795,8 @@
       "clozePlaceholder": "Standard: n2a-cloze",
       "inputPlaceholder": "Standard: n2a-input"
     }
+  },
+  "favoritesPage": {
+    "subtitle": "Seiten, die du für schnellen Zugriff mit einem Stern markiert hast."
   }
 }

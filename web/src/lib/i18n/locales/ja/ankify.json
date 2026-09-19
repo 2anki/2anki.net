@@ -26,7 +26,8 @@
     "notConnectedOpenAnki": "Anki が接続されていません。お使いのパソコンで Anki を開いてから、もう一度お試しください。",
     "notConnected": "Anki が接続されていません。",
     "noDecks": "まだ復習するデッキがありません。Notion ページを同期してカードを作り始めましょう。",
-    "pickDeck": "デッキを選ぶと、Anki を開かずに期限切れや新規のカードを学習できます。"
+    "pickDeck": "デッキを選ぶと、Anki を開かずに期限切れや新規のカードを学習できます。",
+    "showQuestion": "質問を表示"
   },
   "subscriptions": {
     "tabsLabel": "デッキ",

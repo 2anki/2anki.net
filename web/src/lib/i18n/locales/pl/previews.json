@@ -136,7 +136,13 @@
     "previewCap": "Wyświetlanie {{shown}} z {{total}} kart",
     "makeYourOwn": "Stwórz własną talię",
     "download": "Pobierz talię (.apkg)",
-    "valueLine": "2anki zamienia Twoje strony Notion, PDFs i notatki w talie Anki. Zacznij za darmo."
+    "valueLine": "2anki zamienia Twoje strony Notion, PDFs i notatki w talie Anki. Zacznij za darmo.",
+    "linkInactive": "Ten link nie jest już aktywny.",
+    "linkInactiveHint": "Poproś o nowy albo utwórz własną talię na 2anki.net.",
+    "deckUnavailable": "Ta talia nie jest już dostępna.",
+    "deckUnavailableHint": "Utwórz własną talię na 2anki.net.",
+    "emptyTitle": "Pusta talia",
+    "emptyDescription": "Ta talia nie ma kart do podglądu."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

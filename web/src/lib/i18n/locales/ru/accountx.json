@@ -108,7 +108,9 @@
     "benefitCancel": "Отмена в любой момент",
     "upgradeToUnlimited": "Перейти на Unlimited",
     "checkoutError": "Не удалось начать оплату. Попробуй ещё раз или напиши на support@2anki.net.",
-    "backToUpload": "Назад к загрузке"
+    "backToUpload": "Назад к загрузке",
+    "headline": "Ты достиг {{limit}} карточек в этом месяце",
+    "pageTitle": "Ты достиг месячного лимита | 2anki"
   },
   "emailChange": {
     "toggle": "Изменить адрес электронной почты",

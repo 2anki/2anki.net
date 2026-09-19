@@ -27,7 +27,8 @@
     "contact": "Contact",
     "privacy": "Privacy",
     "terms": "Terms",
-    "about": "About"
+    "about": "About",
+    "cardsThisMonth": "{{limit}} cards this month"
   },
   "account": {
     "title": "Account",
@@ -181,7 +182,28 @@
       "liveLockedPdf": "This PDF is password-protected. Enter the password to continue.",
       "pdfPasswordAria": "PDF password",
       "changeSourceAria": "Change upload source",
-      "uploadFileAria": "Upload file"
+      "uploadFileAria": "Upload file",
+      "mcqPreviewHeading": "Preview",
+      "mcqAnswerNote": "Open your downloaded deck in Anki to see the full question and correct answer highlighted.",
+      "mcqSummary_one": "Your deck contains {{count}} multiple-choice card. Each card shows a question stem with labelled options — tap the correct one in Anki to reveal the answer.",
+      "mcqSummary_other": "Your deck contains {{count}} multiple-choice cards. Each card shows a question stem with labelled options — tap the correct one in Anki to reveal the answer.",
+      "mcqSkipped": "{{count}} skipped, no answer marked",
+      "mcqSkippedHint": "Mark the correct option in Notion to render these as multiple choice. Use a Notion checkbox or bold the correct bullet.",
+      "emptyMarkdownLossy": "Notion Markdown exports flatten toggles — re-export this page as HTML and the toggles become flashcards.",
+      "emptyGoogleDoc": "Your Doc converted, but we didn't see the bullet shape we turn into cards. Restructure your Doc so each question is a top-level bullet with its answer indented underneath, then try again. <exampleLink>See a working example</exampleLink>",
+      "emptySheet": "Sheets need a column of questions and a column of answers. Make sure your Sheet has at least two columns, then try again.",
+      "emptySlides": "Slides need a title and bullets per slide to produce cards. Add titles and bullet points to your slides, then try again.",
+      "emptyTextFile": "No cards in this file. For a text file, put one card per line as question - answer or question = answer, separate the two with a tab, or use a bullet list. See <problemsLink>common problems</problemsLink> for the formats that work.",
+      "lockedBadge": "Locked",
+      "lockedHeadline": "This PDF is password-protected",
+      "passwordPlaceholder": "Enter password",
+      "unlock": "Unlock",
+      "unlockFailed": "That didn't open the file. Check for typos and try again.",
+      "lockedHint": "Still stuck? Some PDFs have owner-only protection that can't be entered here — open the file in Preview or Adobe Reader, save a copy, and upload that.",
+      "skipFile": "Skip this file",
+      "askClaude": "Ask Claude about this file",
+      "readErrorTitle": "Something broke while reading this file.",
+      "readErrorDetail": "Try again, or send the file to support@2anki.net so we can fix the parser."
     },
     "page": {
       "title": "Convert your notes",
@@ -495,7 +517,8 @@
       "blocksSkipped_one": "{{count}} block skipped",
       "blocksSkipped_other": "{{count}} blocks skipped",
       "structureGuessed": "Structure guessed",
-      "columnsGuessed": "Columns guessed"
+      "columnsGuessed": "Columns guessed",
+      "sharedTooltip": "Shared — click to open preview"
     },
     "done": "Done",
     "openInNotion": "Open in Notion",
@@ -772,5 +795,8 @@
       "clozePlaceholder": "Defaults to n2a-cloze",
       "inputPlaceholder": "Defaults to n2a-input"
     }
+  },
+  "favoritesPage": {
+    "subtitle": "Pages you've starred for quick access."
   }
 }

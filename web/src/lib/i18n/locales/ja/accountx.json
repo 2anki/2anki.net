@@ -102,7 +102,9 @@
     "benefitCancel": "いつでもキャンセル可能",
     "upgradeToUnlimited": "Unlimited にアップグレード",
     "checkoutError": "チェックアウトを開始できませんでした。もう一度お試しいただくか、support@2anki.net までメールしてください。",
-    "backToUpload": "アップロードに戻る"
+    "backToUpload": "アップロードに戻る",
+    "headline": "今月のカード {{limit}} 枚に達しました",
+    "pageTitle": "今月の上限に達しました | 2anki"
   },
   "emailChange": {
     "toggle": "メールアドレスを変更",

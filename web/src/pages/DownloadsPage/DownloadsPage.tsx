@@ -873,7 +873,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                       marginLeft: '0.5rem',
                                       textDecoration: 'none',
                                     }}
-                                    title="Shared — click to open preview"
+                                    title={t('downloads.badge.sharedTooltip')}
                                   >
                                     {t('downloads.badge.shared')}
                                   </Link>

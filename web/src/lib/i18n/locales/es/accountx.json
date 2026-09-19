@@ -104,7 +104,9 @@
     "benefitCancel": "Cancela cuando quieras",
     "upgradeToUnlimited": "Cambiar a Unlimited",
     "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo o escribe a support@2anki.net.",
-    "backToUpload": "Volver a la subida"
+    "backToUpload": "Volver a la subida",
+    "headline": "Has alcanzado {{limit}} tarjetas este mes",
+    "pageTitle": "Has alcanzado tu límite mensual | 2anki"
   },
   "emailChange": {
     "toggle": "Cambiar correo",

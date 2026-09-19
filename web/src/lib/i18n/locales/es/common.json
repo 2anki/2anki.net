@@ -27,7 +27,8 @@
     "contact": "Contacto",
     "privacy": "Privacidad",
     "terms": "Términos",
-    "about": "Acerca de"
+    "about": "Acerca de",
+    "cardsThisMonth": "{{limit}} tarjetas este mes"
   },
   "account": {
     "title": "Cuenta",
@@ -181,7 +182,28 @@
       "liveLockedPdf": "Este PDF está protegido con contraseña. Introduce la contraseña para continuar.",
       "pdfPasswordAria": "Contraseña del PDF",
       "changeSourceAria": "Cambiar origen de subida",
-      "uploadFileAria": "Subir archivo"
+      "uploadFileAria": "Subir archivo",
+      "mcqPreviewHeading": "Vista previa",
+      "mcqAnswerNote": "Abre tu mazo descargado en Anki para ver la pregunta completa y la respuesta correcta resaltada.",
+      "mcqSummary_one": "Tu mazo contiene {{count}} tarjeta de opción múltiple. Cada tarjeta muestra el enunciado de una pregunta con opciones etiquetadas — toca la correcta en Anki para ver la respuesta.",
+      "mcqSummary_other": "Tu mazo contiene {{count}} tarjetas de opción múltiple. Cada tarjeta muestra el enunciado de una pregunta con opciones etiquetadas — toca la correcta en Anki para ver la respuesta.",
+      "mcqSkipped": "Omitidas: {{count}}, sin respuesta marcada",
+      "mcqSkippedHint": "Marca la opción correcta en Notion para que se conviertan en opción múltiple. Usa una casilla de Notion o pon en negrita la viñeta correcta.",
+      "emptyMarkdownLossy": "Las exportaciones a Markdown de Notion aplanan los toggles — vuelve a exportar esta página como HTML y los toggles se convierten en tarjetas.",
+      "emptyGoogleDoc": "Tu Doc se convirtió, pero no vimos el formato de viñetas que convertimos en tarjetas. Reorganiza tu Doc para que cada pregunta sea una viñeta de nivel superior con su respuesta con sangría debajo e inténtalo de nuevo. <exampleLink>Ver un ejemplo que funciona</exampleLink>",
+      "emptySheet": "Los Sheets necesitan una columna de preguntas y una columna de respuestas. Asegúrate de que tu Sheet tenga al menos dos columnas e inténtalo de nuevo.",
+      "emptySlides": "Slides necesita un título y viñetas en cada diapositiva para crear tarjetas. Añade títulos y viñetas a tus diapositivas e inténtalo de nuevo.",
+      "emptyTextFile": "No hay tarjetas en este archivo. En un archivo de texto, pon una tarjeta por línea como pregunta - respuesta o pregunta = respuesta, separa las dos con un tabulador, o usa una lista con viñetas. Consulta los <problemsLink>problemas habituales</problemsLink> para ver los formatos que funcionan.",
+      "lockedBadge": "Bloqueado",
+      "lockedHeadline": "Este PDF está protegido con contraseña",
+      "passwordPlaceholder": "Introduce la contraseña",
+      "unlock": "Desbloquear",
+      "unlockFailed": "Eso no abrió el archivo. Comprueba que no haya errores de escritura e inténtalo de nuevo.",
+      "lockedHint": "¿Sigue sin funcionar? Algunos PDF tienen una protección de propietario que no se puede introducir aquí — abre el archivo en Preview o Adobe Reader, guarda una copia y sube esa copia.",
+      "skipFile": "Omitir este archivo",
+      "askClaude": "Preguntar a Claude sobre este archivo",
+      "readErrorTitle": "Algo falló al leer este archivo.",
+      "readErrorDetail": "Inténtalo de nuevo o envía el archivo a support@2anki.net para que podamos arreglar el analizador."
     },
     "page": {
       "title": "Convierte tus notas",
@@ -495,7 +517,8 @@
       "blocksSkipped_one": "{{count}} bloque omitido",
       "blocksSkipped_other": "{{count}} bloques omitidos",
       "structureGuessed": "Estructura deducida",
-      "columnsGuessed": "Columnas deducidas"
+      "columnsGuessed": "Columnas deducidas",
+      "sharedTooltip": "Compartido — haz clic para abrir la vista previa"
     },
     "done": "Listo",
     "openInNotion": "Abrir en Notion",
@@ -772,5 +795,8 @@
       "clozePlaceholder": "Por defecto n2a-cloze",
       "inputPlaceholder": "Por defecto n2a-input"
     }
+  },
+  "favoritesPage": {
+    "subtitle": "Páginas que has marcado como favoritas para acceder rápido."
   }
 }

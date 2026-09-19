@@ -104,7 +104,9 @@
     "benefitCancel": "Annulez à tout moment",
     "upgradeToUnlimited": "Passer à Unlimited",
     "checkoutError": "Impossible de démarrer le paiement. Réessayez ou écrivez à support@2anki.net.",
-    "backToUpload": "Retour à l'import"
+    "backToUpload": "Retour à l'import",
+    "headline": "Tu as atteint {{limit}} cartes ce mois-ci",
+    "pageTitle": "Tu as atteint ta limite mensuelle | 2anki"
   },
   "emailChange": {
     "toggle": "Changer d'e-mail",

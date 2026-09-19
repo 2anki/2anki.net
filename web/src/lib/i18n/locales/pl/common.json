@@ -27,7 +27,8 @@
     "contact": "Kontakt",
     "privacy": "Prywatność",
     "terms": "Warunki",
-    "about": "O nas"
+    "about": "O nas",
+    "cardsThisMonth": "{{limit}} kart w tym miesiącu"
   },
   "account": {
     "title": "Konto",
@@ -189,7 +190,30 @@
       "liveLockedPdf": "Ten PDF jest chroniony hasłem. Wprowadź hasło, aby kontynuować.",
       "pdfPasswordAria": "Hasło do PDF",
       "changeSourceAria": "Zmień źródło przesyłania",
-      "uploadFileAria": "Prześlij plik"
+      "uploadFileAria": "Prześlij plik",
+      "mcqPreviewHeading": "Podgląd",
+      "mcqAnswerNote": "Otwórz pobraną talię w Anki, aby zobaczyć pełne pytanie i wyróżnioną poprawną odpowiedź.",
+      "mcqSummary_one": "Twoja talia zawiera {{count}} kartę wielokrotnego wyboru. Każda karta pokazuje treść pytania z oznaczonymi opcjami — dotknij poprawnej w Anki, aby zobaczyć odpowiedź.",
+      "mcqSummary_few": "Twoja talia zawiera {{count}} karty wielokrotnego wyboru. Każda karta pokazuje treść pytania z oznaczonymi opcjami — dotknij poprawnej w Anki, aby zobaczyć odpowiedź.",
+      "mcqSummary_many": "Twoja talia zawiera {{count}} kart wielokrotnego wyboru. Każda karta pokazuje treść pytania z oznaczonymi opcjami — dotknij poprawnej w Anki, aby zobaczyć odpowiedź.",
+      "mcqSummary_other": "Twoja talia zawiera {{count}} karty wielokrotnego wyboru. Każda karta pokazuje treść pytania z oznaczonymi opcjami — dotknij poprawnej w Anki, aby zobaczyć odpowiedź.",
+      "mcqSkipped": "{{count}} pominięto, nie oznaczono odpowiedzi",
+      "mcqSkippedHint": "Oznacz poprawną opcję w Notion, aby te karty były wielokrotnego wyboru. Użyj pola wyboru w Notion lub pogrub poprawny punkt.",
+      "emptyMarkdownLossy": "Eksport Markdown z Notion spłaszcza listy rozwijane — wyeksportuj tę stronę ponownie jako HTML, a listy rozwijane staną się fiszkami.",
+      "emptyGoogleDoc": "Twój dokument został przekonwertowany, ale nie znaleźliśmy układu punktów, który zamieniamy w karty. Uporządkuj dokument tak, aby każde pytanie było punktem najwyższego poziomu, a jego odpowiedź wcięta pod spodem, i spróbuj ponownie. <exampleLink>Zobacz działający przykład</exampleLink>",
+      "emptySheet": "Arkusz potrzebuje kolumny z pytaniami i kolumny z odpowiedziami. Upewnij się, że Twój arkusz ma co najmniej dwie kolumny, i spróbuj ponownie.",
+      "emptySlides": "Prezentacja potrzebuje tytułu i punktów na każdym slajdzie, aby powstały karty. Dodaj tytuły i punkty do slajdów i spróbuj ponownie.",
+      "emptyTextFile": "W tym pliku nie ma kart. W pliku tekstowym umieść jedną kartę w wierszu jako pytanie - odpowiedź lub pytanie = odpowiedź, oddziel obie części tabulatorem albo użyj listy wypunktowanej. Zobacz <problemsLink>typowe problemy</problemsLink>, aby poznać działające formaty.",
+      "lockedBadge": "Zablokowany",
+      "lockedHeadline": "Ten PDF jest chroniony hasłem",
+      "passwordPlaceholder": "Wprowadź hasło",
+      "unlock": "Odblokuj",
+      "unlockFailed": "To hasło nie otworzyło pliku. Sprawdź literówki i spróbuj ponownie.",
+      "lockedHint": "Nadal nie działa? Niektóre pliki PDF mają ochronę tylko dla właściciela, której nie da się tu wpisać — otwórz plik w Preview lub Adobe Reader, zapisz kopię i prześlij ją.",
+      "skipFile": "Pomiń ten plik",
+      "askClaude": "Zapytaj Claude o ten plik",
+      "readErrorTitle": "Coś się zepsuło przy odczytywaniu tego pliku.",
+      "readErrorDetail": "Spróbuj ponownie albo wyślij plik na support@2anki.net, żebyśmy mogli naprawić parser."
     },
     "page": {
       "title": "Przekształć swoje notatki",
@@ -509,7 +533,8 @@
       "blocksSkipped_many": "Pominięto {{count}} bloków",
       "blocksSkipped_other": "Pominięto {{count}} bloku",
       "structureGuessed": "Odgadnięto strukturę",
-      "columnsGuessed": "Odgadnięto kolumny"
+      "columnsGuessed": "Odgadnięto kolumny",
+      "sharedTooltip": "Udostępnione — kliknij, aby otworzyć podgląd"
     },
     "done": "Gotowe",
     "openInNotion": "Otwórz w Notion",
@@ -788,5 +813,8 @@
       "clozePlaceholder": "Domyślnie n2a-cloze",
       "inputPlaceholder": "Domyślnie n2a-input"
     }
+  },
+  "favoritesPage": {
+    "subtitle": "Strony oznaczone gwiazdką, do szybkiego dostępu."
   }
 }

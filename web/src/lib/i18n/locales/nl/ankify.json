@@ -27,7 +27,8 @@
     "notConnectedOpenAnki": "Anki is niet verbonden. Open Anki op je computer en probeer het opnieuw.",
     "notConnected": "Anki is niet verbonden.",
     "noDecks": "Nog geen decks om te herhalen. Sync een Notion-pagina om kaarten te bouwen.",
-    "pickDeck": "Kies een deck om de te herhalen en nieuwe kaarten te leren zonder Anki te openen."
+    "pickDeck": "Kies een deck om de te herhalen en nieuwe kaarten te leren zonder Anki te openen.",
+    "showQuestion": "Toon vraag"
   },
   "subscriptions": {
     "tabsLabel": "Decks",

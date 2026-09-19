@@ -114,7 +114,13 @@
     "previewCap": "Showing {{shown}} of {{total}} cards",
     "makeYourOwn": "Make your own deck",
     "download": "Download deck (.apkg)",
-    "valueLine": "2anki turns your Notion pages, PDFs, and notes into Anki decks. Free to start."
+    "valueLine": "2anki turns your Notion pages, PDFs, and notes into Anki decks. Free to start.",
+    "linkInactive": "This link is no longer active.",
+    "linkInactiveHint": "Ask them for a new one, or make your own deck on 2anki.net.",
+    "deckUnavailable": "This deck is no longer available.",
+    "deckUnavailableHint": "Make your own deck on 2anki.net.",
+    "emptyTitle": "Empty deck",
+    "emptyDescription": "This deck has no cards to preview."
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}} ({{side}})",

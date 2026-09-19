@@ -103,7 +103,13 @@
     "previewCap": "{{total}}枚中{{shown}}枚のカードを表示",
     "makeYourOwn": "自分のデッキを作る",
     "download": "デッキをダウンロード（.apkg）",
-    "valueLine": "2ankiはあなたのNotionページ、PDFs、メモをAnkiデッキに変換します。無料で始められます。"
+    "valueLine": "2ankiはあなたのNotionページ、PDFs、メモをAnkiデッキに変換します。無料で始められます。",
+    "linkInactive": "このリンクはもう有効ではありません。",
+    "linkInactiveHint": "相手に新しいリンクをもらうか、2anki.net で自分のデッキを作ってください。",
+    "deckUnavailable": "このデッキは利用できなくなりました。",
+    "deckUnavailableHint": "2anki.net で自分のデッキを作ってください。",
+    "emptyTitle": "空のデッキ",
+    "emptyDescription": "このデッキにはプレビューするカードがありません。"
   },
   "card": {
     "frameTitle": "{{deck}} / {{template}}（{{side}}）",
