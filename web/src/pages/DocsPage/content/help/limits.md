@@ -60,7 +60,7 @@ Deleting a map frees a slot right away — there's no monthly window. See [Mind 
 
 ## Photo to deck
 
-Free accounts can turn 5 photos into decks per month. Subscription and Lifetime remove the cap. See [Photo to deck](/documentation/cards/photo-to-deck).
+Free accounts can turn 5 photos into decks per month. Subscription and Lifetime draw on AI credits instead of the free monthly count. See [Photo to deck](/documentation/cards/photo-to-deck).
 
 ## PDF print export
 

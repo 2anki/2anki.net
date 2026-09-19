@@ -54,7 +54,7 @@ Das Modell zielt auf den Bereich; es trifft nicht immer die exakte Zahl. Deine W
 
 Der kostenlose Plan ist auf 5 Fotos pro Kalendermonat begrenzt — Vision-Aufrufe kosten auf unserer Seite echtes Geld. Wenn du das Limit erreichst, zeigt die Seite, wie viele du genutzt hast, und einen Weg zum Upgrade. Der Zähler setzt sich am 1. jedes Monats zurück.
 
-Kostenpflichtige Pläne (Subscription oder Lifetime) haben kein Limit.
+Kostenpflichtige Pläne (Subscription oder Lifetime) nutzen KI-Credits statt des kostenlosen Monatslimits — viel mehr Fotos, begrenzt durch dein Credit-Guthaben.
 
 ## Tipps für bessere Ergebnisse
 

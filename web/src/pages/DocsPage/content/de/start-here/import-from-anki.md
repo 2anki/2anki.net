@@ -1,11 +1,11 @@
 ---
 title: Ein Anki-Deck in Notion importieren
-description: Verwandle eine .apkg in Notion-Toggle-Seiten — kostenlos bis 1.000 Karten pro Import.
+description: Verwandle eine .apkg in Notion-Toggle-Seiten — kostenlos bis 1.000 Notizen pro Import.
 ---
 
 Die Umkehrung von allem anderen, was 2anki macht. Du lädst eine bestehende `.apkg` hoch, und wir bauen die Karten als Toggles innerhalb einer Notion-Seite nach. Nützlich, um ein altes Deck zurück in bearbeitbare Notizen zu holen, oder um jemandem ein Lern-Deck zu geben, der in Notion statt in Anki arbeitet.
 
-**Plan:** Kostenlos bis 1.000 Karten pro Import. Abo und Lifetime bekommen unbegrenzte Importe.
+**Plan:** Kostenlos bis 1.000 Notizen pro Import. Abo und Lifetime heben das Limit auf 10.000 Notizen pro Import an.
 
 ## Wann du das nutzt
 
@@ -32,11 +32,11 @@ Karten werden zu Toggles — die Vorderseite ist die Toggle-Zusammenfassung, die
 ## Häufige Fehler
 
 - **Falscher Dateityp.** Die Seite akzeptiert nur `.apkg`. Wenn du eine `.colpkg` (vollständiges Collection-Backup) hast, öffne sie zuerst in Anki und exportiere das gewünschte Deck als `.apkg`.
-- **Deck über dem kostenlosen Limit.** Kostenlos stoppt hart bei 1.000 Karten pro Import. Teile das Deck in Anki (Rechtsklick → **Export** mit einer gefilterten Teilmenge) oder [upgrade](/pricing) für unbegrenzt.
+- **Deck über dem Notizen-Limit.** Ein großer Import schlägt nicht fehl: Er bringt die ersten 1.000 Notizen im kostenlosen Plan (10.000 bei Abo und Lifetime) und fügt oben auf der Seite einen Hinweis hinzu. Um den Rest zu importieren, teile das Deck in Anki (Rechtsklick → **Export** mit einer gefilterten Teilmenge) und importiere jeden Teil, oder [upgrade](/pricing) für das höhere Limit.
 - **Seite nicht in der Auswahl.** Die Ziel-Auswahl zeigt nur Seiten, auf die die 2anki-Integration Zugriff hat. Öffne die Seite in Notion → **Share** → **Add connections** → wähle **2anki**.
 
 ## Verwandt
 
 - [Notion verbinden](/documentation/start-here/connect-notion) — die Workspace-Verbindung, die dieser Weg nutzt
 - [Grenzen und Kontingente](/documentation/help/limits) — was jeder Plan enthält
-- [Preise](/pricing) — upgrade für unbegrenzte Importe
+- [Preise](/pricing) — das Import-Limit auf 10.000 Notizen anheben
