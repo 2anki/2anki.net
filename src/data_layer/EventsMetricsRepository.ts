@@ -1,8 +1,26 @@
 import type { Knex } from 'knex';
 
+import {
+  EMPTY_REASON_PATTERNS,
+  PAYWALL_REASON_PATTERNS,
+  REASON_PROP_EXPRESSION,
+} from './classifyFailureReason';
+
+export type ConversionTier = 'free' | 'paid';
+
+export interface ConversionOutcomeCounts {
+  succeeded: number;
+  technicalFailed: number;
+  planBlocked: number;
+}
+
 export interface IEventsMetricsRepository {
   medianMinutesToFirstDeck(cohortStart: Date): Promise<number | null>;
   uploadToDownloadRate(since: Date): Promise<number | null>;
+  conversionOutcomes(
+    since: Date,
+    tier: ConversionTier
+  ): Promise<ConversionOutcomeCounts>;
 }
 
 export interface PassSalesCounts {
@@ -27,13 +45,42 @@ export interface PaidValueEventRow {
   createdAt: Date;
 }
 
+type PostgresNumeric = number | string | null;
+
 export interface MedianMinutesRow {
-  median_minutes: number | string | null;
+  median_minutes: PostgresNumeric;
 }
 
 export interface UploadToDownloadRateRow {
   uploaders: number | string;
   downloaders: number | string;
+}
+
+export interface ConversionOutcomesRow {
+  succeeded: PostgresNumeric;
+  technical_failed: PostgresNumeric;
+  plan_blocked: PostgresNumeric;
+}
+
+const PAID_CUSTOMER_FILTER =
+  "users.stripe_customer_id IS NOT NULL AND users.stripe_customer_id != ''";
+const FREE_CUSTOMER_FILTER =
+  "(users.stripe_customer_id IS NULL OR users.stripe_customer_id = '')";
+
+function likeAnyReason(patterns: string[]): string {
+  return `(${patterns
+    .map(() => `${REASON_PROP_EXPRESSION} LIKE ?`)
+    .join(' OR ')})`;
+}
+
+export function mapConversionOutcomesRow(
+  row: ConversionOutcomesRow | undefined
+): ConversionOutcomeCounts {
+  return {
+    succeeded: Number(row?.succeeded ?? 0),
+    technicalFailed: Number(row?.technical_failed ?? 0),
+    planBlocked: Number(row?.plan_blocked ?? 0),
+  };
 }
 
 export function mapMedianMinutesRow(
@@ -135,6 +182,50 @@ export class EventsMetricsRepository
       | UploadToDownloadRateRow
       | undefined;
     return mapUploadToDownloadRateRow(row);
+  }
+
+  buildConversionOutcomesQuery(
+    since: Date,
+    tier: ConversionTier
+  ): Knex.QueryBuilder {
+    const paywall = likeAnyReason(PAYWALL_REASON_PATTERNS);
+    const empty = likeAnyReason(EMPTY_REASON_PATTERNS);
+    const technical = `(${REASON_PROP_EXPRESSION} IS NULL OR (NOT ${paywall} AND NOT ${empty}))`;
+
+    return this.database('events')
+      .leftJoin('users', 'users.id', 'events.user_id')
+      .whereIn('events.name', ['conversion_succeeded', 'conversion_failed'])
+      .where('events.created_at', '>=', since)
+      .whereRaw(tier === 'paid' ? PAID_CUSTOMER_FILTER : FREE_CUSTOMER_FILTER)
+      .select(
+        this.database.raw(
+          'count(case when events.name = ? then 1 end) as succeeded',
+          ['conversion_succeeded']
+        ),
+        this.database.raw(
+          `count(case when events.name = ? and ${technical} then 1 end) as technical_failed`,
+          [
+            'conversion_failed',
+            ...PAYWALL_REASON_PATTERNS,
+            ...EMPTY_REASON_PATTERNS,
+          ]
+        ),
+        this.database.raw(
+          `count(case when events.name = ? and ${paywall} then 1 end) as plan_blocked`,
+          ['conversion_failed', ...PAYWALL_REASON_PATTERNS]
+        )
+      );
+  }
+
+  async conversionOutcomes(
+    since: Date,
+    tier: ConversionTier
+  ): Promise<ConversionOutcomeCounts> {
+    const row = (await this.buildConversionOutcomesQuery(
+      since,
+      tier
+    ).first()) as ConversionOutcomesRow | undefined;
+    return mapConversionOutcomesRow(row);
   }
 
   async listPaidValueEvents(

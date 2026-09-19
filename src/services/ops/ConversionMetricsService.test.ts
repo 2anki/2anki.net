@@ -1,4 +1,8 @@
-import type { IEventsMetricsRepository } from '../../data_layer/EventsMetricsRepository';
+import type {
+  ConversionOutcomeCounts,
+  ConversionTier,
+  IEventsMetricsRepository,
+} from '../../data_layer/EventsMetricsRepository';
 import type { IJobsMetricsRepository } from '../../data_layer/JobsMetricsRepository';
 import type { ConversionErrorCount } from './ConversionMetricsService';
 import {
@@ -8,12 +12,6 @@ import {
 
 function makeFailingRepo(): IJobsMetricsRepository {
   return {
-    countFreeConversions7d: jest.fn().mockRejectedValue(new Error('db down')),
-    countPaidConversions7d: jest.fn().mockRejectedValue(new Error('db down')),
-    computeFreeSuccessRate7d: jest.fn().mockRejectedValue(new Error('db down')),
-    computePaidSuccessRate7d: jest.fn().mockRejectedValue(new Error('db down')),
-    countFreePlanBlocked7d: jest.fn().mockRejectedValue(new Error('db down')),
-    countPaidPlanBlocked7d: jest.fn().mockRejectedValue(new Error('db down')),
     topFailureReasons7d: jest.fn().mockRejectedValue(new Error('db down')),
     failedConversionsWeekly: jest.fn().mockRejectedValue(new Error('db down')),
   };
@@ -23,12 +21,6 @@ function makeStubRepo(
   overrides: Partial<IJobsMetricsRepository> = {}
 ): IJobsMetricsRepository {
   return {
-    countFreeConversions7d: jest.fn().mockResolvedValue(0),
-    countPaidConversions7d: jest.fn().mockResolvedValue(0),
-    computeFreeSuccessRate7d: jest.fn().mockResolvedValue(null),
-    computePaidSuccessRate7d: jest.fn().mockResolvedValue(null),
-    countFreePlanBlocked7d: jest.fn().mockResolvedValue(0),
-    countPaidPlanBlocked7d: jest.fn().mockResolvedValue(0),
     topFailureReasons7d: jest.fn().mockResolvedValue([]),
     failedConversionsWeekly: jest.fn().mockResolvedValue([]),
     ...overrides,
@@ -39,6 +31,7 @@ function makeFailingEventsRepo(): IEventsMetricsRepository {
   return {
     medianMinutesToFirstDeck: jest.fn().mockRejectedValue(new Error('db down')),
     uploadToDownloadRate: jest.fn().mockRejectedValue(new Error('db down')),
+    conversionOutcomes: jest.fn().mockRejectedValue(new Error('db down')),
   };
 }
 
@@ -48,9 +41,32 @@ function makeStubEventsRepo(
   return {
     medianMinutesToFirstDeck: jest.fn().mockResolvedValue(null),
     uploadToDownloadRate: jest.fn().mockResolvedValue(null),
+    conversionOutcomes: jest.fn().mockResolvedValue(outcomes()),
     ...overrides,
   };
 }
+
+function outcomes(
+  overrides: Partial<ConversionOutcomeCounts> = {}
+): ConversionOutcomeCounts {
+  return { succeeded: 0, technicalFailed: 0, planBlocked: 0, ...overrides };
+}
+
+function eventsRepoWithOutcomes(
+  byTier: Partial<Record<ConversionTier, Partial<ConversionOutcomeCounts>>>
+): IEventsMetricsRepository {
+  return makeStubEventsRepo({
+    conversionOutcomes: jest
+      .fn()
+      .mockImplementation(async (_since: Date, tier: ConversionTier) =>
+        outcomes(byTier[tier])
+      ),
+  });
+}
+
+afterEach(() => {
+  jest.useRealTimers();
+});
 
 describe('ConversionMetricsService — graceful failure', () => {
   it('returns null for every metric when the repository throws', async () => {
@@ -74,54 +90,126 @@ describe('ConversionMetricsService — graceful failure', () => {
 });
 
 describe('ConversionMetricsService — shape assembly', () => {
-  it('passes through free conversion count from the repository', async () => {
+  it('counts free and paid conversions from succeeded events', async () => {
     const service = new ConversionMetricsService(
-      makeStubRepo({ countFreeConversions7d: jest.fn().mockResolvedValue(7) }),
-      makeStubEventsRepo()
+      makeStubRepo(),
+      eventsRepoWithOutcomes({
+        free: { succeeded: 7 },
+        paid: { succeeded: 3 },
+      })
     );
 
     const metrics = await service.getMetrics();
 
     expect(metrics.free_conversions_7d).toBe(7);
-  });
-
-  it('passes through paid conversion count from the repository', async () => {
-    const service = new ConversionMetricsService(
-      makeStubRepo({ countPaidConversions7d: jest.fn().mockResolvedValue(3) }),
-      makeStubEventsRepo()
-    );
-
-    const metrics = await service.getMetrics();
-
     expect(metrics.paid_conversions_7d).toBe(3);
   });
 
-  it('passes through free success rate from the repository', async () => {
+  it('computes the success rate as succeeded over succeeded plus technical failures', async () => {
     const service = new ConversionMetricsService(
-      makeStubRepo({
-        computeFreeSuccessRate7d: jest.fn().mockResolvedValue(66.7),
-      }),
-      makeStubEventsRepo()
+      makeStubRepo(),
+      eventsRepoWithOutcomes({
+        free: { succeeded: 9, technicalFailed: 1 },
+        paid: { succeeded: 3, technicalFailed: 1 },
+      })
     );
 
     const metrics = await service.getMetrics();
 
-    expect(metrics.free_conversion_success_rate_7d).toBe(66.7);
+    expect(metrics.free_conversion_success_rate_7d).toBe(90);
+    expect(metrics.paid_conversion_success_rate_7d).toBe(75);
   });
 
-  it('passes through the plan-blocked counts per tier from the repository', async () => {
+  it('keeps plan blocks out of the success-rate denominator', async () => {
     const service = new ConversionMetricsService(
-      makeStubRepo({
-        countFreePlanBlocked7d: jest.fn().mockResolvedValue(18),
-        countPaidPlanBlocked7d: jest.fn().mockResolvedValue(2),
-      }),
-      makeStubEventsRepo()
+      makeStubRepo(),
+      eventsRepoWithOutcomes({
+        free: { succeeded: 8, technicalFailed: 2, planBlocked: 500 },
+      })
+    );
+
+    const metrics = await service.getMetrics();
+
+    expect(metrics.free_conversion_success_rate_7d).toBe(80);
+  });
+
+  it('reports a success rate of 100 when nothing failed technically', async () => {
+    const service = new ConversionMetricsService(
+      makeStubRepo(),
+      eventsRepoWithOutcomes({ free: { succeeded: 4, planBlocked: 9 } })
+    );
+
+    const metrics = await service.getMetrics();
+
+    expect(metrics.free_conversion_success_rate_7d).toBe(100);
+  });
+
+  it('returns a null success rate for a tier with no conversions or failures', async () => {
+    const service = new ConversionMetricsService(
+      makeStubRepo(),
+      eventsRepoWithOutcomes({ free: { planBlocked: 12 } })
+    );
+
+    const metrics = await service.getMetrics();
+
+    expect(metrics.free_conversion_success_rate_7d).toBeNull();
+    expect(metrics.paid_conversion_success_rate_7d).toBeNull();
+  });
+
+  it('passes through the plan-blocked counts per tier', async () => {
+    const service = new ConversionMetricsService(
+      makeStubRepo(),
+      eventsRepoWithOutcomes({
+        free: { planBlocked: 18 },
+        paid: { planBlocked: 2 },
+      })
     );
 
     const metrics = await service.getMetrics();
 
     expect(metrics.free_blocked_by_plan_7d).toBe(18);
     expect(metrics.paid_blocked_by_plan_7d).toBe(2);
+  });
+
+  it('nulls only the tier whose query failed', async () => {
+    const service = new ConversionMetricsService(
+      makeStubRepo(),
+      makeStubEventsRepo({
+        conversionOutcomes: jest
+          .fn()
+          .mockImplementation(async (_since: Date, tier: ConversionTier) => {
+            if (tier === 'free') throw new Error('db down');
+            return outcomes({ succeeded: 5 });
+          }),
+      })
+    );
+
+    const metrics = await service.getMetrics();
+
+    expect(metrics.free_conversions_7d).toBeNull();
+    expect(metrics.free_conversion_success_rate_7d).toBeNull();
+    expect(metrics.free_blocked_by_plan_7d).toBeNull();
+    expect(metrics.paid_conversions_7d).toBe(5);
+  });
+
+  it('reads both tiers over the last seven days', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2025-05-19T00:00:00.000Z'));
+    const eventsRepo = makeStubEventsRepo();
+    const service = new ConversionMetricsService(makeStubRepo(), eventsRepo);
+
+    await service.getMetrics();
+
+    const sevenDaysAgo = new Date('2025-05-12T00:00:00.000Z');
+    expect(eventsRepo.conversionOutcomes).toHaveBeenCalledWith(
+      sevenDaysAgo,
+      'free'
+    );
+    expect(eventsRepo.conversionOutcomes).toHaveBeenCalledWith(
+      sevenDaysAgo,
+      'paid'
+    );
+    jest.useRealTimers();
   });
 
   it('passes through top failure reasons from the repository', async () => {
