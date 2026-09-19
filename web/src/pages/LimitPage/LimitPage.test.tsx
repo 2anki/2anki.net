@@ -146,6 +146,40 @@ describe('LimitPage', () => {
     });
   });
 
+  it('offers the Semester Pass next to the Day and Week Pass', () => {
+    renderPage();
+    expect(
+      screen.getByRole('button', { name: 'Get Semester Pass' })
+    ).toBeTruthy();
+    expect(screen.getByText('Best value')).toBeTruthy();
+  });
+
+  it('starts a Semester Pass checkout tagged to the wall and tracks the click', async () => {
+    mockStartPassCheckout.mockResolvedValue({
+      url: 'https://checkout.stripe.com/semester',
+    });
+    Object.defineProperty(globalThis, 'location', {
+      writable: true,
+      value: { href: '' },
+    });
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Get Semester Pass' }));
+    expect(mockTrack).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: 'limit-wall',
+      plan: 'semester_pass',
+    });
+    await vi.waitFor(() => {
+      expect(mockStartPassCheckout).toHaveBeenCalledWith(
+        '120d',
+        undefined,
+        'limit-wall'
+      );
+      expect(globalThis.location.href).toBe(
+        'https://checkout.stripe.com/semester'
+      );
+    });
+  });
+
   it('shows the logged-in upgrade view even when the URL says kind=anonymous', () => {
     asLoggedIn();
     renderPage(['/limit?kind=anonymous']);

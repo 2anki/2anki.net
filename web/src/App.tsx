@@ -78,6 +78,9 @@ const AccountEmailChangePage = lazyWithRetry(
 const AccountPreviewPage = import.meta.env.DEV
   ? lazy(() => import('./pages/AccountPreviewPage/AccountPreviewPage'))
   : null;
+const LimitPreviewPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/LimitPreviewPage/LimitPreviewPage'))
+  : null;
 const NotionPreviewPage = import.meta.env.DEV
   ? lazy(() => import('./pages/NotionPreviewPage/NotionPreviewPage'))
   : null;
@@ -509,6 +512,9 @@ function AppContent({
                 path="/dev/account-preview"
                 element={<AccountPreviewPage />}
               />
+            )}
+            {LimitPreviewPage && (
+              <Route path="/dev/limit-preview" element={<LimitPreviewPage />} />
             )}
             {NotionPreviewPage && (
               <Route
