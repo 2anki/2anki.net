@@ -22,6 +22,7 @@ export interface UploadFunnelResponse {
   upload_to_download_rate_pct: number;
   download_to_signup_rate_pct: number;
   download_to_paid_rate_pct: number;
+  signup_reliable: boolean;
   since: string;
   as_of: string;
   error?: string;

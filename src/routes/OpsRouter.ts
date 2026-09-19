@@ -798,6 +798,9 @@ const OpsRouter = () => {
    *       (attributed from the first_touch cookie), ordered by upload volume, so
    *       leaks can be read per acquisition source. Defaults to the last 30 days;
    *       pass ?window=7d|14d|30d|60d|90d.
+   *       `signup_reliable` is false when the window starts before 2026-09-09 (when
+   *       account_created became reliable); in that case the signup count and the
+   *       download_to_signup rate undercount and should not be read as real.
    *       Internal endpoint locked to the ops owner — returns 404 for everyone else.
    *     tags: [Ops]
    *     parameters:

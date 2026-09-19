@@ -36,10 +36,13 @@ export interface UploadFunnelResponse extends UploadFunnelRates {
   stages: UploadFunnelStages | null;
   by_origin: UploadFunnelOriginBreakdown[];
   conversion_failed_by_reason: ConversionFailedByReason;
+  signup_reliable: boolean;
   since: string;
   as_of: string;
   error?: string;
 }
+
+const ACCOUNT_CREATED_RELIABLE_SINCE = new Date('2026-09-09T00:00:00.000Z');
 
 interface UploadFunnelServiceDeps {
   eventsRepo: IEventsRepository;
@@ -55,6 +58,8 @@ export class UploadFunnelService {
   async getMetrics(since: Date): Promise<UploadFunnelResponse> {
     const as_of = new Date().toISOString();
     const sinceStr = since.toISOString();
+    const signup_reliable =
+      since.getTime() >= ACCOUNT_CREATED_RELIABLE_SINCE.getTime();
 
     let rows: UploadFunnelStageRow[];
     let originRows: UploadFunnelStageByOriginRow[];
@@ -73,6 +78,7 @@ export class UploadFunnelService {
         upload_to_download_rate_pct: 0,
         download_to_signup_rate_pct: 0,
         download_to_paid_rate_pct: 0,
+        signup_reliable,
         since: sinceStr,
         as_of,
         error: err instanceof Error ? err.message : String(err),
@@ -90,6 +96,7 @@ export class UploadFunnelService {
         technical: failedByReason.technical,
       },
       ...computeRates(stages),
+      signup_reliable,
       since: sinceStr,
       as_of,
     };

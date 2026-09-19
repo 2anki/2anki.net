@@ -47,6 +47,7 @@ describe('useUploadFunnel', () => {
       upload_to_download_rate_pct: 60,
       download_to_signup_rate_pct: 50,
       download_to_paid_rate_pct: 10,
+      signup_reliable: true,
       since: '2026-05-01T00:00:00.000Z',
       as_of: '2026-05-30T00:00:00.000Z',
     };

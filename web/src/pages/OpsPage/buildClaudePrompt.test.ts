@@ -151,6 +151,7 @@ function makeUploadFunnel(
     upload_to_download_rate_pct: 57.8,
     download_to_signup_rate_pct: 30.1,
     download_to_paid_rate_pct: 6.0,
+    signup_reliable: true,
     since: '2026-05-01T00:00:00.000Z',
     as_of: '2026-05-30T00:00:00.000Z',
     ...overrides,
@@ -298,6 +299,37 @@ describe('buildClaudePrompt — upload-funnel', () => {
   it('carries no user-submitted text, so no untrusted notice', () => {
     const prompt = buildClaudePrompt('upload-funnel', makeUploadFunnel());
     expect(prompt).not.toContain(UNTRUSTED);
+  });
+
+  it('adds a standalone note and a signup-free task when account_created was unreliable', () => {
+    const prompt = buildClaudePrompt(
+      'upload-funnel',
+      makeUploadFunnel({ signup_reliable: false })
+    );
+    expect(prompt).toContain(
+      'stages.signup and download_to_signup_rate_pct undercount'
+    );
+    expect(prompt).toContain(
+      'Ignore the signup stage and the download-to-signup rate'
+    );
+    expect(prompt).not.toContain(
+      'find the biggest drop-off between stages and the origin it hits hardest'
+    );
+  });
+
+  it('omits the note and keeps the plain task when tracking was reliable', () => {
+    const prompt = buildClaudePrompt('upload-funnel', makeUploadFunnel());
+    expect(prompt).not.toContain('undercount');
+    expect(prompt).toContain(
+      'find the biggest drop-off between stages and the origin it hits hardest'
+    );
+  });
+
+  it('reads a payload with no signup_reliable field as reliable', () => {
+    const payload = makeUploadFunnel();
+    delete (payload as { signup_reliable?: boolean }).signup_reliable;
+    const prompt = buildClaudePrompt('upload-funnel', payload);
+    expect(prompt).not.toContain('undercount');
   });
 });
 
