@@ -97,6 +97,7 @@ describe('UploadFunnelTab', () => {
       upload_to_download_rate_pct: 57.83,
       download_to_signup_rate_pct: 30.1,
       download_to_paid_rate_pct: 6.02,
+      signup_reliable: true,
       since: '2026-05-01T00:00:00.000Z',
       as_of: '2026-05-30T00:00:00.000Z',
     });
@@ -108,6 +109,8 @@ describe('UploadFunnelTab', () => {
         screen.getByText('12 450', { normalizer: spaceNormalizer })
       ).toBeInTheDocument()
     );
+
+    expect(screen.queryByText(/Signup tracking under-fired/i)).toBeNull();
 
     expect(screen.getByText('/nclex')).toBeInTheDocument();
     expect(screen.getByText('82.5%')).toBeInTheDocument();
@@ -154,6 +157,7 @@ describe('UploadFunnelTab', () => {
       upload_to_download_rate_pct: 0,
       download_to_signup_rate_pct: 0,
       download_to_paid_rate_pct: 0,
+      signup_reliable: true,
       since: '2026-05-01T00:00:00.000Z',
       as_of: '2026-05-30T00:00:00.000Z',
     });
@@ -174,6 +178,7 @@ describe('UploadFunnelTab', () => {
       upload_to_download_rate_pct: 0,
       download_to_signup_rate_pct: 0,
       download_to_paid_rate_pct: 0,
+      signup_reliable: true,
       since: '2026-05-01T00:00:00.000Z',
       as_of: '2026-05-30T00:00:00.000Z',
     });
@@ -197,6 +202,7 @@ describe('UploadFunnelTab', () => {
       upload_to_download_rate_pct: 0,
       download_to_signup_rate_pct: 0,
       download_to_paid_rate_pct: 0,
+      signup_reliable: true,
       since: '2026-05-01T00:00:00.000Z',
       as_of: '2026-05-30T00:00:00.000Z',
       error: 'relation "events" does not exist',
@@ -210,5 +216,53 @@ describe('UploadFunnelTab', () => {
       ).toBeInTheDocument()
     );
     expect(screen.queryByText('No uploads in this window')).toBeNull();
+  });
+
+  test('flags signup as unreliable for windows before the 2026-09-08 fix', async () => {
+    mockFetch({
+      stages: {
+        upload_started: 100,
+        conversion_succeeded: 80,
+        conversion_failed: 5,
+        deck_downloaded: 60,
+        paywall_shown: 20,
+        signup: 4,
+        paid: 6,
+      },
+      by_origin: [
+        {
+          origin: '/nclex',
+          stages: {
+            upload_started: 60,
+            conversion_succeeded: 50,
+            conversion_failed: 3,
+            deck_downloaded: 40,
+            paywall_shown: 12,
+            signup: 3,
+            paid: 4,
+          },
+          upload_to_download_rate_pct: 66.7,
+          download_to_signup_rate_pct: 7.5,
+          download_to_paid_rate_pct: 10,
+        },
+      ],
+      upload_to_download_rate_pct: 60,
+      download_to_signup_rate_pct: 6.7,
+      download_to_paid_rate_pct: 10,
+      signup_reliable: false,
+      since: '2026-08-20T00:00:00.000Z',
+      as_of: '2026-09-19T00:00:00.000Z',
+    });
+
+    renderTab();
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Signup tracking under-fired before 2026-09-08/i)
+      ).toBeInTheDocument()
+    );
+    expect(screen.getByText(/earlier windows undercount/i)).toBeInTheDocument();
+    expect(screen.queryByText('6.7%')).toBeNull();
+    expect(screen.queryByText('7.5%')).toBeNull();
   });
 });

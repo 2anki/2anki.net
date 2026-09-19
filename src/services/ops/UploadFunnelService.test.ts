@@ -243,4 +243,54 @@ describe('UploadFunnelService', () => {
     expect(result.stages).toBeNull();
     expect(result.error).toBe('db down');
   });
+
+  describe('signup reliability guard', () => {
+    const reliableSince = new Date('2026-09-08T00:00:00.000Z');
+    const beforeFix = new Date('2026-08-20T00:00:00.000Z');
+    const afterFix = new Date('2026-09-12T00:00:00.000Z');
+
+    it('flags the signup stage reliable when the window starts after the fix', async () => {
+      const repo = makeRepo([
+        { stage: 'account_created', distinct_identities: 18 },
+      ]);
+      const service = new UploadFunnelService({ eventsRepo: repo });
+
+      const result = await service.getMetrics(afterFix);
+
+      expect(result.signup_reliable).toBe(true);
+    });
+
+    it('treats a window starting exactly on the fix boundary as reliable', async () => {
+      const repo = makeRepo([]);
+      const service = new UploadFunnelService({ eventsRepo: repo });
+
+      const result = await service.getMetrics(reliableSince);
+
+      expect(result.signup_reliable).toBe(true);
+    });
+
+    it('flags the signup stage unreliable when the window starts before the fix', async () => {
+      const repo = makeRepo([
+        { stage: 'account_created', distinct_identities: 18 },
+      ]);
+      const service = new UploadFunnelService({ eventsRepo: repo });
+
+      const result = await service.getMetrics(beforeFix);
+
+      expect(result.signup_reliable).toBe(false);
+    });
+
+    it('reports the signup stage as unreliable on the error path too', async () => {
+      const repo = makeRepo([]);
+      (repo.groupUploadFunnel as jest.Mock).mockRejectedValueOnce(
+        new Error('db down')
+      );
+      const service = new UploadFunnelService({ eventsRepo: repo });
+
+      const result = await service.getMetrics(beforeFix);
+
+      expect(result.signup_reliable).toBe(false);
+      expect(result.error).toBe('db down');
+    });
+  });
 });

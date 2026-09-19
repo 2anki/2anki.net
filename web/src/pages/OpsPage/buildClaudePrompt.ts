@@ -164,6 +164,9 @@ function buildEngineeringPrompt(payload: OpsMetricsResponse): string {
 
 function buildUploadFunnelPrompt(payload: UploadFunnelResponse): string {
   const stages = payload.stages;
+  const signupSuffix = payload.signup_reliable
+    ? ''
+    : '  (UNRELIABLE: account_created under-fired before 2026-09-08; this window undercounts signups)';
   const lines: string[] = [
     '## Upload funnel — weekly review',
     '',
@@ -175,12 +178,12 @@ function buildUploadFunnelPrompt(payload: UploadFunnelResponse): string {
     `Conversion failed:     ${numberOrDash(stages?.conversion_failed)}`,
     `Deck downloaded:       ${numberOrDash(stages?.deck_downloaded)}`,
     `Paywall shown:         ${numberOrDash(stages?.paywall_shown)}`,
-    `Signup:                ${numberOrDash(stages?.signup)}`,
+    `Signup:                ${numberOrDash(stages?.signup)}${signupSuffix}`,
     `Paid:                  ${numberOrDash(stages?.paid)}`,
     '',
     'Stage-to-stage rates:',
     `Upload → download (%):   ${numberOrDash(payload.upload_to_download_rate_pct)}`,
-    `Download → signup (%):   ${numberOrDash(payload.download_to_signup_rate_pct)}`,
+    `Download → signup (%):   ${numberOrDash(payload.download_to_signup_rate_pct)}${signupSuffix}`,
     `Download → paid (%):     ${numberOrDash(payload.download_to_paid_rate_pct)}`,
     '',
     jsonBlock(
