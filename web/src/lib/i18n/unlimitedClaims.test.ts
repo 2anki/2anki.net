@@ -36,6 +36,7 @@ const CAPPED_FEATURE_STRINGS: Array<[string, string]> = [
   ['tools', 'photo.quotaReached'],
   ['tools', 'mindmaps.monthlyLimit'],
   ['tools', 'mindmaps.limitSubheading'],
+  ['tools', 'mindmaps.nodeLimitReached'],
   ['tools', 'import.upgradeUnlimitedImports'],
   ['marketing', 'nativeApp.faq1A'],
 ];

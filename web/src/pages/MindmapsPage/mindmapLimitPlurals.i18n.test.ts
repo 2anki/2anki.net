@@ -14,6 +14,18 @@ const PL_MAP_CASES: Case[] = [
   [3, 'mapy myśli'],
   [5, 'map myśli'],
   [21, 'map myśli'],
+  [22, 'mapy myśli'],
+  [25, 'map myśli'],
+];
+
+const PL_HEADING_CASES: Case[] = [
+  [1, 'mapy myśli'],
+  [2, 'map myśli'],
+  [3, 'map myśli'],
+  [5, 'map myśli'],
+  [21, 'map myśli'],
+  [22, 'map myśli'],
+  [25, 'map myśli'],
 ];
 
 const PL_NODE_CASES: Case[] = [
@@ -22,6 +34,8 @@ const PL_NODE_CASES: Case[] = [
   [3, 'węzły'],
   [5, 'węzłów'],
   [21, 'węzłów'],
+  [22, 'węzły'],
+  [25, 'węzłów'],
 ];
 
 const RU_MAP_CASES: Case[] = [
@@ -30,6 +44,8 @@ const RU_MAP_CASES: Case[] = [
   [3, 'ментальные карты'],
   [5, 'ментальных карт'],
   [21, 'ментальную карту'],
+  [22, 'ментальные карты'],
+  [25, 'ментальных карт'],
 ];
 
 const RU_NODE_CASES: Case[] = [
@@ -38,6 +54,8 @@ const RU_NODE_CASES: Case[] = [
   [3, 'узла'],
   [5, 'узлов'],
   [21, 'узел'],
+  [22, 'узла'],
+  [25, 'узлов'],
 ];
 
 function resolve(key: string, count: number): string {
@@ -45,6 +63,14 @@ function resolve(key: string, count: number): string {
 }
 
 describe('Polish mind-map limit plurals', () => {
+  it.each(PL_HEADING_CASES)(
+    'limitHeading agrees for count %i',
+    async (count, nounForm) => {
+      await i18n.changeLanguage('pl');
+      expect(resolve('limitHeading', count)).toContain(nounForm);
+    }
+  );
+
   it.each(PL_MAP_CASES)(
     'limitSubheading agrees for count %i',
     async (count, nounForm) => {
@@ -71,6 +97,14 @@ describe('Polish mind-map limit plurals', () => {
 });
 
 describe('Russian mind-map limit plurals', () => {
+  it.each(RU_MAP_CASES)(
+    'limitHeading agrees for count %i',
+    async (count, nounForm) => {
+      await i18n.changeLanguage('ru');
+      expect(resolve('limitHeading', count)).toContain(nounForm);
+    }
+  );
+
   it.each(RU_MAP_CASES)(
     'limitSubheading agrees for count %i',
     async (count, nounForm) => {
