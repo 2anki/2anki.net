@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -218,7 +218,7 @@ describe('UploadFunnelTab', () => {
     expect(screen.queryByText('No uploads in this window')).toBeNull();
   });
 
-  test('flags signup as unreliable for windows before the 2026-09-08 fix', async () => {
+  test('flags signup as unreliable for windows before the 2026-09-09 cutoff', async () => {
     mockFetch({
       stages: {
         upload_started: 100,
@@ -258,11 +258,21 @@ describe('UploadFunnelTab', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText(/Signup tracking under-fired before 2026-09-08/i)
+        screen.getByText(/Signup tracking under-fired before 2026-09-09/i)
       ).toBeInTheDocument()
     );
     expect(screen.getByText(/earlier windows undercount/i)).toBeInTheDocument();
+
+    const signupTile = screen.getByText('Signup').closest('div');
+    expect(signupTile).not.toBeNull();
+    expect(
+      within(signupTile as HTMLElement).getByText('—')
+    ).toBeInTheDocument();
+
+    const originRow = screen.getByText('/nclex').closest('tr');
+    expect(originRow).not.toBeNull();
+    expect(within(originRow as HTMLElement).getByText('—')).toBeInTheDocument();
+
     expect(screen.queryByText('6.7%')).toBeNull();
-    expect(screen.queryByText('7.5%')).toBeNull();
   });
 });

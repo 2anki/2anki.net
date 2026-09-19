@@ -164,9 +164,12 @@ function buildEngineeringPrompt(payload: OpsMetricsResponse): string {
 
 function buildUploadFunnelPrompt(payload: UploadFunnelResponse): string {
   const stages = payload.stages;
-  const signupSuffix = payload.signup_reliable
-    ? ''
-    : '  (UNRELIABLE: account_created under-fired before 2026-09-08; this window undercounts signups)';
+  const signupReliable = payload.signup_reliable ?? true;
+  const signupNote =
+    'NOTE: account_created under-fired before 2026-09-09, so stages.signup and download_to_signup_rate_pct undercount for this window — treat them as unreliable, not as a real drop-off.';
+  const taskLine = signupReliable
+    ? 'Task: find the biggest drop-off between stages and the origin it hits hardest, then propose one fix.'
+    : 'Task: find the biggest drop-off among the reliable stages (upload, conversion, download, paid) and the origin it hits hardest, then propose one fix. Ignore the signup stage and the download-to-signup rate — they undercount for this window.';
   const lines: string[] = [
     '## Upload funnel — weekly review',
     '',
@@ -178,21 +181,22 @@ function buildUploadFunnelPrompt(payload: UploadFunnelResponse): string {
     `Conversion failed:     ${numberOrDash(stages?.conversion_failed)}`,
     `Deck downloaded:       ${numberOrDash(stages?.deck_downloaded)}`,
     `Paywall shown:         ${numberOrDash(stages?.paywall_shown)}`,
-    `Signup:                ${numberOrDash(stages?.signup)}${signupSuffix}`,
+    `Signup:                ${numberOrDash(stages?.signup)}`,
     `Paid:                  ${numberOrDash(stages?.paid)}`,
     '',
     'Stage-to-stage rates:',
     `Upload → download (%):   ${numberOrDash(payload.upload_to_download_rate_pct)}`,
-    `Download → signup (%):   ${numberOrDash(payload.download_to_signup_rate_pct)}${signupSuffix}`,
+    `Download → signup (%):   ${numberOrDash(payload.download_to_signup_rate_pct)}`,
     `Download → paid (%):     ${numberOrDash(payload.download_to_paid_rate_pct)}`,
     '',
+    ...(signupReliable ? [] : [signupNote, '']),
     jsonBlock(
       'Per-origin breakdown (signup_origin)',
       sanitizeStringsDeep(payload.by_origin)
     ),
     '',
     'Code path: src/usecases/ops/GetUploadFunnelUseCase.ts (/api/ops/upload-funnel)',
-    'Task: find the biggest drop-off between stages and the origin it hits hardest, then propose one fix.',
+    taskLine,
     REPO_LINE,
   ];
 

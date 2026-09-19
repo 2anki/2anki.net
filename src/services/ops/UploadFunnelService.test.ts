@@ -245,11 +245,12 @@ describe('UploadFunnelService', () => {
   });
 
   describe('signup reliability guard', () => {
-    const reliableSince = new Date('2026-09-08T00:00:00.000Z');
+    const exactCutoff = new Date('2026-09-09T00:00:00.000Z');
+    const justBeforeCutoff = new Date('2026-09-08T23:59:59.999Z');
     const beforeFix = new Date('2026-08-20T00:00:00.000Z');
     const afterFix = new Date('2026-09-12T00:00:00.000Z');
 
-    it('flags the signup stage reliable when the window starts after the fix', async () => {
+    it('flags the signup stage reliable when the window starts after the cutoff', async () => {
       const repo = makeRepo([
         { stage: 'account_created', distinct_identities: 18 },
       ]);
@@ -260,16 +261,25 @@ describe('UploadFunnelService', () => {
       expect(result.signup_reliable).toBe(true);
     });
 
-    it('treats a window starting exactly on the fix boundary as reliable', async () => {
+    it('treats a window starting exactly on the cutoff as reliable', async () => {
       const repo = makeRepo([]);
       const service = new UploadFunnelService({ eventsRepo: repo });
 
-      const result = await service.getMetrics(reliableSince);
+      const result = await service.getMetrics(exactCutoff);
 
       expect(result.signup_reliable).toBe(true);
     });
 
-    it('flags the signup stage unreliable when the window starts before the fix', async () => {
+    it('flags a window ending one millisecond before the cutoff as unreliable', async () => {
+      const repo = makeRepo([]);
+      const service = new UploadFunnelService({ eventsRepo: repo });
+
+      const result = await service.getMetrics(justBeforeCutoff);
+
+      expect(result.signup_reliable).toBe(false);
+    });
+
+    it('flags the signup stage unreliable when the window starts before the cutoff', async () => {
       const repo = makeRepo([
         { stage: 'account_created', distinct_identities: 18 },
       ]);

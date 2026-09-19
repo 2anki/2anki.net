@@ -301,19 +301,35 @@ describe('buildClaudePrompt — upload-funnel', () => {
     expect(prompt).not.toContain(UNTRUSTED);
   });
 
-  it('flags the signup lines when account_created was unreliable', () => {
+  it('adds a standalone note and a signup-free task when account_created was unreliable', () => {
     const prompt = buildClaudePrompt(
       'upload-funnel',
       makeUploadFunnel({ signup_reliable: false })
     );
     expect(prompt).toContain(
-      'UNRELIABLE: account_created under-fired before 2026-09-08'
+      'stages.signup and download_to_signup_rate_pct undercount'
+    );
+    expect(prompt).toContain(
+      'Ignore the signup stage and the download-to-signup rate'
+    );
+    expect(prompt).not.toContain(
+      'find the biggest drop-off between stages and the origin it hits hardest'
     );
   });
 
-  it('leaves the signup lines unannotated when tracking was reliable', () => {
+  it('omits the note and keeps the plain task when tracking was reliable', () => {
     const prompt = buildClaudePrompt('upload-funnel', makeUploadFunnel());
-    expect(prompt).not.toContain('UNRELIABLE');
+    expect(prompt).not.toContain('undercount');
+    expect(prompt).toContain(
+      'find the biggest drop-off between stages and the origin it hits hardest'
+    );
+  });
+
+  it('reads a payload with no signup_reliable field as reliable', () => {
+    const payload = makeUploadFunnel();
+    delete (payload as { signup_reliable?: boolean }).signup_reliable;
+    const prompt = buildClaudePrompt('upload-funnel', payload);
+    expect(prompt).not.toContain('undercount');
   });
 });
 

@@ -42,7 +42,7 @@ export interface UploadFunnelResponse extends UploadFunnelRates {
   error?: string;
 }
 
-const ACCOUNT_CREATED_RELIABLE_SINCE = new Date('2026-09-08T00:00:00.000Z');
+const ACCOUNT_CREATED_RELIABLE_SINCE = new Date('2026-09-09T00:00:00.000Z');
 
 interface UploadFunnelServiceDeps {
   eventsRepo: IEventsRepository;

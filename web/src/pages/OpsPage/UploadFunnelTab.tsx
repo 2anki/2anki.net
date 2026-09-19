@@ -16,10 +16,10 @@ const DIRECT_ORIGIN_LABEL = 'Direct / unknown';
 const UNRELIABLE_VALUE = '\u2014';
 
 const SIGNUP_UNRELIABLE_NOTICE =
-  'Signup tracking under-fired before 2026-09-08, so the signup count and the download-to-signup rate undercount for any window reaching back before then. Read the 7-day window for a reliable signup number.';
+  'Signup tracking under-fired before 2026-09-09, so the signup count and the download-to-signup rate undercount for any window reaching back before then. Read the 7-day window for a reliable signup number.';
 
 const SIGNUP_UNRELIABLE_FOOTNOTE =
-  'Signup tracking fixed 2026-09-08; earlier windows undercount';
+  'Signup tracking reliable from 2026-09-09; earlier windows undercount';
 
 function originLabel(origin: string | null): string {
   return origin == null || origin.trim() === '' ? DIRECT_ORIGIN_LABEL : origin;
@@ -198,7 +198,7 @@ export default function UploadFunnelTab() {
         </div>
       )}
 
-      {data != null && !signupReliable && (
+      {stages != null && !signupReliable && (
         <div className={`${styles.noticeBanner} ${styles.banner}`}>
           {SIGNUP_UNRELIABLE_NOTICE}
         </div>
