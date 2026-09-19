@@ -485,7 +485,7 @@ describe('McpToolsService.convertToDeck', () => {
       kind: 'error',
       code: 'monthly_limit',
       message:
-        "You've reached your free limit of 100 cards this month, so this deck wasn't created. Upgrade to Unlimited to keep converting, or wait for your limit to reset next month. Upgrade: https://2anki.net/pricing?from=mcp",
+        "You've reached your free limit of 100 cards this month, so this deck wasn't created. Upgrade to Pro to keep converting, or wait for your limit to reset next month. Upgrade: https://2anki.net/pricing?from=mcp",
       next_step: { upgrade_url: 'https://2anki.net/pricing?from=mcp' },
     });
     expect(trackMock).toHaveBeenCalledTimes(1);

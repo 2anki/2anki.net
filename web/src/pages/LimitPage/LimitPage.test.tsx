@@ -82,9 +82,9 @@ describe('LimitPage', () => {
     expect(screen.getByText('You reached 100 cards this month')).toBeTruthy();
   });
 
-  it('shows the Unlimited plan title', () => {
+  it('shows the Pro plan title', () => {
     renderPage();
-    expect(screen.getByText('Unlimited')).toBeTruthy();
+    expect(screen.getByText('Pro')).toBeTruthy();
   });
 
   it('does not advertise the Auto Sync plan', () => {
@@ -94,14 +94,12 @@ describe('LimitPage', () => {
     expect(screen.queryByText('Get Auto Sync')).toBeNull();
   });
 
-  it('does not show a hardcoded Unlimited monthly price', () => {
+  it('does not show a hardcoded Pro monthly price', () => {
     renderPage();
-    const unlimitedCard = screen
-      .getByText('Upgrade to Unlimited')
-      .closest('div');
-    if (unlimitedCard == null) throw new Error('Unlimited card not found');
+    const unlimitedCard = screen.getByText('Upgrade to Pro').closest('div');
+    if (unlimitedCard == null) throw new Error('Pro card not found');
     expect(within(unlimitedCard).queryByText(/\$\d/)).toBeNull();
-    expect(screen.getByText('Upgrade to Unlimited')).toBeInTheDocument();
+    expect(screen.getByText('Upgrade to Pro')).toBeInTheDocument();
   });
 
   it('shows a back link to /upload', () => {
@@ -110,9 +108,9 @@ describe('LimitPage', () => {
     expect(backLink.closest('a')?.getAttribute('href')).toBe('/upload');
   });
 
-  it('starts the Unlimited checkout through the API, not a static link', () => {
+  it('starts the Pro checkout through the API, not a static link', () => {
     renderPage();
-    const upgradeLink = screen.getByText('Upgrade to Unlimited');
+    const upgradeLink = screen.getByText('Upgrade to Pro');
     expect(upgradeLink.getAttribute('href')).toBe('/pricing?source=limit-wall');
 
     fireEvent.click(upgradeLink);
@@ -146,7 +144,7 @@ describe('LimitPage', () => {
     });
   });
 
-  it('leads with the Unlimited plan and lists the passes after it', () => {
+  it('leads with the Pro plan and lists the passes after it', () => {
     renderPage();
     const unlimitedLabel = screen.getByText('Skip the cap for good');
     const passesLabel = screen.getByText('Pay once — no subscription');

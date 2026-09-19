@@ -5,7 +5,7 @@ description: Snap or upload a photo of your notes — textbook page, lecture sli
 
 Photo to deck takes a single image and sends it to Claude's vision model, which reads the content and returns question-and-answer cards. The page is at [2anki.net/photo-to-deck](https://2anki.net/photo-to-deck).
 
-**Plan:** Free plan gets 5 photos per month. Paid plans are unlimited.
+**Plan:** Free plan gets 5 photos per month. Paid plans use AI credits.
 
 ## When to use this
 

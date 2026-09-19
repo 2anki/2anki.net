@@ -447,8 +447,8 @@
       "benefitCancel": "Anuluj w każdej chwili",
       "tryAgain": "Spróbuj ponownie",
       "startingCheckout": "Rozpoczynanie płatności",
-      "getUnlimitedYearly": "Kup Unlimited — płatność roczna",
-      "getUnlimitedMonthly": "Kup Unlimited — płatność miesięczna",
+      "getUnlimitedYearly": "Kup Pro — płatność roczna",
+      "getUnlimitedMonthly": "Kup Pro — płatność miesięczna",
       "termsYearly": "{{annualTotal}} pobierane dziś, odnawia się co roku. Anuluj w każdej chwili — zachowujesz dostęp przez opłacony rok.",
       "termsMonthly": "{{monthlyTotal}} pobierane dziś, odnawia się co miesiąc. Anuluj w każdej chwili.",
       "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie albo napisz na support@2anki.net.",
@@ -616,7 +616,7 @@
       "openingCheckout": "Otwieranie płatności",
       "getDayPass": "Kup Day Pass — {{price}}",
       "getWeekPass": "Kup Week Pass — {{price}}",
-      "upgradeUnlimited": "Przejdź na Unlimited"
+      "upgradeUnlimited": "Przejdź na Pro"
     }
   },
   "modals": {

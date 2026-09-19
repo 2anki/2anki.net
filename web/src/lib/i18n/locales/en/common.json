@@ -437,8 +437,8 @@
       "benefitCancel": "Cancel anytime",
       "tryAgain": "Try again",
       "startingCheckout": "Starting checkout",
-      "getUnlimitedYearly": "Get Unlimited — billed yearly",
-      "getUnlimitedMonthly": "Get Unlimited — billed monthly",
+      "getUnlimitedYearly": "Get Pro — billed yearly",
+      "getUnlimitedMonthly": "Get Pro — billed monthly",
       "termsYearly": "{{annualTotal}} billed today, renews yearly. Cancel anytime — keeps access through the year you paid for.",
       "termsMonthly": "{{monthlyTotal}} billed today, renews monthly. Cancel anytime.",
       "checkoutError": "Couldn't start checkout. Try again, or email support@2anki.net.",
@@ -598,7 +598,7 @@
       "openingCheckout": "Opening checkout",
       "getDayPass": "Get Day Pass — {{price}}",
       "getWeekPass": "Get Week Pass — {{price}}",
-      "upgradeUnlimited": "Upgrade to Unlimited"
+      "upgradeUnlimited": "Upgrade to Pro"
     }
   },
   "modals": {

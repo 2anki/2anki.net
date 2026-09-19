@@ -437,8 +437,8 @@
       "benefitCancel": "Cancela cuando quieras",
       "tryAgain": "Inténtalo de nuevo",
       "startingCheckout": "Abriendo el pago",
-      "getUnlimitedYearly": "Consigue Unlimited — facturación anual",
-      "getUnlimitedMonthly": "Consigue Unlimited — facturación mensual",
+      "getUnlimitedYearly": "Consigue Pro — facturación anual",
+      "getUnlimitedMonthly": "Consigue Pro — facturación mensual",
       "termsYearly": "{{annualTotal}} se cobra hoy, se renueva anualmente. Cancela cuando quieras — conservas el acceso durante el año que pagaste.",
       "termsMonthly": "{{monthlyTotal}} se cobra hoy, se renueva mensualmente. Cancela cuando quieras.",
       "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo, o escribe a support@2anki.net.",
@@ -598,7 +598,7 @@
       "openingCheckout": "Abriendo el pago",
       "getDayPass": "Consigue el Day Pass — {{price}}",
       "getWeekPass": "Consigue el Week Pass — {{price}}",
-      "upgradeUnlimited": "Mejora a Unlimited"
+      "upgradeUnlimited": "Mejora a Pro"
     }
   },
   "modals": {

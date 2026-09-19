@@ -6,8 +6,8 @@ describe('getPlanLabel', () => {
     expect(getPlanLabel({ patreon: true })).toBe('Lifetime');
   });
 
-  it('returns Unlimited when only subscriber is true', () => {
-    expect(getPlanLabel({ subscriber: true })).toBe('Unlimited');
+  it('returns Pro when only subscriber is true', () => {
+    expect(getPlanLabel({ subscriber: true })).toBe('Pro');
   });
 
   it('prefers Lifetime when both flags are true', () => {

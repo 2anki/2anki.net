@@ -83,11 +83,11 @@
     "text": "Non siamo riusciti a capire quali colonne siano la domanda e la risposta, quindi questo mazzo usa <front>{{frontField}}</front> come fronte e <back>{{backField}}</back> come retro. Converti di nuovo il database per scegliere colonne diverse."
   },
   "paywall": {
-    "ariaLabel": "Passa a Unlimited",
+    "ariaLabel": "Passa a Pro",
     "headline": "Una conversione alla volta con il piano gratuito",
-    "body": "Questa conversione è stata messa in pausa affinché quella già avviata possa terminare. Passa a Unlimited per eseguirne più di una alla volta.",
+    "body": "Questa conversione è stata messa in pausa affinché quella già avviata possa terminare. Passa a Pro per eseguirne più di una alla volta.",
     "opening": "Apertura del pagamento",
-    "upgrade": "Passa a Unlimited",
+    "upgrade": "Passa a Pro",
     "orWaitTitled": "Oppure attendi che \"<jobTitle>{{title}}</jobTitle>\" finisca — iniziata {{time}}.",
     "orWaitUntitled": "Oppure attendi che la tua conversione in corso finisca — iniziata {{time}}.",
     "seeAllPlans": "Vedi tutti i piani"

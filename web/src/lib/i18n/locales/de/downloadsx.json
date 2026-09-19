@@ -83,11 +83,11 @@
     "text": "Wir konnten nicht erkennen, welche Spalten Frage und Antwort sind, daher verwendet dieser Stapel <front>{{frontField}}</front> als Vorderseite und <back>{{backField}}</back> als Rückseite. Konvertiere die Datenbank erneut, um andere Spalten zu wählen."
   },
   "paywall": {
-    "ariaLabel": "Auf Unlimited upgraden",
+    "ariaLabel": "Auf Pro upgraden",
     "headline": "Eine Konvertierung nach der anderen im kostenlosen Tarif",
-    "body": "Diese Konvertierung wurde pausiert, damit die bereits gestartete abgeschlossen werden kann. Upgrade auf Unlimited, um mehrere gleichzeitig auszuführen.",
+    "body": "Diese Konvertierung wurde pausiert, damit die bereits gestartete abgeschlossen werden kann. Upgrade auf Pro, um mehrere gleichzeitig auszuführen.",
     "opening": "Checkout wird geöffnet",
-    "upgrade": "Auf Unlimited upgraden",
+    "upgrade": "Auf Pro upgraden",
     "orWaitTitled": "Oder warte, bis \"<jobTitle>{{title}}</jobTitle>\" fertig ist — gestartet {{time}}.",
     "orWaitUntitled": "Oder warte, bis deine aktuelle Konvertierung fertig ist — gestartet {{time}}.",
     "seeAllPlans": "Alle Tarife ansehen"

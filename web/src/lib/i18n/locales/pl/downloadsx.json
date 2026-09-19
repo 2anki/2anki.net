@@ -103,11 +103,11 @@
     "text": "Nie udało nam się ustalić, które kolumny to pytanie i odpowiedź, więc ta talia używa <front>{{frontField}}</front> jako przodu i <back>{{backField}}</back> jako tyłu. Przekonwertuj bazę danych ponownie, aby wybrać inne kolumny."
   },
   "paywall": {
-    "ariaLabel": "Przejdź na Unlimited",
+    "ariaLabel": "Przejdź na Pro",
     "headline": "Jedna konwersja naraz w planie darmowym",
-    "body": "Ta konwersja została wstrzymana, aby ta już rozpoczęta mogła się zakończyć. Przejdź na Unlimited, aby uruchamiać kilka naraz.",
+    "body": "Ta konwersja została wstrzymana, aby ta już rozpoczęta mogła się zakończyć. Przejdź na Pro, aby uruchamiać kilka naraz.",
     "opening": "Otwieranie płatności",
-    "upgrade": "Przejdź na Unlimited",
+    "upgrade": "Przejdź na Pro",
     "orWaitTitled": "Lub poczekaj, aż „<jobTitle>{{title}}</jobTitle>” się zakończy — rozpoczęto {{time}}.",
     "orWaitUntitled": "Lub poczekaj, aż Twoja obecna konwersja się zakończy — rozpoczęto {{time}}.",
     "seeAllPlans": "Zobacz wszystkie plany"

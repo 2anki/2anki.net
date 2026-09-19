@@ -45,7 +45,7 @@ The Chat study assistant is part of every paid plan — Subscription, Day Pass, 
 
 |                | Free                         | Paid plans         |
 | -------------- | ---------------------------- | ------------------ |
-| Messages       | — (past chats stay readable) | Unlimited          |
+| Messages       | — (past chats stay readable) | Uses AI credits    |
 | Message length | —                            | 100 000 characters |
 
 ## Mind maps
@@ -102,7 +102,7 @@ Free covers the conversion paths most people need: drag in a file, get a deck ba
 | Anonymous file upload                            | ✓                  | ✓            | ✓          |
 | Account features (history, favorites, templates) | sign-in required   | ✓            | ✓          |
 | AI-generated flashcards (Claude)                 | —                  | ✓            | ✓          |
-| Chat (study assistant)                           | —                  | Unlimited    | Unlimited  |
+| Chat (study assistant)                           | —                  | AI credits   | AI credits |
 | Long-term deck storage                           | 24 h               | active sub   | indefinite |
 | Auto Sync (Notion → Anki)                        | —                  | by request   | ✓          |
 

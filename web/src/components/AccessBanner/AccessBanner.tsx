@@ -35,7 +35,7 @@ const PASS_LABELS: Record<PassKind, string> = {
   '24h': 'Day Pass',
   '7d': 'Week Pass',
   '120d': 'Semester Pass',
-  unlimited: 'Unlimited',
+  unlimited: 'Pro',
 };
 
 interface AccessBannerProps {

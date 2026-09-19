@@ -83,11 +83,11 @@
     "text": "We konden niet bepalen welke kolommen de vraag en het antwoord zijn, dus dit pakket gebruikt <front>{{frontField}}</front> als voorkant en <back>{{backField}}</back> als achterkant. Converteer de database opnieuw om andere kolommen te kiezen."
   },
   "paywall": {
-    "ariaLabel": "Upgraden naar Unlimited",
+    "ariaLabel": "Upgraden naar Pro",
     "headline": "Eén conversie tegelijk op het gratis abonnement",
-    "body": "Deze conversie is gepauzeerd zodat de al gestarte conversie kan worden voltooid. Upgrade naar Unlimited om er meerdere tegelijk uit te voeren.",
+    "body": "Deze conversie is gepauzeerd zodat de al gestarte conversie kan worden voltooid. Upgrade naar Pro om er meerdere tegelijk uit te voeren.",
     "opening": "Afrekenen wordt geopend",
-    "upgrade": "Upgraden naar Unlimited",
+    "upgrade": "Upgraden naar Pro",
     "orWaitTitled": "Of wacht tot \"<jobTitle>{{title}}</jobTitle>\" klaar is — gestart {{time}}.",
     "orWaitUntitled": "Of wacht tot je huidige conversie klaar is — gestart {{time}}.",
     "seeAllPlans": "Alle abonnementen bekijken"

@@ -87,7 +87,7 @@ describe('PricingPage try-free CTA', () => {
   });
 });
 
-describe('PricingPage Unlimited benefits', () => {
+describe('PricingPage Pro benefits', () => {
   it('lists parallel conversions as a benefit', () => {
     renderAt('/pricing');
     expect(
@@ -106,9 +106,9 @@ describe('PricingPage Unlimited benefits', () => {
 });
 
 describe('PricingPage layout', () => {
-  it('renders the Unlimited card', () => {
+  it('renders the Pro card', () => {
     renderAt('/pricing');
-    expect(screen.getAllByText('Unlimited').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Pro').length).toBeGreaterThan(0);
   });
 
   it('does not sell Auto Sync as a standalone plan', () => {
@@ -139,12 +139,12 @@ describe('PricingPage layout', () => {
     expect(screen.queryByText('From $345')).not.toBeInTheDocument();
   });
 
-  it('shows the v2 fallback Unlimited price in the comparison table', async () => {
+  it('shows the v2 fallback Pro price in the comparison table', async () => {
     renderAt('/pricing');
     expect(await screen.findByText('$7.99 / mo')).toBeInTheDocument();
   });
 
-  it('shows the fetched v2 Unlimited price in the comparison table', async () => {
+  it('shows the fetched v2 Pro price in the comparison table', async () => {
     mockGetCheckoutPrices.mockResolvedValue({
       monthly: { cents: 799 },
       annual: { cents: 6400 },
@@ -249,7 +249,7 @@ describe('PricingPage layout', () => {
     expect(
       screen.getByRole('heading', { name: 'Questions & answers' })
     ).toBeInTheDocument();
-    expect(screen.getByText('What is the Unlimited plan?')).toBeInTheDocument();
+    expect(screen.getByText('What is the Pro plan?')).toBeInTheDocument();
   });
 });
 
@@ -411,7 +411,7 @@ describe('PricingPage internal event tracking', () => {
 
     renderAt('/pricing', { isLoggedIn: true });
     fireEvent.click(
-      screen.getByRole('button', { name: 'Get Unlimited — billed monthly' })
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
     );
 
     await waitFor(() => {
@@ -495,7 +495,7 @@ describe('PricingPage anonymous upgrade-click tracking', () => {
     });
   });
 
-  it('tracks paywall_upgrade_clicked then redirects to login for an anonymous Unlimited click', async () => {
+  it('tracks paywall_upgrade_clicked then redirects to login for an anonymous Pro click', async () => {
     const { track } = await import('../../lib/analytics/track');
     const trackMock = vi.mocked(track);
     trackMock.mockClear();
@@ -507,7 +507,7 @@ describe('PricingPage anonymous upgrade-click tracking', () => {
 
     renderAt('/pricing', { isLoggedIn: false });
     fireEvent.click(
-      screen.getByRole('button', { name: 'Get Unlimited — billed monthly' })
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
     );
 
     expect(trackMock).toHaveBeenCalledWith('paywall_upgrade_clicked', {
@@ -598,7 +598,7 @@ describe('PricingPage quota_remaining in paywall_shown', () => {
   });
 });
 
-describe('PricingPage Unlimited billing toggle', () => {
+describe('PricingPage Pro billing toggle', () => {
   it('renders the billing toggle with both options by default', () => {
     renderAt('/pricing');
     const group = screen.getByRole('radiogroup', { name: 'Billing cycle' });
@@ -641,7 +641,7 @@ describe('PricingPage Unlimited billing toggle', () => {
 
     renderAt('/pricing', { isLoggedIn: true });
     fireEvent.click(
-      screen.getByRole('button', { name: 'Get Unlimited — billed monthly' })
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
     );
 
     await waitFor(() => {
@@ -665,7 +665,7 @@ describe('PricingPage Unlimited billing toggle', () => {
     renderAt('/pricing', { isLoggedIn: true });
     fireEvent.click(screen.getByRole('radio', { name: 'Yearly · save 33%' }));
     fireEvent.click(
-      screen.getByRole('button', { name: 'Get Unlimited — billed yearly' })
+      screen.getByRole('button', { name: 'Get Pro — billed yearly' })
     );
 
     await waitFor(() => {
@@ -684,7 +684,7 @@ describe('PricingPage Unlimited billing toggle', () => {
     });
     renderAt('/pricing', { isLoggedIn: false });
     fireEvent.click(
-      screen.getByRole('button', { name: 'Get Unlimited — billed monthly' })
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
     );
     expect(globalThis.location.href).toBe('/login?redirect=/pricing');
   });

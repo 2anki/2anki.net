@@ -89,8 +89,8 @@ describe('EmailService.sendPriceLockInEmail', () => {
     await service.sendPriceLockInEmail('user@example.com', 'tok', 'a');
 
     const msg = lastMessage();
-    expect(msg.html).toContain('Unlimited pricing has gone up for new members');
+    expect(msg.html).toContain('Pro pricing has gone up for new members');
     expect(msg.html).toContain('The 2anki Team');
-    expect(msg.text).toContain('Unlimited pricing has gone up for new members');
+    expect(msg.text).toContain('Pro pricing has gone up for new members');
   });
 });

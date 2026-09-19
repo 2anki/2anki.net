@@ -1,6 +1,6 @@
 ---
 title: Short plans and passes
-description: Day Pass and Week Pass — when one-time Unlimited access makes sense.
+description: Day Pass and Week Pass — when one-time full access makes sense.
 ---
 
 Most people use Free or a monthly Subscription. But two short options exist for when neither fits — a deck for the weekend or a one-off cram session.
@@ -9,7 +9,7 @@ For the full plan list and prices, see the [pricing page](/pricing).
 
 ## Day Pass — $6
 
-24 hours of Unlimited access, paid once.
+24 hours of full access, paid once.
 
 - **Length:** 24 hours from purchase.
 - **Cost:** $6, one-time.
@@ -20,7 +20,7 @@ Use this when you have a weekend of cards to build and don't want a recurring ch
 
 ## Week Pass — $12
 
-7 days of Unlimited access, paid once.
+7 days of full access, paid once.
 
 - **Length:** 7 days from purchase.
 - **Cost:** $12, one-time.
@@ -31,7 +31,7 @@ Use this when you have a week to prep for an exam or a sprint to digitize a stac
 
 ## How the short plans differ from Subscription
 
-|                                                     | Free    | Day Pass  | Week Pass | Unlimited (sub)        |
+|                                                     | Free    | Day Pass  | Week Pass | Pro (sub)              |
 | --------------------------------------------------- | ------- | --------- | --------- | ---------------------- |
 | Cost                                                | $0      | $6        | $12       | $7.99 / mo or $64 / yr |
 | Length                                              | forever | 24 h      | 7 days    | until cancelled        |
@@ -52,7 +52,7 @@ Pausing is available on monthly plans after 30 days. Annual plans and passes can
 ## Common mistakes
 
 - **Expecting the pass to renew.** Day and Week passes are one-time. When the window closes, you go back to Free. Buy another pass or move to a Subscription if you want continuous access.
-- **Mixing payment paths.** Day and Week passes are one-time Stripe checkouts; Unlimited is a monthly or yearly subscription.
+- **Mixing payment paths.** Day and Week passes are one-time Stripe checkouts; Pro is a monthly or yearly subscription.
 
 ## Related
 

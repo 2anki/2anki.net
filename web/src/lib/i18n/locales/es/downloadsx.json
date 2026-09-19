@@ -83,11 +83,11 @@
     "text": "No pudimos saber qué columnas son la pregunta y la respuesta, así que este mazo usa <front>{{frontField}}</front> como anverso y <back>{{backField}}</back> como reverso. Convierte la base de datos de nuevo para elegir otras columnas."
   },
   "paywall": {
-    "ariaLabel": "Mejorar a Unlimited",
+    "ariaLabel": "Mejorar a Pro",
     "headline": "Una conversión a la vez en el plan gratuito",
-    "body": "Esta conversión se pausó para que la que ya empezaste pueda terminar. Mejora a Unlimited para ejecutar varias a la vez.",
+    "body": "Esta conversión se pausó para que la que ya empezaste pueda terminar. Mejora a Pro para ejecutar varias a la vez.",
     "opening": "Abriendo el pago",
-    "upgrade": "Mejorar a Unlimited",
+    "upgrade": "Mejorar a Pro",
     "orWaitTitled": "O espera a que \"<jobTitle>{{title}}</jobTitle>\" termine — empezó {{time}}.",
     "orWaitUntitled": "O espera a que termine tu conversión actual — empezó {{time}}.",
     "seeAllPlans": "Ver todos los planes"

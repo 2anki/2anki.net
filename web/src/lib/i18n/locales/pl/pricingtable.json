@@ -46,12 +46,12 @@
       "answer": "Day Pass ({{dayPrice}}) znosi darmowe limity na 24 godziny i zawiera 300 kredytów AI. Week Pass ({{weekPrice}}) obejmuje 7 dni z 500 kredytami. Semester Pass ({{semesterPrice}}) obejmuje około 4 miesiące z 1500 kredytami. Kredyty pokrywają funkcje AI, takie jak fiszki, MCQ i zdjęcie na talię; gdy się skończą, talia nadal powstaje bez AI. Wszystkie to płatności jednorazowe, bez subskrypcji."
     },
     "q3": {
-      "question": "Czym jest plan Unlimited?",
-      "answer": "Unlimited usuwa limit 100 kart, dodaje obsługę PDF, pozwala uruchamiać wiele konwersji naraz i obejmuje importy z Anki do Notion do 10 000 notatek każdy — wszystko bez miesięcznego limitu. Funkcje AI działają na 300 kredytach miesięcznie; gdy się skończą, talia nadal powstaje bez AI. Ceny znajdziesz na kartach powyżej."
+      "question": "Czym jest plan Pro?",
+      "answer": "Pro usuwa limit 100 kart, dodaje obsługę PDF, pozwala uruchamiać wiele konwersji naraz i obejmuje importy z Anki do Notion do 10 000 notatek każdy — wszystko bez miesięcznego limitu. Funkcje AI działają na 300 kredytach miesięcznie; gdy się skończą, talia nadal powstaje bez AI. Ceny znajdziesz na kartach powyżej."
     },
     "q4": {
       "question": "Czy jest plan Lifetime?",
-      "answer": "Już nie. Lifetime jest zamknięty dla nowych użytkowników. Jeśli masz już Lifetime, Twój dostęp i wszystkie funkcje pozostają dokładnie takie same. Aby uzyskać plan ciągły, skorzystaj z planu Unlimited na kartach powyżej."
+      "answer": "Już nie. Lifetime jest zamknięty dla nowych użytkowników. Jeśli masz już Lifetime, Twój dostęp i wszystkie funkcje pozostają dokładnie takie same. Aby uzyskać plan ciągły, skorzystaj z planu Pro na kartach powyżej."
     },
     "q5": {
       "question": "Czy mogę anulować w dowolnym momencie?",
@@ -59,7 +59,7 @@
     },
     "q6": {
       "question": "Czy jest aplikacja?",
-      "answer": "Tak — 2anki jest darmowe w App Store na iPhone'a, iPada i Maca, obok aplikacji webowej. Pliki są przetwarzane na urządzeniu. Obowiązują te same plany: Day Pass, Week Pass i Unlimited są dostępne jako zakupy w aplikacji."
+      "answer": "Tak — 2anki jest darmowe w App Store na iPhone'a, iPada i Maca, obok aplikacji webowej. Pliki są przetwarzane na urządzeniu. Obowiązują te same plany: Day Pass, Week Pass i Pro są dostępne jako zakupy w aplikacji."
     },
     "q7": {
       "question": "Co stanie się z moimi taliami, jeśli przestanę płacić?",

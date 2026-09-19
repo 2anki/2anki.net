@@ -83,11 +83,11 @@
     "text": "Não conseguimos identificar quais colunas são a pergunta e a resposta, então este baralho usa <front>{{frontField}}</front> como frente e <back>{{backField}}</back> como verso. Converta o banco de dados novamente para escolher outras colunas."
   },
   "paywall": {
-    "ariaLabel": "Fazer upgrade para o Unlimited",
+    "ariaLabel": "Fazer upgrade para o Pro",
     "headline": "Uma conversão por vez no plano gratuito",
-    "body": "Esta conversão foi pausada para que a que você já iniciou possa terminar. Faça upgrade para o Unlimited para executar várias ao mesmo tempo.",
+    "body": "Esta conversão foi pausada para que a que você já iniciou possa terminar. Faça upgrade para o Pro para executar várias ao mesmo tempo.",
     "opening": "Abrindo o checkout",
-    "upgrade": "Fazer upgrade para o Unlimited",
+    "upgrade": "Fazer upgrade para o Pro",
     "orWaitTitled": "Ou aguarde \"<jobTitle>{{title}}</jobTitle>\" terminar — iniciada {{time}}.",
     "orWaitUntitled": "Ou aguarde sua conversão atual terminar — iniciada {{time}}.",
     "seeAllPlans": "Ver todos os planos"

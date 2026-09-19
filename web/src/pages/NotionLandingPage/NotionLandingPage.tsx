@@ -74,7 +74,7 @@ export function NotionLandingPage() {
         <div className={styles.plansGrid}>
           <PricingCard
             badge={t('notionLanding.recommended')}
-            title="Unlimited"
+            title="Pro"
             priceChip={t('notionLanding.seePricing')}
             benefits={unlimitedBenefits}
             link={UNLIMITED_HREF}

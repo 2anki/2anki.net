@@ -60,7 +60,7 @@ The same advice that works for [AI flashcards](/documentation/cards/ai-flashcard
 
 |                | Free                              | Paid plans         |
 | -------------- | --------------------------------- | ------------------ |
-| Messages       | — (reading past chats stays free) | Unlimited          |
+| Messages       | — (reading past chats stays free) | Uses AI credits    |
 | Message length | —                                 | 100 000 characters |
 
 See [Limits and quotas](/documentation/help/limits) for the full plan table.

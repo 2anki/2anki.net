@@ -46,12 +46,12 @@
       "answer": "Day Pass ({{dayPrice}}) hebt für 24 Stunden die kostenlosen Limits auf und enthält 300 KI-Credits. Week Pass ({{weekPrice}}) gilt für 7 Tage mit 500 Credits. Semester Pass ({{semesterPrice}}) gilt für rund 4 Monate mit 1500 Credits. Credits gelten für KI-Funktionen wie Karteikarten, MCQ und Foto zu Deck; sind sie aufgebraucht, wird dein Deck weiterhin ohne KI erstellt. Alle sind Einmalzahlungen, kein Abo nötig."
     },
     "q3": {
-      "question": "Was ist der Unlimited-Tarif?",
-      "answer": "Unlimited entfernt das 100-Karten-Limit, fügt PDF-Unterstützung hinzu, erlaubt mehrere Konvertierungen gleichzeitig und umfasst Anki-zu-Notion-Importe mit bis zu 10.000 Notizen pro Import — alles ohne monatliche Obergrenze. KI-Funktionen laufen mit 300 Credits im Monat; sind sie aufgebraucht, wird dein Deck weiterhin ohne KI erstellt. Die Preise stehen auf den Karten oben."
+      "question": "Was ist der Pro-Tarif?",
+      "answer": "Pro entfernt das 100-Karten-Limit, fügt PDF-Unterstützung hinzu, erlaubt mehrere Konvertierungen gleichzeitig und umfasst Anki-zu-Notion-Importe mit bis zu 10.000 Notizen pro Import — alles ohne monatliche Obergrenze. KI-Funktionen laufen mit 300 Credits im Monat; sind sie aufgebraucht, wird dein Deck weiterhin ohne KI erstellt. Die Preise stehen auf den Karten oben."
     },
     "q4": {
       "question": "Gibt es einen Lifetime-Plan?",
-      "answer": "Nicht mehr. Lifetime ist für neue Mitglieder geschlossen. Wenn du bereits Lifetime hast, bleiben dein Zugang und alle Funktionen genau so, wie sie sind. Für einen laufenden Tarif nutze den Unlimited-Plan auf den Karten oben."
+      "answer": "Nicht mehr. Lifetime ist für neue Mitglieder geschlossen. Wenn du bereits Lifetime hast, bleiben dein Zugang und alle Funktionen genau so, wie sie sind. Für einen laufenden Tarif nutze den Pro-Plan auf den Karten oben."
     },
     "q5": {
       "question": "Kann ich jederzeit kündigen?",
@@ -59,7 +59,7 @@
     },
     "q6": {
       "question": "Gibt es eine App?",
-      "answer": "Ja — 2anki ist kostenlos im App Store für iPhone, iPad und Mac, neben der Web-App. Dateien werden auf dem Gerät verarbeitet. Es gelten dieselben Tarife: Day Pass, Week Pass und Unlimited sind als In-App-Käufe verfügbar."
+      "answer": "Ja — 2anki ist kostenlos im App Store für iPhone, iPad und Mac, neben der Web-App. Dateien werden auf dem Gerät verarbeitet. Es gelten dieselben Tarife: Day Pass, Week Pass und Pro sind als In-App-Käufe verfügbar."
     },
     "q7": {
       "question": "Was passiert mit meinen Decks, wenn ich nicht mehr zahle?",

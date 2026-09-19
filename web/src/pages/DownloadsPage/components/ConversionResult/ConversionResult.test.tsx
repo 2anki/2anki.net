@@ -124,7 +124,7 @@ describe('ConversionResult — paywalled variant', () => {
     });
   });
 
-  it('leads with the Day Pass as the primary CTA, then Week Pass, then Unlimited', () => {
+  it('leads with the Day Pass as the primary CTA, then Week Pass, then Pro', () => {
     renderPaywall();
     expect(
       screen.getByRole('button', { name: 'Get Day Pass — $6' })
@@ -133,7 +133,7 @@ describe('ConversionResult — paywalled variant', () => {
       screen.getByRole('button', { name: 'Get Week Pass — $12' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Upgrade to Unlimited' })
+      screen.getByRole('link', { name: 'Upgrade to Pro' })
     ).toBeInTheDocument();
   });
 
@@ -173,9 +173,9 @@ describe('ConversionResult — paywalled variant', () => {
     });
   });
 
-  it('fires paywall_upgrade_clicked with plan=unlimited on the Unlimited link', () => {
+  it('fires paywall_upgrade_clicked with plan=unlimited on the Pro link', () => {
     renderPaywall();
-    fireEvent.click(screen.getByRole('link', { name: 'Upgrade to Unlimited' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Upgrade to Pro' }));
     expect(mockTrack).toHaveBeenCalledWith('paywall_upgrade_clicked', {
       surface: 'downloads-limit',
       plan: 'unlimited',
@@ -236,9 +236,7 @@ describe('ConversionResult — failed variant', () => {
       </MemoryRouter>
     );
 
-    expect(
-      screen.queryByRole('link', { name: 'Upgrade to Unlimited' })
-    ).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Upgrade to Pro' })).toBeNull();
   });
 
   it.each(['claude_parse_failed', 'claude_response_truncated'])(

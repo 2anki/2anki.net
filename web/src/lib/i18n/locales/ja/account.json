@@ -116,7 +116,7 @@
     "seePlans": "プランを見る"
   },
   "checkout": {
-    "youreOnUnlimited": "Unlimited をご利用中です",
+    "youreOnUnlimited": "Pro をご利用中です",
     "thanksActive": "{{firstName}} さん、ありがとうございます — サブスクリプションが有効になりました。",
     "subscriptionActive": "サブスクリプションが有効になりました。",
     "makeDeck": "デッキを作る",
