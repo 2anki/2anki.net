@@ -87,7 +87,8 @@ export default function ConversionsTab() {
           </h2>
           <p className={styles.sectionHint}>
             succeeded ÷ (succeeded + technical failures). Plan blocks and empty
-            decks are excluded.
+            decks are excluded. Only failures the server records as events are
+            counted.
           </p>
         </header>
         <div className={styles.cardGrid}>

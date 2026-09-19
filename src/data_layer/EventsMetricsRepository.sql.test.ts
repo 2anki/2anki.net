@@ -130,7 +130,9 @@ describe('EventsMetricsRepository generated SQL', () => {
         'count(case when events.name = ? then 1 end) as succeeded'
       );
       expect(sql).toContain('as technical_failed');
-      expect(sql).toContain('as plan_blocked');
+      expect(sql).toContain(
+        "count(case when events.name = ? and (props->>'reason' LIKE ? OR props->>'reason' LIKE ? OR props->>'reason' LIKE ?) then 1 end) as plan_blocked"
+      );
     });
 
     it('leaves paywall and empty-deck reasons out of the technical failures', () => {
@@ -181,11 +183,11 @@ describe('mapConversionOutcomesRow', () => {
   it('turns the string counts Postgres returns into numbers', () => {
     expect(
       mapConversionOutcomesRow({
-        succeeded: '2209',
-        technical_failed: '16',
-        plan_blocked: '889',
+        succeeded: '12',
+        technical_failed: '3',
+        plan_blocked: '5',
       })
-    ).toEqual({ succeeded: 2209, technicalFailed: 16, planBlocked: 889 });
+    ).toEqual({ succeeded: 12, technicalFailed: 3, planBlocked: 5 });
   });
 
   it('treats null counts as zero', () => {

@@ -64,6 +64,10 @@ function eventsRepoWithOutcomes(
   });
 }
 
+afterEach(() => {
+  jest.useRealTimers();
+});
+
 describe('ConversionMetricsService — graceful failure', () => {
   it('returns null for every metric when the repository throws', async () => {
     const service = new ConversionMetricsService(

@@ -328,7 +328,7 @@ const OpsRouter = () => {
    * @swagger
    * /api/ops/conversion/metrics:
    *   get:
-   *     summary: Conversion success/failure metrics from jobs table plus funnel metrics from events
+   *     summary: Conversion volume, success rate and plan blocks from conversion events, failure reasons from the jobs table, plus funnel metrics from events
    *     description: Internal endpoint locked to the ops owner. Returns 404 for everyone else.
    *     tags: [Ops]
    *     responses:
