@@ -14,6 +14,9 @@ describe('isExpectedUploadState', () => {
     'ClaudeLargeSectionError',
     'ImageOnlyContentError',
     'DeckTooLargeError',
+    'IncompleteZipError',
+    'EpubNoAnnotationsError',
+    'EpubTooLargeError',
   ])(
     'treats %s as a user input state even after the worker rebuilds it',
     (name) => {
@@ -24,6 +27,15 @@ describe('isExpectedUploadState', () => {
   it.each([
     ['a truncated conversion', CONVERSION_TRUNCATED_MESSAGE],
     ['a corrupt PDF', 'pdfinfo_failed code=1'],
+    ['a password protected PDF', 'pdfinfo_password: needs a password'],
+    [
+      'an EPUB with nothing highlighted',
+      'This EPUB contains no highlighted passages.',
+    ],
+    [
+      'a Kindle clippings file with nothing in it',
+      'No highlights found in My Clippings.txt',
+    ],
     ['an unreadable docx', 'docx_parse_failed: not a zip'],
     [
       'an Anki package uploaded as a source file',

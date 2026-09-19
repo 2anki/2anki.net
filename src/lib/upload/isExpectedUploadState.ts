@@ -12,12 +12,18 @@ const EXPECTED_ERROR_NAMES = new Set([
   'ClaudeLargeSectionError',
   'ImageOnlyContentError',
   'DeckTooLargeError',
+  'IncompleteZipError',
+  'EpubNoAnnotationsError',
+  'EpubTooLargeError',
 ]);
 
 const EXPECTED_MESSAGE_PATTERNS = [
   /^docx_parse_failed/,
   /^pdfinfo_failed/,
+  /^pdfinfo_password/,
   /already an Anki deck/,
+  /no highlighted passages/,
+  /^No highlights found/,
 ];
 
 export function isExpectedUploadState(err: unknown): boolean {
