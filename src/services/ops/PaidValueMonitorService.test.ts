@@ -19,9 +19,13 @@ const buildService = (fixture: Fixture) => {
     userIds: [] as number[],
     since: null as Date | null,
   };
+  const passQuery = { until: null as Date | null };
   const service = new PaidValueMonitorService({
     userPasses: {
-      listActiveInWindow: async () => fixture.userPasses ?? [],
+      listActiveInWindow: async (_since, until) => {
+        passQuery.until = until;
+        return fixture.userPasses ?? [];
+      },
     },
     anonymousPasses: {
       listActiveInWindow: async () => fixture.anonymousPasses ?? [],
@@ -39,10 +43,49 @@ const buildService = (fixture: Fixture) => {
       },
     },
   });
-  return { service, eventsCapture };
+  return { service, eventsCapture, passQuery };
 };
 
 describe('PaidValueMonitorService', () => {
+  it('counts a semester pass bought inside the window as value delivered', async () => {
+    const { service } = buildService({
+      userPasses: [
+        {
+          id: 7,
+          userId: 700,
+          kind: '120d',
+          expiresAt: new Date('2026-11-09T12:00:00.000Z'),
+        },
+      ],
+      events: [
+        {
+          userId: 700,
+          name: 'conversion_succeeded',
+          createdAt: new Date('2026-07-13T12:00:00.000Z'),
+        },
+      ],
+    });
+
+    const result = await service.getStatus(SINCE, NOW);
+
+    expect(result.passes).toEqual({
+      checked: 1,
+      withValue: 1,
+      zeroValueTried: 0,
+      zeroValueNeverTried: 0,
+      rows: [],
+    });
+  });
+
+  it('queries passes that expire a full semester after now', async () => {
+    const { service, passQuery } = buildService({});
+
+    await service.getStatus(SINCE, NOW);
+
+    const semesterMs = 120 * 24 * 60 * 60 * 1000;
+    expect(passQuery.until).toEqual(new Date(NOW.getTime() + semesterMs));
+  });
+
   it('counts a pass with a successful conversion as value delivered', async () => {
     const { service, eventsCapture } = buildService({
       userPasses: [

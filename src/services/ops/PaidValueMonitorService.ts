@@ -5,13 +5,15 @@ import type { NewSubscriptionWithUserRow } from '../../data_layer/PaidValueSubsc
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
+const SEMESTER_MS = 120 * DAY_MS;
 
 const KIND_DURATION_MS: Record<string, number> = {
   '24h': DAY_MS,
   '7d': WEEK_MS,
+  '120d': SEMESTER_MS,
 };
 const DEFAULT_KIND_DURATION_MS = DAY_MS;
-const LARGEST_KIND_DURATION_MS = WEEK_MS;
+const LARGEST_KIND_DURATION_MS = SEMESTER_MS;
 const SUBSCRIPTION_VALUE_WINDOW_MS = WEEK_MS;
 
 export type PaidValueClassification = 'tried' | 'never';
