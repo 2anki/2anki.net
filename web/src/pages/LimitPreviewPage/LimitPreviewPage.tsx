@@ -19,7 +19,7 @@ interface Variant {
 
 const variants: Variant[] = [
   {
-    label: 'A — passes first (today’s order)',
+    label: 'A — passes first (previous order)',
     note: 'Free signed-in user at the monthly cap. Day, Week and Semester lead; Unlimited follows.',
     order: 'passes-first',
     pendingPass: null,
@@ -27,7 +27,7 @@ const variants: Variant[] = [
   },
   {
     label: 'B — Unlimited first',
-    note: 'Same user. The subscription leads; the passes follow.',
+    note: 'Same user. The subscription leads; the passes follow. This is the order the limit page uses.',
     order: 'unlimited-first',
     pendingPass: null,
     showError: false,

@@ -22,7 +22,7 @@ describe('LimitPreviewPage', () => {
       .filter((text) => text?.match(/^[AB] — /));
 
     expect(labels).toEqual([
-      'A — passes first (today’s order)',
+      'A — passes first (previous order)',
       'B — Unlimited first',
       'A — Semester redirecting',
       'B — Semester redirecting',

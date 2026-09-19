@@ -146,6 +146,16 @@ describe('LimitPage', () => {
     });
   });
 
+  it('leads with the Unlimited plan and lists the passes after it', () => {
+    renderPage();
+    const unlimitedLabel = screen.getByText('Skip the cap for good');
+    const passesLabel = screen.getByText('Pay once — no subscription');
+    expect(
+      unlimitedLabel.compareDocumentPosition(passesLabel) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
   it('offers the Semester Pass next to the Day and Week Pass', () => {
     renderPage();
     expect(

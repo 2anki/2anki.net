@@ -18,7 +18,7 @@ const REF = 'limit-wall';
 
 const ANONYMOUS_CARD_CAP = 21;
 
-const WALL_ORDER: WallOrder = 'passes-first';
+const WALL_ORDER: WallOrder = 'unlimited-first';
 
 const PASS_PLAN: Record<PassKind, string> = {
   '24h': 'day_pass',
