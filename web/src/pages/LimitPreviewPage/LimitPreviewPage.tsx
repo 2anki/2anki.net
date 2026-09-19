@@ -48,14 +48,14 @@ const variants: Variant[] = [
   },
   {
     label: 'A — checkout error',
-    note: 'Checkout could not start; the alert appears under the passes.',
+    note: 'Checkout could not start; the alert appears above the passes and scrolls into view.',
     order: 'passes-first',
     pendingPass: null,
     showError: true,
   },
   {
     label: 'B — checkout error',
-    note: 'Same error with Unlimited first: the alert sits under the passes, below the fold.',
+    note: 'Same error with Unlimited first: the alert stays above the passes, next to the buttons.',
     order: 'unlimited-first',
     pendingPass: null,
     showError: true,

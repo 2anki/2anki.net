@@ -1,10 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import LimitPreviewPage from './LimitPreviewPage';
-
-vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
 
 describe('LimitPreviewPage', () => {
   it('renders both section orders and the error and redirecting states', () => {

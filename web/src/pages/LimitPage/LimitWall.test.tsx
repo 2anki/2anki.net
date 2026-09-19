@@ -4,8 +4,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { LimitWall, type WallOrder } from './LimitWall';
 
-vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
-
 function renderWall(order: WallOrder, passError: string | null = null) {
   return render(
     <HelmetProvider>
@@ -49,6 +47,22 @@ describe('LimitWall', () => {
     expect(screen.getByRole('alert').textContent).toBe(
       'Checkout is unavailable right now'
     );
+  });
+
+  it('shows a checkout error above the passes so it stays near the buttons', () => {
+    renderWall('passes-first', 'Checkout is unavailable right now');
+    const alert = screen.getByRole('alert');
+    const dayPass = screen.getByRole('button', { name: 'Get Day Pass' });
+    expect(appearsBefore(alert, dayPass)).toBe(true);
+  });
+
+  it('scrolls a checkout error into view', () => {
+    const scrollIntoView = vi.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    renderWall('unlimited-first', 'Checkout is unavailable right now');
+    HTMLElement.prototype.scrollIntoView = original;
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
   });
 
   it('disables only the pass that is redirecting', () => {

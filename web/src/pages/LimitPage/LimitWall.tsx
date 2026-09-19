@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react';
+import { useEffect, useRef, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -28,10 +28,22 @@ export function LimitWall({
   onUnlimitedClick,
 }: Readonly<LimitWallProps>) {
   const { t } = useTranslation('accountx');
+  const errorRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (passError != null) {
+      errorRef.current?.scrollIntoView?.({ block: 'nearest' });
+    }
+  }, [passError]);
 
   const passes = (
     <>
       <p className={styles.sectionLabel}>{t('limit.payOnce')}</p>
+      {passError && (
+        <p ref={errorRef} className={styles.planError} role="alert">
+          {passError}
+        </p>
+      )}
       <PassCards
         onDayPass={() => onPass('24h')}
         onWeekPass={() => onPass('7d')}
@@ -41,11 +53,6 @@ export function LimitWall({
         semesterPassPending={pendingPass === '120d'}
         featureDayPass
       />
-      {passError && (
-        <p className={styles.planError} role="alert">
-          {passError}
-        </p>
-      )}
     </>
   );
 
