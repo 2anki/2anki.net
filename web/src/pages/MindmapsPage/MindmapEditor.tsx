@@ -720,7 +720,7 @@ export function MindmapEditor() {
 
   function addChildNode(parentId: string) {
     if (nodes.length >= nodeLimit) {
-      showToast(t('mindmaps.nodeLimitReached', { limit: nodeLimit }));
+      showToast(t('mindmaps.nodeLimitReached', { count: nodeLimit }));
       return;
     }
     const newId = crypto.randomUUID();
@@ -751,7 +751,7 @@ export function MindmapEditor() {
 
   function addSiblingNode(siblingId: string) {
     if (nodes.length >= nodeLimit) {
-      showToast(t('mindmaps.nodeLimitReached', { limit: nodeLimit }));
+      showToast(t('mindmaps.nodeLimitReached', { count: nodeLimit }));
       return;
     }
     const parentEdge = edges.find((e) => e.target === siblingId);
@@ -836,7 +836,7 @@ export function MindmapEditor() {
     parentId?: string | null
   ) {
     if (nodes.length >= nodeLimit) {
-      showToast(t('mindmaps.nodeLimitReached', { limit: nodeLimit }));
+      showToast(t('mindmaps.nodeLimitReached', { count: nodeLimit }));
       return;
     }
     const newId = crypto.randomUUID();

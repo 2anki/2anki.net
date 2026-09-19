@@ -95,7 +95,7 @@ export function MindmapList() {
           style={{ marginBottom: '1rem' }}
         >
           {t('mindmaps.monthlyLimit', {
-            limit: data?.access.freeMapLimit ?? 3,
+            count: data?.access.freeMapLimit ?? 3,
           })}
         </div>
       )}

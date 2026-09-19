@@ -17,10 +17,10 @@ export function MindmapLimitModal({
     <div className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.heading}>
-          {t('mindmaps.limitHeading', { limit })}
+          {t('mindmaps.limitHeading', { count: limit })}
         </h1>
         <p className={styles.subheading}>
-          {t('mindmaps.limitSubheading', { limit })}
+          {t('mindmaps.limitSubheading', { count: limit })}
         </p>
       </div>
       <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
