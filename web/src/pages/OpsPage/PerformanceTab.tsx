@@ -189,7 +189,7 @@ export default function PerformanceTab() {
       <div className={styles.grid}>
         <ChartPanel
           title="Job duration percentiles"
-          subtitle="From job start to terminal status, completed jobs only"
+          subtitle="Created → last done update, excluding MCP saves. Restarts and re-syncs reuse the row, so the tail is an upper bound, not a per-run duration."
           isLoading={isInitial}
           isEmpty={(data?.durations.length ?? 0) === 0}
           emptyText="No completed jobs yet."
@@ -209,7 +209,7 @@ export default function PerformanceTab() {
 
         <ChartPanel
           title="Slowest 20 jobs, last 24h"
-          subtitle="Click an ID to copy it for pg lookup"
+          subtitle="Excludes MCP saves. Click an ID to copy it for pg lookup"
           isLoading={isInitial}
           isEmpty={(data?.slowest_jobs_24h.length ?? 0) === 0}
           emptyText="No completed jobs in this window."
