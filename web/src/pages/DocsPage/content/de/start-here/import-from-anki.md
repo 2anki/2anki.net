@@ -5,7 +5,7 @@ description: Verwandle eine .apkg in Notion-Toggle-Seiten — kostenlos bis 1.00
 
 Die Umkehrung von allem anderen, was 2anki macht. Du lädst eine bestehende `.apkg` hoch, und wir bauen die Karten als Toggles innerhalb einer Notion-Seite nach. Nützlich, um ein altes Deck zurück in bearbeitbare Notizen zu holen, oder um jemandem ein Lern-Deck zu geben, der in Notion statt in Anki arbeitet.
 
-**Plan:** Kostenlos bis 1.000 Karten pro Import. Abo und Lifetime bekommen unbegrenzte Importe.
+**Plan:** Kostenlos bis 1.000 Karten pro Import. Abo und Lifetime heben das Limit auf 10.000 Karten pro Import an.
 
 ## Wann du das nutzt
 
@@ -32,11 +32,11 @@ Karten werden zu Toggles — die Vorderseite ist die Toggle-Zusammenfassung, die
 ## Häufige Fehler
 
 - **Falscher Dateityp.** Die Seite akzeptiert nur `.apkg`. Wenn du eine `.colpkg` (vollständiges Collection-Backup) hast, öffne sie zuerst in Anki und exportiere das gewünschte Deck als `.apkg`.
-- **Deck über dem kostenlosen Limit.** Kostenlos stoppt hart bei 1.000 Karten pro Import. Teile das Deck in Anki (Rechtsklick → **Export** mit einer gefilterten Teilmenge) oder [upgrade](/pricing) für unbegrenzt.
+- **Deck über dem kostenlosen Limit.** Kostenlos stoppt hart bei 1.000 Karten pro Import. Teile das Deck in Anki (Rechtsklick → **Export** mit einer gefilterten Teilmenge) oder [upgrade](/pricing), um das Limit auf 10.000 Karten pro Import anzuheben.
 - **Seite nicht in der Auswahl.** Die Ziel-Auswahl zeigt nur Seiten, auf die die 2anki-Integration Zugriff hat. Öffne die Seite in Notion → **Share** → **Add connections** → wähle **2anki**.
 
 ## Verwandt
 
 - [Notion verbinden](/documentation/start-here/connect-notion) — die Workspace-Verbindung, die dieser Weg nutzt
 - [Grenzen und Kontingente](/documentation/help/limits) — was jeder Plan enthält
-- [Preise](/pricing) — upgrade für unbegrenzte Importe
+- [Preise](/pricing) — das Import-Limit auf 10.000 Karten anheben
