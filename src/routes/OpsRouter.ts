@@ -647,7 +647,7 @@ const OpsRouter = () => {
    *   get:
    *     summary: Job-duration percentiles, status breakdown, and signup-country counts
    *     description: |
-   *       Internal endpoint locked to the ops owner. Returns p50/p95/p99 job durations (24h and 7d), terminal-status counts, the 20 slowest done jobs in the last 24h, and signup country breakdown for the last 7 days. Returns 404 for everyone else.
+   *       Internal endpoint locked to the ops owner. Returns p50/p95/p99 job durations (24h and 7d) and the 20 slowest done jobs in the last 24h — both measure created_at to the last terminal update and both exclude MCP saves, which create and complete their job row in the same call (~1ms) and would otherwise drag the median down. The terminal-status counts for the last 24h DO still include MCP saves, so the done count exceeds the duration-sample count by the MCP volume. The created_at-to-last-update span is an upper bound, not a per-run duration: restarts and re-syncs reuse the row, so a true duration would need a dedicated per-run start/finish column (not added here). Also returns the signup-country breakdown for the last 7 days. Returns 404 for everyone else.
    *     tags: [Ops]
    *     responses:
    *       200:

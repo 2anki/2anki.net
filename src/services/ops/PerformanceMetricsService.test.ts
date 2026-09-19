@@ -1,3 +1,5 @@
+import knex from 'knex';
+
 import {
   PerformanceMetricsService,
   buildDurationPercentilesSql,
@@ -8,45 +10,63 @@ import {
 import { InMemoryUserVisibleErrorsRepository } from '../../data_layer/UserVisibleErrorsRepository';
 import type { IUserVisibleErrorsRepository } from '../../data_layer/UserVisibleErrorsRepository';
 
-describe('buildDurationPercentilesSql', () => {
-  it('times done jobs from created_at to last_edited_time', () => {
-    const sql = buildDurationPercentilesSql();
-    expect(sql).toContain(
-      'EXTRACT(EPOCH FROM (last_edited_time - created_at)) * 1000'
-    );
-    expect(sql).toContain("status = 'done'");
+describe('PerformanceMetricsService generated SQL', () => {
+  const pg = knex({ client: 'pg' });
+
+  afterAll(async () => {
+    await pg.destroy();
   });
 
-  it('drops rows it cannot time by requiring both timestamps', () => {
-    const sql = buildDurationPercentilesSql();
-    expect(sql).toContain('created_at IS NOT NULL');
-    expect(sql).toContain('last_edited_time IS NOT NULL');
+  const placeholderCount = (sql: string): number =>
+    (sql.match(/\?/g) ?? []).length;
+
+  describe('duration percentiles', () => {
+    it('times done jobs created-to-last-edited, dropping untimed and MCP rows', () => {
+      const { sql } = pg.raw(buildDurationPercentilesSql(), [1]).toSQL();
+
+      expect(sql).toContain(
+        'EXTRACT(EPOCH FROM (last_edited_time - created_at)) * 1000'
+      );
+      expect(sql).toContain("status = 'done'");
+      expect(sql).toContain('created_at IS NOT NULL');
+      expect(sql).toContain('last_edited_time IS NOT NULL');
+      expect(sql).toContain("type IS DISTINCT FROM 'mcp'");
+    });
+
+    it('computes p50, p95, p99 and a total count', () => {
+      const { sql } = pg.raw(buildDurationPercentilesSql(), [1]).toSQL();
+
+      expect(sql).toContain('percentile_disc(0.5)');
+      expect(sql).toContain('percentile_disc(0.95)');
+      expect(sql).toContain('percentile_disc(0.99)');
+      expect(sql).toContain('COUNT(*) AS total');
+    });
+
+    it('binds exactly the sinceDays window, matching the placeholder count', () => {
+      const { sql, bindings } = pg
+        .raw(buildDurationPercentilesSql(), [1])
+        .toSQL();
+
+      expect(bindings).toEqual([1]);
+      expect(placeholderCount(sql)).toBe(bindings.length);
+    });
   });
 
-  it('excludes MCP saves, which record persistence time not conversion time', () => {
-    expect(buildDurationPercentilesSql()).toContain(
-      "type IS DISTINCT FROM 'mcp'"
-    );
-  });
+  describe('slowest jobs', () => {
+    it('excludes MCP saves and reads last_edited_time as the completion time', () => {
+      const { sql } = pg.raw(buildSlowestJobsSql(), [1, 20]).toSQL();
 
-  it('computes p50, p95, p99 and a total count', () => {
-    const sql = buildDurationPercentilesSql();
-    expect(sql).toContain('percentile_disc(0.5)');
-    expect(sql).toContain('percentile_disc(0.95)');
-    expect(sql).toContain('percentile_disc(0.99)');
-    expect(sql).toContain('COUNT(*) AS total');
-  });
-});
+      expect(sql).toContain("type IS DISTINCT FROM 'mcp'");
+      expect(sql).toContain('last_edited_time AS completed_at');
+      expect(sql).toContain('ORDER BY duration_ms DESC NULLS LAST');
+    });
 
-describe('buildSlowestJobsSql', () => {
-  it('excludes MCP saves from the slowest-jobs list', () => {
-    expect(buildSlowestJobsSql()).toContain("type IS DISTINCT FROM 'mcp'");
-  });
+    it('binds the window and the limit, matching the placeholder count', () => {
+      const { sql, bindings } = pg.raw(buildSlowestJobsSql(), [1, 20]).toSQL();
 
-  it('orders by duration and reads last_edited_time as the completion time', () => {
-    const sql = buildSlowestJobsSql();
-    expect(sql).toContain('ORDER BY duration_ms DESC NULLS LAST');
-    expect(sql).toContain('last_edited_time AS completed_at');
+      expect(bindings).toEqual([1, 20]);
+      expect(placeholderCount(sql)).toBe(bindings.length);
+    });
   });
 });
 
