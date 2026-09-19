@@ -437,8 +437,8 @@
       "benefitCancel": "Disdici quando vuoi",
       "tryAgain": "Riprova",
       "startingCheckout": "Avvio del pagamento",
-      "getUnlimitedYearly": "Ottieni Unlimited — fatturazione annuale",
-      "getUnlimitedMonthly": "Ottieni Unlimited — fatturazione mensile",
+      "getUnlimitedYearly": "Ottieni Pro — fatturazione annuale",
+      "getUnlimitedMonthly": "Ottieni Pro — fatturazione mensile",
       "termsYearly": "{{annualTotal}} addebitato oggi, si rinnova ogni anno. Disdici quando vuoi — mantieni l'accesso per l'anno che hai pagato.",
       "termsMonthly": "{{monthlyTotal}} addebitato oggi, si rinnova ogni mese. Disdici quando vuoi.",
       "checkoutError": "Non siamo riusciti ad avviare il pagamento. Riprova, oppure scrivi a support@2anki.net.",
@@ -598,7 +598,7 @@
       "openingCheckout": "Apertura del pagamento",
       "getDayPass": "Ottieni il Day Pass — {{price}}",
       "getWeekPass": "Ottieni il Week Pass — {{price}}",
-      "upgradeUnlimited": "Passa a Unlimited"
+      "upgradeUnlimited": "Passa a Pro"
     }
   },
   "modals": {

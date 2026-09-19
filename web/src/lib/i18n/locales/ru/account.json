@@ -116,7 +116,7 @@
     "seePlans": "Посмотреть планы"
   },
   "checkout": {
-    "youreOnUnlimited": "У тебя Unlimited",
+    "youreOnUnlimited": "У тебя Pro",
     "thanksActive": "Спасибо, {{firstName}} — твоя подписка активна.",
     "subscriptionActive": "Твоя подписка активна.",
     "makeDeck": "Создать колоду",

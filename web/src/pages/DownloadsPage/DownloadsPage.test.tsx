@@ -743,7 +743,7 @@ describe('DownloadsPage monthly limit panel', () => {
       screen.getByRole('button', { name: 'Get Week Pass — $12' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Upgrade to Unlimited' })
+      screen.getByRole('link', { name: 'Upgrade to Pro' })
     ).toBeInTheDocument();
   });
 

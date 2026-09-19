@@ -437,8 +437,8 @@
       "benefitCancel": "Annulable à tout moment",
       "tryAgain": "Réessayer",
       "startingCheckout": "Ouverture du paiement",
-      "getUnlimitedYearly": "Prendre Unlimited — facturation annuelle",
-      "getUnlimitedMonthly": "Prendre Unlimited — facturation mensuelle",
+      "getUnlimitedYearly": "Prendre Pro — facturation annuelle",
+      "getUnlimitedMonthly": "Prendre Pro — facturation mensuelle",
       "termsYearly": "{{annualTotal}} facturé aujourd'hui, se renouvelle chaque année. Annulable à tout moment — l'accès est conservé jusqu'à la fin de l'année payée.",
       "termsMonthly": "{{monthlyTotal}} facturé aujourd'hui, se renouvelle chaque mois. Annulable à tout moment.",
       "checkoutError": "Impossible de démarrer le paiement. Réessaie, ou écris à support@2anki.net.",
@@ -598,7 +598,7 @@
       "openingCheckout": "Ouverture du paiement",
       "getDayPass": "Prendre un Day Pass — {{price}}",
       "getWeekPass": "Prendre un Week Pass — {{price}}",
-      "upgradeUnlimited": "Passer à Unlimited"
+      "upgradeUnlimited": "Passer à Pro"
     }
   },
   "modals": {

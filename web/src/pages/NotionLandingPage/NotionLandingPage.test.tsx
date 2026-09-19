@@ -44,14 +44,14 @@ describe('NotionLandingPage', () => {
     );
   });
 
-  it('features the Unlimited plan card without a hardcoded monthly price', () => {
+  it('features the Pro plan card without a hardcoded monthly price', () => {
     renderPage();
-    expect(screen.getByText('Unlimited')).toBeInTheDocument();
+    expect(screen.getByText('Pro')).toBeInTheDocument();
     expect(screen.getByText('See pricing')).toBeInTheDocument();
     const unlimitedCard = screen
-      .getByRole('heading', { name: 'Unlimited' })
+      .getByRole('heading', { name: 'Pro' })
       .closest('div')?.parentElement;
-    if (unlimitedCard == null) throw new Error('Unlimited card not found');
+    if (unlimitedCard == null) throw new Error('Pro card not found');
     expect(within(unlimitedCard).queryByText(/\$\d/)).toBeNull();
     expect(screen.getByText('Recommended')).toBeInTheDocument();
   });
@@ -79,9 +79,9 @@ describe('NotionLandingPage', () => {
     );
   });
 
-  it('includes ?ref=notion-marketplace in the Unlimited CTA href', () => {
+  it('includes ?ref=notion-marketplace in the Pro CTA href', () => {
     renderPage();
-    const unlimitedLink = screen.getByRole('link', { name: /get unlimited/i });
+    const unlimitedLink = screen.getByRole('link', { name: /get pro/i });
     expect(unlimitedLink.getAttribute('href')).toContain(
       'ref=notion-marketplace'
     );

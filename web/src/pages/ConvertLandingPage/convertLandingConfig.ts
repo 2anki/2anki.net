@@ -422,7 +422,7 @@ const studystackToAnki: LandingCopy = {
     },
     {
       q: 'How many cards can I import?',
-      a: 'Free 2anki accounts convert up to 100 cards per month — this is the 2anki limit, not a StudyStack restriction. Unlimited and Auto Sync plans remove the cap — see the pricing page.',
+      a: 'Free 2anki accounts convert up to 100 cards per month — this is the 2anki limit, not a StudyStack restriction. Pro and Auto Sync plans remove the cap — see the pricing page.',
     },
   ],
 };

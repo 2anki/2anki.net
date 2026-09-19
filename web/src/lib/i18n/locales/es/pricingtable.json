@@ -46,12 +46,12 @@
       "answer": "Day Pass ({{dayPrice}}) levanta los límites gratuitos durante 24 horas e incluye 300 créditos de IA. Week Pass ({{weekPrice}}) cubre 7 días con 500 créditos. Semester Pass ({{semesterPrice}}) cubre unos 4 meses con 1500 créditos. Los créditos cubren funciones de IA como tarjetas, MCQ y foto a mazo; cuando se agotan, tu mazo se sigue creando sin IA. Todos son pagos únicos, sin suscripción."
     },
     "q3": {
-      "question": "¿Qué es el plan Unlimited?",
-      "answer": "Unlimited elimina el límite de 100 tarjetas, añade soporte para PDF, permite varias conversiones a la vez e incluye importaciones de Anki a Notion de hasta 10.000 notas cada una — todo sin tope mensual. Las funciones de IA funcionan con 300 créditos al mes; cuando se agotan, tu mazo se sigue creando sin IA. Los precios están en las tarjetas de arriba."
+      "question": "¿Qué es el plan Pro?",
+      "answer": "Pro elimina el límite de 100 tarjetas, añade soporte para PDF, permite varias conversiones a la vez e incluye importaciones de Anki a Notion de hasta 10.000 notas cada una — todo sin tope mensual. Las funciones de IA funcionan con 300 créditos al mes; cuando se agotan, tu mazo se sigue creando sin IA. Los precios están en las tarjetas de arriba."
     },
     "q4": {
       "question": "¿Hay un plan Lifetime?",
-      "answer": "Ya no. Lifetime está cerrado para nuevos miembros. Si ya tienes Lifetime, tu acceso y todas las funciones siguen exactamente igual. Para un plan continuo, usa el plan Unlimited de las tarjetas de arriba."
+      "answer": "Ya no. Lifetime está cerrado para nuevos miembros. Si ya tienes Lifetime, tu acceso y todas las funciones siguen exactamente igual. Para un plan continuo, usa el plan Pro de las tarjetas de arriba."
     },
     "q5": {
       "question": "¿Puedo cancelar cuando quiera?",
@@ -59,7 +59,7 @@
     },
     "q6": {
       "question": "¿Hay una aplicación?",
-      "answer": "Sí — 2anki es gratis en la App Store para iPhone, iPad y Mac, junto con la app web. Los archivos se procesan en el dispositivo. Se aplican los mismos planes: Day Pass, Week Pass y Unlimited están disponibles como compras dentro de la app."
+      "answer": "Sí — 2anki es gratis en la App Store para iPhone, iPad y Mac, junto con la app web. Los archivos se procesan en el dispositivo. Se aplican los mismos planes: Day Pass, Week Pass y Pro están disponibles como compras dentro de la app."
     },
     "q7": {
       "question": "¿Qué pasa con mis mazos si dejo de pagar?",

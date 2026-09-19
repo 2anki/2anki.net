@@ -83,7 +83,7 @@ export function UnlimitedCard({
   return (
     <div className={`${styles.card} ${styles.cardPro}`}>
       <div className={styles.cardHeader}>
-        <h3 className={styles.cardTitle}>Unlimited</h3>
+        <h3 className={styles.cardTitle}>Pro</h3>
         <span className={styles.cardPriceLine}>
           <span className={styles.cardPrice}>{heroPrice}</span>
           <span className={styles.cardPriceSuffix}>

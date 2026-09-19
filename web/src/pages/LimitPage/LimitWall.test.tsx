@@ -28,14 +28,14 @@ function appearsBefore(first: HTMLElement, second: HTMLElement) {
 }
 
 describe('LimitWall', () => {
-  it('shows the passes before Unlimited when passes lead', () => {
+  it('shows the passes before Pro when passes lead', () => {
     renderWall('passes-first');
     const passesLabel = screen.getByText('Pay once — no subscription');
     const unlimitedLabel = screen.getByText('Skip the cap for good');
     expect(appearsBefore(passesLabel, unlimitedLabel)).toBe(true);
   });
 
-  it('shows Unlimited before the passes when Unlimited leads', () => {
+  it('shows Pro before the passes when Pro leads', () => {
     renderWall('unlimited-first');
     const passesLabel = screen.getByText('Pay once — no subscription');
     const unlimitedLabel = screen.getByText('Skip the cap for good');

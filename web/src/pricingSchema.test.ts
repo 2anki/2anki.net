@@ -19,13 +19,13 @@ function extractSoftwareApplicationSchema(): {
 }
 
 describe('index.html SoftwareApplication schema', () => {
-  it('advertises the live Unlimited prices, not a stale ramp', () => {
+  it('advertises the live Pro prices, not a stale ramp', () => {
     const { offers } = extractSoftwareApplicationSchema();
-    const monthly = offers.find((o) => o.name === 'Unlimited');
+    const monthly = offers.find((o) => o.name === 'Pro');
     expect(monthly?.price).toBe(
       (LEGACY_UNLIMITED_PRICING.monthlyCents / 100).toFixed(2)
     );
-    const annual = offers.find((o) => o.name === 'Unlimited (annual)');
+    const annual = offers.find((o) => o.name === 'Pro (annual)');
     expect(annual?.price).toBe(
       String(LEGACY_UNLIMITED_PRICING.annualCents / 100)
     );

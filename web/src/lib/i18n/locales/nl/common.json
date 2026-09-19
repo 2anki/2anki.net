@@ -437,8 +437,8 @@
       "benefitCancel": "Altijd opzegbaar",
       "tryAgain": "Opnieuw proberen",
       "startingCheckout": "Afrekenen starten",
-      "getUnlimitedYearly": "Unlimited kopen — jaarlijkse facturering",
-      "getUnlimitedMonthly": "Unlimited kopen — maandelijkse facturering",
+      "getUnlimitedYearly": "Pro kopen — jaarlijkse facturering",
+      "getUnlimitedMonthly": "Pro kopen — maandelijkse facturering",
       "termsYearly": "{{annualTotal}} vandaag afgeschreven, wordt jaarlijks verlengd. Altijd opzegbaar — je houdt toegang gedurende het jaar waarvoor je betaalde.",
       "termsMonthly": "{{monthlyTotal}} vandaag afgeschreven, wordt maandelijks verlengd. Altijd opzegbaar.",
       "checkoutError": "Kon het afrekenen niet starten. Probeer het opnieuw, of mail support@2anki.net.",
@@ -598,7 +598,7 @@
       "openingCheckout": "Afrekenen openen",
       "getDayPass": "Day Pass kopen — {{price}}",
       "getWeekPass": "Week Pass kopen — {{price}}",
-      "upgradeUnlimited": "Upgraden naar Unlimited"
+      "upgradeUnlimited": "Upgraden naar Pro"
     }
   },
   "modals": {

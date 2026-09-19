@@ -116,7 +116,7 @@
     "seePlans": "Vedi i piani"
   },
   "checkout": {
-    "youreOnUnlimited": "Sei su Unlimited",
+    "youreOnUnlimited": "Sei su Pro",
     "thanksActive": "Grazie, {{firstName}} — il tuo abbonamento è attivo.",
     "subscriptionActive": "Il tuo abbonamento è attivo.",
     "makeDeck": "Crea un mazzo",

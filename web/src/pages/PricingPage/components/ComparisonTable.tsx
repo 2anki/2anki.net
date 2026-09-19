@@ -5,7 +5,7 @@ import { FALLBACK_PASS_PRICES } from '../payment.links';
 import type { PassPriceDisplay } from '../../../lib/hooks/usePassPrices';
 import styles from './ComparisonTable.module.css';
 
-const PLANS = ['Free', 'Day / Week pass', 'Unlimited'];
+const PLANS = ['Free', 'Day / Week pass', 'Pro'];
 
 type Cell = boolean | string;
 

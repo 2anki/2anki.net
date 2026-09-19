@@ -344,7 +344,7 @@ describe('RedeemAppleTransactionUseCase', () => {
       });
 
       expect(result.message).toBe(
-        'Unlimited active — no card limit, PDF uploads, and several conversions at once'
+        'Pro active — no card limit, PDF uploads, and several conversions at once'
       );
       expect(result.pass.kind).toBe('unlimited');
       const active = await passes.findActive(USER_ID, NOW);

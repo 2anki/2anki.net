@@ -447,8 +447,8 @@
       "benefitCancel": "Отмена в любой момент",
       "tryAgain": "Попробовать снова",
       "startingCheckout": "Открываем оплату",
-      "getUnlimitedYearly": "Купить Unlimited — годовая оплата",
-      "getUnlimitedMonthly": "Купить Unlimited — помесячная оплата",
+      "getUnlimitedYearly": "Купить Pro — годовая оплата",
+      "getUnlimitedMonthly": "Купить Pro — помесячная оплата",
       "termsYearly": "{{annualTotal}} спишется сегодня, продлевается ежегодно. Отмена в любой момент — доступ сохраняется до конца оплаченного года.",
       "termsMonthly": "{{monthlyTotal}} спишется сегодня, продлевается ежемесячно. Отмена в любой момент.",
       "checkoutError": "Не удалось открыть оплату. Попробуй ещё раз или напиши на support@2anki.net.",
@@ -616,7 +616,7 @@
       "openingCheckout": "Открываем оплату",
       "getDayPass": "Купить Day Pass — {{price}}",
       "getWeekPass": "Купить Week Pass — {{price}}",
-      "upgradeUnlimited": "Перейти на Unlimited"
+      "upgradeUnlimited": "Перейти на Pro"
     }
   },
   "modals": {

@@ -1,6 +1,6 @@
 ---
 title: Kurze Pläne und Pässe
-description: Day Pass und Week Pass — wann einmaliger Unlimited-Zugang sinnvoll ist.
+description: Day Pass und Week Pass — wann einmaliger Vollzugriff sinnvoll ist.
 ---
 
 Die meisten nutzen Free oder ein monatliches Subscription. Aber zwei kurze Optionen gibt es für den Fall, dass keins davon passt — ein Deck fürs Wochenende oder eine einmalige Pauk-Sitzung.
@@ -9,7 +9,7 @@ Für die vollständige Planliste und Preise siehe die [Preisseite](/pricing).
 
 ## Day Pass — $6
 
-24 Stunden Unlimited-Zugang, einmalig bezahlt.
+24 Stunden Vollzugriff, einmalig bezahlt.
 
 - **Dauer:** 24 Stunden ab Kauf.
 - **Kosten:** $6, einmalig.
@@ -20,7 +20,7 @@ Nutze das, wenn du ein Wochenende voller Karten zu bauen hast und keine wiederke
 
 ## Week Pass — $12
 
-7 Tage Unlimited-Zugang, einmalig bezahlt.
+7 Tage Vollzugriff, einmalig bezahlt.
 
 - **Dauer:** 7 Tage ab Kauf.
 - **Kosten:** $12, einmalig.
@@ -31,15 +31,15 @@ Nutze das, wenn du eine Woche hast, um dich auf eine Prüfung vorzubereiten, ode
 
 ## Wie sich die kurzen Pläne von Subscription unterscheiden
 
-|                                                       | Free      | Day Pass   | Week Pass  | Unlimited (Abo) |
-| ----------------------------------------------------- | --------- | ---------- | ---------- | --------------- |
-| Kosten                                                | $0        | $6         | $12        | $6 / Mon.       |
-| Dauer                                                 | für immer | 24 h       | 7 Tage     | bis gekündigt   |
-| Karten pro Monat                                      | 100       | unbegrenzt | unbegrenzt | unbegrenzt      |
-| PDF-Unterstützung                                     | —         | ✓          | ✓          | ✓               |
-| [KI-Karteikarten](/documentation/cards/ai-flashcards) | —         | ✓          | ✓          | ✓               |
-| [Auto Sync](/documentation/sync/how-it-works)         | —         | —          | —          | auf Anfrage     |
-| Wiederkehrende Belastung                              | —         | —          | —          | monatlich       |
+|                                                       | Free      | Day Pass   | Week Pass  | Pro (Abo)     |
+| ----------------------------------------------------- | --------- | ---------- | ---------- | ------------- |
+| Kosten                                                | $0        | $6         | $12        | $6 / Mon.     |
+| Dauer                                                 | für immer | 24 h       | 7 Tage     | bis gekündigt |
+| Karten pro Monat                                      | 100       | unbegrenzt | unbegrenzt | unbegrenzt    |
+| PDF-Unterstützung                                     | —         | ✓          | ✓          | ✓             |
+| [KI-Karteikarten](/documentation/cards/ai-flashcards) | —         | ✓          | ✓          | ✓             |
+| [Auto Sync](/documentation/sync/how-it-works)         | —         | —          | —          | auf Anfrage   |
+| Wiederkehrende Belastung                              | —         | —          | —          | monatlich     |
 
 Auto Sync ist nicht auf der Preisseite. Bei jedem Abo schreib eine E-Mail an [support@2anki.net](mailto:support@2anki.net), und wir schalten es für dein Konto frei.
 
@@ -52,7 +52,7 @@ Pausieren ist bei monatlichen Plänen nach 30 Tagen verfügbar. Jahrespläne und
 ## Häufige Fehler
 
 - **Erwarten, dass der Pass sich verlängert.** Day- und Week-Pässe sind einmalig. Wenn das Fenster schließt, gehst du zurück zu Free. Kauf einen weiteren Pass oder wechsle zu einem Subscription, wenn du durchgehenden Zugang willst.
-- **Zahlwege mischen.** Day- und Week-Pässe sind einmalige Stripe-Checkouts; Unlimited ist ein monatliches oder jährliches Abo.
+- **Zahlwege mischen.** Day- und Week-Pässe sind einmalige Stripe-Checkouts; Pro ist ein monatliches oder jährliches Abo.
 
 ## Verwandt
 

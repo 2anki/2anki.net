@@ -116,7 +116,7 @@
     "seePlans": "Ver planes"
   },
   "checkout": {
-    "youreOnUnlimited": "Tienes Unlimited",
+    "youreOnUnlimited": "Tienes Pro",
     "thanksActive": "Gracias, {{firstName}} — tu suscripción está activa.",
     "subscriptionActive": "Tu suscripción está activa.",
     "makeDeck": "Crear un mazo",

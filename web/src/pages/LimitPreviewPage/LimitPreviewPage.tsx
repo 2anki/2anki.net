@@ -20,13 +20,13 @@ interface Variant {
 const variants: Variant[] = [
   {
     label: 'A — passes first (previous order)',
-    note: 'Free signed-in user at the monthly cap. Day, Week and Semester lead; Unlimited follows.',
+    note: 'Free signed-in user at the monthly cap. Day, Week and Semester lead; Pro follows.',
     order: 'passes-first',
     pendingPass: null,
     showError: false,
   },
   {
-    label: 'B — Unlimited first',
+    label: 'B — Pro first',
     note: 'Same user. The subscription leads; the passes follow. This is the order the limit page uses.',
     order: 'unlimited-first',
     pendingPass: null,
@@ -41,7 +41,7 @@ const variants: Variant[] = [
   },
   {
     label: 'B — Semester redirecting',
-    note: 'Same state with Unlimited first.',
+    note: 'Same state with Pro first.',
     order: 'unlimited-first',
     pendingPass: '120d',
     showError: false,
@@ -55,7 +55,7 @@ const variants: Variant[] = [
   },
   {
     label: 'B — checkout error',
-    note: 'Same error with Unlimited first: the alert stays above the passes, next to the buttons.',
+    note: 'Same error with Pro first: the alert stays above the passes, next to the buttons.',
     order: 'unlimited-first',
     pendingPass: null,
     showError: true,

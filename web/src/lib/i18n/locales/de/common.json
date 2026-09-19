@@ -437,8 +437,8 @@
       "benefitCancel": "Jederzeit kündbar",
       "tryAgain": "Erneut versuchen",
       "startingCheckout": "Checkout wird gestartet",
-      "getUnlimitedYearly": "Unlimited holen — jährliche Abrechnung",
-      "getUnlimitedMonthly": "Unlimited holen — monatliche Abrechnung",
+      "getUnlimitedYearly": "Pro holen — jährliche Abrechnung",
+      "getUnlimitedMonthly": "Pro holen — monatliche Abrechnung",
       "termsYearly": "{{annualTotal}} heute fällig, verlängert sich jährlich. Jederzeit kündbar — der Zugang bleibt bis zum Ende des bezahlten Jahres.",
       "termsMonthly": "{{monthlyTotal}} heute fällig, verlängert sich monatlich. Jederzeit kündbar.",
       "checkoutError": "Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.",
@@ -598,7 +598,7 @@
       "openingCheckout": "Checkout wird geöffnet",
       "getDayPass": "Day Pass holen — {{price}}",
       "getWeekPass": "Week Pass holen — {{price}}",
-      "upgradeUnlimited": "Auf Unlimited upgraden"
+      "upgradeUnlimited": "Auf Pro upgraden"
     }
   },
   "modals": {

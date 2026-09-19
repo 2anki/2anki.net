@@ -21,7 +21,7 @@ describe('LimitPreviewPage', () => {
 
     expect(labels).toEqual([
       'A — passes first (previous order)',
-      'B — Unlimited first',
+      'B — Pro first',
       'A — Semester redirecting',
       'B — Semester redirecting',
       'A — checkout error',

@@ -34,7 +34,7 @@ describe('capped features are not sold as unlimited', () => {
       expect(read(locale, file, path)).not.toMatch(UNLIMITED_WORD);
     });
 
-    it('the Unlimited plan card says how many AI credits it includes', () => {
+    it('the Pro plan card says how many AI credits it includes', () => {
       expect(read(locale, 'common', 'pricing.unlimited.benefitAi')).toContain(
         '300'
       );
