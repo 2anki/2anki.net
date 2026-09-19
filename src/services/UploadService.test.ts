@@ -75,7 +75,6 @@ import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase
 import { writePdfImageFallbackMarker } from '../infrastracture/adapters/fileConversion/pdfImageFallbackMarker';
 import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
-import { MonthlyLimitError } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import UploadService, { resolveUploadWarning } from './UploadService';
@@ -4406,8 +4405,8 @@ describe('UploadService.handleUpload — failure events for the success-rate til
     }
   );
 
-  it('records an unreadable PDF as pdf_unreadable', async () => {
-    failWith(new Error('pdfinfo_failed code=1'));
+  it('records a missing pdfinfo binary as pdf_unreadable, because that is our tooling failing', async () => {
+    failWith(new Error('pdfinfo_spawn_failed: ENOENT'));
     const { res } = buildResponse();
 
     await buildService().handleUpload(buildRequest(), res);
@@ -4415,14 +4414,42 @@ describe('UploadService.handleUpload — failure events for the success-rate til
     expect(conversionFailedReasons()).toEqual(['pdf_unreadable']);
   });
 
-  it('records an unreadable docx as docx_parse_failed', async () => {
-    failWith(new Error('docx_parse_failed: not a zip'));
-    const { res } = buildResponse();
+  it.each([
+    ['a corrupt PDF', 'pdfinfo_failed code=1'],
+    ['an unreadable docx', 'docx_parse_failed: not a zip'],
+    [
+      'an Anki package uploaded as a source file',
+      '"x.apkg" is already an Anki deck.',
+    ],
+  ])(
+    'does not count %s, which is a problem with the user file',
+    async (_label, message) => {
+      failWith(new Error(message));
+      const { res } = buildResponse();
 
-    await buildService().handleUpload(buildRequest(), res);
+      await buildService().handleUpload(buildRequest(), res);
 
-    expect(conversionFailedReasons()).toEqual(['docx_parse_failed']);
-  });
+      expect(conversionFailedReasons()).toEqual([]);
+    }
+  );
+
+  it.each([
+    'ImageOnlyContentError',
+    'DeckTooLargeError',
+    'ClaudeParseError',
+    'ClaudeLargeSectionError',
+    'PythonZeroCardsError',
+  ])(
+    'does not count %s once the worker has rebuilt it as a plain error',
+    async (name) => {
+      failWith(Object.assign(new Error('rebuilt by the worker'), { name }));
+      const { res } = buildResponse();
+
+      await buildService().handleUpload(buildRequest(), res);
+
+      expect(conversionFailedReasons()).toEqual([]);
+    }
+  );
 
   it.each([
     [
@@ -4505,15 +4532,22 @@ describe('UploadService.handleUpload — failure events for the success-rate til
       expect(conversionFailedReasons()).toEqual([]);
     });
 
-    it('records a monthly limit hit in the background as a plan block, not a technical failure', async () => {
-      failWith(new MonthlyLimitError(105, 100, 20, '2026-10-01'));
-      const { res } = buildPayingResponse();
+    it.each([
+      'ImageOnlyContentError',
+      'ClaudeParseError',
+      'ClaudeLargeSectionError',
+    ])(
+      'does not count %s once the worker has rebuilt it as a plain error',
+      async (name) => {
+        failWith(Object.assign(new Error('rebuilt by the worker'), { name }));
+        const { res } = buildPayingResponse();
 
-      await buildService(buildJobRepo()).handleUpload(buildAiRequest(), res);
-      await settle();
+        await buildService(buildJobRepo()).handleUpload(buildAiRequest(), res);
+        await settle();
 
-      expect(conversionFailedReasons()).toEqual(['monthly_limit']);
-    });
+        expect(conversionFailedReasons()).toEqual([]);
+      }
+    );
 
     it('records a credits error that lost its class across the worker boundary as ai_credits_exhausted', async () => {
       failWith(

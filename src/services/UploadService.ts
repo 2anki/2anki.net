@@ -53,15 +53,10 @@ import { decodeUploadImage } from '../lib/upload/decodeUploadImage';
 import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
-import { isExpectedClientFault } from '../lib/misc/isExpectedClientFault';
 import type { DeckScore } from '../lib/parser/scoreCandidateDeck';
 import type { InducedRescue } from '../lib/parser/induction/candidateRules';
 import { toCardCountBucket } from '../lib/analytics/cardCountBucket';
 import { uploadInputFormat } from '../lib/analytics/uploadInputFormat';
-import {
-  CONVERSION_TRUNCATED_MESSAGE,
-  FileConversionError,
-} from '../infrastracture/adapters/fileConversion/claudeFileConversion';
 import {
   CONVERSION_FALLBACK_FILENAME,
   loadPdfImageFallbackNames,
@@ -79,6 +74,7 @@ import {
 } from '../usecases/jobs/jobFailureReason';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import { getOwner } from '../lib/User/getOwner';
+import { isExpectedUploadState } from '../lib/upload/isExpectedUploadState';
 import { censusUploadedFile } from '../infrastracture/adapters/fileConversion/documentStructureCensus';
 import { formatDeckName } from '../lib/formatDeckName';
 import {
@@ -90,9 +86,6 @@ import { ANONYMOUS_CARD_CAP, MONTHLY_CARD_LIMIT } from '../lib/limits';
 import {
   generateDeckInfo,
   DeckInfo,
-  ClaudeParseError,
-  ClaudeLargeSectionError,
-  ImageOnlyContentError,
   AiCreditsTrippedWithSalvage,
 } from '../lib/claude/ClaudeService';
 import CustomExporter from '../lib/parser/exporters/CustomExporter';
@@ -447,9 +440,6 @@ function resolveAsyncFailureReason(err: unknown, jobId: string): string {
 }
 
 function uploadFailureReason(err: unknown): string {
-  if (err instanceof MonthlyLimitError) {
-    return 'monthly_limit';
-  }
   if (
     err instanceof Error &&
     (err.name === 'AiCreditsExhaustedError' ||
@@ -1172,7 +1162,9 @@ class UploadService {
         err instanceof Error &&
         /^pdfinfo_(failed|spawn_failed)/.test(err.message)
       ) {
-        this.trackUploadFailed(req, res, 'pdf_unreadable');
+        if (!isExpectedUploadState(err)) {
+          this.trackUploadFailed(req, res, 'pdf_unreadable');
+        }
         return res.status(400).json({
           code: 'pdf_processing_failed',
           message:
@@ -1182,14 +1174,13 @@ class UploadService {
         err instanceof Error &&
         /^docx_parse_failed/.test(err.message)
       ) {
-        this.trackUploadFailed(req, res, 'docx_parse_failed');
         return res.status(400).json({
           code: 'docx_processing_failed',
           message:
             "We couldn't read this .docx. It may have been renamed from another format. Try re-exporting it from Word or Google Docs.",
         });
       } else {
-        if (!isExpectedClientFault(err as Error)) {
+        if (!isExpectedUploadState(err)) {
           this.trackUploadFailed(req, res, uploadFailureReason(err));
         }
         return ErrorHandler(res, req, err as Error);
@@ -1355,19 +1346,7 @@ class UploadService {
           return;
         }
         const message = err instanceof Error ? err.message : String(err);
-        const isExpectedState =
-          err instanceof EmptyDeckError ||
-          err instanceof ClaudeParseError ||
-          err instanceof ClaudeLargeSectionError ||
-          (err instanceof Error && err.name === 'EmptyContentError') ||
-          (err instanceof FileConversionError &&
-            err.message === CONVERSION_TRUNCATED_MESSAGE) ||
-          err instanceof ImageOnlyContentError ||
-          (err instanceof Error && isExpectedClientFault(err)) ||
-          (err instanceof Error && isPdfPasswordSentinel(err.message)) ||
-          (err instanceof Error && err.name === 'PythonZeroCardsError') ||
-          (err instanceof Error && /^docx_parse_failed/.test(err.message));
-        if (isExpectedState) {
+        if (isExpectedUploadState(err)) {
           console.info('[UploadService] async job user-input state', {
             jobId: ws.id,
             kind: err instanceof Error ? err.name : 'unknown',
