@@ -48,7 +48,7 @@
     "hero": {
       "headline": "Flashcard che funzionano in Anki",
       "subtitle": "Trascina una pagina di Notion e ottieni un mazzo che non devi sistemare — cloze fatte bene, carte atomiche, i tipi di nota giusti. Anche PDF, Quizlet, Markdown, HTML e CSV.",
-      "aiBadgeIntro": "Carte pulite, pronte da studiare — cloze fatte bene, fronte e retro atomici, nessun retro vuoto. Preferisci le bozze con l'AI?",
+      "aiBadgeIntro": "Carte pulite, pronte da studiare — cloze fatte bene, fronte e retro atomici, nessun retro vuoto. Preferisci le bozze con l'IA?",
       "createAccount": "Crea un account",
       "cardOptions": "Opzioni carta",
       "nativeApps": "Anche su iPhone, iPad e Mac →"
@@ -81,7 +81,7 @@
       },
       "chat": {
         "label": "Chat",
-        "body": "Trasforma i tuoi appunti in carte con l'AI."
+        "body": "Trasforma i tuoi appunti in carte con l'IA."
       },
       "print": {
         "label": "Stampa",
@@ -149,7 +149,7 @@
       "downloadEmpty": "Scarica il mazzo vuoto",
       "tryDifferent": "Prova un altro file",
       "imagesTitle": "Sembrano immagini",
-      "imagesBody": "Nessun testo da leggere, quindi non c'era niente da trasformare in carte. Da foto a mazzo legge le immagini con l'AI e prepara carte che rivedi prima di scaricare.",
+      "imagesBody": "Nessun testo da leggere, quindi non c'era niente da trasformare in carte. Da foto a mazzo legge le immagini con l'IA e prepara carte che rivedi prima di scaricare.",
       "tryPhotoToDeck": "Prova Da foto a mazzo",
       "apkgRejectHeading": "È già un mazzo Anki completo",
       "apkgRejectBody": "2anki trasforma le note in carte — non può convertire un mazzo già pronto. Caricarlo di nuovo non cambierà nulla.",
@@ -387,8 +387,8 @@
     "kicker": "Piani",
     "title": "Prezzi",
     "contextBanner": "Sei sul piano gratuito — 100 carte al mese.",
-    "introUS": "Pensato per la ripetizione dilazionata — MCAT, USMLE, esame di abilitazione e studio delle lingue. Trasforma pagine di Notion, PDF e foto in mazzi Anki con l'AI — nessun account necessario per iniziare.",
-    "introDefault": "Trasforma pagine di Notion, PDF e foto in mazzi Anki con l'AI — nessun account necessario per iniziare. Registrati gratis per 100 carte al mese, poi paghi una volta al giorno o alla settimana.",
+    "introUS": "Pensato per la ripetizione dilazionata — MCAT, USMLE, esame di abilitazione e studio delle lingue. Trasforma pagine di Notion, PDF e foto in mazzi Anki con l'IA — nessun account necessario per iniziare.",
+    "introDefault": "Trasforma pagine di Notion, PDF e foto in mazzi Anki con l'IA — nessun account necessario per iniziare. Registrati gratis per 100 carte al mese, poi paghi una volta al giorno o alla settimana.",
     "socialProof": "Scelto da oltre 15 000 studenti in tutto il mondo",
     "payOnceSection": "Paghi una volta — niente abbonamento",
     "monthlySection": "Preferisci un abbonamento?",
@@ -402,7 +402,7 @@
     "pass": {
       "noSubscription": "Nessun abbonamento",
       "unlimitedCards": "Carte e conversioni illimitate",
-      "aiPhoto": "Flashcard AI e da foto a mazzo",
+      "aiPhoto": "Flashcard IA e da foto a mazzo",
       "everyFormat": "Ogni formato di file — PDF, Word, EPUB e altri",
       "nativeApkg": ".apkg nativo — funziona con qualsiasi client Anki",
       "imageOcclusion": "Occlusione immagini illimitata",
@@ -429,7 +429,7 @@
       "monthlyOption": "Mensile",
       "benefitUnlimited": "Flashcard illimitate",
       "benefitApkg": ".apkg nativo — funziona con qualsiasi client Anki",
-      "benefitAi": "Flashcard AI, da foto a mazzo e chat — 300 crediti IA al mese",
+      "benefitAi": "Flashcard IA, da foto a mazzo e chat — 300 crediti IA al mese",
       "benefitMultiple": "Esegui più conversioni contemporaneamente",
       "benefitPdf": "PDF ed export grandi di Notion",
       "benefitImport": "Importazioni da Anki a Notion — fino a 10.000 note ciascuna",
@@ -454,10 +454,10 @@
       "notionToAnkiDesc": "Converti pagine ed export di Notion in mazzi",
       "ankiToNotionTitle": "Anki → Notion",
       "ankiToNotionDesc": "Importa mazzi .apkg di nuovo in Notion",
-      "aiChatTitle": "Chat AI",
+      "aiChatTitle": "Chat IA",
       "aiChatDesc": "Prepara e perfeziona le carte con Claude",
       "photoTitle": "Da foto a mazzo",
-      "photoDesc": "Scatta a una pagina o slide — l'AI la trasforma in carte",
+      "photoDesc": "Scatta a una pagina o slide — l'IA la trasforma in carte",
       "mcqTitle": "Scelta multipla",
       "mcqDesc": "Carte in stile quiz con fino a 7 opzioni",
       "occlusionTitle": "Occlusione immagini",
@@ -687,7 +687,7 @@
       "cardTypes": "Tipi di carta",
       "filtering": "Filtri",
       "linksFormatting": "Link e formattazione",
-      "pdfAi": "PDF e AI",
+      "pdfAi": "PDF e IA",
       "media": "Media",
       "imageQuizzes": "Quiz con immagini",
       "debugging": "Debug"
@@ -703,7 +703,7 @@
       "short": "Breve",
       "medium": "Media",
       "detailed": "Dettagliata",
-      "intro": "Controlla quanto l'AI mette su ogni carta. Carte più grandi significano meno carte dallo stesso materiale.",
+      "intro": "Controlla quanto l'IA mette su ogni carta. Carte più grandi significano meno carte dallo stesso materiale.",
       "shortDesc": "1 fatto per carta, ~80 caratteri per risposta. Ideale per vocaboli, date, formule.",
       "mediumDesc": "1–2 fatti per carta, ~160 caratteri per risposta. Buon valore predefinito per la maggior parte degli appunti.",
       "detailedDesc": "3–4 fatti per carta, ~320 caratteri per risposta. Meno carte, più complete: meglio per concetti che vuoi ripassare insieme."
@@ -723,7 +723,7 @@
       "aria": "Attiva le domande a scelta multipla",
       "off": "Off",
       "on": "On",
-      "introPrefix": "Da foto a mazzo e la chat AI generano MCQ quando questa opzione è attiva. Puoi anche scriverle da solo con la sintassi MCQ — vedi la ",
+      "introPrefix": "Da foto a mazzo e la chat IA generano MCQ quando questa opzione è attiva. Puoi anche scriverle da solo con la sintassi MCQ — vedi la ",
       "introDocs": "documentazione",
       "introSuffix": ".",
       "readAloud": "Leggi ad alta voce",

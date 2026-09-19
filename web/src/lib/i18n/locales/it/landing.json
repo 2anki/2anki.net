@@ -80,7 +80,7 @@
     },
     "handwritten-notes-to-anki": {
       "h1": "Come trasformare gli appunti scritti a mano in flashcard Anki",
-      "intro": "Gli appunti scritti a mano sono difficili da ripassare e impossibili da cercare. Fotografa una pagina, caricala su 2anki e lo strumento da foto a mazzo la legge con l'AI e prepara carte che rivedi prima di scaricare. Ottieni un mazzo .apkg che si apre in Anki."
+      "intro": "Gli appunti scritti a mano sono difficili da ripassare e impossibili da cercare. Fotografa una pagina, caricala su 2anki e lo strumento da foto a mazzo la legge con l'IA e prepara carte che rivedi prima di scaricare. Ottieni un mazzo .apkg che si apre in Anki."
     },
     "textbook-to-anki": {
       "h1": "Come trasformare il capitolo di un libro di testo in flashcard Anki",
@@ -166,7 +166,7 @@
     },
     "convert-pdf-to-anki": {
       "h1": "Converti PDF in Anki — flashcard da slide di lezioni e capitoli di libri di testo",
-      "subhead": "Trascina un PDF di una lezione, un export di slide o il capitolo di un libro di testo e scarica un mazzo .apkg. 2anki legge il testo in carte domanda-risposta, ripiega su carte-immagine quando una pagina non ha testo e può scrivere carte con l'AI quando il PDF è denso."
+      "subhead": "Trascina un PDF di una lezione, un export di slide o il capitolo di un libro di testo e scarica un mazzo .apkg. 2anki legge il testo in carte domanda-risposta, ripiega su carte-immagine quando una pagina non ha testo e può scrivere carte con l'IA quando il PDF è denso."
     },
     "convert-markdown-to-anki": {
       "h1": "Da Markdown ad Anki — converti file .md e appunti Obsidian",
