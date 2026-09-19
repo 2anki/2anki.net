@@ -40,9 +40,13 @@ export class BlocksCacheRepository implements IBlocksCacheRepository {
     if (!cache || new Date(lastEditedAt) > new Date(cache.last_edited_time)) {
       return undefined;
     }
-    this.database(this.table)
-      .where({ object_id: id, owner })
-      .update({ fetch: cache.fetch + 1 });
+    try {
+      await this.database(this.table)
+        .where({ object_id: id, owner })
+        .update({ fetch: cache.fetch + 1 });
+    } catch (error) {
+      console.error('[blocks-cache] fetch counter update failed:', error);
+    }
     return cache.payload as ListBlockChildrenResponse;
   }
 

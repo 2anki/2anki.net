@@ -101,6 +101,51 @@ describe('BlocksCacheRepository', () => {
     expect(JSON.parse(rowB.payload).results[0].id).toBe('b');
   });
 
+  it('get increments the fetch counter for the owner', async () => {
+    await repo.save({
+      id: 'page-1',
+      owner: 'user-a',
+      payload,
+      createdAt: '2024-01-01',
+      lastEditedAt: '2024-01-02',
+    });
+
+    await repo.get({
+      id: 'page-1',
+      owner: 'user-a',
+      lastEditedAt: '2024-01-01',
+    });
+
+    const row = await knex('blocks')
+      .where({ object_id: 'page-1', owner: 'user-a' })
+      .first();
+    expect(row.fetch).toBe(2);
+  });
+
+  it('get still returns the cached payload when the counter update fails', async () => {
+    const cachedRow = {
+      payload,
+      fetch: 1,
+      last_edited_time: '2024-01-02',
+    };
+    const failingDatabase = (() => ({
+      where: () => ({
+        first: () => Promise.resolve(cachedRow),
+        update: () => Promise.reject(new Error('counter update failed')),
+      }),
+    })) as unknown as Knex.Knex;
+    const failingRepo = new BlocksCacheRepository(failingDatabase);
+
+    const result = await failingRepo.get({
+      id: 'page-1',
+      owner: 'user-a',
+      lastEditedAt: '2024-01-01',
+    });
+
+    const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+    expect(parsed).toEqual(payload);
+  });
+
   it('get returns cached payload when lastEditedAt has not changed', async () => {
     await repo.save({
       id: 'page-1',
