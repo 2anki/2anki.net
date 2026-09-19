@@ -1,10 +1,54 @@
 import {
   PerformanceMetricsService,
+  buildDurationPercentilesSql,
+  buildSlowestJobsSql,
   capSignupCountries,
   SIGNUP_COUNTRIES_PANEL_LIMIT,
 } from './PerformanceMetricsService';
 import { InMemoryUserVisibleErrorsRepository } from '../../data_layer/UserVisibleErrorsRepository';
 import type { IUserVisibleErrorsRepository } from '../../data_layer/UserVisibleErrorsRepository';
+
+describe('buildDurationPercentilesSql', () => {
+  it('times done jobs from created_at to last_edited_time', () => {
+    const sql = buildDurationPercentilesSql();
+    expect(sql).toContain(
+      'EXTRACT(EPOCH FROM (last_edited_time - created_at)) * 1000'
+    );
+    expect(sql).toContain("status = 'done'");
+  });
+
+  it('drops rows it cannot time by requiring both timestamps', () => {
+    const sql = buildDurationPercentilesSql();
+    expect(sql).toContain('created_at IS NOT NULL');
+    expect(sql).toContain('last_edited_time IS NOT NULL');
+  });
+
+  it('excludes MCP saves, which record persistence time not conversion time', () => {
+    expect(buildDurationPercentilesSql()).toContain(
+      "type IS DISTINCT FROM 'mcp'"
+    );
+  });
+
+  it('computes p50, p95, p99 and a total count', () => {
+    const sql = buildDurationPercentilesSql();
+    expect(sql).toContain('percentile_disc(0.5)');
+    expect(sql).toContain('percentile_disc(0.95)');
+    expect(sql).toContain('percentile_disc(0.99)');
+    expect(sql).toContain('COUNT(*) AS total');
+  });
+});
+
+describe('buildSlowestJobsSql', () => {
+  it('excludes MCP saves from the slowest-jobs list', () => {
+    expect(buildSlowestJobsSql()).toContain("type IS DISTINCT FROM 'mcp'");
+  });
+
+  it('orders by duration and reads last_edited_time as the completion time', () => {
+    const sql = buildSlowestJobsSql();
+    expect(sql).toContain('ORDER BY duration_ms DESC NULLS LAST');
+    expect(sql).toContain('last_edited_time AS completed_at');
+  });
+});
 
 function buildMockDb() {
   return {
