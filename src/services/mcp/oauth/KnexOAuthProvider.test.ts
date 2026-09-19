@@ -682,7 +682,8 @@ describe('bearer auth through the SDK middleware', () => {
       'a revoked token',
       async (ctx: { tokenRepo: FakeTokenRepo }, token: string) => {
         const row = ctx.tokenRepo.access.get(hashSecret(token));
-        if (row) row.revoked_at = new Date();
+        if (row == null) throw new Error('token row missing');
+        row.revoked_at = new Date();
       },
       null,
     ],
@@ -690,7 +691,8 @@ describe('bearer auth through the SDK middleware', () => {
       'an expired token',
       async (ctx: { tokenRepo: FakeTokenRepo }, token: string) => {
         const row = ctx.tokenRepo.access.get(hashSecret(token));
-        if (row) row.expires_at = new Date(Date.now() - 1000);
+        if (row == null) throw new Error('token row missing');
+        row.expires_at = new Date(Date.now() - 1000);
       },
       null,
     ],
@@ -698,7 +700,8 @@ describe('bearer auth through the SDK middleware', () => {
       'a token whose owner no longer exists',
       async (ctx: { tokenRepo: FakeTokenRepo }, token: string) => {
         const row = ctx.tokenRepo.access.get(hashSecret(token));
-        if (row) row.user_id = 99;
+        if (row == null) throw new Error('token row missing');
+        row.user_id = 99;
       },
       null,
     ],
