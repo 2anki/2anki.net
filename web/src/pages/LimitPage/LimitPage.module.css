@@ -215,7 +215,7 @@
 .planError {
   font-size: var(--text-sm);
   color: var(--color-text-danger);
-  margin: 0.5rem 0 0;
+  margin: 0 0 1rem;
   text-align: center;
 }
 
