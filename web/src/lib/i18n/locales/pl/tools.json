@@ -78,7 +78,7 @@
     "notAvailable": "Zdjęcie na talię nie jest jeszcze dostępne.",
     "signIn": "Zaloguj się, aby korzystać ze zdjęcia na talię.",
     "tooLarge": "Zdjęcie jest za duże. Spróbuj z mniejszym obrazem lub o niższej rozdzielczości.",
-    "quotaReached": "Plan darmowy to {{limit}} zdjęć miesięcznie. Plany płatne zawierają kredyty AI na więcej.",
+    "quotaReached": "Plan darmowy to {{limit}} zdjęć miesięcznie. Plany płatne zawierają kredyty AI, dzięki którym zrobisz więcej.",
     "genericReadError": "Nie udało się odczytać tego zdjęcia. Spróbuj ponownie.",
     "addFirst": "Najpierw dodaj zdjęcie.",
     "somethingBroke": "Coś się zepsuło po naszej stronie. Spróbuj ponownie za moment.",
