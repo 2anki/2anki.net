@@ -309,7 +309,7 @@ describe('PhotoToFlashcardsPage', () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          /Free plan is 5 photos per month\. Upgrade for unlimited\./
+          /Free plan is 5 photos per month\. Paid plans include AI credits for more\./
         )
       ).toBeTruthy();
     });
@@ -553,7 +553,7 @@ describe('PhotoToFlashcardsPage', () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          /Free plan is 5 photos per month\. Upgrade for unlimited\./
+          /Free plan is 5 photos per month\. Paid plans include AI credits for more\./
         )
       ).toBeTruthy();
     });
