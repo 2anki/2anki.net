@@ -3,6 +3,10 @@ import type { ListBlockChildrenResponse } from '@notionhq/client/build/src/api-e
 
 import { BlocksCacheRepository } from './BlocksCacheRepository';
 
+function flushMicrotasks(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
 const knex = Knex({
   client: 'better-sqlite3',
   connection: { filename: ':memory:' },
@@ -115,6 +119,7 @@ describe('BlocksCacheRepository', () => {
       owner: 'user-a',
       lastEditedAt: '2024-01-01',
     });
+    await flushMicrotasks();
 
     const row = await knex('blocks')
       .where({ object_id: 'page-1', owner: 'user-a' })
@@ -122,28 +127,47 @@ describe('BlocksCacheRepository', () => {
     expect(row.fetch).toBe(2);
   });
 
-  it('get still returns the cached payload when the counter update fails', async () => {
-    const cachedRow = {
+  it('get returns the cached payload and warns when the counter update fails', async () => {
+    const failing = Knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await failing.schema.createTable('blocks', (table) => {
+      table.increments('id').primary();
+      table.string('owner').notNullable();
+      table.string('object_id').notNullable();
+      table.json('payload').notNullable();
+      table.integer('fetch').notNullable().defaultTo(0);
+      table.timestamp('created_at').notNullable();
+      table.timestamp('last_edited_time').notNullable();
+      table.unique(['object_id', 'owner']);
+    });
+    const failingRepo = new BlocksCacheRepository(failing);
+    await failingRepo.save({
+      id: 'page-1',
+      owner: 'user-a',
       payload,
-      fetch: 1,
-      last_edited_time: '2024-01-02',
-    };
-    const failingDatabase = (() => ({
-      where: () => ({
-        first: () => Promise.resolve(cachedRow),
-        update: () => Promise.reject(new Error('counter update failed')),
-      }),
-    })) as unknown as Knex.Knex;
-    const failingRepo = new BlocksCacheRepository(failingDatabase);
+      createdAt: '2024-01-01',
+      lastEditedAt: '2024-01-02',
+    });
+    await failing.schema.alterTable('blocks', (table) =>
+      table.dropColumn('fetch')
+    );
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
     const result = await failingRepo.get({
       id: 'page-1',
       owner: 'user-a',
       lastEditedAt: '2024-01-01',
     });
+    await flushMicrotasks();
 
-    const parsed = typeof result === 'string' ? JSON.parse(result) : result;
-    expect(parsed).toEqual(payload);
+    expect(result).toBe(JSON.stringify(payload));
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+    await failing.destroy();
   });
 
   it('get returns cached payload when lastEditedAt has not changed', async () => {

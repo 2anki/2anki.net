@@ -40,14 +40,20 @@ export class BlocksCacheRepository implements IBlocksCacheRepository {
     if (!cache || new Date(lastEditedAt) > new Date(cache.last_edited_time)) {
       return undefined;
     }
-    try {
-      await this.database(this.table)
-        .where({ object_id: id, owner })
-        .update({ fetch: cache.fetch + 1 });
-    } catch (error) {
-      console.error('[blocks-cache] fetch counter update failed:', error);
-    }
+    this.bumpFetch(id, owner);
     return cache.payload as ListBlockChildrenResponse;
+  }
+
+  private bumpFetch(id: string, owner: string): void {
+    void this.database(this.table)
+      .where({ object_id: id, owner })
+      .update({ fetch: this.database.raw('fetch + 1') })
+      .then(undefined, (error: unknown) => {
+        console.warn(
+          '[blocks-cache] fetch counter update failed:',
+          error instanceof Error ? error.message : String(error)
+        );
+      });
   }
 
   async save({
