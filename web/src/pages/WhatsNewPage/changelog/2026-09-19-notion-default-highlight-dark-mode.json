@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-19-notion-default-highlight-dark-mode",
+  "date": "2026-09-19",
+  "type": "fix",
+  "title": "Cards from Notion text that carries a default highlight, such as pages imported from Anki, stay readable in Anki's dark mode"
+}
