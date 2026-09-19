@@ -3,6 +3,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import cookieParser from 'cookie-parser';
 import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/authorize.js';
+import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
 import type { OAuthClientInformationFull } from '@modelcontextprotocol/sdk/shared/auth.js';
 
 import { KnexOAuthProvider, McpOAuthDeps } from './KnexOAuthProvider';
@@ -605,4 +606,120 @@ describe('authorize endpoint through the SDK handler (CSRF gate)', () => {
       expect(codeRepo.rows).toHaveLength(0);
     });
   });
+});
+
+describe('bearer auth through the SDK middleware', () => {
+  async function withBearerServer(
+    run: (
+      base: string,
+      ctx: { issueToken: () => Promise<string>; tokenRepo: FakeTokenRepo }
+    ) => Promise<void>
+  ) {
+    const { provider, codeRepo, tokenRepo } = makeProvider({
+      now: () => new Date(),
+    });
+    const app = express();
+    app.post(
+      '/mcp',
+      requireBearerAuth({
+        verifier: provider,
+        resourceMetadataUrl: `${RESOURCE}/.well-known/oauth-protected-resource`,
+      }),
+      (_req, res) => {
+        res.json({ ok: true });
+      }
+    );
+    const server = http.createServer(app);
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const { port } = server.address() as AddressInfo;
+    const issueToken = async () => {
+      codeRepo.seed(hashSecret('c'), {
+        client_id: 'client-1',
+        user_id: 42,
+        redirect_uri: 'https://claude.ai/callback',
+        code_challenge: 'chal',
+        scopes: ['mcp'],
+        resource: RESOURCE,
+        expires_at: new Date(Date.now() + 60_000),
+        consumed_at: null,
+      });
+      const tokens = await provider.exchangeAuthorizationCode(
+        CLIENT,
+        'c',
+        undefined,
+        'https://claude.ai/callback'
+      );
+      return tokens.access_token;
+    };
+    try {
+      await run(`http://127.0.0.1:${port}`, { issueToken, tokenRepo });
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  }
+
+  const post = (base: string, token: string) =>
+    fetch(`${base}/mcp`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+  it('lets a valid access token through', async () => {
+    await withBearerServer(async (base, { issueToken }) => {
+      const res = await post(base, await issueToken());
+
+      expect(res.status).toBe(200);
+    });
+  });
+
+  it.each([
+    [
+      'an unknown token',
+      async (_ctx: { tokenRepo: FakeTokenRepo }, _token: string) => undefined,
+      'mcp_at_nope',
+    ],
+    [
+      'a revoked token',
+      async (ctx: { tokenRepo: FakeTokenRepo }, token: string) => {
+        const row = ctx.tokenRepo.access.get(hashSecret(token));
+        if (row == null) throw new Error('token row missing');
+        row.revoked_at = new Date();
+      },
+      null,
+    ],
+    [
+      'an expired token',
+      async (ctx: { tokenRepo: FakeTokenRepo }, token: string) => {
+        const row = ctx.tokenRepo.access.get(hashSecret(token));
+        if (row == null) throw new Error('token row missing');
+        row.expires_at = new Date(Date.now() - 1000);
+      },
+      null,
+    ],
+    [
+      'a token whose owner no longer exists',
+      async (ctx: { tokenRepo: FakeTokenRepo }, token: string) => {
+        const row = ctx.tokenRepo.access.get(hashSecret(token));
+        if (row == null) throw new Error('token row missing');
+        row.user_id = 99;
+      },
+      null,
+    ],
+  ])(
+    'answers 401 invalid_token for %s so the client refreshes instead of giving up',
+    async (_label, breakToken, fixedToken) => {
+      await withBearerServer(async (base, ctx) => {
+        const token = fixedToken ?? (await ctx.issueToken());
+        await breakToken(ctx, token);
+
+        const res = await post(base, token);
+
+        expect(res.status).toBe(401);
+        expect(res.headers.get('www-authenticate')).toContain(
+          'error="invalid_token"'
+        );
+        expect(await res.json()).toMatchObject({ error: 'invalid_token' });
+      });
+    }
+  );
 });

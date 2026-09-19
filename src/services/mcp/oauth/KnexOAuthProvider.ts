@@ -11,9 +11,9 @@ import type {
   OAuthTokens,
 } from '@modelcontextprotocol/sdk/shared/auth.js';
 import {
-  InvalidClientError,
   InvalidGrantError,
   InvalidRequestError,
+  InvalidTokenError,
   ServerError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
@@ -390,19 +390,19 @@ export class KnexOAuthProvider implements OAuthServerProvider {
       hashSecret(token)
     );
     if (stored == null) {
-      throw new InvalidClientError('Invalid access token');
+      throw new InvalidTokenError('Invalid access token');
     }
     if (stored.revoked_at != null) {
-      throw new InvalidClientError('Access token revoked');
+      throw new InvalidTokenError('Access token revoked');
     }
     const expiresAtMs = stored.expires_at.getTime();
     if (expiresAtMs <= this.now().getTime()) {
-      throw new InvalidClientError('Access token expired');
+      throw new InvalidTokenError('Access token expired');
     }
 
     const user = await this.deps.usersRepo.getById(String(stored.user_id));
     if (user == null) {
-      throw new InvalidClientError('Access token owner no longer exists');
+      throw new InvalidTokenError('Access token owner no longer exists');
     }
 
     return {
