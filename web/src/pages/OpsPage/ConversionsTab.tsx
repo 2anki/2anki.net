@@ -54,7 +54,10 @@ export default function ConversionsTab() {
           <h2 id="conv-section-volume" className={styles.sectionTitle}>
             Volume, last 7 days
           </h2>
-          <p className={styles.sectionHint}>Completed conversions by tier</p>
+          <p className={styles.sectionHint}>
+            Successful conversions by tier. Free includes uploads without an
+            account.
+          </p>
         </header>
         <div className={styles.cardGrid}>
           <MetricCard
@@ -83,7 +86,8 @@ export default function ConversionsTab() {
             Success rate, last 7 days
           </h2>
           <p className={styles.sectionHint}>
-            done ÷ (done + technical failures) — plan-limit blocks excluded
+            succeeded ÷ (succeeded + technical failures). Plan blocks and empty
+            decks are excluded.
           </p>
         </header>
         <div className={styles.cardGrid}>
@@ -107,7 +111,7 @@ export default function ConversionsTab() {
               visible?.free_blocked_by_plan_7d ?? null,
               formatInteger
             )}
-            footnote="Monthly-limit blocks, not conversion errors"
+            footnote="Monthly and anonymous card caps, not conversion errors"
           />
           <MetricCard
             title="Paid blocked by plan"
@@ -115,7 +119,7 @@ export default function ConversionsTab() {
               visible?.paid_blocked_by_plan_7d ?? null,
               formatInteger
             )}
-            footnote="Monthly-limit blocks, not conversion errors"
+            footnote="Monthly and anonymous card caps, not conversion errors"
           />
         </div>
       </section>

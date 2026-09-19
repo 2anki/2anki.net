@@ -2,7 +2,10 @@ import {
   CURRENT_SCORER_VERSION,
   type IConversionRuleScoresRepository,
 } from '../../data_layer/ConversionRuleScoresRepository';
-import type { IEventsMetricsRepository } from '../../data_layer/EventsMetricsRepository';
+import type {
+  ConversionOutcomeCounts,
+  IEventsMetricsRepository,
+} from '../../data_layer/EventsMetricsRepository';
 import type { IJobsMetricsRepository } from '../../data_layer/JobsMetricsRepository';
 
 export type ConversionMetricKey =
@@ -65,6 +68,21 @@ const COHORT_WINDOW_DAYS = 30;
 // is failing but rare stays visible instead of silently vanishing.
 export const MIN_COHORT_SAMPLE = 30;
 
+function fromOutcomes<T>(
+  settled: PromiseSettledResult<ConversionOutcomeCounts>,
+  pick: (counts: ConversionOutcomeCounts) => T
+): T | null {
+  return settled.status === 'fulfilled' ? pick(settled.value) : null;
+}
+
+function successRate({
+  succeeded,
+  technicalFailed,
+}: ConversionOutcomeCounts): number | null {
+  const attempts = succeeded + technicalFailed;
+  return attempts === 0 ? null : (succeeded / attempts) * 100;
+}
+
 export class ConversionMetricsService {
   constructor(
     private readonly repository: IJobsMetricsRepository,
@@ -116,24 +134,16 @@ export class ConversionMetricsService {
     const weekEnd = new Date(lastStart + 7 * SECONDS_PER_DAY * 1000);
 
     const [
-      freeConversions7d,
-      paidConversions7d,
-      freeSuccessRate7d,
-      paidSuccessRate7d,
-      freeBlockedByPlan7d,
-      paidBlockedByPlan7d,
+      freeOutcomes,
+      paidOutcomes,
       topErrors7d,
       failedConversionsWeeklyRows,
       timeToFirstDeck30d,
       uploadToDownloadRate7d,
       deckQualityCohorts30d,
     ] = await Promise.allSettled([
-      this.repository.countFreeConversions7d(sevenDaysAgo),
-      this.repository.countPaidConversions7d(sevenDaysAgo),
-      this.repository.computeFreeSuccessRate7d(sevenDaysAgo),
-      this.repository.computePaidSuccessRate7d(sevenDaysAgo),
-      this.repository.countFreePlanBlocked7d(sevenDaysAgo),
-      this.repository.countPaidPlanBlocked7d(sevenDaysAgo),
+      this.eventsMetricsRepository.conversionOutcomes(sevenDaysAgo, 'free'),
+      this.eventsMetricsRepository.conversionOutcomes(sevenDaysAgo, 'paid'),
       this.repository.topFailureReasons7d(sevenDaysAgo),
       this.repository.failedConversionsWeekly(earliestStart, weekEnd),
       this.eventsMetricsRepository.medianMinutesToFirstDeck(thirtyDaysAgo),
@@ -150,30 +160,12 @@ export class ConversionMetricsService {
         : null;
 
     return {
-      free_conversions_7d:
-        freeConversions7d.status === 'fulfilled'
-          ? freeConversions7d.value
-          : null,
-      paid_conversions_7d:
-        paidConversions7d.status === 'fulfilled'
-          ? paidConversions7d.value
-          : null,
-      free_conversion_success_rate_7d:
-        freeSuccessRate7d.status === 'fulfilled'
-          ? freeSuccessRate7d.value
-          : null,
-      paid_conversion_success_rate_7d:
-        paidSuccessRate7d.status === 'fulfilled'
-          ? paidSuccessRate7d.value
-          : null,
-      free_blocked_by_plan_7d:
-        freeBlockedByPlan7d.status === 'fulfilled'
-          ? freeBlockedByPlan7d.value
-          : null,
-      paid_blocked_by_plan_7d:
-        paidBlockedByPlan7d.status === 'fulfilled'
-          ? paidBlockedByPlan7d.value
-          : null,
+      free_conversions_7d: fromOutcomes(freeOutcomes, (o) => o.succeeded),
+      paid_conversions_7d: fromOutcomes(paidOutcomes, (o) => o.succeeded),
+      free_conversion_success_rate_7d: fromOutcomes(freeOutcomes, successRate),
+      paid_conversion_success_rate_7d: fromOutcomes(paidOutcomes, successRate),
+      free_blocked_by_plan_7d: fromOutcomes(freeOutcomes, (o) => o.planBlocked),
+      paid_blocked_by_plan_7d: fromOutcomes(paidOutcomes, (o) => o.planBlocked),
       conversion_errors_7d_top_reasons:
         topErrors7d.status === 'fulfilled' ? topErrors7d.value : null,
       failed_conversions_weekly: failedConversionsWeekly,
