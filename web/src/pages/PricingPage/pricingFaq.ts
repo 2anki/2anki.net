@@ -15,7 +15,7 @@ export const buildPricingFaq = (
   {
     question: 'How many cards can I make for free?',
     answer:
-      '100 cards per month on the free plan. No account required for one-off conversions — drop a file and download a deck.',
+      '100 cards per month with a free account. Without an account, each conversion is capped at 21 cards — drop a file and download a deck.',
     questionKey: 'faq.q1.question',
     answerKey: 'faq.q1.answer',
   },
