@@ -405,7 +405,7 @@
       "aiPhoto": "Cartes par IA et photo vers paquet",
       "everyFormat": "Tous les formats de fichier — PDF, Word, EPUB et plus",
       "nativeApkg": ".apkg natif — fonctionne dans tous les clients Anki",
-      "imageOcclusion": "Occlusion d'image illimitée",
+      "imageOcclusion": "Occlusion d'image avec jusqu'à 20 images à la fois",
       "mostPopular": "Le plus populaire",
       "day24": "— 24 heures",
       "week1": "— 1 semaine",
@@ -449,7 +449,7 @@
     },
     "features": {
       "heading": "Tout ce que fait 2anki",
-      "subheading": "Chaque offre inclut tout, gratuit compris. Les offres payantes lèvent les limites.",
+      "subheading": "Chaque offre inclut tout, gratuit compris. Les offres payantes relèvent les limites.",
       "notionToAnkiTitle": "Notion → Anki",
       "notionToAnkiDesc": "Convertis des pages et exports Notion en paquets",
       "ankiToNotionTitle": "Anki → Notion",

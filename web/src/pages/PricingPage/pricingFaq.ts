@@ -21,7 +21,7 @@ export const buildPricingFaq = (
   },
   {
     question: 'Is there a one-time payment option?',
-    answer: `Day Pass (${passPrices['24h']}) gives 24 hours of full access. Week Pass (${passPrices['7d']}) gives 7 days. Semester Pass (${passPrices['120d']}) gives about 4 months. All are one-time payments, no subscription required.`,
+    answer: `Day Pass (${passPrices['24h']}) lifts the free limits for 24 hours and includes 300 AI credits. Week Pass (${passPrices['7d']}) covers 7 days with 500 credits. Semester Pass (${passPrices['120d']}) covers about 4 months with 1500 credits. Credits cover AI features like flashcards, MCQ, and photo to deck; when they run out, decks still build without AI. All are one-time payments, no subscription required.`,
     questionKey: 'faq.q2.question',
     answerKey: 'faq.q2.answer',
     answerValues: {

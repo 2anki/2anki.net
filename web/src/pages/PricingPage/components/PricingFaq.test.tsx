@@ -35,6 +35,16 @@ describe('PricingFaq', () => {
     expect(unlimited?.answer).toContain('removes the 100-card limit');
   });
 
+  it('names the AI credits each pass includes, like the visible answer does', () => {
+    const passes = PRICING_FAQ.find(
+      (item) => item.question === 'Is there a one-time payment option?'
+    );
+    expect(passes?.answer).toContain('includes 300 AI credits');
+    expect(passes?.answer).toContain('with 500 credits');
+    expect(passes?.answer).toContain('with 1500 credits');
+    expect(passes?.answer).not.toMatch(/full access/i);
+  });
+
   it('shows answers in collapsible details elements', () => {
     const { container } = render(<PricingFaq />);
     expect(container.querySelectorAll('details').length).toBe(

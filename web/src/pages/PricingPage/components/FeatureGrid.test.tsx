@@ -32,7 +32,7 @@ describe('FeatureGrid', () => {
     render(<FeatureGrid />);
     expect(
       screen.getByText(
-        'Every plan includes all of it, free included. Paid plans lift the limits.'
+        'Every plan includes all of it, free included. Paid plans raise the limits.'
       )
     ).toBeInTheDocument();
   });

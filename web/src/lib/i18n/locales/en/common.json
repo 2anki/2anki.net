@@ -405,7 +405,7 @@
       "aiPhoto": "AI flashcards & photo-to-deck",
       "everyFormat": "Every file format — PDF, Word, EPUB, and more",
       "nativeApkg": "Native .apkg — works in any Anki client",
-      "imageOcclusion": "Unlimited image occlusion",
+      "imageOcclusion": "Image occlusion with up to 20 images at a time",
       "mostPopular": "Most popular",
       "day24": "— 24 hours",
       "week1": "— 1 week",
@@ -449,7 +449,7 @@
     },
     "features": {
       "heading": "Everything 2anki does",
-      "subheading": "Every plan includes all of it, free included. Paid plans lift the limits.",
+      "subheading": "Every plan includes all of it, free included. Paid plans raise the limits.",
       "notionToAnkiTitle": "Notion → Anki",
       "notionToAnkiDesc": "Convert Notion pages and exports into decks",
       "ankiToNotionTitle": "Anki → Notion",

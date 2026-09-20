@@ -415,7 +415,7 @@
       "aiPhoto": "Fiszki AI i zdjęcie na talię",
       "everyFormat": "Każdy format pliku — PDF, Word, EPUB i więcej",
       "nativeApkg": "Natywny .apkg — działa w każdym kliencie Anki",
-      "imageOcclusion": "Nieograniczone zasłanianie obrazu",
+      "imageOcclusion": "Zasłanianie obrazu do 20 obrazów naraz",
       "mostPopular": "Najpopularniejszy",
       "day24": "— 24 godziny",
       "week1": "— 1 tydzień",
@@ -459,7 +459,7 @@
     },
     "features": {
       "heading": "Wszystko, co robi 2anki",
-      "subheading": "Każdy plan zawiera to wszystko, także darmowy. Plany płatne znoszą limity.",
+      "subheading": "Każdy plan zawiera to wszystko, także darmowy. Plany płatne podnoszą limity.",
       "notionToAnkiTitle": "Notion → Anki",
       "notionToAnkiDesc": "Konwertuj strony i eksporty Notion na talie",
       "ankiToNotionTitle": "Anki → Notion",
