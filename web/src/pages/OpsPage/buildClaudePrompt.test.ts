@@ -346,7 +346,7 @@ describe('buildClaudePrompt — return-rate', () => {
     expect(prompt).toContain('"source_type": "notion"');
     expect(prompt).toContain('at least 24 hours after the first');
     expect(prompt).toContain(
-      'name the source with the weakest return rate (ignore any source whose n is too small to trust) and propose one fix'
+      'name the source with the weakest return rate (ignore any source with a small eligible count) and propose one fix'
     );
     expect(prompt).toContain('Repo: 2anki/server');
   });

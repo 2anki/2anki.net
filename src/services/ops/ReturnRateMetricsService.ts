@@ -129,6 +129,8 @@ export function computeReturnRates(
     });
   }
 
+  by_source_type.sort((a, b) => b.cohort_size - a.cohort_size);
+
   return {
     overall: {
       '7d': pct(total.returned['7d'], total.eligible['7d']),
@@ -172,12 +174,10 @@ export class ReturnRateMetricsService {
     return computeReturnRates(identities, as_of);
   }
 
-  // "New" means the first conversion we can see, looking back far enough that
-  // an identity quiet for up to a month before the cohort window is not
-  // mistaken for a newcomer. One scan: a window function finds each identity's
-  // first conversion and source, and a FILTER picks the first conversion at
-  // least a whole day later. A correlated subquery per identity is what made
-  // the old query stack up (see QUERY_TIMEOUT_MS).
+  // The scan starts a month before the cohort so an identity that was merely
+  // quiet is not mistaken for a newcomer. One pass with a window function: a
+  // correlated subquery per identity is what made the old query stack up (see
+  // QUERY_TIMEOUT_MS).
   buildNewIdentitiesQuery(now: Date): Knex.Raw {
     const cohortStart = new Date(now.getTime() - COHORT_DAYS * MS_PER_DAY);
     const scanStart = new Date(
@@ -188,13 +188,13 @@ export class ReturnRateMetricsService {
       `SELECT owner, first_source AS source_type, first_at,
               MIN(created_at) FILTER (WHERE created_at >= first_at + INTERVAL '24 hours') AS first_return_at
        FROM (
-         SELECT owner, created_at,
+         SELECT owner, created_at, id,
                 MIN(created_at) OVER (PARTITION BY owner) AS first_at,
-                FIRST_VALUE(source_type) OVER (PARTITION BY owner ORDER BY created_at) AS first_source
+                FIRST_VALUE(source_type) OVER (PARTITION BY owner ORDER BY created_at, id) AS first_source
          FROM (
            SELECT COALESCE(user_id::text, anonymous_id) AS owner,
                   COALESCE(props->>'source', ?) AS source_type,
-                  created_at
+                  created_at, id
            FROM events
            WHERE name = ? AND created_at >= ?
              AND COALESCE(user_id::text, anonymous_id) IS NOT NULL

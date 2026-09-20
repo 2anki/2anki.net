@@ -6,7 +6,7 @@ import { buildClaudePrompt } from './buildClaudePrompt';
 import CopyForClaudeButton from './CopyForClaudeButton';
 import { formatCount, formatPercent } from './opsHelpers';
 import { useReturnRateMetrics } from './useReturnRateMetrics';
-import { ReturnRateBySourceType } from './returnRateTypes';
+import { ReturnRateBySourceType, ReturnRateEligible } from './returnRateTypes';
 
 const formatPct = (value: number | null): string =>
   value == null ? '—' : formatPercent(value);
@@ -64,6 +64,10 @@ const renderBySourceType = (rows: ReturnRateBySourceType[]) => {
 export default function ReturnRateTab() {
   const { data, error, isLoading } = useReturnRateMetrics();
   const isInitial = isLoading && data == null;
+  const footnoteFor = (window: keyof ReturnRateEligible): string | undefined =>
+    data == null || data.error != null
+      ? undefined
+      : eligibleFootnote(data.eligible[window]);
 
   return (
     <>
@@ -101,23 +105,17 @@ export default function ReturnRateTab() {
         <MetricCard
           title="Returned within 7 days"
           value={formatPct(data?.overall['7d'] ?? null)}
-          footnote={
-            data == null ? undefined : eligibleFootnote(data.eligible['7d'])
-          }
+          footnote={footnoteFor('7d')}
         />
         <MetricCard
           title="Returned within 14 days"
           value={formatPct(data?.overall['14d'] ?? null)}
-          footnote={
-            data == null ? undefined : eligibleFootnote(data.eligible['14d'])
-          }
+          footnote={footnoteFor('14d')}
         />
         <MetricCard
           title="Returned within 30 days"
           value={formatPct(data?.overall['30d'] ?? null)}
-          footnote={
-            data == null ? undefined : eligibleFootnote(data.eligible['30d'])
-          }
+          footnote={footnoteFor('30d')}
         />
 
         <ChartPanel
@@ -125,7 +123,7 @@ export default function ReturnRateTab() {
           subtitle="Bucketed by the source of each identity's first conversion; the count in brackets is how many were old enough for that window"
           isLoading={isInitial}
           isEmpty={(data?.by_source_type?.length ?? 0) === 0}
-          emptyText="No cohorts in this window."
+          emptyText="No new identities in this window."
           autoHeight
         >
           {data != null && renderBySourceType(data.by_source_type ?? [])}

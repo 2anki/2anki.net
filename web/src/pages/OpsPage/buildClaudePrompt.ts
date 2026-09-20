@@ -217,7 +217,7 @@ function buildReturnRatePrompt(payload: ReturnRateMetricsResponse): string {
     jsonBlock('Return rate by source type', payload.by_source_type),
     '',
     'Code path: src/usecases/ops/GetReturnRateMetricsUseCase.ts (/api/ops/return-rate/metrics)',
-    'Task: name the source with the weakest return rate (ignore any source whose n is too small to trust) and propose one fix.',
+    'Task: name the source with the weakest return rate (ignore any source with a small eligible count) and propose one fix.',
     REPO_LINE,
   ];
 

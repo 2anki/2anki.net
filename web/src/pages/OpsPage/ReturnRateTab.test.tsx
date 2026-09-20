@@ -97,6 +97,23 @@ describe('ReturnRateTab', () => {
     expect(within(cardBody).getByText('—')).toBeInTheDocument();
   });
 
+  test('does not claim nobody is old enough when the query failed', async () => {
+    mockFetch({
+      overall: { '7d': null, '14d': null, '30d': null },
+      eligible: { '7d': 0, '14d': 0, '30d': 0 },
+      by_source_type: null,
+      as_of: '2026-09-20T00:00:00.000Z',
+      error: 'canceling statement due to statement timeout',
+    });
+
+    renderTab();
+
+    expect(
+      await screen.findByText(/Return-rate query failed on the server/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/none old enough yet/i)).toBeNull();
+  });
+
   test('puts the eligible count beside each source rate', async () => {
     mockFetch(payload);
 

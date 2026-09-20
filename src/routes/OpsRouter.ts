@@ -670,8 +670,8 @@ const OpsRouter = () => {
    *       identities old enough to have finished a window are counted for that window, and
    *       `eligible` gives that denominator overall and per source. Sources are the source of
    *       each identity's first conversion. The cohort is identities whose first conversion in
-   *       the last 90 days is not preceded by another in the 30 days before. Returns 404 for
-   *       everyone else.
+   *       the last 120 days falls in the last 90 (so no conversion between 120 and 90 days
+   *       ago). Returns 404 for everyone else.
    *     tags: [Ops]
    *     responses:
    *       200:

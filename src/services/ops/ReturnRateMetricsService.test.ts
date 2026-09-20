@@ -35,7 +35,9 @@ describe('ReturnRateMetricsService — generated SQL', () => {
 
     expect(sql.match(/from events/gi)).toHaveLength(1);
     expect(sql).toContain('PARTITION BY owner');
-    expect(sql).toContain('FIRST_VALUE(source_type)');
+    expect(sql).toContain(
+      'FIRST_VALUE(source_type) OVER (PARTITION BY owner ORDER BY created_at, id)'
+    );
     expect(sql).toContain(
       "MIN(created_at) FILTER (WHERE created_at >= first_at + INTERVAL '24 hours') AS first_return_at"
     );
@@ -201,16 +203,57 @@ describe('computeReturnRates — mature cohorts and a real return', () => {
     });
   });
 
-  it('counts an identity once, under the source of its first conversion', () => {
+  it('lists the biggest source first so the table does not reshuffle between refreshes', () => {
     const first = daysBefore(NOW, 40);
 
     const result = computeReturnRates(
-      [identity('u10', 'notion', first, daysAfter(first, 2))],
+      [
+        identity('a', 'upload', first, null),
+        identity('b', 'notion', first, null),
+        identity('c', 'notion', first, null),
+        identity('d', 'notion', first, null),
+        identity('e', 'upload', first, null),
+      ],
       asOf
     );
 
-    expect(result.by_source_type).toHaveLength(1);
-    expect(result.by_source_type?.[0].source_type).toBe('notion');
+    expect(result.by_source_type?.map((row) => row.source_type)).toEqual([
+      'notion',
+      'upload',
+    ]);
+  });
+
+  it.each([
+    ['exactly 24 hours later', 24 * HOUR_MS, 100],
+    ['one second short of 24 hours later', 24 * HOUR_MS - 1000, 0],
+  ])('a conversion %s', (_label, gapMs, expected7d) => {
+    const first = daysBefore(NOW, 40);
+
+    const result = computeReturnRates(
+      [
+        identity(
+          'boundary',
+          'notion',
+          first,
+          new Date(first.getTime() + gapMs)
+        ),
+      ],
+      asOf
+    );
+
+    expect(result.overall['7d']).toBe(expected7d);
+  });
+
+  it.each([
+    ['exactly 7 days old', 7 * DAY_MS, 1],
+    ['one second short of 7 days old', 7 * DAY_MS - 1000, 0],
+  ])('an identity that is %s', (_label, ageMs, eligible7d) => {
+    const result = computeReturnRates(
+      [identity('age', 'notion', new Date(NOW.getTime() - ageMs), null)],
+      asOf
+    );
+
+    expect(result.eligible['7d']).toBe(eligible7d);
   });
 
   it('gives a source null rates for a window none of its identities finished', () => {
@@ -237,12 +280,12 @@ describe('computeReturnRates — mature cohorts and a real return', () => {
 });
 
 describe('ReturnRateMetricsService — getMetrics', () => {
-  function fakeDatabase(rows: unknown[]): Knex {
-    return {
-      raw: jest.fn().mockReturnValue({
-        timeout: jest.fn().mockResolvedValue({ rows }),
-      }),
+  function fakeDatabase(rows: unknown[]) {
+    const timeout = jest.fn().mockResolvedValue({ rows });
+    const database = {
+      raw: jest.fn().mockReturnValue({ timeout }),
     } as unknown as Knex;
+    return { database, timeout };
   }
 
   beforeEach(() => {
@@ -255,22 +298,21 @@ describe('ReturnRateMetricsService — getMetrics', () => {
 
   it('turns database rows, whose timestamps arrive as Date objects, into rates', async () => {
     const first = daysBefore(NOW, 40);
-    const service = new ReturnRateMetricsService(
-      fakeDatabase([
-        {
-          owner: '1',
-          source_type: 'notion',
-          first_at: first,
-          first_return_at: daysAfter(first, 3),
-        },
-        {
-          owner: '2',
-          source_type: 'notion',
-          first_at: first,
-          first_return_at: null,
-        },
-      ])
-    );
+    const { database } = fakeDatabase([
+      {
+        owner: '1',
+        source_type: 'notion',
+        first_at: first,
+        first_return_at: daysAfter(first, 3),
+      },
+      {
+        owner: '2',
+        source_type: 'notion',
+        first_at: first,
+        first_return_at: null,
+      },
+    ]);
+    const service = new ReturnRateMetricsService(database);
 
     const result = await service.getMetrics();
 
@@ -283,15 +325,26 @@ describe('ReturnRateMetricsService — getMetrics', () => {
     expect(result.error).toBeUndefined();
   });
 
-  it('returns null windows and surfaces the error when the query throws', async () => {
-    const failing = { raw: jest.fn() } as unknown as Knex;
-    const service = new ReturnRateMetricsService(failing);
+  it('cancels the query server-side after 30 seconds so refreshes cannot pile up', async () => {
+    const { database, timeout } = fakeDatabase([]);
 
-    const result = await service.getMetrics();
+    await new ReturnRateMetricsService(database).getMetrics();
+
+    expect(timeout).toHaveBeenCalledWith(30_000, { cancel: true });
+  });
+
+  it('returns null windows and surfaces the database error when the query rejects', async () => {
+    const database = {
+      raw: jest.fn().mockReturnValue({
+        timeout: jest.fn().mockRejectedValue(new Error('canceling statement')),
+      }),
+    } as unknown as Knex;
+
+    const result = await new ReturnRateMetricsService(database).getMetrics();
 
     expect(result.by_source_type).toBeNull();
     expect(result.overall).toEqual({ '7d': null, '14d': null, '30d': null });
     expect(result.eligible).toEqual({ '7d': 0, '14d': 0, '30d': 0 });
-    expect((result.error ?? '').length).toBeGreaterThan(0);
+    expect(result.error).toBe('canceling statement');
   });
 });
