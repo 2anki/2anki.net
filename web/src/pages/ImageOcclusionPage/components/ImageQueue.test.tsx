@@ -91,6 +91,17 @@ describe('ImageQueue', () => {
     expect(screen.getByText(/You've added the 3 images/)).toBeTruthy();
   });
 
+  it('offers an upgrade to add more images, not to unlimited, while the free plan has room', () => {
+    renderQueue([makeEntry(0), makeEntry(1)], false);
+    expect(screen.getByText('2 of 3 images on the free plan')).toBeTruthy();
+    expect(
+      screen
+        .getByRole('link', { name: 'Upgrade to add more images' })
+        .getAttribute('href')
+    ).toBe('/pricing');
+    expect(screen.queryByRole('link', { name: /unlimited/i })).toBeNull();
+  });
+
   it('shows upgrade link pointing to /pricing', () => {
     const entries = [makeEntry(0), makeEntry(1), makeEntry(2)];
     renderQueue(entries, false);

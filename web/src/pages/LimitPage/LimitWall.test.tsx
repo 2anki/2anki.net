@@ -31,14 +31,14 @@ describe('LimitWall', () => {
   it('shows the passes before Pro when passes lead', () => {
     renderWall('passes-first');
     const passesLabel = screen.getByText('Pay once — no subscription');
-    const unlimitedLabel = screen.getByText('Skip the cap for good');
+    const unlimitedLabel = screen.getByText('Skip the monthly card cap');
     expect(appearsBefore(passesLabel, unlimitedLabel)).toBe(true);
   });
 
   it('shows Pro before the passes when Pro leads', () => {
     renderWall('unlimited-first');
     const passesLabel = screen.getByText('Pay once — no subscription');
-    const unlimitedLabel = screen.getByText('Skip the cap for good');
+    const unlimitedLabel = screen.getByText('Skip the monthly card cap');
     expect(appearsBefore(unlimitedLabel, passesLabel)).toBe(true);
   });
 
