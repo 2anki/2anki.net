@@ -371,6 +371,11 @@ describe('UploadPage analytics', () => {
     expect(callsFor('upload_page_viewed')).toHaveLength(1);
   });
 
+  it('does not also fire a separate AI badge impression on every page view', () => {
+    renderPage();
+    expect(callsFor('upload_ai_badge_viewed')).toHaveLength(0);
+  });
+
   it('tracks signup_completed for a brand-new account that just signed up', () => {
     fakeUser = {
       id: 42,
