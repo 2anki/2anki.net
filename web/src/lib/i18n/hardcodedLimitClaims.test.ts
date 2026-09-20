@@ -90,4 +90,16 @@ describe('hardcoded limit claims', () => {
     const text = readFileSync(join(WEB_ROOT, file), 'utf8');
     expect(text).not.toMatch(/full\s+access|Vollzugriff/i);
   });
+
+  it.each([
+    'index.html',
+    'public/llms.txt',
+    'src/pages/AnswersPage/answersConfig.ts',
+  ])(
+    '%s states the 21-card anonymous cap instead of "no account required"',
+    (file) => {
+      const text = readFileSync(join(WEB_ROOT, file), 'utf8');
+      expect(text).not.toMatch(/no\s+account\s+(is\s+)?required/i);
+    }
+  );
 });

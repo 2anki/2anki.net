@@ -125,7 +125,7 @@ const pdfToAnki: AnswerConfig = {
     },
     {
       heading: 'Convert a PDF',
-      body: 'Go to 2anki.net, drag your PDF onto the upload area, and click Convert. Download the .apkg file and open it in Anki with a double-click. No account required for PDFs under the free plan limit.',
+      body: 'Go to 2anki.net, drag your PDF onto the upload area, and click Convert. Download the .apkg file and open it in Anki with a double-click. Without an account a conversion can produce up to 21 cards; a free account raises that to 100 cards per month.',
     },
     {
       heading: 'Large PDFs and textbooks',
