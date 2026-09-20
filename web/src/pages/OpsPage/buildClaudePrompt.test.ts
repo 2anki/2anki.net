@@ -163,10 +163,14 @@ function makeReturnRate(
 ): ReturnRateMetricsResponse {
   return {
     overall: { '7d': 12.3, '14d': 18.9, '30d': 24.1 },
+    eligible: { '7d': 480, '14d': 400, '30d': 310 },
     by_source_type: [
       {
         source_type: 'notion',
         cohort_size: 500,
+        eligible_7d: 480,
+        eligible_14d: 400,
+        eligible_30d: 310,
         returned_7d: 60,
         returned_14d: 95,
         returned_30d: 120,
@@ -337,11 +341,12 @@ describe('buildClaudePrompt — return-rate', () => {
   it('includes overall rates, the source-type array, task, and repo line', () => {
     const prompt = buildClaudePrompt('return-rate', makeReturnRate());
     expect(prompt).toContain('## Return rate — weekly review');
-    expect(prompt).toContain('Within 7 days:   12.3');
-    expect(prompt).toContain('Within 30 days:  24.1');
+    expect(prompt).toContain('Within 7 days:   12.3 (n=480)');
+    expect(prompt).toContain('Within 30 days:  24.1 (n=310)');
     expect(prompt).toContain('"source_type": "notion"');
+    expect(prompt).toContain('at least 24 hours after the first');
     expect(prompt).toContain(
-      'name the cohort with the weakest return rate and propose one fix'
+      'name the source with the weakest return rate (ignore any source whose n is too small to trust) and propose one fix'
     );
     expect(prompt).toContain('Repo: 2anki/server');
   });

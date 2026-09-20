@@ -207,17 +207,17 @@ function buildReturnRatePrompt(payload: ReturnRateMetricsResponse): string {
   const lines: string[] = [
     '## Return rate — weekly review',
     '',
-    'Window: second conversion within N days · 90-day cohort window.',
+    'Window: a return is a conversion at least 24 hours after the first, within N days · 90-day cohort window · only identities old enough for the whole window are counted.',
     '',
-    'Overall return rate (%):',
-    `Within 7 days:   ${numberOrDash(payload.overall['7d'])}`,
-    `Within 14 days:  ${numberOrDash(payload.overall['14d'])}`,
-    `Within 30 days:  ${numberOrDash(payload.overall['30d'])}`,
+    'Overall return rate (%), and how many new identities each is measured over:',
+    `Within 7 days:   ${numberOrDash(payload.overall['7d'])} (n=${payload.eligible['7d']})`,
+    `Within 14 days:  ${numberOrDash(payload.overall['14d'])} (n=${payload.eligible['14d']})`,
+    `Within 30 days:  ${numberOrDash(payload.overall['30d'])} (n=${payload.eligible['30d']})`,
     '',
     jsonBlock('Return rate by source type', payload.by_source_type),
     '',
     'Code path: src/usecases/ops/GetReturnRateMetricsUseCase.ts (/api/ops/return-rate/metrics)',
-    'Task: name the cohort with the weakest return rate and propose one fix.',
+    'Task: name the source with the weakest return rate (ignore any source whose n is too small to trust) and propose one fix.',
     REPO_LINE,
   ];
 
