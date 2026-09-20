@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import sharedStyles from '../../styles/shared.module.css';
-import {
-  formatDurationMinutes,
-  formatInteger,
-  formatPercentOneDecimal,
-} from './businessHelpers';
+import { formatInteger, formatPercentOneDecimal } from './businessHelpers';
 import { ConversionMetricsResponse } from './conversionTypes';
 import { buildClaudePrompt } from './buildClaudePrompt';
 import CopyForClaudeButton from './CopyForClaudeButton';
@@ -136,12 +132,21 @@ export default function ConversionsTab() {
         </header>
         <div className={styles.cardGrid}>
           <MetricCard
-            title="Time to first deck"
+            title="Downloaded within 24h of signup"
             value={formatNumberOrDash(
-              visible?.time_to_first_deck_median_minutes_30d ?? null,
-              formatDurationMinutes
+              visible?.new_accounts_downloaded_24h_rate_30d ?? null,
+              formatPercentOneDecimal
             )}
-            footnote="Median, accounts created in the last 30 days"
+            footnote="New accounts from the last 30 days (since 2026-09-09 at the earliest) that are at least a day old. Includes the deck made before signing up."
+          />
+          <MetricCard
+            title="Made a deck after signing up"
+            value={formatNumberOrDash(
+              visible?.new_accounts_downloaded_after_signup_24h_rate_30d ??
+                null,
+              formatPercentOneDecimal
+            )}
+            footnote="A download 10 minutes or more after signup, within 24h of it."
           />
           <MetricCard
             title="Upload → download rate"

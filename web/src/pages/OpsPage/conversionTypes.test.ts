@@ -19,7 +19,8 @@ describe('conversionTypes', () => {
       paid_blocked_by_plan_7d: 0,
       conversion_errors_7d_top_reasons: [reason],
       failed_conversions_weekly: [week],
-      time_to_first_deck_median_minutes_30d: 42.5,
+      new_accounts_downloaded_24h_rate_30d: 54.4,
+      new_accounts_downloaded_after_signup_24h_rate_30d: 11.7,
       upload_to_download_rate_7d: 25,
       deck_quality_cohorts_30d: null,
     };
@@ -41,7 +42,8 @@ describe('conversionTypes', () => {
       paid_blocked_by_plan_7d: null,
       conversion_errors_7d_top_reasons: null,
       failed_conversions_weekly: null,
-      time_to_first_deck_median_minutes_30d: null,
+      new_accounts_downloaded_24h_rate_30d: null,
+      new_accounts_downloaded_after_signup_24h_rate_30d: null,
       upload_to_download_rate_7d: null,
       deck_quality_cohorts_30d: null,
     };

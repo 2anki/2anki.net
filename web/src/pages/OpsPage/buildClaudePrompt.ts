@@ -106,7 +106,7 @@ function buildConversionsPrompt(payload: ConversionMetricsResponse): string {
   }
 
   lines.push(
-    'Window: volume & success rate over 7 days; time-to-first-deck over 30 days.',
+    'Window: volume & success rate over 7 days; new-account download shares over 30 days (accounts at least a day old, since signup tracking was fixed on 2026-09-09).',
     '',
     'Current numbers:',
     `Free conversions 7d:            ${numberOrDash(payload.free_conversions_7d)}`,
@@ -115,7 +115,8 @@ function buildConversionsPrompt(payload: ConversionMetricsResponse): string {
     `Paid success rate 7d (%):       ${numberOrDash(payload.paid_conversion_success_rate_7d)}`,
     `Free blocked by plan 7d:        ${numberOrDash(payload.free_blocked_by_plan_7d)}`,
     `Paid blocked by plan 7d:        ${numberOrDash(payload.paid_blocked_by_plan_7d)}`,
-    `Time to first deck 30d (min):   ${numberOrDash(payload.time_to_first_deck_median_minutes_30d)}`,
+    `New accounts downloading in 24h (%):         ${numberOrDash(payload.new_accounts_downloaded_24h_rate_30d)}`,
+    `New accounts making a deck after signup (%): ${numberOrDash(payload.new_accounts_downloaded_after_signup_24h_rate_30d)}`,
     `Upload → download rate 7d (%):  ${numberOrDash(payload.upload_to_download_rate_7d)}`,
     '',
     jsonBlock(

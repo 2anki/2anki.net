@@ -58,7 +58,8 @@ function makeConversions(
     paid_blocked_by_plan_7d: 0,
     conversion_errors_7d_top_reasons: [{ reason: 'Notion timeout', count: 12 }],
     failed_conversions_weekly: [{ week: '2026-06-01', count: 3 }],
-    time_to_first_deck_median_minutes_30d: 42,
+    new_accounts_downloaded_24h_rate_30d: 54.4,
+    new_accounts_downloaded_after_signup_24h_rate_30d: 11.7,
     upload_to_download_rate_7d: 25.4,
     deck_quality_cohorts_30d: null,
     ...overrides,
@@ -238,6 +239,12 @@ describe('buildClaudePrompt — conversions', () => {
     expect(prompt).toContain('Free conversions 7d:            824');
     expect(prompt).toContain('Paid success rate 7d (%):       96.2');
     expect(prompt).toContain('Free blocked by plan 7d:        63');
+    expect(prompt).toContain(
+      'New accounts downloading in 24h (%):         54.4'
+    );
+    expect(prompt).toContain(
+      'New accounts making a deck after signup (%): 11.7'
+    );
     expect(prompt).toContain('Notion timeout');
     expect(prompt).toContain(
       'find the biggest conversion leak and propose one fix'

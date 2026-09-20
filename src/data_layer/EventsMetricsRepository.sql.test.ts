@@ -3,11 +3,12 @@ import knex from 'knex';
 import {
   EventsMetricsRepository,
   mapConversionOutcomesRow,
-  mapMedianMinutesRow,
+  mapNewAccountDownloadsRow,
   mapUploadToDownloadRateRow,
 } from './EventsMetricsRepository';
 
 const cohortStart = new Date('2026-05-06T00:00:00.000Z');
+const cohortEnd = new Date('2026-06-04T00:00:00.000Z');
 const sevenDaysAgo = new Date('2026-05-29T00:00:00.000Z');
 
 describe('EventsMetricsRepository generated SQL', () => {
@@ -18,30 +19,39 @@ describe('EventsMetricsRepository generated SQL', () => {
     await pg.destroy();
   });
 
-  it('computes the time-to-first-deck median over joined first-event subqueries', () => {
+  it('counts new accounts and those with a download in their first 24 hours in one left join', () => {
     const { sql } = repository
-      .buildMedianMinutesToFirstDeckQuery(cohortStart)
+      .buildNewAccountDownloadsQuery(cohortStart, cohortEnd)
       .toSQL();
 
-    expect(sql).toBe(
-      'select percentile_cont(0.5) within group (order by extract(epoch from (downloads.first_download_at - accounts.account_at)) / 60) as median_minutes ' +
-        'from (select "user_id", min("created_at") as "account_at" from "events" where "name" = ? and "created_at" >= ? and "user_id" is not null group by "user_id") as "accounts" ' +
-        'inner join (select "user_id", min("created_at") as "first_download_at" from "events" where "name" = ? and "user_id" is not null group by "user_id") as "downloads" ' +
-        'on "downloads"."user_id" = "accounts"."user_id" ' +
-        'where downloads.first_download_at >= accounts.account_at'
+    expect(sql).toContain(
+      'count(distinct accounts.user_id) as accounts, count(distinct downloads.user_id) as downloaded_24h'
     );
+    expect(sql).toContain(
+      "count(distinct case when downloads.created_at >= accounts.account_at + ? * interval '1 minute' then downloads.user_id end) as downloaded_after_signup"
+    );
+    expect(sql).toContain(
+      'from (select "user_id", min("created_at") as "account_at" from "events" where "name" = ? and "created_at" >= ? and "created_at" <= ? and "user_id" is not null group by "user_id") as "accounts"'
+    );
+    expect(sql).toContain(
+      'left join "events" as "downloads" on "downloads"."user_id" = "accounts"."user_id" and "downloads"."name" = ? and "downloads"."created_at" >= "accounts"."account_at" and downloads.created_at <= accounts.account_at + interval \'24 hours\''
+    );
+    expect(sql.match(/from "events"/g)).toHaveLength(1);
   });
 
-  it('binds account_created and deck_downloaded into the median query', () => {
-    const { bindings } = repository
-      .buildMedianMinutesToFirstDeckQuery(cohortStart)
+  it('binds the ten minute settle time, the account cohort window and the download event name in placeholder order', () => {
+    const { sql, bindings } = repository
+      .buildNewAccountDownloadsQuery(cohortStart, cohortEnd)
       .toSQL();
 
     expect(bindings).toEqual([
+      10,
       'account_created',
       cohortStart,
+      cohortEnd,
       'deck_downloaded',
     ]);
+    expect(sql.match(/\?/g)).toHaveLength(bindings.length);
   });
 
   it('counts distinct coalesced actors per funnel stage for the upload-to-download rate', () => {
@@ -201,17 +211,23 @@ describe('mapConversionOutcomesRow', () => {
   });
 });
 
-describe('mapMedianMinutesRow', () => {
+describe('mapNewAccountDownloadsRow', () => {
   it('returns null when the query yields no row', () => {
-    expect(mapMedianMinutesRow(undefined)).toBeNull();
+    expect(mapNewAccountDownloadsRow(undefined)).toBeNull();
   });
 
-  it('returns null when percentile_cont returns null', () => {
-    expect(mapMedianMinutesRow({ median_minutes: null })).toBeNull();
-  });
-
-  it('returns the median as a number when the row carries a string', () => {
-    expect(mapMedianMinutesRow({ median_minutes: '42.5' })).toBe(42.5);
+  it('reads the three Postgres counts, which arrive as strings, as numbers', () => {
+    expect(
+      mapNewAccountDownloadsRow({
+        accounts: '701',
+        downloaded_24h: '376',
+        downloaded_after_signup: '82',
+      })
+    ).toEqual({
+      accounts: 701,
+      downloadedWithin24h: 376,
+      downloadedAfterSignup: 82,
+    });
   });
 });
 
