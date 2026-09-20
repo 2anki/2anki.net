@@ -78,6 +78,43 @@ export function reportDeclinedChunkRecovery(
   });
 }
 
+const MEGABYTE = 1024 * 1024;
+const SAFE_EXTENSION = /^\.[a-z0-9]{1,6}$/;
+
+function uploadSizeBucket(bytes: number | null): string {
+  if (bytes == null) return 'unknown size';
+  if (bytes < 10 * MEGABYTE) return 'under 10 MB';
+  if (bytes <= 50 * MEGABYTE) return '10-50 MB';
+  return 'over 50 MB';
+}
+
+/**
+ * A browser-side "Failed to fetch" on an upload is skipped as transient, which
+ * left /ops/errors blind to them. Reported under a bucketed message (type and
+ * size range, never the filename) so the failures group into a handful of
+ * rows, with the elapsed time in context to tell an instant drop from a
+ * proxy timeout.
+ */
+export function reportUploadNetworkFailure(
+  error: unknown,
+  upload: {
+    fileExt: string | null;
+    fileSizeBytes: number | null;
+    elapsedMs: number;
+  }
+): void {
+  const type =
+    upload.fileExt != null && SAFE_EXTENSION.test(upload.fileExt)
+      ? upload.fileExt
+      : 'unknown type';
+  const size = uploadSizeBucket(upload.fileSizeBytes);
+  const cause = error instanceof Error ? error.message : String(error);
+  reportClientError(new Error(`Upload network failure (${type}, ${size})`), {
+    elapsedSeconds: Math.round(upload.elapsedMs / 1000),
+    cause: cause.slice(0, 200),
+  });
+}
+
 export function reportClientError(
   error: unknown,
   context?: Record<string, unknown>

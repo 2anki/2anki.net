@@ -2,8 +2,13 @@ import {
   CURRENT_SCORER_VERSION,
   type IConversionRuleScoresRepository,
 } from '../../data_layer/ConversionRuleScoresRepository';
-import type { IEventsMetricsRepository } from '../../data_layer/EventsMetricsRepository';
+import type {
+  ConversionOutcomeCounts,
+  IEventsMetricsRepository,
+  NewAccountDownloadCounts,
+} from '../../data_layer/EventsMetricsRepository';
 import type { IJobsMetricsRepository } from '../../data_layer/JobsMetricsRepository';
+import { ACCOUNT_CREATED_RELIABLE_SINCE } from './UploadFunnelService';
 
 export type ConversionMetricKey =
   | 'free_conversions_7d'
@@ -14,7 +19,8 @@ export type ConversionMetricKey =
   | 'paid_blocked_by_plan_7d'
   | 'conversion_errors_7d_top_reasons'
   | 'failed_conversions_weekly'
-  | 'time_to_first_deck_median_minutes_30d'
+  | 'new_accounts_downloaded_24h_rate_30d'
+  | 'new_accounts_downloaded_after_signup_24h_rate_30d'
   | 'upload_to_download_rate_7d';
 
 export interface ConversionErrorCount {
@@ -51,7 +57,8 @@ export interface ConversionMetricsResponse {
   paid_blocked_by_plan_7d: number | null;
   conversion_errors_7d_top_reasons: ConversionErrorCount[] | null;
   failed_conversions_weekly: FailedConversionsWeekPoint[] | null;
-  time_to_first_deck_median_minutes_30d: number | null;
+  new_accounts_downloaded_24h_rate_30d: number | null;
+  new_accounts_downloaded_after_signup_24h_rate_30d: number | null;
   upload_to_download_rate_7d: number | null;
   deck_quality_cohorts_30d: DeckQualityCohort[] | null;
 }
@@ -64,6 +71,32 @@ const COHORT_WINDOW_DAYS = 30;
 // with its sample size and no percentiles rather than dropped, so a format that
 // is failing but rare stays visible instead of silently vanishing.
 export const MIN_COHORT_SAMPLE = 30;
+
+function fromOutcomes<T>(
+  settled: PromiseSettledResult<ConversionOutcomeCounts>,
+  pick: (counts: ConversionOutcomeCounts) => T
+): T | null {
+  return settled.status === 'fulfilled' ? pick(settled.value) : null;
+}
+
+function successRate({
+  succeeded,
+  technicalFailed,
+}: ConversionOutcomeCounts): number | null {
+  const attempts = succeeded + technicalFailed;
+  return attempts === 0 ? null : (succeeded / attempts) * 100;
+}
+
+const MS_PER_DAY = SECONDS_PER_DAY * 1000;
+
+function shareOfNewAccounts(
+  settled: PromiseSettledResult<NewAccountDownloadCounts | null>,
+  pick: (counts: NewAccountDownloadCounts) => number
+): number | null {
+  if (settled.status !== 'fulfilled' || settled.value == null) return null;
+  const { accounts } = settled.value;
+  return accounts === 0 ? null : (pick(settled.value) / accounts) * 100;
+}
 
 export class ConversionMetricsService {
   constructor(
@@ -102,6 +135,24 @@ export class ConversionMetricsService {
     });
   }
 
+  private newAccountDownloads(
+    now: Date,
+    thirtyDaysAgo: Date
+  ): Promise<NewAccountDownloadCounts | null> {
+    const cohortStart = new Date(
+      Math.max(
+        thirtyDaysAgo.getTime(),
+        ACCOUNT_CREATED_RELIABLE_SINCE.getTime()
+      )
+    );
+    const cohortEnd = new Date(now.getTime() - MS_PER_DAY);
+    if (cohortStart >= cohortEnd) return Promise.resolve(null);
+    return this.eventsMetricsRepository.newAccountDownloads(
+      cohortStart,
+      cohortEnd
+    );
+  }
+
   async getMetrics(): Promise<ConversionMetricsResponse> {
     const now = new Date();
     const sevenDaysAgoMs = now.getTime() - 7 * SECONDS_PER_DAY * 1000;
@@ -116,27 +167,19 @@ export class ConversionMetricsService {
     const weekEnd = new Date(lastStart + 7 * SECONDS_PER_DAY * 1000);
 
     const [
-      freeConversions7d,
-      paidConversions7d,
-      freeSuccessRate7d,
-      paidSuccessRate7d,
-      freeBlockedByPlan7d,
-      paidBlockedByPlan7d,
+      freeOutcomes,
+      paidOutcomes,
       topErrors7d,
       failedConversionsWeeklyRows,
-      timeToFirstDeck30d,
+      newAccountDownloads30d,
       uploadToDownloadRate7d,
       deckQualityCohorts30d,
     ] = await Promise.allSettled([
-      this.repository.countFreeConversions7d(sevenDaysAgo),
-      this.repository.countPaidConversions7d(sevenDaysAgo),
-      this.repository.computeFreeSuccessRate7d(sevenDaysAgo),
-      this.repository.computePaidSuccessRate7d(sevenDaysAgo),
-      this.repository.countFreePlanBlocked7d(sevenDaysAgo),
-      this.repository.countPaidPlanBlocked7d(sevenDaysAgo),
+      this.eventsMetricsRepository.conversionOutcomes(sevenDaysAgo, 'free'),
+      this.eventsMetricsRepository.conversionOutcomes(sevenDaysAgo, 'paid'),
       this.repository.topFailureReasons7d(sevenDaysAgo),
       this.repository.failedConversionsWeekly(earliestStart, weekEnd),
-      this.eventsMetricsRepository.medianMinutesToFirstDeck(thirtyDaysAgo),
+      this.newAccountDownloads(now, thirtyDaysAgo),
       this.eventsMetricsRepository.uploadToDownloadRate(sevenDaysAgo),
       this.deckQualityCohorts(thirtyDaysAgo),
     ]);
@@ -150,37 +193,23 @@ export class ConversionMetricsService {
         : null;
 
     return {
-      free_conversions_7d:
-        freeConversions7d.status === 'fulfilled'
-          ? freeConversions7d.value
-          : null,
-      paid_conversions_7d:
-        paidConversions7d.status === 'fulfilled'
-          ? paidConversions7d.value
-          : null,
-      free_conversion_success_rate_7d:
-        freeSuccessRate7d.status === 'fulfilled'
-          ? freeSuccessRate7d.value
-          : null,
-      paid_conversion_success_rate_7d:
-        paidSuccessRate7d.status === 'fulfilled'
-          ? paidSuccessRate7d.value
-          : null,
-      free_blocked_by_plan_7d:
-        freeBlockedByPlan7d.status === 'fulfilled'
-          ? freeBlockedByPlan7d.value
-          : null,
-      paid_blocked_by_plan_7d:
-        paidBlockedByPlan7d.status === 'fulfilled'
-          ? paidBlockedByPlan7d.value
-          : null,
+      free_conversions_7d: fromOutcomes(freeOutcomes, (o) => o.succeeded),
+      paid_conversions_7d: fromOutcomes(paidOutcomes, (o) => o.succeeded),
+      free_conversion_success_rate_7d: fromOutcomes(freeOutcomes, successRate),
+      paid_conversion_success_rate_7d: fromOutcomes(paidOutcomes, successRate),
+      free_blocked_by_plan_7d: fromOutcomes(freeOutcomes, (o) => o.planBlocked),
+      paid_blocked_by_plan_7d: fromOutcomes(paidOutcomes, (o) => o.planBlocked),
       conversion_errors_7d_top_reasons:
         topErrors7d.status === 'fulfilled' ? topErrors7d.value : null,
       failed_conversions_weekly: failedConversionsWeekly,
-      time_to_first_deck_median_minutes_30d:
-        timeToFirstDeck30d.status === 'fulfilled'
-          ? timeToFirstDeck30d.value
-          : null,
+      new_accounts_downloaded_24h_rate_30d: shareOfNewAccounts(
+        newAccountDownloads30d,
+        (counts) => counts.downloadedWithin24h
+      ),
+      new_accounts_downloaded_after_signup_24h_rate_30d: shareOfNewAccounts(
+        newAccountDownloads30d,
+        (counts) => counts.downloadedAfterSignup
+      ),
       upload_to_download_rate_7d:
         uploadToDownloadRate7d.status === 'fulfilled'
           ? uploadToDownloadRate7d.value

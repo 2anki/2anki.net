@@ -75,6 +75,7 @@ import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase
 import { writePdfImageFallbackMarker } from '../infrastracture/adapters/fileConversion/pdfImageFallbackMarker';
 import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
+import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import UploadService, { resolveUploadWarning } from './UploadService';
 import {
@@ -3865,7 +3866,7 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
   it('surfaces the vision quota error with its status instead of a silent failure', async () => {
     const quotaError = Object.assign(
       new Error(
-        "Free plan is 5 photos per month. You've used 5. Upgrade for unlimited."
+        "Free plan is 5 photos per month. You've used 5. Paid plans include AI credits for more."
       ),
       { status: 429, used: 5, limit: 5 }
     );
@@ -4328,5 +4329,247 @@ describe('resolveUploadWarning — AI credits exhausted', () => {
         'This PDF is password-protected.',
       ])
     ).toMatch(/password-protected/);
+  });
+});
+
+describe('UploadService.handleUpload — failure events for the success-rate tile', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'upload-service-test');
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+  });
+
+  beforeEach(() => {
+    MockGeneratePackagesUseCase.mockClear();
+    trackMock.mockClear();
+  });
+
+  function failWith(error: Error) {
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockRejectedValue(error),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+  }
+
+  function buildService(jobRepository: JobRepository = {} as JobRepository) {
+    return new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+  }
+
+  const conversionFailedReasons = () =>
+    trackMock.mock.calls
+      .filter(([name]) => name === 'conversion_failed')
+      .map(([, payload]) => payload.props.reason);
+
+  it.each([
+    [
+      'a parser crash',
+      Object.assign(new Error('parser crashed'), { code: 'PARSER_CRASH' }),
+      'parser_crash',
+    ],
+    [
+      'a worker timeout',
+      Object.assign(new Error('worker timed out'), { code: 'WORKER_TIMEOUT' }),
+      'worker_timeout',
+    ],
+    ['an unclassified error', new Error('something broke'), 'unknown'],
+  ])(
+    'records %s from a synchronous upload as conversion_failed',
+    async (_label, error, reason) => {
+      failWith(error);
+      const req = buildRequest({
+        cookies: { anon_id: 'anon-failed' },
+      } as Partial<express.Request>);
+      const { res } = buildResponse();
+
+      await buildService().handleUpload(req, res);
+
+      expect(trackMock).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          anonymousId: 'anon-failed',
+          userId: null,
+          props: expect.objectContaining({ reason, source: 'upload' }),
+        })
+      );
+    }
+  );
+
+  it('records a missing pdfinfo binary as pdf_unreadable, because that is our tooling failing', async () => {
+    failWith(new Error('pdfinfo_spawn_failed: ENOENT'));
+    const { res } = buildResponse();
+
+    await buildService().handleUpload(buildRequest(), res);
+
+    expect(conversionFailedReasons()).toEqual(['pdf_unreadable']);
+  });
+
+  it.each([
+    ['a corrupt PDF', 'pdfinfo_failed code=1'],
+    ['an unreadable docx', 'docx_parse_failed: not a zip'],
+    [
+      'an Anki package uploaded as a source file',
+      '"x.apkg" is already an Anki deck.',
+    ],
+  ])(
+    'does not count %s, which is a problem with the user file',
+    async (_label, message) => {
+      failWith(new Error(message));
+      const { res } = buildResponse();
+
+      await buildService().handleUpload(buildRequest(), res);
+
+      expect(conversionFailedReasons()).toEqual([]);
+    }
+  );
+
+  it.each([
+    'ImageOnlyContentError',
+    'DeckTooLargeError',
+    'ClaudeParseError',
+    'ClaudeLargeSectionError',
+    'PythonZeroCardsError',
+  ])(
+    'does not count %s once the worker has rebuilt it as a plain error',
+    async (name) => {
+      failWith(Object.assign(new Error('rebuilt by the worker'), { name }));
+      const { res } = buildResponse();
+
+      await buildService().handleUpload(buildRequest(), res);
+
+      expect(conversionFailedReasons()).toEqual([]);
+    }
+  );
+
+  it.each([
+    [
+      'a client that hung up mid upload',
+      Object.assign(new Error('request aborted'), {
+        type: 'entity.parse.failed',
+      }),
+    ],
+    [
+      'a file with no content',
+      Object.assign(new Error('nothing to convert'), {
+        name: 'EmptyContentError',
+      }),
+    ],
+  ])('does not count %s as a technical failure', async (_label, error) => {
+    failWith(error);
+    const { res } = buildResponse();
+
+    await buildService().handleUpload(buildRequest(), res);
+
+    expect(conversionFailedReasons()).toEqual([]);
+  });
+
+  describe('asynchronous AI uploads', () => {
+    function buildJobRepo(): JobRepository {
+      return {
+        create: jest.fn().mockResolvedValue(undefined),
+        updateJobStatus: jest.fn().mockResolvedValue(undefined),
+      } as unknown as JobRepository;
+    }
+
+    function buildAiRequest() {
+      return buildRequest({
+        files: [
+          {
+            originalname: 'chapter.pdf',
+            mimetype: 'application/pdf',
+            size: 10,
+            buffer: Buffer.from('bytes'),
+          },
+        ],
+        body: { 'claude-ai-flashcards': 'true' },
+      } as unknown as Partial<express.Request>);
+    }
+
+    function buildPayingResponse() {
+      const built = buildResponse();
+      (built.res.locals as Record<string, unknown>).owner = 42;
+      (built.res.locals as Record<string, unknown>).patreon = true;
+      return built;
+    }
+
+    const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+    it('records an unexpected background failure for the signed-in owner', async () => {
+      failWith(
+        Object.assign(new Error('parser crashed'), { code: 'PARSER_CRASH' })
+      );
+      const { res } = buildPayingResponse();
+
+      await buildService(buildJobRepo()).handleUpload(buildAiRequest(), res);
+      await settle();
+
+      expect(trackMock).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          userId: 42,
+          props: expect.objectContaining({ reason: 'parser_crash' }),
+        })
+      );
+    });
+
+    it('does not count an empty deck as a technical failure', async () => {
+      failWith(new EmptyDeckError());
+      const { res } = buildPayingResponse();
+
+      await buildService(buildJobRepo()).handleUpload(buildAiRequest(), res);
+      await settle();
+
+      expect(conversionFailedReasons()).toEqual([]);
+    });
+
+    it.each([
+      'ImageOnlyContentError',
+      'ClaudeParseError',
+      'ClaudeLargeSectionError',
+    ])(
+      'does not count %s once the worker has rebuilt it as a plain error',
+      async (name) => {
+        failWith(Object.assign(new Error('rebuilt by the worker'), { name }));
+        const { res } = buildPayingResponse();
+
+        await buildService(buildJobRepo()).handleUpload(buildAiRequest(), res);
+        await settle();
+
+        expect(conversionFailedReasons()).toEqual([]);
+      }
+    );
+
+    it('records a credits error that lost its class across the worker boundary as ai_credits_exhausted', async () => {
+      failWith(
+        Object.assign(new Error("You're out of AI credits."), {
+          name: 'AiCreditsExhaustedError',
+        })
+      );
+      const { res } = buildPayingResponse();
+
+      await buildService(buildJobRepo()).handleUpload(buildAiRequest(), res);
+      await settle();
+
+      expect(conversionFailedReasons()).toEqual(['ai_credits_exhausted']);
+    });
+  });
+
+  it('adds no second event for a credits error the synchronous path already tracked', async () => {
+    failWith(new AiCreditsExhaustedError());
+    const { res } = buildResponse();
+
+    await buildService().handleUpload(buildRequest(), res);
+
+    expect(conversionFailedReasons()).toEqual([]);
   });
 });

@@ -64,7 +64,28 @@ const DURATION_MS_SQL =
 
 const DONE_JOBS_SINCE_SQL = `status = 'done'
   AND last_edited_time >= NOW() - (? * INTERVAL '1 day')
-  AND created_at IS NOT NULL`;
+  AND created_at IS NOT NULL
+  AND type IS DISTINCT FROM 'mcp'`;
+
+export function buildDurationPercentilesSql(): string {
+  return `SELECT
+       percentile_disc(0.5) WITHIN GROUP (ORDER BY ${DURATION_MS_SQL}) AS p50,
+       percentile_disc(0.95) WITHIN GROUP (ORDER BY ${DURATION_MS_SQL}) AS p95,
+       percentile_disc(0.99) WITHIN GROUP (ORDER BY ${DURATION_MS_SQL}) AS p99,
+       COUNT(*) AS total
+     FROM jobs
+     WHERE ${DONE_JOBS_SINCE_SQL}
+       AND last_edited_time IS NOT NULL`;
+}
+
+export function buildSlowestJobsSql(): string {
+  return `SELECT id, type, card_count, last_edited_time AS completed_at,
+              ${DURATION_MS_SQL} AS duration_ms
+       FROM jobs
+       WHERE ${DONE_JOBS_SINCE_SQL}
+       ORDER BY duration_ms DESC NULLS LAST
+       LIMIT ?`;
+}
 
 export class PerformanceMetricsService {
   constructor(
@@ -110,17 +131,9 @@ export class PerformanceMetricsService {
   private async getDurationPercentiles(
     sinceDays: number
   ): Promise<Omit<JobDurationPercentiles, 'window'>> {
-    const result = (await this.db.raw(
-      `SELECT
-         percentile_disc(0.5) WITHIN GROUP (ORDER BY ${DURATION_MS_SQL}) AS p50,
-         percentile_disc(0.95) WITHIN GROUP (ORDER BY ${DURATION_MS_SQL}) AS p95,
-         percentile_disc(0.99) WITHIN GROUP (ORDER BY ${DURATION_MS_SQL}) AS p99,
-         COUNT(*) AS total
-       FROM jobs
-       WHERE ${DONE_JOBS_SINCE_SQL}
-         AND last_edited_time IS NOT NULL`,
-      [sinceDays]
-    )) as {
+    const result = (await this.db.raw(buildDurationPercentilesSql(), [
+      sinceDays,
+    ])) as {
       rows: {
         p50: string | null;
         p95: string | null;
@@ -161,15 +174,10 @@ export class PerformanceMetricsService {
     sinceDays: number,
     limit: number
   ): Promise<SlowJob[]> {
-    const result = (await this.db.raw(
-      `SELECT id, type, card_count, last_edited_time AS completed_at,
-              ${DURATION_MS_SQL} AS duration_ms
-       FROM jobs
-       WHERE ${DONE_JOBS_SINCE_SQL}
-       ORDER BY duration_ms DESC NULLS LAST
-       LIMIT ?`,
-      [sinceDays, limit]
-    )) as {
+    const result = (await this.db.raw(buildSlowestJobsSql(), [
+      sinceDays,
+      limit,
+    ])) as {
       rows: {
         id: number;
         type: string | null;

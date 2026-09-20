@@ -116,7 +116,7 @@
     "seePlans": "Bekijk abonnementen"
   },
   "checkout": {
-    "youreOnUnlimited": "Je zit op Unlimited",
+    "youreOnUnlimited": "Je zit op Pro",
     "thanksActive": "Bedankt, {{firstName}} — je abonnement is actief.",
     "subscriptionActive": "Je abonnement is actief.",
     "makeDeck": "Een deck maken",

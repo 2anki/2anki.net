@@ -67,11 +67,11 @@ const ankiToNotionCopy: LandingCopy = {
     },
     {
       q: 'Is it free?',
-      a: 'Yes. Free covers up to 1 000 cards per import. For larger decks, upgrade to Unlimited or split your deck in Anki (File → Export → Selected Deck) and run two imports.',
+      a: 'Yes. Free covers up to 1 000 cards per import. For larger decks, upgrade to Pro or split your deck in Anki (File → Export → Selected Deck) and run two imports.',
     },
     {
       q: 'How big can my deck be?',
-      a: 'Free: 1 000 cards per import. Unlimited: up to 5,000 cards per import. For very large decks we split across multiple Notion pages automatically.',
+      a: 'Free: 1 000 cards per import. Pro: up to 10,000 notes per import. For very large decks we split across multiple Notion pages automatically.',
     },
   ],
 };

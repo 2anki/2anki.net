@@ -28,7 +28,7 @@ describe('LoggedInSuccess', () => {
   it('shows the headline', () => {
     renderComponent();
     expect(
-      screen.getByRole('heading', { name: /You're on Unlimited/i })
+      screen.getByRole('heading', { name: /You're on Pro/i })
     ).toBeInTheDocument();
   });
 

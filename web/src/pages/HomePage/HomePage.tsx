@@ -164,10 +164,6 @@ export function HomePage({
   const landingViewedRef = useRef(false);
 
   useEffect(() => {
-    if (!isLoggedIn) track('home_ai_anon_badge_viewed');
-  }, [isLoggedIn]);
-
-  useEffect(() => {
     if (isLoggedIn || landingViewedRef.current) return;
     landingViewedRef.current = true;
     track('landing_page_viewed');

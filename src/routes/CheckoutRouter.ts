@@ -116,7 +116,7 @@ const CheckoutRouter = () => {
       if (unlimitedMonthlyPriceId === '') {
         return res
           .status(503)
-          .json({ message: 'Unlimited checkout is not available' });
+          .json({ message: 'Pro checkout is not available' });
       }
       const useCase = new UnlimitedCheckoutUseCase(
         getStripe(),
@@ -137,9 +137,9 @@ const CheckoutRouter = () => {
    * @swagger
    * /api/checkout/prices:
    *   get:
-   *     summary: Get the Unlimited plan prices for the current visitor
+   *     summary: Get the Pro plan prices for the current visitor
    *     description: |
-   *       Returns the monthly and annual Unlimited prices the visitor would
+   *       Returns the monthly and annual Pro prices the visitor would
    *       pay at checkout. Accounts created before the pricing-v2 cutover see
    *       legacy prices until the lock-in window closes; everyone else sees
    *       v2 prices once the pricing_v2 flag is on. Anonymous visitors are

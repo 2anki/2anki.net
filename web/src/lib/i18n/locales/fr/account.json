@@ -116,7 +116,7 @@
     "seePlans": "Voir les offres"
   },
   "checkout": {
-    "youreOnUnlimited": "Tu es sur Unlimited",
+    "youreOnUnlimited": "Tu es sur le forfait Pro",
     "thanksActive": "Merci, {{firstName}} — ton abonnement est actif.",
     "subscriptionActive": "Ton abonnement est actif.",
     "makeDeck": "Créer un paquet",

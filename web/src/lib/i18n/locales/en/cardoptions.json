@@ -1,0 +1,133 @@
+{
+  "premiumBadge": "Premium",
+  "options": {
+    "add-notion-link": {
+      "label": "Add Notion link",
+      "description": "Add a link back to the Notion page on each card."
+    },
+    "block-id-identity": {
+      "label": "Match cards to their Notion blocks",
+      "description": "On, uploading the page again matches your toggle cards to their Notion blocks and updates them in place. Turn it on for decks you first built before July 2026. Off for newer decks."
+    },
+    "all": {
+      "label": "Use all toggle lists",
+      "description": "Pull toggles from anywhere on the page, including nested ones. Off, only top-level toggles become cards."
+    },
+    "paragraph": {
+      "label": "Use plain text for back",
+      "description": "Strip formatting from the back of each card and keep only the text. Use this when colors and styles distract from review."
+    },
+    "cherry": {
+      "label": "Cherry-pick using 🍒 emoji",
+      "description": "Only build cards from toggles that contain 🍒 in the header or body. Use this to publish a few cards from a long page."
+    },
+    "avocado": {
+      "label": "Skip toggles with the 🥑 emoji",
+      "description": "Ignore any toggle marked with 🥑. Use this to exclude drafts or notes without editing the page."
+    },
+    "tags": {
+      "label": "Treat strikethrough as tags",
+      "description": "Turn strikethrough text into Anki tags. Strikethrough at the page level becomes a global tag; inside a toggle it tags only that card."
+    },
+    "section-tags": {
+      "label": "Tag a whole section",
+      "description": "Strike through a line under a parent toggle to tag every card nested beneath it — tag a whole section at once. Requires Cherry-pick mode."
+    },
+    "cloze": {
+      "label": "Cloze deletion",
+      "description": "Create cloze cards from inline code and {{c1::}} syntax in your toggles."
+    },
+    "cloze-from-toggle-content": {
+      "label": "Inline code toggles become cloze",
+      "description": "When a toggle's contents contain inline code, hide the code as a cloze and use the toggle header as the hint. Works only when Cloze deletion is on."
+    },
+    "group-cloze-per-toggle": {
+      "label": "Group cloze blanks per toggle",
+      "description": "When one Notion toggle holds several :: blanks, put them all on a single card and reveal them together. Off by default — each :: makes its own card."
+    },
+    "remove-deck-name-numbering": {
+      "label": "Remove numbering from deck names",
+      "description": "Removes a leading number like \"3. \" or \"03 - \" from deck and sub-deck names. Off by default — titles like 3D Anatomy that only start with a number are never changed."
+    },
+    "enable-input": {
+      "label": "Treat bold text as input",
+      "description": "Hide bold words on the front of the card so you type them during review. Useful for vocabulary and exact-answer recall."
+    },
+    "basic-reversed": {
+      "label": "Basic and reversed",
+      "description": "Create two cards per toggle: question to answer, and answer to question."
+    },
+    "reversed": {
+      "label": "Reversed only",
+      "description": "Create only the reversed card, swapping front and back. Useful when the back is an image you want to see first."
+    },
+    "no-underline": {
+      "label": "Remove underlines",
+      "description": "Strip underline formatting from card text. Turn this on if Notion underlines are showing up where you do not want them."
+    },
+    "max-one-toggle-per-card": {
+      "label": "Maximum one toggle per card",
+      "description": "Keep each card focused on a single toggle. Combine with Use all toggle lists to turn every nested toggle into its own card."
+    },
+    "remove-mp3-links": {
+      "label": "Remove MP3 links from audio files",
+      "description": "Hide raw MP3 URLs on cards while keeping the audio playable."
+    },
+    "perserve-newlines": {
+      "label": "Preserve newlines in toggle header and body",
+      "description": "Keep line breaks made with Shift+Enter inside toggles. Applies to every card type."
+    },
+    "process-pdfs": {
+      "label": "Process PDF files",
+      "description": "Convert PDFs found inside ZIP uploads into cards. Turn off to skip them and finish ZIP uploads faster."
+    },
+    "pdf-extract-text": {
+      "label": "Extract text from PDFs",
+      "description": "Turn the text inside a PDF into cards. Leave off to render each page as an image — page 1 on the front, page 2 on the back."
+    },
+    "pdf-page-pairs": {
+      "label": "Two pages make one card",
+      "description": "For PDFs laid out front then back — page 1 is the card front, page 2 its back. 2anki turns every 2 pages into one image card."
+    },
+    "download-pdfs": {
+      "label": "Download PDFs as Anki media",
+      "description": "Off: PDFs appear as clickable links. On: PDFs are bundled into the .apkg, which makes the deck file much larger."
+    },
+    "markdown-nested-bullet-points": {
+      "label": "Markdown nested bullet points",
+      "description": "Turn bullets and their sub-bullets into front-and-back cards. Recommended for Obsidian exports."
+    },
+    "split-sections-into-decks": {
+      "label": "Split each section into its own deck",
+      "description": "When on, each heading, toggle, and list on the page becomes its own deck instead of all cards landing in one."
+    },
+    "vertex-ai-pdf-questions": {
+      "label": "Generate questions from PDF uploads",
+      "description": "Drafts questions from your PDF using Claude (Anthropic). Your PDF content is sent to Anthropic for processing."
+    },
+    "disable-indented-bullets": {
+      "label": "Disable indented bullets",
+      "description": "Keep indented bullets attached to their parent instead of becoming separate cards."
+    },
+    "image-quiz-html-to-anki": {
+      "label": "Convert image quiz HTML to Anki cards",
+      "description": "Use OCR to pull images and answers out of HTML quizzes and turn them into cards."
+    },
+    "embed-images": {
+      "label": "Embed images in cards",
+      "description": "Pack image bytes into the deck so cards render offline. Turn off to ship a leaner deck when images are pushing the upload over the size cap."
+    },
+    "claude-ai-flashcards": {
+      "label": "Generate flashcards with Claude AI",
+      "description": "Use Claude AI to draft cards from your content. Produces stronger results on dense or unstructured documents."
+    },
+    "ai-comprehensive": {
+      "label": "Comprehensive AI mode",
+      "description": "Reads every section of long documents so nothing important gets skipped. Best for thorough study of dense material. Takes longer to make. Paid plans only."
+    },
+    "share-files-for-debugging": {
+      "label": "Share files for debugging when conversion fails",
+      "description": "On a failed conversion, send the uploaded files and error details to the 2anki team to investigate. Off by default to keep your notes private."
+    }
+  }
+}

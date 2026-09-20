@@ -1,11 +1,11 @@
 ---
 title: Import an Anki deck into Notion
-description: Turn an .apkg into Notion toggle pages — free up to 1,000 cards per import.
+description: Turn an .apkg into Notion toggle pages — free up to 1,000 notes per import.
 ---
 
 The reverse of everything else 2anki does. You upload an existing `.apkg` and we recreate the cards as toggles inside a Notion page. Useful for moving an old deck back into notes you can edit, or for giving a study deck to someone who works in Notion instead of Anki.
 
-**Plan:** Free up to 1,000 cards per import. Subscription and Lifetime get unlimited imports.
+**Plan:** Free up to 1,000 notes per import. Subscription and Lifetime raise the cap to 10,000 notes per import.
 
 ## When to use this
 
@@ -32,11 +32,11 @@ Cards become toggles — the front is the toggle summary, the back is what's ins
 ## Common mistakes
 
 - **Wrong file type.** The page only accepts `.apkg`. If you have a `.colpkg` (full collection backup), open it in Anki first and export the deck you want as `.apkg`.
-- **Deck over the free limit.** Free hits a hard stop at 1,000 cards per import. Split the deck in Anki (right-click → **Export** with a filtered subset) or [upgrade](/pricing) for unlimited.
+- **Deck over the note limit.** A big import doesn't fail: it brings in the first 1,000 notes on the free plan (10,000 on Subscription and Lifetime) and adds a notice at the top of the page. To import the rest, split the deck in Anki (right-click → **Export** with a filtered subset) and import each part, or [upgrade](/pricing) for the higher limit.
 - **Page not in the picker.** The destination picker only shows pages where the 2anki integration has access. Open the page in Notion → **Share** → **Add connections** → pick **2anki**.
 
 ## Related
 
 - [Connect Notion](/documentation/start-here/connect-notion) — the workspace connection this flow uses
 - [Limits and quotas](/documentation/help/limits) — what each plan includes
-- [Pricing](/pricing) — upgrade for unlimited imports
+- [Pricing](/pricing) — raise the import cap to 10,000 notes

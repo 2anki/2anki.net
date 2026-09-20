@@ -27,7 +27,8 @@
     "contact": "Contato",
     "privacy": "Privacidade",
     "terms": "Termos",
-    "about": "Sobre"
+    "about": "Sobre",
+    "cardsThisMonth": "{{limit}} cartões este mês"
   },
   "account": {
     "title": "Conta",
@@ -150,6 +151,12 @@
       "imagesTitle": "Isto parece ser imagens",
       "imagesBody": "Nenhum texto para ler, então não havia nada para virar cartões. O Foto para baralho lê imagens com IA e rascunha cartões que você revisa antes de baixar.",
       "tryPhotoToDeck": "Testar Foto para baralho",
+      "apkgRejectHeading": "Isso já é um baralho do Anki pronto",
+      "apkgRejectBody": "O 2anki transforma notas em cartões — ele não consegue converter um baralho que já está pronto. Enviar de novo não vai mudar isso.",
+      "apkgRejectPrimary": "Escolher outro arquivo",
+      "apkgRejectSecondaryPrefix": "Já é seu? Abra direto no Anki, ou ",
+      "apkgRejectPrintLink": "imprima como PDF",
+      "apkgRejectSecondarySuffix": ".",
       "errorTitle": "Algo deu errado",
       "tryAgain": "Tentar de novo",
       "changeSource": "← Trocar fonte",
@@ -175,7 +182,28 @@
       "liveLockedPdf": "Este PDF está protegido por senha. Digite a senha para continuar.",
       "pdfPasswordAria": "Senha do PDF",
       "changeSourceAria": "Trocar fonte de upload",
-      "uploadFileAria": "Enviar arquivo"
+      "uploadFileAria": "Enviar arquivo",
+      "mcqPreviewHeading": "Prévia",
+      "mcqAnswerNote": "Abra seu baralho baixado no Anki para ver a pergunta completa e a resposta correta destacada.",
+      "mcqSummary_one": "Seu baralho contém {{count}} cartão de múltipla escolha. Cada cartão mostra o enunciado de uma pergunta com opções rotuladas — toque na correta no Anki para revelar a resposta.",
+      "mcqSummary_other": "Seu baralho contém {{count}} cartões de múltipla escolha. Cada cartão mostra o enunciado de uma pergunta com opções rotuladas — toque na correta no Anki para revelar a resposta.",
+      "mcqSkipped": "Ignorados, sem resposta marcada: {{count}}",
+      "mcqSkippedHint": "Marque a opção correta no Notion para exibi-los como múltipla escolha. Use uma caixa de seleção do Notion ou deixe em negrito o marcador correto.",
+      "emptyMarkdownLossy": "As exportações em Markdown do Notion achatam os toggles — exporte esta página de novo como HTML e os toggles viram flashcards.",
+      "emptyGoogleDoc": "Seu Doc foi convertido, mas não encontramos o formato de marcadores que transformamos em cartões. Reestruture seu Doc para que cada pergunta seja um marcador de nível superior, com a resposta indentada logo abaixo, e tente de novo. <exampleLink>Veja um exemplo que funciona</exampleLink>",
+      "emptySheet": "Planilhas precisam de uma coluna de perguntas e uma de respostas. Confirme que sua Planilha tem pelo menos duas colunas e tente de novo.",
+      "emptySlides": "Slides precisam de um título e marcadores em cada slide para gerar cartões. Adicione títulos e marcadores aos seus slides e tente de novo.",
+      "emptyTextFile": "Nenhum cartão neste arquivo. Em um arquivo de texto, coloque um cartão por linha como pergunta - resposta ou pergunta = resposta, separe os dois com uma tabulação, ou use uma lista com marcadores. Veja <problemsLink>problemas comuns</problemsLink> para os formatos que funcionam.",
+      "lockedBadge": "Bloqueado",
+      "lockedHeadline": "Este PDF está protegido por senha",
+      "passwordPlaceholder": "Digite a senha",
+      "unlock": "Desbloquear",
+      "unlockFailed": "Isso não abriu o arquivo. Confira se há erros de digitação e tente de novo.",
+      "lockedHint": "Ainda travado? Alguns PDFs têm uma proteção só para o proprietário que não pode ser inserida aqui — abra o arquivo no Preview ou no Adobe Reader, salve uma cópia e envie essa.",
+      "skipFile": "Pular este arquivo",
+      "askClaude": "Perguntar ao Claude sobre este arquivo",
+      "readErrorTitle": "Algo quebrou ao ler este arquivo.",
+      "readErrorDetail": "Tente de novo, ou envie o arquivo para support@2anki.net para corrigirmos o analisador."
     },
     "page": {
       "title": "Converta suas anotações",
@@ -401,7 +429,7 @@
       "monthlyOption": "Mensal",
       "benefitUnlimited": "Flashcards ilimitados",
       "benefitApkg": ".apkg nativo — funciona em qualquer cliente Anki",
-      "benefitAi": "Flashcards com IA, foto para baralho e chat",
+      "benefitAi": "Flashcards com IA, foto para baralho e chat — 300 créditos de IA por mês",
       "benefitMultiple": "Rode várias conversões ao mesmo tempo",
       "benefitPdf": "PDFs e exportações grandes do Notion",
       "benefitImport": "Importações Anki → Notion — até 10.000 notas cada",
@@ -409,8 +437,8 @@
       "benefitCancel": "Cancele quando quiser",
       "tryAgain": "Tentar de novo",
       "startingCheckout": "Iniciando o checkout",
-      "getUnlimitedYearly": "Obter Unlimited — cobrança anual",
-      "getUnlimitedMonthly": "Obter Unlimited — cobrança mensal",
+      "getUnlimitedYearly": "Obter o Pro — cobrança anual",
+      "getUnlimitedMonthly": "Obter o Pro — cobrança mensal",
       "termsYearly": "{{annualTotal}} cobrado hoje, renova anualmente. Cancele quando quiser — o acesso continua até o fim do ano pago.",
       "termsMonthly": "{{monthlyTotal}} cobrado hoje, renova mensalmente. Cancele quando quiser.",
       "checkoutError": "Não foi possível iniciar o checkout. Tente de novo, ou envie um e-mail para support@2anki.net.",
@@ -489,7 +517,8 @@
       "blocksSkipped_one": "{{count}} bloco ignorado",
       "blocksSkipped_other": "{{count}} blocos ignorados",
       "structureGuessed": "Estrutura deduzida",
-      "columnsGuessed": "Colunas deduzidas"
+      "columnsGuessed": "Colunas deduzidas",
+      "sharedTooltip": "Compartilhado — clique para abrir a prévia"
     },
     "done": "Pronto",
     "openInNotion": "Abrir no Notion",
@@ -569,7 +598,7 @@
       "openingCheckout": "Abrindo o checkout",
       "getDayPass": "Obter Day Pass — {{price}}",
       "getWeekPass": "Obter Week Pass — {{price}}",
-      "upgradeUnlimited": "Fazer upgrade para o Unlimited"
+      "upgradeUnlimited": "Fazer upgrade para o Pro"
     }
   },
   "modals": {
@@ -766,5 +795,8 @@
       "clozePlaceholder": "Padrão: n2a-cloze",
       "inputPlaceholder": "Padrão: n2a-input"
     }
+  },
+  "favoritesPage": {
+    "subtitle": "Páginas que você favoritou para acesso rápido."
   }
 }

@@ -5,7 +5,7 @@ description: Connect the 2anki MCP server and build Anki decks straight from a c
 
 2anki runs as an MCP connector, so an AI assistant can build your Anki decks for you. Paste lecture notes into a conversation, ask for flashcards, and get a download link for a ready `.apkg` — without leaving the chat.
 
-**The connector is open to every signed-in account.** Sign in at [2anki.net](https://2anki.net/), add the connector, and approve the consent screen once. Free accounts keep their monthly card limit; paid plans convert without limits.
+**The connector is open to every signed-in account.** Sign in at [2anki.net](https://2anki.net/), add the connector, and approve the consent screen once. Free accounts keep their monthly card limit; paid plans have no monthly card limit, and photos draw on your AI credits.
 
 ## Connect to Claude
 
@@ -65,7 +65,7 @@ description: Connect the 2anki MCP server and build Anki decks straight from a c
 - Preview a deck's cards before you download
 - List the decks you've already created
 
-Free accounts keep their normal monthly card limit; paid plans convert without limits — the same [plans and limits](/documentation/reference/plans) as the web app.
+Free accounts keep their normal monthly card limit; paid plans have no monthly card limit, and photos draw on your AI credits — the same [plans and limits](/documentation/reference/plans) as the web app.
 
 ## If something fails
 

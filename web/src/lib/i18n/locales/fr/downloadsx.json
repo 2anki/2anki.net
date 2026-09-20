@@ -83,11 +83,11 @@
     "text": "Nous n'avons pas pu déterminer quelles colonnes sont la question et la réponse, donc ce paquet utilise <front>{{frontField}}</front> comme recto et <back>{{backField}}</back> comme verso. Convertissez à nouveau la base de données pour choisir d'autres colonnes."
   },
   "paywall": {
-    "ariaLabel": "Passer à Unlimited",
+    "ariaLabel": "Passer à Pro",
     "headline": "Une conversion à la fois sur le forfait gratuit",
-    "body": "Cette conversion a été mise en pause pour que celle déjà lancée puisse se terminer. Passez à Unlimited pour en exécuter plusieurs à la fois.",
+    "body": "Cette conversion a été mise en pause pour que celle déjà lancée puisse se terminer. Passez à Pro pour en exécuter plusieurs à la fois.",
     "opening": "Ouverture du paiement",
-    "upgrade": "Passer à Unlimited",
+    "upgrade": "Passer à Pro",
     "orWaitTitled": "Ou attendez que \"<jobTitle>{{title}}</jobTitle>\" se termine — commencé {{time}}.",
     "orWaitUntitled": "Ou attendez que votre conversion en cours se termine — commencée {{time}}.",
     "seeAllPlans": "Voir tous les forfaits"

@@ -1,5 +1,5 @@
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -46,12 +46,14 @@ import { AI_CREDITS_QUERY_KEY } from '../../../../lib/hooks/useAiCredits';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
+import { reportUploadNetworkFailure } from '../../../../lib/reportClientError';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { PostDownloadNudge } from '../../../../components/PostDownloadNudge';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
 import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
+import DocsLink from './DocsLink';
 import sharedStyles from '../../../../styles/shared.module.css';
 import {
   collectDroppedEntries,
@@ -115,8 +117,8 @@ function getLimitDescription(
 ): string {
   if (kind === 'file_size') {
     if (context === 'anonymous')
-      return 'Create a free account to convert files of any size, or split the file and try again.';
-    return 'Split the file, or upgrade to convert files of any size.';
+      return 'Files over 100 MB need a paid plan. Split the file and try again, or create an account and upgrade for uploads up to about 10 GB.';
+    return 'Split the file, or upgrade for uploads up to about 10 GB.';
   }
   if (context === 'anonymous')
     return 'Create a free account to start converting, or upgrade for no monthly cap.';
@@ -811,6 +813,7 @@ function UploadForm({
 
   const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
+    const submittedAt = Date.now();
     setZoneState('converting');
     fireAnalyticsEvent('upload_started');
     setProgressWidth(10);
@@ -878,19 +881,30 @@ function UploadForm({
       const isNetworkError =
         error instanceof TypeError ||
         (error instanceof Error && /fetch|network/i.test(error.message));
+      const failedFile = fileInputRef.current?.files?.[0];
+      const failedFileName = failedFile?.name ?? '';
+      const extensionStart = failedFileName.lastIndexOf('.');
+      const fileExt =
+        extensionStart >= 0
+          ? failedFileName.slice(extensionStart).toLowerCase()
+          : null;
+      const fileSizeBytes = failedFile?.size ?? null;
       track('upload_failed', {
         reason: isNetworkError ? 'network' : 'other',
         message: (error instanceof Error ? error.message : String(error)).slice(
           0,
           200
         ),
-        fileSizeBytes: fileInputRef.current?.files?.[0]?.size ?? null,
-        fileExt: (() => {
-          const name = fileInputRef.current?.files?.[0]?.name ?? '';
-          const dot = name.lastIndexOf('.');
-          return dot >= 0 ? name.slice(dot).toLowerCase() : null;
-        })(),
+        fileSizeBytes,
+        fileExt,
       });
+      if (isNetworkError) {
+        reportUploadNetworkFailure(error, {
+          fileExt,
+          fileSizeBytes,
+          elapsedMs: Date.now() - submittedAt,
+        });
+      }
       setLocalError(toFriendlyThrownError(error));
       setZoneState('error');
       return false;
@@ -902,6 +916,12 @@ function UploadForm({
     zoneState === 'error' &&
     localError != null &&
     /already an Anki deck/i.test(localError.message);
+
+  useEffect(() => {
+    if (isExistingApkgReject) {
+      track('apkg_reject_shown');
+    }
+  }, [isExistingApkgReject]);
 
   const zoneClassName = [
     formStyles.dropZone,
@@ -1009,35 +1029,33 @@ function UploadForm({
 
   const renderMcqDrawer = () => (
     <div className={formStyles.mcqDrawer}>
-      <p className={formStyles.mcqDrawerHeading}>Preview</p>
+      <p className={formStyles.mcqDrawerHeading}>
+        {t('upload.form.mcqPreviewHeading')}
+      </p>
       {mcqShowAnswer ? (
         <>
           <p className={formStyles.mcqDrawerQuestion}>
-            Open your downloaded deck in Anki to see the full question and
-            correct answer highlighted.
+            {t('upload.form.mcqAnswerNote')}
           </p>
           <button
             type="button"
             className={formStyles.mcqDrawerToggle}
             onClick={() => setMcqShowAnswer(false)}
           >
-            Show question
+            {t('ankify:reviewer.showQuestion')}
           </button>
         </>
       ) : (
         <>
           <p className={formStyles.mcqDrawerQuestion}>
-            Your deck contains {mcqCount} multiple-choice{' '}
-            {mcqCount === 1 ? 'card' : 'cards'}. Each card shows a question stem
-            with labelled options — tap the correct one in Anki to reveal the
-            answer.
+            {t('upload.form.mcqSummary', { count: mcqCount })}
           </p>
           <button
             type="button"
             className={formStyles.mcqDrawerToggle}
             onClick={() => setMcqShowAnswer(true)}
           >
-            Show answer
+            {t('ankify:reviewer.showAnswer')}
           </button>
         </>
       )}
@@ -1071,9 +1089,10 @@ function UploadForm({
             {mcqSkippedCount > 0 && (
               <span
                 className={formStyles.mcqSkipped}
-                title="Mark the correct option in Notion to render these as multiple choice. Use a Notion checkbox or bold the correct bullet."
+                title={t('upload.form.mcqSkippedHint')}
               >
-                &nbsp;&mdash;&nbsp;{mcqSkippedCount} skipped, no answer marked
+                &nbsp;&mdash;&nbsp;
+                {t('upload.form.mcqSkipped', { count: mcqSkippedCount })}
               </span>
             )}
           </button>
@@ -1268,47 +1287,47 @@ function UploadForm({
     if (localError?.code === 'markdown_likely_lossy') {
       return (
         <p className={formStyles.emptyBody}>
-          Notion Markdown exports flatten toggles — re-export this page as HTML
-          and the toggles become flashcards.
+          {t('upload.form.emptyMarkdownLossy')}
         </p>
       );
     }
     if (driveMimeType === 'application/vnd.google-apps.document') {
       return (
         <p className={formStyles.emptyBody}>
-          Your Doc converted, but we didn't see the bullet shape we turn into
-          cards. Restructure your Doc so each question is a top-level bullet
-          with its answer indented underneath, then try again.{' '}
-          <a href="/documentation/help/common-problems#my-google-doc-converted-to-0-cards">
-            See a working example
-          </a>
+          <Trans
+            t={t}
+            i18nKey="upload.form.emptyGoogleDoc"
+            components={{
+              exampleLink: (
+                <DocsLink href="/documentation/help/common-problems#my-google-doc-converted-to-0-cards" />
+              ),
+            }}
+          />
         </p>
       );
     }
     if (driveMimeType === 'application/vnd.google-apps.spreadsheet') {
       return (
-        <p className={formStyles.emptyBody}>
-          Sheets need a column of questions and a column of answers. Make sure
-          your Sheet has at least two columns, then try again.
-        </p>
+        <p className={formStyles.emptyBody}>{t('upload.form.emptySheet')}</p>
       );
     }
     if (driveMimeType === 'application/vnd.google-apps.presentation') {
       return (
-        <p className={formStyles.emptyBody}>
-          Slides need a title and bullets per slide to produce cards. Add titles
-          and bullet points to your slides, then try again.
-        </p>
+        <p className={formStyles.emptyBody}>{t('upload.form.emptySlides')}</p>
       );
     }
     if (/\.txt$/i.test(currentFilename())) {
       return (
         <p className={formStyles.emptyBody}>
-          No cards in this file. For a text file, put one card per line as
-          question - answer or question = answer, separate the two with a tab,
-          or use a bullet list. See{' '}
-          <a href="/documentation/help/common-problems">common problems</a> for
-          the formats that work.
+          <Trans
+            t={t}
+            i18nKey="upload.form.emptyTextFile"
+            components={{
+              problemsLink: (
+                <DocsLink href="/documentation/help/common-problems" />
+              ),
+            }}
+          />
         </p>
       );
     }
@@ -1429,7 +1448,7 @@ function UploadForm({
                 saveFilenameForReattach(limitInfo?.filename ?? null)
               }
             >
-              Create a free account
+              {t('accountx:limit.signUpFree')}
             </Link>
           ) : (
             <>
@@ -1456,7 +1475,7 @@ function UploadForm({
             className={formStyles.resetLink}
             onClick={resetForm}
           >
-            Try a different file
+            {t('upload.form.tryDifferent')}
           </button>
         </div>
       </div>
@@ -1509,37 +1528,42 @@ function UploadForm({
       return (
         <div className={formStyles.stateContent}>
           <p className={formStyles.apkgRedirectHeading}>
-            That&apos;s already an Anki deck
+            {t('upload.form.apkgRejectHeading')}
           </p>
           <p className={formStyles.apkgRedirectIntro}>
-            Print it as a PDF for offline study.
+            {t('upload.form.apkgRejectBody')}
           </p>
           <div className={formStyles.apkgRedirectActions}>
-            <Link to="/print" className={formStyles.apkgRedirectPrimary}>
-              <span className={formStyles.apkgRedirectActionLabel}>
-                Print as PDF →
-              </span>
-              <span className={formStyles.apkgRedirectActionHint}>
-                Export your deck as a printable PDF for offline study.
-              </span>
-            </Link>
+            <button
+              type="button"
+              className={formStyles.apkgRedirectPrimary}
+              onClick={() => {
+                resetForm();
+                fileInputRef.current?.click();
+              }}
+            >
+              {t('upload.form.apkgRejectPrimary')}
+            </button>
           </div>
-          <button
-            type="button"
-            className={formStyles.resetLink}
-            onClick={resetForm}
-          >
-            Pick a different file
-          </button>
+          <p className={formStyles.apkgRedirectFootnote}>
+            {t('upload.form.apkgRejectSecondaryPrefix')}
+            <Link
+              to="/print"
+              className={formStyles.apkgRedirectFootnoteLink}
+              onClick={() => track('apkg_print_cta_clicked')}
+            >
+              {t('upload.form.apkgRejectPrintLink')}
+            </Link>
+            {t('upload.form.apkgRejectSecondarySuffix')}
+          </p>
         </div>
       );
     }
     const classified = localError
       ? classifyUploadError(localError)
       : {
-          title: 'Something broke while reading this file.',
-          detail:
-            'Try again, or send the file to support@2anki.net so we can fix the parser.',
+          title: t('upload.form.readErrorTitle'),
+          detail: t('upload.form.readErrorDetail'),
         };
     const errorText = classified.detail
       ? `${classified.title} ${classified.detail}`
@@ -1629,9 +1653,7 @@ function UploadForm({
 
       const newAttemptCount = pdfAttemptCount + 1;
       setPdfAttemptCount(newAttemptCount);
-      setPdfUnlockError(
-        "That didn't open the file. Check for typos and try again."
-      );
+      setPdfUnlockError(t('upload.form.unlockFailed'));
       setZoneState('lockedPdf');
     } catch (error) {
       setPdfUnlockError(toFriendlyThrownError(error).message);
@@ -1656,18 +1678,20 @@ function UploadForm({
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
       </span>
-      <div className={formStyles.lockedBadge}>Locked</div>
+      <div className={formStyles.lockedBadge}>
+        {t('upload.form.lockedBadge')}
+      </div>
       <p className={formStyles.lockedFilename} data-hj-suppress>
         {lockedPdfInfo?.filename}
       </p>
       <p className={formStyles.lockedHeadline}>
-        This PDF is password-protected
+        {t('upload.form.lockedHeadline')}
       </p>
       <div className={formStyles.lockedInputRow}>
         <input
           type="password"
           className={formStyles.lockedInput}
-          placeholder="Enter password"
+          placeholder={t('upload.form.passwordPlaceholder')}
           value={pdfCredential}
           autoFocus
           onChange={(e) => setPdfCredential(e.target.value)}
@@ -1682,7 +1706,7 @@ function UploadForm({
           onClick={handleUnlock}
           disabled={!pdfCredential.trim()}
         >
-          Unlock
+          {t('upload.form.unlock')}
         </button>
       </div>
       {pdfUnlockError && (
@@ -1691,18 +1715,14 @@ function UploadForm({
         </p>
       )}
       {pdfAttemptCount >= 3 && (
-        <p className={formStyles.lockedHint}>
-          Still stuck? Some PDFs have owner-only protection that can't be
-          entered here — open the file in Preview or Adobe Reader, save a copy,
-          and upload that.
-        </p>
+        <p className={formStyles.lockedHint}>{t('upload.form.lockedHint')}</p>
       )}
       <button
         type="button"
         className={formStyles.resetLink}
         onClick={resetForm}
       >
-        Skip this file
+        {t('upload.form.skipFile')}
       </button>
     </div>
   );
@@ -1894,7 +1914,7 @@ function UploadForm({
             >
               ›
             </i>
-            Ask Claude about this file
+            {t('upload.form.askClaude')}
           </button>
           {showInlineChat && (
             <section

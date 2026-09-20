@@ -96,15 +96,17 @@
     "signIn": "Accedi",
     "upgradeSubheading": "Passa a un piano superiore per continuare a convertire — nessun limite, nessuna attesa.",
     "payOnce": "Paga una volta — nessun abbonamento",
-    "skipCap": "Supera il limite per sempre",
-    "unlimited": "Illimitato",
+    "skipCap": "Supera il limite mensile di carte",
+    "unlimited": "Pro",
     "benefitUnlimited": "Carte illimitate",
     "benefitMultiple": "Esegui più conversioni contemporaneamente",
     "benefitPdf": "PDF e grandi esportazioni da Notion",
     "benefitCancel": "Annulla quando vuoi",
-    "upgradeToUnlimited": "Passa a Unlimited",
+    "upgradeToUnlimited": "Passa a Pro",
     "checkoutError": "Impossibile avviare il pagamento. Riprova o scrivi a support@2anki.net.",
-    "backToUpload": "Torna al caricamento"
+    "backToUpload": "Torna al caricamento",
+    "headline": "Hai raggiunto {{limit}} carte questo mese",
+    "pageTitle": "Hai raggiunto il limite mensile | 2anki"
   },
   "emailChange": {
     "toggle": "Cambia email",

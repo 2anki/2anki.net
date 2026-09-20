@@ -258,7 +258,7 @@ const NOTION_MARKETPLACE_META = {
   pathname: '/notion-marketplace',
   title: 'Sync Notion to Anki automatically | 2anki',
   description:
-    'Connect your Notion workspace and your notes become Anki flashcards automatically. No exports, no zips. Included with Unlimited at $7.99/mo.',
+    'Connect your Notion workspace and your notes become Anki flashcards automatically. No exports, no zips. Included with Pro at $7.99/mo.',
   h1: 'Your Notion notes become Anki cards — automatically',
   subhead:
     'Connect your workspace in 5 minutes. No exports, no zips, no manual steps.',
@@ -386,12 +386,12 @@ const META_ONLY_PAGES: MetaOnlyPageMeta[] = [
   },
   {
     pathname: '/pricing',
-    title: 'Pricing — Free, Day Pass, Unlimited, Lifetime | 2anki',
+    title: 'Pricing — Free, Day Pass, Pro, Lifetime | 2anki',
     description:
-      'Compare 2anki plans. Free converts 100 cards a month. Unlimited at $7.99/mo or $64/yr. Day and Week Passes from $4. Lifetime with Auto Sync included.',
+      'Compare 2anki plans. Free converts 100 cards a month. Pro at $7.99/mo or $64/yr. Day and Week Passes from $4. Lifetime with Auto Sync included.',
     h1: 'Pricing',
     intro:
-      'Free converts 100 cards a month. Unlimited is $7.99/mo or $64/yr. A Day Pass is $4, a Week Pass $9 — one-time payments, no subscription. Lifetime is $345 once, with Auto Sync included. Cancel any subscription in one click.',
+      'Free converts 100 cards a month. Pro is $7.99/mo or $64/yr. A Day Pass is $4, a Week Pass $9 — one-time payments, no subscription. Lifetime is $345 once, with Auto Sync included. Cancel any subscription in one click.',
   },
   {
     pathname: '/about',

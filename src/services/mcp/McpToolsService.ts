@@ -61,7 +61,7 @@ const EMPTY_BACK_MESSAGE =
 const GENERIC_CONVERT_ERROR = 'Could not convert this input.';
 const MONTHLY_LIMIT_CODE = 'monthly_limit';
 const MONTHLY_LIMIT_MESSAGE =
-  "You've reached your free limit of 100 cards this month, so this deck wasn't created. Upgrade to Unlimited to keep converting, or wait for your limit to reset next month. Upgrade: https://2anki.net/pricing?from=mcp";
+  "You've reached your free limit of 100 cards this month, so this deck wasn't created. Upgrade to Pro to keep converting, or wait for your limit to reset next month. Upgrade: https://2anki.net/pricing?from=mcp";
 const CARD_LIMIT_REDIRECT_PREFIX = '/limit?kind=card_count';
 const UPGRADE_URL = 'https://2anki.net/pricing?from=mcp';
 

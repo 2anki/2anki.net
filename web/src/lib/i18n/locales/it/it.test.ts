@@ -86,6 +86,7 @@ const allowedIdentical = new Set<string>([
   'common:cardOptions.cardStyle.cloze',
   'common:cardOptions.audio.heading',
   'common:cardOptions.templates.introSuffix',
+  'common:upload.form.apkgRejectSecondarySuffix',
   'marketing:about.philosophySuffix',
   'marketing:status.api',
   'marketing:status.database',

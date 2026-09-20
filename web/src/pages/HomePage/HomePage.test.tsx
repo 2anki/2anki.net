@@ -36,6 +36,15 @@ describe('HomePage (anonymous)', () => {
     ).toHaveLength(1);
   });
 
+  it('does not also fire the separate AI badge impression on the landing page', () => {
+    renderHome();
+    expect(
+      trackMock.mock.calls.filter(
+        ([name]) => name === 'home_ai_anon_badge_viewed'
+      )
+    ).toHaveLength(0);
+  });
+
   it('does not fire landing_page_viewed for a logged-in visitor', () => {
     renderHome(true);
     expect(trackMock).not.toHaveBeenCalledWith('landing_page_viewed');

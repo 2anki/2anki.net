@@ -129,12 +129,12 @@ const pdfToAnki: AnswerConfig = {
     },
     {
       heading: 'Large PDFs and textbooks',
-      body: 'Large PDFs work — a whole textbook uploads fine. Big files take longer and create large decks. Uploading one chapter at a time keeps decks easier to review and share. The free plan covers 100 cards per month; the Unlimited plan has no card limit.',
+      body: 'Large PDFs work — a whole textbook uploads fine. Big files take longer and create large decks. Uploading one chapter at a time keeps decks easier to review and share. The free plan covers 100 cards per month; the Pro plan has no card limit.',
     },
   ],
   relatedLinks: [
     { label: 'PDF to Anki converter', href: '/convert/pdf-to-anki?ref=ai' },
-    { label: 'Pricing — Unlimited plan', href: '/pricing?ref=ai' },
+    { label: 'Pricing — Pro plan', href: '/pricing?ref=ai' },
     {
       label: 'How to convert Notion to Anki',
       href: '/answers/convert-notion-to-anki?ref=ai',
@@ -260,7 +260,7 @@ const lectureNotesToAnki: AnswerConfig = {
     },
     {
       heading: 'Free for your first 100 cards a month',
-      body: 'The free plan converts 100 cards a month, enough to build a deck for one course before you decide. Unlimited removes the cap for a full semester load. If you keep editing your notes in Notion, Auto Sync rebuilds the deck automatically.',
+      body: 'The free plan converts 100 cards a month, enough to build a deck for one course before you decide. Pro removes the cap for a full semester load. If you keep editing your notes in Notion, Auto Sync rebuilds the deck automatically.',
     },
   ],
   faqs: [
@@ -278,7 +278,7 @@ const lectureNotesToAnki: AnswerConfig = {
     },
     {
       q: 'Is there a card limit?',
-      a: "The free plan converts 100 cards a month. Unlimited removes the cap, which matters once you're building decks for a full course load.",
+      a: "The free plan converts 100 cards a month. Pro removes the cap, which matters once you're building decks for a full course load.",
     },
   ],
   relatedLinks: [
@@ -507,7 +507,7 @@ const handwrittenNotesToAnki: AnswerConfig = {
     },
     {
       heading: 'What it costs',
-      body: 'The free plan covers your first 100 cards a month, enough to turn a stack of notes into a starter deck. Unlimited removes the cap and adds the multiple-choice option for photo-to-deck cards.',
+      body: 'The free plan turns 5 photos a month into cards, enough for a starter deck. Paid plans include a monthly AI credit allowance for photos and add the multiple-choice option for photo-to-deck cards.',
     },
   ],
   faqs: [
@@ -565,11 +565,11 @@ const textbookToAnki: AnswerConfig = {
     },
     {
       heading: 'AI cards for prose-heavy chapters',
-      body: 'Some chapters are paragraphs, not bullet lists. On the Unlimited plan, AI can draft question-and-answer cards from that prose so you are not hand-writing every card. Review the drafts and edit any that need tightening before you study.',
+      body: 'Some chapters are paragraphs, not bullet lists. On the Pro plan, AI can draft question-and-answer cards from that prose so you are not hand-writing every card. Review the drafts and edit any that need tightening before you study.',
     },
     {
       heading: 'Convert one chapter at a time',
-      body: 'A whole textbook uploads fine, but big files make big decks that are slow to review and share. One chapter per conversion keeps each deck focused and easy to organize. The free plan covers 100 cards a month; Unlimited removes the cap for a full semester of chapters.',
+      body: 'A whole textbook uploads fine, but big files make big decks that are slow to review and share. One chapter per conversion keeps each deck focused and easy to organize. The free plan covers 100 cards a month; Pro removes the cap for a full semester of chapters.',
     },
   ],
   faqs: [
@@ -587,7 +587,7 @@ const textbookToAnki: AnswerConfig = {
     },
     {
       q: 'Can 2anki write cards from paragraphs, not just bullets?',
-      a: 'Yes, on the Unlimited plan. AI drafts question-and-answer cards from prose-heavy chapters, and you review and edit them before studying.',
+      a: 'Yes, on the Pro plan. AI drafts question-and-answer cards from prose-heavy chapters, and you review and edit them before studying.',
     },
   ],
   relatedLinks: [
@@ -600,7 +600,7 @@ const textbookToAnki: AnswerConfig = {
       label: 'Make image occlusion cards',
       href: '/answers/image-occlusion-anki?ref=ai',
     },
-    { label: 'Pricing — Unlimited plan', href: '/pricing?ref=ai' },
+    { label: 'Pricing — Pro plan', href: '/pricing?ref=ai' },
   ],
 };
 
@@ -696,7 +696,7 @@ const languageAppToAnki: AnswerConfig = {
     },
     {
       heading: 'What transfers and what stays behind',
-      body: 'Card content transfers — the words, translations, and context. Review history, streaks, and scheduling stay in the original app, because each app uses its own algorithm; Anki reschedules the imported cards from scratch with spaced repetition. The free plan converts 100 cards a month, enough to move one course of vocabulary; Unlimited removes the cap for a full library.',
+      body: 'Card content transfers — the words, translations, and context. Review history, streaks, and scheduling stay in the original app, because each app uses its own algorithm; Anki reschedules the imported cards from scratch with spaced repetition. The free plan converts 100 cards a month, enough to move one course of vocabulary; Pro removes the cap for a full library.',
     },
   ],
   faqs: [
@@ -714,7 +714,7 @@ const languageAppToAnki: AnswerConfig = {
     },
     {
       q: 'Is there a limit on how many words I can move?',
-      a: 'The free plan converts 100 cards a month. Unlimited removes the cap, which matters when you are moving a whole vocabulary library rather than a single lesson.',
+      a: 'The free plan converts 100 cards a month. Pro removes the cap, which matters when you are moving a whole vocabulary library rather than a single lesson.',
     },
   ],
   relatedLinks: [
@@ -765,7 +765,7 @@ const obsidianToAnki: AnswerConfig = {
     },
     {
       heading: 'Convert your note',
-      body: 'Go to 2anki.net, drag the .md file onto the upload area, and click Convert. Download the .apkg file and open it in Anki with a double-click. Your cards appear as a new deck. The free plan covers your first 100 cards a month; Unlimited removes the cap for a full vault.',
+      body: 'Go to 2anki.net, drag the .md file onto the upload area, and click Convert. Download the .apkg file and open it in Anki with a double-click. Your cards appear as a new deck. The free plan covers your first 100 cards a month; Pro removes the cap for a full vault.',
     },
   ],
   faqs: [
@@ -834,7 +834,7 @@ const claudeToAnki: AnswerConfig = {
     },
     {
       heading: 'What it costs',
-      body: 'The free plan converts 100 cards a month, whether you build them through the connector or upload files directly. Unlimited removes the cap. It is the same account and the same decks — the connector is another way in, not a separate product or a separate bill.',
+      body: 'The free plan converts 100 cards a month, whether you build them through the connector or upload files directly. Pro removes the cap. It is the same account and the same decks — the connector is another way in, not a separate product or a separate bill.',
     },
   ],
   faqs: [
@@ -903,7 +903,7 @@ const chatgptToAnki: AnswerConfig = {
     },
     {
       heading: 'What it costs',
-      body: 'The free plan converts 100 cards a month, whether you build them through the connector or upload files directly. Unlimited removes the cap. It is the same account and the same decks — the connector is another way in, not a separate product or a separate bill.',
+      body: 'The free plan converts 100 cards a month, whether you build them through the connector or upload files directly. Pro removes the cap. It is the same account and the same decks — the connector is another way in, not a separate product or a separate bill.',
     },
   ],
   faqs: [
@@ -968,7 +968,7 @@ const geminiToAnki: AnswerConfig = {
     },
     {
       heading: 'What it costs',
-      body: 'The free plan converts 100 cards a month, whether a connector builds them or you upload a file yourself. Unlimited removes the cap. It is the same account and the same decks — Gemini is another way to draft the cards, not a separate product or a separate bill.',
+      body: 'The free plan converts 100 cards a month, whether a connector builds them or you upload a file yourself. Pro removes the cap. It is the same account and the same decks — Gemini is another way to draft the cards, not a separate product or a separate bill.',
     },
   ],
   faqs: [

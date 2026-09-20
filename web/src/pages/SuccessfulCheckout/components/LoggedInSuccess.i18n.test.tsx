@@ -14,14 +14,14 @@ describe('LoggedInSuccess in German', () => {
     await i18n.changeLanguage('en');
   });
 
-  it('keeps the Unlimited plan name and renders German actions', () => {
+  it('keeps the Pro plan name and renders German actions', () => {
     render(
       <MemoryRouter>
         <LoggedInSuccess firstName="Alex" />
       </MemoryRouter>
     );
     expect(
-      screen.getByRole('heading', { name: 'Du hast Unlimited' })
+      screen.getByRole('heading', { name: 'Du hast Pro' })
     ).toBeInTheDocument();
     expect(
       screen.getByText('Danke, Alex — dein Abo ist aktiv.')

@@ -4,7 +4,9 @@
     "menu": "меню",
     "logoAlt": "Логотип 2anki",
     "openNavigation": "Открыть навигацию",
-    "home": "Главная 2anki"
+    "home": "Главная 2anki",
+    "skipToContent": "Перейти к содержимому",
+    "sidebarLabel": "Основная навигация"
   },
   "theme": {
     "appearance": "Оформление",

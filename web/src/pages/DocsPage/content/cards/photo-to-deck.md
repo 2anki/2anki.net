@@ -5,7 +5,7 @@ description: Snap or upload a photo of your notes — textbook page, lecture sli
 
 Photo to deck takes a single image and sends it to Claude's vision model, which reads the content and returns question-and-answer cards. The page is at [2anki.net/photo-to-deck](https://2anki.net/photo-to-deck).
 
-**Plan:** Free plan gets 5 photos per month. Paid plans are unlimited.
+**Plan:** Free plan gets 5 photos per month. Paid plans use AI credits.
 
 ## When to use this
 
@@ -54,7 +54,7 @@ The model targets the range; it doesn't always hit the exact count. Your choice 
 
 The free plan is capped at 5 photos per calendar month — vision calls cost real money on our side. When you hit the limit, the page shows how many you've used and a path to upgrade. The counter resets on the 1st of each month.
 
-Paid plans (Subscription or Lifetime) have no cap.
+Paid plans (Subscription or Lifetime) draw on AI credits instead of the free monthly count — far more photos, up to your credit allowance.
 
 ## Tips for better results
 

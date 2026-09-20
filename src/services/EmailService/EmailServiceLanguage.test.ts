@@ -234,8 +234,8 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe('Schließe dein 2anki-Unlimited-Abo ab');
-      expect(msg.html).toContain('Du hast ein 2anki-Unlimited-Abo begonnen');
+      expect(msg.subject).toBe('Schließe dein 2anki-Pro-Abo ab');
+      expect(msg.html).toContain('Du hast ein 2anki-Pro-Abo begonnen');
       expect(msg.html).toContain('Anmeldung abschließen');
       expect(msg.html).toContain('Das 2anki-Team');
       expect(msg.html).toContain('Keine E-Mails wie diese? Abmelden');
@@ -256,8 +256,8 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe('Finish your 2anki Unlimited subscription');
-      expect(msg.html).toContain('You started a 2anki Unlimited subscription');
+      expect(msg.subject).toBe('Finish your 2anki Pro subscription');
+      expect(msg.html).toContain('You started a 2anki Pro subscription');
       expect(msg.html).toContain("Don't want emails like this? Unsubscribe");
     });
   });

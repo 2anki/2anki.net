@@ -1067,7 +1067,7 @@ describe('UploadForm analytics events', () => {
     });
   });
 
-  it('redirects an apkg-reject error to /print with the PDF CTA', async () => {
+  it('leads an apkg-reject error with pick-a-different-file, and keeps /print as a quiet secondary link', async () => {
     const jsonBody = {
       code: 'unsupported_format',
       message: 'This file is already an Anki deck.',
@@ -1094,15 +1094,75 @@ describe('UploadForm analytics events', () => {
     });
 
     await waitFor(() => {
-      expect(container.textContent).toMatch(/That's already an Anki deck/);
+      expect(container.textContent).toMatch(
+        /This is already a finished Anki deck/
+      );
     });
+
+    expect(container.textContent).toMatch(
+      /it cannot convert a deck that is already built/
+    );
+
+    const primary = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Choose a different file'
+    );
+    expect(primary).toBeDefined();
 
     const print = container.querySelector('a[href="/print"]');
     expect(container.querySelector('a[href="/transform"]')).toBeNull();
-    expect(print?.textContent).toMatch(/Print as PDF/);
-    expect(container.textContent).toMatch(
-      /Export your deck as a printable PDF/
+    expect(print?.textContent).toMatch(/print it as a PDF/);
+  });
+
+  it('clicking the apkg-reject primary action resets the form and opens the file picker', async () => {
+    const jsonBody = {
+      code: 'unsupported_format',
+      message: 'This file is already an Anki deck.',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 400,
+        clone: () => ({ json: () => Promise.resolve(jsonBody) }),
+        text: () => Promise.resolve(JSON.stringify(jsonBody)),
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+      })
     );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    await waitFor(() => {
+      expect(container.textContent).toMatch(
+        /This is already a finished Anki deck/
+      );
+    });
+
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const clickSpy = vi.spyOn(fileInput, 'click');
+
+    const primary = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Choose a different file'
+    )!;
+    await act(async () => {
+      primary.click();
+    });
+
+    expect(clickSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(
+        container.textContent?.includes('This is already a finished Anki deck')
+      ).toBe(false);
+    });
   });
 
   it('renders empty-deck spec copy with docs link on the 200 + 0-cards path', async () => {
@@ -1326,6 +1386,86 @@ describe('UploadForm analytics events', () => {
       );
       expect(calls).toHaveLength(1);
       expect(calls[0][1]).toMatchObject({ reason: 'network' });
+    });
+  });
+
+  describe('ops error log', () => {
+    function stubFetch(uploadError: Error) {
+      const reports: Array<Record<string, unknown>> = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, init?: RequestInit) => {
+          if (url === '/api/events/errors') {
+            reports.push(JSON.parse(init?.body as string));
+            return Promise.resolve(new Response(null));
+          }
+          return Promise.reject(uploadError);
+        })
+      );
+      return reports;
+    }
+
+    async function submitUpload(file?: File) {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      if (file != null) {
+        const fileInput = container.querySelector(
+          'input[type="file"]'
+        ) as HTMLInputElement;
+        Object.defineProperty(fileInput, 'files', {
+          value: [file],
+          configurable: true,
+        });
+      }
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+    }
+
+    it('reports a network failure with the selected file type and size range', async () => {
+      const reports = stubFetch(new TypeError('Failed to fetch'));
+      const file = new File(['x'], 'Study Notes.PDF');
+      Object.defineProperty(file, 'size', { value: 20 * 1024 * 1024 });
+
+      await submitUpload(file);
+
+      await waitFor(() => expect(reports).toHaveLength(1));
+      expect(reports[0]).toMatchObject({
+        message: 'Upload network failure (.pdf, 10-50 MB)',
+        context: { cause: 'Failed to fetch' },
+      });
+    });
+
+    it('reports an unknown type and size when no file is selected', async () => {
+      const reports = stubFetch(new TypeError('Load failed'));
+
+      await submitUpload();
+
+      await waitFor(() => expect(reports).toHaveLength(1));
+      expect(reports[0]).toMatchObject({
+        message: 'Upload network failure (unknown type, unknown size)',
+      });
+    });
+
+    it('does not report a non-network upload error', async () => {
+      const { track } = await import('../../../../lib/analytics/track');
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
+      const reports = stubFetch(new Error('Unexpected server error'));
+
+      await submitUpload();
+
+      await waitFor(() =>
+        expect(trackMock).toHaveBeenCalledWith(
+          'upload_failed',
+          expect.objectContaining({ reason: 'other' })
+        )
+      );
+      expect(reports).toEqual([]);
     });
   });
 

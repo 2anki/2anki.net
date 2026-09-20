@@ -32,7 +32,8 @@ export interface ConversionMetricsResponse {
   paid_blocked_by_plan_7d: number | null;
   conversion_errors_7d_top_reasons: ConversionErrorCount[] | null;
   failed_conversions_weekly: FailedConversionsWeekPoint[] | null;
-  time_to_first_deck_median_minutes_30d: number | null;
+  new_accounts_downloaded_24h_rate_30d: number | null;
+  new_accounts_downloaded_after_signup_24h_rate_30d: number | null;
   upload_to_download_rate_7d: number | null;
   deck_quality_cohorts_30d: DeckQualityCohort[] | null;
 }

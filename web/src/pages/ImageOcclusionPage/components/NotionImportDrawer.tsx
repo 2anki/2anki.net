@@ -417,7 +417,7 @@ export function NotionImportDrawer({
               <p className={styles.drawerFreeTierNote}>
                 {t('occlusion.drawerFreeTier')}{' '}
                 <a href="/pricing" className={styles.drawerUpgradeLink}>
-                  {t('occlusion.upgradeForUnlimited')}
+                  {t('occlusion.upgradeToAddMoreImages')}
                 </a>
               </p>
             )}

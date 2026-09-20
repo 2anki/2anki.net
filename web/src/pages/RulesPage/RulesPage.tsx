@@ -123,7 +123,6 @@ export default function RulesPage({ setErrorMessage }: Readonly<Props>) {
   const headingTitle = titleParam
     ? t('rules.headingWithTitle', { title: titleParam })
     : t('rules.heading');
-  const parent = titleParam ?? t('rules.thisPage');
   const type = params.get('type');
   const advancedDeckLabels: Record<string, string> = Object.fromEntries(
     Object.entries(advancedDeckLabelKeys).map(([key, value]) => [key, t(value)])
@@ -499,7 +498,7 @@ export default function RulesPage({ setErrorMessage }: Readonly<Props>) {
               <CardOptionsForm
                 ref={cardOptionsRef}
                 pageId={id}
-                pageTitle={parent}
+                pageTitle={titleParam}
                 setError={setErrorMessage}
                 hideActions
               />

@@ -12,9 +12,10 @@ function renderModal(limit: number) {
 }
 
 describe('MindmapLimitModal', () => {
-  it('offers a generic upgrade line', () => {
-    renderModal(3);
-    expect(screen.getByText(/Upgrade for unlimited mind maps\./)).toBeDefined();
+  it('says how to make room without promising unlimited mind maps', () => {
+    const { container } = renderModal(3);
+    expect(screen.getByText(/Delete one to make room\./)).toBeDefined();
+    expect(container.textContent).not.toMatch(/unlimited/i);
   });
 
   it('does not mention Auto Sync', () => {

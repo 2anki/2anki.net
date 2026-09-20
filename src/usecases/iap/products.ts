@@ -47,7 +47,7 @@ export const APPLE_PRODUCTS: Record<string, AppleProduct> = {
     productId: 'unlimited.monthly',
     passKind: 'unlimited',
     successMessage:
-      'Unlimited active — no card limit, PDF uploads, and several conversions at once',
+      'Pro active — no card limit, PDF uploads, and several conversions at once',
   },
 };
 

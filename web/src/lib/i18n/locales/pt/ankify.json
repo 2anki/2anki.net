@@ -27,7 +27,8 @@
     "notConnectedOpenAnki": "O Anki não está conectado. Abra o Anki no seu computador e tente de novo.",
     "notConnected": "O Anki não está conectado.",
     "noDecks": "Nenhum baralho para revisar ainda. Sincronize uma página do Notion para começar a criar cartões.",
-    "pickDeck": "Escolha um baralho para estudar seus cartões para revisar e novos sem abrir o Anki."
+    "pickDeck": "Escolha um baralho para estudar seus cartões para revisar e novos sem abrir o Anki.",
+    "showQuestion": "Mostrar pergunta"
   },
   "subscriptions": {
     "tabsLabel": "Baralhos",

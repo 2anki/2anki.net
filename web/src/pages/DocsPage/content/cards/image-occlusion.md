@@ -16,7 +16,7 @@ description: Cover parts of an image and recall them — anatomy, diagrams, maps
 
 Image occlusion cards show you a picture with bits hidden. You try to recall what's behind the cover, then flip the card to see if you got it right. The canvas tool at [2anki.net/image-occlusion](https://2anki.net/image-occlusion) lets you draw the covers yourself — no Anki add-on, no plugin install.
 
-**Plan:** Free accounts can use any source, including Notion import, up to 3 images per deck. Subscription and Lifetime remove the cap.
+**Plan:** Free accounts can use any source, including Notion import, up to 3 images per deck. Subscription and Lifetime allow up to 20 uploaded images at a time.
 
 ## When to use this
 

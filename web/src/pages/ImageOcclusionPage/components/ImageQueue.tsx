@@ -191,7 +191,7 @@ export function ImageQueue({
           )}
           <Link to="/pricing" className={styles.upgradeLink}>
             {notice === 'count'
-              ? t('occlusion.upgradeForUnlimited')
+              ? t('occlusion.upgradeToAddMoreImages')
               : t('occlusion.upgradeToAddMore')}
           </Link>
         </div>

@@ -27,7 +27,8 @@
     "contact": "お問い合わせ",
     "privacy": "プライバシー",
     "terms": "利用規約",
-    "about": "概要"
+    "about": "概要",
+    "cardsThisMonth": "今月 {{limit}} 枚のカード"
   },
   "account": {
     "title": "アカウント",
@@ -147,6 +148,12 @@
       "imagesTitle": "これらは画像のようです",
       "imagesBody": "読み取れるテキストがないため、カードにできるものがありませんでした。写真からデッキは、AI で画像を読み取り、ダウンロード前に確認できるカードの下書きを作ります。",
       "tryPhotoToDeck": "写真からデッキを試す",
+      "apkgRejectHeading": "これはすでに完成したAnkiデッキです",
+      "apkgRejectBody": "2ankiはノートをカードに変換します。すでに完成したデッキは変換できません。再度アップロードしても結果は変わりません。",
+      "apkgRejectPrimary": "別のファイルを選ぶ",
+      "apkgRejectSecondaryPrefix": "すでにお持ちのデッキなら、Ankiで直接開くか、",
+      "apkgRejectPrintLink": "PDFとして印刷",
+      "apkgRejectSecondarySuffix": "できます。",
       "errorTitle": "問題が発生しました",
       "tryAgain": "再試行",
       "changeSource": "← ソースを変更",
@@ -171,7 +178,27 @@
       "liveLockedPdf": "この PDF はパスワードで保護されています。続けるにはパスワードを入力してください。",
       "pdfPasswordAria": "PDF のパスワード",
       "changeSourceAria": "アップロード元を変更",
-      "uploadFileAria": "ファイルをアップロード"
+      "uploadFileAria": "ファイルをアップロード",
+      "mcqPreviewHeading": "プレビュー",
+      "mcqAnswerNote": "ダウンロードしたデッキを Anki で開くと、質問全体と正解がハイライトされて表示されます。",
+      "mcqSummary_other": "デッキには多肢選択カードが {{count}} 枚含まれています。各カードには問題文とラベル付きの選択肢が表示されます — Anki で正しい選択肢をタップすると答えが表示されます。",
+      "mcqSkipped": "{{count}} 件をスキップ、正解のマークなし",
+      "mcqSkippedHint": "これらを多肢選択として表示するには、Notion で正しい選択肢にマークを付けてください。Notion のチェックボックスを使うか、正しい箇条書きを太字にします。",
+      "emptyMarkdownLossy": "Notion の Markdown エクスポートはトグルが平坦化されます — このページを HTML で再エクスポートすると、トグルがフラッシュカードになります。",
+      "emptyGoogleDoc": "Google ドキュメントは変換できましたが、カードにできる箇条書きの形が見つかりませんでした。各質問を最上位の箇条書きにし、その回答を字下げして下に置くようにドキュメントを整えてから、もう一度お試しください。<exampleLink>動作する例を見る</exampleLink>",
+      "emptySheet": "Google スプレッドシートには、質問の列と回答の列が必要です。スプレッドシートに少なくとも 2 列あることを確認してから、もう一度お試しください。",
+      "emptySlides": "Google スライドでは、カードを作るためにスライドごとにタイトルと箇条書きが必要です。スライドにタイトルと箇条書きを追加してから、もう一度お試しください。",
+      "emptyTextFile": "このファイルにカードがありません。テキストファイルでは、1 行に 1 枚のカードを「質問 - 回答」または「質問 = 回答」の形で書くか、2 つをタブで区切るか、箇条書きを使ってください。使える形式は<problemsLink>よくある問題</problemsLink>をご覧ください。",
+      "lockedBadge": "ロック中",
+      "lockedHeadline": "この PDF はパスワードで保護されています",
+      "passwordPlaceholder": "パスワードを入力",
+      "unlock": "ロック解除",
+      "unlockFailed": "ファイルを開けませんでした。入力ミスがないか確認して、もう一度お試しください。",
+      "lockedHint": "まだ開けませんか？一部の PDF には、ここでは入力できない所有者のみの保護がかかっています — ファイルを Preview または Adobe Reader で開いてコピーを保存し、そちらをアップロードしてください。",
+      "skipFile": "このファイルをスキップ",
+      "askClaude": "このファイルについて Claude に聞く",
+      "readErrorTitle": "このファイルの読み込み中に問題が発生しました。",
+      "readErrorDetail": "もう一度お試しいただくか、パーサーを修正できるようファイルを support@2anki.net までお送りください。"
     },
     "page": {
       "title": "ノートを変換",
@@ -397,7 +424,7 @@
       "monthlyOption": "月払い",
       "benefitUnlimited": "無制限のフラッシュカード",
       "benefitApkg": "ネイティブ .apkg — どの Anki クライアントでも使えます",
-      "benefitAi": "AI フラッシュカード、写真からデッキ、チャット",
+      "benefitAi": "AI フラッシュカード、写真からデッキ、チャット — 毎月 300 AIクレジット",
       "benefitMultiple": "複数の変換を同時に実行",
       "benefitPdf": "PDF と大きな Notion エクスポート",
       "benefitImport": "Anki → Notion インポート — 1回につき最大10,000ノート",
@@ -405,8 +432,8 @@
       "benefitCancel": "いつでも解約",
       "tryAgain": "再試行",
       "startingCheckout": "チェックアウトを開始しています",
-      "getUnlimitedYearly": "Get Unlimited — 年払い",
-      "getUnlimitedMonthly": "Get Unlimited — 月払い",
+      "getUnlimitedYearly": "Get Pro — 年払い",
+      "getUnlimitedMonthly": "Get Pro — 月払い",
       "termsYearly": "本日 {{annualTotal}} を請求、毎年更新。いつでも解約可能 — お支払い済みの 1 年間はご利用いただけます。",
       "termsMonthly": "本日 {{monthlyTotal}} を請求、毎月更新。いつでも解約可能。",
       "checkoutError": "チェックアウトを開始できませんでした。もう一度お試しいただくか、support@2anki.net までご連絡ください。",
@@ -482,7 +509,8 @@
       "blocksForbidden_other": "未接続の部分 {{count}} 件",
       "blocksSkipped_other": "ブロック {{count}} 個をスキップ",
       "structureGuessed": "構造を推定",
-      "columnsGuessed": "列を推定"
+      "columnsGuessed": "列を推定",
+      "sharedTooltip": "共有済み — クリックしてプレビューを開く"
     },
     "done": "完了",
     "openInNotion": "Notion で開く",
@@ -561,7 +589,7 @@
       "openingCheckout": "チェックアウトを開いています",
       "getDayPass": "Get Day Pass — {{price}}",
       "getWeekPass": "Get Week Pass — {{price}}",
-      "upgradeUnlimited": "Unlimited にアップグレード"
+      "upgradeUnlimited": "Pro にアップグレード"
     }
   },
   "modals": {
@@ -758,5 +786,8 @@
       "clozePlaceholder": "既定は n2a-cloze",
       "inputPlaceholder": "既定は n2a-input"
     }
+  },
+  "favoritesPage": {
+    "subtitle": "お気に入りに追加したページにすぐアクセスできます。"
   }
 }

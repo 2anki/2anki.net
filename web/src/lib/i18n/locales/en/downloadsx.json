@@ -83,11 +83,11 @@
     "text": "We couldn't tell which columns are the question and answer, so this deck uses <front>{{frontField}}</front> as the front and <back>{{backField}}</back> as the back. Convert the database again to pick different columns."
   },
   "paywall": {
-    "ariaLabel": "Upgrade to Unlimited",
+    "ariaLabel": "Upgrade to Pro",
     "headline": "One conversion at a time on the free plan",
-    "body": "This conversion was paused so the one you already started can finish. Upgrade to Unlimited to run several at once.",
+    "body": "This conversion was paused so the one you already started can finish. Upgrade to Pro to run several at once.",
     "opening": "Opening checkout",
-    "upgrade": "Upgrade to Unlimited",
+    "upgrade": "Upgrade to Pro",
     "orWaitTitled": "Or wait for \"<jobTitle>{{title}}</jobTitle>\" to finish — started {{time}}.",
     "orWaitUntitled": "Or wait for your current conversion to finish — started {{time}}.",
     "seeAllPlans": "See all plans"

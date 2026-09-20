@@ -4,7 +4,9 @@
     "menu": "メニュー",
     "logoAlt": "2anki ロゴ",
     "openNavigation": "ナビゲーションを開く",
-    "home": "2anki ホーム"
+    "home": "2anki ホーム",
+    "skipToContent": "コンテンツへスキップ",
+    "sidebarLabel": "メインナビゲーション"
   },
   "theme": {
     "appearance": "外観",

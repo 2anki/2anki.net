@@ -96,15 +96,17 @@
     "signIn": "Aanmelden",
     "upgradeSubheading": "Upgrade om te blijven converteren — geen limiet, geen wachten.",
     "payOnce": "Betaal één keer — geen abonnement",
-    "skipCap": "Omzeil de limiet voorgoed",
-    "unlimited": "Onbeperkt",
+    "skipCap": "Omzeil de maandelijkse flashcardlimiet",
+    "unlimited": "Pro",
     "benefitUnlimited": "Onbeperkte flashcards",
     "benefitMultiple": "Voer meerdere conversies tegelijk uit",
     "benefitPdf": "PDF's en grote Notion-exports",
     "benefitCancel": "Altijd opzegbaar",
-    "upgradeToUnlimited": "Upgraden naar Unlimited",
+    "upgradeToUnlimited": "Upgraden naar Pro",
     "checkoutError": "Kon de betaling niet starten. Probeer het opnieuw of mail naar support@2anki.net.",
-    "backToUpload": "Terug naar uploaden"
+    "backToUpload": "Terug naar uploaden",
+    "headline": "Je hebt {{limit}} kaarten deze maand bereikt",
+    "pageTitle": "Je hebt je maandlimiet bereikt | 2anki"
   },
   "emailChange": {
     "toggle": "E-mailadres wijzigen",

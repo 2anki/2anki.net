@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-19-mindmap-limit-plurals",
+  "date": "2026-09-19",
+  "type": "fix",
+  "title": "Mind map limit messages in Polish and Russian match the number they show"
+}

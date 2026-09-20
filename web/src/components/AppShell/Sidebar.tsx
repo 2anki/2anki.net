@@ -44,6 +44,7 @@ interface CardUsageCounterProps {
 }
 
 function CardUsageCounter({ used, limit }: Readonly<CardUsageCounterProps>) {
+  const { t } = useTranslation();
   const atLimit = used >= limit;
   const approaching = !atLimit && used >= limit * 0.8;
   const heroClass =
@@ -57,10 +58,10 @@ function CardUsageCounter({ used, limit }: Readonly<CardUsageCounterProps>) {
   return (
     <span className={styles.identityUsage}>
       <span className={heroClass}>{used}</span>
-      <span className={restClass}> / {limit} cards this month</span>
+      <span className={restClass}> / {t('nav.cardsThisMonth', { limit })}</span>
       {atLimit && (
         <Link to="/pricing?from=limit" className={styles.identityUsageUpgrade}>
-          Upgrade for unlimited
+          {t('tools:print.upgradeUnlimited')}
         </Link>
       )}
     </span>
@@ -307,7 +308,7 @@ export function Sidebar({
       <aside
         id={drawerId}
         className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''} ${collapsed ? styles.sidebarCollapsed : ''}`}
-        aria-label="Main navigation"
+        aria-label={t('chrome:nav.sidebarLabel')}
         data-testid="app-sidebar"
         data-collapsed={collapsed ? 'true' : 'false'}
         onMouseEnter={onSidebarInteraction}
@@ -317,7 +318,7 @@ export function Sidebar({
           <Link
             className={styles.sidebarLogo}
             to="/"
-            aria-label="2anki home"
+            aria-label={t('chrome:nav.home')}
             onClick={handleNavClick()}
           >
             <img src={logoSrc} alt="" />

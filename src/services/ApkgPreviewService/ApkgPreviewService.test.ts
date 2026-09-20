@@ -44,6 +44,60 @@ function makeIoCollection(): NormalizedCollection {
   };
 }
 
+const MCQ_TEMPLATE_QFMT =
+  '<div class="front">{{Question}}<form id="shuffle"></form></div><script>buildOptions();</script>';
+const MCQ_TEMPLATE_AFMT =
+  '<div class="back">{{Question}}<form id="shuffle"></form>{{#Extra}}<div>{{Extra}}</div>{{/Extra}}</div><script>buildOptions();</script>';
+
+function makeMcqCollection(
+  options: {
+    question?: string;
+    choices?: string;
+    correct?: string;
+    extra?: string;
+  } = {}
+): NormalizedCollection {
+  const noteType = {
+    id: 1,
+    name: 'n2a-mcq',
+    type: 0 as const,
+    css: '#myCard { display: flex; }',
+    fields: [
+      { name: 'Question', ord: 0 },
+      { name: 'Multiple Choice', ord: 1 },
+      { name: 'Correct Answer', ord: 2 },
+      { name: 'Extra', ord: 3 },
+    ],
+    templates: [
+      {
+        name: 'n2a-mcq',
+        ord: 0,
+        qfmt: MCQ_TEMPLATE_QFMT,
+        afmt: MCQ_TEMPLATE_AFMT,
+      },
+    ],
+  };
+
+  const note = {
+    id: 10,
+    mid: 1,
+    tags: '',
+    fields: [
+      options.question ?? 'What is the capital of Switzerland?',
+      options.choices ?? 'Zurich<br>Bern<br>Geneva<br>Basel',
+      options.correct ?? 'Bern',
+      options.extra ?? 'Bern has been the capital since 1848.',
+    ],
+  };
+
+  return {
+    noteTypes: new Map([[1, noteType]]),
+    notes: new Map([[10, note]]),
+    decks: new Map([[2, { id: 2, name: 'Switzerland' }]]),
+    cards: [{ id: 100, nid: 10, did: 2, ord: 0 }],
+  };
+}
+
 function makeParsed(collection: NormalizedCollection) {
   return {
     collection,
@@ -266,6 +320,66 @@ describe('ApkgPreviewService.getCardsPage', () => {
       expect(result.total).toBe(1);
       expect(result.cards).toHaveLength(1);
       expect(result.cards[0].noteTypeName).toBe('Image Occlusion');
+    });
+  });
+
+  describe('MCQ static option list', () => {
+    it('lists every option on the front, unmarked', () => {
+      const parsed = makeParsed(makeMcqCollection());
+      const result = service.getCardsPage(parsed, 0, 10, 'http://example.com');
+
+      const front = result.cards[0].front;
+      expect(front).toContain('Zurich');
+      expect(front).toContain('Bern');
+      expect(front).toContain('Geneva');
+      expect(front).toContain('Basel');
+      expect(front).not.toContain('<mark>');
+    });
+
+    it('marks the correct option on the back and keeps the rest plain', () => {
+      const parsed = makeParsed(makeMcqCollection());
+      const result = service.getCardsPage(parsed, 0, 10, 'http://example.com');
+
+      const back = result.cards[0].back;
+      expect(back).toContain('<mark>✓ <strong>Bern</strong></mark>');
+      expect(back).not.toContain('<mark>✓ <strong>Zurich</strong></mark>');
+    });
+
+    it('renders the Extra explanation on the back', () => {
+      const parsed = makeParsed(makeMcqCollection());
+      const result = service.getCardsPage(parsed, 0, 10, 'http://example.com');
+
+      expect(result.cards[0].back).toContain(
+        'Bern has been the capital since 1848.'
+      );
+    });
+
+    it('falls back to a labeled answer line when Correct Answer matches no option', () => {
+      const parsed = makeParsed(makeMcqCollection({ correct: 'Lausanne' }));
+      const result = service.getCardsPage(parsed, 0, 10, 'http://example.com');
+
+      const back = result.cards[0].back;
+      expect(back).not.toContain('<mark>');
+      expect(back).toContain('Correct answer: Lausanne');
+    });
+
+    it('does not include <script> or <form> in the rendered output', () => {
+      const parsed = makeParsed(makeMcqCollection());
+      const result = service.getCardsPage(parsed, 0, 10, 'http://example.com');
+
+      expect(result.cards[0].front).not.toContain('<script');
+      expect(result.cards[0].front).not.toContain('<form');
+      expect(result.cards[0].back).not.toContain('<script');
+      expect(result.cards[0].back).not.toContain('<form');
+    });
+
+    it('still includes the MCQ card in the deck list — does not drop it', () => {
+      const parsed = makeParsed(makeMcqCollection());
+      const result = service.getCardsPage(parsed, 0, 10, 'http://example.com');
+
+      expect(result.total).toBe(1);
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0].noteTypeName).toBe('n2a-mcq');
     });
   });
 });

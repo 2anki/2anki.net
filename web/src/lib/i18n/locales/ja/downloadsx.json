@@ -73,11 +73,11 @@
     "text": "どの列が問題と解答かを判別できなかったため、このデッキは <front>{{frontField}}</front> を表、<back>{{backField}}</back> を裏として使用します。データベースを再度変換して別の列を選んでください。"
   },
   "paywall": {
-    "ariaLabel": "Unlimited にアップグレード",
+    "ariaLabel": "Pro にアップグレード",
     "headline": "無料プランでは変換は一度に 1 つ",
-    "body": "すでに開始した変換を完了できるよう、この変換は一時停止されました。Unlimited にアップグレードすると複数を同時に実行できます。",
+    "body": "すでに開始した変換を完了できるよう、この変換は一時停止されました。Pro にアップグレードすると複数を同時に実行できます。",
     "opening": "チェックアウトを開いています",
-    "upgrade": "Unlimited にアップグレード",
+    "upgrade": "Pro にアップグレード",
     "orWaitTitled": "または「<jobTitle>{{title}}</jobTitle>」の完了を待ってください — 開始 {{time}}。",
     "orWaitUntitled": "または現在の変換の完了を待ってください — 開始 {{time}}。",
     "seeAllPlans": "すべてのプランを見る"

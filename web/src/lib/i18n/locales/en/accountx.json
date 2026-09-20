@@ -120,14 +120,16 @@
     "signIn": "Sign in",
     "upgradeSubheading": "Upgrade to keep converting — no cap, no wait.",
     "payOnce": "Pay once — no subscription",
-    "skipCap": "Skip the cap for good",
-    "unlimited": "Unlimited",
+    "skipCap": "Skip the monthly card cap",
+    "unlimited": "Pro",
     "benefitUnlimited": "Unlimited flashcards",
     "benefitMultiple": "Run multiple conversions at once",
     "benefitPdf": "PDFs and large Notion exports",
     "benefitCancel": "Cancel anytime",
-    "upgradeToUnlimited": "Upgrade to Unlimited",
+    "upgradeToUnlimited": "Upgrade to Pro",
     "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net.",
-    "backToUpload": "Back to upload"
+    "backToUpload": "Back to upload",
+    "headline": "You reached {{limit}} cards this month",
+    "pageTitle": "You reached your monthly limit | 2anki"
   }
 }

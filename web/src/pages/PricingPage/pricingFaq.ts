@@ -21,7 +21,7 @@ export const buildPricingFaq = (
   },
   {
     question: 'Is there a one-time payment option?',
-    answer: `Day Pass (${passPrices['24h']}) gives 24 hours of unlimited access. Week Pass (${passPrices['7d']}) gives 7 days. Semester Pass (${passPrices['120d']}) gives about 4 months. All are one-time payments, no subscription required.`,
+    answer: `Day Pass (${passPrices['24h']}) gives 24 hours of full access. Week Pass (${passPrices['7d']}) gives 7 days. Semester Pass (${passPrices['120d']}) gives about 4 months. All are one-time payments, no subscription required.`,
     questionKey: 'faq.q2.question',
     answerKey: 'faq.q2.answer',
     answerValues: {
@@ -31,16 +31,16 @@ export const buildPricingFaq = (
     },
   },
   {
-    question: 'What is the Unlimited plan?',
+    question: 'What is the Pro plan?',
     answer:
-      'Unlimited removes the 100-card limit, adds PDF support, lets you run multiple conversions at once, and includes Anki to Notion imports of up to 10,000 notes each. Pricing is on the cards above.',
+      'Pro removes the 100-card limit, adds PDF support, lets you run multiple conversions at once, and includes Anki to Notion imports of up to 10,000 notes each — all with no monthly cap. AI features run on 300 credits a month; when those run out, decks still build without AI. Pricing is on the cards above.',
     questionKey: 'faq.q3.question',
     answerKey: 'faq.q3.answer',
   },
   {
     question: 'Is there a lifetime plan?',
     answer:
-      'Not anymore. Lifetime is closed to new members. If you already have Lifetime, your access and every feature stay exactly as they are. For unlimited access, use the Unlimited plan on the cards above.',
+      'Not anymore. Lifetime is closed to new members. If you already have Lifetime, your access and every feature stay exactly as they are. For an ongoing plan, use the Pro plan on the cards above.',
     questionKey: 'faq.q4.question',
     answerKey: 'faq.q4.answer',
   },
@@ -54,7 +54,7 @@ export const buildPricingFaq = (
   {
     question: 'Is there an app?',
     answer:
-      'Yes — 2anki is free on the App Store for iPhone, iPad, and Mac, alongside the web app. Files are parsed on-device. The same plans apply: Day Pass, Week Pass, and Unlimited are available as in-app purchases.',
+      'Yes — 2anki is free on the App Store for iPhone, iPad, and Mac, alongside the web app. Files are parsed on-device. The same plans apply: Day Pass, Week Pass, and Pro are available as in-app purchases.',
     questionKey: 'faq.q6.question',
     answerKey: 'faq.q6.answer',
   },

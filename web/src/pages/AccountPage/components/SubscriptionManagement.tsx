@@ -235,7 +235,7 @@ function AppleSubscriptionManagement() {
   return (
     <section className={styles.section}>
       <p className={styles.statusLine}>
-        Unlimited · {t('subscription.billedThroughApple')}
+        Pro · {t('subscription.billedThroughApple')}
       </p>
       <p className={sharedStyles.smallDescription}>
         {t('subscription.appleManageNotice')}

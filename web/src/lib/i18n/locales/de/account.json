@@ -116,7 +116,7 @@
     "seePlans": "Tarife ansehen"
   },
   "checkout": {
-    "youreOnUnlimited": "Du hast Unlimited",
+    "youreOnUnlimited": "Du hast Pro",
     "thanksActive": "Danke, {{firstName}} — dein Abo ist aktiv.",
     "subscriptionActive": "Dein Abo ist aktiv.",
     "makeDeck": "Stapel erstellen",

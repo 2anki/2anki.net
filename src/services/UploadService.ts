@@ -53,15 +53,10 @@ import { decodeUploadImage } from '../lib/upload/decodeUploadImage';
 import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
-import { isExpectedClientFault } from '../lib/misc/isExpectedClientFault';
 import type { DeckScore } from '../lib/parser/scoreCandidateDeck';
 import type { InducedRescue } from '../lib/parser/induction/candidateRules';
 import { toCardCountBucket } from '../lib/analytics/cardCountBucket';
 import { uploadInputFormat } from '../lib/analytics/uploadInputFormat';
-import {
-  CONVERSION_TRUNCATED_MESSAGE,
-  FileConversionError,
-} from '../infrastracture/adapters/fileConversion/claudeFileConversion';
 import {
   CONVERSION_FALLBACK_FILENAME,
   loadPdfImageFallbackNames,
@@ -74,10 +69,12 @@ import type {
 import type { ConversionEngine } from '../lib/parser/conversionEngine';
 import {
   MARKDOWN_LIKELY_LOSSY_REASON,
+  jobFailureReasonCode,
   jobFailureReasonFromError,
 } from '../usecases/jobs/jobFailureReason';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import { getOwner } from '../lib/User/getOwner';
+import { isExpectedUploadState } from '../lib/upload/isExpectedUploadState';
 import { censusUploadedFile } from '../infrastracture/adapters/fileConversion/documentStructureCensus';
 import { formatDeckName } from '../lib/formatDeckName';
 import {
@@ -89,9 +86,6 @@ import { ANONYMOUS_CARD_CAP, MONTHLY_CARD_LIMIT } from '../lib/limits';
 import {
   generateDeckInfo,
   DeckInfo,
-  ClaudeParseError,
-  ClaudeLargeSectionError,
-  ImageOnlyContentError,
   AiCreditsTrippedWithSalvage,
 } from '../lib/claude/ClaudeService';
 import CustomExporter from '../lib/parser/exporters/CustomExporter';
@@ -443,6 +437,17 @@ function resolveAsyncFailureReason(err: unknown, jobId: string): string {
   // driver text reached the downloads page verbatim — a user was once shown an
   // Anthropic SDK error complete with a link to its GitHub repo.
   return jobFailureReasonFromError(err, jobId);
+}
+
+function uploadFailureReason(err: unknown): string {
+  if (
+    err instanceof Error &&
+    (err.name === 'AiCreditsExhaustedError' ||
+      err.message.includes("You're out of AI credits"))
+  ) {
+    return 'ai_credits_exhausted';
+  }
+  return jobFailureReasonCode(err);
 }
 
 function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
@@ -1157,6 +1162,9 @@ class UploadService {
         err instanceof Error &&
         /^pdfinfo_(failed|spawn_failed)/.test(err.message)
       ) {
+        if (!isExpectedUploadState(err)) {
+          this.trackUploadFailed(req, res, 'pdf_unreadable');
+        }
         return res.status(400).json({
           code: 'pdf_processing_failed',
           message:
@@ -1172,6 +1180,9 @@ class UploadService {
             "We couldn't read this .docx. It may have been renamed from another format. Try re-exporting it from Word or Google Docs.",
         });
       } else {
+        if (!isExpectedUploadState(err)) {
+          this.trackUploadFailed(req, res, uploadFailureReason(err));
+        }
         return ErrorHandler(res, req, err as Error);
       }
     }
@@ -1335,19 +1346,7 @@ class UploadService {
           return;
         }
         const message = err instanceof Error ? err.message : String(err);
-        const isExpectedState =
-          err instanceof EmptyDeckError ||
-          err instanceof ClaudeParseError ||
-          err instanceof ClaudeLargeSectionError ||
-          (err instanceof Error && err.name === 'EmptyContentError') ||
-          (err instanceof FileConversionError &&
-            err.message === CONVERSION_TRUNCATED_MESSAGE) ||
-          err instanceof ImageOnlyContentError ||
-          (err instanceof Error && isExpectedClientFault(err)) ||
-          (err instanceof Error && isPdfPasswordSentinel(err.message)) ||
-          (err instanceof Error && err.name === 'PythonZeroCardsError') ||
-          (err instanceof Error && /^docx_parse_failed/.test(err.message));
-        if (isExpectedState) {
+        if (isExpectedUploadState(err)) {
           console.info('[UploadService] async job user-input state', {
             jobId: ws.id,
             kind: err instanceof Error ? err.name : 'unknown',
@@ -1358,6 +1357,7 @@ class UploadService {
             message,
             err,
           });
+          this.trackUploadFailed(req, res, uploadFailureReason(err));
         }
         const reason = resolveAsyncFailureReason(err, ws.id);
         await this.jobRepository.updateJobStatus(
@@ -1902,6 +1902,19 @@ class UploadService {
   private resolvePersistedSource(req: express.Request): UploadSource | null {
     const body = req.body as Record<string, unknown> | undefined;
     return validateUploadSource(body?.source);
+  }
+
+  private trackUploadFailed(
+    req: express.Request,
+    res: express.Response,
+    reason: string
+  ): void {
+    const owner = getOwner(res);
+    track('conversion_failed', {
+      userId: owner != null ? Number(owner) : null,
+      anonymousId: this.resolveAnonId(req),
+      props: { ...this.baseFunnelProps(req), reason },
+    });
   }
 
   private baseFunnelProps(req: express.Request): Record<string, unknown> {

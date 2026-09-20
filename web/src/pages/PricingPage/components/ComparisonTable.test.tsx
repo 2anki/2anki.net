@@ -7,7 +7,7 @@ import { ComparisonTable } from './ComparisonTable';
 describe('ComparisonTable', () => {
   it('renders a column for every plan', () => {
     render(<ComparisonTable unlimitedMonthlyPrice="$7.99" />);
-    for (const plan of ['Free', 'Day / Week pass', 'Unlimited']) {
+    for (const plan of ['Free', 'Day / Week pass', 'Pro']) {
       expect(
         screen.getByRole('columnheader', { name: new RegExp(plan) })
       ).toBeInTheDocument();
@@ -21,13 +21,13 @@ describe('ComparisonTable', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows the v2 cohort Unlimited price in the header', () => {
+  it('shows the v2 cohort Pro price in the header', () => {
     render(<ComparisonTable unlimitedMonthlyPrice="$7.99" />);
     expect(screen.getByText('$7.99 / mo')).toBeInTheDocument();
     expect(screen.queryByText('$6 / mo')).not.toBeInTheDocument();
   });
 
-  it('shows the legacy cohort Unlimited price in the header', () => {
+  it('shows the legacy cohort Pro price in the header', () => {
     render(<ComparisonTable unlimitedMonthlyPrice="$6" />);
     expect(screen.getByText('$6 / mo')).toBeInTheDocument();
     expect(screen.queryByText('$7.99 / mo')).not.toBeInTheDocument();

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   reportClientError,
   reportDeclinedChunkRecovery,
+  reportUploadNetworkFailure,
 } from './reportClientError';
 import { UserNotice } from './errors/UserNotice';
 import { getClientRelease } from './release';
@@ -267,5 +268,74 @@ describe('reportDeclinedChunkRecovery', () => {
       originalMessage: 'Importing a module script failed.',
       componentStack: 'at LazyRoute',
     });
+  });
+});
+
+describe('reportUploadNetworkFailure', () => {
+  const MB = 1024 * 1024;
+
+  function lastBody(): Record<string, unknown> {
+    const [, init] = getLastCall();
+    return JSON.parse(init.body as string) as Record<string, unknown>;
+  }
+
+  it('reports a browser "Failed to fetch" that reportClientError skips as transient', () => {
+    const cause = new TypeError('Failed to fetch');
+    reportClientError(cause);
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    reportUploadNetworkFailure(cause, {
+      fileExt: '.zip',
+      fileSizeBytes: 5 * MB,
+      elapsedMs: 1200,
+    });
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    expect(lastBody().message).toBe(
+      'Upload network failure (.zip, under 10 MB)'
+    );
+  });
+
+  it.each([
+    ['.pdf', 10 * MB, 'Upload network failure (.pdf, 10-50 MB)'],
+    ['.pptx', 51 * MB, 'Upload network failure (.pptx, over 50 MB)'],
+    [null, null, 'Upload network failure (unknown type, unknown size)'],
+    [
+      '.my private notes',
+      1,
+      'Upload network failure (unknown type, under 10 MB)',
+    ],
+  ])(
+    'groups %s at %s bytes under one message',
+    (fileExt, fileSizeBytes, message) => {
+      reportUploadNetworkFailure(new TypeError('Load failed'), {
+        fileExt,
+        fileSizeBytes,
+        elapsedMs: 0,
+      });
+      expect(lastBody().message).toBe(message);
+    }
+  );
+
+  it('carries the elapsed seconds and the browser wording in the context', () => {
+    reportUploadNetworkFailure(new TypeError('Load failed'), {
+      fileExt: '.pdf',
+      fileSizeBytes: 20 * MB,
+      elapsedMs: 61_400,
+    });
+    expect(lastBody().context).toMatchObject({
+      elapsedSeconds: 61,
+      cause: 'Load failed',
+    });
+  });
+
+  it('stays silent when the browser is offline', () => {
+    vi.stubGlobal('navigator', { userAgent: 'Vitest/1.0', onLine: false });
+    reportUploadNetworkFailure(new TypeError('Failed to fetch'), {
+      fileExt: '.zip',
+      fileSizeBytes: MB,
+      elapsedMs: 10,
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

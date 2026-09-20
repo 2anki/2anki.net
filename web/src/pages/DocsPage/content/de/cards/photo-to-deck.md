@@ -5,7 +5,7 @@ description: Fotografiere oder lade ein Foto deiner Notizen hoch — Lehrbuchsei
 
 Foto zu Deck nimmt ein einzelnes Bild und schickt es an Claudes Vision-Modell, das den Inhalt liest und Frage-und-Antwort-Karten zurückgibt. Die Seite liegt unter [2anki.net/photo-to-deck](https://2anki.net/photo-to-deck).
 
-**Plan:** Der kostenlose Plan bekommt 5 Fotos pro Monat. Kostenpflichtige Pläne sind unbegrenzt.
+**Plan:** Der kostenlose Plan bekommt 5 Fotos pro Monat. Kostenpflichtige Pläne nutzen KI-Credits.
 
 ## Wann du das nutzt
 
@@ -54,7 +54,7 @@ Das Modell zielt auf den Bereich; es trifft nicht immer die exakte Zahl. Deine W
 
 Der kostenlose Plan ist auf 5 Fotos pro Kalendermonat begrenzt — Vision-Aufrufe kosten auf unserer Seite echtes Geld. Wenn du das Limit erreichst, zeigt die Seite, wie viele du genutzt hast, und einen Weg zum Upgrade. Der Zähler setzt sich am 1. jedes Monats zurück.
 
-Kostenpflichtige Pläne (Subscription oder Lifetime) haben kein Limit.
+Kostenpflichtige Pläne (Subscription oder Lifetime) nutzen KI-Credits statt des kostenlosen Monatslimits — viel mehr Fotos, begrenzt durch dein Credit-Guthaben.
 
 ## Tipps für bessere Ergebnisse
 

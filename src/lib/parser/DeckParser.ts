@@ -63,6 +63,7 @@ import {
 } from '../storage/checks';
 import { getFileContents } from './getFileContents';
 import { normalizeNotionEquations } from './normalizeNotionEquations';
+import { unwrapNotionDefaultHighlights } from './unwrapNotionDefaultHighlights';
 import { handleNestedBulletPointsInMarkdown } from './handleNestedBulletPointsInMarkdown';
 import {
   guessMarkdownCards,
@@ -1625,6 +1626,7 @@ export class DeckParser {
   } {
     const dom = this.loadDOM(contents);
     normalizeNotionEquations(dom);
+    unwrapNotionDefaultHighlights(dom);
     this.reshapeBareToggleDetails(dom);
     const isNewFormat = this.hasNotionNewExportFormat(dom);
     this.normalizeNotionNewExportFormat(dom);

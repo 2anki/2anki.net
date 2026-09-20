@@ -106,7 +106,7 @@ function buildConversionsPrompt(payload: ConversionMetricsResponse): string {
   }
 
   lines.push(
-    'Window: volume & success rate over 7 days; time-to-first-deck over 30 days.',
+    'Window: volume & success rate over 7 days; new-account download shares over 30 days (accounts at least a day old, since signup tracking was fixed on 2026-09-09).',
     '',
     'Current numbers:',
     `Free conversions 7d:            ${numberOrDash(payload.free_conversions_7d)}`,
@@ -115,7 +115,8 @@ function buildConversionsPrompt(payload: ConversionMetricsResponse): string {
     `Paid success rate 7d (%):       ${numberOrDash(payload.paid_conversion_success_rate_7d)}`,
     `Free blocked by plan 7d:        ${numberOrDash(payload.free_blocked_by_plan_7d)}`,
     `Paid blocked by plan 7d:        ${numberOrDash(payload.paid_blocked_by_plan_7d)}`,
-    `Time to first deck 30d (min):   ${numberOrDash(payload.time_to_first_deck_median_minutes_30d)}`,
+    `New accounts downloading in 24h (%):         ${numberOrDash(payload.new_accounts_downloaded_24h_rate_30d)}`,
+    `New accounts making a deck after signup (%): ${numberOrDash(payload.new_accounts_downloaded_after_signup_24h_rate_30d)}`,
     `Upload → download rate 7d (%):  ${numberOrDash(payload.upload_to_download_rate_7d)}`,
     '',
     jsonBlock(
@@ -164,6 +165,12 @@ function buildEngineeringPrompt(payload: OpsMetricsResponse): string {
 
 function buildUploadFunnelPrompt(payload: UploadFunnelResponse): string {
   const stages = payload.stages;
+  const signupReliable = payload.signup_reliable ?? true;
+  const signupNote =
+    'NOTE: account_created under-fired before 2026-09-09, so stages.signup and download_to_signup_rate_pct undercount for this window — treat them as unreliable, not as a real drop-off.';
+  const taskLine = signupReliable
+    ? 'Task: find the biggest drop-off between stages and the origin it hits hardest, then propose one fix.'
+    : 'Task: find the biggest drop-off among the reliable stages (upload, conversion, download, paid) and the origin it hits hardest, then propose one fix. Ignore the signup stage and the download-to-signup rate — they undercount for this window.';
   const lines: string[] = [
     '## Upload funnel — weekly review',
     '',
@@ -183,13 +190,14 @@ function buildUploadFunnelPrompt(payload: UploadFunnelResponse): string {
     `Download → signup (%):   ${numberOrDash(payload.download_to_signup_rate_pct)}`,
     `Download → paid (%):     ${numberOrDash(payload.download_to_paid_rate_pct)}`,
     '',
+    ...(signupReliable ? [] : [signupNote, '']),
     jsonBlock(
       'Per-origin breakdown (signup_origin)',
       sanitizeStringsDeep(payload.by_origin)
     ),
     '',
     'Code path: src/usecases/ops/GetUploadFunnelUseCase.ts (/api/ops/upload-funnel)',
-    'Task: find the biggest drop-off between stages and the origin it hits hardest, then propose one fix.',
+    taskLine,
     REPO_LINE,
   ];
 
@@ -200,17 +208,17 @@ function buildReturnRatePrompt(payload: ReturnRateMetricsResponse): string {
   const lines: string[] = [
     '## Return rate — weekly review',
     '',
-    'Window: second conversion within N days · 90-day cohort window.',
+    'Window: a return is a conversion at least 24 hours after the first, within N days · 90-day cohort window · only identities old enough for the whole window are counted.',
     '',
-    'Overall return rate (%):',
-    `Within 7 days:   ${numberOrDash(payload.overall['7d'])}`,
-    `Within 14 days:  ${numberOrDash(payload.overall['14d'])}`,
-    `Within 30 days:  ${numberOrDash(payload.overall['30d'])}`,
+    'Overall return rate (%), and how many new identities each is measured over:',
+    `Within 7 days:   ${numberOrDash(payload.overall['7d'])} (n=${payload.eligible['7d']})`,
+    `Within 14 days:  ${numberOrDash(payload.overall['14d'])} (n=${payload.eligible['14d']})`,
+    `Within 30 days:  ${numberOrDash(payload.overall['30d'])} (n=${payload.eligible['30d']})`,
     '',
     jsonBlock('Return rate by source type', payload.by_source_type),
     '',
     'Code path: src/usecases/ops/GetReturnRateMetricsUseCase.ts (/api/ops/return-rate/metrics)',
-    'Task: name the cohort with the weakest return rate and propose one fix.',
+    'Task: name the source with the weakest return rate (ignore any source with a small eligible count) and propose one fix.',
     REPO_LINE,
   ];
 

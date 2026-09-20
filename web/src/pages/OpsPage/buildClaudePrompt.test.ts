@@ -58,7 +58,8 @@ function makeConversions(
     paid_blocked_by_plan_7d: 0,
     conversion_errors_7d_top_reasons: [{ reason: 'Notion timeout', count: 12 }],
     failed_conversions_weekly: [{ week: '2026-06-01', count: 3 }],
-    time_to_first_deck_median_minutes_30d: 42,
+    new_accounts_downloaded_24h_rate_30d: 54.4,
+    new_accounts_downloaded_after_signup_24h_rate_30d: 11.7,
     upload_to_download_rate_7d: 25.4,
     deck_quality_cohorts_30d: null,
     ...overrides,
@@ -151,6 +152,7 @@ function makeUploadFunnel(
     upload_to_download_rate_pct: 57.8,
     download_to_signup_rate_pct: 30.1,
     download_to_paid_rate_pct: 6.0,
+    signup_reliable: true,
     since: '2026-05-01T00:00:00.000Z',
     as_of: '2026-05-30T00:00:00.000Z',
     ...overrides,
@@ -162,13 +164,14 @@ function makeReturnRate(
 ): ReturnRateMetricsResponse {
   return {
     overall: { '7d': 12.3, '14d': 18.9, '30d': 24.1 },
+    eligible: { '7d': 480, '14d': 400, '30d': 310 },
     by_source_type: [
       {
         source_type: 'notion',
         cohort_size: 500,
-        returned_7d: 60,
-        returned_14d: 95,
-        returned_30d: 120,
+        eligible_7d: 480,
+        eligible_14d: 400,
+        eligible_30d: 310,
         return_rate_7d_pct: 12,
         return_rate_14d_pct: 19,
         return_rate_30d_pct: 24,
@@ -237,6 +240,12 @@ describe('buildClaudePrompt — conversions', () => {
     expect(prompt).toContain('Free conversions 7d:            824');
     expect(prompt).toContain('Paid success rate 7d (%):       96.2');
     expect(prompt).toContain('Free blocked by plan 7d:        63');
+    expect(prompt).toContain(
+      'New accounts downloading in 24h (%):         54.4'
+    );
+    expect(prompt).toContain(
+      'New accounts making a deck after signup (%): 11.7'
+    );
     expect(prompt).toContain('Notion timeout');
     expect(prompt).toContain(
       'find the biggest conversion leak and propose one fix'
@@ -299,17 +308,49 @@ describe('buildClaudePrompt — upload-funnel', () => {
     const prompt = buildClaudePrompt('upload-funnel', makeUploadFunnel());
     expect(prompt).not.toContain(UNTRUSTED);
   });
+
+  it('adds a standalone note and a signup-free task when account_created was unreliable', () => {
+    const prompt = buildClaudePrompt(
+      'upload-funnel',
+      makeUploadFunnel({ signup_reliable: false })
+    );
+    expect(prompt).toContain(
+      'stages.signup and download_to_signup_rate_pct undercount'
+    );
+    expect(prompt).toContain(
+      'Ignore the signup stage and the download-to-signup rate'
+    );
+    expect(prompt).not.toContain(
+      'find the biggest drop-off between stages and the origin it hits hardest'
+    );
+  });
+
+  it('omits the note and keeps the plain task when tracking was reliable', () => {
+    const prompt = buildClaudePrompt('upload-funnel', makeUploadFunnel());
+    expect(prompt).not.toContain('undercount');
+    expect(prompt).toContain(
+      'find the biggest drop-off between stages and the origin it hits hardest'
+    );
+  });
+
+  it('reads a payload with no signup_reliable field as reliable', () => {
+    const payload = makeUploadFunnel();
+    delete (payload as { signup_reliable?: boolean }).signup_reliable;
+    const prompt = buildClaudePrompt('upload-funnel', payload);
+    expect(prompt).not.toContain('undercount');
+  });
 });
 
 describe('buildClaudePrompt — return-rate', () => {
   it('includes overall rates, the source-type array, task, and repo line', () => {
     const prompt = buildClaudePrompt('return-rate', makeReturnRate());
     expect(prompt).toContain('## Return rate — weekly review');
-    expect(prompt).toContain('Within 7 days:   12.3');
-    expect(prompt).toContain('Within 30 days:  24.1');
+    expect(prompt).toContain('Within 7 days:   12.3 (n=480)');
+    expect(prompt).toContain('Within 30 days:  24.1 (n=310)');
     expect(prompt).toContain('"source_type": "notion"');
+    expect(prompt).toContain('at least 24 hours after the first');
     expect(prompt).toContain(
-      'name the cohort with the weakest return rate and propose one fix'
+      'name the source with the weakest return rate (ignore any source with a small eligible count) and propose one fix'
     );
     expect(prompt).toContain('Repo: 2anki/server');
   });

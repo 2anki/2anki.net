@@ -1,8 +1,29 @@
 import type { Knex } from 'knex';
 
+import {
+  EMPTY_REASON_PATTERNS,
+  PAYWALL_REASON_PATTERNS,
+  REASON_PROP_EXPRESSION,
+} from './classifyFailureReason';
+
+export type ConversionTier = 'free' | 'paid';
+
+export interface ConversionOutcomeCounts {
+  succeeded: number;
+  technicalFailed: number;
+  planBlocked: number;
+}
+
 export interface IEventsMetricsRepository {
-  medianMinutesToFirstDeck(cohortStart: Date): Promise<number | null>;
+  newAccountDownloads(
+    cohortStart: Date,
+    cohortEnd: Date
+  ): Promise<NewAccountDownloadCounts | null>;
   uploadToDownloadRate(since: Date): Promise<number | null>;
+  conversionOutcomes(
+    since: Date,
+    tier: ConversionTier
+  ): Promise<ConversionOutcomeCounts>;
 }
 
 export interface PassSalesCounts {
@@ -27,20 +48,66 @@ export interface PaidValueEventRow {
   createdAt: Date;
 }
 
-export interface MedianMinutesRow {
-  median_minutes: number | string | null;
+type PostgresNumeric = number | string | null;
+
+export interface NewAccountDownloadsRow {
+  accounts: PostgresNumeric;
+  downloaded_24h: PostgresNumeric;
+  downloaded_after_signup: PostgresNumeric;
 }
+
+export interface NewAccountDownloadCounts {
+  accounts: number;
+  downloadedWithin24h: number;
+  downloadedAfterSignup: number;
+}
+
+// Nearly every signup's first download lands within minutes, because the deck
+// they made before signing up downloads the moment they sign in. Anything past
+// this many minutes is a deck made after signing up.
+const HELD_DECK_DOWNLOAD_MINUTES = 10;
 
 export interface UploadToDownloadRateRow {
   uploaders: number | string;
   downloaders: number | string;
 }
 
-export function mapMedianMinutesRow(
-  row: MedianMinutesRow | undefined
-): number | null {
-  if (row?.median_minutes == null) return null;
-  return Number(row.median_minutes);
+export interface ConversionOutcomesRow {
+  succeeded: PostgresNumeric;
+  technical_failed: PostgresNumeric;
+  plan_blocked: PostgresNumeric;
+}
+
+const PAID_CUSTOMER_FILTER =
+  "users.stripe_customer_id IS NOT NULL AND users.stripe_customer_id != ''";
+const FREE_CUSTOMER_FILTER =
+  "(users.stripe_customer_id IS NULL OR users.stripe_customer_id = '')";
+
+function likeAnyReason(patterns: string[]): string {
+  return `(${patterns
+    .map(() => `${REASON_PROP_EXPRESSION} LIKE ?`)
+    .join(' OR ')})`;
+}
+
+export function mapConversionOutcomesRow(
+  row: ConversionOutcomesRow | undefined
+): ConversionOutcomeCounts {
+  return {
+    succeeded: Number(row?.succeeded ?? 0),
+    technicalFailed: Number(row?.technical_failed ?? 0),
+    planBlocked: Number(row?.plan_blocked ?? 0),
+  };
+}
+
+export function mapNewAccountDownloadsRow(
+  row: NewAccountDownloadsRow | undefined
+): NewAccountDownloadCounts | null {
+  if (row == null) return null;
+  return {
+    accounts: Number(row.accounts),
+    downloadedWithin24h: Number(row.downloaded_24h),
+    downloadedAfterSignup: Number(row.downloaded_after_signup),
+  };
 }
 
 export function mapUploadToDownloadRateRow(
@@ -78,40 +145,53 @@ export class EventsMetricsRepository
     };
   }
 
-  buildMedianMinutesToFirstDeckQuery(cohortStart: Date): Knex.QueryBuilder {
+  buildNewAccountDownloadsQuery(
+    cohortStart: Date,
+    cohortEnd: Date
+  ): Knex.QueryBuilder {
     const accounts = this.database('events')
       .select('user_id')
       .min('created_at as account_at')
       .where('name', 'account_created')
       .where('created_at', '>=', cohortStart)
+      .where('created_at', '<=', cohortEnd)
       .whereNotNull('user_id')
       .groupBy('user_id')
       .as('accounts');
-
-    const downloads = this.database('events')
-      .select('user_id')
-      .min('created_at as first_download_at')
-      .where('name', 'deck_downloaded')
-      .whereNotNull('user_id')
-      .groupBy('user_id')
-      .as('downloads');
+    const database = this.database;
 
     return this.database
       .from(accounts)
-      .join(downloads, 'downloads.user_id', 'accounts.user_id')
-      .whereRaw('downloads.first_download_at >= accounts.account_at')
+      .leftJoin('events as downloads', function () {
+        this.on('downloads.user_id', 'accounts.user_id')
+          .andOnVal('downloads.name', 'deck_downloaded')
+          .andOn('downloads.created_at', '>=', 'accounts.account_at')
+          .andOn(
+            database.raw(
+              "downloads.created_at <= accounts.account_at + interval '24 hours'"
+            )
+          );
+      })
       .select(
         this.database.raw(
-          'percentile_cont(0.5) within group (order by extract(epoch from (downloads.first_download_at - accounts.account_at)) / 60) as median_minutes'
+          'count(distinct accounts.user_id) as accounts, count(distinct downloads.user_id) as downloaded_24h'
+        ),
+        this.database.raw(
+          "count(distinct case when downloads.created_at >= accounts.account_at + ? * interval '1 minute' then downloads.user_id end) as downloaded_after_signup",
+          [HELD_DECK_DOWNLOAD_MINUTES]
         )
       );
   }
 
-  async medianMinutesToFirstDeck(cohortStart: Date): Promise<number | null> {
-    const row = (await this.buildMedianMinutesToFirstDeckQuery(
-      cohortStart
-    ).first()) as MedianMinutesRow | undefined;
-    return mapMedianMinutesRow(row);
+  async newAccountDownloads(
+    cohortStart: Date,
+    cohortEnd: Date
+  ): Promise<NewAccountDownloadCounts | null> {
+    const row = (await this.buildNewAccountDownloadsQuery(
+      cohortStart,
+      cohortEnd
+    ).first()) as NewAccountDownloadsRow | undefined;
+    return mapNewAccountDownloadsRow(row);
   }
 
   buildUploadToDownloadRateQuery(since: Date): Knex.QueryBuilder {
@@ -135,6 +215,50 @@ export class EventsMetricsRepository
       | UploadToDownloadRateRow
       | undefined;
     return mapUploadToDownloadRateRow(row);
+  }
+
+  buildConversionOutcomesQuery(
+    since: Date,
+    tier: ConversionTier
+  ): Knex.QueryBuilder {
+    const paywall = likeAnyReason(PAYWALL_REASON_PATTERNS);
+    const empty = likeAnyReason(EMPTY_REASON_PATTERNS);
+    const technical = `(${REASON_PROP_EXPRESSION} IS NULL OR (NOT ${paywall} AND NOT ${empty}))`;
+
+    return this.database('events')
+      .leftJoin('users', 'users.id', 'events.user_id')
+      .whereIn('events.name', ['conversion_succeeded', 'conversion_failed'])
+      .where('events.created_at', '>=', since)
+      .whereRaw(tier === 'paid' ? PAID_CUSTOMER_FILTER : FREE_CUSTOMER_FILTER)
+      .select(
+        this.database.raw(
+          'count(case when events.name = ? then 1 end) as succeeded',
+          ['conversion_succeeded']
+        ),
+        this.database.raw(
+          `count(case when events.name = ? and ${technical} then 1 end) as technical_failed`,
+          [
+            'conversion_failed',
+            ...PAYWALL_REASON_PATTERNS,
+            ...EMPTY_REASON_PATTERNS,
+          ]
+        ),
+        this.database.raw(
+          `count(case when events.name = ? and ${paywall} then 1 end) as plan_blocked`,
+          ['conversion_failed', ...PAYWALL_REASON_PATTERNS]
+        )
+      );
+  }
+
+  async conversionOutcomes(
+    since: Date,
+    tier: ConversionTier
+  ): Promise<ConversionOutcomeCounts> {
+    const row = (await this.buildConversionOutcomesQuery(
+      since,
+      tier
+    ).first()) as ConversionOutcomesRow | undefined;
+    return mapConversionOutcomesRow(row);
   }
 
   async listPaidValueEvents(

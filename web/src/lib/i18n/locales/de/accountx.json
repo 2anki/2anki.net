@@ -96,15 +96,17 @@
     "signIn": "Anmelden",
     "upgradeSubheading": "Upgrade, um weiter zu konvertieren — kein Limit, kein Warten.",
     "payOnce": "Einmal zahlen — kein Abo",
-    "skipCap": "Das Limit dauerhaft überspringen",
-    "unlimited": "Unbegrenzt",
+    "skipCap": "Das monatliche Karteikarten-Limit überspringen",
+    "unlimited": "Pro",
     "benefitUnlimited": "Unbegrenzte Karteikarten",
     "benefitMultiple": "Mehrere Konvertierungen gleichzeitig ausführen",
     "benefitPdf": "PDFs und große Notion-Exporte",
     "benefitCancel": "Jederzeit kündbar",
-    "upgradeToUnlimited": "Auf Unlimited upgraden",
+    "upgradeToUnlimited": "Auf Pro upgraden",
     "checkoutError": "Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.",
-    "backToUpload": "Zurück zum Upload"
+    "backToUpload": "Zurück zum Upload",
+    "headline": "Du hast diesen Monat {{limit}} Karten erreicht",
+    "pageTitle": "Du hast dein monatliches Limit erreicht | 2anki"
   },
   "emailChange": {
     "toggle": "E-Mail-Adresse ändern",

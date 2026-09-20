@@ -328,7 +328,7 @@ const OpsRouter = () => {
    * @swagger
    * /api/ops/conversion/metrics:
    *   get:
-   *     summary: Conversion success/failure metrics from jobs table plus funnel metrics from events
+   *     summary: Conversion volume, success rate and plan blocks from conversion events, failure reasons from the jobs table, plus funnel metrics from events
    *     description: Internal endpoint locked to the ops owner. Returns 404 for everyone else.
    *     tags: [Ops]
    *     responses:
@@ -647,7 +647,7 @@ const OpsRouter = () => {
    *   get:
    *     summary: Job-duration percentiles, status breakdown, and signup-country counts
    *     description: |
-   *       Internal endpoint locked to the ops owner. Returns p50/p95/p99 job durations (24h and 7d), terminal-status counts, the 20 slowest done jobs in the last 24h, and signup country breakdown for the last 7 days. Returns 404 for everyone else.
+   *       Internal endpoint locked to the ops owner. Returns p50/p95/p99 job durations (24h and 7d) and the 20 slowest done jobs in the last 24h — both measure created_at to the last terminal update and both exclude MCP saves, which create and complete their job row in the same call (~1ms) and would otherwise drag the median down. The terminal-status counts for the last 24h DO still include MCP saves, so the done count exceeds the duration-sample count by the MCP volume. The created_at-to-last-update span is an upper bound, not a per-run duration: restarts and re-syncs reuse the row, so a true duration would need a dedicated per-run start/finish column (not added here). Also returns the signup-country breakdown for the last 7 days. Returns 404 for everyone else.
    *     tags: [Ops]
    *     responses:
    *       200:
@@ -663,12 +663,15 @@ const OpsRouter = () => {
    * @swagger
    * /api/ops/return-rate/metrics:
    *   get:
-   *     summary: Post-completion return-rate metrics bucketed by source type
+   *     summary: Return-rate metrics for new identities, bucketed by the source of their first conversion
    *     description: |
-   *       Internal endpoint locked to the ops owner. Returns the % of users who returned for a
-   *       second conversion within 7, 14, and 30 days of their prior successful conversion,
-   *       bucketed by source_type (page, database, conversion). Cohort window is the last 90 days.
-   *       Returns 404 for everyone else.
+   *       Internal endpoint locked to the ops owner. A "return" is a successful conversion at
+   *       least 24 hours after an identity's first one, within 7, 14 or 30 days of it. Only
+   *       identities old enough to have finished a window are counted for that window, and
+   *       `eligible` gives that denominator overall and per source. Sources are the source of
+   *       each identity's first conversion. The cohort is identities whose first conversion in
+   *       the last 120 days falls in the last 90 (so no conversion between 120 and 90 days
+   *       ago). Returns 404 for everyone else.
    *     tags: [Ops]
    *     responses:
    *       200:
@@ -798,6 +801,9 @@ const OpsRouter = () => {
    *       (attributed from the first_touch cookie), ordered by upload volume, so
    *       leaks can be read per acquisition source. Defaults to the last 30 days;
    *       pass ?window=7d|14d|30d|60d|90d.
+   *       `signup_reliable` is false when the window starts before 2026-09-09 (when
+   *       account_created became reliable); in that case the signup count and the
+   *       download_to_signup rate undercount and should not be read as real.
    *       Internal endpoint locked to the ops owner — returns 404 for everyone else.
    *     tags: [Ops]
    *     parameters:

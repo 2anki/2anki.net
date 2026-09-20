@@ -44,16 +44,6 @@ export const formatInteger = (value: number): string =>
 export const formatPercentOneDecimal = (value: number): string =>
   `${value.toFixed(1)}%`;
 
-const MINUTES_PER_HOUR = 60;
-const MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR;
-
-export const formatDurationMinutes = (value: number): string => {
-  if (value < MINUTES_PER_HOUR) return `${Math.round(value)} min`;
-  if (value < 2 * MINUTES_PER_DAY)
-    return `${(value / MINUTES_PER_HOUR).toFixed(1)} h`;
-  return `${(value / MINUTES_PER_DAY).toFixed(1)} d`;
-};
-
 const padTwo = (n: number): string => n.toString().padStart(2, '0');
 
 export const formatClockShort = (date: Date): string =>

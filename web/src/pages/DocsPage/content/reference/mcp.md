@@ -26,7 +26,7 @@ The server uses OAuth 2.1. The first time an assistant connects, 2anki opens a s
 
 ## Limits
 
-Conversions through MCP count against the same plan limits as the web app: free accounts have a monthly card limit and a photo quota; paid plans convert without limits. Individual requests are capped at 5 MB of text, 500 cards per deck, and 10 MB per photo.
+Conversions through MCP count against the same plan limits as the web app: free accounts have a monthly card limit and a photo quota; paid plans have no monthly card limit, and photos draw on AI credits. Individual requests are capped at 5 MB of text, 500 cards per deck, and 10 MB per photo.
 
 ## Feedback
 

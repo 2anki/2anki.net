@@ -79,7 +79,7 @@ const pdfToAnki: LandingCopy = {
     },
     {
       q: 'Can I upload a whole textbook?',
-      a: 'Yes. Large PDFs work, though big files take longer and create large decks. Free accounts handle everyday lecture and chapter PDFs; paid plans lift the size limit. Uploading one chapter at a time keeps decks easier to review.',
+      a: 'Yes. Large PDFs work, though big files take longer and create large decks. Free accounts handle PDFs up to 100 MB, and scanned PDFs up to 100 pages; paid plans allow uploads up to about 10 GB and longer scanned PDFs. Uploading one chapter at a time keeps decks easier to review.',
     },
     {
       q: 'What happens to equations and diagrams?',
@@ -422,7 +422,7 @@ const studystackToAnki: LandingCopy = {
     },
     {
       q: 'How many cards can I import?',
-      a: 'Free 2anki accounts convert up to 100 cards per month — this is the 2anki limit, not a StudyStack restriction. Unlimited and Auto Sync plans remove the cap — see the pricing page.',
+      a: 'Free 2anki accounts convert up to 100 cards per month — this is the 2anki limit, not a StudyStack restriction. Pro and Auto Sync plans remove the cap — see the pricing page.',
     },
   ],
 };
@@ -809,7 +809,7 @@ const photoToAnki: LandingCopy = {
     },
     {
       q: 'How many photos can I turn into cards?',
-      a: 'Add several photos at once — one per page, or a few pages of the same topic in one go. The free plan covers 5 photos per month; paid plans lift the limit.',
+      a: 'Add several photos at once — one per page, or a few pages of the same topic in one go. The free plan covers 5 photos a month. Paid plans include a monthly AI credit allowance for photos.',
     },
     {
       q: 'I have the notes as a PDF, not a photo. What then?',

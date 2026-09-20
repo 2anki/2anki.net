@@ -5,7 +5,7 @@ description: Baue einen Baum in deinem Browser und lade ihn als Anki-Deck herunt
 
 Der Mindmap-Editor unter [2anki.net/mindmaps](https://2anki.net/mindmaps) lässt dich eine Hierarchie in deinem Browser skizzieren — Themen, Unterthemen, verschachtelte Konzepte — und als `.apkg`-Deck exportieren. Im Export-Dialog kannst du vor dem Herunterladen einen Kartentyp wählen.
 
-**Plan:** Kostenlose Konten können 3 gespeicherte Maps und 50 Knoten pro Map haben. Auto-Sync ($30/Mon.) und Patreon Lifetime geben unbegrenzte Maps und Knoten.
+**Plan:** Kostenlose Konten können 3 gespeicherte Maps und 50 Knoten pro Map haben. Abonnenten bekommen 25 Maps und 250 Knoten pro Map. Lifetime und Auto-Sync geben unbegrenzte Maps und Knoten.
 
 ## Ein Deck bauen
 
@@ -69,7 +69,7 @@ Der ganze Baum wird zu einer einzelnen Karte. Die Rückseite der Karte zeigt ein
 ## Grenzen im kostenlosen Plan
 
 - **3 gespeicherte Maps.** Das Löschen einer Map macht sofort einen Platz frei; es gibt kein monatliches Fenster.
-- **50 Knoten pro Map.** Der Editor zeigt eine Meldung, wenn du das Limit erreichst. Kostenpflichtige Konten haben kein Knotenlimit.
+- **50 Knoten pro Map.** Der Editor zeigt eine Meldung, wenn du das Limit erreichst. Abonnenten bekommen 250 Knoten pro Map, Lifetime und Auto-Sync haben kein Knotenlimit.
 
 ## Bilder in Knoten
 

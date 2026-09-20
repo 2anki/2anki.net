@@ -485,7 +485,7 @@ describe('McpToolsService.convertToDeck', () => {
       kind: 'error',
       code: 'monthly_limit',
       message:
-        "You've reached your free limit of 100 cards this month, so this deck wasn't created. Upgrade to Unlimited to keep converting, or wait for your limit to reset next month. Upgrade: https://2anki.net/pricing?from=mcp",
+        "You've reached your free limit of 100 cards this month, so this deck wasn't created. Upgrade to Pro to keep converting, or wait for your limit to reset next month. Upgrade: https://2anki.net/pricing?from=mcp",
       next_step: { upgrade_url: 'https://2anki.net/pricing?from=mcp' },
     });
     expect(trackMock).toHaveBeenCalledTimes(1);
@@ -1166,7 +1166,9 @@ describe('McpToolsService.photoToDeck', () => {
 
   it('surfaces a quota-exceeded error from the vision use case', async () => {
     const quotaError = Object.assign(
-      new Error('Free plan is 5 photos per month. Upgrade for unlimited.'),
+      new Error(
+        'Free plan is 5 photos per month. Paid plans include AI credits for more.'
+      ),
       { status: 429 }
     );
     const generateCards = jest.fn(async () => {

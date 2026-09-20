@@ -3,6 +3,10 @@ import type { ListBlockChildrenResponse } from '@notionhq/client/build/src/api-e
 
 import { BlocksCacheRepository } from './BlocksCacheRepository';
 
+function flushMicrotasks(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
 const knex = Knex({
   client: 'better-sqlite3',
   connection: { filename: ':memory:' },
@@ -99,6 +103,71 @@ describe('BlocksCacheRepository', () => {
 
     expect(JSON.parse(rowA.payload).results[0].id).toBe('a');
     expect(JSON.parse(rowB.payload).results[0].id).toBe('b');
+  });
+
+  it('get increments the fetch counter for the owner', async () => {
+    await repo.save({
+      id: 'page-1',
+      owner: 'user-a',
+      payload,
+      createdAt: '2024-01-01',
+      lastEditedAt: '2024-01-02',
+    });
+
+    await repo.get({
+      id: 'page-1',
+      owner: 'user-a',
+      lastEditedAt: '2024-01-01',
+    });
+    await flushMicrotasks();
+
+    const row = await knex('blocks')
+      .where({ object_id: 'page-1', owner: 'user-a' })
+      .first();
+    expect(row.fetch).toBe(2);
+  });
+
+  it('get returns the cached payload and warns when the counter update fails', async () => {
+    const failing = Knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await failing.schema.createTable('blocks', (table) => {
+      table.increments('id').primary();
+      table.string('owner').notNullable();
+      table.string('object_id').notNullable();
+      table.json('payload').notNullable();
+      table.integer('fetch').notNullable().defaultTo(0);
+      table.timestamp('created_at').notNullable();
+      table.timestamp('last_edited_time').notNullable();
+      table.unique(['object_id', 'owner']);
+    });
+    const failingRepo = new BlocksCacheRepository(failing);
+    await failingRepo.save({
+      id: 'page-1',
+      owner: 'user-a',
+      payload,
+      createdAt: '2024-01-01',
+      lastEditedAt: '2024-01-02',
+    });
+    await failing.schema.alterTable('blocks', (table) =>
+      table.dropColumn('fetch')
+    );
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await failingRepo.get({
+      id: 'page-1',
+      owner: 'user-a',
+      lastEditedAt: '2024-01-01',
+    });
+    await flushMicrotasks();
+
+    expect(result).toBe(JSON.stringify(payload));
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+    await failing.destroy();
   });
 
   it('get returns cached payload when lastEditedAt has not changed', async () => {

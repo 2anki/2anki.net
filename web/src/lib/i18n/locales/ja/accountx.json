@@ -94,15 +94,17 @@
     "signIn": "サインイン",
     "upgradeSubheading": "アップグレードして変換を続けましょう — 上限なし、待ち時間なし。",
     "payOnce": "一度の支払い — サブスクリプションなし",
-    "skipCap": "上限を完全に回避",
-    "unlimited": "無制限",
+    "skipCap": "月ごとのフラッシュカード上限を回避",
+    "unlimited": "Pro",
     "benefitUnlimited": "無制限のフラッシュカード",
     "benefitMultiple": "複数の変換を同時に実行",
     "benefitPdf": "PDF と大きな Notion エクスポート",
     "benefitCancel": "いつでもキャンセル可能",
-    "upgradeToUnlimited": "Unlimited にアップグレード",
+    "upgradeToUnlimited": "Pro にアップグレード",
     "checkoutError": "チェックアウトを開始できませんでした。もう一度お試しいただくか、support@2anki.net までメールしてください。",
-    "backToUpload": "アップロードに戻る"
+    "backToUpload": "アップロードに戻る",
+    "headline": "今月のカード {{limit}} 枚に達しました",
+    "pageTitle": "今月の上限に達しました | 2anki"
   },
   "emailChange": {
     "toggle": "メールアドレスを変更",

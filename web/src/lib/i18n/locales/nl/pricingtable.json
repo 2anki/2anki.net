@@ -46,12 +46,12 @@
       "answer": "Day Pass ({{dayPrice}}) heft de gratis limieten 24 uur lang op en bevat 300 AI-credits. Week Pass ({{weekPrice}}) geldt 7 dagen met 500 credits. Semester Pass ({{semesterPrice}}) geldt ongeveer 4 maanden met 1500 credits. Credits dekken AI-functies zoals flashcards, MCQ en foto naar deck; als ze op zijn, wordt je deck nog steeds zonder AI gemaakt. Alle zijn eenmalige betalingen, geen abonnement nodig."
     },
     "q3": {
-      "question": "Wat is het Unlimited-abonnement?",
-      "answer": "Unlimited verwijdert de limiet van 100 kaarten, voegt PDF-ondersteuning toe, laat je meerdere conversies tegelijk uitvoeren en bevat Anki-naar-Notion-imports tot 10.000 notities per import — allemaal zonder maandelijkse limiet. AI-functies draaien op 300 credits per maand; als ze op zijn, wordt je deck nog steeds zonder AI gemaakt. De prijzen staan op de kaarten hierboven."
+      "question": "Wat is het Pro-abonnement?",
+      "answer": "Pro verwijdert de limiet van 100 kaarten, voegt PDF-ondersteuning toe, laat je meerdere conversies tegelijk uitvoeren en bevat Anki-naar-Notion-imports tot 10.000 notities per import — allemaal zonder maandelijkse limiet. AI-functies draaien op 300 credits per maand; als ze op zijn, wordt je deck nog steeds zonder AI gemaakt. De prijzen staan op de kaarten hierboven."
     },
     "q4": {
       "question": "Is er een Lifetime-abonnement?",
-      "answer": "Niet meer. Lifetime is gesloten voor nieuwe leden. Als je al Lifetime hebt, blijven je toegang en alle functies precies hetzelfde. Voor een doorlopend plan gebruik je het Unlimited-plan op de kaarten hierboven."
+      "answer": "Niet meer. Lifetime is gesloten voor nieuwe leden. Als je al Lifetime hebt, blijven je toegang en alle functies precies hetzelfde. Voor een doorlopend plan gebruik je het Pro-plan op de kaarten hierboven."
     },
     "q5": {
       "question": "Kan ik altijd opzeggen?",
@@ -59,7 +59,7 @@
     },
     "q6": {
       "question": "Is er een app?",
-      "answer": "Ja — 2anki is gratis in de App Store voor iPhone, iPad en Mac, naast de webapp. Bestanden worden op het apparaat verwerkt. Dezelfde abonnementen gelden: Day Pass, Week Pass en Unlimited zijn beschikbaar als in-app-aankopen."
+      "answer": "Ja — 2anki is gratis in de App Store voor iPhone, iPad en Mac, naast de webapp. Bestanden worden op het apparaat verwerkt. Dezelfde abonnementen gelden: Day Pass, Week Pass en Pro zijn beschikbaar als in-app-aankopen."
     },
     "q7": {
       "question": "Wat gebeurt er met mijn decks als ik stop met betalen?",

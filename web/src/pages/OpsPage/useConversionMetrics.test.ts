@@ -32,7 +32,8 @@ describe('useConversionMetrics', () => {
       paid_blocked_by_plan_7d: 0,
       conversion_errors_7d_top_reasons: [],
       failed_conversions_weekly: [],
-      time_to_first_deck_median_minutes_30d: 42.5,
+      new_accounts_downloaded_24h_rate_30d: 54.4,
+      new_accounts_downloaded_after_signup_24h_rate_30d: 11.7,
       upload_to_download_rate_7d: 25,
     };
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({

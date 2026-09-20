@@ -27,9 +27,9 @@ describe('PricingFaq', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps the Unlimited answer price-neutral so it is true for every cohort', () => {
+  it('keeps the Pro answer price-neutral so it is true for every cohort', () => {
     const unlimited = PRICING_FAQ.find(
-      (item) => item.question === 'What is the Unlimited plan?'
+      (item) => item.question === 'What is the Pro plan?'
     );
     expect(unlimited?.answer).not.toMatch(/\$\d/);
     expect(unlimited?.answer).toContain('removes the 100-card limit');

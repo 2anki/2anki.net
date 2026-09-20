@@ -45,7 +45,7 @@ The Chat study assistant is part of every paid plan — Subscription, Day Pass, 
 
 |                | Free                         | Paid plans         |
 | -------------- | ---------------------------- | ------------------ |
-| Messages       | — (past chats stay readable) | Unlimited          |
+| Messages       | — (past chats stay readable) | Uses AI credits    |
 | Message length | —                            | 100 000 characters |
 
 ## Mind maps
@@ -60,7 +60,7 @@ Deleting a map frees a slot right away — there's no monthly window. See [Mind 
 
 ## Photo to deck
 
-Free accounts can turn 5 photos into decks per month. Subscription and Lifetime remove the cap. See [Photo to deck](/documentation/cards/photo-to-deck).
+Free accounts can turn 5 photos into decks per month. Subscription and Lifetime draw on AI credits instead of the free monthly count. See [Photo to deck](/documentation/cards/photo-to-deck).
 
 ## PDF print export
 
@@ -68,7 +68,7 @@ Free accounts get 1 PDF export per month. Subscription and Lifetime are unlimite
 
 ## Image occlusion
 
-Free accounts can build up to 3 images per deck. Subscription and Lifetime remove the cap. See [Image occlusion](/documentation/cards/image-occlusion).
+Free accounts can build up to 3 images per deck. Subscription and Lifetime allow up to 20 uploaded images at a time. See [Image occlusion](/documentation/cards/image-occlusion).
 
 ## Storage
 
@@ -102,7 +102,7 @@ Free covers the conversion paths most people need: drag in a file, get a deck ba
 | Anonymous file upload                            | ✓                  | ✓            | ✓          |
 | Account features (history, favorites, templates) | sign-in required   | ✓            | ✓          |
 | AI-generated flashcards (Claude)                 | —                  | ✓            | ✓          |
-| Chat (study assistant)                           | —                  | Unlimited    | Unlimited  |
+| Chat (study assistant)                           | —                  | AI credits   | AI credits |
 | Long-term deck storage                           | 24 h               | active sub   | indefinite |
 | Auto Sync (Notion → Anki)                        | —                  | by request   | ✓          |
 

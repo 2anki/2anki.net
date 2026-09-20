@@ -49,7 +49,7 @@ function buildJob(overrides: Partial<JobResponse> = {}): JobResponse {
 
 function getUpgradeButton() {
   return screen.getByRole('button', {
-    name: /Upgrade to Unlimited/,
+    name: /Upgrade to Pro/,
   });
 }
 
@@ -91,7 +91,7 @@ describe('PaywallBanner', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'This conversion was paused so the one you already started can finish. Upgrade to Unlimited to run several at once.'
+        'This conversion was paused so the one you already started can finish. Upgrade to Pro to run several at once.'
       )
     ).toBeInTheDocument();
     expect(getUpgradeButton()).toBeInTheDocument();
@@ -242,7 +242,7 @@ describe('PaywallBanner', () => {
     );
   });
 
-  it('starts an Unlimited checkout and redirects to the returned Stripe url', async () => {
+  it('starts a Pro checkout and redirects to the returned Stripe url', async () => {
     startUnlimitedCheckout.mockResolvedValue({
       url: 'https://checkout.stripe.test/session-123',
     });
