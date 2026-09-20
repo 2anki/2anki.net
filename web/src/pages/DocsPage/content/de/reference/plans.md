@@ -1,6 +1,6 @@
 ---
 title: Kurze Pläne und Pässe
-description: Day Pass und Week Pass — wann einmaliger Vollzugriff sinnvoll ist.
+description: Day Pass und Week Pass — wann ein einmaliger Pass sinnvoll ist.
 ---
 
 Die meisten nutzen Free oder ein monatliches Subscription. Aber zwei kurze Optionen gibt es für den Fall, dass keins davon passt — ein Deck fürs Wochenende oder eine einmalige Pauk-Sitzung.
@@ -9,22 +9,22 @@ Für die vollständige Planliste und Preise siehe die [Preisseite](/pricing).
 
 ## Day Pass — $6
 
-24 Stunden Vollzugriff, einmalig bezahlt.
+24 Stunden Pro-Funktionen mit 300 KI-Credits, einmalig bezahlt.
 
 - **Dauer:** 24 Stunden ab Kauf.
 - **Kosten:** $6, einmalig.
-- **Was du bekommst:** Unbegrenzte Konvertierungen, jedes Upload-Format (`.zip`, `.html`, `.md`, `.csv`, `.apkg`), Image Occlusion, eigene Kartenvorlagen.
+- **Was du bekommst:** Unbegrenzte Konvertierungen, jedes Upload-Format (`.zip`, `.html`, `.md`, `.csv`, `.apkg`), Image Occlusion, eigene Kartenvorlagen und 300 KI-Credits.
 - **Wo:** **Day Pass** auf der [Preisseite](/pricing).
 
 Nutze das, wenn du ein Wochenende voller Karten zu bauen hast und keine wiederkehrende Belastung willst.
 
 ## Week Pass — $12
 
-7 Tage Vollzugriff, einmalig bezahlt.
+7 Tage Pro-Funktionen mit 500 KI-Credits, einmalig bezahlt.
 
 - **Dauer:** 7 Tage ab Kauf.
 - **Kosten:** $12, einmalig.
-- **Was du bekommst:** derselbe Funktionsumfang wie der Day Pass.
+- **Was du bekommst:** derselbe Funktionsumfang wie der Day Pass, mit 500 KI-Credits.
 - **Wo:** **Week Pass** auf der [Preisseite](/pricing).
 
 Nutze das, wenn du eine Woche hast, um dich auf eine Prüfung vorzubereiten, oder einen Sprint, um einen Stapel Notizen zu digitalisieren.

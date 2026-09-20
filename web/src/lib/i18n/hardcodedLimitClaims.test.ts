@@ -80,4 +80,14 @@ describe('hardcoded limit claims', () => {
     }
     expect(offenders).toEqual([]);
   });
+
+  it.each([
+    'index.html',
+    'public/llms.txt',
+    'src/pages/DocsPage/content/reference/plans.md',
+    'src/pages/DocsPage/content/de/reference/plans.md',
+  ])('%s names what a pass includes instead of "full access"', (file) => {
+    const text = readFileSync(join(WEB_ROOT, file), 'utf8');
+    expect(text).not.toMatch(/full\s+access|Vollzugriff/i);
+  });
 });
