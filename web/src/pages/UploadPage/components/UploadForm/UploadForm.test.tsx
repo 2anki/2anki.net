@@ -1389,6 +1389,60 @@ describe('UploadForm analytics events', () => {
     });
   });
 
+  it('reports a network failure on the upload to the ops error log', async () => {
+    const errorLogFetch = vi.fn(() => Promise.resolve(new Response(null)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        url === '/api/events/errors'
+          ? errorLogFetch()
+          : Promise.reject(new TypeError('Failed to fetch'))
+      )
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    await waitFor(() => expect(errorLogFetch).toHaveBeenCalledOnce());
+    const [, init] = vi
+      .mocked(globalThis.fetch)
+      .mock.calls.find(([url]) => url === '/api/events/errors') as [
+      string,
+      RequestInit,
+    ];
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      message: 'Upload network failure (unknown type, unknown size)',
+    });
+  });
+
+  it('does not report a non-network upload error to the ops error log', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('Unexpected'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.map(([url]) => url)).not.toContain(
+        '/api/events/errors'
+      )
+    );
+  });
+
   it('tracks upload_failed with reason=other when fetch throws a non-network Error', async () => {
     const { track } = await import('../../../../lib/analytics/track');
     const trackMock = vi.mocked(track);

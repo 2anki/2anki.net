@@ -46,6 +46,7 @@ import { AI_CREDITS_QUERY_KEY } from '../../../../lib/hooks/useAiCredits';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
+import { reportUploadNetworkFailure } from '../../../../lib/reportClientError';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { PostDownloadNudge } from '../../../../components/PostDownloadNudge';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
@@ -812,6 +813,7 @@ function UploadForm({
 
   const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
+    const submittedAt = Date.now();
     setZoneState('converting');
     fireAnalyticsEvent('upload_started');
     setProgressWidth(10);
@@ -879,19 +881,30 @@ function UploadForm({
       const isNetworkError =
         error instanceof TypeError ||
         (error instanceof Error && /fetch|network/i.test(error.message));
+      const failedFile = fileInputRef.current?.files?.[0];
+      const failedFileName = failedFile?.name ?? '';
+      const extensionStart = failedFileName.lastIndexOf('.');
+      const fileExt =
+        extensionStart >= 0
+          ? failedFileName.slice(extensionStart).toLowerCase()
+          : null;
+      const fileSizeBytes = failedFile?.size ?? null;
       track('upload_failed', {
         reason: isNetworkError ? 'network' : 'other',
         message: (error instanceof Error ? error.message : String(error)).slice(
           0,
           200
         ),
-        fileSizeBytes: fileInputRef.current?.files?.[0]?.size ?? null,
-        fileExt: (() => {
-          const name = fileInputRef.current?.files?.[0]?.name ?? '';
-          const dot = name.lastIndexOf('.');
-          return dot >= 0 ? name.slice(dot).toLowerCase() : null;
-        })(),
+        fileSizeBytes,
+        fileExt,
       });
+      if (isNetworkError) {
+        reportUploadNetworkFailure(error, {
+          fileExt,
+          fileSizeBytes,
+          elapsedMs: Date.now() - submittedAt,
+        });
+      }
       setLocalError(toFriendlyThrownError(error));
       setZoneState('error');
       return false;
