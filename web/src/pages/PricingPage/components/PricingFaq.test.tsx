@@ -40,8 +40,8 @@ describe('PricingFaq', () => {
       (item) => item.question === 'Is there a one-time payment option?'
     );
     expect(passes?.answer).toContain('includes 300 AI credits');
-    expect(passes?.answer).toContain('500 credits');
-    expect(passes?.answer).toContain('1500 credits');
+    expect(passes?.answer).toContain('with 500 credits');
+    expect(passes?.answer).toContain('with 1500 credits');
     expect(passes?.answer).not.toMatch(/full access/i);
   });
 
