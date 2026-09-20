@@ -1,7 +1,10 @@
 import Knex from 'knex';
 import type { ListBlockChildrenResponse } from '@notionhq/client/build/src/api-endpoints';
 
-import { BlocksCacheRepository } from './BlocksCacheRepository';
+import {
+  BlocksCacheRepository,
+  incrementFetchCounter,
+} from './BlocksCacheRepository';
 
 function flushMicrotasks(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));
@@ -205,5 +208,47 @@ describe('BlocksCacheRepository', () => {
     });
 
     expect(result).toBeUndefined();
+  });
+});
+
+describe('BlocksCacheRepository fetch counter SQL', () => {
+  const postgres = Knex({ client: 'pg' });
+
+  afterAll(() => postgres.destroy());
+
+  it('quotes the reserved word fetch on both sides of the increment for Postgres', () => {
+    const sql = postgres('blocks')
+      .where({ object_id: 'page-1', owner: 'owner-1' })
+      .update({ fetch: incrementFetchCounter(postgres) })
+      .toString();
+
+    expect(sql).toBe(
+      `update "blocks" set "fetch" = "fetch" + 1 where "object_id" = 'page-1' and "owner" = 'owner-1'`
+    );
+  });
+
+  it('emits the increment through the same helper when a cached page is read', async () => {
+    const statements: string[] = [];
+    const listener = (query: { sql: string }) => statements.push(query.sql);
+    knex.on('query', listener);
+    await knex('blocks').insert({
+      owner: 'owner-sql',
+      object_id: 'page-sql',
+      payload: JSON.stringify({ results: [] }),
+      fetch: 1,
+      created_at: new Date('2026-01-01T00:00:00Z'),
+      last_edited_time: new Date('2026-01-01T00:00:00Z'),
+    });
+
+    await new BlocksCacheRepository(knex).get({
+      id: 'page-sql',
+      owner: 'owner-sql',
+      lastEditedAt: '2026-01-01T00:00:00.000Z',
+    });
+    await flushMicrotasks();
+    knex.removeListener('query', listener);
+
+    const update = statements.find((sql) => sql.startsWith('update'));
+    expect(update).toContain('`fetch` = `fetch` + 1');
   });
 });

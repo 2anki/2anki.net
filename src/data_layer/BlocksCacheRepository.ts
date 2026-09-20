@@ -24,6 +24,12 @@ export interface IBlocksCacheRepository {
   save(entry: BlocksCacheSave): Promise<void>;
 }
 
+// `fetch` is a reserved word in Postgres, so the right-hand side must be a
+// quoted identifier; the bare form is a syntax error that SQLite accepts.
+export function incrementFetchCounter(database: Knex): Knex.Raw {
+  return database.raw('?? + 1', ['fetch']);
+}
+
 export class BlocksCacheRepository implements IBlocksCacheRepository {
   private readonly table = 'blocks';
 
@@ -47,7 +53,7 @@ export class BlocksCacheRepository implements IBlocksCacheRepository {
   private bumpFetch(id: string, owner: string): void {
     void this.database(this.table)
       .where({ object_id: id, owner })
-      .update({ fetch: this.database.raw('fetch + 1') })
+      .update({ fetch: incrementFetchCounter(this.database) })
       .then(undefined, (error: unknown) => {
         console.warn(
           '[blocks-cache] fetch counter update failed:',
