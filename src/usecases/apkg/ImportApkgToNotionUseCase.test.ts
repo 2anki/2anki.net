@@ -1,3 +1,13 @@
+jest.mock('../../services/events/eventsSinkInstance', () => {
+  const recorded: unknown[] = [];
+  return {
+    getEventsSink: () => ({
+      record: jest.fn((row: unknown) => recorded.push(row)),
+    }),
+    __recorded: recorded,
+  };
+});
+
 import ImportApkgToNotionUseCase from './ImportApkgToNotionUseCase';
 import ApkgPreviewService from '../../services/ApkgPreviewService/ApkgPreviewService';
 import ApkgToNotionBlocksService from '../../services/ApkgToNotionBlocksService';
@@ -526,5 +536,75 @@ describe('ImportApkgToNotionUseCase', () => {
     const pageNames = notionApi.createPage.mock.calls.map((c) => c[1]);
     expect(pageNames).toContain('Parent');
     expect(pageNames).toContain('Child');
+  });
+
+  describe('usage event', () => {
+    function recordedEvents(): Array<Record<string, unknown>> {
+      return (
+        jest.requireMock('../../services/events/eventsSinkInstance') as {
+          __recorded: Array<Record<string, unknown>>;
+        }
+      ).__recorded;
+    }
+
+    beforeEach(() => {
+      recordedEvents().length = 0;
+    });
+
+    it('records apkg_imported with the note count when the import finishes', async () => {
+      previewService.parse.mockResolvedValue(makeParsed(3));
+
+      await useCase.execute(
+        Buffer.from('fake'),
+        'parent-page',
+        '42',
+        notionApi,
+        'job-1',
+        { maxNotes: 10000 }
+      );
+
+      expect(recordedEvents()).toEqual([
+        expect.objectContaining({
+          name: 'apkg_imported',
+          user_id: 42,
+          anonymous_id: null,
+          props: { note_count: 3, truncated: false },
+        }),
+      ]);
+    });
+
+    it('marks a truncated import in the event props', async () => {
+      previewService.parse.mockResolvedValue(makeParsed(5));
+
+      await useCase.execute(
+        Buffer.from('fake'),
+        'parent-page',
+        '42',
+        notionApi,
+        'job-1',
+        { isPaying: false, maxNotes: 2 }
+      );
+
+      expect(recordedEvents()).toEqual([
+        expect.objectContaining({
+          props: { note_count: 2, truncated: true },
+        }),
+      ]);
+    });
+
+    it('records nothing when the import fails', async () => {
+      previewService.parse.mockRejectedValue(new Error('corrupt collection'));
+
+      await useCase.execute(
+        Buffer.from('fake'),
+        'parent-page',
+        '42',
+        notionApi,
+        'job-1',
+        { maxNotes: 10000 }
+      );
+
+      expect(recordedEvents()).toEqual([]);
+    });
   });
 });

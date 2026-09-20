@@ -134,6 +134,7 @@ export const KNOWN_EVENTS = new Set([
   'ankify_decklist_sorted',
   'empty_back_notice_shown',
   'thin_deck_notice_shown',
+  'mindmap_created',
   'mindmap_export_excluded_nodes',
   'ai_usage_recorded',
   'email_delivery_event',

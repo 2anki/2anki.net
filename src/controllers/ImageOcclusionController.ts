@@ -8,6 +8,7 @@ import {
 } from '../usecases/imageOcclusion/CreateImageOcclusionDeckUseCase';
 import { HttpCodedError } from '../lib/errors/HttpCodedError';
 import { buildContentDisposition } from '../lib/buildContentDisposition';
+import { getEventsSink } from '../services/events/eventsSinkInstance';
 
 interface RawPoint {
   x: unknown;
@@ -117,6 +118,17 @@ class ImageOcclusionController {
     } finally {
       for (const f of uploadedFiles) fs.unlink(f.path, () => undefined);
     }
+    const owner = res.locals['owner'];
+    getEventsSink().record({
+      name: 'image_occlusion_created',
+      user_id: owner == null ? null : Number(owner),
+      anonymous_id: null,
+      props: {
+        image_count: images.length,
+        occlusion_count: images.reduce((sum, img) => sum + img.rects.length, 0),
+      },
+      created_at: new Date(),
+    });
     res.setHeader(
       'Content-Disposition',
       buildContentDisposition(path.basename(apkgPath))

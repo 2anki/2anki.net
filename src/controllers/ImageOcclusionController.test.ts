@@ -1,4 +1,18 @@
 import express from 'express';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { PassThrough } from 'node:stream';
+
+jest.mock('../services/events/eventsSinkInstance', () => {
+  const recorded: unknown[] = [];
+  return {
+    getEventsSink: () => ({
+      record: jest.fn((row: unknown) => recorded.push(row)),
+    }),
+    __recorded: recorded,
+  };
+});
 
 import ImageOcclusionController from './ImageOcclusionController';
 import { CreateImageOcclusionDeckUseCase } from '../usecases/imageOcclusion/CreateImageOcclusionDeckUseCase';
@@ -76,5 +90,76 @@ describe('ImageOcclusionController.create', () => {
       'python exploded'
     );
     expect(status).not.toHaveBeenCalledWith(403);
+  });
+
+  describe('usage event', () => {
+    function recordedEvents(): Array<Record<string, unknown>> {
+      return (
+        jest.requireMock('../services/events/eventsSinkInstance') as {
+          __recorded: Array<Record<string, unknown>>;
+        }
+      ).__recorded;
+    }
+
+    function buildStreamingResponse(owner?: string) {
+      const stream = new PassThrough();
+      stream.resume();
+      Object.assign(stream, { setHeader: jest.fn(), locals: { owner } });
+      return stream as unknown as express.Response;
+    }
+
+    beforeEach(() => {
+      recordedEvents().length = 0;
+    });
+
+    it('records image_occlusion_created with the image and occlusion counts', async () => {
+      const apkgPath = path.join(os.tmpdir(), `io-test-${Date.now()}.apkg`);
+      fs.writeFileSync(apkgPath, 'deck');
+      const controller = new ImageOcclusionController({
+        execute: jest.fn().mockResolvedValue(apkgPath),
+      } as unknown as CreateImageOcclusionDeckUseCase);
+
+      await controller.create(buildRequest(2), buildStreamingResponse('42'));
+
+      expect(recordedEvents()).toEqual([
+        expect.objectContaining({
+          name: 'image_occlusion_created',
+          user_id: 42,
+          anonymous_id: null,
+          props: { image_count: 2, occlusion_count: 2 },
+        }),
+      ]);
+    });
+
+    it('records a guest build without a user id', async () => {
+      const apkgPath = path.join(
+        os.tmpdir(),
+        `io-test-guest-${Date.now()}.apkg`
+      );
+      fs.writeFileSync(apkgPath, 'deck');
+      const controller = new ImageOcclusionController({
+        execute: jest.fn().mockResolvedValue(apkgPath),
+      } as unknown as CreateImageOcclusionDeckUseCase);
+
+      await controller.create(buildRequest(1), buildStreamingResponse());
+
+      expect(recordedEvents()).toEqual([
+        expect.objectContaining({
+          name: 'image_occlusion_created',
+          user_id: null,
+        }),
+      ]);
+    });
+
+    it('records nothing when the free-tier cap refuses the build', async () => {
+      const controller = new ImageOcclusionController({
+        execute: jest.fn().mockRejectedValue(new ImageLimitError(3)),
+      } as unknown as CreateImageOcclusionDeckUseCase);
+      const { res } = buildResponse();
+
+      await controller.create(buildRequest(4), res);
+
+      expect(recordedEvents()).toEqual([]);
+    });
   });
 });
