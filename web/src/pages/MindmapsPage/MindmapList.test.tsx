@@ -77,6 +77,7 @@ describe('MindmapList', () => {
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith('/mindmaps/m2')
     );
+    expect(mockTrack).toHaveBeenCalledTimes(1);
     expect(mockTrack).toHaveBeenCalledWith('mindmap_created');
   });
 

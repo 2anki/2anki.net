@@ -592,6 +592,23 @@ describe('ImportApkgToNotionUseCase', () => {
       ]);
     });
 
+    it('records a non-numeric owner as no user so it cannot poison the event batch', async () => {
+      previewService.parse.mockResolvedValue(makeParsed(1));
+
+      await useCase.execute(
+        Buffer.from('fake'),
+        'parent-page',
+        'user-1',
+        notionApi,
+        'job-1',
+        { maxNotes: 10000 }
+      );
+
+      expect(recordedEvents()).toEqual([
+        expect.objectContaining({ user_id: null }),
+      ]);
+    });
+
     it('records nothing when the import fails', async () => {
       previewService.parse.mockRejectedValue(new Error('corrupt collection'));
 

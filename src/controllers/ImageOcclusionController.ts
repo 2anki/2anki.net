@@ -9,6 +9,7 @@ import {
 import { HttpCodedError } from '../lib/errors/HttpCodedError';
 import { buildContentDisposition } from '../lib/buildContentDisposition';
 import { getEventsSink } from '../services/events/eventsSinkInstance';
+import { getOwnerId } from '../lib/User/getOwner';
 
 interface RawPoint {
   x: unknown;
@@ -118,10 +119,9 @@ class ImageOcclusionController {
     } finally {
       for (const f of uploadedFiles) fs.unlink(f.path, () => undefined);
     }
-    const owner = res.locals['owner'];
     getEventsSink().record({
       name: 'image_occlusion_created',
-      user_id: owner == null ? null : Number(owner),
+      user_id: getOwnerId(res),
       anonymous_id: null,
       props: {
         image_count: images.length,

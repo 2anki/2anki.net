@@ -151,6 +151,20 @@ describe('ImageOcclusionController.create', () => {
       ]);
     });
 
+    it('records a non-numeric owner as no user so it cannot poison the event batch', async () => {
+      const apkgPath = path.join(os.tmpdir(), `io-test-nan-${Date.now()}.apkg`);
+      fs.writeFileSync(apkgPath, 'deck');
+      const controller = new ImageOcclusionController({
+        execute: jest.fn().mockResolvedValue(apkgPath),
+      } as unknown as CreateImageOcclusionDeckUseCase);
+
+      await controller.create(buildRequest(1), buildStreamingResponse('abc'));
+
+      expect(recordedEvents()).toEqual([
+        expect.objectContaining({ user_id: null }),
+      ]);
+    });
+
     it('records nothing when the free-tier cap refuses the build', async () => {
       const controller = new ImageOcclusionController({
         execute: jest.fn().mockRejectedValue(new ImageLimitError(3)),

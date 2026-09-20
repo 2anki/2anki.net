@@ -192,9 +192,10 @@ export default class ImportApkgToNotionUseCase {
         })
       );
 
+      const ownerId = Number(owner);
       getEventsSink().record({
         name: 'apkg_imported',
-        user_id: Number(owner),
+        user_id: Number.isFinite(ownerId) ? ownerId : null,
         anonymous_id: null,
         props: {
           note_count: result.importedNotes,
