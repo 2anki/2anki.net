@@ -41,6 +41,7 @@ const CAPPED_FEATURE_STRINGS: Array<[string, string]> = [
   ['tools', 'occlusion.paywallImages'],
   ['tools', 'occlusion.upgradeToAddMore'],
   ['tools', 'occlusion.upgradeToAddMoreImages'],
+  ['common', 'pricing.pass.imageOcclusion'],
   ['marketing', 'nativeApp.faq1A'],
 ];
 

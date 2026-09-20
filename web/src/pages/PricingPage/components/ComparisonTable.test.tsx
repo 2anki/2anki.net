@@ -39,6 +39,18 @@ describe('ComparisonTable', () => {
     expect(screen.getAllByText('Unlimited').length).toBeGreaterThan(0);
   });
 
+  it('shows the paid image occlusion allowance as 20 images, not unlimited', () => {
+    render(<ComparisonTable unlimitedMonthlyPrice="$7.99" />);
+    const row = screen.getByText('Image occlusion').closest('tr');
+    expect(row).not.toBeNull();
+    const cells = within(row as HTMLElement).getAllByRole('cell');
+    expect(cells.map((cell) => cell.textContent)).toEqual([
+      '3 images',
+      '20 images',
+      '20 images',
+    ]);
+  });
+
   it('groups rows under category headers including AI', () => {
     render(<ComparisonTable unlimitedMonthlyPrice="$7.99" />);
     expect(

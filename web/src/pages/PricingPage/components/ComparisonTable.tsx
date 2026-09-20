@@ -107,7 +107,11 @@ export function ComparisonTable({
       rows: [
         {
           label: t('rows.imageOcclusion'),
-          values: [t('cells.imagesQty'), unlimited, unlimited],
+          values: [
+            t('cells.imagesQty'),
+            t('cells.imagesPaid'),
+            t('cells.imagesPaid'),
+          ],
         },
         {
           label: t('rows.mindMaps'),

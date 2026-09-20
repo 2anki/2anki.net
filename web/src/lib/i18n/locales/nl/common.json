@@ -405,7 +405,7 @@
       "aiPhoto": "AI-flashcards en foto naar deck",
       "everyFormat": "Elk bestandsformaat — PDF, Word, EPUB en meer",
       "nativeApkg": "Native .apkg — werkt in elke Anki-client",
-      "imageOcclusion": "Onbeperkte image occlusion",
+      "imageOcclusion": "Image occlusion met maximaal 20 afbeeldingen tegelijk",
       "mostPopular": "Meest gekozen",
       "day24": "— 24 uur",
       "week1": "— 1 week",
@@ -449,7 +449,7 @@
     },
     "features": {
       "heading": "Alles wat 2anki doet",
-      "subheading": "Elk abonnement bevat alles, gratis inbegrepen. Betaalde abonnementen halen de limieten weg.",
+      "subheading": "Elk abonnement bevat alles, gratis inbegrepen. Betaalde abonnementen verhogen de limieten.",
       "notionToAnkiTitle": "Notion → Anki",
       "notionToAnkiDesc": "Zet Notion-pagina's en exports om in decks",
       "ankiToNotionTitle": "Anki → Notion",
