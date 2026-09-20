@@ -78,6 +78,7 @@ import { getEventsSink } from './services/events/eventsSinkInstance';
 
 import { getDatabase, setupDatabase } from './data_layer';
 import { bootstrapBackgroundJobs } from './app/bootstrapBackgroundJobs';
+import { applyHttpServerTimeouts } from './lib/httpServerTimeouts';
 import JobRepository from './data_layer/JobRepository';
 import { MagicTokenRepository } from './data_layer/MagicTokenRepository';
 import TokenRepository from './data_layer/TokenRepository';
@@ -159,6 +160,7 @@ const serve = async () => {
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
   const server = http.createServer(app);
+  applyHttpServerTimeouts(server);
 
   app.use(webhookRouter());
   app.use(ankifyWebhookRouter());
