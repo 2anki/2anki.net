@@ -231,22 +231,25 @@ describe('BlocksCacheRepository fetch counter SQL', () => {
     const statements: string[] = [];
     const listener = (query: { sql: string }) => statements.push(query.sql);
     knex.on('query', listener);
-    await knex('blocks').insert({
-      owner: 'owner-sql',
-      object_id: 'page-sql',
-      payload: JSON.stringify({ results: [] }),
-      fetch: 1,
-      created_at: new Date('2026-01-01T00:00:00Z'),
-      last_edited_time: new Date('2026-01-01T00:00:00Z'),
-    });
+    try {
+      await knex('blocks').insert({
+        owner: 'owner-sql',
+        object_id: 'page-sql',
+        payload: JSON.stringify({ results: [] }),
+        fetch: 1,
+        created_at: new Date('2026-01-01T00:00:00Z'),
+        last_edited_time: new Date('2026-01-01T00:00:00Z'),
+      });
 
-    await new BlocksCacheRepository(knex).get({
-      id: 'page-sql',
-      owner: 'owner-sql',
-      lastEditedAt: '2026-01-01T00:00:00.000Z',
-    });
-    await flushMicrotasks();
-    knex.removeListener('query', listener);
+      await new BlocksCacheRepository(knex).get({
+        id: 'page-sql',
+        owner: 'owner-sql',
+        lastEditedAt: '2026-01-01T00:00:00.000Z',
+      });
+      await flushMicrotasks();
+    } finally {
+      knex.removeListener('query', listener);
+    }
 
     const update = statements.find((sql) => sql.startsWith('update'));
     expect(update).toContain('`fetch` = `fetch` + 1');
