@@ -68,7 +68,7 @@ Free accounts get 1 PDF export per month. Subscription and Lifetime are unlimite
 
 ## Image occlusion
 
-Free accounts can build up to 3 images per deck. Subscription and Lifetime remove the cap. See [Image occlusion](/documentation/cards/image-occlusion).
+Free accounts can build up to 3 images per deck. Subscription and Lifetime allow up to 20 uploaded images at a time. See [Image occlusion](/documentation/cards/image-occlusion).
 
 ## Storage
 

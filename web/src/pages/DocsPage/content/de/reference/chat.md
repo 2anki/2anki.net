@@ -58,10 +58,10 @@ Der gleiche Rat, der für [KI-Karteikarten](/documentation/cards/ai-flashcards) 
 
 ## Unterhaltungsgrenzen
 
-|                  | Free                               | Bezahlte Pläne  |
-| ---------------- | ---------------------------------- | --------------- |
-| Nachrichten      | — (bisherige Chats bleiben lesbar) | Unbegrenzt      |
-| Nachrichtenlänge | —                                  | 100 000 Zeichen |
+|                  | Free                               | Bezahlte Pläne   |
+| ---------------- | ---------------------------------- | ---------------- |
+| Nachrichten      | — (bisherige Chats bleiben lesbar) | Nutzt KI-Credits |
+| Nachrichtenlänge | —                                  | 100 000 Zeichen  |
 
 Siehe [Grenzen und Kontingente](/documentation/help/limits) für die vollständige Plantabelle.
 

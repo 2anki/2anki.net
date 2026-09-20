@@ -116,8 +116,8 @@ function getLimitDescription(
 ): string {
   if (kind === 'file_size') {
     if (context === 'anonymous')
-      return 'Create a free account to convert files of any size, or split the file and try again.';
-    return 'Split the file, or upgrade to convert files of any size.';
+      return 'Files over 100 MB need a paid plan. Split the file and try again, or create an account and upgrade for uploads up to about 10 GB.';
+    return 'Split the file, or upgrade for uploads up to about 10 GB.';
   }
   if (context === 'anonymous')
     return 'Create a free account to start converting, or upgrade for no monthly cap.';
