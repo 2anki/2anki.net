@@ -1,16 +1,16 @@
 import { Knex } from 'knex';
 
-export interface ReturnRateWindow {
-  '7d': number | null;
-  '14d': number | null;
-  '30d': number | null;
-}
+const WINDOWS = [
+  { key: '7d', days: 7 },
+  { key: '14d', days: 14 },
+  { key: '30d', days: 30 },
+] as const;
 
-export interface ReturnRateEligible {
-  '7d': number;
-  '14d': number;
-  '30d': number;
-}
+type WindowKey = (typeof WINDOWS)[number]['key'];
+
+export type ReturnRateWindow = Record<WindowKey, number | null>;
+
+export type ReturnRateEligible = Record<WindowKey, number>;
 
 export interface ReturnRateBySourceType {
   source_type: string;
@@ -41,14 +41,6 @@ const MIN_RETURN_GAP_MS = 24 * MS_PER_HOUR;
 const COHORT_DAYS = 90;
 const PRIOR_ACTIVITY_BUFFER_DAYS = 30;
 const UNKNOWN_SOURCE = 'unknown';
-
-const WINDOWS = [
-  { key: '7d', days: 7 },
-  { key: '14d', days: 14 },
-  { key: '30d', days: 30 },
-] as const;
-
-type WindowKey = (typeof WINDOWS)[number]['key'];
 
 // The ops page auto-refreshes; a query that outlives the refresh interval
 // stacks concurrent copies until the pool starves (#4049 — eight 4-minute

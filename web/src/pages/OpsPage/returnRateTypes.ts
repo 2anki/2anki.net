@@ -16,9 +16,6 @@ export interface ReturnRateBySourceType {
   eligible_7d: number;
   eligible_14d: number;
   eligible_30d: number;
-  returned_7d: number;
-  returned_14d: number;
-  returned_30d: number;
   return_rate_7d_pct: number | null;
   return_rate_14d_pct: number | null;
   return_rate_30d_pct: number | null;
