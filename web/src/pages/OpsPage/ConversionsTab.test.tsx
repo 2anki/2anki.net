@@ -37,7 +37,8 @@ const buildSampleMetrics = (
     week: `2026-02-${String((i % 28) + 1).padStart(2, '0')}`,
     count: i % 4,
   })),
-  time_to_first_deck_median_minutes_30d: 42,
+  new_accounts_downloaded_24h_rate_30d: 54.4,
+  new_accounts_downloaded_after_signup_24h_rate_30d: 11.7,
   upload_to_download_rate_7d: 25.4,
   deck_quality_cohorts_30d: null,
   ...overrides,
@@ -93,30 +94,29 @@ describe('ConversionsTab', () => {
 
     renderTab();
 
-    await waitFor(() => expect(screen.getByText('42 min')).toBeInTheDocument());
-    expect(screen.getByText('Time to first deck')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('54.4%')).toBeInTheDocument());
     expect(
-      screen.getByText('Median, accounts created in the last 30 days')
+      screen.getByText('Downloaded within 24h of signup')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'New accounts from the last 30 days that are at least a day old. Includes the deck made before signing up.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText('11.7%')).toBeInTheDocument();
+    expect(
+      screen.getByText('Made a deck after signing up')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'A download 10 minutes or more after signup, within 24h of it.'
+      )
     ).toBeInTheDocument();
     expect(screen.getByText('Upload → download rate')).toBeInTheDocument();
     expect(screen.getByText('25.4%')).toBeInTheDocument();
     expect(
       screen.getByText('Distinct visitors, last 7 days')
     ).toBeInTheDocument();
-  });
-
-  test('formats a multi-hour median in hours', async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      json: async () =>
-        buildSampleMetrics({ time_to_first_deck_median_minutes_30d: 150 }),
-    });
-
-    renderTab();
-
-    await waitFor(() => expect(screen.getByText('2.5 h')).toBeInTheDocument());
   });
 
   test('renders em-dash for null funnel metrics', async () => {
@@ -126,7 +126,8 @@ describe('ConversionsTab', () => {
       statusText: 'OK',
       json: async () =>
         buildSampleMetrics({
-          time_to_first_deck_median_minutes_30d: null,
+          new_accounts_downloaded_24h_rate_30d: null,
+          new_accounts_downloaded_after_signup_24h_rate_30d: null,
           upload_to_download_rate_7d: null,
         }),
     });
@@ -134,7 +135,7 @@ describe('ConversionsTab', () => {
     renderTab();
 
     await waitFor(() => expect(screen.getByText('824')).toBeInTheDocument());
-    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(3);
   });
 
   test('renders failure panel titles', async () => {

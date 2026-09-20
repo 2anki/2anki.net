@@ -15,7 +15,10 @@ export interface ConversionOutcomeCounts {
 }
 
 export interface IEventsMetricsRepository {
-  medianMinutesToFirstDeck(cohortStart: Date): Promise<number | null>;
+  newAccountDownloads(
+    cohortStart: Date,
+    cohortEnd: Date
+  ): Promise<NewAccountDownloadCounts | null>;
   uploadToDownloadRate(since: Date): Promise<number | null>;
   conversionOutcomes(
     since: Date,
@@ -47,9 +50,22 @@ export interface PaidValueEventRow {
 
 type PostgresNumeric = number | string | null;
 
-export interface MedianMinutesRow {
-  median_minutes: PostgresNumeric;
+export interface NewAccountDownloadsRow {
+  accounts: PostgresNumeric;
+  downloaded_24h: PostgresNumeric;
+  downloaded_after_signup: PostgresNumeric;
 }
+
+export interface NewAccountDownloadCounts {
+  accounts: number;
+  downloadedWithin24h: number;
+  downloadedAfterSignup: number;
+}
+
+// Nearly every signup's first download lands within minutes, because the deck
+// they made before signing up downloads the moment they sign in. Anything past
+// this many minutes is a deck made after signing up.
+const HELD_DECK_DOWNLOAD_MINUTES = 10;
 
 export interface UploadToDownloadRateRow {
   uploaders: number | string;
@@ -83,11 +99,15 @@ export function mapConversionOutcomesRow(
   };
 }
 
-export function mapMedianMinutesRow(
-  row: MedianMinutesRow | undefined
-): number | null {
-  if (row?.median_minutes == null) return null;
-  return Number(row.median_minutes);
+export function mapNewAccountDownloadsRow(
+  row: NewAccountDownloadsRow | undefined
+): NewAccountDownloadCounts | null {
+  if (row == null) return null;
+  return {
+    accounts: Number(row.accounts),
+    downloadedWithin24h: Number(row.downloaded_24h),
+    downloadedAfterSignup: Number(row.downloaded_after_signup),
+  };
 }
 
 export function mapUploadToDownloadRateRow(
@@ -125,40 +145,52 @@ export class EventsMetricsRepository
     };
   }
 
-  buildMedianMinutesToFirstDeckQuery(cohortStart: Date): Knex.QueryBuilder {
+  buildNewAccountDownloadsQuery(
+    cohortStart: Date,
+    cohortEnd: Date
+  ): Knex.QueryBuilder {
     const accounts = this.database('events')
       .select('user_id')
       .min('created_at as account_at')
       .where('name', 'account_created')
       .where('created_at', '>=', cohortStart)
+      .where('created_at', '<=', cohortEnd)
       .whereNotNull('user_id')
       .groupBy('user_id')
       .as('accounts');
-
-    const downloads = this.database('events')
-      .select('user_id')
-      .min('created_at as first_download_at')
-      .where('name', 'deck_downloaded')
-      .whereNotNull('user_id')
-      .groupBy('user_id')
-      .as('downloads');
+    const database = this.database;
 
     return this.database
       .from(accounts)
-      .join(downloads, 'downloads.user_id', 'accounts.user_id')
-      .whereRaw('downloads.first_download_at >= accounts.account_at')
+      .leftJoin('events as downloads', function () {
+        this.on('downloads.user_id', 'accounts.user_id')
+          .andOnVal('downloads.name', 'deck_downloaded')
+          .andOn('downloads.created_at', '>=', 'accounts.account_at')
+          .andOn(
+            database.raw(
+              "downloads.created_at <= accounts.account_at + interval '24 hours'"
+            )
+          );
+      })
       .select(
         this.database.raw(
-          'percentile_cont(0.5) within group (order by extract(epoch from (downloads.first_download_at - accounts.account_at)) / 60) as median_minutes'
+          'count(distinct accounts.user_id) as accounts, count(distinct downloads.user_id) as downloaded_24h'
+        ),
+        this.database.raw(
+          `count(distinct case when downloads.created_at >= accounts.account_at + interval '${HELD_DECK_DOWNLOAD_MINUTES} minutes' then downloads.user_id end) as downloaded_after_signup`
         )
       );
   }
 
-  async medianMinutesToFirstDeck(cohortStart: Date): Promise<number | null> {
-    const row = (await this.buildMedianMinutesToFirstDeckQuery(
-      cohortStart
-    ).first()) as MedianMinutesRow | undefined;
-    return mapMedianMinutesRow(row);
+  async newAccountDownloads(
+    cohortStart: Date,
+    cohortEnd: Date
+  ): Promise<NewAccountDownloadCounts | null> {
+    const row = (await this.buildNewAccountDownloadsQuery(
+      cohortStart,
+      cohortEnd
+    ).first()) as NewAccountDownloadsRow | undefined;
+    return mapNewAccountDownloadsRow(row);
   }
 
   buildUploadToDownloadRateQuery(since: Date): Knex.QueryBuilder {

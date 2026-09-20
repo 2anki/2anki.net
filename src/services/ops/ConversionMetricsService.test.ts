@@ -29,7 +29,7 @@ function makeStubRepo(
 
 function makeFailingEventsRepo(): IEventsMetricsRepository {
   return {
-    medianMinutesToFirstDeck: jest.fn().mockRejectedValue(new Error('db down')),
+    newAccountDownloads: jest.fn().mockRejectedValue(new Error('db down')),
     uploadToDownloadRate: jest.fn().mockRejectedValue(new Error('db down')),
     conversionOutcomes: jest.fn().mockRejectedValue(new Error('db down')),
   };
@@ -39,7 +39,7 @@ function makeStubEventsRepo(
   overrides: Partial<IEventsMetricsRepository> = {}
 ): IEventsMetricsRepository {
   return {
-    medianMinutesToFirstDeck: jest.fn().mockResolvedValue(null),
+    newAccountDownloads: jest.fn().mockResolvedValue(null),
     uploadToDownloadRate: jest.fn().mockResolvedValue(null),
     conversionOutcomes: jest.fn().mockResolvedValue(outcomes()),
     ...overrides,
@@ -84,7 +84,10 @@ describe('ConversionMetricsService — graceful failure', () => {
     expect(metrics.paid_blocked_by_plan_7d).toBeNull();
     expect(metrics.conversion_errors_7d_top_reasons).toBeNull();
     expect(metrics.failed_conversions_weekly).toBeNull();
-    expect(metrics.time_to_first_deck_median_minutes_30d).toBeNull();
+    expect(metrics.new_accounts_downloaded_24h_rate_30d).toBeNull();
+    expect(
+      metrics.new_accounts_downloaded_after_signup_24h_rate_30d
+    ).toBeNull();
     expect(metrics.upload_to_download_rate_7d).toBeNull();
   });
 });
@@ -268,17 +271,39 @@ describe('ConversionMetricsService — shape assembly', () => {
     jest.useRealTimers();
   });
 
-  it('passes through the time-to-first-deck median from the events repository', async () => {
+  it('turns new-account download counts into shares of the accounts that could have downloaded', async () => {
     const service = new ConversionMetricsService(
       makeStubRepo(),
       makeStubEventsRepo({
-        medianMinutesToFirstDeck: jest.fn().mockResolvedValue(42.5),
+        newAccountDownloads: jest.fn().mockResolvedValue({
+          accounts: 200,
+          downloadedWithin24h: 100,
+          downloadedAfterSignup: 30,
+        }),
       })
     );
 
     const metrics = await service.getMetrics();
 
-    expect(metrics.time_to_first_deck_median_minutes_30d).toBe(42.5);
+    expect(metrics.new_accounts_downloaded_24h_rate_30d).toBe(50);
+    expect(metrics.new_accounts_downloaded_after_signup_24h_rate_30d).toBe(15);
+  });
+
+  it('reads no share when no new account is old enough to have had a day', async () => {
+    const service = new ConversionMetricsService(
+      makeStubRepo(),
+      makeStubEventsRepo({
+        newAccountDownloads: jest.fn().mockResolvedValue({
+          accounts: 0,
+          downloadedWithin24h: 0,
+          downloadedAfterSignup: 0,
+        }),
+      })
+    );
+
+    const metrics = await service.getMetrics();
+
+    expect(metrics.new_accounts_downloaded_24h_rate_30d).toBeNull();
   });
 
   it('passes through the upload-to-download rate from the events repository', async () => {
@@ -294,8 +319,8 @@ describe('ConversionMetricsService — shape assembly', () => {
     expect(metrics.upload_to_download_rate_7d).toBe(25);
   });
 
-  it('queries the median over a 30-day cohort and the rate over 7 days', async () => {
-    const now = new Date('2025-05-19T00:00:00.000Z');
+  it('takes accounts from 30 days ago until a day ago, and the download rate over 7 days', async () => {
+    const now = new Date('2026-11-19T00:00:00.000Z');
     jest.useFakeTimers();
     jest.setSystemTime(now);
 
@@ -304,12 +329,46 @@ describe('ConversionMetricsService — shape assembly', () => {
 
     await service.getMetrics();
 
-    expect(eventsRepo.medianMinutesToFirstDeck).toHaveBeenCalledWith(
-      new Date('2025-04-19T00:00:00.000Z')
+    expect(eventsRepo.newAccountDownloads).toHaveBeenCalledWith(
+      new Date('2026-10-20T00:00:00.000Z'),
+      new Date('2026-11-18T00:00:00.000Z')
     );
     expect(eventsRepo.uploadToDownloadRate).toHaveBeenCalledWith(
-      new Date('2025-05-12T00:00:00.000Z')
+      new Date('2026-11-12T00:00:00.000Z')
     );
+
+    jest.useRealTimers();
+  });
+
+  it('starts the account cohort no earlier than the day account_created became reliable', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-20T00:00:00.000Z'));
+
+    const eventsRepo = makeStubEventsRepo();
+    const service = new ConversionMetricsService(makeStubRepo(), eventsRepo);
+
+    await service.getMetrics();
+
+    expect(eventsRepo.newAccountDownloads).toHaveBeenCalledWith(
+      new Date('2026-09-09T00:00:00.000Z'),
+      new Date('2026-09-19T00:00:00.000Z')
+    );
+
+    jest.useRealTimers();
+  });
+
+  it('does not query when the reliable cohort has not reached a whole day yet', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-09T12:00:00.000Z'));
+
+    const eventsRepo = makeStubEventsRepo();
+    const metrics = await new ConversionMetricsService(
+      makeStubRepo(),
+      eventsRepo
+    ).getMetrics();
+
+    expect(eventsRepo.newAccountDownloads).not.toHaveBeenCalled();
+    expect(metrics.new_accounts_downloaded_24h_rate_30d).toBeNull();
 
     jest.useRealTimers();
   });
