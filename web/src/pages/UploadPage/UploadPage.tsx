@@ -99,10 +99,6 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   };
 
   useEffect(() => {
-    track('upload_ai_badge_viewed', { state: aiBadgeState });
-  }, [aiBadgeState]);
-
-  useEffect(() => {
     if (pageViewTracked.current) return;
     pageViewTracked.current = true;
     track('upload_page_viewed');
