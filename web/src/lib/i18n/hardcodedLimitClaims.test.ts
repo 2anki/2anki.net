@@ -52,6 +52,10 @@ const FALSE_CLAIMS: Array<{ claim: RegExp; why: string }> = [
     why: 'the image occlusion Notion import only requires sign-in; free accounts are capped at 3 images per deck',
   },
   {
+    claim: /no\s+account\s+required\s+for\s+one-off\s+conversions/i,
+    why: 'without an account a conversion is capped at 21 cards; the 100 a month needs a free account',
+  },
+  {
     claim: /Dieser\s+Weg\s+braucht\s+einen\s+kostenpflichtigen\s+Plan/i,
     why: 'the image occlusion Notion import only requires sign-in; free accounts are capped at 3 images per deck',
   },
