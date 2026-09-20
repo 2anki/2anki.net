@@ -103,7 +103,7 @@
     "takePhoto": "Scatta una foto",
     "orPick": "oppure scegli dalle tue foto",
     "dropTitle": "Trascina le foto, incolla o clicca per aggiungere",
-    "dropHint": "JPEG, PNG, WebP, GIF, HEIC. Fino a 10 MB ciascuna. Aggiungi più foto in una volta.",
+    "dropHint": "JPEG, PNG, WebP, GIF, HEIC. Fino a 10 MB ciascuna. Aggiungi più foto in una sola volta.",
     "addMoreTitle": "Aggiungine altre — trascina, incolla o clicca",
     "photosReady_one": "{{count}} foto pronta",
     "photosReady_other": "{{count}} foto pronte",
