@@ -38,6 +38,9 @@ const CAPPED_FEATURE_STRINGS: Array<[string, string]> = [
   ['tools', 'mindmaps.limitSubheading'],
   ['tools', 'mindmaps.nodeLimitReached'],
   ['tools', 'import.upgradeUnlimitedImports'],
+  ['tools', 'occlusion.paywallImages'],
+  ['tools', 'occlusion.upgradeToAddMore'],
+  ['tools', 'occlusion.upgradeToAddMoreImages'],
   ['marketing', 'nativeApp.faq1A'],
 ];
 

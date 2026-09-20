@@ -146,7 +146,7 @@ describe('LimitPage', () => {
 
   it('leads with the Pro plan and lists the passes after it', () => {
     renderPage();
-    const unlimitedLabel = screen.getByText('Skip the cap for good');
+    const unlimitedLabel = screen.getByText('Skip the monthly card cap');
     const passesLabel = screen.getByText('Pay once — no subscription');
     expect(
       Boolean(

@@ -141,6 +141,13 @@ describe('PhotoToFlashcardsPage', () => {
     expect(screen.getByText(/the AI writes options A–D/)).toBeTruthy();
   });
 
+  it('does not tell the user they can add as many photos as they like', () => {
+    setLocals({ paying: true });
+    renderPage();
+    expect(screen.getByText(/Add several photos at once\./)).toBeTruthy();
+    expect(screen.queryByText(/as many as you need/i)).toBeNull();
+  });
+
   it('rejects unsupported file types', () => {
     setLocals({ paying: true });
     renderPage();
