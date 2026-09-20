@@ -1389,58 +1389,84 @@ describe('UploadForm analytics events', () => {
     });
   });
 
-  it('reports a network failure on the upload to the ops error log', async () => {
-    const errorLogFetch = vi.fn(() => Promise.resolve(new Response(null)));
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((url: string) =>
-        url === '/api/events/errors'
-          ? errorLogFetch()
-          : Promise.reject(new TypeError('Failed to fetch'))
-      )
-    );
-
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} />
-    );
-    const form = container.querySelector('form')!;
-    await act(async () => {
-      form.dispatchEvent(
-        new Event('submit', { bubbles: true, cancelable: true })
+  describe('ops error log', () => {
+    function stubFetch(uploadError: Error) {
+      const reports: Array<Record<string, unknown>> = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, init?: RequestInit) => {
+          if (url === '/api/events/errors') {
+            reports.push(JSON.parse(init?.body as string));
+            return Promise.resolve(new Response(null));
+          }
+          return Promise.reject(uploadError);
+        })
       );
-    });
+      return reports;
+    }
 
-    await waitFor(() => expect(errorLogFetch).toHaveBeenCalledOnce());
-    const [, init] = vi
-      .mocked(globalThis.fetch)
-      .mock.calls.find(([url]) => url === '/api/events/errors') as [
-      string,
-      RequestInit,
-    ];
-    expect(JSON.parse(init.body as string)).toMatchObject({
-      message: 'Upload network failure (unknown type, unknown size)',
-    });
-  });
-
-  it('does not report a non-network upload error to the ops error log', async () => {
-    const fetchMock = vi.fn().mockRejectedValue(new Error('Unexpected'));
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} />
-    );
-    const form = container.querySelector('form')!;
-    await act(async () => {
-      form.dispatchEvent(
-        new Event('submit', { bubbles: true, cancelable: true })
+    async function submitUpload(file?: File) {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
       );
+      if (file != null) {
+        const fileInput = container.querySelector(
+          'input[type="file"]'
+        ) as HTMLInputElement;
+        Object.defineProperty(fileInput, 'files', {
+          value: [file],
+          configurable: true,
+        });
+      }
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+    }
+
+    it('reports a network failure with the selected file type and size range', async () => {
+      const reports = stubFetch(new TypeError('Failed to fetch'));
+      const file = new File(['x'], 'Study Notes.PDF');
+      Object.defineProperty(file, 'size', { value: 20 * 1024 * 1024 });
+
+      await submitUpload(file);
+
+      await waitFor(() => expect(reports).toHaveLength(1));
+      expect(reports[0]).toMatchObject({
+        message: 'Upload network failure (.pdf, 10-50 MB)',
+        context: { cause: 'Failed to fetch' },
+      });
     });
 
-    await waitFor(() =>
-      expect(fetchMock.mock.calls.map(([url]) => url)).not.toContain(
-        '/api/events/errors'
-      )
-    );
+    it('reports an unknown type and size when no file is selected', async () => {
+      const reports = stubFetch(new TypeError('Load failed'));
+
+      await submitUpload();
+
+      await waitFor(() => expect(reports).toHaveLength(1));
+      expect(reports[0]).toMatchObject({
+        message: 'Upload network failure (unknown type, unknown size)',
+      });
+    });
+
+    it('does not report a non-network upload error', async () => {
+      const { track } = await import('../../../../lib/analytics/track');
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
+      const reports = stubFetch(new Error('Unexpected server error'));
+
+      await submitUpload();
+
+      await waitFor(() =>
+        expect(trackMock).toHaveBeenCalledWith(
+          'upload_failed',
+          expect.objectContaining({ reason: 'other' })
+        )
+      );
+      expect(reports).toEqual([]);
+    });
   });
 
   it('tracks upload_failed with reason=other when fetch throws a non-network Error', async () => {
