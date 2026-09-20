@@ -663,12 +663,15 @@ const OpsRouter = () => {
    * @swagger
    * /api/ops/return-rate/metrics:
    *   get:
-   *     summary: Post-completion return-rate metrics bucketed by source type
+   *     summary: Return-rate metrics for new identities, bucketed by the source of their first conversion
    *     description: |
-   *       Internal endpoint locked to the ops owner. Returns the % of users who returned for a
-   *       second conversion within 7, 14, and 30 days of their prior successful conversion,
-   *       bucketed by source_type (page, database, conversion). Cohort window is the last 90 days.
-   *       Returns 404 for everyone else.
+   *       Internal endpoint locked to the ops owner. A "return" is a successful conversion at
+   *       least 24 hours after an identity's first one, within 7, 14 or 30 days of it. Only
+   *       identities old enough to have finished a window are counted for that window, and
+   *       `eligible` gives that denominator overall and per source. Sources are the source of
+   *       each identity's first conversion. The cohort is identities whose first conversion in
+   *       the last 120 days falls in the last 90 (so no conversion between 120 and 90 days
+   *       ago). Returns 404 for everyone else.
    *     tags: [Ops]
    *     responses:
    *       200:
