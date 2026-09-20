@@ -507,7 +507,7 @@ const handwrittenNotesToAnki: AnswerConfig = {
     },
     {
       heading: 'What it costs',
-      body: 'The free plan covers your first 100 cards a month, enough to turn a stack of notes into a starter deck. Pro removes the cap and adds the multiple-choice option for photo-to-deck cards.',
+      body: 'The free plan turns 5 photos a month into cards, enough for a starter deck. Paid plans include a monthly AI credit allowance for photos and add the multiple-choice option for photo-to-deck cards.',
     },
   ],
   faqs: [

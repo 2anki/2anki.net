@@ -5,7 +5,7 @@ description: Den 2anki-MCP-Server verbinden und Anki-Decks direkt aus einem Gesp
 
 2anki läuft als MCP-Connector, sodass ein KI-Assistent deine Anki-Decks für dich bauen kann. Füge Vorlesungsnotizen in ein Gespräch ein, frag nach Karteikarten, und bekomm einen Download-Link für eine fertige `.apkg` — ohne den Chat zu verlassen.
 
-**Der Connector steht jedem angemeldeten Konto offen.** Melde dich auf [2anki.net](https://2anki.net/) an, füge den Connector hinzu und bestätige die Zustimmungsseite einmal. Kostenlose Konten behalten ihr monatliches Kartenlimit; bezahlte Pläne konvertieren ohne Limits.
+**Der Connector steht jedem angemeldeten Konto offen.** Melde dich auf [2anki.net](https://2anki.net/) an, füge den Connector hinzu und bestätige die Zustimmungsseite einmal. Kostenlose Konten behalten ihr monatliches Kartenlimit; bezahlte Pläne haben kein monatliches Kartenlimit, und Fotos nutzen KI-Credits.
 
 ## Mit Claude verbinden
 
@@ -65,7 +65,7 @@ description: Den 2anki-MCP-Server verbinden und Anki-Decks direkt aus einem Gesp
 - Die Karten eines Decks vor dem Download anzeigen
 - Deine bereits erstellten Decks auflisten
 
-Kostenlose Konten behalten ihr normales monatliches Kartenlimit; bezahlte Pläne konvertieren ohne Limits — dieselben [Pläne und Limits](/documentation/reference/plans) wie in der Web-App.
+Kostenlose Konten behalten ihr normales monatliches Kartenlimit; bezahlte Pläne haben kein monatliches Kartenlimit, und Fotos nutzen KI-Credits — dieselben [Pläne und Limits](/documentation/reference/plans) wie in der Web-App.
 
 ## Wenn etwas fehlschlägt
 

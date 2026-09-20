@@ -26,7 +26,7 @@ Der Server nutzt OAuth 2.1. Beim ersten Verbinden öffnet 2anki eine Anmelde- un
 
 ## Limits
 
-Konvertierungen über MCP zählen gegen dieselben Plan-Limits wie die Web-App: kostenlose Konten haben ein monatliches Kartenlimit und ein Foto-Kontingent; bezahlte Pläne konvertieren ohne Limits. Einzelne Anfragen sind auf 5 MB Text, 500 Karten pro Deck und 10 MB pro Foto begrenzt.
+Konvertierungen über MCP zählen gegen dieselben Plan-Limits wie die Web-App: kostenlose Konten haben ein monatliches Kartenlimit und ein Foto-Kontingent; bezahlte Pläne haben kein monatliches Kartenlimit, und Fotos nutzen KI-Credits. Einzelne Anfragen sind auf 5 MB Text, 500 Karten pro Deck und 10 MB pro Foto begrenzt.
 
 ## Feedback
 

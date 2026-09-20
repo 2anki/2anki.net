@@ -51,7 +51,7 @@ arrangement — email support@2anki.net.
 ## Pricing
 
 - Free: 100 cards per month, no account required for one-off conversions.
-- Pro: $7.99/month or $64/year — unlimited cards, PDF support, concurrent conversions.
+- Pro: $7.99/month or $64/year: no monthly card limit, PDF support, concurrent conversions, 300 AI credits a month.
 - Lifetime: from $345 — all Pro features paid once, Auto Sync included.
 - Auto Sync: not sold as a plan — included with Lifetime, or switched on by arrangement.
 - Day Pass: $4 — 24-hour full access.

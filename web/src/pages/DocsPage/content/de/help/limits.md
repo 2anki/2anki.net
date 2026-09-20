@@ -43,10 +43,10 @@ Die Kartenoption **Use Claude AI** ist eine Subscription-/Lifetime-Funktion. Kos
 
 Der Chat-Lernassistent ist Teil jedes bezahlten Plans — Subscription, Day Pass und Lifetime. Mit einem kostenlosen Konto bleiben bisherige Unterhaltungen lesbar und bereits erstellte Decks herunterladbar; zum Senden von Nachrichten brauchst du einen Plan.
 
-|                  | Free                               | Bezahlte Pläne  |
-| ---------------- | ---------------------------------- | --------------- |
-| Nachrichten      | — (bisherige Chats bleiben lesbar) | Unbegrenzt      |
-| Nachrichtenlänge | —                                  | 100 000 Zeichen |
+|                  | Free                               | Bezahlte Pläne   |
+| ---------------- | ---------------------------------- | ---------------- |
+| Nachrichten      | — (bisherige Chats bleiben lesbar) | Nutzt KI-Credits |
+| Nachrichtenlänge | —                                  | 100 000 Zeichen  |
 
 ## Speicherung
 
@@ -80,7 +80,7 @@ Free deckt die Konvertierungswege ab, die die meisten Leute brauchen: eine Datei
 | Anonymer Datei-Upload                          | ✓               | ✓               | ✓          |
 | Kontofunktionen (Verlauf, Favoriten, Vorlagen) | Anmeldung nötig | ✓               | ✓          |
 | KI-generierte Karteikarten (Claude)            | —               | ✓               | ✓          |
-| Chat (Lernassistent)                           | —               | Unbegrenzt      | Unbegrenzt |
+| Chat (Lernassistent)                           | —               | KI-Credits      | KI-Credits |
 | Langzeit-Deckspeicherung                       | 24 h            | aktives Abo     | unbegrenzt |
 | Auto Sync (Notion → Anki)                      | —               | 30 $/Mo. Add-on | ✓          |
 
