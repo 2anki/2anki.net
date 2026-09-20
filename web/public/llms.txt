@@ -54,8 +54,8 @@ arrangement — email support@2anki.net.
 - Pro: $7.99/month or $64/year, with no monthly card limit, PDF support, concurrent conversions, and 300 AI credits a month.
 - Lifetime: from $345 — all Pro features paid once, Auto Sync included.
 - Auto Sync: not sold as a plan — included with Lifetime, or switched on by arrangement.
-- Day Pass: $4 — 24-hour full access.
-- Week Pass: $9 — 7-day full access.
+- Day Pass: $4 — 24 hours of Pro features, including 300 AI credits.
+- Week Pass: $9 — 7 days of Pro features, including 500 AI credits.
 
 ## Key differentiators
 

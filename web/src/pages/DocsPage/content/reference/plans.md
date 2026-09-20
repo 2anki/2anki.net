@@ -1,6 +1,6 @@
 ---
 title: Short plans and passes
-description: Day Pass and Week Pass — when one-time full access makes sense.
+description: Day Pass and Week Pass — when a one-time pass makes sense.
 ---
 
 Most people use Free or a monthly Subscription. But two short options exist for when neither fits — a deck for the weekend or a one-off cram session.
@@ -9,22 +9,22 @@ For the full plan list and prices, see the [pricing page](/pricing).
 
 ## Day Pass — $6
 
-24 hours of full access, paid once.
+24 hours of Pro features with 300 AI credits, paid once.
 
 - **Length:** 24 hours from purchase.
 - **Cost:** $6, one-time.
-- **What you get:** Unlimited conversions, every upload format (`.zip`, `.html`, `.md`, `.csv`, `.apkg`), image occlusion, custom card templates.
+- **What you get:** Unlimited conversions, every upload format (`.zip`, `.html`, `.md`, `.csv`, `.apkg`), image occlusion, custom card templates, and 300 AI credits.
 - **Where:** **Day Pass** on the [pricing page](/pricing).
 
 Use this when you have a weekend of cards to build and don't want a recurring charge.
 
 ## Week Pass — $12
 
-7 days of full access, paid once.
+7 days of Pro features with 500 AI credits, paid once.
 
 - **Length:** 7 days from purchase.
 - **Cost:** $12, one-time.
-- **What you get:** same feature set as the Day Pass.
+- **What you get:** same feature set as the Day Pass, with 500 AI credits.
 - **Where:** **Week Pass** on the [pricing page](/pricing).
 
 Use this when you have a week to prep for an exam or a sprint to digitize a stack of notes.
