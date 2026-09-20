@@ -47,6 +47,14 @@ const FALSE_CLAIMS: Array<{ claim: RegExp; why: string }> = [
     claim: /paid\s+plans?\s+lift\s+the\s+(size\s+)?limit\b/i,
     why: 'say what paid plans raise the limit to, or that they use AI credits',
   },
+  {
+    claim: /aus\s+Notion\s+zu\s+importieren\s+braucht\s+Subscription/i,
+    why: 'the image occlusion Notion import only requires sign-in; free accounts are capped at 3 images per deck',
+  },
+  {
+    claim: /Dieser\s+Weg\s+braucht\s+einen\s+kostenpflichtigen\s+Plan/i,
+    why: 'the image occlusion Notion import only requires sign-in; free accounts are capped at 3 images per deck',
+  },
 ];
 
 function listSourceFiles(): string[] {

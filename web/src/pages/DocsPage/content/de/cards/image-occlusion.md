@@ -16,7 +16,7 @@ description: Verdecke Teile eines Bildes und rufe sie ab — Anatomie, Diagramme
 
 Image-Occlusion-Karten zeigen dir ein Bild mit verdeckten Teilen. Du versuchst abzurufen, was hinter der Abdeckung steckt, und drehst die Karte dann um, um zu sehen, ob du richtig lagst. Das Canvas-Tool unter [2anki.net/image-occlusion](https://2anki.net/image-occlusion) lässt dich die Abdeckungen selbst zeichnen — kein Anki-Add-on, keine Plugin-Installation.
 
-**Plan:** Kostenlos für Bild-Upload. Bilder aus Notion zu importieren braucht Subscription oder Lifetime.
+**Plan:** Kostenlose Konten können jede Quelle nutzen, auch den Notion-Import, bis zu 3 Bilder pro Deck. Subscription und Lifetime erlauben bis zu 20 hochgeladene Bilder auf einmal.
 
 ## Wann du das nutzt
 
@@ -33,7 +33,7 @@ Wenn deine Quelle Text ist — Toggles, Aufzählungen, Fließtext — sind einfa
 3. Bilder hinzufügen. Auf drei Wegen:
    - **Upload** — zieh Bilder in die Warteschlange oder nutze die Dateiauswahl.
    - **Paste** — kopiere ein Bild in deine Zwischenablage (Screenshot-Tool, eine Notion-Seite, irgendwoher) und füge es irgendwo auf der Seite ein.
-   - **Import from Notion** — klick auf den Notion-Button an der Warteschlange, wenn du angemeldet und verbunden bist. Wähle Bilder aus deinen Notion-Seiten. Dieser Weg braucht einen kostenpflichtigen Plan.
+   - **Import from Notion** — klick auf den Notion-Button an der Warteschlange, wenn du angemeldet und verbunden bist. Wähle Bilder aus deinen Notion-Seiten. Kostenlose Konten können das auch nutzen, innerhalb der Grenze von 3 Bildern pro Deck.
 4. Klick auf ein Bild in der Warteschlange, um es auf das Canvas rechts zu laden.
 5. Zeichne ein Rechteck über jeden Teil, den du verstecken willst. Jedes Kästchen wird zu einer Karteikarte. Füge jedem Kästchen eine Beschriftung hinzu, wenn du zusätzlichen Kontext auf der Kartenrückseite willst.
 6. (Optional) Füge einen Header hinzu — kurzer Text über dem Bild — um der Karte einen Titel oder eine Fragestellung zu geben.
