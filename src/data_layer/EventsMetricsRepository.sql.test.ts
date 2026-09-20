@@ -28,7 +28,7 @@ describe('EventsMetricsRepository generated SQL', () => {
       'count(distinct accounts.user_id) as accounts, count(distinct downloads.user_id) as downloaded_24h'
     );
     expect(sql).toContain(
-      "count(distinct case when downloads.created_at >= accounts.account_at + interval '10 minutes' then downloads.user_id end) as downloaded_after_signup"
+      "count(distinct case when downloads.created_at >= accounts.account_at + ? * interval '1 minute' then downloads.user_id end) as downloaded_after_signup"
     );
     expect(sql).toContain(
       'from (select "user_id", min("created_at") as "account_at" from "events" where "name" = ? and "created_at" >= ? and "created_at" <= ? and "user_id" is not null group by "user_id") as "accounts"'
@@ -39,12 +39,13 @@ describe('EventsMetricsRepository generated SQL', () => {
     expect(sql.match(/from "events"/g)).toHaveLength(1);
   });
 
-  it('binds the account cohort window before the download event name, matching placeholder order', () => {
+  it('binds the ten minute settle time, the account cohort window and the download event name in placeholder order', () => {
     const { sql, bindings } = repository
       .buildNewAccountDownloadsQuery(cohortStart, cohortEnd)
       .toSQL();
 
     expect(bindings).toEqual([
+      10,
       'account_created',
       cohortStart,
       cohortEnd,

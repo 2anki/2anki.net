@@ -137,7 +137,7 @@ export default function ConversionsTab() {
               visible?.new_accounts_downloaded_24h_rate_30d ?? null,
               formatPercentOneDecimal
             )}
-            footnote="New accounts from the last 30 days that are at least a day old. Includes the deck made before signing up."
+            footnote="New accounts from the last 30 days (since 2026-09-09 at the earliest) that are at least a day old. Includes the deck made before signing up."
           />
           <MetricCard
             title="Made a deck after signing up"

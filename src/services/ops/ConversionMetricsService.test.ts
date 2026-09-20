@@ -304,6 +304,9 @@ describe('ConversionMetricsService — shape assembly', () => {
     const metrics = await service.getMetrics();
 
     expect(metrics.new_accounts_downloaded_24h_rate_30d).toBeNull();
+    expect(
+      metrics.new_accounts_downloaded_after_signup_24h_rate_30d
+    ).toBeNull();
   });
 
   it('passes through the upload-to-download rate from the events repository', async () => {

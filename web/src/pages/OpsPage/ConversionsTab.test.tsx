@@ -100,7 +100,7 @@ describe('ConversionsTab', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'New accounts from the last 30 days that are at least a day old. Includes the deck made before signing up.'
+        'New accounts from the last 30 days (since 2026-09-09 at the earliest) that are at least a day old. Includes the deck made before signing up.'
       )
     ).toBeInTheDocument();
     expect(screen.getByText('11.7%')).toBeInTheDocument();

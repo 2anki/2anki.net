@@ -239,6 +239,12 @@ describe('buildClaudePrompt — conversions', () => {
     expect(prompt).toContain('Free conversions 7d:            824');
     expect(prompt).toContain('Paid success rate 7d (%):       96.2');
     expect(prompt).toContain('Free blocked by plan 7d:        63');
+    expect(prompt).toContain(
+      'New accounts downloading in 24h (%):         54.4'
+    );
+    expect(prompt).toContain(
+      'New accounts making a deck after signup (%): 11.7'
+    );
     expect(prompt).toContain('Notion timeout');
     expect(prompt).toContain(
       'find the biggest conversion leak and propose one fix'

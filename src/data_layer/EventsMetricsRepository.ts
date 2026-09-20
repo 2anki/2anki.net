@@ -177,7 +177,8 @@ export class EventsMetricsRepository
           'count(distinct accounts.user_id) as accounts, count(distinct downloads.user_id) as downloaded_24h'
         ),
         this.database.raw(
-          `count(distinct case when downloads.created_at >= accounts.account_at + interval '${HELD_DECK_DOWNLOAD_MINUTES} minutes' then downloads.user_id end) as downloaded_after_signup`
+          "count(distinct case when downloads.created_at >= accounts.account_at + ? * interval '1 minute' then downloads.user_id end) as downloaded_after_signup",
+          [HELD_DECK_DOWNLOAD_MINUTES]
         )
       );
   }
