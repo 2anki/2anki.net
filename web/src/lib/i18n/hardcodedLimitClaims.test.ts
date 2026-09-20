@@ -8,27 +8,43 @@ const SKIPPED_FILES = /\.test\.(ts|tsx)$/;
 
 const FALSE_CLAIMS: Array<{ claim: RegExp; why: string }> = [
   {
-    claim: /files? of any size/i,
+    claim: /files?\s+of\s+any\s+size/i,
     why: 'free and paid uploads are capped at 100 MB and 10 GB',
   },
   {
-    claim: /no message cap/i,
+    claim: /no\s+message\s+cap/i,
     why: 'chat messages use AI credits',
   },
   {
-    claim: /paid plans? convert without limits/i,
+    claim: /paid\s+plans?\s+convert\s+without\s+limits/i,
     why: 'photos and chat draw on AI credits',
   },
   {
-    claim: /bezahlte Pläne konvertieren ohne Limits/i,
+    claim: /bezahlte\s+Pläne\s+konvertieren\s+ohne\s+Limits/i,
     why: 'photos and chat draw on AI credits',
   },
   {
-    claim: /unlimited AI conversion/i,
-    why: 'AI features run on a monthly credit allowance',
+    claim: /unlimited\s+flashcards,\s+PDF support/i,
+    why: 'AI conversion runs on a monthly credit allowance, so do not bundle it with unlimited',
   },
   {
-    claim: /paid plans lift the (size )?limit\b/i,
+    claim: /unlimited\s+cards,\s+PDF support/i,
+    why: 'name the monthly card limit and the AI credits instead',
+  },
+  {
+    claim: /Pro\s+removes\s+the\s+cap\s+and\s+adds\s+the\s+multiple-choice/i,
+    why: 'photo-to-deck is capped at 5 free photos and paid photos use AI credits',
+  },
+  {
+    claim: /\|\s*Nachrichten[^|]*\|[^|]*\|\s*Unbegrenzt/i,
+    why: 'chat messages use AI credits',
+  },
+  {
+    claim: /Subscription\s+and\s+Lifetime\s+remove\s+the\s+cap/i,
+    why: 'the image occlusion build accepts up to 20 uploaded images at a time',
+  },
+  {
+    claim: /paid\s+plans?\s+lift\s+the\s+(size\s+)?limit\b/i,
     why: 'say what paid plans raise the limit to, or that they use AI credits',
   },
 ];

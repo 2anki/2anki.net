@@ -79,7 +79,7 @@ const pdfToAnki: LandingCopy = {
     },
     {
       q: 'Can I upload a whole textbook?',
-      a: 'Yes. Large PDFs work, though big files take longer and create large decks. Free accounts handle PDFs up to 100 pages and 100 MB; paid plans allow more pages and uploads up to 10 GB. Uploading one chapter at a time keeps decks easier to review.',
+      a: 'Yes. Large PDFs work, though big files take longer and create large decks. Free accounts handle PDFs up to 100 MB, and scanned PDFs up to 100 pages; paid plans allow uploads up to about 10 GB and longer scanned PDFs. Uploading one chapter at a time keeps decks easier to review.',
     },
     {
       q: 'What happens to equations and diagrams?',
