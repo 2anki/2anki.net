@@ -61,8 +61,8 @@ If `$ARGUMENTS` is a raw spec (pasted body or a path to a `.md` file with no ass
 
 1. Read the spec.
 2. Follow the engineer workflow above.
-3. Suggest a branch name. Format: `<type>/<short-slug>` using a conventional commit prefix (`fix/`, `feat/`, `chore/`, `refactor/`, `test/`). Do **not** use `docs/` for an implementation branch.
-4. Once confirmed, create the branch, commit in logical chunks. If the work changes user-visible behavior, add a changelog entry per CLAUDE.md > Changelog (separate `chore: add changelog entry …` commit). If the work adds or changes a user-visible feature (stricter than the changelog trigger — see step 7 of the primary path), also update the in-app user docs under `web/src/pages/DocsPage/content/` and register any new MDX page in `web/src/pages/DocsPage/sidebar.ts`, in a separate `docs: update user docs …` commit. Run `/check`, then open the PR (not draft) with `gh pr create` using the engineer template, then run `/ship <n>`. End your reply with the full `https://github.com/2anki/server/pull/<n>` URL and the deploy verdict as the last lines.
+3. Name the branch. Format: `<type>/<short-slug>` using a conventional commit prefix (`fix/`, `feat/`, `chore/`, `refactor/`, `test/`). Do **not** use `docs/` for an implementation branch.
+4. Create the branch, commit in logical chunks. If the work changes user-visible behavior, add a changelog entry per CLAUDE.md > Changelog (separate `chore: add changelog entry …` commit). If the work adds or changes a user-visible feature (stricter than the changelog trigger — see step 7 of the primary path), also update the in-app user docs under `web/src/pages/DocsPage/content/` and register any new MDX page in `web/src/pages/DocsPage/sidebar.ts`, in a separate `docs: update user docs …` commit. Run `/check`, then open the PR (not draft) with `gh pr create` using the engineer template, then run `/ship <n>`. End your reply with the full `https://github.com/2anki/server/pull/<n>` URL and the deploy verdict as the last lines.
 
 In this path there is no spec file in the repo to remove — skip the spec-cleanup commit.
 

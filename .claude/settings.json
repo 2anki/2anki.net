@@ -21,11 +21,15 @@
     "typescript-lsp@claude-plugins-official": true,
     "sonarqube@claude-plugins-official": true,
     "stripe@claude-plugins-official": true,
-    "playwright@claude-plugins-official": true
+    "playwright@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": false
   },
   "permissions": {
     "allow": [
       "Bash(git commit *)",
+      "Bash(git push -u origin *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr ready *)",
       "Bash(git branch -D *)",
       "Bash(git branch -d *)",
       "Bash(git fetch --prune *)",
