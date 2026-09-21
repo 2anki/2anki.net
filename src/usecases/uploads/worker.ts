@@ -336,7 +336,6 @@ async function doGenerationWork(
   } = task;
   let packages: Package[] = [];
   const warnings: string[] = [];
-  let remainingCardBudget = cardLimit;
   let cardsHeldBack = 0;
 
   const dedupeAcrossDecks = shouldDedupeAcrossDecks(
@@ -364,21 +363,11 @@ async function doGenerationWork(
       crossFileDedup,
       requestId,
       uploadIdentity,
-      remainingCardBudget
+      cardLimit
     );
     packages = packages.concat(result.packages);
     warnings.push(...result.warnings);
-    if (cardLimit != null) {
-      cardsHeldBack += result.cardsHeldBack ?? 0;
-      const deliveredThisFile = result.packages.reduce(
-        (sum, p) => sum + p.cardCount,
-        0
-      );
-      remainingCardBudget = Math.max(
-        0,
-        (remainingCardBudget ?? 0) - deliveredThisFile
-      );
-    }
+    cardsHeldBack += result.cardsHeldBack ?? 0;
   }
 
   const reportsCrossDeck =
