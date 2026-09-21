@@ -9,6 +9,7 @@ import NotionAPIWrapper from '../../services/NotionService/NotionAPIWrapper';
 import JobRepository from '../../data_layer/JobRepository';
 import { BlockObjectRequest } from '@notionhq/client/build/src/api-endpoints';
 import { APIErrorCode, APIResponseError } from '@notionhq/client';
+import { getEventsSink } from '../../services/events/eventsSinkInstance';
 
 const BATCH_SIZE = 50;
 const THROTTLE_MS = 350;
@@ -190,6 +191,18 @@ export default class ImportApkgToNotionUseCase {
           notion_page_url: notionUrl,
         })
       );
+
+      const ownerId = Number(owner);
+      getEventsSink().record({
+        name: 'apkg_imported',
+        user_id: Number.isFinite(ownerId) ? ownerId : null,
+        anonymous_id: null,
+        props: {
+          note_count: result.importedNotes,
+          truncated: result.truncated,
+        },
+        created_at: new Date(),
+      });
     } catch (error) {
       console.error(`[apkg-import] job=${jobId} failed:`, error);
       await this.jobRepository

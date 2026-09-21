@@ -10,6 +10,7 @@ import {
 import shared from '../../styles/shared.module.css';
 import styles from './MindmapList.module.css';
 import TrashIcon from '../../components/icons/TrashIcon';
+import { track } from '../../lib/analytics/track';
 
 export function MindmapList() {
   const { t } = useTranslation('tools');
@@ -36,6 +37,7 @@ export function MindmapList() {
     }
     const created = await createMindmap.mutateAsync(t('mindmaps.untitled'));
     if (created?.id != null) {
+      track('mindmap_created');
       navigate(`/mindmaps/${created.id}`);
     }
   }
