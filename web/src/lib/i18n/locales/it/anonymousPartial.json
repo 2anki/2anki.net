@@ -1,0 +1,8 @@
+{
+  "headline": "Le tue prime 21 carte sono pronte",
+  "heldBack_one": "{{count}} carta in più non è in questo download",
+  "heldBack_other": "{{count}} carte in più non sono in questo download",
+  "body": "Questo file ha creato {{total}} carte. Un account gratuito ti dà fino a {{monthly}} carte al mese. Creane uno, poi carica di nuovo il file.",
+  "cta": "Crea un account gratuito",
+  "aria": "Mazzo parziale pronto"
+}

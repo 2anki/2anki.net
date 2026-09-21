@@ -112,6 +112,8 @@ export const KNOWN_EVENTS = new Set([
   'credits_buy_clicked',
   'credits_purchase_completed',
   'credits_sidebar_link_clicked',
+  'anonymous_partial_notice_shown',
+  'anonymous_partial_signup_clicked',
 ] as const);
 
 export type KnownEvent = typeof KNOWN_EVENTS extends Set<infer T> ? T : never;

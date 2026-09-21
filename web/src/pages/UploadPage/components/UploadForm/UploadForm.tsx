@@ -50,6 +50,7 @@ import { reportUploadNetworkFailure } from '../../../../lib/reportClientError';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { PostDownloadNudge } from '../../../../components/PostDownloadNudge';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
+import { AnonymousPartialNotice } from '../../../../components/AnonymousPartialNotice/AnonymousPartialNotice';
 import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
@@ -303,6 +304,8 @@ function UploadForm({
     setExpiredNotionImageCount,
     emptyBackCount,
     setEmptyBackCount,
+    cardsHeldBack,
+    setCardsHeldBack,
     setOverSplit,
     creditsUsed,
     setCreditsUsed,
@@ -389,6 +392,7 @@ function UploadForm({
     setDroppedImageCount,
     setExpiredNotionImageCount,
     setEmptyBackCount,
+    setCardsHeldBack,
     setOverSplit,
     setCreditsUsed,
     setDownloadLink,
@@ -1169,7 +1173,13 @@ function UploadForm({
           {t('upload.form.fallbackDownload')}
         </button>
       )}
-      {successOffer === 'anon_signup' && (
+      {cardsHeldBack > 0 && cardCount != null && (
+        <AnonymousPartialNotice
+          cardCount={cardCount}
+          cardsHeldBack={cardsHeldBack}
+        />
+      )}
+      {successOffer === 'anon_signup' && cardsHeldBack === 0 && (
         <CreateAccountNotice deckName={deckName} />
       )}
       {successOffer === 'upsell' && <PostDownloadNudge page="upload" />}

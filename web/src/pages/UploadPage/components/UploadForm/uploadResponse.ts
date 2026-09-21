@@ -43,6 +43,7 @@ export interface ConversionSuccessHandlers {
   setDroppedImageCount: (value: number) => void;
   setExpiredNotionImageCount: (value: number) => void;
   setEmptyBackCount: (value: number) => void;
+  setCardsHeldBack: (value: number) => void;
   setOverSplit: (value: boolean) => void;
   setCreditsUsed: (value: number) => void;
   setDownloadLink: (value: string | null) => void;
@@ -119,6 +120,9 @@ export async function applyConversionSuccess(
   );
   handlers.setEmptyBackCount(
     parseNonNegativeIntHeader(response.headers, 'X-Empty-Back-Count')
+  );
+  handlers.setCardsHeldBack(
+    parseNonNegativeIntHeader(response.headers, 'X-Cards-Held-Back')
   );
   handlers.setOverSplit(response.headers.get('X-Over-Split') === '1');
   handlers.setCreditsUsed(

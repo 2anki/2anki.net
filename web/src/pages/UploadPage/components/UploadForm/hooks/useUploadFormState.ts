@@ -58,6 +58,7 @@ export function useUploadFormState(onReset: () => void) {
   const [expiredNotionImageCount, setExpiredNotionImageCount] =
     useState<number>(0);
   const [emptyBackCount, setEmptyBackCount] = useState<number>(0);
+  const [cardsHeldBack, setCardsHeldBack] = useState<number>(0);
   const [overSplit, setOverSplit] = useState(false);
   const [creditsUsed, setCreditsUsed] = useState<number>(0);
   const [structureRescuedRule, setStructureRescuedRule] =
@@ -100,6 +101,7 @@ export function useUploadFormState(onReset: () => void) {
     setDroppedImageCount(0);
     setExpiredNotionImageCount(0);
     setEmptyBackCount(0);
+    setCardsHeldBack(0);
     setOverSplit(false);
     setCreditsUsed(0);
     setStructureRescuedRule(null);
@@ -150,6 +152,8 @@ export function useUploadFormState(onReset: () => void) {
     setExpiredNotionImageCount,
     emptyBackCount,
     setEmptyBackCount,
+    cardsHeldBack,
+    setCardsHeldBack,
     overSplit,
     setOverSplit,
     creditsUsed,

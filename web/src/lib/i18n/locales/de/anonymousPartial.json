@@ -1,0 +1,8 @@
+{
+  "headline": "Deine ersten 21 Karten sind fertig",
+  "heldBack_one": "{{count}} weitere Karte ist nicht in diesem Download",
+  "heldBack_other": "{{count}} weitere Karten sind nicht in diesem Download",
+  "body": "Diese Datei ergab {{total}} Karten. Ein kostenloses Konto gibt dir bis zu {{monthly}} Karten pro Monat. Erstelle eins und lege die Datei dann noch einmal ab.",
+  "cta": "Kostenloses Konto erstellen",
+  "aria": "Teildeck fertig"
+}

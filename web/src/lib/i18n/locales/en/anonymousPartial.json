@@ -1,0 +1,8 @@
+{
+  "headline": "Your first 21 cards are ready",
+  "heldBack_one": "{{count}} more card is not in this download",
+  "heldBack_other": "{{count}} more cards are not in this download",
+  "body": "This file made {{total}} cards. A free account gives you up to {{monthly}} cards a month. Create one, then drop the file again.",
+  "cta": "Create a free account",
+  "aria": "Partial deck ready"
+}
