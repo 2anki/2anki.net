@@ -7,12 +7,12 @@ Invoke `pm`, `designer`, and `engineer` subagents via the Agent tool **in parall
 
 1. What each agent said (one line each)
 2. Where they agree
-3. Where they conflict — state the conflict precisely and resolve it (or surface it for Alexander to call)
+3. Where they conflict — state the conflict precisely and resolve it (record the call in the PR body under `## Decisions`; Alexander can override after the fact)
 4. The resulting plan
 
-Do not start any implementation until the synthesis is complete and explicit.
+The synthesis is a section of your reply, not a checkpoint: write it, then implement.
 
-Conflicts are first-class output, not failure modes. If the designer wants more whitespace and the engineer says that pushes a key control below the fold on mobile, that is a real product decision — surface it, don't paper over it.
+Conflicts are first-class output, not failure modes. If the designer wants more whitespace and the engineer says that pushes a key control below the fold on mobile, that is a real product decision — state it in the synthesis and resolve it, don't paper over it.
 
 ---
 
