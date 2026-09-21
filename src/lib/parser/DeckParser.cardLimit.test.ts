@@ -61,3 +61,26 @@ describe('DeckParser card limit truncation', () => {
     expect(parser.cardsHeldBack).toBe(0);
   });
 });
+
+describe('DeckParser card limit with reversed cards', () => {
+  it('counts the extra reversed cards toward the limit', async () => {
+    const parser = new DeckParser({
+      name: 'big-deck.html',
+      settings: new CardOption({
+        cherry: 'false',
+        reversed: 'true',
+        'basic-reversed': 'true',
+      }),
+      files: [{ name: 'big-deck.html', contents: toggleHtml(12) }],
+      noLimits: false,
+      workspace: new Workspace(true, 'fs'),
+      cardLimit: 21,
+    });
+    const workspace = new Workspace(true, 'fs');
+
+    await parser.build(workspace);
+
+    expect(parser.totalCardCount()).toBe(21);
+    expect(parser.cardsHeldBack).toBe(3);
+  });
+});
