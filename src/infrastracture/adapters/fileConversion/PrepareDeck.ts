@@ -150,6 +150,7 @@ interface PrepareDeckResult {
   apkg: Buffer;
   deck: Deck[];
   cardCount: number;
+  cardsHeldBack?: number;
   mcqCount: number;
   mcqSkippedCount: number;
   warning?: string;
@@ -732,6 +733,7 @@ async function buildParserResult(
         ),
         guidEntries: parser.issuedGuidEntries,
         uploadIdentityStats: uploadIdentityStatsFor(input, parser),
+        cardsHeldBack: parser.cardsHeldBack,
       };
     }
   }
@@ -765,6 +767,7 @@ async function buildParserResult(
     ),
     guidEntries: parser.issuedGuidEntries,
     uploadIdentityStats: uploadIdentityStatsFor(input, parser),
+    cardsHeldBack: parser.cardsHeldBack,
   };
 }
 

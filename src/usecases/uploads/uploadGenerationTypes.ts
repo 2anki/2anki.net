@@ -17,6 +17,7 @@ export interface UploadGenerationTask {
   uploadIdentity?: UploadIdentityContext;
   existingCardFingerprints?: string[];
   requestId?: string;
+  cardLimit?: number;
   progressPort?: MessagePort;
 }
 
@@ -32,6 +33,7 @@ export type UploadGenerationResult =
       packages: Package[];
       warnings: string[];
       cardFingerprints?: string[];
+      cardsHeldBack?: number;
     }
   | { ok: false; error: UploadGenerationFailure };
 

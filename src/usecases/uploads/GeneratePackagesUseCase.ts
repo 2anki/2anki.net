@@ -28,6 +28,7 @@ export interface PackageResult {
   packages: Package[];
   warnings?: string[];
   cardFingerprints?: string[];
+  cardsHeldBack?: number;
 }
 
 function buildWorkerError(failure: UploadGenerationFailure): Error {
@@ -56,6 +57,7 @@ export interface GenerationContext {
   uploadIdentity?: UploadIdentityContext;
   existingCardFingerprints?: string[];
   requestId?: string;
+  cardLimit?: number;
 }
 
 class GeneratePackagesUseCase {
@@ -68,8 +70,13 @@ class GeneratePackagesUseCase {
     userId: number | null = null,
     context: GenerationContext = {}
   ): Promise<PackageResult> {
-    const { knownGuids, uploadIdentity, existingCardFingerprints, requestId } =
-      context;
+    const {
+      knownGuids,
+      uploadIdentity,
+      existingCardFingerprints,
+      requestId,
+      cardLimit,
+    } = context;
     ensureUploadBytes(files);
     const unavailable = findUnavailableUpload(files);
     if (unavailable) {
@@ -91,6 +98,7 @@ class GeneratePackagesUseCase {
           uploadIdentity,
           existingCardFingerprints,
           requestId,
+          cardLimit,
           progressPort: channel?.port2,
         },
         channel ? [channel.port2] : undefined
@@ -100,6 +108,7 @@ class GeneratePackagesUseCase {
           packages: result.packages,
           warnings: result.warnings,
           cardFingerprints: result.cardFingerprints,
+          cardsHeldBack: result.cardsHeldBack,
         };
       }
       throw buildWorkerError(result.error);
