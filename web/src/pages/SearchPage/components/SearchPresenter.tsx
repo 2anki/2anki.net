@@ -1,7 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ErrorHandlerType } from '../../../components/errors/helpers/getErrorMessage';
 import Backend from '../../../lib/backend';
 import NotionObject from '../../../lib/interfaces/NotionObject';
+import sharedStyles from '../../../styles/shared.module.css';
 import useFavorites from '../helpers/useFavorites';
 import searchStyles from '../SearchPage.module.css';
 import ListSearchResults from './ListSearchResults';
@@ -20,6 +22,7 @@ interface SearchPresenterProps {
 
 export default function SearchPresenter(props: Readonly<SearchPresenterProps>) {
   const navigate = useNavigate();
+  const { t } = useTranslation('tools');
   const {
     inProgress,
     myPages,
@@ -31,6 +34,7 @@ export default function SearchPresenter(props: Readonly<SearchPresenterProps>) {
     isLoggedIn,
   } = props;
   const [, setFavorites] = useFavorites(new Backend(), isLoggedIn);
+  const showsTopLevelPages = searchQuery.trim() === '' && myPages.length > 0;
 
   return (
     <>
@@ -51,6 +55,11 @@ export default function SearchPresenter(props: Readonly<SearchPresenterProps>) {
           onSearchClicked={() => triggerSearch(false)}
         />
       </div>
+      {showsTopLevelPages && (
+        <p className={sharedStyles.secondaryText}>
+          {t('import.pagePickerHelp')}
+        </p>
+      )}
       <ListSearchResults
         setError={setError}
         setFavorites={setFavorites}

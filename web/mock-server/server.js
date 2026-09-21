@@ -222,6 +222,14 @@ app.post('/api/notion/pages', (req, res) => {
   res.json({ results });
 });
 
+app.post('/api/notion/top-level-pages', (req, res) => {
+  const { query = '' } = req.body;
+  const results = mockNotionObjects
+    .filter((obj) => obj.object === 'page')
+    .filter((obj) => obj.title.toLowerCase().includes(query.toLowerCase()));
+  res.json({ results });
+});
+
 app.post('/api/notion/convert', (req, res) => {
   const { id, type, title } = req.body;
   const newJob = {

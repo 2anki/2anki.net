@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ErrorHandlerType } from '../../../components/errors/helpers/getErrorMessage';
 
 import Backend from '../../../lib/backend';
@@ -25,12 +25,12 @@ export default function useSearchQuery(
   const query = useQuery();
 
   const [searchQuery, setSearchQuery] = useState<string>(
-    query.get(QUERY_KEY) ||
-      sessionStorage.getItem(SESSION_STORAGE_KEY) ||
-      'anki'
+    query.get(QUERY_KEY) || sessionStorage.getItem(SESSION_STORAGE_KEY) || ''
   );
+  const currentQuery = useRef(searchQuery);
 
   const updateSearchQuery = useCallback((value: string) => {
+    currentQuery.current = value;
     setSearchQuery(value);
     setMyPages([]);
     setInProgress(true);
@@ -41,15 +41,22 @@ export default function useSearchQuery(
   const [isLoading, setIsLoading] = useState(true);
 
   const triggerSearch = useCallback(() => {
+    const requestedQuery = searchQuery;
+    const isStale = () => currentQuery.current !== requestedQuery;
     setInProgress(true);
-    backend
-      .search(searchQuery)
+    const request =
+      requestedQuery.trim() === ''
+        ? backend.searchTopLevelPages('')
+        : backend.search(requestedQuery);
+    request
       .then((results) => {
+        if (isStale()) return;
         setMyPages(results);
         setInProgress(false);
         setIsLoading(false);
       })
       .catch((error) => {
+        if (isStale()) return;
         setError(error);
         setIsLoading(false);
         setInProgress(false);
