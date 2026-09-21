@@ -155,7 +155,7 @@ describe('MagicLinkPage', () => {
     renderMagicLinkPage('?token=abc123');
 
     await waitFor(() => {
-      expect(globalThis.location.href).toBe('/search?q=anki');
+      expect(globalThis.location.href).toBe('/search');
     });
   });
 
@@ -169,7 +169,7 @@ describe('MagicLinkPage', () => {
     renderMagicLinkPage('?token=abc123&redirect=https://evil.example');
 
     await waitFor(() => {
-      expect(globalThis.location.href).toBe('/search?q=anki');
+      expect(globalThis.location.href).toBe('/search');
     });
   });
 

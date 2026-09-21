@@ -84,6 +84,21 @@ describe('useHandleLoginSubmit redirect behavior', () => {
     expect(globalThis.location.href).toBe('/card-options');
   });
 
+  it('lands on the unfiltered search page when nothing names a redirect', async () => {
+    mockLogin.mockResolvedValue({
+      status: 200,
+      json: () => Promise.resolve({ token: 'tok' }),
+    });
+
+    const { result } = renderHook(() => useHandleLoginSubmit(vi.fn()));
+
+    await act(async () => {
+      await result.current.onSubmit(fakeSubmitEvent);
+    });
+
+    expect(globalThis.location.href).toBe('/search');
+  });
+
   it('prefers server redirect over URL ?redirect= when server provides one', async () => {
     setSearchParams('?redirect=%2Fcard-options');
     mockLogin.mockResolvedValue({

@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-21-notion-picker-shows-shared-pages",
+  "date": "2026-09-21",
+  "type": "fix",
+  "title": "Notion page picker starts with your shared pages instead of a search for “anki”"
+}

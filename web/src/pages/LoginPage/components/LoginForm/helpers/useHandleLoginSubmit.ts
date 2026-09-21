@@ -10,7 +10,6 @@ import {
   getErrorMessage,
 } from '../../../../../components/errors/helpers/getErrorMessage';
 import { get2ankiApi } from '../../../../../lib/backend/get2ankiApi';
-import { getSearchPath } from '../../../../../components/NavigationBar/helpers/getSearchPath';
 import {
   migrateToServer,
   hydrateFromServer,
@@ -52,8 +51,7 @@ export const useHandleLoginSubmit = (onError: ErrorHandlerType): LoginState => {
         setCookie('token', token);
         await migrateToServer();
         await hydrateFromServer();
-        globalThis.location.href =
-          redirect ?? getUrlRedirect() ?? getSearchPath('anki');
+        globalThis.location.href = redirect ?? getUrlRedirect() ?? '/search';
       } else if (res.status === 401) {
         const data = (await res.json().catch(() => ({}))) as {
           message?: string;

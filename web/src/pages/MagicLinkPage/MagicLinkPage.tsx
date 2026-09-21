@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useCookies } from 'react-cookie';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
-import { getSearchPath } from '../../components/NavigationBar/helpers/getSearchPath';
 import { sanitizeRelativeRedirect } from '../../lib/auth/sanitizeRelativeRedirect';
 import { stripUrlParam } from '../../lib/stripUrlParam';
 import styles from '../../styles/auth.module.css';
@@ -63,7 +62,7 @@ function MagicLinkPage() {
           setCookie('token', data.token);
           setState({ status: 'success' });
           globalThis.location.href =
-            sanitizeRelativeRedirect(data.redirect) ?? getSearchPath('anki');
+            sanitizeRelativeRedirect(data.redirect) ?? '/search';
         } else {
           const errorData = await response.json().catch(() => ({}));
           setState({

@@ -217,7 +217,13 @@ export class NotionService {
   async connectToNotion(authorizationCode: string, owner: number) {
     const accessData = await this.getAccessData(authorizationCode.toString());
     await this.notionRepository.saveNotionToken(owner, accessData, hashToken);
+    invalidateTopLevelPagesForOwner(owner);
     if (this.topLevelPagesRepository) {
+      try {
+        await this.topLevelPagesRepository.deleteByOwner(owner);
+      } catch (error) {
+        console.error('[notion] tier2 connect cleanup failed', error);
+      }
       void this.refreshTopLevelPagesCache(owner).catch((error) => {
         console.error('[notion] connect-time pre-warm failed', error);
       });
