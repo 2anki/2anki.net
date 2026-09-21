@@ -4615,6 +4615,20 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     mockWorkspaceId = 'test-ws-id';
   });
 
+  function buildEligibleRequest(anonId?: string): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'study-notes.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/study-notes.html',
+        },
+      ],
+      ...(anonId ? { cookies: { anon_id: anonId } } : {}),
+    } as Partial<express.Request>);
+  }
+
   function mockPartial(
     packages: Array<{ name: string; cardCount: number }>,
     cardsHeldBack?: number
@@ -4681,9 +4695,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   it('refuses an over-cap anonymous upload and tags no arm when the flag is off', async () => {
     mockGetFeatureFlag.mockResolvedValue(false);
     const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
-    const req = buildRequest({
-      cookies: { anon_id: TREATMENT_ID },
-    } as Partial<express.Request>);
+    const req = buildEligibleRequest(TREATMENT_ID);
     const { res, capturedSend, redirectedTo } = responseWithRedirect();
 
     await serviceUnderTest().handleUpload(req, res);
@@ -4700,9 +4712,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   it('delivers the first 21 cards with held-back headers for the treatment arm', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);
-    const req = buildRequest({
-      cookies: { anon_id: TREATMENT_ID },
-    } as Partial<express.Request>);
+    const req = buildEligibleRequest(TREATMENT_ID);
     const { res, capturedStatus, capturedSend } = buildResponse();
 
     await serviceUnderTest().handleUpload(req, res);
@@ -4735,9 +4745,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   it('leaves a treatment upload at or under 21 cards untouched', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21 }], 0);
-    const req = buildRequest({
-      cookies: { anon_id: TREATMENT_ID },
-    } as Partial<express.Request>);
+    const req = buildEligibleRequest(TREATMENT_ID);
     const { res, capturedStatus } = buildResponse();
 
     await serviceUnderTest().handleUpload(req, res);
@@ -4753,9 +4761,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   it('delivers an at-cap control upload unchanged with no held-back header', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }]);
-    const req = buildRequest({
-      cookies: { anon_id: CONTROL_ID },
-    } as Partial<express.Request>);
+    const req = buildEligibleRequest(CONTROL_ID);
     const { res, capturedStatus } = buildResponse();
 
     await serviceUnderTest().handleUpload(req, res);
@@ -4771,9 +4777,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   it('refuses an over-cap control upload with the arm and card-count bucket props', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
-    const req = buildRequest({
-      cookies: { anon_id: CONTROL_ID },
-    } as Partial<express.Request>);
+    const req = buildEligibleRequest(CONTROL_ID);
     const { res, capturedSend, redirectedTo } = responseWithRedirect();
 
     await serviceUnderTest().handleUpload(req, res);
@@ -4790,7 +4794,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   it('puts a request with no anonymous id in the control arm', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
-    const req = buildRequest();
+    const req = buildEligibleRequest();
     const { res, redirectedTo } = responseWithRedirect();
 
     await serviceUnderTest().handleUpload(req, res);
@@ -4801,4 +4805,55 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(props.reason).toBe('anonymous_cap');
     expect(props.arm).toBe('control');
   });
+
+  it.each([
+    [
+      'a zip upload',
+      [
+        {
+          originalname: 'study-notes.zip',
+          mimetype: 'application/zip',
+          size: 1024,
+          path: '/tmp/study-notes.zip',
+        },
+      ],
+    ],
+    [
+      'a multi-file upload',
+      [
+        {
+          originalname: 'week-one.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/week-one.html',
+        },
+        {
+          originalname: 'week-two.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/week-two.html',
+        },
+      ],
+    ],
+  ])(
+    'keeps %s on the refuse path with no arm even for a treatment id',
+    async (_label, files) => {
+      mockGetFeatureFlag.mockResolvedValue(true);
+      const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+      const req = buildRequest({
+        files,
+        cookies: { anon_id: TREATMENT_ID },
+      } as unknown as Partial<express.Request>);
+      const { res, capturedSend, redirectedTo } = responseWithRedirect();
+
+      await serviceUnderTest().handleUpload(req, res);
+
+      expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
+      expect(redirectedTo()).toBe('/limit?kind=anonymous');
+      expect(capturedSend()).toBeNull();
+      const props = conversionFailedProps();
+      expect(props.reason).toBe('anonymous_cap');
+      expect(props).not.toHaveProperty('arm');
+    }
+  );
 });
