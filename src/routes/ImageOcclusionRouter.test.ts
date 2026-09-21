@@ -6,6 +6,11 @@ import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 
 const mockExecute = jest.fn();
+const mockRecord = jest.fn();
+
+jest.mock('../services/events/eventsSinkInstance', () => ({
+  getEventsSink: () => ({ record: mockRecord }),
+}));
 
 jest.mock('../data_layer', () => ({
   getDatabase: jest.fn().mockReturnValue({}),
@@ -154,6 +159,20 @@ describe('ImageOcclusionRouter — POST /api/image-occlusion paying gate', () =>
     expect(response.status).toBe(200);
     expect(mockExecute).toHaveBeenCalledWith(
       expect.objectContaining({ isPaying: true })
+    );
+  });
+
+  it('records one image_occlusion_created event for the signed-in user', async () => {
+    const response = await postDeck(2);
+
+    expect(response.status).toBe(200);
+    expect(mockRecord).toHaveBeenCalledTimes(1);
+    expect(mockRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'image_occlusion_created',
+        user_id: 42,
+        props: { image_count: 2, occlusion_count: 2 },
+      })
     );
   });
 
