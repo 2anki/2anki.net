@@ -44,9 +44,13 @@ export function convertPage(
       );
     });
 
-    process.on('close', (code) => {
+    process.on('close', (code, signal) => {
       if (code !== 0) {
-        return reject(new Error(`pdftoppm process exited with code ${code}`));
+        return reject(
+          new Error(
+            `pdftoppm process exited with code=${code ?? 'null'} signal=${signal ?? 'none'}`
+          )
+        );
       }
       resolve(`${outputFileNameBase}-${paddedPageNumber}.png`);
     });
