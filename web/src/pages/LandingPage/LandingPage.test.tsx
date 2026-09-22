@@ -19,6 +19,10 @@ import goodnotesCopy from './copy/goodnotes';
 import aiFlashcardGeneratorCopy from './copy/ai-flashcard-generator';
 import { CONVERT_LANDING_PAGES } from '../ConvertLandingPage/convertLandingConfig';
 
+vi.mock('../../lib/analytics/track', () => ({
+  track: vi.fn(),
+}));
+
 function renderLandingPage(children: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -300,4 +304,25 @@ describe('LandingPage', () => {
       `/register?source=${encodeURIComponent(aiFlashcardGeneratorCopy.pathname)}`
     );
   });
+});
+
+describe('LandingPage funnel instrumentation', () => {
+  it.each([
+    [notionCopy, notionCopy.pathname],
+    [pdfCopy, pdfCopy.pathname],
+  ])(
+    'fires landing_page_viewed once on mount tagged with the page path',
+    async (copy, expectedPath) => {
+      const { track } = await import('../../lib/analytics/track');
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
+
+      renderLandingPage(<LandingPage copy={copy} setErrorMessage={vi.fn()} />);
+
+      const calls = trackMock.mock.calls.filter(
+        ([name]) => name === 'landing_page_viewed'
+      );
+      expect(calls).toEqual([['landing_page_viewed', { path: expectedPath }]]);
+    }
+  );
 });

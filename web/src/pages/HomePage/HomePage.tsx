@@ -166,7 +166,7 @@ export function HomePage({
   useEffect(() => {
     if (isLoggedIn || landingViewedRef.current) return;
     landingViewedRef.current = true;
-    track('landing_page_viewed');
+    track('landing_page_viewed', { path: '/' });
   }, [isLoggedIn]);
 
   if (isLoggedIn) {

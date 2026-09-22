@@ -520,6 +520,25 @@ describe('PricingPage anonymous upgrade-click tracking', () => {
   });
 });
 
+describe('PricingPage landing_page_viewed telemetry', () => {
+  beforeEach(() => {
+    mockUseCardUsage.mockReturnValue(null);
+  });
+
+  it('fires landing_page_viewed once on mount tagged with the pricing path', async () => {
+    const { track } = await import('../../lib/analytics/track');
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+
+    renderAt('/pricing');
+
+    const calls = trackMock.mock.calls.filter(
+      ([name]) => name === 'landing_page_viewed'
+    );
+    expect(calls).toEqual([['landing_page_viewed', { path: '/pricing' }]]);
+  });
+});
+
 describe('PricingPage pricing_left telemetry', () => {
   beforeEach(() => {
     mockUseCardUsage.mockReturnValue(null);

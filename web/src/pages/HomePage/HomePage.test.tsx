@@ -29,11 +29,11 @@ describe('HomePage (anonymous)', () => {
     trackMock.mockClear();
   });
 
-  it('fires landing_page_viewed once on mount', () => {
+  it('fires landing_page_viewed once on mount tagged with the home path', () => {
     renderHome();
     expect(
       trackMock.mock.calls.filter(([name]) => name === 'landing_page_viewed')
-    ).toHaveLength(1);
+    ).toEqual([['landing_page_viewed', { path: '/' }]]);
   });
 
   it('does not also fire the separate AI badge impression on the landing page', () => {

@@ -1,9 +1,10 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Trans, useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import UploadForm from '../UploadPage/components/UploadForm/UploadForm';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
+import { track } from '../../lib/analytics/track';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
@@ -104,8 +105,15 @@ function LandingPage({
 }: Readonly<LandingPageProps>) {
   const { t } = useTranslation('landing');
   const passPrices = usePassPrices();
+  const landingViewedRef = useRef(false);
   useEffect(() => {
     persistSignupOrigin(copy.pathname, globalThis.sessionStorage ?? null);
+  }, [copy.pathname]);
+
+  useEffect(() => {
+    if (landingViewedRef.current) return;
+    landingViewedRef.current = true;
+    track('landing_page_viewed', { path: copy.pathname });
   }, [copy.pathname]);
 
   const pageUrl = canonicalUrl(copy.pathname);
