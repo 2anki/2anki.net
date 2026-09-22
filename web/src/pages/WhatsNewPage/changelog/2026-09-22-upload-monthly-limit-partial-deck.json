@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-22-upload-monthly-limit-partial-deck",
+  "date": "2026-09-22",
+  "type": "fix",
+  "title": "File uploads that reach your monthly card limit deliver the cards that fit instead of nothing"
+}

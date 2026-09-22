@@ -1468,8 +1468,30 @@ class UploadService {
       paying
     );
     const partialArm = await this.resolveAnonymousPartialArm(req, res);
-    const cardLimit =
-      partialArm === 'treatment' ? ANONYMOUS_CARD_CAP : undefined;
+    let cardLimit = partialArm === 'treatment' ? ANONYMOUS_CARD_CAP : undefined;
+
+    // Parity with the job-queue path (performConversion): a signed-in free user
+    // over their remaining monthly allowance gets a deck truncated to what is
+    // left instead of a hard refuse. Only single-file supported uploads thread
+    // the cardLimit through the worker's PrepareDeck truncation, so gating on
+    // isPartialDeliveryEligible keeps the cumulative monthly math correct — one
+    // deck truncated to remaining. Every other shape falls through to the
+    // post-generation check below and refuses exactly as before.
+    let signedInMonthlyPartial = false;
+    if (
+      owner != null &&
+      !paying &&
+      cardLimit == null &&
+      isPartialDeliveryEligible(req.files as UploadedFile[] | undefined)
+    ) {
+      const { cards_used } = await this.usersRepository.getCardUsage(owner);
+      const remaining = Math.max(0, MONTHLY_CARD_LIMIT - cards_used);
+      if (remaining > 0) {
+        cardLimit = remaining;
+        signedInMonthlyPartial = true;
+      }
+    }
+
     const { packages, warnings, cardFingerprints, cardsHeldBack } =
       await useCase.execute(
         paying,
@@ -1561,13 +1583,13 @@ class UploadService {
     );
     logEmptyBackAttribution(packages, this.resolveUploadSource(req));
 
-    if (owner != null) {
+    if (owner != null && !signedInMonthlyPartial) {
       await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
         userId: owner,
         candidateCardCount: totalCards,
         isPaying: paying,
       });
-    } else if (totalCards > ANONYMOUS_CARD_CAP) {
+    } else if (owner == null && totalCards > ANONYMOUS_CARD_CAP) {
       if (authenticated) {
         throw new MonthlyLimitError(
           MONTHLY_CARD_LIMIT,
@@ -1704,7 +1726,7 @@ class UploadService {
             ? {
                 card_limit_partial: true,
                 cards_held_back: heldBack,
-                arm: partialArm,
+                ...(partialArm !== 'off' ? { arm: partialArm } : {}),
               }
             : {}),
         },
