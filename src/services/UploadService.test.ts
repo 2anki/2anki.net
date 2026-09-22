@@ -98,7 +98,10 @@ import Uploads from '../data_layer/public/Uploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
 import { resolveAnonymousPartialArm } from '../lib/upload/anonymousPartialDelivery';
-import { ANONYMOUS_CARD_CAP } from '../usecases/users/CheckMonthlyCardLimitUseCase';
+import {
+  ANONYMOUS_CARD_CAP,
+  MONTHLY_CARD_LIMIT,
+} from '../usecases/users/CheckMonthlyCardLimitUseCase';
 
 const MockGeneratePackagesUseCase = GeneratePackagesUseCase as jest.MockedClass<
   typeof GeneratePackagesUseCase
@@ -4856,4 +4859,235 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       expect(props).not.toHaveProperty('arm');
     }
   );
+});
+
+describe('UploadService.handleSyncUpload — signed-in monthly partial delivery', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'upload-service-test');
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+  });
+
+  beforeEach(() => {
+    MockGeneratePackagesUseCase.mockClear();
+    trackMock.mockClear();
+    mockFirstApkg = Buffer.from('fake-apkg');
+    mockWorkspaceId = 'test-ws-id';
+  });
+
+  function usersRepoAt(cardsUsed: number): UsersRepository {
+    return buildUsersRepo({
+      getCardUsage: jest.fn().mockResolvedValue({
+        cards_used: cardsUsed,
+        month_started_at: new Date(),
+      }),
+    });
+  }
+
+  function singleFileRequest(originalname: string): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname,
+          mimetype: 'text/html',
+          size: 1024,
+          path: `/tmp/${originalname}`,
+        },
+      ],
+    } as unknown as Partial<express.Request>);
+  }
+
+  function mockPartial(
+    packages: Array<{ name: string; cardCount: number }>,
+    cardsHeldBack?: number
+  ) {
+    const execute = jest
+      .fn()
+      .mockResolvedValue({ packages, warnings: [], cardsHeldBack });
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({ execute }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+    return execute;
+  }
+
+  function responseWithRedirect() {
+    const built = buildResponse();
+    let redirectedTo: string | null = null;
+    (built.res.redirect as unknown as jest.Mock).mockImplementation(
+      (url: string) => {
+        redirectedTo = url;
+        return built.res;
+      }
+    );
+    return { ...built, redirectedTo: () => redirectedTo };
+  }
+
+  function headerValue(
+    res: express.Response,
+    name: string
+  ): string | undefined {
+    const call = (res.set as jest.Mock).mock.calls.find(
+      ([headerName]) => headerName === name
+    );
+    return call?.[1] as string | undefined;
+  }
+
+  function exposedHeaders(res: express.Response): string {
+    return headerValue(res, 'Access-Control-Expose-Headers') ?? '';
+  }
+
+  function conversionSucceededProps(): Record<string, unknown> {
+    const call = trackMock.mock.calls.find(
+      ([name]) => name === 'conversion_succeeded'
+    );
+    return (call?.[1] as { props: Record<string, unknown> }).props;
+  }
+
+  function serviceUnderTest(usersRepo: UsersRepository) {
+    return new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      usersRepo,
+      ...fakeUploadServiceDeps()
+    );
+  }
+
+  it('truncates a free user over their remaining allowance to a partial deck', async () => {
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+    const execute = mockPartial([{ name: 'deck', cardCount: 10 }], 5);
+    const req = singleFileRequest('study-notes.html');
+    const { res, capturedStatus, capturedSend } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo).handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 10 });
+    expect(capturedStatus()).toBe(200);
+    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
+    expect(headerValue(res, 'X-Card-Count')).toBe('10');
+    expect(headerValue(res, 'X-Cards-Held-Back')).toBe('5');
+    expect(exposedHeaders(res)).toContain('X-Cards-Held-Back');
+    const props = conversionSucceededProps();
+    expect(props).toMatchObject({
+      card_limit_partial: true,
+      cards_held_back: 5,
+    });
+    expect(props).not.toHaveProperty('arm');
+    expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 10);
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.anything()
+    );
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'paywall_shown',
+      expect.anything()
+    );
+  });
+
+  it('leaves a deck that fits the remaining allowance untouched', async () => {
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+    const execute = mockPartial([{ name: 'deck', cardCount: 10 }], 0);
+    const req = singleFileRequest('study-notes.html');
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo).handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 10 });
+    expect(capturedStatus()).toBe(200);
+    expect(headerValue(res, 'X-Cards-Held-Back')).toBeUndefined();
+    expect(exposedHeaders(res)).not.toContain('X-Cards-Held-Back');
+    const props = conversionSucceededProps();
+    expect(props).not.toHaveProperty('card_limit_partial');
+    expect(props).not.toHaveProperty('arm');
+    expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 10);
+  });
+
+  it('hard-refuses when the user has zero remaining allowance', async () => {
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT);
+    const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+    const req = singleFileRequest('study-notes.html');
+    const { res, capturedSend, redirectedTo } = responseWithRedirect();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo).handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
+    expect(redirectedTo()).toBe('/limit?kind=card_count');
+    expect(capturedSend()).toBeNull();
+    expect(usersRepo.incrementCardUsage).not.toHaveBeenCalled();
+    expect(trackMock).toHaveBeenCalledWith(
+      'paywall_shown',
+      expect.objectContaining({
+        props: expect.objectContaining({ kind: 'card_count' }),
+      })
+    );
+  });
+
+  it.each([
+    [
+      'a zip upload',
+      [
+        {
+          originalname: 'export.zip',
+          mimetype: 'application/zip',
+          size: 1024,
+          path: '/tmp/export.zip',
+        },
+      ],
+    ],
+    [
+      'a multi-file upload',
+      [
+        {
+          originalname: 'week-one.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/week-one.html',
+        },
+        {
+          originalname: 'week-two.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/week-two.html',
+        },
+      ],
+    ],
+  ])(
+    'keeps %s on the hard-refuse path with no cardLimit',
+    async (_label, files) => {
+      const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+      const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+      const req = buildRequest({
+        files,
+      } as unknown as Partial<express.Request>);
+      const { res, redirectedTo } = responseWithRedirect();
+      (res.locals as Record<string, unknown>).owner = 42;
+
+      await serviceUnderTest(usersRepo).handleUpload(req, res);
+
+      expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
+      expect(redirectedTo()).toBe('/limit?kind=card_count');
+    }
+  );
+
+  it('never truncates a paying user over the allowance', async () => {
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT * 2);
+    const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+    const req = singleFileRequest('study-notes.html');
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+
+    await serviceUnderTest(usersRepo).handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
+    expect(capturedStatus()).toBe(200);
+    expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 30);
+  });
 });
