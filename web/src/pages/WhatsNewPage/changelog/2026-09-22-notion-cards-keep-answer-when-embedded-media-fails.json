@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-22-notion-cards-keep-answer-when-embedded-media-fails",
+  "date": "2026-09-22",
+  "type": "fix",
+  "title": "Notion cards keep their answer even when an embedded image can't load"
+}

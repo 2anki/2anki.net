@@ -7,36 +7,72 @@ import {
 import type { IBlockRenderer } from '../BlockHandler/types';
 import { blockToStaticMarkup } from './blockToStaticMarkup';
 
+export const MISSING_MEDIA_PLACEHOLDER =
+  '<aside class="notion-media-unavailable">This embedded media couldn\'t be loaded.</aside>';
+
+type BackChild = PartialBlockObjectResponse | BlockObjectResponse;
+
+const TYPES_THAT_RENDER_OWN_CHILDREN = new Set([
+  'toggle',
+  'bulleted_list_item',
+  'callout',
+]);
+
+const shouldRecurseIntoChildren = (
+  block: BlockObjectResponse,
+  handleChildren: boolean | undefined
+): boolean =>
+  Boolean(handleChildren) ||
+  (block.has_children && !TYPES_THAT_RENDER_OWN_CHILDREN.has(block.type));
+
+const renderBackChild = async (
+  handler: IBlockRenderer,
+  block: BlockObjectResponse,
+  response: ListBlockChildrenResponse,
+  handleChildren: boolean | undefined
+): Promise<string> => {
+  let markup = await blockToStaticMarkup(handler, block, response);
+  if (shouldRecurseIntoChildren(block, handleChildren)) {
+    markup += await handler.getBackSide(block);
+  }
+  return markup;
+};
+
 export const renderBack = async (
   handler: IBlockRenderer,
-  requestChildren: Array<PartialBlockObjectResponse | BlockObjectResponse>,
+  requestChildren: BackChild[],
   response: ListBlockChildrenResponse,
   handleChildren: boolean | undefined
 ) => {
   let back = '';
   for (const c of requestChildren) {
-    // If the block has been handled before, skip it.
-    // This can be true due to nesting
-    if (handler.skip.includes(c.id)) {
+    if (handler.skip.includes(c.id) || !isFullBlock(c)) {
       continue;
     }
+    back += await renderBackChild(handler, c, response, handleChildren);
+  }
+  return back;
+};
 
-    if (!isFullBlock(c)) {
+export const renderBackResilient = async (
+  handler: IBlockRenderer,
+  requestChildren: BackChild[],
+  response: ListBlockChildrenResponse,
+  handleChildren: boolean | undefined
+) => {
+  let back = '';
+  for (const c of requestChildren) {
+    if (handler.skip.includes(c.id) || !isFullBlock(c)) {
       continue;
     }
-    back += await blockToStaticMarkup(handler, c, response);
-
-    // Nesting applies to all not just toggles.
-    // Callouts render their own children inside the figure, so the
-    // re-recursion here would otherwise append them flat after the box.
-    if (
-      handleChildren ||
-      (c.has_children &&
-        c.type !== 'toggle' &&
-        c.type !== 'bulleted_list_item' &&
-        c.type !== 'callout')
-    ) {
-      back += await handler.getBackSide(c);
+    try {
+      back += await renderBackChild(handler, c, response, handleChildren);
+    } catch (error) {
+      console.warn(
+        `Skipping unrenderable Notion block ${c.id} on the card back`,
+        error
+      );
+      back += MISSING_MEDIA_PLACEHOLDER;
     }
   }
   return back;

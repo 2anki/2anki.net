@@ -73,7 +73,7 @@ import getInputCard from '../helpers/getInputCard';
 import isColumnList from '../helpers/isColumnList';
 import isTesting from '../helpers/isTesting';
 import perserveNewlinesIfApplicable from '../helpers/preserveNewlinesIfApplicable';
-import { renderBack } from '../helpers/renderBack';
+import { renderBack, renderBackResilient } from '../helpers/renderBack';
 import renderTextChildren from '../helpers/renderTextChildren';
 import { toText } from './helpers/deckNameToText';
 import getSubDeckName from './helpers/getSubDeckName';
@@ -395,6 +395,25 @@ class BlockHandler implements IBlockRenderer {
     return '';
   }
 
+  private async fetchBackSideChildren(block: BlockObjectResponse): Promise<{
+    requestChildren: Awaited<ReturnType<typeof expandSyncedBlocks>>;
+    response: ListBlockChildrenResponse;
+  }> {
+    const response = await this.api.getBlocks({
+      createdAt: block.created_time,
+      lastEditedAt: block.last_edited_time,
+      id: block.id,
+      all: this.useAll,
+      type: block.type,
+    });
+    const requestChildren = await expandSyncedBlocks(
+      response.results,
+      this.api,
+      this.useAll
+    );
+    return { requestChildren, response };
+  }
+
   /**
    * Retrieve the back side of a toggle
    * @param block
@@ -405,25 +424,46 @@ class BlockHandler implements IBlockRenderer {
     block: BlockObjectResponse,
     handleChildren?: boolean
   ): Promise<string | null> {
-    let response2: ListBlockChildrenResponse | null;
+    let children: Awaited<ReturnType<typeof this.fetchBackSideChildren>>;
     try {
-      response2 = await this.api.getBlocks({
-        createdAt: block.created_time,
-        lastEditedAt: block.last_edited_time,
-        id: block.id,
-        all: this.useAll,
-        type: block.type,
-      });
-      const requestChildren = await expandSyncedBlocks(
-        response2.results,
-        this.api,
-        this.useAll
-      );
-      return await renderBack(this, requestChildren, response2, handleChildren);
-    } catch (e: unknown) {
+      children = await this.fetchBackSideChildren(block);
+    } catch (fetchError: unknown) {
       console.info('Get back side failed');
-      console.error(e);
+      console.error(fetchError);
       return null;
+    }
+
+    try {
+      return await renderBack(
+        this,
+        children.requestChildren,
+        children.response,
+        handleChildren
+      );
+    } catch {
+      console.info(
+        `Back side render failed for block ${block.id}, retrying with fresh block content`
+      );
+      try {
+        children = await this.fetchBackSideChildren(block);
+        return await renderBack(
+          this,
+          children.requestChildren,
+          children.response,
+          handleChildren
+        );
+      } catch (retryError: unknown) {
+        console.warn(
+          `Back side media unrecoverable for block ${block.id}; delivering recoverable content with a placeholder`,
+          retryError
+        );
+        return await renderBackResilient(
+          this,
+          children.requestChildren,
+          children.response,
+          handleChildren
+        );
+      }
     }
   }
 
