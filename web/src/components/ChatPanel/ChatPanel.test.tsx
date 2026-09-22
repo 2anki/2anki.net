@@ -1250,6 +1250,115 @@ describe('ChatPanel — template selector', () => {
   });
 });
 
+describe('ChatPanel — message sent analytics', () => {
+  beforeEach(() => {
+    mockPost.mockReset();
+    mockPatch.mockReset();
+    mockTrack.mockReset();
+    mockGet.mockResolvedValue({ used: 0, limit: 20 });
+    mockUseUserLocals.mockReturnValue(consentedLocals);
+  });
+
+  function sentEvents() {
+    return mockTrack.mock.calls.filter(
+      ([name]) => name === 'chat_message_sent'
+    );
+  }
+
+  it('fires chat_message_sent once with is_new_conversation true on first send', async () => {
+    mockPost.mockResolvedValueOnce(
+      makeSseResponse([
+        { event: 'done', data: { content: 'Reply', conversationId: 1 } },
+      ])
+    );
+    renderChatPanel();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message input' }), {
+      target: { value: 'What is spaced repetition?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith(
+        '/api/chat/message',
+        expect.objectContaining({ content: 'What is spaced repetition?' })
+      );
+    });
+
+    const calls = sentEvents();
+    expect(calls).toHaveLength(1);
+    expect(calls[0][1]).toEqual({ is_new_conversation: true });
+  });
+
+  it('marks is_new_conversation false when sending into an existing conversation', async () => {
+    mockPost.mockResolvedValueOnce(
+      makeSseResponse([
+        { event: 'done', data: { content: 'Reply', conversationId: 7 } },
+      ])
+    );
+    renderChatPanel({
+      initialConversationId: 7,
+      initialMessages: [
+        { role: 'user', content: 'Earlier question' },
+        { role: 'assistant', content: 'Earlier answer' },
+      ],
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message input' }), {
+      target: { value: 'Follow-up question' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith(
+        '/api/chat/message',
+        expect.objectContaining({ content: 'Follow-up question' })
+      );
+    });
+
+    const calls = sentEvents();
+    expect(calls).toHaveLength(1);
+    expect(calls[0][1]).toEqual({ is_new_conversation: false });
+  });
+
+  it('does not fire chat_message_sent on a template-change regenerate', async () => {
+    mockPatch.mockResolvedValue({ ok: true, status: 204 });
+    mockPost.mockResolvedValueOnce(
+      makeSseResponse([
+        {
+          event: 'done',
+          data: {
+            content: 'Reply',
+            conversationId: 7,
+            cards: [{ front: 'New', back: 'Card' }],
+          },
+        },
+      ])
+    );
+    renderChatPanel({
+      initialMessages: [
+        { role: 'user', content: '20 cards about Norway' },
+        {
+          role: 'assistant',
+          content: 'Reply',
+          cards: [{ front: 'Capital?', back: 'Oslo' }],
+        },
+      ],
+      initialConversationId: 7,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Note type: Basic' }));
+    fireEvent.click(
+      screen.getByRole('option', { name: /Cloze/ }).querySelector('button')!
+    );
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith(
+        '/api/chat/conversations/7/regenerate',
+        { templateSlug: 'cloze' }
+      );
+    });
+
+    expect(sentEvents()).toHaveLength(0);
+  });
+});
+
 describe('consumeSseEvents', () => {
   function streamFromStrings(parts: string[]): ReadableStream<Uint8Array> {
     const encoder = new TextEncoder();
