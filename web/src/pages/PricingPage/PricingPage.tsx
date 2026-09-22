@@ -55,6 +55,7 @@ export default function PricingPage({
     fromContext != null && !isLoggedIn ? false : fromContext != null;
   const enteredAtRef = useRef(Date.now());
   const shownFiredRef = useRef(false);
+  const landingViewedRef = useRef(false);
   const cardUsage = useCardUsage(true);
   const pricingOrder = usePricingOrderVariant();
   const passPrices = usePassPrices();
@@ -82,6 +83,12 @@ export default function PricingPage({
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    if (landingViewedRef.current) return;
+    landingViewedRef.current = true;
+    track('landing_page_viewed', { path: '/pricing' });
   }, []);
 
   const selectBillingCycle = (cycle: 'month' | 'year') => {
