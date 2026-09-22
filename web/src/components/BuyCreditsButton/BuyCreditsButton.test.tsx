@@ -29,10 +29,10 @@ describe('BuyCreditsButton', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows the compact label for the badge', () => {
+  it('shows the compact price label for the badge', () => {
     render(<BuyCreditsButton source="credits_badge" variant="link" compact />);
     expect(
-      screen.getByRole('button', { name: 'Buy credits' })
+      screen.getByRole('button', { name: 'Top up — $5' })
     ).toBeInTheDocument();
   });
 
