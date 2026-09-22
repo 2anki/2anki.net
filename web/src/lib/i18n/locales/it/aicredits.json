@@ -16,7 +16,7 @@
   "remainingValid_one": "{{count}} rimasto, valido fino al {{date}}.",
   "remainingValid_other": "{{count}} rimasti, validi fino al {{date}}.",
   "buy": "Acquista 250 crediti per 5 $",
-  "buyShort": "Acquista crediti",
+  "buyShort": "Ricarica — 5 $",
   "buyPending": "Avvio del pagamento",
   "buyError": "Impossibile avviare il pagamento. Riprova.",
   "confirmation": "250 crediti aggiunti. Validi fino al {{date}}."

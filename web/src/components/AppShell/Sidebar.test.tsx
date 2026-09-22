@@ -525,7 +525,7 @@ describe('Sidebar AI credits line', () => {
       expect(screen.getByText('312 AI credits left.')).toBeInTheDocument()
     );
     expect(
-      screen.queryByRole('link', { name: 'Buy credits' })
+      screen.queryByRole('link', { name: 'Top up — $5' })
     ).not.toBeInTheDocument();
   });
 
@@ -542,7 +542,7 @@ describe('Sidebar AI credits line', () => {
     await waitFor(() =>
       expect(screen.getByText('10 AI credits left.')).toBeInTheDocument()
     );
-    expect(screen.getByRole('link', { name: 'Buy credits' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Top up — $5' })).toHaveAttribute(
       'href',
       '/account'
     );
@@ -564,7 +564,7 @@ describe('Sidebar AI credits line', () => {
       ).toBeInTheDocument()
     );
     expect(
-      screen.getByRole('link', { name: 'Buy credits' })
+      screen.getByRole('link', { name: 'Top up — $5' })
     ).toBeInTheDocument();
   });
 
@@ -582,7 +582,7 @@ describe('Sidebar AI credits line', () => {
       expect(screen.getByText(/120 AI credits, paused/)).toBeInTheDocument()
     );
     expect(
-      screen.queryByRole('link', { name: 'Buy credits' })
+      screen.queryByRole('link', { name: 'Top up — $5' })
     ).not.toBeInTheDocument();
   });
 
@@ -596,7 +596,7 @@ describe('Sidebar AI credits line', () => {
       resets: 'period',
     });
     renderSidebar({ subscriber: true });
-    const link = await screen.findByRole('link', { name: 'Buy credits' });
+    const link = await screen.findByRole('link', { name: 'Top up — $5' });
     fireEvent.click(link);
     expect(track).toHaveBeenCalledWith('credits_sidebar_link_clicked');
   });

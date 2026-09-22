@@ -1136,7 +1136,7 @@ function UploadForm({
         <p className={formStyles.warningInline}>
           {warningMessage}
           {warningCode === AI_CREDITS_WARNING_CODE && (
-            <BuyCreditsButton source="credits_conversion" variant="link" />
+            <BuyCreditsButton source="credits_conversion" variant="secondary" />
           )}
         </p>
       )}
@@ -1220,7 +1220,10 @@ function UploadForm({
           <p className={formStyles.warningInline}>
             {warning}
             {warningCode === AI_CREDITS_WARNING_CODE && (
-              <BuyCreditsButton source="credits_conversion" variant="link" />
+              <BuyCreditsButton
+                source="credits_conversion"
+                variant="secondary"
+              />
             )}
           </p>
         )}

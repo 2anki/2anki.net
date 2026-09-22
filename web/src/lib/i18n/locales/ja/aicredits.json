@@ -9,7 +9,7 @@
   "remaining_other": "残りは{{count}}です。",
   "remainingValid_other": "残りは{{count}}、{{date}}まで有効。",
   "buy": "250クレジットを5ドルで購入",
-  "buyShort": "クレジットを購入",
+  "buyShort": "5ドルでチャージ",
   "buyPending": "決済を開始しています",
   "buyError": "決済を開始できませんでした。もう一度お試しください。",
   "confirmation": "250クレジットを追加しました。{{date}}まで有効です。"

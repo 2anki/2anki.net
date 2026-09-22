@@ -1252,7 +1252,10 @@ export default function ChatPanel({
                   {aiCreditsExhausted && (
                     <output className={styles.aiCreditsNotice}>
                       {t('aiCreditsExhausted')}{' '}
-                      <BuyCreditsButton source="credits_chat" variant="link" />
+                      <BuyCreditsButton
+                        source="credits_chat"
+                        variant="secondary"
+                      />
                     </output>
                   )}
                 </div>
@@ -1379,7 +1382,7 @@ export default function ChatPanel({
               {aiCreditsExhausted && (
                 <output className={styles.aiCreditsNotice}>
                   {t('aiCreditsExhausted')}{' '}
-                  <BuyCreditsButton source="credits_chat" variant="link" />
+                  <BuyCreditsButton source="credits_chat" variant="secondary" />
                 </output>
               )}
               {successMessage != null && (

@@ -678,7 +678,7 @@ describe('ChatPanel', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/out of AI credits/i);
   });
 
-  it('offers a buy-credits link in the exhausted notice', async () => {
+  it('offers a secondary buy-credits button in the exhausted notice', async () => {
     mockPost.mockResolvedValueOnce(
       makeSseResponse([
         { event: 'error', data: { type: 'ai_credits_exhausted' } },
@@ -696,6 +696,7 @@ describe('ChatPanel', () => {
       name: 'Buy 250 credits for $5',
     });
     expect(buyButton).toBeInTheDocument();
+    expect(buyButton.className).toContain('btnSecondary');
   });
 
   it('swaps to the upgrade panel when the server answers 402', async () => {

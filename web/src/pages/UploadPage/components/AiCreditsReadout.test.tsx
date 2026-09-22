@@ -35,14 +35,14 @@ describe('AiCreditsReadout', () => {
   it('shows the remaining count with no buy action above the low threshold', () => {
     render(<AiCreditsReadout credits={state({ credits: 180 })} />);
     expect(screen.getByText('180 AI credits left.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Buy credits' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Top up — $5' })).toBeNull();
   });
 
   it('offers a compact buy action at a low balance', () => {
     render(<AiCreditsReadout credits={state({ credits: 20 })} />);
     expect(screen.getByText('20 AI credits left.')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Buy credits' })
+      screen.getByRole('button', { name: 'Top up — $5' })
     ).toBeInTheDocument();
   });
 
@@ -54,7 +54,7 @@ describe('AiCreditsReadout', () => {
       )
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Buy credits' })
+      screen.getByRole('button', { name: 'Top up — $5' })
     ).toBeInTheDocument();
   });
 });
