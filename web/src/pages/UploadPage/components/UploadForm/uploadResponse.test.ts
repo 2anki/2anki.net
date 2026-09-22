@@ -20,6 +20,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setDroppedImageCount: vi.fn(),
     setExpiredNotionImageCount: vi.fn(),
     setEmptyBackCount: vi.fn(),
+    setCardsHeldBack: vi.fn(),
     setOverSplit: vi.fn(),
     setCreditsUsed: vi.fn(),
     setDownloadLink: vi.fn(),
@@ -163,6 +164,25 @@ describe('applyConversionSuccess', () => {
     );
 
     expect(handlers.setEmptyBackCount).toHaveBeenCalledWith(2);
+  });
+
+  it('reads the held-back count from the X-Cards-Held-Back header on a single deck', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({ 'X-Cards-Held-Back': '13' }),
+      handlers
+    );
+
+    expect(handlers.setCardsHeldBack).toHaveBeenCalledWith(13);
+  });
+
+  it('sets the held-back count to 0 when the X-Cards-Held-Back header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setCardsHeldBack).toHaveBeenCalledWith(0);
   });
 
   it('sets the empty-back count to 0 when the X-Empty-Back-Count header is absent', async () => {

@@ -1158,3 +1158,45 @@ describe('conversionInvokesAi', () => {
     expect(conversionInvokesAi(makeSettings(), [file('notes.md')])).toBe(false);
   });
 });
+
+describe('PrepareDeck — anonymous card limit', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  function toggleDeck(cardCount: number): string {
+    const toggles = Array.from(
+      { length: cardCount },
+      (_, i) =>
+        `<ul class="toggle"><li><details open=""><summary>Question ${i + 1}</summary><p>Answer ${i + 1}</p></details></li></ul>`
+    ).join('\n');
+    return `<html><head><title>Deck</title></head><body><article class="page sans"><header><h1 class="page-title">Deck</h1></header><div class="page-body">${toggles}</div></article></body></html>`;
+  }
+
+  it('delivers the limit and reports the held-back remainder', async () => {
+    const result = await PrepareDeck({
+      name: 'deck.html',
+      files: [{ name: 'deck.html', contents: toggleDeck(25) }],
+      settings: makeSettings({ cherry: 'false' }),
+      noLimits: false,
+      workspace: makeWorkspace(),
+      cardLimit: 21,
+    });
+
+    expect(result?.cardCount).toBe(21);
+    expect(result?.cardsHeldBack).toBe(4);
+  });
+
+  it('holds nothing back when no limit is passed', async () => {
+    const result = await PrepareDeck({
+      name: 'deck.html',
+      files: [{ name: 'deck.html', contents: toggleDeck(25) }],
+      settings: makeSettings({ cherry: 'false' }),
+      noLimits: false,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBe(25);
+    expect(result?.cardsHeldBack).toBe(0);
+  });
+});

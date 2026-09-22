@@ -21,6 +21,7 @@ import { File } from '../zip/zip';
 import Deck from './Deck';
 import Note from './Note';
 import { countEmptyBacks } from './countEmptyBacks';
+import { truncateDecksToCardLimit } from './truncateDecksToCardLimit';
 import { isTypableAnswer, typableAnswerText } from './isTypableAnswer';
 import { noteHasAnswerSide } from './noteHasAnswerSide';
 import CardOption from './Settings';
@@ -130,6 +131,7 @@ export interface DeckParserInput {
   knownGuids?: KnownGuids;
   uploadIdentity?: UploadIdentityContext;
   crossFileDedup?: CrossFileDedupState;
+  cardLimit?: number;
 }
 
 // Present only for signed-in uploads of a format whose fronts are stable
@@ -205,6 +207,10 @@ export class DeckParser {
 
   private sawUnclassifiedParse: boolean;
 
+  private readonly cardLimit?: number;
+
+  cardsHeldBack = 0;
+
   workspace: Workspace;
   customExporter: CustomExporter;
 
@@ -230,6 +236,7 @@ export class DeckParser {
     this.emptyBackCount = 0;
     this.strayClozeCount = 0;
     this.sawUnclassifiedParse = false;
+    this.cardLimit = input.cardLimit;
     this.payload = [];
     this.workspace = input.workspace ?? new Workspace(true, 'fs');
     this.customExporter = new CustomExporter(
@@ -1432,11 +1439,23 @@ export class DeckParser {
       this.applyGlobalTags(deck.cards);
     }
 
+    this.applyCardLimit();
+
     this.markUploadDecks();
     this.applyLedgerGuids();
     this.applyUploadIdentityGuids();
     this.payload[0].settings = this.settings;
     this.customExporter.configure(this.payload);
+  }
+
+  private applyCardLimit(): void {
+    if (this.cardLimit == null) {
+      return;
+    }
+    this.cardsHeldBack = truncateDecksToCardLimit(
+      this.payload,
+      this.cardLimit
+    ).heldBack;
   }
 
   // Upload decks get the legacy content-formula GUID from python so a deck a
@@ -1597,6 +1616,7 @@ export class DeckParser {
       throw new EmptyDeckError(markdownSourced ? 'markdown' : undefined);
     }
 
+    this.applyCardLimit();
     this.markUploadDecks();
     this.applyUploadIdentityGuids();
     this.issuedGuidEntries = this.uploadIdentityEntries;

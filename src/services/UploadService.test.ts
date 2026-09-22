@@ -31,6 +31,11 @@ jest.mock('../services/SubscriptionService', () => ({
 
 jest.mock('./events/track', () => ({ track: jest.fn() }));
 
+const mockGetFeatureFlag = jest.fn().mockResolvedValue(false);
+jest.mock('../lib/featureFlags/getFeatureFlag', () => ({
+  getFeatureFlag: (...args: unknown[]) => mockGetFeatureFlag(...args),
+}));
+
 let mockWorkspaceLocation = '';
 let mockWorkspaceId = 'test-ws-id';
 let mockFirstApkg: Buffer | null = null;
@@ -92,10 +97,17 @@ import { ISettingsRepository } from '../data_layer/SettingsRepository';
 import Uploads from '../data_layer/public/Uploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
+import { resolveAnonymousPartialArm } from '../lib/upload/anonymousPartialDelivery';
+import { ANONYMOUS_CARD_CAP } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 
 const MockGeneratePackagesUseCase = GeneratePackagesUseCase as jest.MockedClass<
   typeof GeneratePackagesUseCase
 >;
+
+beforeEach(() => {
+  mockGetFeatureFlag.mockClear();
+  mockGetFeatureFlag.mockResolvedValue(false);
+});
 
 function buildRepository(): IUploadRepository {
   return {
@@ -4572,4 +4584,276 @@ describe('UploadService.handleUpload — failure events for the success-rate til
 
     expect(conversionFailedReasons()).toEqual([]);
   });
+});
+
+describe('UploadService.handleSyncUpload — anonymous partial delivery', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+
+  function anonIdForArm(target: 'control' | 'treatment'): string {
+    for (let i = 0; i < 10000; i += 1) {
+      const id = `probe-${i}`;
+      if (resolveAnonymousPartialArm(id, true) === target) return id;
+    }
+    throw new Error(`no anonymous id resolved to ${target}`);
+  }
+
+  const TREATMENT_ID = anonIdForArm('treatment');
+  const CONTROL_ID = anonIdForArm('control');
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'upload-service-test');
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+  });
+
+  beforeEach(() => {
+    MockGeneratePackagesUseCase.mockClear();
+    trackMock.mockClear();
+    mockFirstApkg = Buffer.from('fake-apkg');
+    mockWorkspaceId = 'test-ws-id';
+  });
+
+  function buildEligibleRequest(anonId?: string): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'study-notes.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/study-notes.html',
+        },
+      ],
+      ...(anonId ? { cookies: { anon_id: anonId } } : {}),
+    } as Partial<express.Request>);
+  }
+
+  function mockPartial(
+    packages: Array<{ name: string; cardCount: number }>,
+    cardsHeldBack?: number
+  ) {
+    const execute = jest
+      .fn()
+      .mockResolvedValue({ packages, warnings: [], cardsHeldBack });
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({ execute }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+    return execute;
+  }
+
+  function responseWithRedirect() {
+    const built = buildResponse();
+    let redirectedTo: string | null = null;
+    (built.res.redirect as unknown as jest.Mock).mockImplementation(
+      (url: string) => {
+        redirectedTo = url;
+        return built.res;
+      }
+    );
+    return { ...built, redirectedTo: () => redirectedTo };
+  }
+
+  function headerValue(
+    res: express.Response,
+    name: string
+  ): string | undefined {
+    const call = (res.set as jest.Mock).mock.calls.find(
+      ([headerName]) => headerName === name
+    );
+    return call?.[1] as string | undefined;
+  }
+
+  function exposedHeaders(res: express.Response): string {
+    return headerValue(res, 'Access-Control-Expose-Headers') ?? '';
+  }
+
+  function conversionSucceededProps(): Record<string, unknown> {
+    const call = trackMock.mock.calls.find(
+      ([name]) => name === 'conversion_succeeded'
+    );
+    return (call?.[1] as { props: Record<string, unknown> }).props;
+  }
+
+  function conversionFailedProps(): Record<string, unknown> {
+    const call = trackMock.mock.calls.find(
+      ([name]) => name === 'conversion_failed'
+    );
+    return (call?.[1] as { props: Record<string, unknown> }).props;
+  }
+
+  function serviceUnderTest() {
+    return new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+  }
+
+  it('refuses an over-cap anonymous upload and tags no arm when the flag is off', async () => {
+    mockGetFeatureFlag.mockResolvedValue(false);
+    const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedSend, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(capturedSend()).toBeNull();
+    expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
+    const props = conversionFailedProps();
+    expect(props.reason).toBe('anonymous_cap');
+    expect(props).not.toHaveProperty('arm');
+    expect(props).not.toHaveProperty('card_count_bucket');
+  });
+
+  it('delivers the first 21 cards with held-back headers for the treatment arm', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedStatus, capturedSend } = buildResponse();
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).toMatchObject({
+      cardLimit: ANONYMOUS_CARD_CAP,
+    });
+    expect(capturedStatus()).toBe(200);
+    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
+    expect(headerValue(res, 'X-Card-Count')).toBe('21');
+    expect(headerValue(res, 'X-Cards-Held-Back')).toBe('13');
+    expect(exposedHeaders(res)).toContain('X-Cards-Held-Back');
+    const props = conversionSucceededProps();
+    expect(props).toMatchObject({
+      card_limit_partial: true,
+      cards_held_back: 13,
+      arm: 'treatment',
+    });
+    expect(props.card_count_bucket).toBeDefined();
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.anything()
+    );
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'paywall_shown',
+      expect.anything()
+    );
+  });
+
+  it('leaves a treatment upload at or under 21 cards untouched', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 0);
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedStatus } = buildResponse();
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(headerValue(res, 'X-Cards-Held-Back')).toBeUndefined();
+    expect(exposedHeaders(res)).not.toContain('X-Cards-Held-Back');
+    const props = conversionSucceededProps();
+    expect(props).not.toHaveProperty('card_limit_partial');
+    expect(props).not.toHaveProperty('arm');
+  });
+
+  it('delivers an at-cap control upload unchanged with no held-back header', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 21 }]);
+    const req = buildEligibleRequest(CONTROL_ID);
+    const { res, capturedStatus } = buildResponse();
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
+    expect(capturedStatus()).toBe(200);
+    expect(headerValue(res, 'X-Cards-Held-Back')).toBeUndefined();
+    const props = conversionSucceededProps();
+    expect(props).not.toHaveProperty('card_limit_partial');
+    expect(props).not.toHaveProperty('arm');
+  });
+
+  it('refuses an over-cap control upload with the arm and card-count bucket props', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+    const req = buildEligibleRequest(CONTROL_ID);
+    const { res, capturedSend, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(capturedSend()).toBeNull();
+    const props = conversionFailedProps();
+    expect(props.reason).toBe('anonymous_cap');
+    expect(props.arm).toBe('control');
+    expect(props.card_count_bucket).toBeDefined();
+  });
+
+  it('puts a request with no anonymous id in the control arm', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+    const req = buildEligibleRequest();
+    const { res, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    const props = conversionFailedProps();
+    expect(props.reason).toBe('anonymous_cap');
+    expect(props.arm).toBe('control');
+  });
+
+  it.each([
+    [
+      'a zip upload',
+      [
+        {
+          originalname: 'study-notes.zip',
+          mimetype: 'application/zip',
+          size: 1024,
+          path: '/tmp/study-notes.zip',
+        },
+      ],
+    ],
+    [
+      'a multi-file upload',
+      [
+        {
+          originalname: 'week-one.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/week-one.html',
+        },
+        {
+          originalname: 'week-two.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/week-two.html',
+        },
+      ],
+    ],
+  ])(
+    'keeps %s on the refuse path with no arm even for a treatment id',
+    async (_label, files) => {
+      mockGetFeatureFlag.mockResolvedValue(true);
+      const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+      const req = buildRequest({
+        files,
+        cookies: { anon_id: TREATMENT_ID },
+      } as unknown as Partial<express.Request>);
+      const { res, capturedSend, redirectedTo } = responseWithRedirect();
+
+      await serviceUnderTest().handleUpload(req, res);
+
+      expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
+      expect(redirectedTo()).toBe('/limit?kind=anonymous');
+      expect(capturedSend()).toBeNull();
+      const props = conversionFailedProps();
+      expect(props.reason).toBe('anonymous_cap');
+      expect(props).not.toHaveProperty('arm');
+    }
+  );
 });

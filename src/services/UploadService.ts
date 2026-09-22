@@ -83,6 +83,13 @@ import {
   AnonymousCardCapError,
 } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 import { ANONYMOUS_CARD_CAP, MONTHLY_CARD_LIMIT } from '../lib/limits';
+import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
+import { isPartialDeliveryEligible } from '../usecases/uploads/isPartialDeliveryEligible';
+import {
+  ANONYMOUS_PARTIAL_DELIVERY_FLAG,
+  resolveAnonymousPartialArm,
+  type PartialDeliveryArm,
+} from '../lib/upload/anonymousPartialDelivery';
 import {
   generateDeckInfo,
   DeckInfo,
@@ -1087,12 +1094,16 @@ class UploadService {
         const userId = owner != null ? Number(owner) : null;
         const source = this.resolveUploadSource(req);
         const anonymousId = this.resolveAnonId(req);
+        const arm = await this.resolveAnonymousPartialArm(req, res);
         track('conversion_failed', {
           userId,
           anonymousId,
           props: {
             ...this.baseFunnelProps(req),
             reason: 'anonymous_cap',
+            ...(arm !== 'off'
+              ? { arm, card_count_bucket: toCardCountBucket(err.cardsFound) }
+              : {}),
           },
         });
         track('paywall_shown', {
@@ -1456,20 +1467,25 @@ class UploadService {
       settings,
       paying
     );
-    const { packages, warnings, cardFingerprints } = await useCase.execute(
-      paying,
-      req.files as UploadedFile[],
-      settings,
-      ws,
-      undefined,
-      syncOwnerId,
-      {
-        knownGuids,
-        uploadIdentity,
-        existingCardFingerprints,
-        requestId: res.locals.requestId,
-      }
-    );
+    const partialArm = await this.resolveAnonymousPartialArm(req, res);
+    const cardLimit =
+      partialArm === 'treatment' ? ANONYMOUS_CARD_CAP : undefined;
+    const { packages, warnings, cardFingerprints, cardsHeldBack } =
+      await useCase.execute(
+        paying,
+        req.files as UploadedFile[],
+        settings,
+        ws,
+        undefined,
+        syncOwnerId,
+        {
+          knownGuids,
+          uploadIdentity,
+          existingCardFingerprints,
+          requestId: res.locals.requestId,
+          ...(cardLimit != null ? { cardLimit } : {}),
+        }
+      );
     this.recordIssuedGuids(packages, syncOwnerId, settings);
     this.recordUploadIdentityMetric(packages, syncOwnerId);
     this.recordCardFingerprints(syncOwnerId, cardFingerprints);
@@ -1630,6 +1646,11 @@ class UploadService {
         res.set('X-Empty-Back-Count', totalEmptyBackCount.toString());
         exposedHeaders.push('X-Empty-Back-Count');
       }
+      const heldBack = cardsHeldBack ?? 0;
+      if (heldBack > 0) {
+        res.set('X-Cards-Held-Back', heldBack.toString());
+        exposedHeaders.push('X-Cards-Held-Back');
+      }
       if (packages.some((p) => p.overSplit)) {
         res.set('X-Over-Split', '1');
         exposedHeaders.push('X-Over-Split');
@@ -1670,13 +1691,22 @@ class UploadService {
         console.error(err);
       }
       res.attachment(`/${first.name}`);
-      const bucket = toCardCountBucket(totalCards);
+      const bucket = toCardCountBucket(
+        heldBack > 0 ? totalCards + heldBack : totalCards
+      );
       track('conversion_succeeded', {
         userId: owner != null ? Number(owner) : null,
         anonymousId: this.resolveAnonId(req),
         props: {
           ...this.baseFunnelProps(req),
           card_count_bucket: bucket,
+          ...(heldBack > 0
+            ? {
+                card_limit_partial: true,
+                cards_held_back: heldBack,
+                arm: partialArm,
+              }
+            : {}),
         },
       });
       if (owner != null) {
@@ -1892,6 +1922,23 @@ class UploadService {
     const cookies = req.cookies as Record<string, unknown> | undefined;
     const anonId = cookies?.anon_id;
     return typeof anonId === 'string' && anonId.length > 0 ? anonId : null;
+  }
+
+  private async resolveAnonymousPartialArm(
+    req: express.Request,
+    res: express.Response
+  ): Promise<PartialDeliveryArm> {
+    if (getOwner(res) != null || hasSessionToken(req)) {
+      return 'off';
+    }
+    if (!isPartialDeliveryEligible(req.files as UploadedFile[] | undefined)) {
+      return 'off';
+    }
+    const flagEnabled = await getFeatureFlag(
+      ANONYMOUS_PARTIAL_DELIVERY_FLAG,
+      false
+    );
+    return resolveAnonymousPartialArm(this.resolveAnonId(req), flagEnabled);
   }
 
   private resolveSignupOrigin(req: express.Request): string | null {

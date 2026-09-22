@@ -1,0 +1,8 @@
+{
+  "headline": "Seus primeiros 21 cartões estão prontos",
+  "heldBack_one": "{{count}} cartão a mais não está neste download",
+  "heldBack_other": "{{count}} cartões a mais não estão neste download",
+  "body": "Este arquivo gerou {{total}} cartões. Uma conta gratuita dá a você até {{monthly}} cartões por mês. Crie uma e solte o arquivo de novo.",
+  "cta": "Criar uma conta gratuita",
+  "aria": "Baralho parcial pronto"
+}

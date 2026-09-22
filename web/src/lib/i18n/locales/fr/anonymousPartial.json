@@ -1,0 +1,8 @@
+{
+  "headline": "Tes 21 premières cartes sont prêtes",
+  "heldBack_one": "{{count}} carte de plus n'est pas dans ce téléchargement",
+  "heldBack_other": "{{count}} cartes de plus ne sont pas dans ce téléchargement",
+  "body": "Ce fichier a produit {{total}} cartes. Un compte gratuit te donne jusqu'à {{monthly}} cartes par mois. Crées-en un, puis dépose le fichier à nouveau.",
+  "cta": "Créer un compte gratuit",
+  "aria": "Paquet partiel prêt"
+}

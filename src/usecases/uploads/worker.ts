@@ -97,6 +97,7 @@ export function getFileContents(
 interface FileResult {
   packages: Package[];
   warnings: string[];
+  cardsHeldBack?: number;
 }
 
 // Files handled by these branches in processFile pre-empt the Claude/PrepareDeck
@@ -183,10 +184,12 @@ async function processFile(
   knownGuids?: KnownGuids,
   crossFileDedup?: CrossFileDedupState,
   requestId?: string,
-  uploadIdentity?: UploadIdentityContext
+  uploadIdentity?: UploadIdentityContext,
+  cardLimit?: number
 ): Promise<FileResult> {
   const packages: Package[] = [];
   const warnings: string[] = [];
+  let cardsHeldBack: number | undefined;
   const filename = file.originalname;
   const key = file.key;
 
@@ -262,9 +265,11 @@ async function processFile(
       knownGuids,
       uploadIdentity,
       crossFileDedup,
+      cardLimit,
     });
 
     if (d) {
+      cardsHeldBack = d.cardsHeldBack;
       const singleFilePackage = new Package(
         d.name,
         d.cardCount ?? 0,
@@ -304,7 +309,7 @@ async function processFile(
     if (result.warnings) warnings.push(...result.warnings);
   }
 
-  return { packages, warnings };
+  return { packages, warnings, cardsHeldBack };
 }
 
 async function doGenerationWork(
@@ -314,6 +319,7 @@ async function doGenerationWork(
   packages: Package[];
   warnings: string[];
   cardFingerprints?: string[];
+  cardsHeldBack?: number;
 }> {
   const {
     paying,
@@ -326,9 +332,11 @@ async function doGenerationWork(
     uploadIdentity,
     existingCardFingerprints,
     requestId,
+    cardLimit,
   } = task;
   let packages: Package[] = [];
   const warnings: string[] = [];
+  let cardsHeldBack = 0;
 
   const dedupeAcrossDecks = shouldDedupeAcrossDecks(
     paying,
@@ -354,10 +362,12 @@ async function doGenerationWork(
       knownGuids,
       crossFileDedup,
       requestId,
-      uploadIdentity
+      uploadIdentity,
+      cardLimit
     );
     packages = packages.concat(result.packages);
     warnings.push(...result.warnings);
+    cardsHeldBack += result.cardsHeldBack ?? 0;
   }
 
   const reportsCrossDeck =
@@ -384,7 +394,12 @@ async function doGenerationWork(
       ? collectNewFingerprints(crossFileDedup)
       : undefined;
 
-  return { packages, warnings, cardFingerprints };
+  return {
+    packages,
+    warnings,
+    cardFingerprints,
+    cardsHeldBack: cardLimit != null ? cardsHeldBack : undefined,
+  };
 }
 
 export async function runUploadGenerationInWorker(
@@ -394,11 +409,9 @@ export async function runUploadGenerationInWorker(
     task.progressPort?.postMessage(step);
   };
   try {
-    const { packages, warnings, cardFingerprints } = await doGenerationWork(
-      task,
-      onProgress
-    );
-    return { ok: true, packages, warnings, cardFingerprints };
+    const { packages, warnings, cardFingerprints, cardsHeldBack } =
+      await doGenerationWork(task, onProgress);
+    return { ok: true, packages, warnings, cardFingerprints, cardsHeldBack };
   } catch (err) {
     return {
       ok: false,

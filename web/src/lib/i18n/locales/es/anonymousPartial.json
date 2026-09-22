@@ -1,0 +1,8 @@
+{
+  "headline": "Tus primeras 21 tarjetas están listas",
+  "heldBack_one": "{{count}} tarjeta más no está en esta descarga",
+  "heldBack_other": "{{count}} tarjetas más no están en esta descarga",
+  "body": "Este archivo generó {{total}} tarjetas. Una cuenta gratuita te da hasta {{monthly}} tarjetas al mes. Crea una y luego suelta el archivo otra vez.",
+  "cta": "Crear una cuenta gratuita",
+  "aria": "Mazo parcial listo"
+}

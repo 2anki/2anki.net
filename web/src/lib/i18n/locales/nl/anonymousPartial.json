@@ -1,0 +1,8 @@
+{
+  "headline": "Je eerste 21 kaarten zijn klaar",
+  "heldBack_one": "{{count}} kaart meer zit niet in deze download",
+  "heldBack_other": "{{count}} kaarten meer zitten niet in deze download",
+  "body": "Dit bestand maakte {{total}} kaarten. Een gratis account geeft je tot {{monthly}} kaarten per maand. Maak er een aan en zet het bestand daarna opnieuw neer.",
+  "cta": "Gratis account aanmaken",
+  "aria": "Gedeeltelijk deck klaar"
+}
