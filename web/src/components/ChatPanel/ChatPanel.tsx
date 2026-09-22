@@ -795,6 +795,9 @@ export default function ChatPanel({
 
   async function sendMessage(rawContent: string) {
     if (!rawContent.trim() && readyChips.length === 0) return;
+    track('chat_message_sent', {
+      is_new_conversation: activeConversationId == null,
+    });
     const content = resolveOutgoingContent(rawContent, readyChips.length, t);
 
     const userMessage: Message = { role: 'user', content };

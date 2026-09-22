@@ -13,6 +13,7 @@ export const KNOWN_EVENTS = new Set([
   'upload_empty_deck_chat_shown',
   'upload_empty_deck_chat_engaged',
   'chat_all_conversations_deleted',
+  'chat_message_sent',
   'paywall_shown',
   'paywall_upgrade_clicked',
   'paywall_pass_clicked',
