@@ -9,6 +9,7 @@ function NotionBlock({
   block,
   defaultOpen,
 }: Readonly<{ block: ShowcaseBlock; defaultOpen?: boolean }>) {
+  const { t } = useTranslation();
   if (block.canExpand && block.summaryHtml) {
     return (
       <details className={styles.toggle} open={defaultOpen}>
@@ -23,7 +24,7 @@ function NotionBlock({
           />
         ) : (
           <div className={styles.toggleContentEmpty}>
-            This is a cloze deletion — the answer is in the toggle title above.
+            {t('home.showcase.clozeEmptyNote')}
           </div>
         )}
       </details>

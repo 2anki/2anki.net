@@ -20,6 +20,9 @@
     "commonQuestions": "よくある質問",
     "related": "関連"
   },
+  "badges": {
+    "notionGallery": "<galleryLink>Notion Integration Gallery</galleryLink> に掲載されています。"
+  },
   "hero": {
     "freeQuota": "無料 · 1 回のインポートで最大 1 000 枚",
     "orPrefix": "または ",

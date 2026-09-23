@@ -53,6 +53,23 @@
       "cardOptions": "Card options",
       "nativeApps": "Also on iPhone, iPad & Mac →"
     },
+    "howItWorks": {
+      "heading": "How it works",
+      "steps": {
+        "upload": {
+          "title": "Upload",
+          "body": "Drop a Notion export, PDF, Markdown, HTML, CSV, Word, or Excel file."
+        },
+        "convert": {
+          "title": "Convert",
+          "body": "2anki builds your deck in seconds — clean cloze, atomic cards, no empty backs. Images, audio, and code blocks come across too."
+        },
+        "study": {
+          "title": "Study",
+          "body": "Open the .apkg file in Anki or AnkiDroid. Your cards are ready to review."
+        }
+      }
+    },
     "features": {
       "heading": "Other ways to use 2anki",
       "notionToAnki": {
@@ -95,7 +112,8 @@
     "showcase": {
       "heading": "See it in action",
       "previousCard": "Previous card",
-      "nextCard": "Next card"
+      "nextCard": "Next card",
+      "clozeEmptyNote": "This is a cloze deletion — the answer is in the toggle title above."
     },
     "walkthroughs": {
       "heading": "Walkthroughs",

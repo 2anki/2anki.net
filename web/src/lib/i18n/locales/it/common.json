@@ -53,6 +53,23 @@
       "cardOptions": "Opzioni carta",
       "nativeApps": "Anche su iPhone, iPad e Mac →"
     },
+    "howItWorks": {
+      "heading": "Come funziona",
+      "steps": {
+        "upload": {
+          "title": "Carica",
+          "body": "Trascina un'esportazione di Notion o un file PDF, Markdown, HTML, CSV, Word o Excel."
+        },
+        "convert": {
+          "title": "Converti",
+          "body": "2anki crea il tuo mazzo in pochi secondi — cloze fatte bene, carte atomiche, nessun retro vuoto. Anche immagini, audio e blocchi di codice vengono conservati."
+        },
+        "study": {
+          "title": "Studia",
+          "body": "Apri il file .apkg in Anki o AnkiDroid. Le tue carte sono pronte per il ripasso."
+        }
+      }
+    },
     "features": {
       "heading": "Altri modi per usare 2anki",
       "notionToAnki": {
@@ -95,7 +112,8 @@
     "showcase": {
       "heading": "Guardalo in azione",
       "previousCard": "Carta precedente",
-      "nextCard": "Carta successiva"
+      "nextCard": "Carta successiva",
+      "clozeEmptyNote": "Questa è una cloze — la risposta è nel titolo del toggle qui sopra."
     },
     "walkthroughs": {
       "heading": "Guide",

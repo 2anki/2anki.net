@@ -51,18 +51,21 @@ const STUDY_LINKS = [
 
 const STEPS = [
   {
-    title: 'Upload',
-    body: 'Drop a Notion export, PDF, Markdown, HTML, CSV, Word, or Excel file.',
+    id: 'upload',
+    titleKey: 'home.howItWorks.steps.upload.title',
+    bodyKey: 'home.howItWorks.steps.upload.body',
     Icon: ArrowUpTrayIcon,
   },
   {
-    title: 'Convert',
-    body: '2anki builds your deck in seconds — clean cloze, atomic cards, no empty backs. Images, audio, and code blocks come across too.',
+    id: 'convert',
+    titleKey: 'home.howItWorks.steps.convert.title',
+    bodyKey: 'home.howItWorks.steps.convert.body',
     Icon: SparklesIcon,
   },
   {
-    title: 'Study',
-    body: 'Open the .apkg file in Anki or AnkiDroid. Your cards are ready to review.',
+    id: 'study',
+    titleKey: 'home.howItWorks.steps.study.title',
+    bodyKey: 'home.howItWorks.steps.study.body',
     Icon: BookOpenIcon,
   },
 ];
@@ -213,15 +216,17 @@ export function HomePage({
 
       <section className={styles.stepsSection}>
         <div className={styles.stepsInner}>
-          <h2 className={styles.stepsHeading}>How it works</h2>
+          <h2 className={styles.stepsHeading}>
+            {t('home.howItWorks.heading')}
+          </h2>
           <div className={styles.stepsGrid}>
             {STEPS.map((step) => (
-              <div key={step.title} className={styles.step}>
+              <div key={step.id} className={styles.step}>
                 <span className={styles.stepIcon}>
                   <step.Icon width={22} height={22} />
                 </span>
-                <p className={styles.stepTitle}>{step.title}</p>
-                <p className={styles.stepBody}>{step.body}</p>
+                <p className={styles.stepTitle}>{t(step.titleKey)}</p>
+                <p className={styles.stepBody}>{t(step.bodyKey)}</p>
               </div>
             ))}
           </div>

@@ -20,6 +20,9 @@
     "commonQuestions": "Częste pytania",
     "related": "Powiązane"
   },
+  "badges": {
+    "notionGallery": "Znajdziesz nas w <galleryLink>Notion Integration Gallery</galleryLink>."
+  },
   "hero": {
     "freeQuota": "Za darmo · do 1 000 kart na import",
     "orPrefix": "albo ",

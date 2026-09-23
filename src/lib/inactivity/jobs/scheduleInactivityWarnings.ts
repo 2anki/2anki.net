@@ -2,6 +2,7 @@ import type { SendInactivityWarningsUseCase } from '../../../usecases/ops/SendIn
 import type { IJobLockRepository } from '../../../data_layer/JobLockRepository';
 import { JOB_LOCK_KEYS } from '../../../data_layer/JobLockRepository';
 import type { EventsSink } from '../../../services/events/EventsSink';
+import { outboundCampaignEmailsEnabled } from '../../featureFlags/outboundCampaignEmails';
 import { makeExclusiveBatchRunner } from '../../scheduling/exclusiveBatch';
 import { isOverdue, type LastRunAt } from './lastRunAt';
 
@@ -16,13 +17,22 @@ export const scheduleInactivityWarnings = async (
     eventsSink?: EventsSink;
     lastRunAt?: LastRunAt;
     lock?: IJobLockRepository;
+    campaignEmailsEnabled?: () => Promise<boolean>;
   } = {}
 ): Promise<NodeJS.Timeout> => {
   const intervalMs = options.intervalMs ?? INACTIVITY_WARNING_INTERVAL_MS;
   const limit = options.limit ?? INACTIVITY_WARNING_DAILY_LIMIT;
+  const campaignEmailsEnabled =
+    options.campaignEmailsEnabled ?? outboundCampaignEmailsEnabled;
 
   const tick = async () => {
     try {
+      if (!(await campaignEmailsEnabled())) {
+        console.info(
+          '[inactivity-warnings] skipped: outbound_campaign_emails is off'
+        );
+        return;
+      }
       const result = await useCase.execute(false, limit);
       console.info(`[inactivity-warnings] sent ${result.count} warning(s)`);
       if (options.eventsSink != null) {

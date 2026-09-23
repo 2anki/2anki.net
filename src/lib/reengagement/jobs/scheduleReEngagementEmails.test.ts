@@ -11,6 +11,10 @@ jest.mock('../../../lib/storage/jobs/helpers/sendReEngagementEmails', () => ({
 }));
 
 import { sendReEngagementEmails } from '../../storage/jobs/helpers/sendReEngagementEmails';
+import {
+  __resetFeatureFlagModuleForTests,
+  __setFeatureFlagDependencies,
+} from '../../featureFlags/getFeatureFlag';
 
 const mockRepo = {} as IReEngagementRepository;
 const mockEmailService = {} as IEmailService;
@@ -19,11 +23,40 @@ function makeSink(): jest.Mocked<Pick<EventsSink, 'record' | 'flush'>> {
   return { record: jest.fn(), flush: jest.fn().mockResolvedValue(undefined) };
 }
 
+const flagRepositoryStub = (value: boolean | null) => ({
+  getAll: async () => [],
+  get: async () => value,
+  set: async () => null,
+});
+
 describe('scheduleReEngagementEmails', () => {
-  beforeEach(() => jest.useFakeTimers());
+  beforeEach(() => {
+    jest.useFakeTimers();
+    // The tick consults the outbound_campaign_emails flag before sending; the
+    // scheduling behavior under test assumes campaigns are on.
+    __setFeatureFlagDependencies({ repository: flagRepositoryStub(true) });
+  });
   afterEach(() => {
+    __resetFeatureFlagModuleForTests();
     jest.useRealTimers();
     jest.clearAllMocks();
+  });
+
+  it('does not send when the outbound_campaign_emails flag is off', async () => {
+    __setFeatureFlagDependencies({ repository: flagRepositoryStub(false) });
+    const sink = makeSink();
+    const handle = await scheduleReEngagementEmails(
+      mockRepo,
+      mockEmailService,
+      sink as unknown as EventsSink,
+      { intervalMs: 1000 }
+    );
+
+    await jest.advanceTimersByTimeAsync(1000);
+
+    expect(sendReEngagementEmails).not.toHaveBeenCalled();
+    expect(sink.record).not.toHaveBeenCalled();
+    clearInterval(handle);
   });
 
   it('fires sendReEngagementEmails after one interval', async () => {
@@ -35,8 +68,7 @@ describe('scheduleReEngagementEmails', () => {
       { intervalMs: 1000 }
     );
 
-    jest.advanceTimersByTime(1000);
-    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(1000);
 
     expect(sendReEngagementEmails).toHaveBeenCalledTimes(1);
     clearInterval(handle);
@@ -67,8 +99,7 @@ describe('scheduleReEngagementEmails', () => {
       { intervalMs: 1000 }
     );
 
-    jest.advanceTimersByTime(1000);
-    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(1000);
 
     expect(sink.record).toHaveBeenCalledWith({
       name: 'email_batch_sent',
@@ -89,8 +120,7 @@ describe('scheduleReEngagementEmails', () => {
       { intervalMs: 1000 }
     );
 
-    jest.advanceTimersByTime(1000);
-    await expect(Promise.resolve()).resolves.toBeUndefined();
+    await jest.advanceTimersByTimeAsync(1000);
 
     expect(sink.record).not.toHaveBeenCalled();
     clearInterval(handle);

@@ -20,6 +20,9 @@
     "commonQuestions": "Common questions",
     "related": "Related"
   },
+  "badges": {
+    "notionGallery": "Listed in the <galleryLink>Notion Integration Gallery</galleryLink>."
+  },
   "hero": {
     "freeQuota": "Free · up to 1 000 cards per import",
     "orPrefix": "or ",

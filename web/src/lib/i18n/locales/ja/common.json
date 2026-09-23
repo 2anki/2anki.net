@@ -53,6 +53,23 @@
       "cardOptions": "カードのオプション",
       "nativeApps": "iPhone、iPad、Mac でも →"
     },
+    "howItWorks": {
+      "heading": "使い方",
+      "steps": {
+        "upload": {
+          "title": "アップロード",
+          "body": "Notion のエクスポートや PDF、Markdown、HTML、CSV、Word、Excel ファイルをドロップします。"
+        },
+        "convert": {
+          "title": "変換",
+          "body": "2anki が数秒でデッキを作成します — 正しいクローズ、要点をしぼったカード、空の裏面なし。画像、音声、コードブロックもそのまま引き継がれます。"
+        },
+        "study": {
+          "title": "学習",
+          "body": "Anki または AnkiDroid で .apkg ファイルを開けば、すぐに復習を始められます。"
+        }
+      }
+    },
     "features": {
       "heading": "2anki の他の使い方",
       "notionToAnki": {
@@ -95,7 +112,8 @@
     "showcase": {
       "heading": "動作を見る",
       "previousCard": "前のカード",
-      "nextCard": "次のカード"
+      "nextCard": "次のカード",
+      "clozeEmptyNote": "これはクローズ（穴埋め）です — 答えは上のトグルのタイトルにあります。"
     },
     "walkthroughs": {
       "heading": "チュートリアル",

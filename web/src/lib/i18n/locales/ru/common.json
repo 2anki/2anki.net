@@ -53,6 +53,23 @@
       "cardOptions": "Параметры карт",
       "nativeApps": "Также на iPhone, iPad и Mac →"
     },
+    "howItWorks": {
+      "heading": "Как это работает",
+      "steps": {
+        "upload": {
+          "title": "Загрузи",
+          "body": "Перетащи экспорт из Notion или файл PDF, Markdown, HTML, CSV, Word или Excel."
+        },
+        "convert": {
+          "title": "Конвертируй",
+          "body": "2anki собирает колоду за считанные секунды — правильный пропуск, атомарные карты, без пустых обратных сторон. Изображения, аудио и блоки кода тоже переносятся."
+        },
+        "study": {
+          "title": "Учись",
+          "body": "Открой файл .apkg в Anki или AnkiDroid. Карты готовы к повторению."
+        }
+      }
+    },
     "features": {
       "heading": "Другие способы использовать 2anki",
       "notionToAnki": {
@@ -95,7 +112,8 @@
     "showcase": {
       "heading": "Посмотри в действии",
       "previousCard": "Предыдущая карта",
-      "nextCard": "Следующая карта"
+      "nextCard": "Следующая карта",
+      "clozeEmptyNote": "Это пропуск (cloze) — ответ в заголовке переключателя выше."
     },
     "walkthroughs": {
       "heading": "Руководства",
