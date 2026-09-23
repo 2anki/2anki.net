@@ -20,6 +20,9 @@
     "commonQuestions": "Частые вопросы",
     "related": "Похожее"
   },
+  "badges": {
+    "notionGallery": "Мы в каталоге <galleryLink>Notion Integration Gallery</galleryLink>."
+  },
   "hero": {
     "freeQuota": "Бесплатно · до 1 000 карт за один импорт",
     "orPrefix": "или ",

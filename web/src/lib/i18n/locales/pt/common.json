@@ -53,6 +53,23 @@
       "cardOptions": "Opções de cartão",
       "nativeApps": "Também no iPhone, iPad e Mac →"
     },
+    "howItWorks": {
+      "heading": "Como funciona",
+      "steps": {
+        "upload": {
+          "title": "Envie",
+          "body": "Arraste uma exportação do Notion ou um arquivo PDF, Markdown, HTML, CSV, Word ou Excel."
+        },
+        "convert": {
+          "title": "Converta",
+          "body": "O 2anki monta seu baralho em segundos — cloze correto, cartões atômicos, sem versos vazios. Imagens, áudio e blocos de código também são preservados."
+        },
+        "study": {
+          "title": "Estude",
+          "body": "Abra o arquivo .apkg no Anki ou AnkiDroid. Seus cartões estão prontos para revisar."
+        }
+      }
+    },
     "features": {
       "heading": "Outras formas de usar o 2anki",
       "notionToAnki": {
@@ -95,7 +112,8 @@
     "showcase": {
       "heading": "Veja em ação",
       "previousCard": "Cartão anterior",
-      "nextCard": "Próximo cartão"
+      "nextCard": "Próximo cartão",
+      "clozeEmptyNote": "Isto é um cloze — a resposta está no título do toggle acima."
     },
     "walkthroughs": {
       "heading": "Tutoriais",

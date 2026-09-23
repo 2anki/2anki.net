@@ -53,6 +53,23 @@
       "cardOptions": "Opcje kart",
       "nativeApps": "Także na iPhone, iPad i Mac →"
     },
+    "howItWorks": {
+      "heading": "Jak to działa",
+      "steps": {
+        "upload": {
+          "title": "Prześlij",
+          "body": "Przeciągnij eksport z Notion albo plik PDF, Markdown, HTML, CSV, Word lub Excel."
+        },
+        "convert": {
+          "title": "Konwertuj",
+          "body": "2anki tworzy talię w kilka sekund — poprawne cloze, atomowe karty, żadnych pustych rewersów. Obrazy, dźwięk i bloki kodu też się przenoszą."
+        },
+        "study": {
+          "title": "Ucz się",
+          "body": "Otwórz plik .apkg w Anki lub AnkiDroid. Karty są gotowe do powtórek."
+        }
+      }
+    },
     "features": {
       "heading": "Inne sposoby korzystania z 2anki",
       "notionToAnki": {
@@ -95,7 +112,8 @@
     "showcase": {
       "heading": "Zobacz to w działaniu",
       "previousCard": "Poprzednia karta",
-      "nextCard": "Następna karta"
+      "nextCard": "Następna karta",
+      "clozeEmptyNote": "To jest cloze — odpowiedź znajduje się w tytule togglea powyżej."
     },
     "walkthroughs": {
       "heading": "Poradniki",

@@ -20,6 +20,9 @@
     "commonQuestions": "Häufige Fragen",
     "related": "Verwandte Seiten"
   },
+  "badges": {
+    "notionGallery": "Gelistet in der <galleryLink>Notion Integration Gallery</galleryLink>."
+  },
   "hero": {
     "freeQuota": "Kostenlos · bis zu 1 000 Karten pro Import",
     "orPrefix": "oder ",

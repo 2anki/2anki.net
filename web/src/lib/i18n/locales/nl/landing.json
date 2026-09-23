@@ -20,6 +20,9 @@
     "commonQuestions": "Veelgestelde vragen",
     "related": "Gerelateerd"
   },
+  "badges": {
+    "notionGallery": "Vermeld in de <galleryLink>Notion Integration Gallery</galleryLink>."
+  },
   "hero": {
     "freeQuota": "Gratis · tot 1 000 kaarten per import",
     "orPrefix": "of ",

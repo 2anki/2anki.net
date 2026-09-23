@@ -53,6 +53,23 @@
       "cardOptions": "Kartenoptionen",
       "nativeApps": "Auch auf iPhone, iPad & Mac →"
     },
+    "howItWorks": {
+      "heading": "So funktioniert's",
+      "steps": {
+        "upload": {
+          "title": "Hochladen",
+          "body": "Zieh einen Notion-Export oder eine PDF-, Markdown-, HTML-, CSV-, Word- oder Excel-Datei hinein."
+        },
+        "convert": {
+          "title": "Umwandeln",
+          "body": "2anki erstellt deinen Stapel in Sekunden — sauberes Cloze, atomare Karten, keine leeren Rückseiten. Bilder, Audio und Codeblöcke kommen mit."
+        },
+        "study": {
+          "title": "Lernen",
+          "body": "Öffne die .apkg-Datei in Anki oder AnkiDroid. Deine Karten sind bereit zum Lernen."
+        }
+      }
+    },
     "features": {
       "heading": "Weitere Möglichkeiten, 2anki zu nutzen",
       "notionToAnki": {
@@ -95,7 +112,8 @@
     "showcase": {
       "heading": "So sieht es aus",
       "previousCard": "Vorherige Karte",
-      "nextCard": "Nächste Karte"
+      "nextCard": "Nächste Karte",
+      "clozeEmptyNote": "Das ist eine Cloze-Lücke — die Antwort steht im Toggle-Titel darüber."
     },
     "walkthroughs": {
       "heading": "Anleitungen",

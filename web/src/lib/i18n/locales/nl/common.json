@@ -53,6 +53,23 @@
       "cardOptions": "Kaartopties",
       "nativeApps": "Ook op iPhone, iPad en Mac →"
     },
+    "howItWorks": {
+      "heading": "Zo werkt het",
+      "steps": {
+        "upload": {
+          "title": "Uploaden",
+          "body": "Sleep een Notion-export of een PDF-, Markdown-, HTML-, CSV-, Word- of Excel-bestand hierheen."
+        },
+        "convert": {
+          "title": "Omzetten",
+          "body": "2anki bouwt je deck in seconden — nette cloze, atomische kaarten, geen lege achterkanten. Afbeeldingen, audio en codeblokken gaan ook mee."
+        },
+        "study": {
+          "title": "Studeren",
+          "body": "Open het .apkg-bestand in Anki of AnkiDroid. Je kaarten zijn klaar om te leren."
+        }
+      }
+    },
     "features": {
       "heading": "Andere manieren om 2anki te gebruiken",
       "notionToAnki": {
@@ -95,7 +112,8 @@
     "showcase": {
       "heading": "Zie het in actie",
       "previousCard": "Vorige kaart",
-      "nextCard": "Volgende kaart"
+      "nextCard": "Volgende kaart",
+      "clozeEmptyNote": "Dit is een cloze — het antwoord staat in de toggle-titel hierboven."
     },
     "walkthroughs": {
       "heading": "Uitleg",
