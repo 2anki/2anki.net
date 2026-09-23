@@ -2530,7 +2530,12 @@ describe('UploadForm network-failure retry', () => {
     expect(fileInput.value).toBe('');
   });
 
-  it('marks the retry attempt with retry:true on upload_started and a repeat upload_failed', async () => {
+  it('marks a repeat network failure retry:true without re-firing the server-owned upload_started track', async () => {
+    // upload_started is server-owned (UploadService.ts fires it unconditionally
+    // on every request that reaches handleUpload, retries included) - a
+    // client-side track('upload_started') here would double-count a
+    // successful retry and, worse, record a "ghost start" if the retry's own
+    // multipart body times out before ever reaching the server.
     const trackMock = vi.mocked(track);
     trackMock.mockClear();
     const fetchMock = vi
@@ -2552,16 +2557,15 @@ describe('UploadForm network-failure retry', () => {
     });
 
     await waitFor(() => {
-      expect(trackMock).toHaveBeenCalledWith('upload_started', {
-        retry: true,
-      });
-    });
-    await waitFor(() => {
       const failed = trackMock.mock.calls.filter(
         ([name]) => name === 'upload_failed'
       );
       expect(failed).toHaveLength(1);
       expect(failed[0][1]).toMatchObject({ reason: 'network', retry: true });
     });
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'upload_started',
+      expect.anything()
+    );
   });
 });

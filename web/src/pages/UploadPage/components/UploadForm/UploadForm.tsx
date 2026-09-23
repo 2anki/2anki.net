@@ -829,9 +829,6 @@ function UploadForm({
     setZoneState('converting');
     setNetworkRetryFiles(null);
     fireAnalyticsEvent('upload_started');
-    if (isRetry) {
-      track('upload_started', { retry: true });
-    }
     setProgressWidth(10);
     setProgressSlow(false);
     setShowFallback(false);
