@@ -114,12 +114,6 @@ const FavoriteRouter = () => {
    *           application/json:
    *             schema:
    *               $ref: '#/components/schemas/Error'
-   *       404:
-   *         description: Favorite not found
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Error'
    */
   router.post('/api/favorite/remove', RequireAuthentication, (req, res) =>
     controller.deleteFavorite(req, res)
