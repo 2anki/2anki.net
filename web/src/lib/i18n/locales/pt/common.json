@@ -221,7 +221,12 @@
       "skipFile": "Pular este arquivo",
       "askClaude": "Perguntar ao Claude sobre este arquivo",
       "readErrorTitle": "Algo quebrou ao ler este arquivo.",
-      "readErrorDetail": "Tente de novo, ou envie o arquivo para support@2anki.net para corrigirmos o analisador."
+      "readErrorDetail": "Tente de novo, ou envie o arquivo para support@2anki.net para corrigirmos o analisador.",
+      "networkErrorLargeTitle": "O envio não foi concluído",
+      "networkErrorLargeBody": "Este é um arquivo grande, então pode levar alguns minutos — e parou na metade. Tente novamente com o mesmo arquivo abaixo ou mude para uma conexão mais rápida e estável. Se continuar parando, divida-o em arquivos menores.",
+      "networkErrorSmallTitle": "Não foi possível enviar seu arquivo",
+      "networkErrorSmallBody": "A conexão caiu antes de o arquivo terminar. Verifique sua conexão e tente novamente.",
+      "networkChooseDifferent": "Escolher outro arquivo"
     },
     "page": {
       "title": "Converta suas anotações",

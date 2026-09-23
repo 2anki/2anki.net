@@ -79,11 +79,16 @@ export function reportDeclinedChunkRecovery(
 }
 
 const MEGABYTE = 1024 * 1024;
+const LARGE_UPLOAD_THRESHOLD_BYTES = 10 * MEGABYTE;
 const SAFE_EXTENSION = /^\.[a-z0-9]{1,6}$/;
+
+export function isLargeUpload(bytes: number | null): boolean {
+  return bytes != null && bytes >= LARGE_UPLOAD_THRESHOLD_BYTES;
+}
 
 function uploadSizeBucket(bytes: number | null): string {
   if (bytes == null) return 'unknown size';
-  if (bytes < 10 * MEGABYTE) return 'under 10 MB';
+  if (bytes < LARGE_UPLOAD_THRESHOLD_BYTES) return 'under 10 MB';
   if (bytes <= 50 * MEGABYTE) return '10-50 MB';
   return 'over 50 MB';
 }

@@ -88,6 +88,9 @@ export function useUploadFormState(onReset: () => void) {
   const [pdfCredential, setPdfCredential] = useState('');
   const [pdfUnlockError, setPdfUnlockError] = useState<string | null>(null);
   const [pdfAttemptCount, setPdfAttemptCount] = useState(0);
+  const [networkRetryFiles, setNetworkRetryFiles] = useState<File[] | null>(
+    null
+  );
 
   const resetForm = () => {
     setZoneState('idle');
@@ -126,6 +129,7 @@ export function useUploadFormState(onReset: () => void) {
     setPdfCredential('');
     setPdfUnlockError(null);
     setPdfAttemptCount(0);
+    setNetworkRetryFiles(null);
     onReset();
   };
 
@@ -206,6 +210,8 @@ export function useUploadFormState(onReset: () => void) {
     setPdfUnlockError,
     pdfAttemptCount,
     setPdfAttemptCount,
+    networkRetryFiles,
+    setNetworkRetryFiles,
     resetForm,
   };
 }

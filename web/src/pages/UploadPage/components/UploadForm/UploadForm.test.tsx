@@ -2347,3 +2347,219 @@ describe('limit state', () => {
     });
   });
 });
+
+describe('UploadForm network-failure retry', () => {
+  beforeEach(() => {
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+  });
+
+  afterEach(() => {
+    delete (globalThis as AnalyticsGlobals).gtag;
+    delete (globalThis as AnalyticsGlobals).hj;
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function successResponse() {
+    return {
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="deck.apkg"',
+        'X-Card-Count': '5',
+      }),
+      blob: () => Promise.resolve(new Blob(['fake'])),
+    };
+  }
+
+  function selectFile(container: HTMLElement, name: string, sizeBytes: number) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const file = new File(['x'], name, { type: 'application/pdf' });
+    Object.defineProperty(file, 'size', { value: sizeBytes });
+    Object.defineProperty(fileInput, 'files', {
+      value: [file],
+      configurable: true,
+    });
+    fileInput.removeAttribute('required');
+    return fileInput;
+  }
+
+  async function submitForm(container: HTMLElement) {
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+  }
+
+  const SMALL = 2 * 1024 * 1024;
+  const LARGE = 20 * 1024 * 1024;
+
+  it('keeps the file selected on a network failure and re-submits it on Try again without a new pick', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValue(successResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const fileInput = selectFile(container, 'big.pdf', SMALL);
+
+    await submitForm(container);
+
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+
+    Object.defineProperty(fileInput, 'files', {
+      value: [],
+      configurable: true,
+    });
+
+    fireEvent.click(retry);
+
+    await waitFor(() => {
+      const uploadCalls = fetchMock.mock.calls.filter(
+        ([url]) => url === '/api/upload/file'
+      );
+      expect(uploadCalls).toHaveLength(2);
+    });
+    const retryCall = fetchMock.mock.calls.filter(
+      ([url]) => url === '/api/upload/file'
+    )[1];
+    const body = retryCall[1].body as FormData;
+    expect((body.get('pakker') as File).name).toBe('big.pdf');
+
+    expect(
+      await screen.findByText(
+        'No empty backs, no stray characters. Ready for Anki.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('shows big-file copy when the failed upload is 10 MB or larger', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'lectures.zip', LARGE);
+
+    await submitForm(container);
+
+    expect(
+      await screen.findByText("Your upload didn't finish")
+    ).toBeInTheDocument();
+    const body = container.querySelector('[class*="errorBody"]');
+    expect(body?.textContent).toContain('This is a big file');
+    expect(body?.textContent).toContain('split it into smaller files');
+  });
+
+  it('shows small-file copy when the failed upload is under 10 MB', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'notes.pdf', SMALL);
+
+    await submitForm(container);
+
+    expect(
+      await screen.findByText("Couldn't upload your file")
+    ).toBeInTheDocument();
+    const body = container.querySelector('[class*="errorBody"]');
+    expect(body?.textContent).toContain(
+      'The connection dropped before the file finished'
+    );
+  });
+
+  it('hides the "Talk it through" chat toggle on a network failure', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'notes.pdf', SMALL);
+
+    await submitForm(container);
+
+    await screen.findByRole('button', { name: 'Try again' });
+    expect(
+      container.querySelector('button[aria-controls="error-state-chat-panel"]')
+    ).toBeNull();
+  });
+
+  it('Choose a different file returns to the drop zone and clears the input', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const fileInput = selectFile(container, 'notes.pdf', SMALL);
+
+    await submitForm(container);
+
+    const chooseDifferent = await screen.findByRole('button', {
+      name: 'Choose a different file',
+    });
+    fireEvent.click(chooseDifferent);
+
+    expect(screen.getByText('Choose files')).toBeInTheDocument();
+    expect(fileInput.value).toBe('');
+  });
+
+  it('marks a repeat network failure retry:true without re-firing the server-owned upload_started track', async () => {
+    // upload_started is server-owned (UploadService.ts fires it unconditionally
+    // on every request that reaches handleUpload, retries included) - a
+    // client-side track('upload_started') here would double-count a
+    // successful retry and, worse, record a "ghost start" if the retry's own
+    // multipart body times out before ever reaching the server.
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'notes.pdf', SMALL);
+
+    await submitForm(container);
+
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    trackMock.mockClear();
+    fireEvent.click(retry);
+
+    await waitFor(() => {
+      const failed = trackMock.mock.calls.filter(
+        ([name]) => name === 'upload_failed'
+      );
+      expect(failed).toHaveLength(1);
+      expect(failed[0][1]).toMatchObject({ reason: 'network', retry: true });
+    });
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'upload_started',
+      expect.anything()
+    );
+  });
+});

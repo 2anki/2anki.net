@@ -221,7 +221,12 @@
       "skipFile": "Skip this file",
       "askClaude": "Ask Claude about this file",
       "readErrorTitle": "Something broke while reading this file.",
-      "readErrorDetail": "Try again, or send the file to support@2anki.net so we can fix the parser."
+      "readErrorDetail": "Try again, or send the file to support@2anki.net so we can fix the parser.",
+      "networkErrorLargeTitle": "Your upload didn't finish",
+      "networkErrorLargeBody": "This is a big file, so it can take a few minutes — and it stopped partway. Try again on the same file below, or switch to a faster, steadier connection. If it keeps stopping, split it into smaller files.",
+      "networkErrorSmallTitle": "Couldn't upload your file",
+      "networkErrorSmallBody": "The connection dropped before the file finished. Check your connection and try again.",
+      "networkChooseDifferent": "Choose a different file"
     },
     "page": {
       "title": "Convert your notes",

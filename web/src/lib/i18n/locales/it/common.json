@@ -221,7 +221,12 @@
       "skipFile": "Salta questo file",
       "askClaude": "Chiedi a Claude di questo file",
       "readErrorTitle": "Qualcosa si è rotto durante la lettura di questo file.",
-      "readErrorDetail": "Riprova, oppure invia il file a support@2anki.net così sistemiamo il parser."
+      "readErrorDetail": "Riprova, oppure invia il file a support@2anki.net così sistemiamo il parser.",
+      "networkErrorLargeTitle": "Il caricamento non è stato completato",
+      "networkErrorLargeBody": "È un file di grandi dimensioni, quindi può richiedere qualche minuto, e si è interrotto a metà. Riprova con lo stesso file qui sotto oppure passa a una connessione più veloce e stabile. Se continua a interrompersi, dividilo in file più piccoli.",
+      "networkErrorSmallTitle": "Impossibile caricare il tuo file",
+      "networkErrorSmallBody": "La connessione è caduta prima che il file fosse completato. Controlla la connessione e riprova.",
+      "networkChooseDifferent": "Scegli un altro file"
     },
     "page": {
       "title": "Converti i tuoi appunti",

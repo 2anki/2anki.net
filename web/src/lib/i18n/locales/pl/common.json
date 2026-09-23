@@ -231,7 +231,12 @@
       "skipFile": "Pomiń ten plik",
       "askClaude": "Zapytaj Claude o ten plik",
       "readErrorTitle": "Coś się zepsuło przy odczytywaniu tego pliku.",
-      "readErrorDetail": "Spróbuj ponownie albo wyślij plik na support@2anki.net, żebyśmy mogli naprawić parser."
+      "readErrorDetail": "Spróbuj ponownie albo wyślij plik na support@2anki.net, żebyśmy mogli naprawić parser.",
+      "networkErrorLargeTitle": "Przesyłanie nie zostało ukończone",
+      "networkErrorLargeBody": "To duży plik, więc może to potrwać kilka minut – i zatrzymało się w połowie. Spróbuj ponownie z tym samym plikiem poniżej albo przełącz się na szybsze, stabilniejsze połączenie. Jeśli wciąż się zatrzymuje, podziel go na mniejsze pliki.",
+      "networkErrorSmallTitle": "Nie udało się przesłać pliku",
+      "networkErrorSmallBody": "Połączenie zostało przerwane, zanim plik został ukończony. Sprawdź połączenie i spróbuj ponownie.",
+      "networkChooseDifferent": "Wybierz inny plik"
     },
     "page": {
       "title": "Przekształć swoje notatki",

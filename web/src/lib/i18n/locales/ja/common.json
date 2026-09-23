@@ -216,7 +216,12 @@
       "skipFile": "このファイルをスキップ",
       "askClaude": "このファイルについて Claude に聞く",
       "readErrorTitle": "このファイルの読み込み中に問題が発生しました。",
-      "readErrorDetail": "もう一度お試しいただくか、パーサーを修正できるようファイルを support@2anki.net までお送りください。"
+      "readErrorDetail": "もう一度お試しいただくか、パーサーを修正できるようファイルを support@2anki.net までお送りください。",
+      "networkErrorLargeTitle": "アップロードが完了しませんでした",
+      "networkErrorLargeBody": "大きなファイルのため数分かかることがありますが、途中で止まってしまいました。下の同じファイルでもう一度お試しいただくか、より速くて安定した接続に切り替えてください。何度も止まる場合は、小さなファイルに分割してください。",
+      "networkErrorSmallTitle": "ファイルをアップロードできませんでした",
+      "networkErrorSmallBody": "ファイルが完了する前に接続が切れました。接続を確認して、もう一度お試しください。",
+      "networkChooseDifferent": "別のファイルを選ぶ"
     },
     "page": {
       "title": "ノートを変換",

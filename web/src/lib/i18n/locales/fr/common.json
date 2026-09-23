@@ -221,7 +221,12 @@
       "skipFile": "Passer ce fichier",
       "askClaude": "Demander à Claude au sujet de ce fichier",
       "readErrorTitle": "Une erreur est survenue lors de la lecture de ce fichier.",
-      "readErrorDetail": "Réessaie, ou envoie le fichier à support@2anki.net pour qu'on corrige l'analyseur."
+      "readErrorDetail": "Réessaie, ou envoie le fichier à support@2anki.net pour qu'on corrige l'analyseur.",
+      "networkErrorLargeTitle": "Votre envoi ne s'est pas terminé",
+      "networkErrorLargeBody": "C'est un gros fichier, cela peut donc prendre quelques minutes, et il s'est arrêté en cours de route. Réessayez avec le même fichier ci-dessous, ou passez à une connexion plus rapide et plus stable. Si cela continue de s'arrêter, divisez-le en fichiers plus petits.",
+      "networkErrorSmallTitle": "Impossible d'envoyer votre fichier",
+      "networkErrorSmallBody": "La connexion a été interrompue avant la fin de l'envoi. Vérifiez votre connexion et réessayez.",
+      "networkChooseDifferent": "Choisir un autre fichier"
     },
     "page": {
       "title": "Convertis tes notes",
