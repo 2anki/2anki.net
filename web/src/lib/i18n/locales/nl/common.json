@@ -221,7 +221,12 @@
       "skipFile": "Dit bestand overslaan",
       "askClaude": "Vraag Claude over dit bestand",
       "readErrorTitle": "Er ging iets mis bij het lezen van dit bestand.",
-      "readErrorDetail": "Probeer het opnieuw, of stuur het bestand naar support@2anki.net zodat we de parser kunnen repareren."
+      "readErrorDetail": "Probeer het opnieuw, of stuur het bestand naar support@2anki.net zodat we de parser kunnen repareren.",
+      "networkErrorLargeTitle": "Je upload is niet voltooid",
+      "networkErrorLargeBody": "Dit is een groot bestand, dus het kan een paar minuten duren – en het is halverwege gestopt. Probeer het hieronder opnieuw met hetzelfde bestand, of schakel over naar een snellere, stabielere verbinding. Als het blijft stoppen, splits het dan op in kleinere bestanden.",
+      "networkErrorSmallTitle": "Je bestand kon niet worden geüpload",
+      "networkErrorSmallBody": "De verbinding werd verbroken voordat het bestand klaar was. Controleer je verbinding en probeer het opnieuw.",
+      "networkChooseDifferent": "Kies een ander bestand"
     },
     "page": {
       "title": "Zet je notities om",

@@ -221,7 +221,12 @@
       "skipFile": "Omitir este archivo",
       "askClaude": "Preguntar a Claude sobre este archivo",
       "readErrorTitle": "Algo falló al leer este archivo.",
-      "readErrorDetail": "Inténtalo de nuevo o envía el archivo a support@2anki.net para que podamos arreglar el analizador."
+      "readErrorDetail": "Inténtalo de nuevo o envía el archivo a support@2anki.net para que podamos arreglar el analizador.",
+      "networkErrorLargeTitle": "Tu subida no se completó",
+      "networkErrorLargeBody": "Es un archivo grande, así que puede tardar unos minutos, y se detuvo a mitad. Vuelve a intentarlo con el mismo archivo abajo o cambia a una conexión más rápida y estable. Si sigue deteniéndose, divídelo en archivos más pequeños.",
+      "networkErrorSmallTitle": "No se pudo subir tu archivo",
+      "networkErrorSmallBody": "La conexión se cortó antes de que el archivo terminara. Revisa tu conexión y vuelve a intentarlo.",
+      "networkChooseDifferent": "Elegir otro archivo"
     },
     "page": {
       "title": "Convierte tus notas",

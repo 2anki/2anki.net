@@ -221,7 +221,12 @@
       "skipFile": "Diese Datei überspringen",
       "askClaude": "Claude zu dieser Datei fragen",
       "readErrorTitle": "Beim Lesen dieser Datei ist etwas schiefgelaufen.",
-      "readErrorDetail": "Versuch es erneut oder sende die Datei an support@2anki.net, damit wir den Parser reparieren können."
+      "readErrorDetail": "Versuch es erneut oder sende die Datei an support@2anki.net, damit wir den Parser reparieren können.",
+      "networkErrorLargeTitle": "Dein Upload wurde nicht abgeschlossen",
+      "networkErrorLargeBody": "Das ist eine große Datei, daher kann es ein paar Minuten dauern – und sie ist mittendrin abgebrochen. Versuche es unten mit derselben Datei erneut oder wechsle zu einer schnelleren, stabileren Verbindung. Wenn es immer wieder abbricht, teile sie in kleinere Dateien auf.",
+      "networkErrorSmallTitle": "Deine Datei konnte nicht hochgeladen werden",
+      "networkErrorSmallBody": "Die Verbindung wurde unterbrochen, bevor die Datei fertig war. Überprüfe deine Verbindung und versuche es erneut.",
+      "networkChooseDifferent": "Andere Datei wählen"
     },
     "page": {
       "title": "Konvertiere deine Notizen",

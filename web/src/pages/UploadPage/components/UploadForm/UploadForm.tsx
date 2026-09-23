@@ -46,7 +46,10 @@ import { AI_CREDITS_QUERY_KEY } from '../../../../lib/hooks/useAiCredits';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
-import { reportUploadNetworkFailure } from '../../../../lib/reportClientError';
+import {
+  reportUploadNetworkFailure,
+  isLargeUpload,
+} from '../../../../lib/reportClientError';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { PostDownloadNudge } from '../../../../components/PostDownloadNudge';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
@@ -357,6 +360,8 @@ function UploadForm({
     setPdfUnlockError,
     pdfAttemptCount,
     setPdfAttemptCount,
+    networkRetryFiles,
+    setNetworkRetryFiles,
     resetForm,
   } = useUploadFormState(() => {
     resetValidation();
@@ -606,10 +611,10 @@ function UploadForm({
   }, [zoneState]);
 
   useEffect(() => {
-    if (zoneState === 'error') {
+    if (zoneState === 'error' && networkRetryFiles == null) {
       track('upload_error_chat_shown');
     }
-  }, [zoneState]);
+  }, [zoneState, networkRetryFiles]);
 
   useEffect(() => {
     if (zoneState === 'success' && showErrorInlineChat) {
@@ -815,16 +820,22 @@ function UploadForm({
     wasDrivePendingRef.current = drivePending;
   }, [drivePending]);
 
-  const handleSubmit = async (event: SyntheticEvent) => {
-    event.preventDefault();
+  const runFileUpload = async (
+    formData: FormData,
+    uploadedFiles: File[],
+    isRetry: boolean
+  ): Promise<boolean> => {
     const submittedAt = Date.now();
     setZoneState('converting');
+    setNetworkRetryFiles(null);
     fireAnalyticsEvent('upload_started');
+    if (isRetry) {
+      track('upload_started', { retry: true });
+    }
     setProgressWidth(10);
     setProgressSlow(false);
     setShowFallback(false);
     try {
-      const formData = buildFormData(event.currentTarget as HTMLFormElement);
       const passToken = getStoredPassToken();
       const uploadHeaders: HeadersInit =
         passToken == null ? {} : { 'X-Pass-Token': passToken };
@@ -840,7 +851,7 @@ function UploadForm({
             globalThis.location.href = '/limit?kind=anonymous';
             return true;
           }
-          const firstFile = fileInputRef.current?.files?.[0];
+          const firstFile = uploadedFiles[0];
           const kind = getLimitKind(redirectUrl);
           setLimitInfo({
             filename: firstFile?.name ?? null,
@@ -862,7 +873,7 @@ function UploadForm({
         try {
           const body = await cloned.json();
           if (body?.error === 'needs_password') {
-            const firstFile = fileInputRef.current?.files?.[0];
+            const firstFile = uploadedFiles[0];
             if (firstFile) {
               setLockedPdfInfo({ filename: firstFile.name, file: firstFile });
               setPdfCredential('');
@@ -885,7 +896,7 @@ function UploadForm({
       const isNetworkError =
         error instanceof TypeError ||
         (error instanceof Error && /fetch|network/i.test(error.message));
-      const failedFile = fileInputRef.current?.files?.[0];
+      const failedFile = uploadedFiles[0];
       const failedFileName = failedFile?.name ?? '';
       const extensionStart = failedFileName.lastIndexOf('.');
       const fileExt =
@@ -901,6 +912,7 @@ function UploadForm({
         ),
         fileSizeBytes,
         fileExt,
+        ...(isRetry ? { retry: true } : {}),
       });
       if (isNetworkError) {
         reportUploadNetworkFailure(error, {
@@ -909,11 +921,37 @@ function UploadForm({
           elapsedMs: Date.now() - submittedAt,
         });
       }
-      setLocalError(toFriendlyThrownError(error));
+      if (isNetworkError && uploadedFiles.length > 0) {
+        setNetworkRetryFiles(uploadedFiles);
+        setLocalError(null);
+      } else {
+        setNetworkRetryFiles(null);
+        setLocalError(toFriendlyThrownError(error));
+      }
       setZoneState('error');
       return false;
     }
     return true;
+  };
+
+  const handleSubmit = async (event: SyntheticEvent) => {
+    event.preventDefault();
+    const form = event.currentTarget as HTMLFormElement;
+    const formData = buildFormData(form);
+    const uploadedFiles = Array.from(fileInputRef.current?.files ?? []);
+    return runFileUpload(formData, uploadedFiles, false);
+  };
+
+  const handleNetworkRetry = () => {
+    if (networkRetryFiles == null || networkRetryFiles.length === 0) return;
+    const formData = new FormData();
+    for (const file of networkRetryFiles) {
+      formData.append('pakker', file, file.name);
+    }
+    for (const [key, value] of Object.entries(globalThis.localStorage)) {
+      formData.append(key, value);
+    }
+    void runFileUpload(formData, networkRetryFiles, true);
   };
 
   const isExistingApkgReject =
@@ -1534,6 +1572,42 @@ function UploadForm({
     );
   };
 
+  // A dropped upload never created a server job, so the status link and
+  // "Talk it through" chat the full error state offers point at nothing —
+  // this render keeps it to size-aware copy, a same-file retry, and a reset.
+  const renderNetworkErrorState = () => {
+    const large = isLargeUpload(networkRetryFiles?.[0]?.size ?? null);
+    return (
+      <div className={formStyles.stateContent}>
+        <WarningIcon className={formStyles.iconError} />
+        <p className={formStyles.errorTitle}>
+          {large
+            ? t('upload.form.networkErrorLargeTitle')
+            : t('upload.form.networkErrorSmallTitle')}
+        </p>
+        <p className={formStyles.errorBody}>
+          {large
+            ? t('upload.form.networkErrorLargeBody')
+            : t('upload.form.networkErrorSmallBody')}
+        </p>
+        <button
+          type="button"
+          className={formStyles.actionButton}
+          onClick={handleNetworkRetry}
+        >
+          {t('upload.form.tryAgain')}
+        </button>
+        <button
+          type="button"
+          className={formStyles.resetLink}
+          onClick={resetForm}
+        >
+          {t('upload.form.networkChooseDifferent')}
+        </button>
+      </div>
+    );
+  };
+
   const renderErrorState = () => {
     const isExistingApkg =
       localError != null && /already an Anki deck/i.test(localError.message);
@@ -1838,6 +1912,9 @@ function UploadForm({
     if (zoneState === 'error' && folderError != null) {
       return renderFolderErrorState(folderError);
     }
+    if (zoneState === 'error' && networkRetryFiles != null) {
+      return renderNetworkErrorState();
+    }
     if (zoneState === 'error') return renderErrorState();
     return renderIdleState();
   };
@@ -1956,7 +2033,7 @@ function UploadForm({
           )}
         </div>
       )}
-      {zoneState === 'error' && (
+      {zoneState === 'error' && networkRetryFiles == null && (
         <div className={formStyles.inlineChatWrapper}>
           <button
             type="button"
