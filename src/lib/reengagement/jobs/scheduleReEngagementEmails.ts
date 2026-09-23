@@ -3,6 +3,7 @@ import type { IJobLockRepository } from '../../../data_layer/JobLockRepository';
 import { JOB_LOCK_KEYS } from '../../../data_layer/JobLockRepository';
 import type { IEmailService } from '../../../services/EmailService/EmailService';
 import type { EventsSink } from '../../../services/events/EventsSink';
+import { outboundCampaignEmailsEnabled } from '../../featureFlags/outboundCampaignEmails';
 import { sendReEngagementEmails } from '../../storage/jobs/helpers/sendReEngagementEmails';
 import { makeExclusiveBatchRunner } from '../../scheduling/exclusiveBatch';
 import { isOverdue, type LastRunAt } from '../../inactivity/jobs/lastRunAt';
@@ -17,12 +18,21 @@ export const scheduleReEngagementEmails = async (
     intervalMs?: number;
     lastRunAt?: LastRunAt;
     lock?: IJobLockRepository;
+    campaignEmailsEnabled?: () => Promise<boolean>;
   } = {}
 ): Promise<NodeJS.Timeout> => {
   const intervalMs = options.intervalMs ?? RE_ENGAGEMENT_INTERVAL_MS;
+  const campaignEmailsEnabled =
+    options.campaignEmailsEnabled ?? outboundCampaignEmailsEnabled;
 
   const tick = async () => {
     try {
+      if (!(await campaignEmailsEnabled())) {
+        console.info(
+          '[re-engagement] skipped: outbound_campaign_emails is off'
+        );
+        return;
+      }
       const { count } = await sendReEngagementEmails(repo, emailService);
       console.info(`[re-engagement] sent ${count} email(s)`);
       eventsSink.record({
