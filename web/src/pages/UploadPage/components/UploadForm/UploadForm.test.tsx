@@ -2421,9 +2421,7 @@ describe('UploadForm network-failure retry', () => {
       configurable: true,
     });
 
-    await act(async () => {
-      fireEvent.click(retry);
-    });
+    fireEvent.click(retry);
 
     await waitFor(() => {
       const uploadCalls = fetchMock.mock.calls.filter(
@@ -2522,9 +2520,7 @@ describe('UploadForm network-failure retry', () => {
     const chooseDifferent = await screen.findByRole('button', {
       name: 'Choose a different file',
     });
-    await act(async () => {
-      fireEvent.click(chooseDifferent);
-    });
+    fireEvent.click(chooseDifferent);
 
     expect(screen.getByText('Choose files')).toBeInTheDocument();
     expect(fileInput.value).toBe('');
@@ -2552,9 +2548,7 @@ describe('UploadForm network-failure retry', () => {
 
     const retry = await screen.findByRole('button', { name: 'Try again' });
     trackMock.mockClear();
-    await act(async () => {
-      fireEvent.click(retry);
-    });
+    fireEvent.click(retry);
 
     await waitFor(() => {
       const failed = trackMock.mock.calls.filter(

@@ -820,6 +820,110 @@ function UploadForm({
     wasDrivePendingRef.current = drivePending;
   }, [drivePending]);
 
+  const handleUploadLimitRedirect = (
+    redirectUrl: URL,
+    uploadedFiles: File[]
+  ): boolean => {
+    if (isAnonymousLimit(redirectUrl)) {
+      globalThis.location.href = '/limit?kind=anonymous';
+      return true;
+    }
+    const firstFile = uploadedFiles[0];
+    const kind = getLimitKind(redirectUrl);
+    setLimitInfo({
+      filename: firstFile?.name ?? null,
+      fileSizeBytes: kind === 'file_size' ? (firstFile?.size ?? null) : null,
+      kind,
+    });
+    setZoneState('limitReached');
+    return true;
+  };
+
+  const handleUploadRedirect = (
+    request: Response,
+    uploadedFiles: File[]
+  ): boolean => {
+    const redirectUrl = new URL(request.url, globalThis.location.origin);
+    if (isLimitRedirect(redirectUrl)) {
+      return handleUploadLimitRedirect(redirectUrl, uploadedFiles);
+    }
+    return handleRedirect(request);
+  };
+
+  const showLockedPdfState = (firstFile: File): void => {
+    setLockedPdfInfo({ filename: firstFile.name, file: firstFile });
+    setPdfCredential('');
+    setPdfUnlockError(null);
+    setPdfAttemptCount(0);
+    setZoneState('lockedPdf');
+  };
+
+  const handleUploadFailureResponse = async (
+    request: Response,
+    uploadedFiles: File[]
+  ): Promise<boolean> => {
+    const cloned = request.clone();
+    try {
+      const body = await cloned.json();
+      const firstFile = uploadedFiles[0];
+      if (body?.error === 'needs_password' && firstFile) {
+        showLockedPdfState(firstFile);
+        return false;
+      }
+    } catch {
+      // non-JSON response — fall through to error
+    }
+    const message = await extractErrorMessage(request);
+    setLocalError(message);
+    setZoneState(zoneStateForUploadError(message));
+    return false;
+  };
+
+  const handleUploadError = (
+    error: unknown,
+    uploadedFiles: File[],
+    isRetry: boolean,
+    submittedAt: number
+  ): false => {
+    const isNetworkError =
+      error instanceof TypeError ||
+      (error instanceof Error && /fetch|network/i.test(error.message));
+    const failedFile = uploadedFiles[0];
+    const failedFileName = failedFile?.name ?? '';
+    const extensionStart = failedFileName.lastIndexOf('.');
+    const fileExt =
+      extensionStart >= 0
+        ? failedFileName.slice(extensionStart).toLowerCase()
+        : null;
+    const fileSizeBytes = failedFile?.size ?? null;
+    track('upload_failed', {
+      reason: isNetworkError ? 'network' : 'other',
+      message: (error instanceof Error ? error.message : String(error)).slice(
+        0,
+        200
+      ),
+      fileSizeBytes,
+      fileExt,
+      ...(isRetry ? { retry: true } : {}),
+    });
+    if (isNetworkError) {
+      reportUploadNetworkFailure(error, {
+        fileExt,
+        fileSizeBytes,
+        elapsedMs: Date.now() - submittedAt,
+      });
+    }
+    if (isNetworkError && uploadedFiles.length > 0) {
+      setNetworkRetryFiles(uploadedFiles);
+      setLocalError(null);
+    } else {
+      setNetworkRetryFiles(null);
+      setLocalError(toFriendlyThrownError(error));
+    }
+    setZoneState('error');
+    return false;
+  };
+
   const runFileUpload = async (
     formData: FormData,
     uploadedFiles: File[],
@@ -842,91 +946,18 @@ function UploadForm({
         body: formData,
       });
       if (request.redirected) {
-        const redirectUrl = new URL(request.url, globalThis.location.origin);
-        if (isLimitRedirect(redirectUrl)) {
-          if (isAnonymousLimit(redirectUrl)) {
-            globalThis.location.href = '/limit?kind=anonymous';
-            return true;
-          }
-          const firstFile = uploadedFiles[0];
-          const kind = getLimitKind(redirectUrl);
-          setLimitInfo({
-            filename: firstFile?.name ?? null,
-            fileSizeBytes:
-              kind === 'file_size' ? (firstFile?.size ?? null) : null,
-            kind,
-          });
-          setZoneState('limitReached');
-          return true;
-        }
-        return handleRedirect(request);
+        return handleUploadRedirect(request, uploadedFiles);
       }
       if (request.status === 202) {
         globalThis.location.href = '/downloads';
         return true;
       }
       if (request.status !== 200) {
-        const cloned = request.clone();
-        try {
-          const body = await cloned.json();
-          if (body?.error === 'needs_password') {
-            const firstFile = uploadedFiles[0];
-            if (firstFile) {
-              setLockedPdfInfo({ filename: firstFile.name, file: firstFile });
-              setPdfCredential('');
-              setPdfUnlockError(null);
-              setPdfAttemptCount(0);
-              setZoneState('lockedPdf');
-              return false;
-            }
-          }
-        } catch {
-          // non-JSON response — fall through to error
-        }
-        const message = await extractErrorMessage(request);
-        setLocalError(message);
-        setZoneState(zoneStateForUploadError(message));
-        return false;
+        return await handleUploadFailureResponse(request, uploadedFiles);
       }
       await applyConversionSuccess(request, conversionSuccessHandlers);
     } catch (error) {
-      const isNetworkError =
-        error instanceof TypeError ||
-        (error instanceof Error && /fetch|network/i.test(error.message));
-      const failedFile = uploadedFiles[0];
-      const failedFileName = failedFile?.name ?? '';
-      const extensionStart = failedFileName.lastIndexOf('.');
-      const fileExt =
-        extensionStart >= 0
-          ? failedFileName.slice(extensionStart).toLowerCase()
-          : null;
-      const fileSizeBytes = failedFile?.size ?? null;
-      track('upload_failed', {
-        reason: isNetworkError ? 'network' : 'other',
-        message: (error instanceof Error ? error.message : String(error)).slice(
-          0,
-          200
-        ),
-        fileSizeBytes,
-        fileExt,
-        ...(isRetry ? { retry: true } : {}),
-      });
-      if (isNetworkError) {
-        reportUploadNetworkFailure(error, {
-          fileExt,
-          fileSizeBytes,
-          elapsedMs: Date.now() - submittedAt,
-        });
-      }
-      if (isNetworkError && uploadedFiles.length > 0) {
-        setNetworkRetryFiles(uploadedFiles);
-        setLocalError(null);
-      } else {
-        setNetworkRetryFiles(null);
-        setLocalError(toFriendlyThrownError(error));
-      }
-      setZoneState('error');
-      return false;
+      return handleUploadError(error, uploadedFiles, isRetry, submittedAt);
     }
     return true;
   };
