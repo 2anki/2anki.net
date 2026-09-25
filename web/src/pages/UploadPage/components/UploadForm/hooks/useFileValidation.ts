@@ -78,9 +78,9 @@ export function detectUploadIssues(
     if (aiOn) return null;
     return {
       status: 'info',
-      title: 'Each pair of pages becomes one card',
-      body: 'Odd pages are card fronts, even pages are backs. Works well for lecture slides where each topic spans 2 pages. Change this in Card Options.',
-      continueLabel: 'Make cards from this PDF',
+      title: translate(t, 'upload.validation.pdfPairs.title'),
+      body: translate(t, 'upload.validation.pdfPairs.body'),
+      continueLabel: translate(t, 'upload.validation.pdfPairs.continue'),
     };
   }
 
@@ -101,9 +101,9 @@ export function detectUploadIssues(
   if (isClippings || isEpub) {
     return {
       status: 'info',
-      title: 'Reading-format support',
-      body: 'Kindle highlights from My Clippings.txt and DRM-free EPUBs are supported. To export your Kindle highlights, connect your Kindle by USB and copy the My Clippings.txt file from the device’s documents folder.',
-      continueLabel: 'Make cards from these highlights',
+      title: translate(t, 'upload.validation.readingFormat.title'),
+      body: translate(t, 'upload.validation.readingFormat.body'),
+      continueLabel: translate(t, 'upload.validation.readingFormat.continue'),
     };
   }
 

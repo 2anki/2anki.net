@@ -311,6 +311,16 @@
         "title": "Bilder werden nicht übernommen",
         "body": "Eine einzelne HTML-Datei enthält keine Bilder. Wenn sie aus Notion stammt, zieh den ganzen Export-Ordner oder die Zip-Datei auf diese Seite und 2anki nimmt die Bilder mit.",
         "continue": "Ohne Bilder fortfahren"
+      },
+      "pdfPairs": {
+        "title": "Je zwei Seiten werden eine Karte",
+        "body": "Ungerade Seiten sind Vorderseiten, gerade Seiten Rückseiten. Funktioniert gut bei Vorlesungsfolien, bei denen jedes Thema 2 Seiten umfasst. Änderbar in den Kartenoptionen.",
+        "continue": "Karten aus dieser PDF erstellen"
+      },
+      "readingFormat": {
+        "title": "Unterstützung für Leseformate",
+        "body": "Kindle-Markierungen aus My Clippings.txt und DRM-freie EPUBs werden unterstützt. Um deine Kindle-Markierungen zu exportieren, schließ den Kindle per USB an und kopiere die Datei My Clippings.txt aus dem Ordner „documents“ des Geräts.",
+        "continue": "Karten aus diesen Markierungen erstellen"
       }
     }
   },
@@ -816,7 +826,16 @@
       "inputTemplateHint": "Name, den 2anki dem Antwort-eingeben-Notiztyp in Anki gibt. Leer lassen, um n2a-input zu verwenden.",
       "basicPlaceholder": "Standard: n2a-basic",
       "clozePlaceholder": "Standard: n2a-cloze",
-      "inputPlaceholder": "Standard: n2a-input"
+      "inputPlaceholder": "Standard: n2a-input",
+      "names": {
+        "default": "Standard",
+        "onlyNotion": "Nur Notion",
+        "rawNote": "Rohe Notiz (ohne Stil)",
+        "abhiyan": "Abhiyan Bhandari (Nachtmodus)",
+        "alexDeluxe": "Alexander Deluxe (Blau)",
+        "hierarchy": "Hierarchie (Felder H1 › H2 › H3)",
+        "custom": "Meine Notiztypen"
+      }
     }
   },
   "favoritesPage": {

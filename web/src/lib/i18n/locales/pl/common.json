@@ -321,6 +321,16 @@
         "title": "Obrazy nie zostaną dołączone",
         "body": "Pojedynczy plik HTML nie zawiera obrazów. Jeśli pochodzi z Notion, przeciągnij cały folder eksportu lub plik zip na tę stronę, a 2anki dołączy obrazy.",
         "continue": "Kontynuuj bez obrazów"
+      },
+      "pdfPairs": {
+        "title": "Każda para stron staje się jedną kartą",
+        "body": "Strony nieparzyste to przody, parzyste to tyły. Sprawdza się przy slajdach z wykładów, gdzie każdy temat zajmuje 2 strony. Zmień to w Opcjach kart.",
+        "continue": "Utwórz karty z tego PDF"
+      },
+      "readingFormat": {
+        "title": "Obsługa formatów do czytania",
+        "body": "Obsługiwane są zakreślenia z Kindle (My Clippings.txt) i pliki EPUB bez DRM. Aby wyeksportować zakreślenia z Kindle, podłącz Kindle przez USB i skopiuj plik My Clippings.txt z folderu documents na urządzeniu.",
+        "continue": "Utwórz karty z tych zakreśleń"
       }
     }
   },
@@ -834,7 +844,16 @@
       "inputTemplateHint": "Nazwa, którą 2anki nada typowi notatki z wpisywaniem odpowiedzi w Anki. Zostaw puste, aby użyć n2a-input.",
       "basicPlaceholder": "Domyślnie n2a-basic",
       "clozePlaceholder": "Domyślnie n2a-cloze",
-      "inputPlaceholder": "Domyślnie n2a-input"
+      "inputPlaceholder": "Domyślnie n2a-input",
+      "names": {
+        "default": "Domyślny",
+        "onlyNotion": "Tylko Notion",
+        "rawNote": "Surowa notatka (bez stylu)",
+        "abhiyan": "Abhiyan Bhandari (tryb nocny)",
+        "alexDeluxe": "Alexander Deluxe (niebieski)",
+        "hierarchy": "Hierarchia (pola H1 › H2 › H3)",
+        "custom": "Moje typy notatek"
+      }
     }
   },
   "favoritesPage": {

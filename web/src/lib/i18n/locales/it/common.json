@@ -311,6 +311,16 @@
         "title": "Le immagini non saranno incluse",
         "body": "Un singolo file HTML non contiene immagini. Se viene da Notion, trascina l'intera cartella di esportazione o lo zip su questa pagina e 2anki include le immagini.",
         "continue": "Continua senza immagini"
+      },
+      "pdfPairs": {
+        "title": "Ogni coppia di pagine diventa una carta",
+        "body": "Le pagine impari sono i fronti, le pari i retri. Funziona bene con slide di lezione in cui ogni argomento occupa 2 pagine. Puoi cambiarlo nelle Opzioni carte.",
+        "continue": "Crea carte da questo PDF"
+      },
+      "readingFormat": {
+        "title": "Formati di lettura supportati",
+        "body": "Sono supportate le evidenziazioni Kindle da My Clippings.txt e gli EPUB senza DRM. Per esportare le evidenziazioni Kindle, collega il Kindle via USB e copia il file My Clippings.txt dalla cartella documents del dispositivo.",
+        "continue": "Crea carte da queste evidenziazioni"
       }
     }
   },
@@ -816,7 +826,16 @@
       "inputTemplateHint": "Nome che 2anki darà al tipo di nota con risposta da digitare in Anki. Lascia vuoto per usare n2a-input.",
       "basicPlaceholder": "Predefinito: n2a-basic",
       "clozePlaceholder": "Predefinito: n2a-cloze",
-      "inputPlaceholder": "Predefinito: n2a-input"
+      "inputPlaceholder": "Predefinito: n2a-input",
+      "names": {
+        "default": "Predefinito",
+        "onlyNotion": "Solo Notion",
+        "rawNote": "Nota grezza (senza stile)",
+        "abhiyan": "Abhiyan Bhandari (modalità notte)",
+        "alexDeluxe": "Alexander Deluxe (blu)",
+        "hierarchy": "Gerarchia (campi H1 › H2 › H3)",
+        "custom": "I miei tipi di nota"
+      }
     }
   },
   "favoritesPage": {

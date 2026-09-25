@@ -1,22 +1,22 @@
 export const availableTemplates = [
-  { value: 'specialstyle', label: 'Default' },
-  { value: 'notionstyle', label: 'Only Notion' },
-  { value: 'nostyle', label: 'Raw Note (no style)' },
+  { value: 'specialstyle', labelKey: 'cardOptions.templates.names.default' },
+  { value: 'notionstyle', labelKey: 'cardOptions.templates.names.onlyNotion' },
+  { value: 'nostyle', labelKey: 'cardOptions.templates.names.rawNote' },
   {
     value: 'abhiyan',
-    label: 'Abhiyan Bhandari (Night Mode)',
+    labelKey: 'cardOptions.templates.names.abhiyan',
   },
   {
     value: 'alex_deluxe',
-    label: 'Alexander Deluxe (Blue)',
+    labelKey: 'cardOptions.templates.names.alexDeluxe',
   },
   {
     value: 'hierarchy',
-    label: 'Hierarchy (H1 › H2 › H3 fields)',
+    labelKey: 'cardOptions.templates.names.hierarchy',
   },
   {
     value: 'custom',
-    label: 'My note types',
+    labelKey: 'cardOptions.templates.names.custom',
   },
 ];
 

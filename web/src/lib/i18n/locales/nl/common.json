@@ -311,6 +311,16 @@
         "title": "Afbeeldingen worden niet meegenomen",
         "body": "Een los HTML-bestand bevat geen afbeeldingen. Komt het uit Notion, sleep dan de hele exportmap of de zip naar deze pagina en 2anki neemt de afbeeldingen mee.",
         "continue": "Doorgaan zonder afbeeldingen"
+      },
+      "pdfPairs": {
+        "title": "Elk paar pagina's wordt één kaart",
+        "body": "Oneven pagina's zijn de voorkant, even pagina's de achterkant. Werkt goed voor collegeslides waarbij elk onderwerp 2 pagina's beslaat. Pas dit aan bij Kaartopties.",
+        "continue": "Kaarten maken van deze PDF"
+      },
+      "readingFormat": {
+        "title": "Ondersteuning voor leesformaten",
+        "body": "Kindle-markeringen uit My Clippings.txt en DRM-vrije EPUB's worden ondersteund. Om je Kindle-markeringen te exporteren, sluit je de Kindle aan via USB en kopieer je het bestand My Clippings.txt uit de map documents op het apparaat.",
+        "continue": "Kaarten maken van deze markeringen"
       }
     }
   },
@@ -816,7 +826,16 @@
       "inputTemplateHint": "Naam die 2anki het Typ-het-antwoord-notitietype geeft in Anki. Laat leeg om n2a-input te gebruiken.",
       "basicPlaceholder": "Standaard n2a-basic",
       "clozePlaceholder": "Standaard n2a-cloze",
-      "inputPlaceholder": "Standaard n2a-input"
+      "inputPlaceholder": "Standaard n2a-input",
+      "names": {
+        "default": "Standaard",
+        "onlyNotion": "Alleen Notion",
+        "rawNote": "Kale notitie (geen stijl)",
+        "abhiyan": "Abhiyan Bhandari (nachtmodus)",
+        "alexDeluxe": "Alexander Deluxe (blauw)",
+        "hierarchy": "Hiërarchie (velden H1 › H2 › H3)",
+        "custom": "Mijn notitietypen"
+      }
     }
   },
   "favoritesPage": {

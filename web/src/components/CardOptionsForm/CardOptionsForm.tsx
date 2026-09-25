@@ -1705,7 +1705,10 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           </p>
           <div className={fieldStyles.section}>
             <TemplateSelect
-              values={availableTemplates}
+              values={availableTemplates.map(({ value, labelKey }) => ({
+                value,
+                label: t(labelKey),
+              }))}
               value={template}
               name="template"
               label={t('cardOptions.templates.cardStyleLabel')}
