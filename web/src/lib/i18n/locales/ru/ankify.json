@@ -109,7 +109,17 @@
     "zeroScannedSuffix": " блоков и не распознали ни одной карты. Ankify ищет переключатели, пары «вопрос — ответ» и маркеры. ",
     "zeroNoContent": "Не удалось прочитать содержимое этой страницы. ",
     "zeroLink": "Что ищет Ankify →",
-    "zeroSamplesSummary": "Что мы увидели на этой странице (первые {{count}})"
+    "zeroSamplesSummary": "Что мы увидели на этой странице (первые {{count}})",
+    "subscribeError": {
+      "notActive": "Auto Sync не активен для этого аккаунта.",
+      "notActiveLink": "Управлять подпиской",
+      "notionDisconnected": "Notion не подключён к 2anki.",
+      "notionDisconnectedLink": "Подключить Notion",
+      "noClient": "Твой размещённый Anki ещё не настроен.",
+      "noClientLink": "Настроить Anki",
+      "ankiUnreachable": "Anki сейчас не отвечает. Попробуй ещё раз через минуту.",
+      "fallback": "Что-то сломалось на нашей стороне. Попробуй ещё раз или напиши на support@2anki.net."
+    }
   },
   "leeches": {
     "flash": {

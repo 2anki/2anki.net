@@ -647,11 +647,13 @@ export default function NotionSubscriptions({
               );
               return (
                 <p role="alert" className={sharedStyles.helpDanger}>
-                  {mapped.text}
+                  {t(mapped.textKey)}
                   {mapped.link != null && (
                     <>
                       {' '}
-                      <Link to={mapped.link.href}>{mapped.link.label}</Link>
+                      <Link to={mapped.link.href}>
+                        {t(mapped.link.labelKey)}
+                      </Link>
                     </>
                   )}
                 </p>
