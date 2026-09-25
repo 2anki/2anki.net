@@ -1,10 +1,17 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import {
   QueryClient,
   QueryClientProvider,
   useQuery,
 } from '@tanstack/react-query';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { describe, expect, test, vi } from 'vitest';
 
 import { formatAge, isOpsQuery, useOpsFreshness } from './useOpsFreshness';
@@ -87,6 +94,53 @@ describe('useOpsFreshness', () => {
     await waitFor(() => expect(opsFetch).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(result.current.fetching).toBe(false));
     expect(otherFetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('an ops query mounted later does not update freshness during its render', async () => {
+    const queryClient = makeClient();
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    const Freshness = () => {
+      const { ageMs } = useOpsFreshness();
+      return <span data-testid="age">{formatAge(ageMs)}</span>;
+    };
+    const LateOpsQuery = () => {
+      useQuery({
+        queryKey: ['ops-cancel-funnel'],
+        queryFn: async () => ({ ok: true }),
+      });
+      return <span>panel open</span>;
+    };
+    const Harness = () => {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Freshness />
+          <button type="button" onClick={() => setOpen(true)}>
+            expand
+          </button>
+          {open && <LateOpsQuery />}
+        </>
+      );
+    };
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Harness />
+      </QueryClientProvider>
+    );
+    fireEvent.click(screen.getByText('expand'));
+    await waitFor(() =>
+      expect(screen.getByTestId('age')).not.toHaveTextContent('—')
+    );
+
+    const renderPhaseUpdates = consoleError.mock.calls.filter((call) =>
+      String(call[0]).includes('Cannot update a component')
+    );
+    consoleError.mockRestore();
+    expect(renderPhaseUpdates).toEqual([]);
   });
 
   test('isOpsQuery matches only ops-prefixed keys', () => {
