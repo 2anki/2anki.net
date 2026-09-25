@@ -33,6 +33,23 @@ export interface ActiveSubsTimeseriesPoint {
   active_paying_subs: number;
 }
 
+export interface ChurnTierPoint {
+  tier: string;
+  churned: number;
+  active: number;
+}
+
+export interface ChurnBreakdown {
+  churned: number;
+  ended: number;
+  scheduled: number;
+  voluntary: number;
+  payment_failed: number;
+  trailing_90d_avg_pct: number | null;
+  same_period_last_year_pct: number | null;
+  by_tier: ChurnTierPoint[];
+}
+
 export interface ConversionsChurnWeekPoint {
   week: string;
   new_paying: number;
@@ -101,6 +118,7 @@ export interface BusinessMetricsResponse {
   net_new_mrr_mtd_usd: number | null;
   active_paying_subs: number | null;
   churn_30d_pct: number | null;
+  churn_30d_breakdown: ChurnBreakdown | null;
   failed_payments_7d: number | null;
   new_paid_conversions_7d: number | null;
   pass_sales_7d: {

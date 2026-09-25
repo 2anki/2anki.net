@@ -52,6 +52,7 @@ export type BusinessMetricKey =
   | 'net_new_mrr_mtd_usd'
   | 'active_paying_subs'
   | 'churn_30d_pct'
+  | 'churn_30d_breakdown'
   | 'failed_payments_7d'
   | 'new_paid_conversions_7d'
   | 'mrr_timeseries'
@@ -102,6 +103,7 @@ export interface BusinessMetricsResponse {
   net_new_mrr_mtd_usd: number | null;
   active_paying_subs: number | null;
   churn_30d_pct: number | null;
+  churn_30d_breakdown: ChurnBreakdown | null;
   failed_payments_7d: number | null;
   new_paid_conversions_7d: number | null;
   pass_sales_7d: PassSalesCounts | null;
@@ -173,8 +175,33 @@ interface NormalizedSubscription {
   status: string;
   createdMs: number;
   endedAtMs: number | null;
+  // ended_at alone: null while a cancel is only scheduled for period end.
+  endedMs: number | null;
+  cancelReason: string | null;
+  tier: string;
   monthlyCents: number;
   paused: boolean;
+}
+
+export interface ChurnTierPoint {
+  tier: string;
+  churned: number;
+  active: number;
+}
+
+// The 30d churn number on its own hid what the 2026-09 alert actually was:
+// cancels split into ended vs still-scheduled, voluntary vs payment failures,
+// and one tier; and "prior 30 days" was the summer trough. Same numerator as
+// churn_30d_pct, with the two baselines that would have read it correctly.
+export interface ChurnBreakdown {
+  churned: number;
+  ended: number;
+  scheduled: number;
+  voluntary: number;
+  payment_failed: number;
+  trailing_90d_avg_pct: number | null;
+  same_period_last_year_pct: number | null;
+  by_tier: ChurnTierPoint[];
 }
 
 interface NormalizedInvoice {
@@ -193,6 +220,7 @@ const SUBS_DERIVED_METRICS: BusinessMetricKey[] = [
   'net_new_mrr_mtd_usd',
   'new_paid_conversions_7d',
   'churn_30d_pct',
+  'churn_30d_breakdown',
   'mrr_timeseries',
   'active_subs_timeseries',
   'conversions_vs_churn_weekly',
@@ -326,6 +354,7 @@ export class BusinessMetricsService {
       net_new_mrr_mtd_usd: fromSubs((s) => computeNetNewMrrMtdUsd(s, now)),
       active_paying_subs: fromSubs((s) => computeActiveCount(s, now)),
       churn_30d_pct: fromSubs((s) => computeChurn30dPct(s, now)),
+      churn_30d_breakdown: fromSubs((s) => computeChurnBreakdown(s, now)),
       failed_payments_7d: fromInvoices((i) => computeFailedPayments7d(i, now)),
       new_paid_conversions_7d: fromSubs((s) =>
         computeNewPaidConversions7d(s, now)
@@ -814,9 +843,37 @@ const normalizeSubscription = (
     status: sub.status,
     createdMs: sub.created * 1000,
     endedAtMs: effectiveEnd != null ? effectiveEnd * 1000 : null,
+    endedMs: endedAt != null ? endedAt * 1000 : null,
+    cancelReason: sub.cancellation_details?.reason ?? null,
+    tier: tierLabelForSubscription(sub),
     monthlyCents: monthlyCentsForSubscription(sub),
     paused: isPaused(sub),
   };
+};
+
+const INTERVAL_SHORT: Record<string, string> = {
+  day: 'day',
+  week: 'wk',
+  month: 'mo',
+  year: 'yr',
+};
+
+// "$7.99/mo", "$2/mo", "$64/yr" — the price, not the Stripe product id, so
+// the ops page reads without a lookup table and nothing prod-specific ships.
+const tierLabelForSubscription = (
+  subscription: StripeTypes.Subscription
+): string => {
+  const price = subscription.items?.data?.[0]?.price;
+  const unitAmount = price?.unit_amount;
+  const interval = price?.recurring?.interval;
+  if (unitAmount == null || interval == null) {
+    return 'other';
+  }
+  const dollars = unitAmount / 100;
+  const amount = Number.isInteger(dollars)
+    ? String(dollars)
+    : dollars.toFixed(2);
+  return `$${amount}/${INTERVAL_SHORT[interval] ?? interval}`;
 };
 
 const normalizeInvoice = (invoice: StripeTypes.Invoice): NormalizedInvoice => ({
@@ -913,6 +970,85 @@ const computeChurn30dPct = (
   }
   if (active === 0) return 0;
   return (canceled / active) * 100;
+};
+
+const churnedInWindow = (
+  subs: NormalizedSubscription[],
+  startMs: number,
+  endMs: number
+): NormalizedSubscription[] =>
+  subs.filter(
+    (sub) =>
+      sub.endedAtMs != null && sub.endedAtMs >= startMs && sub.endedAtMs < endMs
+  );
+
+const activeCountAt = (subs: NormalizedSubscription[], atMs: number): number =>
+  subs.filter((sub) => wasActiveOn(sub, atMs)).length;
+
+const ratePct = (churned: number, active: number): number | null =>
+  active === 0 ? null : (churned / active) * 100;
+
+const computeChurnBreakdown = (
+  subs: NormalizedSubscription[],
+  now: Date
+): ChurnBreakdown => {
+  const nowMs = now.getTime();
+  const windowMs = 30 * SECONDS_PER_DAY * 1000;
+  const windowStart = nowMs - windowMs;
+  const churned = churnedInWindow(subs, windowStart, nowMs + 1);
+
+  const byTier = new Map<string, ChurnTierPoint>();
+  for (const sub of subs) {
+    if (!isActiveToday(sub, nowMs)) continue;
+    const point = byTier.get(sub.tier) ?? {
+      tier: sub.tier,
+      churned: 0,
+      active: 0,
+    };
+    point.active += 1;
+    byTier.set(sub.tier, point);
+  }
+  for (const sub of churned) {
+    const point = byTier.get(sub.tier) ?? {
+      tier: sub.tier,
+      churned: 0,
+      active: 0,
+    };
+    point.churned += 1;
+    byTier.set(sub.tier, point);
+  }
+
+  const trailingChurned = churnedInWindow(
+    subs,
+    windowStart - 3 * windowMs,
+    windowStart
+  ).length;
+  const lastYearEnd = nowMs - 365 * SECONDS_PER_DAY * 1000;
+  const lastYearChurned = churnedInWindow(
+    subs,
+    lastYearEnd - windowMs,
+    lastYearEnd
+  ).length;
+
+  return {
+    churned: churned.length,
+    ended: churned.filter((sub) => sub.endedMs != null).length,
+    scheduled: churned.filter((sub) => sub.endedMs == null).length,
+    voluntary: churned.filter((sub) => sub.cancelReason !== 'payment_failed')
+      .length,
+    payment_failed: churned.filter(
+      (sub) => sub.cancelReason === 'payment_failed'
+    ).length,
+    trailing_90d_avg_pct: ratePct(
+      trailingChurned / 3,
+      activeCountAt(subs, windowStart)
+    ),
+    same_period_last_year_pct: ratePct(
+      lastYearChurned,
+      activeCountAt(subs, lastYearEnd)
+    ),
+    by_tier: [...byTier.values()].sort((a, b) => b.churned - a.churned),
+  };
 };
 
 const computeFailedPayments7d = (

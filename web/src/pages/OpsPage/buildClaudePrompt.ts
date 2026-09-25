@@ -67,6 +67,7 @@ function buildBusinessPrompt(payload: BusinessMetricsResponse): string {
     `Net new MRR MTD (USD):     ${numberOrDash(payload.net_new_mrr_mtd_usd)}`,
     `Active paying subs:        ${numberOrDash(payload.active_paying_subs)}`,
     `Churn 30d (%):             ${numberOrDash(payload.churn_30d_pct)}`,
+    `Churn 30d breakdown:       ${payload.churn_30d_breakdown == null ? '—' : JSON.stringify(payload.churn_30d_breakdown)}`,
     `Failed payments 7d:        ${numberOrDash(payload.failed_payments_7d)}`,
     `New paid conversions 7d:   ${numberOrDash(payload.new_paid_conversions_7d)}`,
     '',

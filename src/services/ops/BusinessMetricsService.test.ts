@@ -34,6 +34,7 @@ interface FakeSubscription {
   canceled_at?: number | null;
   ended_at?: number | null;
   pause_collection?: { behavior: string; resumes_at: number } | null;
+  cancellation_details?: { reason: string | null } | null;
   items: { data: FakeSubscriptionItem[] };
 }
 
@@ -82,6 +83,7 @@ const sub = (
   canceled_at: overrides.canceled_at ?? null,
   ended_at: overrides.ended_at ?? null,
   pause_collection: overrides.pause_collection ?? null,
+  cancellation_details: overrides.cancellation_details ?? null,
   items: { data: items },
 });
 
@@ -305,6 +307,88 @@ describe('BusinessMetricsService', () => {
     expect(result.active_paying_subs).toBe(1);
     expect(result.mrr_usd).toBeCloseTo(20, 5);
     expect(result.churn_30d_pct).toBeCloseTo((1 / 1) * 100, 5);
+  });
+
+  it('breaks 30d churn down by ended/scheduled, reason, tier, and two baselines', async () => {
+    const requested = { reason: 'cancellation_requested' };
+    const { service } = buildService({
+      allSubs: [
+        sub('pro_active', [monthly(799)]),
+        sub('pro_ended', [monthly(799)], {
+          status: 'canceled',
+          canceled_at: daysAgoEpoch(5),
+          ended_at: daysAgoEpoch(5),
+          cancellation_details: requested,
+        }),
+        sub('pro_scheduled', [monthly(799)], {
+          status: 'active',
+          canceled_at: daysAgoEpoch(3),
+          ended_at: null,
+          cancellation_details: requested,
+        }),
+        sub('cheap_card_failed', [monthly(200)], {
+          status: 'canceled',
+          canceled_at: daysAgoEpoch(10),
+          ended_at: daysAgoEpoch(10),
+          cancellation_details: { reason: 'payment_failed' },
+        }),
+        sub('cheap_active', [monthly(200)]),
+        sub('cheap_trailing', [monthly(200)], {
+          status: 'canceled',
+          canceled_at: daysAgoEpoch(60),
+          ended_at: daysAgoEpoch(60),
+          cancellation_details: requested,
+        }),
+        sub('old_last_year_churn', [monthly(200)], {
+          created: daysAgoEpoch(500),
+          status: 'canceled',
+          canceled_at: daysAgoEpoch(370),
+          ended_at: daysAgoEpoch(370),
+          cancellation_details: requested,
+        }),
+        sub('old_still_active', [monthly(200)], { created: daysAgoEpoch(500) }),
+      ],
+    });
+
+    const result = await service.getMetrics();
+    const breakdown = result.churn_30d_breakdown!;
+
+    expect(breakdown.churned).toBe(3);
+    expect(breakdown.ended).toBe(2);
+    expect(breakdown.scheduled).toBe(1);
+    expect(breakdown.voluntary).toBe(2);
+    expect(breakdown.payment_failed).toBe(1);
+    expect(breakdown.by_tier).toEqual([
+      { tier: '$7.99/mo', churned: 2, active: 1 },
+      { tier: '$2/mo', churned: 1, active: 2 },
+    ]);
+    // One cancel in the 90 days before this window, over the 6 subs that
+    // were active when the window opened: (1/3) / 6.
+    expect(breakdown.trailing_90d_avg_pct).toBeCloseTo((1 / 3 / 6) * 100, 5);
+    // Same 30-day window a year ago: one cancel, one sub active at its end.
+    expect(breakdown.same_period_last_year_pct).toBeCloseTo(100, 5);
+    expect(breakdown.churned).toBe(
+      Math.round((result.churn_30d_pct! * result.active_paying_subs!) / 100)
+    );
+  });
+
+  it('reports null baselines when no subscription existed then', async () => {
+    const { service } = buildService({
+      allSubs: [sub('only', [monthly(799)], { created: daysAgoEpoch(10) })],
+    });
+
+    const result = await service.getMetrics();
+
+    expect(result.churn_30d_breakdown).toEqual({
+      churned: 0,
+      ended: 0,
+      scheduled: 0,
+      voluntary: 0,
+      payment_failed: 0,
+      trailing_90d_avg_pct: null,
+      same_period_last_year_pct: null,
+      by_tier: [{ tier: '$7.99/mo', churned: 0, active: 1 }],
+    });
   });
 
   it('serves cached values within 15 minutes', async () => {

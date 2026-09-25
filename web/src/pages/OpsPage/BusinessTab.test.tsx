@@ -36,6 +36,19 @@ const buildSampleMetrics = (
   net_new_mrr_mtd_usd: 312,
   active_paying_subs: 184,
   churn_30d_pct: 2.1,
+  churn_30d_breakdown: {
+    churned: 4,
+    ended: 3,
+    scheduled: 1,
+    voluntary: 3,
+    payment_failed: 1,
+    trailing_90d_avg_pct: 1.6,
+    same_period_last_year_pct: null,
+    by_tier: [
+      { tier: '$7.99/mo', churned: 3, active: 97 },
+      { tier: '$2/mo', churned: 1, active: 83 },
+    ],
+  },
   failed_payments_7d: 4,
   new_paid_conversions_7d: 11,
   pass_sales_7d: null,
@@ -157,6 +170,14 @@ describe('BusinessTab', () => {
     expect(screen.getByText('Active paying subs')).toBeInTheDocument();
     expect(screen.getByText('2.1%')).toBeInTheDocument();
     expect(screen.getByText('Churn (30d)')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '3 ended · 1 scheduled · 1 card failures · 90d avg 1.6% · same 30d last year n/a'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText('Churn by plan (30d)')).toBeInTheDocument();
+    expect(screen.getByText('$7.99/mo')).toBeInTheDocument();
+    expect(screen.getByText(/3 of 100 \(3\.0%\)/)).toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument();
     expect(screen.getByText('Failed payments (7d)')).toBeInTheDocument();
     expect(screen.getByText('11')).toBeInTheDocument();
