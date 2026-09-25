@@ -113,7 +113,7 @@ describe('detectUploadIssues', () => {
     const result = detectUploadIssues([fakeFile('slides.pdf')]);
     expect(result).not.toBeNull();
     expect(result!.status).toBe('info');
-    expect(result!.title).toContain('pair');
+    expect(result!.title).toBe('upload.validation.pdfPairs.title');
   });
 
   it('returns info for multiple pdf files', () => {

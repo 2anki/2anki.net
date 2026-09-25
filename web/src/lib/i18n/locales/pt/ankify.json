@@ -103,7 +103,17 @@
     "zeroScannedSuffix": " blocos e não reconhecemos nenhum cartão. O Ankify procura toggles, pares de P&R e marcadores. ",
     "zeroNoContent": "Não conseguimos ler nenhum conteúdo desta página. ",
     "zeroLink": "O que o Ankify procura →",
-    "zeroSamplesSummary": "O que vimos nesta página (os primeiros {{count}})"
+    "zeroSamplesSummary": "O que vimos nesta página (os primeiros {{count}})",
+    "subscribeError": {
+      "notActive": "O Auto Sync não está ativo nesta conta.",
+      "notActiveLink": "Gerenciar assinatura",
+      "notionDisconnected": "O Notion não está conectado ao 2anki.",
+      "notionDisconnectedLink": "Conectar Notion",
+      "noClient": "Seu Anki hospedado ainda não foi configurado.",
+      "noClientLink": "Configurar Anki",
+      "ankiUnreachable": "O Anki não está respondendo agora. Tente de novo em instantes.",
+      "fallback": "Algo quebrou do nosso lado. Tente de novo ou escreva para support@2anki.net."
+    }
   },
   "leeches": {
     "flash": {

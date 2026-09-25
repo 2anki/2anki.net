@@ -311,6 +311,16 @@
         "title": "Images won't be included",
         "body": "A single HTML file carries no images. If it came from Notion, drop the whole export folder or the zip onto this page and 2anki includes the images.",
         "continue": "Continue without images"
+      },
+      "pdfPairs": {
+        "title": "Each pair of pages becomes one card",
+        "body": "Odd pages are card fronts, even pages are backs. Works well for lecture slides where each topic spans 2 pages. Change this in Card Options.",
+        "continue": "Make cards from this PDF"
+      },
+      "readingFormat": {
+        "title": "Reading-format support",
+        "body": "Kindle highlights from My Clippings.txt and DRM-free EPUBs are supported. To export your Kindle highlights, connect your Kindle by USB and copy the My Clippings.txt file from the device’s documents folder.",
+        "continue": "Make cards from these highlights"
       }
     }
   },
@@ -816,7 +826,16 @@
       "inputTemplateHint": "Name 2anki will give the Type-the-answer note type in Anki. Leave blank to use n2a-input.",
       "basicPlaceholder": "Defaults to n2a-basic",
       "clozePlaceholder": "Defaults to n2a-cloze",
-      "inputPlaceholder": "Defaults to n2a-input"
+      "inputPlaceholder": "Defaults to n2a-input",
+      "names": {
+        "default": "Default",
+        "onlyNotion": "Only Notion",
+        "rawNote": "Raw Note (no style)",
+        "abhiyan": "Abhiyan Bhandari (Night Mode)",
+        "alexDeluxe": "Alexander Deluxe (Blue)",
+        "hierarchy": "Hierarchy (H1 › H2 › H3 fields)",
+        "custom": "My note types"
+      }
     }
   },
   "favoritesPage": {

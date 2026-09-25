@@ -11,15 +11,17 @@ describe('detectUploadIssues — reading formats', () => {
     const result = detectUploadIssues([makeFile('My Clippings.txt')]);
     expect(result).not.toBeNull();
     expect(result?.status).toBe('info');
-    expect(result?.title).toBe('Reading-format support');
-    expect(result?.body).toMatch(/Kindle/);
-    expect(result?.continueLabel).toBe('Make cards from these highlights');
+    expect(result?.title).toBe('upload.validation.readingFormat.title');
+    expect(result?.body).toBe('upload.validation.readingFormat.body');
+    expect(result?.continueLabel).toBe(
+      'upload.validation.readingFormat.continue'
+    );
   });
 
   it('returns info hint for a .epub upload', () => {
     const result = detectUploadIssues([makeFile('Discourse.epub')]);
     expect(result?.status).toBe('info');
-    expect(result?.body).toMatch(/EPUB/);
+    expect(result?.body).toBe('upload.validation.readingFormat.body');
   });
 
   it('matches My Clippings.txt case-insensitively', () => {

@@ -306,6 +306,16 @@
         "title": "画像は含まれません",
         "body": "HTMLファイル1つだけでは画像が含まれません。Notionからのファイルなら、エクスポートしたフォルダごと、またはzipをこのページにドロップすると、2ankiが画像を含めます。",
         "continue": "画像なしで続ける"
+      },
+      "pdfPairs": {
+        "title": "2 ページごとに 1 枚のカードになります",
+        "body": "奇数ページが表、偶数ページが裏になります。各トピックが 2 ページにまたがる講義スライドに向いています。カードオプションで変更できます。",
+        "continue": "この PDF からカードを作る"
+      },
+      "readingFormat": {
+        "title": "読書フォーマットに対応",
+        "body": "My Clippings.txt の Kindle ハイライトと DRM なしの EPUB に対応しています。Kindle のハイライトを書き出すには、Kindle を USB で接続し、端末の documents フォルダから My Clippings.txt をコピーしてください。",
+        "continue": "これらのハイライトからカードを作る"
       }
     }
   },
@@ -807,7 +817,16 @@
       "inputTemplateHint": "2anki が Anki で答えを入力するノートタイプに付ける名前。空欄の場合は n2a-input を使います。",
       "basicPlaceholder": "既定は n2a-basic",
       "clozePlaceholder": "既定は n2a-cloze",
-      "inputPlaceholder": "既定は n2a-input"
+      "inputPlaceholder": "既定は n2a-input",
+      "names": {
+        "default": "デフォルト",
+        "onlyNotion": "Notion のみ",
+        "rawNote": "素のノート（スタイルなし）",
+        "abhiyan": "Abhiyan Bhandari（ナイトモード）",
+        "alexDeluxe": "Alexander Deluxe（ブルー）",
+        "hierarchy": "階層（H1 › H2 › H3 フィールド）",
+        "custom": "マイノートタイプ"
+      }
     }
   },
   "favoritesPage": {

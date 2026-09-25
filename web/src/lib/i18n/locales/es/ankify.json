@@ -103,7 +103,17 @@
     "zeroScannedSuffix": " bloques y no reconocimos ninguna tarjeta. Ankify busca alternancias, pares de pregunta y respuesta, y viñetas. ",
     "zeroNoContent": "No pudimos leer ningún contenido de esta página. ",
     "zeroLink": "Qué busca Ankify →",
-    "zeroSamplesSummary": "Lo que vimos en esta página (primeros {{count}})"
+    "zeroSamplesSummary": "Lo que vimos en esta página (primeros {{count}})",
+    "subscribeError": {
+      "notActive": "Auto Sync no está activo en esta cuenta.",
+      "notActiveLink": "Gestionar suscripción",
+      "notionDisconnected": "Notion no está conectado a 2anki.",
+      "notionDisconnectedLink": "Conectar Notion",
+      "noClient": "Tu Anki alojado aún no está configurado.",
+      "noClientLink": "Configurar Anki",
+      "ankiUnreachable": "Anki no responde ahora mismo. Inténtalo de nuevo en un momento.",
+      "fallback": "Algo falló de nuestro lado. Inténtalo de nuevo o escribe a support@2anki.net."
+    }
   },
   "leeches": {
     "flash": {

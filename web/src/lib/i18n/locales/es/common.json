@@ -311,6 +311,16 @@
         "title": "Las imágenes no se incluirán",
         "body": "Un archivo HTML suelto no lleva imágenes. Si viene de Notion, arrastra la carpeta de exportación completa o el zip a esta página y 2anki incluye las imágenes.",
         "continue": "Continuar sin imágenes"
+      },
+      "pdfPairs": {
+        "title": "Cada par de páginas se convierte en una tarjeta",
+        "body": "Las páginas impares son el frente y las pares el dorso. Funciona bien con diapositivas donde cada tema ocupa 2 páginas. Cámbialo en Opciones de tarjeta.",
+        "continue": "Crear tarjetas desde este PDF"
+      },
+      "readingFormat": {
+        "title": "Compatibilidad con formatos de lectura",
+        "body": "Se admiten los subrayados de Kindle desde My Clippings.txt y los EPUB sin DRM. Para exportar tus subrayados de Kindle, conecta el Kindle por USB y copia el archivo My Clippings.txt de la carpeta documents del dispositivo.",
+        "continue": "Crear tarjetas desde estos subrayados"
       }
     }
   },
@@ -816,7 +826,16 @@
       "inputTemplateHint": "Nombre que 2anki dará al tipo de nota de escribir la respuesta en Anki. Déjalo en blanco para usar n2a-input.",
       "basicPlaceholder": "Por defecto n2a-basic",
       "clozePlaceholder": "Por defecto n2a-cloze",
-      "inputPlaceholder": "Por defecto n2a-input"
+      "inputPlaceholder": "Por defecto n2a-input",
+      "names": {
+        "default": "Predeterminado",
+        "onlyNotion": "Solo Notion",
+        "rawNote": "Nota sin formato (sin estilo)",
+        "abhiyan": "Abhiyan Bhandari (modo nocturno)",
+        "alexDeluxe": "Alexander Deluxe (azul)",
+        "hierarchy": "Jerarquía (campos H1 › H2 › H3)",
+        "custom": "Mis tipos de nota"
+      }
     }
   },
   "favoritesPage": {

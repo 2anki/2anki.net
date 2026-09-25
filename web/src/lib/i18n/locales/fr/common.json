@@ -311,6 +311,16 @@
         "title": "Les images ne seront pas incluses",
         "body": "Un fichier HTML seul ne contient pas d'images. S'il vient de Notion, dépose le dossier d'export entier ou le zip sur cette page et 2anki inclut les images.",
         "continue": "Continuer sans images"
+      },
+      "pdfPairs": {
+        "title": "Chaque paire de pages devient une carte",
+        "body": "Les pages impaires sont les rectos, les pages paires les versos. Pratique pour des diapos de cours où chaque sujet tient sur 2 pages. Modifiable dans les Options des cartes.",
+        "continue": "Créer des cartes depuis ce PDF"
+      },
+      "readingFormat": {
+        "title": "Formats de lecture pris en charge",
+        "body": "Les surlignages Kindle de My Clippings.txt et les EPUB sans DRM sont pris en charge. Pour exporter tes surlignages Kindle, branche le Kindle en USB et copie le fichier My Clippings.txt depuis le dossier documents de l'appareil.",
+        "continue": "Créer des cartes depuis ces surlignages"
       }
     }
   },
@@ -816,7 +826,16 @@
       "inputTemplateHint": "Nom que 2anki donnera au type de note Saisie-la-réponse dans Anki. Laisse vide pour utiliser n2a-input.",
       "basicPlaceholder": "Par défaut n2a-basic",
       "clozePlaceholder": "Par défaut n2a-cloze",
-      "inputPlaceholder": "Par défaut n2a-input"
+      "inputPlaceholder": "Par défaut n2a-input",
+      "names": {
+        "default": "Par défaut",
+        "onlyNotion": "Notion uniquement",
+        "rawNote": "Note brute (sans style)",
+        "abhiyan": "Abhiyan Bhandari (mode nuit)",
+        "alexDeluxe": "Alexander Deluxe (bleu)",
+        "hierarchy": "Hiérarchie (champs H1 › H2 › H3)",
+        "custom": "Mes types de notes"
+      }
     }
   },
   "favoritesPage": {

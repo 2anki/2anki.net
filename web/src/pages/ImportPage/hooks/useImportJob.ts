@@ -63,7 +63,7 @@ export default function useImportJob() {
           progress: result.progress,
           statusText: null,
           notionPageUrl: null,
-          errorMessage: result.error ?? 'Import failed',
+          errorMessage: result.error ?? null,
           truncated: false,
         });
       } else {
@@ -79,7 +79,7 @@ export default function useImportJob() {
       setState((prev) => ({
         ...prev,
         phase: 'failed',
-        errorMessage: err instanceof Error ? err.message : 'Connection lost',
+        errorMessage: err instanceof Error ? err.message : null,
       }));
     }
   }, [stopPolling]);
@@ -117,8 +117,7 @@ export default function useImportJob() {
           progress: { total_notes: 0, imported: 0 },
           statusText: null,
           notionPageUrl: null,
-          errorMessage:
-            err instanceof Error ? err.message : 'Failed to start import',
+          errorMessage: err instanceof Error ? err.message : null,
           truncated: false,
         });
       }
