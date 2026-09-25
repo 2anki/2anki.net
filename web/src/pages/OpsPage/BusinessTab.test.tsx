@@ -172,7 +172,7 @@ describe('BusinessTab', () => {
     expect(screen.getByText('Churn (30d)')).toBeInTheDocument();
     expect(
       screen.getByText(
-        '3 ended · 1 scheduled · 1 card failures · 90d avg 1.6% · last year n/a'
+        '3 ended · 1 scheduled · 1 card failures · 90d avg 1.6% · same 30d last year n/a'
       )
     ).toBeInTheDocument();
     expect(screen.getByText('Churn by plan (30d)')).toBeInTheDocument();

@@ -65,7 +65,7 @@ const buildChurnFootnote = (
     `${breakdown.scheduled} scheduled`,
     `${breakdown.payment_failed} card failures`,
     `90d avg ${formatBaselinePct(breakdown.trailing_90d_avg_pct)}`,
-    `last year ${formatBaselinePct(breakdown.same_period_last_year_pct)}`,
+    `same 30d last year ${formatBaselinePct(breakdown.same_period_last_year_pct)}`,
   ].join(' · ');
 };
 
@@ -342,13 +342,15 @@ export default function BusinessTab() {
         title="Why users cancel"
         summary={summaryFor('churn_30d_pct')}
       >
-        <p className={styles.sectionHint}>Cancel-survey reasons and comments</p>
+        <p className={styles.sectionHint}>
+          Churn by plan, cancel-survey reasons, and comments
+        </p>
         <div className={styles.grid}>
           <ChartPanel
             title="Churn by plan (30d)"
             isLoading={showInitialSkeleton}
             isEmpty={(churnBreakdown?.by_tier.length ?? 0) === 0}
-            emptyText="No cancellations in this window."
+            emptyText="No churn in this window."
           >
             <ChurnByPlanList tiers={churnBreakdown?.by_tier ?? []} />
           </ChartPanel>
