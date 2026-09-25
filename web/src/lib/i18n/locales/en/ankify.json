@@ -103,17 +103,7 @@
     "zeroScannedSuffix": " blocks and didn't recognize any cards. Ankify looks for toggles, Q&A pairs, and bullets. ",
     "zeroNoContent": "We couldn't read any content from this page. ",
     "zeroLink": "What Ankify looks for →",
-    "zeroSamplesSummary": "What we saw on this page (first {{count}})",
-    "subscribeError": {
-      "notActive": "Auto Sync isn't active on this account.",
-      "notActiveLink": "Manage subscription",
-      "notionDisconnected": "Notion isn't connected to 2anki.",
-      "notionDisconnectedLink": "Connect Notion",
-      "noClient": "Your hosted Anki isn't set up yet.",
-      "noClientLink": "Set up Anki",
-      "ankiUnreachable": "Anki isn't responding right now. Try again in a moment.",
-      "fallback": "Something broke on our end. Try again, or email support@2anki.net."
-    }
+    "zeroSamplesSummary": "What we saw on this page (first {{count}})"
   },
   "leeches": {
     "flash": {

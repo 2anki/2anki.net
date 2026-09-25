@@ -2,18 +2,16 @@ type SubscribeError = Error & { status?: number };
 
 interface ErrorLink {
   href: string;
-  labelKey: string;
+  label: string;
 }
 
 interface MappedError {
-  textKey: string;
+  text: string;
   link?: ErrorLink;
 }
 
-const KEY_PREFIX = 'subscriptions.subscribeError';
-
 const FALLBACK: MappedError = {
-  textKey: `${KEY_PREFIX}.fallback`,
+  text: 'Something broke on our end. Try again, or email support@2anki.net.',
 };
 
 export function mapSubscribeError(error: SubscribeError): MappedError {
@@ -21,32 +19,29 @@ export function mapSubscribeError(error: SubscribeError): MappedError {
 
   if (status === 401 || status === 403) {
     return {
-      textKey: `${KEY_PREFIX}.notActive`,
-      link: { href: '/account', labelKey: `${KEY_PREFIX}.notActiveLink` },
+      text: "Auto Sync isn't active on this account.",
+      link: { href: '/account', label: 'Manage subscription' },
     };
   }
 
   if (status === 409) {
     if (message.includes('Notion is not connected')) {
       return {
-        textKey: `${KEY_PREFIX}.notionDisconnected`,
-        link: {
-          href: '/notion',
-          labelKey: `${KEY_PREFIX}.notionDisconnectedLink`,
-        },
+        text: "Notion isn't connected to 2anki.",
+        link: { href: '/notion', label: 'Connect Notion' },
       };
     }
     if (message.includes('No active Ankify client')) {
       return {
-        textKey: `${KEY_PREFIX}.noClient`,
-        link: { href: '/ankify/setup', labelKey: `${KEY_PREFIX}.noClientLink` },
+        text: "Your hosted Anki isn't set up yet.",
+        link: { href: '/ankify/setup', label: 'Set up Anki' },
       };
     }
     return FALLBACK;
   }
 
   if (status === 503) {
-    return { textKey: `${KEY_PREFIX}.ankiUnreachable` };
+    return { text: "Anki isn't responding right now. Try again in a moment." };
   }
 
   return FALLBACK;

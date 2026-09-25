@@ -103,17 +103,7 @@
     "zeroScannedSuffix": " blocs et n'avons reconnu aucune carte. Ankify recherche des bascules, des paires Q/R et des puces. ",
     "zeroNoContent": "Nous n'avons pu lire aucun contenu sur cette page. ",
     "zeroLink": "Ce que recherche Ankify →",
-    "zeroSamplesSummary": "Ce que nous avons vu sur cette page ({{count}} premiers)",
-    "subscribeError": {
-      "notActive": "Auto Sync n'est pas actif sur ce compte.",
-      "notActiveLink": "Gérer l'abonnement",
-      "notionDisconnected": "Notion n'est pas connecté à 2anki.",
-      "notionDisconnectedLink": "Connecter Notion",
-      "noClient": "Ton Anki hébergé n'est pas encore configuré.",
-      "noClientLink": "Configurer Anki",
-      "ankiUnreachable": "Anki ne répond pas pour le moment. Réessaie dans un instant.",
-      "fallback": "Quelque chose a cassé de notre côté. Réessaie ou écris à support@2anki.net."
-    }
+    "zeroSamplesSummary": "Ce que nous avons vu sur cette page ({{count}} premiers)"
   },
   "leeches": {
     "flash": {

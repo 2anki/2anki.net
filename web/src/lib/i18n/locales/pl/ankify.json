@@ -109,17 +109,7 @@
     "zeroScannedSuffix": " bloków i nie rozpoznaliśmy żadnych kart. Ankify szuka list rozwijanych, par pytanie/odpowiedź i punktów. ",
     "zeroNoContent": "Nie udało się odczytać żadnej treści z tej strony. ",
     "zeroLink": "Czego szuka Ankify →",
-    "zeroSamplesSummary": "Co widzieliśmy na tej stronie (pierwsze {{count}})",
-    "subscribeError": {
-      "notActive": "Auto Sync nie jest aktywny na tym koncie.",
-      "notActiveLink": "Zarządzaj subskrypcją",
-      "notionDisconnected": "Notion nie jest połączony z 2anki.",
-      "notionDisconnectedLink": "Połącz Notion",
-      "noClient": "Twój hostowany Anki nie jest jeszcze skonfigurowany.",
-      "noClientLink": "Skonfiguruj Anki",
-      "ankiUnreachable": "Anki teraz nie odpowiada. Spróbuj ponownie za chwilę.",
-      "fallback": "Coś poszło nie tak po naszej stronie. Spróbuj ponownie albo napisz na support@2anki.net."
-    }
+    "zeroSamplesSummary": "Co widzieliśmy na tej stronie (pierwsze {{count}})"
   },
   "leeches": {
     "flash": {

@@ -100,17 +100,7 @@
     "zeroScannedSuffix": " 個のブロックをスキャンしましたが、カードは認識されませんでした。Ankify はトグル、Q&A のペア、箇条書きを探します。 ",
     "zeroNoContent": "このページからコンテンツを読み取れませんでした。 ",
     "zeroLink": "Ankify が探すもの →",
-    "zeroSamplesSummary": "このページで見つかったもの（最初の {{count}} 件）",
-    "subscribeError": {
-      "notActive": "このアカウントでは Auto Sync が有効になっていません。",
-      "notActiveLink": "サブスクリプションを管理",
-      "notionDisconnected": "Notion が 2anki に接続されていません。",
-      "notionDisconnectedLink": "Notion に接続",
-      "noClient": "ホスト型 Anki がまだ設定されていません。",
-      "noClientLink": "Anki を設定",
-      "ankiUnreachable": "Anki が現在応答していません。しばらくしてからもう一度お試しください。",
-      "fallback": "こちら側で問題が発生しました。もう一度お試しいただくか、support@2anki.net までメールでご連絡ください。"
-    }
+    "zeroSamplesSummary": "このページで見つかったもの（最初の {{count}} 件）"
   },
   "leeches": {
     "flash": {

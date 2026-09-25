@@ -8,82 +8,82 @@ const makeError = (message: string, status?: number): StatusError => {
   return e;
 };
 
-const FALLBACK_KEY = 'subscriptions.subscribeError.fallback';
-
 describe('mapSubscribeError', () => {
   it.each([
     [
       401,
       'anything',
-      'subscriptions.subscribeError.notActive',
+      "Auto Sync isn't active on this account.",
       '/account',
-      'subscriptions.subscribeError.notActiveLink',
+      'Manage subscription',
     ],
     [
       403,
       'anything',
-      'subscriptions.subscribeError.notActive',
+      "Auto Sync isn't active on this account.",
       '/account',
-      'subscriptions.subscribeError.notActiveLink',
+      'Manage subscription',
     ],
   ])(
-    'status %d → paywall key with manage link',
-    (status, message, expectedTextKey, expectedHref, expectedLabelKey) => {
+    'status %d → paywall copy with manage link',
+    (status, message, expectedText, expectedHref, expectedLabel) => {
       const result = mapSubscribeError(makeError(message, status));
-      expect(result.textKey).toBe(expectedTextKey);
+      expect(result.text).toBe(expectedText);
       expect(result.link?.href).toBe(expectedHref);
-      expect(result.link?.labelKey).toBe(expectedLabelKey);
+      expect(result.link?.label).toBe(expectedLabel);
     }
   );
 
-  it('409 with NotionNotConnected message → Notion connect key', () => {
+  it('409 with NotionNotConnected message → Notion connect copy', () => {
     const result = mapSubscribeError(makeError('Notion is not connected', 409));
-    expect(result.textKey).toBe(
-      'subscriptions.subscribeError.notionDisconnected'
-    );
+    expect(result.text).toBe("Notion isn't connected to 2anki.");
     expect(result.link?.href).toBe('/notion');
-    expect(result.link?.labelKey).toBe(
-      'subscriptions.subscribeError.notionDisconnectedLink'
-    );
+    expect(result.link?.label).toBe('Connect Notion');
   });
 
-  it('409 with NoActiveAnkifyClient message → set up Anki key', () => {
+  it('409 with NoActiveAnkifyClient message → set up Anki copy', () => {
     const result = mapSubscribeError(
       makeError(
         'No active Ankify client. Provision one before subscribing.',
         409
       )
     );
-    expect(result.textKey).toBe('subscriptions.subscribeError.noClient');
+    expect(result.text).toBe("Your hosted Anki isn't set up yet.");
     expect(result.link?.href).toBe('/ankify/setup');
-    expect(result.link?.labelKey).toBe(
-      'subscriptions.subscribeError.noClientLink'
-    );
+    expect(result.link?.label).toBe('Set up Anki');
   });
 
   it('409 with unknown message → default fallback (no link)', () => {
     const result = mapSubscribeError(makeError('Some other 409 reason', 409));
-    expect(result.textKey).toBe(FALLBACK_KEY);
+    expect(result.text).toBe(
+      'Something broke on our end. Try again, or email support@2anki.net.'
+    );
     expect(result.link).toBeUndefined();
   });
 
-  it('503 → AnkiConnect unreachable key (no link)', () => {
+  it('503 → AnkiConnect unreachable copy (no link)', () => {
     const result = mapSubscribeError(
       makeError('AnkiConnect is unreachable.', 503)
     );
-    expect(result.textKey).toBe('subscriptions.subscribeError.ankiUnreachable');
+    expect(result.text).toBe(
+      "Anki isn't responding right now. Try again in a moment."
+    );
     expect(result.link).toBeUndefined();
   });
 
   it('unknown status → default fallback (no link)', () => {
     const result = mapSubscribeError(makeError('network error'));
-    expect(result.textKey).toBe(FALLBACK_KEY);
+    expect(result.text).toBe(
+      'Something broke on our end. Try again, or email support@2anki.net.'
+    );
     expect(result.link).toBeUndefined();
   });
 
   it('500 → default fallback (no link)', () => {
     const result = mapSubscribeError(makeError('internal error', 500));
-    expect(result.textKey).toBe(FALLBACK_KEY);
+    expect(result.text).toBe(
+      'Something broke on our end. Try again, or email support@2anki.net.'
+    );
     expect(result.link).toBeUndefined();
   });
 });
