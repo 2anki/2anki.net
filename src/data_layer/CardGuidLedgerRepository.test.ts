@@ -159,6 +159,54 @@ describe('CardGuidLedgerRepository SQL generation', () => {
     });
   });
 
+  it('reissue collapses duplicate block_id entries in one batch, keeping the last', async () => {
+    // A zip upload resolves each file's identity independently (DeckParser
+    // runs per package), so two files that each have a card with the same
+    // normalized front + type land on the same block_id here. Postgres
+    // rejects an ON CONFLICT DO UPDATE that would touch one row twice in the
+    // same statement (error 21000) — this collapse is what keeps that one
+    // real prod crash (2026-09-25) from reaching the query.
+    const calls: CapturedInsert[] = [];
+    const repo = new CardGuidLedgerRepository(captureDatabase(calls));
+
+    await repo.reissue(7, [
+      { blockId: 'u:abc', sourcePageId: 'page-1', guid: 'guid-first' },
+      { blockId: 'u:abc', sourcePageId: 'page-2', guid: 'guid-second' },
+    ]);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].rows).toEqual([
+      {
+        owner: 7,
+        block_id: 'u:abc',
+        source_page_id: 'page-2',
+        guid: 'guid-second',
+        content_changed_at: null,
+      },
+    ]);
+  });
+
+  it('record collapses duplicate block_id entries in one batch, keeping the last', async () => {
+    const calls: CapturedInsert[] = [];
+    const repo = new CardGuidLedgerRepository(captureDatabase(calls));
+
+    await repo.record(7, [
+      { blockId: 'block-a', guid: 'guid-first' },
+      { blockId: 'block-a', guid: 'guid-second' },
+    ]);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].rows).toEqual([
+      {
+        owner: 7,
+        block_id: 'block-a',
+        source_page_id: null,
+        guid: 'guid-second',
+        content_changed_at: null,
+      },
+    ]);
+  });
+
   it('record maps entries to snake_case rows and skips empty input', async () => {
     const captured: unknown[] = [];
     const fake = {

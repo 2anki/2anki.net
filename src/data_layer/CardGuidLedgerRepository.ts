@@ -92,15 +92,26 @@ export class CardGuidLedgerRepository implements ICardGuidLedgerRepository {
     owner: number,
     entries: IssuedCardGuid[]
   ): Array<Array<Record<string, unknown>>> {
-    const rows = entries
-      .filter(
-        (entry) =>
-          entry.blockId.length <= MAX_ID_LENGTH &&
-          entry.guid.length <= MAX_ID_LENGTH &&
-          (entry.sourcePageId == null ||
-            entry.sourcePageId.length <= MAX_ID_LENGTH)
-      )
-      .map((entry) => ({
+    const filtered = entries.filter(
+      (entry) =>
+        entry.blockId.length <= MAX_ID_LENGTH &&
+        entry.guid.length <= MAX_ID_LENGTH &&
+        (entry.sourcePageId == null ||
+          entry.sourcePageId.length <= MAX_ID_LENGTH)
+    );
+    if (filtered.length < entries.length) {
+      console.warn(
+        `[CardGuidLedgerRepository] dropped ${entries.length - filtered.length} over-length entries`
+      );
+    }
+    // A zip upload resolves each file's identity independently, so two files
+    // can land on the same block_id in one call (identical normalized front
+    // + card type). ON CONFLICT DO UPDATE cannot touch one row twice inside a
+    // single statement (Postgres error 21000) — collapse here, last write
+    // wins, same as issuing the rows one at a time would.
+    const byKey = new Map<string, Record<string, unknown>>();
+    for (const entry of filtered) {
+      byKey.set(entry.blockId, {
         owner: owner as UsersId,
         block_id: entry.blockId,
         source_page_id: entry.sourcePageId ?? null,
@@ -109,12 +120,9 @@ export class CardGuidLedgerRepository implements ICardGuidLedgerRepository {
           entry.contentChangedAt == null
             ? null
             : new Date(entry.contentChangedAt * 1000),
-      }));
-    if (rows.length < entries.length) {
-      console.warn(
-        `[CardGuidLedgerRepository] dropped ${entries.length - rows.length} over-length entries`
-      );
+      });
     }
+    const rows = [...byKey.values()];
     const batches: Array<Array<Record<string, unknown>>> = [];
     for (let start = 0; start < rows.length; start += INSERT_CHUNK_SIZE) {
       batches.push(rows.slice(start, start + INSERT_CHUNK_SIZE));
