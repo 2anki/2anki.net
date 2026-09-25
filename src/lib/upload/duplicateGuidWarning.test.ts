@@ -14,13 +14,13 @@ describe('duplicateGuidWarning', () => {
 
   it('renders one card in the singular', () => {
     expect(duplicateGuidWarningText(1)).toBe(
-      '1 card repeats the question of another card in the same deck, so Anki keeps only the first. You import 1 card fewer than you see here. Give it a different question and convert again.'
+      "1 card is an exact duplicate of another card in this deck — same question and answer. Anki keeps one, so you import 1 card fewer than you see here. If it wasn't meant to repeat, remove it and convert again."
     );
   });
 
   it('renders several cards in the plural', () => {
     expect(duplicateGuidWarningText(3)).toBe(
-      '3 cards repeat the question of another card in the same deck, so Anki keeps only the first of each. You import 3 cards fewer than you see here. Make the repeated questions different and convert again.'
+      "3 cards are exact duplicates of other cards in this deck — same question and answer. Anki keeps one of each, so you import 3 cards fewer than you see here. If they weren't meant to repeat, remove them and convert again."
     );
   });
 });

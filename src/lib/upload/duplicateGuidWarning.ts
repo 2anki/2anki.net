@@ -8,9 +8,13 @@ export function duplicateGuidWarning(dropped: number): string | null {
   return `duplicate-guid:${dropped}`;
 }
 
+// #4424 narrowed what still reaches this warning: a same-question card whose
+// answer differs now forks into its own card instead of colliding here, so
+// only a whole-card exact duplicate (same question AND answer) still lands
+// on this path — the copy describes that, not a merely-repeated question.
 export function duplicateGuidWarningText(dropped: number): string {
   if (dropped === 1) {
-    return '1 card repeats the question of another card in the same deck, so Anki keeps only the first. You import 1 card fewer than you see here. Give it a different question and convert again.';
+    return "1 card is an exact duplicate of another card in this deck — same question and answer. Anki keeps one, so you import 1 card fewer than you see here. If it wasn't meant to repeat, remove it and convert again.";
   }
-  return `${dropped} cards repeat the question of another card in the same deck, so Anki keeps only the first of each. You import ${dropped} cards fewer than you see here. Make the repeated questions different and convert again.`;
+  return `${dropped} cards are exact duplicates of other cards in this deck — same question and answer. Anki keeps one of each, so you import ${dropped} cards fewer than you see here. If they weren't meant to repeat, remove them and convert again.`;
 }
