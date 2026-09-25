@@ -200,6 +200,14 @@ describeWithPython('the shipped apkg keeps prod-compatible GUIDs', () => {
     expect(twice.guids[0]).toBe(twice.guids[1]);
     expect(countDuplicateGuids(twice.workspace.location)).toBe(1);
   });
+
+  it('forks two toggles with the same question but different answers onto distinct guids, and stops counting them as a loss', async () => {
+    const withDifferentAnswer = `<details class="toggle" open=""><summary dir="auto">Same question</summary><div class="indented" dir="auto"><p>A different answer</p></div></details>`;
+    const forked = await buildApkg(withoutId + withDifferentAnswer, 'Deck One');
+    expect(forked.guids).toHaveLength(2);
+    expect(forked.guids[0]).not.toBe(forked.guids[1]);
+    expect(countDuplicateGuids(forked.workspace.location)).toBe(0);
+  });
 });
 
 describe('guid ledger replay', () => {

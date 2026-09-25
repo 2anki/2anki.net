@@ -1614,9 +1614,22 @@ class UploadService {
         throw new Error(`Could not produce APKG for ${name}`);
       }
       const plen = Buffer.byteLength(apkg);
+      const duplicateGuidCount = countDuplicateGuids(ws.location);
+      // Count only, never the colliding content itself. #4424 stopped
+      // counting a differing-back collision as a loss (it forks instead of
+      // collapsing now), so this rate should fall after that ships — the
+      // signal a day-7 read needs, since the count was never captured
+      // server-side before.
+      if (duplicateGuidCount > 0) {
+        track('upload_duplicate_guids_collapsed', {
+          userId: owner != null ? Number(owner) : null,
+          anonymousId: this.resolveAnonId(req),
+          props: { count: duplicateGuidCount },
+        });
+      }
       const builtWarnings = [
         apkgOversizeWarning(plen),
-        duplicateGuidWarning(countDuplicateGuids(ws.location)),
+        duplicateGuidWarning(duplicateGuidCount),
       ].filter((w): w is string => w != null);
       const syncWarnings =
         builtWarnings.length > 0

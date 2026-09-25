@@ -1469,7 +1469,68 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     expect(capturedStatus()).toBe(200);
     expect(res.set).toHaveBeenCalledWith(
       'X-Warning',
-      expect.stringMatching(/^1 card repeats the question/)
+      expect.stringMatching(/^1 card is an exact duplicate/)
+    );
+  });
+
+  it('tracks upload_duplicate_guids_collapsed with the count when notes share a guid', async () => {
+    const previousLocation = mockWorkspaceLocation;
+    mockWorkspaceLocation = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'upload-dup-guid-track-')
+    );
+    fs.writeFileSync(
+      path.join(mockWorkspaceLocation, 'guids.json'),
+      JSON.stringify([
+        { notionId: null, guid: 'same' },
+        { notionId: null, guid: 'same' },
+        { notionId: null, guid: 'other' },
+      ])
+    );
+    mockPackages([{ name: 'notes.html', cardCount: 3 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      cookies: { anon_id: 'anon-dup-guid-track' },
+    } as Partial<express.Request>);
+    const { res } = buildResponse();
+
+    try {
+      await service.handleUpload(req, res);
+    } finally {
+      mockWorkspaceLocation = previousLocation;
+    }
+
+    expect(trackMock).toHaveBeenCalledWith(
+      'upload_duplicate_guids_collapsed',
+      expect.objectContaining({
+        anonymousId: 'anon-dup-guid-track',
+        props: { count: 1 },
+      })
+    );
+  });
+
+  it('does not track upload_duplicate_guids_collapsed when no guid collides', async () => {
+    mockPackages([{ name: 'deck', cardCount: 3 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'upload_duplicate_guids_collapsed',
+      expect.anything()
     );
   });
 
@@ -4305,7 +4366,7 @@ describe('resolveUploadWarning — notes sharing a guid', () => {
   it('turns the coded count into user copy, summing across packages', () => {
     expect(
       resolveUploadWarning(['duplicate-guid:2', 'duplicate-guid:1'])
-    ).toMatch(/^3 cards repeat the question/);
+    ).toMatch(/^3 cards are exact duplicates/);
   });
 
   it('ranks below the sync-size warning and above the markdown heuristic', () => {
@@ -4318,7 +4379,7 @@ describe('resolveUploadWarning — notes sharing a guid', () => {
         'stray-cloze:2',
         'duplicate-guid:1',
       ])
-    ).toMatch(/^1 card repeats the question/);
+    ).toMatch(/^1 card is an exact duplicate/);
   });
 });
 
