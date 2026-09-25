@@ -49,6 +49,39 @@ def _clamp_output_path(path: str) -> str:
     return os.path.join(directory, new_basename)
 
 
+def _content_guid(deck_name, guid_value, card_type, back, seen):
+    """
+    Two cards with the same front + type collapse onto one Anki note by
+    default (the content-formula guid ignores the back). When their backs
+    differ, that silently drops real content, so every distinct back within
+    a (deck, front, type) group gets its own guid — the first keeps the plain
+    3-value formula, byte-identical to what prod always produced, and the
+    rest add the ordinal as its own hashed value rather than folding it into
+    guid_value's text: a separator glued onto the front (e.g. "::2") risks
+    colliding with an unrelated card whose actual front already ends that
+    way (real content for a programming/tech deck — "std::vector::2" is a
+    plausible front). guid_for hashes on the joined, unbounded args tuple, so
+    a distinct 4th value can't be typed by a user into the 3-value form.
+    A card whose back exactly repeats one already seen in this group reuses
+    that back's guid, deliberately: Anki's own duplicate handling is the
+    right outcome when the content is truly identical, and nothing is lost.
+    `seen` is one dict per build_one_deck call, so ordinals are assigned in
+    the same order on every re-run of the same input, keeping guids stable.
+    """
+    key = (deck_name, guid_value, card_type)
+    by_back = seen.setdefault(key, {})
+    if back in by_back:
+        return by_back[back]
+    ordinal = len(by_back) + 1
+    guid = (
+        guid_for(deck_name, guid_value, card_type)
+        if ordinal == 1
+        else guid_for(deck_name, guid_value, card_type, ordinal)
+    )
+    by_back[back] = guid
+    return guid
+
+
 def build_one_deck(data_file, template_dir):
     # pylint: disable=invalid-name,too-many-locals,too-many-branches,too-many-statements,import-outside-toplevel
     """
@@ -70,6 +103,7 @@ def build_one_deck(data_file, template_dir):
     media_files = []
     decks = []
     guid_records = []
+    content_guid_seen = {}
 
     if len(data) == 0:
         return None
@@ -244,7 +278,7 @@ def build_one_deck(data_file, template_dir):
             else:
                 card_type = "cloze" if card.get("cloze") else ("mcq" if card.get("mcq") else ("input" if card.get("enableInput") else "basic"))
                 guid_value = front if card.get('hierarchy', False) else fields[0]
-                guid = guid_for(deck["name"], guid_value, card_type)
+                guid = _content_guid(deck["name"], guid_value, card_type, back, content_guid_seen)
             my_note = N2ANote(model, fields=fields,
                               sort_field=card["number"], tags=tags,
                               guid=guid, due=position, mod=card.get("mod"))

@@ -40,6 +40,28 @@ def _deck_info_basic(deck_name: str, front: str, back: str) -> list:
     ]
 
 
+def _deck_info_cards(deck_name: str, cards: list) -> list:
+    return [
+        {
+            "id": abs(hash(deck_name)) % (10**10),
+            "name": deck_name,
+            "cards": [
+                {
+                    "name": front,
+                    "back": back,
+                    "number": i,
+                    "tags": [],
+                    "media": [],
+                    "cloze": False,
+                    "enableInput": False,
+                }
+                for i, (front, back) in enumerate(cards)
+            ],
+            "settings": {},
+        }
+    ]
+
+
 def _deck_info_with_notion_id(deck_name: str, front: str, back: str, notion_id: str) -> list:
     return [
         {
@@ -88,6 +110,30 @@ def _read_guids_from_apkg(apkg_path: str) -> list:
     return guids
 
 
+def _read_guids_from_apkg_in_order(apkg_path: str) -> list:
+    with zipfile.ZipFile(apkg_path) as zf:
+        db_name = "collection.anki21" if "collection.anki21" in zf.namelist() else "collection.anki2"
+        db_bytes = zf.read(db_name)
+
+    import sqlite3
+
+    with tempfile.NamedTemporaryFile(suffix=".anki2", delete=False) as tmp:
+        tmp.write(db_bytes)
+        tmp_path = tmp.name
+    try:
+        conn = sqlite3.connect(tmp_path)
+        # `id` is genanki's monotonic note id (assigned in the order notes
+        # were added), so this preserves document order — unlike the
+        # alphabetical `ORDER BY guid` the other helper uses, which the
+        # collision-forking tests below need to line a guid back up with
+        # the card that produced it.
+        rows = conn.execute("SELECT guid FROM notes ORDER BY id").fetchall()
+        conn.close()
+    finally:
+        os.unlink(tmp_path)
+    return [row[0] for row in rows]
+
+
 def _build_and_get_guids(deck_info: list, tmpdir: str, suffix: str) -> list:
     data_file = os.path.join(tmpdir, f"deck_info_{suffix}.json")
     with open(data_file, "w", encoding="utf-8") as f:
@@ -100,6 +146,20 @@ def _build_and_get_guids(deck_info: list, tmpdir: str, suffix: str) -> list:
         os.chdir(original_cwd)
     assert apkg_path is not None
     return _read_guids_from_apkg(apkg_path)
+
+
+def _build_and_get_guids_in_order(deck_info: list, tmpdir: str, suffix: str) -> list:
+    data_file = os.path.join(tmpdir, f"deck_info_{suffix}.json")
+    with open(data_file, "w", encoding="utf-8") as f:
+        json.dump(deck_info, f)
+    original_cwd = os.getcwd()
+    try:
+        os.chdir(tmpdir)
+        apkg_path = build_one_deck(data_file, TEMPLATE_DIR)
+    finally:
+        os.chdir(original_cwd)
+    assert apkg_path is not None
+    return _read_guids_from_apkg_in_order(apkg_path)
 
 
 class TestStableGuids:
@@ -216,3 +276,129 @@ class TestGuidForCrossLanguageParity:
 
         for args, expected in self.VECTORS:
             assert guid_for(*args) == expected, args
+
+
+class TestContentGuidCollisionForking:
+    """Content-formula guid (#4424): two cards with the same front + type
+    collapse onto one Anki note by default, since the formula never looks at
+    the back. When the backs genuinely differ that silently drops real
+    content, so the second-and-later distinct back forks onto its own guid;
+    a back that repeats one already seen still collapses on purpose.
+    """
+
+    def test_same_front_different_backs_get_distinct_guids(self):
+        deck_info = _deck_info_cards(
+            "Deck", [("What is H2O?", "Water"), ("What is H2O?", "Hydrogen peroxide")]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_in_order(deck_info, tmpdir, "fork")
+        assert len(guids) == 2
+        assert guids[0] != guids[1]
+
+    def test_same_front_same_back_still_collapse_onto_one_guid(self):
+        from genanki.util import guid_for
+
+        deck_info = _deck_info_cards(
+            "Deck", [("What is H2O?", "Water"), ("What is H2O?", "Water")]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_in_order(deck_info, tmpdir, "collapse")
+        assert guids == [guid_for("Deck", "What is H2O?", "basic")] * 2
+
+    def test_repeated_back_reuses_its_own_guid_not_the_first_fork(self):
+        # card 3 repeats card 1's back exactly, but card 2 forked in between
+        # with a different back — card 3 must rejoin card 1, not card 2.
+        deck_info = _deck_info_cards(
+            "Deck",
+            [
+                ("What is H2O?", "Water"),
+                ("What is H2O?", "Hydrogen peroxide"),
+                ("What is H2O?", "Water"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_in_order(deck_info, tmpdir, "rejoin")
+        assert guids[0] == guids[2]
+        assert guids[0] != guids[1]
+
+    def test_forked_guid_is_document_order_deterministic_across_runs(self):
+        deck_info = _deck_info_cards(
+            "Deck",
+            [
+                ("What is H2O?", "Water"),
+                ("What is H2O?", "Hydrogen peroxide"),
+                ("What is H2O?", "Ice"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids_first = _build_and_get_guids_in_order(deck_info, tmpdir, "first")
+            guids_second = _build_and_get_guids_in_order(deck_info, tmpdir, "second")
+        assert guids_first == guids_second
+        assert len(set(guids_first)) == 3
+
+    def test_fork_is_scoped_per_deck(self):
+        # Two decks, each with its own single, unforked card (no collision in
+        # either) — same front and same back, different deck name. This only
+        # holds because the content formula already keys on deck name; it
+        # would pass even if forking did not exist, so it's a sanity check on
+        # the pre-existing keying, not on forking itself.
+        deck_a = _deck_info_cards("Deck A", [("Q", "Back")])
+        deck_b = _deck_info_cards("Deck B", [("Q", "Back")])
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids_a = _build_and_get_guids_in_order(deck_a, tmpdir, "a")
+            guids_b = _build_and_get_guids_in_order(deck_b, tmpdir, "b")
+        assert guids_a != guids_b
+
+    def test_forking_does_not_cross_decks(self):
+        # Each deck has its own two-distinct-back collision (its own fork).
+        # A bug that hashed the ordinal without deck_name could make the two
+        # decks' ordinal-2 forks collide with each other.
+        deck_a = _deck_info_cards(
+            "Deck A", [("Q", "Back one"), ("Q", "Back two")]
+        )
+        deck_b = _deck_info_cards(
+            "Deck B", [("Q", "Back one"), ("Q", "Back two")]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids_a = _build_and_get_guids_in_order(deck_a, tmpdir, "a")
+            guids_b = _build_and_get_guids_in_order(deck_b, tmpdir, "b")
+        assert guids_a[1] != guids_b[1]
+
+    def test_repeat_rejoins_a_middle_fork_not_the_most_recent_one(self):
+        # backs in order A, B, A, C, B — the two repeats (index 2 -> A,
+        # index 4 -> B) must each rejoin the guid their own back first got,
+        # not whichever fork happened to be assigned most recently.
+        deck_info = _deck_info_cards(
+            "Deck",
+            [
+                ("Q", "A"),
+                ("Q", "B"),
+                ("Q", "A"),
+                ("Q", "C"),
+                ("Q", "B"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_in_order(deck_info, tmpdir, "rejoin-middle")
+        assert guids[2] == guids[0]
+        assert guids[4] == guids[1]
+        assert len({guids[0], guids[1], guids[3]}) == 3
+
+    def test_fork_does_not_collide_with_a_front_that_looks_like_one(self):
+        # A card whose real front already ends in the ordinal-fork's own
+        # separator must not land on the same guid as an unrelated card's
+        # fork. Regression for an earlier version that glued the ordinal
+        # onto guid_value as text ("front::2") instead of hashing it as its
+        # own value — "std::vector::2" is a plausible real front for a
+        # programming deck, not a contrived string.
+        deck_info = _deck_info_cards(
+            "Deck",
+            [
+                ("std::vector", "First answer"),
+                ("std::vector", "A different answer"),
+                ("std::vector::2", "Unrelated card, unrelated answer"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_in_order(deck_info, tmpdir, "lookalike")
+        assert len(set(guids)) == 3
