@@ -17,6 +17,7 @@ function makeBusiness(
     net_new_mrr_mtd_usd: 312,
     active_paying_subs: 759,
     churn_30d_pct: 18.2,
+    churn_30d_breakdown: null,
     failed_payments_7d: 4,
     new_paid_conversions_7d: 16,
     pass_sales_7d: null,

@@ -8,7 +8,11 @@ import {
   formatPercentOneDecimal,
   formatUsd,
 } from './businessHelpers';
-import { BusinessMetricsResponse } from './businessTypes';
+import {
+  BusinessMetricsResponse,
+  ChurnBreakdown,
+  ChurnTierPoint,
+} from './businessTypes';
 import { buildClaudePrompt } from './buildClaudePrompt';
 import CopyForClaudeButton from './CopyForClaudeButton';
 import MetricCard, { formatNumberOrDash } from './MetricCard';
@@ -44,6 +48,45 @@ const buildMrrFootnote = (
   if (cacheAgeSeconds == null) return `as of ${clock}`;
   return `as of ${clock} (cache ${formatCacheAge(cacheAgeSeconds)})`;
 };
+
+const formatBaselinePct = (value: number | null): string =>
+  value == null ? 'n/a' : formatPercentOneDecimal(value);
+
+// The 30d rate alone misled once (2026-09): it hid that a third of the cancels
+// were still scheduled, that card failures were flat, and that the "prior
+// 30 days" it was read against was the summer trough. The footnote carries
+// the pieces that would have made that a one-glance read.
+const buildChurnFootnote = (
+  breakdown: ChurnBreakdown | null
+): string | undefined => {
+  if (breakdown == null) return undefined;
+  return [
+    `${breakdown.ended} ended`,
+    `${breakdown.scheduled} scheduled`,
+    `${breakdown.payment_failed} card failures`,
+    `90d avg ${formatBaselinePct(breakdown.trailing_90d_avg_pct)}`,
+    `last year ${formatBaselinePct(breakdown.same_period_last_year_pct)}`,
+  ].join(' · ');
+};
+
+function ChurnByPlanList({ tiers }: { tiers: ChurnTierPoint[] }) {
+  return (
+    <ul className={styles.plainList}>
+      {tiers.map((point) => (
+        <li key={point.tier}>
+          <strong>{point.tier}</strong>: {point.churned} of{' '}
+          {point.churned + point.active} (
+          {formatPercentOneDecimal(
+            point.churned + point.active === 0
+              ? 0
+              : (point.churned / (point.churned + point.active)) * 100
+          )}
+          )
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function CancelFunnelPanel() {
   const { data: cancelFunnel, isLoading } = useCancelFunnel();
@@ -85,6 +128,11 @@ export default function BusinessTab() {
         visible?.cache_age_seconds ?? null
       ),
     [visible?.as_of, visible?.cache_age_seconds]
+  );
+  const churnBreakdown = visible?.churn_30d_breakdown ?? null;
+  const churnFootnote = useMemo(
+    () => buildChurnFootnote(churnBreakdown),
+    [churnBreakdown]
   );
 
   return (
@@ -141,6 +189,7 @@ export default function BusinessTab() {
             visible?.churn_30d_pct ?? null,
             formatPercentOneDecimal
           )}
+          footnote={churnFootnote}
         />
         <MetricCard
           title="Failed payments (7d)"
@@ -295,6 +344,14 @@ export default function BusinessTab() {
       >
         <p className={styles.sectionHint}>Cancel-survey reasons and comments</p>
         <div className={styles.grid}>
+          <ChartPanel
+            title="Churn by plan (30d)"
+            isLoading={showInitialSkeleton}
+            isEmpty={(churnBreakdown?.by_tier.length ?? 0) === 0}
+            emptyText="No cancellations in this window."
+          >
+            <ChurnByPlanList tiers={churnBreakdown?.by_tier ?? []} />
+          </ChartPanel>
           <CancelFunnelPanel />
 
           <ChartPanel

@@ -231,6 +231,15 @@
   margin: 0;
 }
 
+.plainList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .compositeSection {
   margin-bottom: 2.5rem;
 }
