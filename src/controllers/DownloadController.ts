@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
+import type { Readable } from 'node:stream';
 import StorageHandler from '../lib/storage/StorageHandler';
 import DownloadService from '../services/DownloadService';
 import { canAccess } from '../lib/misc/canAccess';
@@ -30,6 +31,12 @@ const WORKSPACE_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 function isValidWorkspaceId(id: string): boolean {
   return WORKSPACE_ID_PATTERN.test(id);
 }
+
+const withApkgExtension = (name: string): string =>
+  name.endsWith('.apkg') ? name : `${name}.apkg`;
+
+const downloadFilename = (key: string, dbName: string | null): string =>
+  withApkgExtension(dbName ? getSafeFilename(dbName) : key);
 
 function resolveDownloadIdentity(
   req: Request,
@@ -65,20 +72,16 @@ class DownloadController {
     console.debug(`download ${key}`);
     const { owner } = res.locals;
     try {
-      const body = await this.service.getFileBody(owner, key, storage);
-      if (body) {
+      const stored = await this.service.getFileStream(owner, key, storage);
+      if (stored) {
         const dbName = await this.service.getFilename(owner, key);
-        const basename = dbName
-          ? getSafeFilename(dbName)
-          : key.endsWith('.apkg')
-            ? key
-            : `${key}.apkg`;
-        const filename = basename.endsWith('.apkg')
-          ? basename
-          : `${basename}.apkg`;
+        const filename = downloadFilename(key, dbName);
         res.setHeader('Content-Type', 'application/octet-stream');
         res.setHeader('Content-Disposition', buildContentDisposition(filename));
-        res.send(body);
+        if (stored.contentLength != null) {
+          res.setHeader('Content-Length', String(stored.contentLength));
+        }
+        this.pipeStoredObject(stored.body, res, owner);
         return;
       }
       console.info('Download link expired', { owner });
@@ -113,6 +116,31 @@ class DownloadController {
           "Download link expire, try converting again <a href='/upload'>upload</a>"
         );
     }
+  }
+
+  // A client that gives up mid-download (Safari retried a 951 MB deck a dozen
+  // times on 2026-09-20) has to stop the pull from storage as well, or every
+  // abandoned attempt still costs a full object read into the box.
+  private pipeStoredObject(body: Readable, res: Response, owner: unknown) {
+    res.on('close', () => {
+      if (!body.destroyed) {
+        body.destroy();
+      }
+    });
+    body.on('error', (error) => {
+      console.error('Download stream failed', {
+        owner,
+        name: (error as { name?: string })?.name,
+      });
+      if (res.headersSent) {
+        res.destroy(error);
+        return;
+      }
+      res
+        .status(503)
+        .send('Storage is busy right now. Try the download again in a moment.');
+    });
+    body.pipe(res);
   }
 
   async getDownloadPage(req: Request, res: Response) {

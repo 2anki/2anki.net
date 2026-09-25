@@ -1,4 +1,6 @@
-import StorageHandler from '../lib/storage/StorageHandler';
+import StorageHandler, {
+  type StoredObjectStream,
+} from '../lib/storage/StorageHandler';
 import DownloadRepository from '../data_layer/DownloadRepository';
 
 const TRANSIENT_ERROR_NAMES = new Set([
@@ -54,6 +56,18 @@ class DownloadService {
     }
     const file = await storage.getFileContents(fileEntry.key);
     return file?.Body;
+  }
+
+  async getFileStream(
+    owner: string,
+    key: string,
+    storage: StorageHandler
+  ): Promise<StoredObjectStream | null | undefined> {
+    const fileEntry = await this.downloadRepository.getFile(owner, key);
+    if (!fileEntry) {
+      return null;
+    }
+    return storage.getFileStream(fileEntry.key);
   }
 
   async getFilename(owner: string, key: string): Promise<string | null> {

@@ -1,6 +1,6 @@
 import DownloadController from './DownloadController';
 import { Request, Response } from 'express';
-import { Writable } from 'stream';
+import { Readable, Writable } from 'stream';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
@@ -14,10 +14,31 @@ beforeEach(() => {
   trackMock.mockClear();
 });
 
-function mockResponse(): Response {
+type StreamingMockResponse = Response & {
+  _headers: Record<string, string>;
+  _chunks: Buffer[];
+  _done: Promise<void>;
+};
+
+// getFile pipes the storage stream into the response, so the mock has to be
+// a real Writable; the collected chunks stand in for what the client got.
+function mockResponse(): StreamingMockResponse {
   const headers: Record<string, string> = {};
-  const res = {
+  const chunks: Buffer[] = [];
+  let resolveDone!: () => void;
+  const done = new Promise<void>((resolve) => {
+    resolveDone = resolve;
+  });
+  const sink = new Writable({
+    write(chunk, _enc, cb) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      cb();
+    },
+  });
+  sink.on('finish', () => resolveDone());
+  const res = Object.assign(sink, {
     locals: { owner: 'test-owner' },
+    headersSent: false,
     setHeader: jest.fn((name: string, value: string) => {
       headers[name] = value;
     }),
@@ -25,14 +46,23 @@ function mockResponse(): Response {
     status: jest.fn().mockReturnThis(),
     redirect: jest.fn(),
     _headers: headers,
-  } as unknown as Response;
-  return res;
+    _chunks: chunks,
+    _done: done,
+  });
+  return res as unknown as StreamingMockResponse;
+}
+
+function fakeApkgStream() {
+  return {
+    body: Readable.from([Buffer.from('fake-apkg')]),
+    contentLength: 9,
+  };
 }
 
 function makeService(overrides: Record<string, unknown> = {}) {
   return {
     isValidKey: () => true,
-    getFileBody: jest.fn().mockResolvedValue(Buffer.from('fake-apkg')),
+    getFileStream: jest.fn().mockImplementation(async () => fakeApkgStream()),
     getFilename: jest.fn().mockResolvedValue(null),
     isMissingDownloadError: () => false,
     deleteMissingFile: jest.fn(),
@@ -47,12 +77,15 @@ describe('DownloadController.getFile', () => {
     const res = mockResponse();
 
     await controller.getFile(req, res, {} as any);
+    await res._done;
 
-    expect(res.send).toHaveBeenCalledWith(Buffer.from('fake-apkg'));
+    expect(Buffer.concat(res._chunks).toString()).toBe('fake-apkg');
+    expect(res.send).not.toHaveBeenCalled();
     expect(res.setHeader).toHaveBeenCalledWith(
       'Content-Type',
       'application/octet-stream'
     );
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Length', '9');
     expect(res.setHeader).toHaveBeenCalledWith(
       'Content-Disposition',
       'attachment; filename="123-deck.apkg"; filename*=UTF-8\'\'123-deck.apkg'
@@ -65,8 +98,9 @@ describe('DownloadController.getFile', () => {
     const res = mockResponse();
 
     await controller.getFile(req, res, {} as any);
+    await res._done;
 
-    expect(res.send).toHaveBeenCalled();
+    expect(Buffer.concat(res._chunks).toString()).toBe('fake-apkg');
     expect(res.setHeader).toHaveBeenCalledWith(
       'Content-Disposition',
       'attachment; filename="123-deck.apkg"; filename*=UTF-8\'\'123-deck.apkg'
@@ -105,6 +139,90 @@ describe('DownloadController.getFile', () => {
       'Content-Disposition',
       'attachment; filename="owner-1234-uuid.apkg"; filename*=UTF-8\'\'owner-1234-uuid.apkg'
     );
+  });
+});
+
+describe('DownloadController.getFile streaming', () => {
+  function neverEndingStream() {
+    return new Readable({
+      read() {
+        /* the test drives this stream by hand */
+      },
+    });
+  }
+
+  it('omits Content-Length when storage does not report one', async () => {
+    const service = makeService({
+      getFileStream: jest.fn().mockResolvedValue({
+        body: Readable.from([Buffer.from('x')]),
+        contentLength: undefined,
+      }),
+    });
+    const controller = new DownloadController(service as never);
+    const req = { params: { key: 'deck.apkg' } } as unknown as Request;
+    const res = mockResponse();
+
+    await controller.getFile(req, res, {} as never);
+    await res._done;
+
+    expect(res._headers['Content-Length']).toBeUndefined();
+  });
+
+  it('stops pulling from storage when the client goes away mid-download', async () => {
+    const body = neverEndingStream();
+    const service = makeService({
+      getFileStream: jest.fn().mockResolvedValue({ body, contentLength: 10 }),
+    });
+    const controller = new DownloadController(service as never);
+    const req = { params: { key: 'deck.apkg' } } as unknown as Request;
+    const res = mockResponse();
+
+    await controller.getFile(req, res, {} as never);
+    expect(body.destroyed).toBe(false);
+
+    res.emit('close');
+
+    expect(body.destroyed).toBe(true);
+  });
+
+  it('tears the response down when storage fails after bytes were sent', async () => {
+    const body = neverEndingStream();
+    const service = makeService({
+      getFileStream: jest.fn().mockResolvedValue({ body, contentLength: 10 }),
+    });
+    const controller = new DownloadController(service as never);
+    const req = { params: { key: 'deck.apkg' } } as unknown as Request;
+    const res = mockResponse();
+    const destroySpy = jest.spyOn(res, 'destroy').mockImplementation(() => res);
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await controller.getFile(req, res, {} as never);
+    res.headersSent = true;
+    body.emit('error', Object.assign(new Error('boom'), { name: 'SlowDown' }));
+
+    expect(destroySpy).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalledWith(503);
+    errorSpy.mockRestore();
+  });
+
+  it('answers 503 when storage fails before any byte was sent', async () => {
+    const body = neverEndingStream();
+    const service = makeService({
+      getFileStream: jest.fn().mockResolvedValue({ body, contentLength: 10 }),
+    });
+    const controller = new DownloadController(service as never);
+    const req = { params: { key: 'deck.apkg' } } as unknown as Request;
+    const res = mockResponse();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await controller.getFile(req, res, {} as never);
+    body.emit('error', Object.assign(new Error('boom'), { name: 'SlowDown' }));
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.send).toHaveBeenCalledWith(
+      'Storage is busy right now. Try the download again in a moment.'
+    );
+    errorSpy.mockRestore();
   });
 });
 
@@ -379,7 +497,7 @@ describe('DownloadController.getFile storage error handling', () => {
     overrides: Record<string, unknown> = {}
   ) {
     return makeService({
-      getFileBody: jest.fn().mockRejectedValue(error),
+      getFileStream: jest.fn().mockRejectedValue(error),
       isMissingDownloadError: (e: unknown) =>
         (e as { name?: string })?.name?.includes('NoSuchKey') === true,
       isTransientStorageError: jest
@@ -478,7 +596,7 @@ describe('DownloadController.getFile storage error handling', () => {
 describe('DownloadController.getFile expired link logging', () => {
   it('returns the 404 expire page when the file is absent', async () => {
     const service = makeService({
-      getFileBody: jest.fn().mockResolvedValue(null),
+      getFileStream: jest.fn().mockResolvedValue(null),
       isTransientStorageError: () => false,
     });
     const controller = new DownloadController(service as never);
@@ -496,7 +614,7 @@ describe('DownloadController.getFile expired link logging', () => {
   it('does not log an error for an absent file (expected expired link)', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const service = makeService({
-      getFileBody: jest.fn().mockResolvedValue(null),
+      getFileStream: jest.fn().mockResolvedValue(null),
       isTransientStorageError: () => false,
     });
     const controller = new DownloadController(service as never);

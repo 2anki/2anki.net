@@ -1,5 +1,6 @@
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Readable } from 'node:stream';
 
 import StorageHandler from './StorageHandler';
 
@@ -48,6 +49,46 @@ describe('StorageHandler.getFileContents', () => {
     const result = await handler.getFileContents('some/key.apkg');
 
     expect(result.Body).toBeUndefined();
+  });
+});
+
+describe('StorageHandler.getFileStream', () => {
+  beforeEach(() => {
+    mockSend.mockReset();
+    process.env.SPACES_DEFAULT_BUCKET_NAME = 'test-bucket';
+    process.env.SPACES_ENDPOINT = 'https://test.spaces.example.com';
+  });
+
+  it('hands back the SDK Body as a stream with its content length, without draining it', async () => {
+    const body = Readable.from([Buffer.from('hello '), Buffer.from('from s3')]);
+    mockSend.mockResolvedValueOnce({ Body: body, ContentLength: 13 });
+
+    const handler = new StorageHandler();
+    const result = await handler.getFileStream('some/key.apkg');
+
+    expect(result?.body).toBe(body);
+    expect(result?.contentLength).toBe(13);
+    expect(body.readableEnded).toBe(false);
+  });
+
+  it('returns undefined when the SDK response has no Body', async () => {
+    mockSend.mockResolvedValueOnce({ Body: null });
+
+    const handler = new StorageHandler();
+    const result = await handler.getFileStream('some/key.apkg');
+
+    expect(result).toBeUndefined();
+  });
+
+  it('returns undefined when the Body is not a Node stream', async () => {
+    mockSend.mockResolvedValueOnce({
+      Body: { transformToByteArray: jest.fn() },
+    });
+
+    const handler = new StorageHandler();
+    const result = await handler.getFileStream('some/key.apkg');
+
+    expect(result).toBeUndefined();
   });
 });
 
