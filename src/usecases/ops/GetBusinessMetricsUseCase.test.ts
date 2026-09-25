@@ -11,6 +11,7 @@ describe('GetBusinessMetricsUseCase', () => {
       net_new_mrr_mtd_usd: 312,
       active_paying_subs: 184,
       churn_30d_pct: 2.1,
+      churn_30d_breakdown: null,
       failed_payments_7d: 4,
       new_paid_conversions_7d: 11,
       pass_sales_7d: { day_passes: 0, week_passes: 0, semester_passes: 0 },
