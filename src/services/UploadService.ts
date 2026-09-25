@@ -40,6 +40,7 @@ import {
   duplicateGuidWarningText,
 } from '../lib/upload/duplicateGuidWarning';
 import { countDuplicateGuids } from '../lib/anki/countDuplicateGuids';
+import { latin1HeaderValue } from '../lib/upload/latin1HeaderValue';
 import { UploadedFile } from '../lib/storage/types';
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';
 import { toText } from './NotionService/BlockHandler/helpers/deckNameToText';
@@ -1697,7 +1698,7 @@ class UploadService {
       }
       const warningText = resolveUploadWarning(syncWarnings);
       if (warningText) {
-        res.set('X-Warning', warningText);
+        res.set('X-Warning', latin1HeaderValue(warningText));
         exposedHeaders.push('X-Warning');
         if (includesAiCreditsWarning(syncWarnings)) {
           res.set('X-Warning-Code', AI_CREDITS_EXHAUSTED_WARNING_CODE);

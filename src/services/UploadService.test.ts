@@ -1473,6 +1473,33 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it('sends X-Warning as Latin-1 even when the warning copy carries typographic characters', async () => {
+    // Node's setHeader throws ERR_INVALID_CHAR on anything above U+00FF, which
+    // 400'd every duplicate-card upload for four hours on 2026-09-25 after an
+    // em dash landed in the warning copy. Password warnings pass through
+    // verbatim, so they are the easiest way to push such a character in.
+    const lockedWarning =
+      '1 password-protected PDF was skipped — unlock it and upload again.';
+    mockPackages([{ name: 'notes.html', cardCount: 12 }], [lockedWarning]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res, capturedStatus } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(res.set).toHaveBeenCalledWith(
+      'X-Warning',
+      '1 password-protected PDF was skipped - unlock it and upload again.'
+    );
+  });
+
   it('tracks upload_duplicate_guids_collapsed with the count when notes share a guid', async () => {
     const previousLocation = mockWorkspaceLocation;
     mockWorkspaceLocation = fs.mkdtempSync(
