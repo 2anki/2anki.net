@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-25-duplicate-question-cards",
+  "date": "2026-09-25",
+  "type": "fix",
+  "title": "Uploaded decks keep both cards when two share a question but not the answer"
+}
