@@ -32,6 +32,12 @@ function isValidWorkspaceId(id: string): boolean {
   return WORKSPACE_ID_PATTERN.test(id);
 }
 
+const withApkgExtension = (name: string): string =>
+  name.endsWith('.apkg') ? name : `${name}.apkg`;
+
+const downloadFilename = (key: string, dbName: string | null): string =>
+  withApkgExtension(dbName ? getSafeFilename(dbName) : key);
+
 function resolveDownloadIdentity(
   req: Request,
   res: Response
@@ -69,14 +75,7 @@ class DownloadController {
       const stored = await this.service.getFileStream(owner, key, storage);
       if (stored) {
         const dbName = await this.service.getFilename(owner, key);
-        const basename = dbName
-          ? getSafeFilename(dbName)
-          : key.endsWith('.apkg')
-            ? key
-            : `${key}.apkg`;
-        const filename = basename.endsWith('.apkg')
-          ? basename
-          : `${basename}.apkg`;
+        const filename = downloadFilename(key, dbName);
         res.setHeader('Content-Type', 'application/octet-stream');
         res.setHeader('Content-Disposition', buildContentDisposition(filename));
         if (stored.contentLength != null) {
