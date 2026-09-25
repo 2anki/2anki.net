@@ -69,7 +69,7 @@ const buildChurnFootnote = (
   ].join(' · ');
 };
 
-function ChurnByPlanList({ tiers }: { tiers: ChurnTierPoint[] }) {
+function ChurnByPlanList({ tiers }: Readonly<{ tiers: ChurnTierPoint[] }>) {
   return (
     <ul className={styles.plainList}>
       {tiers.map((point) => (
