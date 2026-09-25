@@ -60,7 +60,7 @@
     "d3": "^7.9.0",
     "dockerode": "^5.0.0",
     "domhandler": "6.0.1",
-    "dotenv": "^17.0.0",
+    "dotenv": "^18.0.3",
     "express": "^5.1.0",
     "fflate": "^0.8.0",
     "find-remove": "^5.0.0",
