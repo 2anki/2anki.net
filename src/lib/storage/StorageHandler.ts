@@ -12,6 +12,7 @@ import {
   type _Object,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import type { Readable } from 'node:stream';
 
 import { normalizeS3Endpoint } from './normalizeS3Endpoint';
 import { buildContentDisposition } from '../buildContentDisposition';
@@ -19,6 +20,11 @@ import { getSafeFilename } from '../getSafeFilename';
 
 export interface StoredObject {
   Body: Buffer | undefined;
+}
+
+export interface StoredObjectStream {
+  body: Readable;
+  contentLength: number | undefined;
 }
 
 class StorageHandler {
@@ -112,6 +118,25 @@ class StorageHandler {
     }
     const bytes = await response.Body.transformToByteArray();
     return { Body: Buffer.from(bytes) };
+  }
+
+  // The deck download path. getFileContents drains the whole object into
+  // memory first, which for a media-heavy deck means the process holds the
+  // full apkg per request (a 951 MB deck pulled a dozen times put the box at
+  // 2.1 GB RSS on 2026-09-25). In Node the SDK's Body is already a Readable,
+  // so the controller can pipe it straight to the response.
+  async getFileStream(key: string): Promise<StoredObjectStream | undefined> {
+    const response = await this.s3.send(
+      new GetObjectCommand({
+        Bucket: StorageHandler.DefaultBucketName(),
+        Key: key,
+      })
+    );
+    const body = response.Body as unknown as Readable | undefined;
+    if (body == null || typeof body.pipe !== 'function') {
+      return undefined;
+    }
+    return { body, contentLength: response.ContentLength };
   }
 
   async uploadFile(name: string, data: Buffer | string): Promise<void> {

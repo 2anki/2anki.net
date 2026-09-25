@@ -1,8 +1,50 @@
+import { Readable } from 'node:stream';
+
 import DownloadService from './DownloadService';
 
 function makeService() {
   return new DownloadService({} as never);
 }
+
+describe('DownloadService.getFileStream', () => {
+  it('returns null when the owner has no such download row', async () => {
+    const repo = { getFile: jest.fn().mockResolvedValue(null) };
+    const storage = { getFileStream: jest.fn() };
+    const service = new DownloadService(repo as never);
+
+    const result = await service.getFileStream(
+      'owner-1',
+      'deck.apkg',
+      storage as never
+    );
+
+    expect(result).toBeNull();
+    expect(storage.getFileStream).not.toHaveBeenCalled();
+  });
+
+  it('opens the stream for the stored key of the matched row', async () => {
+    const body = Readable.from([Buffer.from('apkg')]);
+    const repo = {
+      getFile: jest.fn().mockResolvedValue({ key: 'stored/owner-1/deck.apkg' }),
+    };
+    const storage = {
+      getFileStream: jest.fn().mockResolvedValue({ body, contentLength: 4 }),
+    };
+    const service = new DownloadService(repo as never);
+
+    const result = await service.getFileStream(
+      'owner-1',
+      'deck.apkg',
+      storage as never
+    );
+
+    expect(repo.getFile).toHaveBeenCalledWith('owner-1', 'deck.apkg');
+    expect(storage.getFileStream).toHaveBeenCalledWith(
+      'stored/owner-1/deck.apkg'
+    );
+    expect(result).toEqual({ body, contentLength: 4 });
+  });
+});
 
 describe('DownloadService.isMissingDownloadError', () => {
   it('matches a NoSuchKey error from the storage SDK', () => {
