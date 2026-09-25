@@ -35,7 +35,12 @@ export function useOpsFreshness(): OpsFreshness {
   const [now, setNow] = useState<number>(() => Date.now());
 
   useEffect(() => {
-    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
+    // A query's "added" event fires inside the render of the component that
+    // first calls useQuery for it (a panel expanding under a <details>), so
+    // reacting to it would set state here mid-render. Only a data update or a
+    // cache eviction can move the freshest stamp.
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== 'updated' && event.type !== 'removed') return;
       setUpdatedAt(latestUpdatedAt());
       setNow(Date.now());
     });
