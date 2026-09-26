@@ -35,7 +35,8 @@
       "cardsUnlimited": "Unlimited cards",
       "upgrade": "Upgrade",
       "manageSubscription": "Manage subscription",
-      "cardSettings": "Card settings"
+      "cardSettings": "Card settings",
+      "cardsLeft": "{{remaining}} / {{limit}} cards left this month"
     }
   },
   "account": {

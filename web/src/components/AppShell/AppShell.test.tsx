@@ -111,7 +111,7 @@ describe('AppShell logout', () => {
         </MemoryRouter>
       )
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Account menu' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Account menu/ }));
     const logoutLink = screen.getByRole('link', { name: /log out/i });
     fireEvent.click(logoutLink);
     expect(logoutSpy).toHaveBeenCalledTimes(1);
@@ -132,7 +132,7 @@ describe('AppShell logout', () => {
         </MemoryRouter>
       )
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Account menu' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Account menu/ }));
     const logoutLink = screen.getByRole('link', { name: /log out/i });
     fireEvent.click(logoutLink);
     expect(confirmSpy).not.toHaveBeenCalled();

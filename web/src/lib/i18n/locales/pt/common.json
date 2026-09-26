@@ -35,7 +35,8 @@
       "cardsUnlimited": "Cartões ilimitados",
       "upgrade": "Fazer upgrade",
       "manageSubscription": "Gerenciar assinatura",
-      "cardSettings": "Configurações dos cartões"
+      "cardSettings": "Configurações dos cartões",
+      "cardsLeft": "{{remaining}} / {{limit}} cartões restantes neste mês"
     }
   },
   "account": {

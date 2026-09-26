@@ -52,7 +52,7 @@ function renderMenu({
 }
 
 function openMenu() {
-  fireEvent.click(screen.getByRole('button', { name: 'Account menu' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Account menu/ }));
 }
 
 beforeEach(() => {
@@ -66,7 +66,7 @@ beforeEach(() => {
 describe('AccountMenu trigger', () => {
   it('renders a closed avatar button with the email initial', () => {
     renderMenu();
-    const button = screen.getByRole('button', { name: 'Account menu' });
+    const button = screen.getByRole('button', { name: /^Account menu/ });
     expect(button).toHaveAttribute('aria-expanded', 'false');
     expect(button).toHaveTextContent('A');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -75,7 +75,7 @@ describe('AccountMenu trigger', () => {
   it('opens on click, tracks the open, and closes on Escape', () => {
     renderMenu();
     openMenu();
-    expect(screen.getByRole('dialog', { name: 'Account menu' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: /^Account menu/ })).toBeVisible();
     expect(track).toHaveBeenCalledWith('account_menu_opened');
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -87,21 +87,90 @@ describe('AccountMenu trigger', () => {
     fireEvent.mouseDown(document.body);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+});
 
-  it('shows a usage badge once a free user is near the monthly limit', async () => {
+describe('AccountMenu balance ring', () => {
+  it('draws the cards left this month for a free user and describes it on the button', async () => {
+    renderMenu();
+    const ring = await screen.findByTestId('avatar-balance-ring');
+    expect(ring).toHaveAttribute('data-kind', 'cards');
+    expect(ring).toHaveAttribute('data-fraction', '0.77');
+    expect(ring).toHaveAttribute('data-low', 'false');
+    expect(
+      screen.getByRole('button', {
+        name: 'Account menu. 77 / 100 cards left this month',
+      })
+    ).toBeInTheDocument();
+  });
+
+  it('turns low once under a fifth of the monthly cards remain', async () => {
     vi.mocked(getCardUsage).mockResolvedValueOnce({
       cards_used: 85,
       cards_limit: 100,
       unlimited: false,
     });
     renderMenu();
-    expect(await screen.findByTestId('avatar-usage-badge')).toBeInTheDocument();
+    const ring = await screen.findByTestId('avatar-balance-ring');
+    expect(ring).toHaveAttribute('data-fraction', '0.15');
+    expect(ring).toHaveAttribute('data-low', 'true');
   });
 
-  it('shows no badge well under the limit', async () => {
-    renderMenu();
-    await waitFor(() => expect(getCardUsage).toHaveBeenCalled());
-    expect(screen.queryByTestId('avatar-usage-badge')).not.toBeInTheDocument();
+  it('draws AI credits left for a subscriber with a usable balance', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      credits: 125,
+      used: 375,
+      allowance: 500,
+      usable: true,
+      windowEnd: null,
+      resets: 'period',
+    });
+    renderMenu({ locals: { subscriber: true } });
+    const ring = await screen.findByTestId('avatar-balance-ring');
+    expect(ring).toHaveAttribute('data-kind', 'aiCredits');
+    expect(ring).toHaveAttribute('data-fraction', '0.25');
+    expect(
+      screen.getByRole('button', {
+        name: 'Account menu. 125 AI credits left.',
+      })
+    ).toBeInTheDocument();
+  });
+
+  it('sizes a pack without an allowance by what was bought', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      credits: 100,
+      used: 150,
+      allowance: 0,
+      usable: true,
+      windowEnd: '2026-12-01T00:00:00.000Z',
+      resets: 'pass',
+    });
+    renderMenu({ locals: { patreon: true } });
+    const ring = await screen.findByTestId('avatar-balance-ring');
+    expect(ring).toHaveAttribute('data-kind', 'aiCredits');
+    expect(ring).toHaveAttribute('data-fraction', '0.40');
+  });
+
+  it('draws no ring for a lifetime user without AI credits', async () => {
+    renderMenu({ locals: { patreon: true } });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(screen.queryByTestId('avatar-balance-ring')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /^Account menu/ })
+    ).toBeInTheDocument();
+  });
+
+  it('draws no ring for a paused pack that cannot be used', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      credits: 120,
+      used: 0,
+      allowance: 0,
+      usable: false,
+      windowEnd: '2026-12-01T00:00:00.000Z',
+      resets: 'pass',
+    });
+    renderMenu({ locals: { patreon: true } });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(screen.queryByTestId('avatar-balance-ring')).not.toBeInTheDocument();
   });
 });
 

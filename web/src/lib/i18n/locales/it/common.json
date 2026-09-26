@@ -35,7 +35,8 @@
       "cardsUnlimited": "Carte illimitate",
       "upgrade": "Passa a un piano superiore",
       "manageSubscription": "Gestisci abbonamento",
-      "cardSettings": "Impostazioni carte"
+      "cardSettings": "Impostazioni carte",
+      "cardsLeft": "{{remaining}} / {{limit}} carte rimaste questo mese"
     }
   },
   "account": {
