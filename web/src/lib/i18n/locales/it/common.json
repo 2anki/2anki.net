@@ -28,7 +28,15 @@
     "privacy": "Privacy",
     "terms": "Termini",
     "about": "Chi siamo",
-    "cardsThisMonth": "{{limit}} carte questo mese"
+    "cardsThisMonth": "{{limit}} carte questo mese",
+    "moreTools": "Altri strumenti",
+    "accountMenu": {
+      "open": "Menu account",
+      "cardsUnlimited": "Carte illimitate",
+      "upgrade": "Passa a un piano superiore",
+      "manageSubscription": "Gestisci abbonamento",
+      "cardSettings": "Impostazioni carte"
+    }
   },
   "account": {
     "title": "Account",

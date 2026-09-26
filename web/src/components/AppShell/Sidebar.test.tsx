@@ -1,10 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -23,8 +17,6 @@ vi.mock('../../lib/analytics/track', () => ({
   track: vi.fn(),
 }));
 
-import { getCardUsage } from '../../lib/backend/getCardUsage';
-
 vi.mock('../../lib/backend/getCardUsage', () => ({
   getCardUsage: vi.fn().mockResolvedValue({
     cards_used: 23,
@@ -32,8 +24,6 @@ vi.mock('../../lib/backend/getCardUsage', () => ({
     unlimited: false,
   }),
 }));
-
-import { getAiCredits } from '../../lib/backend/getAiCredits';
 
 vi.mock('../../lib/backend/getAiCredits', () => ({
   getAiCredits: vi.fn().mockResolvedValue(null),
@@ -52,7 +42,6 @@ interface SidebarRenderOpts {
     subscriber?: boolean;
     autoSyncActive?: boolean;
   } | null;
-  onLogOut?: (event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => void;
 }
 
 function renderSidebar({
@@ -64,7 +53,6 @@ function renderSidebar({
   ops = false,
   email = 'alexander@alemayhu.com',
   locals,
-  onLogOut = vi.fn(),
 }: SidebarRenderOpts = {}) {
   const resolvedLocals =
     locals === undefined ? { patreon, subscriber, autoSyncActive } : locals;
@@ -78,7 +66,6 @@ function renderSidebar({
           email={email}
           locals={resolvedLocals}
           features={{ kiUI, ops }}
-          onLogOut={onLogOut}
         />
       </MemoryRouter>
     </QueryClientProvider>
@@ -144,22 +131,6 @@ describe('Sidebar convert group', () => {
 });
 
 describe('Sidebar your-stuff group', () => {
-  it('shows Settings for every logged-in user', () => {
-    renderSidebar();
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
-      'href',
-      '/card-options'
-    );
-  });
-
-  it('marks Settings active on /card-options', () => {
-    renderSidebar({ pathname: '/card-options' });
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
-      'aria-current',
-      'page'
-    );
-  });
-
   it('shows Favorites for a logged-in user', () => {
     renderSidebar();
     expect(screen.getByRole('link', { name: 'Favorites' })).toHaveAttribute(
@@ -172,38 +143,6 @@ describe('Sidebar your-stuff group', () => {
     renderSidebar({ email: null });
     expect(
       screen.queryByRole('link', { name: 'Favorites' })
-    ).not.toBeInTheDocument();
-  });
-});
-
-describe('Sidebar help group', () => {
-  it('always shows Docs', () => {
-    renderSidebar();
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
-      'href',
-      '/documentation'
-    );
-  });
-
-  it('shows Pricing only for free users', () => {
-    renderSidebar();
-    expect(screen.getByRole('link', { name: 'Pricing' })).toHaveAttribute(
-      'href',
-      '/pricing'
-    );
-  });
-
-  it('hides Pricing for paying users', () => {
-    renderSidebar({ subscriber: true });
-    expect(
-      screen.queryByRole('link', { name: 'Pricing' })
-    ).not.toBeInTheDocument();
-  });
-
-  it('does not render a Billing row for paying users', () => {
-    renderSidebar({ patreon: true });
-    expect(
-      screen.queryByRole('link', { name: 'Billing' })
     ).not.toBeInTheDocument();
   });
 });
@@ -366,35 +305,6 @@ describe('Sidebar Ops folder', () => {
   });
 });
 
-describe('Sidebar identity block', () => {
-  it('renders the email and plan label', () => {
-    renderSidebar({ email: 'alexander@alemayhu.com', patreon: true });
-    expect(screen.getByText('alexander@alemayhu.com')).toBeInTheDocument();
-    expect(screen.getByText('Lifetime')).toBeInTheDocument();
-  });
-
-  it('shows Free when neither plan flag is set', () => {
-    renderSidebar();
-    expect(screen.getByText('Free')).toBeInTheDocument();
-  });
-
-  it('renders Account and Log out as first-class rows', () => {
-    renderSidebar();
-    expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute(
-      'href',
-      '/account'
-    );
-    expect(screen.getByRole('link', { name: /log out/i })).toBeInTheDocument();
-  });
-
-  it('fires onLogOut when the Log out row is clicked', () => {
-    const onLogOut = vi.fn();
-    renderSidebar({ onLogOut });
-    fireEvent.click(screen.getByRole('link', { name: /log out/i }));
-    expect(onLogOut).toHaveBeenCalledTimes(1);
-  });
-});
-
 describe('Sidebar active state', () => {
   it('marks the My Decks row active on /downloads', () => {
     renderSidebar({ pathname: '/downloads' });
@@ -407,14 +317,6 @@ describe('Sidebar active state', () => {
     ).not.toHaveAttribute('aria-current', 'page');
   });
 
-  it('marks the Account row active on /account', () => {
-    renderSidebar({ pathname: '/account' });
-    expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute(
-      'aria-current',
-      'page'
-    );
-  });
-
   it('marks the My Decks row active on a /downloads sub-route', () => {
     renderSidebar({ pathname: '/downloads/123' });
     expect(screen.getByRole('link', { name: 'My Decks' })).toHaveAttribute(
@@ -425,10 +327,24 @@ describe('Sidebar active state', () => {
 });
 
 describe('Sidebar group hierarchy', () => {
-  it('labels the Library and Resources groups', () => {
+  it('labels the More tools group', () => {
     renderSidebar();
-    expect(screen.getByText('Library')).toBeInTheDocument();
-    expect(screen.getByText('Resources')).toBeInTheDocument();
+    expect(screen.getByText('More tools')).toBeInTheDocument();
+  });
+
+  it('keeps account, usage, theme and legal links out of the sidebar', () => {
+    renderSidebar();
+    expect(
+      screen.queryByRole('link', { name: /log out/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Privacy' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('alexander@alemayhu.com')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Free')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
   });
 
   it('orders the top feature group by visit frequency (Upload, Notion, Note types first)', () => {
@@ -455,156 +371,6 @@ describe('Sidebar group hierarchy', () => {
   it('does not render Admin group label even when ops is on', () => {
     renderSidebar({ ops: true });
     expect(screen.queryByText('Admin')).not.toBeInTheDocument();
-  });
-});
-
-describe('Sidebar cards-used counter', () => {
-  beforeEach(() => {
-    vi.mocked(getCardUsage).mockClear();
-  });
-
-  it('renders the counter for free users with the fetched usage', async () => {
-    renderSidebar();
-    await waitFor(() => expect(screen.getByText('23')).toBeInTheDocument());
-    expect(screen.getByText('/ 100 cards this month')).toBeInTheDocument();
-  });
-
-  it('does not render the counter for paying users', async () => {
-    renderSidebar({ subscriber: true });
-    await new Promise((r) => setTimeout(r, 10));
-    expect(
-      screen.queryByText('/ 100 cards this month')
-    ).not.toBeInTheDocument();
-  });
-
-  it('does not call getCardUsage when locals is null (unauthenticated visitor)', async () => {
-    renderSidebar({ locals: null });
-    await new Promise((r) => setTimeout(r, 10));
-    expect(getCardUsage).not.toHaveBeenCalled();
-  });
-});
-
-describe('Sidebar AI credits line', () => {
-  beforeEach(() => {
-    vi.mocked(getAiCredits).mockReset();
-    vi.mocked(track).mockClear();
-  });
-
-  it('renders nothing when the fetch fails or resolves null', async () => {
-    vi.mocked(getAiCredits).mockResolvedValue(null);
-    renderSidebar();
-    await new Promise((r) => setTimeout(r, 10));
-    expect(screen.queryByText(/AI credit/)).not.toBeInTheDocument();
-  });
-
-  it('renders nothing for a free user with no plan (the real zero-allowance shape)', async () => {
-    vi.mocked(getAiCredits).mockResolvedValue({
-      credits: 0,
-      used: 0,
-      allowance: 0,
-      usable: false,
-      windowEnd: null,
-      resets: 'month',
-    });
-    renderSidebar();
-    await new Promise((r) => setTimeout(r, 10));
-    expect(screen.queryByText(/AI credit/)).not.toBeInTheDocument();
-  });
-
-  it('shows the balance for a subscriber with credits', async () => {
-    vi.mocked(getAiCredits).mockResolvedValue({
-      credits: 312,
-      used: 0,
-      allowance: 500,
-      usable: true,
-      windowEnd: null,
-      resets: 'period',
-    });
-    renderSidebar({ subscriber: true });
-    await waitFor(() =>
-      expect(screen.getByText('312 AI credits left.')).toBeInTheDocument()
-    );
-    expect(
-      screen.queryByRole('link', { name: 'Top up — $5' })
-    ).not.toBeInTheDocument();
-  });
-
-  it('shows a buy-credits link when the balance is low', async () => {
-    vi.mocked(getAiCredits).mockResolvedValue({
-      credits: 10,
-      used: 490,
-      allowance: 500,
-      usable: true,
-      windowEnd: null,
-      resets: 'period',
-    });
-    renderSidebar({ subscriber: true });
-    await waitFor(() =>
-      expect(screen.getByText('10 AI credits left.')).toBeInTheDocument()
-    );
-    expect(screen.getByRole('link', { name: 'Top up — $5' })).toHaveAttribute(
-      'href',
-      '/account'
-    );
-  });
-
-  it('shows the zero-state copy with a buy link when exhausted', async () => {
-    vi.mocked(getAiCredits).mockResolvedValue({
-      credits: 0,
-      used: 500,
-      allowance: 500,
-      usable: true,
-      windowEnd: null,
-      resets: 'period',
-    });
-    renderSidebar({ subscriber: true });
-    await waitFor(() =>
-      expect(
-        screen.getByText(/Your next deck builds without AI/)
-      ).toBeInTheDocument()
-    );
-    expect(
-      screen.getByRole('link', { name: 'Top up — $5' })
-    ).toBeInTheDocument();
-  });
-
-  it('shows a paused balance for a lapsed plan with an unexpired pack, no buy link', async () => {
-    vi.mocked(getAiCredits).mockResolvedValue({
-      credits: 120,
-      used: 0,
-      allowance: 0,
-      usable: false,
-      windowEnd: '2026-12-01T00:00:00.000Z',
-      resets: 'pass',
-    });
-    renderSidebar();
-    await waitFor(() =>
-      expect(screen.getByText(/120 AI credits, paused/)).toBeInTheDocument()
-    );
-    expect(
-      screen.queryByRole('link', { name: 'Top up — $5' })
-    ).not.toBeInTheDocument();
-  });
-
-  it('fires the sidebar analytics event when the buy link is clicked', async () => {
-    vi.mocked(getAiCredits).mockResolvedValue({
-      credits: 0,
-      used: 500,
-      allowance: 500,
-      usable: true,
-      windowEnd: null,
-      resets: 'period',
-    });
-    renderSidebar({ subscriber: true });
-    const link = await screen.findByRole('link', { name: 'Top up — $5' });
-    fireEvent.click(link);
-    expect(track).toHaveBeenCalledWith('credits_sidebar_link_clicked');
-  });
-
-  it('does not call getAiCredits when locals is null (unauthenticated visitor)', async () => {
-    renderSidebar({ locals: null });
-    await new Promise((r) => setTimeout(r, 10));
-    expect(getAiCredits).not.toHaveBeenCalled();
   });
 });
 
@@ -830,27 +596,5 @@ describe('Sidebar collapse rail survives browser translation', () => {
     expect(
       screen.getByRole('button', { name: 'Expand sidebar' })
     ).toBeInTheDocument();
-  });
-});
-
-describe('Sidebar More block', () => {
-  it('renders the footer links', () => {
-    renderSidebar();
-    expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute(
-      'href',
-      '/about'
-    );
-    expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute(
-      'href',
-      '/contact'
-    );
-    expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute(
-      'href',
-      '/documentation/misc/terms-of-service'
-    );
-    expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute(
-      'href',
-      '/documentation/misc/privacy-policy'
-    );
   });
 });
