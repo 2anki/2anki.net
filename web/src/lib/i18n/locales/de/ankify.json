@@ -103,7 +103,17 @@
     "zeroScannedSuffix": " Blöcke durchsucht und keine Karten erkannt. Ankify sucht nach Toggles, Frage-Antwort-Paaren und Aufzählungspunkten. ",
     "zeroNoContent": "Wir konnten keinen Inhalt von dieser Seite lesen. ",
     "zeroLink": "Wonach Ankify sucht →",
-    "zeroSamplesSummary": "Was wir auf dieser Seite gesehen haben (erste {{count}})"
+    "zeroSamplesSummary": "Was wir auf dieser Seite gesehen haben (erste {{count}})",
+    "subscribeError": {
+      "notActive": "Auto Sync ist für dieses Konto nicht aktiv.",
+      "notActiveLink": "Abo verwalten",
+      "notionDisconnected": "Notion ist nicht mit 2anki verbunden.",
+      "notionDisconnectedLink": "Notion verbinden",
+      "noClient": "Dein gehostetes Anki ist noch nicht eingerichtet.",
+      "noClientLink": "Anki einrichten",
+      "ankiUnreachable": "Anki antwortet gerade nicht. Versuch es gleich noch einmal.",
+      "fallback": "Bei uns ist etwas schiefgelaufen. Versuch es erneut oder schreib an support@2anki.net."
+    }
   },
   "leeches": {
     "flash": {

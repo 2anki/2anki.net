@@ -103,7 +103,17 @@
     "zeroScannedSuffix": " blocchi e non abbiamo riconosciuto nessuna carta. Ankify cerca toggle, coppie D&R e punti elenco. ",
     "zeroNoContent": "Non siamo riusciti a leggere nessun contenuto da questa pagina. ",
     "zeroLink": "Cosa cerca Ankify →",
-    "zeroSamplesSummary": "Cosa abbiamo visto in questa pagina (primi {{count}})"
+    "zeroSamplesSummary": "Cosa abbiamo visto in questa pagina (primi {{count}})",
+    "subscribeError": {
+      "notActive": "Auto Sync non è attivo su questo account.",
+      "notActiveLink": "Gestisci abbonamento",
+      "notionDisconnected": "Notion non è collegato a 2anki.",
+      "notionDisconnectedLink": "Collega Notion",
+      "noClient": "Il tuo Anki ospitato non è ancora configurato.",
+      "noClientLink": "Configura Anki",
+      "ankiUnreachable": "Anki non risponde al momento. Riprova tra poco.",
+      "fallback": "Qualcosa si è rotto da parte nostra. Riprova o scrivi a support@2anki.net."
+    }
   },
   "leeches": {
     "flash": {

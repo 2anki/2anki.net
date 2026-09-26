@@ -103,7 +103,17 @@
     "zeroScannedSuffix": " blokken en herkenden geen kaarten. Ankify zoekt naar toggles, vraag-antwoordparen en bullets. ",
     "zeroNoContent": "We konden geen inhoud van deze pagina lezen. ",
     "zeroLink": "Waar Ankify naar zoekt →",
-    "zeroSamplesSummary": "Wat we op deze pagina zagen (eerste {{count}})"
+    "zeroSamplesSummary": "Wat we op deze pagina zagen (eerste {{count}})",
+    "subscribeError": {
+      "notActive": "Auto Sync is niet actief op dit account.",
+      "notActiveLink": "Abonnement beheren",
+      "notionDisconnected": "Notion is niet gekoppeld aan 2anki.",
+      "notionDisconnectedLink": "Notion koppelen",
+      "noClient": "Je gehoste Anki is nog niet ingesteld.",
+      "noClientLink": "Anki instellen",
+      "ankiUnreachable": "Anki reageert nu niet. Probeer het zo nog eens.",
+      "fallback": "Er ging iets mis aan onze kant. Probeer het opnieuw of mail naar support@2anki.net."
+    }
   },
   "leeches": {
     "flash": {
