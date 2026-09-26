@@ -18,18 +18,18 @@ function renderModal(
   return render(<NotionColumnMappingModal {...defaults} {...props} />);
 }
 
+function fakeShowModal(this: HTMLDialogElement) {
+  this.setAttribute('open', '');
+}
+
+function fakeClose(this: HTMLDialogElement) {
+  this.removeAttribute('open');
+}
+
 describe('NotionColumnMappingModal', () => {
   beforeEach(() => {
-    HTMLDialogElement.prototype.showModal = vi.fn(
-      function (this: HTMLDialogElement) {
-        this.setAttribute('open', '');
-      }
-    );
-    HTMLDialogElement.prototype.close = vi.fn(
-      function (this: HTMLDialogElement) {
-        this.removeAttribute('open');
-      }
-    );
+    HTMLDialogElement.prototype.showModal = vi.fn(fakeShowModal);
+    HTMLDialogElement.prototype.close = vi.fn(fakeClose);
   });
 
   it('renders the heading', () => {
