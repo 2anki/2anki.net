@@ -67,7 +67,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.0.5",
-    "@vitest/coverage-v8": "^4.1.5",
+    "@vitest/coverage-v8": "^5.0.1",
     "@vitest/ui": "^4.1.10",
     "concurrently": "^10.0.4",
     "cors": "^2.8.6",
