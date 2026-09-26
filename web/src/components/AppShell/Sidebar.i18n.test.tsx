@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -7,8 +7,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '../../lib/i18n';
 import deChrome from '../../lib/i18n/locales/de/chrome.json';
 import deCommon from '../../lib/i18n/locales/de/common.json';
-import deTools from '../../lib/i18n/locales/de/tools.json';
-import { getCardUsage } from '../../lib/backend/getCardUsage';
 import { Sidebar } from './Sidebar';
 import { SidebarLayout } from './SidebarLayout';
 
@@ -43,7 +41,6 @@ const sidebarProps = {
   email: 'reader@example.com',
   locals: { patreon: false, subscriber: false, autoSyncActive: false },
   features: { kiUI: false, ops: false },
-  onLogOut: vi.fn(),
 };
 
 describe('Sidebar in German', () => {
@@ -68,30 +65,34 @@ describe('Sidebar in German', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows the monthly usage line in German', async () => {
+  it('labels the More tools group in German', () => {
     renderWithProviders(<Sidebar {...sidebarProps} />);
 
-    const suffix = deCommon.nav.cardsThisMonth.replace('{{limit}}', '100');
-    expect(await screen.findByText(`/ ${suffix}`)).toBeInTheDocument();
+    expect(deCommon.nav.moreTools).not.toBe('More tools');
+    expect(screen.getByText(deCommon.nav.moreTools)).toBeInTheDocument();
   });
 
-  it('shows the upgrade link in German once the monthly limit is reached', async () => {
-    vi.mocked(getCardUsage).mockResolvedValueOnce({
-      cards_used: 100,
-      cards_limit: 100,
-      unlimited: false,
-    });
-    renderWithProviders(<Sidebar {...sidebarProps} />);
+  it('shows the monthly usage line in German inside the account menu', async () => {
+    renderWithProviders(
+      <SidebarLayout {...sidebarProps} onLogOut={vi.fn()}>
+        <div>content</div>
+      </SidebarLayout>
+    );
 
-    expect(deTools.print.upgradeUnlimited).not.toBe('Upgrade for unlimited');
+    expect(deCommon.nav.accountMenu.open).not.toBe('Account menu');
+    fireEvent.click(
+      screen.getByRole('button', { name: deCommon.nav.accountMenu.open })
+    );
+    const suffix = deCommon.nav.cardsThisMonth.replace('{{limit}}', '100');
+    expect(await screen.findByText(`/ ${suffix}`)).toBeInTheDocument();
     expect(
-      await screen.findByRole('link', { name: deTools.print.upgradeUnlimited })
-    ).toHaveAttribute('href', '/pricing?from=limit');
+      screen.getByRole('link', { name: deCommon.nav.accountMenu.upgrade })
+    ).toHaveAttribute('href', '/pricing?from=avatar');
   });
 
   it('translates the skip link in the layout', () => {
     renderWithProviders(
-      <SidebarLayout {...sidebarProps}>
+      <SidebarLayout {...sidebarProps} onLogOut={vi.fn()}>
         <div>content</div>
       </SidebarLayout>
     );

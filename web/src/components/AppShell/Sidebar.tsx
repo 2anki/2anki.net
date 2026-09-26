@@ -2,19 +2,9 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../lib/hooks/useTheme';
-import { useCardUsage } from '../../lib/hooks/useCardUsage';
-import { useAiCredits } from '../../lib/hooks/useAiCredits';
-import { track } from '../../lib/analytics/track';
-import { formatLongDate } from '../../pages/AccountPage/utils/formatLongDate';
-import {
-  getPlanLabel,
-  isPayingUser,
-} from '../NavigationBar/helpers/getPlanLabel';
 import ArrowLeftIcon from '../icons/ArrowLeftIcon';
 import ArrowRightIcon from '../icons/ArrowRightIcon';
-import ArrowRightOnRectangleIcon from '../icons/ArrowRightOnRectangleIcon';
 import ArrowUpTrayIcon from '../icons/ArrowUpTrayIcon';
-import BookOpenIcon from '../icons/BookOpenIcon';
 import ChatBubbleIcon from '../icons/ChatBubbleIcon';
 import CameraIcon from '../icons/CameraIcon';
 import RectangleGroupIcon from '../icons/RectangleGroupIcon';
@@ -22,101 +12,15 @@ import SwatchIcon from '../icons/SwatchIcon';
 import LayersIcon from '../icons/LayersIcon';
 import ChevronRightIcon from '../icons/ChevronRightIcon';
 import CommandLineIcon from '../icons/CommandLineIcon';
-import CreditCardIcon from '../icons/CreditCardIcon';
 import PrinterIcon from '../icons/PrinterIcon';
 import SparklesIcon from '../icons/SparklesIcon';
 import StarIcon from '../icons/StarIcon';
-import UserCircleIcon from '../icons/UserCircleIcon';
-import SettingsIcon from '../icons/SettingsIcon';
 import WrenchIcon from '../icons/WrenchIcon';
 import ShareIcon from '../icons/ShareIcon';
 import { OPS_TABS } from '../../pages/OpsPage/opsTabs';
 import { OPS_WINDOW_PARAM, isOpsWindow } from '../../pages/OpsPage/opsWindow';
-import { ThemeSwitcher } from '../ThemeSwitcher/ThemeSwitcher';
-import { ThemeToggle } from '../ThemeSwitcher/ThemeToggle';
-import { LanguagePicker } from '../LanguagePicker/LanguagePicker';
 import styles from './AppShell.module.css';
 import { useSidebarCollapseState } from './useSidebarCollapseState';
-
-interface CardUsageCounterProps {
-  used: number;
-  limit: number;
-}
-
-function CardUsageCounter({ used, limit }: Readonly<CardUsageCounterProps>) {
-  const { t } = useTranslation();
-  const atLimit = used >= limit;
-  const approaching = !atLimit && used >= limit * 0.8;
-  const heroClass =
-    approaching || atLimit
-      ? `${styles.identityUsageHero} ${styles.identityUsageWarning}`
-      : styles.identityUsageHero;
-  const restClass =
-    approaching || atLimit
-      ? `${styles.identityUsageRest} ${styles.identityUsageWarning}`
-      : styles.identityUsageRest;
-  return (
-    <span className={styles.identityUsage}>
-      <span className={heroClass}>{used}</span>
-      <span className={restClass}> / {t('nav.cardsThisMonth', { limit })}</span>
-      {atLimit && (
-        <Link to="/pricing?from=limit" className={styles.identityUsageUpgrade}>
-          {t('tools:print.upgradeUnlimited')}
-        </Link>
-      )}
-    </span>
-  );
-}
-
-const LOW_CREDITS_THRESHOLD = 25;
-
-function AiCreditsSidebarLine({ enabled }: Readonly<{ enabled: boolean }>) {
-  const { t, i18n } = useTranslation('aicredits');
-  const credits = useAiCredits(enabled);
-
-  if (credits == null) {
-    return null;
-  }
-
-  if (!credits.usable) {
-    if (credits.credits > 0 && credits.windowEnd != null) {
-      const pausedThrough = formatLongDate(
-        new Date(credits.windowEnd),
-        i18n.language
-      );
-      return (
-        <span
-          className={`${styles.identityUsage} ${styles.identityUsageWarning} ${styles.identityAiCredits}`}
-        >
-          {t('paused', { count: credits.credits, date: pausedThrough })}
-        </span>
-      );
-    }
-    return null;
-  }
-
-  const low = credits.credits <= LOW_CREDITS_THRESHOLD;
-  return (
-    <span
-      className={
-        low
-          ? `${styles.identityUsage} ${styles.identityUsageWarning} ${styles.identityAiCredits}`
-          : `${styles.identityUsage} ${styles.identityAiCredits}`
-      }
-    >
-      {credits.credits <= 0 ? t('zero') : t('left', { count: credits.credits })}
-      {low && (
-        <Link
-          to="/account"
-          onClick={() => track('credits_sidebar_link_clicked')}
-          className={styles.identityUsageUpgrade}
-        >
-          {t('buyShort')}
-        </Link>
-      )}
-    </span>
-  );
-}
 
 export interface SidebarLocals {
   patreon?: boolean;
@@ -135,7 +39,6 @@ interface SidebarProps {
   email: string | null | undefined;
   locals: SidebarLocals | undefined | null;
   features: SidebarFeatures | undefined | null;
-  onLogOut: (event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => void;
   onNavigate?: () => void;
   isOpen?: boolean;
   drawerId?: string;
@@ -270,7 +173,6 @@ export function Sidebar({
   email,
   locals,
   features,
-  onLogOut,
   onNavigate,
   isOpen = false,
   drawerId,
@@ -283,23 +185,14 @@ export function Sidebar({
   const logoSrc = getLogoSrc(collapsed, theme);
   const showAnkify =
     locals?.patreon === true || locals?.autoSyncActive === true;
-  const isLoggedIn = locals != null;
   const showFavorites = email != null && email !== '';
-  const paying = isPayingUser(locals);
-  const showPricing = !paying;
   const showKi = features?.kiUI === true;
   const showOps = features?.ops === true;
   const showAdminGroup = showKi || showOps;
-  const planLabel = getPlanLabel(locals);
-  const usage = useCardUsage(isLoggedIn && !paying);
-  const showUsage = usage != null && !usage.unlimited && !usage.loading;
 
-  const handleNavClick = (
-    handler?: React.MouseEventHandler<HTMLAnchorElement>
-  ): React.MouseEventHandler<HTMLAnchorElement> => {
-    return (event) => {
+  const handleNavClick = (): React.MouseEventHandler<HTMLAnchorElement> => {
+    return () => {
       onNavigate?.();
-      handler?.(event);
     };
   };
 
@@ -344,13 +237,52 @@ export function Sidebar({
               {t('nav.notionToAnki')}
             </SidebarRow>
             <SidebarRow
-              href="/templates"
+              href="/downloads"
+              pathname={pathname}
+              onClick={handleNavClick()}
+              icon={LayersIcon}
+            >
+              {t('nav.myDecks')}
+            </SidebarRow>
+            {showFavorites && (
+              <SidebarRow
+                href="/favorites"
+                pathname={pathname}
+                matchPrefix={false}
+                onClick={handleNavClick()}
+                icon={StarIcon}
+              >
+                {t('nav.favorites')}
+              </SidebarRow>
+            )}
+          </div>
+          <div className={styles.sidebarGroup}>
+            <p className={styles.sidebarGroupLabel}>{t('nav.moreTools')}</p>
+            <SidebarRow
+              href="/photo-to-deck"
               pathname={pathname}
               matchPrefix={false}
               onClick={handleNavClick()}
-              icon={SwatchIcon}
+              icon={CameraIcon}
             >
-              {t('nav.noteTypes')}
+              {t('nav.photoToDeck')}
+            </SidebarRow>
+            <SidebarRow
+              href="/image-occlusion"
+              pathname={pathname}
+              matchPrefix={false}
+              onClick={handleNavClick()}
+              icon={RectangleGroupIcon}
+            >
+              {t('nav.imageOcclusion')}
+            </SidebarRow>
+            <SidebarRow
+              href="/mindmaps"
+              pathname={pathname}
+              onClick={handleNavClick()}
+              icon={ShareIcon}
+            >
+              {t('nav.mindMaps')}
             </SidebarRow>
             <SidebarRow
               href="/print"
@@ -371,30 +303,13 @@ export function Sidebar({
               {t('nav.chat')}
             </SidebarRow>
             <SidebarRow
-              href="/mindmaps"
-              pathname={pathname}
-              onClick={handleNavClick()}
-              icon={ShareIcon}
-            >
-              {t('nav.mindMaps')}
-            </SidebarRow>
-            <SidebarRow
-              href="/image-occlusion"
+              href="/templates"
               pathname={pathname}
               matchPrefix={false}
               onClick={handleNavClick()}
-              icon={RectangleGroupIcon}
+              icon={SwatchIcon}
             >
-              {t('nav.imageOcclusion')}
-            </SidebarRow>
-            <SidebarRow
-              href="/photo-to-deck"
-              pathname={pathname}
-              matchPrefix={false}
-              onClick={handleNavClick()}
-              icon={CameraIcon}
-            >
-              {t('nav.photoToDeck')}
+              {t('nav.noteTypes')}
             </SidebarRow>
             <SidebarRow
               href="/import"
@@ -413,59 +328,6 @@ export function Sidebar({
                 icon={SparklesIcon}
               >
                 {t('nav.autoSync')}
-              </SidebarRow>
-            )}
-          </div>
-          <div className={styles.sidebarGroup}>
-            <p className={styles.sidebarGroupLabel}>{t('nav.library')}</p>
-            <SidebarRow
-              href="/downloads"
-              pathname={pathname}
-              onClick={handleNavClick()}
-              icon={LayersIcon}
-            >
-              {t('nav.myDecks')}
-            </SidebarRow>
-            {showFavorites && (
-              <SidebarRow
-                href="/favorites"
-                pathname={pathname}
-                matchPrefix={false}
-                onClick={handleNavClick()}
-                icon={StarIcon}
-              >
-                {t('nav.favorites')}
-              </SidebarRow>
-            )}
-            <SidebarRow
-              href="/card-options"
-              pathname={pathname}
-              matchPrefix={false}
-              onClick={handleNavClick()}
-              icon={SettingsIcon}
-            >
-              {t('nav.settings')}
-            </SidebarRow>
-          </div>
-          <div className={styles.sidebarGroup}>
-            <p className={styles.sidebarGroupLabel}>{t('nav.resources')}</p>
-            <SidebarRow
-              href="/documentation"
-              pathname={pathname}
-              onClick={handleNavClick()}
-              icon={BookOpenIcon}
-            >
-              {t('nav.docs')}
-            </SidebarRow>
-            {showPricing && (
-              <SidebarRow
-                href="/pricing"
-                pathname={pathname}
-                matchPrefix={false}
-                onClick={handleNavClick()}
-                icon={CreditCardIcon}
-              >
-                {t('nav.pricing')}
               </SidebarRow>
             )}
           </div>
@@ -491,75 +353,6 @@ export function Sidebar({
             </div>
           )}
         </nav>
-        <div className={styles.sidebarTheme}>
-          {collapsed ? <ThemeToggle /> : <ThemeSwitcher />}
-          <LanguagePicker />
-          {!collapsed && (
-            <Link
-              to="/whats-new"
-              onClick={handleNavClick()}
-              className={styles.whatsNewLink}
-            >
-              {t('nav.whatsNew')}
-            </Link>
-          )}
-        </div>
-        <div className={styles.sidebarSpacer} />
-        <div className={styles.identity}>
-          <span className={styles.identityEmail} title={email ?? undefined}>
-            {email ?? 'Account'}
-          </span>
-          <span className={styles.identityPlan}>{planLabel}</span>
-          {showUsage && usage && (
-            <CardUsageCounter
-              used={usage.cards_used}
-              limit={usage.cards_limit}
-            />
-          )}
-          <AiCreditsSidebarLine enabled={isLoggedIn} />
-        </div>
-        <div className={styles.sidebarGroup}>
-          <SidebarRow
-            href="/account"
-            pathname={pathname}
-            matchPrefix={false}
-            onClick={handleNavClick()}
-            icon={UserCircleIcon}
-          >
-            {t('nav.account')}
-          </SidebarRow>
-          <a
-            className={styles.sidebarRow}
-            href="/users/logout"
-            onClick={handleNavClick(onLogOut)}
-            title={t('nav.logout')}
-          >
-            <ArrowRightOnRectangleIcon width={20} height={20} />
-            <span className={styles.sidebarRowLabel}>{t('nav.logout')}</span>
-          </a>
-        </div>
-        <div className={styles.sidebarMore}>
-          <div className={styles.sidebarMoreLinks}>
-            <Link to="/contact" onClick={handleNavClick()}>
-              {t('nav.contact')}
-            </Link>
-            <Link
-              to="/documentation/misc/privacy-policy"
-              onClick={handleNavClick()}
-            >
-              {t('nav.privacy')}
-            </Link>
-            <Link
-              to="/documentation/misc/terms-of-service"
-              onClick={handleNavClick()}
-            >
-              {t('nav.terms')}
-            </Link>
-            <Link to="/about" onClick={handleNavClick()}>
-              {t('nav.about')}
-            </Link>
-          </div>
-        </div>
       </aside>
       <button
         type="button"

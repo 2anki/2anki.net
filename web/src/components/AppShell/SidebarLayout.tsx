@@ -1,7 +1,7 @@
 import React, { ReactNode, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sidebar, SidebarFeatures, SidebarLocals } from './Sidebar';
-import { MobileTopBar } from './MobileTopBar';
+import { TopBar } from './TopBar';
 import { SkeletonPage } from '../Skeleton/Skeleton';
 import { ErrorPresenter } from '../errors/ErrorPresenter';
 import { AccessBanner } from '../AccessBanner/AccessBanner';
@@ -46,7 +46,6 @@ export function SidebarLayout({
         email={email}
         locals={locals}
         features={features}
-        onLogOut={onLogOut}
         onNavigate={() => setIsDrawerOpen(false)}
         isOpen={isDrawerOpen}
         drawerId="app-sidebar-drawer"
@@ -60,10 +59,13 @@ export function SidebarLayout({
         onClick={() => setIsDrawerOpen(false)}
       />
       <div className={styles.main}>
-        <MobileTopBar
-          isOpen={isDrawerOpen}
-          onOpen={() => setIsDrawerOpen(true)}
-          onClose={() => setIsDrawerOpen(false)}
+        <TopBar
+          email={email}
+          locals={locals}
+          onLogOut={onLogOut}
+          isDrawerOpen={isDrawerOpen}
+          onOpenDrawer={() => setIsDrawerOpen(true)}
+          onCloseDrawer={() => setIsDrawerOpen(false)}
         />
         <AccessBanner
           passExpiresAt={locals?.passExpiresAt}

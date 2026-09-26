@@ -28,7 +28,15 @@
     "privacy": "プライバシー",
     "terms": "利用規約",
     "about": "概要",
-    "cardsThisMonth": "今月 {{limit}} 枚のカード"
+    "cardsThisMonth": "今月 {{limit}} 枚のカード",
+    "moreTools": "その他のツール",
+    "accountMenu": {
+      "open": "アカウントメニュー",
+      "cardsUnlimited": "カード無制限",
+      "upgrade": "アップグレード",
+      "manageSubscription": "サブスクリプションを管理",
+      "cardSettings": "カード設定"
+    }
   },
   "account": {
     "title": "アカウント",

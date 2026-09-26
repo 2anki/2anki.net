@@ -113,6 +113,8 @@ export const KNOWN_EVENTS = new Set([
   'credits_buy_clicked',
   'credits_purchase_completed',
   'credits_sidebar_link_clicked',
+  'account_menu_opened',
+  'upgrade_clicked',
   'anonymous_partial_notice_shown',
   'anonymous_partial_signup_clicked',
 ] as const);

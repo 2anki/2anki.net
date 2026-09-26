@@ -28,7 +28,15 @@
     "privacy": "Privacy",
     "terms": "Voorwaarden",
     "about": "Over ons",
-    "cardsThisMonth": "{{limit}} kaarten deze maand"
+    "cardsThisMonth": "{{limit}} kaarten deze maand",
+    "moreTools": "Meer tools",
+    "accountMenu": {
+      "open": "Accountmenu",
+      "cardsUnlimited": "Onbeperkt kaarten",
+      "upgrade": "Upgraden",
+      "manageSubscription": "Abonnement beheren",
+      "cardSettings": "Kaartinstellingen"
+    }
   },
   "account": {
     "title": "Account",

@@ -28,7 +28,15 @@
     "privacy": "Конфиденциальность",
     "terms": "Условия",
     "about": "О нас",
-    "cardsThisMonth": "{{limit}} карточек в этом месяце"
+    "cardsThisMonth": "{{limit}} карточек в этом месяце",
+    "moreTools": "Другие инструменты",
+    "accountMenu": {
+      "open": "Меню аккаунта",
+      "cardsUnlimited": "Карточки без ограничений",
+      "upgrade": "Улучшить план",
+      "manageSubscription": "Управлять подпиской",
+      "cardSettings": "Настройки карточек"
+    }
   },
   "account": {
     "title": "Аккаунт",
