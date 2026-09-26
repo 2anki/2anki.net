@@ -140,7 +140,7 @@ export function pickBalanceRing(
       kind: 'cards',
     };
   }
-  if (credits != null && credits.usable) {
+  if (credits?.usable) {
     const total =
       credits.allowance > 0
         ? credits.allowance
@@ -211,9 +211,8 @@ export function AccountMenu({
   const usage = useCardUsage(isLoggedIn && !paying);
   const credits = useAiCredits(isLoggedIn);
   const showUsage = usage != null && !usage.unlimited && !usage.loading;
-  const ring = usage?.loading
-    ? null
-    : pickBalanceRing(showUsage && usage ? usage : null, credits);
+  const usageForRing = showUsage && usage ? usage : null;
+  const ring = usage?.loading ? null : pickBalanceRing(usageForRing, credits);
   const ringDescription = describeRing(ring, t);
 
   const close = () => setOpen(false);
