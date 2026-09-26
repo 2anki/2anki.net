@@ -135,6 +135,21 @@ describe('AccountMenu balance ring', () => {
     ).toBeInTheDocument();
   });
 
+  it('sizes a pack without an allowance by what was bought', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      credits: 100,
+      used: 150,
+      allowance: 0,
+      usable: true,
+      windowEnd: '2026-12-01T00:00:00.000Z',
+      resets: 'pass',
+    });
+    renderMenu({ locals: { patreon: true } });
+    const ring = await screen.findByTestId('avatar-balance-ring');
+    expect(ring).toHaveAttribute('data-kind', 'aiCredits');
+    expect(ring).toHaveAttribute('data-fraction', '0.40');
+  });
+
   it('draws no ring for a lifetime user without AI credits', async () => {
     renderMenu({ locals: { patreon: true } });
     await new Promise((r) => setTimeout(r, 10));

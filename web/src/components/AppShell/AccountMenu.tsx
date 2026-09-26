@@ -211,7 +211,9 @@ export function AccountMenu({
   const usage = useCardUsage(isLoggedIn && !paying);
   const credits = useAiCredits(isLoggedIn);
   const showUsage = usage != null && !usage.unlimited && !usage.loading;
-  const ring = pickBalanceRing(showUsage && usage ? usage : null, credits);
+  const ring = usage?.loading
+    ? null
+    : pickBalanceRing(showUsage && usage ? usage : null, credits);
   const ringDescription = describeRing(ring, t);
 
   const close = () => setOpen(false);

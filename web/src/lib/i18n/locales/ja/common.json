@@ -36,7 +36,7 @@
       "upgrade": "アップグレード",
       "manageSubscription": "サブスクリプションを管理",
       "cardSettings": "カード設定",
-      "cardsLeft": "今月の残りカード {{remaining}} / {{limit}}"
+      "cardsLeft": "今月の残りカード {{remaining}} / {{limit}} 枚"
     }
   },
   "account": {
