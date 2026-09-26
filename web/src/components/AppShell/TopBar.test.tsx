@@ -55,7 +55,7 @@ describe('TopBar', () => {
       '/'
     );
     expect(
-      screen.getByRole('button', { name: 'Account menu' })
+      screen.getByRole('button', { name: /^Account menu/ })
     ).toBeInTheDocument();
   });
 
@@ -76,7 +76,7 @@ describe('TopBar', () => {
 
   it('passes the account through to the menu', () => {
     renderTopBar({ locals: { patreon: true } });
-    fireEvent.click(screen.getByRole('button', { name: 'Account menu' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Account menu/ }));
     expect(screen.getByText('reader@example.com')).toBeInTheDocument();
     expect(screen.getByText('Lifetime')).toBeInTheDocument();
   });

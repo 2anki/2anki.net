@@ -2,7 +2,10 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useCardUsage } from '../../lib/hooks/useCardUsage';
-import { useAiCredits } from '../../lib/hooks/useAiCredits';
+import {
+  useAiCredits,
+  type AiCreditsState,
+} from '../../lib/hooks/useAiCredits';
 import { useDialogFocus } from '../../lib/hooks/useDialogFocus';
 import { track } from '../../lib/analytics/track';
 import { formatLongDate } from '../../pages/AccountPage/utils/formatLongDate';
@@ -17,6 +20,20 @@ import styles from './AppShell.module.css';
 
 const NEAR_LIMIT_RATIO = 0.8;
 const LOW_CREDITS_THRESHOLD = 25;
+
+function describeRing(
+  ring: BalanceRing | null,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string | null {
+  if (ring == null) return null;
+  if (ring.kind === 'cards') {
+    return t('nav.accountMenu.cardsLeft', {
+      remaining: ring.remaining,
+      limit: ring.total,
+    });
+  }
+  return t('aicredits:left', { count: ring.remaining });
+}
 
 interface CardUsageLineProps {
   used: number;
@@ -43,9 +60,10 @@ function CardUsageLine({ used, limit }: Readonly<CardUsageLineProps>) {
   );
 }
 
-function AiCreditsLine({ enabled }: Readonly<{ enabled: boolean }>) {
+function AiCreditsLine({
+  credits,
+}: Readonly<{ credits: AiCreditsState | null }>) {
   const { t, i18n } = useTranslation('aicredits');
-  const credits = useAiCredits(enabled);
 
   if (credits == null) {
     return null;
@@ -96,6 +114,81 @@ function avatarInitial(email: string | null | undefined): string {
   return first ? first.toUpperCase() : '?';
 }
 
+const LOW_BALANCE_RATIO = 0.2;
+const RING_RADIUS = 17;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+export interface BalanceRing {
+  remaining: number;
+  total: number;
+  kind: 'cards' | 'aiCredits';
+}
+
+function clampFraction(remaining: number, total: number): number {
+  if (total <= 0) return 0;
+  return Math.min(1, Math.max(0, remaining / total));
+}
+
+export function pickBalanceRing(
+  usage: { cards_used: number; cards_limit: number } | null,
+  credits: AiCreditsState | null
+): BalanceRing | null {
+  if (usage != null && usage.cards_limit > 0) {
+    return {
+      remaining: Math.max(0, usage.cards_limit - usage.cards_used),
+      total: usage.cards_limit,
+      kind: 'cards',
+    };
+  }
+  if (credits != null && credits.usable) {
+    const total =
+      credits.allowance > 0
+        ? credits.allowance
+        : credits.used + credits.credits;
+    if (total > 0) {
+      return {
+        remaining: Math.max(0, credits.credits),
+        total,
+        kind: 'aiCredits',
+      };
+    }
+  }
+  return null;
+}
+
+function AvatarRing({ ring }: Readonly<{ ring: BalanceRing }>) {
+  const fraction = clampFraction(ring.remaining, ring.total);
+  const low = fraction <= LOW_BALANCE_RATIO;
+  return (
+    <svg
+      className={
+        low ? `${styles.avatarRing} ${styles.avatarRingLow}` : styles.avatarRing
+      }
+      viewBox="0 0 40 40"
+      aria-hidden="true"
+      data-testid="avatar-balance-ring"
+      data-kind={ring.kind}
+      data-fraction={fraction.toFixed(2)}
+      data-low={low ? 'true' : 'false'}
+    >
+      <circle
+        className={styles.avatarRingTrack}
+        cx="20"
+        cy="20"
+        r={RING_RADIUS}
+      />
+      <circle
+        className={styles.avatarRingValue}
+        cx="20"
+        cy="20"
+        r={RING_RADIUS}
+        strokeDasharray={RING_CIRCUMFERENCE}
+        strokeDashoffset={RING_CIRCUMFERENCE * (1 - fraction)}
+      />
+    </svg>
+  );
+}
+
 interface AccountMenuProps {
   email: string | null | undefined;
   locals: SidebarLocals | undefined | null;
@@ -116,11 +209,10 @@ export function AccountMenu({
   const paying = isPayingUser(locals);
   const planLabel = getPlanLabel(locals);
   const usage = useCardUsage(isLoggedIn && !paying);
+  const credits = useAiCredits(isLoggedIn);
   const showUsage = usage != null && !usage.unlimited && !usage.loading;
-  const nearLimit =
-    showUsage &&
-    usage != null &&
-    usage.cards_used >= usage.cards_limit * NEAR_LIMIT_RATIO;
+  const ring = pickBalanceRing(showUsage && usage ? usage : null, credits);
+  const ringDescription = describeRing(ring, t);
 
   const close = () => setOpen(false);
 
@@ -150,22 +242,21 @@ export function AccountMenu({
       <button
         type="button"
         className={styles.avatarButton}
-        aria-label={t('nav.accountMenu.open')}
+        aria-label={
+          ringDescription
+            ? `${t('nav.accountMenu.open')}. ${ringDescription}`
+            : t('nav.accountMenu.open')
+        }
+        title={ringDescription ?? undefined}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={toggle}
       >
+        {ring && <AvatarRing ring={ring} />}
         <span className={styles.avatarInitial} aria-hidden="true">
           {avatarInitial(email)}
         </span>
-        {nearLimit && (
-          <span
-            className={styles.avatarBadge}
-            data-testid="avatar-usage-badge"
-            aria-hidden="true"
-          />
-        )}
       </button>
       {open && (
         <dialog
@@ -198,7 +289,7 @@ export function AccountMenu({
                 {t('nav.accountMenu.cardsUnlimited')}
               </span>
             )}
-            <AiCreditsLine enabled={isLoggedIn} />
+            <AiCreditsLine credits={credits} />
             {!paying && (
               <Link
                 to="/pricing?from=avatar"

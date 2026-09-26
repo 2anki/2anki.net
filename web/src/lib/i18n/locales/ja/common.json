@@ -35,7 +35,8 @@
       "cardsUnlimited": "カード無制限",
       "upgrade": "アップグレード",
       "manageSubscription": "サブスクリプションを管理",
-      "cardSettings": "カード設定"
+      "cardSettings": "カード設定",
+      "cardsLeft": "今月の残りカード {{remaining}} / {{limit}}"
     }
   },
   "account": {

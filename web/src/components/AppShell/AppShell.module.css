@@ -416,15 +416,33 @@
   line-height: 1;
 }
 
-.avatarBadge {
+.avatarRing {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--color-warning);
-  border: 2px solid var(--color-bg-primary);
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.avatarRingTrack,
+.avatarRingValue {
+  fill: none;
+  stroke-width: 2.5;
+}
+
+.avatarRingTrack {
+  stroke: var(--color-border);
+}
+
+.avatarRingValue {
+  stroke: var(--color-primary);
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--transition-fast);
+}
+
+.avatarRingLow .avatarRingValue {
+  stroke: var(--color-warning);
 }
 
 .accountPanel {

@@ -35,7 +35,8 @@
       "cardsUnlimited": "Onbeperkt aantal kaarten",
       "upgrade": "Upgraden",
       "manageSubscription": "Abonnement beheren",
-      "cardSettings": "Kaartinstellingen"
+      "cardSettings": "Kaartinstellingen",
+      "cardsLeft": "{{remaining}} / {{limit}} kaarten over deze maand"
     }
   },
   "account": {

@@ -35,7 +35,8 @@
       "cardsUnlimited": "Карточки без ограничений",
       "upgrade": "Улучшить план",
       "manageSubscription": "Управлять подпиской",
-      "cardSettings": "Настройки карточек"
+      "cardSettings": "Настройки карточек",
+      "cardsLeft": "Осталось {{remaining}} / {{limit}} карточек в этом месяце"
     }
   },
   "account": {

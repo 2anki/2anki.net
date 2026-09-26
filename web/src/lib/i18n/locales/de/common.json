@@ -35,7 +35,8 @@
       "cardsUnlimited": "Unbegrenzte Karten",
       "upgrade": "Upgrade",
       "manageSubscription": "Abo verwalten",
-      "cardSettings": "Karteneinstellungen"
+      "cardSettings": "Karteneinstellungen",
+      "cardsLeft": "{{remaining}} / {{limit}} Karten übrig diesen Monat"
     }
   },
   "account": {

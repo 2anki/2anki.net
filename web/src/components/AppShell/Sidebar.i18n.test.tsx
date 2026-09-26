@@ -81,7 +81,9 @@ describe('Sidebar in German', () => {
 
     expect(deCommon.nav.accountMenu.open).not.toBe('Account menu');
     fireEvent.click(
-      screen.getByRole('button', { name: deCommon.nav.accountMenu.open })
+      screen.getByRole('button', {
+        name: new RegExp(`^${deCommon.nav.accountMenu.open}`),
+      })
     );
     const suffix = deCommon.nav.cardsThisMonth.replace('{{limit}}', '100');
     expect(await screen.findByText(`/ ${suffix}`)).toBeInTheDocument();
