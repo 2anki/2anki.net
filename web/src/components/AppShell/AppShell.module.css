@@ -429,10 +429,14 @@
 
 .accountPanel {
   position: absolute;
+  inset: auto;
   top: calc(100% + 0.5rem);
   right: 0;
+  margin: 0;
   z-index: 50;
   width: 280px;
+  height: auto;
+  color: inherit;
   max-height: calc(100vh - 72px);
   overflow-y: auto;
   padding: 0.5rem;

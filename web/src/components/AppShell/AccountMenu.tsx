@@ -110,7 +110,7 @@ export function AccountMenu({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDialogElement>(null);
   const panelId = useId();
   const isLoggedIn = locals != null;
   const paying = isPayingUser(locals);
@@ -168,10 +168,10 @@ export function AccountMenu({
         )}
       </button>
       {open && (
-        <div
+        <dialog
+          open
           id={panelId}
           ref={panelRef}
-          role="dialog"
           aria-label={t('nav.accountMenu.open')}
           tabIndex={-1}
           className={styles.accountPanel}
@@ -278,7 +278,7 @@ export function AccountMenu({
               {t('nav.logout')}
             </a>
           </div>
-        </div>
+        </dialog>
       )}
     </div>
   );
