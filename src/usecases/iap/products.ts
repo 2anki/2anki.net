@@ -1,4 +1,8 @@
 import type { PassKind } from '../../data_layer/UserPassRepository';
+import {
+  CREDIT_PACK_CREDITS,
+  CREDIT_PACK_EXPIRY_DAYS,
+} from '../checkout/creditPack';
 
 export interface ConsumableProduct {
   kind: 'consumable';
@@ -15,7 +19,18 @@ export interface SubscriptionProduct {
   successMessage: string;
 }
 
-export type AppleProduct = ConsumableProduct | SubscriptionProduct;
+export interface CreditsProduct {
+  kind: 'credits';
+  productId: string;
+  credits: number;
+  expiryDays: number;
+  successMessage: string;
+}
+
+export type AppleProduct =
+  | ConsumableProduct
+  | SubscriptionProduct
+  | CreditsProduct;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -48,6 +63,15 @@ export const APPLE_PRODUCTS: Record<string, AppleProduct> = {
     passKind: 'unlimited',
     successMessage:
       'Pro active — no card limit, PDF uploads, and several conversions at once',
+  },
+  // Mirrors the $5 web pack sold through Stripe Checkout: same credits, same
+  // 90-day expiry, same grant ledger.
+  'aicredits.250': {
+    kind: 'credits',
+    productId: 'aicredits.250',
+    credits: CREDIT_PACK_CREDITS,
+    expiryDays: CREDIT_PACK_EXPIRY_DAYS,
+    successMessage: `${CREDIT_PACK_CREDITS} AI credits added — they last ${CREDIT_PACK_EXPIRY_DAYS} days`,
   },
 };
 

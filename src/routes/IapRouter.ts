@@ -5,6 +5,7 @@ import RequireAllowedOrigin from './middleware/RequireAllowedOrigin';
 import { getDatabase } from '../data_layer';
 import UserPassRepository from '../data_layer/UserPassRepository';
 import AppleTransactionsRepository from '../data_layer/AppleTransactionsRepository';
+import AiCreditGrantsRepository from '../data_layer/AiCreditGrantsRepository';
 import { RedeemAppleTransactionUseCase } from '../usecases/iap/RedeemAppleTransactionUseCase';
 import {
   createAppleStoreKitService,
@@ -17,6 +18,7 @@ const IapRouter = () => {
   const database = getDatabase();
   const userPassRepository = new UserPassRepository(database);
   const appleTransactions = new AppleTransactionsRepository(database);
+  const creditGrants = new AiCreditGrantsRepository(database);
 
   let appleService: IAppleStoreKitService | null = null;
   const getAppleService = () => {
@@ -69,7 +71,8 @@ const IapRouter = () => {
         const useCase = new RedeemAppleTransactionUseCase(
           getAppleService(),
           userPassRepository,
-          appleTransactions
+          appleTransactions,
+          creditGrants
         );
         const controller = new IapController(useCase);
         await controller.redeem(req, res);

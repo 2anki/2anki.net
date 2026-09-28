@@ -64,6 +64,43 @@ describe('IapController', () => {
     });
   });
 
+  it('returns the credits block and untouched pass locals for a credit pack', async () => {
+    const expiresAt = new Date('2026-08-30T00:00:00.000Z');
+    const execute = jest.fn().mockResolvedValue({
+      message: '250 AI credits added — they last 90 days',
+      credits: { amount: 250, expiresAt },
+    });
+    const controller = controllerWith(execute);
+    const res = makeRes();
+    res.locals.subscriber = true;
+    res.locals.passExpiresAt = '2026-07-01T00:00:00.000Z';
+    res.locals.passKind = '120d';
+
+    await controller.redeem(
+      makeReq({ jws: 'signed', product_id: 'aicredits.250' }),
+      res
+    );
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      ok: true,
+      message: '250 AI credits added — they last 90 days',
+      locals: {
+        owner: 42,
+        patreon: false,
+        subscriber: true,
+        subscriptionInfo: {
+          active: false,
+          email: 'a@b.test',
+          linked_email: '',
+        },
+        passExpiresAt: '2026-07-01T00:00:00.000Z',
+        passKind: '120d',
+      },
+      credits: { amount: 250, expiresAt: expiresAt.toISOString() },
+    });
+  });
+
   it('returns 400 without calling the use case when the jws is missing', async () => {
     const execute = jest.fn();
     const controller = controllerWith(execute);
