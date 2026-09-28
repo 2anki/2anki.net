@@ -793,7 +793,9 @@
       "groupClozeHeading": "Cloze-Lücken pro Toggle gruppieren",
       "groupClozeHelp": "Wenn ein Notion-Toggle mehrere ::-Lücken enthält, packe sie alle auf eine Karte und decke sie zusammen auf. Standardmäßig aus — jedes :: erzeugt eine eigene Karte.",
       "inlineCodeHeading": "Inline-Code-Toggles werden zu Cloze",
-      "inlineCodeHelp": "Wenn der Inhalt eines Toggles Inline-Code enthält, verdecke den Code als Cloze und nutze die Toggle-Überschrift als Hinweis. Funktioniert nur, wenn Cloze-Löschung aktiv ist."
+      "inlineCodeHelp": "Wenn der Inhalt eines Toggles Inline-Code enthält, verdecke den Code als Cloze und nutze die Toggle-Überschrift als Hinweis. Funktioniert nur, wenn Cloze-Löschung aktiv ist.",
+      "nestedClozeHeading": "Verschachtelte Toggles mit Inline-Code werden eigene Karten",
+      "nestedClozeHelp": "Wenn ein Toggle innerhalb eines anderen Toggles Inline-Code im Titel hat, wird er zu einer eigenen Cloze-Karte, und sein Titel erscheint als fetter Text auf der übergeordneten Karte. Funktioniert nur, wenn Cloze-Löschung aktiv ist."
     },
     "audio": {
       "heading": "Audio",

@@ -41,6 +41,10 @@
       "label": "Les bascules de code en ligne deviennent des cloze",
       "description": "Quand le contenu d'une bascule contient du code en ligne, masque le code comme un cloze et utilise l'en-tête de la bascule comme indice. Fonctionne uniquement quand les cartes Cloze sont activées."
     },
+    "promote-nested-cloze": {
+      "label": "Les bascules imbriquées avec du code en ligne deviennent leurs propres cartes",
+      "description": "Quand une bascule imbriquée dans une autre contient du code en ligne dans son titre, elle devient sa propre carte cloze et son titre apparaît en gras sur la carte parente. Fonctionne uniquement quand le Cloze est activé."
+    },
     "group-cloze-per-toggle": {
       "label": "Grouper les trous de cloze par bascule",
       "description": "Quand une bascule Notion contient plusieurs trous ::, mets-les tous sur une seule carte et révèle-les ensemble. Désactivé par défaut — chaque :: crée sa propre carte."

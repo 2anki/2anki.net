@@ -1732,7 +1732,12 @@ export class DeckParser {
               }
             });
 
-            const nestedDetailsHTML = `<details style="margin-left: 20px; margin-bottom: 10px;">
+            const nestedId = $nestedDetails.attr('id') ?? $nestedUl.attr('id');
+            const idAttr =
+              nestedId && DeckParser.NOTION_BLOCK_ID_PATTERN.test(nestedId)
+                ? ` id="${nestedId}"`
+                : '';
+            const nestedDetailsHTML = `<details${idAttr} style="margin-left: 20px; margin-bottom: 10px;">
               <summary>${summaryHTML}</summary>
               ${contentHTML}
             </details>`;
@@ -1865,6 +1870,7 @@ export class DeckParser {
     const cards: Note[] = [];
     let mcqCount = 0;
     let mcqSkippedCount = 0;
+    let promotedCount = 0;
     const pageId = dom('article').attr('id');
 
     const sectionTagOwners =
@@ -1909,6 +1915,13 @@ export class DeckParser {
             ? `<div class='${parentClass}'>${validSummary}</div>`
             : validSummary;
           if (toggle || this.settings.maxOne) {
+            const promoted = this.promoteNestedClozeToggles(
+              toggle,
+              dom,
+              parentClass,
+              isNewFormat
+            );
+            promotedCount += promoted.length;
             const toggleHTML = toggle.html();
             if (toggleHTML) {
               const toggleEl = toggle.get(0);
@@ -1932,10 +1945,7 @@ export class DeckParser {
                 note.sourcePageId = pageId;
                 note.sectionTags = sectionTags;
                 mcqCount++;
-                if (
-                  (this.settings.isAvocado && this.noteHasAvocado(note)) ||
-                  (this.settings.isCherry && !this.noteHasCherry(note))
-                ) {
+                if (this.dropsByMatchingRules(note)) {
                   console.debug('dropping due to matching rules');
                 } else {
                   cards.push(note);
@@ -1958,22 +1968,7 @@ export class DeckParser {
                 }
               }
 
-              const backSide = (() => {
-                let mangleBackSide = b;
-                if (this.settings.maxOne) {
-                  mangleBackSide = isNewFormat
-                    ? this.removeNestedTogglesNewFormat(b)
-                    : this.removeNestedTogglesLegacy(b);
-                }
-                mangleBackSide = mangleBackSide.replaceAll(
-                  '<summary class="toggle"></summary>',
-                  ''
-                );
-                if (this.settings.perserveNewLines) {
-                  mangleBackSide = replaceAll(mangleBackSide, '\n', '<br />');
-                }
-                return mangleBackSide;
-              })();
+              const backSide = this.buildToggleBackSide(b, isNewFormat);
               const note = new Note(front || '', backSide);
               note.notionId = this.resolveToggleBlockId(parentUL);
               note.sourcePageId = pageId;
@@ -1984,20 +1979,119 @@ export class DeckParser {
                   note.back += link;
                 }
               }
-              if (
-                (this.settings.isAvocado && this.noteHasAvocado(note)) ||
-                (this.settings.isCherry && !this.noteHasCherry(note))
-              ) {
+              if (this.dropsByMatchingRules(note)) {
                 console.debug('dropping due to matching rules');
               } else {
                 cards.push(note);
+              }
+              for (const child of promoted) {
+                child.sourcePageId = pageId;
+                child.sectionTags = sectionTags;
+                if (!this.dropsByMatchingRules(child)) {
+                  cards.push(child);
+                }
               }
             }
           }
         }
       }
     });
+    if (promotedCount > 0) {
+      console.info('[nested-cloze] promoted nested toggles to cloze cards', {
+        count: promotedCount,
+      });
+    }
     return { cards, mcqCount, mcqSkippedCount };
+  }
+
+  private dropsByMatchingRules(note: Note): boolean {
+    return (
+      (this.settings.isAvocado && this.noteHasAvocado(note)) ||
+      (this.settings.isCherry && !this.noteHasCherry(note))
+    );
+  }
+
+  private buildToggleBackSide(body: string, isNewFormat: boolean): string {
+    let back = body;
+    if (this.settings.maxOne) {
+      back = isNewFormat
+        ? this.removeNestedTogglesNewFormat(body)
+        : this.removeNestedTogglesLegacy(body);
+    }
+    back = back.replaceAll('<summary class="toggle"></summary>', '');
+    if (this.settings.perserveNewLines) {
+      back = replaceAll(back, '\n', '<br />');
+    }
+    return back;
+  }
+
+  // A nested toggle whose title carries the inline-code cloze marker is a
+  // cloze card the author wrote, not answer text for the parent. Opt-in
+  // (promote-nested-cloze) because the #3515 contract keeps every nested fact
+  // folded into the parent back, and a real export with this exact shape
+  // wanted that. Fronts are captured before the markers are unwrapped, so the
+  // parent back, built from the same DOM afterwards, shows the fact in bold
+  // with no code box.
+  private promoteNestedClozeToggles(
+    toggle: cheerio.Cheerio<Element>,
+    dom: cheerio.CheerioAPI,
+    parentClass: string,
+    isNewFormat: boolean
+  ): Note[] {
+    if (
+      !this.settings.isCloze ||
+      !this.settings.promoteNestedCloze ||
+      this.settings.isCherry
+    ) {
+      return [];
+    }
+    const captured = toggle
+      .find('details')
+      .toArray()
+      .map((el) => {
+        const $details = dom(el);
+        const $summary = $details.children('summary').first();
+        return { $details, $summary, summaryHTML: $summary.html() ?? '' };
+      })
+      .filter(({ summaryHTML }) => hasInlineClozeCode(summaryHTML))
+      .map(({ $details, $summary, summaryHTML }) => ({
+        $details,
+        $summary,
+        front: preserveNewlinesIfApplicable(summaryHTML, this.settings),
+        notionId: this.resolveNestedToggleBlockId($details),
+      }));
+    for (const { $summary } of captured) {
+      $summary.find('code').each((_, code) => {
+        const $code = dom(code);
+        if ($code.parents('pre').length > 0) return;
+        $code.replaceWith(`<b>${$code.html() ?? ''}</b>`);
+      });
+    }
+    return captured.map(({ $details, $summary, front, notionId }) => {
+      const body = ($details.html() ?? '').replace($summary.toString(), '');
+      const note = new Note(
+        parentClass ? `<div class='${parentClass}'>${front}</div>` : front,
+        this.buildToggleBackSide(body, isNewFormat)
+      );
+      note.notionId = notionId;
+      return note;
+    });
+  }
+
+  // The block UUID sits either on the nested <details> itself (the bare
+  // details.toggle export and the max-one rebuild) or on its own wrapping
+  // ul.toggle (the display:contents export). Only the nested toggle's own
+  // wrapper counts, never an ancestor's, or the child would inherit the
+  // parent's identity and overwrite it in Anki.
+  private resolveNestedToggleBlockId(
+    $details: cheerio.Cheerio<Element>
+  ): string | undefined {
+    const $li = $details.parent();
+    const wrapperId = $li.is('li')
+      ? $li.parent().filter('ul.toggle').attr('id')
+      : undefined;
+    const id = $details.attr('id') ?? wrapperId;
+    return id && DeckParser.NOTION_BLOCK_ID_PATTERN.test(id) ? id : undefined;
   }
 
   private unclassifiedCardSurvives(note: Note): boolean {

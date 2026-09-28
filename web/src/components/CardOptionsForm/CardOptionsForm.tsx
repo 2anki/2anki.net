@@ -222,6 +222,7 @@ const HIDDEN_KEYS = [
   'vertex-ai-pdf-questions',
   'remove-mp3-links',
   'cloze-from-toggle-content',
+  'promote-nested-cloze',
   'group-cloze-per-toggle',
   'remove-deck-name-numbering',
   'split-sections-into-decks',
@@ -1537,6 +1538,20 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                   enabled={checkboxValues['cloze'] ?? true}
                   onChange={(checked) =>
                     toggleCheckbox('cloze-from-toggle-content', checked)
+                  }
+                />
+              )}
+              {isCardTypesGroup && (
+                <GatedToggleRow
+                  id="promote-nested-cloze"
+                  heading={t('cardOptions.gated.nestedClozeHeading')}
+                  label={t('cardOptions.gated.nestedClozeHeading')}
+                  helperText={t('cardOptions.gated.nestedClozeHelp')}
+                  prerequisiteHelperText={t('cardOptions.prereq.cloze')}
+                  checked={checkboxValues['promote-nested-cloze'] ?? false}
+                  enabled={checkboxValues['cloze'] ?? true}
+                  onChange={(checked) =>
+                    toggleCheckbox('promote-nested-cloze', checked)
                   }
                 />
               )}

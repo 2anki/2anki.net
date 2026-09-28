@@ -793,7 +793,9 @@
       "groupClozeHeading": "Agrupar lacunas cloze por toggle",
       "groupClozeHelp": "Quando um único toggle do Notion tem várias lacunas ::, coloque todas em um só cartão e revele-as juntas. Desligado por padrão — cada :: cria seu próprio cartão.",
       "inlineCodeHeading": "Código inline em toggles vira cloze",
-      "inlineCodeHelp": "Quando o conteúdo de um toggle contém código inline, esconda o código como cloze e use o cabeçalho do toggle como dica. Funciona apenas quando a omissão cloze está ligada."
+      "inlineCodeHelp": "Quando o conteúdo de um toggle contém código inline, esconda o código como cloze e use o cabeçalho do toggle como dica. Funciona apenas quando a omissão cloze está ligada.",
+      "nestedClozeHeading": "Toggles aninhados com código inline viram cartões próprios",
+      "nestedClozeHelp": "Quando um toggle aninhado dentro de outro tem código inline no título, ele vira um cartão cloze próprio e o título aparece em negrito no cartão principal. Funciona apenas quando a omissão cloze está ligada."
     },
     "audio": {
       "heading": "Áudio",
