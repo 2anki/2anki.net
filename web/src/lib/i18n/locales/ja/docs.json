@@ -1,0 +1,38 @@
+{
+  "search": {
+    "trigger": "ドキュメントを検索",
+    "dialogLabel": "ドキュメントを検索",
+    "close": "検索を閉じる",
+    "placeholder": "ドキュメントを検索",
+    "resultsLabel": "検索結果",
+    "hint": "{{total}} 件のドキュメントを検索",
+    "noMatch": "<q>{{query}}</q> に一致するドキュメントはありません",
+    "checkSpelling": "スペルを確認するか、<browse>すべてのドキュメントを見る</browse>。"
+  },
+  "content": {
+    "notFoundTitle": "見つかりません",
+    "notFoundBody": "お探しのページは存在しません。<back>ドキュメントに戻る</back>。",
+    "editOnGitHub": "このページを GitHub で編集 →",
+    "pagerLabel": "ページ送り",
+    "previous": "前へ",
+    "next": "次へ"
+  },
+  "code": {
+    "copy": "コピー",
+    "copied": "コピーしました",
+    "copyAria": "コードをクリップボードにコピー"
+  },
+  "wip": "このドキュメントは AI の助けを借りて書き直しています。おかしいところがあれば、<issue>Issue を開いてください</issue>。すべて目を通しています。",
+  "sidebar": {
+    "label": "ドキュメント"
+  },
+  "home": {
+    "title": "2anki ドキュメント",
+    "tagline": "学んでいる内容を Anki カードに変える、最もシンプルな方法。",
+    "connectCta": "5 分で Notion を接続 →",
+    "uploadCta": "ファイルをアップロード",
+    "startHere": "ここから始める",
+    "popular": "人気のページ",
+    "footer": "困ったときは <email>support@2anki.net</email> にメールするか、<issue>GitHub で Issue を開いてください</issue>。"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "search": {
+    "trigger": "Docs doorzoeken",
+    "dialogLabel": "Documentatie doorzoeken",
+    "close": "Zoeken sluiten",
+    "placeholder": "Docs doorzoeken",
+    "resultsLabel": "Zoekresultaten",
+    "hint": "{{total}} docs doorzoeken",
+    "noMatch": "Geen docs komen overeen met <q>{{query}}</q>",
+    "checkSpelling": "Controleer de spelling of <browse>blader door alle docs</browse>."
+  },
+  "content": {
+    "notFoundTitle": "Niet gevonden",
+    "notFoundBody": "De pagina die je zoekt bestaat niet. <back>Terug naar de documentatie</back>.",
+    "editOnGitHub": "Deze pagina bewerken op GitHub →",
+    "pagerLabel": "Paginering",
+    "previous": "Vorige",
+    "next": "Volgende"
+  },
+  "code": {
+    "copy": "Kopiëren",
+    "copied": "Gekopieerd",
+    "copyAria": "Code naar klembord kopiëren"
+  },
+  "wip": "Deze docs worden herschreven met hulp van AI. Als er iets niet klopt, <issue>open een issue</issue> — we lezen ze allemaal.",
+  "sidebar": {
+    "label": "Documentatie"
+  },
+  "home": {
+    "title": "2anki-documentatie",
+    "tagline": "De eenvoudigste manier om wat je leert om te zetten in Anki-kaarten.",
+    "connectCta": "Verbind Notion in 5 min →",
+    "uploadCta": "Een bestand uploaden",
+    "startHere": "Begin hier",
+    "popular": "Populaire pagina's",
+    "footer": "Vastgelopen? Mail <email>support@2anki.net</email> of <issue>open een issue op GitHub</issue>."
+  }
+}

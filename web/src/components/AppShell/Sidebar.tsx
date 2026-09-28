@@ -98,6 +98,7 @@ function OpsSidebarFolder({
   collapsed,
   onNavigate,
 }: Readonly<OpsSidebarFolderProps>) {
+  const { t } = useTranslation();
   const opsActive = pathname === '/ops' || pathname.startsWith('/ops/');
   const [open, setOpen] = useState(opsActive);
   const expanded = open || opsActive;
@@ -143,7 +144,7 @@ function OpsSidebarFolder({
         <div
           id="ops-folder-items"
           role="group"
-          aria-label="Ops"
+          aria-label={t('chrome:nav.ops')}
           className={styles.sidebarFolderItems}
         >
           {OPS_TABS.map((tab) => (
@@ -360,7 +361,11 @@ export function Sidebar({
         className={`${styles.collapseRail} ${
           collapsed ? styles.collapseRailCollapsed : ''
         }`}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-label={
+          collapsed
+            ? t('chrome:nav.expandSidebar')
+            : t('chrome:nav.collapseSidebar')
+        }
         aria-expanded={!collapsed}
       >
         <span className={styles.collapseRailLine} aria-hidden="true" />

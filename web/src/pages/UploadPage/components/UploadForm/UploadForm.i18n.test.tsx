@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 
 import i18n from '../../../../lib/i18n';
+import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
+import { useCardUsage } from '../../../../lib/hooks/useCardUsage';
 import UploadForm from './UploadForm';
 
 vi.mock('../../../../lib/analytics/track', () => ({
@@ -80,5 +82,57 @@ describe('UploadForm dropzone in German', () => {
         'Wähle eine Datei aus deiner Dropbox, um sie in einen Stapel zu konvertieren'
       )
     ).toBeInTheDocument();
+  });
+});
+
+describe('UploadForm card-limit wall in German', () => {
+  beforeEach(async () => {
+    vi.mocked(useUserLocals).mockReturnValue({
+      data: { user: { id: 42, patreon: false } },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    vi.mocked(useCardUsage).mockReturnValue({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+    await i18n.changeLanguage('de');
+  });
+
+  afterEach(async () => {
+    vi.mocked(useUserLocals).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    vi.mocked(useCardUsage).mockReturnValue(null);
+    await i18n.changeLanguage('en');
+  });
+
+  it('translates the locked-state title and drops the English literal', () => {
+    renderUploadForm();
+    expect(
+      screen.getByText('Du hast diesen Monat alle 100 Karten genutzt')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/You've used all/i)).not.toBeInTheDocument();
+  });
+
+  it('translates the Day Pass and See plans actions in the locked wall', () => {
+    renderUploadForm();
+    expect(
+      screen.getByRole('button', { name: /Day Pass holen/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Tarife ansehen' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'See plans' })
+    ).not.toBeInTheDocument();
   });
 });

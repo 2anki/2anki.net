@@ -1,5 +1,8 @@
 {
   "nav": {
+    "ops": "Ops",
+    "expandSidebar": "Rozwiń pasek boczny",
+    "collapseSidebar": "Zwiń pasek boczny",
     "mainNavigation": "nawigacja główna",
     "menu": "menu",
     "logoAlt": "Logo 2anki",

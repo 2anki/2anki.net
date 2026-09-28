@@ -1,4 +1,5 @@
 import { HTMLAttributes, ReactNode, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import styles from './DocsPage.module.css';
 
 type PreProps = HTMLAttributes<HTMLPreElement> & { children?: ReactNode };
@@ -17,6 +18,7 @@ function getTextContent(node: ReactNode): string {
 }
 
 export function CodeBlock({ children, ...rest }: Readonly<PreProps>) {
+  const { t } = useTranslation('docs');
   const [copied, setCopied] = useState(false);
 
   const onCopy = async () => {
@@ -37,9 +39,9 @@ export function CodeBlock({ children, ...rest }: Readonly<PreProps>) {
         type="button"
         className={styles.copyButton}
         onClick={onCopy}
-        aria-label="Copy code to clipboard"
+        aria-label={t('code.copyAria')}
       >
-        {copied ? 'Copied' : 'Copy'}
+        {copied ? t('code.copied') : t('code.copy')}
       </button>
       <pre {...rest}>{children}</pre>
     </div>

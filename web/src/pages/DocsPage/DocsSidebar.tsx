@@ -18,7 +18,7 @@ export function DocsSidebar({
   isDrawer,
   activeSlug,
 }: Readonly<DocsSidebarProps>) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation('docs');
   const language = i18n.resolvedLanguage ?? i18n.language;
   const activeGroupLabel = activeSlug
     ? findGroupForSlug(activeSlug)?.label
@@ -31,7 +31,7 @@ export function DocsSidebar({
   return (
     <nav
       className={`${styles.sidebar} ${isDrawer ? styles.sidebarDrawer : ''}`}
-      aria-label="Documentation"
+      aria-label={t('sidebar.label')}
     >
       {onSearch && <DocsSearchTrigger onOpen={onSearch} />}
       {sidebar.map((group) => {

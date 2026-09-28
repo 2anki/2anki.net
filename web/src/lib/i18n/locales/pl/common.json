@@ -142,6 +142,19 @@
     }
   },
   "upload": {
+    "limit": {
+      "fileTooBig": "Ten plik przekracza limit {{limit}}",
+      "allCardsUsed": "Wykorzystałeś wszystkie {{limit}} kart w tym miesiącu",
+      "overFreeLimit": "Ta konwersja przekracza twój darmowy limit {{limit}} kart miesięcznie",
+      "descFileAnon": "Pliki większe niż 100 MB wymagają płatnego planu. Podziel plik i spróbuj ponownie albo utwórz konto i przejdź na wyższy plan, aby przesyłać pliki do około 10 GB.",
+      "descFileUser": "Podziel plik albo przejdź na wyższy plan, aby przesyłać pliki do około 10 GB.",
+      "descCardsAnon": "Utwórz darmowe konto, aby zacząć konwertować, albo przejdź na wyższy plan bez miesięcznego limitu.",
+      "descCardsUser": "Przejdź na wyższy plan bez miesięcznego limitu albo poczekaj do następnego miesiąca.",
+      "usage": "{{used}} / {{limit}} kart · resetuje się {{resetsOn}}, gdy wracają twoje darmowe karty",
+      "startingCheckout": "Rozpoczynanie płatności",
+      "getDayPass": "Kup Day Pass — {{price}}",
+      "seePlans": "Zobacz plany"
+    },
     "dropzone": {
       "dropActive": "Upuść tutaj",
       "dropIdle": "Upuść pliki tutaj",

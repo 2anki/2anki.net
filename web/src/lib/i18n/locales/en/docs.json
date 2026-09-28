@@ -1,0 +1,38 @@
+{
+  "search": {
+    "trigger": "Search docs",
+    "dialogLabel": "Search documentation",
+    "close": "Close search",
+    "placeholder": "Search the docs",
+    "resultsLabel": "Search results",
+    "hint": "Search {{total}} docs",
+    "noMatch": "No docs match <q>{{query}}</q>",
+    "checkSpelling": "Check the spelling, or <browse>browse all docs</browse>."
+  },
+  "content": {
+    "notFoundTitle": "Not found",
+    "notFoundBody": "The page you are looking for does not exist. <back>Back to documentation</back>.",
+    "editOnGitHub": "Edit this page on GitHub →",
+    "pagerLabel": "Pager",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "code": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyAria": "Copy code to clipboard"
+  },
+  "wip": "These docs are being rewritten with help from AI. If something looks wrong, <issue>open an issue</issue> — we read every one.",
+  "sidebar": {
+    "label": "Documentation"
+  },
+  "home": {
+    "title": "2anki documentation",
+    "tagline": "The simplest way to turn what you're studying into Anki cards.",
+    "connectCta": "Connect Notion in 5 min →",
+    "uploadCta": "Upload a file",
+    "startHere": "Start here",
+    "popular": "Popular pages",
+    "footer": "Stuck? Email <email>support@2anki.net</email> or <issue>open an issue on GitHub</issue>."
+  }
+}

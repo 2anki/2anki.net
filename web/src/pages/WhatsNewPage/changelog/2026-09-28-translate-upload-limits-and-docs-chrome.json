@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-28-translate-upload-limits-and-docs-chrome",
+  "date": "2026-09-28",
+  "type": "fix",
+  "title": "Upload limit messages and the docs interface now follow your chosen language"
+}

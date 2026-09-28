@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   docCount,
   popularResults,
@@ -38,6 +39,7 @@ function Highlighted({
 }
 
 export function DocsSearch({ isOpen, onClose }: Readonly<DocsSearchProps>) {
+  const { t } = useTranslation('docs');
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
@@ -120,13 +122,13 @@ export function DocsSearch({ isOpen, onClose }: Readonly<DocsSearchProps>) {
       className={styles.searchOverlay}
       role="dialog"
       aria-modal="true"
-      aria-label="Search documentation"
+      aria-label={t('search.dialogLabel')}
     >
       <button
         type="button"
         className={styles.searchBackdrop}
         onClick={onClose}
-        aria-label="Close search"
+        aria-label={t('search.close')}
       />
       <div className={styles.searchModal}>
         <div className={styles.searchInputRow}>
@@ -138,8 +140,8 @@ export function DocsSearch({ isOpen, onClose }: Readonly<DocsSearchProps>) {
             type="text"
             role="combobox"
             className={styles.searchInput}
-            placeholder="Search the docs"
-            aria-label="Search the docs"
+            placeholder={t('search.placeholder')}
+            aria-label={t('search.placeholder')}
             aria-haspopup="listbox"
             aria-expanded={results.length > 0}
             aria-controls="docs-search-results"
@@ -154,35 +156,45 @@ export function DocsSearch({ isOpen, onClose }: Readonly<DocsSearchProps>) {
             type="button"
             className={styles.searchClose}
             onClick={onClose}
-            aria-label="Close search"
+            aria-label={t('search.close')}
           >
             ×
           </button>
         </div>
 
         {!trimmed && (
-          <div className={styles.searchHint}>Search {docCount()} docs</div>
+          <div className={styles.searchHint}>
+            {t('search.hint', { total: docCount() })}
+          </div>
         )}
 
         {noResults ? (
           <div className={styles.searchEmpty}>
             <p className={styles.searchEmptyTitle}>
-              No docs match{' '}
-              <span className={styles.searchQuery}>{trimmed}</span>
+              <Trans
+                i18nKey="docs:search.noMatch"
+                values={{ query: trimmed }}
+                components={{
+                  q: <span className={styles.searchQuery} />,
+                }}
+              />
             </p>
             <p className={styles.searchEmptyBody}>
-              Check the spelling, or{' '}
-              <button
-                type="button"
-                className={styles.searchBrowseLink}
-                onClick={() => {
-                  navigate('/documentation');
-                  onClose();
+              <Trans
+                i18nKey="docs:search.checkSpelling"
+                components={{
+                  browse: (
+                    <button
+                      type="button"
+                      className={styles.searchBrowseLink}
+                      onClick={() => {
+                        navigate('/documentation');
+                        onClose();
+                      }}
+                    />
+                  ),
                 }}
-              >
-                browse all docs
-              </button>
-              .
+              />
             </p>
           </div>
         ) : (
@@ -191,7 +203,7 @@ export function DocsSearch({ isOpen, onClose }: Readonly<DocsSearchProps>) {
             id="docs-search-results"
             className={styles.searchResults}
             role="listbox"
-            aria-label="Search results"
+            aria-label={t('search.resultsLabel')}
           >
             {results.map((result, index) => (
               <a
