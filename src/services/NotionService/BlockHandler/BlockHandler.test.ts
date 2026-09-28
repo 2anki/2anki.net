@@ -88,7 +88,7 @@ import { getToggleBlocks } from '../helpers/getToggleBlocks';
 import renderTextChildren from '../helpers/renderTextChildren';
 import BlockHandler from './BlockHandler';
 
-dotenv.config({ path: 'test/.env' });
+dotenv.config({ path: 'test/.env', quiet: true });
 const api = new MockNotionAPI(process.env.NOTION_KEY!, '3');
 
 const defaultAnnotations = {
