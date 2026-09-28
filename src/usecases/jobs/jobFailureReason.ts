@@ -24,6 +24,15 @@ export const EMPTY_DECK_FAILURE_REASON =
 export const MARKDOWN_LIKELY_LOSSY_REASON =
   'Notion Markdown exports flatten toggles — re-export this page as HTML and the toggles become flashcards.';
 
+export const DOCX_UNREADABLE_REASON =
+  "We couldn't read this .docx. It may have been renamed from another format. Try re-exporting it from Word or Google Docs.";
+
+export const CLAUDE_PARSE_FAILED_REASON =
+  "Claude's answer couldn't be turned into cards this time. Convert again, or try a smaller part of the file.";
+
+export const DECK_TOO_LARGE_REASON =
+  'This deck is too large to build as one file. Split the source and convert each part separately.';
+
 export const COLUMNS_AMBIGUOUS_PREFIX = 'COLUMNS_AMBIGUOUS:';
 
 export function isColumnsAmbiguousError(
@@ -75,6 +84,26 @@ function hasName(error: unknown, name: string): boolean {
   return error instanceof Error && error.name === name;
 }
 
+const isDocxParseError = (error: unknown): error is Error =>
+  error instanceof Error && error.message.startsWith('docx_parse_failed');
+
+// EpubWalker throws EpubNoAnnotationsError; the Kindle clippings path throws a
+// plain Error with the same sentence shape. Both messages are already the copy.
+const isNoHighlightsError = (error: unknown): error is Error =>
+  error instanceof Error &&
+  (error.name === 'EpubNoAnnotationsError' ||
+    /no highlighted passages/.test(error.message) ||
+    error.message.startsWith('No highlights found'));
+
+// Errors whose message is already the sentence the user should read.
+const MESSAGE_IS_REASON_NAMES = [
+  'ImageOnlyContentError',
+  'EpubTooLargeError',
+] as const;
+
+const carriesItsOwnReason = (error: unknown): error is Error =>
+  MESSAGE_IS_REASON_NAMES.some((name) => hasName(error, name));
+
 // The synchronous upload path turns this sentinel into the enter-a-password
 // state; the async (job) path has no such state, so the job needs the same
 // message pdfinfo's own password error gets, not the generic fallback.
@@ -96,8 +125,15 @@ export type JobFailureReasonCode =
   | 'notion_database_not_page'
   | 'apkg_too_large'
   | 'zip_invalid'
+  | 'already_anki_deck'
   | 'pdf_password'
   | 'pdf_unreadable'
+  | 'docx_unreadable'
+  | 'no_highlights'
+  | 'epub_too_large'
+  | 'image_only'
+  | 'deck_too_large'
+  | 'claude_parse_failed'
   | 'claude_large_section'
   | 'empty_content'
   | 'unknown';
@@ -108,7 +144,10 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
       ? 'markdown_likely_lossy'
       : 'empty_deck';
   }
-  if (error instanceof ClaudeLargeSectionError) {
+  if (
+    error instanceof ClaudeLargeSectionError ||
+    hasName(error, 'ClaudeLargeSectionError')
+  ) {
     return 'claude_large_section';
   }
   if (
@@ -117,11 +156,32 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
   ) {
     return 'empty_content';
   }
-  if (hasName(error, 'PythonZeroCardsError')) {
+  if (
+    hasName(error, 'PythonZeroCardsError') ||
+    hasName(error, 'EmptyDeckError')
+  ) {
     return 'empty_deck';
   }
-  if (error instanceof PythonExitError) {
+  if (error instanceof PythonExitError || hasName(error, 'PythonExitError')) {
     return 'python_crash';
+  }
+  if (hasName(error, 'ClaudeParseError')) {
+    return 'claude_parse_failed';
+  }
+  if (hasName(error, 'ImageOnlyContentError')) {
+    return 'image_only';
+  }
+  if (hasName(error, 'DeckTooLargeError')) {
+    return 'deck_too_large';
+  }
+  if (hasName(error, 'EpubTooLargeError')) {
+    return 'epub_too_large';
+  }
+  if (isNoHighlightsError(error)) {
+    return 'no_highlights';
+  }
+  if (isDocxParseError(error)) {
+    return 'docx_unreadable';
   }
   if (isColumnsAmbiguousError(error)) {
     return 'columns_ambiguous';
@@ -156,6 +216,9 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
   if (hasCode(error, 'ZIP_INVALID') || hasName(error, 'IncompleteZipError')) {
     return 'zip_invalid';
   }
+  if (error instanceof Error && /already an Anki deck/.test(error.message)) {
+    return 'already_anki_deck';
+  }
   if (isLockedPdfError(error)) {
     return 'pdf_password';
   }
@@ -178,8 +241,23 @@ export function jobFailureReasonFromError(
     }
     return EMPTY_DECK_FAILURE_REASON;
   }
-  if (hasName(error, 'PythonZeroCardsError')) {
+  if (
+    hasName(error, 'PythonZeroCardsError') ||
+    hasName(error, 'EmptyDeckError')
+  ) {
     return EMPTY_DECK_FAILURE_REASON;
+  }
+  if (hasName(error, 'ClaudeParseError')) {
+    return CLAUDE_PARSE_FAILED_REASON;
+  }
+  if (hasName(error, 'DeckTooLargeError')) {
+    return DECK_TOO_LARGE_REASON;
+  }
+  if (carriesItsOwnReason(error) || isNoHighlightsError(error)) {
+    return error.message;
+  }
+  if (isDocxParseError(error)) {
+    return DOCX_UNREADABLE_REASON;
   }
   // The worker serializes errors down to {message, name} and the multi-chunk
   // path re-wraps into a plain Error carrying only the message, so match both.

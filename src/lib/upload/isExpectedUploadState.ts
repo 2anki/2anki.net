@@ -4,7 +4,9 @@ import { isPdfPasswordSentinel } from '../pdf/pdfPasswordSentinel';
 
 // Uploads convert in a worker that serialises an error down to { message, name },
 // so these states are matched by name and message and never by instanceof.
-const EXPECTED_ERROR_NAMES = new Set([
+// Exported so jobFailureReason's guard test can assert every entry resolves to
+// its own copy on the async path rather than the generic fallback.
+export const EXPECTED_ERROR_NAMES = new Set([
   'EmptyDeckError',
   'EmptyContentError',
   'PythonZeroCardsError',
@@ -17,7 +19,7 @@ const EXPECTED_ERROR_NAMES = new Set([
   'EpubTooLargeError',
 ]);
 
-const EXPECTED_MESSAGE_PATTERNS = [
+export const EXPECTED_MESSAGE_PATTERNS = [
   /^docx_parse_failed/,
   /^pdfinfo_failed/,
   /^pdfinfo_password/,
