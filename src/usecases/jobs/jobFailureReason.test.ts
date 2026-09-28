@@ -10,7 +10,15 @@ import { CONVERSION_TRUNCATED_MESSAGE } from '../../infrastracture/adapters/file
 import { EmptyDeckError } from './EmptyDeckError';
 import { buildPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
 import {
+  EXPECTED_ERROR_NAMES,
+  EXPECTED_MESSAGE_PATTERNS,
+} from '../../lib/upload/isExpectedUploadState';
+import { IMAGE_ONLY_USER_MESSAGE } from '../../lib/claude/ClaudeService';
+import {
+  CLAUDE_PARSE_FAILED_REASON,
   COLUMNS_AMBIGUOUS_PREFIX,
+  DECK_TOO_LARGE_REASON,
+  DOCX_UNREADABLE_REASON,
   EMPTY_DECK_FAILURE_REASON,
   MARKDOWN_LIKELY_LOSSY_REASON,
   NOTION_TOKEN_EXPIRED_REASON,
@@ -476,4 +484,127 @@ describe('jobFailureReasonFromError — Anki deck uploads', () => {
       message
     );
   });
+});
+
+// The upload worker hands GeneratePackagesUseCase a plain Error carrying only
+// { name, message }, so every expected state must resolve by name or message.
+function rehydrated(name: string, message: string): Error {
+  const error = new Error(message);
+  error.name = name;
+  return error;
+}
+
+const GENERIC_FALLBACK = 'Something went wrong on our end';
+
+const EPUB_TOO_LARGE_MESSAGE =
+  'EPUB is too large (30000000 bytes, max 20971520). Try a smaller EPUB or contact support for an exemption.';
+const EPUB_NO_HIGHLIGHTS_MESSAGE =
+  'This EPUB contains no highlighted passages. Highlight passages in your e-reader first, then re-upload.';
+const CLIPPINGS_NO_HIGHLIGHTS_MESSAGE =
+  'No highlights found in My Clippings.txt. The file may contain only bookmarks or notes.';
+
+describe('jobFailureReason — expected upload states on the async path', () => {
+  it.each([
+    [
+      'ClaudeParseError',
+      'claude_parse_failed',
+      CLAUDE_PARSE_FAILED_REASON,
+      'claude_parse_failed',
+    ],
+    [
+      'DeckTooLargeError',
+      'Deck too large to serialize',
+      DECK_TOO_LARGE_REASON,
+      'deck_too_large',
+    ],
+    [
+      'ImageOnlyContentError',
+      IMAGE_ONLY_USER_MESSAGE,
+      IMAGE_ONLY_USER_MESSAGE,
+      'image_only',
+    ],
+    [
+      'EpubTooLargeError',
+      EPUB_TOO_LARGE_MESSAGE,
+      EPUB_TOO_LARGE_MESSAGE,
+      'epub_too_large',
+    ],
+    [
+      'EpubNoAnnotationsError',
+      EPUB_NO_HIGHLIGHTS_MESSAGE,
+      EPUB_NO_HIGHLIGHTS_MESSAGE,
+      'no_highlights',
+    ],
+    [
+      'Error',
+      CLIPPINGS_NO_HIGHLIGHTS_MESSAGE,
+      CLIPPINGS_NO_HIGHLIGHTS_MESSAGE,
+      'no_highlights',
+    ],
+    [
+      'Error',
+      'docx_parse_failed: End of data reached',
+      DOCX_UNREADABLE_REASON,
+      'docx_unreadable',
+    ],
+    ['EmptyDeckError', 'No cards', EMPTY_DECK_FAILURE_REASON, 'empty_deck'],
+  ])(
+    '%s with message "%s" stores its own copy and code',
+    (name, message, expectedReason, expectedCode) => {
+      const error = rehydrated(name, message);
+      expect(jobFailureReasonFromError(error, 'job-1')).toBe(expectedReason);
+      expect(jobFailureReasonCode(error)).toBe(expectedCode);
+    }
+  );
+
+  it('classifies a rehydrated PythonExitError as a python crash', () => {
+    expect(
+      jobFailureReasonCode(rehydrated('PythonExitError', 'genanki exited 1'))
+    ).toBe('python_crash');
+  });
+
+  it('classifies a rehydrated ClaudeLargeSectionError as a large section', () => {
+    expect(
+      jobFailureReasonCode(
+        rehydrated('ClaudeLargeSectionError', 'section too large')
+      )
+    ).toBe('claude_large_section');
+  });
+
+  it.each([...EXPECTED_ERROR_NAMES])(
+    'every expected error name resolves past the generic fallback: %s',
+    (name) => {
+      const error = rehydrated(name, `${name} happened`);
+      expect(jobFailureReasonFromError(error, 'job-1')).not.toContain(
+        GENERIC_FALLBACK
+      );
+      expect(jobFailureReasonCode(error)).not.toBe('unknown');
+    }
+  );
+
+  const SAMPLE_FOR_PATTERN: Record<string, string> = {
+    '^docx_parse_failed': 'docx_parse_failed: not a zip',
+    '^pdfinfo_failed': 'pdfinfo_failed: exit 1',
+    '^pdfinfo_password': 'pdfinfo_password: encrypted',
+    'already an Anki deck': 'This zip is already an Anki deck.',
+    'no highlighted passages': EPUB_NO_HIGHLIGHTS_MESSAGE,
+    '^No highlights found': CLIPPINGS_NO_HIGHLIGHTS_MESSAGE,
+  };
+
+  it('has a sample message for every expected message pattern', () => {
+    expect(EXPECTED_MESSAGE_PATTERNS.map((pattern) => pattern.source)).toEqual(
+      Object.keys(SAMPLE_FOR_PATTERN)
+    );
+  });
+
+  it.each(EXPECTED_MESSAGE_PATTERNS.map((pattern) => pattern.source))(
+    'every expected message pattern resolves past the generic fallback: %s',
+    (source) => {
+      const error = new Error(SAMPLE_FOR_PATTERN[source]);
+      expect(jobFailureReasonFromError(error, 'job-1')).not.toContain(
+        GENERIC_FALLBACK
+      );
+      expect(jobFailureReasonCode(error)).not.toBe('unknown');
+    }
+  );
 });
