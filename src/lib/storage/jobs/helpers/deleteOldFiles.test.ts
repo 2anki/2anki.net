@@ -1,7 +1,7 @@
-import fs from 'fs';
-import osReal from 'os';
-import pathReal from 'path';
-import { randomUUID } from 'crypto';
+import fs from 'node:fs';
+import osReal from 'node:os';
+import pathReal from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 import deleteOldFiles from './deleteOldFiles';
 import { CLEANUP_AGE_SECONDS } from '../../../constants';
