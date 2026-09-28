@@ -279,7 +279,8 @@
       "step3Body": "Twój plik .apkg pobiera się automatycznie. Zaimportuj go do Anki lub AnkiDroid, aby zacząć naukę.",
       "contactPrefix": "Coś nie działa?",
       "tellUs": "Daj nam znać",
-      "orEmail": "lub napisz na"
+      "orEmail": "lub napisz na",
+      "metaTitle": "Prześlij — 2anki"
     },
     "explore": {
       "heading": "Twórz lepsze talie",

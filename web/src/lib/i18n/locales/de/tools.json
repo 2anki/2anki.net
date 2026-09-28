@@ -451,5 +451,29 @@
     "myDeck": "Mein Stapel",
     "removeConnection": "Verbindung entfernen",
     "addNodeHere": "Hier Knoten hinzufügen"
+  },
+  "apkgCsv": {
+    "formAria": ".apkg als CSV exportieren",
+    "changeFile": "Datei ändern",
+    "chooseFile": ".apkg-Datei auswählen",
+    "exporting": "CSV wird exportiert",
+    "exportToCsv": "Als CSV exportieren",
+    "helper": "Exportiere jetzt bis zu 21 Notizen, ohne Konto. Mit einem kostenlosen Konto sind es 100 pro Datei — unbegrenzt mit einem kostenpflichtigen Plan.",
+    "capHas_one": "Dieser Stapel hat {{count}} Notiz.",
+    "capHas_other": "Dieser Stapel hat {{count}} Notizen.",
+    "capNoAccount": "Ohne Konto kannst du {{limit}} exportieren.",
+    "capPlan": "Dein Plan exportiert {{limit}} pro Datei.",
+    "capSignInFree": "Melde dich kostenlos an, um bis zu 100 pro Datei zu exportieren.",
+    "signInToExport": "Zum Exportieren anmelden",
+    "upgradeUnlimited": "Upgrade für unbegrenzt",
+    "exportSuccess_one": "{{count}} Notiz exportiert — {{deckName}}.csv in deinen Downloads gespeichert",
+    "exportSuccess_other": "{{count}} Notizen exportiert — {{deckName}}.csv in deinen Downloads gespeichert",
+    "downloadAgain": "Erneut herunterladen",
+    "pickFile": "Wähle eine .apkg-Datei zum Exportieren.",
+    "notApkg": "Diese Datei ist keine .apkg. Exportiere sie zuerst aus Anki und lade dann diese Datei hoch.",
+    "tooBig": "Diese Datei ist größer als das Upload-Limit von 100 MB.",
+    "unreadable": "Diese .apkg-Datei konnte nicht gelesen werden. Wähle einen anderen Stapel und versuche es erneut.",
+    "networkError": "2anki konnte nicht erreicht werden. Prüfe deine Verbindung und versuche es erneut.",
+    "genericError": "Dieser Stapel konnte nicht exportiert werden. Versuche es erneut oder schreib an support@2anki.net."
   }
 }

@@ -451,5 +451,29 @@
     "myDeck": "Meu baralho",
     "removeConnection": "Remover conexão",
     "addNodeHere": "Adicionar nó aqui"
+  },
+  "apkgCsv": {
+    "formAria": "Exportar .apkg para CSV",
+    "changeFile": "Mudar ficheiro",
+    "chooseFile": "Escolher ficheiro .apkg",
+    "exporting": "A exportar o teu CSV",
+    "exportToCsv": "Exportar para CSV",
+    "helper": "Exporta até 21 notas agora, sem conta. Uma conta gratuita aumenta esse limite para 100 por ficheiro — ilimitado com um plano pago.",
+    "capHas_one": "Este baralho tem {{count}} nota.",
+    "capHas_other": "Este baralho tem {{count}} notas.",
+    "capNoAccount": "Sem conta podes exportar {{limit}}.",
+    "capPlan": "O teu plano exporta {{limit}} por ficheiro.",
+    "capSignInFree": "Inicia sessão gratuitamente para exportar até 100 por ficheiro.",
+    "signInToExport": "Inicia sessão para exportar",
+    "upgradeUnlimited": "Faz upgrade para ilimitado",
+    "exportSuccess_one": "Exportada {{count}} nota — {{deckName}}.csv guardado nas tuas transferências",
+    "exportSuccess_other": "Exportadas {{count}} notas — {{deckName}}.csv guardado nas tuas transferências",
+    "downloadAgain": "Transferir novamente",
+    "pickFile": "Escolhe um ficheiro .apkg para exportar.",
+    "notApkg": "Este ficheiro não é um .apkg. Exporta-o primeiro do Anki e depois carrega esse ficheiro.",
+    "tooBig": "Este ficheiro ultrapassa o limite de envio de 100 MB.",
+    "unreadable": "Não foi possível ler este ficheiro .apkg. Escolhe outro baralho e tenta novamente.",
+    "networkError": "Não foi possível contactar o 2anki. Verifica a tua ligação e tenta novamente.",
+    "genericError": "Não foi possível exportar este baralho. Tenta novamente ou escreve para support@2anki.net."
   }
 }

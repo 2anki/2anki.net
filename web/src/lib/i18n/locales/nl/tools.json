@@ -451,5 +451,29 @@
     "myDeck": "Mijn deck",
     "removeConnection": "Verbinding verwijderen",
     "addNodeHere": "Node hier toevoegen"
+  },
+  "apkgCsv": {
+    "formAria": ".apkg naar CSV exporteren",
+    "changeFile": "Bestand wijzigen",
+    "chooseFile": ".apkg-bestand kiezen",
+    "exporting": "Je CSV wordt geëxporteerd",
+    "exportToCsv": "Naar CSV exporteren",
+    "helper": "Exporteer nu tot 21 notities, zonder account. Met een gratis account worden dat er 100 per bestand — onbeperkt met een betaald abonnement.",
+    "capHas_one": "Dit deck heeft {{count}} notitie.",
+    "capHas_other": "Dit deck heeft {{count}} notities.",
+    "capNoAccount": "Zonder account kun je er {{limit}} exporteren.",
+    "capPlan": "Je abonnement exporteert er {{limit}} per bestand.",
+    "capSignInFree": "Meld je gratis aan om er tot 100 per bestand te exporteren.",
+    "signInToExport": "Aanmelden om te exporteren",
+    "upgradeUnlimited": "Upgrade voor onbeperkt",
+    "exportSuccess_one": "{{count}} notitie geëxporteerd — {{deckName}}.csv opgeslagen in je downloads",
+    "exportSuccess_other": "{{count}} notities geëxporteerd — {{deckName}}.csv opgeslagen in je downloads",
+    "downloadAgain": "Opnieuw downloaden",
+    "pickFile": "Kies een .apkg-bestand om te exporteren.",
+    "notApkg": "Dit bestand is geen .apkg. Exporteer het eerst uit Anki en upload dan dat bestand.",
+    "tooBig": "Dit bestand is groter dan de uploadlimiet van 100 MB.",
+    "unreadable": "Kon dit .apkg-bestand niet lezen. Kies een ander deck en probeer het opnieuw.",
+    "networkError": "Kon 2anki niet bereiken. Controleer je verbinding en probeer het opnieuw.",
+    "genericError": "Kon dit deck niet exporteren. Probeer het opnieuw of mail naar support@2anki.net."
   }
 }

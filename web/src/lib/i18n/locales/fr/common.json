@@ -269,7 +269,8 @@
       "step3Body": "Ton .apkg se télécharge automatiquement. Importe-le dans Anki ou AnkiDroid pour commencer à réviser.",
       "contactPrefix": "Quelque chose ne fonctionne pas ?",
       "tellUs": "Dis-le-nous",
-      "orEmail": "ou écris à"
+      "orEmail": "ou écris à",
+      "metaTitle": "Importer — 2anki"
     },
     "explore": {
       "heading": "Crée de meilleurs paquets",
