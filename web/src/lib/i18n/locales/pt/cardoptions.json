@@ -42,8 +42,8 @@
       "description": "Quando o conteúdo de um toggle contém código inline, esconde o código como cloze e usa o cabeçalho do toggle como dica. Funciona apenas quando a omissão cloze está ligada."
     },
     "promote-nested-cloze": {
-      "label": "Toggles aninhados com cloze viram cartões próprios",
-      "description": "Quando um toggle aninhado dentro de outro tem código inline no título, ele vira um cartão cloze próprio e o título aparece como texto normal no cartão principal. Funciona apenas quando a omissão cloze está ligada."
+      "label": "Toggles aninhados com código inline viram cartões próprios",
+      "description": "Quando um toggle aninhado dentro de outro tem código inline no título, ele vira um cartão cloze próprio e o título aparece em negrito no cartão principal. Funciona apenas quando a omissão cloze está ligada."
     },
     "group-cloze-per-toggle": {
       "label": "Agrupar lacunas cloze por toggle",

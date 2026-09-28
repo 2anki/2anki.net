@@ -68,8 +68,8 @@ const supportedOptions = (): CardOptionDetail[] => {
     ),
     new CardOptionDetail(
       'promote-nested-cloze',
-      'Nested cloze toggles become their own cards',
-      'When a toggle nested inside another toggle has inline code in its title, make it its own cloze card and show its title as plain text on the parent card. Works only when Cloze deletion is on.',
+      'Nested toggles with inline code become their own cards',
+      'When a toggle nested inside another toggle has inline code in its title, make it its own cloze card and show its title as bold text on the parent card. Works only when Cloze deletion is on.',
       defaultFor('promote-nested-cloze')
     ),
     new CardOptionDetail(

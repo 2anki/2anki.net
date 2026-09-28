@@ -794,8 +794,8 @@
       "groupClozeHelp": "Als één Notion-toggle meerdere :: lacunes bevat, zet ze dan allemaal op één kaart en onthul ze samen. Standaard uit — elke :: maakt zijn eigen kaart.",
       "inlineCodeHeading": "Inline code-toggles worden cloze",
       "inlineCodeHelp": "Als de inhoud van een toggle inline code bevat, verberg de code dan als cloze en gebruik de toggletitel als hint. Werkt alleen als Cloze-verwijdering aan staat.",
-      "nestedClozeHeading": "Geneste cloze-toggles worden eigen kaarten",
-      "nestedClozeHelp": "Als een toggle binnen een andere toggle inline code in de titel heeft, wordt die een eigen cloze-kaart en verschijnt de titel als gewone tekst op de bovenliggende kaart. Werkt alleen als Cloze-verwijdering aan staat."
+      "nestedClozeHeading": "Geneste toggles met inline code worden eigen kaarten",
+      "nestedClozeHelp": "Als een toggle binnen een andere toggle inline code in de titel heeft, wordt die een eigen cloze-kaart en verschijnt de titel als vette tekst op de bovenliggende kaart. Werkt alleen als Cloze-verwijdering aan staat."
     },
     "audio": {
       "heading": "Audio",

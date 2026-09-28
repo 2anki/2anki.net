@@ -42,8 +42,8 @@
       "description": "Gdy zawartość listy rozwijanej zawiera kod w tekście, ukryj kod jako cloze, a nagłówek listy użyj jako podpowiedzi. Działa tylko przy włączonej opcji Luki cloze."
     },
     "promote-nested-cloze": {
-      "label": "Zagnieżdżone listy z cloze stają się osobnymi kartami",
-      "description": "Gdy lista rozwijana zagnieżdżona w innej ma kod w linii w tytule, staje się osobną kartą cloze, a jej tytuł pojawia się jako zwykły tekst na karcie nadrzędnej. Działa tylko przy włączonych lukach cloze."
+      "label": "Zagnieżdżone listy z kodem w linii stają się osobnymi kartami",
+      "description": "Gdy lista rozwijana zagnieżdżona w innej ma kod w linii w tytule, staje się osobną kartą cloze, a jej tytuł pojawia się jako pogrubiony tekst na karcie nadrzędnej. Działa tylko przy włączonych lukach cloze."
     },
     "group-cloze-per-toggle": {
       "label": "Grupuj luki cloze w liście rozwijanej",

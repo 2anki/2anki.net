@@ -72,7 +72,7 @@ Code inside the toggle's content can become the cloze too. When the markers are 
 
 Tables and bulleted lists inside the toggle keep their structure in the resulting card. This is controlled by the **Inline code toggles become cloze** card option, which is off by default and needs **Cloze Deletion** turned on. Leave it off and a toggle with inline code in its body stays a basic card — heading on the front, content on the back.
 
-A toggle nested inside another toggle is normally answer text for the parent card, so inline code in its title shows as code on the parent's back rather than becoming a cloze. Turn on **Nested cloze toggles become their own cards** (off by default, needs **Cloze Deletion**) and each nested toggle whose title has inline code becomes its own cloze card, while the parent card keeps that title as bold text:
+A toggle nested inside another toggle is normally answer text for the parent card, so inline code in its title shows as code on the parent's back rather than becoming a cloze. Turn on **Nested toggles with inline code become their own cards** (off by default, needs **Cloze Deletion**) and each nested toggle whose title has inline code becomes its own cloze card, while the parent card keeps that title as bold text:
 
 ```html
 <details>

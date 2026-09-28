@@ -794,8 +794,8 @@
       "groupClozeHelp": "When one Notion toggle holds several :: blanks, put them all on a single card and reveal them together. Off by default — each :: makes its own card.",
       "inlineCodeHeading": "Inline code toggles become cloze",
       "inlineCodeHelp": "When a toggle's contents contain inline code, hide the code as a cloze and use the toggle header as the hint. Works only when Cloze deletion is on.",
-      "nestedClozeHeading": "Nested cloze toggles become their own cards",
-      "nestedClozeHelp": "When a toggle nested inside another toggle has inline code in its title, make it its own cloze card and show its title as plain text on the parent card. Works only when Cloze deletion is on."
+      "nestedClozeHeading": "Nested toggles with inline code become their own cards",
+      "nestedClozeHelp": "When a toggle nested inside another toggle has inline code in its title, make it its own cloze card and show its title as bold text on the parent card. Works only when Cloze deletion is on."
     },
     "audio": {
       "heading": "Audio",

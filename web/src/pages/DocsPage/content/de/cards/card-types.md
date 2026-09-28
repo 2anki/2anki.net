@@ -72,7 +72,7 @@ Code im Inhalt des Toggles kann auch zur Cloze werden. Wenn die Marker im Inhalt
 
 Tabellen und Aufzählungslisten im Toggle behalten ihre Struktur in der resultierenden Karte. Das wird von der Kartenoption **Inline code toggles become cloze** gesteuert, die standardmäßig aus ist und **Cloze Deletion** eingeschaltet braucht. Lass sie aus, und ein Toggle mit Inline-Code in seinem Körper bleibt eine Basic-Karte — Überschrift auf der Vorderseite, Inhalt auf der Rückseite.
 
-Ein Toggle, der in einem anderen Toggle verschachtelt ist, zählt normalerweise als Antworttext der übergeordneten Karte. Inline-Code in seinem Titel erscheint dann als Code auf deren Rückseite, statt zu einem Cloze zu werden. Schalte **Nested cloze toggles become their own cards** ein (standardmäßig aus, braucht **Cloze Deletion**), und jeder verschachtelte Toggle mit Inline-Code im Titel wird zu einer eigenen Cloze-Karte, während die übergeordnete Karte den Titel als fetten Text behält:
+Ein Toggle, der in einem anderen Toggle verschachtelt ist, zählt normalerweise als Antworttext der übergeordneten Karte. Inline-Code in seinem Titel erscheint dann als Code auf deren Rückseite, statt zu einem Cloze zu werden. Schalte **Nested toggles with inline code become their own cards** ein (standardmäßig aus, braucht **Cloze Deletion**), und jeder verschachtelte Toggle mit Inline-Code im Titel wird zu einer eigenen Cloze-Karte, während die übergeordnete Karte den Titel als fetten Text behält:
 
 ```html
 <details>

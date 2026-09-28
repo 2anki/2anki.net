@@ -42,8 +42,8 @@
       "description": "When a toggle's contents contain inline code, hide the code as a cloze and use the toggle header as the hint. Works only when Cloze deletion is on."
     },
     "promote-nested-cloze": {
-      "label": "Nested cloze toggles become their own cards",
-      "description": "When a toggle nested inside another toggle has inline code in its title, make it its own cloze card and show its title as plain text on the parent card. Works only when Cloze deletion is on."
+      "label": "Nested toggles with inline code become their own cards",
+      "description": "When a toggle nested inside another toggle has inline code in its title, make it its own cloze card and show its title as bold text on the parent card. Works only when Cloze deletion is on."
     },
     "group-cloze-per-toggle": {
       "label": "Group cloze blanks per toggle",
