@@ -3,10 +3,6 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement } from 'react';
 
-vi.mock('../../../lib/analytics/track', () => ({
-  track: vi.fn(),
-}));
-
 function buildWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -15,7 +11,7 @@ function buildWrapper() {
     createElement(QueryClientProvider, { client: queryClient }, children);
 }
 
-describe('useSubscriptionStatus purchase event', () => {
+describe('useSubscriptionStatus', () => {
   beforeEach(() => {
     sessionStorage.clear();
     Object.defineProperty(globalThis, 'location', {
@@ -30,38 +26,6 @@ describe('useSubscriptionStatus purchase event', () => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
-
-  it('tracks purchase once when hasActiveSubscription becomes true', async () => {
-    const { track } = await import('../../../lib/analytics/track');
-    const trackMock = vi.mocked(track);
-    trackMock.mockClear();
-
-    vi.mocked(globalThis.fetch).mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          authenticated: true,
-          hasActiveSubscription: true,
-          user: { email: 'a@b.com', name: 'Alex', patreon: false },
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      )
-    );
-
-    const { useSubscriptionStatus } = await import('./useSubscriptionStatus');
-    renderHook(() => useSubscriptionStatus(), { wrapper: buildWrapper() });
-
-    await waitFor(
-      () => {
-        expect(trackMock).toHaveBeenCalledWith('purchase');
-      },
-      { timeout: 10000 }
-    );
-
-    const purchaseCalls = trackMock.mock.calls.filter(
-      ([name]) => name === 'purchase'
-    );
-    expect(purchaseCalls).toHaveLength(1);
-  }, 12000);
 
   it('strips session_id from the address bar after capturing it', async () => {
     const replaceState = vi.fn();
@@ -100,11 +64,7 @@ describe('useSubscriptionStatus purchase event', () => {
     });
   });
 
-  it('does not fire purchase when dedup key is already set in sessionStorage', async () => {
-    const { track } = await import('../../../lib/analytics/track');
-    const trackMock = vi.mocked(track);
-    trackMock.mockClear();
-
+  it('redirects straight to the account page when the session was already confirmed', async () => {
     Object.defineProperty(globalThis, 'location', {
       writable: true,
       configurable: true,
@@ -124,10 +84,13 @@ describe('useSubscriptionStatus purchase event', () => {
     );
 
     const { useSubscriptionStatus } = await import('./useSubscriptionStatus');
-    renderHook(() => useSubscriptionStatus(), { wrapper: buildWrapper() });
+    const { result } = renderHook(() => useSubscriptionStatus(), {
+      wrapper: buildWrapper(),
+    });
 
-    await new Promise((r) => setTimeout(r, 500));
-
-    expect(trackMock).not.toHaveBeenCalledWith('purchase');
-  }, 8000);
+    await waitFor(() => {
+      expect(globalThis.location.href).toBe('/account?subscribed=1');
+    });
+    expect(result.current.showConfirmation).toBe(false);
+  });
 });
