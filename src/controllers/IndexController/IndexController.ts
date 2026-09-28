@@ -13,8 +13,8 @@ import {
 } from '../../lib/email/isHoneypotTripped';
 
 class IndexController {
-  public getIndex(_request: express.Request, response: express.Response) {
-    sendIndex(response);
+  public getIndex(request: express.Request, response: express.Response) {
+    sendIndex(response, request.path);
   }
 
   async contactUs(req: express.Request, res: express.Response) {
