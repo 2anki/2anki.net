@@ -56,16 +56,25 @@ wait_for_sha() {
   return 1
 }
 
+# Apache's global Timeout (300 s) also bounds how long mod_proxy waits for the
+# backend. A synchronous upload whose transfer plus conversion runs past it gets
+# a 502 from Apache while Node keeps working (issue #4562: 2 to 15 a day). The
+# two upload routes get their own longer backend timeout; everything else keeps
+# the global value.
+UPLOAD_PROXY_TIMEOUT_SECONDS="${UPLOAD_PROXY_TIMEOUT_SECONDS:-900}"
+
 # Rewrite both Apache upstream includes to point at $1 (a port). The HTTP include
 # is shared by every app vhost; the WebSocket include is referenced only by the
 # live :443 vhost (Ankify /v/* proxy). Each temp file lives in the target's own
 # directory so the mv is a same-filesystem rename — no half-written include is
 # ever read. The caller runs `apachectl graceful` once afterwards so both apply
-# together.
+# together. The upload routes are listed before the catch-all because mod_proxy
+# matches ProxyPass prefixes in configuration order.
 swap_upstreams() {
   local port="$1"
-  printf 'ProxyPass / http://127.0.0.1:%s/\nProxyPassReverse / http://127.0.0.1:%s/\n' \
-    "$port" "$port" | run sudo tee "${UPSTREAM_CONF}.new" >/dev/null
+  printf 'ProxyPass /api/upload http://127.0.0.1:%s/api/upload timeout=%s\nProxyPass /api/apkg http://127.0.0.1:%s/api/apkg timeout=%s\nProxyPass / http://127.0.0.1:%s/\nProxyPassReverse / http://127.0.0.1:%s/\n' \
+    "$port" "$UPLOAD_PROXY_TIMEOUT_SECONDS" "$port" "$UPLOAD_PROXY_TIMEOUT_SECONDS" "$port" "$port" \
+    | run sudo tee "${UPSTREAM_CONF}.new" >/dev/null
   run sudo mv "${UPSTREAM_CONF}.new" "$UPSTREAM_CONF"
   printf 'RewriteEngine on\nRewriteCond %%{HTTP:Upgrade} =websocket [NC]\nRewriteRule ^/v/(.*)$ ws://127.0.0.1:%s/v/$1 [P,L]\n' \
     "$port" | run sudo tee "${WS_UPSTREAM_CONF}.new" >/dev/null

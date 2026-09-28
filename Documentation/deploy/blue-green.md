@@ -79,7 +79,7 @@ Seed both include files at the current live port (3000) so Apache has a valid
 config before the first script run, then verify and reload:
 
 ```bash
-printf 'ProxyPass / http://127.0.0.1:3000/\nProxyPassReverse / http://127.0.0.1:3000/\n' \
+printf 'ProxyPass /api/upload http://127.0.0.1:3000/api/upload timeout=900\nProxyPass /api/apkg http://127.0.0.1:3000/api/apkg timeout=900\nProxyPass / http://127.0.0.1:3000/\nProxyPassReverse / http://127.0.0.1:3000/\n' \
   | sudo tee /etc/apache2/conf-2anki-upstream.conf
 printf 'RewriteEngine on\nRewriteCond %%{HTTP:Upgrade} =websocket [NC]\nRewriteRule ^/v/(.*)$ ws://127.0.0.1:3000/v/$1 [P,L]\n' \
   | sudo tee /etc/apache2/conf-2anki-ws-upstream.conf
