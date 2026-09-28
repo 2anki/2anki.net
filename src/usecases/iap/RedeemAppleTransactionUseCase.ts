@@ -6,6 +6,7 @@ import {
   DuplicateAppleTransactionError,
   type IAppleTransactionsRepository,
 } from '../../data_layer/AppleTransactionsRepository';
+import type { IAiCreditGrantsWriter } from '../../data_layer/AiCreditGrantsRepository';
 import {
   AppleUnavailableError,
   AppleVerificationError,
@@ -15,7 +16,12 @@ import {
 import hashToken from '../../lib/misc/hashToken';
 import { track } from '../../services/events/track';
 import { IapRedeemError } from './IapRedeemError';
-import { findAppleProduct, type SubscriptionProduct } from './products';
+import {
+  findAppleProduct,
+  type AppleProduct,
+  type CreditsProduct,
+  type SubscriptionProduct,
+} from './products';
 
 export interface RedeemAppleTransactionInput {
   userId: number;
@@ -23,16 +29,30 @@ export interface RedeemAppleTransactionInput {
   productId: string;
 }
 
+export interface RedeemedPass {
+  kind: PassKind;
+  expiresAt: Date;
+}
+
+export interface RedeemedCredits {
+  amount: number;
+  expiresAt: Date;
+}
+
 export interface RedeemAppleTransactionResult {
   message: string;
-  pass: { kind: PassKind; expiresAt: Date };
+  pass?: RedeemedPass;
+  credits?: RedeemedCredits;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export class RedeemAppleTransactionUseCase {
   constructor(
     private readonly appleService: IAppleStoreKitService,
     private readonly userPassRepository: IUserPassRepository,
     private readonly appleTransactions: IAppleTransactionsRepository,
+    private readonly creditGrants: IAiCreditGrantsWriter,
     private readonly now: () => Date = () => new Date()
   ) {}
 
@@ -51,22 +71,10 @@ export class RedeemAppleTransactionUseCase {
     }
 
     const now = this.now();
-    const idempotencyKey = `apple:${decoded.transactionId}`;
-    const pass =
-      product.kind === 'subscription'
-        ? await this.grantSubscription(
-            input.userId,
-            product,
-            decoded,
-            idempotencyKey
-          )
-        : await this.userPassRepository.upsertWithExtension(
-            input.userId,
-            product.passKind,
-            product.durationMs,
-            idempotencyKey,
-            now
-          );
+    const granted =
+      product.kind === 'credits'
+        ? await this.grantCredits(input.userId, product, decoded, now)
+        : await this.grantPass(input.userId, product, decoded, now);
 
     const ledgerExpiresAt =
       decoded.expiresDateMs != null ? new Date(decoded.expiresDateMs) : null;
@@ -89,12 +97,16 @@ export class RedeemAppleTransactionUseCase {
       throw err;
     }
 
+    const passKind = product.kind === 'credits' ? null : product.passKind;
+    const grantedExpiresAt =
+      'pass' in granted ? granted.pass.expiresAt : granted.credits.expiresAt;
+
     console.info('iap.redeem.granted', {
       user_id: input.userId,
       product_id: decoded.productId,
-      kind: product.passKind,
+      kind: passKind ?? product.kind,
       environment: decoded.environment,
-      expires_at: pass.expires_at.toISOString(),
+      expires_at: grantedExpiresAt.toISOString(),
       transaction_id_hash: hashToken(decoded.transactionId),
     });
 
@@ -103,15 +115,54 @@ export class RedeemAppleTransactionUseCase {
       props: {
         platform: 'apple',
         product_kind: product.kind,
-        pass_kind: product.passKind,
+        pass_kind: passKind,
         environment: decoded.environment,
       },
     });
 
-    return {
-      message: product.successMessage,
-      pass: { kind: pass.kind, expiresAt: pass.expires_at },
-    };
+    return { message: product.successMessage, ...granted };
+  }
+
+  private async grantPass(
+    userId: number,
+    product: Exclude<AppleProduct, CreditsProduct>,
+    decoded: DecodedAppleTransaction,
+    now: Date
+  ): Promise<{ pass: RedeemedPass }> {
+    const idempotencyKey = `apple:${decoded.transactionId}`;
+    const pass =
+      product.kind === 'subscription'
+        ? await this.grantSubscription(userId, product, decoded, idempotencyKey)
+        : await this.userPassRepository.upsertWithExtension(
+            userId,
+            product.passKind,
+            product.durationMs,
+            idempotencyKey,
+            now
+          );
+    return { pass: { kind: pass.kind, expiresAt: pass.expires_at } };
+  }
+
+  // A consumable credit pack is granted exactly once per Apple transaction:
+  // the grant row dedupes on the transaction id, so a replayed JWS inserts
+  // nothing and is reported as the duplicate the ledger would also catch.
+  private async grantCredits(
+    userId: number,
+    product: CreditsProduct,
+    decoded: DecodedAppleTransaction,
+    now: Date
+  ): Promise<{ credits: RedeemedCredits }> {
+    const expiresAt = new Date(now.getTime() + product.expiryDays * DAY_MS);
+    const inserted = await this.creditGrants.insertAppleGrant({
+      userId,
+      amountCredits: product.credits,
+      expiresAt,
+      appleTransactionId: decoded.transactionId,
+    });
+    if (inserted) {
+      return { credits: { amount: product.credits, expiresAt } };
+    }
+    throw IapRedeemError.duplicate();
   }
 
   private grantSubscription(

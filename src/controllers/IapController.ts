@@ -52,6 +52,14 @@ class IapController {
         ok: true,
         message: result.message,
         locals: this.buildLocals(res, result.pass),
+        ...(result.credits == null
+          ? {}
+          : {
+              credits: {
+                amount: result.credits.amount,
+                expiresAt: result.credits.expiresAt.toISOString(),
+              },
+            }),
       });
     } catch (err) {
       if (err instanceof IapRedeemError) {
@@ -67,9 +75,11 @@ class IapController {
     res.status(error.status).json({ ok: false, message: error.userMessage });
   }
 
+  // A pass grant refreshes the pass fields; a credits grant leaves the
+  // caller's existing pass state exactly as the auth middleware read it.
   private buildLocals(
     res: Response,
-    pass: { kind: PassKind; expiresAt: Date }
+    pass: { kind: PassKind; expiresAt: Date } | undefined
   ): IapLocals {
     const subscriptionInfo = (res.locals.subscriptionInfo as
       | SubscriptionInfo
@@ -78,11 +88,22 @@ class IapController {
       email: '',
       linked_email: '',
     };
-    return {
+    const base = {
       owner: res.locals.owner as number,
       patreon: Boolean(res.locals.patreon),
-      subscriber: true,
       subscriptionInfo,
+    };
+    if (pass == null) {
+      return {
+        ...base,
+        subscriber: Boolean(res.locals.subscriber),
+        passExpiresAt: (res.locals.passExpiresAt as string | null) ?? null,
+        passKind: (res.locals.passKind as PassKind | null) ?? null,
+      };
+    }
+    return {
+      ...base,
+      subscriber: true,
       passExpiresAt: pass.expiresAt.toISOString(),
       passKind: pass.kind,
     };

@@ -1,5 +1,6 @@
 import { InMemoryUserPassRepository } from '../../data_layer/UserPassRepository';
 import { InMemoryAppleTransactionsRepository } from '../../data_layer/AppleTransactionsRepository';
+import { InMemoryAiCreditGrantsRepository } from '../../data_layer/AiCreditGrantsRepository';
 import {
   AppleUnavailableError,
   AppleVerificationError,
@@ -57,13 +58,15 @@ function serviceThrowing(error: Error): IAppleStoreKitService {
 function build(service: IAppleStoreKitService) {
   const passes = new InMemoryUserPassRepository();
   const ledger = new InMemoryAppleTransactionsRepository();
+  const grants = new InMemoryAiCreditGrantsRepository();
   const useCase = new RedeemAppleTransactionUseCase(
     service,
     passes,
     ledger,
+    grants,
     () => NOW
   );
-  return { useCase, passes, ledger };
+  return { useCase, passes, ledger, grants };
 }
 
 describe('RedeemAppleTransactionUseCase', () => {
@@ -108,7 +111,7 @@ describe('RedeemAppleTransactionUseCase', () => {
       });
 
       expect(result.message).toBe(message);
-      expect(result.pass.kind).toBe(kind);
+      expect(result.pass?.kind).toBe(kind);
       const active = await passes.findActive(USER_ID, NOW);
       expect(active?.expires_at).toEqual(new Date(NOW.getTime() + durationMs));
     }
@@ -133,7 +136,9 @@ describe('RedeemAppleTransactionUseCase', () => {
       productId: 'daypass.24h',
     });
 
-    expect(result.pass.expiresAt).toEqual(new Date(NOW.getTime() + 2 * DAY_MS));
+    expect(result.pass?.expiresAt).toEqual(
+      new Date(NOW.getTime() + 2 * DAY_MS)
+    );
   });
 
   it('returns 409 for an already-credited transaction and grants nothing new', async () => {
@@ -346,7 +351,7 @@ describe('RedeemAppleTransactionUseCase', () => {
       expect(result.message).toBe(
         'Pro active — no card limit, PDF uploads, and several conversions at once'
       );
-      expect(result.pass.kind).toBe('unlimited');
+      expect(result.pass?.kind).toBe('unlimited');
       const active = await passes.findActive(USER_ID, NOW);
       expect(active?.kind).toBe('unlimited');
       expect(active?.expires_at).toEqual(EXPIRES);
@@ -378,6 +383,7 @@ describe('RedeemAppleTransactionUseCase', () => {
         serviceReturning(subscriptionDecoded('sub-2', RENEWAL.getTime())),
         passes,
         new InMemoryAppleTransactionsRepository(),
+        new InMemoryAiCreditGrantsRepository(),
         () => NOW
       );
       const result = await renewalCase.execute({
@@ -386,7 +392,7 @@ describe('RedeemAppleTransactionUseCase', () => {
         productId: 'unlimited.monthly',
       });
 
-      expect(result.pass.expiresAt).toEqual(RENEWAL);
+      expect(result.pass?.expiresAt).toEqual(RENEWAL);
       const active = await passes.findActive(USER_ID, NOW);
       expect(active?.expires_at).toEqual(RENEWAL);
     });
@@ -411,5 +417,89 @@ describe('RedeemAppleTransactionUseCase', () => {
       ).rejects.toMatchObject({ status: 400 });
       expect(await passes.findActive(USER_ID, NOW)).toBeNull();
     });
+  });
+});
+
+describe('RedeemAppleTransactionUseCase — aicredits.250', () => {
+  const CREDITS_TXN = decoded({
+    transactionId: 'txn-credits-1',
+    productId: 'aicredits.250',
+  });
+
+  it('grants 250 credits that expire 90 days out and records the transaction', async () => {
+    const { useCase, grants, ledger, passes } = build(
+      serviceReturning(CREDITS_TXN)
+    );
+
+    const result = await useCase.execute({
+      userId: USER_ID,
+      jws: 'signed',
+      productId: 'aicredits.250',
+    });
+
+    const expiresAt = new Date(NOW.getTime() + 90 * DAY_MS);
+    expect(result).toEqual({
+      message: '250 AI credits added — they last 90 days',
+      credits: { amount: 250, expiresAt },
+    });
+    expect(grants.grants).toEqual([
+      {
+        userId: USER_ID,
+        source: 'apple',
+        amountCredits: 250,
+        expiresAt,
+        dedupeKey: 'apple:txn-credits-1',
+      },
+    ]);
+    expect(await passes.findActive(USER_ID, NOW)).toBeNull();
+    await expect(
+      ledger.record(
+        {
+          userId: USER_ID,
+          transactionId: 'txn-credits-1',
+          productId: 'aicredits.250',
+          environment: 'Sandbox',
+        },
+        NOW
+      )
+    ).rejects.toMatchObject({ name: 'DuplicateAppleTransactionError' });
+  });
+
+  it('returns 409 and grants nothing new when the same transaction is redeemed twice', async () => {
+    const { useCase, grants } = build(serviceReturning(CREDITS_TXN));
+    const input = {
+      userId: USER_ID,
+      jws: 'signed',
+      productId: 'aicredits.250',
+    };
+    await useCase.execute(input);
+
+    await expect(useCase.execute(input)).rejects.toMatchObject({
+      status: 409,
+    });
+    expect(grants.grants).toHaveLength(1);
+  });
+
+  it('emits native_app_activated with product_kind credits and no pass kind', async () => {
+    recordedEvents().length = 0;
+    const { useCase } = build(serviceReturning(CREDITS_TXN));
+
+    await useCase.execute({
+      userId: USER_ID,
+      jws: 'signed',
+      productId: 'aicredits.250',
+    });
+
+    expect(recordedEvents()).toEqual([
+      expect.objectContaining({
+        name: 'native_app_activated',
+        props: expect.objectContaining({
+          platform: 'apple',
+          product_kind: 'credits',
+          pass_kind: null,
+          environment: 'Sandbox',
+        }),
+      }),
+    ]);
   });
 });

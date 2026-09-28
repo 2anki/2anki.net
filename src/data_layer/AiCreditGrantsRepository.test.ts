@@ -44,4 +44,21 @@ describe('AiCreditGrantsRepository generated SQL', () => {
     expect(sql).toContain('cs_test_123');
     expect(sql).toContain('returning "id"');
   });
+
+  it('inserts an Apple grant deduped on the prefixed transaction id', () => {
+    const repo = new AiCreditGrantsRepository(pg);
+    const sql = repo
+      .buildInsertAppleGrantQuery({
+        userId: 42,
+        amountCredits: 250,
+        expiresAt: new Date('2026-09-01T00:00:00.000Z'),
+        appleTransactionId: 'txn-9',
+      })
+      .toString();
+    expect(sql).toContain('insert into "ai_credit_grants"');
+    expect(sql).toContain("'apple'");
+    expect(sql).toContain("'apple:txn-9'");
+    expect(sql).toContain('250');
+    expect(sql).toContain('on conflict ("stripe_session_id") do nothing');
+  });
 });
