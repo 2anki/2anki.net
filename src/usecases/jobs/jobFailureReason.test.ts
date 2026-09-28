@@ -8,6 +8,7 @@ import {
 } from '../../lib/claude/ClaudeService';
 import { CONVERSION_TRUNCATED_MESSAGE } from '../../infrastracture/adapters/fileConversion/claudeFileConversion';
 import { EmptyDeckError } from './EmptyDeckError';
+import { buildPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
 import {
   COLUMNS_AMBIGUOUS_PREFIX,
   EMPTY_DECK_FAILURE_REASON,
@@ -277,6 +278,14 @@ describe('jobFailureReasonFromError', () => {
     expect(reason).toContain('Remove the password');
   });
 
+  it('classifies the PDF password sentinel from the async path as password-protected', () => {
+    const err = new Error(buildPdfPasswordSentinel('lecture.pdf'));
+    const reason = jobFailureReasonFromError(err, 'job-sentinel');
+    expect(reason).toBe(
+      'This PDF is password-protected. Remove the password and try again.'
+    );
+  });
+
   it('generic fallback includes status link', () => {
     const reason = jobFailureReasonFromError(
       new Error('some unknown error'),
@@ -365,6 +374,12 @@ describe('jobFailureReasonCode', () => {
     expect(jobFailureReasonCode(new Error('pdfinfo_password: encrypted'))).toBe(
       'pdf_password'
     );
+  });
+
+  it('maps the PDF password sentinel to pdf_password', () => {
+    expect(
+      jobFailureReasonCode(new Error(buildPdfPasswordSentinel('lecture.pdf')))
+    ).toBe('pdf_password');
   });
 
   it('maps a pdfinfo_failed error to pdf_unreadable', () => {

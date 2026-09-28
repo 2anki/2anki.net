@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-28-locked-pdf-job-reason",
+  "date": "2026-09-28",
+  "type": "fix",
+  "title": "A password-protected PDF sent to the downloads page says so instead of reporting an error on our end"
+}

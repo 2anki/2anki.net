@@ -10,6 +10,15 @@ import {
 } from '../../infrastracture/adapters/fileConversion/claudeFileConversion';
 import { EmptyDeckError } from './EmptyDeckError';
 import { inferColumnMapping } from '../../lib/notionDatabase/inferColumnMapping';
+import { isPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
+
+// The synchronous upload path turns this sentinel into the enter-a-password
+// state; the async (job) path has no such state, so the job needs the same
+// message pdfinfo's own password error gets, not the generic fallback.
+const isLockedPdfError = (error: unknown): error is Error =>
+  error instanceof Error &&
+  (error.message.startsWith('pdfinfo_password') ||
+    isPdfPasswordSentinel(error.message));
 import { isNotionDatabaseNotPageError } from '../../services/NotionService/helpers/isNotionDatabaseNotPageError';
 
 export const NOTION_DATABASE_NOT_PAGE_REASON =
@@ -147,7 +156,7 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
   if (hasCode(error, 'ZIP_INVALID') || hasName(error, 'IncompleteZipError')) {
     return 'zip_invalid';
   }
-  if (error instanceof Error && error.message.startsWith('pdfinfo_password')) {
+  if (isLockedPdfError(error)) {
     return 'pdf_password';
   }
   if (
@@ -239,7 +248,7 @@ export function jobFailureReasonFromError(
   if (hasCode(error, 'ZIP_INVALID') || hasName(error, 'IncompleteZipError')) {
     return (error as Error).message;
   }
-  if (error instanceof Error && error.message.startsWith('pdfinfo_password')) {
+  if (isLockedPdfError(error)) {
     return 'This PDF is password-protected. Remove the password and try again.';
   }
   if (
