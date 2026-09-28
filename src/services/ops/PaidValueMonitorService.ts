@@ -1,4 +1,7 @@
-import type { UserPassWindowRow } from '../../data_layer/UserPassRepository';
+import type {
+  PassKind,
+  UserPassWindowRow,
+} from '../../data_layer/UserPassRepository';
 import type { AnonymousPassWindowRow } from '../../data_layer/AnonymousPassRepository';
 import type { PaidValueEventRow } from '../../data_layer/EventsMetricsRepository';
 import type { NewSubscriptionWithUserRow } from '../../data_layer/PaidValueSubscriptionsRepository';
@@ -7,10 +10,16 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 const SEMESTER_MS = 120 * DAY_MS;
 
-const KIND_DURATION_MS: Record<string, number> = {
+const MONTH_MS = 30 * DAY_MS;
+// Typed by PassKind so a new kind fails tsc here instead of warning in prod
+// on every run (the unlimited kind did that from 2026-09-23 until #4564).
+// An unlimited pass renews monthly, so its value window is the last month
+// before its expiry, the same shape as the fixed-length passes.
+const KIND_DURATION_MS: Record<PassKind, number> = {
   '24h': DAY_MS,
   '7d': WEEK_MS,
   '120d': SEMESTER_MS,
+  unlimited: MONTH_MS,
 };
 const DEFAULT_KIND_DURATION_MS = DAY_MS;
 const LARGEST_KIND_DURATION_MS = SEMESTER_MS;
@@ -116,7 +125,7 @@ interface EventCounts {
 }
 
 function kindDurationMs(kind: string): number {
-  const known = KIND_DURATION_MS[kind];
+  const known = KIND_DURATION_MS[kind as PassKind];
   if (known != null) {
     return known;
   }

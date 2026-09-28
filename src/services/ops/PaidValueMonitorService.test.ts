@@ -231,6 +231,41 @@ describe('PaidValueMonitorService', () => {
     });
   });
 
+  it('gives an unlimited pass a month-long window without warning', async () => {
+    const warn = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const { service } = buildService({
+      userPasses: [
+        {
+          id: 7,
+          userId: 700,
+          kind: 'unlimited',
+          expiresAt: new Date('2026-07-20T12:00:00.000Z'),
+        },
+      ],
+      events: [
+        {
+          userId: 700,
+          name: 'conversion_succeeded',
+          createdAt: new Date('2026-07-01T12:00:00.000Z'),
+        },
+      ],
+    });
+
+    const result = await service.getStatus(SINCE, NOW);
+
+    expect(result.passes).toEqual({
+      checked: 1,
+      withValue: 1,
+      zeroValueTried: 0,
+      zeroValueNeverTried: 0,
+      rows: [],
+    });
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it('defaults an unknown pass kind to a 24h window and warns', async () => {
     const warn = jest
       .spyOn(console, 'warn')
