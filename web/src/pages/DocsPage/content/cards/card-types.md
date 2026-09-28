@@ -72,6 +72,24 @@ Code inside the toggle's content can become the cloze too. When the markers are 
 
 Tables and bulleted lists inside the toggle keep their structure in the resulting card. This is controlled by the **Inline code toggles become cloze** card option, which is off by default and needs **Cloze Deletion** turned on. Leave it off and a toggle with inline code in its body stays a basic card — heading on the front, content on the back.
 
+A toggle nested inside another toggle is normally answer text for the parent card, so inline code in its title shows as code on the parent's back rather than becoming a cloze. Turn on **Nested cloze toggles become their own cards** (off by default, needs **Cloze Deletion**) and each nested toggle whose title has inline code becomes its own cloze card, while the parent card keeps that title as bold text:
+
+```html
+<details>
+  <summary>Management of alcohol-related liver disease</summary>
+  <details>
+    <summary>Complete abstinence is the most important step</summary>
+  </details>
+  <details>
+    <summary>
+      To manage acute withdrawal use <code>benzodiazepines</code>
+    </summary>
+  </details>
+</details>
+```
+
+That gives a basic card for the parent with both lines on the back, plus a cloze card "To manage acute withdrawal use [...]". Nested toggles without inline code stay folded into the parent.
+
 You can also use Anki's native cloze syntax directly when you want explicit numbering or hints:
 
 ```

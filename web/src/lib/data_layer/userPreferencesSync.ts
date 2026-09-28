@@ -35,6 +35,7 @@ export const CARD_OPTION_KEYS = [
   'section-tags',
   'cloze',
   'cloze-from-toggle-content',
+  'promote-nested-cloze',
   'group-cloze-per-toggle',
   'remove-deck-name-numbering',
   'enable-input',

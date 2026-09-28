@@ -811,7 +811,9 @@
       "groupClozeHeading": "Grupuj luki cloze według listy rozwijanej",
       "groupClozeHelp": "Gdy jedna lista rozwijana Notion zawiera kilka luk ::, umieść je wszystkie na jednej karcie i odsłaniaj razem. Domyślnie wyłączone — każde :: tworzy własną kartę.",
       "inlineCodeHeading": "Listy z kodem w linii stają się cloze",
-      "inlineCodeHelp": "Gdy zawartość listy rozwijanej zawiera kod w linii, ukryj kod jako lukę cloze i użyj nagłówka listy jako wskazówki. Działa tylko przy włączonych lukach cloze."
+      "inlineCodeHelp": "Gdy zawartość listy rozwijanej zawiera kod w linii, ukryj kod jako lukę cloze i użyj nagłówka listy jako wskazówki. Działa tylko przy włączonych lukach cloze.",
+      "nestedClozeHeading": "Zagnieżdżone listy z cloze stają się osobnymi kartami",
+      "nestedClozeHelp": "Gdy lista rozwijana zagnieżdżona w innej ma kod w linii w tytule, staje się osobną kartą cloze, a jej tytuł pojawia się jako zwykły tekst na karcie nadrzędnej. Działa tylko przy włączonych lukach cloze."
     },
     "audio": {
       "heading": "Dźwięk",

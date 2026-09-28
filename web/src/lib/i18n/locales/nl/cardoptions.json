@@ -41,6 +41,10 @@
       "label": "Inline code-toggles worden cloze",
       "description": "Als de inhoud van een toggle inline code bevat, verberg de code dan als cloze en gebruik de toggletitel als hint. Werkt alleen als Cloze-verwijdering aan staat."
     },
+    "promote-nested-cloze": {
+      "label": "Geneste cloze-toggles worden eigen kaarten",
+      "description": "Als een toggle binnen een andere toggle inline code in de titel heeft, wordt die een eigen cloze-kaart en verschijnt de titel als gewone tekst op de bovenliggende kaart. Werkt alleen als Cloze-verwijdering aan staat."
+    },
     "group-cloze-per-toggle": {
       "label": "Groepeer cloze-lacunes per toggle",
       "description": "Als één Notion-toggle meerdere :: lacunes bevat, zet ze dan allemaal op één kaart en onthul ze samen. Standaard uit — elke :: maakt zijn eigen kaart."

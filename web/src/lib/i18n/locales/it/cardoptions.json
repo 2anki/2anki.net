@@ -41,6 +41,10 @@
       "label": "Il codice in linea nei toggle diventa cloze",
       "description": "Quando il contenuto di un toggle contiene codice in linea, nascondilo come cloze e usa l'intestazione del toggle come suggerimento. Funziona solo con la cancellazione cloze attiva."
     },
+    "promote-nested-cloze": {
+      "label": "I toggle annidati con cloze diventano schede a sé",
+      "description": "Quando un toggle annidato in un altro ha codice in linea nel titolo, diventa una scheda cloze a sé e il suo titolo appare come testo normale nella scheda principale. Funziona solo con la cancellazione cloze attiva."
+    },
     "group-cloze-per-toggle": {
       "label": "Raggruppa le cloze per toggle",
       "description": "Quando un toggle di Notion contiene più spazi ::, mettili tutti su un'unica carta e rivelali insieme. Disattivato di default — ogni :: crea la sua carta."

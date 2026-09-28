@@ -72,6 +72,24 @@ Code im Inhalt des Toggles kann auch zur Cloze werden. Wenn die Marker im Inhalt
 
 Tabellen und Aufzählungslisten im Toggle behalten ihre Struktur in der resultierenden Karte. Das wird von der Kartenoption **Inline code toggles become cloze** gesteuert, die standardmäßig aus ist und **Cloze Deletion** eingeschaltet braucht. Lass sie aus, und ein Toggle mit Inline-Code in seinem Körper bleibt eine Basic-Karte — Überschrift auf der Vorderseite, Inhalt auf der Rückseite.
 
+Ein Toggle, der in einem anderen Toggle verschachtelt ist, zählt normalerweise als Antworttext der übergeordneten Karte. Inline-Code in seinem Titel erscheint dann als Code auf deren Rückseite, statt zu einem Cloze zu werden. Schalte **Nested cloze toggles become their own cards** ein (standardmäßig aus, braucht **Cloze Deletion**), und jeder verschachtelte Toggle mit Inline-Code im Titel wird zu einer eigenen Cloze-Karte, während die übergeordnete Karte den Titel als fetten Text behält:
+
+```html
+<details>
+  <summary>Management of alcohol-related liver disease</summary>
+  <details>
+    <summary>Complete abstinence is the most important step</summary>
+  </details>
+  <details>
+    <summary>
+      To manage acute withdrawal use <code>benzodiazepines</code>
+    </summary>
+  </details>
+</details>
+```
+
+Das ergibt eine Basic-Karte für den übergeordneten Toggle mit beiden Zeilen auf der Rückseite, plus eine Cloze-Karte "To manage acute withdrawal use [...]". Verschachtelte Toggles ohne Inline-Code bleiben in der übergeordneten Karte.
+
 Du kannst auch Ankis native Cloze-Syntax direkt nutzen, wenn du explizite Nummerierung oder Hinweise willst:
 
 ```

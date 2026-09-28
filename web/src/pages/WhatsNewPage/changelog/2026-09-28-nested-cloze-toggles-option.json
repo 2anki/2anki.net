@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-28-nested-cloze-toggles-option",
+  "date": "2026-09-28",
+  "type": "feature",
+  "title": "Card option: nested Notion toggles with inline code become their own cloze cards instead of a code box on the parent"
+}

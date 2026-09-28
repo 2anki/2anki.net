@@ -41,6 +41,10 @@
       "label": "El código en línea de las alternancias se convierte en cloze",
       "description": "Cuando el contenido de una alternancia contiene código en línea, oculta el código como un cloze y usa el encabezado de la alternancia como pista. Solo funciona cuando el borrado por oclusión (Cloze) está activado."
     },
+    "promote-nested-cloze": {
+      "label": "Las alternancias anidadas con cloze se convierten en tarjetas propias",
+      "description": "Cuando una alternancia anidada dentro de otra tiene código en línea en su título, se convierte en su propia tarjeta cloze y su título aparece como texto normal en la tarjeta principal. Solo funciona cuando el borrado por oclusión (Cloze) está activado."
+    },
     "group-cloze-per-toggle": {
       "label": "Agrupar los huecos de cloze por alternancia",
       "description": "Cuando una alternancia de Notion contiene varios huecos ::, ponlos todos en una sola tarjeta y revélalos juntos. Desactivado por defecto — cada :: crea su propia tarjeta."

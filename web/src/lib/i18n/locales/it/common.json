@@ -793,7 +793,9 @@
       "groupClozeHeading": "Raggruppa le cloze per toggle",
       "groupClozeHelp": "Quando un toggle di Notion contiene più spazi ::, mettili tutti su un'unica carta e rivelali insieme. Disattivato di default — ogni :: crea la sua carta.",
       "inlineCodeHeading": "Il codice in linea nei toggle diventa cloze",
-      "inlineCodeHelp": "Quando il contenuto di un toggle contiene codice in linea, nascondilo come cloze e usa l'intestazione del toggle come suggerimento. Funziona solo con la cancellazione cloze attiva."
+      "inlineCodeHelp": "Quando il contenuto di un toggle contiene codice in linea, nascondilo come cloze e usa l'intestazione del toggle come suggerimento. Funziona solo con la cancellazione cloze attiva.",
+      "nestedClozeHeading": "I toggle annidati con cloze diventano schede a sé",
+      "nestedClozeHelp": "Quando un toggle annidato in un altro ha codice in linea nel titolo, diventa una scheda cloze a sé e il suo titolo appare come testo normale nella scheda principale. Funziona solo con la cancellazione cloze attiva."
     },
     "audio": {
       "heading": "Audio",

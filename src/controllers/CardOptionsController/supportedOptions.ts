@@ -67,6 +67,12 @@ const supportedOptions = (): CardOptionDetail[] => {
       defaultFor('cloze-from-toggle-content')
     ),
     new CardOptionDetail(
+      'promote-nested-cloze',
+      'Nested cloze toggles become their own cards',
+      'When a toggle nested inside another toggle has inline code in its title, make it its own cloze card and show its title as plain text on the parent card. Works only when Cloze deletion is on.',
+      defaultFor('promote-nested-cloze')
+    ),
+    new CardOptionDetail(
       'group-cloze-per-toggle',
       'Group cloze blanks per toggle',
       'When one Notion toggle holds several :: blanks, put them all on a single card and reveal them together. Off by default — each :: makes its own card.',

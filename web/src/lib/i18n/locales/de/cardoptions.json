@@ -41,6 +41,10 @@
       "label": "Inline-Code-Toggles werden zu Cloze",
       "description": "Wenn der Inhalt eines Toggles Inline-Code enthält, blende den Code als Cloze aus und nutze den Toggle-Titel als Hinweis. Funktioniert nur, wenn Cloze-Löschung aktiviert ist."
     },
+    "promote-nested-cloze": {
+      "label": "Verschachtelte Cloze-Toggles werden eigene Karten",
+      "description": "Wenn ein Toggle innerhalb eines anderen Toggles Inline-Code im Titel hat, wird er zu einer eigenen Cloze-Karte, und sein Titel erscheint als normaler Text auf der übergeordneten Karte. Funktioniert nur, wenn Cloze-Löschung aktiv ist."
+    },
     "group-cloze-per-toggle": {
       "label": "Cloze-Lücken pro Toggle gruppieren",
       "description": "Wenn ein Notion-Toggle mehrere ::-Lücken enthält, kommen alle auf eine einzelne Karte und werden zusammen aufgedeckt. Standardmäßig aus — jedes :: erzeugt eine eigene Karte."
