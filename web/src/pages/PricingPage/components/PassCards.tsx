@@ -27,10 +27,6 @@ interface PassCardsProps {
   prices?: PassPriceDisplay;
 }
 
-function actionLabel(t: Translate, pending: boolean, labelKey: string) {
-  return pending ? t('pricing.pass.redirecting') : t(labelKey);
-}
-
 function featuredTreatment(t: Translate, featured: boolean) {
   return {
     badge: featured ? t('pricing.pass.mostPopular') : undefined,
@@ -53,6 +49,7 @@ export function PassCards({
   const benefits = PASS_BENEFIT_KEYS.map((key) => t(key));
   const featureWeek = !featureDayPass && !featureSemester;
   const showHorizons = !featureDayPass;
+  const redirecting = t('pricing.pass.redirecting');
 
   const dayCard = (
     <PricingCard
@@ -64,7 +61,7 @@ export function PassCards({
       priceSuffix={t('pricing.pass.day24')}
       benefits={benefits}
       onAction={onDayPass}
-      actionLabel={actionLabel(t, dayPassPending, 'pricing.pass.getDayPass')}
+      actionLabel={dayPassPending ? redirecting : t('pricing.pass.getDayPass')}
       actionDisabled={dayPassPending}
     />
   );
@@ -79,7 +76,9 @@ export function PassCards({
       priceSuffix={t('pricing.pass.week1')}
       benefits={benefits}
       onAction={onWeekPass}
-      actionLabel={actionLabel(t, weekPassPending, 'pricing.pass.getWeekPass')}
+      actionLabel={
+        weekPassPending ? redirecting : t('pricing.pass.getWeekPass')
+      }
       actionDisabled={weekPassPending}
     />
   );
@@ -102,11 +101,9 @@ export function PassCards({
         priceSuffix={t('pricing.pass.semester4mo')}
         benefits={benefits}
         onAction={onSemesterPass}
-        actionLabel={actionLabel(
-          t,
-          semesterPassPending,
-          'pricing.pass.getSemesterPass'
-        )}
+        actionLabel={
+          semesterPassPending ? redirecting : t('pricing.pass.getSemesterPass')
+        }
         actionDisabled={semesterPassPending}
       />
     );
