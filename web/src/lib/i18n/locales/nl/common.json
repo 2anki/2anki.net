@@ -238,7 +238,7 @@
       "networkChooseDifferent": "Kies een ander bestand",
       "unreadableFileTitle": "Dit bestand is veranderd sinds je het koos",
       "unreadableFileBody": "De browser kan de gekozen versie niet meer lezen: het is na het kiezen opgeslagen, verplaatst of verwijderd. Kies het opnieuw om de huidige versie te uploaden.",
-      "unreadableChooseAgain": "Bestand opnieuw kiezen"
+      "unreadableChooseAgain": "Kies het bestand opnieuw"
     },
     "page": {
       "title": "Zet je notities om",

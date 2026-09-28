@@ -237,7 +237,7 @@
       "networkErrorSmallBody": "The connection dropped before the file finished. Check your connection and try again.",
       "networkChooseDifferent": "Choose a different file",
       "unreadableFileTitle": "This file changed since you picked it",
-      "unreadableFileBody": "The browser can't read the version you chose any more — it was saved, moved or deleted after you picked it. Choose it again to upload the current version.",
+      "unreadableFileBody": "The browser can't read the version you chose any more — it was saved, moved or deleted after you picked it. Choose the file again to upload the current version.",
       "unreadableChooseAgain": "Choose the file again"
     },
     "page": {

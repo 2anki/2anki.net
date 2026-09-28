@@ -236,8 +236,8 @@
       "networkErrorSmallTitle": "Impossible d'envoyer votre fichier",
       "networkErrorSmallBody": "La connexion a été interrompue avant la fin de l'envoi. Vérifiez votre connexion et réessayez.",
       "networkChooseDifferent": "Choisir un autre fichier",
-      "unreadableFileTitle": "Ce fichier a changé depuis que tu l'as choisi",
-      "unreadableFileBody": "Le navigateur ne peut plus lire la version choisie : elle a été enregistrée, déplacée ou supprimée après la sélection. Choisis-le à nouveau pour envoyer la version actuelle.",
+      "unreadableFileTitle": "Ce fichier a changé depuis que vous l'avez choisi",
+      "unreadableFileBody": "Le navigateur ne peut plus lire la version choisie : elle a été enregistrée, déplacée ou supprimée après la sélection. Choisissez-le à nouveau pour envoyer la version actuelle.",
       "unreadableChooseAgain": "Choisir le fichier à nouveau"
     },
     "page": {
