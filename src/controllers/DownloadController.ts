@@ -58,6 +58,29 @@ function resolveDownloadIdentity(
   return { userId, anonymousId };
 }
 
+const STALE_SPOOL_MS = 60 * 60 * 1000;
+
+// A spool file outlives its download only when the process died mid-serve.
+// Pruning by age on the next download keeps the dir self-contained; a file
+// still being served survives its own unlink through the open descriptor.
+async function pruneStaleSpoolFiles(spoolDir: string): Promise<void> {
+  try {
+    const cutoff = Date.now() - STALE_SPOOL_MS;
+    const names = await fs.promises.readdir(spoolDir);
+    await Promise.all(
+      names.map(async (name) => {
+        const filePath = path.join(spoolDir, name);
+        const { mtimeMs } = await fs.promises.stat(filePath);
+        if (mtimeMs < cutoff) {
+          await fs.promises.rm(filePath, { force: true });
+        }
+      })
+    );
+  } catch {
+    // Pruning is opportunistic; the download itself never waits on it.
+  }
+}
+
 class DownloadController {
   constructor(
     private readonly service: DownloadService,
@@ -121,10 +144,11 @@ class DownloadController {
   // Piping storage straight to the client let a slow reader (30 KB/s on a
   // 76 MB deck, 2026-09-28) hold the storage socket idle until the upstream
   // dropped it mid-object, truncating every attempt (#4561). A client that
-  // gives up while spooling still stops the pull (#4544), and only the spool
-  // file, never the whole object, sits on the box. An unlinked file stays
-  // readable through its open descriptor, so the workspace sweeper cannot
-  // cut a slow download short.
+  // gives up at any point stops the pull and drops the spool (#4544), and
+  // only the spool file, never the whole object, sits on the box. Files an
+  // earlier process left behind are pruned on the next download, so the spool
+  // dir never relies on another sweeper; an unlinked file stays readable
+  // through its open descriptor, so pruning cannot cut a slow download short.
   private async serveStoredObject(
     body: Readable,
     res: Response,
@@ -135,16 +159,21 @@ class DownloadController {
     const discardSpool = () =>
       fs.promises.rm(spoolPath, { force: true }).catch(() => undefined);
     let clientGone = false;
-    const stopPull = () => {
+    let file: fs.ReadStream | undefined;
+    res.on('close', () => {
       clientGone = true;
       if (!body.destroyed) {
         body.destroy();
       }
-    };
-    res.on('close', stopPull);
+      if (file && !file.destroyed) {
+        file.destroy();
+      }
+      void discardSpool();
+    });
     try {
       await fs.promises.mkdir(spoolDir, { recursive: true });
-      await pipeline(body, fs.createWriteStream(spoolPath));
+      void pruneStaleSpoolFiles(spoolDir);
+      await pipeline(body, fs.createWriteStream(spoolPath, { flags: 'wx' }));
     } catch (error) {
       await discardSpool();
       if (clientGone) {
@@ -159,8 +188,6 @@ class DownloadController {
         .status(503)
         .send('Storage is busy right now. Try the download again in a moment.');
       return;
-    } finally {
-      res.off('close', stopPull);
     }
     if (clientGone) {
       await discardSpool();
@@ -169,13 +196,7 @@ class DownloadController {
 
     const { size } = await fs.promises.stat(spoolPath);
     res.setHeader('Content-Length', String(size));
-    const file = fs.createReadStream(spoolPath);
-    res.on('close', () => {
-      if (!file.destroyed) {
-        file.destroy();
-      }
-      void discardSpool();
-    });
+    file = fs.createReadStream(spoolPath);
     file.on('error', (error) => {
       console.error('Download spool read failed', {
         owner,

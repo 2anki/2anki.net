@@ -258,6 +258,28 @@ describe('DownloadController.getFile streaming', () => {
     errorSpy.mockRestore();
   });
 
+  it('prunes spool files an earlier process left behind, keeping fresh ones', async () => {
+    const spoolDir = path.join(spoolBase, 'download-spool');
+    fs.mkdirSync(spoolDir, { recursive: true });
+    const stale = path.join(spoolDir, 'stale.apkg');
+    const fresh = path.join(spoolDir, 'fresh.apkg');
+    fs.writeFileSync(stale, 'old');
+    fs.writeFileSync(fresh, 'new');
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    fs.utimesSync(stale, twoHoursAgo, twoHoursAgo);
+    const controller = new DownloadController(makeService() as never);
+    const req = { params: { key: 'deck.apkg' } } as unknown as Request;
+    const res = mockResponse();
+
+    await controller.getFile(req, res, {} as never);
+    await res._done;
+    res.emit('close');
+    await settle();
+
+    expect(fs.existsSync(stale)).toBe(false);
+    expect(fs.existsSync(fresh)).toBe(true);
+  });
+
   it('removes the spool file once the download has finished', async () => {
     const service = makeService();
     const controller = new DownloadController(service as never);
@@ -270,6 +292,27 @@ describe('DownloadController.getFile streaming', () => {
     await settle();
 
     expect(Buffer.concat(res._chunks).toString()).toBe('fake-apkg');
+    expect(spoolFiles()).toEqual([]);
+  });
+
+  it('drops the spool when the client leaves while the file is being sent', async () => {
+    const source = Array.from({ length: 40 }, (_, i) => Buffer.alloc(1024, i));
+    const service = makeService({
+      getFileStream: jest.fn().mockResolvedValue({
+        body: Readable.from(source),
+        contentLength: 40 * 1024,
+      }),
+    });
+    const controller = new DownloadController(service as never);
+    const req = { params: { key: 'deck.apkg' } } as unknown as Request;
+    const res = mockResponse(200);
+
+    await controller.getFile(req, res, {} as never);
+    await settle();
+    expect(spoolFiles()).toHaveLength(1);
+    res.emit('close');
+    await settle();
+
     expect(spoolFiles()).toEqual([]);
   });
 });
