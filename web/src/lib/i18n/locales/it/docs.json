@@ -6,7 +6,7 @@
     "placeholder": "Cerca nei docs",
     "resultsLabel": "Risultati della ricerca",
     "hint": "Cerca in {{total}} docs",
-    "noMatch": "Nessun doc corrisponde a <q>{{query}}</q>",
+    "noMatch": "Nessun doc corrisponde a <q></q>",
     "checkSpelling": "Controlla l'ortografia oppure <browse>sfoglia tutti i docs</browse>."
   },
   "content": {

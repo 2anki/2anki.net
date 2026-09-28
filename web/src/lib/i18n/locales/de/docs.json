@@ -6,7 +6,7 @@
     "placeholder": "Docs durchsuchen",
     "resultsLabel": "Suchergebnisse",
     "hint": "{{total}} Docs durchsuchen",
-    "noMatch": "Keine Docs passen zu <q>{{query}}</q>",
+    "noMatch": "Keine Docs passen zu <q></q>",
     "checkSpelling": "Prüfe die Schreibweise oder <browse>durchsuche alle Docs</browse>."
   },
   "content": {
@@ -33,6 +33,6 @@
     "uploadCta": "Datei hochladen",
     "startHere": "Los geht's",
     "popular": "Beliebte Seiten",
-    "footer": "Nicht weiter? Schreib an <email>support@2anki.net</email> oder <issue>öffne ein Issue auf GitHub</issue>."
+    "footer": "Kommst du nicht weiter? Schreib an <email>support@2anki.net</email> oder <issue>öffne ein Issue auf GitHub</issue>."
   }
 }

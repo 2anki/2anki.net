@@ -6,7 +6,7 @@
     "placeholder": "Docs doorzoeken",
     "resultsLabel": "Zoekresultaten",
     "hint": "{{total}} docs doorzoeken",
-    "noMatch": "Geen docs komen overeen met <q>{{query}}</q>",
+    "noMatch": "Geen docs komen overeen met <q></q>",
     "checkSpelling": "Controleer de spelling of <browse>blader door alle docs</browse>."
   },
   "content": {

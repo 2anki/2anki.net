@@ -149,7 +149,7 @@
       "descCardsUser": "アップグレードすると月間の上限がなくなります。または来月までお待ちください。",
       "usage": "{{used}} / {{limit}} 枚 · {{resetsOn}} にリセットされ、無料カードが戻ります",
       "startingCheckout": "チェックアウトを開始しています",
-      "getDayPass": "Get Day Pass — {{price}}",
+      "getDayPass": "Day Pass を購入 — {{price}}",
       "seePlans": "プランを見る"
     },
     "dropzone": {

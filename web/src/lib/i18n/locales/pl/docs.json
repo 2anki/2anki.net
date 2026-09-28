@@ -6,7 +6,7 @@
     "placeholder": "Przeszukaj docs",
     "resultsLabel": "Wyniki wyszukiwania",
     "hint": "Przeszukaj {{total}} docs",
-    "noMatch": "Żadne docs nie pasują do <q>{{query}}</q>",
+    "noMatch": "Żadne docs nie pasują do <q></q>",
     "checkSpelling": "Sprawdź pisownię albo <browse>przejrzyj wszystkie docs</browse>."
   },
   "content": {

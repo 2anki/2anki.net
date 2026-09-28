@@ -6,7 +6,7 @@
     "placeholder": "Search the docs",
     "resultsLabel": "Search results",
     "hint": "Search {{total}} docs",
-    "noMatch": "No docs match <q>{{query}}</q>",
+    "noMatch": "No docs match <q></q>",
     "checkSpelling": "Check the spelling, or <browse>browse all docs</browse>."
   },
   "content": {

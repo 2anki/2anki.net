@@ -6,7 +6,7 @@
     "placeholder": "ドキュメントを検索",
     "resultsLabel": "検索結果",
     "hint": "{{total}} 件のドキュメントを検索",
-    "noMatch": "<q>{{query}}</q> に一致するドキュメントはありません",
+    "noMatch": "<q></q> に一致するドキュメントはありません",
     "checkSpelling": "スペルを確認するか、<browse>すべてのドキュメントを見る</browse>。"
   },
   "content": {

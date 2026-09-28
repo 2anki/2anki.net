@@ -116,6 +116,7 @@ export function DocsSearch({ isOpen, onClose }: Readonly<DocsSearchProps>) {
   };
 
   const noResults = trimmed.length > 0 && results.length === 0;
+  const [noMatchBefore, noMatchAfter] = t('search.noMatch').split('<q></q>');
 
   return (
     <div
@@ -171,13 +172,9 @@ export function DocsSearch({ isOpen, onClose }: Readonly<DocsSearchProps>) {
         {noResults ? (
           <div className={styles.searchEmpty}>
             <p className={styles.searchEmptyTitle}>
-              <Trans
-                i18nKey="docs:search.noMatch"
-                values={{ query: trimmed }}
-                components={{
-                  q: <span className={styles.searchQuery} />,
-                }}
-              />
+              {noMatchBefore}
+              <span className={styles.searchQuery}>{trimmed}</span>
+              {noMatchAfter}
             </p>
             <p className={styles.searchEmptyBody}>
               <Trans
