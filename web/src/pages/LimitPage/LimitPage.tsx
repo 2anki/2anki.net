@@ -26,6 +26,13 @@ const PASS_PLAN: Record<PassKind, string> = {
   '120d': 'semester_pass',
 };
 
+// Same vocabulary as the downloads-page pass CTA, so one query reads both.
+const PASS_CLICK_PLAN: Record<PassKind, string> = {
+  '24h': 'day',
+  '7d': 'week',
+  '120d': 'semester',
+};
+
 function AnonymousLimit() {
   const { t } = useTranslation('accountx');
 
@@ -125,6 +132,10 @@ export function LimitPage() {
     track('paywall_upgrade_clicked', {
       surface: REF,
       plan: PASS_PLAN[passKind],
+    });
+    track('paywall_pass_clicked', {
+      surface: REF,
+      plan: PASS_CLICK_PLAN[passKind],
     });
     setPassError(null);
     setPendingPass(passKind);

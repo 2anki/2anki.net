@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { track } from '../../../lib/analytics/track';
 import { stripUrlParam } from '../../../lib/stripUrlParam';
 
 interface SubscriptionStatus {
@@ -91,8 +90,6 @@ export const useSubscriptionStatus = () => {
       if (dedupeKey) {
         sessionStorage.setItem(dedupeKey, '1');
       }
-
-      track('purchase');
 
       setShouldPoll(false);
       setShowConfirmation(true);

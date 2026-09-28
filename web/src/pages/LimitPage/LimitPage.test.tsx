@@ -178,6 +178,10 @@ describe('LimitPage', () => {
       surface: 'limit-wall',
       plan: 'semester_pass',
     });
+    expect(mockTrack).toHaveBeenCalledWith('paywall_pass_clicked', {
+      surface: 'limit-wall',
+      plan: 'semester',
+    });
     await vi.waitFor(() => {
       expect(mockStartPassCheckout).toHaveBeenCalledWith(
         '120d',
