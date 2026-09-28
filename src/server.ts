@@ -10,7 +10,7 @@ import type { Knex } from 'knex';
 
 const localEnvFile = path.join(__dirname, '../.env');
 if (existsSync(localEnvFile)) {
-  dotenv.config({ path: localEnvFile });
+  dotenv.config({ path: localEnvFile, quiet: true });
 }
 
 import { BUILD_DIR } from './lib/constants';
