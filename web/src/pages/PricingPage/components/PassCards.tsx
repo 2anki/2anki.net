@@ -89,7 +89,7 @@ export function PassCards({
       <PricingCard
         key="semester"
         title="Semester Pass"
-        {...featuredTreatment(t, featureSemester)}
+        className={featureSemester ? styles.cardPro : undefined}
         badge={
           featureSemester
             ? t('pricing.pass.mostPopular')
