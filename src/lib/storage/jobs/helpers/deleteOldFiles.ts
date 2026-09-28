@@ -1,31 +1,60 @@
+import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import findRemoveSync from 'find-remove';
 import { CLEANUP_AGE_SECONDS } from '../../../constants';
 
 /**
- * Locally stored files are deleted after CLEANUP_AGE_SECONDS. This is to prevent the server from running out of space.
- * It will not affect files processed by the Notion integration which are stored in DigitalOcean space.
+ * Removes every top-level entry under a location whose mtime is older than
+ * CLEANUP_AGE_SECONDS: conversion workspaces, multer temp files, stray
+ * directories. The location root itself is never removed, and a fresh entry
+ * is left alone as a unit, so an in-flight conversion keeps its workspace.
+ *
+ * Entries are inspected with lstat and removed with rmSync, neither of which
+ * follows symlinks. That matters because the fallback zip path extracts with
+ * bsdtar, which materialises a zip's symlink entries as real links inside the
+ * workspace; a sweep that followed them would delete aged files wherever an
+ * uploaded archive pointed.
+ *
  * @param loc an absolute directory, or a name relative to os.tmpdir()
  */
 function deleteFile(loc: string) {
-  console.time(`finding & removing old ${loc} files`);
   // Prod configures WORKSPACE_BASE and UPLOAD_BASE as absolute paths; joining
   // those onto os.tmpdir() pointed the sweep at a directory that does not
   // exist, so it never removed anything (#4568).
   const root = path.isAbsolute(loc) ? loc : path.join(os.tmpdir(), loc);
-  // `files: '*.*'` only matches extensioned files, so the extensionless UUID
-  // workspace directories under /tmp/workspaces were never swept — 48 dirs /
-  // 335MB accumulated in prod. `dir: '*'` matches every directory, and the
-  // shared `age` filter still gates removal to entries older than
-  // CLEANUP_AGE_SECONDS, so an in-flight conversion's fresh workspace survives.
-  findRemoveSync(root, {
-    files: '*.*',
-    dir: '*',
-    age: { seconds: CLEANUP_AGE_SECONDS },
+  const cutoffMs = Date.now() - CLEANUP_AGE_SECONDS * 1000;
+  const startedAt = Date.now();
+
+  let names: string[];
+  try {
+    names = fs.readdirSync(root);
+  } catch {
+    return;
+  }
+
+  let removed = 0;
+  let failed = 0;
+  for (const name of names) {
+    const entry = path.join(root, name);
+    try {
+      if (fs.lstatSync(entry).mtimeMs > cutoffMs) {
+        continue;
+      }
+      fs.rmSync(entry, { recursive: true, force: true });
+      removed += 1;
+    } catch {
+      failed += 1;
+    }
+  }
+
+  console.info('[cleanup] swept old files', {
+    root,
+    scanned: names.length,
+    removed,
+    failed,
+    ms: Date.now() - startedAt,
   });
-  console.timeEnd(`finding & removing old ${loc} files`);
 }
 
 /**
