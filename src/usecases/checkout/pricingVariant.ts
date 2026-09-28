@@ -2,6 +2,7 @@ const VALID_PRICING_VARIANTS = new Set([
   'passes-first',
   'unlimited-first',
   'minimal',
+  'semester-first',
 ]);
 
 /**

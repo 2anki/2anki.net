@@ -203,7 +203,8 @@ export default function PricingPage({
   });
 
   const unlimitedFirst = pricingOrder === 'unlimited-first';
-  const minimalHeader = pricingOrder === 'minimal';
+  const semesterFirst = pricingOrder === 'semester-first';
+  const minimalHeader = pricingOrder === 'minimal' || semesterFirst;
 
   const passCards = (
     <PassCards
@@ -214,6 +215,7 @@ export default function PricingPage({
       weekPassPending={weekPassState === 'pending'}
       semesterPassPending={semesterPassState === 'pending'}
       featureDayPass={false}
+      featureSemester={semesterFirst}
       prices={passPrices}
     />
   );
@@ -230,6 +232,7 @@ export default function PricingPage({
         monthlyCents={pricing.monthlyCents}
         annualCents={pricing.annualCents}
         error={unlimitedError}
+        featured={!semesterFirst}
       />
     </div>
   );

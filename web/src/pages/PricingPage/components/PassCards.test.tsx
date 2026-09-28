@@ -139,6 +139,33 @@ describe('PassCards', () => {
     expect(screen.getByText('A full term')).toBeInTheDocument();
   });
 
+  it('leads with the Semester Pass as Most popular when featureSemester is set', () => {
+    renderPassCards({ featureDayPass: false, featureSemester: true });
+    const titles = screen
+      .getAllByRole('heading', { level: 3 })
+      .map((heading) => heading.textContent);
+    expect(titles).toEqual(['Semester Pass', 'Week Pass', 'Day Pass']);
+    expect(
+      within(cardByTitle('Semester Pass')).getByText('Most popular')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Best value')).not.toBeInTheDocument();
+    expect(
+      within(cardByTitle('Week Pass')).queryByText('Most popular')
+    ).toBeNull();
+  });
+
+  it('keeps the study-horizon and per-week captions when the Semester Pass leads', () => {
+    renderPassCards({ featureDayPass: false, featureSemester: true });
+    expect(screen.getByText('A full term')).toBeInTheDocument();
+    expect(screen.getByText('One exam week')).toBeInTheDocument();
+    expect(screen.getByText('One study day')).toBeInTheDocument();
+    expect(
+      within(cardByTitle('Semester Pass')).getByText(
+        '≈$2/week — 85% less than the Week Pass'
+      )
+    ).toBeInTheDocument();
+  });
+
   it('shows the per-week value line under the Semester Pass', () => {
     renderPassCards({ featureDayPass: false });
     expect(

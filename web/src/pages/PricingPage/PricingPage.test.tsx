@@ -40,7 +40,7 @@ vi.mock('../../lib/hooks/useCardUsage', () => ({
 
 const { mockPricingVariant } = vi.hoisted(() => ({
   mockPricingVariant: {
-    current: 'minimal' as 'minimal' | 'unlimited-first' | 'minimal',
+    current: 'minimal' as 'minimal' | 'unlimited-first' | 'semester-first',
   },
 }));
 
@@ -201,6 +201,34 @@ describe('PricingPage layout', () => {
     expect(
       screen.getByRole('button', { name: 'Get Day Pass' })
     ).toBeInTheDocument();
+  });
+
+  it('leads the pass row with a featured Semester Pass in the semester-first variant', () => {
+    mockPricingVariant.current = 'semester-first';
+    renderAt('/pricing');
+    const headings = screen
+      .getAllByRole('heading', { level: 3 })
+      .map((heading) => heading.textContent);
+    expect(headings.indexOf('Semester Pass')).toBeLessThan(
+      headings.indexOf('Week Pass')
+    );
+    expect(headings.indexOf('Week Pass')).toBeLessThan(
+      headings.indexOf('Day Pass')
+    );
+    const badges = screen.getAllByText('Most popular');
+    expect(badges).toHaveLength(1);
+    expect(badges[0].closest('div')?.textContent).toContain('Semester Pass');
+    expect(screen.queryByText('Best value')).not.toBeInTheDocument();
+    expect(screen.getByTestId('unlimited-card').className).not.toContain(
+      'cardPro'
+    );
+    expect(screen.queryByText('Plans')).not.toBeInTheDocument();
+    const passLabel = screen.getByText('Pay once — no subscription');
+    const monthlyLabel = screen.getByText('Prefer a subscription?');
+    expect(
+      passLabel.compareDocumentPosition(monthlyLabel) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it('shows the risk-reversal reassurance strip', () => {

@@ -17,6 +17,7 @@ interface UnlimitedCardProps {
   monthlyCents: number;
   annualCents: number;
   error?: boolean;
+  featured?: boolean;
 }
 
 function CheckIcon() {
@@ -58,6 +59,7 @@ export function UnlimitedCard({
   monthlyCents,
   annualCents,
   error = false,
+  featured = true,
 }: Readonly<UnlimitedCardProps>) {
   const { t } = useTranslation();
   const isYearly = billingCycle === 'year';
@@ -81,7 +83,10 @@ export function UnlimitedCard({
   }
 
   return (
-    <div className={`${styles.card} ${styles.cardPro}`}>
+    <div
+      className={featured ? `${styles.card} ${styles.cardPro}` : styles.card}
+      data-testid="unlimited-card"
+    >
       <div className={styles.cardHeader}>
         <h3 className={styles.cardTitle}>Pro</h3>
         <span className={styles.cardPriceLine}>
