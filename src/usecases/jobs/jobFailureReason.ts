@@ -11,14 +11,6 @@ import {
 import { EmptyDeckError } from './EmptyDeckError';
 import { inferColumnMapping } from '../../lib/notionDatabase/inferColumnMapping';
 import { isPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
-
-// The synchronous upload path turns this sentinel into the enter-a-password
-// state; the async (job) path has no such state, so the job needs the same
-// message pdfinfo's own password error gets, not the generic fallback.
-const isLockedPdfError = (error: unknown): error is Error =>
-  error instanceof Error &&
-  (error.message.startsWith('pdfinfo_password') ||
-    isPdfPasswordSentinel(error.message));
 import { isNotionDatabaseNotPageError } from '../../services/NotionService/helpers/isNotionDatabaseNotPageError';
 
 export const NOTION_DATABASE_NOT_PAGE_REASON =
@@ -82,6 +74,14 @@ function hasCode(error: unknown, code: string): boolean {
 function hasName(error: unknown, name: string): boolean {
   return error instanceof Error && error.name === name;
 }
+
+// The synchronous upload path turns this sentinel into the enter-a-password
+// state; the async (job) path has no such state, so the job needs the same
+// message pdfinfo's own password error gets, not the generic fallback.
+const isLockedPdfError = (error: unknown): error is Error =>
+  error instanceof Error &&
+  (error.message.startsWith('pdfinfo_password') ||
+    isPdfPasswordSentinel(error.message));
 
 export type JobFailureReasonCode =
   | 'empty_deck'
