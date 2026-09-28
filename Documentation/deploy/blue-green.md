@@ -19,7 +19,7 @@ incident.
 |---|---|---|
 | `ecosystem.blue-green.config.js` | repo | two apps: `server-blue` (`PORT=3000`), `server-green` (`PORT=3001`) |
 | `scripts/deploy-blue-green.sh` | repo | the cutover: start next color → health-check → swap Apache → drain old color |
-| `/etc/apache2/conf-2anki-upstream.conf` | prod, generated | HTTP `ProxyPass`/`ProxyPassReverse`; rewritten by the script each deploy |
+| `/etc/apache2/conf-2anki-upstream.conf` | prod, generated | HTTP `ProxyPass`/`ProxyPassReverse`, plus `timeout=900` `ProxyPass` lines for `/api/upload` and `/api/apkg`; rewritten by the script each deploy |
 | `/etc/apache2/conf-2anki-ws-upstream.conf` | prod, generated | the Ankify WebSocket `RewriteRule` (`/v/*`); rewritten by the script each deploy |
 | four Apache vhosts (`000-2anki*`, `000-beta*`) | prod, manual one-time edit | each `Include`s the upstream file(s) instead of static directives — see [One-time Apache setup](#one-time-apache-setup) |
 | `~/.deploy_color` | prod, state | `blue` or `green` — the currently live color |
