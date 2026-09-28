@@ -168,13 +168,6 @@ class UsersService {
     ).deleteUser(owner);
   }
 
-  updateSubScriptionEmailUsingPrimaryEmail(email: string, newEmail: string) {
-    return this.repository.updateSubScriptionEmailUsingPrimaryEmail(
-      email,
-      newEmail
-    );
-  }
-
   getSubscriptionLinkedEmail(owner: string) {
     return this.repository.getSubscriptionLinkedEmail(owner);
   }

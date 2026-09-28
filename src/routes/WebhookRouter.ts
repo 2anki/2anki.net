@@ -27,7 +27,6 @@ import {
 } from '../usecases/passes/passDurations';
 import TokenRepository from '../data_layer/TokenRepository';
 import AuthenticationService from '../services/AuthenticationService';
-import UsersService from '../services/UsersService';
 import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import { PersistStripeSessionUseCase } from '../usecases/checkout/PersistStripeSessionUseCase';
 import hashToken from '../lib/misc/hashToken';

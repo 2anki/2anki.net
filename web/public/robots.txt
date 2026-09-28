@@ -19,7 +19,6 @@ Disallow: /templates/edit/
 Disallow: /preview/
 Disallow: /search
 Disallow: /uploads
-Disallow: /successful-checkout
 Disallow: /debug
 Disallow: /s/
 
