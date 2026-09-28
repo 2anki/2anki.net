@@ -2,5 +2,5 @@
   "id": "2026-09-28-async-upload-failure-reasons",
   "date": "2026-09-28",
   "type": "fix",
-  "title": "Failed uploads on the downloads page say what was wrong with the file, not that something broke on our end"
+  "title": "Failed uploads on the downloads page say what was wrong with the file"
 }
