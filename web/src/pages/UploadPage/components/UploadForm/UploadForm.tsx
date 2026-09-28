@@ -46,10 +46,11 @@ import { AI_CREDITS_QUERY_KEY } from '../../../../lib/hooks/useAiCredits';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
+import { isLargeUpload } from '../../../../lib/reportClientError';
 import {
-  reportUploadNetworkFailure,
-  isLargeUpload,
-} from '../../../../lib/reportClientError';
+  assertFilesReadable,
+  UnreadableFileError,
+} from './assertFilesReadable';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { PostDownloadNudge } from '../../../../components/PostDownloadNudge';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
@@ -362,6 +363,8 @@ function UploadForm({
     setPdfAttemptCount,
     networkRetryFiles,
     setNetworkRetryFiles,
+    unreadableFile,
+    setUnreadableFile,
     resetForm,
   } = useUploadFormState(() => {
     resetValidation();
@@ -611,10 +614,14 @@ function UploadForm({
   }, [zoneState]);
 
   useEffect(() => {
-    if (zoneState === 'error' && networkRetryFiles == null) {
+    if (
+      zoneState === 'error' &&
+      networkRetryFiles == null &&
+      unreadableFile == null
+    ) {
       track('upload_error_chat_shown');
     }
-  }, [zoneState, networkRetryFiles]);
+  }, [zoneState, networkRetryFiles, unreadableFile]);
 
   useEffect(() => {
     if (zoneState === 'success' && showErrorInlineChat) {
@@ -896,6 +903,18 @@ function UploadForm({
         ? failedFileName.slice(extensionStart).toLowerCase()
         : null;
     const fileSizeBytes = failedFile?.size ?? null;
+    if (error instanceof UnreadableFileError) {
+      track('upload_file_unreadable', {
+        fileSizeBytes,
+        fileExt,
+        ...(isRetry ? { retry: true } : {}),
+      });
+      setUnreadableFile(error.file);
+      setNetworkRetryFiles(null);
+      setLocalError(null);
+      setZoneState('error');
+      return false;
+    }
     track('upload_failed', {
       reason: isNetworkError ? 'network' : 'other',
       message: (error instanceof Error ? error.message : String(error)).slice(
@@ -904,15 +923,9 @@ function UploadForm({
       ),
       fileSizeBytes,
       fileExt,
+      elapsedSeconds: Math.round((Date.now() - submittedAt) / 1000),
       ...(isRetry ? { retry: true } : {}),
     });
-    if (isNetworkError) {
-      reportUploadNetworkFailure(error, {
-        fileExt,
-        fileSizeBytes,
-        elapsedMs: Date.now() - submittedAt,
-      });
-    }
     if (isNetworkError && uploadedFiles.length > 0) {
       setNetworkRetryFiles(uploadedFiles);
       setLocalError(null);
@@ -932,11 +945,13 @@ function UploadForm({
     const submittedAt = Date.now();
     setZoneState('converting');
     setNetworkRetryFiles(null);
+    setUnreadableFile(null);
     fireAnalyticsEvent('upload_started');
     setProgressWidth(10);
     setProgressSlow(false);
     setShowFallback(false);
     try {
+      await assertFilesReadable(uploadedFiles);
       const passToken = getStoredPassToken();
       const uploadHeaders: HeadersInit =
         passToken == null ? {} : { 'X-Pass-Token': passToken };
@@ -1600,6 +1615,28 @@ function UploadForm({
     );
   };
 
+  // The browser refuses to read the picked file (saved again, moved or deleted
+  // since the pick), so a same-file retry can never succeed: the only way out
+  // is a fresh pick.
+  const renderUnreadableFileState = () => (
+    <div className={formStyles.stateContent}>
+      <WarningIcon className={formStyles.iconError} />
+      <p className={formStyles.errorTitle}>
+        {t('upload.form.unreadableFileTitle')}
+      </p>
+      <p className={formStyles.errorBody}>
+        {t('upload.form.unreadableFileBody')}
+      </p>
+      <button
+        type="button"
+        className={formStyles.actionButton}
+        onClick={resetForm}
+      >
+        {t('upload.form.unreadableChooseAgain')}
+      </button>
+    </div>
+  );
+
   // A dropped upload never created a server job, so the status link and
   // "Talk it through" chat the full error state offers point at nothing —
   // this render keeps it to size-aware copy, a same-file retry, and a reset.
@@ -1940,6 +1977,9 @@ function UploadForm({
     if (zoneState === 'error' && folderError != null) {
       return renderFolderErrorState(folderError);
     }
+    if (zoneState === 'error' && unreadableFile != null) {
+      return renderUnreadableFileState();
+    }
     if (zoneState === 'error' && networkRetryFiles != null) {
       return renderNetworkErrorState();
     }
@@ -2061,52 +2101,54 @@ function UploadForm({
           )}
         </div>
       )}
-      {zoneState === 'error' && networkRetryFiles == null && (
-        <div className={formStyles.inlineChatWrapper}>
-          <button
-            type="button"
-            className={formStyles.inlineChatToggle}
-            onClick={() => {
-              setShowErrorInlineChat((prev) => {
-                if (!prev) track('upload_error_chat_engaged');
-                return !prev;
-              });
-            }}
-            aria-expanded={showErrorInlineChat}
-            aria-controls="error-state-chat-panel"
-          >
-            <i
-              className={`${formStyles.inlineChatToggleChevron} ${showErrorInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
-              aria-hidden="true"
+      {zoneState === 'error' &&
+        networkRetryFiles == null &&
+        unreadableFile == null && (
+          <div className={formStyles.inlineChatWrapper}>
+            <button
+              type="button"
+              className={formStyles.inlineChatToggle}
+              onClick={() => {
+                setShowErrorInlineChat((prev) => {
+                  if (!prev) track('upload_error_chat_engaged');
+                  return !prev;
+                });
+              }}
+              aria-expanded={showErrorInlineChat}
+              aria-controls="error-state-chat-panel"
             >
-              ›
-            </i>
-            {showErrorInlineChat ? 'Hide chat' : 'Talk it through instead'}
-          </button>
-          {showErrorInlineChat && (
-            <section
-              id="error-state-chat-panel"
-              className={formStyles.inlineChatBody}
-              aria-label={`Talk to Claude about ${currentFilename() || 'this file'}`}
-            >
-              <p className={formStyles.inlineChatContext}>
-                About{' '}
-                <span
-                  className={formStyles.inlineChatFilename}
-                  title={currentFilename() || 'your file'}
-                >
-                  {currentFilename() || 'your file'}
-                </span>
-              </p>
-              <ChatPanel
-                key={`error-${currentFilename()}`}
-                initialPrompt={`I tried to convert ${currentFilename() || 'a file'} and got stuck. What can I do?`}
-                cameFromUpload
-              />
-            </section>
-          )}
-        </div>
-      )}
+              <i
+                className={`${formStyles.inlineChatToggleChevron} ${showErrorInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
+                aria-hidden="true"
+              >
+                ›
+              </i>
+              {showErrorInlineChat ? 'Hide chat' : 'Talk it through instead'}
+            </button>
+            {showErrorInlineChat && (
+              <section
+                id="error-state-chat-panel"
+                className={formStyles.inlineChatBody}
+                aria-label={`Talk to Claude about ${currentFilename() || 'this file'}`}
+              >
+                <p className={formStyles.inlineChatContext}>
+                  About{' '}
+                  <span
+                    className={formStyles.inlineChatFilename}
+                    title={currentFilename() || 'your file'}
+                  >
+                    {currentFilename() || 'your file'}
+                  </span>
+                </p>
+                <ChatPanel
+                  key={`error-${currentFilename()}`}
+                  initialPrompt={`I tried to convert ${currentFilename() || 'a file'} and got stuck. What can I do?`}
+                  cameFromUpload
+                />
+              </section>
+            )}
+          </div>
+        )}
       {showChips && (
         <div
           id="upload-panel-dropbox"

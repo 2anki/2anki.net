@@ -235,7 +235,10 @@
       "networkErrorLargeBody": "Es un archivo grande, así que puede tardar unos minutos, y se detuvo a mitad. Vuelve a intentarlo con el mismo archivo abajo o cambia a una conexión más rápida y estable. Si sigue deteniéndose, divídelo en archivos más pequeños.",
       "networkErrorSmallTitle": "No se pudo subir tu archivo",
       "networkErrorSmallBody": "La conexión se cortó antes de que el archivo terminara. Revisa tu conexión y vuelve a intentarlo.",
-      "networkChooseDifferent": "Elegir otro archivo"
+      "networkChooseDifferent": "Elegir otro archivo",
+      "unreadableFileTitle": "Este archivo cambió desde que lo elegiste",
+      "unreadableFileBody": "El navegador ya no puede leer la versión que elegiste: se guardó, movió o eliminó después de seleccionarla. Elígelo de nuevo para subir la versión actual.",
+      "unreadableChooseAgain": "Elegir el archivo de nuevo"
     },
     "page": {
       "title": "Convierte tus notas",

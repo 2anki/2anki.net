@@ -235,7 +235,10 @@
       "networkErrorLargeBody": "C'est un gros fichier, cela peut donc prendre quelques minutes, et il s'est arrêté en cours de route. Réessayez avec le même fichier ci-dessous, ou passez à une connexion plus rapide et plus stable. Si cela continue de s'arrêter, divisez-le en fichiers plus petits.",
       "networkErrorSmallTitle": "Impossible d'envoyer votre fichier",
       "networkErrorSmallBody": "La connexion a été interrompue avant la fin de l'envoi. Vérifiez votre connexion et réessayez.",
-      "networkChooseDifferent": "Choisir un autre fichier"
+      "networkChooseDifferent": "Choisir un autre fichier",
+      "unreadableFileTitle": "Ce fichier a changé depuis que vous l'avez choisi",
+      "unreadableFileBody": "Le navigateur ne peut plus lire la version choisie : elle a été enregistrée, déplacée ou supprimée après la sélection. Choisissez-le à nouveau pour envoyer la version actuelle.",
+      "unreadableChooseAgain": "Choisir le fichier à nouveau"
     },
     "page": {
       "title": "Convertis tes notes",

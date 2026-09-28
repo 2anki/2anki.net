@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-28-upload-changed-file-repick",
+  "date": "2026-09-28",
+  "type": "fix",
+  "title": "Upload says when a picked file changed on disk, so you re-pick it instead of retrying"
+}
