@@ -20,8 +20,8 @@ export const LEGAL_ROUTES: Readonly<Record<string, string>> = {
 
 const md = new MarkdownIt({ html: false, linkify: true });
 
-const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n/;
-const TITLE_RE = /^title:\s*['"]?(.*?)['"]?\s*$/m;
+const FRONTMATTER_OPEN = '---\n';
+const FRONTMATTER_CLOSE = '\n---\n';
 const ROOT_RE = /<div id="root"><\/div>/;
 
 // The prerender is visible until React mounts; keep it readable rather than
@@ -35,12 +35,38 @@ export interface LegalDocument {
   html: string;
 }
 
+function splitFrontmatter(raw: string): { frontmatter: string; body: string } {
+  if (!raw.startsWith(FRONTMATTER_OPEN)) {
+    return { frontmatter: '', body: raw };
+  }
+  const close = raw.indexOf(FRONTMATTER_CLOSE, FRONTMATTER_OPEN.length);
+  if (close === -1) {
+    return { frontmatter: '', body: raw };
+  }
+  return {
+    frontmatter: raw.slice(FRONTMATTER_OPEN.length, close),
+    body: raw.slice(close + FRONTMATTER_CLOSE.length),
+  };
+}
+
+function readTitle(frontmatter: string): string {
+  const line = frontmatter
+    .split('\n')
+    .find((candidate) => candidate.startsWith('title:'));
+  if (line == null) {
+    return '';
+  }
+  const value = line.slice('title:'.length).trim();
+  const quoted =
+    value.length >= 2 &&
+    ((value.startsWith("'") && value.endsWith("'")) ||
+      (value.startsWith('"') && value.endsWith('"')));
+  return quoted ? value.slice(1, -1) : value;
+}
+
 export function renderLegalDocument(raw: string): LegalDocument {
-  const match = FRONTMATTER_RE.exec(raw);
-  const frontmatter = match?.[1] ?? '';
-  const body = match == null ? raw : raw.slice(match[0].length);
-  const title = TITLE_RE.exec(frontmatter)?.[1] ?? '';
-  return { title, html: md.render(body) };
+  const { frontmatter, body } = splitFrontmatter(raw);
+  return { title: readTitle(frontmatter), html: md.render(body) };
 }
 
 export function injectLegalDocument(
