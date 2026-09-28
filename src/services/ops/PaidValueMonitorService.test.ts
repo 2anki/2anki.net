@@ -255,10 +255,12 @@ describe('PaidValueMonitorService', () => {
 
     const result = await service.getStatus(SINCE, NOW);
 
-    expect(result.passes.rows[0]).toMatchObject({
-      kind: 'unlimited',
-      classification: 'tried',
-      successes: 1,
+    expect(result.passes).toEqual({
+      checked: 1,
+      withValue: 1,
+      zeroValueTried: 0,
+      zeroValueNeverTried: 0,
+      rows: [],
     });
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
