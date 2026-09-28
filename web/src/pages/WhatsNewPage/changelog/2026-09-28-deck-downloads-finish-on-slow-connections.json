@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-28-deck-downloads-finish-on-slow-connections",
+  "date": "2026-09-28",
+  "type": "fix",
+  "title": "Deck downloads finish on slow connections instead of stopping partway"
+}
