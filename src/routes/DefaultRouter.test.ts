@@ -51,6 +51,21 @@ describe('DefaultRouter catch-all status', () => {
     }
   );
 
+  it.each([
+    '/documentation/misc/privacy-policy',
+    '/documentation/misc/terms-of-service',
+  ])(
+    'prerenders the legal page text into the shell for %s',
+    async (legalPath) => {
+      const res = await fetch(`${url}${legalPath}`);
+      const body = await res.text();
+      expect(res.status).toBe(200);
+      expect(body).toContain('<main class="legal-prerender"');
+      expect(body).toContain('</main></div>');
+      expect(body).not.toBe(SHELL_HTML);
+    }
+  );
+
   it.each(['/pricing', '/pricing/', '/convert/csv-to-anki', '/account', '/'])(
     'returns 200 for known route %s',
     async (knownPath) => {
