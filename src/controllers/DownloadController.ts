@@ -201,10 +201,19 @@ class DownloadController {
       bytes: size,
       spoolMs: Date.now() - spoolStartedAt,
     });
+    if (clientGone) {
+      await discardSpool();
+      return;
+    }
     if (!res.headersSent) {
       res.setHeader('Content-Length', String(size));
     }
     file = fs.createReadStream(spoolPath);
+    if (clientGone) {
+      file.destroy();
+      await discardSpool();
+      return;
+    }
     file.on('error', (error) => {
       console.error('Download spool read failed', {
         owner,
