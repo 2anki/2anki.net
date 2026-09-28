@@ -1945,10 +1945,7 @@ export class DeckParser {
                 note.sourcePageId = pageId;
                 note.sectionTags = sectionTags;
                 mcqCount++;
-                if (
-                  (this.settings.isAvocado && this.noteHasAvocado(note)) ||
-                  (this.settings.isCherry && !this.noteHasCherry(note))
-                ) {
+                if (this.dropsByMatchingRules(note)) {
                   console.debug('dropping due to matching rules');
                 } else {
                   cards.push(note);
@@ -2081,10 +2078,11 @@ export class DeckParser {
     });
   }
 
-  // The 2026 export (and the max-one rebuild) keeps the block UUID on the
-  // nested <details>; the legacy export keeps it on the wrapping ul.toggle.
-  // Only the nested toggle's own wrapper counts, never an ancestor's, or the
-  // child would inherit the parent's identity and overwrite it in Anki.
+  // The block UUID sits either on the nested <details> itself (the bare
+  // details.toggle export and the max-one rebuild) or on its own wrapping
+  // ul.toggle (the display:contents export). Only the nested toggle's own
+  // wrapper counts, never an ancestor's, or the child would inherit the
+  // parent's identity and overwrite it in Anki.
   private resolveNestedToggleBlockId(
     $details: cheerio.Cheerio<Element>
   ): string | undefined {
