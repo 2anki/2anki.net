@@ -199,6 +199,28 @@
   min-width: 2.25rem;
 }
 
+/* A header whose control carries sentence-length labels (overlapping cloze:
+   "Show the whole list", "Show nearby lines only") cannot share a row with
+   its heading on a phone. Below 600px the control drops to its own full-width
+   line and the segments share it, wrapping their text instead of clipping. */
+@media (max-width: 600px) {
+  .groupHeaderStacks {
+    flex-wrap: wrap;
+  }
+
+  .groupHeaderStacks .segmented {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .groupHeaderStacks .segment {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: normal;
+    padding: 0.4rem 0.5rem;
+  }
+}
+
 .groupOptions {
   display: flex;
   flex-direction: column;

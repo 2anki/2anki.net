@@ -1436,7 +1436,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
               )}
               {isCardTypesGroup && (
                 <div className={fieldStyles.optionGroup} id="overlapping-cloze">
-                  <div className={fieldStyles.groupHeader}>
+                  <div
+                    className={`${fieldStyles.groupHeader} ${fieldStyles.groupHeaderStacks}`}
+                  >
                     <h3 className={fieldStyles.groupHeading}>
                       {t('cardOptions.overlappingCloze.heading')}
                     </h3>
