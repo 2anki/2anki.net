@@ -10,9 +10,24 @@ jest.mock('../services/events/track', () => ({ track: jest.fn() }));
 
 const trackMock = track as jest.Mock;
 
+let spoolBase: string;
+
 beforeEach(() => {
   trackMock.mockClear();
+  spoolBase = fs.mkdtempSync(path.join(os.tmpdir(), 'dl-spool-'));
+  process.env.WORKSPACE_BASE = spoolBase;
 });
+
+afterEach(() => {
+  fs.rmSync(spoolBase, { recursive: true, force: true });
+});
+
+function spoolFiles() {
+  const dir = path.join(spoolBase, 'download-spool');
+  return fs.existsSync(dir) ? fs.readdirSync(dir) : [];
+}
+
+const settle = () => new Promise((resolve) => setTimeout(resolve, 25));
 
 type StreamingMockResponse = Response & {
   _headers: Record<string, string>;
@@ -20,9 +35,10 @@ type StreamingMockResponse = Response & {
   _done: Promise<void>;
 };
 
-// getFile pipes the storage stream into the response, so the mock has to be
+// getFile pipes the spooled file into the response, so the mock has to be
 // a real Writable; the collected chunks stand in for what the client got.
-function mockResponse(): StreamingMockResponse {
+// delayMs makes the sink read slowly, like a client on a weak connection.
+function mockResponse(delayMs = 0): StreamingMockResponse {
   const headers: Record<string, string> = {};
   const chunks: Buffer[] = [];
   let resolveDone!: () => void;
@@ -30,9 +46,14 @@ function mockResponse(): StreamingMockResponse {
     resolveDone = resolve;
   });
   const sink = new Writable({
+    highWaterMark: 1024,
     write(chunk, _enc, cb) {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      cb();
+      if (delayMs > 0) {
+        setTimeout(cb, delayMs);
+      } else {
+        cb();
+      }
     },
   });
   sink.on('finish', () => resolveDone());
@@ -119,6 +140,7 @@ describe('DownloadController.getFile', () => {
     const res = mockResponse();
 
     await controller.getFile(req, res, {} as any);
+    await res._done;
 
     expect(res.setHeader).toHaveBeenCalledWith(
       'Content-Disposition',
@@ -134,6 +156,7 @@ describe('DownloadController.getFile', () => {
     const res = mockResponse();
 
     await controller.getFile(req, res, {} as any);
+    await res._done;
 
     expect(res.setHeader).toHaveBeenCalledWith(
       'Content-Disposition',
@@ -151,7 +174,7 @@ describe('DownloadController.getFile streaming', () => {
     });
   }
 
-  it('omits Content-Length when storage does not report one', async () => {
+  it('sets Content-Length from the spooled size even when storage reports none', async () => {
     const service = makeService({
       getFileStream: jest.fn().mockResolvedValue({
         body: Readable.from([Buffer.from('x')]),
@@ -165,10 +188,29 @@ describe('DownloadController.getFile streaming', () => {
     await controller.getFile(req, res, {} as never);
     await res._done;
 
-    expect(res._headers['Content-Length']).toBeUndefined();
+    expect(res._headers['Content-Length']).toBe('1');
   });
 
-  it('stops pulling from storage when the client goes away mid-download', async () => {
+  it('delivers every byte to a client that reads slowly', async () => {
+    const source = Array.from({ length: 40 }, (_, i) => Buffer.alloc(1024, i));
+    const service = makeService({
+      getFileStream: jest.fn().mockResolvedValue({
+        body: Readable.from(source),
+        contentLength: 40 * 1024,
+      }),
+    });
+    const controller = new DownloadController(service as never);
+    const req = { params: { key: 'deck.apkg' } } as unknown as Request;
+    const res = mockResponse(5);
+
+    await controller.getFile(req, res, {} as never);
+    await res._done;
+
+    expect(Buffer.concat(res._chunks).equals(Buffer.concat(source))).toBe(true);
+    expect(res._headers['Content-Length']).toBe(String(40 * 1024));
+  });
+
+  it('stops pulling from storage when the client goes away while spooling', async () => {
     const body = neverEndingStream();
     const service = makeService({
       getFileStream: jest.fn().mockResolvedValue({ body, contentLength: 10 }),
@@ -176,36 +218,23 @@ describe('DownloadController.getFile streaming', () => {
     const controller = new DownloadController(service as never);
     const req = { params: { key: 'deck.apkg' } } as unknown as Request;
     const res = mockResponse();
+    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
 
-    await controller.getFile(req, res, {} as never);
+    const pending = controller.getFile(req, res, {} as never);
+    await settle();
     expect(body.destroyed).toBe(false);
 
     res.emit('close');
+    await pending;
 
     expect(body.destroyed).toBe(true);
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res._chunks).toEqual([]);
+    expect(spoolFiles()).toEqual([]);
+    infoSpy.mockRestore();
   });
 
-  it('tears the response down when storage fails after bytes were sent', async () => {
-    const body = neverEndingStream();
-    const service = makeService({
-      getFileStream: jest.fn().mockResolvedValue({ body, contentLength: 10 }),
-    });
-    const controller = new DownloadController(service as never);
-    const req = { params: { key: 'deck.apkg' } } as unknown as Request;
-    const res = mockResponse();
-    const destroySpy = jest.spyOn(res, 'destroy').mockImplementation(() => res);
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-    await controller.getFile(req, res, {} as never);
-    res.headersSent = true;
-    body.emit('error', Object.assign(new Error('boom'), { name: 'SlowDown' }));
-
-    expect(destroySpy).toHaveBeenCalled();
-    expect(res.status).not.toHaveBeenCalledWith(503);
-    errorSpy.mockRestore();
-  });
-
-  it('answers 503 when storage fails before any byte was sent', async () => {
+  it('answers 503 when storage fails while spooling, before any byte reaches the client', async () => {
     const body = neverEndingStream();
     const service = makeService({
       getFileStream: jest.fn().mockResolvedValue({ body, contentLength: 10 }),
@@ -215,14 +244,76 @@ describe('DownloadController.getFile streaming', () => {
     const res = mockResponse();
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    await controller.getFile(req, res, {} as never);
+    const pending = controller.getFile(req, res, {} as never);
+    await settle();
     body.emit('error', Object.assign(new Error('boom'), { name: 'SlowDown' }));
+    await pending;
 
     expect(res.status).toHaveBeenCalledWith(503);
     expect(res.send).toHaveBeenCalledWith(
       'Storage is busy right now. Try the download again in a moment.'
     );
+    expect(res._chunks).toEqual([]);
+    expect(spoolFiles()).toEqual([]);
     errorSpy.mockRestore();
+  });
+
+  it('prunes spool files an earlier process left behind, keeping fresh ones', async () => {
+    const spoolDir = path.join(spoolBase, 'download-spool');
+    fs.mkdirSync(spoolDir, { recursive: true });
+    const stale = path.join(spoolDir, 'stale.apkg');
+    const fresh = path.join(spoolDir, 'fresh.apkg');
+    fs.writeFileSync(stale, 'old');
+    fs.writeFileSync(fresh, 'new');
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    fs.utimesSync(stale, twoHoursAgo, twoHoursAgo);
+    const controller = new DownloadController(makeService() as never);
+    const req = { params: { key: 'deck.apkg' } } as unknown as Request;
+    const res = mockResponse();
+
+    await controller.getFile(req, res, {} as never);
+    await res._done;
+    res.emit('close');
+    await settle();
+
+    expect(fs.existsSync(stale)).toBe(false);
+    expect(fs.existsSync(fresh)).toBe(true);
+  });
+
+  it('removes the spool file once the download has finished', async () => {
+    const service = makeService();
+    const controller = new DownloadController(service as never);
+    const req = { params: { key: 'deck.apkg' } } as unknown as Request;
+    const res = mockResponse();
+
+    await controller.getFile(req, res, {} as never);
+    await res._done;
+    res.emit('close');
+    await settle();
+
+    expect(Buffer.concat(res._chunks).toString()).toBe('fake-apkg');
+    expect(spoolFiles()).toEqual([]);
+  });
+
+  it('drops the spool when the client leaves while the file is being sent', async () => {
+    const source = Array.from({ length: 40 }, (_, i) => Buffer.alloc(1024, i));
+    const service = makeService({
+      getFileStream: jest.fn().mockResolvedValue({
+        body: Readable.from(source),
+        contentLength: 40 * 1024,
+      }),
+    });
+    const controller = new DownloadController(service as never);
+    const req = { params: { key: 'deck.apkg' } } as unknown as Request;
+    const res = mockResponse(200);
+
+    await controller.getFile(req, res, {} as never);
+    await settle();
+    expect(spoolFiles()).toHaveLength(1);
+    res.emit('close');
+    await settle();
+
+    expect(spoolFiles()).toEqual([]);
   });
 });
 

@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
+import { randomUUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import StorageHandler from '../lib/storage/StorageHandler';
 import DownloadService from '../services/DownloadService';
 import { canAccess } from '../lib/misc/canAccess';
@@ -56,6 +58,29 @@ function resolveDownloadIdentity(
   return { userId, anonymousId };
 }
 
+const STALE_SPOOL_MS = 60 * 60 * 1000;
+
+// A spool file outlives its download only when the process died mid-serve.
+// Pruning by age on the next download keeps the dir self-contained; a file
+// still being served survives its own unlink through the open descriptor.
+async function pruneStaleSpoolFiles(spoolDir: string): Promise<void> {
+  try {
+    const cutoff = Date.now() - STALE_SPOOL_MS;
+    const names = await fs.promises.readdir(spoolDir);
+    await Promise.all(
+      names.map(async (name) => {
+        const filePath = path.join(spoolDir, name);
+        const { mtimeMs } = await fs.promises.stat(filePath);
+        if (mtimeMs < cutoff) {
+          await fs.promises.rm(filePath, { force: true });
+        }
+      })
+    );
+  } catch {
+    // Pruning is opportunistic; the download itself never waits on it.
+  }
+}
+
 class DownloadController {
   constructor(
     private readonly service: DownloadService,
@@ -78,10 +103,7 @@ class DownloadController {
         const filename = downloadFilename(key, dbName);
         res.setHeader('Content-Type', 'application/octet-stream');
         res.setHeader('Content-Disposition', buildContentDisposition(filename));
-        if (stored.contentLength != null) {
-          res.setHeader('Content-Length', String(stored.contentLength));
-        }
-        this.pipeStoredObject(stored.body, res, owner);
+        await this.serveStoredObject(stored.body, res, owner);
         return;
       }
       console.info('Download link expired', { owner });
@@ -118,29 +140,88 @@ class DownloadController {
     }
   }
 
-  // A client that gives up mid-download (Safari retried a 951 MB deck a dozen
-  // times on 2026-09-20) has to stop the pull from storage as well, or every
-  // abandoned attempt still costs a full object read into the box.
-  private pipeStoredObject(body: Readable, res: Response, owner: unknown) {
+  // The object is spooled to disk at storage speed and served from the file.
+  // Piping storage straight to the client let a slow reader (30 KB/s on a
+  // 76 MB deck, 2026-09-28) hold the storage socket idle until the upstream
+  // dropped it mid-object, truncating every attempt (#4561). A client that
+  // gives up at any point stops the pull and drops the spool (#4544), and
+  // only the spool file, never the whole object, sits on the box. Files an
+  // earlier process left behind are pruned on the next download, so the spool
+  // dir never relies on another sweeper; an unlinked file stays readable
+  // through its open descriptor, so pruning cannot cut a slow download short.
+  private async serveStoredObject(
+    body: Readable,
+    res: Response,
+    owner: unknown
+  ) {
+    const spoolDir = path.join(process.env.WORKSPACE_BASE!, 'download-spool');
+    const spoolPath = path.join(spoolDir, `${randomUUID()}.apkg`);
+    const discardSpool = () =>
+      fs.promises.rm(spoolPath, { force: true }).catch(() => undefined);
+    let clientGone = false;
+    let file: fs.ReadStream | undefined;
     res.on('close', () => {
+      clientGone = true;
       if (!body.destroyed) {
         body.destroy();
       }
+      if (file && !file.destroyed) {
+        file.destroy();
+      }
+      void discardSpool();
     });
-    body.on('error', (error) => {
-      console.error('Download stream failed', {
+    const spoolStartedAt = Date.now();
+    try {
+      await fs.promises.mkdir(spoolDir, { recursive: true });
+      void pruneStaleSpoolFiles(spoolDir);
+      await pipeline(body, fs.createWriteStream(spoolPath, { flags: 'wx' }));
+    } catch (error) {
+      await discardSpool();
+      if (clientGone) {
+        console.info('Download abandoned while spooling', { owner });
+        return;
+      }
+      console.error('Download spool failed', {
         owner,
         name: (error as { name?: string })?.name,
       });
-      if (res.headersSent) {
-        res.destroy(error);
-        return;
-      }
       res
         .status(503)
         .send('Storage is busy right now. Try the download again in a moment.');
+      return;
+    }
+    if (clientGone) {
+      await discardSpool();
+      return;
+    }
+
+    const { size } = await fs.promises.stat(spoolPath);
+    console.info('Download spooled', {
+      owner,
+      bytes: size,
+      spoolMs: Date.now() - spoolStartedAt,
     });
-    body.pipe(res);
+    if (clientGone) {
+      await discardSpool();
+      return;
+    }
+    if (!res.headersSent) {
+      res.setHeader('Content-Length', String(size));
+    }
+    file = fs.createReadStream(spoolPath);
+    if (clientGone) {
+      file.destroy();
+      await discardSpool();
+      return;
+    }
+    file.on('error', (error) => {
+      console.error('Download spool read failed', {
+        owner,
+        name: (error as { name?: string })?.name,
+      });
+      res.destroy(error);
+    });
+    file.pipe(res);
   }
 
   async getDownloadPage(req: Request, res: Response) {
