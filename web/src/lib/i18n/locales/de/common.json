@@ -235,7 +235,10 @@
       "networkErrorLargeBody": "Das ist eine große Datei, daher kann es ein paar Minuten dauern – und sie ist mittendrin abgebrochen. Versuche es unten mit derselben Datei erneut oder wechsle zu einer schnelleren, stabileren Verbindung. Wenn es immer wieder abbricht, teile sie in kleinere Dateien auf.",
       "networkErrorSmallTitle": "Deine Datei konnte nicht hochgeladen werden",
       "networkErrorSmallBody": "Die Verbindung wurde unterbrochen, bevor die Datei fertig war. Überprüfe deine Verbindung und versuche es erneut.",
-      "networkChooseDifferent": "Andere Datei wählen"
+      "networkChooseDifferent": "Andere Datei wählen",
+      "unreadableFileTitle": "Diese Datei hat sich geändert, seit du sie ausgewählt hast",
+      "unreadableFileBody": "Der Browser kann die gewählte Version nicht mehr lesen – sie wurde nach der Auswahl gespeichert, verschoben oder gelöscht. Wähle die Datei erneut, um die aktuelle Version hochzuladen.",
+      "unreadableChooseAgain": "Datei erneut wählen"
     },
     "page": {
       "title": "Konvertiere deine Notizen",

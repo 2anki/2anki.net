@@ -235,7 +235,10 @@
       "networkErrorLargeBody": "È un file di grandi dimensioni, quindi può richiedere qualche minuto, e si è interrotto a metà. Riprova con lo stesso file qui sotto oppure passa a una connessione più veloce e stabile. Se continua a interrompersi, dividilo in file più piccoli.",
       "networkErrorSmallTitle": "Impossibile caricare il tuo file",
       "networkErrorSmallBody": "La connessione è caduta prima che il file fosse completato. Controlla la connessione e riprova.",
-      "networkChooseDifferent": "Scegli un altro file"
+      "networkChooseDifferent": "Scegli un altro file",
+      "unreadableFileTitle": "Questo file è cambiato da quando l'hai scelto",
+      "unreadableFileBody": "Il browser non riesce più a leggere la versione scelta: è stata salvata, spostata o eliminata dopo la selezione. Scegli di nuovo il file per caricare la versione attuale.",
+      "unreadableChooseAgain": "Scegli di nuovo il file"
     },
     "page": {
       "title": "Converti i tuoi appunti",

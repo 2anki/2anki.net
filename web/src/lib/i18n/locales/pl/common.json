@@ -245,7 +245,10 @@
       "networkErrorLargeBody": "To duży plik, więc może to potrwać kilka minut – i zatrzymało się w połowie. Spróbuj ponownie z tym samym plikiem poniżej albo przełącz się na szybsze, stabilniejsze połączenie. Jeśli wciąż się zatrzymuje, podziel go na mniejsze pliki.",
       "networkErrorSmallTitle": "Nie udało się przesłać pliku",
       "networkErrorSmallBody": "Połączenie zostało przerwane, zanim plik został ukończony. Sprawdź połączenie i spróbuj ponownie.",
-      "networkChooseDifferent": "Wybierz inny plik"
+      "networkChooseDifferent": "Wybierz inny plik",
+      "unreadableFileTitle": "Ten plik zmienił się od momentu wyboru",
+      "unreadableFileBody": "Przeglądarka nie może już odczytać wybranej wersji: została zapisana, przeniesiona lub usunięta po wybraniu. Wybierz plik ponownie, aby przesłać aktualną wersję.",
+      "unreadableChooseAgain": "Wybierz plik ponownie"
     },
     "page": {
       "title": "Przekształć swoje notatki",

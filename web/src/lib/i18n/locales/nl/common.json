@@ -235,7 +235,10 @@
       "networkErrorLargeBody": "Dit is een groot bestand, dus het kan een paar minuten duren – en het is halverwege gestopt. Probeer het hieronder opnieuw met hetzelfde bestand, of schakel over naar een snellere, stabielere verbinding. Als het blijft stoppen, splits het dan op in kleinere bestanden.",
       "networkErrorSmallTitle": "Je bestand kon niet worden geüpload",
       "networkErrorSmallBody": "De verbinding werd verbroken voordat het bestand klaar was. Controleer je verbinding en probeer het opnieuw.",
-      "networkChooseDifferent": "Kies een ander bestand"
+      "networkChooseDifferent": "Kies een ander bestand",
+      "unreadableFileTitle": "Dit bestand is veranderd sinds je het koos",
+      "unreadableFileBody": "De browser kan de gekozen versie niet meer lezen: het is na het kiezen opgeslagen, verplaatst of verwijderd. Kies het opnieuw om de huidige versie te uploaden.",
+      "unreadableChooseAgain": "Bestand opnieuw kiezen"
     },
     "page": {
       "title": "Zet je notities om",

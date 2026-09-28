@@ -230,7 +230,10 @@
       "networkErrorLargeBody": "大きなファイルのため数分かかることがありますが、途中で止まってしまいました。下の同じファイルでもう一度お試しいただくか、より速くて安定した接続に切り替えてください。何度も止まる場合は、小さなファイルに分割してください。",
       "networkErrorSmallTitle": "ファイルをアップロードできませんでした",
       "networkErrorSmallBody": "ファイルが完了する前に接続が切れました。接続を確認して、もう一度お試しください。",
-      "networkChooseDifferent": "別のファイルを選ぶ"
+      "networkChooseDifferent": "別のファイルを選ぶ",
+      "unreadableFileTitle": "選択後にこのファイルが変更されました",
+      "unreadableFileBody": "選択したバージョンをブラウザが読み込めなくなりました。選択後に保存、移動、または削除された可能性があります。もう一度ファイルを選んで、現在のバージョンをアップロードしてください。",
+      "unreadableChooseAgain": "ファイルをもう一度選ぶ"
     },
     "page": {
       "title": "ノートを変換",

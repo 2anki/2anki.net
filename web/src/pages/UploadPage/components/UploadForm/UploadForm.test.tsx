@@ -1389,7 +1389,7 @@ describe('UploadForm analytics events', () => {
     });
   });
 
-  describe('ops error log', () => {
+  describe('upload failure reporting', () => {
     function stubFetch(uploadError: Error) {
       const reports: Array<Record<string, unknown>> = [];
       vi.stubGlobal(
@@ -1426,29 +1426,69 @@ describe('UploadForm analytics events', () => {
       });
     }
 
-    it('reports a network failure with the selected file type and size range', async () => {
+    it('keeps a network failure out of the ops error log and records its elapsed seconds', async () => {
+      const { track } = await import('../../../../lib/analytics/track');
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
       const reports = stubFetch(new TypeError('Failed to fetch'));
       const file = new File(['x'], 'Study Notes.PDF');
-      Object.defineProperty(file, 'size', { value: 20 * 1024 * 1024 });
 
       await submitUpload(file);
 
-      await waitFor(() => expect(reports).toHaveLength(1));
-      expect(reports[0]).toMatchObject({
-        message: 'Upload network failure (.pdf, 10-50 MB)',
-        context: { cause: 'Failed to fetch' },
-      });
+      await waitFor(() =>
+        expect(trackMock).toHaveBeenCalledWith(
+          'upload_failed',
+          expect.objectContaining({
+            reason: 'network',
+            fileExt: '.pdf',
+            elapsedSeconds: expect.any(Number),
+          })
+        )
+      );
+      expect(reports).toEqual([]);
     });
 
-    it('reports an unknown type and size when no file is selected', async () => {
-      const reports = stubFetch(new TypeError('Load failed'));
-
-      await submitUpload();
-
-      await waitFor(() => expect(reports).toHaveLength(1));
-      expect(reports[0]).toMatchObject({
-        message: 'Upload network failure (unknown type, unknown size)',
+    it('asks for a fresh pick when the browser can no longer read the file, without uploading', async () => {
+      const { track } = await import('../../../../lib/analytics/track');
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
+      const requests: string[] = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string) => {
+          requests.push(url);
+          return Promise.resolve(new Response(null));
+        })
+      );
+      const file = new File(['x'], 'notes.zip');
+      Object.defineProperty(file, 'slice', {
+        value: () => ({
+          arrayBuffer: () =>
+            Promise.reject(new DOMException('changed', 'NotReadableError')),
+        }),
       });
+
+      await submitUpload(file);
+
+      await waitFor(() =>
+        expect(
+          screen.getByText('This file changed since you picked it')
+        ).toBeInTheDocument()
+      );
+      expect(
+        screen.getByRole('button', { name: 'Choose the file again' })
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+      expect(requests).not.toContain('/api/upload/file');
+      expect(requests).not.toContain('/api/events/errors');
+      expect(trackMock).toHaveBeenCalledWith(
+        'upload_file_unreadable',
+        expect.objectContaining({ fileExt: '.zip' })
+      );
+      expect(trackMock).not.toHaveBeenCalledWith(
+        'upload_failed',
+        expect.anything()
+      );
     });
 
     it('does not report a non-network upload error', async () => {

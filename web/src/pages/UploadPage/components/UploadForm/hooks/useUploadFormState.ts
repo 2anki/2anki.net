@@ -91,6 +91,7 @@ export function useUploadFormState(onReset: () => void) {
   const [networkRetryFiles, setNetworkRetryFiles] = useState<File[] | null>(
     null
   );
+  const [unreadableFile, setUnreadableFile] = useState<File | null>(null);
 
   const resetForm = () => {
     setZoneState('idle');
@@ -130,6 +131,7 @@ export function useUploadFormState(onReset: () => void) {
     setPdfUnlockError(null);
     setPdfAttemptCount(0);
     setNetworkRetryFiles(null);
+    setUnreadableFile(null);
     onReset();
   };
 
@@ -212,6 +214,8 @@ export function useUploadFormState(onReset: () => void) {
     setPdfAttemptCount,
     networkRetryFiles,
     setNetworkRetryFiles,
+    unreadableFile,
+    setUnreadableFile,
     resetForm,
   };
 }

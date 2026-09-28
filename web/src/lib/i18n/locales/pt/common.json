@@ -235,7 +235,10 @@
       "networkErrorLargeBody": "Este é um arquivo grande, então pode levar alguns minutos — e parou na metade. Tente novamente com o mesmo arquivo abaixo ou mude para uma conexão mais rápida e estável. Se continuar parando, divida-o em arquivos menores.",
       "networkErrorSmallTitle": "Não foi possível enviar seu arquivo",
       "networkErrorSmallBody": "A conexão caiu antes de o arquivo terminar. Verifique sua conexão e tente novamente.",
-      "networkChooseDifferent": "Escolher outro arquivo"
+      "networkChooseDifferent": "Escolher outro arquivo",
+      "unreadableFileTitle": "Este arquivo mudou desde que você o escolheu",
+      "unreadableFileBody": "O navegador não consegue mais ler a versão escolhida: ela foi salva, movida ou excluída depois da seleção. Escolha o arquivo de novo para enviar a versão atual.",
+      "unreadableChooseAgain": "Escolher o arquivo de novo"
     },
     "page": {
       "title": "Converta suas anotações",
