@@ -5,6 +5,7 @@ describe('parsePricingVariant', () => {
     expect(parsePricingVariant('passes-first')).toBe('passes-first');
     expect(parsePricingVariant('unlimited-first')).toBe('unlimited-first');
     expect(parsePricingVariant('minimal')).toBe('minimal');
+    expect(parsePricingVariant('semester-first')).toBe('semester-first');
   });
 
   it('rejects anything unknown so it never reaches Stripe metadata', () => {
