@@ -269,7 +269,8 @@
       "step3Body": "Your .apkg downloads automatically. Import it into Anki or AnkiDroid to start studying.",
       "contactPrefix": "Something not working?",
       "tellUs": "Tell us",
-      "orEmail": "or email"
+      "orEmail": "or email",
+      "metaTitle": "Upload — 2anki"
     },
     "explore": {
       "heading": "Make better decks",

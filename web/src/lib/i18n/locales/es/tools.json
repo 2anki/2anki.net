@@ -451,5 +451,29 @@
     "myDeck": "Mi mazo",
     "removeConnection": "Quitar conexión",
     "addNodeHere": "Añadir nodo aquí"
+  },
+  "apkgCsv": {
+    "formAria": "Exportar .apkg a CSV",
+    "changeFile": "Cambiar archivo",
+    "chooseFile": "Elegir archivo .apkg",
+    "exporting": "Exportando tu CSV",
+    "exportToCsv": "Exportar a CSV",
+    "helper": "Exporta hasta 21 notas ahora, sin cuenta. Una cuenta gratuita lo sube a 100 por archivo — ilimitado con un plan de pago.",
+    "capHas_one": "Este mazo tiene {{count}} nota.",
+    "capHas_other": "Este mazo tiene {{count}} notas.",
+    "capNoAccount": "Sin cuenta puedes exportar {{limit}}.",
+    "capPlan": "Tu plan exporta {{limit}} por archivo.",
+    "capSignInFree": "Inicia sesión gratis para exportar hasta 100 por archivo.",
+    "signInToExport": "Inicia sesión para exportar",
+    "upgradeUnlimited": "Mejora tu plan para tener ilimitado",
+    "exportSuccess_one": "Exportada {{count}} nota — {{deckName}}.csv guardado en tus descargas",
+    "exportSuccess_other": "Exportadas {{count}} notas — {{deckName}}.csv guardado en tus descargas",
+    "downloadAgain": "Descargar de nuevo",
+    "pickFile": "Elige un archivo .apkg para exportar.",
+    "notApkg": "Este archivo no es un .apkg. Expórtalo primero desde Anki y luego sube ese archivo.",
+    "tooBig": "Este archivo supera el límite de subida de 100 MB.",
+    "unreadable": "No se pudo leer este archivo .apkg. Elige otro mazo e inténtalo de nuevo.",
+    "networkError": "No se pudo conectar con 2anki. Revisa tu conexión e inténtalo de nuevo.",
+    "genericError": "No se pudo exportar este mazo. Inténtalo de nuevo o escribe a support@2anki.net."
   }
 }

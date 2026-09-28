@@ -269,7 +269,8 @@
       "step3Body": "Il tuo .apkg viene scaricato automaticamente. Importalo in Anki o AnkiDroid per iniziare a studiare.",
       "contactPrefix": "Qualcosa non funziona?",
       "tellUs": "Faccelo sapere",
-      "orEmail": "o scrivi a"
+      "orEmail": "o scrivi a",
+      "metaTitle": "Carica — 2anki"
     },
     "explore": {
       "heading": "Crea mazzi migliori",

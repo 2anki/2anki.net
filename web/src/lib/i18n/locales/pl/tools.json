@@ -483,5 +483,33 @@
     "myDeck": "Moja talia",
     "removeConnection": "Usuń połączenie",
     "addNodeHere": "Dodaj węzeł tutaj"
+  },
+  "apkgCsv": {
+    "formAria": "Eksportuj .apkg do CSV",
+    "changeFile": "Zmień plik",
+    "chooseFile": "Wybierz plik .apkg",
+    "exporting": "Eksportowanie CSV",
+    "exportToCsv": "Eksportuj do CSV",
+    "helper": "Wyeksportuj teraz do 21 notatek, bez konta. Darmowe konto zwiększa limit do 100 na plik — bez limitu w planie płatnym.",
+    "capHas_one": "Ta talia ma {{count}} notatkę.",
+    "capHas_few": "Ta talia ma {{count}} notatki.",
+    "capHas_many": "Ta talia ma {{count}} notatek.",
+    "capHas_other": "Ta talia ma {{count}} notatki.",
+    "capNoAccount": "Bez konta możesz wyeksportować {{limit}}.",
+    "capPlan": "Twój plan eksportuje {{limit}} na plik.",
+    "capSignInFree": "Zaloguj się za darmo, aby eksportować do 100 na plik.",
+    "signInToExport": "Zaloguj się, aby eksportować",
+    "upgradeUnlimited": "Ulepsz plan, aby mieć bez limitu",
+    "exportSuccess_one": "Wyeksportowano {{count}} notatkę — {{deckName}}.csv zapisano w pobranych",
+    "exportSuccess_few": "Wyeksportowano {{count}} notatki — {{deckName}}.csv zapisano w pobranych",
+    "exportSuccess_many": "Wyeksportowano {{count}} notatek — {{deckName}}.csv zapisano w pobranych",
+    "exportSuccess_other": "Wyeksportowano {{count}} notatki — {{deckName}}.csv zapisano w pobranych",
+    "downloadAgain": "Pobierz ponownie",
+    "pickFile": "Wybierz plik .apkg do wyeksportowania.",
+    "notApkg": "Ten plik to nie .apkg. Najpierw wyeksportuj go z Anki, a potem prześlij ten plik.",
+    "tooBig": "Ten plik przekracza limit przesyłania 100 MB.",
+    "unreadable": "Nie udało się odczytać tego pliku .apkg. Wybierz inną talię i spróbuj ponownie.",
+    "networkError": "Nie udało się połączyć z 2anki. Sprawdź połączenie i spróbuj ponownie.",
+    "genericError": "Nie udało się wyeksportować tej talii. Spróbuj ponownie lub napisz na support@2anki.net."
   }
 }

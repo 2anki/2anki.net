@@ -264,7 +264,8 @@
       "step3Body": ".apkg は自動的にダウンロードされます。Anki または AnkiDroid にインポートして学習を始めましょう。",
       "contactPrefix": "うまくいきませんか？",
       "tellUs": "お知らせください",
-      "orEmail": "またはメールで"
+      "orEmail": "またはメールで",
+      "metaTitle": "アップロード — 2anki"
     },
     "explore": {
       "heading": "もっと良いデッキを作る",

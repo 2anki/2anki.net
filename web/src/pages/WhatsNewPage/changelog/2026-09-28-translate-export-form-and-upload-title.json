@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-28-translate-export-form-and-upload-title",
+  "date": "2026-09-28",
+  "type": "fix",
+  "title": "The Anki-to-CSV export tool now follows your chosen language"
+}

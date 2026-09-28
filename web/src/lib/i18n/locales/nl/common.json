@@ -269,7 +269,8 @@
       "step3Body": "Je .apkg wordt automatisch gedownload. Importeer het in Anki of AnkiDroid om te gaan studeren.",
       "contactPrefix": "Werkt er iets niet?",
       "tellUs": "Laat het ons weten",
-      "orEmail": "of e-mail"
+      "orEmail": "of e-mail",
+      "metaTitle": "Uploaden — 2anki"
     },
     "explore": {
       "heading": "Maak betere decks",

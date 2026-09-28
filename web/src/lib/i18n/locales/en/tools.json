@@ -451,5 +451,29 @@
     "myDeck": "My deck",
     "removeConnection": "Remove connection",
     "addNodeHere": "Add node here"
+  },
+  "apkgCsv": {
+    "formAria": "Export .apkg to CSV",
+    "changeFile": "Change file",
+    "chooseFile": "Choose .apkg file",
+    "exporting": "Exporting your CSV",
+    "exportToCsv": "Export to CSV",
+    "helper": "Export up to 21 notes now, no account needed. A free account raises that to 100 per file — unlimited with a paid plan.",
+    "capHas_one": "This deck has {{count}} note.",
+    "capHas_other": "This deck has {{count}} notes.",
+    "capNoAccount": "Without an account you can export {{limit}}.",
+    "capPlan": "Your plan exports {{limit}} per file.",
+    "capSignInFree": "Sign in free to export up to 100 per file.",
+    "signInToExport": "Sign in to export",
+    "upgradeUnlimited": "Upgrade for unlimited",
+    "exportSuccess_one": "Exported {{count}} note — {{deckName}}.csv saved to your downloads",
+    "exportSuccess_other": "Exported {{count}} notes — {{deckName}}.csv saved to your downloads",
+    "downloadAgain": "Download again",
+    "pickFile": "Pick a .apkg file to export.",
+    "notApkg": "This file isn’t an .apkg. Export from Anki first, then upload that file.",
+    "tooBig": "This file is over the 100 MB upload limit.",
+    "unreadable": "Couldn't read this .apkg file. Pick another deck and try again.",
+    "networkError": "Couldn't reach 2anki. Check your connection and try again.",
+    "genericError": "Couldn't export this deck. Try again, or email support@2anki.net."
   }
 }

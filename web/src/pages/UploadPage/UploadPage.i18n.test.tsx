@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -64,6 +64,13 @@ describe('UploadPage in German', () => {
         name: 'Konvertiere deine Notizen',
       })
     ).toBeInTheDocument();
+  });
+
+  it('translates the browser tab title', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(document.title).toBe('Hochladen — 2anki');
+    });
   });
 
   it('translates the how-it-works heading and the explore card', () => {

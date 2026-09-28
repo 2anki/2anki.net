@@ -162,7 +162,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   return (
     <div className={styles.page}>
       <Helmet>
-        <title>Upload — 2anki</title>
+        <title>{t('upload.page.metaTitle')}</title>
       </Helmet>
       <header className={styles.pageHeader}>
         <h1 className={styles.title}>{t('upload.page.title')}</h1>

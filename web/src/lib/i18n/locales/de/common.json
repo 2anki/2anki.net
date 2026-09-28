@@ -269,7 +269,8 @@
       "step3Body": "Deine .apkg wird automatisch heruntergeladen. Importiere sie in Anki oder AnkiDroid, um mit dem Lernen zu beginnen.",
       "contactPrefix": "Etwas funktioniert nicht?",
       "tellUs": "Sag uns Bescheid",
-      "orEmail": "oder schreib an"
+      "orEmail": "oder schreib an",
+      "metaTitle": "Hochladen — 2anki"
     },
     "explore": {
       "heading": "Bessere Stapel erstellen",

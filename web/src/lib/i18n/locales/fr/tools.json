@@ -451,5 +451,29 @@
     "myDeck": "Mon paquet",
     "removeConnection": "Retirer la connexion",
     "addNodeHere": "Ajouter un nœud ici"
+  },
+  "apkgCsv": {
+    "formAria": "Exporter le .apkg en CSV",
+    "changeFile": "Changer de fichier",
+    "chooseFile": "Choisir un fichier .apkg",
+    "exporting": "Export de ton CSV en cours",
+    "exportToCsv": "Exporter en CSV",
+    "helper": "Exporte jusqu'à 21 notes maintenant, sans compte. Un compte gratuit passe à 100 par fichier — illimité avec un forfait payant.",
+    "capHas_one": "Ce paquet contient {{count}} note.",
+    "capHas_other": "Ce paquet contient {{count}} notes.",
+    "capNoAccount": "Sans compte, tu peux en exporter {{limit}}.",
+    "capPlan": "Ton forfait exporte {{limit}} par fichier.",
+    "capSignInFree": "Connecte-toi gratuitement pour en exporter jusqu'à 100 par fichier.",
+    "signInToExport": "Se connecter pour exporter",
+    "upgradeUnlimited": "Passer à l'illimité",
+    "exportSuccess_one": "{{count}} note exportée — {{deckName}}.csv enregistré dans tes téléchargements",
+    "exportSuccess_other": "{{count}} notes exportées — {{deckName}}.csv enregistré dans tes téléchargements",
+    "downloadAgain": "Télécharger à nouveau",
+    "pickFile": "Choisis un fichier .apkg à exporter.",
+    "notApkg": "Ce fichier n'est pas un .apkg. Exporte-le d'abord depuis Anki, puis téléverse ce fichier.",
+    "tooBig": "Ce fichier dépasse la limite d'envoi de 100 MB.",
+    "unreadable": "Impossible de lire ce fichier .apkg. Choisis un autre paquet et réessaie.",
+    "networkError": "Impossible de joindre 2anki. Vérifie ta connexion et réessaie.",
+    "genericError": "Impossible d'exporter ce paquet. Réessaie ou écris à support@2anki.net."
   }
 }

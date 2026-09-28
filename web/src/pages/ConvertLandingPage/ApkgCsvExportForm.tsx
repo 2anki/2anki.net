@@ -1,4 +1,6 @@
 import { type SyntheticEvent, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { track } from '../../lib/analytics/track';
 import styles from './ApkgCsvExportForm.module.css';
 
@@ -51,7 +53,10 @@ async function readCapExceeded(response: Response): Promise<{
   }
 }
 
-async function readErrorMessage(response: Response): Promise<string> {
+async function readErrorMessage(
+  response: Response,
+  t: TFunction<'tools'>
+): Promise<string> {
   try {
     const body = (await response.clone().json()) as ServerError;
     if (typeof body.message === 'string' && body.message.length > 0) {
@@ -60,9 +65,8 @@ async function readErrorMessage(response: Response): Promise<string> {
   } catch {
     // not JSON
   }
-  if (response.status === 413)
-    return 'This file is over the 100 MB upload limit.';
-  return "Couldn't read this .apkg file. Pick another deck and try again.";
+  if (response.status === 413) return t('apkgCsv.tooBig');
+  return t('apkgCsv.unreadable');
 }
 
 function readDeckName(headers: Headers, fallback: string): string {
@@ -81,6 +85,7 @@ function readNoteCount(headers: Headers): number {
 }
 
 function ApkgCsvExportForm() {
+  const { t } = useTranslation('tools');
   const inputRef = useRef<HTMLInputElement>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
   const [state, setState] = useState<FormState>({ kind: 'idle' });
@@ -102,14 +107,13 @@ function ApkgCsvExportForm() {
     event.preventDefault();
     const file = inputRef.current?.files?.[0];
     if (file == null) {
-      setState({ kind: 'error', message: 'Pick a .apkg file to export.' });
+      setState({ kind: 'error', message: t('apkgCsv.pickFile') });
       return;
     }
     if (!/\.apkg$/i.test(file.name)) {
       setState({
         kind: 'error',
-        message:
-          'This file isn’t an .apkg. Export from Anki first, then upload that file.',
+        message: t('apkgCsv.notApkg'),
       });
       return;
     }
@@ -127,7 +131,7 @@ function ApkgCsvExportForm() {
           setState(capped);
           return;
         }
-        const message = await readErrorMessage(response);
+        const message = await readErrorMessage(response, t);
         setState({ kind: 'error', message });
         return;
       }
@@ -143,8 +147,8 @@ function ApkgCsvExportForm() {
     } catch (error) {
       const message =
         error instanceof Error && /fetch|network/i.test(error.message)
-          ? "Couldn't reach 2anki. Check your connection and try again."
-          : "Couldn't export this deck. Try again, or email support@2anki.net.";
+          ? t('apkgCsv.networkError')
+          : t('apkgCsv.genericError');
       setState({ kind: 'error', message });
     }
   };
@@ -158,12 +162,12 @@ function ApkgCsvExportForm() {
     <form
       className={styles.form}
       onSubmit={handleSubmit}
-      aria-label="Export .apkg to CSV"
+      aria-label={t('apkgCsv.formAria')}
     >
       {showFileLabel && (
         <div className={styles.row}>
           <label htmlFor="apkg-csv-file" className={styles.fileLabel}>
-            {filename ? 'Change file' : 'Choose .apkg file'}
+            {filename ? t('apkgCsv.changeFile') : t('apkgCsv.chooseFile')}
             {filename && (
               <span className={styles.filenameInline} title={filename}>
                 {filename}
@@ -185,27 +189,22 @@ function ApkgCsvExportForm() {
             disabled={state.kind === 'uploading' || filename == null}
           >
             {state.kind === 'uploading'
-              ? 'Exporting your CSV'
-              : 'Export to CSV'}
+              ? t('apkgCsv.exporting')
+              : t('apkgCsv.exportToCsv')}
           </button>
         </div>
       )}
-      <p className={styles.helper}>
-        Export up to 21 notes now, no account needed. A free account raises that
-        to 100 per file — unlimited with a paid plan.
-      </p>
+      <p className={styles.helper}>{t('apkgCsv.helper')}</p>
       {state.kind === 'capped' && (
         <div className={styles.capNotice} role="status" aria-live="polite">
           <p className={styles.capHeadline}>
-            This deck has {state.noteCount} notes.{' '}
+            {t('apkgCsv.capHas', { count: state.noteCount })}{' '}
             {state.needsAccount
-              ? `Without an account you can export ${state.noteLimit}.`
-              : `Your plan exports ${state.noteLimit} per file.`}
+              ? t('apkgCsv.capNoAccount', { limit: state.noteLimit })
+              : t('apkgCsv.capPlan', { limit: state.noteLimit })}
           </p>
           {state.needsAccount && (
-            <p className={styles.capSubline}>
-              Sign in free to export up to 100 per file.
-            </p>
+            <p className={styles.capSubline}>{t('apkgCsv.capSignInFree')}</p>
           )}
           <div className={styles.capActions}>
             {state.needsAccount && (
@@ -213,11 +212,11 @@ function ApkgCsvExportForm() {
                 className={styles.capPrimary}
                 href="/login?redirect=/convert/apkg-to-csv"
               >
-                Sign in to export
+                {t('apkgCsv.signInToExport')}
               </a>
             )}
             <a className={styles.capSecondary} href="/pricing">
-              Upgrade for unlimited
+              {t('apkgCsv.upgradeUnlimited')}
             </a>
           </div>
         </div>
@@ -230,16 +229,17 @@ function ApkgCsvExportForm() {
       {state.kind === 'success' && (
         <>
           <p className={styles.success}>
-            Exported {state.noteCount}{' '}
-            {state.noteCount === 1 ? 'note' : 'notes'} — {state.deckName}.csv
-            saved to your downloads
+            {t('apkgCsv.exportSuccess', {
+              count: state.noteCount,
+              deckName: state.deckName,
+            })}
           </p>
           <button
             type="button"
             className={styles.downloadAgain}
             onClick={() => triggerDownload(state.csvUrl, state.csvName)}
           >
-            Download again
+            {t('apkgCsv.downloadAgain')}
           </button>
         </>
       )}

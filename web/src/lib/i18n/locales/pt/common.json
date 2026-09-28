@@ -269,7 +269,8 @@
       "step3Body": "Seu .apkg é baixado automaticamente. Importe-o no Anki ou AnkiDroid para começar a estudar.",
       "contactPrefix": "Algo não está funcionando?",
       "tellUs": "Conte para nós",
-      "orEmail": "ou envie um e-mail para"
+      "orEmail": "ou envie um e-mail para",
+      "metaTitle": "Enviar — 2anki"
     },
     "explore": {
       "heading": "Crie baralhos melhores",
