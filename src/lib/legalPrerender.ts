@@ -23,6 +23,11 @@ const md = new MarkdownIt({ html: false, linkify: true });
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n/;
 const TITLE_RE = /^title:\s*['"]?(.*?)['"]?\s*$/m;
 const ROOT_RE = /<div id="root"><\/div>/;
+
+// The prerender is visible until React mounts; keep it readable rather than
+// bare browser-default text in that moment.
+const PRERENDER_STYLE =
+  'max-width:48rem;margin:0 auto;padding:1rem;font-family:system-ui,sans-serif;line-height:1.5';
 const TITLE_TAG_RE = /<title>[^<]*<\/title>/;
 
 export interface LegalDocument {
@@ -46,7 +51,7 @@ export function injectLegalDocument(
     doc.title === '' ? '' : `<h1>${md.utils.escapeHtml(doc.title)}</h1>`;
   const withRoot = indexHtml.replace(
     ROOT_RE,
-    `<div id="root"><main class="legal-prerender">${heading}${doc.html}</main></div>`
+    `<div id="root"><main class="legal-prerender" style="${PRERENDER_STYLE}">${heading}${doc.html}</main></div>`
   );
   if (doc.title === '') {
     return withRoot;
@@ -64,10 +69,10 @@ export function legalPrerenderFor(
   indexHtml: string,
   contentDir: string = LEGAL_CONTENT_DIR
 ): string | null {
-  const file = LEGAL_ROUTES[routePath];
-  if (file == null) {
+  if (!Object.prototype.hasOwnProperty.call(LEGAL_ROUTES, routePath)) {
     return null;
   }
+  const file = LEGAL_ROUTES[routePath];
   const cacheKey = path.join(contentDir, file);
   let doc = cache.get(cacheKey);
   if (doc == null) {

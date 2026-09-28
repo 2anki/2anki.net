@@ -45,9 +45,8 @@ describe('injectLegalDocument', () => {
   it('puts the rendered policy inside the React root and sets the title', () => {
     const html = injectLegalDocument(SHELL, renderLegalDocument(PRIVACY_MD));
     expect(html).toContain('<title>Privacy Policy — 2anki</title>');
-    expect(html).toContain(
-      '<div id="root"><main class="legal-prerender"><h1>Privacy Policy</h1>'
-    );
+    expect(html).toContain('<div id="root"><main class="legal-prerender"');
+    expect(html).toContain('<h1>Privacy Policy</h1>');
     expect(html).toContain('<h2>Signing in with Google</h2>');
     expect(html).toContain('</main></div>');
   });
@@ -77,6 +76,13 @@ describe('legalPrerenderFor', () => {
   it('returns null for a route that is not a legal page', () => {
     expect(legalPrerenderFor('/upload', SHELL, dir)).toBeNull();
   });
+
+  it.each(['/constructor', '/__proto__', 'constructor', '__proto__'])(
+    'treats prototype-shaped path %s as no legal page',
+    (routePath) => {
+      expect(legalPrerenderFor(routePath, SHELL, dir)).toBeNull();
+    }
+  );
 
   it('returns null when the policy file is missing so the plain shell is served', () => {
     expect(

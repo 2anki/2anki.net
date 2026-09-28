@@ -29,7 +29,7 @@ We do keep a short record of the files you picked (the file's name, type, size a
 
 You can review or revoke 2anki's access to your Google account and Drive at any time at [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
 
-2anki's use and transfer to any other app of information received from Google APIs will adhere to the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements.
+2anki's use and transfer to any other app of information received from Google APIs will adhere to the Google API Services User Data Policy, including the Limited Use requirements. That policy is published at https://developers.google.com/terms/api-services-user-data-policy.
 
 ## Service Providers
 
