@@ -170,6 +170,7 @@ class DownloadController {
       }
       void discardSpool();
     });
+    const spoolStartedAt = Date.now();
     try {
       await fs.promises.mkdir(spoolDir, { recursive: true });
       void pruneStaleSpoolFiles(spoolDir);
@@ -195,7 +196,14 @@ class DownloadController {
     }
 
     const { size } = await fs.promises.stat(spoolPath);
-    res.setHeader('Content-Length', String(size));
+    console.info('Download spooled', {
+      owner,
+      bytes: size,
+      spoolMs: Date.now() - spoolStartedAt,
+    });
+    if (!res.headersSent) {
+      res.setHeader('Content-Length', String(size));
+    }
     file = fs.createReadStream(spoolPath);
     file.on('error', (error) => {
       console.error('Download spool read failed', {
