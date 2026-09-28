@@ -13,6 +13,8 @@ const PASS_BENEFIT_KEYS = [
   'pricing.pass.imageOcclusion',
 ];
 
+type Translate = ReturnType<typeof useTranslation>['t'];
+
 interface PassCardsProps {
   onDayPass: () => void;
   onWeekPass: () => void;
@@ -23,6 +25,17 @@ interface PassCardsProps {
   featureDayPass?: boolean;
   featureSemester?: boolean;
   prices?: PassPriceDisplay;
+}
+
+function actionLabel(t: Translate, pending: boolean, labelKey: string) {
+  return pending ? t('pricing.pass.redirecting') : t(labelKey);
+}
+
+function featuredTreatment(t: Translate, featured: boolean) {
+  return {
+    badge: featured ? t('pricing.pass.mostPopular') : undefined,
+    className: featured ? styles.cardPro : undefined,
+  };
 }
 
 export function PassCards({
@@ -39,24 +52,20 @@ export function PassCards({
   const { t } = useTranslation();
   const benefits = PASS_BENEFIT_KEYS.map((key) => t(key));
   const featureWeek = !featureDayPass && !featureSemester;
+  const showHorizons = !featureDayPass;
 
   const dayCard = (
     <PricingCard
       key="day"
       title="Day Pass"
-      badge={featureDayPass ? t('pricing.pass.mostPopular') : undefined}
-      horizonCaption={featureDayPass ? undefined : t('pricing.pass.horizonDay')}
+      {...featuredTreatment(t, featureDayPass)}
+      horizonCaption={showHorizons ? t('pricing.pass.horizonDay') : undefined}
       price={prices['24h']}
       priceSuffix={t('pricing.pass.day24')}
       benefits={benefits}
       onAction={onDayPass}
-      actionLabel={
-        dayPassPending
-          ? t('pricing.pass.redirecting')
-          : t('pricing.pass.getDayPass')
-      }
+      actionLabel={actionLabel(t, dayPassPending, 'pricing.pass.getDayPass')}
       actionDisabled={dayPassPending}
-      className={featureDayPass ? styles.cardPro : undefined}
     />
   );
 
@@ -64,21 +73,14 @@ export function PassCards({
     <PricingCard
       key="week"
       title="Week Pass"
-      badge={featureWeek ? t('pricing.pass.mostPopular') : undefined}
-      horizonCaption={
-        featureDayPass ? undefined : t('pricing.pass.horizonWeek')
-      }
+      {...featuredTreatment(t, featureWeek)}
+      horizonCaption={showHorizons ? t('pricing.pass.horizonWeek') : undefined}
       price={prices['7d']}
       priceSuffix={t('pricing.pass.week1')}
       benefits={benefits}
       onAction={onWeekPass}
-      actionLabel={
-        weekPassPending
-          ? t('pricing.pass.redirecting')
-          : t('pricing.pass.getWeekPass')
-      }
+      actionLabel={actionLabel(t, weekPassPending, 'pricing.pass.getWeekPass')}
       actionDisabled={weekPassPending}
-      className={featureWeek ? styles.cardPro : undefined}
     />
   );
 
@@ -87,6 +89,7 @@ export function PassCards({
       <PricingCard
         key="semester"
         title="Semester Pass"
+        {...featuredTreatment(t, featureSemester)}
         badge={
           featureSemester
             ? t('pricing.pass.mostPopular')
@@ -99,13 +102,12 @@ export function PassCards({
         priceSuffix={t('pricing.pass.semester4mo')}
         benefits={benefits}
         onAction={onSemesterPass}
-        actionLabel={
-          semesterPassPending
-            ? t('pricing.pass.redirecting')
-            : t('pricing.pass.getSemesterPass')
-        }
+        actionLabel={actionLabel(
+          t,
+          semesterPassPending,
+          'pricing.pass.getSemesterPass'
+        )}
         actionDisabled={semesterPassPending}
-        className={featureSemester ? styles.cardPro : undefined}
       />
     );
 
