@@ -1,0 +1,38 @@
+{
+  "search": {
+    "trigger": "Buscar nos docs",
+    "dialogLabel": "Buscar na documentação",
+    "close": "Fechar a busca",
+    "placeholder": "Buscar nos docs",
+    "resultsLabel": "Resultados da busca",
+    "hint": "Buscar em {{total}} docs",
+    "noMatch": "Nenhum doc corresponde a <q></q>",
+    "checkSpelling": "Verifique a ortografia ou <browse>veja todos os docs</browse>."
+  },
+  "content": {
+    "notFoundTitle": "Não encontrado",
+    "notFoundBody": "A página que você procura não existe. <back>Voltar para a documentação</back>.",
+    "editOnGitHub": "Editar esta página no GitHub →",
+    "pagerLabel": "Paginação",
+    "previous": "Anterior",
+    "next": "Próximo"
+  },
+  "code": {
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "copyAria": "Copiar o código para a área de transferência"
+  },
+  "wip": "Estes docs estão sendo reescritos com ajuda de IA. Se algo parecer errado, <issue>abra uma issue</issue> — lemos todas.",
+  "sidebar": {
+    "label": "Documentação"
+  },
+  "home": {
+    "title": "Documentação do 2anki",
+    "tagline": "O jeito mais simples de transformar o que você estuda em cartões do Anki.",
+    "connectCta": "Conecte o Notion em 5 min →",
+    "uploadCta": "Enviar um arquivo",
+    "startHere": "Comece aqui",
+    "popular": "Páginas populares",
+    "footer": "Travou? Escreva para <email>support@2anki.net</email> ou <issue>abra uma issue no GitHub</issue>."
+  }
+}

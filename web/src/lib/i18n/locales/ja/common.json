@@ -139,6 +139,19 @@
     }
   },
   "upload": {
+    "limit": {
+      "fileTooBig": "このファイルは {{limit}} の上限を超えています",
+      "allCardsUsed": "今月の無料カード {{limit}} 枚をすべて使いました",
+      "overFreeLimit": "この変換は月 {{limit}} 枚の無料上限を超えています",
+      "descFileAnon": "100 MB を超えるファイルには有料プランが必要です。ファイルを分割して再試行するか、アカウントを作成してアップグレードすると約 10 GB までアップロードできます。",
+      "descFileUser": "ファイルを分割するか、アップグレードすると約 10 GB までアップロードできます。",
+      "descCardsAnon": "無料アカウントを作成して変換を始めるか、アップグレードすると月間の上限がなくなります。",
+      "descCardsUser": "アップグレードすると月間の上限がなくなります。または来月までお待ちください。",
+      "usage": "{{used}} / {{limit}} 枚 · {{resetsOn}} にリセットされ、無料カードが戻ります",
+      "startingCheckout": "チェックアウトを開始しています",
+      "getDayPass": "Day Pass を購入 — {{price}}",
+      "seePlans": "プランを見る"
+    },
     "dropzone": {
       "dropActive": "ここにドロップ",
       "dropIdle": "ここにファイルをドロップ",

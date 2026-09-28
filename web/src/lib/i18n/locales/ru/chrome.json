@@ -1,5 +1,8 @@
 {
   "nav": {
+    "ops": "Ops",
+    "expandSidebar": "Развернуть боковую панель",
+    "collapseSidebar": "Свернуть боковую панель",
     "mainNavigation": "основная навигация",
     "menu": "меню",
     "logoAlt": "Логотип 2anki",

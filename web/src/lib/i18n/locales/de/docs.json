@@ -1,0 +1,38 @@
+{
+  "search": {
+    "trigger": "Docs durchsuchen",
+    "dialogLabel": "Dokumentation durchsuchen",
+    "close": "Suche schließen",
+    "placeholder": "Docs durchsuchen",
+    "resultsLabel": "Suchergebnisse",
+    "hint": "{{total}} Docs durchsuchen",
+    "noMatch": "Keine Docs passen zu <q></q>",
+    "checkSpelling": "Prüfe die Schreibweise oder <browse>durchsuche alle Docs</browse>."
+  },
+  "content": {
+    "notFoundTitle": "Nicht gefunden",
+    "notFoundBody": "Die gesuchte Seite existiert nicht. <back>Zurück zur Dokumentation</back>.",
+    "editOnGitHub": "Diese Seite auf GitHub bearbeiten →",
+    "pagerLabel": "Seitennavigation",
+    "previous": "Zurück",
+    "next": "Weiter"
+  },
+  "code": {
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "copyAria": "Code in die Zwischenablage kopieren"
+  },
+  "wip": "Diese Docs werden mit Hilfe von KI neu geschrieben. Wenn etwas falsch aussieht, <issue>öffne ein Issue</issue> — wir lesen jedes.",
+  "sidebar": {
+    "label": "Dokumentation"
+  },
+  "home": {
+    "title": "2anki-Dokumentation",
+    "tagline": "Der einfachste Weg, das Gelernte in Anki-Karten zu verwandeln.",
+    "connectCta": "Notion in 5 Min verbinden →",
+    "uploadCta": "Datei hochladen",
+    "startHere": "Los geht's",
+    "popular": "Beliebte Seiten",
+    "footer": "Kommst du nicht weiter? Schreib an <email>support@2anki.net</email> oder <issue>öffne ein Issue auf GitHub</issue>."
+  }
+}

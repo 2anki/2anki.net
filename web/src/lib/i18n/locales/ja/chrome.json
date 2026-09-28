@@ -1,5 +1,8 @@
 {
   "nav": {
+    "ops": "Ops",
+    "expandSidebar": "サイドバーを展開",
+    "collapseSidebar": "サイドバーを折りたたむ",
     "mainNavigation": "メインナビゲーション",
     "menu": "メニュー",
     "logoAlt": "2anki ロゴ",

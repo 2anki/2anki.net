@@ -92,6 +92,18 @@ describe('Sidebar in German', () => {
     ).toHaveAttribute('href', '/pricing?from=avatar');
   });
 
+  it('translates the collapse rail aria-label in German', () => {
+    renderWithProviders(<Sidebar {...sidebarProps} />);
+
+    expect(deChrome.nav.collapseSidebar).not.toBe('Collapse sidebar');
+    expect(
+      screen.getByRole('button', { name: deChrome.nav.collapseSidebar })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Collapse sidebar' })
+    ).not.toBeInTheDocument();
+  });
+
   it('translates the skip link in the layout', () => {
     renderWithProviders(
       <SidebarLayout {...sidebarProps} onLogOut={vi.fn()}>

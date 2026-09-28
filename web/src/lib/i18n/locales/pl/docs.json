@@ -1,0 +1,38 @@
+{
+  "search": {
+    "trigger": "Przeszukaj docs",
+    "dialogLabel": "Przeszukaj dokumentację",
+    "close": "Zamknij wyszukiwanie",
+    "placeholder": "Przeszukaj docs",
+    "resultsLabel": "Wyniki wyszukiwania",
+    "hint": "Przeszukaj {{total}} docs",
+    "noMatch": "Żadne docs nie pasują do <q></q>",
+    "checkSpelling": "Sprawdź pisownię albo <browse>przejrzyj wszystkie docs</browse>."
+  },
+  "content": {
+    "notFoundTitle": "Nie znaleziono",
+    "notFoundBody": "Szukana strona nie istnieje. <back>Wróć do dokumentacji</back>.",
+    "editOnGitHub": "Edytuj tę stronę na GitHub →",
+    "pagerLabel": "Nawigacja stron",
+    "previous": "Poprzednia",
+    "next": "Następna"
+  },
+  "code": {
+    "copy": "Kopiuj",
+    "copied": "Skopiowano",
+    "copyAria": "Skopiuj kod do schowka"
+  },
+  "wip": "Te docs są przepisywane z pomocą AI. Jeśli coś wygląda źle, <issue>otwórz zgłoszenie</issue> — czytamy każde.",
+  "sidebar": {
+    "label": "Dokumentacja"
+  },
+  "home": {
+    "title": "Dokumentacja 2anki",
+    "tagline": "Najprostszy sposób, aby zamienić to, czego się uczysz, w karty Anki.",
+    "connectCta": "Połącz Notion w 5 min →",
+    "uploadCta": "Prześlij plik",
+    "startHere": "Zacznij tutaj",
+    "popular": "Popularne strony",
+    "footer": "Utknąłeś? Napisz na <email>support@2anki.net</email> lub <issue>otwórz zgłoszenie na GitHub</issue>."
+  }
+}

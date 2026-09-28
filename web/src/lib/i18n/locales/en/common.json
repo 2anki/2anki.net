@@ -140,6 +140,19 @@
     }
   },
   "upload": {
+    "limit": {
+      "fileTooBig": "This file is over the {{limit}} limit",
+      "allCardsUsed": "You've used all {{limit}} cards this month",
+      "overFreeLimit": "This conversion is over your free limit of {{limit}} cards a month",
+      "descFileAnon": "Files over 100 MB need a paid plan. Split the file and try again, or create an account and upgrade for uploads up to about 10 GB.",
+      "descFileUser": "Split the file, or upgrade for uploads up to about 10 GB.",
+      "descCardsAnon": "Create a free account to start converting, or upgrade for no monthly cap.",
+      "descCardsUser": "Upgrade for no monthly cap, or wait until next month.",
+      "usage": "{{used}} / {{limit}} cards · resets {{resetsOn}}, when your free cards come back",
+      "startingCheckout": "Starting checkout",
+      "getDayPass": "Get Day Pass — {{price}}",
+      "seePlans": "See plans"
+    },
     "dropzone": {
       "dropActive": "Drop it right here",
       "dropIdle": "Drop your files here",

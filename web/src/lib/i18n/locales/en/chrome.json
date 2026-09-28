@@ -1,5 +1,8 @@
 {
   "nav": {
+    "ops": "Ops",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
     "mainNavigation": "main navigation",
     "menu": "menu",
     "logoAlt": "2anki Logo",

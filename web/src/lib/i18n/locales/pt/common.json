@@ -140,6 +140,19 @@
     }
   },
   "upload": {
+    "limit": {
+      "fileTooBig": "Este arquivo passa do limite de {{limit}}",
+      "allCardsUsed": "Você usou todos os seus {{limit}} cartões este mês",
+      "overFreeLimit": "Esta conversão passa do seu limite grátis de {{limit}} cartões por mês",
+      "descFileAnon": "Arquivos maiores que 100 MB precisam de um plano pago. Divida o arquivo e tente de novo, ou crie uma conta e faça upgrade para envios de até cerca de 10 GB.",
+      "descFileUser": "Divida o arquivo ou faça upgrade para envios de até cerca de 10 GB.",
+      "descCardsAnon": "Crie uma conta grátis para começar a converter, ou faça upgrade para não ter limite mensal.",
+      "descCardsUser": "Faça upgrade para não ter limite mensal, ou espere até o mês que vem.",
+      "usage": "{{used}} / {{limit}} cartões · reinicia em {{resetsOn}}, quando seus cartões grátis voltam",
+      "startingCheckout": "Iniciando o checkout",
+      "getDayPass": "Obter Day Pass — {{price}}",
+      "seePlans": "Ver planos"
+    },
     "dropzone": {
       "dropActive": "Solte bem aqui",
       "dropIdle": "Solte seus arquivos aqui",

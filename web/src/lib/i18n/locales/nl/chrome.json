@@ -1,5 +1,8 @@
 {
   "nav": {
+    "ops": "Ops",
+    "expandSidebar": "Zijbalk uitklappen",
+    "collapseSidebar": "Zijbalk inklappen",
     "mainNavigation": "hoofdnavigatie",
     "menu": "menu",
     "logoAlt": "2anki-logo",

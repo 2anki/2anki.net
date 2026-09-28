@@ -1,5 +1,8 @@
 {
   "nav": {
+    "ops": "Ops",
+    "expandSidebar": "Seitenleiste ausklappen",
+    "collapseSidebar": "Seitenleiste einklappen",
     "mainNavigation": "Hauptnavigation",
     "menu": "Menü",
     "logoAlt": "2anki Logo",

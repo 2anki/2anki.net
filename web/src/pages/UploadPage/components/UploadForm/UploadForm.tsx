@@ -116,18 +116,16 @@ function getLimitKind(url: URL): 'file_size' | 'card_count' {
     : 'file_size';
 }
 
-function getLimitDescription(
+function getLimitDescriptionKey(
   kind: 'file_size' | 'card_count',
   context: 'anonymous' | 'logged_in'
 ): string {
   if (kind === 'file_size') {
-    if (context === 'anonymous')
-      return 'Files over 100 MB need a paid plan. Split the file and try again, or create an account and upgrade for uploads up to about 10 GB.';
-    return 'Split the file, or upgrade for uploads up to about 10 GB.';
+    if (context === 'anonymous') return 'upload.limit.descFileAnon';
+    return 'upload.limit.descFileUser';
   }
-  if (context === 'anonymous')
-    return 'Create a free account to start converting, or upgrade for no monthly cap.';
-  return 'Upgrade for no monthly cap, or wait until next month.';
+  if (context === 'anonymous') return 'upload.limit.descCardsAnon';
+  return 'upload.limit.descCardsUser';
 }
 
 function decodeFilename(filename: string | null): string | null {
@@ -1499,16 +1497,18 @@ function UploadForm({
     const cardsUsed = cardUsage?.cards_used ?? 0;
     let title: string;
     if (isFileSize) {
-      title = 'This file is over the 100 MB limit';
+      title = t('upload.limit.fileTooBig', { limit: '100 MB' });
     } else if (cardsUsed >= 100) {
-      title = "You've used all 100 cards this month";
+      title = t('upload.limit.allCardsUsed', { limit: 100 });
     } else {
-      title = 'This conversion is over your free limit of 100 cards a month';
+      title = t('upload.limit.overFreeLimit', { limit: 100 });
     }
     const limitContext = showSignInPrompt ? 'anonymous' : 'logged_in';
-    const description = getLimitDescription(
-      isFileSize ? 'file_size' : 'card_count',
-      limitContext
+    const description = t(
+      getLimitDescriptionKey(
+        isFileSize ? 'file_size' : 'card_count',
+        limitContext
+      )
     );
     const displayedFilename = decodeFilename(limitInfo?.filename ?? null);
 
@@ -1553,14 +1553,16 @@ function UploadForm({
                 disabled={dayPassPending}
               >
                 {dayPassPending
-                  ? 'Starting checkout'
-                  : `Get Day Pass — ${passPrices['24h']}`}
+                  ? t('upload.limit.startingCheckout')
+                  : t('upload.limit.getDayPass', {
+                      price: passPrices['24h'],
+                    })}
               </button>
               <Link
                 to="/limit?ref=upload-limit-wall"
                 className={`${sharedStyles.btnSecondary} ${sharedStyles.btnInline}`}
               >
-                See plans
+                {t('upload.limit.seePlans')}
               </Link>
             </>
           )}
@@ -1906,11 +1908,10 @@ function UploadForm({
           </svg>
         </span>
         <p className={formStyles.limitTitle}>
-          You&apos;ve used all {limit} cards this month
+          {t('upload.limit.allCardsUsed', { limit })}
         </p>
         <p className={formStyles.limitDescription}>
-          {used} / {limit} cards · resets {resetsOn}, when your free cards come
-          back
+          {t('upload.limit.usage', { used, limit, resetsOn })}
         </p>
         {dayPassError && (
           <p className={formStyles.limitError} role="alert">
@@ -1925,14 +1926,14 @@ function UploadForm({
             disabled={dayPassPending}
           >
             {dayPassPending
-              ? 'Starting checkout'
-              : `Get Day Pass — ${passPrices['24h']}`}
+              ? t('upload.limit.startingCheckout')
+              : t('upload.limit.getDayPass', { price: passPrices['24h'] })}
           </button>
           <Link
             to="/limit?ref=upload-limit-wall"
             className={`${sharedStyles.btnSecondary} ${sharedStyles.btnInline}`}
           >
-            See plans
+            {t('upload.limit.seePlans')}
           </Link>
         </div>
       </div>

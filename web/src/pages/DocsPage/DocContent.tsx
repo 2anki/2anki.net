@@ -1,6 +1,6 @@
 import { AnchorHTMLAttributes, useEffect, useMemo } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import ReactMarkdown, { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -131,7 +131,7 @@ const rehypePlugins = [rehypeRaw, rehypeSlug];
 const EDIT_BASE = 'https://github.com/2anki/server/edit/main/';
 
 export function DocContent({ slug }: Readonly<DocContentProps>) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation('docs');
   const doc = loadDoc(slug, i18n.resolvedLanguage);
   const { hash } = useLocation();
   const resolvedSlug = resolveSlug(slug);
@@ -158,10 +158,12 @@ export function DocContent({ slug }: Readonly<DocContentProps>) {
   if (!doc) {
     return (
       <article key={resolvedSlug} className={styles.article}>
-        <h1>Not found</h1>
+        <h1>{t('content.notFoundTitle')}</h1>
         <p>
-          The page you are looking for does not exist.{' '}
-          <Link to="/documentation">Back to documentation</Link>.
+          <Trans
+            i18nKey="docs:content.notFoundBody"
+            components={{ back: <Link to="/documentation" /> }}
+          />
         </p>
       </article>
     );
@@ -199,14 +201,14 @@ export function DocContent({ slug }: Readonly<DocContentProps>) {
           rel="noopener noreferrer"
           className={styles.editLink}
         >
-          Edit this page on GitHub →
+          {t('content.editOnGitHub')}
         </a>
       </div>
 
-      <nav className={styles.pager} aria-label="Pager">
+      <nav className={styles.pager} aria-label={t('content.pagerLabel')}>
         {prev ? (
           <Link to={`/documentation/${prev.slug}`} className={styles.pagerPrev}>
-            <span className={styles.pagerLabel}>Previous</span>
+            <span className={styles.pagerLabel}>{t('content.previous')}</span>
             <span className={styles.pagerTitle}>{prev.label}</span>
           </Link>
         ) : (
@@ -214,7 +216,7 @@ export function DocContent({ slug }: Readonly<DocContentProps>) {
         )}
         {next ? (
           <Link to={`/documentation/${next.slug}`} className={styles.pagerNext}>
-            <span className={styles.pagerLabel}>Next</span>
+            <span className={styles.pagerLabel}>{t('content.next')}</span>
             <span className={styles.pagerTitle}>{next.label}</span>
           </Link>
         ) : (

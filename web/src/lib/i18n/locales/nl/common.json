@@ -140,6 +140,19 @@
     }
   },
   "upload": {
+    "limit": {
+      "fileTooBig": "Dit bestand is groter dan de limiet van {{limit}}",
+      "allCardsUsed": "Je hebt deze maand al je {{limit}} kaarten gebruikt",
+      "overFreeLimit": "Deze conversie gaat over je gratis limiet van {{limit}} kaarten per maand",
+      "descFileAnon": "Bestanden groter dan 100 MB hebben een betaald abonnement nodig. Splits het bestand en probeer het opnieuw, of maak een account en upgrade voor uploads tot ongeveer 10 GB.",
+      "descFileUser": "Splits het bestand of upgrade voor uploads tot ongeveer 10 GB.",
+      "descCardsAnon": "Maak een gratis account om te beginnen met converteren, of upgrade voor geen maandlimiet.",
+      "descCardsUser": "Upgrade voor geen maandlimiet, of wacht tot volgende maand.",
+      "usage": "{{used}} / {{limit}} kaarten · reset op {{resetsOn}}, wanneer je gratis kaarten terugkomen",
+      "startingCheckout": "Afrekenen starten",
+      "getDayPass": "Day Pass kopen — {{price}}",
+      "seePlans": "Bekijk abonnementen"
+    },
     "dropzone": {
       "dropActive": "Zet het hier neer",
       "dropIdle": "Sleep je bestanden hierheen",

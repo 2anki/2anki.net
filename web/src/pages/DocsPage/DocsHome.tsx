@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import styles from './DocsPage.module.css';
 
 interface HomeCard {
@@ -54,31 +55,30 @@ const popularPages: HomeCard[] = [
 ];
 
 export function DocsHome() {
+  const { t } = useTranslation('docs');
   return (
     <article className={styles.article}>
       <section className={styles.docsHomeHero}>
-        <h1 className={styles.docsHomeTitle}>2anki documentation</h1>
-        <p className={styles.docsHomeTagline}>
-          The simplest way to turn what you're studying into Anki cards.
-        </p>
+        <h1 className={styles.docsHomeTitle}>{t('home.title')}</h1>
+        <p className={styles.docsHomeTagline}>{t('home.tagline')}</p>
         <div className={styles.docsHomeActions}>
           <Link
             to="/documentation/start-here/connect-notion"
             className={styles.docsHomeButtonPrimary}
           >
-            Connect Notion in 5 min →
+            {t('home.connectCta')}
           </Link>
           <Link
             to="/documentation/start-here/upload-a-file"
             className={styles.docsHomeButtonSecondary}
           >
-            Upload a file
+            {t('home.uploadCta')}
           </Link>
         </div>
       </section>
 
       <section className={styles.docsHomeSection}>
-        <h2 className={styles.docsHomeSectionTitle}>Start here</h2>
+        <h2 className={styles.docsHomeSectionTitle}>{t('home.startHere')}</h2>
         <div className={styles.homeGrid}>
           {startHereCards.map((card) => (
             <Link key={card.to} to={card.to} className={styles.homeCard}>
@@ -90,7 +90,7 @@ export function DocsHome() {
       </section>
 
       <section className={styles.docsHomeSection}>
-        <h2 className={styles.docsHomeSectionTitle}>Popular pages</h2>
+        <h2 className={styles.docsHomeSectionTitle}>{t('home.popular')}</h2>
         <ul className={styles.popularList}>
           {popularPages.map((page) => (
             <li key={page.to}>
@@ -101,15 +101,21 @@ export function DocsHome() {
       </section>
 
       <footer className={styles.docsHomeFooter}>
-        Stuck? Email <a href="mailto:support@2anki.net">support@2anki.net</a> or{' '}
-        <a
-          href="https://github.com/2anki/server/issues/new"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          open an issue on GitHub
-        </a>
-        .
+        <Trans
+          i18nKey="docs:home.footer"
+          components={{
+            email: <a href="mailto:support@2anki.net">support@2anki.net</a>,
+            issue: (
+              <a
+                href="https://github.com/2anki/server/issues/new"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                open an issue on GitHub
+              </a>
+            ),
+          }}
+        />
       </footer>
     </article>
   );
