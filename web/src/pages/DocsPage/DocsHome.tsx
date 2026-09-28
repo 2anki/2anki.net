@@ -104,13 +104,15 @@ export function DocsHome() {
         <Trans
           i18nKey="docs:home.footer"
           components={{
-            email: <a href="mailto:support@2anki.net" />,
+            email: <a href="mailto:support@2anki.net">support@2anki.net</a>,
             issue: (
               <a
                 href="https://github.com/2anki/server/issues/new"
                 target="_blank"
                 rel="noopener noreferrer"
-              />
+              >
+                open an issue on GitHub
+              </a>
             ),
           }}
         />

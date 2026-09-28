@@ -12,7 +12,9 @@ export function WipBanner() {
               href="https://github.com/2anki/server/issues/new"
               target="_blank"
               rel="noopener noreferrer"
-            />
+            >
+              open an issue
+            </a>
           ),
         }}
       />
