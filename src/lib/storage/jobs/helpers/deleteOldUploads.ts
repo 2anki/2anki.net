@@ -7,7 +7,6 @@ import { deleteDanglingUploadsInBucket } from './deleteDanglingUploadsInBucket';
 import { deleteDeadUploadRowsInDatabase } from './deleteDeadUploadRowsInDatabase';
 
 export const MS_21 = CLEANUP_AGE_SECONDS * 1000;
-export const MS_24_HOURS = 1000 * 60 * 60 * 24;
 
 export function safeParseAttachments(val: unknown): string[] {
   if (val == null) return [];
