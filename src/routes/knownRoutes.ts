@@ -39,7 +39,6 @@ const APP_ROUTES = new Set<string>([
   '/status',
   '/whats-new',
   '/documentation',
-  '/successful-checkout',
   '/auth/magic',
   '/app',
   '/templates',

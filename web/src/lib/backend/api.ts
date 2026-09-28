@@ -24,7 +24,6 @@ const NON_AUTH_PATHS = [
   '/contact',
   '/documentation',
   '/debug',
-  '/successful-checkout',
 ];
 
 function isNonAuthPath(pathname: string): boolean {

@@ -58,19 +58,13 @@ const WebhooksRouter = () => {
     tokenRepository,
     usersRepository
   );
-  const usersService = new UsersService(
-    usersRepository,
-    getDefaultEmailService()
-  );
   const persistStripeSessionUseCase = new PersistStripeSessionUseCase(
     stripe,
     database
   );
   const controller = new StripeController(
     authService,
-    usersService,
     persistStripeSessionUseCase,
-    stripe,
     new UserPassRepository(database)
   );
   const abandonedCheckoutRecoveryUseCase =
@@ -730,26 +724,6 @@ const WebhooksRouter = () => {
       // Return a 200 response to acknowledge receipt of the event
       response.send();
     }
-  );
-
-  /**
-   * @swagger
-   * /successful-checkout:
-   *   get:
-   *     summary: Successful checkout page
-   *     description: Display the successful checkout confirmation page after payment
-   *     tags: [Payments]
-   *     responses:
-   *       200:
-   *         description: Checkout success page rendered
-   *         content:
-   *           text/html:
-   *             schema:
-   *               type: string
-   *               description: HTML success page
-   */
-  router.get('/successful-checkout', (req, res) =>
-    controller.getSuccessfulCheckout(req, res)
   );
 
   /**
