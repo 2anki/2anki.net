@@ -43,12 +43,7 @@ describe('deleteExpiredHeldDecks', () => {
       }),
     } as unknown as StorageHandler;
 
-    await deleteExpiredHeldDecks(
-      undefined as never,
-      storage,
-      now,
-      repo
-    );
+    await deleteExpiredHeldDecks(undefined as never, storage, now, repo);
 
     expect(deleted.sort()).toEqual([
       'held/expired.html',

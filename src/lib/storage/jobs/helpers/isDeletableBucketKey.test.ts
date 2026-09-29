@@ -54,11 +54,10 @@ describe('isDeletableBucketKey', () => {
     'assets/main.css',
     'held/anon-1-1700000000000-notes.html',
   ])('never deletes %s even when unreferenced and old', (key) => {
-      expect(
-        isDeletableBucketKey({ Key: key, LastModified: old }, referenced, now)
-      ).toBe(false);
-    }
-  );
+    expect(
+      isDeletableBucketKey({ Key: key, LastModified: old }, referenced, now)
+    ).toBe(false);
+  });
 
   // A deck is written to storage before its uploads row commits.
   it('keeps a recently written object so an in-flight upload survives', () => {

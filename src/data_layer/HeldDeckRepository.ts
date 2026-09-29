@@ -147,7 +147,8 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
   ): Promise<HeldDecks | null> {
     return (
       this.newestForAnon(anonId).find(
-        (row) => row.claimed_at == null && row.expires_at.getTime() > now.getTime()
+        (row) =>
+          row.claimed_at == null && row.expires_at.getTime() > now.getTime()
       ) ?? null
     );
   }
