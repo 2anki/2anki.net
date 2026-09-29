@@ -1,12 +1,12 @@
 {
-  "gateAria": "Erstelle ein kostenloses Konto, um dein Deck herunterzuladen",
+  "gateAria": "Erstelle ein kostenloses Konto, um deinen Stapel herunterzuladen",
   "gateHeadline": "Deine ersten {{count}} Karten sind fertig",
   "gateBody": "Erstelle ein kostenloses Konto, um sie herunterzuladen. Bis zu {{monthly}} Karten pro Monat, kostenlos.",
   "gateContext": "Diese Datei ergab {{total}} Karten.",
   "gateLive": "Deine {{count}} Karten sind fertig. Erstelle ein kostenloses Konto, um sie herunterzuladen.",
   "preparing": "Dein Download wird vorbereitet",
-  "readyBody": "Du bist angemeldet. Lade dein Deck unten herunter.",
-  "expiredHeadline": "Dieses Deck ist nicht mehr gespeichert",
-  "expiredBody": "Wir bewahren nicht abgeholte Decks nur einen Tag lang auf. Lege die Datei noch einmal ab, um es neu zu erstellen.",
+  "readyBody": "Du bist angemeldet. Lade deinen Stapel unten herunter.",
+  "expiredHeadline": "Dieser Stapel ist nicht mehr gespeichert",
+  "expiredBody": "Wir bewahren nicht abgeholte Stapel nur einen Tag lang auf. Lege die Datei noch einmal ab, um ihn neu zu erstellen.",
   "expiredCta": "Erneut hochladen"
 }

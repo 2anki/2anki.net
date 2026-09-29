@@ -1,9 +1,9 @@
 {
   "gateAria": "Załóż darmowe konto, aby pobrać swoją talię",
-  "gateHeadline": "Twoje pierwsze {{count}} fiszek jest gotowe",
+  "gateHeadline": "Twoich pierwszych {{count}} fiszek jest gotowych",
   "gateBody": "Załóż darmowe konto, aby je pobrać. Do {{monthly}} fiszek miesięcznie, za darmo.",
-  "gateContext": "Ten plik utworzył {{total}} fiszek.",
-  "gateLive": "Twoje {{count}} fiszek jest gotowe. Załóż darmowe konto, aby je pobrać.",
+  "gateContext": "Fiszek w tym pliku: {{total}}.",
+  "gateLive": "Twoich {{count}} fiszek jest gotowych. Załóż darmowe konto, aby je pobrać.",
   "preparing": "Przygotowywanie pobierania",
   "readyBody": "Jesteś zalogowany. Pobierz swoją talię poniżej.",
   "expiredHeadline": "Ta talia nie jest już zapisana",
