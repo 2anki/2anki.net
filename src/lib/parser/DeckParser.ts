@@ -20,6 +20,7 @@ import type { CrossFileDedupState } from '../claude/ClaudeService';
 import { File } from '../zip/zip';
 import Deck from './Deck';
 import { toPlainTextBack } from './toPlainTextBack';
+import { runSequentially } from './runSequentially';
 import Note from './Note';
 import { countEmptyBacks } from './countEmptyBacks';
 import { truncateDecksToCardLimit } from './truncateDecksToCardLimit';
@@ -991,9 +992,9 @@ export class DeckParser {
     const images = dom('img').toArray();
     if (images.length === 0) return content;
 
-    for (const elem of images) {
+    await runSequentially(images, async (elem) => {
       const originalName = dom(elem).attr('src');
-      if (!originalName) continue;
+      if (!originalName) return;
 
       const handled = this.embedLocalOrZipImage(
         dom,
@@ -1002,10 +1003,10 @@ export class DeckParser {
         card,
         ws
       );
-      if (handled) continue;
+      if (handled) return;
 
       await this.embedRemoteImage(dom, elem, originalName, card);
-    }
+    });
     return dom.html();
   }
 
@@ -1386,7 +1387,7 @@ export class DeckParser {
       let counter = 0;
       const addThese: Note[] = [];
       const replaced = new Set<Note>();
-      for (const c of deck.cards) {
+      await runSequentially(deck.cards, async (c) => {
         let card = c;
         await this.transformCard(card, counter++, ws);
 
@@ -1401,7 +1402,7 @@ export class DeckParser {
           }
           addThese.push(...overlappingNotes);
           replaced.add(c);
-          continue;
+          return;
         }
 
         const refreshIconRequested = card.hasRefreshIcon();
@@ -1424,7 +1425,7 @@ export class DeckParser {
         if (refreshIconRequested) {
           card.stripRefreshIcon();
         }
-      }
+      });
       const kept = deck.cards.filter((card) => !replaced.has(card));
       const produced = kept.concat(addThese);
       this.emptyBackCount += countEmptyBacks(
