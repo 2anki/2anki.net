@@ -1,5 +1,4 @@
 import * as cheerio from 'cheerio';
-import { toPlainTextBack } from './toPlainTextBack';
 import type { Element } from 'domhandler';
 
 import preserveNewlinesIfApplicable from '../../services/NotionService/helpers/preserveNewlinesIfApplicable';
@@ -20,6 +19,7 @@ import { cardFingerprint } from '../claude/ClaudeService';
 import type { CrossFileDedupState } from '../claude/ClaudeService';
 import { File } from '../zip/zip';
 import Deck from './Deck';
+import { toPlainTextBack } from './toPlainTextBack';
 import Note from './Note';
 import { countEmptyBacks } from './countEmptyBacks';
 import { truncateDecksToCardLimit } from './truncateDecksToCardLimit';

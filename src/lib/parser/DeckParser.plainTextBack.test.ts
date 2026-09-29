@@ -34,21 +34,10 @@ const answersAsNestedToggles = wrap(
 );
 
 describe('Use plain text for back (paragraph option)', () => {
-  it('keeps the answer text when the answers are nested toggles', async () => {
+  it('keeps nested toggle answers as plain lines', async () => {
     const cards = await cardsFor(answersAsNestedToggles, { paragraph: 'true' });
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].back).toContain('Cost is monetary (£)');
-    expect(cards[0].back).toContain(
-      'Consequences is assumed equivalent (ignored)'
-    );
-  });
-
-  it('strips the formatting but keeps each answer line apart', async () => {
-    const cards = await cardsFor(answersAsNestedToggles, { paragraph: 'true' });
-
-    expect(cards[0].back).not.toContain('<strong>');
-    expect(cards[0].back).not.toContain('<details');
     expect(cards[0].back).toBe(
       'Cost is monetary (£)<br>Consequences is assumed equivalent (ignored)'
     );
