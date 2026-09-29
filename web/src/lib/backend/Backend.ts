@@ -85,6 +85,7 @@ export interface ClaimHeldDeckResult {
   status: number;
   downloadKey: string | null;
   cardCount: number | null;
+  deckName: string | null;
 }
 
 export interface CheckoutPrices {
@@ -407,14 +408,21 @@ export class Backend {
       const body = (await response.json().catch(() => ({}))) as {
         downloadKey?: string | null;
         cardCount?: number | null;
+        deckName?: string | null;
       };
       return {
         status: OK,
         downloadKey: body.downloadKey ?? null,
         cardCount: body.cardCount ?? null,
+        deckName: body.deckName ?? null,
       };
     }
-    return { status: response.status, downloadKey: null, cardCount: null };
+    return {
+      status: response.status,
+      downloadKey: null,
+      cardCount: null,
+      deckName: null,
+    };
   }
 
   async getDropboxUploads(offset = 0): Promise<DropboxUpload[]> {

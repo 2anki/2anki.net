@@ -268,7 +268,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
       </form>
       <p className={styles.footerText}>
         {t('auth.register.loginQuestion')}{' '}
-        <a rel="noreferrer" href="/login">
+        <a rel="noreferrer" href={loginHref(redirect)}>
           {t('auth.register.logIn')}
         </a>
       </p>

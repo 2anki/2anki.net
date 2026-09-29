@@ -464,6 +464,7 @@ function UploadForm({
         if (cancelled) return;
         if (result.status === 200 && result.downloadKey != null) {
           setDownloadLink(recoveryDownloadUrl(result.downloadKey));
+          if (result.deckName) setDeckName(result.deckName);
           setCardCount(result.cardCount);
           setProgressWidth(100);
           setZoneState('heldReady');
@@ -1952,6 +1953,7 @@ function UploadForm({
       {downloadLink && (
         <a
           href={downloadLink}
+          download={getDownloadFileName(deckName || 'Untitled')}
           className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
           onClick={() => {
             fireAnalyticsEvent('deck_downloaded');

@@ -122,6 +122,7 @@ describe('ClaimHeldDeckUseCase', () => {
       downloadKey: 'owner-key.apkg',
       cardCount: 34,
       cardsHeldBack: 0,
+      deckName: 'study-notes',
     });
     expect(getFileContents).toHaveBeenCalledWith('held/abc.html');
     expect(convertHeldFileForOwner).toHaveBeenCalledTimes(1);

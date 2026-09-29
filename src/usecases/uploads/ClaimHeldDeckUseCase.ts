@@ -40,6 +40,7 @@ export interface ClaimResult {
   downloadKey: string | null;
   cardCount: number;
   cardsHeldBack: number;
+  deckName: string;
 }
 
 export interface ClaimParams {
@@ -107,6 +108,7 @@ export class ClaimHeldDeckUseCase {
       downloadKey: conversion.downloadKey,
       cardCount: conversion.cardCount,
       cardsHeldBack: conversion.cardsHeldBack,
+      deckName: conversion.deckName,
     };
   }
 }

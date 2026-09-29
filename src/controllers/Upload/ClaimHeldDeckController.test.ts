@@ -138,6 +138,7 @@ describe('ClaimHeldDeckController', () => {
     expect(capturedJson()).toEqual({
       downloadKey: 'owner-key.apkg',
       cardCount: 34,
+      deckName: 'notes',
     });
     expect(trackMock).toHaveBeenCalledWith('anonymous_partial_claimed', {
       userId: 7,

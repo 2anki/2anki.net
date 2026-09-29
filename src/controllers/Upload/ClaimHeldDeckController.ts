@@ -46,6 +46,7 @@ export class ClaimHeldDeckController {
       return res.status(200).json({
         downloadKey: result.downloadKey,
         cardCount: result.cardCount,
+        deckName: result.deckName,
       });
     } catch (err) {
       if (err instanceof NoHeldDeckError) {
