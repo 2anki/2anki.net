@@ -4887,6 +4887,34 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     });
   });
 
+  it('refuses to charge usage when the claimed deck cannot be persisted', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }]);
+    mockStorageUploadFile.mockRejectedValueOnce(new Error('no credentials'));
+    const usersRepo = buildUsersRepo();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      usersRepo,
+      ...fakeUploadServiceDeps({})
+    );
+    const heldFile = {
+      fieldname: 'file',
+      originalname: 'notes.html',
+      encoding: '7bit',
+      mimetype: 'application/octet-stream',
+      size: 13,
+      buffer: Buffer.from('<html></html>'),
+      key: 'held/abc',
+    } as unknown as Parameters<UploadService['convertHeldFileForOwner']>[1];
+
+    await expect(
+      service.convertHeldFileForOwner('4242', heldFile, false, null, 'req-1')
+    ).rejects.toThrow('Could not persist the claimed deck');
+
+    expect(usersRepo.incrementCardUsage).not.toHaveBeenCalled();
+  });
+
   it('leaves a treatment upload at or under 21 cards untouched', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21 }], 0);

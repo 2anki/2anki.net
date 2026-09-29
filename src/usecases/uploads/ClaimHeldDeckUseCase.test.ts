@@ -1,4 +1,5 @@
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
+import { EmptyDeckError } from '../jobs/EmptyDeckError';
 import { MonthlyLimitError } from '../users/CheckMonthlyCardLimitUseCase';
 import {
   ClaimHeldDeckUseCase,
@@ -238,7 +239,30 @@ describe('ClaimHeldDeckUseCase', () => {
         requestId: undefined,
       })
     ).rejects.toBeInstanceOf(HeldDeckExpiredError);
-    expect(repo.rows[0].claimed_at).toBeNull();
+    expect(repo.rows[0].claimed_at).not.toBeNull();
+    expect(await useCase.peek(ANON)).toBeNull();
+  });
+
+  it('keeps the hold consumed when the held file makes no cards', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo);
+    const convertHeldFileForOwner = jest
+      .fn()
+      .mockRejectedValue(new EmptyDeckError());
+    const useCase = new ClaimHeldDeckUseCase(repo, buildStore().store, {
+      convertHeldFileForOwner,
+    });
+
+    await expect(
+      useCase.execute({
+        anonId: ANON,
+        owner: OWNER,
+        paying: false,
+        requestId: undefined,
+      })
+    ).rejects.toBeInstanceOf(EmptyDeckError);
+
+    expect(repo.rows[0].claimed_at).not.toBeNull();
   });
 
   it('410s when the stored source object is already gone', async () => {

@@ -66,13 +66,13 @@ describe('HeldDeckRepository generated SQL', () => {
     expect(bindings).toEqual([claimedAt, 7, 42]);
   });
 
-  it('releases a claim by clearing both claim columns', () => {
-    const { sql, bindings } = repository.buildReleaseClaimQuery(42).toSQL();
+  it("releases only the claimant's own claim by clearing both claim columns", () => {
+    const { sql, bindings } = repository.buildReleaseClaimQuery(42, 7).toSQL();
 
     expect(sql).toBe(
-      'update "held_decks" set "claimed_at" = ?, "claimed_by" = ? where "id" = ?'
+      'update "held_decks" set "claimed_at" = ?, "claimed_by" = ? where "id" = ? and "claimed_by" = ?'
     );
-    expect(bindings).toEqual([null, null, 42]);
+    expect(bindings).toEqual([null, null, 42, 7]);
   });
 
   it('lists expired or long-claimed holds with their storage keys', () => {

@@ -22,7 +22,8 @@ export interface IHeldDeckRepository {
   findNewestByAnonId(anonId: string): Promise<HeldDecks | null>;
   /** Claims the row only if nobody has; false means another claim won. */
   markClaimed(id: number, claimedBy: number, claimedAt: Date): Promise<boolean>;
-  releaseClaim(id: number): Promise<void>;
+  /** Clears a claim, but only the claimant's own. */
+  releaseClaim(id: number, claimedBy: number): Promise<void>;
   findExpired(now: Date, claimedBefore: Date): Promise<ExpiredHeldDeck[]>;
   deleteByIds(ids: number[]): Promise<void>;
 }
@@ -107,14 +108,15 @@ export class HeldDeckRepository implements IHeldDeckRepository {
     return updated > 0;
   }
 
-  buildReleaseClaimQuery(id: number): Knex.QueryBuilder {
+  buildReleaseClaimQuery(id: number, claimedBy: number): Knex.QueryBuilder {
     return this.database(this.table)
       .where('id', id)
+      .where('claimed_by', claimedBy)
       .update({ claimed_at: null, claimed_by: null });
   }
 
-  async releaseClaim(id: number): Promise<void> {
-    await this.buildReleaseClaimQuery(id);
+  async releaseClaim(id: number, claimedBy: number): Promise<void> {
+    await this.buildReleaseClaimQuery(id, claimedBy);
   }
 
   buildFindExpiredQuery(now: Date, claimedBefore: Date): Knex.QueryBuilder {
@@ -206,9 +208,9 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
     return true;
   }
 
-  async releaseClaim(id: number): Promise<void> {
+  async releaseClaim(id: number, claimedBy: number): Promise<void> {
     const row = this.rows.find((r) => r.id === (id as HeldDecks['id']));
-    if (row != null) {
+    if (row != null && row.claimed_by === claimedBy) {
       row.claimed_at = null;
       row.claimed_by = null;
     }

@@ -1,5 +1,6 @@
 import type { IHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
 import type { UploadedFile } from '../../lib/storage/types';
+import { EmptyDeckError } from '../jobs/EmptyDeckError';
 import { MonthlyLimitError } from '../users/CheckMonthlyCardLimitUseCase';
 
 export class NoHeldDeckError extends Error {
@@ -21,7 +22,7 @@ export interface HeldFileStore {
 }
 
 export interface HeldDeckConversion {
-  downloadKey: string | null;
+  downloadKey: string;
   cardCount: number;
   cardsHeldBack: number;
   deckName: string;
@@ -38,7 +39,7 @@ export interface HeldDeckConverter {
 }
 
 export interface ClaimResult {
-  downloadKey: string | null;
+  downloadKey: string;
   cardCount: number;
   deckName: string;
 }
@@ -53,6 +54,14 @@ export interface ClaimParams {
 function isMissingObjectError(error: unknown): boolean {
   const name = (error as { name?: unknown } | null)?.name;
   return typeof name === 'string' && name.includes('NoSuchKey');
+}
+
+function isDeterministicRefusal(error: unknown): boolean {
+  return (
+    error instanceof MonthlyLimitError ||
+    error instanceof HeldDeckExpiredError ||
+    error instanceof EmptyDeckError
+  );
 }
 
 export class ClaimHeldDeckUseCase {
@@ -111,12 +120,12 @@ export class ClaimHeldDeckUseCase {
         deckName: conversion.deckName,
       };
     } catch (error) {
-      // A monthly-limit refusal consumes the hold: the account cannot take the
-      // deck this month and the hold expires within a day anyway, so retrying
-      // on every visit would only repeat the refusal. Anything else releases
-      // the claim so the next visit can try again.
-      if (!(error instanceof MonthlyLimitError)) {
-        await this.repository.releaseClaim(hold.id);
+      // Deterministic refusals consume the hold: a monthly-limit refusal, a
+      // missing object and an empty deck would repeat on every visit until the
+      // hold expires. Anything else releases the claim so the next visit can
+      // try again.
+      if (!isDeterministicRefusal(error)) {
+        await this.repository.releaseClaim(hold.id, Number(owner));
       }
       throw error;
     }

@@ -2071,7 +2071,7 @@ class UploadService {
     source: UploadSource | null,
     requestId: string | undefined
   ): Promise<{
-    downloadKey: string | null;
+    downloadKey: string;
     cardCount: number;
     cardsHeldBack: number;
     deckName: string;
@@ -2152,6 +2152,9 @@ class UploadService {
       source,
       requestId
     );
+    if (downloadKey == null) {
+      throw new Error('Could not persist the claimed deck');
+    }
     await this.usersRepository.incrementCardUsage(Number(owner), totalCards);
     return {
       downloadKey,
