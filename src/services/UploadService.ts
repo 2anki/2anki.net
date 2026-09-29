@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { IUploadRepository } from '../data_layer/UploadRespository';
+import { IHeldDeckRepository } from '../data_layer/HeldDeckRepository';
 import JobRepository from '../data_layer/JobRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import { ISettingsRepository } from '../data_layer/SettingsRepository';
@@ -173,6 +174,15 @@ interface BatchUploadResponse {
   emptyBackCount?: number;
   structureRescuedRule?: string;
 }
+
+export interface HeldUploadResponse {
+  kind: 'held';
+  cardCount: number;
+  cardsHeldBack: number;
+  totalCards: number;
+}
+
+const HELD_DECK_TTL_MS = 24 * 60 * 60 * 1000;
 
 const MARKDOWN_HEURISTIC_WARNING =
   'Your Markdown file was processed using heuristic detection. For reliable results, use the nested bullet format or enable Claude AI in settings.';
@@ -519,7 +529,8 @@ class UploadService {
     private readonly cardGuidLedgerRepository: ICardGuidLedgerRepository,
     private readonly aiCardFingerprintRepository: IAiCardFingerprintRepository,
     private readonly photoToFlashcardsUseCase: PhotoToFlashcardsUseCase,
-    private readonly aiRequestCostReader: IAiRequestCostReader
+    private readonly aiRequestCostReader: IAiRequestCostReader,
+    private readonly heldDeckRepository: IHeldDeckRepository
   ) {}
 
   private async resolveSyncCreditsUsed(
@@ -1608,6 +1619,19 @@ class UploadService {
     );
 
     const first = packages[0];
+    if (
+      partialArm === 'treatment' &&
+      owner == null &&
+      (cardsHeldBack ?? 0) > 0
+    ) {
+      return await this.holdDeckForSignup(
+        req,
+        res,
+        totalCards,
+        cardsHeldBack ?? 0,
+        partialArm
+      );
+    }
     if (packages.length === 1) {
       const apkg = await ws.getFirstAPKG();
       if (!apkg) {
@@ -1975,6 +1999,156 @@ class UploadService {
       false
     );
     return resolveAnonymousPartialArm(this.resolveAnonId(req), flagEnabled);
+  }
+
+  private async holdDeckForSignup(
+    req: express.Request,
+    res: express.Response,
+    cardCount: number,
+    cardsHeldBack: number,
+    arm: PartialDeliveryArm
+  ): Promise<express.Response> {
+    const anonId = this.resolveAnonId(req);
+    const file = (req.files as UploadedFile[])[0];
+    const bytes = await readUploadBytes(file);
+    if (anonId == null || bytes == null) {
+      throw new AnonymousCardCapError(
+        cardCount + cardsHeldBack,
+        ANONYMOUS_CARD_CAP
+      );
+    }
+    const storage = new StorageHandler();
+    const storageKey = `held/${randomUUID()}${path.extname(file.originalname)}`;
+    await storage.uploadFile(storageKey, bytes);
+    await this.heldDeckRepository.insert({
+      claimKey: randomUUID(),
+      storageKey,
+      anonId,
+      filename: file.originalname,
+      cardCount,
+      cardsHeldBack,
+      expiresAt: new Date(Date.now() + HELD_DECK_TTL_MS),
+    });
+    track('conversion_succeeded', {
+      userId: null,
+      anonymousId: anonId,
+      props: {
+        ...this.baseFunnelProps(req),
+        card_count_bucket: toCardCountBucket(cardCount + cardsHeldBack),
+        card_limit_partial: true,
+        cards_held_back: cardsHeldBack,
+        arm,
+        held: true,
+      },
+    });
+    const body: HeldUploadResponse = {
+      kind: 'held',
+      cardCount,
+      cardsHeldBack,
+      totalCards: cardCount + cardsHeldBack,
+    };
+    return res.status(200).json(body);
+  }
+
+  // The claim runs the same single-file conversion a signed-in sync upload
+  // runs: the free monthly limit (and its partial truncation), the uploads
+  // row, and incrementCardUsage all happen the normal way, so the claimed
+  // deck lands in Downloads and counts against the new account's allowance.
+  async convertHeldFileForOwner(
+    owner: string,
+    file: UploadedFile,
+    paying: boolean,
+    source: UploadSource | null,
+    requestId: string | undefined
+  ): Promise<{
+    downloadKey: string | null;
+    cardCount: number;
+    cardsHeldBack: number;
+    deckName: string;
+  }> {
+    const body = await this.resolveCardOptionInput(owner, {});
+    const settings = new CardOption(body);
+    if (settings.n2aBasic == null) {
+      await this.settingsRepository.attachCustomTemplates(owner, settings);
+    }
+    const ws = new Workspace(true, 'fs');
+    const ownerNumeric = Number(owner);
+    const ownerId =
+      Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null;
+    const knownGuids = await this.loadKnownGuids(ownerId);
+    const uploadIdentity = await this.loadUploadIdentityLedger(ownerId);
+    const existingCardFingerprints = await this.loadExistingCardFingerprints(
+      ownerId,
+      settings,
+      paying
+    );
+
+    let cardLimit: number | undefined;
+    let signedInMonthlyPartial = false;
+    if (!paying) {
+      const { cards_used } = await this.usersRepository.getCardUsage(owner);
+      const remaining = Math.max(0, MONTHLY_CARD_LIMIT - cards_used);
+      if (remaining > 0) {
+        cardLimit = remaining;
+        signedInMonthlyPartial = true;
+      }
+    }
+
+    const useCase = new GeneratePackagesUseCase();
+    const { packages, cardFingerprints, cardsHeldBack } = await useCase.execute(
+      paying,
+      [file],
+      settings,
+      ws,
+      undefined,
+      ownerId,
+      {
+        knownGuids,
+        uploadIdentity,
+        existingCardFingerprints,
+        requestId,
+        ...(cardLimit != null ? { cardLimit } : {}),
+      }
+    );
+    this.recordIssuedGuids(packages, ownerId, settings);
+    this.recordUploadIdentityMetric(packages, ownerId);
+    this.recordCardFingerprints(ownerId, cardFingerprints);
+
+    const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
+    if (totalCards === 0) {
+      throw new EmptyDeckError();
+    }
+
+    if (!signedInMonthlyPartial) {
+      await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
+        userId: owner,
+        candidateCardCount: totalCards,
+        isPaying: paying,
+      });
+    }
+
+    const first = packages[0];
+    const apkg = await ws.getFirstAPKG();
+    if (!apkg) {
+      throw new Error(
+        `Could not produce APKG for ${first?.name ?? 'untitled'}`
+      );
+    }
+    const deckName = toText(first.name);
+    const downloadKey = await this.persistSyncDeck(
+      owner,
+      deckName,
+      apkg,
+      source,
+      requestId
+    );
+    await this.usersRepository.incrementCardUsage(Number(owner), totalCards);
+    return {
+      downloadKey,
+      cardCount: totalCards,
+      cardsHeldBack: cardsHeldBack ?? 0,
+      deckName,
+    };
   }
 
   private resolveSignupOrigin(req: express.Request): string | null {

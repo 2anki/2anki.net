@@ -16,6 +16,7 @@ import JobRepository from '../data_layer/JobRepository';
 import UploadService from '../services/UploadService';
 import { getDatabase } from '../data_layer';
 import UploadRepository from '../data_layer/UploadRespository';
+import { HeldDeckRepository } from '../data_layer/HeldDeckRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import SettingsRepository from '../data_layer/SettingsRepository';
 import { ConversionOutputStatsRepository } from '../data_layer/ConversionOutputStatsRepository';
@@ -56,7 +57,8 @@ const UploadRouter = () => {
     new CardGuidLedgerRepository(database),
     new AiCardFingerprintRepository(database),
     new PhotoToFlashcardsUseCase(new EventsRepository(database)),
-    new AiUsageMetricsRepository(database)
+    new AiUsageMetricsRepository(database),
+    new HeldDeckRepository(database)
   );
   const jobController = new JobController(
     jobService,

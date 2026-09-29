@@ -98,6 +98,7 @@ import Uploads from '../data_layer/public/Uploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
 import { resolveAnonymousPartialArm } from '../lib/upload/anonymousPartialDelivery';
+import { InMemoryHeldDeckRepository } from '../data_layer/HeldDeckRepository';
 import {
   ANONYMOUS_CARD_CAP,
   MONTHLY_CARD_LIMIT,
@@ -4702,6 +4703,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   beforeEach(() => {
     MockGeneratePackagesUseCase.mockClear();
     trackMock.mockClear();
+    mockStorageUploadFile.mockClear();
     mockFirstApkg = Buffer.from('fake-apkg');
     mockWorkspaceId = 'test-ws-id';
   });
@@ -4714,6 +4716,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
           mimetype: 'text/html',
           size: 1024,
           path: '/tmp/study-notes.html',
+          buffer: Buffer.from('<html>study notes</html>'),
         },
       ],
       ...(anonId ? { cookies: { anon_id: anonId } } : {}),
@@ -4774,12 +4777,12 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     return (call?.[1] as { props: Record<string, unknown> }).props;
   }
 
-  function serviceUnderTest() {
+  function serviceUnderTest(heldDeck?: InMemoryHeldDeckRepository) {
     return new UploadService(
       buildRepository(),
       {} as JobRepository,
       buildUsersRepo(),
-      ...fakeUploadServiceDeps()
+      ...fakeUploadServiceDeps(heldDeck ? { heldDeck } : {})
     );
   }
 
@@ -4800,27 +4803,44 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(props).not.toHaveProperty('card_count_bucket');
   });
 
-  it('delivers the first 21 cards with held-back headers for the treatment arm', async () => {
+  it('holds the deck behind an account step for the treatment arm', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
     const req = buildEligibleRequest(TREATMENT_ID);
-    const { res, capturedStatus, capturedSend } = buildResponse();
+    const { res, capturedStatus, capturedJson, capturedSend } = buildResponse();
 
-    await serviceUnderTest().handleUpload(req, res);
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
 
     expect(execute.mock.calls[0][6]).toMatchObject({
       cardLimit: ANONYMOUS_CARD_CAP,
     });
     expect(capturedStatus()).toBe(200);
-    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
-    expect(headerValue(res, 'X-Card-Count')).toBe('21');
-    expect(headerValue(res, 'X-Cards-Held-Back')).toBe('13');
-    expect(exposedHeaders(res)).toContain('X-Cards-Held-Back');
+    expect(capturedJson()).toEqual({
+      kind: 'held',
+      cardCount: 21,
+      cardsHeldBack: 13,
+      totalCards: 34,
+    });
+    expect(capturedSend()).toBeNull();
+    expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
+    const [storageKey, bytes] = mockStorageUploadFile.mock.calls[0];
+    expect(storageKey).toMatch(/^held\//);
+    expect(bytes).toEqual(Buffer.from('<html>study notes</html>'));
+    expect(heldDeck.rows).toHaveLength(1);
+    expect(heldDeck.rows[0]).toMatchObject({
+      anon_id: TREATMENT_ID,
+      card_count: 21,
+      cards_held_back: 13,
+      claimed_at: null,
+    });
+    expect(heldDeck.rows[0].storage_key).toMatch(/^held\//);
     const props = conversionSucceededProps();
     expect(props).toMatchObject({
       card_limit_partial: true,
       cards_held_back: 13,
       arm: 'treatment',
+      held: true,
     });
     expect(props.card_count_bucket).toBeDefined();
     expect(trackMock).not.toHaveBeenCalledWith(
@@ -4830,6 +4850,21 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(trackMock).not.toHaveBeenCalledWith(
       'paywall_shown',
       expect.anything()
+    );
+  });
+
+  it('does not expose the storage key to the client', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedJson } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(JSON.stringify(capturedJson())).not.toContain('held/');
+    expect(JSON.stringify(capturedJson())).not.toContain(
+      heldDeck.rows[0].storage_key
     );
   });
 

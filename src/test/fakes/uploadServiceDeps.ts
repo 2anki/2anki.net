@@ -6,6 +6,10 @@ import type { ICardGuidLedgerRepository } from '../../data_layer/CardGuidLedgerR
 import type { IAiCardFingerprintRepository } from '../../data_layer/AiCardFingerprintRepository';
 import type { IAiRequestCostReader } from '../../data_layer/AiUsageMetricsRepository';
 import type { PhotoToFlashcardsUseCase } from '../../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
+import {
+  InMemoryHeldDeckRepository,
+  type IHeldDeckRepository,
+} from '../../data_layer/HeldDeckRepository';
 
 export type UploadServiceDeps = [
   ISettingsRepository,
@@ -16,6 +20,7 @@ export type UploadServiceDeps = [
   IAiCardFingerprintRepository,
   PhotoToFlashcardsUseCase,
   IAiRequestCostReader,
+  IHeldDeckRepository,
 ];
 
 export interface UploadServiceDepOverrides {
@@ -27,6 +32,7 @@ export interface UploadServiceDepOverrides {
   aiFingerprints?: IAiCardFingerprintRepository;
   photoToFlashcards?: PhotoToFlashcardsUseCase;
   aiRequestCost?: IAiRequestCostReader;
+  heldDeck?: IHeldDeckRepository;
 }
 
 export function fakeUploadServiceDeps(
@@ -75,5 +81,6 @@ export function fakeUploadServiceDeps(
     overrides.aiRequestCost ?? {
       costByRequestId: jest.fn().mockResolvedValue(0),
     },
+    overrides.heldDeck ?? new InMemoryHeldDeckRepository(),
   ];
 }
