@@ -1,9 +1,9 @@
 {
   "gateAria": "Crie uma conta gratuita para baixar seu baralho",
-  "gateHeadline": "Suas primeiras {{count}} cartas estão prontas",
-  "gateBody": "Crie uma conta gratuita para baixá-las. Até {{monthly}} cartas por mês, grátis.",
-  "gateContext": "Este arquivo gerou {{total}} cartas.",
-  "gateLive": "Suas {{count}} cartas estão prontas. Crie uma conta gratuita para baixá-las.",
+  "gateHeadline": "Seus primeiros {{count}} cartões estão prontos",
+  "gateBody": "Crie uma conta gratuita para baixá-los. Até {{monthly}} cartões por mês, grátis.",
+  "gateContext": "Este arquivo gerou {{total}} cartões.",
+  "gateLive": "Seus {{count}} cartões estão prontos. Crie uma conta gratuita para baixá-los.",
   "preparing": "Preparando seu download",
   "readyBody": "Você está conectado. Baixe seu baralho abaixo.",
   "expiredHeadline": "Este baralho não está mais salvo",
