@@ -284,12 +284,6 @@ class UsersRepository {
     return row.email as string;
   }
 
-  updateSubScriptionEmailUsingPrimaryEmail(email: string, newEmail: string) {
-    return this.database('subscriptions')
-      .where({ email: email.toLowerCase() })
-      .update({ linked_email: newEmail.toLowerCase() });
-  }
-
   changeEmailAndRelinkSubscriptions(
     currentEmail: string,
     newEmail: string
