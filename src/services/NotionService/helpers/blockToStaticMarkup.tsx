@@ -21,7 +21,6 @@ import { BlockBulletList } from '../blocks/lists/BlockBulletList';
 import BlockColumnList from '../blocks/lists/BlockColumnList';
 import { BlockNumberedList } from '../blocks/lists/BlockNumberedList';
 import { BlockTable } from '../blocks/lists/BlockTable';
-import getChildren from './getChildren';
 import { BlockTodoList } from '../blocks/lists/BlockTodoList';
 import { BlockToggleList } from '../blocks/lists/BlockToggleList';
 import BlockBookmark from '../blocks/media/BlockBookmark';
@@ -169,8 +168,11 @@ export const blockToStaticMarkup = async (
     case 'link_preview':
       back += renderLinkPreview(c);
       break;
+    // renderBackChild already recurses into a column's children, because
+    // column is absent from TYPES_THAT_RENDER_OWN_CHILDREN. Rendering them
+    // here too would duplicate every side-by-side layout; this arm exists so
+    // the block is not misreported as a type we could not convert.
     case 'column':
-      back += await getChildren(c, handler);
       break;
     default:
       handler.recordUnsupportedBlockType(c.type);

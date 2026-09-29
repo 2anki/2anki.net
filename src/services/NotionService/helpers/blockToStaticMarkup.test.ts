@@ -476,13 +476,18 @@ describe('blockToStaticMarkup', () => {
 });
 
 describe('blockToStaticMarkup column blocks', () => {
-  function makeColumn(id: string, hasChildren: boolean): BlockObjectResponse {
+  function block(
+    id: string,
+    type: string,
+    body: Record<string, unknown>,
+    hasChildren: boolean
+  ): BlockObjectResponse {
     return {
       object: 'block',
       id,
-      type: 'column',
-      column: {},
-      parent: { type: 'block_id', block_id: 'column-list-id' },
+      type,
+      [type]: body,
+      parent: { type: 'block_id', block_id: 'parent' },
       created_time: '2026-09-29T07:46:00.000Z',
       last_edited_time: '2026-09-29T07:46:00.000Z',
       created_by: { object: 'user', id: 'user-1' },
@@ -493,40 +498,75 @@ describe('blockToStaticMarkup column blocks', () => {
     } as unknown as BlockObjectResponse;
   }
 
-  it('renders the content inside a column instead of dropping it', async () => {
+  function paragraph(id: string, text: string): BlockObjectResponse {
+    return block(
+      id,
+      'paragraph',
+      {
+        rich_text: [
+          {
+            type: 'text',
+            text: { content: text, link: null },
+            annotations: {
+              bold: false,
+              italic: false,
+              strikethrough: false,
+              underline: false,
+              code: false,
+              color: 'default',
+            },
+            plain_text: text,
+            href: null,
+          },
+        ],
+        color: 'default',
+      },
+      false
+    );
+  }
+
+  // Stubbing the Notion API is the external edge; stubbing getBackSide would
+  // remove renderBack from the graph, and renderBack is what decides whether a
+  // column's children get walked a second time.
+  function handlerWithColumns() {
     const handler = makeHandler();
+    const columnList = block('column-list', 'column_list', {}, true);
+    const children: Record<string, BlockObjectResponse[]> = {
+      'column-list': [
+        block('col-0', 'column', {}, true),
+        block('col-1', 'column', {}, true),
+      ],
+      'col-0': [paragraph('p-left', 'LEFTSIDE')],
+      'col-1': [paragraph('p-right', 'RIGHTSIDE')],
+    };
+    let calls = 0;
     jest
-      .spyOn(handler, 'getBackSide')
-      .mockResolvedValue('<p>the answer lived in a column</p>');
+      .spyOn(handler.api, 'getBlocks')
+      .mockImplementation(async ({ id }: { id: string }) => {
+        calls += 1;
+        return {
+          results: children[id] ?? [],
+          has_more: false,
+          next_cursor: null,
+        } as never;
+      });
+    return { handler, columnList, callCount: () => calls };
+  }
 
-    const result = await blockToStaticMarkup(
-      handler,
-      makeColumn('column-with-content', true)
-    );
+  it('renders each column exactly once', async () => {
+    const { handler, columnList } = handlerWithColumns();
 
-    expect(result).toBe('<p>the answer lived in a column</p>');
+    const back = (await handler.getBackSide(columnList, true)) ?? '';
+
+    expect(back.match(/LEFTSIDE/g) ?? []).toHaveLength(1);
+    expect(back.match(/RIGHTSIDE/g) ?? []).toHaveLength(1);
+  });
+
+  it('does not report a column as a block it could not convert', async () => {
+    const { handler, columnList } = handlerWithColumns();
+
+    await handler.getBackSide(columnList, true);
+
     expect(handler.unsupportedBlockTypes).not.toContain('column');
-  });
-
-  it('does not count a column as an unsupported block type', async () => {
-    const handler = makeHandler();
-    jest.spyOn(handler, 'getBackSide').mockResolvedValue('<p>content</p>');
-
-    await blockToStaticMarkup(handler, makeColumn('column-1', true));
-
-    expect(handler.unsupportedBlockTypes).toEqual([]);
-  });
-
-  it('renders nothing for an empty column without calling the API', async () => {
-    const handler = makeHandler();
-    const getBackSide = jest.spyOn(handler, 'getBackSide');
-
-    const result = await blockToStaticMarkup(
-      handler,
-      makeColumn('empty-column', false)
-    );
-
-    expect(result).toBe('');
-    expect(getBackSide).not.toHaveBeenCalled();
   });
 });
