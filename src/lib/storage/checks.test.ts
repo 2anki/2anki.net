@@ -5,6 +5,7 @@ import {
   isAnkiDeckFile,
   isXmlFile,
   isAnkiAppExportXml,
+  isPptxFile,
 } from './checks';
 
 const FILE_MD = 'abc.md';
@@ -98,4 +99,15 @@ test('isCSVFile rejects other extensions and bare names', () => {
   expect(Boolean(isCSVFile('cards.txt'))).toBe(false);
   expect(Boolean(isCSVFile('csv'))).toBe(false);
   expect(Boolean(isCSVFile('mycsv'))).toBe(false);
+});
+
+describe('isPptxFile', () => {
+  it.each([
+    ['deck.pptx', true],
+    ['DECK.PPTX', true],
+    ['deck.ppt', false],
+    ['deck.pptx.zip', false],
+  ])('%s → %s', (name, expected) => {
+    expect(isPptxFile(name)).toBe(expected);
+  });
 });

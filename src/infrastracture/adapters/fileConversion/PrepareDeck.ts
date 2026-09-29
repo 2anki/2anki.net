@@ -14,13 +14,17 @@ import {
   isMarkdownFile,
   isPDFFile,
   isPPTFile,
+  isPptxFile,
   isXLSXFile,
   isDocxFile,
 } from '../../../lib/storage/checks';
 import { convertPDFToHTML } from './convertPDFToHTML';
 import { convertPPTToPDF } from './ConvertPPTToPDF';
 import { convertImageToHTML } from './convertImageToHTML';
-import { convertPDFToImages } from './convertPDFToImages';
+import { convertPDFToImages, renderPdfPageImages } from './convertPDFToImages';
+import { extractPptxSourceUnits } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
+import type { SlideUnit } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
+import { combineSlidesIntoHTML } from '../../../lib/pdf/combineSlidesIntoHTML';
 import {
   convertPdfTextToHtml,
   convertPdfTextToHtmlAuto,
@@ -55,6 +59,7 @@ import type { ConversionEngine } from '../../../lib/parser/conversionEngine';
 import type { InducedRescue } from '../../../lib/parser/induction/candidateRules';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import Workspace from '../../../lib/parser/WorkSpace';
+import fs from 'node:fs';
 import path from 'path';
 import {
   logFileLabel,
@@ -77,17 +82,16 @@ async function mapWithConcurrency<T, R>(
   concurrency: number,
   worker: (item: T, index: number) => Promise<R>
 ): Promise<R[]> {
-  const results: R[] = new Array(items.length);
+  const results: R[] = Array.from({ length: items.length });
   let cursor = 0;
   const runnerCount = Math.min(concurrency, items.length);
-  const runners = new Array(runnerCount).fill(null).map(async () => {
-    while (true) {
-      const index = cursor++;
-      if (index >= items.length) return;
-      results[index] = await worker(items[index], index);
-    }
-  });
-  await Promise.all(runners);
+  const runNext = async (): Promise<void> => {
+    const index = cursor++;
+    if (index >= items.length) return;
+    results[index] = await worker(items[index], index);
+    return runNext();
+  };
+  await Promise.all(Array.from({ length: runnerCount }, runNext));
   return results;
 }
 
@@ -343,6 +347,12 @@ async function convertFile(
       file.contents as Buffer,
       input.workspace
     );
+    const slides = isPptxFile(file.name)
+      ? readSlidesOrFallBack(file.name, file.contents as Buffer)
+      : [];
+    if (slides.some(hasSlideText)) {
+      return convertSlidesToTextCards(file, input, pdContents, slides, t0);
+    }
     const result: ConvertedFile = {
       name: `${file.name}.html`,
       contents: Buffer.from(
@@ -374,6 +384,88 @@ async function convertFile(
   }
 
   return null;
+}
+
+// LibreOffice already accepted the file; a zip the extractor cannot read
+// (renamed .ppt, zip64, over budget) falls back to the page-pair path instead
+// of failing an upload that used to convert.
+function readSlidesOrFallBack(fileName: string, contents: Buffer): SlideUnit[] {
+  try {
+    return extractPptxSourceUnits(contents);
+  } catch (error) {
+    console.warn('[PrepareDeck] could not read pptx slide text, using pages', {
+      file: fileName,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return [];
+  }
+}
+
+function hasSlideText(slide: SlideUnit): boolean {
+  return (
+    slide.title !== '' ||
+    slide.paragraphs.length > 0 ||
+    slide.speakerNotes !== ''
+  );
+}
+
+// Text-first slides: the title asks, the body and notes answer, and the
+// rendered slide rides on the back so diagrams survive. The blind page
+// pairing stays only for decks with no text at all and for binary .ppt.
+async function convertSlidesToTextCards(
+  file: DeckParserInput['files'][number],
+  input: DeckParserInput,
+  pdfContents: Buffer,
+  slides: SlideUnit[],
+  t0: number
+): Promise<ConvertedFile> {
+  const rendered =
+    input.settings.processPDFs === false
+      ? { imagePaths: [], title: file.name }
+      : await renderPdfPageImages({
+          name: file.name,
+          workspace: input.workspace,
+          noLimits: input.noLimits,
+          contents: pdfContents,
+          settings: input.settings,
+        });
+  if (
+    rendered.imagePaths.length > 0 &&
+    rendered.imagePaths.length !== slides.length
+  ) {
+    console.warn('[PrepareDeck] pptx slide count differs from rendered pages', {
+      file: file.name,
+      slides: slides.length,
+      pages: rendered.imagePaths.length,
+    });
+  }
+  const html = combineSlidesIntoHTML(
+    slides,
+    rendered.imagePaths,
+    rendered.title,
+    input.workspace.location
+  );
+  // The AI branch only sees media it is handed as extraFiles (the DOCX path
+  // learned this in #3946), so the rendered slides travel with the HTML.
+  const slideImages: PdfHtmlImage[] = await Promise.all(
+    rendered.imagePaths.map(async (imagePath) => ({
+      name: path
+        .relative(input.workspace.location, imagePath)
+        .replaceAll('\\', '/'),
+      contents: await fs.promises.readFile(imagePath),
+    }))
+  );
+  console.log('[PrepareDeck] convertFile pptx→text cards', {
+    file: file.name,
+    slideCount: slides.length,
+    imageCount: slideImages.length,
+    durationMs: Date.now() - t0,
+  });
+  return {
+    name: `${file.name}.html`,
+    contents: Buffer.from(html),
+    extraFiles: slideImages.length > 0 ? slideImages : undefined,
+  };
 }
 
 interface ConvertedFile {

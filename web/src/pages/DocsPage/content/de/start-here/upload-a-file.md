@@ -60,7 +60,7 @@ Die vollständige Tabelle der Formate und Grenzen findest du unter [Dateiformate
 - **Markdown** — `.md`, einschließlich Obsidian-Vaults.
 - **CSV / XLSX** — eine Zeile pro Karte.
 - **PDF** — Vorder-/Rückseite pro Seitenpaar, oder KI-generierte Fragen im kostenpflichtigen Plan.
-- **PPT / PPTX** — konvertiert über Folien zu PDF zu Bildern.
+- **PPT / PPTX** — eine Karte pro Folie: Der Folientitel ist die Vorderseite; Stichpunkte, Folienbild und Notizen die Rückseite. Eine Präsentation ganz ohne Text behält das Seitenpaar-Layout.
 
 Wirf das falsche Format hinein, und 2anki sagt es dir. Die Fehlermeldung nennt die unterstützten Typen, damit du nicht raten musst.
 

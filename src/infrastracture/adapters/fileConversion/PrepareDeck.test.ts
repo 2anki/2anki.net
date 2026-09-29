@@ -32,6 +32,10 @@ jest.mock('fs', () => ({
   ...jest.requireActual('fs'),
   mkdirSync: jest.fn(),
   writeFileSync: jest.fn(),
+  promises: {
+    ...jest.requireActual('fs').promises,
+    readFile: jest.fn().mockResolvedValue(Buffer.from('png-bytes')),
+  },
 }));
 
 jest.mock('./convertPdfTextToHtml', () => ({
@@ -52,6 +56,13 @@ jest.mock('./convertPdfTextToHtml', () => ({
 
 jest.mock('./convertPDFToImages', () => ({
   convertPDFToImages: jest.fn().mockResolvedValue('<p>page image card</p>'),
+  renderPdfPageImages: jest.fn().mockResolvedValue({
+    imagePaths: [
+      '/tmp/test-workspace/pdf-1/page-1.png',
+      '/tmp/test-workspace/pdf-1/page-2.png',
+    ],
+    title: 'deck.pdf',
+  }),
 }));
 
 jest.mock('./convertDocxToHTML', () => ({
@@ -69,7 +80,21 @@ const {
   convertPdfTextToHtml,
   convertPdfTextToHtmlAuto,
 } = require('./convertPdfTextToHtml');
-const { convertPDFToImages } = require('./convertPDFToImages');
+const {
+  convertPDFToImages,
+  renderPdfPageImages,
+} = require('./convertPDFToImages');
+const {
+  extractPptxSourceUnits,
+} = require('../../../lib/parser/sourceUnits/extractPptxSourceUnits');
+
+jest.mock('./ConvertPPTToPDF', () => ({
+  convertPPTToPDF: jest.fn().mockResolvedValue(Buffer.from('%PDF-1.4 slides')),
+}));
+
+jest.mock('../../../lib/parser/sourceUnits/extractPptxSourceUnits', () => ({
+  extractPptxSourceUnits: jest.fn().mockReturnValue([]),
+}));
 const {
   downloadMediaOrSkip,
 } = require('../../../services/NotionService/helpers/downloadMediaOrSkip');
@@ -1198,5 +1223,97 @@ describe('PrepareDeck — anonymous card limit', () => {
 
     expect(result?.cardCount).toBe(25);
     expect(result?.cardsHeldBack).toBe(0);
+  });
+});
+
+describe('PrepareDeck — PowerPoint text-first cards', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  function runDeck(name: string) {
+    return PrepareDeck({
+      name,
+      files: [{ name, contents: Buffer.from('PK fake pptx') }],
+      settings: makeSettings(),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    }).catch(() => undefined);
+  }
+
+  it('builds one text card per slide when the slides carry text', async () => {
+    extractPptxSourceUnits.mockReturnValueOnce([
+      {
+        id: 'slide-1',
+        visibleText: 'Mitosis\nCell division',
+        speakerNotes: '',
+        role: 'title',
+        title: 'Mitosis',
+        paragraphs: ['Cell division'],
+        hasPicture: false,
+      },
+      {
+        id: 'slide-2',
+        visibleText: 'Meiosis\nGametes',
+        speakerNotes: '',
+        role: 'title',
+        title: 'Meiosis',
+        paragraphs: ['Gametes'],
+        hasPicture: false,
+      },
+    ]);
+
+    await runDeck('lecture.pptx');
+
+    expect(renderPdfPageImages).toHaveBeenCalledTimes(1);
+    expect(convertPDFToImages).not.toHaveBeenCalled();
+    expect(require('fs').promises.readFile).toHaveBeenCalledWith(
+      '/tmp/test-workspace/pdf-1/page-1.png'
+    );
+    expect(require('fs').promises.readFile).toHaveBeenCalledWith(
+      '/tmp/test-workspace/pdf-1/page-2.png'
+    );
+  });
+
+  it('keeps the page-image path when no slide has any text', async () => {
+    extractPptxSourceUnits.mockReturnValueOnce([
+      {
+        id: 'slide-1',
+        visibleText: '',
+        speakerNotes: '',
+        role: 'image',
+        title: '',
+        paragraphs: [],
+        hasPicture: true,
+      },
+    ]);
+
+    await runDeck('photos.pptx');
+
+    expect(convertPDFToImages).toHaveBeenCalledTimes(1);
+    expect(renderPdfPageImages).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the page-image path when the slide XML cannot be read', async () => {
+    extractPptxSourceUnits.mockImplementationOnce(() => {
+      throw new Error('invalid zip data');
+    });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      await runDeck('renamed.pptx');
+    } finally {
+      warn.mockRestore();
+    }
+
+    expect(convertPDFToImages).toHaveBeenCalledTimes(1);
+    expect(renderPdfPageImages).not.toHaveBeenCalled();
+  });
+
+  it('keeps the page-image path for the binary .ppt format', async () => {
+    await runDeck('old.ppt');
+
+    expect(extractPptxSourceUnits).not.toHaveBeenCalled();
+    expect(convertPDFToImages).toHaveBeenCalledTimes(1);
   });
 });

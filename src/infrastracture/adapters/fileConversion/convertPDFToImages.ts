@@ -23,12 +23,18 @@ export const PDF_EXCEEDS_MAX_PAGE_LIMIT =
 export async function convertPDFToImages(
   input: ConvertPDFToImagesInput
 ): Promise<string> {
-  const { contents, workspace, noLimits, name, settings } = input;
-
   // Skip PDF processing if the option is disabled
-  if (settings?.processPDFs === false) {
+  if (input.settings?.processPDFs === false) {
     return '';
   }
+  const { imagePaths, title } = await renderPdfPageImages(input);
+  return combineIntoHTML(imagePaths, title, input.workspace.location);
+}
+
+export async function renderPdfPageImages(
+  input: ConvertPDFToImagesInput
+): Promise<{ imagePaths: string[]; title: string }> {
+  const { contents, workspace, noLimits, name } = input;
   const fileName = name
     ? path.basename(name).replace(/\.pptx?$/i, '.pdf')
     : 'Default.pdf';
@@ -51,5 +57,5 @@ export async function convertPDFToImages(
     )
   );
 
-  return combineIntoHTML(imagePaths, title, workspace.location);
+  return { imagePaths, title };
 }
