@@ -19,6 +19,7 @@ exports.up = async (knex) => {
       .onDelete('SET NULL');
     t.index(['anon_id', 'created_at'], 'held_decks_anon_id_created_at_idx');
     t.index(['expires_at'], 'held_decks_expires_at_idx');
+    t.index(['claimed_by'], 'held_decks_claimed_by_idx');
   });
 };
 
