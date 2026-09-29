@@ -28,6 +28,7 @@ import { buildMcpServer } from '../services/mcp/McpServerFactory';
 import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EventsRepository } from '../data_layer/EventsRepository';
 import { AiUsageMetricsRepository } from '../data_layer/AiUsageMetricsRepository';
+import { HeldDeckRepository } from '../data_layer/HeldDeckRepository';
 import { applyUserLocals } from './middleware/configureUserLocal';
 import { getEventsSink } from '../services/events/eventsSinkInstance';
 import { createMcpRouter, MCP_AUTHORIZE_PATH } from './mcp/createMcpRouter';
@@ -73,7 +74,8 @@ const McpRouter = () => {
     new CardGuidLedgerRepository(database),
     new AiCardFingerprintRepository(database),
     new PhotoToFlashcardsUseCase(new EventsRepository(database)),
-    new AiUsageMetricsRepository(database)
+    new AiUsageMetricsRepository(database),
+    new HeldDeckRepository(database)
   );
   const storage = new StorageHandler();
   const toolsService = new McpToolsService(

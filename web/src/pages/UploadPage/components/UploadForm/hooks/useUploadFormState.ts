@@ -13,7 +13,17 @@ export type ZoneState =
   | 'imageOnly'
   | 'limitReached'
   | 'error'
-  | 'lockedPdf';
+  | 'lockedPdf'
+  | 'heldForSignup'
+  | 'claimingHeld'
+  | 'heldReady'
+  | 'heldExpired';
+
+export interface HeldDeckState {
+  cardCount: number;
+  cardsHeldBack: number;
+  totalCards: number;
+}
 
 export interface BatchDeck {
   name: string;
@@ -59,6 +69,7 @@ export function useUploadFormState(onReset: () => void) {
     useState<number>(0);
   const [emptyBackCount, setEmptyBackCount] = useState<number>(0);
   const [cardsHeldBack, setCardsHeldBack] = useState<number>(0);
+  const [heldDeck, setHeldDeck] = useState<HeldDeckState | null>(null);
   const [overSplit, setOverSplit] = useState(false);
   const [creditsUsed, setCreditsUsed] = useState<number>(0);
   const [structureRescuedRule, setStructureRescuedRule] =
@@ -106,6 +117,7 @@ export function useUploadFormState(onReset: () => void) {
     setExpiredNotionImageCount(0);
     setEmptyBackCount(0);
     setCardsHeldBack(0);
+    setHeldDeck(null);
     setOverSplit(false);
     setCreditsUsed(0);
     setStructureRescuedRule(null);
@@ -160,6 +172,8 @@ export function useUploadFormState(onReset: () => void) {
     setEmptyBackCount,
     cardsHeldBack,
     setCardsHeldBack,
+    heldDeck,
+    setHeldDeck,
     overSplit,
     setOverSplit,
     creditsUsed,

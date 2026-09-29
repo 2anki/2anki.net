@@ -14,6 +14,7 @@ import { extractErrorMessage } from '../../helpers/extractErrorMessage';
 import {
   applyConversionSuccess,
   AI_CREDITS_WARNING_CODE,
+  recoveryDownloadUrl,
   type ConversionSuccessHandlers,
 } from './uploadResponse';
 import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
@@ -54,7 +55,7 @@ import {
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { PostDownloadNudge } from '../../../../components/PostDownloadNudge';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
-import { AnonymousPartialNotice } from '../../../../components/AnonymousPartialNotice/AnonymousPartialNotice';
+import { AnonymousPartialGate } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
 import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
@@ -308,6 +309,8 @@ function UploadForm({
     setEmptyBackCount,
     cardsHeldBack,
     setCardsHeldBack,
+    heldDeck,
+    setHeldDeck,
     setOverSplit,
     creditsUsed,
     setCreditsUsed,
@@ -404,6 +407,7 @@ function UploadForm({
     setDownloadLink,
     setProgressWidth,
     setBatchResult,
+    setHeldDeck,
     setZoneState,
     setStructureRescuedRule,
     recoverDownload: (recoveryUrl, errorMessage) => {
@@ -440,6 +444,50 @@ function UploadForm({
   const { openPicker, isConfigured: isGoogleDriveConfigured } =
     useGooglePicker();
   const driveButtonRef = useRef<HTMLButtonElement>(null);
+  const claimAttemptedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || claimAttemptedRef.current) return;
+    claimAttemptedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const hold = await get2ankiApi().getHeldDeck();
+        if (cancelled || hold == null) return;
+        setHeldDeck({
+          cardCount: hold.cardCount,
+          cardsHeldBack: hold.cardsHeldBack,
+          totalCards: hold.cardCount + hold.cardsHeldBack,
+        });
+        setZoneState('claimingHeld');
+        const result = await get2ankiApi().claimHeldDeck();
+        if (cancelled) return;
+        if (result.status === 200 && result.downloadKey != null) {
+          setDownloadLink(recoveryDownloadUrl(result.downloadKey));
+          if (result.deckName) setDeckName(result.deckName);
+          setCardCount(result.cardCount);
+          setProgressWidth(100);
+          setZoneState('heldReady');
+        } else if (result.status === 404 || result.status === 410) {
+          setZoneState('heldExpired');
+        } else if (result.status === 409) {
+          globalThis.location.href = '/limit?kind=card_count';
+        } else {
+          resetForm();
+          setErrorMessage(t('upload.form.liveError'));
+        }
+      } catch {
+        if (cancelled) return;
+        resetForm();
+        setErrorMessage(t('upload.form.liveError'));
+      }
+    })();
+    return () => {
+      cancelled = true;
+      claimAttemptedRef.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const handleDayPass = async () => {
     setDayPassError(null);
@@ -538,7 +586,11 @@ function UploadForm({
 
   const { dropHover } = useDrag({
     onDrop: (event) => {
-      if (isUploadLocked || zoneState === 'packaging') {
+      if (
+        isUploadLocked ||
+        zoneState === 'packaging' ||
+        zoneState === 'heldForSignup'
+      ) {
         event.preventDefault();
         return;
       }
@@ -1010,7 +1062,9 @@ function UploadForm({
     formStyles.dropZone,
     dropHover && zoneState === 'idle' ? formStyles.dropZoneActive : '',
     zoneState === 'converting' ? formStyles.dropZoneConverting : '',
-    zoneState === 'success' || zoneState === 'multiDeck'
+    zoneState === 'success' ||
+    zoneState === 'multiDeck' ||
+    zoneState === 'heldReady'
       ? formStyles.dropZoneSuccess
       : '',
     zoneState === 'emptyDeck' || zoneState === 'imageOnly'
@@ -1021,7 +1075,12 @@ function UploadForm({
       : '',
     isExistingApkgReject ? formStyles.dropZoneRedirect : '',
     zoneState === 'limitReached' ? formStyles.dropZoneLimit : '',
-    zoneState === 'lockedPdf' ? formStyles.dropZoneLocked : '',
+    zoneState === 'lockedPdf' ||
+    zoneState === 'heldForSignup' ||
+    zoneState === 'claimingHeld' ||
+    zoneState === 'heldExpired'
+      ? formStyles.dropZoneLocked
+      : '',
     isUploadLocked && zoneState === 'idle' ? formStyles.dropZoneLimitWall : '',
     validation?.status === 'warning' ? formStyles.dropZoneWarning : '',
     validation?.status === 'error' ? formStyles.dropZoneError : '',
@@ -1251,12 +1310,6 @@ function UploadForm({
         >
           {t('upload.form.fallbackDownload')}
         </button>
-      )}
-      {cardsHeldBack > 0 && cardCount != null && (
-        <AnonymousPartialNotice
-          cardCount={cardCount}
-          cardsHeldBack={cardsHeldBack}
-        />
       )}
       {successOffer === 'anon_signup' && cardsHeldBack === 0 && (
         <CreateAccountNotice deckName={deckName} />
@@ -1881,6 +1934,83 @@ function UploadForm({
     </div>
   );
 
+  const renderHeldForSignupState = () =>
+    heldDeck == null ? null : (
+      <div className={formStyles.stateContent}>
+        <AnonymousPartialGate held={heldDeck} />
+      </div>
+    );
+
+  const renderClaimingHeldState = () => (
+    <div className={formStyles.stateContent}>
+      <p className={formStyles.successPrimary}>
+        {t('anonymousPartial:preparing')}
+      </p>
+    </div>
+  );
+
+  const renderHeldReadyState = () => (
+    <div className={formStyles.stateContent}>
+      <CheckCircleIcon className={formStyles.iconSuccess} />
+      {cardCount == null ? (
+        <p className={formStyles.successPrimary}>
+          {t('upload.form.deckReady')}
+        </p>
+      ) : (
+        <ConversionResult variant="success" count={cardCount} />
+      )}
+      <p className={formStyles.successSecondary}>
+        {t('anonymousPartial:readyBody')}
+      </p>
+      {downloadLink && (
+        <a
+          href={downloadLink}
+          download={getDownloadFileName(deckName || 'Untitled')}
+          className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+          onClick={() => {
+            fireAnalyticsEvent('deck_downloaded');
+            track('deck_downloaded', { source: 'held_claim' });
+          }}
+        >
+          {t('upload.form.downloadDeck')}
+        </a>
+      )}
+    </div>
+  );
+
+  const renderHeldExpiredState = () => (
+    <div className={formStyles.stateContent}>
+      <span className={formStyles.lockedIcon} aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          width="40"
+          height="40"
+        >
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      </span>
+      <p className={formStyles.successPrimary}>
+        {t('anonymousPartial:expiredHeadline')}
+      </p>
+      <p className={formStyles.successSecondary}>
+        {t('anonymousPartial:expiredBody')}
+      </p>
+      <button
+        type="button"
+        className={sharedStyles.btnSecondary}
+        onClick={resetForm}
+      >
+        {t('anonymousPartial:expiredCta')}
+      </button>
+    </div>
+  );
+
   const renderLockedState = () => {
     const used = cardUsage?.cards_used ?? 0;
     const limit = cardUsage?.cards_limit ?? 100;
@@ -1974,6 +2104,10 @@ function UploadForm({
     if (zoneState === 'imageOnly') return renderImageOnlyState();
     if (zoneState === 'limitReached' && limitInfo) return renderLimitState();
     if (zoneState === 'lockedPdf') return renderLockedPdfState();
+    if (zoneState === 'heldForSignup') return null;
+    if (zoneState === 'claimingHeld') return renderClaimingHeldState();
+    if (zoneState === 'heldReady') return renderHeldReadyState();
+    if (zoneState === 'heldExpired') return renderHeldExpiredState();
     if (zoneState === 'packaging') return renderPackagingState();
     if (zoneState === 'error' && folderError != null) {
       return renderFolderErrorState(folderError);
@@ -1989,148 +2123,111 @@ function UploadForm({
   };
 
   const showChips = zoneState === 'idle' && !validation && !isUploadLocked;
+  const gateVisible = zoneState === 'heldForSignup' && heldDeck != null;
   const showDropboxPanel = showChips && source === 'dropbox';
   const showGoogleDrivePanel = showChips && source === 'google_drive';
   const showLocalPanel = !showChips || source === 'local';
 
+  const staticLiveStatusKeys: Partial<Record<ZoneState, string>> = {
+    packaging: 'upload.form.packingFolder',
+    converting: 'upload.form.liveConverting',
+    emptyDeck: 'upload.form.liveEmptyDeck',
+    imageOnly: 'upload.form.liveImageOnly',
+    error: 'upload.form.liveError',
+    limitReached: 'upload.form.liveLimitReached',
+    lockedPdf: 'upload.form.liveLockedPdf',
+    claimingHeld: 'anonymousPartial:preparing',
+  };
+
+  const deckReadyLiveStatus = (): string =>
+    cardCount == null
+      ? t('upload.form.liveDeckReady')
+      : t('upload.form.liveDeckReadyCount', { count: cardCount });
+
   const renderLiveStatus = (): string => {
     if (guardrailVisible && validation) return validation.title;
-    if (zoneState === 'packaging') return t('upload.form.packingFolder');
-    if (zoneState === 'converting') return t('upload.form.liveConverting');
-    if (zoneState === 'success') {
-      if (cardCount == null) return t('upload.form.liveDeckReady');
-      return t('upload.form.liveDeckReadyCount', { count: cardCount });
+    const staticKey = staticLiveStatusKeys[zoneState];
+    if (staticKey != null) return t(staticKey);
+    if (zoneState === 'success' || zoneState === 'heldReady') {
+      return deckReadyLiveStatus();
     }
     if (zoneState === 'multiDeck') {
-      const n = batchResult?.deckCount ?? 0;
-      return t('upload.form.decksReady', { count: n });
+      return t('upload.form.decksReady', {
+        count: batchResult?.deckCount ?? 0,
+      });
     }
-    if (zoneState === 'emptyDeck') {
-      return t('upload.form.liveEmptyDeck');
+    if (zoneState === 'heldForSignup' && heldDeck != null) {
+      return t('anonymousPartial:gateLive', { count: heldDeck.cardCount });
     }
-    if (zoneState === 'imageOnly') {
-      return t('upload.form.liveImageOnly');
-    }
-    if (zoneState === 'error') return t('upload.form.liveError');
-    if (zoneState === 'limitReached') {
-      return t('upload.form.liveLimitReached');
-    }
-    if (zoneState === 'lockedPdf') {
-      return t('upload.form.liveLockedPdf');
+    if (zoneState === 'heldExpired') {
+      return `${t('anonymousPartial:expiredHeadline')}. ${t('anonymousPartial:expiredBody')}`;
     }
     return '';
   };
 
   return (
-    <form encType="multipart/form-data" method="post" onSubmit={handleSubmit}>
-      <output aria-live="polite" className={sharedStyles.srOnly}>
-        {renderLiveStatus()}
-      </output>
-      <label
-        htmlFor="pakker"
-        id="upload-panel-local"
-        translate="no"
-        className={`${zoneClassName} ${showLocalPanel ? '' : formStyles.panelHidden}`}
-        aria-hidden={!showLocalPanel}
-      >
-        {renderZoneContent()}
-        <input
-          ref={fileInputRef}
-          className={formStyles.fileInput}
-          id="pakker"
-          type="file"
-          name="pakker"
-          accept={getAcceptedContentTypes()}
-          required
-          multiple
-          disabled={isUploadLocked}
-          onChange={() => {
-            const files = fileInputRef.current?.files;
-            if (!files) return;
-            void validate(files).then((clean) => {
-              if (clean) submitFiles();
-            });
-          }}
-        />
-      </label>
-      {zoneState === 'emptyDeck' && (
-        <div className={formStyles.inlineChatWrapper}>
-          <button
-            type="button"
-            className={formStyles.inlineChatToggle}
-            onClick={() => {
-              setShowInlineChat((prev) => {
-                if (!prev) track('upload_empty_deck_chat_engaged');
-                return !prev;
+    <>
+      {gateVisible && (
+        <div className={zoneClassName}>{renderHeldForSignupState()}</div>
+      )}
+      <form encType="multipart/form-data" method="post" onSubmit={handleSubmit}>
+        <output aria-live="polite" className={sharedStyles.srOnly}>
+          {renderLiveStatus()}
+        </output>
+        <label
+          htmlFor="pakker"
+          id="upload-panel-local"
+          translate="no"
+          className={`${zoneClassName} ${showLocalPanel && !gateVisible ? '' : formStyles.panelHidden}`}
+          aria-hidden={!showLocalPanel || gateVisible}
+        >
+          {renderZoneContent()}
+          <input
+            ref={fileInputRef}
+            className={formStyles.fileInput}
+            id="pakker"
+            type="file"
+            name="pakker"
+            accept={getAcceptedContentTypes()}
+            required
+            multiple
+            disabled={isUploadLocked || gateVisible}
+            onChange={() => {
+              const files = fileInputRef.current?.files;
+              if (!files) return;
+              void validate(files).then((clean) => {
+                if (clean) submitFiles();
               });
             }}
-            aria-expanded={showInlineChat}
-            aria-controls="empty-deck-chat-panel"
-          >
-            <i
-              className={`${formStyles.inlineChatToggleChevron} ${showInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
-              aria-hidden="true"
-            >
-              ›
-            </i>
-            {t('upload.form.askClaude')}
-          </button>
-          {showInlineChat && (
-            <section
-              id="empty-deck-chat-panel"
-              className={formStyles.inlineChatBody}
-              aria-label={`Ask Claude about ${currentFilename() || 'this file'}`}
-            >
-              <p className={formStyles.inlineChatContext}>
-                About{' '}
-                <span
-                  className={formStyles.inlineChatFilename}
-                  title={currentFilename() || 'your file'}
-                >
-                  {currentFilename() || 'your file'}
-                </span>
-              </p>
-              <ChatPanel
-                key={currentFilename()}
-                initialPrompt={getEmptyDeckChatPrompt(
-                  driveMimeType,
-                  currentFilename()
-                )}
-                cameFromUpload
-              />
-            </section>
-          )}
-        </div>
-      )}
-      {zoneState === 'error' &&
-        networkRetryFiles == null &&
-        unreadableFile == null && (
+          />
+        </label>
+        {zoneState === 'emptyDeck' && (
           <div className={formStyles.inlineChatWrapper}>
             <button
               type="button"
               className={formStyles.inlineChatToggle}
               onClick={() => {
-                setShowErrorInlineChat((prev) => {
-                  if (!prev) track('upload_error_chat_engaged');
+                setShowInlineChat((prev) => {
+                  if (!prev) track('upload_empty_deck_chat_engaged');
                   return !prev;
                 });
               }}
-              aria-expanded={showErrorInlineChat}
-              aria-controls="error-state-chat-panel"
+              aria-expanded={showInlineChat}
+              aria-controls="empty-deck-chat-panel"
             >
               <i
-                className={`${formStyles.inlineChatToggleChevron} ${showErrorInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
+                className={`${formStyles.inlineChatToggleChevron} ${showInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
                 aria-hidden="true"
               >
                 ›
               </i>
-              {showErrorInlineChat ? 'Hide chat' : 'Talk it through instead'}
+              {t('upload.form.askClaude')}
             </button>
-            {showErrorInlineChat && (
+            {showInlineChat && (
               <section
-                id="error-state-chat-panel"
+                id="empty-deck-chat-panel"
                 className={formStyles.inlineChatBody}
-                aria-label={`Talk to Claude about ${currentFilename() || 'this file'}`}
+                aria-label={`Ask Claude about ${currentFilename() || 'this file'}`}
               >
                 <p className={formStyles.inlineChatContext}>
                   About{' '}
@@ -2142,138 +2239,190 @@ function UploadForm({
                   </span>
                 </p>
                 <ChatPanel
-                  key={`error-${currentFilename()}`}
-                  initialPrompt={`I tried to convert ${currentFilename() || 'a file'} and got stuck. What can I do?`}
+                  key={currentFilename()}
+                  initialPrompt={getEmptyDeckChatPrompt(
+                    driveMimeType,
+                    currentFilename()
+                  )}
                   cameFromUpload
                 />
               </section>
             )}
           </div>
         )}
-      {showChips && (
-        <div
-          id="upload-panel-dropbox"
-          className={`${zoneClassName} ${showDropboxPanel ? '' : formStyles.panelHidden}`}
-          aria-hidden={!showDropboxPanel}
-        >
-          <div className={formStyles.stateContent}>
-            <button
-              type="button"
-              className={formStyles.changeSourceLink}
-              aria-label={t('upload.form.changeSourceAria')}
-              onClick={() => handleSourceChange('local')}
-            >
-              {t('upload.form.changeSource')}
-            </button>
-            <DropboxIcon className={formStyles.dropboxIconLarge} />
-            <span className={formStyles.dropText}>
-              {t('upload.form.dropboxPrompt')}
-            </span>
-            <button
-              type="button"
-              className={formStyles.chooseButton}
-              onClick={handleDropboxClick}
-              disabled={dropboxPending}
-              aria-label={t('upload.form.chooseFromDropbox')}
-            >
-              {dropboxPending
-                ? t('upload.form.openingDropbox')
-                : t('upload.form.chooseFromDropbox')}
-            </button>
-            <div className={formStyles.formatList}>
-              {FORMATS.map((fmt) => (
-                <span key={fmt} className={formStyles.formatPill}>
-                  {fmt}
-                </span>
-              ))}
+        {zoneState === 'error' &&
+          networkRetryFiles == null &&
+          unreadableFile == null && (
+            <div className={formStyles.inlineChatWrapper}>
+              <button
+                type="button"
+                className={formStyles.inlineChatToggle}
+                onClick={() => {
+                  setShowErrorInlineChat((prev) => {
+                    if (!prev) track('upload_error_chat_engaged');
+                    return !prev;
+                  });
+                }}
+                aria-expanded={showErrorInlineChat}
+                aria-controls="error-state-chat-panel"
+              >
+                <i
+                  className={`${formStyles.inlineChatToggleChevron} ${showErrorInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
+                  aria-hidden="true"
+                >
+                  ›
+                </i>
+                {showErrorInlineChat ? 'Hide chat' : 'Talk it through instead'}
+              </button>
+              {showErrorInlineChat && (
+                <section
+                  id="error-state-chat-panel"
+                  className={formStyles.inlineChatBody}
+                  aria-label={`Talk to Claude about ${currentFilename() || 'this file'}`}
+                >
+                  <p className={formStyles.inlineChatContext}>
+                    About{' '}
+                    <span
+                      className={formStyles.inlineChatFilename}
+                      title={currentFilename() || 'your file'}
+                    >
+                      {currentFilename() || 'your file'}
+                    </span>
+                  </p>
+                  <ChatPanel
+                    key={`error-${currentFilename()}`}
+                    initialPrompt={`I tried to convert ${currentFilename() || 'a file'} and got stuck. What can I do?`}
+                    cameFromUpload
+                  />
+                </section>
+              )}
+            </div>
+          )}
+        {showChips && (
+          <div
+            id="upload-panel-dropbox"
+            className={`${zoneClassName} ${showDropboxPanel ? '' : formStyles.panelHidden}`}
+            aria-hidden={!showDropboxPanel}
+          >
+            <div className={formStyles.stateContent}>
+              <button
+                type="button"
+                className={formStyles.changeSourceLink}
+                aria-label={t('upload.form.changeSourceAria')}
+                onClick={() => handleSourceChange('local')}
+              >
+                {t('upload.form.changeSource')}
+              </button>
+              <DropboxIcon className={formStyles.dropboxIconLarge} />
+              <span className={formStyles.dropText}>
+                {t('upload.form.dropboxPrompt')}
+              </span>
+              <button
+                type="button"
+                className={formStyles.chooseButton}
+                onClick={handleDropboxClick}
+                disabled={dropboxPending}
+                aria-label={t('upload.form.chooseFromDropbox')}
+              >
+                {dropboxPending
+                  ? t('upload.form.openingDropbox')
+                  : t('upload.form.chooseFromDropbox')}
+              </button>
+              <div className={formStyles.formatList}>
+                {FORMATS.map((fmt) => (
+                  <span key={fmt} className={formStyles.formatPill}>
+                    {fmt}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {dropboxError && (
-        <p className={formStyles.dropboxError} role="alert">
-          {dropboxError}
-        </p>
-      )}
-      {showChips && isGoogleDriveConfigured && (
-        <div
-          id="upload-panel-google-drive"
-          className={`${zoneClassName} ${showGoogleDrivePanel ? '' : formStyles.panelHidden}`}
-          aria-hidden={!showGoogleDrivePanel}
-        >
-          <div className={formStyles.stateContent}>
-            <button
-              type="button"
-              className={formStyles.changeSourceLink}
-              aria-label={t('upload.form.changeSourceAria')}
-              onClick={() => handleSourceChange('local')}
-            >
-              {t('upload.form.changeSource')}
-            </button>
-            <GoogleDriveIcon className={formStyles.dropboxIconLarge} />
-            <span className={formStyles.dropText}>
-              {t('upload.form.drivePrompt')}
-            </span>
-            <span className={formStyles.shapeHint}>
-              {t('upload.form.driveHint')}
-            </span>
-            <button
-              ref={driveButtonRef}
-              type="button"
-              className={formStyles.chooseButton}
-              onClick={handleGoogleDriveClick}
-              disabled={drivePending}
-              aria-label={t('upload.form.chooseFromDrive')}
-            >
-              {drivePending
-                ? t('upload.form.openingDrive')
-                : t('upload.form.chooseFromDrive')}
-            </button>
-            <div className={formStyles.formatList}>
-              {FORMATS.map((fmt) => (
-                <span key={fmt} className={formStyles.formatPill}>
-                  {fmt}
-                </span>
-              ))}
+        )}
+        {dropboxError && (
+          <p className={formStyles.dropboxError} role="alert">
+            {dropboxError}
+          </p>
+        )}
+        {showChips && isGoogleDriveConfigured && (
+          <div
+            id="upload-panel-google-drive"
+            className={`${zoneClassName} ${showGoogleDrivePanel ? '' : formStyles.panelHidden}`}
+            aria-hidden={!showGoogleDrivePanel}
+          >
+            <div className={formStyles.stateContent}>
+              <button
+                type="button"
+                className={formStyles.changeSourceLink}
+                aria-label={t('upload.form.changeSourceAria')}
+                onClick={() => handleSourceChange('local')}
+              >
+                {t('upload.form.changeSource')}
+              </button>
+              <GoogleDriveIcon className={formStyles.dropboxIconLarge} />
+              <span className={formStyles.dropText}>
+                {t('upload.form.drivePrompt')}
+              </span>
+              <span className={formStyles.shapeHint}>
+                {t('upload.form.driveHint')}
+              </span>
+              <button
+                ref={driveButtonRef}
+                type="button"
+                className={formStyles.chooseButton}
+                onClick={handleGoogleDriveClick}
+                disabled={drivePending}
+                aria-label={t('upload.form.chooseFromDrive')}
+              >
+                {drivePending
+                  ? t('upload.form.openingDrive')
+                  : t('upload.form.chooseFromDrive')}
+              </button>
+              <div className={formStyles.formatList}>
+                {FORMATS.map((fmt) => (
+                  <span key={fmt} className={formStyles.formatPill}>
+                    {fmt}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {driveError && (
-        <p className={formStyles.dropboxError} role="alert">
-          {driveError}
-        </p>
-      )}
-      {showChips && (
-        <div className={formStyles.chipsRow}>
-          <UploadSourceChips
-            active={source}
-            onChange={handleSourceChange}
-            dropboxAvailable={isDropboxConfigured}
-            googleDriveAvailable={isGoogleDriveConfigured}
-          />
-        </div>
-      )}
-      {downloadLink && (
-        <a
-          hidden
-          target="_blank"
-          aria-label="download link"
-          href={downloadLink}
-          download={getDownloadFileName(deckName || 'Untitled')}
-          ref={downloadRef}
-          rel="noreferrer"
-        >
-          {downloadLink}
-        </a>
-      )}
-      <button
-        aria-label={t('upload.form.uploadFileAria')}
-        className={sharedStyles.hidden}
-        ref={convertRef}
-        type="submit"
-      />
-    </form>
+        )}
+        {driveError && (
+          <p className={formStyles.dropboxError} role="alert">
+            {driveError}
+          </p>
+        )}
+        {showChips && (
+          <div className={formStyles.chipsRow}>
+            <UploadSourceChips
+              active={source}
+              onChange={handleSourceChange}
+              dropboxAvailable={isDropboxConfigured}
+              googleDriveAvailable={isGoogleDriveConfigured}
+            />
+          </div>
+        )}
+        {downloadLink && (
+          <a
+            hidden
+            target="_blank"
+            aria-label="download link"
+            href={downloadLink}
+            download={getDownloadFileName(deckName || 'Untitled')}
+            ref={downloadRef}
+            rel="noreferrer"
+          >
+            {downloadLink}
+          </a>
+        )}
+        <button
+          aria-label={t('upload.form.uploadFileAria')}
+          className={sharedStyles.hidden}
+          ref={convertRef}
+          type="submit"
+        />
+      </form>
+    </>
   );
 }
 

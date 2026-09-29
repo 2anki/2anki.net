@@ -1,8 +1,12 @@
 {
-  "headline": "Your first 21 cards are ready",
-  "heldBack_one": "{{count}} more card is not in this download",
-  "heldBack_other": "{{count}} more cards are not in this download",
-  "body": "This file made {{total}} cards. A free account gives you up to {{monthly}} cards a month. Create one, then drop the file again.",
-  "cta": "Create a free account",
-  "aria": "Partial deck ready"
+  "gateAria": "Create a free account to download your deck",
+  "gateHeadline": "Your first {{count}} cards are ready",
+  "gateBody": "Create a free account to download them. Up to {{monthly}} cards a month, free.",
+  "gateContext": "This file made {{total}} cards.",
+  "gateLive": "Your {{count}} cards are ready. Create a free account to download them.",
+  "preparing": "Preparing your download",
+  "readyBody": "You're signed in. Download your deck below.",
+  "expiredHeadline": "This deck is no longer saved",
+  "expiredBody": "We only keep unclaimed decks for a day. Drop the file again to remake it.",
+  "expiredCta": "Upload again"
 }

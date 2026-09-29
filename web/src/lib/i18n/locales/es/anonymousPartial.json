@@ -1,8 +1,12 @@
 {
-  "headline": "Tus primeras 21 tarjetas están listas",
-  "heldBack_one": "{{count}} tarjeta más no está en esta descarga",
-  "heldBack_other": "{{count}} tarjetas más no están en esta descarga",
-  "body": "Este archivo generó {{total}} tarjetas. Una cuenta gratuita te da hasta {{monthly}} tarjetas al mes. Crea una y luego suelta el archivo otra vez.",
-  "cta": "Crear una cuenta gratuita",
-  "aria": "Mazo parcial listo"
+  "gateAria": "Crea una cuenta gratuita para descargar tu mazo",
+  "gateHeadline": "Tus primeras {{count}} tarjetas están listas",
+  "gateBody": "Crea una cuenta gratuita para descargarlas. Hasta {{monthly}} tarjetas al mes, gratis.",
+  "gateContext": "Este archivo generó {{total}} tarjetas.",
+  "gateLive": "Tus {{count}} tarjetas están listas. Crea una cuenta gratuita para descargarlas.",
+  "preparing": "Preparando tu descarga",
+  "readyBody": "Has iniciado sesión. Descarga tu mazo abajo.",
+  "expiredHeadline": "Este mazo ya no está guardado",
+  "expiredBody": "Solo guardamos los mazos sin reclamar durante un día. Suelta el archivo de nuevo para rehacerlo.",
+  "expiredCta": "Subir de nuevo"
 }

@@ -5,6 +5,7 @@ import StorageHandler from '../../StorageHandler';
 import { deleteNonSubScriberUploadsInDatabase } from './deleteNonSubScriberUploadsInDatabase';
 import { deleteDanglingUploadsInBucket } from './deleteDanglingUploadsInBucket';
 import { deleteDeadUploadRowsInDatabase } from './deleteDeadUploadRowsInDatabase';
+import { deleteExpiredHeldDecks } from './deleteExpiredHeldDecks';
 
 export const MS_21 = CLEANUP_AGE_SECONDS * 1000;
 
@@ -58,5 +59,6 @@ export default async function deleteOldUploads(db: Knex) {
   await deleteNonSubScriberUploadsInDatabase(db, storage);
   await deleteDanglingUploadsInBucket(db, storage);
   await deleteDeadUploadRowsInDatabase(db, storage);
+  await deleteExpiredHeldDecks(db, storage);
   await deleteResolvedFeedbackAttachments(db, storage);
 }

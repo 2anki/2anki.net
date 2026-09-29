@@ -26,10 +26,24 @@ function buildHandlers(): ConversionSuccessHandlers {
     setDownloadLink: vi.fn(),
     setProgressWidth: vi.fn(),
     setBatchResult: vi.fn(),
+    setHeldDeck: vi.fn(),
     setZoneState: vi.fn(),
     setStructureRescuedRule: vi.fn(),
     recoverDownload: vi.fn(),
   };
+}
+
+function heldResponse(): Response {
+  return {
+    headers: new Headers({ 'Content-Type': 'application/json' }),
+    json: () =>
+      Promise.resolve({
+        kind: 'held',
+        cardCount: 21,
+        cardsHeldBack: 13,
+        totalCards: 34,
+      }),
+  } as unknown as Response;
 }
 
 function singleDeckResponse(headers: Record<string, string> = {}): Response {
@@ -74,6 +88,21 @@ describe('applyConversionSuccess', () => {
     delete (globalThis as AnalyticsGlobals).gtag;
     delete (globalThis as AnalyticsGlobals).hj;
     vi.restoreAllMocks();
+  });
+
+  it('routes a held response to the heldForSignup zone without a download', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(heldResponse(), handlers);
+
+    expect(handlers.setHeldDeck).toHaveBeenCalledWith({
+      cardCount: 21,
+      cardsHeldBack: 13,
+      totalCards: 34,
+    });
+    expect(handlers.setZoneState).toHaveBeenCalledWith('heldForSignup');
+    expect(handlers.setDownloadLink).not.toHaveBeenCalled();
+    expect(handlers.setZoneState).not.toHaveBeenCalledWith('success');
   });
 
   it('does not fire conversion_success on the single-deck success path', async () => {

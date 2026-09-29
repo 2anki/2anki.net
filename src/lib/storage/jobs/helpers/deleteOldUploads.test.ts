@@ -20,6 +20,21 @@ function makeDb(feedbackRows: { attachments: unknown }[] = []) {
         where: jest.fn().mockReturnValue(deleteWhereChain),
       };
     }
+    if (table === 'held_decks') {
+      const heldDecksChain = {
+        select: jest.fn(),
+        where: jest.fn(),
+        orWhere: jest.fn(),
+        whereIn: jest.fn(),
+        del: jest.fn().mockResolvedValue(0),
+        then: (resolve: (rows: unknown[]) => void) => resolve([]),
+      };
+      heldDecksChain.select.mockReturnValue(heldDecksChain);
+      heldDecksChain.where.mockReturnValue(heldDecksChain);
+      heldDecksChain.orWhere.mockReturnValue(heldDecksChain);
+      heldDecksChain.whereIn.mockReturnValue(heldDecksChain);
+      return heldDecksChain;
+    }
     return {};
   });
 
@@ -158,5 +173,15 @@ describe('deleteResolvedFeedbackAttachments (via deleteOldUploads)', () => {
 
     expect(deleteDeadUploadRowsInDatabase).toHaveBeenCalledTimes(1);
     expect(deleteDeadUploadRowsInDatabase).toHaveBeenCalledWith(dbFn, storage);
+  });
+
+  it('sweeps expired held decks as part of the daily sweep', async () => {
+    const storage = makeStorage();
+    (StorageHandler as unknown as jest.Mock).mockImplementation(() => storage);
+    const { dbFn } = makeDb([]);
+
+    await deleteOldUploads(dbFn);
+
+    expect(dbFn).toHaveBeenCalledWith('held_decks');
   });
 });

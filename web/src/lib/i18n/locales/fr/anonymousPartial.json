@@ -1,8 +1,12 @@
 {
-  "headline": "Tes 21 premières cartes sont prêtes",
-  "heldBack_one": "{{count}} carte de plus n'est pas dans ce téléchargement",
-  "heldBack_other": "{{count}} cartes de plus ne sont pas dans ce téléchargement",
-  "body": "Ce fichier a produit {{total}} cartes. Un compte gratuit te donne jusqu'à {{monthly}} cartes par mois. Crées-en un, puis dépose le fichier à nouveau.",
-  "cta": "Créer un compte gratuit",
-  "aria": "Paquet partiel prêt"
+  "gateAria": "Crée un compte gratuit pour télécharger ton paquet",
+  "gateHeadline": "Tes {{count}} premières cartes sont prêtes",
+  "gateBody": "Crée un compte gratuit pour les télécharger. Jusqu'à {{monthly}} cartes par mois, gratuitement.",
+  "gateContext": "Ce fichier a produit {{total}} cartes.",
+  "gateLive": "Tes {{count}} cartes sont prêtes. Crée un compte gratuit pour les télécharger.",
+  "preparing": "Préparation de ton téléchargement",
+  "readyBody": "Tu es connecté. Télécharge ton paquet ci-dessous.",
+  "expiredHeadline": "Ce paquet n'est plus enregistré",
+  "expiredBody": "Nous ne gardons les paquets non récupérés qu'un jour. Dépose à nouveau le fichier pour le recréer.",
+  "expiredCta": "Téléverser à nouveau"
 }

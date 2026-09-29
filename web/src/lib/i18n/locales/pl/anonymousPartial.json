@@ -1,10 +1,12 @@
 {
-  "headline": "Twoje pierwsze 21 kart są gotowe",
-  "heldBack_one": "Jeszcze {{count}} karta nie znalazła się w tym pliku",
-  "heldBack_few": "Jeszcze {{count}} karty nie znalazły się w tym pliku",
-  "heldBack_many": "Jeszcze {{count}} kart nie znalazło się w tym pliku",
-  "heldBack_other": "Jeszcze {{count}} karty nie znalazły się w tym pliku",
-  "body": "Ten plik utworzył {{total}} kart. Darmowe konto daje do {{monthly}} kart miesięcznie. Załóż je, a potem ponownie upuść plik.",
-  "cta": "Załóż darmowe konto",
-  "aria": "Częściowa talia gotowa"
+  "gateAria": "Załóż darmowe konto, aby pobrać swoją talię",
+  "gateHeadline": "Twoich pierwszych {{count}} fiszek jest gotowych",
+  "gateBody": "Załóż darmowe konto, aby je pobrać. Do {{monthly}} fiszek miesięcznie, za darmo.",
+  "gateContext": "Fiszek w tym pliku: {{total}}.",
+  "gateLive": "Twoich {{count}} fiszek jest gotowych. Załóż darmowe konto, aby je pobrać.",
+  "preparing": "Przygotowywanie pobierania",
+  "readyBody": "Jesteś zalogowany. Pobierz swoją talię poniżej.",
+  "expiredHeadline": "Ta talia nie jest już zapisana",
+  "expiredBody": "Nieodebrane talie przechowujemy tylko przez jeden dzień. Upuść plik ponownie, aby ją odtworzyć.",
+  "expiredCta": "Prześlij ponownie"
 }

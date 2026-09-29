@@ -16,6 +16,7 @@ import JobRepository from '../data_layer/JobRepository';
 import UploadService from '../services/UploadService';
 import { getDatabase } from '../data_layer';
 import UploadRepository from '../data_layer/UploadRespository';
+import { HeldDeckRepository } from '../data_layer/HeldDeckRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import SettingsRepository from '../data_layer/SettingsRepository';
 import { ConversionOutputStatsRepository } from '../data_layer/ConversionOutputStatsRepository';
@@ -39,6 +40,8 @@ import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlas
 import NotionTopLevelPagesRepository from '../data_layer/NotionTopLevelPagesRepository';
 import { GetRecentSourcesUseCase } from '../usecases/uploads/GetRecentSourcesUseCase';
 import { RecentSourcesController } from '../controllers/Upload/RecentSourcesController';
+import { ClaimHeldDeckController } from '../controllers/Upload/ClaimHeldDeckController';
+import { ClaimHeldDeckUseCase } from '../usecases/uploads/ClaimHeldDeckUseCase';
 
 const UploadRouter = () => {
   const router = express.Router();
@@ -56,7 +59,8 @@ const UploadRouter = () => {
     new CardGuidLedgerRepository(database),
     new AiCardFingerprintRepository(database),
     new PhotoToFlashcardsUseCase(new EventsRepository(database)),
-    new AiUsageMetricsRepository(database)
+    new AiUsageMetricsRepository(database),
+    new HeldDeckRepository(database)
   );
   const jobController = new JobController(
     jobService,
@@ -74,6 +78,13 @@ const UploadRouter = () => {
     new SaveNativeDeckUseCase(
       new UploadRepository(database),
       new StorageHandler()
+    )
+  );
+  const claimHeldDeckController = new ClaimHeldDeckController(
+    new ClaimHeldDeckUseCase(
+      new HeldDeckRepository(database),
+      new StorageHandler(),
+      uploadService
     )
   );
   const uploadController = new UploadController(
@@ -138,6 +149,45 @@ const UploadRouter = () => {
    */
   router.post('/api/upload/file', RequireAllowedOrigin, (req, res) =>
     uploadController.file(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/upload/claim:
+   *   get:
+   *     summary: Check for a held deck to claim
+   *     description: Returns 204 when the signed-in visitor's anon_id cookie has no claimable held deck, or 200 with the card counts when one is waiting.
+   *     tags: [Upload]
+   *     security:
+   *       - cookieAuth: []
+   *     responses:
+   *       200:
+   *         description: A claimable held deck exists
+   *       204:
+   *         description: No claimable held deck
+   *       401:
+   *         description: Authentication required
+   *   post:
+   *     summary: Claim a held deck
+   *     description: Converts the held source file as the signed-in visitor and returns a download key. The hold is matched to the anon_id cookie.
+   *     tags: [Upload]
+   *     security:
+   *       - cookieAuth: []
+   *     responses:
+   *       200:
+   *         description: Deck claimed and converted
+   *       401:
+   *         description: Authentication required
+   *       404:
+   *         description: No held deck for this visitor
+   *       410:
+   *         description: Held deck expired or already claimed
+   */
+  router.get('/api/upload/claim', RequireAuthentication, (req, res) =>
+    claimHeldDeckController.check(req, res)
+  );
+  router.post('/api/upload/claim', RequireAuthentication, (req, res) =>
+    claimHeldDeckController.claim(req, res)
   );
 
   /**

@@ -3,7 +3,11 @@ import {
   STRUCTURE_RESCUE_RULES,
   type StructureRescueRule,
 } from '../../../DownloadsPage/helpers/parseStructureRescuedPayload';
-import type { BatchResult, ZoneState } from './hooks/useUploadFormState';
+import type {
+  BatchResult,
+  HeldDeckState,
+  ZoneState,
+} from './hooks/useUploadFormState';
 
 export function resolveDeckName(headers: Headers): string {
   const fileNameHeader = getHeadersFilename(headers);
@@ -49,6 +53,7 @@ export interface ConversionSuccessHandlers {
   setDownloadLink: (value: string | null) => void;
   setProgressWidth: (value: number) => void;
   setBatchResult: (value: BatchResult) => void;
+  setHeldDeck: (value: HeldDeckState | null) => void;
   setZoneState: (value: ZoneState) => void;
   setStructureRescuedRule: (value: StructureRescueRule | null) => void;
   /**
@@ -80,6 +85,21 @@ function isBatchResult(value: unknown): value is BatchResult {
   );
 }
 
+interface HeldResult extends HeldDeckState {
+  kind: 'held';
+}
+
+function isHeldResult(value: unknown): value is HeldResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as { kind?: unknown }).kind === 'held' &&
+    typeof (value as { cardCount?: unknown }).cardCount === 'number' &&
+    typeof (value as { cardsHeldBack?: unknown }).cardsHeldBack === 'number' &&
+    typeof (value as { totalCards?: unknown }).totalCards === 'number'
+  );
+}
+
 export async function applyConversionSuccess(
   response: Response,
   handlers: ConversionSuccessHandlers
@@ -97,6 +117,16 @@ export async function applyConversionSuccess(
       );
       handlers.setProgressWidth(100);
       handlers.setZoneState('multiDeck');
+      return;
+    }
+    if (isHeldResult(body)) {
+      handlers.setHeldDeck({
+        cardCount: body.cardCount,
+        cardsHeldBack: body.cardsHeldBack,
+        totalCards: body.totalCards,
+      });
+      handlers.setProgressWidth(100);
+      handlers.setZoneState('heldForSignup');
       return;
     }
   }
