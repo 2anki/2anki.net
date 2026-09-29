@@ -489,6 +489,18 @@ function UploadForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
+  const leavingRef = useRef(false);
+  const leaveTo = (url: string): void => {
+    leavingRef.current = true;
+    globalThis.location.href = url;
+  };
+  const leaveViaRedirect = (request: Response): boolean => {
+    if (request.redirected) {
+      leavingRef.current = true;
+    }
+    return handleRedirect(request);
+  };
+
   const handleDayPass = async () => {
     setDayPassError(null);
     setDayPassPending(true);
@@ -691,30 +703,26 @@ function UploadForm({
     }
   }, [zoneState]);
 
-  const leavingRef = useRef(false);
-  const leaveTo = (url: string): void => {
-    leavingRef.current = true;
-    globalThis.location.href = url;
-  };
-  const leaveViaRedirect = (request: Response): boolean => {
-    if (request.redirected) {
-      leavingRef.current = true;
-    }
-    return leaveViaRedirect(request);
-  };
-
   const uploadCancelledFiredRef = useRef(false);
   useEffect(() => {
     if (zoneState !== 'converting') return;
+    leavingRef.current = false;
     const fireUploadCancelled = () => {
       if (leavingRef.current) return;
       if (uploadCancelledFiredRef.current) return;
       uploadCancelledFiredRef.current = true;
       track('upload_cancelled', { stage: 'converting' });
     };
+    const rearmOnRestore = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        leavingRef.current = false;
+      }
+    };
     globalThis.addEventListener('pagehide', fireUploadCancelled);
+    globalThis.addEventListener('pageshow', rearmOnRestore);
     return () => {
       globalThis.removeEventListener('pagehide', fireUploadCancelled);
+      globalThis.removeEventListener('pageshow', rearmOnRestore);
     };
   }, [zoneState]);
 

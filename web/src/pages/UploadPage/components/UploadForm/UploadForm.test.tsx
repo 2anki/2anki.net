@@ -242,6 +242,7 @@ describe('UploadForm analytics events', () => {
     delete (globalThis as AnalyticsGlobals).gtag;
     delete (globalThis as AnalyticsGlobals).hj;
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('fires upload_started when the form is submitted', async () => {
@@ -436,6 +437,85 @@ describe('UploadForm analytics events', () => {
       ([name]) => name === 'upload_cancelled'
     );
     expect(cancelledCalls).toHaveLength(0);
+  });
+
+  it('follows a non-limit server redirect and does not count it as a cancel', async () => {
+    const { track } = await import('../../../../lib/analytics/track');
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+
+    const locationStub = { href: '', origin: 'http://localhost' } as Location;
+    vi.stubGlobal('location', locationStub);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: true,
+        status: 200,
+        url: 'http://localhost/upload',
+        headers: new Headers(),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(locationStub.href).toBe('http://localhost/upload');
+
+    await act(async () => {
+      globalThis.dispatchEvent(new Event('pagehide'));
+    });
+
+    const cancelledCalls = trackMock.mock.calls.filter(
+      ([name]) => name === 'upload_cancelled'
+    );
+    expect(cancelledCalls).toHaveLength(0);
+  });
+
+  it('re-arms cancel reporting when the page is restored from bfcache', async () => {
+    const { track } = await import('../../../../lib/analytics/track');
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+
+    const locationStub = { href: '', origin: 'http://localhost' } as Location;
+    vi.stubGlobal('location', locationStub);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 202,
+        url: 'http://localhost/api/upload/file',
+        headers: new Headers(),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    await act(async () => {
+      const restored = new Event('pageshow') as PageTransitionEvent;
+      Object.defineProperty(restored, 'persisted', { value: true });
+      globalThis.dispatchEvent(restored);
+      globalThis.dispatchEvent(new Event('pagehide'));
+    });
+
+    const cancelledCalls = trackMock.mock.calls.filter(
+      ([name]) => name === 'upload_cancelled'
+    );
+    expect(cancelledCalls).toHaveLength(1);
   });
 
   it('does not fire upload_cancelled on pagehide when no conversion is in flight', async () => {
