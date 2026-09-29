@@ -361,6 +361,7 @@ const WebhooksRouter = () => {
           const pricingVariant = sessionMeta.pricing_variant;
           const surface = sessionMeta.surface;
           const anonId = sessionMeta.anon_id;
+          const billingInterval = sessionMeta.interval;
           const userIdMeta = Number.parseInt(sessionMeta.user_id ?? '', 10);
           track('checkout_completed', {
             userId: Number.isNaN(userIdMeta) ? null : userIdMeta,
@@ -373,6 +374,9 @@ const WebhooksRouter = () => {
                 ? { variant: pricingVariant }
                 : {}),
               ...(surface != null && surface !== '' ? { surface } : {}),
+              ...(billingInterval != null && billingInterval !== ''
+                ? { interval: billingInterval }
+                : {}),
               ...(typeof session.recovered_from === 'string' &&
               session.recovered_from !== ''
                 ? { recovered: true }

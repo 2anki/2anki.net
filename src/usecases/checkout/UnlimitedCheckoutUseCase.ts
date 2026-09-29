@@ -105,6 +105,7 @@ export class UnlimitedCheckoutUseCase {
       metadata: {
         user_id: String(input.userId),
         cohort,
+        interval: input.interval,
         ...optionalMetadata({
           pricing_variant: input.variant,
           anon_id: input.anonId,
