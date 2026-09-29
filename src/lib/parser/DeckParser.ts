@@ -19,6 +19,8 @@ import { cardFingerprint } from '../claude/ClaudeService';
 import type { CrossFileDedupState } from '../claude/ClaudeService';
 import { File } from '../zip/zip';
 import Deck from './Deck';
+import { toPlainTextBack } from './toPlainTextBack';
+import { runSequentially } from './runSequentially';
 import Note from './Note';
 import { countEmptyBacks } from './countEmptyBacks';
 import { truncateDecksToCardLimit } from './truncateDecksToCardLimit';
@@ -990,9 +992,9 @@ export class DeckParser {
     const images = dom('img').toArray();
     if (images.length === 0) return content;
 
-    for (const elem of images) {
+    await runSequentially(images, async (elem) => {
       const originalName = dom(elem).attr('src');
-      if (!originalName) continue;
+      if (!originalName) return;
 
       const handled = this.embedLocalOrZipImage(
         dom,
@@ -1001,10 +1003,10 @@ export class DeckParser {
         card,
         ws
       );
-      if (handled) continue;
+      if (handled) return;
 
       await this.embedRemoteImage(dom, elem, originalName, card);
-    }
+    });
     return dom.html();
   }
 
@@ -1378,14 +1380,13 @@ export class DeckParser {
 
     this.emptyBackCount = 0;
     this.strayClozeCount = 0;
-    for (const d of this.payload) {
-      const deck = d;
+    await runSequentially(this.payload, async (deck) => {
       deck.id = get16DigitRandomId();
 
       let counter = 0;
       const addThese: Note[] = [];
       const replaced = new Set<Note>();
-      for (const c of deck.cards) {
+      await runSequentially(deck.cards, async (c) => {
         let card = c;
         await this.transformCard(card, counter++, ws);
 
@@ -1400,7 +1401,7 @@ export class DeckParser {
           }
           addThese.push(...overlappingNotes);
           replaced.add(c);
-          continue;
+          return;
         }
 
         const refreshIconRequested = card.hasRefreshIcon();
@@ -1423,7 +1424,7 @@ export class DeckParser {
         if (refreshIconRequested) {
           card.stripRefreshIcon();
         }
-      }
+      });
       const kept = deck.cards.filter((card) => !replaced.has(card));
       const produced = kept.concat(addThese);
       this.emptyBackCount += countEmptyBacks(
@@ -1437,7 +1438,7 @@ export class DeckParser {
       );
       deck.cards = Deck.CleanCards(produced);
       this.applyGlobalTags(deck.cards);
-    }
+    });
 
     this.applyCardLimit();
 
@@ -1957,18 +1958,11 @@ export class DeckParser {
                 mcqSkippedCount++;
               }
 
-              let b = toggleHTML.replace(summary.html() || '', '');
-              if (this.settings.isTextOnlyBack) {
-                const paragraphs = dom(toggle).find('> p').toArray();
-                b = '';
-                for (const paragraph of paragraphs) {
-                  if (paragraph) {
-                    b += dom(paragraph).html();
-                  }
-                }
-              }
-
-              const backSide = this.buildToggleBackSide(b, isNewFormat);
+              const b = toggleHTML.replace(summary.html() || '', '');
+              const builtBack = this.buildToggleBackSide(b, isNewFormat);
+              const backSide = this.settings.isTextOnlyBack
+                ? toPlainTextBack(builtBack)
+                : builtBack;
               const note = new Note(front || '', backSide);
               note.notionId = this.resolveToggleBlockId(parentUL);
               note.sourcePageId = pageId;
