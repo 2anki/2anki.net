@@ -2171,118 +2171,68 @@ function UploadForm({
   };
 
   return (
-    <form encType="multipart/form-data" method="post" onSubmit={handleSubmit}>
-      <output aria-live="polite" className={sharedStyles.srOnly}>
-        {renderLiveStatus()}
-      </output>
+    <>
       {gateVisible && (
         <div className={zoneClassName}>{renderHeldForSignupState()}</div>
       )}
-      <label
-        htmlFor="pakker"
-        id="upload-panel-local"
-        translate="no"
-        className={`${zoneClassName} ${showLocalPanel && !gateVisible ? '' : formStyles.panelHidden}`}
-        aria-hidden={!showLocalPanel || gateVisible}
-      >
-        {renderZoneContent()}
-        <input
-          ref={fileInputRef}
-          className={formStyles.fileInput}
-          id="pakker"
-          type="file"
-          name="pakker"
-          accept={getAcceptedContentTypes()}
-          required
-          multiple
-          disabled={isUploadLocked || gateVisible}
-          onChange={() => {
-            const files = fileInputRef.current?.files;
-            if (!files) return;
-            void validate(files).then((clean) => {
-              if (clean) submitFiles();
-            });
-          }}
-        />
-      </label>
-      {zoneState === 'emptyDeck' && (
-        <div className={formStyles.inlineChatWrapper}>
-          <button
-            type="button"
-            className={formStyles.inlineChatToggle}
-            onClick={() => {
-              setShowInlineChat((prev) => {
-                if (!prev) track('upload_empty_deck_chat_engaged');
-                return !prev;
+      <form encType="multipart/form-data" method="post" onSubmit={handleSubmit}>
+        <output aria-live="polite" className={sharedStyles.srOnly}>
+          {renderLiveStatus()}
+        </output>
+        <label
+          htmlFor="pakker"
+          id="upload-panel-local"
+          translate="no"
+          className={`${zoneClassName} ${showLocalPanel && !gateVisible ? '' : formStyles.panelHidden}`}
+          aria-hidden={!showLocalPanel || gateVisible}
+        >
+          {renderZoneContent()}
+          <input
+            ref={fileInputRef}
+            className={formStyles.fileInput}
+            id="pakker"
+            type="file"
+            name="pakker"
+            accept={getAcceptedContentTypes()}
+            required
+            multiple
+            disabled={isUploadLocked || gateVisible}
+            onChange={() => {
+              const files = fileInputRef.current?.files;
+              if (!files) return;
+              void validate(files).then((clean) => {
+                if (clean) submitFiles();
               });
             }}
-            aria-expanded={showInlineChat}
-            aria-controls="empty-deck-chat-panel"
-          >
-            <i
-              className={`${formStyles.inlineChatToggleChevron} ${showInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
-              aria-hidden="true"
-            >
-              ›
-            </i>
-            {t('upload.form.askClaude')}
-          </button>
-          {showInlineChat && (
-            <section
-              id="empty-deck-chat-panel"
-              className={formStyles.inlineChatBody}
-              aria-label={`Ask Claude about ${currentFilename() || 'this file'}`}
-            >
-              <p className={formStyles.inlineChatContext}>
-                About{' '}
-                <span
-                  className={formStyles.inlineChatFilename}
-                  title={currentFilename() || 'your file'}
-                >
-                  {currentFilename() || 'your file'}
-                </span>
-              </p>
-              <ChatPanel
-                key={currentFilename()}
-                initialPrompt={getEmptyDeckChatPrompt(
-                  driveMimeType,
-                  currentFilename()
-                )}
-                cameFromUpload
-              />
-            </section>
-          )}
-        </div>
-      )}
-      {zoneState === 'error' &&
-        networkRetryFiles == null &&
-        unreadableFile == null && (
+          />
+        </label>
+        {zoneState === 'emptyDeck' && (
           <div className={formStyles.inlineChatWrapper}>
             <button
               type="button"
               className={formStyles.inlineChatToggle}
               onClick={() => {
-                setShowErrorInlineChat((prev) => {
-                  if (!prev) track('upload_error_chat_engaged');
+                setShowInlineChat((prev) => {
+                  if (!prev) track('upload_empty_deck_chat_engaged');
                   return !prev;
                 });
               }}
-              aria-expanded={showErrorInlineChat}
-              aria-controls="error-state-chat-panel"
+              aria-expanded={showInlineChat}
+              aria-controls="empty-deck-chat-panel"
             >
               <i
-                className={`${formStyles.inlineChatToggleChevron} ${showErrorInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
+                className={`${formStyles.inlineChatToggleChevron} ${showInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
                 aria-hidden="true"
               >
                 ›
               </i>
-              {showErrorInlineChat ? 'Hide chat' : 'Talk it through instead'}
+              {t('upload.form.askClaude')}
             </button>
-            {showErrorInlineChat && (
+            {showInlineChat && (
               <section
-                id="error-state-chat-panel"
+                id="empty-deck-chat-panel"
                 className={formStyles.inlineChatBody}
-                aria-label={`Talk to Claude about ${currentFilename() || 'this file'}`}
+                aria-label={`Ask Claude about ${currentFilename() || 'this file'}`}
               >
                 <p className={formStyles.inlineChatContext}>
                   About{' '}
@@ -2294,138 +2244,190 @@ function UploadForm({
                   </span>
                 </p>
                 <ChatPanel
-                  key={`error-${currentFilename()}`}
-                  initialPrompt={`I tried to convert ${currentFilename() || 'a file'} and got stuck. What can I do?`}
+                  key={currentFilename()}
+                  initialPrompt={getEmptyDeckChatPrompt(
+                    driveMimeType,
+                    currentFilename()
+                  )}
                   cameFromUpload
                 />
               </section>
             )}
           </div>
         )}
-      {showChips && (
-        <div
-          id="upload-panel-dropbox"
-          className={`${zoneClassName} ${showDropboxPanel ? '' : formStyles.panelHidden}`}
-          aria-hidden={!showDropboxPanel}
-        >
-          <div className={formStyles.stateContent}>
-            <button
-              type="button"
-              className={formStyles.changeSourceLink}
-              aria-label={t('upload.form.changeSourceAria')}
-              onClick={() => handleSourceChange('local')}
-            >
-              {t('upload.form.changeSource')}
-            </button>
-            <DropboxIcon className={formStyles.dropboxIconLarge} />
-            <span className={formStyles.dropText}>
-              {t('upload.form.dropboxPrompt')}
-            </span>
-            <button
-              type="button"
-              className={formStyles.chooseButton}
-              onClick={handleDropboxClick}
-              disabled={dropboxPending}
-              aria-label={t('upload.form.chooseFromDropbox')}
-            >
-              {dropboxPending
-                ? t('upload.form.openingDropbox')
-                : t('upload.form.chooseFromDropbox')}
-            </button>
-            <div className={formStyles.formatList}>
-              {FORMATS.map((fmt) => (
-                <span key={fmt} className={formStyles.formatPill}>
-                  {fmt}
-                </span>
-              ))}
+        {zoneState === 'error' &&
+          networkRetryFiles == null &&
+          unreadableFile == null && (
+            <div className={formStyles.inlineChatWrapper}>
+              <button
+                type="button"
+                className={formStyles.inlineChatToggle}
+                onClick={() => {
+                  setShowErrorInlineChat((prev) => {
+                    if (!prev) track('upload_error_chat_engaged');
+                    return !prev;
+                  });
+                }}
+                aria-expanded={showErrorInlineChat}
+                aria-controls="error-state-chat-panel"
+              >
+                <i
+                  className={`${formStyles.inlineChatToggleChevron} ${showErrorInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
+                  aria-hidden="true"
+                >
+                  ›
+                </i>
+                {showErrorInlineChat ? 'Hide chat' : 'Talk it through instead'}
+              </button>
+              {showErrorInlineChat && (
+                <section
+                  id="error-state-chat-panel"
+                  className={formStyles.inlineChatBody}
+                  aria-label={`Talk to Claude about ${currentFilename() || 'this file'}`}
+                >
+                  <p className={formStyles.inlineChatContext}>
+                    About{' '}
+                    <span
+                      className={formStyles.inlineChatFilename}
+                      title={currentFilename() || 'your file'}
+                    >
+                      {currentFilename() || 'your file'}
+                    </span>
+                  </p>
+                  <ChatPanel
+                    key={`error-${currentFilename()}`}
+                    initialPrompt={`I tried to convert ${currentFilename() || 'a file'} and got stuck. What can I do?`}
+                    cameFromUpload
+                  />
+                </section>
+              )}
+            </div>
+          )}
+        {showChips && (
+          <div
+            id="upload-panel-dropbox"
+            className={`${zoneClassName} ${showDropboxPanel ? '' : formStyles.panelHidden}`}
+            aria-hidden={!showDropboxPanel}
+          >
+            <div className={formStyles.stateContent}>
+              <button
+                type="button"
+                className={formStyles.changeSourceLink}
+                aria-label={t('upload.form.changeSourceAria')}
+                onClick={() => handleSourceChange('local')}
+              >
+                {t('upload.form.changeSource')}
+              </button>
+              <DropboxIcon className={formStyles.dropboxIconLarge} />
+              <span className={formStyles.dropText}>
+                {t('upload.form.dropboxPrompt')}
+              </span>
+              <button
+                type="button"
+                className={formStyles.chooseButton}
+                onClick={handleDropboxClick}
+                disabled={dropboxPending}
+                aria-label={t('upload.form.chooseFromDropbox')}
+              >
+                {dropboxPending
+                  ? t('upload.form.openingDropbox')
+                  : t('upload.form.chooseFromDropbox')}
+              </button>
+              <div className={formStyles.formatList}>
+                {FORMATS.map((fmt) => (
+                  <span key={fmt} className={formStyles.formatPill}>
+                    {fmt}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {dropboxError && (
-        <p className={formStyles.dropboxError} role="alert">
-          {dropboxError}
-        </p>
-      )}
-      {showChips && isGoogleDriveConfigured && (
-        <div
-          id="upload-panel-google-drive"
-          className={`${zoneClassName} ${showGoogleDrivePanel ? '' : formStyles.panelHidden}`}
-          aria-hidden={!showGoogleDrivePanel}
-        >
-          <div className={formStyles.stateContent}>
-            <button
-              type="button"
-              className={formStyles.changeSourceLink}
-              aria-label={t('upload.form.changeSourceAria')}
-              onClick={() => handleSourceChange('local')}
-            >
-              {t('upload.form.changeSource')}
-            </button>
-            <GoogleDriveIcon className={formStyles.dropboxIconLarge} />
-            <span className={formStyles.dropText}>
-              {t('upload.form.drivePrompt')}
-            </span>
-            <span className={formStyles.shapeHint}>
-              {t('upload.form.driveHint')}
-            </span>
-            <button
-              ref={driveButtonRef}
-              type="button"
-              className={formStyles.chooseButton}
-              onClick={handleGoogleDriveClick}
-              disabled={drivePending}
-              aria-label={t('upload.form.chooseFromDrive')}
-            >
-              {drivePending
-                ? t('upload.form.openingDrive')
-                : t('upload.form.chooseFromDrive')}
-            </button>
-            <div className={formStyles.formatList}>
-              {FORMATS.map((fmt) => (
-                <span key={fmt} className={formStyles.formatPill}>
-                  {fmt}
-                </span>
-              ))}
+        )}
+        {dropboxError && (
+          <p className={formStyles.dropboxError} role="alert">
+            {dropboxError}
+          </p>
+        )}
+        {showChips && isGoogleDriveConfigured && (
+          <div
+            id="upload-panel-google-drive"
+            className={`${zoneClassName} ${showGoogleDrivePanel ? '' : formStyles.panelHidden}`}
+            aria-hidden={!showGoogleDrivePanel}
+          >
+            <div className={formStyles.stateContent}>
+              <button
+                type="button"
+                className={formStyles.changeSourceLink}
+                aria-label={t('upload.form.changeSourceAria')}
+                onClick={() => handleSourceChange('local')}
+              >
+                {t('upload.form.changeSource')}
+              </button>
+              <GoogleDriveIcon className={formStyles.dropboxIconLarge} />
+              <span className={formStyles.dropText}>
+                {t('upload.form.drivePrompt')}
+              </span>
+              <span className={formStyles.shapeHint}>
+                {t('upload.form.driveHint')}
+              </span>
+              <button
+                ref={driveButtonRef}
+                type="button"
+                className={formStyles.chooseButton}
+                onClick={handleGoogleDriveClick}
+                disabled={drivePending}
+                aria-label={t('upload.form.chooseFromDrive')}
+              >
+                {drivePending
+                  ? t('upload.form.openingDrive')
+                  : t('upload.form.chooseFromDrive')}
+              </button>
+              <div className={formStyles.formatList}>
+                {FORMATS.map((fmt) => (
+                  <span key={fmt} className={formStyles.formatPill}>
+                    {fmt}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {driveError && (
-        <p className={formStyles.dropboxError} role="alert">
-          {driveError}
-        </p>
-      )}
-      {showChips && (
-        <div className={formStyles.chipsRow}>
-          <UploadSourceChips
-            active={source}
-            onChange={handleSourceChange}
-            dropboxAvailable={isDropboxConfigured}
-            googleDriveAvailable={isGoogleDriveConfigured}
-          />
-        </div>
-      )}
-      {downloadLink && (
-        <a
-          hidden
-          target="_blank"
-          aria-label="download link"
-          href={downloadLink}
-          download={getDownloadFileName(deckName || 'Untitled')}
-          ref={downloadRef}
-          rel="noreferrer"
-        >
-          {downloadLink}
-        </a>
-      )}
-      <button
-        aria-label={t('upload.form.uploadFileAria')}
-        className={sharedStyles.hidden}
-        ref={convertRef}
-        type="submit"
-      />
-    </form>
+        )}
+        {driveError && (
+          <p className={formStyles.dropboxError} role="alert">
+            {driveError}
+          </p>
+        )}
+        {showChips && (
+          <div className={formStyles.chipsRow}>
+            <UploadSourceChips
+              active={source}
+              onChange={handleSourceChange}
+              dropboxAvailable={isDropboxConfigured}
+              googleDriveAvailable={isGoogleDriveConfigured}
+            />
+          </div>
+        )}
+        {downloadLink && (
+          <a
+            hidden
+            target="_blank"
+            aria-label="download link"
+            href={downloadLink}
+            download={getDownloadFileName(deckName || 'Untitled')}
+            ref={downloadRef}
+            rel="noreferrer"
+          >
+            {downloadLink}
+          </a>
+        )}
+        <button
+          aria-label={t('upload.form.uploadFileAria')}
+          className={sharedStyles.hidden}
+          ref={convertRef}
+          type="submit"
+        />
+      </form>
+    </>
   );
 }
 
