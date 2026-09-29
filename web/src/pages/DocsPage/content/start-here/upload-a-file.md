@@ -60,7 +60,7 @@ The full table of formats and limits is on [File formats](/documentation/referen
 - **Markdown** — `.md`, including Obsidian vaults.
 - **CSV / XLSX** — one row per card.
 - **PDF** — front/back per page pair, or AI-generated questions on paid.
-- **PPT / PPTX** — one card per slide: the slide title is the front, the bullets, slide image and speaker notes are the back. Slides with no text keep the page-pair layout.
+- **PPT / PPTX** — one card per slide: the slide title is the front; the bullets, slide image, and speaker notes are the back. A deck with no slide text at all keeps the page-pair layout.
 
 Drop the wrong format and 2anki tells you. The error message names the supported types so you don't have to guess.
 

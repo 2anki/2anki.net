@@ -59,6 +59,7 @@ import type { ConversionEngine } from '../../../lib/parser/conversionEngine';
 import type { InducedRescue } from '../../../lib/parser/induction/candidateRules';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import Workspace from '../../../lib/parser/WorkSpace';
+import fs from 'fs';
 import path from 'path';
 import {
   logFileLabel,
@@ -348,7 +349,7 @@ async function convertFile(
       input.workspace
     );
     const slides = isPptxFile(file.name)
-      ? await extractPptxSourceUnits(file.contents as Buffer)
+      ? await readSlidesOrFallBack(file.name, file.contents as Buffer)
       : [];
     if (slides.some(hasSlideText)) {
       return convertSlidesToTextCards(file, input, pdContents, slides, t0);
@@ -384,6 +385,24 @@ async function convertFile(
   }
 
   return null;
+}
+
+// LibreOffice already accepted the file; a zip the extractor cannot read
+// (renamed .ppt, zip64, over budget) falls back to the page-pair path instead
+// of failing an upload that used to convert.
+async function readSlidesOrFallBack(
+  fileName: string,
+  contents: Buffer
+): Promise<SlideUnit[]> {
+  try {
+    return await extractPptxSourceUnits(contents);
+  } catch (error) {
+    console.warn('[PrepareDeck] could not read pptx slide text, using pages', {
+      file: fileName,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return [];
+  }
 }
 
 function hasSlideText(slide: SlideUnit): boolean {
@@ -430,12 +449,25 @@ async function convertSlidesToTextCards(
     rendered.title,
     input.workspace.location
   );
+  // The AI branch only sees media it is handed as extraFiles (the DOCX path
+  // learned this in #3946), so the rendered slides travel with the HTML.
+  const slideImages: PdfHtmlImage[] = await Promise.all(
+    rendered.imagePaths.map(async (imagePath) => ({
+      name: path.relative(input.workspace.location, imagePath),
+      contents: await fs.promises.readFile(imagePath),
+    }))
+  );
   console.log('[PrepareDeck] convertFile pptx→text cards', {
     file: file.name,
     slideCount: slides.length,
+    imageCount: slideImages.length,
     durationMs: Date.now() - t0,
   });
-  return { name: `${file.name}.html`, contents: Buffer.from(html) };
+  return {
+    name: `${file.name}.html`,
+    contents: Buffer.from(html),
+    extraFiles: slideImages.length > 0 ? slideImages : undefined,
+  };
 }
 
 interface ConvertedFile {

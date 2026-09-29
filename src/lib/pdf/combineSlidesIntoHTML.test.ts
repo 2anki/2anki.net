@@ -50,12 +50,9 @@ describe('combineSlidesIntoHTML', () => {
     expect(card.front).toBe('Mitosis');
     expect(card.back).toContain('<ul><li>Prophase</li><li>Metaphase</li></ul>');
     expect(card.back).toContain('<img src="pdf-x/slide-1.png" />');
-    expect(card.back).toContain('Speaker notes');
-    expect(card.back).toContain('<p>Remember PMAT</p>');
+    expect(card.back).toContain('<hr /><p>Remember PMAT</p>');
     expect(card.back.indexOf('<ul>')).toBeLessThan(card.back.indexOf('<img'));
-    expect(card.back.indexOf('<img')).toBeLessThan(
-      card.back.indexOf('Speaker notes')
-    );
+    expect(card.back.indexOf('<img')).toBeLessThan(card.back.indexOf('<hr />'));
   });
 
   it('keeps a title-only slide as a card with the slide image on the back', () => {
@@ -134,5 +131,39 @@ describe('combineSlidesIntoHTML', () => {
     );
 
     expect(cards(html)[0].back).toContain('<p>line one</p><p>line two</p>');
+  });
+
+  it('warns and skips a slide with no text and no page image instead of emitting an empty card', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const html = combineSlidesIntoHTML(
+        [slide({ id: 'slide-7', role: 'image', hasPicture: true })],
+        [],
+        'lecture.pdf',
+        WORKSPACE
+      );
+
+      expect(cards(html)).toHaveLength(0);
+      expect(warn).toHaveBeenCalledWith(
+        '[combineSlidesIntoHTML] slide has nothing to show',
+        { slide: 'slide-7' }
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('escapes the document title so a filename cannot break out of the head', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'One' })],
+      [],
+      '</title><script>x</script>.pdf',
+      WORKSPACE
+    );
+
+    expect(html).toContain(
+      '<title>&lt;/title&gt;&lt;script&gt;x&lt;/script&gt;.pdf</title>'
+    );
+    expect(html).not.toContain('<script>');
   });
 });

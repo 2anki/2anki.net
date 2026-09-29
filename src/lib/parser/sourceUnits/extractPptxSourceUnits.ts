@@ -5,6 +5,21 @@ const SLIDE_PATTERN = /^ppt\/slides\/slide(\d+)\.xml$/;
 const NOTES_PATTERN = /^ppt\/notesSlides\/notesSlide(\d+)\.xml$/;
 const PRESENTATION_XML = 'ppt/presentation.xml';
 const PRESENTATION_RELS = 'ppt/_rels/presentation.xml.rels';
+const NEEDED_PART =
+  /^ppt\/(?:slides\/slide\d+\.xml|notesSlides\/notesSlide\d+\.xml|presentation\.xml|_rels\/presentation\.xml\.rels)$/;
+
+// Anonymous uploads reach this extractor, so the archive's own size claims
+// bound what gets inflated: one part over the cap is skipped, and a deck whose
+// needed parts add up past the budget is refused rather than decompressed.
+export const MAX_PPTX_PART_BYTES = 8 * 1024 * 1024;
+export const MAX_PPTX_TOTAL_BYTES = 64 * 1024 * 1024;
+
+export class PptxTooLargeError extends Error {
+  constructor() {
+    super('This presentation is too large to read slide text from');
+    this.name = 'PptxTooLargeError';
+  }
+}
 
 export interface SlideUnit extends SourceUnit {
   title: string;
@@ -12,18 +27,67 @@ export interface SlideUnit extends SourceUnit {
   hasPicture: boolean;
 }
 
+function unzipNeededParts(pptxBuffer: Buffer): Record<string, Uint8Array> {
+  let total = 0;
+  let overBudget = false;
+  const zip = unzipSync(new Uint8Array(pptxBuffer), {
+    filter: (file) => {
+      if (!NEEDED_PART.test(file.name)) return false;
+      if (file.originalSize > MAX_PPTX_PART_BYTES) return false;
+      total += file.originalSize;
+      if (total > MAX_PPTX_TOTAL_BYTES) {
+        overBudget = true;
+        return false;
+      }
+      return true;
+    },
+  });
+  if (overBudget) throw new PptxTooLargeError();
+  return zip;
+}
+
+// Linear scan for `<tag ...>...</tag>` blocks. A lazy `[\s\S]*?` regex is
+// quadratic when closing tags are missing, which a crafted slide can arrange.
+function tagBlocks(xml: string, tag: string): string[] {
+  const open = `<${tag}`;
+  const close = `</${tag}>`;
+  const blocks: string[] = [];
+  let from = 0;
+
+  while (from < xml.length) {
+    const start = xml.indexOf(open, from);
+    if (start === -1) break;
+    const afterName = xml[start + open.length];
+    const isExactTag =
+      afterName === '>' || afterName === '/' || /\s/.test(afterName ?? '');
+    if (!isExactTag) {
+      from = start + open.length;
+      continue;
+    }
+    const openEnd = xml.indexOf('>', start);
+    if (openEnd === -1) break;
+    if (xml[openEnd - 1] === '/') {
+      from = openEnd + 1;
+      continue;
+    }
+    const end = xml.indexOf(close, openEnd);
+    if (end === -1) break;
+    blocks.push(xml.slice(start, end + close.length));
+    from = end + close.length;
+  }
+
+  return blocks;
+}
+
 function extractParagraphs(xml: string): string[] {
   const texts: string[] = [];
   const runPattern = /<a:t[^>]*>([^<]*)<\/a:t>/g;
   let match: RegExpExecArray | null;
-  const paragraphPattern = /<a:p\b[^>]*>([\s\S]*?)<\/a:p>/g;
-  let paraMatch: RegExpExecArray | null;
 
-  while ((paraMatch = paragraphPattern.exec(xml)) !== null) {
-    const paraContent = paraMatch[1];
+  for (const paragraph of tagBlocks(xml, 'a:p')) {
     const paraTexts: string[] = [];
     runPattern.lastIndex = 0;
-    while ((match = runPattern.exec(paraContent)) !== null) {
+    while ((match = runPattern.exec(paragraph)) !== null) {
       const text = match[1];
       if (text.trim()) {
         paraTexts.push(text);
@@ -46,7 +110,7 @@ function hasPicture(slideXml: string): boolean {
 }
 
 function isHidden(slideXml: string): boolean {
-  return /<p:sld\b[^>]*\sshow="0"/.test(slideXml);
+  return /<p:sld\b[^>]*\sshow="(?:0|false)"/.test(slideXml);
 }
 
 function isTitleShape(shapeXml: string): boolean {
@@ -67,15 +131,13 @@ function splitSlideText(slideXml: string): {
   title: string;
   paragraphs: string[];
 } {
-  const shapePattern = /<p:sp\b[\s\S]*?<\/p:sp>/g;
   let title = '';
   const paragraphs: string[] = [];
-  let match: RegExpExecArray | null;
 
-  while ((match = shapePattern.exec(slideXml)) !== null) {
-    const shapeParagraphs = extractParagraphs(match[0]);
+  for (const shape of tagBlocks(slideXml, 'p:sp')) {
+    const shapeParagraphs = extractParagraphs(shape);
     if (shapeParagraphs.length === 0) continue;
-    if (title === '' && isTitleShape(match[0])) {
+    if (title === '' && isTitleShape(shape)) {
       title = shapeParagraphs.join(' ');
     } else {
       paragraphs.push(...shapeParagraphs);
@@ -86,11 +148,9 @@ function splitSlideText(slideXml: string): {
 }
 
 function extractNotesText(notesXml: string): string {
-  const bodyPhPattern = /<p:sp\b[\s\S]*?<p:ph\s[^>]*idx="1"[\s\S]*?<\/p:sp>/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = bodyPhPattern.exec(notesXml)) !== null) {
-    const text = extractParagraphs(match[0]).join('\n');
+  for (const shape of tagBlocks(notesXml, 'p:sp')) {
+    if (!/<p:ph\s[^>]*idx="1"/.test(shape)) continue;
+    const text = extractParagraphs(shape).join('\n');
     if (text.trim()) {
       return text.trim();
     }
@@ -122,12 +182,14 @@ function readDisplayOrder(
   }
 
   const order: number[] = [];
+  const seen = new Set<number>();
   const sldIdPattern = /<p:sldId\b[^>]*\sr:id="([^"]+)"/g;
   const presentationXml = new TextDecoder().decode(presentation);
   let sldId: RegExpExecArray | null;
   while ((sldId = sldIdPattern.exec(presentationXml)) !== null) {
     const num = targetById.get(sldId[1]);
-    if (num != null && known.has(num)) {
+    if (num != null && known.has(num) && !seen.has(num)) {
+      seen.add(num);
       order.push(num);
     }
   }
@@ -138,7 +200,7 @@ function readDisplayOrder(
 export async function extractPptxSourceUnits(
   pptxBuffer: Buffer
 ): Promise<SlideUnit[]> {
-  const zip = unzipSync(new Uint8Array(pptxBuffer));
+  const zip = unzipNeededParts(pptxBuffer);
 
   const slideEntries: Map<number, string> = new Map();
   const notesEntries: Map<number, string> = new Map();

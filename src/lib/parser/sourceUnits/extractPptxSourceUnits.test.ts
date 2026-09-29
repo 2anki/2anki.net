@@ -1,5 +1,9 @@
 import { strToU8, unzipSync, zipSync } from 'fflate';
-import { extractPptxSourceUnits } from './extractPptxSourceUnits';
+import {
+  extractPptxSourceUnits,
+  MAX_PPTX_PART_BYTES,
+  PptxTooLargeError,
+} from './extractPptxSourceUnits';
 
 function buildPptx(slides: Array<{ xml: string; notesXml?: string }>): Buffer {
   const files: Record<string, Uint8Array> = {};
@@ -245,6 +249,19 @@ describe('extractPptxSourceUnits — slide structure for text-first cards', () =
     expect(units.map((u) => u.title)).toEqual(['One', 'Three']);
   });
 
+  it('also drops slides hidden with show="false"', async () => {
+    const pptx = buildPptx([
+      { xml: slideXml('One', 'a') },
+      {
+        xml: slideXml('Hidden', 'b').replace('<p:sld ', '<p:sld show="false" '),
+      },
+    ]);
+
+    const units = await extractPptxSourceUnits(pptx);
+
+    expect(units.map((u) => u.title)).toEqual(['One']);
+  });
+
   it('follows the presentation display order, not the slide file numbers', async () => {
     const pptx = withPresentationOrder(
       buildPptx([
@@ -274,5 +291,51 @@ describe('extractPptxSourceUnits — slide structure for text-first cards', () =
     const units = await extractPptxSourceUnits(pptx);
 
     expect(units.map((u) => u.hasPicture)).toEqual([true, false]);
+  });
+
+  it('emits a slide once even when the display order lists it twice', async () => {
+    const pptx = withPresentationOrder(
+      buildPptx([{ xml: slideXml('A', 'a') }, { xml: slideXml('B', 'b') }]),
+      [2, 1, 2]
+    );
+
+    const units = await extractPptxSourceUnits(pptx);
+
+    expect(units.map((u) => u.title)).toEqual(['B', 'A']);
+  });
+
+  it('reads a paragraph whose open tag is self-closing without swallowing the next one', async () => {
+    const xml = bodyOnlySlideXml(['Second']).replace('<a:p>', '<a:p/><a:p>');
+
+    const [unit] = await extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.paragraphs).toEqual(['Second']);
+  });
+
+  it('ignores an oversized part instead of inflating it', async () => {
+    const files = unzipSync(
+      new Uint8Array(buildPptx([{ xml: slideXml('Small', 'a') }]))
+    );
+    files['ppt/slides/slide2.xml'] = new Uint8Array(MAX_PPTX_PART_BYTES + 1);
+    files['docProps/junk.bin'] = new Uint8Array(MAX_PPTX_PART_BYTES + 1);
+
+    const units = await extractPptxSourceUnits(
+      Buffer.from(zipSync(files, { level: 1 }))
+    );
+
+    expect(units.map((u) => u.title)).toEqual(['Small']);
+  });
+
+  it('refuses a deck whose needed parts exceed the total budget', async () => {
+    const files: Record<string, Uint8Array> = {};
+    for (let i = 1; i <= 9; i += 1) {
+      files[`ppt/slides/slide${i}.xml`] = new Uint8Array(
+        MAX_PPTX_PART_BYTES - 1
+      );
+    }
+
+    await expect(
+      extractPptxSourceUnits(Buffer.from(zipSync(files, { level: 1 })))
+    ).rejects.toBeInstanceOf(PptxTooLargeError);
   });
 });

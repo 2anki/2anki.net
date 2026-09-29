@@ -7,6 +7,13 @@ function toSrc(imagePath: string, workspaceLocation?: string): string {
     : path.basename(imagePath);
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
 function bulletList(paragraphs: string[]): string {
   if (paragraphs.length === 0) return '';
   return `<ul>${paragraphs.map((p) => `<li>${p}</li>`).join('')}</ul>`;
@@ -19,7 +26,7 @@ function speakerNotesBlock(notes: string): string {
     .filter((line) => line.length > 0);
   if (lines.length === 0) return '';
   const body = lines.map((line) => `<p>${line}</p>`).join('');
-  return `<hr /><p><strong>Speaker notes</strong></p>${body}`;
+  return `<hr />${body}`;
 }
 
 function slideCard(slide: SlideUnit, image: string): string | null {
@@ -35,7 +42,12 @@ function slideCard(slide: SlideUnit, image: string): string | null {
     front = image;
     imageOnBack = '';
   }
-  if (front === '') return null;
+  if (front === '') {
+    console.warn('[combineSlidesIntoHTML] slide has nothing to show', {
+      slide: slide.id,
+    });
+    return null;
+  }
 
   const back = `${bulletList(remaining)}${imageOnBack}${speakerNotesBlock(
     slide.speakerNotes
@@ -72,7 +84,7 @@ export function combineSlidesIntoHTML(
 
   return `<!DOCTYPE html>
 <html>
-<head><title>${title}</title></head>
+<head><title>${escapeHtml(title)}</title></head>
 <body>
   ${cards.join('\n')}
 </body>

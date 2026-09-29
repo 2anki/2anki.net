@@ -32,6 +32,10 @@ jest.mock('fs', () => ({
   ...jest.requireActual('fs'),
   mkdirSync: jest.fn(),
   writeFileSync: jest.fn(),
+  promises: {
+    ...jest.requireActual('fs').promises,
+    readFile: jest.fn().mockResolvedValue(Buffer.from('png-bytes')),
+  },
 }));
 
 jest.mock('./convertPdfTextToHtml', () => ({
@@ -1263,6 +1267,12 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
 
     expect(renderPdfPageImages).toHaveBeenCalledTimes(1);
     expect(convertPDFToImages).not.toHaveBeenCalled();
+    expect(require('fs').promises.readFile).toHaveBeenCalledWith(
+      '/tmp/test-workspace/pdf-1/page-1.png'
+    );
+    expect(require('fs').promises.readFile).toHaveBeenCalledWith(
+      '/tmp/test-workspace/pdf-1/page-2.png'
+    );
   });
 
   it('keeps the page-image path when no slide has any text', async () => {
@@ -1279,6 +1289,20 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
     ]);
 
     await runDeck('photos.pptx');
+
+    expect(convertPDFToImages).toHaveBeenCalledTimes(1);
+    expect(renderPdfPageImages).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the page-image path when the slide XML cannot be read', async () => {
+    extractPptxSourceUnits.mockRejectedValueOnce(new Error('invalid zip data'));
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      await runDeck('renamed.pptx');
+    } finally {
+      warn.mockRestore();
+    }
 
     expect(convertPDFToImages).toHaveBeenCalledTimes(1);
     expect(renderPdfPageImages).not.toHaveBeenCalled();
