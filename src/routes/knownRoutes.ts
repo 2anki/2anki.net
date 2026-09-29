@@ -55,6 +55,7 @@ const OPS_ROUTES = new Set<string>([
   '/ops/conversions',
   '/ops/upload-funnel',
   '/ops/business',
+  '/ops/return-rate',
   '/ops/showcase',
   '/ops/messages',
   '/ops/commands',
