@@ -10,8 +10,6 @@ export type HeldDecksId = number & { __brand: 'public.held_decks' };
 export default interface HeldDecks {
   id: HeldDecksId;
 
-  claim_key: string;
-
   storage_key: string;
 
   anon_id: string;
@@ -36,8 +34,6 @@ export interface HeldDecksInitializer {
   /** Default value: nextval('held_decks_id_seq'::regclass) */
   id?: HeldDecksId;
 
-  claim_key: string;
-
   storage_key: string;
 
   anon_id: string;
@@ -61,8 +57,6 @@ export interface HeldDecksInitializer {
 /** Represents the mutator for the table public.held_decks */
 export interface HeldDecksMutator {
   id?: HeldDecksId;
-
-  claim_key?: string;
 
   storage_key?: string;
 

@@ -1,7 +1,6 @@
 exports.up = async (knex) => {
   await knex.schema.createTable('held_decks', (t) => {
     t.increments('id').primary();
-    t.string('claim_key', 36).notNullable().unique();
     t.string('storage_key', 512).notNullable();
     t.string('anon_id', 64).notNullable();
     t.string('filename', 512).notNullable();

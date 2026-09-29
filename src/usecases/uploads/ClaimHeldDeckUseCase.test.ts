@@ -1,4 +1,5 @@
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
+import { MonthlyLimitError } from '../users/CheckMonthlyCardLimitUseCase';
 import {
   ClaimHeldDeckUseCase,
   HeldDeckExpiredError,
@@ -37,7 +38,6 @@ async function seedHold(
   overrides: { expiresAt?: Date; anonId?: string } = {}
 ) {
   return repo.insert({
-    claimKey: 'claim-key',
     storageKey: 'held/abc.html',
     anonId: overrides.anonId ?? ANON,
     filename: 'study-notes.html',
@@ -121,7 +121,6 @@ describe('ClaimHeldDeckUseCase', () => {
     expect(result).toEqual({
       downloadKey: 'owner-key.apkg',
       cardCount: 34,
-      cardsHeldBack: 0,
       deckName: 'study-notes',
     });
     expect(getFileContents).toHaveBeenCalledWith('held/abc.html');
@@ -161,6 +160,85 @@ describe('ClaimHeldDeckUseCase', () => {
         requestId: undefined,
       })
     ).rejects.toBeInstanceOf(HeldDeckExpiredError);
+  });
+
+  it('claims before converting and releases the claim when the conversion fails', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo);
+    const markClaimed = jest.spyOn(repo, 'markClaimed');
+    const convertHeldFileForOwner = jest
+      .fn()
+      .mockRejectedValue(new Error('parser crashed'));
+    const useCase = new ClaimHeldDeckUseCase(repo, buildStore().store, {
+      convertHeldFileForOwner,
+    });
+
+    await expect(
+      useCase.execute({
+        anonId: ANON,
+        owner: OWNER,
+        paying: false,
+        requestId: undefined,
+      })
+    ).rejects.toThrow('parser crashed');
+
+    expect(markClaimed.mock.invocationCallOrder[0]).toBeLessThan(
+      convertHeldFileForOwner.mock.invocationCallOrder[0]
+    );
+    expect(repo.rows[0].claimed_at).toBeNull();
+    expect(repo.rows[0].claimed_by).toBeNull();
+  });
+
+  it('keeps the hold consumed when the account is over its monthly limit', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo);
+    const convertHeldFileForOwner = jest
+      .fn()
+      .mockRejectedValue(new MonthlyLimitError(100, 100, 21, '2026-10-01'));
+    const useCase = new ClaimHeldDeckUseCase(repo, buildStore().store, {
+      convertHeldFileForOwner,
+    });
+
+    await expect(
+      useCase.execute({
+        anonId: ANON,
+        owner: OWNER,
+        paying: false,
+        requestId: undefined,
+      })
+    ).rejects.toBeInstanceOf(MonthlyLimitError);
+
+    expect(repo.rows[0].claimed_at).not.toBeNull();
+    expect(await useCase.peek(ANON)).toBeNull();
+  });
+
+  it('410s when storage reports the object missing', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo);
+    const missing = Object.assign(
+      new Error('The specified key does not exist'),
+      {
+        name: 'NoSuchKey',
+      }
+    );
+    const store: HeldFileStore = {
+      getFileContents: jest.fn().mockRejectedValue(missing),
+    };
+    const useCase = new ClaimHeldDeckUseCase(
+      repo,
+      store,
+      buildConverter().converter
+    );
+
+    await expect(
+      useCase.execute({
+        anonId: ANON,
+        owner: OWNER,
+        paying: false,
+        requestId: undefined,
+      })
+    ).rejects.toBeInstanceOf(HeldDeckExpiredError);
+    expect(repo.rows[0].claimed_at).toBeNull();
   });
 
   it('410s when the stored source object is already gone', async () => {

@@ -8,6 +8,7 @@ import {
   type HeldDeckConverter,
   type HeldFileStore,
 } from '../../usecases/uploads/ClaimHeldDeckUseCase';
+import { MonthlyLimitError } from '../../usecases/users/CheckMonthlyCardLimitUseCase';
 import { ClaimHeldDeckController } from './ClaimHeldDeckController';
 import { track } from '../../services/events/track';
 
@@ -66,7 +67,6 @@ function buildUseCase(repo: InMemoryHeldDeckRepository) {
 
 async function seedHold(repo: InMemoryHeldDeckRepository, expiresAt?: Date) {
   await repo.insert({
-    claimKey: 'ck',
     storageKey: 'held/x.html',
     anonId: ANON,
     filename: 'notes.html',
@@ -145,6 +145,34 @@ describe('ClaimHeldDeckController', () => {
       anonymousId: ANON,
       props: { arm: 'treatment' },
     });
+  });
+
+  it('POST 409s with monthly_limit when the account cannot take the deck this month', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo);
+    const store: HeldFileStore = {
+      getFileContents: jest
+        .fn()
+        .mockResolvedValue({ Body: Buffer.from('<html></html>') }),
+    };
+    const converter: HeldDeckConverter = {
+      convertHeldFileForOwner: jest
+        .fn()
+        .mockRejectedValue(new MonthlyLimitError(100, 100, 21, '2026-10-01')),
+    };
+    const controller = new ClaimHeldDeckController(
+      new ClaimHeldDeckUseCase(repo, store, converter)
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse(7);
+
+    await controller.claim(buildRequest(ANON), res);
+
+    expect(capturedStatus()).toBe(409);
+    expect(capturedJson()).toEqual({ code: 'monthly_limit' });
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'anonymous_partial_claimed',
+      expect.anything()
+    );
   });
 
   it('POST 410s on the second claim once the hold is claimed', async () => {

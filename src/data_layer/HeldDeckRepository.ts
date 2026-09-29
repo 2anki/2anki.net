@@ -3,7 +3,6 @@ import type { Knex } from 'knex';
 import type HeldDecks from './public/HeldDecks';
 
 export interface HeldDeckInsert {
-  claimKey: string;
   storageKey: string;
   anonId: string;
   filename: string;
@@ -12,12 +11,20 @@ export interface HeldDeckInsert {
   expiresAt: Date;
 }
 
+export interface ExpiredHeldDeck {
+  id: number;
+  storageKey: string;
+}
+
 export interface IHeldDeckRepository {
   insert(row: HeldDeckInsert): Promise<HeldDecks>;
   findNewestClaimable(anonId: string, now: Date): Promise<HeldDecks | null>;
   findNewestByAnonId(anonId: string): Promise<HeldDecks | null>;
-  markClaimed(id: number, claimedBy: number, claimedAt: Date): Promise<void>;
-  deleteExpired(now: Date, claimedBefore: Date): Promise<string[]>;
+  /** Claims the row only if nobody has; false means another claim won. */
+  markClaimed(id: number, claimedBy: number, claimedAt: Date): Promise<boolean>;
+  releaseClaim(id: number): Promise<void>;
+  findExpired(now: Date, claimedBefore: Date): Promise<ExpiredHeldDeck[]>;
+  deleteByIds(ids: number[]): Promise<void>;
 }
 
 export class HeldDeckRepository implements IHeldDeckRepository {
@@ -28,7 +35,6 @@ export class HeldDeckRepository implements IHeldDeckRepository {
   buildInsertQuery(row: HeldDeckInsert): Knex.QueryBuilder {
     return this.database(this.table)
       .insert({
-        claim_key: row.claimKey,
         storage_key: row.storageKey,
         anon_id: row.anonId,
         filename: row.filename,
@@ -84,6 +90,7 @@ export class HeldDeckRepository implements IHeldDeckRepository {
   ): Knex.QueryBuilder {
     return this.database(this.table)
       .where('id', id)
+      .whereNull('claimed_at')
       .update({ claimed_at: claimedAt, claimed_by: claimedBy });
   }
 
@@ -91,25 +98,54 @@ export class HeldDeckRepository implements IHeldDeckRepository {
     id: number,
     claimedBy: number,
     claimedAt: Date
-  ): Promise<void> {
-    await this.buildMarkClaimedQuery(id, claimedBy, claimedAt);
+  ): Promise<boolean> {
+    const updated = (await this.buildMarkClaimedQuery(
+      id,
+      claimedBy,
+      claimedAt
+    )) as number;
+    return updated > 0;
   }
 
-  buildDeleteExpiredQuery(now: Date, claimedBefore: Date): Knex.QueryBuilder {
+  buildReleaseClaimQuery(id: number): Knex.QueryBuilder {
     return this.database(this.table)
+      .where('id', id)
+      .update({ claimed_at: null, claimed_by: null });
+  }
+
+  async releaseClaim(id: number): Promise<void> {
+    await this.buildReleaseClaimQuery(id);
+  }
+
+  buildFindExpiredQuery(now: Date, claimedBefore: Date): Knex.QueryBuilder {
+    return this.database(this.table)
+      .select('id', 'storage_key')
       .where('expires_at', '<=', now)
       .orWhere((qb) =>
         qb.whereNotNull('claimed_at').where('claimed_at', '<', claimedBefore)
-      )
-      .del()
-      .returning('storage_key');
+      );
   }
 
-  async deleteExpired(now: Date, claimedBefore: Date): Promise<string[]> {
-    const rows = (await this.buildDeleteExpiredQuery(now, claimedBefore)) as {
+  async findExpired(
+    now: Date,
+    claimedBefore: Date
+  ): Promise<ExpiredHeldDeck[]> {
+    const rows = (await this.buildFindExpiredQuery(now, claimedBefore)) as {
+      id: number;
       storage_key: string;
     }[];
-    return rows.map((row) => row.storage_key);
+    return rows.map((row) => ({ id: row.id, storageKey: row.storage_key }));
+  }
+
+  buildDeleteByIdsQuery(ids: number[]): Knex.QueryBuilder {
+    return this.database(this.table).whereIn('id', ids).del();
+  }
+
+  async deleteByIds(ids: number[]): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+    await this.buildDeleteByIdsQuery(ids);
   }
 }
 
@@ -120,7 +156,6 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
   async insert(row: HeldDeckInsert): Promise<HeldDecks> {
     const stored = {
       id: this.nextId++,
-      claim_key: row.claimKey,
       storage_key: row.storageKey,
       anon_id: row.anonId,
       filename: row.filename,
@@ -161,28 +196,44 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
     id: number,
     claimedBy: number,
     claimedAt: Date
-  ): Promise<void> {
+  ): Promise<boolean> {
+    const row = this.rows.find((r) => r.id === (id as HeldDecks['id']));
+    if (row == null || row.claimed_at != null) {
+      return false;
+    }
+    row.claimed_at = claimedAt;
+    row.claimed_by = claimedBy as HeldDecks['claimed_by'];
+    return true;
+  }
+
+  async releaseClaim(id: number): Promise<void> {
     const row = this.rows.find((r) => r.id === (id as HeldDecks['id']));
     if (row != null) {
-      row.claimed_at = claimedAt;
-      row.claimed_by = claimedBy as HeldDecks['claimed_by'];
+      row.claimed_at = null;
+      row.claimed_by = null;
     }
   }
 
-  async deleteExpired(now: Date, claimedBefore: Date): Promise<string[]> {
-    const removed: string[] = [];
+  async findExpired(
+    now: Date,
+    claimedBefore: Date
+  ): Promise<ExpiredHeldDeck[]> {
+    return this.rows
+      .filter(
+        (row) =>
+          row.expires_at.getTime() <= now.getTime() ||
+          (row.claimed_at != null &&
+            row.claimed_at.getTime() < claimedBefore.getTime())
+      )
+      .map((row) => ({ id: row.id as number, storageKey: row.storage_key }));
+  }
+
+  async deleteByIds(ids: number[]): Promise<void> {
     for (let i = this.rows.length - 1; i >= 0; i -= 1) {
-      const row = this.rows[i];
-      const expired = row.expires_at.getTime() <= now.getTime();
-      const longClaimed =
-        row.claimed_at != null &&
-        row.claimed_at.getTime() < claimedBefore.getTime();
-      if (expired || longClaimed) {
-        removed.push(row.storage_key);
+      if (ids.includes(this.rows[i].id as number)) {
         this.rows.splice(i, 1);
       }
     }
-    return removed;
   }
 }
 

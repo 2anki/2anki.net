@@ -2018,11 +2018,10 @@ class UploadService {
       );
     }
     const storage = new StorageHandler();
-    const storageKey = `held/${randomUUID()}${path.extname(file.originalname)}`;
+    const storageKey = `held/${randomUUID()}`;
     try {
       await storage.uploadFile(storageKey, bytes);
       await this.heldDeckRepository.insert({
-        claimKey: randomUUID(),
         storageKey,
         anonId,
         filename: file.originalname,

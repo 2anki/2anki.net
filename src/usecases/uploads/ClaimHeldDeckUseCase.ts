@@ -1,5 +1,6 @@
 import type { IHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
 import type { UploadedFile } from '../../lib/storage/types';
+import { MonthlyLimitError } from '../users/CheckMonthlyCardLimitUseCase';
 
 export class NoHeldDeckError extends Error {
   constructor() {
@@ -39,7 +40,6 @@ export interface HeldDeckConverter {
 export interface ClaimResult {
   downloadKey: string | null;
   cardCount: number;
-  cardsHeldBack: number;
   deckName: string;
 }
 
@@ -48,6 +48,11 @@ export interface ClaimParams {
   owner: string;
   paying: boolean;
   requestId: string | undefined;
+}
+
+function isMissingObjectError(error: unknown): boolean {
+  const name = (error as { name?: unknown } | null)?.name;
+  return typeof name === 'string' && name.includes('NoSuchKey');
 }
 
 export class ClaimHeldDeckUseCase {
@@ -83,33 +88,65 @@ export class ClaimHeldDeckUseCase {
       }
       throw new HeldDeckExpiredError();
     }
-    const stored = await this.store.getFileContents(hold.storage_key);
-    if (stored.Body == null) {
+    const claimed = await this.repository.markClaimed(
+      hold.id,
+      Number(owner),
+      new Date()
+    );
+    if (!claimed) {
       throw new HeldDeckExpiredError();
     }
-    const file = {
+    try {
+      const file = await this.readHeldFile(hold.storage_key, hold.filename);
+      const conversion = await this.converter.convertHeldFileForOwner(
+        owner,
+        file,
+        paying,
+        null,
+        requestId
+      );
+      return {
+        downloadKey: conversion.downloadKey,
+        cardCount: conversion.cardCount,
+        deckName: conversion.deckName,
+      };
+    } catch (error) {
+      // A monthly-limit refusal consumes the hold: the account cannot take the
+      // deck this month and the hold expires within a day anyway, so retrying
+      // on every visit would only repeat the refusal. Anything else releases
+      // the claim so the next visit can try again.
+      if (!(error instanceof MonthlyLimitError)) {
+        await this.repository.releaseClaim(hold.id);
+      }
+      throw error;
+    }
+  }
+
+  private async readHeldFile(
+    storageKey: string,
+    filename: string
+  ): Promise<UploadedFile> {
+    let body: Buffer | undefined;
+    try {
+      body = (await this.store.getFileContents(storageKey)).Body;
+    } catch (error) {
+      if (isMissingObjectError(error)) {
+        throw new HeldDeckExpiredError();
+      }
+      throw error;
+    }
+    if (body == null) {
+      throw new HeldDeckExpiredError();
+    }
+    return {
       fieldname: 'file',
-      originalname: hold.filename,
+      originalname: filename,
       encoding: '7bit',
       mimetype: 'application/octet-stream',
-      size: stored.Body.byteLength,
-      buffer: stored.Body,
-      key: hold.storage_key,
+      size: body.byteLength,
+      buffer: body,
+      key: storageKey,
     } as unknown as UploadedFile;
-    const conversion = await this.converter.convertHeldFileForOwner(
-      owner,
-      file,
-      paying,
-      null,
-      requestId
-    );
-    await this.repository.markClaimed(hold.id, Number(owner), new Date());
-    return {
-      downloadKey: conversion.downloadKey,
-      cardCount: conversion.cardCount,
-      cardsHeldBack: conversion.cardsHeldBack,
-      deckName: conversion.deckName,
-    };
   }
 }
 

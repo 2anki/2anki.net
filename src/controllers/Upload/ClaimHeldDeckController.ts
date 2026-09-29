@@ -5,6 +5,7 @@ import {
   HeldDeckExpiredError,
   NoHeldDeckError,
 } from '../../usecases/uploads/ClaimHeldDeckUseCase';
+import { MonthlyLimitError } from '../../usecases/users/CheckMonthlyCardLimitUseCase';
 import { getOwner } from '../../lib/User/getOwner';
 import { isPaying } from '../../lib/isPaying';
 import { track } from '../../services/events/track';
@@ -54,6 +55,9 @@ export class ClaimHeldDeckController {
       }
       if (err instanceof HeldDeckExpiredError) {
         return res.status(410).json({ code: 'held_deck_expired' });
+      }
+      if (err instanceof MonthlyLimitError) {
+        return res.status(409).json({ code: 'monthly_limit' });
       }
       throw err;
     }

@@ -14,8 +14,7 @@ describe('HeldDeckRepository generated SQL', () => {
   it('inserts a hold with all columns and returns the row', () => {
     const { sql } = repository
       .buildInsertQuery({
-        claimKey: 'claim-1',
-        storageKey: 'held/abc.html',
+        storageKey: 'held/abc',
         anonId: 'anon-1',
         filename: 'notes.html',
         cardCount: 21,
@@ -29,6 +28,7 @@ describe('HeldDeckRepository generated SQL', () => {
     expect(sql).toContain('"card_count"');
     expect(sql).toContain('"cards_held_back"');
     expect(sql).toContain('"storage_key"');
+    expect(sql).not.toContain('claim_key');
     expect(sql).toContain('returning *');
   });
 
@@ -54,27 +54,43 @@ describe('HeldDeckRepository generated SQL', () => {
     expect(bindings).toEqual(['anon-1', 1]);
   });
 
-  it('stamps the claim on a single row', () => {
+  it('stamps the claim only on a row nobody has claimed yet', () => {
     const claimedAt = new Date('2026-09-29T01:00:00.000Z');
     const { sql, bindings } = repository
       .buildMarkClaimedQuery(42, 7, claimedAt)
       .toSQL();
 
     expect(sql).toBe(
-      'update "held_decks" set "claimed_at" = ?, "claimed_by" = ? where "id" = ?'
+      'update "held_decks" set "claimed_at" = ?, "claimed_by" = ? where "id" = ? and "claimed_at" is null'
     );
     expect(bindings).toEqual([claimedAt, 7, 42]);
   });
 
-  it('deletes expired or long-claimed holds and returns their storage keys', () => {
+  it('releases a claim by clearing both claim columns', () => {
+    const { sql, bindings } = repository.buildReleaseClaimQuery(42).toSQL();
+
+    expect(sql).toBe(
+      'update "held_decks" set "claimed_at" = ?, "claimed_by" = ? where "id" = ?'
+    );
+    expect(bindings).toEqual([null, null, 42]);
+  });
+
+  it('lists expired or long-claimed holds with their storage keys', () => {
     const claimedBefore = new Date('2026-09-28T00:00:00.000Z');
     const { sql, bindings } = repository
-      .buildDeleteExpiredQuery(now, claimedBefore)
+      .buildFindExpiredQuery(now, claimedBefore)
       .toSQL();
 
     expect(sql).toBe(
-      'delete from "held_decks" where "expires_at" <= ? or ("claimed_at" is not null and "claimed_at" < ?) returning "storage_key"'
+      'select "id", "storage_key" from "held_decks" where "expires_at" <= ? or ("claimed_at" is not null and "claimed_at" < ?)'
     );
     expect(bindings).toEqual([now, claimedBefore]);
+  });
+
+  it('deletes swept rows by id', () => {
+    const { sql, bindings } = repository.buildDeleteByIdsQuery([1, 2]).toSQL();
+
+    expect(sql).toBe('delete from "held_decks" where "id" in (?, ?)');
+    expect(bindings).toEqual([1, 2]);
   });
 });
