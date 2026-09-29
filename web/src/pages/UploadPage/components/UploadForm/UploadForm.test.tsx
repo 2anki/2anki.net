@@ -429,6 +429,8 @@ describe('UploadForm analytics events', () => {
       );
     });
 
+    expect(locationStub.href).toBe('/downloads');
+
     await act(async () => {
       globalThis.dispatchEvent(new Event('pagehide'));
     });
@@ -478,7 +480,7 @@ describe('UploadForm analytics events', () => {
     expect(cancelledCalls).toHaveLength(0);
   });
 
-  it('re-arms cancel reporting when the page is restored from bfcache', async () => {
+  it('stays silent when a completed conversion is restored from bfcache', async () => {
     const { track } = await import('../../../../lib/analytics/track');
     const trackMock = vi.mocked(track);
     trackMock.mockClear();
@@ -506,16 +508,17 @@ describe('UploadForm analytics events', () => {
     });
 
     await act(async () => {
-      const restored = new Event('pageshow') as PageTransitionEvent;
-      Object.defineProperty(restored, 'persisted', { value: true });
-      globalThis.dispatchEvent(restored);
+      globalThis.dispatchEvent(new Event('pagehide'));
+      globalThis.dispatchEvent(
+        new PageTransitionEvent('pageshow', { persisted: true })
+      );
       globalThis.dispatchEvent(new Event('pagehide'));
     });
 
     const cancelledCalls = trackMock.mock.calls.filter(
       ([name]) => name === 'upload_cancelled'
     );
-    expect(cancelledCalls).toHaveLength(1);
+    expect(cancelledCalls).toHaveLength(0);
   });
 
   it('does not fire upload_cancelled on pagehide when no conversion is in flight', async () => {

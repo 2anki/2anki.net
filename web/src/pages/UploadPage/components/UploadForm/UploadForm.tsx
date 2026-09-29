@@ -713,16 +713,9 @@ function UploadForm({
       uploadCancelledFiredRef.current = true;
       track('upload_cancelled', { stage: 'converting' });
     };
-    const rearmOnRestore = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        leavingRef.current = false;
-      }
-    };
     globalThis.addEventListener('pagehide', fireUploadCancelled);
-    globalThis.addEventListener('pageshow', rearmOnRestore);
     return () => {
       globalThis.removeEventListener('pagehide', fireUploadCancelled);
-      globalThis.removeEventListener('pageshow', rearmOnRestore);
     };
   }, [zoneState]);
 
