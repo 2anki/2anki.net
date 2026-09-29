@@ -2019,16 +2019,27 @@ class UploadService {
     }
     const storage = new StorageHandler();
     const storageKey = `held/${randomUUID()}${path.extname(file.originalname)}`;
-    await storage.uploadFile(storageKey, bytes);
-    await this.heldDeckRepository.insert({
-      claimKey: randomUUID(),
-      storageKey,
-      anonId,
-      filename: file.originalname,
-      cardCount,
-      cardsHeldBack,
-      expiresAt: new Date(Date.now() + HELD_DECK_TTL_MS),
-    });
+    try {
+      await storage.uploadFile(storageKey, bytes);
+      await this.heldDeckRepository.insert({
+        claimKey: randomUUID(),
+        storageKey,
+        anonId,
+        filename: file.originalname,
+        cardCount,
+        cardsHeldBack,
+        expiresAt: new Date(Date.now() + HELD_DECK_TTL_MS),
+      });
+    } catch (error) {
+      console.error('[UploadService] could not hold the deck for signup', {
+        requestId: res.locals.requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new AnonymousCardCapError(
+        cardCount + cardsHeldBack,
+        ANONYMOUS_CARD_CAP
+      );
+    }
     track('conversion_succeeded', {
       userId: null,
       anonymousId: anonId,

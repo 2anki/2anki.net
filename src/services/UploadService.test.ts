@@ -4868,6 +4868,25 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   });
 
+  it('falls back to the wall when the held file cannot be stored', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    mockStorageUploadFile.mockRejectedValueOnce(new Error('no credentials'));
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedSend, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(capturedSend()).toBeNull();
+    expect(heldDeck.rows).toHaveLength(0);
+    expect(conversionFailedProps()).toMatchObject({
+      reason: 'anonymous_cap',
+      arm: 'treatment',
+    });
+  });
+
   it('leaves a treatment upload at or under 21 cards untouched', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21 }], 0);
