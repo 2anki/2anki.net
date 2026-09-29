@@ -8,10 +8,15 @@
 // bucket depends on SPACES_ASSETS_BUCKET, which is a CI secret we cannot read
 // from here — the bucket holds no assets/ objects today, but the previous
 // sweep would have deleted them either way, so absence proves nothing.
+// 'held/' is the anonymous-partial-delivery hold: the uploaded source file a
+// treatment-arm visitor over the cap can claim after signing up. It has its own
+// held_decks row and its own 24h expiry sweep, so the dangling-object walk must
+// leave it alone rather than delete a file a signup is about to claim.
 export const RESERVED_KEY_PREFIXES = [
   'mindmaps/',
   'io-drafts/',
   'assets/',
+  'held/',
 ] as const;
 
 // An object is only orphaned once its owning row has had time to commit. A
