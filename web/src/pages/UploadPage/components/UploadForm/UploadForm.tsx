@@ -471,7 +471,7 @@ function UploadForm({
         } else if (result.status === 404 || result.status === 410) {
           setZoneState('heldExpired');
         } else if (result.status === 409) {
-          globalThis.location.href = '/limit?kind=card_count';
+          leaveTo('/limit?kind=card_count');
         } else {
           resetForm();
           setErrorMessage(t('upload.form.liveError'));
@@ -503,7 +503,7 @@ function UploadForm({
         'upload-limit-wall'
       );
       if ('url' in result) {
-        globalThis.location.href = result.url;
+        leaveTo(result.url);
         return;
       }
       setDayPassError(
@@ -691,10 +691,23 @@ function UploadForm({
     }
   }, [zoneState]);
 
+  const leavingRef = useRef(false);
+  const leaveTo = (url: string): void => {
+    leavingRef.current = true;
+    globalThis.location.href = url;
+  };
+  const leaveViaRedirect = (request: Response): boolean => {
+    if (request.redirected) {
+      leavingRef.current = true;
+    }
+    return leaveViaRedirect(request);
+  };
+
   const uploadCancelledFiredRef = useRef(false);
   useEffect(() => {
     if (zoneState !== 'converting') return;
     const fireUploadCancelled = () => {
+      if (leavingRef.current) return;
       if (uploadCancelledFiredRef.current) return;
       uploadCancelledFiredRef.current = true;
       track('upload_cancelled', { stage: 'converting' });
@@ -728,7 +741,7 @@ function UploadForm({
         const redirectUrl = new URL(request.url, globalThis.location.origin);
         if (isLimitRedirect(redirectUrl)) {
           if (isAnonymousLimit(redirectUrl)) {
-            globalThis.location.href = '/limit?kind=anonymous';
+            leaveTo('/limit?kind=anonymous');
             return;
           }
           const kind = getLimitKind(redirectUrl);
@@ -740,11 +753,11 @@ function UploadForm({
           setZoneState('limitReached');
           return;
         }
-        handleRedirect(request);
+        leaveViaRedirect(request);
         return;
       }
       if (request.status === 202) {
-        globalThis.location.href = '/downloads';
+        leaveTo('/downloads');
         return;
       }
       if (request.status !== 200) {
@@ -807,7 +820,7 @@ function UploadForm({
         const redirectUrl = new URL(request.url, globalThis.location.origin);
         if (isLimitRedirect(redirectUrl)) {
           if (isAnonymousLimit(redirectUrl)) {
-            globalThis.location.href = '/limit?kind=anonymous';
+            leaveTo('/limit?kind=anonymous');
             return;
           }
           const kind = getLimitKind(redirectUrl);
@@ -820,11 +833,11 @@ function UploadForm({
           setZoneState('limitReached');
           return;
         }
-        handleRedirect(request);
+        leaveViaRedirect(request);
         return;
       }
       if (request.status === 202) {
-        globalThis.location.href = '/downloads';
+        leaveTo('/downloads');
         return;
       }
       if (request.status !== 200) {
@@ -882,7 +895,7 @@ function UploadForm({
     uploadedFiles: File[]
   ): boolean => {
     if (isAnonymousLimit(redirectUrl)) {
-      globalThis.location.href = '/limit?kind=anonymous';
+      leaveTo('/limit?kind=anonymous');
       return true;
     }
     const firstFile = uploadedFiles[0];
@@ -904,7 +917,7 @@ function UploadForm({
     if (isLimitRedirect(redirectUrl)) {
       return handleUploadLimitRedirect(redirectUrl, uploadedFiles);
     }
-    return handleRedirect(request);
+    return leaveViaRedirect(request);
   };
 
   const showLockedPdfState = (firstFile: File): void => {
@@ -1014,7 +1027,7 @@ function UploadForm({
         return handleUploadRedirect(request, uploadedFiles);
       }
       if (request.status === 202) {
-        globalThis.location.href = '/downloads';
+        leaveTo('/downloads');
         return true;
       }
       if (request.status !== 200) {
