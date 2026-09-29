@@ -3,6 +3,7 @@ export type BusinessMetricKey =
   | 'net_new_mrr_mtd_usd'
   | 'active_paying_subs'
   | 'churn_30d_pct'
+  | 'churn_30d_breakdown'
   | 'failed_payments_7d'
   | 'new_paid_conversions_7d'
   | 'mrr_timeseries'
@@ -16,7 +17,11 @@ export type BusinessMetricKey =
   | 'happy_score'
   | 'reengagement_reasons_top'
   | 'reengagement_comments_recent'
-  | 'signup_countries_90d';
+  | 'signup_countries_90d'
+  | 'total_users'
+  | 'signups_24h'
+  | 'signups_7d'
+  | 'pass_sales_7d';
 
 export interface BusinessMetricError {
   metric: BusinessMetricKey;
@@ -138,6 +143,9 @@ export interface BusinessMetricsResponse {
   reengagement_reasons_top: ReEngagementReasonPoint[] | null;
   reengagement_comments_recent: ReEngagementCommentPoint[] | null;
   signup_countries_90d: SignupCountryPoint[] | null;
+  total_users: number | null;
+  signups_24h: number | null;
+  signups_7d: number | null;
   as_of: string;
   cache_age_seconds: number;
   errors?: BusinessMetricError[];
