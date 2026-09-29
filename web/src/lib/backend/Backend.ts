@@ -81,6 +81,15 @@ export interface HeldDeckSummary {
   cardsHeldBack: number;
 }
 
+function isHeldDeckSummary(value: unknown): value is HeldDeckSummary {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as HeldDeckSummary).cardCount === 'number' &&
+    typeof (value as HeldDeckSummary).cardsHeldBack === 'number'
+  );
+}
+
 export interface ClaimHeldDeckResult {
   status: number;
   downloadKey: string | null;
@@ -396,10 +405,11 @@ export class Backend {
     const response = await fetch(`${this.baseURL}upload/claim`, {
       credentials: 'include',
     });
-    if (response.status === OK) {
-      return (await response.json()) as HeldDeckSummary;
+    if (response.status !== OK) {
+      return null;
     }
-    return null;
+    const body: unknown = await response.json().catch(() => null);
+    return isHeldDeckSummary(body) ? body : null;
   }
 
   async claimHeldDeck(): Promise<ClaimHeldDeckResult> {

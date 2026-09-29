@@ -35,9 +35,6 @@ export function AnonymousPartialGate({ held }: Props) {
 
   return (
     <section className={styles.gate} role="region" aria-label={t('gateAria')}>
-      <span className={styles.srOnly} aria-live="polite">
-        {t('gateLive', { count: held.cardCount })}
-      </span>
       <span className={styles.icon} aria-hidden="true">
         <svg
           viewBox="0 0 24 24"

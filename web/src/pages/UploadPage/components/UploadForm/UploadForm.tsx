@@ -468,11 +468,18 @@ function UploadForm({
           setCardCount(result.cardCount);
           setProgressWidth(100);
           setZoneState('heldReady');
-        } else {
+        } else if (result.status === 404 || result.status === 410) {
           setZoneState('heldExpired');
+        } else if (result.status === 409) {
+          globalThis.location.href = '/limit?kind=card_count';
+        } else {
+          resetForm();
+          setErrorMessage(t('upload.form.liveError'));
         }
       } catch {
-        if (!cancelled) claimAttemptedRef.current = false;
+        if (cancelled) return;
+        resetForm();
+        setErrorMessage(t('upload.form.liveError'));
       }
     })();
     return () => {
@@ -579,7 +586,11 @@ function UploadForm({
 
   const { dropHover } = useDrag({
     onDrop: (event) => {
-      if (isUploadLocked || zoneState === 'packaging') {
+      if (
+        isUploadLocked ||
+        zoneState === 'packaging' ||
+        zoneState === 'heldForSignup'
+      ) {
         event.preventDefault();
         return;
       }
@@ -2093,7 +2104,7 @@ function UploadForm({
     if (zoneState === 'imageOnly') return renderImageOnlyState();
     if (zoneState === 'limitReached' && limitInfo) return renderLimitState();
     if (zoneState === 'lockedPdf') return renderLockedPdfState();
-    if (zoneState === 'heldForSignup') return renderHeldForSignupState();
+    if (zoneState === 'heldForSignup') return null;
     if (zoneState === 'claimingHeld') return renderClaimingHeldState();
     if (zoneState === 'heldReady') return renderHeldReadyState();
     if (zoneState === 'heldExpired') return renderHeldExpiredState();
@@ -2112,6 +2123,7 @@ function UploadForm({
   };
 
   const showChips = zoneState === 'idle' && !validation && !isUploadLocked;
+  const gateVisible = zoneState === 'heldForSignup' && heldDeck != null;
   const showDropboxPanel = showChips && source === 'dropbox';
   const showGoogleDrivePanel = showChips && source === 'google_drive';
   const showLocalPanel = !showChips || source === 'local';
@@ -2149,8 +2161,11 @@ function UploadForm({
         ? t('upload.form.liveDeckReady')
         : t('upload.form.liveDeckReadyCount', { count: cardCount });
     }
+    if (zoneState === 'heldForSignup' && heldDeck != null) {
+      return t('anonymousPartial:gateLive', { count: heldDeck.cardCount });
+    }
     if (zoneState === 'heldExpired') {
-      return t('anonymousPartial:expiredHeadline');
+      return `${t('anonymousPartial:expiredHeadline')}. ${t('anonymousPartial:expiredBody')}`;
     }
     return '';
   };
@@ -2160,12 +2175,15 @@ function UploadForm({
       <output aria-live="polite" className={sharedStyles.srOnly}>
         {renderLiveStatus()}
       </output>
+      {gateVisible && (
+        <div className={zoneClassName}>{renderHeldForSignupState()}</div>
+      )}
       <label
         htmlFor="pakker"
         id="upload-panel-local"
         translate="no"
-        className={`${zoneClassName} ${showLocalPanel ? '' : formStyles.panelHidden}`}
-        aria-hidden={!showLocalPanel}
+        className={`${zoneClassName} ${showLocalPanel && !gateVisible ? '' : formStyles.panelHidden}`}
+        aria-hidden={!showLocalPanel || gateVisible}
       >
         {renderZoneContent()}
         <input
@@ -2177,7 +2195,7 @@ function UploadForm({
           accept={getAcceptedContentTypes()}
           required
           multiple
-          disabled={isUploadLocked}
+          disabled={isUploadLocked || gateVisible}
           onChange={() => {
             const files = fileInputRef.current?.files;
             if (!files) return;
