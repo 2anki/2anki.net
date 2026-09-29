@@ -45,6 +45,11 @@ describe('AnonymousPartialGate', () => {
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
   });
 
+  it('renders no form element so it can sit inside the upload form', () => {
+    const { container } = renderGate();
+    expect(container.querySelector('form')).toBeNull();
+  });
+
   it('does not fire signup_started on mount from the inline form', () => {
     renderGate();
     expect(track).not.toHaveBeenCalledWith('signup_started', {

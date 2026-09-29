@@ -1,4 +1,11 @@
-import { SyntheticEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  KeyboardEvent,
+  SyntheticEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import TopMessage from '../TopMessage/TopMessage';
@@ -38,6 +45,7 @@ function loginHref(redirect?: string | null): string {
 function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
   const { t } = useTranslation();
   const inline = variant === 'inline';
+  const Fields = inline ? 'div' : 'form';
   const [email, setEmail] = useState(localStorage.getItem('email') || '');
   const [tos, setTos] = useState(false);
   const [password, setPassword] = useState('');
@@ -74,6 +82,16 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
     email.length < 256 &&
     passwordMeetsMinimum &&
     password.length < 256;
+
+  const submitOnEnter = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Enter' || !(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    event.preventDefault();
+    if (isValid() && !loading) {
+      void handleSubmit(event);
+    }
+  };
 
   const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
@@ -181,7 +199,11 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
           {t('auth.register.orSignUpEmail')}
         </span>
       </div>
-      <form onSubmit={handleSubmit} onFocus={markSignupStarted}>
+      <Fields
+        onSubmit={inline ? undefined : handleSubmit}
+        onFocus={markSignupStarted}
+        onKeyDown={inline ? submitOnEnter : undefined}
+      >
         <div className={styles.field}>
           <label htmlFor="email">
             <span>{t('auth.common.email')}</span>
@@ -258,14 +280,15 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
         </div>
         <div className={styles.field}>
           <button
-            type="submit"
+            type={inline ? 'button' : 'submit'}
+            onClick={inline ? handleSubmit : undefined}
             className={styles.submitButton}
             disabled={!isValid() || loading}
           >
             {loading ? t('auth.register.creating') : t('auth.register.create')}
           </button>
         </div>
-      </form>
+      </Fields>
       <p className={styles.footerText}>
         {t('auth.register.loginQuestion')}{' '}
         <a rel="noreferrer" href={loginHref(redirect)}>
