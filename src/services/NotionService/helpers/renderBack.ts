@@ -18,16 +18,21 @@ type BackChild = PartialBlockObjectResponse | BlockObjectResponse;
 const TYPES_THAT_RENDER_OWN_CHILDREN = new Set([
   'toggle',
   'bulleted_list_item',
+  'numbered_list_item',
+  'to_do',
   'callout',
   'column_list',
 ]);
 
+// The set is checked first on purpose. Every type in it reaches its children
+// through getChildren, which calls getBackSide with handleChildren set, so
+// testing that flag first would skip the set on the one path it exists for.
 const shouldRecurseIntoChildren = (
   block: BlockObjectResponse,
   handleChildren: boolean | undefined
 ): boolean =>
-  Boolean(handleChildren) ||
-  (block.has_children && !TYPES_THAT_RENDER_OWN_CHILDREN.has(block.type));
+  !TYPES_THAT_RENDER_OWN_CHILDREN.has(block.type) &&
+  (Boolean(handleChildren) || block.has_children);
 
 const renderBackChild = async (
   handler: IBlockRenderer,

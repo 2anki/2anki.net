@@ -131,3 +131,94 @@ describe('two-column flashcard convention', () => {
     expect(cards[0].back).not.toContain('LEFTSIDE');
   });
 });
+
+describe('containers that walk their own children', () => {
+  function handlerWithNesting(
+    wrapperType: string,
+    wrapperBody: Record<string, unknown>
+  ) {
+    const exporter = new CustomExporter('', new Workspace(true, 'fs').location);
+    const handler = new BlockHandler(
+      exporter,
+      new MockNotionAPI('', ''),
+      new CardOption({})
+    );
+    const children: Record<string, BlockObjectResponse[]> = {
+      toggle: [block('wrapper', wrapperType, wrapperBody, true)],
+      wrapper: [block('column-list', 'column_list', {}, true)],
+      'column-list': [
+        block('col-0', 'column', {}, true),
+        block('col-1', 'column', {}, true),
+      ],
+      'col-0': [paragraph('p-left', 'LEFTSIDE')],
+      'col-1': [paragraph('p-right', 'RIGHTSIDE')],
+    };
+    jest
+      .spyOn(handler.api, 'getBlocks')
+      .mockImplementation(async ({ id }: { id: string }) => {
+        return {
+          results: children[id] ?? [],
+          has_more: false,
+          next_cursor: null,
+        } as never;
+      });
+    return {
+      handler,
+      toggle: block('toggle', 'toggle', { rich_text: [] }, true),
+    };
+  }
+
+  it.each([
+    ['toggle', { rich_text: [] }],
+    ['callout', { rich_text: [], icon: null, color: 'default' }],
+  ])(
+    'renders columns once when they sit inside a nested %s',
+    async (wrapperType, wrapperBody) => {
+      const { handler, toggle } = handlerWithNesting(wrapperType, wrapperBody);
+
+      const back = (await handler.getBackSide(toggle)) ?? '';
+
+      expect(back.match(/LEFTSIDE/g) ?? []).toHaveLength(1);
+      expect(back.match(/RIGHTSIDE/g) ?? []).toHaveLength(1);
+    }
+  );
+
+  it.each(['numbered_list_item', 'to_do', 'bulleted_list_item'])(
+    'renders a %s child exactly once',
+    async (listType) => {
+      const exporter = new CustomExporter(
+        '',
+        new Workspace(true, 'fs').location
+      );
+      const handler = new BlockHandler(
+        exporter,
+        new MockNotionAPI('', ''),
+        new CardOption({})
+      );
+      const body =
+        listType === 'to_do'
+          ? { rich_text: [], checked: false, color: 'default' }
+          : { rich_text: [], color: 'default' };
+      const children: Record<string, BlockObjectResponse[]> = {
+        toggle: [block('item', listType, body, true)],
+        item: [paragraph('p-child', 'CHILDTEXT')],
+      };
+      jest
+        .spyOn(handler.api, 'getBlocks')
+        .mockImplementation(async ({ id }: { id: string }) => {
+          return {
+            results: children[id] ?? [],
+            has_more: false,
+            next_cursor: null,
+          } as never;
+        });
+
+      const back =
+        (await handler.getBackSide(
+          block('toggle', 'toggle', { rich_text: [] }, true)
+        )) ?? '';
+
+      expect(back.match(/CHILDTEXT/g) ?? []).toHaveLength(1);
+    }
+  );
+});

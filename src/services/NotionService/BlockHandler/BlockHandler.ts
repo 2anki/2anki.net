@@ -557,9 +557,7 @@ class BlockHandler implements IBlockRenderer {
           // front is that first column alone — not the whole layout, which is
           // what blockToStaticMarkup renders for a column_list anywhere else.
           const firstColumn = await getColumn(block.id, this, 0);
-          name = firstColumn
-            ? await BlockColumn(firstColumn, this)
-            : await blockToStaticMarkup(this, block as BlockObjectResponse);
+          name = firstColumn ? await BlockColumn(firstColumn, this) : '';
           const secondColumn = await getColumn(block.id, this, 1);
           if (secondColumn) {
             back = await BlockColumn(secondColumn, this);
