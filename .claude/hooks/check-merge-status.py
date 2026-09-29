@@ -60,7 +60,14 @@ def deny(reason):
 
 
 REVIEW_MARKER = re.compile(r"<!--\s*ship-review:\s*pass\s+sha=([0-9a-f]{40})\s*-->")
-DEPENDABOT = "dependabot[bot]"
+# `gh pr view --json author` reports the bot as `app/dependabot`; the GitHub UI
+# and the REST API spell it `dependabot[bot]`. Accept both so the review-marker
+# exemption actually fires (#4555).
+DEPENDABOT_LOGINS = frozenset({"dependabot[bot]", "app/dependabot"})
+
+
+def is_dependabot(login):
+    return login in DEPENDABOT_LOGINS
 
 
 def is_gh_pr_merge(cmd):
@@ -246,7 +253,7 @@ def main():
 
     violations = classify(rollup, files)
 
-    if author != DEPENDABOT:
+    if not is_dependabot(author):
         marker_violation = review_marker_violation(pr_data)
         if marker_violation:
             violations.append(marker_violation)
