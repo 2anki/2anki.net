@@ -539,24 +539,22 @@ describe('blockToStaticMarkup column blocks', () => {
       'col-0': [paragraph('p-left', 'LEFTSIDE')],
       'col-1': [paragraph('p-right', 'RIGHTSIDE')],
     };
-    let calls = 0;
     jest
       .spyOn(handler.api, 'getBlocks')
       .mockImplementation(async ({ id }: { id: string }) => {
-        calls += 1;
         return {
           results: children[id] ?? [],
           has_more: false,
           next_cursor: null,
         } as never;
       });
-    return { handler, columnList, callCount: () => calls };
+    return { handler, columnList };
   }
 
   it('renders each column exactly once', async () => {
     const { handler, columnList } = handlerWithColumns();
 
-    const back = (await handler.getBackSide(columnList, true)) ?? '';
+    const back = (await handler.getBackSide(columnList)) ?? '';
 
     expect(back.match(/LEFTSIDE/g) ?? []).toHaveLength(1);
     expect(back.match(/RIGHTSIDE/g) ?? []).toHaveLength(1);
@@ -565,7 +563,7 @@ describe('blockToStaticMarkup column blocks', () => {
   it('does not report a column as a block it could not convert', async () => {
     const { handler, columnList } = handlerWithColumns();
 
-    await handler.getBackSide(columnList, true);
+    await handler.getBackSide(columnList);
 
     expect(handler.unsupportedBlockTypes).not.toContain('column');
   });
