@@ -10,6 +10,7 @@ export type UploadErrorCode =
   | 'docx_processing_failed'
   | 'claude_parse_failed'
   | 'empty_export'
+  | 'image_only_no_text'
   | 'markdown_likely_lossy'
   | 'parser_crash'
   | 'worker_timeout'

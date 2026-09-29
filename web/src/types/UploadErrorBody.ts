@@ -1,6 +1,7 @@
 export type UploadErrorCode =
   | 'unsupported_format'
   | 'too_large'
+  | 'too_many_files'
   | 'invalid_markup'
   | 'malformed_notion'
   | 'corrupted_apkg'
@@ -15,6 +16,7 @@ export type UploadErrorCode =
   | 'worker_timeout'
   | 'notion_rate_limit'
   | 'notion_object_not_found'
+  | 'notion_unauthorized'
   | 'apkg_too_large_for_anki'
   | 'zip_invalid'
   | 'ai_credits_exhausted'
