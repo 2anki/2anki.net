@@ -2067,7 +2067,7 @@ class UploadService {
     deckName: string;
   }> {
     const body = await this.resolveCardOptionInput(owner, {});
-    const settings = new CardOption(body);
+    const settings = new CardOption(body as { [key: string]: string });
     if (settings.n2aBasic == null) {
       await this.settingsRepository.attachCustomTemplates(owner, settings);
     }
