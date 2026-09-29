@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-29-plain-text-back-keeps-nested-answers",
+  "date": "2026-09-29",
+  "type": "fix",
+  "title": "Use plain text for back keeps answers written as nested toggles instead of leaving the back empty"
+}

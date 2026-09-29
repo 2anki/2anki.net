@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { toPlainTextBack } from './toPlainTextBack';
 import type { Element } from 'domhandler';
 
 import preserveNewlinesIfApplicable from '../../services/NotionService/helpers/preserveNewlinesIfApplicable';
@@ -1957,18 +1958,11 @@ export class DeckParser {
                 mcqSkippedCount++;
               }
 
-              let b = toggleHTML.replace(summary.html() || '', '');
-              if (this.settings.isTextOnlyBack) {
-                const paragraphs = dom(toggle).find('> p').toArray();
-                b = '';
-                for (const paragraph of paragraphs) {
-                  if (paragraph) {
-                    b += dom(paragraph).html();
-                  }
-                }
-              }
-
-              const backSide = this.buildToggleBackSide(b, isNewFormat);
+              const b = toggleHTML.replace(summary.html() || '', '');
+              const builtBack = this.buildToggleBackSide(b, isNewFormat);
+              const backSide = this.settings.isTextOnlyBack
+                ? toPlainTextBack(builtBack)
+                : builtBack;
               const note = new Note(front || '', backSide);
               note.notionId = this.resolveToggleBlockId(parentUL);
               note.sourcePageId = pageId;
