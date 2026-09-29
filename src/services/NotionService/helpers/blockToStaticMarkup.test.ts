@@ -474,3 +474,59 @@ describe('blockToStaticMarkup', () => {
     expect(afterFigure).not.toContain('child');
   });
 });
+
+describe('blockToStaticMarkup column blocks', () => {
+  function makeColumn(id: string, hasChildren: boolean): BlockObjectResponse {
+    return {
+      object: 'block',
+      id,
+      type: 'column',
+      column: {},
+      parent: { type: 'block_id', block_id: 'column-list-id' },
+      created_time: '2026-09-29T07:46:00.000Z',
+      last_edited_time: '2026-09-29T07:46:00.000Z',
+      created_by: { object: 'user', id: 'user-1' },
+      last_edited_by: { object: 'user', id: 'user-1' },
+      has_children: hasChildren,
+      archived: false,
+      in_trash: false,
+    } as unknown as BlockObjectResponse;
+  }
+
+  it('renders the content inside a column instead of dropping it', async () => {
+    const handler = makeHandler();
+    jest
+      .spyOn(handler, 'getBackSide')
+      .mockResolvedValue('<p>the answer lived in a column</p>');
+
+    const result = await blockToStaticMarkup(
+      handler,
+      makeColumn('column-with-content', true)
+    );
+
+    expect(result).toBe('<p>the answer lived in a column</p>');
+    expect(handler.unsupportedBlockTypes).not.toContain('column');
+  });
+
+  it('does not count a column as an unsupported block type', async () => {
+    const handler = makeHandler();
+    jest.spyOn(handler, 'getBackSide').mockResolvedValue('<p>content</p>');
+
+    await blockToStaticMarkup(handler, makeColumn('column-1', true));
+
+    expect(handler.unsupportedBlockTypes).toEqual([]);
+  });
+
+  it('renders nothing for an empty column without calling the API', async () => {
+    const handler = makeHandler();
+    const getBackSide = jest.spyOn(handler, 'getBackSide');
+
+    const result = await blockToStaticMarkup(
+      handler,
+      makeColumn('empty-column', false)
+    );
+
+    expect(result).toBe('');
+    expect(getBackSide).not.toHaveBeenCalled();
+  });
+});

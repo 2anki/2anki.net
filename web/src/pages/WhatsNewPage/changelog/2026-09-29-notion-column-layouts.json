@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-29-notion-column-layouts",
+  "date": "2026-09-29",
+  "type": "fix",
+  "title": "Notion pages with side-by-side columns keep the content from every column"
+}
