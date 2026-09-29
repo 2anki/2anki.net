@@ -338,4 +338,37 @@ describe('extractPptxSourceUnits — slide structure for text-first cards', () =
       extractPptxSourceUnits(Buffer.from(zipSync(files, { level: 1 })))
     ).rejects.toBeInstanceOf(PptxTooLargeError);
   });
+
+  it('reads a crafted slide of unterminated tags in linear time', async () => {
+    const junk = '<a:t<p:ph <p:sld <p:sldId <Relationship '.repeat(50_000);
+    const xml = `<?xml version="1.0"?>
+<p:sld xmlns:a="${NS_A}" xmlns:p="${NS_P}"><p:cSld><p:spTree><p:sp><p:txBody><a:p>${junk}</a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>`;
+    const pptx = withPresentationOrder(buildPptx([{ xml }]), [1]);
+    const files = unzipSync(new Uint8Array(pptx));
+    files['ppt/presentation.xml'] = strToU8(
+      `<p:presentation><p:sldIdLst>${junk}</p:sldIdLst></p:presentation>`
+    );
+    files['ppt/_rels/presentation.xml.rels'] = strToU8(
+      `<Relationships>${junk}</Relationships>`
+    );
+
+    const started = Date.now();
+    const units = await extractPptxSourceUnits(Buffer.from(zipSync(files)));
+
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(units).toHaveLength(1);
+    expect(units[0].paragraphs).toEqual([]);
+  });
+
+  it('keeps a tiny XML part whose deflate stream is larger than the text', async () => {
+    const files = unzipSync(
+      new Uint8Array(buildPptx([{ xml: slideXml('Real', 'a') }]))
+    );
+
+    const units = await extractPptxSourceUnits(
+      Buffer.from(zipSync(files, { level: 9 }))
+    );
+
+    expect(units.map((u) => u.title)).toEqual(['Real']);
+  });
 });

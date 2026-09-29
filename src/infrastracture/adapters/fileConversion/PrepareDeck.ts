@@ -453,7 +453,9 @@ async function convertSlidesToTextCards(
   // learned this in #3946), so the rendered slides travel with the HTML.
   const slideImages: PdfHtmlImage[] = await Promise.all(
     rendered.imagePaths.map(async (imagePath) => ({
-      name: path.relative(input.workspace.location, imagePath),
+      name: path
+        .relative(input.workspace.location, imagePath)
+        .replaceAll('\\', '/'),
       contents: await fs.promises.readFile(imagePath),
     }))
   );

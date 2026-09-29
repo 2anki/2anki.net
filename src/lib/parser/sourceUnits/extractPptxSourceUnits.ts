@@ -34,6 +34,7 @@ function unzipNeededParts(pptxBuffer: Buffer): Record<string, Uint8Array> {
     filter: (file) => {
       if (!NEEDED_PART.test(file.name)) return false;
       if (file.originalSize > MAX_PPTX_PART_BYTES) return false;
+      if (file.size > file.originalSize * 4 + 1024) return false;
       total += file.originalSize;
       if (total > MAX_PPTX_TOTAL_BYTES) {
         overBudget = true;
@@ -57,10 +58,7 @@ function tagBlocks(xml: string, tag: string): string[] {
   while (from < xml.length) {
     const start = xml.indexOf(open, from);
     if (start === -1) break;
-    const afterName = xml[start + open.length];
-    const isExactTag =
-      afterName === '>' || afterName === '/' || /\s/.test(afterName ?? '');
-    if (!isExactTag) {
+    if (!isExactTagName(xml, start + open.length)) {
       from = start + open.length;
       continue;
     }
@@ -79,20 +77,72 @@ function tagBlocks(xml: string, tag: string): string[] {
   return blocks;
 }
 
+function isExactTagName(xml: string, nameEnd: number): boolean {
+  const afterName = xml[nameEnd];
+  return afterName === '>' || afterName === '/' || /\s/.test(afterName ?? '');
+}
+
+// Every `<tag ...>` open tag as its own slice, so attribute regexes run over
+// one tag at a time instead of backtracking across the whole document.
+function openTags(xml: string, tag: string): string[] {
+  const open = `<${tag}`;
+  const tags: string[] = [];
+  let from = 0;
+
+  while (from < xml.length) {
+    const start = xml.indexOf(open, from);
+    if (start === -1) break;
+    if (!isExactTagName(xml, start + open.length)) {
+      from = start + open.length;
+      continue;
+    }
+    const openEnd = xml.indexOf('>', start);
+    if (openEnd === -1) break;
+    tags.push(xml.slice(start, openEnd + 1));
+    from = openEnd + 1;
+  }
+
+  return tags;
+}
+
+function hasAttribute(xml: string, tag: string, attribute: RegExp): boolean {
+  return openTags(xml, tag).some((openTag) => attribute.test(openTag));
+}
+
+function textRuns(paragraph: string): string[] {
+  const runs: string[] = [];
+  let from = 0;
+
+  while (from < paragraph.length) {
+    const start = paragraph.indexOf('<a:t', from);
+    if (start === -1) break;
+    if (!isExactTagName(paragraph, start + 4)) {
+      from = start + 4;
+      continue;
+    }
+    const openEnd = paragraph.indexOf('>', start);
+    if (openEnd === -1) break;
+    if (paragraph[openEnd - 1] === '/') {
+      from = openEnd + 1;
+      continue;
+    }
+    const close = paragraph.indexOf('</a:t>', openEnd);
+    if (close === -1) break;
+    const text = paragraph.slice(openEnd + 1, close);
+    if (!text.includes('<') && text.trim()) {
+      runs.push(text);
+    }
+    from = close + '</a:t>'.length;
+  }
+
+  return runs;
+}
+
 function extractParagraphs(xml: string): string[] {
   const texts: string[] = [];
-  const runPattern = /<a:t[^>]*>([^<]*)<\/a:t>/g;
-  let match: RegExpExecArray | null;
 
   for (const paragraph of tagBlocks(xml, 'a:p')) {
-    const paraTexts: string[] = [];
-    runPattern.lastIndex = 0;
-    while ((match = runPattern.exec(paragraph)) !== null) {
-      const text = match[1];
-      if (text.trim()) {
-        paraTexts.push(text);
-      }
-    }
+    const paraTexts = textRuns(paragraph);
     if (paraTexts.length > 0) {
       texts.push(paraTexts.join(''));
     }
@@ -110,18 +160,18 @@ function hasPicture(slideXml: string): boolean {
 }
 
 function isHidden(slideXml: string): boolean {
-  return /<p:sld\b[^>]*\sshow="(?:0|false)"/.test(slideXml);
+  return hasAttribute(slideXml, 'p:sld', /\sshow="(?:0|false)"/);
 }
 
 function isTitleShape(shapeXml: string): boolean {
-  return /<p:ph\s[^>]*type="(?:title|ctrTitle)"/.test(shapeXml);
+  return hasAttribute(shapeXml, 'p:ph', /\stype="(?:title|ctrTitle)"/);
 }
 
 function inferRole(slideXml: string, visibleText: string): SourceUnitRole {
   if (visibleText.trim() === '') {
     return hasPicture(slideXml) ? 'image' : 'body';
   }
-  if (/<p:ph\s[^>]*type="title"/.test(slideXml)) {
+  if (hasAttribute(slideXml, 'p:ph', /\stype="title"/)) {
     return 'title';
   }
   return 'body';
@@ -149,7 +199,7 @@ function splitSlideText(slideXml: string): {
 
 function extractNotesText(notesXml: string): string {
   for (const shape of tagBlocks(notesXml, 'p:sp')) {
-    if (!/<p:ph\s[^>]*idx="1"/.test(shape)) continue;
+    if (!hasAttribute(shape, 'p:ph', /\sidx="1"/)) continue;
     const text = extractParagraphs(shape).join('\n');
     if (text.trim()) {
       return text.trim();
@@ -170,24 +220,23 @@ function readDisplayOrder(
   if (presentation == null || rels == null) return null;
 
   const targetById = new Map<string, number>();
-  const relPattern = /<Relationship\b[^>]*>/g;
   const relsXml = new TextDecoder().decode(rels);
-  let rel: RegExpExecArray | null;
-  while ((rel = relPattern.exec(relsXml)) !== null) {
-    const id = /\sId="([^"]+)"/.exec(rel[0])?.[1];
-    const target = /\sTarget="[^"]*?slides\/slide(\d+)\.xml"/.exec(rel[0])?.[1];
-    if (id != null && target != null) {
-      targetById.set(id, parseInt(target, 10));
+  for (const rel of openTags(relsXml, 'Relationship')) {
+    const id = /\sId="([^"]+)"/.exec(rel)?.[1];
+    const target = /\sTarget="([^"]*)"/.exec(rel)?.[1];
+    const slideNumber =
+      target == null ? null : /slides\/slide(\d+)\.xml$/.exec(target)?.[1];
+    if (id != null && slideNumber != null) {
+      targetById.set(id, parseInt(slideNumber, 10));
     }
   }
 
   const order: number[] = [];
   const seen = new Set<number>();
-  const sldIdPattern = /<p:sldId\b[^>]*\sr:id="([^"]+)"/g;
   const presentationXml = new TextDecoder().decode(presentation);
-  let sldId: RegExpExecArray | null;
-  while ((sldId = sldIdPattern.exec(presentationXml)) !== null) {
-    const num = targetById.get(sldId[1]);
+  for (const sldIdTag of openTags(presentationXml, 'p:sldId')) {
+    const relId = /\sr:id="([^"]+)"/.exec(sldIdTag)?.[1];
+    const num = relId == null ? undefined : targetById.get(relId);
     if (num != null && known.has(num) && !seen.has(num)) {
       seen.add(num);
       order.push(num);
