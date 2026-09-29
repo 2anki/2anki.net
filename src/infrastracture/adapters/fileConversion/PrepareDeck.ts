@@ -14,13 +14,17 @@ import {
   isMarkdownFile,
   isPDFFile,
   isPPTFile,
+  isPptxFile,
   isXLSXFile,
   isDocxFile,
 } from '../../../lib/storage/checks';
 import { convertPDFToHTML } from './convertPDFToHTML';
 import { convertPPTToPDF } from './ConvertPPTToPDF';
 import { convertImageToHTML } from './convertImageToHTML';
-import { convertPDFToImages } from './convertPDFToImages';
+import { convertPDFToImages, renderPdfPageImages } from './convertPDFToImages';
+import { extractPptxSourceUnits } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
+import type { SlideUnit } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
+import { combineSlidesIntoHTML } from '../../../lib/pdf/combineSlidesIntoHTML';
 import {
   convertPdfTextToHtml,
   convertPdfTextToHtmlAuto,
@@ -343,6 +347,12 @@ async function convertFile(
       file.contents as Buffer,
       input.workspace
     );
+    const slides = isPptxFile(file.name)
+      ? await extractPptxSourceUnits(file.contents as Buffer)
+      : [];
+    if (slides.some(hasSlideText)) {
+      return convertSlidesToTextCards(file, input, pdContents, slides, t0);
+    }
     const result: ConvertedFile = {
       name: `${file.name}.html`,
       contents: Buffer.from(
@@ -374,6 +384,58 @@ async function convertFile(
   }
 
   return null;
+}
+
+function hasSlideText(slide: SlideUnit): boolean {
+  return (
+    slide.title !== '' ||
+    slide.paragraphs.length > 0 ||
+    slide.speakerNotes !== ''
+  );
+}
+
+// Text-first slides: the title asks, the body and notes answer, and the
+// rendered slide rides on the back so diagrams survive. The blind page
+// pairing stays only for decks with no text at all and for binary .ppt.
+async function convertSlidesToTextCards(
+  file: DeckParserInput['files'][number],
+  input: DeckParserInput,
+  pdfContents: Buffer,
+  slides: SlideUnit[],
+  t0: number
+): Promise<ConvertedFile> {
+  const rendered =
+    input.settings.processPDFs === false
+      ? { imagePaths: [], title: file.name }
+      : await renderPdfPageImages({
+          name: file.name,
+          workspace: input.workspace,
+          noLimits: input.noLimits,
+          contents: pdfContents,
+          settings: input.settings,
+        });
+  if (
+    rendered.imagePaths.length > 0 &&
+    rendered.imagePaths.length !== slides.length
+  ) {
+    console.warn('[PrepareDeck] pptx slide count differs from rendered pages', {
+      file: file.name,
+      slides: slides.length,
+      pages: rendered.imagePaths.length,
+    });
+  }
+  const html = combineSlidesIntoHTML(
+    slides,
+    rendered.imagePaths,
+    rendered.title,
+    input.workspace.location
+  );
+  console.log('[PrepareDeck] convertFile pptx→text cards', {
+    file: file.name,
+    slideCount: slides.length,
+    durationMs: Date.now() - t0,
+  });
+  return { name: `${file.name}.html`, contents: Buffer.from(html) };
 }
 
 interface ConvertedFile {

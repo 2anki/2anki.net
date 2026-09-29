@@ -1,4 +1,4 @@
-import { strToU8, zipSync } from 'fflate';
+import { strToU8, unzipSync, zipSync } from 'fflate';
 import { extractPptxSourceUnits } from './extractPptxSourceUnits';
 
 function buildPptx(slides: Array<{ xml: string; notesXml?: string }>): Buffer {
@@ -153,5 +153,126 @@ describe('extractPptxSourceUnits', () => {
     const units = await extractPptxSourceUnits(pptx);
 
     expect(units[0].visibleText).toBe('Hello World');
+  });
+});
+
+function bodyOnlySlideXml(paragraphs: string[]): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="${NS_A}" xmlns:p="${NS_P}">
+  <p:cSld>
+    <p:spTree>
+      <p:sp>
+        <p:nvSpPr><p:nvPr><p:ph type="body"/></p:nvPr></p:nvSpPr>
+        <p:txBody>
+          ${paragraphs.map((p) => `<a:p><a:r><a:t>${p}</a:t></a:r></a:p>`).join('')}
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sld>`;
+}
+
+function hiddenSlideXml(title: string): string {
+  return slideXml(title, 'hidden body').replace('<p:sld ', '<p:sld show="0" ');
+}
+
+function withPresentationOrder(
+  pptx: Buffer,
+  slideNumbersInDisplayOrder: number[]
+): Buffer {
+  const files = unzipSync(new Uint8Array(pptx));
+  const ids = slideNumbersInDisplayOrder.map(
+    (n, i) => `<p:sldId id="${256 + i}" r:id="rId${n}"/>`
+  );
+  files['ppt/presentation.xml'] = strToU8(
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:p="${NS_P}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:sldIdLst>${ids.join('')}</p:sldIdLst>
+</p:presentation>`
+  );
+  const rels = slideNumbersInDisplayOrder.map(
+    (n) =>
+      `<Relationship Id="rId${n}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${n}.xml"/>`
+  );
+  files['ppt/_rels/presentation.xml.rels'] = strToU8(
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`
+  );
+  return Buffer.from(zipSync(files));
+}
+
+describe('extractPptxSourceUnits — slide structure for text-first cards', () => {
+  it('keeps the title apart from the body paragraphs', async () => {
+    const pptx = buildPptx([{ xml: slideXml('Mitosis', 'Cell division') }]);
+
+    const [unit] = await extractPptxSourceUnits(pptx);
+
+    expect(unit.title).toBe('Mitosis');
+    expect(unit.paragraphs).toEqual(['Cell division']);
+  });
+
+  it('keeps each bullet as its own paragraph', async () => {
+    const pptx = buildPptx([
+      { xml: bodyOnlySlideXml(['Prophase', 'Metaphase', 'Anaphase']) },
+    ]);
+
+    const [unit] = await extractPptxSourceUnits(pptx);
+
+    expect(unit.title).toBe('');
+    expect(unit.paragraphs).toEqual(['Prophase', 'Metaphase', 'Anaphase']);
+  });
+
+  it('treats a centred title placeholder as the title', async () => {
+    const xml = slideXml('Welcome', 'Agenda').replace(
+      'type="title"',
+      'type="ctrTitle"'
+    );
+
+    const [unit] = await extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.title).toBe('Welcome');
+  });
+
+  it('drops hidden slides so units line up with the exported PDF pages', async () => {
+    const pptx = buildPptx([
+      { xml: slideXml('One', 'a') },
+      { xml: hiddenSlideXml('Hidden') },
+      { xml: slideXml('Three', 'c') },
+    ]);
+
+    const units = await extractPptxSourceUnits(pptx);
+
+    expect(units.map((u) => u.title)).toEqual(['One', 'Three']);
+  });
+
+  it('follows the presentation display order, not the slide file numbers', async () => {
+    const pptx = withPresentationOrder(
+      buildPptx([
+        { xml: slideXml('First file', 'a') },
+        { xml: slideXml('Second file', 'b') },
+        { xml: slideXml('Third file', 'c') },
+      ]),
+      [3, 1, 2]
+    );
+
+    const units = await extractPptxSourceUnits(pptx);
+
+    expect(units.map((u) => u.title)).toEqual([
+      'Third file',
+      'First file',
+      'Second file',
+    ]);
+    expect(units.map((u) => u.id)).toEqual(['slide-3', 'slide-1', 'slide-2']);
+  });
+
+  it('reports whether a slide carries a picture, chart or table', async () => {
+    const pptx = buildPptx([
+      { xml: imageSlidXml() },
+      { xml: slideXml('Text only', 'body') },
+    ]);
+
+    const units = await extractPptxSourceUnits(pptx);
+
+    expect(units.map((u) => u.hasPicture)).toEqual([true, false]);
   });
 });

@@ -29,6 +29,7 @@ export const isDocxFile = (fileName: string) => /\.(docx|doc)$/i.exec(fileName);
 export const isPDFFile = (fileName: string) => /.pdf$/i.exec(fileName);
 
 export const isPPTFile = (fileName: string) => /\.(ppt|pptx)$/i.exec(fileName);
+export const isPptxFile = (fileName: string) => /\.pptx$/i.test(fileName);
 
 /**
  * Checks if a file is a compressed file based on its extension or naming pattern.

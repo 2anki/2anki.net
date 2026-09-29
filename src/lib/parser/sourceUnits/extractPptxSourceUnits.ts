@@ -3,8 +3,16 @@ import { SourceUnit, SourceUnitRole } from './SourceUnit';
 
 const SLIDE_PATTERN = /^ppt\/slides\/slide(\d+)\.xml$/;
 const NOTES_PATTERN = /^ppt\/notesSlides\/notesSlide(\d+)\.xml$/;
+const PRESENTATION_XML = 'ppt/presentation.xml';
+const PRESENTATION_RELS = 'ppt/_rels/presentation.xml.rels';
 
-function extractTextFromXml(xml: string): string {
+export interface SlideUnit extends SourceUnit {
+  title: string;
+  paragraphs: string[];
+  hasPicture: boolean;
+}
+
+function extractParagraphs(xml: string): string[] {
   const texts: string[] = [];
   const runPattern = /<a:t[^>]*>([^<]*)<\/a:t>/g;
   let match: RegExpExecArray | null;
@@ -26,7 +34,7 @@ function extractTextFromXml(xml: string): string {
     }
   }
 
-  return texts.join('\n');
+  return texts;
 }
 
 function hasTextShapes(slideXml: string): boolean {
@@ -34,7 +42,15 @@ function hasTextShapes(slideXml: string): boolean {
 }
 
 function hasPicture(slideXml: string): boolean {
-  return /<p:pic\b/.test(slideXml);
+  return /<p:pic\b|<p:graphicFrame\b/.test(slideXml);
+}
+
+function isHidden(slideXml: string): boolean {
+  return /<p:sld\b[^>]*\sshow="0"/.test(slideXml);
+}
+
+function isTitleShape(shapeXml: string): boolean {
+  return /<p:ph\s[^>]*type="(?:title|ctrTitle)"/.test(shapeXml);
 }
 
 function inferRole(slideXml: string, visibleText: string): SourceUnitRole {
@@ -47,19 +63,26 @@ function inferRole(slideXml: string, visibleText: string): SourceUnitRole {
   return 'body';
 }
 
-function extractSlideText(slideXml: string): string {
+function splitSlideText(slideXml: string): {
+  title: string;
+  paragraphs: string[];
+} {
   const shapePattern = /<p:sp\b[\s\S]*?<\/p:sp>/g;
-  const shapeTexts: string[] = [];
+  let title = '';
+  const paragraphs: string[] = [];
   let match: RegExpExecArray | null;
 
   while ((match = shapePattern.exec(slideXml)) !== null) {
-    const text = extractTextFromXml(match[0]);
-    if (text.trim()) {
-      shapeTexts.push(text);
+    const shapeParagraphs = extractParagraphs(match[0]);
+    if (shapeParagraphs.length === 0) continue;
+    if (title === '' && isTitleShape(match[0])) {
+      title = shapeParagraphs.join(' ');
+    } else {
+      paragraphs.push(...shapeParagraphs);
     }
   }
 
-  return shapeTexts.join('\n');
+  return { title, paragraphs };
 }
 
 function extractNotesText(notesXml: string): string {
@@ -67,7 +90,7 @@ function extractNotesText(notesXml: string): string {
   let match: RegExpExecArray | null;
 
   while ((match = bodyPhPattern.exec(notesXml)) !== null) {
-    const text = extractTextFromXml(match[0]);
+    const text = extractParagraphs(match[0]).join('\n');
     if (text.trim()) {
       return text.trim();
     }
@@ -76,9 +99,45 @@ function extractNotesText(notesXml: string): string {
   return '';
 }
 
+// Slide files are numbered in creation order; the order the audience sees
+// lives in presentation.xml, resolved through the package relationships.
+function readDisplayOrder(
+  zip: Record<string, Uint8Array>,
+  known: Set<number>
+): number[] | null {
+  const presentation = zip[PRESENTATION_XML];
+  const rels = zip[PRESENTATION_RELS];
+  if (presentation == null || rels == null) return null;
+
+  const targetById = new Map<string, number>();
+  const relPattern = /<Relationship\b[^>]*>/g;
+  const relsXml = new TextDecoder().decode(rels);
+  let rel: RegExpExecArray | null;
+  while ((rel = relPattern.exec(relsXml)) !== null) {
+    const id = /\sId="([^"]+)"/.exec(rel[0])?.[1];
+    const target = /\sTarget="[^"]*?slides\/slide(\d+)\.xml"/.exec(rel[0])?.[1];
+    if (id != null && target != null) {
+      targetById.set(id, parseInt(target, 10));
+    }
+  }
+
+  const order: number[] = [];
+  const sldIdPattern = /<p:sldId\b[^>]*\sr:id="([^"]+)"/g;
+  const presentationXml = new TextDecoder().decode(presentation);
+  let sldId: RegExpExecArray | null;
+  while ((sldId = sldIdPattern.exec(presentationXml)) !== null) {
+    const num = targetById.get(sldId[1]);
+    if (num != null && known.has(num)) {
+      order.push(num);
+    }
+  }
+
+  return order.length > 0 ? order : null;
+}
+
 export async function extractPptxSourceUnits(
   pptxBuffer: Buffer
-): Promise<SourceUnit[]> {
+): Promise<SlideUnit[]> {
   const zip = unzipSync(new Uint8Array(pptxBuffer));
 
   const slideEntries: Map<number, string> = new Map();
@@ -97,23 +156,34 @@ export async function extractPptxSourceUnits(
     }
   }
 
-  const slideNumbers = [...slideEntries.keys()].sort((a, b) => a - b);
+  const slideNumbers =
+    readDisplayOrder(zip, new Set(slideEntries.keys())) ??
+    [...slideEntries.keys()].sort((a, b) => a - b);
 
-  return slideNumbers.map((num) => {
+  return slideNumbers.flatMap((num) => {
     const slideXml = slideEntries.get(num)!;
-    const notesXml = notesEntries.get(num) ?? '';
+    if (isHidden(slideXml)) return [];
 
-    const visibleText = hasTextShapes(slideXml)
-      ? extractSlideText(slideXml)
-      : '';
+    const notesXml = notesEntries.get(num) ?? '';
+    const { title, paragraphs } = hasTextShapes(slideXml)
+      ? splitSlideText(slideXml)
+      : { title: '', paragraphs: [] };
+    const visibleText = [title, ...paragraphs]
+      .filter((text) => text !== '')
+      .join('\n');
     const speakerNotes = notesXml ? extractNotesText(notesXml) : '';
     const role = inferRole(slideXml, visibleText);
 
-    return {
-      id: `slide-${num}`,
-      visibleText,
-      speakerNotes,
-      role,
-    };
+    return [
+      {
+        id: `slide-${num}`,
+        visibleText,
+        speakerNotes,
+        role,
+        title,
+        paragraphs,
+        hasPicture: hasPicture(slideXml),
+      },
+    ];
   });
 }
