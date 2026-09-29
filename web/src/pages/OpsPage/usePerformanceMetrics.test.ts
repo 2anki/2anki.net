@@ -32,6 +32,7 @@ describe('usePerformanceMetrics', () => {
       status_breakdown_24h: [],
       slowest_jobs_24h: [],
       signup_countries_7d: [],
+      signup_countries_7d_others: 0,
       user_visible_errors_24h: [],
       user_visible_errors_7d: [],
     };

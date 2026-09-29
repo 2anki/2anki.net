@@ -129,7 +129,7 @@ export interface BusinessMetricsResponse {
   pass_sales_7d: {
     day_passes: number;
     week_passes: number;
-    semester_passes?: number;
+    semester_passes: number;
   } | null;
   mrr_timeseries: MrrTimeseriesPoint[] | null;
   active_subs_timeseries: ActiveSubsTimeseriesPoint[] | null;

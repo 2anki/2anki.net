@@ -1,26 +1,14 @@
 import { stripHtmlTags } from '../../../lib/text/stripHtmlTags';
-import type {
-  UploadErrorBody,
-  UploadErrorCode,
+import {
+  isUploadErrorCode,
+  type UploadErrorBody,
+  type UploadErrorCode,
 } from '../../../types/UploadErrorBody';
 
 const REJECTED_FALLBACK =
   'The server rejected the upload. Try again or email support@2anki.net.';
 
-function isValidCode(value: unknown): value is UploadErrorCode {
-  return (
-    value === 'unsupported_format' ||
-    value === 'too_large' ||
-    value === 'invalid_markup' ||
-    value === 'malformed_notion' ||
-    value === 'corrupted_apkg' ||
-    value === 'password_protected_pdf' ||
-    value === 'empty_export' ||
-    value === 'image_only_no_text' ||
-    value === 'ai_credits_exhausted' ||
-    value === 'unknown'
-  );
-}
+const isValidCode = isUploadErrorCode;
 
 export async function extractErrorMessage(
   response: Response
