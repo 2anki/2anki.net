@@ -20,6 +20,18 @@ function makeDb(feedbackRows: { attachments: unknown }[] = []) {
         where: jest.fn().mockReturnValue(deleteWhereChain),
       };
     }
+    if (table === 'held_decks') {
+      const heldDecksChain = {
+        where: jest.fn(),
+        orWhere: jest.fn(),
+        del: jest.fn(),
+        returning: jest.fn().mockResolvedValue([]),
+      };
+      heldDecksChain.where.mockReturnValue(heldDecksChain);
+      heldDecksChain.orWhere.mockReturnValue(heldDecksChain);
+      heldDecksChain.del.mockReturnValue(heldDecksChain);
+      return heldDecksChain;
+    }
     return {};
   });
 
