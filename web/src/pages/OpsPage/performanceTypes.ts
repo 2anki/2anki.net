@@ -24,11 +24,19 @@ export interface SignupCountryBreakdownItem {
   count: number;
 }
 
+export interface ErrorSurfaceCount {
+  surface: string;
+  code: string;
+  count: number;
+}
+
 export interface PerformanceMetricsResponse {
   generated_at: string;
   durations: JobDurationPercentiles[];
   status_breakdown_24h: JobStatusBreakdown[];
   slowest_jobs_24h: SlowJob[];
   signup_countries_7d: SignupCountryBreakdownItem[];
-  signup_countries_7d_others?: number;
+  signup_countries_7d_others: number;
+  user_visible_errors_24h: ErrorSurfaceCount[];
+  user_visible_errors_7d: ErrorSurfaceCount[];
 }

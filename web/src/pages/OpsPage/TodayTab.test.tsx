@@ -50,7 +50,7 @@ const business = {
   churn_30d_pct: 9.1,
   failed_payments_7d: 3,
   new_paid_conversions_7d: 16,
-  pass_sales_7d: { day_passes: 4, week_passes: 1 },
+  pass_sales_7d: { day_passes: 4, week_passes: 1, semester_passes: 0 },
   mrr_timeseries: null,
   active_subs_timeseries: null,
   conversions_vs_churn_weekly: null,
