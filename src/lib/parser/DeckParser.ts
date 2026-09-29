@@ -1380,8 +1380,7 @@ export class DeckParser {
 
     this.emptyBackCount = 0;
     this.strayClozeCount = 0;
-    for (const d of this.payload) {
-      const deck = d;
+    await runSequentially(this.payload, async (deck) => {
       deck.id = get16DigitRandomId();
 
       let counter = 0;
@@ -1439,7 +1438,7 @@ export class DeckParser {
       );
       deck.cards = Deck.CleanCards(produced);
       this.applyGlobalTags(deck.cards);
-    }
+    });
 
     this.applyCardLimit();
 
