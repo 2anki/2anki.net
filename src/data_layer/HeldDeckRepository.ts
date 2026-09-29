@@ -210,7 +210,7 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
 
   async releaseClaim(id: number, claimedBy: number): Promise<void> {
     const row = this.rows.find((r) => r.id === (id as HeldDecks['id']));
-    if (row != null && row.claimed_by === claimedBy) {
+    if (row?.claimed_by === claimedBy) {
       row.claimed_at = null;
       row.claimed_by = null;
     }

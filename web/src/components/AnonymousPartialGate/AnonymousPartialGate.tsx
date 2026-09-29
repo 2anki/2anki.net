@@ -34,7 +34,7 @@ export function AnonymousPartialGate({ held }: Props) {
   }, [held.cardsHeldBack]);
 
   return (
-    <section className={styles.gate} role="region" aria-label={t('gateAria')}>
+    <section className={styles.gate} aria-label={t('gateAria')}>
       <span className={styles.icon} aria-hidden="true">
         <svg
           viewBox="0 0 24 24"

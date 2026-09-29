@@ -2128,38 +2128,33 @@ function UploadForm({
   const showGoogleDrivePanel = showChips && source === 'google_drive';
   const showLocalPanel = !showChips || source === 'local';
 
+  const staticLiveStatusKeys: Partial<Record<ZoneState, string>> = {
+    packaging: 'upload.form.packingFolder',
+    converting: 'upload.form.liveConverting',
+    emptyDeck: 'upload.form.liveEmptyDeck',
+    imageOnly: 'upload.form.liveImageOnly',
+    error: 'upload.form.liveError',
+    limitReached: 'upload.form.liveLimitReached',
+    lockedPdf: 'upload.form.liveLockedPdf',
+    claimingHeld: 'anonymousPartial:preparing',
+  };
+
+  const deckReadyLiveStatus = (): string =>
+    cardCount == null
+      ? t('upload.form.liveDeckReady')
+      : t('upload.form.liveDeckReadyCount', { count: cardCount });
+
   const renderLiveStatus = (): string => {
     if (guardrailVisible && validation) return validation.title;
-    if (zoneState === 'packaging') return t('upload.form.packingFolder');
-    if (zoneState === 'converting') return t('upload.form.liveConverting');
-    if (zoneState === 'success') {
-      if (cardCount == null) return t('upload.form.liveDeckReady');
-      return t('upload.form.liveDeckReadyCount', { count: cardCount });
+    const staticKey = staticLiveStatusKeys[zoneState];
+    if (staticKey != null) return t(staticKey);
+    if (zoneState === 'success' || zoneState === 'heldReady') {
+      return deckReadyLiveStatus();
     }
     if (zoneState === 'multiDeck') {
-      const n = batchResult?.deckCount ?? 0;
-      return t('upload.form.decksReady', { count: n });
-    }
-    if (zoneState === 'emptyDeck') {
-      return t('upload.form.liveEmptyDeck');
-    }
-    if (zoneState === 'imageOnly') {
-      return t('upload.form.liveImageOnly');
-    }
-    if (zoneState === 'error') return t('upload.form.liveError');
-    if (zoneState === 'limitReached') {
-      return t('upload.form.liveLimitReached');
-    }
-    if (zoneState === 'lockedPdf') {
-      return t('upload.form.liveLockedPdf');
-    }
-    if (zoneState === 'claimingHeld') {
-      return t('anonymousPartial:preparing');
-    }
-    if (zoneState === 'heldReady') {
-      return cardCount == null
-        ? t('upload.form.liveDeckReady')
-        : t('upload.form.liveDeckReadyCount', { count: cardCount });
+      return t('upload.form.decksReady', {
+        count: batchResult?.deckCount ?? 0,
+      });
     }
     if (zoneState === 'heldForSignup' && heldDeck != null) {
       return t('anonymousPartial:gateLive', { count: heldDeck.cardCount });
