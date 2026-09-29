@@ -471,7 +471,7 @@ function UploadForm({
         } else if (result.status === 404 || result.status === 410) {
           setZoneState('heldExpired');
         } else if (result.status === 409) {
-          globalThis.location.href = '/limit?kind=card_count';
+          leaveTo('/limit?kind=card_count');
         } else {
           resetForm();
           setErrorMessage(t('upload.form.liveError'));
@@ -489,6 +489,18 @@ function UploadForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
+  const leavingRef = useRef(false);
+  const leaveTo = (url: string): void => {
+    leavingRef.current = true;
+    globalThis.location.href = url;
+  };
+  const leaveViaRedirect = (request: Response): boolean => {
+    if (request.redirected) {
+      leavingRef.current = true;
+    }
+    return handleRedirect(request);
+  };
+
   const handleDayPass = async () => {
     setDayPassError(null);
     setDayPassPending(true);
@@ -503,7 +515,7 @@ function UploadForm({
         'upload-limit-wall'
       );
       if ('url' in result) {
-        globalThis.location.href = result.url;
+        leaveTo(result.url);
         return;
       }
       setDayPassError(
@@ -694,7 +706,9 @@ function UploadForm({
   const uploadCancelledFiredRef = useRef(false);
   useEffect(() => {
     if (zoneState !== 'converting') return;
+    leavingRef.current = false;
     const fireUploadCancelled = () => {
+      if (leavingRef.current) return;
       if (uploadCancelledFiredRef.current) return;
       uploadCancelledFiredRef.current = true;
       track('upload_cancelled', { stage: 'converting' });
@@ -704,6 +718,45 @@ function UploadForm({
       globalThis.removeEventListener('pagehide', fireUploadCancelled);
     };
   }, [zoneState]);
+
+  // Dropbox and Google Drive post the same multipart shape to their own
+  // endpoints and handle the reply identically; only the picker's field name
+  // for a file's size differs.
+  const applyRemoteUploadResponse = async (
+    request: Response,
+    picked: { filename: string | null; sizeBytes: number | null }
+  ): Promise<void> => {
+    if (request.redirected) {
+      const redirectUrl = new URL(request.url, globalThis.location.origin);
+      if (isLimitRedirect(redirectUrl)) {
+        if (isAnonymousLimit(redirectUrl)) {
+          leaveTo('/limit?kind=anonymous');
+          return;
+        }
+        const kind = getLimitKind(redirectUrl);
+        setLimitInfo({
+          filename: picked.filename,
+          fileSizeBytes: kind === 'file_size' ? picked.sizeBytes : null,
+          kind,
+        });
+        setZoneState('limitReached');
+        return;
+      }
+      leaveViaRedirect(request);
+      return;
+    }
+    if (request.status === 202) {
+      leaveTo('/downloads');
+      return;
+    }
+    if (request.status !== 200) {
+      const message = await extractErrorMessage(request);
+      setLocalError(message);
+      setZoneState(zoneStateForUploadError(message));
+      return;
+    }
+    await applyConversionSuccess(request, conversionSuccessHandlers);
+  };
 
   const handleDropboxFiles = async (files: DropboxFile[]) => {
     const first = files[0];
@@ -724,36 +777,10 @@ function UploadForm({
         method: 'post',
         body: formData,
       });
-      if (request.redirected) {
-        const redirectUrl = new URL(request.url, globalThis.location.origin);
-        if (isLimitRedirect(redirectUrl)) {
-          if (isAnonymousLimit(redirectUrl)) {
-            globalThis.location.href = '/limit?kind=anonymous';
-            return;
-          }
-          const kind = getLimitKind(redirectUrl);
-          setLimitInfo({
-            filename: first?.name ?? null,
-            fileSizeBytes: kind === 'file_size' ? (first?.bytes ?? null) : null,
-            kind,
-          });
-          setZoneState('limitReached');
-          return;
-        }
-        handleRedirect(request);
-        return;
-      }
-      if (request.status === 202) {
-        globalThis.location.href = '/downloads';
-        return;
-      }
-      if (request.status !== 200) {
-        const message = await extractErrorMessage(request);
-        setLocalError(message);
-        setZoneState(zoneStateForUploadError(message));
-        return;
-      }
-      await applyConversionSuccess(request, conversionSuccessHandlers);
+      await applyRemoteUploadResponse(request, {
+        filename: first?.name ?? null,
+        sizeBytes: first?.bytes ?? null,
+      });
     } catch (error) {
       setLocalError(toFriendlyThrownError(error));
       setZoneState('error');
@@ -803,37 +830,10 @@ function UploadForm({
         method: 'post',
         body: formData,
       });
-      if (request.redirected) {
-        const redirectUrl = new URL(request.url, globalThis.location.origin);
-        if (isLimitRedirect(redirectUrl)) {
-          if (isAnonymousLimit(redirectUrl)) {
-            globalThis.location.href = '/limit?kind=anonymous';
-            return;
-          }
-          const kind = getLimitKind(redirectUrl);
-          setLimitInfo({
-            filename: first?.name ?? null,
-            fileSizeBytes:
-              kind === 'file_size' ? (first?.sizeBytes ?? null) : null,
-            kind,
-          });
-          setZoneState('limitReached');
-          return;
-        }
-        handleRedirect(request);
-        return;
-      }
-      if (request.status === 202) {
-        globalThis.location.href = '/downloads';
-        return;
-      }
-      if (request.status !== 200) {
-        const message = await extractErrorMessage(request);
-        setLocalError(message);
-        setZoneState(zoneStateForUploadError(message));
-        return;
-      }
-      await applyConversionSuccess(request, conversionSuccessHandlers);
+      await applyRemoteUploadResponse(request, {
+        filename: first?.name ?? null,
+        sizeBytes: first?.sizeBytes ?? null,
+      });
     } catch (error) {
       setLocalError(toFriendlyThrownError(error));
       setZoneState('error');
@@ -882,7 +882,7 @@ function UploadForm({
     uploadedFiles: File[]
   ): boolean => {
     if (isAnonymousLimit(redirectUrl)) {
-      globalThis.location.href = '/limit?kind=anonymous';
+      leaveTo('/limit?kind=anonymous');
       return true;
     }
     const firstFile = uploadedFiles[0];
@@ -904,7 +904,7 @@ function UploadForm({
     if (isLimitRedirect(redirectUrl)) {
       return handleUploadLimitRedirect(redirectUrl, uploadedFiles);
     }
-    return handleRedirect(request);
+    return leaveViaRedirect(request);
   };
 
   const showLockedPdfState = (firstFile: File): void => {
@@ -1014,7 +1014,7 @@ function UploadForm({
         return handleUploadRedirect(request, uploadedFiles);
       }
       if (request.status === 202) {
-        globalThis.location.href = '/downloads';
+        leaveTo('/downloads');
         return true;
       }
       if (request.status !== 200) {
