@@ -227,7 +227,7 @@ function readDisplayOrder(
     const slideNumber =
       target == null ? null : /slides\/slide(\d+)\.xml$/.exec(target)?.[1];
     if (id != null && slideNumber != null) {
-      targetById.set(id, parseInt(slideNumber, 10));
+      targetById.set(id, Number.parseInt(slideNumber, 10));
     }
   }
 
@@ -246,9 +246,7 @@ function readDisplayOrder(
   return order.length > 0 ? order : null;
 }
 
-export async function extractPptxSourceUnits(
-  pptxBuffer: Buffer
-): Promise<SlideUnit[]> {
+export function extractPptxSourceUnits(pptxBuffer: Buffer): SlideUnit[] {
   const zip = unzipNeededParts(pptxBuffer);
 
   const slideEntries: Map<number, string> = new Map();
@@ -257,12 +255,12 @@ export async function extractPptxSourceUnits(
   for (const name of Object.keys(zip)) {
     const slideMatch = SLIDE_PATTERN.exec(name);
     if (slideMatch) {
-      const num = parseInt(slideMatch[1], 10);
+      const num = Number.parseInt(slideMatch[1], 10);
       slideEntries.set(num, new TextDecoder().decode(zip[name]));
     }
     const notesMatch = NOTES_PATTERN.exec(name);
     if (notesMatch) {
-      const num = parseInt(notesMatch[1], 10);
+      const num = Number.parseInt(notesMatch[1], 10);
       notesEntries.set(num, new TextDecoder().decode(zip[name]));
     }
   }

@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 import type { SlideUnit } from '../parser/sourceUnits/extractPptxSourceUnits';
 
 function toSrc(imagePath: string, workspaceLocation?: string): string {
@@ -16,7 +16,8 @@ function escapeHtml(text: string): string {
 
 function bulletList(paragraphs: string[]): string {
   if (paragraphs.length === 0) return '';
-  return `<ul>${paragraphs.map((p) => `<li>${p}</li>`).join('')}</ul>`;
+  const items = paragraphs.map((p) => `<li>${p}</li>`).join('');
+  return `<ul>${items}</ul>`;
 }
 
 function speakerNotesBlock(notes: string): string {

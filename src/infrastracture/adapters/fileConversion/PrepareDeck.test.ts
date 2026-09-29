@@ -93,7 +93,7 @@ jest.mock('./ConvertPPTToPDF', () => ({
 }));
 
 jest.mock('../../../lib/parser/sourceUnits/extractPptxSourceUnits', () => ({
-  extractPptxSourceUnits: jest.fn().mockResolvedValue([]),
+  extractPptxSourceUnits: jest.fn().mockReturnValue([]),
 }));
 const {
   downloadMediaOrSkip,
@@ -1242,7 +1242,7 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
   }
 
   it('builds one text card per slide when the slides carry text', async () => {
-    extractPptxSourceUnits.mockResolvedValueOnce([
+    extractPptxSourceUnits.mockReturnValueOnce([
       {
         id: 'slide-1',
         visibleText: 'Mitosis\nCell division',
@@ -1276,7 +1276,7 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
   });
 
   it('keeps the page-image path when no slide has any text', async () => {
-    extractPptxSourceUnits.mockResolvedValueOnce([
+    extractPptxSourceUnits.mockReturnValueOnce([
       {
         id: 'slide-1',
         visibleText: '',
@@ -1295,7 +1295,9 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
   });
 
   it('falls back to the page-image path when the slide XML cannot be read', async () => {
-    extractPptxSourceUnits.mockRejectedValueOnce(new Error('invalid zip data'));
+    extractPptxSourceUnits.mockImplementationOnce(() => {
+      throw new Error('invalid zip data');
+    });
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
     try {

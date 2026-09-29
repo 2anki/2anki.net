@@ -59,7 +59,7 @@ import type { ConversionEngine } from '../../../lib/parser/conversionEngine';
 import type { InducedRescue } from '../../../lib/parser/induction/candidateRules';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import Workspace from '../../../lib/parser/WorkSpace';
-import fs from 'fs';
+import fs from 'node:fs';
 import path from 'path';
 import {
   logFileLabel,
@@ -82,17 +82,16 @@ async function mapWithConcurrency<T, R>(
   concurrency: number,
   worker: (item: T, index: number) => Promise<R>
 ): Promise<R[]> {
-  const results: R[] = new Array(items.length);
+  const results: R[] = Array.from({ length: items.length });
   let cursor = 0;
   const runnerCount = Math.min(concurrency, items.length);
-  const runners = new Array(runnerCount).fill(null).map(async () => {
-    while (true) {
-      const index = cursor++;
-      if (index >= items.length) return;
-      results[index] = await worker(items[index], index);
-    }
-  });
-  await Promise.all(runners);
+  const runNext = async (): Promise<void> => {
+    const index = cursor++;
+    if (index >= items.length) return;
+    results[index] = await worker(items[index], index);
+    return runNext();
+  };
+  await Promise.all(Array.from({ length: runnerCount }, runNext));
   return results;
 }
 
@@ -349,7 +348,7 @@ async function convertFile(
       input.workspace
     );
     const slides = isPptxFile(file.name)
-      ? await readSlidesOrFallBack(file.name, file.contents as Buffer)
+      ? readSlidesOrFallBack(file.name, file.contents as Buffer)
       : [];
     if (slides.some(hasSlideText)) {
       return convertSlidesToTextCards(file, input, pdContents, slides, t0);
@@ -390,12 +389,9 @@ async function convertFile(
 // LibreOffice already accepted the file; a zip the extractor cannot read
 // (renamed .ppt, zip64, over budget) falls back to the page-pair path instead
 // of failing an upload that used to convert.
-async function readSlidesOrFallBack(
-  fileName: string,
-  contents: Buffer
-): Promise<SlideUnit[]> {
+function readSlidesOrFallBack(fileName: string, contents: Buffer): SlideUnit[] {
   try {
-    return await extractPptxSourceUnits(contents);
+    return extractPptxSourceUnits(contents);
   } catch (error) {
     console.warn('[PrepareDeck] could not read pptx slide text, using pages', {
       file: fileName,
