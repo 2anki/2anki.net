@@ -168,6 +168,12 @@ export const blockToStaticMarkup = async (
     case 'link_preview':
       back += renderLinkPreview(c);
       break;
+    // renderBackChild already recurses into a column's children, because
+    // column is absent from TYPES_THAT_RENDER_OWN_CHILDREN. Rendering them
+    // here too would duplicate every side-by-side layout; this arm exists so
+    // the block is not misreported as a type we could not convert.
+    case 'column':
+      break;
     default:
       handler.recordUnsupportedBlockType(c.type);
       console.debug(`unsupported ${c.type}`);

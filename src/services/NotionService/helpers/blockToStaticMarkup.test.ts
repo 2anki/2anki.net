@@ -474,3 +474,97 @@ describe('blockToStaticMarkup', () => {
     expect(afterFigure).not.toContain('child');
   });
 });
+
+describe('blockToStaticMarkup column blocks', () => {
+  function block(
+    id: string,
+    type: string,
+    body: Record<string, unknown>,
+    hasChildren: boolean
+  ): BlockObjectResponse {
+    return {
+      object: 'block',
+      id,
+      type,
+      [type]: body,
+      parent: { type: 'block_id', block_id: 'parent' },
+      created_time: '2026-09-29T07:46:00.000Z',
+      last_edited_time: '2026-09-29T07:46:00.000Z',
+      created_by: { object: 'user', id: 'user-1' },
+      last_edited_by: { object: 'user', id: 'user-1' },
+      has_children: hasChildren,
+      archived: false,
+      in_trash: false,
+    } as unknown as BlockObjectResponse;
+  }
+
+  function paragraph(id: string, text: string): BlockObjectResponse {
+    return block(
+      id,
+      'paragraph',
+      {
+        rich_text: [
+          {
+            type: 'text',
+            text: { content: text, link: null },
+            annotations: {
+              bold: false,
+              italic: false,
+              strikethrough: false,
+              underline: false,
+              code: false,
+              color: 'default',
+            },
+            plain_text: text,
+            href: null,
+          },
+        ],
+        color: 'default',
+      },
+      false
+    );
+  }
+
+  // Stubbing the Notion API is the external edge; stubbing getBackSide would
+  // remove renderBack from the graph, and renderBack is what decides whether a
+  // column's children get walked a second time.
+  function handlerWithColumns() {
+    const handler = makeHandler();
+    const columnList = block('column-list', 'column_list', {}, true);
+    const children: Record<string, BlockObjectResponse[]> = {
+      'column-list': [
+        block('col-0', 'column', {}, true),
+        block('col-1', 'column', {}, true),
+      ],
+      'col-0': [paragraph('p-left', 'LEFTSIDE')],
+      'col-1': [paragraph('p-right', 'RIGHTSIDE')],
+    };
+    jest
+      .spyOn(handler.api, 'getBlocks')
+      .mockImplementation(async ({ id }: { id: string }) => {
+        return {
+          results: children[id] ?? [],
+          has_more: false,
+          next_cursor: null,
+        } as never;
+      });
+    return { handler, columnList };
+  }
+
+  it('renders each column exactly once', async () => {
+    const { handler, columnList } = handlerWithColumns();
+
+    const back = (await handler.getBackSide(columnList)) ?? '';
+
+    expect(back.match(/LEFTSIDE/g) ?? []).toHaveLength(1);
+    expect(back.match(/RIGHTSIDE/g) ?? []).toHaveLength(1);
+  });
+
+  it('does not report a column as a block it could not convert', async () => {
+    const { handler, columnList } = handlerWithColumns();
+
+    await handler.getBackSide(columnList);
+
+    expect(handler.unsupportedBlockTypes).not.toContain('column');
+  });
+});
