@@ -719,6 +719,45 @@ function UploadForm({
     };
   }, [zoneState]);
 
+  // Dropbox and Google Drive post the same multipart shape to their own
+  // endpoints and handle the reply identically; only the picker's field name
+  // for a file's size differs.
+  const applyRemoteUploadResponse = async (
+    request: Response,
+    picked: { filename: string | null; sizeBytes: number | null }
+  ): Promise<void> => {
+    if (request.redirected) {
+      const redirectUrl = new URL(request.url, globalThis.location.origin);
+      if (isLimitRedirect(redirectUrl)) {
+        if (isAnonymousLimit(redirectUrl)) {
+          leaveTo('/limit?kind=anonymous');
+          return;
+        }
+        const kind = getLimitKind(redirectUrl);
+        setLimitInfo({
+          filename: picked.filename,
+          fileSizeBytes: kind === 'file_size' ? picked.sizeBytes : null,
+          kind,
+        });
+        setZoneState('limitReached');
+        return;
+      }
+      leaveViaRedirect(request);
+      return;
+    }
+    if (request.status === 202) {
+      leaveTo('/downloads');
+      return;
+    }
+    if (request.status !== 200) {
+      const message = await extractErrorMessage(request);
+      setLocalError(message);
+      setZoneState(zoneStateForUploadError(message));
+      return;
+    }
+    await applyConversionSuccess(request, conversionSuccessHandlers);
+  };
+
   const handleDropboxFiles = async (files: DropboxFile[]) => {
     const first = files[0];
     setDropboxFilename(first?.name ?? null);
@@ -738,36 +777,10 @@ function UploadForm({
         method: 'post',
         body: formData,
       });
-      if (request.redirected) {
-        const redirectUrl = new URL(request.url, globalThis.location.origin);
-        if (isLimitRedirect(redirectUrl)) {
-          if (isAnonymousLimit(redirectUrl)) {
-            leaveTo('/limit?kind=anonymous');
-            return;
-          }
-          const kind = getLimitKind(redirectUrl);
-          setLimitInfo({
-            filename: first?.name ?? null,
-            fileSizeBytes: kind === 'file_size' ? (first?.bytes ?? null) : null,
-            kind,
-          });
-          setZoneState('limitReached');
-          return;
-        }
-        leaveViaRedirect(request);
-        return;
-      }
-      if (request.status === 202) {
-        leaveTo('/downloads');
-        return;
-      }
-      if (request.status !== 200) {
-        const message = await extractErrorMessage(request);
-        setLocalError(message);
-        setZoneState(zoneStateForUploadError(message));
-        return;
-      }
-      await applyConversionSuccess(request, conversionSuccessHandlers);
+      await applyRemoteUploadResponse(request, {
+        filename: first?.name ?? null,
+        sizeBytes: first?.bytes ?? null,
+      });
     } catch (error) {
       setLocalError(toFriendlyThrownError(error));
       setZoneState('error');
@@ -817,37 +830,10 @@ function UploadForm({
         method: 'post',
         body: formData,
       });
-      if (request.redirected) {
-        const redirectUrl = new URL(request.url, globalThis.location.origin);
-        if (isLimitRedirect(redirectUrl)) {
-          if (isAnonymousLimit(redirectUrl)) {
-            leaveTo('/limit?kind=anonymous');
-            return;
-          }
-          const kind = getLimitKind(redirectUrl);
-          setLimitInfo({
-            filename: first?.name ?? null,
-            fileSizeBytes:
-              kind === 'file_size' ? (first?.sizeBytes ?? null) : null,
-            kind,
-          });
-          setZoneState('limitReached');
-          return;
-        }
-        leaveViaRedirect(request);
-        return;
-      }
-      if (request.status === 202) {
-        leaveTo('/downloads');
-        return;
-      }
-      if (request.status !== 200) {
-        const message = await extractErrorMessage(request);
-        setLocalError(message);
-        setZoneState(zoneStateForUploadError(message));
-        return;
-      }
-      await applyConversionSuccess(request, conversionSuccessHandlers);
+      await applyRemoteUploadResponse(request, {
+        filename: first?.name ?? null,
+        sizeBytes: first?.sizeBytes ?? null,
+      });
     } catch (error) {
       setLocalError(toFriendlyThrownError(error));
       setZoneState('error');
