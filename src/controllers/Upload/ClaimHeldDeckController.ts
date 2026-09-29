@@ -43,7 +43,10 @@ export class ClaimHeldDeckController {
         anonymousId: anonId(req),
         props: { arm: 'treatment' },
       });
-      return res.status(200).json({ downloadKey: result.downloadKey });
+      return res.status(200).json({
+        downloadKey: result.downloadKey,
+        cardCount: result.cardCount,
+      });
     } catch (err) {
       if (err instanceof NoHeldDeckError) {
         return res.status(404).json({ code: 'no_held_deck' });

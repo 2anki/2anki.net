@@ -135,7 +135,10 @@ describe('ClaimHeldDeckController', () => {
     await controller.claim(buildRequest(ANON), res);
 
     expect(capturedStatus()).toBe(200);
-    expect(capturedJson()).toEqual({ downloadKey: 'owner-key.apkg' });
+    expect(capturedJson()).toEqual({
+      downloadKey: 'owner-key.apkg',
+      cardCount: 34,
+    });
     expect(trackMock).toHaveBeenCalledWith('anonymous_partial_claimed', {
       userId: 7,
       anonymousId: ANON,

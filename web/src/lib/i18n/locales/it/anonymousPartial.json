@@ -1,8 +1,12 @@
 {
-  "headline": "Le tue prime 21 carte sono pronte",
-  "heldBack_one": "{{count}} carta in più non è in questo download",
-  "heldBack_other": "{{count}} carte in più non sono in questo download",
-  "body": "Questo file ha creato {{total}} carte. Un account gratuito ti dà fino a {{monthly}} carte al mese. Creane uno, poi carica di nuovo il file.",
-  "cta": "Crea un account gratuito",
-  "aria": "Mazzo parziale pronto"
+  "gateAria": "Crea un account gratuito per scaricare il tuo mazzo",
+  "gateHeadline": "Le tue prime {{count}} carte sono pronte",
+  "gateBody": "Crea un account gratuito per scaricarle. Fino a {{monthly}} carte al mese, gratis.",
+  "gateContext": "Questo file ha prodotto {{total}} carte.",
+  "gateLive": "Le tue {{count}} carte sono pronte. Crea un account gratuito per scaricarle.",
+  "preparing": "Preparazione del download",
+  "readyBody": "Hai effettuato l'accesso. Scarica il tuo mazzo qui sotto.",
+  "expiredHeadline": "Questo mazzo non è più salvato",
+  "expiredBody": "Conserviamo i mazzi non riscattati solo per un giorno. Rilascia di nuovo il file per ricrearlo.",
+  "expiredCta": "Carica di nuovo"
 }

@@ -76,6 +76,17 @@ export type ReviewCard =
   | { connected: false; reason: 'offline' }
   | { connected: false; reason: 'error' };
 
+export interface HeldDeckSummary {
+  cardCount: number;
+  cardsHeldBack: number;
+}
+
+export interface ClaimHeldDeckResult {
+  status: number;
+  downloadKey: string | null;
+  cardCount: number | null;
+}
+
 export interface CheckoutPrices {
   cohort: 'legacy' | 'v2';
   legacy: boolean;
@@ -378,6 +389,32 @@ export class Backend {
 
   async getUploads(): Promise<UserUpload[]> {
     return get(`${this.baseURL}upload/mine`);
+  }
+
+  async getHeldDeck(): Promise<HeldDeckSummary | null> {
+    const response = await fetch(`${this.baseURL}upload/claim`, {
+      credentials: 'include',
+    });
+    if (response.status === OK) {
+      return (await response.json()) as HeldDeckSummary;
+    }
+    return null;
+  }
+
+  async claimHeldDeck(): Promise<ClaimHeldDeckResult> {
+    const response = await post(`${this.baseURL}upload/claim`, {});
+    if (response.status === OK) {
+      const body = (await response.json().catch(() => ({}))) as {
+        downloadKey?: string | null;
+        cardCount?: number | null;
+      };
+      return {
+        status: OK,
+        downloadKey: body.downloadKey ?? null,
+        cardCount: body.cardCount ?? null,
+      };
+    }
+    return { status: response.status, downloadKey: null, cardCount: null };
   }
 
   async getDropboxUploads(offset = 0): Promise<DropboxUpload[]> {

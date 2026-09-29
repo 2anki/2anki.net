@@ -1,8 +1,12 @@
 {
-  "headline": "Deine ersten 21 Karten sind fertig",
-  "heldBack_one": "{{count}} weitere Karte ist nicht in diesem Download",
-  "heldBack_other": "{{count}} weitere Karten sind nicht in diesem Download",
-  "body": "Diese Datei ergab {{total}} Karten. Ein kostenloses Konto gibt dir bis zu {{monthly}} Karten pro Monat. Erstelle eins und lege die Datei dann noch einmal ab.",
-  "cta": "Kostenloses Konto erstellen",
-  "aria": "Teildeck fertig"
+  "gateAria": "Erstelle ein kostenloses Konto, um dein Deck herunterzuladen",
+  "gateHeadline": "Deine ersten {{count}} Karten sind fertig",
+  "gateBody": "Erstelle ein kostenloses Konto, um sie herunterzuladen. Bis zu {{monthly}} Karten pro Monat, kostenlos.",
+  "gateContext": "Diese Datei ergab {{total}} Karten.",
+  "gateLive": "Deine {{count}} Karten sind fertig. Erstelle ein kostenloses Konto, um sie herunterzuladen.",
+  "preparing": "Dein Download wird vorbereitet",
+  "readyBody": "Du bist angemeldet. Lade dein Deck unten herunter.",
+  "expiredHeadline": "Dieses Deck ist nicht mehr gespeichert",
+  "expiredBody": "Wir bewahren nicht abgeholte Decks nur einen Tag lang auf. Lege die Datei noch einmal ab, um es neu zu erstellen.",
+  "expiredCta": "Erneut hochladen"
 }

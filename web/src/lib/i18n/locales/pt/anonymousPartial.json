@@ -1,8 +1,12 @@
 {
-  "headline": "Seus primeiros 21 cartões estão prontos",
-  "heldBack_one": "{{count}} cartão a mais não está neste download",
-  "heldBack_other": "{{count}} cartões a mais não estão neste download",
-  "body": "Este arquivo gerou {{total}} cartões. Uma conta gratuita dá a você até {{monthly}} cartões por mês. Crie uma e solte o arquivo de novo.",
-  "cta": "Criar uma conta gratuita",
-  "aria": "Baralho parcial pronto"
+  "gateAria": "Crie uma conta gratuita para baixar seu baralho",
+  "gateHeadline": "Suas primeiras {{count}} cartas estão prontas",
+  "gateBody": "Crie uma conta gratuita para baixá-las. Até {{monthly}} cartas por mês, grátis.",
+  "gateContext": "Este arquivo gerou {{total}} cartas.",
+  "gateLive": "Suas {{count}} cartas estão prontas. Crie uma conta gratuita para baixá-las.",
+  "preparing": "Preparando seu download",
+  "readyBody": "Você está conectado. Baixe seu baralho abaixo.",
+  "expiredHeadline": "Este baralho não está mais salvo",
+  "expiredBody": "Guardamos os baralhos não resgatados por apenas um dia. Solte o arquivo novamente para refazê-lo.",
+  "expiredCta": "Enviar novamente"
 }

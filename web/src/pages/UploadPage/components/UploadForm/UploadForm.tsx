@@ -14,6 +14,7 @@ import { extractErrorMessage } from '../../helpers/extractErrorMessage';
 import {
   applyConversionSuccess,
   AI_CREDITS_WARNING_CODE,
+  recoveryDownloadUrl,
   type ConversionSuccessHandlers,
 } from './uploadResponse';
 import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
@@ -54,7 +55,7 @@ import {
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { PostDownloadNudge } from '../../../../components/PostDownloadNudge';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
-import { AnonymousPartialNotice } from '../../../../components/AnonymousPartialNotice/AnonymousPartialNotice';
+import { AnonymousPartialGate } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
 import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
@@ -308,6 +309,8 @@ function UploadForm({
     setEmptyBackCount,
     cardsHeldBack,
     setCardsHeldBack,
+    heldDeck,
+    setHeldDeck,
     setOverSplit,
     creditsUsed,
     setCreditsUsed,
@@ -404,6 +407,7 @@ function UploadForm({
     setDownloadLink,
     setProgressWidth,
     setBatchResult,
+    setHeldDeck,
     setZoneState,
     setStructureRescuedRule,
     recoverDownload: (recoveryUrl, errorMessage) => {
@@ -440,6 +444,41 @@ function UploadForm({
   const { openPicker, isConfigured: isGoogleDriveConfigured } =
     useGooglePicker();
   const driveButtonRef = useRef<HTMLButtonElement>(null);
+  const claimAttemptedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || claimAttemptedRef.current) return;
+    claimAttemptedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const hold = await get2ankiApi().getHeldDeck();
+        if (cancelled || hold == null) return;
+        setHeldDeck({
+          cardCount: hold.cardCount,
+          cardsHeldBack: hold.cardsHeldBack,
+          totalCards: hold.cardCount + hold.cardsHeldBack,
+        });
+        setZoneState('claimingHeld');
+        const result = await get2ankiApi().claimHeldDeck();
+        if (cancelled) return;
+        if (result.status === 200 && result.downloadKey != null) {
+          setDownloadLink(recoveryDownloadUrl(result.downloadKey));
+          setCardCount(result.cardCount);
+          setProgressWidth(100);
+          setZoneState('heldReady');
+        } else {
+          setZoneState('heldExpired');
+        }
+      } catch {
+        if (!cancelled) claimAttemptedRef.current = false;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const handleDayPass = async () => {
     setDayPassError(null);
@@ -1010,7 +1049,9 @@ function UploadForm({
     formStyles.dropZone,
     dropHover && zoneState === 'idle' ? formStyles.dropZoneActive : '',
     zoneState === 'converting' ? formStyles.dropZoneConverting : '',
-    zoneState === 'success' || zoneState === 'multiDeck'
+    zoneState === 'success' ||
+    zoneState === 'multiDeck' ||
+    zoneState === 'heldReady'
       ? formStyles.dropZoneSuccess
       : '',
     zoneState === 'emptyDeck' || zoneState === 'imageOnly'
@@ -1021,7 +1062,12 @@ function UploadForm({
       : '',
     isExistingApkgReject ? formStyles.dropZoneRedirect : '',
     zoneState === 'limitReached' ? formStyles.dropZoneLimit : '',
-    zoneState === 'lockedPdf' ? formStyles.dropZoneLocked : '',
+    zoneState === 'lockedPdf' ||
+    zoneState === 'heldForSignup' ||
+    zoneState === 'claimingHeld' ||
+    zoneState === 'heldExpired'
+      ? formStyles.dropZoneLocked
+      : '',
     isUploadLocked && zoneState === 'idle' ? formStyles.dropZoneLimitWall : '',
     validation?.status === 'warning' ? formStyles.dropZoneWarning : '',
     validation?.status === 'error' ? formStyles.dropZoneError : '',
@@ -1251,12 +1297,6 @@ function UploadForm({
         >
           {t('upload.form.fallbackDownload')}
         </button>
-      )}
-      {cardsHeldBack > 0 && cardCount != null && (
-        <AnonymousPartialNotice
-          cardCount={cardCount}
-          cardsHeldBack={cardsHeldBack}
-        />
       )}
       {successOffer === 'anon_signup' && cardsHeldBack === 0 && (
         <CreateAccountNotice deckName={deckName} />
@@ -1881,6 +1921,82 @@ function UploadForm({
     </div>
   );
 
+  const renderHeldForSignupState = () =>
+    heldDeck == null ? null : (
+      <div className={formStyles.stateContent}>
+        <AnonymousPartialGate held={heldDeck} />
+      </div>
+    );
+
+  const renderClaimingHeldState = () => (
+    <div className={formStyles.stateContent}>
+      <p className={formStyles.successPrimary}>
+        {t('anonymousPartial:preparing')}
+      </p>
+    </div>
+  );
+
+  const renderHeldReadyState = () => (
+    <div className={formStyles.stateContent}>
+      <CheckCircleIcon className={formStyles.iconSuccess} />
+      {cardCount == null ? (
+        <p className={formStyles.successPrimary}>
+          {t('upload.form.deckReady')}
+        </p>
+      ) : (
+        <ConversionResult variant="success" count={cardCount} />
+      )}
+      <p className={formStyles.successSecondary}>
+        {t('anonymousPartial:readyBody')}
+      </p>
+      {downloadLink && (
+        <a
+          href={downloadLink}
+          className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+          onClick={() => {
+            fireAnalyticsEvent('deck_downloaded');
+            track('deck_downloaded', { source: 'held_claim' });
+          }}
+        >
+          {t('upload.form.downloadDeck')}
+        </a>
+      )}
+    </div>
+  );
+
+  const renderHeldExpiredState = () => (
+    <div className={formStyles.stateContent}>
+      <span className={formStyles.lockedIcon} aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          width="40"
+          height="40"
+        >
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      </span>
+      <p className={formStyles.successPrimary}>
+        {t('anonymousPartial:expiredHeadline')}
+      </p>
+      <p className={formStyles.successSecondary}>
+        {t('anonymousPartial:expiredBody')}
+      </p>
+      <button
+        type="button"
+        className={sharedStyles.btnSecondary}
+        onClick={resetForm}
+      >
+        {t('anonymousPartial:expiredCta')}
+      </button>
+    </div>
+  );
+
   const renderLockedState = () => {
     const used = cardUsage?.cards_used ?? 0;
     const limit = cardUsage?.cards_limit ?? 100;
@@ -1974,6 +2090,10 @@ function UploadForm({
     if (zoneState === 'imageOnly') return renderImageOnlyState();
     if (zoneState === 'limitReached' && limitInfo) return renderLimitState();
     if (zoneState === 'lockedPdf') return renderLockedPdfState();
+    if (zoneState === 'heldForSignup') return renderHeldForSignupState();
+    if (zoneState === 'claimingHeld') return renderClaimingHeldState();
+    if (zoneState === 'heldReady') return renderHeldReadyState();
+    if (zoneState === 'heldExpired') return renderHeldExpiredState();
     if (zoneState === 'packaging') return renderPackagingState();
     if (zoneState === 'error' && folderError != null) {
       return renderFolderErrorState(folderError);
@@ -2017,6 +2137,17 @@ function UploadForm({
     }
     if (zoneState === 'lockedPdf') {
       return t('upload.form.liveLockedPdf');
+    }
+    if (zoneState === 'claimingHeld') {
+      return t('anonymousPartial:preparing');
+    }
+    if (zoneState === 'heldReady') {
+      return cardCount == null
+        ? t('upload.form.liveDeckReady')
+        : t('upload.form.liveDeckReadyCount', { count: cardCount });
+    }
+    if (zoneState === 'heldExpired') {
+      return t('anonymousPartial:expiredHeadline');
     }
     return '';
   };
