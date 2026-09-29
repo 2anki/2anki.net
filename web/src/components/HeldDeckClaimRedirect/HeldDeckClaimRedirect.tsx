@@ -23,12 +23,13 @@ export function HeldDeckClaimRedirect({ isLoggedIn }: Props) {
     if (location.pathname === '/upload') return;
     if (globalThis.sessionStorage?.getItem(SESSION_KEY) === '1') return;
     checkedRef.current = true;
-    globalThis.sessionStorage?.setItem(SESSION_KEY, '1');
     let cancelled = false;
     (async () => {
       try {
         const hold = await get2ankiApi().getHeldDeck();
-        if (!cancelled && hold != null) {
+        if (cancelled) return;
+        globalThis.sessionStorage?.setItem(SESSION_KEY, '1');
+        if (hold != null) {
           navigate('/upload');
         }
       } catch {
@@ -37,6 +38,7 @@ export function HeldDeckClaimRedirect({ isLoggedIn }: Props) {
     })();
     return () => {
       cancelled = true;
+      checkedRef.current = false;
     };
   }, [isLoggedIn, location.pathname, navigate]);
 

@@ -477,6 +477,7 @@ function UploadForm({
     })();
     return () => {
       cancelled = true;
+      claimAttemptedRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
