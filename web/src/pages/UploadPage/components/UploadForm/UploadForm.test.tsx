@@ -402,22 +402,14 @@ describe('UploadForm analytics events', () => {
     expect(cancelledCalls[0][1]).toEqual({ stage: 'converting' });
   });
 
-  it('does not fire upload_cancelled when the async job path redirects to downloads', async () => {
+  async function submitAndGetHarness(response: Record<string, unknown>) {
     const { track } = await import('../../../../lib/analytics/track');
     const trackMock = vi.mocked(track);
     trackMock.mockClear();
 
     const locationStub = { href: '', origin: 'http://localhost' } as Location;
     vi.stubGlobal('location', locationStub);
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        redirected: false,
-        status: 202,
-        url: 'http://localhost/api/upload/file',
-        headers: new Headers(),
-      })
-    );
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
 
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} />
@@ -428,6 +420,23 @@ describe('UploadForm analytics events', () => {
         new Event('submit', { bubbles: true, cancelable: true })
       );
     });
+
+    const cancelCount = () =>
+      trackMock.mock.calls.filter(([name]) => name === 'upload_cancelled')
+        .length;
+    return { locationStub, cancelCount };
+  }
+
+  const asyncJobAccepted = {
+    redirected: false,
+    status: 202,
+    url: 'http://localhost/api/upload/file',
+    headers: new Headers(),
+  };
+
+  it('does not fire upload_cancelled when the async job path redirects to downloads', async () => {
+    const { locationStub, cancelCount } =
+      await submitAndGetHarness(asyncJobAccepted);
 
     expect(locationStub.href).toBe('/downloads');
 
@@ -435,37 +444,15 @@ describe('UploadForm analytics events', () => {
       globalThis.dispatchEvent(new Event('pagehide'));
     });
 
-    const cancelledCalls = trackMock.mock.calls.filter(
-      ([name]) => name === 'upload_cancelled'
-    );
-    expect(cancelledCalls).toHaveLength(0);
+    expect(cancelCount()).toBe(0);
   });
 
   it('follows a non-limit server redirect and does not count it as a cancel', async () => {
-    const { track } = await import('../../../../lib/analytics/track');
-    const trackMock = vi.mocked(track);
-    trackMock.mockClear();
-
-    const locationStub = { href: '', origin: 'http://localhost' } as Location;
-    vi.stubGlobal('location', locationStub);
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        redirected: true,
-        status: 200,
-        url: 'http://localhost/upload',
-        headers: new Headers(),
-      })
-    );
-
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} />
-    );
-    const form = container.querySelector('form')!;
-    await act(async () => {
-      form.dispatchEvent(
-        new Event('submit', { bubbles: true, cancelable: true })
-      );
+    const { locationStub, cancelCount } = await submitAndGetHarness({
+      redirected: true,
+      status: 200,
+      url: 'http://localhost/upload',
+      headers: new Headers(),
     });
 
     expect(locationStub.href).toBe('http://localhost/upload');
@@ -474,38 +461,11 @@ describe('UploadForm analytics events', () => {
       globalThis.dispatchEvent(new Event('pagehide'));
     });
 
-    const cancelledCalls = trackMock.mock.calls.filter(
-      ([name]) => name === 'upload_cancelled'
-    );
-    expect(cancelledCalls).toHaveLength(0);
+    expect(cancelCount()).toBe(0);
   });
 
   it('stays silent when a completed conversion is restored from bfcache', async () => {
-    const { track } = await import('../../../../lib/analytics/track');
-    const trackMock = vi.mocked(track);
-    trackMock.mockClear();
-
-    const locationStub = { href: '', origin: 'http://localhost' } as Location;
-    vi.stubGlobal('location', locationStub);
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        redirected: false,
-        status: 202,
-        url: 'http://localhost/api/upload/file',
-        headers: new Headers(),
-      })
-    );
-
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} />
-    );
-    const form = container.querySelector('form')!;
-    await act(async () => {
-      form.dispatchEvent(
-        new Event('submit', { bubbles: true, cancelable: true })
-      );
-    });
+    const { cancelCount } = await submitAndGetHarness(asyncJobAccepted);
 
     await act(async () => {
       globalThis.dispatchEvent(new Event('pagehide'));
@@ -515,10 +475,7 @@ describe('UploadForm analytics events', () => {
       globalThis.dispatchEvent(new Event('pagehide'));
     });
 
-    const cancelledCalls = trackMock.mock.calls.filter(
-      ([name]) => name === 'upload_cancelled'
-    );
-    expect(cancelledCalls).toHaveLength(0);
+    expect(cancelCount()).toBe(0);
   });
 
   it('does not fire upload_cancelled on pagehide when no conversion is in flight', async () => {
