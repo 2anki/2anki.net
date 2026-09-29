@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,6 +35,25 @@ describe('HeldDeckClaimRedirect', () => {
   it('redirects to /upload when a hold is waiting off the upload page', async () => {
     getHeldDeck.mockResolvedValue({ cardCount: 21, cardsHeldBack: 13 });
     const { findByText } = renderAt('/notion', true);
+    expect(await findByText('upload')).toBeInTheDocument();
+  });
+
+  it('still redirects when StrictMode runs the effect twice', async () => {
+    getHeldDeck.mockResolvedValue({ cardCount: 21, cardsHeldBack: 13 });
+    vi.mocked(get2ankiApi).mockReturnValue({
+      getHeldDeck,
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    const { findByText } = render(
+      <StrictMode>
+        <MemoryRouter initialEntries={['/notion']}>
+          <HeldDeckClaimRedirect isLoggedIn={true} />
+          <Routes>
+            <Route path="/notion" element={<p>notion</p>} />
+            <Route path="/upload" element={<p>upload</p>} />
+          </Routes>
+        </MemoryRouter>
+      </StrictMode>
+    );
     expect(await findByText('upload')).toBeInTheDocument();
   });
 
