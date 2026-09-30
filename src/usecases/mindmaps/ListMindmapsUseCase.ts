@@ -15,6 +15,12 @@ export interface MindmapAccessInfo {
   currentCount: number;
   freeMapLimit: number;
   maxNodesPerMap: number;
+  // Whether buying something on the pricing page would actually raise this
+  // person's cap. Only the free tier can: a subscriber is already on the
+  // subscriber cap, and the one plan above it is Auto Sync, which the pricing
+  // page does not sell. Without this the client offered them an upgrade that
+  // led nowhere.
+  canUpgrade: boolean;
 }
 
 export interface ListMindmapsResult {
@@ -58,6 +64,7 @@ export class ListMindmapsUseCase {
         freeMapLimit: resolveMapLimit(hasUnlimited, isPaying) ?? FREE_MAP_LIMIT,
         maxNodesPerMap:
           resolveNodeLimit(hasUnlimited, isPaying) ?? FREE_NODE_LIMIT,
+        canUpgrade: !hasUnlimited && !isPaying,
       },
     };
   }

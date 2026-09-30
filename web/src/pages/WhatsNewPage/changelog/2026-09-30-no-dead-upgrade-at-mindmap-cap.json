@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-30-no-dead-upgrade-at-mindmap-cap",
+  "date": "2026-09-30",
+  "type": "fix",
+  "title": "Subscribers at the mind map limit are no longer offered an upgrade that does not exist"
+}

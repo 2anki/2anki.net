@@ -41,6 +41,7 @@ export interface MindmapAccessInfo {
   currentCount: number;
   freeMapLimit: number;
   maxNodesPerMap: number;
+  canUpgrade: boolean;
 }
 
 export interface ListMindmapsResult {
