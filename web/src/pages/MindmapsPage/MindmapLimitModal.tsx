@@ -6,11 +6,13 @@ import sharedStyles from '../../styles/shared.module.css';
 interface MindmapLimitModalProps {
   onClose: () => void;
   limit: number;
+  canUpgrade: boolean;
 }
 
 export function MindmapLimitModal({
   onClose,
   limit,
+  canUpgrade,
 }: Readonly<MindmapLimitModalProps>) {
   const { t } = useTranslation('tools');
   return (
@@ -24,26 +26,28 @@ export function MindmapLimitModal({
         </p>
       </div>
       <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-        <Link
-          to="/pricing"
-          style={{
-            display: 'inline-block',
-            padding: '0.75rem 1.5rem',
-            background: 'var(--color-primary)',
-            color: '#fff',
-            borderRadius: 'var(--radius-md)',
-            fontWeight: 'var(--font-semibold)',
-            textDecoration: 'none',
-          }}
-        >
-          {t('mindmaps.upgrade')}
-        </Link>
+        {canUpgrade && (
+          <Link
+            to="/pricing?source=mindmap-limit"
+            style={{
+              display: 'inline-block',
+              padding: '0.75rem 1.5rem',
+              background: 'var(--color-primary)',
+              color: '#fff',
+              borderRadius: 'var(--radius-md)',
+              fontWeight: 'var(--font-semibold)',
+              textDecoration: 'none',
+            }}
+          >
+            {t('mindmaps.upgrade')}
+          </Link>
+        )}
         <button
           type="button"
           onClick={onClose}
           className={sharedStyles.btnSecondary}
         >
-          {t('mindmaps.notNow')}
+          {canUpgrade ? t('mindmaps.notNow') : t('mindmaps.close')}
         </button>
       </div>
     </div>

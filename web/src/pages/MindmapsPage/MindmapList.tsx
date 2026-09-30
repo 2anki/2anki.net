@@ -46,6 +46,7 @@ export function MindmapList() {
     return (
       <MindmapLimitModal
         limit={data?.access.freeMapLimit ?? 3}
+        canUpgrade={data?.access.canUpgrade ?? true}
         onClose={() => setShowLimitModal(false)}
       />
     );

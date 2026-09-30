@@ -3,10 +3,14 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MindmapLimitModal } from './MindmapLimitModal';
 
-function renderModal(limit: number) {
+function renderModal(limit: number, canUpgrade = true) {
   return render(
     <MemoryRouter>
-      <MindmapLimitModal limit={limit} onClose={() => {}} />
+      <MindmapLimitModal
+        limit={limit}
+        canUpgrade={canUpgrade}
+        onClose={() => {}}
+      />
     </MemoryRouter>
   );
 }
@@ -33,5 +37,28 @@ describe('MindmapLimitModal', () => {
     renderModal(25);
     expect(screen.getByText(/limit of 25 mind maps/)).toBeDefined();
     expect(screen.getByText(/includes 25 mind maps/)).toBeDefined();
+  });
+
+  it('offers the upgrade to someone a purchase would actually help', () => {
+    renderModal(3, true);
+
+    expect(screen.getByRole('link', { name: /upgrade/i })).toHaveAttribute(
+      'href',
+      '/pricing?source=mindmap-limit'
+    );
+  });
+
+  it('offers no upgrade at the subscriber cap, where nothing on the pricing page raises it', () => {
+    renderModal(25, false);
+
+    expect(screen.queryByRole('link', { name: /upgrade/i })).toBeNull();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('closes rather than deferring when there is nothing to defer', () => {
+    renderModal(25, false);
+
+    expect(screen.getByRole('button', { name: /close/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /not now/i })).toBeNull();
   });
 });

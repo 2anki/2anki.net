@@ -49,6 +49,7 @@ describe('ListMindmapsUseCase', () => {
     expect(result.access.currentCount).toBe(2);
     expect(result.access.freeMapLimit).toBe(FREE_MAP_LIMIT);
     expect(result.access.maxNodesPerMap).toBe(FREE_NODE_LIMIT);
+    expect(result.access.canUpgrade).toBe(true);
   });
 
   it('reports the subscriber caps for a paying subscriber without unlimited access', async () => {
@@ -65,6 +66,8 @@ describe('ListMindmapsUseCase', () => {
     expect(result.access.hasUnlimited).toBe(false);
     expect(result.access.freeMapLimit).toBe(SUBSCRIBER_MAP_LIMIT);
     expect(result.access.maxNodesPerMap).toBe(SUBSCRIBER_NODE_LIMIT);
+    // A subscriber is already on the highest cap the pricing page sells.
+    expect(result.access.canUpgrade).toBe(false);
   });
 
   it('does not throw when subscriptions is undefined (guard against caller bug)', async () => {
@@ -107,6 +110,7 @@ describe('ListMindmapsUseCase', () => {
     });
 
     expect(result.access.hasUnlimited).toBe(true);
+    expect(result.access.canUpgrade).toBe(false);
   });
 
   it('returns hasUnlimited true for an active auto-sync subscriber', async () => {
@@ -123,5 +127,6 @@ describe('ListMindmapsUseCase', () => {
     });
 
     expect(result.access.hasUnlimited).toBe(true);
+    expect(result.access.canUpgrade).toBe(false);
   });
 });
