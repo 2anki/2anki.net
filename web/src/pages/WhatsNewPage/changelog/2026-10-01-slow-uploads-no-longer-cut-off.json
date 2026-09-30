@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-01-slow-uploads-no-longer-cut-off",
+  "date": "2026-10-01",
+  "type": "fix",
+  "title": "A big upload on a slow connection is no longer cut off after five minutes"
+}
