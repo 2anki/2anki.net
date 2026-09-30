@@ -14,8 +14,12 @@ export const HEADERS_TIMEOUT_MS = 66_000;
 // 302s and 331s after the request arrived, each surfacing to Apache as
 // 'AH01084 (32) Broken pipe' then a 502 and to the visitor as 'Failed to
 // fetch' with no message. Match the proxy so Node is never the side that cuts.
-// headersTimeout still bounds the header phase, and multer's per-plan fileSize
-// caps bound the body, so this does not widen a slow-body hold indefinitely.
+// The cost, stated honestly: requestTimeout is per-server, so every route that
+// takes a body now holds a slow one for fifteen minutes instead of five. That
+// is bounded, not unbounded - headersTimeout still cuts the slow-header attack
+// at 66s, and every body is size-capped (multer's per-plan fileSize on the
+// upload and apkg routes, express.json's 50mb everywhere else) - but it is a
+// three-fold widening of the hold window, not a no-op.
 export const REQUEST_TIMEOUT_MS = 900_000;
 
 export function applyHttpServerTimeouts(server: http.Server): void {
