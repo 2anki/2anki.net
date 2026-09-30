@@ -117,6 +117,48 @@ describe('UnlimitedCheckoutController', () => {
     });
   });
 
+  it('records the surface on checkout_started so the interval is attributable', async () => {
+    const req = {
+      body: { interval: 'year', surface: 'limit-wall' },
+    } as Request;
+    const res = makeResponse();
+    const sink = makeSink();
+    const controller = new UnlimitedCheckoutController(
+      makeUseCase('v2'),
+      makeContext({ pricingV2On: true }),
+      sink
+    );
+
+    await controller.createSession(req, res as unknown as Response);
+
+    expect(sink.record).toHaveBeenCalledWith({
+      name: 'checkout_started',
+      user_id: 42,
+      props: {
+        plan: 'unlimited',
+        interval: 'year',
+        cohort: 'v2',
+        surface: 'limit-wall',
+      },
+    });
+  });
+
+  it('omits surface from checkout_started when the caller sent none', async () => {
+    const req = { body: { interval: 'month' } } as Request;
+    const res = makeResponse();
+    const sink = makeSink();
+    const controller = new UnlimitedCheckoutController(
+      makeUseCase('v2'),
+      makeContext({ pricingV2On: true }),
+      sink
+    );
+
+    await controller.createSession(req, res as unknown as Response);
+
+    const recorded = sink.record.mock.calls[0][0];
+    expect(recorded.props).not.toHaveProperty('surface');
+  });
+
   it('forwards the anon_id cookie to the use case when present', async () => {
     const req = {
       body: { interval: 'month' },

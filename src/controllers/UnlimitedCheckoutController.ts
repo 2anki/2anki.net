@@ -35,6 +35,7 @@ class UnlimitedCheckoutController {
     const anonId = (req.cookies?.anon_id as string | undefined) ?? undefined;
     const gaClientId = parseGaClientId(req.cookies?._ga);
     const createdAt = await this.context.getUserCreatedAt(userId);
+    const surface = parseCheckoutSurface(req.body?.surface);
 
     let result;
     try {
@@ -44,7 +45,7 @@ class UnlimitedCheckoutController {
         interval: interval as UnlimitedInterval,
         variant: parsePricingVariant(req.body?.variant),
         anonId,
-        surface: parseCheckoutSurface(req.body?.surface),
+        surface,
         gaClientId,
         pricingV2On: this.context.pricingV2On,
         createdAt,
@@ -67,6 +68,7 @@ class UnlimitedCheckoutController {
         plan: 'unlimited',
         interval,
         cohort: result.cohort,
+        ...(surface == null ? {} : { surface }),
       },
     });
 

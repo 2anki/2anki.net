@@ -40,7 +40,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       expect.objectContaining({
         mode: 'subscription',
         line_items: [{ price: MONTHLY_PRICE_ID, quantity: 1 }],
-        metadata: { user_id: '1', cohort: 'legacy' },
+        metadata: { user_id: '1', cohort: 'legacy', interval: 'month' },
         subscription_data: { metadata: { user_id: '1' } },
       })
     );
@@ -70,7 +70,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       expect.objectContaining({
         mode: 'subscription',
         line_items: [{ price: YEARLY_PRICE_ID, quantity: 1 }],
-        metadata: { user_id: '2', cohort: 'legacy' },
+        metadata: { user_id: '2', cohort: 'legacy', interval: 'year' },
       })
     );
   });
@@ -191,7 +191,12 @@ describe('UnlimitedCheckoutUseCase', () => {
 
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: { user_id: '8', cohort: 'legacy', anon_id: 'anon-uuid-123' },
+        metadata: {
+          user_id: '8',
+          cohort: 'legacy',
+          interval: 'month',
+          anon_id: 'anon-uuid-123',
+        },
       })
     );
   });
@@ -214,7 +219,7 @@ describe('UnlimitedCheckoutUseCase', () => {
 
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: { user_id: '9', cohort: 'legacy' },
+        metadata: { user_id: '9', cohort: 'legacy', interval: 'month' },
       })
     );
   });
@@ -238,7 +243,12 @@ describe('UnlimitedCheckoutUseCase', () => {
 
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: { user_id: '10', cohort: 'legacy', surface: 'pricing_page' },
+        metadata: {
+          user_id: '10',
+          cohort: 'legacy',
+          interval: 'month',
+          surface: 'pricing_page',
+        },
       })
     );
   });
@@ -261,7 +271,7 @@ describe('UnlimitedCheckoutUseCase', () => {
 
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: { user_id: '11', cohort: 'legacy' },
+        metadata: { user_id: '11', cohort: 'legacy', interval: 'month' },
       })
     );
   });
@@ -288,6 +298,7 @@ describe('UnlimitedCheckoutUseCase', () => {
         metadata: {
           user_id: '12',
           cohort: 'legacy',
+          interval: 'month',
           ga_client_id: '1234567890.987654321',
         },
       })
@@ -312,7 +323,7 @@ describe('UnlimitedCheckoutUseCase', () => {
 
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: { user_id: '13', cohort: 'legacy' },
+        metadata: { user_id: '13', cohort: 'legacy', interval: 'month' },
       })
     );
   });
@@ -397,7 +408,7 @@ describe('UnlimitedCheckoutUseCase', () => {
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
         line_items: [{ price: MONTHLY_PRICE_ID, quantity: 1 }],
-        metadata: { user_id: '20', cohort: 'legacy' },
+        metadata: { user_id: '20', cohort: 'legacy', interval: 'month' },
       })
     );
   });
@@ -425,7 +436,7 @@ describe('UnlimitedCheckoutUseCase', () => {
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
         line_items: [{ price: 'price_v2_annual', quantity: 1 }],
-        metadata: { user_id: '21', cohort: 'v2' },
+        metadata: { user_id: '21', cohort: 'v2', interval: 'year' },
       })
     );
   });
@@ -453,7 +464,7 @@ describe('UnlimitedCheckoutUseCase', () => {
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
         line_items: [{ price: 'price_v2_monthly', quantity: 1 }],
-        metadata: { user_id: '22', cohort: 'v2' },
+        metadata: { user_id: '22', cohort: 'v2', interval: 'month' },
       })
     );
   });
@@ -480,7 +491,7 @@ describe('UnlimitedCheckoutUseCase', () => {
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
         line_items: [{ price: MONTHLY_PRICE_ID, quantity: 1 }],
-        metadata: { user_id: '23', cohort: 'v2' },
+        metadata: { user_id: '23', cohort: 'v2', interval: 'month' },
       })
     );
   });
@@ -531,7 +542,7 @@ describe('UnlimitedCheckoutUseCase', () => {
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
         line_items: [{ price: MONTHLY_PRICE_ID, quantity: 1 }],
-        metadata: { user_id: '24', cohort: 'legacy' },
+        metadata: { user_id: '24', cohort: 'legacy', interval: 'month' },
       })
     );
   });

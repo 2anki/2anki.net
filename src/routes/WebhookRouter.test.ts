@@ -831,6 +831,52 @@ describe('WebhookRouter — checkout_completed funnel join', () => {
     );
   });
 
+  it('emits checkout_completed with the interval a subscription was bought on', async () => {
+    mockWebhookEvent = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_interval',
+          mode: 'subscription',
+          metadata: { user_id: '13', surface: 'limit-wall', interval: 'year' },
+        },
+      },
+    };
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    expect(mockTrack).toHaveBeenCalledWith(
+      'checkout_completed',
+      expect.objectContaining({
+        userId: 13,
+        props: expect.objectContaining({
+          surface: 'limit-wall',
+          interval: 'year',
+        }),
+      })
+    );
+  });
+
+  it('omits interval from checkout_completed props for a pass purchase', async () => {
+    mockWebhookEvent = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_pass_no_interval',
+          mode: 'payment',
+          metadata: { user_id: '14', pass_kind: '24h' },
+        },
+      },
+    };
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    const call = mockTrack.mock.calls.find(
+      (c) => c[0] === 'checkout_completed'
+    );
+    expect(call?.[1].props.interval).toBeUndefined();
+  });
+
   it('omits surface from checkout_completed props when metadata lacks it', async () => {
     mockWebhookEvent = {
       type: 'checkout.session.completed',
