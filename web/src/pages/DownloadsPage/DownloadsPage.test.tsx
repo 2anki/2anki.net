@@ -151,27 +151,11 @@ describe('DownloadsPage paywall query param', () => {
     delete (globalThis as AnalyticsGlobals).gtag;
   });
 
-  it('shows PaywallBanner when ?paywall=1 is present', () => {
+  it('shows no upgrade banner, even for the query the removed one listened for', () => {
     renderAt('/downloads?paywall=1');
-    expect(
-      screen.getByText('One conversion at a time on the free plan')
-    ).toBeInTheDocument();
-  });
-
-  it('does not show PaywallBanner without ?paywall=1', () => {
-    renderAt('/downloads');
     expect(
       screen.queryByText('One conversion at a time on the free plan')
     ).not.toBeInTheDocument();
-  });
-
-  it('renders PaywallBanner without the in-progress affordance when no active job exists', () => {
-    mockJobs = [];
-    renderAt('/downloads?paywall=1');
-    expect(
-      screen.getByText('One conversion at a time on the free plan')
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Or wait for/)).not.toBeInTheDocument();
   });
 });
 

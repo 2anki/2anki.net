@@ -17,7 +17,6 @@ import useGoogleDriveUploads from './hooks/useGoogleDriveUploads';
 import { SkeletonList } from '../../components/Skeleton/Skeleton';
 import { EmptyDownloadsSection } from './components/EmptyDownloadsSection';
 import { redirectOnError } from '../../components/shared/redirectOnError';
-import { PaywallBanner } from './components/PaywallBanner';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { toDeckRows, DeckRow } from './helpers/toDeckRows';
@@ -344,7 +343,6 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
   const sharedKeySet = new Set(activeShares.map((s) => s.upload_key));
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const showPaywall = searchParams.get('paywall') === '1';
   const [showVerifiedBanner, setShowVerifiedBanner] = useState(
     searchParams.get('verified') === '1'
   );
@@ -497,10 +495,6 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
         <SkeletonList count={4} />
       ) : (
         <>
-          {showPaywall && (
-            <PaywallBanner inProgressJob={activeJobs[0] ?? null} />
-          )}
-
           <EmptyDownloadsSection
             isEmpty={isGloballyEmpty && activeFilter === 'all'}
           />
