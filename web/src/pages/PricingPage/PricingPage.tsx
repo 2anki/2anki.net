@@ -21,11 +21,17 @@ import sharedStyles from '../../styles/shared.module.css';
 import { formatMonthly, LEGACY_UNLIMITED_PRICING } from './pricing.constants';
 import { buildPricingFaq } from './pricingFaq';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
+import {
+  OwnedPlanNotice,
+  ownsOngoingAccess,
+  type PricingEntitlement,
+} from './components/OwnedPlanNotice';
 
 interface PricingPageProps {
   isLoggedIn: boolean;
   email?: string;
   signupCountry?: string | null;
+  entitlement?: PricingEntitlement;
 }
 
 type PassState = 'idle' | 'pending' | 'error';
@@ -34,6 +40,7 @@ export default function PricingPage({
   isLoggedIn,
   email: _email,
   signupCountry,
+  entitlement,
 }: Readonly<PricingPageProps>) {
   const { t } = useTranslation();
   const isUS = signupCountry === 'US';
@@ -280,7 +287,9 @@ export default function PricingPage({
         )}
       </div>
 
-      {unlimitedFirst ? (
+      <OwnedPlanNotice entitlement={entitlement} />
+
+      {ownsOngoingAccess(entitlement) ? null : unlimitedFirst ? (
         <>
           {monthlySection}
           {passesSection}

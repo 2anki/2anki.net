@@ -750,3 +750,45 @@ describe('PricingPage Pro billing toggle', () => {
     );
   });
 });
+
+const renderPricing = (entitlement: unknown) =>
+  renderAt('/pricing', {
+    isLoggedIn: true,
+    entitlement: entitlement as never,
+  });
+
+describe('PricingPage entitlement awareness', () => {
+  const buyButtons = () =>
+    screen
+      .queryAllByRole('button')
+      .filter((b) => /get |upgrade/i.test(b.textContent ?? ''));
+
+  it('does not offer a lifetime holder anything to buy', () => {
+    renderPricing({ patreon: true });
+
+    expect(buyButtons()).toHaveLength(0);
+  });
+
+  it('does not offer an active subscriber a second subscription', () => {
+    renderPricing({ subscriber: true, planSource: 'stripe' });
+
+    expect(buyButtons()).toHaveLength(0);
+  });
+
+  it('keeps the purchase options for a pass holder, who may still upgrade', () => {
+    renderPricing({
+      subscriber: true,
+      passKind: '120d',
+      passExpiresAt: new Date(Date.now() + 8.64e7).toISOString(),
+    });
+
+    expect(screen.getAllByText(/Semester Pass/).length).toBeGreaterThan(0);
+    expect(buyButtons().length).toBeGreaterThan(0);
+  });
+
+  it('shows the full menu to someone with no entitlement', () => {
+    renderPricing(undefined);
+
+    expect(buyButtons().length).toBeGreaterThan(0);
+  });
+});
