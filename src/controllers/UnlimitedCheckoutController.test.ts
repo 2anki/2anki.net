@@ -113,7 +113,7 @@ describe('UnlimitedCheckoutController', () => {
     expect(sink.record).toHaveBeenCalledWith({
       name: 'checkout_started',
       user_id: 42,
-      props: { plan: 'unlimited', interval: 'year', cohort: 'v2' },
+      props: { plan: 'subscription', interval: 'year', cohort: 'v2' },
     });
   });
 
@@ -135,7 +135,7 @@ describe('UnlimitedCheckoutController', () => {
       name: 'checkout_started',
       user_id: 42,
       props: {
-        plan: 'unlimited',
+        plan: 'subscription',
         interval: 'year',
         cohort: 'v2',
         surface: 'limit-wall',
