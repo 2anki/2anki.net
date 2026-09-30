@@ -98,6 +98,9 @@ const UploadSuccessPreviewPage = import.meta.env.DEV
 const DownloadsPreviewPage = import.meta.env.DEV
   ? lazy(() => import('./pages/DownloadsPreviewPage/DownloadsPreviewPage'))
   : null;
+const PricingPreviewPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/PricingPreviewPage/PricingPreviewPage'))
+  : null;
 const DocsPage = lazyWithRetry(
   () => import('./pages/DocsPage/DocsPage'),
   './pages/DocsPage/DocsPage'
@@ -510,6 +513,12 @@ function AppContent({
             )}
             {LimitPreviewPage && (
               <Route path="/dev/limit-preview" element={<LimitPreviewPage />} />
+            )}
+            {PricingPreviewPage && (
+              <Route
+                path="/dev/pricing-preview"
+                element={<PricingPreviewPage />}
+              />
             )}
             {NotionPreviewPage && (
               <Route
