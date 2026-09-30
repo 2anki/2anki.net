@@ -70,8 +70,10 @@
 }
 
 .contextBanner {
-  display: inline-block;
+  display: block;
+  width: fit-content;
   margin: 0 auto 1.5rem;
+  text-align: center;
   padding: 0.625rem 1rem;
   border-radius: var(--radius-md);
   background: var(--color-primary-light);
