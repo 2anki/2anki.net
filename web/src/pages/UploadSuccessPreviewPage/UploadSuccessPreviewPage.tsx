@@ -31,8 +31,7 @@ export default function UploadSuccessPreviewPage() {
         <h1>Success-offer slot preview</h1>
         <p>
           The success state renders exactly one of these, resolved by
-          resolveSuccessOffer: anonymous → account offer, logged-in free → pass
-          upsell, paying → nothing.
+          resolveSuccessOffer: anonymous → account offer, signed in → nothing.
         </p>
         <Variant title="Anonymous — account offer (named deck)">
           <CreateAccountNotice deckName="Pharmacology Week 3" />

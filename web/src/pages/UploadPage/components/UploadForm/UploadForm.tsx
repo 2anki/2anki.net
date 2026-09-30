@@ -55,7 +55,6 @@ import {
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
 import { AnonymousPartialGate } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
-import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
 import DocsLink from './DocsLink';
