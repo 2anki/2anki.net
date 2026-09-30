@@ -28,6 +28,45 @@ jest.mock('./middleware/RequireAuthentication', () => {
 let mockOptionalOwner: number | undefined;
 let mockOptionalEmail: string | undefined;
 
+// The duplicate-purchase guard reads what the caller already owns, so the
+// router now touches the database on every authenticated checkout.
+let mockHeldPatreon = false;
+let mockHeldSubscriber = false;
+let mockHeldPass: {
+  kind: string;
+  expires_at: Date;
+  stripe_payment_intent_id: string;
+} | null = null;
+
+jest.mock('../data_layer', () => ({ getDatabase: () => ({}) }));
+
+jest.mock('../data_layer/UsersRepository', () => ({
+  __esModule: true,
+  default: class {
+    async getById() {
+      return { email: 'test@example.com', patreon: mockHeldPatreon };
+    }
+  },
+}));
+
+jest.mock('../data_layer/UserPassRepository', () => ({
+  __esModule: true,
+  default: class {
+    async findActive() {
+      return mockHeldPass;
+    }
+  },
+}));
+
+jest.mock('../services/AuthenticationService', () => ({
+  __esModule: true,
+  default: class {
+    async getIsSubscriber() {
+      return mockHeldSubscriber;
+    }
+  },
+}));
+
 jest.mock('./middleware/optionalAuthMiddleware', () => ({
   optionalAuthMiddleware: (
     _req: express.Request,
@@ -58,6 +97,9 @@ describe('CheckoutRouter — pass routes', () => {
   beforeAll(async () => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});
+    // The router captures this at construction, unlike the pass price ids,
+    // which resolve per request.
+    process.env.UNLIMITED_MONTHLY_PRICE_ID = 'price_unlimited_test';
     ({ server, url } = await buildServer());
   });
 
@@ -70,6 +112,65 @@ describe('CheckoutRouter — pass routes', () => {
     delete process.env.PASS_120D_PRICE_ID;
     mockOptionalOwner = undefined;
     mockOptionalEmail = undefined;
+    mockHeldPatreon = false;
+    mockHeldSubscriber = false;
+    mockHeldPass = null;
+  });
+
+  describe('duplicate-purchase guard', () => {
+    beforeEach(() => {
+      process.env.PASS_24H_PRICE_ID = 'price_24h_test';
+      mockStripeCreate.mockResolvedValue({
+        url: 'https://checkout.stripe.com/should-not-be-reached',
+      });
+    });
+
+    it('answers 409 when a pass holder buys a second pass', async () => {
+      mockOptionalOwner = 42;
+      mockHeldPass = {
+        kind: '7d',
+        expires_at: new Date('2026-10-08T00:00:00.000Z'),
+        stripe_payment_intent_id: 'pi_stripe',
+      };
+
+      const res = await fetch(`${url}/api/checkout/pass/24h`, {
+        method: 'POST',
+      });
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({
+        code: 'pass_still_active',
+        message:
+          'Your pass is still running. Buy the next one when it runs out.',
+        expiresAt: '2026-10-08T00:00:00.000Z',
+      });
+      expect(mockStripeCreate).not.toHaveBeenCalled();
+    });
+
+    it('answers 409 when a subscriber buys Pro again', async () => {
+      mockHeldSubscriber = true;
+
+      const res = await fetch(`${url}/api/checkout/unlimited`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ interval: 'month' }),
+      });
+
+      expect(res.status).toBe(409);
+      expect((await res.json()).code).toBe('already_subscribed');
+      expect(mockStripeCreate).not.toHaveBeenCalled();
+    });
+
+    it('still lets an anonymous caller buy a pass', async () => {
+      mockHeldSubscriber = true;
+
+      const res = await fetch(`${url}/api/checkout/pass/24h`, {
+        method: 'POST',
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockStripeCreate).toHaveBeenCalled();
+    });
   });
 
   describe('POST /api/checkout/pass/24h', () => {
