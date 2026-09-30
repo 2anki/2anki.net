@@ -543,7 +543,9 @@ describe('PricingPage anonymous upgrade-click tracking', () => {
       plan: 'unlimited',
       variant: 'minimal',
     });
-    expect(globalThis.location.href).toBe('/login?redirect=/pricing');
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing')}`
+    );
     expect(mockStartUnlimitedCheckout).not.toHaveBeenCalled();
   });
 });
@@ -733,7 +735,9 @@ describe('PricingPage Pro billing toggle', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Get Pro — billed monthly' })
     );
-    expect(globalThis.location.href).toBe('/login?redirect=/pricing');
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing')}`
+    );
   });
 
   it('fires producer_entry_viewed once when the educators section is seen', async () => {
@@ -790,5 +794,65 @@ describe('PricingPage entitlement awareness', () => {
     renderPricing(undefined);
 
     expect(buyButtons().length).toBeGreaterThan(0);
+  });
+});
+
+describe('PricingPage billing interval survives the trip through sign-in', () => {
+  beforeEach(() => {
+    mockUseCardUsage.mockReturnValue(null);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('opens on yearly when the URL already names it', () => {
+    renderAt('/pricing?interval=year');
+
+    expect(
+      screen.getByRole('button', { name: /billed yearly/i })
+    ).toBeInTheDocument();
+  });
+
+  it('opens on monthly when the URL names nothing', () => {
+    renderAt('/pricing');
+
+    expect(
+      screen.getByRole('button', { name: /billed monthly/i })
+    ).toBeInTheDocument();
+  });
+
+  it('sends a signed-out yearly choice to sign-in with the interval attached', () => {
+    const locationStub = { href: '' };
+    vi.stubGlobal('location', locationStub);
+
+    renderAt('/pricing?interval=year', { isLoggedIn: false });
+    fireEvent.click(screen.getByRole('button', { name: /billed yearly/i }));
+
+    expect(locationStub.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?interval=year')}`
+    );
+  });
+
+  it('sends a signed-out monthly choice to sign-in without an interval', () => {
+    const locationStub = { href: '' };
+    vi.stubGlobal('location', locationStub);
+
+    renderAt('/pricing', { isLoggedIn: false });
+    fireEvent.click(screen.getByRole('button', { name: /billed monthly/i }));
+
+    expect(locationStub.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing')}`
+    );
+  });
+
+  it('records the yearly choice in the URL so a remount cannot reset it', () => {
+    renderAt('/pricing');
+
+    fireEvent.click(screen.getByRole('radio', { name: /yearly/i }));
+
+    expect(
+      screen.getByRole('button', { name: /billed yearly/i })
+    ).toBeInTheDocument();
   });
 });

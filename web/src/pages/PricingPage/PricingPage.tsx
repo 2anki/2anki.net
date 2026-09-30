@@ -47,7 +47,10 @@ export default function PricingPage({
   const [dayPassState, setDayPassState] = useState<PassState>('idle');
   const [weekPassState, setWeekPassState] = useState<PassState>('idle');
   const [semesterPassState, setSemesterPassState] = useState<PassState>('idle');
-  const [billingCycle, setBillingCycle] = useState<'month' | 'year'>('month');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [billingCycle, setBillingCycle] = useState<'month' | 'year'>(
+    searchParams.get('interval') === 'year' ? 'year' : 'month'
+  );
   const [producerModalOpen, setProducerModalOpen] = useState(false);
   const educatorsRef = useInViewOnce<HTMLElement>(() =>
     track('producer_entry_viewed', { source: 'pricing_page' })
@@ -55,7 +58,6 @@ export default function PricingPage({
   const [unlimitedPending, setUnlimitedPending] = useState(false);
   const [unlimitedError, setUnlimitedError] = useState(false);
   const [pricing, setPricing] = useState(LEGACY_UNLIMITED_PRICING);
-  const [searchParams] = useSearchParams();
   const fromPaywall = searchParams.get('source') === 'paywall-cancel';
   const fromContext = searchParams.get('from');
   const showContextBanner =
@@ -98,8 +100,23 @@ export default function PricingPage({
     track('landing_page_viewed', { path: '/pricing' });
   }, []);
 
+  // The interval lives in the URL as well as in state. Component state alone
+  // was lost on any remount and discarded entirely by the sign-in redirect,
+  // which sent someone who chose yearly back to a page defaulted to monthly.
   const selectBillingCycle = (cycle: 'month' | 'year') => {
     setBillingCycle(cycle);
+    setSearchParams(
+      (params) => {
+        const next = new URLSearchParams(params);
+        if (cycle === 'year') {
+          next.set('interval', 'year');
+        } else {
+          next.delete('interval');
+        }
+        return next;
+      },
+      { replace: true }
+    );
     track('plan_interval_selected', { interval: cycle });
   };
 
@@ -178,7 +195,9 @@ export default function PricingPage({
       variant: pricingOrder,
     });
     if (!isLoggedIn) {
-      globalThis.location.href = '/login?redirect=/pricing';
+      const target =
+        billingCycle === 'year' ? '/pricing?interval=year' : '/pricing';
+      globalThis.location.href = `/login?redirect=${encodeURIComponent(target)}`;
       return;
     }
     setUnlimitedError(false);
