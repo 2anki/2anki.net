@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-30-yearly-choice-survives-signin",
+  "date": "2026-09-30",
+  "type": "fix",
+  "title": "Choosing yearly billing before you sign in no longer sends you back to monthly"
+}
