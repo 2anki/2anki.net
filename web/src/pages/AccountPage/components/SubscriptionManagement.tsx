@@ -475,6 +475,20 @@ function StripeSubscriptionManagement({
     setConfirming(false);
   };
 
+  // Someone who cancelled keeps their subscriptions row, which is what admits
+  // them to this section, but once Stripe reports nothing and they are not
+  // marked a subscriber there is no state left to describe. Returning the
+  // section wrapper anyway leaves a bordered, padded, empty card on /account.
+  const hasNothingToShow =
+    !stripeStatus.isLoading &&
+    !stripeStatus.isError &&
+    view.kind === 'none' &&
+    locals.subscriber !== true;
+
+  if (hasNothingToShow) {
+    return null;
+  }
+
   return (
     <section className={styles.section}>
       {hasMultipleActive && (
@@ -682,9 +696,14 @@ function StripeSubscriptionManagement({
               />
             )}
 
+          {/* The copy below says "You're marked as a subscriber". Only show it
+              to someone that is actually true of. Someone who cancelled still
+              has a subscriptions row, which renders this section, but they are
+              not marked a subscriber and have no missing purchase to explain. */}
           {!stripeStatus.isLoading &&
             !stripeStatus.isError &&
             view.kind === 'none' &&
+            locals.subscriber === true &&
             locals.passKind == null && (
               <div>
                 <h4 className={sharedStyles.smallHeading}>
