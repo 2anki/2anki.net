@@ -479,6 +479,7 @@ function AppContent({
                   isLoggedIn={isLoggedInResolved}
                   email={data?.user?.email}
                   signupCountry={data?.user?.signup_country ?? null}
+                  entitlement={data?.locals}
                 />
               }
             />
