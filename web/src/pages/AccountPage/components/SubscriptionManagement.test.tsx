@@ -738,3 +738,75 @@ describe('SubscriptionManagement for a pass holder', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('SubscriptionManagement for a former subscriber', () => {
+  beforeEach(() => {
+    mockUseStripeSubscriptions.mockReset();
+    vi.mocked(track).mockClear();
+    mockUseStripeSubscriptions.mockReturnValue({
+      subscriptions: [],
+      activeSubscriptions: [],
+      view: { kind: 'none' },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    } as unknown as StripeSubscriptionsState);
+  });
+
+  it('does not tell someone who cancelled that we cannot find their subscription', () => {
+    render(
+      withQueryClient(
+        <SubscriptionManagement
+          user={user}
+          locals={{
+            subscriber: false,
+            planSource: null,
+            subscriptionInfo: { email: user.email },
+          }}
+          hasActivePlan={false}
+          onRefetch={vi.fn().mockResolvedValue(undefined)}
+        />
+      )
+    );
+
+    expect(
+      screen.queryByText(/can't find your subscription/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders nothing at all rather than an empty card', () => {
+    const { container } = render(
+      withQueryClient(
+        <SubscriptionManagement
+          user={user}
+          locals={{
+            subscriber: false,
+            planSource: null,
+            subscriptionInfo: { email: user.email },
+          }}
+          hasActivePlan={false}
+          onRefetch={vi.fn().mockResolvedValue(undefined)}
+        />
+      )
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('still warns someone marked as a subscriber with no live subscription', () => {
+    render(
+      withQueryClient(
+        <SubscriptionManagement
+          user={user}
+          locals={{ subscriber: true, planSource: 'stripe' }}
+          hasActivePlan
+          onRefetch={vi.fn().mockResolvedValue(undefined)}
+        />
+      )
+    );
+
+    expect(
+      screen.getByText(/can't find your subscription/i)
+    ).toBeInTheDocument();
+  });
+});
