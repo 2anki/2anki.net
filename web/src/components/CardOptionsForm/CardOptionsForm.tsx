@@ -1160,36 +1160,41 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                         </a>
                       </p>
                     )}
-                  {isPdfAiGroup && (
-                    <div className={fieldStyles.section} id="card-style">
-                      <label
-                        htmlFor="card-style-select"
-                        className={fieldStyles.sectionLabel}
-                      >
-                        {t('cardOptions.cardStyle.heading')}
-                      </label>
-                      <select
-                        id="card-style-select"
-                        className={fieldStyles.deckInput}
-                        value={cardStyle}
-                        onChange={(e) => {
-                          const value = normalizeCardStyle(e.target.value);
-                          setCardStyle(value);
-                          saveValueInLocalStorage('card-style', value, pageId);
-                          track('card_style_selected', { style: value });
-                        }}
-                      >
-                        {CARD_STYLE_OPTIONS.map(({ labelKey, value }) => (
-                          <option key={value || 'automatic'} value={value}>
-                            {t(labelKey)}
-                          </option>
-                        ))}
-                      </select>
-                      <p className={fieldStyles.sectionHint}>
-                        {t('cardOptions.cardStyle.hint')}
-                      </p>
-                    </div>
-                  )}
+                  {isPdfAiGroup &&
+                    (checkboxValues['claude-ai-flashcards'] ?? false) && (
+                      <div className={fieldStyles.section} id="card-style">
+                        <label
+                          htmlFor="card-style-select"
+                          className={fieldStyles.sectionLabel}
+                        >
+                          {t('cardOptions.cardStyle.heading')}
+                        </label>
+                        <select
+                          id="card-style-select"
+                          className={fieldStyles.deckInput}
+                          value={cardStyle}
+                          onChange={(e) => {
+                            const value = normalizeCardStyle(e.target.value);
+                            setCardStyle(value);
+                            saveValueInLocalStorage(
+                              'card-style',
+                              value,
+                              pageId
+                            );
+                            track('card_style_selected', { style: value });
+                          }}
+                        >
+                          {CARD_STYLE_OPTIONS.map(({ labelKey, value }) => (
+                            <option key={value || 'automatic'} value={value}>
+                              {t(labelKey)}
+                            </option>
+                          ))}
+                        </select>
+                        <p className={fieldStyles.sectionHint}>
+                          {t('cardOptions.cardStyle.hint')}
+                        </p>
+                      </div>
+                    )}
                   {isPdfAiGroup && userInstructionsDisclosure}
                 </div>
               </div>

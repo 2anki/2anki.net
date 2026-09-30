@@ -860,7 +860,7 @@ describe('CardOptionsForm card style picker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResetUserCardOptions.mockResolvedValue(undefined);
-    setUserLocalsPaying(false);
+    setUserLocalsPaying(true);
     globalThis.localStorage.clear();
     mockGetSettingsCardOptions.mockResolvedValue([
       new CardOptionModel(
@@ -872,9 +872,36 @@ describe('CardOptionsForm card style picker', () => {
     ]);
   });
 
+  async function enableAiThenFindSelect() {
+    fireEvent.click(
+      await screen.findByRole('checkbox', {
+        name: /Generate flashcards with Claude AI/,
+      })
+    );
+    return screen.findByLabelText('Card style');
+  }
+
+  it('is hidden while AI is off, because nothing reads the setting then', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    await screen.findByRole('checkbox', {
+      name: /Generate flashcards with Claude AI/,
+    });
+
+    expect(screen.queryByLabelText('Card style')).toBeNull();
+  });
+
+  it('appears once AI is on, the only path that applies it', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    await enableAiThenFindSelect();
+
+    expect(screen.getByLabelText('Card style')).toBeInTheDocument();
+  });
+
   it('renders the four card style options', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const select = await screen.findByLabelText('Card style');
+    const select = await enableAiThenFindSelect();
     const labels = within(select)
       .getAllByRole('option')
       .map((option) => option.textContent);
@@ -888,13 +915,13 @@ describe('CardOptionsForm card style picker', () => {
 
   it('defaults to Automatic', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const select = await screen.findByLabelText('Card style');
+    const select = await enableAiThenFindSelect();
     expect(select).toHaveValue('');
   });
 
   it('writes the picked style to localStorage on change', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const select = await screen.findByLabelText('Card style');
+    const select = await enableAiThenFindSelect();
     fireEvent.change(select, { target: { value: 'heading-driven' } });
     expect(localStorage.getItem('card-style')).toBe('heading-driven');
     expect(select).toHaveValue('heading-driven');
@@ -902,7 +929,7 @@ describe('CardOptionsForm card style picker', () => {
 
   it('fires the card_style_selected event with the chosen style', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const select = await screen.findByLabelText('Card style');
+    const select = await enableAiThenFindSelect();
     fireEvent.change(select, { target: { value: 'cloze' } });
     expect(mockTrack).toHaveBeenCalledWith('card_style_selected', {
       style: 'cloze',

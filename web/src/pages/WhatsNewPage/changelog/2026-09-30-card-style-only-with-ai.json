@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-30-card-style-only-with-ai",
+  "date": "2026-09-30",
+  "type": "fix",
+  "title": "The card style picker now appears only when AI is on, the setting it actually affects"
+}
