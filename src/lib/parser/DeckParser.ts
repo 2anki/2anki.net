@@ -1805,7 +1805,14 @@ export class DeckParser {
       disableIndentedBulletPoints: this.settings.disableIndentedBulletPoints,
     });
 
-    const details: Element[] = dom('details').toArray();
+    // Only outermost toggles. transformDetailsTagToNotionToggleList moves each
+    // <details> it is handed into a fresh wrapper, so passing a nested toggle
+    // tears it out of its parent and leaves the parent card with an empty back.
+    // A nested toggle stays folded into its parent's back, matching the
+    // top-level .page-body > ul path.
+    const details: Element[] = dom('details')
+      .toArray()
+      .filter((el) => dom(el).parents('details').length === 0);
 
     // Remove duplicate toggles caused by merged ul.toggle
     const uniqueToggles: Element[] = [];

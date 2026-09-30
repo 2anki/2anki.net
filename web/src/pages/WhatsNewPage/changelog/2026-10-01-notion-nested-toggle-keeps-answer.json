@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-01-notion-nested-toggle-keeps-answer",
+  "date": "2026-10-01",
+  "type": "fix",
+  "title": "Notion toggles nested inside a column or callout layout keep their answers instead of converting to blank cards"
+}
