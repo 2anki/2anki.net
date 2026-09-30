@@ -10,6 +10,7 @@ import { STRIPE_CUSTOMER_PORTAL_URL } from '../../../lib/stripePortal';
 import { CancelFlow } from './CancelFlow';
 import { CancellationReason } from './cancellationReasons';
 import { ClaimSubscription } from './ClaimSubscription';
+import { AccessBanner } from '../../../components/AccessBanner/AccessBanner';
 import styles from '../AccountPage.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
 import { formatLongDate } from '../utils/formatLongDate';
@@ -35,6 +36,8 @@ interface User {
 interface LocalsData {
   subscriber?: boolean;
   planSource?: 'stripe' | 'apple' | 'lifetime' | null;
+  passKind?: '24h' | '7d' | '120d' | 'unlimited' | null;
+  passExpiresAt?: string | null;
   subscriptionInfo?: {
     linked_email?: string;
     email?: string;
@@ -665,9 +668,24 @@ function StripeSubscriptionManagement({
               </p>
             )}
 
+          {/* A pass is not a subscription, so Stripe reports none for a pass
+              holder who paid us minutes ago. Telling them we cannot find their
+              purchase, and offering a claim form that cannot match anything,
+              is how a paid customer concludes they were charged for nothing. */}
           {!stripeStatus.isLoading &&
             !stripeStatus.isError &&
-            view.kind === 'none' && (
+            view.kind === 'none' &&
+            locals.passKind != null && (
+              <AccessBanner
+                passKind={locals.passKind}
+                passExpiresAt={locals.passExpiresAt}
+              />
+            )}
+
+          {!stripeStatus.isLoading &&
+            !stripeStatus.isError &&
+            view.kind === 'none' &&
+            locals.passKind == null && (
               <div>
                 <h4 className={sharedStyles.smallHeading}>
                   {t('claimSubscription.mismatchTitle')}

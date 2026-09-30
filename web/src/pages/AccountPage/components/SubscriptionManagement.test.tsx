@@ -667,3 +667,74 @@ describe('SubscriptionManagement', () => {
     });
   });
 });
+
+describe('SubscriptionManagement for a pass holder', () => {
+  beforeEach(() => {
+    mockUseStripeSubscriptions.mockReset();
+    vi.mocked(track).mockClear();
+    mockUseStripeSubscriptions.mockReturnValue({
+      subscriptions: [],
+      activeSubscriptions: [],
+      view: { kind: 'none' },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    } as unknown as StripeSubscriptionsState);
+  });
+
+  const passLocals = {
+    subscriber: true,
+    planSource: null,
+    passKind: '120d' as const,
+    passExpiresAt: new Date(
+      Date.now() + 90 * 24 * 60 * 60 * 1000
+    ).toISOString(),
+  };
+
+  function renderPassHolder() {
+    return render(
+      withQueryClient(
+        <SubscriptionManagement
+          user={user}
+          locals={passLocals}
+          hasActivePlan
+          onRefetch={vi.fn().mockResolvedValue(undefined)}
+        />
+      )
+    );
+  }
+
+  it('does not tell a pass holder that their purchase cannot be found', () => {
+    renderPassHolder();
+
+    expect(
+      screen.queryByText(/can't find your subscription/i)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/email you paid with/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the pass they bought and when it runs out', () => {
+    renderPassHolder();
+
+    expect(screen.getByText(/Semester Pass/i)).toBeInTheDocument();
+  });
+
+  it('still offers the claim form to a subscriber with no matching subscription', () => {
+    render(
+      withQueryClient(
+        <SubscriptionManagement
+          user={user}
+          locals={{ subscriber: true, planSource: 'stripe' }}
+          hasActivePlan
+          onRefetch={vi.fn().mockResolvedValue(undefined)}
+        />
+      )
+    );
+
+    expect(
+      screen.getByText(/can't find your subscription/i)
+    ).toBeInTheDocument();
+  });
+});
