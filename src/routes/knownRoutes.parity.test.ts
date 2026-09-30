@@ -14,13 +14,106 @@ const APP_TSX = join(__dirname, '../../web/src/App.tsx');
 // them.
 const DEV_ONLY_PREFIX = '/dev/';
 
+// The SPA's catch-all renders NotFoundPage. The server deliberately 404s an
+// unknown path rather than handing it index.html, so it is not a parity gap.
+const CATCH_ALL = '/*';
+
+const OPENING_TAG = '<Route';
+const CLOSING_TAG = '</Route>';
+
+interface OpeningTag {
+  attributes: string;
+  nestsChildren: boolean;
+  end: number;
+}
+
+// The tag ends at the first '>' outside a string or a JSX expression.
+// element={requireAuth(<OpsLayout />)} carries both, and the '/>' inside it
+// must not be read as the end of the <Route> itself.
+const readOpeningTag = (source: string, from: number): OpeningTag => {
+  let braceDepth = 0;
+  let quote = '';
+  for (let index = from; index < source.length; index += 1) {
+    const char = source[index];
+    if (quote !== '') {
+      if (char === quote) {
+        quote = '';
+      }
+    } else if (char === '"' || char === "'") {
+      quote = char;
+    } else if (char === '{') {
+      braceDepth += 1;
+    } else if (char === '}') {
+      braceDepth -= 1;
+    } else if (char === '>' && braceDepth === 0) {
+      const attributes = source.slice(from, index);
+      return {
+        attributes,
+        nestsChildren: !attributes.trimEnd().endsWith('/'),
+        end: index + 1,
+      };
+    }
+  }
+  throw new Error('App.tsx has an unterminated <Route> tag');
+};
+
+// '<Routes>' shares the prefix and must not be read as a route declaration.
+const nextRouteTag = (source: string, from: number): number => {
+  let index = source.indexOf(OPENING_TAG, from);
+  while (
+    index !== -1 &&
+    !/[\s/>]/.test(source[index + OPENING_TAG.length] ?? '')
+  ) {
+    index = source.indexOf(OPENING_TAG, index + OPENING_TAG.length);
+  }
+  return index;
+};
+
+const resolveAgainstParent = (parent: string, declared: string): string =>
+  declared.startsWith('/') ? declared : `${parent}/${declared}`;
+
+// React Router resolves a nested route's path against its parent. The thirteen
+// /ops tabs are declared as bare segments ('today', 'flags') and only exist at
+// /ops/today, so reading the declared string on its own drops every one of
+// them and the test passes without ever asking about them.
 const readAppRoutePaths = (): string[] => {
   const source = readFileSync(APP_TSX, 'utf8');
-  const paths = [...source.matchAll(/path="([^"]+)"/g)].map(
-    (match) => match[1]
-  );
-  return [...new Set(paths)].filter(
-    (path) => path.startsWith('/') && !path.startsWith(DEV_ONLY_PREFIX)
+  const declared: string[] = [];
+  const parents: string[] = [];
+  let cursor = 0;
+
+  while (cursor < source.length) {
+    const opening = nextRouteTag(source, cursor);
+    const closing = source.indexOf(CLOSING_TAG, cursor);
+    if (opening === -1 && closing === -1) {
+      break;
+    }
+
+    if (opening === -1 || (closing !== -1 && closing < opening)) {
+      parents.pop();
+      cursor = closing + CLOSING_TAG.length;
+      continue;
+    }
+
+    const tag = readOpeningTag(source, opening + OPENING_TAG.length);
+    const declaredPath = /path="([^"]+)"/.exec(tag.attributes)?.[1];
+    const parent = parents[parents.length - 1] ?? '';
+    const resolved =
+      declaredPath == null
+        ? parent
+        : resolveAgainstParent(parent, declaredPath);
+
+    if (declaredPath != null) {
+      declared.push(resolved);
+    }
+    if (tag.nestsChildren) {
+      parents.push(resolved);
+    }
+    cursor = tag.end;
+  }
+
+  return [...new Set(declared)].filter(
+    (path) => path !== CATCH_ALL && !path.startsWith(DEV_ONLY_PREFIX)
   );
 };
 
@@ -55,12 +148,17 @@ describe('known app routes stay in step with the SPA router', () => {
     expect(routePaths.length).toBeGreaterThan(50);
   });
 
-  it.each(readAppRoutePaths())(
-    'serves the app for %s on a direct load',
-    (routePath) => {
-      expect(isKnownAppRoute(toConcretePath(routePath))).toBe(true);
-    }
-  );
+  // Without parent resolution these thirteen tabs read as bare segments, get
+  // dropped, and a fourteenth could ship unserved without failing anything.
+  it('resolves a nested route against its parent, not as a bare segment', () => {
+    expect(routePaths).toContain('/ops/today');
+    expect(routePaths).toContain('/ops/flags');
+    expect(routePaths).not.toContain('/today');
+  });
+
+  it.each(routePaths)('serves the app for %s on a direct load', (routePath) => {
+    expect(isKnownAppRoute(toConcretePath(routePath))).toBe(true);
+  });
 
   it('still rejects a path the SPA does not render', () => {
     expect(isKnownAppRoute('/not-a-real-route-xyz')).toBe(false);
