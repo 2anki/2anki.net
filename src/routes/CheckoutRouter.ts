@@ -177,7 +177,11 @@ const CheckoutRouter = () => {
         pass24hPriceId,
         '24h'
       );
-      const controller = new PassCheckoutController(useCase);
+      const controller = new PassCheckoutController(
+        useCase,
+        '24h',
+        getEventsSink()
+      );
       return controller.createSession(req, res);
     }
   );
@@ -198,7 +202,11 @@ const CheckoutRouter = () => {
         pass7dPriceId,
         '7d'
       );
-      const controller = new PassCheckoutController(useCase);
+      const controller = new PassCheckoutController(
+        useCase,
+        '7d',
+        getEventsSink()
+      );
       return controller.createSession(req, res);
     }
   );
@@ -219,7 +227,11 @@ const CheckoutRouter = () => {
         pass120dPriceId,
         '120d'
       );
-      const controller = new PassCheckoutController(useCase);
+      const controller = new PassCheckoutController(
+        useCase,
+        '120d',
+        getEventsSink()
+      );
       return controller.createSession(req, res);
     }
   );
