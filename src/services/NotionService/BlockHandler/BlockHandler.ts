@@ -65,7 +65,7 @@ import { getAudioSourceType, getAudioUrl } from '../helpers/getAudioUrl';
 import getClozeDeletionCard from '../helpers/getClozeDeletionCard';
 import handleClozeDeletions from '../../../lib/parser/helpers/handleClozeDeletions';
 import hasInlineClozeCode from '../../../lib/parser/helpers/hasInlineClozeCode';
-import getColumn from '../helpers/getColumn';
+import getColumns from '../helpers/getColumns';
 import { getFileSourceType, getFileUrl } from '../helpers/getFileUrl';
 import { getImageSourceType, getImageUrl } from '../helpers/getImageUrl';
 import { isNotionDatabaseNotPageError } from '../helpers/isNotionDatabaseNotPageError';
@@ -483,6 +483,20 @@ class BlockHandler implements IBlockRenderer {
     );
   }
 
+  // The convention is column one asks and column two answers, so the front is
+  // that first column alone, not the whole layout that blockToStaticMarkup
+  // renders for a column_list everywhere else. Both columns come from one
+  // fetch; asking for them separately repeated the same request.
+  private async buildColumnListCard(
+    columnListId: string
+  ): Promise<{ name: string; back: string | null }> {
+    const [first, second] = await getColumns(columnListId, this);
+    return {
+      name: first ? await BlockColumn(first, this) : '',
+      back: second ? await BlockColumn(second, this) : null,
+    };
+  }
+
   async getFlashcards(
     rules: ParserRules,
     flashcardBlocks: GetBlockResponse[],
@@ -550,22 +564,13 @@ class BlockHandler implements IBlockRenderer {
           name = await this.getToggleFrontMedia(fullBlock);
         }
         back = await this.getBackSide(fullBlock);
+      } else if (isColumnList(block) && rules.useColums()) {
+        const card = await this.buildColumnListCard(block.id);
+        name = card.name;
+        back = card.back;
       } else {
-        // For non-toggle blocks, use the existing logic
-        if (isColumnList(block) && rules.useColums()) {
-          // The convention is column one asks and column two answers, so the
-          // front is that first column alone — not the whole layout, which is
-          // what blockToStaticMarkup renders for a column_list anywhere else.
-          const firstColumn = await getColumn(block.id, this, 0);
-          name = firstColumn ? await BlockColumn(firstColumn, this) : '';
-          const secondColumn = await getColumn(block.id, this, 1);
-          if (secondColumn) {
-            back = await BlockColumn(secondColumn, this);
-          }
-        } else {
-          name = await blockToStaticMarkup(this, block as BlockObjectResponse);
-          back = await this.getBackSide(block as BlockObjectResponse);
-        }
+        name = await blockToStaticMarkup(this, block as BlockObjectResponse);
+        back = await this.getBackSide(block as BlockObjectResponse);
       }
 
       if (!name) {
