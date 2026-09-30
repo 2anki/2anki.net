@@ -177,13 +177,6 @@
     "fullPrefix": "Independent since 2020. Built by ",
     "fullSuffix": " and its contributors, and funded by the people who use it — not investors."
   },
-  "postDownloadNudge": {
-    "aria": "See paid plans",
-    "dismiss": "Dismiss",
-    "headline": "Enjoying 2anki?",
-    "body": "You're on the free plan — {{limit}} cards a month. Whenever you want more, see what a paid plan adds.",
-    "cta": "See plans"
-  },
   "feedback": {
     "thanks": "Thanks — feedback received.",
     "prompt": "How's your experience?",

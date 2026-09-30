@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { CreateAccountNotice } from '../../components/CreateAccountNotice/CreateAccountNotice';
-import { PostDownloadNudgeCard } from '../../components/PostDownloadNudge';
 import sharedStyles from '../../styles/shared.module.css';
 
 const queryClient = new QueryClient({
@@ -40,9 +39,6 @@ export default function UploadSuccessPreviewPage() {
         </Variant>
         <Variant title="Anonymous — account offer (untitled deck)">
           <CreateAccountNotice />
-        </Variant>
-        <Variant title="Logged-in free — pricing nudge">
-          <PostDownloadNudgeCard limit={100} />
         </Variant>
         <Variant title="Paying — no card">
           <p>(nothing renders)</p>

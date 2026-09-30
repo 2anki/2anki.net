@@ -177,13 +177,6 @@
     "fullPrefix": "Independente desde 2020. Construído por ",
     "fullSuffix": " e seus colaboradores, e financiado por quem usa — não por investidores."
   },
-  "postDownloadNudge": {
-    "aria": "Ver planos pagos",
-    "dismiss": "Dispensar",
-    "headline": "Está gostando do 2anki?",
-    "body": "Você está no plano gratuito — {{limit}} cartões por mês. Quando quiser mais, veja o que um plano pago acrescenta.",
-    "cta": "Ver planos"
-  },
   "feedback": {
     "thanks": "Obrigado — feedback recebido.",
     "prompt": "Como está sua experiência?",

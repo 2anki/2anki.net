@@ -177,13 +177,6 @@
     "fullPrefix": "Onafhankelijk sinds 2020. Gebouwd door ",
     "fullSuffix": " en zijn bijdragers, en gefinancierd door de mensen die het gebruiken — niet door investeerders."
   },
-  "postDownloadNudge": {
-    "aria": "Bekijk betaalde abonnementen",
-    "dismiss": "Sluiten",
-    "headline": "Bevalt 2anki?",
-    "body": "Je gebruikt het gratis abonnement — {{limit}} kaarten per maand. Wil je meer, bekijk dan wat een betaald abonnement toevoegt.",
-    "cta": "Bekijk abonnementen"
-  },
   "feedback": {
     "thanks": "Bedankt — feedback ontvangen.",
     "prompt": "Hoe is je ervaring?",
