@@ -5,6 +5,7 @@ import {
   PAYWALL_REASON_PATTERNS,
   REASON_PROP_EXPRESSION,
 } from './classifyFailureReason';
+import { canonicalSurfaceSql } from '../lib/analytics/canonicalSurface';
 
 export interface EventRow {
   name: string;
@@ -156,12 +157,12 @@ export class EventsRepository implements IEventsRepository {
       .where('created_at', '>=', since)
       .select(
         this.database.raw("props->>'variant' as variant"),
-        this.database.raw("props->>'surface' as surface"),
+        this.database.raw(`${canonicalSurfaceSql()} as surface`),
         this.database.raw(
           'count(distinct COALESCE(user_id::text, anonymous_id)) as distinct_users'
         )
       )
-      .groupByRaw("props->>'variant', props->>'surface'")) as Array<{
+      .groupByRaw(`props->>'variant', ${canonicalSurfaceSql()}`)) as Array<{
       variant: string | null;
       surface: string | null;
       distinct_users: string | number;
