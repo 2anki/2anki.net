@@ -1,0 +1,6 @@
+{
+  "id": "2026-09-30-notion-repeated-answers",
+  "date": "2026-09-30",
+  "type": "fix",
+  "title": "Notion answers with columns, numbered lists or checklists stop repeating their contents"
+}
