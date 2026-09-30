@@ -183,13 +183,6 @@
     "fullPrefix": "Niezależne od 2020. Tworzone przez ",
     "fullSuffix": " i jego współtwórców, finansowane przez ludzi, którzy z niego korzystają — nie inwestorów."
   },
-  "postDownloadNudge": {
-    "aria": "Zobacz płatne plany",
-    "dismiss": "Zamknij",
-    "headline": "Podoba Ci się 2anki?",
-    "body": "Korzystasz z darmowego planu — {{limit}} kart miesięcznie. Gdy zechcesz więcej, zobacz, co daje płatny plan.",
-    "cta": "Zobacz plany"
-  },
   "feedback": {
     "thanks": "Dzięki — opinia przyjęta.",
     "prompt": "Jak Ci się korzysta?",

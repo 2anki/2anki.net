@@ -177,13 +177,6 @@
     "fullPrefix": "Unabhängig seit 2020. Gebaut von ",
     "fullSuffix": " und seinen Beitragenden, finanziert von den Menschen, die es nutzen — nicht von Investoren."
   },
-  "postDownloadNudge": {
-    "aria": "Bezahlte Tarife ansehen",
-    "dismiss": "Ausblenden",
-    "headline": "Gefällt dir 2anki?",
-    "body": "Du nutzt den kostenlosen Tarif — {{limit}} Karten pro Monat. Wenn du mehr willst, sieh dir an, was ein bezahlter Tarif zusätzlich bietet.",
-    "cta": "Tarife ansehen"
-  },
   "feedback": {
     "thanks": "Danke — Feedback erhalten.",
     "prompt": "Wie ist deine Erfahrung?",

@@ -53,10 +53,8 @@ import {
   UnreadableFileError,
 } from './assertFilesReadable';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
-import { PostDownloadNudge } from '../../../../components/PostDownloadNudge';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
 import { AnonymousPartialGate } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
-import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
 import DocsLink from './DocsLink';
@@ -1206,7 +1204,6 @@ function UploadForm({
 
   const successOffer = resolveSuccessOffer({
     anonymous: userLocals != null && userLocals.user?.email == null,
-    paying: isPayingUser(userLocals?.locals),
   });
 
   const renderSuccessState = () => (
@@ -1314,7 +1311,6 @@ function UploadForm({
       {successOffer === 'anon_signup' && cardsHeldBack === 0 && (
         <CreateAccountNotice deckName={deckName} />
       )}
-      {successOffer === 'upsell' && <PostDownloadNudge page="upload" />}
       <button
         type="button"
         className={sharedStyles.btnSecondary}

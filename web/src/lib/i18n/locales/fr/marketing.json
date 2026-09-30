@@ -177,13 +177,6 @@
     "fullPrefix": "Indépendant depuis 2020. Construit par ",
     "fullSuffix": " et ses contributeurs, et financé par les personnes qui l'utilisent — pas par des investisseurs."
   },
-  "postDownloadNudge": {
-    "aria": "Voir les offres payantes",
-    "dismiss": "Fermer",
-    "headline": "2anki te plaît ?",
-    "body": "Tu es sur l'offre gratuite — {{limit}} cartes par mois. Quand tu en voudras plus, découvre ce qu'ajoute une offre payante.",
-    "cta": "Voir les offres"
-  },
   "feedback": {
     "thanks": "Merci — avis reçu.",
     "prompt": "Comment se passe ton expérience ?",

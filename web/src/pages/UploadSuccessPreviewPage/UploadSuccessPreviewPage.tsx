@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { CreateAccountNotice } from '../../components/CreateAccountNotice/CreateAccountNotice';
-import { PostDownloadNudgeCard } from '../../components/PostDownloadNudge';
 import sharedStyles from '../../styles/shared.module.css';
 
 const queryClient = new QueryClient({
@@ -32,17 +31,13 @@ export default function UploadSuccessPreviewPage() {
         <h1>Success-offer slot preview</h1>
         <p>
           The success state renders exactly one of these, resolved by
-          resolveSuccessOffer: anonymous → account offer, logged-in free → pass
-          upsell, paying → nothing.
+          resolveSuccessOffer: anonymous → account offer, signed in → nothing.
         </p>
         <Variant title="Anonymous — account offer (named deck)">
           <CreateAccountNotice deckName="Pharmacology Week 3" />
         </Variant>
         <Variant title="Anonymous — account offer (untitled deck)">
           <CreateAccountNotice />
-        </Variant>
-        <Variant title="Logged-in free — pricing nudge">
-          <PostDownloadNudgeCard limit={100} />
         </Variant>
         <Variant title="Paying — no card">
           <p>(nothing renders)</p>

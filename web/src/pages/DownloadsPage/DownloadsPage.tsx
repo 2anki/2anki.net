@@ -36,8 +36,6 @@ import { useActiveShares } from './hooks/useActiveShares';
 import { fireAnalyticsEvent } from '../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../lib/analytics/track';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
-import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
-import { PostDownloadNudge } from '../../components/PostDownloadNudge';
 import JobResponse from '../../schemas/public/JobResponse';
 import {
   ThinDeckNotice,
@@ -338,7 +336,6 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
   const { uploads: googleDriveUploads, deleteUpload: deleteGoogleDriveUpload } =
     useGoogleDriveUploads(backend);
   const { data } = useUserLocals();
-  const showUpgradeFooter = !isPayingUser(data?.locals);
   const activeShares = useActiveShares();
   const sharedKeySet = new Set(activeShares.map((s) => s.upload_key));
 
@@ -1047,11 +1044,6 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                     </tbody>
                   </table>
                 </div>
-                {showUpgradeFooter && !isGloballyEmpty && (
-                  <div className={styles.nudgeSlot}>
-                    <PostDownloadNudge page="downloads" />
-                  </div>
-                )}
               </div>
 
               {hasDownloaded && (
