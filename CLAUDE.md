@@ -206,4 +206,12 @@ Specs live in `Documentation/specs/` only while a feature is in flight: `/spec-d
 
 A new `feat:` surface (a distinct user-facing capability — chat, mindmaps, photo-to-deck, transform, print, quizlet import, image occlusion, ankify) ships with two things in the same PR: a usage analytics event that fires when the surface is used, and a T+30d adoption-review GitHub issue created at merge with the review date in the title. At that review the verdict is binary — **keep or remove**. Silence is removal, not maintenance; an unused surface is a maintenance tax with no offsetting users. History: 8+ surfaces shipped in May 2026 with usage evidence for only 2-3, and one (quizlet import) went silent within days and nobody noticed.
 
+**A T+30 threshold is only as good as its denominator, and a wrong one does not fail loudly.** Before a keep/kill rule is written down, the review issue must state:
+
+- **The reachable population** — who could physically have used this surface, and the query that counts them. Not "conversions" unless the surface exists on every conversion. The 2026-09-29 conversion-report review was written against every conversion on the site for a surface that only exists on the Notion path: 93% of that denominator could never have opened it, and the rule as written read 1.7% and said remove, where the reachable denominator read 28.1% and said keep.
+- **A power check on any support- or email-volume condition.** A theme running below roughly 20 threads per window cannot show a 30% move; such a condition can be neither satisfied nor falsified and does not belong in the rule.
+- **Whether the usage event can see passive use.** An event that fires only on change cannot observe anyone relying on a saved non-default, so it undercounts by construction. A surface whose signal only sees deliberate changes needs a second, server-side one before its T+30 read means anything.
+
+Silence is removal, so a denominator that is too wide deletes working surfaces on the strength of a confident wrong number.
+
 One new surface in flight at a time. The next surface does not start until the previous one has a day-7 prod check and a usage signal. Six years of unmeasured parallel bets (Imba, Electron, KI, avatars, Gemini, Quizlet) is why this gate exists — breadth without evidence is how the backlog filled with surfaces no one uses.
