@@ -61,11 +61,15 @@ class UnlimitedCheckoutController {
       throw error;
     }
 
+    // 'subscription' rather than 'unlimited' so this joins to
+    // checkout_completed, which records the mode from the Stripe session. The
+    // two used to disagree, so subscription starts and completions could not be
+    // matched at all.
     this.eventsSink.record({
       name: 'checkout_started',
       user_id: userId,
       props: {
-        plan: 'unlimited',
+        plan: 'subscription',
         interval,
         cohort: result.cohort,
         ...(surface == null ? {} : { surface }),
