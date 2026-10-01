@@ -1,4 +1,4 @@
-import type { ConversionErrorCount } from '../services/ops/ConversionMetricsService';
+import type { ConversionErrorCount } from '../types/ops/ConversionMetrics';
 
 const EXCLUDED_CODES = new Set(['monthly_limit']);
 

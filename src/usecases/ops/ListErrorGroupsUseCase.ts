@@ -1,13 +1,10 @@
 import {
   IErrorEventRepository,
-  ErrorGroupRow,
   ListErrorGroupsOptions,
 } from '../../data_layer/ErrorEventRepository';
+import type { ErrorGroupsResponse } from '../../types/ops/Errors';
 
-export interface ListErrorGroupsResult {
-  groups: ErrorGroupRow[];
-  totalGroups: number;
-}
+export type ListErrorGroupsResult = ErrorGroupsResponse;
 
 export class ListErrorGroupsUseCase {
   constructor(private readonly repository: IErrorEventRepository) {}

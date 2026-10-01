@@ -1,5 +1,19 @@
 import { Knex } from 'knex';
 
+import type {
+  ReturnRateBySourceType,
+  ReturnRateEligible,
+  ReturnRateMetricsResponse,
+  ReturnRateWindow,
+} from '../../types/ops/ReturnRate';
+
+export type {
+  ReturnRateBySourceType,
+  ReturnRateEligible,
+  ReturnRateMetricsResponse,
+  ReturnRateWindow,
+};
+
 const WINDOWS = [
   { key: '7d', days: 7 },
   { key: '14d', days: 14 },
@@ -7,32 +21,6 @@ const WINDOWS = [
 ] as const;
 
 type WindowKey = (typeof WINDOWS)[number]['key'];
-
-export type ReturnRateWindow = Record<WindowKey, number | null>;
-
-export type ReturnRateEligible = Record<WindowKey, number>;
-
-export interface ReturnRateBySourceType {
-  source_type: string;
-  cohort_size: number;
-  eligible_7d: number;
-  eligible_14d: number;
-  eligible_30d: number;
-  returned_7d: number;
-  returned_14d: number;
-  returned_30d: number;
-  return_rate_7d_pct: number | null;
-  return_rate_14d_pct: number | null;
-  return_rate_30d_pct: number | null;
-}
-
-export interface ReturnRateMetricsResponse {
-  overall: ReturnRateWindow;
-  eligible: ReturnRateEligible;
-  by_source_type: ReturnRateBySourceType[] | null;
-  as_of: string;
-  error?: string;
-}
 
 const CONVERSION_EVENT = 'conversion_succeeded';
 const MS_PER_HOUR = 60 * 60 * 1000;

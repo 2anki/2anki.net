@@ -1,5 +1,9 @@
 import type { Knex } from 'knex';
 
+import type { ErrorGroupRow, ResolutionStatus } from '../types/ops/Errors';
+
+export type { ErrorGroupRow, ResolutionStatus };
+
 export interface ErrorEventInsert {
   source: 'web' | 'server';
   message_hash: string;
@@ -11,24 +15,6 @@ export interface ErrorEventInsert {
   user_id?: number | null;
   ip_hash?: string | null;
   context?: Record<string, unknown> | null;
-}
-
-export type ResolutionStatus = 'unresolved' | 'resolved' | 'all';
-
-export interface ErrorGroupRow {
-  message_hash: string;
-  message: string;
-  stack: string | null;
-  url: string | null;
-  release: string | null;
-  source: string;
-  user_id: number | null;
-  user_agent: string | null;
-  first_seen: string;
-  last_seen: string;
-  occurrences: number;
-  resolved: boolean;
-  resolved_at: string | null;
 }
 
 export interface ListErrorGroupsOptions {

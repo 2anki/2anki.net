@@ -3,7 +3,33 @@ import { IUnsupportedNotionBlockRepository } from '../../data_layer/UnsupportedN
 import { IConversionOutputStatsRepository } from '../../data_layer/ConversionOutputStatsRepository';
 import { IParsePathSignatureRepository } from '../../data_layer/ParsePathSignatureRepository';
 
-export type OpsMetricsWindow = '1h' | '24h' | '7d';
+import type {
+  OpsMetricsBucketPoint,
+  OpsMetricsConversionOutputPoint,
+  OpsMetricsOutboundPoint,
+  OpsMetricsParsePathPoint,
+  OpsMetricsResponse,
+  OpsMetricsRouteErrorPoint,
+  OpsMetricsRouteLatencyPoint,
+  OpsMetricsServiceErrorPoint,
+  OpsMetricsServiceLatencyPoint,
+  OpsMetricsUnsupportedBlockPoint,
+  OpsMetricsWindow,
+} from '../../types/ops/OpsMetrics';
+
+export type {
+  OpsMetricsBucketPoint,
+  OpsMetricsConversionOutputPoint,
+  OpsMetricsOutboundPoint,
+  OpsMetricsParsePathPoint,
+  OpsMetricsResponse,
+  OpsMetricsRouteErrorPoint,
+  OpsMetricsRouteLatencyPoint,
+  OpsMetricsServiceErrorPoint,
+  OpsMetricsServiceLatencyPoint,
+  OpsMetricsUnsupportedBlockPoint,
+  OpsMetricsWindow,
+};
 
 export const OPS_METRICS_WINDOWS: readonly OpsMetricsWindow[] = [
   '1h',
@@ -34,85 +60,6 @@ const TOP_ROUTES_LIMIT = 15;
 const TOP_ROUTES_ERROR_LIMIT = 10;
 const TOP_SERVICES_ERROR_LIMIT = 5;
 const TOP_SERVICES_LATENCY_LIMIT = 10;
-
-export interface OpsMetricsBucketPoint {
-  bucket: string;
-  status_class: '2xx' | '3xx' | '4xx' | '5xx';
-  count: number;
-}
-
-export interface OpsMetricsRouteLatencyPoint {
-  method: string;
-  route: string;
-  avg_ms: number;
-  p95_ms: number;
-  count: number;
-}
-
-export interface OpsMetricsOutboundPoint {
-  bucket: string;
-  service: string;
-  count: number;
-}
-
-export interface OpsMetricsRouteErrorPoint {
-  method: string;
-  route: string;
-  total: number;
-  errors: number;
-}
-
-export interface OpsMetricsServiceErrorPoint {
-  service: string;
-  total: number;
-  errors: number;
-}
-
-export interface OpsMetricsServiceLatencyPoint {
-  service: string;
-  p50_ms: number;
-  p95_ms: number;
-  p99_ms: number;
-  count: number;
-}
-
-export interface OpsMetricsUnsupportedBlockPoint {
-  block_type: string;
-  occurrences: number;
-  first_seen: string;
-  last_seen: string;
-}
-
-export interface OpsMetricsConversionOutputPoint {
-  source: string;
-  decks: number;
-  cards: number;
-  empty_back_cards: number;
-  first_seen: string;
-  last_seen: string;
-}
-
-export interface OpsMetricsParsePathPoint {
-  parse_path: string;
-  occurrences: number;
-  first_seen: string;
-  last_seen: string;
-}
-
-export interface OpsMetricsResponse {
-  window: OpsMetricsWindow;
-  bucket_seconds: number;
-  generated_at: string;
-  inbound_volume: OpsMetricsBucketPoint[];
-  route_latency: OpsMetricsRouteLatencyPoint[];
-  outbound_volume: OpsMetricsOutboundPoint[];
-  outbound_latency_by_service: OpsMetricsServiceLatencyPoint[];
-  error_rate_by_route: OpsMetricsRouteErrorPoint[];
-  error_rate_by_service: OpsMetricsServiceErrorPoint[];
-  unsupported_blocks: OpsMetricsUnsupportedBlockPoint[];
-  conversion_output: OpsMetricsConversionOutputPoint[];
-  parse_path_signatures: OpsMetricsParsePathPoint[];
-}
 
 export const isOpsMetricsWindow = (input: unknown): input is OpsMetricsWindow =>
   typeof input === 'string' &&

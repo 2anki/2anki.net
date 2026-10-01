@@ -1,7 +1,7 @@
-import {
-  AiUsageMetricsService,
-  AiUsageMetricsResponse,
-} from '../../services/ops/AiUsageMetricsService';
+import { AiUsageMetricsService } from '../../services/ops/AiUsageMetricsService';
+import type { AiUsageMetricsPayload } from '../../types/ops/AiUsage';
+
+export type { AiUsageMetricsPayload };
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
 
@@ -14,10 +14,6 @@ const WINDOW_DAYS: Record<string, number> = {
 };
 
 const DEFAULT_WINDOW = '30d';
-
-export interface AiUsageMetricsPayload extends AiUsageMetricsResponse {
-  window: string;
-}
 
 export class GetAiUsageMetricsUseCase {
   constructor(private readonly service: AiUsageMetricsService) {}

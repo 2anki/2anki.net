@@ -1,16 +1,7 @@
-import {
-  AiUsageGroup,
-  AiUsageTotals,
-  IAiUsageMetricsRepository,
-} from '../../data_layer/AiUsageMetricsRepository';
+import { IAiUsageMetricsRepository } from '../../data_layer/AiUsageMetricsRepository';
+import type { AiUsageMetricsResponse } from '../../types/ops/AiUsage';
 
-export interface AiUsageMetricsResponse {
-  totals: AiUsageTotals;
-  by_surface: AiUsageGroup[];
-  by_model: AiUsageGroup[];
-  by_day: AiUsageGroup[];
-  by_user: AiUsageGroup[];
-}
+export type { AiUsageMetricsResponse };
 
 export class AiUsageMetricsService {
   constructor(private readonly deps: { repo: IAiUsageMetricsRepository }) {}

@@ -1,19 +1,13 @@
+import type {
+  MindmapStorageMetricsResponse,
+  MindmapUserStorageEntry,
+} from '../../types/ops/MindmapStorage';
+
+export type { MindmapStorageMetricsResponse, MindmapUserStorageEntry };
+
 const DEFAULT_TOP_USERS_LIMIT = 20;
 const MINDMAPS_PREFIX = 'mindmaps/';
 const MIN_KEY_SEGMENTS = 3;
-
-export interface MindmapUserStorageEntry {
-  user_id: string;
-  bytes: number;
-  object_count: number;
-}
-
-export interface MindmapStorageMetricsResponse {
-  total_bytes: number;
-  total_objects: number;
-  top_users: MindmapUserStorageEntry[];
-  measured_at: string;
-}
 
 export interface StorageObject {
   key: string;

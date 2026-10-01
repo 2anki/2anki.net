@@ -1,152 +1,23 @@
-export type BusinessMetricKey =
-  | 'mrr_usd'
-  | 'net_new_mrr_mtd_usd'
-  | 'active_paying_subs'
-  | 'churn_30d_pct'
-  | 'churn_30d_breakdown'
-  | 'failed_payments_7d'
-  | 'new_paid_conversions_7d'
-  | 'mrr_timeseries'
-  | 'active_subs_timeseries'
-  | 'conversions_vs_churn_weekly'
-  | 'failed_payments_weekly'
-  | 'cancellation_reasons_top'
-  | 'cancellation_comments_recent'
-  | 'emoji_feedback_ratings'
-  | 'emoji_feedback_comments'
-  | 'happy_score'
-  | 'reengagement_reasons_top'
-  | 'reengagement_comments_recent'
-  | 'signup_countries_90d'
-  | 'total_users'
-  | 'signups_24h'
-  | 'signups_7d'
-  | 'pass_sales_7d';
+export type {
+  ActiveSubsTimeseriesPoint,
+  BusinessMetricError,
+  BusinessMetricKey,
+  BusinessMetricsResponse,
+  ChurnBreakdown,
+  ChurnTierPoint,
+  ConversionsChurnWeekPoint,
+  FailedPaymentsWeekPoint,
+  MrrTimeseriesPoint,
+  SignupCountryCount as SignupCountryPoint,
+} from '@server/types/ops/BusinessMetrics';
 
-export interface BusinessMetricError {
-  metric: BusinessMetricKey;
-  message: string;
-}
-
-export interface MrrTimeseriesPoint {
-  t: string;
-  mrr_usd: number;
-}
-
-export interface ActiveSubsTimeseriesPoint {
-  t: string;
-  active_paying_subs: number;
-}
-
-export interface ChurnTierPoint {
-  tier: string;
-  churned: number;
-  active: number;
-}
-
-export interface ChurnBreakdown {
-  churned: number;
-  ended: number;
-  scheduled: number;
-  voluntary: number;
-  payment_failed: number;
-  trailing_90d_avg_pct: number | null;
-  same_period_last_year_pct: number | null;
-  by_tier: ChurnTierPoint[];
-}
-
-export interface ConversionsChurnWeekPoint {
-  week: string;
-  new_paying: number;
-  churned: number;
-}
-
-export interface FailedPaymentsWeekPoint {
-  week: string;
-  count: number;
-}
-
-export interface CancellationReasonPoint {
-  reason: string;
-  count: number;
-}
-
-export interface CancellationCommentPoint {
-  reason: string;
-  comment: string;
-  created_at: string;
-}
-
-export interface EmojiFeedbackRatingPoint {
-  rating: number;
-  count: number;
-}
-
-export interface EmojiFeedbackCommentPoint {
-  rating: number;
-  comment: string;
-  page: string;
-  created_at: string;
-}
-
-export type HappyScoreWindowLabel = '7d' | '30d' | '90d';
-
-export interface HappyScoreWindow {
-  window: HappyScoreWindowLabel;
-  love: number;
-  low: number;
-  n: number;
-  score_pct: number | null;
-  asks: number | null;
-  response_rate_pct: number | null;
-}
-
-export interface ReEngagementReasonPoint {
-  stopped_reason: string;
-  count: number;
-}
-
-export interface ReEngagementCommentPoint {
-  stopped_reason: string;
-  content_type: string;
-  comment: string;
-  created_at: string;
-}
-
-export interface SignupCountryPoint {
-  country: string;
-  count: number;
-}
-
-export interface BusinessMetricsResponse {
-  mrr_usd: number | null;
-  net_new_mrr_mtd_usd: number | null;
-  active_paying_subs: number | null;
-  churn_30d_pct: number | null;
-  churn_30d_breakdown: ChurnBreakdown | null;
-  failed_payments_7d: number | null;
-  new_paid_conversions_7d: number | null;
-  pass_sales_7d: {
-    day_passes: number;
-    week_passes: number;
-    semester_passes: number;
-  } | null;
-  mrr_timeseries: MrrTimeseriesPoint[] | null;
-  active_subs_timeseries: ActiveSubsTimeseriesPoint[] | null;
-  conversions_vs_churn_weekly: ConversionsChurnWeekPoint[] | null;
-  failed_payments_weekly: FailedPaymentsWeekPoint[] | null;
-  cancellation_reasons_top: CancellationReasonPoint[] | null;
-  cancellation_comments_recent: CancellationCommentPoint[] | null;
-  emoji_feedback_ratings: EmojiFeedbackRatingPoint[] | null;
-  emoji_feedback_comments: EmojiFeedbackCommentPoint[] | null;
-  happy_score: HappyScoreWindow[] | null;
-  reengagement_reasons_top: ReEngagementReasonPoint[] | null;
-  reengagement_comments_recent: ReEngagementCommentPoint[] | null;
-  signup_countries_90d: SignupCountryPoint[] | null;
-  total_users: number | null;
-  signups_24h: number | null;
-  signups_7d: number | null;
-  as_of: string;
-  cache_age_seconds: number;
-  errors?: BusinessMetricError[];
-}
+export type {
+  CancellationCommentEntry as CancellationCommentPoint,
+  CancellationReasonCount as CancellationReasonPoint,
+  EmojiFeedbackCommentEntry as EmojiFeedbackCommentPoint,
+  EmojiFeedbackRatingCount as EmojiFeedbackRatingPoint,
+  HappyScoreWindow,
+  HappyScoreWindowLabel,
+  ReEngagementCommentEntry as ReEngagementCommentPoint,
+  ReEngagementReasonCount as ReEngagementReasonPoint,
+} from '@server/types/ops/feedbackRows';

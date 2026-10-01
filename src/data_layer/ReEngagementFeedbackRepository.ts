@@ -1,16 +1,11 @@
 import type { Knex } from 'knex';
 
-export interface ReEngagementReasonCount {
-  stopped_reason: string;
-  count: number;
-}
+import type {
+  ReEngagementCommentEntry,
+  ReEngagementReasonCount,
+} from '../types/ops/feedbackRows';
 
-export interface ReEngagementCommentEntry {
-  stopped_reason: string;
-  content_type: string;
-  comment: string;
-  created_at: string;
-}
+export type { ReEngagementCommentEntry, ReEngagementReasonCount };
 
 export interface IReEngagementFeedbackRepository {
   countByReason(since: Date): Promise<ReEngagementReasonCount[]>;
