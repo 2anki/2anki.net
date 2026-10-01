@@ -67,6 +67,9 @@ const describeTokenExchangeError = (error: unknown): string => {
   return describeError(error).slice(0, 300);
 };
 
+const isProviderEmailVerified = (claim: unknown): boolean =>
+  claim === true || claim === 'true';
+
 const resolveRsaSigningKey = (
   idToken: string,
   jwks: RsaJwk[]
@@ -197,6 +200,10 @@ export type AppleLoginResult =
       refreshToken?: string;
     }
   | { ok: false; reason: string; message: string };
+
+export type AppleIdentityTokenResult =
+  | { ok: true; subject: string; email?: string }
+  | { ok: false; reason: 'invalid_identity_token' | 'email_not_verified' };
 
 export interface UserWithOwner extends Users {
   owner: number;
@@ -483,6 +490,13 @@ class AuthenticationService {
         typeof payload.email === 'string' && payload.email.length > 0
           ? payload.email
           : undefined;
+      if (email != null && !isProviderEmailVerified(payload.email_verified)) {
+        return {
+          ok: false,
+          reason: 'email_not_verified',
+          message: 'Google reports the email as unverified',
+        };
+      }
       const name = typeof payload.name === 'string' ? payload.name : undefined;
       return { ok: true, email, name };
     } catch (error) {
@@ -690,9 +704,7 @@ class AuthenticationService {
           message: 'id_token payload has no sub claim',
         };
       }
-      const emailVerified =
-        payload.email_verified === true || payload.email_verified === 'true';
-      if (!emailVerified) {
+      if (!isProviderEmailVerified(payload.email_verified)) {
         return {
           ok: false,
           reason: 'email_not_verified',
@@ -757,25 +769,25 @@ class AuthenticationService {
 
   async verifyAppleIdentityToken(
     idToken: string
-  ): Promise<{ subject: string; email?: string } | undefined> {
+  ): Promise<AppleIdentityTokenResult> {
     const audience = process.env.APPLE_NATIVE_CLIENT_ID;
     if (!audience) {
-      return undefined;
+      return { ok: false, reason: 'invalid_identity_token' };
     }
     try {
       const decoded = jwt.decode(idToken, { complete: true });
       if (!decoded || typeof decoded === 'string') {
-        return undefined;
+        return { ok: false, reason: 'invalid_identity_token' };
       }
       const kid = decoded.header.kid;
       const alg = decoded.header.alg;
       if (alg !== 'RS256' || typeof kid !== 'string') {
-        return undefined;
+        return { ok: false, reason: 'invalid_identity_token' };
       }
       const jwks = await getAppleJwks();
       const jwk = jwks.find((k) => k.kid === kid);
       if (!jwk) {
-        return undefined;
+        return { ok: false, reason: 'invalid_identity_token' };
       }
       const publicKey = crypto.createPublicKey({ key: jwk, format: 'jwk' });
       const payload = jwt.verify(idToken, publicKey, {
@@ -784,19 +796,22 @@ class AuthenticationService {
         issuer: APPLE_ISSUER,
       });
       if (typeof payload === 'string') {
-        return undefined;
+        return { ok: false, reason: 'invalid_identity_token' };
       }
       const subject = typeof payload.sub === 'string' ? payload.sub : undefined;
       if (!subject) {
-        return undefined;
+        return { ok: false, reason: 'invalid_identity_token' };
       }
       const email =
         typeof payload.email === 'string' && payload.email.length > 0
           ? payload.email
           : undefined;
-      return { subject, email };
+      if (email != null && !isProviderEmailVerified(payload.email_verified)) {
+        return { ok: false, reason: 'email_not_verified' };
+      }
+      return { ok: true, subject, email };
     } catch {
-      return undefined;
+      return { ok: false, reason: 'invalid_identity_token' };
     }
   }
 }
