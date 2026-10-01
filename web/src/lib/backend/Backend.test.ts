@@ -533,6 +533,7 @@ describe('Backend', () => {
       const blob = new Blob(['apkg']);
       const fetchMock = vi.fn().mockResolvedValue({
         status: 200,
+        headers: new Headers({ 'Content-Type': 'application/octet-stream' }),
         blob: () => Promise.resolve(blob),
       });
       vi.stubGlobal('fetch', fetchMock);
@@ -543,6 +544,36 @@ describe('Backend', () => {
       expect(fetchMock).toHaveBeenCalledWith(`/api/download/recover/${token}`, {
         credentials: 'include',
       });
+    });
+
+    it('rejects a 200 that is not a deck', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          status: 200,
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+          blob: () => Promise.resolve(new Blob(['{"success":true}'])),
+        })
+      );
+
+      await expect(
+        backend.getAnonymousRecoveredDeck(token)
+      ).resolves.toBeNull();
+    });
+
+    it('rejects an empty body', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          status: 200,
+          headers: new Headers({ 'Content-Type': 'application/octet-stream' }),
+          blob: () => Promise.resolve(new Blob([])),
+        })
+      );
+
+      await expect(
+        backend.getAnonymousRecoveredDeck(token)
+      ).resolves.toBeNull();
     });
 
     it('returns null when nothing was stored', async () => {

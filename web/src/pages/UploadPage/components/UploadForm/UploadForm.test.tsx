@@ -3024,6 +3024,65 @@ describe('UploadForm anonymous deck recovery', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('fetches a copy that finished after the drop when the user taps Try again', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+    const getAnonymousRecoveredDeck = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(new Blob(['apkg']));
+    stubApi(getAnonymousRecoveredDeck);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', 'blob:recovered');
+    const token = uploadToken(fetchMock);
+    expect(getAnonymousRecoveredDeck).toHaveBeenNthCalledWith(2, token);
+    const uploads = fetchMock.mock.calls.filter(
+      ([url]) => url === '/api/upload/file'
+    );
+    expect(uploads).toHaveLength(1);
+  });
+
+  it('re-uploads with the same token when Try again finds no copy', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+    stubApi(vi.fn().mockResolvedValue(null));
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => {
+      const uploads = fetchMock.mock.calls.filter(
+        ([url]) => url === '/api/upload/file'
+      );
+      expect(uploads).toHaveLength(2);
+    });
+    const tokens = fetchMock.mock.calls
+      .filter(([url]) => url === '/api/upload/file')
+      .map(
+        ([, init]) =>
+          (init.headers as Record<string, string>)['X-Recovery-Token']
+      );
+    expect(tokens[1]).toBe(tokens[0]);
+  });
+
   it('falls back to the retry state when the recovery lookup itself fails', async () => {
     vi.stubGlobal(
       'fetch',

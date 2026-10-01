@@ -9,7 +9,6 @@ const SURFACE = 'upload_success_signup';
 
 interface CreateAccountNoticeProps {
   readonly deckName?: string;
-  /** Yield the solid style to another primary action on the same screen. */
   readonly secondary?: boolean;
 }
 

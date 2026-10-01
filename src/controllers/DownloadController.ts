@@ -167,6 +167,7 @@ class DownloadController {
         return res.status(404).send();
       }
       res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Cache-Control', 'private, no-store');
       await this.serveStoredObject(stored.body, res, null);
     } catch (error) {
       if (this.service.isMissingDownloadError(error)) {

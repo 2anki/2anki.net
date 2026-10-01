@@ -401,10 +401,15 @@ export class Backend {
       `${this.baseURL}download/recover/${encodeURIComponent(token)}`,
       { credentials: 'include' }
     );
-    if (response.status !== OK) {
+    const contentType = response.headers?.get('Content-Type') ?? '';
+    if (
+      response.status !== OK ||
+      !contentType.includes('application/octet-stream')
+    ) {
       return null;
     }
-    return response.blob();
+    const deck = await response.blob();
+    return deck.size > 0 ? deck : null;
   }
 
   async claimHeldDeck(): Promise<ClaimHeldDeckResult> {

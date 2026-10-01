@@ -764,6 +764,7 @@ describe('DownloadController.getAnonymousRecovery', () => {
     );
     expect(Buffer.concat(res._chunks).toString()).toBe('fake-apkg');
     expect(res._headers['Content-Type']).toBe('application/octet-stream');
+    expect(res._headers['Cache-Control']).toBe('private, no-store');
   });
 
   it('answers 400 for a token that is not a UUID', async () => {

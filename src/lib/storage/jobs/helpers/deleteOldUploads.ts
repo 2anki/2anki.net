@@ -61,6 +61,6 @@ export default async function deleteOldUploads(db: Knex) {
   await deleteDanglingUploadsInBucket(db, storage);
   await deleteDeadUploadRowsInDatabase(db, storage);
   await deleteExpiredHeldDecks(db, storage);
-  await deleteExpiredRecoveryDecks(storage);
   await deleteResolvedFeedbackAttachments(db, storage);
+  await deleteExpiredRecoveryDecks(storage);
 }
