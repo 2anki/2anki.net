@@ -1,6 +1,7 @@
 import express from 'express';
 import RequireAuthentication from './middleware/RequireAuthentication';
 import { optionalAuthMiddleware } from './middleware/optionalAuthMiddleware';
+import { RejectDuplicatePurchase } from './middleware/RejectDuplicatePurchase';
 import AutoSyncCheckoutController from '../controllers/AutoSyncCheckoutController';
 import PassCheckoutController from '../controllers/PassCheckoutController';
 import ResumeCheckoutController from '../controllers/ResumeCheckoutController';
@@ -112,6 +113,7 @@ const CheckoutRouter = () => {
     '/api/checkout/unlimited',
     RequireAuthentication,
     express.json(),
+    RejectDuplicatePurchase('subscription'),
     async (req, res) => {
       if (unlimitedMonthlyPriceId === '') {
         return res
@@ -165,6 +167,7 @@ const CheckoutRouter = () => {
     '/api/checkout/pass/24h',
     optionalAuthMiddleware,
     express.json(),
+    RejectDuplicatePurchase('pass'),
     async (req, res) => {
       const pass24hPriceId = await pricingService.resolvePriceId('24h');
       if (pass24hPriceId == null) {
@@ -190,6 +193,7 @@ const CheckoutRouter = () => {
     '/api/checkout/pass/7d',
     optionalAuthMiddleware,
     express.json(),
+    RejectDuplicatePurchase('pass'),
     async (req, res) => {
       const pass7dPriceId = await pricingService.resolvePriceId('7d');
       if (pass7dPriceId == null) {
@@ -215,6 +219,7 @@ const CheckoutRouter = () => {
     '/api/checkout/pass/120d',
     optionalAuthMiddleware,
     express.json(),
+    RejectDuplicatePurchase('pass'),
     async (req, res) => {
       const pass120dPriceId = await pricingService.resolvePriceId('120d');
       if (pass120dPriceId == null) {
