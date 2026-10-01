@@ -30,6 +30,7 @@ vi.mock('../../../../lib/hooks/useUserLocals', () => ({
 vi.mock('../../../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: vi.fn(() => ({
     startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+    getUploads: vi.fn().mockResolvedValue([]),
   })),
 }));
 
@@ -2678,5 +2679,225 @@ describe('UploadForm network-failure retry', () => {
       'upload_started',
       expect.anything()
     );
+  });
+});
+
+describe('UploadForm reattach recovery', () => {
+  beforeEach(() => {
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    globalThis.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    delete (globalThis as AnalyticsGlobals).gtag;
+    delete (globalThis as AnalyticsGlobals).hj;
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    globalThis.sessionStorage.clear();
+  });
+
+  function selectFile(container: HTMLElement, name: string) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const file = new File(['x'], name, { type: 'application/pdf' });
+    Object.defineProperty(fileInput, 'files', {
+      value: [file],
+      configurable: true,
+    });
+    fileInput.removeAttribute('required');
+    return fileInput;
+  }
+
+  async function submitForm(container: HTMLElement) {
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+  }
+
+  it('persists the in-flight filename while the upload request is pending', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise(() => {}))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    expect(globalThis.sessionStorage.getItem('upload_pending_filename')).toBe(
+      'biochem.pdf'
+    );
+  });
+
+  it('clears the pending filename once the server responds', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': '5',
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    await waitFor(() =>
+      expect(
+        globalThis.sessionStorage.getItem('upload_pending_filename')
+      ).toBeNull()
+    );
+  });
+
+  it('keeps the pending filename after a dropped connection so a reload can recover it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    await screen.findByRole('button', { name: 'Try again' });
+    expect(globalThis.sessionStorage.getItem('upload_pending_filename')).toBe(
+      'biochem.pdf'
+    );
+  });
+});
+
+describe('UploadForm signed-in deck recovery', () => {
+  const authedData = {
+    user: { id: 1 },
+    locals: {
+      owner: 1,
+      patreon: false,
+      subscriber: false,
+      subscriptionInfo: { active: false, email: '', linked_email: '' },
+    },
+    linked_email: '',
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  beforeEach(() => {
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    globalThis.sessionStorage.clear();
+    mockUseUserLocals.mockReturnValue({
+      data: authedData,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    delete (globalThis as AnalyticsGlobals).gtag;
+    delete (globalThis as AnalyticsGlobals).hj;
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    globalThis.sessionStorage.clear();
+  });
+
+  function selectFile(container: HTMLElement, name: string) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const file = new File(['x'], name, { type: 'application/pdf' });
+    Object.defineProperty(fileInput, 'files', {
+      value: [file],
+      configurable: true,
+    });
+    fileInput.removeAttribute('required');
+    return fileInput;
+  }
+
+  async function submitForm(container: HTMLElement) {
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+  }
+
+  function makeUpload() {
+    return {
+      id: '1',
+      size_mb: 1,
+      owner: 1,
+      key: 'recovered-key',
+      filename: 'biochem',
+      object_id: 'obj-1',
+      created_at: new Date().toISOString(),
+      source: null,
+    };
+  }
+
+  it('recovers a signed-in deck from My Decks when the response is lost', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getUploads: vi.fn().mockResolvedValue([makeUpload()]),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', '/api/download/u/recovered-key');
+    expect(
+      screen.queryByRole('button', { name: 'Try again' })
+    ).not.toBeInTheDocument();
+    expect(
+      globalThis.sessionStorage.getItem('upload_pending_filename')
+    ).toBeNull();
+  });
+
+  it('falls back to the retry state when My Decks has no matching deck', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getUploads: vi.fn().mockResolvedValue([]),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    await screen.findByRole('button', { name: 'Try again' });
+    expect(
+      screen.queryByRole('link', { name: 'Download deck' })
+    ).not.toBeInTheDocument();
   });
 });

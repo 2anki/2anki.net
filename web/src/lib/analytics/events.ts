@@ -46,6 +46,7 @@ export const KNOWN_EVENTS = new Set([
   'upload_guardrail_shown',
   'upload_guardrail_overridden',
   'upload_cancelled',
+  'upload_reattach_shown',
   'cancel_during_generating',
   'signup_completed',
   'landing_page_viewed',

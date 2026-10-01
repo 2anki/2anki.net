@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-01-mobile-upload-recovery",
+  "date": "2026-10-01",
+  "type": "fix",
+  "title": "An upload interrupted by a locked screen or app switch recovers when you come back"
+}

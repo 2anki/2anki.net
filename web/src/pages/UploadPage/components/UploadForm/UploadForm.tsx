@@ -9,6 +9,7 @@ import {
 import handleRedirect from '../../../../lib/handleRedirect';
 import { getStoredPassToken } from '../../../../lib/anonymousPass';
 import type { UploadErrorBody } from '../../../../types/UploadErrorBody';
+import type UserUpload from '../../../../lib/interfaces/UserUpload';
 import getAcceptedContentTypes from '../../helpers/getAcceptedContentTypes';
 import { extractErrorMessage } from '../../helpers/extractErrorMessage';
 import {
@@ -66,6 +67,7 @@ import {
   FolderTooBigError,
 } from './helpers/collectDroppedEntries';
 import { zipDroppedFiles } from './helpers/zipDroppedEntries';
+import { findRecoveredUpload } from './helpers/findRecoveredUpload';
 
 import type {
   ZoneState,
@@ -97,6 +99,7 @@ const REJECTED_FALLBACK =
   'The server rejected the upload. Try again or email support@2anki.net.';
 const NETWORK_FALLBACK =
   "Couldn't upload your file. Check your connection and try again.";
+const REATTACH_FILENAME_KEY = 'upload_pending_filename';
 
 function isLimitRedirect(url: URL): boolean {
   return (
@@ -143,11 +146,17 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function toFriendlyThrownError(error: unknown): UploadErrorBody {
-  const isNetworkError =
+function isNetworkThrownError(error: unknown): boolean {
+  return (
     error instanceof TypeError ||
-    (error instanceof Error && /fetch|network/i.test(error.message));
-  if (isNetworkError) return { code: 'unknown', message: NETWORK_FALLBACK };
+    (error instanceof Error && /fetch|network/i.test(error.message))
+  );
+}
+
+function toFriendlyThrownError(error: unknown): UploadErrorBody {
+  if (isNetworkThrownError(error)) {
+    return { code: 'unknown', message: NETWORK_FALLBACK };
+  }
   if (error instanceof Error)
     return { code: 'unknown', message: error.message };
   return { code: 'unknown', message: REJECTED_FALLBACK };
@@ -639,7 +648,7 @@ function UploadForm({
 
   useEffect(() => {
     if (zoneState === 'success' && downloadLink && !showFallback) {
-      globalThis.sessionStorage?.removeItem('upload_pending_filename');
+      globalThis.sessionStorage?.removeItem(REATTACH_FILENAME_KEY);
       queryClient.invalidateQueries({ queryKey: CARD_USAGE_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: AI_CREDITS_QUERY_KEY });
       // A recovered download is a server copy behind a visible button: the
@@ -940,9 +949,7 @@ function UploadForm({
     isRetry: boolean,
     submittedAt: number
   ): false => {
-    const isNetworkError =
-      error instanceof TypeError ||
-      (error instanceof Error && /fetch|network/i.test(error.message));
+    const isNetworkError = isNetworkThrownError(error);
     const failedFile = uploadedFiles[0];
     const failedFileName = failedFile?.name ?? '';
     const extensionStart = failedFileName.lastIndexOf('.');
@@ -985,6 +992,43 @@ function UploadForm({
     return false;
   };
 
+  const recoverSignedInDeck = async (
+    error: unknown,
+    uploadedFiles: File[],
+    submittedAt: number
+  ): Promise<boolean> => {
+    if (!isNetworkThrownError(error)) return false;
+    if (!isAuthenticated) return false;
+    const target = uploadedFiles[0];
+    if (target == null) return false;
+
+    let uploads: UserUpload[];
+    try {
+      uploads = await get2ankiApi().getUploads();
+    } catch {
+      return false;
+    }
+    const recovered = findRecoveredUpload(uploads, target.name, submittedAt);
+    if (recovered == null) return false;
+
+    globalThis.sessionStorage?.removeItem(REATTACH_FILENAME_KEY);
+    setDeckName(recovered.filename);
+    setCardCount(null);
+    setDownloadLink(`/api/download/u/${encodeURIComponent(recovered.key)}`);
+    setDownloadRecovered(true);
+    setProgressWidth(100);
+    setZoneState('success');
+    queryClient.invalidateQueries({ queryKey: CARD_USAGE_QUERY_KEY });
+    track('upload_failed', {
+      reason: 'network',
+      recovered: true,
+      source: 'my_decks',
+      fileSizeBytes: target.size ?? null,
+      elapsedSeconds: Math.round((Date.now() - submittedAt) / 1000),
+    });
+    return true;
+  };
+
   const runFileUpload = async (
     formData: FormData,
     uploadedFiles: File[],
@@ -992,6 +1036,7 @@ function UploadForm({
   ): Promise<boolean> => {
     const submittedAt = Date.now();
     setZoneState('converting');
+    saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
     setNetworkRetryFiles(null);
     setUnreadableFile(null);
     fireAnalyticsEvent('upload_started');
@@ -1008,6 +1053,7 @@ function UploadForm({
         headers: uploadHeaders,
         body: formData,
       });
+      globalThis.sessionStorage?.removeItem(REATTACH_FILENAME_KEY);
       if (request.redirected) {
         return handleUploadRedirect(request, uploadedFiles);
       }
@@ -1020,6 +1066,9 @@ function UploadForm({
       }
       await applyConversionSuccess(request, conversionSuccessHandlers);
     } catch (error) {
+      if (await recoverSignedInDeck(error, uploadedFiles, submittedAt)) {
+        return true;
+      }
       return handleUploadError(error, uploadedFiles, isRetry, submittedAt);
     }
     return true;
@@ -1537,7 +1586,7 @@ function UploadForm({
 
   const saveFilenameForReattach = (filename: string | null) => {
     if (filename != null && filename.length > 0) {
-      globalThis.sessionStorage?.setItem('upload_pending_filename', filename);
+      globalThis.sessionStorage?.setItem(REATTACH_FILENAME_KEY, filename);
     }
   };
 

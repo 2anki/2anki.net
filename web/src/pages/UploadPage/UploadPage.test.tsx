@@ -119,6 +119,23 @@ describe('UploadPage reattach banner', () => {
       expect(screen.queryByText(/Re-attach/)).not.toBeInTheDocument();
     });
   });
+
+  it('fires upload_reattach_shown when the banner is displayed', async () => {
+    trackMock.mockClear();
+    renderPageWithSession('upload_pending_filename', 'biochemistry.zip');
+    await screen.findByText(/Re-attach/);
+    expect(trackMock).toHaveBeenCalledWith('upload_reattach_shown');
+    globalThis.sessionStorage.removeItem('upload_pending_filename');
+  });
+
+  it('does not fire upload_reattach_shown when no pending filename is set', async () => {
+    trackMock.mockClear();
+    renderPageWithSession('upload_pending_filename', null);
+    await waitFor(() => {
+      expect(screen.queryByText(/Re-attach/)).not.toBeInTheDocument();
+    });
+    expect(trackMock).not.toHaveBeenCalledWith('upload_reattach_shown');
+  });
 });
 
 describe('UploadPage explore card', () => {
