@@ -36,7 +36,7 @@ import { useActiveShares } from './hooks/useActiveShares';
 import { fireAnalyticsEvent } from '../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../lib/analytics/track';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
-import JobResponse from '../../schemas/public/JobResponse';
+import type JobResponse from '@server/types/JobResponse';
 import {
   ThinDeckNotice,
   shouldShowThinDeckNotice,

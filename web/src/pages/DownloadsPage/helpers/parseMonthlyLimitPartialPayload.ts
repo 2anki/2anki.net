@@ -1,4 +1,4 @@
-import JobResponse from '../../../schemas/public/JobResponse';
+import type JobResponse from '@server/types/JobResponse';
 
 export interface MonthlyLimitPartialPayload {
   cardsDelivered: number;

@@ -118,7 +118,6 @@ export default defineConfig(({ command, mode }) => {
         exclude: [
           'src/**/*.{test,spec}.{ts,tsx}',
           'src/setupTests.ts',
-          'src/schemas/**',
           'src/react-app-env.d.ts',
         ],
       },
@@ -126,9 +125,18 @@ export default defineConfig(({ command, mode }) => {
 
     // Define aliases
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-      },
+      alias: [
+        {
+          find: /^@server\//,
+          replacement: '@server/',
+          customResolver() {
+            throw new Error(
+              'server modules are type-only in the web app — import them with `import type` so esbuild erases the import before Vite resolves it; a value import through @server/* would bundle server runtime into the client'
+            );
+          },
+        },
+        { find: '@', replacement: path.resolve(__dirname, './src') },
+      ],
     },
 
     // Development server configuration

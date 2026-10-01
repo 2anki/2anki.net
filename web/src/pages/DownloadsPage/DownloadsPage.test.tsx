@@ -6,8 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { DownloadsPage, renderJobStatusCell } from './DownloadsPage';
 import i18n from '../../lib/i18n';
-import JobResponse from '../../schemas/public/JobResponse';
-import { JobsId } from '../../schemas/public/Jobs';
+import type JobResponse from '@server/types/JobResponse';
+import type { JobsId } from '@server/data_layer/public/Jobs';
 
 vi.mock('./hooks/useJobs', () => ({
   default: () => ({

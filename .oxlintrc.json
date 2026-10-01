@@ -10,7 +10,19 @@
     "for-direction": "warn",
     "no-unused-labels": "warn",
     "unicorn/no-negated-condition": "warn",
-    "typescript/prefer-optional-chain": "warn"
+    "typescript/prefer-optional-chain": "warn",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@server/**"],
+            "allowTypeImports": true,
+            "message": "The @server/* alias is type-only. Use `import type` — value imports would bundle server runtime into the web app."
+          }
+        ]
+      }
+    ]
   },
   "ignorePatterns": [
     "**/node_modules/**",
@@ -22,7 +34,6 @@
     "**/templates/**",
     "**/fixtures/**",
     "**/generated/**",
-    "**/schemas/**",
     "**/react-app-env.d.ts"
   ]
 }

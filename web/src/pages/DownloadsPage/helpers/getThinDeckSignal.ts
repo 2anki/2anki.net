@@ -1,4 +1,4 @@
-import JobResponse from '../../../schemas/public/JobResponse';
+import type JobResponse from '@server/types/JobResponse';
 import { parseForbiddenBlocksPayload } from './parseForbiddenBlocksPayload';
 import { parseUnsupportedBlocksPayload } from './parseUnsupportedBlocksPayload';
 import { countUnsupportedBlocks } from './countUnsupportedBlocks';

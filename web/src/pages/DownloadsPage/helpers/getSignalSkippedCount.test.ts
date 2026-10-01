@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { getSignalSkippedCount } from './getSignalSkippedCount';
-import JobResponse from '../../../schemas/public/JobResponse';
-import { JobsId } from '../../../schemas/public/Jobs';
+import type JobResponse from '@server/types/JobResponse';
+import type { JobsId } from '@server/data_layer/public/Jobs';
 
 const doneNotionJob = (payload: unknown): JobResponse =>
   ({

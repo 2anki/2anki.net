@@ -1,3 +1,10 @@
+import type { UploadErrorCode } from '@server/types/UploadErrorBody';
+
+export type {
+  UploadErrorBody,
+  UploadErrorCode,
+} from '@server/types/UploadErrorBody';
+
 export const UPLOAD_ERROR_CODES = [
   'unsupported_format',
   'too_large',
@@ -21,18 +28,11 @@ export const UPLOAD_ERROR_CODES = [
   'zip_invalid',
   'ai_credits_exhausted',
   'unknown',
-] as const;
-
-export type UploadErrorCode = (typeof UPLOAD_ERROR_CODES)[number];
+] as const satisfies readonly UploadErrorCode[];
 
 export function isUploadErrorCode(value: unknown): value is UploadErrorCode {
   return (
     typeof value === 'string' &&
     (UPLOAD_ERROR_CODES as readonly string[]).includes(value)
   );
-}
-
-export interface UploadErrorBody {
-  code: UploadErrorCode;
-  message: string;
 }

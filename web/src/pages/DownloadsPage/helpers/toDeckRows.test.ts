@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import JobResponse from '../../../schemas/public/JobResponse';
+import type JobResponse from '@server/types/JobResponse';
 import UserUpload from '../../../lib/interfaces/UserUpload';
 import { DropboxUpload, GoogleDriveUpload } from '../../../lib/backend';
 import { toDeckRows } from './toDeckRows';
-import { JobsId } from '../../../schemas/public/Jobs';
+import type { JobsId } from '@server/data_layer/public/Jobs';
 
 const makeJob = (overrides: Partial<JobResponse> = {}): JobResponse => ({
   id: 1 as JobsId,

@@ -16,7 +16,10 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "sourceMap": true,
-    "types": ["vitest/globals", "node"]
+    "types": ["vitest/globals", "node"],
+    "paths": {
+      "@server/*": ["../src/*"]
+    }
   },
   "include": ["src", "tests"]
 }

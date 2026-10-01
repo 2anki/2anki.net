@@ -7,17 +7,9 @@ import { JobWithDownloadKey } from '../data_layer/JobRepository';
 import { getOwner } from '../lib/User/getOwner';
 import DeleteJobUseCase from '../usecases/jobs/DeleteJobUseCase';
 import { getEmptyBackCount } from '../services/NotionService/helpers/getEmptyBackCount';
+import JobResponse from '../types/JobResponse';
 
-// conversion_report stays out of the polled jobs list on purpose — the
-// report is fetched lazily per job when the user opens it (#4211). Only the
-// empty-toggle count is derived from it, so the Downloads row can say why a
-// Notion deck came back thin (#4273).
-interface JobListItem extends Omit<JobWithDownloadKey, 'conversion_report'> {
-  restartable: boolean;
-  empty_back_count: number;
-}
-
-function toJobListItem(job: JobWithDownloadKey): JobListItem {
+function toJobResponse(job: JobWithDownloadKey): JobResponse {
   return {
     id: job.id,
     owner: job.owner,
@@ -49,7 +41,7 @@ class JobController {
       return;
     }
     const jobs = await this.service.getJobsByOwner(owner);
-    res.send(jobs.map(toJobListItem));
+    res.send(jobs.map(toJobResponse));
   }
 
   async downloadJobResult(req: express.Request, res: express.Response) {

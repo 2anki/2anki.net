@@ -1,8 +1,8 @@
 import { getNotionObjectTitle } from 'get-notion-object-title';
 import Cookies from 'universal-cookie';
 import { NotionResource } from '../interfaces/NotionResource';
-import JobResponse from '../../schemas/public/JobResponse';
-import { JobsId } from '../../schemas/public/Jobs';
+import type JobResponse from '@server/types/JobResponse';
+import type { JobsId } from '@server/data_layer/public/Jobs';
 import { cancelPendingSync } from '../data_layer/userPreferencesSync';
 import AnkifyClient from '../interfaces/AnkifyClient';
 import { AppStoreLinks } from '../interfaces/AppStoreLinks';
@@ -21,7 +21,7 @@ import {
   CheckoutConflict,
   readCheckoutConflict,
 } from '../checkout/checkoutConflict';
-import { ConversionReport } from '../interfaces/ConversionReport';
+import type { ConversionReport } from '../interfaces/ConversionReport';
 
 export class TrackerSchemaError extends Error {
   readonly missing: string[];

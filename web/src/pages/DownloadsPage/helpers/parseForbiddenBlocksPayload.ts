@@ -1,4 +1,4 @@
-import JobResponse from '../../../schemas/public/JobResponse';
+import type JobResponse from '@server/types/JobResponse';
 
 const NOTION_PAGE_JOB_TYPES = new Set(['page', 'database']);
 
