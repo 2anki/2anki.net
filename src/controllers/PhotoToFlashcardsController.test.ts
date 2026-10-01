@@ -299,3 +299,62 @@ describe('PhotoToFlashcardsController MCQ headers', () => {
     expect(res.setHeader).toHaveBeenCalledWith('X-Card-Count', '5');
   });
 });
+
+describe('PhotoToFlashcardsController client attribution', () => {
+  const baseBody = {
+    imageBase64: 'abc',
+    mediaType: 'image/jpeg',
+    deckName: 'X',
+    width: 100,
+    height: 100,
+  };
+
+  it('names the web app when it declares itself', async () => {
+    const useCase = makeUseCase();
+    const controller = new PhotoToFlashcardsController(useCase);
+
+    await controller.create(makeReq({ ...baseBody, source: 'web' }), makeRes());
+
+    expect(useCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ usageSurface: 'photo_to_deck_web' })
+    );
+  });
+
+  // A client that sends nothing is the native app today. Labelling it
+  // 'unattributed' rather than guessing 'native' keeps the number honest and
+  // makes the bucket shrink as clients are taught to declare themselves.
+  it('marks a client that declares nothing as unattributed', async () => {
+    const useCase = makeUseCase();
+    const controller = new PhotoToFlashcardsController(useCase);
+
+    await controller.create(makeReq(baseBody), makeRes());
+
+    expect(useCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ usageSurface: 'photo_to_deck_unattributed' })
+    );
+  });
+
+  // An object literal indexed by client input resolves through
+  // Object.prototype, so source="toString" would hand a Function to the
+  // analytics event. These four names are the reason the allowlist is a Map.
+  it.each([
+    ['an unknown name', 'desktop'],
+    ['a number', 42],
+    ['an object', { web: true }],
+    ['an empty string', ''],
+    ['toString', 'toString'],
+    ['constructor', 'constructor'],
+    ['hasOwnProperty', 'hasOwnProperty'],
+    ['valueOf', 'valueOf'],
+    ['__proto__', '__proto__'],
+  ])('does not trust %s as a surface name', async (_label, source) => {
+    const useCase = makeUseCase();
+    const controller = new PhotoToFlashcardsController(useCase);
+
+    await controller.create(makeReq({ ...baseBody, source }), makeRes());
+
+    expect(useCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ usageSurface: 'photo_to_deck_unattributed' })
+    );
+  });
+});

@@ -253,6 +253,7 @@ export function PhotoToFlashcardsPage() {
         density,
         mode: activeMode,
         mcqEnabled: includeMcq && isPaying,
+        source: 'web',
       }),
     });
 
