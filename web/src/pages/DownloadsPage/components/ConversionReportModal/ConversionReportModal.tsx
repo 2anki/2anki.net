@@ -3,13 +3,13 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
-import {
+import type {
   ConversionReport,
   ConversionReportEntry,
 } from '../../../../lib/interfaces/ConversionReport';
 import { useDialog } from '../../../../lib/hooks/useDialog';
 import { track } from '../../../../lib/analytics/track';
-import JobResponse from '../../../../schemas/public/JobResponse';
+import type JobResponse from '@server/types/JobResponse';
 import { TruncationNotice } from '../TruncationNotice';
 import { ImageDropNotice } from '../ImageDropNotice';
 import { ColumnsGuessedNotice } from '../ColumnsGuessedNotice';

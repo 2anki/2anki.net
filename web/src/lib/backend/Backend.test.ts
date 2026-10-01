@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { JobsId } from '../../schemas/public/Jobs';
+import type { JobsId } from '@server/data_layer/public/Jobs';
 import * as api from './api';
 import { Backend } from './Backend';
 

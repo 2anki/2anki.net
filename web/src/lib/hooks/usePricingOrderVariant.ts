@@ -6,7 +6,7 @@ export type PricingOrder =
   | 'minimal'
   | 'semester-first';
 
-const VARIANTS: PricingOrder[] = [
+export const VARIANTS: PricingOrder[] = [
   'passes-first',
   'unlimited-first',
   'minimal',

@@ -6,8 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import i18n from '../../lib/i18n';
 import { DownloadsPage } from './DownloadsPage';
-import JobResponse from '../../schemas/public/JobResponse';
-import { JobsId } from '../../schemas/public/Jobs';
+import type JobResponse from '@server/types/JobResponse';
+import type { JobsId } from '@server/data_layer/public/Jobs';
 
 let mockJobs: JobResponse[] = [];
 

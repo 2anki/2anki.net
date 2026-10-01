@@ -4,8 +4,8 @@ import { renderHook, act } from '@testing-library/react';
 import useJobs from './useJobs';
 import Backend from '../../../lib/backend';
 import { UserNotice } from '../../../lib/errors/UserNotice';
-import { JobsId } from '../../../schemas/public/Jobs';
-import JobResponse from '../../../schemas/public/JobResponse';
+import type { JobsId } from '@server/data_layer/public/Jobs';
+import type JobResponse from '@server/types/JobResponse';
 
 vi.mock('../../../lib/analytics/track', () => ({ track: vi.fn() }));
 

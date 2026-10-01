@@ -1,4 +1,4 @@
-import Users from '../../schemas/public/Users';
+import type Users from '@server/data_layer/public/Users';
 import { get } from './api';
 import { get2ankiApi } from './get2ankiApi';
 
@@ -17,7 +17,7 @@ interface GetUserLocalsResponse {
     planSource?: 'stripe' | 'apple' | 'lifetime' | null;
   };
   linked_email: string;
-  user?: Users & {
+  user?: Pick<Users, 'id' | 'name' | 'email' | 'patreon'> & {
     ankify_welcome_seen?: boolean;
     email_verified?: boolean;
     signup_country?: string | null;

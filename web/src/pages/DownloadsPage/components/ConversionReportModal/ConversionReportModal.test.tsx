@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ConversionReportModal } from './ConversionReportModal';
 import '../../../../lib/i18n';
-import JobResponse from '../../../../schemas/public/JobResponse';
-import { JobsId } from '../../../../schemas/public/Jobs';
+import type JobResponse from '@server/types/JobResponse';
+import type { JobsId } from '@server/data_layer/public/Jobs';
 import type { ConversionReport } from '../../../../lib/interfaces/ConversionReport';
 
 const mockGetJobReport = vi.fn();

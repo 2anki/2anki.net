@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseUnsupportedBlocksPayload } from './parseUnsupportedBlocksPayload';
-import JobResponse from '../../../schemas/public/JobResponse';
-import { JobsId } from '../../../schemas/public/Jobs';
+import type JobResponse from '@server/types/JobResponse';
+import type { JobsId } from '@server/data_layer/public/Jobs';
 
 function buildJob(overrides: Partial<JobResponse> = {}): JobResponse {
   return {
