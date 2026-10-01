@@ -854,5 +854,16 @@
   },
   "favoritesPage": {
     "subtitle": "Pages you've starred for quick access."
+  },
+  "checkout": {
+    "conflict": {
+      "already_lifetime": "You already have lifetime access — no need to buy again.",
+      "already_subscribed": "You already have an active subscription — no need to buy again.",
+      "already_unlimited": "You already have unlimited access — no need to buy again.",
+      "already_unlimited_until": "You have unlimited access until {{date}}.",
+      "billed_through_apple": "Your plan is billed through Apple. Manage it in your Apple subscriptions.",
+      "pass_still_active": "Your pass is still active. Buy the next one when it runs out.",
+      "pass_still_active_until": "Your pass runs until {{date}}. Buy the next one when it runs out."
+    }
   }
 }

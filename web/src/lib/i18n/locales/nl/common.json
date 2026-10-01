@@ -854,5 +854,16 @@
   },
   "favoritesPage": {
     "subtitle": "Pagina's die je een ster hebt gegeven voor snelle toegang."
+  },
+  "checkout": {
+    "conflict": {
+      "already_lifetime": "Je hebt al levenslange toegang — je hoeft niets opnieuw te kopen.",
+      "already_subscribed": "Je hebt al een actief abonnement — je hoeft niets opnieuw te kopen.",
+      "already_unlimited": "Je hebt al onbeperkte toegang — je hoeft niets opnieuw te kopen.",
+      "already_unlimited_until": "Je hebt onbeperkte toegang tot {{date}}.",
+      "billed_through_apple": "Je plan wordt via Apple gefactureerd. Beheer het in je Apple-abonnementen.",
+      "pass_still_active": "Je pas is nog actief. Koop de volgende wanneer deze afloopt.",
+      "pass_still_active_until": "Je pas loopt tot {{date}}. Koop de volgende wanneer deze afloopt."
+    }
   }
 }

@@ -6,6 +6,8 @@ import TopMessage from '../../components/TopMessage/TopMessage';
 import { firePaywallEvent } from '../../lib/analytics/firePaywallEvent';
 import { track } from '../../lib/analytics/track';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
+import type { CheckoutConflict } from '../../lib/checkout/checkoutConflict';
+import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMessage';
 import { useCardUsage } from '../../lib/hooks/useCardUsage';
 import { usePricingOrderVariant } from '../../lib/hooks/usePricingOrderVariant';
 import { ComparisonTable } from './components/ComparisonTable';
@@ -42,8 +44,9 @@ export default function PricingPage({
   signupCountry,
   entitlement,
 }: Readonly<PricingPageProps>) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isUS = signupCountry === 'US';
+  const [conflict, setConflict] = useState<CheckoutConflict | null>(null);
   const [dayPassState, setDayPassState] = useState<PassState>('idle');
   const [weekPassState, setWeekPassState] = useState<PassState>('idle');
   const [semesterPassState, setSemesterPassState] = useState<PassState>('idle');
@@ -175,6 +178,7 @@ export default function PricingPage({
       plan: planByKind[kind],
       variant: pricingOrder,
     });
+    setConflict(null);
     setPassState('pending');
     const result = await get2ankiApi().startPassCheckout(
       kind,
@@ -183,6 +187,11 @@ export default function PricingPage({
     );
     if ('url' in result) {
       globalThis.location.href = result.url;
+      return;
+    }
+    if (result.status === 'conflict') {
+      setConflict(result);
+      setPassState('idle');
       return;
     }
     setPassState('error');
@@ -200,6 +209,7 @@ export default function PricingPage({
       globalThis.location.href = `/login?redirect=${encodeURIComponent(target)}`;
       return;
     }
+    setConflict(null);
     setUnlimitedError(false);
     setUnlimitedPending(true);
     const result = await get2ankiApi().startUnlimitedCheckout(
@@ -212,6 +222,10 @@ export default function PricingPage({
       return;
     }
     setUnlimitedPending(false);
+    if (result.status === 'conflict') {
+      setConflict(result);
+      return;
+    }
     setUnlimitedError(true);
   };
 
@@ -307,6 +321,12 @@ export default function PricingPage({
       </div>
 
       <OwnedPlanNotice entitlement={entitlement} />
+
+      {conflict && (
+        <div className={styles.contextBanner} role="alert">
+          {purchaseConflictMessage(t, conflict, i18n.language)}
+        </div>
+      )}
 
       {ownsOngoingAccess(entitlement) ? null : unlimitedFirst ? (
         <>

@@ -452,6 +452,43 @@ describe('PricingPage internal event tracking', () => {
   });
 });
 
+describe('PricingPage duplicate-purchase conflict', () => {
+  beforeEach(() => {
+    mockUseCardUsage.mockReturnValue(null);
+    mockStartPassCheckout.mockReset();
+    mockStartUnlimitedCheckout.mockReset();
+  });
+
+  it('shows when an active pass ends when buying another pass', async () => {
+    mockStartPassCheckout.mockResolvedValue({
+      status: 'conflict',
+      code: 'pass_still_active',
+      expiresAt: '2026-10-08T12:00:00.000Z',
+    });
+    renderAt('/pricing', { isLoggedIn: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('Your pass runs until');
+    expect(alert.textContent).toContain('2026');
+  });
+
+  it('names the active subscription when buying Pro again', async () => {
+    mockStartUnlimitedCheckout.mockResolvedValue({
+      status: 'conflict',
+      code: 'already_subscribed',
+      expiresAt: null,
+    });
+    renderAt('/pricing', { isLoggedIn: true });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
+    );
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain(
+      'You already have an active subscription'
+    );
+  });
+});
+
 describe('PricingPage anonymous upgrade-click tracking', () => {
   beforeEach(() => {
     mockUseCardUsage.mockReturnValue(null);

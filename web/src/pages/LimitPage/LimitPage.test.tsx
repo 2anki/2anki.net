@@ -144,6 +144,20 @@ describe('LimitPage', () => {
     });
   });
 
+  it('tells a pass holder when the current pass ends instead of a generic error', async () => {
+    mockStartPassCheckout.mockResolvedValue({
+      status: 'conflict',
+      code: 'pass_still_active',
+      expiresAt: '2026-10-08T12:00:00.000Z',
+    });
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('Your pass runs until');
+    expect(alert.textContent).toContain('2026');
+    expect(alert.textContent).toContain('Buy the next one when it runs out');
+  });
+
   it('leads with the Pro plan and lists the passes after it', () => {
     renderPage();
     const unlimitedLabel = screen.getByText('Skip the monthly card cap');
