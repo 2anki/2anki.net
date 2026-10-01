@@ -356,3 +356,41 @@ describe('heading context does not leak out of a column layout', () => {
     expect(second.h2).toBe('');
   });
 });
+
+describe('column cards do not suppress the empty-deck rescue', () => {
+  it('rescues heading cards from the page and still cards a column toggle', async () => {
+    const api = makeApi({
+      'page-1': [
+        textBlock('h-a', 'heading_2', 'Alpha'),
+        textBlock('p-a', 'paragraph', 'Alpha is the first concept.'),
+        textBlock('h-b', 'heading_2', 'Beta'),
+        textBlock('p-b', 'paragraph', 'Beta is the second concept.'),
+        textBlock('h-c', 'heading_2', 'Gamma'),
+        textBlock('p-c', 'paragraph', 'Gamma is the third concept.'),
+        layoutBlock('cl-1', 'column_list'),
+      ],
+      'cl-1': [layoutBlock('col-0', 'column')],
+      'col-0': [textBlock('t-colq', 'toggle', 'ColQ', true)],
+      't-colq': [textBlock('p-colq', 'paragraph', 'Column answer')],
+    });
+    const handler = makeHandler(api);
+
+    const decks = await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks).toHaveLength(1);
+    const fronts = decks[0].cards.map((c) => c.name.replace(/<[^>]*>/g, ''));
+    expect(fronts).toHaveLength(4);
+    expect(fronts).toEqual(expect.arrayContaining(['Alpha', 'Beta', 'Gamma']));
+    expect(fronts.some((f) => f.includes('ColQ'))).toBe(true);
+    expect(handler.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
+  });
+});

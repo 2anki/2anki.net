@@ -1047,7 +1047,17 @@ class BlockHandler implements IBlockRenderer {
           ) === 'card'
         );
       };
-      const cBlocks = cardSource.filter(isCardBlock);
+      // Base cards are exactly what the un-flattened walk produces — the same
+      // card blocks and the same rescue input main uses — so the rescue decision
+      // (empty-deck vs degenerate) and its induction see only `blocks`, never the
+      // column-derived cards. Column cards are produced separately and appended,
+      // so a toggle inside a column can never suppress a rescue the headings on
+      // the page would otherwise earn.
+      const baseCardBlocks = blocks.filter(isCardBlock);
+      const baseCardIds = new Set<string>(baseCardBlocks.map((b) => b.id));
+      const columnCardBlocks = cardSource
+        .filter(isCardBlock)
+        .filter((b) => !baseCardIds.has(b.id));
       const headingTagMap =
         rules.TAGS === 'heading'
           ? buildHeadingTagMap(blocks, isCardBlock)
@@ -1064,25 +1074,43 @@ class BlockHandler implements IBlockRenderer {
             ? page?.url
             : undefined
           : undefined;
-      let cards = await this.getFlashcards(
-        rules,
-        cBlocks,
-        tags,
-        notionBaseLink,
-        headingTagMap,
-        headingContextMap
+      const dropAlreadySeen = (list: Note[]): Note[] =>
+        list.filter((card) => {
+          if (
+            typeof card.notionId === 'string' &&
+            globalSeenIds.has(card.notionId)
+          ) {
+            return false;
+          }
+          if (typeof card.notionId === 'string') {
+            globalSeenIds.add(card.notionId);
+          }
+          return true;
+        });
+      let cards = dropAlreadySeen(
+        await this.getFlashcards(
+          rules,
+          baseCardBlocks,
+          tags,
+          notionBaseLink,
+          headingTagMap,
+          headingContextMap
+        )
       );
-      cards = cards.filter((card) => {
-        if (
-          typeof card.notionId === 'string' &&
-          globalSeenIds.has(card.notionId)
-        ) {
-          return false;
-        }
-        if (typeof card.notionId === 'string') globalSeenIds.add(card.notionId);
-        return true;
-      });
-      cards = this.rescueEmptyCards(cards, cardSource);
+      cards = this.rescueEmptyCards(cards, blocks);
+      if (columnCardBlocks.length > 0) {
+        const columnCards = dropAlreadySeen(
+          await this.getFlashcards(
+            rules,
+            columnCardBlocks,
+            tags,
+            notionBaseLink,
+            headingTagMap,
+            headingContextMap
+          )
+        );
+        cards = cards.concat(columnCards);
+      }
       const deck = new Deck(
         currentDeckName,
         Deck.CleanCards(cards),
