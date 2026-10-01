@@ -21,6 +21,7 @@ function makeExtraction(
     avgCharsPerPage: totalChars / 10,
     isDrmLocked: false,
     needsCredential: false,
+    coloredTextPageCount: 0,
     ...overrides,
   };
 }
@@ -44,6 +45,7 @@ function makeImageCardExtraction(pageCount: number): PdfExtractionResult {
     avgCharsPerPage: totalChars / pageCount,
     isDrmLocked: false,
     needsCredential: false,
+    coloredTextPageCount: 0,
   };
 }
 
@@ -118,6 +120,7 @@ describe('isTextShapedPdf', () => {
       avgCharsPerPage: totalChars / 12,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     };
     expect(isTextShapedPdf(extraction)).toBe(true);
   });
@@ -136,6 +139,7 @@ describe('isTextShapedPdf', () => {
       avgCharsPerPage: totalChars / 20,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     };
     expect(isTextShapedPdf(extraction)).toBe(false);
   });

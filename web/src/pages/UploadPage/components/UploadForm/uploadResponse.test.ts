@@ -19,6 +19,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setMcqSkippedCount: vi.fn(),
     setDroppedImageCount: vi.fn(),
     setExpiredNotionImageCount: vi.fn(),
+    setColoredTextPageCount: vi.fn(),
     setEmptyBackCount: vi.fn(),
     setCardsHeldBack: vi.fn(),
     setOverSplit: vi.fn(),
@@ -136,6 +137,25 @@ describe('applyConversionSuccess', () => {
     );
 
     expect(handlers.setDroppedImageCount).toHaveBeenCalledWith(3);
+  });
+
+  it('reads the coloured-text page count from the X-Colored-Text-Pages header on a single deck', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({ 'X-Colored-Text-Pages': '2' }),
+      handlers
+    );
+
+    expect(handlers.setColoredTextPageCount).toHaveBeenCalledWith(2);
+  });
+
+  it('sets the coloured-text page count to 0 when the header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setColoredTextPageCount).toHaveBeenCalledWith(0);
   });
 
   it('sets the dropped-image count to 0 when the X-Dropped-Assets header is absent', async () => {

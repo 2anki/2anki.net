@@ -88,6 +88,12 @@
   "jobs": {
     "deleteInProgress": "Este trabajo aún está en curso. Espera a que termine."
   },
+  "colorFlattened": {
+    "uploadSingleDeck_one": "Los colores del texto en {{count}} página de tu PDF no están en este mazo — el texto está completo, pero en el color predeterminado.",
+    "uploadSingleDeck_other": "Los colores del texto en {{count}} páginas de tu PDF no están en este mazo — el texto está completo, pero en el color predeterminado.",
+    "uploadMultiDeck_one": "Los colores del texto en {{count}} página de tu PDF no están en tus mazos — el texto está completo, pero en el color predeterminado.",
+    "uploadMultiDeck_other": "Los colores del texto en {{count}} páginas de tu PDF no están en tus mazos — el texto está completo, pero en el color predeterminado."
+  },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} tarjeta no tenía respuesta y se omitió, así que no está en este mazo. Añade un reverso en tu archivo y vuelve a convertir.",
     "uploadSingleDeck_other": "{{count}} tarjetas no tenían respuesta y se omitieron, así que no están en este mazo. Añade un reverso a cada una en tu archivo y vuelve a convertir.",

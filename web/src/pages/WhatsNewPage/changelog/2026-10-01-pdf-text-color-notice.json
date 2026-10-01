@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-01-pdf-text-color-notice",
+  "date": "2026-10-01",
+  "type": "fix",
+  "title": "PDF uploads flag when text colors don't carry into the deck"
+}

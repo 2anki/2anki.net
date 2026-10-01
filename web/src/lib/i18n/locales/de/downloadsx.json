@@ -88,6 +88,12 @@
   "jobs": {
     "deleteInProgress": "Dieser Auftrag läuft noch. Warte, bis er fertig ist."
   },
+  "colorFlattened": {
+    "uploadSingleDeck_one": "Textfarben auf {{count}} Seite deines PDFs sind nicht in diesem Stapel — der Text ist vollständig vorhanden, aber in der Standardfarbe.",
+    "uploadSingleDeck_other": "Textfarben auf {{count}} Seiten deines PDFs sind nicht in diesem Stapel — der Text ist vollständig vorhanden, aber in der Standardfarbe.",
+    "uploadMultiDeck_one": "Textfarben auf {{count}} Seite deines PDFs sind nicht in deinen Stapeln — der Text ist vollständig vorhanden, aber in der Standardfarbe.",
+    "uploadMultiDeck_other": "Textfarben auf {{count}} Seiten deines PDFs sind nicht in deinen Stapeln — der Text ist vollständig vorhanden, aber in der Standardfarbe."
+  },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} Karte hatte keine Antwort und wurde übersprungen, sie ist also nicht in diesem Stapel. Füge in deiner Datei eine Rückseite hinzu und konvertiere erneut.",
     "uploadSingleDeck_other": "{{count}} Karten hatten keine Antwort und wurden übersprungen, sie sind also nicht in diesem Stapel. Füge in deiner Datei jeweils eine Rückseite hinzu und konvertiere erneut.",

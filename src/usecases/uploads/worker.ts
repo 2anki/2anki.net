@@ -293,6 +293,7 @@ async function processFile(
       singleFilePackage.expiredNotionImageCount =
         d.expiredNotionImageCount ?? 0;
       singleFilePackage.pdfPageCount = d.pdfPageCount;
+      singleFilePackage.coloredTextPageCount = d.coloredTextPageCount ?? 0;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
     }

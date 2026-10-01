@@ -159,6 +159,7 @@ interface PrepareDeckResult {
   mcqSkippedCount: number;
   warning?: string;
   droppedImageCount: number;
+  coloredTextPageCount: number;
   expiredNotionImageCount: number;
   emptyBackCount: number;
   parsePath?: string;
@@ -483,8 +484,16 @@ interface ConvertedFile {
   size?: number;
   imageFallback?: boolean;
   droppedImageCount?: number;
+  coloredTextPageCount?: number;
   extraFiles?: PdfHtmlImage[];
   pdfPageCount?: number;
+}
+
+function sumColoredTextPages(convertedFiles: ConvertedFile[]): number {
+  return convertedFiles.reduce(
+    (sum, f) => sum + (f.coloredTextPageCount ?? 0),
+    0
+  );
 }
 
 // Embedded-figure extraction is opt-out via the same embed-images CardOption
@@ -557,6 +566,7 @@ async function convertPdfByManualTextFlag(
       name: `${file.name}.html`,
       contents: Buffer.from(textResult.html),
       droppedImageCount: textResult.droppedImageCount,
+      coloredTextPageCount: textResult.coloredTextPageCount,
       extraFiles: textResult.images,
     };
   }
@@ -607,6 +617,7 @@ async function convertPdfByAutoDetection(
       name: `${file.name}.html`,
       contents: Buffer.from(autoResult.html),
       droppedImageCount: autoResult.droppedImageCount,
+      coloredTextPageCount: autoResult.coloredTextPageCount,
       extraFiles: autoResult.images,
       pdfPageCount: autoResult.pageCount,
     };
@@ -801,6 +812,7 @@ async function buildParserResult(
   aiWarning: string | undefined
 ): Promise<PrepareDeckResult> {
   const parser = newDeckParser(input, allFiles);
+  const coloredTextPageCount = sumColoredTextPages(convertedFiles);
 
   if (parser.totalCardCount() === 0) {
     if (convertedFiles.length > 0) {
@@ -817,6 +829,7 @@ async function buildParserResult(
         mcqSkippedCount: 0,
         warning: aiWarning ?? parserWarning(parser),
         droppedImageCount: parser.droppedImageCount,
+        coloredTextPageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
         // This is the branch a document takes when nothing recognised it, so it
@@ -858,6 +871,7 @@ async function buildParserResult(
     mcqSkippedCount,
     warning: aiWarning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
+    coloredTextPageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,
     parsePath: parser.parsePathSignature(),
@@ -1085,6 +1099,7 @@ async function buildClaudeDeck(
       (sum, f) => sum + (f.droppedImageCount ?? 0),
       0
     ),
+    coloredTextPageCount: sumColoredTextPages(convertedFiles),
     expiredNotionImageCount: 0,
     emptyBackCount: 0,
     pdfPageCount: sumPdfPageCount(convertedFiles),
@@ -1226,6 +1241,7 @@ export interface DeckInfoOnlyResult {
   mcqSkippedCount: number;
   warning?: string;
   droppedImageCount: number;
+  coloredTextPageCount: number;
   expiredNotionImageCount: number;
   emptyBackCount: number;
   parsePath?: string;
@@ -1260,6 +1276,7 @@ export async function prepareDeckInfoOnly(
     (ai.tripped ? AI_CREDITS_EXHAUSTED_WARNING_CODE : undefined);
 
   const parser = newDeckParser(input, allFiles);
+  const coloredTextPageCount = sumColoredTextPages(convertedFiles);
 
   if (parser.totalCardCount() === 0) {
     if (convertedFiles.length > 0) {
@@ -1277,6 +1294,7 @@ export async function prepareDeckInfoOnly(
         mcqSkippedCount: 0,
         warning: aiWarning ?? parserWarning(parser),
         droppedImageCount: parser.droppedImageCount,
+        coloredTextPageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
         emptyBackCount: parser.emptyBackCount,
         needsIndividualBuild: true,
@@ -1307,6 +1325,7 @@ export async function prepareDeckInfoOnly(
     mcqSkippedCount,
     warning: aiWarning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
+    coloredTextPageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
     emptyBackCount: parser.emptyBackCount,
     parsePath: parser.parsePathSignature(),

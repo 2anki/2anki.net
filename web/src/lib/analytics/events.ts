@@ -75,6 +75,7 @@ export const KNOWN_EVENTS = new Set([
   'ankify_decklist_sorted',
   'image_drop_notice_shown',
   'empty_back_notice_shown',
+  'color_flatten_notice_shown',
   'thin_deck_notice_shown',
   'mindmap_created',
   'mindmap_export_excluded_nodes',

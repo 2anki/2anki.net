@@ -28,6 +28,8 @@ class Package {
   // short document's yield from a long one's. Undefined for non-PDF uploads.
   pdfPageCount?: number;
 
+  coloredTextPageCount = 0;
+
   // Set by PrepareDeck, inside whichever branch produced the deck. The parent
   // process persists them — the worker pool has no database handle.
   engine?: ConversionEngine;

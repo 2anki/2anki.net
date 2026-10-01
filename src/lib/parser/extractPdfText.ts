@@ -11,6 +11,7 @@ export interface PdfExtractionResult {
   avgCharsPerPage: number;
   isDrmLocked: boolean;
   needsCredential: boolean;
+  coloredTextPageCount: number;
 }
 
 const DRM_CHARS_PER_PAGE_THRESHOLD = 10;
@@ -23,6 +24,22 @@ const RASTER_IMAGE_OPS = [
   'paintInlineImageXObjectGroup',
   'paintImageXObjectRepeat',
 ];
+
+// pdf.js normalizes every fill-colour operator (`g` gray, `k` CMYK, `cs`/`sc`
+// colour space) into setFillRGBColor with 0-255 components before the operator
+// list is produced, so tracking this one op is enough to see all text colour.
+const FILL_RGB_OP = 'setFillRGBColor';
+const TEXT_SHOW_OPS = [
+  'showText',
+  'showSpacedText',
+  'nextLineShowText',
+  'nextLineSetSpacingShowText',
+];
+
+// A grayscale fill (r≈g≈b: black, gray, white) renders as the card's default
+// colour, so only a fill with real hue is colour a learner would miss. 24/255
+// keeps rounding noise and near-neutral tints from firing a false notice.
+const CHROMATIC_MIN_SPREAD = 24;
 
 interface PdfJsOps {
   [opName: string]: number;
@@ -103,12 +120,17 @@ function loadPdfJs(): PdfJsModule | null {
   }
 }
 
+interface PdfOperatorList {
+  fnArray: number[];
+  argsArray: unknown[];
+}
+
 interface PdfJsPageProxy {
   getTextContent(options: {
     normalizeWhitespace: boolean;
     disableCombineTextItems: boolean;
   }): Promise<{ items: Array<{ str: string; transform: number[] }> }>;
-  getOperatorList(): Promise<{ fnArray: number[] }>;
+  getOperatorList(): Promise<PdfOperatorList>;
 }
 
 function resolveRasterImageOpcodes(): Set<number> {
@@ -122,7 +144,50 @@ function resolveRasterImageOpcodes(): Set<number> {
   return opcodes;
 }
 
+interface ColorTextOpcodes {
+  fillRgb: number | null;
+  textShow: Set<number>;
+}
+
+function resolveColorTextOpcodes(): ColorTextOpcodes {
+  const ops = loadPdfJs()?.OPS;
+  if (ops == null) return { fillRgb: null, textShow: new Set() };
+  const fillRgbCode = ops[FILL_RGB_OP];
+  const textShow = new Set<number>();
+  for (const name of TEXT_SHOW_OPS) {
+    const code = ops[name];
+    if (typeof code === 'number') textShow.add(code);
+  }
+  return {
+    fillRgb: typeof fillRgbCode === 'number' ? fillRgbCode : null,
+    textShow,
+  };
+}
+
 const RASTER_IMAGE_OPCODES = resolveRasterImageOpcodes();
+const COLOR_TEXT_OPCODES = resolveColorTextOpcodes();
+
+export function isChromaticRgb(args: unknown): boolean {
+  if (args == null || typeof args !== 'object') return false;
+  const rgb = args as Record<number, unknown>;
+  const r = rgb[0];
+  const g = rgb[1];
+  const b = rgb[2];
+  if (typeof r !== 'number' || typeof g !== 'number' || typeof b !== 'number') {
+    return false;
+  }
+  return Math.max(r, g, b) - Math.min(r, g, b) > CHROMATIC_MIN_SPREAD;
+}
+
+async function getOperatorListSafe(
+  page: PdfJsPageProxy
+): Promise<PdfOperatorList | null> {
+  try {
+    return await page.getOperatorList();
+  } catch {
+    return null;
+  }
+}
 
 function extractPageText(textContent: {
   items: Array<{ str: string; transform: number[] }>;
@@ -140,15 +205,31 @@ function extractPageText(textContent: {
   return text;
 }
 
-async function countImagePaintOps(page: PdfJsPageProxy): Promise<number> {
-  if (RASTER_IMAGE_OPCODES.size === 0) return 0;
-  try {
-    const operatorList = await page.getOperatorList();
-    return operatorList.fnArray.filter((code) => RASTER_IMAGE_OPCODES.has(code))
-      .length;
-  } catch {
-    return 0;
+function countImagePaintOps(operatorList: PdfOperatorList | null): number {
+  if (operatorList == null || RASTER_IMAGE_OPCODES.size === 0) return 0;
+  return operatorList.fnArray.filter((code) => RASTER_IMAGE_OPCODES.has(code))
+    .length;
+}
+
+// A text run only loses visible colour when a chromatic fill is active at the
+// moment it is painted, so track the fill state and look at it on each
+// text-show op. Fills applied to vector graphics never reach a text-show op, so
+// a page of black text over coloured shapes does not count.
+function pageHasColoredText(operatorList: PdfOperatorList | null): boolean {
+  const { fillRgb, textShow } = COLOR_TEXT_OPCODES;
+  if (operatorList == null || fillRgb == null || textShow.size === 0) {
+    return false;
   }
+  let chromatic = false;
+  for (let i = 0; i < operatorList.fnArray.length; i++) {
+    const code = operatorList.fnArray[i];
+    if (code === fillRgb) {
+      chromatic = isChromaticRgb(operatorList.argsArray[i]);
+    } else if (chromatic && textShow.has(code)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function splitIntoPages(
@@ -195,13 +276,16 @@ export async function extractPdfText(
   const t0 = Date.now();
 
   const imageCounts: number[] = [];
+  const coloredTextFlags: boolean[] = [];
 
   const pagerender = async (pageData: PdfJsPageProxy): Promise<string> => {
     const textContent = await pageData.getTextContent({
       normalizeWhitespace: false,
       disableCombineTextItems: false,
     });
-    imageCounts.push(await countImagePaintOps(pageData));
+    const operatorList = await getOperatorListSafe(pageData);
+    imageCounts.push(countImagePaintOps(operatorList));
+    coloredTextFlags.push(pageHasColoredText(operatorList));
     return extractPageText(textContent) + '\f';
   };
 
@@ -228,6 +312,7 @@ export async function extractPdfText(
         avgCharsPerPage: 0,
         isDrmLocked: false,
         needsCredential: true,
+        coloredTextPageCount: 0,
       };
     }
     throw error;
@@ -245,11 +330,13 @@ export async function extractPdfText(
     : splitIntoPages(result.text, pageCount, imageCounts);
 
   const pagesWithImage = pages.filter((p) => p.imagePaintCount > 0).length;
+  const coloredTextPageCount = coloredTextFlags.filter(Boolean).length;
 
   console.info('[extractPdfText] result', {
     pageCount,
     avgCharsPerPage: Math.round(avgCharsPerPage),
     pagesWithImage,
+    coloredTextPageCount,
     isDrmLocked,
     credentialProvided: credential != null,
     durationMs: Date.now() - t0,
@@ -261,5 +348,6 @@ export async function extractPdfText(
     avgCharsPerPage,
     isDrmLocked,
     needsCredential: false,
+    coloredTextPageCount,
   };
 }

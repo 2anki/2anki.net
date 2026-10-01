@@ -81,6 +81,7 @@ export interface ConvertPdfTextToHtmlResult {
   isDrmLocked: boolean;
   needsCredential: boolean;
   droppedImageCount: number;
+  coloredTextPageCount: number;
   images: PdfHtmlImage[];
 }
 
@@ -155,6 +156,7 @@ export async function convertPdfTextToHtml(
       isDrmLocked: false,
       needsCredential: true,
       droppedImageCount: 0,
+      coloredTextPageCount: 0,
       images: [],
     };
   }
@@ -166,6 +168,7 @@ export async function convertPdfTextToHtml(
       isDrmLocked: true,
       needsCredential: false,
       droppedImageCount: 0,
+      coloredTextPageCount: 0,
       images: [],
     };
   }
@@ -183,6 +186,7 @@ export async function convertPdfTextToHtml(
       extraction.pages.reduce((sum, p) => sum + p.imagePaintCount, 0),
       files.length
     ),
+    coloredTextPageCount: extraction.coloredTextPageCount,
     images: files,
   };
 }
@@ -203,6 +207,7 @@ export async function convertPdfTextToHtmlAuto(
       isDrmLocked: false,
       needsCredential: true,
       droppedImageCount: 0,
+      coloredTextPageCount: 0,
       images: [],
       isTextShaped: false,
       overSplit: false,
@@ -217,6 +222,7 @@ export async function convertPdfTextToHtmlAuto(
       isDrmLocked: true,
       needsCredential: false,
       droppedImageCount: 0,
+      coloredTextPageCount: 0,
       images: [],
       isTextShaped: false,
       overSplit: false,
@@ -231,6 +237,7 @@ export async function convertPdfTextToHtmlAuto(
       isDrmLocked: false,
       needsCredential: false,
       droppedImageCount: 0,
+      coloredTextPageCount: 0,
       images: [],
       isTextShaped: false,
       overSplit: false,
@@ -253,6 +260,7 @@ export async function convertPdfTextToHtmlAuto(
       isDrmLocked: false,
       needsCredential: false,
       droppedImageCount: paintedImageCount,
+      coloredTextPageCount: 0,
       images: [],
       isTextShaped: true,
       overSplit,
@@ -269,6 +277,7 @@ export async function convertPdfTextToHtmlAuto(
     isDrmLocked: false,
     needsCredential: false,
     droppedImageCount: remainingDroppedImages(paintedImageCount, files.length),
+    coloredTextPageCount: extraction.coloredTextPageCount,
     images: files,
     isTextShaped: true,
     overSplit,
