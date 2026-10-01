@@ -44,6 +44,28 @@ describe('OauthIdentitiesRepository', () => {
     return id as UsersId;
   };
 
+  it('keeps the first link when a concurrent callback links the same identity', async () => {
+    const userId = await insertUser('user@example.com');
+    await repo.link('microsoft', 'sub-1', userId);
+
+    await expect(repo.link('microsoft', 'sub-1', userId)).resolves.toBe(
+      undefined
+    );
+    const rows = await database('oauth_identities').where({
+      provider: 'microsoft',
+      subject: 'sub-1',
+    });
+    expect(rows).toHaveLength(1);
+  });
+
+  it('builds a Postgres insert that ignores a provider+subject conflict', () => {
+    const pg = knex({ client: 'pg' });
+    const sql = new OauthIdentitiesRepository(pg)
+      .buildLinkQuery('microsoft', 'sub-1', 7 as UsersId)
+      .toString();
+    expect(sql).toContain('on conflict ("provider", "subject") do nothing');
+  });
+
   it('returns null when no matching identity exists', async () => {
     const row = await repo.findByProviderAndSubject('microsoft', 'sub-1');
     expect(row).toBeNull();

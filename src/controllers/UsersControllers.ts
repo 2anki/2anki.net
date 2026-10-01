@@ -739,7 +739,7 @@ class UsersController {
     const isNewUser = !user;
     if (!user) {
       const hashedPassword = this.authService.getHashPassword(getRandomUUID());
-      await this.userService.register(
+      await this.userService.registerVerifiedIdentity(
         name ?? email,
         hashedPassword,
         email,
@@ -857,7 +857,7 @@ class UsersController {
       } else {
         const hashedPassword =
           this.authService.getHashPassword(getRandomUUID());
-        await this.userService.register(
+        await this.userService.registerVerifiedIdentity(
           name ?? email,
           hashedPassword,
           email,
@@ -1101,7 +1101,7 @@ class UsersController {
       } else {
         const hashedPassword =
           this.authService.getHashPassword(getRandomUUID());
-        await this.userService.register(
+        await this.userService.registerVerifiedIdentity(
           rawName ?? email,
           hashedPassword,
           email,
@@ -1225,7 +1225,7 @@ class UsersController {
     const isNewUser = !user;
     if (!user) {
       const hashedPassword = this.authService.getHashPassword(getRandomUUID());
-      await this.userService.register(
+      await this.userService.registerVerifiedIdentity(
         name,
         hashedPassword,
         email,

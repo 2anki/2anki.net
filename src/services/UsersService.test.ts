@@ -154,6 +154,68 @@ describe('UsersService.register', () => {
   });
 });
 
+function emailTakenError() {
+  return Object.assign(
+    new Error('duplicate key value violates unique constraint'),
+    { code: '23505', constraint: 'users_email_unique' }
+  );
+}
+
+describe('UsersService.registerVerifiedIdentity', () => {
+  beforeEach(() => trackMock.mockClear());
+
+  it('returns the inserted row for a new account', async () => {
+    const repository = buildRegisterRepository();
+    const service = new UsersService(repository, buildEmailService());
+
+    await expect(
+      service.registerVerifiedIdentity('Alex', 'hashed', 'al@example.com')
+    ).resolves.toEqual([{ id: 1 }]);
+  });
+
+  it('returns no row when a concurrent sign-in already created the account', async () => {
+    const repository = buildRegisterRepository();
+    repository.createUserAndSeedFromTombstone.mockRejectedValue(
+      emailTakenError()
+    );
+    const service = new UsersService(repository, buildEmailService());
+
+    await expect(
+      service.registerVerifiedIdentity('Alex', 'hashed', 'al@example.com')
+    ).resolves.toEqual([]);
+    expect(trackMock).not.toHaveBeenCalled();
+  });
+
+  it('rethrows a unique violation on any other constraint', async () => {
+    const repository = buildRegisterRepository();
+    repository.createUserAndSeedFromTombstone.mockRejectedValue(
+      Object.assign(new Error('duplicate'), {
+        code: '23505',
+        constraint: 'users_some_other_unique',
+      })
+    );
+    const service = new UsersService(repository, buildEmailService());
+
+    await expect(
+      service.registerVerifiedIdentity('Alex', 'hashed', 'al@example.com')
+    ).rejects.toMatchObject({ constraint: 'users_some_other_unique' });
+  });
+});
+
+describe('UsersService.register on a taken email', () => {
+  it('still throws, so the password path never adopts an existing account', async () => {
+    const repository = buildRegisterRepository();
+    repository.createUserAndSeedFromTombstone.mockRejectedValue(
+      emailTakenError()
+    );
+    const service = new UsersService(repository, buildEmailService());
+
+    await expect(
+      service.register('Alex', 'hashed', 'al@example.com')
+    ).rejects.toMatchObject({ code: '23505' });
+  });
+});
+
 describe('UsersService.sendResetEmail', () => {
   it('awaits the email send so failures propagate to the caller', async () => {
     const sendError = new Error('SendGrid unavailable');
