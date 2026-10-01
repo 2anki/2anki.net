@@ -251,8 +251,9 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
     const usersUpdate = jest.fn().mockResolvedValue(1);
     const subsUpdate = jest.fn().mockResolvedValue(1);
     const usersWhereRaw = jest.fn().mockReturnValue({
-      update: usersUpdate,
-      select: jest.fn().mockResolvedValue([{ id: 1 }]),
+      update: usersUpdate.mockReturnValue({
+        returning: jest.fn().mockResolvedValue([{ id: 1 }]),
+      }),
     });
     const subsWhere = jest.fn().mockReturnValue({ update: subsUpdate });
     const magicTokens = {
@@ -269,7 +270,7 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       if (table === 'subscriptions') {
         return { where: subsWhere };
       }
-      if (table === 'magic_tokens') {
+      if (table === 'magic_tokens' || table === 'email_change_tokens') {
         return magicTokens;
       }
       return {};

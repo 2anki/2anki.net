@@ -93,10 +93,21 @@ describe('UsersRepository email change voids links mailed to the old address', (
     const userId = await seedUserWithPendingLinks('old@example.com');
     const otherId = await seedUserWithPendingLinks('other@example.com');
 
+    await database('email_change_tokens').insert({
+      user_id: userId,
+      expires_at: LATER,
+    });
+
     await repo.changeEmailAndRelinkSubscriptions(
       'Old@Example.com',
       'new@example.com'
     );
+
+    expect(
+      await database('email_change_tokens')
+        .where({ user_id: userId })
+        .whereNull('consumed_at')
+    ).toEqual([]);
 
     const user = await database('users').where({ id: userId }).first();
     expect(user).toMatchObject({

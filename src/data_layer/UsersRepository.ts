@@ -296,16 +296,16 @@ class UsersRepository {
     const current = currentEmail.trim();
     const next = newEmail.trim().toLowerCase();
     return this.database.transaction(async (trx) => {
-      const owners = await trx(this.table)
+      const updated: Array<{ id: number }> = await trx(this.table)
         .whereRaw('LOWER(TRIM(email)) = LOWER(?)', [current])
-        .select('id');
-      await trx(this.table)
-        .whereRaw('LOWER(TRIM(email)) = LOWER(?)', [current])
-        .update({ email: next, ...CLEARED_RESET_TOKEN });
-      await this.spendUnusedMagicTokensQuery(
-        trx,
-        owners.map((row: { id: number }) => row.id)
-      );
+        .update({ email: next, ...CLEARED_RESET_TOKEN })
+        .returning('id');
+      const ownerIds = updated.map((row) => row.id);
+      await this.spendUnusedMagicTokensQuery(trx, ownerIds);
+      await trx('email_change_tokens')
+        .whereIn('user_id', ownerIds)
+        .whereNull('consumed_at')
+        .update({ consumed_at: trx.fn.now() });
       await trx('subscriptions')
         .where({ email: current.toLowerCase() })
         .update({ linked_email: next });
