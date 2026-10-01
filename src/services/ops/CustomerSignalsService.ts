@@ -6,40 +6,23 @@ import type { EmojiFeedbackCommentEntry } from '../../data_layer/EmojiFeedbackRe
 import type { ConversionOutputStatsRow } from '../../data_layer/ConversionOutputStatsRepository';
 import type { BehavioralDropoffCounts } from '../../data_layer/BehavioralDropoffRepository';
 import type { ConversionErrorCount } from './ConversionMetricsService';
+import type {
+  CustomerSignalBucket,
+  CustomerSignalRow,
+  CustomerSignalSource,
+  CustomerSignalStream,
+  CustomerSignalsResponse,
+} from '../../types/ops/CustomerSignals';
 
-export type CustomerSignalSource =
-  | 'cancel_reason'
-  | 'cancel_comment'
-  | 'emoji_feedback'
-  | 'failed_conversion'
-  | 'empty_back'
-  | 'behavioral_dropoff';
-
-export type CustomerSignalBucket =
-  | 'pain-killer'
-  | 'money-multiplier'
-  | 'unknown';
-
-export type CustomerSignalStream = 'said' | 'behavioral' | 'revenue';
-
-export interface CustomerSignalRow {
-  source: CustomerSignalSource;
-  label: string;
-  count: number;
-  bucket: CustomerSignalBucket;
-  stream: CustomerSignalStream;
-  convergence: number;
-  sampleQuote?: string;
-}
+export type {
+  CustomerSignalBucket,
+  CustomerSignalRow,
+  CustomerSignalSource,
+  CustomerSignalStream,
+  CustomerSignalsResponse,
+};
 
 type BaseSignalRow = Omit<CustomerSignalRow, 'stream' | 'convergence'>;
-
-export interface CustomerSignalsResponse {
-  signals: CustomerSignalRow[] | null;
-  since: string;
-  as_of: string;
-  error?: string;
-}
 
 export interface CancellationSignalSource {
   countByReason(since: Date): Promise<CancellationReasonCount[]>;

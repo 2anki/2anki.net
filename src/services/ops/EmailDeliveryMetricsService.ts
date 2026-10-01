@@ -2,6 +2,12 @@ import {
   EmailDeliveryCount,
   IEmailDeliveryMetricsRepository,
 } from '../../data_layer/EmailDeliveryMetricsRepository';
+import type {
+  EmailDeliveryCategory,
+  EmailDeliveryMetricsResponse,
+} from '../../types/ops/EmailDelivery';
+
+export type { EmailDeliveryCategory, EmailDeliveryMetricsResponse };
 
 // SendGrid event types recorded by ProcessSendgridEventsUseCase. Delivered is
 // the success signal; bounce/dropped/blocked are hard failures; deferred is a
@@ -12,22 +18,6 @@ const FAILURE_TYPES: ReadonlySet<string> = new Set([
   'dropped',
   'blocked',
 ]);
-
-export interface EmailDeliveryCategory {
-  category: string;
-  delivered: number;
-  bounce: number;
-  dropped: number;
-  blocked: number;
-  deferred: number;
-  spamreport: number;
-  unsubscribe: number;
-  failure_rate: number;
-}
-
-export interface EmailDeliveryMetricsResponse {
-  by_category: EmailDeliveryCategory[];
-}
 
 const COUNTED_TYPES: ReadonlySet<string> = new Set([
   'delivered',

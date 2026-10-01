@@ -1,5 +1,4 @@
-export interface MindmapStorageMetricsResponse {
-  total_bytes: number;
-  total_objects: number;
-  measured_at: string;
-}
+export type {
+  MindmapStorageMetricsResponse,
+  MindmapUserStorageEntry,
+} from '@server/types/ops/MindmapStorage';

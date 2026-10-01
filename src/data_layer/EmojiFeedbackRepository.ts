@@ -1,22 +1,17 @@
 import type { Knex } from 'knex';
 
+import type {
+  EmojiFeedbackCommentEntry,
+  EmojiFeedbackRatingCount,
+} from '../types/ops/feedbackRows';
+
+export type { EmojiFeedbackCommentEntry, EmojiFeedbackRatingCount };
+
 interface EmojiFeedbackEntry {
   rating: number;
   comment: string | null;
   page: string;
   email: string | null;
-}
-
-export interface EmojiFeedbackRatingCount {
-  rating: number;
-  count: number;
-}
-
-export interface EmojiFeedbackCommentEntry {
-  rating: number;
-  comment: string;
-  page: string;
-  created_at: string;
 }
 
 export interface IEmojiFeedbackRepository {

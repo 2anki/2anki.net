@@ -3,7 +3,7 @@ import type { Knex } from 'knex';
 import type {
   ConversionErrorCount,
   FailedConversionsWeekPoint,
-} from '../services/ops/ConversionMetricsService';
+} from '../types/ops/ConversionMetrics';
 import { normalizeFailureReasons } from './normalizeFailureReasons';
 
 export interface IJobsMetricsRepository {

@@ -1,5 +1,9 @@
 import type { Knex } from 'knex';
 
+import type { AiUsageGroup, AiUsageTotals } from '../types/ops/AiUsage';
+
+export type { AiUsageGroup, AiUsageTotals };
+
 const AI_USAGE_EVENT = 'ai_usage_recorded';
 
 export interface AiUsageTotalsRow {
@@ -13,19 +17,6 @@ export interface AiUsageTotalsRow {
 
 export interface AiUsageGroupRow extends AiUsageTotalsRow {
   key: string | null;
-}
-
-export interface AiUsageTotals {
-  calls: number;
-  cost_usd: number;
-  input_tokens: number;
-  output_tokens: number;
-  cache_creation_tokens: number;
-  cache_read_tokens: number;
-}
-
-export interface AiUsageGroup extends AiUsageTotals {
-  key: string;
 }
 
 export interface IAiUsageMetricsRepository {

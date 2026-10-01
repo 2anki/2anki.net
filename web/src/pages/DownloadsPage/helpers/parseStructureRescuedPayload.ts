@@ -1,4 +1,5 @@
 import type JobResponse from '@server/types/JobResponse';
+import { NOTION_STRUCTURE_RESCUED_CODE } from './conversionSignalCodes';
 
 export const STRUCTURE_RESCUE_RULES = [
   'heading',
@@ -36,7 +37,7 @@ export function parseStructureRescuedPayload(
   }
   if (parsed == null || typeof parsed !== 'object') return null;
   const payload = parsed as { code?: unknown; rule?: unknown };
-  if (payload.code !== 'notion_structure_rescued') return null;
+  if (payload.code !== NOTION_STRUCTURE_RESCUED_CODE) return null;
   if (!isRescueRule(payload.rule)) return null;
   return { rule: payload.rule };
 }

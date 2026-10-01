@@ -1,6 +1,10 @@
-import type { EmojiFeedbackRatingCount } from '../data_layer/EmojiFeedbackRepository';
+import type {
+  EmojiFeedbackRatingCount,
+  HappyScoreWindow,
+  HappyScoreWindowLabel,
+} from '../types/ops/feedbackRows';
 
-export type HappyScoreWindowLabel = '7d' | '30d' | '90d';
+export type { HappyScoreWindow, HappyScoreWindowLabel };
 
 export const HAPPY_SCORE_WINDOWS: ReadonlyArray<{
   label: HappyScoreWindowLabel;
@@ -17,16 +21,6 @@ export const HAPPY_SCORE_ASK_EVENT = 'happy_score_ask_shown';
 
 const LOVE_RATING = 5;
 const LOW_RATINGS = new Set([1, 2]);
-
-export interface HappyScoreWindow {
-  window: HappyScoreWindowLabel;
-  love: number;
-  low: number;
-  n: number;
-  score_pct: number | null;
-  asks: number | null;
-  response_rate_pct: number | null;
-}
 
 const roundOneDecimal = (value: number): number => Math.round(value * 10) / 10;
 

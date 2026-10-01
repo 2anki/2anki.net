@@ -1,16 +1,14 @@
 import type { Knex } from 'knex';
 
+import type { ErrorSurfaceCount } from '../types/ops/Performance';
+
+export type { ErrorSurfaceCount };
+
 export interface RecordErrorInput {
   userId: number | null;
   surface: string;
   code: string;
   context?: Record<string, unknown> | null;
-}
-
-export interface ErrorSurfaceCount {
-  surface: string;
-  code: string;
-  count: number;
 }
 
 export interface IUserVisibleErrorsRepository {

@@ -27,6 +27,7 @@ import {
   NormalizedCollection,
   Note,
 } from '../../services/ApkgPreviewService/types';
+import type { AnkiWebSyncStatus } from '../../types/ankify/AnkiWebSyncStatus';
 
 export class NoActiveAnkifyClientError extends Error {
   constructor() {
@@ -42,7 +43,7 @@ export class UploadNotFoundError extends Error {
   }
 }
 
-export type AnkiWebSyncStatus = 'synced' | 'failed' | 'skipped';
+export type { AnkiWebSyncStatus };
 
 export interface SendUploadToRacResult {
   client: AnkifyClient;

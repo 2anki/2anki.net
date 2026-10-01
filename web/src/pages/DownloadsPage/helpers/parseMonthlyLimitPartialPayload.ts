@@ -1,4 +1,5 @@
 import type JobResponse from '@server/types/JobResponse';
+import { MONTHLY_LIMIT_PARTIAL_CODE } from './conversionSignalCodes';
 
 export interface MonthlyLimitPartialPayload {
   cardsDelivered: number;
@@ -31,7 +32,7 @@ export function parseMonthlyLimitPartialPayload(
     limit?: unknown;
     reset_on?: unknown;
   };
-  if (payload.code !== 'monthly_limit_partial') return null;
+  if (payload.code !== MONTHLY_LIMIT_PARTIAL_CODE) return null;
   const cardsDelivered = Number(payload.cards_delivered);
   const cardsHeldBack = Number(payload.cards_held_back);
   const limit = Number(payload.limit);

@@ -1,7 +1,7 @@
-import {
-  EmailDeliveryMetricsService,
-  EmailDeliveryMetricsResponse,
-} from '../../services/ops/EmailDeliveryMetricsService';
+import { EmailDeliveryMetricsService } from '../../services/ops/EmailDeliveryMetricsService';
+import type { EmailDeliveryMetricsPayload } from '../../types/ops/EmailDelivery';
+
+export type { EmailDeliveryMetricsPayload };
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
 
@@ -14,10 +14,6 @@ const WINDOW_DAYS: Record<string, number> = {
 };
 
 const DEFAULT_WINDOW = '30d';
-
-export interface EmailDeliveryMetricsPayload extends EmailDeliveryMetricsResponse {
-  window: string;
-}
 
 export class GetEmailDeliveryMetricsUseCase {
   constructor(private readonly service: EmailDeliveryMetricsService) {}

@@ -5,6 +5,9 @@ import {
   PAYWALL_REASON_PATTERNS,
   REASON_PROP_EXPRESSION,
 } from './classifyFailureReason';
+import type { PassSalesCounts } from '../types/ops/BusinessMetrics';
+
+export type { PassSalesCounts };
 
 export type ConversionTier = 'free' | 'paid';
 
@@ -24,12 +27,6 @@ export interface IEventsMetricsRepository {
     since: Date,
     tier: ConversionTier
   ): Promise<ConversionOutcomeCounts>;
-}
-
-export interface PassSalesCounts {
-  day_passes: number;
-  week_passes: number;
-  semester_passes: number;
 }
 
 export interface IPassSalesRepository {

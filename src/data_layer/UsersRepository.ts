@@ -6,6 +6,9 @@ import { isNewMonth } from '../lib/User/isNewMonth';
 import { startOfMonthUtc } from '../lib/User/startOfMonthUtc';
 import DeletedUserUsageRepository from './DeletedUserUsageRepository';
 import { emailHash } from '../lib/emailHash';
+import type { SignupCountryCount } from '../types/ops/BusinessMetrics';
+
+export type { SignupCountryCount };
 
 // Matches the magic-link window in MagicTokenRepository.
 export const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
@@ -16,11 +19,6 @@ export type EmailChangeResult =
 
 class EmailAlreadyInUseError extends Error {}
 class EmailChangeTokenInvalidError extends Error {}
-
-export interface SignupCountryCount {
-  country: string;
-  count: number;
-}
 
 export interface ISignupCountryRepository {
   countBySignupCountry(

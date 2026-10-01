@@ -5,6 +5,21 @@ import {
   AnkiDeckStat,
 } from '../../services/ankify/AnkiConnectClient';
 import { computeReviewStreaks } from './ankifyStreak';
+import type {
+  AnkifyStatsConnected,
+  AnkifyStatsDeck,
+  AnkifyStatsOffline,
+  AnkifyStatsResult,
+  AnkifyStatsReviewDay,
+} from '../../types/ankify/AnkifyStats';
+
+export type {
+  AnkifyStatsConnected,
+  AnkifyStatsDeck,
+  AnkifyStatsOffline,
+  AnkifyStatsResult,
+  AnkifyStatsReviewDay,
+};
 
 export type AnkiConnectFactory = (
   host: string,
@@ -12,43 +27,12 @@ export type AnkiConnectFactory = (
   apiKey: string | null
 ) => AnkiConnectClient;
 
-export interface AnkifyStatsDeck {
-  fullName: string;
-  name: string;
-  depth: number;
-  new: number;
-  learning: number;
-  review: number;
-  total: number;
-}
-
 const leafName = (fullName: string): string => {
   const segments = fullName.split('::');
   return segments[segments.length - 1];
 };
 
 const deckDepth = (fullName: string): number => fullName.split('::').length - 1;
-
-export interface AnkifyStatsReviewDay {
-  date: string;
-  count: number;
-}
-
-export interface AnkifyStatsOffline {
-  connected: false;
-}
-
-export interface AnkifyStatsConnected {
-  connected: true;
-  reviewedToday: number;
-  reviewedThisYear: number;
-  currentStreak: number;
-  longestStreak: number;
-  reviewsByDay: AnkifyStatsReviewDay[];
-  decks: AnkifyStatsDeck[];
-}
-
-export type AnkifyStatsResult = AnkifyStatsOffline | AnkifyStatsConnected;
 
 const oneYearAgo = (today: string): string => {
   const cutoff = new Date(`${today}T00:00:00Z`);

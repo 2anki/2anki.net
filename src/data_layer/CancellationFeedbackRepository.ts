@@ -1,15 +1,11 @@
 import type { Knex } from 'knex';
 
-export interface CancellationReasonCount {
-  reason: string;
-  count: number;
-}
+import type {
+  CancellationCommentEntry,
+  CancellationReasonCount,
+} from '../types/ops/feedbackRows';
 
-export interface CancellationCommentEntry {
-  reason: string;
-  comment: string;
-  created_at: string;
-}
+export type { CancellationCommentEntry, CancellationReasonCount };
 
 export interface ICancellationFeedbackRepository {
   countByReason(since: Date): Promise<CancellationReasonCount[]>;
