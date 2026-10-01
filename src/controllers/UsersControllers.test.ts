@@ -3290,6 +3290,7 @@ describe('UsersController.newPassword', () => {
       getUserByLiveResetToken?: jest.Mock;
       updatePassword?: jest.Mock;
       logOutEverywhere?: jest.Mock;
+      markEmailVerified?: jest.Mock;
     } = {}
   ) => {
     const getUserByLiveResetToken =
@@ -3299,9 +3300,12 @@ describe('UsersController.newPassword', () => {
       overrides.updatePassword ?? jest.fn().mockResolvedValue(1);
     const logOutEverywhere =
       overrides.logOutEverywhere ?? jest.fn().mockResolvedValue(1);
+    const markEmailVerified =
+      overrides.markEmailVerified ?? jest.fn().mockResolvedValue(undefined);
     const userService = {
       getUserByLiveResetToken,
       updatePassword,
+      markEmailVerified,
     } as unknown as UsersService;
     const authService = {
       isNewPasswordValid: jest.fn().mockReturnValue(false),
@@ -3313,7 +3317,7 @@ describe('UsersController.newPassword', () => {
       authService,
       {} as ReturnType<typeof import('../data_layer').getDatabase>
     );
-    return { controller, updatePassword, logOutEverywhere };
+    return { controller, updatePassword, logOutEverywhere, markEmailVerified };
   };
 
   const buildReq = () =>
@@ -3337,6 +3341,41 @@ describe('UsersController.newPassword', () => {
 
     expect(logOutEverywhere).toHaveBeenCalledWith(7);
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('marks the email verified once the emailed reset link is redeemed', async () => {
+    const { controller, markEmailVerified } = buildNewPasswordController();
+    const res = buildRes();
+
+    await controller.newPassword(buildReq(), res, jest.fn());
+
+    expect(markEmailVerified).toHaveBeenCalledWith('7');
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('still reports success when marking the email verified fails', async () => {
+    const { controller } = buildNewPasswordController({
+      markEmailVerified: jest.fn().mockRejectedValue(new Error('db down')),
+    });
+    const res = buildRes();
+    const next = jest.fn();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await controller.newPassword(buildReq(), res, next);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('does not mark the email verified when the token no longer redeems', async () => {
+    const { controller, markEmailVerified } = buildNewPasswordController({
+      getUserByLiveResetToken: jest.fn().mockResolvedValue(null),
+      updatePassword: jest.fn().mockResolvedValue(0),
+    });
+
+    await controller.newPassword(buildReq(), buildRes(), jest.fn());
+
+    expect(markEmailVerified).not.toHaveBeenCalled();
   });
 
   // A stale token must not stay usable as a way to force the owner out.

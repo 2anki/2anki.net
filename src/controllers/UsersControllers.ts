@@ -106,6 +106,13 @@ class UsersController {
         return res.status(400).send({ message: 'invalid' });
       }
       await this.authService.logOutEverywhere(owner.id);
+      try {
+        await this.userService.markEmailVerified(owner.id.toString());
+      } catch (error) {
+        // The password already changed; a missed verification mark must not
+        // report the reset as failed.
+        console.error('[newPassword] could not mark email verified', error);
+      }
       res.status(200).send({ message: 'ok' });
     } catch (error) {
       console.info('Update password failed');
