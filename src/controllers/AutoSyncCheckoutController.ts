@@ -10,6 +10,7 @@ class AutoSyncCheckoutController {
   async createSession(req: Request, res: Response): Promise<void> {
     const userId = res.locals.owner as number;
     const userEmail = res.locals.email as string;
+    const stripeCustomerId = res.locals.stripeCustomerId as string | undefined;
     const variant = parsePricingVariant(req.body?.variant);
     const anonId = (req.cookies?.anon_id as string | undefined) ?? undefined;
     const surface = parseCheckoutSurface(req.body?.surface);
@@ -18,6 +19,7 @@ class AutoSyncCheckoutController {
     const result = await this.useCase.execute({
       userId,
       userEmail,
+      stripeCustomerId,
       variant,
       anonId,
       surface,

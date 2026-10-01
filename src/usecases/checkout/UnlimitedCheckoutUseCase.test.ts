@@ -120,6 +120,9 @@ describe('UnlimitedCheckoutUseCase', () => {
       expect.objectContaining({
         customer: 'cus_existing',
         customer_email: undefined,
+        subscription_data: expect.objectContaining({
+          metadata: expect.objectContaining({ user_id: '4' }),
+        }),
       })
     );
   });

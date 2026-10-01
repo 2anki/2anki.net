@@ -215,4 +215,21 @@ describe('UnlimitedCheckoutController', () => {
       controller.createSession(req, res as unknown as Response)
     ).rejects.toThrow('stripe down');
   });
+
+  it('forwards the resolved Stripe customer id from res.locals', async () => {
+    const req = { body: { interval: 'month' } } as Request;
+    const res = makeResponse({ stripeCustomerId: 'cus_abc' });
+    const uc = makeUseCase();
+    const controller = new UnlimitedCheckoutController(
+      uc,
+      makeContext(),
+      makeSink()
+    );
+
+    await controller.createSession(req, res as unknown as Response);
+
+    expect(uc.execute as jest.Mock).toHaveBeenCalledWith(
+      expect.objectContaining({ stripeCustomerId: 'cus_abc' })
+    );
+  });
 });

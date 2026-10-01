@@ -95,4 +95,22 @@ describe('AutoSyncCheckoutController', () => {
       expect.objectContaining({ userId: 99, userEmail: 'alice@example.com' })
     );
   });
+
+  test('forwards the resolved Stripe customer id from res.locals', async () => {
+    const uc = makeUseCase({ url: 'https://checkout.stripe.com/test' });
+    const controller = new AutoSyncCheckoutController(uc);
+    const req = makeRequest();
+    const res = makeResponse();
+    res.locals = {
+      owner: 99,
+      email: 'alice@example.com',
+      stripeCustomerId: 'cus_abc',
+    };
+
+    await controller.createSession(req, res as unknown as Response);
+
+    expect(uc.execute as jest.Mock).toHaveBeenCalledWith(
+      expect.objectContaining({ stripeCustomerId: 'cus_abc' })
+    );
+  });
 });

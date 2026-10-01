@@ -2,6 +2,7 @@ import express from 'express';
 import RequireAuthentication from './middleware/RequireAuthentication';
 import { optionalAuthMiddleware } from './middleware/optionalAuthMiddleware';
 import { RejectDuplicatePurchase } from './middleware/RejectDuplicatePurchase';
+import { resolveStripeCustomer } from './middleware/ResolveStripeCustomer';
 import AutoSyncCheckoutController from '../controllers/AutoSyncCheckoutController';
 import PassCheckoutController from '../controllers/PassCheckoutController';
 import ResumeCheckoutController from '../controllers/ResumeCheckoutController';
@@ -19,6 +20,8 @@ import { getEventsSink } from '../services/events/eventsSinkInstance';
 import { FeatureFlagsRepository } from '../data_layer/FeatureFlagsRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import { StripePriceResolver } from '../services/StripePriceResolver';
+import { StripeCustomerResolver } from '../services/StripeCustomerResolver';
+import { StaleCheckoutCustomerRefresher } from '../usecases/checkout/StaleCheckoutCustomerRefresher';
 import { getPricingService } from '../services/pricingServiceInstance';
 import { GetPassPricingUseCase } from '../usecases/checkout/GetPassPricingUseCase';
 import PassPricingController from '../controllers/PassPricingController';
@@ -53,6 +56,11 @@ const getUserCreatedAt = async (userId: number): Promise<Date | null> => {
 const CheckoutRouter = () => {
   const router = express.Router();
 
+  const staleCustomerRefresher = new StaleCheckoutCustomerRefresher(
+    new UsersRepository(getDatabase()),
+    new StripeCustomerResolver(getStripe(), new UsersRepository(getDatabase()))
+  );
+
   const priceId = process.env.AUTO_SYNC_PRICE_ID ?? '';
   const productId = process.env.AUTO_SYNC_PRODUCT_ID ?? '';
   const maxSubscribers =
@@ -63,17 +71,19 @@ const CheckoutRouter = () => {
     '/api/checkout/auto-sync',
     RequireAuthentication,
     express.json(),
-    (req, res) => {
+    async (req, res) => {
       if (priceId === '') {
         return res
           .status(404)
           .json({ message: 'Auto Sync checkout is not available' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new AutoSyncCheckoutUseCase(
         getStripe(),
         priceId,
         productId,
-        maxSubscribers
+        maxSubscribers,
+        staleCustomerRefresher
       );
       const controller = new AutoSyncCheckoutController(useCase);
       return controller.createSession(req, res);
@@ -86,20 +96,19 @@ const CheckoutRouter = () => {
     '/api/checkout/credit-pack',
     RequireAuthentication,
     express.json(),
-    (req, res) => {
+    async (req, res) => {
       if (creditPackPriceId === '') {
         return res
           .status(503)
           .json({ message: 'Credit packs are not available right now.' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new CreateCreditPackCheckoutUseCase(
         getStripe(),
-        creditPackPriceId
+        creditPackPriceId,
+        staleCustomerRefresher
       );
-      const controller = new CreditPackCheckoutController(
-        useCase,
-        new UsersRepository(getDatabase())
-      );
+      const controller = new CreditPackCheckoutController(useCase);
       return controller.createSession(req, res);
     }
   );
@@ -120,11 +129,13 @@ const CheckoutRouter = () => {
           .status(503)
           .json({ message: 'Pro checkout is not available' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new UnlimitedCheckoutUseCase(
         getStripe(),
         unlimitedMonthlyPriceId,
         unlimitedYearlyPriceId,
-        priceResolver
+        priceResolver,
+        staleCustomerRefresher
       );
       const controller = new UnlimitedCheckoutController(
         useCase,
@@ -175,10 +186,12 @@ const CheckoutRouter = () => {
           .status(503)
           .json({ message: 'Day Pass is not available right now.' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new CreatePassCheckoutUseCase(
         getStripe(),
         pass24hPriceId,
-        '24h'
+        '24h',
+        staleCustomerRefresher
       );
       const controller = new PassCheckoutController(
         useCase,
@@ -201,10 +214,12 @@ const CheckoutRouter = () => {
           .status(503)
           .json({ message: 'Week Pass is not available right now.' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new CreatePassCheckoutUseCase(
         getStripe(),
         pass7dPriceId,
-        '7d'
+        '7d',
+        staleCustomerRefresher
       );
       const controller = new PassCheckoutController(
         useCase,
@@ -227,10 +242,12 @@ const CheckoutRouter = () => {
           .status(503)
           .json({ message: 'Semester Pass is not available right now.' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new CreatePassCheckoutUseCase(
         getStripe(),
         pass120dPriceId,
-        '120d'
+        '120d',
+        staleCustomerRefresher
       );
       const controller = new PassCheckoutController(
         useCase,

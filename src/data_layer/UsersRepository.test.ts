@@ -753,3 +753,85 @@ const RUN_INTEGRATION = process.env.DATABASE_URL != null;
     });
   }
 );
+
+describe('UsersRepository.claimStripeCustomerId', () => {
+  let db: ReturnType<typeof Knex>;
+
+  beforeEach(async () => {
+    db = Knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await db.schema.createTable('users', (t) => {
+      t.increments('id');
+      t.string('stripe_customer_id');
+    });
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  it('stores and returns the candidate when the row has no customer yet', async () => {
+    const [id] = await db('users').insert({ stripe_customer_id: null });
+    const repo = new UsersRepository(db);
+
+    const result = await repo.claimStripeCustomerId(id, 'cus_fresh');
+
+    expect(result).toBe('cus_fresh');
+    const row = await db('users').where({ id }).first();
+    expect(row.stripe_customer_id).toBe('cus_fresh');
+  });
+
+  it('keeps the existing id and returns it rather than overwriting', async () => {
+    const [id] = await db('users').insert({ stripe_customer_id: 'cus_winner' });
+    const repo = new UsersRepository(db);
+
+    const result = await repo.claimStripeCustomerId(id, 'cus_loser');
+
+    expect(result).toBe('cus_winner');
+    const row = await db('users').where({ id }).first();
+    expect(row.stripe_customer_id).toBe('cus_winner');
+  });
+});
+
+describe('UsersRepository.clearStripeCustomerIdIf', () => {
+  let db: ReturnType<typeof Knex>;
+
+  beforeEach(async () => {
+    db = Knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await db.schema.createTable('users', (t) => {
+      t.increments('id');
+      t.string('stripe_customer_id');
+    });
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  it('clears the id when it still equals the stale value', async () => {
+    const [id] = await db('users').insert({ stripe_customer_id: 'cus_stale' });
+    const repo = new UsersRepository(db);
+
+    await repo.clearStripeCustomerIdIf(id, 'cus_stale');
+
+    const row = await db('users').where({ id }).first();
+    expect(row.stripe_customer_id).toBeNull();
+  });
+
+  it('leaves a changed id untouched', async () => {
+    const [id] = await db('users').insert({ stripe_customer_id: 'cus_newer' });
+    const repo = new UsersRepository(db);
+
+    await repo.clearStripeCustomerIdIf(id, 'cus_stale');
+
+    const row = await db('users').where({ id }).first();
+    expect(row.stripe_customer_id).toBe('cus_newer');
+  });
+});
