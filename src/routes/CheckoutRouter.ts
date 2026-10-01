@@ -2,7 +2,7 @@ import express from 'express';
 import RequireAuthentication from './middleware/RequireAuthentication';
 import { optionalAuthMiddleware } from './middleware/optionalAuthMiddleware';
 import { RejectDuplicatePurchase } from './middleware/RejectDuplicatePurchase';
-import { ResolveStripeCustomer } from './middleware/ResolveStripeCustomer';
+import { resolveStripeCustomer } from './middleware/ResolveStripeCustomer';
 import AutoSyncCheckoutController from '../controllers/AutoSyncCheckoutController';
 import PassCheckoutController from '../controllers/PassCheckoutController';
 import ResumeCheckoutController from '../controllers/ResumeCheckoutController';
@@ -64,13 +64,13 @@ const CheckoutRouter = () => {
     '/api/checkout/auto-sync',
     RequireAuthentication,
     express.json(),
-    ResolveStripeCustomer(),
-    (req, res) => {
+    async (req, res) => {
       if (priceId === '') {
         return res
           .status(404)
           .json({ message: 'Auto Sync checkout is not available' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new AutoSyncCheckoutUseCase(
         getStripe(),
         priceId,
@@ -88,13 +88,13 @@ const CheckoutRouter = () => {
     '/api/checkout/credit-pack',
     RequireAuthentication,
     express.json(),
-    ResolveStripeCustomer(),
-    (req, res) => {
+    async (req, res) => {
       if (creditPackPriceId === '') {
         return res
           .status(503)
           .json({ message: 'Credit packs are not available right now.' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new CreateCreditPackCheckoutUseCase(
         getStripe(),
         creditPackPriceId
@@ -114,13 +114,13 @@ const CheckoutRouter = () => {
     RequireAuthentication,
     express.json(),
     RejectDuplicatePurchase('subscription'),
-    ResolveStripeCustomer(),
     async (req, res) => {
       if (unlimitedMonthlyPriceId === '') {
         return res
           .status(503)
           .json({ message: 'Pro checkout is not available' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new UnlimitedCheckoutUseCase(
         getStripe(),
         unlimitedMonthlyPriceId,
@@ -169,7 +169,6 @@ const CheckoutRouter = () => {
     optionalAuthMiddleware,
     express.json(),
     RejectDuplicatePurchase('pass'),
-    ResolveStripeCustomer(),
     async (req, res) => {
       const pass24hPriceId = await pricingService.resolvePriceId('24h');
       if (pass24hPriceId == null) {
@@ -177,6 +176,7 @@ const CheckoutRouter = () => {
           .status(503)
           .json({ message: 'Day Pass is not available right now.' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new CreatePassCheckoutUseCase(
         getStripe(),
         pass24hPriceId,
@@ -196,7 +196,6 @@ const CheckoutRouter = () => {
     optionalAuthMiddleware,
     express.json(),
     RejectDuplicatePurchase('pass'),
-    ResolveStripeCustomer(),
     async (req, res) => {
       const pass7dPriceId = await pricingService.resolvePriceId('7d');
       if (pass7dPriceId == null) {
@@ -204,6 +203,7 @@ const CheckoutRouter = () => {
           .status(503)
           .json({ message: 'Week Pass is not available right now.' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new CreatePassCheckoutUseCase(
         getStripe(),
         pass7dPriceId,
@@ -223,7 +223,6 @@ const CheckoutRouter = () => {
     optionalAuthMiddleware,
     express.json(),
     RejectDuplicatePurchase('pass'),
-    ResolveStripeCustomer(),
     async (req, res) => {
       const pass120dPriceId = await pricingService.resolvePriceId('120d');
       if (pass120dPriceId == null) {
@@ -231,6 +230,7 @@ const CheckoutRouter = () => {
           .status(503)
           .json({ message: 'Semester Pass is not available right now.' });
       }
+      await resolveStripeCustomer(res);
       const useCase = new CreatePassCheckoutUseCase(
         getStripe(),
         pass120dPriceId,

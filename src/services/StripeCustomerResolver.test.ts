@@ -42,43 +42,7 @@ describe('StripeCustomerResolver', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('adopts the existing customer found by email list and stores it', async () => {
-    const { stripe, create, search } = makeStripe({
-      list: jest.fn().mockResolvedValue({ data: [{ id: 'cus_existing' }] }),
-    });
-    const store = makeStore(null);
-    const resolver = new StripeCustomerResolver(stripe, store);
-
-    const result = await resolver.resolveOrCreate(42, 'learner@example.test');
-
-    expect(result).toBe('cus_existing');
-    expect(store.claimStripeCustomerId).toHaveBeenCalledWith(
-      42,
-      'cus_existing'
-    );
-    expect(search).not.toHaveBeenCalled();
-    expect(create).not.toHaveBeenCalled();
-  });
-
-  it('falls back to search when list returns nothing and adopts the hit', async () => {
-    const { stripe, create } = makeStripe({
-      list: jest.fn().mockResolvedValue({ data: [] }),
-      search: jest.fn().mockResolvedValue({ data: [{ id: 'cus_searched' }] }),
-    });
-    const store = makeStore(null);
-    const resolver = new StripeCustomerResolver(stripe, store);
-
-    const result = await resolver.resolveOrCreate(42, 'learner@example.test');
-
-    expect(result).toBe('cus_searched');
-    expect(store.claimStripeCustomerId).toHaveBeenCalledWith(
-      42,
-      'cus_searched'
-    );
-    expect(create).not.toHaveBeenCalled();
-  });
-
-  it('creates a new customer carrying the user id when none exists', async () => {
+  it('creates a new customer carrying the user id when none is stored', async () => {
     const { stripe, create } = makeStripe({
       create: jest.fn().mockResolvedValue({ id: 'cus_new' }),
     });
@@ -95,6 +59,23 @@ describe('StripeCustomerResolver', () => {
     expect(store.claimStripeCustomerId).toHaveBeenCalledWith(42, 'cus_new');
   });
 
+  it('never looks a customer up by email: creates fresh even when a same-email customer exists', async () => {
+    const { stripe, list, search, create } = makeStripe({
+      list: jest.fn().mockResolvedValue({ data: [{ id: 'cus_sameemail' }] }),
+      search: jest.fn().mockResolvedValue({ data: [{ id: 'cus_sameemail' }] }),
+      create: jest.fn().mockResolvedValue({ id: 'cus_new' }),
+    });
+    const store = makeStore(null);
+    const resolver = new StripeCustomerResolver(stripe, store);
+
+    const result = await resolver.resolveOrCreate(42, 'learner@example.test');
+
+    expect(result).toBe('cus_new');
+    expect(list).not.toHaveBeenCalled();
+    expect(search).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalled();
+  });
+
   it('deletes the customer it just created when it loses the claim race', async () => {
     const { stripe, del } = makeStripe({
       create: jest.fn().mockResolvedValue({ id: 'cus_mine' }),
@@ -108,16 +89,16 @@ describe('StripeCustomerResolver', () => {
     expect(del).toHaveBeenCalledWith('cus_mine');
   });
 
-  it('treats an empty stored id as a miss and resolves afresh', async () => {
-    const { stripe, list } = makeStripe({
-      list: jest.fn().mockResolvedValue({ data: [{ id: 'cus_existing' }] }),
+  it('treats an empty stored id as a miss and creates afresh', async () => {
+    const { stripe, create } = makeStripe({
+      create: jest.fn().mockResolvedValue({ id: 'cus_new' }),
     });
     const store = makeStore('');
     const resolver = new StripeCustomerResolver(stripe, store);
 
     const result = await resolver.resolveOrCreate(42, 'learner@example.test');
 
-    expect(result).toBe('cus_existing');
-    expect(list).toHaveBeenCalled();
+    expect(result).toBe('cus_new');
+    expect(create).toHaveBeenCalled();
   });
 });
