@@ -632,6 +632,18 @@ class UsersRepository {
       );
   }
 
+  async claimStripeCustomerId(
+    id: string | number,
+    candidateId: string
+  ): Promise<string> {
+    await this.database(this.table)
+      .where({ id })
+      .whereNull('stripe_customer_id')
+      .update({ stripe_customer_id: candidateId });
+    const current = await this.getStripeCustomerId(id);
+    return current ?? candidateId;
+  }
+
   async countTotalUsers(): Promise<number> {
     const row = (await this.database(this.table)
       .count<{ count: string | number }>('* as count')

@@ -54,6 +54,22 @@ describe('PassCheckoutController', () => {
     );
   });
 
+  it('forwards the resolved Stripe customer id from res.locals', async () => {
+    const execute = resolving();
+    const { controller } = makeController(execute);
+    const res = makeRes({
+      owner: 42,
+      email: 'a@b.test',
+      stripeCustomerId: 'cus_abc',
+    });
+
+    await controller.createSession({} as never, res);
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({ stripeCustomerId: 'cus_abc' })
+    );
+  });
+
   it('propagates use case errors', async () => {
     const execute = jest.fn().mockRejectedValue(new Error('stripe down'));
     const { controller } = makeController(execute);

@@ -32,6 +32,7 @@ class UnlimitedCheckoutController {
 
     const userId = res.locals.owner as number;
     const userEmail = res.locals.email as string;
+    const stripeCustomerId = res.locals.stripeCustomerId as string | undefined;
     const anonId = (req.cookies?.anon_id as string | undefined) ?? undefined;
     const gaClientId = parseGaClientId(req.cookies?._ga);
     const createdAt = await this.context.getUserCreatedAt(userId);
@@ -42,6 +43,7 @@ class UnlimitedCheckoutController {
       result = await this.useCase.execute({
         userId,
         userEmail,
+        stripeCustomerId,
         interval: interval as UnlimitedInterval,
         variant: parsePricingVariant(req.body?.variant),
         anonId,

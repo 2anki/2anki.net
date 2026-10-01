@@ -2,6 +2,7 @@ import express from 'express';
 import RequireAuthentication from './middleware/RequireAuthentication';
 import { optionalAuthMiddleware } from './middleware/optionalAuthMiddleware';
 import { RejectDuplicatePurchase } from './middleware/RejectDuplicatePurchase';
+import { ResolveStripeCustomer } from './middleware/ResolveStripeCustomer';
 import AutoSyncCheckoutController from '../controllers/AutoSyncCheckoutController';
 import PassCheckoutController from '../controllers/PassCheckoutController';
 import ResumeCheckoutController from '../controllers/ResumeCheckoutController';
@@ -63,6 +64,7 @@ const CheckoutRouter = () => {
     '/api/checkout/auto-sync',
     RequireAuthentication,
     express.json(),
+    ResolveStripeCustomer(),
     (req, res) => {
       if (priceId === '') {
         return res
@@ -86,6 +88,7 @@ const CheckoutRouter = () => {
     '/api/checkout/credit-pack',
     RequireAuthentication,
     express.json(),
+    ResolveStripeCustomer(),
     (req, res) => {
       if (creditPackPriceId === '') {
         return res
@@ -96,10 +99,7 @@ const CheckoutRouter = () => {
         getStripe(),
         creditPackPriceId
       );
-      const controller = new CreditPackCheckoutController(
-        useCase,
-        new UsersRepository(getDatabase())
-      );
+      const controller = new CreditPackCheckoutController(useCase);
       return controller.createSession(req, res);
     }
   );
@@ -114,6 +114,7 @@ const CheckoutRouter = () => {
     RequireAuthentication,
     express.json(),
     RejectDuplicatePurchase('subscription'),
+    ResolveStripeCustomer(),
     async (req, res) => {
       if (unlimitedMonthlyPriceId === '') {
         return res
@@ -168,6 +169,7 @@ const CheckoutRouter = () => {
     optionalAuthMiddleware,
     express.json(),
     RejectDuplicatePurchase('pass'),
+    ResolveStripeCustomer(),
     async (req, res) => {
       const pass24hPriceId = await pricingService.resolvePriceId('24h');
       if (pass24hPriceId == null) {
@@ -194,6 +196,7 @@ const CheckoutRouter = () => {
     optionalAuthMiddleware,
     express.json(),
     RejectDuplicatePurchase('pass'),
+    ResolveStripeCustomer(),
     async (req, res) => {
       const pass7dPriceId = await pricingService.resolvePriceId('7d');
       if (pass7dPriceId == null) {
@@ -220,6 +223,7 @@ const CheckoutRouter = () => {
     optionalAuthMiddleware,
     express.json(),
     RejectDuplicatePurchase('pass'),
+    ResolveStripeCustomer(),
     async (req, res) => {
       const pass120dPriceId = await pricingService.resolvePriceId('120d');
       if (pass120dPriceId == null) {

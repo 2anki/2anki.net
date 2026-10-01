@@ -9,6 +9,12 @@ jest.mock('../lib/integrations/stripe', () => ({
     checkout: {
       sessions: { create: mockStripeCreate },
     },
+    customers: {
+      list: jest.fn().mockResolvedValue({ data: [] }),
+      search: jest.fn().mockResolvedValue({ data: [] }),
+      create: jest.fn().mockResolvedValue({ id: 'cus_router_created' }),
+      del: jest.fn().mockResolvedValue({ deleted: true }),
+    },
   }),
 }));
 
@@ -45,6 +51,12 @@ jest.mock('../data_layer/UsersRepository', () => ({
   default: class {
     async getById() {
       return { email: 'test@example.com', patreon: mockHeldPatreon };
+    }
+    async getStripeCustomerId() {
+      return 'cus_router_test';
+    }
+    async claimStripeCustomerId(_id: number, candidate: string) {
+      return candidate;
     }
   },
 }));
@@ -174,6 +186,27 @@ describe('CheckoutRouter — pass routes', () => {
   });
 
   describe('POST /api/checkout/pass/24h', () => {
+    it('reuses the account customer for an authenticated buyer', async () => {
+      process.env.PASS_24H_PRICE_ID = 'price_24h_test';
+      mockOptionalOwner = 42;
+      mockOptionalEmail = 'test@example.com';
+      mockStripeCreate.mockResolvedValue({
+        url: 'https://checkout.stripe.com/24h-auth',
+      });
+
+      const res = await fetch(`${url}/api/checkout/pass/24h`, {
+        method: 'POST',
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockStripeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customer: 'cus_router_test',
+          customer_email: undefined,
+        })
+      );
+    });
+
     it('returns 503 when PASS_24H_PRICE_ID env var is not set', async () => {
       const res = await fetch(`${url}/api/checkout/pass/24h`, {
         method: 'POST',
