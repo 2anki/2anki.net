@@ -22,6 +22,7 @@ import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCre
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
 import { EmptyBackNotice } from '../../../DownloadsPage/components/EmptyBackNotice';
+import { ColorFlattenedNotice } from '../../../DownloadsPage/components/ColorFlattenedNotice';
 import { StructureRescuedNotice } from '../../../DownloadsPage/components/StructureRescuedNotice';
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
@@ -312,6 +313,8 @@ function UploadForm({
     setDroppedImageCount,
     expiredNotionImageCount,
     setExpiredNotionImageCount,
+    coloredTextPageCount,
+    setColoredTextPageCount,
     emptyBackCount,
     setEmptyBackCount,
     cardsHeldBack,
@@ -407,6 +410,7 @@ function UploadForm({
     setMcqSkippedCount,
     setDroppedImageCount,
     setExpiredNotionImageCount,
+    setColoredTextPageCount,
     setEmptyBackCount,
     setCardsHeldBack,
     setOverSplit,
@@ -1338,6 +1342,11 @@ function UploadForm({
           <EmptyBackNotice count={emptyBackCount} />
         </div>
       )}
+      {coloredTextPageCount > 0 && (
+        <div className={formStyles.warningInline}>
+          <ColorFlattenedNotice count={coloredTextPageCount} />
+        </div>
+      )}
       {overSplit && (
         <div className={formStyles.warningInline}>
           <OverSplitNotice cardCount={cardCount} />
@@ -1417,6 +1426,11 @@ function UploadForm({
         {emptyBackCount > 0 && (
           <div className={formStyles.warningInline}>
             <EmptyBackNotice count={emptyBackCount} multipleDecks />
+          </div>
+        )}
+        {coloredTextPageCount > 0 && (
+          <div className={formStyles.warningInline}>
+            <ColorFlattenedNotice count={coloredTextPageCount} multipleDecks />
           </div>
         )}
         {structureRescuedRule != null && (

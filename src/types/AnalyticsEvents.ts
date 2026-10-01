@@ -136,6 +136,7 @@ export const KNOWN_EVENTS = new Set([
   'apkg_print_cta_clicked',
   'ankify_decklist_sorted',
   'empty_back_notice_shown',
+  'color_flatten_notice_shown',
   'thin_deck_notice_shown',
   'mindmap_created',
   'mindmap_export_excluded_nodes',

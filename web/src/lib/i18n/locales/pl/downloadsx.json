@@ -108,6 +108,16 @@
   "jobs": {
     "deleteInProgress": "To zadanie wciąż trwa. Poczekaj, aż się zakończy."
   },
+  "colorFlattened": {
+    "uploadSingleDeck_one": "Kolory tekstu na {{count}} stronie Twojego pliku PDF nie znalazły się w tej talii — cały tekst jest, ale w domyślnym kolorze.",
+    "uploadSingleDeck_few": "Kolory tekstu na {{count}} stronach Twojego pliku PDF nie znalazły się w tej talii — cały tekst jest, ale w domyślnym kolorze.",
+    "uploadSingleDeck_many": "Kolory tekstu na {{count}} stronach Twojego pliku PDF nie znalazły się w tej talii — cały tekst jest, ale w domyślnym kolorze.",
+    "uploadSingleDeck_other": "Kolory tekstu na {{count}} strony Twojego pliku PDF nie znalazły się w tej talii — cały tekst jest, ale w domyślnym kolorze.",
+    "uploadMultiDeck_one": "Kolory tekstu na {{count}} stronie Twoich plików PDF nie znalazły się w Twoich taliach — cały tekst jest, ale w domyślnym kolorze.",
+    "uploadMultiDeck_few": "Kolory tekstu na {{count}} stronach Twoich plików PDF nie znalazły się w Twoich taliach — cały tekst jest, ale w domyślnym kolorze.",
+    "uploadMultiDeck_many": "Kolory tekstu na {{count}} stronach Twoich plików PDF nie znalazły się w Twoich taliach — cały tekst jest, ale w domyślnym kolorze.",
+    "uploadMultiDeck_other": "Kolory tekstu na {{count}} strony Twoich plików PDF nie znalazły się w Twoich taliach — cały tekst jest, ale w domyślnym kolorze."
+  },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} karta bez odpowiedzi została pominięta, więc nie ma jej w tej talii. Dodaj tył w pliku i przekonwertuj ponownie.",
     "uploadSingleDeck_few": "{{count}} karty bez odpowiedzi zostały pominięte, więc nie ma ich w tej talii. Dodaj tył do każdej w pliku i przekonwertuj ponownie.",

@@ -28,6 +28,7 @@ describe('convertPdfTextToHtml', () => {
       avgCharsPerPage: 2,
       isDrmLocked: true,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtml(Buffer.from('x'), 'locked.pdf');
@@ -38,6 +39,7 @@ describe('convertPdfTextToHtml', () => {
       isDrmLocked: true,
       needsCredential: false,
       droppedImageCount: 0,
+      coloredTextPageCount: 0,
       images: [],
     });
     expect(mockSynthesize).not.toHaveBeenCalled();
@@ -50,6 +52,7 @@ describe('convertPdfTextToHtml', () => {
       avgCharsPerPage: 0,
       isDrmLocked: false,
       needsCredential: true,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtml(
@@ -63,6 +66,7 @@ describe('convertPdfTextToHtml', () => {
       isDrmLocked: false,
       needsCredential: true,
       droppedImageCount: 0,
+      coloredTextPageCount: 0,
       images: [],
     });
     expect(mockSynthesize).not.toHaveBeenCalled();
@@ -75,6 +79,7 @@ describe('convertPdfTextToHtml', () => {
       avgCharsPerPage: 60,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
     mockSynthesize.mockReturnValue([
       { front: 'Q1', back: 'A1', tags: [] },
@@ -102,12 +107,29 @@ describe('convertPdfTextToHtml', () => {
       avgCharsPerPage: 60,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
     mockSynthesize.mockReturnValue([{ front: 'Q1', back: 'A1', tags: [] }]);
 
     const result = await convertPdfTextToHtml(Buffer.from('x'), 'study.pdf');
 
     expect(result.droppedImageCount).toBe(6);
+  });
+
+  it('carries the coloured-text page count through on the text path', async () => {
+    mockExtract.mockResolvedValue({
+      pages: [{ text: 'page one', imagePaintCount: 0 }],
+      pageCount: 3,
+      avgCharsPerPage: 60,
+      isDrmLocked: false,
+      needsCredential: false,
+      coloredTextPageCount: 2,
+    });
+    mockSynthesize.mockReturnValue([{ front: 'Q1', back: 'A1', tags: [] }]);
+
+    const result = await convertPdfTextToHtml(Buffer.from('x'), 'study.pdf');
+
+    expect(result.coloredTextPageCount).toBe(2);
   });
 
   it('escapes HTML-sensitive characters in card content', async () => {
@@ -117,6 +139,7 @@ describe('convertPdfTextToHtml', () => {
       avgCharsPerPage: 60,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
     mockSynthesize.mockReturnValue([
       { front: '<script>alert("x")</script>', back: 'a & b', tags: [] },
@@ -138,6 +161,7 @@ describe('convertPdfTextToHtml', () => {
       avgCharsPerPage: 60,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
     mockSynthesize.mockReturnValue([
       { front: 'line1\nline2', back: 'b', tags: [] },
@@ -155,6 +179,7 @@ describe('convertPdfTextToHtml', () => {
       avgCharsPerPage: 60,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
     mockSynthesize.mockReturnValue([{ front: 'q', back: 'a', tags: [] }]);
 
@@ -189,6 +214,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       avgCharsPerPage: 320,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtmlAuto(Buffer.from('x'), 'bio.pdf');
@@ -212,12 +238,29 @@ describe('convertPdfTextToHtmlAuto', () => {
       avgCharsPerPage: 320,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtmlAuto(Buffer.from('x'), 'bio.pdf');
 
     expect(result.isTextShaped).toBe(true);
     expect(result.droppedImageCount).toBe(5);
+  });
+
+  it('carries the coloured-text page count through on a text-shaped PDF', async () => {
+    mockExtract.mockResolvedValue({
+      pages: textShapedPages(),
+      pageCount: 5,
+      avgCharsPerPage: 320,
+      isDrmLocked: false,
+      needsCredential: false,
+      coloredTextPageCount: 3,
+    });
+
+    const result = await convertPdfTextToHtmlAuto(Buffer.from('x'), 'bio.pdf');
+
+    expect(result.isTextShaped).toBe(true);
+    expect(result.coloredTextPageCount).toBe(3);
   });
 
   it('reports not text-shaped when most pages have no text', async () => {
@@ -233,6 +276,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       avgCharsPerPage: 320,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtmlAuto(Buffer.from('x'), 'scan.pdf');
@@ -243,6 +287,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       isDrmLocked: false,
       needsCredential: false,
       droppedImageCount: 0,
+      coloredTextPageCount: 0,
       images: [],
       isTextShaped: false,
       overSplit: false,
@@ -257,6 +302,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       avgCharsPerPage: 40,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtmlAuto(Buffer.from('x'), 'thin.pdf');
@@ -272,6 +318,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       avgCharsPerPage: 2,
       isDrmLocked: true,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtmlAuto(
@@ -285,6 +332,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       isDrmLocked: true,
       needsCredential: false,
       droppedImageCount: 0,
+      coloredTextPageCount: 0,
       images: [],
       isTextShaped: false,
       overSplit: false,
@@ -299,6 +347,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       avgCharsPerPage: 0,
       isDrmLocked: false,
       needsCredential: true,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtmlAuto(
@@ -312,6 +361,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       isDrmLocked: false,
       needsCredential: true,
       droppedImageCount: 0,
+      coloredTextPageCount: 0,
       images: [],
       isTextShaped: false,
       overSplit: false,
@@ -335,6 +385,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       avgCharsPerPage: totalChars / 228,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtmlAuto(
@@ -360,6 +411,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       avgCharsPerPage: 320,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtmlAuto(
@@ -388,6 +440,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       avgCharsPerPage: pageText.length,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtmlAuto(
@@ -409,6 +462,7 @@ describe('convertPdfTextToHtmlAuto', () => {
       avgCharsPerPage: 320,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
 
     const result = await convertPdfTextToHtmlAuto(Buffer.from('x'), 'bio.pdf');
@@ -448,6 +502,7 @@ describe('embedded image injection', () => {
       avgCharsPerPage: 320,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
     const loadImages = jest.fn().mockResolvedValue([
       { pageIndex: 0, name: 'img-001-000.png', contents: Buffer.from('a') },
@@ -481,6 +536,7 @@ describe('embedded image injection', () => {
       avgCharsPerPage: 320,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
     const loadImages = jest
       .fn()
@@ -510,6 +566,7 @@ describe('embedded image injection', () => {
       avgCharsPerPage: 320,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
     const loadImages = jest.fn();
 
@@ -533,6 +590,7 @@ describe('embedded image injection', () => {
       avgCharsPerPage: 60,
       isDrmLocked: false,
       needsCredential: false,
+      coloredTextPageCount: 0,
     });
     mockSynthesize.mockReturnValue([
       { front: 'Question page', back: 'Answer page', tags: [], pageIndex: 0 },

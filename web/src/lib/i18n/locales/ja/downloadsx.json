@@ -78,6 +78,10 @@
   "jobs": {
     "deleteInProgress": "このジョブはまだ実行中です。完了するまでお待ちください。"
   },
+  "colorFlattened": {
+    "uploadSingleDeck_other": "PDFの{{count}}ページにある文字色はこのデッキには含まれていません。文字はすべて揃っていますが、既定の色で表示されます。",
+    "uploadMultiDeck_other": "PDFの{{count}}ページにある文字色はあなたのデッキには含まれていません。文字はすべて揃っていますが、既定の色で表示されます。"
+  },
   "emptyBack": {
     "uploadSingleDeck_other": "{{count}}枚のカードに解答がなかったためスキップされ、このデッキには含まれていません。ファイルに裏面を追加して、もう一度変換してください。",
     "uploadMultiDeck_other": "{{count}}枚のカードに解答がなかったためスキップされ、デッキには含まれていません。ファイルに裏面を追加して、もう一度変換してください。"

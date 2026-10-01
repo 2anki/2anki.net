@@ -172,6 +172,7 @@ interface BatchUploadResponse {
   warningCode?: string;
   droppedImageCount?: number;
   expiredNotionImageCount?: number;
+  coloredTextPageCount?: number;
   emptyBackCount?: number;
   structureRescuedRule?: string;
 }
@@ -251,6 +252,12 @@ function sumExpiredNotionImages(
   packages: { expiredNotionImageCount?: number }[]
 ): number {
   return packages.reduce((sum, p) => sum + (p.expiredNotionImageCount ?? 0), 0);
+}
+
+function sumColoredTextPages(
+  packages: { coloredTextPageCount?: number }[]
+): number {
+  return packages.reduce((sum, p) => sum + (p.coloredTextPageCount ?? 0), 0);
 }
 
 function hasSessionToken(req: express.Request): boolean {
@@ -1682,6 +1689,7 @@ class UploadService {
       );
       const totalDroppedImageCount = sumDroppedImages(packages);
       const totalExpiredNotionImageCount = sumExpiredNotionImages(packages);
+      const totalColoredTextPageCount = sumColoredTextPages(packages);
       res.set('Content-Type', 'application/apkg');
       res.set('Content-Length', plen.toString());
       res.set('X-Card-Count', totalCards.toString());
@@ -1703,6 +1711,10 @@ class UploadService {
           totalExpiredNotionImageCount.toString()
         );
         exposedHeaders.push('X-Expired-Notion-Assets');
+      }
+      if (totalColoredTextPageCount > 0) {
+        res.set('X-Colored-Text-Pages', totalColoredTextPageCount.toString());
+        exposedHeaders.push('X-Colored-Text-Pages');
       }
       if (totalEmptyBackCount > 0) {
         res.set('X-Empty-Back-Count', totalEmptyBackCount.toString());
@@ -1802,7 +1814,8 @@ class UploadService {
           sumExpiredNotionImages(packages),
           includesAiCreditsWarning(warnings)
             ? AI_CREDITS_EXHAUSTED_WARNING_CODE
-            : null
+            : null,
+          sumColoredTextPages(packages)
         )
       );
   }
@@ -1957,7 +1970,8 @@ class UploadService {
     emptyBackCount = 0,
     structureRescuedRule?: string,
     expiredNotionImageCount = 0,
-    warningCode: string | null = null
+    warningCode: string | null = null,
+    coloredTextPageCount = 0
   ): Promise<BatchUploadResponse> {
     const apkgFilenames = (await fs.promises.readdir(ws.location)).filter(
       (filename) => filename.endsWith('.apkg')
@@ -1977,6 +1991,7 @@ class UploadService {
       ...(warningCode ? { warningCode } : {}),
       ...(droppedImageCount > 0 ? { droppedImageCount } : {}),
       ...(expiredNotionImageCount > 0 ? { expiredNotionImageCount } : {}),
+      ...(coloredTextPageCount > 0 ? { coloredTextPageCount } : {}),
       ...(emptyBackCount > 0 ? { emptyBackCount } : {}),
       ...(structureRescuedRule == null ? {} : { structureRescuedRule }),
     };

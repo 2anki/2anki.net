@@ -40,6 +40,7 @@ export interface BatchResult {
   warningCode?: string;
   droppedImageCount?: number;
   expiredNotionImageCount?: number;
+  coloredTextPageCount?: number;
   emptyBackCount?: number;
   structureRescuedRule?: string;
 }
@@ -67,6 +68,7 @@ export function useUploadFormState(onReset: () => void) {
   const [droppedImageCount, setDroppedImageCount] = useState<number>(0);
   const [expiredNotionImageCount, setExpiredNotionImageCount] =
     useState<number>(0);
+  const [coloredTextPageCount, setColoredTextPageCount] = useState<number>(0);
   const [emptyBackCount, setEmptyBackCount] = useState<number>(0);
   const [cardsHeldBack, setCardsHeldBack] = useState<number>(0);
   const [heldDeck, setHeldDeck] = useState<HeldDeckState | null>(null);
@@ -115,6 +117,7 @@ export function useUploadFormState(onReset: () => void) {
     setMcqSkippedCount(0);
     setDroppedImageCount(0);
     setExpiredNotionImageCount(0);
+    setColoredTextPageCount(0);
     setEmptyBackCount(0);
     setCardsHeldBack(0);
     setHeldDeck(null);
@@ -168,6 +171,8 @@ export function useUploadFormState(onReset: () => void) {
     setDroppedImageCount,
     expiredNotionImageCount,
     setExpiredNotionImageCount,
+    coloredTextPageCount,
+    setColoredTextPageCount,
     emptyBackCount,
     setEmptyBackCount,
     cardsHeldBack,

@@ -46,6 +46,7 @@ export interface ConversionSuccessHandlers {
   setMcqSkippedCount: (value: number) => void;
   setDroppedImageCount: (value: number) => void;
   setExpiredNotionImageCount: (value: number) => void;
+  setColoredTextPageCount: (value: number) => void;
   setEmptyBackCount: (value: number) => void;
   setCardsHeldBack: (value: number) => void;
   setOverSplit: (value: boolean) => void;
@@ -111,6 +112,7 @@ export async function applyConversionSuccess(
       handlers.setBatchResult(body);
       handlers.setDroppedImageCount(body.droppedImageCount ?? 0);
       handlers.setExpiredNotionImageCount(body.expiredNotionImageCount ?? 0);
+      handlers.setColoredTextPageCount(body.coloredTextPageCount ?? 0);
       handlers.setEmptyBackCount(body.emptyBackCount ?? 0);
       handlers.setStructureRescuedRule(
         parseStructureRescuedValue(body.structureRescuedRule)
@@ -147,6 +149,9 @@ export async function applyConversionSuccess(
   );
   handlers.setExpiredNotionImageCount(
     parseNonNegativeIntHeader(response.headers, 'X-Expired-Notion-Assets')
+  );
+  handlers.setColoredTextPageCount(
+    parseNonNegativeIntHeader(response.headers, 'X-Colored-Text-Pages')
   );
   handlers.setEmptyBackCount(
     parseNonNegativeIntHeader(response.headers, 'X-Empty-Back-Count')
