@@ -14,7 +14,9 @@ function readServerAiCreditsWarningCode(): string {
   );
   const match = /AI_CREDITS_EXHAUSTED_WARNING_CODE = '([a-z-]+)'/.exec(source);
   if (match == null) {
-    throw new Error('AI_CREDITS_EXHAUSTED_WARNING_CODE not found in server source');
+    throw new Error(
+      'AI_CREDITS_EXHAUSTED_WARNING_CODE not found in server source'
+    );
   }
   return match[1];
 }

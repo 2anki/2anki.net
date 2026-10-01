@@ -9,11 +9,7 @@ import type {
   DeckMaturityResult,
 } from '../../types/ankify/DeckMaturity';
 
-export type {
-  DeckMaturityConnected,
-  DeckMaturityOffline,
-  DeckMaturityResult,
-};
+export type { DeckMaturityConnected, DeckMaturityOffline, DeckMaturityResult };
 
 const MATURE_INTERVAL_DAYS = 21;
 

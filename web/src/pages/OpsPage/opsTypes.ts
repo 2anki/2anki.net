@@ -1,4 +1,7 @@
-import type { OpsMetricsWindow, StatusClass } from '@server/types/ops/OpsMetrics';
+import type {
+  OpsMetricsWindow,
+  StatusClass,
+} from '@server/types/ops/OpsMetrics';
 
 export type {
   OpsMetricsBucketPoint,
