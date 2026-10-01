@@ -354,16 +354,24 @@ const SIGNUP_FLAG_KEY = 'signup_completed_tracked';
 const callsFor = (name: string) =>
   trackMock.mock.calls.filter(([eventName]) => eventName === name);
 
+const onboardedCalls = (fetchMock: ReturnType<typeof vi.fn>) =>
+  fetchMock.mock.calls.filter(([url]) => url === '/api/users/me/onboarded');
+
 describe('UploadPage analytics', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     trackMock.mockClear();
     fakeUser = null;
     globalThis.sessionStorage.clear();
+    fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
   });
 
   afterEach(() => {
     fakeUser = null;
     globalThis.sessionStorage.clear();
+    vi.unstubAllGlobals();
   });
 
   it('tracks upload_page_viewed once on mount', () => {
@@ -421,6 +429,39 @@ describe('UploadPage analytics', () => {
     fakeUser = null;
     renderPage();
     expect(callsFor('signup_completed')).toHaveLength(0);
+  });
+
+  it('marks a brand-new account onboarded so a later session cannot re-count the signup', () => {
+    fakeUser = {
+      id: 42,
+      created_at: new Date().toISOString(),
+      onboarded_at: null,
+    };
+    renderPage();
+    expect(onboardedCalls(fetchMock)).toEqual([
+      ['/api/users/me/onboarded', { method: 'PATCH', credentials: 'include' }],
+    ]);
+  });
+
+  it('marks the account onboarded even when the email path already tracked the signup', () => {
+    globalThis.sessionStorage.setItem(SIGNUP_FLAG_KEY, '1');
+    fakeUser = {
+      id: 42,
+      created_at: new Date().toISOString(),
+      onboarded_at: null,
+    };
+    renderPage();
+    expect(onboardedCalls(fetchMock)).toHaveLength(1);
+  });
+
+  it('does not mark an already-onboarded account again', () => {
+    fakeUser = {
+      id: 42,
+      created_at: new Date().toISOString(),
+      onboarded_at: new Date().toISOString(),
+    };
+    renderPage();
+    expect(onboardedCalls(fetchMock)).toHaveLength(0);
   });
 });
 
