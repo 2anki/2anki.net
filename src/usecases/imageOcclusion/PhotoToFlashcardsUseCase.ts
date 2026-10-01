@@ -693,6 +693,10 @@ export class PhotoToFlashcardsUseCase {
       userId,
       anonymousId: userId == null ? input.owner : null,
       props: {
+        // The spend ledger has carried this since the surface shipped, but the
+        // usage event did not - so "how many people use photo to deck" could
+        // only be answered by joining two event names, and nobody did.
+        surface: input.usageSurface ?? 'photo_to_deck',
         card_count: cardCount,
         tile_count: tiles,
         source_mode: mode,

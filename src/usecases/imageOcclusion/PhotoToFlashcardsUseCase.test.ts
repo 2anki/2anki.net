@@ -189,6 +189,28 @@ describe('PhotoToFlashcardsUseCase', () => {
         })
       );
     });
+
+    // Without this the only way to ask which client drove a photo conversion
+    // was to join vision_photo_converted to ai_usage_recorded, which nobody
+    // did - so 95% of usage sat under a default that read like a real surface.
+    it('names the calling surface on the conversion event', async () => {
+      const events = makeEventsStub(0);
+      const useCase = new PhotoToFlashcardsUseCase(events);
+      await useCase.execute({
+        ...BASE_INPUT,
+        isPaying: true,
+        usageSurface: 'photo_to_deck_web',
+      });
+      const { track } = jest.requireMock('../../services/events/track') as {
+        track: jest.Mock;
+      };
+      expect(track).toHaveBeenCalledWith(
+        'vision_photo_converted',
+        expect.objectContaining({
+          props: expect.objectContaining({ surface: 'photo_to_deck_web' }),
+        })
+      );
+    });
   });
 
   describe('token ceiling', () => {

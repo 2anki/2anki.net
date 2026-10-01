@@ -26,6 +26,20 @@ const ALLOWED_DENSITIES: PhotoDensity[] = ['sparse', 'balanced', 'dense'];
 const ALLOWED_MODES: PhotoMode[] = ['generative', 'verbatim'];
 const ALLOWED_CARD_STYLES: PhotoCardStyle[] = ['generative', 'heading-driven'];
 
+// Which client sent the photo. Closed vocabulary - a client naming anything
+// else is treated as unattributed rather than silently trusted, so the bucket
+// can only shrink as clients are taught to declare themselves.
+const PHOTO_CLIENT_SURFACE: Record<string, string> = {
+  web: 'photo_to_deck_web',
+};
+
+// Until #4603 this route passed no surface at all, so every call through it
+// landed on the use case's 'photo_to_deck' default - which read like a real
+// surface while meaning "we don't know", and that is exactly what made the
+// photo-to-deck usage numbers unreadable. An honest name for not knowing makes
+// the gap visible instead of hiding it behind the feature's own name.
+const UNATTRIBUTED_SURFACE = 'photo_to_deck_unattributed';
+
 interface RawPhotoBody {
   imageBase64?: unknown;
   mediaType?: unknown;
@@ -37,6 +51,7 @@ interface RawPhotoBody {
   mode?: unknown;
   cardStyle?: unknown;
   mcqEnabled?: unknown;
+  source?: unknown;
 }
 
 function isAllowedMediaType(value: unknown): value is VisionMediaType {
@@ -65,6 +80,13 @@ function parseCardStyle(value: unknown): PhotoCardStyle {
     (ALLOWED_CARD_STYLES as string[]).includes(value)
     ? (value as PhotoCardStyle)
     : DEFAULT_PHOTO_CARD_STYLE;
+}
+
+function parseClientSurface(value: unknown): string {
+  if (typeof value !== 'string') {
+    return UNATTRIBUTED_SURFACE;
+  }
+  return PHOTO_CLIENT_SURFACE[value] ?? UNATTRIBUTED_SURFACE;
 }
 
 export class PhotoToFlashcardsController {
@@ -127,6 +149,7 @@ export class PhotoToFlashcardsController {
         mode,
         cardStyle,
         mcqEnabled,
+        usageSurface: parseClientSurface(body.source),
       });
     } catch (err) {
       const e = err as Error & {

@@ -299,3 +299,54 @@ describe('PhotoToFlashcardsController MCQ headers', () => {
     expect(res.setHeader).toHaveBeenCalledWith('X-Card-Count', '5');
   });
 });
+
+describe('PhotoToFlashcardsController client attribution', () => {
+  const baseBody = {
+    imageBase64: 'abc',
+    mediaType: 'image/jpeg',
+    deckName: 'X',
+    width: 100,
+    height: 100,
+  };
+
+  it('names the web app when it declares itself', async () => {
+    const useCase = makeUseCase();
+    const controller = new PhotoToFlashcardsController(useCase);
+
+    await controller.create(makeReq({ ...baseBody, source: 'web' }), makeRes());
+
+    expect(useCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ usageSurface: 'photo_to_deck_web' })
+    );
+  });
+
+  // A client that sends nothing is the native app today. Labelling it
+  // 'unattributed' rather than guessing 'native' keeps the number honest and
+  // makes the bucket shrink as clients are taught to declare themselves.
+  it('marks a client that declares nothing as unattributed', async () => {
+    const useCase = makeUseCase();
+    const controller = new PhotoToFlashcardsController(useCase);
+
+    await controller.create(makeReq(baseBody), makeRes());
+
+    expect(useCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ usageSurface: 'photo_to_deck_unattributed' })
+    );
+  });
+
+  it.each([
+    ['an unknown name', 'desktop'],
+    ['a number', 42],
+    ['an object', { web: true }],
+    ['an empty string', ''],
+  ])('does not trust %s as a surface name', async (_label, source) => {
+    const useCase = makeUseCase();
+    const controller = new PhotoToFlashcardsController(useCase);
+
+    await controller.create(makeReq({ ...baseBody, source }), makeRes());
+
+    expect(useCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ usageSurface: 'photo_to_deck_unattributed' })
+    );
+  });
+});
