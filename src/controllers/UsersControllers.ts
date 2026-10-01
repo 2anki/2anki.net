@@ -16,6 +16,7 @@ import AuthenticationService, {
 } from '../services/AuthenticationService';
 import UsersService from '../services/UsersService';
 import { getRedirect } from './helpers/getRedirect';
+import { recordUnverifiedSignin } from './helpers/recordUnverifiedSignin';
 import { sanitizeRelativeRedirect } from './helpers/sanitizeRelativeRedirect';
 import { parseSignupOrigin } from './helpers/parseSignupOrigin';
 import {
@@ -781,6 +782,7 @@ class UsersController {
         .send('Unknown error. Please try again or register a new account.');
     }
 
+    if (!isNewUser) recordUnverifiedSignin(user, 'google');
     await this.userService.markEmailVerified(user.id.toString());
 
     const token = await this.authService.newJWTToken(user.id);
@@ -905,6 +907,7 @@ class UsersController {
       }
     }
 
+    if (!isNewUser) recordUnverifiedSignin(user, 'microsoft');
     await this.userService.markEmailVerified(user.id.toString());
 
     const token = await this.authService.newJWTToken(user.id);
@@ -1152,6 +1155,7 @@ class UsersController {
       }
     }
 
+    if (!isNewUser) recordUnverifiedSignin(user, 'apple');
     await this.userService.markEmailVerified(user.id.toString());
 
     const token = await this.authService.newJWTToken(user.id);
@@ -1265,6 +1269,8 @@ class UsersController {
         .status(400)
         .send('Unknown error. Please try again or register a new account.');
     }
+
+    if (!isNewUser) recordUnverifiedSignin(user, 'notion');
 
     const token = await this.authService.newJWTToken(user.id);
     if (!token) {
@@ -1385,6 +1391,7 @@ class UsersController {
         const jwtToken = await this.authService.newJWTToken(user.id);
         await this.authService.persistToken(jwtToken, user.id.toString());
         await this.userService.updateLastLoginAt(user.id.toString());
+        recordUnverifiedSignin(user, 'magic_link');
         await this.userService.markEmailVerified(user.id.toString());
         res.cookie('token', jwtToken, sessionCookieOptions());
         const redirect = sanitizeRelativeRedirect(req.query?.redirect);
@@ -1405,6 +1412,7 @@ class UsersController {
         }
         const resetToken = crypto.randomUUID();
         await this.userService.updateResetToken(user.id.toString(), resetToken);
+        recordUnverifiedSignin(user, 'magic_link_reset');
         await this.userService.markEmailVerified(user.id.toString());
         return res
           .status(200)
