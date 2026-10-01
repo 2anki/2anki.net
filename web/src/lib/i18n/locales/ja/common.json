@@ -294,20 +294,6 @@
       "title": "最近",
       "convertAgain": "もう一度変換"
     },
-    "onboarding": {
-      "aria": "クイックツアー",
-      "step1Title": "ファイルをドロップするか、Notion ページを選びましょう。",
-      "step1Hint": "対応形式：.zip（Notion のエクスポート）、.html、.md、.pdf、.docx、.xlsx、.pptx、.csv",
-      "step2Title": "デッキの設定を選びましょう。",
-      "step2Hint": "デッキ名を変更し、カードテンプレートを選び、「カードオプション」で変換オプションを設定します。",
-      "step3Title": "ファイルをデッキに変換します。",
-      "step3Hint": "「変換」を押すと、2anki が数秒で .apkg を作成します。",
-      "step4Title": "デッキをダウンロードするか、AnkiWeb に送信します。",
-      "step4Hint": "デッキは自動的にダウンロードされます。Anki にインポートするか、AnkiWeb で同期しましょう。",
-      "back": "戻る",
-      "next": "次へ",
-      "skip": "スキップ"
-    },
     "chips": {
       "groupAria": "その他のアップロード元"
     },

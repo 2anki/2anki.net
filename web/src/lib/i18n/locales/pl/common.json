@@ -309,20 +309,6 @@
       "title": "Ostatnie",
       "convertAgain": "Konwertuj ponownie"
     },
-    "onboarding": {
-      "aria": "Szybkie wprowadzenie",
-      "step1Title": "Upuść plik lub wybierz stronę Notion.",
-      "step1Hint": "Obsługiwane: .zip (eksport z Notion), .html, .md, .pdf, .docx, .xlsx, .pptx, .csv",
-      "step2Title": "Wybierz ustawienia talii.",
-      "step2Hint": "Zmień nazwę talii, wybierz szablon karty i ustaw opcje konwersji w Opcjach karty.",
-      "step3Title": "Przekształć plik w talię.",
-      "step3Hint": "Naciśnij Konwertuj — 2anki tworzy Twój plik .apkg w kilka sekund.",
-      "step4Title": "Pobierz talię lub wyślij ją do AnkiWeb.",
-      "step4Hint": "Twoja talia pobiera się automatycznie. Zaimportuj ją do Anki lub zsynchronizuj przez AnkiWeb.",
-      "back": "Wstecz",
-      "next": "Dalej",
-      "skip": "Pomiń"
-    },
     "chips": {
       "groupAria": "Inne źródła przesyłania"
     },

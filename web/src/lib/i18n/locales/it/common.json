@@ -299,20 +299,6 @@
       "title": "Recenti",
       "convertAgain": "Converti di nuovo"
     },
-    "onboarding": {
-      "aria": "Tour rapido",
-      "step1Title": "Trascina un file o scegli una pagina di Notion.",
-      "step1Hint": "Supportati: .zip (esportazione da Notion), .html, .md, .pdf, .docx, .xlsx, .pptx, .csv",
-      "step2Title": "Scegli le impostazioni del mazzo.",
-      "step2Hint": "Rinomina il mazzo, scegli un modello di carta e imposta le opzioni di conversione in Opzioni carta.",
-      "step3Title": "Converti il tuo file in un mazzo.",
-      "step3Hint": "Premi Converti — 2anki crea il tuo .apkg in pochi secondi.",
-      "step4Title": "Scarica il mazzo o invialo ad AnkiWeb.",
-      "step4Hint": "Il tuo mazzo viene scaricato automaticamente. Importalo in Anki o sincronizzalo tramite AnkiWeb.",
-      "back": "Indietro",
-      "next": "Avanti",
-      "skip": "Salta"
-    },
     "chips": {
       "groupAria": "Altre origini di caricamento"
     },

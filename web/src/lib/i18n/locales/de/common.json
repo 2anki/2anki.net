@@ -299,20 +299,6 @@
       "title": "Zuletzt",
       "convertAgain": "Erneut konvertieren"
     },
-    "onboarding": {
-      "aria": "Kurze Tour",
-      "step1Title": "Lege eine Datei ab oder wähle eine Notion-Seite.",
-      "step1Hint": "Unterstützt: .zip (Notion-Export), .html, .md, .pdf, .docx, .xlsx, .pptx, .csv",
-      "step2Title": "Wähle die Stapel-Einstellungen.",
-      "step2Hint": "Benenne den Stapel um, wähle eine Kartenvorlage und lege die Konvertierungsoptionen unter „Kartenoptionen“ fest.",
-      "step3Title": "Wandle deine Datei in einen Stapel um.",
-      "step3Hint": "Klick auf Konvertieren — 2anki erstellt deine .apkg in Sekunden.",
-      "step4Title": "Lade den Stapel herunter oder sende ihn an AnkiWeb.",
-      "step4Hint": "Dein Stapel wird automatisch heruntergeladen. Importiere ihn in Anki oder synchronisiere ihn über AnkiWeb.",
-      "back": "Zurück",
-      "next": "Weiter",
-      "skip": "Überspringen"
-    },
     "chips": {
       "groupAria": "Andere Upload-Quellen"
     },

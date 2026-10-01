@@ -299,20 +299,6 @@
       "title": "Recent",
       "convertAgain": "Convert again"
     },
-    "onboarding": {
-      "aria": "Quick tour",
-      "step1Title": "Drop a file, or pick a Notion page.",
-      "step1Hint": "Supported: .zip (Notion export), .html, .md, .pdf, .docx, .xlsx, .pptx, .csv",
-      "step2Title": "Pick deck settings.",
-      "step2Hint": "Rename the deck, choose a card template, and set conversion options in Card options.",
-      "step3Title": "Convert your file into a deck.",
-      "step3Hint": "Press Convert — 2anki builds your .apkg in seconds.",
-      "step4Title": "Download the deck, or send it to AnkiWeb.",
-      "step4Hint": "Your deck downloads automatically. Import it in Anki or sync via AnkiWeb.",
-      "back": "Back",
-      "next": "Next",
-      "skip": "Skip"
-    },
     "chips": {
       "groupAria": "Other upload sources"
     },
