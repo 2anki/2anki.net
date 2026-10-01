@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
@@ -236,6 +242,31 @@ describe('RulesPage advanced deck types', () => {
     const details = screen.getByText('Advanced deck types').closest('details');
     expect(details).toHaveAttribute('open');
     expect(screen.getByRole('button', { name: 'Toggle' })).toBeInTheDocument();
+  });
+
+  it('does not offer columns as a deck type', async () => {
+    mockApi.getRules.mockResolvedValue({
+      id: 4,
+      object_id: 'page-advanced-columns',
+      flashcard_is: 'toggle',
+      sub_deck_is: 'child_page',
+      tags_is: 'strikethrough',
+      deck_is: 'page,database,toggle',
+      owner: 1,
+      email_notification: false,
+    });
+    renderPage('page-advanced-columns');
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Toggle' })
+      ).toBeInTheDocument();
+    });
+    const details = screen
+      .getByText('Advanced deck types')
+      .closest('details') as HTMLElement;
+    expect(
+      within(details).queryByRole('button', { name: 'Columns' })
+    ).not.toBeInTheDocument();
   });
 
   it('adds an advanced block type to deck_is when its chip is toggled', async () => {

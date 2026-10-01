@@ -60,7 +60,6 @@ const advancedDeckOptions = [
   'bulleted_list_item',
   'numbered_list_item',
   'quote',
-  'column_list',
   'child_database',
 ];
 const advancedDeckLabelKeys: Record<string, string> = {
@@ -71,7 +70,6 @@ const advancedDeckLabelKeys: Record<string, string> = {
   bulleted_list_item: 'rules.labelBulletedList',
   numbered_list_item: 'rules.labelNumberedList',
   quote: 'rules.labelQuote',
-  column_list: 'rules.labelColumns',
   child_database: 'rules.labelDatabaseInPage',
 };
 const allowedDeckTypes = new Set([...deckOptions, ...advancedDeckOptions]);
