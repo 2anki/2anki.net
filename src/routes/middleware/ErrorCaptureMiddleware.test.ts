@@ -80,6 +80,60 @@ describe('makeErrorCaptureMiddleware', () => {
     expect(repo.inserts[0].url).toBe('/api/upload');
   });
 
+  it('stores Stripe object ids redacted in the message and stack', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const err = new Error("No such customer: 'cus_Qx1aBcD2eFgH3i'");
+
+    await middleware(err, makeReq(), makeRes(), makeNext());
+
+    expect(repo.inserts[0].message).toBe("No such customer: '<stripe_id>'");
+    expect(repo.inserts[0].stack).not.toContain('cus_Qx1aBcD2eFgH3i');
+  });
+
+  it('groups errors that differ only by a Stripe id under one hash', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+
+    await middleware(
+      new Error("No such customer: 'cus_AAA111'"),
+      makeReq('/a', '10.0.0.1'),
+      makeRes(),
+      makeNext()
+    );
+    await middleware(
+      new Error("No such customer: 'cus_BBB222'"),
+      makeReq('/a', '10.0.0.2'),
+      makeRes(),
+      makeNext()
+    );
+
+    expect(repo.inserts[0].message_hash).toBe(repo.inserts[1].message_hash);
+  });
+
+  it('redacts Stripe ids in the outage fallback payload', async () => {
+    const repo = makeRepository();
+    repo.existsWithinWindow = async () => {
+      throw new Error('db down');
+    };
+    const fallback = jest.fn();
+    const middleware = makeErrorCaptureMiddleware(repo, fallback);
+
+    await middleware(
+      new Error("No such customer: 'cus_Qx1aBcD2eFgH3i'"),
+      makeReq(),
+      makeRes(),
+      makeNext()
+    );
+
+    expect(fallback).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "No such customer: '<stripe_id>'" })
+    );
+    expect(JSON.stringify(fallback.mock.calls)).not.toContain(
+      'cus_Qx1aBcD2eFgH3i'
+    );
+  });
+
   it('does not persist the raw IP address', async () => {
     const repo = makeRepository();
     const middleware = makeErrorCaptureMiddleware(repo);

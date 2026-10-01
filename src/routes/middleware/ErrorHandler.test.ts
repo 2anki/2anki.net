@@ -467,4 +467,22 @@ describe('ErrorHandler', () => {
     expect(errorSpy).toHaveBeenCalled();
     errorSpy.mockRestore();
   });
+
+  test('logs a server error with Stripe ids redacted', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const err = new Error("No such customer: 'cus_Qx1aBcD2eFgH3i'");
+
+    await ErrorHandler(
+      makeResponse(false) as unknown as express.Response,
+      makeRequest(),
+      err
+    );
+
+    const logged = errorSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+    expect(logged).toContain('No such customer');
+    expect(logged).not.toContain('cus_Qx1aBcD2eFgH3i');
+    errorSpy.mockRestore();
+    infoSpy.mockRestore();
+  });
 });
