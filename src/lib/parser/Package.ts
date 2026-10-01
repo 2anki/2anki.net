@@ -23,6 +23,11 @@ class Package {
 
   expiredNotionImageCount = 0;
 
+  // Set by the worker from the conversion result so `conversion_succeeded` can
+  // carry a bucketed page count — the denominator cards-per-page needs to tell a
+  // short document's yield from a long one's. Undefined for non-PDF uploads.
+  pdfPageCount?: number;
+
   // Set by PrepareDeck, inside whichever branch produced the deck. The parent
   // process persists them — the worker pool has no database handle.
   engine?: ConversionEngine;

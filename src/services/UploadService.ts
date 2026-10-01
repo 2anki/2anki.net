@@ -58,6 +58,7 @@ import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavai
 import type { DeckScore } from '../lib/parser/scoreCandidateDeck';
 import type { InducedRescue } from '../lib/parser/induction/candidateRules';
 import { toCardCountBucket } from '../lib/analytics/cardCountBucket';
+import { toPageCountBucket } from '../lib/analytics/pageCountBucket';
 import { uploadInputFormat } from '../lib/analytics/uploadInputFormat';
 import {
   CONVERSION_FALLBACK_FILENAME,
@@ -1343,6 +1344,7 @@ class UploadService {
             props: {
               ...this.baseFunnelProps(req),
               card_count_bucket: toCardCountBucket(totalCards),
+              ...this.pdfPageCountProps(packages),
             },
           });
         } else {
@@ -1760,6 +1762,7 @@ class UploadService {
         props: {
           ...this.baseFunnelProps(req),
           card_count_bucket: bucket,
+          ...this.pdfPageCountProps(packages),
           ...(heldBack > 0
             ? {
                 card_limit_partial: true,
@@ -1781,6 +1784,7 @@ class UploadService {
       props: {
         ...this.baseFunnelProps(req),
         card_count_bucket: toCardCountBucket(totalCards),
+        ...this.pdfPageCountProps(packages),
       },
     });
     if (owner != null) {
@@ -2193,6 +2197,17 @@ class UploadService {
       input_format: uploadInputFormat(req.files as UploadedFile[] | undefined),
       signup_origin: this.resolveSignupOrigin(req),
     };
+  }
+
+  private pdfPageCountProps(
+    packages: { pdfPageCount?: number }[]
+  ): { page_count_bucket: string } | Record<string, never> {
+    const totalPages = packages.reduce(
+      (sum, p) => sum + (p.pdfPageCount ?? 0),
+      0
+    );
+    if (totalPages <= 0) return {};
+    return { page_count_bucket: toPageCountBucket(totalPages) };
   }
 
   private resolveUploadSource(

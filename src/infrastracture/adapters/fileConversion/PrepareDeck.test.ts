@@ -582,6 +582,27 @@ describe('PrepareDeck — PDF text-vs-image gate', () => {
     expect(convertPdfTextToHtml).not.toHaveBeenCalled();
   });
 
+  it('threads the PDF page count onto the parser result for telemetry', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce({
+      html: '<ul class="toggle"><li><details><summary>Q1</summary><p>A1</p></details></li></ul>',
+      cardCount: 1,
+      isDrmLocked: false,
+      needsCredential: false,
+      isTextShaped: true,
+      pageCount: 18,
+    });
+
+    const result = await PrepareDeck({
+      name: 'notes.pdf',
+      files: [{ name: 'notes.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings: makeSettings(),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.pdfPageCount).toBe(18);
+  });
+
   it('keeps page images when the text-shaped PDF yields no heading cards', async () => {
     convertPdfTextToHtmlAuto.mockResolvedValueOnce({
       html: '',
@@ -762,6 +783,24 @@ describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
 
     expect(convertPDFToImages).not.toHaveBeenCalled();
     expect(result?.droppedImageCount).toBe(4);
+  });
+
+  it('threads the PDF page count onto the Claude result for telemetry', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce({
+      html: '<p>auto text card</p>',
+      cardCount: 5,
+      isDrmLocked: false,
+      needsCredential: false,
+      isTextShaped: true,
+      pageCount: 37,
+    });
+    generateDeckInfo.mockResolvedValueOnce(claudeDeck());
+
+    const result = await runClaudePdf(
+      makeSettings({ 'claude-ai-flashcards': 'true' })
+    );
+
+    expect(result?.pdfPageCount).toBe(37);
   });
 });
 

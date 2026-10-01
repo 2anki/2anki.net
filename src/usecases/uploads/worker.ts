@@ -292,6 +292,7 @@ async function processFile(
       singleFilePackage.uploadIdentityStats = d.uploadIdentityStats;
       singleFilePackage.expiredNotionImageCount =
         d.expiredNotionImageCount ?? 0;
+      singleFilePackage.pdfPageCount = d.pdfPageCount;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
     }
