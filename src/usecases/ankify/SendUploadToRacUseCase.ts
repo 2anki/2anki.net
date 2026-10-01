@@ -27,6 +27,7 @@ import {
   NormalizedCollection,
   Note,
 } from '../../services/ApkgPreviewService/types';
+import type { AnkiWebSyncStatus } from '../../types/ankify/AnkiWebSyncStatus';
 
 export class NoActiveAnkifyClientError extends Error {
   constructor() {
@@ -41,8 +42,6 @@ export class UploadNotFoundError extends Error {
     this.name = 'UploadNotFoundError';
   }
 }
-
-import type { AnkiWebSyncStatus } from '../../types/ankify/AnkiWebSyncStatus';
 
 export type { AnkiWebSyncStatus };
 

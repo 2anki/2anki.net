@@ -76,6 +76,10 @@ export interface ChurnTierPoint {
   active: number;
 }
 
+// The 30d churn number on its own hid what the 2026-09 alert actually was:
+// cancels split into ended vs still-scheduled, voluntary vs payment failures,
+// and one tier; and "prior 30 days" was the summer trough. Same numerator as
+// churn_30d_pct, with the two baselines that would have read it correctly.
 export interface ChurnBreakdown {
   churned: number;
   ended: number;

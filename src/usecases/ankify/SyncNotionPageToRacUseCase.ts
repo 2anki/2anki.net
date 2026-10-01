@@ -56,6 +56,7 @@ import {
   buildChildDeckName,
   buildDeckName,
 } from '../../lib/ankify/transforms/deckName';
+import type { AnkiWebSyncStatus } from '../../types/ankify/AnkiWebSyncStatus';
 
 export { NotionNotConnectedError } from './ExportReviewDataToNotionUseCase';
 
@@ -98,8 +99,6 @@ export type NotionPageMetaFetcher = (
   notionPageId: string,
   knownObjectType?: NotionObjectType | null
 ) => Promise<NotionPageMeta>;
-
-import type { AnkiWebSyncStatus } from '../../types/ankify/AnkiWebSyncStatus';
 
 export type { AnkiWebSyncStatus };
 
