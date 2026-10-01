@@ -250,8 +250,19 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
   function buildTrxKnex() {
     const usersUpdate = jest.fn().mockResolvedValue(1);
     const subsUpdate = jest.fn().mockResolvedValue(1);
-    const usersWhereRaw = jest.fn().mockReturnValue({ update: usersUpdate });
+    const usersWhereRaw = jest.fn().mockReturnValue({
+      update: usersUpdate.mockReturnValue({
+        returning: jest.fn().mockResolvedValue([{ id: 1 }]),
+      }),
+    });
     const subsWhere = jest.fn().mockReturnValue({ update: subsUpdate });
+    const magicTokens = {
+      whereIn: jest.fn().mockReturnValue({
+        whereNull: jest.fn().mockReturnValue({
+          update: jest.fn().mockResolvedValue(0),
+        }),
+      }),
+    };
     const trx: any = jest.fn().mockImplementation((table: string) => {
       if (table === 'users') {
         return { whereRaw: usersWhereRaw };
@@ -259,8 +270,12 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       if (table === 'subscriptions') {
         return { where: subsWhere };
       }
+      if (table === 'magic_tokens' || table === 'email_change_tokens') {
+        return magicTokens;
+      }
       return {};
     });
+    trx.fn = { now: jest.fn().mockReturnValue('now()') };
     const transaction = jest.fn().mockImplementation(async (cb) => cb(trx));
     const knex: any = jest.fn();
     knex.transaction = transaction;
@@ -281,7 +296,11 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       'LOWER(TRIM(email)) = LOWER(?)',
       ['Old@Example.com']
     );
-    expect(usersUpdate).toHaveBeenCalledWith({ email: 'new@example.com' });
+    expect(usersUpdate).toHaveBeenCalledWith({
+      email: 'new@example.com',
+      reset_token: null,
+      reset_token_expires_at: null,
+    });
     expect(subsWhere).toHaveBeenCalledWith({ email: 'old@example.com' });
     expect(subsUpdate).toHaveBeenCalledWith({
       linked_email: 'new@example.com',

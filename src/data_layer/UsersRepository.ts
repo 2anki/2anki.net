@@ -39,6 +39,11 @@ function toDateOrNull(value: Date | string | number | null): Date | null {
   return value instanceof Date ? value : new Date(value);
 }
 
+const CLEARED_RESET_TOKEN = {
+  reset_token: null,
+  reset_token_expires_at: null,
+};
+
 class UsersRepository {
   table: string;
   private deletedUserUsage: DeletedUserUsageRepository;
@@ -291,13 +296,31 @@ class UsersRepository {
     const current = currentEmail.trim();
     const next = newEmail.trim().toLowerCase();
     return this.database.transaction(async (trx) => {
-      await trx(this.table)
+      const updated: Array<{ id: number }> = await trx(this.table)
         .whereRaw('LOWER(TRIM(email)) = LOWER(?)', [current])
-        .update({ email: next });
+        .update({ email: next, ...CLEARED_RESET_TOKEN })
+        .returning('id');
+      const ownerIds = updated.map((row) => row.id);
+      await this.spendUnusedMagicTokensQuery(trx, ownerIds);
+      await trx('email_change_tokens')
+        .whereIn('user_id', ownerIds)
+        .whereNull('consumed_at')
+        .update({ consumed_at: trx.fn.now() });
       await trx('subscriptions')
         .where({ email: current.toLowerCase() })
         .update({ linked_email: next });
     });
+  }
+
+  // Links already mailed to the old address must not outlive the address.
+  spendUnusedMagicTokensQuery(
+    executor: Knex | Knex.Transaction,
+    owners: number[]
+  ) {
+    return executor('magic_tokens')
+      .whereIn('owner', owners)
+      .whereNull('used_at')
+      .update({ used_at: executor.fn.now() });
   }
 
   relinkSubscriptionsForEmailChangeQuery(
@@ -352,7 +375,8 @@ class UsersRepository {
         const oldEmail = String(user.email).trim().toLowerCase();
         await trx(this.table)
           .where({ id: params.userId })
-          .update({ email: nextEmail });
+          .update({ email: nextEmail, ...CLEARED_RESET_TOKEN });
+        await this.spendUnusedMagicTokensQuery(trx, [params.userId]);
         await this.relinkSubscriptionsForEmailChangeQuery(
           trx,
           oldEmail,
