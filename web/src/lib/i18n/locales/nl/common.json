@@ -299,20 +299,6 @@
       "title": "Recent",
       "convertAgain": "Opnieuw converteren"
     },
-    "onboarding": {
-      "aria": "Snelle rondleiding",
-      "step1Title": "Zet een bestand neer of kies een Notion-pagina.",
-      "step1Hint": "Ondersteund: .zip (Notion-export), .html, .md, .pdf, .docx, .xlsx, .pptx, .csv",
-      "step2Title": "Kies de deckinstellingen.",
-      "step2Hint": "Hernoem het deck, kies een kaartsjabloon en stel de conversieopties in bij Kaartopties.",
-      "step3Title": "Zet je bestand om in een deck.",
-      "step3Hint": "Druk op Converteren — 2anki maakt je .apkg in seconden.",
-      "step4Title": "Download het deck of stuur het naar AnkiWeb.",
-      "step4Hint": "Je deck wordt automatisch gedownload. Importeer het in Anki of synchroniseer via AnkiWeb.",
-      "back": "Terug",
-      "next": "Volgende",
-      "skip": "Overslaan"
-    },
     "chips": {
       "groupAria": "Andere uploadbronnen"
     },

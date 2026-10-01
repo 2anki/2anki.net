@@ -299,20 +299,6 @@
       "title": "Recientes",
       "convertAgain": "Convertir de nuevo"
     },
-    "onboarding": {
-      "aria": "Recorrido rápido",
-      "step1Title": "Suelta un archivo o elige una página de Notion.",
-      "step1Hint": "Compatibles: .zip (exportación de Notion), .html, .md, .pdf, .docx, .xlsx, .pptx, .csv",
-      "step2Title": "Elige los ajustes del mazo.",
-      "step2Hint": "Cambia el nombre del mazo, elige una plantilla de tarjeta y ajusta las opciones de conversión en Opciones de tarjeta.",
-      "step3Title": "Convierte tu archivo en un mazo.",
-      "step3Hint": "Pulsa Convertir — 2anki crea tu .apkg en segundos.",
-      "step4Title": "Descarga el mazo o envíalo a AnkiWeb.",
-      "step4Hint": "Tu mazo se descarga automáticamente. Impórtalo en Anki o sincronízalo mediante AnkiWeb.",
-      "back": "Atrás",
-      "next": "Siguiente",
-      "skip": "Omitir"
-    },
     "chips": {
       "groupAria": "Otras fuentes de subida"
     },

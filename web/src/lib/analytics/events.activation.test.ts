@@ -3,13 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { KNOWN_EVENTS } from './events';
 
-const ACTIVATION_EVENTS = [
-  'signup_completed',
-  'upload_page_viewed',
-  'onboarding_shown',
-  'onboarding_skipped',
-  'onboarding_completed',
-] as const;
+const ACTIVATION_EVENTS = ['signup_completed', 'upload_page_viewed'] as const;
 
 describe('activation funnel events', () => {
   it.each(ACTIVATION_EVENTS)('%s is in the web allowlist', (name) => {

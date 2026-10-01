@@ -18,7 +18,6 @@ import { formatCreditPackExpiry } from '../../lib/credits/formatCreditPackExpiry
 import styles from '../../styles/shared.module.css';
 import { AiCreditsReadout } from './components/AiCreditsReadout';
 import { ExploreCard } from './components/ExploreCard/ExploreCard';
-import { OnboardingTour } from './components/OnboardingTour/OnboardingTour';
 import { RecentSources } from './components/RecentSources/RecentSources';
 import UploadForm from './components/UploadForm/UploadForm';
 import pageStyles from './UploadPage.module.css';
@@ -168,10 +167,6 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
         <h1 className={styles.title}>{t('upload.page.title')}</h1>
         <p className={styles.subtitle}>{t('upload.page.subtitle')}</p>
       </header>
-      <OnboardingTour
-        createdAt={userLocals?.user?.created_at ?? null}
-        onboardedAt={userLocals?.user?.onboarded_at ?? null}
-      />
       {creditsConfirmation != null && (
         <div
           className={pageStyles.reattachBanner}

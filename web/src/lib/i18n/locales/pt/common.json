@@ -299,20 +299,6 @@
       "title": "Recentes",
       "convertAgain": "Converter de novo"
     },
-    "onboarding": {
-      "aria": "Tour rápido",
-      "step1Title": "Solte um arquivo ou escolha uma página do Notion.",
-      "step1Hint": "Compatíveis: .zip (exportação do Notion), .html, .md, .pdf, .docx, .xlsx, .pptx, .csv",
-      "step2Title": "Escolha as configurações do baralho.",
-      "step2Hint": "Renomeie o baralho, escolha um modelo de cartão e defina as opções de conversão em Opções de cartão.",
-      "step3Title": "Converta seu arquivo em um baralho.",
-      "step3Hint": "Pressione Converter — o 2anki cria seu .apkg em segundos.",
-      "step4Title": "Baixe o baralho ou envie-o para o AnkiWeb.",
-      "step4Hint": "Seu baralho é baixado automaticamente. Importe-o no Anki ou sincronize via AnkiWeb.",
-      "back": "Voltar",
-      "next": "Próximo",
-      "skip": "Pular"
-    },
     "chips": {
       "groupAria": "Outras fontes de upload"
     },

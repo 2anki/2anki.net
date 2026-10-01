@@ -299,20 +299,6 @@
       "title": "Récents",
       "convertAgain": "Reconvertir"
     },
-    "onboarding": {
-      "aria": "Visite rapide",
-      "step1Title": "Dépose un fichier ou choisis une page Notion.",
-      "step1Hint": "Pris en charge : .zip (export Notion), .html, .md, .pdf, .docx, .xlsx, .pptx, .csv",
-      "step2Title": "Choisis les réglages du paquet.",
-      "step2Hint": "Renomme le paquet, choisis un modèle de carte et définis les options de conversion dans Options de carte.",
-      "step3Title": "Convertis ton fichier en paquet.",
-      "step3Hint": "Appuie sur Convertir — 2anki crée ton .apkg en quelques secondes.",
-      "step4Title": "Télécharge le paquet ou envoie-le vers AnkiWeb.",
-      "step4Hint": "Ton paquet se télécharge automatiquement. Importe-le dans Anki ou synchronise-le via AnkiWeb.",
-      "back": "Retour",
-      "next": "Suivant",
-      "skip": "Passer"
-    },
     "chips": {
       "groupAria": "Autres sources d'import"
     },
