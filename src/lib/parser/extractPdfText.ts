@@ -36,6 +36,14 @@ const TEXT_SHOW_OPS = [
   'nextLineSetSpacingShowText',
 ];
 
+// `q`/`Q` and a Form XObject's begin/end save and restore the whole graphics
+// state, including the fill colour. A highlight box or table shading drawn
+// inside q…Q leaves the fill red only until the matching restore, so the fill
+// state has to be a stack — not a single flag — or black text after the box
+// reads as coloured (the false-notice bug reviewers caught).
+const GSTATE_SAVE_OPS = ['save', 'paintFormXObjectBegin'];
+const GSTATE_RESTORE_OPS = ['restore', 'paintFormXObjectEnd'];
+
 // A grayscale fill (r≈g≈b: black, gray, white) renders as the card's default
 // colour, so only a fill with real hue is colour a learner would miss. 24/255
 // keeps rounding noise and near-neutral tints from firing a false notice.
@@ -147,20 +155,35 @@ function resolveRasterImageOpcodes(): Set<number> {
 interface ColorTextOpcodes {
   fillRgb: number | null;
   textShow: Set<number>;
+  gstateSave: Set<number>;
+  gstateRestore: Set<number>;
+}
+
+function resolveOpcodeSet(ops: PdfJsOps, names: string[]): Set<number> {
+  const set = new Set<number>();
+  for (const name of names) {
+    const code = ops[name];
+    if (typeof code === 'number') set.add(code);
+  }
+  return set;
 }
 
 function resolveColorTextOpcodes(): ColorTextOpcodes {
   const ops = loadPdfJs()?.OPS;
-  if (ops == null) return { fillRgb: null, textShow: new Set() };
-  const fillRgbCode = ops[FILL_RGB_OP];
-  const textShow = new Set<number>();
-  for (const name of TEXT_SHOW_OPS) {
-    const code = ops[name];
-    if (typeof code === 'number') textShow.add(code);
+  if (ops == null) {
+    return {
+      fillRgb: null,
+      textShow: new Set(),
+      gstateSave: new Set(),
+      gstateRestore: new Set(),
+    };
   }
+  const fillRgbCode = ops[FILL_RGB_OP];
   return {
     fillRgb: typeof fillRgbCode === 'number' ? fillRgbCode : null,
-    textShow,
+    textShow: resolveOpcodeSet(ops, TEXT_SHOW_OPS),
+    gstateSave: resolveOpcodeSet(ops, GSTATE_SAVE_OPS),
+    gstateRestore: resolveOpcodeSet(ops, GSTATE_RESTORE_OPS),
   };
 }
 
@@ -216,15 +239,21 @@ function countImagePaintOps(operatorList: PdfOperatorList | null): number {
 // text-show op. Fills applied to vector graphics never reach a text-show op, so
 // a page of black text over coloured shapes does not count.
 function pageHasColoredText(operatorList: PdfOperatorList | null): boolean {
-  const { fillRgb, textShow } = COLOR_TEXT_OPCODES;
+  const { fillRgb, textShow, gstateSave, gstateRestore } = COLOR_TEXT_OPCODES;
   if (operatorList == null || fillRgb == null || textShow.size === 0) {
     return false;
   }
   let chromatic = false;
+  const savedChromatic: boolean[] = [];
   for (let i = 0; i < operatorList.fnArray.length; i++) {
     const code = operatorList.fnArray[i];
     if (code === fillRgb) {
       chromatic = isChromaticRgb(operatorList.argsArray[i]);
+    } else if (gstateSave.has(code)) {
+      savedChromatic.push(chromatic);
+    } else if (gstateRestore.has(code)) {
+      const restored = savedChromatic.pop();
+      if (restored !== undefined) chromatic = restored;
     } else if (chromatic && textShow.has(code)) {
       return true;
     }

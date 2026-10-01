@@ -24,6 +24,24 @@ describe('extractPdfText coloured-text detection', () => {
     expect(result.isDrmLocked).toBe(false);
     expect(result.coloredTextPageCount).toBe(0);
   });
+
+  it('does not count a q/Q-scoped coloured rectangle drawn before black text', async () => {
+    const result = await extractPdfText(loadFixture('pdf-colored-shapes.pdf'));
+
+    expect(result.pageCount).toBe(2);
+    expect(result.isDrmLocked).toBe(false);
+    expect(result.coloredTextPageCount).toBe(0);
+  });
+
+  it('does not count a coloured rectangle inside a Form XObject before black text', async () => {
+    const result = await extractPdfText(
+      loadFixture('pdf-colored-form-xobject.pdf')
+    );
+
+    expect(result.pageCount).toBe(2);
+    expect(result.isDrmLocked).toBe(false);
+    expect(result.coloredTextPageCount).toBe(0);
+  });
 });
 
 describe('isChromaticRgb', () => {

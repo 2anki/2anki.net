@@ -91,8 +91,8 @@
   "colorFlattened": {
     "uploadSingleDeck_one": "Les couleurs du texte sur {{count}} page de votre PDF ne sont pas dans ce paquet — le texte est bien présent, mais dans la couleur par défaut.",
     "uploadSingleDeck_other": "Les couleurs du texte sur {{count}} pages de votre PDF ne sont pas dans ce paquet — le texte est bien présent, mais dans la couleur par défaut.",
-    "uploadMultiDeck_one": "Les couleurs du texte sur {{count}} page de votre PDF ne sont pas dans vos paquets — le texte est bien présent, mais dans la couleur par défaut.",
-    "uploadMultiDeck_other": "Les couleurs du texte sur {{count}} pages de votre PDF ne sont pas dans vos paquets — le texte est bien présent, mais dans la couleur par défaut."
+    "uploadMultiDeck_one": "Les couleurs du texte sur {{count}} page de vos PDF ne sont pas dans vos paquets — le texte est bien présent, mais dans la couleur par défaut.",
+    "uploadMultiDeck_other": "Les couleurs du texte sur {{count}} pages de vos PDF ne sont pas dans vos paquets — le texte est bien présent, mais dans la couleur par défaut."
   },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} carte n'avait pas de réponse et a été ignorée, elle n'est donc pas dans ce paquet. Ajoutez un verso dans votre fichier, puis convertissez à nouveau.",

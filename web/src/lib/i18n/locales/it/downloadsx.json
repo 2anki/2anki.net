@@ -91,8 +91,8 @@
   "colorFlattened": {
     "uploadSingleDeck_one": "I colori del testo su {{count}} pagina del tuo PDF non sono in questo mazzo — il testo c'è tutto, ma nel colore predefinito.",
     "uploadSingleDeck_other": "I colori del testo su {{count}} pagine del tuo PDF non sono in questo mazzo — il testo c'è tutto, ma nel colore predefinito.",
-    "uploadMultiDeck_one": "I colori del testo su {{count}} pagina del tuo PDF non sono nei tuoi mazzi — il testo c'è tutto, ma nel colore predefinito.",
-    "uploadMultiDeck_other": "I colori del testo su {{count}} pagine del tuo PDF non sono nei tuoi mazzi — il testo c'è tutto, ma nel colore predefinito."
+    "uploadMultiDeck_one": "I colori del testo su {{count}} pagina dei tuoi PDF non sono nei tuoi mazzi — il testo c'è tutto, ma nel colore predefinito.",
+    "uploadMultiDeck_other": "I colori del testo su {{count}} pagine dei tuoi PDF non sono nei tuoi mazzi — il testo c'è tutto, ma nel colore predefinito."
   },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} carta non aveva una risposta ed è stata saltata, quindi non è in questo mazzo. Aggiungi un retro nel tuo file e converti di nuovo.",

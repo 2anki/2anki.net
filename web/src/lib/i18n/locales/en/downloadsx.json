@@ -91,8 +91,8 @@
   "colorFlattened": {
     "uploadSingleDeck_one": "Text colors on {{count}} page of your PDF aren't in this deck — the text is all there, shown in the default color.",
     "uploadSingleDeck_other": "Text colors on {{count}} pages of your PDF aren't in this deck — the text is all there, shown in the default color.",
-    "uploadMultiDeck_one": "Text colors on {{count}} page of your PDF aren't in your decks — the text is all there, shown in the default color.",
-    "uploadMultiDeck_other": "Text colors on {{count}} pages of your PDF aren't in your decks — the text is all there, shown in the default color."
+    "uploadMultiDeck_one": "Text colors on {{count}} page of your PDFs aren't in your decks — the text is all there, shown in the default color.",
+    "uploadMultiDeck_other": "Text colors on {{count}} pages of your PDFs aren't in your decks — the text is all there, shown in the default color."
   },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} card had no answer and was skipped, so it isn't in this deck. Add a back to it in your file, then convert again.",

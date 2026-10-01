@@ -91,8 +91,8 @@
   "colorFlattened": {
     "uploadSingleDeck_one": "Tekstkleuren op {{count}} pagina van je PDF zitten niet in dit pakket — de tekst staat er volledig in, maar in de standaardkleur.",
     "uploadSingleDeck_other": "Tekstkleuren op {{count}} pagina's van je PDF zitten niet in dit pakket — de tekst staat er volledig in, maar in de standaardkleur.",
-    "uploadMultiDeck_one": "Tekstkleuren op {{count}} pagina van je PDF zitten niet in je pakketten — de tekst staat er volledig in, maar in de standaardkleur.",
-    "uploadMultiDeck_other": "Tekstkleuren op {{count}} pagina's van je PDF zitten niet in je pakketten — de tekst staat er volledig in, maar in de standaardkleur."
+    "uploadMultiDeck_one": "Tekstkleuren op {{count}} pagina van je PDF's zitten niet in je pakketten — de tekst staat er volledig in, maar in de standaardkleur.",
+    "uploadMultiDeck_other": "Tekstkleuren op {{count}} pagina's van je PDF's zitten niet in je pakketten — de tekst staat er volledig in, maar in de standaardkleur."
   },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} kaart had geen antwoord en is overgeslagen, dus zit niet in dit pakket. Voeg een achterkant toe in je bestand en converteer opnieuw.",

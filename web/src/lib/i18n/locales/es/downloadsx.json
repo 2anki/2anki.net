@@ -91,8 +91,8 @@
   "colorFlattened": {
     "uploadSingleDeck_one": "Los colores del texto en {{count}} página de tu PDF no están en este mazo — el texto está completo, pero en el color predeterminado.",
     "uploadSingleDeck_other": "Los colores del texto en {{count}} páginas de tu PDF no están en este mazo — el texto está completo, pero en el color predeterminado.",
-    "uploadMultiDeck_one": "Los colores del texto en {{count}} página de tu PDF no están en tus mazos — el texto está completo, pero en el color predeterminado.",
-    "uploadMultiDeck_other": "Los colores del texto en {{count}} páginas de tu PDF no están en tus mazos — el texto está completo, pero en el color predeterminado."
+    "uploadMultiDeck_one": "Los colores del texto en {{count}} página de tus PDF no están en tus mazos — el texto está completo, pero en el color predeterminado.",
+    "uploadMultiDeck_other": "Los colores del texto en {{count}} páginas de tus PDF no están en tus mazos — el texto está completo, pero en el color predeterminado."
   },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} tarjeta no tenía respuesta y se omitió, así que no está en este mazo. Añade un reverso en tu archivo y vuelve a convertir.",
