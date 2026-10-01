@@ -88,13 +88,13 @@ CONTENT_TRIGGERS = (
     # model (max_tokens ceilings, chunk sizes, retry loops that re-bill on
     # truncation) before merge."
     "CHUNK_MAX_TOKENS",
-    "CHUNK_SIZE",
     "GIANT_INPUT_CHUNK_SIZE",
     "VISION_MAX_TOKENS",
     "VISION_RETRY_MAX_TOKENS",
     "PDF_PAGE_VISION_MAX_TOKENS",
     "PDF_PAGE_VISION_RETRY_MAX_TOKENS",
     "AI_SPEND_ALERT_THRESHOLD_USD",
+    "VISION_TOKEN_CEILING_OVERRIDE",
     "RESERVED_CREDITS_PER_INFLIGHT_CALL",
     # What a free account is allowed. Moving these moves revenue.
     "MONTHLY_CARD_LIMIT",
@@ -105,7 +105,17 @@ CONTENT_TRIGGERS = (
 )
 
 
+# A changelog entry is prose about a shipped change, not the change. 67 of the
+# 906 entries carry a word from NAME_GLOBS in their slug - "pricing",
+# "checkout", "signup" - so without this one in fourteen user-visible PRs became
+# a manual merge because of how its entry was worded. A rail that fires on
+# wording teaches agents to read rail denials as noise.
+CHANGELOG_DIR = "web/src/pages/WhatsNewPage/changelog/"
+
+
 def is_rail_path(path):
+    if path.startswith(CHANGELOG_DIR):
+        return False
     lowered = path.lower()
     if any(glob in lowered for glob in NAME_GLOBS):
         return True

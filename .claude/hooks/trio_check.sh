@@ -11,13 +11,13 @@ prompt=$(cat | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get(
 # and a wasted trio costs 3 forks (opus + opus + sonnet) per fire.
 # Match both `.claude/` (path form) and bare `.claude` / `claude folder` (prose form).
 if echo "$prompt" | grep -qiE \
-  '(^|[^a-z])\.claude([/.]|\b)|\bclaude (folder|setup|config|housekeep)|/hooks/|/rules/|/agents/|/commands/|/skills/|\bCI\b|dependabot|dependenc(y|ies)|tooling|sub.?agent|prompt cache|model routing'; then
+  '(^|[^a-z])\.claude([/.]|\b)|\bclaude (folder|setup|config|housekeep)|/hooks/|/rules/|/agents/|/commands/|/skills/|\bCI\b|dependabot|dependenc(y|ies)|(internal|build|test) tooling|sub.?agent|prompt cache|model routing'; then
   exit 0
 fi
 
 # Heuristic: product-relevant keywords. Tune this list as false-positive/negative patterns emerge.
 if echo "$prompt" | grep -qiE \
-  'feature|user.facing|ux|ui\b|flow|onboard|sign.?up|pricing|limit|button|screen|page|copy|error message|landing|conversion|upload|deck|card|notion|export|first.run|retention|churn'; then
+  'feature|user.facing|ux|ui\b|flow|onboard|sign.?up|pricing|limit|button|screen|page|copy|error message|landing|conversion|upload|deck|card|notion|export|first.run|retention|churn|analytics|instrumentation|usage event|funnel|metric|keep or remove|adoption review'; then
   python3 - <<'PYEOF'
 import json, sys
 result = {

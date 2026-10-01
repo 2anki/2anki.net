@@ -32,6 +32,10 @@ Check exclusively for:
 - Auth check moved into a controller from middleware
 - Raw errors / stack traces leaked to res.send
 - New Math.random for IDs (Sonar S2245 — use crypto.randomUUID)
+- A regex with nested or adjacent quantifiers run over user-supplied text (ReDoS, S8786). Nothing gates this since the Sonar merge gate was removed on 2026-10-01, and #3960 merged one over card HTML on the conversion worker
+- An allowlist indexed by client input using a bare object literal — `toString`/`constructor`/`__proto__` escape it (CWE-1321). Must be a Map, `Object.create(null)`, or `Object.hasOwn`-guarded
+- `!value` used to test whether an id is present — falsy ids (`0`, `""`) get rejected. Use `value == null` (CWE-754)
+- A raw DB row, Knex result, or untyped object passed to `res.json()` instead of a mapped response shape (CWE-209)
 
 Output under 200 words. **Evidence gate — every finding must clear it before you list it:**
 1. Quote the verbatim line you're reacting to, copied from `gh pr diff <n>`. If you can't quote it, it doesn't exist — drop it.

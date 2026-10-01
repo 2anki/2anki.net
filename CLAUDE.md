@@ -117,6 +117,8 @@ Load on demand — read these when the task touches the named surface (kept out 
 
 ## Process
 
+- **A zero, a null, or a silence is not evidence until you have shown the sensor could have produced a non-zero reading.** Before claiming a metric proves something, state what a positive result would look like and confirm the query can return one. Three separate failures in one session were this shape: a funnel filter whose numerator matched zero rows by construction (so the zero proved nothing), a surface proposed for removal on entry-point numbers with no usage-event trend read, and a `total: 0` from an issues search run before the analysis it queries had landed.
+- **Name the table or event every number comes from, and what one row means.** A purchase is not a user; an entry-point impression is not an activation; a conversion recorded at an intermediate stage is not a card the user received. On 2026-10-01 an Apple in-app-purchase counter read as a user count nearly deleted a growing feature.
 - Surface assumptions before coding. If a request has multiple valid interpretations, present them — don't pick silently. If the goal is unclear, ask; never ask about the next mechanical step. If a simpler approach exists, say so.
 - **Execute, don't menu.** "Multiple interpretations" applies to *what* to do; it does not license menus of *how to do it*. When the answer is a sequence of mechanical sub-steps with one obvious right path (resolve a worktree conflict on `gh pr checkout`, drop two named stashes after a wave merges, run `pnpm install` before a dev server) — pick the right path and execute. A response that hands Alexander "option A vs option B" for mechanical glue is a failure mode. Reserve confirmation for destructive/irreversible steps (force-push, `branch -D` on unmerged work, destructive prod or DB changes).
 - **Harness improvement found via audit or incidental discovery (`.claude/`, `CLAUDE.md`, `.github/`): report it, don't open the PR unprompted.** These paths are a permanent hard rail — every PR against them needs Alexander's own manual merge no matter how clean the diff, so a self-initiated harness PR is a click he didn't ask for. Surface the finding and let him decide whether it earns that click. Doesn't apply to harness work he directly asked for — only to things noticed on your own initiative. (2026-09-18: two audit-driven harness PRs landed in one session on top of the feature work actually asked for, both needing his manual merge.)
@@ -176,6 +178,7 @@ For any task that changes user-facing behavior, invoke `pm`, `designer`, and `en
 - Onboarding, signup, payment, or core conversion flows
 - Cancellation and churn surfaces — any cancel-flow change must weigh a retention offer (pause, downgrade, legacy-rate reminder); 79% of churn is lifecycle, and this surface owns it
 - New product surfaces — the synthesis must state the usage event that ships in the same PR, the day-7 prod check, and the T+30d adoption-review issue (see Surface lifecycle)
+- Instrumentation a keep-or-remove or funnel decision will be read from — adding, renaming or re-scoping an analytics event or its props. The numbers it produces outlive the PR and decide whether features live.
 - Refactors that change user-visible behavior
 
 **Trio optional (proceed unless you sense a product question):**

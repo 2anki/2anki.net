@@ -126,7 +126,7 @@ class TestContentTriggers(unittest.TestCase):
     def test_paid_inference_budgets_are_triggers(self):
         for symbol in (
             "CHUNK_MAX_TOKENS",
-            "CHUNK_SIZE",
+            "GIANT_INPUT_CHUNK_SIZE",
             "VISION_MAX_TOKENS",
             "PDF_PAGE_VISION_MAX_TOKENS",
             "AI_SPEND_ALERT_THRESHOLD_USD",
@@ -147,6 +147,28 @@ class TestContentTriggers(unittest.TestCase):
             with self.subTest(symbol=symbol):
                 diff = f"+export const {symbol} = 999;"
                 self.assertEqual(rails.rail_content_hits(diff), [symbol])
+
+    # A bare CHUNK_SIZE trigger also matched INSERT_CHUNK_SIZE, the Postgres
+    # batch size in two repositories - 8 commits of churn on something that is
+    # not an inference budget at all. The named ceilings cover the real cases.
+    def test_postgres_batch_size_is_not_an_inference_budget(self):
+        diff = "-const INSERT_CHUNK_SIZE = 500;\n+const INSERT_CHUNK_SIZE = 1000;"
+        self.assertEqual(rails.rail_content_hits(diff), [])
+
+    # 67 of 906 changelog slugs carry a NAME_GLOBS word, so without the
+    # exclusion one in fourteen user-visible PRs railed on its own wording.
+    def test_changelog_entries_never_rail_on_their_slug(self):
+        for name in (
+            "2026-08-18-pricing-study-links.json",
+            "2026-09-01-pass-checkout-email-link.json",
+            "2026-06-05-checkout-resume.json",
+        ):
+            with self.subTest(name=name):
+                self.assertFalse(
+                    rails.is_rail_path(
+                        f"web/src/pages/WhatsNewPage/changelog/{name}"
+                    )
+                )
 
     def test_files_whose_job_is_holding_a_limit_are_rails(self):
         for path in (

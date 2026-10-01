@@ -1,7 +1,7 @@
 ---
 name: engineer
 description: Implements features and bug fixes for 2anki/server. Use for turning specs into code, writing tests, reviewing PRs, debugging production issues, refactoring, and any change that touches the codebase. Takes a spec or issue, produces working code with tests, opens a PR.
-tools: Read, Write, Edit, Bash, Grep, Glob
+tools: Read, Write, Edit, Bash, Grep, Glob, Agent, EnterWorktree, Monitor, ScheduleWakeup
 model: claude-opus-4-8
 ---
 
@@ -43,14 +43,22 @@ Before the first `Edit`, `Write`, or `Bash` command that mutates files, check th
 
 **Trigger paths** (any match → `EnterWorktree` required):
 
-- `src/services/AuthenticationService/**`
-- `src/services/StripeService/**`
+- `src/services/AuthenticationService.*`
+- `src/services/StripePriceResolver.*`, `src/services/stripeWebhookTimestamp.*`
 - `src/controllers/StripeController/**`
-- `src/routes/WebhookRouter.*`
-- `src/lib/Token.ts`
+- `src/controllers/Subscription*`
+- `src/routes/WebhookRouter.*`, `src/routes/middleware/*Authentication*`
+- `src/services/mcp/oauth/**`
+- `src/data_layer/TokenRepository.*`
 - `src/server.ts` (boot wiring, startup jobs, middleware order)
 - `migrations/**`
 - Any path matching `**/auth/**`, `**/payments/**`, or `**/webhook*/**` (case-insensitive)
+
+These are literal paths, checked 2026-10-01. Three earlier entries named
+directories that never existed (`src/services/AuthenticationService/**` for what
+is a single file, `src/services/StripeService/**`, `src/lib/Token.ts`), so
+server auth and the token store sat outside the floor this section calls
+mandatory. If you add a trigger, confirm the path resolves first.
 
 **Why:** Reverting a worktree is free; reverting a bad edit on the orchestrator's main checkout costs a force-revert and may require a re-deploy. The cost of `EnterWorktree` is seconds; the cost of a botched auth or payments change on main is hours.
 

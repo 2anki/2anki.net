@@ -24,7 +24,9 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
 
 ## 2. Review agent
 
-Run the `/review-pr` fan-out on `<n>` (security / engineering / ux-voice forks, fresh context, diff only). Read the synthesized verdict:
+Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh context, diff only) and read the synthesized verdict.
+
+**`review-pr` is switched off in `.claude/settings.local.json`, so invoke the forks yourself** with the `Agent` tool rather than the skill — one agent per dimension, each briefed to read the diff and report BLOCKING / NON-BLOCKING / verdict with no edits, commits or merges. The marker you post in a moment is the merge gate's only substantive review condition, so it must stand for a review that actually ran. Do not post it on the strength of your own reading alone.
 
 - **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. Two rounds maximum. A third round of must-fix means the change is not ready: leave the PR ready, comment the blocker, print the URL, stop.
 - **Clean** → post the pass marker for the exact head SHA:
