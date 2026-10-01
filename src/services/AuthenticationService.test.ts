@@ -257,6 +257,7 @@ describe('loginWithGoogle', () => {
       aud: CLIENT_ID,
       sub: 'google-sub-001',
       email: 'user@example.com',
+      email_verified: true,
       name: 'Test User',
     });
     mockedAxios.post = jest
@@ -271,6 +272,25 @@ describe('loginWithGoogle', () => {
       email: 'user@example.com',
       name: 'Test User',
     });
+  });
+
+  it('refuses the sign-in when the email is reported unverified', async () => {
+    const idToken = signIdToken({
+      iss: 'https://accounts.google.com',
+      aud: CLIENT_ID,
+      sub: 'google-sub-unverified',
+      email: 'unverified@example.com',
+      email_verified: false,
+      name: 'Unverified User',
+    });
+    mockedAxios.post = jest
+      .fn()
+      .mockResolvedValue({ data: { id_token: idToken } });
+
+    const service = createService();
+    const result = await service.loginWithGoogle('auth-code');
+
+    expect(result).toMatchObject({ ok: false, reason: 'email_not_verified' });
   });
 
   it('fetches the Google JWKS through instrumentedAxios', async () => {
@@ -448,6 +468,7 @@ describe('loginWithGoogle', () => {
       aud: CLIENT_ID,
       sub: 'google-sub-retry',
       email: 'retry@example.com',
+      email_verified: true,
       name: 'Retry User',
     });
     const transient = Object.assign(
@@ -1336,9 +1357,25 @@ describe('verifyAppleIdentityToken', () => {
     const result = await service.verifyAppleIdentityToken(idToken);
 
     expect(result).toEqual({
+      ok: true,
       subject: 'native-sub-001',
       email: 'native@example.com',
     });
+  });
+
+  it('refuses the sign-in when the email is reported unverified', async () => {
+    const idToken = signIdToken({
+      iss: 'https://appleid.apple.com',
+      aud: NATIVE_CLIENT_ID,
+      sub: 'native-sub-unverified',
+      email: 'native@example.com',
+      email_verified: false,
+    });
+
+    const service = createService();
+    const result = await service.verifyAppleIdentityToken(idToken);
+
+    expect(result).toEqual({ ok: false, reason: 'email_not_verified' });
   });
 
   it('returns subject without email when email claim is absent', async () => {
@@ -1352,7 +1389,11 @@ describe('verifyAppleIdentityToken', () => {
     const service = createService();
     const result = await service.verifyAppleIdentityToken(idToken);
 
-    expect(result).toEqual({ subject: 'native-sub-002', email: undefined });
+    expect(result).toEqual({
+      ok: true,
+      subject: 'native-sub-002',
+      email: undefined,
+    });
   });
 
   it('returns undefined when the audience is the web Service ID, not the native App ID', async () => {
@@ -1367,7 +1408,7 @@ describe('verifyAppleIdentityToken', () => {
     const service = createService();
     const result = await service.verifyAppleIdentityToken(idToken);
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
   });
 
   it('returns undefined when the issuer is not Apple', async () => {
@@ -1382,7 +1423,7 @@ describe('verifyAppleIdentityToken', () => {
     const service = createService();
     const result = await service.verifyAppleIdentityToken(idToken);
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
   });
 
   it('returns undefined when the signature is invalid', async () => {
@@ -1404,7 +1445,7 @@ describe('verifyAppleIdentityToken', () => {
     const service = createService();
     const result = await service.verifyAppleIdentityToken(idToken);
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
   });
 
   it('returns undefined when the sub claim is missing', async () => {
@@ -1418,7 +1459,7 @@ describe('verifyAppleIdentityToken', () => {
     const service = createService();
     const result = await service.verifyAppleIdentityToken(idToken);
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
   });
 
   it('returns undefined when the kid is not in the JWKS', async () => {
@@ -1437,7 +1478,7 @@ describe('verifyAppleIdentityToken', () => {
     const service = createService();
     const result = await service.verifyAppleIdentityToken(idToken);
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
   });
 
   it('returns undefined when APPLE_NATIVE_CLIENT_ID is not set', async () => {
@@ -1453,7 +1494,7 @@ describe('verifyAppleIdentityToken', () => {
     const service = createService();
     const result = await service.verifyAppleIdentityToken(idToken);
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
   });
 
   it('rejects ES256-signed tokens (algorithm substitution defense)', async () => {
@@ -1487,7 +1528,7 @@ describe('verifyAppleIdentityToken', () => {
     const service = createService();
     const result = await service.verifyAppleIdentityToken(idToken);
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
   });
 });
 

@@ -714,7 +714,10 @@ class UsersController {
       await this.recordError?.execute({
         userId: null,
         surface: 'oauth_google',
-        code: 'oauth_token_exchange_failed',
+        code:
+          loginRequest.reason === 'email_not_verified'
+            ? 'oauth_email_not_verified'
+            : 'oauth_token_exchange_failed',
         context: {
           reason: loginRequest.reason,
           message: loginRequest.message,
@@ -1016,13 +1019,16 @@ class UsersController {
     const validated = await this.authService.verifyAppleIdentityToken(
       body.identityToken
     );
-    if (!validated) {
+    if (!validated.ok) {
       await this.recordError?.execute({
         userId: null,
         surface: 'oauth_apple_native',
-        code: 'invalid_identity_token',
+        code:
+          validated.reason === 'email_not_verified'
+            ? 'oauth_email_not_verified'
+            : 'invalid_identity_token',
       });
-      return res.status(401).json({ error: 'invalid_identity_token' });
+      return res.status(401).json({ error: validated.reason });
     }
 
     const { subject, email } = validated;

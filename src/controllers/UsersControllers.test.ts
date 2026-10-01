@@ -2128,6 +2128,34 @@ describe('UsersController.loginWithGoogle — error recording', () => {
       code: 'oauth_user_creation_failed',
     });
   });
+
+  it('records oauth_email_not_verified and refuses when the provider reports the email unverified', async () => {
+    const { controller, recordExecute } = buildOAuthController({
+      ok: false,
+      reason: 'email_not_verified',
+      message: 'Google reports the email as unverified',
+    });
+    const req = {
+      query: { code: 'auth-code-123' },
+    } as unknown as express.Request;
+    const res = buildRedirectRes();
+
+    await controller.loginWithGoogle(req, res);
+
+    expect(recordExecute).toHaveBeenCalledWith({
+      userId: null,
+      surface: 'oauth_google',
+      code: 'oauth_email_not_verified',
+      context: {
+        reason: 'email_not_verified',
+        message: 'Google reports the email as unverified',
+        userAgent: null,
+      },
+    });
+    expect(res.redirect).toHaveBeenCalledWith(
+      '/login?error=google_signin_failed'
+    );
+  });
 });
 
 describe('UsersController.loginWithNotion', () => {
@@ -2983,6 +3011,7 @@ describe('UsersController.loginWithAppleNative', () => {
       verifyAppleIdentityToken:
         overrides?.verifyAppleIdentityToken ??
         jest.fn().mockResolvedValue({
+          ok: true,
           subject: 'native-sub-001',
           email: 'native-apple@example.com',
         }),
@@ -3033,7 +3062,9 @@ describe('UsersController.loginWithAppleNative', () => {
   });
 
   it('returns 401 and records the error when the identity token fails verification', async () => {
-    const verifyAppleIdentityToken = jest.fn().mockResolvedValue(undefined);
+    const verifyAppleIdentityToken = jest
+      .fn()
+      .mockResolvedValue({ ok: false, reason: 'invalid_identity_token' });
     const { controller, recordExecute } = buildNativeController({
       verifyAppleIdentityToken,
     });
@@ -3116,9 +3147,11 @@ describe('UsersController.loginWithAppleNative', () => {
   });
 
   it('returns 401 when email is absent and no existing identity row exists', async () => {
-    const verifyAppleIdentityToken = jest
-      .fn()
-      .mockResolvedValue({ subject: 'native-sub-noemail', email: undefined });
+    const verifyAppleIdentityToken = jest.fn().mockResolvedValue({
+      ok: true,
+      subject: 'native-sub-noemail',
+      email: undefined,
+    });
     const { controller } = buildNativeController({ verifyAppleIdentityToken });
     const res = buildNativeRes();
 
@@ -3167,6 +3200,26 @@ describe('UsersController.loginWithAppleNative', () => {
       'apple',
       expect.objectContaining({ method: 'apple' })
     );
+  });
+
+  it('rejects and records oauth_email_not_verified when Apple reports the email unverified', async () => {
+    const verifyAppleIdentityToken = jest
+      .fn()
+      .mockResolvedValue({ ok: false, reason: 'email_not_verified' });
+    const { controller, recordExecute } = buildNativeController({
+      verifyAppleIdentityToken,
+    });
+    const res = buildNativeRes();
+
+    await controller.loginWithAppleNative(buildReq(), res);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'email_not_verified' });
+    expect(recordExecute).toHaveBeenCalledWith({
+      userId: null,
+      surface: 'oauth_apple_native',
+      code: 'oauth_email_not_verified',
+    });
   });
 });
 
