@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-01-oauth-signup-double-callback",
+  "date": "2026-10-01",
+  "type": "fix",
+  "title": "Signing up with Google, Microsoft, Apple or Notion completes even when the sign-in page loads twice"
+}

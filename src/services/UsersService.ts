@@ -161,6 +161,34 @@ class UsersService {
     return inserted;
   }
 
+  // Only for callers whose identity provider or magic link already proved
+  // the email: two concurrent callbacks for one new account race the insert,
+  // and the loser adopts the row the winner created. The password path must
+  // keep using register(), which throws, or a racing signup would be handed
+  // a session for an account it did not create.
+  async registerVerifiedIdentity(
+    name: string,
+    password: string,
+    email: string,
+    signupOrigin?: string | null,
+    telemetry?: RegisterTelemetry
+  ) {
+    try {
+      return await this.register(
+        name,
+        password,
+        email,
+        signupOrigin,
+        telemetry
+      );
+    } catch (error) {
+      if (isEmailTakenError(error)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
   deleteUser(owner: any) {
     return new UserDeletionService(
       this.repository,
@@ -234,7 +262,7 @@ class UsersService {
         return;
       }
       const placeholderPassword = bcrypt.hashSync(crypto.randomUUID(), 12);
-      await this.register(
+      await this.registerVerifiedIdentity(
         '',
         placeholderPassword,
         email,
@@ -317,6 +345,11 @@ class UsersService {
     await this.magicTokenRepository.markUsed(token);
     return { userId: record.owner, purpose: record.purpose };
   }
+}
+
+function isEmailTakenError(error: unknown): boolean {
+  const pgErr = error as { code?: string; constraint?: string };
+  return pgErr?.code === '23505' && pgErr.constraint === 'users_email_unique';
 }
 
 export default UsersService;

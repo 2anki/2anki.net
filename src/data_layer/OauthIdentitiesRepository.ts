@@ -28,13 +28,25 @@ class OauthIdentitiesRepository {
     userId: UsersId,
     refreshToken?: string
   ): Promise<void> {
+    await this.buildLinkQuery(provider, subject, userId, refreshToken);
+  }
+
+  buildLinkQuery(
+    provider: string,
+    subject: string,
+    userId: UsersId,
+    refreshToken?: string
+  ) {
     const row: OauthIdentitiesInitializer = {
       provider,
       subject,
       user_id: userId,
       refresh_token: refreshToken ? hashToken(refreshToken) : null,
     };
-    await this.database(this.table).insert(row);
+    return this.database(this.table)
+      .insert(row)
+      .onConflict(['provider', 'subject'])
+      .ignore();
   }
 
   async updateRefreshToken(

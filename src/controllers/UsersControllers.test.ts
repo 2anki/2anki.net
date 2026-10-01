@@ -1042,7 +1042,8 @@ describe('UsersController.loginWithGoogle', () => {
       getUserFrom:
         overrides?.getUserFrom ??
         jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
-      register: overrides?.register ?? jest.fn().mockResolvedValue([{ id: 7 }]),
+      registerVerifiedIdentity:
+        overrides?.register ?? jest.fn().mockResolvedValue([{ id: 7 }]),
       markEmailVerified:
         overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
       updateLastLoginAt:
@@ -1193,7 +1194,7 @@ describe('UsersController.loginWithMicrosoft', () => {
         jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
       getUserById:
         overrides?.getUserById ?? jest.fn().mockResolvedValue(mockUser),
-      register:
+      registerVerifiedIdentity:
         overrides?.register ?? jest.fn().mockResolvedValue([{ id: 11 }]),
       markEmailVerified:
         overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
@@ -1405,7 +1406,7 @@ describe('UsersController.loginWithApple', () => {
         jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
       getUserById:
         overrides?.getUserById ?? jest.fn().mockResolvedValue(mockUser),
-      register:
+      registerVerifiedIdentity:
         overrides?.register ?? jest.fn().mockResolvedValue([{ id: 20 }]),
       markEmailVerified:
         overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
@@ -1925,7 +1926,7 @@ describe('UsersController.loginWithNotion — error recording', () => {
     } as unknown as AuthenticationService;
     const userService = {
       getUserFrom: jest.fn().mockResolvedValue(getUserFromResult),
-      register: jest.fn().mockResolvedValue(undefined),
+      registerVerifiedIdentity: jest.fn().mockResolvedValue(undefined),
       updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const controller = new UsersController(
@@ -2014,7 +2015,7 @@ describe('UsersController.loginWithGoogle — error recording', () => {
     } as unknown as AuthenticationService;
     const userService = {
       getUserFrom: jest.fn().mockResolvedValue(getUserFromResult),
-      register: jest.fn().mockResolvedValue(undefined),
+      registerVerifiedIdentity: jest.fn().mockResolvedValue(undefined),
       updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
       markEmailVerified: jest.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
@@ -2141,7 +2142,7 @@ describe('UsersController.loginWithNotion', () => {
       getUserFrom:
         overrides?.getUserFrom ??
         jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
-      register:
+      registerVerifiedIdentity:
         overrides?.register ?? jest.fn().mockResolvedValue([{ id: 11 }]),
       updateLastLoginAt:
         overrides?.updateLastLoginAt ?? jest.fn().mockResolvedValue(undefined),
@@ -2339,7 +2340,7 @@ describe('UsersController cookie options — 30-day persistent session', () => {
       .mockResolvedValue(null);
     const userService = {
       getUserFrom: jest.fn().mockResolvedValue(mockUser),
-      register: jest.fn().mockResolvedValue([{ id: 7 }]),
+      registerVerifiedIdentity: jest.fn().mockResolvedValue([{ id: 7 }]),
       markEmailVerified: jest.fn().mockResolvedValue(1),
       updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
@@ -2400,7 +2401,7 @@ describe('UsersController cookie options — 30-day persistent session', () => {
     const userService = {
       getUserFrom: jest.fn().mockResolvedValue(mockUser),
       getUserById: jest.fn().mockResolvedValue(mockUser),
-      register: jest.fn().mockResolvedValue([{ id: 11 }]),
+      registerVerifiedIdentity: jest.fn().mockResolvedValue([{ id: 11 }]),
       markEmailVerified: jest.fn().mockResolvedValue(1),
       updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
@@ -2463,7 +2464,7 @@ describe('UsersController cookie options — 30-day persistent session', () => {
     const userService = {
       getUserFrom: jest.fn().mockResolvedValue(mockUser),
       getUserById: jest.fn().mockResolvedValue(mockUser),
-      register: jest.fn().mockResolvedValue([{ id: 20 }]),
+      registerVerifiedIdentity: jest.fn().mockResolvedValue([{ id: 20 }]),
       markEmailVerified: jest.fn().mockResolvedValue(1),
       updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
@@ -2534,7 +2535,7 @@ describe('UsersController cookie options — 30-day persistent session', () => {
     const newJWTToken = jest.fn().mockResolvedValue('notion-jwt');
     const userService = {
       getUserFrom: jest.fn().mockResolvedValue(mockUser),
-      register: jest.fn().mockResolvedValue([{ id: 11 }]),
+      registerVerifiedIdentity: jest.fn().mockResolvedValue([{ id: 11 }]),
       updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {
@@ -2937,7 +2938,7 @@ describe('UsersController.loginWithAppleNative', () => {
         jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
       getUserById:
         overrides?.getUserById ?? jest.fn().mockResolvedValue(mockUser),
-      register:
+      registerVerifiedIdentity:
         overrides?.register ?? jest.fn().mockResolvedValue([{ id: 30 }]),
       markEmailVerified:
         overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
