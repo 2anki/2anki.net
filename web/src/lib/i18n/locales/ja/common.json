@@ -845,5 +845,16 @@
   },
   "favoritesPage": {
     "subtitle": "お気に入りに追加したページにすぐアクセスできます。"
+  },
+  "checkout": {
+    "conflict": {
+      "already_lifetime": "すでに無期限アクセスをお持ちです。再度購入する必要はありません。",
+      "already_subscribed": "すでに有効なサブスクリプションがあります。再度購入する必要はありません。",
+      "already_unlimited": "すでに無制限アクセスをお持ちです。再度購入する必要はありません。",
+      "already_unlimited_until": "{{date}} まで無制限アクセスをご利用いただけます。",
+      "billed_through_apple": "プランは Apple 経由で請求されています。Apple のサブスクリプションで管理してください。",
+      "pass_still_active": "パスはまだ有効です。期限が切れたら次のパスを購入してください。",
+      "pass_still_active_until": "パスは {{date}} まで有効です。期限が切れたら次のパスを購入してください。"
+    }
   }
 }

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { track } from '../../lib/analytics/track';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
+import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMessage';
 import { startUnlimitedUpgrade } from '../../lib/backend/startUnlimitedUpgrade';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import {
@@ -103,7 +104,7 @@ function AnonymousLimit() {
 }
 
 export function LimitPage() {
-  const { t } = useTranslation('accountx');
+  const { t, i18n } = useTranslation('accountx');
   const { data: userLocals, isLoading } = useUserLocals();
   const isLoggedIn = userLocals?.user?.id != null;
   const [pendingPass, setPendingPass] = useState<PassKind | null>(null);
@@ -147,6 +148,10 @@ export function LimitPage() {
       );
       if ('url' in result) {
         globalThis.location.href = result.url;
+        return;
+      }
+      if (result.status === 'conflict') {
+        setPassError(purchaseConflictMessage(t, result, i18n.language));
         return;
       }
       setPassError(t('limit.checkoutError'));

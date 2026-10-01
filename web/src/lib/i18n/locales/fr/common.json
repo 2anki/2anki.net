@@ -854,5 +854,16 @@
   },
   "favoritesPage": {
     "subtitle": "Les pages que tu as ajoutées aux favoris pour y accéder rapidement."
+  },
+  "checkout": {
+    "conflict": {
+      "already_lifetime": "Tu as déjà un accès à vie — pas besoin d'acheter à nouveau.",
+      "already_subscribed": "Tu as déjà un abonnement actif — pas besoin d'acheter à nouveau.",
+      "already_unlimited": "Tu as déjà un accès illimité — pas besoin d'acheter à nouveau.",
+      "already_unlimited_until": "Tu as un accès illimité jusqu'au {{date}}.",
+      "billed_through_apple": "Ton forfait est facturé via Apple. Gère-le dans tes abonnements Apple.",
+      "pass_still_active": "Ton pass est encore actif. Achète le suivant quand il expire.",
+      "pass_still_active_until": "Ton pass est valable jusqu'au {{date}}. Achète le suivant quand il expire."
+    }
   }
 }

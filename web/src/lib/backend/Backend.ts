@@ -17,6 +17,10 @@ import { AnkifyStats } from '../../pages/AnkifyPage/stats/types';
 import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
 import { CONFLICT, NOT_FOUND, OK, UNAUTHORIZED } from './http';
+import {
+  CheckoutConflict,
+  readCheckoutConflict,
+} from '../checkout/checkoutConflict';
 import { ConversionReport } from '../interfaces/ConversionReport';
 
 export class TrackerSchemaError extends Error {
@@ -685,7 +689,9 @@ export class Backend {
     interval: 'month' | 'year',
     variant?: string,
     surface?: string
-  ): Promise<{ url: string } | { status: 'unavailable' | 'error' }> {
+  ): Promise<
+    { url: string } | { status: 'unavailable' | 'error' } | CheckoutConflict
+  > {
     try {
       const response = await post(`${this.baseURL}checkout/unlimited`, {
         interval,
@@ -694,6 +700,9 @@ export class Backend {
       });
       if (response.status === 503) {
         return { status: 'unavailable' };
+      }
+      if (response.status === CONFLICT) {
+        return (await readCheckoutConflict(response)) ?? { status: 'error' };
       }
       if (!response.ok) {
         return { status: 'error' };
@@ -714,7 +723,9 @@ export class Backend {
     kind: '24h' | '7d' | '120d',
     variant?: string,
     surface?: string
-  ): Promise<{ url: string } | { status: 'unavailable' | 'error' }> {
+  ): Promise<
+    { url: string } | { status: 'unavailable' | 'error' } | CheckoutConflict
+  > {
     const path = `checkout/pass/${kind}`;
     try {
       const response = await post(`${this.baseURL}${path}`, {
@@ -723,6 +734,9 @@ export class Backend {
       });
       if (response.status === 503) {
         return { status: 'unavailable' };
+      }
+      if (response.status === CONFLICT) {
+        return (await readCheckoutConflict(response)) ?? { status: 'error' };
       }
       if (!response.ok) {
         return { status: 'error' };

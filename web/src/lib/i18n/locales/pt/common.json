@@ -854,5 +854,16 @@
   },
   "favoritesPage": {
     "subtitle": "Páginas que você favoritou para acesso rápido."
+  },
+  "checkout": {
+    "conflict": {
+      "already_lifetime": "Você já tem acesso vitalício — não precisa comprar de novo.",
+      "already_subscribed": "Você já tem uma assinatura ativa — não precisa comprar de novo.",
+      "already_unlimited": "Você já tem acesso ilimitado — não precisa comprar de novo.",
+      "already_unlimited_until": "Você tem acesso ilimitado até {{date}}.",
+      "billed_through_apple": "Seu plano é cobrado pela Apple. Gerencie nas suas assinaturas da Apple.",
+      "pass_still_active": "Seu passe ainda está ativo. Compre o próximo quando ele acabar.",
+      "pass_still_active_until": "Seu passe vale até {{date}}. Compre o próximo quando ele acabar."
+    }
   }
 }

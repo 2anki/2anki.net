@@ -854,5 +854,16 @@
   },
   "favoritesPage": {
     "subtitle": "Seiten, die du für schnellen Zugriff mit einem Stern markiert hast."
+  },
+  "checkout": {
+    "conflict": {
+      "already_lifetime": "Du hast bereits lebenslangen Zugang — du musst nichts erneut kaufen.",
+      "already_subscribed": "Du hast bereits ein aktives Abo — du musst nichts erneut kaufen.",
+      "already_unlimited": "Du hast bereits unbegrenzten Zugang — du musst nichts erneut kaufen.",
+      "already_unlimited_until": "Du hast unbegrenzten Zugang bis zum {{date}}.",
+      "billed_through_apple": "Dein Plan wird über Apple abgerechnet. Verwalte ihn in deinen Apple-Abos.",
+      "pass_still_active": "Dein Pass ist noch aktiv. Kaufe den nächsten, wenn er abläuft.",
+      "pass_still_active_until": "Dein Pass läuft bis zum {{date}}. Kaufe den nächsten, wenn er abläuft."
+    }
   }
 }

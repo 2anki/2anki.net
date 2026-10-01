@@ -872,5 +872,16 @@
   },
   "favoritesPage": {
     "subtitle": "Strony oznaczone gwiazdką, do szybkiego dostępu."
+  },
+  "checkout": {
+    "conflict": {
+      "already_lifetime": "Masz już dostęp dożywotni — nie musisz kupować ponownie.",
+      "already_subscribed": "Masz już aktywną subskrypcję — nie musisz kupować ponownie.",
+      "already_unlimited": "Masz już nieograniczony dostęp — nie musisz kupować ponownie.",
+      "already_unlimited_until": "Masz nieograniczony dostęp do {{date}}.",
+      "billed_through_apple": "Twój plan jest rozliczany przez Apple. Zarządzaj nim w subskrypcjach Apple.",
+      "pass_still_active": "Twój pass jest wciąż aktywny. Kup kolejny, gdy wygaśnie.",
+      "pass_still_active_until": "Twój pass jest ważny do {{date}}. Kup kolejny, gdy wygaśnie."
+    }
   }
 }

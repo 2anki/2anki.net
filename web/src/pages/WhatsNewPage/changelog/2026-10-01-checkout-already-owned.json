@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-01-checkout-already-owned",
+  "date": "2026-10-01",
+  "type": "fix",
+  "title": "Checkout now names the plan you already own, and shows when your pass ends"
+}
