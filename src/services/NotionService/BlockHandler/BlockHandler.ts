@@ -98,6 +98,11 @@ const PAGE_LIKE_DECK_TYPES = new Set([
   'child_database',
 ]);
 
+// Blocks that the top-level walk turns into sub-decks or recurses into rather
+// than cards. They are excluded when flattening a column layout so a child page
+// nested in a column keeps its existing behaviour instead of becoming a sub-deck.
+const NON_CARD_DECK_TYPES = new Set(['child_page', 'child_database']);
+
 function activeNonPageDeckTypes(rules: ParserRules): Set<string> {
   return new Set(
     rules.deckTypes().filter((type) => !PAGE_LIKE_DECK_TYPES.has(type))
@@ -828,6 +833,85 @@ class BlockHandler implements IBlockRenderer {
   // sections, not cards: replace them with their (recursively expanded)
   // children and keep the heading itself as a plain heading so the tag and
   // hierarchy maps still see the section.
+  // A two-column layout is a visual arrangement, not a card type: a column_list
+  // holding toggles used to be skipped whole (column_list is not a flashcard
+  // type and columns are not recursed into), so every toggle inside a
+  // side-by-side layout was dropped from the deck. Flatten each top-level
+  // column_list into its columns' card-bearing children, in reading order, so
+  // the normal walk finds the cards inside. Anki cards are single-column anyway,
+  // so the horizontal split carries no meaning worth preserving. The result
+  // feeds only the card-extraction list, never the sub-deck/child-page walks, so
+  // child_page and child_database inside a column keep their existing behaviour
+  // (not turned into sub-decks) and are dropped here rather than flattened.
+  // Callers skip this entirely when the user made column_list a flashcard or
+  // deck type — those paths own the column_list block.
+  private async expandColumnLists(
+    blocks: GetBlockResponse[],
+    depth = 0,
+    seen: Set<string> = new Set<string>()
+  ): Promise<GetBlockResponse[]> {
+    const maxDepth = 5;
+    if (depth >= maxDepth) {
+      return blocks;
+    }
+
+    const expanded: GetBlockResponse[] = [];
+    for (const block of blocks) {
+      if (
+        !isFullBlock(block) ||
+        !isColumnList(block) ||
+        !block.has_children ||
+        seen.has(block.id)
+      ) {
+        expanded.push(block);
+        continue;
+      }
+      seen.add(block.id);
+      let content: GetBlockResponse[];
+      try {
+        content = await this.fetchColumnListContent(block.id);
+      } catch (error) {
+        console.info(
+          '[column-list] flatten fetch failed, keeping column layout as-is'
+        );
+        console.error(error);
+        expanded.push(block);
+        continue;
+      }
+      const flattened = await this.expandColumnLists(content, depth + 1, seen);
+      expanded.push(...flattened);
+    }
+    return expanded;
+  }
+
+  private async fetchColumnListContent(
+    columnListId: string
+  ): Promise<GetBlockResponse[]> {
+    const columns = await getColumns(columnListId, this);
+    const content: GetBlockResponse[] = [];
+    for (const column of columns) {
+      const response = await this.api.getBlocks({
+        createdAt: column.created_time,
+        lastEditedAt: column.last_edited_time,
+        id: column.id,
+        all: this.useAll,
+        type: column.type,
+      });
+      const children = await expandSyncedBlocks(
+        response.results,
+        this.api,
+        this.useAll
+      );
+      for (const child of children) {
+        if (isFullBlock(child) && NON_CARD_DECK_TYPES.has(child.type)) {
+          continue;
+        }
+        content.push(child);
+      }
+    }
+    return content;
+  }
+
   private async expandToggleHeadingSections(
     blocks: GetBlockResponse[],
     flashCardTypes: string[],
@@ -927,6 +1011,16 @@ class BlockHandler implements IBlockRenderer {
       topLevelBlocks,
       flashCardTypes
     );
+    // `cardSource` flattens top-level column layouts so toggles nested in a
+    // two-column layout become cards. It is kept separate from `blocks`: the
+    // heading tag/breadcrumb maps and the sub-deck / child-page walks run over
+    // `blocks`, so a column's own headings never retag cards outside it and a
+    // child page inside a column is not turned into a sub-deck. Skipped when the
+    // user made column_list a flashcard or deck type — those paths own the block.
+    const cardSource =
+      rules.useColums() || rules.deckTypes().includes('column_list')
+        ? blocks
+        : await this.expandColumnLists(blocks);
 
     const title = await this.api.getPageTitle(page, this.settings);
     if (!this.firstPageTitle) {
@@ -953,7 +1047,17 @@ class BlockHandler implements IBlockRenderer {
           ) === 'card'
         );
       };
-      const cBlocks = blocks.filter(isCardBlock);
+      // Base cards are exactly what the un-flattened walk produces — the same
+      // card blocks and the same rescue input main uses — so the rescue decision
+      // (empty-deck vs degenerate) and its induction see only `blocks`, never the
+      // column-derived cards. Column cards are produced separately and appended,
+      // so a toggle inside a column can never suppress a rescue the headings on
+      // the page would otherwise earn.
+      const baseCardBlocks = blocks.filter(isCardBlock);
+      const baseCardIds = new Set<string>(baseCardBlocks.map((b) => b.id));
+      const columnCardBlocks = cardSource
+        .filter(isCardBlock)
+        .filter((b) => !baseCardIds.has(b.id));
       const headingTagMap =
         rules.TAGS === 'heading'
           ? buildHeadingTagMap(blocks, isCardBlock)
@@ -970,25 +1074,43 @@ class BlockHandler implements IBlockRenderer {
             ? page?.url
             : undefined
           : undefined;
-      let cards = await this.getFlashcards(
-        rules,
-        cBlocks,
-        tags,
-        notionBaseLink,
-        headingTagMap,
-        headingContextMap
+      const dropAlreadySeen = (list: Note[]): Note[] =>
+        list.filter((card) => {
+          if (
+            typeof card.notionId === 'string' &&
+            globalSeenIds.has(card.notionId)
+          ) {
+            return false;
+          }
+          if (typeof card.notionId === 'string') {
+            globalSeenIds.add(card.notionId);
+          }
+          return true;
+        });
+      let cards = dropAlreadySeen(
+        await this.getFlashcards(
+          rules,
+          baseCardBlocks,
+          tags,
+          notionBaseLink,
+          headingTagMap,
+          headingContextMap
+        )
       );
-      cards = cards.filter((card) => {
-        if (
-          typeof card.notionId === 'string' &&
-          globalSeenIds.has(card.notionId)
-        ) {
-          return false;
-        }
-        if (typeof card.notionId === 'string') globalSeenIds.add(card.notionId);
-        return true;
-      });
       cards = this.rescueEmptyCards(cards, blocks);
+      if (columnCardBlocks.length > 0) {
+        const columnCards = dropAlreadySeen(
+          await this.getFlashcards(
+            rules,
+            columnCardBlocks,
+            tags,
+            notionBaseLink,
+            headingTagMap,
+            headingContextMap
+          )
+        );
+        cards = cards.concat(columnCards);
+      }
       const deck = new Deck(
         currentDeckName,
         Deck.CleanCards(cards),

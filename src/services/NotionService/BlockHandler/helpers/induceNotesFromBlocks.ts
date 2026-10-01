@@ -20,10 +20,12 @@ import renderTextChildren from '../../helpers/renderTextChildren';
 // Which flat block types open a new card for each structural candidate. The
 // back is the rendered content of the blocks that follow the front until the
 // next front-type block, so a heading and its paragraphs, or a bullet and its
-// explanation, become one card. Columns are absent here on purpose: a
-// column_list's columns are child blocks the walk never fetched, and fetching
-// them would break the zero-extra-Notion-request contract — the upload path
-// rescues two-column layouts from the DOM instead, where they cost nothing.
+// explanation, become one card. `column_list` is absent on purpose: on the
+// top-level page path the walk already flattens a column layout into its
+// columns' children before the rescue runs (see expandColumnLists in
+// BlockHandler), so this list only ever sees that flattened content, never a
+// column_list block to open a card from. The rescue induces over the blocks it
+// is handed and makes no Notion requests of its own.
 const FRONT_TYPES: Partial<Record<InducedRule, ReadonlySet<string>>> = {
   // heading_1 is included even though the issue table names only heading_2/3:
   // the deleted plain-text guessCardsFromBlocks matched heading_1/2/3, so a
