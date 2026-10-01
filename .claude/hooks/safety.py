@@ -8,7 +8,9 @@ Currently blocks:
   * git reset --hard when there are uncommitted changes
   * rm -rf against /, ~, $HOME, or parent directories
 
-Bypass: CLAUDE_SKIP_SAFETY=1 <command>
+Bypass: relaunch the session with CLAUDE_SKIP_SAFETY=1 set in the
+environment. An inline prefix on the command does NOT work - this hook reads
+os.environ before the shell that would apply the assignment ever runs.
 """
 import json
 import os
@@ -109,26 +111,26 @@ def main():
     if is_push_to_protected(cmd):
         deny(
             "Refusing to push to main/master — push to a feature branch and open a PR.\n"
-            "If you genuinely need this, prefix with CLAUDE_SKIP_SAFETY=1."
+            "If you genuinely need this, relaunch with CLAUDE_SKIP_SAFETY=1 set."
         )
 
     if is_bare_push(cmd):
         deny(
             "Refusing bare `git push` — always specify the remote and branch explicitly\n"
             "(e.g. `git push origin <branch-name>`) so we never push to main by accident.\n"
-            "Bypass with CLAUDE_SKIP_SAFETY=1 if intentional."
+            "Bypass by relaunching with CLAUDE_SKIP_SAFETY=1 set."
         )
 
     if is_reset_hard_with_uncommitted(cmd):
         deny(
             "Refusing `git reset --hard` with uncommitted changes — would discard work.\n"
-            "Commit or stash first, or prefix with CLAUDE_SKIP_SAFETY=1."
+            "Commit or stash first, or relaunch with CLAUDE_SKIP_SAFETY=1 set."
         )
 
     if is_dangerous_rm(cmd):
         deny(
             "Refusing `rm -rf` against critical paths (/, ~, $HOME, parent dirs).\n"
-            "Prefix with CLAUDE_SKIP_SAFETY=1 if intentional."
+            "Relaunch with CLAUDE_SKIP_SAFETY=1 set if intentional."
         )
 
     allow()

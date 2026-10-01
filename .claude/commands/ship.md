@@ -24,7 +24,9 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
 
 ## 2. Review agent
 
-Run the `/review-pr` fan-out on `<n>` (security / engineering / ux-voice forks, fresh context, diff only). Read the synthesized verdict:
+Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh context, diff only) and read the synthesized verdict.
+
+**`review-pr` is switched off in `.claude/settings.local.json`, so invoke the forks yourself** with the `Agent` tool rather than the skill — one agent per dimension, each briefed to read the diff and report BLOCKING / NON-BLOCKING / verdict with no edits, commits or merges. The marker you post in a moment is the merge gate's only substantive review condition, so it must stand for a review that actually ran. Do not post it on the strength of your own reading alone.
 
 - **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. Two rounds maximum. A third round of must-fix means the change is not ready: leave the PR ready, comment the blocker, print the URL, stop.
 - **Clean** → post the pass marker for the exact head SHA:
@@ -43,14 +45,6 @@ gh pr view <n> --json statusCheckRollup --jq '.statusCheckRollup[] | "\(.name //
 ```
 
 Every entry must be COMPLETED and non-FAILURE. Don't busy-poll — use `Monitor` on that command, or `ScheduleWakeup` (270s) when a run has minutes left. A FAILURE → read the log (`gh run view <id> --log-failed`), fix on the branch, restart from step 1.
-
-Then wait for SonarCloud on the head SHA (polls up to five minutes, exits non-zero if the gate fails or Sonar is unreachable):
-
-```bash
-python3 .claude/hooks/sonar_gate.py --pr <n> --sha "$HEAD" --wait 300
-```
-
-Open findings → fix on the branch, restart from step 1.
 
 ## 4. Merge (through the merge queue)
 
@@ -104,7 +98,7 @@ If the deploy run failed, `/api/version` does not report the merge SHA after the
 1. `git checkout main && git pull --ff-only && git checkout -b revert/<slug>`
 2. `git revert --no-commit $MERGE_SHA && git commit -m "revert: <original subject>" -m "Deploy run <run URL> failed after merging #<n>: <one line on what broke>."` — git's default `Revert "…"` subject fails the conventional-prefix hook, so write the subject yourself (≤72 chars).
 3. `git push -u origin revert/<slug>` and `gh pr create --repo 2anki/server --base main --head revert/<slug>` with a body that links the failed run and the original PR.
-4. Ship the revert through this command. A pure `git revert` of the PR just merged skips step 2's review agent: post the marker directly with the verdict "mechanical revert of #<n> after a failed deploy". CI, Sonar, and the hooks still gate it.
+4. Ship the revert through this command. A pure `git revert` of the PR just merged skips step 2's review agent: post the marker directly with the verdict "mechanical revert of #<n> after a failed deploy". CI and the hooks still gate it.
 5. Comment the revert PR URL on the deploy-failure issue the workflow opened (`gh issue list --repo 2anki/2anki.net --search "Production deploy failed" --state open` — the search API does not follow the `2anki/server` rename, so list/search calls use the canonical name).
 6. Reopen the original issue if the PR had closed one, with one line on what failed.
 

@@ -7,7 +7,7 @@
 # whose spawning agent/shell/session already exited, matching a dev-server or
 # build-tool signature:
 #   - vite preview / vite dev / pnpm dev  (leftover dev servers)
-#   - server.mjs                          (leftover app server)
+#   - tsx watch src/server.ts              (leftover `pnpm dev:server`)
 #   - tsc / jest / vitest / esbuild       (stuck /check runs)
 # A process with a LIVE parent (PPID != 1) is never touched — that is an
 # actively-running agent's work, not an orphan.
@@ -28,7 +28,7 @@ FORCE=0
 matches() {
   ps -Ao pid=,ppid=,etime=,command= 2>/dev/null | awk '
     $2 == 1 && /node/ &&
-    /(vite[^A-Za-z]|server\.mjs|pnpm[[:space:]]+dev|[[:space:]]tsc([[:space:]]|$)|jest|vitest|esbuild)/ {
+    /(vite[^A-Za-z]|(^|[^A-Za-z.])tsx[[:space:]]|pnpm[[:space:]]+dev|[[:space:]]tsc([[:space:]]|$)|jest|vitest|esbuild)/ {
       pid = $1; et = $3;
       cmd = $0; sub(/^[[:space:]]*[0-9]+[[:space:]]+[0-9]+[[:space:]]+[^[:space:]]+[[:space:]]+/, "", cmd);
       printf "%s\t%s\t%s\n", pid, et, substr(cmd, 1, 90);

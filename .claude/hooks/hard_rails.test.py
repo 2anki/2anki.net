@@ -108,6 +108,91 @@ class TestContentTriggers(unittest.TestCase):
         diff = "-const SUBSCRIBER_MAP_LIMIT = 25;\n+const SUBSCRIBER_MAP_LIMIT = 250;"
         self.assertEqual(rails.rail_content_hits(diff), ["SUBSCRIBER_MAP_LIMIT"])
 
+    # PR #4632 raised Node's request timeout from 300s to 900s on every route
+    # and the gate let it through: both rail_paths and rail_content_hits came
+    # back empty. This is that PR's shape.
+    def test_node_request_timeout_change_is_a_rail(self):
+        diff = (
+            "+export const REQUEST_TIMEOUT_MS = 900_000;\n"
+            "+  server.requestTimeout = REQUEST_TIMEOUT_MS;"
+        )
+        self.assertIn("REQUEST_TIMEOUT_MS", rails.rail_content_hits(diff))
+        self.assertIn("requestTimeout", rails.rail_content_hits(diff))
+        self.assertEqual(
+            rails.rail_paths(["src/lib/httpServerTimeouts.ts"]),
+            ["src/lib/httpServerTimeouts.ts"],
+        )
+
+    def test_paid_inference_budgets_are_triggers(self):
+        for symbol in (
+            "CHUNK_MAX_TOKENS",
+            "GIANT_INPUT_CHUNK_SIZE",
+            "VISION_MAX_TOKENS",
+            "PDF_PAGE_VISION_MAX_TOKENS",
+            "AI_SPEND_ALERT_THRESHOLD_USD",
+        ):
+            with self.subTest(symbol=symbol):
+                diff = f"-const {symbol} = 1;\n+const {symbol} = 2;"
+                # Substring, not equality: PDF_PAGE_VISION_MAX_TOKENS also
+                # contains VISION_MAX_TOKENS, and reporting both is correct.
+                self.assertIn(symbol, rails.rail_content_hits(diff))
+
+    def test_free_tier_allowances_are_triggers(self):
+        for symbol in (
+            "MONTHLY_CARD_LIMIT",
+            "ANONYMOUS_CARD_CAP",
+            "FREE_PHOTO_QUOTA_PER_MONTH",
+            "FREE_USER_MAX_UPLOAD_SIZE",
+        ):
+            with self.subTest(symbol=symbol):
+                diff = f"+export const {symbol} = 999;"
+                self.assertEqual(rails.rail_content_hits(diff), [symbol])
+
+    # A bare CHUNK_SIZE trigger also matched INSERT_CHUNK_SIZE, the Postgres
+    # batch size in two repositories - 8 commits of churn on something that is
+    # not an inference budget at all. The named ceilings cover the real cases.
+    def test_postgres_batch_size_is_not_an_inference_budget(self):
+        diff = "-const INSERT_CHUNK_SIZE = 500;\n+const INSERT_CHUNK_SIZE = 1000;"
+        self.assertEqual(rails.rail_content_hits(diff), [])
+
+    # 67 of 906 changelog slugs carry a NAME_GLOBS word, so without the
+    # exclusion one in fourteen user-visible PRs railed on its own wording.
+    def test_changelog_entries_never_rail_on_their_slug(self):
+        for name in (
+            "2026-08-18-pricing-study-links.json",
+            "2026-09-01-pass-checkout-email-link.json",
+            "2026-06-05-checkout-resume.json",
+        ):
+            with self.subTest(name=name):
+                self.assertFalse(
+                    rails.is_rail_path(
+                        f"web/src/pages/WhatsNewPage/changelog/{name}"
+                    )
+                )
+
+    def test_files_whose_job_is_holding_a_limit_are_rails(self):
+        for path in (
+            "src/lib/httpServerTimeouts.ts",
+            "src/lib/misc/getUploadLimits.ts",
+            "src/lib/claude/aiSpendGuard.ts",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(rails.is_rail_path(path))
+
+    # The rail is only worth having if it stays quiet on ordinary work. These
+    # are real paths from PRs merged this week that must not become rails.
+    # Note what is deliberately absent: anything under PricingPage, which the
+    # "pricing" name glob already rails on purpose.
+    def test_ordinary_feature_work_is_not_railed(self):
+        for path in (
+            "src/lib/parser/DeckParser.ts",
+            "src/routes/knownRoutes.ts",
+            "src/usecases/mindmaps/ListMindmapsUseCase.ts",
+            "web/src/components/CardOptionsForm/CardOptionsForm.tsx",
+        ):
+            with self.subTest(path=path):
+                self.assertFalse(rails.is_rail_path(path))
+
 
 if __name__ == "__main__":
     unittest.main()

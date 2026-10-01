@@ -6,7 +6,7 @@ feature branch, scoped to the workspace that actually changed.
 Goal: stop pushing red branches that then fail GH Actions and chew CI minutes.
 - Server `.ts` changed  → server `tsc --noEmit`.
 - Web `.ts`/`.tsx` changed → web typecheck + web oxlint (the lint rules
-  mirror the SonarCloud findings that otherwise only surface post-push).
+  catch the smells that otherwise only surface post-push).
 Web vitest is intentionally left to `/check` and CI — it's the slow one and
 would make every push wait.
 

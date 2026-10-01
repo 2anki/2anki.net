@@ -45,7 +45,7 @@ PER-ISSUE WORKFLOW (each agent):
      reason → smallest fix → green.
   3. Changelog JSON entry only if a real user would notice (web/src/pages/
      WhatsNewPage/changelog/), per the rules; otherwise state "no entry" in the PR.
-  4. Run /check. Run sonar-scanner if a token is configured; if not, say so in
+  4. Run /check. Say in
      the PR body.
   5. If the diff touches web/src/, add the ## Browser check attestation.
   6. Conventional commit, subject ≤72 chars, "Fixes #<n>", Co-Authored-By line.

@@ -132,7 +132,7 @@ READY with a `## Decisions made overnight` section, then `/ship`.**
 - A feature request, an enhancement, a copy change, an empty/error/loading state, a small UX fix.
 - BEFORE coding, run the trio (pm + designer + engineer in one parallel Agent call) on the issue.
   Take their recommendation as the spec: what to build, what NOT to build, the exact copy.
-- Implement it with the same rigor as Tier 1 (tests, /check, sonar, changelog if user-visible).
+- Implement it with the same rigor as Tier 1 (tests, /check, changelog if user-visible).
 - Document EVERY decision and assumption in the PR (format below) so Alexander can override.
 - Still no hard-rail change.
 
@@ -175,8 +175,6 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
 6. If user-visible, add ONE changelog JSON under `web/src/pages/WhatsNewPage/changelog/` per
    `CLAUDE.md` (user voice, no implementation detail). Internal-only → no entry.
 7. `/check` (server tsc + web typecheck + web vitest + web lint) — must be green.
-8. `sonar-scanner -Dsonar.host.url=https://sonarcloud.io` (`.claude/rules/sonar.md`); clear new
-   smells. If scanner/token unavailable, say so in the PR body.
 9. `git rebase origin/main`. Commit with a conventional `fix:`/`feat:` subject ≤72 chars, body
    with `Fixes #<n>`. Co-author trailer per `CLAUDE.md`.
 10. `git push -u origin <branch>` (use `--no-verify` ONLY if the pre-push hook false-positives on

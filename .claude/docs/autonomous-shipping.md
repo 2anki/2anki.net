@@ -16,10 +16,9 @@ Before this, every merge was a human step — but branch protection on `main` re
 | 1 | PR touches no hard rail | `hard_rails.py` on the PR file list + diff |
 | 2 | Every rollup entry COMPLETED and non-FAILURE; every `test*` check RAN; dep changes have a SUCCESS test | `gh pr view --json statusCheckRollup,files` |
 | 3 | Review-agent pass marker for the head SHA | `<!-- ship-review: pass sha=<headRefOid> -->` in a PR review or comment; dependabot exempt. **Honor-system**, like the browser attestation: anyone who can comment can post it — it binds the operator's session to having run the review, it does not prove the review ran |
-| 4 | SonarCloud: analysis exists for the head SHA, gate `OK`, zero `OPEN`/`CONFIRMED` issues | `sonar_gate.py` via the SonarCloud API — Sonar posts no GitHub check on this repo |
 | 5 | Browser attestation (web/src diffs) and changelog (feat/fix) | existing hooks |
 
-Failure modes are deliberate: `gh pr view` tooling errors **fail open** (a broken `gh` must not block a human); the rail diff fetch and Sonar **fail closed** (an unchecked rail or an unscanned merge is the exact gap the gate closes). The Sonar issue search leaks CLOSED records through its status filter (seen 2026-08-11 on #4046), so `sonar_gate.py` counts only records whose own `status` is OPEN/CONFIRMED.
+Failure modes are deliberate: `gh pr view` tooling errors **fail open** (a broken `gh` must not block a human); the rail diff fetch **fails closed** (an unchecked rail is the exact gap the gate closes). SonarCloud was a fifth condition until 2026-10-01; it was removed because it added a serial wait that timed out on 8% of PRs while `main` carried 1,102 unactioned findings, the gate rating only new code.
 
 The only bypasses are ones an agent cannot reach from inside a session: merging from the GitHub UI, or launching the session with the env var set (`CLAUDE_SKIP_SAFETY=1 claude`). A `CLAUDE_SKIP_SAFETY=1` prefix typed into a command is deliberately ignored — a PreToolUse hook runs before the shell, and honoring the prefix would let any agent self-bypass the gate (caught by the commit security review on #4244).
 
@@ -33,7 +32,7 @@ Why not CODEOWNERS: agents run under Alexander's `gh` auth and he authors most P
 
 ## `/ship` in one paragraph
 
-Preflight (draft? rail? rebased?) → review agent (`/review-pr` fan-out; two fix rounds max) posts the marker → wait for the rollup and for `sonar_gate.py --wait 300` → `gh pr merge --squash` enqueues in the merge queue (hooks re-verify; `--delete-branch` is rejected while the queue is on) → poll the PR until `state: MERGED` (a dequeue means a required job failed on the `gh-readonly-queue/…` branch; one retry for a diff-unrelated flake, then stop) → find the deploy run for the merge SHA and watch it → `curl /api/version` must report the merge SHA, then `/deploy-status` → on failure, `git revert` on a `revert/<slug>` branch shipped through the same command (review agent skipped for a mechanical revert), comment on the deploy-failure issue. Full steps: `.claude/commands/ship.md`.
+Preflight (draft? rail? rebased?) → review agent (`/review-pr` fan-out; two fix rounds max) posts the marker → wait for the rollup → `gh pr merge --squash` enqueues in the merge queue (hooks re-verify; `--delete-branch` is rejected while the queue is on) → poll the PR until `state: MERGED` (a dequeue means a required job failed on the `gh-readonly-queue/…` branch; one retry for a diff-unrelated flake, then stop) → find the deploy run for the merge SHA and watch it → `curl /api/version` must report the merge SHA, then `/deploy-status` → on failure, `git revert` on a `revert/<slug>` branch shipped through the same command (review agent skipped for a mechanical revert), comment on the deploy-failure issue. Full steps: `.claude/commands/ship.md`.
 
 Sanctioned carve-outs inside `/ship` only: starting `pnpm dev` for the browser attestation (kill it after), and the read-only `/deploy-status` SSH.
 
@@ -49,4 +48,3 @@ Docs-only pushes (`.claude/**`, `Documentation/**`, `*.md` outside `src/` and `w
 
 - Branch protection was applied 2026-08-26 with `gh api -X PUT repos/2anki/2anki.net/branches/main/protection` — use the canonical repo name for writes, `gh api` does not follow the rename redirect (`2anki/server` answers a PUT with HTTP 307). To read the current state: `gh api repos/2anki/server/branches/main/protection`.
 - To pause autonomous merging without touching code, set `required_approving_review_count` to 1 in branch protection — every merge then waits for a human approval. Restore with the same PUT.
-- If SonarCloud's GitHub status check is ever enabled in the SonarCloud UI, add its context to the required list and keep `sonar_gate.py` as the finding-count check (the GitHub check reports the gate, not the count).
