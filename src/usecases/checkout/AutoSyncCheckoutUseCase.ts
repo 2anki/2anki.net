@@ -2,6 +2,11 @@ import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
 import SubscriptionService from '../../services/SubscriptionService';
 import hashToken from '../../lib/misc/hashToken';
 import { optionalMetadata } from './checkoutMetadata';
+import { createCheckoutSession } from './createCheckoutSession';
+import {
+  CheckoutCustomerRefresher,
+  recoverWith,
+} from './StaleCheckoutCustomerRefresher';
 
 export type AutoSyncCheckoutResult =
   | { url: string }
@@ -16,7 +21,8 @@ export class AutoSyncCheckoutUseCase {
     private readonly stripe: Pick<StripeTypes, 'checkout'>,
     private readonly priceId: string,
     private readonly productId: string,
-    maxSubscribers?: number
+    maxSubscribers?: number,
+    private readonly refresher?: CheckoutCustomerRefresher
   ) {
     this.maxSubscribers = maxSubscribers ?? DEFAULT_MAX_SUBSCRIBERS;
   }
@@ -81,7 +87,11 @@ export class AutoSyncCheckoutUseCase {
       },
     };
 
-    const session = await this.stripe.checkout.sessions.create(sessionParams);
+    const session = await createCheckoutSession(
+      this.stripe,
+      sessionParams,
+      recoverWith(this.refresher, input.userId, input.userEmail)
+    );
 
     console.info('auto_sync.checkout.session_created', {
       user_id: input.userId,

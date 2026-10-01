@@ -20,6 +20,8 @@ import { getEventsSink } from '../services/events/eventsSinkInstance';
 import { FeatureFlagsRepository } from '../data_layer/FeatureFlagsRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import { StripePriceResolver } from '../services/StripePriceResolver';
+import { StripeCustomerResolver } from '../services/StripeCustomerResolver';
+import { StaleCheckoutCustomerRefresher } from '../usecases/checkout/StaleCheckoutCustomerRefresher';
 import { getPricingService } from '../services/pricingServiceInstance';
 import { GetPassPricingUseCase } from '../usecases/checkout/GetPassPricingUseCase';
 import PassPricingController from '../controllers/PassPricingController';
@@ -54,6 +56,11 @@ const getUserCreatedAt = async (userId: number): Promise<Date | null> => {
 const CheckoutRouter = () => {
   const router = express.Router();
 
+  const staleCustomerRefresher = new StaleCheckoutCustomerRefresher(
+    new UsersRepository(getDatabase()),
+    new StripeCustomerResolver(getStripe(), new UsersRepository(getDatabase()))
+  );
+
   const priceId = process.env.AUTO_SYNC_PRICE_ID ?? '';
   const productId = process.env.AUTO_SYNC_PRODUCT_ID ?? '';
   const maxSubscribers =
@@ -75,7 +82,8 @@ const CheckoutRouter = () => {
         getStripe(),
         priceId,
         productId,
-        maxSubscribers
+        maxSubscribers,
+        staleCustomerRefresher
       );
       const controller = new AutoSyncCheckoutController(useCase);
       return controller.createSession(req, res);
@@ -97,7 +105,8 @@ const CheckoutRouter = () => {
       await resolveStripeCustomer(res);
       const useCase = new CreateCreditPackCheckoutUseCase(
         getStripe(),
-        creditPackPriceId
+        creditPackPriceId,
+        staleCustomerRefresher
       );
       const controller = new CreditPackCheckoutController(useCase);
       return controller.createSession(req, res);
@@ -125,7 +134,8 @@ const CheckoutRouter = () => {
         getStripe(),
         unlimitedMonthlyPriceId,
         unlimitedYearlyPriceId,
-        priceResolver
+        priceResolver,
+        staleCustomerRefresher
       );
       const controller = new UnlimitedCheckoutController(
         useCase,
@@ -180,7 +190,8 @@ const CheckoutRouter = () => {
       const useCase = new CreatePassCheckoutUseCase(
         getStripe(),
         pass24hPriceId,
-        '24h'
+        '24h',
+        staleCustomerRefresher
       );
       const controller = new PassCheckoutController(
         useCase,
@@ -207,7 +218,8 @@ const CheckoutRouter = () => {
       const useCase = new CreatePassCheckoutUseCase(
         getStripe(),
         pass7dPriceId,
-        '7d'
+        '7d',
+        staleCustomerRefresher
       );
       const controller = new PassCheckoutController(
         useCase,
@@ -234,7 +246,8 @@ const CheckoutRouter = () => {
       const useCase = new CreatePassCheckoutUseCase(
         getStripe(),
         pass120dPriceId,
-        '120d'
+        '120d',
+        staleCustomerRefresher
       );
       const controller = new PassCheckoutController(
         useCase,

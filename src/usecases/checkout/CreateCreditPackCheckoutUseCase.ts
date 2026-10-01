@@ -1,6 +1,11 @@
 import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
 import { optionalMetadata } from './checkoutMetadata';
 import { CreditPackSource, resolveCreditPackRedirect } from './creditPack';
+import { createCheckoutSession } from './createCheckoutSession';
+import {
+  CheckoutCustomerRefresher,
+  recoverWith,
+} from './StaleCheckoutCustomerRefresher';
 
 export interface CreateCreditPackCheckoutResult {
   url: string;
@@ -9,7 +14,8 @@ export interface CreateCreditPackCheckoutResult {
 export class CreateCreditPackCheckoutUseCase {
   constructor(
     private readonly stripe: Pick<StripeTypes, 'checkout'>,
-    private readonly priceId: string
+    private readonly priceId: string,
+    private readonly refresher?: CheckoutCustomerRefresher
   ) {}
 
   async execute(input: {
@@ -37,7 +43,7 @@ export class CreateCreditPackCheckoutUseCase {
       })
     );
 
-    const session = await this.stripe.checkout.sessions.create({
+    const sessionParams: StripeTypes.Checkout.SessionCreateParams = {
       mode: 'payment',
       invoice_creation: { enabled: true },
       line_items: [{ price: this.priceId, quantity: 1 }],
@@ -47,7 +53,13 @@ export class CreateCreditPackCheckoutUseCase {
         input.stripeCustomerId == null ? input.userEmail : undefined,
       customer: input.stripeCustomerId ?? undefined,
       metadata,
-    });
+    };
+
+    const session = await createCheckoutSession(
+      this.stripe,
+      sessionParams,
+      recoverWith(this.refresher, input.userId, input.userEmail)
+    );
 
     return { url: session.url! };
   }

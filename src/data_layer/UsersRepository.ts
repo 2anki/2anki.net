@@ -644,6 +644,15 @@ class UsersRepository {
     return current ?? candidateId;
   }
 
+  async clearStripeCustomerIdIf(
+    id: string | number,
+    oldValue: string
+  ): Promise<void> {
+    await this.database(this.table)
+      .where({ id, stripe_customer_id: oldValue })
+      .update({ stripe_customer_id: null });
+  }
+
   async countTotalUsers(): Promise<number> {
     const row = (await this.database(this.table)
       .count<{ count: string | number }>('* as count')

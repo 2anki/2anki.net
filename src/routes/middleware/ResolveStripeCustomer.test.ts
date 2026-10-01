@@ -6,10 +6,14 @@ const run = async (
   locals: Record<string, unknown>,
   resolveOrCreate: jest.Mock
 ) => {
-  const record = jest.fn();
+  const recordFailure = jest.fn();
   const res = { locals } as unknown as Response;
-  await applyResolvedStripeCustomer(res, { resolveOrCreate }, { record });
-  return { res, record };
+  await applyResolvedStripeCustomer(
+    res,
+    () => ({ resolveOrCreate }),
+    recordFailure
+  );
+  return { res, recordFailure };
 };
 
 describe('applyResolvedStripeCustomer', () => {
@@ -26,14 +30,14 @@ describe('applyResolvedStripeCustomer', () => {
 
   it('passes an anonymous caller through without touching Stripe', async () => {
     const resolveOrCreate = jest.fn();
-    const { res, record } = await run(
+    const { res, recordFailure } = await run(
       { email: 'someone@example.test' },
       resolveOrCreate
     );
 
     expect(resolveOrCreate).not.toHaveBeenCalled();
     expect(res.locals.stripeCustomerId).toBeUndefined();
-    expect(record).not.toHaveBeenCalled();
+    expect(recordFailure).not.toHaveBeenCalled();
   });
 
   it('passes through when the account has no email to resolve against', async () => {
@@ -43,25 +47,41 @@ describe('applyResolvedStripeCustomer', () => {
     expect(resolveOrCreate).not.toHaveBeenCalled();
   });
 
-  it('records resolve_failed and leaks no customer id in logs when resolution fails', async () => {
+  it('records the failure and leaks no customer id when resolution fails', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const resolveOrCreate = jest
       .fn()
       .mockRejectedValue(new Error("No such customer: 'cus_leak123'"));
 
-    const { res, record } = await run(
+    const { res, recordFailure } = await run(
       { owner: 42, email: 'learner@example.test' },
       resolveOrCreate
     );
 
     expect(res.locals.stripeCustomerId).toBeUndefined();
-    expect(record).toHaveBeenCalledWith({
-      name: 'checkout_customer_resolve',
-      user_id: 42,
-      props: { outcome: 'resolve_failed' },
-    });
+    expect(recordFailure).toHaveBeenCalledWith(42);
     const logged = JSON.stringify(errorSpy.mock.calls);
     expect(logged).not.toContain('cus_');
+    errorSpy.mockRestore();
+  });
+
+  it('falls back when building the resolver throws', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const recordFailure = jest.fn();
+    const res = {
+      locals: { owner: 42, email: 'learner@example.test' },
+    } as unknown as Response;
+
+    await applyResolvedStripeCustomer(
+      res,
+      () => {
+        throw new Error('getDatabase failed');
+      },
+      recordFailure
+    );
+
+    expect(res.locals.stripeCustomerId).toBeUndefined();
+    expect(recordFailure).toHaveBeenCalledWith(42);
     errorSpy.mockRestore();
   });
 });

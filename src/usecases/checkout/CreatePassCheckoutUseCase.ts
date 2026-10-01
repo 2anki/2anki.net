@@ -1,6 +1,11 @@
 import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
 import type { PassKind } from '../../data_layer/UserPassRepository';
 import { optionalMetadata } from './checkoutMetadata';
+import { createCheckoutSession } from './createCheckoutSession';
+import {
+  CheckoutCustomerRefresher,
+  recoverWith,
+} from './StaleCheckoutCustomerRefresher';
 
 export interface CreatePassCheckoutResult {
   url: string;
@@ -10,7 +15,8 @@ export class CreatePassCheckoutUseCase {
   constructor(
     private readonly stripe: Pick<StripeTypes, 'checkout'>,
     private readonly priceId: string,
-    private readonly passKind: PassKind
+    private readonly passKind: PassKind,
+    private readonly refresher?: CheckoutCustomerRefresher
   ) {}
 
   async execute(input: {
@@ -73,7 +79,11 @@ export class CreatePassCheckoutUseCase {
       sessionParams.customer = input.stripeCustomerId ?? undefined;
     }
 
-    const session = await this.stripe.checkout.sessions.create(sessionParams);
+    const session = await createCheckoutSession(
+      this.stripe,
+      sessionParams,
+      recoverWith(this.refresher, input.userId, input.userEmail)
+    );
 
     return { url: session.url! };
   }

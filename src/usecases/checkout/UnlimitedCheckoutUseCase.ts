@@ -10,6 +10,11 @@ import {
   V2_MONTHLY_LOOKUP_KEY,
 } from './pricingV2';
 import { PricingResolutionError } from './PricingResolutionError';
+import { createCheckoutSession } from './createCheckoutSession';
+import {
+  CheckoutCustomerRefresher,
+  recoverWith,
+} from './StaleCheckoutCustomerRefresher';
 
 export type UnlimitedInterval = 'month' | 'year';
 
@@ -23,7 +28,8 @@ export class UnlimitedCheckoutUseCase {
     private readonly stripe: Pick<StripeTypes, 'checkout'>,
     private readonly monthlyPriceId: string,
     private readonly yearlyPriceId: string,
-    private readonly priceResolver?: StripePriceResolver
+    private readonly priceResolver?: StripePriceResolver,
+    private readonly refresher?: CheckoutCustomerRefresher
   ) {}
 
   private async resolvePriceId(
@@ -115,7 +121,11 @@ export class UnlimitedCheckoutUseCase {
       },
     };
 
-    const session = await this.stripe.checkout.sessions.create(sessionParams);
+    const session = await createCheckoutSession(
+      this.stripe,
+      sessionParams,
+      recoverWith(this.refresher, input.userId, input.userEmail)
+    );
 
     console.info('unlimited.checkout.session_created', {
       user_id: input.userId,
