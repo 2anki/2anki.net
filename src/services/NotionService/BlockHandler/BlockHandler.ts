@@ -828,6 +828,77 @@ class BlockHandler implements IBlockRenderer {
   // sections, not cards: replace them with their (recursively expanded)
   // children and keep the heading itself as a plain heading so the tag and
   // hierarchy maps still see the section.
+  // A two-column layout is a visual arrangement, not a card type: a column_list
+  // holding toggles used to be skipped whole (column_list is not a flashcard
+  // type and columns are not recursed into), so every toggle inside a
+  // side-by-side layout was dropped from the deck. Flatten each top-level
+  // column_list into its columns' children, in reading order, so the normal
+  // walk finds the cards inside. Anki cards are single-column anyway, so the
+  // horizontal split carries no meaning worth preserving. Skipped when the user
+  // made column_list itself a flashcard type — that path builds a deliberate
+  // two-column Q/A card instead (buildColumnListCard).
+  private async expandColumnLists(
+    blocks: GetBlockResponse[],
+    depth = 0,
+    seen: Set<string> = new Set<string>()
+  ): Promise<GetBlockResponse[]> {
+    const maxDepth = 5;
+    if (depth >= maxDepth) {
+      return blocks;
+    }
+
+    const expanded: GetBlockResponse[] = [];
+    for (const block of blocks) {
+      if (
+        !isFullBlock(block) ||
+        !isColumnList(block) ||
+        !block.has_children ||
+        seen.has(block.id)
+      ) {
+        expanded.push(block);
+        continue;
+      }
+      seen.add(block.id);
+      let content: GetBlockResponse[];
+      try {
+        content = await this.fetchColumnListContent(block.id);
+      } catch (error) {
+        console.info(
+          '[column-list] flatten fetch failed, keeping column layout as-is'
+        );
+        console.error(error);
+        expanded.push(block);
+        continue;
+      }
+      const flattened = await this.expandColumnLists(content, depth + 1, seen);
+      expanded.push(...flattened);
+    }
+    return expanded;
+  }
+
+  private async fetchColumnListContent(
+    columnListId: string
+  ): Promise<GetBlockResponse[]> {
+    const columns = await getColumns(columnListId, this);
+    const content: GetBlockResponse[] = [];
+    for (const column of columns) {
+      const response = await this.api.getBlocks({
+        createdAt: column.created_time,
+        lastEditedAt: column.last_edited_time,
+        id: column.id,
+        all: this.useAll,
+        type: column.type,
+      });
+      const children = await expandSyncedBlocks(
+        response.results,
+        this.api,
+        this.useAll
+      );
+      content.push(...children);
+    }
+    return content;
+  }
+
   private async expandToggleHeadingSections(
     blocks: GetBlockResponse[],
     flashCardTypes: string[],
@@ -923,8 +994,11 @@ class BlockHandler implements IBlockRenderer {
       this.useAll
     );
     const flashCardTypes = rules.flaschardTypeNames();
+    const columnFlattened = rules.useColums()
+      ? topLevelBlocks
+      : await this.expandColumnLists(topLevelBlocks);
     const blocks = await this.expandToggleHeadingSections(
-      topLevelBlocks,
+      columnFlattened,
       flashCardTypes
     );
 
