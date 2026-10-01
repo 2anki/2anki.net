@@ -98,6 +98,11 @@ const PAGE_LIKE_DECK_TYPES = new Set([
   'child_database',
 ]);
 
+// Blocks that the top-level walk turns into sub-decks or recurses into rather
+// than cards. They are excluded when flattening a column layout so a child page
+// nested in a column keeps its existing behaviour instead of becoming a sub-deck.
+const NON_CARD_DECK_TYPES = new Set(['child_page', 'child_database']);
+
 function activeNonPageDeckTypes(rules: ParserRules): Set<string> {
   return new Set(
     rules.deckTypes().filter((type) => !PAGE_LIKE_DECK_TYPES.has(type))
@@ -832,11 +837,14 @@ class BlockHandler implements IBlockRenderer {
   // holding toggles used to be skipped whole (column_list is not a flashcard
   // type and columns are not recursed into), so every toggle inside a
   // side-by-side layout was dropped from the deck. Flatten each top-level
-  // column_list into its columns' children, in reading order, so the normal
-  // walk finds the cards inside. Anki cards are single-column anyway, so the
-  // horizontal split carries no meaning worth preserving. Skipped when the user
-  // made column_list itself a flashcard type — that path builds a deliberate
-  // two-column Q/A card instead (buildColumnListCard).
+  // column_list into its columns' card-bearing children, in reading order, so
+  // the normal walk finds the cards inside. Anki cards are single-column anyway,
+  // so the horizontal split carries no meaning worth preserving. The result
+  // feeds only the card-extraction list, never the sub-deck/child-page walks, so
+  // child_page and child_database inside a column keep their existing behaviour
+  // (not turned into sub-decks) and are dropped here rather than flattened.
+  // Callers skip this entirely when the user made column_list a flashcard or
+  // deck type — those paths own the column_list block.
   private async expandColumnLists(
     blocks: GetBlockResponse[],
     depth = 0,
@@ -894,7 +902,12 @@ class BlockHandler implements IBlockRenderer {
         this.api,
         this.useAll
       );
-      content.push(...children);
+      for (const child of children) {
+        if (isFullBlock(child) && NON_CARD_DECK_TYPES.has(child.type)) {
+          continue;
+        }
+        content.push(child);
+      }
     }
     return content;
   }
@@ -994,13 +1007,20 @@ class BlockHandler implements IBlockRenderer {
       this.useAll
     );
     const flashCardTypes = rules.flaschardTypeNames();
-    const columnFlattened = rules.useColums()
-      ? topLevelBlocks
-      : await this.expandColumnLists(topLevelBlocks);
     const blocks = await this.expandToggleHeadingSections(
-      columnFlattened,
+      topLevelBlocks,
       flashCardTypes
     );
+    // `cardSource` flattens top-level column layouts so toggles nested in a
+    // two-column layout become cards. It is kept separate from `blocks`: the
+    // heading tag/breadcrumb maps and the sub-deck / child-page walks run over
+    // `blocks`, so a column's own headings never retag cards outside it and a
+    // child page inside a column is not turned into a sub-deck. Skipped when the
+    // user made column_list a flashcard or deck type — those paths own the block.
+    const cardSource =
+      rules.useColums() || rules.deckTypes().includes('column_list')
+        ? blocks
+        : await this.expandColumnLists(blocks);
 
     const title = await this.api.getPageTitle(page, this.settings);
     if (!this.firstPageTitle) {
@@ -1027,7 +1047,7 @@ class BlockHandler implements IBlockRenderer {
           ) === 'card'
         );
       };
-      const cBlocks = blocks.filter(isCardBlock);
+      const cBlocks = cardSource.filter(isCardBlock);
       const headingTagMap =
         rules.TAGS === 'heading'
           ? buildHeadingTagMap(blocks, isCardBlock)
@@ -1062,7 +1082,7 @@ class BlockHandler implements IBlockRenderer {
         if (typeof card.notionId === 'string') globalSeenIds.add(card.notionId);
         return true;
       });
-      cards = this.rescueEmptyCards(cards, blocks);
+      cards = this.rescueEmptyCards(cards, cardSource);
       const deck = new Deck(
         currentDeckName,
         Deck.CleanCards(cards),
