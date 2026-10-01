@@ -106,6 +106,7 @@ class UsersController {
         return res.status(400).send({ message: 'invalid' });
       }
       await this.authService.logOutEverywhere(owner.id);
+      await this.userService.markEmailVerified(owner.id.toString());
       res.status(200).send({ message: 'ok' });
     } catch (error) {
       console.info('Update password failed');
