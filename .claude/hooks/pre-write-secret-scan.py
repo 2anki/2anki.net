@@ -101,7 +101,14 @@ def is_test_or_fixture(path):
         or "/test/" in p
         or "/__tests__/" in p
         or "/fixtures/" in p
-        or p.endswith("env.example")
+        # Anchored on a separator deliberately. A bare endswith("env.example")
+        # would also exempt prodenv.example or secretenv.example, which is an
+        # allowlist widening disguised as a typo fix. This repo's file is
+        # src/env.example (no leading dot); the dotted form is kept for any
+        # workspace that adds one.
+        or p.endswith("/env.example")
+        or p.endswith("/.env.example")
+        or p in ("env.example", ".env.example")
     )
 
 
