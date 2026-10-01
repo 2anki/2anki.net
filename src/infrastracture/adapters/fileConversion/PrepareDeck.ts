@@ -167,6 +167,15 @@ interface PrepareDeckResult {
   inducedRule?: InducedRescue;
   guidEntries?: IssuedCardGuid[];
   uploadIdentityStats?: UploadIdentityStats;
+  pdfPageCount?: number;
+}
+
+function sumPdfPageCount(convertedFiles: ConvertedFile[]): number | undefined {
+  const total = convertedFiles.reduce(
+    (sum, f) => sum + (f.pdfPageCount ?? 0),
+    0
+  );
+  return total > 0 ? total : undefined;
 }
 
 // A rejected rescue must not ride a deck that still shipped through a later
@@ -475,6 +484,7 @@ interface ConvertedFile {
   imageFallback?: boolean;
   droppedImageCount?: number;
   extraFiles?: PdfHtmlImage[];
+  pdfPageCount?: number;
 }
 
 // Embedded-figure extraction is opt-out via the same embed-images CardOption
@@ -598,6 +608,7 @@ async function convertPdfByAutoDetection(
       contents: Buffer.from(autoResult.html),
       droppedImageCount: autoResult.droppedImageCount,
       extraFiles: autoResult.images,
+      pdfPageCount: autoResult.pageCount,
     };
   }
 
@@ -611,7 +622,8 @@ async function convertPdfByAutoDetection(
     cardsPerPage,
     durationMs: Date.now() - t0,
   });
-  return convertPdfPagesToImagesFile(file, input);
+  const imagesFile = await convertPdfPagesToImagesFile(file, input);
+  return { ...imagesFile, pdfPageCount: autoResult.pageCount };
 }
 
 // Both build paths must hand the parser the same file set: the originals, the
@@ -826,6 +838,7 @@ async function buildParserResult(
         guidEntries: parser.issuedGuidEntries,
         uploadIdentityStats: uploadIdentityStatsFor(input, parser),
         cardsHeldBack: parser.cardsHeldBack,
+        pdfPageCount: sumPdfPageCount(convertedFiles),
       };
     }
   }
@@ -860,6 +873,7 @@ async function buildParserResult(
     guidEntries: parser.issuedGuidEntries,
     uploadIdentityStats: uploadIdentityStatsFor(input, parser),
     cardsHeldBack: parser.cardsHeldBack,
+    pdfPageCount: sumPdfPageCount(convertedFiles),
   };
 }
 
@@ -1073,6 +1087,7 @@ async function buildClaudeDeck(
     ),
     expiredNotionImageCount: 0,
     emptyBackCount: 0,
+    pdfPageCount: sumPdfPageCount(convertedFiles),
   };
 }
 

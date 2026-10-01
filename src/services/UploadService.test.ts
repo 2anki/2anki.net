@@ -735,6 +735,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     packages: Array<{
       name: string;
       cardCount: number;
+      pdfPageCount?: number;
       guidEntries?: IssuedCardGuid[];
       uploadIdentityStats?: {
         replayed: number;
@@ -795,6 +796,62 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
     expect(startOrder).toBeGreaterThanOrEqual(0);
     expect(startOrder).toBeLessThan(successOrder);
+  });
+
+  it('tags conversion_succeeded with the PDF page-count bucket on the sync path', async () => {
+    mockPackages([{ name: 'deck', cardCount: 12, pdfPageCount: 42 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'lecture.pdf',
+          mimetype: 'application/pdf',
+          size: 2048,
+          path: '/tmp/lecture.pdf',
+        },
+      ],
+    } as unknown as Partial<express.Request>);
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_succeeded',
+      expect.objectContaining({
+        props: expect.objectContaining({
+          input_format: 'pdf',
+          card_count_bucket: '3-49',
+          page_count_bucket: '21-50',
+        }),
+      })
+    );
+  });
+
+  it('omits the PDF page-count bucket when no PDF pages were converted', async () => {
+    mockPackages([{ name: 'deck', cardCount: 10 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    const successCall = trackMock.mock.calls.find(
+      (call) => call[0] === 'conversion_succeeded'
+    );
+    expect(successCall).toBeDefined();
+    expect(successCall?.[1].props).not.toHaveProperty('page_count_bucket');
   });
 
   it('redirects a logged-in free user over the monthly limit to /limit?kind=card_count and does not send the deck', async () => {
