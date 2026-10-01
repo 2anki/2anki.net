@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { track } from '../../lib/analytics/track';
+import { markOnboarded } from '../../lib/backend/markOnboarded';
 import { storePassToken } from '../../lib/anonymousPass';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
 import useQuery from '../../lib/hooks/useQuery';
@@ -108,8 +109,9 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     const user = userLocals?.user;
     if (user?.id == null) return;
     if (!isFreshSignup(user.created_at, user.onboarded_at)) return;
-    if (globalThis.sessionStorage?.getItem(SIGNUP_FLAG_KEY) != null) return;
     signupTracked.current = true;
+    void markOnboarded();
+    if (globalThis.sessionStorage?.getItem(SIGNUP_FLAG_KEY) != null) return;
     globalThis.sessionStorage?.setItem(SIGNUP_FLAG_KEY, '1');
     track('signup_completed', { method: 'oauth' });
   }, [userLocals]);
