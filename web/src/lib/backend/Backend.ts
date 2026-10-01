@@ -3,6 +3,14 @@ import Cookies from 'universal-cookie';
 import { NotionResource } from '../interfaces/NotionResource';
 import type JobResponse from '@server/types/JobResponse';
 import type { JobsId } from '@server/data_layer/public/Jobs';
+import type { AnkiWebSyncStatus } from '@server/types/ankify/AnkiWebSyncStatus';
+import type { DeckMaturityResult as DeckMaturity } from '@server/types/ankify/DeckMaturity';
+import type {
+  LeechNote,
+  LeechNoteField,
+  ListLeechesResult as LeechList,
+} from '@server/types/ankify/Leeches';
+import type { ReviewCard as ReviewQueueCard } from '@server/types/ankify/Review';
 import { cancelPendingSync } from '../data_layer/userPreferencesSync';
 import AnkifyClient from '../interfaces/AnkifyClient';
 import { AppStoreLinks } from '../interfaces/AppStoreLinks';
@@ -33,42 +41,14 @@ export class TrackerSchemaError extends Error {
   }
 }
 
-export type AnkiWebSyncStatus = 'synced' | 'failed' | 'skipped';
-
-export type DeckMaturity =
-  | { connected: false }
-  | {
-      connected: true;
-      matureCount: number;
-      total: number;
-      avgIntervalDays: number;
-    };
-
-export interface LeechNoteField {
-  name: string;
-  value: string;
-}
-
-export interface LeechNote {
-  noteId: number;
-  deckName: string;
-  modelName: string;
-  fields: LeechNoteField[];
-  tags: string[];
-  lapses: number;
-  suspended: boolean;
-}
-
-export type LeechList =
-  | { connected: false }
-  | { connected: true; leeches: LeechNote[] };
-
-export interface ReviewQueueCard {
-  cardId: number;
-  questionHtml: string;
-  answerHtml: string;
-  css: string;
-}
+export type {
+  AnkiWebSyncStatus,
+  DeckMaturity,
+  LeechList,
+  LeechNote,
+  LeechNoteField,
+  ReviewQueueCard,
+};
 
 export type ReviewQueue =
   | { connected: true; cardIds: number[] }

@@ -3,24 +3,22 @@ import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../data_layer/a
 import { userOwnsDeck } from '../../lib/ankify/deckOwnership';
 import { AnkiConnectFactory } from './GetAnkifyStatsUseCase';
 import { DeckNotOwnedError } from './OpenDeckInAnkiUseCase';
+import type {
+  DeckMaturityConnected,
+  DeckMaturityOffline,
+  DeckMaturityResult,
+} from '../../types/ankify/DeckMaturity';
+
+export type {
+  DeckMaturityConnected,
+  DeckMaturityOffline,
+  DeckMaturityResult,
+};
 
 const MATURE_INTERVAL_DAYS = 21;
 
 const escapeDeckQueryValue = (deck: string): string =>
   deck.split('\\').join('\\\\').split('"').join('\\"');
-
-export interface DeckMaturityOffline {
-  connected: false;
-}
-
-export interface DeckMaturityConnected {
-  connected: true;
-  matureCount: number;
-  total: number;
-  avgIntervalDays: number;
-}
-
-export type DeckMaturityResult = DeckMaturityOffline | DeckMaturityConnected;
 
 export interface GetDeckMaturityInput {
   owner: number;

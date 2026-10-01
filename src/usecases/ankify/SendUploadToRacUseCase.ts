@@ -42,7 +42,9 @@ export class UploadNotFoundError extends Error {
   }
 }
 
-export type AnkiWebSyncStatus = 'synced' | 'failed' | 'skipped';
+import type { AnkiWebSyncStatus } from '../../types/ankify/AnkiWebSyncStatus';
+
+export type { AnkiWebSyncStatus };
 
 export interface SendUploadToRacResult {
   client: AnkifyClient;

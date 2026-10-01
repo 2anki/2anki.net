@@ -3,13 +3,9 @@ import { AnkiConnectFactory } from './GetAnkifyStatsUseCase';
 import { inlineReviewMedia } from './inlineReviewMedia';
 import { REVIEW_MEDIA_CSS } from './reviewMediaCss';
 import { buildCardExistsQuery } from './reviewQueries';
+import type { ReviewCard } from '../../types/ankify/Review';
 
-export interface ReviewCard {
-  cardId: number;
-  questionHtml: string;
-  answerHtml: string;
-  css: string;
-}
+export type { ReviewCard };
 
 export type GetReviewCardResult =
   | { connected: true; card: ReviewCard | null }

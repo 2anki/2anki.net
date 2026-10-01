@@ -8,34 +8,23 @@ import {
 } from '../../services/ankify/AnkiConnectClient';
 import { AnkiConnectFactory } from './GetAnkifyStatsUseCase';
 import { buildLeechListQuery } from './leechQueries';
+import type {
+  LeechNote,
+  LeechNoteField,
+  ListLeechesConnected,
+  ListLeechesOffline,
+  ListLeechesResult,
+} from '../../types/ankify/Leeches';
+
+export type {
+  LeechNote,
+  LeechNoteField,
+  ListLeechesConnected,
+  ListLeechesOffline,
+  ListLeechesResult,
+};
 
 const SUSPENDED_QUEUE = -1;
-
-export interface LeechNoteField {
-  name: string;
-  value: string;
-}
-
-export interface LeechNote {
-  noteId: number;
-  deckName: string;
-  modelName: string;
-  fields: LeechNoteField[];
-  tags: string[];
-  lapses: number;
-  suspended: boolean;
-}
-
-export interface ListLeechesOffline {
-  connected: false;
-}
-
-export interface ListLeechesConnected {
-  connected: true;
-  leeches: LeechNote[];
-}
-
-export type ListLeechesResult = ListLeechesOffline | ListLeechesConnected;
 
 export interface ListLeechesInput {
   owner: number;
