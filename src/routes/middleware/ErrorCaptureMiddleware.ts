@@ -9,6 +9,7 @@ import { resolveClientIp } from '../../lib/rateLimit/ipHelpers';
 import { buildUnknownPythonErrorContext } from '../../lib/anki/scrubPythonRawOutput';
 import { isLimitError } from '../../lib/misc/isLimitError';
 import { isExpectedClientFault } from '../../lib/misc/isExpectedClientFault';
+import { redactStripeIds } from '../../lib/log/redactStripeIds';
 
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -45,8 +46,9 @@ export const makeErrorCaptureMiddleware = (
       next(err);
       return;
     }
+    const message = redactStripeIds(err?.message ?? String(err));
+    const stack = err?.stack == null ? null : redactStripeIds(err.stack);
     try {
-      const message = err?.message ?? String(err);
       const messageHash = sha256(message);
       const ipHash = sha256(resolveClientIp(req));
 
@@ -63,7 +65,7 @@ export const makeErrorCaptureMiddleware = (
           source: 'server',
           message_hash: messageHash,
           message,
-          stack: err?.stack ?? null,
+          stack,
           url: req.originalUrl ?? null,
           release,
           ip_hash: ipHash,
@@ -74,11 +76,10 @@ export const makeErrorCaptureMiddleware = (
       }
     } catch {
       if (writeFallback != null) {
-        const message = err?.message ?? String(err);
         writeFallback({
           source: 'server',
           message,
-          stack: err?.stack,
+          stack: stack ?? undefined,
           capturedAt: new Date().toISOString(),
           phase: 'db-outage',
         });

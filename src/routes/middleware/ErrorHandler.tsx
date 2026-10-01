@@ -1,11 +1,13 @@
 import express from 'express';
 import fs from 'fs';
+import { inspect } from 'node:util';
 import multer from 'multer';
 import nodemailer from 'nodemailer';
 import { UploadedFile } from '../../lib/storage/types';
 import { isLimitError } from '../../lib/misc/isLimitError';
 import { isExpectedClientFault } from '../../lib/misc/isExpectedClientFault';
 import { isEmptyPayload } from '../../lib/misc/isEmptyPayload';
+import { redactStripeIds } from '../../lib/log/redactStripeIds';
 import { preserveFilesForDebugging } from '../../lib/debug/preserveFilesForDebugging';
 import { shouldShareFilesForDebugging } from './shouldShareFilesForDebugging';
 import * as cheerio from 'cheerio';
@@ -93,7 +95,7 @@ export default async function ErrorHandler(
 
   if (!quietError) {
     console.info('Send error');
-    console.error(err);
+    console.error(redactStripeIds(inspect(err)));
     const canShareFiles = shouldShareFilesForDebugging(req.body);
     if (canShareFiles && !isEmptyPayload(uploadedFiles)) {
       preserveFilesForDebugging(req, uploadedFiles, err);
