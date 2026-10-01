@@ -334,11 +334,19 @@ describe('PhotoToFlashcardsController client attribution', () => {
     );
   });
 
+  // An object literal indexed by client input resolves through
+  // Object.prototype, so source="toString" would hand a Function to the
+  // analytics event. These four names are the reason the allowlist is a Map.
   it.each([
     ['an unknown name', 'desktop'],
     ['a number', 42],
     ['an object', { web: true }],
     ['an empty string', ''],
+    ['toString', 'toString'],
+    ['constructor', 'constructor'],
+    ['hasOwnProperty', 'hasOwnProperty'],
+    ['valueOf', 'valueOf'],
+    ['__proto__', '__proto__'],
   ])('does not trust %s as a surface name', async (_label, source) => {
     const useCase = makeUseCase();
     const controller = new PhotoToFlashcardsController(useCase);

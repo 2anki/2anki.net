@@ -29,9 +29,14 @@ const ALLOWED_CARD_STYLES: PhotoCardStyle[] = ['generative', 'heading-driven'];
 // Which client sent the photo. Closed vocabulary - a client naming anything
 // else is treated as unattributed rather than silently trusted, so the bucket
 // can only shrink as clients are taught to declare themselves.
-const PHOTO_CLIENT_SURFACE: Record<string, string> = {
-  web: 'photo_to_deck_web',
-};
+//
+// A Map, not an object literal: an object indexed by a client-supplied string
+// resolves through Object.prototype, so source="toString" returns a Function
+// rather than undefined and that Function lands in the analytics event this
+// code exists to make trustworthy. A Map only ever sees its own keys.
+const PHOTO_CLIENT_SURFACE = new Map<string, string>([
+  ['web', 'photo_to_deck_web'],
+]);
 
 // Until #4603 this route passed no surface at all, so every call through it
 // landed on the use case's 'photo_to_deck' default - which read like a real
@@ -86,7 +91,7 @@ function parseClientSurface(value: unknown): string {
   if (typeof value !== 'string') {
     return UNATTRIBUTED_SURFACE;
   }
-  return PHOTO_CLIENT_SURFACE[value] ?? UNATTRIBUTED_SURFACE;
+  return PHOTO_CLIENT_SURFACE.get(value) ?? UNATTRIBUTED_SURFACE;
 }
 
 export class PhotoToFlashcardsController {
