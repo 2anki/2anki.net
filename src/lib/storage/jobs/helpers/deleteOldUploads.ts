@@ -6,6 +6,7 @@ import { deleteNonSubScriberUploadsInDatabase } from './deleteNonSubScriberUploa
 import { deleteDanglingUploadsInBucket } from './deleteDanglingUploadsInBucket';
 import { deleteDeadUploadRowsInDatabase } from './deleteDeadUploadRowsInDatabase';
 import { deleteExpiredHeldDecks } from './deleteExpiredHeldDecks';
+import { deleteExpiredRecoveryDecks } from './deleteExpiredRecoveryDecks';
 
 export const MS_21 = CLEANUP_AGE_SECONDS * 1000;
 
@@ -60,5 +61,6 @@ export default async function deleteOldUploads(db: Knex) {
   await deleteDanglingUploadsInBucket(db, storage);
   await deleteDeadUploadRowsInDatabase(db, storage);
   await deleteExpiredHeldDecks(db, storage);
+  await deleteExpiredRecoveryDecks(storage);
   await deleteResolvedFeedbackAttachments(db, storage);
 }

@@ -440,6 +440,7 @@ function UploadForm({
   const queryClient = useQueryClient();
   const isAuthenticated = userLocals?.user?.id != null;
   const [dayPassPending, setDayPassPending] = useState(false);
+  const [anonCopyRecovered, setAnonCopyRecovered] = useState(false);
   const [dayPassError, setDayPassError] = useState<string | null>(null);
   const showSignInPrompt = userLocals != null && !isAuthenticated;
   const cardUsage = useCardUsage(isAuthenticated);
@@ -1033,12 +1034,53 @@ function UploadForm({
     return true;
   };
 
+  const recoverAnonymousDeck = async (
+    error: unknown,
+    uploadedFiles: File[],
+    submittedAt: number,
+    recoveryToken: string | null
+  ): Promise<boolean> => {
+    if (!isNetworkThrownError(error)) return false;
+    if (isAuthenticated || recoveryToken == null) return false;
+    const target = uploadedFiles[0];
+    if (target == null) return false;
+
+    let deck: Blob | null;
+    try {
+      deck = await get2ankiApi().getAnonymousRecoveredDeck(recoveryToken);
+    } catch {
+      return false;
+    }
+    if (deck == null) return false;
+
+    globalThis.sessionStorage?.removeItem(REATTACH_FILENAME_KEY);
+    setDeckName(target.name.replace(/\.[^.]+$/, ''));
+    setCardCount(null);
+    setDownloadLink(globalThis.URL.createObjectURL(deck));
+    setDownloadRecovered(true);
+    setAnonCopyRecovered(true);
+    setProgressWidth(100);
+    setZoneState('success');
+    track('upload_failed', {
+      reason: 'network',
+      recovered: true,
+      source: 'anon_recovery',
+      fileSizeBytes: target.size ?? null,
+      elapsedSeconds: Math.round((Date.now() - submittedAt) / 1000),
+    });
+    return true;
+  };
+
   const runFileUpload = async (
     formData: FormData,
     uploadedFiles: File[],
     isRetry: boolean
   ): Promise<boolean> => {
     const submittedAt = Date.now();
+    const recoveryToken = isAuthenticated
+      ? null
+      : (globalThis.crypto?.randomUUID?.() ?? null);
+    setAnonCopyRecovered(false);
     setZoneState('converting');
     saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
     setNetworkRetryFiles(null);
@@ -1050,8 +1092,11 @@ function UploadForm({
     try {
       await assertFilesReadable(uploadedFiles);
       const passToken = getStoredPassToken();
-      const uploadHeaders: HeadersInit =
+      const uploadHeaders: Record<string, string> =
         passToken == null ? {} : { 'X-Pass-Token': passToken };
+      if (recoveryToken != null) {
+        uploadHeaders['X-Recovery-Token'] = recoveryToken;
+      }
       const request = await globalThis.fetch('/api/upload/file', {
         method: 'post',
         headers: uploadHeaders,
@@ -1071,6 +1116,16 @@ function UploadForm({
       await applyConversionSuccess(request, conversionSuccessHandlers);
     } catch (error) {
       if (await recoverSignedInDeck(error, uploadedFiles, submittedAt)) {
+        return true;
+      }
+      if (
+        await recoverAnonymousDeck(
+          error,
+          uploadedFiles,
+          submittedAt,
+          recoveryToken
+        )
+      ) {
         return true;
       }
       return handleUploadError(error, uploadedFiles, isRetry, submittedAt);
@@ -1294,7 +1349,9 @@ function UploadForm({
       {downloadRecovered && downloadLink ? (
         <>
           <p className={formStyles.successSecondary}>
-            {t('upload.form.downloadRecoveredNote')}
+            {anonCopyRecovered
+              ? t('upload.form.downloadRecoveredNoteAnon')
+              : t('upload.form.downloadRecoveredNote')}
           </p>
           <a
             href={downloadLink}
@@ -1367,7 +1424,10 @@ function UploadForm({
         </button>
       )}
       {successOffer === 'anon_signup' && cardsHeldBack === 0 && (
-        <CreateAccountNotice deckName={deckName} />
+        <CreateAccountNotice
+          deckName={deckName}
+          secondary={downloadRecovered}
+        />
       )}
       <button
         type="button"

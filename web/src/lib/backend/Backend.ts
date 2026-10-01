@@ -396,6 +396,17 @@ export class Backend {
     return isHeldDeckSummary(body) ? body : null;
   }
 
+  async getAnonymousRecoveredDeck(token: string): Promise<Blob | null> {
+    const response = await fetch(
+      `${this.baseURL}download/recover/${encodeURIComponent(token)}`,
+      { credentials: 'include' }
+    );
+    if (response.status !== OK) {
+      return null;
+    }
+    return response.blob();
+  }
+
   async claimHeldDeck(): Promise<ClaimHeldDeckResult> {
     const response = await post(`${this.baseURL}upload/claim`, {});
     if (response.status === OK) {

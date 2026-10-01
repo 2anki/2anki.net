@@ -167,6 +167,7 @@
       "deckReady": "Your deck is ready",
       "savedToDownloads": "{{deckName}} was saved to your downloads",
       "downloadRecoveredNote": "Your download didn't finish — the deck is saved to your downloads.",
+      "downloadRecoveredNoteAnon": "Your download didn't finish — your deck is ready. Download it now; we only keep it for a day.",
       "creditsUsed_one": "This deck used {{count}} AI credit.",
       "creditsUsed_other": "This deck used {{count}} AI credits.",
       "downloadDeck": "Download deck",

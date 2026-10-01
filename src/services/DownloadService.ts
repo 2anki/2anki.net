@@ -2,6 +2,7 @@ import StorageHandler, {
   type StoredObjectStream,
 } from '../lib/storage/StorageHandler';
 import DownloadRepository from '../data_layer/DownloadRepository';
+import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
 
 const TRANSIENT_ERROR_NAMES = new Set([
   'TimeoutError',
@@ -68,6 +69,14 @@ class DownloadService {
       return null;
     }
     return storage.getFileStream(fileEntry.key);
+  }
+
+  getAnonymousRecoveryStream(
+    anonId: string,
+    token: string,
+    storage: StorageHandler
+  ): Promise<StoredObjectStream | undefined> {
+    return storage.getFileStream(anonRecoveryKey(anonId, token));
   }
 
   async getFilename(owner: string, key: string): Promise<string | null> {

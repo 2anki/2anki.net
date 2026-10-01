@@ -14,6 +14,7 @@ import { formatDeckName } from '../lib/formatDeckName';
 import JobRepository from '../data_layer/JobRepository';
 import { track } from '../services/events/track';
 import { createZipArchive } from '../lib/archiver/createZipArchive';
+import { isRecoveryToken } from '../lib/upload/anonymousRecovery';
 
 export interface DownloadFileViewModel {
   originalName: string;
@@ -137,6 +138,51 @@ class DownloadController {
         .send(
           "Download link expire, try converting again <a href='/upload'>upload</a>"
         );
+    }
+  }
+
+  // Serves the copy an anonymous sync upload left behind (#4651). Both the
+  // anon_id cookie and the per-upload token have to match, and neither is
+  // logged: the spool logs carry no owner for this path.
+  async getAnonymousRecovery(
+    req: Request,
+    res: Response,
+    storage: StorageHandler
+  ) {
+    const { token } = req.params;
+    if (!isRecoveryToken(token)) {
+      return res.status(400).send();
+    }
+    const { anonymousId } = resolveDownloadIdentity(req, res);
+    if (anonymousId == null) {
+      return res.status(404).send();
+    }
+    try {
+      const stored = await this.service.getAnonymousRecoveryStream(
+        anonymousId,
+        token,
+        storage
+      );
+      if (stored == null) {
+        return res.status(404).send();
+      }
+      res.setHeader('Content-Type', 'application/octet-stream');
+      await this.serveStoredObject(stored.body, res, null);
+    } catch (error) {
+      if (this.service.isMissingDownloadError(error)) {
+        return res.status(404).send();
+      }
+      if (this.service.isTransientStorageError(error)) {
+        return res
+          .status(503)
+          .send(
+            'Storage is busy right now. Try the download again in a moment.'
+          );
+      }
+      console.error('Anonymous recovery download failed', {
+        name: (error as { name?: string })?.name,
+      });
+      return res.status(404).send();
     }
   }
 
