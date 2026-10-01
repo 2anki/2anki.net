@@ -3353,6 +3353,20 @@ describe('UsersController.newPassword', () => {
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
+  it('still reports success when marking the email verified fails', async () => {
+    const { controller } = buildNewPasswordController({
+      markEmailVerified: jest.fn().mockRejectedValue(new Error('db down')),
+    });
+    const res = buildRes();
+    const next = jest.fn();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await controller.newPassword(buildReq(), res, next);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it('does not mark the email verified when the token no longer redeems', async () => {
     const { controller, markEmailVerified } = buildNewPasswordController({
       getUserByLiveResetToken: jest.fn().mockResolvedValue(null),
