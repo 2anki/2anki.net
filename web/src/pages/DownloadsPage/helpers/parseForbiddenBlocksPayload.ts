@@ -1,4 +1,5 @@
 import type JobResponse from '@server/types/JobResponse';
+import { NOTION_BLOCKS_FORBIDDEN_CODE } from './conversionSignalCodes';
 
 const NOTION_PAGE_JOB_TYPES = new Set(['page', 'database']);
 
@@ -18,7 +19,7 @@ export function parseForbiddenBlocksPayload(
   }
   if (parsed == null || typeof parsed !== 'object') return null;
   const payload = parsed as { code?: unknown; forbidden_blocks?: unknown };
-  if (payload.code !== 'notion_blocks_forbidden') return null;
+  if (payload.code !== NOTION_BLOCKS_FORBIDDEN_CODE) return null;
   const count = Number(payload.forbidden_blocks);
   if (!Number.isInteger(count) || count <= 0) return null;
   return { count };

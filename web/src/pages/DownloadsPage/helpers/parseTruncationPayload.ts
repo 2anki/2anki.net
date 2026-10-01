@@ -1,4 +1,5 @@
 import type JobResponse from '@server/types/JobResponse';
+import { NOTION_TRUNCATED_CODE } from './conversionSignalCodes';
 
 export interface TruncationPayload {
   blocksConverted: number;
@@ -27,7 +28,7 @@ export function parseTruncationPayload(
     blocks_converted?: unknown;
     sub_deck_rules_skipped?: unknown;
   };
-  if (payload.code !== 'notion_truncated') return null;
+  if (payload.code !== NOTION_TRUNCATED_CODE) return null;
   const blocksConverted = Number(payload.blocks_converted);
   if (!Number.isFinite(blocksConverted) || blocksConverted <= 0) return null;
   return {
