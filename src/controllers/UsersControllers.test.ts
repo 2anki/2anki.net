@@ -1126,6 +1126,47 @@ describe('UsersController.loginWithGoogle', () => {
     expect(register).not.toHaveBeenCalled();
   });
 
+  it('records a Google sign-in onto an existing unverified account', async () => {
+    trackMock.mockClear();
+    const getUserFrom = jest.fn().mockResolvedValue({
+      id: 9,
+      email: 'existing@example.com',
+      email_verified: false,
+      created_at: new Date('2025-01-01T00:00:00.000Z'),
+    });
+    const { controller } = buildGoogleController({ getUserFrom });
+    const req = {
+      query: { code: 'gauth-code' },
+      cookies: {},
+      headers: {},
+    } as unknown as express.Request;
+
+    await controller.loginWithGoogle(req, buildGoogleRes());
+
+    expect(trackMock).toHaveBeenCalledWith('unverified_account_signin', {
+      userId: 9,
+      props: { surface: 'google', account_age: 'over_30d' },
+    });
+  });
+
+  it('does not record a Google sign-in that creates the account', async () => {
+    trackMock.mockClear();
+    const { controller } = buildGoogleController();
+    const req = {
+      query: { code: 'gauth-code' },
+      cookies: {},
+      headers: {},
+    } as unknown as express.Request;
+
+    await controller.loginWithGoogle(req, buildGoogleRes());
+
+    expect(
+      trackMock.mock.calls.filter(
+        ([name]) => name === 'unverified_account_signin'
+      )
+    ).toHaveLength(0);
+  });
+
   it('redirects with error=google_signin_failed when the token exchange fails', async () => {
     const loginWithGoogle = jest.fn().mockResolvedValue({
       ok: false,

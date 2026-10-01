@@ -70,6 +70,7 @@ export const KNOWN_EVENTS = new Set([
   'ai_fallback_triggered',
   'feature_flag_changed',
   'account_created',
+  'unverified_account_signin',
   'account_offer_shown',
   'account_offer_clicked',
   'signup_completed',
