@@ -396,6 +396,22 @@ export class Backend {
     return isHeldDeckSummary(body) ? body : null;
   }
 
+  async getAnonymousRecoveredDeck(token: string): Promise<Blob | null> {
+    const response = await fetch(
+      `${this.baseURL}download/recover/${encodeURIComponent(token)}`,
+      { credentials: 'include' }
+    );
+    const contentType = response.headers?.get('Content-Type') ?? '';
+    if (
+      response.status !== OK ||
+      !contentType.includes('application/octet-stream')
+    ) {
+      return null;
+    }
+    const deck = await response.blob();
+    return deck.size > 0 ? deck : null;
+  }
+
   async claimHeldDeck(): Promise<ClaimHeldDeckResult> {
     const response = await post(`${this.baseURL}upload/claim`, {});
     if (response.status === OK) {

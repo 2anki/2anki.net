@@ -43,6 +43,15 @@
   border-color: var(--color-primary-hover);
 }
 
+.ctaSecondary {
+  color: var(--color-text-link);
+  background: transparent;
+}
+
+.ctaSecondary:hover {
+  color: var(--color-bg-primary);
+}
+
 @media (max-width: 600px) {
   .cta {
     align-self: stretch;

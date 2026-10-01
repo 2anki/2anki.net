@@ -2,7 +2,11 @@ import deleteOldUploads from './deleteOldUploads';
 import { safeParseAttachments } from './deleteOldUploads';
 
 function makeStorage() {
-  return { delete: jest.fn().mockResolvedValue(true) };
+  return {
+    delete: jest.fn().mockResolvedValue(true),
+    listObjectsByPrefix: jest.fn().mockResolvedValue([]),
+    deleteObjects: jest.fn().mockResolvedValue(undefined),
+  };
 }
 
 function makeDb(feedbackRows: { attachments: unknown }[] = []) {
@@ -183,5 +187,15 @@ describe('deleteResolvedFeedbackAttachments (via deleteOldUploads)', () => {
     await deleteOldUploads(dbFn);
 
     expect(dbFn).toHaveBeenCalledWith('held_decks');
+  });
+
+  it('sweeps expired anonymous recovery decks as part of the daily sweep', async () => {
+    const storage = makeStorage();
+    (StorageHandler as unknown as jest.Mock).mockImplementation(() => storage);
+    const { dbFn } = makeDb([]);
+
+    await deleteOldUploads(dbFn);
+
+    expect(storage.listObjectsByPrefix).toHaveBeenCalledWith('recover/');
   });
 });

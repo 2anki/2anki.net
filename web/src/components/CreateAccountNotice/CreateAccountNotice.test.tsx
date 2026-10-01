@@ -55,4 +55,16 @@ describe('CreateAccountNotice', () => {
       surface: 'upload_success_signup',
     });
   });
+
+  it('drops to the secondary style when another action leads', () => {
+    render(<CreateAccountNotice secondary />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('link').className).toMatch(/ctaSecondary/);
+  });
+
+  it('keeps the solid style by default', () => {
+    render(<CreateAccountNotice />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('link').className).not.toMatch(/ctaSecondary/);
+  });
 });

@@ -192,7 +192,14 @@ class StorageHandler {
   }
 
   async listByPrefix(prefix: string): Promise<string[]> {
-    const keys: string[] = [];
+    const objects = await this.listObjectsByPrefix(prefix);
+    return objects.map((obj) => obj.Key);
+  }
+
+  async listObjectsByPrefix(
+    prefix: string
+  ): Promise<{ Key: string; LastModified?: Date }[]> {
+    const objects: { Key: string; LastModified?: Date }[] = [];
     let continuationToken: string | undefined;
     let hasMore = true;
     while (hasMore) {
@@ -204,12 +211,14 @@ class StorageHandler {
         })
       );
       for (const obj of response.Contents ?? []) {
-        if (obj.Key != null) keys.push(obj.Key);
+        if (obj.Key != null) {
+          objects.push({ Key: obj.Key, LastModified: obj.LastModified });
+        }
       }
       continuationToken = response.NextContinuationToken;
       hasMore = Boolean(response.IsTruncated) && continuationToken != null;
     }
-    return keys;
+    return objects;
   }
 
   async deleteObjects(keys: string[]): Promise<void> {

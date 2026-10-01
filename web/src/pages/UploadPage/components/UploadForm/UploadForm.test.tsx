@@ -2901,3 +2901,201 @@ describe('UploadForm signed-in deck recovery', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('UploadForm anonymous deck recovery', () => {
+  const anonymousData = {
+    user: null,
+    locals: {
+      owner: 0,
+      patreon: false,
+      subscriber: false,
+      subscriptionInfo: { active: false, email: '', linked_email: '' },
+    },
+    linked_email: '',
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  beforeEach(() => {
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    globalThis.sessionStorage.clear();
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:recovered');
+    mockUseUserLocals.mockReturnValue({
+      data: anonymousData,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    delete (globalThis as AnalyticsGlobals).gtag;
+    delete (globalThis as AnalyticsGlobals).hj;
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    globalThis.sessionStorage.clear();
+  });
+
+  function selectFile(container: HTMLElement, name: string) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const file = new File(['x'], name, { type: 'application/pdf' });
+    Object.defineProperty(fileInput, 'files', {
+      value: [file],
+      configurable: true,
+    });
+    fileInput.removeAttribute('required');
+    return fileInput;
+  }
+
+  async function submitForm(container: HTMLElement) {
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+  }
+
+  function stubApi(getAnonymousRecoveredDeck: ReturnType<typeof vi.fn>) {
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getAnonymousRecoveredDeck,
+    } as unknown as ReturnType<typeof get2ankiApi>);
+  }
+
+  function uploadToken(fetchMock: ReturnType<typeof vi.fn>): string | null {
+    const call = fetchMock.mock.calls.find(
+      ([url]) => url === '/api/upload/file'
+    );
+    const headers = call?.[1]?.headers as Record<string, string> | undefined;
+    return headers?.['X-Recovery-Token'] ?? null;
+  }
+
+  it('sends a recovery token and fetches the stored deck when the response is lost', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+    const getAnonymousRecoveredDeck = vi
+      .fn()
+      .mockResolvedValue(new Blob(['apkg']));
+    stubApi(getAnonymousRecoveredDeck);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', 'blob:recovered');
+    const token = uploadToken(fetchMock);
+    expect(token).toMatch(/^[0-9a-f-]{36}$/);
+    expect(getAnonymousRecoveredDeck).toHaveBeenCalledWith(token);
+    expect(
+      screen.getByText(
+        "Your download didn't finish — your deck is ready. Download it now; we only keep it for a day."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Try again' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('falls back to the retry state when no deck was stored', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    stubApi(vi.fn().mockResolvedValue(null));
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    await screen.findByRole('button', { name: 'Try again' });
+    expect(
+      screen.queryByRole('link', { name: 'Download deck' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('fetches a copy that finished after the drop when the user taps Try again', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+    const getAnonymousRecoveredDeck = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(new Blob(['apkg']));
+    stubApi(getAnonymousRecoveredDeck);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', 'blob:recovered');
+    const token = uploadToken(fetchMock);
+    expect(getAnonymousRecoveredDeck).toHaveBeenNthCalledWith(2, token);
+    const uploads = fetchMock.mock.calls.filter(
+      ([url]) => url === '/api/upload/file'
+    );
+    expect(uploads).toHaveLength(1);
+  });
+
+  it('re-uploads with the same token when Try again finds no copy', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+    stubApi(vi.fn().mockResolvedValue(null));
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => {
+      const uploads = fetchMock.mock.calls.filter(
+        ([url]) => url === '/api/upload/file'
+      );
+      expect(uploads).toHaveLength(2);
+    });
+    const tokens = fetchMock.mock.calls
+      .filter(([url]) => url === '/api/upload/file')
+      .map(
+        ([, init]) =>
+          (init.headers as Record<string, string>)['X-Recovery-Token']
+      );
+    expect(tokens[1]).toBe(tokens[0]);
+  });
+
+  it('falls back to the retry state when the recovery lookup itself fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    stubApi(vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    await screen.findByRole('button', { name: 'Try again' });
+  });
+});

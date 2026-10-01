@@ -83,6 +83,7 @@ import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import UploadService, { resolveUploadWarning } from './UploadService';
+import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
 import {
   AiCreditsTrippedWithSalvage,
   DeckInfo,
@@ -4342,6 +4343,108 @@ describe('UploadService.handleSyncUpload — persisted copy for a signed-in owne
       'X-Download-Key',
       expect.anything()
     );
+  });
+});
+
+describe('UploadService.handleSyncUpload — anonymous recovery copy (#4651)', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  const token = '3f2b8c1e-9a4d-4e7f-8b21-5c6d7e8f9a0b';
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'upload-service-test');
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+  });
+
+  beforeEach(() => {
+    MockGeneratePackagesUseCase.mockClear();
+    mockStorageUploadFile.mockClear();
+    mockFirstApkg = Buffer.from('fake-apkg');
+    mockWorkspaceId = 'test-ws-id';
+    MockGeneratePackagesUseCase.mockImplementation(
+      () =>
+        ({
+          execute: jest.fn().mockResolvedValue({
+            packages: [{ name: 'deck', cardCount: 12 }],
+            warnings: [],
+          }),
+        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
+    );
+  });
+
+  function buildService() {
+    return new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+  }
+
+  it('stores the finished deck under the key the visitor can rebuild', async () => {
+    const req = buildRequest({
+      cookies: { anon_id: 'anon-recover' },
+      headers: { 'x-recovery-token': token },
+    });
+    const { res, capturedSend } = buildResponse();
+
+    await buildService().handleUpload(req, res);
+
+    expect(mockStorageUploadFile).toHaveBeenCalledWith(
+      anonRecoveryKey('anon-recover', token),
+      Buffer.from('fake-apkg')
+    );
+    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
+  });
+
+  it.each([
+    ['no token header', { cookies: { anon_id: 'anon-recover' }, headers: {} }],
+    [
+      'a malformed token',
+      {
+        cookies: { anon_id: 'anon-recover' },
+        headers: { 'x-recovery-token': '../held/x' },
+      },
+    ],
+    ['no anon_id cookie', { headers: { 'x-recovery-token': token } }],
+  ])('stores nothing with %s', async (_label, overrides) => {
+    const req = buildRequest(overrides as Partial<express.Request>);
+    const { res, capturedSend } = buildResponse();
+
+    await buildService().handleUpload(req, res);
+
+    expect(mockStorageUploadFile).not.toHaveBeenCalled();
+    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
+  });
+
+  it('stores no recovery copy for a signed-in owner', async () => {
+    const req = buildRequest({
+      cookies: { anon_id: 'anon-recover' },
+      headers: { 'x-recovery-token': token },
+    });
+    const { res } = buildResponse();
+    res.locals.owner = 42;
+
+    await buildService().handleUpload(req, res);
+
+    const keys = mockStorageUploadFile.mock.calls.map(([key]) => key);
+    expect(keys).not.toContain(anonRecoveryKey('anon-recover', token));
+  });
+
+  it('still sends the deck when the recovery copy cannot be stored', async () => {
+    mockStorageUploadFile.mockRejectedValueOnce(new Error('storage down'));
+    const req = buildRequest({
+      cookies: { anon_id: 'anon-recover' },
+      headers: { 'x-recovery-token': token },
+    });
+    const { res, capturedStatus, capturedSend } = buildResponse();
+
+    await buildService().handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
   });
 });
 

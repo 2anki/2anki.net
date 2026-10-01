@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JobsId } from '@server/data_layer/public/Jobs';
 import * as api from './api';
 import { Backend } from './Backend';
@@ -519,6 +519,69 @@ describe('Backend', () => {
       await expect(backend.deleteRules('page-xyz')).rejects.toThrow(
         'Failed to delete rules: 500'
       );
+    });
+  });
+
+  describe('getAnonymousRecoveredDeck', () => {
+    const token = '3f2b8c1e-9a4d-4e7f-8b21-5c6d7e8f9a0b';
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('returns the stored deck as a blob', async () => {
+      const blob = new Blob(['apkg']);
+      const fetchMock = vi.fn().mockResolvedValue({
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/octet-stream' }),
+        blob: () => Promise.resolve(blob),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(backend.getAnonymousRecoveredDeck(token)).resolves.toBe(
+        blob
+      );
+      expect(fetchMock).toHaveBeenCalledWith(`/api/download/recover/${token}`, {
+        credentials: 'include',
+      });
+    });
+
+    it('rejects a 200 that is not a deck', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          status: 200,
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+          blob: () => Promise.resolve(new Blob(['{"success":true}'])),
+        })
+      );
+
+      await expect(
+        backend.getAnonymousRecoveredDeck(token)
+      ).resolves.toBeNull();
+    });
+
+    it('rejects an empty body', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          status: 200,
+          headers: new Headers({ 'Content-Type': 'application/octet-stream' }),
+          blob: () => Promise.resolve(new Blob([])),
+        })
+      );
+
+      await expect(
+        backend.getAnonymousRecoveredDeck(token)
+      ).resolves.toBeNull();
+    });
+
+    it('returns null when nothing was stored', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 404 }));
+
+      await expect(
+        backend.getAnonymousRecoveredDeck(token)
+      ).resolves.toBeNull();
     });
   });
 });

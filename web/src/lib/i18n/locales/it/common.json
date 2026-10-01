@@ -167,6 +167,7 @@
       "deckReady": "Il tuo mazzo è pronto",
       "savedToDownloads": "{{deckName}} è stato salvato nei tuoi download",
       "downloadRecoveredNote": "Il download non è stato completato — il mazzo è salvato nei tuoi download.",
+      "downloadRecoveredNoteAnon": "Il download non è stato completato — il tuo mazzo è pronto. Scaricalo ora; lo conserviamo solo per un giorno.",
       "creditsUsed_one": "Questo mazzo ha usato {{count}} credito IA.",
       "creditsUsed_other": "Questo mazzo ha usato {{count}} crediti IA.",
       "downloadDeck": "Scarica il mazzo",

@@ -63,6 +63,41 @@ const DownloadRouter = () => {
 
   /**
    * @swagger
+   * /api/download/recover/{token}:
+   *   get:
+   *     summary: Recover an anonymous deck
+   *     description: Returns the deck an anonymous upload stored for a day, so a visitor whose upload response dropped can fetch it again. Matched to the anon_id cookie and the per-upload recovery token the client sent with the upload.
+   *     tags: [Download]
+   *     parameters:
+   *       - in: path
+   *         name: token
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Recovery token sent as X-Recovery-Token with the upload
+   *     responses:
+   *       200:
+   *         description: Deck found
+   *         content:
+   *           application/octet-stream:
+   *             schema:
+   *               type: string
+   *               format: binary
+   *       400:
+   *         description: Token is not a UUID
+   *       404:
+   *         description: No deck stored for this visitor and token
+   *       503:
+   *         description: Storage is busy
+   */
+  router.get('/api/download/recover/:token', (req, res) => {
+    const storage = new StorageHandler();
+    controller.getAnonymousRecovery(req, res, storage);
+  });
+
+  /**
+   * @swagger
    * /download/{id}:
    *   get:
    *     summary: Get download page

@@ -9,9 +9,13 @@ const SURFACE = 'upload_success_signup';
 
 interface CreateAccountNoticeProps {
   readonly deckName?: string;
+  readonly secondary?: boolean;
 }
 
-export function CreateAccountNotice({ deckName }: CreateAccountNoticeProps) {
+export function CreateAccountNotice({
+  deckName,
+  secondary = false,
+}: CreateAccountNoticeProps) {
   const { t } = useTranslation('account');
   const shownFiredRef = useRef(false);
 
@@ -32,7 +36,9 @@ export function CreateAccountNotice({ deckName }: CreateAccountNoticeProps) {
           : t('createAccount.bodyNoName')}
       </p>
       <Link
-        className={styles.cta}
+        className={
+          secondary ? `${styles.cta} ${styles.ctaSecondary}` : styles.cta
+        }
         to="/register?redirect=/upload"
         onClick={() => track('account_offer_clicked', { surface: SURFACE })}
       >

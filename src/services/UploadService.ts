@@ -94,6 +94,10 @@ import {
   type PartialDeliveryArm,
 } from '../lib/upload/anonymousPartialDelivery';
 import {
+  anonRecoveryKey,
+  readRecoveryToken,
+} from '../lib/upload/anonymousRecovery';
+import {
   generateDeckInfo,
   DeckInfo,
   AiCreditsTrippedWithSalvage,
@@ -1024,6 +1028,33 @@ class UploadService {
     }
   }
 
+  /**
+   * An anonymous deck has no My Decks row to fall back on, so a dropped
+   * response used to lose it (#4651). Keep a copy the uploading browser can
+   * fetch again for a day. Like persistSyncDeck, a failure here never fails
+   * the conversion, and nothing about the visitor or the key is logged.
+   */
+  private async storeAnonymousRecoveryCopy(
+    req: express.Request,
+    apkg: Buffer
+  ): Promise<void> {
+    const anonId = this.resolveAnonId(req);
+    const token = readRecoveryToken(req.headers ?? {});
+    if (anonId == null || token == null) {
+      return;
+    }
+    try {
+      await new StorageHandler().uploadFile(
+        anonRecoveryKey(anonId, token),
+        apkg
+      );
+    } catch {
+      console.error(
+        '[UploadService] could not store the anonymous recovery copy'
+      );
+    }
+  }
+
   async deleteUpload(owner: number, key: string) {
     const upload = await this.uploadRepository.findByKey(owner, key);
     const s = new StorageHandler();
@@ -1679,6 +1710,9 @@ class UploadService {
               this.resolvePersistedSource(req),
               res.locals.requestId
             );
+      if (owner == null) {
+        await this.storeAnonymousRecoveryCopy(req, apkg);
+      }
       const totalMcqCount = packages.reduce(
         (sum, p) => sum + (p.mcqCount ?? 0),
         0

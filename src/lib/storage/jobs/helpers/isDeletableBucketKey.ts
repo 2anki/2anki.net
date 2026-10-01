@@ -12,11 +12,16 @@
 // treatment-arm visitor over the cap can claim after signing up. It has its own
 // held_decks row and its own 24h expiry sweep, so the dangling-object walk must
 // leave it alone rather than delete a file a signup is about to claim.
+// 'recover/' holds an anonymous visitor's finished deck for a day so a dropped
+// response can be fetched again. Nothing references those keys by design, so
+// the dangling walk would count every one as an orphan and a busy day would
+// trip its deletion-volume alarm; deleteExpiredRecoveryDecks owns them.
 export const RESERVED_KEY_PREFIXES = [
   'mindmaps/',
   'io-drafts/',
   'assets/',
   'held/',
+  'recover/',
 ] as const;
 
 // An object is only orphaned once its owning row has had time to commit. A

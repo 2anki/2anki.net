@@ -718,3 +718,123 @@ describe('DownloadController.getFile expired link logging', () => {
     errorSpy.mockRestore();
   });
 });
+
+describe('DownloadController.getAnonymousRecovery', () => {
+  const token = '3f2b8c1e-9a4d-4e7f-8b21-5c6d7e8f9a0b';
+
+  function recoveryRequest(
+    params: Record<string, string>,
+    cookies: Record<string, string> = { anon_id: 'anon-1' }
+  ) {
+    return { params, cookies } as unknown as Request;
+  }
+
+  function recoveryService(overrides: Record<string, unknown> = {}) {
+    return {
+      ...makeService(),
+      getAnonymousRecoveryStream: jest
+        .fn()
+        .mockImplementation(async () => fakeApkgStream()),
+      isMissingDownloadError: (e: unknown) =>
+        (e as { name?: string })?.name?.includes('NoSuchKey') === true,
+      isTransientStorageError: () => false,
+      ...overrides,
+    } as {
+      getAnonymousRecoveryStream: jest.Mock;
+      [method: string]: unknown;
+    };
+  }
+
+  it('streams the stored deck for the visitor that made it', async () => {
+    const service = recoveryService();
+    const controller = new DownloadController(service as never);
+    const res = mockResponse();
+
+    await controller.getAnonymousRecovery(
+      recoveryRequest({ token }),
+      res,
+      {} as never
+    );
+    await res._done;
+
+    expect(service.getAnonymousRecoveryStream).toHaveBeenCalledWith(
+      'anon-1',
+      token,
+      {}
+    );
+    expect(Buffer.concat(res._chunks).toString()).toBe('fake-apkg');
+    expect(res._headers['Content-Type']).toBe('application/octet-stream');
+    expect(res._headers['Cache-Control']).toBe('private, no-store');
+  });
+
+  it('answers 400 for a token that is not a UUID', async () => {
+    const service = recoveryService();
+    const controller = new DownloadController(service as never);
+    const res = mockResponse();
+
+    await controller.getAnonymousRecovery(
+      recoveryRequest({ token: '..%2Fheld%2Fx' }),
+      res,
+      {} as never
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(service.getAnonymousRecoveryStream).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 without an anon_id cookie', async () => {
+    const service = recoveryService();
+    const controller = new DownloadController(service as never);
+    const res = mockResponse();
+
+    await controller.getAnonymousRecovery(
+      recoveryRequest({ token }, {}),
+      res,
+      {} as never
+    );
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(service.getAnonymousRecoveryStream).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 when no deck was stored', async () => {
+    const service = recoveryService({
+      getAnonymousRecoveryStream: jest
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('gone'), { name: 'NoSuchKey' })
+        ),
+    });
+    const controller = new DownloadController(service as never);
+    const res = mockResponse();
+
+    await controller.getAnonymousRecovery(
+      recoveryRequest({ token }),
+      res,
+      {} as never
+    );
+
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('answers 503 on a transient storage error', async () => {
+    const service = recoveryService({
+      getAnonymousRecoveryStream: jest
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('busy'), { name: 'SlowDown' })
+        ),
+      isTransientStorageError: () => true,
+    });
+    const controller = new DownloadController(service as never);
+    const res = mockResponse();
+
+    await controller.getAnonymousRecovery(
+      recoveryRequest({ token }),
+      res,
+      {} as never
+    );
+
+    expect(res.status).toHaveBeenCalledWith(503);
+  });
+});
