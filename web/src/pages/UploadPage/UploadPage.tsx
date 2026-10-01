@@ -76,6 +76,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const { data: userLocals } = useUserLocals();
   const pageViewTracked = useRef(false);
   const signupTracked = useRef(false);
+  const reattachTracked = useRef(false);
 
   const isSignedIn = userLocals?.user?.id != null;
   const isPaying = isPayingUser(userLocals?.locals);
@@ -103,6 +104,13 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     pageViewTracked.current = true;
     track('upload_page_viewed');
   }, []);
+
+  useEffect(() => {
+    if (reattachTracked.current) return;
+    if (reattachFilename == null) return;
+    reattachTracked.current = true;
+    track('upload_reattach_shown');
+  }, [reattachFilename]);
 
   useEffect(() => {
     if (signupTracked.current) return;
