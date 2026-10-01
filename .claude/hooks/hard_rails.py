@@ -7,6 +7,11 @@ the PR waits for Alexander in the GitHub UI instead. The harness itself
 (`.claude/`, `CLAUDE.md`, `.github/`) is a rail so an agent cannot rewrite its
 own gate or brief and self-merge. Widening or narrowing this list is its own
 PR — never folded into feature work.
+
+Three kinds of trigger, and they are not interchangeable. A name glob catches a
+surface by what it is called. An explicit path catches a known file. A content
+trigger catches a *value* wherever it lives, which is the only one that still
+works after the constant moves to a new file — prefer it for production limits.
 See `.claude/docs/autonomous-shipping.md`.
 """
 
@@ -43,8 +48,26 @@ EXPLICIT_FILES = (
     "src/server.ts",
     "src/lib/isPaying.ts",
     "src/lib/ankify/access.ts",
+    # Files whose entire job is to hold a production limit, listed as well as
+    # content-triggered so a rename or a refactor that drops the constant name
+    # still lands on the rail.
+    "src/lib/httpServerTimeouts.ts",
+    "src/lib/misc/getUploadLimits.ts",
+    "src/lib/claude/aiSpendGuard.ts",
 )
 
+# A production safety limit is a rail wherever it lives. CLAUDE.md states the
+# two strongest "never" rules in the repo over these values - never lower a
+# safety limit on an inference, and never swap a model on a paid path without a
+# cost-envelope check - and until now neither had a sensor: PR #4632 changed
+# Node's request timeout from 300s to 900s on every route and `rail_paths` plus
+# `rail_content_hits` both came back empty. Triggering on the constant name
+# rather than the file keeps the rail attached to the value when it moves.
+#
+# These are low-churn by nature: over the six months to 2026-10-01 each of them
+# appears in one to eight commits, so the rail costs roughly one flagged PR a
+# week. Churn is the test to re-run before adding a name here - a trigger that
+# fires on ordinary feature work gets resented and then ignored.
 CONTENT_TRIGGERS = (
     "AUTO_SYNC_PRODUCT_ID",
     "max_memory_restart",
@@ -52,6 +75,33 @@ CONTENT_TRIGGERS = (
     "process.env.SECRET",
     "SUBSCRIBER_MAP_LIMIT",
     "SUBSCRIBER_NODE_LIMIT",
+    # Node's own request/connection ceilings. Raising these holds sockets and
+    # heap for longer on every route, not just the one being fixed.
+    "REQUEST_TIMEOUT_MS",
+    "HEADERS_TIMEOUT_MS",
+    "KEEP_ALIVE_TIMEOUT_MS",
+    "requestTimeout",
+    "headersTimeout",
+    "keepAliveTimeout",
+    "UPLOAD_PROXY_TIMEOUT_SECONDS",
+    # Paid-inference budgets. CLAUDE.md: "Re-read every budget tuned to the old
+    # model (max_tokens ceilings, chunk sizes, retry loops that re-bill on
+    # truncation) before merge."
+    "CHUNK_MAX_TOKENS",
+    "CHUNK_SIZE",
+    "GIANT_INPUT_CHUNK_SIZE",
+    "VISION_MAX_TOKENS",
+    "VISION_RETRY_MAX_TOKENS",
+    "PDF_PAGE_VISION_MAX_TOKENS",
+    "PDF_PAGE_VISION_RETRY_MAX_TOKENS",
+    "AI_SPEND_ALERT_THRESHOLD_USD",
+    "RESERVED_CREDITS_PER_INFLIGHT_CALL",
+    # What a free account is allowed. Moving these moves revenue.
+    "MONTHLY_CARD_LIMIT",
+    "ANONYMOUS_CARD_CAP",
+    "FREE_PHOTO_QUOTA_PER_MONTH",
+    "FREE_USER_MAX_UPLOAD_SIZE",
+    "PAYING_MAX_UPLOAD_SIZE",
 )
 
 

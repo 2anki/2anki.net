@@ -9,7 +9,6 @@ Three project-scoped MCP servers. None are required to use Claude Code on this r
 | Plugin | What it adds | Auth |
 | --- | --- | --- |
 | `typescript-lsp` | Type-aware navigation (go-to-def, find-refs, real TS errors) across `src/` and `web/`. | None — works immediately. |
-| `sonarqube` | SonarCloud's rule engine in-loop, before push — catches the cognitive-complexity / nesting / a11y smells that `/check` misses (see `rules/sonar.md`). | Uses existing `SONAR_TOKEN`. |
 | `stripe` | Inspect subscriptions/customers directly instead of prod psql + the `/ops` Sync button. | Needs Stripe key via `/mcp`. **Read-only scope; never point at a key with write access for routine debugging.** |
 | `playwright` | Browser automation — makes the browser-attestation golden-path check (localhost:3000, console at 375px) machine-verifiable instead of honor-system. | None for local drive. |
 

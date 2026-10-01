@@ -17,11 +17,16 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
   6. No review-agent pass marker for the head SHA
      (`<!-- ship-review: pass sha=<headRefOid> -->`, full 40-char SHA, posted by
      /ship). Dependabot PRs are exempt — the /batch dependabot decision matrix is their review.
-  7. SonarCloud is not clean for the head SHA (`sonar_gate.py`; fails closed).
 
 `gh pr view` tooling errors fail open (a broken gh should not block a human);
-the rail diff fetch and Sonar fail closed (an unchecked rail or an unscanned
-merge is the exact gap the gate closes).
+the rail diff fetch fails closed (an unchecked rail is the exact gap the gate
+closes).
+
+The SonarCloud condition was removed on 2026-10-01. It was a serial wait after
+CI that timed out on 8% of PRs with no documented recovery, and `main` carried
+1,102 findings nobody was acting on, because the gate rates only new code. PR
+decoration still reports on every push, so the signal survives without an agent
+waiting on it.
 
 Bypass: launch the session with the env var set (`CLAUDE_SKIP_SAFETY=1 claude`).
 A command-string prefix is deliberately NOT honored: a PreToolUse hook runs
@@ -40,7 +45,6 @@ sys.path.insert(0, HOOKS_DIR)
 
 import hard_rails  # noqa: E402
 import merge_command  # noqa: E402
-import sonar_gate  # noqa: E402
 
 
 def allow():
@@ -258,12 +262,6 @@ def main():
         if marker_violation:
             violations.append(marker_violation)
 
-    sonar_ok, sonar_reason = sonar_gate.evaluate(
-        pr_data.get("number"), pr_data.get("headRefOid") or ""
-    )
-    if not sonar_ok:
-        violations.append(sonar_reason)
-
     if violations:
         bullet_list = "\n".join(f"  - {v}" for v in violations)
         deny(
@@ -271,7 +269,7 @@ def main():
             f"{bullet_list}\n\n"
             "Every rollup entry must be COMPLETED and non-FAILURE, every test "
             "job must have actually RUN, dependency changes need a SUCCESS test run, "
-            "the review agent must have passed the head SHA, and SonarCloud must be clean.\n"
+            "and the review agent must have passed the head SHA.\n"
             "Human bypass: merge from the GitHub UI, or relaunch with CLAUDE_SKIP_SAFETY=1 set at launch."
         )
 
