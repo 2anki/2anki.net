@@ -161,11 +161,12 @@ class UsersService {
     return inserted;
   }
 
-  // Only for callers whose identity provider or magic link already proved
-  // the email: two concurrent callbacks for one new account race the insert,
-  // and the loser adopts the row the winner created. The password path must
-  // keep using register(), which throws, or a racing signup would be handed
-  // a session for an account it did not create.
+  // Only for OAuth callbacks, whose provider asserted the email, and for
+  // magic-link signup, which issues no session until the mailed link is
+  // clicked. Two concurrent requests for one new account race the insert;
+  // the loser adopts the row the winner created. The password path must keep
+  // using register(), which throws, or a racing signup would be handed a
+  // session for an account it did not create.
   async registerVerifiedIdentity(
     name: string,
     password: string,

@@ -1030,7 +1030,7 @@ describe('UsersController.verifyMagicLink', () => {
 describe('UsersController.loginWithGoogle', () => {
   const buildGoogleController = (overrides?: {
     getUserFrom?: jest.Mock;
-    register?: jest.Mock;
+    registerVerifiedIdentity?: jest.Mock;
     markEmailVerified?: jest.Mock;
     newJWTToken?: jest.Mock;
     persistToken?: jest.Mock;
@@ -1043,7 +1043,8 @@ describe('UsersController.loginWithGoogle', () => {
         overrides?.getUserFrom ??
         jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
       registerVerifiedIdentity:
-        overrides?.register ?? jest.fn().mockResolvedValue([{ id: 7 }]),
+        overrides?.registerVerifiedIdentity ??
+        jest.fn().mockResolvedValue([{ id: 7 }]),
       markEmailVerified:
         overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
       updateLastLoginAt:
@@ -1084,7 +1085,9 @@ describe('UsersController.loginWithGoogle', () => {
 
   it("registers new Google users with signup_origin set to 'google'", async () => {
     const register = jest.fn().mockResolvedValue([{ id: 7 }]);
-    const { controller } = buildGoogleController({ register });
+    const { controller } = buildGoogleController({
+      registerVerifiedIdentity: register,
+    });
     const req = {
       query: { code: 'gauth-code' },
       cookies: {},
@@ -1107,7 +1110,10 @@ describe('UsersController.loginWithGoogle', () => {
     const existingUser = { id: 9, email: 'existing@example.com' };
     const getUserFrom = jest.fn().mockResolvedValue(existingUser);
     const register = jest.fn();
-    const { controller } = buildGoogleController({ getUserFrom, register });
+    const { controller } = buildGoogleController({
+      getUserFrom,
+      registerVerifiedIdentity: register,
+    });
     const req = {
       query: { code: 'gauth-code' },
       cookies: {},
@@ -1180,7 +1186,7 @@ describe('UsersController.loginWithMicrosoft', () => {
   const buildMicrosoftController = (overrides?: {
     getUserFrom?: jest.Mock;
     getUserById?: jest.Mock;
-    register?: jest.Mock;
+    registerVerifiedIdentity?: jest.Mock;
     markEmailVerified?: jest.Mock;
     newJWTToken?: jest.Mock;
     persistToken?: jest.Mock;
@@ -1195,7 +1201,8 @@ describe('UsersController.loginWithMicrosoft', () => {
       getUserById:
         overrides?.getUserById ?? jest.fn().mockResolvedValue(mockUser),
       registerVerifiedIdentity:
-        overrides?.register ?? jest.fn().mockResolvedValue([{ id: 11 }]),
+        overrides?.registerVerifiedIdentity ??
+        jest.fn().mockResolvedValue([{ id: 11 }]),
       markEmailVerified:
         overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
       updateLastLoginAt:
@@ -1244,7 +1251,9 @@ describe('UsersController.loginWithMicrosoft', () => {
 
   it("creates a new user, links the identity, and stamps signup_origin='microsoft' when the verified email has no existing account", async () => {
     const register = jest.fn().mockResolvedValue([{ id: 11 }]);
-    const { controller } = buildMicrosoftController({ register });
+    const { controller } = buildMicrosoftController({
+      registerVerifiedIdentity: register,
+    });
 
     await controller.loginWithMicrosoft(buildReq(), buildMicrosoftRes());
 
@@ -1275,7 +1284,10 @@ describe('UsersController.loginWithMicrosoft', () => {
       .fn()
       .mockResolvedValue({ id: 42, email: 'returner@outlook.com' });
 
-    const { controller } = buildMicrosoftController({ register, getUserById });
+    const { controller } = buildMicrosoftController({
+      registerVerifiedIdentity: register,
+      getUserById,
+    });
 
     await controller.loginWithMicrosoft(buildReq(), buildMicrosoftRes());
 
@@ -1289,7 +1301,10 @@ describe('UsersController.loginWithMicrosoft', () => {
     const getUserFrom = jest.fn().mockResolvedValue(existingUser);
     const register = jest.fn();
 
-    const { controller } = buildMicrosoftController({ getUserFrom, register });
+    const { controller } = buildMicrosoftController({
+      getUserFrom,
+      registerVerifiedIdentity: register,
+    });
 
     await controller.loginWithMicrosoft(buildReq(), buildMicrosoftRes());
 
@@ -1311,7 +1326,7 @@ describe('UsersController.loginWithMicrosoft', () => {
     });
     const { controller } = buildMicrosoftController({
       loginWithMicrosoft,
-      register,
+      registerVerifiedIdentity: register,
     });
     const res = buildMicrosoftRes();
 
@@ -1334,7 +1349,7 @@ describe('UsersController.loginWithMicrosoft', () => {
     });
     const { controller } = buildMicrosoftController({
       loginWithMicrosoft,
-      register,
+      registerVerifiedIdentity: register,
     });
     const res = buildMicrosoftRes();
 
@@ -1392,7 +1407,7 @@ describe('UsersController.loginWithApple', () => {
   const buildAppleController = (overrides?: {
     getUserFrom?: jest.Mock;
     getUserById?: jest.Mock;
-    register?: jest.Mock;
+    registerVerifiedIdentity?: jest.Mock;
     markEmailVerified?: jest.Mock;
     newJWTToken?: jest.Mock;
     persistToken?: jest.Mock;
@@ -1407,7 +1422,8 @@ describe('UsersController.loginWithApple', () => {
       getUserById:
         overrides?.getUserById ?? jest.fn().mockResolvedValue(mockUser),
       registerVerifiedIdentity:
-        overrides?.register ?? jest.fn().mockResolvedValue([{ id: 20 }]),
+        overrides?.registerVerifiedIdentity ??
+        jest.fn().mockResolvedValue([{ id: 20 }]),
       markEmailVerified:
         overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
       updateLastLoginAt:
@@ -1478,7 +1494,9 @@ describe('UsersController.loginWithApple', () => {
 
   it("creates a new user, links the identity, and stamps signup_origin='apple' when the email has no existing account", async () => {
     const register = jest.fn().mockResolvedValue([{ id: 20 }]);
-    const { controller } = buildAppleController({ register });
+    const { controller } = buildAppleController({
+      registerVerifiedIdentity: register,
+    });
 
     await controller.loginWithApple(buildReq(), buildAppleRes());
 
@@ -1506,7 +1524,10 @@ describe('UsersController.loginWithApple', () => {
       emailVerified: true,
       refreshToken: 'apple-refresh-555',
     });
-    const { controller } = buildAppleController({ register, loginWithApple });
+    const { controller } = buildAppleController({
+      registerVerifiedIdentity: register,
+      loginWithApple,
+    });
 
     await controller.loginWithApple(buildReq(), buildAppleRes());
 
@@ -1565,7 +1586,10 @@ describe('UsersController.loginWithApple', () => {
       .fn()
       .mockResolvedValue({ id: 20, email: 'apple@example.com' });
 
-    const { controller } = buildAppleController({ register, getUserById });
+    const { controller } = buildAppleController({
+      registerVerifiedIdentity: register,
+      getUserById,
+    });
 
     await controller.loginWithApple(buildReq(), buildAppleRes());
 
@@ -1579,7 +1603,10 @@ describe('UsersController.loginWithApple', () => {
     const getUserFrom = jest.fn().mockResolvedValue(existingUser);
     const register = jest.fn();
 
-    const { controller } = buildAppleController({ getUserFrom, register });
+    const { controller } = buildAppleController({
+      getUserFrom,
+      registerVerifiedIdentity: register,
+    });
 
     await controller.loginWithApple(buildReq(), buildAppleRes());
 
@@ -2131,7 +2158,7 @@ describe('UsersController.loginWithNotion', () => {
 
   const buildNotionController = (overrides?: {
     getUserFrom?: jest.Mock;
-    register?: jest.Mock;
+    registerVerifiedIdentity?: jest.Mock;
     newJWTToken?: jest.Mock;
     persistToken?: jest.Mock;
     updateLastLoginAt?: jest.Mock;
@@ -2143,7 +2170,8 @@ describe('UsersController.loginWithNotion', () => {
         overrides?.getUserFrom ??
         jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
       registerVerifiedIdentity:
-        overrides?.register ?? jest.fn().mockResolvedValue([{ id: 11 }]),
+        overrides?.registerVerifiedIdentity ??
+        jest.fn().mockResolvedValue([{ id: 11 }]),
       updateLastLoginAt:
         overrides?.updateLastLoginAt ?? jest.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
@@ -2182,7 +2210,9 @@ describe('UsersController.loginWithNotion', () => {
 
   it("registers new Notion users with signup_origin set to 'notion_oauth'", async () => {
     const register = jest.fn().mockResolvedValue([{ id: 11 }]);
-    const { controller } = buildNotionController({ register });
+    const { controller } = buildNotionController({
+      registerVerifiedIdentity: register,
+    });
     const req = {
       query: { code: 'notion-code' },
       cookies: {},
@@ -2205,7 +2235,10 @@ describe('UsersController.loginWithNotion', () => {
     const existingUser = { id: 12, email: 'existing@example.com' };
     const getUserFrom = jest.fn().mockResolvedValue(existingUser);
     const register = jest.fn();
-    const { controller } = buildNotionController({ getUserFrom, register });
+    const { controller } = buildNotionController({
+      getUserFrom,
+      registerVerifiedIdentity: register,
+    });
     const req = {
       query: { code: 'notion-code' },
       cookies: {},
@@ -2923,7 +2956,7 @@ describe('UsersController.loginWithAppleNative', () => {
   const buildNativeController = (overrides?: {
     getUserFrom?: jest.Mock;
     getUserById?: jest.Mock;
-    register?: jest.Mock;
+    registerVerifiedIdentity?: jest.Mock;
     markEmailVerified?: jest.Mock;
     newJWTToken?: jest.Mock;
     persistToken?: jest.Mock;
@@ -2939,7 +2972,8 @@ describe('UsersController.loginWithAppleNative', () => {
       getUserById:
         overrides?.getUserById ?? jest.fn().mockResolvedValue(mockUser),
       registerVerifiedIdentity:
-        overrides?.register ?? jest.fn().mockResolvedValue([{ id: 30 }]),
+        overrides?.registerVerifiedIdentity ??
+        jest.fn().mockResolvedValue([{ id: 30 }]),
       markEmailVerified:
         overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
       updateLastLoginAt:
@@ -3033,7 +3067,9 @@ describe('UsersController.loginWithAppleNative', () => {
 
   it('creates a new user and links the Apple identity when no account exists', async () => {
     const register = jest.fn().mockResolvedValue([{ id: 30 }]);
-    const { controller } = buildNativeController({ register });
+    const { controller } = buildNativeController({
+      registerVerifiedIdentity: register,
+    });
     const res = buildNativeRes();
 
     await controller.loginWithAppleNative(buildReq(), res);
@@ -3066,7 +3102,10 @@ describe('UsersController.loginWithAppleNative', () => {
       .fn()
       .mockResolvedValue({ id: 30, email: 'native-apple@example.com' });
 
-    const { controller } = buildNativeController({ register, getUserById });
+    const { controller } = buildNativeController({
+      registerVerifiedIdentity: register,
+      getUserById,
+    });
     const res = buildNativeRes();
 
     await controller.loginWithAppleNative(buildReq(), res);
@@ -3093,7 +3132,9 @@ describe('UsersController.loginWithAppleNative', () => {
 
   it('uses fullName from request body when creating a new account', async () => {
     const register = jest.fn().mockResolvedValue([{ id: 30 }]);
-    const { controller } = buildNativeController({ register });
+    const { controller } = buildNativeController({
+      registerVerifiedIdentity: register,
+    });
     const res = buildNativeRes();
 
     await controller.loginWithAppleNative(
@@ -3112,7 +3153,9 @@ describe('UsersController.loginWithAppleNative', () => {
 
   it('falls back to email as name when fullName is absent', async () => {
     const register = jest.fn().mockResolvedValue([{ id: 30 }]);
-    const { controller } = buildNativeController({ register });
+    const { controller } = buildNativeController({
+      registerVerifiedIdentity: register,
+    });
     const res = buildNativeRes();
 
     await controller.loginWithAppleNative(buildReq(), res);
