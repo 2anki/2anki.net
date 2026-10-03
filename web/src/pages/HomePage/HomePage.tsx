@@ -194,7 +194,7 @@ export function HomePage({
             .
           </p>
         </div>
-        <UploadForm setErrorMessage={setErrorMessage} />
+        <UploadForm setErrorMessage={setErrorMessage} sample />
         <div className={styles.heroFooter}>
           <Link
             to="/card-options"

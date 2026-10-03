@@ -3365,3 +3365,140 @@ describe('UploadForm thin-deck notice', () => {
     expect(screen.queryByText(/came from this file/)).toBeNull();
   });
 });
+
+describe('UploadForm try-a-sample', () => {
+  const anonymousData = {
+    user: null,
+    locals: { owner: 0, patreon: false, subscriber: false },
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  function setUserLocals(data: ReturnType<typeof useUserLocals>['data']) {
+    mockUseUserLocals.mockReturnValue({
+      data,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    });
+  }
+
+  function stubSampleSuccess() {
+    const fetchMock = vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/apkg',
+        'Content-Disposition': 'attachment; filename="Sample deck.apkg"',
+        'X-Card-Count': '8',
+      }),
+      blob: () => Promise.resolve(new Blob(['fake'])),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  beforeEach(() => {
+    vi.mocked(track).mockClear();
+    mockUseCardUsage.mockReturnValue(null);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+  });
+
+  afterEach(() => {
+    setUserLocals(undefined);
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('shows the sample control only when the sample prop is set', () => {
+    const withoutSample = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    expect(
+      withoutSample.queryByRole('button', { name: 'Try a sample' })
+    ).toBeNull();
+    withoutSample.unmount();
+
+    const withSample = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} sample />
+    );
+    expect(
+      withSample.getByRole('button', { name: 'Try a sample' })
+    ).toBeInTheDocument();
+  });
+
+  it('posts to /api/upload/sample and fires sample_conversion_started', async () => {
+    const fetchMock = stubSampleSuccess();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} sample />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Try a sample' }));
+    });
+
+    expect(
+      fetchMock.mock.calls.find((call) => call[0] === '/api/upload/sample')
+    ).toBeDefined();
+    const sampleCall = fetchMock.mock.calls.find(
+      (call) => call[0] === '/api/upload/sample'
+    )!;
+    expect(sampleCall[1]).toEqual(expect.objectContaining({ method: 'post' }));
+    expect(vi.mocked(track)).toHaveBeenCalledWith('sample_conversion_started');
+  });
+
+  it('shows the sample note and a convert-your-own reset on success', async () => {
+    stubSampleSuccess();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} sample />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Try a sample' }));
+    });
+
+    await screen.findByText(
+      'This is a sample deck. Convert your own file next.'
+    );
+    expect(
+      screen.getByRole('button', { name: 'Convert your own file' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Make another deck' })
+    ).toBeNull();
+  });
+
+  it('tags the sample download with source=sample', async () => {
+    stubSampleSuccess();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} sample />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Try a sample' }));
+    });
+
+    await screen.findByText(
+      'This is a sample deck. Convert your own file next.'
+    );
+    expect(vi.mocked(track)).toHaveBeenCalledWith('deck_downloaded', {
+      source: 'sample',
+    });
+  });
+
+  it('suppresses the create-account notice for an anonymous sample run', async () => {
+    setUserLocals(anonymousData);
+    stubSampleSuccess();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} sample />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Try a sample' }));
+    });
+
+    await screen.findByText(
+      'This is a sample deck. Convert your own file next.'
+    );
+    expect(vi.mocked(track)).not.toHaveBeenCalledWith(
+      'account_offer_shown',
+      expect.anything()
+    );
+  });
+});

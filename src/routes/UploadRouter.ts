@@ -42,6 +42,8 @@ import { GetRecentSourcesUseCase } from '../usecases/uploads/GetRecentSourcesUse
 import { RecentSourcesController } from '../controllers/Upload/RecentSourcesController';
 import { ClaimHeldDeckController } from '../controllers/Upload/ClaimHeldDeckController';
 import { ClaimHeldDeckUseCase } from '../usecases/uploads/ClaimHeldDeckUseCase';
+import { SampleUploadController } from '../controllers/Upload/SampleUploadController';
+import { ConvertSampleDeckUseCase } from '../usecases/uploads/ConvertSampleDeckUseCase';
 
 const UploadRouter = () => {
   const router = express.Router();
@@ -86,6 +88,9 @@ const UploadRouter = () => {
       new StorageHandler(),
       uploadService
     )
+  );
+  const sampleUploadController = new SampleUploadController(
+    new ConvertSampleDeckUseCase()
   );
   const uploadController = new UploadController(
     uploadService,
@@ -149,6 +154,25 @@ const UploadRouter = () => {
    */
   router.post('/api/upload/file', RequireAllowedOrigin, (req, res) =>
     uploadController.file(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/upload/sample:
+   *   post:
+   *     summary: Convert the bundled sample deck
+   *     description: Converts a server-bundled Notion HTML sample with the standard parser and returns the same apkg response shape as /api/upload/file. Takes no client file input and does not count against any card allowance.
+   *     tags: [Upload]
+   *     responses:
+   *       200:
+   *         description: Sample deck converted
+   *       403:
+   *         description: Origin not allowed
+   *       429:
+   *         description: Too many sample requests
+   */
+  router.post('/api/upload/sample', RequireAllowedOrigin, (req, res) =>
+    sampleUploadController.sample(req, res)
   );
 
   /**

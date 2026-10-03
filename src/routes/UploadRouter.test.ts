@@ -44,6 +44,7 @@ jest.mock('../lib/storage/StorageHandler', () => ({
 }));
 
 const mockDropbox = jest.fn();
+const mockSample = jest.fn();
 
 jest.mock('../controllers/Upload/UploadController', () => ({
   __esModule: true,
@@ -78,6 +79,16 @@ jest.mock('../controllers/Upload/RecentSourcesController', () => ({
   RecentSourcesController: jest.fn().mockImplementation(() => ({
     getRecentSources: jest.fn(),
   })),
+}));
+
+jest.mock('../controllers/Upload/SampleUploadController', () => ({
+  SampleUploadController: jest.fn().mockImplementation(() => ({
+    sample: mockSample,
+  })),
+}));
+
+jest.mock('../usecases/uploads/ConvertSampleDeckUseCase', () => ({
+  ConvertSampleDeckUseCase: jest.fn().mockImplementation(() => ({})),
 }));
 
 import UploadRouter from './UploadRouter';
@@ -138,6 +149,34 @@ describe('UploadRouter POST /api/upload/dropbox', () => {
       const res = await postDropbox(url);
       expect(res.status).toBe(200);
       expect(mockDropbox).toHaveBeenCalledTimes(1);
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe('UploadRouter POST /api/upload/sample', () => {
+  beforeEach(() => {
+    mockSample.mockReset();
+    mockSample.mockImplementation(
+      (_req: express.Request, res: express.Response) => {
+        res
+          .status(200)
+          .set('Content-Type', 'application/apkg')
+          .set('X-Card-Count', '8')
+          .send(Buffer.from('APKG'));
+      }
+    );
+  });
+
+  it('converts the bundled sample without requiring authentication', async () => {
+    mockAuthOwner = null;
+    const { url, close } = await startServer();
+    try {
+      const res = await fetch(`${url}/api/upload/sample`, { method: 'POST' });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('X-Card-Count')).toBe('8');
+      expect(mockSample).toHaveBeenCalledTimes(1);
     } finally {
       await close();
     }

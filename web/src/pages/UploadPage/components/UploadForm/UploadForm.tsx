@@ -84,6 +84,7 @@ import type {
 interface UploadFormProps {
   setErrorMessage: ErrorHandlerType;
   aiOn?: boolean;
+  sample?: boolean;
 }
 
 const REJECTED_FALLBACK =
@@ -284,12 +285,14 @@ function WarningIcon({ className }: Readonly<{ className?: string }>) {
 function UploadForm({
   setErrorMessage,
   aiOn = false,
+  sample = false,
 }: Readonly<UploadFormProps>) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const convertRef = useRef<HTMLButtonElement>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const [sampleRun, setSampleRun] = useState(false);
   const {
     validation,
     validate,
@@ -390,6 +393,7 @@ function UploadForm({
     if (fallbackTimerRef.current) {
       clearTimeout(fallbackTimerRef.current);
     }
+    setSampleRun(false);
   });
 
   const handleSourceChange = (next: UploadSource) => {
@@ -671,7 +675,7 @@ function UploadForm({
       }
       if (cardCount !== 0) {
         fireAnalyticsEvent('deck_downloaded');
-        track('deck_downloaded');
+        track('deck_downloaded', sampleRun ? { source: 'sample' } : undefined);
         downloadRef.current?.click();
       }
       fallbackTimerRef.current = setTimeout(() => {
@@ -1164,6 +1168,32 @@ function UploadForm({
     return runFileUpload(formData, uploadedFiles, false);
   };
 
+  const handleTrySample = async () => {
+    if (zoneStateRef.current === 'converting') return;
+    setSampleRun(true);
+    setZoneState('converting');
+    track('sample_conversion_started');
+    setProgressWidth(10);
+    setProgressSlow(false);
+    setShowFallback(false);
+    try {
+      const request = await globalThis.fetch('/api/upload/sample', {
+        method: 'post',
+      });
+      if (request.status !== 200) {
+        setSampleRun(false);
+        setLocalError(toFriendlyThrownError(new Error(REJECTED_FALLBACK)));
+        setZoneState('error');
+        return;
+      }
+      await applyConversionSuccess(request, conversionSuccessHandlers);
+    } catch (error) {
+      setSampleRun(false);
+      setLocalError(toFriendlyThrownError(error));
+      setZoneState('error');
+    }
+  };
+
   const handleNetworkRetry = async () => {
     if (networkRetryFiles == null || networkRetryFiles.length === 0) return;
     const recoveryToken = recoveryTokenRef.current;
@@ -1356,6 +1386,11 @@ function UploadForm({
       ) : (
         <ConversionResult variant="success" count={cardCount} />
       )}
+      {sampleRun && (
+        <p className={formStyles.successSecondary}>
+          {t('upload.form.sampleSuccessNote')}
+        </p>
+      )}
       {mcqCount > 0 && (
         <>
           <button
@@ -1469,7 +1504,7 @@ function UploadForm({
           {t('upload.form.fallbackDownload')}
         </button>
       )}
-      {successOffer === 'anon_signup' && cardsHeldBack === 0 && (
+      {successOffer === 'anon_signup' && cardsHeldBack === 0 && !sampleRun && (
         <CreateAccountNotice
           deckName={deckName}
           secondary={downloadRecovered}
@@ -1484,7 +1519,9 @@ function UploadForm({
           resetForm();
         }}
       >
-        {t('upload.form.makeAnother')}
+        {sampleRun
+          ? t('upload.form.convertYourOwn')
+          : t('upload.form.makeAnother')}
       </button>
       <div className={formStyles.feedbackPrompt}>
         <p className={formStyles.feedbackLabel}>
@@ -1987,6 +2024,24 @@ function UploadForm({
           <span className={formStyles.shapeHint}>
             {t('upload.dropzone.folderHint')}
           </span>
+          {sample && (
+            <div className={formStyles.sampleRow}>
+              <span className={formStyles.sampleLead}>
+                {t('home.hero.sampleLead')}
+              </span>
+              <button
+                type="button"
+                className={formStyles.sampleButton}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  void handleTrySample();
+                }}
+              >
+                {t('home.hero.sampleButton')}
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

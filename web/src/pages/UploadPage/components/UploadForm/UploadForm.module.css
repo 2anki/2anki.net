@@ -149,6 +149,38 @@
   color: var(--color-text-secondary);
 }
 
+.sampleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.sampleLead {
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+}
+
+.sampleButton {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.375rem;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.sampleButton:hover {
+  color: var(--color-primary-hover);
+}
+
 .fileInput {
   position: absolute;
   width: 1px;

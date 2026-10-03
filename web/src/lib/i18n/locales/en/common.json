@@ -60,7 +60,9 @@
       "aiBadgeIntro": "Clean cards, ready to study — proper cloze, atomic front and back, no empty backs. Prefer AI drafts?",
       "createAccount": "Create an account",
       "cardOptions": "Card options",
-      "nativeApps": "Also on iPhone, iPad & Mac →"
+      "nativeApps": "Also on iPhone, iPad & Mac →",
+      "sampleLead": "No file yet?",
+      "sampleButton": "Try a sample"
     },
     "howItWorks": {
       "heading": "How it works",
@@ -254,7 +256,9 @@
       "networkChooseDifferent": "Choose a different file",
       "unreadableFileTitle": "This file changed since you picked it",
       "unreadableFileBody": "The browser can't read the version you chose any more — it was saved, moved or deleted after you picked it. Choose the file again to upload the current version.",
-      "unreadableChooseAgain": "Choose the file again"
+      "unreadableChooseAgain": "Choose the file again",
+      "sampleSuccessNote": "This is a sample deck. Convert your own file next.",
+      "convertYourOwn": "Convert your own file"
     },
     "page": {
       "title": "Convert your notes",

@@ -60,7 +60,9 @@
       "aiBadgeIntro": "Carte pulite, pronte da studiare — cloze fatte bene, fronte e retro atomici, nessun retro vuoto. Preferisci le bozze con l'IA?",
       "createAccount": "Crea un account",
       "cardOptions": "Opzioni carta",
-      "nativeApps": "Anche su iPhone, iPad e Mac →"
+      "nativeApps": "Anche su iPhone, iPad e Mac →",
+      "sampleLead": "Non hai ancora un file?",
+      "sampleButton": "Prova un esempio"
     },
     "howItWorks": {
       "heading": "Come funziona",
@@ -254,7 +256,9 @@
       "networkChooseDifferent": "Scegli un altro file",
       "unreadableFileTitle": "Questo file è cambiato da quando l'hai scelto",
       "unreadableFileBody": "Il browser non riesce più a leggere la versione scelta: è stata salvata, spostata o eliminata dopo la selezione. Scegli di nuovo il file per caricare la versione attuale.",
-      "unreadableChooseAgain": "Scegli di nuovo il file"
+      "unreadableChooseAgain": "Scegli di nuovo il file",
+      "sampleSuccessNote": "Questo è un mazzo di esempio. Ora converti il tuo file.",
+      "convertYourOwn": "Converti il tuo file"
     },
     "page": {
       "title": "Converti i tuoi appunti",

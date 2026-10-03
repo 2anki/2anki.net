@@ -60,7 +60,9 @@
       "aiBadgeIntro": "そのまま学習できるきれいなカード — 正しいクローズ、要点をしぼった表と裏、空の裏面なし。AI の下書きがお好みですか？",
       "createAccount": "アカウントを作成",
       "cardOptions": "カードのオプション",
-      "nativeApps": "iPhone、iPad、Mac でも →"
+      "nativeApps": "iPhone、iPad、Mac でも →",
+      "sampleLead": "ファイルはまだですか？",
+      "sampleButton": "サンプルを試す"
     },
     "howItWorks": {
       "heading": "使い方",
@@ -249,7 +251,9 @@
       "networkChooseDifferent": "別のファイルを選ぶ",
       "unreadableFileTitle": "選択後にこのファイルが変更されました",
       "unreadableFileBody": "選択したバージョンをブラウザが読み込めなくなりました。選択後に保存、移動、または削除された可能性があります。もう一度ファイルを選んで、現在のバージョンをアップロードしてください。",
-      "unreadableChooseAgain": "ファイルをもう一度選ぶ"
+      "unreadableChooseAgain": "ファイルをもう一度選ぶ",
+      "sampleSuccessNote": "これはサンプルのデッキです。次は自分のファイルを変換しましょう。",
+      "convertYourOwn": "自分のファイルを変換"
     },
     "page": {
       "title": "ノートを変換",

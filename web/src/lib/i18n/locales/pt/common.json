@@ -60,7 +60,9 @@
       "aiBadgeIntro": "Cartões limpos, prontos para estudar — cloze correto, frente e verso atômicos, sem versos vazios. Prefere rascunhos com IA?",
       "createAccount": "Criar uma conta",
       "cardOptions": "Opções de cartão",
-      "nativeApps": "Também no iPhone, iPad e Mac →"
+      "nativeApps": "Também no iPhone, iPad e Mac →",
+      "sampleLead": "Ainda não tem um arquivo?",
+      "sampleButton": "Experimentar um exemplo"
     },
     "howItWorks": {
       "heading": "Como funciona",
@@ -254,7 +256,9 @@
       "networkChooseDifferent": "Escolher outro arquivo",
       "unreadableFileTitle": "Este arquivo mudou desde que você o escolheu",
       "unreadableFileBody": "O navegador não consegue mais ler a versão escolhida: ela foi salva, movida ou excluída depois da seleção. Escolha o arquivo de novo para enviar a versão atual.",
-      "unreadableChooseAgain": "Escolher o arquivo de novo"
+      "unreadableChooseAgain": "Escolher o arquivo de novo",
+      "sampleSuccessNote": "Este é um baralho de exemplo. Agora converta o seu próprio arquivo.",
+      "convertYourOwn": "Converter o seu próprio arquivo"
     },
     "page": {
       "title": "Converta suas anotações",

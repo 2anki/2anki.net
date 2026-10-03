@@ -71,6 +71,14 @@ describe('HomePage (anonymous)', () => {
     expect(screen.getByText(/drop your files here/i)).toBeInTheDocument();
   });
 
+  it('offers a Try a sample action in the hero for visitors with no file', () => {
+    renderHome();
+    expect(screen.getByText('No file yet?')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Try a sample' })
+    ).toBeInTheDocument();
+  });
+
   it('keeps the hero focused on conversion — no free-tier limit or open-source brag in the hero', () => {
     renderHome();
     expect(screen.queryByText(/100 cards per month/i)).toBeNull();
