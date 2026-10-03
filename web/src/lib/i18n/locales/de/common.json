@@ -257,7 +257,7 @@
       "unreadableFileTitle": "Diese Datei hat sich geändert, seit du sie ausgewählt hast",
       "unreadableFileBody": "Der Browser kann die gewählte Version nicht mehr lesen – sie wurde nach der Auswahl gespeichert, verschoben oder gelöscht. Wähle die Datei erneut, um die aktuelle Version hochzuladen.",
       "unreadableChooseAgain": "Datei erneut wählen",
-      "sampleSuccessNote": "Das ist ein Beispiel-Stapel. Konvertiere als Nächstes deine eigene Datei.",
+      "sampleSuccessNote": "Das ist ein Beispielstapel. Konvertiere als Nächstes deine eigene Datei.",
       "convertYourOwn": "Eigene Datei konvertieren"
     },
     "page": {

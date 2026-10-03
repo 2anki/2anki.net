@@ -23,6 +23,7 @@ interface FakeResponse {
   statusCode: number;
   body: unknown;
   headers: Record<string, string>;
+  locals: Record<string, unknown>;
   set: jest.Mock;
   status: jest.Mock;
   attachment: jest.Mock;
@@ -30,12 +31,13 @@ interface FakeResponse {
   json: jest.Mock;
 }
 
-function fakeResponse(): FakeResponse {
+function fakeResponse(owner?: number): FakeResponse {
   const headers: Record<string, string> = {};
   const res: FakeResponse = {
     statusCode: 200,
     body: undefined,
     headers,
+    locals: owner == null ? {} : { owner },
     set: jest.fn((key: string, value: string) => {
       headers[key] = value;
       return res;
@@ -94,6 +96,7 @@ describe('SampleUploadController', () => {
     await controller.sample(req, res as unknown as express.Response);
 
     expect(mockTrack).toHaveBeenCalledWith('sample_conversion_succeeded', {
+      userId: null,
       anonymousId: 'anon-123',
       props: { source: 'sample', card_count: 8 },
     });
@@ -101,6 +104,22 @@ describe('SampleUploadController', () => {
       'conversion_succeeded',
       expect.anything()
     );
+  });
+
+  it('attributes a signed-in sample to the owner id', async () => {
+    const controller = new SampleUploadController(
+      fakeUseCase(8),
+      allowingLimiter
+    );
+    const res = fakeResponse(4242);
+
+    await controller.sample(req, res as unknown as express.Response);
+
+    expect(mockTrack).toHaveBeenCalledWith('sample_conversion_succeeded', {
+      userId: 4242,
+      anonymousId: 'anon-123',
+      props: { source: 'sample', card_count: 8 },
+    });
   });
 
   it('refuses with 429 when the rate limiter is exhausted and does not convert', async () => {

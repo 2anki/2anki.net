@@ -4,6 +4,7 @@ export const KNOWN_EVENTS = new Set([
   'conversion_succeeded',
   'sample_conversion_started',
   'sample_conversion_succeeded',
+  'sample_deck_downloaded',
   'conversion_failed',
   'conversion_report_opened',
   'upload_identity_replayed',

@@ -6,6 +6,7 @@ import {
 } from '../../lib/rateLimit/InMemoryRateLimiter';
 import { hashIp, resolveClientIp } from '../../lib/rateLimit/ipHelpers';
 import { ConvertSampleDeckUseCase } from '../../usecases/uploads/ConvertSampleDeckUseCase';
+import { getOwnerId } from '../../lib/User/getOwner';
 import { track } from '../../services/events/track';
 
 const SAMPLE_WINDOW_MS = 60_000;
@@ -57,6 +58,7 @@ export class SampleUploadController {
     res.attachment(`/${deckName}`);
 
     track('sample_conversion_succeeded', {
+      userId: getOwnerId(res),
       anonymousId: resolveAnonId(req),
       props: { source: 'sample', card_count: cardCount },
     });

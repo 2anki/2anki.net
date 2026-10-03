@@ -595,6 +595,7 @@ function UploadForm({
   ) => {
     setFolderError(null);
     setFolderName(droppedFolderName);
+    setSampleRun(false);
     setZoneState('packaging');
     track('folder_upload_packaged');
     try {
@@ -674,8 +675,12 @@ function UploadForm({
         return;
       }
       if (cardCount !== 0) {
-        fireAnalyticsEvent('deck_downloaded');
-        track('deck_downloaded', sampleRun ? { source: 'sample' } : undefined);
+        if (sampleRun) {
+          track('sample_deck_downloaded');
+        } else {
+          fireAnalyticsEvent('deck_downloaded');
+          track('deck_downloaded');
+        }
         downloadRef.current?.click();
       }
       fallbackTimerRef.current = setTimeout(() => {
@@ -729,7 +734,7 @@ function UploadForm({
 
   const uploadCancelledFiredRef = useRef(false);
   useEffect(() => {
-    if (zoneState !== 'converting') return;
+    if (zoneState !== 'converting' || sampleRun) return;
     leavingRef.current = false;
     const fireUploadCancelled = () => {
       if (leavingRef.current) return;
@@ -741,7 +746,7 @@ function UploadForm({
     return () => {
       globalThis.removeEventListener('pagehide', fireUploadCancelled);
     };
-  }, [zoneState]);
+  }, [zoneState, sampleRun]);
 
   // Dropbox and Google Drive post the same multipart shape to their own
   // endpoints and handle the reply identically; only the picker's field name
@@ -786,6 +791,7 @@ function UploadForm({
     const first = files[0];
     setDropboxFilename(first?.name ?? null);
     setDropboxError(null);
+    setSampleRun(false);
     setZoneState('converting');
     fireAnalyticsEvent('upload_started');
     setProgressWidth(10);
@@ -838,6 +844,7 @@ function UploadForm({
     setDriveFilename(first?.name ?? null);
     setDriveMimeType(first?.mimeType ?? null);
     setDriveError(null);
+    setSampleRun(false);
     setZoneState('converting');
     fireAnalyticsEvent('upload_started');
     setProgressWidth(10);
@@ -1115,6 +1122,7 @@ function UploadForm({
     const submittedAt = Date.now();
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
+    setSampleRun(false);
     setZoneState('converting');
     saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
     setNetworkRetryFiles(null);
@@ -1512,10 +1520,15 @@ function UploadForm({
       )}
       <button
         type="button"
-        className={sharedStyles.btnSecondary}
+        className={
+          sampleRun ? sharedStyles.btnPrimary : sharedStyles.btnSecondary
+        }
         onClick={() => {
           fireAnalyticsEvent('make_another_deck_clicked');
-          track('make_another_deck_clicked');
+          track(
+            'make_another_deck_clicked',
+            sampleRun ? { source: 'sample' } : undefined
+          );
           resetForm();
         }}
       >

@@ -258,7 +258,7 @@
       "unreadableFileBody": "El navegador ya no puede leer la versión que elegiste: se guardó, movió o eliminó después de seleccionarla. Elígelo de nuevo para subir la versión actual.",
       "unreadableChooseAgain": "Elegir el archivo de nuevo",
       "sampleSuccessNote": "Este es un mazo de ejemplo. Ahora convierte tu propio archivo.",
-      "convertYourOwn": "Convierte tu propio archivo"
+      "convertYourOwn": "Convertir tu propio archivo"
     },
     "page": {
       "title": "Convierte tus notas",

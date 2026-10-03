@@ -3,7 +3,7 @@ export const SAMPLE_DECK_NAME = 'Sample deck — Biology 101';
 export const SAMPLE_DECK_FILENAME = 'Sample deck — Biology 101.html';
 
 const CARDS: ReadonlyArray<readonly [string, string]> = [
-  ['What is the powerhouse of the cell?', 'The mitochondrion.'],
+  ['Which organelle produces most of the cell’s ATP?', 'The mitochondrion.'],
   [
     'What molecule carries genetic information?',
     'DNA — deoxyribonucleic acid.',
@@ -12,7 +12,10 @@ const CARDS: ReadonlyArray<readonly [string, string]> = [
   ['What is the basic unit of life?', 'The cell.'],
   ['What are the building blocks of proteins?', 'Amino acids.'],
   ['What organelle controls the cell’s activities?', 'The nucleus.'],
-  ['What is the process of cell division called?', 'Mitosis.'],
+  [
+    'What type of cell division produces two identical daughter cells?',
+    'Mitosis.',
+  ],
   ['What gas do plants take in during photosynthesis?', 'Carbon dioxide.'],
 ];
 

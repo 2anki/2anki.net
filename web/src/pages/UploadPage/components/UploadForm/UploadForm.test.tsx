@@ -3468,7 +3468,9 @@ describe('UploadForm try-a-sample', () => {
     ).toBeNull();
   });
 
-  it('tags the sample download with source=sample', async () => {
+  it('records sample_deck_downloaded, not the funnel deck_downloaded, on a sample', async () => {
+    const gtag = vi.fn();
+    (globalThis as { gtag?: unknown }).gtag = gtag;
     stubSampleSuccess();
 
     renderUploadForm(<UploadForm setErrorMessage={vi.fn()} sample />);
@@ -3479,9 +3481,14 @@ describe('UploadForm try-a-sample', () => {
     await screen.findByText(
       'This is a sample deck. Convert your own file next.'
     );
-    expect(vi.mocked(track)).toHaveBeenCalledWith('deck_downloaded', {
-      source: 'sample',
-    });
+    expect(vi.mocked(track)).toHaveBeenCalledWith('sample_deck_downloaded');
+    expect(vi.mocked(track)).not.toHaveBeenCalledWith(
+      'deck_downloaded',
+      expect.anything()
+    );
+    expect(vi.mocked(track)).not.toHaveBeenCalledWith('deck_downloaded');
+    expect(gtag).not.toHaveBeenCalledWith('event', 'deck_downloaded');
+    delete (globalThis as { gtag?: unknown }).gtag;
   });
 
   it('suppresses the create-account notice for an anonymous sample run', async () => {
@@ -3498,6 +3505,72 @@ describe('UploadForm try-a-sample', () => {
     );
     expect(vi.mocked(track)).not.toHaveBeenCalledWith(
       'account_offer_shown',
+      expect.anything()
+    );
+  });
+
+  it('does not leak the sample state into a following real upload', async () => {
+    setUserLocals(anonymousData);
+    stubSampleSuccess();
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} sample />
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Try a sample' }));
+    });
+    await screen.findByText(
+      'This is a sample deck. Convert your own file next.'
+    );
+
+    vi.mocked(track).mockClear();
+
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [new File(['x'], 'my-notes.zip')],
+      configurable: true,
+    });
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    await waitFor(() =>
+      expect(vi.mocked(track)).toHaveBeenCalledWith(
+        'account_offer_shown',
+        expect.anything()
+      )
+    );
+    expect(
+      screen.queryByText('This is a sample deck. Convert your own file next.')
+    ).toBeNull();
+    expect(vi.mocked(track)).not.toHaveBeenCalledWith('sample_deck_downloaded');
+    expect(vi.mocked(track)).not.toHaveBeenCalledWith(
+      'sample_conversion_started'
+    );
+  });
+
+  it('does not fire upload_cancelled when the page hides during a sample conversion', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise(() => {}))
+    );
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} sample />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Try a sample' }));
+    });
+
+    await act(async () => {
+      globalThis.dispatchEvent(new Event('pagehide'));
+    });
+
+    expect(vi.mocked(track)).not.toHaveBeenCalledWith(
+      'upload_cancelled',
       expect.anything()
     );
   });

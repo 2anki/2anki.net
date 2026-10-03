@@ -20,9 +20,7 @@ describe('bundled sample deck', () => {
       workspace: new Workspace(true, 'fs'),
     });
 
-    const cardCount = parser.totalCardCount();
-    expect(cardCount).toBe(8);
-    expect(cardCount).toBeLessThanOrEqual(8);
+    expect(parser.totalCardCount()).toBe(8);
   });
 
   it('names the deck from the page title', () => {
@@ -48,7 +46,7 @@ describe('bundled sample deck', () => {
 
     const cards = parser.payload.flatMap((deck) => deck.cards);
     const mitochondrion = cards.find((card) =>
-      card.name.includes('powerhouse of the cell')
+      card.name.includes('produces most of the cell')
     );
     expect(mitochondrion?.back).toContain('mitochondrion');
   });
