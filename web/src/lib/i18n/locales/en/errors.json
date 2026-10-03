@@ -48,7 +48,7 @@
   "upload": {
     "unsupported_format": {
       "title": "This file type isn't supported.",
-      "detail": "Use .zip, .html, .md, .pdf, .docx, .xlsx, .pptx, .csv, or .xml."
+      "detail": "Use {{formats}}."
     },
     "too_large": {
       "title": "This export is too large to convert in one go.",

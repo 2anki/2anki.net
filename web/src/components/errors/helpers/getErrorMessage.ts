@@ -1,6 +1,7 @@
 import i18n from '../../../lib/i18n';
 import { stripHtmlTags } from '../../../lib/text/stripHtmlTags';
 import type { UploadErrorBody } from '../../../types/UploadErrorBody';
+import { formatAcceptedFormats } from '../../../pages/UploadPage/helpers/getAcceptedContentTypes';
 
 export type ErrorHandlerType = (error: unknown) => void;
 
@@ -10,8 +11,12 @@ interface FriendlyError {
   actionLink?: { text: string; to: string };
 }
 
-function tr(key: string, fallback: string): string {
-  return i18n.t(`errors:${key}`, { defaultValue: fallback });
+function tr(
+  key: string,
+  fallback: string,
+  values?: Record<string, unknown>
+): string {
+  return i18n.t(`errors:${key}`, { defaultValue: fallback, ...values });
 }
 
 const FALLBACK = (): FriendlyError => ({
@@ -214,7 +219,7 @@ const UPLOAD_CODE_DEFAULTS: Partial<
 > = {
   unsupported_format: {
     title: "This file type isn't supported.",
-    detail: 'Use .zip, .html, .md, .pdf, .docx, .xlsx, .pptx, .csv, or .xml.',
+    detail: 'Use {{formats}}.',
   },
   too_large: {
     title: 'This export is too large to convert in one go.',
@@ -294,7 +299,11 @@ function localizeUploadCode(
     title: tr(`upload.${code}.title`, defaults.title),
   };
   if (defaults.detail !== undefined) {
-    localized.detail = tr(`upload.${code}.detail`, defaults.detail);
+    const values =
+      code === 'unsupported_format'
+        ? { formats: formatAcceptedFormats(i18n.language) }
+        : undefined;
+    localized.detail = tr(`upload.${code}.detail`, defaults.detail, values);
   }
   return localized;
 }

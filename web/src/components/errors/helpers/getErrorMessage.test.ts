@@ -163,8 +163,21 @@ describe('classifyUploadError', () => {
     const result = classifyUploadError(body);
     expect(result.title).toBe("This file type isn't supported.");
     expect(result.detail).toBe(
-      'Use .zip, .html, .md, .pdf, .docx, .xlsx, .pptx, .csv, or .xml.'
+      'Use .zip, .html, .md, .pdf, .docx, .xlsx, .pptx, .csv, .epub, .opml, or .txt.'
     );
+  });
+
+  test('unsupported_format detail names every shared accepted format', async () => {
+    const { ACCEPTED_FORMATS } =
+      await import('../../../pages/UploadPage/helpers/getAcceptedContentTypes');
+    const body: UploadErrorBody = {
+      code: 'unsupported_format',
+      message: 'original',
+    };
+    const detail = classifyUploadError(body).detail ?? '';
+    for (const fmt of ACCEPTED_FORMATS) {
+      expect(detail).toContain(fmt);
+    }
   });
 
   test('too_large returns copy about splitting into subpages', () => {

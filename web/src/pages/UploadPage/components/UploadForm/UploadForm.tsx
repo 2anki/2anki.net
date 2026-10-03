@@ -10,7 +10,10 @@ import handleRedirect from '../../../../lib/handleRedirect';
 import { getStoredPassToken } from '../../../../lib/anonymousPass';
 import type { UploadErrorBody } from '../../../../types/UploadErrorBody';
 import type UserUpload from '../../../../lib/interfaces/UserUpload';
-import getAcceptedContentTypes from '../../helpers/getAcceptedContentTypes';
+import getAcceptedContentTypes, {
+  ACCEPTED_FORMATS,
+  ACCEPTED_EXTENSIONS,
+} from '../../helpers/getAcceptedContentTypes';
 import { extractErrorMessage } from '../../helpers/extractErrorMessage';
 import {
   applyConversionSuccess,
@@ -82,21 +85,6 @@ interface UploadFormProps {
   setErrorMessage: ErrorHandlerType;
   aiOn?: boolean;
 }
-
-const FORMATS = [
-  '.zip',
-  '.html',
-  '.md',
-  '.pdf',
-  '.epub',
-  'My Clippings.txt',
-  '.docx',
-  '.xlsx',
-  '.pptx',
-  '.csv',
-  '.opml',
-  '.brainstorms.json',
-];
 
 const REJECTED_FALLBACK =
   'The server rejected the upload. Try again or email support@2anki.net.';
@@ -472,7 +460,7 @@ function UploadForm({
     !cardUsage.loading &&
     cardUsage.cards_used >= cardUsage.cards_limit;
   const { openChooser, isConfigured: isDropboxConfigured } =
-    useDropboxChooser(FORMATS);
+    useDropboxChooser(ACCEPTED_EXTENSIONS);
   const { openPicker, isConfigured: isGoogleDriveConfigured } =
     useGooglePicker();
   const driveButtonRef = useRef<HTMLButtonElement>(null);
@@ -1987,7 +1975,7 @@ function UploadForm({
             {t('upload.dropzone.chooseFiles')}
           </span>
           <div className={formStyles.formatList}>
-            {FORMATS.map((fmt) => (
+            {ACCEPTED_FORMATS.map((fmt) => (
               <span key={fmt} className={formStyles.formatPill}>
                 {fmt}
               </span>
@@ -2252,14 +2240,33 @@ function UploadForm({
       <WarningIcon className={formStyles.iconWarning} />
       <p className={formStyles.emptyTitle}>{t('upload.form.imagesTitle')}</p>
       <p className={formStyles.emptyBody}>{t('upload.form.imagesBody')}</p>
+      {!isAuthenticated && (
+        <p className={formStyles.emptyBody}>
+          {t('upload.form.imagesBodyAccount')}
+        </p>
+      )}
       <div className={formStyles.emptyActions}>
-        <Link
-          to="/photo-to-deck"
-          className={formStyles.actionButton}
-          onClick={() => track('image_only_photo_deck_clicked')}
-        >
-          {t('upload.form.tryPhotoToDeck')}
-        </Link>
+        {isAuthenticated ? (
+          <Link
+            to="/photo-to-deck"
+            className={formStyles.actionButton}
+            onClick={() =>
+              track('image_only_photo_deck_clicked', { context: 'signed_in' })
+            }
+          >
+            {t('upload.form.tryPhotoToDeck')}
+          </Link>
+        ) : (
+          <Link
+            to="/register?redirect=/photo-to-deck"
+            className={formStyles.actionButton}
+            onClick={() =>
+              track('image_only_photo_deck_clicked', { context: 'anonymous' })
+            }
+          >
+            {t('upload.form.imagesCreateAccount')}
+          </Link>
+        )}
         <button
           type="button"
           className={formStyles.resetLink}
@@ -2506,7 +2513,7 @@ function UploadForm({
                   : t('upload.form.chooseFromDropbox')}
               </button>
               <div className={formStyles.formatList}>
-                {FORMATS.map((fmt) => (
+                {ACCEPTED_FORMATS.map((fmt) => (
                   <span key={fmt} className={formStyles.formatPill}>
                     {fmt}
                   </span>
@@ -2555,7 +2562,7 @@ function UploadForm({
                   : t('upload.form.chooseFromDrive')}
               </button>
               <div className={formStyles.formatList}>
-                {FORMATS.map((fmt) => (
+                {ACCEPTED_FORMATS.map((fmt) => (
                   <span key={fmt} className={formStyles.formatPill}>
                     {fmt}
                   </span>
