@@ -4,38 +4,44 @@ import { track } from '../../../lib/analytics/track';
 import styles from '../DownloadsPage.module.css';
 import { ThinDeckReason } from '../helpers/getThinDeckSignal';
 
+type ThinDeckSurface = 'downloads' | 'upload';
+
 interface ThinDeckNoticeProps {
   reason: ThinDeckReason;
   cards: number;
   skipped: number;
-  onSeeReport: () => void;
+  surface?: ThinDeckSurface;
+  onSeeReport?: () => void;
 }
 
 export function ThinDeckNotice({
   reason,
   cards,
   skipped,
+  surface = 'downloads',
   onSeeReport,
 }: Readonly<ThinDeckNoticeProps>) {
   const { t } = useTranslation('downloadsx');
 
   useEffect(() => {
-    track('thin_deck_notice_shown', { reason, cards, skipped });
-  }, [reason, cards, skipped]);
+    track('thin_deck_notice_shown', { reason, cards, skipped, surface });
+  }, [reason, cards, skipped, surface]);
 
   return (
     <div className={styles.emptyToggleNotice}>
       <p className={styles.emptyToggleText}>
         {t(`thinDeck.${reason}`, { count: cards, skipped })}
       </p>
-      <button
-        type="button"
-        className={`${styles.reportLink} ${styles.thinDeckSeeReport}`}
-        aria-haspopup="dialog"
-        onClick={onSeeReport}
-      >
-        {t('thinDeck.seeReport')}
-      </button>
+      {onSeeReport && (
+        <button
+          type="button"
+          className={`${styles.reportLink} ${styles.thinDeckSeeReport}`}
+          aria-haspopup="dialog"
+          onClick={onSeeReport}
+        >
+          {t('thinDeck.seeReport')}
+        </button>
+      )}
     </div>
   );
 }

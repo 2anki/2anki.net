@@ -102,7 +102,7 @@ describe('ThinDeckNotice', () => {
     expect(onSeeReport).toHaveBeenCalledTimes(1);
   });
 
-  it('fires the thin-deck event once with the reason, cards and skipped props', () => {
+  it('fires the thin-deck event once with the reason, cards, skipped and downloads surface', () => {
     render(
       <ThinDeckNotice
         reason="notConnected"
@@ -117,6 +117,61 @@ describe('ThinDeckNotice', () => {
       reason: 'notConnected',
       cards: 2,
       skipped: 6,
+      surface: 'downloads',
+    });
+  });
+
+  it('renders the upload few-cards copy without a report button', () => {
+    render(
+      <ThinDeckNotice
+        reason="fewCards"
+        skipped={0}
+        cards={2}
+        surface="upload"
+      />
+    );
+
+    expect(
+      screen.getByText(
+        'Only 2 cards came from this file. Turn on Claude cards and convert again to get more.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('uses the singular few-cards wording for exactly one card', () => {
+    render(
+      <ThinDeckNotice
+        reason="fewCards"
+        skipped={0}
+        cards={1}
+        surface="upload"
+      />
+    );
+
+    expect(
+      screen.getByText(
+        'Only 1 card came from this file. Turn on Claude cards and convert again to get more.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('tags the analytics event with the upload surface', () => {
+    render(
+      <ThinDeckNotice
+        reason="fewCards"
+        skipped={0}
+        cards={2}
+        surface="upload"
+      />
+    );
+
+    expect(mockTrack).toHaveBeenCalledTimes(1);
+    expect(mockTrack).toHaveBeenCalledWith('thin_deck_notice_shown', {
+      reason: 'fewCards',
+      cards: 2,
+      skipped: 0,
+      surface: 'upload',
     });
   });
 });

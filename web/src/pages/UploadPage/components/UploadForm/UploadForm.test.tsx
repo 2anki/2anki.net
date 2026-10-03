@@ -1804,6 +1804,100 @@ describe('UploadForm analytics events', () => {
     expect(successCopy).toHaveAttribute('data-hj-suppress');
   });
 
+  function stubThinDeckSuccess(cardCount: string) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': cardCount,
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+  }
+
+  function attachFileAndSubmit(container: HTMLElement, filename: string) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [new File(['x'], filename)],
+      configurable: true,
+    });
+    const form = container.querySelector('form')!;
+    return act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+  }
+
+  it('shows the thin-deck notice for a two-card PDF upload', async () => {
+    stubThinDeckSuccess('2');
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await attachFileAndSubmit(container, 'notes.pdf');
+
+    expect(
+      await screen.findByText(
+        'Only 2 cards came from this file. Turn on Claude cards and convert again to get more.'
+      )
+    ).toBeInTheDocument();
+    expect(trackMock).toHaveBeenCalledWith('thin_deck_notice_shown', {
+      reason: 'fewCards',
+      cards: 2,
+      skipped: 0,
+      surface: 'upload',
+    });
+  });
+
+  it('shows the thin-deck notice for a one-card TXT upload', async () => {
+    stubThinDeckSuccess('1');
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await attachFileAndSubmit(container, 'My Clippings.txt');
+
+    expect(
+      await screen.findByText(
+        'Only 1 card came from this file. Turn on Claude cards and convert again to get more.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('does not show the thin-deck notice when a PDF makes three or more cards', async () => {
+    stubThinDeckSuccess('5');
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await attachFileAndSubmit(container, 'notes.pdf');
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    expect(screen.queryByText(/came from this file/)).toBeNull();
+  });
+
+  it('does not show the thin-deck notice for a thin non-PDF/TXT upload', async () => {
+    stubThinDeckSuccess('2');
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await attachFileAndSubmit(container, 'notes.zip');
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    expect(screen.queryByText(/came from this file/)).toBeNull();
+  });
+
   it('recovers a dropped download from the server copy when the response carries a key', async () => {
     vi.stubGlobal(
       'fetch',

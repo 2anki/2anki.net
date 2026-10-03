@@ -24,6 +24,7 @@ import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNoti
 import { EmptyBackNotice } from '../../../DownloadsPage/components/EmptyBackNotice';
 import { ColorFlattenedNotice } from '../../../DownloadsPage/components/ColorFlattenedNotice';
 import { StructureRescuedNotice } from '../../../DownloadsPage/components/StructureRescuedNotice';
+import { ThinDeckNotice } from '../../../DownloadsPage/components/ThinDeckNotice';
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
@@ -191,6 +192,18 @@ function displayFilename(fileInput: HTMLInputElement | null): string {
   if (!files || files.length === 0) return '';
   if (files.length === 1) return files[0].name;
   return `${files.length} files`;
+}
+
+const THIN_DECK_MAX_CARDS = 3;
+
+function isThinPdfOrTxtDeck(
+  cardCount: number | null,
+  filename: string
+): cardCount is number {
+  if (cardCount == null || cardCount <= 0 || cardCount >= THIN_DECK_MAX_CARDS) {
+    return false;
+  }
+  return /\.(pdf|txt)$/i.test(filename);
 }
 
 function UploadCloudIcon({ className }: Readonly<{ className?: string }>) {
@@ -1440,6 +1453,16 @@ function UploadForm({
       {structureRescuedRule != null && (
         <div className={formStyles.warningInline}>
           <StructureRescuedNotice rule={structureRescuedRule} source="upload" />
+        </div>
+      )}
+      {isThinPdfOrTxtDeck(cardCount, currentFilename()) && (
+        <div className={formStyles.warningInline}>
+          <ThinDeckNotice
+            reason="fewCards"
+            cards={cardCount}
+            skipped={0}
+            surface="upload"
+          />
         </div>
       )}
       {showFallback && (

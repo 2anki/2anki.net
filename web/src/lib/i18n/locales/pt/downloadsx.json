@@ -135,6 +135,8 @@
     "notConnected_other": "Só saíram {{count}} cartões desta página. {{skipped}} partes não estão conectadas ao 2anki e foram ignoradas — no Notion, adicione o 2anki a esta página e às subpáginas em Connections e converta de novo.",
     "generic_one": "Só saiu {{count}} cartão desta página, e {{skipped}} partes foram ignoradas. Abra o relatório para ver o motivo.",
     "generic_other": "Só saíram {{count}} cartões desta página, e {{skipped}} partes foram ignoradas. Abra o relatório para ver o motivo.",
+    "fewCards_one": "Só saiu {{count}} cartão deste arquivo. Ative os cartões do Claude e converta de novo para obter mais.",
+    "fewCards_other": "Só saíram {{count}} cartões deste arquivo. Ative os cartões do Claude e converta de novo para obter mais.",
     "seeReport": "Ver o relatório completo"
   }
 }

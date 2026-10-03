@@ -3,7 +3,11 @@ import { parseForbiddenBlocksPayload } from './parseForbiddenBlocksPayload';
 import { parseUnsupportedBlocksPayload } from './parseUnsupportedBlocksPayload';
 import { countUnsupportedBlocks } from './countUnsupportedBlocks';
 
-export type ThinDeckReason = 'emptyToggles' | 'notConnected' | 'generic';
+export type ThinDeckReason =
+  | 'emptyToggles'
+  | 'notConnected'
+  | 'generic'
+  | 'fewCards';
 
 export interface ThinDeckSignal {
   candidateSkips: number;

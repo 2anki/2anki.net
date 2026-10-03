@@ -135,6 +135,8 @@
     "notConnected_other": "Only {{count}} cards came from this page. {{skipped}} parts aren't connected to 2anki and were skipped — in Notion, add 2anki to this page and its sub-pages under Connections, then convert again.",
     "generic_one": "Only {{count}} card came from this page, and {{skipped}} parts were skipped. Open the report to see why.",
     "generic_other": "Only {{count}} cards came from this page, and {{skipped}} parts were skipped. Open the report to see why.",
+    "fewCards_one": "Only {{count}} card came from this file. Turn on Claude cards and convert again to get more.",
+    "fewCards_other": "Only {{count}} cards came from this file. Turn on Claude cards and convert again to get more.",
     "seeReport": "See full report"
   }
 }
