@@ -42,7 +42,7 @@ test.describe('Upload dropzone @golden', () => {
 
     const pill = page
       .locator('#upload-panel-local')
-      .getByText('My Clippings.txt', { exact: true });
+      .getByText('.pdf', { exact: true });
     const fileChooserPromise = page.waitForEvent('filechooser');
     await pill.click();
     await expect(fileChooserPromise).resolves.toBeTruthy();
