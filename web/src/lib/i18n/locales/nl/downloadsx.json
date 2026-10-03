@@ -135,6 +135,10 @@
     "notConnected_other": "Er kwamen maar {{count}} kaarten uit deze pagina. {{skipped}} delen zijn niet met 2anki verbonden en zijn overgeslagen — voeg 2anki in Notion onder Connections toe aan deze pagina en de subpagina's en converteer opnieuw.",
     "generic_one": "Er kwam maar {{count}} kaart uit deze pagina en {{skipped}} delen zijn overgeslagen. Open het rapport om te zien waarom.",
     "generic_other": "Er kwamen maar {{count}} kaarten uit deze pagina en {{skipped}} delen zijn overgeslagen. Open het rapport om te zien waarom.",
+    "fewCards_one": "Er kwam maar {{count}} kaart uit dit bestand. Schakel Claude-kaarten hierboven in en converteer opnieuw om er meer te krijgen.",
+    "fewCards_other": "Er kwamen maar {{count}} kaarten uit dit bestand. Schakel Claude-kaarten hierboven in en converteer opnieuw om er meer te krijgen.",
+    "fewCardsPaidAi_one": "Er kwam maar {{count}} kaart uit dit bestand. Met een betaald abonnement kan Claude er meer kaarten uit halen.",
+    "fewCardsPaidAi_other": "Er kwamen maar {{count}} kaarten uit dit bestand. Met een betaald abonnement kan Claude er meer kaarten uit halen.",
     "seeReport": "Volledig rapport bekijken"
   }
 }

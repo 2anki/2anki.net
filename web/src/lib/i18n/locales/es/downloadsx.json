@@ -135,6 +135,10 @@
     "notConnected_other": "Solo salieron {{count}} tarjetas de esta página. {{skipped}} partes no están conectadas a 2anki y se omitieron — en Notion, añade 2anki a esta página y sus subpáginas en Connections y vuelve a convertir.",
     "generic_one": "Solo salió {{count}} tarjeta de esta página y se omitieron {{skipped}} partes. Abre el informe para ver por qué.",
     "generic_other": "Solo salieron {{count}} tarjetas de esta página y se omitieron {{skipped}} partes. Abre el informe para ver por qué.",
+    "fewCards_one": "Solo salió {{count}} tarjeta de este archivo. Activa arriba las tarjetas de Claude y vuelve a convertir para obtener más.",
+    "fewCards_other": "Solo salieron {{count}} tarjetas de este archivo. Activa arriba las tarjetas de Claude y vuelve a convertir para obtener más.",
+    "fewCardsPaidAi_one": "Solo salió {{count}} tarjeta de este archivo. Con un plan de pago, Claude puede escribir más tarjetas a partir de él.",
+    "fewCardsPaidAi_other": "Solo salieron {{count}} tarjetas de este archivo. Con un plan de pago, Claude puede escribir más tarjetas a partir de él.",
     "seeReport": "Ver el informe completo"
   }
 }

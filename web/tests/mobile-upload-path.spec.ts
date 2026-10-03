@@ -92,6 +92,44 @@ for (const f of FILES) {
   });
 }
 
+test('a thin PDF deck shows the few-cards notice at 375px', async ({ page }) => {
+  const errors = collectConsoleErrors(page);
+  await mockBackend(page);
+  await page.route('**/api/upload/file', async (route) => {
+    await new Promise((r) => setTimeout(r, 300));
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/octet-stream',
+      headers: { 'X-Card-Count': '2' },
+      body: Buffer.from('fake-apkg'),
+    });
+  });
+
+  await page.goto('/upload');
+  await expect(page.locator('#upload-panel-local')).toBeVisible();
+
+  await page.setInputFiles('#pakker', {
+    name: 'notes.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('thin pdf'),
+  });
+
+  const cont = page.getByRole('button', {
+    name: 'Make cards from this PDF',
+    exact: true,
+  });
+  await expect(cont).toBeVisible();
+  await cont.click();
+
+  await expect(
+    page.getByText(
+      'Only 2 cards came from this file. Claude can write more cards from it on a paid plan.'
+    )
+  ).toBeVisible({ timeout: 10_000 });
+  await noOverflow(page, 'thin-deck-notice');
+  expect(realErrors(errors)).toEqual([]);
+});
+
 test('backgrounding then a dropped connection surfaces a retry at 375px', async ({
   page,
 }) => {

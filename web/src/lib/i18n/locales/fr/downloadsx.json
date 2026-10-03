@@ -135,6 +135,10 @@
     "notConnected_other": "Seulement {{count}} cartes sont issues de cette page. {{skipped}} parties ne sont pas connectées à 2anki et ont été ignorées — dans Notion, ajoute 2anki à cette page et à ses sous-pages sous Connections, puis relance la conversion.",
     "generic_one": "Seulement {{count}} carte est issue de cette page, et {{skipped}} parties ont été ignorées. Ouvre le rapport pour voir pourquoi.",
     "generic_other": "Seulement {{count}} cartes sont issues de cette page, et {{skipped}} parties ont été ignorées. Ouvre le rapport pour voir pourquoi.",
+    "fewCards_one": "Seulement {{count}} carte est issue de ce fichier. Active les cartes Claude ci-dessus et relance la conversion pour en obtenir plus.",
+    "fewCards_other": "Seulement {{count}} cartes sont issues de ce fichier. Active les cartes Claude ci-dessus et relance la conversion pour en obtenir plus.",
+    "fewCardsPaidAi_one": "Seulement {{count}} carte est issue de ce fichier. Avec une offre payante, Claude peut en tirer plus de cartes.",
+    "fewCardsPaidAi_other": "Seulement {{count}} cartes sont issues de ce fichier. Avec une offre payante, Claude peut en tirer plus de cartes.",
     "seeReport": "Voir le rapport complet"
   }
 }

@@ -24,6 +24,7 @@ import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNoti
 import { EmptyBackNotice } from '../../../DownloadsPage/components/EmptyBackNotice';
 import { ColorFlattenedNotice } from '../../../DownloadsPage/components/ColorFlattenedNotice';
 import { StructureRescuedNotice } from '../../../DownloadsPage/components/StructureRescuedNotice';
+import { ThinDeckNotice } from '../../../DownloadsPage/components/ThinDeckNotice';
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
@@ -40,6 +41,7 @@ import { useGooglePicker, type GoogleDriveFile } from './hooks/useGooglePicker';
 import { UploadSourceChips, type UploadSource } from './UploadSourceChips';
 import { getStaleSourceState } from './helpers/getStaleSourceState';
 import { FeedbackWidget } from '../../../../components/FeedbackWidget/FeedbackWidget';
+import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
 import {
   useCardUsage,
@@ -191,6 +193,21 @@ function displayFilename(fileInput: HTMLInputElement | null): string {
   if (!files || files.length === 0) return '';
   if (files.length === 1) return files[0].name;
   return `${files.length} files`;
+}
+
+const THIN_DECK_MAX_CARDS = 3;
+
+function isThinPdfOrTxtDeck(
+  cardCount: number | null,
+  filename: string
+): cardCount is number {
+  if (cardCount == null || cardCount <= 0 || cardCount >= THIN_DECK_MAX_CARDS) {
+    return false;
+  }
+  if (/my clippings\.txt$/i.test(filename)) {
+    return false;
+  }
+  return /\.(pdf|txt)$/i.test(filename);
 }
 
 function UploadCloudIcon({ className }: Readonly<{ className?: string }>) {
@@ -439,6 +456,7 @@ function UploadForm({
   const passPrices = usePassPrices();
   const queryClient = useQueryClient();
   const isAuthenticated = userLocals?.user?.id != null;
+  const isPaying = isPayingUser(userLocals?.locals);
   const [dayPassPending, setDayPassPending] = useState(false);
   const [anonCopyRecovered, setAnonCopyRecovered] = useState(false);
   const recoveryTokenRef = useRef<string | null>(null);
@@ -1442,6 +1460,18 @@ function UploadForm({
           <StructureRescuedNotice rule={structureRescuedRule} source="upload" />
         </div>
       )}
+      {!aiOn &&
+        cardsHeldBack === 0 &&
+        isThinPdfOrTxtDeck(cardCount, currentFilename()) && (
+          <div className={formStyles.warningInline}>
+            <ThinDeckNotice
+              reason={isPaying ? 'fewCards' : 'fewCardsPaidAi'}
+              cards={cardCount}
+              skipped={0}
+              surface="upload"
+            />
+          </div>
+        )}
       {showFallback && (
         <button
           type="button"
