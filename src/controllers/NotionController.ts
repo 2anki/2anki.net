@@ -9,7 +9,6 @@ import {
   InProgressJobError,
   JobLimitError,
 } from '../lib/storage/jobs/helpers/errors';
-import { trackConversionFailed } from '../lib/storage/jobs/helpers/performConversion';
 import JobRepository from '../data_layer/JobRepository';
 import { FindOrCreateJobUseCase } from '../usecases/jobs/FindOrCreateJobUseCase';
 import { ClaimJobForRestartUseCase } from '../usecases/jobs/ClaimJobForRestartUseCase';
@@ -305,17 +304,17 @@ class NotionController {
         const usersRepository = new UsersRepository(database);
         const { cards_used } = await usersRepository.getCardUsage(owner);
         if (cards_used >= MONTHLY_CARD_LIMIT) {
-          trackConversionFailed(
-            owner,
-            safeString(anonId),
-            type,
-            parseFirstTouch(cookies?.first_touch).signupOrigin,
-            {
+          track('conversion_failed', {
+            userId: funnelUserId(owner),
+            anonymousId: safeString(anonId) ?? null,
+            props: {
+              source: conversionSourceFromType(type),
+              signup_origin: parseFirstTouch(cookies?.first_touch).signupOrigin,
               reason: 'monthly_limit',
               cards_used,
               limit: MONTHLY_CARD_LIMIT,
-            }
-          );
+            },
+          });
           return res.status(402).json({
             reason: 'monthly_limit',
             code: 'monthly_limit',
