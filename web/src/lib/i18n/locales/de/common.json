@@ -60,7 +60,9 @@
       "aiBadgeIntro": "Saubere Karten, bereit zum Lernen — sauberes Cloze, atomare Vorder- und Rückseite, keine leeren Rückseiten. Lieber KI-Entwürfe?",
       "createAccount": "Konto erstellen",
       "cardOptions": "Kartenoptionen",
-      "nativeApps": "Auch auf iPhone, iPad & Mac →"
+      "nativeApps": "Auch auf iPhone, iPad & Mac →",
+      "sampleLead": "Noch keine Datei?",
+      "sampleButton": "Beispiel ausprobieren"
     },
     "howItWorks": {
       "heading": "So funktioniert's",
@@ -254,7 +256,9 @@
       "networkChooseDifferent": "Andere Datei wählen",
       "unreadableFileTitle": "Diese Datei hat sich geändert, seit du sie ausgewählt hast",
       "unreadableFileBody": "Der Browser kann die gewählte Version nicht mehr lesen – sie wurde nach der Auswahl gespeichert, verschoben oder gelöscht. Wähle die Datei erneut, um die aktuelle Version hochzuladen.",
-      "unreadableChooseAgain": "Datei erneut wählen"
+      "unreadableChooseAgain": "Datei erneut wählen",
+      "sampleSuccessNote": "Das ist ein Beispielstapel. Konvertiere als Nächstes deine eigene Datei.",
+      "convertYourOwn": "Eigene Datei konvertieren"
     },
     "page": {
       "title": "Konvertiere deine Notizen",

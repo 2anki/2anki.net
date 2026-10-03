@@ -60,7 +60,9 @@
       "aiBadgeIntro": "Nette kaarten, klaar om te leren — nette cloze, atomische voor- en achterkant, geen lege achterkanten. Liever AI-concepten?",
       "createAccount": "Maak een account",
       "cardOptions": "Kaartopties",
-      "nativeApps": "Ook op iPhone, iPad en Mac →"
+      "nativeApps": "Ook op iPhone, iPad en Mac →",
+      "sampleLead": "Nog geen bestand?",
+      "sampleButton": "Probeer een voorbeeld"
     },
     "howItWorks": {
       "heading": "Zo werkt het",
@@ -254,7 +256,9 @@
       "networkChooseDifferent": "Kies een ander bestand",
       "unreadableFileTitle": "Dit bestand is veranderd sinds je het koos",
       "unreadableFileBody": "De browser kan de gekozen versie niet meer lezen: het is na het kiezen opgeslagen, verplaatst of verwijderd. Kies het opnieuw om de huidige versie te uploaden.",
-      "unreadableChooseAgain": "Kies het bestand opnieuw"
+      "unreadableChooseAgain": "Kies het bestand opnieuw",
+      "sampleSuccessNote": "Dit is een voorbeelddeck. Converteer nu je eigen bestand.",
+      "convertYourOwn": "Je eigen bestand converteren"
     },
     "page": {
       "title": "Zet je notities om",

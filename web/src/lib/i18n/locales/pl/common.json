@@ -60,7 +60,9 @@
       "aiBadgeIntro": "Czyste karty, gotowe do nauki — poprawne cloze, atomowy przód i tył, żadnych pustych tyłów. Wolisz szkice od AI?",
       "createAccount": "Utwórz konto",
       "cardOptions": "Opcje kart",
-      "nativeApps": "Także na iPhone, iPad i Mac →"
+      "nativeApps": "Także na iPhone, iPad i Mac →",
+      "sampleLead": "Nie masz jeszcze pliku?",
+      "sampleButton": "Wypróbuj przykład"
     },
     "howItWorks": {
       "heading": "Jak to działa",
@@ -264,7 +266,9 @@
       "networkChooseDifferent": "Wybierz inny plik",
       "unreadableFileTitle": "Ten plik zmienił się od momentu wyboru",
       "unreadableFileBody": "Przeglądarka nie może już odczytać wybranej wersji: została zapisana, przeniesiona lub usunięta po wybraniu. Wybierz plik ponownie, aby przesłać aktualną wersję.",
-      "unreadableChooseAgain": "Wybierz plik ponownie"
+      "unreadableChooseAgain": "Wybierz plik ponownie",
+      "sampleSuccessNote": "To jest przykładowa talia. Teraz przekonwertuj własny plik.",
+      "convertYourOwn": "Przekonwertuj własny plik"
     },
     "page": {
       "title": "Przekształć swoje notatki",

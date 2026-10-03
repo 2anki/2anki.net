@@ -84,6 +84,7 @@ import type {
 interface UploadFormProps {
   setErrorMessage: ErrorHandlerType;
   aiOn?: boolean;
+  sample?: boolean;
 }
 
 const REJECTED_FALLBACK =
@@ -284,12 +285,14 @@ function WarningIcon({ className }: Readonly<{ className?: string }>) {
 function UploadForm({
   setErrorMessage,
   aiOn = false,
+  sample = false,
 }: Readonly<UploadFormProps>) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const convertRef = useRef<HTMLButtonElement>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const [sampleRun, setSampleRun] = useState(false);
   const {
     validation,
     validate,
@@ -390,6 +393,7 @@ function UploadForm({
     if (fallbackTimerRef.current) {
       clearTimeout(fallbackTimerRef.current);
     }
+    setSampleRun(false);
   });
 
   const handleSourceChange = (next: UploadSource) => {
@@ -591,6 +595,7 @@ function UploadForm({
   ) => {
     setFolderError(null);
     setFolderName(droppedFolderName);
+    setSampleRun(false);
     setZoneState('packaging');
     track('folder_upload_packaged');
     try {
@@ -670,8 +675,12 @@ function UploadForm({
         return;
       }
       if (cardCount !== 0) {
-        fireAnalyticsEvent('deck_downloaded');
-        track('deck_downloaded');
+        if (sampleRun) {
+          track('sample_deck_downloaded');
+        } else {
+          fireAnalyticsEvent('deck_downloaded');
+          track('deck_downloaded');
+        }
         downloadRef.current?.click();
       }
       fallbackTimerRef.current = setTimeout(() => {
@@ -725,7 +734,7 @@ function UploadForm({
 
   const uploadCancelledFiredRef = useRef(false);
   useEffect(() => {
-    if (zoneState !== 'converting') return;
+    if (zoneState !== 'converting' || sampleRun) return;
     leavingRef.current = false;
     const fireUploadCancelled = () => {
       if (leavingRef.current) return;
@@ -737,7 +746,7 @@ function UploadForm({
     return () => {
       globalThis.removeEventListener('pagehide', fireUploadCancelled);
     };
-  }, [zoneState]);
+  }, [zoneState, sampleRun]);
 
   // Dropbox and Google Drive post the same multipart shape to their own
   // endpoints and handle the reply identically; only the picker's field name
@@ -782,6 +791,7 @@ function UploadForm({
     const first = files[0];
     setDropboxFilename(first?.name ?? null);
     setDropboxError(null);
+    setSampleRun(false);
     setZoneState('converting');
     fireAnalyticsEvent('upload_started');
     setProgressWidth(10);
@@ -834,6 +844,7 @@ function UploadForm({
     setDriveFilename(first?.name ?? null);
     setDriveMimeType(first?.mimeType ?? null);
     setDriveError(null);
+    setSampleRun(false);
     setZoneState('converting');
     fireAnalyticsEvent('upload_started');
     setProgressWidth(10);
@@ -1111,6 +1122,7 @@ function UploadForm({
     const submittedAt = Date.now();
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
+    setSampleRun(false);
     setZoneState('converting');
     saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
     setNetworkRetryFiles(null);
@@ -1162,6 +1174,32 @@ function UploadForm({
     const formData = buildFormData(form);
     const uploadedFiles = Array.from(fileInputRef.current?.files ?? []);
     return runFileUpload(formData, uploadedFiles, false);
+  };
+
+  const handleTrySample = async () => {
+    if (zoneStateRef.current === 'converting') return;
+    setSampleRun(true);
+    setZoneState('converting');
+    track('sample_conversion_started');
+    setProgressWidth(10);
+    setProgressSlow(false);
+    setShowFallback(false);
+    try {
+      const request = await globalThis.fetch('/api/upload/sample', {
+        method: 'post',
+      });
+      if (request.status !== 200) {
+        setSampleRun(false);
+        setLocalError(toFriendlyThrownError(new Error(REJECTED_FALLBACK)));
+        setZoneState('error');
+        return;
+      }
+      await applyConversionSuccess(request, conversionSuccessHandlers);
+    } catch (error) {
+      setSampleRun(false);
+      setLocalError(toFriendlyThrownError(error));
+      setZoneState('error');
+    }
   };
 
   const handleNetworkRetry = async () => {
@@ -1356,6 +1394,11 @@ function UploadForm({
       ) : (
         <ConversionResult variant="success" count={cardCount} />
       )}
+      {sampleRun && (
+        <p className={formStyles.successSecondary}>
+          {t('upload.form.sampleSuccessNote')}
+        </p>
+      )}
       {mcqCount > 0 && (
         <>
           <button
@@ -1469,7 +1512,7 @@ function UploadForm({
           {t('upload.form.fallbackDownload')}
         </button>
       )}
-      {successOffer === 'anon_signup' && cardsHeldBack === 0 && (
+      {successOffer === 'anon_signup' && cardsHeldBack === 0 && !sampleRun && (
         <CreateAccountNotice
           deckName={deckName}
           secondary={downloadRecovered}
@@ -1477,14 +1520,21 @@ function UploadForm({
       )}
       <button
         type="button"
-        className={sharedStyles.btnSecondary}
+        className={
+          sampleRun ? sharedStyles.btnPrimary : sharedStyles.btnSecondary
+        }
         onClick={() => {
           fireAnalyticsEvent('make_another_deck_clicked');
-          track('make_another_deck_clicked');
+          track(
+            'make_another_deck_clicked',
+            sampleRun ? { source: 'sample' } : undefined
+          );
           resetForm();
         }}
       >
-        {t('upload.form.makeAnother')}
+        {sampleRun
+          ? t('upload.form.convertYourOwn')
+          : t('upload.form.makeAnother')}
       </button>
       <div className={formStyles.feedbackPrompt}>
         <p className={formStyles.feedbackLabel}>
@@ -1987,6 +2037,24 @@ function UploadForm({
           <span className={formStyles.shapeHint}>
             {t('upload.dropzone.folderHint')}
           </span>
+          {sample && (
+            <div className={formStyles.sampleRow}>
+              <span className={formStyles.sampleLead}>
+                {t('home.hero.sampleLead')}
+              </span>
+              <button
+                type="button"
+                className={formStyles.sampleButton}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  void handleTrySample();
+                }}
+              >
+                {t('home.hero.sampleButton')}
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
