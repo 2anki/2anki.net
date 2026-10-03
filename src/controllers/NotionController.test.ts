@@ -288,6 +288,28 @@ describe('NotionController', () => {
       expect(runConversion).not.toHaveBeenCalled();
     });
 
+    it('tracks conversion_failed with reason=monthly_limit when a free user is over the limit', async () => {
+      setupConvertMocks();
+      jest
+        .spyOn(UsersRepository.prototype, 'getCardUsage')
+        .mockResolvedValue({ cards_used: 200, month_started_at: new Date() });
+
+      await controller.convert(req as express.Request, res as express.Response);
+
+      expect(track).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          userId: null,
+          props: expect.objectContaining({
+            source: 'notion',
+            reason: 'monthly_limit',
+            cards_used: 200,
+            limit: 100,
+          }),
+        })
+      );
+    });
+
     it('returns 202 with jobId on happy path', async () => {
       setupConvertMocks();
 
