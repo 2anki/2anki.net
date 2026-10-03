@@ -640,6 +640,79 @@ describe('getPackagesFromZip — batch concurrency', () => {
     );
   });
 
+  it('threads the card limit into a single-content zip and returns cardsHeldBack', async () => {
+    mockZipHandlerClass.mockImplementation(() => ({
+      build: jest.fn().mockResolvedValue(undefined),
+      getFileNames: jest.fn().mockReturnValue(['only.html']),
+      files: [{ name: 'only.html', contents: '<html></html>' }],
+    }));
+
+    mockPrepareDeck.mockResolvedValue({
+      name: 'only.html',
+      apkg: Buffer.from(''),
+      deck: [],
+      cardCount: 21,
+      cardsHeldBack: 9,
+    });
+
+    const settings = new CardOption({});
+    const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
+
+    const result = await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      settings,
+      workspace,
+      undefined,
+      null,
+      { cardLimit: 21 }
+    );
+
+    expect(mockPrepareDeck).toHaveBeenCalledTimes(1);
+    expect(mockPrepareDeck.mock.calls[0][0].cardLimit).toBe(21);
+    expect(result.cardsHeldBack).toBe(9);
+  });
+
+  it('does not apply the card limit when the zip holds multiple content files', async () => {
+    mockZipHandlerClass.mockImplementation(() => ({
+      build: jest.fn().mockResolvedValue(undefined),
+      getFileNames: jest.fn().mockReturnValue(['a.html', 'b.html']),
+      files: [
+        { name: 'a.html', contents: '<html></html>' },
+        { name: 'b.html', contents: '<html></html>' },
+      ],
+    }));
+
+    mockPrepareDeck.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        name,
+        apkg: Buffer.from(''),
+        deck: [],
+        cardCount: 1,
+        cardsHeldBack: 5,
+      })
+    );
+
+    const settings = new CardOption({});
+    const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
+
+    const result = await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      settings,
+      workspace,
+      undefined,
+      null,
+      { cardLimit: 21 }
+    );
+
+    expect(mockPrepareDeck).toHaveBeenCalledTimes(2);
+    for (const call of mockPrepareDeck.mock.calls) {
+      expect(call[0].cardLimit).toBeUndefined();
+    }
+    expect(result.cardsHeldBack).toBeUndefined();
+  });
+
   it('returns empty packages when fileContents is undefined', async () => {
     const settings = new CardOption({});
     const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
