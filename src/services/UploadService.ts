@@ -87,7 +87,10 @@ import {
 } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 import { ANONYMOUS_CARD_CAP, MONTHLY_CARD_LIMIT } from '../lib/limits';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
-import { isPartialDeliveryEligible } from '../usecases/uploads/isPartialDeliveryEligible';
+import {
+  isAnonymousPartialDeliveryEligible,
+  isPartialDeliveryEligible,
+} from '../usecases/uploads/isPartialDeliveryEligible';
 import {
   ANONYMOUS_PARTIAL_DELIVERY_FLAG,
   resolveAnonymousPartialArm,
@@ -2044,7 +2047,11 @@ class UploadService {
     if (getOwner(res) != null || hasSessionToken(req)) {
       return 'off';
     }
-    if (!isPartialDeliveryEligible(req.files as UploadedFile[] | undefined)) {
+    if (
+      !isAnonymousPartialDeliveryEligible(
+        req.files as UploadedFile[] | undefined
+      )
+    ) {
       return 'off';
     }
     const flagEnabled = await getFeatureFlag(

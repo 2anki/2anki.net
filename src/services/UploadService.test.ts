@@ -5013,6 +5013,49 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   });
 
+  it('holds a single zip upload for the treatment arm', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'study-notes.zip',
+          mimetype: 'application/zip',
+          size: 2048,
+          path: '/tmp/study-notes.zip',
+          buffer: Buffer.from('PK\x03\x04 zip bytes'),
+        },
+      ],
+      cookies: { anon_id: TREATMENT_ID },
+    } as unknown as Partial<express.Request>);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).toMatchObject({
+      cardLimit: ANONYMOUS_CARD_CAP,
+    });
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toEqual({
+      kind: 'held',
+      cardCount: 21,
+      cardsHeldBack: 13,
+      totalCards: 34,
+    });
+    expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
+    const [, bytes] = mockStorageUploadFile.mock.calls[0];
+    expect(bytes).toEqual(Buffer.from('PK\x03\x04 zip bytes'));
+    expect(heldDeck.rows).toHaveLength(1);
+    expect(heldDeck.rows[0]).toMatchObject({
+      anon_id: TREATMENT_ID,
+      filename: 'study-notes.zip',
+      card_count: 21,
+      cards_held_back: 13,
+      claimed_at: null,
+    });
+  });
+
   it('does not expose the storage key to the client', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21 }], 13);
@@ -5139,21 +5182,11 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(props.arm).toBe('control');
   });
 
-  it.each([
-    [
-      'a zip upload',
-      [
-        {
-          originalname: 'study-notes.zip',
-          mimetype: 'application/zip',
-          size: 1024,
-          path: '/tmp/study-notes.zip',
-        },
-      ],
-    ],
-    [
-      'a multi-file upload',
-      [
+  it('keeps a multi-file upload on the refuse path with no arm even for a treatment id', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+    const req = buildRequest({
+      files: [
         {
           originalname: 'week-one.html',
           mimetype: 'text/html',
@@ -5167,28 +5200,47 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
           path: '/tmp/week-two.html',
         },
       ],
-    ],
-  ])(
-    'keeps %s on the refuse path with no arm even for a treatment id',
-    async (_label, files) => {
-      mockGetFeatureFlag.mockResolvedValue(true);
-      const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
-      const req = buildRequest({
-        files,
-        cookies: { anon_id: TREATMENT_ID },
-      } as unknown as Partial<express.Request>);
-      const { res, capturedSend, redirectedTo } = responseWithRedirect();
+    } as unknown as Partial<express.Request>);
+    const { res, capturedSend, redirectedTo } = responseWithRedirect();
 
-      await serviceUnderTest().handleUpload(req, res);
+    await serviceUnderTest().handleUpload(req, res);
 
-      expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
-      expect(redirectedTo()).toBe('/limit?kind=anonymous');
-      expect(capturedSend()).toBeNull();
-      const props = conversionFailedProps();
-      expect(props.reason).toBe('anonymous_cap');
-      expect(props).not.toHaveProperty('arm');
-    }
-  );
+    expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(capturedSend()).toBeNull();
+    const props = conversionFailedProps();
+    expect(props.reason).toBe('anonymous_cap');
+    expect(props).not.toHaveProperty('arm');
+  });
+
+  it('walls a zip that did not truncate but tags the treatment arm', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'study-notes.zip',
+          mimetype: 'application/zip',
+          size: 1024,
+          path: '/tmp/study-notes.zip',
+          buffer: Buffer.from('PK\x03\x04 zip bytes'),
+        },
+      ],
+      cookies: { anon_id: TREATMENT_ID },
+    } as unknown as Partial<express.Request>);
+    const { res, capturedSend, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).toMatchObject({
+      cardLimit: ANONYMOUS_CARD_CAP,
+    });
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(capturedSend()).toBeNull();
+    const props = conversionFailedProps();
+    expect(props.reason).toBe('anonymous_cap');
+    expect(props.arm).toBe('treatment');
+  });
 });
 
 describe('UploadService.handleSyncUpload — signed-in monthly partial delivery', () => {

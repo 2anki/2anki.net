@@ -678,4 +678,35 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
       props: { source_file_count: 3 },
     });
   });
+
+  it('threads the card limit into the zip path and surfaces cardsHeldBack', async () => {
+    mockGetPackagesFromZip.mockResolvedValue({
+      packages: [],
+      warnings: [],
+      cardsHeldBack: 9,
+    });
+
+    const zipFile = makeFile({
+      originalname: 'notes.zip',
+      filename: 'notes.zip',
+      key: 'notes.zip',
+      path: '',
+      buffer: Buffer.from('PK zip bytes'),
+    });
+
+    const result = await runUploadGenerationInWorker({
+      paying: false,
+      files: [zipFile],
+      settings: new CardOption({}),
+      workspace: {} as Workspace,
+      enqueuedAt: Date.now(),
+      userId: null,
+      cardLimit: 21,
+    });
+
+    expect(mockGetPackagesFromZip).toHaveBeenCalledTimes(1);
+    const options = mockGetPackagesFromZip.mock.calls[0][6];
+    expect(options?.cardLimit).toBe(21);
+    expect(result).toMatchObject({ ok: true, cardsHeldBack: 9 });
+  });
 });
