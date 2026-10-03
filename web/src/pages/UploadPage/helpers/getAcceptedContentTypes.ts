@@ -30,6 +30,9 @@ export default function getAcceptedContentTypes(): string {
 }
 
 export function formatAcceptedFormats(language?: string): string {
+  if (typeof Intl.ListFormat !== 'function') {
+    return ACCEPTED_FORMATS.join(', ');
+  }
   return new Intl.ListFormat(language, {
     style: 'long',
     type: 'disjunction',

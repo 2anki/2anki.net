@@ -52,4 +52,16 @@ describe('accepted formats single source of truth', () => {
   it('localizes the disjunction word', () => {
     expect(formatAcceptedFormats('de')).toContain('.opml oder .txt');
   });
+
+  it('falls back to a comma list when Intl.ListFormat is unavailable', () => {
+    const original = Intl.ListFormat;
+    try {
+      (Intl as unknown as { ListFormat?: unknown }).ListFormat = undefined;
+      expect(formatAcceptedFormats('en')).toBe(
+        '.zip, .html, .md, .pdf, .docx, .xlsx, .pptx, .csv, .epub, .opml, .txt'
+      );
+    } finally {
+      (Intl as unknown as { ListFormat?: unknown }).ListFormat = original;
+    }
+  });
 });

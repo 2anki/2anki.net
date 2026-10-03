@@ -1419,10 +1419,12 @@ describe('UploadForm analytics events', () => {
       name: 'Create a free account',
     });
     expect(cta).toHaveAttribute('href', '/register?redirect=/photo-to-deck');
-    expect(screen.getByText("It's free with an account.")).toBeTruthy();
+    expect(
+      screen.getByText('5 photos a month are free with an account.')
+    ).toBeInTheDocument();
     expect(
       screen.getByText('Photo to Deck turns images into cards')
-    ).toBeTruthy();
+    ).toBeInTheDocument();
     expect(container.querySelector('[class*="errorBody"]')).toBeNull();
   });
 
@@ -1444,7 +1446,9 @@ describe('UploadForm analytics events', () => {
     const cta = await screen.findByRole('link', { name: 'Open Photo to Deck' });
     expect(cta).toHaveAttribute('href', '/photo-to-deck');
     expect(screen.queryByText('Create a free account')).toBeNull();
-    expect(screen.queryByText("It's free with an account.")).toBeNull();
+    expect(
+      screen.queryByText('5 photos a month are free with an account.')
+    ).toBeNull();
   });
 
   it('tags image_only_photo_deck_clicked with the anonymous context', async () => {

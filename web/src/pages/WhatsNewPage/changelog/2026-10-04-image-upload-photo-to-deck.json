@@ -2,5 +2,5 @@
   "id": "2026-10-04-image-upload-photo-to-deck",
   "date": "2026-10-04",
   "type": "fix",
-  "title": "Dropping an image into the uploader points to Photo to Deck and a free account to turn it into cards"
+  "title": "Image uploads point you to Photo to Deck, and the uploader lists every file type it accepts"
 }
