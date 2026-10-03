@@ -41,6 +41,7 @@ import { useGooglePicker, type GoogleDriveFile } from './hooks/useGooglePicker';
 import { UploadSourceChips, type UploadSource } from './UploadSourceChips';
 import { getStaleSourceState } from './helpers/getStaleSourceState';
 import { FeedbackWidget } from '../../../../components/FeedbackWidget/FeedbackWidget';
+import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
 import {
   useCardUsage,
@@ -201,6 +202,9 @@ function isThinPdfOrTxtDeck(
   filename: string
 ): cardCount is number {
   if (cardCount == null || cardCount <= 0 || cardCount >= THIN_DECK_MAX_CARDS) {
+    return false;
+  }
+  if (/my clippings\.txt$/i.test(filename)) {
     return false;
   }
   return /\.(pdf|txt)$/i.test(filename);
@@ -452,6 +456,7 @@ function UploadForm({
   const passPrices = usePassPrices();
   const queryClient = useQueryClient();
   const isAuthenticated = userLocals?.user?.id != null;
+  const isPaying = isPayingUser(userLocals?.locals);
   const [dayPassPending, setDayPassPending] = useState(false);
   const [anonCopyRecovered, setAnonCopyRecovered] = useState(false);
   const recoveryTokenRef = useRef<string | null>(null);
@@ -1455,16 +1460,18 @@ function UploadForm({
           <StructureRescuedNotice rule={structureRescuedRule} source="upload" />
         </div>
       )}
-      {isThinPdfOrTxtDeck(cardCount, currentFilename()) && (
-        <div className={formStyles.warningInline}>
-          <ThinDeckNotice
-            reason="fewCards"
-            cards={cardCount}
-            skipped={0}
-            surface="upload"
-          />
-        </div>
-      )}
+      {!aiOn &&
+        cardsHeldBack === 0 &&
+        isThinPdfOrTxtDeck(cardCount, currentFilename()) && (
+          <div className={formStyles.warningInline}>
+            <ThinDeckNotice
+              reason={isPaying ? 'fewCards' : 'fewCardsPaidAi'}
+              cards={cardCount}
+              skipped={0}
+              surface="upload"
+            />
+          </div>
+        )}
       {showFallback && (
         <button
           type="button"

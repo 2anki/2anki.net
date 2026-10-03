@@ -183,10 +183,14 @@
     "generic_few": "Z tej strony powstały tylko {{count}} karty, a {{skipped}} części zostało pominiętych. Otwórz raport, aby zobaczyć dlaczego.",
     "generic_many": "Z tej strony powstało tylko {{count}} kart, a {{skipped}} części zostało pominiętych. Otwórz raport, aby zobaczyć dlaczego.",
     "generic_other": "Z tej strony powstało tylko {{count}} karty, a {{skipped}} części zostało pominiętych. Otwórz raport, aby zobaczyć dlaczego.",
-    "fewCards_one": "Z tego pliku powstała tylko {{count}} karta. Włącz karty Claude i przekonwertuj ponownie, aby uzyskać więcej.",
-    "fewCards_few": "Z tego pliku powstały tylko {{count}} karty. Włącz karty Claude i przekonwertuj ponownie, aby uzyskać więcej.",
-    "fewCards_many": "Z tego pliku powstało tylko {{count}} kart. Włącz karty Claude i przekonwertuj ponownie, aby uzyskać więcej.",
-    "fewCards_other": "Z tego pliku powstało tylko {{count}} karty. Włącz karty Claude i przekonwertuj ponownie, aby uzyskać więcej.",
+    "fewCards_one": "Z tego pliku powstała tylko {{count}} karta. Włącz powyżej karty Claude i przekonwertuj ponownie, aby uzyskać więcej.",
+    "fewCards_few": "Z tego pliku powstały tylko {{count}} karty. Włącz powyżej karty Claude i przekonwertuj ponownie, aby uzyskać więcej.",
+    "fewCards_many": "Z tego pliku powstało tylko {{count}} kart. Włącz powyżej karty Claude i przekonwertuj ponownie, aby uzyskać więcej.",
+    "fewCards_other": "Z tego pliku powstało tylko {{count}} karty. Włącz powyżej karty Claude i przekonwertuj ponownie, aby uzyskać więcej.",
+    "fewCardsPaidAi_one": "Z tego pliku powstała tylko {{count}} karta. W płatnym planie Claude może napisać z niego więcej kart.",
+    "fewCardsPaidAi_few": "Z tego pliku powstały tylko {{count}} karty. W płatnym planie Claude może napisać z niego więcej kart.",
+    "fewCardsPaidAi_many": "Z tego pliku powstało tylko {{count}} kart. W płatnym planie Claude może napisać z niego więcej kart.",
+    "fewCardsPaidAi_other": "Z tego pliku powstało tylko {{count}} karty. W płatnym planie Claude może napisać z niego więcej kart.",
     "seeReport": "Zobacz pełny raport"
   }
 }

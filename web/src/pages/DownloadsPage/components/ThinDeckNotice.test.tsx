@@ -121,7 +121,7 @@ describe('ThinDeckNotice', () => {
     });
   });
 
-  it('renders the upload few-cards copy without a report button', () => {
+  it('renders the paying few-cards copy without a report button', () => {
     render(
       <ThinDeckNotice
         reason="fewCards"
@@ -133,7 +133,25 @@ describe('ThinDeckNotice', () => {
 
     expect(
       screen.getByText(
-        'Only 2 cards came from this file. Turn on Claude cards and convert again to get more.'
+        'Only 2 cards came from this file. Turn on Claude cards above and convert again to get more.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('renders the paid-AI few-cards copy without a report button', () => {
+    render(
+      <ThinDeckNotice
+        reason="fewCardsPaidAi"
+        skipped={0}
+        cards={2}
+        surface="upload"
+      />
+    );
+
+    expect(
+      screen.getByText(
+        'Only 2 cards came from this file. Claude can write more cards from it on a paid plan.'
       )
     ).toBeInTheDocument();
     expect(screen.queryByRole('button')).toBeNull();
@@ -151,7 +169,7 @@ describe('ThinDeckNotice', () => {
 
     expect(
       screen.getByText(
-        'Only 1 card came from this file. Turn on Claude cards and convert again to get more.'
+        'Only 1 card came from this file. Turn on Claude cards above and convert again to get more.'
       )
     ).toBeInTheDocument();
   });

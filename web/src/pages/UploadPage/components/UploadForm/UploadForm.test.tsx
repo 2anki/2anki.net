@@ -1804,100 +1804,6 @@ describe('UploadForm analytics events', () => {
     expect(successCopy).toHaveAttribute('data-hj-suppress');
   });
 
-  function stubThinDeckSuccess(cardCount: string) {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        redirected: false,
-        status: 200,
-        headers: new Headers({
-          'Content-Type': 'application/octet-stream',
-          'Content-Disposition': 'attachment; filename="deck.apkg"',
-          'X-Card-Count': cardCount,
-        }),
-        blob: () => Promise.resolve(new Blob(['fake'])),
-      })
-    );
-  }
-
-  function attachFileAndSubmit(container: HTMLElement, filename: string) {
-    const fileInput = container.querySelector(
-      'input[type="file"]'
-    ) as HTMLInputElement;
-    Object.defineProperty(fileInput, 'files', {
-      value: [new File(['x'], filename)],
-      configurable: true,
-    });
-    const form = container.querySelector('form')!;
-    return act(async () => {
-      form.dispatchEvent(
-        new Event('submit', { bubbles: true, cancelable: true })
-      );
-    });
-  }
-
-  it('shows the thin-deck notice for a two-card PDF upload', async () => {
-    stubThinDeckSuccess('2');
-    const trackMock = vi.mocked(track);
-    trackMock.mockClear();
-
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} />
-    );
-    await attachFileAndSubmit(container, 'notes.pdf');
-
-    expect(
-      await screen.findByText(
-        'Only 2 cards came from this file. Turn on Claude cards and convert again to get more.'
-      )
-    ).toBeInTheDocument();
-    expect(trackMock).toHaveBeenCalledWith('thin_deck_notice_shown', {
-      reason: 'fewCards',
-      cards: 2,
-      skipped: 0,
-      surface: 'upload',
-    });
-  });
-
-  it('shows the thin-deck notice for a one-card TXT upload', async () => {
-    stubThinDeckSuccess('1');
-
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} />
-    );
-    await attachFileAndSubmit(container, 'My Clippings.txt');
-
-    expect(
-      await screen.findByText(
-        'Only 1 card came from this file. Turn on Claude cards and convert again to get more.'
-      )
-    ).toBeInTheDocument();
-  });
-
-  it('does not show the thin-deck notice when a PDF makes three or more cards', async () => {
-    stubThinDeckSuccess('5');
-
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} />
-    );
-    await attachFileAndSubmit(container, 'notes.pdf');
-
-    await screen.findByRole('button', { name: 'Make another deck' });
-    expect(screen.queryByText(/came from this file/)).toBeNull();
-  });
-
-  it('does not show the thin-deck notice for a thin non-PDF/TXT upload', async () => {
-    stubThinDeckSuccess('2');
-
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} />
-    );
-    await attachFileAndSubmit(container, 'notes.zip');
-
-    await screen.findByRole('button', { name: 'Make another deck' });
-    expect(screen.queryByText(/came from this file/)).toBeNull();
-  });
-
   it('recovers a dropped download from the server copy when the response carries a key', async () => {
     vi.stubGlobal(
       'fetch',
@@ -3191,5 +3097,208 @@ describe('UploadForm anonymous deck recovery', () => {
     await submitForm(container);
 
     await screen.findByRole('button', { name: 'Try again' });
+  });
+});
+
+describe('UploadForm thin-deck notice', () => {
+  const payingData = {
+    user: { id: 1, email: 'learner@example.com' },
+    locals: { owner: 1, patreon: false, subscriber: true },
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  const freeSignedInData = {
+    user: { id: 2, email: 'free@example.com' },
+    locals: { owner: 2, patreon: false, subscriber: false },
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  const anonymousData = {
+    user: null,
+    locals: { owner: 0, patreon: false, subscriber: false },
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  function setUserLocals(data: ReturnType<typeof useUserLocals>['data']) {
+    mockUseUserLocals.mockReturnValue({
+      data,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    });
+  }
+
+  beforeEach(() => {
+    vi.mocked(track).mockClear();
+    mockUseCardUsage.mockReturnValue(null);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+  });
+
+  afterEach(() => {
+    setUserLocals(undefined);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+      getUploads: vi.fn().mockResolvedValue([]),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    vi.unstubAllGlobals();
+  });
+
+  function stubSuccess(headers: Record<string, string>) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          ...headers,
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+  }
+
+  function uploadFile(container: HTMLElement, filename: string) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [new File(['x'], filename)],
+      configurable: true,
+    });
+    const form = container.querySelector('form')!;
+    return act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+  }
+
+  it('shows the paid-AI copy for an anonymous thin PDF deck', async () => {
+    setUserLocals(anonymousData);
+    stubSuccess({ 'X-Card-Count': '2' });
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container, 'notes.pdf');
+
+    expect(
+      await screen.findByText(
+        'Only 2 cards came from this file. Claude can write more cards from it on a paid plan.'
+      )
+    ).toBeInTheDocument();
+    expect(vi.mocked(track)).toHaveBeenCalledWith('thin_deck_notice_shown', {
+      reason: 'fewCardsPaidAi',
+      cards: 2,
+      skipped: 0,
+      surface: 'upload',
+    });
+  });
+
+  it('shows the paid-AI copy for a free signed-in thin TXT deck', async () => {
+    setUserLocals(freeSignedInData);
+    stubSuccess({ 'X-Card-Count': '1' });
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container, 'notes.txt');
+
+    expect(
+      await screen.findByText(
+        'Only 1 card came from this file. Claude can write more cards from it on a paid plan.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('shows the turn-on copy for a paying user with Claude off', async () => {
+    setUserLocals(payingData);
+    stubSuccess({ 'X-Card-Count': '2' });
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container, 'notes.pdf');
+
+    expect(
+      await screen.findByText(
+        'Only 2 cards came from this file. Turn on Claude cards above and convert again to get more.'
+      )
+    ).toBeInTheDocument();
+    expect(vi.mocked(track)).toHaveBeenCalledWith('thin_deck_notice_shown', {
+      reason: 'fewCards',
+      cards: 2,
+      skipped: 0,
+      surface: 'upload',
+    });
+  });
+
+  it('hides the notice when Claude cards are already on', async () => {
+    setUserLocals(payingData);
+    stubSuccess({ 'X-Card-Count': '2' });
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn />
+    );
+    await uploadFile(container, 'notes.pdf');
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    expect(screen.queryByText(/came from this file/)).toBeNull();
+  });
+
+  it('hides the notice when the monthly limit held cards back', async () => {
+    setUserLocals(freeSignedInData);
+    stubSuccess({ 'X-Card-Count': '2', 'X-Cards-Held-Back': '5' });
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container, 'notes.pdf');
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    expect(screen.queryByText(/came from this file/)).toBeNull();
+  });
+
+  it('hides the notice when a PDF makes three or more cards', async () => {
+    setUserLocals(anonymousData);
+    stubSuccess({ 'X-Card-Count': '5' });
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container, 'notes.pdf');
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    expect(screen.queryByText(/came from this file/)).toBeNull();
+  });
+
+  it('hides the notice for a thin non-PDF or TXT upload', async () => {
+    setUserLocals(anonymousData);
+    stubSuccess({ 'X-Card-Count': '2' });
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container, 'notes.zip');
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    expect(screen.queryByText(/came from this file/)).toBeNull();
+  });
+
+  it('hides the notice for a thin Kindle clippings file', async () => {
+    setUserLocals(anonymousData);
+    stubSuccess({ 'X-Card-Count': '2' });
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container, 'My Clippings.txt');
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    expect(screen.queryByText(/came from this file/)).toBeNull();
   });
 });

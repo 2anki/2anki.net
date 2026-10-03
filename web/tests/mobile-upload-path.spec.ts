@@ -123,7 +123,7 @@ test('a thin PDF deck shows the few-cards notice at 375px', async ({ page }) => 
 
   await expect(
     page.getByText(
-      'Only 2 cards came from this file. Turn on Claude cards and convert again to get more.'
+      'Only 2 cards came from this file. Claude can write more cards from it on a paid plan.'
     )
   ).toBeVisible({ timeout: 10_000 });
   await noOverflow(page, 'thin-deck-notice');

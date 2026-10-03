@@ -7,7 +7,8 @@ export type ThinDeckReason =
   | 'emptyToggles'
   | 'notConnected'
   | 'generic'
-  | 'fewCards';
+  | 'fewCards'
+  | 'fewCardsPaidAi';
 
 export interface ThinDeckSignal {
   candidateSkips: number;

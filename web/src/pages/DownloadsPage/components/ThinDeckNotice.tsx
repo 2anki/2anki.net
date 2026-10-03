@@ -27,11 +27,15 @@ export function ThinDeckNotice({
     track('thin_deck_notice_shown', { reason, cards, skipped, surface });
   }, [reason, cards, skipped, surface]);
 
+  const message = t(`thinDeck.${reason}`, { count: cards, skipped });
+
+  if (surface === 'upload') {
+    return <p>{message}</p>;
+  }
+
   return (
     <div className={styles.emptyToggleNotice}>
-      <p className={styles.emptyToggleText}>
-        {t(`thinDeck.${reason}`, { count: cards, skipped })}
-      </p>
+      <p className={styles.emptyToggleText}>{message}</p>
       {onSeeReport && (
         <button
           type="button"
