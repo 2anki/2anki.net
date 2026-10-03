@@ -48,7 +48,7 @@
   "upload": {
     "unsupported_format": {
       "title": "このファイル形式には対応していません。",
-      "detail": ".zip、.html、.md、.pdf、.docx、.xlsx、.pptx、.csv、.xml をご利用ください。"
+      "detail": "{{formats}} をご利用ください。"
     },
     "too_large": {
       "title": "このエクスポートは一度に変換するには大きすぎます。",

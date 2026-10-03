@@ -62,7 +62,7 @@ describe('classifyUploadError in German', () => {
     const result = classifyUploadError(body);
     expect(result.title).toBe('Dieser Dateityp wird nicht unterstützt.');
     expect(result.detail).toBe(
-      'Verwende .zip, .html, .md, .pdf, .docx, .xlsx, .pptx, .csv oder .xml.'
+      'Verwende .zip, .html, .md, .pdf, .docx, .xlsx, .pptx, .csv, .epub, .opml oder .txt.'
     );
   });
 

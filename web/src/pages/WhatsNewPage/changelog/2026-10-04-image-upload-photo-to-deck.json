@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-04-image-upload-photo-to-deck",
+  "date": "2026-10-04",
+  "type": "fix",
+  "title": "Image uploads point you to Photo to Deck, and the uploader lists every file type it accepts"
+}
