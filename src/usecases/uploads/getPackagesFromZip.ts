@@ -343,10 +343,16 @@ async function buildAllInOneSlot(
   supportedFileNames: string[],
   zipHandler: ZipHandler,
   cap: number,
-  ctx: BatchBuildContext
+  ctx: BatchBuildContext,
+  cardLimit?: number
 ): Promise<PackageResult> {
   const { settings, paying, workspace, userId, knownGuids, uploadIdentity } =
     ctx;
+  // Partial delivery only has a coherent "first N cards" meaning for a zip that
+  // resolves to a single deck; a per-file limit on a multi-deck zip would cap
+  // every deck at N and over-deliver, so it only applies to a lone content file.
+  const perFileCardLimit =
+    supportedFileNames.length === 1 ? cardLimit : undefined;
   const limit = pLimit(cap);
   const settled = await Promise.allSettled(
     supportedFileNames.map((fileName) =>
@@ -368,6 +374,7 @@ async function buildAllInOneSlot(
             userId,
             knownGuids,
             uploadIdentity,
+            cardLimit: perFileCardLimit,
           });
           await liftDecksToParent(deckWorkspace, workspace);
           return result;
@@ -380,6 +387,7 @@ async function buildAllInOneSlot(
   const warnings: string[] = [];
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
+  let cardsHeldBack: number | undefined;
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
       failedFiles.push(supportedFileNames[index]);
@@ -407,11 +415,14 @@ async function buildAllInOneSlot(
       pkg.coloredTextPageCount = outcome.coloredTextPageCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
+      if (perFileCardLimit != null) {
+        cardsHeldBack = outcome.cardsHeldBack ?? 0;
+      }
     }
   });
   appendLockedPdfWarning(warnings, lockedPdfs);
   appendConversionFailureWarning(warnings, failedFiles);
-  return { packages, warnings };
+  return { packages, warnings, cardsHeldBack };
 }
 
 function appendLockedPdfWarning(warnings: string[], lockedPdfs: string[]) {
@@ -432,6 +443,7 @@ export interface GetPackagesFromZipOptions {
   uploadIdentity?: UploadIdentityContext;
   requestId?: string;
   crossFileDedup?: CrossFileDedupState;
+  cardLimit?: number;
 }
 
 export const getPackagesFromZip = async (
@@ -443,7 +455,8 @@ export const getPackagesFromZip = async (
   userId: number | null = null,
   options: GetPackagesFromZipOptions = {}
 ): Promise<PackageResult> => {
-  const { knownGuids, uploadIdentity, requestId, crossFileDedup } = options;
+  const { knownGuids, uploadIdentity, requestId, crossFileDedup, cardLimit } =
+    options;
   if (!fileContents) {
     return { packages: [] };
   }
@@ -499,7 +512,13 @@ export const getPackagesFromZip = async (
   };
 
   if (supportedFileNames.length <= 1 || batchSize <= 1) {
-    return buildAllInOneSlot(supportedFileNames, zipHandler, cap, batchCtx);
+    return buildAllInOneSlot(
+      supportedFileNames,
+      zipHandler,
+      cap,
+      batchCtx,
+      cardLimit
+    );
   }
 
   const chunks = chunkArray(supportedFileNames, batchSize);

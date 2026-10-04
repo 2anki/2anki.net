@@ -305,10 +305,11 @@ async function processFile(
       workspace,
       onProgress,
       userId,
-      { knownGuids, uploadIdentity, requestId, crossFileDedup }
+      { knownGuids, uploadIdentity, requestId, crossFileDedup, cardLimit }
     );
     packages.push(...result.packages);
     if (result.warnings) warnings.push(...result.warnings);
+    cardsHeldBack = result.cardsHeldBack;
   }
 
   return { packages, warnings, cardsHeldBack };

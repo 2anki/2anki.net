@@ -137,6 +137,34 @@ describe('ClaimHeldDeckUseCase', () => {
     expect(repo.rows[0].claimed_by).toBe(4242);
   });
 
+  it('re-converts a held zip by handing the .zip source to the converter unchanged', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await repo.insert({
+      storageKey: 'held/zip-source.bin',
+      anonId: ANON,
+      filename: 'study-notes.zip',
+      cardCount: 21,
+      cardsHeldBack: 13,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const zipBytes = Buffer.from('PK\x03\x04 zip bytes');
+    const { store } = buildStore(zipBytes);
+    const { converter, convertHeldFileForOwner } = buildConverter();
+    const useCase = new ClaimHeldDeckUseCase(repo, store, converter);
+
+    await useCase.execute({
+      anonId: ANON,
+      owner: OWNER,
+      paying: false,
+      requestId: undefined,
+    });
+
+    expect(convertHeldFileForOwner).toHaveBeenCalledTimes(1);
+    const [, file] = convertHeldFileForOwner.mock.calls[0];
+    expect(file).toMatchObject({ originalname: 'study-notes.zip' });
+    expect(file.buffer).toEqual(zipBytes);
+  });
+
   it('410s on a second claim once the hold is already claimed', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedHold(repo);
