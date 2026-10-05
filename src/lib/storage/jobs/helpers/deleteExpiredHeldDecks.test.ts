@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { InMemoryHeldDeckRepository } from '../../../../data_layer/HeldDeckRepository';
 import StorageHandler from '../../StorageHandler';
 import { deleteExpiredHeldDecks } from './deleteExpiredHeldDecks';
@@ -32,7 +33,7 @@ describe('deleteExpiredHeldDecks', () => {
     deleted: string[]
   ): StorageHandler {
     return {
-      delete: jest.fn(async (key: string) => {
+      delete: vi.fn(async (key: string) => {
         deleted.push(key);
         return outcome(key);
       }),
@@ -65,7 +66,7 @@ describe('deleteExpiredHeldDecks', () => {
     const repo = new InMemoryHeldDeckRepository();
     await seed(repo, 'held/expired-stuck', hourAgo, null);
     await seed(repo, 'held/expired-gone', hourAgo, null);
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     await deleteExpiredHeldDecks(
       undefined as never,

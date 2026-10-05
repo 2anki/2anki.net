@@ -1,17 +1,20 @@
-jest.mock('./storage/jobs/helpers/performConversion', () => ({
+import { vi, type Mock } from 'vitest';
+vi.mock('./storage/jobs/helpers/performConversion', () => ({
   __esModule: true,
-  default: jest.fn().mockResolvedValue(undefined),
-  conversionLogPrefix: jest.fn(
-    (fields: { jobDbId: string | number; requestId?: string }) =>
-      `[conversion] job=${fields.jobDbId} request=${fields.requestId ?? 'none'}`
-  ),
-  trackConversionFailed: jest.fn(),
+  default: vi.fn().mockResolvedValue(undefined),
+  conversionLogPrefix: vi.fn(function (fields: {
+    jobDbId: string | number;
+    requestId?: string;
+  }) {
+    return `[conversion] job=${fields.jobDbId} request=${fields.requestId ?? 'none'}`;
+  }),
+  trackConversionFailed: vi.fn(),
 }));
 
-jest.mock('../data_layer/NotionRespository');
-jest.mock('../data_layer/BlocksCacheRepository');
-jest.mock('../data_layer/JobRepository');
-jest.mock('../usecases/jobs/SetJobFailedUseCase');
+vi.mock('../data_layer/NotionRespository');
+vi.mock('../data_layer/BlocksCacheRepository');
+vi.mock('../data_layer/JobRepository');
+vi.mock('../usecases/jobs/SetJobFailedUseCase');
 
 import performConversion, {
   trackConversionFailed,
@@ -33,19 +36,27 @@ const baseRequest: ConversionWorkerRequest = {
   jobDbId: 99,
 };
 
-const mockSetJobFailedExecute = jest.fn().mockResolvedValue(undefined);
+const mockSetJobFailedExecute = vi.fn().mockResolvedValue(undefined);
 
 describe('runConversionInWorker', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (NotionRepository as jest.Mock).mockImplementation(() => ({
-      getNotionToken: jest.fn().mockResolvedValue('secret-token'),
-    }));
-    (BlocksCacheRepository as jest.Mock).mockImplementation(() => ({}));
-    (JobRepository as unknown as jest.Mock).mockImplementation(() => ({}));
-    (SetJobFailedUseCase as jest.Mock).mockImplementation(() => ({
-      execute: mockSetJobFailedExecute,
-    }));
+    vi.clearAllMocks();
+    (NotionRepository as Mock).mockImplementation(function () {
+      return {
+        getNotionToken: vi.fn().mockResolvedValue('secret-token'),
+      };
+    });
+    (BlocksCacheRepository as Mock).mockImplementation(function () {
+      return {};
+    });
+    (JobRepository as unknown as Mock).mockImplementation(function () {
+      return {};
+    });
+    (SetJobFailedUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: mockSetJobFailedExecute,
+      };
+    });
   });
 
   it('rehydrates NotionAPIWrapper from owner and invokes performConversion', async () => {
@@ -56,7 +67,7 @@ describe('runConversionInWorker', () => {
     await runConversionInWorker(baseRequest, () => fakeKnex);
 
     expect(performConversion).toHaveBeenCalledTimes(1);
-    const [db, request] = (performConversion as jest.Mock).mock.calls[0];
+    const [db, request] = (performConversion as Mock).mock.calls[0];
     expect(db).toBe(fakeKnex);
     expect(request).toEqual(
       expect.objectContaining({
@@ -80,14 +91,16 @@ describe('runConversionInWorker', () => {
       () => fakeKnex
     );
 
-    const [, request] = (performConversion as jest.Mock).mock.calls[0];
+    const [, request] = (performConversion as Mock).mock.calls[0];
     expect(request.requestId).toBe('req-xyz-789');
   });
 
   it('sets job failed with notion_token_expired when owner has no Notion token', async () => {
-    (NotionRepository as jest.Mock).mockImplementation(() => ({
-      getNotionToken: jest.fn().mockResolvedValue(null),
-    }));
+    (NotionRepository as Mock).mockImplementation(function () {
+      return {
+        getNotionToken: vi.fn().mockResolvedValue(null),
+      };
+    });
     const fakeKnex = {} as unknown as Parameters<typeof performConversion>[0];
 
     await runConversionInWorker(baseRequest, () => fakeKnex);
@@ -101,10 +114,12 @@ describe('runConversionInWorker', () => {
   });
 
   it('logs a stamped line and tracks conversion_failed when the Notion token has expired', async () => {
-    (NotionRepository as jest.Mock).mockImplementation(() => ({
-      getNotionToken: jest.fn().mockResolvedValue(null),
-    }));
-    const infoSpy = jest
+    (NotionRepository as Mock).mockImplementation(function () {
+      return {
+        getNotionToken: vi.fn().mockResolvedValue(null),
+      };
+    });
+    const infoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined);
     const fakeKnex = {} as unknown as Parameters<typeof performConversion>[0];
@@ -143,7 +158,7 @@ describe('runConversionInWorker', () => {
 
     await runConversionInWorker(fullRequest, () => fakeKnex);
 
-    const [, request] = (performConversion as jest.Mock).mock.calls[0];
+    const [, request] = (performConversion as Mock).mock.calls[0];
     expect(request).toEqual(
       expect.objectContaining({
         id: fullRequest.id,
@@ -162,7 +177,7 @@ describe('runConversionInWorker', () => {
   });
 
   it('surfaces unexpected rejections to the caller (the pool rejects the task)', async () => {
-    (performConversion as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    (performConversion as Mock).mockRejectedValueOnce(new Error('boom'));
     const fakeKnex = {} as unknown as Parameters<typeof performConversion>[0];
 
     await expect(

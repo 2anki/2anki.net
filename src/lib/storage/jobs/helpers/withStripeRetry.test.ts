@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { withStripeRetry } from './withStripeRetry';
 
 const rateLimitError = {
@@ -8,7 +9,7 @@ const genericError = new Error('something else');
 
 describe('withStripeRetry', () => {
   it('returns result when operation succeeds on first attempt', async () => {
-    const operation = jest.fn().mockResolvedValue('ok');
+    const operation = vi.fn().mockResolvedValue('ok');
     await expect(
       withStripeRetry(operation, 'test', { baseDelayMs: 1 })
     ).resolves.toBe('ok');
@@ -16,7 +17,7 @@ describe('withStripeRetry', () => {
   });
 
   it('retries on StripeRateLimitError and returns result on second attempt', async () => {
-    const operation = jest
+    const operation = vi
       .fn()
       .mockRejectedValueOnce(rateLimitError)
       .mockResolvedValueOnce('ok');
@@ -27,7 +28,7 @@ describe('withStripeRetry', () => {
   });
 
   it('throws immediately on non-rate-limit errors without retrying', async () => {
-    const operation = jest.fn().mockRejectedValue(genericError);
+    const operation = vi.fn().mockRejectedValue(genericError);
     await expect(
       withStripeRetry(operation, 'test', { baseDelayMs: 1 })
     ).rejects.toBe(genericError);
@@ -35,7 +36,7 @@ describe('withStripeRetry', () => {
   });
 
   it('throws after exhausting max attempts on persistent rate limits', async () => {
-    const operation = jest.fn().mockRejectedValue(rateLimitError);
+    const operation = vi.fn().mockRejectedValue(rateLimitError);
     await expect(
       withStripeRetry(operation, 'test', { maxAttempts: 3, baseDelayMs: 1 })
     ).rejects.toBe(rateLimitError);
@@ -43,7 +44,7 @@ describe('withStripeRetry', () => {
   });
 
   it('retries up to maxAttempts and succeeds on last attempt', async () => {
-    const operation = jest
+    const operation = vi
       .fn()
       .mockRejectedValueOnce(rateLimitError)
       .mockRejectedValueOnce(rateLimitError)

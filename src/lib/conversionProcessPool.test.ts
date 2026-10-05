@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import {
   ConversionProcessPool,
@@ -126,7 +127,7 @@ function makePool(overrides: Partial<ProcessPoolDeps> = {}) {
   const timers = makeTimers();
   const logs: string[] = [];
   const warns: string[] = [];
-  const killGroupFn = jest.fn();
+  const killGroupFn = vi.fn();
   const pool = new ConversionProcessPool({
     forkFn,
     childModulePath: '/app/src/lib/conversionChild.js',
@@ -274,7 +275,7 @@ describe('ConversionProcessPool scheduling', () => {
   it('routes progress to the task that owns the taskId', () => {
     const { pool, created } = makePool();
     pool.start();
-    const onProgress = jest.fn();
+    const onProgress = vi.fn();
     pool.runTask('a', onProgress);
     created[0].ready();
     created[0].progress(1, 'step-x');

@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import {
   scheduleInactivityWarnings,
   INACTIVITY_WARNING_DAILY_LIMIT,
@@ -11,8 +12,8 @@ import {
 
 function makeUseCase(
   result = { count: 3, dryRun: false }
-): jest.Mocked<Pick<SendInactivityWarningsUseCase, 'execute'>> {
-  return { execute: jest.fn().mockResolvedValue(result) };
+): Mocked<Pick<SendInactivityWarningsUseCase, 'execute'>> {
+  return { execute: vi.fn().mockResolvedValue(result) };
 }
 
 const flagRepositoryStub = (value: boolean | null) => ({
@@ -23,21 +24,21 @@ const flagRepositoryStub = (value: boolean | null) => ({
 
 describe('scheduleInactivityWarnings', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     // The tick consults the outbound_campaign_emails flag before sending; the
     // scheduling behavior under test assumes campaigns are on.
     __setFeatureFlagDependencies({ repository: flagRepositoryStub(true) });
   });
   afterEach(() => {
     __resetFeatureFlagModuleForTests();
-    jest.useRealTimers();
-    jest.clearAllMocks();
+    vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
   it('does not send when the outbound_campaign_emails flag is off', async () => {
     __setFeatureFlagDependencies({ repository: flagRepositoryStub(false) });
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(null);
+    const lastRunAt = vi.fn().mockResolvedValue(null);
 
     const handle = await scheduleInactivityWarnings(
       useCase as unknown as SendInactivityWarningsUseCase,
@@ -51,7 +52,7 @@ describe('scheduleInactivityWarnings', () => {
   it('does not send when the flag row is missing (default off)', async () => {
     __setFeatureFlagDependencies({ repository: flagRepositoryStub(null) });
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(null);
+    const lastRunAt = vi.fn().mockResolvedValue(null);
 
     const handle = await scheduleInactivityWarnings(
       useCase as unknown as SendInactivityWarningsUseCase,
@@ -64,7 +65,7 @@ describe('scheduleInactivityWarnings', () => {
 
   it('ticks on startup when the job has never run', async () => {
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(null);
+    const lastRunAt = vi.fn().mockResolvedValue(null);
 
     const handle = await scheduleInactivityWarnings(
       useCase as unknown as SendInactivityWarningsUseCase,
@@ -81,7 +82,7 @@ describe('scheduleInactivityWarnings', () => {
 
   it('ticks on startup when the last run is older than the interval', async () => {
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(new Date(Date.now() - 2000));
+    const lastRunAt = vi.fn().mockResolvedValue(new Date(Date.now() - 2000));
 
     const handle = await scheduleInactivityWarnings(
       useCase as unknown as SendInactivityWarningsUseCase,
@@ -94,7 +95,7 @@ describe('scheduleInactivityWarnings', () => {
 
   it('does not tick on startup when the last run is within the interval', async () => {
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(new Date(Date.now() - 500));
+    const lastRunAt = vi.fn().mockResolvedValue(new Date(Date.now() - 500));
 
     const handle = await scheduleInactivityWarnings(
       useCase as unknown as SendInactivityWarningsUseCase,
@@ -107,7 +108,7 @@ describe('scheduleInactivityWarnings', () => {
 
   it('arms the interval after the startup check so later windows still fire', async () => {
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(new Date(Date.now() - 500));
+    const lastRunAt = vi.fn().mockResolvedValue(new Date(Date.now() - 500));
 
     const handle = await scheduleInactivityWarnings(
       useCase as unknown as SendInactivityWarningsUseCase,
@@ -116,7 +117,7 @@ describe('scheduleInactivityWarnings', () => {
 
     expect(useCase.execute).not.toHaveBeenCalled();
 
-    await jest.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     expect(useCase.execute).toHaveBeenCalledTimes(1);
     expect(useCase.execute).toHaveBeenCalledWith(
@@ -128,7 +129,7 @@ describe('scheduleInactivityWarnings', () => {
 
   it('respects a custom limit passed via options', async () => {
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(null);
+    const lastRunAt = vi.fn().mockResolvedValue(null);
 
     const handle = await scheduleInactivityWarnings(
       useCase as unknown as SendInactivityWarningsUseCase,

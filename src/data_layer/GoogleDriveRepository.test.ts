@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import {
   GoogleDriveRepository,
   GOOGLE_DRIVE_FOLDER_MIME,
 } from './GoogleDriveRepository';
 
 describe('GoogleDriveRepository.getByOwner owner guards', () => {
-  const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   afterEach(() => warn.mockClear());
 
   function makeRepo() {
@@ -85,7 +86,7 @@ describe('GoogleDriveRepository.getByOwner owner guards', () => {
 });
 
 describe('GoogleDriveRepository.deleteByIdAndOwner owner guards', () => {
-  const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   afterEach(() => warn.mockClear());
 
   function makeDeleteRepo() {

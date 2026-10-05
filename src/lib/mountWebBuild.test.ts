@@ -11,7 +11,7 @@ describe('mountWebBuild', () => {
   let server: http.Server;
   let baseUrl: string;
 
-  beforeAll((done) => {
+  beforeAll(async () => {
     buildDir = fs.mkdtempSync(path.join(os.tmpdir(), 'web-build-'));
     fs.writeFileSync(path.join(buildDir, 'index.html'), '<html>app</html>');
     fs.mkdirSync(path.join(buildDir, 'assets'));
@@ -19,21 +19,25 @@ describe('mountWebBuild', () => {
 
     const app = express();
     mountWebBuild(app, buildDir);
-    server = app.listen(0, () => {
-      const address = server.address();
-      if (address == null || typeof address === 'string') {
-        done(new Error('expected an ephemeral port'));
-        return;
-      }
-      baseUrl = `http://127.0.0.1:${address.port}`;
-      done();
+    await new Promise<void>((resolve, reject) => {
+      server = app.listen(0, () => {
+        const address = server.address();
+        if (address == null || typeof address === 'string') {
+          reject(new Error('expected an ephemeral port'));
+          return;
+        }
+        baseUrl = `http://127.0.0.1:${address.port}`;
+        resolve();
+      });
     });
   });
 
-  afterAll((done) => {
-    server.close(() => {
-      fs.rmSync(buildDir, { recursive: true, force: true });
-      done();
+  afterAll(async () => {
+    await new Promise<void>((resolve) => {
+      server.close(() => {
+        fs.rmSync(buildDir, { recursive: true, force: true });
+        resolve();
+      });
     });
   });
 

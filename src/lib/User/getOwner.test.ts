@@ -1,14 +1,15 @@
+import { vi } from 'vitest';
 import { getOwner, getOwnerId } from './getOwner';
 
 import { Response } from 'express';
 
 const mockResponse = (owner: unknown): Response<any, Record<string, any>> => {
   const res: Partial<Response<any, Record<string, any>>> = {};
-  res.status = jest.fn().mockReturnValue(res) as Response<
+  res.status = vi.fn().mockReturnValue(res) as Response<
     any,
     Record<string, any>
   >['status'];
-  res.json = jest.fn().mockReturnValue(res) as Response<
+  res.json = vi.fn().mockReturnValue(res) as Response<
     any,
     Record<string, any>
   >['json'];

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { IErrorEventRepository } from '../../../../data_layer/ErrorEventRepository';
 import {
   assessDeletionVolume,
@@ -50,8 +51,8 @@ describe('assessDeletionVolume', () => {
 
 describe('raiseDeletionVolumeAlarm', () => {
   it('records a server-source error event on the ops path', async () => {
-    const insert = jest.fn().mockResolvedValue(undefined);
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const insert = vi.fn().mockResolvedValue(undefined);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const assessment = assessDeletionVolume(
       DELETION_VOLUME_ABSOLUTE_THRESHOLD,
       2000
@@ -73,8 +74,8 @@ describe('raiseDeletionVolumeAlarm', () => {
   });
 
   it('never throws when recording the ops event fails', async () => {
-    const insert = jest.fn().mockRejectedValue(new Error('db down'));
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const insert = vi.fn().mockRejectedValue(new Error('db down'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const assessment = assessDeletionVolume(
       DELETION_VOLUME_ABSOLUTE_THRESHOLD,
       2000

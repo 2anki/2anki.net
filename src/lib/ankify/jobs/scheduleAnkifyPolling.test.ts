@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import { scheduleAnkifyPolling } from './scheduleAnkifyPolling';
 import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../../data_layer/ankify/AnkifyNotionSubscriptionsRepository';
 import { NoActiveAnkifyClientError } from '../../../usecases/ankify/SendUploadToRacUseCase';
@@ -25,36 +26,34 @@ const sampleSubscription = (
 });
 
 const makeSubscriptions =
-  (): jest.Mocked<AnkifyNotionSubscriptionsRepositoryInterface> =>
+  (): Mocked<AnkifyNotionSubscriptionsRepositoryInterface> =>
     ({
-      upsert: jest.fn(),
-      listByOwner: jest.fn(),
-      listEnabled: jest.fn(),
-      findByPageId: jest.fn(),
-      findByOwnerAndPageId: jest.fn(),
-      findById: jest.fn(),
-      setEnabled: jest.fn(),
-      deleteById: jest.fn(),
-      recordPoll: jest.fn(),
-      recordObjectType: jest.fn(),
-    }) as unknown as jest.Mocked<AnkifyNotionSubscriptionsRepositoryInterface>;
+      upsert: vi.fn(),
+      listByOwner: vi.fn(),
+      listEnabled: vi.fn(),
+      findByPageId: vi.fn(),
+      findByOwnerAndPageId: vi.fn(),
+      findById: vi.fn(),
+      setEnabled: vi.fn(),
+      deleteById: vi.fn(),
+      recordPoll: vi.fn(),
+      recordObjectType: vi.fn(),
+    }) as unknown as Mocked<AnkifyNotionSubscriptionsRepositoryInterface>;
 
-const makeUseCase = (): jest.Mocked<
-  Pick<SyncNotionPageToRacUseCase, 'execute'>
-> =>
+const makeUseCase = (): Mocked<Pick<SyncNotionPageToRacUseCase, 'execute'>> =>
   ({
-    execute: jest.fn(async () => undefined),
-  }) as unknown as jest.Mocked<Pick<SyncNotionPageToRacUseCase, 'execute'>>;
+    execute: vi.fn(async () => undefined),
+  }) as unknown as Mocked<Pick<SyncNotionPageToRacUseCase, 'execute'>>;
 
-const waitForTick = () => jest.advanceTimersByTimeAsync(16);
+const waitForTick = () => vi.advanceTimersByTimeAsync(16);
 
 describe('scheduleAnkifyPolling', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   test('skips a subscription deleted after the enabled snapshot was taken', async () => {
@@ -123,7 +122,7 @@ describe('scheduleAnkifyPolling', () => {
     subscriptions.listEnabled.mockResolvedValue([lapsed]);
     subscriptions.findByOwnerAndPageId.mockResolvedValue(lapsed);
 
-    const refreshTopLevelPagesForOwner = jest.fn();
+    const refreshTopLevelPagesForOwner = vi.fn();
     const timer = scheduleAnkifyPolling(
       subscriptions,
       useCase as unknown as SyncNotionPageToRacUseCase,
@@ -233,7 +232,7 @@ describe('scheduleAnkifyPolling', () => {
   });
 
   test('logs a warning naming the stuck tick age when a tick is skipped', async () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const subscriptions = makeSubscriptions();
       const useCase = makeUseCase();
@@ -296,8 +295,8 @@ describe('scheduleAnkifyPolling', () => {
   });
 
   test('mutes a NoActiveAnkifyClientError after one info line per boot', async () => {
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const subscriptions = makeSubscriptions();
     const useCase = makeUseCase();
 
@@ -329,7 +328,7 @@ describe('scheduleAnkifyPolling', () => {
   });
 
   test('backs off a subscription with no active client instead of retrying every tick', async () => {
-    jest.spyOn(console, 'info').mockImplementation(() => {});
+    vi.spyOn(console, 'info').mockImplementation(() => {});
     const subscriptions = makeSubscriptions();
     const useCase = makeUseCase();
 
@@ -349,14 +348,14 @@ describe('scheduleAnkifyPolling', () => {
     await waitForTick();
     expect(useCase.execute).toHaveBeenCalledTimes(1);
 
-    await jest.advanceTimersByTimeAsync(50);
+    await vi.advanceTimersByTimeAsync(50);
     expect(useCase.execute).toHaveBeenCalledTimes(2);
 
     clearInterval(timer);
   });
 
   test('polls a backed-off subscription again once its client is provisioned', async () => {
-    jest.spyOn(console, 'info').mockImplementation(() => {});
+    vi.spyOn(console, 'info').mockImplementation(() => {});
     const subscriptions = makeSubscriptions();
     const useCase = makeUseCase();
 
@@ -372,7 +371,7 @@ describe('scheduleAnkifyPolling', () => {
     );
 
     await waitForTick();
-    await jest.advanceTimersByTimeAsync(50);
+    await vi.advanceTimersByTimeAsync(50);
     await waitForTick();
     await waitForTick();
     await waitForTick();
@@ -382,8 +381,8 @@ describe('scheduleAnkifyPolling', () => {
   });
 
   test('still logs an error for a non-client failure', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const subscriptions = makeSubscriptions();
     const useCase = makeUseCase();
 

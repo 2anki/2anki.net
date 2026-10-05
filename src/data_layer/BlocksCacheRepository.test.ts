@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import Knex from 'knex';
 import type { ListBlockChildrenResponse } from '@notionhq/client/build/src/api-endpoints';
 
@@ -157,7 +158,7 @@ describe('BlocksCacheRepository', () => {
     await failing.schema.alterTable('blocks', (table) =>
       table.dropColumn('fetch')
     );
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const result = await failingRepo.get({
       id: 'page-1',

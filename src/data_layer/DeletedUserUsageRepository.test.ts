@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import Knex from 'knex';
 import KnexConfig from '../KnexConfig';
 import DeletedUserUsageRepository from './DeletedUserUsageRepository';
@@ -7,11 +8,11 @@ const HASH = emailHash('tombstone-test@example.com');
 
 describe('DeletedUserUsageRepository.consumeIfCurrentMonth — unit', () => {
   function buildKnex(rowFromDb: Record<string, unknown> | undefined) {
-    const deleteSpy = jest.fn().mockResolvedValue(1);
-    const firstSpy = jest.fn().mockResolvedValue(rowFromDb);
+    const deleteSpy = vi.fn().mockResolvedValue(1);
+    const firstSpy = vi.fn().mockResolvedValue(rowFromDb);
     const whereBuilder = { first: firstSpy, del: deleteSpy };
-    const tableBuilder = { where: jest.fn().mockReturnValue(whereBuilder) };
-    const knex = jest.fn().mockReturnValue(tableBuilder);
+    const tableBuilder = { where: vi.fn().mockReturnValue(whereBuilder) };
+    const knex = vi.fn().mockReturnValue(tableBuilder);
     return knex as unknown as ReturnType<typeof Knex>;
   }
 
@@ -83,18 +84,18 @@ describe('DeletedUserUsageRepository.consumeIfCurrentMonth — unit', () => {
   });
 
   it('deletes the tombstone row whether or not the seed survives the month filter', async () => {
-    const deleteSpy = jest.fn().mockResolvedValue(1);
-    const firstSpy = jest.fn().mockResolvedValue({
+    const deleteSpy = vi.fn().mockResolvedValue(1);
+    const firstSpy = vi.fn().mockResolvedValue({
       cards_used_this_month: 80,
       cards_month_started_at: '2026-04-01T00:00:00Z',
       pdf_prints_this_month: 1,
       prints_month_started_at: '2026-04-01T00:00:00Z',
     });
     const whereBuilder = { first: firstSpy, del: deleteSpy };
-    const tableBuilder = { where: jest.fn().mockReturnValue(whereBuilder) };
-    const knex = jest
-      .fn()
-      .mockReturnValue(tableBuilder) as unknown as ReturnType<typeof Knex>;
+    const tableBuilder = { where: vi.fn().mockReturnValue(whereBuilder) };
+    const knex = vi.fn().mockReturnValue(tableBuilder) as unknown as ReturnType<
+      typeof Knex
+    >;
 
     const repo = new DeletedUserUsageRepository(knex);
     await repo.consumeIfCurrentMonth(HASH, new Date('2026-05-24T00:00:00Z'));

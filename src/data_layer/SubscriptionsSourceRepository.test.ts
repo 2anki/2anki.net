@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Knex } from 'knex';
 import {
   SubscriptionsSourceRepository,
@@ -6,11 +7,11 @@ import {
 
 describe('SubscriptionsSourceRepository', () => {
   it('selects the payload column from the subscriptions table and maps the rows', async () => {
-    const select = jest.fn(async () => [
+    const select = vi.fn(async () => [
       { payload: { id: 'sub_1' } },
       { payload: '{"id":"sub_2"}' },
     ]);
-    const table = jest.fn(() => ({ select }));
+    const table = vi.fn(() => ({ select }));
     const repo = new SubscriptionsSourceRepository(table as unknown as Knex);
 
     const payloads = await repo.listPayloads();

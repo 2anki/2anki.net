@@ -1,50 +1,59 @@
-jest.mock('../../StorageHandler', () => ({
+import { vi, type Mock, type MockInstance } from 'vitest';
+vi.mock('../../StorageHandler', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    getWorkspacePath: () => '/tmp/fake-workspace',
-    getFileContents: jest.fn().mockResolvedValue(null),
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      getWorkspacePath: () => '/tmp/fake-workspace',
+      getFileContents: vi.fn().mockResolvedValue(null),
+    };
+  }),
 }));
 
-jest.mock('../../../../usecases/jobs/CreateJobWorkSpaceUseCase');
-jest.mock('../../../../usecases/jobs/CreateFlashcardsForJobUseCase');
-jest.mock('../../../../usecases/jobs/SetJobFailedUseCase');
-jest.mock('../../../../usecases/jobs/BuildDeckForJobUseCase');
-jest.mock('../../../../usecases/jobs/CompleteJobUseCase');
-jest.mock('../../../../usecases/jobs/NotifyUserUseCase');
-jest.mock('../../../../data_layer/JobRepository');
-jest.mock('../../../../data_layer/UsersRepository');
-jest.mock('../../../../data_layer/NotionRespository');
-jest.mock('../../../../usecases/users/CheckMonthlyCardLimitUseCase', () => {
-  const actual = jest.requireActual<
+vi.mock('../../../../usecases/jobs/CreateJobWorkSpaceUseCase');
+vi.mock('../../../../usecases/jobs/CreateFlashcardsForJobUseCase');
+vi.mock('../../../../usecases/jobs/SetJobFailedUseCase');
+vi.mock('../../../../usecases/jobs/BuildDeckForJobUseCase');
+vi.mock('../../../../usecases/jobs/CompleteJobUseCase');
+vi.mock('../../../../usecases/jobs/NotifyUserUseCase');
+vi.mock('../../../../data_layer/JobRepository');
+vi.mock('../../../../data_layer/UsersRepository');
+vi.mock('../../../../data_layer/NotionRespository');
+vi.mock('../../../../usecases/users/CheckMonthlyCardLimitUseCase', async () => {
+  const actual = await vi.importActual<
     typeof import('../../../../usecases/users/CheckMonthlyCardLimitUseCase')
   >('../../../../usecases/users/CheckMonthlyCardLimitUseCase');
   return {
     ...actual,
-    CheckMonthlyCardLimitUseCase: jest.fn(),
+    CheckMonthlyCardLimitUseCase: vi.fn(),
   };
 });
-jest.mock('../../../../services/events/track', () => ({ track: jest.fn() }));
+vi.mock('../../../../services/events/track', () => ({ track: vi.fn() }));
 
-const mockRecordUnsupported = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../../../data_layer/UnsupportedNotionBlockRepository', () => ({
-  UnsupportedNotionBlockRepository: jest
-    .fn()
-    .mockImplementation(() => ({ record: mockRecordUnsupported })),
+const mockRecordUnsupported = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(undefined)
+);
+vi.mock('../../../../data_layer/UnsupportedNotionBlockRepository', () => ({
+  UnsupportedNotionBlockRepository: vi.fn().mockImplementation(function () {
+    return { record: mockRecordUnsupported };
+  }),
 }));
 
-const mockRecordOutputStats = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../../../data_layer/ConversionOutputStatsRepository', () => ({
-  ConversionOutputStatsRepository: jest
-    .fn()
-    .mockImplementation(() => ({ record: mockRecordOutputStats })),
+const mockRecordOutputStats = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(undefined)
+);
+vi.mock('../../../../data_layer/ConversionOutputStatsRepository', () => ({
+  ConversionOutputStatsRepository: vi.fn().mockImplementation(function () {
+    return { record: mockRecordOutputStats };
+  }),
 }));
 
-const mockRecordDeckScore = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../../../data_layer/ConversionRuleScoresRepository', () => ({
-  ConversionRuleScoresRepository: jest
-    .fn()
-    .mockImplementation(() => ({ record: mockRecordDeckScore })),
+const mockRecordDeckScore = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(undefined)
+);
+vi.mock('../../../../data_layer/ConversionRuleScoresRepository', () => ({
+  ConversionRuleScoresRepository: vi.fn().mockImplementation(function () {
+    return { record: mockRecordDeckScore };
+  }),
 }));
 
 import fs from 'node:fs';
@@ -106,15 +115,17 @@ function makeRealWorkspace(): { location: string } {
 }
 
 function mockWorkspaceCreation(ws: { location: string }): void {
-  (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-    execute: jest.fn().mockResolvedValue({
-      ws,
-      exporter: {},
-      settings: {},
-      bl: {},
-      rules: {},
-    }),
-  }));
+  (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+    return {
+      execute: vi.fn().mockResolvedValue({
+        ws,
+        exporter: {},
+        settings: {},
+        bl: {},
+        rules: {},
+      }),
+    };
+  });
 }
 
 describe('performConversion — signature', () => {
@@ -124,36 +135,46 @@ describe('performConversion — signature', () => {
 });
 
 describe('performConversion — heavy pipeline', () => {
-  let errorSpy: jest.SpyInstance;
-  let setJobFailedExecute: jest.Mock;
-  let markTokenInvalidMock: jest.Mock;
+  let errorSpy: MockInstance;
+  let setJobFailedExecute: Mock;
+  let markTokenInvalidMock: Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.clearAllMocks();
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(function () {
+      return undefined;
+    });
+    vi.spyOn(console, 'info').mockImplementation(function () {
+      return undefined;
+    });
 
-    setJobFailedExecute = jest.fn().mockResolvedValue(undefined);
-    (SetJobFailedUseCase as jest.Mock).mockImplementation(() => ({
-      execute: setJobFailedExecute,
-    }));
+    setJobFailedExecute = vi.fn().mockResolvedValue(undefined);
+    (SetJobFailedUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: setJobFailedExecute,
+      };
+    });
 
-    markTokenInvalidMock = jest.fn().mockResolvedValue(undefined);
-    (NotionRepository as jest.Mock).mockImplementation(() => ({
-      markTokenInvalid: markTokenInvalidMock,
-      setReconnectEmailSent: jest.fn().mockResolvedValue(false),
-    }));
+    markTokenInvalidMock = vi.fn().mockResolvedValue(undefined);
+    (NotionRepository as Mock).mockImplementation(function () {
+      return {
+        markTokenInvalid: markTokenInvalidMock,
+        setReconnectEmailSent: vi.fn().mockResolvedValue(false),
+      };
+    });
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('marks job as failed when workspace creation throws', async () => {
     const boom = new Error('workspace exploded');
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(boom),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(boom),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -169,18 +190,22 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('marks job as failed when no decks are created', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([]),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([]),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -198,9 +223,11 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('sets notion_token_expired reason and calls markTokenInvalid when workspace throws a 401', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(makeUnauthorizedError()),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(makeUnauthorizedError()),
+      };
+    });
     const numericOwnerRequest = { ...baseRequest, owner: '42' };
 
     await performConversion(mockDatabase, numericOwnerRequest);
@@ -220,9 +247,11 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('emits conversion_failed with reason=unknown for an unclassified workspace error', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(new Error('random error')),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(new Error('random error')),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -238,9 +267,11 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('does not call markTokenInvalid for non-unauthorized errors', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(new Error('random error')),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(new Error('random error')),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -248,40 +279,52 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('delivers a truncated deck and records the held-back count when the monthly limit leaves room', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
     const decks = [{ cards: [1, 2, 3] }];
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(decks),
-    }));
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(decks),
+      };
+    });
     const limitError = new MonthlyLimitError(
       99,
       100,
       3,
       '2026-07-01T00:00:00.000Z'
     );
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(limitError),
-    }));
-    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
-    }));
-    (NotifyUserUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    const completeJobExecute = jest.fn().mockResolvedValue(undefined);
-    (CompleteJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: completeJobExecute,
-    }));
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(limitError),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    const completeJobExecute = vi.fn().mockResolvedValue(undefined);
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: completeJobExecute,
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -327,27 +370,33 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('fails the whole job with the monthly_limit reason when there is no allowance left', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
     const limitError = new MonthlyLimitError(
       100,
       100,
       3,
       '2026-07-01T00:00:00.000Z'
     );
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(limitError),
-    }));
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(limitError),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -375,18 +424,22 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('marks job as failed with the empty-deck reason when decks have zero cards', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [] }]),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [] }]),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -398,28 +451,34 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('records a Notion deck score with source notion and engine parser', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([
-        {
-          cards: [
-            { name: 'What is ATP?', back: 'Adenosine triphosphate.' },
-            { name: 'What is DNA?', back: 'Deoxyribonucleic acid.' },
-          ],
-        },
-      ]),
-    }));
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([
+          {
+            cards: [
+              { name: 'What is ATP?', back: 'Adenosine triphosphate.' },
+              { name: 'What is DNA?', back: 'Deoxyribonucleic acid.' },
+            ],
+          },
+        ]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -434,18 +493,22 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('records a no_cards score for a Notion conversion that yields no cards', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [] }]),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [] }]),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -455,18 +518,22 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('maps a database job to the notion source, not upload', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [] }]),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [] }]),
+      };
+    });
 
     await performConversion(mockDatabase, { ...baseRequest, type: 'database' });
 
@@ -476,32 +543,44 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('emits conversion_succeeded carrying the anonymous_id threaded through the job', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
-    }));
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
-    }));
-    (NotifyUserUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (CompleteJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
 
     await performConversion(mockDatabase, {
       ...baseRequest,
@@ -519,18 +598,22 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('emits conversion_failed with the anonymous_id when decks have zero cards', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [] }]),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [] }]),
+      };
+    });
 
     await performConversion(mockDatabase, {
       ...baseRequest,
@@ -548,30 +631,38 @@ describe('performConversion — heavy pipeline', () => {
   });
 
   it('emits conversion_failed with reason=python_crash when the deck build throws a PythonExitError', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
-    }));
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(
-        new PythonExitError('python died', {
-          kind: 'unknown',
-          rawOutput: 'traceback',
-          code: 1,
-        })
-      ),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(
+          new PythonExitError('python died', {
+            kind: 'unknown',
+            rawOutput: 'traceback',
+            code: 1,
+          })
+        ),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -586,49 +677,69 @@ describe('performConversion — heavy pipeline', () => {
 
 describe('performConversion — signup_origin attribution', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    jest.spyOn(console, 'info').mockImplementation(() => undefined);
-    (SetJobFailedUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (NotionRepository as jest.Mock).mockImplementation(() => ({
-      markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-      setReconnectEmailSent: jest.fn().mockResolvedValue(false),
-    }));
+    vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(function () {
+      return undefined;
+    });
+    vi.spyOn(console, 'info').mockImplementation(function () {
+      return undefined;
+    });
+    (SetJobFailedUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (NotionRepository as Mock).mockImplementation(function () {
+      return {
+        markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+        setReconnectEmailSent: vi.fn().mockResolvedValue(false),
+      };
+    });
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   function mockSuccessfulPipeline(): void {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
-    }));
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
-    }));
-    (NotifyUserUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (CompleteJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
   }
 
   it('stamps signup_origin on conversion_succeeded from the job payload', async () => {
@@ -648,18 +759,22 @@ describe('performConversion — signup_origin attribution', () => {
   });
 
   it('stamps signup_origin on conversion_failed from the job payload', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [] }]),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [] }]),
+      };
+    });
 
     await performConversion(mockDatabase, {
       ...baseRequest,
@@ -693,44 +808,62 @@ describe('performConversion — signup_origin attribution', () => {
 
 describe('performConversion — workspace cleanup', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(function () {
+      return undefined;
+    });
+    vi.spyOn(console, 'info').mockImplementation(function () {
+      return undefined;
+    });
 
-    (SetJobFailedUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (NotionRepository as jest.Mock).mockImplementation(() => ({
-      markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-      setReconnectEmailSent: jest.fn().mockResolvedValue(false),
-    }));
+    (SetJobFailedUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (NotionRepository as Mock).mockImplementation(function () {
+      return {
+        markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+        setReconnectEmailSent: vi.fn().mockResolvedValue(false),
+      };
+    });
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('removes the workspace directory after a successful conversion', async () => {
     const ws = makeRealWorkspace();
     mockWorkspaceCreation(ws);
 
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [{}, {}] }]),
-    }));
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockResolvedValue({ size: 10, key: 'k', apkg: Buffer.from('x') }),
-    }));
-    (NotifyUserUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (CompleteJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [{}, {}] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 10, key: 'k', apkg: Buffer.from('x') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -741,9 +874,11 @@ describe('performConversion — workspace cleanup', () => {
     const ws = makeRealWorkspace();
     mockWorkspaceCreation(ws);
 
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(new Error('deck build blew up')),
-    }));
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(new Error('deck build blew up')),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -752,32 +887,44 @@ describe('performConversion — workspace cleanup', () => {
 
   it('records the block handler unsupported block types after a successful conversion', async () => {
     mockRecordUnsupported.mockClear();
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: { unsupportedBlockTypes: ['html', 'html'] },
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
-    }));
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
-    }));
-    (NotifyUserUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (CompleteJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: { unsupportedBlockTypes: ['html', 'html'] },
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -792,32 +939,44 @@ describe('performConversion — workspace cleanup', () => {
 
   it('does not fail the conversion when the unsupported-block write rejects', async () => {
     mockRecordUnsupported.mockRejectedValueOnce(new Error('db down'));
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: { unsupportedBlockTypes: ['html'] },
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
-    }));
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
-    }));
-    (NotifyUserUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (CompleteJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: { unsupportedBlockTypes: ['html'] },
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -830,36 +989,48 @@ describe('performConversion — workspace cleanup', () => {
   });
 
   it('forwards the unsupported-block type counts to completeJob as a plain object', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {
-          unsupportedBlockTypes: ['child_database', 'child_database'],
-          unsupportedBlockTypeCounts: new Map([['child_database', 2]]),
-        },
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
-    }));
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
-    }));
-    (NotifyUserUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    const completeJobExecute = jest.fn().mockResolvedValue(undefined);
-    (CompleteJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: completeJobExecute,
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {
+            unsupportedBlockTypes: ['child_database', 'child_database'],
+            unsupportedBlockTypeCounts: new Map([['child_database', 2]]),
+          },
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    const completeJobExecute = vi.fn().mockResolvedValue(undefined);
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: completeJobExecute,
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -874,36 +1045,48 @@ describe('performConversion — workspace cleanup', () => {
     mockRecordUnsupported.mockReturnValueOnce(unsupportedGate);
     mockRecordOutputStats.mockClear();
 
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {
-          cardCount: 3,
-          emptyBackCount: 0,
-          unsupportedBlockTypes: ['html'],
-        },
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
-    }));
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
-    }));
-    (NotifyUserUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (CompleteJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {
+            cardCount: 3,
+            emptyBackCount: 0,
+            unsupportedBlockTypes: ['html'],
+          },
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
     await Promise.resolve();
@@ -927,32 +1110,44 @@ describe('performConversion — workspace cleanup', () => {
         'Knex: Timeout acquiring a connection. The pool is probably full.'
       )
     );
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: { cardCount: 3, emptyBackCount: 0, unsupportedBlockTypes: [] },
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
-    }));
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
-    }));
-    (NotifyUserUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (CompleteJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: { cardCount: 3, emptyBackCount: 0, unsupportedBlockTypes: [] },
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
 
     await performConversion(mockDatabase, baseRequest);
 
@@ -970,55 +1165,75 @@ describe('performConversion — workspace cleanup', () => {
 });
 
 describe('performConversion — log correlation', () => {
-  let errorSpy: jest.SpyInstance;
-  let infoSpy: jest.SpyInstance;
-  let setJobFailedExecute: jest.Mock;
+  let errorSpy: MockInstance;
+  let infoSpy: MockInstance;
+  let setJobFailedExecute: Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
-    setJobFailedExecute = jest.fn().mockResolvedValue(undefined);
-    (SetJobFailedUseCase as jest.Mock).mockImplementation(() => ({
-      execute: setJobFailedExecute,
-    }));
-    (NotionRepository as jest.Mock).mockImplementation(() => ({
-      markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-      setReconnectEmailSent: jest.fn().mockResolvedValue(false),
-    }));
+    vi.clearAllMocks();
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(function () {
+      return undefined;
+    });
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(function () {
+      return undefined;
+    });
+    setJobFailedExecute = vi.fn().mockResolvedValue(undefined);
+    (SetJobFailedUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: setJobFailedExecute,
+      };
+    });
+    (NotionRepository as Mock).mockImplementation(function () {
+      return {
+        markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+        setReconnectEmailSent: vi.fn().mockResolvedValue(false),
+      };
+    });
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   function mockSuccessfulPipeline(): void {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        ws: {},
-        exporter: {},
-        settings: {},
-        bl: {},
-        rules: {},
-      }),
-    }));
-    (CreateFlashcardsForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
-    }));
-    (CheckMonthlyCardLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (BuildDeckForJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
-    }));
-    (NotifyUserUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (CompleteJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
   }
 
   it('stamps the start line with the [conversion] prefix and the db job id, keeping the raw page id out of the message', async () => {
@@ -1066,9 +1281,11 @@ describe('performConversion — log correlation', () => {
   });
 
   it('hoists the request id into the failure message string, not onto its own object key', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(new Error('random error')),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(new Error('random error')),
+      };
+    });
 
     await performConversion(mockDatabase, {
       ...baseRequest,
@@ -1087,13 +1304,17 @@ describe('performConversion — log correlation', () => {
   });
 
   it('still marks the job failed when marking the notion token invalid throws', async () => {
-    (CreateJobWorkSpaceUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(makeUnauthorizedError()),
-    }));
-    (NotionRepository as jest.Mock).mockImplementation(() => ({
-      markTokenInvalid: jest.fn().mockRejectedValue(new Error('db blip')),
-      setReconnectEmailSent: jest.fn().mockResolvedValue(false),
-    }));
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(makeUnauthorizedError()),
+      };
+    });
+    (NotionRepository as Mock).mockImplementation(function () {
+      return {
+        markTokenInvalid: vi.fn().mockRejectedValue(new Error('db blip')),
+        setReconnectEmailSent: vi.fn().mockResolvedValue(false),
+      };
+    });
 
     await performConversion(mockDatabase, {
       ...baseRequest,

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   scheduleObservabilityCleanup,
   OBSERVABILITY_CLEANUP_INTERVAL_MS,
@@ -5,21 +6,22 @@ import {
 } from './scheduleObservabilityCleanup';
 
 describe('scheduleObservabilityCleanup', () => {
-  beforeEach(() => jest.useFakeTimers());
+  beforeEach(() => vi.useFakeTimers());
   afterEach(() => {
-    jest.useRealTimers();
-    jest.clearAllMocks();
-    jest.restoreAllMocks();
+    vi.useRealTimers();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   function makeRepo(
     impl?: () => Promise<{ requestLogs: number; outboundCallLogs: number }>
   ) {
     return {
-      deleteOlderThan: jest
+      deleteOlderThan: vi
         .fn<
-          Promise<{ requestLogs: number; outboundCallLogs: number }>,
-          [number]
+          (
+            days: number
+          ) => Promise<{ requestLogs: number; outboundCallLogs: number }>
         >()
         .mockImplementation(
           impl ??
@@ -32,7 +34,7 @@ describe('scheduleObservabilityCleanup', () => {
     const repo = makeRepo();
     const handle = scheduleObservabilityCleanup(repo, { intervalMs: 1000 });
 
-    jest.advanceTimersByTime(1000);
+    vi.advanceTimersByTime(1000);
     await Promise.resolve();
 
     expect(repo.deleteOlderThan).toHaveBeenCalledTimes(1);
@@ -46,7 +48,7 @@ describe('scheduleObservabilityCleanup', () => {
     const repo = makeRepo();
     const handle = scheduleObservabilityCleanup(repo, { intervalMs: 1000 });
 
-    jest.advanceTimersByTime(999);
+    vi.advanceTimersByTime(999);
 
     expect(repo.deleteOlderThan).not.toHaveBeenCalled();
     clearInterval(handle);
@@ -56,12 +58,10 @@ describe('scheduleObservabilityCleanup', () => {
     const repo = makeRepo(() =>
       Promise.resolve({ requestLogs: 12, outboundCallLogs: 4 })
     );
-    const info = jest
-      .spyOn(console, 'info')
-      .mockImplementation(() => undefined);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
     const handle = scheduleObservabilityCleanup(repo, { intervalMs: 1000 });
 
-    jest.advanceTimersByTime(1000);
+    vi.advanceTimersByTime(1000);
     await Promise.resolve();
     await Promise.resolve();
 
@@ -73,12 +73,12 @@ describe('scheduleObservabilityCleanup', () => {
 
   it('catches errors from the repo without rethrowing', async () => {
     const repo = makeRepo(() => Promise.reject(new Error('db down')));
-    const error = jest
+    const error = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
     const handle = scheduleObservabilityCleanup(repo, { intervalMs: 1000 });
 
-    jest.advanceTimersByTime(1000);
+    vi.advanceTimersByTime(1000);
     await expect(Promise.resolve()).resolves.toBeUndefined();
     await Promise.resolve();
 

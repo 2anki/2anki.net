@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import Knex from 'knex';
 import KnexConfig from '../KnexConfig';
 import UsersRepository from './UsersRepository';
@@ -5,16 +6,14 @@ import { isNewMonth } from '../lib/User/isNewMonth';
 import { startOfMonthUtc } from '../lib/User/startOfMonthUtc';
 
 function buildKnexMock() {
-  const updateSpy = jest.fn().mockResolvedValue(1);
-  const whereRawSpy = jest.fn().mockReturnValue({ update: updateSpy });
-  const whereSpy = jest.fn().mockReturnValue({ update: updateSpy });
+  const updateSpy = vi.fn().mockResolvedValue(1);
+  const whereRawSpy = vi.fn().mockReturnValue({ update: updateSpy });
+  const whereSpy = vi.fn().mockReturnValue({ update: updateSpy });
   const tableBuilder = { whereRaw: whereRawSpy, where: whereSpy };
-  const knex = jest
-    .fn()
-    .mockReturnValue(tableBuilder) as unknown as jest.Mock & {
-    whereRawSpy: jest.Mock;
-    whereSpy: jest.Mock;
-    updateSpy: jest.Mock;
+  const knex = vi.fn().mockReturnValue(tableBuilder) as unknown as Mock & {
+    whereRawSpy: Mock;
+    whereSpy: Mock;
+    updateSpy: Mock;
   };
   knex.whereRawSpy = whereRawSpy;
   knex.whereSpy = whereSpy;
@@ -26,11 +25,11 @@ const SAMPLE_HASH = 'hashed-pw';
 
 describe('UsersRepository.createUser', () => {
   it('persists signup_origin when provided', async () => {
-    const insertSpy = jest.fn().mockReturnValue({
-      returning: jest.fn().mockResolvedValue([{ id: 1 }]),
+    const insertSpy = vi.fn().mockReturnValue({
+      returning: vi.fn().mockResolvedValue([{ id: 1 }]),
     });
     const tableBuilder = { insert: insertSpy };
-    const knex = jest.fn().mockReturnValue(tableBuilder);
+    const knex = vi.fn().mockReturnValue(tableBuilder);
     const repo = new UsersRepository(knex as any);
 
     await repo.createUser(
@@ -49,11 +48,11 @@ describe('UsersRepository.createUser', () => {
   });
 
   it('defaults signup_origin to null when the caller omits it', async () => {
-    const insertSpy = jest.fn().mockReturnValue({
-      returning: jest.fn().mockResolvedValue([{ id: 1 }]),
+    const insertSpy = vi.fn().mockReturnValue({
+      returning: vi.fn().mockResolvedValue([{ id: 1 }]),
     });
     const tableBuilder = { insert: insertSpy };
-    const knex = jest.fn().mockReturnValue(tableBuilder);
+    const knex = vi.fn().mockReturnValue(tableBuilder);
     const repo = new UsersRepository(knex as any);
 
     await repo.createUser('al', SAMPLE_HASH, 'al@example.com');
@@ -66,13 +65,13 @@ describe('UsersRepository.createUser', () => {
 
 describe('UsersRepository.getByEmail', () => {
   it('uses LOWER(TRIM(email)) so mixed-case stored emails still match', async () => {
-    const firstSpy = jest
+    const firstSpy = vi
       .fn()
       .mockResolvedValue({ id: 1, email: 'user@example.com' });
-    const whereRawSpy = jest.fn().mockReturnValue({ first: firstSpy });
-    const knex = jest
+    const whereRawSpy = vi.fn().mockReturnValue({ first: firstSpy });
+    const knex = vi
       .fn()
-      .mockReturnValue({ whereRaw: whereRawSpy }) as unknown as jest.Mock;
+      .mockReturnValue({ whereRaw: whereRawSpy }) as unknown as Mock;
     const repo = new UsersRepository(knex as any);
 
     await repo.getByEmail('  User@Example.COM  ');
@@ -85,12 +84,12 @@ describe('UsersRepository.getByEmail', () => {
 
 describe('UsersRepository.getLanguageByEmail', () => {
   function buildLanguageKnex(row: { language: string | null } | undefined) {
-    const firstSpy = jest.fn().mockResolvedValue(row);
-    const selectSpy = jest.fn().mockReturnValue({ first: firstSpy });
-    const whereRawSpy = jest.fn().mockReturnValue({ select: selectSpy });
-    const knex = jest
+    const firstSpy = vi.fn().mockResolvedValue(row);
+    const selectSpy = vi.fn().mockReturnValue({ first: firstSpy });
+    const whereRawSpy = vi.fn().mockReturnValue({ select: selectSpy });
+    const knex = vi
       .fn()
-      .mockReturnValue({ whereRaw: whereRawSpy }) as unknown as jest.Mock;
+      .mockReturnValue({ whereRaw: whereRawSpy }) as unknown as Mock;
     return { knex, whereRawSpy };
   }
 
@@ -154,24 +153,24 @@ describe('UsersRepository.updatePatreonByEmail', () => {
 
 describe('UsersRepository.createUserAndSeedFromTombstone', () => {
   function buildTrxKnex(tombstoneSeed: any) {
-    const insertReturning = jest.fn().mockResolvedValue([{ id: 99 }]);
-    const updateSpy = jest.fn().mockResolvedValue(1);
+    const insertReturning = vi.fn().mockResolvedValue([{ id: 99 }]);
+    const updateSpy = vi.fn().mockResolvedValue(1);
     const whereForUpdate = { update: updateSpy };
-    const trx: any = jest.fn().mockImplementation((table: string) => {
+    const trx: any = vi.fn().mockImplementation((table: string) => {
       if (table === 'users') {
         return {
-          insert: jest.fn().mockReturnValue({ returning: insertReturning }),
-          where: jest.fn().mockReturnValue(whereForUpdate),
+          insert: vi.fn().mockReturnValue({ returning: insertReturning }),
+          where: vi.fn().mockReturnValue(whereForUpdate),
         };
       }
       return {};
     });
-    const transaction = jest.fn().mockImplementation(async (cb) => cb(trx));
-    const knex: any = jest.fn();
+    const transaction = vi.fn().mockImplementation(async (cb) => cb(trx));
+    const knex: any = vi.fn();
     knex.transaction = transaction;
     const tombstoneRepo = {
-      snapshot: jest.fn().mockResolvedValue(undefined),
-      consumeIfCurrentMonth: jest.fn().mockResolvedValue(tombstoneSeed),
+      snapshot: vi.fn().mockResolvedValue(undefined),
+      consumeIfCurrentMonth: vi.fn().mockResolvedValue(tombstoneSeed),
     };
     return { knex, tombstoneRepo, updateSpy, insertReturning };
   }
@@ -248,22 +247,22 @@ describe('UsersRepository.createUserAndSeedFromTombstone', () => {
 
 describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
   function buildTrxKnex() {
-    const usersUpdate = jest.fn().mockResolvedValue(1);
-    const subsUpdate = jest.fn().mockResolvedValue(1);
-    const usersWhereRaw = jest.fn().mockReturnValue({
+    const usersUpdate = vi.fn().mockResolvedValue(1);
+    const subsUpdate = vi.fn().mockResolvedValue(1);
+    const usersWhereRaw = vi.fn().mockReturnValue({
       update: usersUpdate.mockReturnValue({
-        returning: jest.fn().mockResolvedValue([{ id: 1 }]),
+        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
       }),
     });
-    const subsWhere = jest.fn().mockReturnValue({ update: subsUpdate });
+    const subsWhere = vi.fn().mockReturnValue({ update: subsUpdate });
     const magicTokens = {
-      whereIn: jest.fn().mockReturnValue({
-        whereNull: jest.fn().mockReturnValue({
-          update: jest.fn().mockResolvedValue(0),
+      whereIn: vi.fn().mockReturnValue({
+        whereNull: vi.fn().mockReturnValue({
+          update: vi.fn().mockResolvedValue(0),
         }),
       }),
     };
-    const trx: any = jest.fn().mockImplementation((table: string) => {
+    const trx: any = vi.fn().mockImplementation((table: string) => {
       if (table === 'users') {
         return { whereRaw: usersWhereRaw };
       }
@@ -275,9 +274,9 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       }
       return {};
     });
-    trx.fn = { now: jest.fn().mockReturnValue('now()') };
-    const transaction = jest.fn().mockImplementation(async (cb) => cb(trx));
-    const knex: any = jest.fn();
+    trx.fn = { now: vi.fn().mockReturnValue('now()') };
+    const transaction = vi.fn().mockImplementation(async (cb) => cb(trx));
+    const knex: any = vi.fn();
     knex.transaction = transaction;
     return { knex, usersWhereRaw, usersUpdate, subsWhere, subsUpdate };
   }
@@ -318,38 +317,38 @@ describe('UsersRepository.deleteUser', () => {
       prints_month_started_at: new Date('2026-05-01T00:00:00Z'),
     };
     const deleteOrder: string[] = [];
-    const trx: any = jest.fn().mockImplementation((table: string) => {
-      const del = jest.fn().mockImplementation(() => {
+    const trx: any = vi.fn().mockImplementation((table: string) => {
+      const del = vi.fn().mockImplementation(() => {
         deleteOrder.push(table);
         return Promise.resolve(1);
       });
       const chain: any = { del };
-      chain.orWhereRaw = jest.fn().mockReturnValue(chain);
-      chain.whereRaw = jest.fn().mockReturnValue(chain);
-      chain.select = jest.fn().mockReturnValue(chain);
-      chain.whereIn = jest.fn().mockReturnValue(chain);
+      chain.orWhereRaw = vi.fn().mockReturnValue(chain);
+      chain.whereRaw = vi.fn().mockReturnValue(chain);
+      chain.select = vi.fn().mockReturnValue(chain);
+      chain.whereIn = vi.fn().mockReturnValue(chain);
       if (table === 'users') {
         return {
-          where: jest.fn().mockReturnValue({
-            select: jest.fn().mockReturnValue({
-              first: jest.fn().mockResolvedValue(userRow),
+          where: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              first: vi.fn().mockResolvedValue(userRow),
             }),
             del,
           }),
         };
       }
       return {
-        where: jest.fn().mockReturnValue(chain),
-        whereRaw: jest.fn().mockReturnValue(chain),
-        whereIn: jest.fn().mockReturnValue(chain),
+        where: vi.fn().mockReturnValue(chain),
+        whereRaw: vi.fn().mockReturnValue(chain),
+        whereIn: vi.fn().mockReturnValue(chain),
       };
     });
-    const transaction = jest.fn().mockImplementation(async (cb) => cb(trx));
-    const knex: any = jest.fn();
+    const transaction = vi.fn().mockImplementation(async (cb) => cb(trx));
+    const knex: any = vi.fn();
     knex.transaction = transaction;
     const tombstoneRepo = {
-      snapshot: jest.fn().mockResolvedValue(undefined),
-      consumeIfCurrentMonth: jest.fn(),
+      snapshot: vi.fn().mockResolvedValue(undefined),
+      consumeIfCurrentMonth: vi.fn(),
     };
 
     const repo = new UsersRepository(knex as any, tombstoneRepo as any);
@@ -378,26 +377,26 @@ describe('UsersRepository.deleteUser', () => {
 
   it('skips the snapshot and email purge when the user row has no email', async () => {
     const touchedTables: string[] = [];
-    const trx: any = jest.fn().mockImplementation((table: string) => {
+    const trx: any = vi.fn().mockImplementation((table: string) => {
       touchedTables.push(table);
-      const chain: any = { del: jest.fn().mockResolvedValue(1) };
-      chain.orWhereRaw = jest.fn().mockReturnValue(chain);
+      const chain: any = { del: vi.fn().mockResolvedValue(1) };
+      chain.orWhereRaw = vi.fn().mockReturnValue(chain);
       return {
-        where: jest.fn().mockReturnValue({
-          select: jest.fn().mockReturnValue({
-            first: jest.fn().mockResolvedValue({ email: null }),
+        where: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            first: vi.fn().mockResolvedValue({ email: null }),
           }),
-          del: jest.fn().mockResolvedValue(1),
+          del: vi.fn().mockResolvedValue(1),
         }),
-        whereRaw: jest.fn().mockReturnValue(chain),
+        whereRaw: vi.fn().mockReturnValue(chain),
       };
     });
-    const transaction = jest.fn().mockImplementation(async (cb) => cb(trx));
-    const knex: any = jest.fn();
+    const transaction = vi.fn().mockImplementation(async (cb) => cb(trx));
+    const knex: any = vi.fn();
     knex.transaction = transaction;
     const tombstoneRepo = {
-      snapshot: jest.fn(),
-      consumeIfCurrentMonth: jest.fn(),
+      snapshot: vi.fn(),
+      consumeIfCurrentMonth: vi.fn(),
     };
 
     const repo = new UsersRepository(knex as any, tombstoneRepo as any);
@@ -411,11 +410,11 @@ describe('UsersRepository.deleteUser', () => {
 
 describe('UsersRepository.countTotalUsers', () => {
   it('counts every row in the users table and coerces the string count to a number', async () => {
-    const firstSpy = jest.fn().mockResolvedValue({ count: '19389' });
-    const countSpy = jest.fn().mockReturnValue({ first: firstSpy });
-    const knex = jest
+    const firstSpy = vi.fn().mockResolvedValue({ count: '19389' });
+    const countSpy = vi.fn().mockReturnValue({ first: firstSpy });
+    const knex = vi
       .fn()
-      .mockReturnValue({ count: countSpy }) as unknown as jest.Mock;
+      .mockReturnValue({ count: countSpy }) as unknown as Mock;
     const repo = new UsersRepository(knex as any);
 
     const total = await repo.countTotalUsers();
@@ -425,11 +424,11 @@ describe('UsersRepository.countTotalUsers', () => {
   });
 
   it('returns 0 when the count row is missing', async () => {
-    const firstSpy = jest.fn().mockResolvedValue(undefined);
-    const countSpy = jest.fn().mockReturnValue({ first: firstSpy });
-    const knex = jest
+    const firstSpy = vi.fn().mockResolvedValue(undefined);
+    const countSpy = vi.fn().mockReturnValue({ first: firstSpy });
+    const knex = vi
       .fn()
-      .mockReturnValue({ count: countSpy }) as unknown as jest.Mock;
+      .mockReturnValue({ count: countSpy }) as unknown as Mock;
     const repo = new UsersRepository(knex as any);
 
     const total = await repo.countTotalUsers();
@@ -440,12 +439,12 @@ describe('UsersRepository.countTotalUsers', () => {
 
 describe('UsersRepository.countSignupsSince', () => {
   it('binds the cutoff date against created_at and coerces the count', async () => {
-    const firstSpy = jest.fn().mockResolvedValue({ count: '42' });
-    const countSpy = jest.fn().mockReturnValue({ first: firstSpy });
-    const whereSpy = jest.fn().mockReturnValue({ count: countSpy });
-    const knex = jest
+    const firstSpy = vi.fn().mockResolvedValue({ count: '42' });
+    const countSpy = vi.fn().mockReturnValue({ first: firstSpy });
+    const whereSpy = vi.fn().mockReturnValue({ count: countSpy });
+    const knex = vi
       .fn()
-      .mockReturnValue({ where: whereSpy }) as unknown as jest.Mock;
+      .mockReturnValue({ where: whereSpy }) as unknown as Mock;
     const repo = new UsersRepository(knex as any);
 
     const since = new Date('2026-05-30T14:32:07.000Z');
@@ -462,11 +461,11 @@ describe('UsersRepository.incrementPrintUsage', () => {
 
   afterAll(() => pg.destroy());
 
-  beforeEach(() => jest.useFakeTimers());
-  afterEach(() => jest.useRealTimers());
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
 
   it('stamps the month boundary in UTC so getPrintUsage counts the print in the same month', () => {
-    jest.setSystemTime(new Date('2026-07-15T12:00:00.000Z'));
+    vi.setSystemTime(new Date('2026-07-15T12:00:00.000Z'));
     const repo = new UsersRepository(pg as any);
 
     const { bindings } = repo.incrementPrintUsage(1).toSQL();
