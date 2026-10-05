@@ -194,6 +194,47 @@ describe('markdownToHTML', () => {
       expect(result).toContain('<li>bullet\n<table>');
       expect(result).not.toContain('<li>\n<p>');
     });
+
+    it('keeps a shorter inner fence as code and still isolates the table after it', () => {
+      const result = markdownToHTML(
+        [
+          '````',
+          '```',
+          'x',
+          '````',
+          '- item',
+          '| A | B |',
+          '| --- | --- |',
+        ].join('\n')
+      );
+      expect(result).toContain('<pre><code>');
+      expect(result).toContain('<table');
+    });
+
+    it('keeps an info-string fence line as code and still isolates the table after it', () => {
+      const result = markdownToHTML(
+        [
+          '```',
+          '```js',
+          'x = 1',
+          '```',
+          '- item',
+          '| A | B |',
+          '| --- | --- |',
+        ].join('\n')
+      );
+      expect(result).toContain('x = 1');
+      expect(result).toContain('<table');
+    });
+
+    it('treats a line-start inline code span as a paragraph, not a never-closing fence', () => {
+      const result = markdownToHTML(
+        ['```x``` here', '', '- item', '| A | B |', '| --- | --- |'].join('\n')
+      );
+      expect(result).toContain('<code>x</code>');
+      expect(result).toContain('<table');
+      expect(result).not.toContain('<pre>');
+    });
   });
 
   describe('U+00A0 non-breaking space', () => {

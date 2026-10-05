@@ -1,5 +1,9 @@
-const CODE_FENCE_RE = /^ {0,3}(`{3,}|~{3,})/;
+import MarkdownIt from 'markdown-it';
+
+const VERBATIM_TOKEN_TYPES = new Set(['fence', 'code_block', 'html_block']);
 const DELIMITER_CELL_RE = /^:?-+:?$/;
+
+const rangeParser = new MarkdownIt({ html: false });
 
 const isTableDelimiter = (line: string): boolean => {
   if (!line.includes('|') || !line.includes('-')) {
@@ -16,30 +20,29 @@ const isIndented = (line: string): boolean => /^[ \t]/.test(line);
 
 const isBlank = (line: string): boolean => line.trim() === '';
 
+const verbatimLineSet = (markdown: string): Set<number> => {
+  const verbatim = new Set<number>();
+  for (const token of rangeParser.parse(markdown, {})) {
+    if (VERBATIM_TOKEN_TYPES.has(token.type) && token.map != null) {
+      for (let line = token.map[0]; line < token.map[1]; line++) {
+        verbatim.add(line);
+      }
+    }
+  }
+  return verbatim;
+};
+
 export const isolateTablesFromText = (markdown: string): string => {
+  const verbatim = verbatimLineSet(markdown);
   const lines = markdown.split('\n');
   const out: string[] = [];
-  let openFence: string | null = null;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const fenceMatch = CODE_FENCE_RE.exec(line);
-    if (fenceMatch) {
-      const marker = fenceMatch[1][0];
-      if (openFence == null) {
-        openFence = marker;
-      } else if (openFence === marker) {
-        openFence = null;
-      }
-      out.push(line);
-      continue;
-    }
-    if (openFence != null) {
-      out.push(line);
-      continue;
-    }
     const nextLine = lines[i + 1];
     const preceding = out.length > 0 ? out[out.length - 1] : undefined;
     const tableGluedToText =
+      !verbatim.has(i) &&
+      !verbatim.has(i + 1) &&
       !isIndented(line) &&
       line.includes('|') &&
       nextLine !== undefined &&

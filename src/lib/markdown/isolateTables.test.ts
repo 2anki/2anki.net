@@ -85,8 +85,75 @@ describe('isolateTablesFromText', () => {
     expect(isolateTablesFromText(input)).toBe(input);
   });
 
-  it('returns the input unchanged on a long whitespace line without quadratic blowup (ReDoS guard)', () => {
+  it('stays linear on a long whitespace line (ReDoS guard)', () => {
     const input = 'a\n' + ' '.repeat(200000) + 'x';
-    expect(isolateTablesFromText(input)).toBe(input);
-  }, 2000);
+    const start = performance.now();
+    const result = isolateTablesFromText(input);
+    const elapsed = performance.now() - start;
+    expect(result).toBe(input);
+    expect(elapsed).toBeLessThan(1000);
+  });
+
+  it('treats a shorter inner fence as content, isolating only after the real close (CommonMark length rule)', () => {
+    const input = [
+      '````',
+      '```',
+      'x',
+      '````',
+      '- item',
+      '| A | B |',
+      '| --- | --- |',
+    ].join('\n');
+    expect(isolateTablesFromText(input)).toBe(
+      [
+        '````',
+        '```',
+        'x',
+        '````',
+        '- item',
+        '',
+        '| A | B |',
+        '| --- | --- |',
+      ].join('\n')
+    );
+  });
+
+  it('treats a fence line with an info string as content, not a close', () => {
+    const input = [
+      '```',
+      '```js',
+      'x = 1',
+      '```',
+      '- item',
+      '| A | B |',
+      '| --- | --- |',
+    ].join('\n');
+    expect(isolateTablesFromText(input)).toBe(
+      [
+        '```',
+        '```js',
+        'x = 1',
+        '```',
+        '- item',
+        '',
+        '| A | B |',
+        '| --- | --- |',
+      ].join('\n')
+    );
+  });
+
+  it('does not open a fence on a line that is inline code, not a fence', () => {
+    const input = [
+      '```x``` here',
+      '',
+      '- item',
+      '| A | B |',
+      '| --- | --- |',
+    ].join('\n');
+    expect(isolateTablesFromText(input)).toBe(
+      ['```x``` here', '', '- item', '', '| A | B |', '| --- | --- |'].join(
+        '\n'
+      )
+    );
+  });
 });
