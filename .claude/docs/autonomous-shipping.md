@@ -33,7 +33,7 @@ Sanctioned carve-outs inside `/ship` only: starting `pnpm dev` for the browser a
 
 ## Decisions and manual steps
 
-Trio decisions land in the PR body under `## Decisions` (the `overnight-prs` format). The merged PR is where Alexander overrides a call — comment on it or open a follow-up. A step only Alexander can do (a prod secret, a Stripe dashboard setting, a third-party account) ships behind a safe default and goes in the final report to him, one line per step. Do not open `Needs you` issues; they were dropped on 2026-10-05 because they piled up as issues to close. The daily `Shipped <date>` digest issues (label `shipped-digest`, 2026-08-26 to 2026-09-08) were dropped: they duplicated `gh pr list --state merged` and cost an issue a day to close. Agents never create one.
+Trio decisions land in the PR body under `## Decisions` (the `overnight-prs` format). The merged PR is where Alexander overrides a call — comment on it or open a follow-up. A step only Alexander can do (a prod secret, a Stripe dashboard setting, a third-party account) ships behind a safe default, and the agent asks him for it in the session chat. Do not open `Needs you` issues; they were dropped on 2026-10-05 because they piled up as issues to close. The daily `Shipped <date>` digest issues (label `shipped-digest`, 2026-08-26 to 2026-09-08) were dropped: they duplicated `gh pr list --state merged` and cost an issue a day to close. Agents never create one.
 
 ## Throughput
 

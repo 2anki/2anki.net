@@ -149,7 +149,8 @@ subscriptions, quotas and migrations all go through `/ship`. Three constraints r
 - No irreversible data change in one step. Split a drop/rename/backfill into expand → migrate →
   contract PRs, each of which can roll back on its own.
 - A change that needs a value only Alexander holds (a new secret on prod, a Stripe dashboard
-  setting, a new third-party account) ships behind a safe default and goes in the morning summary as one line per step.
+  setting, a new third-party account) ships behind a safe default and goes in the morning summary as a question
+  for Alexander, one line per step.
 - Anything you cannot make safe in two attempts → leave it DRAFT with the blocker stated.
 
 ### `## Decisions made overnight` — required in every Tier 2 and Tier 3 PR
