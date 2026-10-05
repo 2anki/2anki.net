@@ -11,15 +11,9 @@ runs:
     - name: Resolve pnpm store path
       shell: bash
       run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
-    - name: Cache pnpm store
-      uses: actions/cache@v5
-      with:
-        path: ${{ env.STORE_PATH }}
-        key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-        restore-keys: |
-          pnpm-store-${{ runner.os }}-
-    - name: Cache node_modules
-      uses: actions/cache@v5
+    - name: Restore node_modules
+      id: node-modules-cache
+      uses: actions/cache/restore@v5
       with:
         path: |
           node_modules
@@ -27,8 +21,30 @@ runs:
         key: node-modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
         restore-keys: |
           node-modules-${{ runner.os }}-
+    - name: Restore pnpm store
+      if: steps.node-modules-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ env.STORE_PATH }}
+        key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          pnpm-store-${{ runner.os }}-
     - name: Install
       shell: bash
       run: pnpm install --frozen-lockfile --prefer-offline
       env:
         CI: true
+    - name: Save pnpm store
+      if: steps.node-modules-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ env.STORE_PATH }}
+        key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+    - name: Save node_modules
+      if: steps.node-modules-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: |
+          node_modules
+          web/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}

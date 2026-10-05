@@ -8,7 +8,7 @@ module.exports = {
     '<rootDir>/web/',
     '<rootDir>/.claude/',
   ],
-  modulePathIgnorePatterns: ['<rootDir>/test/'],
+  modulePathIgnorePatterns: ['<rootDir>/test/', '<rootDir>/.claude/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
     '^puppeteer$': '<rootDir>/src/test/mocks/puppeteer.ts',
