@@ -2,6 +2,7 @@ import express from 'express';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { vi } from 'vitest';
 import { withNormalizedFilenames } from './GetUploadHandler';
 import { UploadedFile } from '../storage/types';
 import { getFileContents } from '../../usecases/uploads/worker';
@@ -42,7 +43,7 @@ describe('withNormalizedFilenames', () => {
     const { req, res } = makeReqRes([file]);
     const wrapped = withNormalizedFilenames((_req, _res, next) => next());
 
-    const callback = jest.fn();
+    const callback = vi.fn();
     wrapped(req, res, callback);
 
     expect(callback).toHaveBeenCalledWith();
@@ -54,7 +55,7 @@ describe('withNormalizedFilenames', () => {
     const { req, res } = makeReqRes([file]);
     const wrapped = withNormalizedFilenames((_req, _res, next) => next());
 
-    wrapped(req, res, jest.fn());
+    wrapped(req, res, vi.fn());
     // The temp file under UPLOAD_BASE vanishes before the worker reads it.
     fs.rmSync(tmpPath);
 
@@ -71,7 +72,7 @@ describe('withNormalizedFilenames', () => {
     const { req, res } = makeReqRes([file]);
     const wrapped = withNormalizedFilenames((_req, _res, next) => next());
 
-    wrapped(req, res, jest.fn());
+    wrapped(req, res, vi.fn());
 
     expect(file.originalname).toBe('résumé.html');
     expect(file.buffer).toEqual(Buffer.from('disk-bytes'));
@@ -89,7 +90,7 @@ describe('withNormalizedFilenames', () => {
     const res = {} as express.Response;
     const wrapped = withNormalizedFilenames((_req, _res, next) => next());
 
-    const callback = jest.fn();
+    const callback = vi.fn();
     wrapped(req, res, callback);
 
     expect(callback).toHaveBeenCalledWith();
@@ -104,10 +105,10 @@ describe('withNormalizedFilenames', () => {
       aborted: true,
     } as unknown as express.Request;
     const res = {} as express.Response;
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const wrapped = withNormalizedFilenames((_req, _res, next) => next());
 
-    const callback = jest.fn();
+    const callback = vi.fn();
     wrapped(req, res, callback);
 
     expect(callback).toHaveBeenCalledWith();
@@ -121,10 +122,10 @@ describe('withNormalizedFilenames', () => {
     const file = makeDiskFile(tmpPath);
     const { req } = makeReqRes([file]);
     const res = { writableEnded: true } as unknown as express.Response;
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const wrapped = withNormalizedFilenames((_req, _res, next) => next());
 
-    wrapped(req, res, jest.fn());
+    wrapped(req, res, vi.fn());
 
     expect(file.buffer).toBeUndefined();
     expect(warn).not.toHaveBeenCalled();
@@ -139,7 +140,7 @@ describe('withNormalizedFilenames', () => {
       next(multerError)
     );
 
-    const callback = jest.fn();
+    const callback = vi.fn();
     wrapped(req, res, callback);
 
     expect(callback).toHaveBeenCalledWith(multerError);

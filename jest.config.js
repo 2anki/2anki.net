@@ -1,3 +1,11 @@
+const { vitest: vitestGlobs } = require('./test-runner-split.json');
+
+const globToIgnorePattern = (glob) =>
+  glob
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*\/|\*/g, (star) => (star === '*' ? '[^/]*' : '(?:.*/)?')) +
+  '$';
+
 /** @type {import('ts-jest/dist/types').Config} */
 module.exports = {
   preset: 'ts-jest',
@@ -7,6 +15,7 @@ module.exports = {
     '/node_modules/',
     '<rootDir>/web/',
     '<rootDir>/.claude/',
+    ...vitestGlobs.map(globToIgnorePattern),
   ],
   modulePathIgnorePatterns: ['<rootDir>/test/', '<rootDir>/.claude/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],

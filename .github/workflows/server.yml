@@ -52,7 +52,7 @@ jobs:
         if: steps.changes.outputs.code == 'true'
       - name: Test
         if: steps.changes.outputs.code == 'true'
-        run: pnpm exec jest --silent
+        run: pnpm exec jest --silent && pnpm exec vitest run
         env:
           CI: true
           NOTION_KEY: ${{ secrets.NOTION_KEY }}

@@ -1,0 +1,7 @@
+{
+  "vitest": [
+    "src/lib/misc/**/*.test.ts",
+    "src/controllers/helpers/**/*.test.ts",
+    "src/data_layer/**/*.sql.test.ts"
+  ]
+}
