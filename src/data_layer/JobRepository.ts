@@ -39,10 +39,10 @@ class JobRepository {
   }
 
   deleteJobByObjectId(objectId: string, owner: string): Promise<number> {
-    return this.database(this.tableName).delete().where({
-      object_id: objectId,
-      owner: owner,
-    });
+    return this.database(this.tableName)
+      .where({ object_id: objectId, owner: owner })
+      .whereIn('status', JobRepository.TERMINAL_STATUSES)
+      .delete();
   }
 
   async create(

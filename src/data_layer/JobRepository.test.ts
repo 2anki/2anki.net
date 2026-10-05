@@ -209,6 +209,40 @@ describe('JobRepository.restartJob — optimistic lock', () => {
   });
 });
 
+describe('JobRepository.deleteJobByObjectId', () => {
+  let db: Knex;
+
+  beforeEach(async () => {
+    db = await makeDb();
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  it('keeps a conversion that is still running for the same page', async () => {
+    await insertJob(db, { owner: '1', object_id: 'page-a', status: 'started' });
+    const repo = new JobRepository(db);
+
+    const deleted = await repo.deleteJobByObjectId('page-a', '1');
+
+    expect(deleted).toBe(0);
+    expect(await db('jobs').where({ object_id: 'page-a' })).toHaveLength(1);
+  });
+
+  it.each(JobRepository.TERMINAL_STATUSES)(
+    'deletes a %s job for the page',
+    async (status) => {
+      await insertJob(db, { owner: '1', object_id: 'page-a', status });
+      const repo = new JobRepository(db);
+
+      const deleted = await repo.deleteJobByObjectId('page-a', '1');
+
+      expect(deleted).toBe(1);
+    }
+  );
+});
+
 describe('JobRepository.create — atomic insert-if-absent', () => {
   let db: Knex;
 
