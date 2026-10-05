@@ -304,17 +304,75 @@ const startServer = async (allowOps: boolean = false) => {
   };
 };
 
-describe('OpsRouter /api/ops/business/metrics', () => {
-  it('returns 404 for non-owner callers', async () => {
-    const { url, close } = await startServer(false);
-    try {
-      const response = await fetch(`${url}/api/ops/business/metrics`);
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
+describe('OpsRouter access control', () => {
+  let shared: Awaited<ReturnType<typeof startServer>>;
+
+  beforeAll(async () => {
+    shared = await startServer(false);
   });
 
+  afterAll(async () => {
+    await shared.close();
+  });
+
+  const jsonRequest = (body: Record<string, unknown> | undefined) =>
+    body == null
+      ? undefined
+      : {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        };
+
+  const nonOwnerRoutes: Array<
+    [string, string, Record<string, unknown> | undefined]
+  > = [
+    ['GET', '/api/ops/business/metrics', undefined],
+    ['POST', '/api/ops/sync-stripe-subscriptions', undefined],
+    ['GET', '/api/ops/upload-funnel', undefined],
+    ['GET', '/api/ops/today', undefined],
+    ['GET', '/api/ops/conversion/metrics', undefined],
+    ['GET', '/api/ops/flags', undefined],
+    ['PUT', '/api/ops/flags/ai-converter-floor-v1', { value: true }],
+    ['GET', '/api/ops/subscriptions/orphaned', undefined],
+    ['POST', '/api/ops/subscriptions/reconcile', undefined],
+  ];
+
+  it.each(nonOwnerRoutes)(
+    'returns 404 for non-owner callers: %s %s',
+    async (method, path, body) => {
+      setOwnerAccess(false);
+      const response = await fetch(`${shared.url}${path}`, {
+        method,
+        ...jsonRequest(body),
+      });
+      expect(response.status).toBe(404);
+    }
+  );
+
+  const retiredRoutes: Array<[string, Record<string, unknown> | undefined]> = [
+    ['/api/ops/create-pricing-v2-prices', undefined],
+    ['/api/ops/send-price-lock-in-emails', { dryRun: true }],
+    [
+      '/api/ops/send-abandoned-checkout-recovery',
+      { emails: ['user@example.com'], dryRun: true },
+    ],
+    ['/api/ops/archive-legacy-prices', { dryRun: true }],
+  ];
+
+  it.each(retiredRoutes)(
+    'returns 404 for the ops owner because %s is retired',
+    async (path, body) => {
+      setOwnerAccess(true);
+      const response = await fetch(`${shared.url}${path}`, {
+        method: 'POST',
+        ...jsonRequest(body),
+      });
+      expect(response.status).toBe(404);
+    }
+  );
+});
+
+describe('OpsRouter /api/ops/business/metrics', () => {
   it('sets Cache-Control no-store on ops endpoints so browsers never serve stale dashboard data', async () => {
     const { url, close } = await startServer(true);
     try {
@@ -362,18 +420,6 @@ describe('OpsRouter /api/ops/business/metrics', () => {
 });
 
 describe('OpsRouter /api/ops/sync-stripe-subscriptions', () => {
-  it('returns 404 for non-owner callers', async () => {
-    const { url, close } = await startServer(false);
-    try {
-      const response = await fetch(`${url}/api/ops/sync-stripe-subscriptions`, {
-        method: 'POST',
-      });
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
-  });
-
   it('returns 202 and starts the sync for the ops owner', async () => {
     const { url, close } = await startServer(true);
     try {
@@ -391,66 +437,7 @@ describe('OpsRouter /api/ops/sync-stripe-subscriptions', () => {
   });
 });
 
-describe('OpsRouter /api/ops/create-pricing-v2-prices', () => {
-  it('returns 404 for the ops owner because the route is retired', async () => {
-    const { url, close } = await startServer(true);
-    try {
-      const response = await fetch(`${url}/api/ops/create-pricing-v2-prices`, {
-        method: 'POST',
-      });
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
-  });
-});
-
-describe('OpsRouter /api/ops/send-price-lock-in-emails', () => {
-  it('returns 404 for the ops owner because the route is retired', async () => {
-    const { url, close } = await startServer(true);
-    try {
-      const response = await fetch(`${url}/api/ops/send-price-lock-in-emails`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dryRun: true }),
-      });
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
-  });
-});
-
-describe('OpsRouter /api/ops/send-abandoned-checkout-recovery', () => {
-  it('returns 404 for the ops owner because the route is retired', async () => {
-    const { url, close } = await startServer(true);
-    try {
-      const response = await fetch(
-        `${url}/api/ops/send-abandoned-checkout-recovery`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ emails: ['user@example.com'], dryRun: true }),
-        }
-      );
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
-  });
-});
-
 describe('OpsRouter /api/ops/upload-funnel', () => {
-  it('returns 404 for non-owner callers', async () => {
-    const { url, close } = await startServer(false);
-    try {
-      const response = await fetch(`${url}/api/ops/upload-funnel`);
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
-  });
-
   it('returns 200 with stage counts and success rate for the ops owner', async () => {
     const { url, close } = await startServer(true);
     try {
@@ -488,16 +475,6 @@ describe('OpsRouter /api/ops/upload-funnel', () => {
 });
 
 describe('OpsRouter /api/ops/today', () => {
-  it('returns 404 for non-owner callers', async () => {
-    const { url, close } = await startServer(false);
-    try {
-      const response = await fetch(`${url}/api/ops/today`);
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
-  });
-
   it('returns the scored snapshot for the ops owner', async () => {
     const { url, close } = await startServer(true);
     try {
@@ -518,16 +495,6 @@ describe('OpsRouter /api/ops/today', () => {
 });
 
 describe('OpsRouter /api/ops/conversion/metrics', () => {
-  it('returns 404 for non-owner callers', async () => {
-    const { url, close } = await startServer(false);
-    try {
-      const response = await fetch(`${url}/api/ops/conversion/metrics`);
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
-  });
-
   it('returns 200 with the conversion metrics shape for the ops owner', async () => {
     const { url, close } = await startServer(true);
     try {
@@ -566,16 +533,6 @@ describe('OpsRouter /api/ops/flags', () => {
     });
   });
 
-  it('GET returns 404 for non-owner callers', async () => {
-    const { url, close } = await startServer(false);
-    try {
-      const response = await fetch(`${url}/api/ops/flags`);
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
-  });
-
   it('GET returns the seeded flag with updated_by_email but no updated_by id', async () => {
     const { url, close } = await startServer(true);
     try {
@@ -591,23 +548,6 @@ describe('OpsRouter /api/ops/flags', () => {
           updated_by_email: 'alex@example.com',
         },
       ]);
-    } finally {
-      await close();
-    }
-  });
-
-  it('PUT returns 404 for non-owner callers', async () => {
-    const { url, close } = await startServer(false);
-    try {
-      const response = await fetch(
-        `${url}/api/ops/flags/ai-converter-floor-v1`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ value: true }),
-        }
-      );
-      expect(response.status).toBe(404);
     } finally {
       await close();
     }
@@ -670,16 +610,6 @@ describe('OpsRouter /api/ops/flags', () => {
 });
 
 describe('OpsRouter /api/ops/subscriptions/orphaned', () => {
-  it('returns 404 for non-owner callers', async () => {
-    const { url, close } = await startServer(false);
-    try {
-      const response = await fetch(`${url}/api/ops/subscriptions/orphaned`);
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
-  });
-
   it('returns 200 with the orphan count and a typed list for the ops owner', async () => {
     const { url, close } = await startServer(true);
     try {
@@ -705,18 +635,6 @@ describe('OpsRouter /api/ops/subscriptions/orphaned', () => {
 });
 
 describe('OpsRouter /api/ops/subscriptions/reconcile', () => {
-  it('returns 404 for non-owner callers', async () => {
-    const { url, close } = await startServer(false);
-    try {
-      const response = await fetch(`${url}/api/ops/subscriptions/reconcile`, {
-        method: 'POST',
-      });
-      expect(response.status).toBe(404);
-    } finally {
-      await close();
-    }
-  });
-
   it('returns 200 with the reconcile summary for the ops owner', async () => {
     const { url, close } = await startServer(true);
     try {
@@ -731,22 +649,6 @@ describe('OpsRouter /api/ops/subscriptions/reconcile', () => {
         skippedRecentlyNotified: 0,
         skippedNoEmail: 0,
       });
-    } finally {
-      await close();
-    }
-  });
-});
-
-describe('OpsRouter /api/ops/archive-legacy-prices', () => {
-  it('returns 404 for the ops owner because the route is retired', async () => {
-    const { url, close } = await startServer(true);
-    try {
-      const response = await fetch(`${url}/api/ops/archive-legacy-prices`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dryRun: true }),
-      });
-      expect(response.status).toBe(404);
     } finally {
       await close();
     }
