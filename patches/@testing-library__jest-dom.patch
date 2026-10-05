@@ -1,0 +1,21 @@
+diff --git a/types/vitest.d.ts b/types/vitest.d.ts
+index 3ee9eb2f35d3f94c22d74b0177e82d92db56a979..8b7b636dbf7fca3f60bf5877298fc44df4b8598d 100644
+--- a/types/vitest.d.ts
++++ b/types/vitest.d.ts
+@@ -2,14 +2,7 @@ import 'vitest'
+ import {type TestingLibraryMatchers} from './matchers'
+ 
+ declare module 'vitest' {
+-  interface Assertion<T = any>
+-    extends TestingLibraryMatchers<
+-      any,
+-      T
+-    > {}
++  interface Assertion<R, T> extends TestingLibraryMatchers<T, R> {}
+   interface AsymmetricMatchersContaining
+-    extends TestingLibraryMatchers<
+-      any,
+-      any
+-    > {}
++    extends TestingLibraryMatchers<any, any> {}
+ }

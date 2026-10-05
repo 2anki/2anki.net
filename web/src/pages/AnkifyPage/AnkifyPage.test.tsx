@@ -68,6 +68,7 @@ const makeBackend = (overrides: Partial<Backend> = {}): Backend =>
     checkAnkifyAnkiWebStatus: vi.fn(async () => ({
       status: 'unlinked' as const,
     })),
+    searchTopLevelPages: vi.fn(async () => []),
     ...overrides,
   }) as unknown as Backend;
 

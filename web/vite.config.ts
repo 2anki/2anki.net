@@ -67,8 +67,10 @@ const sharedTestConfig = {
   globals: true,
   css: true,
   setupFiles: ['./src/setupTests.ts'],
-  deps: {
-    inline: ['@exodus/bytes'],
+  server: {
+    deps: {
+      inline: ['@exodus/bytes'],
+    },
   },
   exclude: ['tests/**/*', 'e2e/**/*'],
 };

@@ -28,6 +28,10 @@
 - Major bumps need a manual look — read the changelog for removed APIs, run the full server suite (`pnpm test`, not just `/check`), sanity-test the conversion path.
 - Drop unused deps quarterly with `/dead-code-auditor` (sub-agent) or `pnpm dlx depcheck`.
 
+## Patched dependencies
+
+- **@testing-library/jest-dom** is patched (`pnpm.patchedDependencies`, `patches/@testing-library__jest-dom.patch`) with upstream testing-library/jest-dom#742 so its `types/vitest.d.ts` augments Vitest 5's `Assertion<R, T>` interface; without it the web `typecheck` fails with ~1800 `Property 'toBeInTheDocument' does not exist` errors. The augmentation only loads because `web/src/setupTests.ts` imports `@testing-library/jest-dom/vitest` (Vitest 5 dropped the `jest.Matchers` linkage the plain import relied on under Vitest 4). Drop the patch when a jest-dom release includes #742.
+
 ## Held bumps — do not retry without clearing the blocker
 
 - **jsdom 30** (held on 29.1.1, ignored `>=30.0.0` in dependabot.yml, see #3988): regresses attribute-value matching on camelCase SVG attributes (`svg[viewBox="0 0 24 24"]` matches 0). Wait for a fixed release; do not weaken the HomePage icon test to get green.

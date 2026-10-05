@@ -164,6 +164,9 @@
     },
     "onlyBuiltDependencies": [
       "better-sqlite3"
-    ]
+    ],
+    "patchedDependencies": {
+      "@testing-library/jest-dom": "patches/@testing-library__jest-dom.patch"
+    }
   }
 }

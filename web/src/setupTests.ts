@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 import { initTestI18n } from './lib/i18n/testI18n';
 
 initTestI18n();
