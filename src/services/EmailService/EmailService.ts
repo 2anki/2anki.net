@@ -1,4 +1,4 @@
-import sgMail = require('@sendgrid/mail');
+import sgMail from '@sendgrid/mail';
 import * as cheerio from 'cheerio';
 import * as fs from 'fs';
 import * as path from 'path';

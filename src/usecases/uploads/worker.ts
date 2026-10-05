@@ -1,4 +1,5 @@
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
+import { track } from '../../services/events/track';
 import { UploadedFile } from '../../lib/storage/types';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
@@ -379,8 +380,6 @@ async function doGenerationWork(
     crossFileDedup &&
     (crossFileDedup.filesProcessed >= 2 || reportsCrossDeck)
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { track } = require('../../services/events/track');
     track('ai_conversion_completed', {
       userId,
       props: {

@@ -1,6 +1,13 @@
 import { track } from '../../services/events/track';
 import { HttpCodedError } from '../errors/HttpCodedError';
-import type { IAiSpendReader } from '../../data_layer/AiUsageMetricsRepository';
+import {
+  AiUsageMetricsRepository,
+  type IAiSpendReader,
+} from '../../data_layer/AiUsageMetricsRepository';
+import { getDatabase } from '../../data_layer';
+import { createAiCreditReaders } from '../../data_layer/createAiCreditReaders';
+import { getDefaultEmailService } from '../../services/EmailService/EmailService';
+import { SUPPORT_CC_ADDRESS } from '../constants';
 import { computeAiCreditBalance, AiCreditBalance } from './aiCredits/balance';
 import {
   RESERVED_CREDITS_PER_INFLIGHT_CALL,
@@ -48,19 +55,6 @@ export interface AiBudgetStatus {
 }
 
 function defaultDeps(): AiBudgetDeps {
-  /* eslint-disable @typescript-eslint/no-var-requires */
-  const { getDatabase } = require('../../data_layer');
-  const {
-    AiUsageMetricsRepository,
-  } = require('../../data_layer/AiUsageMetricsRepository');
-  const {
-    createAiCreditReaders,
-  } = require('../../data_layer/createAiCreditReaders');
-  const {
-    getDefaultEmailService,
-  } = require('../../services/EmailService/EmailService');
-  const { SUPPORT_CC_ADDRESS } = require('../constants');
-  /* eslint-enable @typescript-eslint/no-var-requires */
   const database = getDatabase();
   const readers = createAiCreditReaders(database);
   const usage = new AiUsageMetricsRepository(database);
