@@ -128,7 +128,7 @@ describe('AutoSyncCheckoutUseCase', () => {
     );
   });
 
-  test('omits anon_id from metadata when absent', async () => {
+  test('omits optional attribution keys (anon_id, surface) from metadata when absent', async () => {
     mockCountActive.mockResolvedValue(0);
     mockGetUserActiveSubscriptions.mockResolvedValue([]);
     mockStripeCreateSession.mockResolvedValue({

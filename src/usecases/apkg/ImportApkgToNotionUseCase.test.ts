@@ -138,6 +138,29 @@ describe('ImportApkgToNotionUseCase', () => {
     expect(result.notion_page_url).toBe('https://notion.so/page-123');
   });
 
+  it('throttles Notion writes by 350ms (THROTTLE_MS) between page creations', async () => {
+    previewService.parse.mockResolvedValue(makeParsed(3));
+    const delay = jest.fn().mockResolvedValue(undefined);
+    const throttledUseCase = new ImportApkgToNotionUseCase(
+      previewService,
+      blocksService,
+      jobRepository,
+      delay
+    );
+
+    await throttledUseCase.execute(
+      Buffer.from('fake'),
+      'parent-page',
+      'user-1',
+      notionApi,
+      'job-1',
+      { maxNotes: 10000 }
+    );
+
+    expect(notionApi.createPage).toHaveBeenCalledTimes(1);
+    expect(delay).toHaveBeenCalledWith(350);
+  });
+
   it('imports up to the cap and prepends a truncation notice for free users', async () => {
     previewService.parse.mockResolvedValue(makeParsed(5));
 
