@@ -13,11 +13,6 @@ updates:
       # compatibility — see "Held bumps" in .claude/rules/dependencies.md.
       - dependency-name: 'sanitize-html'
         versions: ['>=2.17.6']
-      # jsdom 30 regresses attribute-value matching on camelCase SVG
-      # attributes (svg[viewBox="..."] matches nothing — #3988). Held on
-      # 29.1.1 until a fixed release; do not weaken the HomePage icon test.
-      - dependency-name: 'jsdom'
-        versions: ['>=30.0.0']
     groups:
       production-dependencies:
         dependency-type: 'production'
