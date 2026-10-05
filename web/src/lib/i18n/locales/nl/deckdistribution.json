@@ -1,0 +1,23 @@
+{
+  "entry": "Deel met je klas of publiek",
+  "ariaLabel": "Deel dit deck met je klas of publiek",
+  "title": "Deck-distributie bestaat nog niet",
+  "body": "Vertel ons hoe je het zou gebruiken.",
+  "question": "Met wie zou je dit deck delen?",
+  "options": {
+    "students": "Studenten",
+    "customers": "Klanten",
+    "studyGroup": "Studiegroep",
+    "colleagues": "Collega's",
+    "justMe": "Alleen ik"
+  },
+  "notifyLabel": "Laat het me weten als het klaar is",
+  "emailPlaceholder": "you@example.com",
+  "emailInvalid": "Voer een geldig e-mailadres in.",
+  "submit": "Verzenden",
+  "sending": "Verzenden",
+  "sentTitle": "Genoteerd",
+  "sentBody": "We gebruiken dit om te beslissen wat we bouwen.",
+  "error": "Kon dit niet verzenden.",
+  "tryAgain": "Opnieuw proberen"
+}

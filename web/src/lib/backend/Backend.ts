@@ -1390,6 +1390,21 @@ export class Backend {
     }
   }
 
+  async recordDeckDistributionIntent(
+    answer: string,
+    uploadKey: string,
+    notifyEmail?: string
+  ): Promise<void> {
+    const response = await post(`${this.baseURL}deck-distribution-intent`, {
+      answer,
+      upload_key: uploadKey,
+      notify_email: notifyEmail ?? null,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to record deck distribution intent');
+    }
+  }
+
   async listContactMessages(): Promise<ContactMessage[]> {
     return get(`${this.baseURL}ops/contact-messages`);
   }

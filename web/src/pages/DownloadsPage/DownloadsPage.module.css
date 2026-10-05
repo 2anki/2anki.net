@@ -194,6 +194,11 @@
   border-left: 2px solid var(--color-warning);
 }
 
+.distributionPanelCell {
+  padding: 1rem 1.25rem;
+  background: var(--color-bg-secondary);
+}
+
 /* The table scrolls horizontally on phones; pin the notice to the viewport so
    both sentences wrap and stay readable instead of running off to the right. */
 .emptyToggleNotice {

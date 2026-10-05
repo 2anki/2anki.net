@@ -1,0 +1,23 @@
+{
+  "entry": "Condividi con la tua classe o il tuo pubblico",
+  "ariaLabel": "Condividi questo mazzo con la tua classe o il tuo pubblico",
+  "title": "La distribuzione dei mazzi non esiste ancora",
+  "body": "Dicci come la useresti.",
+  "question": "Con chi condivideresti questo mazzo?",
+  "options": {
+    "students": "Studenti",
+    "customers": "Clienti",
+    "studyGroup": "Gruppo di studio",
+    "colleagues": "Colleghi",
+    "justMe": "Solo io"
+  },
+  "notifyLabel": "Avvisami quando è pronto",
+  "emailPlaceholder": "you@example.com",
+  "emailInvalid": "Inserisci un indirizzo email valido.",
+  "submit": "Invia",
+  "sending": "Invio in corso",
+  "sentTitle": "Annotato",
+  "sentBody": "Lo useremo per decidere cosa costruire.",
+  "error": "Impossibile inviare.",
+  "tryAgain": "Riprova"
+}

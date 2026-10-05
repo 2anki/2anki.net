@@ -1,0 +1,23 @@
+{
+  "entry": "クラスやオーディエンスと共有する",
+  "ariaLabel": "このデッキをクラスやオーディエンスと共有する",
+  "title": "デッキの配布機能はまだありません",
+  "body": "どのように使いたいか教えてください。",
+  "question": "このデッキを誰と共有しますか？",
+  "options": {
+    "students": "学生",
+    "customers": "顧客",
+    "studyGroup": "勉強会",
+    "colleagues": "同僚",
+    "justMe": "自分だけ"
+  },
+  "notifyLabel": "準備ができたら知らせてください",
+  "emailPlaceholder": "you@example.com",
+  "emailInvalid": "有効なメールアドレスを入力してください。",
+  "submit": "送信",
+  "sending": "送信中",
+  "sentTitle": "承りました",
+  "sentBody": "いただいた内容をもとに、何を作るか検討します。",
+  "error": "送信できませんでした。",
+  "tryAgain": "もう一度試す"
+}

@@ -64,6 +64,7 @@ export const KNOWN_EVENTS = new Set([
   'shared_deck_downloaded',
   'shared_deck_convert_clicked',
   'make_another_deck_clicked',
+  'deck_distribution_intent_clicked',
   'recent_page_reconvert_clicked',
   'native_app_page_viewed',
   'native_app_store_clicked',

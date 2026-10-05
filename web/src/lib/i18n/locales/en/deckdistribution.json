@@ -1,0 +1,23 @@
+{
+  "entry": "Share with your class or audience",
+  "ariaLabel": "Share this deck with your class or audience",
+  "title": "Deck distribution isn't built yet",
+  "body": "Tell us how you'd use it.",
+  "question": "Who would you share this deck with?",
+  "options": {
+    "students": "Students",
+    "customers": "Customers",
+    "studyGroup": "Study group",
+    "colleagues": "Colleagues",
+    "justMe": "Just me"
+  },
+  "notifyLabel": "Notify me when it's ready",
+  "emailPlaceholder": "you@example.com",
+  "emailInvalid": "Enter a valid email address.",
+  "submit": "Send",
+  "sending": "Sending",
+  "sentTitle": "Noted",
+  "sentBody": "We'll use this to decide what to build.",
+  "error": "Couldn't send that.",
+  "tryAgain": "Try again"
+}
