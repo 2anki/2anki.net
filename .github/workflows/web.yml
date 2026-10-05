@@ -44,12 +44,12 @@ jobs:
           CI: true
 
   test-web-shard:
-    name: test-web-shard (${{ matrix.shard }}/3)
+    name: test-web-shard (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v7
       - id: changes
@@ -58,7 +58,7 @@ jobs:
         if: steps.changes.outputs.code == 'true'
       - name: Test
         if: steps.changes.outputs.code == 'true'
-        run: pnpm --filter 2anki-web exec vitest run --shard=${{ matrix.shard }}/3
+        run: pnpm --filter 2anki-web exec vitest run --shard=${{ matrix.shard }}/4
         env:
           CI: true
 
