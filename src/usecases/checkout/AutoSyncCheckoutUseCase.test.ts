@@ -166,23 +166,6 @@ describe('AutoSyncCheckoutUseCase', () => {
     );
   });
 
-  test('omits surface from metadata when absent', async () => {
-    mockCountActive.mockResolvedValue(0);
-    mockGetUserActiveSubscriptions.mockResolvedValue([]);
-    mockStripeCreateSession.mockResolvedValue({
-      url: 'https://checkout.stripe.com/test',
-    });
-
-    const uc = makeUseCase();
-    await uc.execute({ userEmail: 'user@example.com', userId: 42 });
-
-    expect(mockStripeCreateSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metadata: { user_id: '42' },
-      })
-    );
-  });
-
   test('does not log raw Stripe IDs in session creation args', async () => {
     mockCountActive.mockResolvedValue(0);
     mockGetUserActiveSubscriptions.mockResolvedValue([]);

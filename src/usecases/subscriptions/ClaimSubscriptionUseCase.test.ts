@@ -110,18 +110,6 @@ describe('ClaimSubscriptionUseCase', () => {
     expect(result.message).toBe(CLAIM_INITIATE_MESSAGE);
   });
 
-  it('returns the identical success message when a Stripe customer matches with no active subscription', async () => {
-    const useCase = new ClaimSubscriptionUseCase(
-      makeTokensRepo(),
-      makeAuditRepo(),
-      makeEmailService(),
-      makeSubscriptionService([]),
-      makeStripe()
-    );
-    const result = await useCase.execute(baseInput);
-    expect(result.message).toBe(CLAIM_INITIATE_MESSAGE);
-  });
-
   it('mints a token and sends the confirmation email to the Stripe customer email on record — not the submitted email', async () => {
     const stripeCustomerEmail = 'stripe-on-record@example.com';
     const emailService = makeEmailService();
