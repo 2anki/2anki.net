@@ -68,6 +68,7 @@ import {
 import { writeWorkspaceFile } from './writeWorkspaceFile';
 import { writePdfImageFallbackMarker } from './pdfImageFallbackMarker';
 import { mediaFilesForHtmlFile } from './mediaFilesForHtmlFile';
+import { track } from '../../../services/events/track';
 
 const HTML_GENERATION_CONCURRENCY = 3;
 
@@ -791,8 +792,6 @@ function emitCrossFileConversionEvent(
   userId: number | null,
   state: CrossFileDedupState
 ): void {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { track } = require('../../../services/events/track');
   track('ai_conversion_completed', {
     userId,
     props: {

@@ -1,4 +1,4 @@
-import type Anthropic from '@anthropic-ai/sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import type { Message } from '@anthropic-ai/sdk/resources/messages';
 import * as cheerio from 'cheerio';
 import { createHash } from 'node:crypto';
@@ -19,6 +19,7 @@ import {
   withConversionResultCache,
   type ConversionResultCacheStore,
 } from './conversionResultCache';
+import { track } from '../../services/events/track';
 
 export interface FieldMappingEntry {
   name: string;
@@ -372,12 +373,10 @@ let _anthropicClient: Anthropic | null = null;
 
 export function getAnthropicClient(): Anthropic {
   if (!_anthropicClient) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const AnthropicClass = require('@anthropic-ai/sdk').default;
-    _anthropicClient = new AnthropicClass({
+    _anthropicClient = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
       defaultHeaders: { 'anthropic-beta': 'prompt-caching-2024-07-31' },
-    }) as Anthropic;
+    });
     console.log('[Claude] Client initialised', {
       apiKeySet: !!process.env.ANTHROPIC_API_KEY,
     });
@@ -1493,10 +1492,10 @@ async function generateDeckInfoUncached(
   if (options?.pdfImageFallback) {
     // The per-page vision path intentionally bypasses comprehensive, cardStyle,
     // cardSize, and fieldMapping — carrying them here is deferred to a tracking issue.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const {
-      generateDeckInfoFromPdfImages,
-    } = require('./generateDeckInfoFromPdfImages');
+    // Loaded dynamically: generateDeckInfoFromPdfImages imports back from this
+    // module, so a static import would form a require-time cycle.
+    const { generateDeckInfoFromPdfImages } =
+      await import('./generateDeckInfoFromPdfImages');
     return generateDeckInfoFromPdfImages(
       htmlContent,
       options.pdfImageFallback,
@@ -1623,8 +1622,6 @@ async function generateDeckInfoUncached(
       costUsd,
       totalMs: elapsedMs,
     });
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { track } = require('../../services/events/track');
     track('ai_conversion_completed', {
       userId: options?.userId ?? null,
       props: {
