@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
-import { initI18n } from './lib/i18n';
+import { initTestI18n } from './lib/i18n/testI18n';
 
-initI18n();
+initTestI18n();
 
 global.ResizeObserver = class ResizeObserver {
   observe() {}

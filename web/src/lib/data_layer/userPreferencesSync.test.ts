@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -180,6 +181,6 @@ describe('userPreferencesSync — hydrate (authenticated)', () => {
     await hydrateFromServer();
 
     expect(localStorage.getItem('2anki-language')).toBe('de');
-    expect(i18n.resolvedLanguage).toBe('de');
+    await vi.waitFor(() => expect(i18n.resolvedLanguage).toBe('de'));
   });
 });

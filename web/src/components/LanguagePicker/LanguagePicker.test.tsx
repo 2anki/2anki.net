@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { track } from '../../lib/analytics/track';
@@ -36,12 +36,12 @@ describe('LanguagePicker', () => {
     ]);
   });
 
-  it('changes the active language to German on selection', () => {
+  it('changes the active language to German on selection', async () => {
     render(<LanguagePicker />);
     fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), {
       target: { value: 'de' },
     });
-    expect(i18n.language).toBe('de');
+    await waitFor(() => expect(i18n.language).toBe('de'));
   });
 
   it('fires the language_changed event with the chosen language', () => {
