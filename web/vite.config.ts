@@ -63,6 +63,16 @@ function rootAssetsSameOrigin(): Plugin {
   };
 }
 
+const sharedTestConfig = {
+  globals: true,
+  css: true,
+  setupFiles: ['./src/setupTests.ts'],
+  deps: {
+    inline: ['@exodus/bytes'],
+  },
+  exclude: ['tests/**/*', 'e2e/**/*'],
+};
+
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   // Load env file based on `mode` in the current working directory.
@@ -98,18 +108,29 @@ export default defineConfig(({ command, mode }) => {
 
     // Test configuration
     test: {
-      globals: true,
-      environment: 'jsdom',
-      setupFiles: ['./src/setupTests.ts'],
-      css: true,
-      deps: {
-        inline: ['@exodus/bytes'],
-      },
-      include: [
-        'src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-        'scripts/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts}',
+      projects: [
+        {
+          extends: true,
+          test: {
+            ...sharedTestConfig,
+            name: 'node',
+            environment: 'node',
+            include: [
+              'src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts}',
+              'scripts/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts}',
+            ],
+          },
+        },
+        {
+          extends: true,
+          test: {
+            ...sharedTestConfig,
+            name: 'jsdom',
+            environment: 'jsdom',
+            include: ['src/**/*.{test,spec}.{jsx,tsx}'],
+          },
+        },
       ],
-      exclude: ['tests/**/*', 'e2e/**/*'],
       coverage: {
         provider: 'v8',
         reporter: ['text', 'lcov'],
