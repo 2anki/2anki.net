@@ -130,12 +130,69 @@ describe('markdownToHTML', () => {
       expect(result).not.toContain('colspan');
     });
 
-    it('does not emit a <caption> for the `[Caption]` syntax', () => {
+    it('renders a `||` empty cell as an empty <td>, not a span', () => {
       const result = markdownToHTML(
-        ['| A | B |', '| --- | --- |', '| 1 | 2 |', '[My Caption]'].join('\n')
+        ['| A | B |', '| --- | --- |', '| 1 | ||'].join('\n')
+      );
+      expect(result).toContain('<td>1</td>\n<td></td>');
+      expect(result).not.toContain('colspan');
+    });
+
+    it('leaves a trailing `[Caption]` as an extra table row, not a <caption>', () => {
+      const result = markdownToHTML(
+        ['| A | B |', '| --- | --- |', '| 1 | 2 |', '[Cap]'].join('\n')
       );
       expect(result).toContain('<table');
       expect(result).not.toContain('<caption');
+      expect(result).toContain('<td>[Cap]</td>');
+    });
+
+    it('ends the table at a blank line, dropping any later rows out of it', () => {
+      const result = markdownToHTML(
+        ['| A | B |', '| --- | --- |', '| 1 | 2 |', '', '| 3 | 4 |'].join('\n')
+      );
+      expect(result).toContain('<p>| 3 | 4 |</p>');
+    });
+
+    it('pulls a GFM continuation line into the table as an extra row', () => {
+      const result = markdownToHTML(
+        ['| A | B |', '| --- | --- |', '| 1 | 2 |', 'next line'].join('\n')
+      );
+      expect(result).toContain('<td>next line</td>');
+    });
+
+    it('splits an unescaped pipe inside inline code across cells (escape it)', () => {
+      const result = markdownToHTML(
+        ['| A | B |', '| --- | --- |', '| `a | b` | c |'].join('\n')
+      );
+      expect(result).toContain('<td>`a</td>');
+      expect(result).toContain('<td>b`</td>');
+    });
+
+    it('renders an escaped pipe inside a cell as a literal bar', () => {
+      const result = markdownToHTML(
+        ['| A | B |', '| --- | --- |', '| a \\| b | c |'].join('\n')
+      );
+      expect(result).toContain('<td>a | b</td>');
+    });
+  });
+
+  describe('tables inside code and indented contexts are left alone', () => {
+    it('keeps table pipes literal inside a fenced code block', () => {
+      const result = markdownToHTML(
+        ['```', 'x = 1', '| A | B |', '| --- | --- |', '```'].join('\n')
+      );
+      expect(result).toContain('<pre><code>');
+      expect(result).toContain('| A | B |');
+      expect(result).not.toContain('<table');
+    });
+
+    it('nests a table indented under a bullet without making the list loose', () => {
+      const result = markdownToHTML(
+        ['- bullet', '  | A | B |', '  | --- | --- |', '  | 1 | 2 |'].join('\n')
+      );
+      expect(result).toContain('<li>bullet\n<table>');
+      expect(result).not.toContain('<li>\n<p>');
     });
   });
 

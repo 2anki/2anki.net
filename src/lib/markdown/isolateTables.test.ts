@@ -50,4 +50,43 @@ describe('isolateTablesFromText', () => {
     const input = '# Title\n\nParagraph with a | pipe in it.\n\n- bullet';
     expect(isolateTablesFromText(input)).toBe(input);
   });
+
+  it('does not insert a blank line inside a ``` fenced code block', () => {
+    const input = ['```', 'x = 1', '| A | B |', '| --- | --- |', '```'].join(
+      '\n'
+    );
+    expect(isolateTablesFromText(input)).toBe(input);
+  });
+
+  it('does not insert a blank line inside a ~~~ fenced code block', () => {
+    const input = ['~~~', '| A | B |', '| --- | --- |', '~~~'].join('\n');
+    expect(isolateTablesFromText(input)).toBe(input);
+  });
+
+  it('does not treat a different fence marker as a close', () => {
+    const input = ['```', '~~~', '| A | B |', '| --- | --- |', '```'].join(
+      '\n'
+    );
+    expect(isolateTablesFromText(input)).toBe(input);
+  });
+
+  it('does not insert before a table indented inside an indented code block', () => {
+    const input = ['    | A | B |', '    | --- | --- |'].join('\n');
+    expect(isolateTablesFromText(input)).toBe(input);
+  });
+
+  it('does not insert before a table indented under a list item', () => {
+    const input = [
+      '- bullet',
+      '  | A | B |',
+      '  | --- | --- |',
+      '  | 1 | 2 |',
+    ].join('\n');
+    expect(isolateTablesFromText(input)).toBe(input);
+  });
+
+  it('returns the input unchanged on a long whitespace line without quadratic blowup (ReDoS guard)', () => {
+    const input = 'a\n' + ' '.repeat(200000) + 'x';
+    expect(isolateTablesFromText(input)).toBe(input);
+  }, 2000);
 });
