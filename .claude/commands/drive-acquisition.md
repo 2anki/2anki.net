@@ -53,7 +53,8 @@ PER-ISSUE WORKFLOW (each agent):
 
 ABSOLUTE SAFETY RULES (non-negotiable):
   - Merge ONLY through /ship. NEVER run `gh pr merge` by hand, NEVER set
-    CLAUDE_SKIP_SAFETY. A hard-rail PR stays ready for my review.
+    CLAUDE_SKIP_SAFETY. Hard-rail PRs ship through /ship with its rail
+    verification.
   - NEVER push to main. NEVER `git push` without `-u origin <branch>`.
   - Deploys happen only through /ship (CI). NEVER SSH to prod outside the
     read-only /deploy-status inside /ship. NEVER touch production data.
