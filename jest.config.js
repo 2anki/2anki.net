@@ -3,8 +3,8 @@ const { vitest: vitestGlobs } = require('./test-runner-split.json');
 const globToIgnorePattern = (glob) =>
   glob
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*\//g, '(?:.*/)?')
-    .replace(/\*/g, '[^/]*') + '$';
+    .replace(/\*\*\/|\*/g, (star) => (star === '*' ? '[^/]*' : '(?:.*/)?')) +
+  '$';
 
 /** @type {import('ts-jest/dist/types').Config} */
 module.exports = {
