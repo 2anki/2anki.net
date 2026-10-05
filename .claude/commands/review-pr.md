@@ -15,7 +15,7 @@ Do not read the changed files yourself — the forks will. Reading them now wast
 
 ## Step 2 — fan out three forks in **one** message
 
-Call `Agent` three times in a single message (no `subagent_type` — fork yourself). Each fork inherits the prompt cache, runs in its own context, returns a focused report.
+Call `Agent` three times in a single message with `subagent_type: "caveman:cavecrew-reviewer"`, a fresh read-only reviewer. Never fork for this: a fork inherits the caller's whole task, and inside `/ship` that includes merging (on #4679 forks briefed as read-only force-pushed and enqueued the merge). Each reviewer runs in its own context and returns a focused report.
 
 **Fork A — security**
 ```
