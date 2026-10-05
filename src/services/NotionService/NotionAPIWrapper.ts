@@ -32,6 +32,7 @@ import { isValidNotionId } from './isValidNotionId';
 import { ValidNotionType } from './types';
 import { notionCallRingBuffer } from './NotionCallRingBuffer';
 import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
+import { makeNotionClientLogger } from './helpers/notionClientLogger';
 
 const DEFAULT_PAGE_SIZE_LIMIT = 100 * 2;
 const SEARCH_MAX_PAGES = 20;
@@ -60,7 +61,7 @@ class NotionAPIWrapper {
     owner: string,
     blocksCache?: IBlocksCacheRepository
   ) {
-    this.notion = new Client({ auth: key });
+    this.notion = new Client({ auth: key, logger: makeNotionClientLogger() });
     this.owner = owner;
     this.blocksCache = blocksCache;
   }
