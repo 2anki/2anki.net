@@ -11,13 +11,13 @@ Three parallel reviewers fan out, each focused on one axis. You synthesize and p
 - `gh pr diff <n>` — capture full diff
 - If the PR touches `web/src/**` or `src/services/EmailService/templates/**`, mark `userFacing = true`. Otherwise `userFacing = false`.
 
-Do not read the changed files yourself — the forks will. Reading them now wastes context you won't reference again.
+Do not read the changed files yourself — the reviewers will. Reading them now wastes context you won't reference again.
 
-## Step 2 — fan out three forks in **one** message
+## Step 2 — fan out three reviewers in **one** message
 
-Call `Agent` three times in a single message (no `subagent_type` — fork yourself). Each fork inherits the prompt cache, runs in its own context, returns a focused report.
+Call `Agent` three times in a single message with `subagent_type: "caveman:cavecrew-reviewer"`, a fresh read-only reviewer. Never fork for this: a fork inherits the caller's whole task, and inside `/ship` that includes merging (on #4679 forks briefed as read-only force-pushed and enqueued the merge). Each reviewer runs in its own context and returns a focused report.
 
-**Fork A — security**
+**Reviewer A — security**
 ```
 You are reviewing PR #<n> against `.claude/rules/security.md`. Pull the diff with `gh pr diff <n>` and the file list with `gh pr view <n> --json files`. Read only the files the diff touches.
 
@@ -49,7 +49,7 @@ Format:
 - **No issues** if clean. Don't pad.
 ```
 
-**Fork B — engineering**
+**Reviewer B — engineering**
 ```
 You are reviewing PR #<n> against `.claude/rules/code-quality.md` and `.claude/rules/testing.md`. Pull diff and files yourself.
 
@@ -65,10 +65,10 @@ Check exclusively for:
 - `setInterval` / `setTimeout` at module top-level
 - Lead-with-positive: `if (!ready) {...} else {...}` (Sonar S7735)
 
-Output under 200 words. Same format as Fork A.
+Output under 200 words. Same format as Reviewer A.
 ```
 
-**Fork C — ux / voice** (only if `userFacing = true`; otherwise skip this fork entirely)
+**Reviewer C — ux / voice** (only if `userFacing = true`; otherwise skip this reviewer entirely)
 ```
 You are reviewing PR #<n> against `VOICE.md` and `.claude/docs/email-templates.md`. Pull diff and files yourself. Read only files under `web/src/**` and `src/services/EmailService/templates/**`.
 
@@ -84,15 +84,15 @@ Check exclusively for:
 - Email template missing mascot header / dark-mode block / responsive block / footer tagline
 - Capitalized brand names (Anki, Notion, AnkiWeb) preserved
 
-Output under 200 words. Same format as Fork A.
+Output under 200 words. Same format as Reviewer A.
 ```
 
 ## Step 3 — synthesize and post
 
 Read the three (or two) summaries. Dedupe overlapping findings. Classify:
 
-- **Drop any finding that lacks a quoted line**, and drop the forks' **Low confidence** bucket unless a finding there is both concrete and quoted — a half-sure flag costs the contributor more than it saves. Never post a speculative finding as Blocking.
-- **Blocking** if any fork flagged it as blocking — bundled, with the file:line and the suggested fix in a `suggestion` code block where possible.
+- **Drop any finding that lacks a quoted line**, and drop the reviewers' **Low confidence** bucket unless a finding there is both concrete and quoted — a half-sure flag costs the contributor more than it saves. Never post a speculative finding as Blocking.
+- **Blocking** if any reviewer flagged it as blocking — bundled, with the file:line and the suggested fix in a `suggestion` code block where possible.
 - **Nits** — bundled separately, no code blocks unless trivial.
 - **First-time contributor?** Check `gh pr view <n> --json authorAssociation`. If `FIRST_TIME_CONTRIBUTOR` or `FIRST_TIMER`, add one warm sentence at the top.
 
@@ -120,6 +120,6 @@ Stop after posting. Merging is `/ship`'s job — it calls this command as its re
 
 ## Notes
 
-- The forks run in parallel — do not wait between calls. One message, three `Agent` blocks.
-- If you find yourself reading changed files in your own context, stop — that's the fork's job. The whole point is to keep diff/file content out of the main thread.
+- The reviewers run in parallel — do not wait between calls. One message, three `Agent` blocks.
+- If you find yourself reading changed files in your own context, stop — that's the reviewer's job. The whole point is to keep diff/file content out of the main thread.
 - Tone in the posted comment: welcoming, specific, fast. Don't sit on the review.
