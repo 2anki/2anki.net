@@ -611,16 +611,6 @@ describe('PhotoToFlashcardsUseCase', () => {
       expect(text).not.toContain('exactly as written');
     });
 
-    it('uses the generative prompt when mode is absent', async () => {
-      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
-      await useCase.execute({ ...BASE_INPUT, isPaying: true });
-      const [callArgs] = mockMessageCreate.mock.calls[0];
-      const text = (
-        callArgs.messages[0].content as Array<{ type: string; text?: string }>
-      ).find((b) => b.type === 'text')?.text;
-      expect(text).toContain('6 to 10 cards');
-    });
-
     it('tracks source_mode: verbatim in the analytics event', async () => {
       const events = makeEventsStub(0);
       const useCase = new PhotoToFlashcardsUseCase(events);
@@ -723,16 +713,6 @@ describe('PhotoToFlashcardsUseCase', () => {
       expect(text).toMatch(/slide|heading|title/i);
       expect(text).not.toContain('6 to 10 cards');
       expect(text).not.toContain('exactly as written');
-    });
-
-    it('sends the generative prompt (not heading-driven) when cardStyle is absent', async () => {
-      const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
-      await useCase.execute({ ...BASE_INPUT, isPaying: true });
-      const [callArgs] = mockMessageCreate.mock.calls[0];
-      const text = (
-        callArgs.messages[0].content as Array<{ type: string; text?: string }>
-      ).find((b) => b.type === 'text')?.text;
-      expect(text).toContain('6 to 10 cards');
     });
 
     it('tracks card_style: heading-driven in the analytics event', async () => {

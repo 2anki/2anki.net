@@ -128,7 +128,7 @@ describe('AutoSyncCheckoutUseCase', () => {
     );
   });
 
-  test('omits anon_id from metadata when absent', async () => {
+  test('omits optional attribution keys (anon_id, surface) from metadata when absent', async () => {
     mockCountActive.mockResolvedValue(0);
     mockGetUserActiveSubscriptions.mockResolvedValue([]);
     mockStripeCreateSession.mockResolvedValue({
@@ -162,23 +162,6 @@ describe('AutoSyncCheckoutUseCase', () => {
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: { user_id: '42', surface: 'pricing_page' },
-      })
-    );
-  });
-
-  test('omits surface from metadata when absent', async () => {
-    mockCountActive.mockResolvedValue(0);
-    mockGetUserActiveSubscriptions.mockResolvedValue([]);
-    mockStripeCreateSession.mockResolvedValue({
-      url: 'https://checkout.stripe.com/test',
-    });
-
-    const uc = makeUseCase();
-    await uc.execute({ userEmail: 'user@example.com', userId: 42 });
-
-    expect(mockStripeCreateSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metadata: { user_id: '42' },
       })
     );
   });

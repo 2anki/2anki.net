@@ -61,12 +61,6 @@ describe('hasAnkifyAccess', () => {
     ).toBe(false);
   });
 
-  test('treats a missing ankify_access field as no grant', () => {
-    expect(hasAnkifyAccess({ patreon: false }, [], AUTO_SYNC_PRODUCT_ID)).toBe(
-      false
-    );
-  });
-
   test('returns true when active Auto Sync subscription matches product ID', () => {
     const subs = [activeAutoSyncSub(AUTO_SYNC_PRODUCT_ID)];
     expect(
@@ -108,12 +102,6 @@ describe('hasAnkifyAccess', () => {
     const subs = [activeAutoSyncSub(AUTO_SYNC_PRODUCT_ID)];
     expect(hasAnkifyAccess({ patreon: null }, subs, AUTO_SYNC_PRODUCT_ID)).toBe(
       true
-    );
-  });
-
-  test('returns false when subscriptions array is empty and patreon is false', () => {
-    expect(hasAnkifyAccess({ patreon: false }, [], AUTO_SYNC_PRODUCT_ID)).toBe(
-      false
     );
   });
 

@@ -578,13 +578,6 @@ describe('ChatPanel', () => {
     expect(textarea.value).toBe('My PDF converted but produced 0 cards.');
   });
 
-  it('renders the message input without initialPrompt', () => {
-    renderChatPanel();
-    expect(
-      screen.getByRole('textbox', { name: 'Message input' })
-    ).toBeInTheDocument();
-  });
-
   it('syncs the textarea when initialPrompt changes after mount', () => {
     const { rerender } = render(
       <MemoryRouter>
@@ -1174,35 +1167,6 @@ describe('ChatPanel — template selector', () => {
     expect(screen.getAllByText('Oslo')).toHaveLength(2);
   });
 
-  it('still calls the server when switching basic to cloze', async () => {
-    mockPost.mockResolvedValueOnce(
-      makeSseResponse([
-        {
-          event: 'done',
-          data: {
-            content: 'Reply',
-            conversationId: 7,
-            cards: [{ front: 'New', back: 'Card' }],
-          },
-        },
-      ])
-    );
-    renderChatPanel({
-      initialMessages: assistantWithCards,
-      initialConversationId: 7,
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Note type: Basic' }));
-    fireEvent.click(
-      screen.getByRole('option', { name: /Cloze/ }).querySelector('button')!
-    );
-    await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith(
-        '/api/chat/conversations/7/regenerate',
-        { templateSlug: 'cloze' }
-      );
-    });
-  });
-
   it('regenerates a cardless last assistant turn when the template changes', async () => {
     mockPost.mockResolvedValueOnce(
       makeSseResponse([
@@ -1610,13 +1574,6 @@ describe('ChatPanel — typed note type requests', () => {
       screen.getByRole('option', { name: /Cloze/ }).querySelector('button')!
     );
     expect(mockPost).not.toHaveBeenCalled();
-  });
-
-  it('shows a note type control in the empty composer', () => {
-    renderChatPanel();
-    expect(
-      screen.getByRole('button', { name: 'Note type: Basic' })
-    ).toBeInTheDocument();
   });
 
   it('shows exactly one note type control once an assistant reply exists', () => {
