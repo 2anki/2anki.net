@@ -90,7 +90,8 @@ export default class ImportApkgToNotionUseCase {
   constructor(
     private readonly previewService: ApkgPreviewService,
     private readonly blocksService: ApkgToNotionBlocksService,
-    private readonly jobRepository: JobRepository
+    private readonly jobRepository: JobRepository,
+    private readonly delay: (ms: number) => Promise<void> = sleep
   ) {}
 
   async execute(
@@ -247,7 +248,7 @@ export default class ImportApkgToNotionUseCase {
           'processing',
           `uploading images ${uploaded}/${totalImages}`
         );
-        await sleep(THROTTLE_MS);
+        await this.delay(THROTTLE_MS);
       } catch (err) {
         console.error(`[apkg-import] failed to upload ${originalName}:`, err);
       }
@@ -266,7 +267,7 @@ export default class ImportApkgToNotionUseCase {
     totalNotes: number
   ): Promise<number> {
     const page = await notionApi.createPage(parentId, deckPage.title);
-    await sleep(THROTTLE_MS);
+    await this.delay(THROTTLE_MS);
 
     const blocks = deckPage.children as unknown as BlockObjectRequest[];
     let currentImported = imported;
@@ -283,7 +284,7 @@ export default class ImportApkgToNotionUseCase {
         `${currentImported}/${totalNotes} notes`
       );
 
-      await sleep(THROTTLE_MS);
+      await this.delay(THROTTLE_MS);
     }
 
     for (const subDeck of deckPage.subDecks) {

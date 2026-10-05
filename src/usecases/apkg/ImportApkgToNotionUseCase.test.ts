@@ -104,7 +104,8 @@ describe('ImportApkgToNotionUseCase', () => {
     useCase = new ImportApkgToNotionUseCase(
       previewService,
       blocksService,
-      jobRepository
+      jobRepository,
+      () => Promise.resolve()
     );
   });
 
