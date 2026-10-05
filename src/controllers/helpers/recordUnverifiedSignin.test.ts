@@ -1,5 +1,7 @@
-jest.mock('../../services/events/track', () => ({
-  track: jest.fn(),
+import { vi, type Mock } from 'vitest';
+
+vi.mock('../../services/events/track', () => ({
+  track: vi.fn(),
 }));
 
 import { track } from '../../services/events/track';
@@ -8,7 +10,7 @@ import {
   recordUnverifiedSignin,
 } from './recordUnverifiedSignin';
 
-const trackMock = track as jest.Mock;
+const trackMock = track as Mock;
 const NOW = new Date('2026-10-01T12:00:00.000Z');
 
 describe('accountAgeBucket', () => {

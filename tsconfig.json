@@ -70,7 +70,14 @@
     "skipLibCheck": true /* Skip type checking of declaration files. */,
     "forceConsistentCasingInFileNames": true /* Disallow inconsistently-cased references to the same file. */
   },
-  "exclude": ["web", "scripts", "ops", "migrations", ".claude"],
+  "exclude": [
+    "web",
+    "scripts",
+    "ops",
+    "migrations",
+    ".claude",
+    "vitest.config.mts"
+  ],
   "ts-node": {
     "transpileOnly": true
   }
