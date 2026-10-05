@@ -712,105 +712,109 @@ describe('loginWithMicrosoft', () => {
     });
   });
 
-  it('returns undefined when the sub claim is missing', async () => {
-    const idToken = signIdToken({
-      iss: 'https://login.microsoftonline.com/common/v2.0',
-      aud: CLIENT_ID,
-      email: 'user@outlook.com',
-      xms_edov: true,
-    });
-    mockedAxios.post = jest
-      .fn()
-      .mockResolvedValue({ data: { id_token: idToken } });
-
-    const service = createService();
-    const result = await service.loginWithMicrosoft('auth-code');
-
-    expect(result).toBeUndefined();
-  });
-
-  it('returns undefined when the iss claim is not a Microsoft issuer', async () => {
-    const idToken = signIdToken({
-      iss: 'https://evil.example.com/v2.0',
-      aud: CLIENT_ID,
-      email: 'user@outlook.com',
-      name: 'User',
-    });
-    mockedAxios.post = jest
-      .fn()
-      .mockResolvedValue({ data: { id_token: idToken } });
-
-    const service = createService();
-    const result = await service.loginWithMicrosoft('auth-code');
-
-    expect(result).toBeUndefined();
-  });
-
-  it('returns undefined when the ID token signature is invalid', async () => {
-    const otherKey = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
-    const idToken = jwt.sign(
-      {
-        iss: 'https://login.microsoftonline.com/common/v2.0',
-        aud: CLIENT_ID,
-        email: 'user@outlook.com',
+  const microsoftUndefinedCases: Array<[string, () => void]> = [
+    [
+      'the sub claim is missing',
+      () => {
+        mockedAxios.post = jest.fn().mockResolvedValue({
+          data: {
+            id_token: signIdToken({
+              iss: 'https://login.microsoftonline.com/common/v2.0',
+              aud: CLIENT_ID,
+              email: 'user@outlook.com',
+              xms_edov: true,
+            }),
+          },
+        });
       },
-      otherKey.privateKey.export({ type: 'pkcs8', format: 'pem' }),
-      { algorithm: 'RS256', header: { alg: 'RS256', kid: KID } }
-    );
-    mockedAxios.post = jest
-      .fn()
-      .mockResolvedValue({ data: { id_token: idToken } });
-
-    const service = createService();
-    const result = await service.loginWithMicrosoft('auth-code');
-
-    expect(result).toBeUndefined();
-  });
-
-  it('returns undefined when the audience does not match the client id', async () => {
-    const idToken = signIdToken({
-      iss: 'https://login.microsoftonline.com/common/v2.0',
-      aud: 'a-different-app',
-      email: 'user@outlook.com',
-    });
-    mockedAxios.post = jest
-      .fn()
-      .mockResolvedValue({ data: { id_token: idToken } });
-
-    const service = createService();
-    const result = await service.loginWithMicrosoft('auth-code');
-
-    expect(result).toBeUndefined();
-  });
-
-  it('returns undefined when the kid is not found in the JWKS', async () => {
-    const idToken = jwt.sign(
-      {
-        iss: 'https://login.microsoftonline.com/common/v2.0',
-        aud: CLIENT_ID,
-        email: 'user@outlook.com',
+    ],
+    [
+      'the iss claim is not a Microsoft issuer',
+      () => {
+        mockedAxios.post = jest.fn().mockResolvedValue({
+          data: {
+            id_token: signIdToken({
+              iss: 'https://evil.example.com/v2.0',
+              aud: CLIENT_ID,
+              email: 'user@outlook.com',
+              name: 'User',
+            }),
+          },
+        });
       },
-      privateKey.export({ type: 'pkcs8', format: 'pem' }),
-      { algorithm: 'RS256', header: { alg: 'RS256', kid: 'unknown-kid' } }
-    );
-    mockedAxios.post = jest
-      .fn()
-      .mockResolvedValue({ data: { id_token: idToken } });
+    ],
+    [
+      'the ID token signature is invalid',
+      () => {
+        const otherKey = crypto.generateKeyPairSync('rsa', {
+          modulusLength: 2048,
+        });
+        const idToken = jwt.sign(
+          {
+            iss: 'https://login.microsoftonline.com/common/v2.0',
+            aud: CLIENT_ID,
+            email: 'user@outlook.com',
+          },
+          otherKey.privateKey.export({ type: 'pkcs8', format: 'pem' }),
+          { algorithm: 'RS256', header: { alg: 'RS256', kid: KID } }
+        );
+        mockedAxios.post = jest
+          .fn()
+          .mockResolvedValue({ data: { id_token: idToken } });
+      },
+    ],
+    [
+      'the audience does not match the client id',
+      () => {
+        mockedAxios.post = jest.fn().mockResolvedValue({
+          data: {
+            id_token: signIdToken({
+              iss: 'https://login.microsoftonline.com/common/v2.0',
+              aud: 'a-different-app',
+              email: 'user@outlook.com',
+            }),
+          },
+        });
+      },
+    ],
+    [
+      'the kid is not found in the JWKS',
+      () => {
+        const idToken = jwt.sign(
+          {
+            iss: 'https://login.microsoftonline.com/common/v2.0',
+            aud: CLIENT_ID,
+            email: 'user@outlook.com',
+          },
+          privateKey.export({ type: 'pkcs8', format: 'pem' }),
+          { algorithm: 'RS256', header: { alg: 'RS256', kid: 'unknown-kid' } }
+        );
+        mockedAxios.post = jest
+          .fn()
+          .mockResolvedValue({ data: { id_token: idToken } });
+      },
+    ],
+    [
+      'the token exchange call fails',
+      () => {
+        mockedAxios.post = jest
+          .fn()
+          .mockRejectedValue(new Error('network error'));
+      },
+    ],
+  ];
 
-    const service = createService();
-    const result = await service.loginWithMicrosoft('auth-code');
+  it.each(microsoftUndefinedCases)(
+    'returns undefined when %s',
+    async (_label, configureExchange) => {
+      configureExchange();
 
-    expect(result).toBeUndefined();
-  });
+      const service = createService();
+      const result = await service.loginWithMicrosoft('auth-code');
 
-  it('returns undefined when the token exchange call fails', async () => {
-    mockedAxios.post = jest.fn().mockRejectedValue(new Error('network error'));
-
-    const service = createService();
-    const result = await service.loginWithMicrosoft('auth-code');
-
-    expect(result).toBeUndefined();
-  });
+      expect(result).toBeUndefined();
+    }
+  );
 });
 
 describe('mintAppleClientSecret', () => {
@@ -1396,106 +1400,99 @@ describe('verifyAppleIdentityToken', () => {
     });
   });
 
-  it('returns undefined when the audience is the web Service ID, not the native App ID', async () => {
-    const idToken = signIdToken({
-      iss: 'https://appleid.apple.com',
-      aud: 'com.example.2anki-web-service-id',
-      sub: 'native-sub-003',
-      email: 'native@example.com',
-      email_verified: true,
-    });
-
-    const service = createService();
-    const result = await service.verifyAppleIdentityToken(idToken);
-
-    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
-  });
-
-  it('returns undefined when the issuer is not Apple', async () => {
-    const idToken = signIdToken({
-      iss: 'https://evil.example.com',
-      aud: NATIVE_CLIENT_ID,
-      sub: 'native-sub-004',
-      email: 'native@example.com',
-      email_verified: true,
-    });
-
-    const service = createService();
-    const result = await service.verifyAppleIdentityToken(idToken);
-
-    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
-  });
-
-  it('returns undefined when the signature is invalid', async () => {
-    const wrongPair = crypto.generateKeyPairSync('rsa', {
-      modulusLength: 2048,
-    });
-    const idToken = jwt.sign(
-      {
-        iss: 'https://appleid.apple.com',
-        aud: NATIVE_CLIENT_ID,
-        sub: 'native-sub-005',
-        email: 'native@example.com',
-        email_verified: true,
+  const appleIdentityInvalidCases: Array<[string, () => string]> = [
+    [
+      'the audience is the web Service ID, not the native App ID',
+      () =>
+        signIdToken({
+          iss: 'https://appleid.apple.com',
+          aud: 'com.example.2anki-web-service-id',
+          sub: 'native-sub-003',
+          email: 'native@example.com',
+          email_verified: true,
+        }),
+    ],
+    [
+      'the issuer is not Apple',
+      () =>
+        signIdToken({
+          iss: 'https://evil.example.com',
+          aud: NATIVE_CLIENT_ID,
+          sub: 'native-sub-004',
+          email: 'native@example.com',
+          email_verified: true,
+        }),
+    ],
+    [
+      'the signature is invalid',
+      () => {
+        const wrongPair = crypto.generateKeyPairSync('rsa', {
+          modulusLength: 2048,
+        });
+        return jwt.sign(
+          {
+            iss: 'https://appleid.apple.com',
+            aud: NATIVE_CLIENT_ID,
+            sub: 'native-sub-005',
+            email: 'native@example.com',
+            email_verified: true,
+          },
+          wrongPair.privateKey.export({ type: 'pkcs8', format: 'pem' }),
+          { algorithm: 'RS256', header: { alg: 'RS256', kid: KID } }
+        );
       },
-      wrongPair.privateKey.export({ type: 'pkcs8', format: 'pem' }),
-      { algorithm: 'RS256', header: { alg: 'RS256', kid: KID } }
-    );
-
-    const service = createService();
-    const result = await service.verifyAppleIdentityToken(idToken);
-
-    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
-  });
-
-  it('returns undefined when the sub claim is missing', async () => {
-    const idToken = signIdToken({
-      iss: 'https://appleid.apple.com',
-      aud: NATIVE_CLIENT_ID,
-      email: 'native@example.com',
-      email_verified: true,
-    });
-
-    const service = createService();
-    const result = await service.verifyAppleIdentityToken(idToken);
-
-    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
-  });
-
-  it('returns undefined when the kid is not in the JWKS', async () => {
-    const idToken = jwt.sign(
-      {
-        iss: 'https://appleid.apple.com',
-        aud: NATIVE_CLIENT_ID,
-        sub: 'native-sub-007',
-        email: 'native@example.com',
-        email_verified: true,
+    ],
+    [
+      'the sub claim is missing',
+      () =>
+        signIdToken({
+          iss: 'https://appleid.apple.com',
+          aud: NATIVE_CLIENT_ID,
+          email: 'native@example.com',
+          email_verified: true,
+        }),
+    ],
+    [
+      'the kid is not in the JWKS',
+      () =>
+        jwt.sign(
+          {
+            iss: 'https://appleid.apple.com',
+            aud: NATIVE_CLIENT_ID,
+            sub: 'native-sub-007',
+            email: 'native@example.com',
+            email_verified: true,
+          },
+          privateKey.export({ type: 'pkcs8', format: 'pem' }),
+          { algorithm: 'RS256', header: { alg: 'RS256', kid: 'unknown-kid' } }
+        ),
+    ],
+    [
+      'APPLE_NATIVE_CLIENT_ID is not set',
+      () => {
+        delete process.env.APPLE_NATIVE_CLIENT_ID;
+        return signIdToken({
+          iss: 'https://appleid.apple.com',
+          aud: NATIVE_CLIENT_ID,
+          sub: 'native-sub-008',
+          email: 'native@example.com',
+          email_verified: true,
+        });
       },
-      privateKey.export({ type: 'pkcs8', format: 'pem' }),
-      { algorithm: 'RS256', header: { alg: 'RS256', kid: 'unknown-kid' } }
-    );
+    ],
+  ];
 
-    const service = createService();
-    const result = await service.verifyAppleIdentityToken(idToken);
+  it.each(appleIdentityInvalidCases)(
+    'returns undefined when %s',
+    async (_label, buildIdToken) => {
+      const idToken = buildIdToken();
 
-    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
-  });
+      const service = createService();
+      const result = await service.verifyAppleIdentityToken(idToken);
 
-  it('returns undefined when APPLE_NATIVE_CLIENT_ID is not set', async () => {
-    delete process.env.APPLE_NATIVE_CLIENT_ID;
-    const idToken = signIdToken({
-      iss: 'https://appleid.apple.com',
-      aud: NATIVE_CLIENT_ID,
-      sub: 'native-sub-008',
-      email: 'native@example.com',
-      email_verified: true,
-    });
-
-    const service = createService();
-    const result = await service.verifyAppleIdentityToken(idToken);
-
-    expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
-  });
+      expect(result).toEqual({ ok: false, reason: 'invalid_identity_token' });
+    }
+  );
 
   it('rejects ES256-signed tokens (algorithm substitution defense)', async () => {
     const ecPair = crypto.generateKeyPairSync('ec', {

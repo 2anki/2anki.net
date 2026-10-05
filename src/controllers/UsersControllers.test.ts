@@ -1357,73 +1357,72 @@ describe('UsersController.loginWithMicrosoft', () => {
     );
   });
 
-  it('redirects to /login and records the error when the email is not verified', async () => {
-    const register = jest.fn();
-    const loginWithMicrosoft = jest.fn().mockResolvedValue({
-      subject: 'ms-sub-002',
-      email: 'unverified@example.com',
-      name: 'Unverified',
-      emailVerified: false,
-    });
-    const { controller } = buildMicrosoftController({
-      loginWithMicrosoft,
-      registerVerifiedIdentity: register,
-    });
-    const res = buildMicrosoftRes();
+  const microsoftRedirectCases: Array<
+    [
+      string,
+      () => Parameters<typeof buildMicrosoftController>[0],
+      string | null,
+      (register: jest.Mock) => void,
+    ]
+  > = [
+    [
+      'the email is not verified',
+      () => ({
+        loginWithMicrosoft: jest.fn().mockResolvedValue({
+          subject: 'ms-sub-002',
+          email: 'unverified@example.com',
+          name: 'Unverified',
+          emailVerified: false,
+        }),
+      }),
+      'mauth-code',
+      (register) => {
+        expect(register).not.toHaveBeenCalled();
+        expect(MockedOauthIdentitiesRepo.prototype.link).not.toHaveBeenCalled();
+      },
+    ],
+    [
+      'the email claim is missing and no identity exists',
+      () => ({
+        loginWithMicrosoft: jest.fn().mockResolvedValue({
+          subject: 'ms-sub-003',
+          email: undefined,
+          name: 'No Email',
+          emailVerified: true,
+        }),
+      }),
+      'mauth-code',
+      (register) => {
+        expect(register).not.toHaveBeenCalled();
+      },
+    ],
+    ['the OAuth code is missing', () => undefined, null, () => {}],
+    [
+      'the token exchange fails',
+      () => ({ loginWithMicrosoft: jest.fn().mockResolvedValue(undefined) }),
+      'bad-code',
+      () => {},
+    ],
+  ];
 
-    await controller.loginWithMicrosoft(buildReq(), res);
+  it.each(microsoftRedirectCases)(
+    'redirects to /login when %s',
+    async (_label, makeOverrides, code, assertExtra) => {
+      const register = jest.fn();
+      const { controller } = buildMicrosoftController({
+        ...makeOverrides(),
+        registerVerifiedIdentity: register,
+      });
+      const res = buildMicrosoftRes();
 
-    expect(res.redirect).toHaveBeenCalledWith(
-      '/login?error=microsoft_signin_failed'
-    );
-    expect(register).not.toHaveBeenCalled();
-    expect(MockedOauthIdentitiesRepo.prototype.link).not.toHaveBeenCalled();
-  });
+      await controller.loginWithMicrosoft(buildReq(code), res);
 
-  it('redirects to /login when the email claim is missing and no identity exists', async () => {
-    const register = jest.fn();
-    const loginWithMicrosoft = jest.fn().mockResolvedValue({
-      subject: 'ms-sub-003',
-      email: undefined,
-      name: 'No Email',
-      emailVerified: true,
-    });
-    const { controller } = buildMicrosoftController({
-      loginWithMicrosoft,
-      registerVerifiedIdentity: register,
-    });
-    const res = buildMicrosoftRes();
-
-    await controller.loginWithMicrosoft(buildReq(), res);
-
-    expect(res.redirect).toHaveBeenCalledWith(
-      '/login?error=microsoft_signin_failed'
-    );
-    expect(register).not.toHaveBeenCalled();
-  });
-
-  it('redirects to /login when the OAuth code is missing', async () => {
-    const { controller } = buildMicrosoftController();
-    const res = buildMicrosoftRes();
-
-    await controller.loginWithMicrosoft(buildReq(null), res);
-
-    expect(res.redirect).toHaveBeenCalledWith(
-      '/login?error=microsoft_signin_failed'
-    );
-  });
-
-  it('redirects to /login when the token exchange fails', async () => {
-    const loginWithMicrosoft = jest.fn().mockResolvedValue(undefined);
-    const { controller } = buildMicrosoftController({ loginWithMicrosoft });
-    const res = buildMicrosoftRes();
-
-    await controller.loginWithMicrosoft(buildReq('bad-code'), res);
-
-    expect(res.redirect).toHaveBeenCalledWith(
-      '/login?error=microsoft_signin_failed'
-    );
-  });
+      expect(res.redirect).toHaveBeenCalledWith(
+        '/login?error=microsoft_signin_failed'
+      );
+      assertExtra(register);
+    }
+  );
 });
 
 describe('UsersController.loginWithApple', () => {
@@ -1660,64 +1659,56 @@ describe('UsersController.loginWithApple', () => {
     );
   });
 
-  it('redirects to /login when the state cookie is missing', async () => {
-    const { controller } = buildAppleController();
-    const res = buildAppleRes();
+  const appleRedirectCases: Array<
+    [
+      string,
+      () => Parameters<typeof buildAppleController>[0],
+      Parameters<typeof buildReq>[0],
+    ]
+  > = [
+    ['the state cookie is missing', () => undefined, { stateCookie: '' }],
+    [
+      'the state parameter does not match the cookie',
+      () => undefined,
+      { state: 'tampered', stateCookie: 'valid-state-token' },
+    ],
+    ['the code is absent', () => undefined, { code: null }],
+    [
+      'the token exchange fails',
+      () => ({
+        loginWithApple: jest.fn().mockResolvedValue({
+          ok: false,
+          reason: 'token_exchange_failed',
+          message: 'HTTP 400 invalid_grant',
+        }),
+      }),
+      undefined,
+    ],
+    [
+      'email is missing and no identity exists',
+      () => ({
+        loginWithApple: jest.fn().mockResolvedValue({
+          ok: true,
+          subject: 'apple-sub-noemail',
+          email: undefined,
+          emailVerified: true,
+        }),
+      }),
+      undefined,
+    ],
+  ];
 
-    await controller.loginWithApple(buildReq({ stateCookie: '' }), res);
+  it.each(appleRedirectCases)(
+    'redirects to /login when %s',
+    async (_label, makeOverrides, reqOpts) => {
+      const { controller } = buildAppleController(makeOverrides());
+      const res = buildAppleRes();
 
-    expect(res.redirect).toHaveBeenCalledWith('/login');
-  });
+      await controller.loginWithApple(buildReq(reqOpts), res);
 
-  it('redirects to /login when the state parameter does not match the cookie', async () => {
-    const { controller } = buildAppleController();
-    const res = buildAppleRes();
-
-    await controller.loginWithApple(
-      buildReq({ state: 'tampered', stateCookie: 'valid-state-token' }),
-      res
-    );
-
-    expect(res.redirect).toHaveBeenCalledWith('/login');
-  });
-
-  it('redirects to /login when the code is absent', async () => {
-    const { controller } = buildAppleController();
-    const res = buildAppleRes();
-
-    await controller.loginWithApple(buildReq({ code: null }), res);
-
-    expect(res.redirect).toHaveBeenCalledWith('/login');
-  });
-
-  it('redirects to /login when the token exchange fails', async () => {
-    const loginWithApple = jest.fn().mockResolvedValue({
-      ok: false,
-      reason: 'token_exchange_failed',
-      message: 'HTTP 400 invalid_grant',
-    });
-    const { controller } = buildAppleController({ loginWithApple });
-    const res = buildAppleRes();
-
-    await controller.loginWithApple(buildReq(), res);
-
-    expect(res.redirect).toHaveBeenCalledWith('/login');
-  });
-
-  it('redirects to /login when email is missing and no identity exists', async () => {
-    const loginWithApple = jest.fn().mockResolvedValue({
-      ok: true,
-      subject: 'apple-sub-noemail',
-      email: undefined,
-      emailVerified: true,
-    });
-    const { controller } = buildAppleController({ loginWithApple });
-    const res = buildAppleRes();
-
-    await controller.loginWithApple(buildReq(), res);
-
-    expect(res.redirect).toHaveBeenCalledWith('/login');
-  });
+      expect(res.redirect).toHaveBeenCalledWith('/login');
+    }
+  );
 });
 
 describe('UsersController.deleteAccount — Apple token revocation', () => {

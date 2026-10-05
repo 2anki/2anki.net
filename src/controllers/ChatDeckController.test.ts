@@ -22,107 +22,41 @@ const validCards = [
 ];
 
 describe('ChatDeckController.generate', () => {
-  it('returns 400 when deckName is missing', async () => {
+  const rejectionCases: Array<[string, unknown]> = [
+    ['deckName is missing', { cards: validCards }],
+    ['deckName is empty string', { cards: validCards, deckName: '' }],
+    [
+      'deckName exceeds 120 chars',
+      { cards: validCards, deckName: 'x'.repeat(121) },
+    ],
+    ['cards is not an array', { cards: 'not-an-array', deckName: 'My Deck' }],
+    ['cards is empty', { cards: [], deckName: 'My Deck' }],
+    [
+      'cards array exceeds 200 items',
+      {
+        cards: Array.from({ length: 201 }, (_, i) => ({
+          front: `Q${i}`,
+          back: `A${i}`,
+        })),
+        deckName: 'My Deck',
+      },
+    ],
+    [
+      'a card is missing front field',
+      { cards: [{ back: 'A1' }], deckName: 'My Deck' },
+    ],
+    [
+      'a card is missing back field',
+      { cards: [{ front: 'Q1' }], deckName: 'My Deck' },
+    ],
+  ];
+
+  it.each(rejectionCases)('returns 400 when %s', async (_label, body) => {
     const useCase = { execute: jest.fn() };
     const controller = new ChatDeckController(useCase as never);
     const res = buildRes();
 
-    await controller.generate(buildReq({ cards: validCards }), res);
-
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 400 when deckName is empty string', async () => {
-    const useCase = { execute: jest.fn() };
-    const controller = new ChatDeckController(useCase as never);
-    const res = buildRes();
-
-    await controller.generate(
-      buildReq({ cards: validCards, deckName: '' }),
-      res
-    );
-
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 400 when deckName exceeds 120 chars', async () => {
-    const useCase = { execute: jest.fn() };
-    const controller = new ChatDeckController(useCase as never);
-    const res = buildRes();
-
-    await controller.generate(
-      buildReq({ cards: validCards, deckName: 'x'.repeat(121) }),
-      res
-    );
-
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 400 when cards is not an array', async () => {
-    const useCase = { execute: jest.fn() };
-    const controller = new ChatDeckController(useCase as never);
-    const res = buildRes();
-
-    await controller.generate(
-      buildReq({ cards: 'not-an-array', deckName: 'My Deck' }),
-      res
-    );
-
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 400 when cards is empty', async () => {
-    const useCase = { execute: jest.fn() };
-    const controller = new ChatDeckController(useCase as never);
-    const res = buildRes();
-
-    await controller.generate(
-      buildReq({ cards: [], deckName: 'My Deck' }),
-      res
-    );
-
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 400 when cards array exceeds 200 items', async () => {
-    const useCase = { execute: jest.fn() };
-    const controller = new ChatDeckController(useCase as never);
-    const res = buildRes();
-    const tooManyCards = Array.from({ length: 201 }, (_, i) => ({
-      front: `Q${i}`,
-      back: `A${i}`,
-    }));
-
-    await controller.generate(
-      buildReq({ cards: tooManyCards, deckName: 'My Deck' }),
-      res
-    );
-
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 400 when a card is missing front field', async () => {
-    const useCase = { execute: jest.fn() };
-    const controller = new ChatDeckController(useCase as never);
-    const res = buildRes();
-
-    await controller.generate(
-      buildReq({ cards: [{ back: 'A1' }], deckName: 'My Deck' }),
-      res
-    );
-
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 400 when a card is missing back field', async () => {
-    const useCase = { execute: jest.fn() };
-    const controller = new ChatDeckController(useCase as never);
-    const res = buildRes();
-
-    await controller.generate(
-      buildReq({ cards: [{ front: 'Q1' }], deckName: 'My Deck' }),
-      res
-    );
+    await controller.generate(buildReq(body), res);
 
     expect(res.status).toHaveBeenCalledWith(400);
   });

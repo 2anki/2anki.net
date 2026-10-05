@@ -93,17 +93,24 @@ describe('ChatController.sendMessage', () => {
     expect(res.end).toHaveBeenCalled();
   });
 
-  it('returns 400 when content is missing', async () => {
-    const { controller, res } = buildMocks();
-    await controller.sendMessage(buildReq({}), res);
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
+  const contentRejectionCases: Array<[string, boolean, unknown]> = [
+    ['content is missing', false, {}],
+    ['content is empty string', false, { content: '' }],
+    [
+      'content exceeds 100 000 chars for any tier',
+      true,
+      { content: 'x'.repeat(100_001) },
+    ],
+  ];
 
-  it('returns 400 when content is empty string', async () => {
-    const { controller, res } = buildMocks();
-    await controller.sendMessage(buildReq({ content: '' }), res);
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
+  it.each(contentRejectionCases)(
+    'returns 400 when %s',
+    async (_label, patreon, body) => {
+      const { controller, res } = buildMocks(42, patreon, false);
+      await controller.sendMessage(buildReq(body), res);
+      expect(res.status).toHaveBeenCalledWith(400);
+    }
+  );
 
   it('allows content up to 100 000 chars for free users', async () => {
     const { execute, controller, res } = buildMocks();
@@ -136,15 +143,6 @@ describe('ChatController.sendMessage', () => {
     );
     expect(res.status).not.toHaveBeenCalledWith(400);
     expect(execute).toHaveBeenCalled();
-  });
-
-  it('returns 400 when content exceeds 100 000 chars for any tier', async () => {
-    const { controller, res } = buildMocks(42, true, false);
-    await controller.sendMessage(
-      buildReq({ content: 'x'.repeat(100_001) }),
-      res
-    );
-    expect(res.status).toHaveBeenCalledWith(400);
   });
 
   it('sends done SSE event with content on happy path', async () => {
@@ -254,52 +252,54 @@ describe('ChatController.sendMessage', () => {
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 describe('ChatController.sendMessage — file attachments', () => {
-  it('returns 400 when more than 5 files are attached', async () => {
-    const { controller, res } = buildMocks();
-    const files = Array.from({ length: 6 }, () => makeFile());
-    await controller.sendMessage(buildReq({ content: 'Hi' }, files), res);
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
+  const fileRejectionCases: Array<[string, () => Express.Multer.File[]]> = [
+    [
+      'more than 5 files are attached',
+      () => Array.from({ length: 6 }, () => makeFile()),
+    ],
+    ['a file exceeds 10 MB', () => [makeFile({ size: 11 * 1024 * 1024 })]],
+    [
+      'total file size exceeds 25 MB',
+      () =>
+        Array.from({ length: 3 }, () =>
+          makeFile({
+            size: 9 * 1024 * 1024,
+            buffer: Buffer.alloc(9 * 1024 * 1024),
+          })
+        ),
+    ],
+    [
+      'MIME type is not allowlisted',
+      () => [
+        makeFile({ mimetype: 'application/msword', originalname: 'doc.doc' }),
+      ],
+    ],
+    [
+      'magic bytes do not match declared MIME',
+      () => [
+        makeFile({
+          mimetype: 'image/png',
+          originalname: 'fake.png',
+          buffer: Buffer.concat([
+            Buffer.from([0x25, 0x50, 0x44, 0x46]),
+            Buffer.alloc(20),
+          ]),
+        }),
+      ],
+    ],
+  ];
 
-  it('returns 400 when a file exceeds 10 MB', async () => {
-    const { controller, res } = buildMocks();
-    const bigFile = makeFile({ size: 11 * 1024 * 1024 });
-    await controller.sendMessage(buildReq({ content: 'Hi' }, [bigFile]), res);
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 400 when total file size exceeds 25 MB', async () => {
-    const { controller, res } = buildMocks();
-    const files = Array.from({ length: 3 }, () =>
-      makeFile({ size: 9 * 1024 * 1024, buffer: Buffer.alloc(9 * 1024 * 1024) })
-    );
-    await controller.sendMessage(buildReq({ content: 'Hi' }, files), res);
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 400 when MIME type is not allowlisted', async () => {
-    const { controller, res } = buildMocks();
-    const file = makeFile({
-      mimetype: 'application/msword',
-      originalname: 'doc.doc',
-    });
-    await controller.sendMessage(buildReq({ content: 'Hi' }, [file]), res);
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it('returns 400 when magic bytes do not match declared MIME', async () => {
-    const { controller, res } = buildMocks();
-    const file = makeFile({
-      mimetype: 'image/png',
-      originalname: 'fake.png',
-      buffer: Buffer.concat([
-        Buffer.from([0x25, 0x50, 0x44, 0x46]),
-        Buffer.alloc(20),
-      ]),
-    });
-    await controller.sendMessage(buildReq({ content: 'Hi' }, [file]), res);
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
+  it.each(fileRejectionCases)(
+    'returns 400 when %s',
+    async (_label, makeFiles) => {
+      const { controller, res } = buildMocks();
+      await controller.sendMessage(
+        buildReq({ content: 'Hi' }, makeFiles()),
+        res
+      );
+      expect(res.status).toHaveBeenCalledWith(400);
+    }
+  );
 
   it('passes validated attachments to the use case on happy path', async () => {
     const { execute, controller, res } = buildMocks();
