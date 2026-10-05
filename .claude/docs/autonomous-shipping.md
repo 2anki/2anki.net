@@ -1,6 +1,6 @@
 # Autonomous shipping
 
-Agents merge and deploy their own non-rail PRs through `/ship`. Alexander reviews only hard-rail PRs and the merged-PR list. Decided 2026-08-26 (PR #4244); this doc is the reference the rules point at.
+Agents merge and deploy their own PRs through `/ship`, hard-rail PRs included. Alexander reviews the merged-PR list. Decided 2026-08-26 (PR #4244); rail PRs became agent-merged on 2026-10-05. This doc is the reference the rules point at.
 
 ## Why it is safe to let agents merge
 
@@ -13,32 +13,27 @@ Before this, every merge was a human step — but branch protection on `main` re
 
 | # | Condition | How it is checked |
 | --- | --- | --- |
-| 1 | PR touches no hard rail | `hard_rails.py` on the PR file list + diff |
 | 2 | Every rollup entry COMPLETED and non-FAILURE; every `test*` check RAN; dep changes have a SUCCESS test | `gh pr view --json statusCheckRollup,files` |
 | 3 | Review-agent pass marker for the head SHA | `<!-- ship-review: pass sha=<headRefOid> -->` in a PR review or comment; dependabot exempt. **Honor-system**, like the browser attestation: anyone who can comment can post it — it binds the operator's session to having run the review, it does not prove the review ran |
 | 5 | Browser attestation (web/src diffs) and changelog (feat/fix) | existing hooks |
 
-Failure modes are deliberate: `gh pr view` tooling errors **fail open** (a broken `gh` must not block a human); the rail diff fetch **fails closed** (an unchecked rail is the exact gap the gate closes). SonarCloud was a fifth condition until 2026-10-01; it was removed because it added a serial wait that timed out on 8% of PRs while `main` carried 1,102 unactioned findings, the gate rating only new code.
+`gh pr view` tooling errors **fail open** (a broken `gh` must not block a human). SonarCloud was a fifth condition until 2026-10-01; it was removed because it added a serial wait that timed out on 8% of PRs while `main` carried 1,102 unactioned findings, the gate rating only new code.
 
 The only bypasses are ones an agent cannot reach from inside a session: merging from the GitHub UI, or launching the session with the env var set (`CLAUDE_SKIP_SAFETY=1 claude`). A `CLAUDE_SKIP_SAFETY=1` prefix typed into a command is deliberately ignored — a PreToolUse hook runs before the shell, and honoring the prefix would let any agent self-bypass the gate (caught by the commit security review on #4244).
 
 ## Hard rails
 
-The surfaces an agent never merges: auth, payments/Stripe, subscriptions, checkout, passes, webhooks, the monthly card/print quota use cases and mindmap quota constants, migrations and the generated data layer, `src/server.ts`, everything under `.github/`, the whole harness (`.claude/`, `CLAUDE.md` — so an agent cannot rewrite its own gate, brief, or `/ship` and self-merge), and the prod safety limits. Canonical list: `.claude/hooks/hard_rails.py` (name globs matched anywhere in the path, explicit paths, and content triggers scanned on changed diff lines).
-
-Rail PR flow: the agent still runs the review agent and posts its verdict, flips the PR ready, prints the URL, and stops. Alexander merges from the GitHub UI, where the hook does not run. Widening or narrowing the list is its own PR, never folded into feature work — the list is also itself a rail.
-
-Why not CODEOWNERS: agents run under Alexander's `gh` auth and he authors most PRs; a code-owner review requirement would make his own rail PRs unmergeable (GitHub blocks self-approval).
+`.claude/hooks/hard_rails.py` lists the high-blast-radius surfaces: auth, payments/Stripe, subscriptions, checkout, passes, webhooks, quota constants, migrations and the generated data layer, `src/server.ts`, `.github/`, the harness (`.claude/`, `CLAUDE.md`) and the prod safety limits. It no longer blocks a merge. `/ship` uses it to classify the PR and, on a hit, runs the matching extra verification before and after the merge (`.claude/commands/ship.md`, step 1b and step 6b). A rail PR merges on that evidence; it does not wait for Alexander.
 
 ## `/ship` in one paragraph
 
-Preflight (draft? rail? rebased?) → review agent (`/review-pr` fan-out; two fix rounds max) posts the marker → wait for the rollup → `gh pr merge --squash` enqueues in the merge queue (hooks re-verify; `--delete-branch` is rejected while the queue is on) → poll the PR until `state: MERGED` (a dequeue means a required job failed on the `gh-readonly-queue/…` branch; one retry for a diff-unrelated flake, then stop) → find the deploy run for the merge SHA and watch it → `curl /api/version` must report the merge SHA, then `/deploy-status` → on failure, `git revert` on a `revert/<slug>` branch shipped through the same command (review agent skipped for a mechanical revert), comment on the deploy-failure issue. Full steps: `.claude/commands/ship.md`.
+Preflight (draft? rail class? rebased?) → rail verification when the classifier hits → review agent (`/review-pr` fan-out; two fix rounds max) posts the marker → wait for the rollup → `gh pr merge --squash` enqueues in the merge queue (hooks re-verify; `--delete-branch` is rejected while the queue is on) → poll the PR until `state: MERGED` (a dequeue means a required job failed on the `gh-readonly-queue/…` branch; one retry for a diff-unrelated flake, then stop) → find the deploy run for the merge SHA and watch it → `curl /api/version` must report the merge SHA, then `/deploy-status` → on failure, `git revert` on a `revert/<slug>` branch shipped through the same command (review agent skipped for a mechanical revert), comment on the deploy-failure issue. Full steps: `.claude/commands/ship.md`.
 
 Sanctioned carve-outs inside `/ship` only: starting `pnpm dev` for the browser attestation (kill it after), and the read-only `/deploy-status` SSH.
 
 ## Decisions and manual steps
 
-Trio decisions land in the PR body under `## Decisions` (the `overnight-prs` format). The merged PR is where Alexander overrides a call — comment on it or open a follow-up. A step only Alexander can do (an ops switch for a user, a Stripe or prod setting, confirming a fix on a specific account) gets its own `Needs you: <step>` issue linking the PR, so the to-do outlives the ship report. **Prose in the PR body is not enough — the issue is the actual artifact.** #4429 (credit pack purchase) shipped with the manual step ("set `CREDIT_PACK_PRICE_ID` on prod's `.env` before merge") written only in the PR body text, no companion issue; it happened to already be set when checked six days later (#4459), but nothing would have caught it if it hadn't been. A merged PR is not something anyone re-reads — a manual step that isn't a standalone `Needs you: <step>` issue effectively doesn't exist once the PR lands. The daily `Shipped <date>` digest issues (label `shipped-digest`, 2026-08-26 to 2026-09-08) were dropped: they duplicated `gh pr list --state merged` and cost an issue a day to close. Agents never create one.
+Trio decisions land in the PR body under `## Decisions` (the `overnight-prs` format). The merged PR is where Alexander overrides a call — comment on it or open a follow-up. A step only Alexander can do (a prod secret, a Stripe dashboard setting, a third-party account) ships behind a safe default, and the agent asks him for it in the session chat. Do not open `Needs you` issues; they were dropped on 2026-10-05 because they piled up as issues to close. The daily `Shipped <date>` digest issues (label `shipped-digest`, 2026-08-26 to 2026-09-08) were dropped: they duplicated `gh pr list --state merged` and cost an issue a day to close. Agents never create one.
 
 ## Throughput
 

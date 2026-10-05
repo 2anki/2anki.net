@@ -7,8 +7,8 @@ You are working autonomously overnight on the 2anki/server repo. Your job: verif
 is still relevant against the current codebase, CLOSE the ones that no longer apply, and turn the
 relevant ones into merged, deployed pull requests (one PR per issue) — not just bug fixes, but
 features, improvements, and copy/UX changes too. Every Tier 1 and Tier 2 PR goes through `/ship`
-(review agent → gate → merge → deploy verified); only hard-rail and Tier 3 PRs wait for
-Alexander. Keep going until you exhaust the queue or hit your usage limit. The night is wasted if
+(review agent → gate → rail verification → merge → deploy verified); only Tier 3 drafts wait
+for Alexander. Keep going until you exhaust the queue or hit your usage limit. The night is wasted if
 you only close stale issues and ship nothing.
 
 Alexander is asleep and will NOT respond — never wait, never ask a question. **The old rule was
@@ -25,8 +25,8 @@ Optional focus / seed from the invocation: $ARGUMENTS
 of the backlog under the same rules. If empty, work the whole open backlog.)
 
 ## Absolute safety rules (violating any of these is failure)
-- Merge ONLY through `/ship`. NEVER run `gh pr merge` by hand, NEVER set `CLAUDE_SKIP_SAFETY`,
-  NEVER merge a hard-rail PR (the hook refuses; the PR waits for Alexander).
+- Merge ONLY through `/ship`. NEVER run `gh pr merge` by hand, NEVER set `CLAUDE_SKIP_SAFETY`.
+  Hard-rail PRs ship through `/ship` too, which runs the extra rail verification.
 - NEVER push to `main`. NEVER `git push` without `-u origin <branch>`. Always work on a branch.
 - Deploys happen only through `/ship` (CI). NEVER SSH to the prod box except the read-only
   `/deploy-status` inside `/ship`. NEVER touch production data.
@@ -125,7 +125,7 @@ fits, and always pick the smallest change that resolves the issue, traceable lin
 - You can write a FAILING TEST that reproduces it, watch it fail for the right reason, then make
   it pass.
 - Self-contained (a handful of files); no product/UX/copy judgment needed.
-- No hard-rail change (see below).
+- Rail paths are fine; `/ship` runs the extra rail verification (see below).
 
 **Tier 2 — improvement or feature that needs a product/UX/copy decision → run the TRIO, then open
 READY with a `## Decisions made overnight` section, then `/ship`.**
@@ -134,22 +134,24 @@ READY with a `## Decisions made overnight` section, then `/ship`.**
   Take their recommendation as the spec: what to build, what NOT to build, the exact copy.
 - Implement it with the same rigor as Tier 1 (tests, /check, changelog if user-visible).
 - Document EVERY decision and assumption in the PR (format below) so Alexander can override.
-- Still no hard-rail change.
+- Rail paths are fine; `/ship` runs the extra rail verification.
 
-**Tier 3 — relevant but rests on a risky rail or a big assumption → open DRAFT, flagged.**
-- Needs a database migration (write it, run `pnpm kanel`, request `migration-reviewer` in the PR
-  body) OR the fix is large/uncertain enough that you want Alexander to gate it before it's real.
+**Tier 3 — rests on an assumption you cannot verify with tools → open DRAFT, flagged.**
+- The fix is large or uncertain enough that no test, log, or prod read can confirm it is right.
+  A migration alone is NOT Tier 3: write it, run `pnpm kanel`, and ship it through `/ship`, whose
+  rail verification runs `migration-reviewer` and the migrate/rollback cycle.
 - Same trio + documentation as Tier 2, but `gh pr create --draft` and say plainly at the top of
   the body why it's a draft and what you need confirmed.
 
-**Hard rails — these still SKIP, every time (leave the issue OPEN, log why). Never attempt these
-unattended:**
-- Auth / login / JWT / session / password changes.
-- Payments / Stripe / subscription / pricing / quota changes.
-- A new third-party integration or a new outbound credential.
-- A destructive or irreversible migration (drop/rename column, data backfill that can't roll back).
-- Anything you cannot make safe in two attempts, or that you still can't understand after the trio
-  has looked at it.
+**Hard rails — ship them, with more evidence.** Nobody reviews the code, so the rail checks in
+`/ship` (step 1b before merge, step 6b after deploy) stand in for the reviewer. Auth, payments,
+subscriptions, quotas and migrations all go through `/ship`. Three constraints remain:
+- No irreversible data change in one step. Split a drop/rename/backfill into expand → migrate →
+  contract PRs, each of which can roll back on its own.
+- A change that needs a value only Alexander holds (a new secret on prod, a Stripe dashboard
+  setting, a new third-party account) ships behind a safe default and goes in the morning summary as a question
+  for Alexander, one line per step.
+- Anything you cannot make safe in two attempts → leave it DRAFT with the blocker stated.
 
 ### `## Decisions made overnight` — required in every Tier 2 and Tier 3 PR
 List each judgment call the trio made, so the morning review is a yes/no, not an investigation:
@@ -185,8 +187,8 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
     `.claude/docs/browser-attestation.md` (out-clause when there's no runtime-visible effect —
     don't claim a check you didn't run). Link the issue.
 12. Tier 1 and Tier 2: run `/ship <n>`. It reviews, waits for green, merges, watches the deploy,
-    verifies prod. A rail hit or a third review round leaves the PR ready for Alexander — log it
-    as `PR` not `SHIPPED`. Tier 3 stays draft.
+    verifies prod. Rail PRs ship the same way with the extra verification. A third review round
+    leaves the PR ready for Alexander — log it as `PR` not `SHIPPED`. Tier 3 stays draft.
 
 ## Between issues — cleanup
 - `git checkout main && git pull --ff-only`.
@@ -203,10 +205,8 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
 - Can't reproduce a reported bug → read the code path it names. If you find a plausible defect,
   fix it with a characterization test and say in the PR "could not reproduce from the report; the
   likely cause is X — please confirm." If there's nothing actionable in the code, SKIP and log.
-- Needs a hard rail (auth / payments / new integration / destructive migration) → SKIP, log, leave
-  OPEN. These never go autonomously.
-- A non-destructive migration → it's Tier 3: write it, run `pnpm kanel`, open DRAFT, request
-  `migration-reviewer`. Don't SKIP it just because it has a migration.
+- Touches a hard rail (auth / payments / migration) → ship it through `/ship` with the rail
+  verification. A destructive migration is split into reversible expand/contract steps first.
 - Unsure whether an issue is irrelevant → leave it OPEN; don't close on a guess.
 - A failing check you can't resolve in two attempts → leave the PR DRAFT, note the blocker, move
   on. Don't thrash.
@@ -216,12 +216,12 @@ Running log, one line per issue, with a running counter so the log reconciles ag
 `[idx/M] #NNN <title> → <state>`. There are FOUR terminal states — every issue you reach lands in
 exactly one, so the log accounts for every issue you opened, not just the ones you acted on:
 - `SHIPPED <url> (T1|T2, healthy|no deploy|reverted)` — merged and deployed through `/ship`.
-- `PR <url> (T1|T2|T3, ready|draft)` — opened a PR that is waiting for Alexander (rail, third
-  review round, or Tier 3 draft); note the tier and whether it's ready or draft.
+- `PR <url> (T1|T2|T3, ready|draft)` — opened a PR that is waiting for Alexander (third review
+  round, or Tier 3 draft); note the tier and whether it's ready or draft.
 - `CLOSED: <reason>` — closed per Step 0 (already fixed / already shipped / superseded / duplicate
   of #m / junk).
-- `SKIPPED: <reason>` — relevant but hit a hard rail (auth/payments/integration/destructive
-  migration) or still unintelligible after the trio looked. Left OPEN. This should be the
+- `SKIPPED: <reason>` — relevant but still unintelligible after the trio looked, or needs a value
+  only Alexander holds. Left OPEN. This should be the
   exception, not the default — if you're skipping most issues, you're back to the old broken
   behavior.
 - `REACHED: left open` — examined, genuinely nothing to ship and not closeable. Should be rare.
@@ -240,7 +240,7 @@ On stop, print the summary in this order — counts are the hero; the four bucke
 2. **Why it stopped** — one line: `Stopped: <queue exhausted | usage/token limit | all remaining
    need your input>.[ <M-N> issues never reached — rerun to continue.]`
 3. **Shipped** — issue #, title, PR URL, deploy verdict.
-3b. **PRs waiting for you** — issue #, title, PR URL, why (rail / review round / Tier 3).
+3b. **PRs waiting for you** — issue #, title, PR URL, why (review round / Tier 3).
 4. **Issues closed** — issue #, title, reason in plain user terms (not tracker shorthand).
 5. **Issues skipped — left open for you** — issue #, title, the specific blocker.
 6. A trailing count for the `REACHED: left open` bucket (`<R> reached, left open — no action`).

@@ -13,14 +13,27 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
 ```
 
 - Draft → stop; report "still draft".
-- Hard rail? Run the rail check on the file list and diff:
+- Rail class? Run the classifier on the file list and diff:
   ```bash
   gh pr view <n> --json files --jq '.files[].path' > /tmp/ship-paths.txt
   gh pr diff <n> > /tmp/ship-diff.txt
   python3 -c "import sys; sys.path.insert(0,'.claude/hooks'); import hard_rails as r; p=open('/tmp/ship-paths.txt').read().split(); print(r.rail_paths(p)); print(r.rail_content_hits(open('/tmp/ship-diff.txt').read()))"
   ```
-  Any hit → **rail flow**: run step 2 (review agent, post the marker), make sure the PR is ready (`gh pr ready <n>`), print the PR URL, and stop. Alexander merges rail PRs from the GitHub UI. Do not continue to step 4.
+  Any hit → run the matching checks in step 1b before step 2, and step 6b after the deploy. A rail PR merges on that evidence; it does not stop and wait for Alexander.
 - Bring the branch up to date: `gh pr checkout <n>`, `git fetch origin main`, `git rebase origin/main`. If the rebase moved HEAD, `git push --force-with-lease origin <branch>` and re-read `headRefOid`.
+
+## 1b. Rail verification (only when step 1 hit)
+
+Run every row that matches the hit. Any failure → fix on the branch and restart from step 1.
+
+| Hit | Before merge |
+| --- | --- |
+| `migrations/`, `src/data_layer/public/` | `migration-reviewer` agent on the diff; apply `migrate:latest` then `migrate:rollback` then `migrate:latest` against local Postgres; confirm kanel output is committed and matches |
+| Stripe, checkout, subscription, webhook, passes, pricing | Add `security` focus to the review; check the touched Stripe objects and webhook events exist in live mode with the Stripe MCP (read only); test that signature verification still runs on the raw body |
+| auth, login, oauth, session, jwt, password, signup | `/security-review` on the diff; full server suite |
+| Quota constants, prod safety limits | Find the evidence that set the old value (`git log -S` plus pm2 logs, per `.claude/docs/prod-ops.md`) and state it in the PR body |
+| `.github/`, `scripts/deploy-` | Read the workflow diff for removed gates; the PR's own CI run must exercise the changed job |
+| `.claude/`, `CLAUDE.md` | Run every touched hook's `*.test.py` |
 
 ## 2. Review agent
 
@@ -83,7 +96,15 @@ Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the queu
 curl -fsS https://2anki.net/api/version | jq -r .sha
 ```
 
-Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 7.
+Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise.
+
+## 6b. Rail verification after deploy (only when step 1 hit)
+
+- Migration: read-only prod psql (`PGOPTIONS="-c default_transaction_read_only=on"`) confirms the `knex_migrations` row and the new schema; pm2 logs show no query errors since the deploy.
+- Stripe or webhooks: Stripe MCP shows webhook deliveries since the deploy succeeding (no new 4xx/5xx); pm2 logs show no Stripe errors; a checkout session can still be created if checkout changed.
+- Auth: pm2 logs show successful logins since the deploy and no spike in 401/500 on auth routes.
+
+Watch for 15 minutes after the deploy. Any regression → step 8 revert.
 
 ## 7. Local cleanup
 
@@ -104,6 +125,6 @@ If the deploy run failed, `/api/version` does not report the merge SHA after the
 
 ## Report
 
-End with two lines: the PR URL, and the deploy verdict (`healthy <sha>` / `no deploy` / `reverted → <revert PR URL>` / `rail — waiting for Alexander`).
+End with two lines: the PR URL, and the deploy verdict (`healthy <sha>` / `no deploy` / `reverted → <revert PR URL>`).
 
-Trio calls stay in the PR body under `## Decisions`; Alexander overrides one by commenting on the merged PR or opening a follow-up. If the PR leaves a step only Alexander can do (flip an ops switch for a user, confirm a fix on a specific account, change a Stripe or prod setting), open one issue for it — `gh issue create --repo 2anki/server --title "Needs you: <step>"` with the PR link in the body — and print its URL as a third line. Do not create a daily `Shipped <date>` digest issue: those were dropped 2026-09-08 because they duplicated the merged-PR list and added an issue a day to close.
+Trio calls stay in the PR body under `## Decisions`; Alexander overrides one by commenting on the merged PR or opening a follow-up. If the PR leaves a step only Alexander can do (a prod secret, a Stripe dashboard setting, confirming on a specific account), ask Alexander for it in the chat. Do not open a `Needs you` issue. Do not create a daily `Shipped <date>` digest issue: those were dropped 2026-09-08 because they duplicated the merged-PR list and added an issue a day to close.

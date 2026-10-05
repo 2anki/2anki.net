@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Hard-rail path list: the surfaces an agent may never merge on its own.
+Hard-rail classifier: the high-blast-radius surfaces that need extra
+verification before and after a merge.
 
-`check-merge-status.py` denies `gh pr merge` when a PR touches any of these;
-the PR waits for Alexander in the GitHub UI instead. The harness itself
-(`.claude/`, `CLAUDE.md`, `.github/`) is a rail so an agent cannot rewrite its
-own gate or brief and self-merge. Widening or narrowing this list is its own
+`/ship` runs this on a PR's paths and diff; a hit selects the rail checks in
+`.claude/commands/ship.md` (step 1b before merge, step 6b after deploy). It no
+longer blocks a merge (2026-10-05). Widening or narrowing this list is its own
 PR — never folded into feature work.
 
 Three kinds of trigger, and they are not interchangeable. A name glob catches a

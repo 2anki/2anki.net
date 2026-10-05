@@ -3,24 +3,23 @@
 PreToolUse hook: gate `gh pr merge` on the autonomous-shipping merge gate.
 
 Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md):
-  1. The PR touches a hard-rail path or its diff contains a rail content trigger
-     (`hard_rails.py`) — those PRs wait for Alexander in the GitHub UI.
-  2. Any rollup entry concluded FAILURE (or a commit status reports FAILURE/ERROR).
-  3. Any rollup entry has not COMPLETED yet (merge-while-running).
-  4. Any check named `test*` concluded SKIPPED or CANCELLED — a skipped test job
+  1. Any rollup entry concluded FAILURE (or a commit status reports FAILURE/ERROR).
+  2. Any rollup entry has not COMPLETED yet (merge-while-running).
+  3. Any check named `test*` concluded SKIPPED or CANCELLED — a skipped test job
      is not a green check. 2026-08-06: the markdown-it 15 bump merged on a
      rollup whose server `test` job was SKIPPED (its CI predated the workflow
      fix in #4000 that made dependabot PRs run the suite); the suite would have
      caught the boot crash that took prod down.
-  5. The PR touches package.json or pnpm-lock.yaml but no `test*` check
+  4. The PR touches package.json or pnpm-lock.yaml but no `test*` check
      concluded SUCCESS — a dependency change with no test run is unverified.
-  6. No review-agent pass marker for the head SHA
+  5. No review-agent pass marker for the head SHA
      (`<!-- ship-review: pass sha=<headRefOid> -->`, full 40-char SHA, posted by
      /ship). Dependabot PRs are exempt — the /batch dependabot decision matrix is their review.
 
-`gh pr view` tooling errors fail open (a broken gh should not block a human);
-the rail diff fetch fails closed (an unchecked rail is the exact gap the gate
-closes).
+`gh pr view` tooling errors fail open (a broken gh should not block a human).
+
+Hard-rail PRs (`hard_rails.py`) are no longer refused here (removed 2026-10-05):
+/ship classifies them and runs extra verification instead of parking them.
 
 The SonarCloud condition was removed on 2026-10-01. It was a serial wait after
 CI that timed out on 8% of PRs with no documented recovery, and `main` carried
@@ -43,7 +42,6 @@ import sys
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HOOKS_DIR)
 
-import hard_rails  # noqa: E402
 import merge_command  # noqa: E402
 
 
@@ -114,10 +112,6 @@ def fetch_pr_data(pr_ref):
     except json.JSONDecodeError:
         sys.stderr.write("[check-merge-status] could not parse gh JSON; allowing merge.\n")
         return None
-
-
-def fetch_pr_diff(pr_ref):
-    return run_gh(["gh", "pr", "diff", *pr_args(pr_ref)], "pr diff")
 
 
 def entry_name(entry):
@@ -194,23 +188,6 @@ def review_marker_violation(pr_data):
     )
 
 
-def rail_reason(paths, content_hits):
-    lines = []
-    if paths:
-        lines.append("  paths:")
-        lines.extend(f"    - {p}" for p in paths)
-    if content_hits:
-        lines.append("  diff contains:")
-        lines.extend(f"    - {h}" for h in content_hits)
-    return (
-        "Refusing `gh pr merge` — this PR touches a hard rail, which agents never merge:\n"
-        + "\n".join(lines)
-        + "\n\nFlip it ready, post the review-agent result, print the PR URL, and stop. "
-        "Alexander merges hard-rail PRs from the GitHub UI. "
-        "The rail list lives in .claude/hooks/hard_rails.py."
-    )
-
-
 def main():
     if os.environ.get("CLAUDE_SKIP_SAFETY"):
         allow()
@@ -241,19 +218,7 @@ def main():
 
     rollup = pr_data.get("statusCheckRollup") or []
     files = pr_data.get("files") or []
-    paths = [f.get("path") or "" for f in files]
     author = (pr_data.get("author") or {}).get("login", "")
-
-    rail_hits = hard_rails.rail_paths(paths)
-    diff = fetch_pr_diff(pr_ref)
-    if diff is None:
-        deny(
-            "Refusing `gh pr merge` — could not fetch the PR diff for the hard-rail "
-            "content check. Retry, or verify by hand and merge from the GitHub UI."
-        )
-    content_hits = hard_rails.rail_content_hits(diff)
-    if rail_hits or content_hits:
-        deny(rail_reason(rail_hits, content_hits))
 
     violations = classify(rollup, files)
 
