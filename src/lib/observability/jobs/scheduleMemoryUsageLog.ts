@@ -20,6 +20,7 @@ interface IntervalHandle {
 interface MemoryUsageLogDeps<H extends IntervalHandle> {
   sampleMemory?: () => MemorySample;
   samplePool: () => PoolSample | null;
+  sampleWorkerHeap?: () => Promise<number | null>;
   log?: (line: string) => void;
   setIntervalFn: (tick: () => void, ms: number) => H;
   intervalMs?: number;
@@ -29,7 +30,8 @@ const toMb = (bytes: number) => Math.round(bytes / BYTES_PER_MB);
 
 export function formatMemoryUsageLine(
   memory: MemorySample,
-  pool: PoolSample | null
+  pool: PoolSample | null,
+  workerHeapUsedBytes: number | null = null
 ): string {
   const fields = [
     `rss_mb=${toMb(memory.rss)}`,
@@ -45,6 +47,9 @@ export function formatMemoryUsageLine(
       `pool_utilization=${pool.utilization}`
     );
   }
+  if (workerHeapUsedBytes != null) {
+    fields.push(`worker_heap_used_mb=${toMb(workerHeapUsedBytes)}`);
+  }
   return `[memory] ${fields.join(' ')}`;
 }
 
@@ -53,8 +58,15 @@ export function scheduleMemoryUsageLog<H extends IntervalHandle>(
 ): H {
   const sampleMemory = deps.sampleMemory ?? (() => process.memoryUsage());
   const log = deps.log ?? ((line: string) => console.info(line));
+  const sampleWorkerHeap = deps.sampleWorkerHeap ?? (async () => null);
+
+  const tick = async () => {
+    const workerHeap = await sampleWorkerHeap().catch(() => null);
+    log(formatMemoryUsageLine(sampleMemory(), deps.samplePool(), workerHeap));
+  };
+
   const handle = deps.setIntervalFn(() => {
-    log(formatMemoryUsageLine(sampleMemory(), deps.samplePool()));
+    void tick();
   }, deps.intervalMs ?? MEMORY_USAGE_LOG_INTERVAL_MS);
   handle.unref();
   return handle;
