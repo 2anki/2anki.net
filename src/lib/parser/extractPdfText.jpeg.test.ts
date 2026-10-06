@@ -31,6 +31,17 @@ describe('withJpegDisplayDecoding', () => {
     });
   });
 
+  it('keeps a URL source', () => {
+    const getDocument = jest.fn();
+
+    withJpegDisplayDecoding(getDocument)('https://example.com/a.pdf');
+
+    expect(getDocument).toHaveBeenCalledWith({
+      url: 'https://example.com/a.pdf',
+      nativeImageDecoderSupport: 'display',
+    });
+  });
+
   it('wraps only once', () => {
     const once = withJpegDisplayDecoding(jest.fn());
 

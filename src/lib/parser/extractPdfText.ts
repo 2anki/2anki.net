@@ -117,15 +117,20 @@ installNodeImageGlobalShim();
 
 const JPEG_DISPLAY_WRAPPED = Symbol('jpegDisplayDecoding');
 
+function toDocumentParams(src: unknown): Record<string, unknown> {
+  if (typeof src === 'string') return { url: src };
+  if (src instanceof Uint8Array || src instanceof ArrayBuffer) {
+    return { data: src };
+  }
+  return src as Record<string, unknown>;
+}
+
 export function withJpegDisplayDecoding(
   getDocument: PdfJsGetDocument
 ): PdfJsGetDocument {
   if (JPEG_DISPLAY_WRAPPED in getDocument) return getDocument;
   const wrapped = (src: unknown) => {
-    const params =
-      src instanceof Uint8Array || src instanceof ArrayBuffer
-        ? { data: src }
-        : (src as Record<string, unknown>);
+    const params = toDocumentParams(src);
     return getDocument({ ...params, nativeImageDecoderSupport: 'display' });
   };
   return Object.assign(wrapped, { [JPEG_DISPLAY_WRAPPED]: true });
