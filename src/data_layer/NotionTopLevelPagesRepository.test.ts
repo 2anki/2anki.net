@@ -46,6 +46,18 @@ function makeFakeKnex(
         where: (filter: Partial<FakeRow>) => queryBuilder(pages, filter),
         insert: (rows: FakeRow[]) => {
           calls.push(`insert ${rows.length}`);
+          const keys = new Set(
+            pages.map((r) => `${r.owner}:${r.notion_page_id}`)
+          );
+          for (const row of rows) {
+            const key = `${row.owner}:${row.notion_page_id}`;
+            if (keys.has(key)) {
+              return Promise.reject(
+                Object.assign(new Error('duplicate key'), { code: '23505' })
+              );
+            }
+            keys.add(key);
+          }
           pages.push(...rows);
           return Promise.resolve(rows.length);
         },
@@ -67,12 +79,19 @@ function makeFakeKnex(
     }
     if (tableName === 'notion_tokens') {
       return {
-        where: (filter: { owner: number }) => ({
-          first: () =>
+        where: (filter: { owner: number }) => {
+          const first = () =>
             Promise.resolve(
               tokens.find((t) => t.owner === filter.owner) ?? undefined
-            ),
-        }),
+            );
+          return {
+            first,
+            forUpdate: () => {
+              calls.push(`lock token ${filter.owner}`);
+              return { first };
+            },
+          };
+        },
       };
     }
     throw new Error(`unexpected table: ${tableName}`);
@@ -158,6 +177,35 @@ describe('NotionTopLevelPagesRepository', () => {
     await repo.replaceForOwnerIfTokenStillValid(1, [sampleRow(1, 'new-1')]);
     expect(fixture.pages.map((p) => p.notion_page_id)).toEqual(['old-1']);
     expect(fixture.calls.find((c) => c.startsWith('insert'))).toBeUndefined();
+  });
+
+  it('replaceForOwnerIfTokenStillValid keeps one row when Notion returns a page twice', async () => {
+    const fixture = makeFakeKnex({ tokens: [{ owner: 1, token: 't' }] });
+    const repo = new NotionTopLevelPagesRepository(fixture.db);
+    const first = sampleRow(1, 'dup');
+    const repeat = { ...sampleRow(1, 'dup'), title: 'repeat' };
+
+    await repo.replaceForOwnerIfTokenStillValid(1, [
+      first,
+      sampleRow(1, 'other'),
+      repeat,
+    ]);
+
+    expect(
+      fixture.pages.map((p) => [p.notion_page_id, p.title]).sort()
+    ).toEqual([
+      ['dup', 'T-dup'],
+      ['other', 'T-other'],
+    ]);
+  });
+
+  it('replaceForOwnerIfTokenStillValid locks the owner token row before replacing', async () => {
+    const fixture = makeFakeKnex({ tokens: [{ owner: 1, token: 't' }] });
+    const repo = new NotionTopLevelPagesRepository(fixture.db);
+
+    await repo.replaceForOwnerIfTokenStillValid(1, [sampleRow(1, 'a')]);
+
+    expect(fixture.calls).toEqual(['lock token 1', 'insert 1']);
   });
 
   it('deleteByOwner removes only that owner', async () => {

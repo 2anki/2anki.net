@@ -25,6 +25,17 @@ export interface INotionTopLevelPagesRepository {
   deleteByOwner(owner: number): Promise<number>;
 }
 
+function uniqueByPageId(
+  rows: NotionTopLevelPageRow[]
+): NotionTopLevelPageRow[] {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    if (seen.has(row.notion_page_id)) return false;
+    seen.add(row.notion_page_id);
+    return true;
+  });
+}
+
 export class NotionTopLevelPagesRepository implements INotionTopLevelPagesRepository {
   private readonly tableName = 'notion_top_level_pages';
 
@@ -66,13 +77,17 @@ export class NotionTopLevelPagesRepository implements INotionTopLevelPagesReposi
     rows: NotionTopLevelPageRow[]
   ): Promise<boolean> {
     return this.database.transaction(async (trx) => {
-      const token = await trx(this.tokenTable).where({ owner }).first();
+      const token = await trx(this.tokenTable)
+        .where({ owner })
+        .forUpdate()
+        .first();
       if (token == null) {
         return false;
       }
       await trx(this.tableName).where({ owner }).del();
-      if (rows.length > 0) {
-        await trx(this.tableName).insert(rows);
+      const uniqueRows = uniqueByPageId(rows);
+      if (uniqueRows.length > 0) {
+        await trx(this.tableName).insert(uniqueRows);
       }
       return true;
     });
