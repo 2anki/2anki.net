@@ -20,7 +20,7 @@ export const NOTION_DATABASE_NOT_PAGE_REASON =
 export const NOTION_TOKEN_EXPIRED_REASON = 'notion_token_expired';
 
 export const CONVERSION_PROCESS_CRASHED_REASON =
-  'This conversion stopped unexpectedly — the process was restarted before it finished. Convert again, and if the file is very large, split it into smaller parts first.';
+  'This conversion stopped unexpectedly. Convert again, and if the file is very large, split it into smaller parts first.';
 
 export const EMPTY_DECK_FAILURE_REASON =
   "No cards in this deck yet. 2anki makes a card from every Notion toggle — the toggle title becomes the question, what's inside becomes the answer. Wrap your key terms in toggles, then convert again.";

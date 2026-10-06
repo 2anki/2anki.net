@@ -6,7 +6,10 @@ import {
   isWorkerTerminationError,
   WORKER_INTERRUPTED_REASON,
 } from '../lib/workerTermination';
-import { CONVERSION_PROCESS_CRASHED_REASON } from '../usecases/jobs/jobFailureReason';
+import {
+  CONVERSION_PROCESS_CRASHED_REASON,
+  jobFailureReasonFromError,
+} from '../usecases/jobs/jobFailureReason';
 import {
   InProgressJobError,
   JobLimitError,
@@ -402,11 +405,21 @@ class NotionController {
           });
           return;
         }
+        // Any other rejection is an unexpected failure the child did not handle
+        // itself (performConversion marks its own conversion errors failed). Mark
+        // the job failed so it never sticks in 'started'; the done-guard in
+        // updateJobStatus keeps this from overwriting a job that already finished.
         console.error('[notion/convert] worker failed', {
           ...correlation,
           pageId: id,
           error: err,
         });
+        await jobRepository.updateJobStatus(
+          id,
+          owner,
+          'failed',
+          jobFailureReasonFromError(err, id)
+        );
       });
 
       return res.status(202).json({ jobId: job.id, restarted });

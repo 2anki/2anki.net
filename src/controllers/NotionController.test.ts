@@ -428,9 +428,13 @@ describe('NotionController', () => {
       });
     });
 
-    it('fires runConversion without awaiting and logs worker rejections with the request id, job id, and owner', async () => {
+    it('logs and marks the job failed on an unexpected worker rejection so it never sticks in started', async () => {
       setupConvertMocks();
       res.locals = { owner: 'owner1', requestId: 'req-abc-123' };
+      const updateJobStatus = jest.fn().mockResolvedValue(undefined);
+      (JobRepository as unknown as jest.Mock).mockImplementation(() => ({
+        updateJobStatus,
+      }));
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
@@ -450,6 +454,12 @@ describe('NotionController', () => {
           owner: 'owner1',
           error: workerError,
         })
+      );
+      expect(updateJobStatus).toHaveBeenCalledWith(
+        'page-abc',
+        'owner1',
+        'failed',
+        expect.any(String)
       );
       consoleErrorSpy.mockRestore();
     });
