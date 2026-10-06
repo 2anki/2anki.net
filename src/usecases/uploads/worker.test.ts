@@ -1,5 +1,4 @@
 import fs from 'fs';
-import type { MessagePort } from 'node:worker_threads';
 import {
   getFileContents,
   runUploadGenerationInWorker,
@@ -199,17 +198,7 @@ describe('getFileContents', () => {
 });
 
 describe('runUploadGenerationInWorker', () => {
-  function makeFakePort(): MessagePort {
-    return {
-      postMessage: jest.fn(),
-      close: jest.fn(),
-    } as unknown as MessagePort;
-  }
-
-  function makeTask(
-    file: UploadedFile,
-    progressPort?: MessagePort
-  ): UploadGenerationTask {
+  function makeTask(file: UploadedFile): UploadGenerationTask {
     return {
       paying: false,
       files: [file],
@@ -217,7 +206,6 @@ describe('runUploadGenerationInWorker', () => {
       workspace: {} as Workspace,
       enqueuedAt: Date.now(),
       userId: null,
-      progressPort,
     };
   }
 
@@ -250,20 +238,6 @@ describe('runUploadGenerationInWorker', () => {
     expect(result.error.name).toBe('Error');
   });
 
-  it('closes the progress port even when generation throws', async () => {
-    const port = makeFakePort();
-    const file = makeFile({
-      originalname: 'existing.apkg',
-      filename: 'existing.apkg',
-      path: '',
-      buffer: Buffer.from('not really a deck'),
-    });
-
-    await runUploadGenerationInWorker(makeTask(file, port));
-
-    expect(port.close).toHaveBeenCalledTimes(1);
-  });
-
   it('drains recorded spend even when generation throws', async () => {
     const flushSpy = jest
       .spyOn(getEventsSink(), 'flushDurable')
@@ -290,12 +264,28 @@ describe('runUploadGenerationInWorker', () => {
       path: '',
       buffer: Buffer.from('plain text'),
     });
-    const port = makeFakePort();
 
-    const result = await runUploadGenerationInWorker(makeTask(file, port));
+    const result = await runUploadGenerationInWorker(makeTask(file));
 
     expect(result).toEqual({ ok: true, packages: [], warnings: [] });
-    expect(port.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('forwards an onProgress callback through to generation', async () => {
+    const onProgress = jest.fn();
+    const file = makeFile({
+      originalname: 'notes.unsupported',
+      filename: 'notes.unsupported',
+      key: 'notes.unsupported',
+      path: '',
+      buffer: Buffer.from('plain text'),
+    });
+
+    const result = await runUploadGenerationInWorker(
+      makeTask(file),
+      onProgress
+    );
+
+    expect(result.ok).toBe(true);
   });
 });
 

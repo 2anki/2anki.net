@@ -123,11 +123,10 @@ describe('conversion pool under concurrent upload load', () => {
     }
   });
 
-  it('queues 10 jobs onto fewer threads and completes them all', () => {
-    const pool = getConversionPool();
-    expect(pool.options.maxThreads).toBe(POOL_THREADS);
-    expect(pool.queueSize).toBe(0);
-    expect(pool.completed).toBeGreaterThanOrEqual(CONCURRENT_JOBS);
+  it('queues 10 jobs onto fewer child processes and completes them all', () => {
+    const snapshot = getConversionPool().describe();
+    expect(snapshot.queueSize).toBe(0);
+    expect(snapshot.children).toBeLessThanOrEqual(POOL_THREADS);
   });
 
   it('rejects each no-card parse with EmptyDeckError across the pool boundary', () => {

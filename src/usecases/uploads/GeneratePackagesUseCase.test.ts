@@ -101,16 +101,14 @@ describe('GeneratePackagesUseCase', () => {
     });
   });
 
-  it('forwards progress messages from the pool worker to onProgress', async () => {
-    let progressDelivered: () => void = () => undefined;
-    const delivered = new Promise<void>((resolve) => {
-      progressDelivered = resolve;
-    });
-    const onProgress = jest.fn(() => progressDelivered());
+  it('forwards progress callbacks from the pool to onProgress', async () => {
+    const onProgress = jest.fn();
     mockRunUploadGeneration.mockImplementationOnce(
-      async (task: UploadGenerationTask) => {
-        task.progressPort?.postMessage('Parsing notes.html');
-        await delivered;
+      async (
+        _task: UploadGenerationTask,
+        progress?: (step: string) => void
+      ) => {
+        progress?.('Parsing notes.html');
         return { ok: true, packages: [], warnings: [] };
       }
     );
@@ -125,11 +123,11 @@ describe('GeneratePackagesUseCase', () => {
     );
 
     expect(onProgress).toHaveBeenCalledWith('Parsing notes.html');
-    const [task, transferList] = mockRunUploadGeneration.mock.calls[0];
-    expect(transferList).toEqual([task.progressPort]);
+    const [, progressArg] = mockRunUploadGeneration.mock.calls[0];
+    expect(typeof progressArg).toBe('function');
   });
 
-  it('omits the progress channel when no onProgress callback is given', async () => {
+  it('passes no progress callback when none is given', async () => {
     mockRunUploadGeneration.mockResolvedValueOnce({
       ok: true,
       packages: [],
@@ -144,9 +142,8 @@ describe('GeneratePackagesUseCase', () => {
       makeWorkspace()
     );
 
-    const [task, transferList] = mockRunUploadGeneration.mock.calls[0];
-    expect(task.progressPort).toBeUndefined();
-    expect(transferList).toBeUndefined();
+    const [, progressArg] = mockRunUploadGeneration.mock.calls[0];
+    expect(progressArg).toBeUndefined();
   });
 
   it('rejects when the pool worker reports an error', async () => {

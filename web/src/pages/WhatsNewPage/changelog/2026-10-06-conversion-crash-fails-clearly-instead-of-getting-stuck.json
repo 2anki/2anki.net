@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-06-conversion-crash-fails-clearly-instead-of-getting-stuck",
+  "date": "2026-10-06",
+  "type": "fix",
+  "title": "A conversion that runs out of memory now fails with a clear message to try again, instead of leaving your Notion page stuck"
+}

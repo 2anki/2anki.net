@@ -1,82 +1,71 @@
-import type { Transferable } from 'node:worker_threads';
-import Piscina from 'piscina';
-import knex, { Knex } from 'knex';
-import {
-  UPLOAD_GENERATION_TASK,
+import { fork } from 'node:child_process';
+import type {
   UploadGenerationResult,
   UploadGenerationTask,
 } from '../usecases/uploads/uploadGenerationTypes';
-import performConversion, {
-  conversionLogPrefix,
-  trackConversionFailed,
-} from './storage/jobs/helpers/performConversion';
-import NotionAPIWrapper from '../services/NotionService/NotionAPIWrapper';
-import NotionRepository from '../data_layer/NotionRespository';
-import BlocksCacheRepository from '../data_layer/BlocksCacheRepository';
-import JobRepository from '../data_layer/JobRepository';
-import { SetJobFailedUseCase } from '../usecases/jobs/SetJobFailedUseCase';
-import { NOTION_TOKEN_EXPIRED_REASON } from '../usecases/jobs/jobFailureReason';
 import {
   resolveConversionWorkers,
   resolveConversionWorkerRecycleTasks,
 } from './pythonWorkerBudget';
-import { MAX_OLD_GENERATION_SIZE_MB } from './conversionMemoryLimits';
-import { resolveConversionWorkerEntry } from './conversionWorkerEntry';
+import {
+  MAX_OLD_GENERATION_SIZE_MB,
+  CONVERSION_CHILD_RETIRE_RSS_MB,
+  CONVERSION_CHILD_GUARD_RSS_MB,
+} from './conversionMemoryLimits';
+import {
+  ConversionProcessPool,
+  ForkFn,
+  PooledChild,
+  buildChildEnv,
+  resolveConversionChildEntry,
+} from './conversionProcessPool';
+import { pinConversionTaskInput } from './conversionTaskInput';
 import type { ConversionWorkerRequest } from './conversionRequestTypes';
 
 export { resolveConversionWorkers } from './pythonWorkerBudget';
 export type { ConversionWorkerRequest } from './conversionRequestTypes';
 
-let pool: Piscina | null = null;
-
+// Sits above the slowest legitimate conversion so a graceful shutdown lets a
+// large Notion deck finish instead of being force-killed at the blue-green swap;
+// gracefulShutdown adds a small reserve on top for the trailing DB teardown.
 export const POOL_CLOSE_TIMEOUT_MS = 80_000;
 
-// Piscina workers are a lifetime singleton, so each worker's V8 old-gen heap
-// ratchets up across conversions (large Notion decks hold image/PDF buffers and
-// rendered HTML) and never resets without a deploy — prod saw RSS climb 317MB →
-// 1.4GB over 20h on one process. Recycling the pool after a bounded number of
-// completed tasks drains the old workers and starts fresh ones, so the heap
-// resets periodically instead of only on restart. The old-gen cap stays at
-// 1024MB: lowering it risks OOMing the comprehensive/big-media path (which would
-// turn a slow leak into failed conversions), so recycling — not a smaller cap —
-// is the mechanism that bounds RSS. The cap value lives in
-// conversionMemoryLimits.ts so the zip extractor can size its ceilings under it
-// without importing this heavy module (knex, Piscina, the Notion client).
+// Conversions run in a pool of forked child processes that exit when they
+// retire, so whatever a conversion leaks (glibc arenas, native buffers,
+// ratcheted V8 old-gen) goes back to the OS at the process boundary — the one
+// guarantee a lifetime worker-thread pool could not give. The V8 old-gen cap is
+// re-exported for the zip extractor to size its ceilings under.
 export { MAX_OLD_GENERATION_SIZE_MB };
 
-let completedTaskCount = 0;
-let recyclingPool = false;
+let pool: ConversionProcessPool | null = null;
 
-export function shouldRecyclePool(
-  completedTasks: number,
-  recycleThreshold: number,
-  isRecycling: boolean
-): boolean {
-  return !isRecycling && completedTasks >= recycleThreshold;
-}
+const BYTES_PER_MB = 1024 * 1024;
+
+const defaultForkFn: ForkFn = (modulePath, args, options) =>
+  fork(modulePath, args, options) as unknown as PooledChild;
 
 export function resetConversionPoolForTesting(): void {
   pool = null;
-  completedTaskCount = 0;
-  recyclingPool = false;
 }
 
-export function initConversionPool(): Piscina {
+export function initConversionPool(): ConversionProcessPool {
   if (pool) return pool;
-  const { filename, execArgv } = resolveConversionWorkerEntry(__filename);
-  const maxThreads = resolveConversionWorkers();
-  pool = new Piscina({
-    filename,
-    execArgv,
-    maxThreads,
-    minThreads: 1,
-    resourceLimits: { maxOldGenerationSizeMb: MAX_OLD_GENERATION_SIZE_MB },
-    closeTimeout: POOL_CLOSE_TIMEOUT_MS,
+  const entry = resolveConversionChildEntry(__filename);
+  pool = new ConversionProcessPool({
+    forkFn: defaultForkFn,
+    childModulePath: entry.filename,
+    childExecArgv: entry.execArgv,
+    childEnv: buildChildEnv(process.env),
+    maxChildren: resolveConversionWorkers(),
+    recycleTasks: resolveConversionWorkerRecycleTasks(),
+    retireRssBytes: CONVERSION_CHILD_RETIRE_RSS_MB * BYTES_PER_MB,
+    guardRssBytes: CONVERSION_CHILD_GUARD_RSS_MB * BYTES_PER_MB,
   });
+  pool.start();
   return pool;
 }
 
-export function getConversionPool(): Piscina {
+export function getConversionPool(): ConversionProcessPool {
   return initConversionPool();
 }
 
@@ -84,163 +73,43 @@ export function describeConversionPool(): {
   queueSize: number;
   threads: number;
   utilization: number;
+  children: number;
+  childrenRssMb: number;
 } | null {
   if (pool == null) return null;
-  return {
-    queueSize: pool.queueSize,
-    threads: pool.threads.length,
-    utilization: Number(pool.utilization.toFixed(2)),
-  };
-}
-
-// Sum of the live workers' V8 heaps. The main thread's process.memoryUsage()
-// does not include worker isolates, so without this the [memory] line cannot
-// tell worker heap growth from native memory. A worker that is starting or
-// exiting rejects getHeapStatistics; it is skipped rather than failing the log.
-export async function sampleWorkerHeapUsedBytes(): Promise<number | null> {
-  if (pool == null) return null;
-  const stats = await Promise.allSettled(
-    pool.threads.map((worker) => worker.getHeapStatistics())
-  );
-  return stats.reduce(
-    (sum, result) =>
-      result.status === 'fulfilled' ? sum + result.value.used_heap_size : sum,
-    0
-  );
-}
-
-// Swap in a fresh pool and drain the retiring one in the background so heaps
-// reset without dropping in-flight conversions — close() waits for outstanding
-// tasks up to its budget. Guarded against re-entry so a burst of completions
-// past the threshold cannot start overlapping recycles.
-function recycleConversionPool(): void {
-  const retiring = pool;
-  if (recyclingPool || retiring == null) return;
-  recyclingPool = true;
-  completedTaskCount = 0;
-  pool = null;
-  initConversionPool();
-  void shutdownConversionPool({
-    handle: retiring,
-    timeoutMs: POOL_CLOSE_TIMEOUT_MS + 3_000,
-  })
-    .catch((error) => {
-      console.error('Conversion pool recycle drain failed:', error);
-    })
-    .finally(() => {
-      recyclingPool = false;
-    });
-}
-
-function noteTaskCompleted(): void {
-  completedTaskCount += 1;
-  if (
-    shouldRecyclePool(
-      completedTaskCount,
-      resolveConversionWorkerRecycleTasks(),
-      recyclingPool
-    )
-  ) {
-    recycleConversionPool();
-  }
+  return pool.describe();
 }
 
 export async function runConversion(
   request: ConversionWorkerRequest
 ): Promise<void> {
-  try {
-    await getConversionPool().run(request);
-  } finally {
-    noteTaskCompleted();
-  }
+  await getConversionPool().runTask({ type: 'conversion', request });
 }
 
 export async function runUploadGeneration(
   task: UploadGenerationTask,
-  transferList?: Transferable[]
+  onProgress?: (step: string) => void
 ): Promise<UploadGenerationResult> {
+  // Pin each uploaded file onto disk off the hot IPC path so nothing is copied
+  // into the child over the channel, then remove the directory once the child
+  // has finished reading it (success or crash).
+  const pinned = await pinConversionTaskInput(task);
   try {
-    return await getConversionPool().run(task, {
-      name: UPLOAD_GENERATION_TASK,
-      transferList: transferList as never, // piscina's TransferList type misinfers to StructuredSerializeOptions under lib.dom; the runtime expects an array
-    });
+    const value = await getConversionPool().runTask(
+      { type: 'upload', task: pinned.task },
+      onProgress
+    );
+    return value as UploadGenerationResult;
   } finally {
-    noteTaskCompleted();
+    await pinned.cleanup();
   }
 }
 
 export async function shutdownConversionPool(
-  options: { timeoutMs?: number; handle?: Piscina } = {}
+  options: { timeoutMs?: number } = {}
 ): Promise<void> {
-  const handle = options.handle ?? pool;
-  if (handle == null) return;
-  if (handle === pool) pool = null;
-  const drain = handle.close();
-  if (options.timeoutMs == null) {
-    await drain;
-    return;
-  }
-  const timeout = new Promise<'timeout'>((resolve) => {
-    const t = setTimeout(() => resolve('timeout'), options.timeoutMs);
-    t.unref();
-  });
-  const winner = await Promise.race([
-    drain.then(() => 'drained' as const),
-    timeout,
-  ]);
-  if (winner === 'timeout') {
-    console.error(
-      `Conversion pool did not drain within ${options.timeoutMs}ms — ` +
-        `forcing destroy, dropping ${handle.queueSize} queued conversion(s)`
-    );
-    await handle.destroy();
-  }
-}
-
-let workerKnex: Knex | null = null;
-
-function defaultKnexFactory(): Knex {
-  if (workerKnex) return workerKnex;
-  workerKnex = knex({
-    client: 'pg',
-    connection: process.env.DATABASE_URL,
-    pool: { min: 0, max: 2 },
-  });
-  return workerKnex;
-}
-
-export async function runConversionInWorker(
-  request: ConversionWorkerRequest,
-  knexFactory: () => Knex = defaultKnexFactory
-): Promise<void> {
-  const database = knexFactory();
-  const notionRepo = new NotionRepository(database);
-  const token = await notionRepo.getNotionToken(request.owner);
-  if (token == null) {
-    console.info(
-      `${conversionLogPrefix({
-        jobDbId: request.jobDbId,
-        requestId: request.requestId,
-      })} notion token expired — marking job failed`,
-      { pageId: request.id }
-    );
-    const jobRepo = new JobRepository(database);
-    const setJobFailed = new SetJobFailedUseCase(jobRepo);
-    await setJobFailed.execute(
-      request.id,
-      request.owner,
-      NOTION_TOKEN_EXPIRED_REASON
-    );
-    trackConversionFailed(
-      request.owner,
-      request.anonId,
-      request.type,
-      request.signupOrigin ?? null,
-      { reason: 'notion_token_expired' }
-    );
-    return;
-  }
-  const blocksCache = new BlocksCacheRepository(database);
-  const api = new NotionAPIWrapper(token, request.owner, blocksCache);
-  await performConversion(database, { ...request, api });
+  if (pool == null) return;
+  const handle = pool;
+  pool = null;
+  await handle.shutdown(options.timeoutMs);
 }

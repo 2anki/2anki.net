@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import { MessageChannel } from 'node:worker_threads';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import Package from '../../lib/parser/Package';
@@ -83,38 +82,31 @@ class GeneratePackagesUseCase {
       throw new UploadFileUnavailableError(unavailable.originalname);
     }
     const enqueuedAt = Date.now();
-    const channel = onProgress ? new MessageChannel() : null;
-    channel?.port1.on('message', (step: string) => onProgress?.(step));
-    try {
-      const result = await runUploadGeneration(
-        {
-          paying,
-          files,
-          settings,
-          workspace,
-          enqueuedAt,
-          userId,
-          knownGuids,
-          uploadIdentity,
-          existingCardFingerprints,
-          requestId,
-          cardLimit,
-          progressPort: channel?.port2,
-        },
-        channel ? [channel.port2] : undefined
-      );
-      if (result.ok) {
-        return {
-          packages: result.packages,
-          warnings: result.warnings,
-          cardFingerprints: result.cardFingerprints,
-          cardsHeldBack: result.cardsHeldBack,
-        };
-      }
-      throw buildWorkerError(result.error);
-    } finally {
-      channel?.port1.close();
+    const result = await runUploadGeneration(
+      {
+        paying,
+        files,
+        settings,
+        workspace,
+        enqueuedAt,
+        userId,
+        knownGuids,
+        uploadIdentity,
+        existingCardFingerprints,
+        requestId,
+        cardLimit,
+      },
+      onProgress
+    );
+    if (result.ok) {
+      return {
+        packages: result.packages,
+        warnings: result.warnings,
+        cardFingerprints: result.cardFingerprints,
+        cardsHeldBack: result.cardsHeldBack,
+      };
     }
+    throw buildWorkerError(result.error);
   }
 }
 

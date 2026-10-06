@@ -7,12 +7,28 @@ import MigratorConfig = Knex.MigratorConfig;
 import JobRepository from './JobRepository';
 import KnexConfig from '../KnexConfig';
 
+// Optional pool sizing. Unset leaves knex defaults (min 2 / max 10) for the main
+// process; the conversion child processes set DATABASE_POOL_MIN=0 / MAX=3 in
+// their env so an idle child holds no connections and a converting one takes at
+// most three, keeping the blue-green peak within the Postgres connection budget.
+function resolvePoolConfig(): { min?: number; max?: number } | undefined {
+  const min = Number.parseInt(process.env.DATABASE_POOL_MIN ?? '', 10);
+  const max = Number.parseInt(process.env.DATABASE_POOL_MAX ?? '', 10);
+  const pool: { min?: number; max?: number } = {};
+  if (Number.isFinite(min) && min >= 0) pool.min = min;
+  if (Number.isFinite(max) && max >= 1) pool.max = max;
+  return Object.keys(pool).length > 0 ? pool : undefined;
+}
+
+const poolConfig = resolvePoolConfig();
+
 /**
  * Performing this assignment here to prevent new connections from being created.
  */
 const SINGLE_CONNECTION = knex({
   client: 'pg',
   connection: process.env.DATABASE_URL,
+  ...(poolConfig ? { pool: poolConfig } : {}),
 });
 
 export const getDatabase = () => SINGLE_CONNECTION;

@@ -2,9 +2,14 @@ import { Request, Response } from 'express';
 
 import { runConversion } from '../lib/conversionPool';
 import {
+  isConversionChildCrashedError,
   isWorkerTerminationError,
   WORKER_INTERRUPTED_REASON,
 } from '../lib/workerTermination';
+import {
+  CONVERSION_PROCESS_CRASHED_REASON,
+  jobFailureReasonFromError,
+} from '../usecases/jobs/jobFailureReason';
 import {
   InProgressJobError,
   JobLimitError,
@@ -374,11 +379,47 @@ class NotionController {
           );
           return;
         }
+        if (isConversionChildCrashedError(err)) {
+          // A worker-thread crash used to leave this job stuck in 'started'
+          // with no rejection. The child process now rejects, so mark the job
+          // failed with a user-facing reason and record the funnel loss.
+          console.error('[notion/convert] conversion process crashed', {
+            ...correlation,
+            pageId: id,
+            error: err,
+          });
+          await jobRepository.updateJobStatus(
+            id,
+            owner,
+            'failed',
+            CONVERSION_PROCESS_CRASHED_REASON
+          );
+          track('conversion_failed', {
+            userId: funnelUserId(owner),
+            anonymousId: safeString(anonId) ?? null,
+            props: {
+              source: conversionSourceFromType(type),
+              signup_origin: parseFirstTouch(cookies?.first_touch).signupOrigin,
+              reason: 'conversion_process_crashed',
+            },
+          });
+          return;
+        }
+        // Any other rejection is an unexpected failure the child did not handle
+        // itself (performConversion marks its own conversion errors failed). Mark
+        // the job failed so it never sticks in 'started'; the done-guard in
+        // updateJobStatus keeps this from overwriting a job that already finished.
         console.error('[notion/convert] worker failed', {
           ...correlation,
           pageId: id,
           error: err,
         });
+        await jobRepository.updateJobStatus(
+          id,
+          owner,
+          'failed',
+          jobFailureReasonFromError(err, id)
+        );
       });
 
       return res.status(202).json({ jobId: job.id, restarted });

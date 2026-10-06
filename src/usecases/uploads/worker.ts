@@ -405,11 +405,9 @@ async function doGenerationWork(
 }
 
 export async function runUploadGenerationInWorker(
-  task: UploadGenerationTask
+  task: UploadGenerationTask,
+  onProgress: (step: string) => void = () => {}
 ): Promise<UploadGenerationResult> {
-  const onProgress = (step: string) => {
-    task.progressPort?.postMessage(step);
-  };
   try {
     const { packages, warnings, cardFingerprints, cardsHeldBack } =
       await doGenerationWork(task, onProgress);
@@ -427,7 +425,7 @@ export async function runUploadGenerationInWorker(
   } finally {
     // A job that made billable Claude calls and then failed still recorded
     // ai_usage_recorded rows; drain them on both the success and error paths
-    // before the thread is reused or torn down so that spend is never lost.
+    // before the child is reused or torn down so that spend is never lost.
     try {
       await getEventsSink().flushDurable();
     } catch (flushError) {
@@ -436,6 +434,5 @@ export async function runUploadGenerationInWorker(
         flushError
       );
     }
-    task.progressPort?.close();
   }
 }

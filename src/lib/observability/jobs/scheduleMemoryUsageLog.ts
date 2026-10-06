@@ -11,6 +11,8 @@ interface PoolSample {
   queueSize: number;
   threads: number;
   utilization: number;
+  children?: number;
+  childrenRssMb?: number;
 }
 
 interface IntervalHandle {
@@ -46,6 +48,12 @@ export function formatMemoryUsageLine(
       `pool_queue=${pool.queueSize}`,
       `pool_utilization=${pool.utilization}`
     );
+    if (pool.children != null) {
+      fields.push(`pool_children=${pool.children}`);
+    }
+    if (pool.childrenRssMb != null) {
+      fields.push(`children_rss_mb=${pool.childrenRssMb}`);
+    }
   }
   if (workerHeapUsedBytes != null) {
     fields.push(`worker_heap_used_mb=${toMb(workerHeapUsedBytes)}`);

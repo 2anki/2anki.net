@@ -1,4 +1,3 @@
-import type { MessagePort } from 'node:worker_threads';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import type Package from '../../lib/parser/Package';
@@ -18,7 +17,6 @@ export interface UploadGenerationTask {
   existingCardFingerprints?: string[];
   requestId?: string;
   cardLimit?: number;
-  progressPort?: MessagePort;
 }
 
 export interface UploadGenerationFailure {

@@ -17,6 +17,7 @@ import { IMAGE_ONLY_USER_MESSAGE } from '../../lib/claude/ClaudeService';
 import {
   CLAUDE_PARSE_FAILED_REASON,
   COLUMNS_AMBIGUOUS_PREFIX,
+  CONVERSION_PROCESS_CRASHED_REASON,
   DECK_TOO_LARGE_REASON,
   DOCX_UNREADABLE_REASON,
   EMPTY_DECK_FAILURE_REASON,
@@ -27,6 +28,7 @@ import {
   jobFailureReasonCode,
   jobFailureReasonFromError,
 } from './jobFailureReason';
+import { ConversionChildCrashedError } from '../../lib/workerTermination';
 
 function makeUnauthorizedError(): APIResponseError {
   const err = Object.create(APIResponseError.prototype) as APIResponseError;
@@ -44,6 +46,25 @@ function makeAPIResponseError(code: string, status: number): APIResponseError {
   Object.assign(err, { name: 'APIResponseError', message: code, code, status });
   return err;
 }
+
+describe('conversion process crash', () => {
+  const crash = new ConversionChildCrashedError({
+    exitCode: 137,
+    signal: null,
+    lastRssBytes: 2_000_000_000,
+    reason: 'conversion_process_crashed',
+  });
+
+  it('maps a child crash to the conversion_process_crashed code', () => {
+    expect(jobFailureReasonCode(crash)).toBe('conversion_process_crashed');
+  });
+
+  it('gives the user the crash reason, not the generic fallback', () => {
+    expect(jobFailureReasonFromError(crash, 'job-crash')).toBe(
+      CONVERSION_PROCESS_CRASHED_REASON
+    );
+  });
+});
 
 describe('jobFailureReasonFromError', () => {
   it('returns the EmptyDeckError reason unchanged', () => {

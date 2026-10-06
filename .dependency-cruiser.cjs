@@ -29,7 +29,6 @@ module.exports = {
         pathNot: [
           '^src/data_layer',
           '^src/KnexConfig\\.ts$',
-          '^src/lib/conversionPool\\.ts$',
           '^src/seeds',
           '^src/migrations',
         ],
@@ -62,6 +61,17 @@ module.exports = {
       severity: 'warn',
       from: { path: '^src/(routes|controllers)' },
       to: { path: '^src/data_layer' },
+    },
+    {
+      name: 'server-not-reach-conversion-internals',
+      comment:
+        'Conversions run in forked child processes. The main process (reachable from src/server.ts) must never import the conversion body — conversionTasks, the upload worker, or performConversion — or the heavy Notion/Claude/Python import graph loads into the main process and its memory, which the child boundary exists to keep out. Only conversionChild.ts imports those, and it is launched by file path, not imported.',
+      severity: 'error',
+      from: { path: '^src/server\\.ts$' },
+      to: {
+        path: '^src/(lib/conversionTasks|usecases/uploads/worker|lib/storage/jobs/helpers/performConversion)\\.ts$',
+        reachable: true,
+      },
     },
   ],
   options: {
