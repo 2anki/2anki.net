@@ -98,6 +98,7 @@ import { JobLockRepository } from './data_layer/JobLockRepository';
 import { scheduleParserCanary } from './lib/parser/canary/scheduleParserCanary';
 import { scheduleExportDriftCanary } from './lib/parser/canary/scheduleExportDriftCanary';
 import { scheduleObservabilityCleanup } from './lib/observability/jobs/scheduleObservabilityCleanup';
+import { scheduleMemoryUsageLog } from './lib/observability/jobs/scheduleMemoryUsageLog';
 import { scheduleMcpOAuthReaper } from './lib/mcp/jobs/scheduleMcpOAuthReaper';
 import { McpAuthorizationCodeRepository } from './data_layer/McpAuthorizationCodeRepository';
 import { McpTokenRepository } from './data_layer/McpTokenRepository';
@@ -112,7 +113,10 @@ import { chatAttachmentRetentionCutoff } from './lib/storage/chatAttachmentKeys'
 import StorageHandler from './lib/storage/StorageHandler';
 import { UserDeletionService } from './services/UserDeletionService';
 import SuppressionEventsRepository from './data_layer/SuppressionEventsRepository';
-import { initConversionPool } from './lib/conversionPool';
+import {
+  describeConversionPool,
+  initConversionPool,
+} from './lib/conversionPool';
 import { assertBootConfig } from './lib/config';
 import { registerSchedulerTimer } from './lib/scheduling/timerRegistry';
 import { gracefulShutdown } from './lib/gracefulShutdown';
@@ -376,6 +380,13 @@ const serve = async () => {
 
   registerSchedulerTimer(
     scheduleObservabilityCleanup(new ObservabilityRepository(database))
+  );
+
+  registerSchedulerTimer(
+    scheduleMemoryUsageLog({
+      samplePool: describeConversionPool,
+      setIntervalFn: setInterval,
+    })
   );
 
   registerSchedulerTimer(
