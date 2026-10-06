@@ -61,8 +61,11 @@ interface PdfJsGlobalSettings {
   verbosity?: number;
 }
 
+type PdfJsGetDocument = (src: unknown) => unknown;
+
 interface PdfJsModule {
   OPS?: PdfJsOps;
+  getDocument?: PdfJsGetDocument;
   // pdf.js reads font settings from `globalScope.PDFJS`, re-exported here.
   PDFJS?: PdfJsGlobalSettings;
   disableFontFace?: boolean;
@@ -80,11 +83,12 @@ interface NodeImageStubLike {
 //   - FontLoader binds web fonts via the `document` global. Fixed by setting
 //     `disableFontFace` on the real settings object (`globalScope.PDFJS`), NOT
 //     the top-level module — `getDefaultSetting` only reads the former.
-//   - `loadJpegStream` decodes JPEG XObjects via `new Image()`. pdf-parse calls
-//     `getDocument(buffer)` with no params, so `nativeImageDecoderSupport` can't
-//     be set to skip that path. Instead we install a no-op `Image` stub: it
-//     resolves the image object via `onload` (we never render, so the decoded
-//     bytes are unused) without throwing or emitting pdf.js's own warn.
+//   - JPEG XObjects default to `nativeImageDecoderSupport: 'decode'`, which
+//     decodes on a `document` canvas and logs "Unable to decode image" per
+//     JPEG. pdf-parse calls `getDocument(buffer)` on the module we load here,
+//     so `withJpegDisplayDecoding` wraps it to request `'display'`: the worker
+//     hands the JPEG over undecoded and `loadJpegStream` resolves it through a
+//     no-op `Image` stub (we never render, so the bytes are unused).
 function installNodeImageGlobalShim(): void {
   if (typeof (globalThis as { Image?: unknown }).Image !== 'undefined') return;
 
@@ -111,6 +115,27 @@ function installNodeImageGlobalShim(): void {
 
 installNodeImageGlobalShim();
 
+const JPEG_DISPLAY_WRAPPED = Symbol('jpegDisplayDecoding');
+
+function toDocumentParams(src: unknown): Record<string, unknown> {
+  if (typeof src === 'string') return { url: src };
+  if (src instanceof Uint8Array || src instanceof ArrayBuffer) {
+    return { data: src };
+  }
+  return src as Record<string, unknown>;
+}
+
+export function withJpegDisplayDecoding(
+  getDocument: PdfJsGetDocument
+): PdfJsGetDocument {
+  if (JPEG_DISPLAY_WRAPPED in getDocument) return getDocument;
+  const wrapped = (src: unknown) => {
+    const params = toDocumentParams(src);
+    return getDocument({ ...params, nativeImageDecoderSupport: 'display' });
+  };
+  return Object.assign(wrapped, { [JPEG_DISPLAY_WRAPPED]: true });
+}
+
 function loadPdfJs(): PdfJsModule | null {
   try {
     const pdfjs = require(
@@ -122,6 +147,9 @@ function loadPdfJs(): PdfJsModule | null {
     // FreeText/Ink", "TT: undefined function") that pdf.js prints for ordinary
     // PDFs; they aren't actionable and flood the logs during conversion.
     settings.verbosity = PDFJS_VERBOSITY_ERRORS;
+    if (pdfjs.getDocument != null) {
+      pdfjs.getDocument = withJpegDisplayDecoding(pdfjs.getDocument);
+    }
     return pdfjs;
   } catch {
     return null;
