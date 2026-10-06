@@ -133,6 +133,17 @@ if [ "$DRY_RUN" != "1" ]; then
       run pm2 delete "server-$NEXT"
       exit 1
     fi
+    # Same check for the glibc arena cap from the ecosystem env: if pm2 drops
+    # it, worker-thread recycles strand malloc arenas again and the process
+    # climbs to the 12G restart (five times between 2026-08 and 2026-10).
+    if tr '\0' '\n' < "/proc/$NEXT_PID/environ" \
+      | grep -qx 'MALLOC_ARENA_MAX=2'; then
+      log "malloc arena cap verified on server-$NEXT (pid $NEXT_PID)"
+    else
+      log "server-$NEXT (pid $NEXT_PID) started WITHOUT MALLOC_ARENA_MAX=2 — removing it; current color still live"
+      run pm2 delete "server-$NEXT"
+      exit 1
+    fi
   else
     log "WARNING: could not read the environment of server-$NEXT — heap ceiling unverified"
   fi
