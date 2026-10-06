@@ -70,8 +70,8 @@ const base = {
   watch: false,
   max_restarts: 10,
   min_uptime: '60s',
-  // Window for src/server.ts graceful shutdown to drain HTTP, Piscina,
-  // and Knex before pm2 escalates to SIGKILL. Must stay above
+  // Window for src/server.ts graceful shutdown to drain HTTP, the conversion
+  // child-process pool, and Knex before pm2 escalates to SIGKILL. Must stay above
   // SHUTDOWN_TIMEOUT_MS in src/lib/gracefulShutdown.ts (currently 85s) so a slow
   // large-deck conversion finishes instead of being force-killed at the swap.
   // Safe to be generous: blue-green serves users on the new color while the old
@@ -100,13 +100,13 @@ const base = {
 const nodeOptions = `--max-old-space-size=${MAX_OLD_SPACE_MB}`;
 
 // glibc gives every thread that mallocs its own arena (up to 8 per core) and
-// rarely hands freed arena pages back to the OS. Conversions run on worker
-// threads that the pool recycles every 50 tasks, so each recycle strands fresh
-// arenas: on 2026-10-06 RSS climbed ~450MB → 13GB in 6.4h while main-thread
-// heapUsed and external stayed flat, and pm2 restarted the app at 12G for the
-// fifth time since August. Two arenas bound that retention. Like NODE_OPTIONS,
-// it must reach the env before exec — glibc reads it once at startup, so the
-// box's .env (read later by dotenv) cannot set it.
+// rarely hands freed arena pages back to the OS. Conversions now run in forked
+// child processes that exit when they retire, so the OS reclaims a child's
+// arenas wholesale at the process boundary — the permanent fix for the leak that
+// climbed RSS ~450MB → 13GB in 6.4h on 2026-10-06. This stays as defence in
+// depth: it bounds arena retention inside each still-multi-threaded child and in
+// the main process. Like NODE_OPTIONS it must reach the env before exec — glibc
+// reads it once at startup, so the box's .env (read later by dotenv) cannot set it.
 const MALLOC_ARENA_MAX = '2';
 
 module.exports = {

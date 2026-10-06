@@ -2,9 +2,11 @@ import { Request, Response } from 'express';
 
 import { runConversion } from '../lib/conversionPool';
 import {
+  isConversionChildCrashedError,
   isWorkerTerminationError,
   WORKER_INTERRUPTED_REASON,
 } from '../lib/workerTermination';
+import { CONVERSION_PROCESS_CRASHED_REASON } from '../usecases/jobs/jobFailureReason';
 import {
   InProgressJobError,
   JobLimitError,
@@ -372,6 +374,32 @@ class NotionController {
             'interrupted',
             WORKER_INTERRUPTED_REASON
           );
+          return;
+        }
+        if (isConversionChildCrashedError(err)) {
+          // A worker-thread crash used to leave this job stuck in 'started'
+          // with no rejection. The child process now rejects, so mark the job
+          // failed with a user-facing reason and record the funnel loss.
+          console.error('[notion/convert] conversion process crashed', {
+            ...correlation,
+            pageId: id,
+            error: err,
+          });
+          await jobRepository.updateJobStatus(
+            id,
+            owner,
+            'failed',
+            CONVERSION_PROCESS_CRASHED_REASON
+          );
+          track('conversion_failed', {
+            userId: funnelUserId(owner),
+            anonymousId: safeString(anonId) ?? null,
+            props: {
+              source: conversionSourceFromType(type),
+              signup_origin: parseFirstTouch(cookies?.first_touch).signupOrigin,
+              reason: 'conversion_process_crashed',
+            },
+          });
           return;
         }
         console.error('[notion/convert] worker failed', {

@@ -6,7 +6,7 @@ import { IErrorEventRepository } from '../data_layer/ErrorEventRepository';
 const FALLBACK_FILENAME = 'error-fallback.jsonl';
 
 export interface FallbackErrorPayload {
-  source: 'server';
+  source: 'server' | 'conversion-child';
   message: string;
   stack?: string;
   release?: string;
@@ -59,7 +59,11 @@ export async function drainFallbackFile(
     try {
       const payload = JSON.parse(line) as FallbackErrorPayload;
       await repository.insert({
-        source: payload.source,
+        // error_events.source is CHECK-constrained to web|server; a conversion
+        // child is a server-side process, and its "[conversion-child]" message
+        // prefix already identifies the origin.
+        source:
+          payload.source === 'conversion-child' ? 'server' : payload.source,
         message: payload.message,
         message_hash: sha256(payload.message),
         stack: payload.stack ?? null,

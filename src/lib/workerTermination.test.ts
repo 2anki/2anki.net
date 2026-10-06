@@ -1,7 +1,7 @@
 import { isWorkerTerminationError } from './workerTermination';
 
 describe('isWorkerTerminationError', () => {
-  it('matches the piscina pool-destroy rejection', () => {
+  it('matches the pool force-drain rejection', () => {
     expect(
       isWorkerTerminationError(new Error('Terminating worker thread'))
     ).toBe(true);

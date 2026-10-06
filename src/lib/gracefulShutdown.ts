@@ -15,13 +15,12 @@ import { getEventsSink } from '../services/events/eventsSinkInstance';
 export const PM2_KILL_TIMEOUT_MS = 90_000;
 // Reserve under PM2_KILL_TIMEOUT_MS so process.exit fires before pm2's SIGKILL.
 export const SHUTDOWN_TIMEOUT_MS = 85_000;
-// Sits just above piscina's own closeTimeout: close() races the pool flush
-// against that internal ceiling and self-destructs on timeout, so the outer
-// race here gives piscina its full window first, then force-destroys only if
-// close() itself hangs. A large Notion deck (pagination plus image/PDF
-// downloads plus the Python .apkg build) can run past the old 23s window; the
-// 80s pool budget lets it finish, and the 5s reserve below SHUTDOWN_TIMEOUT_MS
-// covers the trailing database.destroy() before the hard exit.
+// The drain budget the conversion child pool gets: it keeps dispatching queued
+// tasks and waits for in-flight ones, then on this timeout rejects the stragglers
+// (callers mark the job interrupted) and SIGKILLs the child groups. A large
+// Notion deck (pagination plus image/PDF downloads plus the Python .apkg build)
+// can run past the old 23s window; the 80s budget lets it finish, and the 5s
+// reserve below SHUTDOWN_TIMEOUT_MS covers the trailing database.destroy().
 export const POOL_DRAIN_TIMEOUT_MS = POOL_CLOSE_TIMEOUT_MS + 3_000;
 // server.close() waits for every in-flight request, and an open SSE stream or
 // a slow client transfer is one closeIdleConnections cannot reap — unbounded,

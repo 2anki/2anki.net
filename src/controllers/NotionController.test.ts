@@ -10,7 +10,11 @@ import { INotionRepository } from '../data_layer/NotionRespository';
 import { IEmailService } from '../services/EmailService/EmailService';
 import UsersRepository from '../data_layer/UsersRepository';
 import { buildNativeOAuthState } from '../services/NotionService/nativeOAuthState';
-import { WORKER_INTERRUPTED_REASON } from '../lib/workerTermination';
+import {
+  ConversionChildCrashedError,
+  WORKER_INTERRUPTED_REASON,
+} from '../lib/workerTermination';
+import { CONVERSION_PROCESS_CRASHED_REASON } from '../usecases/jobs/jobFailureReason';
 
 jest.mock('../lib/conversionPool', () => ({
   __esModule: true,
@@ -475,6 +479,47 @@ describe('NotionController', () => {
         WORKER_INTERRUPTED_REASON
       );
       consoleInfoSpy.mockRestore();
+    });
+
+    it('marks the job failed and tracks the loss when the conversion process crashes', async () => {
+      setupConvertMocks();
+      res.locals = { owner: '42', requestId: 'req-crash-1' };
+      const updateJobStatus = jest.fn().mockResolvedValue(undefined);
+      (JobRepository as unknown as jest.Mock).mockImplementation(() => ({
+        updateJobStatus,
+      }));
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      (runConversion as jest.Mock).mockRejectedValue(
+        new ConversionChildCrashedError({
+          exitCode: 137,
+          signal: null,
+          lastRssBytes: 2_000_000_000,
+          reason: 'conversion_process_crashed',
+        })
+      );
+
+      await controller.convert(req as express.Request, res as express.Response);
+
+      expect(res.status).toHaveBeenCalledWith(202);
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(updateJobStatus).toHaveBeenCalledWith(
+        'page-abc',
+        '42',
+        'failed',
+        CONVERSION_PROCESS_CRASHED_REASON
+      );
+      expect(track).toHaveBeenCalledWith('conversion_failed', {
+        userId: 42,
+        anonymousId: null,
+        props: expect.objectContaining({
+          source: 'notion',
+          reason: 'conversion_process_crashed',
+        }),
+      });
+      consoleErrorSpy.mockRestore();
     });
 
     it('logs the request id and owner when the enqueue itself fails', async () => {

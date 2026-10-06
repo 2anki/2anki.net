@@ -12,11 +12,15 @@ import { EmptyDeckError } from './EmptyDeckError';
 import { inferColumnMapping } from '../../lib/notionDatabase/inferColumnMapping';
 import { isPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
 import { isNotionDatabaseNotPageError } from '../../services/NotionService/helpers/isNotionDatabaseNotPageError';
+import { isConversionChildCrashedError } from '../../lib/workerTermination';
 
 export const NOTION_DATABASE_NOT_PAGE_REASON =
   'This Notion link points to a database. We read the database rows as cards — share the database with the 2anki integration in Notion, then convert again.';
 
 export const NOTION_TOKEN_EXPIRED_REASON = 'notion_token_expired';
+
+export const CONVERSION_PROCESS_CRASHED_REASON =
+  'This conversion stopped unexpectedly — the process was restarted before it finished. Convert again, and if the file is very large, split it into smaller parts first.';
 
 export const EMPTY_DECK_FAILURE_REASON =
   "No cards in this deck yet. 2anki makes a card from every Notion toggle — the toggle title becomes the question, what's inside becomes the answer. Wrap your key terms in toggles, then convert again.";
@@ -136,9 +140,13 @@ export type JobFailureReasonCode =
   | 'claude_parse_failed'
   | 'claude_large_section'
   | 'empty_content'
+  | 'conversion_process_crashed'
   | 'unknown';
 
 export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
+  if (isConversionChildCrashedError(error)) {
+    return 'conversion_process_crashed';
+  }
   if (error instanceof EmptyDeckError) {
     return error.sourceFormat === 'markdown'
       ? 'markdown_likely_lossy'
@@ -235,6 +243,9 @@ export function jobFailureReasonFromError(
   error: unknown,
   jobId?: string
 ): string {
+  if (isConversionChildCrashedError(error)) {
+    return CONVERSION_PROCESS_CRASHED_REASON;
+  }
   if (error instanceof EmptyDeckError) {
     if (error.sourceFormat === 'markdown') {
       return MARKDOWN_LIKELY_LOSSY_REASON;

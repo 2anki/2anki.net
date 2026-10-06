@@ -38,6 +38,20 @@ describe('formatMemoryUsageLine', () => {
       '[memory] rss_mb=1200 heap_total_mb=300 heap_used_mb=250 external_mb=700 array_buffers_mb=650'
     );
   });
+
+  it('adds the child-process count and summed RSS when the pool reports them', () => {
+    expect(
+      formatMemoryUsageLine(memory, {
+        queueSize: 1,
+        threads: 2,
+        utilization: 0.5,
+        children: 2,
+        childrenRssMb: 820,
+      })
+    ).toBe(
+      '[memory] rss_mb=1200 heap_total_mb=300 heap_used_mb=250 external_mb=700 array_buffers_mb=650 pool_threads=2 pool_queue=1 pool_utilization=0.5 pool_children=2 children_rss_mb=820'
+    );
+  });
 });
 
 describe('scheduleMemoryUsageLog', () => {

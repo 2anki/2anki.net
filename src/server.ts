@@ -116,8 +116,8 @@ import SuppressionEventsRepository from './data_layer/SuppressionEventsRepositor
 import {
   describeConversionPool,
   initConversionPool,
-  sampleWorkerHeapUsedBytes,
 } from './lib/conversionPool';
+import { clearStaleConversionTaskDirs } from './lib/conversionTaskInput';
 import { assertBootConfig } from './lib/config';
 import { registerSchedulerTimer } from './lib/scheduling/timerRegistry';
 import { gracefulShutdown } from './lib/gracefulShutdown';
@@ -283,6 +283,16 @@ const serve = async () => {
     );
   }
 
+  const CONVERSION_TASK_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+  const stalePinnedTaskDirs = await clearStaleConversionTaskDirs(
+    CONVERSION_TASK_MAX_AGE_MS
+  );
+  if (stalePinnedTaskDirs > 0) {
+    console.info(
+      `[startup] Removed ${stalePinnedTaskDirs} stale pinned conversion task dir(s)`
+    );
+  }
+
   const expiredAttachmentRows = await new ChatAttachmentsRepository(
     database
   ).deleteOlderThan(chatAttachmentRetentionCutoff());
@@ -386,7 +396,6 @@ const serve = async () => {
   registerSchedulerTimer(
     scheduleMemoryUsageLog({
       samplePool: describeConversionPool,
-      sampleWorkerHeap: sampleWorkerHeapUsedBytes,
       setIntervalFn: setInterval,
     })
   );
