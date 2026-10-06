@@ -1,0 +1,23 @@
+{
+  "entry": "Mit deiner Klasse oder deinem Publikum teilen",
+  "ariaLabel": "Dieses Deck mit deiner Klasse oder deinem Publikum teilen",
+  "title": "Deck-Verteilung gibt es noch nicht",
+  "body": "Sag uns, wie du sie nutzen würdest.",
+  "question": "Mit wem würdest du dieses Deck teilen?",
+  "options": {
+    "students": "Studierende",
+    "customers": "Kunden",
+    "studyGroup": "Lerngruppe",
+    "colleagues": "Kollegen",
+    "justMe": "Nur ich"
+  },
+  "notifyLabel": "Benachrichtige mich, wenn es so weit ist",
+  "emailPlaceholder": "you@example.com",
+  "emailInvalid": "Gib eine gültige E-Mail-Adresse ein.",
+  "submit": "Senden",
+  "sending": "Wird gesendet",
+  "sentTitle": "Notiert",
+  "sentBody": "Wir nutzen das, um zu entscheiden, was wir bauen.",
+  "error": "Das konnte nicht gesendet werden.",
+  "tryAgain": "Erneut versuchen"
+}

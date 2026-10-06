@@ -1,0 +1,23 @@
+{
+  "entry": "Udostępnij swojej klasie lub odbiorcom",
+  "ariaLabel": "Udostępnij tę talię swojej klasie lub odbiorcom",
+  "title": "Dystrybucja talii jeszcze nie istnieje",
+  "body": "Powiedz nam, jak chciałbyś jej używać.",
+  "question": "Komu udostępniłbyś tę talię?",
+  "options": {
+    "students": "Uczniowie",
+    "customers": "Klienci",
+    "studyGroup": "Grupa nauki",
+    "colleagues": "Współpracownicy",
+    "justMe": "Tylko ja"
+  },
+  "notifyLabel": "Powiadom mnie, gdy będzie gotowe",
+  "emailPlaceholder": "you@example.com",
+  "emailInvalid": "Wprowadź prawidłowy adres e-mail.",
+  "submit": "Wyślij",
+  "sending": "Wysyłanie",
+  "sentTitle": "Zapisane",
+  "sentBody": "Wykorzystamy to, by zdecydować, co zbudować.",
+  "error": "Nie udało się wysłać.",
+  "tryAgain": "Spróbuj ponownie"
+}

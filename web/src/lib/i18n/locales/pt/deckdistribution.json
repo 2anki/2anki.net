@@ -1,0 +1,23 @@
+{
+  "entry": "Compartilhar com sua turma ou público",
+  "ariaLabel": "Compartilhe este baralho com sua turma ou público",
+  "title": "A distribuição de baralhos ainda não existe",
+  "body": "Conte como você usaria.",
+  "question": "Com quem você compartilharia este baralho?",
+  "options": {
+    "students": "Estudantes",
+    "customers": "Clientes",
+    "studyGroup": "Grupo de estudo",
+    "colleagues": "Colegas",
+    "justMe": "Só eu"
+  },
+  "notifyLabel": "Avise-me quando estiver pronto",
+  "emailPlaceholder": "you@example.com",
+  "emailInvalid": "Digite um endereço de e-mail válido.",
+  "submit": "Enviar",
+  "sending": "Enviando",
+  "sentTitle": "Anotado",
+  "sentBody": "Vamos usar isso para decidir o que construir.",
+  "error": "Não foi possível enviar.",
+  "tryAgain": "Tentar novamente"
+}

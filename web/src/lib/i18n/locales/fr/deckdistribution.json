@@ -1,0 +1,23 @@
+{
+  "entry": "Partager avec ta classe ou ton public",
+  "ariaLabel": "Partage ce paquet avec ta classe ou ton public",
+  "title": "La distribution de paquets n'existe pas encore",
+  "body": "Dis-nous comment tu l'utiliserais.",
+  "question": "Avec qui partagerais-tu ce paquet ?",
+  "options": {
+    "students": "Étudiants",
+    "customers": "Clients",
+    "studyGroup": "Groupe de révision",
+    "colleagues": "Collègues",
+    "justMe": "Juste moi"
+  },
+  "notifyLabel": "Préviens-moi quand ce sera prêt",
+  "emailPlaceholder": "you@example.com",
+  "emailInvalid": "Saisis une adresse e-mail valide.",
+  "submit": "Envoyer",
+  "sending": "Envoi en cours",
+  "sentTitle": "Noté",
+  "sentBody": "Nous l'utiliserons pour décider quoi construire.",
+  "error": "Impossible d'envoyer.",
+  "tryAgain": "Réessayer"
+}

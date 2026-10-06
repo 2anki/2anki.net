@@ -47,6 +47,7 @@ import {
   type FieldMapping,
 } from '../../lib/fieldMapping/types';
 import { ConversionResult } from './components/ConversionResult/ConversionResult';
+import { DeckDistributionPanel } from './components/DeckDistributionPanel';
 import { ProducerPrompt } from './components/ProducerPrompt';
 import { ConversionReportModal } from './components/ConversionReportModal/ConversionReportModal';
 import { getThinDeckSignal } from './helpers/getThinDeckSignal';
@@ -354,8 +355,19 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
     null
   );
   const [hasDownloaded, setHasDownloaded] = useState(false);
+  const [distributionPanelKey, setDistributionPanelKey] = useState<
+    string | null
+  >(null);
   const pageViewTracked = useRef(false);
   const navigate = useNavigate();
+
+  const notifyEmail = data?.user?.email ?? null;
+
+  const toggleDistributionPanel = (uploadKey: string) => {
+    const willOpen = distributionPanelKey !== uploadKey;
+    setDistributionPanelKey(willOpen ? uploadKey : null);
+    if (willOpen) track('deck_distribution_intent_clicked');
+  };
 
   useEffect(() => {
     if (pageViewTracked.current) return;
@@ -580,6 +592,11 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                               row.job.type === 'database');
                           const { candidateSkips, reason: thinDeckReason } =
                             getThinDeckSignal(row.job);
+                          const doneDownloadKey =
+                            isDoneJob(row.job.status) &&
+                            row.job.download_key != null
+                              ? row.job.download_key
+                              : null;
                           const isMonthlyLimitRow =
                             isFailed &&
                             parseMonthlyLimitPayload(
@@ -663,6 +680,23 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                                 </span>
                                               </>
                                             )}
+                                          </button>
+                                        )}
+                                        {doneDownloadKey != null && (
+                                          <button
+                                            type="button"
+                                            className={styles.reportLink}
+                                            aria-expanded={
+                                              distributionPanelKey ===
+                                              doneDownloadKey
+                                            }
+                                            onClick={() =>
+                                              toggleDistributionPanel(
+                                                doneDownloadKey
+                                              )
+                                            }
+                                          >
+                                            {t('deckdistribution:entry')}
                                           </button>
                                         )}
                                       </>
@@ -790,6 +824,20 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     </td>
                                   </tr>
                                 )}
+                              {doneDownloadKey != null &&
+                                distributionPanelKey === doneDownloadKey && (
+                                  <tr key={`job-${row.job.id}-distribution`}>
+                                    <td
+                                      colSpan={4}
+                                      className={styles.distributionPanelCell}
+                                    >
+                                      <DeckDistributionPanel
+                                        uploadKey={doneDownloadKey}
+                                        defaultEmail={notifyEmail}
+                                      />
+                                    </td>
+                                  </tr>
+                                )}
                               {isFailed &&
                                 (restartUi[row.job.object_id]?.exhausted ||
                                   restartUi[row.job.object_id]?.expired) && (
@@ -848,94 +896,123 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                           const isShared = sharedKeySet.has(u.key);
                           const sharePreviewUrl = `/preview/apkg/${encodeURIComponent(u.key)}`;
                           return (
-                            <tr key={`upload-${u.key}`}>
-                              <td>
-                                <span
-                                  data-hj-suppress
-                                  className={styles.fileName}
-                                >
-                                  {u.filename}
-                                </span>
-                                {isShared && (
-                                  <Link
-                                    to={sharePreviewUrl}
-                                    className={sharedStyles.badge}
-                                    style={{
-                                      marginLeft: '0.5rem',
-                                      textDecoration: 'none',
-                                    }}
-                                    title={t('downloads.badge.sharedTooltip')}
+                            <Fragment key={`upload-${u.key}`}>
+                              <tr>
+                                <td>
+                                  <span
+                                    data-hj-suppress
+                                    className={styles.fileName}
                                   >
-                                    {t('downloads.badge.shared')}
-                                  </Link>
-                                )}
-                              </td>
-                              <td>
-                                <span className={sharedStyles.badge}>
-                                  {getSourceLabel(row.source, t)}
-                                </span>
-                              </td>
-                              <td>
-                                {u.created_at != null && (
-                                  <span className={styles.timeAgo}>
-                                    {getDistance(u.created_at)}
+                                    {u.filename}
                                   </span>
-                                )}
-                              </td>
-                              <td>
-                                <div className={styles.actions}>
-                                  <a
-                                    href={`/api/download/u/${u.key}`}
-                                    className={styles.downloadAction}
-                                    aria-label={t(
-                                      'downloads.actions.downloadNamed',
-                                      { name: u.filename }
-                                    )}
-                                    title={t('downloads.actions.download')}
-                                    onClick={() => {
-                                      setHasDownloaded(true);
-                                      fireAnalyticsEvent('deck_downloaded');
-                                      track('deck_downloaded');
-                                    }}
-                                  >
-                                    <DownloadIcon width={16} height={16} />
-                                  </a>
-                                  <div className={styles.secondaryActions}>
-                                    {APKG_PATTERN.test(u.key) && (
-                                      <Link
-                                        to={`/preview/apkg/${encodeURIComponent(u.key)}`}
-                                        className={styles.iconButton}
-                                        aria-label={t(
-                                          'downloads.actions.previewNamed',
-                                          { name: u.filename }
-                                        )}
-                                        title={t('downloads.actions.preview')}
-                                      >
-                                        <EyeIcon width={16} height={16} />
-                                      </Link>
-                                    )}
-                                    {APKG_PATTERN.test(u.key) && (
-                                      <SendToAnkifyButton
-                                        uploadId={u.id}
-                                        filename={u.filename}
-                                      />
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteUpload(u.key)}
-                                      className={`${styles.iconButton} ${styles.iconButtonDanger}`}
+                                  {isShared && (
+                                    <Link
+                                      to={sharePreviewUrl}
+                                      className={sharedStyles.badge}
+                                      style={{
+                                        marginLeft: '0.5rem',
+                                        textDecoration: 'none',
+                                      }}
+                                      title={t('downloads.badge.sharedTooltip')}
+                                    >
+                                      {t('downloads.badge.shared')}
+                                    </Link>
+                                  )}
+                                </td>
+                                <td>
+                                  <span className={sharedStyles.badge}>
+                                    {getSourceLabel(row.source, t)}
+                                  </span>
+                                </td>
+                                <td>
+                                  {u.created_at != null && (
+                                    <span className={styles.timeAgo}>
+                                      {getDistance(u.created_at)}
+                                    </span>
+                                  )}
+                                </td>
+                                <td>
+                                  <div className={styles.actions}>
+                                    <a
+                                      href={`/api/download/u/${u.key}`}
+                                      className={styles.downloadAction}
                                       aria-label={t(
-                                        'downloads.actions.deleteNamed',
+                                        'downloads.actions.downloadNamed',
                                         { name: u.filename }
                                       )}
-                                      title={t('downloads.actions.delete')}
+                                      title={t('downloads.actions.download')}
+                                      onClick={() => {
+                                        setHasDownloaded(true);
+                                        fireAnalyticsEvent('deck_downloaded');
+                                        track('deck_downloaded');
+                                      }}
                                     >
-                                      <TrashIcon width={16} height={16} />
+                                      <DownloadIcon width={16} height={16} />
+                                    </a>
+                                    <button
+                                      type="button"
+                                      className={styles.reportLink}
+                                      aria-expanded={
+                                        distributionPanelKey === u.key
+                                      }
+                                      onClick={() =>
+                                        toggleDistributionPanel(u.key)
+                                      }
+                                    >
+                                      {t('deckdistribution:entry')}
                                     </button>
+                                    <div className={styles.secondaryActions}>
+                                      {APKG_PATTERN.test(u.key) && (
+                                        <Link
+                                          to={`/preview/apkg/${encodeURIComponent(u.key)}`}
+                                          className={styles.iconButton}
+                                          aria-label={t(
+                                            'downloads.actions.previewNamed',
+                                            { name: u.filename }
+                                          )}
+                                          title={t('downloads.actions.preview')}
+                                        >
+                                          <EyeIcon width={16} height={16} />
+                                        </Link>
+                                      )}
+                                      {APKG_PATTERN.test(u.key) && (
+                                        <SendToAnkifyButton
+                                          uploadId={u.id}
+                                          filename={u.filename}
+                                        />
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleDeleteUpload(u.key)
+                                        }
+                                        className={`${styles.iconButton} ${styles.iconButtonDanger}`}
+                                        aria-label={t(
+                                          'downloads.actions.deleteNamed',
+                                          { name: u.filename }
+                                        )}
+                                        title={t('downloads.actions.delete')}
+                                      >
+                                        <TrashIcon width={16} height={16} />
+                                      </button>
+                                    </div>
                                   </div>
-                                </div>
-                              </td>
-                            </tr>
+                                </td>
+                              </tr>
+                              {distributionPanelKey === u.key && (
+                                <tr key={`upload-${u.key}-distribution`}>
+                                  <td
+                                    colSpan={4}
+                                    className={styles.distributionPanelCell}
+                                  >
+                                    <DeckDistributionPanel
+                                      uploadKey={u.key}
+                                      defaultEmail={notifyEmail}
+                                    />
+                                  </td>
+                                </tr>
+                              )}
+                            </Fragment>
                           );
                         }
 
