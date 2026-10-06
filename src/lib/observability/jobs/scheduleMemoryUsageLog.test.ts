@@ -27,6 +27,12 @@ describe('formatMemoryUsageLine', () => {
     );
   });
 
+  it('adds the summed worker heap when it was sampled', () => {
+    expect(formatMemoryUsageLine(memory, null, 900 * MB)).toBe(
+      '[memory] rss_mb=1200 heap_total_mb=300 heap_used_mb=250 external_mb=700 array_buffers_mb=650 worker_heap_used_mb=900'
+    );
+  });
+
   it('omits the pool fields before the pool exists', () => {
     expect(formatMemoryUsageLine(memory, null)).toBe(
       '[memory] rss_mb=1200 heap_total_mb=300 heap_used_mb=250 external_mb=700 array_buffers_mb=650'
@@ -35,7 +41,7 @@ describe('formatMemoryUsageLine', () => {
 });
 
 describe('scheduleMemoryUsageLog', () => {
-  function setup() {
+  function setup(sampleWorkerHeap?: () => Promise<number | null>) {
     const lines: string[] = [];
     const scheduled: { tick?: () => void; ms?: number; unrefs: number } = {
       unrefs: 0,
@@ -43,6 +49,7 @@ describe('scheduleMemoryUsageLog', () => {
     const handle = scheduleMemoryUsageLog({
       sampleMemory: () => memory,
       samplePool: () => null,
+      sampleWorkerHeap,
       log: (line) => lines.push(line),
       setIntervalFn: (tick, ms) => {
         scheduled.tick = tick;
@@ -65,15 +72,38 @@ describe('scheduleMemoryUsageLog', () => {
     expect(lines).toEqual([]);
   });
 
-  it('writes one line per tick', () => {
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+  it('writes one line per tick', async () => {
     const { lines, scheduled } = setup();
 
     scheduled.tick?.();
     scheduled.tick?.();
+    await flush();
 
     expect(lines).toEqual([
       formatMemoryUsageLine(memory, null),
       formatMemoryUsageLine(memory, null),
     ]);
+  });
+
+  it('includes the worker heap sample in the line', async () => {
+    const { lines, scheduled } = setup(async () => 900 * MB);
+
+    scheduled.tick?.();
+    await flush();
+
+    expect(lines).toEqual([formatMemoryUsageLine(memory, null, 900 * MB)]);
+  });
+
+  it('still logs when the worker heap sample fails', async () => {
+    const { lines, scheduled } = setup(async () => {
+      throw new Error('worker exiting');
+    });
+
+    scheduled.tick?.();
+    await flush();
+
+    expect(lines).toEqual([formatMemoryUsageLine(memory, null)]);
   });
 });

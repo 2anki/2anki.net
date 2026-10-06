@@ -1,5 +1,3 @@
-import path from 'node:path';
-import fs from 'node:fs';
 import type { Transferable } from 'node:worker_threads';
 import Piscina from 'piscina';
 import knex, { Knex } from 'knex';
@@ -23,6 +21,7 @@ import {
   resolveConversionWorkerRecycleTasks,
 } from './pythonWorkerBudget';
 import { MAX_OLD_GENERATION_SIZE_MB } from './conversionMemoryLimits';
+import { resolveConversionWorkerEntry } from './conversionWorkerEntry';
 import type { ConversionWorkerRequest } from './conversionRequestTypes';
 
 export { resolveConversionWorkers } from './pythonWorkerBudget';
@@ -62,17 +61,9 @@ export function resetConversionPoolForTesting(): void {
   recyclingPool = false;
 }
 
-function workerEntry(): { filename: string; execArgv: string[] } {
-  const tsPath = path.resolve(__dirname, './conversionWorker.ts');
-  const jsPath = path.resolve(__dirname, './conversionWorker.js');
-  const filename = fs.existsSync(tsPath) ? tsPath : jsPath;
-  const execArgv = filename.endsWith('.ts') ? ['--require', 'tsx/cjs'] : [];
-  return { filename, execArgv };
-}
-
 export function initConversionPool(): Piscina {
   if (pool) return pool;
-  const { filename, execArgv } = workerEntry();
+  const { filename, execArgv } = resolveConversionWorkerEntry(__filename);
   const maxThreads = resolveConversionWorkers();
   pool = new Piscina({
     filename,
@@ -100,6 +91,22 @@ export function describeConversionPool(): {
     threads: pool.threads.length,
     utilization: Number(pool.utilization.toFixed(2)),
   };
+}
+
+// Sum of the live workers' V8 heaps. The main thread's process.memoryUsage()
+// does not include worker isolates, so without this the [memory] line cannot
+// tell worker heap growth from native memory. A worker that is starting or
+// exiting rejects getHeapStatistics; it is skipped rather than failing the log.
+export async function sampleWorkerHeapUsedBytes(): Promise<number | null> {
+  if (pool == null) return null;
+  const stats = await Promise.allSettled(
+    pool.threads.map((worker) => worker.getHeapStatistics())
+  );
+  return stats.reduce(
+    (sum, result) =>
+      result.status === 'fulfilled' ? sum + result.value.used_heap_size : sum,
+    0
+  );
 }
 
 // Swap in a fresh pool and drain the retiring one in the background so heaps

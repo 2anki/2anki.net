@@ -29,6 +29,15 @@ describe('blue-green ecosystem config — heap ceiling', () => {
   });
 
   it.each(['server-blue', 'server-green'])(
+    'caps glibc malloc arenas for %s in the pre-exec env',
+    (name) => {
+      const app = config.apps.find((candidate) => candidate.name === name)!;
+
+      expect(app.env.MALLOC_ARENA_MAX).toBe('2');
+    }
+  );
+
+  it.each(['server-blue', 'server-green'])(
     'sets NODE_OPTIONS heap ceiling for %s so V8 sees it before boot',
     (name) => {
       const app = config.apps.find((candidate) => candidate.name === name)!;

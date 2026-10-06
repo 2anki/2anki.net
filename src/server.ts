@@ -116,6 +116,7 @@ import SuppressionEventsRepository from './data_layer/SuppressionEventsRepositor
 import {
   describeConversionPool,
   initConversionPool,
+  sampleWorkerHeapUsedBytes,
 } from './lib/conversionPool';
 import { assertBootConfig } from './lib/config';
 import { registerSchedulerTimer } from './lib/scheduling/timerRegistry';
@@ -385,6 +386,7 @@ const serve = async () => {
   registerSchedulerTimer(
     scheduleMemoryUsageLog({
       samplePool: describeConversionPool,
+      sampleWorkerHeap: sampleWorkerHeapUsedBytes,
       setIntervalFn: setInterval,
     })
   );

@@ -99,6 +99,16 @@ const base = {
 
 const nodeOptions = `--max-old-space-size=${MAX_OLD_SPACE_MB}`;
 
+// glibc gives every thread that mallocs its own arena (up to 8 per core) and
+// rarely hands freed arena pages back to the OS. Conversions run on worker
+// threads that the pool recycles every 50 tasks, so each recycle strands fresh
+// arenas: on 2026-10-06 RSS climbed ~450MB → 13GB in 6.4h while main-thread
+// heapUsed and external stayed flat, and pm2 restarted the app at 12G for the
+// fifth time since August. Two arenas bound that retention. Like NODE_OPTIONS,
+// it must reach the env before exec — glibc reads it once at startup, so the
+// box's .env (read later by dotenv) cannot set it.
+const MALLOC_ARENA_MAX = '2';
+
 module.exports = {
   apps: [
     {
@@ -110,6 +120,7 @@ module.exports = {
         PORT: 3000,
         GIT_SHA: process.env.GIT_SHA,
         NODE_OPTIONS: nodeOptions,
+        MALLOC_ARENA_MAX,
       },
     },
     {
@@ -121,6 +132,7 @@ module.exports = {
         PORT: 3001,
         GIT_SHA: process.env.GIT_SHA,
         NODE_OPTIONS: nodeOptions,
+        MALLOC_ARENA_MAX,
       },
     },
   ],
