@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import {
   AI_SPEND_ALERT_THRESHOLD_USD,
   AiBudgetDeps,
@@ -14,9 +15,9 @@ import {
 } from './aiCredits/inflightReservations';
 import { track } from '../../services/events/track';
 
-jest.mock('../../services/events/track', () => ({ track: jest.fn() }));
+vi.mock('../../services/events/track', () => ({ track: vi.fn() }));
 
-const trackMock = track as jest.Mock;
+const trackMock = track as Mock;
 const NOW = new Date('2026-09-07T12:00:00.000Z');
 
 // The watch alert and the exhausted-event fire both run detached, so tests that
@@ -40,16 +41,16 @@ function makeDeps(overrides: {
   cost30d?: number;
   eventCount?: number;
 }): AiBudgetDeps & {
-  sendAlert: jest.Mock;
-  reader: { userCostSince: jest.Mock; eventCountSince: jest.Mock };
+  sendAlert: Mock;
+  reader: { userCostSince: Mock; eventCountSince: Mock };
 } {
   return {
-    computeBalance: jest.fn().mockResolvedValue(overrides.balance ?? null),
+    computeBalance: vi.fn().mockResolvedValue(overrides.balance ?? null),
     reader: {
-      userCostSince: jest.fn().mockResolvedValue(overrides.cost30d ?? 0),
-      eventCountSince: jest.fn().mockResolvedValue(overrides.eventCount ?? 0),
+      userCostSince: vi.fn().mockResolvedValue(overrides.cost30d ?? 0),
+      eventCountSince: vi.fn().mockResolvedValue(overrides.eventCount ?? 0),
     },
-    sendAlert: jest.fn().mockResolvedValue(undefined),
+    sendAlert: vi.fn().mockResolvedValue(undefined),
     now: () => NOW,
   };
 }
@@ -57,9 +58,9 @@ function makeDeps(overrides: {
 describe('assertAiBudget', () => {
   beforeEach(() => {
     trackMock.mockReset();
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   it('does nothing for anonymous callers', async () => {
     const deps = makeDeps({});
@@ -135,7 +136,7 @@ describe('assertAiBudget', () => {
       balance: balanceWith(180),
       cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
     });
-    (deps.sendAlert as jest.Mock).mockRejectedValue(new Error('smtp down'));
+    (deps.sendAlert as Mock).mockRejectedValue(new Error('smtp down'));
     await expect(assertAiBudget(42, deps)).resolves.toBeUndefined();
     await flushAsync();
     expect(deps.sendAlert).toHaveBeenCalled();
@@ -155,7 +156,7 @@ describe('assertAiBudget', () => {
 
   it('fails open when the balance read throws', async () => {
     const deps = makeDeps({});
-    (deps.computeBalance as jest.Mock).mockRejectedValue(new Error('db down'));
+    (deps.computeBalance as Mock).mockRejectedValue(new Error('db down'));
     await expect(assertAiBudget(42, deps)).resolves.toBeUndefined();
     await flushAsync();
     expect(deps.sendAlert).not.toHaveBeenCalled();
@@ -168,9 +169,9 @@ describe('withAiBudget', () => {
   beforeEach(() => {
     trackMock.mockReset();
     resetInflightReservations();
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   it('runs the call without a balance check for anonymous callers', async () => {
     const deps = makeDeps({});
@@ -188,7 +189,7 @@ describe('withAiBudget', () => {
 
   it('throws without running the call when the balance is spent', async () => {
     const deps = makeDeps({ balance: balanceWith(0) });
-    const run = jest.fn().mockResolvedValue('ok');
+    const run = vi.fn().mockResolvedValue('ok');
     await expect(withAiBudget(42, run, deps)).rejects.toBeInstanceOf(
       AiCreditsExhaustedError
     );
@@ -215,7 +216,7 @@ describe('withAiBudget', () => {
     await flush();
     expect(reservedCreditsFor(42)).toBe(RESERVED_CREDITS_PER_INFLIGHT_CALL);
 
-    const second = jest.fn().mockResolvedValue('second');
+    const second = vi.fn().mockResolvedValue('second');
     await expect(withAiBudget(42, second, deps)).rejects.toBeInstanceOf(
       AiCreditsExhaustedError
     );
@@ -276,7 +277,7 @@ describe('withAiBudget', () => {
     );
     await flush();
 
-    const second = jest.fn().mockResolvedValue('second');
+    const second = vi.fn().mockResolvedValue('second');
     await expect(withAiBudget(42, second, deps)).rejects.toBeInstanceOf(
       AiCreditsExhaustedError
     );
@@ -294,9 +295,9 @@ describe('withAiBudget', () => {
 describe('getAiBudgetStatus', () => {
   beforeEach(() => {
     trackMock.mockReset();
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   it('returns not-exhausted with a null balance for anonymous callers', async () => {
     const status = await getAiBudgetStatus(null, makeDeps({}));

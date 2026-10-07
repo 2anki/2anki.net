@@ -1,11 +1,14 @@
+import { vi } from 'vitest';
 import { setupTests } from '../../test/configure-jest';
 import CardOption from './Settings/CardOption';
 import { DeckParser } from './DeckParser';
 import Workspace from './WorkSpace';
 
-const downloadMediaOrSkipMock = jest.fn<Promise<Buffer | null>, [string]>();
+const downloadMediaOrSkipMock = vi.hoisted(() =>
+  vi.fn<(url: string) => Promise<Buffer | null>>()
+);
 
-jest.mock('../../services/NotionService/helpers/downloadMediaOrSkip', () => ({
+vi.mock('../../services/NotionService/helpers/downloadMediaOrSkip', () => ({
   __esModule: true,
   downloadMediaOrSkip: (url: string) => downloadMediaOrSkipMock(url),
 }));

@@ -1,20 +1,21 @@
+import { vi, type Mock } from 'vitest';
 import { recordClaudeUsage } from './recordClaudeUsage';
 import { track } from '../../services/events/track';
 
-jest.mock('../../services/events/track', () => ({
-  track: jest.fn(),
+vi.mock('../../services/events/track', () => ({
+  track: vi.fn(),
 }));
 
-const trackMock = track as jest.Mock;
+const trackMock = track as Mock;
 
 describe('recordClaudeUsage', () => {
   beforeEach(() => {
     trackMock.mockReset();
-    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('tracks an ai_usage_recorded event with token counts nested under usage', () => {
@@ -114,7 +115,7 @@ describe('recordClaudeUsage', () => {
   });
 
   it('never throws when the event sink is unavailable', () => {
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
     trackMock.mockImplementation(() => {
       throw new Error('no database');
     });
@@ -128,9 +129,7 @@ describe('recordClaudeUsage', () => {
     ).not.toThrow();
   });
   it('stamps the request id on the usage line when one is known', () => {
-    const info = jest
-      .spyOn(console, 'info')
-      .mockImplementation(() => undefined);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
 
     recordClaudeUsage({
       surface: 'conversion',
@@ -148,9 +147,7 @@ describe('recordClaudeUsage', () => {
   });
 
   it('leaves the request id off the usage line when none is known', () => {
-    const info = jest
-      .spyOn(console, 'info')
-      .mockImplementation(() => undefined);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
 
     recordClaudeUsage({
       surface: 'chat',

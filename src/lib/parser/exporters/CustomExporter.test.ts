@@ -1,3 +1,4 @@
+import { vi, type MockedClass } from 'vitest';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -9,7 +10,7 @@ import Note from '../Note';
 import CardOption from '../Settings';
 import CardGenerator from '../../anki/CardGenerator';
 
-jest.mock('../../anki/CardGenerator');
+vi.mock('../../anki/CardGenerator');
 
 function tempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'custom-exporter-test-'));
@@ -175,9 +176,7 @@ describe('CustomExporter.configure', () => {
 });
 
 describe('CustomExporter.save', () => {
-  const MockCardGenerator = CardGenerator as jest.MockedClass<
-    typeof CardGenerator
-  >;
+  const MockCardGenerator = CardGenerator as MockedClass<typeof CardGenerator>;
   // CI sets SKIP_CREATE_DECK=true tree-wide so most suites skip the Python
   // packaging step; these tests exercise that real (mocked-CardGenerator)
   // path specifically, so the flag must be off here regardless of the
@@ -185,7 +184,7 @@ describe('CustomExporter.save', () => {
   const originalSkipCreateDeck = process.env.SKIP_CREATE_DECK;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     delete process.env.SKIP_CREATE_DECK;
   });
 
@@ -198,12 +197,11 @@ describe('CustomExporter.save', () => {
   });
 
   function mockGenRun(apkgPath: string) {
-    MockCardGenerator.mockImplementation(
-      () =>
-        ({
-          run: jest.fn().mockResolvedValue(apkgPath),
-        }) as unknown as InstanceType<typeof CardGenerator>
-    );
+    MockCardGenerator.mockImplementation(function () {
+      return {
+        run: vi.fn().mockResolvedValue(apkgPath),
+      } as unknown as InstanceType<typeof CardGenerator>;
+    });
   }
 
   it('reads back the apkg CardGenerator reports', async () => {

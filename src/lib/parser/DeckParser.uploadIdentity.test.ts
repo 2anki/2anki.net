@@ -1,3 +1,4 @@
+import { vi, type MockInstance } from 'vitest';
 import { setupTests } from '../../test/configure-jest';
 import { guidFor } from '../anki/guid';
 import type { IssuedCardGuid } from '../anki/guidLedgerTypes';
@@ -120,10 +121,10 @@ describe('upload card identity for signed-in non-Notion uploads', () => {
   describe('note mod', () => {
     const FIRST_EXPORT_MS = 1_700_000_000_000;
     const SECOND_EXPORT_MS = 1_700_000_600_000;
-    let nowSpy: jest.SpiedFunction<typeof Date.now>;
+    let nowSpy: MockInstance<typeof Date.now>;
 
     beforeEach(() => {
-      nowSpy = jest.spyOn(Date, 'now');
+      nowSpy = vi.spyOn(Date, 'now');
     });
 
     afterEach(() => {

@@ -1,3 +1,4 @@
+import { vi, type MockedFunction } from 'vitest';
 import { EventEmitter } from 'events';
 import { execSync, spawn as realSpawn, type ChildProcess } from 'child_process';
 import fs from 'fs/promises';
@@ -6,12 +7,13 @@ import os from 'os';
 import { getPageCount } from './getPageCount';
 import { jobFailureReasonCode } from '../../usecases/jobs/jobFailureReason';
 
-jest.mock('child_process', () => {
-  const actual = jest.requireActual('child_process');
-  return { ...actual, spawn: jest.fn(actual.spawn) };
+vi.mock('child_process', async () => {
+  const actual =
+    await vi.importActual<typeof import('child_process')>('child_process');
+  return { ...actual, spawn: vi.fn(actual.spawn) };
 });
 
-const spawnMock = realSpawn as jest.MockedFunction<typeof realSpawn>;
+const spawnMock = realSpawn as MockedFunction<typeof realSpawn>;
 
 const hasPdfinfo = (() => {
   try {

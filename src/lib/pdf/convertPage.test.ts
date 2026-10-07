@@ -1,13 +1,15 @@
+import { vi, type MockedFunction } from 'vitest';
 import { EventEmitter } from 'events';
 import { spawn as realSpawn, type ChildProcess } from 'child_process';
 import { convertPage } from './convertPage';
 
-jest.mock('child_process', () => {
-  const actual = jest.requireActual('child_process');
-  return { ...actual, spawn: jest.fn(actual.spawn) };
+vi.mock('child_process', async () => {
+  const actual =
+    await vi.importActual<typeof import('child_process')>('child_process');
+  return { ...actual, spawn: vi.fn(actual.spawn) };
 });
 
-const spawnMock = realSpawn as jest.MockedFunction<typeof realSpawn>;
+const spawnMock = realSpawn as MockedFunction<typeof realSpawn>;
 
 function fakePdftoppm(code: number | null, signal: NodeJS.Signals | null) {
   spawnMock.mockImplementationOnce((): ChildProcess => {

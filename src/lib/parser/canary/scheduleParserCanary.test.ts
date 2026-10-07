@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { setupTests } from '../../../test/configure-jest';
 import {
   scheduleParserCanary,
@@ -14,23 +15,23 @@ function makeEmailService(
   overrides: Partial<IEmailService> = {}
 ): IEmailService {
   return {
-    sendResetEmail: jest.fn(),
-    sendConversionEmail: jest.fn(),
-    sendConversionLinkEmail: jest.fn(),
-    sendContactEmail: jest.fn(),
-    sendSubscriptionCancelledEmail: jest.fn(),
-    sendSubscriptionScheduledCancellationEmail: jest.fn(),
-    sendHostedAnkiAccessRequestEmail: jest.fn(),
-    sendMagicLinkEmail: jest.fn(),
-    sendReEngagementEmail: jest.fn(),
-    sendInactivityWarningEmail: jest.fn(),
-    sendAbandonedCheckoutRecoveryEmail: jest.fn(),
-    sendParserCanaryAlert: jest.fn().mockResolvedValue(undefined),
-    sendNotionReconnectEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
+    sendResetEmail: vi.fn(),
+    sendConversionEmail: vi.fn(),
+    sendConversionLinkEmail: vi.fn(),
+    sendContactEmail: vi.fn(),
+    sendSubscriptionCancelledEmail: vi.fn(),
+    sendSubscriptionScheduledCancellationEmail: vi.fn(),
+    sendHostedAnkiAccessRequestEmail: vi.fn(),
+    sendMagicLinkEmail: vi.fn(),
+    sendReEngagementEmail: vi.fn(),
+    sendInactivityWarningEmail: vi.fn(),
+    sendAbandonedCheckoutRecoveryEmail: vi.fn(),
+    sendParserCanaryAlert: vi.fn().mockResolvedValue(undefined),
+    sendNotionReconnectEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendPassClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendPriceLockInEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionRecoveryEmail: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as IEmailService;
 }
@@ -49,12 +50,12 @@ const FAIL_RESULT: CanaryResult = {
 };
 
 describe('scheduleParserCanary', () => {
-  beforeEach(() => jest.useFakeTimers());
-  afterEach(() => jest.useRealTimers());
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
 
   test('returns a timeout handle immediately', () => {
     const handle = scheduleParserCanary(makeEmailService(), {
-      runCanary: jest.fn().mockResolvedValue(PASS_RESULT),
+      runCanary: vi.fn().mockResolvedValue(PASS_RESULT),
     });
     expect(handle).toBeDefined();
     clearTimeout(handle);
@@ -62,7 +63,7 @@ describe('scheduleParserCanary', () => {
 
   test('does not fire before the next 03:00 UTC window', () => {
     const now = new Date('2026-05-18T01:00:00Z');
-    const runCanary = jest.fn().mockResolvedValue(PASS_RESULT);
+    const runCanary = vi.fn().mockResolvedValue(PASS_RESULT);
     const handle = scheduleParserCanary(makeEmailService(), {
       now: () => now,
       runCanary,
@@ -75,7 +76,7 @@ describe('scheduleParserCanary', () => {
     );
     const delayMs = expected.getTime() - now.getTime();
 
-    jest.advanceTimersByTime(delayMs - 1);
+    vi.advanceTimersByTime(delayMs - 1);
     expect(runCanary).not.toHaveBeenCalled();
 
     clearTimeout(handle);
@@ -83,13 +84,13 @@ describe('scheduleParserCanary', () => {
 
   test('sends an alert email when the canary reports a failure', async () => {
     const now = new Date('2026-05-18T01:00:00Z');
-    const alertMock = jest.fn().mockResolvedValue(undefined);
+    const alertMock = vi.fn().mockResolvedValue(undefined);
     const emailService = makeEmailService({ sendParserCanaryAlert: alertMock });
-    const runCanary = jest.fn().mockResolvedValue(FAIL_RESULT);
+    const runCanary = vi.fn().mockResolvedValue(FAIL_RESULT);
 
     scheduleParserCanary(emailService, { now: () => now, runCanary });
 
-    await jest.runOnlyPendingTimersAsync();
+    await vi.runOnlyPendingTimersAsync();
 
     expect(alertMock).toHaveBeenCalledTimes(1);
     const [toArg, summaryArg] = alertMock.mock.calls[0] as [string, string];
@@ -101,13 +102,13 @@ describe('scheduleParserCanary', () => {
 
   test('does not send an alert email when the canary passes', async () => {
     const now = new Date('2026-05-18T01:00:00Z');
-    const alertMock = jest.fn().mockResolvedValue(undefined);
+    const alertMock = vi.fn().mockResolvedValue(undefined);
     const emailService = makeEmailService({ sendParserCanaryAlert: alertMock });
-    const runCanary = jest.fn().mockResolvedValue(PASS_RESULT);
+    const runCanary = vi.fn().mockResolvedValue(PASS_RESULT);
 
     scheduleParserCanary(emailService, { now: () => now, runCanary });
 
-    await jest.runOnlyPendingTimersAsync();
+    await vi.runOnlyPendingTimersAsync();
 
     expect(alertMock).not.toHaveBeenCalled();
   });

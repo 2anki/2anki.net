@@ -1,18 +1,19 @@
+import { vi, type MockedFunction } from 'vitest';
 import { extractPdfText, PdfExtractionResult } from './extractPdfText';
 
-jest.mock('pdf-parse', () => {
-  return jest.fn();
+vi.mock('pdf-parse', () => {
+  return { default: vi.fn() };
 });
 
 import pdfParse from 'pdf-parse';
 
-const mockPdfParse = pdfParse as jest.MockedFunction<typeof pdfParse>;
+const mockPdfParse = pdfParse as MockedFunction<typeof pdfParse>;
 
 const FIXTURE_BUFFER = Buffer.from('fake-pdf-bytes');
 
 describe('extractPdfText', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('returns page texts and metadata for a normal PDF', async () => {

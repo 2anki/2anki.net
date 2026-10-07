@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import path from 'path';
 import fs from 'fs';
 
@@ -8,9 +9,11 @@ import { DeckParser } from './DeckParser';
 import Workspace from './WorkSpace';
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 
-const downloadMediaOrSkipMock = jest.fn<Promise<Buffer | null>, [string]>();
+const downloadMediaOrSkipMock = vi.hoisted(() =>
+  vi.fn<(url: string) => Promise<Buffer | null>>()
+);
 
-jest.mock('../../services/NotionService/helpers/downloadMediaOrSkip', () => ({
+vi.mock('../../services/NotionService/helpers/downloadMediaOrSkip', () => ({
   __esModule: true,
   downloadMediaOrSkip: (url: string) => downloadMediaOrSkipMock(url),
 }));
@@ -679,7 +682,7 @@ test('global tags per file are preserved in multi-file uploads', async () => {
 
   expect(parser.payload.length).toBe(2);
 
-  parser.customExporter.save = jest.fn().mockResolvedValue('');
+  parser.customExporter.save = vi.fn().mockResolvedValue('');
   await parser.build(workspace);
 
   const deckA = parser.payload[0];
@@ -717,7 +720,7 @@ test('global tags on a parent page carry into its sub-pages', async () => {
     workspace,
   });
 
-  parser.customExporter.save = jest.fn().mockResolvedValue('');
+  parser.customExporter.save = vi.fn().mockResolvedValue('');
   await parser.build(workspace);
 
   const parentDeck = parser.payload[0];
@@ -979,7 +982,7 @@ test('Markdown reversed cards keep numeric sort order', async () => {
     workspace,
   });
 
-  parser.customExporter.save = jest.fn().mockResolvedValue('');
+  parser.customExporter.save = vi.fn().mockResolvedValue('');
   await parser.build(workspace);
 
   const deck = parser.payload[0];
@@ -1318,7 +1321,7 @@ test('refresh emoji reverses an uploaded card even when reverse settings are off
   });
 
   expect(parser.payload[0].cards.length).toBe(2);
-  parser.customExporter.save = jest.fn().mockResolvedValue('');
+  parser.customExporter.save = vi.fn().mockResolvedValue('');
   await parser.build(workspace);
 
   const deck = parser.payload[0];
@@ -1429,7 +1432,7 @@ describe('notion-html-2024 regression corpus', () => {
     const parser = buildParser(
       new CardOption({ 'max-one-toggle-per-card': 'true', cherry: 'false' })
     );
-    parser.customExporter.save = jest.fn().mockResolvedValue('');
+    parser.customExporter.save = vi.fn().mockResolvedValue('');
     await parser.build(new Workspace(true, 'fs'));
 
     const symptomCard = parser.payload[0].cards.find(
@@ -1446,7 +1449,7 @@ describe('notion-html-2024 regression corpus', () => {
     const parser = buildParser(
       new CardOption({ 'max-one-toggle-per-card': 'true', cherry: 'false' })
     );
-    parser.customExporter.save = jest.fn().mockResolvedValue('');
+    parser.customExporter.save = vi.fn().mockResolvedValue('');
     await parser.build(new Workspace(true, 'fs'));
 
     const imageCard = parser.payload[0].cards.find(
@@ -1468,7 +1471,7 @@ describe('notion-html-2024 regression corpus', () => {
         cloze: 'true',
       })
     );
-    parser.customExporter.save = jest.fn().mockResolvedValue('');
+    parser.customExporter.save = vi.fn().mockResolvedValue('');
     await parser.build(new Workspace(true, 'fs'));
 
     const clozeCard = parser.payload[0].cards.find(
@@ -1498,7 +1501,7 @@ describe('MCQ detection via DeckParser', () => {
 
   test('happy path: to-do checkbox produces MCQ note with correct shape', async () => {
     const parser = buildParserFromFixture('mcq-todo-checked.html');
-    parser.customExporter.save = jest.fn().mockResolvedValue('');
+    parser.customExporter.save = vi.fn().mockResolvedValue('');
     await parser.build(new Workspace(true, 'fs'));
 
     const deck = parser.payload[0];
@@ -1514,7 +1517,7 @@ describe('MCQ detection via DeckParser', () => {
 
   test('happy path: fully-bolded bullet produces MCQ note via bold fallback', async () => {
     const parser = buildParserFromFixture('mcq-bold-fallback.html');
-    parser.customExporter.save = jest.fn().mockResolvedValue('');
+    parser.customExporter.save = vi.fn().mockResolvedValue('');
     await parser.build(new Workspace(true, 'fs'));
 
     const deck = parser.payload[0];
@@ -1540,7 +1543,7 @@ describe('MCQ detection via DeckParser', () => {
       noLimits: true,
       workspace,
     });
-    parser.customExporter.save = jest.fn().mockResolvedValue('');
+    parser.customExporter.save = vi.fn().mockResolvedValue('');
     await parser.build(new Workspace(true, 'fs'));
 
     const deck = parser.payload[0];
@@ -1560,7 +1563,7 @@ describe('MCQ detection via DeckParser', () => {
       noLimits: true,
       workspace,
     });
-    parser.customExporter.save = jest.fn().mockResolvedValue('');
+    parser.customExporter.save = vi.fn().mockResolvedValue('');
     await parser.build(new Workspace(true, 'fs'));
 
     const deck = parser.payload[0];
@@ -1581,7 +1584,7 @@ describe('MCQ detection via DeckParser', () => {
 
   test('real Notion export: fragmented ul.to-do-list under display:contents wrappers produces MCQ note', async () => {
     const parser = buildParserFromFixture('mcq-real-notion-export.html');
-    parser.customExporter.save = jest.fn().mockResolvedValue('');
+    parser.customExporter.save = vi.fn().mockResolvedValue('');
     await parser.build(new Workspace(true, 'fs'));
 
     const deck = parser.payload[0];
@@ -1598,7 +1601,7 @@ describe('MCQ detection via DeckParser', () => {
 
   test('no marker: MCQ-shaped toggle with all unchecked to-dos falls back to Basic note', async () => {
     const parser = buildParserFromFixture('mcq-no-marker.html');
-    parser.customExporter.save = jest.fn().mockResolvedValue('');
+    parser.customExporter.save = vi.fn().mockResolvedValue('');
     await parser.build(new Workspace(true, 'fs'));
 
     const deck = parser.payload[0];
@@ -1626,7 +1629,7 @@ describe('MCQ detection via DeckParser', () => {
       noLimits: true,
       workspace,
     });
-    parser.customExporter.save = jest.fn().mockResolvedValue('');
+    parser.customExporter.save = vi.fn().mockResolvedValue('');
     await parser.build(workspace);
 
     const deck = parser.payload[0];
@@ -1670,7 +1673,7 @@ describe('heuristic markdown path — entity preservation', () => {
       noLimits: true,
       workspace,
     });
-    parser.customExporter.save = jest.fn().mockResolvedValue('');
+    parser.customExporter.save = vi.fn().mockResolvedValue('');
     await parser.build(workspace);
     return parser.payload[0];
   };
@@ -1889,7 +1892,7 @@ describe('remote image rehosting', () => {
 
   test('logs a skipped-media warning when a remote image fetch returns no content', async () => {
     downloadMediaOrSkipMock.mockResolvedValueOnce(null);
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const ws = new Workspace(true, 'fs');
     const parser = buildRemoteImageParser();
     await parser.writeDeckInfo(ws);

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   buildConversionCacheKey,
   withConversionResultCache,
@@ -121,7 +122,7 @@ describe('withConversionResultCache', () => {
   const keyInput = baseKeyInput();
 
   it('computes without touching the cache when no store is provided', async () => {
-    const compute = jest.fn().mockResolvedValue(sampleDeck());
+    const compute = vi.fn().mockResolvedValue(sampleDeck());
     const result = await withConversionResultCache(
       undefined,
       keyInput,
@@ -134,12 +135,12 @@ describe('withConversionResultCache', () => {
   it('computes and saves on a cache miss', async () => {
     const saves: ConversionResultCacheSave<DeckInfo[]>[] = [];
     const store: ConversionResultCacheStore<DeckInfo[]> = {
-      get: jest.fn().mockResolvedValue(undefined),
-      save: jest.fn(async (entry) => {
+      get: vi.fn().mockResolvedValue(undefined),
+      save: vi.fn(async (entry) => {
         saves.push(entry);
       }),
     };
-    const compute = jest.fn().mockResolvedValue(sampleDeck());
+    const compute = vi.fn().mockResolvedValue(sampleDeck());
 
     const result = await withConversionResultCache(store, keyInput, compute);
 
@@ -157,10 +158,10 @@ describe('withConversionResultCache', () => {
   it('returns the cached decks without computing on a hit', async () => {
     const cached = sampleDeck('cached-front');
     const store: ConversionResultCacheStore<DeckInfo[]> = {
-      get: jest.fn().mockResolvedValue(cached),
-      save: jest.fn(),
+      get: vi.fn().mockResolvedValue(cached),
+      save: vi.fn(),
     };
-    const compute = jest.fn();
+    const compute = vi.fn();
 
     const result = await withConversionResultCache(store, keyInput, compute);
 
@@ -171,10 +172,10 @@ describe('withConversionResultCache', () => {
 
   it('falls through to a fresh conversion when the cache read throws', async () => {
     const store: ConversionResultCacheStore<DeckInfo[]> = {
-      get: jest.fn().mockRejectedValue(new Error('db down')),
-      save: jest.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockRejectedValue(new Error('db down')),
+      save: vi.fn().mockResolvedValue(undefined),
     };
-    const compute = jest.fn().mockResolvedValue(sampleDeck());
+    const compute = vi.fn().mockResolvedValue(sampleDeck());
 
     const result = await withConversionResultCache(store, keyInput, compute);
 
@@ -184,10 +185,10 @@ describe('withConversionResultCache', () => {
 
   it('still returns the conversion when the cache write throws', async () => {
     const store: ConversionResultCacheStore<DeckInfo[]> = {
-      get: jest.fn().mockResolvedValue(undefined),
-      save: jest.fn().mockRejectedValue(new Error('write failed')),
+      get: vi.fn().mockResolvedValue(undefined),
+      save: vi.fn().mockRejectedValue(new Error('write failed')),
     };
-    const compute = jest.fn().mockResolvedValue(sampleDeck());
+    const compute = vi.fn().mockResolvedValue(sampleDeck());
 
     const result = await withConversionResultCache(store, keyInput, compute);
 

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   computeAiCreditBalance,
   AiCreditBalanceReaders,
@@ -145,7 +146,7 @@ describe('computeAiCreditBalance with no active plan', () => {
   });
 
   it('counts spend against the grant window start', async () => {
-    const userCostSince = jest.fn().mockResolvedValue(0);
+    const userCostSince = vi.fn().mockResolvedValue(0);
     const readers: AiCreditBalanceReaders = {
       getPlanInputs: async () => lapsedInputs,
       sumActiveCredits: async () => 250,
