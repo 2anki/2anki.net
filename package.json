@@ -92,7 +92,7 @@
     "puppeteer": "^25.0.2",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "sanitize-html": "^2.17.4",
+    "sanitize-html": "^2.18.0",
     "sql.js": "^1.13.0",
     "stripe": "^23.0.0",
     "swagger-jsdoc": "^6.2.8",
@@ -159,8 +159,7 @@
       "body-parser@2": "^2.3.0",
       "protobufjs@7": "^7.6.5",
       "qs@6": "^6.15.2",
-      "@xmldom/xmldom": ">=0.8.13 <0.9.0",
-      "sanitize-html": "2.17.5"
+      "@xmldom/xmldom": ">=0.8.13 <0.9.0"
     },
     "onlyBuiltDependencies": [
       "better-sqlite3"
