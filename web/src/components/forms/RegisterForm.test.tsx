@@ -142,14 +142,37 @@ describe('RegisterForm', () => {
     }
   );
 
-  it('fires signup_failed with method email on a non-200 response', async () => {
-    registerMock.mockResolvedValue({
-      status: 400,
-      json: () =>
-        Promise.resolve({
-          message: 'Invalid user data. Required email and password!',
-        }),
-    });
+  it.each([
+    [400, 'An account with this email already exists.', 'account_exists'],
+    [400, 'Invalid user data. Required email and password!', 'validation'],
+    [422, 'Invalid user data. Required email and password!', 'validation'],
+    [429, 'Too many requests. Slow down.', 'rate_limited'],
+    [500, 'Internal server error', 'server'],
+    [503, 'Service unavailable', 'server'],
+    [403, 'Forbidden', 'other'],
+  ])(
+    'fires signup_failed with status %s classified as reason %s',
+    async (status, message, reason) => {
+      registerMock.mockResolvedValue({
+        status,
+        json: () => Promise.resolve({ message }),
+      });
+
+      renderForm();
+      fillAndSubmit();
+
+      await waitFor(() => {
+        expect(trackMock).toHaveBeenCalledWith('signup_failed', {
+          method: 'email',
+          status,
+          reason,
+        });
+      });
+    }
+  );
+
+  it('fires signup_failed with reason network and no status when the request throws', async () => {
+    registerMock.mockRejectedValue(new TypeError('Failed to fetch'));
 
     renderForm();
     fillAndSubmit();
@@ -157,6 +180,7 @@ describe('RegisterForm', () => {
     await waitFor(() => {
       expect(trackMock).toHaveBeenCalledWith('signup_failed', {
         method: 'email',
+        reason: 'network',
       });
     });
   });
@@ -172,9 +196,9 @@ describe('RegisterForm', () => {
         method: 'email',
       });
     });
-    expect(trackMock).not.toHaveBeenCalledWith('signup_failed', {
-      method: 'email',
-    });
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'signup_failed')
+    ).toHaveLength(0);
   });
 
   it('sets the signup dedup flag so the upload page does not re-fire', async () => {

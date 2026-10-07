@@ -33,8 +33,27 @@ interface Props {
 const MIN_PASSWORD_LENGTH = 8;
 const SIGNUP_FLAG_KEY = 'signup_completed_tracked';
 
+type SignupFailureReason =
+  | 'account_exists'
+  | 'validation'
+  | 'rate_limited'
+  | 'server'
+  | 'network'
+  | 'other';
+
 function isAccountExistsFailure(message: unknown): boolean {
   return typeof message === 'string' && message.includes('already exists');
+}
+
+function classifySignupFailure(
+  status: number,
+  backendMessage: string | null
+): SignupFailureReason {
+  if (isAccountExistsFailure(backendMessage)) return 'account_exists';
+  if (status === 400 || status === 422) return 'validation';
+  if (status === 429) return 'rate_limited';
+  if (status >= 500) return 'server';
+  return 'other';
 }
 
 function loginHref(redirect?: string | null): string {
@@ -116,10 +135,14 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
           ? `/${redirect.replace(/^\//, '')}`
           : '/upload';
       } else {
-        track('signup_failed', { method: 'email' });
         const body = await res.json().catch(() => null);
         const backendMessage =
           typeof body?.message === 'string' ? body.message : null;
+        track('signup_failed', {
+          method: 'email',
+          status: res.status,
+          reason: classifySignupFailure(res.status, backendMessage),
+        });
         if (isAccountExistsFailure(backendMessage)) {
           if (email.includes('@')) {
             localStorage.setItem('email', email);
@@ -141,6 +164,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
       }
     } catch (error) {
       console.error('Register submit failed', error);
+      track('signup_failed', { method: 'email', reason: 'network' });
       setErrorMessage(t('auth.register.errorGeneric'));
       setLoading(false);
     }
