@@ -1,6 +1,6 @@
 # Testing rules
 
-Jest + ts-jest, `*.test.ts(x)` colocated next to source. `pnpm test <path>` to scope to a single file. Outside-in by default — exercise the use case from the route or controller boundary, not the leaves.
+Vitest (`vitest.config.mts`, globals on, `pool: forks`), `*.test.ts(x)` colocated next to source. `pnpm test <path>` to scope to a single file. Outside-in by default — exercise the use case from the route or controller boundary, not the leaves.
 
 | Requirement | Do instead | CWE |
 | --- | --- | --- |
@@ -9,7 +9,7 @@ Jest + ts-jest, `*.test.ts(x)` colocated next to source. `pnpm test <path>` to s
 | Do not use `expect(...).toBeTruthy()` / `toBeFalsy()` on values that have a real shape. | Match the value: `toEqual({ ... })`, `toBe(0)`, `toMatchObject({ ... })`. Truthy/falsy hide regressions to neighbouring states. | CWE-754 |
 | Do not commit `.only` / unconditional `.skip` / `xit` / `xdescribe`. The env-gated integration idiom `(RUN_INTEGRATION ? describe : describe.skip)` is the sanctioned exception (it is how NOTION_KEY-gated suites work). | Re-enable before commit; the suite is the contract. Use `--testNamePattern` while iterating. | — |
 | Do not assert on the literal `Error.message` text from third-party libs. | Assert on the error class or your own coded error. Library messages drift between versions. | — |
-| Do not write a test that depends on wall-clock time, current date, or `Math.random`. | Inject a clock/seed; use `jest.useFakeTimers()` and `jest.setSystemTime()`. | CWE-330 |
+| Do not write a test that depends on wall-clock time, current date, or `Math.random`. | Inject a clock/seed; use `vi.useFakeTimers()` and `vi.setSystemTime()`. | CWE-330 |
 | Do not skip the failing-test step when fixing a bug. | Reproduce the bug as a failing test first, watch it fail for the right reason, then fix. | — |
 | Do not call out to the network from a test (Notion, Stripe, Anthropic, Patreon, AWS). | Stub the SDK or `axios` at the module boundary; gate any genuine integration test behind `process.env.NOTION_KEY` like CI does. | — |
 | Do not write a single test that asserts five unrelated things. | One behaviour per `it`; share setup via `beforeEach` or a builder. | — |
@@ -22,7 +22,7 @@ Jest + ts-jest, `*.test.ts(x)` colocated next to source. `pnpm test <path>` to s
 
 ## Conventions
 
-- Test file name: `<source>.test.ts` next to `<source>.ts` (already enforced by `jest.config.js` testMatch).
+- Test file name: `<source>.test.ts` next to `<source>.ts` (already enforced by the `include` globs in `vitest.config.mts`).
 - Coverage is collected from `src/**`; `src/templates/**`, `src/migrations/**`, and `src/test/fixtures/**` are excluded — don't add logic there.
 - For multi-case behaviour use `it.each([...])` rather than copy-pasted `it` blocks.
 - When a test is slow because of real I/O, ask whether the I/O belongs in that layer at all.

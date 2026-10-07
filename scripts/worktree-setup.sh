@@ -6,7 +6,7 @@
 # node_modules in either workspace, and the Oxc native binaries
 # (@oxlint/binding-*, @oxfmt/binding-*) are frequently missing even after a
 # plain `pnpm install` because pnpm skips the optional platform dep. Until
-# this runs, `pnpm test` reports `jest: command not found` and oxfmt/oxlint
+# this runs, `pnpm test` reports `vitest: command not found` and oxfmt/oxlint
 # die with `Cannot find native binding`.
 #
 # Run this as the FIRST action in any new worktree. Idempotent — safe to
@@ -30,7 +30,7 @@ if ! pnpm exec oxfmt --help >/dev/null 2>&1 || ! pnpm exec oxlint --help >/dev/n
 fi
 
 echo "[worktree-setup] verifying toolchain"
-pnpm exec jest --version >/dev/null && echo "  jest    ok"
+pnpm exec vitest --version >/dev/null && echo "  vitest  ok"
 pnpm exec oxfmt --help >/dev/null 2>&1 && echo "  oxfmt   ok"
 pnpm exec oxlint --help >/dev/null 2>&1 && echo "  oxlint  ok"
 
