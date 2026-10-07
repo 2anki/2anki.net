@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { securityHeaders } from './securityHeaders';
 
@@ -5,11 +6,11 @@ function mockReq(): Request {
   return {} as Request;
 }
 
-function mockRes(): { headers: Record<string, string>; setHeader: jest.Mock } {
+function mockRes(): { headers: Record<string, string>; setHeader: Mock } {
   const headers: Record<string, string> = {};
   return {
     headers,
-    setHeader: jest.fn((name: string, value: string) => {
+    setHeader: vi.fn((name: string, value: string) => {
       headers[name] = value;
     }),
   };
@@ -18,7 +19,7 @@ function mockRes(): { headers: Record<string, string>; setHeader: jest.Mock } {
 describe('securityHeaders', () => {
   it('sets Strict-Transport-Security for one year including subdomains', () => {
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     securityHeaders(
       mockReq(),
       res as unknown as Response,
@@ -32,7 +33,7 @@ describe('securityHeaders', () => {
 
   it('sets X-Content-Type-Options to nosniff', () => {
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     securityHeaders(
       mockReq(),
       res as unknown as Response,
@@ -43,7 +44,7 @@ describe('securityHeaders', () => {
 
   it('sets Referrer-Policy to strict-origin-when-cross-origin', () => {
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     securityHeaders(
       mockReq(),
       res as unknown as Response,

@@ -1,12 +1,13 @@
+import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
-jest.mock('../data_layer', () => ({
-  getDatabase: jest.fn(() => ({})),
+vi.mock('../data_layer', () => ({
+  getDatabase: vi.fn(() => ({})),
 }));
 
-jest.mock('./middleware/RequireOpsAccess', () => {
+vi.mock('./middleware/RequireOpsAccess', () => {
   type State = { allow: boolean };
   const state = globalThis as unknown as { __opsErrorsState?: State };
   if (state.__opsErrorsState == null) {
@@ -29,11 +30,11 @@ jest.mock('./middleware/RequireOpsAccess', () => {
   };
 });
 
-const resolveGroupSpy = jest.fn(async () => {});
-const reopenGroupSpy = jest.fn(async () => {});
-const listGroupsSpy = jest.fn();
+const resolveGroupSpy = vi.fn(async () => {});
+const reopenGroupSpy = vi.fn(async () => {});
+const listGroupsSpy = vi.fn();
 
-jest.mock('../data_layer/ErrorEventRepository', () => ({
+vi.mock('../data_layer/ErrorEventRepository', () => ({
   ErrorEventRepository: class {
     async listGroups(options: unknown) {
       listGroupsSpy(options);

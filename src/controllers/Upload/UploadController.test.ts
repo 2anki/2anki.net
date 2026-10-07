@@ -1,18 +1,19 @@
+import { vi, type Mock } from 'vitest';
 import express from 'express';
 import multer from 'multer';
 
-jest.mock('../../lib/misc/GetUploadHandler');
+vi.mock('../../lib/misc/GetUploadHandler');
 
-jest.mock('../../lib/integrations/stripe', () => ({
-  getStripe: jest.fn().mockReturnValue({
-    customers: { retrieve: jest.fn() },
+vi.mock('../../lib/integrations/stripe', () => ({
+  getStripe: vi.fn().mockReturnValue({
+    customers: { retrieve: vi.fn() },
   }),
-  updateStoreSubscription: jest.fn().mockResolvedValue(undefined),
+  updateStoreSubscription: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../../services/SubscriptionService', () => ({
+vi.mock('../../services/SubscriptionService', () => ({
   __esModule: true,
-  default: { findActiveStripeSubscriptions: jest.fn().mockResolvedValue([]) },
+  default: { findActiveStripeSubscriptions: vi.fn().mockResolvedValue([]) },
 }));
 
 import { getUploadHandler } from '../../lib/misc/GetUploadHandler';
@@ -29,10 +30,10 @@ import { fakeUploadServiceDeps } from '../../test/fakes/uploadServiceDeps';
 
 function buildUsersRepo(): UsersRepository {
   return {
-    getCardUsage: jest
+    getCardUsage: vi
       .fn()
       .mockResolvedValue({ cards_used: 0, month_started_at: new Date() }),
-    incrementCardUsage: jest.fn().mockResolvedValue(1),
+    incrementCardUsage: vi.fn().mockResolvedValue(1),
   } as unknown as UsersRepository;
 }
 
@@ -114,9 +115,9 @@ describe('Upload file', () => {
       deleteNotionData(owner: number): Promise<boolean> {
         return Promise.resolve(true);
       },
-      markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-      clearTokenInvalid: jest.fn().mockResolvedValue(undefined),
-      setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+      markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+      clearTokenInvalid: vi.fn().mockResolvedValue(undefined),
+      setReconnectEmailSent: vi.fn().mockResolvedValue(true),
     };
     const uploadService = new UploadService(
       repository,
@@ -128,7 +129,7 @@ describe('Upload file', () => {
     const uploadController = new UploadController(uploadService, notionService);
 
     // Act
-    const jsonSpy = jest.fn();
+    const jsonSpy = vi.fn();
     let capturedStatus = 0;
 
     // Assert
@@ -151,7 +152,7 @@ describe('Upload file', () => {
 
 describe('Upload file — multer error handling', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test.each([
@@ -165,7 +166,7 @@ describe('Upload file — multer error handling', () => {
       // multer has already deleted every temp file by the time it reports the
       // count limit; running the conversion on the dead placeholders used to
       // answer "your upload didn't finish" instead of naming the cap.
-      (getUploadHandler as jest.Mock).mockImplementation(
+      (getUploadHandler as Mock).mockImplementation(
         () =>
           (
             req: express.Request,
@@ -183,13 +184,13 @@ describe('Upload file — multer error handling', () => {
         buildUsersRepo(),
         ...fakeUploadServiceDeps()
       );
-      const handleUpload = jest
+      const handleUpload = vi
         .spyOn(uploadService, 'handleUpload')
         .mockResolvedValue(undefined);
       const notionService = new NotionService({} as INotionRepository);
       const controller = new UploadController(uploadService, notionService);
 
-      const jsonSpy = jest.fn();
+      const jsonSpy = vi.fn();
       let capturedStatus = 0;
       await new Promise<void>((resolve) => {
         const fakeRes = {
@@ -217,7 +218,7 @@ describe('Upload file — multer error handling', () => {
   );
 
   test('a stray field name is not the file cap and still reaches the service', async () => {
-    (getUploadHandler as jest.Mock).mockImplementation(
+    (getUploadHandler as Mock).mockImplementation(
       () =>
         (
           _req: express.Request,
@@ -233,7 +234,7 @@ describe('Upload file — multer error handling', () => {
       buildUsersRepo(),
       ...fakeUploadServiceDeps()
     );
-    const handleUpload = jest
+    const handleUpload = vi
       .spyOn(uploadService, 'handleUpload')
       .mockResolvedValue(undefined);
     const controller = new UploadController(
@@ -254,7 +255,7 @@ describe('Upload file — multer error handling', () => {
 
   test('returns 413 with code=too_large when multer LIMIT_FILE_SIZE fires', async () => {
     const multerError = new multer.MulterError('LIMIT_FILE_SIZE');
-    (getUploadHandler as jest.Mock).mockImplementation(
+    (getUploadHandler as Mock).mockImplementation(
       () =>
         (
           _req: express.Request,
@@ -265,33 +266,32 @@ describe('Upload file — multer error handling', () => {
         }
     );
 
-    const jsonSpy = jest.fn();
+    const jsonSpy = vi.fn();
     let capturedStatus = 0;
 
     const repository = {
-      deleteUpload: jest.fn(),
-      getUploadsByOwner: jest.fn().mockResolvedValue([]),
-      findByIdAndOwner: jest.fn().mockResolvedValue(null),
-      findByObjectId: jest.fn().mockResolvedValue(null),
-      findByKey: jest.fn().mockResolvedValue(null),
-      findAllByObjectIdAndOwner: jest.fn().mockResolvedValue([]),
-      update: jest.fn().mockResolvedValue([]),
-      getLastUploadForUser: jest.fn().mockResolvedValue(null),
-      getLastReconvertibleUpload: jest.fn().mockResolvedValue(null),
-      findByOwnerAndDedupeKey: jest.fn().mockResolvedValue(null),
-      insertNativeDeck: jest.fn(),
-      insertConvertedDeck: jest.fn(),
+      deleteUpload: vi.fn(),
+      getUploadsByOwner: vi.fn().mockResolvedValue([]),
+      findByIdAndOwner: vi.fn().mockResolvedValue(null),
+      findByObjectId: vi.fn().mockResolvedValue(null),
+      findByKey: vi.fn().mockResolvedValue(null),
+      findAllByObjectIdAndOwner: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue([]),
+      getLastUploadForUser: vi.fn().mockResolvedValue(null),
+      getLastReconvertibleUpload: vi.fn().mockResolvedValue(null),
+      findByOwnerAndDedupeKey: vi.fn().mockResolvedValue(null),
+      insertNativeDeck: vi.fn(),
+      insertConvertedDeck: vi.fn(),
     };
     const notionRepository: INotionRepository = {
-      getNotionData: jest.fn() as INotionRepository['getNotionData'],
-      saveNotionToken: jest.fn() as INotionRepository['saveNotionToken'],
-      getNotionToken: jest.fn() as INotionRepository['getNotionToken'],
-      deleteBlocksByOwner:
-        jest.fn() as INotionRepository['deleteBlocksByOwner'],
-      deleteNotionData: jest.fn() as INotionRepository['deleteNotionData'],
-      markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-      clearTokenInvalid: jest.fn().mockResolvedValue(undefined),
-      setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+      getNotionData: vi.fn() as INotionRepository['getNotionData'],
+      saveNotionToken: vi.fn() as INotionRepository['saveNotionToken'],
+      getNotionToken: vi.fn() as INotionRepository['getNotionToken'],
+      deleteBlocksByOwner: vi.fn() as INotionRepository['deleteBlocksByOwner'],
+      deleteNotionData: vi.fn() as INotionRepository['deleteNotionData'],
+      markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+      clearTokenInvalid: vi.fn().mockResolvedValue(undefined),
+      setReconnectEmailSent: vi.fn().mockResolvedValue(true),
     };
     const uploadService = new UploadService(
       repository,
@@ -333,29 +333,28 @@ describe('Upload file — multer error handling', () => {
 describe('UploadController.retryPdfWithCredential rate limit', () => {
   test('returns 429 when the limiter rejects the IP', async () => {
     const repository = {
-      deleteUpload: jest.fn(),
-      getUploadsByOwner: jest.fn().mockResolvedValue([]),
-      findByIdAndOwner: jest.fn().mockResolvedValue(null),
-      findByObjectId: jest.fn().mockResolvedValue(null),
-      findByKey: jest.fn().mockResolvedValue(null),
-      findAllByObjectIdAndOwner: jest.fn().mockResolvedValue([]),
-      update: jest.fn().mockResolvedValue([]),
-      getLastUploadForUser: jest.fn().mockResolvedValue(null),
-      getLastReconvertibleUpload: jest.fn().mockResolvedValue(null),
-      findByOwnerAndDedupeKey: jest.fn().mockResolvedValue(null),
-      insertNativeDeck: jest.fn(),
-      insertConvertedDeck: jest.fn(),
+      deleteUpload: vi.fn(),
+      getUploadsByOwner: vi.fn().mockResolvedValue([]),
+      findByIdAndOwner: vi.fn().mockResolvedValue(null),
+      findByObjectId: vi.fn().mockResolvedValue(null),
+      findByKey: vi.fn().mockResolvedValue(null),
+      findAllByObjectIdAndOwner: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue([]),
+      getLastUploadForUser: vi.fn().mockResolvedValue(null),
+      getLastReconvertibleUpload: vi.fn().mockResolvedValue(null),
+      findByOwnerAndDedupeKey: vi.fn().mockResolvedValue(null),
+      insertNativeDeck: vi.fn(),
+      insertConvertedDeck: vi.fn(),
     };
     const notionRepository: INotionRepository = {
-      getNotionData: jest.fn() as INotionRepository['getNotionData'],
-      saveNotionToken: jest.fn() as INotionRepository['saveNotionToken'],
-      getNotionToken: jest.fn() as INotionRepository['getNotionToken'],
-      deleteBlocksByOwner:
-        jest.fn() as INotionRepository['deleteBlocksByOwner'],
-      deleteNotionData: jest.fn() as INotionRepository['deleteNotionData'],
-      markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-      clearTokenInvalid: jest.fn().mockResolvedValue(undefined),
-      setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+      getNotionData: vi.fn() as INotionRepository['getNotionData'],
+      saveNotionToken: vi.fn() as INotionRepository['saveNotionToken'],
+      getNotionToken: vi.fn() as INotionRepository['getNotionToken'],
+      deleteBlocksByOwner: vi.fn() as INotionRepository['deleteBlocksByOwner'],
+      deleteNotionData: vi.fn() as INotionRepository['deleteNotionData'],
+      markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+      clearTokenInvalid: vi.fn().mockResolvedValue(undefined),
+      setReconnectEmailSent: vi.fn().mockResolvedValue(true),
     };
     const uploadService = new UploadService(
       repository,
@@ -365,7 +364,7 @@ describe('UploadController.retryPdfWithCredential rate limit', () => {
     );
     const notionService = new NotionService(notionRepository);
 
-    const blockingLimiter = { check: jest.fn().mockReturnValue(false) };
+    const blockingLimiter = { check: vi.fn().mockReturnValue(false) };
     const controller = new UploadController(
       uploadService,
       notionService,
@@ -376,7 +375,7 @@ describe('UploadController.retryPdfWithCredential rate limit', () => {
       blockingLimiter
     );
 
-    const jsonSpy = jest.fn();
+    const jsonSpy = vi.fn();
     let capturedStatus = 0;
     const capturedHeaders: Record<string, string> = {};
 
@@ -416,29 +415,28 @@ describe('UploadController.retryPdfWithCredential rate limit', () => {
 
   test('returns 400 when no file is provided (before rate limit check)', async () => {
     const repository = {
-      deleteUpload: jest.fn(),
-      getUploadsByOwner: jest.fn().mockResolvedValue([]),
-      findByIdAndOwner: jest.fn().mockResolvedValue(null),
-      findByObjectId: jest.fn().mockResolvedValue(null),
-      findByKey: jest.fn().mockResolvedValue(null),
-      findAllByObjectIdAndOwner: jest.fn().mockResolvedValue([]),
-      update: jest.fn().mockResolvedValue([]),
-      getLastUploadForUser: jest.fn().mockResolvedValue(null),
-      getLastReconvertibleUpload: jest.fn().mockResolvedValue(null),
-      findByOwnerAndDedupeKey: jest.fn().mockResolvedValue(null),
-      insertNativeDeck: jest.fn(),
-      insertConvertedDeck: jest.fn(),
+      deleteUpload: vi.fn(),
+      getUploadsByOwner: vi.fn().mockResolvedValue([]),
+      findByIdAndOwner: vi.fn().mockResolvedValue(null),
+      findByObjectId: vi.fn().mockResolvedValue(null),
+      findByKey: vi.fn().mockResolvedValue(null),
+      findAllByObjectIdAndOwner: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue([]),
+      getLastUploadForUser: vi.fn().mockResolvedValue(null),
+      getLastReconvertibleUpload: vi.fn().mockResolvedValue(null),
+      findByOwnerAndDedupeKey: vi.fn().mockResolvedValue(null),
+      insertNativeDeck: vi.fn(),
+      insertConvertedDeck: vi.fn(),
     };
     const notionRepository: INotionRepository = {
-      getNotionData: jest.fn() as INotionRepository['getNotionData'],
-      saveNotionToken: jest.fn() as INotionRepository['saveNotionToken'],
-      getNotionToken: jest.fn() as INotionRepository['getNotionToken'],
-      deleteBlocksByOwner:
-        jest.fn() as INotionRepository['deleteBlocksByOwner'],
-      deleteNotionData: jest.fn() as INotionRepository['deleteNotionData'],
-      markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-      clearTokenInvalid: jest.fn().mockResolvedValue(undefined),
-      setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+      getNotionData: vi.fn() as INotionRepository['getNotionData'],
+      saveNotionToken: vi.fn() as INotionRepository['saveNotionToken'],
+      getNotionToken: vi.fn() as INotionRepository['getNotionToken'],
+      deleteBlocksByOwner: vi.fn() as INotionRepository['deleteBlocksByOwner'],
+      deleteNotionData: vi.fn() as INotionRepository['deleteNotionData'],
+      markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+      clearTokenInvalid: vi.fn().mockResolvedValue(undefined),
+      setReconnectEmailSent: vi.fn().mockResolvedValue(true),
     };
     const uploadService = new UploadService(
       repository,
@@ -448,7 +446,7 @@ describe('UploadController.retryPdfWithCredential rate limit', () => {
     );
     const notionService = new NotionService(notionRepository);
 
-    const blockingLimiter = { check: jest.fn().mockReturnValue(false) };
+    const blockingLimiter = { check: vi.fn().mockReturnValue(false) };
     const controller = new UploadController(
       uploadService,
       notionService,
@@ -459,7 +457,7 @@ describe('UploadController.retryPdfWithCredential rate limit', () => {
       blockingLimiter
     );
 
-    const jsonSpy = jest.fn();
+    const jsonSpy = vi.fn();
     let capturedStatus = 0;
 
     const req = {

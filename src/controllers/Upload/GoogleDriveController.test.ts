@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 import express from 'express';
 
-jest.mock('../../lib/integrations/stripe', () => ({
-  getStripe: jest.fn().mockReturnValue({
-    customers: { retrieve: jest.fn() },
+vi.mock('../../lib/integrations/stripe', () => ({
+  getStripe: vi.fn().mockReturnValue({
+    customers: { retrieve: vi.fn() },
   }),
-  updateStoreSubscription: jest.fn().mockResolvedValue(undefined),
+  updateStoreSubscription: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../../services/SubscriptionService', () => ({
+vi.mock('../../services/SubscriptionService', () => ({
   __esModule: true,
-  default: { findActiveStripeSubscriptions: jest.fn().mockResolvedValue([]) },
+  default: { findActiveStripeSubscriptions: vi.fn().mockResolvedValue([]) },
 }));
 
 import { INotionRepository } from '../../data_layer/NotionRespository';
@@ -29,39 +30,39 @@ function makeController(
   deleteUseCase: DeleteGoogleDriveUploadUseCase
 ) {
   const uploadRepository: IUploadRepository = {
-    deleteUpload: jest.fn().mockResolvedValue(1),
-    getUploadsByOwner: jest.fn().mockResolvedValue([]),
-    findByIdAndOwner: jest.fn().mockResolvedValue(null),
-    findByObjectId: jest.fn().mockResolvedValue(null),
-    findByKey: jest.fn().mockResolvedValue(null),
-    findAllByObjectIdAndOwner: jest.fn().mockResolvedValue([]),
-    update: jest.fn().mockResolvedValue([]),
-    getLastUploadForUser: jest.fn().mockResolvedValue(null),
-    getLastReconvertibleUpload: jest.fn().mockResolvedValue(null),
-    findByOwnerAndDedupeKey: jest.fn().mockResolvedValue(null),
-    insertNativeDeck: jest.fn(),
-    insertConvertedDeck: jest.fn(),
+    deleteUpload: vi.fn().mockResolvedValue(1),
+    getUploadsByOwner: vi.fn().mockResolvedValue([]),
+    findByIdAndOwner: vi.fn().mockResolvedValue(null),
+    findByObjectId: vi.fn().mockResolvedValue(null),
+    findByKey: vi.fn().mockResolvedValue(null),
+    findAllByObjectIdAndOwner: vi.fn().mockResolvedValue([]),
+    update: vi.fn().mockResolvedValue([]),
+    getLastUploadForUser: vi.fn().mockResolvedValue(null),
+    getLastReconvertibleUpload: vi.fn().mockResolvedValue(null),
+    findByOwnerAndDedupeKey: vi.fn().mockResolvedValue(null),
+    insertNativeDeck: vi.fn(),
+    insertConvertedDeck: vi.fn(),
   };
   const notionRepository: INotionRepository = {
-    getNotionData: jest
+    getNotionData: vi
       .fn()
       .mockResolvedValue({ owner: 1, token: '...' } as NotionTokens),
-    saveNotionToken: jest.fn().mockResolvedValue(true),
-    getNotionToken: jest.fn().mockResolvedValue('...'),
-    deleteBlocksByOwner: jest.fn().mockResolvedValue(1),
-    deleteNotionData: jest.fn().mockResolvedValue(true),
-    markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    clearTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+    saveNotionToken: vi.fn().mockResolvedValue(true),
+    getNotionToken: vi.fn().mockResolvedValue('...'),
+    deleteBlocksByOwner: vi.fn().mockResolvedValue(1),
+    deleteNotionData: vi.fn().mockResolvedValue(true),
+    markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    clearTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    setReconnectEmailSent: vi.fn().mockResolvedValue(true),
   };
   const uploadService = new UploadService(
     uploadRepository,
     {} as JobRepository,
     {
-      getCardUsage: jest
+      getCardUsage: vi
         .fn()
         .mockResolvedValue({ cards_used: 0, month_started_at: new Date() }),
-      incrementCardUsage: jest.fn().mockResolvedValue(1),
+      incrementCardUsage: vi.fn().mockResolvedValue(1),
     } as unknown as UsersRepository,
     ...fakeUploadServiceDeps()
   );
@@ -77,8 +78,8 @@ function makeController(
 }
 
 function makeRes(owner: number | null = 42) {
-  const json = jest.fn();
-  const status = jest.fn().mockReturnValue({ json });
+  const json = vi.fn();
+  const status = vi.fn().mockReturnValue({ json });
   return {
     res: { locals: { owner }, status, json } as unknown as express.Response,
     json,
@@ -89,10 +90,10 @@ function makeRes(owner: number | null = 42) {
 describe('UploadController.getGoogleDriveUploads', () => {
   it('returns 401 when owner is missing', async () => {
     const getUseCase = {
-      execute: jest.fn().mockResolvedValue([]),
+      execute: vi.fn().mockResolvedValue([]),
     } as unknown as GetGoogleDriveUploadsUseCase;
     const deleteUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as DeleteGoogleDriveUploadUseCase;
     const controller = makeController(getUseCase, deleteUseCase);
     const { res, status, json } = makeRes(null);
@@ -122,10 +123,10 @@ describe('UploadController.getGoogleDriveUploads', () => {
       },
     ];
     const getUseCase = {
-      execute: jest.fn().mockResolvedValue(rows),
+      execute: vi.fn().mockResolvedValue(rows),
     } as unknown as GetGoogleDriveUploadsUseCase;
     const deleteUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as DeleteGoogleDriveUploadUseCase;
     const controller = makeController(getUseCase, deleteUseCase);
     const { res, json } = makeRes(42);
@@ -140,10 +141,10 @@ describe('UploadController.getGoogleDriveUploads', () => {
 
   it('passes parsed offset to use case', async () => {
     const getUseCase = {
-      execute: jest.fn().mockResolvedValue([]),
+      execute: vi.fn().mockResolvedValue([]),
     } as unknown as GetGoogleDriveUploadsUseCase;
     const deleteUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as DeleteGoogleDriveUploadUseCase;
     const controller = makeController(getUseCase, deleteUseCase);
     const { res } = makeRes(42);
@@ -160,10 +161,10 @@ describe('UploadController.getGoogleDriveUploads', () => {
 describe('UploadController.deleteGoogleDriveUpload', () => {
   it('returns 401 when owner is missing', async () => {
     const getUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as GetGoogleDriveUploadsUseCase;
     const deleteUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as DeleteGoogleDriveUploadUseCase;
     const controller = makeController(getUseCase, deleteUseCase);
     const { res, status, json } = makeRes(null);
@@ -182,10 +183,10 @@ describe('UploadController.deleteGoogleDriveUpload', () => {
 
   it('returns 400 when id param is missing', async () => {
     const getUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as GetGoogleDriveUploadsUseCase;
     const deleteUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as DeleteGoogleDriveUploadUseCase;
     const controller = makeController(getUseCase, deleteUseCase);
     const { res, status, json } = makeRes(42);
@@ -203,10 +204,10 @@ describe('UploadController.deleteGoogleDriveUpload', () => {
 
   it('returns 400 when id contains characters outside the allowed alphabet', async () => {
     const getUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as GetGoogleDriveUploadsUseCase;
     const deleteUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as DeleteGoogleDriveUploadUseCase;
     const controller = makeController(getUseCase, deleteUseCase);
     const { res, status, json } = makeRes(42);
@@ -225,10 +226,10 @@ describe('UploadController.deleteGoogleDriveUpload', () => {
 
   it('returns 404 when use case throws', async () => {
     const getUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as GetGoogleDriveUploadsUseCase;
     const deleteUseCase = {
-      execute: jest.fn().mockRejectedValue(new Error('Not found')),
+      execute: vi.fn().mockRejectedValue(new Error('Not found')),
     } as unknown as DeleteGoogleDriveUploadUseCase;
     const controller = makeController(getUseCase, deleteUseCase);
     const { res, status, json } = makeRes(42);
@@ -246,10 +247,10 @@ describe('UploadController.deleteGoogleDriveUpload', () => {
 
   it('returns 200 on successful delete and passes the string id', async () => {
     const getUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as GetGoogleDriveUploadsUseCase;
     const deleteUseCase = {
-      execute: jest.fn().mockResolvedValue(undefined),
+      execute: vi.fn().mockResolvedValue(undefined),
     } as unknown as DeleteGoogleDriveUploadUseCase;
     const controller = makeController(getUseCase, deleteUseCase);
     const { res, json } = makeRes(42);

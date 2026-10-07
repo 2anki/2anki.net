@@ -1,43 +1,46 @@
+import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
-const mockAiGenerate = jest.fn();
-const mockAiModify = jest.fn();
-const mockListDefaults = jest.fn();
+const mockAiGenerate = vi.fn();
+const mockAiModify = vi.fn();
+const mockListDefaults = vi.fn();
 
-jest.mock('../data_layer', () => ({
-  getDatabase: jest.fn().mockReturnValue({}),
+vi.mock('../data_layer', () => ({
+  getDatabase: vi.fn().mockReturnValue({}),
 }));
 
-jest.mock('../controllers/TemplatesController', () => ({
+vi.mock('../controllers/TemplatesController', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    aiGenerate: (req: express.Request, res: express.Response) => {
-      mockAiGenerate();
-      res.status(200).json({ starter: {}, reply: '' });
-    },
-    aiModify: (req: express.Request, res: express.Response) => {
-      mockAiModify();
-      res.status(200).json({ starter: {}, reply: '' });
-    },
-    listDefaultTemplates: (req: express.Request, res: express.Response) => {
-      mockListDefaults();
-      res.status(200).json([]);
-    },
-    listOfficialTemplates: (req: express.Request, res: express.Response) =>
-      res.status(200).json([]),
-    createTemplate: (req: express.Request, res: express.Response) =>
-      res.status(200).end(),
-    deleteTemplate: (req: express.Request, res: express.Response) =>
-      res.status(200).end(),
-    getUserData: (req: express.Request, res: express.Response) =>
-      res.status(200).json({ templates: [], hiddenIds: [] }),
-    saveUserData: (req: express.Request, res: express.Response) =>
-      res.status(200).json({ ok: true }),
-    exportTemplate: (req: express.Request, res: express.Response) =>
-      res.status(200).end(),
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      aiGenerate: (req: express.Request, res: express.Response) => {
+        mockAiGenerate();
+        res.status(200).json({ starter: {}, reply: '' });
+      },
+      aiModify: (req: express.Request, res: express.Response) => {
+        mockAiModify();
+        res.status(200).json({ starter: {}, reply: '' });
+      },
+      listDefaultTemplates: (req: express.Request, res: express.Response) => {
+        mockListDefaults();
+        res.status(200).json([]);
+      },
+      listOfficialTemplates: (req: express.Request, res: express.Response) =>
+        res.status(200).json([]),
+      createTemplate: (req: express.Request, res: express.Response) =>
+        res.status(200).end(),
+      deleteTemplate: (req: express.Request, res: express.Response) =>
+        res.status(200).end(),
+      getUserData: (req: express.Request, res: express.Response) =>
+        res.status(200).json({ templates: [], hiddenIds: [] }),
+      saveUserData: (req: express.Request, res: express.Response) =>
+        res.status(200).json({ ok: true }),
+      exportTemplate: (req: express.Request, res: express.Response) =>
+        res.status(200).end(),
+    };
+  }),
 }));
 
 let mockLocals: {
@@ -46,7 +49,7 @@ let mockLocals: {
   subscriber: boolean;
 } = { owner: 42, patreon: false, subscriber: false };
 
-jest.mock('./middleware/RequireAuthentication', () => {
+vi.mock('./middleware/RequireAuthentication', () => {
   const middleware = (
     _req: express.Request,
     res: express.Response,
@@ -61,7 +64,7 @@ jest.mock('./middleware/RequireAuthentication', () => {
     res.locals.subscriber = mockLocals.subscriber;
     next();
   };
-  return middleware;
+  return { __esModule: true, default: middleware };
 });
 
 import TemplatesRouter from './TemplatesRouter';
@@ -70,23 +73,27 @@ describe('TemplatesRouter AI paid gate', () => {
   let server: http.Server;
   let baseUrl: string;
 
-  beforeAll((done) => {
+  beforeAll(async () => {
     const app = express();
     app.use(express.json());
     app.use(TemplatesRouter());
-    server = app.listen(0, () => {
-      const { port } = server.address() as AddressInfo;
-      baseUrl = `http://127.0.0.1:${port}`;
-      done();
+    await new Promise<void>((resolve) => {
+      server = app.listen(0, () => {
+        const { port } = server.address() as AddressInfo;
+        baseUrl = `http://127.0.0.1:${port}`;
+        resolve();
+      });
     });
   });
 
-  afterAll((done) => {
-    server.close(done);
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockLocals = { owner: 42, patreon: false, subscriber: false };
   });
 

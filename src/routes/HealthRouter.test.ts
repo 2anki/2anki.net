@@ -1,26 +1,27 @@
+import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Knex } from 'knex';
 
-jest.mock('../services/NotionService/NotionCallRingBuffer', () => ({
+vi.mock('../services/NotionService/NotionCallRingBuffer', () => ({
   notionCallRingBuffer: {
-    lastSuccessAt: jest.fn(() => null),
+    lastSuccessAt: vi.fn(() => null),
   },
 }));
 
-jest.mock('../services/stripeWebhookTimestamp', () => ({
-  getLastStripeWebhookAt: jest.fn(() => null),
+vi.mock('../services/stripeWebhookTimestamp', () => ({
+  getLastStripeWebhookAt: vi.fn(() => null),
 }));
 
-jest.mock('fs', () => ({
-  ...jest.requireActual('fs'),
-  readFileSync: jest.fn(() => '[]'),
+vi.mock('fs', async () => ({
+  ...(await vi.importActual<typeof import('fs')>('fs')),
+  readFileSync: vi.fn(() => '[]'),
 }));
 
 function makeTestDb(dbOk = true) {
   return {
-    raw: jest.fn(async () => {
+    raw: vi.fn(async () => {
       if (dbOk) return [{ '1': 1 }];
       throw new Error('db down');
     }),

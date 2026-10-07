@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import express from 'express';
 import { ChecksController } from './ChecksController';
 
@@ -6,8 +7,8 @@ describe('ChecksController', () => {
     it('should return a 200 status code', () => {
       const req = {} as express.Request;
       const res = {
-        status: jest.fn().mockReturnThis(),
-        send: jest.fn(),
+        status: vi.fn().mockReturnThis(),
+        send: vi.fn(),
       } as unknown as express.Response;
 
       const checksController = new ChecksController();

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { anonIdMiddleware } from './anonIdMiddleware';
 
@@ -9,11 +10,11 @@ function makeReqRes(opts: { existingCookie?: string; path?: string } = {}) {
   const req = { cookies, path: opts.path ?? '/' } as unknown as Request;
   const setCookieArgs: Array<[string, string, object]> = [];
   const res = {
-    cookie: jest.fn((name: string, value: string, options: object) => {
+    cookie: vi.fn((name: string, value: string, options: object) => {
       setCookieArgs.push([name, value, options]);
     }),
   } as unknown as Response;
-  const next: NextFunction = jest.fn();
+  const next: NextFunction = vi.fn();
   return { req, res, next, setCookieArgs };
 }
 

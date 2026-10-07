@@ -1,55 +1,60 @@
+import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
-const mockCreate = jest.fn();
-const mockList = jest.fn();
-const mockDelete = jest.fn();
-const mockExport = jest.fn();
-const mockGetById = jest.fn();
-const mockUpdate = jest.fn();
-const mockCount = jest.fn();
-const mockGetUserActiveSubscriptions = jest.fn();
+const mockCreate = vi.fn();
+const mockList = vi.fn();
+const mockDelete = vi.fn();
+const mockExport = vi.fn();
+const mockGetById = vi.fn();
+const mockUpdate = vi.fn();
+const mockCount = vi.fn();
+const mockGetUserActiveSubscriptions = vi.fn();
 
-const mockUploadFile = jest.fn().mockResolvedValue(undefined);
-const mockGetPresignedUrl = jest
+const mockUploadFile = vi.fn().mockResolvedValue(undefined);
+const mockGetPresignedUrl = vi
   .fn()
   .mockResolvedValue('https://spaces.example.com/presigned');
-const mockObjectExists = jest.fn().mockResolvedValue(false);
-const mockListByPrefix = jest.fn().mockResolvedValue([]);
-const mockDeleteObjects = jest.fn().mockResolvedValue(undefined);
+const mockObjectExists = vi.fn().mockResolvedValue(false);
+const mockListByPrefix = vi.fn().mockResolvedValue([]);
+const mockDeleteObjects = vi.fn().mockResolvedValue(undefined);
 
-jest.mock('../lib/storage/StorageHandler', () => ({
+vi.mock('../lib/storage/StorageHandler', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    uploadFile: mockUploadFile,
-    getPresignedUrl: mockGetPresignedUrl,
-    objectExists: mockObjectExists,
-    listByPrefix: mockListByPrefix,
-    deleteObjects: mockDeleteObjects,
-    getFileContents: jest.fn().mockResolvedValue({ Body: undefined }),
-    delete: jest.fn(),
-    getContents: jest.fn(),
-    uniqify: jest.fn(),
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      uploadFile: mockUploadFile,
+      getPresignedUrl: mockGetPresignedUrl,
+      objectExists: mockObjectExists,
+      listByPrefix: mockListByPrefix,
+      deleteObjects: mockDeleteObjects,
+      getFileContents: vi.fn().mockResolvedValue({ Body: undefined }),
+      delete: vi.fn(),
+      getContents: vi.fn(),
+      uniqify: vi.fn(),
+    };
+  }),
 }));
 
-jest.mock('../data_layer', () => ({
-  getDatabase: jest.fn().mockReturnValue({}),
+vi.mock('../data_layer', () => ({
+  getDatabase: vi.fn().mockReturnValue({}),
 }));
 
-jest.mock('../data_layer/MindmapRepository', () => ({
-  MindmapRepository: jest.fn().mockImplementation(() => ({
-    create: mockCreate,
-    findById: mockGetById,
-    findByUserId: mockList,
-    update: mockUpdate,
-    delete: mockDelete,
-    countByUserId: mockCount,
-  })),
+vi.mock('../data_layer/MindmapRepository', () => ({
+  MindmapRepository: vi.fn().mockImplementation(function () {
+    return {
+      create: mockCreate,
+      findById: mockGetById,
+      findByUserId: mockList,
+      update: mockUpdate,
+      delete: mockDelete,
+      countByUserId: mockCount,
+    };
+  }),
 }));
 
-jest.mock('../services/SubscriptionService', () => ({
+vi.mock('../services/SubscriptionService', () => ({
   __esModule: true,
   default: {
     getUserActiveSubscriptions: (...args: unknown[]) =>
@@ -59,7 +64,7 @@ jest.mock('../services/SubscriptionService', () => ({
 
 let mockAuthOwner: number | null = 42;
 
-jest.mock('./middleware/RequireAuthentication', () => {
+vi.mock('./middleware/RequireAuthentication', () => {
   const middleware = (
     _req: express.Request,
     res: express.Response,
@@ -74,7 +79,7 @@ jest.mock('./middleware/RequireAuthentication', () => {
     res.locals.patreon = null;
     next();
   };
-  return middleware;
+  return { __esModule: true, default: middleware };
 });
 
 process.env.SKIP_CREATE_DECK = '1';
@@ -118,7 +123,7 @@ describe('MindmapRouter', () => {
   afterAll(() => server.close());
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockAuthOwner = 42;
     mockGetUserActiveSubscriptions.mockResolvedValue([]);
     mockGetPresignedUrl.mockResolvedValue(

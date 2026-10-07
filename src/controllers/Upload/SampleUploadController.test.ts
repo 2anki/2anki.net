@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import express from 'express';
 
 import { SampleUploadController } from './SampleUploadController';
@@ -5,13 +6,13 @@ import { ConvertSampleDeckUseCase } from '../../usecases/uploads/ConvertSampleDe
 import { RateLimiter } from '../../lib/rateLimit/InMemoryRateLimiter';
 import { track } from '../../services/events/track';
 
-jest.mock('../../services/events/track', () => ({ track: jest.fn() }));
+vi.mock('../../services/events/track', () => ({ track: vi.fn() }));
 
-const mockTrack = track as jest.Mock;
+const mockTrack = track as Mock;
 
 function fakeUseCase(cardCount = 8): ConvertSampleDeckUseCase {
   return {
-    execute: jest.fn().mockResolvedValue({
+    execute: vi.fn().mockResolvedValue({
       apkg: Buffer.from('SAMPLE-APKG'),
       cardCount,
       deckName: 'Sample deck — Biology 101',
@@ -24,11 +25,11 @@ interface FakeResponse {
   body: unknown;
   headers: Record<string, string>;
   locals: Record<string, unknown>;
-  set: jest.Mock;
-  status: jest.Mock;
-  attachment: jest.Mock;
-  send: jest.Mock;
-  json: jest.Mock;
+  set: Mock;
+  status: Mock;
+  attachment: Mock;
+  send: Mock;
+  json: Mock;
 }
 
 function fakeResponse(owner?: number): FakeResponse {
@@ -38,20 +39,20 @@ function fakeResponse(owner?: number): FakeResponse {
     body: undefined,
     headers,
     locals: owner == null ? {} : { owner },
-    set: jest.fn((key: string, value: string) => {
+    set: vi.fn((key: string, value: string) => {
       headers[key] = value;
       return res;
     }),
-    status: jest.fn((code: number) => {
+    status: vi.fn((code: number) => {
       res.statusCode = code;
       return res;
     }),
-    attachment: jest.fn(() => res),
-    send: jest.fn((payload: unknown) => {
+    attachment: vi.fn(() => res),
+    send: vi.fn((payload: unknown) => {
       res.body = payload;
       return res;
     }),
-    json: jest.fn((payload: unknown) => {
+    json: vi.fn((payload: unknown) => {
       res.body = payload;
       return res;
     }),
@@ -130,7 +131,7 @@ describe('SampleUploadController', () => {
     await controller.sample(req, res as unknown as express.Response);
 
     expect(res.statusCode).toBe(429);
-    expect(useCase.execute as jest.Mock).not.toHaveBeenCalled();
+    expect(useCase.execute as Mock).not.toHaveBeenCalled();
     expect(res.headers['Retry-After']).toBe('60');
   });
 });

@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Response } from 'express';
 import PassCheckoutController from './PassCheckoutController';
 import { CreatePassCheckoutUseCase } from '../usecases/checkout/CreatePassCheckoutUseCase';
@@ -6,20 +7,20 @@ import type { PassKind } from '../data_layer/UserPassRepository';
 const makeRes = (
   locals: Record<string, unknown> = { owner: 42, email: 'a@b.test' }
 ) => {
-  const json = jest.fn();
+  const json = vi.fn();
   return {
     locals,
     json,
   } as unknown as Response & {
-    json: jest.Mock;
+    json: Mock;
   };
 };
 
 const makeController = (
-  execute: jest.Mock,
+  execute: Mock,
   passKind: PassKind = '24h'
-): { controller: PassCheckoutController; record: jest.Mock } => {
-  const record = jest.fn();
+): { controller: PassCheckoutController; record: Mock } => {
+  const record = vi.fn();
   const useCase = { execute } as unknown as CreatePassCheckoutUseCase;
   return {
     controller: new PassCheckoutController(useCase, passKind, { record }),
@@ -28,7 +29,7 @@ const makeController = (
 };
 
 const resolving = () =>
-  jest.fn().mockResolvedValue({ url: 'https://stripe/session' });
+  vi.fn().mockResolvedValue({ url: 'https://stripe/session' });
 
 describe('PassCheckoutController', () => {
   it('forwards owner and email to the use case and serializes the result', async () => {
@@ -71,7 +72,7 @@ describe('PassCheckoutController', () => {
   });
 
   it('propagates use case errors', async () => {
-    const execute = jest.fn().mockRejectedValue(new Error('stripe down'));
+    const execute = vi.fn().mockRejectedValue(new Error('stripe down'));
     const { controller } = makeController(execute);
 
     await expect(
@@ -139,7 +140,7 @@ describe('PassCheckoutController', () => {
   });
 
   it('records nothing when checkout could not be created', async () => {
-    const execute = jest.fn().mockRejectedValue(new Error('stripe down'));
+    const execute = vi.fn().mockRejectedValue(new Error('stripe down'));
     const { controller, record } = makeController(execute);
 
     await expect(

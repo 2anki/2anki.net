@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 import { OpsErrorsController } from './OpsErrorsController';
 import { ListErrorGroupsUseCase } from '../usecases/ops/ListErrorGroupsUseCase';
@@ -30,10 +31,10 @@ function makeResponse() {
 }
 
 function makeController() {
-  const listExecute = jest.fn(async () => ({ groups: [], totalGroups: 0 }));
-  const exportExecute = jest.fn(async () => '# export');
-  const resolveExecute = jest.fn(async () => {});
-  const reopenExecute = jest.fn(async () => {});
+  const listExecute = vi.fn(async () => ({ groups: [], totalGroups: 0 }));
+  const exportExecute = vi.fn(async () => '# export');
+  const resolveExecute = vi.fn(async () => {});
+  const reopenExecute = vi.fn(async () => {});
 
   const controller = new OpsErrorsController(
     { execute: listExecute } as unknown as ListErrorGroupsUseCase,

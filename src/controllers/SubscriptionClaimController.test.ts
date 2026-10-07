@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 import { SubscriptionClaimController } from './SubscriptionClaimController';
 import { CLAIM_INITIATE_MESSAGE } from '../usecases/subscriptions/ClaimSubscriptionUseCase';
@@ -17,8 +18,8 @@ function buildReq(
 
 function buildRes(owner = 1): Response {
   return {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
     locals: { owner },
   } as unknown as Response;
 }
@@ -26,10 +27,10 @@ function buildRes(owner = 1): Response {
 describe('SubscriptionClaimController.initiate', () => {
   it('returns 400 for missing email', async () => {
     const controller = new SubscriptionClaimController(
-      { execute: jest.fn() } as never,
-      { execute: jest.fn() } as never,
-      { execute: jest.fn().mockResolvedValue(undefined) } as never,
-      { execute: jest.fn() } as never
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      { execute: vi.fn().mockResolvedValue(undefined) } as never,
+      { execute: vi.fn() } as never
     );
     const res = buildRes();
     await controller.initiate(buildReq({}), res);
@@ -41,10 +42,10 @@ describe('SubscriptionClaimController.initiate', () => {
 
   it('returns 400 for invalid email without @', async () => {
     const controller = new SubscriptionClaimController(
-      { execute: jest.fn() } as never,
-      { execute: jest.fn() } as never,
-      { execute: jest.fn().mockResolvedValue(undefined) } as never,
-      { execute: jest.fn() } as never
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      { execute: vi.fn().mockResolvedValue(undefined) } as never,
+      { execute: vi.fn() } as never
     );
     const res = buildRes();
     await controller.initiate(buildReq({ email: 'notanemail' }), res);
@@ -53,13 +54,13 @@ describe('SubscriptionClaimController.initiate', () => {
 
   it('returns 200 with the identical message regardless of match', async () => {
     const claimUseCase = {
-      execute: jest.fn().mockResolvedValue({ message: CLAIM_INITIATE_MESSAGE }),
+      execute: vi.fn().mockResolvedValue({ message: CLAIM_INITIATE_MESSAGE }),
     };
     const controller = new SubscriptionClaimController(
       claimUseCase as never,
-      { execute: jest.fn() } as never,
-      { execute: jest.fn().mockResolvedValue(undefined) } as never,
-      { execute: jest.fn() } as never
+      { execute: vi.fn() } as never,
+      { execute: vi.fn().mockResolvedValue(undefined) } as never,
+      { execute: vi.fn() } as never
     );
     const res = buildRes(5);
     await controller.initiate(buildReq({ email: 'test@example.com' }), res);
@@ -71,10 +72,10 @@ describe('SubscriptionClaimController.initiate', () => {
 describe('SubscriptionClaimController.confirm', () => {
   it('returns 400 for missing token', async () => {
     const controller = new SubscriptionClaimController(
-      { execute: jest.fn() } as never,
-      { execute: jest.fn() } as never,
-      { execute: jest.fn().mockResolvedValue(undefined) } as never,
-      { execute: jest.fn() } as never
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      { execute: vi.fn().mockResolvedValue(undefined) } as never,
+      { execute: vi.fn() } as never
     );
     const res = buildRes();
     await controller.confirm(buildReq({}), res);
@@ -84,13 +85,13 @@ describe('SubscriptionClaimController.confirm', () => {
 
   it('returns 200 on success', async () => {
     const confirmUseCase = {
-      execute: jest.fn().mockResolvedValue({ success: true }),
+      execute: vi.fn().mockResolvedValue({ success: true }),
     };
     const controller = new SubscriptionClaimController(
-      { execute: jest.fn() } as never,
+      { execute: vi.fn() } as never,
       confirmUseCase as never,
-      { execute: jest.fn().mockResolvedValue(undefined) } as never,
-      { execute: jest.fn() } as never
+      { execute: vi.fn().mockResolvedValue(undefined) } as never,
+      { execute: vi.fn() } as never
     );
     const res = buildRes(3);
     await controller.confirm(buildReq({ token: 'valid-raw-token' }), res);
@@ -100,15 +101,15 @@ describe('SubscriptionClaimController.confirm', () => {
 
   it('returns 409 for already consumed token', async () => {
     const confirmUseCase = {
-      execute: jest
+      execute: vi
         .fn()
         .mockResolvedValue({ success: false, reason: 'already_consumed' }),
     };
     const controller = new SubscriptionClaimController(
-      { execute: jest.fn() } as never,
+      { execute: vi.fn() } as never,
       confirmUseCase as never,
-      { execute: jest.fn().mockResolvedValue(undefined) } as never,
-      { execute: jest.fn() } as never
+      { execute: vi.fn().mockResolvedValue(undefined) } as never,
+      { execute: vi.fn() } as never
     );
     const res = buildRes(3);
     await controller.confirm(buildReq({ token: 'used-token' }), res);
@@ -117,15 +118,15 @@ describe('SubscriptionClaimController.confirm', () => {
 
   it('returns 409 when user already has active subscription', async () => {
     const confirmUseCase = {
-      execute: jest
+      execute: vi
         .fn()
         .mockResolvedValue({ success: false, reason: 'user_has_active_sub' }),
     };
     const controller = new SubscriptionClaimController(
-      { execute: jest.fn() } as never,
+      { execute: vi.fn() } as never,
       confirmUseCase as never,
-      { execute: jest.fn().mockResolvedValue(undefined) } as never,
-      { execute: jest.fn() } as never
+      { execute: vi.fn().mockResolvedValue(undefined) } as never,
+      { execute: vi.fn() } as never
     );
     const res = buildRes(3);
     await controller.confirm(buildReq({ token: 'some-token' }), res);
@@ -134,15 +135,15 @@ describe('SubscriptionClaimController.confirm', () => {
 
   it('returns 400 for invalid or expired token', async () => {
     const confirmUseCase = {
-      execute: jest
+      execute: vi
         .fn()
         .mockResolvedValue({ success: false, reason: 'invalid_token' }),
     };
     const controller = new SubscriptionClaimController(
-      { execute: jest.fn() } as never,
+      { execute: vi.fn() } as never,
       confirmUseCase as never,
-      { execute: jest.fn().mockResolvedValue(undefined) } as never,
-      { execute: jest.fn() } as never
+      { execute: vi.fn().mockResolvedValue(undefined) } as never,
+      { execute: vi.fn() } as never
     );
     const res = buildRes(3);
     await controller.confirm(buildReq({ token: 'expired-token' }), res);

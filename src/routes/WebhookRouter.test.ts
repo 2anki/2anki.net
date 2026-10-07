@@ -1,173 +1,200 @@
+import { vi, type Mock } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 import { InMemoryUserPassRepository } from '../data_layer/UserPassRepository';
 import { InMemoryAnonymousPassRepository } from '../data_layer/AnonymousPassRepository';
 import { emailHash } from '../lib/emailHash';
+import * as stripeIntegrationMock from '../lib/integrations/stripe';
 
 process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
 
-const mockUpsert = jest.fn();
+const mockUpsert = vi.fn();
 const inMemoryRepo = new InMemoryUserPassRepository();
 
-const mockAnonInsert = jest.fn();
-const mockAnonFindBySessionId = jest.fn().mockResolvedValue(null);
-const mockAnonFindById = jest.fn().mockResolvedValue(null);
-const mockAnonClaim = jest.fn().mockResolvedValue(true);
-const mockUpsertAbsolute = jest.fn();
-const mockPassClaimTokenInsert = jest.fn().mockResolvedValue({ id: 1 });
+const mockAnonInsert = vi.fn();
+const mockAnonFindBySessionId = vi.fn().mockResolvedValue(null);
+const mockAnonFindById = vi.fn().mockResolvedValue(null);
+const mockAnonClaim = vi.fn().mockResolvedValue(true);
+const mockUpsertAbsolute = vi.fn();
+const mockPassClaimTokenInsert = vi.fn().mockResolvedValue({ id: 1 });
 const inMemoryAnonRepo = new InMemoryAnonymousPassRepository();
 
-const mockCustomersRetrieve = jest.fn();
-const mockSessionsRetrieve = jest.fn();
-const mockUpdateStoreSubscription = jest
-  .fn()
-  .mockResolvedValue({ status: 'linked', resolvedUserId: 1 });
-const mockResolveAccountForSubscription = jest.fn().mockResolvedValue(null);
+const {
+  mockCustomersRetrieve,
+  mockSessionsRetrieve,
+  mockUpdateStoreSubscription,
+  mockResolveAccountForSubscription,
+} = vi.hoisted(() => ({
+  mockCustomersRetrieve: vi.fn(),
+  mockSessionsRetrieve: vi.fn(),
+  mockUpdateStoreSubscription: vi
+    .fn()
+    .mockResolvedValue({ status: 'linked', resolvedUserId: 1 }),
+  mockResolveAccountForSubscription: vi.fn().mockResolvedValue(null),
+}));
 
-jest.mock('../lib/integrations/stripe', () => ({
-  getStripe: jest.fn().mockReturnValue({
+vi.mock('../lib/integrations/stripe', () => ({
+  getStripe: vi.fn().mockReturnValue({
     webhooks: {
-      constructEvent: jest.fn(
-        (_body: Buffer, _sig: string) => mockWebhookEvent
-      ),
+      constructEvent: vi.fn((_body: Buffer, _sig: string) => mockWebhookEvent),
     },
     customers: { retrieve: mockCustomersRetrieve },
     checkout: { sessions: { retrieve: mockSessionsRetrieve } },
   }),
-  getCustomerId: jest.fn().mockReturnValue('cus_abc'),
-  extractProductId: jest.fn().mockReturnValue('prod_test'),
+  getCustomerId: vi.fn().mockReturnValue('cus_abc'),
+  extractProductId: vi.fn().mockReturnValue('prod_test'),
   normalizeEmail: (e: string | null) =>
     e == null ? null : e.toLowerCase().trim(),
   updateStoreSubscription: mockUpdateStoreSubscription,
   resolveAccountForSubscription: mockResolveAccountForSubscription,
 }));
 
-jest.mock('../data_layer', () => ({ getDatabase: jest.fn() }));
+vi.mock('../data_layer', () => ({ getDatabase: vi.fn() }));
 
-const mockDeactivateDeveloperSubscription = jest.fn().mockResolvedValue(0);
-jest.mock('../data_layer/DeveloperSubscriptionsRepository', () => ({
-  DeveloperSubscriptionsRepository: jest.fn().mockImplementation(() => ({
-    deactivateBySubscriptionId: mockDeactivateDeveloperSubscription,
-  })),
-}));
-
-const mockClaimSession = jest.fn().mockResolvedValue(true);
-const mockIsMarketingOptedOut = jest.fn().mockResolvedValue(false);
-const mockHasLifetimeOrActiveSubscription = jest.fn().mockResolvedValue(false);
-const mockHasSendSince = jest.fn().mockResolvedValue(false);
-jest.mock('../data_layer/AbandonedCheckoutRecoveryRepository', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    claimSession: mockClaimSession,
-    isMarketingOptedOut: mockIsMarketingOptedOut,
-    hasLifetimeOrActiveSubscription: mockHasLifetimeOrActiveSubscription,
-    hasSendSince: mockHasSendSince,
-  })),
-}));
-
-const mockSendAbandonedCheckoutRecoveryEmail = jest
-  .fn()
-  .mockResolvedValue(undefined);
-const mockSendAnonymousPassClaimEmail = jest.fn().mockResolvedValue(undefined);
-jest.mock('../services/EmailService/EmailService', () => ({
-  getDefaultEmailService: jest.fn().mockReturnValue({
-    sendAbandonedCheckoutRecoveryEmail: mockSendAbandonedCheckoutRecoveryEmail,
-    sendResetEmail: jest.fn(),
-    sendConversionEmail: jest.fn(),
-    sendConversionLinkEmail: jest.fn(),
-    sendContactEmail: jest.fn(),
-    sendSubscriptionCancelledEmail: jest.fn(),
-    sendSubscriptionScheduledCancellationEmail: jest.fn(),
-    sendHostedAnkiAccessRequestEmail: jest.fn(),
-    sendMagicLinkEmail: jest.fn(),
-    sendReEngagementEmail: jest.fn(),
-    sendInactivityWarningEmail: jest.fn(),
-    sendParserCanaryAlert: jest.fn(),
-    sendNotionReconnectEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendAnonymousPassClaimEmail: mockSendAnonymousPassClaimEmail,
-    sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
+const mockDeactivateDeveloperSubscription = vi.fn().mockResolvedValue(0);
+vi.mock('../data_layer/DeveloperSubscriptionsRepository', () => ({
+  DeveloperSubscriptionsRepository: vi.fn().mockImplementation(function () {
+    return {
+      deactivateBySubscriptionId: mockDeactivateDeveloperSubscription,
+    };
   }),
 }));
 
-jest.mock('../data_layer/UserPassRepository', () => {
-  const { InMemoryUserPassRepository: Mem } = jest.requireActual(
-    '../data_layer/UserPassRepository'
-  );
+const mockClaimSession = vi.fn().mockResolvedValue(true);
+const mockIsMarketingOptedOut = vi.fn().mockResolvedValue(false);
+const mockHasLifetimeOrActiveSubscription = vi.fn().mockResolvedValue(false);
+const mockHasSendSince = vi.fn().mockResolvedValue(false);
+vi.mock('../data_layer/AbandonedCheckoutRecoveryRepository', () => ({
+  __esModule: true,
+  default: vi.fn().mockImplementation(function () {
+    return {
+      claimSession: mockClaimSession,
+      isMarketingOptedOut: mockIsMarketingOptedOut,
+      hasLifetimeOrActiveSubscription: mockHasLifetimeOrActiveSubscription,
+      hasSendSince: mockHasSendSince,
+    };
+  }),
+}));
+
+const mockSendAbandonedCheckoutRecoveryEmail = vi
+  .fn()
+  .mockResolvedValue(undefined);
+const mockSendAnonymousPassClaimEmail = vi.fn().mockResolvedValue(undefined);
+vi.mock('../services/EmailService/EmailService', () => ({
+  getDefaultEmailService: vi.fn().mockReturnValue({
+    sendAbandonedCheckoutRecoveryEmail: mockSendAbandonedCheckoutRecoveryEmail,
+    sendResetEmail: vi.fn(),
+    sendConversionEmail: vi.fn(),
+    sendConversionLinkEmail: vi.fn(),
+    sendContactEmail: vi.fn(),
+    sendSubscriptionCancelledEmail: vi.fn(),
+    sendSubscriptionScheduledCancellationEmail: vi.fn(),
+    sendHostedAnkiAccessRequestEmail: vi.fn(),
+    sendMagicLinkEmail: vi.fn(),
+    sendReEngagementEmail: vi.fn(),
+    sendInactivityWarningEmail: vi.fn(),
+    sendParserCanaryAlert: vi.fn(),
+    sendNotionReconnectEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendPassClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendAnonymousPassClaimEmail: mockSendAnonymousPassClaimEmail,
+    sendPriceLockInEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionRecoveryEmail: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
+
+vi.mock('../data_layer/UserPassRepository', async () => {
+  const { InMemoryUserPassRepository: Mem } = await vi.importActual<
+    typeof import('../data_layer/UserPassRepository')
+  >('../data_layer/UserPassRepository');
   return {
     __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      upsertWithExtension: mockUpsert,
-      upsertWithAbsoluteExpiry: mockUpsertAbsolute,
-    })),
+    default: vi.fn().mockImplementation(function () {
+      return {
+        upsertWithExtension: mockUpsert,
+        upsertWithAbsoluteExpiry: mockUpsertAbsolute,
+      };
+    }),
     InMemoryUserPassRepository: Mem,
   };
 });
 
-jest.mock('../data_layer/AnonymousPassRepository', () => {
-  const { InMemoryAnonymousPassRepository: AnonMem } = jest.requireActual(
-    '../data_layer/AnonymousPassRepository'
-  );
+vi.mock('../data_layer/AnonymousPassRepository', async () => {
+  const { InMemoryAnonymousPassRepository: AnonMem } = await vi.importActual<
+    typeof import('../data_layer/AnonymousPassRepository')
+  >('../data_layer/AnonymousPassRepository');
   return {
     __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      insert: mockAnonInsert,
-      findBySessionId: mockAnonFindBySessionId,
-      findById: mockAnonFindById,
-      claim: mockAnonClaim,
-    })),
+    default: vi.fn().mockImplementation(function () {
+      return {
+        insert: mockAnonInsert,
+        findBySessionId: mockAnonFindBySessionId,
+        findById: mockAnonFindById,
+        claim: mockAnonClaim,
+      };
+    }),
     InMemoryAnonymousPassRepository: AnonMem,
   };
 });
 
-jest.mock('../data_layer/PassClaimTokensRepository', () => ({
+vi.mock('../data_layer/PassClaimTokensRepository', () => ({
   __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => ({ insert: mockPassClaimTokenInsert })),
+  default: vi.fn().mockImplementation(function () {
+    return { insert: mockPassClaimTokenInsert };
+  }),
 }));
 
-const mockUpdatePatreonByEmail = jest.fn();
-const mockGetByEmail = jest.fn().mockResolvedValue(null);
-jest.mock('../data_layer/UsersRepository', () =>
-  jest.fn().mockImplementation(() => ({
-    updatePatreonByEmail: mockUpdatePatreonByEmail,
-    getByEmail: mockGetByEmail,
-  }))
-);
-
-const mockInsertPackGrant = jest.fn();
-jest.mock('../data_layer/AiCreditGrantsRepository', () => ({
-  AiCreditGrantsRepository: jest.fn().mockImplementation(() => ({
-    insertPackGrant: mockInsertPackGrant,
-  })),
+const mockUpdatePatreonByEmail = vi.fn();
+const mockGetByEmail = vi.fn().mockResolvedValue(null);
+vi.mock('../data_layer/UsersRepository', () => ({
+  __esModule: true,
+  default: vi.fn().mockImplementation(function () {
+    return {
+      updatePatreonByEmail: mockUpdatePatreonByEmail,
+      getByEmail: mockGetByEmail,
+    };
+  }),
 }));
 
-jest.mock('../lib/misc/hashToken', () => (s: string) => `hashed:${s}`);
-
-jest.mock('../services/GA4Service', () => ({
-  sendPurchaseEvent: jest.fn().mockResolvedValue(undefined),
+const mockInsertPackGrant = vi.fn();
+vi.mock('../data_layer/AiCreditGrantsRepository', () => ({
+  AiCreditGrantsRepository: vi.fn().mockImplementation(function () {
+    return {
+      insertPackGrant: mockInsertPackGrant,
+    };
+  }),
 }));
 
-const mockTrack = jest.fn();
-jest.mock('../services/events/track', () => ({
+vi.mock('../lib/misc/hashToken', () => ({
+  __esModule: true,
+  default: (s: string) => `hashed:${s}`,
+}));
+
+vi.mock('../services/GA4Service', () => ({
+  sendPurchaseEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
+const mockTrack = vi.fn();
+vi.mock('../services/events/track', () => ({
   track: (...args: unknown[]) => mockTrack(...args),
 }));
 
-const mockRecordError = jest.fn().mockResolvedValue(undefined);
-jest.mock('../data_layer/UserVisibleErrorsRepository', () => ({
-  UserVisibleErrorsRepository: jest.fn().mockImplementation(() => ({
-    record: jest.fn().mockResolvedValue(undefined),
-    countBySurfaceAndCode: jest.fn().mockResolvedValue([]),
-  })),
+const mockRecordError = vi.fn().mockResolvedValue(undefined);
+vi.mock('../data_layer/UserVisibleErrorsRepository', () => ({
+  UserVisibleErrorsRepository: vi.fn().mockImplementation(function () {
+    return {
+      record: vi.fn().mockResolvedValue(undefined),
+      countBySurfaceAndCode: vi.fn().mockResolvedValue([]),
+    };
+  }),
 }));
-jest.mock('../usecases/observability/RecordUserVisibleErrorUseCase', () => ({
-  RecordUserVisibleErrorUseCase: jest.fn().mockImplementation(() => ({
-    execute: mockRecordError,
-  })),
+vi.mock('../usecases/observability/RecordUserVisibleErrorUseCase', () => ({
+  RecordUserVisibleErrorUseCase: vi.fn().mockImplementation(function () {
+    return {
+      execute: mockRecordError,
+    };
+  }),
 }));
 
 let mockWebhookEvent: {
@@ -213,7 +240,7 @@ describe('WebhookRouter — pass grant', () => {
   afterAll(() => server.close());
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   function postWebhook() {
@@ -298,7 +325,7 @@ describe('WebhookRouter — pass grant', () => {
 
   it('returns 200 without calling upsert when user_id metadata is missing', async () => {
     mockWebhookEvent = makePassSessionEvent({ metadata: { pass_kind: '24h' } });
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const res = await postWebhook();
     expect(res.status).toBe(200);
@@ -314,7 +341,7 @@ describe('WebhookRouter — pass grant', () => {
     mockWebhookEvent = makePassSessionEvent({
       metadata: { user_id: 'not-a-number', pass_kind: '24h' },
     });
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const res = await postWebhook();
     expect(res.status).toBe(200);
@@ -332,7 +359,7 @@ describe('WebhookRouter — pass grant', () => {
       expires_at: expiresAt,
       stripe_payment_intent_id: 'pi_test_123',
     });
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     await postWebhook();
     const passGrantedCall = infoSpy.mock.calls.find(
@@ -498,7 +525,7 @@ describe('WebhookRouter — pass grant', () => {
         },
       },
     };
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const res = await postWebhook();
     expect(res.status).toBe(200);
@@ -654,7 +681,7 @@ describe('WebhookRouter — checkout_completed funnel join', () => {
   afterAll(() => server.close());
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   function postWebhook() {
@@ -909,7 +936,7 @@ describe('WebhookRouter — credit pack grant', () => {
   afterAll(() => server.close());
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockInsertPackGrant.mockResolvedValue(true);
   });
 
@@ -991,7 +1018,7 @@ describe('WebhookRouter — credit pack grant', () => {
 
   it('skips the grant when user_id metadata is missing', async () => {
     mockWebhookEvent = makeCreditPackEvent({ metadata: { credit_pack: '1' } });
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const res = await postWebhook();
     expect(res.status).toBe(200);
@@ -1001,7 +1028,7 @@ describe('WebhookRouter — credit pack grant', () => {
 
   it('skips the grant when amount_total is below the pack price', async () => {
     mockWebhookEvent = makeCreditPackEvent({ amount_total: 100 });
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const res = await postWebhook();
     expect(res.status).toBe(200);
@@ -1041,7 +1068,7 @@ describe('WebhookRouter — customer.subscription.deleted', () => {
   afterAll(() => server.close());
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockCustomersRetrieve.mockResolvedValue({
       id: 'cus_abc',
       email: 'billing@example.com',
@@ -1142,7 +1169,7 @@ describe('WebhookRouter — lifetime product-ID allowlist', () => {
   afterAll(() => server.close());
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.LIFETIME_PRICE_IDS = LIFETIME_PRODUCT_ID;
     mockCustomersRetrieve.mockResolvedValue({
       id: 'cus_abc',
@@ -1329,7 +1356,7 @@ describe('WebhookRouter — checkout.session.expired', () => {
   afterAll(() => server.close());
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockClaimSession.mockResolvedValue(true);
   });
 
@@ -1448,7 +1475,7 @@ describe('WebhookRouter — checkout.session.expired', () => {
   });
 
   it('skips with warn log when session has no email', async () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mockWebhookEvent = {
       type: 'checkout.session.expired',
       data: {
@@ -1472,12 +1499,12 @@ describe('WebhookRouter — checkout.session.expired', () => {
   });
 
   it('returns 400 when Stripe signature verification fails', async () => {
-    const { getStripe } = jest.requireMock('../lib/integrations/stripe') as {
-      getStripe: jest.Mock;
+    const { getStripe } = stripeIntegrationMock as unknown as {
+      getStripe: Mock;
     };
     getStripe.mockReturnValueOnce({
       webhooks: {
-        constructEvent: jest.fn(() => {
+        constructEvent: vi.fn(() => {
           throw new Error(
             'No signatures found matching the expected signature for payload'
           );
@@ -1529,16 +1556,16 @@ describe('WebhookRouter — stripe signature invalid error recording', () => {
   afterAll(() => server.close());
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('records stripe_webhook_signature_invalid when signature check fails', async () => {
-    const { getStripe } = jest.requireMock('../lib/integrations/stripe') as {
-      getStripe: jest.Mock;
+    const { getStripe } = stripeIntegrationMock as unknown as {
+      getStripe: Mock;
     };
     getStripe.mockReturnValueOnce({
       webhooks: {
-        constructEvent: jest.fn(() => {
+        constructEvent: vi.fn(() => {
           throw new Error(
             'No signatures found matching the expected signature for payload'
           );
@@ -1565,12 +1592,12 @@ describe('WebhookRouter — stripe signature invalid error recording', () => {
   });
 
   it('does not include raw signature header in the context', async () => {
-    const { getStripe } = jest.requireMock('../lib/integrations/stripe') as {
-      getStripe: jest.Mock;
+    const { getStripe } = stripeIntegrationMock as unknown as {
+      getStripe: Mock;
     };
     getStripe.mockReturnValueOnce({
       webhooks: {
-        constructEvent: jest.fn(() => {
+        constructEvent: vi.fn(() => {
           throw new Error('Signature verification failed');
         }),
       },
@@ -1607,7 +1634,7 @@ describe('WebhookRouter — customer.subscription.created', () => {
   afterAll(() => server.close());
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockCustomersRetrieve.mockResolvedValue({
       id: 'cus_abc',
       email: 'subscriber@example.com',
@@ -1626,10 +1653,8 @@ describe('WebhookRouter — customer.subscription.created', () => {
   }
 
   it('calls updateStoreSubscription when a new subscription is created with active status', async () => {
-    const { updateStoreSubscription } = jest.requireMock(
-      '../lib/integrations/stripe'
-    ) as {
-      updateStoreSubscription: jest.Mock;
+    const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+      updateStoreSubscription: Mock;
     };
     mockWebhookEvent = {
       type: 'customer.subscription.created',
@@ -1656,9 +1681,9 @@ describe('WebhookRouter — customer.subscription.created', () => {
   });
 
   it('records an unlinked_payment alert when no account resolves', async () => {
-    const { updateStoreSubscription } = jest.requireMock(
-      '../lib/integrations/stripe'
-    ) as { updateStoreSubscription: jest.Mock };
+    const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+      updateStoreSubscription: Mock;
+    };
     updateStoreSubscription.mockResolvedValueOnce({
       status: 'unlinked',
       resolvedUserId: null,
@@ -1688,15 +1713,11 @@ describe('WebhookRouter — customer.subscription.created', () => {
   });
 
   it('returns 200 and skips provisioning when customer ID is absent', async () => {
-    const { updateStoreSubscription } = jest.requireMock(
-      '../lib/integrations/stripe'
-    ) as {
-      updateStoreSubscription: jest.Mock;
+    const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+      updateStoreSubscription: Mock;
     };
-    const { getCustomerId } = jest.requireMock(
-      '../lib/integrations/stripe'
-    ) as {
-      getCustomerId: jest.Mock;
+    const { getCustomerId } = stripeIntegrationMock as unknown as {
+      getCustomerId: Mock;
     };
     getCustomerId.mockReturnValueOnce(undefined);
     mockWebhookEvent = {

@@ -1,19 +1,20 @@
+import { vi } from 'vitest';
 import type express from 'express';
 
-const mockSendContactEmail = jest.fn().mockResolvedValue({ didSend: true });
-const mockSendContactConfirmationEmail = jest.fn().mockResolvedValue(undefined);
+const mockSendContactEmail = vi.fn().mockResolvedValue({ didSend: true });
+const mockSendContactConfirmationEmail = vi.fn().mockResolvedValue(undefined);
 
-jest.mock('../../services/EmailService/EmailService', () => ({
+vi.mock('../../services/EmailService/EmailService', () => ({
   getDefaultEmailService: () => ({
     sendContactEmail: mockSendContactEmail,
     sendContactConfirmationEmail: mockSendContactConfirmationEmail,
   }),
 }));
 
-const mockInsertReturning = jest.fn().mockResolvedValue([{ id: 1 }]);
-const mockCount = jest.fn().mockResolvedValue([{ count: 1 }]);
+const mockInsertReturning = vi.fn().mockResolvedValue([{ id: 1 }]);
+const mockCount = vi.fn().mockResolvedValue([{ count: 1 }]);
 
-jest.mock('../../data_layer', () => ({
+vi.mock('../../data_layer', () => ({
   getDatabase: () => (table: string) => {
     if (table !== 'feedback') throw new Error(`unexpected table ${table}`);
     return {
@@ -35,8 +36,8 @@ function buildReq(body: Record<string, unknown>): express.Request {
 
 function buildRes(): express.Response {
   return {
-    status: jest.fn().mockReturnThis(),
-    send: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    send: vi.fn().mockReturnThis(),
   } as unknown as express.Response;
 }
 
@@ -46,7 +47,7 @@ async function flushAsync() {
 
 describe('IndexController.contactUs', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockInsertReturning.mockResolvedValue([{ id: 1 }]);
     mockCount.mockResolvedValue([{ count: 1 }]);
     mockSendContactEmail.mockResolvedValue({ didSend: true });

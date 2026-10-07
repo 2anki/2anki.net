@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { makeErrorCaptureMiddleware } from './ErrorCaptureMiddleware';
 import {
@@ -47,7 +48,7 @@ function makeRes(owner?: number): Response {
 }
 
 function makeNext(): NextFunction & { receivedErr?: unknown } {
-  const fn = jest.fn() as jest.Mock & { receivedErr?: unknown };
+  const fn = vi.fn() as Mock & { receivedErr?: unknown };
   fn.mockImplementation((err?: unknown) => {
     fn.receivedErr = err;
   });
@@ -116,7 +117,7 @@ describe('makeErrorCaptureMiddleware', () => {
     repo.existsWithinWindow = async () => {
       throw new Error('db down');
     };
-    const fallback = jest.fn();
+    const fallback = vi.fn();
     const middleware = makeErrorCaptureMiddleware(repo, fallback);
 
     await middleware(

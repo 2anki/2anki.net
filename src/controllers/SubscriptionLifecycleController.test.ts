@@ -1,6 +1,7 @@
+import { vi, type Mock } from 'vitest';
 import express from 'express';
 
-jest.mock('../services/SubscriptionService', () => {
+vi.mock('../services/SubscriptionService', () => {
   class SubscriptionNotOwnedError extends Error {
     constructor() {
       super('Subscription not found');
@@ -32,18 +33,18 @@ jest.mock('../services/SubscriptionService', () => {
     SubscriptionTooNewToPauseError,
     InvalidPauseMonthsError,
     default: {
-      cancelUserSubscriptions: jest.fn(),
-      cancelSubscriptionById: jest.fn(),
-      findRecentStripeSubscriptions: jest.fn(),
-      countActiveByProductId: jest.fn().mockResolvedValue(0),
-      getUserActiveSubscriptions: jest.fn().mockResolvedValue([]),
-      pauseSubscription: jest.fn(),
-      resumeSubscription: jest.fn(),
+      cancelUserSubscriptions: vi.fn(),
+      cancelSubscriptionById: vi.fn(),
+      findRecentStripeSubscriptions: vi.fn(),
+      countActiveByProductId: vi.fn().mockResolvedValue(0),
+      getUserActiveSubscriptions: vi.fn().mockResolvedValue([]),
+      pauseSubscription: vi.fn(),
+      resumeSubscription: vi.fn(),
     },
   };
 });
 
-jest.mock('../services/events/track', () => ({ track: jest.fn() }));
+vi.mock('../services/events/track', () => ({ track: vi.fn() }));
 
 import SubscriptionLifecycleController from './SubscriptionLifecycleController';
 import type UsersService from '../services/UsersService';
@@ -53,12 +54,12 @@ import SubscriptionService, {
 } from '../services/SubscriptionService';
 import { track } from '../services/events/track';
 
-const trackMock = track as jest.Mock;
+const trackMock = track as Mock;
 
 describe('UsersController.cancelSubscription', () => {
   const buildCancelController = (dbMock?: unknown) => {
     const userService = {
-      getUserById: jest
+      getUserById: vi
         .fn()
         .mockResolvedValue({ id: 1, email: 'sub@example.com' }),
     } as unknown as UsersService;
@@ -70,27 +71,25 @@ describe('UsersController.cancelSubscription', () => {
   };
 
   const buildResWithLocals = (owner: number | null = 1) => {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
     return {
       json,
       status,
       locals: { owner },
     } as unknown as express.Response & {
-      json: jest.Mock;
-      status: jest.Mock;
+      json: Mock;
+      status: Mock;
     };
   };
 
   beforeEach(() => {
-    (SubscriptionService.cancelUserSubscriptions as jest.Mock).mockReset();
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockReset();
     trackMock.mockClear();
   });
 
   it('returns 422 with a recovery hint when no subscription matches the account', async () => {
-    (
-      SubscriptionService.cancelUserSubscriptions as jest.Mock
-    ).mockResolvedValue(0);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(0);
     const { controller } = buildCancelController();
     const req = { body: { mode: 'period_end' } } as express.Request;
     const res = buildResWithLocals();
@@ -106,9 +105,7 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('returns 200 when a subscription is cancelled', async () => {
-    (
-      SubscriptionService.cancelUserSubscriptions as jest.Mock
-    ).mockResolvedValue(1);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(1);
     const { controller } = buildCancelController();
     const req = { body: { mode: 'period_end' } } as express.Request;
     const res = buildResWithLocals();
@@ -119,11 +116,9 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('does not record feedback from the cancel endpoint even if a reason is sent', async () => {
-    (
-      SubscriptionService.cancelUserSubscriptions as jest.Mock
-    ).mockResolvedValue(1);
-    const insert = jest.fn().mockResolvedValue([1]);
-    const db = jest.fn().mockReturnValue({ insert });
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(1);
+    const insert = vi.fn().mockResolvedValue([1]);
+    const db = vi.fn().mockReturnValue({ insert });
     const { controller } = buildCancelController(db);
     const req = {
       body: { mode: 'period_end', reason: 'Too expensive' },
@@ -147,9 +142,7 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('fires subscription_cancelled once with reason and period_end cancel_type', async () => {
-    (
-      SubscriptionService.cancelUserSubscriptions as jest.Mock
-    ).mockResolvedValue(1);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(1);
     const { controller } = buildCancelController();
     const req = {
       body: { mode: 'period_end', reason: "I don't use it enough" },
@@ -166,9 +159,7 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('records cancel_type immediate when the mode is immediate', async () => {
-    (
-      SubscriptionService.cancelUserSubscriptions as jest.Mock
-    ).mockResolvedValue(2);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(2);
     const { controller } = buildCancelController();
     const req = {
       body: { mode: 'immediate', reason: 'Too expensive' },
@@ -184,9 +175,7 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('sends reason null when the body omits a reason', async () => {
-    (
-      SubscriptionService.cancelUserSubscriptions as jest.Mock
-    ).mockResolvedValue(1);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(1);
     const { controller } = buildCancelController();
     const req = { body: { mode: 'period_end' } } as express.Request;
     const res = buildResWithLocals();
@@ -200,9 +189,7 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('does not fire subscription_cancelled when no subscription matches', async () => {
-    (
-      SubscriptionService.cancelUserSubscriptions as jest.Mock
-    ).mockResolvedValue(0);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(0);
     const { controller } = buildCancelController();
     const req = { body: { mode: 'period_end' } } as express.Request;
     const res = buildResWithLocals();
@@ -216,7 +203,7 @@ describe('UsersController.cancelSubscription', () => {
 describe('UsersController.getSubscriptionStatus', () => {
   const buildStatusController = () => {
     const userService = {
-      getUserById: jest
+      getUserById: vi
         .fn()
         .mockResolvedValue({ id: 1, email: 'sub@example.com' }),
     } as unknown as UsersService;
@@ -228,20 +215,20 @@ describe('UsersController.getSubscriptionStatus', () => {
   };
 
   const buildResWithLocals = (owner: number | null = 1) => {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
     return {
       json,
       status,
       locals: { owner },
     } as unknown as express.Response & {
-      json: jest.Mock;
-      status: jest.Mock;
+      json: Mock;
+      status: Mock;
     };
   };
 
   const readSummaries = (res: {
-    json: jest.Mock;
+    json: Mock;
   }): Array<{ cancellation_reason: string | null }> =>
     (
       res.json.mock.calls[0][0] as {
@@ -250,14 +237,12 @@ describe('UsersController.getSubscriptionStatus', () => {
     ).subscriptions;
 
   beforeEach(() => {
-    (
-      SubscriptionService.findRecentStripeSubscriptions as jest.Mock
-    ).mockReset();
+    (SubscriptionService.findRecentStripeSubscriptions as Mock).mockReset();
   });
 
   it('maps cancellation_details.reason onto cancellation_reason', async () => {
     (
-      SubscriptionService.findRecentStripeSubscriptions as jest.Mock
+      SubscriptionService.findRecentStripeSubscriptions as Mock
     ).mockResolvedValue([
       {
         id: 'sub_ended',
@@ -281,7 +266,7 @@ describe('UsersController.getSubscriptionStatus', () => {
 
   it('sends cancellation_reason null when Stripe has no cancellation details', async () => {
     (
-      SubscriptionService.findRecentStripeSubscriptions as jest.Mock
+      SubscriptionService.findRecentStripeSubscriptions as Mock
     ).mockResolvedValue([
       {
         id: 'sub_active',
@@ -305,7 +290,7 @@ describe('UsersController.getSubscriptionStatus', () => {
 describe('UsersController.pauseSubscription', () => {
   const buildPauseController = () => {
     const userService = {
-      getUserById: jest
+      getUserById: vi
         .fn()
         .mockResolvedValue({ id: 1, email: 'sub@example.com' }),
     } as unknown as UsersService;
@@ -317,24 +302,24 @@ describe('UsersController.pauseSubscription', () => {
   };
 
   const buildResWithLocals = (owner: number | null = 1) => {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
     return {
       json,
       status,
       locals: { owner },
     } as unknown as express.Response & {
-      json: jest.Mock;
-      status: jest.Mock;
+      json: Mock;
+      status: Mock;
     };
   };
 
   beforeEach(() => {
-    (SubscriptionService.pauseSubscription as jest.Mock).mockReset();
+    (SubscriptionService.pauseSubscription as Mock).mockReset();
   });
 
   it('pauses and returns the resume date', async () => {
-    (SubscriptionService.pauseSubscription as jest.Mock).mockResolvedValue({
+    (SubscriptionService.pauseSubscription as Mock).mockResolvedValue({
       subscriptionId: 'sub_1',
       resumesAt: 1900000000,
       tenureDays: 90,
@@ -367,7 +352,7 @@ describe('UsersController.pauseSubscription', () => {
   });
 
   it('maps an annual plan rejection to 422', async () => {
-    (SubscriptionService.pauseSubscription as jest.Mock).mockRejectedValue(
+    (SubscriptionService.pauseSubscription as Mock).mockRejectedValue(
       new AnnualPlanNotPausableError()
     );
     const { controller } = buildPauseController();
@@ -393,7 +378,7 @@ describe('UsersController.pauseSubscription', () => {
 describe('UsersController.resumeSubscription', () => {
   const buildResumeController = () => {
     const userService = {
-      getUserById: jest
+      getUserById: vi
         .fn()
         .mockResolvedValue({ id: 1, email: 'sub@example.com' }),
     } as unknown as UsersService;
@@ -405,27 +390,25 @@ describe('UsersController.resumeSubscription', () => {
   };
 
   const buildResWithLocals = (owner: number | null = 1) => {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
     return {
       json,
       status,
       locals: { owner },
     } as unknown as express.Response & {
-      json: jest.Mock;
-      status: jest.Mock;
+      json: Mock;
+      status: Mock;
     };
   };
 
   beforeEach(() => {
-    (SubscriptionService.resumeSubscription as jest.Mock).mockReset();
+    (SubscriptionService.resumeSubscription as Mock).mockReset();
     trackMock.mockReset();
   });
 
   it('resumes and fires the resume event', async () => {
-    (SubscriptionService.resumeSubscription as jest.Mock).mockResolvedValue(
-      'sub_1'
-    );
+    (SubscriptionService.resumeSubscription as Mock).mockResolvedValue('sub_1');
     const { controller } = buildResumeController();
     const req = { body: {} } as express.Request;
     const res = buildResWithLocals();
@@ -439,7 +422,7 @@ describe('UsersController.resumeSubscription', () => {
   });
 
   it('returns 422 when no paused subscription is found', async () => {
-    (SubscriptionService.resumeSubscription as jest.Mock).mockRejectedValue(
+    (SubscriptionService.resumeSubscription as Mock).mockRejectedValue(
       new SubscriptionNotOwnedError()
     );
     const { controller } = buildResumeController();
@@ -454,11 +437,11 @@ describe('UsersController.resumeSubscription', () => {
 });
 
 describe('UsersController.cancelSubscriptionById', () => {
-  const buildByIdController = (getUserById?: jest.Mock) => {
+  const buildByIdController = (getUserById?: Mock) => {
     const userService = {
       getUserById:
         getUserById ??
-        jest.fn().mockResolvedValue({ id: 1, email: 'sub@example.com' }),
+        vi.fn().mockResolvedValue({ id: 1, email: 'sub@example.com' }),
     } as unknown as UsersService;
     const controller = new SubscriptionLifecycleController(
       userService,
@@ -468,20 +451,20 @@ describe('UsersController.cancelSubscriptionById', () => {
   };
 
   const buildResWithLocals = (owner: number | null = 1) => {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
     return {
       json,
       status,
       locals: { owner },
     } as unknown as express.Response & {
-      json: jest.Mock;
-      status: jest.Mock;
+      json: Mock;
+      status: Mock;
     };
   };
 
   beforeEach(() => {
-    (SubscriptionService.cancelSubscriptionById as jest.Mock).mockReset();
+    (SubscriptionService.cancelSubscriptionById as Mock).mockReset();
     trackMock.mockClear();
   });
 
@@ -501,7 +484,7 @@ describe('UsersController.cancelSubscriptionById', () => {
   });
 
   it('returns 404 when the user is not found', async () => {
-    const getUserById = jest.fn().mockResolvedValue(null);
+    const getUserById = vi.fn().mockResolvedValue(null);
     const { controller } = buildByIdController(getUserById);
     const req = {
       params: { id: 'sub_1' },
@@ -530,7 +513,7 @@ describe('UsersController.cancelSubscriptionById', () => {
   });
 
   it('returns 403 and never invokes Stripe when the subscription is not owned', async () => {
-    (SubscriptionService.cancelSubscriptionById as jest.Mock).mockRejectedValue(
+    (SubscriptionService.cancelSubscriptionById as Mock).mockRejectedValue(
       new SubscriptionNotOwnedError()
     );
     const { controller } = buildByIdController();
@@ -546,7 +529,7 @@ describe('UsersController.cancelSubscriptionById', () => {
   });
 
   it('returns 200 when a subscription is cancelled by id', async () => {
-    (SubscriptionService.cancelSubscriptionById as jest.Mock).mockResolvedValue(
+    (SubscriptionService.cancelSubscriptionById as Mock).mockResolvedValue(
       undefined
     );
     const { controller } = buildByIdController();
@@ -567,7 +550,7 @@ describe('UsersController.cancelSubscriptionById', () => {
   });
 
   it('fires subscription_cancelled with reason and cancel_type from the request', async () => {
-    (SubscriptionService.cancelSubscriptionById as jest.Mock).mockResolvedValue(
+    (SubscriptionService.cancelSubscriptionById as Mock).mockResolvedValue(
       undefined
     );
     const { controller } = buildByIdController();
@@ -587,7 +570,7 @@ describe('UsersController.cancelSubscriptionById', () => {
   });
 
   it('does not fire subscription_cancelled when the subscription is not owned', async () => {
-    (SubscriptionService.cancelSubscriptionById as jest.Mock).mockRejectedValue(
+    (SubscriptionService.cancelSubscriptionById as Mock).mockRejectedValue(
       new SubscriptionNotOwnedError()
     );
     const { controller } = buildByIdController();
@@ -604,8 +587,8 @@ describe('UsersController.cancelSubscriptionById', () => {
 });
 
 describe('UsersController.submitCancellationFeedback', () => {
-  const buildFeedbackController = (insert: jest.Mock) => {
-    const db = jest.fn().mockReturnValue({ insert });
+  const buildFeedbackController = (insert: Mock) => {
+    const db = vi.fn().mockReturnValue({ insert });
     const controller = new SubscriptionLifecycleController(
       {} as UsersService,
       db as unknown as ReturnType<typeof import('../data_layer').getDatabase>
@@ -614,20 +597,20 @@ describe('UsersController.submitCancellationFeedback', () => {
   };
 
   const buildResWithLocals = (owner: number | null = 7) => {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
     return {
       json,
       status,
       locals: { owner },
     } as unknown as express.Response & {
-      json: jest.Mock;
-      status: jest.Mock;
+      json: Mock;
+      status: Mock;
     };
   };
 
   it('stores the reason and comment for the owner', async () => {
-    const insert = jest.fn().mockResolvedValue([1]);
+    const insert = vi.fn().mockResolvedValue([1]);
     const { controller, db } = buildFeedbackController(insert);
     const req = {
       body: { reason: 'Too expensive', comment: 'too much' },
@@ -646,7 +629,7 @@ describe('UsersController.submitCancellationFeedback', () => {
   });
 
   it('rejects feedback without a reason and never touches the database', async () => {
-    const insert = jest.fn();
+    const insert = vi.fn();
     const { controller } = buildFeedbackController(insert);
     const req = { body: { comment: 'no reason given' } } as express.Request;
     const res = buildResWithLocals(7);

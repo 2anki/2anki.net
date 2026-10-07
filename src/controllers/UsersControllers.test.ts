@@ -1,18 +1,19 @@
+import { vi, type Mock, type MockedClass } from 'vitest';
 import express from 'express';
 
-jest.mock('../lib/integrations/stripe', () => ({
-  getStripe: jest.fn().mockReturnValue({
-    customers: { retrieve: jest.fn() },
+vi.mock('../lib/integrations/stripe', () => ({
+  getStripe: vi.fn().mockReturnValue({
+    customers: { retrieve: vi.fn() },
     subscriptions: {
-      retrieve: jest.fn(),
-      cancel: jest.fn(),
-      update: jest.fn(),
+      retrieve: vi.fn(),
+      cancel: vi.fn(),
+      update: vi.fn(),
     },
   }),
-  updateStoreSubscription: jest.fn().mockResolvedValue(undefined),
+  updateStoreSubscription: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../services/SubscriptionService', () => {
+vi.mock('../services/SubscriptionService', () => {
   class SubscriptionNotOwnedError extends Error {
     constructor() {
       super('Subscription not found');
@@ -44,47 +45,56 @@ jest.mock('../services/SubscriptionService', () => {
     SubscriptionTooNewToPauseError,
     InvalidPauseMonthsError,
     default: {
-      cancelUserSubscriptions: jest.fn(),
-      cancelSubscriptionById: jest.fn(),
-      findRecentStripeSubscriptions: jest.fn(),
-      countActiveByProductId: jest.fn().mockResolvedValue(0),
-      getUserActiveSubscriptions: jest.fn().mockResolvedValue([]),
-      pauseSubscription: jest.fn(),
-      resumeSubscription: jest.fn(),
+      cancelUserSubscriptions: vi.fn(),
+      cancelSubscriptionById: vi.fn(),
+      findRecentStripeSubscriptions: vi.fn(),
+      countActiveByProductId: vi.fn().mockResolvedValue(0),
+      getUserActiveSubscriptions: vi.fn().mockResolvedValue([]),
+      pauseSubscription: vi.fn(),
+      resumeSubscription: vi.fn(),
     },
   };
 });
 
-jest.mock('../lib/misc/hashToken', () => ({
+vi.mock('../lib/misc/hashToken', () => ({
   __esModule: true,
-  default: jest.fn().mockReturnValue('hashed-token'),
+  default: vi.fn().mockReturnValue('hashed-token'),
 }));
 
-jest.mock('../services/events/track', () => ({ track: jest.fn() }));
+vi.mock('../services/events/track', () => ({ track: vi.fn() }));
 
-const mockGetById = jest.fn().mockResolvedValue({ patreon: false });
+const mockGetById = vi.fn().mockResolvedValue({ patreon: false });
 
-jest.mock('../data_layer/UsersRepository', () => {
-  return jest.fn().mockImplementation(() => ({
-    setSignupCountryIfMissing: jest.fn().mockResolvedValue(undefined),
-    getSignupCountry: jest.fn().mockResolvedValue(null),
-    getById: mockGetById,
-    getCardUsage: jest.fn().mockResolvedValue({ cards_used: 0 }),
-    getPrintUsage: jest
-      .fn()
-      .mockResolvedValue({ prints_used: 0, month_started_at: null }),
-    updateName: jest.fn().mockResolvedValue(undefined),
-  }));
+vi.mock('../data_layer/UsersRepository', () => {
+  return {
+    __esModule: true,
+    default: vi.fn().mockImplementation(function () {
+      return {
+        setSignupCountryIfMissing: vi.fn().mockResolvedValue(undefined),
+        getSignupCountry: vi.fn().mockResolvedValue(null),
+        getById: mockGetById,
+        getCardUsage: vi.fn().mockResolvedValue({ cards_used: 0 }),
+        getPrintUsage: vi
+          .fn()
+          .mockResolvedValue({ prints_used: 0, month_started_at: null }),
+        updateName: vi.fn().mockResolvedValue(undefined),
+      };
+    }),
+  };
 });
 
-jest.mock('../data_layer/UserPassRepository', () => {
-  const actual = jest.requireActual('../data_layer/UserPassRepository');
+vi.mock('../data_layer/UserPassRepository', async () => {
+  const actual = await vi.importActual<
+    typeof import('../data_layer/UserPassRepository')
+  >('../data_layer/UserPassRepository');
   return {
     ...actual,
     __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      findActive: jest.fn().mockResolvedValue(null),
-    })),
+    default: vi.fn().mockImplementation(function () {
+      return {
+        findActive: vi.fn().mockResolvedValue(null),
+      };
+    }),
   };
 });
 
@@ -100,46 +110,45 @@ import NotionRepository from '../data_layer/NotionRespository';
 import { SESSION_MAX_AGE_MS } from '../shared/session';
 import { track } from '../services/events/track';
 
-const trackMock = track as jest.Mock;
+const trackMock = track as Mock;
 
 const SAMPLE_PW = '12345678';
 
 const buildRes = () => {
-  const json = jest.fn();
-  const status = jest.fn().mockReturnValue({ json });
-  const cookie = jest.fn();
+  const json = vi.fn();
+  const status = vi.fn().mockReturnValue({ json });
+  const cookie = vi.fn();
   return { json, status, cookie } as unknown as express.Response & {
-    json: jest.Mock;
-    status: jest.Mock;
-    cookie: jest.Mock;
+    json: Mock;
+    status: Mock;
+    cookie: Mock;
   };
 };
 
 const buildController = (overrides?: {
-  getUserFrom?: jest.Mock;
-  register?: jest.Mock;
-  getHashPassword?: jest.Mock;
-  newJWTToken?: jest.Mock;
-  persistToken?: jest.Mock;
-  updateLastLoginAt?: jest.Mock;
+  getUserFrom?: Mock;
+  register?: Mock;
+  getHashPassword?: Mock;
+  newJWTToken?: Mock;
+  persistToken?: Mock;
+  updateLastLoginAt?: Mock;
 }) => {
   const mockUser = { id: 1, email: 'test@example.com' };
   const userService = {
     getUserFrom:
       overrides?.getUserFrom ??
-      jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
-    register: overrides?.register ?? jest.fn().mockResolvedValue([{ id: 1 }]),
+      vi.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
+    register: overrides?.register ?? vi.fn().mockResolvedValue([{ id: 1 }]),
     updateLastLoginAt:
-      overrides?.updateLastLoginAt ?? jest.fn().mockResolvedValue(undefined),
+      overrides?.updateLastLoginAt ?? vi.fn().mockResolvedValue(undefined),
   } as unknown as UsersService;
   const authService = {
     getHashPassword:
-      overrides?.getHashPassword ?? jest.fn().mockReturnValue('hashed'),
-    newJWTToken:
-      overrides?.newJWTToken ?? jest.fn().mockResolvedValue('jwt-tok'),
+      overrides?.getHashPassword ?? vi.fn().mockReturnValue('hashed'),
+    newJWTToken: overrides?.newJWTToken ?? vi.fn().mockResolvedValue('jwt-tok'),
     persistToken:
-      overrides?.persistToken ?? jest.fn().mockResolvedValue(undefined),
-    isValidLogin: jest.fn().mockReturnValue(true),
+      overrides?.persistToken ?? vi.fn().mockResolvedValue(undefined),
+    isValidLogin: vi.fn().mockReturnValue(true),
   } as unknown as AuthenticationService;
   const controller = new UsersController(
     userService,
@@ -155,7 +164,7 @@ describe('UsersController.register', () => {
   });
 
   it('emits account_created keyed to the new user id and the request anonymous id on success', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 1 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
     const { controller } = buildController({ register });
     const req = {
       body: {
@@ -167,7 +176,7 @@ describe('UsersController.register', () => {
       cookies: { anon_id: 'anon-abc-123' },
     } as unknown as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -184,7 +193,7 @@ describe('UsersController.register', () => {
   });
 
   it('emits signup_origin and signup_referrer from the first_touch cookie', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 1 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
     const { controller } = buildController({ register });
     const req = {
       body: { email: 'jane.doe@example.com', password: SAMPLE_PW },
@@ -198,7 +207,7 @@ describe('UsersController.register', () => {
       },
     } as unknown as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -216,7 +225,7 @@ describe('UsersController.register', () => {
   });
 
   it('prefers the first_touch cookie over the legacy source field', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 1 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
     const { controller } = buildController({ register });
     const req = {
       body: {
@@ -230,7 +239,7 @@ describe('UsersController.register', () => {
       },
     } as unknown as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -244,7 +253,7 @@ describe('UsersController.register', () => {
   });
 
   it('emits account_created with a null anonymous id when no anon_id cookie is present', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 1 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
     const { controller } = buildController({ register });
     const req = {
       body: { email: 'jane.doe@example.com', password: SAMPLE_PW },
@@ -252,7 +261,7 @@ describe('UsersController.register', () => {
       cookies: {},
     } as unknown as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -266,17 +275,17 @@ describe('UsersController.register', () => {
   });
 
   it('does not emit account_created when the email is already registered', async () => {
-    const getUserFrom = jest
+    const getUserFrom = vi
       .fn()
       .mockResolvedValue({ id: 1, email: 'taken@example.com' });
-    const register = jest.fn();
+    const register = vi.fn();
     const { controller } = buildController({ getUserFrom, register });
     const req = {
       body: { email: 'taken@example.com', password: SAMPLE_PW },
       cookies: { anon_id: 'anon-abc-123' },
     } as unknown as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -288,7 +297,7 @@ describe('UsersController.register', () => {
     const { controller } = buildController();
     const req = { body: {} } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -305,7 +314,7 @@ describe('UsersController.register', () => {
     const { controller } = buildController();
     const req = { body: { email: 'a@b.com' } } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -313,10 +322,10 @@ describe('UsersController.register', () => {
   });
 
   it('auto-logs in the user after registration and sets a JWT cookie', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 1 }]);
-    const newJWTToken = jest.fn().mockResolvedValue('jwt-reg-tok');
-    const persistToken = jest.fn().mockResolvedValue(undefined);
-    const updateLastLoginAt = jest.fn().mockResolvedValue(undefined);
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
+    const newJWTToken = vi.fn().mockResolvedValue('jwt-reg-tok');
+    const persistToken = vi.fn().mockResolvedValue(undefined);
+    const updateLastLoginAt = vi.fn().mockResolvedValue(undefined);
     const { controller } = buildController({
       register,
       newJWTToken,
@@ -328,7 +337,7 @@ describe('UsersController.register', () => {
       query: {},
     } as unknown as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -350,7 +359,7 @@ describe('UsersController.register', () => {
   });
 
   it('still accepts a name when older clients send one', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 1 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
     const { controller } = buildController({ register });
     const req = {
       body: {
@@ -361,7 +370,7 @@ describe('UsersController.register', () => {
       query: {},
     } as unknown as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -376,7 +385,7 @@ describe('UsersController.register', () => {
   });
 
   it('persists signup_origin when source matches an allowed landing path', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 1 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
     const { controller } = buildController({ register });
     const req = {
       body: {
@@ -387,7 +396,7 @@ describe('UsersController.register', () => {
       query: {},
     } as unknown as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -401,7 +410,7 @@ describe('UsersController.register', () => {
   });
 
   it('drops the signup_origin to null when source fails the allowlist regex', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 1 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
     const { controller } = buildController({ register });
     const req = {
       body: {
@@ -412,7 +421,7 @@ describe('UsersController.register', () => {
       query: {},
     } as unknown as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -426,16 +435,16 @@ describe('UsersController.register', () => {
   });
 
   it('returns 400 when the email is already registered', async () => {
-    const getUserFrom = jest
+    const getUserFrom = vi
       .fn()
       .mockResolvedValue({ id: 1, email: 'taken@example.com' });
-    const register = jest.fn();
+    const register = vi.fn();
     const { controller } = buildController({ getUserFrom, register });
     const req = {
       body: { email: 'taken@example.com', password: SAMPLE_PW },
     } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -450,19 +459,19 @@ describe('UsersController.register', () => {
 
 describe('UsersController.verifyEmail', () => {
   const buildVerifyEmailController = (overrides?: {
-    verifyMagicToken?: jest.Mock;
-    markEmailVerified?: jest.Mock;
-    authGetUserFrom?: jest.Mock;
+    verifyMagicToken?: Mock;
+    markEmailVerified?: Mock;
+    authGetUserFrom?: Mock;
   }) => {
     const userService = {
       verifyMagicToken:
-        overrides?.verifyMagicToken ?? jest.fn().mockResolvedValue(null),
+        overrides?.verifyMagicToken ?? vi.fn().mockResolvedValue(null),
       markEmailVerified:
-        overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
+        overrides?.markEmailVerified ?? vi.fn().mockResolvedValue(1),
     } as unknown as UsersService;
     const authService = {
       getUserFrom:
-        overrides?.authGetUserFrom ?? jest.fn().mockResolvedValue(null),
+        overrides?.authGetUserFrom ?? vi.fn().mockResolvedValue(null),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -473,17 +482,17 @@ describe('UsersController.verifyEmail', () => {
   };
 
   const buildVerifyEmailRes = () => {
-    const redirect = jest.fn();
+    const redirect = vi.fn();
     return { redirect } as unknown as express.Response & {
-      redirect: jest.Mock;
+      redirect: Mock;
     };
   };
 
   it('redirects to /login?verified=1 when the verify_email token is valid and user is unauthenticated', async () => {
-    const verifyMagicToken = jest
+    const verifyMagicToken = vi
       .fn()
       .mockResolvedValue({ userId: 7, purpose: 'verify_email' });
-    const markEmailVerified = jest.fn().mockResolvedValue(1);
+    const markEmailVerified = vi.fn().mockResolvedValue(1);
     const { controller } = buildVerifyEmailController({
       verifyMagicToken,
       markEmailVerified,
@@ -493,7 +502,7 @@ describe('UsersController.verifyEmail', () => {
       cookies: {},
     } as unknown as express.Request;
     const res = buildVerifyEmailRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.verifyEmail(req, res, next);
 
@@ -502,11 +511,11 @@ describe('UsersController.verifyEmail', () => {
   });
 
   it('redirects to /account?verified=1 when the token is valid and user is authenticated', async () => {
-    const verifyMagicToken = jest
+    const verifyMagicToken = vi
       .fn()
       .mockResolvedValue({ userId: 7, purpose: 'verify_email' });
-    const markEmailVerified = jest.fn().mockResolvedValue(1);
-    const authGetUserFrom = jest.fn().mockResolvedValue({ id: 7 });
+    const markEmailVerified = vi.fn().mockResolvedValue(1);
+    const authGetUserFrom = vi.fn().mockResolvedValue({ id: 7 });
     const { controller } = buildVerifyEmailController({
       verifyMagicToken,
       markEmailVerified,
@@ -517,7 +526,7 @@ describe('UsersController.verifyEmail', () => {
       cookies: { token: 'session' },
     } as unknown as express.Request;
     const res = buildVerifyEmailRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.verifyEmail(req, res, next);
 
@@ -532,7 +541,7 @@ describe('UsersController.verifyEmail', () => {
       cookies: {},
     } as unknown as express.Request;
     const res = buildVerifyEmailRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.verifyEmail(req, res, next);
 
@@ -540,14 +549,14 @@ describe('UsersController.verifyEmail', () => {
   });
 
   it('redirects to /account?verify_error=expired when token is invalid and user is authenticated', async () => {
-    const authGetUserFrom = jest.fn().mockResolvedValue({ id: 7 });
+    const authGetUserFrom = vi.fn().mockResolvedValue({ id: 7 });
     const { controller } = buildVerifyEmailController({ authGetUserFrom });
     const req = {
       params: { token: 'bad-tok' },
       cookies: { token: 'session' },
     } as unknown as express.Request;
     const res = buildVerifyEmailRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.verifyEmail(req, res, next);
 
@@ -555,7 +564,7 @@ describe('UsersController.verifyEmail', () => {
   });
 
   it('redirects to /login?verify_error=expired for non-verify_email purpose tokens when unauthenticated', async () => {
-    const verifyMagicToken = jest
+    const verifyMagicToken = vi
       .fn()
       .mockResolvedValue({ userId: 7, purpose: 'login' });
     const { controller } = buildVerifyEmailController({ verifyMagicToken });
@@ -564,7 +573,7 @@ describe('UsersController.verifyEmail', () => {
       cookies: {},
     } as unknown as express.Request;
     const res = buildVerifyEmailRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.verifyEmail(req, res, next);
 
@@ -573,15 +582,17 @@ describe('UsersController.verifyEmail', () => {
 
   it('logs the error and forwards it to next() when verification throws', async () => {
     const dbError = new Error('Database connection failed');
-    const verifyMagicToken = jest.fn().mockRejectedValue(dbError);
+    const verifyMagicToken = vi.fn().mockRejectedValue(dbError);
     const { controller } = buildVerifyEmailController({ verifyMagicToken });
     const req = {
       params: { token: 'valid-tok' },
       cookies: {},
     } as unknown as express.Request;
     const res = buildVerifyEmailRes();
-    const next = jest.fn();
-    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    const next = vi.fn();
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
     try {
       await controller.verifyEmail(req, res, next);
@@ -598,12 +609,10 @@ describe('UsersController.verifyEmail', () => {
 });
 
 describe('UsersController.requestMagicLink', () => {
-  const buildMagicController = (overrides?: {
-    requestMagicLink?: jest.Mock;
-  }) => {
+  const buildMagicController = (overrides?: { requestMagicLink?: Mock }) => {
     const userService = {
       requestMagicLink:
-        overrides?.requestMagicLink ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.requestMagicLink ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {} as AuthenticationService;
     const controller = new UsersController(
@@ -620,7 +629,7 @@ describe('UsersController.requestMagicLink', () => {
       body: { email: 'al@example.com', purpose: 'login' },
     } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.requestMagicLink(req, res, next);
 
@@ -629,13 +638,13 @@ describe('UsersController.requestMagicLink', () => {
   });
 
   it('defaults purpose to login when not provided', async () => {
-    const requestMagicLink = jest.fn().mockResolvedValue(undefined);
+    const requestMagicLink = vi.fn().mockResolvedValue(undefined);
     const { controller } = buildMagicController({ requestMagicLink });
     const req = {
       body: { email: 'al@example.com' },
     } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.requestMagicLink(req, res, next);
 
@@ -649,13 +658,13 @@ describe('UsersController.requestMagicLink', () => {
   });
 
   it('forwards a validated relative redirect to the service', async () => {
-    const requestMagicLink = jest.fn().mockResolvedValue(undefined);
+    const requestMagicLink = vi.fn().mockResolvedValue(undefined);
     const { controller } = buildMagicController({ requestMagicLink });
     const req = {
       body: { email: 'al@example.com', purpose: 'login', redirect: '/upload' },
     } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.requestMagicLink(req, res, next);
 
@@ -669,7 +678,7 @@ describe('UsersController.requestMagicLink', () => {
   });
 
   it('drops an unsafe redirect before calling the service', async () => {
-    const requestMagicLink = jest.fn().mockResolvedValue(undefined);
+    const requestMagicLink = vi.fn().mockResolvedValue(undefined);
     const { controller } = buildMagicController({ requestMagicLink });
     const req = {
       body: {
@@ -679,7 +688,7 @@ describe('UsersController.requestMagicLink', () => {
       },
     } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.requestMagicLink(req, res, next);
 
@@ -696,7 +705,7 @@ describe('UsersController.requestMagicLink', () => {
     const { controller } = buildMagicController();
     const req = { body: { purpose: 'login' } } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.requestMagicLink(req, res, next);
 
@@ -709,7 +718,7 @@ describe('UsersController.requestMagicLink', () => {
       body: { email: 'al@example.com', purpose: 'evil' },
     } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.requestMagicLink(req, res, next);
 
@@ -718,7 +727,7 @@ describe('UsersController.requestMagicLink', () => {
   });
 
   it('returns 200 even when rate limited to prevent email enumeration', async () => {
-    const requestMagicLink = jest
+    const requestMagicLink = vi
       .fn()
       .mockRejectedValue(new MagicLinkRateLimitError());
     const { controller } = buildMagicController({ requestMagicLink });
@@ -726,7 +735,7 @@ describe('UsersController.requestMagicLink', () => {
       body: { email: 'al@example.com', purpose: 'login' },
     } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.requestMagicLink(req, res, next);
 
@@ -734,7 +743,7 @@ describe('UsersController.requestMagicLink', () => {
   });
 
   it('returns 200 with suppressed flag when the address is on the suppression list', async () => {
-    const requestMagicLink = jest
+    const requestMagicLink = vi
       .fn()
       .mockRejectedValue(new MagicLinkSuppressedError());
     const { controller } = buildMagicController({ requestMagicLink });
@@ -742,7 +751,7 @@ describe('UsersController.requestMagicLink', () => {
       body: { email: 'blocked@example.com', purpose: 'login' },
     } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.requestMagicLink(req, res, next);
 
@@ -756,13 +765,13 @@ describe('UsersController.requestMagicLink', () => {
 
   it('forwards infrastructure errors to next() so ErrorHandler can surface them', async () => {
     const sendgridError = new Error('SendGrid down');
-    const requestMagicLink = jest.fn().mockRejectedValue(sendgridError);
+    const requestMagicLink = vi.fn().mockRejectedValue(sendgridError);
     const { controller } = buildMagicController({ requestMagicLink });
     const req = {
       body: { email: 'al@example.com', purpose: 'login' },
     } as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.requestMagicLink(req, res, next);
 
@@ -773,29 +782,29 @@ describe('UsersController.requestMagicLink', () => {
 
 describe('UsersController.verifyMagicLink', () => {
   const buildVerifyController = (overrides?: {
-    verifyMagicToken?: jest.Mock;
-    getUserById?: jest.Mock;
-    newJWTToken?: jest.Mock;
-    persistToken?: jest.Mock;
-    updateLastLoginAt?: jest.Mock;
-    markEmailVerified?: jest.Mock;
+    verifyMagicToken?: Mock;
+    getUserById?: Mock;
+    newJWTToken?: Mock;
+    persistToken?: Mock;
+    updateLastLoginAt?: Mock;
+    markEmailVerified?: Mock;
   }) => {
     const userService = {
       verifyMagicToken:
-        overrides?.verifyMagicToken ?? jest.fn().mockResolvedValue(null),
+        overrides?.verifyMagicToken ?? vi.fn().mockResolvedValue(null),
       getUserById:
         overrides?.getUserById ??
-        jest.fn().mockResolvedValue({ id: 1, email: 'al@example.com' }),
+        vi.fn().mockResolvedValue({ id: 1, email: 'al@example.com' }),
       updateLastLoginAt:
-        overrides?.updateLastLoginAt ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.updateLastLoginAt ?? vi.fn().mockResolvedValue(undefined),
       markEmailVerified:
-        overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
+        overrides?.markEmailVerified ?? vi.fn().mockResolvedValue(1),
     } as unknown as UsersService;
     const authService = {
       newJWTToken:
-        overrides?.newJWTToken ?? jest.fn().mockResolvedValue('jwt-token-abc'),
+        overrides?.newJWTToken ?? vi.fn().mockResolvedValue('jwt-token-abc'),
       persistToken:
-        overrides?.persistToken ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.persistToken ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -806,13 +815,13 @@ describe('UsersController.verifyMagicLink', () => {
   };
 
   const buildVerifyRes = () => {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
-    const cookie = jest.fn();
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    const cookie = vi.fn();
     return { json, status, cookie } as unknown as express.Response & {
-      json: jest.Mock;
-      status: jest.Mock;
-      cookie: jest.Mock;
+      json: Mock;
+      status: Mock;
+      cookie: Mock;
     };
   };
 
@@ -822,7 +831,7 @@ describe('UsersController.verifyMagicLink', () => {
       params: { token: 'bad-token' },
     } as unknown as express.Request;
     const res = buildVerifyRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.verifyMagicLink(req, res, next);
 
@@ -833,13 +842,13 @@ describe('UsersController.verifyMagicLink', () => {
   });
 
   it('sets a JWT cookie and returns the token for a login purpose', async () => {
-    const verifyMagicToken = jest
+    const verifyMagicToken = vi
       .fn()
       .mockResolvedValue({ userId: 5, purpose: 'login' });
-    const newJWTToken = jest.fn().mockResolvedValue('jwt-login-tok');
-    const persistToken = jest.fn().mockResolvedValue(undefined);
-    const updateLastLoginAt = jest.fn().mockResolvedValue(undefined);
-    const getUserById = jest
+    const newJWTToken = vi.fn().mockResolvedValue('jwt-login-tok');
+    const persistToken = vi.fn().mockResolvedValue(undefined);
+    const updateLastLoginAt = vi.fn().mockResolvedValue(undefined);
+    const getUserById = vi
       .fn()
       .mockResolvedValue({ id: 5, email: 'al@example.com' });
     const { controller } = buildVerifyController({
@@ -853,7 +862,7 @@ describe('UsersController.verifyMagicLink', () => {
       params: { token: 'valid-tok' },
     } as unknown as express.Request;
     const res = buildVerifyRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.verifyMagicLink(req, res, next);
 
@@ -873,23 +882,23 @@ describe('UsersController.verifyMagicLink', () => {
   });
 
   it('returns purpose and reset_token for a password_reset token', async () => {
-    const verifyMagicToken = jest
+    const verifyMagicToken = vi
       .fn()
       .mockResolvedValue({ userId: 8, purpose: 'password_reset' });
-    const getUserById = jest
+    const getUserById = vi
       .fn()
       .mockResolvedValue({ id: 8, email: 'reset@example.com' });
-    const updateResetToken = jest.fn().mockResolvedValue(undefined);
+    const updateResetToken = vi.fn().mockResolvedValue(undefined);
     const userService = {
       verifyMagicToken,
       getUserById,
       updateResetToken,
-      updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
-      markEmailVerified: jest.fn().mockResolvedValue(1),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
+      markEmailVerified: vi.fn().mockResolvedValue(1),
     } as unknown as UsersService;
     const authService = {
-      newJWTToken: jest.fn().mockResolvedValue('jwt-tok'),
-      persistToken: jest.fn().mockResolvedValue(undefined),
+      newJWTToken: vi.fn().mockResolvedValue('jwt-tok'),
+      persistToken: vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -900,7 +909,7 @@ describe('UsersController.verifyMagicLink', () => {
       params: { token: 'reset-tok' },
     } as unknown as express.Request;
     const res = buildVerifyRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.verifyMagicLink(req, res, next);
 
@@ -913,13 +922,13 @@ describe('UsersController.verifyMagicLink', () => {
   });
 
   it('marks email verified after a successful login magic link', async () => {
-    const verifyMagicToken = jest
+    const verifyMagicToken = vi
       .fn()
       .mockResolvedValue({ userId: 5, purpose: 'login' });
-    const getUserById = jest
+    const getUserById = vi
       .fn()
       .mockResolvedValue({ id: 5, email: 'al@example.com' });
-    const markEmailVerified = jest.fn().mockResolvedValue(1);
+    const markEmailVerified = vi.fn().mockResolvedValue(1);
     const { controller } = buildVerifyController({
       verifyMagicToken,
       getUserById,
@@ -929,7 +938,7 @@ describe('UsersController.verifyMagicLink', () => {
       params: { token: 'valid-tok' },
     } as unknown as express.Request;
     const res = buildVerifyRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.verifyMagicLink(req, res, next);
 
@@ -937,24 +946,24 @@ describe('UsersController.verifyMagicLink', () => {
   });
 
   it('marks email verified after a successful password_reset magic link', async () => {
-    const verifyMagicToken = jest
+    const verifyMagicToken = vi
       .fn()
       .mockResolvedValue({ userId: 8, purpose: 'password_reset' });
-    const getUserById = jest
+    const getUserById = vi
       .fn()
       .mockResolvedValue({ id: 8, email: 'reset@example.com' });
-    const markEmailVerified = jest.fn().mockResolvedValue(1);
-    const updateResetToken = jest.fn().mockResolvedValue(undefined);
+    const markEmailVerified = vi.fn().mockResolvedValue(1);
+    const updateResetToken = vi.fn().mockResolvedValue(undefined);
     const userService = {
       verifyMagicToken,
       getUserById,
       updateResetToken,
-      updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
       markEmailVerified,
     } as unknown as UsersService;
     const authService = {
-      newJWTToken: jest.fn().mockResolvedValue('jwt-tok'),
-      persistToken: jest.fn().mockResolvedValue(undefined),
+      newJWTToken: vi.fn().mockResolvedValue('jwt-tok'),
+      persistToken: vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -965,7 +974,7 @@ describe('UsersController.verifyMagicLink', () => {
       params: { token: 'reset-tok' },
     } as unknown as express.Request;
     const res = buildVerifyRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.verifyMagicLink(req, res, next);
 
@@ -973,23 +982,23 @@ describe('UsersController.verifyMagicLink', () => {
   });
 
   it('echoes a validated relative redirect for a login token', async () => {
-    const verifyMagicToken = jest
+    const verifyMagicToken = vi
       .fn()
       .mockResolvedValue({ userId: 5, purpose: 'login' });
-    const getUserById = jest
+    const getUserById = vi
       .fn()
       .mockResolvedValue({ id: 5, email: 'al@example.com' });
     const { controller } = buildVerifyController({
       verifyMagicToken,
       getUserById,
-      newJWTToken: jest.fn().mockResolvedValue('jwt-login-tok'),
+      newJWTToken: vi.fn().mockResolvedValue('jwt-login-tok'),
     });
     const req = {
       params: { token: 'valid-tok' },
       query: { redirect: '/upload' },
     } as unknown as express.Request;
     const res = buildVerifyRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.verifyMagicLink(req, res, next);
 
@@ -1002,23 +1011,23 @@ describe('UsersController.verifyMagicLink', () => {
   it.each(['https://evil.example', '//evil.example', '/\\evil'])(
     'drops the unsafe redirect %s and returns only the token',
     async (unsafe) => {
-      const verifyMagicToken = jest
+      const verifyMagicToken = vi
         .fn()
         .mockResolvedValue({ userId: 5, purpose: 'login' });
-      const getUserById = jest
+      const getUserById = vi
         .fn()
         .mockResolvedValue({ id: 5, email: 'al@example.com' });
       const { controller } = buildVerifyController({
         verifyMagicToken,
         getUserById,
-        newJWTToken: jest.fn().mockResolvedValue('jwt-login-tok'),
+        newJWTToken: vi.fn().mockResolvedValue('jwt-login-tok'),
       });
       const req = {
         params: { token: 'valid-tok' },
         query: { redirect: unsafe },
       } as unknown as express.Request;
       const res = buildVerifyRes();
-      const next = jest.fn();
+      const next = vi.fn();
 
       await controller.verifyMagicLink(req, res, next);
 
@@ -1029,40 +1038,40 @@ describe('UsersController.verifyMagicLink', () => {
 
 describe('UsersController.loginWithGoogle', () => {
   const buildGoogleController = (overrides?: {
-    getUserFrom?: jest.Mock;
-    registerVerifiedIdentity?: jest.Mock;
-    markEmailVerified?: jest.Mock;
-    newJWTToken?: jest.Mock;
-    persistToken?: jest.Mock;
-    updateLastLoginAt?: jest.Mock;
-    loginWithGoogle?: jest.Mock;
+    getUserFrom?: Mock;
+    registerVerifiedIdentity?: Mock;
+    markEmailVerified?: Mock;
+    newJWTToken?: Mock;
+    persistToken?: Mock;
+    updateLastLoginAt?: Mock;
+    loginWithGoogle?: Mock;
   }) => {
     const mockUser = { id: 7, email: 'g@example.com' };
     const userService = {
       getUserFrom:
         overrides?.getUserFrom ??
-        jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
+        vi.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
       registerVerifiedIdentity:
         overrides?.registerVerifiedIdentity ??
-        jest.fn().mockResolvedValue([{ id: 7 }]),
+        vi.fn().mockResolvedValue([{ id: 7 }]),
       markEmailVerified:
-        overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
+        overrides?.markEmailVerified ?? vi.fn().mockResolvedValue(1),
       updateLastLoginAt:
-        overrides?.updateLastLoginAt ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.updateLastLoginAt ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {
       loginWithGoogle:
         overrides?.loginWithGoogle ??
-        jest.fn().mockResolvedValue({
+        vi.fn().mockResolvedValue({
           ok: true,
           email: 'g@example.com',
           name: 'Google User',
         }),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
       newJWTToken:
-        overrides?.newJWTToken ?? jest.fn().mockResolvedValue('google-jwt'),
+        overrides?.newJWTToken ?? vi.fn().mockResolvedValue('google-jwt'),
       persistToken:
-        overrides?.persistToken ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.persistToken ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -1073,18 +1082,18 @@ describe('UsersController.loginWithGoogle', () => {
   };
 
   const buildGoogleRes = () => {
-    const redirect = jest.fn();
-    const cookie = jest.fn();
-    const status = jest.fn().mockReturnThis();
+    const redirect = vi.fn();
+    const cookie = vi.fn();
+    const status = vi.fn().mockReturnThis();
     return { redirect, cookie, status } as unknown as express.Response & {
-      redirect: jest.Mock;
-      cookie: jest.Mock;
-      status: jest.Mock;
+      redirect: Mock;
+      cookie: Mock;
+      status: Mock;
     };
   };
 
   it("registers new Google users with signup_origin set to 'google'", async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 7 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 7 }]);
     const { controller } = buildGoogleController({
       registerVerifiedIdentity: register,
     });
@@ -1108,8 +1117,8 @@ describe('UsersController.loginWithGoogle', () => {
 
   it('does not call register for an existing Google user', async () => {
     const existingUser = { id: 9, email: 'existing@example.com' };
-    const getUserFrom = jest.fn().mockResolvedValue(existingUser);
-    const register = jest.fn();
+    const getUserFrom = vi.fn().mockResolvedValue(existingUser);
+    const register = vi.fn();
     const { controller } = buildGoogleController({
       getUserFrom,
       registerVerifiedIdentity: register,
@@ -1128,7 +1137,7 @@ describe('UsersController.loginWithGoogle', () => {
 
   it('records a Google sign-in onto an existing unverified account', async () => {
     trackMock.mockClear();
-    const getUserFrom = jest.fn().mockResolvedValue({
+    const getUserFrom = vi.fn().mockResolvedValue({
       id: 9,
       email: 'existing@example.com',
       email_verified: false,
@@ -1168,7 +1177,7 @@ describe('UsersController.loginWithGoogle', () => {
   });
 
   it('redirects with error=google_signin_failed when the token exchange fails', async () => {
-    const loginWithGoogle = jest.fn().mockResolvedValue({
+    const loginWithGoogle = vi.fn().mockResolvedValue({
       ok: false,
       reason: 'token_exchange_failed',
       message: 'Error: invalid_grant',
@@ -1205,64 +1214,63 @@ describe('UsersController.loginWithGoogle', () => {
   });
 });
 
-jest.mock('../data_layer/OauthIdentitiesRepository');
-jest.mock('../data_layer/NotionRespository');
+vi.mock('../data_layer/OauthIdentitiesRepository');
+vi.mock('../data_layer/NotionRespository');
 
 describe('UsersController.loginWithMicrosoft', () => {
-  const MockedOauthIdentitiesRepo =
-    OauthIdentitiesRepository as jest.MockedClass<
-      typeof OauthIdentitiesRepository
-    >;
+  const MockedOauthIdentitiesRepo = OauthIdentitiesRepository as MockedClass<
+    typeof OauthIdentitiesRepository
+  >;
 
   beforeEach(() => {
     MockedOauthIdentitiesRepo.mockClear();
-    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = jest
+    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
       .fn()
       .mockResolvedValue(null);
-    MockedOauthIdentitiesRepo.prototype.link = jest
+    MockedOauthIdentitiesRepo.prototype.link = vi
       .fn()
       .mockResolvedValue(undefined);
   });
 
   const buildMicrosoftController = (overrides?: {
-    getUserFrom?: jest.Mock;
-    getUserById?: jest.Mock;
-    registerVerifiedIdentity?: jest.Mock;
-    markEmailVerified?: jest.Mock;
-    newJWTToken?: jest.Mock;
-    persistToken?: jest.Mock;
-    updateLastLoginAt?: jest.Mock;
-    loginWithMicrosoft?: jest.Mock;
+    getUserFrom?: Mock;
+    getUserById?: Mock;
+    registerVerifiedIdentity?: Mock;
+    markEmailVerified?: Mock;
+    newJWTToken?: Mock;
+    persistToken?: Mock;
+    updateLastLoginAt?: Mock;
+    loginWithMicrosoft?: Mock;
   }) => {
     const mockUser = { id: 11, email: 'm@example.com' };
     const userService = {
       getUserFrom:
         overrides?.getUserFrom ??
-        jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
+        vi.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
       getUserById:
-        overrides?.getUserById ?? jest.fn().mockResolvedValue(mockUser),
+        overrides?.getUserById ?? vi.fn().mockResolvedValue(mockUser),
       registerVerifiedIdentity:
         overrides?.registerVerifiedIdentity ??
-        jest.fn().mockResolvedValue([{ id: 11 }]),
+        vi.fn().mockResolvedValue([{ id: 11 }]),
       markEmailVerified:
-        overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
+        overrides?.markEmailVerified ?? vi.fn().mockResolvedValue(1),
       updateLastLoginAt:
-        overrides?.updateLastLoginAt ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.updateLastLoginAt ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {
       loginWithMicrosoft:
         overrides?.loginWithMicrosoft ??
-        jest.fn().mockResolvedValue({
+        vi.fn().mockResolvedValue({
           subject: 'ms-sub-001',
           email: 'm@example.com',
           name: 'Microsoft User',
           emailVerified: true,
         }),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
       newJWTToken:
-        overrides?.newJWTToken ?? jest.fn().mockResolvedValue('microsoft-jwt'),
+        overrides?.newJWTToken ?? vi.fn().mockResolvedValue('microsoft-jwt'),
       persistToken:
-        overrides?.persistToken ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.persistToken ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -1273,13 +1281,13 @@ describe('UsersController.loginWithMicrosoft', () => {
   };
 
   const buildMicrosoftRes = () => {
-    const redirect = jest.fn();
-    const cookie = jest.fn();
-    const status = jest.fn().mockReturnThis();
+    const redirect = vi.fn();
+    const cookie = vi.fn();
+    const status = vi.fn().mockReturnThis();
     return { redirect, cookie, status } as unknown as express.Response & {
-      redirect: jest.Mock;
-      cookie: jest.Mock;
-      status: jest.Mock;
+      redirect: Mock;
+      cookie: Mock;
+      status: Mock;
     };
   };
 
@@ -1291,7 +1299,7 @@ describe('UsersController.loginWithMicrosoft', () => {
     }) as unknown as express.Request;
 
   it("creates a new user, links the identity, and stamps signup_origin='microsoft' when the verified email has no existing account", async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 11 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 11 }]);
     const { controller } = buildMicrosoftController({
       registerVerifiedIdentity: register,
     });
@@ -1313,15 +1321,15 @@ describe('UsersController.loginWithMicrosoft', () => {
   });
 
   it('signs in via subject lookup without calling register or re-linking when the identity already exists', async () => {
-    const register = jest.fn();
-    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = jest
+    const register = vi.fn();
+    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
       .fn()
       .mockResolvedValue({
         user_id: 42,
         provider: 'microsoft',
         subject: 'ms-sub-001',
       });
-    const getUserById = jest
+    const getUserById = vi
       .fn()
       .mockResolvedValue({ id: 42, email: 'returner@outlook.com' });
 
@@ -1339,8 +1347,8 @@ describe('UsersController.loginWithMicrosoft', () => {
 
   it('links the identity to the existing user when verified email matches but no identity row exists yet', async () => {
     const existingUser = { id: 13, email: 'existing@outlook.com' };
-    const getUserFrom = jest.fn().mockResolvedValue(existingUser);
-    const register = jest.fn();
+    const getUserFrom = vi.fn().mockResolvedValue(existingUser);
+    const register = vi.fn();
 
     const { controller } = buildMicrosoftController({
       getUserFrom,
@@ -1362,13 +1370,13 @@ describe('UsersController.loginWithMicrosoft', () => {
       string,
       () => Parameters<typeof buildMicrosoftController>[0],
       string | null,
-      (register: jest.Mock) => void,
+      (register: Mock) => void,
     ]
   > = [
     [
       'the email is not verified',
       () => ({
-        loginWithMicrosoft: jest.fn().mockResolvedValue({
+        loginWithMicrosoft: vi.fn().mockResolvedValue({
           subject: 'ms-sub-002',
           email: 'unverified@example.com',
           name: 'Unverified',
@@ -1384,7 +1392,7 @@ describe('UsersController.loginWithMicrosoft', () => {
     [
       'the email claim is missing and no identity exists',
       () => ({
-        loginWithMicrosoft: jest.fn().mockResolvedValue({
+        loginWithMicrosoft: vi.fn().mockResolvedValue({
           subject: 'ms-sub-003',
           email: undefined,
           name: 'No Email',
@@ -1399,7 +1407,7 @@ describe('UsersController.loginWithMicrosoft', () => {
     ['the OAuth code is missing', () => undefined, null, () => {}],
     [
       'the token exchange fails',
-      () => ({ loginWithMicrosoft: jest.fn().mockResolvedValue(undefined) }),
+      () => ({ loginWithMicrosoft: vi.fn().mockResolvedValue(undefined) }),
       'bad-code',
       () => {},
     ],
@@ -1408,7 +1416,7 @@ describe('UsersController.loginWithMicrosoft', () => {
   it.each(microsoftRedirectCases)(
     'redirects to /login when %s',
     async (_label, makeOverrides, code, assertExtra) => {
-      const register = jest.fn();
+      const register = vi.fn();
       const { controller } = buildMicrosoftController({
         ...makeOverrides(),
         registerVerifiedIdentity: register,
@@ -1426,63 +1434,62 @@ describe('UsersController.loginWithMicrosoft', () => {
 });
 
 describe('UsersController.loginWithApple', () => {
-  const MockedOauthIdentitiesRepo =
-    OauthIdentitiesRepository as jest.MockedClass<
-      typeof OauthIdentitiesRepository
-    >;
+  const MockedOauthIdentitiesRepo = OauthIdentitiesRepository as MockedClass<
+    typeof OauthIdentitiesRepository
+  >;
 
   beforeEach(() => {
     MockedOauthIdentitiesRepo.mockClear();
-    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = jest
+    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
       .fn()
       .mockResolvedValue(null);
-    MockedOauthIdentitiesRepo.prototype.link = jest
+    MockedOauthIdentitiesRepo.prototype.link = vi
       .fn()
       .mockResolvedValue(undefined);
-    MockedOauthIdentitiesRepo.prototype.updateRefreshToken = jest
+    MockedOauthIdentitiesRepo.prototype.updateRefreshToken = vi
       .fn()
       .mockResolvedValue(undefined);
   });
 
   const buildAppleController = (overrides?: {
-    getUserFrom?: jest.Mock;
-    getUserById?: jest.Mock;
-    registerVerifiedIdentity?: jest.Mock;
-    markEmailVerified?: jest.Mock;
-    newJWTToken?: jest.Mock;
-    persistToken?: jest.Mock;
-    updateLastLoginAt?: jest.Mock;
-    loginWithApple?: jest.Mock;
+    getUserFrom?: Mock;
+    getUserById?: Mock;
+    registerVerifiedIdentity?: Mock;
+    markEmailVerified?: Mock;
+    newJWTToken?: Mock;
+    persistToken?: Mock;
+    updateLastLoginAt?: Mock;
+    loginWithApple?: Mock;
   }) => {
     const mockUser = { id: 20, email: 'apple@example.com' };
     const userService = {
       getUserFrom:
         overrides?.getUserFrom ??
-        jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
+        vi.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
       getUserById:
-        overrides?.getUserById ?? jest.fn().mockResolvedValue(mockUser),
+        overrides?.getUserById ?? vi.fn().mockResolvedValue(mockUser),
       registerVerifiedIdentity:
         overrides?.registerVerifiedIdentity ??
-        jest.fn().mockResolvedValue([{ id: 20 }]),
+        vi.fn().mockResolvedValue([{ id: 20 }]),
       markEmailVerified:
-        overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
+        overrides?.markEmailVerified ?? vi.fn().mockResolvedValue(1),
       updateLastLoginAt:
-        overrides?.updateLastLoginAt ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.updateLastLoginAt ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {
       loginWithApple:
         overrides?.loginWithApple ??
-        jest.fn().mockResolvedValue({
+        vi.fn().mockResolvedValue({
           ok: true,
           subject: 'apple-sub-001',
           email: 'apple@example.com',
           emailVerified: true,
         }),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
       newJWTToken:
-        overrides?.newJWTToken ?? jest.fn().mockResolvedValue('apple-jwt'),
+        overrides?.newJWTToken ?? vi.fn().mockResolvedValue('apple-jwt'),
       persistToken:
-        overrides?.persistToken ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.persistToken ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -1493,20 +1500,20 @@ describe('UsersController.loginWithApple', () => {
   };
 
   const buildAppleRes = () => {
-    const redirect = jest.fn();
-    const cookie = jest.fn();
-    const clearCookie = jest.fn();
-    const status = jest.fn().mockReturnThis();
+    const redirect = vi.fn();
+    const cookie = vi.fn();
+    const clearCookie = vi.fn();
+    const status = vi.fn().mockReturnThis();
     return {
       redirect,
       cookie,
       clearCookie,
       status,
     } as unknown as express.Response & {
-      redirect: jest.Mock;
-      cookie: jest.Mock;
-      clearCookie: jest.Mock;
-      status: jest.Mock;
+      redirect: Mock;
+      cookie: Mock;
+      clearCookie: Mock;
+      status: Mock;
     };
   };
 
@@ -1533,7 +1540,7 @@ describe('UsersController.loginWithApple', () => {
   };
 
   it("creates a new user, links the identity, and stamps signup_origin='apple' when the email has no existing account", async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 20 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 20 }]);
     const { controller } = buildAppleController({
       registerVerifiedIdentity: register,
     });
@@ -1556,8 +1563,8 @@ describe('UsersController.loginWithApple', () => {
   });
 
   it('stores the Apple refresh token on the linked identity when present', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 20 }]);
-    const loginWithApple = jest.fn().mockResolvedValue({
+    const register = vi.fn().mockResolvedValue([{ id: 20 }]);
+    const loginWithApple = vi.fn().mockResolvedValue({
       ok: true,
       subject: 'apple-sub-001',
       email: 'apple@example.com',
@@ -1580,20 +1587,20 @@ describe('UsersController.loginWithApple', () => {
   });
 
   it('refreshes the stored token when the identity already exists', async () => {
-    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = jest
+    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
       .fn()
       .mockResolvedValue({
         user_id: 20,
         provider: 'apple',
         subject: 'apple-sub-001',
       });
-    MockedOauthIdentitiesRepo.prototype.updateRefreshToken = jest
+    MockedOauthIdentitiesRepo.prototype.updateRefreshToken = vi
       .fn()
       .mockResolvedValue(undefined);
-    const getUserById = jest
+    const getUserById = vi
       .fn()
       .mockResolvedValue({ id: 20, email: 'apple@example.com' });
-    const loginWithApple = jest.fn().mockResolvedValue({
+    const loginWithApple = vi.fn().mockResolvedValue({
       ok: true,
       subject: 'apple-sub-001',
       email: 'apple@example.com',
@@ -1614,15 +1621,15 @@ describe('UsersController.loginWithApple', () => {
   });
 
   it('signs in via subject lookup without calling register when the identity already exists', async () => {
-    const register = jest.fn();
-    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = jest
+    const register = vi.fn();
+    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
       .fn()
       .mockResolvedValue({
         user_id: 20,
         provider: 'apple',
         subject: 'apple-sub-001',
       });
-    const getUserById = jest
+    const getUserById = vi
       .fn()
       .mockResolvedValue({ id: 20, email: 'apple@example.com' });
 
@@ -1640,8 +1647,8 @@ describe('UsersController.loginWithApple', () => {
 
   it('links the identity to the existing user when email matches but no identity row exists yet', async () => {
     const existingUser = { id: 21, email: 'existing@example.com' };
-    const getUserFrom = jest.fn().mockResolvedValue(existingUser);
-    const register = jest.fn();
+    const getUserFrom = vi.fn().mockResolvedValue(existingUser);
+    const register = vi.fn();
 
     const { controller } = buildAppleController({
       getUserFrom,
@@ -1676,7 +1683,7 @@ describe('UsersController.loginWithApple', () => {
     [
       'the token exchange fails',
       () => ({
-        loginWithApple: jest.fn().mockResolvedValue({
+        loginWithApple: vi.fn().mockResolvedValue({
           ok: false,
           reason: 'token_exchange_failed',
           message: 'HTTP 400 invalid_grant',
@@ -1687,7 +1694,7 @@ describe('UsersController.loginWithApple', () => {
     [
       'email is missing and no identity exists',
       () => ({
-        loginWithApple: jest.fn().mockResolvedValue({
+        loginWithApple: vi.fn().mockResolvedValue({
           ok: true,
           subject: 'apple-sub-noemail',
           email: undefined,
@@ -1712,40 +1719,39 @@ describe('UsersController.loginWithApple', () => {
 });
 
 describe('UsersController.deleteAccount — Apple token revocation', () => {
-  const MockedOauthIdentitiesRepo =
-    OauthIdentitiesRepository as jest.MockedClass<
-      typeof OauthIdentitiesRepository
-    >;
+  const MockedOauthIdentitiesRepo = OauthIdentitiesRepository as MockedClass<
+    typeof OauthIdentitiesRepository
+  >;
   const SubscriptionServiceMock = SubscriptionService as unknown as {
-    cancelUserSubscriptions: jest.Mock;
+    cancelUserSubscriptions: Mock;
   };
 
   beforeEach(() => {
     MockedOauthIdentitiesRepo.mockClear();
-    SubscriptionServiceMock.cancelUserSubscriptions = jest
+    SubscriptionServiceMock.cancelUserSubscriptions = vi
       .fn()
       .mockResolvedValue(undefined);
   });
 
   const buildDeleteController = (overrides?: {
     refreshToken?: string | null;
-    revokeAppleToken?: jest.Mock;
-    deleteUser?: jest.Mock;
+    revokeAppleToken?: Mock;
+    deleteUser?: Mock;
   }) => {
-    MockedOauthIdentitiesRepo.prototype.findRefreshTokenByUserAndProvider = jest
+    MockedOauthIdentitiesRepo.prototype.findRefreshTokenByUserAndProvider = vi
       .fn()
       .mockResolvedValue(overrides?.refreshToken ?? null);
     const deleteUser =
-      overrides?.deleteUser ?? jest.fn().mockResolvedValue(undefined);
+      overrides?.deleteUser ?? vi.fn().mockResolvedValue(undefined);
     const userService = {
-      getUserById: jest
+      getUserById: vi
         .fn()
         .mockResolvedValue({ id: 42, email: 'apple@example.com' }),
       deleteUser,
     } as unknown as UsersService;
     const authService = {
       revokeAppleToken:
-        overrides?.revokeAppleToken ?? jest.fn().mockResolvedValue(true),
+        overrides?.revokeAppleToken ?? vi.fn().mockResolvedValue(true),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -1764,17 +1770,17 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
     }) as unknown as express.Request;
 
   const buildDeleteRes = () => {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
     return { json, status } as unknown as express.Response & {
-      json: jest.Mock;
-      status: jest.Mock;
+      json: Mock;
+      status: Mock;
     };
   };
 
   it('revokes the stored Apple refresh token before deleting the user', async () => {
-    const revokeAppleToken = jest.fn().mockResolvedValue(true);
-    const deleteUser = jest.fn().mockResolvedValue(undefined);
+    const revokeAppleToken = vi.fn().mockResolvedValue(true);
+    const deleteUser = vi.fn().mockResolvedValue(undefined);
     const { controller } = buildDeleteController({
       refreshToken: 'apple-refresh-del',
       revokeAppleToken,
@@ -1797,8 +1803,8 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
   });
 
   it('completes deletion without revoking when no Apple identity token exists', async () => {
-    const revokeAppleToken = jest.fn();
-    const deleteUser = jest.fn().mockResolvedValue(undefined);
+    const revokeAppleToken = vi.fn();
+    const deleteUser = vi.fn().mockResolvedValue(undefined);
     const { controller } = buildDeleteController({
       refreshToken: null,
       revokeAppleToken,
@@ -1819,10 +1825,10 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
   });
 
   it('still deletes the account when Apple revocation throws', async () => {
-    const revokeAppleToken = jest
+    const revokeAppleToken = vi
       .fn()
       .mockRejectedValue(new Error('apple revoke down'));
-    const deleteUser = jest.fn().mockResolvedValue(undefined);
+    const deleteUser = vi.fn().mockResolvedValue(undefined);
     const { controller } = buildDeleteController({
       refreshToken: 'apple-refresh-del',
       revokeAppleToken,
@@ -1842,10 +1848,10 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
   });
 
   it('aborts the deletion with 502 when the subscription cancel fails', async () => {
-    SubscriptionServiceMock.cancelUserSubscriptions = jest
+    SubscriptionServiceMock.cancelUserSubscriptions = vi
       .fn()
       .mockRejectedValue(new Error('stripe down'));
-    const deleteUser = jest.fn().mockResolvedValue(undefined);
+    const deleteUser = vi.fn().mockResolvedValue(undefined);
     const { controller } = buildDeleteController({ deleteUser });
     const res = buildDeleteRes();
 
@@ -1862,35 +1868,33 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
 });
 
 describe('UsersController.login — Notion-aware redirect', () => {
-  const MockedNotionRepo = NotionRepository as jest.MockedClass<
+  const MockedNotionRepo = NotionRepository as MockedClass<
     typeof NotionRepository
   >;
 
   beforeEach(() => {
     MockedNotionRepo.mockClear();
-    MockedNotionRepo.prototype.getNotionData = jest
-      .fn()
-      .mockResolvedValue(null);
+    MockedNotionRepo.prototype.getNotionData = vi.fn().mockResolvedValue(null);
   });
 
   const buildLoginController = (overrides?: {
-    comparePassword?: jest.Mock;
-    newJWTToken?: jest.Mock;
-    persistToken?: jest.Mock;
+    comparePassword?: Mock;
+    newJWTToken?: Mock;
+    persistToken?: Mock;
   }) => {
     const mockUser = { id: 5, email: 'u@example.com', pw: 'mock' };
     const userService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
-      updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {
-      isValidLogin: jest.fn().mockReturnValue(true),
+      isValidLogin: vi.fn().mockReturnValue(true),
       comparePassword:
-        overrides?.comparePassword ?? jest.fn().mockReturnValue(true),
+        overrides?.comparePassword ?? vi.fn().mockReturnValue(true),
       newJWTToken:
-        overrides?.newJWTToken ?? jest.fn().mockResolvedValue('login-jwt'),
+        overrides?.newJWTToken ?? vi.fn().mockResolvedValue('login-jwt'),
       persistToken:
-        overrides?.persistToken ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.persistToken ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -1901,27 +1905,25 @@ describe('UsersController.login — Notion-aware redirect', () => {
   };
 
   const buildLoginRes = () => {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
-    const cookie = jest.fn();
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    const cookie = vi.fn();
     return { json, status, cookie } as unknown as express.Response & {
-      json: jest.Mock;
-      status: jest.Mock;
-      cookie: jest.Mock;
+      json: Mock;
+      status: Mock;
+      cookie: Mock;
     };
   };
 
   it('redirects to /upload when user has no Notion token and no redirect param', async () => {
-    MockedNotionRepo.prototype.getNotionData = jest
-      .fn()
-      .mockResolvedValue(null);
+    MockedNotionRepo.prototype.getNotionData = vi.fn().mockResolvedValue(null);
     const { controller } = buildLoginController();
     const req = {
       body: { email: 'u@example.com', credentials: 'mock' },
       query: {},
     } as unknown as express.Request;
     const res = buildLoginRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.login(req, res, next);
 
@@ -1931,7 +1933,7 @@ describe('UsersController.login — Notion-aware redirect', () => {
   });
 
   it('redirects to /notion when user has a Notion token and no redirect param', async () => {
-    MockedNotionRepo.prototype.getNotionData = jest
+    MockedNotionRepo.prototype.getNotionData = vi
       .fn()
       .mockResolvedValue({ token: 'stored-tok', owner: 5 });
     const { controller } = buildLoginController();
@@ -1940,7 +1942,7 @@ describe('UsersController.login — Notion-aware redirect', () => {
       query: {},
     } as unknown as express.Request;
     const res = buildLoginRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.login(req, res, next);
 
@@ -1950,7 +1952,7 @@ describe('UsersController.login — Notion-aware redirect', () => {
   });
 
   it('respects explicit ?redirect= param even for Notion users', async () => {
-    MockedNotionRepo.prototype.getNotionData = jest
+    MockedNotionRepo.prototype.getNotionData = vi
       .fn()
       .mockResolvedValue({ token: 'stored-tok', owner: 5 });
     const { controller } = buildLoginController();
@@ -1959,7 +1961,7 @@ describe('UsersController.login — Notion-aware redirect', () => {
       query: { redirect: '/downloads' },
     } as unknown as express.Request;
     const res = buildLoginRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.login(req, res, next);
 
@@ -1974,19 +1976,19 @@ describe('UsersController.loginWithNotion — error recording', () => {
     loginWithNotionResult: Record<string, unknown> | null,
     getUserFromResult: Record<string, unknown> | null = null
   ) => {
-    const recordExecute = jest.fn().mockResolvedValue(undefined);
+    const recordExecute = vi.fn().mockResolvedValue(undefined);
     const recordError = { execute: recordExecute };
 
     const authService = {
-      loginWithNotion: jest.fn().mockResolvedValue(loginWithNotionResult),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
-      newJWTToken: jest.fn().mockResolvedValue(null),
-      persistToken: jest.fn().mockResolvedValue(undefined),
+      loginWithNotion: vi.fn().mockResolvedValue(loginWithNotionResult),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
+      newJWTToken: vi.fn().mockResolvedValue(null),
+      persistToken: vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const userService = {
-      getUserFrom: jest.fn().mockResolvedValue(getUserFromResult),
-      registerVerifiedIdentity: jest.fn().mockResolvedValue(undefined),
-      updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
+      getUserFrom: vi.fn().mockResolvedValue(getUserFromResult),
+      registerVerifiedIdentity: vi.fn().mockResolvedValue(undefined),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const controller = new UsersController(
       userService,
@@ -1998,11 +2000,11 @@ describe('UsersController.loginWithNotion — error recording', () => {
   };
 
   const buildRedirectRes = () => {
-    const redirect = jest.fn();
-    const status = jest.fn().mockReturnValue({ send: jest.fn() });
+    const redirect = vi.fn();
+    const status = vi.fn().mockReturnValue({ send: vi.fn() });
     return { redirect, status } as unknown as express.Response & {
-      redirect: jest.Mock;
-      status: jest.Mock;
+      redirect: Mock;
+      status: Mock;
     };
   };
 
@@ -2063,20 +2065,20 @@ describe('UsersController.loginWithGoogle — error recording', () => {
     loginWithGoogleResult: Record<string, unknown> | null,
     getUserFromResult: Record<string, unknown> | null = null
   ) => {
-    const recordExecute = jest.fn().mockResolvedValue(undefined);
+    const recordExecute = vi.fn().mockResolvedValue(undefined);
     const recordError = { execute: recordExecute };
 
     const authService = {
-      loginWithGoogle: jest.fn().mockResolvedValue(loginWithGoogleResult),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
-      newJWTToken: jest.fn().mockResolvedValue(null),
-      persistToken: jest.fn().mockResolvedValue(undefined),
+      loginWithGoogle: vi.fn().mockResolvedValue(loginWithGoogleResult),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
+      newJWTToken: vi.fn().mockResolvedValue(null),
+      persistToken: vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const userService = {
-      getUserFrom: jest.fn().mockResolvedValue(getUserFromResult),
-      registerVerifiedIdentity: jest.fn().mockResolvedValue(undefined),
-      updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
-      markEmailVerified: jest.fn().mockResolvedValue(undefined),
+      getUserFrom: vi.fn().mockResolvedValue(getUserFromResult),
+      registerVerifiedIdentity: vi.fn().mockResolvedValue(undefined),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
+      markEmailVerified: vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const controller = new UsersController(
       userService,
@@ -2088,11 +2090,11 @@ describe('UsersController.loginWithGoogle — error recording', () => {
   };
 
   const buildRedirectRes = () => {
-    const redirect = jest.fn();
-    const status = jest.fn().mockReturnValue({ send: jest.fn() });
+    const redirect = vi.fn();
+    const status = vi.fn().mockReturnValue({ send: vi.fn() });
     return { redirect, status } as unknown as express.Response & {
-      redirect: jest.Mock;
-      status: jest.Mock;
+      redirect: Mock;
+      status: Mock;
     };
   };
 
@@ -2192,7 +2194,7 @@ describe('UsersController.loginWithGoogle — error recording', () => {
 
 describe('UsersController.loginWithNotion', () => {
   const buildNotionDb = () => {
-    const chainable: Record<string, jest.Mock> = {};
+    const chainable: Record<string, Mock> = {};
     const methods = [
       'insert',
       'where',
@@ -2203,51 +2205,51 @@ describe('UsersController.loginWithNotion', () => {
       'merge',
     ];
     for (const m of methods) {
-      chainable[m] = jest.fn().mockReturnValue(Promise.resolve([1]));
+      chainable[m] = vi.fn().mockReturnValue(Promise.resolve([1]));
     }
     for (const m of ['where', 'whereNull', 'onConflict']) {
-      chainable[m] = jest.fn().mockReturnValue(chainable);
+      chainable[m] = vi.fn().mockReturnValue(chainable);
     }
-    chainable['insert'] = jest.fn().mockReturnValue(chainable);
-    chainable['merge'] = jest.fn().mockResolvedValue([1]);
-    const mockDb = jest.fn().mockReturnValue(chainable);
+    chainable['insert'] = vi.fn().mockReturnValue(chainable);
+    chainable['merge'] = vi.fn().mockResolvedValue([1]);
+    const mockDb = vi.fn().mockReturnValue(chainable);
     return mockDb as unknown as ReturnType<
       typeof import('../data_layer').getDatabase
     >;
   };
 
   const buildNotionController = (overrides?: {
-    getUserFrom?: jest.Mock;
-    registerVerifiedIdentity?: jest.Mock;
-    newJWTToken?: jest.Mock;
-    persistToken?: jest.Mock;
-    updateLastLoginAt?: jest.Mock;
-    loginWithNotion?: jest.Mock;
+    getUserFrom?: Mock;
+    registerVerifiedIdentity?: Mock;
+    newJWTToken?: Mock;
+    persistToken?: Mock;
+    updateLastLoginAt?: Mock;
+    loginWithNotion?: Mock;
   }) => {
     const mockUser = { id: 11, email: 'n@example.com' };
     const userService = {
       getUserFrom:
         overrides?.getUserFrom ??
-        jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
+        vi.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
       registerVerifiedIdentity:
         overrides?.registerVerifiedIdentity ??
-        jest.fn().mockResolvedValue([{ id: 11 }]),
+        vi.fn().mockResolvedValue([{ id: 11 }]),
       updateLastLoginAt:
-        overrides?.updateLastLoginAt ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.updateLastLoginAt ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {
       loginWithNotion:
         overrides?.loginWithNotion ??
-        jest.fn().mockResolvedValue({
+        vi.fn().mockResolvedValue({
           email: 'n@example.com',
           name: 'Notion User',
           accessData: {},
         }),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
       newJWTToken:
-        overrides?.newJWTToken ?? jest.fn().mockResolvedValue('notion-jwt'),
+        overrides?.newJWTToken ?? vi.fn().mockResolvedValue('notion-jwt'),
       persistToken:
-        overrides?.persistToken ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.persistToken ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2258,18 +2260,18 @@ describe('UsersController.loginWithNotion', () => {
   };
 
   const buildNotionRes = () => {
-    const redirect = jest.fn();
-    const cookie = jest.fn();
-    const status = jest.fn().mockReturnThis();
+    const redirect = vi.fn();
+    const cookie = vi.fn();
+    const status = vi.fn().mockReturnThis();
     return { redirect, cookie, status } as unknown as express.Response & {
-      redirect: jest.Mock;
-      cookie: jest.Mock;
-      status: jest.Mock;
+      redirect: Mock;
+      cookie: Mock;
+      status: Mock;
     };
   };
 
   it("registers new Notion users with signup_origin set to 'notion_oauth'", async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 11 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 11 }]);
     const { controller } = buildNotionController({
       registerVerifiedIdentity: register,
     });
@@ -2293,8 +2295,8 @@ describe('UsersController.loginWithNotion', () => {
 
   it('does not call register for an existing Notion user', async () => {
     const existingUser = { id: 12, email: 'existing@example.com' };
-    const getUserFrom = jest.fn().mockResolvedValue(existingUser);
-    const register = jest.fn();
+    const getUserFrom = vi.fn().mockResolvedValue(existingUser);
+    const register = vi.fn();
     const { controller } = buildNotionController({
       getUserFrom,
       registerVerifiedIdentity: register,
@@ -2320,22 +2322,20 @@ describe('UsersController cookie options — 30-day persistent session', () => {
   };
 
   it('sets maxAge, httpOnly, and sameSite on the token cookie during email/password login', async () => {
-    const MockedNotionRepo = NotionRepository as jest.MockedClass<
+    const MockedNotionRepo = NotionRepository as MockedClass<
       typeof NotionRepository
     >;
-    MockedNotionRepo.prototype.getNotionData = jest
-      .fn()
-      .mockResolvedValue(null);
+    MockedNotionRepo.prototype.getNotionData = vi.fn().mockResolvedValue(null);
     const mockUser = { id: 5, email: 'u@example.com', pw: '$2b$10$hash' };
     const userService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
-      updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {
-      isValidLogin: jest.fn().mockReturnValue(true),
-      comparePassword: jest.fn().mockReturnValue(true),
-      newJWTToken: jest.fn().mockResolvedValue('login-jwt'),
-      persistToken: jest.fn().mockResolvedValue(undefined),
+      isValidLogin: vi.fn().mockReturnValue(true),
+      comparePassword: vi.fn().mockReturnValue(true),
+      newJWTToken: vi.fn().mockResolvedValue('login-jwt'),
+      persistToken: vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2347,7 +2347,7 @@ describe('UsersController cookie options — 30-day persistent session', () => {
       query: {},
     } as unknown as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.login(req, res, next);
 
@@ -2359,15 +2359,15 @@ describe('UsersController cookie options — 30-day persistent session', () => {
   });
 
   it('sets maxAge, httpOnly, and sameSite on the token cookie during registration', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 1 }]);
-    const newJWTToken = jest.fn().mockResolvedValue('register-jwt');
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
+    const newJWTToken = vi.fn().mockResolvedValue('register-jwt');
     const { controller } = buildController({ register, newJWTToken });
     const req = {
       body: { email: 'new@example.com', password: SAMPLE_PW },
       query: {},
     } as unknown as express.Request;
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.register(req, res, next);
 
@@ -2379,16 +2379,16 @@ describe('UsersController cookie options — 30-day persistent session', () => {
   });
 
   it('sets maxAge, httpOnly, and sameSite on the token cookie during magic link verification', async () => {
-    const verifyMagicToken = jest
+    const verifyMagicToken = vi
       .fn()
       .mockResolvedValue({ userId: 5, purpose: 'login' });
-    const newJWTToken = jest.fn().mockResolvedValue('magic-jwt');
-    const persistToken = jest.fn().mockResolvedValue(undefined);
-    const updateLastLoginAt = jest.fn().mockResolvedValue(undefined);
-    const getUserById = jest
+    const newJWTToken = vi.fn().mockResolvedValue('magic-jwt');
+    const persistToken = vi.fn().mockResolvedValue(undefined);
+    const updateLastLoginAt = vi.fn().mockResolvedValue(undefined);
+    const getUserById = vi
       .fn()
       .mockResolvedValue({ id: 5, email: 'al@example.com' });
-    const markEmailVerified = jest.fn().mockResolvedValue(1);
+    const markEmailVerified = vi.fn().mockResolvedValue(1);
     const userService = {
       verifyMagicToken,
       getUserById,
@@ -2408,11 +2408,11 @@ describe('UsersController cookie options — 30-day persistent session', () => {
       params: { token: 'magic-tok' },
     } as unknown as express.Request;
     const res = {
-      json: jest.fn(),
-      status: jest.fn().mockReturnThis(),
-      cookie: jest.fn(),
-    } as unknown as express.Response & { cookie: jest.Mock };
-    const next = jest.fn();
+      json: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      cookie: vi.fn(),
+    } as unknown as express.Response & { cookie: Mock };
+    const next = vi.fn();
 
     await controller.verifyMagicLink(req, res, next);
 
@@ -2425,26 +2425,24 @@ describe('UsersController cookie options — 30-day persistent session', () => {
 
   it('sets maxAge, httpOnly, and sameSite on the token cookie during Google OAuth login', async () => {
     const mockUser = { id: 7, email: 'g@example.com' };
-    const MockedNotionRepo = NotionRepository as jest.MockedClass<
+    const MockedNotionRepo = NotionRepository as MockedClass<
       typeof NotionRepository
     >;
-    MockedNotionRepo.prototype.getNotionData = jest
-      .fn()
-      .mockResolvedValue(null);
+    MockedNotionRepo.prototype.getNotionData = vi.fn().mockResolvedValue(null);
     const userService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
-      registerVerifiedIdentity: jest.fn().mockResolvedValue([{ id: 7 }]),
-      markEmailVerified: jest.fn().mockResolvedValue(1),
-      updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
+      registerVerifiedIdentity: vi.fn().mockResolvedValue([{ id: 7 }]),
+      markEmailVerified: vi.fn().mockResolvedValue(1),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
-    const newJWTToken = jest.fn().mockResolvedValue('google-jwt');
+    const newJWTToken = vi.fn().mockResolvedValue('google-jwt');
     const authService = {
-      loginWithGoogle: jest
+      loginWithGoogle: vi
         .fn()
         .mockResolvedValue({ ok: true, email: 'g@example.com', name: 'G' }),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
       newJWTToken,
-      persistToken: jest.fn().mockResolvedValue(undefined),
+      persistToken: vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2457,10 +2455,10 @@ describe('UsersController cookie options — 30-day persistent session', () => {
       headers: {},
     } as unknown as express.Request;
     const res = {
-      redirect: jest.fn(),
-      cookie: jest.fn(),
-      status: jest.fn().mockReturnThis(),
-    } as unknown as express.Response & { cookie: jest.Mock };
+      redirect: vi.fn(),
+      cookie: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+    } as unknown as express.Response & { cookie: Mock };
 
     await controller.loginWithGoogle(req, res);
 
@@ -2472,42 +2470,39 @@ describe('UsersController cookie options — 30-day persistent session', () => {
   });
 
   it('sets maxAge, httpOnly, and sameSite on the token cookie during Microsoft OAuth login', async () => {
-    const MockedOauthIdentitiesRepo =
-      OauthIdentitiesRepository as jest.MockedClass<
-        typeof OauthIdentitiesRepository
-      >;
-    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = jest
+    const MockedOauthIdentitiesRepo = OauthIdentitiesRepository as MockedClass<
+      typeof OauthIdentitiesRepository
+    >;
+    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
       .fn()
       .mockResolvedValue(null);
-    MockedOauthIdentitiesRepo.prototype.link = jest
+    MockedOauthIdentitiesRepo.prototype.link = vi
       .fn()
       .mockResolvedValue(undefined);
-    const MockedNotionRepo = NotionRepository as jest.MockedClass<
+    const MockedNotionRepo = NotionRepository as MockedClass<
       typeof NotionRepository
     >;
-    MockedNotionRepo.prototype.getNotionData = jest
-      .fn()
-      .mockResolvedValue(null);
+    MockedNotionRepo.prototype.getNotionData = vi.fn().mockResolvedValue(null);
 
     const mockUser = { id: 11, email: 'm@example.com' };
-    const newJWTToken = jest.fn().mockResolvedValue('microsoft-jwt');
+    const newJWTToken = vi.fn().mockResolvedValue('microsoft-jwt');
     const userService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
-      getUserById: jest.fn().mockResolvedValue(mockUser),
-      registerVerifiedIdentity: jest.fn().mockResolvedValue([{ id: 11 }]),
-      markEmailVerified: jest.fn().mockResolvedValue(1),
-      updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
+      getUserById: vi.fn().mockResolvedValue(mockUser),
+      registerVerifiedIdentity: vi.fn().mockResolvedValue([{ id: 11 }]),
+      markEmailVerified: vi.fn().mockResolvedValue(1),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {
-      loginWithMicrosoft: jest.fn().mockResolvedValue({
+      loginWithMicrosoft: vi.fn().mockResolvedValue({
         subject: 'ms-sub',
         email: 'm@example.com',
         name: 'M',
         emailVerified: true,
       }),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
       newJWTToken,
-      persistToken: jest.fn().mockResolvedValue(undefined),
+      persistToken: vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2520,10 +2515,10 @@ describe('UsersController cookie options — 30-day persistent session', () => {
       headers: {},
     } as unknown as express.Request;
     const res = {
-      redirect: jest.fn(),
-      cookie: jest.fn(),
-      status: jest.fn().mockReturnThis(),
-    } as unknown as express.Response & { cookie: jest.Mock };
+      redirect: vi.fn(),
+      cookie: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+    } as unknown as express.Response & { cookie: Mock };
 
     await controller.loginWithMicrosoft(req, res);
 
@@ -2535,42 +2530,39 @@ describe('UsersController cookie options — 30-day persistent session', () => {
   });
 
   it('sets maxAge, httpOnly, and sameSite on the token cookie during Apple OAuth login', async () => {
-    const MockedOauthIdentitiesRepo =
-      OauthIdentitiesRepository as jest.MockedClass<
-        typeof OauthIdentitiesRepository
-      >;
-    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = jest
+    const MockedOauthIdentitiesRepo = OauthIdentitiesRepository as MockedClass<
+      typeof OauthIdentitiesRepository
+    >;
+    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
       .fn()
       .mockResolvedValue(null);
-    MockedOauthIdentitiesRepo.prototype.link = jest
+    MockedOauthIdentitiesRepo.prototype.link = vi
       .fn()
       .mockResolvedValue(undefined);
-    const MockedNotionRepo = NotionRepository as jest.MockedClass<
+    const MockedNotionRepo = NotionRepository as MockedClass<
       typeof NotionRepository
     >;
-    MockedNotionRepo.prototype.getNotionData = jest
-      .fn()
-      .mockResolvedValue(null);
+    MockedNotionRepo.prototype.getNotionData = vi.fn().mockResolvedValue(null);
 
     const mockUser = { id: 20, email: 'apple@example.com' };
-    const newJWTToken = jest.fn().mockResolvedValue('apple-jwt');
+    const newJWTToken = vi.fn().mockResolvedValue('apple-jwt');
     const userService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
-      getUserById: jest.fn().mockResolvedValue(mockUser),
-      registerVerifiedIdentity: jest.fn().mockResolvedValue([{ id: 20 }]),
-      markEmailVerified: jest.fn().mockResolvedValue(1),
-      updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
+      getUserById: vi.fn().mockResolvedValue(mockUser),
+      registerVerifiedIdentity: vi.fn().mockResolvedValue([{ id: 20 }]),
+      markEmailVerified: vi.fn().mockResolvedValue(1),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {
-      loginWithApple: jest.fn().mockResolvedValue({
+      loginWithApple: vi.fn().mockResolvedValue({
         ok: true,
         subject: 'apple-sub',
         email: 'apple@example.com',
         emailVerified: true,
       }),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
       newJWTToken,
-      persistToken: jest.fn().mockResolvedValue(undefined),
+      persistToken: vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2584,11 +2576,11 @@ describe('UsersController cookie options — 30-day persistent session', () => {
       query: {},
     } as unknown as express.Request;
     const res = {
-      redirect: jest.fn(),
-      cookie: jest.fn(),
-      clearCookie: jest.fn(),
-      status: jest.fn().mockReturnThis(),
-    } as unknown as express.Response & { cookie: jest.Mock };
+      redirect: vi.fn(),
+      cookie: vi.fn(),
+      clearCookie: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+    } as unknown as express.Response & { cookie: Mock };
 
     await controller.loginWithApple(req, res);
 
@@ -2600,7 +2592,7 @@ describe('UsersController cookie options — 30-day persistent session', () => {
   });
 
   it('sets maxAge, httpOnly, and sameSite on the token cookie during Notion OAuth login', async () => {
-    const chainable: Record<string, jest.Mock> = {};
+    const chainable: Record<string, Mock> = {};
     const methods = [
       'insert',
       'where',
@@ -2611,35 +2603,33 @@ describe('UsersController cookie options — 30-day persistent session', () => {
       'merge',
     ];
     for (const m of methods) {
-      chainable[m] = jest.fn().mockReturnValue(Promise.resolve([1]));
+      chainable[m] = vi.fn().mockReturnValue(Promise.resolve([1]));
     }
     for (const m of ['where', 'whereNull', 'onConflict']) {
-      chainable[m] = jest.fn().mockReturnValue(chainable);
+      chainable[m] = vi.fn().mockReturnValue(chainable);
     }
-    chainable['insert'] = jest.fn().mockReturnValue(chainable);
-    chainable['merge'] = jest.fn().mockResolvedValue([1]);
-    const mockDb = jest
-      .fn()
-      .mockReturnValue(chainable) as unknown as ReturnType<
+    chainable['insert'] = vi.fn().mockReturnValue(chainable);
+    chainable['merge'] = vi.fn().mockResolvedValue([1]);
+    const mockDb = vi.fn().mockReturnValue(chainable) as unknown as ReturnType<
       typeof import('../data_layer').getDatabase
     >;
 
     const mockUser = { id: 11, email: 'n@example.com' };
-    const newJWTToken = jest.fn().mockResolvedValue('notion-jwt');
+    const newJWTToken = vi.fn().mockResolvedValue('notion-jwt');
     const userService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
-      registerVerifiedIdentity: jest.fn().mockResolvedValue([{ id: 11 }]),
-      updateLastLoginAt: jest.fn().mockResolvedValue(undefined),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
+      registerVerifiedIdentity: vi.fn().mockResolvedValue([{ id: 11 }]),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {
-      loginWithNotion: jest.fn().mockResolvedValue({
+      loginWithNotion: vi.fn().mockResolvedValue({
         email: 'n@example.com',
         name: 'N',
         accessData: {},
       }),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
       newJWTToken,
-      persistToken: jest.fn().mockResolvedValue(undefined),
+      persistToken: vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(userService, authService, mockDb);
     const req = {
@@ -2648,10 +2638,10 @@ describe('UsersController cookie options — 30-day persistent session', () => {
       headers: {},
     } as unknown as express.Request;
     const res = {
-      redirect: jest.fn(),
-      cookie: jest.fn(),
-      status: jest.fn().mockReturnThis(),
-    } as unknown as express.Response & { cookie: jest.Mock };
+      redirect: vi.fn(),
+      cookie: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+    } as unknown as express.Response & { cookie: Mock };
 
     await controller.loginWithNotion(req, res);
 
@@ -2675,10 +2665,10 @@ describe('UsersController.getLocals', () => {
       owner: 1,
     };
     const userService = {
-      getSubscriptionLinkedEmail: jest.fn().mockResolvedValue(null),
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
     } as unknown as UsersService;
     const authService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2688,8 +2678,8 @@ describe('UsersController.getLocals', () => {
     const req = { cookies: { token: 'valid' } } as unknown as express.Request;
     const res = {
       locals: {},
-      json: jest.fn(),
-    } as unknown as express.Response & { json: jest.Mock };
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
 
     await controller.getLocals(req, res);
 
@@ -2699,7 +2689,7 @@ describe('UsersController.getLocals', () => {
 
   it('marks autoSyncActive true for a patreon lifetime user with no Auto Sync subscription', async () => {
     (
-      SubscriptionService.getUserActiveSubscriptions as jest.Mock
+      SubscriptionService.getUserActiveSubscriptions as Mock
     ).mockResolvedValueOnce([]);
     const mockUser = {
       id: 42,
@@ -2711,10 +2701,10 @@ describe('UsersController.getLocals', () => {
       owner: 42,
     };
     const userService = {
-      getSubscriptionLinkedEmail: jest.fn().mockResolvedValue(null),
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
     } as unknown as UsersService;
     const authService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2724,8 +2714,8 @@ describe('UsersController.getLocals', () => {
     const req = { cookies: { token: 'valid' } } as unknown as express.Request;
     const res = {
       locals: {},
-      json: jest.fn(),
-    } as unknown as express.Response & { json: jest.Mock };
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
 
     await controller.getLocals(req, res);
 
@@ -2746,10 +2736,10 @@ describe('UsersController.getLocals', () => {
       owner: 3,
     };
     const userService = {
-      getSubscriptionLinkedEmail: jest.fn().mockResolvedValue(null),
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
     } as unknown as UsersService;
     const authService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2759,8 +2749,8 @@ describe('UsersController.getLocals', () => {
     const req = { cookies: { token: 'valid' } } as unknown as express.Request;
     const res = {
       locals: {},
-      json: jest.fn(),
-    } as unknown as express.Response & { json: jest.Mock };
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
 
     await controller.getLocals(req, res);
 
@@ -2780,10 +2770,10 @@ describe('UsersController.getLocals', () => {
       owner: 4,
     };
     const userService = {
-      getSubscriptionLinkedEmail: jest.fn().mockResolvedValue(null),
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
     } as unknown as UsersService;
     const authService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2793,8 +2783,8 @@ describe('UsersController.getLocals', () => {
     const req = { cookies: { token: 'valid' } } as unknown as express.Request;
     const res = {
       locals: {},
-      json: jest.fn(),
-    } as unknown as express.Response & { json: jest.Mock };
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
 
     await controller.getLocals(req, res);
 
@@ -2813,10 +2803,10 @@ describe('UsersController.getLocals', () => {
       owner: 5,
     };
     const userService = {
-      getSubscriptionLinkedEmail: jest.fn().mockResolvedValue(null),
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
     } as unknown as UsersService;
     const authService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2831,8 +2821,8 @@ describe('UsersController.getLocals', () => {
         passExpiresAt: '2026-06-07T00:00:00.000Z',
         planSource: null,
       },
-      json: jest.fn(),
-    } as unknown as express.Response & { json: jest.Mock };
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
 
     await controller.getLocals(req, res);
 
@@ -2855,10 +2845,10 @@ describe('UsersController.getLocals', () => {
       owner: 6,
     };
     const userService = {
-      getSubscriptionLinkedEmail: jest.fn().mockResolvedValue(null),
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
     } as unknown as UsersService;
     const authService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2871,8 +2861,8 @@ describe('UsersController.getLocals', () => {
         subscriber: true,
         planSource: 'stripe',
       },
-      json: jest.fn(),
-    } as unknown as express.Response & { json: jest.Mock };
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
 
     await controller.getLocals(req, res);
 
@@ -2895,10 +2885,10 @@ describe('UsersController.getLocals', () => {
       owner: 7,
     };
     const userService = {
-      getSubscriptionLinkedEmail: jest.fn().mockResolvedValue(null),
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
     } as unknown as UsersService;
     const authService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2913,8 +2903,8 @@ describe('UsersController.getLocals', () => {
         passExpiresAt: '2026-06-12T00:00:00.000Z',
         planSource: null,
       },
-      json: jest.fn(),
-    } as unknown as express.Response & { json: jest.Mock };
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
 
     await controller.getLocals(req, res);
 
@@ -2937,10 +2927,10 @@ describe('UsersController.getLocals', () => {
       owner: 8,
     };
     const userService = {
-      getSubscriptionLinkedEmail: jest.fn().mockResolvedValue(null),
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
     } as unknown as UsersService;
     const authService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2950,8 +2940,8 @@ describe('UsersController.getLocals', () => {
     const req = { cookies: { token: 'valid' } } as unknown as express.Request;
     const res = {
       locals: {},
-      json: jest.fn(),
-    } as unknown as express.Response & { json: jest.Mock };
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
 
     await controller.getLocals(req, res);
 
@@ -2974,10 +2964,10 @@ describe('UsersController.getLocals', () => {
       owner: 2,
     };
     const userService = {
-      getSubscriptionLinkedEmail: jest.fn().mockResolvedValue(null),
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
     } as unknown as UsersService;
     const authService = {
-      getUserFrom: jest.fn().mockResolvedValue(mockUser),
+      getUserFrom: vi.fn().mockResolvedValue(mockUser),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -2987,8 +2977,8 @@ describe('UsersController.getLocals', () => {
     const req = { cookies: { token: 'valid' } } as unknown as express.Request;
     const res = {
       locals: {},
-      json: jest.fn(),
-    } as unknown as express.Response & { json: jest.Mock };
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
 
     await controller.getLocals(req, res);
 
@@ -2998,61 +2988,59 @@ describe('UsersController.getLocals', () => {
 });
 
 describe('UsersController.loginWithAppleNative', () => {
-  const MockedOauthIdentitiesRepo =
-    OauthIdentitiesRepository as jest.MockedClass<
-      typeof OauthIdentitiesRepository
-    >;
+  const MockedOauthIdentitiesRepo = OauthIdentitiesRepository as MockedClass<
+    typeof OauthIdentitiesRepository
+  >;
 
   beforeEach(() => {
     MockedOauthIdentitiesRepo.mockClear();
-    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = jest
+    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
       .fn()
       .mockResolvedValue(null);
-    MockedOauthIdentitiesRepo.prototype.link = jest
+    MockedOauthIdentitiesRepo.prototype.link = vi
       .fn()
       .mockResolvedValue(undefined);
   });
 
   const buildNativeController = (overrides?: {
-    getUserFrom?: jest.Mock;
-    getUserById?: jest.Mock;
-    registerVerifiedIdentity?: jest.Mock;
-    markEmailVerified?: jest.Mock;
-    newJWTToken?: jest.Mock;
-    persistToken?: jest.Mock;
-    updateLastLoginAt?: jest.Mock;
-    verifyAppleIdentityToken?: jest.Mock;
+    getUserFrom?: Mock;
+    getUserById?: Mock;
+    registerVerifiedIdentity?: Mock;
+    markEmailVerified?: Mock;
+    newJWTToken?: Mock;
+    persistToken?: Mock;
+    updateLastLoginAt?: Mock;
+    verifyAppleIdentityToken?: Mock;
   }) => {
-    const recordExecute = jest.fn().mockResolvedValue(undefined);
+    const recordExecute = vi.fn().mockResolvedValue(undefined);
     const mockUser = { id: 30, email: 'native-apple@example.com' };
     const userService = {
       getUserFrom:
         overrides?.getUserFrom ??
-        jest.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
+        vi.fn().mockResolvedValueOnce(null).mockResolvedValue(mockUser),
       getUserById:
-        overrides?.getUserById ?? jest.fn().mockResolvedValue(mockUser),
+        overrides?.getUserById ?? vi.fn().mockResolvedValue(mockUser),
       registerVerifiedIdentity:
         overrides?.registerVerifiedIdentity ??
-        jest.fn().mockResolvedValue([{ id: 30 }]),
+        vi.fn().mockResolvedValue([{ id: 30 }]),
       markEmailVerified:
-        overrides?.markEmailVerified ?? jest.fn().mockResolvedValue(1),
+        overrides?.markEmailVerified ?? vi.fn().mockResolvedValue(1),
       updateLastLoginAt:
-        overrides?.updateLastLoginAt ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.updateLastLoginAt ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
     const authService = {
       verifyAppleIdentityToken:
         overrides?.verifyAppleIdentityToken ??
-        jest.fn().mockResolvedValue({
+        vi.fn().mockResolvedValue({
           ok: true,
           subject: 'native-sub-001',
           email: 'native-apple@example.com',
         }),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
       newJWTToken:
-        overrides?.newJWTToken ??
-        jest.fn().mockResolvedValue('native-apple-jwt'),
+        overrides?.newJWTToken ?? vi.fn().mockResolvedValue('native-apple-jwt'),
       persistToken:
-        overrides?.persistToken ?? jest.fn().mockResolvedValue(undefined),
+        overrides?.persistToken ?? vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -3066,13 +3054,13 @@ describe('UsersController.loginWithAppleNative', () => {
   };
 
   const buildNativeRes = () => {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
-    const cookie = jest.fn();
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    const cookie = vi.fn();
     return { json, status, cookie } as unknown as express.Response & {
-      json: jest.Mock;
-      status: jest.Mock;
-      cookie: jest.Mock;
+      json: Mock;
+      status: Mock;
+      cookie: Mock;
     };
   };
 
@@ -3094,7 +3082,7 @@ describe('UsersController.loginWithAppleNative', () => {
   });
 
   it('returns 401 and records the error when the identity token fails verification', async () => {
-    const verifyAppleIdentityToken = jest
+    const verifyAppleIdentityToken = vi
       .fn()
       .mockResolvedValue({ ok: false, reason: 'invalid_identity_token' });
     const { controller, recordExecute } = buildNativeController({
@@ -3129,7 +3117,7 @@ describe('UsersController.loginWithAppleNative', () => {
   });
 
   it('creates a new user and links the Apple identity when no account exists', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 30 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 30 }]);
     const { controller } = buildNativeController({
       registerVerifiedIdentity: register,
     });
@@ -3153,15 +3141,15 @@ describe('UsersController.loginWithAppleNative', () => {
   });
 
   it('signs in via subject lookup without re-registering when the identity already exists', async () => {
-    const register = jest.fn();
-    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = jest
+    const register = vi.fn();
+    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
       .fn()
       .mockResolvedValue({
         user_id: 30,
         provider: 'apple',
         subject: 'native-sub-001',
       });
-    const getUserById = jest
+    const getUserById = vi
       .fn()
       .mockResolvedValue({ id: 30, email: 'native-apple@example.com' });
 
@@ -3179,7 +3167,7 @@ describe('UsersController.loginWithAppleNative', () => {
   });
 
   it('returns 401 when email is absent and no existing identity row exists', async () => {
-    const verifyAppleIdentityToken = jest.fn().mockResolvedValue({
+    const verifyAppleIdentityToken = vi.fn().mockResolvedValue({
       ok: true,
       subject: 'native-sub-noemail',
       email: undefined,
@@ -3196,7 +3184,7 @@ describe('UsersController.loginWithAppleNative', () => {
   });
 
   it('uses fullName from request body when creating a new account', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 30 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 30 }]);
     const { controller } = buildNativeController({
       registerVerifiedIdentity: register,
     });
@@ -3217,7 +3205,7 @@ describe('UsersController.loginWithAppleNative', () => {
   });
 
   it('falls back to email as name when fullName is absent', async () => {
-    const register = jest.fn().mockResolvedValue([{ id: 30 }]);
+    const register = vi.fn().mockResolvedValue([{ id: 30 }]);
     const { controller } = buildNativeController({
       registerVerifiedIdentity: register,
     });
@@ -3235,7 +3223,7 @@ describe('UsersController.loginWithAppleNative', () => {
   });
 
   it('rejects and records oauth_email_not_verified when Apple reports the email unverified', async () => {
-    const verifyAppleIdentityToken = jest
+    const verifyAppleIdentityToken = vi
       .fn()
       .mockResolvedValue({ ok: false, reason: 'email_not_verified' });
     const { controller, recordExecute } = buildNativeController({
@@ -3256,7 +3244,7 @@ describe('UsersController.loginWithAppleNative', () => {
 });
 
 describe('UsersController.logOutEverywhere', () => {
-  const buildLogOutEverywhereController = (logOutEverywhere: jest.Mock) => {
+  const buildLogOutEverywhereController = (logOutEverywhere: Mock) => {
     const authService = {
       logOutEverywhere,
     } as unknown as AuthenticationService;
@@ -3269,29 +3257,29 @@ describe('UsersController.logOutEverywhere', () => {
   };
 
   const buildResWithLocals = (owner: number | null) => {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
-    const clearCookie = jest.fn();
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    const clearCookie = vi.fn();
     return {
       json,
       status,
       clearCookie,
       locals: { owner },
     } as unknown as express.Response & {
-      json: jest.Mock;
-      status: jest.Mock;
-      clearCookie: jest.Mock;
+      json: Mock;
+      status: Mock;
+      clearCookie: Mock;
     };
   };
 
   it('revokes every session for the session owner and clears the cookie', async () => {
-    const logOutEverywhere = jest.fn().mockResolvedValue(3);
+    const logOutEverywhere = vi.fn().mockResolvedValue(3);
     const { controller } = buildLogOutEverywhereController(logOutEverywhere);
     const req = {
       body: { owner: 999 },
     } as unknown as express.Request;
     const res = buildResWithLocals(7);
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.logOutEverywhere(req, res, next);
 
@@ -3303,11 +3291,11 @@ describe('UsersController.logOutEverywhere', () => {
   });
 
   it('rejects when there is no session owner and never revokes', async () => {
-    const logOutEverywhere = jest.fn();
+    const logOutEverywhere = vi.fn();
     const { controller } = buildLogOutEverywhereController(logOutEverywhere);
     const req = {} as express.Request;
     const res = buildResWithLocals(null);
-    const next = jest.fn();
+    const next = vi.fn();
 
     await controller.logOutEverywhere(req, res, next);
 
@@ -3319,29 +3307,28 @@ describe('UsersController.logOutEverywhere', () => {
 describe('UsersController.newPassword', () => {
   const buildNewPasswordController = (
     overrides: {
-      getUserByLiveResetToken?: jest.Mock;
-      updatePassword?: jest.Mock;
-      logOutEverywhere?: jest.Mock;
-      markEmailVerified?: jest.Mock;
+      getUserByLiveResetToken?: Mock;
+      updatePassword?: Mock;
+      logOutEverywhere?: Mock;
+      markEmailVerified?: Mock;
     } = {}
   ) => {
     const getUserByLiveResetToken =
-      overrides.getUserByLiveResetToken ??
-      jest.fn().mockResolvedValue({ id: 7 });
+      overrides.getUserByLiveResetToken ?? vi.fn().mockResolvedValue({ id: 7 });
     const updatePassword =
-      overrides.updatePassword ?? jest.fn().mockResolvedValue(1);
+      overrides.updatePassword ?? vi.fn().mockResolvedValue(1);
     const logOutEverywhere =
-      overrides.logOutEverywhere ?? jest.fn().mockResolvedValue(1);
+      overrides.logOutEverywhere ?? vi.fn().mockResolvedValue(1);
     const markEmailVerified =
-      overrides.markEmailVerified ?? jest.fn().mockResolvedValue(undefined);
+      overrides.markEmailVerified ?? vi.fn().mockResolvedValue(undefined);
     const userService = {
       getUserByLiveResetToken,
       updatePassword,
       markEmailVerified,
     } as unknown as UsersService;
     const authService = {
-      isNewPasswordValid: jest.fn().mockReturnValue(false),
-      getHashPassword: jest.fn().mockReturnValue('hashed'),
+      isNewPasswordValid: vi.fn().mockReturnValue(false),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
       logOutEverywhere,
     } as unknown as AuthenticationService;
     const controller = new UsersController(
@@ -3361,15 +3348,15 @@ describe('UsersController.newPassword', () => {
 
   const buildRes = () =>
     ({
-      status: jest.fn().mockReturnThis(),
-      send: jest.fn().mockReturnThis(),
+      status: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis(),
     }) as unknown as express.Response;
 
   it('revokes sessions only after the token is successfully redeemed', async () => {
     const { controller, logOutEverywhere } = buildNewPasswordController();
     const res = buildRes();
 
-    await controller.newPassword(buildReq(), res, jest.fn());
+    await controller.newPassword(buildReq(), res, vi.fn());
 
     expect(logOutEverywhere).toHaveBeenCalledWith(7);
     expect(res.status).toHaveBeenCalledWith(200);
@@ -3379,7 +3366,7 @@ describe('UsersController.newPassword', () => {
     const { controller, markEmailVerified } = buildNewPasswordController();
     const res = buildRes();
 
-    await controller.newPassword(buildReq(), res, jest.fn());
+    await controller.newPassword(buildReq(), res, vi.fn());
 
     expect(markEmailVerified).toHaveBeenCalledWith('7');
     expect(res.status).toHaveBeenCalledWith(200);
@@ -3387,11 +3374,11 @@ describe('UsersController.newPassword', () => {
 
   it('still reports success when marking the email verified fails', async () => {
     const { controller } = buildNewPasswordController({
-      markEmailVerified: jest.fn().mockRejectedValue(new Error('db down')),
+      markEmailVerified: vi.fn().mockRejectedValue(new Error('db down')),
     });
     const res = buildRes();
-    const next = jest.fn();
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const next = vi.fn();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
 
     await controller.newPassword(buildReq(), res, next);
 
@@ -3401,11 +3388,11 @@ describe('UsersController.newPassword', () => {
 
   it('does not mark the email verified when the token no longer redeems', async () => {
     const { controller, markEmailVerified } = buildNewPasswordController({
-      getUserByLiveResetToken: jest.fn().mockResolvedValue(null),
-      updatePassword: jest.fn().mockResolvedValue(0),
+      getUserByLiveResetToken: vi.fn().mockResolvedValue(null),
+      updatePassword: vi.fn().mockResolvedValue(0),
     });
 
-    await controller.newPassword(buildReq(), buildRes(), jest.fn());
+    await controller.newPassword(buildReq(), buildRes(), vi.fn());
 
     expect(markEmailVerified).not.toHaveBeenCalled();
   });
@@ -3413,12 +3400,12 @@ describe('UsersController.newPassword', () => {
   // A stale token must not stay usable as a way to force the owner out.
   it('never revokes sessions when the token no longer redeems', async () => {
     const { controller, logOutEverywhere } = buildNewPasswordController({
-      getUserByLiveResetToken: jest.fn().mockResolvedValue(null),
-      updatePassword: jest.fn().mockResolvedValue(0),
+      getUserByLiveResetToken: vi.fn().mockResolvedValue(null),
+      updatePassword: vi.fn().mockResolvedValue(0),
     });
     const res = buildRes();
 
-    await controller.newPassword(buildReq(), res, jest.fn());
+    await controller.newPassword(buildReq(), res, vi.fn());
 
     expect(logOutEverywhere).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(400);
@@ -3426,11 +3413,11 @@ describe('UsersController.newPassword', () => {
 
   it('does not revoke when the row is gone even if a redeem is reported', async () => {
     const { controller, logOutEverywhere } = buildNewPasswordController({
-      getUserByLiveResetToken: jest.fn().mockResolvedValue(null),
+      getUserByLiveResetToken: vi.fn().mockResolvedValue(null),
     });
     const res = buildRes();
 
-    await controller.newPassword(buildReq(), res, jest.fn());
+    await controller.newPassword(buildReq(), res, vi.fn());
 
     expect(logOutEverywhere).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(400);

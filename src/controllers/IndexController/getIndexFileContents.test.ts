@@ -1,21 +1,19 @@
+import { vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
 import { getIndexFileContents } from './getIndexFileContents';
+import { BUILD_DIR } from '../../lib/constants';
 
-jest.mock('../../lib/constants', () => {
-  const tmpRoot = require('os').tmpdir();
-  const tmpBuild = require('path').join(
+vi.mock('../../lib/constants', () => {
+  const tmpRoot = os.tmpdir();
+  const tmpBuild = path.join(
     tmpRoot,
     `index-contents-test-${process.pid}-${Date.now()}`
   );
   return { BUILD_DIR: tmpBuild };
 });
-
-const { BUILD_DIR } = jest.requireMock('../../lib/constants') as {
-  BUILD_DIR: string;
-};
 
 describe('getIndexFileContents', () => {
   beforeEach(() => {

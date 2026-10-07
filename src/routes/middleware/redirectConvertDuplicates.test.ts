@@ -1,12 +1,13 @@
+import { vi } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { redirectConvertDuplicates } from './redirectConvertDuplicates';
 
 function mockReqRes(path: string, originalUrl?: string) {
   const req = { path, originalUrl: originalUrl ?? path } as Request;
   const res = {
-    redirect: jest.fn(),
+    redirect: vi.fn(),
   } as unknown as Response;
-  const next = jest.fn() as NextFunction;
+  const next = vi.fn() as NextFunction;
   return { req, res, next };
 }
 

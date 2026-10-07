@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import express from 'express';
 import JobController from './JobController';
 import JobService from '../services/JobService';
@@ -13,23 +14,23 @@ describe('JobController', () => {
 
   beforeEach(() => {
     jobService = {
-      getJobsByOwner: jest.fn(),
-      deleteJobById: jest.fn(),
-      findJobByObjectId: jest.fn(),
-      getConversionReport: jest.fn(),
+      getJobsByOwner: vi.fn(),
+      deleteJobById: vi.fn(),
+      findJobByObjectId: vi.fn(),
+      getConversionReport: vi.fn(),
     } as unknown as JobService;
     deleteJobUseCase = {
-      execute: jest.fn(),
+      execute: vi.fn(),
     } as unknown as DeleteJobUseCase;
     jobController = new JobController(jobService, deleteJobUseCase);
     req = { params: { id: '123' } };
     res = {
-      send: jest.fn(),
-      status: jest.fn().mockReturnThis(),
-      redirect: jest.fn(),
-      json: jest.fn(),
+      send: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      redirect: vi.fn(),
+      json: vi.fn(),
     };
-    jest.spyOn(getOwnerModule, 'getOwner').mockReturnValue('owner1');
+    vi.spyOn(getOwnerModule, 'getOwner').mockReturnValue('owner1');
   });
 
   it('should get jobs by owner and send them', async () => {
@@ -37,7 +38,7 @@ describe('JobController', () => {
       { id: 1, title: 'job1', download_key: null },
       { id: 2, title: 'job2', download_key: null },
     ];
-    (jobService.getJobsByOwner as jest.Mock).mockResolvedValue(mockJobs);
+    (jobService.getJobsByOwner as Mock).mockResolvedValue(mockJobs);
     await jobController.getJobsByOwner(
       req as express.Request,
       res as express.Response
@@ -85,12 +86,12 @@ describe('JobController', () => {
         },
       },
     ];
-    (jobService.getJobsByOwner as jest.Mock).mockResolvedValue(mockJobs);
+    (jobService.getJobsByOwner as Mock).mockResolvedValue(mockJobs);
     await jobController.getJobsByOwner(
       req as express.Request,
       res as express.Response
     );
-    const [sent] = (res.send as jest.Mock).mock.calls[0][0];
+    const [sent] = (res.send as Mock).mock.calls[0][0];
     expect(sent.empty_back_count).toBe(14);
     expect(sent).not.toHaveProperty('conversion_report');
   });
@@ -113,12 +114,12 @@ describe('JobController', () => {
         download_key: 'abc123.apkg',
       },
     ];
-    (jobService.getJobsByOwner as jest.Mock).mockResolvedValue(mockJobs);
+    (jobService.getJobsByOwner as Mock).mockResolvedValue(mockJobs);
     await jobController.getJobsByOwner(
       req as express.Request,
       res as express.Response
     );
-    const sent = (res.send as jest.Mock).mock.calls[0][0] as Array<{
+    const sent = (res.send as Mock).mock.calls[0][0] as Array<{
       job_reason_failure: string | null;
     }>;
     expect(sent[0].job_reason_failure).toBe(truncationPayload);
@@ -136,12 +137,12 @@ describe('JobController', () => {
         download_key: 'abc123.apkg',
       },
     ];
-    (jobService.getJobsByOwner as jest.Mock).mockResolvedValue(mockJobs);
+    (jobService.getJobsByOwner as Mock).mockResolvedValue(mockJobs);
     await jobController.getJobsByOwner(
       req as express.Request,
       res as express.Response
     );
-    const sent = (res.send as jest.Mock).mock.calls[0][0] as Array<{
+    const sent = (res.send as Mock).mock.calls[0][0] as Array<{
       download_key: string | null;
     }>;
     expect(sent[0].download_key).toBe('abc123.apkg');
@@ -159,12 +160,12 @@ describe('JobController', () => {
         download_key: 'upload-key.apkg',
       },
     ];
-    (jobService.getJobsByOwner as jest.Mock).mockResolvedValue(mockJobs);
+    (jobService.getJobsByOwner as Mock).mockResolvedValue(mockJobs);
     await jobController.getJobsByOwner(
       req as express.Request,
       res as express.Response
     );
-    const sent = (res.send as jest.Mock).mock.calls[0][0] as Array<{
+    const sent = (res.send as Mock).mock.calls[0][0] as Array<{
       download_key: string | null;
     }>;
     expect(sent[0].download_key).toBe('upload-key.apkg');
@@ -182,12 +183,12 @@ describe('JobController', () => {
         download_key: null,
       },
     ];
-    (jobService.getJobsByOwner as jest.Mock).mockResolvedValue(mockJobs);
+    (jobService.getJobsByOwner as Mock).mockResolvedValue(mockJobs);
     await jobController.getJobsByOwner(
       req as express.Request,
       res as express.Response
     );
-    const sent = (res.send as jest.Mock).mock.calls[0][0] as Array<{
+    const sent = (res.send as Mock).mock.calls[0][0] as Array<{
       download_key: string | null;
     }>;
     expect(sent[0].download_key).toBeNull();
@@ -205,21 +206,19 @@ describe('JobController', () => {
         download_key: null,
       },
     ];
-    (jobService.getJobsByOwner as jest.Mock).mockResolvedValue(
-      mockJobsForOwner1
-    );
+    (jobService.getJobsByOwner as Mock).mockResolvedValue(mockJobsForOwner1);
     await jobController.getJobsByOwner(
       req as express.Request,
       res as express.Response
     );
-    const sent = (res.send as jest.Mock).mock.calls[0][0] as Array<{
+    const sent = (res.send as Mock).mock.calls[0][0] as Array<{
       download_key: string | null;
     }>;
     expect(sent[0].download_key).toBeNull();
   });
 
   it('should delegate delete to the use case and send 200', async () => {
-    (deleteJobUseCase.execute as jest.Mock).mockResolvedValue(undefined);
+    (deleteJobUseCase.execute as Mock).mockResolvedValue(undefined);
     await jobController.deleteJobByOwner(
       req as express.Request,
       res as express.Response
@@ -230,9 +229,7 @@ describe('JobController', () => {
   });
 
   it('should handle error in deleteJobByOwner', async () => {
-    (deleteJobUseCase.execute as jest.Mock).mockRejectedValue(
-      new Error('fail')
-    );
+    (deleteJobUseCase.execute as Mock).mockRejectedValue(new Error('fail'));
     await jobController.deleteJobByOwner(
       req as express.Request,
       res as express.Response
@@ -242,7 +239,7 @@ describe('JobController', () => {
   });
 
   it('should handle job in progress error with 409 status', async () => {
-    (deleteJobUseCase.execute as jest.Mock).mockRejectedValue(
+    (deleteJobUseCase.execute as Mock).mockRejectedValue(
       new Error('Cannot delete job while it is in progress')
     );
     await jobController.deleteJobByOwner(
@@ -256,7 +253,7 @@ describe('JobController', () => {
   });
 
   it('should redirect to login if owner is missing when getting jobs', async () => {
-    (getOwnerModule.getOwner as jest.Mock).mockReturnValue(undefined);
+    (getOwnerModule.getOwner as Mock).mockReturnValue(undefined);
     await jobController.getJobsByOwner(
       req as express.Request,
       res as express.Response
@@ -283,7 +280,7 @@ describe('JobController', () => {
     });
 
     it('sends the typed report for the owner job', async () => {
-      (jobService.getConversionReport as jest.Mock).mockResolvedValue({
+      (jobService.getConversionReport as Mock).mockResolvedValue({
         jobExists: true,
         report,
       });
@@ -301,7 +298,7 @@ describe('JobController', () => {
     });
 
     it('responds 404 when the job does not exist for this owner', async () => {
-      (jobService.getConversionReport as jest.Mock).mockResolvedValue({
+      (jobService.getConversionReport as Mock).mockResolvedValue({
         jobExists: false,
         report: null,
       });
@@ -316,7 +313,7 @@ describe('JobController', () => {
     });
 
     it('responds 404 when the job has no stored report', async () => {
-      (jobService.getConversionReport as jest.Mock).mockResolvedValue({
+      (jobService.getConversionReport as Mock).mockResolvedValue({
         jobExists: true,
         report: null,
       });

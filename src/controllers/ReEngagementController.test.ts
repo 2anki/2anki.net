@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import { Request, Response } from 'express';
 
 import { ReEngagementController } from './ReEngagementController';
@@ -5,23 +6,23 @@ import type { IReEngagementRepository } from '../data_layer/ReEngagementReposito
 import type { IEmailPreferencesRepository } from '../data_layer/EmailPreferencesRepository';
 
 function buildMocks() {
-  const repo: jest.Mocked<IReEngagementRepository> = {
-    hasBeenSent: jest.fn().mockResolvedValue(false),
-    recordSend: jest.fn().mockResolvedValue(1),
-    saveResponse: jest.fn().mockResolvedValue(undefined),
-    findByToken: jest.fn().mockResolvedValue(null),
-    getUsersToEmail: jest.fn().mockResolvedValue([]),
+  const repo: Mocked<IReEngagementRepository> = {
+    hasBeenSent: vi.fn().mockResolvedValue(false),
+    recordSend: vi.fn().mockResolvedValue(1),
+    saveResponse: vi.fn().mockResolvedValue(undefined),
+    findByToken: vi.fn().mockResolvedValue(null),
+    getUsersToEmail: vi.fn().mockResolvedValue([]),
   };
-  const prefRepo: jest.Mocked<IEmailPreferencesRepository> = {
-    isOptedOut: jest.fn().mockResolvedValue(false),
-    optOut: jest.fn().mockResolvedValue(undefined),
-    optIn: jest.fn().mockResolvedValue(undefined),
+  const prefRepo: Mocked<IEmailPreferencesRepository> = {
+    isOptedOut: vi.fn().mockResolvedValue(false),
+    optOut: vi.fn().mockResolvedValue(undefined),
+    optIn: vi.fn().mockResolvedValue(undefined),
   };
   const controller = new ReEngagementController(repo, prefRepo);
   const req = { body: {}, query: {} } as unknown as Request;
   const res = {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
   } as unknown as Response;
   return { repo, prefRepo, controller, req, res };
 }

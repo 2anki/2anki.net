@@ -1,12 +1,10 @@
+import { vi, type Mock } from 'vitest';
 import { Response } from 'express';
 
 import { applyResolvedStripeCustomer } from './ResolveStripeCustomer';
 
-const run = async (
-  locals: Record<string, unknown>,
-  resolveOrCreate: jest.Mock
-) => {
-  const recordFailure = jest.fn();
+const run = async (locals: Record<string, unknown>, resolveOrCreate: Mock) => {
+  const recordFailure = vi.fn();
   const res = { locals } as unknown as Response;
   await applyResolvedStripeCustomer(
     res,
@@ -18,7 +16,7 @@ const run = async (
 
 describe('applyResolvedStripeCustomer', () => {
   it('resolves and stashes the customer id for an authenticated caller', async () => {
-    const resolveOrCreate = jest.fn().mockResolvedValue('cus_resolved');
+    const resolveOrCreate = vi.fn().mockResolvedValue('cus_resolved');
     const { res } = await run(
       { owner: 42, email: 'learner@example.test' },
       resolveOrCreate
@@ -29,7 +27,7 @@ describe('applyResolvedStripeCustomer', () => {
   });
 
   it('passes an anonymous caller through without touching Stripe', async () => {
-    const resolveOrCreate = jest.fn();
+    const resolveOrCreate = vi.fn();
     const { res, recordFailure } = await run(
       { email: 'someone@example.test' },
       resolveOrCreate
@@ -41,15 +39,15 @@ describe('applyResolvedStripeCustomer', () => {
   });
 
   it('passes through when the account has no email to resolve against', async () => {
-    const resolveOrCreate = jest.fn();
+    const resolveOrCreate = vi.fn();
     await run({ owner: 42, email: '' }, resolveOrCreate);
 
     expect(resolveOrCreate).not.toHaveBeenCalled();
   });
 
   it('records the failure and leaks no customer id when resolution fails', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const resolveOrCreate = jest
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const resolveOrCreate = vi
       .fn()
       .mockRejectedValue(new Error("No such customer: 'cus_leak123'"));
 
@@ -66,8 +64,8 @@ describe('applyResolvedStripeCustomer', () => {
   });
 
   it('falls back when building the resolver throws', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const recordFailure = jest.fn();
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const recordFailure = vi.fn();
     const res = {
       locals: { owner: 42, email: 'learner@example.test' },
     } as unknown as Response;

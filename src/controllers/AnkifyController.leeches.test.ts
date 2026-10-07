@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response } from 'express';
 
 import AnkifyController from './AnkifyController';
@@ -21,15 +22,15 @@ const makeResponse = (): CapturingResponse => {
   };
   const res = {
     locals: { owner: 42 },
-    status: jest.fn((code: number) => {
+    status: vi.fn((code: number) => {
       capture.statusCode = code;
       return res;
     }),
-    json: jest.fn((payload: unknown) => {
+    json: vi.fn((payload: unknown) => {
       capture.body = payload;
       return res;
     }),
-    send: jest.fn((payload: unknown) => {
+    send: vi.fn((payload: unknown) => {
       capture.sent = payload;
       return res;
     }),
@@ -43,7 +44,7 @@ const EDIT_INDEX = 29;
 const DELETE_INDEX = 30;
 const RETURN_INDEX = 31;
 
-const makeController = (index: number, useCase: { execute: jest.Mock }) => {
+const makeController = (index: number, useCase: { execute: Mock }) => {
   const stubs = Array.from({ length: 34 }, () => ({}));
   stubs[index] = useCase;
   return new AnkifyController(
@@ -67,7 +68,7 @@ describe('AnkifyController leech handlers', () => {
         },
       ],
     };
-    const execute = jest.fn(async () => result);
+    const execute = vi.fn(async () => result);
     const controller = makeController(LIST_INDEX, { execute });
     const capture = makeResponse();
 
@@ -79,7 +80,7 @@ describe('AnkifyController leech handlers', () => {
   });
 
   test('listLeeches returns connected false when offline', async () => {
-    const execute = jest.fn(async () => ({ connected: false }));
+    const execute = vi.fn(async () => ({ connected: false }));
     const controller = makeController(LIST_INDEX, { execute });
     const capture = makeResponse();
 
@@ -90,7 +91,7 @@ describe('AnkifyController leech handlers', () => {
   });
 
   test('editLeech 400 when noteId is not an integer', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = makeController(EDIT_INDEX, { execute });
     const capture = makeResponse();
 
@@ -107,7 +108,7 @@ describe('AnkifyController leech handlers', () => {
   });
 
   test('editLeech 400 when fields are missing', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = makeController(EDIT_INDEX, { execute });
     const capture = makeResponse();
 
@@ -121,7 +122,7 @@ describe('AnkifyController leech handlers', () => {
   });
 
   test('editLeech 204 on success and forwards the fields', async () => {
-    const execute = jest.fn(async () => undefined);
+    const execute = vi.fn(async () => undefined);
     const controller = makeController(EDIT_INDEX, { execute });
     const capture = makeResponse();
 
@@ -142,7 +143,7 @@ describe('AnkifyController leech handlers', () => {
   });
 
   test('editLeech maps a forged note id to 403 without mutating', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new NoteNotOwnedError();
     });
     const controller = makeController(EDIT_INDEX, { execute });
@@ -160,7 +161,7 @@ describe('AnkifyController leech handlers', () => {
   });
 
   test('deleteLeech 400 when noteId is not an integer', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = makeController(DELETE_INDEX, { execute });
     const capture = makeResponse();
 
@@ -174,7 +175,7 @@ describe('AnkifyController leech handlers', () => {
   });
 
   test('deleteLeech 204 on success', async () => {
-    const execute = jest.fn(async () => undefined);
+    const execute = vi.fn(async () => undefined);
     const controller = makeController(DELETE_INDEX, { execute });
     const capture = makeResponse();
 
@@ -188,7 +189,7 @@ describe('AnkifyController leech handlers', () => {
   });
 
   test('deleteLeech maps a forged note id to 403 and never deletes', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new NoteNotOwnedError();
     });
     const controller = makeController(DELETE_INDEX, { execute });
@@ -203,7 +204,7 @@ describe('AnkifyController leech handlers', () => {
   });
 
   test('deleteLeech maps AnkiConnect unreachable to 503', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new AnkiConnectUnreachableError('http://x', new Error('down'));
     });
     const controller = makeController(DELETE_INDEX, { execute });
@@ -219,7 +220,7 @@ describe('AnkifyController leech handlers', () => {
 
   test('returnLeechToReview 200 with the result', async () => {
     const result = { noteId: 4, unsuspended: true, tagRemoved: true as const };
-    const execute = jest.fn(async () => result);
+    const execute = vi.fn(async () => result);
     const controller = makeController(RETURN_INDEX, { execute });
     const capture = makeResponse();
 
@@ -234,7 +235,7 @@ describe('AnkifyController leech handlers', () => {
   });
 
   test('returnLeechToReview maps a forged note id to 403', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new NoteNotOwnedError();
     });
     const controller = makeController(RETURN_INDEX, { execute });
@@ -249,7 +250,7 @@ describe('AnkifyController leech handlers', () => {
   });
 
   test('returnLeechToReview maps no active client to 409', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new NoActiveAnkifyClientForLeechError();
     });
     const controller = makeController(RETURN_INDEX, { execute });

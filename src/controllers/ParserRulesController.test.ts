@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import express from 'express';
 import RulesController from './ParserRulesController';
 import ParserRulesService from '../services/ParserRulesService';
@@ -11,9 +12,9 @@ describe('ParserRulesController', () => {
 
   beforeEach(() => {
     service = {
-      createRule: jest.fn(),
-      getById: jest.fn(),
-      deleteRule: jest.fn(),
+      createRule: vi.fn(),
+      getById: vi.fn(),
+      deleteRule: vi.fn(),
     } as any;
     controller = new RulesController(service);
     req = {
@@ -21,11 +22,11 @@ describe('ParserRulesController', () => {
       body: { payload: { FLASHCARD: 'a', DECK: 'b' } },
     };
     res = {
-      send: jest.fn(),
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
+      send: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
     };
-    jest.spyOn(getOwnerModule, 'getOwner').mockReturnValue('owner1');
+    vi.spyOn(getOwnerModule, 'getOwner').mockReturnValue('owner1');
   });
 
   it('does not leak database driver internals when creating a rule', async () => {
@@ -38,7 +39,7 @@ describe('ParserRulesController', () => {
       RowCtor: null,
       rowAsArray: false,
     };
-    (service.createRule as jest.Mock).mockResolvedValue(pgResultLikeObject);
+    (service.createRule as Mock).mockResolvedValue(pgResultLikeObject);
 
     await controller.createRule(
       req as express.Request,
@@ -46,8 +47,8 @@ describe('ParserRulesController', () => {
     );
 
     expect(res.status).toHaveBeenCalledWith(201);
-    const sentBody = (res.send as jest.Mock).mock.calls[0]?.[0];
-    const sentJson = (res.json as jest.Mock).mock.calls[0]?.[0];
+    const sentBody = (res.send as Mock).mock.calls[0]?.[0];
+    const sentJson = (res.json as Mock).mock.calls[0]?.[0];
     const payload = sentBody ?? sentJson;
     const serialized = JSON.stringify(payload ?? '');
     expect(serialized).not.toContain('_types');
@@ -66,7 +67,7 @@ describe('ParserRulesController', () => {
   });
 
   it('returns 400 when service throws', async () => {
-    (service.createRule as jest.Mock).mockRejectedValue(new Error('fail'));
+    (service.createRule as Mock).mockRejectedValue(new Error('fail'));
     await controller.createRule(
       req as express.Request,
       res as express.Response
@@ -83,23 +84,23 @@ describe('RulesController.deleteRule', () => {
 
   beforeEach(() => {
     service = {
-      createRule: jest.fn(),
-      getById: jest.fn(),
-      deleteRule: jest.fn(),
+      createRule: vi.fn(),
+      getById: vi.fn(),
+      deleteRule: vi.fn(),
     } as any;
     controller = new RulesController(service);
     req = { params: { id: 'page-abc' } };
     res = {
-      send: jest.fn(),
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
+      send: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
       locals: { owner: 'owner1' },
     };
-    jest.spyOn(getOwnerModule, 'getOwner').mockReturnValue('owner1');
+    vi.spyOn(getOwnerModule, 'getOwner').mockReturnValue('owner1');
   });
 
   it('calls deleteRule with id and owner and returns 204', async () => {
-    (service.deleteRule as jest.Mock).mockResolvedValue(1);
+    (service.deleteRule as Mock).mockResolvedValue(1);
 
     await controller.deleteRule(
       req as express.Request,
@@ -112,7 +113,7 @@ describe('RulesController.deleteRule', () => {
   });
 
   it('returns 204 even when no row is found (idempotent)', async () => {
-    (service.deleteRule as jest.Mock).mockResolvedValue(0);
+    (service.deleteRule as Mock).mockResolvedValue(0);
 
     await controller.deleteRule(
       req as express.Request,

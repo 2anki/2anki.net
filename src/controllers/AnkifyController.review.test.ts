@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response } from 'express';
 
 import AnkifyController from './AnkifyController';
@@ -22,15 +23,15 @@ const makeResponse = (): CapturingResponse => {
   };
   const res = {
     locals: { owner: 42 },
-    status: jest.fn((code: number) => {
+    status: vi.fn((code: number) => {
       capture.statusCode = code;
       return res;
     }),
-    json: jest.fn((payload: unknown) => {
+    json: vi.fn((payload: unknown) => {
       capture.body = payload;
       return res;
     }),
-    send: jest.fn(() => res),
+    send: vi.fn(() => res),
   } as unknown as Response;
   capture.res = res;
   return capture;
@@ -40,7 +41,7 @@ const QUEUE_INDEX = 32;
 const CARD_INDEX = 33;
 const GRADE_INDEX = 34;
 
-const makeController = (index: number, useCase: { execute: jest.Mock }) => {
+const makeController = (index: number, useCase: { execute: Mock }) => {
   const stubs = Array.from({ length: 35 }, () => ({}));
   stubs[index] = useCase;
   return new AnkifyController(
@@ -51,7 +52,7 @@ const makeController = (index: number, useCase: { execute: jest.Mock }) => {
 describe('AnkifyController review handlers', () => {
   test('getReviewQueue returns the due card ids for an owned deck', async () => {
     const result = { connected: true, cardIds: [9001, 9002] };
-    const execute = jest.fn(async () => result);
+    const execute = vi.fn(async () => result);
     const controller = makeController(QUEUE_INDEX, { execute });
     const capture = makeResponse();
 
@@ -69,7 +70,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('getReviewQueue rejects a missing deck with 400', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = makeController(QUEUE_INDEX, { execute });
     const capture = makeResponse();
 
@@ -83,7 +84,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('getReviewQueue maps AnkiConnectUnreachableError to 503', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new AnkiConnectUnreachableError('http://x', new Error('down'));
     });
     const controller = makeController(QUEUE_INDEX, { execute });
@@ -104,7 +105,7 @@ describe('AnkifyController review handlers', () => {
       answerHtml: '<p>A</p>',
       css: '.card{}',
     };
-    const execute = jest.fn(async () => ({ connected: true, card }));
+    const execute = vi.fn(async () => ({ connected: true, card }));
     const controller = makeController(CARD_INDEX, { execute });
     const capture = makeResponse();
 
@@ -119,7 +120,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('getReviewCard returns card:null when the card is gone', async () => {
-    const execute = jest.fn(async () => ({ connected: true, card: null }));
+    const execute = vi.fn(async () => ({ connected: true, card: null }));
     const controller = makeController(CARD_INDEX, { execute });
     const capture = makeResponse();
 
@@ -133,7 +134,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('getReviewCard rejects a missing cardId with 400', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = makeController(CARD_INDEX, { execute });
     const capture = makeResponse();
 
@@ -147,7 +148,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('getReviewCard maps an offline client to 503', async () => {
-    const execute = jest.fn(async () => ({ connected: false, card: null }));
+    const execute = vi.fn(async () => ({ connected: false, card: null }));
     const controller = makeController(CARD_INDEX, { execute });
     const capture = makeResponse();
 
@@ -160,7 +161,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('getReviewCard maps AnkiConnectUnreachableError to 503', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new AnkiConnectUnreachableError('http://x', new Error('down'));
     });
     const controller = makeController(CARD_INDEX, { execute });
@@ -175,7 +176,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('gradeReviewCard grades and returns 200', async () => {
-    const execute = jest.fn(async () => ({ graded: true }));
+    const execute = vi.fn(async () => ({ graded: true }));
     const controller = makeController(GRADE_INDEX, { execute });
     const capture = makeResponse();
 
@@ -190,7 +191,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('gradeReviewCard rejects a missing cardId with 400', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = makeController(GRADE_INDEX, { execute });
     const capture = makeResponse();
 
@@ -204,7 +205,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('gradeReviewCard maps InvalidReviewEaseError to 400', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new InvalidReviewEaseError();
     });
     const controller = makeController(GRADE_INDEX, { execute });
@@ -219,7 +220,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('gradeReviewCard maps ReviewCardNotFoundError to 404', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new ReviewCardNotFoundError();
     });
     const controller = makeController(GRADE_INDEX, { execute });
@@ -234,7 +235,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('gradeReviewCard maps an offline client to 503', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new NoActiveAnkifyClientForReviewError();
     });
     const controller = makeController(GRADE_INDEX, { execute });
@@ -249,7 +250,7 @@ describe('AnkifyController review handlers', () => {
   });
 
   test('gradeReviewCard maps AnkiConnectUnreachableError to 503', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new AnkiConnectUnreachableError('http://x', new Error('down'));
     });
     const controller = makeController(GRADE_INDEX, { execute });

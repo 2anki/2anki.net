@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
@@ -6,13 +7,13 @@ const capturedOptions: { value: Record<string, unknown> | null } = {
   value: null,
 };
 
-jest.mock('http-proxy-middleware', () => {
+vi.mock('http-proxy-middleware', () => {
   const middleware = Object.assign(
-    jest.fn((_req: unknown, _res: unknown, next: () => void) => next()),
-    { upgrade: jest.fn() }
+    vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
+    { upgrade: vi.fn() }
   );
   return {
-    createProxyMiddleware: jest.fn((options: Record<string, unknown>) => {
+    createProxyMiddleware: vi.fn((options: Record<string, unknown>) => {
       capturedOptions.value = options;
       return middleware;
     }),
@@ -110,7 +111,7 @@ describe('attachAnkifySessionProxy', () => {
       url: `/v/${VALID_TOKEN}/websockify`,
       headers: { cookie: 'token=abc' },
     } as unknown as http.IncomingMessage;
-    const socket = { destroy: jest.fn() };
+    const socket = { destroy: vi.fn() };
     const head = Buffer.alloc(0);
 
     await ourHandler(req, socket, head);

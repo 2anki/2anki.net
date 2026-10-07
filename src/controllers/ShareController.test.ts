@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 import ShareController from './ShareController';
 
@@ -5,18 +6,18 @@ function mockResponse(locals: Record<string, unknown> = {}): Response {
   const headers: Record<string, string> = {};
   return {
     locals: { owner: null, ...locals },
-    setHeader: jest.fn((k: string, v: string) => {
+    setHeader: vi.fn((k: string, v: string) => {
       headers[k] = v;
     }),
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn(),
-    send: jest.fn(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn(),
+    send: vi.fn(),
   } as unknown as Response;
 }
 
 function makeCreateUseCase(overrides: Record<string, unknown> = {}) {
   return {
-    execute: jest.fn().mockResolvedValue({
+    execute: vi.fn().mockResolvedValue({
       token: 'abc-token',
       url: 'https://2anki.net/s/abc-token',
     }),
@@ -26,7 +27,7 @@ function makeCreateUseCase(overrides: Record<string, unknown> = {}) {
 
 function makeResolveUseCase(overrides: Record<string, unknown> = {}) {
   return {
-    execute: jest.fn().mockResolvedValue({
+    execute: vi.fn().mockResolvedValue({
       id: 1,
       owner: 42,
       upload_key: 'test.apkg',
@@ -40,19 +41,19 @@ function makeResolveUseCase(overrides: Record<string, unknown> = {}) {
 }
 
 function makeRevokeUseCase(overrides: Record<string, unknown> = {}) {
-  return { execute: jest.fn().mockResolvedValue(true), ...overrides };
+  return { execute: vi.fn().mockResolvedValue(true), ...overrides };
 }
 
 function makeShareService(overrides: Record<string, unknown> = {}) {
   return {
-    recordView: jest.fn().mockResolvedValue(undefined),
+    recordView: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
 
 function makeStorage(overrides: Record<string, unknown> = {}) {
   return {
-    getFileContents: jest
+    getFileContents: vi
       .fn()
       .mockResolvedValue({ Body: Buffer.from('fake-apkg') }),
     ...overrides,
@@ -61,20 +62,20 @@ function makeStorage(overrides: Record<string, unknown> = {}) {
 
 function makePreviewService(overrides: Record<string, unknown> = {}) {
   return {
-    parse: jest.fn().mockResolvedValue({}),
-    getMeta: jest.fn().mockReturnValue({ totalCards: 5, decks: [] }),
-    getCardsPage: jest
+    parse: vi.fn().mockResolvedValue({}),
+    getMeta: vi.fn().mockReturnValue({ totalCards: 5, decks: [] }),
+    getCardsPage: vi
       .fn()
       .mockReturnValue({ cards: [], nextCursor: null, total: 5 }),
-    getMediaEntry: jest.fn().mockReturnValue(Buffer.from('media-bytes')),
+    getMediaEntry: vi.fn().mockReturnValue(Buffer.from('media-bytes')),
     ...overrides,
   };
 }
 
 function makeDownloadService(overrides: Record<string, unknown> = {}) {
   return {
-    getFilename: jest.fn().mockResolvedValue('My Deck'),
-    isMissingDownloadError: jest.fn().mockReturnValue(false),
+    getFilename: vi.fn().mockResolvedValue('My Deck'),
+    isMissingDownloadError: vi.fn().mockReturnValue(false),
     ...overrides,
   };
 }
@@ -146,7 +147,7 @@ describe('ShareController - GET /api/shares/:token/meta', () => {
   it('returns 404 when token is not found or revoked', async () => {
     const controller = buildController({
       resolveUseCase: makeResolveUseCase({
-        execute: jest.fn().mockResolvedValue(null),
+        execute: vi.fn().mockResolvedValue(null),
       }),
     });
     const req = { params: { token: 'gone-token' } } as unknown as Request;
@@ -177,7 +178,7 @@ describe('ShareController - GET /api/shares/:token/download', () => {
   it('returns 404 on missing or revoked token', async () => {
     const controller = buildController({
       resolveUseCase: makeResolveUseCase({
-        execute: jest.fn().mockResolvedValue(null),
+        execute: vi.fn().mockResolvedValue(null),
       }),
     });
     const req = { params: { token: 'gone' } } as unknown as Request;
@@ -192,12 +193,12 @@ describe('ShareController - GET /api/shares/:token/download', () => {
     const headers: Record<string, string> = {};
     const res = {
       locals: {},
-      setHeader: jest.fn((k: string, v: string) => {
+      setHeader: vi.fn((k: string, v: string) => {
         headers[k] = v;
       }),
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-      send: jest.fn(),
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+      send: vi.fn(),
     } as unknown as Response;
 
     const controller = buildController();
@@ -228,7 +229,7 @@ describe('ShareController - DELETE /api/shares/:token', () => {
   it('returns 404 when revoke returns false', async () => {
     const controller = buildController({
       revokeUseCase: makeRevokeUseCase({
-        execute: jest.fn().mockResolvedValue(false),
+        execute: vi.fn().mockResolvedValue(false),
       }),
     });
     const req = { params: { token: 'abc-token' } } as unknown as Request;

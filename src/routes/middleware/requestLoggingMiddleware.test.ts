@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { EventEmitter } from 'events';
 
 import { makeRequestLoggingMiddleware } from './requestLoggingMiddleware';
@@ -58,7 +59,7 @@ describe('requestLoggingMiddleware', () => {
 
     const req = makeReq({ route: { path: '/api/upload/:id' } });
     const res = makeRes(200);
-    const next = jest.fn();
+    const next = vi.fn();
 
     middleware(req as never, res as never, next);
     expect(next).toHaveBeenCalledTimes(1);
@@ -84,7 +85,7 @@ describe('requestLoggingMiddleware', () => {
     const req = makeReq({ path: '/totally/random/path' });
     const res = makeRes(404);
 
-    middleware(req as never, res as never, jest.fn());
+    middleware(req as never, res as never, vi.fn());
     res.emit('finish');
     await sink.flush();
 
@@ -99,7 +100,7 @@ describe('requestLoggingMiddleware', () => {
     const req = makeReq({ path: '/ops' });
     const res = makeRes(200);
 
-    middleware(req as never, res as never, jest.fn());
+    middleware(req as never, res as never, vi.fn());
     res.emit('finish');
     await sink.flush();
 
@@ -114,7 +115,7 @@ describe('requestLoggingMiddleware', () => {
     const req = makeReq({ path: '/api/ops/metrics' });
     const res = makeRes(200);
 
-    middleware(req as never, res as never, jest.fn());
+    middleware(req as never, res as never, vi.fn());
     res.emit('finish');
     await sink.flush();
 
@@ -131,8 +132,8 @@ describe('requestLoggingMiddleware', () => {
 
     const req = makeReq({ route: { path: '/api/upload/:id' } });
     const res = makeRes(500);
-    const next = jest.fn();
-    const errSpy = jest
+    const next = vi.fn();
+    const errSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
 
@@ -154,7 +155,7 @@ describe('requestLoggingMiddleware', () => {
     });
     const res = makeRes(200);
 
-    middleware(req as never, res as never, jest.fn());
+    middleware(req as never, res as never, vi.fn());
     res.emit('finish');
     await sink.flush();
 

@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { noindexNonCanonicalHosts } from './noindexNonCanonicalHosts';
 
@@ -5,11 +6,11 @@ function mockReq(host: string): Request {
   return { hostname: host } as Request;
 }
 
-function mockRes(): { headers: Record<string, string>; setHeader: jest.Mock } {
+function mockRes(): { headers: Record<string, string>; setHeader: Mock } {
   const headers: Record<string, string> = {};
   return {
     headers,
-    setHeader: jest.fn((name: string, value: string) => {
+    setHeader: vi.fn((name: string, value: string) => {
       headers[name] = value;
     }),
   };
@@ -18,7 +19,7 @@ function mockRes(): { headers: Record<string, string>; setHeader: jest.Mock } {
 describe('noindexNonCanonicalHosts', () => {
   it('does not add X-Robots-Tag on the canonical apex host', () => {
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     noindexNonCanonicalHosts(
       mockReq('2anki.net'),
       res as unknown as Response,
@@ -30,7 +31,7 @@ describe('noindexNonCanonicalHosts', () => {
 
   it('adds noindex on the www host, which is not canonical', () => {
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     noindexNonCanonicalHosts(
       mockReq('www.2anki.net'),
       res as unknown as Response,
@@ -45,7 +46,7 @@ describe('noindexNonCanonicalHosts', () => {
 
   it('adds noindex, nofollow on a preview subdomain', () => {
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     noindexNonCanonicalHosts(
       mockReq('dev.2anki.net'),
       res as unknown as Response,
@@ -66,7 +67,7 @@ describe('noindexNonCanonicalHosts', () => {
       'cxa.2anki.net',
     ]) {
       const res = mockRes();
-      const next = jest.fn();
+      const next = vi.fn();
       noindexNonCanonicalHosts(
         mockReq(host),
         res as unknown as Response,
@@ -82,7 +83,7 @@ describe('noindexNonCanonicalHosts', () => {
 
   it('still calls next when hostname is missing', () => {
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     noindexNonCanonicalHosts(
       mockReq(''),
       res as unknown as Response,

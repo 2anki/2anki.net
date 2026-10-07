@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import express from 'express';
 
 import { SaveNativeDeckController } from './SaveNativeDeckController';
@@ -32,8 +33,8 @@ function makeRequest(
 
 function makeUseCase() {
   return {
-    execute: jest.fn(),
-  } as unknown as jest.Mocked<SaveNativeDeckUseCase>;
+    execute: vi.fn(),
+  } as unknown as Mocked<SaveNativeDeckUseCase>;
 }
 
 const apkgFile: Partial<Express.Multer.File> = {

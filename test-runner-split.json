@@ -1,6 +1,18 @@
 {
   "vitest": [
+    "src/KnexConfig.test.ts",
+    "src/app/**/*.test.ts",
+    "src/config/**/*.test.ts",
+    "src/shared/**/*.test.ts",
+    "src/templates/**/*.test.ts",
+    "src/test/**/*.test.ts",
+    "src/ui/**/*.test.ts",
+    "src/ui/**/*.test.tsx",
+    "src/controllers/**/*.test.ts",
+    "src/controllers/**/*.test.tsx",
     "src/controllers/helpers/**/*.test.ts",
+    "src/routes/**/*.test.ts",
+    "src/routes/**/*.test.tsx",
     "src/data_layer/**/*.test.ts",
     "src/infrastracture/**/*.test.ts",
     "src/usecases/**/*.test.ts",
@@ -44,9 +56,8 @@
     "src/lib/vocab/**/*.test.ts",
     "src/lib/zip/**/*.test.ts",
     "src/services/**/*.test.ts",
-    "src/services/**/*.test.tsx"
+    "src/services/**/*.test.tsx",
+    "src/lib/zip/**/*.test.tsx"
   ],
-  "jestOnly": [
-    "src/services/NotionService/BlockHandler/BlockHandler.test.ts"
-  ]
+  "jestOnly": []
 }

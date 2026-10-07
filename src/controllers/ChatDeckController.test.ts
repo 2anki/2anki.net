@@ -1,13 +1,14 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 import ChatDeckController from './ChatDeckController';
 import { MonthlyLimitError } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 
 function buildRes(): Response {
   return {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
-    setHeader: jest.fn().mockReturnThis(),
-    send: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
+    setHeader: vi.fn().mockReturnThis(),
+    send: vi.fn().mockReturnThis(),
     locals: { owner: 42 },
   } as unknown as Response;
 }
@@ -52,7 +53,7 @@ describe('ChatDeckController.generate', () => {
   ];
 
   it.each(rejectionCases)('returns 400 when %s', async (_label, body) => {
-    const useCase = { execute: jest.fn() };
+    const useCase = { execute: vi.fn() };
     const controller = new ChatDeckController(useCase as never);
     const res = buildRes();
 
@@ -63,7 +64,7 @@ describe('ChatDeckController.generate', () => {
 
   it('accepts a valid MCQ-shaped card and forwards it to the use case', async () => {
     const fakeBuffer = Buffer.from('fake-apkg-data');
-    const useCase = { execute: jest.fn().mockResolvedValue(fakeBuffer) };
+    const useCase = { execute: vi.fn().mockResolvedValue(fakeBuffer) };
     const controller = new ChatDeckController(useCase as never);
     const res = buildRes();
     const mcqCard = {
@@ -97,7 +98,7 @@ describe('ChatDeckController.generate', () => {
   });
 
   it('rejects an MCQ-shaped card with 3 options', async () => {
-    const useCase = { execute: jest.fn() };
+    const useCase = { execute: vi.fn() };
     const controller = new ChatDeckController(useCase as never);
     const res = buildRes();
     const badMcq = {
@@ -116,7 +117,7 @@ describe('ChatDeckController.generate', () => {
   });
 
   it('rejects an MCQ-shaped card with an out-of-range correctIndex', async () => {
-    const useCase = { execute: jest.fn() };
+    const useCase = { execute: vi.fn() };
     const controller = new ChatDeckController(useCase as never);
     const res = buildRes();
     const badMcq = {
@@ -136,7 +137,7 @@ describe('ChatDeckController.generate', () => {
 
   it('calls use case and sends buffer on valid input', async () => {
     const fakeBuffer = Buffer.from('fake-apkg-data');
-    const useCase = { execute: jest.fn().mockResolvedValue(fakeBuffer) };
+    const useCase = { execute: vi.fn().mockResolvedValue(fakeBuffer) };
     const controller = new ChatDeckController(useCase as never);
     const res = buildRes();
 
@@ -166,7 +167,7 @@ describe('ChatDeckController.generate', () => {
   it('maps a MonthlyLimitError to a 402 with the monthly_limit shape and sends no deck', async () => {
     const resetOn = '2026-10-01T00:00:00.000Z';
     const useCase = {
-      execute: jest
+      execute: vi
         .fn()
         .mockRejectedValue(new MonthlyLimitError(100, 100, 2, resetOn)),
     };

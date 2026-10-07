@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import { Request, Response } from 'express';
 import { ErrorEventController } from './ErrorEventController';
 import { RateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
@@ -7,11 +8,11 @@ function makeIngestUseCase(
   result: 'accepted' | 'duplicate' = 'accepted'
 ): IngestErrorEventUseCase {
   return {
-    execute: jest.fn(async () => result),
+    execute: vi.fn(async () => result),
   } as unknown as IngestErrorEventUseCase;
 }
 
-function makeRes(): jest.Mocked<
+function makeRes(): Mocked<
   Pick<Response, 'status' | 'json' | 'end' | 'set'>
 > & {
   _statusCode?: number;
@@ -38,7 +39,7 @@ function makeRes(): jest.Mocked<
       return this;
     },
   };
-  return res as unknown as jest.Mocked<
+  return res as unknown as Mocked<
     Pick<Response, 'status' | 'json' | 'end' | 'set'>
   > & {
     _statusCode?: number;
@@ -222,7 +223,7 @@ describe('ErrorEventController.ingest', () => {
 
   it('truncates an over-long release to 40 chars', async () => {
     const useCase = makeIngestUseCase();
-    const executeSpy = jest.spyOn(useCase, 'execute');
+    const executeSpy = vi.spyOn(useCase, 'execute');
     const controller = new ErrorEventController(useCase);
     const res = makeRes();
     await controller.ingest(
@@ -237,7 +238,7 @@ describe('ErrorEventController.ingest', () => {
 
   it('does not expose the raw IP in the response', async () => {
     const useCase = makeIngestUseCase();
-    const executeSpy = jest.spyOn(useCase, 'execute');
+    const executeSpy = vi.spyOn(useCase, 'execute');
     const controller = new ErrorEventController(useCase);
     const res = makeRes();
     await controller.ingest(

@@ -1,3 +1,4 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import { Request, Response } from 'express';
 import { APIErrorCode, APIResponseError } from '@notionhq/client';
 import ApkgController from './ApkgController';
@@ -17,35 +18,39 @@ import ExportApkgToCsvUseCase, {
 import { track } from '../services/events/track';
 import { InvalidApkgError } from '../services/ApkgPreviewService/extractApkg';
 
-jest.mock('../usecases/apkg/ImportApkgToNotionUseCase');
-jest.mock('../usecases/apkg/ExportApkgToPdfUseCase');
-jest.mock('../usecases/apkg/ExportApkgToCsvUseCase', () => {
-  const actual = jest.requireActual('../usecases/apkg/ExportApkgToCsvUseCase');
+vi.mock('../usecases/apkg/ImportApkgToNotionUseCase');
+vi.mock('../usecases/apkg/ExportApkgToPdfUseCase');
+vi.mock('../usecases/apkg/ExportApkgToCsvUseCase', async () => {
+  const actual = await vi.importActual<
+    typeof import('../usecases/apkg/ExportApkgToCsvUseCase')
+  >('../usecases/apkg/ExportApkgToCsvUseCase');
   return {
     __esModule: true,
-    default: jest.fn(),
+    default: vi.fn(),
     CardLimitExceededError: actual.CardLimitExceededError,
     EmptyDeckError: actual.EmptyDeckError,
     CSV_FREE_NOTE_LIMIT: actual.CSV_FREE_NOTE_LIMIT,
     CSV_ANONYMOUS_NOTE_LIMIT: actual.CSV_ANONYMOUS_NOTE_LIMIT,
   };
 });
-jest.mock('../services/events/track', () => ({ track: jest.fn() }));
-jest.mock('../lib/storage/StorageHandler', () => ({
+vi.mock('../services/events/track', () => ({ track: vi.fn() }));
+vi.mock('../lib/storage/StorageHandler', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({})),
+  default: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
-jest.mock('node:fs/promises', () => ({
-  readFile: jest.fn().mockResolvedValue(Buffer.from('fake')),
-  unlink: jest.fn().mockResolvedValue(undefined),
+vi.mock('node:fs/promises', () => ({
+  readFile: vi.fn().mockResolvedValue(Buffer.from('fake')),
+  unlink: vi.fn().mockResolvedValue(undefined),
 }));
 
-const trackMock = track as jest.Mock;
+const trackMock = track as Mock;
 
 function makeRes(locals: Record<string, unknown> = {}): Partial<Response> {
   return {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn(),
     locals: { owner: 'user-1', ...locals },
   };
 }
@@ -84,28 +89,28 @@ function makeAPIResponseError(code: string, status: number): APIResponseError {
 
 function makeController() {
   const downloadService = {
-    getFileBody: jest.fn(),
-    isMissingDownloadError: jest.fn().mockReturnValue(false),
+    getFileBody: vi.fn(),
+    isMissingDownloadError: vi.fn().mockReturnValue(false),
   } as unknown as DownloadService;
   const previewService = {
-    parse: jest.fn(),
-    getMeta: jest.fn(),
-    getCardsPage: jest.fn(),
-    getMediaEntry: jest.fn(),
+    parse: vi.fn(),
+    getMeta: vi.fn(),
+    getCardsPage: vi.fn(),
+    getMediaEntry: vi.fn(),
   } as unknown as ApkgPreviewService;
   const pdfRenderService = {} as PdfRenderService;
   const notionService = {
-    getNotionAPI: jest.fn().mockResolvedValue({
-      createPage: jest.fn().mockResolvedValue({ id: 'page-1' }),
-      appendBlocks: jest.fn().mockResolvedValue({}),
-      getPage: jest.fn().mockResolvedValue({ url: 'https://notion.so/p' }),
+    getNotionAPI: vi.fn().mockResolvedValue({
+      createPage: vi.fn().mockResolvedValue({ id: 'page-1' }),
+      appendBlocks: vi.fn().mockResolvedValue({}),
+      getPage: vi.fn().mockResolvedValue({ url: 'https://notion.so/p' }),
     }),
   } as unknown as NotionService;
   const jobRepository = {
-    countJobsByType: jest.fn().mockResolvedValue(0),
-    create: jest.fn().mockResolvedValue(undefined),
-    updateJobStatus: jest.fn().mockResolvedValue({}),
-    findJobById: jest.fn(),
+    countJobsByType: vi.fn().mockResolvedValue(0),
+    create: vi.fn().mockResolvedValue(undefined),
+    updateJobStatus: vi.fn().mockResolvedValue({}),
+    findJobById: vi.fn(),
   } as unknown as JobRepository;
 
   return new ApkgController(
@@ -117,20 +122,22 @@ function makeController() {
   );
 }
 
-jest.mock('../usecases/apkg/PackEditedApkgUseCase');
+vi.mock('../usecases/apkg/PackEditedApkgUseCase');
 import PackEditedApkgUseCase from '../usecases/apkg/PackEditedApkgUseCase';
 
 describe('ApkgController.downloadEdited', () => {
-  let executeMock: jest.Mock;
+  let executeMock: Mock;
 
   beforeEach(() => {
-    executeMock = jest.fn().mockResolvedValue({
+    executeMock = vi.fn().mockResolvedValue({
       buffer: Buffer.from('fake-apkg'),
       filename: 'deck-edited.apkg',
     });
-    (PackEditedApkgUseCase as jest.Mock).mockImplementation(() => ({
-      execute: executeMock,
-    }));
+    (PackEditedApkgUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: executeMock,
+      };
+    });
   });
 
   it('returns 400 when key is not an .apkg', async () => {
@@ -157,7 +164,7 @@ describe('ApkgController.downloadEdited', () => {
 
   it('returns 404 when upload not found', async () => {
     const controller = makeController();
-    const ds = controller['downloadService'] as jest.Mocked<DownloadService>;
+    const ds = controller['downloadService'] as Mocked<DownloadService>;
     ds.getFileBody.mockResolvedValue(null);
     const req = makeReq({
       params: { key: 'deck.apkg' },
@@ -171,11 +178,11 @@ describe('ApkgController.downloadEdited', () => {
   it('sends the .apkg buffer when edits are valid', async () => {
     const fakeBuffer = Buffer.from('fake-apkg');
     const controller = makeController();
-    const ds = controller['downloadService'] as jest.Mocked<DownloadService>;
+    const ds = controller['downloadService'] as Mocked<DownloadService>;
     ds.getFileBody.mockResolvedValue(fakeBuffer);
     const res = makeRes() as Response;
-    (res as unknown as Record<string, jest.Mock>).setHeader = jest.fn();
-    (res as unknown as Record<string, jest.Mock>).send = jest.fn();
+    (res as unknown as Record<string, Mock>).setHeader = vi.fn();
+    (res as unknown as Record<string, Mock>).send = vi.fn();
     const req = makeReq({
       params: { key: 'deck.apkg' },
       body: { edits: [{ cardIndex: 0, deleted: true }] },
@@ -184,20 +191,22 @@ describe('ApkgController.downloadEdited', () => {
     expect(executeMock).toHaveBeenCalledWith(
       expect.objectContaining({ edits: [{ cardIndex: 0, deleted: true }] })
     );
-    expect(
-      (res as unknown as Record<string, jest.Mock>).send
-    ).toHaveBeenCalledWith(Buffer.from('fake-apkg'));
+    expect((res as unknown as Record<string, Mock>).send).toHaveBeenCalledWith(
+      Buffer.from('fake-apkg')
+    );
   });
 });
 
 describe('ApkgController.importToNotion', () => {
-  let executeMock: jest.Mock;
+  let executeMock: Mock;
 
   beforeEach(() => {
-    executeMock = jest.fn().mockResolvedValue(undefined);
-    (ImportApkgToNotionUseCase as jest.Mock).mockImplementation(() => ({
-      execute: executeMock,
-    }));
+    executeMock = vi.fn().mockResolvedValue(undefined);
+    (ImportApkgToNotionUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: executeMock,
+      };
+    });
   });
 
   it('allows a free user to start an import with maxNotes=1000', async () => {
@@ -238,12 +247,10 @@ describe('ApkgController.importToNotion', () => {
 
   it('returns 400 when the user has no accessible Notion pages', async () => {
     const controller = makeController();
-    const notionService = controller[
-      'notionService'
-    ] as jest.Mocked<NotionService>;
-    (notionService.getNotionAPI as jest.Mock).mockResolvedValue({
-      searchTopLevelPages: jest.fn().mockResolvedValue({ results: [] }),
-      createPage: jest.fn(),
+    const notionService = controller['notionService'] as Mocked<NotionService>;
+    (notionService.getNotionAPI as Mock).mockResolvedValue({
+      searchTopLevelPages: vi.fn().mockResolvedValue({ results: [] }),
+      createPage: vi.fn(),
     });
     const req = makeReq({ body: {} }) as Request;
     const res = makeRes({ patreon: false, subscriber: false }) as Response;
@@ -259,21 +266,19 @@ describe('ApkgController.importToNotion', () => {
 
   it('returns 401 notion_unauthorized when Notion rejects the search as Unauthorized', async () => {
     const controller = makeController();
-    const notionService = controller[
-      'notionService'
-    ] as jest.Mocked<NotionService>;
-    (notionService.getNotionAPI as jest.Mock).mockResolvedValue({
-      searchTopLevelPages: jest
+    const notionService = controller['notionService'] as Mocked<NotionService>;
+    (notionService.getNotionAPI as Mock).mockResolvedValue({
+      searchTopLevelPages: vi
         .fn()
         .mockRejectedValue(
           makeAPIResponseError(APIErrorCode.Unauthorized, 401)
         ),
-      createPage: jest.fn(),
+      createPage: vi.fn(),
     });
     const req = makeReq({ body: {} }) as Request;
     const res = makeRes({ patreon: false, subscriber: false }) as Response;
-    (res.json as jest.Mock).mockReturnThis();
-    (res as unknown as Record<string, jest.Mock>).send = jest.fn();
+    (res.json as Mock).mockReturnThis();
+    (res as unknown as Record<string, Mock>).send = vi.fn();
 
     await controller.importToNotion(req, res);
 
@@ -285,12 +290,8 @@ describe('ApkgController.importToNotion', () => {
 
   it('returns 500 when an unexpected error occurs while starting the import', async () => {
     const controller = makeController();
-    const notionService = controller[
-      'notionService'
-    ] as jest.Mocked<NotionService>;
-    (notionService.getNotionAPI as jest.Mock).mockRejectedValue(
-      new Error('boom')
-    );
+    const notionService = controller['notionService'] as Mocked<NotionService>;
+    (notionService.getNotionAPI as Mock).mockRejectedValue(new Error('boom'));
     const req = makeReq({ body: {} }) as Request;
     const res = makeRes({ patreon: false, subscriber: false }) as Response;
 
@@ -306,38 +307,42 @@ describe('ApkgController.importToNotion', () => {
 describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
   beforeEach(() => {
     trackMock.mockClear();
-    (ExportApkgToPdfUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue({
-        pdf: Buffer.from('fake-pdf'),
-        deckName: 'deck',
-        cardCount: 1,
-      }),
-    }));
+    (ExportApkgToPdfUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          pdf: Buffer.from('fake-pdf'),
+          deckName: 'deck',
+          cardCount: 1,
+        }),
+      };
+    });
   });
 
   function makePdfRes(locals: Record<string, unknown> = {}): Response {
     const res = makeRes(locals) as Partial<Response> & {
-      setHeader?: jest.Mock;
-      send?: jest.Mock;
+      setHeader?: Mock;
+      send?: Mock;
     };
-    res.setHeader = jest.fn();
-    res.send = jest.fn();
+    res.setHeader = vi.fn();
+    res.send = vi.fn();
     return res as Response;
   }
 
   it('answers 400 Invalid .apkg file when the upload is not a zip at all', async () => {
     // extractApkg wraps yauzl's "End of central directory…" for a renamed
     // PDF/HTML; this used to fall through to a logged 500 (prod, 2026-08-27).
-    (ExportApkgToPdfUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockRejectedValue(
-          new InvalidApkgError(
-            'End of central directory record signature not found. Either not a zip file, or file is truncated.'
-          )
-        ),
-    }));
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (ExportApkgToPdfUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockRejectedValue(
+            new InvalidApkgError(
+              'End of central directory record signature not found. Either not a zip file, or file is truncated.'
+            )
+          ),
+      };
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const controller = makeController();
     const req = makeReq({ body: {} }) as Request;
     const res = makePdfRes({ owner: 42 });
@@ -351,10 +356,12 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
   });
 
   it('answers 400 with a too-large message when the PDF render times out', async () => {
-    (ExportApkgToPdfUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(new PdfRenderTimeoutError()),
-    }));
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (ExportApkgToPdfUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(new PdfRenderTimeoutError()),
+      };
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const controller = makeController();
     const req = makeReq({ body: {} }) as Request;
     const res = makePdfRes({ owner: 42 });
@@ -371,9 +378,11 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
   });
 
   it('tracks pdf_render_timed_out for the owner when the render times out', async () => {
-    (ExportApkgToPdfUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockRejectedValue(new PdfRenderTimeoutError()),
-    }));
+    (ExportApkgToPdfUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(new PdfRenderTimeoutError()),
+      };
+    });
     const controller = makeController();
     const req = makeReq({ body: {} }) as Request;
     const res = makePdfRes({ owner: 42 });
@@ -509,25 +518,27 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
 describe('ApkgController.exportCsv', () => {
   function makeCsvRes(locals: Record<string, unknown> = {}): Response {
     const res = makeRes(locals) as Partial<Response> & {
-      setHeader?: jest.Mock;
-      send?: jest.Mock;
+      setHeader?: Mock;
+      send?: Mock;
     };
-    res.setHeader = jest.fn();
-    res.send = jest.fn();
+    res.setHeader = vi.fn();
+    res.send = vi.fn();
     return res as Response;
   }
 
-  let executeMock: jest.Mock;
+  let executeMock: Mock;
 
   beforeEach(() => {
-    executeMock = jest.fn().mockResolvedValue({
+    executeMock = vi.fn().mockResolvedValue({
       csv: Buffer.from('Model,Front,Back,Tags\r\nBasic,Q,A,\r\n'),
       deckName: 'My deck',
       noteCount: 1,
     });
-    (ExportApkgToCsvUseCase as unknown as jest.Mock).mockImplementation(() => ({
-      execute: executeMock,
-    }));
+    (ExportApkgToCsvUseCase as unknown as Mock).mockImplementation(function () {
+      return {
+        execute: executeMock,
+      };
+    });
   });
 
   it('returns 400 when no file is uploaded', async () => {
@@ -561,7 +572,7 @@ describe('ApkgController.exportCsv', () => {
     await controller.exportCsv(req, res);
 
     expect(executeMock).toHaveBeenCalledWith(expect.any(Buffer), null);
-    const setHeader = (res as unknown as { setHeader: jest.Mock }).setHeader;
+    const setHeader = (res as unknown as { setHeader: Mock }).setHeader;
     expect(setHeader).toHaveBeenCalledWith(
       'Content-Type',
       'text/csv; charset=utf-8'
@@ -575,7 +586,7 @@ describe('ApkgController.exportCsv', () => {
       expect.stringContaining('deck.csv')
     );
     expect(setHeader).toHaveBeenCalledWith('X-Card-Count', '1');
-    expect((res as unknown as { send: jest.Mock }).send).toHaveBeenCalledWith(
+    expect((res as unknown as { send: Mock }).send).toHaveBeenCalledWith(
       expect.any(Buffer)
     );
   });
@@ -591,9 +602,9 @@ describe('ApkgController.exportCsv', () => {
   });
 
   it('returns 413 when the apkg exceeds the decompression caps', async () => {
-    const { ApkgTooLargeError } = jest.requireActual(
-      '../services/ApkgPreviewService/extractApkg'
-    );
+    const { ApkgTooLargeError } = await vi.importActual<
+      typeof import('../services/ApkgPreviewService/extractApkg')
+    >('../services/ApkgPreviewService/extractApkg');
     executeMock.mockRejectedValueOnce(new ApkgTooLargeError());
     const controller = makeController();
     const req = makeReq() as Request;
@@ -654,7 +665,7 @@ describe('ApkgController.exportCsv', () => {
     await controller.exportCsv(req, res);
 
     expect(res.status).toHaveBeenCalledWith(402);
-    const body = (res.json as jest.Mock).mock.calls[0][0];
+    const body = (res.json as Mock).mock.calls[0][0];
     expect(body).toMatchObject({
       note_count: 340,
       note_limit: 21,
@@ -672,7 +683,7 @@ describe('ApkgController.exportCsv', () => {
 
     await controller.exportCsv(req, res);
 
-    const body = (res.json as jest.Mock).mock.calls[0][0];
+    const body = (res.json as Mock).mock.calls[0][0];
     expect(body.requires_account).toBe(false);
   });
 });

@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
@@ -5,27 +6,33 @@ import { AddressInfo } from 'node:net';
 import type { IReEngagementRepository } from '../data_layer/ReEngagementRepository';
 import type { IEmailPreferencesRepository } from '../data_layer/EmailPreferencesRepository';
 
-const mockRepo: jest.Mocked<IReEngagementRepository> = {
-  hasBeenSent: jest.fn().mockResolvedValue(false),
-  recordSend: jest.fn().mockResolvedValue(1),
-  saveResponse: jest.fn().mockResolvedValue(undefined),
-  findByToken: jest.fn().mockResolvedValue(null),
-  getUsersToEmail: jest.fn().mockResolvedValue([]),
+const mockRepo: Mocked<IReEngagementRepository> = {
+  hasBeenSent: vi.fn().mockResolvedValue(false),
+  recordSend: vi.fn().mockResolvedValue(1),
+  saveResponse: vi.fn().mockResolvedValue(undefined),
+  findByToken: vi.fn().mockResolvedValue(null),
+  getUsersToEmail: vi.fn().mockResolvedValue([]),
 };
 
-const mockPrefRepo: jest.Mocked<IEmailPreferencesRepository> = {
-  isOptedOut: jest.fn().mockResolvedValue(false),
-  optOut: jest.fn().mockResolvedValue(undefined),
-  optIn: jest.fn().mockResolvedValue(undefined),
+const mockPrefRepo: Mocked<IEmailPreferencesRepository> = {
+  isOptedOut: vi.fn().mockResolvedValue(false),
+  optOut: vi.fn().mockResolvedValue(undefined),
+  optIn: vi.fn().mockResolvedValue(undefined),
 };
 
-jest.mock('../data_layer', () => ({ getDatabase: jest.fn() }));
-jest.mock('../data_layer/ReEngagementRepository', () =>
-  jest.fn().mockImplementation(() => mockRepo)
-);
-jest.mock('../data_layer/EmailPreferencesRepository', () =>
-  jest.fn().mockImplementation(() => mockPrefRepo)
-);
+vi.mock('../data_layer', () => ({ getDatabase: vi.fn() }));
+vi.mock('../data_layer/ReEngagementRepository', () => ({
+  __esModule: true,
+  default: vi.fn().mockImplementation(function () {
+    return mockRepo;
+  }),
+}));
+vi.mock('../data_layer/EmailPreferencesRepository', () => ({
+  __esModule: true,
+  default: vi.fn().mockImplementation(function () {
+    return mockPrefRepo;
+  }),
+}));
 
 async function buildServer() {
   const { default: ReEngagementRouter } = await import('./ReEngagementRouter');
@@ -48,7 +55,7 @@ describe('ReEngagementRouter', () => {
 
   afterAll(() => server.close());
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   describe('GET /feedback/onboarding', () => {
     it('returns 400 when uid is missing', async () => {

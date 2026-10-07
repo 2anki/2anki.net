@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
 let mockAuthOwner: number | null = 42;
 
-jest.mock('./middleware/RequireAuthentication', () => {
+vi.mock('./middleware/RequireAuthentication', () => {
   const middleware = (
     _req: express.Request,
     res: express.Response,
@@ -24,7 +25,7 @@ jest.mock('./middleware/RequireAuthentication', () => {
   };
 });
 
-jest.mock('./middleware/RequireAllowedOrigin', () => ({
+vi.mock('./middleware/RequireAllowedOrigin', () => ({
   __esModule: true,
   default: (
     _req: express.Request,
@@ -33,62 +34,76 @@ jest.mock('./middleware/RequireAllowedOrigin', () => ({
   ) => next(),
 }));
 
-jest.mock('../data_layer', () => ({
+vi.mock('../data_layer', () => ({
   __esModule: true,
   getDatabase: () => ({}),
 }));
 
-jest.mock('../lib/storage/StorageHandler', () => ({
+vi.mock('../lib/storage/StorageHandler', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({})),
+  default: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
 
-const mockDropbox = jest.fn();
-const mockSample = jest.fn();
+const mockDropbox = vi.fn();
+const mockSample = vi.fn();
 
-jest.mock('../controllers/Upload/UploadController', () => ({
+vi.mock('../controllers/Upload/UploadController', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    dropbox: mockDropbox,
-    googleDrive: jest.fn(),
-    getDropboxUploads: jest.fn(),
-    deleteDropboxUpload: jest.fn(),
-    getGoogleDriveUploads: jest.fn(),
-    deleteGoogleDriveUpload: jest.fn(),
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      dropbox: mockDropbox,
+      googleDrive: vi.fn(),
+      getDropboxUploads: vi.fn(),
+      deleteDropboxUpload: vi.fn(),
+      getGoogleDriveUploads: vi.fn(),
+      deleteGoogleDriveUpload: vi.fn(),
+    };
+  }),
 }));
 
-jest.mock('../controllers/Upload/SaveNativeDeckController', () => ({
-  SaveNativeDeckController: jest.fn().mockImplementation(() => ({
-    save: jest.fn(),
-  })),
+vi.mock('../controllers/Upload/SaveNativeDeckController', () => ({
+  SaveNativeDeckController: vi.fn().mockImplementation(function () {
+    return {
+      save: vi.fn(),
+    };
+  }),
 }));
 
-const mockGetJobReport = jest.fn();
+const mockGetJobReport = vi.fn();
 
-jest.mock('../controllers/JobController', () => ({
+vi.mock('../controllers/JobController', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    getJobs: jest.fn(),
-    deleteJob: jest.fn(),
-    getJobReport: mockGetJobReport,
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      getJobs: vi.fn(),
+      deleteJob: vi.fn(),
+      getJobReport: mockGetJobReport,
+    };
+  }),
 }));
 
-jest.mock('../controllers/Upload/RecentSourcesController', () => ({
-  RecentSourcesController: jest.fn().mockImplementation(() => ({
-    getRecentSources: jest.fn(),
-  })),
+vi.mock('../controllers/Upload/RecentSourcesController', () => ({
+  RecentSourcesController: vi.fn().mockImplementation(function () {
+    return {
+      getRecentSources: vi.fn(),
+    };
+  }),
 }));
 
-jest.mock('../controllers/Upload/SampleUploadController', () => ({
-  SampleUploadController: jest.fn().mockImplementation(() => ({
-    sample: mockSample,
-  })),
+vi.mock('../controllers/Upload/SampleUploadController', () => ({
+  SampleUploadController: vi.fn().mockImplementation(function () {
+    return {
+      sample: mockSample,
+    };
+  }),
 }));
 
-jest.mock('../usecases/uploads/ConvertSampleDeckUseCase', () => ({
-  ConvertSampleDeckUseCase: jest.fn().mockImplementation(() => ({})),
+vi.mock('../usecases/uploads/ConvertSampleDeckUseCase', () => ({
+  ConvertSampleDeckUseCase: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
 
 import UploadRouter from './UploadRouter';

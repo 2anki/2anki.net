@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import express from 'express';
 import { APIErrorCode, APIResponseError } from '@notionhq/client';
 import NotionController from './NotionController';
@@ -16,22 +17,22 @@ import {
 } from '../lib/workerTermination';
 import { CONVERSION_PROCESS_CRASHED_REASON } from '../usecases/jobs/jobFailureReason';
 
-jest.mock('../lib/conversionPool', () => ({
+vi.mock('../lib/conversionPool', () => ({
   __esModule: true,
-  runConversion: jest.fn().mockResolvedValue(undefined),
+  runConversion: vi.fn().mockResolvedValue(undefined),
 }));
-jest.mock('../services/events/track', () => ({
+vi.mock('../services/events/track', () => ({
   __esModule: true,
-  track: jest.fn(),
+  track: vi.fn(),
 }));
-jest.mock('../data_layer', () => ({
-  getDatabase: jest.fn().mockReturnValue({}),
+vi.mock('../data_layer', () => ({
+  getDatabase: vi.fn().mockReturnValue({}),
 }));
-jest.mock('../data_layer/JobRepository');
-jest.mock('../usecases/jobs/FindOrCreateJobUseCase');
-jest.mock('../usecases/jobs/ClaimJobForRestartUseCase');
-jest.mock('../usecases/jobs/CheckJobLimitUseCase');
-jest.mock('../usecases/jobs/CancelJobUseCase');
+vi.mock('../data_layer/JobRepository');
+vi.mock('../usecases/jobs/FindOrCreateJobUseCase');
+vi.mock('../usecases/jobs/ClaimJobForRestartUseCase');
+vi.mock('../usecases/jobs/CheckJobLimitUseCase');
+vi.mock('../usecases/jobs/CancelJobUseCase');
 
 import { runConversion } from '../lib/conversionPool';
 import { track } from '../services/events/track';
@@ -45,50 +46,50 @@ function buildNotionRepo(
   overrides: Partial<INotionRepository> = {}
 ): INotionRepository {
   return {
-    getNotionData: jest.fn(),
-    saveNotionToken: jest.fn(),
-    getNotionToken: jest.fn(),
-    deleteBlocksByOwner: jest.fn(),
-    deleteNotionData: jest.fn(),
-    markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    clearTokenInvalid: jest.fn(),
-    setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+    getNotionData: vi.fn(),
+    saveNotionToken: vi.fn(),
+    getNotionToken: vi.fn(),
+    deleteBlocksByOwner: vi.fn(),
+    deleteNotionData: vi.fn(),
+    markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    clearTokenInvalid: vi.fn(),
+    setReconnectEmailSent: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
 
 function buildEmailService(): IEmailService {
   return {
-    sendResetEmail: jest.fn(),
-    sendConversionEmail: jest.fn(),
-    sendConversionLinkEmail: jest.fn(),
-    sendContactEmail: jest.fn(),
-    sendSubscriptionCancelledEmail: jest.fn(),
-    sendSubscriptionScheduledCancellationEmail: jest.fn(),
-    sendSubscriptionResumingSoonEmail: jest.fn().mockResolvedValue(undefined),
-    sendHostedAnkiAccessRequestEmail: jest.fn(),
-    sendMagicLinkEmail: jest.fn(),
-    sendReEngagementEmail: jest.fn(),
-    sendInactivityWarningEmail: jest.fn(),
-    sendAbandonedCheckoutRecoveryEmail: jest.fn(),
-    sendPassWinbackEmail: jest.fn(),
-    sendParserCanaryAlert: jest.fn(),
-    sendAiSpendAlertEmail: jest.fn(),
-    sendNotionReconnectEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendAnonymousPassClaimEmail: jest.fn().mockResolvedValue(undefined),
-    sendContactConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-    sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
-    sendEmailChangeConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-    sendEmailChangeNotificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendResetEmail: vi.fn(),
+    sendConversionEmail: vi.fn(),
+    sendConversionLinkEmail: vi.fn(),
+    sendContactEmail: vi.fn(),
+    sendSubscriptionCancelledEmail: vi.fn(),
+    sendSubscriptionScheduledCancellationEmail: vi.fn(),
+    sendSubscriptionResumingSoonEmail: vi.fn().mockResolvedValue(undefined),
+    sendHostedAnkiAccessRequestEmail: vi.fn(),
+    sendMagicLinkEmail: vi.fn(),
+    sendReEngagementEmail: vi.fn(),
+    sendInactivityWarningEmail: vi.fn(),
+    sendAbandonedCheckoutRecoveryEmail: vi.fn(),
+    sendPassWinbackEmail: vi.fn(),
+    sendParserCanaryAlert: vi.fn(),
+    sendAiSpendAlertEmail: vi.fn(),
+    sendNotionReconnectEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendPassClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendAnonymousPassClaimEmail: vi.fn().mockResolvedValue(undefined),
+    sendContactConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+    sendPriceLockInEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionRecoveryEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeNotificationEmail: vi.fn().mockResolvedValue(undefined),
   };
 }
 
 function buildUsersRepo(): UsersRepository {
   return {
-    getEmailById: jest.fn().mockResolvedValue(undefined),
+    getEmailById: vi.fn().mockResolvedValue(undefined),
   } as unknown as UsersRepository;
 }
 
@@ -102,12 +103,12 @@ describe('NotionController', () => {
 
   const buildApi = (overrides: Record<string, unknown> = {}) =>
     ({
-      listBlocksPage: jest.fn().mockResolvedValue({
+      listBlocksPage: vi.fn().mockResolvedValue({
         results: [],
         next_cursor: null,
         has_more: false,
       }),
-      getPage: jest.fn().mockResolvedValue(null),
+      getPage: vi.fn().mockResolvedValue(null),
       ...overrides,
     }) as any;
 
@@ -125,28 +126,38 @@ describe('NotionController', () => {
     (
       JobRepository as unknown as { TERMINAL_STATUSES: string[] }
     ).TERMINAL_STATUSES = ['done', 'failed', 'cancelled', 'interrupted'];
-    (JobRepository as unknown as jest.Mock).mockImplementation(() => ({}));
-    (FindOrCreateJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest
-        .fn()
-        .mockResolvedValue({ job: { id: 77, status: jobStatus }, created }),
-    }));
-    (ClaimJobForRestartUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(claimed),
-    }));
-    (CheckJobLimitUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(withinLimit),
-    }));
-    (CancelJobUseCase as jest.Mock).mockImplementation(() => ({
-      execute: jest.fn().mockResolvedValue(undefined),
-    }));
-    (runConversion as jest.Mock).mockResolvedValue(undefined);
+    (JobRepository as unknown as Mock).mockImplementation(function () {
+      return {};
+    });
+    (FindOrCreateJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ job: { id: 77, status: jobStatus }, created }),
+      };
+    });
+    (ClaimJobForRestartUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(claimed),
+      };
+    });
+    (CheckJobLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(withinLimit),
+      };
+    });
+    (CancelJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (runConversion as Mock).mockResolvedValue(undefined);
   }
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = {
-      getNotionAPI: jest.fn(),
+      getNotionAPI: vi.fn(),
     } as any;
     controller = new NotionController(service);
     req = {
@@ -154,9 +165,9 @@ describe('NotionController', () => {
       query: {},
     };
     res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis(),
-      send: jest.fn().mockReturnThis(),
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis(),
       locals: { owner: 'owner1' },
     } as any;
   });
@@ -171,14 +182,14 @@ describe('NotionController', () => {
     } as any);
 
     const api = buildApi({
-      listBlocksPage: jest.fn().mockResolvedValue({
+      listBlocksPage: vi.fn().mockResolvedValue({
         results: [],
         next_cursor: null,
         has_more: false,
       }),
-      getPage: jest.fn().mockRejectedValue(validationError),
+      getPage: vi.fn().mockRejectedValue(validationError),
     });
-    (service.getNotionAPI as jest.Mock).mockResolvedValue(api);
+    (service.getNotionAPI as Mock).mockResolvedValue(api);
 
     await controller.previewPage(
       req as express.Request,
@@ -195,9 +206,9 @@ describe('NotionController', () => {
   });
 
   it('skips getPage entirely when parent=block is passed', async () => {
-    const getPage = jest.fn();
+    const getPage = vi.fn();
     const api = buildApi({ getPage });
-    (service.getNotionAPI as jest.Mock).mockResolvedValue(api);
+    (service.getNotionAPI as Mock).mockResolvedValue(api);
     req.query = { parent: 'block' };
 
     await controller.previewPage(
@@ -211,7 +222,7 @@ describe('NotionController', () => {
 
   it('includes page title when id refers to a real page', async () => {
     const api = buildApi({
-      getPage: jest.fn().mockResolvedValue({
+      getPage: vi.fn().mockResolvedValue({
         object: 'page',
         id: pageId,
         parent: { type: 'workspace', workspace: true },
@@ -248,14 +259,14 @@ describe('NotionController', () => {
         in_trash: false,
       }),
     });
-    (service.getNotionAPI as jest.Mock).mockResolvedValue(api);
+    (service.getNotionAPI as Mock).mockResolvedValue(api);
 
     await controller.previewPage(
       req as express.Request,
       res as express.Response
     );
 
-    const payload = (res.json as jest.Mock).mock.calls[0]?.[0];
+    const payload = (res.json as Mock).mock.calls[0]?.[0];
     expect(payload.pageTitle).toBe('My Page');
     expect(payload.pageUrl).toBe('https://notion.so/My-Page');
   });
@@ -267,21 +278,23 @@ describe('NotionController', () => {
         params: {},
         query: {},
       };
-      (service.getNotionAPI as jest.Mock).mockResolvedValue(buildApi());
-      jest
-        .spyOn(UsersRepository.prototype, 'getCardUsage')
-        .mockResolvedValue({ cards_used: 0, month_started_at: new Date() });
+      (service.getNotionAPI as Mock).mockResolvedValue(buildApi());
+      vi.spyOn(UsersRepository.prototype, 'getCardUsage').mockResolvedValue({
+        cards_used: 0,
+        month_started_at: new Date(),
+      });
     });
 
     afterEach(() => {
-      (UsersRepository.prototype.getCardUsage as jest.Mock).mockRestore?.();
+      (UsersRepository.prototype.getCardUsage as Mock).mockRestore?.();
     });
 
     it('returns 402 monthly_limit and starts no job when a free user is over the limit', async () => {
       setupConvertMocks();
-      jest
-        .spyOn(UsersRepository.prototype, 'getCardUsage')
-        .mockResolvedValue({ cards_used: 200, month_started_at: new Date() });
+      vi.spyOn(UsersRepository.prototype, 'getCardUsage').mockResolvedValue({
+        cards_used: 200,
+        month_started_at: new Date(),
+      });
 
       await controller.convert(req as express.Request, res as express.Response);
 
@@ -298,9 +311,10 @@ describe('NotionController', () => {
         setupConvertMocks();
         req.body = { ...req.body, type };
         res.locals = { ...res.locals, owner: '42' };
-        jest
-          .spyOn(UsersRepository.prototype, 'getCardUsage')
-          .mockResolvedValue({ cards_used: 200, month_started_at: new Date() });
+        vi.spyOn(UsersRepository.prototype, 'getCardUsage').mockResolvedValue({
+          cards_used: 200,
+          month_started_at: new Date(),
+        });
 
         await controller.convert(
           req as express.Request,
@@ -379,9 +393,10 @@ describe('NotionController', () => {
 
     it('emits upload_started at funnel entry even when a free user is over the limit', async () => {
       setupConvertMocks();
-      jest
-        .spyOn(UsersRepository.prototype, 'getCardUsage')
-        .mockResolvedValue({ cards_used: 200, month_started_at: new Date() });
+      vi.spyOn(UsersRepository.prototype, 'getCardUsage').mockResolvedValue({
+        cards_used: 200,
+        month_started_at: new Date(),
+      });
 
       await controller.convert(req as express.Request, res as express.Response);
 
@@ -431,15 +446,17 @@ describe('NotionController', () => {
     it('logs and marks the job failed on an unexpected worker rejection so it never sticks in started', async () => {
       setupConvertMocks();
       res.locals = { owner: 'owner1', requestId: 'req-abc-123' };
-      const updateJobStatus = jest.fn().mockResolvedValue(undefined);
-      (JobRepository as unknown as jest.Mock).mockImplementation(() => ({
-        updateJobStatus,
-      }));
-      const consoleErrorSpy = jest
+      const updateJobStatus = vi.fn().mockResolvedValue(undefined);
+      (JobRepository as unknown as Mock).mockImplementation(function () {
+        return {
+          updateJobStatus,
+        };
+      });
+      const consoleErrorSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
       const workerError = new Error('worker boom');
-      (runConversion as jest.Mock).mockRejectedValue(workerError);
+      (runConversion as Mock).mockRejectedValue(workerError);
 
       await controller.convert(req as express.Request, res as express.Response);
 
@@ -466,14 +483,16 @@ describe('NotionController', () => {
 
     it('marks the job interrupted when the worker is killed by a pool drain', async () => {
       setupConvertMocks();
-      const updateJobStatus = jest.fn().mockResolvedValue(undefined);
-      (JobRepository as unknown as jest.Mock).mockImplementation(() => ({
-        updateJobStatus,
-      }));
-      const consoleInfoSpy = jest
+      const updateJobStatus = vi.fn().mockResolvedValue(undefined);
+      (JobRepository as unknown as Mock).mockImplementation(function () {
+        return {
+          updateJobStatus,
+        };
+      });
+      const consoleInfoSpy = vi
         .spyOn(console, 'info')
         .mockImplementation(() => undefined);
-      (runConversion as jest.Mock).mockRejectedValue(
+      (runConversion as Mock).mockRejectedValue(
         new Error('Terminating worker thread')
       );
 
@@ -494,14 +513,16 @@ describe('NotionController', () => {
     it('marks the job failed and tracks the loss when the conversion process crashes', async () => {
       setupConvertMocks();
       res.locals = { owner: '42', requestId: 'req-crash-1' };
-      const updateJobStatus = jest.fn().mockResolvedValue(undefined);
-      (JobRepository as unknown as jest.Mock).mockImplementation(() => ({
-        updateJobStatus,
-      }));
-      const consoleErrorSpy = jest
+      const updateJobStatus = vi.fn().mockResolvedValue(undefined);
+      (JobRepository as unknown as Mock).mockImplementation(function () {
+        return {
+          updateJobStatus,
+        };
+      });
+      const consoleErrorSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
-      (runConversion as jest.Mock).mockRejectedValue(
+      (runConversion as Mock).mockRejectedValue(
         new ConversionChildCrashedError({
           exitCode: 137,
           signal: null,
@@ -535,10 +556,12 @@ describe('NotionController', () => {
     it('logs the request id and owner when the enqueue itself fails', async () => {
       setupConvertMocks();
       res.locals = { owner: 'owner1', requestId: 'req-enqueue-9' };
-      (FindOrCreateJobUseCase as jest.Mock).mockImplementation(() => ({
-        execute: jest.fn().mockRejectedValue(new Error('db down')),
-      }));
-      const consoleErrorSpy = jest
+      (FindOrCreateJobUseCase as Mock).mockImplementation(function () {
+        return {
+          execute: vi.fn().mockRejectedValue(new Error('db down')),
+        };
+      });
+      const consoleErrorSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
 
@@ -557,7 +580,7 @@ describe('NotionController', () => {
 
     it('returns 400 when id is missing', async () => {
       req = { body: {}, params: {}, query: {} };
-      (service.getNotionAPI as jest.Mock).mockResolvedValue(buildApi());
+      (service.getNotionAPI as Mock).mockResolvedValue(buildApi());
 
       await controller.convert(req as express.Request, res as express.Response);
 
@@ -575,13 +598,13 @@ describe('NotionController', () => {
         headers: {},
       } as any);
       service = {
-        getNotionLinkInfo: jest.fn().mockResolvedValue({ isConnected: true }),
-        search: jest.fn().mockRejectedValue(unauthorizedError),
-        markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-        getNotionAuthorizationLink: jest
+        getNotionLinkInfo: vi.fn().mockResolvedValue({ isConnected: true }),
+        search: vi.fn().mockRejectedValue(unauthorizedError),
+        markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+        getNotionAuthorizationLink: vi
           .fn()
           .mockReturnValue('https://notion.so/oauth'),
-        getClientId: jest.fn().mockReturnValue('client-abc'),
+        getClientId: vi.fn().mockReturnValue('client-abc'),
       } as any;
       controller = new NotionController(service);
       req = { body: { query: 'test' }, params: {}, query: {} };
@@ -589,7 +612,7 @@ describe('NotionController', () => {
       await controller.search(req as express.Request, res as express.Response);
 
       expect(res.status).toHaveBeenCalledWith(401);
-      const body = (res.json as jest.Mock).mock.calls[0]?.[0];
+      const body = (res.json as Mock).mock.calls[0]?.[0];
       expect(body.code).toBe('notion_unauthorized');
       expect(body.message).not.toMatch(/<a /);
       expect(body.message).not.toMatch(/href/);
@@ -606,13 +629,13 @@ describe('NotionController', () => {
       const notionRepo = buildNotionRepo();
       const emailService = buildEmailService();
       service = {
-        getNotionLinkInfo: jest.fn().mockResolvedValue({ isConnected: true }),
-        search: jest.fn().mockRejectedValue(unauthorizedError),
-        markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-        getNotionAuthorizationLink: jest
+        getNotionLinkInfo: vi.fn().mockResolvedValue({ isConnected: true }),
+        search: vi.fn().mockRejectedValue(unauthorizedError),
+        markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+        getNotionAuthorizationLink: vi
           .fn()
           .mockReturnValue('https://notion.so/oauth'),
-        getClientId: jest.fn().mockReturnValue('client-abc'),
+        getClientId: vi.fn().mockReturnValue('client-abc'),
       } as any;
       controller = new NotionController(
         service,
@@ -633,8 +656,8 @@ describe('NotionController', () => {
     it('treats a null query as empty and searches without throwing', async () => {
       const searchResult = { results: [] };
       service = {
-        getNotionLinkInfo: jest.fn().mockResolvedValue({ isConnected: true }),
-        search: jest.fn().mockResolvedValue(searchResult),
+        getNotionLinkInfo: vi.fn().mockResolvedValue({ isConnected: true }),
+        search: vi.fn().mockResolvedValue(searchResult),
       } as any;
       controller = new NotionController(service);
       req = { body: { query: null }, params: {}, query: {} };
@@ -649,8 +672,8 @@ describe('NotionController', () => {
     it('treats an absent query as empty and searches without throwing', async () => {
       const searchResult = { results: [] };
       service = {
-        getNotionLinkInfo: jest.fn().mockResolvedValue({ isConnected: true }),
-        search: jest.fn().mockResolvedValue(searchResult),
+        getNotionLinkInfo: vi.fn().mockResolvedValue({ isConnected: true }),
+        search: vi.fn().mockResolvedValue(searchResult),
       } as any;
       controller = new NotionController(service);
       req = { body: {}, params: {}, query: {} };
@@ -673,13 +696,13 @@ describe('NotionController', () => {
         headers: {},
       } as any);
       service = {
-        getNotionLinkInfo: jest.fn().mockResolvedValue({ isConnected: true }),
-        searchTopLevelPages: jest.fn().mockRejectedValue(unauthorizedError),
-        markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-        getNotionAuthorizationLink: jest
+        getNotionLinkInfo: vi.fn().mockResolvedValue({ isConnected: true }),
+        searchTopLevelPages: vi.fn().mockRejectedValue(unauthorizedError),
+        markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+        getNotionAuthorizationLink: vi
           .fn()
           .mockReturnValue('https://notion.so/oauth'),
-        getClientId: jest.fn().mockReturnValue('client-abc'),
+        getClientId: vi.fn().mockReturnValue('client-abc'),
       } as any;
       controller = new NotionController(service);
       req = { body: { query: 'test' }, params: {}, query: {} };
@@ -690,7 +713,7 @@ describe('NotionController', () => {
       );
 
       expect(res.status).toHaveBeenCalledWith(401);
-      const body = (res.json as jest.Mock).mock.calls[0]?.[0];
+      const body = (res.json as Mock).mock.calls[0]?.[0];
       expect(body.code).toBe('notion_unauthorized');
       expect(body.message).not.toMatch(/<a /);
       expect(body.message).not.toMatch(/href/);
@@ -707,13 +730,13 @@ describe('NotionController', () => {
       const notionRepo = buildNotionRepo();
       const emailService = buildEmailService();
       service = {
-        getNotionLinkInfo: jest.fn().mockResolvedValue({ isConnected: true }),
-        searchTopLevelPages: jest.fn().mockRejectedValue(unauthorizedError),
-        markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-        getNotionAuthorizationLink: jest
+        getNotionLinkInfo: vi.fn().mockResolvedValue({ isConnected: true }),
+        searchTopLevelPages: vi.fn().mockRejectedValue(unauthorizedError),
+        markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+        getNotionAuthorizationLink: vi
           .fn()
           .mockReturnValue('https://notion.so/oauth'),
-        getClientId: jest.fn().mockReturnValue('client-abc'),
+        getClientId: vi.fn().mockReturnValue('client-abc'),
       } as any;
       controller = new NotionController(
         service,
@@ -736,8 +759,8 @@ describe('NotionController', () => {
   describe('getNotionLink', () => {
     it('returns the OAuth link with isConnected=false when the caller is anonymous', async () => {
       service = {
-        getClientId: jest.fn().mockReturnValue('client-abc'),
-        getNotionLinkInfo: jest.fn().mockResolvedValue({
+        getClientId: vi.fn().mockReturnValue('client-abc'),
+        getNotionLinkInfo: vi.fn().mockResolvedValue({
           link: 'https://api.notion.com/v1/oauth/authorize?client_id=client-abc',
           isConnected: false,
           workspace: null,
@@ -745,9 +768,9 @@ describe('NotionController', () => {
       } as any;
       controller = new NotionController(service);
       res = {
-        status: jest.fn().mockReturnThis(),
-        send: jest.fn().mockReturnThis(),
-        json: jest.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        json: vi.fn().mockReturnThis(),
         locals: {},
       } as any;
 
@@ -768,8 +791,8 @@ describe('NotionController', () => {
 
     it('returns isConnected=true with workspace when the caller has a Notion token', async () => {
       service = {
-        getClientId: jest.fn().mockReturnValue('client-abc'),
-        getNotionLinkInfo: jest.fn().mockResolvedValue({
+        getClientId: vi.fn().mockReturnValue('client-abc'),
+        getNotionLinkInfo: vi.fn().mockResolvedValue({
           link: 'https://api.notion.com/v1/oauth/authorize?client_id=client-abc',
           isConnected: true,
           workspace: 'Pristine Shrestha’s Notion',
@@ -793,8 +816,8 @@ describe('NotionController', () => {
 
     it('returns 400 when the client ID is not configured', async () => {
       service = {
-        getClientId: jest.fn().mockReturnValue(undefined),
-        getNotionLinkInfo: jest.fn(),
+        getClientId: vi.fn().mockReturnValue(undefined),
+        getNotionLinkInfo: vi.fn(),
       } as any;
       controller = new NotionController(service);
 
@@ -809,15 +832,15 @@ describe('NotionController', () => {
 
     it('returns 401 for an anonymous caller when query.client is native', async () => {
       service = {
-        getClientId: jest.fn().mockReturnValue('client-abc'),
-        getNotionLinkInfo: jest.fn(),
+        getClientId: vi.fn().mockReturnValue('client-abc'),
+        getNotionLinkInfo: vi.fn(),
       } as any;
       controller = new NotionController(service);
       req = { params: {}, query: { client: 'native' } };
       res = {
-        status: jest.fn().mockReturnThis(),
-        send: jest.fn().mockReturnThis(),
-        json: jest.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        json: vi.fn().mockReturnThis(),
         locals: {},
       } as any;
 
@@ -836,8 +859,8 @@ describe('NotionController', () => {
 
     it('threads client=native into the link info when query.client is native', async () => {
       service = {
-        getClientId: jest.fn().mockReturnValue('client-abc'),
-        getNotionLinkInfo: jest.fn().mockResolvedValue({
+        getClientId: vi.fn().mockReturnValue('client-abc'),
+        getNotionLinkInfo: vi.fn().mockResolvedValue({
           link: 'https://api.notion.com/v1/oauth/authorize?client_id=client-abc&state=native',
           isConnected: false,
           workspace: null,
@@ -854,14 +877,14 @@ describe('NotionController', () => {
       expect(service.getNotionLinkInfo).toHaveBeenCalledWith('owner1', {
         client: 'native',
       });
-      const sent = (res.send as jest.Mock).mock.calls[0]?.[0];
+      const sent = (res.send as Mock).mock.calls[0]?.[0];
       expect(new URL(sent.link).searchParams.get('state')).toBe('native');
     });
 
     it('does not pass options for a web caller (no client query)', async () => {
       service = {
-        getClientId: jest.fn().mockReturnValue('client-abc'),
-        getNotionLinkInfo: jest.fn().mockResolvedValue({
+        getClientId: vi.fn().mockReturnValue('client-abc'),
+        getNotionLinkInfo: vi.fn().mockResolvedValue({
           link: 'https://api.notion.com/v1/oauth/authorize?client_id=client-abc',
           isConnected: false,
           workspace: null,
@@ -876,7 +899,7 @@ describe('NotionController', () => {
       );
 
       expect(service.getNotionLinkInfo).toHaveBeenCalledWith('owner1');
-      const sent = (res.send as jest.Mock).mock.calls[0]?.[0];
+      const sent = (res.send as Mock).mock.calls[0]?.[0];
       expect(new URL(sent.link).searchParams.has('state')).toBe(false);
     });
   });
@@ -884,7 +907,7 @@ describe('NotionController', () => {
   describe('connect', () => {
     function buildConnectService() {
       return {
-        connectToNotion: jest.fn().mockResolvedValue(undefined),
+        connectToNotion: vi.fn().mockResolvedValue(undefined),
       } as any;
     }
 
@@ -895,8 +918,8 @@ describe('NotionController', () => {
       const appOwnerState = buildNativeOAuthState(7, process.env.SECRET);
       req = { query: { code: 'auth-code', state: appOwnerState } };
       res = {
-        redirect: jest.fn().mockReturnThis(),
-        clearCookie: jest.fn().mockReturnThis(),
+        redirect: vi.fn().mockReturnThis(),
+        clearCookie: vi.fn().mockReturnThis(),
         locals: { owner: 99 },
       } as any;
 
@@ -918,8 +941,8 @@ describe('NotionController', () => {
       );
       req = { query: { code: 'auth-code', state: tampered } };
       res = {
-        redirect: jest.fn().mockReturnThis(),
-        clearCookie: jest.fn().mockReturnThis(),
+        redirect: vi.fn().mockReturnThis(),
+        clearCookie: vi.fn().mockReturnThis(),
         locals: { owner: 99 },
       } as any;
 
@@ -937,8 +960,8 @@ describe('NotionController', () => {
       controller = new NotionController(service);
       req = { query: { code: 'auth-code', state: 'native' } };
       res = {
-        redirect: jest.fn().mockReturnThis(),
-        clearCookie: jest.fn().mockReturnThis(),
+        redirect: vi.fn().mockReturnThis(),
+        clearCookie: vi.fn().mockReturnThis(),
         locals: { owner: 99 },
       } as any;
 
@@ -955,8 +978,8 @@ describe('NotionController', () => {
       controller = new NotionController(service);
       req = { query: { code: 'auth-code' } };
       res = {
-        redirect: jest.fn().mockReturnThis(),
-        clearCookie: jest.fn().mockReturnThis(),
+        redirect: vi.fn().mockReturnThis(),
+        clearCookie: vi.fn().mockReturnThis(),
         locals: { owner: 42 },
       } as any;
 
@@ -971,10 +994,10 @@ describe('NotionController', () => {
       controller = new NotionController(service);
       req = { query: { code: 'auth-code' } };
       res = {
-        redirect: jest.fn().mockReturnThis(),
-        clearCookie: jest.fn().mockReturnThis(),
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn().mockReturnThis(),
+        redirect: vi.fn().mockReturnThis(),
+        clearCookie: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn().mockReturnThis(),
         locals: {},
       } as any;
 
@@ -982,7 +1005,7 @@ describe('NotionController', () => {
 
       expect(service.connectToNotion).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(401);
-      const body = (res.json as jest.Mock).mock.calls[0]?.[0];
+      const body = (res.json as Mock).mock.calls[0]?.[0];
       expect(body.code).toBe('notion_unauthorized');
     });
 
@@ -994,8 +1017,8 @@ describe('NotionController', () => {
         cookies: { notion_login_state: 'nonce-1' },
       } as any;
       res = {
-        redirect: jest.fn().mockReturnThis(),
-        clearCookie: jest.fn().mockReturnThis(),
+        redirect: vi.fn().mockReturnThis(),
+        clearCookie: vi.fn().mockReturnThis(),
         locals: { owner: 42 },
       } as any;
 

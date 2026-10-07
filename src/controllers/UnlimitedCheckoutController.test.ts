@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response } from 'express';
 import UnlimitedCheckoutController, {
   UnlimitedCheckoutContext,
@@ -10,8 +11,8 @@ const makeResponse = (locals: Record<string, unknown> = {}) => {
     statusCode: 200,
     body: undefined as unknown,
     locals: { owner: 42, email: 'user@example.com', ...locals },
-    status: jest.fn(),
-    json: jest.fn(),
+    status: vi.fn(),
+    json: vi.fn(),
   };
   res.status.mockImplementation((code: number) => {
     res.statusCode = code;
@@ -26,7 +27,7 @@ const makeResponse = (locals: Record<string, unknown> = {}) => {
 
 const makeUseCase = (cohort: 'legacy' | 'v2' = 'legacy') =>
   ({
-    execute: jest
+    execute: vi
       .fn()
       .mockResolvedValue({ url: 'https://checkout.stripe.com/test', cohort }),
   }) as unknown as UnlimitedCheckoutUseCase;
@@ -35,11 +36,11 @@ const makeContext = (
   overrides: Partial<UnlimitedCheckoutContext> = {}
 ): UnlimitedCheckoutContext => ({
   pricingV2On: false,
-  getUserCreatedAt: jest.fn().mockResolvedValue(null),
+  getUserCreatedAt: vi.fn().mockResolvedValue(null),
   ...overrides,
 });
 
-const makeSink = () => ({ record: jest.fn() });
+const makeSink = () => ({ record: vi.fn() });
 
 describe('UnlimitedCheckoutController', () => {
   it('returns 400 when interval is missing', async () => {
@@ -79,7 +80,7 @@ describe('UnlimitedCheckoutController', () => {
     const createdAt = new Date('2026-06-10T00:00:00Z');
     const context = makeContext({
       pricingV2On: true,
-      getUserCreatedAt: jest.fn().mockResolvedValue(createdAt),
+      getUserCreatedAt: vi.fn().mockResolvedValue(createdAt),
     });
     const controller = new UnlimitedCheckoutController(uc, context, makeSink());
 
@@ -87,7 +88,7 @@ describe('UnlimitedCheckoutController', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ url: 'https://checkout.stripe.com/test' });
-    expect(uc.execute as jest.Mock).toHaveBeenCalledWith(
+    expect(uc.execute as Mock).toHaveBeenCalledWith(
       expect.objectContaining({
         interval: 'month',
         userId: 42,
@@ -174,13 +175,13 @@ describe('UnlimitedCheckoutController', () => {
 
     await controller.createSession(req, res as unknown as Response);
 
-    expect(uc.execute as jest.Mock).toHaveBeenCalledWith(
+    expect(uc.execute as Mock).toHaveBeenCalledWith(
       expect.objectContaining({ anonId: 'anon-uuid-123' })
     );
   });
 
   it('returns 503 and records no event when pricing resolution fails', async () => {
-    const execute = jest
+    const execute = vi
       .fn()
       .mockRejectedValue(new PricingResolutionError('v2_monthly'));
     const uc = { execute } as unknown as UnlimitedCheckoutUseCase;
@@ -201,7 +202,7 @@ describe('UnlimitedCheckoutController', () => {
   });
 
   it('propagates use case errors', async () => {
-    const execute = jest.fn().mockRejectedValue(new Error('stripe down'));
+    const execute = vi.fn().mockRejectedValue(new Error('stripe down'));
     const uc = { execute } as unknown as UnlimitedCheckoutUseCase;
     const req = { body: { interval: 'month' } } as Request;
     const res = makeResponse();
@@ -228,7 +229,7 @@ describe('UnlimitedCheckoutController', () => {
 
     await controller.createSession(req, res as unknown as Response);
 
-    expect(uc.execute as jest.Mock).toHaveBeenCalledWith(
+    expect(uc.execute as Mock).toHaveBeenCalledWith(
       expect.objectContaining({ stripeCustomerId: 'cus_abc' })
     );
   });

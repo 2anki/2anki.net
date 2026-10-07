@@ -1,20 +1,21 @@
+import { vi, type MockedFunction } from 'vitest';
 import { Response } from 'express';
 
 import { sendIndex } from './sendIndex';
 import { getIndexFileContents } from './getIndexFileContents';
 import { INDEX_HTML_CACHE_CONTROL } from '../../lib/mountWebBuild';
 
-jest.mock('./getIndexFileContents');
+vi.mock('./getIndexFileContents');
 
-const mockedGet = getIndexFileContents as jest.MockedFunction<
+const mockedGet = getIndexFileContents as MockedFunction<
   typeof getIndexFileContents
 >;
 
 function buildResponse() {
   return {
-    status: jest.fn().mockReturnThis(),
-    set: jest.fn().mockReturnThis(),
-    send: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+    send: vi.fn().mockReturnThis(),
   } as unknown as Response;
 }
 

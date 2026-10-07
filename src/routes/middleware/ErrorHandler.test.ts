@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { APIErrorCode, APIResponseError } from '@notionhq/client';
 import express from 'express';
 import multer from 'multer';
@@ -29,10 +30,10 @@ interface FakeResponse {
   statusCode: number;
   headers: Record<string, string>;
   body: unknown;
-  set: jest.Mock;
-  status: jest.Mock;
-  send: jest.Mock;
-  json: jest.Mock;
+  set: Mock;
+  status: Mock;
+  send: Mock;
+  json: Mock;
 }
 
 const makeResponse = (headersSent: boolean): FakeResponse => {
@@ -43,7 +44,7 @@ const makeResponse = (headersSent: boolean): FakeResponse => {
     body: undefined,
   } as FakeResponse;
 
-  state.set = jest.fn((name: string, value: string) => {
+  state.set = vi.fn((name: string, value: string) => {
     if (state.headersSent) {
       throw Object.assign(
         new Error('Cannot set headers after they are sent to the client'),
@@ -54,7 +55,7 @@ const makeResponse = (headersSent: boolean): FakeResponse => {
     return state;
   });
 
-  state.status = jest.fn((code: number) => {
+  state.status = vi.fn((code: number) => {
     if (state.headersSent) {
       throw Object.assign(
         new Error('Cannot set headers after they are sent to the client'),
@@ -65,13 +66,13 @@ const makeResponse = (headersSent: boolean): FakeResponse => {
     return state;
   });
 
-  state.send = jest.fn((body: unknown) => {
+  state.send = vi.fn((body: unknown) => {
     state.body = body;
     state.headersSent = true;
     return state;
   });
 
-  state.json = jest.fn((body: unknown) => {
+  state.json = vi.fn((body: unknown) => {
     state.body = body;
     state.headersSent = true;
     return state;
@@ -259,7 +260,7 @@ describe('ErrorHandler', () => {
   });
 
   test('does not log a stack for a malformed-JSON scanner probe, still returns 400', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeResponse(false);
     const req = makeRequest();
     const probe = Object.assign(new SyntaxError('bad json'), {
@@ -274,7 +275,7 @@ describe('ErrorHandler', () => {
   });
 
   test('does not log a stack for an AnkiAppExportError, still returns 400', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeResponse(false);
     const req = makeRequest();
     const err = new Error('No cards found in this AnkiApp export.');
@@ -293,7 +294,7 @@ describe('ErrorHandler', () => {
   });
 
   test('still logs a stack for a genuine server error', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeResponse(false);
     const req = makeRequest();
 
@@ -326,7 +327,7 @@ describe('ErrorHandler', () => {
   });
 
   test('a TypeError responds 500 with a generic body, not the internal message', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeResponse(false);
     const req = makeRequest();
 
@@ -347,7 +348,7 @@ describe('ErrorHandler', () => {
   });
 
   test('a Knex pool error responds 500 with a generic body', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeResponse(false);
     const req = makeRequest();
 
@@ -366,7 +367,7 @@ describe('ErrorHandler', () => {
   });
 
   test('a SQLSTATE-coded database error responds 500 with a generic body', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeResponse(false);
     const req = makeRequest();
 
@@ -383,7 +384,7 @@ describe('ErrorHandler', () => {
   });
 
   test('a filesystem ENOENT error responds 500 without leaking the internal path', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeResponse(false);
     const req = makeRequest();
 
@@ -429,7 +430,7 @@ describe('ErrorHandler', () => {
   });
 
   test('a 4xx HttpCodedError responds with its status, code, and message, quietly', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeResponse(false);
     const req = makeRequest();
 
@@ -449,7 +450,7 @@ describe('ErrorHandler', () => {
   });
 
   test('a 5xx HttpCodedError keeps its status and message and is not quiet', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeResponse(false);
     const req = makeRequest();
 
@@ -469,8 +470,8 @@ describe('ErrorHandler', () => {
   });
 
   test('logs a server error with Stripe ids redacted', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const err = new Error("No such customer: 'cus_Qx1aBcD2eFgH3i'");
 
     await ErrorHandler(

@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import express from 'express';
 import { mcpFirstTouchMiddleware } from './mcpFirstTouch';
 
 function run(cookies: Record<string, unknown> | undefined) {
   const req = { cookies } as unknown as express.Request;
-  const cookieMock = jest.fn();
+  const cookieMock = vi.fn();
   const res = { cookie: cookieMock } as unknown as express.Response;
-  const next = jest.fn();
+  const next = vi.fn();
   mcpFirstTouchMiddleware(req, res, next);
   return { cookieMock, next };
 }

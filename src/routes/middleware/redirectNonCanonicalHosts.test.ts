@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { redirectNonCanonicalHosts } from './redirectNonCanonicalHosts';
 
@@ -5,8 +6,8 @@ function mockReq(host: string, originalUrl = '/'): Request {
   return { hostname: host, originalUrl } as Request;
 }
 
-function mockRes(): { redirect: jest.Mock } {
-  return { redirect: jest.fn() };
+function mockRes(): { redirect: Mock } {
+  return { redirect: vi.fn() };
 }
 
 describe('redirectNonCanonicalHosts', () => {
@@ -23,7 +24,7 @@ describe('redirectNonCanonicalHosts', () => {
   it('calls next without redirecting when CANONICAL_HOST is unset', () => {
     delete process.env.CANONICAL_HOST;
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     redirectNonCanonicalHosts(
       mockReq('www.2anki.net'),
       res as unknown as Response,
@@ -36,7 +37,7 @@ describe('redirectNonCanonicalHosts', () => {
   it('calls next without redirecting on the canonical apex host', () => {
     process.env.CANONICAL_HOST = '2anki.net';
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     redirectNonCanonicalHosts(
       mockReq('2anki.net', '/upload'),
       res as unknown as Response,
@@ -49,7 +50,7 @@ describe('redirectNonCanonicalHosts', () => {
   it('301-redirects www to the apex, preserving path and query', () => {
     process.env.CANONICAL_HOST = '2anki.net';
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     redirectNonCanonicalHosts(
       mockReq('www.2anki.net', '/upload?view=template'),
       res as unknown as Response,
@@ -71,7 +72,7 @@ describe('redirectNonCanonicalHosts', () => {
       'd1ftjqlthet2543jvpm0.2anki.net',
     ]) {
       const res = mockRes();
-      const next = jest.fn();
+      const next = vi.fn();
       redirectNonCanonicalHosts(
         mockReq(host, '/'),
         res as unknown as Response,
@@ -85,7 +86,7 @@ describe('redirectNonCanonicalHosts', () => {
   it('never redirects off the canonical host for a crafted protocol-relative path', () => {
     process.env.CANONICAL_HOST = '2anki.net';
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     redirectNonCanonicalHosts(
       mockReq('www.2anki.net', '//evil.com'),
       res as unknown as Response,
@@ -98,7 +99,7 @@ describe('redirectNonCanonicalHosts', () => {
   it('calls next without redirecting on localhost (internal health probes)', () => {
     process.env.CANONICAL_HOST = '2anki.net';
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     redirectNonCanonicalHosts(
       mockReq('localhost', '/api/checks'),
       res as unknown as Response,
@@ -112,7 +113,7 @@ describe('redirectNonCanonicalHosts', () => {
     process.env.CANONICAL_HOST = '2anki.net';
     for (const host of ['example.com', '2anki.com', '127.0.0.1']) {
       const res = mockRes();
-      const next = jest.fn();
+      const next = vi.fn();
       redirectNonCanonicalHosts(
         mockReq(host, '/'),
         res as unknown as Response,
@@ -126,7 +127,7 @@ describe('redirectNonCanonicalHosts', () => {
   it('calls next when the hostname is missing', () => {
     process.env.CANONICAL_HOST = '2anki.net';
     const res = mockRes();
-    const next = jest.fn();
+    const next = vi.fn();
     redirectNonCanonicalHosts(
       mockReq('', '/'),
       res as unknown as Response,

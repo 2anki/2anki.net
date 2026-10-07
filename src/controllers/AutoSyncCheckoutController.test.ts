@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response } from 'express';
 import AutoSyncCheckoutController from './AutoSyncCheckoutController';
 import { AutoSyncCheckoutUseCase } from '../usecases/checkout/AutoSyncCheckoutUseCase';
@@ -10,8 +11,8 @@ const makeResponse = () => {
     statusCode: 200,
     body: undefined as unknown,
     locals: {} as Record<string, unknown>,
-    status: jest.fn(),
-    json: jest.fn(),
+    status: vi.fn(),
+    json: vi.fn(),
   };
   res.status.mockImplementation((code: number) => {
     res.statusCode = code;
@@ -28,7 +29,7 @@ const makeUseCase = (
   result: Awaited<ReturnType<AutoSyncCheckoutUseCase['execute']>>
 ) =>
   ({
-    execute: jest.fn().mockResolvedValue(result),
+    execute: vi.fn().mockResolvedValue(result),
   }) as unknown as AutoSyncCheckoutUseCase;
 
 describe('AutoSyncCheckoutController', () => {
@@ -77,7 +78,7 @@ describe('AutoSyncCheckoutController', () => {
 
     await controller.createSession(req, res as unknown as Response);
 
-    expect(uc.execute as jest.Mock).toHaveBeenCalledWith(
+    expect(uc.execute as Mock).toHaveBeenCalledWith(
       expect.objectContaining({ anonId: 'anon-uuid-123' })
     );
   });
@@ -91,7 +92,7 @@ describe('AutoSyncCheckoutController', () => {
 
     await controller.createSession(req, res as unknown as Response);
 
-    expect(uc.execute as jest.Mock).toHaveBeenCalledWith(
+    expect(uc.execute as Mock).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 99, userEmail: 'alice@example.com' })
     );
   });
@@ -109,7 +110,7 @@ describe('AutoSyncCheckoutController', () => {
 
     await controller.createSession(req, res as unknown as Response);
 
-    expect(uc.execute as jest.Mock).toHaveBeenCalledWith(
+    expect(uc.execute as Mock).toHaveBeenCalledWith(
       expect.objectContaining({ stripeCustomerId: 'cus_abc' })
     );
   });

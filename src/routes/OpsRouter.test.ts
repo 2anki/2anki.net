@@ -1,27 +1,28 @@
+import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
-jest.mock('../lib/integrations/stripe', () => ({
-  getStripe: jest.fn(() => ({
+vi.mock('../lib/integrations/stripe', () => ({
+  getStripe: vi.fn(() => ({
     products: {
-      list: jest.fn().mockResolvedValue({
+      list: vi.fn().mockResolvedValue({
         data: [{ id: 'prod_unlimited', name: 'Unlimited' }],
       }),
-      create: jest.fn().mockImplementation(async (params) => ({
+      create: vi.fn().mockImplementation(async (params) => ({
         id: 'prod_created',
         metadata: params?.metadata ?? {},
       })),
     },
     prices: {
-      list: jest.fn().mockResolvedValue({ data: [] }),
-      create: jest.fn().mockResolvedValue({ id: 'price_new', livemode: false }),
+      list: vi.fn().mockResolvedValue({ data: [] }),
+      create: vi.fn().mockResolvedValue({ id: 'price_new', livemode: false }),
     },
   })),
 }));
 
-jest.mock('../services/events/eventsSinkInstance', () => ({
-  getEventsSink: () => ({ record: jest.fn() }),
+vi.mock('../services/events/eventsSinkInstance', () => ({
+  getEventsSink: () => ({ record: vi.fn() }),
 }));
 
 const featureFlagStore: Array<{
@@ -33,13 +34,13 @@ const featureFlagStore: Array<{
   email: string | null;
 }> = [];
 
-jest.mock('../data_layer', () => ({
-  getDatabase: jest.fn(() => ({
-    raw: jest.fn(),
+vi.mock('../data_layer', () => ({
+  getDatabase: vi.fn(() => ({
+    raw: vi.fn(),
   })),
 }));
 
-jest.mock('../data_layer/FeatureFlagsRepository', () => {
+vi.mock('../data_layer/FeatureFlagsRepository', () => {
   class FakeFeatureFlagsRepository {
     async getAll() {
       return featureFlagStore.map((row) => ({
@@ -80,11 +81,11 @@ jest.mock('../data_layer/FeatureFlagsRepository', () => {
   return { FeatureFlagsRepository: FakeFeatureFlagsRepository };
 });
 
-jest.mock('../services/events/track', () => ({
-  track: jest.fn(),
+vi.mock('../services/events/track', () => ({
+  track: vi.fn(),
 }));
 
-jest.mock('../data_layer/OrphanedSubscriptionsRepository', () => ({
+vi.mock('../data_layer/OrphanedSubscriptionsRepository', () => ({
   OrphanedSubscriptionsRepository: class {
     async findOrphanedActiveSubscriptions() {
       return [
@@ -100,7 +101,7 @@ jest.mock('../data_layer/OrphanedSubscriptionsRepository', () => ({
   },
 }));
 
-jest.mock('../data_layer/SubscriptionRecoveryNotificationsRepository', () => ({
+vi.mock('../data_layer/SubscriptionRecoveryNotificationsRepository', () => ({
   SubscriptionRecoveryNotificationsRepository: class {
     async wasNotifiedSince() {
       return false;
@@ -109,15 +110,15 @@ jest.mock('../data_layer/SubscriptionRecoveryNotificationsRepository', () => ({
   },
 }));
 
-jest.mock('../services/EmailService/EmailService', () => ({
+vi.mock('../services/EmailService/EmailService', () => ({
   getDefaultEmailService: () => ({
-    sendInactivityWarningEmail: jest.fn().mockResolvedValue(undefined),
-    sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
+    sendInactivityWarningEmail: vi.fn().mockResolvedValue(undefined),
+    sendPriceLockInEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionRecoveryEmail: vi.fn().mockResolvedValue(undefined),
   }),
 }));
 
-jest.mock('./middleware/RequireOpsAccess', () => {
+vi.mock('./middleware/RequireOpsAccess', () => {
   const state = globalThis as unknown as {
     __opsAccessState?: { allow: boolean };
   };
@@ -140,11 +141,11 @@ jest.mock('./middleware/RequireOpsAccess', () => {
       res.locals.email = 'alex@example.com';
       next();
     },
-    makeRequireOpsAccess: jest.fn(),
+    makeRequireOpsAccess: vi.fn(),
   };
 });
 
-jest.mock('../services/ops/BusinessMetricsService', () => {
+vi.mock('../services/ops/BusinessMetricsService', () => {
   return {
     BusinessMetricsService: class {
       async getMetrics() {
@@ -163,7 +164,7 @@ jest.mock('../services/ops/BusinessMetricsService', () => {
   };
 });
 
-jest.mock('../services/ops/ConversionMetricsService', () => {
+vi.mock('../services/ops/ConversionMetricsService', () => {
   return {
     ConversionMetricsService: class {
       async getMetrics() {
@@ -189,7 +190,7 @@ jest.mock('../services/ops/ConversionMetricsService', () => {
   };
 });
 
-jest.mock('../services/ops/TodaySnapshotService', () => {
+vi.mock('../services/ops/TodaySnapshotService', () => {
   return {
     TodaySnapshotService: class {
       async getSnapshot() {
@@ -220,7 +221,7 @@ jest.mock('../services/ops/TodaySnapshotService', () => {
   };
 });
 
-jest.mock('../lib/storage/StorageHandler', () => {
+vi.mock('../lib/storage/StorageHandler', () => {
   return {
     __esModule: true,
     default: class {
@@ -231,11 +232,11 @@ jest.mock('../lib/storage/StorageHandler', () => {
   };
 });
 
-jest.mock('../lib/storage/jobs/helpers/updateStripeSubscriptions', () => ({
-  updateStripeSubscriptions: jest.fn().mockResolvedValue(undefined),
+vi.mock('../lib/storage/jobs/helpers/updateStripeSubscriptions', () => ({
+  updateStripeSubscriptions: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../data_layer/EventsRepository', () => {
+vi.mock('../data_layer/EventsRepository', () => {
   return {
     __esModule: true,
     default: class {

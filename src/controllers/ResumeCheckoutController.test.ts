@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import type { Request, Response } from 'express';
 import ResumeCheckoutController from './ResumeCheckoutController';
 import { ResumeAbandonedCheckoutUseCase } from '../usecases/checkout/ResumeAbandonedCheckoutUseCase';
@@ -8,10 +9,8 @@ const TOKEN = 'f4b3a070-1f2e-4c3d-9a8b-7c6d5e4f3a2b';
 const STRIPE_URL = 'https://buy.stripe.com/r/live_abc123';
 const FUTURE = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-function makeRes(): jest.Mocked<Pick<Response, 'redirect'>> {
-  return { redirect: jest.fn() } as unknown as jest.Mocked<
-    Pick<Response, 'redirect'>
-  >;
+function makeRes(): Mocked<Pick<Response, 'redirect'>> {
+  return { redirect: vi.fn() } as unknown as Mocked<Pick<Response, 'redirect'>>;
 }
 
 function makeReq(token?: unknown): Request {
@@ -21,11 +20,11 @@ function makeReq(token?: unknown): Request {
 describe('ResumeCheckoutController', () => {
   let repo: InMemoryAbandonedCheckoutRecoveryRepository;
   let controller: ResumeCheckoutController;
-  let eventsSink: jest.Mocked<Pick<EventsSink, 'record'>>;
+  let eventsSink: Mocked<Pick<EventsSink, 'record'>>;
 
   beforeEach(() => {
     repo = new InMemoryAbandonedCheckoutRecoveryRepository();
-    eventsSink = { record: jest.fn() };
+    eventsSink = { record: vi.fn() };
     controller = new ResumeCheckoutController(
       new ResumeAbandonedCheckoutUseCase(repo),
       eventsSink

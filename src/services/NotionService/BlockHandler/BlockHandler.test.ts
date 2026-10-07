@@ -1,3 +1,7 @@
+import { vi } from 'vitest';
+
+vi.setConfig({ testTimeout: 30000 });
+
 test('Highlighted text is rendered with background', async () => {
   const mockToggleBlock = {
     object: 'block' as const,
@@ -261,8 +265,8 @@ async function findCardByName(
 
 beforeEach(() => setupTests());
 
-jest.mock('get-notion-object-title', () => ({
-  getNotionObjectTitle: jest.fn(),
+vi.mock('get-notion-object-title', () => ({
+  getNotionObjectTitle: vi.fn(),
 }));
 
 describe('BlockHandler', () => {
@@ -693,7 +697,6 @@ describe('BlockHandler', () => {
     expect(flashcards.length).toBe(2);
   });
 
-  jest.setTimeout(10000);
   test('Enable two columns', async () => {
     const rules = new ParserRules();
     rules.setFlashcardTypes(['column_list']);
@@ -823,7 +826,7 @@ describe('BlockHandler', () => {
     const rules = new ParserRules();
     rules.setFlashcardTypes(['table']);
 
-    const getBlocksSpy = jest.spyOn(api, 'getBlocks');
+    const getBlocksSpy = vi.spyOn(api, 'getBlocks');
 
     try {
       const flashcards = await loadCards(
