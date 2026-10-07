@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   walkNotionPageForFlashcards,
   walkNotionDatabaseForFlashcards,
@@ -19,7 +20,7 @@ const paragraphChild = (text: string) => ({
 
 describe('walkNotionPageForFlashcards', () => {
   test('extracts hosted image blocks and embeds <img> with ankify-{id}.{ext}', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') {
         return [toggleBlock()];
       }
@@ -59,7 +60,7 @@ describe('walkNotionPageForFlashcards', () => {
   });
 
   test('surfaces unsupported child block types from the toggle back', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') return [toggleBlock()];
       return [paragraphChild('Known text.'), { id: 'weird-1', type: 'html' }];
     });
@@ -74,7 +75,7 @@ describe('walkNotionPageForFlashcards', () => {
   });
 
   test('rewrites external-hosted image URLs to a local filename in the back HTML', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') {
         return [toggleBlock()];
       }
@@ -108,7 +109,7 @@ describe('walkNotionPageForFlashcards', () => {
   });
 
   test('rewrites a YouTube external video to an iframe', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') return [toggleBlock()];
       return [
         {
@@ -137,7 +138,7 @@ describe('walkNotionPageForFlashcards', () => {
   });
 
   test('emits an Anki [sound:] tag for audio blocks and tracks the file', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') return [toggleBlock()];
       return [
         {
@@ -165,7 +166,7 @@ describe('walkNotionPageForFlashcards', () => {
   });
 
   test('renders an embed block as an iframe', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') return [toggleBlock()];
       return [
         {
@@ -186,7 +187,7 @@ describe('walkNotionPageForFlashcards', () => {
   });
 
   test('extracts file blocks as download links and tracks them', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') return [toggleBlock()];
       return [
         {
@@ -216,7 +217,7 @@ describe('walkNotionPageForFlashcards', () => {
   });
 
   test('recurses into nested toggles inside a parent toggle', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') return [toggleBlock({ id: 'outer' })];
       if (blockId === 'outer') {
         return [
@@ -243,7 +244,7 @@ describe('walkNotionPageForFlashcards', () => {
   });
 
   test('skips toggles with empty front text', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') {
         return [
           toggleBlock({ id: 't-empty', toggle: { rich_text: [] } }),
@@ -263,7 +264,7 @@ describe('walkNotionPageForFlashcards', () => {
   });
 
   test('carries front text color from rich-text annotation and toggle block color', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') {
         return [
           toggleBlock({
@@ -297,7 +298,7 @@ describe('walkNotionPageForFlashcards', () => {
 
 describe('walkNotionPageForFlashcards diagnostic', () => {
   test('diagnostic counts blocks_scanned and blocks_matched from a single toggle page', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') {
         return [toggleBlock({ id: 't-1' }), { id: 'p-1', type: 'paragraph' }];
       }
@@ -314,7 +315,7 @@ describe('walkNotionPageForFlashcards diagnostic', () => {
   });
 
   test('diagnostic records toggle hits in pattern_hits', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') {
         return [toggleBlock({ id: 't-1' }), toggleBlock({ id: 't-2' })];
       }
@@ -330,7 +331,7 @@ describe('walkNotionPageForFlashcards diagnostic', () => {
   });
 
   test('diagnostic captures unmatched_samples (heading text) for non-toggle blocks up to 3', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') {
         return [
           {
@@ -374,7 +375,7 @@ describe('walkNotionPageForFlashcards diagnostic', () => {
       type: 'paragraph',
       paragraph: { rich_text: [{ plain_text: `Block ${i}` }] },
     }));
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') return manyBlocks;
       return [];
     });
@@ -388,7 +389,7 @@ describe('walkNotionPageForFlashcards diagnostic', () => {
   });
 
   test('diagnostic blocks_matched is 0 and unmatched_samples is populated when no toggles found', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'page-id') {
         return [
           {
@@ -421,14 +422,14 @@ describe('walkNotionDatabaseForFlashcards', () => {
   });
 
   test('walks every database row-page and aggregates the cards', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'row-1') return [rowToggle('row-1', 'Front 1')];
       if (blockId === 'row-2') return [rowToggle('row-2', 'Front 2')];
       if (blockId === 'row-1-toggle') return [paragraphChild('Back 1')];
       if (blockId === 'row-2-toggle') return [paragraphChild('Back 2')];
       return [];
     });
-    const fetchDatabasePages = jest.fn(async () => [
+    const fetchDatabasePages = vi.fn(async () => [
       { id: 'row-1' },
       { id: 'row-2' },
     ]);
@@ -448,12 +449,12 @@ describe('walkNotionDatabaseForFlashcards', () => {
   });
 
   test('tags every card with the child page id and title', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'row-1') return [rowToggle('row-1', 'Front 1')];
       if (blockId === 'row-2') return [rowToggle('row-2', 'Front 2')];
       return [];
     });
-    const fetchDatabasePages = jest.fn(async () => [
+    const fetchDatabasePages = vi.fn(async () => [
       { id: 'row-1', title: 'Cell Biology' },
       { id: 'row-2', title: null },
     ]);
@@ -476,13 +477,13 @@ describe('walkNotionDatabaseForFlashcards', () => {
   });
 
   test('keeps the cards in the order the pages were returned', async () => {
-    const fetchChildren = jest.fn(async (blockId: string) => {
+    const fetchChildren = vi.fn(async (blockId: string) => {
       if (blockId === 'row-1') return [rowToggle('row-1', 'Front 1')];
       if (blockId === 'row-2') return [rowToggle('row-2', 'Front 2')];
       if (blockId === 'row-3') return [rowToggle('row-3', 'Front 3')];
       return [];
     });
-    const fetchDatabasePages = jest.fn(async () => [
+    const fetchDatabasePages = vi.fn(async () => [
       { id: 'row-2' },
       { id: 'row-3' },
       { id: 'row-1' },
@@ -503,8 +504,8 @@ describe('walkNotionDatabaseForFlashcards', () => {
 
   test('caps the number of database rows walked at 250', async () => {
     const pages = Array.from({ length: 300 }, (_v, i) => ({ id: `row-${i}` }));
-    const fetchChildren = jest.fn(async () => []);
-    const fetchDatabasePages = jest.fn(async () => pages);
+    const fetchChildren = vi.fn(async () => []);
+    const fetchDatabasePages = vi.fn(async () => pages);
 
     await walkNotionDatabaseForFlashcards(
       'database-id',
@@ -516,8 +517,8 @@ describe('walkNotionDatabaseForFlashcards', () => {
   });
 
   test('returns zero cards for an empty database', async () => {
-    const fetchChildren = jest.fn(async () => []);
-    const fetchDatabasePages = jest.fn(async () => []);
+    const fetchChildren = vi.fn(async () => []);
+    const fetchDatabasePages = vi.fn(async () => []);
 
     const { cards, diagnostic } = await walkNotionDatabaseForFlashcards(
       'database-id',

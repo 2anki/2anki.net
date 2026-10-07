@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import BlockHandler from './BlockHandler';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
@@ -72,15 +73,15 @@ function blockList(results: unknown[]) {
 
 function makeApi(childrenById: Record<string, unknown[]>): NotionAPIWrapper {
   return {
-    getPage: jest.fn().mockResolvedValue({
+    getPage: vi.fn().mockResolvedValue({
       id: 'page-1',
       object: 'page',
       created_time: '',
       last_edited_time: '',
     }),
-    getPageTitle: jest.fn().mockResolvedValue('Study Notes'),
-    getTopLevelTags: jest.fn().mockResolvedValue([]),
-    getBlocks: jest
+    getPageTitle: vi.fn().mockResolvedValue('Study Notes'),
+    getTopLevelTags: vi.fn().mockResolvedValue([]),
+    getBlocks: vi
       .fn()
       .mockImplementation(({ id }: { id: string }) =>
         Promise.resolve(blockList(childrenById[id] ?? []))

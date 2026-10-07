@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import {
   ANKI_CONNECT_SYNC_TIMEOUT_MS,
   AnkiConnectClient,
@@ -11,7 +12,7 @@ const makeFetch = (
   body: unknown,
   init: Partial<{ ok: boolean; status: number; statusText: string }> = {}
 ) =>
-  jest.fn(async () => ({
+  vi.fn(async () => ({
     ok: init.ok ?? true,
     status: init.status ?? 200,
     statusText: init.statusText ?? 'OK',
@@ -35,7 +36,7 @@ describe('AnkiConnectClient', () => {
     });
 
     expect(id).toBe(1234567890);
-    const callArgs = (fetchImpl as jest.Mock).mock.calls[0];
+    const callArgs = (fetchImpl as Mock).mock.calls[0];
     expect(callArgs[0]).toBe('http://localhost:8765');
     const body = JSON.parse(callArgs[1].body);
     expect(body).toEqual({
@@ -58,7 +59,7 @@ describe('AnkiConnectClient', () => {
 
     await client.changeDeck([9001, 9002], 'MS3::Pharmacology');
 
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'changeDeck',
       version: 6,
@@ -72,7 +73,7 @@ describe('AnkiConnectClient', () => {
 
     await client.ping();
 
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({ action: 'version', version: 6 });
   });
 
@@ -105,8 +106,8 @@ describe('AnkiConnectClient', () => {
     await client.ping();
     await client.deckNames();
 
-    const body0 = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
-    const body1 = JSON.parse((fetchImpl as jest.Mock).mock.calls[1][1].body);
+    const body0 = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
+    const body1 = JSON.parse((fetchImpl as Mock).mock.calls[1][1].body);
     expect(body0).toEqual({
       action: 'version',
       version: 6,
@@ -125,7 +126,7 @@ describe('AnkiConnectClient', () => {
 
     await client.ping();
 
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).not.toHaveProperty('key');
   });
 
@@ -150,7 +151,7 @@ describe('AnkiConnectClient', () => {
       ],
     });
 
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'createModel',
       version: 6,
@@ -179,7 +180,7 @@ describe('AnkiConnectClient', () => {
       css: '.card { color: red; }',
     });
 
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'updateModelStyling',
       version: 6,
@@ -200,7 +201,7 @@ describe('AnkiConnectClient', () => {
       },
     });
 
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'updateModelTemplates',
       version: 6,
@@ -225,7 +226,7 @@ describe('AnkiConnectClient', () => {
     });
 
     expect(stored).toBe('ankify-x.png');
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'storeMediaFile',
       version: 6,
@@ -243,7 +244,7 @@ describe('AnkiConnectClient', () => {
     const names = await client.getMediaFilesNames('ankify-*');
 
     expect(names).toEqual(['ankify-a.png', 'ankify-b.jpg']);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'getMediaFilesNames',
       version: 6,
@@ -261,7 +262,7 @@ describe('AnkiConnectClient', () => {
     ]);
 
     expect(result).toEqual([true, true]);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'answerCards',
       version: 6,
@@ -281,7 +282,7 @@ describe('AnkiConnectClient', () => {
     const count = await client.getNumCardsReviewedToday();
 
     expect(count).toBe(42);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({ action: 'getNumCardsReviewedToday', version: 6 });
   });
 
@@ -313,7 +314,7 @@ describe('AnkiConnectClient', () => {
         total_in_deck: 120,
       },
     });
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'getDeckStats',
       version: 6,
@@ -339,7 +340,7 @@ describe('AnkiConnectClient', () => {
       "Jlab's beginner course": 1651445861967,
       "Jlab's beginner course::Part 1: Listening comprehension": 1651445861999,
     });
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'deckNamesAndIds',
       version: 6,
@@ -354,7 +355,7 @@ describe('AnkiConnectClient', () => {
     const cardIds = await client.guiBrowse('nid:1502298033753');
 
     expect(cardIds).toEqual([1502298033753]);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'guiBrowse',
       version: 6,
@@ -372,7 +373,7 @@ describe('AnkiConnectClient', () => {
     const actions = await client.apiReflect();
 
     expect(actions).toEqual(['notesModTime', 'multi']);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'apiReflect',
       version: 6,
@@ -408,7 +409,7 @@ describe('AnkiConnectClient', () => {
       { noteId: 900, mod: 1700000000 },
       { noteId: 0, mod: 1700000005 },
     ]);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'notesModTime',
       version: 6,
@@ -435,7 +436,7 @@ describe('AnkiConnectClient', () => {
       { result: 111, error: null },
       { result: null, error: 'cannot create note because it is a duplicate' },
     ]);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'multi',
       version: 6,
@@ -455,7 +456,7 @@ describe('AnkiConnectClient', () => {
     const data = await client.retrieveMediaFile('foo.jpg');
 
     expect(data).toBe('UEFTREFUQQ==');
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'retrieveMediaFile',
       version: 6,
@@ -471,7 +472,7 @@ describe('AnkiConnectClient', () => {
   });
 
   test('throws AnkiConnectUnreachableError when fetch rejects', async () => {
-    const fetchImpl = jest.fn(async () => {
+    const fetchImpl = vi.fn(async () => {
       throw new Error('connect ECONNREFUSED');
     }) as unknown as typeof fetch;
     const client = new AnkiConnectClient('http://x', fetchImpl);
@@ -482,7 +483,7 @@ describe('AnkiConnectClient', () => {
   });
 
   test('throws AnkiConnectUnreachableError when the body read fails mid-stream', async () => {
-    const fetchImpl = jest.fn(async () => ({
+    const fetchImpl = vi.fn(async () => ({
       ok: true,
       status: 200,
       statusText: 'OK',
@@ -499,7 +500,7 @@ describe('AnkiConnectClient', () => {
   });
 
   const makeHangingFetch = () =>
-    jest.fn(
+    vi.fn(
       (_url: string, init: { signal: AbortSignal }) =>
         new Promise((_resolve, reject) => {
           init.signal.addEventListener('abort', () =>
@@ -523,20 +524,20 @@ describe('AnkiConnectClient', () => {
   });
 
   test('sync aborts on the longer sync timeout, not the per-call default', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     try {
       const fetchImpl = makeHangingFetch();
       const client = new AnkiConnectClient('http://x', fetchImpl);
 
       const pending = client.sync().catch((e) => e);
-      await jest.advanceTimersByTimeAsync(ANKI_CONNECT_SYNC_TIMEOUT_MS);
+      await vi.advanceTimersByTimeAsync(ANKI_CONNECT_SYNC_TIMEOUT_MS);
       const err = await pending;
 
       expect(err).toBeInstanceOf(AnkiConnectTimeoutError);
       expect(err.action).toBe('sync');
       expect(err.timeoutMs).toBe(ANKI_CONNECT_SYNC_TIMEOUT_MS);
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 
@@ -573,7 +574,7 @@ describe('AnkiConnectClient', () => {
     const profile = await client.getActiveProfile();
 
     expect(profile).toBe('User 1');
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({ action: 'getActiveProfile', version: 6 });
   });
 
@@ -584,7 +585,7 @@ describe('AnkiConnectClient', () => {
     const opened = await client.guiDeckOverview('Notion Sync::Pharmacology');
 
     expect(opened).toBe(true);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'guiDeckOverview',
       version: 6,
@@ -599,7 +600,7 @@ describe('AnkiConnectClient', () => {
     const factors = await client.getEaseFactors([101, 102]);
 
     expect(factors).toEqual([2500, 1800]);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'getEaseFactors',
       version: 6,
@@ -614,7 +615,7 @@ describe('AnkiConnectClient', () => {
     const intervals = await client.getIntervals([101, 102]);
 
     expect(intervals).toEqual([21, 4]);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'getIntervals',
       version: 6,
@@ -629,7 +630,7 @@ describe('AnkiConnectClient', () => {
     const cards = await client.findCards('deck:"X" -is:new');
 
     expect(cards).toEqual([1, 2, 3]);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'findCards',
       version: 6,
@@ -644,7 +645,7 @@ describe('AnkiConnectClient', () => {
     const result = await client.deleteNotes([5001, 5002]);
 
     expect(result).toBeNull();
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'deleteNotes',
       version: 6,
@@ -659,7 +660,7 @@ describe('AnkiConnectClient', () => {
     const changed = await client.unsuspend([9001, 9002]);
 
     expect(changed).toBe(true);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'unsuspend',
       version: 6,
@@ -681,7 +682,7 @@ describe('AnkiConnectClient', () => {
     const result = await client.removeTags([7001, 7002], 'leech');
 
     expect(result).toBeNull();
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'removeTags',
       version: 6,
@@ -715,7 +716,7 @@ describe('AnkiConnectClient', () => {
         queue: -1,
       },
     ]);
-    const body = JSON.parse((fetchImpl as jest.Mock).mock.calls[0][1].body);
+    const body = JSON.parse((fetchImpl as Mock).mock.calls[0][1].body);
     expect(body).toEqual({
       action: 'cardsInfo',
       version: 6,

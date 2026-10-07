@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import fs from 'fs';
 
 import {
@@ -11,12 +12,14 @@ import {
 } from './createAppleStoreKitService';
 import { DEFAULT_APP_STORE_APPLE_ID } from '../AppStoreLinksService/AppStoreLinksService';
 
-jest.mock('@apple/app-store-server-library', () => {
-  const actual = jest.requireActual('@apple/app-store-server-library');
-  return { ...actual, SignedDataVerifier: jest.fn() };
+vi.mock('@apple/app-store-server-library', async () => {
+  const actual = await vi.importActual<
+    typeof import('@apple/app-store-server-library')
+  >('@apple/app-store-server-library');
+  return { ...actual, SignedDataVerifier: vi.fn() };
 });
 
-const MockedVerifier = SignedDataVerifier as unknown as jest.Mock;
+const MockedVerifier = SignedDataVerifier as unknown as Mock;
 
 function environmentsPassedToVerifiers(): Environment[] {
   return MockedVerifier.mock.calls.map((call) => call[2] as Environment);
@@ -27,18 +30,18 @@ describe('createAppleStoreKitService', () => {
 
   beforeEach(() => {
     MockedVerifier.mockClear();
-    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-    jest
-      .spyOn(fs, 'readdirSync')
-      .mockReturnValue(['AppleRootCA-G3.cer'] as never);
-    jest.spyOn(fs, 'readFileSync').mockReturnValue(Buffer.from('cert'));
+    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+    vi.spyOn(fs, 'readdirSync').mockReturnValue([
+      'AppleRootCA-G3.cer',
+    ] as never);
+    vi.spyOn(fs, 'readFileSync').mockReturnValue(Buffer.from('cert'));
     process.env.APPLE_IAP_BUNDLE_ID = 'net.2anki.app';
     process.env.APPLE_IAP_ROOT_CERTS_DIR = '/certs';
     process.env.APPLE_IAP_APP_APPLE_ID = '1234567890';
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     process.env = { ...original };
   });
 

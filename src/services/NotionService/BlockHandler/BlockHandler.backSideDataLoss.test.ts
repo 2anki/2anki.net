@@ -1,3 +1,4 @@
+import { vi, type MockedFunction } from 'vitest';
 import {
   BlockObjectResponse,
   GetBlockResponse,
@@ -16,17 +17,17 @@ import { downloadMediaOrSkip } from '../helpers/downloadMediaOrSkip';
 
 beforeEach(() => setupTests());
 
-jest.mock('../helpers/isTesting', () => ({
+vi.mock('../helpers/isTesting', () => ({
   __esModule: true,
-  default: jest.fn(() => false),
+  default: vi.fn(() => false),
 }));
 
-jest.mock('../helpers/downloadMediaOrSkip', () => ({
+vi.mock('../helpers/downloadMediaOrSkip', () => ({
   __esModule: true,
-  downloadMediaOrSkip: jest.fn(),
+  downloadMediaOrSkip: vi.fn(),
 }));
 
-const mockedDownload = downloadMediaOrSkip as jest.MockedFunction<
+const mockedDownload = downloadMediaOrSkip as MockedFunction<
   typeof downloadMediaOrSkip
 >;
 
@@ -120,10 +121,10 @@ describe('BlockHandler back-side data loss on media failure', () => {
   let exporter: CustomExporter;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     const ws = new Workspace(true, 'fs');
     exporter = new CustomExporter('', ws.location);
-    jest.spyOn(exporter, 'addMedia').mockImplementation(() => 'fake-abs-path');
+    vi.spyOn(exporter, 'addMedia').mockImplementation(() => 'fake-abs-path');
   });
 
   function buildHandler(): BlockHandler {
@@ -135,8 +136,8 @@ describe('BlockHandler back-side data loss on media failure', () => {
       'https://notion.s3/img-fresh.png'
     ) as unknown as GetBlockResponse;
     const api = {
-      getBlocks: jest.fn(async () => children),
-      getBlock: jest.fn(async () => freshImage),
+      getBlocks: vi.fn(async () => children),
+      getBlock: vi.fn(async () => freshImage),
     } as unknown as NotionAPIWrapper;
     return new BlockHandler(exporter, api, new CardOption({}));
   }

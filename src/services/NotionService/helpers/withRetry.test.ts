@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   APIErrorCode,
   APIResponseError,
@@ -40,14 +41,14 @@ function makeRequestTimeoutError(): RequestTimeoutError {
 
 describe('withRetry', () => {
   it('returns the result when the operation succeeds on the first try', async () => {
-    const fn = jest.fn().mockResolvedValue('ok');
+    const fn = vi.fn().mockResolvedValue('ok');
     const result = await withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 });
     expect(result).toBe('ok');
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
   it('retries on rate_limited and eventually succeeds', async () => {
-    const fn = jest
+    const fn = vi
       .fn()
       .mockRejectedValueOnce(makeApiError(APIErrorCode.RateLimited, 429))
       .mockResolvedValueOnce('ok');
@@ -57,7 +58,7 @@ describe('withRetry', () => {
   });
 
   it('retries on internal_server_error', async () => {
-    const fn = jest
+    const fn = vi
       .fn()
       .mockRejectedValueOnce(
         makeApiError(APIErrorCode.InternalServerError, 500)
@@ -70,7 +71,7 @@ describe('withRetry', () => {
   it('retries on network errors (no response)', async () => {
     const networkError: any = new Error('ECONNRESET');
     networkError.code = 'ECONNRESET';
-    const fn = jest
+    const fn = vi
       .fn()
       .mockRejectedValueOnce(networkError)
       .mockResolvedValueOnce('ok');
@@ -87,7 +88,7 @@ describe('withRetry', () => {
     fetchFailed.cause = Object.assign(new Error('Connect Timeout Error'), {
       code: 'UND_ERR_CONNECT_TIMEOUT',
     });
-    const fn = jest
+    const fn = vi
       .fn()
       .mockRejectedValueOnce(fetchFailed)
       .mockResolvedValueOnce('ok');
@@ -102,7 +103,7 @@ describe('withRetry', () => {
     fetchFailed.cause = Object.assign(new Error('certificate error'), {
       code: 'CERT_HAS_EXPIRED',
     });
-    const fn = jest.fn().mockRejectedValue(fetchFailed);
+    const fn = vi.fn().mockRejectedValue(fetchFailed);
     await expect(
       withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })
     ).rejects.toBe(fetchFailed);
@@ -110,7 +111,7 @@ describe('withRetry', () => {
   });
 
   it('retries on a 502 bad gateway (UnknownHTTPResponseError)', async () => {
-    const fn = jest
+    const fn = vi
       .fn()
       .mockRejectedValueOnce(makeUnknownHttpError(502))
       .mockResolvedValueOnce('ok');
@@ -119,7 +120,7 @@ describe('withRetry', () => {
   });
 
   it('retries on a 504 gateway timeout (UnknownHTTPResponseError)', async () => {
-    const fn = jest
+    const fn = vi
       .fn()
       .mockRejectedValueOnce(makeUnknownHttpError(504))
       .mockResolvedValueOnce('ok');
@@ -129,7 +130,7 @@ describe('withRetry', () => {
 
   it('does NOT retry a 4xx UnknownHTTPResponseError', async () => {
     const err = makeUnknownHttpError(400);
-    const fn = jest.fn().mockRejectedValue(err);
+    const fn = vi.fn().mockRejectedValue(err);
     await expect(
       withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })
     ).rejects.toBe(err);
@@ -141,7 +142,7 @@ describe('withRetry', () => {
       new Error('Request failed with status code 503'),
       { isAxiosError: true, response: { status: 503 } }
     );
-    const fn = jest
+    const fn = vi
       .fn()
       .mockRejectedValueOnce(axiosError)
       .mockResolvedValueOnce('ok');
@@ -154,7 +155,7 @@ describe('withRetry', () => {
       isAxiosError: true,
       code: 'ERR_NETWORK',
     });
-    const fn = jest
+    const fn = vi
       .fn()
       .mockRejectedValueOnce(axiosError)
       .mockResolvedValueOnce('ok');
@@ -170,7 +171,7 @@ describe('withRetry', () => {
         response: { status: 400, data: { error: 'invalid_grant' } },
       }
     );
-    const fn = jest.fn().mockRejectedValue(axiosError);
+    const fn = vi.fn().mockRejectedValue(axiosError);
     await expect(
       withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })
     ).rejects.toBe(axiosError);
@@ -178,7 +179,7 @@ describe('withRetry', () => {
   });
 
   it('retries on a Notion client RequestTimeoutError', async () => {
-    const fn = jest
+    const fn = vi
       .fn()
       .mockRejectedValueOnce(makeRequestTimeoutError())
       .mockResolvedValueOnce('ok');
@@ -188,7 +189,7 @@ describe('withRetry', () => {
 
   it('does NOT retry on unauthorized', async () => {
     const err = makeApiError(APIErrorCode.Unauthorized, 401);
-    const fn = jest.fn().mockRejectedValue(err);
+    const fn = vi.fn().mockRejectedValue(err);
     await expect(
       withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })
     ).rejects.toBe(err);
@@ -197,7 +198,7 @@ describe('withRetry', () => {
 
   it('does NOT retry on object_not_found', async () => {
     const err = makeApiError(APIErrorCode.ObjectNotFound, 404);
-    const fn = jest.fn().mockRejectedValue(err);
+    const fn = vi.fn().mockRejectedValue(err);
     await expect(
       withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })
     ).rejects.toBe(err);
@@ -206,7 +207,7 @@ describe('withRetry', () => {
 
   it('does NOT retry on validation_error', async () => {
     const err = makeApiError(APIErrorCode.ValidationError, 400);
-    const fn = jest.fn().mockRejectedValue(err);
+    const fn = vi.fn().mockRejectedValue(err);
     await expect(
       withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })
     ).rejects.toBe(err);
@@ -215,7 +216,7 @@ describe('withRetry', () => {
 
   it('gives up after maxAttempts retryable failures and throws the last error', async () => {
     const err = makeApiError(APIErrorCode.InternalServerError, 500);
-    const fn = jest.fn().mockRejectedValue(err);
+    const fn = vi.fn().mockRejectedValue(err);
     await expect(
       withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 })
     ).rejects.toBe(err);
@@ -224,14 +225,11 @@ describe('withRetry', () => {
 
   describe('Retry-After header', () => {
     it('waits the Retry-After integer seconds when header is present on 429', async () => {
-      const sleepFn = jest.fn().mockResolvedValue(undefined);
+      const sleepFn = vi.fn().mockResolvedValue(undefined);
       const err = makeApiError(APIErrorCode.RateLimited, 429, {
         'retry-after': '7',
       });
-      const fn = jest
-        .fn()
-        .mockRejectedValueOnce(err)
-        .mockResolvedValueOnce('ok');
+      const fn = vi.fn().mockRejectedValueOnce(err).mockResolvedValueOnce('ok');
 
       await withRetry(fn, { maxAttempts: 3, baseDelayMs: 1000, sleepFn });
 
@@ -239,12 +237,9 @@ describe('withRetry', () => {
     });
 
     it('falls through to exponential backoff when Retry-After header is missing', async () => {
-      const sleepFn = jest.fn().mockResolvedValue(undefined);
+      const sleepFn = vi.fn().mockResolvedValue(undefined);
       const err = makeApiError(APIErrorCode.RateLimited, 429);
-      const fn = jest
-        .fn()
-        .mockRejectedValueOnce(err)
-        .mockResolvedValueOnce('ok');
+      const fn = vi.fn().mockRejectedValueOnce(err).mockResolvedValueOnce('ok');
 
       await withRetry(fn, { maxAttempts: 3, baseDelayMs: 100, sleepFn });
 
@@ -254,14 +249,11 @@ describe('withRetry', () => {
     });
 
     it('clamps Retry-After values above 30s to 30s', async () => {
-      const sleepFn = jest.fn().mockResolvedValue(undefined);
+      const sleepFn = vi.fn().mockResolvedValue(undefined);
       const err = makeApiError(APIErrorCode.RateLimited, 429, {
         'retry-after': '120',
       });
-      const fn = jest
-        .fn()
-        .mockRejectedValueOnce(err)
-        .mockResolvedValueOnce('ok');
+      const fn = vi.fn().mockRejectedValueOnce(err).mockResolvedValueOnce('ok');
 
       await withRetry(fn, { maxAttempts: 3, baseDelayMs: 1000, sleepFn });
 

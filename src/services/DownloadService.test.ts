@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Readable } from 'node:stream';
 
 import DownloadService from './DownloadService';
@@ -8,8 +9,8 @@ function makeService() {
 
 describe('DownloadService.getFileStream', () => {
   it('returns null when the owner has no such download row', async () => {
-    const repo = { getFile: jest.fn().mockResolvedValue(null) };
-    const storage = { getFileStream: jest.fn() };
+    const repo = { getFile: vi.fn().mockResolvedValue(null) };
+    const storage = { getFileStream: vi.fn() };
     const service = new DownloadService(repo as never);
 
     const result = await service.getFileStream(
@@ -25,10 +26,10 @@ describe('DownloadService.getFileStream', () => {
   it('opens the stream for the stored key of the matched row', async () => {
     const body = Readable.from([Buffer.from('apkg')]);
     const repo = {
-      getFile: jest.fn().mockResolvedValue({ key: 'stored/owner-1/deck.apkg' }),
+      getFile: vi.fn().mockResolvedValue({ key: 'stored/owner-1/deck.apkg' }),
     };
     const storage = {
-      getFileStream: jest.fn().mockResolvedValue({ body, contentLength: 4 }),
+      getFileStream: vi.fn().mockResolvedValue({ body, contentLength: 4 }),
     };
     const service = new DownloadService(repo as never);
 

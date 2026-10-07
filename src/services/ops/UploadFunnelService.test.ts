@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { UploadFunnelService } from './UploadFunnelService';
 import type {
   IEventsRepository,
@@ -18,16 +19,16 @@ function makeRepo(
   failedByReason: ConversionFailedByReasonRow = NO_FAILURES
 ): IEventsRepository {
   return {
-    insertEvents: jest.fn(),
-    countByName: jest.fn(),
-    countDistinctUsers: jest.fn(),
-    countByNameForUser: jest.fn(),
-    lastEventAt: jest.fn(),
-    groupPaywallShownByVariantAndSurface: jest.fn(),
-    groupPaywallClicksByVariant: jest.fn(),
-    groupUploadFunnel: jest.fn().mockResolvedValue(rows),
-    groupUploadFunnelByOrigin: jest.fn().mockResolvedValue(originRows),
-    groupConversionFailedByReason: jest.fn().mockResolvedValue(failedByReason),
+    insertEvents: vi.fn(),
+    countByName: vi.fn(),
+    countDistinctUsers: vi.fn(),
+    countByNameForUser: vi.fn(),
+    lastEventAt: vi.fn(),
+    groupPaywallShownByVariantAndSurface: vi.fn(),
+    groupPaywallClicksByVariant: vi.fn(),
+    groupUploadFunnel: vi.fn().mockResolvedValue(rows),
+    groupUploadFunnelByOrigin: vi.fn().mockResolvedValue(originRows),
+    groupConversionFailedByReason: vi.fn().mockResolvedValue(failedByReason),
   };
 }
 
@@ -216,7 +217,7 @@ describe('UploadFunnelService', () => {
 
   it('reports zeroed reason buckets on a repository error', async () => {
     const repo = makeRepo([]);
-    (repo.groupConversionFailedByReason as jest.Mock).mockRejectedValueOnce(
+    (repo.groupConversionFailedByReason as Mock).mockRejectedValueOnce(
       new Error('db down')
     );
     const service = new UploadFunnelService({ eventsRepo: repo });
@@ -233,7 +234,7 @@ describe('UploadFunnelService', () => {
 
   it('surfaces a repository error without throwing', async () => {
     const repo = makeRepo([]);
-    (repo.groupUploadFunnel as jest.Mock).mockRejectedValueOnce(
+    (repo.groupUploadFunnel as Mock).mockRejectedValueOnce(
       new Error('db down')
     );
     const service = new UploadFunnelService({ eventsRepo: repo });
@@ -292,7 +293,7 @@ describe('UploadFunnelService', () => {
 
     it('reports the signup stage as unreliable on the error path too', async () => {
       const repo = makeRepo([]);
-      (repo.groupUploadFunnel as jest.Mock).mockRejectedValueOnce(
+      (repo.groupUploadFunnel as Mock).mockRejectedValueOnce(
         new Error('db down')
       );
       const service = new UploadFunnelService({ eventsRepo: repo });

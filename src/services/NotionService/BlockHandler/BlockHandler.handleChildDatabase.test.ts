@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import BlockHandler from './BlockHandler';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
@@ -23,19 +24,19 @@ function makeApi(opts: FakeApiOpts): NotionAPIWrapper {
   }));
 
   return {
-    queryDatabase: jest.fn().mockResolvedValue({ results }),
-    getDatabase: jest.fn().mockResolvedValue({ id: 'embedded-db' }),
-    getDatabaseTitle: jest.fn().mockResolvedValue('Embedded DB'),
-    getPage: jest.fn().mockResolvedValue({
+    queryDatabase: vi.fn().mockResolvedValue({ results }),
+    getDatabase: vi.fn().mockResolvedValue({ id: 'embedded-db' }),
+    getDatabaseTitle: vi.fn().mockResolvedValue('Embedded DB'),
+    getPage: vi.fn().mockResolvedValue({
       id: 'page',
       object: 'page',
       created_time: '2024-01-01T00:00:00.000Z',
       last_edited_time: '2024-01-01T00:00:00.000Z',
       properties: {},
     }),
-    getPageTitle: jest.fn().mockResolvedValue('Row'),
-    getTopLevelTags: jest.fn().mockResolvedValue([]),
-    getBlocks: jest.fn().mockResolvedValue({ results: [] }),
+    getPageTitle: vi.fn().mockResolvedValue('Row'),
+    getTopLevelTags: vi.fn().mockResolvedValue([]),
+    getBlocks: vi.fn().mockResolvedValue({ results: [] }),
   } as unknown as NotionAPIWrapper;
 }
 

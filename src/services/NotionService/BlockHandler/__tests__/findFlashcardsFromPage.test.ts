@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import BlockHandler from '../BlockHandler';
 import NotionAPIWrapper from '../../NotionAPIWrapper';
 import CustomExporter from '../../../../lib/parser/exporters/CustomExporter';
@@ -5,7 +6,7 @@ import CardOption from '../../../../lib/parser/Settings';
 import ParserRules from '../../../../lib/parser/ParserRules';
 import { ISettingsRepository } from '../../../../data_layer/SettingsRepository';
 
-jest.mock('../../../../lib/parser/exporters/CustomExporter');
+vi.mock('../../../../lib/parser/exporters/CustomExporter');
 
 interface FakePage {
   id: string;
@@ -28,9 +29,9 @@ function buildApi(
   titles: Record<string, string>
 ): NotionAPIWrapper {
   const api = {
-    getPage: jest.fn(async (id: string) => pages[id]),
-    getTopLevelTags: jest.fn(async () => []),
-    getBlocks: jest.fn(async ({ id }: { id: string }) => ({
+    getPage: vi.fn(async (id: string) => pages[id]),
+    getTopLevelTags: vi.fn(async () => []),
+    getBlocks: vi.fn(async ({ id }: { id: string }) => ({
       results: pages[id].childPageIds.map((childId) => ({
         object: 'block',
         id: childId,
@@ -41,7 +42,7 @@ function buildApi(
         last_edited_time: '2026-01-01T00:00:00.000Z',
       })),
     })),
-    getPageTitle: jest.fn(async (page: FakePage, settings?: CardOption) => {
+    getPageTitle: vi.fn(async (page: FakePage, settings?: CardOption) => {
       if (settings?.deckName) {
         return settings.deckName;
       }
@@ -62,12 +63,10 @@ function buildSettingsRepository(
   rows: Record<string, CardOption>
 ): ISettingsRepository {
   return {
-    load: jest.fn(async () => buildSettings()),
-    loadIfExists: jest.fn(
-      async (_owner: string, id: string) => rows[id] ?? null
-    ),
-    loadAnkifyTemplateOverrides: jest.fn(async () => null),
-    attachCustomTemplates: jest.fn(async () => undefined),
+    load: vi.fn(async () => buildSettings()),
+    loadIfExists: vi.fn(async (_owner: string, id: string) => rows[id] ?? null),
+    loadAnkifyTemplateOverrides: vi.fn(async () => null),
+    attachCustomTemplates: vi.fn(async () => undefined),
   };
 }
 

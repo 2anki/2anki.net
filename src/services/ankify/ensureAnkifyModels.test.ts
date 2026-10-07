@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { ensureAnkifyModels } from './ensureAnkifyModels';
 import { ANKIFY_BASIC_MODEL, ANKIFY_CLOZE_MODEL } from './ankifyModels';
 import { AnkiConnectClient } from './AnkiConnectClient';
@@ -6,8 +7,8 @@ import { TemplateFile } from '../../lib/parser/Settings/types';
 
 const makeStub = (modelNames: string[]) => {
   const stub = {
-    modelNames: jest.fn(async () => modelNames),
-    createModel: jest.fn(async () => ({ id: 1 })),
+    modelNames: vi.fn(async () => modelNames),
+    createModel: vi.fn(async () => ({ id: 1 })),
   };
   return stub as unknown as AnkiConnectClient & typeof stub;
 };
@@ -20,7 +21,7 @@ describe('ensureAnkifyModels', () => {
     await ensureAnkifyModels(ac, cache);
 
     expect(ac.createModel).toHaveBeenCalledTimes(2);
-    const created = (ac.createModel as jest.Mock).mock.calls.map(
+    const created = (ac.createModel as Mock).mock.calls.map(
       (args) => (args[0] as { modelName: string }).modelName
     );
     expect(created).toEqual(
@@ -46,8 +47,8 @@ describe('ensureAnkifyModels', () => {
     const cache = new Set<string>();
 
     await ensureAnkifyModels(ac, cache);
-    (ac.modelNames as jest.Mock).mockClear();
-    (ac.createModel as jest.Mock).mockClear();
+    (ac.modelNames as Mock).mockClear();
+    (ac.createModel as Mock).mockClear();
 
     await ensureAnkifyModels(ac, cache);
 
@@ -57,7 +58,7 @@ describe('ensureAnkifyModels', () => {
 
   test('treats createModel "already exists" failure as success (race-safe)', async () => {
     const ac = makeStub([]);
-    (ac.createModel as jest.Mock).mockRejectedValueOnce(
+    (ac.createModel as Mock).mockRejectedValueOnce(
       new Error('Model name already exists')
     );
     const cache = new Set<string>();
@@ -86,7 +87,7 @@ describe('ensureAnkifyModels', () => {
 
     await ensureAnkifyModels(ac, cache, overrides);
 
-    const created = (ac.createModel as jest.Mock).mock.calls.map(
+    const created = (ac.createModel as Mock).mock.calls.map(
       (args) =>
         args[0] as { modelName: string; inOrderFields: string[]; css: string }
     );

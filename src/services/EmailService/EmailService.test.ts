@@ -1,10 +1,18 @@
-const send = jest.fn().mockResolvedValue([{ statusCode: 202 }, {}]);
+import { vi } from 'vitest';
+const send = vi.hoisted(() =>
+  vi.fn().mockResolvedValue([{ statusCode: 202 }, {}])
+);
 
-jest.mock('@sendgrid/mail', () => ({
-  setApiKey: jest.fn(),
-  send,
+vi.mock('@sendgrid/mail', () => {
+  const sgMailMock = { setApiKey: vi.fn(), send };
+  return { ...sgMailMock, default: sgMailMock };
+});
+
+vi.mock('fs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('fs')>()),
 }));
 
+import * as fs from 'fs';
 import {
   getDefaultEmailService,
   IEmailService,
@@ -20,7 +28,7 @@ describe('EmailService.sendNotionReconnectEmail', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.SENDGRID_API_KEY = 'test-key';
     process.env.DOMAIN = 'https://2anki.net';
   });
@@ -84,7 +92,7 @@ describe('EmailService.sendAbandonedCheckoutRecoveryEmail', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.SENDGRID_API_KEY = 'test-key';
     process.env.DOMAIN = 'https://2anki.net';
   });
@@ -136,7 +144,7 @@ describe('EmailService conversion emails name the deck and count', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.SENDGRID_API_KEY = 'test-key';
     process.env.DOMAIN = 'https://2anki.net';
   });
@@ -263,7 +271,7 @@ describe('EmailService support notifications cc the owner', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.SENDGRID_API_KEY = 'test-key';
   });
 
@@ -318,7 +326,7 @@ describe('EmailService.sendContactConfirmationEmail', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.SENDGRID_API_KEY = 'test-key';
   });
 
@@ -366,7 +374,7 @@ describe('EmailService.sendConversionLinkEmail delivery contract', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.SENDGRID_API_KEY = 'test-key';
     process.env.DOMAIN = 'https://2anki.net';
   });
@@ -420,7 +428,7 @@ describe('EmailService tags every outgoing send with a template category', () =>
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.SENDGRID_API_KEY = 'test-key';
     process.env.DOMAIN = 'https://2anki.net';
   });
@@ -587,10 +595,9 @@ describe('EmailService tags every outgoing send with a template category', () =>
   });
 
   it('tags the subscription-cancelled email with its category', async () => {
-    const fs = jest.requireActual('fs') as typeof import('fs');
-    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
-    jest.spyOn(fs, 'mkdirSync').mockImplementation(() => undefined);
-    jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined);
+    vi.spyOn(fs, 'existsSync').mockReturnValue(false);
+    vi.spyOn(fs, 'mkdirSync').mockImplementation(() => undefined);
+    vi.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined);
     const service = getDefaultEmailService();
 
     await service.sendSubscriptionCancelledEmail(

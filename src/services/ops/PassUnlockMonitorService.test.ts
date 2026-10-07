@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { Stripe } from 'stripe';
 import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
 
@@ -33,7 +34,7 @@ const buildSession = (
 const buildStripe = (
   sessions: StripeTypes.Checkout.Session[]
 ): (() => Stripe) => {
-  const list = jest.fn().mockResolvedValue({
+  const list = vi.fn().mockResolvedValue({
     object: 'list',
     data: sessions,
     has_more: false,
@@ -185,7 +186,7 @@ describe('PassUnlockMonitorService', () => {
   });
 
   it('lists Stripe sessions created at or after the window start', async () => {
-    const list = jest.fn().mockResolvedValue({
+    const list = vi.fn().mockResolvedValue({
       object: 'list',
       data: [],
       has_more: false,
@@ -211,7 +212,7 @@ describe('PassUnlockMonitorService', () => {
   it('paginates until has_more is false', async () => {
     const first = buildSession({ id: 'cs_a', payment_intent: 'pi_a' });
     const second = buildSession({ id: 'cs_b', payment_intent: 'pi_b' });
-    const list = jest
+    const list = vi
       .fn()
       .mockResolvedValueOnce({ object: 'list', data: [first], has_more: true })
       .mockResolvedValueOnce({
@@ -238,7 +239,7 @@ describe('PassUnlockMonitorService', () => {
   });
 
   it('returns an error string instead of throwing when Stripe fails', async () => {
-    const list = jest.fn().mockRejectedValue(new Error('stripe down'));
+    const list = vi.fn().mockRejectedValue(new Error('stripe down'));
     const stripeFactory = () =>
       ({ checkout: { sessions: { list } } }) as unknown as Stripe;
     const service = new PassUnlockMonitorService({

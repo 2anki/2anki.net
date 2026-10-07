@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import knex, { Knex } from 'knex';
 
 import {
@@ -281,19 +282,19 @@ describe('computeReturnRates — mature cohorts and a real return', () => {
 
 describe('ReturnRateMetricsService — getMetrics', () => {
   function fakeDatabase(rows: unknown[]) {
-    const timeout = jest.fn().mockResolvedValue({ rows });
+    const timeout = vi.fn().mockResolvedValue({ rows });
     const database = {
-      raw: jest.fn().mockReturnValue({ timeout }),
+      raw: vi.fn().mockReturnValue({ timeout }),
     } as unknown as Knex;
     return { database, timeout };
   }
 
   beforeEach(() => {
-    jest.useFakeTimers().setSystemTime(NOW);
+    vi.useFakeTimers().setSystemTime(NOW);
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('turns database rows, whose timestamps arrive as Date objects, into rates', async () => {
@@ -335,8 +336,8 @@ describe('ReturnRateMetricsService — getMetrics', () => {
 
   it('returns null windows and surfaces the database error when the query rejects', async () => {
     const database = {
-      raw: jest.fn().mockReturnValue({
-        timeout: jest.fn().mockRejectedValue(new Error('canceling statement')),
+      raw: vi.fn().mockReturnValue({
+        timeout: vi.fn().mockRejectedValue(new Error('canceling statement')),
       }),
     } as unknown as Knex;
 

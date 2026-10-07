@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import BlockHandler from './BlockHandler';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
@@ -71,7 +72,7 @@ function bullet(id: string, text: string) {
 
 function buildApi(children: Record<string, unknown[]>): NotionAPIWrapper {
   return {
-    getPage: jest.fn(async () => ({
+    getPage: vi.fn(async () => ({
       id: 'page-1',
       object: 'page',
       created_time: TIME,
@@ -79,9 +80,9 @@ function buildApi(children: Record<string, unknown[]>): NotionAPIWrapper {
       url: 'https://notion.so/page-1',
       properties: {},
     })),
-    getPageTitle: jest.fn(async () => 'Study page'),
-    getTopLevelTags: jest.fn(async () => []),
-    getBlocks: jest.fn(async ({ id }: { id: string }) => ({
+    getPageTitle: vi.fn(async () => 'Study page'),
+    getTopLevelTags: vi.fn(async () => []),
+    getBlocks: vi.fn(async ({ id }: { id: string }) => ({
       results: children[id] ?? [],
       has_more: false,
     })),

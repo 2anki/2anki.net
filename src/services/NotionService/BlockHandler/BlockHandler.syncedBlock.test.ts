@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import BlockHandler from './BlockHandler';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
@@ -79,7 +80,7 @@ interface ResponseMap {
 
 function makeApi(responseMap: ResponseMap): NotionAPIWrapper {
   return {
-    getPage: jest.fn().mockResolvedValue({
+    getPage: vi.fn().mockResolvedValue({
       id: 'page-1',
       object: 'page',
       properties: {
@@ -98,9 +99,9 @@ function makeApi(responseMap: ResponseMap): NotionAPIWrapper {
       in_trash: false,
       url: 'https://www.notion.so/page-1',
     }),
-    getPageTitle: jest.fn().mockResolvedValue('Synced Toggle Page'),
-    getTopLevelTags: jest.fn().mockResolvedValue([]),
-    getBlocks: jest.fn(async ({ id }: { id: string }) => ({
+    getPageTitle: vi.fn().mockResolvedValue('Synced Toggle Page'),
+    getTopLevelTags: vi.fn().mockResolvedValue([]),
+    getBlocks: vi.fn(async ({ id }: { id: string }) => ({
       type: 'block' as const,
       block: {},
       object: 'list' as const,

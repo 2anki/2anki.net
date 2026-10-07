@@ -1,7 +1,8 @@
+import { vi } from 'vitest';
 import { AudioBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import { getAudioUrl } from './getAudioUrl';
 
-jest.mock('@notionhq/client', () => ({
+vi.mock('@notionhq/client', () => ({
   isFullBlock: () => true,
 }));
 

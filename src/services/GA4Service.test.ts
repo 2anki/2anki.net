@@ -1,3 +1,4 @@
+import { vi, type MockedFunction } from 'vitest';
 const GA4_ENDPOINT = 'https://www.google-analytics.com/mp/collect';
 
 describe('sendPurchaseEvent', () => {
@@ -9,15 +10,15 @@ describe('sendPurchaseEvent', () => {
       GA4_API_SECRET: 'test-secret',
       GA4_MEASUREMENT_ID: 'G-TEST123',
     };
-    jest.spyOn(global, 'fetch').mockResolvedValue({
+    vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
     } as Response);
   });
 
   afterEach(() => {
     process.env = originalEnv;
-    jest.restoreAllMocks();
-    jest.resetModules();
+    vi.restoreAllMocks();
+    vi.resetModules();
   });
 
   it('sends a purchase event with the correct payload shape', async () => {
@@ -31,8 +32,8 @@ describe('sendPurchaseEvent', () => {
     });
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    const [url, options] = (global.fetch as jest.MockedFunction<typeof fetch>)
-      .mock.calls[0];
+    const [url, options] = (global.fetch as MockedFunction<typeof fetch>).mock
+      .calls[0];
 
     expect(String(url)).toBe(
       `${GA4_ENDPOINT}?measurement_id=G-TEST123&api_secret=test-secret`
@@ -92,7 +93,7 @@ describe('sendPurchaseEvent', () => {
       stripeCustomerId: 'cus_fallback123',
     });
 
-    const [, options] = (global.fetch as jest.MockedFunction<typeof fetch>).mock
+    const [, options] = (global.fetch as MockedFunction<typeof fetch>).mock
       .calls[0];
     const body = JSON.parse((options as RequestInit).body as string);
     expect(body.client_id).toBe('cus_fallback123');

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import knex from 'knex';
 
 import {
@@ -72,7 +73,7 @@ describe('PerformanceMetricsService generated SQL', () => {
 
 function buildMockDb() {
   return {
-    raw: jest.fn().mockResolvedValue({
+    raw: vi.fn().mockResolvedValue({
       rows: [{ p50: null, p95: null, p99: null, total: '0' }],
     }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -151,8 +152,8 @@ describe('PerformanceMetricsService.getUserVisibleErrorCounts', () => {
 
   it('respects the sinceDays window (24h vs 7d filter)', async () => {
     const repo: IUserVisibleErrorsRepository = {
-      record: jest.fn(),
-      countBySurfaceAndCode: jest
+      record: vi.fn(),
+      countBySurfaceAndCode: vi
         .fn()
         .mockResolvedValueOnce([
           { surface: 'oauth_google', code: 'oauth_cancelled', count: 3 },
@@ -182,8 +183,8 @@ describe('PerformanceMetricsService.getUserVisibleErrorCounts', () => {
 describe('PerformanceMetricsService — user_visible_errors fields in getMetrics', () => {
   it('calls countBySurfaceAndCode with 1 and 7 for the two windows', async () => {
     const repo: IUserVisibleErrorsRepository = {
-      record: jest.fn(),
-      countBySurfaceAndCode: jest.fn().mockResolvedValue([]),
+      record: vi.fn(),
+      countBySurfaceAndCode: vi.fn().mockResolvedValue([]),
     };
 
     const service = new PerformanceMetricsService(buildMockDb(), repo);

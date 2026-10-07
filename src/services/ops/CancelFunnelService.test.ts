@@ -1,8 +1,9 @@
+import { vi } from 'vitest';
 import { IEventsRepository } from '../../data_layer/EventsRepository';
 import { CancelFunnelService } from './CancelFunnelService';
 
 const buildRepo = (counts: Record<string, number>): IEventsRepository => {
-  const countByName = jest.fn((name: string) =>
+  const countByName = vi.fn((name: string) =>
     Promise.resolve(counts[name] ?? 0)
   );
   return { countByName } as unknown as IEventsRepository;
@@ -103,7 +104,7 @@ describe('CancelFunnelService', () => {
   });
 
   it('returns a null stages payload with an error message when the repository fails', async () => {
-    const countByName = jest
+    const countByName = vi
       .fn()
       .mockRejectedValue(new Error('connection reset'));
     const repo = { countByName } as unknown as IEventsRepository;

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { sendWithRetry, isTransientSendError } from './sendWithRetry';
 
 const noSleep = () => Promise.resolve();
@@ -30,13 +31,13 @@ describe('isTransientSendError', () => {
 
 describe('sendWithRetry', () => {
   it('returns the result on first success without retrying', async () => {
-    const send = jest.fn().mockResolvedValue('ok');
+    const send = vi.fn().mockResolvedValue('ok');
     await expect(sendWithRetry(send, { sleepFn: noSleep })).resolves.toBe('ok');
     expect(send).toHaveBeenCalledTimes(1);
   });
 
   it('retries a transient failure then succeeds', async () => {
-    const send = jest
+    const send = vi
       .fn()
       .mockRejectedValueOnce(sendError(503))
       .mockResolvedValue('ok');
@@ -45,7 +46,7 @@ describe('sendWithRetry', () => {
   });
 
   it('rethrows after exhausting attempts on persistent transient failure', async () => {
-    const send = jest.fn().mockRejectedValue(sendError(500));
+    const send = vi.fn().mockRejectedValue(sendError(500));
     await expect(
       sendWithRetry(send, { maxAttempts: 3, sleepFn: noSleep })
     ).rejects.toMatchObject({ code: 500 });
@@ -53,7 +54,7 @@ describe('sendWithRetry', () => {
   });
 
   it('does not retry a permanent failure', async () => {
-    const send = jest.fn().mockRejectedValue(sendError(400));
+    const send = vi.fn().mockRejectedValue(sendError(400));
     await expect(
       sendWithRetry(send, { sleepFn: noSleep })
     ).rejects.toMatchObject({ code: 400 });
@@ -62,7 +63,7 @@ describe('sendWithRetry', () => {
 
   it('backs off exponentially between attempts', async () => {
     const delays: number[] = [];
-    const send = jest.fn().mockRejectedValue(sendError(429));
+    const send = vi.fn().mockRejectedValue(sendError(429));
     await expect(
       sendWithRetry(send, {
         maxAttempts: 3,

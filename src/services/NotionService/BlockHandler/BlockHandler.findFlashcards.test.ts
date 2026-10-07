@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import BlockHandler from './BlockHandler';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
@@ -59,15 +60,15 @@ function makeDataSourceApi(): NotionAPIWrapper {
   };
 
   return {
-    queryDatabase: jest.fn().mockResolvedValue({
+    queryDatabase: vi.fn().mockResolvedValue({
       results: [row],
     }),
-    getDatabase: jest.fn().mockResolvedValue({ id: 'ds-1' }),
-    getDatabaseTitle: jest.fn().mockResolvedValue('Study Deck'),
-    getPage: jest.fn(),
-    getPageTitle: jest.fn(),
-    getTopLevelTags: jest.fn().mockResolvedValue([]),
-    getBlocks: jest.fn(),
+    getDatabase: vi.fn().mockResolvedValue({ id: 'ds-1' }),
+    getDatabaseTitle: vi.fn().mockResolvedValue('Study Deck'),
+    getPage: vi.fn(),
+    getPageTitle: vi.fn(),
+    getTopLevelTags: vi.fn().mockResolvedValue([]),
+    getBlocks: vi.fn(),
   } as unknown as NotionAPIWrapper;
 }
 
@@ -100,7 +101,7 @@ describe('BlockHandler.findFlashcards — parentType routing', () => {
       message:
         ' ds-1 is a database, not a page. Use the Retrieve a database endpoint.',
     };
-    (api.getPage as jest.Mock).mockRejectedValue(databaseNotPage);
+    (api.getPage as Mock).mockRejectedValue(databaseNotPage);
     const bl = makeHandler(api);
 
     const decks = await bl.findFlashcards({
@@ -124,7 +125,7 @@ describe('BlockHandler.findFlashcards — parentType routing', () => {
   it('returns empty decks and logs once for an unknown parentType, does not throw', async () => {
     const api = makeDataSourceApi();
     const bl = makeHandler(api);
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const decks = await bl.findFlashcards({
       parentType: 'unknown_future_type',

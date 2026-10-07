@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   ObservabilitySink,
   OBSERVABILITY_FLUSH_THRESHOLD,
@@ -104,7 +105,7 @@ describe('ObservabilitySink', () => {
   it('drops the batch and logs to stderr when an insert fails (never blocks recording)', async () => {
     const repo = new FakeRepo();
     const sink = new ObservabilitySink(repo);
-    const errSpy = jest
+    const errSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
 

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import ApkgPreviewService from './ApkgPreviewService';
 import { NormalizedCollection } from './types';
 
@@ -194,7 +195,7 @@ describe('ApkgPreviewService.getCardsPage', () => {
 
   it('renders cloze cards at ord=1 and higher without the template-ord warning', () => {
     const parsed = makeParsed(makeClozeCollection([0, 1]));
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const result = service.getCardsPage(parsed, 0, 10, 'http://example.com');
     warnSpy.mockRestore();
 
@@ -204,7 +205,7 @@ describe('ApkgPreviewService.getCardsPage', () => {
 
   it('does not emit the template-ord warning for cloze cards with ord >= 1', () => {
     const parsed = makeParsed(makeClozeCollection([0, 1, 2]));
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     service.getCardsPage(parsed, 0, 10, 'http://example.com');
 
@@ -219,9 +220,7 @@ describe('ApkgPreviewService.getCardsPage', () => {
   describe('ord-out-of-range fallback', () => {
     it('emits a debug log when a card ord exceeds the noteType template count', () => {
       const parsed = makeParsed(makeBadOrdClozeCollection());
-      const debugSpy = jest
-        .spyOn(console, 'debug')
-        .mockImplementation(() => {});
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
       service.getCardsPage(parsed, 0, 10, 'http://example.com');
 
@@ -236,7 +235,7 @@ describe('ApkgPreviewService.getCardsPage', () => {
 
     it('still renders the out-of-range card against ord=0 instead of dropping it', () => {
       const parsed = makeParsed(makeBadOrdClozeCollection());
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const result = service.getCardsPage(parsed, 0, 10, 'http://example.com');
       warnSpy.mockRestore();
@@ -249,7 +248,7 @@ describe('ApkgPreviewService.getCardsPage', () => {
 
     it('does not throw when a card ord exceeds the noteType template count', () => {
       const parsed = makeParsed(makeBadOrdClozeCollection());
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       expect(() =>
         service.getCardsPage(parsed, 0, 10, 'http://example.com')

@@ -1,7 +1,8 @@
+import { vi } from 'vitest';
 import { ImageBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import { getImageUrl } from './getImageUrl';
 
-jest.mock('@notionhq/client', () => ({
+vi.mock('@notionhq/client', () => ({
   isFullBlock: () => true,
 }));
 

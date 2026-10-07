@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { APIErrorCode, APIResponseError } from '@notionhq/client';
 
 import NotionAPIWrapper from './NotionAPIWrapper';
@@ -28,7 +29,7 @@ describe('NotionAPIWrapper forbidden block counting', () => {
     setNotion(wrapper, {
       blocks: {
         children: {
-          list: jest.fn(async () => {
+          list: vi.fn(async () => {
             throw error;
           }),
         },
@@ -57,7 +58,7 @@ describe('NotionAPIWrapper forbidden block counting', () => {
     );
     setNotion(wrapper, {
       blocks: {
-        retrieve: jest.fn(async () => {
+        retrieve: vi.fn(async () => {
           throw error;
         }),
       },
@@ -77,7 +78,7 @@ describe('NotionAPIWrapper forbidden block counting', () => {
     setNotion(wrapper, {
       blocks: {
         children: {
-          list: jest.fn(async () => {
+          list: vi.fn(async () => {
             throw error;
           }),
         },
@@ -107,7 +108,7 @@ describe('NotionAPIWrapper forbidden block counting', () => {
     setNotion(wrapper, {
       blocks: {
         children: {
-          list: jest.fn(async () => {
+          list: vi.fn(async () => {
             throw error;
           }),
         },
@@ -137,7 +138,7 @@ describe('NotionAPIWrapper forbidden block counting', () => {
     setNotion(wrapper, {
       blocks: {
         children: {
-          list: jest.fn(async () => {
+          list: vi.fn(async () => {
             throw error;
           }),
         },

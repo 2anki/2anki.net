@@ -11,6 +11,9 @@ import {
   type IHeldDeckRepository,
 } from '../../data_layer/HeldDeckRepository';
 
+const mocker =
+  (globalThis as typeof globalThis & { vi?: typeof jest }).vi ?? jest;
+
 export type UploadServiceDeps = [
   ISettingsRepository,
   IConversionOutputStatsRepository,
@@ -41,36 +44,36 @@ export function fakeUploadServiceDeps(
   return [
     overrides.settings ??
       ({
-        load: jest.fn(),
-        loadIfExists: jest.fn().mockResolvedValue(null),
-        attachCustomTemplates: jest.fn().mockResolvedValue(undefined),
-        loadAnkifyTemplateOverrides: jest.fn().mockResolvedValue(null),
+        load: mocker.fn(),
+        loadIfExists: mocker.fn().mockResolvedValue(null),
+        attachCustomTemplates: mocker.fn().mockResolvedValue(undefined),
+        loadAnkifyTemplateOverrides: mocker.fn().mockResolvedValue(null),
       } as unknown as ISettingsRepository),
     overrides.outputStats ?? {
-      record: jest.fn().mockResolvedValue(undefined),
-      list: jest.fn().mockResolvedValue([]),
+      record: mocker.fn().mockResolvedValue(undefined),
+      list: mocker.fn().mockResolvedValue([]),
     },
     overrides.parsePaths ?? {
-      record: jest.fn().mockResolvedValue(undefined),
-      list: jest.fn().mockResolvedValue([]),
+      record: mocker.fn().mockResolvedValue(undefined),
+      list: mocker.fn().mockResolvedValue([]),
     },
     overrides.ruleScores ?? {
-      record: jest.fn().mockResolvedValue(undefined),
-      distribution: jest.fn().mockResolvedValue([]),
+      record: mocker.fn().mockResolvedValue(undefined),
+      distribution: mocker.fn().mockResolvedValue([]),
     },
     overrides.guidLedger ?? {
-      getAllForOwner: jest.fn().mockResolvedValue({}),
-      getUploadIdentityForOwner: jest.fn().mockResolvedValue({}),
-      record: jest.fn().mockResolvedValue(undefined),
-      reissue: jest.fn().mockResolvedValue(undefined),
+      getAllForOwner: mocker.fn().mockResolvedValue({}),
+      getUploadIdentityForOwner: mocker.fn().mockResolvedValue({}),
+      record: mocker.fn().mockResolvedValue(undefined),
+      reissue: mocker.fn().mockResolvedValue(undefined),
     },
     overrides.aiFingerprints ?? {
-      getRecentForOwner: jest.fn().mockResolvedValue([]),
-      record: jest.fn().mockResolvedValue(undefined),
+      getRecentForOwner: mocker.fn().mockResolvedValue([]),
+      record: mocker.fn().mockResolvedValue(undefined),
     },
     overrides.photoToFlashcards ??
       ({
-        execute: jest
+        execute: mocker
           .fn()
           .mockRejectedValue(
             new Error(
@@ -79,7 +82,7 @@ export function fakeUploadServiceDeps(
           ),
       } as unknown as PhotoToFlashcardsUseCase),
     overrides.aiRequestCost ?? {
-      costByRequestId: jest.fn().mockResolvedValue(0),
+      costByRequestId: mocker.fn().mockResolvedValue(0),
     },
     overrides.heldDeck ?? new InMemoryHeldDeckRepository(),
   ];

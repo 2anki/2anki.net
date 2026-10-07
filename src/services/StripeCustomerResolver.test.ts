@@ -1,13 +1,14 @@
+import { vi, type Mock } from 'vitest';
 process.env.THE_HASHING_SECRET = 'test-hashing-secret';
 
 import { StripeCustomerResolver } from './StripeCustomerResolver';
 
-const makeStripe = (overrides: Record<string, jest.Mock> = {}) => {
-  const list = overrides.list ?? jest.fn().mockResolvedValue({ data: [] });
-  const search = overrides.search ?? jest.fn().mockResolvedValue({ data: [] });
+const makeStripe = (overrides: Record<string, Mock> = {}) => {
+  const list = overrides.list ?? vi.fn().mockResolvedValue({ data: [] });
+  const search = overrides.search ?? vi.fn().mockResolvedValue({ data: [] });
   const create =
-    overrides.create ?? jest.fn().mockResolvedValue({ id: 'cus_created' });
-  const del = overrides.del ?? jest.fn().mockResolvedValue({ deleted: true });
+    overrides.create ?? vi.fn().mockResolvedValue({ id: 'cus_created' });
+  const del = overrides.del ?? vi.fn().mockResolvedValue({ deleted: true });
   return {
     stripe: { customers: { list, search, create, del } } as never,
     list,
@@ -18,8 +19,8 @@ const makeStripe = (overrides: Record<string, jest.Mock> = {}) => {
 };
 
 const makeStore = (stored: string | null, claimReturns?: string) => {
-  const getStripeCustomerId = jest.fn().mockResolvedValue(stored);
-  const claimStripeCustomerId = jest
+  const getStripeCustomerId = vi.fn().mockResolvedValue(stored);
+  const claimStripeCustomerId = vi
     .fn()
     .mockImplementation(
       async (_id: number, candidate: string) => claimReturns ?? candidate
@@ -44,7 +45,7 @@ describe('StripeCustomerResolver', () => {
 
   it('creates a new customer carrying the user id when none is stored', async () => {
     const { stripe, create } = makeStripe({
-      create: jest.fn().mockResolvedValue({ id: 'cus_new' }),
+      create: vi.fn().mockResolvedValue({ id: 'cus_new' }),
     });
     const store = makeStore(null);
     const resolver = new StripeCustomerResolver(stripe, store);
@@ -61,9 +62,9 @@ describe('StripeCustomerResolver', () => {
 
   it('never looks a customer up by email: creates fresh even when a same-email customer exists', async () => {
     const { stripe, list, search, create } = makeStripe({
-      list: jest.fn().mockResolvedValue({ data: [{ id: 'cus_sameemail' }] }),
-      search: jest.fn().mockResolvedValue({ data: [{ id: 'cus_sameemail' }] }),
-      create: jest.fn().mockResolvedValue({ id: 'cus_new' }),
+      list: vi.fn().mockResolvedValue({ data: [{ id: 'cus_sameemail' }] }),
+      search: vi.fn().mockResolvedValue({ data: [{ id: 'cus_sameemail' }] }),
+      create: vi.fn().mockResolvedValue({ id: 'cus_new' }),
     });
     const store = makeStore(null);
     const resolver = new StripeCustomerResolver(stripe, store);
@@ -78,7 +79,7 @@ describe('StripeCustomerResolver', () => {
 
   it('deletes the customer it just created when it loses the claim race', async () => {
     const { stripe, del } = makeStripe({
-      create: jest.fn().mockResolvedValue({ id: 'cus_mine' }),
+      create: vi.fn().mockResolvedValue({ id: 'cus_mine' }),
     });
     const store = makeStore(null, 'cus_rival');
     const resolver = new StripeCustomerResolver(stripe, store);
@@ -91,7 +92,7 @@ describe('StripeCustomerResolver', () => {
 
   it('treats an empty stored id as a miss and creates afresh', async () => {
     const { stripe, create } = makeStripe({
-      create: jest.fn().mockResolvedValue({ id: 'cus_new' }),
+      create: vi.fn().mockResolvedValue({ id: 'cus_new' }),
     });
     const store = makeStore('');
     const resolver = new StripeCustomerResolver(stripe, store);

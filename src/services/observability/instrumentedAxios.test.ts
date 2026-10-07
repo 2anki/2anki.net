@@ -1,3 +1,4 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import axios, { AxiosError } from 'axios';
 import dns from 'dns';
 
@@ -12,28 +13,28 @@ import {
   RequestLogRow,
 } from '../../data_layer/ObservabilityRepository';
 
-jest.mock('axios', () => {
-  const actual = jest.requireActual('axios');
+vi.mock('axios', async () => {
+  const actual = await vi.importActual<typeof import('axios')>('axios');
   return {
     __esModule: true,
     default: {
-      get: jest.fn(),
-      post: jest.fn(),
-      put: jest.fn(),
-      delete: jest.fn(),
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
       isAxiosError: actual.isAxiosError,
     },
   };
 });
 
-jest.mock('dns', () => ({
+vi.mock('dns', () => ({
   __esModule: true,
-  default: { promises: { lookup: jest.fn() } },
-  promises: { lookup: jest.fn() },
+  default: { promises: { lookup: vi.fn() } },
+  promises: { lookup: vi.fn() },
 }));
 
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-const mockedLookup = dns.promises.lookup as jest.Mock;
+const mockedAxios = axios as Mocked<typeof axios>;
+const mockedLookup = dns.promises.lookup as Mock;
 
 const mockPublicLookup = () => {
   mockedLookup.mockImplementation(async () => [
@@ -75,7 +76,7 @@ const makeAxiosError = (status: number): AxiosError => {
 
 describe('instrumentedAxios', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     mockPublicLookup();
   });
 
@@ -423,7 +424,7 @@ describe('instrumentedAxios', () => {
     const opts = callArgs[1] as { lookup: Function };
     expect(typeof opts.lookup).toBe('function');
 
-    const cb = jest.fn();
+    const cb = vi.fn();
     opts.lookup('uc8.dl.dropboxusercontent.com', {}, cb as never);
     expect(cb).toHaveBeenCalledWith(null, '13.224.0.1', 4);
   });
@@ -741,7 +742,7 @@ describe('instrumentedAxios', () => {
     };
     const client = makeInstrumentedAxios(sink as never);
     mockedAxios.get.mockResolvedValueOnce({ status: 200, data: 'ok' });
-    const errSpy = jest
+    const errSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
 

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   AudioBlockObjectResponse,
   ImageBlockObjectResponse,
@@ -11,14 +12,14 @@ import { setupTests } from '../../../test/configure-jest';
 import MockNotionAPI from '../_mock/MockNotionAPI';
 import BlockHandler from './BlockHandler';
 
-jest.mock('../helpers/isTesting', () => ({
+vi.mock('../helpers/isTesting', () => ({
   __esModule: true,
-  default: jest.fn(() => false),
+  default: vi.fn(() => false),
 }));
 
-jest.mock('../helpers/downloadMediaOrSkip', () => ({
+vi.mock('../helpers/downloadMediaOrSkip', () => ({
   __esModule: true,
-  downloadMediaOrSkip: jest.fn(async () => Buffer.from('fake-media-bytes')),
+  downloadMediaOrSkip: vi.fn(async () => Buffer.from('fake-media-bytes')),
 }));
 
 const defaultAnnotations = {

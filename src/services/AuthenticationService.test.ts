@@ -1,3 +1,4 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import crypto from 'crypto';
 
 import jwt from 'jsonwebtoken';
@@ -13,7 +14,7 @@ import UsersRepository from '../data_layer/UsersRepository';
 import { SESSION_MAX_AGE_MS } from '../shared/session';
 import instrumentedAxios from './observability/instrumentedAxios';
 
-jest.mock('./observability/instrumentedAxios');
+vi.mock('./observability/instrumentedAxios');
 
 const SECRET = 'test-secret';
 
@@ -24,7 +25,7 @@ beforeAll(() => {
   process.env.NOTION_REDIRECT_URI = 'http://localhost:2020/api/notion/connect';
 });
 
-const mockedAxios = instrumentedAxios as jest.Mocked<typeof instrumentedAxios>;
+const mockedAxios = instrumentedAxios as Mocked<typeof instrumentedAxios>;
 
 function createService() {
   const tokenRepo = {} as TokenRepository;
@@ -116,7 +117,7 @@ describe('loginWithNotion', () => {
   };
 
   it('returns email, name, and accessData on success', async () => {
-    mockedAxios.post = jest.fn().mockResolvedValue({ data: notionResponse });
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: notionResponse });
 
     const service = createService();
     const result = await service.loginWithNotion('auth-code');
@@ -133,9 +134,7 @@ describe('loginWithNotion', () => {
       ...notionResponse,
       owner: { user: { person: { email: 'bob@example.com' } } },
     };
-    mockedAxios.post = jest
-      .fn()
-      .mockResolvedValue({ data: responseWithoutName });
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: responseWithoutName });
 
     const service = createService();
     const result = await service.loginWithNotion('auth-code');
@@ -145,7 +144,7 @@ describe('loginWithNotion', () => {
   });
 
   it('returns null when Notion response has no email', async () => {
-    mockedAxios.post = jest.fn().mockResolvedValue({
+    mockedAxios.post = vi.fn().mockResolvedValue({
       data: { access_token: 'tok', owner: { user: { person: {} } } },
     });
 
@@ -156,7 +155,7 @@ describe('loginWithNotion', () => {
   });
 
   it('returns null when the Notion API call throws', async () => {
-    mockedAxios.post = jest.fn().mockRejectedValue(new Error('network error'));
+    mockedAxios.post = vi.fn().mockRejectedValue(new Error('network error'));
 
     const service = createService();
     const result = await service.loginWithNotion('auth-code');
@@ -169,7 +168,7 @@ describe('loginWithNotion', () => {
       new Error('Request failed with status code 503'),
       { isAxiosError: true, response: { status: 503 } }
     );
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockRejectedValueOnce(transient)
       .mockResolvedValueOnce({ data: notionResponse });
@@ -186,7 +185,7 @@ describe('loginWithNotion', () => {
       new Error('Request failed with status code 400'),
       { isAxiosError: true, response: { status: 400 } }
     );
-    mockedAxios.post = jest.fn().mockRejectedValue(consumed);
+    mockedAxios.post = vi.fn().mockRejectedValue(consumed);
 
     const service = createService();
     const result = await service.loginWithNotion('auth-code');
@@ -241,12 +240,12 @@ describe('loginWithGoogle', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     __resetGoogleJwksCacheForTests();
     process.env.GOOGLE_CLIENT_ID = CLIENT_ID;
     process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
     process.env.GOOGLE_REDIRECT_URI = 'http://localhost:2020/api/auth/google';
-    mockedAxios.get = jest.fn().mockResolvedValue({
+    mockedAxios.get = vi.fn().mockResolvedValue({
       data: { keys: [publicJwk] },
     });
   });
@@ -260,7 +259,7 @@ describe('loginWithGoogle', () => {
       email_verified: true,
       name: 'Test User',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -283,7 +282,7 @@ describe('loginWithGoogle', () => {
       email_verified: false,
       name: 'Unverified User',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -300,7 +299,7 @@ describe('loginWithGoogle', () => {
       sub: 'google-sub-002',
       email: 'user@example.com',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -327,7 +326,7 @@ describe('loginWithGoogle', () => {
         },
       }
     );
-    mockedAxios.post = jest.fn().mockRejectedValue(axiosError);
+    mockedAxios.post = vi.fn().mockRejectedValue(axiosError);
 
     const service = createService();
     const result = await service.loginWithGoogle('auth-code');
@@ -353,7 +352,7 @@ describe('loginWithGoogle', () => {
       otherKey.privateKey.export({ type: 'pkcs8', format: 'pem' }),
       { algorithm: 'RS256', header: { alg: 'RS256', kid: KID } }
     );
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -375,7 +374,7 @@ describe('loginWithGoogle', () => {
       sub: 'google-sub-004',
       email: 'user@example.com',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -395,7 +394,7 @@ describe('loginWithGoogle', () => {
       sub: 'google-sub-005',
       email: 'user@example.com',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -416,7 +415,7 @@ describe('loginWithGoogle', () => {
       privateKey.export({ type: 'pkcs8', format: 'pem' }),
       { algorithm: 'RS256', header: { alg: 'RS256', kid: 'unknown-kid' } }
     );
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -436,10 +435,10 @@ describe('loginWithGoogle', () => {
       sub: 'google-sub-007',
       email: 'user@example.com',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
-    mockedAxios.get = jest.fn().mockRejectedValue(new Error('jwks down'));
+    mockedAxios.get = vi.fn().mockRejectedValue(new Error('jwks down'));
 
     const service = createService();
     const result = await service.loginWithGoogle('auth-code');
@@ -451,7 +450,7 @@ describe('loginWithGoogle', () => {
   });
 
   it('returns a failure reason when the token exchange call fails', async () => {
-    mockedAxios.post = jest.fn().mockRejectedValue(new Error('invalid_grant'));
+    mockedAxios.post = vi.fn().mockRejectedValue(new Error('invalid_grant'));
 
     const service = createService();
     const result = await service.loginWithGoogle('auth-code');
@@ -475,7 +474,7 @@ describe('loginWithGoogle', () => {
       new Error('Request failed with status code 503'),
       { isAxiosError: true, response: { status: 503 } }
     );
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockRejectedValueOnce(transient)
       .mockResolvedValueOnce({ data: { id_token: idToken } });
@@ -499,7 +498,7 @@ describe('loginWithGoogle', () => {
         response: { status: 400, data: { error: 'invalid_grant' } },
       }
     );
-    mockedAxios.post = jest.fn().mockRejectedValue(consumed);
+    mockedAxios.post = vi.fn().mockRejectedValue(consumed);
 
     const service = createService();
     const result = await service.loginWithGoogle('auth-code');
@@ -524,7 +523,7 @@ describe('loginWithGoogle', () => {
       alg: 'ES256',
       use: 'sig',
     };
-    mockedAxios.get = jest
+    mockedAxios.get = vi
       .fn()
       .mockResolvedValue({ data: { keys: [ecPublicJwk] } });
     const idToken = jwt.sign(
@@ -537,7 +536,7 @@ describe('loginWithGoogle', () => {
       ecPair.privateKey.export({ type: 'pkcs8', format: 'pem' }),
       { algorithm: 'ES256', header: { alg: 'ES256', kid: KID } }
     );
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -582,13 +581,13 @@ describe('loginWithMicrosoft', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     __resetMicrosoftJwksCacheForTests();
     process.env.MICROSOFT_CLIENT_ID = CLIENT_ID;
     process.env.MICROSOFT_CLIENT_SECRET = 'test-microsoft-client-secret';
     process.env.MICROSOFT_REDIRECT_URI =
       'http://localhost:2020/api/users/auth/microsoft';
-    mockedAxios.get = jest.fn().mockResolvedValue({
+    mockedAxios.get = vi.fn().mockResolvedValue({
       data: { keys: [publicJwk] },
     });
   });
@@ -602,7 +601,7 @@ describe('loginWithMicrosoft', () => {
       xms_edov: true,
       name: 'Microsoft User',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -626,7 +625,7 @@ describe('loginWithMicrosoft', () => {
       email_verified: true,
       name: 'Alice',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -650,7 +649,7 @@ describe('loginWithMicrosoft', () => {
       email: 'maybe@example.com',
       name: 'Bob',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -674,7 +673,7 @@ describe('loginWithMicrosoft', () => {
       email: 'msa-user@hotmail.com',
       name: 'MSA User',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -697,7 +696,7 @@ describe('loginWithMicrosoft', () => {
       xms_edov: true,
       name: 'No Email User',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -716,7 +715,7 @@ describe('loginWithMicrosoft', () => {
     [
       'the sub claim is missing',
       () => {
-        mockedAxios.post = jest.fn().mockResolvedValue({
+        mockedAxios.post = vi.fn().mockResolvedValue({
           data: {
             id_token: signIdToken({
               iss: 'https://login.microsoftonline.com/common/v2.0',
@@ -731,7 +730,7 @@ describe('loginWithMicrosoft', () => {
     [
       'the iss claim is not a Microsoft issuer',
       () => {
-        mockedAxios.post = jest.fn().mockResolvedValue({
+        mockedAxios.post = vi.fn().mockResolvedValue({
           data: {
             id_token: signIdToken({
               iss: 'https://evil.example.com/v2.0',
@@ -758,7 +757,7 @@ describe('loginWithMicrosoft', () => {
           otherKey.privateKey.export({ type: 'pkcs8', format: 'pem' }),
           { algorithm: 'RS256', header: { alg: 'RS256', kid: KID } }
         );
-        mockedAxios.post = jest
+        mockedAxios.post = vi
           .fn()
           .mockResolvedValue({ data: { id_token: idToken } });
       },
@@ -766,7 +765,7 @@ describe('loginWithMicrosoft', () => {
     [
       'the audience does not match the client id',
       () => {
-        mockedAxios.post = jest.fn().mockResolvedValue({
+        mockedAxios.post = vi.fn().mockResolvedValue({
           data: {
             id_token: signIdToken({
               iss: 'https://login.microsoftonline.com/common/v2.0',
@@ -789,7 +788,7 @@ describe('loginWithMicrosoft', () => {
           privateKey.export({ type: 'pkcs8', format: 'pem' }),
           { algorithm: 'RS256', header: { alg: 'RS256', kid: 'unknown-kid' } }
         );
-        mockedAxios.post = jest
+        mockedAxios.post = vi
           .fn()
           .mockResolvedValue({ data: { id_token: idToken } });
       },
@@ -797,7 +796,7 @@ describe('loginWithMicrosoft', () => {
     [
       'the token exchange call fails',
       () => {
-        mockedAxios.post = jest
+        mockedAxios.post = vi
           .fn()
           .mockRejectedValue(new Error('network error'));
       },
@@ -905,7 +904,7 @@ describe('loginWithApple', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     __resetAppleJwksCacheForTests();
     process.env.APPLE_CLIENT_ID = SERVICES_ID;
     process.env.APPLE_TEAM_ID = 'TEAMID1234';
@@ -916,7 +915,7 @@ describe('loginWithApple', () => {
     process.env.APPLE_PRIVATE_KEY_B64 = Buffer.from(
       sk.export({ type: 'pkcs8', format: 'pem' }) as string
     ).toString('base64');
-    mockedAxios.get = jest
+    mockedAxios.get = vi
       .fn()
       .mockResolvedValue({ data: { keys: [publicJwk] } });
   });
@@ -929,7 +928,7 @@ describe('loginWithApple', () => {
       email: 'user@example.com',
       email_verified: true,
     });
-    mockedAxios.post = jest.fn().mockResolvedValue({
+    mockedAxios.post = vi.fn().mockResolvedValue({
       data: { id_token: idToken, refresh_token: 'apple-refresh-001' },
     });
 
@@ -953,7 +952,7 @@ describe('loginWithApple', () => {
       email: 'user@example.com',
       email_verified: true,
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -975,7 +974,7 @@ describe('loginWithApple', () => {
       email: 'hidden@privaterelay.appleid.com',
       email_verified: 'true',
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -997,7 +996,7 @@ describe('loginWithApple', () => {
       email: 'user@example.com',
       email_verified: false,
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -1015,7 +1014,7 @@ describe('loginWithApple', () => {
       email: 'user@example.com',
       email_verified: true,
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -1033,7 +1032,7 @@ describe('loginWithApple', () => {
       email: 'user@example.com',
       email_verified: true,
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -1058,7 +1057,7 @@ describe('loginWithApple', () => {
       wrongPair.privateKey.export({ type: 'pkcs8', format: 'pem' }),
       { algorithm: 'RS256', header: { alg: 'RS256', kid: KID } }
     );
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -1080,7 +1079,7 @@ describe('loginWithApple', () => {
       privateKey.export({ type: 'pkcs8', format: 'pem' }),
       { algorithm: 'RS256', header: { alg: 'RS256', kid: 'unknown-kid' } }
     );
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -1101,7 +1100,7 @@ describe('loginWithApple', () => {
         },
       }
     );
-    mockedAxios.post = jest.fn().mockRejectedValue(axiosError);
+    mockedAxios.post = vi.fn().mockRejectedValue(axiosError);
 
     const service = createService();
     const result = await service.loginWithApple('auth-code');
@@ -1128,7 +1127,7 @@ describe('loginWithApple', () => {
       new Error('Request failed with status code 502'),
       { isAxiosError: true, response: { status: 502 } }
     );
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockRejectedValueOnce(transient)
       .mockResolvedValueOnce({ data: { id_token: idToken } });
@@ -1147,7 +1146,7 @@ describe('loginWithApple', () => {
       email: 'user@example.com',
       email_verified: true,
     });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -1181,7 +1180,7 @@ describe('loginWithApple algorithm pin', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     __resetAppleJwksCacheForTests();
     process.env.APPLE_SERVICES_ID = SERVICES_ID;
     process.env.APPLE_REDIRECT_URI = 'https://2anki.net/api/users/auth/apple';
@@ -1208,10 +1207,10 @@ describe('loginWithApple algorithm pin', () => {
       rsaPrivateKey.export({ type: 'pkcs8', format: 'pem' }),
       { algorithm: 'RS256', header: { alg: 'RS256', kid: KID } }
     );
-    mockedAxios.get = jest
+    mockedAxios.get = vi
       .fn()
       .mockResolvedValue({ data: { keys: [rsaPublicJwk] } });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -1239,10 +1238,10 @@ describe('loginWithApple algorithm pin', () => {
       ecPrivateKey.export({ type: 'pkcs8', format: 'pem' }),
       { algorithm: 'ES256', header: { alg: 'ES256', kid: KID } }
     );
-    mockedAxios.get = jest
+    mockedAxios.get = vi
       .fn()
       .mockResolvedValue({ data: { keys: [ecPublicJwk] } });
-    mockedAxios.post = jest
+    mockedAxios.post = vi
       .fn()
       .mockResolvedValue({ data: { id_token: idToken } });
 
@@ -1255,7 +1254,7 @@ describe('loginWithApple algorithm pin', () => {
 
 describe('revokeAppleToken', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.APPLE_CLIENT_ID = 'com.example.2anki';
     process.env.APPLE_TEAM_ID = 'TEAMID1234';
     process.env.APPLE_KEY_ID = 'KEYID56789';
@@ -1268,13 +1267,13 @@ describe('revokeAppleToken', () => {
   });
 
   it('posts the refresh token to the Apple revoke endpoint', async () => {
-    mockedAxios.post = jest.fn().mockResolvedValue({ status: 200, data: {} });
+    mockedAxios.post = vi.fn().mockResolvedValue({ status: 200, data: {} });
 
     const service = createService();
     const result = await service.revokeAppleToken('apple-refresh-xyz');
 
     expect(result).toBe(true);
-    const call = (mockedAxios.post as jest.Mock).mock.calls[0];
+    const call = (mockedAxios.post as Mock).mock.calls[0];
     expect(call[0]).toBe('apple_login');
     expect(call[1]).toBe('https://appleid.apple.com/auth/revoke');
     expect(call[2]).toContain('token=apple-refresh-xyz');
@@ -1286,7 +1285,7 @@ describe('revokeAppleToken', () => {
       isAxiosError: true,
       response: { status: 400 },
     });
-    mockedAxios.post = jest.fn().mockRejectedValue(axiosError);
+    mockedAxios.post = vi.fn().mockRejectedValue(axiosError);
 
     const service = createService();
     const result = await service.revokeAppleToken('apple-refresh-xyz');
@@ -1295,7 +1294,7 @@ describe('revokeAppleToken', () => {
   });
 
   it('returns false on an unexpected error', async () => {
-    mockedAxios.post = jest.fn().mockRejectedValue(new Error('network down'));
+    mockedAxios.post = vi.fn().mockRejectedValue(new Error('network down'));
 
     const service = createService();
     const result = await service.revokeAppleToken('apple-refresh-xyz');
@@ -1305,7 +1304,7 @@ describe('revokeAppleToken', () => {
 
   it('returns false when APPLE_CLIENT_ID is missing', async () => {
     delete process.env.APPLE_CLIENT_ID;
-    mockedAxios.post = jest.fn();
+    mockedAxios.post = vi.fn() as typeof mockedAxios.post;
 
     const service = createService();
     const result = await service.revokeAppleToken('apple-refresh-xyz');
@@ -1340,10 +1339,10 @@ describe('verifyAppleIdentityToken', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     __resetAppleJwksCacheForTests();
     process.env.APPLE_NATIVE_CLIENT_ID = NATIVE_CLIENT_ID;
-    mockedAxios.get = jest
+    mockedAxios.get = vi
       .fn()
       .mockResolvedValue({ data: { keys: [publicJwk] } });
   });
@@ -1507,7 +1506,7 @@ describe('verifyAppleIdentityToken', () => {
       alg: 'ES256',
       use: 'sig',
     };
-    mockedAxios.get = jest
+    mockedAxios.get = vi
       .fn()
       .mockResolvedValue({ data: { keys: [ecPublicJwk] } });
     const idToken = jwt.sign(

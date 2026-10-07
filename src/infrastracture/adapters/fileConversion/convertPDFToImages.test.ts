@@ -1,28 +1,36 @@
+import { vi, type Mock } from 'vitest';
 import path from 'path';
+import {
+  writeFile as writeFileModule,
+  mkdir as mkdirModule,
+} from 'fs/promises';
 import { convertPDFToImages } from './convertPDFToImages';
 import CardOption from '../../../lib/parser/Settings/CardOption';
+import { getPageCount as getPageCountModule } from '../../../lib/pdf/getPageCount';
+import { convertPage as convertPageModule } from '../../../lib/pdf/convertPage';
 
-jest.mock('fs/promises', () => ({
+vi.mock('fs/promises', () => ({
   __esModule: true,
-  writeFile: jest.fn().mockResolvedValue(undefined),
-  mkdir: jest.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  mkdir: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../../../lib/pdf/getPageCount', () => ({
-  getPageCount: jest.fn().mockResolvedValue(2),
+vi.mock('../../../lib/pdf/getPageCount', () => ({
+  getPageCount: vi.fn().mockResolvedValue(2),
 }));
 
-jest.mock('../../../lib/pdf/convertPage', () => ({
-  convertPage: jest
+vi.mock('../../../lib/pdf/convertPage', () => ({
+  convertPage: vi
     .fn()
     .mockImplementation((pdfPath: string, pageNumber: number) =>
       Promise.resolve(`${pdfPath}-page${pageNumber}-${pageNumber}.png`)
     ),
 }));
 
-const { writeFile, mkdir } = require('fs/promises');
-const { getPageCount } = require('../../../lib/pdf/getPageCount');
-const { convertPage } = require('../../../lib/pdf/convertPage');
+const writeFile = writeFileModule as unknown as Mock;
+const mkdir = mkdirModule as unknown as Mock;
+const getPageCount = getPageCountModule as unknown as Mock;
+const convertPage = convertPageModule as unknown as Mock;
 
 function makeSettings(overrides: Record<string, string> = {}): CardOption {
   return new CardOption({ ...CardOption.LoadDefaultOptions(), ...overrides });
@@ -36,7 +44,7 @@ function makeWorkspace(location = WORKSPACE_LOCATION) {
 
 describe('convertPDFToImages — concurrent-run isolation', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('gives two concurrent calls with the same name distinct pdf write paths', async () => {
@@ -59,13 +67,13 @@ describe('convertPDFToImages — concurrent-run isolation', () => {
       }),
     ]);
 
-    const writePaths = (writeFile as jest.Mock).mock.calls.map(
+    const writePaths = (writeFile as Mock).mock.calls.map(
       (call) => call[0] as string
     );
     expect(writePaths).toHaveLength(2);
     expect(writePaths[0]).not.toEqual(writePaths[1]);
 
-    const pageCountPaths = (getPageCount as jest.Mock).mock.calls.map(
+    const pageCountPaths = (getPageCount as Mock).mock.calls.map(
       (call) => call[0] as string
     );
     expect(pageCountPaths).toHaveLength(2);
@@ -90,7 +98,7 @@ describe('convertPDFToImages — concurrent-run isolation', () => {
       settings: makeSettings(),
     });
 
-    const mkdirCalls = (mkdir as jest.Mock).mock.calls;
+    const mkdirCalls = (mkdir as Mock).mock.calls;
     expect(mkdirCalls).toHaveLength(1);
     const createdDir = mkdirCalls[0][0] as string;
     expect(path.dirname(createdDir)).toEqual(WORKSPACE_LOCATION);
@@ -112,7 +120,7 @@ describe('convertPDFToImages — concurrent-run isolation', () => {
       (m) => m[1]
     );
     expect(srcMatches.length).toBeGreaterThan(0);
-    const pageImagePath = (convertPage as jest.Mock).mock.results[0]
+    const pageImagePath = (convertPage as Mock).mock.results[0]
       .value as Promise<string>;
     const resolvedPageImage = await pageImagePath;
     for (const src of srcMatches) {

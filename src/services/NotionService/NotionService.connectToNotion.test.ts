@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { NotionService } from './NotionService';
 import { __resetTopLevelPagesCacheForTests } from './topLevelPagesCache';
 import { __resetTopLevelPagesRefreshGateForTests } from './topLevelPagesRefreshGate';
@@ -29,48 +30,48 @@ function makeService() {
   let storedRows: StoredRow[] = [];
 
   const api = {
-    searchTopLevelPages: jest.fn(async () => ({ results: grantedPages })),
+    searchTopLevelPages: vi.fn(async () => ({ results: grantedPages })),
   };
   const topLevelPagesRepository = {
-    getByOwner: jest.fn(async () => storedRows),
-    newestCachedAt: jest.fn(async () =>
+    getByOwner: vi.fn(async () => storedRows),
+    newestCachedAt: vi.fn(async () =>
       storedRows.length === 0
         ? null
         : new Date(Math.max(...storedRows.map((r) => r.cached_at.getTime())))
     ),
-    replaceForOwnerIfTokenStillValid: jest.fn(
+    replaceForOwnerIfTokenStillValid: vi.fn(
       async (_owner: number, next: StoredRow[]) => {
         storedRows = next;
         return true;
       }
     ),
-    deleteByOwner: jest.fn(async () => {
+    deleteByOwner: vi.fn(async () => {
       const removed = storedRows.length;
       storedRows = [];
       return removed;
     }),
   };
   const notionRepository = {
-    getNotionData: jest.fn(),
-    saveNotionToken: jest.fn().mockResolvedValue(true),
-    getNotionToken: jest.fn(),
-    deleteBlocksByOwner: jest.fn(),
-    deleteNotionData: jest.fn(),
-    markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    clearTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+    getNotionData: vi.fn(),
+    saveNotionToken: vi.fn().mockResolvedValue(true),
+    getNotionToken: vi.fn(),
+    deleteBlocksByOwner: vi.fn(),
+    deleteNotionData: vi.fn(),
+    markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    clearTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    setReconnectEmailSent: vi.fn().mockResolvedValue(true),
   };
 
   const service = new NotionService(
     notionRepository as never,
     topLevelPagesRepository as never
   );
-  service.getAccessData = jest.fn().mockResolvedValue({
+  service.getAccessData = vi.fn().mockResolvedValue({
     access_token: 'token',
     workspace_name: 'Workspace',
   }) as never;
-  service.tryGetNotionAPI = jest.fn(async () => api as never) as never;
-  service.getNotionAPI = jest.fn(async () => api as never) as never;
+  service.tryGetNotionAPI = vi.fn(async () => api as never) as never;
+  service.getNotionAPI = vi.fn(async () => api as never) as never;
 
   return {
     service,
@@ -115,7 +116,7 @@ describe('NotionService.connectToNotion', () => {
     topLevelPagesRepository.deleteByOwner.mockRejectedValueOnce(
       new Error('db unavailable')
     );
-    const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     await expect(
       service.connectToNotion('auth-code', OWNER)

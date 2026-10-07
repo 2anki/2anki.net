@@ -1,13 +1,14 @@
+import { vi, type Mocked } from 'vitest';
 import { FavoritesRepository } from '../data_layer/FavoritesRepository';
 import FavoriteService from './FavoriteService';
 
 function buildRepository() {
   return {
-    findById: jest.fn().mockResolvedValue(undefined),
-    addToFavorites: jest.fn().mockResolvedValue(undefined),
-    remove: jest.fn(),
-    getAllByOwner: jest.fn(),
-  } as unknown as jest.Mocked<FavoritesRepository>;
+    findById: vi.fn().mockResolvedValue(undefined),
+    addToFavorites: vi.fn().mockResolvedValue(undefined),
+    remove: vi.fn(),
+    getAllByOwner: vi.fn(),
+  } as unknown as Mocked<FavoritesRepository>;
 }
 
 describe('FavoriteService', () => {

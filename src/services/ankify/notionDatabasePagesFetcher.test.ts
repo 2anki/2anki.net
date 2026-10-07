@@ -1,11 +1,14 @@
-const retrieveMock = jest.fn();
-const queryMock = jest.fn();
+import { vi } from 'vitest';
+const retrieveMock = vi.fn();
+const queryMock = vi.fn();
 
-jest.mock('@notionhq/client', () => ({
-  Client: jest.fn().mockImplementation(() => ({
-    databases: { retrieve: retrieveMock },
-    dataSources: { query: queryMock },
-  })),
+vi.mock('@notionhq/client', () => ({
+  Client: vi.fn().mockImplementation(function () {
+    return {
+      databases: { retrieve: retrieveMock },
+      dataSources: { query: queryMock },
+    };
+  }),
 }));
 
 import { notionDatabasePagesFetcherFactory } from './notionDatabasePagesFetcher';

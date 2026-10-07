@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { PricingService, PASS_PRICE_KINDS } from './PricingService';
 
 interface FakePrice {
@@ -7,7 +8,7 @@ interface FakePrice {
   created: number;
 }
 
-const makeStripe = (searchImpl: jest.Mock) =>
+const makeStripe = (searchImpl: Mock) =>
   ({ prices: { search: searchImpl } }) as never;
 
 const price = (over: Partial<FakePrice> = {}): FakePrice => ({
@@ -22,20 +23,20 @@ describe('PricingService', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     delete process.env.PASS_24H_PRICE_ID;
     delete process.env.PASS_7D_PRICE_ID;
     delete process.env.PASS_120D_PRICE_ID;
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     process.env = { ...originalEnv };
   });
 
   it('resolves the active price for a pass kind by its metadata', async () => {
-    const search = jest.fn().mockResolvedValue({
+    const search = vi.fn().mockResolvedValue({
       data: [price({ id: 'price_24h', unit_amount: 600, currency: 'usd' })],
     });
     const service = new PricingService(makeStripe(search));
@@ -58,8 +59,8 @@ describe('PricingService', () => {
   });
 
   it('picks the newest active price and warns when more than one matches', async () => {
-    const warn = jest.spyOn(console, 'warn');
-    const search = jest.fn().mockResolvedValue({
+    const warn = vi.spyOn(console, 'warn');
+    const search = vi.fn().mockResolvedValue({
       data: [
         price({ id: 'price_old', created: 1000, unit_amount: 500 }),
         price({ id: 'price_new', created: 2000, unit_amount: 700 }),
@@ -78,56 +79,56 @@ describe('PricingService', () => {
   });
 
   it('serves the cached result within the TTL without calling Stripe again', async () => {
-    jest.useFakeTimers();
-    const search = jest.fn().mockResolvedValue({
+    vi.useFakeTimers();
+    const search = vi.fn().mockResolvedValue({
       data: [price({ id: 'price_120d' })],
     });
     const service = new PricingService(makeStripe(search));
 
     await service.resolve('120d');
-    jest.advanceTimersByTime(4 * 60 * 1000);
+    vi.advanceTimersByTime(4 * 60 * 1000);
     await service.resolve('120d');
 
     expect(search).toHaveBeenCalledTimes(1);
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('re-resolves from Stripe once the 5-minute TTL has elapsed', async () => {
-    jest.useFakeTimers();
-    const search = jest.fn().mockResolvedValue({
+    vi.useFakeTimers();
+    const search = vi.fn().mockResolvedValue({
       data: [price({ id: 'price_120d' })],
     });
     const service = new PricingService(makeStripe(search));
 
     await service.resolve('120d');
-    jest.advanceTimersByTime(5 * 60 * 1000 + 1);
+    vi.advanceTimersByTime(5 * 60 * 1000 + 1);
     await service.resolve('120d');
 
     expect(search).toHaveBeenCalledTimes(2);
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('serves the last-known-good result when Stripe fails after a prior success', async () => {
-    jest.useFakeTimers();
-    const search = jest
+    vi.useFakeTimers();
+    const search = vi
       .fn()
       .mockResolvedValueOnce({ data: [price({ id: 'price_24h_good' })] })
       .mockRejectedValueOnce(new Error('stripe down'));
     const service = new PricingService(makeStripe(search));
 
     const first = await service.resolve('24h');
-    jest.advanceTimersByTime(6 * 60 * 1000);
+    vi.advanceTimersByTime(6 * 60 * 1000);
     const second = await service.resolve('24h');
 
     expect(first.source).toBe('stripe');
     expect(second.priceId).toBe('price_24h_good');
     expect(second.source).toBe('cache');
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('falls back to the env price id on a cold start with no prior success', async () => {
     process.env.PASS_24H_PRICE_ID = 'price_env_24h';
-    const search = jest.fn().mockRejectedValue(new Error('stripe down'));
+    const search = vi.fn().mockRejectedValue(new Error('stripe down'));
     const service = new PricingService(makeStripe(search));
 
     const resolved = await service.resolve('24h');
@@ -142,7 +143,7 @@ describe('PricingService', () => {
   });
 
   it('returns a null price id when Stripe, cache, and env are all unavailable', async () => {
-    const search = jest.fn().mockRejectedValue(new Error('stripe down'));
+    const search = vi.fn().mockRejectedValue(new Error('stripe down'));
     const service = new PricingService(makeStripe(search));
 
     const resolved = await service.resolve('7d');
@@ -153,7 +154,7 @@ describe('PricingService', () => {
 
   it('falls back to env when the Stripe search returns no matching price', async () => {
     process.env.PASS_120D_PRICE_ID = 'price_env_120d';
-    const search = jest.fn().mockResolvedValue({ data: [] });
+    const search = vi.fn().mockResolvedValue({ data: [] });
     const service = new PricingService(makeStripe(search));
 
     const resolved = await service.resolve('120d');
@@ -163,7 +164,7 @@ describe('PricingService', () => {
   });
 
   it('resolvePriceId returns just the price id string', async () => {
-    const search = jest.fn().mockResolvedValue({
+    const search = vi.fn().mockResolvedValue({
       data: [price({ id: 'price_7d' })],
     });
     const service = new PricingService(makeStripe(search));
@@ -172,7 +173,7 @@ describe('PricingService', () => {
   });
 
   it('resolveAll resolves every pass kind', async () => {
-    const search = jest.fn().mockImplementation((params: { query: string }) => {
+    const search = vi.fn().mockImplementation((params: { query: string }) => {
       const kind = PASS_PRICE_KINDS.find((k) =>
         params.query.includes(`:'${k}'`)
       );
@@ -193,7 +194,7 @@ describe('PricingService', () => {
   });
 
   it('coalesces concurrent cold-cache resolutions into one Stripe call', async () => {
-    const search = jest.fn().mockResolvedValue({
+    const search = vi.fn().mockResolvedValue({
       data: [price({ id: 'price_24h_coalesced' })],
     });
     const service = new PricingService(makeStripe(search));

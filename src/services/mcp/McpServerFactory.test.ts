@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { buildMcpServer, type McpRequestContext } from './McpServerFactory';
 import type { McpToolsService } from './McpToolsService';
 
@@ -89,7 +90,7 @@ describe('buildMcpServer', () => {
 
 describe('create_deck handler', () => {
   it('records the distinct subdeck count on the result event', async () => {
-    const createDeck = jest.fn(async () => ({
+    const createDeck = vi.fn(async () => ({
       kind: 'deck' as const,
       cardCount: 3,
       filename: 'JLPT N5.apkg',
@@ -122,7 +123,7 @@ describe('create_deck handler', () => {
   });
 
   it('records a subdeck count of 1 for a flat deck with no applied subdecks', async () => {
-    const createDeck = jest.fn(async () => ({
+    const createDeck = vi.fn(async () => ({
       kind: 'deck' as const,
       cardCount: 2,
       filename: 'deck.apkg',
@@ -142,7 +143,7 @@ describe('create_deck handler', () => {
   });
 
   it('renders a markdown card table in the text block by default', async () => {
-    const createDeck = jest.fn(async () => ({
+    const createDeck = vi.fn(async () => ({
       kind: 'deck' as const,
       cardCount: 2,
       filename: 'deck.apkg',
@@ -173,7 +174,7 @@ describe('create_deck handler', () => {
   });
 
   it('omits the card table but keeps the summary when detail is summary', async () => {
-    const createDeck = jest.fn(async () => ({
+    const createDeck = vi.fn(async () => ({
       kind: 'deck' as const,
       cardCount: 2,
       filename: 'deck.apkg',
@@ -199,7 +200,7 @@ describe('create_deck handler', () => {
 
 describe('get_deck_preview handler', () => {
   it('passes a jobId through to getDeckPreview and returns the preview', async () => {
-    const getDeckPreview = jest.fn(async () => ({
+    const getDeckPreview = vi.fn(async () => ({
       cardCount: 3,
       deckCount: 1,
       decks: [],
@@ -222,7 +223,7 @@ describe('get_deck_preview handler', () => {
       front: `f${i}`,
       back: `b${i}`,
     }));
-    const getDeckPreview = jest.fn(async () => ({
+    const getDeckPreview = vi.fn(async () => ({
       cardCount: 34,
       deckCount: 1,
       decks: [],
@@ -246,7 +247,7 @@ describe('get_deck_preview handler', () => {
   });
 
   it('falls back to the key param when jobId is absent', async () => {
-    const getDeckPreview = jest.fn(async () => ({
+    const getDeckPreview = vi.fn(async () => ({
       cardCount: 1,
       deckCount: 1,
       decks: [],
@@ -264,7 +265,7 @@ describe('get_deck_preview handler', () => {
   });
 
   it('returns a clean error when neither jobId nor key is given', async () => {
-    const getDeckPreview = jest.fn();
+    const getDeckPreview = vi.fn();
     const handler = getHandler(
       buildContext({
         toolsService: { getDeckPreview } as unknown as McpToolsService,
@@ -280,10 +281,10 @@ describe('get_deck_preview handler', () => {
   });
 
   it('logs and surfaces the real error message on failure', async () => {
-    const getDeckPreview = jest.fn(async () => {
+    const getDeckPreview = vi.fn(async () => {
       throw new Error('Deck not found.');
     });
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const handler = getHandler(
       buildContext({
         toolsService: { getDeckPreview } as unknown as McpToolsService,
@@ -305,7 +306,7 @@ describe('tool result metric', () => {
 
   it('records a successful convert_to_deck result', async () => {
     const calls: ResultCall[] = [];
-    const convertToDeck = jest.fn(async () => ({
+    const convertToDeck = vi.fn(async () => ({
       kind: 'deck' as const,
       cardCount: 3,
       filename: 'deck.apkg',
@@ -325,7 +326,7 @@ describe('tool result metric', () => {
 
   it('records a failed convert_to_deck result with its error code', async () => {
     const calls: ResultCall[] = [];
-    const convertToDeck = jest.fn(async () => ({
+    const convertToDeck = vi.fn(async () => ({
       kind: 'error' as const,
       message: 'No cards found in this text.',
       code: 'empty_export',
@@ -365,7 +366,7 @@ describe('tool result metric', () => {
     ],
   ])('records the input source and format for %j', async (input, expected) => {
     const props: Array<Record<string, unknown> | undefined> = [];
-    const convertToDeck = jest.fn(async () => ({
+    const convertToDeck = vi.fn(async () => ({
       kind: 'deck' as const,
       cardCount: 3,
       filename: 'deck.apkg',
@@ -387,7 +388,7 @@ describe('tool result metric', () => {
     const successHandler = getHandler(
       buildContext({
         toolsService: {
-          createDeck: jest.fn(async () => ({
+          createDeck: vi.fn(async () => ({
             kind: 'deck' as const,
             cardCount: 2,
             filename: 'deck.apkg',
@@ -406,7 +407,7 @@ describe('tool result metric', () => {
     const failHandler = getHandler(
       buildContext({
         toolsService: {
-          createDeck: jest.fn(async () => ({
+          createDeck: vi.fn(async () => ({
             kind: 'error' as const,
             message: 'Some cards have an empty back.',
             code: 'empty_export',

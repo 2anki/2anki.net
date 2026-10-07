@@ -2,6 +2,7 @@
   "vitest": [
     "src/controllers/helpers/**/*.test.ts",
     "src/data_layer/**/*.test.ts",
+    "src/infrastracture/**/*.test.ts",
     "src/usecases/**/*.test.ts",
     "src/lib/*.test.ts",
     "src/lib/analytics/**/*.test.ts",
@@ -37,6 +38,11 @@
     "src/lib/User/**/*.test.ts",
     "src/lib/vision/**/*.test.ts",
     "src/lib/vocab/**/*.test.ts",
-    "src/lib/zip/**/*.test.ts"
+    "src/lib/zip/**/*.test.ts",
+    "src/services/**/*.test.ts",
+    "src/services/**/*.test.tsx"
+  ],
+  "jestOnly": [
+    "src/services/NotionService/BlockHandler/BlockHandler.test.ts"
   ]
 }

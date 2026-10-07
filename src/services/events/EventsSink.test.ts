@@ -1,21 +1,22 @@
+import { vi, type Mock } from 'vitest';
 import { EventsSink, EVENTS_FLUSH_THRESHOLD } from './EventsSink';
 import { IEventsRepository, EventRow } from '../../data_layer/EventsRepository';
 
 function makeFakeRepository() {
   const inserted: EventRow[][] = [];
   const repo: IEventsRepository = {
-    insertEvents: jest.fn(async (rows) => {
+    insertEvents: vi.fn(async (rows) => {
       inserted.push([...rows]);
     }),
-    countByName: jest.fn(async () => 0),
-    countDistinctUsers: jest.fn(async () => 0),
-    countByNameForUser: jest.fn(async () => 0),
-    lastEventAt: jest.fn(async () => null),
-    groupPaywallShownByVariantAndSurface: jest.fn(async () => []),
-    groupPaywallClicksByVariant: jest.fn(async () => []),
-    groupUploadFunnel: jest.fn(async () => []),
-    groupUploadFunnelByOrigin: jest.fn(async () => []),
-    groupConversionFailedByReason: jest.fn(async () => ({
+    countByName: vi.fn(async () => 0),
+    countDistinctUsers: vi.fn(async () => 0),
+    countByNameForUser: vi.fn(async () => 0),
+    lastEventAt: vi.fn(async () => null),
+    groupPaywallShownByVariantAndSurface: vi.fn(async () => []),
+    groupPaywallClicksByVariant: vi.fn(async () => []),
+    groupUploadFunnel: vi.fn(async () => []),
+    groupUploadFunnelByOrigin: vi.fn(async () => []),
+    groupConversionFailedByReason: vi.fn(async () => ({
       paywall: 0,
       empty: 0,
       technical: 0,
@@ -33,11 +34,11 @@ const baseRow: EventRow = {
 
 describe('EventsSink', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('does not flush when buffer is below threshold', async () => {
@@ -66,7 +67,7 @@ describe('EventsSink', () => {
     });
     sink.start();
     sink.record(baseRow);
-    jest.advanceTimersByTime(1001);
+    vi.advanceTimersByTime(1001);
     await Promise.resolve();
     sink.stop();
     expect(repo.insertEvents).toHaveBeenCalled();
@@ -77,7 +78,7 @@ describe('EventsSink', () => {
     const { repo } = makeFakeRepository();
     const sink = new EventsSink(repo, { flushIntervalMs: 500 });
     sink.start();
-    jest.advanceTimersByTime(600);
+    vi.advanceTimersByTime(600);
     await Promise.resolve();
     sink.stop();
     expect(repo.insertEvents).not.toHaveBeenCalled();
@@ -85,18 +86,18 @@ describe('EventsSink', () => {
 
   it('tolerates repository errors without throwing', async () => {
     const repo: IEventsRepository = {
-      insertEvents: jest.fn(async () => {
+      insertEvents: vi.fn(async () => {
         throw new Error('db down');
       }),
-      countByName: jest.fn(async () => 0),
-      countDistinctUsers: jest.fn(async () => 0),
-      countByNameForUser: jest.fn(async () => 0),
-      lastEventAt: jest.fn(async () => null),
-      groupPaywallShownByVariantAndSurface: jest.fn(async () => []),
-      groupPaywallClicksByVariant: jest.fn(async () => []),
-      groupUploadFunnel: jest.fn(async () => []),
-      groupUploadFunnelByOrigin: jest.fn(async () => []),
-      groupConversionFailedByReason: jest.fn(async () => ({
+      countByName: vi.fn(async () => 0),
+      countDistinctUsers: vi.fn(async () => 0),
+      countByNameForUser: vi.fn(async () => 0),
+      lastEventAt: vi.fn(async () => null),
+      groupPaywallShownByVariantAndSurface: vi.fn(async () => []),
+      groupPaywallClicksByVariant: vi.fn(async () => []),
+      groupUploadFunnel: vi.fn(async () => []),
+      groupUploadFunnelByOrigin: vi.fn(async () => []),
+      groupConversionFailedByReason: vi.fn(async () => ({
         paywall: 0,
         empty: 0,
         technical: 0,
@@ -110,18 +111,16 @@ describe('EventsSink', () => {
   it('salvages the rest of a batch when one row violates the user foreign key', async () => {
     const { repo, inserted } = makeFakeRepository();
     const deletedUserId = 999;
-    (repo.insertEvents as jest.Mock).mockImplementation(
-      async (rows: EventRow[]) => {
-        if (rows.some((row) => row.user_id === deletedUserId)) {
-          const error = new Error(
-            'violates foreign key constraint "events_user_id_foreign"'
-          ) as Error & { code: string };
-          error.code = '23503';
-          throw error;
-        }
-        inserted.push([...rows]);
+    (repo.insertEvents as Mock).mockImplementation(async (rows: EventRow[]) => {
+      if (rows.some((row) => row.user_id === deletedUserId)) {
+        const error = new Error(
+          'violates foreign key constraint "events_user_id_foreign"'
+        ) as Error & { code: string };
+        error.code = '23503';
+        throw error;
       }
-    );
+      inserted.push([...rows]);
+    });
     const sink = new EventsSink(repo, { flushThreshold: 2 });
     sink.record(baseRow);
     sink.record({ ...baseRow, user_id: deletedUserId, anonymous_id: 'anon-7' });
@@ -135,7 +134,7 @@ describe('EventsSink', () => {
 
   it('still drops the batch on non-foreign-key repository errors', async () => {
     const { repo, inserted } = makeFakeRepository();
-    (repo.insertEvents as jest.Mock).mockRejectedValue(new Error('db down'));
+    (repo.insertEvents as Mock).mockRejectedValue(new Error('db down'));
     const sink = new EventsSink(repo, { flushThreshold: 2 });
     sink.record(baseRow);
     sink.record({ ...baseRow, name: 'upload_started' });
@@ -156,8 +155,8 @@ describe('EventsSink', () => {
 
   it('retries a failed durable insert once', async () => {
     const { repo } = makeFakeRepository();
-    (repo.insertEvents as jest.Mock).mockRejectedValueOnce(new Error('boom'));
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    (repo.insertEvents as Mock).mockRejectedValueOnce(new Error('boom'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const sink = new EventsSink(repo, { flushThreshold: 100 });
     sink.record({ ...baseRow, name: 'ai_usage_recorded' });
     await sink.drain();
@@ -177,8 +176,8 @@ describe('EventsSink', () => {
     // so it passed no matter what start() did. A leaked second interval would
     // double every periodic flush; the guard in start() is the thing under test.
     const { repo } = makeFakeRepository();
-    const setIntervalSpy = jest.spyOn(global, 'setInterval');
-    const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+    const setIntervalSpy = vi.spyOn(global, 'setInterval');
+    const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
 
     try {
       const sink = new EventsSink(repo, { flushIntervalMs: 1000 });
@@ -202,7 +201,7 @@ describe('EventsSink', () => {
   describe('signup_origin enrichment', () => {
     it('stamps signup_origin from the resolver onto rows with a user and no origin', async () => {
       const { repo, inserted } = makeFakeRepository();
-      const resolver = jest.fn().mockResolvedValue(new Map([[1, '/nclex']]));
+      const resolver = vi.fn().mockResolvedValue(new Map([[1, '/nclex']]));
       const sink = new EventsSink(repo, {
         flushThreshold: 1,
         signupOriginResolver: resolver,
@@ -220,7 +219,7 @@ describe('EventsSink', () => {
 
     it('never overrides an origin the event already carries', async () => {
       const { repo, inserted } = makeFakeRepository();
-      const resolver = jest.fn().mockResolvedValue(new Map([[1, '/nclex']]));
+      const resolver = vi.fn().mockResolvedValue(new Map([[1, '/nclex']]));
       const sink = new EventsSink(repo, {
         flushThreshold: 1,
         signupOriginResolver: resolver,
@@ -235,7 +234,7 @@ describe('EventsSink', () => {
 
     it('leaves anonymous rows untouched and skips the resolver', async () => {
       const { repo, inserted } = makeFakeRepository();
-      const resolver = jest.fn().mockResolvedValue(new Map());
+      const resolver = vi.fn().mockResolvedValue(new Map());
       const sink = new EventsSink(repo, {
         flushThreshold: 1,
         signupOriginResolver: resolver,
@@ -250,7 +249,7 @@ describe('EventsSink', () => {
 
     it('still inserts unenriched rows when the resolver fails', async () => {
       const { repo, inserted } = makeFakeRepository();
-      const resolver = jest.fn().mockRejectedValue(new Error('db down'));
+      const resolver = vi.fn().mockRejectedValue(new Error('db down'));
       const sink = new EventsSink(repo, {
         flushThreshold: 1,
         signupOriginResolver: resolver,

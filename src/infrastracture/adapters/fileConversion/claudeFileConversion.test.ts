@@ -1,14 +1,15 @@
+import { vi, type Mock } from 'vitest';
 import type Anthropic from '@anthropic-ai/sdk';
 import { convertWithClaude, FileConversionError } from './claudeFileConversion';
 import { withAiBudget } from '../../../lib/claude/aiSpendGuard';
 
-jest.mock('../../../lib/claude/aiSpendGuard', () => ({
-  withAiBudget: jest.fn(
+vi.mock('../../../lib/claude/aiSpendGuard', () => ({
+  withAiBudget: vi.fn(
     (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
   ),
 }));
 
-const withAiBudgetMock = withAiBudget as jest.Mock;
+const withAiBudgetMock = withAiBudget as Mock;
 
 // The SDK rejects a non-streaming request whose max_tokens implies more than
 // ten minutes of work: 60min * max_tokens / 128000 > 10min. Anything above this
@@ -16,8 +17,8 @@ const withAiBudgetMock = withAiBudget as jest.Mock;
 const SDK_NON_STREAMING_CEILING = Math.floor(128000 / 6);
 
 const makeStream = (response: unknown) =>
-  jest.fn().mockReturnValue({
-    finalMessage: jest.fn().mockResolvedValue(response),
+  vi.fn().mockReturnValue({
+    finalMessage: vi.fn().mockResolvedValue(response),
   });
 
 const makeAnthropicMock = (responseText: string, stopReason = 'end_turn') => {
@@ -26,25 +27,30 @@ const makeAnthropicMock = (responseText: string, stopReason = 'end_turn') => {
     stop_reason: stopReason,
   };
   return {
-    messages: { stream: makeStream(response), create: jest.fn() },
+    messages: { stream: makeStream(response), create: vi.fn() },
     beta: {
-      messages: { stream: makeStream(response), create: jest.fn() },
+      messages: { stream: makeStream(response), create: vi.fn() },
     },
   };
 };
 
 const makeFailingMock = (message: string) => {
-  const stream = jest.fn().mockReturnValue({
-    finalMessage: jest.fn().mockRejectedValue(new Error(message)),
+  const stream = vi.fn().mockReturnValue({
+    finalMessage: vi.fn().mockRejectedValue(new Error(message)),
   });
   return {
-    messages: { stream, create: jest.fn() },
-    beta: { messages: { stream, create: jest.fn() } },
+    messages: { stream, create: vi.fn() },
+    beta: { messages: { stream, create: vi.fn() } },
   };
 };
 
 describe('convertWithClaude budget guard', () => {
-  beforeEach(() => withAiBudgetMock.mockClear());
+  beforeEach(() => {
+    withAiBudgetMock.mockReset();
+    withAiBudgetMock.mockImplementation(
+      (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
+    );
+  });
 
   it('reserves credits for the concurrent call via withAiBudget (never disabled)', async () => {
     const mock = makeAnthropicMock('<p>ok</p>');
@@ -93,7 +99,7 @@ describe('convertWithClaude', () => {
       { type: 'text', text: 'user text' },
     ]);
 
-    const callArg = (mock.messages.stream as jest.Mock).mock.calls[0][0];
+    const callArg = (mock.messages.stream as Mock).mock.calls[0][0];
     expect(callArg.system).toEqual([
       {
         type: 'text',
@@ -113,7 +119,7 @@ describe('convertWithClaude', () => {
     );
 
     expect(mock.messages.stream).not.toHaveBeenCalled();
-    const callArg = (mock.beta.messages.stream as jest.Mock).mock.calls[0][0];
+    const callArg = (mock.beta.messages.stream as Mock).mock.calls[0][0];
     expect(callArg.betas).toContain('pdfs-2024-09-25');
   });
 
@@ -149,7 +155,7 @@ describe('convertWithClaude', () => {
       { type: 'text', text: 'user text' },
     ]);
 
-    const callArg = (mock.messages.stream as jest.Mock).mock.calls[0][0];
+    const callArg = (mock.messages.stream as Mock).mock.calls[0][0];
     expect(callArg.max_tokens).toBe(32768);
     expect(callArg.max_tokens).toBeGreaterThan(SDK_NON_STREAMING_CEILING);
   });
@@ -179,8 +185,8 @@ describe('convertWithClaude', () => {
 
   it('joins every text block instead of reading only the first', async () => {
     const mock = makeAnthropicMock('');
-    (mock.messages.stream as jest.Mock).mockReturnValue({
-      finalMessage: jest.fn().mockResolvedValue({
+    (mock.messages.stream as Mock).mockReturnValue({
+      finalMessage: vi.fn().mockResolvedValue({
         content: [
           { type: 'text', text: '<p>part one</p>' },
           { type: 'text', text: '<p>part two</p>' },
@@ -204,7 +210,7 @@ describe('convertWithClaude', () => {
       { type: 'text', text: 'user text' },
     ]);
 
-    const callArg = (mock.messages.stream as jest.Mock).mock.calls[0][0];
+    const callArg = (mock.messages.stream as Mock).mock.calls[0][0];
     expect(callArg.model).toBe('claude-sonnet-5');
   });
 
@@ -216,7 +222,7 @@ describe('convertWithClaude', () => {
     ]);
     delete process.env.CLAUDE_FILE_CONVERSION_MODEL;
 
-    const callArg = (mock.messages.stream as jest.Mock).mock.calls[0][0];
+    const callArg = (mock.messages.stream as Mock).mock.calls[0][0];
     expect(callArg.model).toBe('claude-opus-4-5');
   });
 });

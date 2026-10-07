@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { NotionService } from './NotionService';
 import { __resetTopLevelPagesCacheForTests } from './topLevelPagesCache';
 import { __resetTopLevelPagesRefreshGateForTests } from './topLevelPagesRefreshGate';
@@ -24,7 +25,7 @@ const liveResults = [
 function makeFakeApi() {
   const calls: string[] = [];
   const api = {
-    searchTopLevelPages: jest.fn(async (query: string) => {
+    searchTopLevelPages: vi.fn(async (query: string) => {
       calls.push(`live:${query}`);
       return { results: liveResults };
     }),
@@ -38,23 +39,23 @@ function makeFakeRepo(initial: { rows?: typeof rowsLike } = {}) {
   return {
     calls,
     rows: () => rows,
-    getByOwner: jest.fn(async () => {
+    getByOwner: vi.fn(async () => {
       calls.push('getByOwner');
       return rows;
     }),
-    newestCachedAt: jest.fn(async () => {
+    newestCachedAt: vi.fn(async () => {
       calls.push('newestCachedAt');
       if (rows.length === 0) return null;
       return rows.map((r) => r.cached_at).reduce((a, b) => (a > b ? a : b));
     }),
-    replaceForOwnerIfTokenStillValid: jest.fn(
+    replaceForOwnerIfTokenStillValid: vi.fn(
       async (_owner: number, next: typeof rowsLike) => {
         calls.push('replace');
         rows = next;
         return true;
       }
     ),
-    deleteByOwner: jest.fn(async () => {
+    deleteByOwner: vi.fn(async () => {
       calls.push('delete');
       const before = rows.length;
       rows = [];
@@ -79,21 +80,21 @@ function makeService(opts: {
   repo: ReturnType<typeof makeFakeRepo>;
 }) {
   const fakeNotionRepo = {
-    getNotionData: jest.fn(),
-    saveNotionToken: jest.fn(),
-    getNotionToken: jest.fn(),
-    deleteBlocksByOwner: jest.fn(),
-    deleteNotionData: jest.fn(),
-    markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    clearTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+    getNotionData: vi.fn(),
+    saveNotionToken: vi.fn(),
+    getNotionToken: vi.fn(),
+    deleteBlocksByOwner: vi.fn(),
+    deleteNotionData: vi.fn(),
+    markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    clearTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    setReconnectEmailSent: vi.fn().mockResolvedValue(true),
   };
   const service = new NotionService(
     fakeNotionRepo as never,
     opts.repo as never
   );
-  service.tryGetNotionAPI = jest.fn(async () => opts.api as never) as never;
-  service.getNotionAPI = jest.fn(async () => {
+  service.tryGetNotionAPI = vi.fn(async () => opts.api as never) as never;
+  service.getNotionAPI = vi.fn(async () => {
     if (opts.api == null) throw new Error('Unauthorized');
     return opts.api as never;
   }) as never;

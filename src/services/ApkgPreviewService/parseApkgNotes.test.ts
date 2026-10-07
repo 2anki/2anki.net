@@ -1,29 +1,28 @@
+import { vi, type Mock } from 'vitest';
 import { parseApkgNotes } from './parseApkgNotes';
 import { NormalizedCollection, Note, NoteType, Deck, Card } from './types';
+import { parseCollection as parseCollectionActual } from './parseCollection';
+import {
+  extractApkg as extractApkgActual,
+  parseMediaManifest as parseMediaManifestActual,
+} from './extractApkg';
 
-jest.mock('./extractApkg', () => ({
-  extractApkg: jest.fn().mockResolvedValue({
+vi.mock('./extractApkg', () => ({
+  extractApkg: vi.fn().mockResolvedValue({
     collectionBuffer: Buffer.from('stub'),
     mediaManifestRaw: null,
     mediaEntries: new Map(),
   }),
-  parseMediaManifest: jest.fn(() => new Map()),
+  parseMediaManifest: vi.fn(() => new Map()),
 }));
 
-jest.mock('./parseCollection', () => ({
-  parseCollection: jest.fn(),
+vi.mock('./parseCollection', () => ({
+  parseCollection: vi.fn(),
 }));
 
-const { parseCollection } = jest.requireMock('./parseCollection') as {
-  parseCollection: jest.Mock;
-};
-
-const { extractApkg, parseMediaManifest } = jest.requireMock(
-  './extractApkg'
-) as {
-  extractApkg: jest.Mock;
-  parseMediaManifest: jest.Mock;
-};
+const parseCollection = parseCollectionActual as unknown as Mock;
+const extractApkg = extractApkgActual as unknown as Mock;
+const parseMediaManifest = parseMediaManifestActual as unknown as Mock;
 
 const noteType = (overrides: Partial<NoteType> = {}): NoteType => ({
   id: 1,

@@ -7,7 +7,7 @@ const rootDir = dirname(fileURLToPath(import.meta.url));
 
 const split = JSON.parse(
   readFileSync(resolve(rootDir, 'test-runner-split.json'), 'utf8')
-) as { vitest: string[] };
+) as { vitest: string[]; jestOnly?: string[] };
 
 const mockPath = (relativePath: string) => resolve(rootDir, relativePath);
 
@@ -23,6 +23,7 @@ export default defineConfig({
       'web/**',
       '.claude/**',
       'test/**',
+      ...(split.jestOnly ?? []),
     ],
     setupFiles: ['src/test/vitest.setup.ts'],
     testTimeout: 5000,

@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import BlockHandler from '../BlockHandler';
 import NotionAPIWrapper from '../../NotionAPIWrapper';
 import CustomExporter from '../../../../lib/parser/exporters/CustomExporter';
 import CardOption from '../../../../lib/parser/Settings';
 import ParserRules from '../../../../lib/parser/ParserRules';
 
-jest.mock('../../../../lib/parser/exporters/CustomExporter');
+vi.mock('../../../../lib/parser/exporters/CustomExporter');
 
 const TS = '2026-01-01T00:00:00.000Z';
 
@@ -53,7 +54,7 @@ function buildApi(
   blocksByParent: Record<string, FakeBlock[]>
 ): NotionAPIWrapper {
   const api = {
-    getPage: jest.fn(async (id: string) => ({
+    getPage: vi.fn(async (id: string) => ({
       id,
       object: 'page',
       created_time: TS,
@@ -61,9 +62,9 @@ function buildApi(
       url: `https://notion.so/${id}`,
       properties: {},
     })),
-    getTopLevelTags: jest.fn(async () => []),
-    getPageTitle: jest.fn(async () => 'Root page'),
-    getBlocks: jest.fn(async ({ id }: { id: string }) => ({
+    getTopLevelTags: vi.fn(async () => []),
+    getPageTitle: vi.fn(async () => 'Root page'),
+    getBlocks: vi.fn(async ({ id }: { id: string }) => ({
       results: blocksByParent[id] ?? [],
     })),
   };

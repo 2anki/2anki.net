@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   __resetTopLevelPagesCacheForTests,
   getTopLevelPagesCache,
@@ -23,13 +24,13 @@ describe('topLevelPagesCache', () => {
   });
 
   it('expires entries after the TTL', () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     try {
       setTopLevelPagesCache(1, '', VALUE);
-      jest.advanceTimersByTime(TOP_LEVEL_PAGES_CACHE_TTL_MS + 1);
+      vi.advanceTimersByTime(TOP_LEVEL_PAGES_CACHE_TTL_MS + 1);
       expect(getTopLevelPagesCache(1, '')).toBeUndefined();
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 

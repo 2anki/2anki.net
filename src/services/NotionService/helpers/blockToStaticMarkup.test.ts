@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { BlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import CardOption from '../../../lib/parser/Settings/CardOption';
@@ -183,7 +184,7 @@ describe('blockToStaticMarkup', () => {
   it('renders a file-hosted pdf as a link when downloadPdfs is off', async () => {
     const handler = makeHandler();
     handler.settings = new CardOption({ 'download-pdfs': 'false' });
-    const embedSpy = jest.spyOn(handler, 'embedFile');
+    const embedSpy = vi.spyOn(handler, 'embedFile');
     const pdf = makePdfBlock({
       type: 'file',
       file: { url: 'https://notion.example/doc.pdf', expiry_time: '' },
@@ -199,7 +200,7 @@ describe('blockToStaticMarkup', () => {
   it('downloads a file-hosted pdf as media when downloadPdfs is on', async () => {
     const handler = makeHandler();
     handler.settings = new CardOption({ 'download-pdfs': 'true' });
-    const embedSpy = jest
+    const embedSpy = vi
       .spyOn(handler, 'embedFile')
       .mockResolvedValue('<embed src="2anki-doc.pdf" />');
     const pdf = makePdfBlock({
@@ -216,7 +217,7 @@ describe('blockToStaticMarkup', () => {
   it('renders an external pdf as a link when downloadPdfs is off', async () => {
     const handler = makeHandler();
     handler.settings = new CardOption({ 'download-pdfs': 'false' });
-    const embedSpy = jest.spyOn(handler, 'embedFile');
+    const embedSpy = vi.spyOn(handler, 'embedFile');
     const pdf = makePdfBlock({
       type: 'external',
       external: { url: 'https://example.com/public.pdf' },
@@ -232,7 +233,7 @@ describe('blockToStaticMarkup', () => {
   it('renders an external pdf as a link even when downloadPdfs is on', async () => {
     const handler = makeHandler();
     handler.settings = new CardOption({ 'download-pdfs': 'true' });
-    const embedSpy = jest.spyOn(handler, 'embedFile');
+    const embedSpy = vi.spyOn(handler, 'embedFile');
     const pdf = makePdfBlock({
       type: 'external',
       external: { url: 'https://example.com/public.pdf' },
@@ -247,7 +248,7 @@ describe('blockToStaticMarkup', () => {
 
   it('renders a synced_block by resolving its children through getBackSide', async () => {
     const handler = makeHandler();
-    const getBackSideSpy = jest
+    const getBackSideSpy = vi
       .spyOn(handler, 'getBackSide')
       .mockResolvedValue('<p>synced child content</p>');
     const syncedBlock = {
@@ -287,7 +288,7 @@ describe('blockToStaticMarkup', () => {
       in_trash: false,
     } as unknown as BlockObjectResponse;
 
-    const consoleDebugSpy = jest
+    const consoleDebugSpy = vi
       .spyOn(console, 'debug')
       .mockImplementation(() => undefined);
     const result = await blockToStaticMarkup(handler, unknownBlock);
@@ -435,9 +436,8 @@ describe('blockToStaticMarkup', () => {
     const callout = makeCalloutWithChildren();
     const listItem = makeBulletListItem('child');
 
-    jest
-      .spyOn(handler.api, 'getBlocks')
-      .mockImplementation(async ({ id }: { id: string }) => {
+    vi.spyOn(handler.api, 'getBlocks').mockImplementation(
+      async ({ id }: { id: string }) => {
         if (id === 'callout-1') {
           return {
             object: 'list',
@@ -456,7 +456,8 @@ describe('blockToStaticMarkup', () => {
           type: 'block',
           block: {},
         } as never;
-      });
+      }
+    );
 
     const result = await blockToStaticMarkup(handler, callout);
 
@@ -539,15 +540,15 @@ describe('blockToStaticMarkup column blocks', () => {
       'col-0': [paragraph('p-left', 'LEFTSIDE')],
       'col-1': [paragraph('p-right', 'RIGHTSIDE')],
     };
-    jest
-      .spyOn(handler.api, 'getBlocks')
-      .mockImplementation(async ({ id }: { id: string }) => {
+    vi.spyOn(handler.api, 'getBlocks').mockImplementation(
+      async ({ id }: { id: string }) => {
         return {
           results: children[id] ?? [],
           has_more: false,
           next_cursor: null,
         } as never;
-      });
+      }
+    );
     return { handler, columnList };
   }
 

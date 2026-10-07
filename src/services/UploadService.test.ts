@@ -1,78 +1,87 @@
+import { vi, type Mock, type MockedClass, type MockInstance } from 'vitest';
 import os from 'os';
 import fs from 'node:fs';
 import path from 'path';
 import express from 'express';
 import knex, { Knex } from 'knex';
 
-jest.mock('../usecases/uploads/GeneratePackagesUseCase', () => {
+vi.mock('../usecases/uploads/GeneratePackagesUseCase', () => {
   return {
     __esModule: true,
-    default: jest.fn(),
+    default: vi.fn(),
   };
 });
 
-const mockGenerateDeckInfo = jest.fn();
-jest.mock('../lib/claude/ClaudeService', () => ({
-  ...jest.requireActual('../lib/claude/ClaudeService'),
+const mockGenerateDeckInfo = vi.fn();
+vi.mock('../lib/claude/ClaudeService', async () => ({
+  ...(await vi.importActual<typeof import('../lib/claude/ClaudeService')>(
+    '../lib/claude/ClaudeService'
+  )),
   generateDeckInfo: (...args: unknown[]) => mockGenerateDeckInfo(...args),
 }));
 
-jest.mock('../lib/integrations/stripe', () => ({
-  getStripe: jest.fn().mockReturnValue({
-    customers: { retrieve: jest.fn() },
+vi.mock('../lib/integrations/stripe', () => ({
+  getStripe: vi.fn().mockReturnValue({
+    customers: { retrieve: vi.fn() },
   }),
-  updateStoreSubscription: jest.fn().mockResolvedValue(undefined),
+  updateStoreSubscription: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../services/SubscriptionService', () => ({
+vi.mock('../services/SubscriptionService', () => ({
   __esModule: true,
-  default: { findActiveStripeSubscriptions: jest.fn().mockResolvedValue([]) },
+  default: { findActiveStripeSubscriptions: vi.fn().mockResolvedValue([]) },
 }));
 
-jest.mock('./events/track', () => ({ track: jest.fn() }));
+vi.mock('./events/track', () => ({ track: vi.fn() }));
 
-const mockGetFeatureFlag = jest.fn().mockResolvedValue(false);
-jest.mock('../lib/featureFlags/getFeatureFlag', () => ({
+const mockGetFeatureFlag = vi.fn().mockResolvedValue(false);
+vi.mock('../lib/featureFlags/getFeatureFlag', () => ({
   getFeatureFlag: (...args: unknown[]) => mockGetFeatureFlag(...args),
 }));
 
 let mockWorkspaceLocation = '';
 let mockWorkspaceId = 'test-ws-id';
 let mockFirstApkg: Buffer | null = null;
-jest.mock('../lib/parser/WorkSpace', () => {
+vi.mock('../lib/parser/WorkSpace', () => {
   return {
     __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      get id() {
-        return mockWorkspaceId;
-      },
-      get location() {
-        return mockWorkspaceLocation;
-      },
-      getFirstAPKG: () => Promise.resolve(mockFirstApkg),
-    })),
+    default: vi.fn().mockImplementation(function () {
+      return {
+        get id() {
+          return mockWorkspaceId;
+        },
+        get location() {
+          return mockWorkspaceLocation;
+        },
+        getFirstAPKG: () => Promise.resolve(mockFirstApkg),
+      };
+    }),
   };
 });
 
-jest.mock('../lib/parser/exporters/CustomExporter', () => ({
+vi.mock('../lib/parser/exporters/CustomExporter', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    configure: jest.fn(),
-    save: jest.fn().mockResolvedValue(undefined),
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      configure: vi.fn(),
+      save: vi.fn().mockResolvedValue(undefined),
+    };
+  }),
 }));
 
-const mockStorageDelete = jest.fn().mockResolvedValue(true);
-const mockStorageUploadFile = jest.fn().mockResolvedValue(undefined);
-const mockStorageUniqify = jest.fn().mockReturnValue('test-key.apkg');
-jest.mock('../lib/storage/StorageHandler', () => {
+const mockStorageDelete = vi.fn().mockResolvedValue(true);
+const mockStorageUploadFile = vi.fn().mockResolvedValue(undefined);
+const mockStorageUniqify = vi.fn().mockReturnValue('test-key.apkg');
+vi.mock('../lib/storage/StorageHandler', () => {
   return {
     __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      delete: mockStorageDelete,
-      uploadFile: mockStorageUploadFile,
-      uniqify: mockStorageUniqify,
-    })),
+    default: vi.fn().mockImplementation(function () {
+      return {
+        delete: mockStorageDelete,
+        uploadFile: mockStorageUploadFile,
+        uniqify: mockStorageUniqify,
+      };
+    }),
   };
 });
 
@@ -90,7 +99,7 @@ import {
 } from '../lib/claude/ClaudeService';
 import { track } from './events/track';
 
-const trackMock = track as jest.Mock;
+const trackMock = track as Mock;
 import { IUploadRepository } from '../data_layer/UploadRespository';
 import JobRepository from '../data_layer/JobRepository';
 import UsersRepository from '../data_layer/UsersRepository';
@@ -105,7 +114,7 @@ import {
   MONTHLY_CARD_LIMIT,
 } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 
-const MockGeneratePackagesUseCase = GeneratePackagesUseCase as jest.MockedClass<
+const MockGeneratePackagesUseCase = GeneratePackagesUseCase as MockedClass<
   typeof GeneratePackagesUseCase
 >;
 
@@ -145,11 +154,11 @@ function buildUsersRepo(
   overrides: Partial<UsersRepository> = {}
 ): UsersRepository {
   return {
-    getCardUsage: jest
+    getCardUsage: vi
       .fn()
       .mockResolvedValue({ cards_used: 0, month_started_at: new Date() }),
-    incrementCardUsage: jest.fn().mockResolvedValue(1),
-    getCardOptions: jest.fn().mockResolvedValue(null),
+    incrementCardUsage: vi.fn().mockResolvedValue(1),
+    getCardOptions: vi.fn().mockResolvedValue(null),
     ...overrides,
   } as unknown as UsersRepository;
 }
@@ -182,22 +191,22 @@ function buildResponse(): {
   let json: unknown = null;
   let sent: unknown = null;
 
-  const jsonFn = jest.fn((body: unknown) => {
+  const jsonFn = vi.fn((body: unknown) => {
     json = body;
     return res; // eslint-disable-line @typescript-eslint/no-use-before-define
   });
-  const statusFn = jest.fn((code: number) => {
+  const statusFn = vi.fn((code: number) => {
     status = code;
     return res; // eslint-disable-line @typescript-eslint/no-use-before-define
   });
-  const setFn = jest.fn(() => res); // eslint-disable-line @typescript-eslint/no-use-before-define
-  const sendFn = jest.fn((body: unknown) => {
+  const setFn = vi.fn(() => res); // eslint-disable-line @typescript-eslint/no-use-before-define
+  const sendFn = vi.fn((body: unknown) => {
     sent = body;
     return res; // eslint-disable-line @typescript-eslint/no-use-before-define
   });
-  const contentTypeFn = jest.fn(() => res); // eslint-disable-line @typescript-eslint/no-use-before-define
-  const attachmentFn = jest.fn(() => res); // eslint-disable-line @typescript-eslint/no-use-before-define
-  const redirectFn = jest.fn(() => res); // eslint-disable-line @typescript-eslint/no-use-before-define
+  const contentTypeFn = vi.fn(() => res); // eslint-disable-line @typescript-eslint/no-use-before-define
+  const attachmentFn = vi.fn(() => res); // eslint-disable-line @typescript-eslint/no-use-before-define
+  const redirectFn = vi.fn(() => res); // eslint-disable-line @typescript-eslint/no-use-before-define
 
   const res = {
     status: statusFn,
@@ -236,12 +245,11 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('emits upload_started and conversion_failed sharing the anonymous_id from the cookie', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({ packages: [] }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -270,13 +278,12 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('hands the request id to the package generator so Claude spend lines can be joined back', async () => {
-    const executeMock = jest.fn().mockResolvedValue({ packages: [] });
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({ execute: executeMock }) as unknown as InstanceType<
-          typeof GeneratePackagesUseCase
-        >
-    );
+    const executeMock = vi.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute: executeMock } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
@@ -299,14 +306,13 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('attaches the saved custom templates for a signed-in upload before generating packages', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({ packages: [] }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
-    const attachCustomTemplates = jest.fn().mockResolvedValue(undefined);
+    const attachCustomTemplates = vi.fn().mockResolvedValue(undefined);
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
@@ -330,14 +336,13 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('does not look up templates for anonymous uploads', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({ packages: [] }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
-    const attachCustomTemplates = jest.fn().mockResolvedValue(undefined);
+    const attachCustomTemplates = vi.fn().mockResolvedValue(undefined);
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
@@ -357,12 +362,11 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('attributes source=dropbox when the request lands on the dropbox path with no explicit source', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({ packages: [] }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -386,12 +390,11 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('returns 400 JSON with empty_export code, spec copy and docs link when no packages are produced', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({ packages: [] }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -424,12 +427,11 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('returns image_only_no_text with a Photo to Deck link when an image-only upload yields 0 cards', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({ packages: [] }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -473,12 +475,11 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('keeps the plain empty_export state for a non-image file that yields 0 cards', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({ packages: [] }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -501,12 +502,11 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('EmptyDeckError response body contains no HTML tags', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({ packages: [] }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -524,20 +524,19 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('uses in-memory uploaded file contents for empty-deck diagnostics when no disk path exists', async () => {
-    const infoSpy = jest
+    const infoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined);
-    const errorSpy = jest
+    const errorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
 
     try {
-      MockGeneratePackagesUseCase.mockImplementation(
-        () =>
-          ({
-            execute: jest.fn().mockResolvedValue({ packages: [] }),
-          }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-      );
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue({ packages: [] }),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
 
       const service = new UploadService(
         buildRepository(),
@@ -573,12 +572,11 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('returns 400 JSON when deck serialization overflows (DeckTooLargeError path)', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockRejectedValue(new DeckTooLargeError()),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(new DeckTooLargeError()),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -600,12 +598,11 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('DeckTooLargeError response body contains no stack trace or V8 internals', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockRejectedValue(new DeckTooLargeError()),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(new DeckTooLargeError()),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -624,18 +621,17 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('returns 400 with code docx_processing_failed when convertDocxToHTML throws a docx_parse_failed error', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest
-            .fn()
-            .mockRejectedValue(
-              new Error(
-                'docx_parse_failed: Could not find the body element: are you sure this is a docx file?'
-              )
-            ),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockRejectedValue(
+            new Error(
+              'docx_parse_failed: Could not find the body element: are you sure this is a docx file?'
+            )
+          ),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -672,13 +668,12 @@ describe('UploadService.handleUpload — error paths', () => {
   });
 
   it('rejects .apkg upload with 400 and the "already an Anki deck" message before reaching GeneratePackagesUseCase', async () => {
-    const executeMock = jest.fn();
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: executeMock,
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    const executeMock = vi.fn();
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: executeMock,
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -746,18 +741,17 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     }>,
     warnings?: string[]
   ) {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({ packages, warnings }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages, warnings }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
   }
 
   function responseWithRedirect() {
     const built = buildResponse();
     let redirectedTo: string | null = null;
-    (built.res.redirect as unknown as jest.Mock).mockImplementation(
+    (built.res.redirect as unknown as Mock).mockImplementation(
       (url: string) => {
         redirectedTo = url;
         return built.res;
@@ -858,11 +852,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   it('redirects a logged-in free user over the monthly limit to /limit?kind=card_count and does not send the deck', async () => {
     mockPackages([{ name: 'deck', cardCount: 30 }]);
     const usersRepo = buildUsersRepo({
-      getCardUsage: jest
+      getCardUsage: vi
         .fn()
         .mockResolvedValue({ cards_used: 80, month_started_at: new Date() }),
     });
-    const incrementSpy = usersRepo.incrementCardUsage as jest.Mock;
+    const incrementSpy = usersRepo.incrementCardUsage as Mock;
 
     const service = new UploadService(
       buildRepository(),
@@ -907,10 +901,10 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     ];
     mockPackages([{ name: 'deck', cardCount: 1, guidEntries }]);
     const guidLedger = {
-      getAllForOwner: jest.fn().mockResolvedValue({ 'block-a': 'old-guid' }),
-      getUploadIdentityForOwner: jest.fn().mockResolvedValue({}),
-      record: jest.fn().mockResolvedValue(undefined),
-      reissue: jest.fn().mockResolvedValue(undefined),
+      getAllForOwner: vi.fn().mockResolvedValue({ 'block-a': 'old-guid' }),
+      getUploadIdentityForOwner: vi.fn().mockResolvedValue({}),
+      record: vi.fn().mockResolvedValue(undefined),
+      reissue: vi.fn().mockResolvedValue(undefined),
     };
 
     const service = new UploadService(
@@ -946,10 +940,10 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       { name: 'deck', cardCount: 2, guidEntries: [notionEntry, uploadEntry] },
     ]);
     const guidLedger = {
-      getAllForOwner: jest.fn().mockResolvedValue({}),
-      getUploadIdentityForOwner: jest.fn().mockResolvedValue({}),
-      record: jest.fn().mockResolvedValue(undefined),
-      reissue: jest.fn().mockResolvedValue(undefined),
+      getAllForOwner: vi.fn().mockResolvedValue({}),
+      getUploadIdentityForOwner: vi.fn().mockResolvedValue({}),
+      record: vi.fn().mockResolvedValue(undefined),
+      reissue: vi.fn().mockResolvedValue(undefined),
     };
 
     const service = new UploadService(
@@ -974,10 +968,10 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     ];
     mockPackages([{ name: 'deck', cardCount: 1, guidEntries }]);
     const guidLedger = {
-      getAllForOwner: jest.fn().mockResolvedValue({}),
-      getUploadIdentityForOwner: jest.fn().mockResolvedValue({}),
-      record: jest.fn().mockResolvedValue(undefined),
-      reissue: jest.fn().mockResolvedValue(undefined),
+      getAllForOwner: vi.fn().mockResolvedValue({}),
+      getUploadIdentityForOwner: vi.fn().mockResolvedValue({}),
+      record: vi.fn().mockResolvedValue(undefined),
+      reissue: vi.fn().mockResolvedValue(undefined),
     };
 
     const service = new UploadService(
@@ -1010,12 +1004,12 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       },
     ]);
     const guidLedger = {
-      getAllForOwner: jest.fn().mockResolvedValue({}),
-      getUploadIdentityForOwner: jest
+      getAllForOwner: vi.fn().mockResolvedValue({}),
+      getUploadIdentityForOwner: vi
         .fn()
         .mockResolvedValue({ 'u:abc': { guid: 'g', sourcePageId: 'h:f' } }),
-      record: jest.fn().mockResolvedValue(undefined),
-      reissue: jest.fn().mockResolvedValue(undefined),
+      record: vi.fn().mockResolvedValue(undefined),
+      reissue: vi.fn().mockResolvedValue(undefined),
     };
 
     const service = new UploadService(
@@ -1061,11 +1055,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   it('sends the deck and increments card usage for a logged-in free user under the limit', async () => {
     mockPackages([{ name: 'deck', cardCount: 30 }]);
     const usersRepo = buildUsersRepo({
-      getCardUsage: jest
+      getCardUsage: vi
         .fn()
         .mockResolvedValue({ cards_used: 10, month_started_at: new Date() }),
     });
-    const incrementSpy = usersRepo.incrementCardUsage as jest.Mock;
+    const incrementSpy = usersRepo.incrementCardUsage as Mock;
 
     const service = new UploadService(
       buildRepository(),
@@ -1087,7 +1081,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   it('redirects an anonymous conversion over 21 cards to /limit?kind=anonymous and does not send the deck', async () => {
     mockPackages([{ name: 'deck', cardCount: 22 }]);
     const usersRepo = buildUsersRepo();
-    const incrementSpy = usersRepo.incrementCardUsage as jest.Mock;
+    const incrementSpy = usersRepo.incrementCardUsage as Mock;
 
     const service = new UploadService(
       buildRepository(),
@@ -1146,23 +1140,22 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   });
 
   it('sets X-Dropped-Assets to the summed dropped-image count across packages on a single-deck sync upload', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'deck',
-                cardCount: 12,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-                droppedImageCount: 2,
-              },
-            ],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 12,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              droppedImageCount: 2,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -1201,7 +1194,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
 
   it('sets X-Credits-Used from the request cost on a single-deck sync upload', async () => {
     mockPackages([{ name: 'deck', cardCount: 12 }]);
-    const costByRequestId = jest.fn().mockResolvedValue(0.88);
+    const costByRequestId = vi.fn().mockResolvedValue(0.88);
 
     const service = new UploadService(
       buildRepository(),
@@ -1227,7 +1220,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
 
   it('omits X-Credits-Used when the conversion recorded no AI cost', async () => {
     mockPackages([{ name: 'deck', cardCount: 12 }]);
-    const costByRequestId = jest.fn().mockResolvedValue(0);
+    const costByRequestId = vi.fn().mockResolvedValue(0);
 
     const service = new UploadService(
       buildRepository(),
@@ -1250,7 +1243,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
 
   it('fails open, still returning the deck, when the cost lookup rejects', async () => {
     mockPackages([{ name: 'deck', cardCount: 12 }]);
-    const costByRequestId = jest
+    const costByRequestId = vi
       .fn()
       .mockRejectedValue(new Error('metrics unavailable'));
 
@@ -1275,24 +1268,23 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   });
 
   it('sets X-Expired-Notion-Assets to the summed expired-image count on a single-deck sync upload', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'deck',
-                cardCount: 12,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-                droppedImageCount: 1,
-                expiredNotionImageCount: 1,
-              },
-            ],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 12,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              droppedImageCount: 1,
+              expiredNotionImageCount: 1,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -1330,23 +1322,22 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   });
 
   it('sets X-Empty-Back-Count to the summed empty-back count on a partial single-deck upload', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'deck',
-                cardCount: 9,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-                emptyBackCount: 3,
-              },
-            ],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 9,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              emptyBackCount: 3,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -1385,23 +1376,22 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   });
 
   it('sets X-Structure-Rescued to the shipped rescue rule on a single-deck sync upload', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'deck',
-                cardCount: 8,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-                inducedRule: { rule: 'heading', outcome: 'rescue_shipped' },
-              },
-            ],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 8,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              inducedRule: { rule: 'heading', outcome: 'rescue_shipped' },
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -1419,23 +1409,22 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   });
 
   it('does not set X-Structure-Rescued when the rescue was rejected', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'deck',
-                cardCount: 8,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-                inducedRule: { rule: 'bullets', outcome: 'rescue_rejected' },
-              },
-            ],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 8,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              inducedRule: { rule: 'bullets', outcome: 'rescue_rejected' },
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -1623,7 +1612,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   it('sends the deck for an anonymous conversion at or under 21 cards without incrementing usage', async () => {
     mockPackages([{ name: 'deck', cardCount: 21 }]);
     const usersRepo = buildUsersRepo();
-    const incrementSpy = usersRepo.incrementCardUsage as jest.Mock;
+    const incrementSpy = usersRepo.incrementCardUsage as Mock;
 
     const service = new UploadService(
       buildRepository(),
@@ -1644,7 +1633,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
   it('returns 400 empty_export instead of a silent empty deck when the single package has 0 cards', async () => {
     mockPackages([{ name: 'deck', cardCount: 0 }]);
     const usersRepo = buildUsersRepo();
-    const incrementSpy = usersRepo.incrementCardUsage as jest.Mock;
+    const incrementSpy = usersRepo.incrementCardUsage as Mock;
 
     const service = new UploadService(
       buildRepository(),
@@ -1696,8 +1685,8 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
 describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
   const originalWorkspaceBase = process.env.WORKSPACE_BASE;
   let tmpDir: string;
-  let infoSpy: jest.SpyInstance;
-  let errorSpy: jest.SpyInstance;
+  let infoSpy: MockInstance;
+  let errorSpy: MockInstance;
 
   beforeAll(() => {
     process.env.WORKSPACE_BASE = path.join(
@@ -1716,8 +1705,8 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fallback-ws-'));
     mockWorkspaceLocation = tmpDir;
     mockWorkspaceId = 'fallback-ws-id';
-    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
-    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -1727,18 +1716,17 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
   });
 
   function zeroCardUseCase() {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({ packages: [] }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
   }
 
   function jobRepositoryWithFailedGate(onFailed?: () => void): JobRepository {
     return {
-      create: jest.fn().mockResolvedValue(undefined),
-      updateJobStatus: jest
+      create: vi.fn().mockResolvedValue(undefined),
+      updateJobStatus: vi
         .fn()
         .mockImplementation((_id: string, _owner: string, status: string) => {
           if (status === 'failed') {
@@ -1746,8 +1734,8 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
           }
           return Promise.resolve(undefined);
         }),
-      findJobById: jest.fn().mockResolvedValue(null),
-      deleteJob: jest.fn().mockResolvedValue(undefined),
+      findJobById: vi.fn().mockResolvedValue(null),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
     } as unknown as JobRepository;
   }
 
@@ -1996,7 +1984,7 @@ describe('UploadService.deleteUpload — cascade', () => {
   it('removes the upload row, the S3 object, and the linked job', async () => {
     const repo: IUploadRepository = {
       ...buildRepository(),
-      findByKey: jest.fn().mockResolvedValue({
+      findByKey: vi.fn().mockResolvedValue({
         id: 1,
         owner: 7,
         key: 'k.apkg',
@@ -2005,10 +1993,10 @@ describe('UploadService.deleteUpload — cascade', () => {
         size_mb: 1,
         created_at: new Date(),
       } as Uploads),
-      deleteUpload: jest.fn().mockResolvedValue(1),
+      deleteUpload: vi.fn().mockResolvedValue(1),
     };
     const jobRepository = {
-      deleteJobByObjectId: jest.fn().mockResolvedValue(1),
+      deleteJobByObjectId: vi.fn().mockResolvedValue(1),
     } as unknown as JobRepository;
 
     const service = new UploadService(
@@ -2031,7 +2019,7 @@ describe('UploadService.deleteUpload — cascade', () => {
   it('skips the job delete when the upload row has no object_id', async () => {
     const repo: IUploadRepository = {
       ...buildRepository(),
-      findByKey: jest.fn().mockResolvedValue({
+      findByKey: vi.fn().mockResolvedValue({
         id: 1,
         owner: 7,
         key: 'k.apkg',
@@ -2040,10 +2028,10 @@ describe('UploadService.deleteUpload — cascade', () => {
         size_mb: 1,
         created_at: new Date(),
       } as Uploads),
-      deleteUpload: jest.fn().mockResolvedValue(1),
+      deleteUpload: vi.fn().mockResolvedValue(1),
     };
     const jobRepository = {
-      deleteJobByObjectId: jest.fn(),
+      deleteJobByObjectId: vi.fn(),
     } as unknown as JobRepository;
 
     const service = new UploadService(
@@ -2062,11 +2050,11 @@ describe('UploadService.deleteUpload — cascade', () => {
   it('skips the job delete when no matching upload row exists', async () => {
     const repo: IUploadRepository = {
       ...buildRepository(),
-      findByKey: jest.fn().mockResolvedValue(null),
-      deleteUpload: jest.fn().mockResolvedValue(0),
+      findByKey: vi.fn().mockResolvedValue(null),
+      deleteUpload: vi.fn().mockResolvedValue(0),
     };
     const jobRepository = {
-      deleteJobByObjectId: jest.fn(),
+      deleteJobByObjectId: vi.fn(),
     } as unknown as JobRepository;
 
     const service = new UploadService(
@@ -2115,30 +2103,29 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
 
     const repo: IUploadRepository = {
       ...buildRepository(),
-      update: jest.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue([]),
     };
     const jobRepository = {
-      create: jest.fn().mockResolvedValue(undefined),
-      updateJobStatus: jest.fn().mockResolvedValue(undefined),
-      findJobById: jest.fn().mockResolvedValue(null),
-      deleteJob: jest.fn().mockResolvedValue(undefined),
+      create: vi.fn().mockResolvedValue(undefined),
+      updateJobStatus: vi.fn().mockResolvedValue(undefined),
+      findJobById: vi.fn().mockResolvedValue(null),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
     } as unknown as JobRepository;
 
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'my-deck',
-                cardCount: 5,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-              },
-            ],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'my-deck',
+              cardCount: 5,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+            },
+          ],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       repo,
@@ -2172,26 +2159,25 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
     });
     const repo: IUploadRepository = {
       ...buildRepository(),
-      update: jest.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue([]),
     };
     const jobRepository = {
-      create: jest.fn().mockResolvedValue(undefined),
-      updateJobStatus: jest.fn().mockResolvedValue(undefined),
-      findJobById: jest.fn().mockImplementation(() => {
+      create: vi.fn().mockResolvedValue(undefined),
+      updateJobStatus: vi.fn().mockResolvedValue(undefined),
+      findJobById: vi.fn().mockImplementation(() => {
         resolveFind();
         return Promise.resolve(null);
       }),
-      deleteJob: jest.fn().mockResolvedValue(undefined),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
     } as unknown as JobRepository;
 
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [{ name: 'my-deck', cardCount: 7 }],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [{ name: 'my-deck', cardCount: 7 }],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       repo,
@@ -2229,14 +2215,14 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
 
   async function runAsyncUploadWithBody(
     body: Record<string, unknown>
-  ): Promise<jest.Mock> {
+  ): Promise<Mock> {
     fs.writeFileSync(path.join(tmpDir, 'my-deck.apkg'), Buffer.from('apkg'));
 
     let resolveUpdate!: () => void;
     const updateCalled = new Promise<void>((r) => {
       resolveUpdate = r;
     });
-    const updateMock = jest.fn().mockImplementation(() => {
+    const updateMock = vi.fn().mockImplementation(() => {
       resolveUpdate();
       return Promise.resolve([]);
     });
@@ -2245,27 +2231,26 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
       update: updateMock,
     };
     const jobRepository = {
-      create: jest.fn().mockResolvedValue(undefined),
-      updateJobStatus: jest.fn().mockResolvedValue(undefined),
-      findJobById: jest.fn().mockResolvedValue(null),
-      deleteJob: jest.fn().mockResolvedValue(undefined),
+      create: vi.fn().mockResolvedValue(undefined),
+      updateJobStatus: vi.fn().mockResolvedValue(undefined),
+      findJobById: vi.fn().mockResolvedValue(null),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
     } as unknown as JobRepository;
 
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'my-deck',
-                cardCount: 5,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-              },
-            ],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'my-deck',
+              cardCount: 5,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+            },
+          ],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       repo,
@@ -2303,14 +2288,12 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
     expect(updateMock.mock.calls[0][4]).toBeNull();
   });
 
-  async function runAsyncUploadThatRejects(
-    rejection: unknown
-  ): Promise<jest.Mock> {
+  async function runAsyncUploadThatRejects(rejection: unknown): Promise<Mock> {
     let resolveFailed!: () => void;
     const failedRecorded = new Promise<void>((r) => {
       resolveFailed = r;
     });
-    const updateJobStatusMock = jest
+    const updateJobStatusMock = vi
       .fn()
       .mockImplementation((_id: string, _owner: string, status: string) => {
         if (status === 'failed') {
@@ -2319,18 +2302,17 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
         return Promise.resolve(undefined);
       });
     const jobRepository = {
-      create: jest.fn().mockResolvedValue(undefined),
+      create: vi.fn().mockResolvedValue(undefined),
       updateJobStatus: updateJobStatusMock,
-      findJobById: jest.fn().mockResolvedValue(null),
-      deleteJob: jest.fn().mockResolvedValue(undefined),
+      findJobById: vi.fn().mockResolvedValue(null),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
     } as unknown as JobRepository;
 
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockRejectedValue(rejection),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(rejection),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -2377,7 +2359,7 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
     const failedRecorded = new Promise<void>((r) => {
       resolveFailed = r;
     });
-    const updateJobStatusMock = jest
+    const updateJobStatusMock = vi
       .fn()
       .mockImplementation((_id: string, _owner: string, status: string) => {
         if (status === 'failed') {
@@ -2386,32 +2368,31 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
         return Promise.resolve(undefined);
       });
     const jobRepository = {
-      create: jest.fn().mockResolvedValue(undefined),
+      create: vi.fn().mockResolvedValue(undefined),
       updateJobStatus: updateJobStatusMock,
-      findJobById: jest.fn().mockResolvedValue(null),
-      deleteJob: jest.fn().mockResolvedValue(undefined),
+      findJobById: vi.fn().mockResolvedValue(null),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
     } as unknown as JobRepository;
-    const updateSpy = jest.fn().mockResolvedValue([]);
+    const updateSpy = vi.fn().mockResolvedValue([]);
     const repo: IUploadRepository = {
       ...buildRepository(),
       update: updateSpy,
     };
 
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'my-deck',
-                cardCount: 0,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-              },
-            ],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'my-deck',
+              cardCount: 0,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+            },
+          ],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       repo,
@@ -2464,28 +2445,27 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
   });
 
   it('returns 200 JSON listing every deck instead of redirecting to /download', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'Biology 101',
-                cardCount: 3,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-              },
-              {
-                name: 'Chemistry',
-                cardCount: 5,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-              },
-            ],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'Biology 101',
+              cardCount: 3,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+            },
+            {
+              name: 'Chemistry',
+              cardCount: 5,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -2534,30 +2514,29 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
   });
 
   it('includes droppedImageCount in the batch JSON when images were dropped across the batch', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'Biology 101',
-                cardCount: 3,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-                droppedImageCount: 1,
-              },
-              {
-                name: 'Chemistry',
-                cardCount: 5,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-                droppedImageCount: 2,
-              },
-            ],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'Biology 101',
+              cardCount: 3,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              droppedImageCount: 1,
+            },
+            {
+              name: 'Chemistry',
+              cardCount: 5,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              droppedImageCount: 2,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -2575,28 +2554,27 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
   });
 
   it('omits droppedImageCount from the batch JSON when no images were dropped', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'Biology 101',
-                cardCount: 3,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-              },
-              {
-                name: 'Chemistry',
-                cardCount: 5,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-              },
-            ],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'Biology 101',
+              cardCount: 3,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+            },
+            {
+              name: 'Chemistry',
+              cardCount: 5,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -2614,32 +2592,31 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
   });
 
   it('includes expiredNotionImageCount in the batch JSON when Notion images expired across the batch', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'Biology 101',
-                cardCount: 3,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-                droppedImageCount: 1,
-                expiredNotionImageCount: 1,
-              },
-              {
-                name: 'Chemistry',
-                cardCount: 5,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-                droppedImageCount: 2,
-                expiredNotionImageCount: 2,
-              },
-            ],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'Biology 101',
+              cardCount: 3,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              droppedImageCount: 1,
+              expiredNotionImageCount: 1,
+            },
+            {
+              name: 'Chemistry',
+              cardCount: 5,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              droppedImageCount: 2,
+              expiredNotionImageCount: 2,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -2657,28 +2634,27 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
   });
 
   it('omits expiredNotionImageCount from the batch JSON when no Notion images expired', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [
-              {
-                name: 'Biology 101',
-                cardCount: 3,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-              },
-              {
-                name: 'Chemistry',
-                cardCount: 5,
-                mcqCount: 0,
-                mcqSkippedCount: 0,
-              },
-            ],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'Biology 101',
+              cardCount: 3,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+            },
+            {
+              name: 'Chemistry',
+              cardCount: 5,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = new UploadService(
       buildRepository(),
@@ -3290,24 +3266,23 @@ describe('UploadService.handleUpload — claude flag does not bypass the card li
     trackMock.mockClear();
     mockFirstApkg = Buffer.from('fake-apkg');
     mockWorkspaceId = 'test-ws-id';
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [{ name: 'deck', cardCount: 30 }],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [{ name: 'deck', cardCount: 30 }],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
   });
 
-  function buildJobRepo(): { repo: JobRepository; create: jest.Mock } {
-    const create = jest.fn().mockResolvedValue(undefined);
+  function buildJobRepo(): { repo: JobRepository; create: Mock } {
+    const create = vi.fn().mockResolvedValue(undefined);
     return {
       repo: {
         create,
-        updateJobStatus: jest.fn().mockResolvedValue(undefined),
-        findJobById: jest.fn().mockResolvedValue(null),
-        deleteJob: jest.fn().mockResolvedValue(undefined),
+        updateJobStatus: vi.fn().mockResolvedValue(undefined),
+        findJobById: vi.fn().mockResolvedValue(null),
+        deleteJob: vi.fn().mockResolvedValue(undefined),
       } as unknown as JobRepository,
       create,
     };
@@ -3315,11 +3290,11 @@ describe('UploadService.handleUpload — claude flag does not bypass the card li
 
   it('routes a free user with the claude flag through the sync path and enforces the limit', async () => {
     const usersRepo = buildUsersRepo({
-      getCardUsage: jest
+      getCardUsage: vi
         .fn()
         .mockResolvedValue({ cards_used: 80, month_started_at: new Date() }),
     });
-    const incrementSpy = usersRepo.incrementCardUsage as jest.Mock;
+    const incrementSpy = usersRepo.incrementCardUsage as Mock;
     const { repo: jobRepo, create } = buildJobRepo();
 
     const service = new UploadService(
@@ -3331,7 +3306,7 @@ describe('UploadService.handleUpload — claude flag does not bypass the card li
     const req = buildRequest({ body: { 'claude-ai-flashcards': 'true' } });
     const built = buildResponse();
     let redirectedTo: string | null = null;
-    (built.res.redirect as unknown as jest.Mock).mockImplementation(
+    (built.res.redirect as unknown as Mock).mockImplementation(
       (url: string) => {
         redirectedTo = url;
         return built.res;
@@ -3349,11 +3324,11 @@ describe('UploadService.handleUpload — claude flag does not bypass the card li
 
   it('serves a free user with the claude flag a sync deck when under the limit', async () => {
     const usersRepo = buildUsersRepo({
-      getCardUsage: jest
+      getCardUsage: vi
         .fn()
         .mockResolvedValue({ cards_used: 10, month_started_at: new Date() }),
     });
-    const incrementSpy = usersRepo.incrementCardUsage as jest.Mock;
+    const incrementSpy = usersRepo.incrementCardUsage as Mock;
     const { repo: jobRepo, create } = buildJobRepo();
 
     const service = new UploadService(
@@ -3525,11 +3500,11 @@ describe('UploadService.restartClaudeJob — card-limit enforcement', () => {
       },
     ]);
     const usersRepo = buildUsersRepo({
-      getCardUsage: jest
+      getCardUsage: vi
         .fn()
         .mockResolvedValue({ cards_used: 80, month_started_at: new Date() }),
     });
-    const incrementSpy = usersRepo.incrementCardUsage as jest.Mock;
+    const incrementSpy = usersRepo.incrementCardUsage as Mock;
 
     const service = new UploadService(
       buildRepository(),
@@ -3674,14 +3649,13 @@ describe('UploadService.handleUpload — signup_origin attribution', () => {
   });
 
   function mockSingleDeck(cardCount: number) {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest
-            .fn()
-            .mockResolvedValue({ packages: [{ name: 'deck', cardCount }] }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ packages: [{ name: 'deck', cardCount }] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
   }
 
   function firstTouchCookie(landingPath: string) {
@@ -3722,7 +3696,7 @@ describe('UploadService.handleUpload — signup_origin attribution', () => {
   it('stamps the resolved signup_origin on conversion_failed for an over-limit upload', async () => {
     mockSingleDeck(30);
     const usersRepo = buildUsersRepo({
-      getCardUsage: jest
+      getCardUsage: vi
         .fn()
         .mockResolvedValue({ cards_used: 80, month_started_at: new Date() }),
     });
@@ -3737,7 +3711,7 @@ describe('UploadService.handleUpload — signup_origin attribution', () => {
       cookies: { first_touch: firstTouchCookie('/photo-to-deck') },
     } as Partial<express.Request>);
     const { res } = buildResponse();
-    (res.redirect as unknown as jest.Mock).mockReturnValue(res);
+    (res.redirect as unknown as Mock).mockReturnValue(res);
     (res.locals as Record<string, unknown>).owner = 42;
 
     await service.handleUpload(req, res);
@@ -3795,8 +3769,8 @@ describe('UploadService.handleUpload — in-flight duplicate guard', () => {
 
   function buildJobRepo(): JobRepository {
     return {
-      create: jest.fn().mockResolvedValue(undefined),
-      updateJobStatus: jest.fn().mockResolvedValue(undefined),
+      create: vi.fn().mockResolvedValue(undefined),
+      updateJobStatus: vi.fn().mockResolvedValue(undefined),
     } as unknown as JobRepository;
   }
 
@@ -3832,17 +3806,16 @@ describe('UploadService.handleUpload — in-flight duplicate guard', () => {
 
   it('rejects a second identical upload while the first is still converting', async () => {
     let finishFirst: (() => void) | undefined;
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn(
-            () =>
-              new Promise((resolve) => {
-                finishFirst = () => resolve({ packages: [] });
-              })
-          ),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn(
+          () =>
+            new Promise((resolve) => {
+              finishFirst = () => resolve({ packages: [] });
+            })
+        ),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = buildService();
     const firstRes = buildPayingResponse();
@@ -3862,12 +3835,11 @@ describe('UploadService.handleUpload — in-flight duplicate guard', () => {
   });
 
   it('allows different content to convert concurrently', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn(() => new Promise(() => {})),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn(() => new Promise(() => {})),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = buildService();
     const firstRes = buildPayingResponse();
@@ -3881,22 +3853,20 @@ describe('UploadService.handleUpload — in-flight duplicate guard', () => {
 
   it('releases the guard when the conversion finishes, allowing a re-upload', async () => {
     let finishFirst: (() => void) | undefined;
-    MockGeneratePackagesUseCase.mockImplementationOnce(
-      () =>
-        ({
-          execute: jest.fn(
-            () =>
-              new Promise((_, reject) => {
-                finishFirst = () => reject(new EmptyDeckError());
-              })
-          ),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    ).mockImplementation(
-      () =>
-        ({
-          execute: jest.fn(() => new Promise(() => {})),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementationOnce(function () {
+      return {
+        execute: vi.fn(
+          () =>
+            new Promise((_, reject) => {
+              finishFirst = () => reject(new EmptyDeckError());
+            })
+        ),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    }).mockImplementation(function () {
+      return {
+        execute: vi.fn(() => new Promise(() => {})),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = buildService();
     const firstRes = buildPayingResponse();
@@ -3911,12 +3881,11 @@ describe('UploadService.handleUpload — in-flight duplicate guard', () => {
   });
 
   it('never blocks two different users uploading the same content', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn(() => new Promise(() => {})),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn(() => new Promise(() => {})),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
 
     const service = buildService();
     const firstRes = buildPayingResponse();
@@ -3945,17 +3914,16 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
 
   beforeEach(() => {
     MockGeneratePackagesUseCase.mockClear();
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({ packages: [] }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
     trackMock.mockClear();
     mockWorkspaceId = 'image-ws-id';
   });
 
-  function buildVisionUseCase(execute: jest.Mock) {
+  function buildVisionUseCase(execute: Mock) {
     return { execute } as unknown as PhotoToFlashcardsUseCase;
   }
 
@@ -3963,7 +3931,7 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
     return new UploadService(
       buildRepository(),
       {
-        create: jest.fn().mockResolvedValue(undefined),
+        create: vi.fn().mockResolvedValue(undefined),
       } as unknown as JobRepository,
       buildUsersRepo(),
       ...fakeUploadServiceDeps({ photoToFlashcards: vision })
@@ -3995,7 +3963,7 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
     const apkgPath = path.join(os.tmpdir(), `vision-upload-${Date.now()}.apkg`);
     const apkgBytes = Buffer.from('fake-apkg-bytes');
     fs.writeFileSync(apkgPath, apkgBytes);
-    const execute = jest.fn().mockResolvedValue({
+    const execute = vi.fn().mockResolvedValue({
       apkgPath,
       cardCount: 7,
       estimatedCostUsd: 0.01,
@@ -4032,7 +4000,7 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
       ),
       { status: 429, used: 5, limit: 5 }
     );
-    const execute = jest.fn().mockRejectedValue(quotaError);
+    const execute = vi.fn().mockRejectedValue(quotaError);
     const service = buildServiceWithVision(buildVisionUseCase(execute));
     const { res, capturedStatus, capturedJson } = signedInResponse();
 
@@ -4055,7 +4023,7 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
   });
 
   it('leaves an anonymous image upload on the image_only_no_text floor and never calls vision', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const service = buildServiceWithVision(buildVisionUseCase(execute));
     const { res, capturedStatus, capturedJson } = buildResponse();
 
@@ -4093,22 +4061,21 @@ describe('UploadService.handleUpload — stored card options', () => {
 
   function buildGuidLedger() {
     return {
-      getAllForOwner: jest.fn().mockResolvedValue({ 'block-a': 'old-guid' }),
-      getUploadIdentityForOwner: jest.fn().mockResolvedValue({}),
-      record: jest.fn().mockResolvedValue(undefined),
-      reissue: jest.fn().mockResolvedValue(undefined),
+      getAllForOwner: vi.fn().mockResolvedValue({ 'block-a': 'old-guid' }),
+      getUploadIdentityForOwner: vi.fn().mockResolvedValue({}),
+      record: vi.fn().mockResolvedValue(undefined),
+      reissue: vi.fn().mockResolvedValue(undefined),
     };
   }
 
   function mockOneDeck() {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [{ name: 'deck', cardCount: 1, guidEntries }],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [{ name: 'deck', cardCount: 1, guidEntries }],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
   }
 
   it('re-keys through a stored block-id-identity the body never sent', async () => {
@@ -4118,7 +4085,7 @@ describe('UploadService.handleUpload — stored card options', () => {
       buildRepository(),
       {} as JobRepository,
       buildUsersRepo({
-        getCardOptions: jest
+        getCardOptions: vi
           .fn()
           .mockResolvedValue({ 'block-id-identity': 'true' }),
       } as unknown as Partial<UsersRepository>),
@@ -4140,7 +4107,7 @@ describe('UploadService.handleUpload — stored card options', () => {
       buildRepository(),
       {} as JobRepository,
       buildUsersRepo({
-        getCardOptions: jest
+        getCardOptions: vi
           .fn()
           .mockResolvedValue({ 'block-id-identity': 'true' }),
       } as unknown as Partial<UsersRepository>),
@@ -4160,12 +4127,12 @@ describe('UploadService.handleUpload — stored card options', () => {
 
   it('fills an ordinary option the body omits from the stored options', async () => {
     mockOneDeck();
-    const attachCustomTemplates = jest.fn().mockResolvedValue(undefined);
+    const attachCustomTemplates = vi.fn().mockResolvedValue(undefined);
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
       buildUsersRepo({
-        getCardOptions: jest.fn().mockResolvedValue({ template: 'custom' }),
+        getCardOptions: vi.fn().mockResolvedValue({ template: 'custom' }),
       } as unknown as Partial<UsersRepository>),
       ...fakeUploadServiceDeps({
         settings: { attachCustomTemplates } as unknown as ISettingsRepository,
@@ -4185,12 +4152,12 @@ describe('UploadService.handleUpload — stored card options', () => {
 
   it('lets the browser win for an ordinary option it did send', async () => {
     mockOneDeck();
-    const attachCustomTemplates = jest.fn().mockResolvedValue(undefined);
+    const attachCustomTemplates = vi.fn().mockResolvedValue(undefined);
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
       buildUsersRepo({
-        getCardOptions: jest.fn().mockResolvedValue({ template: 'stored' }),
+        getCardOptions: vi.fn().mockResolvedValue({ template: 'stored' }),
       } as unknown as Partial<UsersRepository>),
       ...fakeUploadServiceDeps({
         settings: { attachCustomTemplates } as unknown as ISettingsRepository,
@@ -4212,7 +4179,7 @@ describe('UploadService.handleUpload — stored card options', () => {
 
   it('never reads stored options for an anonymous upload', async () => {
     mockOneDeck();
-    const getCardOptions = jest
+    const getCardOptions = vi
       .fn()
       .mockResolvedValue({ 'block-id-identity': 'true' });
     const guidLedger = buildGuidLedger();
@@ -4249,26 +4216,25 @@ describe('UploadService.handleSyncUpload — persisted copy for a signed-in owne
     trackMock.mockClear();
     mockFirstApkg = Buffer.from('fake-apkg');
     mockWorkspaceId = 'test-ws-id';
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [{ name: 'deck', cardCount: 12 }],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [{ name: 'deck', cardCount: 12 }],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
   });
 
   function exposedHeaders(res: express.Response): string {
-    const call = (res.set as jest.Mock).mock.calls.find(
+    const call = (res.set as Mock).mock.calls.find(
       ([name]) => name === 'Access-Control-Expose-Headers'
     );
     return call?.[1] ?? '';
   }
 
   it('persists the built deck, records an uploads row, and advertises the key', async () => {
-    const update = jest.fn().mockResolvedValue([]);
+    const update = vi.fn().mockResolvedValue([]);
     const usersRepo = buildUsersRepo();
     const service = new UploadService(
       { ...buildRepository(), update },
@@ -4301,7 +4267,7 @@ describe('UploadService.handleSyncUpload — persisted copy for a signed-in owne
   });
 
   it('keeps streaming for an anonymous upload without persisting or advertising a key', async () => {
-    const update = jest.fn().mockResolvedValue([]);
+    const update = vi.fn().mockResolvedValue([]);
     const service = new UploadService(
       { ...buildRepository(), update },
       {} as JobRepository,
@@ -4363,15 +4329,14 @@ describe('UploadService.handleSyncUpload — anonymous recovery copy (#4651)', (
     mockStorageUploadFile.mockClear();
     mockFirstApkg = Buffer.from('fake-apkg');
     mockWorkspaceId = 'test-ws-id';
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockResolvedValue({
-            packages: [{ name: 'deck', cardCount: 12 }],
-            warnings: [],
-          }),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [{ name: 'deck', cardCount: 12 }],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
   });
 
   function buildService() {
@@ -4458,11 +4423,12 @@ describe('UploadService.handleUpload — image drops without a vision path (#440
     }) as unknown as Express.Multer.File;
 
   it('answers an anonymous photo drop with the Photo to Deck pointer before any parse', async () => {
-    const execute = jest.fn().mockResolvedValue({ packages: [] });
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({ execute }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    const execute = vi.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
@@ -4493,11 +4459,12 @@ describe('UploadService.handleUpload — image drops without a vision path (#440
   });
 
   it('answers a signed-in multi-photo drop the same way instead of parsing', async () => {
-    const execute = jest.fn().mockResolvedValue({ packages: [] });
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({ execute }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    const execute = vi.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
@@ -4613,12 +4580,11 @@ describe('UploadService.handleUpload — failure events for the success-rate til
   });
 
   function failWith(error: Error) {
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({
-          execute: jest.fn().mockRejectedValue(error),
-        }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(error),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
   }
 
   function buildService(jobRepository: JobRepository = {} as JobRepository) {
@@ -4740,8 +4706,8 @@ describe('UploadService.handleUpload — failure events for the success-rate til
   describe('asynchronous AI uploads', () => {
     function buildJobRepo(): JobRepository {
       return {
-        create: jest.fn().mockResolvedValue(undefined),
-        updateJobStatus: jest.fn().mockResolvedValue(undefined),
+        create: vi.fn().mockResolvedValue(undefined),
+        updateJobStatus: vi.fn().mockResolvedValue(undefined),
       } as unknown as JobRepository;
     }
 
@@ -4887,20 +4853,21 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     packages: Array<{ name: string; cardCount: number }>,
     cardsHeldBack?: number
   ) {
-    const execute = jest
+    const execute = vi
       .fn()
       .mockResolvedValue({ packages, warnings: [], cardsHeldBack });
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({ execute }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
     return execute;
   }
 
   function responseWithRedirect() {
     const built = buildResponse();
     let redirectedTo: string | null = null;
-    (built.res.redirect as unknown as jest.Mock).mockImplementation(
+    (built.res.redirect as unknown as Mock).mockImplementation(
       (url: string) => {
         redirectedTo = url;
         return built.res;
@@ -4913,7 +4880,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     res: express.Response,
     name: string
   ): string | undefined {
-    const call = (res.set as jest.Mock).mock.calls.find(
+    const call = (res.set as Mock).mock.calls.find(
       ([headerName]) => headerName === name
     );
     return call?.[1] as string | undefined;
@@ -5263,7 +5230,7 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
 
   function usersRepoAt(cardsUsed: number): UsersRepository {
     return buildUsersRepo({
-      getCardUsage: jest.fn().mockResolvedValue({
+      getCardUsage: vi.fn().mockResolvedValue({
         cards_used: cardsUsed,
         month_started_at: new Date(),
       }),
@@ -5287,20 +5254,21 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
     packages: Array<{ name: string; cardCount: number }>,
     cardsHeldBack?: number
   ) {
-    const execute = jest
+    const execute = vi
       .fn()
       .mockResolvedValue({ packages, warnings: [], cardsHeldBack });
-    MockGeneratePackagesUseCase.mockImplementation(
-      () =>
-        ({ execute }) as unknown as InstanceType<typeof GeneratePackagesUseCase>
-    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
     return execute;
   }
 
   function responseWithRedirect() {
     const built = buildResponse();
     let redirectedTo: string | null = null;
-    (built.res.redirect as unknown as jest.Mock).mockImplementation(
+    (built.res.redirect as unknown as Mock).mockImplementation(
       (url: string) => {
         redirectedTo = url;
         return built.res;
@@ -5313,7 +5281,7 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
     res: express.Response,
     name: string
   ): string | undefined {
-    const call = (res.set as jest.Mock).mock.calls.find(
+    const call = (res.set as Mock).mock.calls.find(
       ([headerName]) => headerName === name
     );
     return call?.[1] as string | undefined;
