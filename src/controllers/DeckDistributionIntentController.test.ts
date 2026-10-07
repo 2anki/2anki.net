@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 
 import DeckDistributionIntentController from './DeckDistributionIntentController';
@@ -9,8 +10,8 @@ function buildMocks(owner: number | null = 42) {
   const req = { body: {} } as Request;
   const res = {
     locals: { owner: owner ?? undefined },
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
   } as unknown as Response;
   return { repo, controller, req, res };
 }

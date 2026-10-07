@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { requestIdMiddleware } from './requestIdMiddleware';
 
 function run(headers: Record<string, string | string[]> = {}) {
   const req = { headers } as unknown as Request;
-  const setHeader = jest.fn();
+  const setHeader = vi.fn();
   const res = { locals: {}, setHeader } as unknown as Response;
-  const next = jest.fn() as NextFunction;
+  const next = vi.fn() as NextFunction;
   requestIdMiddleware(req, res, next);
   return { res, setHeader, next };
 }

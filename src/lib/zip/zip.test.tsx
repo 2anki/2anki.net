@@ -1,3 +1,4 @@
+import { vi, type MockedFunction } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -14,9 +15,9 @@ import { MAX_OLD_GENERATION_SIZE_MB } from '../conversionMemoryLimits';
 import CardOption from '../parser/Settings';
 import { processAndPrepareArchiveData } from './fallback/processAndPrepareArchiveData';
 
-jest.mock('./fallback/processAndPrepareArchiveData');
+vi.mock('./fallback/processAndPrepareArchiveData');
 
-const mockedFallback = processAndPrepareArchiveData as jest.MockedFunction<
+const mockedFallback = processAndPrepareArchiveData as MockedFunction<
   typeof processAndPrepareArchiveData
 >;
 

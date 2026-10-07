@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 import PassPricingController from './PassPricingController';
 import type {
@@ -7,15 +8,15 @@ import type {
 
 const buildResponse = () => {
   const res = {} as Response;
-  res.set = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
-  res.status = jest.fn().mockReturnValue(res);
+  res.set = vi.fn().mockReturnValue(res);
+  res.json = vi.fn().mockReturnValue(res);
+  res.status = vi.fn().mockReturnValue(res);
   return res;
 };
 
 const makeUseCase = (response: PassPricingResponse): GetPassPricingUseCase =>
   ({
-    execute: jest.fn().mockResolvedValue(response),
+    execute: vi.fn().mockResolvedValue(response),
   }) as unknown as GetPassPricingUseCase;
 
 describe('PassPricingController', () => {

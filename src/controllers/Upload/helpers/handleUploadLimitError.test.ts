@@ -1,27 +1,28 @@
+import { vi, type MockedClass, type MockedFunction } from 'vitest';
 import express from 'express';
 
-jest.mock('../../../data_layer', () => ({
-  getDatabase: jest.fn().mockReturnValue({}),
+vi.mock('../../../data_layer', () => ({
+  getDatabase: vi.fn().mockReturnValue({}),
 }));
 
-jest.mock('../../../services/EmailService/EmailService', () => ({
-  getDefaultEmailService: jest.fn().mockReturnValue({}),
+vi.mock('../../../services/EmailService/EmailService', () => ({
+  getDefaultEmailService: vi.fn().mockReturnValue({}),
 }));
 
-jest.mock('../../../data_layer/UsersRepository');
-jest.mock('../../../services/UsersService');
+vi.mock('../../../data_layer/UsersRepository');
+vi.mock('../../../services/UsersService');
 
-jest.mock('../../../lib/integrations/stripe', () => ({
-  getStripe: jest.fn().mockReturnValue({
-    customers: { retrieve: jest.fn() },
+vi.mock('../../../lib/integrations/stripe', () => ({
+  getStripe: vi.fn().mockReturnValue({
+    customers: { retrieve: vi.fn() },
   }),
-  updateStoreSubscription: jest.fn().mockResolvedValue(undefined),
+  updateStoreSubscription: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../../../services/SubscriptionService', () => ({
+vi.mock('../../../services/SubscriptionService', () => ({
   __esModule: true,
   default: {
-    findActiveStripeSubscriptions: jest.fn(),
+    findActiveStripeSubscriptions: vi.fn(),
   },
 }));
 
@@ -34,19 +35,18 @@ import {
 } from '../../../lib/integrations/stripe';
 
 const mockedFindActive =
-  SubscriptionService.findActiveStripeSubscriptions as jest.MockedFunction<
+  SubscriptionService.findActiveStripeSubscriptions as MockedFunction<
     typeof SubscriptionService.findActiveStripeSubscriptions
   >;
-const mockedUpdateStoreSubscription =
-  updateStoreSubscription as jest.MockedFunction<
-    typeof updateStoreSubscription
-  >;
+const mockedUpdateStoreSubscription = updateStoreSubscription as MockedFunction<
+  typeof updateStoreSubscription
+>;
 const mockedStripe = getStripe() as any;
 
 function mockResponse(owner?: string): express.Response {
   return {
     locals: { owner },
-    redirect: jest.fn(),
+    redirect: vi.fn(),
   } as unknown as express.Response;
 }
 
@@ -56,7 +56,7 @@ function mockRequest(): express.Request {
 
 describe('handleUploadLimitError', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('redirects unauthenticated users to /limit with file_size kind by default', async () => {
@@ -76,11 +76,8 @@ describe('handleUploadLimitError', () => {
   });
 
   it('redirects authenticated users with no Stripe subscription to /limit?kind=file_size', async () => {
-    (
-      UsersService as jest.MockedClass<typeof UsersService>
-    ).prototype.getUserById = jest
-      .fn()
-      .mockResolvedValue({ id: '1', email: 'user@example.com' });
+    (UsersService as MockedClass<typeof UsersService>).prototype.getUserById =
+      vi.fn().mockResolvedValue({ id: '1', email: 'user@example.com' });
     mockedFindActive.mockResolvedValue([]);
 
     const res = mockResponse('owner-1');
@@ -94,11 +91,8 @@ describe('handleUploadLimitError', () => {
   });
 
   it('redirects authenticated users with card_count error to /limit?kind=card_count', async () => {
-    (
-      UsersService as jest.MockedClass<typeof UsersService>
-    ).prototype.getUserById = jest
-      .fn()
-      .mockResolvedValue({ id: '1', email: 'user@example.com' });
+    (UsersService as MockedClass<typeof UsersService>).prototype.getUserById =
+      vi.fn().mockResolvedValue({ id: '1', email: 'user@example.com' });
     mockedFindActive.mockResolvedValue([]);
 
     const res = mockResponse('owner-1');
@@ -112,11 +106,8 @@ describe('handleUploadLimitError', () => {
   });
 
   it('syncs subscription and redirects to upload when active Stripe sub exists but is missing from DB', async () => {
-    (
-      UsersService as jest.MockedClass<typeof UsersService>
-    ).prototype.getUserById = jest
-      .fn()
-      .mockResolvedValue({ id: '1', email: 'user@example.com' });
+    (UsersService as MockedClass<typeof UsersService>).prototype.getUserById =
+      vi.fn().mockResolvedValue({ id: '1', email: 'user@example.com' });
     const fakeSub = {
       id: 'sub_123',
       customer: 'cus_123',
@@ -136,11 +127,8 @@ describe('handleUploadLimitError', () => {
   });
 
   it('falls back to /limit?kind=file_size when Stripe call throws', async () => {
-    (
-      UsersService as jest.MockedClass<typeof UsersService>
-    ).prototype.getUserById = jest
-      .fn()
-      .mockResolvedValue({ id: '1', email: 'user@example.com' });
+    (UsersService as MockedClass<typeof UsersService>).prototype.getUserById =
+      vi.fn().mockResolvedValue({ id: '1', email: 'user@example.com' });
     mockedFindActive.mockRejectedValue(new Error('Stripe unavailable'));
 
     const res = mockResponse('owner-1');

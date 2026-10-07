@@ -1,83 +1,94 @@
+import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
-const mockSendMessage = jest.fn();
-const mockRegenerate = jest.fn();
-const mockTagCards = jest.fn();
-const mockDeckGenerate = jest.fn();
-const mockConversationsList = jest.fn();
-const mockConversationsDeleteAll = jest.fn();
+const mockSendMessage = vi.fn();
+const mockRegenerate = vi.fn();
+const mockTagCards = vi.fn();
+const mockDeckGenerate = vi.fn();
+const mockConversationsList = vi.fn();
+const mockConversationsDeleteAll = vi.fn();
 
-jest.mock('../data_layer', () => ({
-  getDatabase: jest.fn().mockReturnValue({}),
+vi.mock('../data_layer', () => ({
+  getDatabase: vi.fn().mockReturnValue({}),
 }));
 
-jest.mock('../lib/claude/ClaudeService', () => ({
-  getAnthropicClient: jest.fn().mockReturnValue({}),
+vi.mock('../lib/claude/ClaudeService', () => ({
+  getAnthropicClient: vi.fn().mockReturnValue({}),
 }));
 
-jest.mock('../lib/storage/StorageHandler', () => ({
+vi.mock('../lib/storage/StorageHandler', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({})),
+  default: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
 
-jest.mock('../controllers/ChatController', () => ({
+vi.mock('../controllers/ChatController', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    sendMessage: (req: express.Request, res: express.Response) => {
-      mockSendMessage();
-      res.status(200).end();
-    },
-    regenerateMessage: (req: express.Request, res: express.Response) => {
-      mockRegenerate();
-      res.status(200).end();
-    },
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      sendMessage: (req: express.Request, res: express.Response) => {
+        mockSendMessage();
+        res.status(200).end();
+      },
+      regenerateMessage: (req: express.Request, res: express.Response) => {
+        mockRegenerate();
+        res.status(200).end();
+      },
+    };
+  }),
 }));
 
-jest.mock('../controllers/TagCardsController', () => ({
+vi.mock('../controllers/TagCardsController', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    tag: (req: express.Request, res: express.Response) => {
-      mockTagCards();
-      res.status(200).json({ tags: [] });
-    },
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      tag: (req: express.Request, res: express.Response) => {
+        mockTagCards();
+        res.status(200).json({ tags: [] });
+      },
+    };
+  }),
 }));
 
-jest.mock('../controllers/ChatDeckController', () => ({
+vi.mock('../controllers/ChatDeckController', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    generate: (req: express.Request, res: express.Response) => {
-      mockDeckGenerate();
-      res.status(200).end();
-    },
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      generate: (req: express.Request, res: express.Response) => {
+        mockDeckGenerate();
+        res.status(200).end();
+      },
+    };
+  }),
 }));
 
-jest.mock('../controllers/ConversationsController', () => ({
+vi.mock('../controllers/ConversationsController', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    list: (req: express.Request, res: express.Response) => {
-      mockConversationsList();
-      res.status(200).json([]);
-    },
-    deleteAll: (req: express.Request, res: express.Response) => {
-      mockConversationsDeleteAll();
-      res.status(204).end();
-    },
-    get: (req: express.Request, res: express.Response) =>
-      res.status(200).json({}),
-    rename: (req: express.Request, res: express.Response) =>
-      res.status(204).end(),
-    delete: (req: express.Request, res: express.Response) =>
-      res.status(204).end(),
-    saveDraft: (req: express.Request, res: express.Response) =>
-      res.status(204).end(),
-    saveTemplate: (req: express.Request, res: express.Response) =>
-      res.status(204).end(),
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      list: (req: express.Request, res: express.Response) => {
+        mockConversationsList();
+        res.status(200).json([]);
+      },
+      deleteAll: (req: express.Request, res: express.Response) => {
+        mockConversationsDeleteAll();
+        res.status(204).end();
+      },
+      get: (req: express.Request, res: express.Response) =>
+        res.status(200).json({}),
+      rename: (req: express.Request, res: express.Response) =>
+        res.status(204).end(),
+      delete: (req: express.Request, res: express.Response) =>
+        res.status(204).end(),
+      saveDraft: (req: express.Request, res: express.Response) =>
+        res.status(204).end(),
+      saveTemplate: (req: express.Request, res: express.Response) =>
+        res.status(204).end(),
+    };
+  }),
 }));
 
 let mockLocals: {
@@ -86,7 +97,7 @@ let mockLocals: {
   subscriber: boolean;
 } = { owner: 42, patreon: false, subscriber: false };
 
-jest.mock('./middleware/RequireAuthentication', () => {
+vi.mock('./middleware/RequireAuthentication', () => {
   const middleware = (
     _req: express.Request,
     res: express.Response,
@@ -101,7 +112,7 @@ jest.mock('./middleware/RequireAuthentication', () => {
     res.locals.subscriber = mockLocals.subscriber;
     next();
   };
-  return middleware;
+  return { __esModule: true, default: middleware };
 });
 
 import ChatRouter from './ChatRouter';
@@ -110,23 +121,27 @@ describe('ChatRouter paid gate', () => {
   let server: http.Server;
   let baseUrl: string;
 
-  beforeAll((done) => {
+  beforeAll(async () => {
     const app = express();
     app.use(express.json());
     app.use(ChatRouter());
-    server = app.listen(0, () => {
-      const { port } = server.address() as AddressInfo;
-      baseUrl = `http://127.0.0.1:${port}`;
-      done();
+    await new Promise<void>((resolve) => {
+      server = app.listen(0, () => {
+        const { port } = server.address() as AddressInfo;
+        baseUrl = `http://127.0.0.1:${port}`;
+        resolve();
+      });
     });
   });
 
-  afterAll((done) => {
-    server.close(done);
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockLocals = { owner: 42, patreon: false, subscriber: false };
   });
 

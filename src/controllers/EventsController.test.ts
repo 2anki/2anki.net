@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 import { EventsController } from './EventsController';
 import { TrackEventUseCase } from '../usecases/events/TrackEventUseCase';
@@ -8,16 +9,16 @@ import * as fs from 'fs';
 
 function makeFakeRepository(): IEventsRepository {
   return {
-    insertEvents: jest.fn(async () => undefined),
-    countByName: jest.fn(async () => 0),
-    countDistinctUsers: jest.fn(async () => 0),
-    countByNameForUser: jest.fn(async () => 0),
-    lastEventAt: jest.fn(async () => null),
-    groupPaywallShownByVariantAndSurface: jest.fn(async () => []),
-    groupPaywallClicksByVariant: jest.fn(async () => []),
-    groupUploadFunnel: jest.fn(async () => []),
-    groupUploadFunnelByOrigin: jest.fn(async () => []),
-    groupConversionFailedByReason: jest.fn(async () => ({
+    insertEvents: vi.fn(async () => undefined),
+    countByName: vi.fn(async () => 0),
+    countDistinctUsers: vi.fn(async () => 0),
+    countByNameForUser: vi.fn(async () => 0),
+    lastEventAt: vi.fn(async () => null),
+    groupPaywallShownByVariantAndSurface: vi.fn(async () => []),
+    groupPaywallClicksByVariant: vi.fn(async () => []),
+    groupUploadFunnel: vi.fn(async () => []),
+    groupUploadFunnelByOrigin: vi.fn(async () => []),
+    groupConversionFailedByReason: vi.fn(async () => ({
       paywall: 0,
       empty: 0,
       technical: 0,
@@ -33,7 +34,7 @@ function buildMocks(opts: {
   const repo = makeFakeRepository();
   const sink = new EventsSink(repo);
   const useCase = new TrackEventUseCase(sink);
-  const executeSpy = jest.spyOn(useCase, 'execute');
+  const executeSpy = vi.spyOn(useCase, 'execute');
   const controller = new EventsController(useCase);
 
   const cookies: Record<string, string> = {};
@@ -47,9 +48,9 @@ function buildMocks(opts: {
 
   const res = {
     locals: { owner: opts.userId ?? undefined },
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
-    end: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
+    end: vi.fn().mockReturnThis(),
   } as unknown as Response;
 
   return { controller, req, res, executeSpy };

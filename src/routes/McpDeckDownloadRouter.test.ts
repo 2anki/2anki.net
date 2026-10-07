@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -30,14 +31,14 @@ function makeRow(overrides: Partial<Uploads> = {}): Uploads {
 }
 
 async function buildServer(opts: {
-  findByObjectId: jest.Mock;
+  findByObjectId: Mock;
   getPresignedUrl?: DeckPresigner['getPresignedUrl'];
 }) {
   const uploads = {
     findByObjectId: opts.findByObjectId,
   } as unknown as IUploadRepository;
   const storage: DeckPresigner = {
-    getPresignedUrl: opts.getPresignedUrl ?? jest.fn(async () => PRESIGNED_URL),
+    getPresignedUrl: opts.getPresignedUrl ?? vi.fn(async () => PRESIGNED_URL),
   };
   const useCase = new ResolveMcpDeckDownloadUseCase(uploads, storage);
   const controller = new McpDeckDownloadController(useCase);
@@ -51,8 +52,8 @@ async function buildServer(opts: {
 
 describe('GET /api/mcp/decks/:objectId/download', () => {
   it('302-redirects a known deck to the presigned URL', async () => {
-    const findByObjectId = jest.fn(async () => makeRow());
-    const getPresignedUrl = jest.fn(async () => PRESIGNED_URL);
+    const findByObjectId = vi.fn(async () => makeRow());
+    const getPresignedUrl = vi.fn(async () => PRESIGNED_URL);
     const { server, url } = await buildServer({
       findByObjectId,
       getPresignedUrl,
@@ -75,7 +76,7 @@ describe('GET /api/mcp/decks/:objectId/download', () => {
   });
 
   it('returns 404 when the deck is unknown', async () => {
-    const findByObjectId = jest.fn(async () => null);
+    const findByObjectId = vi.fn(async () => null);
     const { server, url } = await buildServer({ findByObjectId });
     try {
       const res = await fetch(
@@ -89,7 +90,7 @@ describe('GET /api/mcp/decks/:objectId/download', () => {
   });
 
   it('returns 404 without touching the database for a malformed object id', async () => {
-    const findByObjectId = jest.fn(async () => makeRow());
+    const findByObjectId = vi.fn(async () => makeRow());
     const { server, url } = await buildServer({ findByObjectId });
     try {
       const res = await fetch(`${url}/api/mcp/decks/not-a-real-id/download`, {
@@ -103,10 +104,10 @@ describe('GET /api/mcp/decks/:objectId/download', () => {
   });
 
   it('returns 404 when the row has no storage key', async () => {
-    const findByObjectId = jest.fn(async () =>
+    const findByObjectId = vi.fn(async () =>
       makeRow({ key: null as unknown as string })
     );
-    const getPresignedUrl = jest.fn(async () => PRESIGNED_URL);
+    const getPresignedUrl = vi.fn(async () => PRESIGNED_URL);
     const { server, url } = await buildServer({
       findByObjectId,
       getPresignedUrl,

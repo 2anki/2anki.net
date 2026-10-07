@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import express from 'express';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -5,43 +6,55 @@ import os from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 
-const mockExecute = jest.fn();
-const mockRecord = jest.fn();
+const mockExecute = vi.fn();
+const mockRecord = vi.fn();
 
-jest.mock('../services/events/eventsSinkInstance', () => ({
+vi.mock('../services/events/eventsSinkInstance', () => ({
   getEventsSink: () => ({ record: mockRecord }),
 }));
 
-jest.mock('../data_layer', () => ({
-  getDatabase: jest.fn().mockReturnValue({}),
+vi.mock('../data_layer', () => ({
+  getDatabase: vi.fn().mockReturnValue({}),
 }));
 
-jest.mock('../lib/storage/StorageHandler', () => ({
+vi.mock('../lib/storage/StorageHandler', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({})),
+  default: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
 
-jest.mock('../data_layer/IoDraftRepository', () => ({
-  IoDraftRepository: jest.fn().mockImplementation(() => ({})),
+vi.mock('../data_layer/IoDraftRepository', () => ({
+  IoDraftRepository: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
 
-jest.mock('../data_layer/NotionRespository', () => ({
+vi.mock('../data_layer/NotionRespository', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({})),
+  default: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
 
-jest.mock('../data_layer/EventsRepository', () => ({
-  EventsRepository: jest.fn().mockImplementation(() => ({})),
+vi.mock('../data_layer/EventsRepository', () => ({
+  EventsRepository: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
 
-jest.mock('../usecases/imageOcclusion/PhotoToFlashcardsUseCase', () => ({
-  PhotoToFlashcardsUseCase: jest.fn().mockImplementation(() => ({})),
+vi.mock('../usecases/imageOcclusion/PhotoToFlashcardsUseCase', () => ({
+  PhotoToFlashcardsUseCase: vi.fn().mockImplementation(function () {
+    return {};
+  }),
 }));
 
-jest.mock('../usecases/imageOcclusion/CreateImageOcclusionDeckUseCase', () => ({
-  CreateImageOcclusionDeckUseCase: jest.fn().mockImplementation(() => ({
-    execute: mockExecute,
-  })),
+vi.mock('../usecases/imageOcclusion/CreateImageOcclusionDeckUseCase', () => ({
+  CreateImageOcclusionDeckUseCase: vi.fn().mockImplementation(function () {
+    return {
+      execute: mockExecute,
+    };
+  }),
 }));
 
 let mockLocals: {
@@ -53,7 +66,7 @@ let mockLocals: {
 // The real middleware reads the session cookie and the subscriptions table;
 // here it only has to do what it does on every other route in this router:
 // put the resolved paying state onto res.locals before the handler runs.
-jest.mock('./middleware/RequireAuthentication', () => {
+vi.mock('./middleware/RequireAuthentication', () => {
   const attach = (res: express.Response) => {
     res.locals.owner = mockLocals.owner ?? undefined;
     res.locals.patreon = mockLocals.patreon;
@@ -94,22 +107,26 @@ describe('ImageOcclusionRouter — POST /api/image-occlusion paying gate', () =>
   let apkgPath: string;
   let tmpDir: string | null = null;
 
-  beforeAll((done) => {
+  beforeAll(async () => {
     const app = express();
     app.use(ImageOcclusionRouter());
-    server = app.listen(0, () => {
-      const { port } = server.address() as AddressInfo;
-      baseUrl = `http://127.0.0.1:${port}`;
-      done();
+    await new Promise<void>((resolve) => {
+      server = app.listen(0, () => {
+        const { port } = server.address() as AddressInfo;
+        baseUrl = `http://127.0.0.1:${port}`;
+        resolve();
+      });
     });
   });
 
-  afterAll((done) => {
-    server.close(done);
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockLocals = { owner: 42, patreon: false, subscriber: false };
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'io-router-'));
     apkgPath = path.join(tmpDir, 'deck.apkg');

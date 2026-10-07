@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import DownloadController from './DownloadController';
 import { Request, Response } from 'express';
 import { Readable, Writable } from 'stream';
@@ -6,9 +7,9 @@ import os from 'os';
 import fs from 'fs';
 import { track } from '../services/events/track';
 
-jest.mock('../services/events/track', () => ({ track: jest.fn() }));
+vi.mock('../services/events/track', () => ({ track: vi.fn() }));
 
-const trackMock = track as jest.Mock;
+const trackMock = track as Mock;
 
 let spoolBase: string;
 
@@ -60,12 +61,12 @@ function mockResponse(delayMs = 0): StreamingMockResponse {
   const res = Object.assign(sink, {
     locals: { owner: 'test-owner' },
     headersSent: false,
-    setHeader: jest.fn((name: string, value: string) => {
+    setHeader: vi.fn((name: string, value: string) => {
       headers[name] = value;
     }),
-    send: jest.fn(),
-    status: jest.fn().mockReturnThis(),
-    redirect: jest.fn(),
+    send: vi.fn(),
+    status: vi.fn().mockReturnThis(),
+    redirect: vi.fn(),
     _headers: headers,
     _chunks: chunks,
     _done: done,
@@ -83,10 +84,10 @@ function fakeApkgStream() {
 function makeService(overrides: Record<string, unknown> = {}) {
   return {
     isValidKey: () => true,
-    getFileStream: jest.fn().mockImplementation(async () => fakeApkgStream()),
-    getFilename: jest.fn().mockResolvedValue(null),
+    getFileStream: vi.fn().mockImplementation(async () => fakeApkgStream()),
+    getFilename: vi.fn().mockResolvedValue(null),
     isMissingDownloadError: () => false,
-    deleteMissingFile: jest.fn(),
+    deleteMissingFile: vi.fn(),
     ...overrides,
   };
 }
@@ -131,7 +132,7 @@ describe('DownloadController.getFile', () => {
   it('uses the friendly deck name from DB when available', async () => {
     const controller = new DownloadController(
       makeService({
-        getFilename: jest.fn().mockResolvedValue('My Custom Deck'),
+        getFilename: vi.fn().mockResolvedValue('My Custom Deck'),
       }) as any
     );
     const req = {
@@ -176,7 +177,7 @@ describe('DownloadController.getFile streaming', () => {
 
   it('sets Content-Length from the spooled size even when storage reports none', async () => {
     const service = makeService({
-      getFileStream: jest.fn().mockResolvedValue({
+      getFileStream: vi.fn().mockResolvedValue({
         body: Readable.from([Buffer.from('x')]),
         contentLength: undefined,
       }),
@@ -194,7 +195,7 @@ describe('DownloadController.getFile streaming', () => {
   it('delivers every byte to a client that reads slowly', async () => {
     const source = Array.from({ length: 40 }, (_, i) => Buffer.alloc(1024, i));
     const service = makeService({
-      getFileStream: jest.fn().mockResolvedValue({
+      getFileStream: vi.fn().mockResolvedValue({
         body: Readable.from(source),
         contentLength: 40 * 1024,
       }),
@@ -213,12 +214,12 @@ describe('DownloadController.getFile streaming', () => {
   it('stops pulling from storage when the client goes away while spooling', async () => {
     const body = neverEndingStream();
     const service = makeService({
-      getFileStream: jest.fn().mockResolvedValue({ body, contentLength: 10 }),
+      getFileStream: vi.fn().mockResolvedValue({ body, contentLength: 10 }),
     });
     const controller = new DownloadController(service as never);
     const req = { params: { key: 'deck.apkg' } } as unknown as Request;
     const res = mockResponse();
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const pending = controller.getFile(req, res, {} as never);
     await settle();
@@ -237,12 +238,12 @@ describe('DownloadController.getFile streaming', () => {
   it('answers 503 when storage fails while spooling, before any byte reaches the client', async () => {
     const body = neverEndingStream();
     const service = makeService({
-      getFileStream: jest.fn().mockResolvedValue({ body, contentLength: 10 }),
+      getFileStream: vi.fn().mockResolvedValue({ body, contentLength: 10 }),
     });
     const controller = new DownloadController(service as never);
     const req = { params: { key: 'deck.apkg' } } as unknown as Request;
     const res = mockResponse();
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const pending = controller.getFile(req, res, {} as never);
     await settle();
@@ -298,7 +299,7 @@ describe('DownloadController.getFile streaming', () => {
   it('drops the spool when the client leaves while the file is being sent', async () => {
     const source = Array.from({ length: 40 }, (_, i) => Buffer.alloc(1024, i));
     const service = makeService({
-      getFileStream: jest.fn().mockResolvedValue({
+      getFileStream: vi.fn().mockResolvedValue({
         body: Readable.from(source),
         contentLength: 40 * 1024,
       }),
@@ -357,9 +358,9 @@ describe('DownloadController.getBulkDownload', () => {
 
     const res = Object.assign(sink, {
       headersSent: false,
-      setHeader: jest.fn(),
-      status: jest.fn().mockReturnThis(),
-      send: jest.fn(),
+      setHeader: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      send: vi.fn(),
     }) as unknown as Response;
 
     return { res, chunks, done };
@@ -379,7 +380,7 @@ describe('DownloadController.getBulkDownload', () => {
     controller.getBulkDownload(req, res);
     await done;
 
-    expect(res.status as jest.Mock).not.toHaveBeenCalledWith(500);
+    expect(res.status as Mock).not.toHaveBeenCalledWith(500);
     expect(res.setHeader).toHaveBeenCalledWith(
       'Content-Type',
       'application/zip'
@@ -447,9 +448,9 @@ describe('DownloadController.getLocalFile', () => {
 
   function fileResponse() {
     return {
-      sendFile: jest.fn(),
-      status: jest.fn().mockReturnThis(),
-      end: jest.fn(),
+      sendFile: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      end: vi.fn(),
     } as unknown as Response;
   }
 
@@ -511,7 +512,7 @@ describe('DownloadController.getDownloadPage view model', () => {
 
   function makeJobRepository(title: string | null = null) {
     return {
-      findJobByObjectId: jest
+      findJobByObjectId: vi
         .fn()
         .mockResolvedValue(
           title != null ? { title, created_at: new Date() } : undefined
@@ -537,7 +538,7 @@ describe('DownloadController.getDownloadPage view model', () => {
 
     await controller.getDownloadPage(req, res);
 
-    const html = (res.send as jest.Mock).mock.calls[0][0] as string;
+    const html = (res.send as Mock).mock.calls[0][0] as string;
     expect(html).toContain('Biology Notes');
     expect(html).toContain('My Source');
     expect(html).not.toContain('>-Biology-Notes-5827131637243234.apkg<');
@@ -558,7 +559,7 @@ describe('DownloadController.getDownloadPage view model', () => {
 
     await controller.getDownloadPage(req, res);
 
-    const html = (res.send as jest.Mock).mock.calls[0][0] as string;
+    const html = (res.send as Mock).mock.calls[0][0] as string;
     expect(html).toContain('1 deck ready');
     expect(html).not.toContain('From ');
   });
@@ -577,7 +578,7 @@ describe('DownloadController.getDownloadPage view model', () => {
 
     await controller.getDownloadPage(req, res);
 
-    const html = (res.send as jest.Mock).mock.calls[0][0] as string;
+    const html = (res.send as Mock).mock.calls[0][0] as string;
     expect(html).toContain('No decks found in your upload');
   });
 });
@@ -588,15 +589,15 @@ describe('DownloadController.getFile storage error handling', () => {
     overrides: Record<string, unknown> = {}
   ) {
     return makeService({
-      getFileStream: jest.fn().mockRejectedValue(error),
+      getFileStream: vi.fn().mockRejectedValue(error),
       isMissingDownloadError: (e: unknown) =>
         (e as { name?: string })?.name?.includes('NoSuchKey') === true,
-      isTransientStorageError: jest
+      isTransientStorageError: vi
         .fn()
         .mockImplementation(
           (e: unknown) => (e as { transient?: boolean })?.transient === true
         ),
-      deleteMissingFile: jest.fn(),
+      deleteMissingFile: vi.fn(),
       ...overrides,
     });
   }
@@ -646,7 +647,7 @@ describe('DownloadController.getFile storage error handling', () => {
 
     await controller.getFile(req, res, {} as never);
 
-    const sent = (res.send as jest.Mock).mock.calls
+    const sent = (res.send as Mock).mock.calls
       .map((c) => String(c[0]))
       .join('');
     expect(sent).not.toContain('2anki-prod');
@@ -663,14 +664,14 @@ describe('DownloadController.getFile storage error handling', () => {
     await controller.getFile(req, res, {} as never);
 
     expect(res.status).toHaveBeenCalledWith(404);
-    const sent = (res.send as jest.Mock).mock.calls
+    const sent = (res.send as Mock).mock.calls
       .map((c) => String(c[0]))
       .join('');
     expect(sent).not.toContain('weird internal detail');
   });
 
   it('still logs an error for a genuinely unexpected failure', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const error = new Error('weird internal detail user must not see');
     const service = makeServiceThatThrows(error);
     const controller = new DownloadController(service as never);
@@ -687,7 +688,7 @@ describe('DownloadController.getFile storage error handling', () => {
 describe('DownloadController.getFile expired link logging', () => {
   it('returns the 404 expire page when the file is absent', async () => {
     const service = makeService({
-      getFileStream: jest.fn().mockResolvedValue(null),
+      getFileStream: vi.fn().mockResolvedValue(null),
       isTransientStorageError: () => false,
     });
     const controller = new DownloadController(service as never);
@@ -703,9 +704,9 @@ describe('DownloadController.getFile expired link logging', () => {
   });
 
   it('does not log an error for an absent file (expected expired link)', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const service = makeService({
-      getFileStream: jest.fn().mockResolvedValue(null),
+      getFileStream: vi.fn().mockResolvedValue(null),
       isTransientStorageError: () => false,
     });
     const controller = new DownloadController(service as never);
@@ -732,7 +733,7 @@ describe('DownloadController.getAnonymousRecovery', () => {
   function recoveryService(overrides: Record<string, unknown> = {}) {
     return {
       ...makeService(),
-      getAnonymousRecoveryStream: jest
+      getAnonymousRecoveryStream: vi
         .fn()
         .mockImplementation(async () => fakeApkgStream()),
       isMissingDownloadError: (e: unknown) =>
@@ -740,7 +741,7 @@ describe('DownloadController.getAnonymousRecovery', () => {
       isTransientStorageError: () => false,
       ...overrides,
     } as {
-      getAnonymousRecoveryStream: jest.Mock;
+      getAnonymousRecoveryStream: Mock;
       [method: string]: unknown;
     };
   }
@@ -799,7 +800,7 @@ describe('DownloadController.getAnonymousRecovery', () => {
 
   it('answers 404 when no deck was stored', async () => {
     const service = recoveryService({
-      getAnonymousRecoveryStream: jest
+      getAnonymousRecoveryStream: vi
         .fn()
         .mockRejectedValue(
           Object.assign(new Error('gone'), { name: 'NoSuchKey' })
@@ -819,7 +820,7 @@ describe('DownloadController.getAnonymousRecovery', () => {
 
   it('answers 503 on a transient storage error', async () => {
     const service = recoveryService({
-      getAnonymousRecoveryStream: jest
+      getAnonymousRecoveryStream: vi
         .fn()
         .mockRejectedValue(
           Object.assign(new Error('busy'), { name: 'SlowDown' })

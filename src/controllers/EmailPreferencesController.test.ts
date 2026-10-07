@@ -1,19 +1,20 @@
+import { vi, type Mocked } from 'vitest';
 import { Request, Response } from 'express';
 
 import { EmailPreferencesController } from './EmailPreferencesController';
 import type { IEmailPreferencesRepository } from '../data_layer/EmailPreferencesRepository';
 
 function buildMocks(userId = 1) {
-  const prefRepo: jest.Mocked<IEmailPreferencesRepository> = {
-    isOptedOut: jest.fn().mockResolvedValue(false),
-    optOut: jest.fn().mockResolvedValue(undefined),
-    optIn: jest.fn().mockResolvedValue(undefined),
+  const prefRepo: Mocked<IEmailPreferencesRepository> = {
+    isOptedOut: vi.fn().mockResolvedValue(false),
+    optOut: vi.fn().mockResolvedValue(undefined),
+    optIn: vi.fn().mockResolvedValue(undefined),
   };
   const controller = new EmailPreferencesController(prefRepo);
   const res = {
     locals: { owner: userId },
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
   } as unknown as Response;
   return { prefRepo, controller, res };
 }

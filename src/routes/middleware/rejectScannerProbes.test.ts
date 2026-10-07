@@ -1,13 +1,14 @@
+import { vi } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import rejectScannerProbes from './rejectScannerProbes';
 
 function mockReqRes(method: string, path: string) {
   const req = { method, path } as Request;
   const res = {
-    status: jest.fn().mockReturnThis(),
-    end: jest.fn(),
+    status: vi.fn().mockReturnThis(),
+    end: vi.fn(),
   } as unknown as Response;
-  const next = jest.fn() as NextFunction;
+  const next = vi.fn() as NextFunction;
   return { req, res, next };
 }
 

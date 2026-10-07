@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 
 import { RecentSourcesController } from './RecentSourcesController';
@@ -5,13 +6,13 @@ import type { GetRecentSourcesUseCase } from '../../usecases/uploads/GetRecentSo
 
 function buildMocks(sources: unknown[]) {
   const useCase = {
-    execute: jest.fn().mockResolvedValue(sources),
+    execute: vi.fn().mockResolvedValue(sources),
   } as unknown as GetRecentSourcesUseCase;
   const controller = new RecentSourcesController(useCase);
   const res = {
     locals: { owner: 7 },
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
   } as unknown as Response;
   return { useCase, controller, res };
 }

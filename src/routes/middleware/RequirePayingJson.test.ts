@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import express from 'express';
 
 import RequirePayingJson from './RequirePayingJson';
@@ -25,7 +26,7 @@ function makeResponse(locals: Record<string, unknown>) {
 describe('RequirePayingJson', () => {
   it('returns 401 JSON when there is no signed-in owner', () => {
     const res = makeResponse({ subscriber: true });
-    const next = jest.fn();
+    const next = vi.fn();
 
     RequirePayingJson({} as express.Request, res, next);
 
@@ -36,7 +37,7 @@ describe('RequirePayingJson', () => {
 
   it('returns 402 JSON when the signed-in user is not paying', () => {
     const res = makeResponse({ owner: 42, subscriber: false, patreon: false });
-    const next = jest.fn();
+    const next = vi.fn();
 
     RequirePayingJson({} as express.Request, res, next);
 
@@ -47,7 +48,7 @@ describe('RequirePayingJson', () => {
 
   it('calls next when the signed-in user is a paying subscriber', () => {
     const res = makeResponse({ owner: 42, subscriber: true });
-    const next = jest.fn();
+    const next = vi.fn();
 
     RequirePayingJson({} as express.Request, res, next);
 
@@ -56,7 +57,7 @@ describe('RequirePayingJson', () => {
 
   it('calls next when the signed-in user is a lifetime patreon', () => {
     const res = makeResponse({ owner: 42, patreon: true });
-    const next = jest.fn();
+    const next = vi.fn();
 
     RequirePayingJson({} as express.Request, res, next);
 

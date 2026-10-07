@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 
 import { UserPreferencesController } from './UserPreferencesController';
@@ -8,9 +9,9 @@ function buildMocks(userId = 1) {
   const controller = new UserPreferencesController(repo);
   const res = {
     locals: { owner: userId },
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
-    send: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
+    send: vi.fn().mockReturnThis(),
   } as unknown as Response;
   return { repo, controller, res };
 }

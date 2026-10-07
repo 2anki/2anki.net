@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import express from 'express';
 
 import OpsController from './OpsController';
@@ -14,17 +15,17 @@ import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUse
 import { ChangeUserEmailUseCase } from '../usecases/ops/ChangeUserEmailUseCase';
 
 const buildRes = () => {
-  const json = jest.fn();
-  const status = jest.fn().mockReturnValue({ json });
+  const json = vi.fn();
+  const status = vi.fn().mockReturnValue({ json });
   return {
     json,
     status,
-    end: jest.fn(),
-    set: jest.fn(),
+    end: vi.fn(),
+    set: vi.fn(),
   } as unknown as express.Response & {
-    json: jest.Mock;
-    status: jest.Mock;
-    set: jest.Mock;
+    json: Mock;
+    status: Mock;
+    set: Mock;
   };
 };
 
@@ -32,7 +33,7 @@ describe('OpsController.getMetrics', () => {
   it('passes the query window down to the use case and returns its result', async () => {
     const fakeMetrics = { window: '24h' };
     const useCase = {
-      execute: jest.fn().mockResolvedValue(fakeMetrics),
+      execute: vi.fn().mockResolvedValue(fakeMetrics),
     } as unknown as GetOpsMetricsUseCase;
     const controller = new OpsController(useCase);
     const req = { query: { window: '24h' } } as unknown as express.Request;
@@ -40,19 +41,19 @@ describe('OpsController.getMetrics', () => {
 
     await controller.getMetrics(req, res);
 
-    expect(useCase.execute as jest.Mock).toHaveBeenCalledWith('24h');
+    expect(useCase.execute as Mock).toHaveBeenCalledWith('24h');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(fakeMetrics);
   });
 
   it('responds 500 when the use case throws', async () => {
     const useCase = {
-      execute: jest.fn().mockRejectedValue(new Error('boom')),
+      execute: vi.fn().mockRejectedValue(new Error('boom')),
     } as unknown as GetOpsMetricsUseCase;
     const controller = new OpsController(useCase);
     const req = { query: {} } as unknown as express.Request;
     const res = buildRes();
-    const errSpy = jest
+    const errSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
 
@@ -71,7 +72,7 @@ describe('OpsController.getBusinessMetrics', () => {
     const fake = { mrr_usd: 4820 };
     const opsUseCase = {} as unknown as GetOpsMetricsUseCase;
     const businessUseCase = {
-      execute: jest.fn().mockResolvedValue(fake),
+      execute: vi.fn().mockResolvedValue(fake),
     } as unknown as GetBusinessMetricsUseCase;
     const controller = new OpsController(opsUseCase, businessUseCase);
     const req = {} as unknown as express.Request;
@@ -79,7 +80,7 @@ describe('OpsController.getBusinessMetrics', () => {
 
     await controller.getBusinessMetrics(req, res);
 
-    expect(businessUseCase.execute as jest.Mock).toHaveBeenCalledTimes(1);
+    expect(businessUseCase.execute as Mock).toHaveBeenCalledTimes(1);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(fake);
   });
@@ -87,12 +88,12 @@ describe('OpsController.getBusinessMetrics', () => {
   it('responds 500 when the use case throws', async () => {
     const opsUseCase = {} as unknown as GetOpsMetricsUseCase;
     const businessUseCase = {
-      execute: jest.fn().mockRejectedValue(new Error('stripe down')),
+      execute: vi.fn().mockRejectedValue(new Error('stripe down')),
     } as unknown as GetBusinessMetricsUseCase;
     const controller = new OpsController(opsUseCase, businessUseCase);
     const req = {} as unknown as express.Request;
     const res = buildRes();
-    const errSpy = jest
+    const errSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
 
@@ -140,7 +141,7 @@ describe('OpsController.getReturnRateMetrics', () => {
     };
     const opsUseCase = {} as unknown as GetOpsMetricsUseCase;
     const returnRateUseCase = {
-      execute: jest.fn().mockResolvedValue(fakeResult),
+      execute: vi.fn().mockResolvedValue(fakeResult),
     } as unknown as GetReturnRateMetricsUseCase;
     const controller = new OpsController(
       opsUseCase,
@@ -157,7 +158,7 @@ describe('OpsController.getReturnRateMetrics', () => {
 
     await controller.getReturnRateMetrics(req, res);
 
-    expect(returnRateUseCase.execute as jest.Mock).toHaveBeenCalledTimes(1);
+    expect(returnRateUseCase.execute as Mock).toHaveBeenCalledTimes(1);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(fakeResult);
   });
@@ -165,7 +166,7 @@ describe('OpsController.getReturnRateMetrics', () => {
   it('responds 500 when the use case throws', async () => {
     const opsUseCase = {} as unknown as GetOpsMetricsUseCase;
     const returnRateUseCase = {
-      execute: jest.fn().mockRejectedValue(new Error('db down')),
+      execute: vi.fn().mockRejectedValue(new Error('db down')),
     } as unknown as GetReturnRateMetricsUseCase;
     const controller = new OpsController(
       opsUseCase,
@@ -179,7 +180,7 @@ describe('OpsController.getReturnRateMetrics', () => {
     );
     const req = {} as unknown as express.Request;
     const res = buildRes();
-    const errSpy = jest
+    const errSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
 
@@ -230,7 +231,7 @@ describe('OpsController.getLandingPageYield', () => {
       as_of: '2026-07-01T00:00:00.000Z',
     };
     const useCase = {
-      execute: jest.fn().mockResolvedValue(payload),
+      execute: vi.fn().mockResolvedValue(payload),
     } as unknown as GetLandingPageYieldUseCase;
     const controller = buildController(useCase);
     const req = { query: { window: '60d' } } as unknown as express.Request;
@@ -238,7 +239,7 @@ describe('OpsController.getLandingPageYield', () => {
 
     await controller.getLandingPageYield(req, res);
 
-    expect(useCase.execute as jest.Mock).toHaveBeenCalledWith('60d');
+    expect(useCase.execute as Mock).toHaveBeenCalledWith('60d');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(payload);
   });
@@ -258,12 +259,12 @@ describe('OpsController.getLandingPageYield', () => {
 
   it('responds 500 when the use case throws', async () => {
     const useCase = {
-      execute: jest.fn().mockRejectedValue(new Error('db down')),
+      execute: vi.fn().mockRejectedValue(new Error('db down')),
     } as unknown as GetLandingPageYieldUseCase;
     const controller = buildController(useCase);
     const req = { query: {} } as unknown as express.Request;
     const res = buildRes();
-    const errSpy = jest
+    const errSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
 
@@ -314,7 +315,7 @@ describe('OpsController.getCustomerSignals', () => {
       as_of: '2026-07-01T00:00:00.000Z',
     };
     const useCase = {
-      execute: jest.fn().mockResolvedValue(payload),
+      execute: vi.fn().mockResolvedValue(payload),
     } as unknown as GetCustomerSignalsUseCase;
     const controller = buildController(useCase);
     const req = { query: { window: '7d' } } as unknown as express.Request;
@@ -322,7 +323,7 @@ describe('OpsController.getCustomerSignals', () => {
 
     await controller.getCustomerSignals(req, res);
 
-    expect(useCase.execute as jest.Mock).toHaveBeenCalledWith('7d');
+    expect(useCase.execute as Mock).toHaveBeenCalledWith('7d');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(payload);
   });
@@ -342,12 +343,12 @@ describe('OpsController.getCustomerSignals', () => {
 
   it('responds 500 when the use case throws', async () => {
     const useCase = {
-      execute: jest.fn().mockRejectedValue(new Error('db down')),
+      execute: vi.fn().mockRejectedValue(new Error('db down')),
     } as unknown as GetCustomerSignalsUseCase;
     const controller = buildController(useCase);
     const req = { query: {} } as unknown as express.Request;
     const res = buildRes();
-    const errSpy = jest
+    const errSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
 
@@ -407,7 +408,7 @@ describe('OpsController.getPassUnlockMonitor', () => {
       ],
     };
     const useCase = {
-      execute: jest.fn().mockResolvedValue(payload),
+      execute: vi.fn().mockResolvedValue(payload),
     } as unknown as GetPassUnlockMonitorUseCase;
     const controller = buildController(useCase);
     const req = { query: { window: '30d' } } as unknown as express.Request;
@@ -415,7 +416,7 @@ describe('OpsController.getPassUnlockMonitor', () => {
 
     await controller.getPassUnlockMonitor(req, res);
 
-    expect(useCase.execute as jest.Mock).toHaveBeenCalledWith('30d');
+    expect(useCase.execute as Mock).toHaveBeenCalledWith('30d');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(payload);
   });
@@ -435,12 +436,12 @@ describe('OpsController.getPassUnlockMonitor', () => {
 
   it('responds 500 when the use case throws', async () => {
     const useCase = {
-      execute: jest.fn().mockRejectedValue(new Error('stripe down')),
+      execute: vi.fn().mockRejectedValue(new Error('stripe down')),
     } as unknown as GetPassUnlockMonitorUseCase;
     const controller = buildController(useCase);
     const req = { query: {} } as unknown as express.Request;
     const res = buildRes();
-    const errSpy = jest
+    const errSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
 
@@ -471,7 +472,7 @@ describe('OpsController.deleteInactiveUsers', () => {
 
   it('defaults to a dry run when dryRun is not specified', async () => {
     const useCase = {
-      execute: jest.fn().mockResolvedValue({ count: 5, dryRun: true }),
+      execute: vi.fn().mockResolvedValue({ count: 5, dryRun: true }),
     } as unknown as DeleteInactiveUsersUseCase;
     const controller = buildController(useCase);
     const req = { query: {} } as unknown as express.Request;
@@ -479,14 +480,14 @@ describe('OpsController.deleteInactiveUsers', () => {
 
     await controller.deleteInactiveUsers(req, res);
 
-    expect(useCase.execute as jest.Mock).toHaveBeenCalledWith(true);
+    expect(useCase.execute as Mock).toHaveBeenCalledWith(true);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ count: 5, dryRun: true });
   });
 
   it('deletes for real only when dryRun=false is passed', async () => {
     const useCase = {
-      execute: jest.fn().mockResolvedValue({ count: 3, dryRun: false }),
+      execute: vi.fn().mockResolvedValue({ count: 3, dryRun: false }),
     } as unknown as DeleteInactiveUsersUseCase;
     const controller = buildController(useCase);
     const req = { query: { dryRun: 'false' } } as unknown as express.Request;
@@ -494,7 +495,7 @@ describe('OpsController.deleteInactiveUsers', () => {
 
     await controller.deleteInactiveUsers(req, res);
 
-    expect(useCase.execute as jest.Mock).toHaveBeenCalledWith(false);
+    expect(useCase.execute as Mock).toHaveBeenCalledWith(false);
   });
 
   it('returns 500 when the use case is not configured', async () => {
@@ -552,7 +553,7 @@ describe('OpsController.getCancelFunnel', () => {
       as_of: '2026-07-01T00:00:00.000Z',
     };
     const useCase = {
-      execute: jest.fn().mockResolvedValue(payload),
+      execute: vi.fn().mockResolvedValue(payload),
     } as unknown as GetCancelFunnelUseCase;
     const controller = buildController(useCase);
     const req = { query: { window: '14d' } } as unknown as express.Request;
@@ -560,7 +561,7 @@ describe('OpsController.getCancelFunnel', () => {
 
     await controller.getCancelFunnel(req, res);
 
-    expect(useCase.execute as jest.Mock).toHaveBeenCalledWith('14d');
+    expect(useCase.execute as Mock).toHaveBeenCalledWith('14d');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(payload);
   });
@@ -580,12 +581,12 @@ describe('OpsController.getCancelFunnel', () => {
 
   it('responds 500 when the use case throws', async () => {
     const useCase = {
-      execute: jest.fn().mockRejectedValue(new Error('db down')),
+      execute: vi.fn().mockRejectedValue(new Error('db down')),
     } as unknown as GetCancelFunnelUseCase;
     const controller = buildController(useCase);
     const req = { query: {} } as unknown as express.Request;
     const res = buildRes();
-    const errSpy = jest
+    const errSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
 
@@ -597,7 +598,7 @@ describe('OpsController.getCancelFunnel', () => {
 });
 
 describe('OpsController.grantUnclaimedPass', () => {
-  const buildController = (execute: jest.Mock) =>
+  const buildController = (execute: Mock) =>
     new OpsController(
       {} as unknown as GetOpsMetricsUseCase,
       undefined,
@@ -628,7 +629,7 @@ describe('OpsController.grantUnclaimedPass', () => {
 
   it('returns 200 with the grant details on success', async () => {
     const expiresAt = new Date('2026-08-21T12:00:00Z');
-    const execute = jest.fn().mockResolvedValue({
+    const execute = vi.fn().mockResolvedValue({
       success: true,
       userId: 42,
       kind: '24h',
@@ -656,7 +657,7 @@ describe('OpsController.grantUnclaimedPass', () => {
   });
 
   it('returns 404 when no pass matches the id', async () => {
-    const execute = jest
+    const execute = vi
       .fn()
       .mockResolvedValue({ success: false, reason: 'pass_not_found' });
     const controller = buildController(execute);
@@ -671,7 +672,7 @@ describe('OpsController.grantUnclaimedPass', () => {
   });
 
   it('returns 409 when the pass is already claimed by another account', async () => {
-    const execute = jest
+    const execute = vi
       .fn()
       .mockResolvedValue({ success: false, reason: 'already_claimed' });
     const controller = buildController(execute);
@@ -686,7 +687,7 @@ describe('OpsController.grantUnclaimedPass', () => {
   });
 
   it('returns 400 without calling the use case on a missing pass id', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = buildController(execute);
     const req = {
       body: { email: 'buyer@example.com' },
@@ -744,7 +745,7 @@ describe('OpsController.setBlockIdIdentity', () => {
     );
 
   it('stores the override and returns the account id', async () => {
-    const execute = jest
+    const execute = vi
       .fn()
       .mockResolvedValue({ success: true, userId: 21, blockIdIdentity: true });
     const controller = buildController({
@@ -769,7 +770,7 @@ describe('OpsController.setBlockIdIdentity', () => {
   });
 
   it('returns 404 when no account matches the email', async () => {
-    const execute = jest
+    const execute = vi
       .fn()
       .mockResolvedValue({ success: false, reason: 'user_not_found' });
     const controller = buildController({
@@ -793,7 +794,7 @@ describe('OpsController.setBlockIdIdentity', () => {
     [{ email: 'learner@example.com', enabled: 'true' }],
     [{ enabled: true }],
   ])('returns 400 without calling the use case for body %o', async (body) => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = buildController({
       execute,
     } as unknown as SetBlockIdIdentityUseCase);
@@ -852,7 +853,7 @@ describe('OpsController.changeUserEmail', () => {
     );
 
   it('returns 200 with the account id on success', async () => {
-    const execute = jest.fn().mockResolvedValue({ success: true, userId: 42 });
+    const execute = vi.fn().mockResolvedValue({ success: true, userId: 42 });
     const controller = buildController({
       execute,
     } as unknown as ChangeUserEmailUseCase);
@@ -872,7 +873,7 @@ describe('OpsController.changeUserEmail', () => {
   });
 
   it('returns 404 when no account matches the current email', async () => {
-    const execute = jest
+    const execute = vi
       .fn()
       .mockResolvedValue({ success: false, reason: 'user_not_found' });
     const controller = buildController({
@@ -889,7 +890,7 @@ describe('OpsController.changeUserEmail', () => {
   });
 
   it('returns 409 when the new email already belongs to another account', async () => {
-    const execute = jest
+    const execute = vi
       .fn()
       .mockResolvedValue({ success: false, reason: 'new_email_taken' });
     const controller = buildController({
@@ -906,7 +907,7 @@ describe('OpsController.changeUserEmail', () => {
   });
 
   it('returns 409 when the new email matches the current one', async () => {
-    const execute = jest
+    const execute = vi
       .fn()
       .mockResolvedValue({ success: false, reason: 'same_email' });
     const controller = buildController({
@@ -927,7 +928,7 @@ describe('OpsController.changeUserEmail', () => {
     [{ currentEmail: 'old@example.com', newEmail: 'not-an-email' }],
     [{ newEmail: 'new@example.com' }],
   ])('returns 400 without calling the use case for body %o', async (body) => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = buildController({
       execute,
     } as unknown as ChangeUserEmailUseCase);

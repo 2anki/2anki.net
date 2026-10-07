@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 import ConversationsController from './ConversationsController';
 import {
@@ -10,9 +11,9 @@ import { DeleteAllConversationsUseCase } from '../usecases/chat/DeleteAllConvers
 
 function buildRes(owner = 42): Response {
   return {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
-    end: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
+    end: vi.fn().mockReturnThis(),
     locals: { owner },
   } as unknown as Response;
 }

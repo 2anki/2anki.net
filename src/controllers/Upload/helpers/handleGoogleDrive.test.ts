@@ -1,48 +1,51 @@
+import { vi, type Mocked } from 'vitest';
 import type express from 'express';
 
-jest.mock('../../../services/observability/instrumentedAxios');
+vi.mock('../../../services/observability/instrumentedAxios');
 
-jest.mock('../../../data_layer', () => ({
-  getDatabase: jest.fn().mockReturnValue({}),
+vi.mock('../../../data_layer', () => ({
+  getDatabase: vi.fn().mockReturnValue({}),
 }));
 
-jest.mock('../../../data_layer/GoogleDriveRepository', () => ({
-  GoogleDriveRepository: jest.fn().mockImplementation(() => ({
-    saveFiles: jest.fn().mockResolvedValue(undefined),
-  })),
-}));
-
-jest.mock('../../../lib/User/getOwner', () => ({
-  getOwner: jest.fn().mockReturnValue(null),
-}));
-
-jest.mock('../../../lib/isPaying', () => ({
-  isPaying: jest.fn().mockReturnValue(false),
-}));
-
-jest.mock('../../../lib/integrations/stripe', () => ({
-  getStripe: jest.fn().mockReturnValue({
-    customers: { retrieve: jest.fn() },
+vi.mock('../../../data_layer/GoogleDriveRepository', () => ({
+  GoogleDriveRepository: vi.fn().mockImplementation(function () {
+    return {
+      saveFiles: vi.fn().mockResolvedValue(undefined),
+    };
   }),
-  updateStoreSubscription: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../../../services/SubscriptionService', () => ({
+vi.mock('../../../lib/User/getOwner', () => ({
+  getOwner: vi.fn().mockReturnValue(null),
+}));
+
+vi.mock('../../../lib/isPaying', () => ({
+  isPaying: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('../../../lib/integrations/stripe', () => ({
+  getStripe: vi.fn().mockReturnValue({
+    customers: { retrieve: vi.fn() },
+  }),
+  updateStoreSubscription: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../../services/SubscriptionService', () => ({
   __esModule: true,
-  default: { findActiveStripeSubscriptions: jest.fn() },
+  default: { findActiveStripeSubscriptions: vi.fn() },
 }));
 
-jest.mock('../../../services/EmailService/EmailService', () => ({
-  getDefaultEmailService: jest.fn().mockReturnValue({}),
+vi.mock('../../../services/EmailService/EmailService', () => ({
+  getDefaultEmailService: vi.fn().mockReturnValue({}),
 }));
 
-jest.mock('../../../data_layer/UsersRepository');
-jest.mock('../../../services/UsersService');
+vi.mock('../../../data_layer/UsersRepository');
+vi.mock('../../../services/UsersService');
 
 import instrumentedAxios from '../../../services/observability/instrumentedAxios';
 import { handleGoogleDrive } from './handleGoogleDrive';
 
-const mockedAxios = instrumentedAxios as jest.Mocked<typeof instrumentedAxios>;
+const mockedAxios = instrumentedAxios as Mocked<typeof instrumentedAxios>;
 
 function makeReq(
   files: object[],
@@ -120,7 +123,7 @@ const baseSlidesFile = {
 
 describe('handleGoogleDrive — native Google Apps mime types', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockedAxios.get.mockResolvedValue({
       data: Buffer.from('fake content'),
     } as never);
@@ -129,7 +132,7 @@ describe('handleGoogleDrive — native Google Apps mime types', () => {
   it('uses alt=media download URL for binary files (PDF)', async () => {
     const req = makeReq([basePdfFile]);
     const res = makeRes();
-    const handleUpload = jest.fn();
+    const handleUpload = vi.fn();
     await handleGoogleDrive(
       req,
       res as unknown as express.Response,
@@ -149,7 +152,7 @@ describe('handleGoogleDrive — native Google Apps mime types', () => {
   it('uses export URL for Google Docs and sets .docx extension', async () => {
     const req = makeReq([baseDocFile]);
     const res = makeRes();
-    const handleUpload = jest.fn();
+    const handleUpload = vi.fn();
     await handleGoogleDrive(
       req,
       res as unknown as express.Response,
@@ -170,7 +173,7 @@ describe('handleGoogleDrive — native Google Apps mime types', () => {
   it('uses export URL for Google Sheets and sets .csv extension', async () => {
     const req = makeReq([baseSheetFile]);
     const res = makeRes();
-    const handleUpload = jest.fn();
+    const handleUpload = vi.fn();
     await handleGoogleDrive(
       req,
       res as unknown as express.Response,
@@ -189,7 +192,7 @@ describe('handleGoogleDrive — native Google Apps mime types', () => {
   it('uses export URL for Google Slides and sets .pptx extension', async () => {
     const req = makeReq([baseSlidesFile]);
     const res = makeRes();
-    const handleUpload = jest.fn();
+    const handleUpload = vi.fn();
     await handleGoogleDrive(
       req,
       res as unknown as express.Response,
@@ -211,7 +214,7 @@ describe('handleGoogleDrive — native Google Apps mime types', () => {
     const zeroSizeDoc = { ...baseDocFile, sizeBytes: 0 };
     const req = makeReq([zeroSizeDoc]);
     const res = makeRes();
-    const handleUpload = jest.fn();
+    const handleUpload = vi.fn();
     mockedAxios.get.mockResolvedValue({
       data: Buffer.from('<html><body><h1>hello</h1></body></html>'),
     } as never);
@@ -233,7 +236,7 @@ describe('handleGoogleDrive — native Google Apps mime types', () => {
   it('requests arraybuffer responseType so bodies are not coerced to strings', async () => {
     const req = makeReq([baseDocFile]);
     const res = makeRes();
-    const handleUpload = jest.fn();
+    const handleUpload = vi.fn();
     await handleGoogleDrive(
       req,
       res as unknown as express.Response,
@@ -250,7 +253,7 @@ describe('handleGoogleDrive — native Google Apps mime types', () => {
     const req = makeReq([basePdfFile], undefined);
     (req.body as Record<string, unknown>).googleDriveAuth = undefined;
     const res = makeRes();
-    const handleUpload = jest.fn();
+    const handleUpload = vi.fn();
     await handleGoogleDrive(
       req,
       res as unknown as express.Response,

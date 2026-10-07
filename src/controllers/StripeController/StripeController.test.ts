@@ -1,14 +1,16 @@
+import { vi, type Mock, type MockedFunction } from 'vitest';
 import express from 'express';
 import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
 
 import { StripeController } from './StripeController';
 
-jest.mock('./extractTokenFromCookies', () => ({
-  extractTokenFromCookies: jest.fn(),
+vi.mock('./extractTokenFromCookies', () => ({
+  extractTokenFromCookies: vi.fn(),
 }));
 
-jest.mock('../../services/SubscriptionService', () => ({
-  getUserActiveSubscriptions: jest.fn(),
+vi.mock('../../services/SubscriptionService', () => ({
+  __esModule: true,
+  default: { getUserActiveSubscriptions: vi.fn() },
 }));
 
 import { extractTokenFromCookies } from './extractTokenFromCookies';
@@ -21,11 +23,11 @@ import type Subscriptions from '../../data_layer/public/Subscriptions';
 import type { SubscriptionsId } from '../../data_layer/public/Subscriptions';
 import type { UsersId } from '../../data_layer/public/Users';
 
-const mockedExtractToken = extractTokenFromCookies as jest.MockedFunction<
+const mockedExtractToken = extractTokenFromCookies as MockedFunction<
   typeof extractTokenFromCookies
 >;
 const mockedGetActiveSubscriptions =
-  SubscriptionService.getUserActiveSubscriptions as jest.MockedFunction<
+  SubscriptionService.getUserActiveSubscriptions as MockedFunction<
     typeof SubscriptionService.getUserActiveSubscriptions
   >;
 
@@ -105,36 +107,36 @@ function mockRequest(
   cookies?: string
 ): express.Request {
   return {
-    get: jest.fn().mockReturnValue(cookies || 'token=abc'),
+    get: vi.fn().mockReturnValue(cookies || 'token=abc'),
     query,
   } as unknown as express.Request;
 }
 
 function mockResponse(): express.Response {
   return {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
-    send: jest.fn().mockReturnThis(),
-    set: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
+    send: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
   } as unknown as express.Response;
 }
 
 interface ControllerHarness {
   controller: StripeController;
-  authService: { getUserFrom: jest.Mock };
-  persistStripeSessionUseCase: { execute: jest.Mock };
-  userPassRepository: { findActive: jest.Mock };
+  authService: { getUserFrom: Mock };
+  persistStripeSessionUseCase: { execute: Mock };
+  userPassRepository: { findActive: Mock };
 }
 
 function buildController(): ControllerHarness {
   const authService = {
-    getUserFrom: jest.fn(),
+    getUserFrom: vi.fn(),
   };
   const persistStripeSessionUseCase = {
-    execute: jest.fn(),
+    execute: vi.fn(),
   };
   const userPassRepository = {
-    findActive: jest.fn().mockResolvedValue(null),
+    findActive: vi.fn().mockResolvedValue(null),
   };
   const controller = new StripeController(
     authService as unknown as AuthenticationService,
@@ -151,7 +153,7 @@ function buildController(): ControllerHarness {
 
 describe('StripeController', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('checkSubscriptionStatus', () => {

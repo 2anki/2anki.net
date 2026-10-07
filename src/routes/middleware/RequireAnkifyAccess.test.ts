@@ -1,16 +1,17 @@
+import { vi, type Mock } from 'vitest';
 import express from 'express';
 
 import { makeRequireAnkifyAccess } from './RequireAnkifyAccess';
 import AuthenticationService from '../../services/AuthenticationService';
 import SubscriptionService from '../../services/SubscriptionService';
 
-jest.mock('../../lib/integrations/stripe', () => ({
-  getStripe: jest.fn(),
-  getCustomerId: jest.fn(),
-  updateStoreSubscription: jest.fn(),
+vi.mock('../../lib/integrations/stripe', () => ({
+  getStripe: vi.fn(),
+  getCustomerId: vi.fn(),
+  updateStoreSubscription: vi.fn(),
 }));
 
-jest.mock('../../services/SubscriptionService');
+vi.mock('../../services/SubscriptionService');
 
 const AUTO_SYNC_PRODUCT_ID = 'prod_test_auto_sync';
 
@@ -23,8 +24,8 @@ interface FakeResponse {
   statusCode: number;
   body: unknown;
   locals: Record<string, unknown>;
-  status: jest.Mock;
-  json: jest.Mock;
+  status: Mock;
+  json: Mock;
 }
 
 const makeResponse = (): FakeResponse => {
@@ -34,12 +35,12 @@ const makeResponse = (): FakeResponse => {
     locals: {},
   } as FakeResponse;
 
-  state.status = jest.fn((code: number) => {
+  state.status = vi.fn((code: number) => {
     state.statusCode = code;
     return state;
   });
 
-  state.json = jest.fn((body: unknown) => {
+  state.json = vi.fn((body: unknown) => {
     state.body = body;
     return state;
   });
@@ -51,16 +52,16 @@ const makeAuthService = (
   user: { id: number; email: string; patreon: boolean | null } | null
 ): AuthenticationService =>
   ({
-    getUserFrom: jest.fn(async () =>
+    getUserFrom: vi.fn(async () =>
       user == null ? null : { ...user, owner: user.id }
     ),
   }) as unknown as AuthenticationService;
 
 const mockGetUserActiveSubscriptions =
-  SubscriptionService.getUserActiveSubscriptions as jest.Mock;
+  SubscriptionService.getUserActiveSubscriptions as Mock;
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  vi.resetAllMocks();
   process.env.AUTO_SYNC_PRODUCT_ID = AUTO_SYNC_PRODUCT_ID;
 });
 
@@ -73,7 +74,7 @@ describe('RequireAnkifyAccess', () => {
     mockGetUserActiveSubscriptions.mockResolvedValue([]);
     const middleware = makeRequireAnkifyAccess(makeAuthService(null));
     const res = makeResponse();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await middleware(
       makeRequest(undefined),
@@ -95,7 +96,7 @@ describe('RequireAnkifyAccess', () => {
       })
     );
     const res = makeResponse();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await middleware(
       makeRequest('cookie-token'),
@@ -117,7 +118,7 @@ describe('RequireAnkifyAccess', () => {
       })
     );
     const res = makeResponse();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await middleware(
       makeRequest('cookie-token'),
@@ -139,7 +140,7 @@ describe('RequireAnkifyAccess', () => {
       })
     );
     const res = makeResponse();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await middleware(
       makeRequest('cookie-token'),
@@ -163,7 +164,7 @@ describe('RequireAnkifyAccess', () => {
       })
     );
     const res = makeResponse();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await middleware(
       makeRequest('cookie-token'),
@@ -187,7 +188,7 @@ describe('RequireAnkifyAccess', () => {
       })
     );
     const res = makeResponse();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await middleware(
       makeRequest('cookie-token'),

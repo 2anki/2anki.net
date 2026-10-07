@@ -1,24 +1,25 @@
+import { vi, type Mock, type MockedFunction } from 'vitest';
 import { Request, Response } from 'express';
 
 import TemplatesController from './TemplatesController';
 import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 
-jest.mock('../lib/templates/exportNoteTypeToApkg', () => ({
-  exportNoteTypeToApkg: jest.fn(),
+vi.mock('../lib/templates/exportNoteTypeToApkg', () => ({
+  exportNoteTypeToApkg: vi.fn(),
 }));
 
 import { exportNoteTypeToApkg } from '../lib/templates/exportNoteTypeToApkg';
 
-const mockedExport = exportNoteTypeToApkg as jest.MockedFunction<
+const mockedExport = exportNoteTypeToApkg as MockedFunction<
   typeof exportNoteTypeToApkg
 >;
 
 function buildRes(): Response {
   return {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
-    setHeader: jest.fn().mockReturnThis(),
-    send: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
+    setHeader: vi.fn().mockReturnThis(),
+    send: vi.fn().mockReturnThis(),
     locals: { owner: 42 },
   } as unknown as Response;
 }
@@ -29,15 +30,15 @@ function buildReq(body: unknown): Request {
 
 function buildService(
   overrides: Partial<{
-    create: jest.Mock;
-    delete: jest.Mock;
-    findByOwner: jest.Mock;
+    create: Mock;
+    delete: Mock;
+    findByOwner: Mock;
   }> = {}
 ) {
   return {
-    create: overrides.create ?? jest.fn().mockResolvedValue(undefined),
-    delete: overrides.delete ?? jest.fn().mockResolvedValue(undefined),
-    findByOwner: overrides.findByOwner ?? jest.fn().mockResolvedValue(null),
+    create: overrides.create ?? vi.fn().mockResolvedValue(undefined),
+    delete: overrides.delete ?? vi.fn().mockResolvedValue(undefined),
+    findByOwner: overrides.findByOwner ?? vi.fn().mockResolvedValue(null),
   };
 }
 
@@ -60,8 +61,8 @@ describe('TemplatesController.aiGenerate', () => {
 
   it('runs the AI use case with the prompt and owner', async () => {
     const aiUseCase = {
-      generate: jest.fn().mockResolvedValue({ starter: {}, reply: '' }),
-      modify: jest.fn(),
+      generate: vi.fn().mockResolvedValue({ starter: {}, reply: '' }),
+      modify: vi.fn(),
     };
     const controller = new TemplatesController(
       buildService() as never,
@@ -75,8 +76,8 @@ describe('TemplatesController.aiGenerate', () => {
 
   it('returns 500 on AI failure', async () => {
     const aiUseCase = {
-      generate: jest.fn().mockRejectedValue(new Error('boom')),
-      modify: jest.fn(),
+      generate: vi.fn().mockRejectedValue(new Error('boom')),
+      modify: vi.fn(),
     };
     const controller = new TemplatesController(
       buildService() as never,
@@ -89,8 +90,8 @@ describe('TemplatesController.aiGenerate', () => {
 
   it('rethrows the coded credit error for the ErrorHandler to map (402)', async () => {
     const aiUseCase = {
-      generate: jest.fn().mockRejectedValue(new AiCreditsExhaustedError()),
-      modify: jest.fn(),
+      generate: vi.fn().mockRejectedValue(new AiCreditsExhaustedError()),
+      modify: vi.fn(),
     };
     const controller = new TemplatesController(
       buildService() as never,
@@ -109,8 +110,8 @@ describe('TemplatesController.aiModify', () => {
 
   it('runs the AI use case with the starter, instruction, and owner', async () => {
     const aiUseCase = {
-      generate: jest.fn(),
-      modify: jest.fn().mockResolvedValue({ starter: {}, reply: '' }),
+      generate: vi.fn(),
+      modify: vi.fn().mockResolvedValue({ starter: {}, reply: '' }),
     };
     const controller = new TemplatesController(
       buildService() as never,
@@ -129,7 +130,7 @@ describe('TemplatesController.aiModify', () => {
 describe('TemplatesController.getUserData', () => {
   it('returns empty payload when user has no saved templates', async () => {
     const service = buildService({
-      findByOwner: jest.fn().mockResolvedValue(null),
+      findByOwner: vi.fn().mockResolvedValue(null),
     });
     const controller = new TemplatesController(service as never);
     const res = buildRes();
@@ -145,7 +146,7 @@ describe('TemplatesController.getUserData', () => {
       hiddenIds: ['cloze-modern'],
     };
     const service = buildService({
-      findByOwner: jest.fn().mockResolvedValue(payload),
+      findByOwner: vi.fn().mockResolvedValue(payload),
     });
     const controller = new TemplatesController(service as never);
     const res = buildRes();
@@ -157,7 +158,7 @@ describe('TemplatesController.getUserData', () => {
 
   it('returns 500 when the service throws', async () => {
     const service = buildService({
-      findByOwner: jest.fn().mockRejectedValue(new Error('db down')),
+      findByOwner: vi.fn().mockRejectedValue(new Error('db down')),
     });
     const controller = new TemplatesController(service as never);
     const res = buildRes();
@@ -180,7 +181,7 @@ describe('TemplatesController.saveUserData', () => {
   };
 
   it('persists templates and hiddenIds arrays', async () => {
-    const create = jest.fn().mockResolvedValue(undefined);
+    const create = vi.fn().mockResolvedValue(undefined);
     const controller = new TemplatesController(
       buildService({ create }) as never
     );
@@ -199,7 +200,7 @@ describe('TemplatesController.saveUserData', () => {
   });
 
   it('rejects a save when a template references a missing field', async () => {
-    const create = jest.fn().mockResolvedValue(undefined);
+    const create = vi.fn().mockResolvedValue(undefined);
     const controller = new TemplatesController(
       buildService({ create }) as never
     );
@@ -236,7 +237,7 @@ describe('TemplatesController.saveUserData', () => {
   });
 
   it('accepts entries without a noteType (skips validation)', async () => {
-    const create = jest.fn().mockResolvedValue(undefined);
+    const create = vi.fn().mockResolvedValue(undefined);
     const controller = new TemplatesController(
       buildService({ create }) as never
     );
@@ -252,7 +253,7 @@ describe('TemplatesController.saveUserData', () => {
   });
 
   it('coerces missing arrays to empty arrays', async () => {
-    const create = jest.fn().mockResolvedValue(undefined);
+    const create = vi.fn().mockResolvedValue(undefined);
     const controller = new TemplatesController(
       buildService({ create }) as never
     );
@@ -264,7 +265,7 @@ describe('TemplatesController.saveUserData', () => {
   });
 
   it('returns 400 when the service throws', async () => {
-    const create = jest.fn().mockRejectedValue(new Error('boom'));
+    const create = vi.fn().mockRejectedValue(new Error('boom'));
     const controller = new TemplatesController(
       buildService({ create }) as never
     );
@@ -287,7 +288,7 @@ describe('TemplatesController.listDefaultTemplates', () => {
     controller.listDefaultTemplates(buildReq({}), res);
 
     expect(res.json).toHaveBeenCalledTimes(1);
-    const payload = (res.json as jest.Mock).mock.calls[0][0];
+    const payload = (res.json as Mock).mock.calls[0][0];
     expect(Array.isArray(payload)).toBe(true);
     expect(payload.length).toBeGreaterThan(0);
     expect(payload[0]).toMatchObject({
@@ -309,7 +310,7 @@ describe('TemplatesController.listOfficialTemplates', () => {
     controller.listOfficialTemplates(buildReq({}), res);
 
     expect(res.json).toHaveBeenCalledTimes(1);
-    const payload = (res.json as jest.Mock).mock.calls[0][0];
+    const payload = (res.json as Mock).mock.calls[0][0];
     expect(Array.isArray(payload)).toBe(true);
     expect(payload.map((p: { id: string }) => p.id)).toContain(
       'official-n2a-basic'
@@ -405,7 +406,7 @@ describe('TemplatesController.exportTemplate', () => {
       res
     );
 
-    const dispositionCalls = (res.setHeader as jest.Mock).mock.calls.filter(
+    const dispositionCalls = (res.setHeader as Mock).mock.calls.filter(
       ([k]) => k === 'Content-Disposition'
     );
     expect(dispositionCalls).toHaveLength(1);

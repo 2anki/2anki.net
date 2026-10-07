@@ -1,24 +1,25 @@
+import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
-const mockStripeCreate = jest.fn();
+const mockStripeCreate = vi.fn();
 
-jest.mock('../lib/integrations/stripe', () => ({
-  getStripe: jest.fn().mockReturnValue({
+vi.mock('../lib/integrations/stripe', () => ({
+  getStripe: vi.fn().mockReturnValue({
     checkout: {
       sessions: { create: mockStripeCreate },
     },
     customers: {
-      list: jest.fn().mockResolvedValue({ data: [] }),
-      search: jest.fn().mockResolvedValue({ data: [] }),
-      create: jest.fn().mockResolvedValue({ id: 'cus_router_created' }),
-      del: jest.fn().mockResolvedValue({ deleted: true }),
+      list: vi.fn().mockResolvedValue({ data: [] }),
+      search: vi.fn().mockResolvedValue({ data: [] }),
+      create: vi.fn().mockResolvedValue({ id: 'cus_router_created' }),
+      del: vi.fn().mockResolvedValue({ deleted: true }),
     },
   }),
 }));
 
-jest.mock('./middleware/RequireAuthentication', () => {
+vi.mock('./middleware/RequireAuthentication', () => {
   const middleware = (
     _req: express.Request,
     res: express.Response,
@@ -28,7 +29,7 @@ jest.mock('./middleware/RequireAuthentication', () => {
     res.locals.email = 'test@example.com';
     next();
   };
-  return middleware;
+  return { __esModule: true, default: middleware };
 });
 
 let mockOptionalOwner: number | undefined;
@@ -44,9 +45,9 @@ let mockHeldPass: {
   stripe_payment_intent_id: string;
 } | null = null;
 
-jest.mock('../data_layer', () => ({ getDatabase: () => ({}) }));
+vi.mock('../data_layer', () => ({ getDatabase: () => ({}) }));
 
-jest.mock('../data_layer/UsersRepository', () => ({
+vi.mock('../data_layer/UsersRepository', () => ({
   __esModule: true,
   default: class {
     async getById() {
@@ -61,7 +62,7 @@ jest.mock('../data_layer/UsersRepository', () => ({
   },
 }));
 
-jest.mock('../data_layer/UserPassRepository', () => ({
+vi.mock('../data_layer/UserPassRepository', () => ({
   __esModule: true,
   default: class {
     async findActive() {
@@ -70,7 +71,7 @@ jest.mock('../data_layer/UserPassRepository', () => ({
   },
 }));
 
-jest.mock('../services/AuthenticationService', () => ({
+vi.mock('../services/AuthenticationService', () => ({
   __esModule: true,
   default: class {
     async getIsSubscriber() {
@@ -79,7 +80,7 @@ jest.mock('../services/AuthenticationService', () => ({
   },
 }));
 
-jest.mock('./middleware/optionalAuthMiddleware', () => ({
+vi.mock('./middleware/optionalAuthMiddleware', () => ({
   optionalAuthMiddleware: (
     _req: express.Request,
     res: express.Response,
@@ -107,8 +108,8 @@ describe('CheckoutRouter — pass routes', () => {
   let url: string;
 
   beforeAll(async () => {
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     // The router captures this at construction, unlike the pass price ids,
     // which resolve per request.
     process.env.UNLIMITED_MONTHLY_PRICE_ID = 'price_unlimited_test';

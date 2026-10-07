@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Knex } from 'knex';
@@ -8,19 +9,21 @@ import { scheduleImportJobReaper } from '../usecases/apkg/scheduleImportJobReape
 import { scheduleAnkifyPolling } from '../lib/ankify/jobs/scheduleAnkifyPolling';
 import { AnkifyExportScheduler } from '../services/ankify/AnkifyExportScheduler';
 
-jest.mock('../lib/ankify/jobs/scheduleAnkifyReaper', () => ({
-  scheduleAnkifyReaper: jest.fn(),
+vi.mock('../lib/ankify/jobs/scheduleAnkifyReaper', () => ({
+  scheduleAnkifyReaper: vi.fn(),
 }));
-jest.mock('../usecases/apkg/scheduleImportJobReaper', () => ({
-  scheduleImportJobReaper: jest.fn(),
+vi.mock('../usecases/apkg/scheduleImportJobReaper', () => ({
+  scheduleImportJobReaper: vi.fn(),
 }));
-jest.mock('../lib/ankify/jobs/scheduleAnkifyPolling', () => ({
-  scheduleAnkifyPolling: jest.fn(),
+vi.mock('../lib/ankify/jobs/scheduleAnkifyPolling', () => ({
+  scheduleAnkifyPolling: vi.fn(),
 }));
-jest.mock('../services/ankify/AnkifyExportScheduler', () => ({
-  AnkifyExportScheduler: jest.fn().mockImplementation(() => ({
-    recoverAll: jest.fn().mockResolvedValue(0),
-  })),
+vi.mock('../services/ankify/AnkifyExportScheduler', () => ({
+  AnkifyExportScheduler: vi.fn().mockImplementation(function () {
+    return {
+      recoverAll: vi.fn().mockResolvedValue(0),
+    };
+  }),
 }));
 
 const fakeDatabase = {} as unknown as Knex;
@@ -34,7 +37,7 @@ describe('bootstrapBackgroundJobs', () => {
     } else {
       process.env.INSTANCE_ID = originalInstanceId;
     }
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('schedules the reapers and the polling worker on the main instance', async () => {

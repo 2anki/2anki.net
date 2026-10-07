@@ -8,38 +8,28 @@ import NotionAPIWrapper, { GetBlockParams } from '../NotionAPIWrapper';
 import dataMockPath from './helpers/dataMockPath';
 import { mockDataExists } from './helpers/mockDataExists';
 import getPayload from './helpers/getPayload';
-import savePayload from './helpers/savePayload';
+
+function refuseLiveCall(type: string, id: string): never {
+  throw new Error(
+    `MockNotionAPI: no recorded ${type} fixture for '${id}'; refusing to reach the live Notion API from a test. Record the fixture offline and commit it under _mock/payloads.`
+  );
+}
 
 export default class MockNotionAPI extends NotionAPIWrapper {
-  async getBlocks({
-    id,
-    all,
-  }: GetBlockParams): Promise<ListBlockChildrenResponse> {
+  async getBlocks({ id }: GetBlockParams): Promise<ListBlockChildrenResponse> {
     if (mockDataExists('ListBlockChildrenResponse', id)) {
       return getPayload(
         dataMockPath('ListBlockChildrenResponse', id)
       ) as ListBlockChildrenResponse;
     }
-    const blocks = await super.getBlocks({
-      createdAt: '',
-      lastEditedAt: '',
-      id,
-      all,
-      type: 'page',
-    });
-    savePayload(dataMockPath('ListBlockChildrenResponse', id), blocks);
-    return blocks;
+    refuseLiveCall('ListBlockChildrenResponse', id);
   }
 
   async getPage(id: string): Promise<GetPageResponse | null> {
     if (mockDataExists('GetPageResponse', id)) {
       return getPayload(dataMockPath('GetPageResponse', id)) as GetPageResponse;
     }
-    const page = await super.getPage(id);
-    if (page) {
-      savePayload(dataMockPath('GetPageResponse', id), page);
-    }
-    return page;
+    refuseLiveCall('GetPageResponse', id);
   }
 
   async getBlock(id: string): Promise<GetBlockResponse> {
@@ -48,23 +38,15 @@ export default class MockNotionAPI extends NotionAPIWrapper {
         dataMockPath('GetBlockResponse', id)
       ) as GetBlockResponse;
     }
-    const block = await super.getBlock(id);
-    savePayload(dataMockPath('GetBlockResponse', id), block);
-    return block;
+    refuseLiveCall('GetBlockResponse', id);
   }
 
-  async queryDatabase(
-    id: string,
-    all?: boolean
-  ): Promise<QueryDataSourceResponse> {
+  async queryDatabase(id: string): Promise<QueryDataSourceResponse> {
     if (mockDataExists('QueryDataSourceResponse', id)) {
       return getPayload(
         dataMockPath('QueryDataSourceResponse', id)
       ) as QueryDataSourceResponse;
     }
-    const query = await super.queryDatabase(id, all);
-    savePayload(dataMockPath('QueryDataSourceResponse', id), query);
-    return query;
+    refuseLiveCall('QueryDataSourceResponse', id);
   }
-  // do we need to mock search?
 }

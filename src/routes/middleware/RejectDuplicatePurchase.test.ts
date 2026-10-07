@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { NextFunction, Request, Response } from 'express';
 import type { Knex } from 'knex';
 
@@ -53,9 +54,9 @@ const run = async (
   held: Held,
   owner: number | null
 ) => {
-  const status = jest.fn().mockReturnThis();
-  const json = jest.fn().mockReturnThis();
-  const next = jest.fn() as NextFunction;
+  const status = vi.fn().mockReturnThis();
+  const json = vi.fn().mockReturnThis();
+  const next = vi.fn() as NextFunction;
   const res = { locals: { owner }, status, json } as unknown as Response;
 
   await makeRejectDuplicatePurchase(kind, makeDeps(held))(

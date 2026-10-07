@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
@@ -5,32 +6,39 @@ import { AddressInfo } from 'node:net';
 import type { IInactivityEmailRepository } from '../data_layer/InactivityEmailRepository';
 import type { IReEngagementRepository } from '../data_layer/ReEngagementRepository';
 import type { EventsSink } from '../services/events/EventsSink';
+import { resolveEmailDestination } from './EmailRedirectRouter';
 
-const mockInactivityRepo: jest.Mocked<
+const mockInactivityRepo: Mocked<
   Pick<IInactivityEmailRepository, 'findByToken'>
 > = {
-  findByToken: jest.fn().mockResolvedValue(null),
+  findByToken: vi.fn().mockResolvedValue(null),
 };
 
-const mockReEngagementRepo: jest.Mocked<
+const mockReEngagementRepo: Mocked<
   Pick<IReEngagementRepository, 'findByToken'>
 > = {
-  findByToken: jest.fn().mockResolvedValue(null),
+  findByToken: vi.fn().mockResolvedValue(null),
 };
 
-const mockSink: jest.Mocked<Pick<EventsSink, 'record'>> = {
-  record: jest.fn(),
+const mockSink: Mocked<Pick<EventsSink, 'record'>> = {
+  record: vi.fn(),
 };
 
-jest.mock('../data_layer', () => ({ getDatabase: jest.fn() }));
-jest.mock('../data_layer/InactivityEmailRepository', () =>
-  jest.fn().mockImplementation(() => mockInactivityRepo)
-);
-jest.mock('../data_layer/ReEngagementRepository', () =>
-  jest.fn().mockImplementation(() => mockReEngagementRepo)
-);
-jest.mock('../services/events/eventsSinkInstance', () => ({
-  getEventsSink: jest.fn(() => mockSink),
+vi.mock('../data_layer', () => ({ getDatabase: vi.fn() }));
+vi.mock('../data_layer/InactivityEmailRepository', () => ({
+  __esModule: true,
+  default: vi.fn().mockImplementation(function () {
+    return mockInactivityRepo;
+  }),
+}));
+vi.mock('../data_layer/ReEngagementRepository', () => ({
+  __esModule: true,
+  default: vi.fn().mockImplementation(function () {
+    return mockReEngagementRepo;
+  }),
+}));
+vi.mock('../services/events/eventsSinkInstance', () => ({
+  getEventsSink: vi.fn(() => mockSink),
 }));
 
 async function buildServer() {
@@ -55,7 +63,7 @@ describe('EmailRedirectRouter', () => {
 
   afterAll(() => server.close());
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   describe('GET /r/email', () => {
     it('redirects to / when to param is absent', async () => {
@@ -193,11 +201,6 @@ describe('resolveEmailDestination', () => {
   // The redirect target must always be a string this module owns, never the
   // caller's — an off-site value reaching res.redirect is an open redirect
   // (tssecurity:S5146), and a phished 2anki email link is the realistic abuse.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { resolveEmailDestination } = require('./EmailRedirectRouter') as {
-    resolveEmailDestination: (requested: string | null) => string;
-  };
-
   it.each(['/', '/upload', '/pricing', '/login'])(
     'passes through the allowlisted destination %s',
     (destination) => {

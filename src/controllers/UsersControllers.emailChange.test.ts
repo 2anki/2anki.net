@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import type express from 'express';
 
 process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
@@ -6,30 +7,36 @@ const STORED_HASH = 'stored-hash-value';
 const TYPED_SECRET = 'typed-secret';
 
 const usersRepoMock = {
-  getById: jest.fn(),
-  getByEmail: jest.fn(),
-  applyEmailChange: jest.fn(),
+  getById: vi.fn(),
+  getByEmail: vi.fn(),
+  applyEmailChange: vi.fn(),
 };
-const oauthRepoMock = { hasIdentityForUser: jest.fn() };
+const oauthRepoMock = { hasIdentityForUser: vi.fn() };
 const tokenRepoMock = {
-  insert: jest.fn().mockResolvedValue({ id: 1 }),
-  findByTokenHash: jest.fn(),
-  findLivePendingByUser: jest.fn(),
-  expireLivePendingByUser: jest.fn(),
-  countRecentByUser: jest.fn().mockResolvedValue(0),
+  insert: vi.fn().mockResolvedValue({ id: 1 }),
+  findByTokenHash: vi.fn(),
+  findLivePendingByUser: vi.fn(),
+  expireLivePendingByUser: vi.fn(),
+  countRecentByUser: vi.fn().mockResolvedValue(0),
 };
 
-jest.mock('../data_layer/UsersRepository', () => ({
+vi.mock('../data_layer/UsersRepository', () => ({
   __esModule: true,
-  default: jest.fn(() => usersRepoMock),
+  default: vi.fn(function () {
+    return usersRepoMock;
+  }),
 }));
-jest.mock('../data_layer/OauthIdentitiesRepository', () => ({
+vi.mock('../data_layer/OauthIdentitiesRepository', () => ({
   __esModule: true,
-  default: jest.fn(() => oauthRepoMock),
+  default: vi.fn(function () {
+    return oauthRepoMock;
+  }),
 }));
-jest.mock('../data_layer/EmailChangeTokenRepository', () => ({
+vi.mock('../data_layer/EmailChangeTokenRepository', () => ({
   __esModule: true,
-  default: jest.fn(() => tokenRepoMock),
+  default: vi.fn(function () {
+    return tokenRepoMock;
+  }),
 }));
 
 import UsersController from './UsersControllers';
@@ -45,16 +52,16 @@ const CURRENT_USER = {
 };
 
 const emailService = {
-  sendEmailChangeConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-  sendEmailChangeNotificationEmail: jest.fn().mockResolvedValue(undefined),
+  sendEmailChangeConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+  sendEmailChangeNotificationEmail: vi.fn().mockResolvedValue(undefined),
 } as unknown as IEmailService;
 
 const buildController = (
   authOverrides: Partial<AuthenticationService> = {}
 ) => {
   const authService = {
-    comparePassword: jest.fn().mockReturnValue(true),
-    logOutEverywhere: jest.fn().mockResolvedValue(1),
+    comparePassword: vi.fn().mockReturnValue(true),
+    logOutEverywhere: vi.fn().mockResolvedValue(1),
     ...authOverrides,
   } as unknown as AuthenticationService;
   const controller = new UsersController(
@@ -71,13 +78,13 @@ const buildRes = (owner?: number) => {
   const res = {
     locals: owner == null ? {} : { owner },
   } as unknown as express.Response & {
-    status: jest.Mock;
-    json: jest.Mock;
-    clearCookie: jest.Mock;
+    status: Mock;
+    json: Mock;
+    clearCookie: Mock;
   };
-  res.status = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
-  res.clearCookie = jest.fn().mockReturnValue(res);
+  res.status = vi.fn().mockReturnValue(res);
+  res.json = vi.fn().mockReturnValue(res);
+  res.clearCookie = vi.fn().mockReturnValue(res);
   return res;
 };
 
@@ -85,7 +92,7 @@ const asReq = (body: Record<string, unknown>) =>
   ({ body }) as unknown as express.Request;
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   usersRepoMock.getById.mockResolvedValue(CURRENT_USER);
   usersRepoMock.getByEmail.mockResolvedValue(undefined);
   usersRepoMock.applyEmailChange.mockResolvedValue({ ok: true });
@@ -120,7 +127,7 @@ describe('UsersController.requestEmailChange', () => {
 
   it('returns 401 on a wrong password for a password account', async () => {
     const { controller } = buildController({
-      comparePassword: jest.fn().mockReturnValue(false),
+      comparePassword: vi.fn().mockReturnValue(false),
     } as Partial<AuthenticationService>);
     const res = buildRes(7);
     await controller.requestEmailChange(
@@ -133,7 +140,7 @@ describe('UsersController.requestEmailChange', () => {
   it('returns 403 set_password_first for an OAuth-only account', async () => {
     oauthRepoMock.hasIdentityForUser.mockResolvedValue(true);
     const { controller } = buildController({
-      comparePassword: jest.fn().mockReturnValue(false),
+      comparePassword: vi.fn().mockReturnValue(false),
     } as Partial<AuthenticationService>);
     const res = buildRes(7);
     await controller.requestEmailChange(

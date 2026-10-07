@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 import ChatConsentController from './ChatConsentController';
 
 function buildRes(owner = 1): Response {
   return {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
-    sendStatus: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
+    sendStatus: vi.fn().mockReturnThis(),
     locals: { owner },
   } as unknown as Response;
 }
@@ -16,7 +17,7 @@ function buildReq(): Request {
 
 describe('ChatConsentController.recordConsent', () => {
   it('calls execute with the owner and returns 204', async () => {
-    const execute = jest.fn().mockResolvedValue(undefined);
+    const execute = vi.fn().mockResolvedValue(undefined);
     const controller = new ChatConsentController({ execute } as never);
     const res = buildRes(7);
     await controller.recordConsent(buildReq(), res);
@@ -25,7 +26,7 @@ describe('ChatConsentController.recordConsent', () => {
   });
 
   it('propagates errors by rethrowing', async () => {
-    const execute = jest.fn().mockRejectedValue(new Error('DB down'));
+    const execute = vi.fn().mockRejectedValue(new Error('DB down'));
     const controller = new ChatConsentController({ execute } as never);
     const res = buildRes(3);
     await expect(controller.recordConsent(buildReq(), res)).rejects.toThrow(

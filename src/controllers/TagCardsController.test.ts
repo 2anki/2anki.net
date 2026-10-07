@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { Request, Response } from 'express';
 import TagCardsController from './TagCardsController';
 import { TagCardsUseCase } from '../usecases/chat/TagCardsUseCase';
@@ -6,7 +7,7 @@ import { InMemoryChatMessagesRepository } from '../data_layer/ChatMessagesReposi
 function makeAnthropic(text: string) {
   return {
     messages: {
-      create: jest.fn().mockResolvedValue({
+      create: vi.fn().mockResolvedValue({
         content: [{ type: 'text', text }],
         usage: { input_tokens: 5, output_tokens: 5 },
       }),

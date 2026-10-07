@@ -1,17 +1,29 @@
+import { vi, type MockedFunction } from 'vitest';
 import express, { NextFunction } from 'express';
 
 import { configureUserLocal } from './configureUserLocal';
 import RequirePaying from './RequirePaying';
 
-jest.mock('./configureUserLocal');
-jest.mock('../../data_layer', () => ({
-  getDatabase: jest.fn(() => ({})),
+vi.mock('./configureUserLocal');
+vi.mock('../../data_layer', () => ({
+  getDatabase: vi.fn(function () {
+    return {};
+  }),
 }));
-jest.mock('../../data_layer/TokenRepository', () => jest.fn());
-jest.mock('../../data_layer/UsersRepository', () => jest.fn());
-jest.mock('../../services/AuthenticationService', () => jest.fn());
+vi.mock('../../data_layer/TokenRepository', () => ({
+  __esModule: true,
+  default: vi.fn(),
+}));
+vi.mock('../../data_layer/UsersRepository', () => ({
+  __esModule: true,
+  default: vi.fn(),
+}));
+vi.mock('../../services/AuthenticationService', () => ({
+  __esModule: true,
+  default: vi.fn(),
+}));
 
-const configureUserLocalMock = configureUserLocal as jest.MockedFunction<
+const configureUserLocalMock = configureUserLocal as MockedFunction<
   typeof configureUserLocal
 >;
 
@@ -40,7 +52,7 @@ describe('RequirePaying', () => {
       res.locals.subscriber = true;
     });
     const res = makeResponse({});
-    const next = jest.fn() as unknown as NextFunction;
+    const next = vi.fn() as unknown as NextFunction;
 
     await RequirePaying({ cookies: {} } as express.Request, res, next);
 
@@ -54,7 +66,7 @@ describe('RequirePaying', () => {
       res.locals.patreon = true;
     });
     const res = makeResponse({});
-    const next = jest.fn() as unknown as NextFunction;
+    const next = vi.fn() as unknown as NextFunction;
 
     await RequirePaying({ cookies: {} } as express.Request, res, next);
 
@@ -69,7 +81,7 @@ describe('RequirePaying', () => {
       res.locals.patreon = false;
     });
     const res = makeResponse({});
-    const next = jest.fn() as unknown as NextFunction;
+    const next = vi.fn() as unknown as NextFunction;
 
     await RequirePaying({ cookies: {} } as express.Request, res, next);
 

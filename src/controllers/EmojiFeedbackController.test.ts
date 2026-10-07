@@ -1,19 +1,20 @@
+import { vi, type Mocked } from 'vitest';
 import { Request, Response } from 'express';
 
 import EmojiFeedbackController from './EmojiFeedbackController';
 import { IEmojiFeedbackRepository } from '../data_layer/EmojiFeedbackRepository';
 
 function buildMocks() {
-  const repo: jest.Mocked<IEmojiFeedbackRepository> = {
-    insert: jest.fn().mockResolvedValue(undefined),
-    countByRating: jest.fn().mockResolvedValue([]),
-    recentComments: jest.fn().mockResolvedValue([]),
+  const repo: Mocked<IEmojiFeedbackRepository> = {
+    insert: vi.fn().mockResolvedValue(undefined),
+    countByRating: vi.fn().mockResolvedValue([]),
+    recentComments: vi.fn().mockResolvedValue([]),
   };
   const controller = new EmojiFeedbackController(repo);
   const req = { body: {} } as Request;
   const res = {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
   } as unknown as Response;
   return { repo, controller, req, res };
 }

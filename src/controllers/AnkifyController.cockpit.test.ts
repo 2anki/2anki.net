@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response } from 'express';
 
 import AnkifyController from './AnkifyController';
@@ -27,19 +28,19 @@ const makeResponse = (): CapturingResponse => {
   };
   const res = {
     locals: { owner: 42 },
-    status: jest.fn((code: number) => {
+    status: vi.fn((code: number) => {
       capture.statusCode = code;
       return res;
     }),
-    json: jest.fn((payload: unknown) => {
+    json: vi.fn((payload: unknown) => {
       capture.body = payload;
       return res;
     }),
-    setHeader: jest.fn((name: string, value: string) => {
+    setHeader: vi.fn((name: string, value: string) => {
       capture.headers[name] = value;
       return res;
     }),
-    send: jest.fn((payload: unknown) => {
+    send: vi.fn((payload: unknown) => {
       capture.sent = payload;
       return res;
     }),
@@ -53,7 +54,7 @@ const SYNC_INDEX = 25;
 const OPEN_DECK_INDEX = 26;
 const MATURITY_INDEX = 27;
 
-const makeController = (index: number, useCase: { execute: jest.Mock }) => {
+const makeController = (index: number, useCase: { execute: Mock }) => {
   const stubs = Array.from({ length: 28 }, () => ({}));
   stubs[index] = useCase;
   return new AnkifyController(
@@ -63,7 +64,7 @@ const makeController = (index: number, useCase: { execute: jest.Mock }) => {
 
 describe('AnkifyController cockpit handlers', () => {
   test('getActiveProfile returns the profile name', async () => {
-    const execute = jest.fn(async () => ({ profile: 'User 1' }));
+    const execute = vi.fn(async () => ({ profile: 'User 1' }));
     const controller = makeController(PROFILE_INDEX, { execute });
     const capture = makeResponse();
 
@@ -74,7 +75,7 @@ describe('AnkifyController cockpit handlers', () => {
   });
 
   test('getActiveProfile maps no active client to 409', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new NoActiveAnkifyClientForProfileError();
     });
     const controller = makeController(PROFILE_INDEX, { execute });
@@ -86,7 +87,7 @@ describe('AnkifyController cockpit handlers', () => {
   });
 
   test('getActiveProfile maps AnkiConnect unreachable to 503', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new AnkiConnectUnreachableError('http://x', new Error('down'));
     });
     const controller = makeController(PROFILE_INDEX, { execute });
@@ -98,7 +99,7 @@ describe('AnkifyController cockpit handlers', () => {
   });
 
   test('syncToAnkiWeb returns ok true', async () => {
-    const execute = jest.fn(async () => undefined);
+    const execute = vi.fn(async () => undefined);
     const controller = makeController(SYNC_INDEX, { execute });
     const capture = makeResponse();
 
@@ -109,7 +110,7 @@ describe('AnkifyController cockpit handlers', () => {
   });
 
   test('syncToAnkiWeb maps no active client to 409', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new NoActiveAnkifyClientForSyncError();
     });
     const controller = makeController(SYNC_INDEX, { execute });
@@ -121,7 +122,7 @@ describe('AnkifyController cockpit handlers', () => {
   });
 
   test('syncToAnkiWeb maps a required full sync to a calm 409, not a raw error', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new AnkiFullSyncRequiredError(
         'Sync status 2 not one of [0, 1] - see SyncCollectionResponse.ChangesRequired for list of sync statuses: https://github.com/ankitects/anki/blob/e41c4573d789afe8b020fab5d9d1eede50c3fa3d/proto/anki/sync.proto#L57-L65'
       );
@@ -139,7 +140,7 @@ describe('AnkifyController cockpit handlers', () => {
   });
 
   test('openDeckInAnki 400 when deck is missing', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = makeController(OPEN_DECK_INDEX, { execute });
     const capture = makeResponse();
 
@@ -153,7 +154,7 @@ describe('AnkifyController cockpit handlers', () => {
   });
 
   test('openDeckInAnki returns opened for an owned deck', async () => {
-    const execute = jest.fn(async () => ({ opened: true }));
+    const execute = vi.fn(async () => ({ opened: true }));
     const controller = makeController(OPEN_DECK_INDEX, { execute });
     const capture = makeResponse();
 
@@ -168,7 +169,7 @@ describe('AnkifyController cockpit handlers', () => {
   });
 
   test('openDeckInAnki maps a not-owned deck to 403', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new DeckNotOwnedError();
     });
     const controller = makeController(OPEN_DECK_INDEX, { execute });
@@ -183,7 +184,7 @@ describe('AnkifyController cockpit handlers', () => {
   });
 
   test('getDeckMaturity 400 when deck query is missing', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = makeController(MATURITY_INDEX, { execute });
     const capture = makeResponse();
 
@@ -197,7 +198,7 @@ describe('AnkifyController cockpit handlers', () => {
   });
 
   test('getDeckMaturity returns the maturity payload', async () => {
-    const execute = jest.fn(async () => ({
+    const execute = vi.fn(async () => ({
       connected: true,
       matureCount: 2,
       total: 4,

@@ -1,11 +1,12 @@
+import { vi, type Mock } from 'vitest';
 import { IServiceSettings } from '../../services/SettingsService';
 import CardOptionsController from './CardOptionsController';
 import { SettingsInitializer } from '../../data_layer/public/Settings';
 import { NotionService } from '../../services/NotionService/NotionService';
 import { getNotionObjectTitle } from 'get-notion-object-title';
 
-jest.mock('get-notion-object-title', () => ({
-  getNotionObjectTitle: jest.fn(),
+vi.mock('get-notion-object-title', () => ({
+  getNotionObjectTitle: vi.fn(),
 }));
 
 const FLAT_OPTIONS = {
@@ -65,8 +66,8 @@ function testDefaultSettings(
 
 describe('CardOptionsController.findSetting', () => {
   function makeMockFindRes(owner = 'user-1') {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ send: jest.fn() });
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ send: vi.fn() });
     return {
       locals: { owner },
       json,
@@ -108,7 +109,7 @@ describe('CardOptionsController.findSetting', () => {
   });
 
   it('scopes the lookup to the authenticated owner', async () => {
-    const getById = jest.fn().mockResolvedValue({
+    const getById = vi.fn().mockResolvedValue({
       object_id: 'page-123',
       owner: 'user-7',
       payload: FLAT_OPTIONS,
@@ -142,8 +143,8 @@ describe('CardOptionsController.findSetting', () => {
 
 describe('CardOptionsController.createSetting', () => {
   function makeMockCreateRes() {
-    const send = jest.fn();
-    const status = jest.fn().mockReturnValue({ send });
+    const send = vi.fn();
+    const status = vi.fn().mockReturnValue({ send });
     return {
       locals: { owner: 'user-1' },
       status,
@@ -179,8 +180,8 @@ describe('CardOptionsController.createSetting', () => {
 
 describe('CardOptionsController.listSettings', () => {
   function makeMockRes(owner: string) {
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ send: jest.fn() });
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ send: vi.fn() });
     return {
       locals: { owner },
       json,
@@ -207,13 +208,13 @@ describe('CardOptionsController.listSettings', () => {
 });
 
 describe('CardOptionsController.listSettings placeholder titles', () => {
-  const getTitleMock = getNotionObjectTitle as jest.Mock;
+  const getTitleMock = getNotionObjectTitle as Mock;
 
   function makeMockRes() {
     return {
       locals: { owner: 'user-1' },
-      json: jest.fn(),
-      status: jest.fn().mockReturnValue({ send: jest.fn() }),
+      json: vi.fn(),
+      status: vi.fn().mockReturnValue({ send: vi.fn() }),
     } as unknown as import('express').Response;
   }
 
@@ -227,12 +228,12 @@ describe('CardOptionsController.listSettings placeholder titles', () => {
           updated_at: new Date('2026-01-01'),
         },
       ]);
-    const updateTitle = jest.spyOn(service, 'updateTitle');
+    const updateTitle = vi.spyOn(service, 'updateTitle');
     return { service, updateTitle };
   }
 
-  function makeNotion(getPage: jest.Mock) {
-    const getNotionAPI = jest.fn().mockResolvedValue({ getPage });
+  function makeNotion(getPage: Mock) {
+    const getNotionAPI = vi.fn().mockResolvedValue({ getPage });
     return {
       notion: { getNotionAPI } as unknown as NotionService,
       getNotionAPI,
@@ -256,7 +257,7 @@ describe('CardOptionsController.listSettings placeholder titles', () => {
   ])('re-resolves the stored placeholder "%s" from Notion', async (stored) => {
     getTitleMock.mockReturnValue('HTML test');
     const { service, updateTitle } = makeService(stored);
-    const { notion } = makeNotion(jest.fn().mockResolvedValue({}));
+    const { notion } = makeNotion(vi.fn().mockResolvedValue({}));
     const controller = new CardOptionsController(service, notion);
     const res = makeMockRes();
 
@@ -276,9 +277,7 @@ describe('CardOptionsController.listSettings placeholder titles', () => {
 
   it('reports no title rather than the placeholder when Notion cannot be reached', async () => {
     const { service, updateTitle } = makeService('this page');
-    const { notion } = makeNotion(
-      jest.fn().mockRejectedValue(new Error('403'))
-    );
+    const { notion } = makeNotion(vi.fn().mockRejectedValue(new Error('403')));
     const controller = new CardOptionsController(service, notion);
     const res = makeMockRes();
 
@@ -298,7 +297,7 @@ describe('CardOptionsController.listSettings placeholder titles', () => {
 
   it('does not call Notion for a row that already has a real title', async () => {
     const { service } = makeService('Organic Chemistry');
-    const { notion, getNotionAPI } = makeNotion(jest.fn());
+    const { notion, getNotionAPI } = makeNotion(vi.fn());
     const controller = new CardOptionsController(service, notion);
     const res = makeMockRes();
 
@@ -310,9 +309,9 @@ describe('CardOptionsController.listSettings placeholder titles', () => {
 
 describe('CardOptionsController.deleteAllUserSettings', () => {
   function makeMockRes(owner: string) {
-    const json = jest.fn();
-    const send = jest.fn();
-    const status = jest.fn().mockReturnValue({ send });
+    const json = vi.fn();
+    const send = vi.fn();
+    const status = vi.fn().mockReturnValue({ send });
     return {
       locals: { owner },
       json,
@@ -322,7 +321,7 @@ describe('CardOptionsController.deleteAllUserSettings', () => {
   }
 
   it('returns 204 when use case resolves', async () => {
-    const mockUseCase = { execute: jest.fn().mockResolvedValue(undefined) };
+    const mockUseCase = { execute: vi.fn().mockResolvedValue(undefined) };
     const controller = new CardOptionsController(
       new FakeSettingsService(),
       undefined,
@@ -337,7 +336,7 @@ describe('CardOptionsController.deleteAllUserSettings', () => {
 
   it('returns 500 when use case throws', async () => {
     const mockUseCase = {
-      execute: jest.fn().mockRejectedValue(new Error('DB down')),
+      execute: vi.fn().mockRejectedValue(new Error('DB down')),
     };
     const controller = new CardOptionsController(
       new FakeSettingsService(),

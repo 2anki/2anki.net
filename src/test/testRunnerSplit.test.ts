@@ -53,13 +53,6 @@ describe('jest testPathIgnorePatterns derived from test-runner-split.json', () =
     ).toBe(true);
   });
 
-  it('keeps controllers and routes suites in jest (owned by a later phase)', () => {
-    expect(ignoredByJest(`${BASE}/controllers/JobController.test.ts`)).toBe(
-      false
-    );
-    expect(ignoredByJest(`${BASE}/routes/OpsErrorsRouter.test.ts`)).toBe(false);
-  });
-
   it('hands services and infrastracture suites to vitest (phase 4)', () => {
     expect(ignoredByJest(`${BASE}/services/UploadService.test.ts`)).toBe(true);
     expect(
@@ -78,11 +71,33 @@ describe('jest testPathIgnorePatterns derived from test-runner-split.json', () =
     ).toBe(true);
   });
 
-  it('keeps the jestOnly BlockHandler suite in jest (phase 4 carve-out)', () => {
+  it('hands the former jestOnly BlockHandler suite to vitest (phase 6)', () => {
     expect(
       ignoredByJest(
         `${BASE}/services/NotionService/BlockHandler/BlockHandler.test.ts`
       )
-    ).toBe(false);
+    ).toBe(true);
+  });
+
+  it('hands controllers, routes and the stragglers to vitest (phase 6)', () => {
+    expect(
+      ignoredByJest(`${BASE}/controllers/DownloadController.test.ts`)
+    ).toBe(true);
+    expect(
+      ignoredByJest(`${BASE}/controllers/Upload/UploadController.test.ts`)
+    ).toBe(true);
+    expect(ignoredByJest(`${BASE}/routes/WebhookRouter.test.ts`)).toBe(true);
+    expect(
+      ignoredByJest(`${BASE}/routes/middleware/RequireOpsAccess.test.ts`)
+    ).toBe(true);
+    expect(ignoredByJest(`${BASE}/KnexConfig.test.ts`)).toBe(true);
+    expect(ignoredByJest(`${BASE}/app/bootstrapBackgroundJobs.test.ts`)).toBe(
+      true
+    );
+    expect(ignoredByJest(`${BASE}/config/swagger.test.ts`)).toBe(true);
+    expect(ignoredByJest(`${BASE}/shared/session.test.ts`)).toBe(true);
+    expect(ignoredByJest(`${BASE}/templates/helper.test.ts`)).toBe(true);
+    expect(ignoredByJest(`${BASE}/ui/pages/DownloadPage.test.tsx`)).toBe(true);
+    expect(ignoredByJest(`${BASE}/lib/zip/zip.test.tsx`)).toBe(true);
   });
 });

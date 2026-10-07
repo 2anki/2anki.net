@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import crypto from 'node:crypto';
 import express from 'express';
 import http from 'node:http';
@@ -227,7 +228,7 @@ describe(`POST ${ENDPOINT}`, () => {
     }
     const failingRepo = new FailAfterFirstRepository();
     const failing = await buildServer(failingRepo);
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
       const timestamp = freshTimestamp();
       const payload = JSON.stringify([

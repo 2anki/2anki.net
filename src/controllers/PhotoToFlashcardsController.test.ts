@@ -1,23 +1,27 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import type express from 'express';
+
+import * as fsMock from 'node:fs';
 
 import { PhotoToFlashcardsController } from './PhotoToFlashcardsController';
 import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 
-jest.mock('node:fs', () => {
-  const actual = jest.requireActual('node:fs');
-  return {
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<typeof import('node:fs')>('node:fs');
+  const mocked = {
     ...actual,
-    createReadStream: jest.fn(),
-    unlink: jest.fn((_p, cb) => cb?.()),
+    createReadStream: vi.fn(),
+    unlink: vi.fn((_p, cb) => cb?.()),
   };
+  return { ...mocked, default: mocked };
 });
 
 function makeRes(): express.Response {
   const res = {
     locals: { owner: '42' },
-    setHeader: jest.fn(),
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
+    setHeader: vi.fn(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
   };
   return res as unknown as express.Response;
 }
@@ -27,11 +31,11 @@ function makeReq(body: Record<string, unknown>): express.Request {
 }
 
 function makeUseCase() {
-  const execute = jest
+  const execute = vi
     .fn()
     .mockRejectedValue(Object.assign(new Error('boom'), { status: 413 }));
-  return { execute } as unknown as jest.Mocked<PhotoToFlashcardsUseCase> & {
-    execute: jest.Mock;
+  return { execute } as unknown as Mocked<PhotoToFlashcardsUseCase> & {
+    execute: Mock;
   };
 }
 
@@ -193,7 +197,7 @@ describe('PhotoToFlashcardsController unreadable Vision response', () => {
   };
 
   function makeUnreadableUseCase() {
-    const execute = jest.fn().mockRejectedValue(
+    const execute = vi.fn().mockRejectedValue(
       Object.assign(
         new Error(
           "Couldn't read the cards from this photo. Try a clearer or less dense image."
@@ -205,7 +209,7 @@ describe('PhotoToFlashcardsController unreadable Vision response', () => {
       )
     );
     return { execute } as unknown as PhotoToFlashcardsUseCase & {
-      execute: jest.Mock;
+      execute: Mock;
     };
   }
 
@@ -222,7 +226,7 @@ describe('PhotoToFlashcardsController unreadable Vision response', () => {
   });
 
   it('forwards the no_ready_made_questions code so the client can offer Generate cards', async () => {
-    const execute = jest
+    const execute = vi
       .fn()
       .mockRejectedValue(
         Object.assign(
@@ -233,7 +237,7 @@ describe('PhotoToFlashcardsController unreadable Vision response', () => {
         )
       );
     const useCase = { execute } as unknown as PhotoToFlashcardsUseCase & {
-      execute: jest.Mock;
+      execute: Mock;
     };
     const controller = new PhotoToFlashcardsController(useCase);
     const res = makeRes();
@@ -257,30 +261,30 @@ describe('PhotoToFlashcardsController MCQ headers', () => {
   };
 
   interface StreamMock {
-    on: jest.Mock;
-    pipe: jest.Mock;
+    on: Mock;
+    pipe: Mock;
     handlers: Record<string, () => void>;
   }
 
   function makeStreamMock(): StreamMock {
     const handlers: Record<string, () => void> = {};
     const stream: StreamMock = {
-      on: jest.fn((event: string, cb: () => void) => {
+      on: vi.fn((event: string, cb: () => void) => {
         handlers[event] = cb;
         return stream;
       }),
-      pipe: jest.fn(),
+      pipe: vi.fn(),
       handlers,
     };
     return stream;
   }
 
   it('writes X-MCQ-Count and X-MCQ-Skipped-Count headers from the use case result', async () => {
-    const fs = jest.requireMock('node:fs') as { createReadStream: jest.Mock };
+    const fs = fsMock as unknown as { createReadStream: Mock };
     fs.createReadStream.mockReturnValue(makeStreamMock());
 
     const useCase = {
-      execute: jest.fn().mockResolvedValue({
+      execute: vi.fn().mockResolvedValue({
         apkgPath: '/tmp/out.apkg',
         cardCount: 5,
         estimatedCostUsd: 0.001,

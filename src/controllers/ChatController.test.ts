@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response } from 'express';
 import ChatController from './ChatController';
 import {
@@ -14,12 +15,12 @@ function buildRes(
   chatConsentAt: Date | null = new Date()
 ): Response {
   return {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
-    setHeader: jest.fn(),
-    flushHeaders: jest.fn(),
-    write: jest.fn(),
-    end: jest.fn(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
+    setHeader: vi.fn(),
+    flushHeaders: vi.fn(),
+    write: vi.fn(),
+    end: vi.fn(),
     locals: { owner, patreon, subscriber, chat_consent_at: chatConsentAt },
   } as unknown as Response;
 }
@@ -30,8 +31,8 @@ function buildMocks(
   subscriber = false,
   chatConsentAt: Date | null = new Date()
 ) {
-  const execute = jest.fn();
-  const regenerate = jest.fn();
+  const execute = vi.fn();
+  const regenerate = vi.fn();
   const controller = new ChatController({ execute, regenerate } as never);
   const res = buildRes(owner, patreon, subscriber, chatConsentAt);
   return { execute, regenerate, controller, res };
@@ -70,7 +71,7 @@ function makeFile(
 }
 
 function writtenEvents(res: Response): Array<{ event: string; data: unknown }> {
-  const calls = (res.write as jest.Mock).mock.calls as Array<[string]>;
+  const calls = (res.write as Mock).mock.calls as Array<[string]>;
   return calls.map(([raw]) => {
     const eventMatch = /^event: (.+)$/m.exec(raw);
     const dataMatch = /^data: (.+)$/m.exec(raw);

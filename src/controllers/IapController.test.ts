@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response } from 'express';
 
 import IapController from './IapController';
@@ -5,8 +6,8 @@ import { RedeemAppleTransactionUseCase } from '../usecases/iap/RedeemAppleTransa
 import { IapRedeemError } from '../usecases/iap/IapRedeemError';
 
 const makeRes = () => {
-  const json = jest.fn();
-  const status = jest.fn().mockReturnThis();
+  const json = vi.fn();
+  const status = vi.fn().mockReturnThis();
   return {
     locals: {
       owner: 42,
@@ -15,12 +16,12 @@ const makeRes = () => {
     },
     status,
     json,
-  } as unknown as Response & { status: jest.Mock; json: jest.Mock };
+  } as unknown as Response & { status: Mock; json: Mock };
 };
 
 const makeReq = (body: unknown) => ({ body }) as unknown as Request;
 
-function controllerWith(execute: jest.Mock) {
+function controllerWith(execute: Mock) {
   const useCase = { execute } as unknown as RedeemAppleTransactionUseCase;
   return new IapController(useCase);
 }
@@ -28,7 +29,7 @@ function controllerWith(execute: jest.Mock) {
 describe('IapController', () => {
   it('returns 200 with the message and refreshed locals on success', async () => {
     const expiresAt = new Date('2026-06-02T00:00:00.000Z');
-    const execute = jest.fn().mockResolvedValue({
+    const execute = vi.fn().mockResolvedValue({
       message: 'Day Pass active — unlimited cards for the next 24 hours',
       pass: { kind: '24h', expiresAt },
     });
@@ -66,7 +67,7 @@ describe('IapController', () => {
 
   it('returns the credits block and untouched pass locals for a credit pack', async () => {
     const expiresAt = new Date('2026-08-30T00:00:00.000Z');
-    const execute = jest.fn().mockResolvedValue({
+    const execute = vi.fn().mockResolvedValue({
       message: '250 AI credits added — they last 90 days',
       credits: { amount: 250, expiresAt },
     });
@@ -102,7 +103,7 @@ describe('IapController', () => {
   });
 
   it('returns 400 without calling the use case when the jws is missing', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = controllerWith(execute);
     const res = makeRes();
 
@@ -116,7 +117,7 @@ describe('IapController', () => {
   });
 
   it('returns 400 without calling the use case when the product id is missing', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = controllerWith(execute);
     const res = makeRes();
 
@@ -130,7 +131,7 @@ describe('IapController', () => {
   });
 
   it('maps an IapRedeemError to its status and message', async () => {
-    const execute = jest.fn().mockRejectedValue(IapRedeemError.duplicate());
+    const execute = vi.fn().mockRejectedValue(IapRedeemError.duplicate());
     const controller = controllerWith(execute);
     const res = makeRes();
 
@@ -148,7 +149,7 @@ describe('IapController', () => {
   });
 
   it('propagates unexpected errors to the error handler', async () => {
-    const execute = jest.fn().mockRejectedValue(new Error('boom'));
+    const execute = vi.fn().mockRejectedValue(new Error('boom'));
     const controller = controllerWith(execute);
 
     await expect(

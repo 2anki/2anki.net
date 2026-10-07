@@ -1,18 +1,19 @@
+import { vi, type Mocked } from 'vitest';
 import { Request, Response } from 'express';
 
 import FeatureInterestController from './FeatureInterestController';
 import { IFeatureInterestRepository } from '../data_layer/FeatureInterestRepository';
 
 function buildMocks() {
-  const repo: jest.Mocked<IFeatureInterestRepository> = {
-    record: jest.fn().mockResolvedValue(undefined),
-    countByFeatureKey: jest.fn().mockResolvedValue([]),
+  const repo: Mocked<IFeatureInterestRepository> = {
+    record: vi.fn().mockResolvedValue(undefined),
+    countByFeatureKey: vi.fn().mockResolvedValue([]),
   };
   const controller = new FeatureInterestController(repo);
   const req = { body: {}, cookies: {} } as Request;
   const res = {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
     locals: {},
   } as unknown as Response;
   return { repo, controller, req, res };

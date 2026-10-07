@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 import PricingController, {
   PricingControllerContext,
@@ -7,7 +8,7 @@ const makeResponse = (locals: Record<string, unknown> = {}) => {
   const res = {
     body: undefined as unknown,
     locals,
-    json: jest.fn(),
+    json: vi.fn(),
   };
   res.json.mockImplementation((body: unknown) => {
     res.body = body;
@@ -20,14 +21,14 @@ const makeContext = (
   overrides: Partial<PricingControllerContext> = {}
 ): PricingControllerContext => ({
   pricingV2On: true,
-  getUserCreatedAt: jest.fn().mockResolvedValue(null),
+  getUserCreatedAt: vi.fn().mockResolvedValue(null),
   ...overrides,
 });
 
 describe('PricingController', () => {
   it('returns v2 prices and no deadline for a post-cutover user', async () => {
     const context = makeContext({
-      getUserCreatedAt: jest
+      getUserCreatedAt: vi
         .fn()
         .mockResolvedValue(new Date('2026-06-16T00:00:00Z')),
     });

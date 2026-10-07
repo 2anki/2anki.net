@@ -1,6 +1,7 @@
+import { vi, type Mock } from 'vitest';
 import { Request, Response } from 'express';
 
-jest.mock('../../services/events/track', () => ({ track: jest.fn() }));
+vi.mock('../../services/events/track', () => ({ track: vi.fn() }));
 
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
 import {
@@ -12,7 +13,7 @@ import { MonthlyLimitError } from '../../usecases/users/CheckMonthlyCardLimitUse
 import { ClaimHeldDeckController } from './ClaimHeldDeckController';
 import { track } from '../../services/events/track';
 
-const trackMock = track as jest.Mock;
+const trackMock = track as Mock;
 const ANON = 'anon-controller-1';
 
 function buildResponse(owner: number | null) {
@@ -21,15 +22,15 @@ function buildResponse(owner: number | null) {
   let sent = false;
   const res = {
     locals: owner == null ? {} : { owner },
-    status: jest.fn((code: number) => {
+    status: vi.fn((code: number) => {
       status = code;
       return res;
     }),
-    json: jest.fn((body: unknown) => {
+    json: vi.fn((body: unknown) => {
       json = body;
       return res;
     }),
-    send: jest.fn(() => {
+    send: vi.fn(() => {
       sent = true;
       return res;
     }),
@@ -50,12 +51,12 @@ function buildRequest(anonId: string | null): Request {
 
 function buildUseCase(repo: InMemoryHeldDeckRepository) {
   const store: HeldFileStore = {
-    getFileContents: jest
+    getFileContents: vi
       .fn()
       .mockResolvedValue({ Body: Buffer.from('<html></html>') }),
   };
   const converter: HeldDeckConverter = {
-    convertHeldFileForOwner: jest.fn().mockResolvedValue({
+    convertHeldFileForOwner: vi.fn().mockResolvedValue({
       downloadKey: 'owner-key.apkg',
       cardCount: 34,
       cardsHeldBack: 0,
@@ -151,12 +152,12 @@ describe('ClaimHeldDeckController', () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedHold(repo);
     const store: HeldFileStore = {
-      getFileContents: jest
+      getFileContents: vi
         .fn()
         .mockResolvedValue({ Body: Buffer.from('<html></html>') }),
     };
     const converter: HeldDeckConverter = {
-      convertHeldFileForOwner: jest
+      convertHeldFileForOwner: vi
         .fn()
         .mockRejectedValue(new MonthlyLimitError(100, 100, 21, '2026-10-01')),
     };

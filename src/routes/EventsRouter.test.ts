@@ -1,16 +1,17 @@
+import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
-jest.mock('../data_layer', () => ({
-  getDatabase: jest.fn(() => ({})),
+vi.mock('../data_layer', () => ({
+  getDatabase: vi.fn(() => ({})),
 }));
 
-jest.mock('../services/events/eventsSinkInstance', () => ({
-  getEventsSink: jest.fn(() => ({ recordEvent: jest.fn() })),
+vi.mock('../services/events/eventsSinkInstance', () => ({
+  getEventsSink: vi.fn(() => ({ recordEvent: vi.fn() })),
 }));
 
-jest.mock('../usecases/events/IngestErrorEventUseCase', () => ({
+vi.mock('../usecases/events/IngestErrorEventUseCase', () => ({
   IngestErrorEventUseCase: class {
     async execute() {
       return 'accepted';
@@ -18,7 +19,7 @@ jest.mock('../usecases/events/IngestErrorEventUseCase', () => ({
   },
 }));
 
-jest.mock('../data_layer/ErrorEventRepository', () => ({
+vi.mock('../data_layer/ErrorEventRepository', () => ({
   ErrorEventRepository: class {
     async insert() {}
     async existsWithinWindow() {

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -9,8 +10,8 @@ import { isKnownAppRoute } from './knownRoutes';
 const SHELL_HTML =
   '<!doctype html><html><body><div id="root"></div></body></html>';
 
-jest.mock('../controllers/IndexController/getIndexFileContents', () => ({
-  getIndexFileContents: jest.fn(() => SHELL_HTML),
+vi.mock('../controllers/IndexController/getIndexFileContents', () => ({
+  getIndexFileContents: vi.fn(() => SHELL_HTML),
 }));
 
 async function buildServer() {

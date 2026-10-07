@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Request, Response } from 'express';
 
 import AnkifyController from './AnkifyController';
@@ -20,11 +21,11 @@ const makeResponse = (): CapturingResponse => {
   };
   const res = {
     locals: { owner: 42 },
-    status: jest.fn((code: number) => {
+    status: vi.fn((code: number) => {
       capture.statusCode = code;
       return res;
     }),
-    json: jest.fn((payload: unknown) => {
+    json: vi.fn((payload: unknown) => {
       capture.body = payload;
       return res;
     }),
@@ -43,7 +44,7 @@ const makeController = (openUseCase: OpenConflictInAnkiUseCase) => {
 
 describe('AnkifyController.openConflictInAnki', () => {
   test('200 with opened true for a valid owned conflict', async () => {
-    const execute = jest.fn(async () => ({ opened: true }));
+    const execute = vi.fn(async () => ({ opened: true }));
     const controller = makeController({
       execute,
     } as unknown as OpenConflictInAnkiUseCase);
@@ -60,7 +61,7 @@ describe('AnkifyController.openConflictInAnki', () => {
   });
 
   test('200 with opened false when the client is offline', async () => {
-    const execute = jest.fn(async () => ({ opened: false }));
+    const execute = vi.fn(async () => ({ opened: false }));
     const controller = makeController({
       execute,
     } as unknown as OpenConflictInAnkiUseCase);
@@ -76,7 +77,7 @@ describe('AnkifyController.openConflictInAnki', () => {
   });
 
   test('400 for a non-integer id without invoking the use case', async () => {
-    const execute = jest.fn();
+    const execute = vi.fn();
     const controller = makeController({
       execute,
     } as unknown as OpenConflictInAnkiUseCase);
@@ -92,7 +93,7 @@ describe('AnkifyController.openConflictInAnki', () => {
   });
 
   test('404 when the conflict is not owned by the requester', async () => {
-    const execute = jest.fn(async () => {
+    const execute = vi.fn(async () => {
       throw new ConflictNotFoundForOpenError();
     });
     const controller = makeController({

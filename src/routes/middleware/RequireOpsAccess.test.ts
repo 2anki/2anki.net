@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import express from 'express';
 
 import { makeRequireOpsAccess } from './RequireOpsAccess';
 import AuthenticationService from '../../services/AuthenticationService';
 
 const buildRes = () => {
-  const status = jest.fn().mockReturnThis();
-  const end = jest.fn();
+  const status = vi.fn().mockReturnThis();
+  const end = vi.fn();
   const locals: Record<string, unknown> = {};
   return {
     status,
@@ -22,12 +23,12 @@ const buildReq = (token: string | undefined) =>
 describe('RequireOpsAccess', () => {
   it('responds 404 (does not reveal existence) when no token is sent', async () => {
     const auth = {
-      getUserFrom: jest.fn().mockResolvedValue(null),
+      getUserFrom: vi.fn().mockResolvedValue(null),
     } as unknown as AuthenticationService;
     const middleware = makeRequireOpsAccess(auth);
     const req = buildReq(undefined);
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await middleware(req, res, next);
 
@@ -37,14 +38,14 @@ describe('RequireOpsAccess', () => {
 
   it('responds 404 when the user email is not the ops owner', async () => {
     const auth = {
-      getUserFrom: jest
+      getUserFrom: vi
         .fn()
         .mockResolvedValue({ owner: 7, email: 'someone@else.com', id: 7 }),
     } as unknown as AuthenticationService;
     const middleware = makeRequireOpsAccess(auth);
     const req = buildReq('jwt');
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await middleware(req, res, next);
 
@@ -54,7 +55,7 @@ describe('RequireOpsAccess', () => {
 
   it('passes through and exposes email/owner for the ops owner (case-insensitive)', async () => {
     const auth = {
-      getUserFrom: jest.fn().mockResolvedValue({
+      getUserFrom: vi.fn().mockResolvedValue({
         owner: 1,
         email: 'Alexander@Alemayhu.com',
         id: 1,
@@ -63,7 +64,7 @@ describe('RequireOpsAccess', () => {
     const middleware = makeRequireOpsAccess(auth);
     const req = buildReq('jwt');
     const res = buildRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await middleware(req, res, next);
 
