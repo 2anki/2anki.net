@@ -1,3 +1,4 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import {
   AnkifyClientView,
   DockerContainerLike,
@@ -18,25 +19,25 @@ import {
 
 const makeRepo = (
   overrides: Partial<AnkifyClientsRepositoryInterface> = {}
-): jest.Mocked<AnkifyClientsRepositoryInterface> =>
+): Mocked<AnkifyClientsRepositoryInterface> =>
   ({
-    create: jest.fn(async (input: NewAnkifyClient): Promise<AnkifyClient> => ({
+    create: vi.fn(async (input: NewAnkifyClient): Promise<AnkifyClient> => ({
       id: 1,
       status: 'active',
       created_at: new Date(),
       last_active_at: new Date(),
       ...input,
     })),
-    listByOwner: jest.fn(async () => []),
-    findActiveById: jest.fn(async () => null),
-    findActiveByOwner: jest.fn(async () => null),
-    setStatus: jest.fn(async () => undefined),
-    deleteById: jest.fn(async () => undefined),
-    touchLastActiveAt: jest.fn(async () => undefined),
-    reservedPorts: jest.fn(async () => []),
-    listIdleSince: jest.fn(async () => []),
+    listByOwner: vi.fn(async () => []),
+    findActiveById: vi.fn(async () => null),
+    findActiveByOwner: vi.fn(async () => null),
+    setStatus: vi.fn(async () => undefined),
+    deleteById: vi.fn(async () => undefined),
+    touchLastActiveAt: vi.fn(async () => undefined),
+    reservedPorts: vi.fn(async () => []),
+    listIdleSince: vi.fn(async () => []),
     ...overrides,
-  }) as jest.Mocked<AnkifyClientsRepositoryInterface>;
+  }) as Mocked<AnkifyClientsRepositoryInterface>;
 
 interface TokenStore {
   rows: AnkifySessionToken[];
@@ -45,11 +46,11 @@ interface TokenStore {
 
 const makeTokens = (
   overrides: Partial<AnkifySessionTokensRepositoryInterface> = {}
-): jest.Mocked<AnkifySessionTokensRepositoryInterface> & {
+): Mocked<AnkifySessionTokensRepositoryInterface> & {
   store: TokenStore;
 } => {
   const store: TokenStore = { rows: [], nextId: 1 };
-  const insert = jest.fn(
+  const insert = vi.fn(
     async (input: NewAnkifySessionToken): Promise<AnkifySessionToken> => {
       const row: AnkifySessionToken = {
         id: store.nextId++,
@@ -65,7 +66,7 @@ const makeTokens = (
       return row;
     }
   );
-  const findActiveByHash = jest.fn(
+  const findActiveByHash = vi.fn(
     async (tokenHash: string) =>
       store.rows.find(
         (row) =>
@@ -74,7 +75,7 @@ const makeTokens = (
           row.expires_at.getTime() > Date.now()
       ) ?? null
   );
-  const findActiveByClientId = jest.fn(
+  const findActiveByClientId = vi.fn(
     async (ankifyClientId: number) =>
       store.rows.find(
         (row) =>
@@ -83,11 +84,11 @@ const makeTokens = (
           row.expires_at.getTime() > Date.now()
       ) ?? null
   );
-  const touchLastUsed = jest.fn(async (id: number) => {
+  const touchLastUsed = vi.fn(async (id: number) => {
     const row = store.rows.find((r) => r.id === id);
     if (row != null) row.last_used_at = new Date();
   });
-  const revokeByClientId = jest.fn(async (ankifyClientId: number) => {
+  const revokeByClientId = vi.fn(async (ankifyClientId: number) => {
     for (const row of store.rows) {
       if (row.ankify_client_id === ankifyClientId && row.revoked_at == null) {
         row.revoked_at = new Date();
@@ -102,7 +103,7 @@ const makeTokens = (
       touchLastUsed,
       revokeByClientId,
       ...overrides,
-    } as jest.Mocked<AnkifySessionTokensRepositoryInterface>,
+    } as Mocked<AnkifySessionTokensRepositoryInterface>,
     { store }
   );
 };
@@ -113,22 +114,22 @@ const makeContainer = (
 ): DockerContainerLike =>
   ({
     id,
-    start: jest.fn(async () => undefined),
-    inspect: jest.fn(async () => ({ Name: name })),
-    stop: jest.fn(async () => undefined),
-    remove: jest.fn(async () => undefined),
+    start: vi.fn(async () => undefined),
+    inspect: vi.fn(async () => ({ Name: name })),
+    stop: vi.fn(async () => undefined),
+    remove: vi.fn(async () => undefined),
   }) as unknown as DockerContainerLike;
 
 const makeDocker = (
   overrides: Partial<DockerLike> = {},
   createdContainer: DockerContainerLike = makeContainer('container-abc')
-): jest.Mocked<DockerLike> =>
+): Mocked<DockerLike> =>
   ({
-    listContainers: jest.fn(async () => []),
-    createContainer: jest.fn(async () => createdContainer),
-    getContainer: jest.fn(() => createdContainer),
+    listContainers: vi.fn(async () => []),
+    createContainer: vi.fn(async () => createdContainer),
+    getContainer: vi.fn(() => createdContainer),
     ...overrides,
-  }) as jest.Mocked<DockerLike>;
+  }) as Mocked<DockerLike>;
 
 const makeService = (
   repo = makeRepo(),
@@ -165,13 +166,13 @@ describe('RacService.provision', () => {
   });
 
   test('never writes the AnkiConnect API key to the log', async () => {
-    const info = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     try {
       const { service, repo } = makeService();
 
       await service.provision(42);
 
-      const { anki_connect_api_key: key } = (repo.create as jest.Mock).mock
+      const { anki_connect_api_key: key } = (repo.create as Mock).mock
         .calls[0][0] as { anki_connect_api_key: string };
       const logged = info.mock.calls.map((args) => JSON.stringify(args));
       expect(key).toMatch(/^[A-Za-z0-9_-]{43}$/);
@@ -189,7 +190,7 @@ describe('RacService.provision', () => {
 
     await service.provision(42);
 
-    const args = (docker.createContainer as jest.Mock).mock.calls[0][0] as {
+    const args = (docker.createContainer as Mock).mock.calls[0][0] as {
       ExposedPorts: Record<string, unknown>;
       HostConfig: {
         PortBindings: Record<string, { HostIp: string; HostPort: string }[]>;
@@ -240,7 +241,7 @@ describe('RacService.provision', () => {
       last_active_at: new Date(),
     };
     const repo = makeRepo({
-      findActiveByOwner: jest.fn(async () => existing),
+      findActiveByOwner: vi.fn(async () => existing),
     });
     const { service, docker, tokens } = makeService(repo);
 
@@ -260,7 +261,7 @@ describe('RacService.provision', () => {
 
   test('skips ports already exposed by other containers', async () => {
     const docker = makeDocker({
-      listContainers: jest.fn(async () => [
+      listContainers: vi.fn(async () => [
         { Ports: [{ PublicPort: 20000 }, { PublicPort: 22000 }] },
       ]),
     });
@@ -278,7 +279,7 @@ describe('RacService.provision', () => {
 
   test('skips ports already reserved in the database', async () => {
     const repo = makeRepo({
-      reservedPorts: jest.fn(async () => [20000, 22000]),
+      reservedPorts: vi.fn(async () => [20000, 22000]),
     });
     const { service } = makeService(repo);
 
@@ -294,7 +295,7 @@ describe('RacService.provision', () => {
 
   test('throws DockerUnavailableError when daemon is unreachable', async () => {
     const docker = makeDocker({
-      listContainers: jest.fn(async () => {
+      listContainers: vi.fn(async () => {
         throw new Error('connect ENOENT /var/run/docker.sock');
       }),
     });
@@ -314,7 +315,7 @@ describe('RacService.provision', () => {
       },
     ];
     const docker = makeDocker({
-      listContainers: jest.fn(async () => allAnkiPortsUsed),
+      listContainers: vi.fn(async () => allAnkiPortsUsed),
     });
     const { service } = makeService(makeRepo(), docker);
 
@@ -339,7 +340,7 @@ describe('RacService.respin', () => {
 
   test('mints a fresh token for the new container', async () => {
     const repo = makeRepo({
-      findActiveByOwner: jest.fn(async () => ({
+      findActiveByOwner: vi.fn(async () => ({
         id: 5,
         owner: 42,
         container_id: 'container-old',
@@ -379,7 +380,7 @@ describe('RacService.list', () => {
         last_active_at: new Date(),
       },
     ];
-    const repo = makeRepo({ listByOwner: jest.fn(async () => expected) });
+    const repo = makeRepo({ listByOwner: vi.fn(async () => expected) });
     const { service } = makeService(repo);
 
     const result = await service.list(7);
@@ -404,11 +405,11 @@ describe('RacService.list', () => {
       last_active_at: new Date(),
     };
     const ghostContainer = makeContainer('container-ghost');
-    (ghostContainer.inspect as jest.Mock).mockRejectedValueOnce(
+    (ghostContainer.inspect as Mock).mockRejectedValueOnce(
       Object.assign(new Error('No such container'), { statusCode: 404 })
     );
-    const repo = makeRepo({ listByOwner: jest.fn(async () => [ghost]) });
-    const docker = makeDocker({ getContainer: jest.fn(() => ghostContainer) });
+    const repo = makeRepo({ listByOwner: vi.fn(async () => [ghost]) });
+    const docker = makeDocker({ getContainer: vi.fn(() => ghostContainer) });
     const { service } = makeService(repo, docker);
 
     const result = await service.list(7);
@@ -431,7 +432,7 @@ describe('RacService.list', () => {
       created_at: new Date(),
       last_active_at: new Date(),
     };
-    const repo = makeRepo({ listByOwner: jest.fn(async () => [live]) });
+    const repo = makeRepo({ listByOwner: vi.fn(async () => [live]) });
     const tokens = makeTokens();
     tokens.store.rows.push({
       id: 100,
@@ -463,7 +464,7 @@ describe('RacService.list', () => {
       created_at: new Date(),
       last_active_at: new Date(),
     };
-    const repo = makeRepo({ listByOwner: jest.fn(async () => [live]) });
+    const repo = makeRepo({ listByOwner: vi.fn(async () => [live]) });
     const { service } = makeService(repo);
 
     const [noToken] = await service.list(7);
@@ -485,11 +486,11 @@ describe('RacService.list', () => {
       last_active_at: new Date(),
     };
     const flakyContainer = makeContainer('container-live');
-    (flakyContainer.inspect as jest.Mock).mockRejectedValueOnce(
+    (flakyContainer.inspect as Mock).mockRejectedValueOnce(
       Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' })
     );
-    const repo = makeRepo({ listByOwner: jest.fn(async () => [live]) });
-    const docker = makeDocker({ getContainer: jest.fn(() => flakyContainer) });
+    const repo = makeRepo({ listByOwner: vi.fn(async () => [live]) });
+    const docker = makeDocker({ getContainer: vi.fn(() => flakyContainer) });
     const { service } = makeService(repo, docker);
 
     const result = await service.list(7);
@@ -512,7 +513,7 @@ describe('RacService.stop', () => {
   test('revokes tokens, stops the container, and deletes the row', async () => {
     const container = makeContainer('container-xyz');
     const repo = makeRepo({
-      findActiveById: jest.fn(async () => ({
+      findActiveById: vi.fn(async () => ({
         id: 5,
         owner: 42,
         container_id: 'container-xyz',
@@ -526,7 +527,7 @@ describe('RacService.stop', () => {
         last_active_at: new Date(),
       })),
     });
-    const docker = makeDocker({ getContainer: jest.fn(() => container) });
+    const docker = makeDocker({ getContainer: vi.fn(() => container) });
     const { service, tokens } = makeService(repo, docker);
 
     await service.stop(5, 42);
@@ -539,10 +540,10 @@ describe('RacService.stop', () => {
 
   test('still revokes tokens and deletes when docker stop throws', async () => {
     const container = makeContainer('container-xyz');
-    (container.stop as jest.Mock).mockRejectedValueOnce(new Error('gone'));
-    (container.remove as jest.Mock).mockRejectedValueOnce(new Error('gone'));
+    (container.stop as Mock).mockRejectedValueOnce(new Error('gone'));
+    (container.remove as Mock).mockRejectedValueOnce(new Error('gone'));
     const repo = makeRepo({
-      findActiveById: jest.fn(async () => ({
+      findActiveById: vi.fn(async () => ({
         id: 5,
         owner: 42,
         container_id: 'container-xyz',
@@ -556,7 +557,7 @@ describe('RacService.stop', () => {
         last_active_at: new Date(),
       })),
     });
-    const docker = makeDocker({ getContainer: jest.fn(() => container) });
+    const docker = makeDocker({ getContainer: vi.fn(() => container) });
     const { service, tokens } = makeService(repo, docker);
 
     await service.stop(5, 42);
@@ -574,7 +575,7 @@ describe('RacService.resolveTokenForProxy', () => {
     const { client } = await service.provision(42);
     const plaintext = client.session_url!.match(/[A-Za-z0-9_-]{43}/)![0];
 
-    repo.findActiveById = jest.fn(async (_id: number, _owner: number) => ({
+    repo.findActiveById = vi.fn(async (_id: number, _owner: number) => ({
       id: client.id,
       owner: 42,
       container_id: client.container_id,
@@ -610,7 +611,7 @@ describe('RacService.resolveTokenForProxy', () => {
     const plaintext = client.session_url!.match(/[A-Za-z0-9_-]{43}/)![0];
 
     // Simulate the client being torn down (DB row gone)
-    repo.findActiveById = jest.fn(async (_id: number, _owner: number) => null);
+    repo.findActiveById = vi.fn(async (_id: number, _owner: number) => null);
 
     const resolved = await service.resolveTokenForProxy(plaintext);
     expect(resolved).toBeNull();
@@ -626,7 +627,7 @@ describe('RacService.reissueSessionUrl', () => {
     const firstPlaintext =
       provisioned.session_url!.match(/[A-Za-z0-9_-]{43}/)![0];
 
-    repo.findActiveById = jest.fn(async (_id: number, _owner: number) => ({
+    repo.findActiveById = vi.fn(async (_id: number, _owner: number) => ({
       id: provisioned.id,
       owner: 42,
       container_id: provisioned.container_id,
@@ -661,7 +662,7 @@ describe('RacService.reissueSessionUrl', () => {
   });
 
   test('returns null when the client is not active', async () => {
-    const repo = makeRepo({ findActiveById: jest.fn(async () => null) });
+    const repo = makeRepo({ findActiveById: vi.fn(async () => null) });
     const { service } = makeService(repo);
 
     const result = await service.reissueSessionUrl(999, 42);
@@ -674,12 +675,12 @@ describe('RacService.reapIdle', () => {
   test('stops every idle client returned by the repo and marks them inactive', async () => {
     const a = makeContainer('container-a');
     const b = makeContainer('container-b');
-    const containerLookup = jest.fn((id: string) =>
+    const containerLookup = vi.fn((id: string) =>
       id === 'container-a' ? a : b
     );
     const docker = makeDocker({ getContainer: containerLookup });
     const repo = makeRepo({
-      listIdleSince: jest.fn(async () => [
+      listIdleSince: vi.fn(async () => [
         {
           id: 1,
           owner: 1,
@@ -762,7 +763,7 @@ describe('RacService container hardening (slice 2)', () => {
 
     await service.provision(42);
 
-    const args = (docker.createContainer as jest.Mock).mock.calls[0][0] as {
+    const args = (docker.createContainer as Mock).mock.calls[0][0] as {
       HostConfig: {
         CapDrop: string[];
         SecurityOpt: string[];
@@ -795,8 +796,9 @@ describe('RacService container hardening (slice 2)', () => {
 
     const { client } = await service.provision(42);
 
-    const createArgs = (docker.createContainer as jest.Mock).mock
-      .calls[0][0] as { Env: string[] };
+    const createArgs = (docker.createContainer as Mock).mock.calls[0][0] as {
+      Env: string[];
+    };
     const envEntry = createArgs.Env.find((e) =>
       e.startsWith('ANKICONNECT_API_KEY=')
     );
@@ -804,7 +806,7 @@ describe('RacService container hardening (slice 2)', () => {
     const envKey = envEntry!.split('=', 2)[1];
     expect(envKey).toMatch(/^[A-Za-z0-9_-]{43}$/);
 
-    const persistedKey = (repo.create as jest.Mock).mock.calls[0][0]
+    const persistedKey = (repo.create as Mock).mock.calls[0][0]
       .anki_connect_api_key as string;
     expect(persistedKey).toBe(envKey);
     expect(client.id).toBe(1);
@@ -813,7 +815,7 @@ describe('RacService container hardening (slice 2)', () => {
   test('respin mints a fresh API key (different from any prior container)', async () => {
     const { service, repo, docker } = makeService(
       makeRepo({
-        findActiveByOwner: jest.fn(async () => ({
+        findActiveByOwner: vi.fn(async () => ({
           id: 5,
           owner: 42,
           container_id: 'container-old',
@@ -831,14 +833,15 @@ describe('RacService container hardening (slice 2)', () => {
 
     await service.respin(42);
 
-    const createArgs = (docker.createContainer as jest.Mock).mock
-      .calls[0][0] as { Env: string[] };
+    const createArgs = (docker.createContainer as Mock).mock.calls[0][0] as {
+      Env: string[];
+    };
     const envKey = createArgs.Env.find((e) =>
       e.startsWith('ANKICONNECT_API_KEY=')
     )!.split('=', 2)[1];
     expect(envKey).not.toBe('old-key');
     expect(envKey).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    const persistedKey = (repo.create as jest.Mock).mock.calls[0][0]
+    const persistedKey = (repo.create as Mock).mock.calls[0][0]
       .anki_connect_api_key as string;
     expect(persistedKey).toBe(envKey);
   });

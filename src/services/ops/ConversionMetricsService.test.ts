@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type {
   ConversionOutcomeCounts,
   ConversionTier,
@@ -12,8 +13,8 @@ import {
 
 function makeFailingRepo(): IJobsMetricsRepository {
   return {
-    topFailureReasons7d: jest.fn().mockRejectedValue(new Error('db down')),
-    failedConversionsWeekly: jest.fn().mockRejectedValue(new Error('db down')),
+    topFailureReasons7d: vi.fn().mockRejectedValue(new Error('db down')),
+    failedConversionsWeekly: vi.fn().mockRejectedValue(new Error('db down')),
   };
 }
 
@@ -21,17 +22,17 @@ function makeStubRepo(
   overrides: Partial<IJobsMetricsRepository> = {}
 ): IJobsMetricsRepository {
   return {
-    topFailureReasons7d: jest.fn().mockResolvedValue([]),
-    failedConversionsWeekly: jest.fn().mockResolvedValue([]),
+    topFailureReasons7d: vi.fn().mockResolvedValue([]),
+    failedConversionsWeekly: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
 }
 
 function makeFailingEventsRepo(): IEventsMetricsRepository {
   return {
-    newAccountDownloads: jest.fn().mockRejectedValue(new Error('db down')),
-    uploadToDownloadRate: jest.fn().mockRejectedValue(new Error('db down')),
-    conversionOutcomes: jest.fn().mockRejectedValue(new Error('db down')),
+    newAccountDownloads: vi.fn().mockRejectedValue(new Error('db down')),
+    uploadToDownloadRate: vi.fn().mockRejectedValue(new Error('db down')),
+    conversionOutcomes: vi.fn().mockRejectedValue(new Error('db down')),
   };
 }
 
@@ -39,9 +40,9 @@ function makeStubEventsRepo(
   overrides: Partial<IEventsMetricsRepository> = {}
 ): IEventsMetricsRepository {
   return {
-    newAccountDownloads: jest.fn().mockResolvedValue(null),
-    uploadToDownloadRate: jest.fn().mockResolvedValue(null),
-    conversionOutcomes: jest.fn().mockResolvedValue(outcomes()),
+    newAccountDownloads: vi.fn().mockResolvedValue(null),
+    uploadToDownloadRate: vi.fn().mockResolvedValue(null),
+    conversionOutcomes: vi.fn().mockResolvedValue(outcomes()),
     ...overrides,
   };
 }
@@ -56,7 +57,7 @@ function eventsRepoWithOutcomes(
   byTier: Partial<Record<ConversionTier, Partial<ConversionOutcomeCounts>>>
 ): IEventsMetricsRepository {
   return makeStubEventsRepo({
-    conversionOutcomes: jest
+    conversionOutcomes: vi
       .fn()
       .mockImplementation(async (_since: Date, tier: ConversionTier) =>
         outcomes(byTier[tier])
@@ -65,7 +66,7 @@ function eventsRepoWithOutcomes(
 }
 
 afterEach(() => {
-  jest.useRealTimers();
+  vi.useRealTimers();
 });
 
 describe('ConversionMetricsService — graceful failure', () => {
@@ -178,7 +179,7 @@ describe('ConversionMetricsService — shape assembly', () => {
     const service = new ConversionMetricsService(
       makeStubRepo(),
       makeStubEventsRepo({
-        conversionOutcomes: jest
+        conversionOutcomes: vi
           .fn()
           .mockImplementation(async (_since: Date, tier: ConversionTier) => {
             if (tier === 'free') throw new Error('db down');
@@ -196,8 +197,8 @@ describe('ConversionMetricsService — shape assembly', () => {
   });
 
   it('reads both tiers over the last seven days', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2025-05-19T00:00:00.000Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-05-19T00:00:00.000Z'));
     const eventsRepo = makeStubEventsRepo();
     const service = new ConversionMetricsService(makeStubRepo(), eventsRepo);
 
@@ -212,7 +213,7 @@ describe('ConversionMetricsService — shape assembly', () => {
       sevenDaysAgo,
       'paid'
     );
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('passes through top failure reasons from the repository', async () => {
@@ -222,7 +223,7 @@ describe('ConversionMetricsService — shape assembly', () => {
     ];
     const service = new ConversionMetricsService(
       makeStubRepo({
-        topFailureReasons7d: jest.fn().mockResolvedValue(reasons),
+        topFailureReasons7d: vi.fn().mockResolvedValue(reasons),
       }),
       makeStubEventsRepo()
     );
@@ -235,7 +236,7 @@ describe('ConversionMetricsService — shape assembly', () => {
   it('produces a 12-week time series with zeroes for weeks with no data', async () => {
     const service = new ConversionMetricsService(
       makeStubRepo({
-        failedConversionsWeekly: jest.fn().mockResolvedValue([]),
+        failedConversionsWeekly: vi.fn().mockResolvedValue([]),
       }),
       makeStubEventsRepo()
     );
@@ -250,12 +251,12 @@ describe('ConversionMetricsService — shape assembly', () => {
 
   it('fills in counts for weeks that have data', async () => {
     const now = new Date('2025-05-19T00:00:00.000Z');
-    jest.useFakeTimers();
-    jest.setSystemTime(now);
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
 
     const currentMonday = new Date('2025-05-19T00:00:00.000Z');
     const repo = makeStubRepo({
-      failedConversionsWeekly: jest
+      failedConversionsWeekly: vi
         .fn()
         .mockResolvedValue([{ weekStart: currentMonday, count: 4 }]),
     });
@@ -268,14 +269,14 @@ describe('ConversionMetricsService — shape assembly', () => {
     expect(lastPoint?.count).toBe(4);
     expect(lastPoint?.week).toBe('2025-05-19');
 
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('turns new-account download counts into shares of the accounts that could have downloaded', async () => {
     const service = new ConversionMetricsService(
       makeStubRepo(),
       makeStubEventsRepo({
-        newAccountDownloads: jest.fn().mockResolvedValue({
+        newAccountDownloads: vi.fn().mockResolvedValue({
           accounts: 200,
           downloadedWithin24h: 100,
           downloadedAfterSignup: 30,
@@ -293,7 +294,7 @@ describe('ConversionMetricsService — shape assembly', () => {
     const service = new ConversionMetricsService(
       makeStubRepo(),
       makeStubEventsRepo({
-        newAccountDownloads: jest.fn().mockResolvedValue({
+        newAccountDownloads: vi.fn().mockResolvedValue({
           accounts: 0,
           downloadedWithin24h: 0,
           downloadedAfterSignup: 0,
@@ -313,7 +314,7 @@ describe('ConversionMetricsService — shape assembly', () => {
     const service = new ConversionMetricsService(
       makeStubRepo(),
       makeStubEventsRepo({
-        uploadToDownloadRate: jest.fn().mockResolvedValue(25),
+        uploadToDownloadRate: vi.fn().mockResolvedValue(25),
       })
     );
 
@@ -324,8 +325,8 @@ describe('ConversionMetricsService — shape assembly', () => {
 
   it('takes accounts from 30 days ago until a day ago, and the download rate over 7 days', async () => {
     const now = new Date('2026-11-19T00:00:00.000Z');
-    jest.useFakeTimers();
-    jest.setSystemTime(now);
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
 
     const eventsRepo = makeStubEventsRepo();
     const service = new ConversionMetricsService(makeStubRepo(), eventsRepo);
@@ -340,12 +341,12 @@ describe('ConversionMetricsService — shape assembly', () => {
       new Date('2026-11-12T00:00:00.000Z')
     );
 
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('starts the account cohort no earlier than the day account_created became reliable', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-09-20T00:00:00.000Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-20T00:00:00.000Z'));
 
     const eventsRepo = makeStubEventsRepo();
     const service = new ConversionMetricsService(makeStubRepo(), eventsRepo);
@@ -357,12 +358,12 @@ describe('ConversionMetricsService — shape assembly', () => {
       new Date('2026-09-19T00:00:00.000Z')
     );
 
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('does not query when the reliable cohort has not reached a whole day yet', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-09-09T12:00:00.000Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-09T12:00:00.000Z'));
 
     const eventsRepo = makeStubEventsRepo();
     const metrics = await new ConversionMetricsService(
@@ -373,15 +374,15 @@ describe('ConversionMetricsService — shape assembly', () => {
     expect(eventsRepo.newAccountDownloads).not.toHaveBeenCalled();
     expect(metrics.new_accounts_downloaded_24h_rate_30d).toBeNull();
 
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 });
 
 describe('ConversionMetricsService — deck quality cohorts', () => {
   function makeScoresRepo(rows: unknown[]) {
     return {
-      record: jest.fn().mockResolvedValue(undefined),
-      distribution: jest.fn().mockResolvedValue(rows),
+      record: vi.fn().mockResolvedValue(undefined),
+      distribution: vi.fn().mockResolvedValue(rows),
     } as never;
   }
 

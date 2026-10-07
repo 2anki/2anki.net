@@ -1,6 +1,16 @@
-const { vitest: vitestGlobs } = require('./test-runner-split.json');
+const {
+  vitest: vitestGlobs,
+  jestOnly = [],
+} = require('./test-runner-split.json');
+
+const escapeForRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const jestOnlyGuard = jestOnly.length
+  ? `(?!.*(?:${jestOnly.map(escapeForRegex).join('|')}))`
+  : '';
 
 const globToIgnorePattern = (glob) =>
+  jestOnlyGuard +
   glob
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
     .replace(/\*\*\/|\*/g, (star) => (star === '*' ? '[^/]*' : '(?:.*/)?')) +

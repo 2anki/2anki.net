@@ -1,21 +1,22 @@
+import { vi, type Mock } from 'vitest';
 import puppeteer, { TimeoutError } from 'puppeteer';
 import PdfRenderService, { PdfRenderTimeoutError } from './PdfRenderService';
 
-jest.mock('puppeteer', () => {
+vi.mock('puppeteer', () => {
   class TimeoutError extends Error {}
   return {
     __esModule: true,
-    default: { launch: jest.fn() },
+    default: { launch: vi.fn() },
     TimeoutError,
   };
 });
 
-const launchMock = puppeteer.launch as unknown as jest.Mock;
+const launchMock = puppeteer.launch as unknown as Mock;
 
-function stubBrowser(page: Record<string, jest.Mock>) {
-  const close = jest.fn().mockResolvedValue(undefined);
+function stubBrowser(page: Record<string, Mock>) {
+  const close = vi.fn().mockResolvedValue(undefined);
   launchMock.mockResolvedValue({
-    newPage: jest.fn().mockResolvedValue(page),
+    newPage: vi.fn().mockResolvedValue(page),
     close,
   });
   return close;
@@ -35,9 +36,9 @@ describe('PdfRenderService timeouts', () => {
 
   it('throws PdfRenderTimeoutError when the MathJax wait times out', async () => {
     const close = stubBrowser({
-      setContent: jest.fn().mockResolvedValue(undefined),
-      waitForFunction: jest.fn().mockRejectedValue(new TimeoutError('30000ms')),
-      pdf: jest.fn(),
+      setContent: vi.fn().mockResolvedValue(undefined),
+      waitForFunction: vi.fn().mockRejectedValue(new TimeoutError('30000ms')),
+      pdf: vi.fn(),
     });
 
     const error = await renderError();
@@ -49,9 +50,9 @@ describe('PdfRenderService timeouts', () => {
 
   it('throws PdfRenderTimeoutError when page.pdf times out', async () => {
     stubBrowser({
-      setContent: jest.fn().mockResolvedValue(undefined),
-      waitForFunction: jest.fn().mockResolvedValue(true),
-      pdf: jest.fn().mockRejectedValue(new TimeoutError('30000ms')),
+      setContent: vi.fn().mockResolvedValue(undefined),
+      waitForFunction: vi.fn().mockResolvedValue(true),
+      pdf: vi.fn().mockRejectedValue(new TimeoutError('30000ms')),
     });
 
     const error = await renderError();
@@ -62,9 +63,9 @@ describe('PdfRenderService timeouts', () => {
 
   it('throws PdfRenderTimeoutError when loading the page times out', async () => {
     stubBrowser({
-      setContent: jest.fn().mockRejectedValue(new TimeoutError('30000ms')),
-      waitForFunction: jest.fn(),
-      pdf: jest.fn(),
+      setContent: vi.fn().mockRejectedValue(new TimeoutError('30000ms')),
+      waitForFunction: vi.fn(),
+      pdf: vi.fn(),
     });
 
     const error = await renderError();
@@ -76,9 +77,9 @@ describe('PdfRenderService timeouts', () => {
   it('leaves other render failures untouched', async () => {
     const boom = new Error('Protocol error: target closed');
     stubBrowser({
-      setContent: jest.fn().mockResolvedValue(undefined),
-      waitForFunction: jest.fn().mockRejectedValue(boom),
-      pdf: jest.fn(),
+      setContent: vi.fn().mockResolvedValue(undefined),
+      waitForFunction: vi.fn().mockRejectedValue(boom),
+      pdf: vi.fn(),
     });
 
     expect(await renderError()).toBe(boom);

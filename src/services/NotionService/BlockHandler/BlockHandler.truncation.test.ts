@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import BlockHandler from './BlockHandler';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
@@ -22,15 +23,15 @@ function paragraphBlock(id: string) {
 
 function makePageApi(hasMore: boolean): NotionAPIWrapper {
   return {
-    getPage: jest.fn().mockResolvedValue({
+    getPage: vi.fn().mockResolvedValue({
       object: 'page',
       id: 'page-1',
       created_time: '2026-06-01T00:00:00.000Z',
       last_edited_time: '2026-06-01T00:00:00.000Z',
     }),
-    getPageTitle: jest.fn().mockResolvedValue('Long Page'),
-    getTopLevelTags: jest.fn().mockResolvedValue([]),
-    getBlocks: jest.fn().mockResolvedValue({
+    getPageTitle: vi.fn().mockResolvedValue('Long Page'),
+    getTopLevelTags: vi.fn().mockResolvedValue([]),
+    getBlocks: vi.fn().mockResolvedValue({
       object: 'list',
       type: 'block',
       block: {},

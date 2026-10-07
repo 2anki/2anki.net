@@ -1,3 +1,4 @@
+import { vi, type MockedFunction, type MockInstance } from 'vitest';
 import {
   AudioBlockObjectResponse,
   FileBlockObjectResponse,
@@ -15,17 +16,17 @@ import { downloadMediaOrSkip } from '../helpers/downloadMediaOrSkip';
 
 beforeEach(() => setupTests());
 
-jest.mock('../helpers/isTesting', () => ({
+vi.mock('../helpers/isTesting', () => ({
   __esModule: true,
-  default: jest.fn(() => false),
+  default: vi.fn(() => false),
 }));
 
-jest.mock('../helpers/downloadMediaOrSkip', () => ({
+vi.mock('../helpers/downloadMediaOrSkip', () => ({
   __esModule: true,
-  downloadMediaOrSkip: jest.fn(),
+  downloadMediaOrSkip: vi.fn(),
 }));
 
-const mockedDownload = downloadMediaOrSkip as jest.MockedFunction<
+const mockedDownload = downloadMediaOrSkip as MockedFunction<
   typeof downloadMediaOrSkip
 >;
 
@@ -95,13 +96,13 @@ function makeFileBlock(url: string): FileBlockObjectResponse {
 
 describe('BlockHandler media expiry recovery', () => {
   let exporter: CustomExporter;
-  let addMediaSpy: jest.SpyInstance;
+  let addMediaSpy: MockInstance;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     const ws = new Workspace(true, 'fs');
     exporter = new CustomExporter('', ws.location);
-    addMediaSpy = jest
+    addMediaSpy = vi
       .spyOn(exporter, 'addMedia')
       .mockImplementation(() => 'fake-abs-path');
   });
@@ -113,7 +114,7 @@ describe('BlockHandler media expiry recovery', () => {
       'https://notion.s3/img-fresh.png'
     ) as unknown as GetBlockResponse;
     const api = {
-      getBlock: jest.fn(async () => freshBlock),
+      getBlock: vi.fn(async () => freshBlock),
     } as unknown as NotionAPIWrapper;
     const handler = new BlockHandler(exporter, api, new CardOption({}));
 
@@ -134,7 +135,7 @@ describe('BlockHandler media expiry recovery', () => {
       'https://notion.s3/audio-fresh.mp3'
     ) as unknown as GetBlockResponse;
     const api = {
-      getBlock: jest.fn(async () => freshBlock),
+      getBlock: vi.fn(async () => freshBlock),
     } as unknown as NotionAPIWrapper;
     const handler = new BlockHandler(exporter, api, new CardOption({}));
 
@@ -155,7 +156,7 @@ describe('BlockHandler media expiry recovery', () => {
       'https://notion.s3/file-fresh.pdf'
     ) as unknown as GetBlockResponse;
     const api = {
-      getBlock: jest.fn(async () => freshBlock),
+      getBlock: vi.fn(async () => freshBlock),
     } as unknown as NotionAPIWrapper;
     const handler = new BlockHandler(exporter, api, new CardOption({}));
 
@@ -175,7 +176,7 @@ describe('BlockHandler media expiry recovery', () => {
       'https://notion.s3/img-still-expired.png'
     ) as unknown as GetBlockResponse;
     const api = {
-      getBlock: jest.fn(async () => freshBlock),
+      getBlock: vi.fn(async () => freshBlock),
     } as unknown as NotionAPIWrapper;
     const handler = new BlockHandler(exporter, api, new CardOption({}));
 
@@ -197,7 +198,7 @@ describe('BlockHandler media expiry recovery', () => {
       'https://notion.s3/img-fresh.png'
     ) as unknown as GetBlockResponse;
     const api = {
-      getBlock: jest.fn(async () => freshBlock),
+      getBlock: vi.fn(async () => freshBlock),
     } as unknown as NotionAPIWrapper;
     const handler = new BlockHandler(exporter, api, new CardOption({}));
 

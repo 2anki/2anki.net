@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import express from 'express';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -26,24 +27,24 @@ function makeService(overrides: {
   preview?: Partial<ApkgPreviewService>;
   persist?: DeckPersistence['persist'];
   getPresignedUrl?: StorageHandler['getPresignedUrl'];
-  generateCards?: jest.Mock;
-  getCardUsage?: jest.Mock;
-  incrementCardUsage?: jest.Mock;
+  generateCards?: Mock;
+  getCardUsage?: Mock;
+  incrementCardUsage?: Mock;
   baseUrl?: string;
 }) {
   const jobLister = {
-    getJobsByOwner: jest.fn(async () => overrides.jobs ?? []),
+    getJobsByOwner: vi.fn(async () => overrides.jobs ?? []),
   };
   const downloadService = {
-    getFileBody: overrides.getFileBody ?? jest.fn(async () => null),
+    getFileBody: overrides.getFileBody ?? vi.fn(async () => null),
   } as unknown as DownloadService;
   const previewService = {
-    parse: jest.fn(async () => ({}) as never),
-    getMeta: jest.fn(() => ({
+    parse: vi.fn(async () => ({}) as never),
+    getMeta: vi.fn(() => ({
       totalCards: 3,
       decks: [{ id: 1, fullName: 'Bio', path: ['Bio'], cardCount: 3 }],
     })),
-    getCardsPage: jest.fn(() => ({
+    getCardsPage: vi.fn(() => ({
       cards: [{ front: 'Q', back: 'A' }],
       nextCursor: null,
       total: 3,
@@ -55,21 +56,21 @@ function makeService(overrides: {
     ((_req: express.Request, res: express.Response) => {
       res.status(200);
     });
-  const persist = jest.fn(
+  const persist = vi.fn(
     overrides.persist ?? (async () => 'owner-9-123-deck.apkg')
   );
   const deckPersistence = { persist } as unknown as DeckPersistence;
-  const getPresignedUrl = jest.fn(
+  const getPresignedUrl = vi.fn(
     overrides.getPresignedUrl ?? (async () => 'https://s3.example/presigned')
   );
   const storage = { getPresignedUrl } as unknown as StorageHandler;
-  const generateCards = overrides.generateCards ?? jest.fn();
+  const generateCards = overrides.generateCards ?? vi.fn();
   const photoToFlashcards = {
     generateCards,
   } as unknown as PhotoToFlashcardsUseCase;
   const getCardUsage =
-    overrides.getCardUsage ?? jest.fn(async () => ({ cards_used: 0 }));
-  const incrementCardUsage = overrides.incrementCardUsage ?? jest.fn();
+    overrides.getCardUsage ?? vi.fn(async () => ({ cards_used: 0 }));
+  const incrementCardUsage = overrides.incrementCardUsage ?? vi.fn();
   const usersRepository = {
     getCardUsage,
     incrementCardUsage,
@@ -153,9 +154,9 @@ function makePreview(
     },
   };
   return {
-    parse: jest.fn(async () => parsed as never),
-    getMeta: jest.fn(() => ({ totalCards: cards.length, decks: [] })),
-    getCardsPage: jest.fn(
+    parse: vi.fn(async () => parsed as never),
+    getMeta: vi.fn(() => ({ totalCards: cards.length, decks: [] })),
+    getCardsPage: vi.fn(
       () => ({ cards, nextCursor: null, total: cards.length }) as never
     ),
   };
@@ -169,9 +170,9 @@ function basicPreview(cards: SampleInput[]): Partial<ApkgPreviewService> {
   return makePreview(basicNoteTypes(), cards);
 }
 
-jest.mock('../events/track', () => ({ track: jest.fn() }));
+vi.mock('../events/track', () => ({ track: vi.fn() }));
 import { track } from '../events/track';
-const trackMock = track as jest.Mock;
+const trackMock = track as Mock;
 
 describe('McpToolsService.listMyDecks', () => {
   it('maps jobs to owner-scoped summaries with download URLs', async () => {
@@ -256,7 +257,7 @@ describe('McpToolsService.getDeckPreview', () => {
   });
 
   it('resolves the jobId to its download_key and returns meta + sample cards', async () => {
-    const getFileBody = jest.fn(async () => Buffer.from('apkg'));
+    const getFileBody = vi.fn(async () => Buffer.from('apkg'));
     const { service } = makeService({
       jobs: [jobFixture({ object_id: 'job-1', download_key: 'deck.apkg' })],
       getFileBody,
@@ -273,7 +274,7 @@ describe('McpToolsService.getDeckPreview', () => {
   });
 
   it('resolves a raw .apkg key directly when no job matches, owner-scoped', async () => {
-    const getFileBody = jest.fn(async () => Buffer.from('apkg'));
+    const getFileBody = vi.fn(async () => Buffer.from('apkg'));
     const { service } = makeService({
       jobs: [jobFixture({ object_id: 'job-1' })],
       getFileBody,
@@ -300,7 +301,7 @@ describe('McpToolsService.getDeckPreview', () => {
   it('reports when the resolved file is missing from storage', async () => {
     const { service } = makeService({
       jobs: [jobFixture({ object_id: 'job-1', download_key: 'deck.apkg' })],
-      getFileBody: jest.fn(async () => null),
+      getFileBody: vi.fn(async () => null),
     });
     await expect(service.getDeckPreview('owner', 'job-1')).rejects.toThrow(
       /Upload not found/
@@ -394,7 +395,7 @@ describe('McpToolsService.convertToDeck', () => {
     const { service } = makeService({
       uploadEntry,
       preview: {
-        parse: jest.fn(async () => {
+        parse: vi.fn(async () => {
           throw new Error('bad apkg');
         }),
       },
@@ -716,7 +717,7 @@ describe('McpToolsService.convertToDeck', () => {
         decks: new Map(),
       },
     };
-    const getCardsPage = jest.fn((_p: unknown, cursor: number) =>
+    const getCardsPage = vi.fn((_p: unknown, cursor: number) =>
       cursor === 0
         ? {
             cards: [{ front: 'F', back: 'B', ord: 0 }],
@@ -732,8 +733,8 @@ describe('McpToolsService.convertToDeck', () => {
     const { service } = makeService({
       uploadEntry,
       preview: {
-        parse: jest.fn(async () => parsed as never),
-        getMeta: jest.fn(() => ({ totalCards: 2, decks: [] })),
+        parse: vi.fn(async () => parsed as never),
+        getMeta: vi.fn(() => ({ totalCards: 2, decks: [] })),
         getCardsPage,
       } as unknown as Partial<ApkgPreviewService>,
     });
@@ -798,7 +799,7 @@ describe('McpToolsService.createDeck', () => {
   it('keys the preview cache by the jobId, not the deck name, so a reused name does not return stale cards (regression: #3744)', async () => {
     const { entry } = captureUpload();
     const { service, previewService } = makeService({ uploadEntry: entry });
-    const parseMock = previewService.parse as jest.Mock;
+    const parseMock = previewService.parse as Mock;
 
     const first = await service.createDeck(
       [{ front: 'A-front', back: 'A-back' }],
@@ -1083,7 +1084,7 @@ describe('McpToolsService.photoToDeck', () => {
   });
 
   it('decodes a data URL, runs vision, and maps the cards to a result', async () => {
-    const generateCards = jest.fn(async () =>
+    const generateCards = vi.fn(async () =>
       visionResult([
         { front: 'Q1', back: 'A1' },
         { front: 'Q2', back: 'A2' },
@@ -1114,7 +1115,7 @@ describe('McpToolsService.photoToDeck', () => {
   });
 
   it('accepts a bare base64 string without a data URL prefix', async () => {
-    const generateCards = jest.fn(async () => visionResult([]));
+    const generateCards = vi.fn(async () => visionResult([]));
     const { service } = makeService({ generateCards });
     await service.photoToDeck({ image: ONE_PIXEL_PNG_BASE64 }, 'o', {});
     expect(generateCards).toHaveBeenCalledWith(
@@ -1123,7 +1124,7 @@ describe('McpToolsService.photoToDeck', () => {
   });
 
   it('forwards density and mode to the vision use case', async () => {
-    const generateCards = jest.fn(async () => visionResult([]));
+    const generateCards = vi.fn(async () => visionResult([]));
     const { service } = makeService({ generateCards });
     await service.photoToDeck(
       { image: ONE_PIXEL_PNG_BASE64, density: 'dense', mode: 'verbatim' },
@@ -1136,7 +1137,7 @@ describe('McpToolsService.photoToDeck', () => {
   });
 
   it('rejects an empty image without calling vision', async () => {
-    const generateCards = jest.fn();
+    const generateCards = vi.fn();
     const { service } = makeService({ generateCards });
     await expect(
       service.photoToDeck({ image: '   ' }, 'o', {})
@@ -1145,7 +1146,7 @@ describe('McpToolsService.photoToDeck', () => {
   });
 
   it('rejects a non-image payload without calling vision', async () => {
-    const generateCards = jest.fn();
+    const generateCards = vi.fn();
     const { service } = makeService({ generateCards });
     const notAnImage = Buffer.from('this is plain text').toString('base64');
     await expect(
@@ -1155,7 +1156,7 @@ describe('McpToolsService.photoToDeck', () => {
   });
 
   it('rejects an oversized image without calling vision', async () => {
-    const generateCards = jest.fn();
+    const generateCards = vi.fn();
     const { service } = makeService({ generateCards });
     const oversized = Buffer.alloc(10 * 1024 * 1024 + 1).toString('base64');
     await expect(
@@ -1171,7 +1172,7 @@ describe('McpToolsService.photoToDeck', () => {
       ),
       { status: 429 }
     );
-    const generateCards = jest.fn(async () => {
+    const generateCards = vi.fn(async () => {
       throw quotaError;
     });
     const { service } = makeService({ generateCards });
@@ -1279,7 +1280,7 @@ describe('McpToolsService.createDeck with subdecks', () => {
   });
 
   it('increments card usage by the flat total across all subdecks', async () => {
-    const incrementCardUsage = jest.fn();
+    const incrementCardUsage = vi.fn();
     const { service } = makeService({ incrementCardUsage });
     await service.createDeck(
       subdeckCards(),
@@ -1292,9 +1293,9 @@ describe('McpToolsService.createDeck with subdecks', () => {
   });
 
   it('blocks an over-limit free user with the limit error and does not package or bill', async () => {
-    const persist = jest.fn(async () => 'k');
-    const incrementCardUsage = jest.fn();
-    const getCardUsage = jest.fn(async () => ({ cards_used: 99 }));
+    const persist = vi.fn(async () => 'k');
+    const incrementCardUsage = vi.fn();
+    const getCardUsage = vi.fn(async () => ({ cards_used: 99 }));
     const { service } = makeService({
       persist,
       incrementCardUsage,
@@ -1330,8 +1331,8 @@ describe('McpToolsService.createDeck with subdecks', () => {
   });
 
   it('exempts a paying user from the monthly card limit', async () => {
-    const incrementCardUsage = jest.fn();
-    const getCardUsage = jest.fn(async () => ({ cards_used: 9999 }));
+    const incrementCardUsage = vi.fn();
+    const getCardUsage = vi.fn(async () => ({ cards_used: 9999 }));
     const { service, persist } = makeService({
       incrementCardUsage,
       getCardUsage,

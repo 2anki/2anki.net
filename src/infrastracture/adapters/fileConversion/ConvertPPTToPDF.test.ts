@@ -1,20 +1,25 @@
+import { vi, type Mock, type MockedFunction } from 'vitest';
 import { EventEmitter } from 'node:events';
-import * as childProcess from 'node:child_process';
+import * as childProcess from 'child_process';
+import fsPromises from 'fs/promises';
 import { convertPPTToPDF } from './ConvertPPTToPDF';
 import Workspace from '../../../lib/parser/WorkSpace';
 
-jest.mock('child_process', () => ({
-  ...jest.requireActual('child_process'),
-  spawn: jest.fn(),
+vi.mock('child_process', async () => ({
+  ...(await vi.importActual<typeof import('child_process')>('child_process')),
+  spawn: vi.fn(),
 }));
 
-jest.mock('fs/promises', () => ({
-  ...jest.requireActual('fs/promises'),
-  writeFile: jest.fn().mockResolvedValue(undefined),
-  readFile: jest.fn().mockResolvedValue(Buffer.from('pdf-bytes')),
-}));
+vi.mock('fs/promises', async () => {
+  const actual =
+    await vi.importActual<typeof import('fs/promises')>('fs/promises');
+  const writeFile = vi.fn().mockResolvedValue(undefined);
+  const readFile = vi.fn().mockResolvedValue(Buffer.from('pdf-bytes'));
+  const mocked = { ...actual, writeFile, readFile };
+  return { ...mocked, default: mocked };
+});
 
-const mockedSpawn = childProcess.spawn as jest.MockedFunction<
+const mockedSpawn = childProcess.spawn as MockedFunction<
   typeof childProcess.spawn
 >;
 
@@ -50,7 +55,7 @@ describe('convertPPTToPDF', () => {
   const workspace = { location: '/tmp/test-ws' } as Workspace;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('surfaces the subprocess stderr and exit code on failure', async () => {
@@ -73,7 +78,7 @@ describe('convertPPTToPDF', () => {
 
   it('logs the subprocess stderr to the server console on failure', async () => {
     const stderr = 'unoconv: Document export failed.';
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockedSpawn.mockReturnValue(makeFailingProcess(stderr, 251));
 
     await convertPPTToPDF('slides.pptx', Buffer.from('fake'), workspace).catch(
@@ -125,10 +130,7 @@ describe('convertPPTToPDF', () => {
   });
 
   it('rejects instead of hanging when exit 0 produced no PDF', async () => {
-    const fsPromises = jest.requireMock('fs/promises') as {
-      readFile: jest.Mock;
-    };
-    fsPromises.readFile.mockRejectedValueOnce(
+    (fsPromises.readFile as unknown as Mock).mockRejectedValueOnce(
       Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
     );
     mockedSpawn.mockReturnValue(makeProcess('', 0));

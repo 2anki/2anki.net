@@ -1,12 +1,14 @@
+import { vi } from 'vitest';
 import { resetEventsSinkForTesting } from './eventsSinkInstance';
+import * as eventsSinkInstance from './eventsSinkInstance';
 
-jest.mock('./eventsSinkInstance', () => {
+vi.mock('./eventsSinkInstance', () => {
   const recorded: unknown[] = [];
   return {
     getEventsSink: () => ({
-      record: jest.fn((row: unknown) => recorded.push(row)),
+      record: vi.fn((row: unknown) => recorded.push(row)),
     }),
-    resetEventsSinkForTesting: jest.fn(),
+    resetEventsSinkForTesting: vi.fn(),
     __recorded: recorded,
   };
 });
@@ -14,9 +16,8 @@ jest.mock('./eventsSinkInstance', () => {
 import { track } from './track';
 
 function getRecorded() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (jest.requireMock('./eventsSinkInstance') as any)
-    .__recorded as unknown[];
+  return (eventsSinkInstance as unknown as { __recorded: unknown[] })
+    .__recorded;
 }
 
 describe('track (server helper)', () => {

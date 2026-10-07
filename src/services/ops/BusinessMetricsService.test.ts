@@ -1,5 +1,6 @@
-jest.mock('../../lib/integrations/stripe', () => ({
-  getStripe: jest.fn(),
+import { vi, type Mock } from 'vitest';
+vi.mock('../../lib/integrations/stripe', () => ({
+  getStripe: vi.fn(),
 }));
 
 import { InMemoryEmojiFeedbackRepository } from '../../data_layer/EmojiFeedbackRepository';
@@ -98,7 +99,7 @@ interface FakeStripeOptions {
 }
 
 const buildFakeStripe = (options: FakeStripeOptions = {}) => {
-  const invoicesList = jest.fn(async () => ({
+  const invoicesList = vi.fn(async () => ({
     data: options.invoices ?? [],
     has_more: false,
   }));
@@ -119,7 +120,7 @@ const buildService = (
   const subscriptionsRepository = new InMemorySubscriptionsSourceRepository(
     (options.allSubs ?? []) as unknown[]
   );
-  const listSpy = jest.spyOn(subscriptionsRepository, 'listPayloads');
+  const listSpy = vi.spyOn(subscriptionsRepository, 'listPayloads');
   const service = new BusinessMetricsService({
     stripeFactory: () => stripe as never,
     subscriptionsRepository,
@@ -130,17 +131,17 @@ const buildService = (
 
 describe('BusinessMetricsService', () => {
   beforeEach(() => {
-    jest.useFakeTimers({
+    vi.useFakeTimers({
       now: NOW_MS,
     });
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('surfaces 7-day pass sales when a pass-sales repository is injected', async () => {
-    const passSalesSince = jest
+    const passSalesSince = vi
       .fn()
       .mockResolvedValue({ day_passes: 5, week_passes: 2 });
     const { service } = buildService(
@@ -163,7 +164,7 @@ describe('BusinessMetricsService', () => {
     for (let i = 0; i < 3; i += 1) {
       await emoji.insert({ rating: 1, comment: null, page: 'p', email: null });
     }
-    const countByName = jest.fn(async (name: string, since: Date) => {
+    const countByName = vi.fn(async (name: string, since: Date) => {
       expect(name).toBe('happy_score_ask_shown');
       const days = Math.round((NOW_MS - since.getTime()) / 86_400_000);
       return days * 10;
@@ -397,7 +398,7 @@ describe('BusinessMetricsService', () => {
     });
 
     await service.getMetrics();
-    jest.advanceTimersByTime(10 * 60 * 1000);
+    vi.advanceTimersByTime(10 * 60 * 1000);
     const second = await service.getMetrics();
 
     expect(listSpy).toHaveBeenCalledTimes(1);
@@ -435,7 +436,7 @@ describe('BusinessMetricsService', () => {
     });
 
     await service.getMetrics();
-    jest.advanceTimersByTime(16 * 60 * 1000);
+    vi.advanceTimersByTime(16 * 60 * 1000);
     await service.getMetrics();
 
     expect(listSpy).toHaveBeenCalledTimes(2);
@@ -502,7 +503,7 @@ describe('BusinessMetricsService', () => {
     const { stripe, service } = buildService({
       allSubs: [sub('sub_1', [monthly(1000)], { created: daysAgoEpoch(60) })],
     });
-    (stripe.invoices.list as jest.Mock).mockRejectedValueOnce(
+    (stripe.invoices.list as Mock).mockRejectedValueOnce(
       new Error('stripe boom')
     );
 
@@ -744,7 +745,7 @@ describe('BusinessMetricsService', () => {
       });
 
       const first = await service.getMetrics();
-      jest.advanceTimersByTime(10 * 60 * 1000);
+      vi.advanceTimersByTime(10 * 60 * 1000);
       const second = await service.getMetrics();
 
       expect(listSpy).toHaveBeenCalledTimes(1);
@@ -797,7 +798,7 @@ describe('BusinessMetricsService', () => {
       expect(listSpy).toHaveBeenCalledTimes(1);
 
       // Past TTL — second call should NOT block but should kick a background refresh
-      jest.advanceTimersByTime(16 * 60 * 1000);
+      vi.advanceTimersByTime(16 * 60 * 1000);
       const second = await service.getMetrics();
       // Stale data returned immediately; cache_age_seconds reflects the staleness
       expect(second.mrr_usd).toBeCloseTo(10, 5);
@@ -826,9 +827,9 @@ describe('BusinessMetricsService', () => {
     it('cold start with the subscriptions source failing still returns invoice-derived metrics', async () => {
       const subscriptionsRepository =
         new InMemorySubscriptionsSourceRepository();
-      jest
-        .spyOn(subscriptionsRepository, 'listPayloads')
-        .mockRejectedValueOnce(new Error('subs boom'));
+      vi.spyOn(subscriptionsRepository, 'listPayloads').mockRejectedValueOnce(
+        new Error('subs boom')
+      );
       const { service } = buildService(
         {
           invoices: [
@@ -945,8 +946,8 @@ describe('BusinessMetricsService', () => {
         reason: 'Too expensive',
         created_at: new Date(NOW_MS - 1000),
       });
-      const countSpy = jest.spyOn(cancellationRepo, 'countByReason');
-      const commentsSpy = jest.spyOn(cancellationRepo, 'recentComments');
+      const countSpy = vi.spyOn(cancellationRepo, 'countByReason');
+      const commentsSpy = vi.spyOn(cancellationRepo, 'recentComments');
 
       const { service } = buildService(
         {},
@@ -954,7 +955,7 @@ describe('BusinessMetricsService', () => {
       );
 
       await service.getMetrics();
-      jest.advanceTimersByTime(10 * 60 * 1000);
+      vi.advanceTimersByTime(10 * 60 * 1000);
       await service.getMetrics();
 
       expect(countSpy).toHaveBeenCalledTimes(1);
@@ -964,9 +965,9 @@ describe('BusinessMetricsService', () => {
     it('reports a per-metric error and returns null when the repo throws', async () => {
       const cancellationRepo: InMemoryCancellationFeedbackRepository =
         new InMemoryCancellationFeedbackRepository();
-      jest
-        .spyOn(cancellationRepo, 'countByReason')
-        .mockRejectedValueOnce(new Error('db down'));
+      vi.spyOn(cancellationRepo, 'countByReason').mockRejectedValueOnce(
+        new Error('db down')
+      );
 
       const { service } = buildService(
         {},
@@ -1016,8 +1017,8 @@ describe('BusinessMetricsService', () => {
     it('caches signup counts within the TTL', async () => {
       const signupCountsRepo = new InMemoryUserSignupCountsRepository();
       signupCountsRepo.setTotalUsers(5);
-      const totalSpy = jest.spyOn(signupCountsRepo, 'countTotalUsers');
-      const sinceSpy = jest.spyOn(signupCountsRepo, 'countSignupsSince');
+      const totalSpy = vi.spyOn(signupCountsRepo, 'countTotalUsers');
+      const sinceSpy = vi.spyOn(signupCountsRepo, 'countSignupsSince');
 
       const { service } = buildService(
         {},
@@ -1025,7 +1026,7 @@ describe('BusinessMetricsService', () => {
       );
 
       await service.getMetrics();
-      jest.advanceTimersByTime(10 * 60 * 1000);
+      vi.advanceTimersByTime(10 * 60 * 1000);
       await service.getMetrics();
 
       expect(totalSpy).toHaveBeenCalledTimes(1);
@@ -1035,9 +1036,9 @@ describe('BusinessMetricsService', () => {
     it('reports a per-metric error and nulls the windows when total count throws', async () => {
       const signupCountsRepo: IUserSignupCountsRepository =
         new InMemoryUserSignupCountsRepository();
-      jest
-        .spyOn(signupCountsRepo, 'countTotalUsers')
-        .mockRejectedValueOnce(new Error('counts down'));
+      vi.spyOn(signupCountsRepo, 'countTotalUsers').mockRejectedValueOnce(
+        new Error('counts down')
+      );
 
       const { service } = buildService(
         {},

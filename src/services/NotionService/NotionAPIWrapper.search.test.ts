@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { APIErrorCode, APIResponseError } from '@notionhq/client';
 
 import NotionAPIWrapper from './NotionAPIWrapper';
@@ -24,7 +25,7 @@ const installSearchStub = (
   pages: ReadonlyArray<{ results: unknown[]; next_cursor: string | null }>
 ) => {
   let call = 0;
-  const search = jest.fn(async () => {
+  const search = vi.fn(async () => {
     const page = pages[call] ?? { results: [], next_cursor: null };
     call += 1;
     return {
@@ -104,7 +105,7 @@ describe('NotionAPIWrapper.search', () => {
   test('returns the pages collected so far when a later cursor is invalidated', async () => {
     const wrapper = new NotionAPIWrapper('test-token', '1');
     let call = 0;
-    const search = jest.fn(async () => {
+    const search = vi.fn(async () => {
       call += 1;
       if (call === 1) {
         return {
@@ -134,7 +135,7 @@ describe('NotionAPIWrapper.search', () => {
 
   test('propagates a cursor validation error thrown on the first page', async () => {
     const wrapper = new NotionAPIWrapper('test-token', '1');
-    const search = jest.fn(async () => {
+    const search = vi.fn(async () => {
       throw makeApiError(
         APIErrorCode.ValidationError,
         'The start_cursor provided is invalid: 00000000-0000-0000-0000-000000000000'
@@ -152,7 +153,7 @@ describe('NotionAPIWrapper.search', () => {
   test('propagates an unrelated validation error thrown mid-pagination', async () => {
     const wrapper = new NotionAPIWrapper('test-token', '1');
     let call = 0;
-    const search = jest.fn(async () => {
+    const search = vi.fn(async () => {
       call += 1;
       if (call === 1) {
         return {

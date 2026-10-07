@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { UserPassWindowRow } from '../../data_layer/UserPassRepository';
 import type { AnonymousPassWindowRow } from '../../data_layer/AnonymousPassRepository';
 import type { PaidValueEventRow } from '../../data_layer/EventsMetricsRepository';
@@ -232,9 +233,7 @@ describe('PaidValueMonitorService', () => {
   });
 
   it('gives an unlimited pass a month-long window without warning', async () => {
-    const warn = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { service } = buildService({
       userPasses: [
         {
@@ -267,9 +266,7 @@ describe('PaidValueMonitorService', () => {
   });
 
   it('defaults an unknown pass kind to a 24h window and warns', async () => {
-    const warn = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { service } = buildService({
       userPasses: [
         {

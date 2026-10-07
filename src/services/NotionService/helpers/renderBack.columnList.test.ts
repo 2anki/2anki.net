@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { BlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import CardOption from '../../../lib/parser/Settings/CardOption';
@@ -77,15 +78,15 @@ function handlerWithTwoColumns() {
     'col-0': [paragraph('p-left', 'LEFTSIDE')],
     'col-1': [paragraph('p-right', 'RIGHTSIDE')],
   };
-  jest
-    .spyOn(handler.api, 'getBlocks')
-    .mockImplementation(async ({ id }: { id: string }) => {
+  vi.spyOn(handler.api, 'getBlocks').mockImplementation(
+    async ({ id }: { id: string }) => {
       return {
         results: children[id] ?? [],
         has_more: false,
         next_cursor: null,
       } as never;
-    });
+    }
+  );
   return {
     handler,
     toggle: block('toggle', 'toggle', { rich_text: [] }, true),
@@ -153,15 +154,15 @@ describe('containers that walk their own children', () => {
       'col-0': [paragraph('p-left', 'LEFTSIDE')],
       'col-1': [paragraph('p-right', 'RIGHTSIDE')],
     };
-    jest
-      .spyOn(handler.api, 'getBlocks')
-      .mockImplementation(async ({ id }: { id: string }) => {
+    vi.spyOn(handler.api, 'getBlocks').mockImplementation(
+      async ({ id }: { id: string }) => {
         return {
           results: children[id] ?? [],
           has_more: false,
           next_cursor: null,
         } as never;
-      });
+      }
+    );
     return {
       handler,
       toggle: block('toggle', 'toggle', { rich_text: [] }, true),
@@ -203,15 +204,15 @@ describe('containers that walk their own children', () => {
         toggle: [block('item', listType, body, true)],
         item: [paragraph('p-child', 'CHILDTEXT')],
       };
-      jest
-        .spyOn(handler.api, 'getBlocks')
-        .mockImplementation(async ({ id }: { id: string }) => {
+      vi.spyOn(handler.api, 'getBlocks').mockImplementation(
+        async ({ id }: { id: string }) => {
           return {
             results: children[id] ?? [],
             has_more: false,
             next_cursor: null,
           } as never;
-        });
+        }
+      );
 
       const back =
         (await handler.getBackSide(

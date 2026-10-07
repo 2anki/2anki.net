@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { MindmapStorageMetricsService } from './MindmapStorageMetricsService';
 
 interface StubObject {
@@ -6,7 +7,7 @@ interface StubObject {
 }
 
 function makeService(objects: StubObject[]): MindmapStorageMetricsService {
-  const listMindmapObjects = jest.fn().mockResolvedValue(objects);
+  const listMindmapObjects = vi.fn().mockResolvedValue(objects);
   return new MindmapStorageMetricsService(listMindmapObjects);
 }
 
@@ -70,7 +71,7 @@ describe('MindmapStorageMetricsService', () => {
   });
 
   it('propagates errors from the storage list call', async () => {
-    const listMindmapObjects = jest
+    const listMindmapObjects = vi
       .fn()
       .mockRejectedValue(new Error('S3 unavailable'));
     const service = new MindmapStorageMetricsService(listMindmapObjects);

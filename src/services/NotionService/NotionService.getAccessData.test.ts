@@ -1,10 +1,11 @@
+import { vi, type Mocked } from 'vitest';
 import { NotionService } from './NotionService';
 import instrumentedAxios from '../observability/instrumentedAxios';
 import type { INotionRepository } from '../../data_layer/NotionRespository';
 
-jest.mock('../observability/instrumentedAxios');
+vi.mock('../observability/instrumentedAxios');
 
-const mockedAxios = instrumentedAxios as jest.Mocked<typeof instrumentedAxios>;
+const mockedAxios = instrumentedAxios as Mocked<typeof instrumentedAxios>;
 const ORIGINAL_ENV = { ...process.env };
 
 beforeEach(() => {
@@ -20,14 +21,14 @@ afterEach(() => {
 
 function makeService() {
   const stubRepo: INotionRepository = {
-    getNotionData: jest.fn().mockResolvedValue(null),
-    saveNotionToken: jest.fn().mockResolvedValue(true),
-    getNotionToken: jest.fn().mockResolvedValue(null),
-    deleteBlocksByOwner: jest.fn().mockResolvedValue(0),
-    deleteNotionData: jest.fn().mockResolvedValue(true),
-    markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    clearTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+    getNotionData: vi.fn().mockResolvedValue(null),
+    saveNotionToken: vi.fn().mockResolvedValue(true),
+    getNotionToken: vi.fn().mockResolvedValue(null),
+    deleteBlocksByOwner: vi.fn().mockResolvedValue(0),
+    deleteNotionData: vi.fn().mockResolvedValue(true),
+    markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    clearTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    setReconnectEmailSent: vi.fn().mockResolvedValue(true),
   };
   return new NotionService(stubRepo);
 }
@@ -83,7 +84,7 @@ describe('NotionService.getAccessData settles per the OAuth response', () => {
       data: {},
     } as Awaited<ReturnType<typeof mockedAxios.post>>);
 
-    const settled = jest.fn();
+    const settled = vi.fn();
     void makeService().getAccessData('auth-code-123').then(settled, settled);
 
     await new Promise((resolve) => setImmediate(resolve));

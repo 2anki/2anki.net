@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { NotionService } from './NotionService';
 import type { INotionRepository } from '../../data_layer/NotionRespository';
 import { verifyNativeOAuthState } from './nativeOAuthState';
@@ -6,14 +7,14 @@ function makeRepo(
   overrides: Partial<INotionRepository> = {}
 ): INotionRepository {
   return {
-    getNotionData: jest.fn().mockResolvedValue(null),
-    saveNotionToken: jest.fn().mockResolvedValue(true),
-    getNotionToken: jest.fn().mockResolvedValue(null),
-    deleteBlocksByOwner: jest.fn().mockResolvedValue(0),
-    deleteNotionData: jest.fn().mockResolvedValue(true),
-    markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    clearTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+    getNotionData: vi.fn().mockResolvedValue(null),
+    saveNotionToken: vi.fn().mockResolvedValue(true),
+    getNotionToken: vi.fn().mockResolvedValue(null),
+    deleteBlocksByOwner: vi.fn().mockResolvedValue(0),
+    deleteNotionData: vi.fn().mockResolvedValue(true),
+    markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    clearTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    setReconnectEmailSent: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -27,7 +28,7 @@ beforeEach(() => {
 
 describe('getNotionLinkInfo', () => {
   it('returns isConnected: false when no token row exists', async () => {
-    const repo = makeRepo({ getNotionData: jest.fn().mockResolvedValue(null) });
+    const repo = makeRepo({ getNotionData: vi.fn().mockResolvedValue(null) });
     const service = new NotionService(repo);
     const result = await service.getNotionLinkInfo(1);
     expect(result.isConnected).toBe(false);
@@ -35,7 +36,7 @@ describe('getNotionLinkInfo', () => {
 
   it('returns isConnected: true when a valid token row exists', async () => {
     const repo = makeRepo({
-      getNotionData: jest.fn().mockResolvedValue({
+      getNotionData: vi.fn().mockResolvedValue({
         token: 'some-token',
         workspace_name: 'My Workspace',
         invalidated_at: null,
@@ -71,7 +72,7 @@ describe('getNotionLinkInfo', () => {
 
   it('returns isConnected: false when token row has invalidated_at set', async () => {
     const repo = makeRepo({
-      getNotionData: jest.fn().mockResolvedValue({
+      getNotionData: vi.fn().mockResolvedValue({
         token: 'stale-token',
         workspace_name: 'My Workspace',
         invalidated_at: new Date('2026-01-01T00:00:00Z'),

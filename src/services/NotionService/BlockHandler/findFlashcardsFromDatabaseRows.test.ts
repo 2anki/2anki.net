@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import BlockHandler from './BlockHandler';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
@@ -22,9 +23,9 @@ function richTextProp(text: string): unknown {
 
 function makeApi(opts: { rows: FakeRow[]; dbName?: string }): NotionAPIWrapper {
   return {
-    queryDatabase: jest.fn().mockResolvedValue({ results: opts.rows }),
-    getDatabase: jest.fn().mockResolvedValue({ id: 'db-1' }),
-    getDatabaseTitle: jest.fn().mockResolvedValue(opts.dbName ?? 'Vocabulary'),
+    queryDatabase: vi.fn().mockResolvedValue({ results: opts.rows }),
+    getDatabase: vi.fn().mockResolvedValue({ id: 'db-1' }),
+    getDatabaseTitle: vi.fn().mockResolvedValue(opts.dbName ?? 'Vocabulary'),
   } as unknown as NotionAPIWrapper;
 }
 
@@ -302,7 +303,7 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
       ],
     });
     const bl = makeHandler(api);
-    jest.spyOn(bl, 'findFlashcardsFromPage').mockRejectedValue({
+    vi.spyOn(bl, 'findFlashcardsFromPage').mockRejectedValue({
       code: 'validation_error',
       message: 'db-1 is a database, not a page',
     });

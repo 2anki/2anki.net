@@ -1,13 +1,14 @@
-jest.mock('../data_layer', () => ({
-  getDatabase: jest.fn(),
+import { vi, type Mock } from 'vitest';
+vi.mock('../data_layer', () => ({
+  getDatabase: vi.fn(),
 }));
 
-jest.mock('../lib/integrations/stripe', () => ({
-  getStripe: jest.fn(),
+vi.mock('../lib/integrations/stripe', () => ({
+  getStripe: vi.fn(),
 }));
 
-jest.mock('./EmailService/EmailService', () => ({
-  getDefaultEmailService: jest.fn(),
+vi.mock('./EmailService/EmailService', () => ({
+  getDefaultEmailService: vi.fn(),
 }));
 
 import { getDatabase } from '../data_layer';
@@ -20,28 +21,28 @@ import SubscriptionService, {
   InvalidPauseMonthsError,
 } from './SubscriptionService';
 
-function buildDbMock(linkedRows: Array<{ email: string }> = []): jest.Mock & {
-  updateSpy: jest.Mock;
-  deleteSpy: jest.Mock;
-  whereRawSpy: jest.Mock;
+function buildDbMock(linkedRows: Array<{ email: string }> = []): Mock & {
+  updateSpy: Mock;
+  deleteSpy: Mock;
+  whereRawSpy: Mock;
 } {
-  const updateSpy = jest.fn().mockResolvedValue(0);
-  const deleteSpy = jest.fn().mockResolvedValue(0);
-  const whereRawSpy = jest.fn().mockReturnThis();
+  const updateSpy = vi.fn().mockResolvedValue(0);
+  const deleteSpy = vi.fn().mockResolvedValue(0);
+  const whereRawSpy = vi.fn().mockReturnThis();
   const queryBuilder: Record<string, unknown> = {
-    select: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
     whereRaw: whereRawSpy,
-    andWhere: jest.fn().mockReturnThis(),
-    orWhere: jest.fn().mockReturnThis(),
+    andWhere: vi.fn().mockReturnThis(),
+    orWhere: vi.fn().mockReturnThis(),
     update: updateSpy,
     delete: deleteSpy,
     then: (resolve: (value: unknown) => void) => resolve(linkedRows),
   };
-  const db = jest.fn().mockReturnValue(queryBuilder) as jest.Mock & {
-    updateSpy: jest.Mock;
-    deleteSpy: jest.Mock;
-    whereRawSpy: jest.Mock;
+  const db = vi.fn().mockReturnValue(queryBuilder) as Mock & {
+    updateSpy: Mock;
+    deleteSpy: Mock;
+    whereRawSpy: Mock;
   };
   db.updateSpy = updateSpy;
   db.deleteSpy = deleteSpy;
@@ -50,24 +51,24 @@ function buildDbMock(linkedRows: Array<{ email: string }> = []): jest.Mock & {
 }
 
 type StripeMock = {
-  customers: { list: jest.Mock; search: jest.Mock };
+  customers: { list: Mock; search: Mock };
   subscriptions: {
-    list: jest.Mock;
-    update: jest.Mock;
-    cancel: jest.Mock;
+    list: Mock;
+    update: Mock;
+    cancel: Mock;
   };
 };
 
 function buildStripeMock(overrides: Partial<StripeMock> = {}): StripeMock {
   return {
     customers: {
-      list: jest.fn().mockResolvedValue({ data: [] }),
-      search: jest.fn().mockResolvedValue({ data: [] }),
+      list: vi.fn().mockResolvedValue({ data: [] }),
+      search: vi.fn().mockResolvedValue({ data: [] }),
     },
     subscriptions: {
-      list: jest.fn().mockResolvedValue({ data: [] }),
-      update: jest.fn().mockResolvedValue({}),
-      cancel: jest.fn().mockResolvedValue({}),
+      list: vi.fn().mockResolvedValue({ data: [] }),
+      update: vi.fn().mockResolvedValue({}),
+      cancel: vi.fn().mockResolvedValue({}),
     },
     ...overrides,
   };
@@ -87,11 +88,11 @@ describe('SubscriptionService.findActiveStripeSubscriptions', () => {
   let stripe: StripeMock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     stripe = buildStripeMock();
-    (getStripe as jest.Mock).mockReturnValue(stripe);
-    (getDatabase as jest.Mock).mockReturnValue(buildDbMock());
-    (getDefaultEmailService as jest.Mock).mockReturnValue({});
+    (getStripe as Mock).mockReturnValue(stripe);
+    (getDatabase as Mock).mockReturnValue(buildDbMock());
+    (getDefaultEmailService as Mock).mockReturnValue({});
   });
 
   it('returns active subscriptions for the user email', async () => {
@@ -126,7 +127,7 @@ describe('SubscriptionService.findActiveStripeSubscriptions', () => {
   });
 
   it('also looks up subscriptions under linked Stripe emails', async () => {
-    (getDatabase as jest.Mock).mockReturnValue(
+    (getDatabase as Mock).mockReturnValue(
       buildDbMock([{ email: 'stripe@example.com' }])
     );
     stripe.customers.list
@@ -200,11 +201,11 @@ describe('SubscriptionService.findRecentStripeSubscriptions', () => {
   let stripe: StripeMock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     stripe = buildStripeMock();
-    (getStripe as jest.Mock).mockReturnValue(stripe);
-    (getDatabase as jest.Mock).mockReturnValue(buildDbMock());
-    (getDefaultEmailService as jest.Mock).mockReturnValue({});
+    (getStripe as Mock).mockReturnValue(stripe);
+    (getDatabase as Mock).mockReturnValue(buildDbMock());
+    (getDefaultEmailService as Mock).mockReturnValue({});
   });
 
   it('returns subscriptions with any status from Stripe', async () => {
@@ -245,18 +246,18 @@ describe('SubscriptionService.findRecentStripeSubscriptions', () => {
 
 describe('SubscriptionService.cancelUserSubscriptions', () => {
   let stripe: StripeMock;
-  let sendScheduledEmail: jest.Mock;
-  let sendCancelledEmail: jest.Mock;
+  let sendScheduledEmail: Mock;
+  let sendCancelledEmail: Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     stripe = buildStripeMock();
-    (getStripe as jest.Mock).mockReturnValue(stripe);
-    (getDatabase as jest.Mock).mockReturnValue(buildDbMock());
+    (getStripe as Mock).mockReturnValue(stripe);
+    (getDatabase as Mock).mockReturnValue(buildDbMock());
 
-    sendScheduledEmail = jest.fn().mockResolvedValue(undefined);
-    sendCancelledEmail = jest.fn().mockResolvedValue(undefined);
-    (getDefaultEmailService as jest.Mock).mockReturnValue({
+    sendScheduledEmail = vi.fn().mockResolvedValue(undefined);
+    sendCancelledEmail = vi.fn().mockResolvedValue(undefined);
+    (getDefaultEmailService as Mock).mockReturnValue({
       sendSubscriptionScheduledCancellationEmail: sendScheduledEmail,
       sendSubscriptionCancelledEmail: sendCancelledEmail,
     });
@@ -300,7 +301,7 @@ describe('SubscriptionService.cancelUserSubscriptions', () => {
 
   it('soft-deletes the local DB subscription row on immediate cancel so churn keeps it', async () => {
     const db = buildDbMock();
-    (getDatabase as jest.Mock).mockReturnValue(db);
+    (getDatabase as Mock).mockReturnValue(db);
 
     await SubscriptionService.cancelUserSubscriptions(email, 'immediate');
 
@@ -321,7 +322,7 @@ describe('SubscriptionService.cancelUserSubscriptions', () => {
 
   it('stamps updated_at when deactivating a row by id', async () => {
     const db = buildDbMock();
-    (getDatabase as jest.Mock).mockReturnValue(db);
+    (getDatabase as Mock).mockReturnValue(db);
 
     await new SubscriptionService().deactivateSubscription(4374);
 
@@ -332,7 +333,7 @@ describe('SubscriptionService.cancelUserSubscriptions', () => {
 
   it('does not touch the DB for period_end cancel', async () => {
     const db = buildDbMock();
-    (getDatabase as jest.Mock).mockReturnValue(db);
+    (getDatabase as Mock).mockReturnValue(db);
 
     await SubscriptionService.cancelUserSubscriptions(email, 'period_end');
 
@@ -403,7 +404,7 @@ describe('SubscriptionService.cancelUserSubscriptions', () => {
   });
 
   it('never writes the user email to the logs', async () => {
-    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     try {
       await SubscriptionService.cancelUserSubscriptions(email);
@@ -425,11 +426,11 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
   const siblingSub = { ...activeSub, id: 'sub_sibling' };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     stripe = buildStripeMock();
-    (getStripe as jest.Mock).mockReturnValue(stripe);
-    (getDatabase as jest.Mock).mockReturnValue(buildDbMock());
-    (getDefaultEmailService as jest.Mock).mockReturnValue({});
+    (getStripe as Mock).mockReturnValue(stripe);
+    (getDatabase as Mock).mockReturnValue(buildDbMock());
+    (getDefaultEmailService as Mock).mockReturnValue({});
 
     stripe.customers.list.mockResolvedValue({ data: [{ id: 'cus_1', email }] });
     stripe.subscriptions.list.mockResolvedValue({
@@ -464,7 +465,7 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
 
   it('cancels a past_due subscription immediately and soft-deletes its DB row', async () => {
     const db = buildDbMock();
-    (getDatabase as jest.Mock).mockReturnValue(db);
+    (getDatabase as Mock).mockReturnValue(db);
     const pastDueSub = { ...activeSub, id: 'sub_due', status: 'past_due' };
     stripe.subscriptions.list.mockResolvedValue({ data: [pastDueSub] });
     stripe.subscriptions.cancel.mockResolvedValue({
@@ -505,7 +506,7 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
 
   it('soft-deletes only the targeted DB row scoped by the Stripe id on immediate cancel', async () => {
     const db = buildDbMock();
-    (getDatabase as jest.Mock).mockReturnValue(db);
+    (getDatabase as Mock).mockReturnValue(db);
     stripe.subscriptions.cancel.mockResolvedValue({
       id: 'sub_owned',
       status: 'canceled',
@@ -536,7 +537,7 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
 
   it('does not touch the DB for period_end cancel', async () => {
     const db = buildDbMock();
-    (getDatabase as jest.Mock).mockReturnValue(db);
+    (getDatabase as Mock).mockReturnValue(db);
 
     await SubscriptionService.cancelSubscriptionById(
       email,
@@ -549,7 +550,7 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
   });
 
   it('does not write the Stripe id to the logs', async () => {
-    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     try {
       await SubscriptionService.cancelSubscriptionById(
@@ -583,11 +584,11 @@ describe('SubscriptionService.pauseSubscription', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     stripe = buildStripeMock();
-    (getStripe as jest.Mock).mockReturnValue(stripe);
-    (getDatabase as jest.Mock).mockReturnValue(buildDbMock());
-    (getDefaultEmailService as jest.Mock).mockReturnValue({});
+    (getStripe as Mock).mockReturnValue(stripe);
+    (getDatabase as Mock).mockReturnValue(buildDbMock());
+    (getDefaultEmailService as Mock).mockReturnValue({});
     stripe.customers.list.mockResolvedValue({ data: [{ id: 'cus_1', email }] });
   });
 
@@ -657,11 +658,11 @@ describe('SubscriptionService.resumeSubscription', () => {
   let stripe: StripeMock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     stripe = buildStripeMock();
-    (getStripe as jest.Mock).mockReturnValue(stripe);
-    (getDatabase as jest.Mock).mockReturnValue(buildDbMock());
-    (getDefaultEmailService as jest.Mock).mockReturnValue({});
+    (getStripe as Mock).mockReturnValue(stripe);
+    (getDatabase as Mock).mockReturnValue(buildDbMock());
+    (getDefaultEmailService as Mock).mockReturnValue({});
     stripe.customers.list.mockResolvedValue({ data: [{ id: 'cus_1', email }] });
   });
 

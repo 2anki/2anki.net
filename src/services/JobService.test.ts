@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import JobService from './JobService';
 import JobRepository, { JobWithDownloadKey } from '../data_layer/JobRepository';
 
@@ -22,14 +23,14 @@ function makeJob(
 }
 
 describe('JobService.deleteJobById', () => {
-  let repository: jest.Mocked<JobRepository>;
+  let repository: Mocked<JobRepository>;
   let service: JobService;
 
   beforeEach(() => {
     repository = {
-      getJobsByOwner: jest.fn(),
-      deleteJob: jest.fn().mockResolvedValue(1),
-    } as unknown as jest.Mocked<JobRepository>;
+      getJobsByOwner: vi.fn(),
+      deleteJob: vi.fn().mockResolvedValue(1),
+    } as unknown as Mocked<JobRepository>;
     service = new JobService(repository);
   });
 
@@ -87,13 +88,13 @@ describe('JobService.getConversionReport', () => {
       },
     ],
   };
-  let repository: jest.Mocked<JobRepository>;
+  let repository: Mocked<JobRepository>;
   let service: JobService;
 
   beforeEach(() => {
     repository = {
-      findConversionReportRow: jest.fn(),
-    } as unknown as jest.Mocked<JobRepository>;
+      findConversionReportRow: vi.fn(),
+    } as unknown as Mocked<JobRepository>;
     service = new JobService(repository);
   });
 

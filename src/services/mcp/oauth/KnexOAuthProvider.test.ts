@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import express, { Response } from 'express';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -197,7 +198,7 @@ function makeProvider(overrides: Partial<McpOAuthDeps> = {}) {
   const tokenRepo = new FakeTokenRepo();
   const now = new Date('2026-07-18T00:00:00.000Z');
   const authService = {
-    getUserFrom: jest.fn(async (token: string) => {
+    getUserFrom: vi.fn(async (token: string) => {
       if (token === 'valid-session') {
         return { id: 42, email: 'a@b.co', developer_access: true };
       }
@@ -208,7 +209,7 @@ function makeProvider(overrides: Partial<McpOAuthDeps> = {}) {
     }),
   } as unknown as McpOAuthDeps['authService'];
   const usersRepo = {
-    getById: jest.fn(async (id: string) =>
+    getById: vi.fn(async (id: string) =>
       id === '42' ? { id: 42, email: 'a@b.co' } : null
     ),
   } as unknown as McpOAuthDeps['usersRepo'];

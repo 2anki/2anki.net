@@ -1,9 +1,10 @@
+import { vi, type Mock } from 'vitest';
 import {
   StripePriceResolver,
   clearResolvedPriceIdCache,
 } from './StripePriceResolver';
 
-const makeStripe = (listImpl: jest.Mock) =>
+const makeStripe = (listImpl: Mock) =>
   ({ prices: { list: listImpl } }) as never;
 
 describe('StripePriceResolver', () => {
@@ -12,7 +13,7 @@ describe('StripePriceResolver', () => {
   });
 
   it('resolves a price ID by lookup_key', async () => {
-    const list = jest.fn().mockResolvedValue({
+    const list = vi.fn().mockResolvedValue({
       data: [{ id: 'price_v2_monthly_abc' }],
     });
     const resolver = new StripePriceResolver(makeStripe(list));
@@ -26,7 +27,7 @@ describe('StripePriceResolver', () => {
   });
 
   it('caches the resolved ID and does not call Stripe twice', async () => {
-    const list = jest.fn().mockResolvedValue({
+    const list = vi.fn().mockResolvedValue({
       data: [{ id: 'price_v2_annual_xyz' }],
     });
     const resolver = new StripePriceResolver(makeStripe(list));
@@ -39,10 +40,10 @@ describe('StripePriceResolver', () => {
   });
 
   it('shares the cache across resolver instances', async () => {
-    const firstList = jest.fn().mockResolvedValue({
+    const firstList = vi.fn().mockResolvedValue({
       data: [{ id: 'price_shared' }],
     });
-    const secondList = jest.fn().mockResolvedValue({
+    const secondList = vi.fn().mockResolvedValue({
       data: [{ id: 'price_should_not_be_used' }],
     });
 
@@ -57,14 +58,14 @@ describe('StripePriceResolver', () => {
   });
 
   it('returns null when no price matches the lookup_key', async () => {
-    const list = jest.fn().mockResolvedValue({ data: [] });
+    const list = vi.fn().mockResolvedValue({ data: [] });
     const resolver = new StripePriceResolver(makeStripe(list));
 
     expect(await resolver.resolveByLookupKey('v2_monthly')).toBeNull();
   });
 
   it('returns null and does not cache when Stripe throws', async () => {
-    const list = jest
+    const list = vi
       .fn()
       .mockRejectedValueOnce(new Error('network'))
       .mockResolvedValueOnce({ data: [{ id: 'price_recovered' }] });

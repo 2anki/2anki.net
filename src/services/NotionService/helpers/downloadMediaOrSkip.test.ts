@@ -1,27 +1,28 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import axios, { AxiosError } from 'axios';
 import dns from 'dns';
 
 import { downloadMediaOrSkip } from './downloadMediaOrSkip';
 
-jest.mock('axios', () => {
-  const actual = jest.requireActual('axios');
+vi.mock('axios', async () => {
+  const actual = await vi.importActual<typeof import('axios')>('axios');
   return {
     __esModule: true,
     default: {
-      get: jest.fn(),
+      get: vi.fn(),
       isAxiosError: actual.isAxiosError,
     },
   };
 });
 
-jest.mock('dns', () => ({
+vi.mock('dns', () => ({
   __esModule: true,
-  default: { promises: { lookup: jest.fn() } },
-  promises: { lookup: jest.fn() },
+  default: { promises: { lookup: vi.fn() } },
+  promises: { lookup: vi.fn() },
 }));
 
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-const mockedLookup = dns.promises.lookup as jest.Mock;
+const mockedAxios = axios as Mocked<typeof axios>;
+const mockedLookup = dns.promises.lookup as Mock;
 
 const makeAxiosError = (status: number): AxiosError => {
   const err = new Error(
@@ -40,7 +41,7 @@ const makeAxiosError = (status: number): AxiosError => {
 
 describe('downloadMediaOrSkip', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     mockedLookup.mockImplementation(async () => [
       { address: '13.224.0.1', family: 4 },
     ]);
@@ -64,7 +65,7 @@ describe('downloadMediaOrSkip', () => {
 
   test('returns null without warning on 403 so the caller owns the drop signal', async () => {
     mockedAxios.get.mockRejectedValueOnce(makeAxiosError(403));
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const result = await downloadMediaOrSkip(
       'https://example.test/expired.png'
@@ -77,7 +78,7 @@ describe('downloadMediaOrSkip', () => {
 
   test('returns null without warning on 404 so the caller owns the drop signal', async () => {
     mockedAxios.get.mockRejectedValueOnce(makeAxiosError(404));
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const result = await downloadMediaOrSkip(
       'https://example.test/missing.png'

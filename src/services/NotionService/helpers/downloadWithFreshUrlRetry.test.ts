@@ -1,31 +1,32 @@
+import { vi, type MockedFunction, type MockInstance } from 'vitest';
 import { GetBlockResponse } from '@notionhq/client/build/src/api-endpoints';
 
 import { downloadWithFreshUrlRetry } from './downloadWithFreshUrlRetry';
 import { downloadMediaOrSkip } from './downloadMediaOrSkip';
 import NotionAPIWrapper from '../NotionAPIWrapper';
 
-jest.mock('./downloadMediaOrSkip', () => ({
+vi.mock('./downloadMediaOrSkip', () => ({
   __esModule: true,
-  downloadMediaOrSkip: jest.fn(),
+  downloadMediaOrSkip: vi.fn(),
 }));
 
-const mockedDownload = downloadMediaOrSkip as jest.MockedFunction<
+const mockedDownload = downloadMediaOrSkip as MockedFunction<
   typeof downloadMediaOrSkip
 >;
 
 const makeApi = (freshBlock: GetBlockResponse): NotionAPIWrapper =>
   ({
-    getBlock: jest.fn(async () => freshBlock),
+    getBlock: vi.fn(async () => freshBlock),
   }) as unknown as NotionAPIWrapper;
 
 describe('downloadWithFreshUrlRetry', () => {
-  let warn: jest.SpyInstance;
-  let info: jest.SpyInstance;
+  let warn: MockInstance;
+  let info: MockInstance;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    info = jest.spyOn(console, 'info').mockImplementation(() => {});
+    vi.clearAllMocks();
+    warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    info = vi.spyOn(console, 'info').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -58,7 +59,7 @@ describe('downloadWithFreshUrlRetry', () => {
     mockedDownload.mockResolvedValueOnce(null).mockResolvedValueOnce(recovered);
     const freshBlock = { id: 'block-1' } as GetBlockResponse;
     const api = makeApi(freshBlock);
-    const extractFreshUrl = jest.fn(() => 'https://notion.s3/fresh.png');
+    const extractFreshUrl = vi.fn(() => 'https://notion.s3/fresh.png');
 
     const result = await downloadWithFreshUrlRetry({
       api,
@@ -149,7 +150,7 @@ describe('downloadWithFreshUrlRetry', () => {
   test('gives up gracefully when re-fetching the block throws', async () => {
     mockedDownload.mockResolvedValueOnce(null);
     const api = {
-      getBlock: jest.fn(async () => {
+      getBlock: vi.fn(async () => {
         throw new Error('notion unreachable');
       }),
     } as unknown as NotionAPIWrapper;

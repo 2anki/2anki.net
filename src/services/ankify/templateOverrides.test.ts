@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   AnkifyTemplateOverrides,
   buildBasicModelFromTemplate,
@@ -18,7 +19,7 @@ const sampleOverrides = (): AnkifyTemplateOverrides => ({
 
 describe('makeAnkifyTemplateOverridesProvider', () => {
   it('forwards the owner as a string with both page id candidates', async () => {
-    const loadAnkifyTemplateOverrides = jest
+    const loadAnkifyTemplateOverrides = vi
       .fn()
       .mockResolvedValue(sampleOverrides());
 
@@ -36,7 +37,7 @@ describe('makeAnkifyTemplateOverridesProvider', () => {
   });
 
   it('forwards a call without page ids unchanged', async () => {
-    const loadAnkifyTemplateOverrides = jest.fn().mockResolvedValue(null);
+    const loadAnkifyTemplateOverrides = vi.fn().mockResolvedValue(null);
 
     const provider = makeAnkifyTemplateOverridesProvider({
       loadAnkifyTemplateOverrides,

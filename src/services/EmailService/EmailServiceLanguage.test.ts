@@ -1,9 +1,12 @@
-const send = jest.fn().mockResolvedValue([{ statusCode: 202 }, {}]);
+import { vi } from 'vitest';
+const send = vi.hoisted(() =>
+  vi.fn().mockResolvedValue([{ statusCode: 202 }, {}])
+);
 
-jest.mock('@sendgrid/mail', () => ({
-  setApiKey: jest.fn(),
-  send,
-}));
+vi.mock('@sendgrid/mail', () => {
+  const sgMailMock = { setApiKey: vi.fn(), send };
+  return { ...sgMailMock, default: sgMailMock };
+});
 
 import { EmailService } from './EmailService';
 import { DEFAULT_SENDER } from './constants';
@@ -34,7 +37,7 @@ describe('EmailService renders copy in the recipient language', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.DOMAIN = 'https://2anki.net';
   });
 

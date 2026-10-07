@@ -1,24 +1,23 @@
+import { vi, type MockedFunction } from 'vitest';
 import {
   convertPdfTextToHtml,
   convertPdfTextToHtmlAuto,
 } from './convertPdfTextToHtml';
 
-jest.mock('../../../lib/parser/extractPdfText');
-jest.mock('../../../lib/parser/synthesizeCardsFromPdf');
+vi.mock('../../../lib/parser/extractPdfText');
+vi.mock('../../../lib/parser/synthesizeCardsFromPdf');
 
 import { extractPdfText } from '../../../lib/parser/extractPdfText';
 import { synthesizeCardsFromPdf } from '../../../lib/parser/synthesizeCardsFromPdf';
 
-const mockExtract = extractPdfText as jest.MockedFunction<
-  typeof extractPdfText
->;
-const mockSynthesize = synthesizeCardsFromPdf as jest.MockedFunction<
+const mockExtract = extractPdfText as MockedFunction<typeof extractPdfText>;
+const mockSynthesize = synthesizeCardsFromPdf as MockedFunction<
   typeof synthesizeCardsFromPdf
 >;
 
 describe('convertPdfTextToHtml', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('returns empty html when the PDF is DRM-locked', async () => {
@@ -194,7 +193,7 @@ describe('convertPdfTextToHtml', () => {
 
 describe('convertPdfTextToHtmlAuto', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   function textShapedPages() {
@@ -475,7 +474,7 @@ describe('convertPdfTextToHtmlAuto', () => {
 
 describe('embedded image injection', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   function textShapedPagesWithImages() {
@@ -504,7 +503,7 @@ describe('embedded image injection', () => {
       needsCredential: false,
       coloredTextPageCount: 0,
     });
-    const loadImages = jest.fn().mockResolvedValue([
+    const loadImages = vi.fn().mockResolvedValue([
       { pageIndex: 0, name: 'img-001-000.png', contents: Buffer.from('a') },
       { pageIndex: 1, name: 'img-002-000.png', contents: Buffer.from('b') },
     ]);
@@ -538,7 +537,7 @@ describe('embedded image injection', () => {
       needsCredential: false,
       coloredTextPageCount: 0,
     });
-    const loadImages = jest
+    const loadImages = vi
       .fn()
       .mockResolvedValue([
         { pageIndex: 7, name: 'img-008-000.png', contents: Buffer.from('c') },
@@ -568,7 +567,7 @@ describe('embedded image injection', () => {
       needsCredential: false,
       coloredTextPageCount: 0,
     });
-    const loadImages = jest.fn();
+    const loadImages = vi.fn();
 
     await convertPdfTextToHtmlAuto(
       Buffer.from('x'),
@@ -595,7 +594,7 @@ describe('embedded image injection', () => {
     mockSynthesize.mockReturnValue([
       { front: 'Question page', back: 'Answer page', tags: [], pageIndex: 0 },
     ]);
-    const loadImages = jest
+    const loadImages = vi
       .fn()
       .mockResolvedValue([
         { pageIndex: 0, name: 'img-001-000.png', contents: Buffer.from('a') },

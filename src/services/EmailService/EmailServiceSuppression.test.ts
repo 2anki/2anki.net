@@ -1,9 +1,12 @@
-const send = jest.fn().mockResolvedValue([{ statusCode: 202 }, {}]);
+import { vi } from 'vitest';
+const send = vi.hoisted(() =>
+  vi.fn().mockResolvedValue([{ statusCode: 202 }, {}])
+);
 
-jest.mock('@sendgrid/mail', () => ({
-  setApiKey: jest.fn(),
-  send,
-}));
+vi.mock('@sendgrid/mail', () => {
+  const sgMailMock = { setApiKey: vi.fn(), send };
+  return { ...sgMailMock, default: sgMailMock };
+});
 
 import { EmailService } from './EmailService';
 import { DEFAULT_SENDER } from './constants';
@@ -12,7 +15,7 @@ describe('EmailService suppression gate', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.DOMAIN = 'https://2anki.net';
   });
 
@@ -21,7 +24,7 @@ describe('EmailService suppression gate', () => {
   });
 
   it('does not call SendGrid when the recipient is suppressed', async () => {
-    const isSuppressed = jest.fn().mockResolvedValue(true);
+    const isSuppressed = vi.fn().mockResolvedValue(true);
     const service = new EmailService('test-key', DEFAULT_SENDER, isSuppressed);
 
     await service.sendResetEmail('blocked@example.com', 'tok-1');
@@ -31,7 +34,7 @@ describe('EmailService suppression gate', () => {
   });
 
   it('sends when the recipient is not suppressed', async () => {
-    const isSuppressed = jest.fn().mockResolvedValue(false);
+    const isSuppressed = vi.fn().mockResolvedValue(false);
     const service = new EmailService('test-key', DEFAULT_SENDER, isSuppressed);
 
     await service.sendResetEmail('ok@example.com', 'tok-1');
@@ -42,7 +45,7 @@ describe('EmailService suppression gate', () => {
   });
 
   it('reports suppressed for a magic link to a suppressed recipient', async () => {
-    const isSuppressed = jest.fn().mockResolvedValue(true);
+    const isSuppressed = vi.fn().mockResolvedValue(true);
     const service = new EmailService('test-key', DEFAULT_SENDER, isSuppressed);
 
     const result = await service.sendMagicLinkEmail(
@@ -56,7 +59,7 @@ describe('EmailService suppression gate', () => {
   });
 
   it('reports not suppressed for a magic link that sends', async () => {
-    const isSuppressed = jest.fn().mockResolvedValue(false);
+    const isSuppressed = vi.fn().mockResolvedValue(false);
     const service = new EmailService('test-key', DEFAULT_SENDER, isSuppressed);
 
     const result = await service.sendMagicLinkEmail(
@@ -70,7 +73,7 @@ describe('EmailService suppression gate', () => {
   });
 
   it('sends when the suppression lookup itself fails (fail-open)', async () => {
-    const isSuppressed = jest
+    const isSuppressed = vi
       .fn()
       .mockRejectedValue(new Error('lookup unavailable'));
     const service = new EmailService('test-key', DEFAULT_SENDER, isSuppressed);
@@ -81,7 +84,7 @@ describe('EmailService suppression gate', () => {
   });
 
   it('blocks the deck-ready conversion email for a suppressed recipient', async () => {
-    const isSuppressed = jest.fn().mockResolvedValue(true);
+    const isSuppressed = vi.fn().mockResolvedValue(true);
     const service = new EmailService('test-key', DEFAULT_SENDER, isSuppressed);
 
     await service.sendConversionLinkEmail(

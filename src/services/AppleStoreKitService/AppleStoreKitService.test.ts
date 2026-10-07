@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   VerificationException,
   VerificationStatus,
@@ -22,11 +23,11 @@ const VALID: JWSTransactionDecodedPayloadLike = {
 function verifierReturning(
   payload: JWSTransactionDecodedPayloadLike
 ): TransactionVerifier {
-  return { verifyAndDecodeTransaction: jest.fn().mockResolvedValue(payload) };
+  return { verifyAndDecodeTransaction: vi.fn().mockResolvedValue(payload) };
 }
 
 function verifierThrowing(error: unknown): TransactionVerifier {
-  return { verifyAndDecodeTransaction: jest.fn().mockRejectedValue(error) };
+  return { verifyAndDecodeTransaction: vi.fn().mockRejectedValue(error) };
 }
 
 describe('AppleStoreKitService', () => {

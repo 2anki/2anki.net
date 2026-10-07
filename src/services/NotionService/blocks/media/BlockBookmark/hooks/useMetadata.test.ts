@@ -1,56 +1,57 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import axios from 'axios';
 import dns from 'dns';
 
 import useMetadata from './useMetadata';
 
-jest.mock('axios', () => {
-  const actual = jest.requireActual('axios');
+vi.mock('axios', async () => {
+  const actual = await vi.importActual<typeof import('axios')>('axios');
   return {
     __esModule: true,
     default: {
-      get: jest.fn(),
-      post: jest.fn(),
-      put: jest.fn(),
-      delete: jest.fn(),
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
       isAxiosError: actual.isAxiosError,
     },
   };
 });
 
-jest.mock('dns', () => ({
+vi.mock('dns', () => ({
   __esModule: true,
-  default: { promises: { lookup: jest.fn() } },
-  promises: { lookup: jest.fn() },
+  default: { promises: { lookup: vi.fn() } },
+  promises: { lookup: vi.fn() },
 }));
 
-const scrape = jest.fn();
-jest.mock(
+const scrape = vi.fn();
+vi.mock(
   'metascraper',
   () =>
     () =>
     (...args: unknown[]) =>
       scrape(...args)
 );
-jest.mock('metascraper-description', () => () => ({}), { virtual: true });
-jest.mock('metascraper-image', () => () => ({}), { virtual: true });
-jest.mock('metascraper-logo-favicon', () => () => ({}), { virtual: true });
-jest.mock('metascraper-title', () => () => ({}), { virtual: true });
-jest.mock('metascraper-url', () => () => ({}), { virtual: true });
+vi.mock('metascraper-description', () => () => ({}));
+vi.mock('metascraper-image', () => () => ({}));
+vi.mock('metascraper-logo-favicon', () => () => ({}));
+vi.mock('metascraper-title', () => () => ({}));
+vi.mock('metascraper-url', () => () => ({}));
 
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-const mockedLookup = dns.promises.lookup as jest.Mock;
+const mockedAxios = axios as Mocked<typeof axios>;
+const mockedLookup = dns.promises.lookup as Mock;
 
 describe('useMetadata', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockedLookup.mockResolvedValue([{ address: '13.224.0.1', family: 4 }]);
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
   it('scrapes metadata for a normal public bookmark URL', async () => {
     mockedAxios.get.mockResolvedValueOnce({
       status: 200,
-      data: '<html></html>',
+      data: '<html><head><title>Spaced repetition</title></head><body></body></html>',
     });
     scrape.mockResolvedValueOnce({
       title: 'Spaced repetition',

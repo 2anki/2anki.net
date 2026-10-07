@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { LogLevel } from '@notionhq/client';
 import { makeNotionClientLogger } from './notionClientLogger';
 
@@ -6,7 +7,7 @@ describe('makeNotionClientLogger', () => {
     'Provided ID abc is a database, not a page. Use the retrieve database API instead.',
     'Provided ID abc is a page, not a database. Use the retrieve page API instead.',
   ])('drops the page/database probe miss the caller handles: %s', (message) => {
-    const base = jest.fn();
+    const base = vi.fn();
     const logger = makeNotionClientLogger(base);
 
     logger(LogLevel.WARN, 'request fail', {
@@ -18,7 +19,7 @@ describe('makeNotionClientLogger', () => {
   });
 
   it('passes every other request failure through', () => {
-    const base = jest.fn();
+    const base = vi.fn();
     const logger = makeNotionClientLogger(base);
     const extraInfo = {
       code: 'rate_limited',

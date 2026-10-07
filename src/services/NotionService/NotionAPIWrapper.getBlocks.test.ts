@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { APIErrorCode, APIResponseError } from '@notionhq/client';
 
 import NotionAPIWrapper from './NotionAPIWrapper';
@@ -20,13 +21,13 @@ const BLOCK = (id: string) => ({
 describe('NotionAPIWrapper.getBlocks cursor tolerance', () => {
   test('returns the blocks collected so far and skips the cache when a later cursor is invalidated', async () => {
     const cache: IBlocksCacheRepository = {
-      get: jest.fn(async () => undefined),
-      save: jest.fn(async () => undefined),
+      get: vi.fn(async () => undefined),
+      save: vi.fn(async () => undefined),
     };
     const wrapper = new NotionAPIWrapper('test-token', '1', cache);
 
     let call = 0;
-    const list = jest.fn(async () => {
+    const list = vi.fn(async () => {
       call += 1;
       if (call === 1) {
         return {

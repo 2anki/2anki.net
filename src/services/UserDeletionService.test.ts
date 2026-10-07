@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { UserDeletionService } from './UserDeletionService';
 
 describe('UserDeletionService', () => {
@@ -24,11 +25,11 @@ describe('UserDeletionService', () => {
   });
 
   it('still deletes the user when the sweep fails', async () => {
-    const deleteUser = jest.fn().mockResolvedValue(1);
+    const deleteUser = vi.fn().mockResolvedValue(1);
     const service = new UserDeletionService(
       { deleteUser },
       {
-        deleteByPrefix: jest.fn().mockRejectedValue(new Error('storage down')),
+        deleteByPrefix: vi.fn().mockRejectedValue(new Error('storage down')),
       }
     );
 
@@ -39,8 +40,8 @@ describe('UserDeletionService', () => {
 
   it('propagates a repository failure', async () => {
     const service = new UserDeletionService(
-      { deleteUser: jest.fn().mockRejectedValue(new Error('db down')) },
-      { deleteByPrefix: jest.fn().mockResolvedValue(0) }
+      { deleteUser: vi.fn().mockRejectedValue(new Error('db down')) },
+      { deleteByPrefix: vi.fn().mockResolvedValue(0) }
     );
 
     await expect(service.deleteUser('42')).rejects.toThrow('db down');

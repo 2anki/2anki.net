@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import {
   FileBlockObjectResponse,
   PdfBlockObjectResponse,
 } from '@notionhq/client/build/src/api-endpoints';
 import { getFileUrl } from './getFileUrl';
 
-jest.mock('@notionhq/client', () => ({
+vi.mock('@notionhq/client', () => ({
   isFullBlock: () => true,
 }));
 

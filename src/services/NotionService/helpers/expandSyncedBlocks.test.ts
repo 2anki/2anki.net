@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { APIResponseError } from '@notionhq/client';
 import { expandSyncedBlocks } from './expandSyncedBlocks';
 import NotionAPIWrapper from '../NotionAPIWrapper';
 
 function makeFailingApi(error: unknown): NotionAPIWrapper {
   return {
-    getBlocks: jest.fn(async () => {
+    getBlocks: vi.fn(async () => {
       throw error;
     }),
   } as unknown as NotionAPIWrapper;
@@ -68,7 +69,7 @@ function makeSyncedBlock(id: string, syncedFromBlockId: string | null) {
 function makeApi(responses: Record<string, unknown[]>): NotionAPIWrapper {
   const calls: string[] = [];
   const api = {
-    getBlocks: jest.fn(async ({ id }: { id: string }) => {
+    getBlocks: vi.fn(async ({ id }: { id: string }) => {
       calls.push(id);
       return {
         type: 'block' as const,
@@ -95,7 +96,7 @@ describe('expandSyncedBlocks', () => {
       status: 404,
     });
     const api = makeFailingApi(error);
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const result = await expandSyncedBlocks([reference], api, true);
 
@@ -111,7 +112,7 @@ describe('expandSyncedBlocks', () => {
     const reference = makeSyncedBlock('ref-y', 'source-y');
     const error = new Error('socket hang up');
     const api = makeFailingApi(error);
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const result = await expandSyncedBlocks([reference], api, true);
 
@@ -218,11 +219,11 @@ describe('expandSyncedBlocks', () => {
   it('returns empty when the synced source fetch throws', async () => {
     const reference = makeSyncedBlock('ref', 'missing');
     const api = {
-      getBlocks: jest.fn(async () => {
+      getBlocks: vi.fn(async () => {
         throw new Error('not found');
       }),
     } as unknown as NotionAPIWrapper;
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const result = await expandSyncedBlocks([reference], api, true);
 

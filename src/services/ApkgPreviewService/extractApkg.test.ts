@@ -1,7 +1,11 @@
 import JSZip from 'jszip';
 import Database from 'better-sqlite3';
 
-import { extractApkg, InvalidApkgError } from './extractApkg';
+import {
+  extractApkg,
+  InvalidApkgError,
+  ApkgTooLargeError,
+} from './extractApkg';
 import { parseCollection } from './parseCollection';
 
 function buildLegacyCollectionBuffer(): Buffer {
@@ -140,8 +144,6 @@ describe('extractApkg on files that are not Anki packages', () => {
 });
 
 describe('extractApkg decompression caps', () => {
-  const { ApkgTooLargeError } = require('./extractApkg');
-
   it('rejects on declared sizes before inflating when the total cap is exceeded', async () => {
     const zip = new JSZip();
     zip.file('collection.anki2', Buffer.alloc(64 * 1024, 0));

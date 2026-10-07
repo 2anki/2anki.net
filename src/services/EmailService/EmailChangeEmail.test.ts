@@ -1,9 +1,12 @@
-const send = jest.fn().mockResolvedValue([{ statusCode: 202 }, {}]);
+import { vi } from 'vitest';
+const send = vi.hoisted(() =>
+  vi.fn().mockResolvedValue([{ statusCode: 202 }, {}])
+);
 
-jest.mock('@sendgrid/mail', () => ({
-  setApiKey: jest.fn(),
-  send,
-}));
+vi.mock('@sendgrid/mail', () => {
+  const sgMailMock = { setApiKey: vi.fn(), send };
+  return { ...sgMailMock, default: sgMailMock };
+});
 
 import { getDefaultEmailService } from './EmailService';
 
@@ -11,7 +14,7 @@ describe('EmailService email-change mails', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.SENDGRID_API_KEY = 'test-key';
     process.env.DOMAIN = 'https://2anki.net';
   });

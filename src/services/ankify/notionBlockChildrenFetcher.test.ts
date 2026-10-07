@@ -1,12 +1,17 @@
+import { vi } from 'vitest';
 import { notionBlockChildrenFetcherFactory } from './notionBlockChildrenFetcher';
 
-const mockList = jest.fn();
+const mockList = vi.fn();
 
-jest.mock('@notionhq/client', () => ({
-  ...jest.requireActual('@notionhq/client'),
-  Client: jest.fn().mockImplementation(() => ({
-    blocks: { children: { list: mockList } },
-  })),
+vi.mock('@notionhq/client', async () => ({
+  ...(await vi.importActual<typeof import('@notionhq/client')>(
+    '@notionhq/client'
+  )),
+  Client: vi.fn().mockImplementation(function () {
+    return {
+      blocks: { children: { list: mockList } },
+    };
+  }),
 }));
 
 describe('notionBlockChildrenFetcherFactory', () => {

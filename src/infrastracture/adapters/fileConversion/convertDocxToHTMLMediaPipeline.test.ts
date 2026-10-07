@@ -1,17 +1,18 @@
+import { vi, type Mock } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import * as cheerio from 'cheerio';
 
-jest.mock('mammoth', () => {
-  const imgElement = jest.fn((handler) => ({
+vi.mock('mammoth', () => {
+  const imgElement = vi.fn((handler) => ({
     __brand: 'imgElement',
     handler,
   }));
   return {
     __esModule: true,
     default: {
-      convertToHtml: jest.fn(),
+      convertToHtml: vi.fn(),
       images: { imgElement },
     },
   };
@@ -25,7 +26,7 @@ import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import Workspace from '../../../lib/parser/WorkSpace';
 import { isImageFileEmbedable } from '../../../lib/storage/checks';
 
-const mockedConvert = mammoth.convertToHtml as jest.Mock;
+const mockedConvert = mammoth.convertToHtml as Mock;
 
 const PNG_BYTES = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 

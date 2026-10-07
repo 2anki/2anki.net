@@ -1,10 +1,11 @@
+import { vi, type MockedFunction } from 'vitest';
 import { convertPdfTextToHtmlAuto } from './convertPdfTextToHtml';
 
-jest.mock('pdf-parse', () => jest.fn());
+vi.mock('pdf-parse', () => ({ default: vi.fn() }));
 
 import pdfParse from 'pdf-parse';
 
-const mockPdfParse = pdfParse as jest.MockedFunction<typeof pdfParse>;
+const mockPdfParse = pdfParse as MockedFunction<typeof pdfParse>;
 
 const PAGES = [
   {
@@ -36,7 +37,7 @@ function mockDeterministicParse() {
 
 describe('non-AI PDF text path determinism', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockDeterministicParse();
   });
 

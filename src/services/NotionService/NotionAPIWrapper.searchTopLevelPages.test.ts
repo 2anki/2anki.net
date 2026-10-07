@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import NotionAPIWrapper from './NotionAPIWrapper';
 
 const PAGE_WITH_TITLE = (id: string, title: string) => ({
@@ -44,28 +45,26 @@ const installSearchStub = (
   databaseResults: unknown[] = []
 ) => {
   let call = 0;
-  const search = jest.fn(
-    async (params: { filter?: { value?: string } } = {}) => {
-      if (params.filter?.value === 'data_source') {
-        return {
-          object: 'list',
-          type: 'page_or_data_source',
-          results: databaseResults,
-          has_more: false,
-          next_cursor: null,
-        };
-      }
-      const page = pages[call] ?? { results: [], next_cursor: null };
-      call += 1;
+  const search = vi.fn(async (params: { filter?: { value?: string } } = {}) => {
+    if (params.filter?.value === 'data_source') {
       return {
         object: 'list',
-        type: 'page_or_database',
-        results: page.results,
-        has_more: page.next_cursor != null,
-        next_cursor: page.next_cursor,
+        type: 'page_or_data_source',
+        results: databaseResults,
+        has_more: false,
+        next_cursor: null,
       };
     }
-  );
+    const page = pages[call] ?? { results: [], next_cursor: null };
+    call += 1;
+    return {
+      object: 'list',
+      type: 'page_or_database',
+      results: page.results,
+      has_more: page.next_cursor != null,
+      next_cursor: page.next_cursor,
+    };
+  });
   (wrapper as unknown as { notion: { search: unknown } }).notion = {
     search,
   } as unknown as NotionAPIWrapper['notion' & keyof NotionAPIWrapper];

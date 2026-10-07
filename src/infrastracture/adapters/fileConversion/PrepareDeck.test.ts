@@ -1,51 +1,76 @@
+import { vi, type Mock, type MockInstance } from 'vitest';
+import fsModule from 'node:fs';
 import {
   PrepareDeck,
   parserWarning,
   prepareDeckInfoOnly,
   conversionInvokesAi,
+  assembleParserFiles,
 } from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import { AiCreditsExhaustedError } from '../../../lib/claude/aiSpendGuard';
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
+import { generateDeckInfo as generateDeckInfoImport } from '../../../lib/claude/ClaudeService';
+import CustomExporterDefault from '../../../lib/parser/exporters/CustomExporter';
+import {
+  convertPdfTextToHtml as convertPdfTextToHtmlImport,
+  convertPdfTextToHtmlAuto as convertPdfTextToHtmlAutoImport,
+} from './convertPdfTextToHtml';
+import {
+  convertPDFToImages as convertPDFToImagesImport,
+  renderPdfPageImages as renderPdfPageImagesImport,
+} from './convertPDFToImages';
+import { convertDocxToHTML as convertDocxToHTMLImport } from './convertDocxToHTML';
+import { extractPptxSourceUnits as extractPptxSourceUnitsImport } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
+import { downloadMediaOrSkip as downloadMediaOrSkipImport } from '../../../services/NotionService/helpers/downloadMediaOrSkip';
+import * as trackModule from '../../../services/events/track';
 
-jest.mock('../../../lib/claude/ClaudeService', () => {
-  const actual = jest.requireActual('../../../lib/claude/ClaudeService');
-  return { ...actual, generateDeckInfo: jest.fn() };
+vi.mock('../../../lib/claude/ClaudeService', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../lib/claude/ClaudeService')
+  >('../../../lib/claude/ClaudeService');
+  return { ...actual, generateDeckInfo: vi.fn() };
 });
 
-jest.mock('../../../lib/parser/exporters/CustomExporter', () => {
+vi.mock('../../../lib/parser/exporters/CustomExporter', () => {
   return {
     __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      configure: jest.fn(),
-      save: jest.fn().mockResolvedValue(Buffer.from('fake-apkg')),
-    })),
+    default: vi.fn().mockImplementation(function () {
+      return {
+        configure: vi.fn(),
+        save: vi.fn().mockResolvedValue(Buffer.from('fake-apkg')),
+      };
+    }),
   };
 });
 
-jest.mock('../../../lib/anki/getDeckFilename', () => ({
+vi.mock('../../../lib/anki/getDeckFilename', () => ({
   __esModule: true,
-  default: jest.fn((name: string) => `${name}.apkg`),
+  default: vi.fn((name: string) => `${name}.apkg`),
 }));
 
-jest.mock('fs', () => ({
-  ...jest.requireActual('fs'),
-  mkdirSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  promises: {
-    ...jest.requireActual('fs').promises,
-    readFile: jest.fn().mockResolvedValue(Buffer.from('png-bytes')),
-  },
-}));
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<typeof import('node:fs')>('node:fs');
+  const mocked = {
+    ...actual,
+    mkdirSync: vi.fn(),
+    writeFileSync: vi.fn(),
+    promises: {
+      ...actual.promises,
+      readFile: vi.fn().mockResolvedValue(Buffer.from('png-bytes')),
+    },
+  };
+  return { ...mocked, default: mocked };
+});
 
-jest.mock('./convertPdfTextToHtml', () => ({
-  convertPdfTextToHtml: jest.fn().mockResolvedValue({
+vi.mock('./convertPdfTextToHtml', () => ({
+  convertPdfTextToHtml: vi.fn().mockResolvedValue({
     html: '<p>extracted text card</p>',
     cardCount: 3,
     isDrmLocked: false,
     needsCredential: false,
   }),
-  convertPdfTextToHtmlAuto: jest.fn().mockResolvedValue({
+  convertPdfTextToHtmlAuto: vi.fn().mockResolvedValue({
     html: '',
     cardCount: 0,
     isDrmLocked: false,
@@ -54,9 +79,9 @@ jest.mock('./convertPdfTextToHtml', () => ({
   }),
 }));
 
-jest.mock('./convertPDFToImages', () => ({
-  convertPDFToImages: jest.fn().mockResolvedValue('<p>page image card</p>'),
-  renderPdfPageImages: jest.fn().mockResolvedValue({
+vi.mock('./convertPDFToImages', () => ({
+  convertPDFToImages: vi.fn().mockResolvedValue('<p>page image card</p>'),
+  renderPdfPageImages: vi.fn().mockResolvedValue({
     imagePaths: [
       '/tmp/test-workspace/pdf-1/page-1.png',
       '/tmp/test-workspace/pdf-1/page-2.png',
@@ -65,43 +90,36 @@ jest.mock('./convertPDFToImages', () => ({
   }),
 }));
 
-jest.mock('./convertDocxToHTML', () => ({
-  convertDocxToHTML: jest.fn(),
+vi.mock('./convertDocxToHTML', () => ({
+  convertDocxToHTML: vi.fn(),
 }));
 
-jest.mock(
-  '../../../services/NotionService/helpers/downloadMediaOrSkip',
-  () => ({
-    downloadMediaOrSkip: jest.fn(),
-  })
-);
-
-const {
-  convertPdfTextToHtml,
-  convertPdfTextToHtmlAuto,
-} = require('./convertPdfTextToHtml');
-const {
-  convertPDFToImages,
-  renderPdfPageImages,
-} = require('./convertPDFToImages');
-const {
-  extractPptxSourceUnits,
-} = require('../../../lib/parser/sourceUnits/extractPptxSourceUnits');
-
-jest.mock('./ConvertPPTToPDF', () => ({
-  convertPPTToPDF: jest.fn().mockResolvedValue(Buffer.from('%PDF-1.4 slides')),
+vi.mock('../../../services/NotionService/helpers/downloadMediaOrSkip', () => ({
+  downloadMediaOrSkip: vi.fn(),
 }));
 
-jest.mock('../../../lib/parser/sourceUnits/extractPptxSourceUnits', () => ({
-  extractPptxSourceUnits: jest.fn().mockReturnValue([]),
-}));
-const {
-  downloadMediaOrSkip,
-} = require('../../../services/NotionService/helpers/downloadMediaOrSkip');
+const convertPdfTextToHtml = convertPdfTextToHtmlImport as unknown as Mock;
+const convertPdfTextToHtmlAuto =
+  convertPdfTextToHtmlAutoImport as unknown as Mock;
+const convertPDFToImages = convertPDFToImagesImport as unknown as Mock;
+const renderPdfPageImages = renderPdfPageImagesImport as unknown as Mock;
+const extractPptxSourceUnits = extractPptxSourceUnitsImport as unknown as Mock;
 
-const { generateDeckInfo } = require('../../../lib/claude/ClaudeService');
-const CustomExporterMock =
-  require('../../../lib/parser/exporters/CustomExporter').default;
+vi.mock('./ConvertPPTToPDF', () => ({
+  convertPPTToPDF: vi.fn().mockResolvedValue(Buffer.from('%PDF-1.4 slides')),
+}));
+
+vi.mock('../../../lib/parser/sourceUnits/extractPptxSourceUnits', () => ({
+  extractPptxSourceUnits: vi.fn().mockReturnValue([]),
+}));
+
+vi.mock('../../../services/events/track', () => ({
+  track: vi.fn(),
+}));
+
+const downloadMediaOrSkip = downloadMediaOrSkipImport as unknown as Mock;
+const generateDeckInfo = generateDeckInfoImport as unknown as Mock;
+const CustomExporterMock = CustomExporterDefault as unknown as Mock;
 
 function makeSettings(overrides: Record<string, string> = {}): CardOption {
   return new CardOption({ ...CardOption.LoadDefaultOptions(), ...overrides });
@@ -113,7 +131,7 @@ function makeWorkspace() {
 
 describe('PrepareDeck — Claude AI flashcards branch', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('invokes ClaudeService when claudeAIFlashcards is true and user is paying', async () => {
@@ -228,18 +246,6 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
   it('does not invoke ClaudeService when noLimits is false', async () => {
     const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
 
-    jest.mock('../../../lib/parser/DeckParser', () => ({
-      DeckParser: jest.fn().mockImplementation(() => ({
-        totalCardCount: jest.fn().mockReturnValue(0),
-        processFirstFile: jest.fn(),
-        tryExperimental: jest
-          .fn()
-          .mockResolvedValue(Buffer.from('regular-apkg')),
-        name: 'test',
-        payload: [],
-      })),
-    }));
-
     await PrepareDeck({
       name: 'test.html',
       files: [{ name: 'test.html', contents: '<p>Front</p>' }],
@@ -268,7 +274,7 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
 
 describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   function deckWithCards(
@@ -398,9 +404,8 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
       ]);
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const trackMod = require('../../../services/events/track');
-    const trackSpy = jest
+    const trackMod = trackModule;
+    const trackSpy = vi
       .spyOn(trackMod, 'track')
       .mockImplementation(() => undefined);
 
@@ -446,9 +451,8 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
       deckWithCards('Solo', [{ name: 'Only fact', back: 'Only answer' }])
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const trackMod = require('../../../services/events/track');
-    const trackSpy = jest
+    const trackMod = trackModule;
+    const trackSpy = vi
       .spyOn(trackMod, 'track')
       .mockImplementation(() => undefined);
 
@@ -477,9 +481,10 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
   });
 
   it('uses a caller-threaded dedup state for a single-file conversion (loose multi-file path)', async () => {
-    const { createCrossFileDedupState, cardFingerprint } = jest.requireActual(
-      '../../../lib/claude/ClaudeService'
-    );
+    const { createCrossFileDedupState, cardFingerprint } =
+      await vi.importActual<typeof import('../../../lib/claude/ClaudeService')>(
+        '../../../lib/claude/ClaudeService'
+      );
     const crossFileDedup = createCrossFileDedupState();
     crossFileDedup.fronts.push('Fact from earlier file');
     crossFileDedup.seenKeys.add(
@@ -516,9 +521,10 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
   });
 
   it('returns no deck (no exporter) when a threaded file is fully covered by earlier files', async () => {
-    const { createCrossFileDedupState, cardFingerprint } = jest.requireActual(
-      '../../../lib/claude/ClaudeService'
-    );
+    const { createCrossFileDedupState, cardFingerprint } =
+      await vi.importActual<typeof import('../../../lib/claude/ClaudeService')>(
+        '../../../lib/claude/ClaudeService'
+      );
     const crossFileDedup = createCrossFileDedupState();
     crossFileDedup.seenKeys.add(
       cardFingerprint({ name: 'Only fact', back: 'Only answer' })
@@ -545,7 +551,7 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
 
 describe('PrepareDeck — PDF text-vs-image gate', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   function runPdf(settings: CardOption) {
@@ -682,7 +688,7 @@ describe('PrepareDeck — PDF text-vs-image gate', () => {
 
 describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   function claudeDeck() {
@@ -806,7 +812,7 @@ describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
 
 describe('PrepareDeck — expired Notion image reporting', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('propagates the expired Notion image count from the parser to the result', async () => {
@@ -834,11 +840,11 @@ describe('PrepareDeck — expired Notion image reporting', () => {
 });
 
 describe('PrepareDeck — duplicate-name dedup', () => {
-  let infoSpy: jest.SpyInstance;
+  let infoSpy: MockInstance;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    vi.clearAllMocks();
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -903,7 +909,7 @@ describe('PrepareDeck — duplicate-name dedup', () => {
 
 describe('prepareDeckInfoOnly — duplicate-name dedup', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('converts a same-named PDF once instead of fanning out two conversions', async () => {
@@ -949,7 +955,7 @@ describe('prepareDeckInfoOnly — duplicate-name dedup', () => {
 
 describe('PrepareDeck — extracted PDF figures reach the Claude media list', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('passes text-path figures as media and hands the converter an image loader', async () => {
@@ -1045,10 +1051,10 @@ describe('PrepareDeck — extracted PDF figures reach the Claude media list', ()
 });
 
 describe('PrepareDeck — AI media matching (#3946)', () => {
-  const { convertDocxToHTML } = require('./convertDocxToHTML');
+  const convertDocxToHTML = convertDocxToHTMLImport as unknown as Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('offers unclaimed zip images to the AI conversion', async () => {
@@ -1113,8 +1119,6 @@ describe('PrepareDeck — AI media matching (#3946)', () => {
 });
 
 describe('assembleParserFiles — both build paths share one file set', () => {
-  const { assembleParserFiles } = require('./PrepareDeck');
-
   it('includes originals, converted HTML, and extracted figure images', () => {
     const original = { name: 'notes.pdf', contents: Buffer.from('%PDF') };
     const figure = { name: 'figure-1.png', contents: Buffer.from('png') };
@@ -1225,7 +1229,7 @@ describe('conversionInvokesAi', () => {
 
 describe('PrepareDeck — anonymous card limit', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   function toggleDeck(cardCount: number): string {
@@ -1267,7 +1271,7 @@ describe('PrepareDeck — anonymous card limit', () => {
 
 describe('PrepareDeck — PowerPoint text-first cards', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   function runDeck(name: string) {
@@ -1306,10 +1310,10 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
 
     expect(renderPdfPageImages).toHaveBeenCalledTimes(1);
     expect(convertPDFToImages).not.toHaveBeenCalled();
-    expect(require('fs').promises.readFile).toHaveBeenCalledWith(
+    expect(fsModule.promises.readFile).toHaveBeenCalledWith(
       '/tmp/test-workspace/pdf-1/page-1.png'
     );
-    expect(require('fs').promises.readFile).toHaveBeenCalledWith(
+    expect(fsModule.promises.readFile).toHaveBeenCalledWith(
       '/tmp/test-workspace/pdf-1/page-2.png'
     );
   });
@@ -1337,7 +1341,7 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
     extractPptxSourceUnits.mockImplementationOnce(() => {
       throw new Error('invalid zip data');
     });
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     try {
       await runDeck('renamed.pptx');

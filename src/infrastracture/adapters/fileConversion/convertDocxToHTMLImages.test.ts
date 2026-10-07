@@ -1,14 +1,15 @@
+import { vi, type Mock } from 'vitest';
 import { DocxImageMediaSink } from './docxImageMediaSink';
 
-jest.mock('mammoth', () => {
-  const imgElement = jest.fn((handler) => ({
+vi.mock('mammoth', () => {
+  const imgElement = vi.fn((handler) => ({
     __brand: 'imgElement',
     handler,
   }));
   return {
     __esModule: true,
     default: {
-      convertToHtml: jest.fn(),
+      convertToHtml: vi.fn(),
       images: { imgElement },
     },
   };
@@ -17,8 +18,8 @@ jest.mock('mammoth', () => {
 import mammoth from 'mammoth';
 import { convertDocxToHTML } from './convertDocxToHTML';
 
-const mockedConvert = mammoth.convertToHtml as jest.Mock;
-const mockedImgElement = mammoth.images.imgElement as unknown as jest.Mock;
+const mockedConvert = mammoth.convertToHtml as Mock;
+const mockedImgElement = mammoth.images.imgElement as unknown as Mock;
 
 describe('convertDocxToHTML image media handling', () => {
   beforeEach(() => {
@@ -29,7 +30,7 @@ describe('convertDocxToHTML image media handling', () => {
   it('passes a convertImage option when a media sink is provided', async () => {
     mockedConvert.mockResolvedValue({ value: '<p>hello</p>', messages: [] });
 
-    const sink: DocxImageMediaSink = { write: jest.fn(() => 'abc.png') };
+    const sink: DocxImageMediaSink = { write: vi.fn(() => 'abc.png') };
     await convertDocxToHTML(Buffer.from('docx'), sink);
 
     expect(mockedConvert).toHaveBeenCalledTimes(1);

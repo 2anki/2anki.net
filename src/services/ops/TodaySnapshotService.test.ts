@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { InMemoryBusinessMetricsCacheRepository } from '../../data_layer/BusinessMetricsCacheRepository';
 import { BusinessMetricsResponse } from './BusinessMetricsService';
 import { ConversionMetricsResponse } from './ConversionMetricsService';
@@ -327,7 +328,7 @@ describe('TodaySnapshotService', () => {
 
   it('serves the cached snapshot inside the TTL without recomputing', async () => {
     const cache = new InMemoryBusinessMetricsCacheRepository();
-    const businessSource = jest.fn(async () => business());
+    const businessSource = vi.fn(async () => business());
     let now = t0;
     const service = new TodaySnapshotService(
       sourcesFor({ business: businessSource }),
@@ -345,7 +346,7 @@ describe('TodaySnapshotService', () => {
 
   it('recomputes once the TTL has passed', async () => {
     const cache = new InMemoryBusinessMetricsCacheRepository();
-    const businessSource = jest.fn(async () => business());
+    const businessSource = vi.fn(async () => business());
     let now = t0;
     const service = new TodaySnapshotService(
       sourcesFor({ business: businessSource }),

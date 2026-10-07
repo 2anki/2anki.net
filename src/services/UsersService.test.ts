@@ -1,3 +1,4 @@
+import { vi, type Mock, type Mocked, type MockInstance } from 'vitest';
 import UsersService, {
   MagicLinkRateLimitError,
   MagicLinkSuppressedError,
@@ -6,51 +7,53 @@ import type UsersRepository from '../data_layer/UsersRepository';
 import type { IEmailService } from './EmailService/EmailService';
 import type AuthenticationService from './AuthenticationService';
 import { InMemoryMagicTokenRepository } from '../data_layer/MagicTokenRepository';
+import { track as trackImport } from './events/track';
 
-jest.mock('../lib/misc/hashToken', () => (s: string) => `hashed:${s}`);
-jest.mock('./events/track', () => ({
-  track: jest.fn(),
+vi.mock('../lib/misc/hashToken', () => ({
+  default: (s: string) => `hashed:${s}`,
+}));
+vi.mock('./events/track', () => ({
+  track: vi.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const trackMock = require('./events/track').track as jest.Mock;
+const trackMock = trackImport as unknown as Mock;
 
 function buildEmailService(
   overrides: Partial<IEmailService> = {}
-): jest.Mocked<IEmailService> {
+): Mocked<IEmailService> {
   return {
-    sendResetEmail: jest.fn(),
-    sendConversionEmail: jest.fn(),
-    sendConversionLinkEmail: jest.fn(),
-    sendContactEmail: jest.fn(),
-    sendSubscriptionCancelledEmail: jest.fn(),
-    sendSubscriptionScheduledCancellationEmail: jest.fn(),
-    sendHostedAnkiAccessRequestEmail: jest
+    sendResetEmail: vi.fn(),
+    sendConversionEmail: vi.fn(),
+    sendConversionLinkEmail: vi.fn(),
+    sendContactEmail: vi.fn(),
+    sendSubscriptionCancelledEmail: vi.fn(),
+    sendSubscriptionScheduledCancellationEmail: vi.fn(),
+    sendHostedAnkiAccessRequestEmail: vi
       .fn()
       .mockResolvedValue({ didSend: true }),
-    sendMagicLinkEmail: jest.fn().mockResolvedValue({ suppressed: false }),
-    sendReEngagementEmail: jest.fn().mockResolvedValue(undefined),
-    sendInactivityWarningEmail: jest.fn().mockResolvedValue(undefined),
+    sendMagicLinkEmail: vi.fn().mockResolvedValue({ suppressed: false }),
+    sendReEngagementEmail: vi.fn().mockResolvedValue(undefined),
+    sendInactivityWarningEmail: vi.fn().mockResolvedValue(undefined),
     ...overrides,
-  } as jest.Mocked<IEmailService>;
+  } as Mocked<IEmailService>;
 }
 
 function buildRegisterRepository() {
   return {
-    createUserAndSeedFromTombstone: jest.fn().mockResolvedValue([{ id: 1 }]),
+    createUserAndSeedFromTombstone: vi.fn().mockResolvedValue([{ id: 1 }]),
   } as unknown as UsersRepository & {
-    createUserAndSeedFromTombstone: jest.Mock;
+    createUserAndSeedFromTombstone: Mock;
   };
 }
 
 interface AccessRepoStubs {
-  getById: jest.Mock;
-  markHostedAnkiRequested?: jest.Mock;
+  getById: Mock;
+  markHostedAnkiRequested?: Mock;
 }
 
 function buildAccessRepository(stubs: AccessRepoStubs): UsersRepository {
   return {
-    markHostedAnkiRequested: jest.fn().mockResolvedValue(1),
+    markHostedAnkiRequested: vi.fn().mockResolvedValue(1),
     ...stubs,
   } as unknown as UsersRepository;
 }
@@ -219,9 +222,9 @@ describe('UsersService.register on a taken email', () => {
 describe('UsersService.sendResetEmail', () => {
   it('awaits the email send so failures propagate to the caller', async () => {
     const sendError = new Error('SendGrid unavailable');
-    const sendResetEmail = jest.fn().mockRejectedValue(sendError);
+    const sendResetEmail = vi.fn().mockRejectedValue(sendError);
     const emailService = buildEmailService({ sendResetEmail });
-    const getByEmail = jest.fn().mockResolvedValue({
+    const getByEmail = vi.fn().mockResolvedValue({
       id: 1,
       email: 'al@example.com',
       reset_token: 'existing-token',
@@ -245,9 +248,9 @@ describe('UsersService.sendResetEmail', () => {
   });
 
   it('silently returns when no user matches the email', async () => {
-    const sendResetEmail = jest.fn();
+    const sendResetEmail = vi.fn();
     const emailService = buildEmailService({ sendResetEmail });
-    const getByEmail = jest.fn().mockResolvedValue(null);
+    const getByEmail = vi.fn().mockResolvedValue(null);
     const repository = { getByEmail } as unknown as UsersRepository;
     const service = new UsersService(repository, emailService);
     const authService = {} as AuthenticationService;
@@ -260,14 +263,14 @@ describe('UsersService.sendResetEmail', () => {
 
 describe('UsersService.requestHostedAnkiAccess', () => {
   it('emails support and persists the request when the user has not asked before', async () => {
-    const sendHostedAnkiAccessRequestEmail = jest
+    const sendHostedAnkiAccessRequestEmail = vi
       .fn()
       .mockResolvedValue({ didSend: true });
-    const markHostedAnkiRequested = jest.fn().mockResolvedValue(1);
+    const markHostedAnkiRequested = vi.fn().mockResolvedValue(1);
     const emailService = buildEmailService({
       sendHostedAnkiAccessRequestEmail,
     });
-    const getById = jest.fn().mockResolvedValue({
+    const getById = vi.fn().mockResolvedValue({
       id: 42,
       email: 'al@example.com',
       hosted_anki_requested_at: null,
@@ -289,12 +292,12 @@ describe('UsersService.requestHostedAnkiAccess', () => {
   });
 
   it('skips the email when the user already requested access', async () => {
-    const sendHostedAnkiAccessRequestEmail = jest.fn();
-    const markHostedAnkiRequested = jest.fn();
+    const sendHostedAnkiAccessRequestEmail = vi.fn();
+    const markHostedAnkiRequested = vi.fn();
     const emailService = buildEmailService({
       sendHostedAnkiAccessRequestEmail,
     });
-    const getById = jest.fn().mockResolvedValue({
+    const getById = vi.fn().mockResolvedValue({
       id: 1,
       email: 'al@example.com',
       hosted_anki_requested_at: new Date('2026-05-01T12:00:00Z'),
@@ -312,11 +315,11 @@ describe('UsersService.requestHostedAnkiAccess', () => {
   });
 
   it('returns ok:false when the user has no email on file', async () => {
-    const sendHostedAnkiAccessRequestEmail = jest.fn();
+    const sendHostedAnkiAccessRequestEmail = vi.fn();
     const emailService = buildEmailService({
       sendHostedAnkiAccessRequestEmail,
     });
-    const getById = jest.fn().mockResolvedValue({
+    const getById = vi.fn().mockResolvedValue({
       id: 7,
       email: null,
       hosted_anki_requested_at: null,
@@ -333,13 +336,13 @@ describe('UsersService.requestHostedAnkiAccess', () => {
   });
 
   it('returns ok:false and does not persist when SendGrid reports the email did not send', async () => {
-    const markHostedAnkiRequested = jest.fn();
+    const markHostedAnkiRequested = vi.fn();
     const emailService = buildEmailService({
-      sendHostedAnkiAccessRequestEmail: jest
+      sendHostedAnkiAccessRequestEmail: vi
         .fn()
         .mockResolvedValue({ didSend: false }),
     });
-    const getById = jest.fn().mockResolvedValue({
+    const getById = vi.fn().mockResolvedValue({
       id: 1,
       email: 'al@example.com',
       hosted_anki_requested_at: null,
@@ -358,7 +361,7 @@ describe('UsersService.requestHostedAnkiAccess', () => {
 
 describe('UsersService.requestMagicLink', () => {
   it('generates a token and sends an email for a known user', async () => {
-    const getByEmail = jest
+    const getByEmail = vi
       .fn()
       .mockResolvedValue({ id: 7, email: 'al@example.com' });
     const repository = { getByEmail } as unknown as UsersRepository;
@@ -375,18 +378,18 @@ describe('UsersService.requestMagicLink', () => {
       'login',
       undefined
     );
-    const sentToken = (emailService.sendMagicLinkEmail as jest.Mock).mock
+    const sentToken = (emailService.sendMagicLinkEmail as Mock).mock
       .calls[0][1];
     expect(sentToken).toHaveLength(128);
   });
 
   it('creates an account and sends the link when the email is new (login)', async () => {
     const created = { id: 41, email: 'newcomer@example.com' };
-    const getByEmail = jest
+    const getByEmail = vi
       .fn()
       .mockResolvedValueOnce(null)
       .mockResolvedValue(created);
-    const createUserAndSeedFromTombstone = jest
+    const createUserAndSeedFromTombstone = vi
       .fn()
       .mockResolvedValue([{ id: 41 }]);
     const repository = {
@@ -417,11 +420,11 @@ describe('UsersService.requestMagicLink', () => {
 
   it('stamps the first-touch origin on a magic-link signup when provided', async () => {
     const created = { id: 42, email: 'viambient@example.com' };
-    const getByEmail = jest
+    const getByEmail = vi
       .fn()
       .mockResolvedValueOnce(null)
       .mockResolvedValue(created);
-    const createUserAndSeedFromTombstone = jest
+    const createUserAndSeedFromTombstone = vi
       .fn()
       .mockResolvedValue([{ id: 42 }]);
     const repository = {
@@ -445,8 +448,8 @@ describe('UsersService.requestMagicLink', () => {
   });
 
   it('does not create an account for a password reset on an unknown email', async () => {
-    const getByEmail = jest.fn().mockResolvedValue(null);
-    const createUserAndSeedFromTombstone = jest.fn();
+    const getByEmail = vi.fn().mockResolvedValue(null);
+    const createUserAndSeedFromTombstone = vi.fn();
     const repository = {
       getByEmail,
       createUserAndSeedFromTombstone,
@@ -462,8 +465,8 @@ describe('UsersService.requestMagicLink', () => {
   });
 
   it('does not create an account for a malformed address', async () => {
-    const getByEmail = jest.fn().mockResolvedValue(null);
-    const createUserAndSeedFromTombstone = jest.fn();
+    const getByEmail = vi.fn().mockResolvedValue(null);
+    const createUserAndSeedFromTombstone = vi.fn();
     const repository = {
       getByEmail,
       createUserAndSeedFromTombstone,
@@ -479,12 +482,12 @@ describe('UsersService.requestMagicLink', () => {
   });
 
   it('throws MagicLinkSuppressedError when the recipient is suppressed', async () => {
-    const getByEmail = jest
+    const getByEmail = vi
       .fn()
       .mockResolvedValue({ id: 9, email: 'blocked@example.com' });
     const repository = { getByEmail } as unknown as UsersRepository;
     const emailService = buildEmailService({
-      sendMagicLinkEmail: jest.fn().mockResolvedValue({ suppressed: true }),
+      sendMagicLinkEmail: vi.fn().mockResolvedValue({ suppressed: true }),
     });
     const magicTokenRepo = new InMemoryMagicTokenRepository();
     const service = new UsersService(repository, emailService, magicTokenRepo);
@@ -495,7 +498,7 @@ describe('UsersService.requestMagicLink', () => {
   });
 
   it('throws MagicLinkRateLimitError after 5 requests in an hour', async () => {
-    const getByEmail = jest
+    const getByEmail = vi
       .fn()
       .mockResolvedValue({ id: 3, email: 'rate@example.com' });
     const repository = { getByEmail } as unknown as UsersRepository;
@@ -514,10 +517,10 @@ describe('UsersService.requestMagicLink', () => {
 });
 
 describe('UsersService.requestMagicLink observability', () => {
-  let consoleInfoSpy: jest.SpyInstance;
+  let consoleInfoSpy: MockInstance;
 
   beforeEach(() => {
-    consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -525,7 +528,7 @@ describe('UsersService.requestMagicLink observability', () => {
   });
 
   it('emits a sent event with hashed user id on the happy path', async () => {
-    const getByEmail = jest
+    const getByEmail = vi
       .fn()
       .mockResolvedValue({ id: 7, email: 'al@example.com' });
     const repository = { getByEmail } as unknown as UsersRepository;
@@ -549,7 +552,7 @@ describe('UsersService.requestMagicLink observability', () => {
   });
 
   it('emits a rate_limited event before throwing MagicLinkRateLimitError', async () => {
-    const getByEmail = jest
+    const getByEmail = vi
       .fn()
       .mockResolvedValue({ id: 3, email: 'rate@example.com' });
     const repository = { getByEmail } as unknown as UsersRepository;
@@ -578,7 +581,7 @@ describe('UsersService.requestMagicLink observability', () => {
   });
 
   it('emits an unknown_email event when no user matches the email', async () => {
-    const getByEmail = jest.fn().mockResolvedValue(null);
+    const getByEmail = vi.fn().mockResolvedValue(null);
     const repository = { getByEmail } as unknown as UsersRepository;
     const emailService = buildEmailService();
     const magicTokenRepo = new InMemoryMagicTokenRepository();
@@ -600,13 +603,13 @@ describe('UsersService.requestMagicLink observability', () => {
   });
 
   it('emits a send_failed event with error class name when sgMail throws', async () => {
-    const getByEmail = jest
+    const getByEmail = vi
       .fn()
       .mockResolvedValue({ id: 7, email: 'al@example.com' });
     const repository = { getByEmail } as unknown as UsersRepository;
     const sendError = new TypeError('network failure');
     const emailService = buildEmailService({
-      sendMagicLinkEmail: jest.fn().mockRejectedValue(sendError),
+      sendMagicLinkEmail: vi.fn().mockRejectedValue(sendError),
     });
     const magicTokenRepo = new InMemoryMagicTokenRepository();
     const service = new UsersService(repository, emailService, magicTokenRepo);
@@ -631,7 +634,7 @@ describe('UsersService.requestMagicLink observability', () => {
 
 describe('UsersService.verifyMagicToken', () => {
   it('returns userId and purpose for a valid token', async () => {
-    const getByEmail = jest
+    const getByEmail = vi
       .fn()
       .mockResolvedValue({ id: 10, email: 'al@example.com' });
     const repository = { getByEmail } as unknown as UsersRepository;
@@ -640,7 +643,7 @@ describe('UsersService.verifyMagicToken', () => {
     const service = new UsersService(repository, emailService, magicTokenRepo);
 
     await service.requestMagicLink('al@example.com', 'login');
-    const sentToken = (emailService.sendMagicLinkEmail as jest.Mock).mock
+    const sentToken = (emailService.sendMagicLinkEmail as Mock).mock
       .calls[0][1];
 
     const result = await service.verifyMagicToken(sentToken);
@@ -660,7 +663,7 @@ describe('UsersService.verifyMagicToken', () => {
   });
 
   it('returns null for a token that has already been used', async () => {
-    const getByEmail = jest
+    const getByEmail = vi
       .fn()
       .mockResolvedValue({ id: 10, email: 'al@example.com' });
     const repository = { getByEmail } as unknown as UsersRepository;
@@ -669,7 +672,7 @@ describe('UsersService.verifyMagicToken', () => {
     const service = new UsersService(repository, emailService, magicTokenRepo);
 
     await service.requestMagicLink('al@example.com', 'password_reset');
-    const sentToken = (emailService.sendMagicLinkEmail as jest.Mock).mock
+    const sentToken = (emailService.sendMagicLinkEmail as Mock).mock
       .calls[0][1];
     await service.verifyMagicToken(sentToken);
 
@@ -679,7 +682,7 @@ describe('UsersService.verifyMagicToken', () => {
   });
 
   it('returns null for an expired token', async () => {
-    const getByEmail = jest
+    const getByEmail = vi
       .fn()
       .mockResolvedValue({ id: 10, email: 'al@example.com' });
     const repository = { getByEmail } as unknown as UsersRepository;
@@ -688,7 +691,7 @@ describe('UsersService.verifyMagicToken', () => {
     const service = new UsersService(repository, emailService, magicTokenRepo);
 
     await service.requestMagicLink('al@example.com', 'login');
-    const sentToken = (emailService.sendMagicLinkEmail as jest.Mock).mock
+    const sentToken = (emailService.sendMagicLinkEmail as Mock).mock
       .calls[0][1];
 
     magicTokenRepo.setNow(new Date(Date.now() + 20 * 60 * 1000));

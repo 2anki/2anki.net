@@ -1,3 +1,4 @@
+import { vi, type MockInstance } from 'vitest';
 import { ImageBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import { setupTests } from '../../../test/configure-jest';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
@@ -8,18 +9,18 @@ import NotionAPIWrapper from '../NotionAPIWrapper';
 
 beforeEach(() => setupTests());
 
-jest.mock('../helpers/isTesting', () => ({
+vi.mock('../helpers/isTesting', () => ({
   __esModule: true,
-  default: jest.fn(() => false),
+  default: vi.fn(() => false),
 }));
 
-jest.mock('../helpers/downloadMediaOrSkip', () => ({
+vi.mock('../helpers/downloadMediaOrSkip', () => ({
   __esModule: true,
-  downloadMediaOrSkip: jest.fn(async () => Buffer.from('fake-image-bytes')),
+  downloadMediaOrSkip: vi.fn(async () => Buffer.from('fake-image-bytes')),
 }));
 
 const fakeApi = {
-  getBlocks: jest.fn(),
+  getBlocks: vi.fn(),
 } as unknown as NotionAPIWrapper;
 
 function makeImageBlock(url: string): ImageBlockObjectResponse {
@@ -45,12 +46,12 @@ function makeImageBlock(url: string): ImageBlockObjectResponse {
 
 describe('BlockHandler.embedImage embed-images gate', () => {
   let exporter: CustomExporter;
-  let addMediaSpy: jest.SpyInstance;
+  let addMediaSpy: MockInstance;
 
   beforeEach(() => {
     const ws = new Workspace(true, 'fs');
     exporter = new CustomExporter('', ws.location);
-    addMediaSpy = jest
+    addMediaSpy = vi
       .spyOn(exporter, 'addMedia')
       .mockImplementation(() => 'fake-abs-path');
   });
