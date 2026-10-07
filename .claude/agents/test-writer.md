@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: Writes colocated tests for a given source file in an isolated worktree — Jest for src/, Vitest for web/src/. Reads the file, designs tests against the public surface, runs them, and returns the diff. Tests-only against existing source: the engineer owns tests that accompany a source change; this agent never edits source.
+description: Writes colocated tests for a given source file in an isolated worktree — Vitest for both src/ and web/src/. Reads the file, designs tests against the public surface, runs them, and returns the diff. Tests-only against existing source: the engineer owns tests that accompany a source change; this agent never edits source.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: claude-opus-4-8
 isolation: worktree
@@ -18,7 +18,7 @@ You write tests. Only tests. The user gives you a source path; you produce a col
 - **Parameterise.** `it.each([...])` for tables of cases. One `it` per behaviour, not five behaviours per `it`.
 - **Determinism.** Inject a clock or seed. Never depend on `Date.now`, `Math.random`, wall-clock ordering, or network.
 - **Read the layer's CLAUDE.md** (controllers / usecases / services / data_layer / routes / lib/parser / lib/ankify) before designing the test — it tells you what the file is *supposed* to be responsible for, which is what your tests should pin.
-- **Know which test runner you're writing for.** Server tests (`src/**/*.test.ts`) use **Jest** (`jest.mock`, `jest.fn`, `jest.spyOn`). Web tests (`web/src/**/*.test.ts(x)`) use **Vitest** (`vi.mock`, `vi.fn`, `vi.spyOn`). Using the wrong API produces confusing runtime errors. Check the nearest `package.json` or config if unsure.
+- **Know which test runner you're writing for.** Server tests (`src/**/*.test.ts`, `vitest.config.mts`, node environment) and web tests (`web/src/**/*.test.ts(x)`, `web/vitest.config.*`, jsdom) both use **Vitest** (`vi.mock`, `vi.fn`, `vi.spyOn`), with separate configs. A `vi.mock` factory that references a top-level variable needs `vi.hoisted`, and a mock constructed with `new` needs a `function` implementation, not an arrow.
 
 ## Workflow
 

@@ -1,13 +1,8 @@
-import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
-
-const split = JSON.parse(
-  readFileSync(resolve(rootDir, 'test-runner-split.json'), 'utf8')
-) as { vitest: string[]; jestOnly?: string[] };
 
 const mockPath = (relativePath: string) => resolve(rootDir, relativePath);
 
@@ -17,14 +12,8 @@ export default defineConfig({
     globals: true,
     pool: 'forks',
     isolate: true,
-    include: split.vitest,
-    exclude: [
-      '**/node_modules/**',
-      'web/**',
-      '.claude/**',
-      'test/**',
-      ...(split.jestOnly ?? []),
-    ],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    exclude: ['**/node_modules/**', 'web/**', '.claude/**', 'test/**'],
     setupFiles: ['src/test/vitest.setup.ts'],
     testTimeout: 5000,
     hookTimeout: 10000,

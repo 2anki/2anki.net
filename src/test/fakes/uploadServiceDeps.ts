@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { ISettingsRepository } from '../../data_layer/SettingsRepository';
 import type { IConversionOutputStatsRepository } from '../../data_layer/ConversionOutputStatsRepository';
 import type { IParsePathSignatureRepository } from '../../data_layer/ParsePathSignatureRepository';
@@ -10,9 +11,6 @@ import {
   InMemoryHeldDeckRepository,
   type IHeldDeckRepository,
 } from '../../data_layer/HeldDeckRepository';
-
-const mocker =
-  (globalThis as typeof globalThis & { vi?: typeof jest }).vi ?? jest;
 
 export type UploadServiceDeps = [
   ISettingsRepository,
@@ -44,36 +42,36 @@ export function fakeUploadServiceDeps(
   return [
     overrides.settings ??
       ({
-        load: mocker.fn(),
-        loadIfExists: mocker.fn().mockResolvedValue(null),
-        attachCustomTemplates: mocker.fn().mockResolvedValue(undefined),
-        loadAnkifyTemplateOverrides: mocker.fn().mockResolvedValue(null),
+        load: vi.fn(),
+        loadIfExists: vi.fn().mockResolvedValue(null),
+        attachCustomTemplates: vi.fn().mockResolvedValue(undefined),
+        loadAnkifyTemplateOverrides: vi.fn().mockResolvedValue(null),
       } as unknown as ISettingsRepository),
     overrides.outputStats ?? {
-      record: mocker.fn().mockResolvedValue(undefined),
-      list: mocker.fn().mockResolvedValue([]),
+      record: vi.fn().mockResolvedValue(undefined),
+      list: vi.fn().mockResolvedValue([]),
     },
     overrides.parsePaths ?? {
-      record: mocker.fn().mockResolvedValue(undefined),
-      list: mocker.fn().mockResolvedValue([]),
+      record: vi.fn().mockResolvedValue(undefined),
+      list: vi.fn().mockResolvedValue([]),
     },
     overrides.ruleScores ?? {
-      record: mocker.fn().mockResolvedValue(undefined),
-      distribution: mocker.fn().mockResolvedValue([]),
+      record: vi.fn().mockResolvedValue(undefined),
+      distribution: vi.fn().mockResolvedValue([]),
     },
     overrides.guidLedger ?? {
-      getAllForOwner: mocker.fn().mockResolvedValue({}),
-      getUploadIdentityForOwner: mocker.fn().mockResolvedValue({}),
-      record: mocker.fn().mockResolvedValue(undefined),
-      reissue: mocker.fn().mockResolvedValue(undefined),
+      getAllForOwner: vi.fn().mockResolvedValue({}),
+      getUploadIdentityForOwner: vi.fn().mockResolvedValue({}),
+      record: vi.fn().mockResolvedValue(undefined),
+      reissue: vi.fn().mockResolvedValue(undefined),
     },
     overrides.aiFingerprints ?? {
-      getRecentForOwner: mocker.fn().mockResolvedValue([]),
-      record: mocker.fn().mockResolvedValue(undefined),
+      getRecentForOwner: vi.fn().mockResolvedValue([]),
+      record: vi.fn().mockResolvedValue(undefined),
     },
     overrides.photoToFlashcards ??
       ({
-        execute: mocker
+        execute: vi
           .fn()
           .mockRejectedValue(
             new Error(
@@ -82,7 +80,7 @@ export function fakeUploadServiceDeps(
           ),
       } as unknown as PhotoToFlashcardsUseCase),
     overrides.aiRequestCost ?? {
-      costByRequestId: mocker.fn().mockResolvedValue(0),
+      costByRequestId: vi.fn().mockResolvedValue(0),
     },
     overrides.heldDeck ?? new InMemoryHeldDeckRepository(),
   ];
