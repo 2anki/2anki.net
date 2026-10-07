@@ -1,7 +1,8 @@
+import { vi } from 'vitest';
 import UploadRepository from './UploadRespository';
 
 describe('UploadRepository owner guards', () => {
-  const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   afterEach(() => warn.mockClear());
 
   function makeRepo() {

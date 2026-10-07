@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ANON_RECOVERY_RETENTION_MS } from '../../../upload/anonymousRecovery';
 import {
   deleteExpiredRecoveryDecks,
@@ -11,8 +12,8 @@ const fresh = new Date(now.getTime() - 60 * 60 * 1000);
 function storeWith(objects: { Key: string; LastModified?: Date }[]) {
   const deleted: string[][] = [];
   const store: RecoveryDeckStore = {
-    listObjectsByPrefix: jest.fn(async () => objects),
-    deleteObjects: jest.fn(async (keys: string[]) => {
+    listObjectsByPrefix: vi.fn(async () => objects),
+    deleteObjects: vi.fn(async (keys: string[]) => {
       deleted.push(keys);
     }),
   };

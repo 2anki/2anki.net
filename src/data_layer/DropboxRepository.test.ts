@@ -1,7 +1,8 @@
+import { vi } from 'vitest';
 import { DropboxRepository } from './DropboxRepository';
 
 describe('DropboxRepository owner guards', () => {
-  const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   afterEach(() => warn.mockClear());
 
   function makeRepo() {
@@ -64,7 +65,7 @@ describe('DropboxRepository owner guards', () => {
 });
 
 describe('DropboxRepository.deleteByIdAndOwner owner guards', () => {
-  const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   afterEach(() => warn.mockClear());
 
   function makeDeleteRepo() {

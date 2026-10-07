@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { AnkifySyncMapping } from '../../entities/ankify';
 import { AnkifySyncMappingsRepository } from './AnkifySyncMappingsRepository';
 
@@ -12,13 +13,13 @@ const stringNoteIdRow = {
 };
 
 function buildKnex(rowToReturn: unknown) {
-  const first = jest.fn().mockResolvedValue(rowToReturn);
-  const orderBy = jest.fn().mockReturnValue(Promise.resolve([rowToReturn]));
-  const select = jest.fn().mockReturnValue({
-    where: jest.fn().mockReturnValue({ first, orderBy }),
+  const first = vi.fn().mockResolvedValue(rowToReturn);
+  const orderBy = vi.fn().mockReturnValue(Promise.resolve([rowToReturn]));
+  const select = vi.fn().mockReturnValue({
+    where: vi.fn().mockReturnValue({ first, orderBy }),
   });
   const tableBuilder = { select };
-  return jest.fn().mockReturnValue(tableBuilder);
+  return vi.fn().mockReturnValue(tableBuilder);
 }
 
 describe('AnkifySyncMappingsRepository — bigint coercion', () => {
@@ -68,10 +69,10 @@ describe('AnkifySyncMappingsRepository — bigint coercion', () => {
 
 describe('AnkifySyncMappingsRepository — upsert carries content_hash', () => {
   function buildUpsertKnex() {
-    const insert = jest.fn();
-    const onConflict = jest.fn();
-    const merge = jest.fn();
-    const returning = jest.fn().mockResolvedValue([
+    const insert = vi.fn();
+    const onConflict = vi.fn();
+    const merge = vi.fn();
+    const returning = vi.fn().mockResolvedValue([
       {
         ...stringNoteIdRow,
         content_hash: 'abc123',
@@ -80,9 +81,9 @@ describe('AnkifySyncMappingsRepository — upsert carries content_hash', () => {
     insert.mockReturnValue({ onConflict });
     onConflict.mockReturnValue({ merge });
     merge.mockReturnValue({ returning });
-    const knex = jest.fn().mockReturnValue({ insert }) as unknown as {
+    const knex = vi.fn().mockReturnValue({ insert }) as unknown as {
       fn: { now: () => unknown };
-    } & jest.Mock;
+    } & Mock;
     knex.fn = { now: () => 'NOW()' };
     return { knex, insert, merge };
   }

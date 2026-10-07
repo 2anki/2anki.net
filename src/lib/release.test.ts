@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { normalizeRelease, resolveRelease } from './release';
 
 const FULL_SHA = 'dc017dfee6f6a1b2c3d4e5f60718293a4b5c6d7e';
@@ -33,7 +34,7 @@ describe('normalizeRelease', () => {
 
 describe('resolveRelease', () => {
   it('prefers RELEASE over GIT_SHA and git lookup', () => {
-    const readGitSha = jest.fn(() => 'fff0000');
+    const readGitSha = vi.fn(() => 'fff0000');
     const release = resolveRelease(
       { RELEASE: 'v1.2.3', GIT_SHA: FULL_SHA },
       readGitSha
@@ -43,7 +44,7 @@ describe('resolveRelease', () => {
   });
 
   it('falls back to GIT_SHA when RELEASE is unset', () => {
-    const readGitSha = jest.fn(() => 'fff0000');
+    const readGitSha = vi.fn(() => 'fff0000');
     const release = resolveRelease({ GIT_SHA: FULL_SHA }, readGitSha);
     expect(release).toBe('dc017df');
     expect(readGitSha).not.toHaveBeenCalled();

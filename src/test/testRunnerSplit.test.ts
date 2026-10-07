@@ -10,40 +10,57 @@ const ignoredByJest = (filePath: string): boolean =>
 const BASE = '/repo/src';
 
 describe('jest testPathIgnorePatterns derived from test-runner-split.json', () => {
-  it('hands migrated sql tests directly in data_layer to vitest', () => {
-    expect(
-      ignoredByJest(`${BASE}/data_layer/UsersRepository.resetToken.sql.test.ts`)
-    ).toBe(true);
-  });
-
-  it('hands migrated sql tests nested one level deep to vitest', () => {
-    expect(
-      ignoredByJest(
-        `${BASE}/data_layer/ankify/addContentHashToAnkifySyncMappingsMigration.sql.test.ts`
-      )
-    ).toBe(true);
-  });
-
-  it('hands migrated sql tests nested several levels deep to vitest', () => {
-    expect(ignoredByJest(`${BASE}/data_layer/a/b/c/Deep.sql.test.ts`)).toBe(
+  it('hands non-sql data_layer suites to vitest (phase 2 widened the glob)', () => {
+    expect(ignoredByJest(`${BASE}/data_layer/SettingsRepository.test.ts`)).toBe(
       true
     );
   });
 
-  it('keeps non-sql data_layer tests in jest', () => {
-    expect(ignoredByJest(`${BASE}/data_layer/SettingsRepository.test.ts`)).toBe(
-      false
-    );
+  it('keeps handing sql and nested data_layer suites to vitest', () => {
+    expect(
+      ignoredByJest(`${BASE}/data_layer/UsersRepository.resetToken.sql.test.ts`)
+    ).toBe(true);
+    expect(
+      ignoredByJest(
+        `${BASE}/data_layer/ankify/AnkifySyncMappingsRepository.test.ts`
+      )
+    ).toBe(true);
   });
 
-  it('hands the whole lib/misc and controllers/helpers suites to vitest', () => {
+  it('hands lib top-level suites to vitest without reaching into subdirectories', () => {
+    expect(ignoredByJest(`${BASE}/lib/config.test.ts`)).toBe(true);
+    expect(ignoredByJest(`${BASE}/lib/conversionPool.test.ts`)).toBe(true);
+  });
+
+  it('hands migrated lib subtrees and the phase-1 suites to vitest', () => {
     expect(ignoredByJest(`${BASE}/lib/misc/canAccess.test.ts`)).toBe(true);
+    expect(
+      ignoredByJest(`${BASE}/lib/storage/jobs/helpers/deleteOldUploads.test.ts`)
+    ).toBe(true);
     expect(
       ignoredByJest(`${BASE}/controllers/helpers/getRedirect.test.ts`)
     ).toBe(true);
   });
 
-  it('keeps unrelated suites in jest', () => {
+  it('keeps lib subtrees still owned by later phases in jest', () => {
     expect(ignoredByJest(`${BASE}/lib/parser/DeckParser.test.ts`)).toBe(false);
+    expect(ignoredByJest(`${BASE}/lib/claude/ClaudeService.test.ts`)).toBe(
+      false
+    );
+    expect(ignoredByJest(`${BASE}/lib/pdf/getPageCount.test.ts`)).toBe(false);
+    expect(
+      ignoredByJest(`${BASE}/lib/notion-render/highlightCode.test.ts`)
+    ).toBe(false);
+  });
+
+  it('keeps services and usecases suites in jest', () => {
+    expect(
+      ignoredByJest(
+        `${BASE}/services/NotionService/BlockHandler/BlockHandler.test.ts`
+      )
+    ).toBe(false);
+    expect(
+      ignoredByJest(`${BASE}/usecases/uploads/GeneratePackagesUseCase.test.ts`)
+    ).toBe(false);
   });
 });

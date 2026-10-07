@@ -1,3 +1,4 @@
+import { vi, type MockInstance } from 'vitest';
 import os from 'node:os';
 import path from 'node:path';
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';
@@ -7,7 +8,7 @@ import Workspace from './parser/WorkSpace';
 import { UploadedFile } from './storage/types';
 import { getConversionPool, shutdownConversionPool } from './conversionPool';
 
-jest.setTimeout(60_000);
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
 const CONCURRENT_JOBS = 10;
 const POOL_THREADS = 2;
@@ -71,7 +72,7 @@ function buildJobSpecs(): JobSpec[] {
 describe('conversion pool under concurrent upload load', () => {
   const previousWorkers = process.env.CONVERSION_WORKERS;
   const previousWorkspaceBase = process.env.WORKSPACE_BASE;
-  let errorSpy: jest.SpyInstance;
+  let errorSpy: MockInstance;
   let results: PromiseSettledResult<{
     packages: unknown[];
     warnings?: string[];
@@ -81,7 +82,7 @@ describe('conversion pool under concurrent upload load', () => {
   beforeAll(async () => {
     process.env.CONVERSION_WORKERS = String(POOL_THREADS);
     process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'pool-load-workspaces');
-    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     specs = buildJobSpecs();
     const useCase = new GeneratePackagesUseCase();

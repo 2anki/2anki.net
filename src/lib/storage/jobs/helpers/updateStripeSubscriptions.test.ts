@@ -1,40 +1,51 @@
+import { vi, type Mock, type MockInstance } from 'vitest';
 import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
 
-const mockStripeInstance = {
+const mockStripeInstance = vi.hoisted(() => ({
   subscriptions: {
-    list: jest.fn(),
+    list: vi.fn(),
   },
   customers: {
-    retrieve: jest.fn(),
+    retrieve: vi.fn(),
   },
-};
-
-const mockDbInstance = {
-  table: jest.fn(),
-};
-
-const mockIsDeveloperTierProduct = jest.fn().mockResolvedValue(false);
-jest.mock('../../../integrations/stripe', () => ({
-  getStripe: () => mockStripeInstance,
-  extractProductId: jest.requireActual('../../../integrations/stripe')
-    .extractProductId,
-  isDeveloperTierProduct: (...args: unknown[]) =>
-    mockIsDeveloperTierProduct(...args),
 }));
 
-const mockUpsertDeveloperSubscription = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../../../data_layer/DeveloperSubscriptionsRepository', () => ({
-  DeveloperSubscriptionsRepository: jest.fn().mockImplementation(() => ({
-    upsert: mockUpsertDeveloperSubscription,
-  })),
+const mockDbInstance = vi.hoisted(() => ({
+  table: vi.fn(),
 }));
 
-jest.mock('../../../../data_layer', () => ({
+const mockIsDeveloperTierProduct = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(false)
+);
+vi.mock('../../../integrations/stripe', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../integrations/stripe')
+  >('../../../integrations/stripe');
+  return {
+    getStripe: () => mockStripeInstance,
+    extractProductId: actual.extractProductId,
+    isDeveloperTierProduct: (...args: unknown[]) =>
+      mockIsDeveloperTierProduct(...args),
+  };
+});
+
+const mockUpsertDeveloperSubscription = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(undefined)
+);
+vi.mock('../../../../data_layer/DeveloperSubscriptionsRepository', () => ({
+  DeveloperSubscriptionsRepository: vi.fn().mockImplementation(function () {
+    return {
+      upsert: mockUpsertDeveloperSubscription,
+    };
+  }),
+}));
+
+vi.mock('../../../../data_layer', () => ({
   getDatabase: () => mockDbInstance,
 }));
 
-jest.mock('./reconcileActiveSubscriptions', () => ({
-  reconcileActiveSubscriptions: jest.fn().mockResolvedValue(undefined),
+vi.mock('./reconcileActiveSubscriptions', () => ({
+  reconcileActiveSubscriptions: vi.fn().mockResolvedValue(undefined),
 }));
 
 import {
@@ -67,21 +78,21 @@ function buildSubscription(
 }
 
 type Spies = {
-  insertSpy: jest.Mock;
-  updateSubscriptionSpy: jest.Mock;
-  updateUsersSpy: jest.Mock;
+  insertSpy: Mock;
+  updateSubscriptionSpy: Mock;
+  updateUsersSpy: Mock;
 };
 
 function setupDbMock(existingRow: Record<string, unknown> | null): Spies {
-  const insertSpy = jest.fn().mockResolvedValue([1]);
-  const updateSubscriptionSpy = jest.fn().mockResolvedValue(1);
-  const updateUsersSpy = jest.fn().mockResolvedValue(1);
+  const insertSpy = vi.fn().mockResolvedValue([1]);
+  const updateSubscriptionSpy = vi.fn().mockResolvedValue(1);
+  const updateUsersSpy = vi.fn().mockResolvedValue(1);
 
-  mockDbInstance.table.mockImplementation((tableName: string) => {
+  mockDbInstance.table.mockImplementation(function (tableName: string) {
     if (tableName === 'subscriptions') {
       return {
-        where: jest.fn().mockReturnValue({
-          first: jest.fn().mockResolvedValue(existingRow),
+        where: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue(existingRow),
           update: updateSubscriptionSpy,
         }),
         insert: insertSpy,
@@ -89,15 +100,15 @@ function setupDbMock(existingRow: Record<string, unknown> | null): Spies {
     }
     if (tableName === 'users') {
       return {
-        where: jest.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
           update: updateUsersSpy,
         }),
       };
     }
     return {
-      where: jest.fn().mockReturnThis(),
-      update: jest.fn(),
-      insert: jest.fn(),
+      where: vi.fn().mockReturnThis(),
+      update: vi.fn(),
+      insert: vi.fn(),
     };
   });
 
@@ -118,7 +129,7 @@ function setupStripeMock(subscriptions: StripeTypes.Subscription[]) {
 
 describe('updateStripeSubscriptions — batch provisioning fields', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockIsDeveloperTierProduct.mockResolvedValue(false);
   });
 
@@ -220,15 +231,21 @@ describe('updateStripeSubscriptions — batch provisioning fields', () => {
 });
 
 describe('updateStripeSubscriptions — does not log raw email or customer id', () => {
-  let infoSpy: jest.SpyInstance;
-  let warnSpy: jest.SpyInstance;
-  let errorSpy: jest.SpyInstance;
+  let infoSpy: MockInstance;
+  let warnSpy: MockInstance;
+  let errorSpy: MockInstance;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
-    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.clearAllMocks();
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(function () {
+      return undefined;
+    });
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(function () {
+      return undefined;
+    });
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(function () {
+      return undefined;
+    });
   });
 
   afterEach(() => {
@@ -237,7 +254,7 @@ describe('updateStripeSubscriptions — does not log raw email or customer id', 
     errorSpy.mockRestore();
   });
 
-  function flatArgs(spy: jest.SpyInstance): string {
+  function flatArgs(spy: MockInstance): string {
     return spy.mock.calls
       .flat()
       .map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg)))
@@ -296,20 +313,20 @@ describe('updateStripeSubscriptions — does not log raw email or customer id', 
 
   it('does not interpolate the raw email or customer id when the per-subscription update path errors', async () => {
     const failingDb = {
-      table: jest.fn().mockImplementation((tableName: string) => {
+      table: vi.fn().mockImplementation(function (tableName: string) {
         if (tableName === 'subscriptions') {
           return {
-            where: jest.fn().mockReturnValue({
-              first: jest.fn().mockRejectedValue(new Error('db boom')),
-              update: jest.fn(),
+            where: vi.fn().mockReturnValue({
+              first: vi.fn().mockRejectedValue(new Error('db boom')),
+              update: vi.fn(),
             }),
-            insert: jest.fn(),
+            insert: vi.fn(),
           };
         }
         return {
-          where: jest.fn().mockReturnThis(),
-          update: jest.fn(),
-          insert: jest.fn(),
+          where: vi.fn().mockReturnThis(),
+          update: vi.fn(),
+          insert: vi.fn(),
         };
       }),
     };
@@ -365,7 +382,7 @@ describe('mapWithConcurrency', () => {
   });
 
   it('does nothing for an empty list', async () => {
-    const worker = jest.fn().mockResolvedValue(undefined);
+    const worker = vi.fn().mockResolvedValue(undefined);
     await mapWithConcurrency([], 5, worker);
     expect(worker).not.toHaveBeenCalled();
   });

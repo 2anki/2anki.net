@@ -1,28 +1,29 @@
+import { vi, type MockedFunction } from 'vitest';
 import { EventEmitter } from 'node:events';
 import * as childProcess from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import CardGenerator from './CardGenerator';
 
-jest.mock('node:child_process', () => ({
-  ...jest.requireActual('node:child_process'),
-  spawn: jest.fn(),
-  execFileSync: jest.fn(),
+vi.mock('node:child_process', async () => ({
+  ...(await vi.importActual<typeof import('node:child_process')>(
+    'node:child_process'
+  )),
+  spawn: vi.fn(),
+  execFileSync: vi.fn(),
 }));
 
-jest.mock('node:fs', () => ({
-  ...jest.requireActual('node:fs'),
-  existsSync: jest.fn(),
-  writeFileSync: jest.fn(),
+vi.mock('node:fs', async () => ({
+  ...(await vi.importActual<typeof import('node:fs')>('node:fs')),
+  existsSync: vi.fn(),
+  writeFileSync: vi.fn(),
 }));
 
-const mockedSpawn = childProcess.spawn as jest.MockedFunction<
+const mockedSpawn = childProcess.spawn as MockedFunction<
   typeof childProcess.spawn
 >;
-const mockedExistsSync = fs.existsSync as jest.MockedFunction<
-  typeof fs.existsSync
->;
-const mockedWriteFileSync = fs.writeFileSync as jest.MockedFunction<
+const mockedExistsSync = fs.existsSync as MockedFunction<typeof fs.existsSync>;
+const mockedWriteFileSync = fs.writeFileSync as MockedFunction<
   typeof fs.writeFileSync
 >;
 
@@ -51,7 +52,7 @@ describe('CardGenerator.runBatch', () => {
   const templateDir = '/fake/templates';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockedExistsSync.mockReturnValue(false);
   });
 
@@ -149,7 +150,7 @@ describe('CardGenerator.run zero-card sentinel', () => {
   const workspace = '/tmp/test-workspace';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockedExistsSync.mockReturnValue(false);
   });
 

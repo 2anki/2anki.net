@@ -1,21 +1,27 @@
+import { vi, type MockedFunction } from 'vitest';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'node:stream';
 
 import StorageHandler from './StorageHandler';
 
-const mockSend = jest.fn();
+const mockSend = vi.hoisted(() => vi.fn());
 
-jest.mock('@aws-sdk/client-s3', () => {
-  const actual = jest.requireActual('@aws-sdk/client-s3');
+vi.mock('@aws-sdk/client-s3', async () => {
+  const actual =
+    await vi.importActual<typeof import('@aws-sdk/client-s3')>(
+      '@aws-sdk/client-s3'
+    );
   return {
     ...actual,
-    S3Client: jest.fn().mockImplementation(() => ({ send: mockSend })),
+    S3Client: vi.fn().mockImplementation(function () {
+      return { send: mockSend };
+    }),
   };
 });
 
-jest.mock('@aws-sdk/s3-request-presigner', () => ({
-  getSignedUrl: jest.fn().mockResolvedValue('https://presigned-url'),
+vi.mock('@aws-sdk/s3-request-presigner', () => ({
+  getSignedUrl: vi.fn().mockResolvedValue('https://presigned-url'),
 }));
 
 describe('StorageHandler.getFileContents', () => {
@@ -29,7 +35,7 @@ describe('StorageHandler.getFileContents', () => {
     const content = Buffer.from('hello from s3');
     mockSend.mockResolvedValueOnce({
       Body: {
-        transformToByteArray: jest
+        transformToByteArray: vi
           .fn()
           .mockResolvedValue(new Uint8Array(content)),
       },
@@ -82,7 +88,7 @@ describe('StorageHandler.getFileStream', () => {
 
   it('returns undefined when the Body is not a Node stream', async () => {
     mockSend.mockResolvedValueOnce({
-      Body: { transformToByteArray: jest.fn() },
+      Body: { transformToByteArray: vi.fn() },
     });
 
     const handler = new StorageHandler();
@@ -93,9 +99,7 @@ describe('StorageHandler.getFileStream', () => {
 });
 
 describe('StorageHandler.getPresignedUrl', () => {
-  const signedUrlMock = getSignedUrl as jest.MockedFunction<
-    typeof getSignedUrl
-  >;
+  const signedUrlMock = getSignedUrl as MockedFunction<typeof getSignedUrl>;
 
   beforeEach(() => {
     signedUrlMock.mockClear();

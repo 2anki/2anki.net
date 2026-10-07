@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { APIErrorCode, APIResponseError } from '@notionhq/client';
 import { Response } from 'express';
 
@@ -6,22 +7,22 @@ import sendErrorResponse from './sendErrorResponse';
 interface FakeResponse {
   statusCode: number;
   body: unknown;
-  status: jest.Mock;
-  json: jest.Mock;
-  send: jest.Mock;
+  status: Mock;
+  json: Mock;
+  send: Mock;
 }
 
 const makeResponse = (): FakeResponse => {
   const state = { statusCode: 200, body: undefined } as FakeResponse;
-  state.status = jest.fn((code: number) => {
+  state.status = vi.fn((code: number) => {
     state.statusCode = code;
     return state;
   });
-  state.json = jest.fn((body: unknown) => {
+  state.json = vi.fn((body: unknown) => {
     state.body = body;
     return state;
   });
-  state.send = jest.fn(() => state);
+  state.send = vi.fn(() => state);
   return state;
 };
 
@@ -41,12 +42,12 @@ const makeAPIResponseError = (
 
 describe('sendErrorResponse', () => {
   beforeEach(() => {
-    jest.spyOn(console, 'info').mockImplementation(() => undefined);
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it.each([

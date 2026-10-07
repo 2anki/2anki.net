@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   MCP_OAUTH_REAP_INTERVAL_MS,
   MCP_ORPHAN_CLIENT_MAX_AGE_MS,
@@ -6,12 +7,12 @@ import {
 } from './scheduleMcpOAuthReaper';
 
 const buildRepos = () => ({
-  authorizationCodes: { deleteExpired: jest.fn().mockResolvedValue(2) },
+  authorizationCodes: { deleteExpired: vi.fn().mockResolvedValue(2) },
   tokens: {
-    deleteExpiredAccessTokens: jest.fn().mockResolvedValue(24),
-    deleteExpiredRefreshTokens: jest.fn().mockResolvedValue(3),
+    deleteExpiredAccessTokens: vi.fn().mockResolvedValue(24),
+    deleteExpiredRefreshTokens: vi.fn().mockResolvedValue(3),
   },
-  clients: { deleteOrphaned: jest.fn().mockResolvedValue(1) },
+  clients: { deleteOrphaned: vi.fn().mockResolvedValue(1) },
 });
 
 describe('reapMcpOAuth', () => {
@@ -74,12 +75,12 @@ describe('reapMcpOAuth', () => {
 
 describe('scheduleMcpOAuthReaper', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.clearAllTimers();
-    jest.useRealTimers();
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('runs a sweep on each interval tick', async () => {
@@ -87,7 +88,7 @@ describe('scheduleMcpOAuthReaper', () => {
 
     const handle = scheduleMcpOAuthReaper(repos, { intervalMs: 1000 });
 
-    await jest.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     expect(repos.authorizationCodes.deleteExpired).toHaveBeenCalledTimes(1);
     clearInterval(handle);
@@ -102,10 +103,10 @@ describe('scheduleMcpOAuthReaper', () => {
     repos.tokens.deleteExpiredAccessTokens.mockRejectedValue(
       new Error('db down')
     );
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const handle = scheduleMcpOAuthReaper(repos, { intervalMs: 1000 });
-    await jest.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     expect(errorSpy).toHaveBeenCalled();
     errorSpy.mockRestore();

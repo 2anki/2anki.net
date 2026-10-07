@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { assertBootConfig, inspectConfig, CONFIG_VARS } from './config';
 
 const fullEnv = (): NodeJS.ProcessEnv =>
@@ -35,7 +36,7 @@ describe('assertBootConfig', () => {
   });
 
   it('boots quietly outside production when warn variables are unset', () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const env = fullEnv();
     delete env.STRIPE_KEY;
     env.NODE_ENV = 'test';
@@ -46,7 +47,7 @@ describe('assertBootConfig', () => {
   });
 
   it('prints one block naming unset warn variables in production', () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const env = fullEnv();
     delete env.STRIPE_KEY;
     delete env.ANTHROPIC_API_KEY;
@@ -60,8 +61,8 @@ describe('assertBootConfig', () => {
     errorSpy.mockRestore();
   });
 
-  it('keeps every inventoried variable documented in env.example', () => {
-    const fs = jest.requireActual<typeof import('fs')>('fs');
+  it('keeps every inventoried variable documented in env.example', async () => {
+    const fs = await vi.importActual<typeof import('fs')>('fs');
     const example = fs.readFileSync('src/env.example', 'utf8');
     for (const spec of CONFIG_VARS) {
       expect(example).toContain(`${spec.name}=`);

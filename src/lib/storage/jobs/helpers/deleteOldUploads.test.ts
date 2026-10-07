@@ -1,36 +1,37 @@
+import { vi, type Mock } from 'vitest';
 import deleteOldUploads from './deleteOldUploads';
 import { safeParseAttachments } from './deleteOldUploads';
 
 function makeStorage() {
   return {
-    delete: jest.fn().mockResolvedValue(true),
-    listObjectsByPrefix: jest.fn().mockResolvedValue([]),
-    deleteObjects: jest.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(true),
+    listObjectsByPrefix: vi.fn().mockResolvedValue([]),
+    deleteObjects: vi.fn().mockResolvedValue(undefined),
   };
 }
 
 function makeDb(feedbackRows: { attachments: unknown }[] = []) {
   const selectWhereChain = {
-    where: jest.fn().mockResolvedValue(feedbackRows),
+    where: vi.fn().mockResolvedValue(feedbackRows),
   };
   const deleteWhereChain = {
-    delete: jest.fn().mockResolvedValue(feedbackRows.length),
+    delete: vi.fn().mockResolvedValue(feedbackRows.length),
   };
 
-  const dbFn = jest.fn().mockImplementation((table: string) => {
+  const dbFn = vi.fn().mockImplementation(function (table: string) {
     if (table === 'feedback') {
       return {
-        select: jest.fn().mockReturnValue(selectWhereChain),
-        where: jest.fn().mockReturnValue(deleteWhereChain),
+        select: vi.fn().mockReturnValue(selectWhereChain),
+        where: vi.fn().mockReturnValue(deleteWhereChain),
       };
     }
     if (table === 'held_decks') {
       const heldDecksChain = {
-        select: jest.fn(),
-        where: jest.fn(),
-        orWhere: jest.fn(),
-        whereIn: jest.fn(),
-        del: jest.fn().mockResolvedValue(0),
+        select: vi.fn(),
+        where: vi.fn(),
+        orWhere: vi.fn(),
+        whereIn: vi.fn(),
+        del: vi.fn().mockResolvedValue(0),
         then: (resolve: (rows: unknown[]) => void) => resolve([]),
       };
       heldDecksChain.select.mockReturnValue(heldDecksChain);
@@ -85,22 +86,22 @@ describe('safeParseAttachments', () => {
   });
 });
 
-jest.mock('./deleteNonSubScriberUploadsInDatabase', () => ({
-  deleteNonSubScriberUploadsInDatabase: jest.fn().mockResolvedValue(undefined),
+vi.mock('./deleteNonSubScriberUploadsInDatabase', () => ({
+  deleteNonSubScriberUploadsInDatabase: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('./deleteDanglingUploadsInBucket', () => ({
-  deleteDanglingUploadsInBucket: jest.fn().mockResolvedValue(undefined),
+vi.mock('./deleteDanglingUploadsInBucket', () => ({
+  deleteDanglingUploadsInBucket: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('./deleteDeadUploadRowsInDatabase', () => ({
-  deleteDeadUploadRowsInDatabase: jest.fn().mockResolvedValue(undefined),
+vi.mock('./deleteDeadUploadRowsInDatabase', () => ({
+  deleteDeadUploadRowsInDatabase: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../../StorageHandler', () => {
+vi.mock('../../StorageHandler', () => {
   return {
     __esModule: true,
-    default: jest.fn(),
+    default: vi.fn(),
   };
 });
 
@@ -109,12 +110,14 @@ import { deleteDeadUploadRowsInDatabase } from './deleteDeadUploadRowsInDatabase
 
 describe('deleteResolvedFeedbackAttachments (via deleteOldUploads)', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('skips storage.delete when attachments is null; still deletes the DB row', async () => {
     const storage = makeStorage();
-    (StorageHandler as unknown as jest.Mock).mockImplementation(() => storage);
+    (StorageHandler as unknown as Mock).mockImplementation(function () {
+      return storage;
+    });
     const { dbFn, deleteWhereChain } = makeDb([{ attachments: null }]);
 
     await deleteOldUploads(dbFn);
@@ -125,7 +128,9 @@ describe('deleteResolvedFeedbackAttachments (via deleteOldUploads)', () => {
 
   it('calls storage.delete for each key in a valid attachments array', async () => {
     const storage = makeStorage();
-    (StorageHandler as unknown as jest.Mock).mockImplementation(() => storage);
+    (StorageHandler as unknown as Mock).mockImplementation(function () {
+      return storage;
+    });
     const { dbFn, deleteWhereChain } = makeDb([
       { attachments: ['a.png', 'b.png'] },
     ]);
@@ -140,8 +145,12 @@ describe('deleteResolvedFeedbackAttachments (via deleteOldUploads)', () => {
 
   it('processes remaining rows when one row has malformed attachments', async () => {
     const storage = makeStorage();
-    (StorageHandler as unknown as jest.Mock).mockImplementation(() => storage);
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    (StorageHandler as unknown as Mock).mockImplementation(function () {
+      return storage;
+    });
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(function () {});
     const { dbFn, deleteWhereChain } = makeDb([
       { attachments: '[broken' },
       { attachments: ['good.png'] },
@@ -157,7 +166,9 @@ describe('deleteResolvedFeedbackAttachments (via deleteOldUploads)', () => {
 
   it('deletes all acknowledged feedback rows from the DB after processing', async () => {
     const storage = makeStorage();
-    (StorageHandler as unknown as jest.Mock).mockImplementation(() => storage);
+    (StorageHandler as unknown as Mock).mockImplementation(function () {
+      return storage;
+    });
     const { dbFn, deleteWhereChain } = makeDb([
       { attachments: '["x.png"]' },
       { attachments: null },
@@ -170,7 +181,9 @@ describe('deleteResolvedFeedbackAttachments (via deleteOldUploads)', () => {
 
   it('runs the dead-upload-row backstop as part of the daily sweep', async () => {
     const storage = makeStorage();
-    (StorageHandler as unknown as jest.Mock).mockImplementation(() => storage);
+    (StorageHandler as unknown as Mock).mockImplementation(function () {
+      return storage;
+    });
     const { dbFn } = makeDb([]);
 
     await deleteOldUploads(dbFn);
@@ -181,7 +194,9 @@ describe('deleteResolvedFeedbackAttachments (via deleteOldUploads)', () => {
 
   it('sweeps expired held decks as part of the daily sweep', async () => {
     const storage = makeStorage();
-    (StorageHandler as unknown as jest.Mock).mockImplementation(() => storage);
+    (StorageHandler as unknown as Mock).mockImplementation(function () {
+      return storage;
+    });
     const { dbFn } = makeDb([]);
 
     await deleteOldUploads(dbFn);
@@ -191,7 +206,9 @@ describe('deleteResolvedFeedbackAttachments (via deleteOldUploads)', () => {
 
   it('sweeps expired anonymous recovery decks as part of the daily sweep', async () => {
     const storage = makeStorage();
-    (StorageHandler as unknown as jest.Mock).mockImplementation(() => storage);
+    (StorageHandler as unknown as Mock).mockImplementation(function () {
+      return storage;
+    });
     const { dbFn } = makeDb([]);
 
     await deleteOldUploads(dbFn);

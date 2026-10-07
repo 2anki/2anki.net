@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import knex, { Knex } from 'knex';
 import { deleteDeadUploadRowsInDatabase } from './deleteDeadUploadRowsInDatabase';
 import { IErrorEventRepository } from '../../../../data_layer/ErrorEventRepository';
 
 function makeStorage(keys: string[]) {
   return {
-    getContents: jest.fn().mockResolvedValue(keys.map((Key) => ({ Key }))),
+    getContents: vi.fn().mockResolvedValue(keys.map((Key) => ({ Key }))),
   };
 }
 
@@ -38,7 +39,7 @@ describe('deleteDeadUploadRowsInDatabase', () => {
   });
 
   it('deletes rows whose bucket object is gone and keeps live and reserved-prefix rows', async () => {
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     await seedUpload(1, 'decks/live-1.apkg', 10);
     await seedUpload(2, 'decks/gone-1.apkg', 20);
     await seedUpload(3, 'decks/gone-2.apkg', 30);
@@ -58,7 +59,7 @@ describe('deleteDeadUploadRowsInDatabase', () => {
   });
 
   it('refuses to delete any row when the bucket listing comes back empty', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     await seedUpload(1, 'decks/live-1.apkg', 10);
     await seedUpload(2, 'decks/gone-1.apkg', 20);
 
@@ -74,7 +75,7 @@ describe('deleteDeadUploadRowsInDatabase', () => {
   });
 
   it('refuses to delete any row when the bucket listing hit the paging cap', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     await seedUpload(1, 'decks/gone-1.apkg', 20);
 
     const capped = Array.from(
@@ -90,14 +91,14 @@ describe('deleteDeadUploadRowsInDatabase', () => {
   });
 
   it('raises a deletion-volume alarm and deletes nothing when the dead fraction is anomalous', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     for (let i = 1; i <= 130; i++) {
       await seedUpload(i, `decks/gone-${i}.apkg`, i);
     }
 
-    const insert = jest.fn().mockResolvedValue(undefined);
+    const insert = vi.fn().mockResolvedValue(undefined);
     const storage = makeStorage(['decks/unrelated-live.apkg']);
 
     await deleteDeadUploadRowsInDatabase(
@@ -117,14 +118,14 @@ describe('deleteDeadUploadRowsInDatabase', () => {
   });
 
   it('does not raise an alarm for a normal-volume cleanup run', async () => {
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     await seedUpload(1, 'decks/gone-1.apkg', 10);
     for (let i = 2; i <= 130; i++) {
       await seedUpload(i, `decks/live-${i}.apkg`, i);
     }
 
-    const insert = jest.fn().mockResolvedValue(undefined);
+    const insert = vi.fn().mockResolvedValue(undefined);
     const liveKeys = Array.from(
       { length: 129 },
       (_, i) => `decks/live-${i + 2}.apkg`

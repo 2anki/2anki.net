@@ -1,13 +1,14 @@
+import { vi, type Mock, type MockInstance } from 'vitest';
 import type { Knex } from 'knex';
 
-jest.mock('./helpers/runFileSystemCleanup', () => ({
+vi.mock('./helpers/runFileSystemCleanup', () => ({
   __esModule: true,
-  runFileSystemCleanup: jest.fn().mockResolvedValue(undefined),
+  runFileSystemCleanup: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('./helpers/deleteOldUploads', () => ({
+vi.mock('./helpers/deleteOldUploads', () => ({
   __esModule: true,
-  default: jest.fn().mockResolvedValue(undefined),
+  default: vi.fn().mockResolvedValue(undefined),
   MS_21: 21 * 60 * 1000,
 }));
 
@@ -26,18 +27,18 @@ function utc(hour: number, minute = 0): Date {
 }
 
 describe('ScheduleCleanup', () => {
-  let errorSpy: jest.SpyInstance;
+  let errorSpy: MockInstance;
 
   beforeEach(() => {
-    jest.useFakeTimers();
-    jest.clearAllMocks();
-    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
-    jest.clearAllTimers();
-    jest.useRealTimers();
+    vi.clearAllTimers();
+    vi.useRealTimers();
     errorSpy.mockRestore();
   });
 
@@ -46,50 +47,50 @@ describe('ScheduleCleanup', () => {
 
     expect(runFileSystemCleanup).not.toHaveBeenCalled();
 
-    jest.advanceTimersByTime(MS_21);
+    vi.advanceTimersByTime(MS_21);
     expect(runFileSystemCleanup).toHaveBeenCalledTimes(1);
     expect(runFileSystemCleanup).toHaveBeenCalledWith(db);
 
-    jest.advanceTimersByTime(MS_21);
+    vi.advanceTimersByTime(MS_21);
     expect(runFileSystemCleanup).toHaveBeenCalledTimes(2);
   });
 
   it('runs the old-upload cleanup once a day, inside the cleanup hour', () => {
-    jest.setSystemTime(utc(10, 30));
+    vi.setSystemTime(utc(10, 30));
     ScheduleCleanup(db);
 
-    jest.advanceTimersByTime(16 * MS_1_HOUR);
+    vi.advanceTimersByTime(16 * MS_1_HOUR);
     expect(new Date().getUTCHours()).toBe(OLD_UPLOAD_CLEANUP_HOUR_UTC - 1);
     expect(deleteOldUploads).not.toHaveBeenCalled();
 
-    jest.advanceTimersByTime(MS_1_HOUR);
+    vi.advanceTimersByTime(MS_1_HOUR);
     expect(new Date().getUTCHours()).toBe(OLD_UPLOAD_CLEANUP_HOUR_UTC);
     expect(deleteOldUploads).toHaveBeenCalledTimes(1);
     expect(deleteOldUploads).toHaveBeenCalledWith(db);
 
-    jest.advanceTimersByTime(23 * MS_1_HOUR);
+    vi.advanceTimersByTime(23 * MS_1_HOUR);
     expect(deleteOldUploads).toHaveBeenCalledTimes(1);
 
-    jest.advanceTimersByTime(MS_1_HOUR);
+    vi.advanceTimersByTime(MS_1_HOUR);
     expect(deleteOldUploads).toHaveBeenCalledTimes(2);
   });
 
   it('a boot shortly before the cleanup hour still runs it that day', () => {
-    jest.setSystemTime(utc(OLD_UPLOAD_CLEANUP_HOUR_UTC - 2, 45));
+    vi.setSystemTime(utc(OLD_UPLOAD_CLEANUP_HOUR_UTC - 2, 45));
     ScheduleCleanup(db);
 
-    jest.advanceTimersByTime(2 * MS_1_HOUR);
+    vi.advanceTimersByTime(2 * MS_1_HOUR);
     expect(deleteOldUploads).toHaveBeenCalledTimes(1);
   });
 
   it('swallows a rejected filesystem cleanup so the interval keeps running', async () => {
-    (runFileSystemCleanup as jest.Mock).mockRejectedValueOnce(
+    (runFileSystemCleanup as Mock).mockRejectedValueOnce(
       new Error('cleanup boom')
     );
 
     ScheduleCleanup(db);
 
-    jest.advanceTimersByTime(MS_21);
+    vi.advanceTimersByTime(MS_21);
     await Promise.resolve();
 
     expect(errorSpy).toHaveBeenCalledWith(expect.any(Error));

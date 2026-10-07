@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import {
   scheduleInactiveUserDeletions,
   INACTIVE_USER_DELETION_DAILY_LIMIT,
@@ -7,20 +8,20 @@ import type { DeleteInactiveUsersUseCase } from '../../../usecases/ops/DeleteIna
 
 function makeUseCase(
   result = { count: 3, dryRun: false }
-): jest.Mocked<Pick<DeleteInactiveUsersUseCase, 'execute'>> {
-  return { execute: jest.fn().mockResolvedValue(result) };
+): Mocked<Pick<DeleteInactiveUsersUseCase, 'execute'>> {
+  return { execute: vi.fn().mockResolvedValue(result) };
 }
 
 describe('scheduleInactiveUserDeletions', () => {
-  beforeEach(() => jest.useFakeTimers());
+  beforeEach(() => vi.useFakeTimers());
   afterEach(() => {
-    jest.useRealTimers();
-    jest.clearAllMocks();
+    vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
   it('ticks on startup when the job has never run', async () => {
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(null);
+    const lastRunAt = vi.fn().mockResolvedValue(null);
 
     const handle = await scheduleInactiveUserDeletions(
       useCase as unknown as DeleteInactiveUsersUseCase,
@@ -37,7 +38,7 @@ describe('scheduleInactiveUserDeletions', () => {
 
   it('ticks on startup when the last run is older than the interval', async () => {
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(new Date(Date.now() - 2000));
+    const lastRunAt = vi.fn().mockResolvedValue(new Date(Date.now() - 2000));
 
     const handle = await scheduleInactiveUserDeletions(
       useCase as unknown as DeleteInactiveUsersUseCase,
@@ -50,7 +51,7 @@ describe('scheduleInactiveUserDeletions', () => {
 
   it('does not tick on startup when the last run is within the interval', async () => {
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(new Date(Date.now() - 500));
+    const lastRunAt = vi.fn().mockResolvedValue(new Date(Date.now() - 500));
 
     const handle = await scheduleInactiveUserDeletions(
       useCase as unknown as DeleteInactiveUsersUseCase,
@@ -63,7 +64,7 @@ describe('scheduleInactiveUserDeletions', () => {
 
   it('arms the interval after the startup check so later windows still fire', async () => {
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(new Date(Date.now() - 500));
+    const lastRunAt = vi.fn().mockResolvedValue(new Date(Date.now() - 500));
 
     const handle = await scheduleInactiveUserDeletions(
       useCase as unknown as DeleteInactiveUsersUseCase,
@@ -72,7 +73,7 @@ describe('scheduleInactiveUserDeletions', () => {
 
     expect(useCase.execute).not.toHaveBeenCalled();
 
-    jest.advanceTimersByTime(1000);
+    vi.advanceTimersByTime(1000);
     await Promise.resolve();
 
     expect(useCase.execute).toHaveBeenCalledTimes(1);
@@ -85,7 +86,7 @@ describe('scheduleInactiveUserDeletions', () => {
 
   it('respects a custom limit passed via options', async () => {
     const useCase = makeUseCase();
-    const lastRunAt = jest.fn().mockResolvedValue(null);
+    const lastRunAt = vi.fn().mockResolvedValue(null);
 
     const handle = await scheduleInactiveUserDeletions(
       useCase as unknown as DeleteInactiveUsersUseCase,

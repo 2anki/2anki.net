@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -42,7 +43,7 @@ describe('preserveFilesForDebugging', () => {
     const debugBase = path.join(os.tmpdir(), 'debug');
     const before = fs.readdirSync(debugBase);
 
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const invalidFile = makeFile({
       originalname: undefined as unknown as string,
@@ -84,7 +85,7 @@ describe('preserveFilesForDebugging', () => {
       path: undefined as unknown as string,
     });
 
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     preserveFilesForDebugging(
       mockRequest,

@@ -1,25 +1,26 @@
+import { vi, type Mock } from 'vitest';
 import knex, { Knex } from 'knex';
 import { deleteNonSubScriberUploadsInDatabase } from './deleteNonSubScriberUploadsInDatabase';
 import { IErrorEventRepository } from '../../../../data_layer/ErrorEventRepository';
 
 function makeDb(uploadsToDelete: { key: string }[] = []) {
-  const deleteMock = jest.fn().mockReturnValue({
-    where: jest.fn().mockResolvedValue(1),
+  const deleteMock = vi.fn().mockReturnValue({
+    where: vi.fn().mockResolvedValue(1),
   });
-  const countMock = jest.fn().mockReturnValue({
-    first: jest.fn().mockResolvedValue({ count: uploadsToDelete.length }),
+  const countMock = vi.fn().mockReturnValue({
+    first: vi.fn().mockResolvedValue({ count: uploadsToDelete.length }),
   });
-  const revokeUpdateMock = jest.fn().mockResolvedValue(1);
-  const whereMock = jest.fn().mockReturnValue({
-    whereNull: jest.fn().mockReturnValue({ update: revokeUpdateMock }),
+  const revokeUpdateMock = vi.fn().mockResolvedValue(1);
+  const whereMock = vi.fn().mockReturnValue({
+    whereNull: vi.fn().mockReturnValue({ update: revokeUpdateMock }),
   });
   const db = {
-    raw: jest.fn().mockResolvedValue({ rows: uploadsToDelete }),
-    uploads: jest.fn(),
-    fn: { now: jest.fn().mockReturnValue('now()') },
+    raw: vi.fn().mockResolvedValue({ rows: uploadsToDelete }),
+    uploads: vi.fn(),
+    fn: { now: vi.fn().mockReturnValue('now()') },
   } as unknown;
 
-  const dbFn = jest.fn().mockReturnValue({
+  const dbFn = vi.fn().mockReturnValue({
     delete: deleteMock,
     count: countMock,
     where: whereMock,
@@ -30,7 +31,7 @@ function makeDb(uploadsToDelete: { key: string }[] = []) {
 }
 
 function makeStorage(deleteResult = true) {
-  return { delete: jest.fn().mockResolvedValue(deleteResult) };
+  return { delete: vi.fn().mockResolvedValue(deleteResult) };
 }
 
 describe('deleteNonSubScriberUploadsInDatabase', () => {
@@ -61,7 +62,7 @@ describe('deleteNonSubScriberUploadsInDatabase', () => {
 
     await deleteNonSubScriberUploadsInDatabase(dbFn, storage as any);
 
-    const [rawCall, rawBindings] = (dbFn.raw as jest.Mock).mock.calls[0] as [
+    const [rawCall, rawBindings] = (dbFn.raw as Mock).mock.calls[0] as [
       string,
       unknown,
     ];
@@ -77,7 +78,7 @@ describe('deleteNonSubScriberUploadsInDatabase', () => {
 
     await deleteNonSubScriberUploadsInDatabase(dbFn, storage as any);
 
-    const rawCall = (dbFn.raw as jest.Mock).mock.calls[0][0] as string;
+    const rawCall = (dbFn.raw as Mock).mock.calls[0][0] as string;
     expect(rawCall).toContain('user_passes');
     expect(rawCall).toContain('pass.user_id = u.id');
     expect(rawCall).toContain('pass.expires_at > now()');
@@ -244,7 +245,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
 
     const deleted: string[] = [];
     const storage = {
-      delete: jest.fn(async (key: string) => {
+      delete: vi.fn(async (key: string) => {
         deleted.push(key);
       }),
     };
@@ -279,7 +280,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       revoked_at: PAST,
     });
 
-    const storage = { delete: jest.fn() };
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),
@@ -299,7 +300,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       last_viewed_at: PAST,
     });
 
-    const storage = { delete: jest.fn() };
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),
@@ -321,7 +322,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       last_viewed_at: new Date().toISOString(),
     });
 
-    const storage = { delete: jest.fn() };
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),
@@ -341,7 +342,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       last_viewed_at: null,
     });
 
-    const storage = { delete: jest.fn() };
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),
@@ -361,7 +362,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       last_viewed_at: null,
     });
 
-    const storage = { delete: jest.fn() };
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),
@@ -386,7 +387,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       active: true,
     });
 
-    const storage = { delete: jest.fn() };
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),
@@ -407,7 +408,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       active: false,
     });
 
-    const storage = { delete: jest.fn() };
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),
@@ -429,7 +430,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       active: true,
     });
 
-    const storage = { delete: jest.fn() };
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),
@@ -447,7 +448,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       active: true,
     });
 
-    const storage = { delete: jest.fn() };
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),
@@ -459,7 +460,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
   });
 
   it('sweeps a non-subscriber only once when several cancelled rows match', async () => {
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     await seedUserWithUpload(1, 'lapsed@example.com', false, 'lapsed.apkg');
     await db('subscriptions').insert({
@@ -472,7 +473,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       active: false,
     });
 
-    const storage = { delete: jest.fn() };
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),
@@ -486,8 +487,8 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
   });
 
   it('raises a deletion-volume alarm when a run sweeps an anomalous fraction of the uploads table', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     for (let i = 1; i <= 130; i++) {
       await seedUserWithUpload(
@@ -498,8 +499,8 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       );
     }
 
-    const insert = jest.fn().mockResolvedValue(undefined);
-    const storage = { delete: jest.fn() };
+    const insert = vi.fn().mockResolvedValue(undefined);
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),
@@ -517,7 +518,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
   });
 
   it('does not raise an alarm for a normal-volume cleanup run', async () => {
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     for (let i = 1; i <= 5; i++) {
       await seedUserWithUpload(
@@ -540,8 +541,8 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       });
     }
 
-    const insert = jest.fn().mockResolvedValue(undefined);
-    const storage = { delete: jest.fn() };
+    const insert = vi.fn().mockResolvedValue(undefined);
+    const storage = { delete: vi.fn() };
 
     await deleteNonSubScriberUploadsInDatabase(
       withPgRawShape(db),

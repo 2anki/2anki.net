@@ -1,11 +1,14 @@
 import path from 'path';
 import os from 'os';
 
+const mocker =
+  (globalThis as typeof globalThis & { vi?: typeof jest }).vi ?? jest;
+
 export const setupTests = () => {
   process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'workspaces');
-  jest.spyOn(console, 'log').mockImplementation(() => {});
-  jest.spyOn(console, 'time').mockImplementation(() => {});
-  jest.spyOn(console, 'debug').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});
-  jest.spyOn(console, 'warn').mockImplementation(() => {});
+  mocker.spyOn(console, 'log').mockImplementation(() => {});
+  mocker.spyOn(console, 'time').mockImplementation(() => {});
+  mocker.spyOn(console, 'debug').mockImplementation(() => {});
+  mocker.spyOn(console, 'error').mockImplementation(() => {});
+  mocker.spyOn(console, 'warn').mockImplementation(() => {});
 };

@@ -1,3 +1,4 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import {
   scheduleReEngagementEmails,
   RE_ENGAGEMENT_INTERVAL_MS,
@@ -6,8 +7,8 @@ import type { IReEngagementRepository } from '../../../data_layer/ReEngagementRe
 import type { IEmailService } from '../../../services/EmailService/EmailService';
 import type { EventsSink } from '../../../services/events/EventsSink';
 
-jest.mock('../../../lib/storage/jobs/helpers/sendReEngagementEmails', () => ({
-  sendReEngagementEmails: jest.fn().mockResolvedValue({ count: 0 }),
+vi.mock('../../../lib/storage/jobs/helpers/sendReEngagementEmails', () => ({
+  sendReEngagementEmails: vi.fn().mockResolvedValue({ count: 0 }),
 }));
 
 import { sendReEngagementEmails } from '../../storage/jobs/helpers/sendReEngagementEmails';
@@ -19,8 +20,8 @@ import {
 const mockRepo = {} as IReEngagementRepository;
 const mockEmailService = {} as IEmailService;
 
-function makeSink(): jest.Mocked<Pick<EventsSink, 'record' | 'flush'>> {
-  return { record: jest.fn(), flush: jest.fn().mockResolvedValue(undefined) };
+function makeSink(): Mocked<Pick<EventsSink, 'record' | 'flush'>> {
+  return { record: vi.fn(), flush: vi.fn().mockResolvedValue(undefined) };
 }
 
 const flagRepositoryStub = (value: boolean | null) => ({
@@ -31,15 +32,15 @@ const flagRepositoryStub = (value: boolean | null) => ({
 
 describe('scheduleReEngagementEmails', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     // The tick consults the outbound_campaign_emails flag before sending; the
     // scheduling behavior under test assumes campaigns are on.
     __setFeatureFlagDependencies({ repository: flagRepositoryStub(true) });
   });
   afterEach(() => {
     __resetFeatureFlagModuleForTests();
-    jest.useRealTimers();
-    jest.clearAllMocks();
+    vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
   it('does not send when the outbound_campaign_emails flag is off', async () => {
@@ -52,7 +53,7 @@ describe('scheduleReEngagementEmails', () => {
       { intervalMs: 1000 }
     );
 
-    await jest.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     expect(sendReEngagementEmails).not.toHaveBeenCalled();
     expect(sink.record).not.toHaveBeenCalled();
@@ -68,7 +69,7 @@ describe('scheduleReEngagementEmails', () => {
       { intervalMs: 1000 }
     );
 
-    await jest.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     expect(sendReEngagementEmails).toHaveBeenCalledTimes(1);
     clearInterval(handle);
@@ -83,14 +84,14 @@ describe('scheduleReEngagementEmails', () => {
       { intervalMs: 1000 }
     );
 
-    jest.advanceTimersByTime(999);
+    vi.advanceTimersByTime(999);
 
     expect(sendReEngagementEmails).not.toHaveBeenCalled();
     clearInterval(handle);
   });
 
   it('emits email_batch_sent with campaign=reengagement and the returned count', async () => {
-    (sendReEngagementEmails as jest.Mock).mockResolvedValueOnce({ count: 7 });
+    (sendReEngagementEmails as Mock).mockResolvedValueOnce({ count: 7 });
     const sink = makeSink();
     const handle = await scheduleReEngagementEmails(
       mockRepo,
@@ -99,7 +100,7 @@ describe('scheduleReEngagementEmails', () => {
       { intervalMs: 1000 }
     );
 
-    await jest.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     expect(sink.record).toHaveBeenCalledWith({
       name: 'email_batch_sent',
@@ -109,7 +110,7 @@ describe('scheduleReEngagementEmails', () => {
   });
 
   it('catches errors thrown by sendReEngagementEmails without rethrowing', async () => {
-    (sendReEngagementEmails as jest.Mock).mockRejectedValueOnce(
+    (sendReEngagementEmails as Mock).mockRejectedValueOnce(
       new Error('db down')
     );
     const sink = makeSink();
@@ -120,7 +121,7 @@ describe('scheduleReEngagementEmails', () => {
       { intervalMs: 1000 }
     );
 
-    await jest.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     expect(sink.record).not.toHaveBeenCalled();
     clearInterval(handle);
@@ -135,7 +136,7 @@ describe('scheduleReEngagementEmails', () => {
   // band, so a user missed on their day never becomes eligible again.
   it('runs an overdue tick at startup when the last run is older than the interval', async () => {
     const sink = makeSink();
-    const lastRunAt = jest.fn().mockResolvedValue(new Date(Date.now() - 2000));
+    const lastRunAt = vi.fn().mockResolvedValue(new Date(Date.now() - 2000));
 
     const handle = await scheduleReEngagementEmails(
       mockRepo,
@@ -150,7 +151,7 @@ describe('scheduleReEngagementEmails', () => {
 
   it('runs an overdue tick at startup when the job has never run', async () => {
     const sink = makeSink();
-    const lastRunAt = jest.fn().mockResolvedValue(null);
+    const lastRunAt = vi.fn().mockResolvedValue(null);
 
     const handle = await scheduleReEngagementEmails(
       mockRepo,
@@ -165,7 +166,7 @@ describe('scheduleReEngagementEmails', () => {
 
   it('does not run a catch-up tick when the last run is recent', async () => {
     const sink = makeSink();
-    const lastRunAt = jest.fn().mockResolvedValue(new Date(Date.now() - 10));
+    const lastRunAt = vi.fn().mockResolvedValue(new Date(Date.now() - 10));
 
     const handle = await scheduleReEngagementEmails(
       mockRepo,
@@ -194,9 +195,9 @@ describe('scheduleReEngagementEmails', () => {
 
   it('skips the catch-up batch when another instance holds the lock', async () => {
     const sink = makeSink();
-    const lastRunAt = jest.fn().mockResolvedValue(null);
+    const lastRunAt = vi.fn().mockResolvedValue(null);
     const lock = {
-      runExclusively: jest.fn().mockResolvedValue(false),
+      runExclusively: vi.fn().mockResolvedValue(false),
     };
 
     const handle = await scheduleReEngagementEmails(
@@ -215,12 +216,12 @@ describe('scheduleReEngagementEmails', () => {
     const sink = makeSink();
     // Outer check reads overdue; the re-check inside the lock reads a batch
     // another instance finished moments ago — the blue-green boot race.
-    const lastRunAt = jest
+    const lastRunAt = vi
       .fn()
       .mockResolvedValueOnce(new Date(Date.now() - 2000))
       .mockResolvedValueOnce(new Date(Date.now() - 10));
     const lock = {
-      runExclusively: jest.fn(async (_key: number, fn: () => Promise<void>) => {
+      runExclusively: vi.fn(async (_key: number, fn: () => Promise<void>) => {
         await fn();
         return true;
       }),
@@ -239,9 +240,9 @@ describe('scheduleReEngagementEmails', () => {
 
   it('sends and flushes events inside the lock when still overdue', async () => {
     const sink = makeSink();
-    const lastRunAt = jest.fn().mockResolvedValue(null);
+    const lastRunAt = vi.fn().mockResolvedValue(null);
     const lock = {
-      runExclusively: jest.fn(async (_key: number, fn: () => Promise<void>) => {
+      runExclusively: vi.fn(async (_key: number, fn: () => Promise<void>) => {
         await fn();
         return true;
       }),

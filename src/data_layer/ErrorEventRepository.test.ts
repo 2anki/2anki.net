@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import knex from 'knex';
 
 import {
@@ -153,7 +154,7 @@ function makeFakeKnex() {
       },
     });
 
-  const rawFn = jest.fn((sql: string) => ({ as: () => sql }));
+  const rawFn = vi.fn((sql: string) => ({ as: () => sql }));
 
   const db = Object.assign(
     ((_name: string) => tableWithInsert()) as unknown as ReturnType<
@@ -220,12 +221,12 @@ describe('ErrorEventRepository.existsWithinWindow', () => {
 
 describe('ErrorEventRepository.resolveGroup', () => {
   it('upserts a resolution row keyed by message_hash', async () => {
-    const mergeSpy = jest.fn().mockResolvedValue(undefined);
-    const onConflictSpy = jest.fn().mockReturnValue({ merge: mergeSpy });
-    const insertSpy = jest.fn().mockReturnValue({ onConflict: onConflictSpy });
-    const knex = jest
+    const mergeSpy = vi.fn().mockResolvedValue(undefined);
+    const onConflictSpy = vi.fn().mockReturnValue({ merge: mergeSpy });
+    const insertSpy = vi.fn().mockReturnValue({ onConflict: onConflictSpy });
+    const knex = vi
       .fn()
-      .mockReturnValue({ insert: insertSpy }) as unknown as jest.Mock & {
+      .mockReturnValue({ insert: insertSpy }) as unknown as Mock & {
       fn: { now: () => string };
     };
     knex.fn = { now: () => 'NOW()' };
@@ -245,9 +246,9 @@ describe('ErrorEventRepository.resolveGroup', () => {
 
 describe('ErrorEventRepository.reopenGroup', () => {
   it('deletes the resolution row for the message_hash', async () => {
-    const delSpy = jest.fn().mockResolvedValue(1);
-    const whereSpy = jest.fn().mockReturnValue({ del: delSpy });
-    const knex = jest.fn().mockReturnValue({ where: whereSpy });
+    const delSpy = vi.fn().mockResolvedValue(1);
+    const whereSpy = vi.fn().mockReturnValue({ del: delSpy });
+    const knex = vi.fn().mockReturnValue({ where: whereSpy });
 
     const repo = new ErrorEventRepository(knex as never);
     await repo.reopenGroup('b'.repeat(64));

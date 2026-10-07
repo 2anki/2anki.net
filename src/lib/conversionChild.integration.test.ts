@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { fork } from 'node:child_process';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -8,7 +9,7 @@ import {
 } from './conversionProcessPool';
 import { ConversionChildCrashedError } from './workerTermination';
 
-jest.setTimeout(60_000);
+vi.setConfig({ testTimeout: 60_000 });
 
 const fixturePath = path.join(
   __dirname,

@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import knexLib, { Knex } from 'knex';
 
 import {
@@ -5,18 +6,18 @@ import {
   reconcileDeveloperSubscriptions,
 } from './reconcileActiveSubscriptions';
 
-type DbMock = jest.Mock & { updateSpy: jest.Mock };
+type DbMock = Mock & { updateSpy: Mock };
 
 function buildDbMock(
   activeRows: Array<{ id: number; email: string; payload: unknown }>
 ): DbMock {
-  const updateSpy = jest.fn().mockResolvedValue(1);
+  const updateSpy = vi.fn().mockResolvedValue(1);
 
-  const db = jest.fn().mockImplementation((table: string) => {
+  const db = vi.fn().mockImplementation((table: string) => {
     const rows = table === 'subscriptions_developer' ? [] : activeRows;
     const builder: Record<string, unknown> = {
-      select: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
       update: updateSpy,
       then: (resolve: (value: unknown) => void) => resolve(rows),
     };
@@ -29,7 +30,7 @@ function buildDbMock(
 function buildStripeMock(retrieveImpl: (id: string) => Promise<any>) {
   return {
     subscriptions: {
-      retrieve: jest.fn().mockImplementation(retrieveImpl),
+      retrieve: vi.fn().mockImplementation(retrieveImpl),
     },
   } as any;
 }
@@ -92,7 +93,7 @@ describe('reconcileActiveSubscriptions', () => {
     ]);
     const stripe = {
       subscriptions: {
-        retrieve: jest.fn().mockRejectedValue({
+        retrieve: vi.fn().mockRejectedValue({
           statusCode: 404,
           message: 'No such subscription',
         }),
@@ -126,7 +127,7 @@ describe('reconcileActiveSubscriptions', () => {
       { id: 1, email: 'a@example.com', payload: { id: 'sub_1' } },
       { id: 2, email: 'b@example.com', payload: { id: 'sub_2' } },
     ]);
-    const retrieve = jest
+    const retrieve = vi
       .fn()
       .mockRejectedValueOnce(new Error('boom'))
       .mockResolvedValueOnce({ status: 'canceled' });
@@ -202,7 +203,7 @@ describe('reconcileDeveloperSubscriptions', () => {
     await insertRow('sub_dev_missing', true);
     const stripe = {
       subscriptions: {
-        retrieve: jest.fn().mockRejectedValue({
+        retrieve: vi.fn().mockRejectedValue({
           statusCode: 404,
           message: 'No such subscription',
         }),
@@ -243,7 +244,7 @@ describe('reconcileDeveloperSubscriptions', () => {
   it('does not abort the sweep when one Stripe lookup fails; still reconciles the rest', async () => {
     await insertRow('sub_dev_boom', true);
     await insertRow('sub_dev_ok', true);
-    const retrieve = jest.fn().mockImplementation(async (id: string) => {
+    const retrieve = vi.fn().mockImplementation(async (id: string) => {
       if (id === 'sub_dev_boom') {
         throw new Error('boom');
       }

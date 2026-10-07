@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   isConnectionClassError,
   persistJobFailureWithRetry,
@@ -32,8 +33,8 @@ describe('isConnectionClassError', () => {
 
 describe('persistJobFailureWithRetry', () => {
   it('returns after the first attempt when the write succeeds', async () => {
-    const write = jest.fn().mockResolvedValue(undefined);
-    const sleepFn = jest.fn().mockResolvedValue(undefined);
+    const write = vi.fn().mockResolvedValue(undefined);
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
 
     await persistJobFailureWithRetry(write, { sleepFn });
 
@@ -42,12 +43,12 @@ describe('persistJobFailureWithRetry', () => {
   });
 
   it('retries a connection-class failure until the database is back', async () => {
-    const write = jest
+    const write = vi
       .fn()
       .mockRejectedValueOnce(connectionError('ECONNREFUSED'))
       .mockRejectedValueOnce(connectionError('ECONNREFUSED'))
       .mockResolvedValueOnce(undefined);
-    const sleepFn = jest.fn().mockResolvedValue(undefined);
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
 
     await persistJobFailureWithRetry(write, { sleepFn });
 
@@ -57,8 +58,8 @@ describe('persistJobFailureWithRetry', () => {
 
   it('does not retry a non-connection failure', async () => {
     const err = new Error('constraint violation');
-    const write = jest.fn().mockRejectedValue(err);
-    const sleepFn = jest.fn().mockResolvedValue(undefined);
+    const write = vi.fn().mockRejectedValue(err);
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
 
     await expect(persistJobFailureWithRetry(write, { sleepFn })).rejects.toBe(
       err
@@ -68,8 +69,8 @@ describe('persistJobFailureWithRetry', () => {
 
   it('rethrows the last error when attempts are exhausted', async () => {
     const err = connectionError('ECONNREFUSED');
-    const write = jest.fn().mockRejectedValue(err);
-    const sleepFn = jest.fn().mockResolvedValue(undefined);
+    const write = vi.fn().mockRejectedValue(err);
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
 
     await expect(persistJobFailureWithRetry(write, { sleepFn })).rejects.toBe(
       err
@@ -79,12 +80,12 @@ describe('persistJobFailureWithRetry', () => {
   });
 
   it('stamps the retry warning with the caller-supplied correlation prefix', async () => {
-    const write = jest
+    const write = vi
       .fn()
       .mockRejectedValueOnce(connectionError('ECONNREFUSED'))
       .mockResolvedValueOnce(undefined);
-    const sleepFn = jest.fn().mockResolvedValue(undefined);
-    const warnSpy = jest
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
+    const warnSpy = vi
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
 

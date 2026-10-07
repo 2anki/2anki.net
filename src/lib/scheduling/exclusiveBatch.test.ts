@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { makeExclusiveBatchRunner } from './exclusiveBatch';
 import type { IJobLockRepository } from '../../data_layer/JobLockRepository';
 
@@ -26,7 +27,7 @@ function deniedLock(): IJobLockRepository {
 
 describe('makeExclusiveBatchRunner', () => {
   it('runs the tick directly when no lock is configured', async () => {
-    const tick = jest.fn().mockResolvedValue(undefined);
+    const tick = vi.fn().mockResolvedValue(undefined);
     const run = makeExclusiveBatchRunner(tick, {
       label: 'test-job',
       lockKey: 1,
@@ -39,7 +40,7 @@ describe('makeExclusiveBatchRunner', () => {
   });
 
   it('runs the tick under the lock with the configured key', async () => {
-    const tick = jest.fn().mockResolvedValue(undefined);
+    const tick = vi.fn().mockResolvedValue(undefined);
     const lock = grantingLock();
     const run = makeExclusiveBatchRunner(tick, {
       label: 'test-job',
@@ -55,7 +56,7 @@ describe('makeExclusiveBatchRunner', () => {
   });
 
   it('skips the tick when the lock is held by another instance', async () => {
-    const tick = jest.fn();
+    const tick = vi.fn();
     const run = makeExclusiveBatchRunner(tick, {
       label: 'test-job',
       lockKey: 1,
@@ -69,7 +70,7 @@ describe('makeExclusiveBatchRunner', () => {
   });
 
   it('skips the tick when another instance ran within the last half interval', async () => {
-    const tick = jest.fn();
+    const tick = vi.fn();
     const run = makeExclusiveBatchRunner(tick, {
       label: 'test-job',
       lockKey: 1,
@@ -84,7 +85,7 @@ describe('makeExclusiveBatchRunner', () => {
   });
 
   it('runs the tick when the last run is older than half the interval', async () => {
-    const tick = jest.fn().mockResolvedValue(undefined);
+    const tick = vi.fn().mockResolvedValue(undefined);
     const run = makeExclusiveBatchRunner(tick, {
       label: 'test-job',
       lockKey: 1,
@@ -100,10 +101,10 @@ describe('makeExclusiveBatchRunner', () => {
 
   it('flushes recorded events before the lock is released', async () => {
     const order: string[] = [];
-    const tick = jest.fn(async () => {
+    const tick = vi.fn(async () => {
       order.push('tick');
     });
-    const flush = jest.fn(async () => {
+    const flush = vi.fn(async () => {
       order.push('flush');
     });
     const lock: IJobLockRepository = {
@@ -127,8 +128,8 @@ describe('makeExclusiveBatchRunner', () => {
   });
 
   it('contains a lock failure instead of crashing the scheduler', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const tick = jest.fn();
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const tick = vi.fn();
     const lock: IJobLockRepository = {
       async runExclusively() {
         throw new Error('db unreachable');

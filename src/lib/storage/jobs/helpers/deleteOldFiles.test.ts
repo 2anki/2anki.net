@@ -1,3 +1,4 @@
+import { vi, type MockInstance } from 'vitest';
 import fs from 'node:fs';
 import osReal from 'node:os';
 import pathReal from 'node:path';
@@ -12,7 +13,7 @@ import { CLEANUP_AGE_SECONDS } from '../../../constants';
 describe('deleteOldFiles', () => {
   let root: string;
   let loc: string;
-  let info: jest.SpyInstance;
+  let info: MockInstance;
 
   const OLD = new Date(Date.now() - (CLEANUP_AGE_SECONDS + 3600) * 1000);
 
@@ -24,7 +25,7 @@ describe('deleteOldFiles', () => {
     loc = `cleanup-fixture-${randomUUID()}`;
     root = pathReal.join(osReal.tmpdir(), loc);
     fs.mkdirSync(root, { recursive: true });
-    info = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
   });
 
   afterEach(() => {

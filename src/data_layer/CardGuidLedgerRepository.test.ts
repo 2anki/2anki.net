@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import knex from 'knex';
 import { CardGuidLedgerRepository } from './CardGuidLedgerRepository';
 
@@ -99,7 +100,7 @@ describe('CardGuidLedgerRepository SQL generation', () => {
       { block_id: 'block-a', guid: 'guid-a' },
       { block_id: 'block-b', guid: 'guid-b' },
     ];
-    const whereNot = jest.fn().mockResolvedValue(rows);
+    const whereNot = vi.fn().mockResolvedValue(rows);
     const fake = {
       select: () => ({ where: () => ({ whereNot }) }),
     };

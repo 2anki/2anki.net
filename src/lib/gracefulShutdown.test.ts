@@ -1,14 +1,20 @@
-jest.mock('./conversionPool', () => ({
-  __esModule: true,
-  shutdownConversionPool: jest.fn(),
-  describeConversionPool: jest.fn(() => ({
-    queueSize: 2,
-    threads: 3,
-    utilization: 0.5,
-  })),
-  POOL_CLOSE_TIMEOUT_MS:
-    jest.requireActual('./conversionPool').POOL_CLOSE_TIMEOUT_MS,
-}));
+import { vi, type Mock, type MockInstance } from 'vitest';
+vi.mock('./conversionPool', async () => {
+  const actual =
+    await vi.importActual<typeof import('./conversionPool')>(
+      './conversionPool'
+    );
+  return {
+    __esModule: true,
+    shutdownConversionPool: vi.fn(),
+    describeConversionPool: vi.fn(() => ({
+      queueSize: 2,
+      threads: 3,
+      utilization: 0.5,
+    })),
+    POOL_CLOSE_TIMEOUT_MS: actual.POOL_CLOSE_TIMEOUT_MS,
+  };
+});
 
 import type http from 'http';
 import type { Knex } from 'knex';
@@ -59,20 +65,20 @@ function fakeDatabase(overrides: { destroy?: () => Promise<void> } = {}): {
 }
 
 describe('gracefulShutdown', () => {
-  let exitSpy: jest.SpyInstance;
-  let infoSpy: jest.SpyInstance;
-  let errorSpy: jest.SpyInstance;
-  const drainMock = shutdownConversionPool as jest.Mock;
+  let exitSpy: MockInstance;
+  let infoSpy: MockInstance;
+  let errorSpy: MockInstance;
+  const drainMock = shutdownConversionPool as Mock;
 
   beforeEach(() => {
     drainMock.mockReset();
     drainMock.mockResolvedValue(undefined);
     resetGracefulShutdownStateForTesting();
-    exitSpy = jest
+    exitSpy = vi
       .spyOn(process, 'exit')
       .mockImplementation(() => undefined as never);
-    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
-    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -150,19 +156,20 @@ describe('gracefulShutdown', () => {
     expect(SHUTDOWN_TIMEOUT_MS).toBeLessThan(PM2_KILL_TIMEOUT_MS);
   });
 
-  it('bounds the HTTP close so piscina keeps its full self-managed window', () => {
-    const POOL_CLOSE_TIMEOUT_MS =
-      jest.requireActual<typeof import('./conversionPool')>(
+  it('bounds the HTTP close so piscina keeps its full self-managed window', async () => {
+    const POOL_CLOSE_TIMEOUT_MS = (
+      await vi.importActual<typeof import('./conversionPool')>(
         './conversionPool'
-      ).POOL_CLOSE_TIMEOUT_MS;
+      )
+    ).POOL_CLOSE_TIMEOUT_MS;
     expect(HTTP_CLOSE_BUDGET_MS + POOL_CLOSE_TIMEOUT_MS).toBeLessThan(
       SHUTDOWN_TIMEOUT_MS
     );
   });
 
   it('severs hung connections after the close budget so the drain still runs', async () => {
-    jest.useFakeTimers();
-    const warnSpy = jest
+    vi.useFakeTimers();
+    const warnSpy = vi
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
     let closeCb: (() => void) | undefined;
@@ -184,7 +191,7 @@ describe('gracefulShutdown', () => {
 
     const done = gracefulShutdown('SIGINT', server, db);
     await Promise.resolve();
-    jest.advanceTimersByTime(HTTP_CLOSE_BUDGET_MS + 1);
+    vi.advanceTimersByTime(HTTP_CLOSE_BUDGET_MS + 1);
     await done;
 
     expect(calls.closeAll).toBe(1);
@@ -192,11 +199,11 @@ describe('gracefulShutdown', () => {
     expect(destroyCalls.count).toBe(1);
     expect(exitSpy).toHaveBeenCalledWith(0);
     warnSpy.mockRestore();
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('names the stuck phase and the open resources when the hard exit fires', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const { server } = fakeServer();
     const { db } = fakeDatabase();
     (db as unknown as { client: unknown }).client = {
@@ -210,7 +217,7 @@ describe('gracefulShutdown', () => {
     drainMock.mockReturnValue(new Promise(() => undefined));
 
     const done = gracefulShutdown('SIGINT', server, db);
-    await jest.advanceTimersByTimeAsync(SHUTDOWN_TIMEOUT_MS + 1);
+    await vi.advanceTimersByTimeAsync(SHUTDOWN_TIMEOUT_MS + 1);
 
     expect(exitSpy).toHaveBeenCalledWith(1);
     const [message, details] = errorSpy.mock.calls.find(([m]) =>
@@ -222,7 +229,7 @@ describe('gracefulShutdown', () => {
       conversionPool: { queueSize: 2, threads: 3, utilization: 0.5 },
     });
     expect(details.activeResources).toEqual(expect.any(Object));
-    jest.useRealTimers();
+    vi.useRealTimers();
     void done;
   });
 
@@ -251,7 +258,7 @@ describe('gracefulShutdown', () => {
   });
 
   it('tallies active resource handles by type', () => {
-    const spy = jest
+    const spy = vi
       .spyOn(process, 'getActiveResourcesInfo')
       .mockReturnValue(['Timeout', 'Timeout', 'TCPSocketWrap']);
     expect(describeActiveResources()).toEqual({ Timeout: 2, TCPSocketWrap: 1 });

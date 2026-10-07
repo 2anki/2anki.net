@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
@@ -69,7 +70,7 @@ describe('pinConversionTaskInput', () => {
   it('falls back to copy when linking throws (cross-device)', async () => {
     const src = path.join(scratch, 'xdev.html');
     await fsp.writeFile(src, '<html>xdev</html>');
-    const linkSpy = jest
+    const linkSpy = vi
       .spyOn(fsp, 'link')
       .mockRejectedValueOnce(
         Object.assign(new Error('EXDEV'), { code: 'EXDEV' })

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifySyncConflict } from '../../entities/ankify';
 import { AnkifySyncConflictsRepository } from './AnkifySyncConflictsRepository';
 
@@ -20,15 +21,15 @@ const stringNoteIdRow = {
 };
 
 function buildKnex(rowToReturn: unknown, rowsToReturn: unknown[] = []) {
-  const orderBy = jest.fn().mockReturnValue({
-    andWhere: jest.fn().mockReturnThis(),
+  const orderBy = vi.fn().mockReturnValue({
+    andWhere: vi.fn().mockReturnThis(),
     then: (resolve: (rows: unknown[]) => unknown) =>
       Promise.resolve(rowsToReturn).then(resolve),
   });
-  const first = jest.fn().mockResolvedValue(rowToReturn);
-  const where = jest.fn().mockReturnValue({ first, orderBy });
-  const select = jest.fn().mockReturnValue({ where });
-  return jest.fn().mockReturnValue({ select });
+  const first = vi.fn().mockResolvedValue(rowToReturn);
+  const where = vi.fn().mockReturnValue({ first, orderBy });
+  const select = vi.fn().mockReturnValue({ where });
+  return vi.fn().mockReturnValue({ select });
 }
 
 describe('AnkifySyncConflictsRepository — bigint coercion', () => {
