@@ -1,12 +1,15 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import { SendAbandonedCheckoutRecoveryOnExpiryUseCase } from './SendAbandonedCheckoutRecoveryOnExpiryUseCase';
 import type { IAbandonedCheckoutRecoveryRepository } from '../../data_layer/AbandonedCheckoutRecoveryRepository';
 import type { IEmailService } from '../../services/EmailService/EmailService';
 import type { EventsSink } from '../../services/events/EventsSink';
 
-jest.mock('../../lib/misc/hashToken', () => (s: string) => `hashed:${s}`);
+vi.mock('../../lib/misc/hashToken', () => ({
+  default: (s: string) => `hashed:${s}`,
+}));
 
-function makeEventsSink(): jest.Mocked<Pick<EventsSink, 'record'>> {
-  return { record: jest.fn() };
+function makeEventsSink(): Mocked<Pick<EventsSink, 'record'>> {
+  return { record: vi.fn() };
 }
 
 function makeRepo(
@@ -14,43 +17,43 @@ function makeRepo(
   optedOut = false,
   alreadyPaying = false,
   recentlySent = false
-): jest.Mocked<IAbandonedCheckoutRecoveryRepository> {
+): Mocked<IAbandonedCheckoutRecoveryRepository> {
   return {
-    claimSession: jest.fn().mockResolvedValue(claimed),
-    recordEmailSend: jest.fn().mockResolvedValue(undefined),
-    isMarketingOptedOut: jest.fn().mockResolvedValue(optedOut),
-    hasLifetimeOrActiveSubscription: jest.fn().mockResolvedValue(alreadyPaying),
-    hasSendSince: jest.fn().mockResolvedValue(recentlySent),
-    getRecoveryByToken: jest.fn().mockResolvedValue(null),
+    claimSession: vi.fn().mockResolvedValue(claimed),
+    recordEmailSend: vi.fn().mockResolvedValue(undefined),
+    isMarketingOptedOut: vi.fn().mockResolvedValue(optedOut),
+    hasLifetimeOrActiveSubscription: vi.fn().mockResolvedValue(alreadyPaying),
+    hasSendSince: vi.fn().mockResolvedValue(recentlySent),
+    getRecoveryByToken: vi.fn().mockResolvedValue(null),
   };
 }
 
-function makeEmailService(): jest.Mocked<IEmailService> {
+function makeEmailService(): Mocked<IEmailService> {
   return {
-    sendResetEmail: jest.fn(),
-    sendConversionEmail: jest.fn(),
-    sendConversionLinkEmail: jest.fn(),
-    sendContactEmail: jest.fn(),
-    sendSubscriptionCancelledEmail: jest.fn(),
-    sendSubscriptionScheduledCancellationEmail: jest.fn(),
-    sendSubscriptionResumingSoonEmail: jest.fn().mockResolvedValue(undefined),
-    sendHostedAnkiAccessRequestEmail: jest.fn(),
-    sendMagicLinkEmail: jest.fn(),
-    sendReEngagementEmail: jest.fn(),
-    sendInactivityWarningEmail: jest.fn(),
-    sendAbandonedCheckoutRecoveryEmail: jest.fn().mockResolvedValue(undefined),
-    sendPassWinbackEmail: jest.fn().mockResolvedValue(undefined),
-    sendParserCanaryAlert: jest.fn().mockResolvedValue(undefined),
-    sendAiSpendAlertEmail: jest.fn().mockResolvedValue(undefined),
-    sendNotionReconnectEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendAnonymousPassClaimEmail: jest.fn().mockResolvedValue(undefined),
-    sendContactConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-    sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
-    sendEmailChangeConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-    sendEmailChangeNotificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendResetEmail: vi.fn(),
+    sendConversionEmail: vi.fn(),
+    sendConversionLinkEmail: vi.fn(),
+    sendContactEmail: vi.fn(),
+    sendSubscriptionCancelledEmail: vi.fn(),
+    sendSubscriptionScheduledCancellationEmail: vi.fn(),
+    sendSubscriptionResumingSoonEmail: vi.fn().mockResolvedValue(undefined),
+    sendHostedAnkiAccessRequestEmail: vi.fn(),
+    sendMagicLinkEmail: vi.fn(),
+    sendReEngagementEmail: vi.fn(),
+    sendInactivityWarningEmail: vi.fn(),
+    sendAbandonedCheckoutRecoveryEmail: vi.fn().mockResolvedValue(undefined),
+    sendPassWinbackEmail: vi.fn().mockResolvedValue(undefined),
+    sendParserCanaryAlert: vi.fn().mockResolvedValue(undefined),
+    sendAiSpendAlertEmail: vi.fn().mockResolvedValue(undefined),
+    sendNotionReconnectEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendPassClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendAnonymousPassClaimEmail: vi.fn().mockResolvedValue(undefined),
+    sendContactConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+    sendPriceLockInEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionRecoveryEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeNotificationEmail: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -101,7 +104,7 @@ describe('SendAbandonedCheckoutRecoveryOnExpiryUseCase', () => {
   it('logs recovery URL presence without logging the URL itself', async () => {
     const repo = makeRepo(true);
     const emailService = makeEmailService();
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const useCase = new SendAbandonedCheckoutRecoveryOnExpiryUseCase(
       repo,
       emailService
@@ -127,7 +130,7 @@ describe('SendAbandonedCheckoutRecoveryOnExpiryUseCase', () => {
   it('logs recovery URL absence when Stripe omitted it', async () => {
     const repo = makeRepo(true);
     const emailService = makeEmailService();
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const useCase = new SendAbandonedCheckoutRecoveryOnExpiryUseCase(
       repo,
       emailService
@@ -171,7 +174,7 @@ describe('SendAbandonedCheckoutRecoveryOnExpiryUseCase', () => {
 
     await useCase.execute('cs_test_same_tok', 'alice@example.com');
 
-    const claimToken = (repo.claimSession as jest.Mock).mock.calls[0][2];
+    const claimToken = (repo.claimSession as Mock).mock.calls[0][2];
     const [, emailToken] =
       emailService.sendAbandonedCheckoutRecoveryEmail.mock.calls[0];
     expect(claimToken).toBe(emailToken);
@@ -219,7 +222,7 @@ describe('SendAbandonedCheckoutRecoveryOnExpiryUseCase', () => {
     const repo = makeRepo(true, false, true);
     const emailService = makeEmailService();
     const eventsSink = makeEventsSink();
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const useCase = new SendAbandonedCheckoutRecoveryOnExpiryUseCase(
       repo,
       emailService,
@@ -263,8 +266,8 @@ describe('SendAbandonedCheckoutRecoveryOnExpiryUseCase', () => {
   });
 
   it('checks recent sends against a cutoff 7 days back', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-07-20T12:00:00Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-20T12:00:00Z'));
     const repo = makeRepo(true);
     const emailService = makeEmailService();
     const useCase = new SendAbandonedCheckoutRecoveryOnExpiryUseCase(
@@ -278,13 +281,13 @@ describe('SendAbandonedCheckoutRecoveryOnExpiryUseCase', () => {
       'alice@example.com',
       new Date('2026-07-13T12:00:00Z')
     );
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('skips with warn log when email is missing', async () => {
     const repo = makeRepo(true);
     const emailService = makeEmailService();
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const useCase = new SendAbandonedCheckoutRecoveryOnExpiryUseCase(
       repo,
       emailService
@@ -305,15 +308,15 @@ describe('SendAbandonedCheckoutRecoveryOnExpiryUseCase', () => {
 
   it('idempotent — second execution with same session does not double-send', async () => {
     const claimCalls: boolean[] = [true, false];
-    const repo: jest.Mocked<IAbandonedCheckoutRecoveryRepository> = {
-      claimSession: jest.fn().mockImplementation(() => {
+    const repo: Mocked<IAbandonedCheckoutRecoveryRepository> = {
+      claimSession: vi.fn().mockImplementation(() => {
         return Promise.resolve(claimCalls.shift() ?? false);
       }),
-      recordEmailSend: jest.fn().mockResolvedValue(undefined),
-      isMarketingOptedOut: jest.fn().mockResolvedValue(false),
-      hasLifetimeOrActiveSubscription: jest.fn().mockResolvedValue(false),
-      hasSendSince: jest.fn().mockResolvedValue(false),
-      getRecoveryByToken: jest.fn().mockResolvedValue(null),
+      recordEmailSend: vi.fn().mockResolvedValue(undefined),
+      isMarketingOptedOut: vi.fn().mockResolvedValue(false),
+      hasLifetimeOrActiveSubscription: vi.fn().mockResolvedValue(false),
+      hasSendSince: vi.fn().mockResolvedValue(false),
+      getRecoveryByToken: vi.fn().mockResolvedValue(null),
     };
     const emailService = makeEmailService();
     const useCase = new SendAbandonedCheckoutRecoveryOnExpiryUseCase(
@@ -366,7 +369,7 @@ describe('SendAbandonedCheckoutRecoveryOnExpiryUseCase', () => {
     const repo = makeRepo(true);
     const emailService = makeEmailService();
     const eventsSink = makeEventsSink();
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const useCase = new SendAbandonedCheckoutRecoveryOnExpiryUseCase(
       repo,
       emailService,

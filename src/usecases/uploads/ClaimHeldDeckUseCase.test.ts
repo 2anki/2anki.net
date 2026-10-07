@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
 import { EmptyDeckError } from '../jobs/EmptyDeckError';
 import { MonthlyLimitError } from '../users/CheckMonthlyCardLimitUseCase';
@@ -14,7 +15,7 @@ const ANON = 'anon-claim-1';
 const OWNER = '4242';
 
 function buildStore(body: Buffer | null = Buffer.from('<html></html>')) {
-  const getFileContents = jest
+  const getFileContents = vi
     .fn()
     .mockResolvedValue({ Body: body ?? undefined });
   const store: HeldFileStore = { getFileContents };
@@ -29,7 +30,7 @@ function buildConverter(
     deckName: 'study-notes',
   }
 ) {
-  const convertHeldFileForOwner = jest.fn().mockResolvedValue(result);
+  const convertHeldFileForOwner = vi.fn().mockResolvedValue(result);
   const converter: HeldDeckConverter = { convertHeldFileForOwner };
   return { converter, convertHeldFileForOwner };
 }
@@ -194,8 +195,8 @@ describe('ClaimHeldDeckUseCase', () => {
   it('claims before converting and releases the claim when the conversion fails', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedHold(repo);
-    const markClaimed = jest.spyOn(repo, 'markClaimed');
-    const convertHeldFileForOwner = jest
+    const markClaimed = vi.spyOn(repo, 'markClaimed');
+    const convertHeldFileForOwner = vi
       .fn()
       .mockRejectedValue(new Error('parser crashed'));
     const useCase = new ClaimHeldDeckUseCase(repo, buildStore().store, {
@@ -221,7 +222,7 @@ describe('ClaimHeldDeckUseCase', () => {
   it('keeps the hold consumed when the account is over its monthly limit', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedHold(repo);
-    const convertHeldFileForOwner = jest
+    const convertHeldFileForOwner = vi
       .fn()
       .mockRejectedValue(new MonthlyLimitError(100, 100, 21, '2026-10-01'));
     const useCase = new ClaimHeldDeckUseCase(repo, buildStore().store, {
@@ -251,7 +252,7 @@ describe('ClaimHeldDeckUseCase', () => {
       }
     );
     const store: HeldFileStore = {
-      getFileContents: jest.fn().mockRejectedValue(missing),
+      getFileContents: vi.fn().mockRejectedValue(missing),
     };
     const useCase = new ClaimHeldDeckUseCase(
       repo,
@@ -274,7 +275,7 @@ describe('ClaimHeldDeckUseCase', () => {
   it('keeps the hold consumed when the held file makes no cards', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedHold(repo);
-    const convertHeldFileForOwner = jest
+    const convertHeldFileForOwner = vi
       .fn()
       .mockRejectedValue(new EmptyDeckError());
     const useCase = new ClaimHeldDeckUseCase(repo, buildStore().store, {

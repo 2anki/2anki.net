@@ -1,8 +1,9 @@
-jest.mock('../../services/events/eventsSinkInstance', () => {
+import { vi, type Mocked } from 'vitest';
+vi.mock('../../services/events/eventsSinkInstance', () => {
   const recorded: unknown[] = [];
   return {
     getEventsSink: () => ({
-      record: jest.fn((row: unknown) => recorded.push(row)),
+      record: vi.fn((row: unknown) => recorded.push(row)),
     }),
     __recorded: recorded,
   };
@@ -16,6 +17,7 @@ import JobRepository from '../../data_layer/JobRepository';
 import { NormalizedCollection } from '../../services/ApkgPreviewService/types';
 import { ParsedApkg } from '../../services/ApkgPreviewService/ApkgPreviewService';
 import { APIErrorCode, APIResponseError } from '@notionhq/client';
+import * as eventsSinkInstance from '../../services/events/eventsSinkInstance';
 
 function makeCollection(noteCount: number): NormalizedCollection {
   const noteTypes = new Map([
@@ -70,36 +72,34 @@ function makeParsed(noteCount: number): ParsedApkg {
 }
 
 describe('ImportApkgToNotionUseCase', () => {
-  let previewService: jest.Mocked<ApkgPreviewService>;
+  let previewService: Mocked<ApkgPreviewService>;
   let blocksService: ApkgToNotionBlocksService;
-  let jobRepository: jest.Mocked<JobRepository>;
-  let notionApi: jest.Mocked<NotionAPIWrapper>;
+  let jobRepository: Mocked<JobRepository>;
+  let notionApi: Mocked<NotionAPIWrapper>;
   let useCase: ImportApkgToNotionUseCase;
 
   beforeEach(() => {
     previewService = {
-      parse: jest.fn(),
-      getMeta: jest.fn(),
-      getCardsPage: jest.fn(),
-      getMediaEntry: jest.fn(),
-    } as unknown as jest.Mocked<ApkgPreviewService>;
+      parse: vi.fn(),
+      getMeta: vi.fn(),
+      getCardsPage: vi.fn(),
+      getMediaEntry: vi.fn(),
+    } as unknown as Mocked<ApkgPreviewService>;
 
     blocksService = new ApkgToNotionBlocksService();
 
     jobRepository = {
-      updateJobStatus: jest.fn().mockResolvedValue({}),
-      create: jest.fn().mockResolvedValue(undefined),
-      findJobById: jest.fn(),
-    } as unknown as jest.Mocked<JobRepository>;
+      updateJobStatus: vi.fn().mockResolvedValue({}),
+      create: vi.fn().mockResolvedValue(undefined),
+      findJobById: vi.fn(),
+    } as unknown as Mocked<JobRepository>;
 
     notionApi = {
-      createPage: jest.fn().mockResolvedValue({ id: 'page-123' }),
-      appendBlocks: jest.fn().mockResolvedValue({}),
-      getPage: jest
-        .fn()
-        .mockResolvedValue({ url: 'https://notion.so/page-123' }),
-      uploadFile: jest.fn().mockResolvedValue('file-upload-123'),
-    } as unknown as jest.Mocked<NotionAPIWrapper>;
+      createPage: vi.fn().mockResolvedValue({ id: 'page-123' }),
+      appendBlocks: vi.fn().mockResolvedValue({}),
+      getPage: vi.fn().mockResolvedValue({ url: 'https://notion.so/page-123' }),
+      uploadFile: vi.fn().mockResolvedValue('file-upload-123'),
+    } as unknown as Mocked<NotionAPIWrapper>;
 
     useCase = new ImportApkgToNotionUseCase(
       previewService,
@@ -140,7 +140,7 @@ describe('ImportApkgToNotionUseCase', () => {
 
   it('throttles Notion writes by 350ms (THROTTLE_MS) between page creations', async () => {
     previewService.parse.mockResolvedValue(makeParsed(3));
-    const delay = jest.fn().mockResolvedValue(undefined);
+    const delay = vi.fn().mockResolvedValue(undefined);
     const throttledUseCase = new ImportApkgToNotionUseCase(
       previewService,
       blocksService,
@@ -565,7 +565,7 @@ describe('ImportApkgToNotionUseCase', () => {
   describe('usage event', () => {
     function recordedEvents(): Array<Record<string, unknown>> {
       return (
-        jest.requireMock('../../services/events/eventsSinkInstance') as {
+        eventsSinkInstance as unknown as {
           __recorded: Array<Record<string, unknown>>;
         }
       ).__recorded;

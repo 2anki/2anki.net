@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { ValidateAnonymousPassUseCase } from './ValidateAnonymousPassUseCase';
 import { InMemoryAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 
@@ -43,7 +44,7 @@ describe('ValidateAnonymousPassUseCase', () => {
   });
 
   it('returns valid=false for a claimed pass without calling Stripe', async () => {
-    const retrieve = jest.fn();
+    const retrieve = vi.fn();
     const withStripe = new ValidateAnonymousPassUseCase(repo, {
       checkout: { sessions: { retrieve } },
     } as never);
@@ -120,14 +121,14 @@ describe('ValidateAnonymousPassUseCase', () => {
       metadata: { pass_kind: '24h', pass_anonymous: '1' },
     };
 
-    function useCaseWith(retrieve: jest.Mock) {
+    function useCaseWith(retrieve: Mock) {
       return new ValidateAnonymousPassUseCase(repo, {
         checkout: { sessions: { retrieve } },
       } as never);
     }
 
     it('reconciles a paid anonymous session and persists the pass when no record exists', async () => {
-      const retrieve = jest.fn().mockResolvedValue(paidSession);
+      const retrieve = vi.fn().mockResolvedValue(paidSession);
       const result = await useCaseWith(retrieve).execute('cs_new', now);
 
       expect(retrieve).toHaveBeenCalledWith('cs_new');
@@ -140,7 +141,7 @@ describe('ValidateAnonymousPassUseCase', () => {
     });
 
     it('activates a reconciled pass to the duration window, not the 30-day deadline', async () => {
-      const retrieve = jest.fn().mockResolvedValue(paidSession);
+      const retrieve = vi.fn().mockResolvedValue(paidSession);
 
       const result = await useCaseWith(retrieve).execute('cs_new2', now);
 
@@ -153,7 +154,7 @@ describe('ValidateAnonymousPassUseCase', () => {
     });
 
     it('reconciles a paid anonymous 120d Semester Pass session', async () => {
-      const retrieve = jest.fn().mockResolvedValue({
+      const retrieve = vi.fn().mockResolvedValue({
         ...paidSession,
         metadata: { pass_kind: '120d', pass_anonymous: '1' },
       });
@@ -172,7 +173,7 @@ describe('ValidateAnonymousPassUseCase', () => {
     });
 
     it('returns valid=false for an unpaid session', async () => {
-      const retrieve = jest
+      const retrieve = vi
         .fn()
         .mockResolvedValue({ ...paidSession, payment_status: 'unpaid' });
       const result = await useCaseWith(retrieve).execute('cs_unpaid', now);
@@ -182,7 +183,7 @@ describe('ValidateAnonymousPassUseCase', () => {
     });
 
     it('returns valid=false when the session is not an anonymous pass', async () => {
-      const retrieve = jest
+      const retrieve = vi
         .fn()
         .mockResolvedValue({ ...paidSession, metadata: { pass_kind: '24h' } });
       const result = await useCaseWith(retrieve).execute('cs_notanon', now);
@@ -191,7 +192,7 @@ describe('ValidateAnonymousPassUseCase', () => {
     });
 
     it('does not call Stripe for tokens without the cs_ prefix', async () => {
-      const retrieve = jest.fn();
+      const retrieve = vi.fn();
       const result = await useCaseWith(retrieve).execute('not-a-session', now);
 
       expect(retrieve).not.toHaveBeenCalled();
@@ -199,9 +200,7 @@ describe('ValidateAnonymousPassUseCase', () => {
     });
 
     it('returns valid=false when Stripe retrieval throws', async () => {
-      const retrieve = jest
-        .fn()
-        .mockRejectedValue(new Error('no such session'));
+      const retrieve = vi.fn().mockRejectedValue(new Error('no such session'));
       const result = await useCaseWith(retrieve).execute('cs_boom', now);
 
       expect(result.valid).toBe(false);

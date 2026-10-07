@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { FindOrCreateJobUseCase } from './FindOrCreateJobUseCase';
 import JobRepository from '../../data_layer/JobRepository';
 
@@ -114,11 +115,11 @@ describe('FindOrCreateJobUseCase', () => {
       status: 'started',
     };
     const repo = {
-      findJobById: jest
+      findJobById: vi
         .fn()
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(raced),
-      create: jest.fn().mockResolvedValue(undefined),
+      create: vi.fn().mockResolvedValue(undefined),
     } as unknown as JobRepository;
     const useCase = new FindOrCreateJobUseCase(repo);
 

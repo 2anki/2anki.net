@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { inlineReviewMedia } from './inlineReviewMedia';
 
 const base64Of = (text: string): string =>
@@ -5,7 +6,7 @@ const base64Of = (text: string): string =>
 
 describe('inlineReviewMedia', () => {
   it('inlines a bare-filename image as a data URI', async () => {
-    const fetchMedia = jest.fn(async () => base64Of('PNGBYTES'));
+    const fetchMedia = vi.fn(async () => base64Of('PNGBYTES'));
     const cache = new Map<string, string | null>();
 
     const out = await inlineReviewMedia('<img src="a.png">', fetchMedia, cache);
@@ -29,7 +30,7 @@ describe('inlineReviewMedia', () => {
   });
 
   it('leaves external, data, and absolute image srcs untouched', async () => {
-    const fetchMedia = jest.fn(async () => base64Of('X'));
+    const fetchMedia = vi.fn(async () => base64Of('X'));
     const cache = new Map<string, string | null>();
     const html =
       '<img src="https://x/y.png"><img src="http://x/z.png">' +
@@ -106,7 +107,7 @@ describe('inlineReviewMedia', () => {
   });
 
   it('resolves [anki:play:q:0] to an audio element using note-field sounds', async () => {
-    const fetchMedia = jest.fn(async () => base64Of('MP3'));
+    const fetchMedia = vi.fn(async () => base64Of('MP3'));
     const cache = new Map<string, string | null>();
 
     const out = await inlineReviewMedia(
@@ -124,7 +125,7 @@ describe('inlineReviewMedia', () => {
   });
 
   it('strips [anki:play:q:0] when noteSounds is empty', async () => {
-    const fetchMedia = jest.fn(async () => base64Of('MP3'));
+    const fetchMedia = vi.fn(async () => base64Of('MP3'));
     const cache = new Map<string, string | null>();
 
     const out = await inlineReviewMedia(
@@ -141,7 +142,7 @@ describe('inlineReviewMedia', () => {
   });
 
   it('fetches a note-field sound shared by q and a sides only once', async () => {
-    const fetchMedia = jest.fn(async () => base64Of('MP3'));
+    const fetchMedia = vi.fn(async () => base64Of('MP3'));
     const cache = new Map<string, string | null>();
 
     await inlineReviewMedia('[anki:play:q:0]', fetchMedia, cache, ['s.mp3']);
@@ -163,7 +164,7 @@ describe('inlineReviewMedia', () => {
   });
 
   it('fetches each unique filename once via the cache', async () => {
-    const fetchMedia = jest.fn(async () => base64Of('X'));
+    const fetchMedia = vi.fn(async () => base64Of('X'));
     const cache = new Map<string, string | null>();
 
     await inlineReviewMedia('<img src="a.png">', fetchMedia, cache);
@@ -177,7 +178,7 @@ describe('inlineReviewMedia', () => {
   });
 
   it('caches a miss so it is not refetched', async () => {
-    const fetchMedia = jest.fn(async () => false as const);
+    const fetchMedia = vi.fn(async () => false as const);
     const cache = new Map<string, string | null>();
 
     await inlineReviewMedia('<img src="gone.png">', fetchMedia, cache);
@@ -187,7 +188,7 @@ describe('inlineReviewMedia', () => {
   });
 
   it('stops fetching new files once the cache holds 200 entries', async () => {
-    const fetchMedia = jest.fn(async () => base64Of('X'));
+    const fetchMedia = vi.fn(async () => base64Of('X'));
     const cache = new Map<string, string | null>();
     const refs = Array.from(
       { length: 201 },

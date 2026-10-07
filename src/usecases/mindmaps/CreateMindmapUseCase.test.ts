@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import {
   CreateMindmapUseCase,
   MindmapLimitError,
@@ -21,12 +22,12 @@ function makeMap(id: string): Mindmaps {
 
 function makeRepo(count: number): MindmapRepositoryInterface {
   return {
-    create: jest.fn().mockResolvedValue(makeMap('new')),
-    findById: jest.fn(),
-    findByUserId: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    countByUserId: jest.fn().mockResolvedValue(count),
+    create: vi.fn().mockResolvedValue(makeMap('new')),
+    findById: vi.fn(),
+    findByUserId: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    countByUserId: vi.fn().mockResolvedValue(count),
   };
 }
 
@@ -143,7 +144,7 @@ describe('CreateMindmapUseCase', () => {
       isPaying: false,
     });
 
-    const callArg = (repo.create as jest.Mock).mock.calls[0][0] as {
+    const callArg = (repo.create as Mock).mock.calls[0][0] as {
       data: { nodes: { id: string; label: string }[]; edges: unknown[] };
     };
     expect(callArg.data.nodes).toHaveLength(1);

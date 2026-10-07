@@ -1,8 +1,9 @@
+import { vi } from 'vitest';
 import ResolveShareUseCase from './ResolveShareUseCase';
 
 function makeShareService(overrides: Record<string, unknown> = {}) {
   return {
-    findActiveShare: jest.fn().mockResolvedValue(null),
+    findActiveShare: vi.fn().mockResolvedValue(null),
     ...overrides,
   };
 }
@@ -10,7 +11,7 @@ function makeShareService(overrides: Record<string, unknown> = {}) {
 describe('ResolveShareUseCase', () => {
   it('returns null when the share is revoked', async () => {
     const service = makeShareService({
-      findActiveShare: jest.fn().mockResolvedValue(null),
+      findActiveShare: vi.fn().mockResolvedValue(null),
     });
     const useCase = new ResolveShareUseCase(service as any);
 
@@ -30,7 +31,7 @@ describe('ResolveShareUseCase', () => {
       view_count: 0,
     };
     const service = makeShareService({
-      findActiveShare: jest.fn().mockResolvedValue(activeShare),
+      findActiveShare: vi.fn().mockResolvedValue(activeShare),
     });
     const useCase = new ResolveShareUseCase(service as any);
 

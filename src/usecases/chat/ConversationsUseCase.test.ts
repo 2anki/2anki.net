@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   ConversationsUseCase,
   InvalidTitleError,
@@ -330,7 +331,7 @@ describe('ConversationsUseCase', () => {
     it('sweeps the conversation attachment prefix and rows on delete', async () => {
       const repo = new InMemoryConversationsRepository();
       const attachments = new InMemoryChatAttachmentsRepository();
-      const deleteByPrefix = jest.fn().mockResolvedValue(1);
+      const deleteByPrefix = vi.fn().mockResolvedValue(1);
       const useCase = new ConversationsUseCase(repo, attachments, {
         deleteByPrefix,
       });
@@ -358,7 +359,7 @@ describe('ConversationsUseCase', () => {
 
     it('does not sweep when the conversation was not deleted', async () => {
       const repo = new InMemoryConversationsRepository();
-      const deleteByPrefix = jest.fn();
+      const deleteByPrefix = vi.fn();
       const useCase = new ConversationsUseCase(
         repo,
         new InMemoryChatAttachmentsRepository(),

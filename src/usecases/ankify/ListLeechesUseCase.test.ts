@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../data_layer/ankify/AnkifyNotionSubscriptionsRepository';
 import {
@@ -22,14 +23,14 @@ const clientsRepo = (
   >
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 const subsRepo = (
   rows: { target_deck: string | null; notion_page_title: string | null }[]
 ): AnkifyNotionSubscriptionsRepositoryInterface =>
   ({
-    listByOwner: jest.fn(async () => rows),
+    listByOwner: vi.fn(async () => rows),
   }) as unknown as AnkifyNotionSubscriptionsRepositoryInterface;
 
 describe('ListLeechesUseCase', () => {
@@ -37,14 +38,14 @@ describe('ListLeechesUseCase', () => {
     const useCase = new ListLeechesUseCase(
       clientsRepo(null),
       subsRepo([{ target_deck: 'MS3::Pharma', notion_page_title: null }]),
-      jest.fn()
+      vi.fn()
     );
 
     expect(await useCase.execute({ owner: 42 })).toEqual({ connected: false });
   });
 
   test('returns an empty list without touching AnkiConnect when no decks are owned', async () => {
-    const factory = jest.fn();
+    const factory = vi.fn();
     const useCase = new ListLeechesUseCase(
       clientsRepo(activeClient),
       subsRepo([]),
@@ -59,8 +60,8 @@ describe('ListLeechesUseCase', () => {
   });
 
   test('maps notes to LeechNote shape sorted most-lapses-first', async () => {
-    const findNotes = jest.fn(async () => [7001, 7002]);
-    const notesInfo = jest.fn(async () => [
+    const findNotes = vi.fn(async () => [7001, 7002]);
+    const notesInfo = vi.fn(async () => [
       {
         noteId: 7001,
         modelName: 'Basic',
@@ -82,7 +83,7 @@ describe('ListLeechesUseCase', () => {
         cards: [22],
       },
     ]);
-    const cardsInfo = jest.fn(async () => [
+    const cardsInfo = vi.fn(async () => [
       {
         cardId: 11,
         note: 7001,
@@ -98,10 +99,10 @@ describe('ListLeechesUseCase', () => {
         queue: -1,
       },
     ]);
-    const factory = jest.fn(
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findNotes,
           notesInfo,
           cardsInfo,
@@ -152,14 +153,14 @@ describe('ListLeechesUseCase', () => {
   });
 
   test('returns an empty list when no leech notes match', async () => {
-    const findNotes = jest.fn(async () => []);
-    const factory = jest.fn(
+    const findNotes = vi.fn(async () => []);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findNotes,
-          notesInfo: jest.fn(),
-          cardsInfo: jest.fn(),
+          notesInfo: vi.fn(),
+          cardsInfo: vi.fn(),
         }) as unknown as AnkiConnectClient
     );
     const useCase = new ListLeechesUseCase(
@@ -177,19 +178,19 @@ describe('ListLeechesUseCase', () => {
   });
 
   test('degrades to connected:false when AnkiConnect is unreachable on ping', async () => {
-    const findNotes = jest.fn();
-    const factory = jest.fn(
+    const findNotes = vi.fn();
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => {
+          ping: vi.fn(async () => {
             throw new AnkiConnectUnreachableError(
               'http://x',
               new Error('down')
             );
           }),
           findNotes,
-          notesInfo: jest.fn(),
-          cardsInfo: jest.fn(),
+          notesInfo: vi.fn(),
+          cardsInfo: vi.fn(),
         }) as unknown as AnkiConnectClient
     );
     const useCase = new ListLeechesUseCase(
@@ -205,11 +206,11 @@ describe('ListLeechesUseCase', () => {
   });
 
   test('degrades to connected:false when a timeout subclass is thrown', async () => {
-    const factory = jest.fn(
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
-          findNotes: jest.fn(async () => {
+          ping: vi.fn(async () => 6),
+          findNotes: vi.fn(async () => {
             throw new AnkiConnectTimeoutError(
               'http://x',
               'findNotes',
@@ -217,8 +218,8 @@ describe('ListLeechesUseCase', () => {
               new Error('slow')
             );
           }),
-          notesInfo: jest.fn(),
-          cardsInfo: jest.fn(),
+          notesInfo: vi.fn(),
+          cardsInfo: vi.fn(),
         }) as unknown as AnkiConnectClient
     );
     const useCase = new ListLeechesUseCase(
@@ -233,7 +234,7 @@ describe('ListLeechesUseCase', () => {
   });
 
   test('degrades to connected:false when the body read fails mid-stream', async () => {
-    const fetchImpl = jest.fn(async (_url: string, init: { body: string }) => {
+    const fetchImpl = vi.fn(async (_url: string, init: { body: string }) => {
       const action = JSON.parse(init.body).action as string;
       if (action === 'version') {
         return {
@@ -252,7 +253,7 @@ describe('ListLeechesUseCase', () => {
         },
       };
     }) as unknown as typeof fetch;
-    const factory = jest.fn(
+    const factory = vi.fn(
       () => new AnkiConnectClient('http://x', fetchImpl, 5000)
     );
     const useCase = new ListLeechesUseCase(
@@ -267,15 +268,15 @@ describe('ListLeechesUseCase', () => {
   });
 
   test('rethrows a non-AnkiConnect error so real bugs surface', async () => {
-    const factory = jest.fn(
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => {
+          ping: vi.fn(async () => {
             throw new Error('unexpected');
           }),
-          findNotes: jest.fn(),
-          notesInfo: jest.fn(),
-          cardsInfo: jest.fn(),
+          findNotes: vi.fn(),
+          notesInfo: vi.fn(),
+          cardsInfo: vi.fn(),
         }) as unknown as AnkiConnectClient
     );
     const useCase = new ListLeechesUseCase(

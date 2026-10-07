@@ -1,15 +1,16 @@
+import { vi, type Mocked } from 'vitest';
 import ResolveImportParentPageUseCase from './ResolveImportParentPageUseCase';
 import NoNotionPagesError from './NoNotionPagesError';
 import NotionAPIWrapper from '../../services/NotionService/NotionAPIWrapper';
 
 function makeNotionApi(
-  overrides: Partial<jest.Mocked<NotionAPIWrapper>> = {}
-): jest.Mocked<NotionAPIWrapper> {
+  overrides: Partial<Mocked<NotionAPIWrapper>> = {}
+): Mocked<NotionAPIWrapper> {
   return {
-    searchTopLevelPages: jest.fn().mockResolvedValue({ results: [] }),
-    createPage: jest.fn().mockResolvedValue({ id: 'new-page-id' }),
+    searchTopLevelPages: vi.fn().mockResolvedValue({ results: [] }),
+    createPage: vi.fn().mockResolvedValue({ id: 'new-page-id' }),
     ...overrides,
-  } as unknown as jest.Mocked<NotionAPIWrapper>;
+  } as unknown as Mocked<NotionAPIWrapper>;
 }
 
 const IMPORT_PAGE_TITLE = '2anki Imports';
@@ -23,7 +24,7 @@ describe('ResolveImportParentPageUseCase', () => {
 
   it('returns the existing page when "2anki Imports" is found', async () => {
     const notionApi = makeNotionApi({
-      searchTopLevelPages: jest.fn().mockResolvedValue({
+      searchTopLevelPages: vi.fn().mockResolvedValue({
         results: [
           {
             id: 'existing-imports-page',
@@ -45,7 +46,7 @@ describe('ResolveImportParentPageUseCase', () => {
 
   it('creates "2anki Imports" under the first top-level page when not found', async () => {
     const notionApi = makeNotionApi({
-      searchTopLevelPages: jest
+      searchTopLevelPages: vi
         .fn()
         .mockResolvedValueOnce({ results: [] })
         .mockResolvedValueOnce({
@@ -60,7 +61,7 @@ describe('ResolveImportParentPageUseCase', () => {
             },
           ],
         }),
-      createPage: jest.fn().mockResolvedValue({ id: 'created-page-id' }),
+      createPage: vi.fn().mockResolvedValue({ id: 'created-page-id' }),
     });
 
     const pageId = await useCase.execute(notionApi);
@@ -74,7 +75,7 @@ describe('ResolveImportParentPageUseCase', () => {
 
   it('throws when no top-level pages are available to host the import page', async () => {
     const notionApi = makeNotionApi({
-      searchTopLevelPages: jest.fn().mockResolvedValue({ results: [] }),
+      searchTopLevelPages: vi.fn().mockResolvedValue({ results: [] }),
     });
 
     await expect(useCase.execute(notionApi)).rejects.toBeInstanceOf(
@@ -86,7 +87,7 @@ describe('ResolveImportParentPageUseCase', () => {
   });
 
   it('does not treat a partial title match as the import page', async () => {
-    const searchMock = jest
+    const searchMock = vi
       .fn()
       .mockResolvedValueOnce({
         results: [
@@ -115,7 +116,7 @@ describe('ResolveImportParentPageUseCase', () => {
 
     const notionApi = makeNotionApi({
       searchTopLevelPages: searchMock,
-      createPage: jest.fn().mockResolvedValue({ id: 'new-imports-page' }),
+      createPage: vi.fn().mockResolvedValue({ id: 'new-imports-page' }),
     });
 
     const pageId = await useCase.execute(notionApi);

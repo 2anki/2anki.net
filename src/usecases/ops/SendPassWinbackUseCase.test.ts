@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import { SendPassWinbackUseCase } from './SendPassWinbackUseCase';
 import { InMemoryPassWinbackRepository } from '../../data_layer/PassWinbackRepository';
 import type { IEmailService } from '../../services/EmailService/EmailService';
@@ -5,36 +6,36 @@ import type { EventsSink } from '../../services/events/EventsSink';
 
 const CAMPAIGN = 'winback-2026-fall';
 
-function makeEventsSink(): jest.Mocked<Pick<EventsSink, 'record'>> {
-  return { record: jest.fn() };
+function makeEventsSink(): Mocked<Pick<EventsSink, 'record'>> {
+  return { record: vi.fn() };
 }
 
-function makeEmailService(): jest.Mocked<IEmailService> {
+function makeEmailService(): Mocked<IEmailService> {
   return {
-    sendResetEmail: jest.fn(),
-    sendConversionEmail: jest.fn(),
-    sendConversionLinkEmail: jest.fn(),
-    sendContactEmail: jest.fn(),
-    sendSubscriptionCancelledEmail: jest.fn(),
-    sendSubscriptionScheduledCancellationEmail: jest.fn(),
-    sendSubscriptionResumingSoonEmail: jest.fn().mockResolvedValue(undefined),
-    sendHostedAnkiAccessRequestEmail: jest.fn(),
-    sendMagicLinkEmail: jest.fn(),
-    sendReEngagementEmail: jest.fn(),
-    sendInactivityWarningEmail: jest.fn(),
-    sendAbandonedCheckoutRecoveryEmail: jest.fn().mockResolvedValue(undefined),
-    sendPassWinbackEmail: jest.fn().mockResolvedValue(undefined),
-    sendParserCanaryAlert: jest.fn().mockResolvedValue(undefined),
-    sendAiSpendAlertEmail: jest.fn().mockResolvedValue(undefined),
-    sendNotionReconnectEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendAnonymousPassClaimEmail: jest.fn().mockResolvedValue(undefined),
-    sendContactConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-    sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
-    sendEmailChangeConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-    sendEmailChangeNotificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendResetEmail: vi.fn(),
+    sendConversionEmail: vi.fn(),
+    sendConversionLinkEmail: vi.fn(),
+    sendContactEmail: vi.fn(),
+    sendSubscriptionCancelledEmail: vi.fn(),
+    sendSubscriptionScheduledCancellationEmail: vi.fn(),
+    sendSubscriptionResumingSoonEmail: vi.fn().mockResolvedValue(undefined),
+    sendHostedAnkiAccessRequestEmail: vi.fn(),
+    sendMagicLinkEmail: vi.fn(),
+    sendReEngagementEmail: vi.fn(),
+    sendInactivityWarningEmail: vi.fn(),
+    sendAbandonedCheckoutRecoveryEmail: vi.fn().mockResolvedValue(undefined),
+    sendPassWinbackEmail: vi.fn().mockResolvedValue(undefined),
+    sendParserCanaryAlert: vi.fn().mockResolvedValue(undefined),
+    sendAiSpendAlertEmail: vi.fn().mockResolvedValue(undefined),
+    sendNotionReconnectEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendPassClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendAnonymousPassClaimEmail: vi.fn().mockResolvedValue(undefined),
+    sendContactConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+    sendPriceLockInEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionRecoveryEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeNotificationEmail: vi.fn().mockResolvedValue(undefined),
   };
 }
 

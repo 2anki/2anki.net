@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkiConnectClient } from '../../services/ankify/AnkiConnectClient';
 import { GetReviewQueueUseCase } from './GetReviewQueueUseCase';
@@ -17,7 +18,7 @@ const clientsRepo = (
   >
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 interface AnkiStub {
@@ -27,10 +28,10 @@ interface AnkiStub {
 }
 
 const factoryFor = (stub: AnkiStub) => {
-  const findCards = jest.fn(async (query: string) =>
+  const findCards = vi.fn(async (query: string) =>
     query.includes('is:new') ? (stub.fresh ?? []) : (stub.due ?? [])
   );
-  const getDeckStats = jest.fn(async () => ({
+  const getDeckStats = vi.fn(async () => ({
     '1651445861967': {
       deck_id: 1651445861967,
       name: 'Deck',
@@ -40,10 +41,10 @@ const factoryFor = (stub: AnkiStub) => {
       total_in_deck: 0,
     },
   }));
-  const factory = jest.fn(
+  const factory = vi.fn(
     () =>
       ({
-        ping: jest.fn(async () => 6),
+        ping: vi.fn(async () => 6),
         findCards,
         getDeckStats,
       }) as unknown as AnkiConnectClient
@@ -109,7 +110,7 @@ describe('GetReviewQueueUseCase', () => {
   });
 
   it('returns connected:false when no active client', async () => {
-    const useCase = new GetReviewQueueUseCase(clientsRepo(null), jest.fn());
+    const useCase = new GetReviewQueueUseCase(clientsRepo(null), vi.fn());
 
     const result = await useCase.execute({
       owner: 42,

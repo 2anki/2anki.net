@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ResumeAbandonedCheckoutUseCase } from './ResumeAbandonedCheckoutUseCase';
 import { InMemoryAbandonedCheckoutRecoveryRepository } from '../../data_layer/AbandonedCheckoutRecoveryRepository';
 
@@ -72,7 +73,7 @@ describe('ResumeAbandonedCheckoutUseCase', () => {
   ])(
     'falls back without querying the repository on %s',
     async (_label, token) => {
-      const spy = jest.spyOn(repo, 'getRecoveryByToken');
+      const spy = vi.spyOn(repo, 'getRecoveryByToken');
 
       const result = await useCase.execute(token, NOW);
 

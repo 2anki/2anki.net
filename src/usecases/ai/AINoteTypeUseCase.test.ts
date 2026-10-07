@@ -1,3 +1,4 @@
+import { vi, type Mock, type MockInstance } from 'vitest';
 import {
   AINoteTypeUseCase,
   NoteTypeStarterInput,
@@ -5,15 +6,17 @@ import {
 } from './AINoteTypeUseCase';
 import { getAnthropicClient } from '../../lib/claude/ClaudeService';
 
-jest.mock('../../lib/claude/ClaudeService', () => ({
-  getAnthropicClient: jest.fn(),
+vi.mock('../../lib/claude/ClaudeService', () => ({
+  getAnthropicClient: vi.fn(),
 }));
 
-jest.mock('../../lib/claude/aiSpendGuard', () => {
-  const actual = jest.requireActual('../../lib/claude/aiSpendGuard');
+vi.mock('../../lib/claude/aiSpendGuard', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../lib/claude/aiSpendGuard')
+  >('../../lib/claude/aiSpendGuard');
   return {
     ...actual,
-    withAiBudget: jest.fn(
+    withAiBudget: vi.fn(
       (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
     ),
   };
@@ -24,7 +27,7 @@ import {
   AiCreditsExhaustedError,
 } from '../../lib/claude/aiSpendGuard';
 
-const withAiBudgetMock = withAiBudget as jest.Mock;
+const withAiBudgetMock = withAiBudget as Mock;
 const runCallbackImpl = (
   _userId: number | null | undefined,
   run: () => Promise<unknown>
@@ -102,22 +105,22 @@ function claudeReply(starter: NoteTypeStarterInput, reply: string) {
 }
 
 describe('AINoteTypeUseCase.modify no-op detection', () => {
-  let warnSpy: jest.SpyInstance;
-  let mockCreate: jest.Mock;
+  let warnSpy: MockInstance;
+  let mockCreate: Mock;
 
   beforeEach(() => {
-    mockCreate = jest.fn();
-    (getAnthropicClient as jest.Mock).mockReturnValue({
+    mockCreate = vi.fn();
+    (getAnthropicClient as Mock).mockReturnValue({
       messages: { create: mockCreate },
     });
-    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
     warnSpy.mockRestore();
-    jest.restoreAllMocks();
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('logs template_ai_modify.no_op when the result fingerprint matches the input', async () => {
@@ -157,11 +160,11 @@ describe('AINoteTypeUseCase.modify no-op detection', () => {
 });
 
 describe('AINoteTypeUseCase system prompt caching', () => {
-  let mockCreate: jest.Mock;
-  let infoSpy: jest.SpyInstance;
+  let mockCreate: Mock;
+  let infoSpy: MockInstance;
 
   beforeEach(() => {
-    mockCreate = jest.fn().mockResolvedValue({
+    mockCreate = vi.fn().mockResolvedValue({
       ...claudeReply(sampleStarter, 'No changes made.'),
       usage: {
         input_tokens: 12,
@@ -170,15 +173,15 @@ describe('AINoteTypeUseCase system prompt caching', () => {
         cache_read_input_tokens: 0,
       },
     });
-    (getAnthropicClient as jest.Mock).mockReturnValue({
+    (getAnthropicClient as Mock).mockReturnValue({
       messages: { create: mockCreate },
     });
-    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
     infoSpy.mockRestore();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('passes system as an array with a cache_control ephemeral block', async () => {

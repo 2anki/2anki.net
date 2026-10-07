@@ -1,8 +1,9 @@
-jest.mock('../../lib/conversionPool', () => ({
-  runUploadGeneration: jest.fn(),
+import { vi, type MockedFunction } from 'vitest';
+vi.mock('../../lib/conversionPool', () => ({
+  runUploadGeneration: vi.fn(),
 }));
 
-jest.mock('../../lib/parser/WorkSpace');
+vi.mock('../../lib/parser/WorkSpace');
 
 import GeneratePackagesUseCase from './GeneratePackagesUseCase';
 import { runUploadGeneration } from '../../lib/conversionPool';
@@ -13,7 +14,7 @@ import { EmptyDeckError } from '../jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from './UploadFileUnavailableError';
 import { UploadGenerationTask } from './uploadGenerationTypes';
 
-const mockRunUploadGeneration = runUploadGeneration as jest.MockedFunction<
+const mockRunUploadGeneration = runUploadGeneration as MockedFunction<
   typeof runUploadGeneration
 >;
 
@@ -43,7 +44,7 @@ function makeFile(name: string): UploadedFile {
 
 describe('GeneratePackagesUseCase', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('dispatches the generation task through the conversion pool', async () => {
@@ -102,7 +103,7 @@ describe('GeneratePackagesUseCase', () => {
   });
 
   it('forwards progress callbacks from the pool to onProgress', async () => {
-    const onProgress = jest.fn();
+    const onProgress = vi.fn();
     mockRunUploadGeneration.mockImplementationOnce(
       async (
         _task: UploadGenerationTask,

@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { SendAnonymousPassClaimEmailUseCase } from './SendAnonymousPassClaimEmailUseCase';
 import type { IPassClaimTokensRepository } from '../../data_layer/PassClaimTokensRepository';
 import type { IEmailService } from '../../services/EmailService/EmailService';
@@ -7,21 +8,21 @@ process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
 
 function makeTokensRepo(): IPassClaimTokensRepository {
   return {
-    insert: jest.fn().mockResolvedValue({ id: 1 }),
-    findByTokenHash: jest.fn().mockResolvedValue(null),
-    markConsumed: jest.fn().mockResolvedValue(undefined),
-    countRecentByUser: jest.fn().mockResolvedValue(0),
+    insert: vi.fn().mockResolvedValue({ id: 1 }),
+    findByTokenHash: vi.fn().mockResolvedValue(null),
+    markConsumed: vi.fn().mockResolvedValue(undefined),
+    countRecentByUser: vi.fn().mockResolvedValue(0),
   };
 }
 
 function makeEmailService(): IEmailService {
   return {
-    sendAnonymousPassClaimEmail: jest.fn().mockResolvedValue(undefined),
+    sendAnonymousPassClaimEmail: vi.fn().mockResolvedValue(undefined),
   } as unknown as IEmailService;
 }
 
 function makeEventsSink(): Pick<EventsSink, 'record'> {
-  return { record: jest.fn() };
+  return { record: vi.fn() };
 }
 
 describe('SendAnonymousPassClaimEmailUseCase', () => {
@@ -45,7 +46,7 @@ describe('SendAnonymousPassClaimEmailUseCase', () => {
     expect(tokensRepo.insert).toHaveBeenCalledWith(
       expect.objectContaining({ user_id: null, anonymous_pass_id: 7 })
     );
-    const tokenArg = (tokensRepo.insert as jest.Mock).mock.calls[0][0];
+    const tokenArg = (tokensRepo.insert as Mock).mock.calls[0][0];
     expect(typeof tokenArg.token_hash).toBe('string');
     expect(tokenArg.token_hash.length).toBeGreaterThan(0);
     expect(tokenArg.expires_at.getTime()).toBeGreaterThan(
@@ -57,7 +58,7 @@ describe('SendAnonymousPassClaimEmailUseCase', () => {
       expect.stringContaining('/account/claim?token='),
       'Day Pass'
     );
-    const url = (emailService.sendAnonymousPassClaimEmail as jest.Mock).mock
+    const url = (emailService.sendAnonymousPassClaimEmail as Mock).mock
       .calls[0][1] as string;
     expect(url).toContain('kind=pass');
   });

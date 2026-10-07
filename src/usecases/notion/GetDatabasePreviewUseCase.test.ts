@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { GetDatabasePreviewUseCase } from './GetDatabasePreviewUseCase';
 
 interface QueryRow {
@@ -6,18 +7,18 @@ interface QueryRow {
 }
 
 interface FakeAPI {
-  getDatabase: jest.Mock;
-  getDatabaseTitle: jest.Mock;
-  queryDatabasePreview: jest.Mock;
+  getDatabase: Mock;
+  getDatabaseTitle: Mock;
+  queryDatabasePreview: Mock;
 }
 
 function fakeApi(overrides: Partial<FakeAPI> = {}): FakeAPI {
   return {
-    getDatabase: jest
+    getDatabase: vi
       .fn()
       .mockResolvedValue({ object: 'database', url: 'https://notion.so/abc' }),
-    getDatabaseTitle: jest.fn().mockResolvedValue('Vocabulary'),
-    queryDatabasePreview: jest.fn().mockResolvedValue({
+    getDatabaseTitle: vi.fn().mockResolvedValue('Vocabulary'),
+    queryDatabasePreview: vi.fn().mockResolvedValue({
       results: [] as QueryRow[],
       hasMore: false,
     }),
@@ -36,7 +37,7 @@ function richTextProp(text: string) {
 describe('GetDatabasePreviewUseCase', () => {
   it('returns clean mapping when columns infer cleanly', async () => {
     const api = fakeApi({
-      queryDatabasePreview: jest.fn().mockResolvedValue({
+      queryDatabasePreview: vi.fn().mockResolvedValue({
         results: [
           {
             id: 'row-1',
@@ -86,7 +87,7 @@ describe('GetDatabasePreviewUseCase', () => {
 
   it('flags ambiguous mapping when no candidate columns match', async () => {
     const api = fakeApi({
-      queryDatabasePreview: jest.fn().mockResolvedValue({
+      queryDatabasePreview: vi.fn().mockResolvedValue({
         results: [
           {
             id: 'row-1',
@@ -110,7 +111,7 @@ describe('GetDatabasePreviewUseCase', () => {
 
   it('returns empty preview when the database has no rows', async () => {
     const api = fakeApi({
-      queryDatabasePreview: jest.fn().mockResolvedValue({
+      queryDatabasePreview: vi.fn().mockResolvedValue({
         results: [],
         hasMore: false,
       }),
@@ -139,7 +140,7 @@ describe('GetDatabasePreviewUseCase', () => {
       },
     }));
     const api = fakeApi({
-      queryDatabasePreview: jest.fn().mockResolvedValue({
+      queryDatabasePreview: vi.fn().mockResolvedValue({
         results: rows,
         hasMore: true,
       }),

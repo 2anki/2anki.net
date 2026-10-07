@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { GetDropboxUploadsUseCase } from './GetDropboxUploadsUseCase';
 import {
   DropboxRepository,
@@ -7,7 +8,7 @@ import {
 describe('GetDropboxUploadsUseCase', () => {
   function makeRepo(rows: DropboxUploadRow[]): DropboxRepository {
     return {
-      getByOwner: jest.fn().mockResolvedValue(rows),
+      getByOwner: vi.fn().mockResolvedValue(rows),
     } as unknown as DropboxRepository;
   }
 

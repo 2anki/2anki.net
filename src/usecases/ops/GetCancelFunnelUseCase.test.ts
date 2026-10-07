@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { GetCancelFunnelUseCase } from './GetCancelFunnelUseCase';
 import {
   CancelFunnelResponse,
@@ -5,7 +6,7 @@ import {
 } from '../../services/ops/CancelFunnelService';
 
 const buildService = () => {
-  const getMetrics = jest.fn().mockResolvedValue({
+  const getMetrics = vi.fn().mockResolvedValue({
     stages: null,
     save_rate_pct: 0,
     offer_reach_pct: 0,
@@ -18,7 +19,7 @@ const buildService = () => {
   };
 };
 
-const daysAgo = (call: jest.Mock): number => {
+const daysAgo = (call: Mock): number => {
   const since = call.mock.calls[0][0] as Date;
   return Math.round((Date.now() - since.getTime()) / (24 * 60 * 60 * 1000));
 };

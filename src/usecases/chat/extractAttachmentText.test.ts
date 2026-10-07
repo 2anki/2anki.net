@@ -1,3 +1,4 @@
+import { vi, type MockedFunction } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
 
 import {
@@ -12,16 +13,16 @@ import {
 } from './extractAttachmentText';
 import type { ChatAttachment } from './buildAttachmentBlocks';
 
-jest.mock(
+vi.mock(
   '../../infrastracture/adapters/fileConversion/convertDocxToHTML',
   () => ({
-    convertDocxToHTML: jest.fn(),
+    convertDocxToHTML: vi.fn(),
   })
 );
 
 import { convertDocxToHTML } from '../../infrastracture/adapters/fileConversion/convertDocxToHTML';
 
-const mockedConvertDocx = convertDocxToHTML as jest.MockedFunction<
+const mockedConvertDocx = convertDocxToHTML as MockedFunction<
   typeof convertDocxToHTML
 >;
 

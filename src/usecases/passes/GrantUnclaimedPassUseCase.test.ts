@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   GrantUnclaimedPassUseCase,
   UsersByEmailRepository,
@@ -8,12 +9,12 @@ import type { EventsSink } from '../../services/events/EventsSink';
 
 function makeUsersRepo(id: number | null): UsersByEmailRepository {
   return {
-    getByEmail: jest.fn().mockResolvedValue(id == null ? undefined : { id }),
+    getByEmail: vi.fn().mockResolvedValue(id == null ? undefined : { id }),
   };
 }
 
 function makeEventsSink(): Pick<EventsSink, 'record'> {
-  return { record: jest.fn() };
+  return { record: vi.fn() };
 }
 
 const NOW = new Date('2026-08-20T12:00:00Z');

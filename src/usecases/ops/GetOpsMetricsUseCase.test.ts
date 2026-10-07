@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { GetOpsMetricsUseCase } from './GetOpsMetricsUseCase';
 import {
   ObservabilityQueryService,
@@ -55,11 +56,11 @@ describe('GetOpsMetricsUseCase', () => {
       parse_path_signatures: [],
     } as OpsMetricsResponse;
     const service = {
-      getMetrics: jest.fn().mockResolvedValue(fakeResponse),
+      getMetrics: vi.fn().mockResolvedValue(fakeResponse),
     } as unknown as ObservabilityQueryService;
     const useCase = new GetOpsMetricsUseCase(service);
     const result = await useCase.execute('7d');
     expect(result).toBe(fakeResponse);
-    expect(service.getMetrics as jest.Mock).toHaveBeenCalledWith('7d');
+    expect(service.getMetrics as Mock).toHaveBeenCalledWith('7d');
   });
 });

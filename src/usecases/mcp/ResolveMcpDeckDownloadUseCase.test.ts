@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import {
   ResolveMcpDeckDownloadUseCase,
   DeckPresigner,
@@ -21,15 +22,15 @@ function makeRow(overrides: Partial<Uploads> = {}): Uploads {
 }
 
 function makeUseCase(overrides: {
-  findByObjectId?: jest.Mock;
+  findByObjectId?: Mock;
   getPresignedUrl?: DeckPresigner['getPresignedUrl'];
 }) {
   const findByObjectId =
-    overrides.findByObjectId ?? jest.fn(async () => makeRow());
+    overrides.findByObjectId ?? vi.fn(async () => makeRow());
   const uploads = { findByObjectId } as unknown as IUploadRepository;
   const getPresignedUrl =
     overrides.getPresignedUrl ??
-    jest.fn(async () => 'https://spaces.example/signed');
+    vi.fn(async () => 'https://spaces.example/signed');
   const storage: DeckPresigner = { getPresignedUrl };
   return {
     useCase: new ResolveMcpDeckDownloadUseCase(uploads, storage),
@@ -56,7 +57,7 @@ describe('ResolveMcpDeckDownloadUseCase', () => {
 
   it('falls back to deck.apkg for the disposition when the filename is null', async () => {
     const { useCase, getPresignedUrl } = makeUseCase({
-      findByObjectId: jest.fn(async () => makeRow({ filename: null })),
+      findByObjectId: vi.fn(async () => makeRow({ filename: null })),
     });
     await useCase.resolve('obj-1');
     expect(getPresignedUrl).toHaveBeenCalledWith(
@@ -68,7 +69,7 @@ describe('ResolveMcpDeckDownloadUseCase', () => {
 
   it('returns not_found when the row is missing', async () => {
     const { useCase, getPresignedUrl } = makeUseCase({
-      findByObjectId: jest.fn(async () => null),
+      findByObjectId: vi.fn(async () => null),
     });
     const result = await useCase.resolve('obj-1');
     expect(result).toEqual({ kind: 'not_found' });
@@ -77,7 +78,7 @@ describe('ResolveMcpDeckDownloadUseCase', () => {
 
   it('returns not_found without presigning when the key is null', async () => {
     const { useCase, getPresignedUrl } = makeUseCase({
-      findByObjectId: jest.fn(async () =>
+      findByObjectId: vi.fn(async () =>
         makeRow({ key: null as unknown as string })
       ),
     });

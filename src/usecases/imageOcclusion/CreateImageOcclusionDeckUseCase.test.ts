@@ -1,15 +1,17 @@
+import { vi, type Mock } from 'vitest';
 import {
   CreateImageOcclusionDeckUseCase,
   CreateImageOcclusionDeckInput,
 } from './CreateImageOcclusionDeckUseCase';
 
-jest.mock('node:fs');
-jest.mock('node:child_process');
+vi.mock('node:fs');
+vi.mock('node:child_process');
 
-const mockFs = jest.requireMock('node:fs') as typeof import('node:fs');
-const mockChild = jest.requireMock(
-  'node:child_process'
-) as typeof import('node:child_process');
+import * as nodeFs from 'node:fs';
+import * as nodeChildProcess from 'node:child_process';
+
+const mockFs = vi.mocked(nodeFs);
+const mockChild = vi.mocked(nodeChildProcess);
 
 function buildInput(
   overrides: Partial<CreateImageOcclusionDeckInput> = {}
@@ -81,18 +83,18 @@ describe('CreateImageOcclusionDeckUseCase', () => {
         path: `/tmp/img${i}.jpg`,
       }));
 
-      (mockFs.mkdirSync as jest.Mock).mockImplementation(() => undefined);
-      (mockFs.existsSync as jest.Mock).mockReturnValue(false);
-      (mockFs.copyFileSync as jest.Mock).mockImplementation(() => undefined);
-      (mockFs.writeFileSync as jest.Mock).mockImplementation(() => undefined);
-      (mockFs.rmSync as jest.Mock).mockImplementation(() => undefined);
+      (mockFs.mkdirSync as Mock).mockImplementation(() => undefined);
+      (mockFs.existsSync as Mock).mockReturnValue(false);
+      (mockFs.copyFileSync as Mock).mockImplementation(() => undefined);
+      (mockFs.writeFileSync as Mock).mockImplementation(() => undefined);
+      (mockFs.rmSync as Mock).mockImplementation(() => undefined);
 
       const mockProcess = {
-        stdout: { on: jest.fn() },
-        stderr: { on: jest.fn() },
-        on: jest.fn(),
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn(),
       };
-      (mockChild.spawn as jest.Mock).mockReturnValue(mockProcess);
+      (mockChild.spawn as Mock).mockReturnValue(mockProcess);
 
       const useCase = new CreateImageOcclusionDeckUseCase();
       const promise = useCase.execute(
@@ -129,18 +131,18 @@ describe('CreateImageOcclusionDeckUseCase', () => {
         path: `/tmp/img${i}.jpg`,
       }));
 
-      (mockFs.mkdirSync as jest.Mock).mockImplementation(() => undefined);
-      (mockFs.existsSync as jest.Mock).mockReturnValue(false);
-      (mockFs.copyFileSync as jest.Mock).mockImplementation(() => undefined);
-      (mockFs.writeFileSync as jest.Mock).mockImplementation(() => undefined);
-      (mockFs.rmSync as jest.Mock).mockImplementation(() => undefined);
+      (mockFs.mkdirSync as Mock).mockImplementation(() => undefined);
+      (mockFs.existsSync as Mock).mockReturnValue(false);
+      (mockFs.copyFileSync as Mock).mockImplementation(() => undefined);
+      (mockFs.writeFileSync as Mock).mockImplementation(() => undefined);
+      (mockFs.rmSync as Mock).mockImplementation(() => undefined);
 
       const mockProcess = {
-        stdout: { on: jest.fn() },
-        stderr: { on: jest.fn() },
-        on: jest.fn(),
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn(),
       };
-      (mockChild.spawn as jest.Mock).mockReturnValue(mockProcess);
+      (mockChild.spawn as Mock).mockReturnValue(mockProcess);
 
       const useCase = new CreateImageOcclusionDeckUseCase();
       const promise = useCase.execute(

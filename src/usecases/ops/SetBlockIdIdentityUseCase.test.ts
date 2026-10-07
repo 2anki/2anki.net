@@ -1,9 +1,10 @@
+import { vi } from 'vitest';
 import { InMemoryUserPreferencesRepository } from '../../data_layer/UserPreferencesRepository';
 import { SetBlockIdIdentityUseCase } from './SetBlockIdIdentityUseCase';
 
 function buildUsers(known: Record<string, number>) {
   return {
-    getByEmail: jest.fn(async (email: string) => {
+    getByEmail: vi.fn(async (email: string) => {
       const id = known[email.toLowerCase()];
       return id == null ? undefined : { id };
     }),
@@ -60,7 +61,7 @@ describe('SetBlockIdIdentityUseCase', () => {
 
   it('reports user_not_found without touching preferences', async () => {
     const prefs = new InMemoryUserPreferencesRepository();
-    const spy = jest.spyOn(prefs, 'setBlockIdIdentity');
+    const spy = vi.spyOn(prefs, 'setBlockIdIdentity');
     const useCase = new SetBlockIdIdentityUseCase(buildUsers({}), prefs);
 
     const outcome = await useCase.execute({

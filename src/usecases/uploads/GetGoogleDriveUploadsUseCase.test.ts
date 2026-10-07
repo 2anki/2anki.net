@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { GetGoogleDriveUploadsUseCase } from './GetGoogleDriveUploadsUseCase';
 import {
   GoogleDriveRepository,
@@ -7,7 +8,7 @@ import {
 describe('GetGoogleDriveUploadsUseCase', () => {
   function makeRepo(rows: GoogleDriveUploadRow[]): GoogleDriveRepository {
     return {
-      getByOwner: jest.fn().mockResolvedValue(rows),
+      getByOwner: vi.fn().mockResolvedValue(rows),
     } as unknown as GoogleDriveRepository;
   }
 

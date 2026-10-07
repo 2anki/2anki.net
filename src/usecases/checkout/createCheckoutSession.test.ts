@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import {
   createCheckoutSession,
   isStaleCustomerError,
@@ -9,7 +10,7 @@ const staleError = () =>
     param: 'customer',
   });
 
-const makeStripe = (create: jest.Mock) =>
+const makeStripe = (create: Mock) =>
   ({ checkout: { sessions: { create } } }) as never;
 
 const params = {
@@ -34,8 +35,8 @@ describe('isStaleCustomerError', () => {
 
 describe('createCheckoutSession', () => {
   it('creates the session without recovery when it succeeds', async () => {
-    const create = jest.fn().mockResolvedValue({ id: 'cs_1' });
-    const recover = jest.fn();
+    const create = vi.fn().mockResolvedValue({ id: 'cs_1' });
+    const recover = vi.fn();
 
     const session = await createCheckoutSession(
       makeStripe(create),
@@ -49,11 +50,11 @@ describe('createCheckoutSession', () => {
   });
 
   it('replaces a stale customer and retries once with the fresh id', async () => {
-    const create = jest
+    const create = vi
       .fn()
       .mockRejectedValueOnce(staleError())
       .mockResolvedValueOnce({ id: 'cs_retry' });
-    const recover = jest.fn().mockResolvedValue('cus_fresh');
+    const recover = vi.fn().mockResolvedValue('cus_fresh');
 
     const session = await createCheckoutSession(
       makeStripe(create),
@@ -71,12 +72,12 @@ describe('createCheckoutSession', () => {
   });
 
   it('logs no customer id while recovering from a stale customer', async () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const create = jest
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const create = vi
       .fn()
       .mockRejectedValueOnce(staleError())
       .mockResolvedValueOnce({ id: 'cs_retry' });
-    const recover = jest.fn().mockResolvedValue('cus_fresh');
+    const recover = vi.fn().mockResolvedValue('cus_fresh');
 
     await createCheckoutSession(makeStripe(create), params, recover);
 
@@ -89,8 +90,8 @@ describe('createCheckoutSession', () => {
     const other = Object.assign(new Error('rate limited'), {
       code: 'rate_limit',
     });
-    const create = jest.fn().mockRejectedValue(other);
-    const recover = jest.fn();
+    const create = vi.fn().mockRejectedValue(other);
+    const recover = vi.fn();
 
     await expect(
       createCheckoutSession(makeStripe(create), params, recover)
@@ -99,7 +100,7 @@ describe('createCheckoutSession', () => {
   });
 
   it('propagates when there is no recovery to run', async () => {
-    const create = jest.fn().mockRejectedValue(staleError());
+    const create = vi.fn().mockRejectedValue(staleError());
 
     await expect(
       createCheckoutSession(makeStripe(create), params)
@@ -108,8 +109,8 @@ describe('createCheckoutSession', () => {
   });
 
   it('does not retry when recovery returns the same stale id', async () => {
-    const create = jest.fn().mockRejectedValue(staleError());
-    const recover = jest.fn().mockResolvedValue('cus_stale999');
+    const create = vi.fn().mockRejectedValue(staleError());
+    const recover = vi.fn().mockResolvedValue('cus_stale999');
 
     await expect(
       createCheckoutSession(makeStripe(create), params, recover)

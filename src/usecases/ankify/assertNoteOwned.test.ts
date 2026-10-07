@@ -1,12 +1,13 @@
+import { vi, type Mock } from 'vitest';
 import { AnkiConnectClient } from '../../services/ankify/AnkiConnectClient';
 import { assertNoteOwned, NoteNotOwnedError } from './assertNoteOwned';
 
-const clientWith = (findNotes: jest.Mock): AnkiConnectClient =>
+const clientWith = (findNotes: Mock): AnkiConnectClient =>
   ({ findNotes }) as unknown as AnkiConnectClient;
 
 describe('assertNoteOwned', () => {
   it('passes when the note resolves inside an owned deck', async () => {
-    const findNotes = jest.fn(async () => [7001]);
+    const findNotes = vi.fn(async () => [7001]);
     const ac = clientWith(findNotes);
 
     await assertNoteOwned(ac, ['Notion Sync::Pharma'], 7001);
@@ -17,7 +18,7 @@ describe('assertNoteOwned', () => {
   });
 
   it('throws NoteNotOwnedError when the scoped query returns no match', async () => {
-    const findNotes = jest.fn(async () => []);
+    const findNotes = vi.fn(async () => []);
     const ac = clientWith(findNotes);
 
     await expect(
@@ -26,7 +27,7 @@ describe('assertNoteOwned', () => {
   });
 
   it('throws NoteNotOwnedError without querying when the user owns no decks', async () => {
-    const findNotes = jest.fn(async () => [7001]);
+    const findNotes = vi.fn(async () => [7001]);
     const ac = clientWith(findNotes);
 
     await expect(assertNoteOwned(ac, [], 7001)).rejects.toBeInstanceOf(

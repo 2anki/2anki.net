@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import {
   PhotoToFlashcardsUseCase,
   FREE_PHOTO_QUOTA_PER_MONTH,
@@ -6,31 +7,38 @@ import {
   buildHeadingDrivenVisionPrompt,
 } from './PhotoToFlashcardsUseCase';
 import type { IEventsRepository } from '../../data_layer/EventsRepository';
+import { getAnthropicClient } from '../../lib/claude/ClaudeService';
+import { track } from '../../services/events/track';
 
-jest.mock('node:fs');
-jest.mock('node:child_process');
+vi.mock('node:fs');
+vi.mock('node:child_process');
 
-const mockFs = jest.requireMock('node:fs') as typeof import('node:fs');
-const mockChild = jest.requireMock(
-  'node:child_process'
-) as typeof import('node:child_process');
+import * as nodeFs from 'node:fs';
+import * as nodeChildProcess from 'node:child_process';
+
+const mockFs = vi.mocked(nodeFs);
+const mockChild = vi.mocked(nodeChildProcess);
 
 const STUB_CLAUDE_RESPONSE = `[{"deck":"My Photo","cards":[{"q":"What is photosynthesis?","a":"The process by which plants convert light into energy"},{"q":"What do plants need?","a":"Water, sunlight, and CO2"}]}]`;
 
-jest.mock('../../lib/claude/ClaudeService', () => ({
-  ...jest.requireActual('../../lib/claude/ClaudeService'),
-  getAnthropicClient: jest.fn(),
+vi.mock('../../lib/claude/ClaudeService', async () => ({
+  ...(await vi.importActual<typeof import('../../lib/claude/ClaudeService')>(
+    '../../lib/claude/ClaudeService'
+  )),
+  getAnthropicClient: vi.fn(),
 }));
 
-jest.mock('../../services/events/track', () => ({
-  track: jest.fn(),
+vi.mock('../../services/events/track', () => ({
+  track: vi.fn(),
 }));
 
-jest.mock('../../lib/claude/aiSpendGuard', () => {
-  const actual = jest.requireActual('../../lib/claude/aiSpendGuard');
+vi.mock('../../lib/claude/aiSpendGuard', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../lib/claude/aiSpendGuard')
+  >('../../lib/claude/aiSpendGuard');
   return {
     ...actual,
-    withAiBudget: jest.fn(
+    withAiBudget: vi.fn(
       (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
     ),
   };
@@ -41,26 +49,28 @@ import {
   AiCreditsExhaustedError,
 } from '../../lib/claude/aiSpendGuard';
 
-const withAiBudgetMock = withAiBudget as jest.Mock;
+const withAiBudgetMock = withAiBudget as Mock;
 const runCallbackImpl = (
   _userId: number | null | undefined,
   run: () => Promise<unknown>
 ) => run();
 
 function setupFsMocks() {
-  (mockFs.mkdirSync as jest.Mock).mockImplementation(() => undefined);
-  (mockFs.existsSync as jest.Mock).mockReturnValue(false);
-  (mockFs.writeFileSync as jest.Mock).mockImplementation(() => undefined);
-  (mockFs.rmSync as jest.Mock).mockImplementation(() => undefined);
+  (mockFs.mkdirSync as Mock).mockImplementation(() => undefined);
+  (mockFs.existsSync as Mock).mockReturnValue(false);
+  (
+    mockFs.writeFileSync as Mock<(p: string, data: string) => void>
+  ).mockImplementation(() => undefined);
+  (mockFs.rmSync as Mock).mockImplementation(() => undefined);
 }
 
 function setupPythonMock(apkgPath = '/tmp/result.apkg') {
   const mockProcess = {
-    stdout: { on: jest.fn() },
-    stderr: { on: jest.fn() },
-    on: jest.fn(),
+    stdout: { on: vi.fn() },
+    stderr: { on: vi.fn() },
+    on: vi.fn(),
   };
-  (mockChild.spawn as jest.Mock).mockReturnValue(mockProcess);
+  (mockChild.spawn as Mock).mockReturnValue(mockProcess);
 
   setTimeout(() => {
     const stdoutHandler = mockProcess.stdout.on.mock.calls.find(
@@ -78,16 +88,16 @@ function setupPythonMock(apkgPath = '/tmp/result.apkg') {
 
 function makeEventsStub(usedThisMonth = 0): IEventsRepository {
   return {
-    insertEvents: jest.fn().mockResolvedValue(undefined),
-    countByName: jest.fn().mockResolvedValue(0),
-    countDistinctUsers: jest.fn().mockResolvedValue(0),
-    countByNameForUser: jest.fn().mockResolvedValue(usedThisMonth),
-    lastEventAt: jest.fn().mockResolvedValue(null),
-    groupPaywallShownByVariantAndSurface: jest.fn().mockResolvedValue([]),
-    groupPaywallClicksByVariant: jest.fn().mockResolvedValue([]),
-    groupUploadFunnel: jest.fn().mockResolvedValue([]),
-    groupUploadFunnelByOrigin: jest.fn().mockResolvedValue([]),
-    groupConversionFailedByReason: jest
+    insertEvents: vi.fn().mockResolvedValue(undefined),
+    countByName: vi.fn().mockResolvedValue(0),
+    countDistinctUsers: vi.fn().mockResolvedValue(0),
+    countByNameForUser: vi.fn().mockResolvedValue(usedThisMonth),
+    lastEventAt: vi.fn().mockResolvedValue(null),
+    groupPaywallShownByVariantAndSurface: vi.fn().mockResolvedValue([]),
+    groupPaywallClicksByVariant: vi.fn().mockResolvedValue([]),
+    groupUploadFunnel: vi.fn().mockResolvedValue([]),
+    groupUploadFunnelByOrigin: vi.fn().mockResolvedValue([]),
+    groupConversionFailedByReason: vi
       .fn()
       .mockResolvedValue({ paywall: 0, empty: 0, technical: 0 }),
   };
@@ -102,14 +112,11 @@ const BASE_INPUT = {
 };
 
 describe('PhotoToFlashcardsUseCase', () => {
-  const mockMessageCreate = jest.fn();
+  const mockMessageCreate = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    const { getAnthropicClient } = jest.requireMock(
-      '../../lib/claude/ClaudeService'
-    ) as { getAnthropicClient: jest.Mock };
-    getAnthropicClient.mockReturnValue({
+    vi.clearAllMocks();
+    (getAnthropicClient as unknown as Mock).mockReturnValue({
       messages: { create: mockMessageCreate },
     });
     mockMessageCreate.mockResolvedValue({
@@ -179,9 +186,6 @@ describe('PhotoToFlashcardsUseCase', () => {
       const events = makeEventsStub(0);
       const useCase = new PhotoToFlashcardsUseCase(events);
       await useCase.execute({ ...BASE_INPUT, isPaying: false });
-      const { track } = jest.requireMock('../../services/events/track') as {
-        track: jest.Mock;
-      };
       expect(track).toHaveBeenCalledWith(
         'vision_photo_converted',
         expect.objectContaining({
@@ -201,9 +205,6 @@ describe('PhotoToFlashcardsUseCase', () => {
         isPaying: true,
         usageSurface: 'photo_to_deck_web',
       });
-      const { track } = jest.requireMock('../../services/events/track') as {
-        track: jest.Mock;
-      };
       expect(track).toHaveBeenCalledWith(
         'vision_photo_converted',
         expect.objectContaining({
@@ -331,7 +332,9 @@ describe('PhotoToFlashcardsUseCase', () => {
       const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
       await useCase.execute({ ...BASE_INPUT, isPaying: true });
 
-      const writeCall = (mockFs.writeFileSync as jest.Mock).mock.calls.find(
+      const writeCall = (
+        mockFs.writeFileSync as Mock<(p: string, data: string) => void>
+      ).mock.calls.find(
         ([p]) => typeof p === 'string' && p.endsWith('deck_info.json')
       );
       expect(writeCall).toBeDefined();
@@ -363,7 +366,9 @@ describe('PhotoToFlashcardsUseCase', () => {
       const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
       await useCase.execute({ ...BASE_INPUT, isPaying: true });
 
-      const writeCall = (mockFs.writeFileSync as jest.Mock).mock.calls.find(
+      const writeCall = (
+        mockFs.writeFileSync as Mock<(p: string, data: string) => void>
+      ).mock.calls.find(
         ([p]) => typeof p === 'string' && p.endsWith('deck_info.json')
       );
       const payload = JSON.parse(writeCall![1] as string) as Array<{
@@ -379,9 +384,9 @@ describe('PhotoToFlashcardsUseCase', () => {
       await useCase.execute({ ...BASE_INPUT, isPaying: true });
 
       const imageWriteCall = (
-        mockFs.writeFileSync as jest.Mock
+        mockFs.writeFileSync as Mock<(p: string, data: string) => void>
       ).mock.calls.find(
-        ([p]: [string]) =>
+        ([p]: [string, string]) =>
           typeof p === 'string' && !p.endsWith('deck_info.json')
       );
       expect(imageWriteCall).toBeDefined();
@@ -394,8 +399,11 @@ describe('PhotoToFlashcardsUseCase', () => {
       const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
       await useCase.execute({ ...BASE_INPUT, isPaying: true });
 
-      const writeCall = (mockFs.writeFileSync as jest.Mock).mock.calls.find(
-        ([p]: [string]) => typeof p === 'string' && p.endsWith('deck_info.json')
+      const writeCall = (
+        mockFs.writeFileSync as Mock<(p: string, data: string) => void>
+      ).mock.calls.find(
+        ([p]: [string, string]) =>
+          typeof p === 'string' && p.endsWith('deck_info.json')
       );
       expect(writeCall).toBeDefined();
       const payload = JSON.parse(writeCall![1] as string) as Array<{
@@ -411,8 +419,11 @@ describe('PhotoToFlashcardsUseCase', () => {
       const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
       await useCase.execute({ ...BASE_INPUT, isPaying: true });
 
-      const writeCall = (mockFs.writeFileSync as jest.Mock).mock.calls.find(
-        ([p]: [string]) => typeof p === 'string' && p.endsWith('deck_info.json')
+      const writeCall = (
+        mockFs.writeFileSync as Mock<(p: string, data: string) => void>
+      ).mock.calls.find(
+        ([p]: [string, string]) =>
+          typeof p === 'string' && p.endsWith('deck_info.json')
       );
       const payload = JSON.parse(writeCall![1] as string) as Array<{
         cards: Array<{ media: string[]; back: string }>;
@@ -431,8 +442,11 @@ describe('PhotoToFlashcardsUseCase', () => {
         isPaying: true,
       });
 
-      const writeCall = (mockFs.writeFileSync as jest.Mock).mock.calls.find(
-        ([p]: [string]) => typeof p === 'string' && p.endsWith('deck_info.json')
+      const writeCall = (
+        mockFs.writeFileSync as Mock<(p: string, data: string) => void>
+      ).mock.calls.find(
+        ([p]: [string, string]) =>
+          typeof p === 'string' && p.endsWith('deck_info.json')
       );
       const payload = JSON.parse(writeCall![1] as string) as Array<{
         cards: Array<{ media: string[] }>;
@@ -450,9 +464,9 @@ describe('PhotoToFlashcardsUseCase', () => {
         });
 
         const imageWriteCall = (
-          mockFs.writeFileSync as jest.Mock
+          mockFs.writeFileSync as Mock<(p: string, data: string) => void>
         ).mock.calls.find(
-          ([p]: [string]) =>
+          ([p]: [string, string]) =>
             typeof p === 'string' && !p.endsWith('deck_info.json')
         );
         expect(imageWriteCall).toBeUndefined();
@@ -466,8 +480,10 @@ describe('PhotoToFlashcardsUseCase', () => {
           includeSourceImage: false,
         });
 
-        const writeCall = (mockFs.writeFileSync as jest.Mock).mock.calls.find(
-          ([p]: [string]) =>
+        const writeCall = (
+          mockFs.writeFileSync as Mock<(p: string, data: string) => void>
+        ).mock.calls.find(
+          ([p]: [string, string]) =>
             typeof p === 'string' && p.endsWith('deck_info.json')
         );
         expect(writeCall).toBeDefined();
@@ -619,9 +635,6 @@ describe('PhotoToFlashcardsUseCase', () => {
         isPaying: false,
         mode: 'verbatim',
       });
-      const { track } = jest.requireMock('../../services/events/track') as {
-        track: jest.Mock;
-      };
       expect(track).toHaveBeenCalledWith(
         'vision_photo_converted',
         expect.objectContaining({
@@ -634,9 +647,6 @@ describe('PhotoToFlashcardsUseCase', () => {
       const events = makeEventsStub(0);
       const useCase = new PhotoToFlashcardsUseCase(events);
       await useCase.execute({ ...BASE_INPUT, isPaying: false });
-      const { track } = jest.requireMock('../../services/events/track') as {
-        track: jest.Mock;
-      };
       expect(track).toHaveBeenCalledWith(
         'vision_photo_converted',
         expect.objectContaining({
@@ -723,9 +733,6 @@ describe('PhotoToFlashcardsUseCase', () => {
         isPaying: false,
         cardStyle: 'heading-driven',
       });
-      const { track } = jest.requireMock('../../services/events/track') as {
-        track: jest.Mock;
-      };
       expect(track).toHaveBeenCalledWith(
         'vision_photo_converted',
         expect.objectContaining({
@@ -738,9 +745,6 @@ describe('PhotoToFlashcardsUseCase', () => {
       const events = makeEventsStub(0);
       const useCase = new PhotoToFlashcardsUseCase(events);
       await useCase.execute({ ...BASE_INPUT, isPaying: false });
-      const { track } = jest.requireMock('../../services/events/track') as {
-        track: jest.Mock;
-      };
       expect(track).toHaveBeenCalledWith(
         'vision_photo_converted',
         expect.objectContaining({
@@ -757,9 +761,6 @@ describe('PhotoToFlashcardsUseCase', () => {
         isPaying: true,
         density: 'dense',
       });
-      const { track } = jest.requireMock('../../services/events/track') as {
-        track: jest.Mock;
-      };
       expect(track).toHaveBeenCalledWith(
         'vision_photo_converted',
         expect.objectContaining({
@@ -772,9 +773,6 @@ describe('PhotoToFlashcardsUseCase', () => {
       const events = makeEventsStub(0);
       const useCase = new PhotoToFlashcardsUseCase(events);
       await useCase.execute({ ...BASE_INPUT, isPaying: false });
-      const { track } = jest.requireMock('../../services/events/track') as {
-        track: jest.Mock;
-      };
       expect(track).toHaveBeenCalledWith(
         'vision_photo_converted',
         expect.objectContaining({
@@ -842,7 +840,9 @@ describe('PhotoToFlashcardsUseCase', () => {
         name?: string;
       }>;
     }> {
-      const writeCall = (mockFs.writeFileSync as jest.Mock).mock.calls.find(
+      const writeCall = (
+        mockFs.writeFileSync as Mock<(p: string, data: string) => void>
+      ).mock.calls.find(
         ([p]) =>
           typeof p === 'string' && (p as string).endsWith('deck_info.json')
       );
@@ -995,7 +995,9 @@ describe('PhotoToFlashcardsUseCase', () => {
         correctIndices?: number[];
       }>;
     }> {
-      const writeCall = (mockFs.writeFileSync as jest.Mock).mock.calls.find(
+      const writeCall = (
+        mockFs.writeFileSync as Mock<(p: string, data: string) => void>
+      ).mock.calls.find(
         ([p]) =>
           typeof p === 'string' && (p as string).endsWith('deck_info.json')
       );
@@ -1343,7 +1345,7 @@ describe('PhotoToFlashcardsUseCase', () => {
     });
 
     it('logs reason no_questions for a verbatim empty parse so prod can tell it from a misread', async () => {
-      const logSpy = jest
+      const logSpy = vi
         .spyOn(console, 'log')
         .mockImplementation(() => undefined);
       mockMessageCreate.mockResolvedValueOnce({
@@ -1372,7 +1374,7 @@ describe('PhotoToFlashcardsUseCase', () => {
       const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
       await useCase.execute({ ...BASE_INPUT, isPaying: true });
       expect(mockChild.spawn).toHaveBeenCalledTimes(1);
-      const [, argv] = (mockChild.spawn as jest.Mock).mock.calls[0];
+      const [, argv] = (mockChild.spawn as Mock).mock.calls[0];
       expect(argv).toHaveLength(3);
       expect(argv[0]).toMatch(/create_deck\.py$/);
       expect(argv[1]).toMatch(/deck_info\.json$/);
@@ -1382,7 +1384,9 @@ describe('PhotoToFlashcardsUseCase', () => {
     it('writes a deck_info.json with deck.name (not deck.deck) so the Python script can read it', async () => {
       const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
       await useCase.execute({ ...BASE_INPUT, isPaying: true });
-      const writeCall = (mockFs.writeFileSync as jest.Mock).mock.calls.find(
+      const writeCall = (
+        mockFs.writeFileSync as Mock<(p: string, data: string) => void>
+      ).mock.calls.find(
         ([p]) => typeof p === 'string' && p.endsWith('deck_info.json')
       );
       expect(writeCall).toBeDefined();

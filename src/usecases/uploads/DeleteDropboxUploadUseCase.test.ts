@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { DeleteDropboxUploadUseCase } from './DeleteDropboxUploadUseCase';
 import { DropboxRepository } from '../../data_layer/DropboxRepository';
 
 describe('DeleteDropboxUploadUseCase', () => {
   function makeRepo(deleteResult: number): DropboxRepository {
     return {
-      deleteByIdAndOwner: jest.fn().mockResolvedValue(deleteResult),
+      deleteByIdAndOwner: vi.fn().mockResolvedValue(deleteResult),
     } as unknown as DropboxRepository;
   }
 

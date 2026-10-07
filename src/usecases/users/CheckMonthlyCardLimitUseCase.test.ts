@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import knex, { Knex } from 'knex';
 
 import {
@@ -9,7 +10,7 @@ import UsersRepository from '../../data_layer/UsersRepository';
 
 function buildRepo(cards_used: number): UsersRepository {
   return {
-    getCardUsage: jest
+    getCardUsage: vi
       .fn()
       .mockResolvedValue({ cards_used, month_started_at: new Date() }),
   } as unknown as UsersRepository;

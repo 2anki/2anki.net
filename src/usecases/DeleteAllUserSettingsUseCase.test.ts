@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 import DeleteAllUserSettingsUseCase from './DeleteAllUserSettingsUseCase';
 
 describe('DeleteAllUserSettingsUseCase', () => {
   const mockSettingsRepo = {
-    deleteAllByOwner: jest.fn(),
+    deleteAllByOwner: vi.fn(),
   };
   const mockParserRulesRepo = {
-    deleteAllByOwner: jest.fn(),
+    deleteAllByOwner: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('calls deleteAllByOwner on both repos with the given owner', async () => {

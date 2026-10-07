@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 process.env.SKIP_CREATE_DECK = '1';
 
 import { ExportMindmapUseCase, MindmapCardType } from './ExportMindmapUseCase';
@@ -54,10 +55,10 @@ const mapWithRootlessCycle: MindmapData = {
 
 function buildUseCase(data: MindmapData) {
   const repo = {
-    findById: jest.fn().mockResolvedValue({ id: 1, title: 'Anatomy', data }),
+    findById: vi.fn().mockResolvedValue({ id: 1, title: 'Anatomy', data }),
   };
   const storage = {
-    getFileContents: jest
+    getFileContents: vi
       .fn()
       .mockResolvedValue({ Body: Buffer.from('png-bytes') }),
   };

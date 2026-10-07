@@ -1,3 +1,4 @@
+import { vi, type Mock, type MockedFunction } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
 import {
   ChatUseCase,
@@ -5,24 +6,27 @@ import {
   ChatAttachmentsNotReplayableError,
   McqExtractionFailedError,
   extractCards,
+  rewriteAssistantContentWithTaggedCards,
 } from './ChatUseCase';
 import { ConversationsUseCase } from './ConversationsUseCase';
 import { InMemoryChatMessagesRepository } from '../../data_layer/ChatMessagesRepository';
 import { InMemoryConversationsRepository } from '../../data_layer/ConversationsRepository';
 import { InMemoryChatAttachmentsRepository } from '../../data_layer/ChatAttachmentsRepository';
 
-jest.mock(
+vi.mock(
   '../../infrastracture/adapters/fileConversion/convertDocxToHTML',
   () => ({
-    convertDocxToHTML: jest.fn(),
+    convertDocxToHTML: vi.fn(),
   })
 );
 
-jest.mock('../../lib/claude/aiSpendGuard', () => {
-  const actual = jest.requireActual('../../lib/claude/aiSpendGuard');
+vi.mock('../../lib/claude/aiSpendGuard', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../lib/claude/aiSpendGuard')
+  >('../../lib/claude/aiSpendGuard');
   return {
     ...actual,
-    withAiBudget: jest.fn(
+    withAiBudget: vi.fn(
       (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
     ),
   };
@@ -34,13 +38,13 @@ import {
   AiCreditsExhaustedError,
 } from '../../lib/claude/aiSpendGuard';
 
-const withAiBudgetMock = withAiBudget as jest.Mock;
+const withAiBudgetMock = withAiBudget as Mock;
 const runCallbackImpl = (
   _userId: number | null | undefined,
   run: () => Promise<unknown>
 ) => run();
 
-const mockedConvertDocx = convertDocxToHTML as jest.MockedFunction<
+const mockedConvertDocx = convertDocxToHTML as MockedFunction<
   typeof convertDocxToHTML
 >;
 
@@ -58,7 +62,7 @@ function notionZip(files: Record<string, string>): Buffer {
   return Buffer.from(zipSync(entries));
 }
 
-function lastUserText(stream: jest.Mock): string {
+function lastUserText(stream: Mock): string {
   const callArg = stream.mock.calls[0][0];
   const lastMessage = callArg.messages[callArg.messages.length - 1];
   if (typeof lastMessage.content === 'string') return lastMessage.content;
@@ -73,12 +77,12 @@ const PATREON_USER = { owner: 2 } as const;
 
 function buildAnthropicMockWithBlocks(content: unknown[]) {
   const mockStream = {
-    on: jest.fn().mockReturnThis(),
-    finalMessage: jest.fn().mockResolvedValue({ content }),
+    on: vi.fn().mockReturnThis(),
+    finalMessage: vi.fn().mockResolvedValue({ content }),
   };
   return {
     messages: {
-      stream: jest.fn().mockReturnValue(mockStream),
+      stream: vi.fn().mockReturnValue(mockStream),
     },
   };
 }
@@ -792,7 +796,7 @@ describe('ChatUseCase', () => {
   });
 
   describe('attachment memory across turns', () => {
-    function historyText(stream: jest.Mock, callIndex: number): string {
+    function historyText(stream: Mock, callIndex: number): string {
       const callArg = stream.mock.calls[callIndex][0];
       const priorMessages = callArg.messages.slice(0, -1);
       return priorMessages
@@ -1418,15 +1422,6 @@ describe('ChatUseCase', () => {
   });
 
   describe('rewriteAssistantContentWithTaggedCards', () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { rewriteAssistantContentWithTaggedCards } =
-      require('./ChatUseCase') as {
-        rewriteAssistantContentWithTaggedCards: (
-          content: string,
-          taggedCards: unknown[]
-        ) => string;
-      };
-
     it('replaces the JSON fence body while preserving surrounding prose', () => {
       const before =
         'Here you go:\n\n```json\n[{"front":"q","back":"a"}]\n```\n\nLet me know.';

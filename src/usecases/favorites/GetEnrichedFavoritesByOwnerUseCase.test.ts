@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { APIResponseError } from '@notionhq/client';
 
 import { FavoritesRepository } from '../../data_layer/FavoritesRepository';
@@ -16,15 +17,13 @@ function makeRepository(favorites: Favorites[]): {
   const byId = new Map(favorites.map((f) => [f.object_id, f]));
   const repo = {
     table: 'favorites',
-    getAllByOwner: jest
-      .fn<Promise<Favorites[]>, [string]>()
+    getAllByOwner: vi
+      .fn<(owner: string) => Promise<Favorites[]>>()
       .mockResolvedValue(favorites),
-    findById: jest.fn(async (id: string) => byId.get(id) as Favorites),
-    remove: jest.fn(
-      async (id: string, owner: string | number): Promise<void> => {
-        removed.push({ id, owner });
-      }
-    ),
+    findById: vi.fn(async (id: string) => byId.get(id) as Favorites),
+    remove: vi.fn(async (id: string, owner: string | number): Promise<void> => {
+      removed.push({ id, owner });
+    }),
   } as unknown as FavoritesRepository;
   return { repo, removed };
 }
@@ -50,8 +49,8 @@ describe('GetEnrichedFavoritesByOwnerUseCase', () => {
   it('returns [] when owner is empty', async () => {
     const { repo } = makeRepository([]);
     const useCase = new GetEnrichedFavoritesByOwnerUseCase(repo, async () => ({
-      getPage: jest.fn(),
-      getDatabase: jest.fn(),
+      getPage: vi.fn(),
+      getDatabase: vi.fn(),
     }));
     expect(await useCase.execute('')).toEqual([]);
     expect(repo.getAllByOwner).not.toHaveBeenCalled();
@@ -73,10 +72,8 @@ describe('GetEnrichedFavoritesByOwnerUseCase', () => {
     ];
     const { repo } = makeRepository(favorites);
     const client: FavoriteEnrichmentClient = {
-      getPage: jest.fn().mockResolvedValue({ id: 'page-1', kind: 'page' }),
-      getDatabase: jest
-        .fn()
-        .mockResolvedValue({ id: 'db-1', kind: 'database' }),
+      getPage: vi.fn().mockResolvedValue({ id: 'page-1', kind: 'page' }),
+      getDatabase: vi.fn().mockResolvedValue({ id: 'db-1', kind: 'database' }),
     };
     const useCase = new GetEnrichedFavoritesByOwnerUseCase(
       repo,
@@ -100,11 +97,11 @@ describe('GetEnrichedFavoritesByOwnerUseCase', () => {
     ];
     const { repo, removed } = makeRepository(favorites);
     const client: FavoriteEnrichmentClient = {
-      getPage: jest.fn().mockImplementation(async (id: string) => {
+      getPage: vi.fn().mockImplementation(async (id: string) => {
         if (id === 'gone') throw makeApiResponseError(404);
         return { id };
       }),
-      getDatabase: jest.fn(),
+      getDatabase: vi.fn(),
     };
     const useCase = new GetEnrichedFavoritesByOwnerUseCase(
       repo,
@@ -124,11 +121,11 @@ describe('GetEnrichedFavoritesByOwnerUseCase', () => {
       makeFavorite('actually-a-db', 'page'),
     ]);
     const client: FavoriteEnrichmentClient = {
-      getPage: jest.fn().mockRejectedValue({
+      getPage: vi.fn().mockRejectedValue({
         code: 'validation_error',
         message: 'actually-a-db is a database, not a page',
       }),
-      getDatabase: jest.fn().mockResolvedValue({ id: 'actually-a-db' }),
+      getDatabase: vi.fn().mockResolvedValue({ id: 'actually-a-db' }),
     };
     const useCase = new GetEnrichedFavoritesByOwnerUseCase(
       repo,
@@ -146,8 +143,8 @@ describe('GetEnrichedFavoritesByOwnerUseCase', () => {
   it('swallows non-APIResponseError failures without cleanup', async () => {
     const { repo, removed } = makeRepository([makeFavorite('p1', 'page')]);
     const client: FavoriteEnrichmentClient = {
-      getPage: jest.fn().mockRejectedValue(new Error('network down')),
-      getDatabase: jest.fn(),
+      getPage: vi.fn().mockRejectedValue(new Error('network down')),
+      getDatabase: vi.fn(),
     };
     const useCase = new GetEnrichedFavoritesByOwnerUseCase(
       repo,
@@ -155,7 +152,7 @@ describe('GetEnrichedFavoritesByOwnerUseCase', () => {
     );
 
     // suppress the expected error log so it doesn't pollute test output
-    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
       const result = await useCase.execute(OWNER);
       expect(result).toEqual([undefined]);

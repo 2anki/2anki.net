@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { CheckJobLimitUseCase } from './CheckJobLimitUseCase';
 import JobRepository from '../../data_layer/JobRepository';
 
 describe('CheckJobLimitUseCase', () => {
   it('counts only active jobs toward the limit', async () => {
     const jobRepository = {
-      getJobsByOwner: jest
+      getJobsByOwner: vi
         .fn()
         .mockResolvedValue([
           { status: 'started' },
@@ -21,7 +22,7 @@ describe('CheckJobLimitUseCase', () => {
 
   it('blocks when active jobs exceed the limit', async () => {
     const jobRepository = {
-      getJobsByOwner: jest
+      getJobsByOwner: vi
         .fn()
         .mockResolvedValue([{ status: 'started' }, { status: 'step1' }]),
     } as unknown as JobRepository;
@@ -34,7 +35,7 @@ describe('CheckJobLimitUseCase', () => {
 
   it('ignores all terminal statuses', async () => {
     const jobRepository = {
-      getJobsByOwner: jest
+      getJobsByOwner: vi
         .fn()
         .mockResolvedValue([
           { status: 'done' },

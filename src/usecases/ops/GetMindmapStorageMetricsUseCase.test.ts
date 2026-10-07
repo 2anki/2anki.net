@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { GetMindmapStorageMetricsUseCase } from './GetMindmapStorageMetricsUseCase';
 import type {
   MindmapStorageMetricsResponse,
@@ -16,13 +17,13 @@ describe('GetMindmapStorageMetricsUseCase', () => {
       measured_at: '2026-05-26T12:00:00.000Z',
     };
     const service = {
-      getMetrics: jest.fn().mockResolvedValue(fake),
+      getMetrics: vi.fn().mockResolvedValue(fake),
     } as unknown as MindmapStorageMetricsService;
     const useCase = new GetMindmapStorageMetricsUseCase(service);
 
     const result = await useCase.execute();
 
     expect(result).toBe(fake);
-    expect(service.getMetrics as jest.Mock).toHaveBeenCalledTimes(1);
+    expect(service.getMetrics as Mock).toHaveBeenCalledTimes(1);
   });
 });

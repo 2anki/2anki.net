@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { GetPassUnlockMonitorUseCase } from './GetPassUnlockMonitorUseCase';
 import type { PassUnlockMonitorService } from '../../services/ops/PassUnlockMonitorService';
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
 
 const buildUseCase = () => {
-  const getStatus = jest.fn().mockResolvedValue({
+  const getStatus = vi.fn().mockResolvedValue({
     window_since: '',
     as_of: '',
     grace_minutes: 15,

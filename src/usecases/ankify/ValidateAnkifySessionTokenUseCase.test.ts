@@ -1,7 +1,8 @@
-jest.mock('../../services/SubscriptionService', () => ({
+import { vi } from 'vitest';
+vi.mock('../../services/SubscriptionService', () => ({
   __esModule: true,
   default: {
-    getUserActiveSubscriptions: jest.fn().mockResolvedValue([]),
+    getUserActiveSubscriptions: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -11,14 +12,14 @@ import AuthenticationService from '../../services/AuthenticationService';
 
 const makeRac = (overrides: Partial<RacService> = {}): RacService =>
   ({
-    resolveTokenForProxy: jest.fn(async () => null),
-    touchTokenLastUsed: jest.fn(async () => undefined),
+    resolveTokenForProxy: vi.fn(async () => null),
+    touchTokenLastUsed: vi.fn(async () => undefined),
     ...overrides,
   }) as unknown as RacService;
 
 const makeAuth = (overrides: Partial<AuthenticationService> = {}) =>
   ({
-    getUserFrom: jest.fn(async () => null),
+    getUserFrom: vi.fn(async () => null),
     ...overrides,
   }) as unknown as AuthenticationService;
 
@@ -41,7 +42,7 @@ describe('ValidateAnkifySessionTokenUseCase', () => {
 
   test('rejects unknown / revoked / expired session token', async () => {
     const rac = makeRac({
-      resolveTokenForProxy: jest.fn(async () => null),
+      resolveTokenForProxy: vi.fn(async () => null),
     });
     const useCase = new ValidateAnkifySessionTokenUseCase(rac, makeAuth());
     const result = await useCase.execute({
@@ -57,7 +58,7 @@ describe('ValidateAnkifySessionTokenUseCase', () => {
 
   test('rejects when cookie is missing', async () => {
     const rac = makeRac({
-      resolveTokenForProxy: jest.fn(async () => ({
+      resolveTokenForProxy: vi.fn(async () => ({
         ankify_client_id: 1,
         owner: 42,
         novnc_port: 22000,
@@ -78,7 +79,7 @@ describe('ValidateAnkifySessionTokenUseCase', () => {
 
   test('rejects when the cookie does not resolve to a user', async () => {
     const rac = makeRac({
-      resolveTokenForProxy: jest.fn(async () => ({
+      resolveTokenForProxy: vi.fn(async () => ({
         ankify_client_id: 1,
         owner: 42,
         novnc_port: 22000,
@@ -86,7 +87,7 @@ describe('ValidateAnkifySessionTokenUseCase', () => {
       })),
     });
     const auth = makeAuth({
-      getUserFrom: jest.fn(async () => null),
+      getUserFrom: vi.fn(async () => null),
     });
     const useCase = new ValidateAnkifySessionTokenUseCase(rac, auth);
     const result = await useCase.execute({
@@ -102,7 +103,7 @@ describe('ValidateAnkifySessionTokenUseCase', () => {
 
   test('rejects when cookie owner does not match token owner (cookie binding)', async () => {
     const rac = makeRac({
-      resolveTokenForProxy: jest.fn(async () => ({
+      resolveTokenForProxy: vi.fn(async () => ({
         ankify_client_id: 1,
         owner: 42,
         novnc_port: 22000,
@@ -110,7 +111,7 @@ describe('ValidateAnkifySessionTokenUseCase', () => {
       })),
     });
     const auth = makeAuth({
-      getUserFrom: jest.fn(
+      getUserFrom: vi.fn(
         async () =>
           ({
             id: 999,
@@ -134,7 +135,7 @@ describe('ValidateAnkifySessionTokenUseCase', () => {
 
   test('rejects when user does not have patreon access (403)', async () => {
     const rac = makeRac({
-      resolveTokenForProxy: jest.fn(async () => ({
+      resolveTokenForProxy: vi.fn(async () => ({
         ankify_client_id: 1,
         owner: 42,
         novnc_port: 22000,
@@ -142,7 +143,7 @@ describe('ValidateAnkifySessionTokenUseCase', () => {
       })),
     });
     const auth = makeAuth({
-      getUserFrom: jest.fn(
+      getUserFrom: vi.fn(
         async () =>
           ({
             id: 42,
@@ -165,9 +166,9 @@ describe('ValidateAnkifySessionTokenUseCase', () => {
   });
 
   test('returns the novnc port and touches last_used for a fully-valid request', async () => {
-    const touchTokenLastUsed = jest.fn(async () => undefined);
+    const touchTokenLastUsed = vi.fn(async () => undefined);
     const rac = makeRac({
-      resolveTokenForProxy: jest.fn(async () => ({
+      resolveTokenForProxy: vi.fn(async () => ({
         ankify_client_id: 1,
         owner: 42,
         novnc_port: 22000,
@@ -176,7 +177,7 @@ describe('ValidateAnkifySessionTokenUseCase', () => {
       touchTokenLastUsed,
     });
     const auth = makeAuth({
-      getUserFrom: jest.fn(
+      getUserFrom: vi.fn(
         async () =>
           ({
             id: 42,

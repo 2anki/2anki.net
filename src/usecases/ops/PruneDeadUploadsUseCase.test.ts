@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   IPruneStorageHandler,
   IPruneUploadRepository,
@@ -23,7 +24,7 @@ function makeStorage(keys: string[]): IPruneStorageHandler {
 }
 
 function makeRepository(uploadRows: UploadReference[]) {
-  const deleteUpload = jest.fn(async () => 1);
+  const deleteUpload = vi.fn(async () => 1);
   const repo: IPruneUploadRepository = {
     getAllUploadReferences: async () => uploadRows,
     deleteUpload,

@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import {
   InMemorySuppressionEventsRepository,
   ISuppressionEventsRepository,
@@ -10,11 +11,11 @@ import {
 } from './ProcessSendgridEventsUseCase';
 import { track } from '../../services/events/track';
 
-jest.mock('../../services/events/track', () => ({
-  track: jest.fn(),
+vi.mock('../../services/events/track', () => ({
+  track: vi.fn(),
 }));
 
-const trackMock = track as jest.Mock;
+const trackMock = track as Mock;
 
 describe('ProcessSendgridEventsUseCase', () => {
   const address = 'bounced@example.com';
@@ -304,12 +305,12 @@ describe('ProcessSendgridEventsUseCase', () => {
   it('throws with the partial result when recording fails mid-batch', async () => {
     const failure = new Error('database unavailable');
     const repo: ISuppressionEventsRepository = {
-      record: jest
-        .fn<Promise<void>, [RecordSuppressionEvent]>()
+      record: vi
+        .fn<(event: RecordSuppressionEvent) => Promise<void>>()
         .mockResolvedValueOnce(undefined)
         .mockRejectedValueOnce(failure),
-      isSuppressed: jest
-        .fn<Promise<boolean>, [string]>()
+      isSuppressed: vi
+        .fn<(value: string) => Promise<boolean>>()
         .mockResolvedValue(false),
     };
     const useCase = new ProcessSendgridEventsUseCase(repo);

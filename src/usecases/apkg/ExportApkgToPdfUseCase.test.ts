@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import ExportApkgToPdfUseCase, {
   CardLimitExceededError,
 } from './ExportApkgToPdfUseCase';
@@ -57,21 +58,21 @@ function makeMeta(totalCards: number): PreviewMeta {
 }
 
 describe('ExportApkgToPdfUseCase', () => {
-  let previewService: jest.Mocked<ApkgPreviewService>;
-  let pdfRenderService: jest.Mocked<PdfRenderService>;
+  let previewService: Mocked<ApkgPreviewService>;
+  let pdfRenderService: Mocked<PdfRenderService>;
   let useCase: ExportApkgToPdfUseCase;
 
   beforeEach(() => {
     previewService = {
-      parse: jest.fn(),
-      getMeta: jest.fn(),
-      getCardsPage: jest.fn(),
-      getMediaEntry: jest.fn(),
-    } as unknown as jest.Mocked<ApkgPreviewService>;
+      parse: vi.fn(),
+      getMeta: vi.fn(),
+      getCardsPage: vi.fn(),
+      getMediaEntry: vi.fn(),
+    } as unknown as Mocked<ApkgPreviewService>;
 
     pdfRenderService = {
-      renderHtml: jest.fn(),
-    } as unknown as jest.Mocked<PdfRenderService>;
+      renderHtml: vi.fn(),
+    } as unknown as Mocked<PdfRenderService>;
 
     useCase = new ExportApkgToPdfUseCase(previewService, pdfRenderService);
   });

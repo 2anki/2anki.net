@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type {
   FeatureFlagWithEmail,
   IFeatureFlagsRepository,
@@ -7,13 +8,13 @@ import {
   SetFeatureFlagUseCase,
 } from './SetFeatureFlagUseCase';
 
-jest.mock('../../services/events/track', () => ({
-  track: jest.fn(),
+vi.mock('../../services/events/track', () => ({
+  track: vi.fn(),
 }));
 
-const { track } = jest.requireMock('../../services/events/track') as {
-  track: jest.Mock;
-};
+import { track as trackFn } from '../../services/events/track';
+
+const track = vi.mocked(trackFn);
 
 const buildRepo = (
   result: FeatureFlagWithEmail | null

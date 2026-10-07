@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { FavoritesRepository } from '../../data_layer/FavoritesRepository';
 import DeleteFavoriteUseCase from './DeleteFavoriteUseCase';
 
@@ -5,8 +6,8 @@ function buildRepository(
   overrides: Partial<FavoritesRepository> = {}
 ): FavoritesRepository {
   return {
-    findById: jest.fn(),
-    remove: jest.fn(),
+    findById: vi.fn(),
+    remove: vi.fn(),
     ...overrides,
   } as unknown as FavoritesRepository;
 }
@@ -14,8 +15,8 @@ function buildRepository(
 describe('DeleteFavoriteUseCase', () => {
   it('removes an existing favorite', async () => {
     const repository = buildRepository({
-      findById: jest.fn().mockResolvedValue({ object_id: 'abc', owner: 1 }),
-      remove: jest.fn().mockResolvedValue(undefined),
+      findById: vi.fn().mockResolvedValue({ object_id: 'abc', owner: 1 }),
+      remove: vi.fn().mockResolvedValue(undefined),
     });
     const useCase = new DeleteFavoriteUseCase(repository);
 
@@ -26,8 +27,8 @@ describe('DeleteFavoriteUseCase', () => {
 
   it('is a no-op, not an error, when the favorite is already gone', async () => {
     const repository = buildRepository({
-      findById: jest.fn().mockResolvedValue(undefined),
-      remove: jest.fn(),
+      findById: vi.fn().mockResolvedValue(undefined),
+      remove: vi.fn(),
     });
     const useCase = new DeleteFavoriteUseCase(repository);
 

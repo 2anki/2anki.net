@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { ClaimPassUseCase } from './ClaimPassUseCase';
 import { InMemoryAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import type { IPassClaimTokensRepository } from '../../data_layer/PassClaimTokensRepository';
@@ -13,10 +14,10 @@ function makeTokensRepo(
   overrides: Partial<IPassClaimTokensRepository> = {}
 ): IPassClaimTokensRepository {
   return {
-    insert: jest.fn().mockResolvedValue({ id: 1 }),
-    findByTokenHash: jest.fn().mockResolvedValue(null),
-    markConsumed: jest.fn().mockResolvedValue(undefined),
-    countRecentByUser: jest.fn().mockResolvedValue(0),
+    insert: vi.fn().mockResolvedValue({ id: 1 }),
+    findByTokenHash: vi.fn().mockResolvedValue(null),
+    markConsumed: vi.fn().mockResolvedValue(undefined),
+    countRecentByUser: vi.fn().mockResolvedValue(0),
     ...overrides,
   };
 }
@@ -25,15 +26,15 @@ function makeAuditRepo(
   overrides: Partial<ISubscriptionClaimAuditRepository> = {}
 ): ISubscriptionClaimAuditRepository {
   return {
-    insert: jest.fn().mockResolvedValue({}),
-    countRecentByIp: jest.fn().mockResolvedValue(0),
+    insert: vi.fn().mockResolvedValue({}),
+    countRecentByIp: vi.fn().mockResolvedValue(0),
     ...overrides,
   } as ISubscriptionClaimAuditRepository;
 }
 
 function makeEmailService(): IEmailService {
   return {
-    sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
+    sendPassClaimConfirmation: vi.fn().mockResolvedValue(undefined),
   } as unknown as IEmailService;
 }
 
@@ -41,7 +42,7 @@ function makeStripe(sessionEmail: string | null = null) {
   return {
     checkout: {
       sessions: {
-        retrieve: jest.fn().mockResolvedValue({
+        retrieve: vi.fn().mockResolvedValue({
           customer_details: { email: sessionEmail },
         }),
       },
@@ -87,7 +88,7 @@ describe('ClaimPassUseCase', () => {
       expect.stringContaining('/account/claim?token='),
       'Week Pass'
     );
-    const url = (emailService.sendPassClaimConfirmation as jest.Mock).mock
+    const url = (emailService.sendPassClaimConfirmation as Mock).mock
       .calls[0][1] as string;
     expect(url).toContain('kind=pass');
   });
@@ -178,7 +179,7 @@ describe('ClaimPassUseCase', () => {
     const emailService = makeEmailService();
     const useCase = new ClaimPassUseCase(
       anonRepo,
-      makeTokensRepo({ countRecentByUser: jest.fn().mockResolvedValue(12) }),
+      makeTokensRepo({ countRecentByUser: vi.fn().mockResolvedValue(12) }),
       makeAuditRepo(),
       emailService,
       makeStripe()

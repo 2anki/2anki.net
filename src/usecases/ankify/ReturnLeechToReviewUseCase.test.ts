@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../data_layer/ankify/AnkifyNotionSubscriptionsRepository';
 import { AnkiConnectClient } from '../../services/ankify/AnkiConnectClient';
@@ -19,26 +20,26 @@ const clientsRepo = (
   >
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 const subsRepo = (
   rows: { target_deck: string | null; notion_page_title: string | null }[]
 ): AnkifyNotionSubscriptionsRepositoryInterface =>
   ({
-    listByOwner: jest.fn(async () => rows),
+    listByOwner: vi.fn(async () => rows),
   }) as unknown as AnkifyNotionSubscriptionsRepositoryInterface;
 
 describe('ReturnLeechToReviewUseCase', () => {
   test('unsuspends the cards and drops the leech tag', async () => {
-    const unsuspend = jest.fn(async () => true);
-    const removeTags = jest.fn(async () => null);
-    const factory = jest.fn(
+    const unsuspend = vi.fn(async () => true);
+    const removeTags = vi.fn(async () => null);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
-          findNotes: jest.fn(async () => [7001]),
-          notesInfo: jest.fn(async () => [
+          ping: vi.fn(async () => 6),
+          findNotes: vi.fn(async () => [7001]),
+          notesInfo: vi.fn(async () => [
             {
               noteId: 7001,
               modelName: 'Basic',
@@ -71,12 +72,12 @@ describe('ReturnLeechToReviewUseCase', () => {
   });
 
   test('unsuspend returning false still counts as success', async () => {
-    const factory = jest.fn(
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
-          findNotes: jest.fn(async () => [7001]),
-          notesInfo: jest.fn(async () => [
+          ping: vi.fn(async () => 6),
+          findNotes: vi.fn(async () => [7001]),
+          notesInfo: vi.fn(async () => [
             {
               noteId: 7001,
               modelName: 'Basic',
@@ -85,8 +86,8 @@ describe('ReturnLeechToReviewUseCase', () => {
               cards: [11],
             },
           ]),
-          unsuspend: jest.fn(async () => false),
-          removeTags: jest.fn(async () => null),
+          unsuspend: vi.fn(async () => false),
+          removeTags: vi.fn(async () => null),
         }) as unknown as AnkiConnectClient
     );
     const useCase = new ReturnLeechToReviewUseCase(
@@ -107,14 +108,14 @@ describe('ReturnLeechToReviewUseCase', () => {
   });
 
   test('rejects a note in an unowned deck and never mutates', async () => {
-    const unsuspend = jest.fn(async () => true);
-    const removeTags = jest.fn(async () => null);
-    const factory = jest.fn(
+    const unsuspend = vi.fn(async () => true);
+    const removeTags = vi.fn(async () => null);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
-          findNotes: jest.fn(async () => []),
-          notesInfo: jest.fn(),
+          ping: vi.fn(async () => 6),
+          findNotes: vi.fn(async () => []),
+          notesInfo: vi.fn(),
           unsuspend,
           removeTags,
         }) as unknown as AnkiConnectClient

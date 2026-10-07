@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { DeleteMindmapUseCase } from './DeleteMindmapUseCase';
 import { MindmapRepositoryInterface } from '../../data_layer/MindmapRepository';
 import { MindmapsId } from '../../data_layer/public/Mindmaps';
@@ -6,26 +7,26 @@ import StorageHandler from '../../lib/storage/StorageHandler';
 
 function makeRepo(): MindmapRepositoryInterface {
   return {
-    create: jest.fn(),
-    findById: jest.fn(),
-    findByUserId: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn().mockResolvedValue(undefined),
-    countByUserId: jest.fn(),
+    create: vi.fn(),
+    findById: vi.fn(),
+    findByUserId: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn().mockResolvedValue(undefined),
+    countByUserId: vi.fn(),
   };
 }
 
 function makeStorage(keys: string[] = []): StorageHandler {
   return {
-    listByPrefix: jest.fn().mockResolvedValue(keys),
-    deleteObjects: jest.fn().mockResolvedValue(undefined),
-    uploadFile: jest.fn(),
-    getPresignedUrl: jest.fn(),
-    getFileContents: jest.fn(),
-    objectExists: jest.fn(),
-    delete: jest.fn(),
-    getContents: jest.fn(),
-    uniqify: jest.fn(),
+    listByPrefix: vi.fn().mockResolvedValue(keys),
+    deleteObjects: vi.fn().mockResolvedValue(undefined),
+    uploadFile: vi.fn(),
+    getPresignedUrl: vi.fn(),
+    getFileContents: vi.fn(),
+    objectExists: vi.fn(),
+    delete: vi.fn(),
+    getContents: vi.fn(),
+    uniqify: vi.fn(),
     s3: {} as never,
   } as unknown as StorageHandler;
 }
@@ -59,7 +60,7 @@ describe('DeleteMindmapUseCase', () => {
 
   it('still deletes from DB when S3 listByPrefix throws', async () => {
     const storage = makeStorage();
-    (storage.listByPrefix as jest.Mock).mockRejectedValue(new Error('S3 down'));
+    (storage.listByPrefix as Mock).mockRejectedValue(new Error('S3 down'));
     const repo = makeRepo();
     const useCase = new DeleteMindmapUseCase(repo, storage);
 
@@ -70,9 +71,7 @@ describe('DeleteMindmapUseCase', () => {
 
   it('still deletes from DB when deleteObjects throws', async () => {
     const storage = makeStorage(['mindmaps/99/map-uuid/a.png']);
-    (storage.deleteObjects as jest.Mock).mockRejectedValue(
-      new Error('S3 down')
-    );
+    (storage.deleteObjects as Mock).mockRejectedValue(new Error('S3 down'));
     const repo = makeRepo();
     const useCase = new DeleteMindmapUseCase(repo, storage);
 

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import CreateShareUseCase from './CreateShareUseCase';
 import { UsersId } from '../../data_layer/public/Users';
 
@@ -5,14 +6,14 @@ const asOwner = (n: number) => n as unknown as UsersId;
 
 function makeUploadRepository(overrides: Record<string, unknown> = {}) {
   return {
-    findByKey: jest.fn().mockResolvedValue(null),
+    findByKey: vi.fn().mockResolvedValue(null),
     ...overrides,
   };
 }
 
 function makeShareService(overrides: Record<string, unknown> = {}) {
   return {
-    createShare: jest.fn().mockResolvedValue({
+    createShare: vi.fn().mockResolvedValue({
       id: 1,
       owner: 42,
       upload_key: 'test.apkg',
@@ -21,8 +22,8 @@ function makeShareService(overrides: Record<string, unknown> = {}) {
       revoked_at: null,
       view_count: 0,
     }),
-    findActiveShareForOwnerAndKey: jest.fn().mockResolvedValue(null),
-    buildShareUrl: jest
+    findActiveShareForOwnerAndKey: vi.fn().mockResolvedValue(null),
+    buildShareUrl: vi
       .fn()
       .mockReturnValue(
         'https://2anki.net/s/550e8400-e29b-41d4-a716-446655440000'
@@ -34,7 +35,7 @@ function makeShareService(overrides: Record<string, unknown> = {}) {
 describe('CreateShareUseCase', () => {
   it('rejects when upload does not exist', async () => {
     const uploadRepo = makeUploadRepository({
-      findByKey: jest.fn().mockResolvedValue(null),
+      findByKey: vi.fn().mockResolvedValue(null),
     });
     const shareService = makeShareService();
     const useCase = new CreateShareUseCase(
@@ -49,7 +50,7 @@ describe('CreateShareUseCase', () => {
 
   it('rejects when caller does not own the upload', async () => {
     const uploadRepo = makeUploadRepository({
-      findByKey: jest
+      findByKey: vi
         .fn()
         .mockResolvedValue({ id: 1, owner: 99, key: 'test.apkg' }),
     });
@@ -67,7 +68,7 @@ describe('CreateShareUseCase', () => {
   it('generates a token via createShare when owner matches', async () => {
     const uploadRow = { id: 1, owner: 42, key: 'test.apkg' };
     const uploadRepo = makeUploadRepository({
-      findByKey: jest.fn().mockResolvedValue(uploadRow),
+      findByKey: vi.fn().mockResolvedValue(uploadRow),
     });
     const shareService = makeShareService();
     const useCase = new CreateShareUseCase(
@@ -96,10 +97,10 @@ describe('CreateShareUseCase', () => {
       view_count: 3,
     };
     const uploadRepo = makeUploadRepository({
-      findByKey: jest.fn().mockResolvedValue(uploadRow),
+      findByKey: vi.fn().mockResolvedValue(uploadRow),
     });
     const shareService = makeShareService({
-      findActiveShareForOwnerAndKey: jest.fn().mockResolvedValue(existingShare),
+      findActiveShareForOwnerAndKey: vi.fn().mockResolvedValue(existingShare),
     });
     const useCase = new CreateShareUseCase(
       uploadRepo as any,

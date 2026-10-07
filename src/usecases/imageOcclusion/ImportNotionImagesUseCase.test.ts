@@ -1,21 +1,24 @@
+import { vi, type Mock, type Mocked, type MockedClass } from 'vitest';
 import { ImportNotionImagesUseCase } from './ImportNotionImagesUseCase';
 import NotionAPIWrapper from '../../services/NotionService/NotionAPIWrapper';
 import instrumentedAxios from '../../services/observability/instrumentedAxios';
 import StorageHandler from '../../lib/storage/StorageHandler';
 
-jest.mock('../../services/NotionService/NotionAPIWrapper');
-jest.mock('../../services/observability/instrumentedAxios', () => ({
-  __esModule: true,
-  default: { get: jest.fn() },
-}));
-jest.mock('../../lib/storage/StorageHandler');
+vi.mock('../../services/NotionService/NotionAPIWrapper');
+vi.mock('../../services/observability/instrumentedAxios', function () {
+  return {
+    __esModule: true,
+    default: { get: vi.fn() },
+  };
+});
+vi.mock('../../lib/storage/StorageHandler');
 
-const MockNotionAPIWrapper = NotionAPIWrapper as jest.MockedClass<
+const MockNotionAPIWrapper = NotionAPIWrapper as MockedClass<
   typeof NotionAPIWrapper
 >;
-const mockGet = instrumentedAxios.get as jest.Mock;
-let mockStorage: jest.Mocked<StorageHandler>;
-let mockGetBlock: jest.Mock;
+const mockGet = instrumentedAxios.get as Mock;
+let mockStorage: Mocked<StorageHandler>;
+let mockGetBlock: Mock;
 
 const VALID_ID = '12345678-1234-1234-1234-123456789012';
 const TOKEN = 'secret_abc';
@@ -43,17 +46,17 @@ function makeAxiosResponse(contentType: string, data: Buffer) {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
-  mockGetBlock = jest.fn();
-  MockNotionAPIWrapper.mockImplementation(
-    () => ({ getBlock: mockGetBlock }) as unknown as NotionAPIWrapper
-  );
+  vi.clearAllMocks();
+  mockGetBlock = vi.fn();
+  MockNotionAPIWrapper.mockImplementation(function () {
+    return { getBlock: mockGetBlock } as unknown as NotionAPIWrapper;
+  });
   mockStorage = {
-    uploadFile: jest.fn().mockResolvedValue({}),
-    getPresignedUrl: jest
+    uploadFile: vi.fn().mockResolvedValue({}),
+    getPresignedUrl: vi
       .fn()
       .mockResolvedValue('https://presigned.example.com/img.png'),
-  } as unknown as jest.Mocked<StorageHandler>;
+  } as unknown as Mocked<StorageHandler>;
 });
 
 describe('ImportNotionImagesUseCase', () => {

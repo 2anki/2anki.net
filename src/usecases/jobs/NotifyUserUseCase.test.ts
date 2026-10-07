@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import UsersRepository from '../../data_layer/UsersRepository';
 import ParserRules from '../../lib/parser/ParserRules';
 import { NotifyUserUseCase } from './NotifyUserUseCase';
 
-const sendConversionEmail = jest.fn();
-const sendConversionLinkEmail = jest.fn();
+const sendConversionEmail = vi.fn();
+const sendConversionLinkEmail = vi.fn();
 
-jest.mock('../../services/EmailService/EmailService', () => ({
+vi.mock('../../services/EmailService/EmailService', () => ({
   getDefaultEmailService: () => ({
     sendConversionEmail,
     sendConversionLinkEmail,
@@ -22,7 +23,7 @@ function makeRules(emailNotification: boolean): ParserRules {
 
 function makeUsersRepository(email: string | undefined): UsersRepository {
   return {
-    getEmailById: jest.fn().mockResolvedValue(email),
+    getEmailById: vi.fn().mockResolvedValue(email),
   } as unknown as UsersRepository;
 }
 
@@ -99,7 +100,7 @@ describe('NotifyUserUseCase', () => {
   it('skips sending when the user has no email on file', async () => {
     const usersRepository = makeUsersRepository(undefined);
     const useCase = new NotifyUserUseCase(usersRepository);
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     try {
       await useCase.execute({

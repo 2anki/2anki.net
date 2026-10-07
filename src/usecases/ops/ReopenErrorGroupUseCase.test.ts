@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 import { ReopenErrorGroupUseCase } from './ReopenErrorGroupUseCase';
 import { IErrorEventRepository } from '../../data_layer/ErrorEventRepository';
 
 function makeRepo(): IErrorEventRepository {
   return {
-    insert: jest.fn(),
-    existsWithinWindow: jest.fn(async () => false),
-    listGroups: jest.fn(async () => []),
-    countGroups: jest.fn(async () => 0),
-    latestSamples: jest.fn(async () => []),
-    resolveGroup: jest.fn(async () => {}),
-    reopenGroup: jest.fn(async () => {}),
+    insert: vi.fn(),
+    existsWithinWindow: vi.fn(async () => false),
+    listGroups: vi.fn(async () => []),
+    countGroups: vi.fn(async () => 0),
+    latestSamples: vi.fn(async () => []),
+    resolveGroup: vi.fn(async () => {}),
+    reopenGroup: vi.fn(async () => {}),
   };
 }
 

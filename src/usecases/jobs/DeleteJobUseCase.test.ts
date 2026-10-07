@@ -1,20 +1,21 @@
+import { vi, type Mocked } from 'vitest';
 import DeleteJobUseCase from './DeleteJobUseCase';
 import JobService from '../../services/JobService';
 import UploadService from '../../services/UploadService';
 import { JobWithDownloadKey } from '../../data_layer/JobRepository';
 
 describe('DeleteJobUseCase', () => {
-  let jobService: jest.Mocked<JobService>;
-  let uploadService: jest.Mocked<UploadService>;
+  let jobService: Mocked<JobService>;
+  let uploadService: Mocked<UploadService>;
   let useCase: DeleteJobUseCase;
 
   beforeEach(() => {
     jobService = {
-      deleteJobById: jest.fn(),
-    } as unknown as jest.Mocked<JobService>;
+      deleteJobById: vi.fn(),
+    } as unknown as Mocked<JobService>;
     uploadService = {
-      deleteUpload: jest.fn().mockResolvedValue(undefined),
-    } as unknown as jest.Mocked<UploadService>;
+      deleteUpload: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Mocked<UploadService>;
     useCase = new DeleteJobUseCase(jobService, uploadService);
   });
 

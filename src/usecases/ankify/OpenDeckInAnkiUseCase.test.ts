@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../data_layer/ankify/AnkifyNotionSubscriptionsRepository';
 import {
@@ -24,21 +25,21 @@ const clientsRepo = (
   >
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 const subsRepo = (
   rows: { target_deck: string | null; notion_page_title: string | null }[]
 ): AnkifyNotionSubscriptionsRepositoryInterface =>
   ({
-    listByOwner: jest.fn(async () => rows),
+    listByOwner: vi.fn(async () => rows),
   }) as unknown as AnkifyNotionSubscriptionsRepositoryInterface;
 
 describe('OpenDeckInAnkiUseCase', () => {
   test('jumps Anki to an owned deck and returns opened', async () => {
-    const ping = jest.fn(async () => 6);
-    const guiDeckOverview = jest.fn(async () => true);
-    const factory = jest.fn(
+    const ping = vi.fn(async () => 6);
+    const guiDeckOverview = vi.fn(async () => true);
+    const factory = vi.fn(
       () => ({ ping, guiDeckOverview }) as unknown as AnkiConnectClient
     );
     const useCase = new OpenDeckInAnkiUseCase(
@@ -54,7 +55,7 @@ describe('OpenDeckInAnkiUseCase', () => {
   });
 
   test('rejects a deck the user does not own without touching AnkiConnect', async () => {
-    const factory = jest.fn();
+    const factory = vi.fn();
     const useCase = new OpenDeckInAnkiUseCase(
       clientsRepo(activeClient),
       subsRepo([{ target_deck: 'MS3::Pharma', notion_page_title: null }]),
@@ -71,7 +72,7 @@ describe('OpenDeckInAnkiUseCase', () => {
     const useCase = new OpenDeckInAnkiUseCase(
       clientsRepo(null),
       subsRepo([{ target_deck: 'MS3::Pharma', notion_page_title: null }]),
-      jest.fn()
+      vi.fn()
     );
 
     const result = await useCase.execute({ owner: 42, deck: 'MS3::Pharma' });
@@ -80,10 +81,10 @@ describe('OpenDeckInAnkiUseCase', () => {
   });
 
   test('propagates AnkiConnectUnreachableError', async () => {
-    const ping = jest.fn(async () => {
+    const ping = vi.fn(async () => {
       throw new AnkiConnectUnreachableError('http://x', new Error('down'));
     });
-    const factory = jest.fn(() => ({ ping }) as unknown as AnkiConnectClient);
+    const factory = vi.fn(() => ({ ping }) as unknown as AnkiConnectClient);
     const useCase = new OpenDeckInAnkiUseCase(
       clientsRepo(activeClient),
       subsRepo([{ target_deck: 'MS3::Pharma', notion_page_title: null }]),

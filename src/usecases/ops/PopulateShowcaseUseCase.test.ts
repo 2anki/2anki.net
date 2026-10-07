@@ -1,7 +1,10 @@
-jest.mock('../../lib/storage/StorageHandler', () => {
+import { vi } from 'vitest';
+vi.mock('../../lib/storage/StorageHandler', () => {
   return {
     __esModule: true,
-    default: jest.fn().mockImplementation(() => ({})),
+    default: vi.fn().mockImplementation(function () {
+      return {};
+    }),
   };
 });
 
@@ -66,14 +69,14 @@ function buildUseCase(
   const mockApi = {
     listBlocksPage:
       overrides.listBlocks ??
-      jest.fn().mockResolvedValue({
+      vi.fn().mockResolvedValue({
         results: [fakeBlock('b1'), fakeBlock('b2')],
         next_cursor: null,
         has_more: false,
       }),
     getPage:
       overrides.getPage ??
-      jest.fn().mockResolvedValue({
+      vi.fn().mockResolvedValue({
         object: 'page',
         id: 'p1',
         url: 'https://notion.so/page',
@@ -84,16 +87,16 @@ function buildUseCase(
   };
 
   const notionService = {
-    getNotionAPI: jest.fn().mockResolvedValue(mockApi),
+    getNotionAPI: vi.fn().mockResolvedValue(mockApi),
   } as any;
 
   const previewService = {
     parse:
       overrides.parseApkg ??
-      jest.fn().mockResolvedValue({ collection: { cards: [] } }),
+      vi.fn().mockResolvedValue({ collection: { cards: [] } }),
     getCardsPage:
       overrides.getCardsPage ??
-      jest.fn().mockReturnValue({
+      vi.fn().mockReturnValue({
         cards: [fakeRenderedCard(1), fakeRenderedCard(2)],
         nextCursor: null,
         total: 2,
@@ -103,7 +106,7 @@ function buildUseCase(
   const downloadService = {
     getFileBody:
       overrides.getFileBody ??
-      jest.fn().mockResolvedValue(Buffer.from('fake-apkg')),
+      vi.fn().mockResolvedValue(Buffer.from('fake-apkg')),
   } as any;
 
   const useCase = new PopulateShowcaseUseCase(
@@ -130,7 +133,7 @@ describe('PopulateShowcaseUseCase', () => {
 
   it('throws when APKG file is not found', async () => {
     const { useCase } = buildUseCase({
-      getFileBody: jest.fn().mockResolvedValue(null),
+      getFileBody: vi.fn().mockResolvedValue(null),
     });
 
     await expect(
@@ -140,7 +143,7 @@ describe('PopulateShowcaseUseCase', () => {
 
   it('stores empty blocks when page has no content', async () => {
     const { useCase, repo } = buildUseCase({
-      listBlocks: jest.fn().mockResolvedValue({
+      listBlocks: vi.fn().mockResolvedValue({
         results: [],
         next_cursor: null,
         has_more: false,
@@ -156,7 +159,7 @@ describe('PopulateShowcaseUseCase', () => {
 
   it('defaults page title to Untitled when lookup fails', async () => {
     const { useCase, repo } = buildUseCase({
-      getPage: jest.fn().mockRejectedValue(new Error('not found')),
+      getPage: vi.fn().mockRejectedValue(new Error('not found')),
     });
 
     await useCase.execute('owner-1', 'page-id', 'file.apkg');
