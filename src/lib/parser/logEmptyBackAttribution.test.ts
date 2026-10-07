@@ -1,10 +1,11 @@
+import { vi, type MockInstance } from 'vitest';
 import { logEmptyBackAttribution } from './logEmptyBackAttribution';
 
 describe('logEmptyBackAttribution', () => {
-  let logSpy: jest.SpyInstance;
+  let logSpy: MockInstance;
 
   beforeEach(() => {
-    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {

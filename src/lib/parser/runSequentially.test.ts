@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { runSequentially } from './runSequentially';
 
 describe('runSequentially', () => {
@@ -31,7 +32,7 @@ describe('runSequentially', () => {
   });
 
   it('resolves immediately for no items', async () => {
-    const task = jest.fn();
+    const task = vi.fn();
     await runSequentially([], task);
     expect(task).not.toHaveBeenCalled();
   });

@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+import * as trackModule from '../../services/events/track';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,13 +15,13 @@ import {
 } from './ClaudeService';
 import { AiCreditsExhaustedError } from './aiSpendGuard';
 
-const mockCreateFn = jest.fn();
+const mockCreateFn = vi.hoisted(() => vi.fn());
 
-jest.mock('@anthropic-ai/sdk', () => ({
+vi.mock('@anthropic-ai/sdk', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    messages: { create: mockCreateFn },
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return { messages: { create: mockCreateFn } };
+  }),
 }));
 
 function visionResponse(json: string, stopReason = 'end_turn') {
@@ -34,7 +36,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   let baseDir: string;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdfimg-'));
     fs.mkdirSync(path.join(baseDir, 'pdf-abc'));
     fs.writeFileSync(
@@ -92,10 +94,8 @@ describe('generateDeckInfoFromPdfImages', () => {
         JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
       )
     );
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const trackMod = require('../../services/events/track');
-    const trackSpy = jest
-      .spyOn(trackMod, 'track')
+    const trackSpy = vi
+      .spyOn(trackModule, 'track')
       .mockImplementation(() => undefined);
 
     try {

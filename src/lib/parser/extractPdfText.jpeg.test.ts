@@ -1,8 +1,9 @@
+import { vi } from 'vitest';
 import { withJpegDisplayDecoding } from './extractPdfText';
 
 describe('withJpegDisplayDecoding', () => {
   it('requests display decoding when given a buffer', () => {
-    const getDocument = jest.fn();
+    const getDocument = vi.fn();
     const data = Buffer.from('pdf');
 
     withJpegDisplayDecoding(getDocument)(data);
@@ -14,7 +15,7 @@ describe('withJpegDisplayDecoding', () => {
   });
 
   it('keeps the other params of an options object', () => {
-    const getDocument = jest.fn();
+    const getDocument = vi.fn();
     const data = Buffer.from('pdf');
 
     withJpegDisplayDecoding(getDocument)({ data, password: 'x' });
@@ -27,7 +28,7 @@ describe('withJpegDisplayDecoding', () => {
   });
 
   it('keeps a URL source', () => {
-    const getDocument = jest.fn();
+    const getDocument = vi.fn();
 
     withJpegDisplayDecoding(getDocument)('https://example.com/a.pdf');
 
@@ -38,7 +39,7 @@ describe('withJpegDisplayDecoding', () => {
   });
 
   it('wraps only once', () => {
-    const once = withJpegDisplayDecoding(jest.fn());
+    const once = withJpegDisplayDecoding(vi.fn());
 
     expect(withJpegDisplayDecoding(once)).toBe(once);
   });

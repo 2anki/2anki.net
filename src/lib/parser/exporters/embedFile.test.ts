@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -16,7 +17,7 @@ const makeExporter = (firstDeckName = 'deck') =>
     firstDeckName,
     workspace: '/tmp',
     media: [],
-    addMedia: jest.fn().mockReturnValue('/tmp/mock.png'),
+    addMedia: vi.fn().mockReturnValue('/tmp/mock.png'),
   }) as unknown as CustomExporter;
 
 const makeWorkspace = () =>
@@ -143,7 +144,7 @@ describe('embedFile — disk-backed (spilled) zip entries', () => {
       firstDeckName: 'deck',
       workspace: '/tmp',
       media: [],
-      addMedia: jest.fn((_name: string, contents: Buffer) => {
+      addMedia: vi.fn((_name: string, contents: Buffer) => {
         captured.push(Buffer.from(contents));
         return '/tmp/x.png';
       }),

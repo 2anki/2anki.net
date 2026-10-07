@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { combineSlidesIntoHTML } from './combineSlidesIntoHTML';
 import type { SlideUnit } from '../parser/sourceUnits/extractPptxSourceUnits';
 
@@ -134,7 +135,7 @@ describe('combineSlidesIntoHTML', () => {
   });
 
   it('warns and skips a slide with no text and no page image instead of emitting an empty card', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const html = combineSlidesIntoHTML(
         [slide({ id: 'slide-7', role: 'image', hasPicture: true })],

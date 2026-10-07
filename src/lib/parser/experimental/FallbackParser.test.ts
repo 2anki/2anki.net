@@ -1,9 +1,10 @@
+import { vi } from 'vitest';
 import FallbackParser from './FallbackParser';
 
 describe('FallbackParser.htmlToTextWithNewlines', () => {
   it('returns empty array and logs warning when html is undefined', () => {
     const parser = new FallbackParser([]);
-    const spy = jest.spyOn(console, 'warn').mockImplementation();
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const result = parser.htmlToTextWithNewlines(undefined as any);
     expect(result).toEqual([]);
     expect(spy).toHaveBeenCalledWith(
@@ -15,7 +16,7 @@ describe('FallbackParser.htmlToTextWithNewlines', () => {
 
   it('returns empty array and logs warning when html is null', () => {
     const parser = new FallbackParser([]);
-    const spy = jest.spyOn(console, 'warn').mockImplementation();
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const result = parser.htmlToTextWithNewlines(null as any);
     expect(result).toEqual([]);
     expect(spy).toHaveBeenCalledWith(
@@ -27,7 +28,7 @@ describe('FallbackParser.htmlToTextWithNewlines', () => {
 
   it('returns empty array and logs warning when html is empty string', () => {
     const parser = new FallbackParser([]);
-    const spy = jest.spyOn(console, 'warn').mockImplementation();
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const result = parser.htmlToTextWithNewlines('');
     expect(result).toEqual([]);
     expect(spy).toHaveBeenCalledWith(

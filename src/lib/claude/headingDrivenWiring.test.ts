@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { generateDeckInfo } from './ClaudeService';
 
 const FAKE_DECK_JSON = JSON.stringify([
@@ -10,17 +11,17 @@ const FAKE_DECK_JSON = JSON.stringify([
   },
 ]);
 
-const mockStreamFn = jest.fn();
+const mockStreamFn = vi.hoisted(() => vi.fn());
 const mockStream = {
-  on: jest.fn().mockReturnThis(),
-  finalMessage: jest.fn(),
+  on: vi.fn().mockReturnThis(),
+  finalMessage: vi.fn(),
 };
 
-jest.mock('@anthropic-ai/sdk', () => ({
+vi.mock('@anthropic-ai/sdk', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    messages: { stream: mockStreamFn },
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return { messages: { stream: mockStreamFn } };
+  }),
 }));
 
 function freshResponse() {
@@ -32,7 +33,7 @@ function freshResponse() {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   mockStreamFn.mockReturnValue(mockStream);
   mockStream.on.mockReturnThis();
   mockStream.finalMessage.mockResolvedValue(freshResponse());
@@ -70,7 +71,7 @@ describe('generateDeckInfo — heading-driven wiring', () => {
   });
 
   it('logs heading-driven:fallback and still calls Claude when no headings are found', async () => {
-    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     await generateDeckInfo(
       htmlWithoutHeadings,

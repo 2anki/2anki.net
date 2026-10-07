@@ -1,3 +1,6 @@
+import { vi } from 'vitest';
+import { APIConnectionError } from '@anthropic-ai/sdk';
+import * as trackModule from '../../services/events/track';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -37,19 +40,28 @@ const FAKE_DECK_JSON = JSON.stringify([
   { deck: 'Test Deck', cards: [{ q: 'Q1', a: 'A1' }] },
 ]);
 
-const mockStreamFn = jest.fn();
-const mockCreateFn = jest.fn();
+const { mockStreamFn, mockCreateFn } = vi.hoisted(() => ({
+  mockStreamFn: vi.fn(),
+  mockCreateFn: vi.fn(),
+}));
 const mockStream = {
-  on: jest.fn().mockReturnThis(),
-  finalMessage: jest.fn(),
+  on: vi.fn().mockReturnThis(),
+  finalMessage: vi.fn(),
 };
 
-jest.mock('@anthropic-ai/sdk', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    messages: { stream: mockStreamFn, create: mockCreateFn },
-  })),
-}));
+vi.mock('@anthropic-ai/sdk', async () => {
+  const actual =
+    await vi.importActual<typeof import('@anthropic-ai/sdk')>(
+      '@anthropic-ai/sdk'
+    );
+  return {
+    ...actual,
+    __esModule: true,
+    default: vi.fn().mockImplementation(function () {
+      return { messages: { stream: mockStreamFn, create: mockCreateFn } };
+    }),
+  };
+});
 
 function fakeResponse() {
   return {
@@ -220,7 +232,7 @@ describe('parseDeckResponse', () => {
   });
 
   it('logs the full raw response body on unrecoverable parse failure for reproducibility', () => {
-    const errorSpy = jest
+    const errorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
     try {
@@ -274,7 +286,7 @@ describe('parseDeckResponse', () => {
   });
 
   it('emits a structured warning when trailing prose is stripped (model-drift signal)', () => {
-    const warnSpy = jest
+    const warnSpy = vi
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
     try {
@@ -297,7 +309,7 @@ describe('parseDeckResponse', () => {
   });
 
   it('does not warn about trailing prose when JSON parses cleanly with no trailing content', () => {
-    const warnSpy = jest
+    const warnSpy = vi
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
     try {
@@ -345,7 +357,7 @@ describe('parseDeckResponse', () => {
   });
 
   it('throws the actionable large-section error when a chunk cannot be parsed or repaired', () => {
-    const errorSpy = jest
+    const errorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
     try {
@@ -363,7 +375,7 @@ describe('parseDeckResponse', () => {
   });
 
   it('throws ClaudeParseError with message "claude_parse_failed" for valid JSON that is not a deck array', () => {
-    const errorSpy = jest
+    const errorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
     try {
@@ -383,7 +395,7 @@ describe('parseDeckResponse', () => {
   it('thrown error message does not contain any substring of the input payload', () => {
     const payload =
       '[{"deck":"Secret","cards":[{"q":"sensitive question","a":"sensitive answer"}';
-    const errorSpy = jest
+    const errorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
     try {
@@ -403,7 +415,7 @@ describe('parseDeckResponse', () => {
   });
 
   it('emits a redacted payload-shape summary (no raw content in that line) on parse failure', () => {
-    const errorSpy = jest
+    const errorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
     try {
@@ -669,7 +681,7 @@ describe('generateDeckInfo — image-only input', () => {
     '<html><body><h1>Cells</h1><p>The cell is the basic unit of life.</p><img src="c.png"></body></html>';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
     mockStream.finalMessage.mockResolvedValue(fakeResponse());
@@ -701,7 +713,7 @@ describe('generateDeckInfo — PDF image fallback', () => {
     '<html><body><details><summary><img src="page-1.png"/></summary></details></body></html>';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
     mockStream.finalMessage.mockResolvedValue(fakeResponse());
@@ -745,12 +757,11 @@ describe('generateDeckInfo — PDF image fallback', () => {
 });
 
 describe('generateDeckInfo — transient chunk retry', () => {
-  const { APIConnectionError } = jest.requireActual('@anthropic-ai/sdk');
   const textHtml =
     '<html><body><h1>Cells</h1><p>The cell is the basic unit of life.</p></body></html>';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
   });
@@ -948,7 +959,7 @@ describe('generateDeckInfo — partial chunk success (default)', () => {
   const htmlTwoChunks = '<p>' + 'x'.repeat(39_990) + '</p><p>y</p>';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
   });
@@ -958,7 +969,7 @@ describe('generateDeckInfo — partial chunk success (default)', () => {
       .mockResolvedValueOnce(fakeResponse())
       .mockRejectedValueOnce(new Error('chunk 1 parse error'));
 
-    const infoSpy = jest
+    const infoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined);
     try {
@@ -1000,7 +1011,7 @@ describe('generateDeckInfo — truncated chunk retry', () => {
     '</details>';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
   });
@@ -1024,7 +1035,7 @@ describe('generateDeckInfo — truncated chunk retry', () => {
       .mockResolvedValueOnce(fakeResponse())
       .mockResolvedValueOnce(truncatedResponse());
 
-    const infoSpy = jest
+    const infoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined);
     try {
@@ -1052,7 +1063,7 @@ describe('generateDeckInfo — truncated chunk retry', () => {
       .mockResolvedValueOnce(truncatedResponse())
       .mockResolvedValueOnce(truncatedResponse());
 
-    const infoSpy = jest
+    const infoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined);
     try {
@@ -1070,7 +1081,7 @@ describe('generateDeckInfo — truncated chunk retry', () => {
       .mockResolvedValueOnce(truncatedResponse())
       .mockResolvedValueOnce(truncatedResponse());
 
-    const infoSpy = jest
+    const infoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined);
     try {
@@ -1091,7 +1102,7 @@ describe('generateDeckInfo — truncated chunk retry', () => {
       .mockResolvedValueOnce(fakeResponse())
       .mockResolvedValueOnce(salvageableTruncatedResponse());
 
-    const infoSpy = jest
+    const infoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined);
     try {
@@ -1207,7 +1218,7 @@ describe('dedupeIdenticalCards', () => {
   });
 
   it('logs the number of removed duplicates when dedup occurs', () => {
-    const warnSpy = jest
+    const warnSpy = vi
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
     try {
@@ -1487,7 +1498,7 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
   });
@@ -1514,9 +1525,7 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
     mockStream.finalMessage.mockImplementation(async () =>
       deckResponse(5, `C${call++}`)
     );
-    const info = jest
-      .spyOn(console, 'info')
-      .mockImplementation(() => undefined);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
 
     try {
       await generateDeckInfo(
@@ -1734,10 +1743,8 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
       deckResponse(50, `C${call++}`)
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const trackMod = require('../../services/events/track');
-    const trackSpy = jest
-      .spyOn(trackMod, 'track')
+    const trackSpy = vi
+      .spyOn(trackModule, 'track')
       .mockImplementation(() => undefined);
 
     try {
@@ -1781,10 +1788,8 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
       deckResponse(50, `C${call++}`)
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const trackMod = require('../../services/events/track');
-    const trackSpy = jest
-      .spyOn(trackMod, 'track')
+    const trackSpy = vi
+      .spyOn(trackModule, 'track')
       .mockImplementation(() => undefined);
 
     try {
@@ -1821,10 +1826,8 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
       deckResponse(5, `C${call++}`)
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const trackMod = require('../../services/events/track');
-    const trackSpy = jest
-      .spyOn(trackMod, 'track')
+    const trackSpy = vi
+      .spyOn(trackModule, 'track')
       .mockImplementation(() => undefined);
 
     try {
@@ -1911,7 +1914,7 @@ describe('floor v1 — card-size scaled bounds', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
   });
@@ -1944,7 +1947,7 @@ describe('floor v1 — card-size scaled bounds', () => {
     await convertWithSize('detailed');
     expect(mockStream.finalMessage).toHaveBeenCalledTimes(6);
 
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
     let call2 = 0;
@@ -1966,10 +1969,8 @@ describe('floor v1 — card-size scaled bounds', () => {
   });
 
   it('emits clamped_from on ai_conversion_completed only when the ceiling clamped', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const trackMod = require('../../services/events/track');
-    const trackSpy = jest
-      .spyOn(trackMod, 'track')
+    const trackSpy = vi
+      .spyOn(trackModule, 'track')
       .mockImplementation(() => undefined);
     try {
       let call = 0;
@@ -1985,7 +1986,7 @@ describe('floor v1 — card-size scaled bounds', () => {
       ).toMatchObject({ card_count: 250, clamped_from: 360 });
 
       trackSpy.mockClear();
-      jest.clearAllMocks();
+      vi.clearAllMocks();
       mockStreamFn.mockReturnValue(mockStream);
       mockStream.on.mockReturnThis();
       let call2 = 0;
@@ -2067,7 +2068,7 @@ describe('generateDeckInfo — card with a missing answer field', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
   });
@@ -2115,7 +2116,7 @@ describe('generateDeckInfo — card with a missing front field', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
   });
@@ -2239,8 +2240,8 @@ describe('generateDeckInfo — conversion result cache', () => {
   function makeStore(initial?: DeckInfo[]) {
     const saved: DeckInfo[][] = [];
     const store = {
-      get: jest.fn(async () => initial),
-      save: jest.fn(async (entry: { result: DeckInfo[] }) => {
+      get: vi.fn(async () => initial),
+      save: vi.fn(async (entry: { result: DeckInfo[] }) => {
         saved.push(entry.result);
       }),
     };
@@ -2248,7 +2249,7 @@ describe('generateDeckInfo — conversion result cache', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
     mockStream.finalMessage.mockResolvedValue(fakeResponse());
@@ -2330,8 +2331,8 @@ describe('generateDeckInfo — conversion result cache', () => {
 
   it('converts fresh when the cache read throws', async () => {
     const store = {
-      get: jest.fn().mockRejectedValue(new Error('db down')),
-      save: jest.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockRejectedValue(new Error('db down')),
+      save: vi.fn().mockResolvedValue(undefined),
     };
     const result = await generateDeckInfo(
       textHtml,

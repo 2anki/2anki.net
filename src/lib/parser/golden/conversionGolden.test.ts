@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 
@@ -29,15 +30,14 @@ import Workspace from '../WorkSpace';
  * Review the snapshot diff like code — an unexpected change is a regression.
  */
 
-const downloadMediaOrSkipMock = jest.fn<Promise<Buffer | null>, [string]>();
-
-jest.mock(
-  '../../../services/NotionService/helpers/downloadMediaOrSkip',
-  () => ({
-    __esModule: true,
-    downloadMediaOrSkip: (url: string) => downloadMediaOrSkipMock(url),
-  })
+const downloadMediaOrSkipMock = vi.hoisted(() =>
+  vi.fn<(url: string) => Promise<Buffer | null>>()
 );
+
+vi.mock('../../../services/NotionService/helpers/downloadMediaOrSkip', () => ({
+  __esModule: true,
+  downloadMediaOrSkip: (url: string) => downloadMediaOrSkipMock(url),
+}));
 
 beforeEach(() => {
   setupTests();
