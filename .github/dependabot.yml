@@ -5,14 +5,6 @@ updates:
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 10
-    ignore:
-      # sanitize-html 2.17.6 moves htmlparser2 to ESM-only 12.0.0, which the
-      # CJS Jest suite cannot load (8 suites red — #4002, resurfaced in #4025).
-      # Tests exercise real sanitization so stubbing is not an option. Remove
-      # once the suite has an ESM strategy or sanitize-html restores CJS
-      # compatibility — see "Held bumps" in .claude/rules/dependencies.md.
-      - dependency-name: 'sanitize-html'
-        versions: ['>=2.17.6']
     groups:
       production-dependencies:
         dependency-type: 'production'

@@ -34,6 +34,6 @@
 
 ## Held bumps — do not retry without clearing the blocker
 
-- **sanitize-html 2.17.6** (held on 2.17.5, ignored `>=2.17.6` in dependabot.yml, see #4002 and #4025 — the grouped PR resurfaced it once already): pulls ESM-only `htmlparser2@12`, which the CJS Jest suite cannot load, and tests exercise real sanitization so stubbing is not an option.
+None at the moment. The sanitize-html hold (ESM-only `htmlparser2@12`, #4002/#4025) cleared once the server suite moved to Vitest (#4695).
 
 Every entry here MUST have a matching `ignore` in `.github/dependabot.yml` (and vice versa — remove both together when a hold clears). The ledger is the why; the ignore is the enforcement. A hold without an ignore resurfaces in the next grouped PR with the held bump buried among safe ones (#4025).
