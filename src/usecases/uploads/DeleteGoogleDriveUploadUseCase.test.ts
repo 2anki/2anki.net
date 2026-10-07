@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { DeleteGoogleDriveUploadUseCase } from './DeleteGoogleDriveUploadUseCase';
 import { GoogleDriveRepository } from '../../data_layer/GoogleDriveRepository';
 
 describe('DeleteGoogleDriveUploadUseCase', () => {
   function makeRepo(deleteResult: number): GoogleDriveRepository {
     return {
-      deleteByIdAndOwner: jest.fn().mockResolvedValue(deleteResult),
+      deleteByIdAndOwner: vi.fn().mockResolvedValue(deleteResult),
     } as unknown as GoogleDriveRepository;
   }
 

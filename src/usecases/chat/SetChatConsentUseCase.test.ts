@@ -1,11 +1,12 @@
+import { vi, type Mock } from 'vitest';
 import { SetChatConsentUseCase } from './SetChatConsentUseCase';
 
 interface FakeUsersRepository {
-  setChatConsentAt: jest.Mock;
+  setChatConsentAt: Mock;
 }
 
 function buildFakeRepo(): FakeUsersRepository {
-  return { setChatConsentAt: jest.fn().mockResolvedValue(undefined) };
+  return { setChatConsentAt: vi.fn().mockResolvedValue(undefined) };
 }
 
 describe('SetChatConsentUseCase', () => {

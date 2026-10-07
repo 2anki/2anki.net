@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   StaleCheckoutCustomerRefresher,
   recoverWith,
@@ -5,8 +6,8 @@ import {
 
 describe('StaleCheckoutCustomerRefresher', () => {
   it('clears the stale id then resolves a fresh customer', async () => {
-    const clearStripeCustomerIdIf = jest.fn().mockResolvedValue(undefined);
-    const resolveOrCreate = jest.fn().mockResolvedValue('cus_fresh');
+    const clearStripeCustomerIdIf = vi.fn().mockResolvedValue(undefined);
+    const resolveOrCreate = vi.fn().mockResolvedValue('cus_fresh');
     const refresher = new StaleCheckoutCustomerRefresher(
       { clearStripeCustomerIdIf },
       { resolveOrCreate }
@@ -25,10 +26,10 @@ describe('StaleCheckoutCustomerRefresher', () => {
 
   it('clears before it resolves so the resolve sees a cleared row', async () => {
     const order: string[] = [];
-    const clearStripeCustomerIdIf = jest.fn().mockImplementation(async () => {
+    const clearStripeCustomerIdIf = vi.fn().mockImplementation(async () => {
       order.push('clear');
     });
-    const resolveOrCreate = jest.fn().mockImplementation(async () => {
+    const resolveOrCreate = vi.fn().mockImplementation(async () => {
       order.push('resolve');
       return 'cus_fresh';
     });
@@ -45,7 +46,7 @@ describe('StaleCheckoutCustomerRefresher', () => {
 
 describe('recoverWith', () => {
   it('binds the refresher to the caller for a signed-in account', async () => {
-    const refresh = jest.fn().mockResolvedValue('cus_fresh');
+    const refresh = vi.fn().mockResolvedValue('cus_fresh');
     const recover = recoverWith({ refresh }, 42, 'learner@example.test');
 
     expect(recover).toBeDefined();
@@ -58,7 +59,7 @@ describe('recoverWith', () => {
   });
 
   it('returns undefined when there is no account to refresh for', () => {
-    const refresh = jest.fn();
+    const refresh = vi.fn();
     expect(recoverWith({ refresh }, undefined, 'a@b.test')).toBeUndefined();
     expect(recoverWith({ refresh }, 42, undefined)).toBeUndefined();
     expect(recoverWith({ refresh }, 42, '')).toBeUndefined();

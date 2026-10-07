@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../data_layer/ankify/AnkifyNotionSubscriptionsRepository';
 import { AnkiConnectClient } from '../../services/ankify/AnkiConnectClient';
@@ -19,24 +20,24 @@ const clientsRepo = (
   >
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 const subsRepo = (
   rows: { target_deck: string | null; notion_page_title: string | null }[]
 ): AnkifyNotionSubscriptionsRepositoryInterface =>
   ({
-    listByOwner: jest.fn(async () => rows),
+    listByOwner: vi.fn(async () => rows),
   }) as unknown as AnkifyNotionSubscriptionsRepositoryInterface;
 
 describe('DeleteLeechNoteUseCase', () => {
   test('deletes the note after the ownership check passes', async () => {
-    const deleteNotes = jest.fn(async () => null);
-    const factory = jest.fn(
+    const deleteNotes = vi.fn(async () => null);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
-          findNotes: jest.fn(async () => [7001]),
+          ping: vi.fn(async () => 6),
+          findNotes: vi.fn(async () => [7001]),
           deleteNotes,
         }) as unknown as AnkiConnectClient
     );
@@ -54,12 +55,12 @@ describe('DeleteLeechNoteUseCase', () => {
   });
 
   test('rejects a note in an unowned deck and never deletes', async () => {
-    const deleteNotes = jest.fn(async () => null);
-    const factory = jest.fn(
+    const deleteNotes = vi.fn(async () => null);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
-          findNotes: jest.fn(async () => []),
+          ping: vi.fn(async () => 6),
+          findNotes: vi.fn(async () => []),
           deleteNotes,
         }) as unknown as AnkiConnectClient
     );
@@ -78,12 +79,12 @@ describe('DeleteLeechNoteUseCase', () => {
   });
 
   test('deleting an already-deleted note does not throw', async () => {
-    const deleteNotes = jest.fn(async () => null);
-    const factory = jest.fn(
+    const deleteNotes = vi.fn(async () => null);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
-          findNotes: jest.fn(async () => [7001]),
+          ping: vi.fn(async () => 6),
+          findNotes: vi.fn(async () => [7001]),
           deleteNotes,
         }) as unknown as AnkiConnectClient
     );

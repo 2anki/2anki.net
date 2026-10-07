@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -80,7 +81,7 @@ describe('ensureUploadBytes', () => {
       makeFile({ path: tmpPath }),
       makeFile({ path: gone, originalname: 'other.html' }),
     ];
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     ensureUploadBytes(files);
 

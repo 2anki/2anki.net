@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ConfirmEmailChangeUseCase } from './ConfirmEmailChangeUseCase';
 import InMemoryEmailChangeTokenRepository from '../../data_layer/InMemoryEmailChangeTokenRepository';
 import type UsersRepository from '../../data_layer/UsersRepository';
@@ -30,8 +31,8 @@ const makeUsersRepo = (options: {
   applyResult?: EmailChangeResult;
 }) =>
   ({
-    getByEmail: jest.fn().mockResolvedValue(options.collision ?? undefined),
-    applyEmailChange: jest
+    getByEmail: vi.fn().mockResolvedValue(options.collision ?? undefined),
+    applyEmailChange: vi
       .fn()
       .mockResolvedValue(options.applyResult ?? { ok: true }),
   }) as unknown as UsersRepository;
@@ -41,7 +42,7 @@ describe('ConfirmEmailChangeUseCase', () => {
     const useCase = new ConfirmEmailChangeUseCase(
       new InMemoryEmailChangeTokenRepository(),
       makeUsersRepo({}),
-      jest.fn()
+      vi.fn()
     );
 
     expect(await useCase.execute('missing')).toEqual({
@@ -57,7 +58,7 @@ describe('ConfirmEmailChangeUseCase', () => {
     const useCase = new ConfirmEmailChangeUseCase(
       repo,
       makeUsersRepo({}),
-      jest.fn()
+      vi.fn()
     );
 
     expect(await useCase.execute(RAW_TOKEN)).toEqual({
@@ -73,7 +74,7 @@ describe('ConfirmEmailChangeUseCase', () => {
     const useCase = new ConfirmEmailChangeUseCase(
       repo,
       makeUsersRepo({}),
-      jest.fn()
+      vi.fn()
     );
 
     expect(await useCase.execute(RAW_TOKEN)).toEqual({
@@ -85,7 +86,7 @@ describe('ConfirmEmailChangeUseCase', () => {
   it('fails cleanly when a colliding account exists at confirm time', async () => {
     const repo = new InMemoryEmailChangeTokenRepository();
     await seedToken(repo);
-    const revokeSessions = jest.fn();
+    const revokeSessions = vi.fn();
 
     const useCase = new ConfirmEmailChangeUseCase(
       repo,
@@ -104,7 +105,7 @@ describe('ConfirmEmailChangeUseCase', () => {
     const repo = new InMemoryEmailChangeTokenRepository();
     const token = await seedToken(repo);
     const usersRepo = makeUsersRepo({});
-    const revokeSessions = jest.fn().mockResolvedValue(undefined);
+    const revokeSessions = vi.fn().mockResolvedValue(undefined);
 
     const useCase = new ConfirmEmailChangeUseCase(
       repo,
@@ -124,7 +125,7 @@ describe('ConfirmEmailChangeUseCase', () => {
   it('returns email_taken and keeps sessions when the transaction loses the race', async () => {
     const repo = new InMemoryEmailChangeTokenRepository();
     await seedToken(repo);
-    const revokeSessions = jest.fn();
+    const revokeSessions = vi.fn();
 
     const useCase = new ConfirmEmailChangeUseCase(
       repo,

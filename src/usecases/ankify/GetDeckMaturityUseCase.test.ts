@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../data_layer/ankify/AnkifyNotionSubscriptionsRepository';
 import { AnkiConnectClient } from '../../services/ankify/AnkiConnectClient';
@@ -19,24 +20,24 @@ const clientsRepo = (
   >
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 const subsRepo = (
   rows: { target_deck: string | null; notion_page_title: string | null }[]
 ): AnkifyNotionSubscriptionsRepositoryInterface =>
   ({
-    listByOwner: jest.fn(async () => rows),
+    listByOwner: vi.fn(async () => rows),
   }) as unknown as AnkifyNotionSubscriptionsRepositoryInterface;
 
 describe('GetDeckMaturityUseCase', () => {
   test('counts mature cards at the 21-day boundary and averages intervals', async () => {
-    const findCards = jest.fn(async () => [1, 2, 3, 4]);
-    const getIntervals = jest.fn(async () => [21, 30, 20, 5]);
-    const factory = jest.fn(
+    const findCards = vi.fn(async () => [1, 2, 3, 4]);
+    const getIntervals = vi.fn(async () => [21, 30, 20, 5]);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findCards,
           getIntervals,
         }) as unknown as AnkiConnectClient
@@ -59,13 +60,13 @@ describe('GetDeckMaturityUseCase', () => {
   });
 
   test('quotes a hierarchical deck name in the findCards query', async () => {
-    const findCards = jest.fn(async () => []);
-    const factory = jest.fn(
+    const findCards = vi.fn(async () => []);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findCards,
-          getIntervals: jest.fn(),
+          getIntervals: vi.fn(),
         }) as unknown as AnkiConnectClient
     );
     const useCase = new GetDeckMaturityUseCase(
@@ -84,12 +85,12 @@ describe('GetDeckMaturityUseCase', () => {
   });
 
   test('returns zeros when the deck has no reviewed cards', async () => {
-    const getIntervals = jest.fn();
-    const factory = jest.fn(
+    const getIntervals = vi.fn();
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
-          findCards: jest.fn(async () => []),
+          ping: vi.fn(async () => 6),
+          findCards: vi.fn(async () => []),
           getIntervals,
         }) as unknown as AnkiConnectClient
     );
@@ -111,7 +112,7 @@ describe('GetDeckMaturityUseCase', () => {
   });
 
   test('rejects a deck the user does not own', async () => {
-    const factory = jest.fn();
+    const factory = vi.fn();
     const useCase = new GetDeckMaturityUseCase(
       clientsRepo(activeClient),
       subsRepo([{ target_deck: 'MS3::Pharma', notion_page_title: null }]),
@@ -128,7 +129,7 @@ describe('GetDeckMaturityUseCase', () => {
     const useCase = new GetDeckMaturityUseCase(
       clientsRepo(null),
       subsRepo([{ target_deck: 'MS3::Pharma', notion_page_title: null }]),
-      jest.fn()
+      vi.fn()
     );
 
     expect(await useCase.execute({ owner: 42, deck: 'MS3::Pharma' })).toEqual({

@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { GetBusinessMetricsUseCase } from './GetBusinessMetricsUseCase';
 import {
   BusinessMetricsResponse,
@@ -34,13 +35,13 @@ describe('GetBusinessMetricsUseCase', () => {
       cache_age_seconds: 412,
     };
     const service = {
-      getMetrics: jest.fn().mockResolvedValue(fake),
+      getMetrics: vi.fn().mockResolvedValue(fake),
     } as unknown as BusinessMetricsService;
     const useCase = new GetBusinessMetricsUseCase(service);
 
     const result = await useCase.execute();
 
     expect(result).toBe(fake);
-    expect(service.getMetrics as jest.Mock).toHaveBeenCalledTimes(1);
+    expect(service.getMetrics as Mock).toHaveBeenCalledTimes(1);
   });
 });

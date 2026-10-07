@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { SyncStripeSubscriptionsUseCase } from './SyncStripeSubscriptionsUseCase';
 
 const flushMicrotasks = () => new Promise((resolve) => setImmediate(resolve));
 
 describe('SyncStripeSubscriptionsUseCase', () => {
   it('starts the sync and reports started on the first call', () => {
-    const runSync = jest.fn().mockResolvedValue(undefined);
+    const runSync = vi.fn().mockResolvedValue(undefined);
     const useCase = new SyncStripeSubscriptionsUseCase(runSync);
 
     const result = useCase.execute();
@@ -15,7 +16,7 @@ describe('SyncStripeSubscriptionsUseCase', () => {
 
   it('rejects a second call while a sync is still running', () => {
     let resolveSync: () => void = () => undefined;
-    const runSync = jest.fn(
+    const runSync = vi.fn(
       () =>
         new Promise<void>((resolve) => {
           resolveSync = resolve;
@@ -35,7 +36,7 @@ describe('SyncStripeSubscriptionsUseCase', () => {
 
   it('allows a new sync once the previous run finishes', async () => {
     let resolveSync: () => void = () => undefined;
-    const runSync = jest.fn(
+    const runSync = vi.fn(
       () =>
         new Promise<void>((resolve) => {
           resolveSync = resolve;
@@ -54,7 +55,7 @@ describe('SyncStripeSubscriptionsUseCase', () => {
   });
 
   it('releases the lock even when the sync rejects', async () => {
-    const runSync = jest
+    const runSync = vi
       .fn()
       .mockRejectedValueOnce(new Error('stripe down'))
       .mockResolvedValueOnce(undefined);

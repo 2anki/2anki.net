@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import JobRepository from '../../data_layer/JobRepository';
 import { SetJobFailedUseCase } from './SetJobFailedUseCase';
 
 const makeRepo = (job: { status: string } | undefined) =>
   ({
-    findJobById: jest.fn().mockResolvedValue(job),
-    updateJobStatus: jest.fn().mockResolvedValue(undefined),
+    findJobById: vi.fn().mockResolvedValue(job),
+    updateJobStatus: vi.fn().mockResolvedValue(undefined),
   }) as unknown as JobRepository;
 
 describe('SetJobFailedUseCase', () => {
@@ -26,7 +27,7 @@ describe('SetJobFailedUseCase', () => {
   });
 
   it('returns without throwing when the job no longer exists (deleted mid-conversion)', async () => {
-    const warnSpy = jest
+    const warnSpy = vi
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
     try {

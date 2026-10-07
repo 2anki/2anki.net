@@ -2,6 +2,7 @@
   "vitest": [
     "src/controllers/helpers/**/*.test.ts",
     "src/data_layer/**/*.test.ts",
+    "src/usecases/**/*.test.ts",
     "src/lib/*.test.ts",
     "src/lib/analytics/**/*.test.ts",
     "src/lib/anki/**/*.test.ts",

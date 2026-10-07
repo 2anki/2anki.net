@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   CustomerSignalsResponse,
   CustomerSignalsService,
@@ -11,7 +12,7 @@ const emptyResponse: CustomerSignalsResponse = {
 };
 
 function buildUseCase() {
-  const getSignals = jest.fn().mockResolvedValue(emptyResponse);
+  const getSignals = vi.fn().mockResolvedValue(emptyResponse);
   const service = { getSignals } as unknown as CustomerSignalsService;
   return { useCase: new GetCustomerSignalsUseCase(service), getSignals };
 }

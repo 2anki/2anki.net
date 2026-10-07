@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import {
   DeleteInactiveUsersUseCase,
   IInactiveUserDeleter,
@@ -8,11 +9,11 @@ import { emailHash } from '../../lib/emailHash';
 
 function makeDeleter(
   overrides: Partial<IInactiveUserDeleter> = {}
-): jest.Mocked<IInactiveUserDeleter> {
+): Mocked<IInactiveUserDeleter> {
   return {
-    deleteUser: jest.fn().mockResolvedValue(undefined),
+    deleteUser: vi.fn().mockResolvedValue(undefined),
     ...overrides,
-  } as jest.Mocked<IInactiveUserDeleter>;
+  } as Mocked<IInactiveUserDeleter>;
 }
 
 async function seedSuppression(
@@ -101,7 +102,7 @@ describe('DeleteInactiveUsersUseCase', () => {
         { id: 2, email: 'bob@example.com' },
       ]);
       const deleter = makeDeleter({
-        deleteUser: jest
+        deleteUser: vi
           .fn()
           .mockRejectedValueOnce(new Error('FK violation'))
           .mockResolvedValueOnce(undefined),

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkiConnectClient } from '../../services/ankify/AnkiConnectClient';
 import { GetReviewCardUseCase } from './GetReviewCardUseCase';
@@ -19,12 +20,12 @@ const clientsRepo = (
   >
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 describe('GetReviewCardUseCase', () => {
   it('returns connected:false when no active client', async () => {
-    const useCase = new GetReviewCardUseCase(clientsRepo(null), jest.fn());
+    const useCase = new GetReviewCardUseCase(clientsRepo(null), vi.fn());
 
     const result = await useCase.execute({ owner: 42, cardId: 9001 });
 
@@ -32,12 +33,12 @@ describe('GetReviewCardUseCase', () => {
   });
 
   it('returns card:null when the card id is not in this Anki', async () => {
-    const findCards = jest.fn(async () => []);
-    const cardsInfo = jest.fn();
-    const factory = jest.fn(
+    const findCards = vi.fn(async () => []);
+    const cardsInfo = vi.fn();
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findCards,
           cardsInfo,
         }) as unknown as AnkiConnectClient
@@ -55,8 +56,8 @@ describe('GetReviewCardUseCase', () => {
   });
 
   it('returns the card with the review media css appended', async () => {
-    const findCards = jest.fn(async () => [9001]);
-    const cardsInfo = jest.fn(async () => [
+    const findCards = vi.fn(async () => [9001]);
+    const cardsInfo = vi.fn(async () => [
       {
         cardId: 9001,
         note: 5,
@@ -68,10 +69,10 @@ describe('GetReviewCardUseCase', () => {
         css: '.card { color: black; }',
       },
     ]);
-    const factory = jest.fn(
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findCards,
           cardsInfo,
         }) as unknown as AnkiConnectClient
@@ -94,8 +95,8 @@ describe('GetReviewCardUseCase', () => {
   });
 
   it('inlines image and audio media as data URIs and strips raw tokens', async () => {
-    const findCards = jest.fn(async () => [9001]);
-    const cardsInfo = jest.fn(async () => [
+    const findCards = vi.fn(async () => [9001]);
+    const cardsInfo = vi.fn(async () => [
       {
         cardId: 9001,
         note: 5,
@@ -107,7 +108,7 @@ describe('GetReviewCardUseCase', () => {
         css: '.card {}',
       },
     ]);
-    const notesInfo = jest.fn(async () => [
+    const notesInfo = vi.fn(async () => [
       {
         noteId: 5,
         modelName: 'JlabNote-JlabConverted-1',
@@ -115,13 +116,13 @@ describe('GetReviewCardUseCase', () => {
         fields: { Audio: { value: '[sound:b.mp3]', order: 0 } },
       },
     ]);
-    const retrieveMediaFile = jest.fn(async () =>
+    const retrieveMediaFile = vi.fn(async () =>
       Buffer.from('BYTES', 'utf-8').toString('base64')
     );
-    const factory = jest.fn(
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findCards,
           cardsInfo,
           notesInfo,
@@ -144,8 +145,8 @@ describe('GetReviewCardUseCase', () => {
   });
 
   it('resolves [anki:play] directives to audio from the note field sounds', async () => {
-    const findCards = jest.fn(async () => [9001]);
-    const cardsInfo = jest.fn(async () => [
+    const findCards = vi.fn(async () => [9001]);
+    const cardsInfo = vi.fn(async () => [
       {
         cardId: 9001,
         note: 77,
@@ -157,7 +158,7 @@ describe('GetReviewCardUseCase', () => {
         css: '.card {}',
       },
     ]);
-    const notesInfo = jest.fn(async () => [
+    const notesInfo = vi.fn(async () => [
       {
         noteId: 77,
         modelName: 'JlabNote-JlabConverted-1',
@@ -169,13 +170,13 @@ describe('GetReviewCardUseCase', () => {
         },
       },
     ]);
-    const retrieveMediaFile = jest.fn(async () =>
+    const retrieveMediaFile = vi.fn(async () =>
       Buffer.from('MP3BYTES', 'utf-8').toString('base64')
     );
-    const factory = jest.fn(
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findCards,
           cardsInfo,
           notesInfo,
@@ -197,8 +198,8 @@ describe('GetReviewCardUseCase', () => {
   });
 
   it('does not fetch note info for a card without [anki:play] directives', async () => {
-    const findCards = jest.fn(async () => [9001]);
-    const cardsInfo = jest.fn(async () => [
+    const findCards = vi.fn(async () => [9001]);
+    const cardsInfo = vi.fn(async () => [
       {
         cardId: 9001,
         note: 5,
@@ -210,15 +211,15 @@ describe('GetReviewCardUseCase', () => {
         css: '',
       },
     ]);
-    const notesInfo = jest.fn();
-    const factory = jest.fn(
+    const notesInfo = vi.fn();
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findCards,
           cardsInfo,
           notesInfo,
-          retrieveMediaFile: jest.fn(),
+          retrieveMediaFile: vi.fn(),
         }) as unknown as AnkiConnectClient
     );
     const useCase = new GetReviewCardUseCase(
@@ -232,8 +233,8 @@ describe('GetReviewCardUseCase', () => {
   });
 
   it('fetches a media file shared across front and back only once', async () => {
-    const findCards = jest.fn(async () => [9001]);
-    const cardsInfo = jest.fn(async () => [
+    const findCards = vi.fn(async () => [9001]);
+    const cardsInfo = vi.fn(async () => [
       {
         cardId: 9001,
         note: 5,
@@ -245,13 +246,13 @@ describe('GetReviewCardUseCase', () => {
         css: '',
       },
     ]);
-    const retrieveMediaFile = jest.fn(async () =>
+    const retrieveMediaFile = vi.fn(async () =>
       Buffer.from('BYTES', 'utf-8').toString('base64')
     );
-    const factory = jest.fn(
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findCards,
           cardsInfo,
           retrieveMediaFile,

@@ -1,4 +1,6 @@
+import { vi, type MockInstance } from 'vitest';
 import fs from 'fs';
+import * as trackModule from '../../services/events/track';
 import {
   getFileContents,
   runUploadGenerationInWorker,
@@ -19,18 +21,18 @@ import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/Prepar
 import { getPackagesFromZip } from './getPackagesFromZip';
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
 
-jest.mock('fs');
-jest.mock('../../lib/parser/WorkSpace');
-jest.mock('../../infrastracture/adapters/fileConversion/PrepareDeck', () => ({
-  PrepareDeck: jest.fn(),
+vi.mock('fs');
+vi.mock('../../lib/parser/WorkSpace');
+vi.mock('../../infrastracture/adapters/fileConversion/PrepareDeck', () => ({
+  PrepareDeck: vi.fn(),
 }));
-jest.mock('./getPackagesFromZip', () => ({
-  getPackagesFromZip: jest.fn(),
+vi.mock('./getPackagesFromZip', () => ({
+  getPackagesFromZip: vi.fn(),
 }));
 
-const mockFs = jest.mocked(fs);
-const mockPrepareDeck = jest.mocked(PrepareDeck);
-const mockGetPackagesFromZip = jest.mocked(getPackagesFromZip);
+const mockFs = vi.mocked(fs);
+const mockPrepareDeck = vi.mocked(PrepareDeck);
+const mockGetPackagesFromZip = vi.mocked(getPackagesFromZip);
 
 function makeClaudeSettings(): CardOption {
   return new CardOption({
@@ -80,14 +82,14 @@ function makeFile(overrides: Partial<UploadedFile>): UploadedFile {
 
 describe('getFileContents', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('dwell time logging', () => {
-    let infoSpy: jest.SpyInstance;
+    let infoSpy: MockInstance;
 
     beforeEach(() => {
-      infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+      infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
     });
 
     afterEach(() => {
@@ -95,8 +97,8 @@ describe('getFileContents', () => {
     });
 
     it('logs dwellMs >= 0 when reading from buffer', () => {
-      jest.useFakeTimers();
-      jest.setSystemTime(1000);
+      vi.useFakeTimers();
+      vi.setSystemTime(1000);
 
       const content = Buffer.from('hello');
       const file = makeFile({ path: '', buffer: content });
@@ -114,17 +116,17 @@ describe('getFileContents', () => {
       const logged = infoSpy.mock.calls[0][1] as { dwellMs: number };
       expect(logged.dwellMs).toBeGreaterThanOrEqual(0);
 
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('logs dwellMs >= 0 when reading from disk', () => {
-      jest.useFakeTimers();
-      jest.setSystemTime(2000);
+      vi.useFakeTimers();
+      vi.setSystemTime(2000);
 
       const content = Buffer.from('disk content');
       const file = makeFile({ path: '/tmp/upload-exists' });
-      mockFs.existsSync = jest.fn().mockReturnValue(true);
-      mockFs.readFileSync = jest.fn().mockReturnValue(content);
+      mockFs.existsSync = vi.fn().mockReturnValue(true);
+      mockFs.readFileSync = vi.fn().mockReturnValue(content);
 
       getFileContents(file, 1500);
 
@@ -139,7 +141,7 @@ describe('getFileContents', () => {
       const logged = infoSpy.mock.calls[0][1] as { dwellMs: number };
       expect(logged.dwellMs).toBeGreaterThanOrEqual(0);
 
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
   });
 
@@ -148,7 +150,7 @@ describe('getFileContents', () => {
       path: '/tmp/upload-gone',
       buffer: undefined as never,
     });
-    mockFs.existsSync = jest.fn().mockReturnValue(false);
+    mockFs.existsSync = vi.fn().mockReturnValue(false);
 
     expect(() => getFileContents(file)).toThrow(
       'Uploaded file is no longer available on disk and has no buffer fallback'
@@ -161,7 +163,7 @@ describe('getFileContents', () => {
     // worker runs, getFileContents must serve the captured bytes, not throw.
     const snapshot = Buffer.from('snapshot bytes');
     const file = makeFile({ path: '/tmp/upload-reaped', buffer: snapshot });
-    mockFs.existsSync = jest.fn().mockReturnValue(false);
+    mockFs.existsSync = vi.fn().mockReturnValue(false);
 
     const result = getFileContents(file);
 
@@ -188,8 +190,8 @@ describe('getFileContents', () => {
   it('returns file contents when path exists on disk', () => {
     const content = Buffer.from('disk content');
     const file = makeFile({ path: '/tmp/upload-exists' });
-    mockFs.existsSync = jest.fn().mockReturnValue(true);
-    mockFs.readFileSync = jest.fn().mockReturnValue(content);
+    mockFs.existsSync = vi.fn().mockReturnValue(true);
+    mockFs.readFileSync = vi.fn().mockReturnValue(content);
 
     const result = getFileContents(file);
 
@@ -209,11 +211,11 @@ describe('runUploadGenerationInWorker', () => {
     };
   }
 
-  let infoSpy: jest.SpyInstance;
+  let infoSpy: MockInstance;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.clearAllMocks();
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -239,7 +241,7 @@ describe('runUploadGenerationInWorker', () => {
   });
 
   it('drains recorded spend even when generation throws', async () => {
-    const flushSpy = jest
+    const flushSpy = vi
       .spyOn(getEventsSink(), 'flushDurable')
       .mockResolvedValue(undefined);
     const file = makeFile({
@@ -271,7 +273,7 @@ describe('runUploadGenerationInWorker', () => {
   });
 
   it('forwards an onProgress callback through to generation', async () => {
-    const onProgress = jest.fn();
+    const onProgress = vi.fn();
     const file = makeFile({
       originalname: 'notes.unsupported',
       filename: 'notes.unsupported',
@@ -392,12 +394,12 @@ describe('shouldDedupeAcrossDecks', () => {
 
 describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.clearAllMocks();
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   function makeMultiFileTask(): UploadGenerationTask {
@@ -427,8 +429,8 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
   }
 
   it('threads one dedup state across loose files and emits the suppressed count', async () => {
-    const trackMod = require('../../services/events/track');
-    const trackSpy = jest
+    const trackMod = trackModule;
+    const trackSpy = vi
       .spyOn(trackMod, 'track')
       .mockImplementation(() => undefined);
 
@@ -471,8 +473,8 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
   });
 
   it('does not thread a dedup state for an anonymous single-file upload', async () => {
-    const trackMod = require('../../services/events/track');
-    const trackSpy = jest
+    const trackMod = trackModule;
+    const trackSpy = vi
       .spyOn(trackMod, 'track')
       .mockImplementation(() => undefined);
 
@@ -499,8 +501,8 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
   });
 
   it('threads a state and returns fingerprints for a signed-in single-file AI upload', async () => {
-    const trackMod = require('../../services/events/track');
-    const trackSpy = jest
+    const trackMod = trackModule;
+    const trackSpy = vi
       .spyOn(trackMod, 'track')
       .mockImplementation(() => undefined);
 
@@ -535,8 +537,8 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
   });
 
   it('suppresses a card matching seeded history and reports the cross-deck count', async () => {
-    const trackMod = require('../../services/events/track');
-    const trackSpy = jest
+    const trackMod = trackModule;
+    const trackSpy = vi
       .spyOn(trackMod, 'track')
       .mockImplementation(() => undefined);
 
@@ -576,8 +578,8 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
   });
 
   it('succeeds and keeps earlier decks when a later loose file is fully suppressed', async () => {
-    const trackMod = require('../../services/events/track');
-    jest.spyOn(trackMod, 'track').mockImplementation(() => undefined);
+    const trackMod = trackModule;
+    vi.spyOn(trackMod, 'track').mockImplementation(() => undefined);
 
     mockPrepareDeck.mockImplementation(async (input) => {
       const isFirst = input.name === 'chapter.html';
@@ -606,8 +608,8 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
   });
 
   it('shares one accumulator across loose files and a zip, emitting a single event', async () => {
-    const trackMod = require('../../services/events/track');
-    const trackSpy = jest
+    const trackMod = trackModule;
+    const trackSpy = vi
       .spyOn(trackMod, 'track')
       .mockImplementation(() => undefined);
 

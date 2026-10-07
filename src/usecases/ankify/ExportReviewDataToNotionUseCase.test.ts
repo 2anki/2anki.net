@@ -1,3 +1,4 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import {
   ExportReviewDataToNotionUseCase,
   findTrackerPropertyKey,
@@ -28,38 +29,38 @@ const sampleClient = (): AnkifyClient => ({
 
 const makeClientsRepo = (
   override: { activeClient?: AnkifyClient | null } = {}
-): jest.Mocked<AnkifyClientsRepositoryInterface> =>
+): Mocked<AnkifyClientsRepositoryInterface> =>
   ({
-    create: jest.fn(),
-    listByOwner: jest.fn(),
-    findActiveById: jest.fn(),
-    findActiveByOwner: jest.fn(async () =>
+    create: vi.fn(),
+    listByOwner: vi.fn(),
+    findActiveById: vi.fn(),
+    findActiveByOwner: vi.fn(async () =>
       'activeClient' in override ? override.activeClient! : sampleClient()
     ),
-    setStatus: jest.fn(),
-    touchLastActiveAt: jest.fn(),
-    reservedPorts: jest.fn(),
-    listIdleSince: jest.fn(),
-  }) as unknown as jest.Mocked<AnkifyClientsRepositoryInterface>;
+    setStatus: vi.fn(),
+    touchLastActiveAt: vi.fn(),
+    reservedPorts: vi.fn(),
+    listIdleSince: vi.fn(),
+  }) as unknown as Mocked<AnkifyClientsRepositoryInterface>;
 
-const makeNotionRepo = (token: string | null): jest.Mocked<INotionRepository> =>
+const makeNotionRepo = (token: string | null): Mocked<INotionRepository> =>
   ({
-    getNotionData: jest.fn(),
-    saveNotionToken: jest.fn(),
-    getNotionToken: jest.fn(async () => token),
-    deleteBlocksByOwner: jest.fn(),
-    deleteNotionData: jest.fn(),
-    markTokenInvalid: jest.fn(async () => undefined),
-    clearTokenInvalid: jest.fn(async () => undefined),
-  }) as unknown as jest.Mocked<INotionRepository>;
+    getNotionData: vi.fn(),
+    saveNotionToken: vi.fn(),
+    getNotionToken: vi.fn(async () => token),
+    deleteBlocksByOwner: vi.fn(),
+    deleteNotionData: vi.fn(),
+    markTokenInvalid: vi.fn(async () => undefined),
+    clearTokenInvalid: vi.fn(async () => undefined),
+  }) as unknown as Mocked<INotionRepository>;
 
 const makeAnkiConnect = (
   rows: Array<[string, number]>,
   minutesByDay: Map<string, number> = new Map()
 ) =>
   ({
-    getNumCardsReviewedByDay: jest.fn(async () => rows),
-    getReviewMinutesByDay: jest.fn(async () => minutesByDay),
+    getNumCardsReviewedByDay: vi.fn(async () => rows),
+    getReviewMinutesByDay: vi.fn(async () => minutesByDay),
   }) as unknown as AnkiConnectClient;
 
 const defaultSchema = (): TrackerSchema => ({
@@ -74,15 +75,15 @@ const makeNotionClient = (
   schema: TrackerSchema = defaultSchema()
 ): {
   client: NotionExportClient;
-  create: jest.Mock;
-  query: jest.Mock;
-  getSchema: jest.Mock;
+  create: Mock;
+  query: Mock;
+  getSchema: Mock;
 } => {
-  const create = jest.fn(async () => ({}));
-  const query = jest.fn(async (params: any) => ({
+  const create = vi.fn(async () => ({}));
+  const query = vi.fn(async (params: any) => ({
     results: existingDates.includes(params.filter.date.equals) ? [{}] : [],
   }));
-  const getSchema = jest.fn(async () => schema);
+  const getSchema = vi.fn(async () => schema);
   return {
     create,
     query,
@@ -158,7 +159,7 @@ describe('ExportReviewDataToNotionUseCase', () => {
 
     expect(result.totalDays).toBe(2);
     expect(create).toHaveBeenCalledTimes(2);
-    const dates = (create as jest.Mock).mock.calls.map(
+    const dates = (create as Mock).mock.calls.map(
       (c) => c[0].properties.Date.date.start
     );
     expect(dates).toEqual(['2026-05-03', '2026-05-04']);
@@ -242,7 +243,7 @@ describe('ExportReviewDataToNotionUseCase', () => {
     const result = await useCase.execute({ owner: 42, databaseId: 'db' });
 
     expect(result.exported).toBe(2);
-    const calls = (create as jest.Mock).mock.calls;
+    const calls = (create as Mock).mock.calls;
     expect(calls[0][0].properties).toMatchObject({
       Date: { date: { start: '2026-05-06' } },
       Reviews: { number: 12 },
@@ -273,7 +274,7 @@ describe('ExportReviewDataToNotionUseCase', () => {
 
     await useCase.execute({ owner: 42, databaseId: 'db' });
 
-    const properties = (create as jest.Mock).mock.calls[0][0].properties;
+    const properties = (create as Mock).mock.calls[0][0].properties;
     expect(properties).toHaveProperty('Date');
     expect(properties).toHaveProperty('Reviews');
     expect(properties).not.toHaveProperty('Time spent');

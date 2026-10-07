@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import fs from 'node:fs';
 import { mindmapToMarkmapHtml } from './mindmapToMarkmapHtml';
 
@@ -98,7 +99,7 @@ describe('mindmapToMarkmapHtml', () => {
   });
 
   it('reads each bundle file at most once across multiple calls (memoized)', () => {
-    const readFileSyncSpy = jest.spyOn(fs, 'readFileSync');
+    const readFileSyncSpy = vi.spyOn(fs, 'readFileSync');
 
     mindmapToMarkmapHtml(fiveNodeTree, 'Call 1');
     mindmapToMarkmapHtml(fiveNodeTree, 'Call 2');

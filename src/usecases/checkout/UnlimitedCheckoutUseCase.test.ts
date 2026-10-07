@@ -1,9 +1,12 @@
-jest.mock('../../lib/misc/hashToken', () => (s: string) => `hashed:${s}`);
+import { vi } from 'vitest';
+vi.mock('../../lib/misc/hashToken', () => ({
+  default: (s: string) => `hashed:${s}`,
+}));
 
 import { UnlimitedCheckoutUseCase } from './UnlimitedCheckoutUseCase';
 import { PricingResolutionError } from './PricingResolutionError';
 
-const mockStripeCreateSession = jest.fn();
+const mockStripeCreateSession = vi.fn();
 
 const makeStripe = () =>
   ({ checkout: { sessions: { create: mockStripeCreateSession } } }) as never;
@@ -12,7 +15,7 @@ const MONTHLY_PRICE_ID = 'price_unlimited_monthly';
 const YEARLY_PRICE_ID = 'price_unlimited_yearly';
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  vi.resetAllMocks();
 });
 
 describe('UnlimitedCheckoutUseCase', () => {
@@ -155,7 +158,7 @@ describe('UnlimitedCheckoutUseCase', () => {
     mockStripeCreateSession.mockResolvedValue({
       url: 'https://checkout.stripe.com/test',
     });
-    const consoleSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const uc = new UnlimitedCheckoutUseCase(
       makeStripe(),
@@ -358,7 +361,7 @@ describe('UnlimitedCheckoutUseCase', () => {
     mockStripeCreateSession.mockResolvedValue({
       url: 'https://checkout.stripe.com/test',
     });
-    const consoleSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const uc = new UnlimitedCheckoutUseCase(
       makeStripe(),
@@ -385,7 +388,7 @@ describe('UnlimitedCheckoutUseCase', () => {
   const afterWindow = new Date('2026-06-22T00:00:00Z');
 
   const makeResolver = (id: string | null) => ({
-    resolveByLookupKey: jest.fn().mockResolvedValue(id),
+    resolveByLookupKey: vi.fn().mockResolvedValue(id),
   });
 
   it('uses the legacy env price for a pre-cutover user inside the lock-in window when flag on', async () => {

@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { RequestEmailChangeUseCase } from './RequestEmailChangeUseCase';
 import InMemoryEmailChangeTokenRepository from '../../data_layer/InMemoryEmailChangeTokenRepository';
 import type UsersRepository from '../../data_layer/UsersRepository';
@@ -20,19 +21,19 @@ const makeUsersRepo = (options: {
   collision?: FakeUser | null;
 }) =>
   ({
-    getById: jest.fn().mockResolvedValue(options.current),
-    getByEmail: jest.fn().mockResolvedValue(options.collision ?? undefined),
+    getById: vi.fn().mockResolvedValue(options.current),
+    getByEmail: vi.fn().mockResolvedValue(options.collision ?? undefined),
   }) as unknown as UsersRepository;
 
 const makeOauthRepo = (hasIdentity: boolean) =>
   ({
-    hasIdentityForUser: jest.fn().mockResolvedValue(hasIdentity),
+    hasIdentityForUser: vi.fn().mockResolvedValue(hasIdentity),
   }) as unknown as OauthIdentitiesRepository;
 
 const makeEmailService = () =>
   ({
-    sendEmailChangeConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-    sendEmailChangeNotificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendEmailChangeConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeNotificationEmail: vi.fn().mockResolvedValue(undefined),
   }) as unknown as IEmailService;
 
 const currentUser: FakeUser = {
@@ -174,10 +175,10 @@ describe('RequestEmailChangeUseCase', () => {
 
     expect(outcome).toEqual({ ok: true });
     expect(
-      (emailService.sendEmailChangeConfirmationEmail as jest.Mock).mock.calls
+      (emailService.sendEmailChangeConfirmationEmail as Mock).mock.calls
     ).toHaveLength(0);
     expect(
-      (emailService.sendEmailChangeNotificationEmail as jest.Mock).mock.calls
+      (emailService.sendEmailChangeNotificationEmail as Mock).mock.calls
     ).toHaveLength(0);
     expect(await tokensRepo.findLivePendingByUser(7, new Date())).toBeNull();
     expect(

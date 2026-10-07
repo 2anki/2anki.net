@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { DeleteAllConversationsUseCase } from './DeleteAllConversationsUseCase';
 import { InMemoryConversationsRepository } from '../../data_layer/ConversationsRepository';
 import { InMemoryChatMessagesRepository } from '../../data_layer/ChatMessagesRepository';
@@ -78,7 +79,7 @@ describe('DeleteAllConversationsUseCase attachment sweep', () => {
   it('sweeps the user attachment prefix before deleting rows', async () => {
     const conversations = new InMemoryConversationsRepository();
     const messages = new InMemoryChatMessagesRepository();
-    const deleteByPrefix = jest.fn().mockResolvedValue(2);
+    const deleteByPrefix = vi.fn().mockResolvedValue(2);
     const useCase = new DeleteAllConversationsUseCase(conversations, messages, {
       deleteByPrefix,
     });
@@ -92,9 +93,7 @@ describe('DeleteAllConversationsUseCase attachment sweep', () => {
     const conversations = new InMemoryConversationsRepository();
     const messages = new InMemoryChatMessagesRepository();
     await conversations.create({ userId: 7, title: 'Mine' });
-    const deleteByPrefix = jest
-      .fn()
-      .mockRejectedValue(new Error('storage down'));
+    const deleteByPrefix = vi.fn().mockRejectedValue(new Error('storage down'));
     const useCase = new DeleteAllConversationsUseCase(conversations, messages, {
       deleteByPrefix,
     });

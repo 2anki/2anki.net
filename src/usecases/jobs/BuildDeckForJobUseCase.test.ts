@@ -1,3 +1,4 @@
+import { vi, type Mock, type Mocked, type MockedClass } from 'vitest';
 import { BuildDeckForJobUseCase } from './BuildDeckForJobUseCase';
 import { EmptyDeckError } from './EmptyDeckError';
 import JobRepository from '../../data_layer/JobRepository';
@@ -13,43 +14,49 @@ import CardGenerator from '../../lib/anki/CardGenerator';
 import fsPromises from 'node:fs/promises';
 import { getDatabase } from '../../data_layer';
 
-jest.mock('../../lib/anki/CardGenerator');
-jest.mock('../../data_layer', () => ({
-  getDatabase: jest.fn(),
-}));
-jest.mock('node:fs/promises', () => ({
-  __esModule: true,
-  default: { readFile: jest.fn() },
-  readFile: jest.fn(),
-}));
-jest.mock('../../lib/misc/file', () => ({
-  FileSizeInMegaBytes: jest.fn().mockReturnValue(1),
-}));
-
-function buildUploadRepository(): jest.Mocked<IUploadRepository> {
+vi.mock('../../lib/anki/CardGenerator');
+vi.mock('../../data_layer', function () {
   return {
-    deleteUpload: jest.fn().mockResolvedValue(1),
-    getUploadsByOwner: jest.fn().mockResolvedValue([]),
-    findByIdAndOwner: jest.fn().mockResolvedValue(null),
-    findByObjectId: jest.fn().mockResolvedValue(null),
-    findByKey: jest.fn().mockResolvedValue(null),
-    findAllByObjectIdAndOwner: jest.fn().mockResolvedValue([]),
-    update: jest.fn().mockResolvedValue([]),
-    getLastUploadForUser: jest.fn().mockResolvedValue(null),
-    getLastReconvertibleUpload: jest.fn().mockResolvedValue(null),
-    findByOwnerAndDedupeKey: jest.fn().mockResolvedValue(null),
-    insertNativeDeck: jest.fn(),
-    insertConvertedDeck: jest.fn(),
+    getDatabase: vi.fn(),
+  };
+});
+vi.mock('node:fs/promises', function () {
+  return {
+    __esModule: true,
+    default: { readFile: vi.fn() },
+    readFile: vi.fn(),
+  };
+});
+vi.mock('../../lib/misc/file', function () {
+  return {
+    FileSizeInMegaBytes: vi.fn().mockReturnValue(1),
+  };
+});
+
+function buildUploadRepository(): Mocked<IUploadRepository> {
+  return {
+    deleteUpload: vi.fn().mockResolvedValue(1),
+    getUploadsByOwner: vi.fn().mockResolvedValue([]),
+    findByIdAndOwner: vi.fn().mockResolvedValue(null),
+    findByObjectId: vi.fn().mockResolvedValue(null),
+    findByKey: vi.fn().mockResolvedValue(null),
+    findAllByObjectIdAndOwner: vi.fn().mockResolvedValue([]),
+    update: vi.fn().mockResolvedValue([]),
+    getLastUploadForUser: vi.fn().mockResolvedValue(null),
+    getLastReconvertibleUpload: vi.fn().mockResolvedValue(null),
+    findByOwnerAndDedupeKey: vi.fn().mockResolvedValue(null),
+    insertNativeDeck: vi.fn(),
+    insertConvertedDeck: vi.fn(),
   };
 }
 
 describe('BuildDeckForJobUseCase', () => {
   const jobRepository = {
-    updateJobStatus: jest.fn().mockResolvedValue(undefined),
+    updateJobStatus: vi.fn().mockResolvedValue(undefined),
   } as unknown as JobRepository;
 
   const exporter = {
-    configure: jest.fn(),
+    configure: vi.fn(),
   } as unknown as CustomExporter;
 
   const bl = { firstPageTitle: 'Title' } as unknown as BlockHandler;
@@ -57,14 +64,14 @@ describe('BuildDeckForJobUseCase', () => {
   const settings = { deckName: 'Deck' } as unknown as CardOption;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('throws EmptyDeckError when every deck has zero cards and never invokes CardGenerator', async () => {
     const storage = {
-      uniqify: jest.fn(),
-      uploadFile: jest.fn(),
-      delete: jest.fn(),
+      uniqify: vi.fn(),
+      uploadFile: vi.fn(),
+      delete: vi.fn(),
     } as unknown as StorageHandler;
     const uploadRepository = buildUploadRepository();
     const useCase = new BuildDeckForJobUseCase(jobRepository, uploadRepository);
@@ -92,30 +99,31 @@ describe('BuildDeckForJobUseCase', () => {
   });
 
   describe('prior-upload prune on re-conversion', () => {
-    const MockCardGenerator = CardGenerator as jest.MockedClass<
+    const MockCardGenerator = CardGenerator as MockedClass<
       typeof CardGenerator
     >;
-    const mockReadFile = fsPromises.readFile as jest.Mock;
-    const mockGetDatabase = getDatabase as jest.Mock;
+    const mockReadFile = fsPromises.readFile as Mock;
+    const mockGetDatabase = getDatabase as Mock;
 
     beforeEach(() => {
-      MockCardGenerator.mockImplementation(
-        () =>
-          ({
-            run: jest.fn().mockResolvedValue('/tmp/ws/deck.apkg'),
-          }) as unknown as InstanceType<typeof CardGenerator>
-      );
+      MockCardGenerator.mockImplementation(function () {
+        return {
+          run: vi.fn().mockResolvedValue('/tmp/ws/deck.apkg'),
+        } as unknown as InstanceType<typeof CardGenerator>;
+      });
       mockReadFile.mockResolvedValue(Buffer.from('apkg-bytes'));
-      mockGetDatabase.mockReturnValue(() => ({
-        insert: jest.fn().mockResolvedValue(1),
-      }));
+      mockGetDatabase.mockReturnValue(function () {
+        return {
+          insert: vi.fn().mockResolvedValue(1),
+        };
+      });
     });
 
     it('deletes the S3 object and DB row for every prior upload after inserting the new one', async () => {
       const storage = {
-        uniqify: jest.fn().mockReturnValue('new-key.apkg'),
-        uploadFile: jest.fn().mockResolvedValue(undefined),
-        delete: jest.fn().mockResolvedValue(true),
+        uniqify: vi.fn().mockReturnValue('new-key.apkg'),
+        uploadFile: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(true),
       } as unknown as StorageHandler;
       const uploadRepository = buildUploadRepository();
       uploadRepository.findAllByObjectIdAndOwner.mockResolvedValue([
@@ -156,9 +164,9 @@ describe('BuildDeckForJobUseCase', () => {
 
     it('makes no prune calls when there are no prior uploads', async () => {
       const storage = {
-        uniqify: jest.fn().mockReturnValue('new-key.apkg'),
-        uploadFile: jest.fn().mockResolvedValue(undefined),
-        delete: jest.fn().mockResolvedValue(true),
+        uniqify: vi.fn().mockReturnValue('new-key.apkg'),
+        uploadFile: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(true),
       } as unknown as StorageHandler;
       const uploadRepository = buildUploadRepository();
 
@@ -183,9 +191,9 @@ describe('BuildDeckForJobUseCase', () => {
 
     it('keeps going when a prune step throws (best-effort cleanup)', async () => {
       const storage = {
-        uniqify: jest.fn().mockReturnValue('new-key.apkg'),
-        uploadFile: jest.fn().mockResolvedValue(undefined),
-        delete: jest
+        uniqify: vi.fn().mockReturnValue('new-key.apkg'),
+        uploadFile: vi.fn().mockResolvedValue(undefined),
+        delete: vi
           .fn()
           .mockRejectedValueOnce(new Error('s3 boom'))
           .mockResolvedValue(true),
@@ -195,7 +203,7 @@ describe('BuildDeckForJobUseCase', () => {
         { id: 1, owner: 7, key: 'old-1.apkg', object_id: 'page-x' } as Uploads,
         { id: 2, owner: 7, key: 'old-2.apkg', object_id: 'page-x' } as Uploads,
       ]);
-      const consoleErr = jest
+      const consoleErr = vi
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
 

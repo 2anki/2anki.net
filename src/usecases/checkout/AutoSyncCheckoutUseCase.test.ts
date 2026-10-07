@@ -1,25 +1,28 @@
-jest.mock('../../lib/integrations/stripe', () => ({
-  getStripe: jest.fn(),
-  getCustomerId: jest.fn(),
-  updateStoreSubscription: jest.fn(),
+import { vi, type Mock } from 'vitest';
+vi.mock('../../lib/integrations/stripe', () => ({
+  getStripe: vi.fn(),
+  getCustomerId: vi.fn(),
+  updateStoreSubscription: vi.fn(),
 }));
 
-jest.mock('../../services/SubscriptionService');
+vi.mock('../../services/SubscriptionService');
 
-jest.mock('../../lib/misc/hashToken', () => (s: string) => `hashed:${s}`);
+vi.mock('../../lib/misc/hashToken', () => ({
+  default: (s: string) => `hashed:${s}`,
+}));
 
 import { AutoSyncCheckoutUseCase } from './AutoSyncCheckoutUseCase';
 import SubscriptionService from '../../services/SubscriptionService';
 
-const mockCountActive = SubscriptionService.countActiveByProductId as jest.Mock;
+const mockCountActive = SubscriptionService.countActiveByProductId as Mock;
 const mockGetUserActiveSubscriptions =
-  SubscriptionService.getUserActiveSubscriptions as jest.Mock;
+  SubscriptionService.getUserActiveSubscriptions as Mock;
 
 const AUTO_SYNC_PRODUCT_ID = 'prod_test_auto_sync';
 const AUTO_SYNC_PRICE_ID = 'price_test_auto_sync';
 const MAX_SUBSCRIBERS = 10;
 
-const mockStripeCreateSession = jest.fn();
+const mockStripeCreateSession = vi.fn();
 
 const makeUseCase = () =>
   new AutoSyncCheckoutUseCase(
@@ -30,7 +33,7 @@ const makeUseCase = () =>
   );
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  vi.resetAllMocks();
 });
 
 describe('AutoSyncCheckoutUseCase', () => {
@@ -173,7 +176,7 @@ describe('AutoSyncCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const consoleSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const uc = makeUseCase();
     await uc.execute({
@@ -194,7 +197,7 @@ describe('AutoSyncCheckoutUseCase', () => {
     mockCountActive.mockResolvedValue(MAX_SUBSCRIBERS);
     mockGetUserActiveSubscriptions.mockResolvedValue([]);
 
-    const consoleSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const uc = makeUseCase();
     await uc.execute({ userEmail: 'user@example.com', userId: 42 });
@@ -214,7 +217,7 @@ describe('AutoSyncCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const consoleSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const uc = makeUseCase();
     await uc.execute({ userEmail: 'user@example.com', userId: 42 });

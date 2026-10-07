@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,22 +15,22 @@ beforeAll(() => {
 
 describe('CreateJobWorkSpaceUseCase', () => {
   const jobRepository = {
-    updateJobStatus: jest.fn().mockResolvedValue(true),
+    updateJobStatus: vi.fn().mockResolvedValue(true),
   } as unknown as JobRepository;
 
   const settingsRepository: ISettingsRepository = {
-    load: jest
+    load: vi
       .fn()
       .mockResolvedValue(new CardOption(CardOption.LoadDefaultOptions())),
-    loadIfExists: jest
+    loadIfExists: vi
       .fn()
       .mockResolvedValue(new CardOption(CardOption.LoadDefaultOptions())),
-    loadAnkifyTemplateOverrides: jest.fn().mockResolvedValue(null),
-    attachCustomTemplates: jest.fn().mockResolvedValue(undefined),
+    loadAnkifyTemplateOverrides: vi.fn().mockResolvedValue(null),
+    attachCustomTemplates: vi.fn().mockResolvedValue(undefined),
   };
 
   const parserRulesRepository: IParserRulesRepository = {
-    load: jest.fn().mockResolvedValue(new ParserRules()),
+    load: vi.fn().mockResolvedValue(new ParserRules()),
   };
 
   const mockApi = {} as never;
@@ -88,7 +89,7 @@ describe('CreateJobWorkSpaceUseCase', () => {
     process.env.WORKSPACE_BASE = base;
     const rejectingSettings: ISettingsRepository = {
       ...settingsRepository,
-      load: jest.fn().mockRejectedValue(new Error('settings db down')),
+      load: vi.fn().mockRejectedValue(new Error('settings db down')),
     };
     const useCase = new CreateJobWorkSpaceUseCase(
       jobRepository,
@@ -114,7 +115,7 @@ describe('CreateJobWorkSpaceUseCase', () => {
 
   it('throws when the job-status update fails', async () => {
     const failingJobRepo = {
-      updateJobStatus: jest.fn().mockResolvedValue(false),
+      updateJobStatus: vi.fn().mockResolvedValue(false),
     } as unknown as JobRepository;
     const useCase = new CreateJobWorkSpaceUseCase(
       failingJobRepo,

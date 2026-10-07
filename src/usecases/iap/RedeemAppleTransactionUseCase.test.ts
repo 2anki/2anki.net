@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { InMemoryUserPassRepository } from '../../data_layer/UserPassRepository';
 import { InMemoryAppleTransactionsRepository } from '../../data_layer/AppleTransactionsRepository';
 import { InMemoryAiCreditGrantsRepository } from '../../data_layer/AiCreditGrantsRepository';
@@ -7,23 +8,24 @@ import {
   type DecodedAppleTransaction,
   type IAppleStoreKitService,
 } from '../../services/AppleStoreKitService';
-jest.mock('../../services/events/eventsSinkInstance', () => {
+vi.mock('../../services/events/eventsSinkInstance', () => {
   const recorded: unknown[] = [];
   return {
     getEventsSink: () => ({
-      record: jest.fn((row: unknown) => recorded.push(row)),
+      record: vi.fn((row: unknown) => recorded.push(row)),
     }),
-    resetEventsSinkForTesting: jest.fn(),
+    resetEventsSinkForTesting: vi.fn(),
     __recorded: recorded,
   };
 });
 
 import { RedeemAppleTransactionUseCase } from './RedeemAppleTransactionUseCase';
 import { IapRedeemError } from './IapRedeemError';
+import * as eventsSinkInstance from '../../services/events/eventsSinkInstance';
 
 function recordedEvents(): Array<Record<string, unknown>> {
   return (
-    jest.requireMock('../../services/events/eventsSinkInstance') as {
+    eventsSinkInstance as unknown as {
       __recorded: Array<Record<string, unknown>>;
     }
   ).__recorded;
@@ -48,11 +50,11 @@ function decoded(
 function serviceReturning(
   value: DecodedAppleTransaction
 ): IAppleStoreKitService {
-  return { verifyTransaction: jest.fn().mockResolvedValue(value) };
+  return { verifyTransaction: vi.fn().mockResolvedValue(value) };
 }
 
 function serviceThrowing(error: Error): IAppleStoreKitService {
-  return { verifyTransaction: jest.fn().mockRejectedValue(error) };
+  return { verifyTransaction: vi.fn().mockRejectedValue(error) };
 }
 
 function build(service: IAppleStoreKitService) {

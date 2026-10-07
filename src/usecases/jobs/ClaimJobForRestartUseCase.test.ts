@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import JobRepository from '../../data_layer/JobRepository';
 import {
   ClaimJobForRestartUseCase,
@@ -6,7 +7,7 @@ import {
 
 function makeRepo(claimResult: unknown) {
   return {
-    claimStaleOrTerminalJob: jest.fn().mockResolvedValue(claimResult),
+    claimStaleOrTerminalJob: vi.fn().mockResolvedValue(claimResult),
   } as unknown as JobRepository;
 }
 

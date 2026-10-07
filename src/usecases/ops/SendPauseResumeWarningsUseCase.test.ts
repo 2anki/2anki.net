@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   SendPauseResumeWarningsUseCase,
   formatAmount,
@@ -45,7 +46,7 @@ class FakeRepository implements IPauseResumeWarningRepository {
 
 function makeEmailService() {
   return {
-    sendSubscriptionResumingSoonEmail: jest.fn().mockResolvedValue(undefined),
+    sendSubscriptionResumingSoonEmail: vi.fn().mockResolvedValue(undefined),
   } as unknown as IEmailService;
 }
 

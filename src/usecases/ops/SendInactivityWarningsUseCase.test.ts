@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import { SendInactivityWarningsUseCase } from './SendInactivityWarningsUseCase';
 import { InMemoryInactivityEmailRepository } from '../../data_layer/InactivityEmailRepository';
 import type { IEmailService } from '../../services/EmailService/EmailService';
@@ -10,50 +11,50 @@ function makeEmailService(
   overrides: Partial<IEmailService> = {}
 ): IEmailService {
   return {
-    sendResetEmail: jest.fn(),
-    sendConversionEmail: jest.fn(),
-    sendConversionLinkEmail: jest.fn(),
-    sendContactEmail: jest.fn(),
-    sendSubscriptionCancelledEmail: jest.fn(),
-    sendSubscriptionScheduledCancellationEmail: jest.fn(),
-    sendSubscriptionResumingSoonEmail: jest.fn().mockResolvedValue(undefined),
-    sendHostedAnkiAccessRequestEmail: jest.fn(),
-    sendMagicLinkEmail: jest.fn(),
-    sendReEngagementEmail: jest.fn(),
-    sendInactivityWarningEmail: jest.fn().mockResolvedValue(undefined),
-    sendAbandonedCheckoutRecoveryEmail: jest.fn().mockResolvedValue(undefined),
-    sendPassWinbackEmail: jest.fn().mockResolvedValue(undefined),
-    sendParserCanaryAlert: jest.fn().mockResolvedValue(undefined),
-    sendAiSpendAlertEmail: jest.fn().mockResolvedValue(undefined),
-    sendNotionReconnectEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendAnonymousPassClaimEmail: jest.fn().mockResolvedValue(undefined),
-    sendContactConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-    sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
-    sendEmailChangeConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-    sendEmailChangeNotificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendResetEmail: vi.fn(),
+    sendConversionEmail: vi.fn(),
+    sendConversionLinkEmail: vi.fn(),
+    sendContactEmail: vi.fn(),
+    sendSubscriptionCancelledEmail: vi.fn(),
+    sendSubscriptionScheduledCancellationEmail: vi.fn(),
+    sendSubscriptionResumingSoonEmail: vi.fn().mockResolvedValue(undefined),
+    sendHostedAnkiAccessRequestEmail: vi.fn(),
+    sendMagicLinkEmail: vi.fn(),
+    sendReEngagementEmail: vi.fn(),
+    sendInactivityWarningEmail: vi.fn().mockResolvedValue(undefined),
+    sendAbandonedCheckoutRecoveryEmail: vi.fn().mockResolvedValue(undefined),
+    sendPassWinbackEmail: vi.fn().mockResolvedValue(undefined),
+    sendParserCanaryAlert: vi.fn().mockResolvedValue(undefined),
+    sendAiSpendAlertEmail: vi.fn().mockResolvedValue(undefined),
+    sendNotionReconnectEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendPassClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendAnonymousPassClaimEmail: vi.fn().mockResolvedValue(undefined),
+    sendContactConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+    sendPriceLockInEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionRecoveryEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeNotificationEmail: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
 
 function makeUploadRepo(
   lastUpload: LastUpload | null = null
-): jest.Mocked<IUploadRepository> {
+): Mocked<IUploadRepository> {
   return {
-    deleteUpload: jest.fn(),
-    getUploadsByOwner: jest.fn(),
-    findByIdAndOwner: jest.fn(),
-    findByObjectId: jest.fn(),
-    findByKey: jest.fn(),
-    findAllByObjectIdAndOwner: jest.fn().mockResolvedValue([]),
-    update: jest.fn(),
-    getLastUploadForUser: jest.fn().mockResolvedValue(lastUpload),
-    getLastReconvertibleUpload: jest.fn().mockResolvedValue(null),
-    findByOwnerAndDedupeKey: jest.fn().mockResolvedValue(null),
-    insertNativeDeck: jest.fn(),
-    insertConvertedDeck: jest.fn(),
+    deleteUpload: vi.fn(),
+    getUploadsByOwner: vi.fn(),
+    findByIdAndOwner: vi.fn(),
+    findByObjectId: vi.fn(),
+    findByKey: vi.fn(),
+    findAllByObjectIdAndOwner: vi.fn().mockResolvedValue([]),
+    update: vi.fn(),
+    getLastUploadForUser: vi.fn().mockResolvedValue(lastUpload),
+    getLastReconvertibleUpload: vi.fn().mockResolvedValue(null),
+    findByOwnerAndDedupeKey: vi.fn().mockResolvedValue(null),
+    insertNativeDeck: vi.fn(),
+    insertConvertedDeck: vi.fn(),
   };
 }
 
@@ -140,7 +141,7 @@ describe('SendInactivityWarningsUseCase', () => {
         { id: 2, name: 'Bob', email: 'bob@example.com' },
       ]);
       const emailService = makeEmailService({
-        sendInactivityWarningEmail: jest
+        sendInactivityWarningEmail: vi
           .fn()
           .mockRejectedValueOnce(new Error('SendGrid error'))
           .mockResolvedValueOnce(undefined),

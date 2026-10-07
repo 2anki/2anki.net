@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { GetEmailDeliveryMetricsUseCase } from './GetEmailDeliveryMetricsUseCase';
 import { EmailDeliveryMetricsService } from '../../services/ops/EmailDeliveryMetricsService';
 
@@ -16,12 +17,12 @@ function makeUseCase() {
 
 describe('GetEmailDeliveryMetricsUseCase', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-09-07T12:00:00.000Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-07T12:00:00.000Z'));
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('returns shaped categories for the default 30d window', async () => {

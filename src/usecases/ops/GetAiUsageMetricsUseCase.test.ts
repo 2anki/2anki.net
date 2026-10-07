@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { GetAiUsageMetricsUseCase } from './GetAiUsageMetricsUseCase';
 import { AiUsageMetricsService } from '../../services/ops/AiUsageMetricsService';
 import {
@@ -40,12 +41,12 @@ function makeUseCase() {
 
 describe('GetAiUsageMetricsUseCase', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-08-13T12:00:00.000Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-13T12:00:00.000Z'));
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('returns totals with surface and model breakdowns for the default window', async () => {

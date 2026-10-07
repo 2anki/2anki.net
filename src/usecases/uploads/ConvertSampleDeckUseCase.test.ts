@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -8,12 +9,12 @@ import GeneratePackagesUseCase from './GeneratePackagesUseCase';
 import { ConvertSampleDeckUseCase } from './ConvertSampleDeckUseCase';
 import UsersRepository from '../../data_layer/UsersRepository';
 
-jest.mock('../../data_layer/UsersRepository');
+vi.mock('../../data_layer/UsersRepository');
 
 beforeEach(() => setupTests());
 
 function fakeGenerate(cardCount: number): GeneratePackagesUseCase {
-  const execute = jest.fn(
+  const execute = vi.fn(
     async (
       _paying: boolean,
       _files: unknown,
@@ -42,7 +43,7 @@ describe('ConvertSampleDeckUseCase', () => {
     expect(result.cardCount).toBe(8);
     expect(result.deckName).toBe('Sample deck — Biology 101');
     expect(result.apkg.toString()).toBe('FAKE-APKG');
-    const [paying] = (generate.execute as jest.Mock).mock.calls[0];
+    const [paying] = (generate.execute as Mock).mock.calls[0];
     expect(paying).toBe(false);
   });
 
@@ -53,7 +54,7 @@ describe('ConvertSampleDeckUseCase', () => {
     await useCase.execute();
     await useCase.execute();
 
-    expect(generate.execute as jest.Mock).toHaveBeenCalledTimes(1);
+    expect(generate.execute as Mock).toHaveBeenCalledTimes(1);
   });
 
   it('never constructs a card-usage counter, so it cannot increment usage', async () => {
@@ -61,6 +62,6 @@ describe('ConvertSampleDeckUseCase', () => {
 
     await useCase.execute();
 
-    expect(UsersRepository as jest.Mock).not.toHaveBeenCalled();
+    expect(UsersRepository as Mock).not.toHaveBeenCalled();
   });
 });

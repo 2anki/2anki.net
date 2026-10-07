@@ -1,3 +1,4 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import {
   NoActiveAnkifyClientError,
   ParsedApkgForSend,
@@ -81,13 +82,13 @@ const buildParsed = (
 
 const makeAnkiConnectStub = () => {
   const stub = {
-    createDeck: jest.fn(async (_d: string) => 1),
-    addNote: jest.fn(async (_n: unknown) => 9_876_543_210),
-    updateNoteFields: jest.fn(async (_id: number, _f: unknown) => null),
-    sync: jest.fn(async () => null),
-    modelNames: jest.fn(async () => [] as string[]),
-    createModel: jest.fn(async (_p: unknown) => ({ id: 1 })),
-    storeMediaFile: jest.fn(async (_p: unknown) => 'ok'),
+    createDeck: vi.fn(async (_d: string) => 1),
+    addNote: vi.fn(async (_n: unknown) => 9_876_543_210),
+    updateNoteFields: vi.fn(async (_id: number, _f: unknown) => null),
+    sync: vi.fn(async () => null),
+    modelNames: vi.fn(async () => [] as string[]),
+    createModel: vi.fn(async (_p: unknown) => ({ id: 1 })),
+    storeMediaFile: vi.fn(async (_p: unknown) => 'ok'),
   };
   return stub as unknown as AnkiConnectClient & typeof stub;
 };
@@ -101,24 +102,24 @@ const makeRepos = (
     >;
   }> = {}
 ): {
-  clients: jest.Mocked<AnkifyClientsRepositoryInterface>;
-  mappings: jest.Mocked<AnkifySyncMappingsRepositoryInterface>;
-  uploads: jest.Mocked<IUploadRepository>;
+  clients: Mocked<AnkifyClientsRepositoryInterface>;
+  mappings: Mocked<AnkifySyncMappingsRepositoryInterface>;
+  uploads: Mocked<IUploadRepository>;
 } => ({
   clients: {
-    create: jest.fn(),
-    listByOwner: jest.fn(),
-    findActiveById: jest.fn(),
-    findActiveByOwner: jest.fn(async () =>
+    create: vi.fn(),
+    listByOwner: vi.fn(),
+    findActiveById: vi.fn(),
+    findActiveByOwner: vi.fn(async () =>
       'activeClient' in overrides ? overrides.activeClient! : sampleClient()
     ),
-    setStatus: jest.fn(),
-    touchLastActiveAt: jest.fn(),
-    reservedPorts: jest.fn(),
-  } as unknown as jest.Mocked<AnkifyClientsRepositoryInterface>,
+    setStatus: vi.fn(),
+    touchLastActiveAt: vi.fn(),
+    reservedPorts: vi.fn(),
+  } as unknown as Mocked<AnkifyClientsRepositoryInterface>,
   mappings: {
-    findBySourceId: jest.fn(async () => (await overrides.findMapping) ?? null),
-    upsert: jest.fn(async (input) => ({
+    findBySourceId: vi.fn(async () => (await overrides.findMapping) ?? null),
+    upsert: vi.fn(async (input) => ({
       id: 1,
       ankify_client_id: input.ankify_client_id,
       source_id: input.source_id,
@@ -128,21 +129,21 @@ const makeRepos = (
       content_hash: input.content_hash ?? null,
       last_synced_at: new Date(),
     })),
-    listByClient: jest.fn(),
-    findByAnkiNoteId: jest.fn(),
-    deleteByAnkiNoteId: jest.fn(),
-  } as unknown as jest.Mocked<AnkifySyncMappingsRepositoryInterface>,
+    listByClient: vi.fn(),
+    findByAnkiNoteId: vi.fn(),
+    deleteByAnkiNoteId: vi.fn(),
+  } as unknown as Mocked<AnkifySyncMappingsRepositoryInterface>,
   uploads: {
-    deleteUpload: jest.fn(),
-    getUploadsByOwner: jest.fn(),
-    findByIdAndOwner: jest.fn(
+    deleteUpload: vi.fn(),
+    getUploadsByOwner: vi.fn(),
+    findByIdAndOwner: vi.fn(
       async () =>
         (overrides.upload === undefined
           ? sampleUpload()
           : overrides.upload) as never
     ),
-    update: jest.fn(),
-  } as unknown as jest.Mocked<IUploadRepository>,
+    update: vi.fn(),
+  } as unknown as Mocked<IUploadRepository>,
 });
 
 describe('SendUploadToRacUseCase', () => {
@@ -188,7 +189,7 @@ describe('SendUploadToRacUseCase', () => {
   test('AnkiWeb sync failure is captured but does not fail the dispatch', async () => {
     const { clients, mappings, uploads } = makeRepos();
     const ac = makeAnkiConnectStub();
-    (ac.sync as jest.Mock).mockRejectedValueOnce(
+    (ac.sync as Mock).mockRejectedValueOnce(
       new Error('AnkiWeb account not configured')
     );
     const useCase = new SendUploadToRacUseCase(
@@ -279,10 +280,10 @@ describe('SendUploadToRacUseCase', () => {
       findMapping: Promise.resolve(existingMapping),
     });
     const ac = makeAnkiConnectStub();
-    (ac.updateNoteFields as jest.Mock).mockRejectedValueOnce(
+    (ac.updateNoteFields as Mock).mockRejectedValueOnce(
       new AnkiConnectError('Note was not found: 555')
     );
-    (ac.addNote as jest.Mock).mockResolvedValueOnce(7777);
+    (ac.addNote as Mock).mockResolvedValueOnce(7777);
 
     const useCase = new SendUploadToRacUseCase(
       clients,
@@ -391,7 +392,7 @@ describe('SendUploadToRacUseCase', () => {
     await useCase.execute({ uploadId: 7, owner: 42 });
 
     expect(ac.modelNames).toHaveBeenCalledTimes(1);
-    const created = (ac.createModel as jest.Mock).mock.calls.map(
+    const created = (ac.createModel as Mock).mock.calls.map(
       (args) => (args[0] as { modelName: string }).modelName
     );
     expect(created).toEqual(
@@ -437,7 +438,7 @@ describe('SendUploadToRacUseCase', () => {
   test('per-note errors are collected without aborting the run', async () => {
     const { clients, mappings, uploads } = makeRepos();
     const ac = makeAnkiConnectStub();
-    (ac.addNote as jest.Mock)
+    (ac.addNote as Mock)
       .mockRejectedValueOnce(new AnkiConnectError('first failed'))
       .mockResolvedValueOnce(2);
     const useCase = new SendUploadToRacUseCase(
@@ -488,11 +489,11 @@ describe('SendUploadToRacUseCase', () => {
     const { clients, mappings, uploads } = makeRepos();
     const ac = makeAnkiConnectStub();
     const callOrder: string[] = [];
-    (ac.storeMediaFile as jest.Mock).mockImplementation(async (params) => {
+    (ac.storeMediaFile as Mock).mockImplementation(async (params) => {
       callOrder.push(`store:${(params as { filename: string }).filename}`);
       return 'ok';
     });
-    (ac.addNote as jest.Mock).mockImplementation(async () => {
+    (ac.addNote as Mock).mockImplementation(async () => {
       callOrder.push('addNote');
       return 9_876_543_210;
     });
@@ -541,7 +542,7 @@ describe('SendUploadToRacUseCase', () => {
   test('per-file storeMediaFile failure is recorded but does not abort dispatch', async () => {
     const { clients, mappings, uploads } = makeRepos();
     const ac = makeAnkiConnectStub();
-    (ac.storeMediaFile as jest.Mock)
+    (ac.storeMediaFile as Mock)
       .mockRejectedValueOnce(new Error('disk full'))
       .mockResolvedValueOnce('ok');
 
@@ -614,10 +615,10 @@ describe('SendUploadToRacUseCase', () => {
   test('logs a partial dispatch when some cards land and some error', async () => {
     const { clients, mappings, uploads } = makeRepos();
     const ac = makeAnkiConnectStub();
-    (ac.addNote as jest.Mock)
+    (ac.addNote as Mock)
       .mockResolvedValueOnce(9_876_543_210)
       .mockRejectedValueOnce(new AnkiConnectError('duplicate note'));
-    const logs = { log: jest.fn(async () => undefined), list: jest.fn() };
+    const logs = { log: vi.fn(async () => undefined), list: vi.fn() };
     const twoNotes = new Map([
       [
         100,
@@ -669,10 +670,10 @@ describe('SendUploadToRacUseCase', () => {
   test('logs a failed dispatch when no card lands', async () => {
     const { clients, mappings, uploads } = makeRepos();
     const ac = makeAnkiConnectStub();
-    (ac.addNote as jest.Mock).mockRejectedValue(
+    (ac.addNote as Mock).mockRejectedValue(
       new AnkiConnectError('collection locked')
     );
-    const logs = { log: jest.fn(async () => undefined), list: jest.fn() };
+    const logs = { log: vi.fn(async () => undefined), list: vi.fn() };
     const useCase = new SendUploadToRacUseCase(
       clients,
       mappings,

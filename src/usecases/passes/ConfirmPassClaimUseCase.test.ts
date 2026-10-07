@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import type { Knex } from 'knex';
 import { ConfirmPassClaimUseCase } from './ConfirmPassClaimUseCase';
 import { InMemoryAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
@@ -22,8 +23,8 @@ function makeTokensRepo(
   overrides: Partial<IPassClaimTokensRepository> = {}
 ): IPassClaimTokensRepository {
   return {
-    insert: jest.fn(),
-    findByTokenHash: jest.fn().mockResolvedValue({
+    insert: vi.fn(),
+    findByTokenHash: vi.fn().mockResolvedValue({
       id: 10,
       user_id: 42,
       anonymous_pass_id: 1,
@@ -32,16 +33,16 @@ function makeTokensRepo(
       consumed_at: null,
       created_at: new Date(),
     }),
-    markConsumed: jest.fn().mockResolvedValue(undefined),
-    countRecentByUser: jest.fn().mockResolvedValue(0),
+    markConsumed: vi.fn().mockResolvedValue(undefined),
+    countRecentByUser: vi.fn().mockResolvedValue(0),
     ...overrides,
   };
 }
 
 function makeAuditRepo(): ISubscriptionClaimAuditRepository {
   return {
-    insert: jest.fn().mockResolvedValue({}),
-    countRecentByIp: jest.fn().mockResolvedValue(0),
+    insert: vi.fn().mockResolvedValue({}),
+    countRecentByIp: vi.fn().mockResolvedValue(0),
   } as unknown as ISubscriptionClaimAuditRepository;
 }
 
@@ -49,10 +50,10 @@ function makeUserPassRepo(
   overrides: Partial<IUserPassRepository> = {}
 ): IUserPassRepository {
   return {
-    findActive: jest.fn(),
-    countPaidPassesSince: jest.fn(),
-    upsertWithExtension: jest.fn(),
-    upsertWithAbsoluteExpiry: jest.fn().mockResolvedValue({
+    findActive: vi.fn(),
+    countPaidPassesSince: vi.fn(),
+    upsertWithExtension: vi.fn(),
+    upsertWithAbsoluteExpiry: vi.fn().mockResolvedValue({
       id: 1,
       user_id: 42,
       kind: '7d',
@@ -75,8 +76,8 @@ async function seedPass(anonRepo: InMemoryAnonymousPassRepository) {
 
 describe('ConfirmPassClaimUseCase', () => {
   it('starts the pass window at claim when it was never used, and marks the anon row claimed', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-09-01T00:00:00.000Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-01T00:00:00.000Z'));
     const now = Date.now();
     const anonRepo = new InMemoryAnonymousPassRepository();
     await anonRepo.insert({
@@ -115,12 +116,12 @@ describe('ConfirmPassClaimUseCase', () => {
     expect(row?.activated_at).toEqual(new Date(now));
     expect(row?.expires_at).toEqual(expected);
     expect(tokensRepo.markConsumed).toHaveBeenCalledWith(10, expect.anything());
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('carries the remaining window when the pass was already used anonymously', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-09-01T00:00:00.000Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-01T00:00:00.000Z'));
     const now = Date.now();
     const anonRepo = new InMemoryAnonymousPassRepository();
     const pass = await anonRepo.insert({
@@ -158,7 +159,7 @@ describe('ConfirmPassClaimUseCase', () => {
       remaining,
       'pi_1'
     );
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('rejects an unknown or expired token', async () => {
@@ -166,7 +167,7 @@ describe('ConfirmPassClaimUseCase', () => {
     await seedPass(anonRepo);
     const useCase = new ConfirmPassClaimUseCase(
       makeDb(),
-      makeTokensRepo({ findByTokenHash: jest.fn().mockResolvedValue(null) }),
+      makeTokensRepo({ findByTokenHash: vi.fn().mockResolvedValue(null) }),
       anonRepo,
       makeUserPassRepo(),
       makeAuditRepo()
@@ -181,7 +182,7 @@ describe('ConfirmPassClaimUseCase', () => {
     const anonRepo = new InMemoryAnonymousPassRepository();
     await seedPass(anonRepo);
     const tokensRepo = makeTokensRepo();
-    (tokensRepo.findByTokenHash as jest.Mock).mockResolvedValue({
+    (tokensRepo.findByTokenHash as Mock).mockResolvedValue({
       id: 10,
       user_id: 42,
       anonymous_pass_id: 1,
@@ -246,9 +247,7 @@ describe('ConfirmPassClaimUseCase', () => {
     const anonRepo = new InMemoryAnonymousPassRepository();
     await seedPass(anonRepo);
     const userPassRepo = makeUserPassRepo({
-      upsertWithAbsoluteExpiry: jest
-        .fn()
-        .mockRejectedValue(new Error('db down')),
+      upsertWithAbsoluteExpiry: vi.fn().mockRejectedValue(new Error('db down')),
     });
     const useCase = new ConfirmPassClaimUseCase(
       makeDb(),

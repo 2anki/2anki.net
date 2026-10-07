@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { MarkNotionTokenInvalidUseCase } from './MarkNotionTokenInvalidUseCase';
 import { INotionRepository } from '../../data_layer/NotionRespository';
 import { IEmailService } from '../../services/EmailService/EmailService';
@@ -7,14 +8,14 @@ function buildNotionRepo(
   overrides: Partial<INotionRepository> = {}
 ): INotionRepository {
   return {
-    getNotionData: jest.fn(),
-    saveNotionToken: jest.fn(),
-    getNotionToken: jest.fn(),
-    deleteBlocksByOwner: jest.fn(),
-    deleteNotionData: jest.fn(),
-    markTokenInvalid: jest.fn().mockResolvedValue(undefined),
-    clearTokenInvalid: jest.fn(),
-    setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+    getNotionData: vi.fn(),
+    saveNotionToken: vi.fn(),
+    getNotionToken: vi.fn(),
+    deleteBlocksByOwner: vi.fn(),
+    deleteNotionData: vi.fn(),
+    markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+    clearTokenInvalid: vi.fn(),
+    setReconnectEmailSent: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -22,7 +23,7 @@ function buildNotionRepo(
 function buildUsers(...args: [string?]): IMarkNotionTokenInvalidUsers {
   const email = args.length === 0 ? 'user@example.com' : args[0];
   return {
-    getEmailById: jest.fn().mockResolvedValue(email),
+    getEmailById: vi.fn().mockResolvedValue(email),
   };
 }
 
@@ -30,30 +31,30 @@ function buildEmailService(
   overrides: Partial<IEmailService> = {}
 ): IEmailService {
   return {
-    sendResetEmail: jest.fn(),
-    sendConversionEmail: jest.fn(),
-    sendConversionLinkEmail: jest.fn(),
-    sendContactEmail: jest.fn(),
-    sendSubscriptionCancelledEmail: jest.fn(),
-    sendSubscriptionScheduledCancellationEmail: jest.fn(),
-    sendSubscriptionResumingSoonEmail: jest.fn().mockResolvedValue(undefined),
-    sendHostedAnkiAccessRequestEmail: jest.fn(),
-    sendMagicLinkEmail: jest.fn(),
-    sendReEngagementEmail: jest.fn(),
-    sendInactivityWarningEmail: jest.fn(),
-    sendAbandonedCheckoutRecoveryEmail: jest.fn(),
-    sendPassWinbackEmail: jest.fn(),
-    sendParserCanaryAlert: jest.fn(),
-    sendAiSpendAlertEmail: jest.fn(),
-    sendNotionReconnectEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-    sendAnonymousPassClaimEmail: jest.fn().mockResolvedValue(undefined),
-    sendContactConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-    sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
-    sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
-    sendEmailChangeConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-    sendEmailChangeNotificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendResetEmail: vi.fn(),
+    sendConversionEmail: vi.fn(),
+    sendConversionLinkEmail: vi.fn(),
+    sendContactEmail: vi.fn(),
+    sendSubscriptionCancelledEmail: vi.fn(),
+    sendSubscriptionScheduledCancellationEmail: vi.fn(),
+    sendSubscriptionResumingSoonEmail: vi.fn().mockResolvedValue(undefined),
+    sendHostedAnkiAccessRequestEmail: vi.fn(),
+    sendMagicLinkEmail: vi.fn(),
+    sendReEngagementEmail: vi.fn(),
+    sendInactivityWarningEmail: vi.fn(),
+    sendAbandonedCheckoutRecoveryEmail: vi.fn(),
+    sendPassWinbackEmail: vi.fn(),
+    sendParserCanaryAlert: vi.fn(),
+    sendAiSpendAlertEmail: vi.fn(),
+    sendNotionReconnectEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendPassClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+    sendAnonymousPassClaimEmail: vi.fn().mockResolvedValue(undefined),
+    sendContactConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+    sendPriceLockInEmail: vi.fn().mockResolvedValue(undefined),
+    sendSubscriptionRecoveryEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+    sendEmailChangeNotificationEmail: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -90,13 +91,13 @@ describe('MarkNotionTokenInvalidUseCase', () => {
   it('claims the gate atomically via setReconnectEmailSent before sending', async () => {
     const sendOrder: string[] = [];
     const notion = buildNotionRepo({
-      setReconnectEmailSent: jest.fn().mockImplementation(async () => {
+      setReconnectEmailSent: vi.fn().mockImplementation(async () => {
         sendOrder.push('gate');
         return true;
       }),
     });
     const emailService = buildEmailService({
-      sendNotionReconnectEmail: jest.fn().mockImplementation(async () => {
+      sendNotionReconnectEmail: vi.fn().mockImplementation(async () => {
         sendOrder.push('send');
       }),
     });
@@ -115,7 +116,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
     const emailService = buildEmailService();
     const useCase = new MarkNotionTokenInvalidUseCase(
       buildNotionRepo({
-        setReconnectEmailSent: jest.fn().mockResolvedValue(true),
+        setReconnectEmailSent: vi.fn().mockResolvedValue(true),
       }),
       buildUsers('alice@example.com'),
       emailService
@@ -132,7 +133,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
     const emailService = buildEmailService();
     const useCase = new MarkNotionTokenInvalidUseCase(
       buildNotionRepo({
-        setReconnectEmailSent: jest.fn().mockResolvedValue(false),
+        setReconnectEmailSent: vi.fn().mockResolvedValue(false),
       }),
       buildUsers(),
       emailService
@@ -158,7 +159,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
 
   it('does NOT throw when email send fails — caller is fire-and-forget', async () => {
     const emailService = buildEmailService({
-      sendNotionReconnectEmail: jest
+      sendNotionReconnectEmail: vi
         .fn()
         .mockRejectedValue(new Error('SendGrid down')),
     });
@@ -172,11 +173,11 @@ describe('MarkNotionTokenInvalidUseCase', () => {
   });
 
   it('does NOT log the recipient email address on failure', async () => {
-    const warnSpy = jest
+    const warnSpy = vi
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
     const emailService = buildEmailService({
-      sendNotionReconnectEmail: jest
+      sendNotionReconnectEmail: vi
         .fn()
         .mockRejectedValue(new Error('SendGrid down')),
     });
@@ -196,7 +197,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
   });
 
   it('logs owner id and a reason code on every non-happy path', async () => {
-    const warnSpy = jest
+    const warnSpy = vi
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
 
@@ -214,7 +215,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
     warnSpy.mockClear();
 
     const failingEmailService = buildEmailService({
-      sendNotionReconnectEmail: jest.fn().mockRejectedValue(new Error('fail')),
+      sendNotionReconnectEmail: vi.fn().mockRejectedValue(new Error('fail')),
     });
     const useCaseSendFail = new MarkNotionTokenInvalidUseCase(
       buildNotionRepo(),

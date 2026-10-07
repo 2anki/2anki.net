@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   ConflictNotFoundForOpenError,
   OpenConflictInAnkiUseCase,
@@ -42,7 +43,7 @@ const makeConflicts = (
   conflict: AnkifySyncConflict | null
 ): AnkifySyncConflictsRepositoryInterface =>
   ({
-    findById: jest.fn(async () => conflict),
+    findById: vi.fn(async () => conflict),
   }) as unknown as AnkifySyncConflictsRepositoryInterface;
 
 const makeClients = (
@@ -51,16 +52,16 @@ const makeClients = (
   >
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 describe('OpenConflictInAnkiUseCase', () => {
   test('opens the owned conflict note via guiBrowse with nid: query', async () => {
-    const guiBrowse = jest.fn(async () => [1]);
-    const ping = jest.fn(async () => 6);
+    const guiBrowse = vi.fn(async () => [1]);
+    const ping = vi.fn(async () => 6);
     const client = makeClients(activeClient);
     const conflicts = makeConflicts(sampleConflict());
-    const factory = jest.fn(
+    const factory = vi.fn(
       () => ({ ping, guiBrowse }) as unknown as AnkiConnectClient
     );
 
@@ -73,14 +74,14 @@ describe('OpenConflictInAnkiUseCase', () => {
   });
 
   test('returns opened false without calling guiBrowse when the client is offline', async () => {
-    const guiBrowse = jest.fn(async () => [1]);
-    const ping = jest.fn(async () => {
+    const guiBrowse = vi.fn(async () => [1]);
+    const ping = vi.fn(async () => {
       throw new AnkiConnectUnreachableError('http://x', new Error('down'));
     });
     const useCase = new OpenConflictInAnkiUseCase(
       makeClients(activeClient),
       makeConflicts(sampleConflict()),
-      jest.fn(() => ({ ping, guiBrowse }) as unknown as AnkiConnectClient)
+      vi.fn(() => ({ ping, guiBrowse }) as unknown as AnkiConnectClient)
     );
 
     const result = await useCase.execute({ id: 7, owner: 42 });
@@ -90,12 +91,12 @@ describe('OpenConflictInAnkiUseCase', () => {
   });
 
   test('returns opened false when the user has no active client', async () => {
-    const guiBrowse = jest.fn(async () => [1]);
+    const guiBrowse = vi.fn(async () => [1]);
     const useCase = new OpenConflictInAnkiUseCase(
       makeClients(null),
       makeConflicts(sampleConflict()),
-      jest.fn(
-        () => ({ ping: jest.fn(), guiBrowse }) as unknown as AnkiConnectClient
+      vi.fn(
+        () => ({ ping: vi.fn(), guiBrowse }) as unknown as AnkiConnectClient
       )
     );
 
@@ -109,7 +110,7 @@ describe('OpenConflictInAnkiUseCase', () => {
     const useCase = new OpenConflictInAnkiUseCase(
       makeClients(activeClient),
       makeConflicts(null),
-      jest.fn()
+      vi.fn()
     );
 
     await expect(useCase.execute({ id: 99, owner: 42 })).rejects.toBeInstanceOf(

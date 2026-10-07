@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   CheckMonthlyPrintLimitUseCase,
   MONTHLY_PRINT_LIMIT,
@@ -7,7 +8,7 @@ import UsersRepository from '../../data_layer/UsersRepository';
 
 function buildRepo(prints_used: number): UsersRepository {
   return {
-    getPrintUsage: jest
+    getPrintUsage: vi
       .fn()
       .mockResolvedValue({ prints_used, month_started_at: new Date() }),
   } as unknown as UsersRepository;

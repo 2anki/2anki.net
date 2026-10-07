@@ -1,46 +1,43 @@
+import { vi, type Mock } from 'vitest';
+import * as nodeFsModule from 'node:fs';
 import { setupTests } from '../../test/configure-jest';
 import { getPackagesFromZip } from './getPackagesFromZip';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import Workspace from '../../lib/parser/WorkSpace';
 
-jest.mock('../../infrastracture/adapters/fileConversion/PrepareDeck');
-jest.mock('../../lib/zip/zip');
-jest.mock('../../lib/anki/CardGenerator');
-jest.mock('../../lib/parser/WorkSpace');
+vi.mock('node:fs', { spy: true });
+vi.mock('../../infrastracture/adapters/fileConversion/PrepareDeck');
+vi.mock('../../lib/zip/zip');
+vi.mock('../../lib/anki/CardGenerator');
+vi.mock('../../lib/parser/WorkSpace');
 
-const mockPrepareDeck = jest.requireMock<{
-  PrepareDeck: jest.Mock;
-  prepareDeckInfoOnly: jest.Mock;
-}>('../../infrastracture/adapters/fileConversion/PrepareDeck').PrepareDeck;
+import {
+  PrepareDeck,
+  prepareDeckInfoOnly,
+} from '../../infrastracture/adapters/fileConversion/PrepareDeck';
+import CardGenerator from '../../lib/anki/CardGenerator';
+import { ZipHandler } from '../../lib/zip/zip';
 
-const mockPrepareDeckInfoOnly = jest.requireMock<{
-  PrepareDeck: jest.Mock;
-  prepareDeckInfoOnly: jest.Mock;
-}>(
-  '../../infrastracture/adapters/fileConversion/PrepareDeck'
-).prepareDeckInfoOnly;
-
-const mockCardGeneratorClass = jest.requireMock<{ default: jest.Mock }>(
-  '../../lib/anki/CardGenerator'
-).default;
-
-const mockZipHandlerClass = jest.requireMock<{ ZipHandler: jest.Mock }>(
-  '../../lib/zip/zip'
-).ZipHandler;
+const mockPrepareDeck = PrepareDeck as unknown as Mock;
+const mockPrepareDeckInfoOnly = prepareDeckInfoOnly as unknown as Mock;
+const mockCardGeneratorClass = CardGenerator as unknown as Mock;
+const mockZipHandlerClass = ZipHandler as unknown as Mock;
 
 const FAKE_WORKSPACE_LOCATION = '/fake/workspace';
 
 beforeEach(() => {
   setupTests();
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 
-  (Workspace as unknown as Record<string, jest.Mock>).subdir = jest
+  (Workspace as unknown as Record<string, Mock>).subdir = vi
     .fn()
     .mockReturnValue({ location: `${FAKE_WORKSPACE_LOCATION}/sub` });
 
-  mockCardGeneratorClass.mockImplementation(() => ({
-    runBatch: jest.fn().mockResolvedValue([]),
-  }));
+  mockCardGeneratorClass.mockImplementation(function () {
+    return {
+      runBatch: vi.fn().mockResolvedValue([]),
+    };
+  });
 });
 
 describe('getPackagesFromZip — batch concurrency', () => {
@@ -51,11 +48,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
       (_, i) => `deck${i}.html`
     );
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
 
     mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
       Promise.resolve({
@@ -69,17 +68,19 @@ describe('getPackagesFromZip — batch concurrency', () => {
       })
     );
 
-    mockCardGeneratorClass.mockImplementation(() => ({
-      runBatch: jest
-        .fn()
-        .mockImplementation((entries: Array<{ output: string }>) =>
-          Promise.resolve(entries.map((e) => e.output))
-        ),
-    }));
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(entries.map((e) => e.output))
+          ),
+      };
+    });
 
-    jest
-      .spyOn(require('node:fs'), 'readFileSync')
-      .mockReturnValue(Buffer.from('fake-apkg'));
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
 
     const settings = new CardOption({});
     const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
@@ -97,11 +98,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
   it('threads the userId into every deck conversion so zip uploads are guarded', async () => {
     const fileNames = ['a.html', 'b.html', 'c.html', 'd.html'];
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
 
     mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
       Promise.resolve({
@@ -115,17 +118,19 @@ describe('getPackagesFromZip — batch concurrency', () => {
       })
     );
 
-    mockCardGeneratorClass.mockImplementation(() => ({
-      runBatch: jest
-        .fn()
-        .mockImplementation((entries: Array<{ output: string }>) =>
-          Promise.resolve(entries.map((e) => e.output))
-        ),
-    }));
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(entries.map((e) => e.output))
+          ),
+      };
+    });
 
-    jest
-      .spyOn(require('node:fs'), 'readFileSync')
-      .mockReturnValue(Buffer.from('fake-apkg'));
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
 
     const settings = new CardOption({});
     const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
@@ -164,11 +169,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
   it('passes parent workspace as outputWorkspace so .apkg files land where the downloader looks', async () => {
     const fileNames = ['deck0.html', 'deck1.html', 'deck2.html'];
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
 
     mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
       Promise.resolve({
@@ -182,13 +189,15 @@ describe('getPackagesFromZip — batch concurrency', () => {
       })
     );
 
-    mockCardGeneratorClass.mockImplementation(() => ({
-      runBatch: jest
-        .fn()
-        .mockImplementation((entries: Array<{ output: string }>) =>
-          Promise.resolve(entries.map((e) => e.output))
-        ),
-    }));
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(entries.map((e) => e.output))
+          ),
+      };
+    });
 
     process.env.MAX_PYTHON_WORKERS = '1';
 
@@ -214,11 +223,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
   it('falls through to single-file path when only one file is in the zip', async () => {
     const fileNames = ['only.html'];
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
 
     mockPrepareDeck.mockResolvedValue({
       name: 'only.html',
@@ -248,17 +259,21 @@ describe('getPackagesFromZip — batch concurrency', () => {
   it('gives every all-in-one conversion its own workspace', async () => {
     const fileNames = ['first.html', 'second.html'];
     let subdirCount = 0;
-    (Workspace as unknown as Record<string, jest.Mock>).subdir = jest
+    (Workspace as unknown as Record<string, Mock>).subdir = vi
       .fn()
-      .mockImplementation(() => ({
-        location: `${FAKE_WORKSPACE_LOCATION}/sub-${subdirCount++}`,
-      }));
+      .mockImplementation(function () {
+        return {
+          location: `${FAKE_WORKSPACE_LOCATION}/sub-${subdirCount++}`,
+        };
+      });
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
 
     mockPrepareDeck.mockImplementation(({ name }: { name: string }) =>
       Promise.resolve({
@@ -294,11 +309,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
       (_, i) => `deck${i}.html`
     );
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
 
     mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
       Promise.resolve({
@@ -313,18 +330,20 @@ describe('getPackagesFromZip — batch concurrency', () => {
     );
 
     let runBatchCallCount = 0;
-    mockCardGeneratorClass.mockImplementation(() => ({
-      runBatch: jest
-        .fn()
-        .mockImplementation((entries: Array<{ output: string }>) => {
-          runBatchCallCount += 1;
-          return Promise.resolve(entries.map((e) => e.output));
-        }),
-    }));
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) => {
+            runBatchCallCount += 1;
+            return Promise.resolve(entries.map((e) => e.output));
+          }),
+      };
+    });
 
-    jest
-      .spyOn(require('node:fs'), 'readFileSync')
-      .mockReturnValue(Buffer.from('fake-apkg'));
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
 
     delete process.env.MAX_PYTHON_WORKERS;
     delete process.env.CONVERSION_WORKERS;
@@ -352,11 +371,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
       (_, i) => `deck${i}.html`
     );
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
 
     mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
       Promise.resolve({
@@ -371,18 +392,20 @@ describe('getPackagesFromZip — batch concurrency', () => {
     );
 
     let runBatchCallCount = 0;
-    mockCardGeneratorClass.mockImplementation(() => ({
-      runBatch: jest
-        .fn()
-        .mockImplementation((entries: Array<{ output: string }>) => {
-          runBatchCallCount += 1;
-          return Promise.resolve(entries.map((e) => e.output));
-        }),
-    }));
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) => {
+            runBatchCallCount += 1;
+            return Promise.resolve(entries.map((e) => e.output));
+          }),
+      };
+    });
 
-    jest
-      .spyOn(require('node:fs'), 'readFileSync')
-      .mockReturnValue(Buffer.from('fake-apkg'));
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
 
     const settings = new CardOption({});
     const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
@@ -404,11 +427,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
       (_, i) => `deck${i}.html`
     );
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
 
     mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
       Promise.resolve({
@@ -436,9 +461,11 @@ describe('getPackagesFromZip — batch concurrency', () => {
       })
     );
 
-    mockCardGeneratorClass.mockImplementation(() => ({
-      runBatch: jest.fn().mockRejectedValue(new Error('Python batch failed')),
-    }));
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi.fn().mockRejectedValue(new Error('Python batch failed')),
+      };
+    });
 
     const settings = new CardOption({});
     const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
@@ -464,11 +491,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
       (_, i) => `deck${i}.html`
     );
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
 
     mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
       Promise.resolve({
@@ -496,21 +525,23 @@ describe('getPackagesFromZip — batch concurrency', () => {
       })
     );
 
-    mockCardGeneratorClass.mockImplementation(() => ({
-      runBatch: jest
-        .fn()
-        .mockImplementation((entries: Array<{ output: string }>) =>
-          Promise.resolve(
-            entries
-              .filter((e) => !e.output.includes('deck3.html'))
-              .map((e) => e.output)
-          )
-        ),
-    }));
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(
+              entries
+                .filter((e) => !e.output.includes('deck3.html'))
+                .map((e) => e.output)
+            )
+          ),
+      };
+    });
 
-    jest
-      .spyOn(require('node:fs'), 'readFileSync')
-      .mockReturnValue(Buffer.from('fake-apkg'));
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
 
     const settings = new CardOption({});
     const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
@@ -534,11 +565,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
       (_, i) => `deck${i}.html`
     );
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
 
     mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
       Promise.resolve({
@@ -552,21 +585,23 @@ describe('getPackagesFromZip — batch concurrency', () => {
       })
     );
 
-    mockCardGeneratorClass.mockImplementation(() => ({
-      runBatch: jest
-        .fn()
-        .mockImplementation((entries: Array<{ output: string }>) =>
-          Promise.resolve(
-            entries
-              .filter((e) => !e.output.includes('deck5.html'))
-              .map((e) => e.output)
-          )
-        ),
-    }));
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(
+              entries
+                .filter((e) => !e.output.includes('deck5.html'))
+                .map((e) => e.output)
+            )
+          ),
+      };
+    });
 
-    jest
-      .spyOn(require('node:fs'), 'readFileSync')
-      .mockReturnValue(Buffer.from('fake-apkg'));
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
 
     const settings = new CardOption({});
     const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
@@ -589,11 +624,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
       (_, i) => `deck${i}.html`
     );
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
 
     mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) => {
       if (name === 'deck3.html') {
@@ -610,17 +647,19 @@ describe('getPackagesFromZip — batch concurrency', () => {
       });
     });
 
-    mockCardGeneratorClass.mockImplementation(() => ({
-      runBatch: jest
-        .fn()
-        .mockImplementation((entries: Array<{ output: string }>) =>
-          Promise.resolve(entries.map((e) => e.output))
-        ),
-    }));
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(entries.map((e) => e.output))
+          ),
+      };
+    });
 
-    jest
-      .spyOn(require('node:fs'), 'readFileSync')
-      .mockReturnValue(Buffer.from('fake-apkg'));
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
 
     const settings = new CardOption({});
     const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
@@ -641,11 +680,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
   });
 
   it('threads the card limit into a single-content zip and returns cardsHeldBack', async () => {
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(['only.html']),
-      files: [{ name: 'only.html', contents: '<html></html>' }],
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(['only.html']),
+        files: [{ name: 'only.html', contents: '<html></html>' }],
+      };
+    });
 
     mockPrepareDeck.mockResolvedValue({
       name: 'only.html',
@@ -674,14 +715,16 @@ describe('getPackagesFromZip — batch concurrency', () => {
   });
 
   it('does not apply the card limit when the zip holds multiple content files', async () => {
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(['a.html', 'b.html']),
-      files: [
-        { name: 'a.html', contents: '<html></html>' },
-        { name: 'b.html', contents: '<html></html>' },
-      ],
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(['a.html', 'b.html']),
+        files: [
+          { name: 'a.html', contents: '<html></html>' },
+          { name: 'b.html', contents: '<html></html>' },
+        ],
+      };
+    });
 
     mockPrepareDeck.mockImplementation(({ name }: { name: string }) =>
       Promise.resolve({
@@ -753,11 +796,13 @@ describe('getPackagesFromZip — encrypted PDFs', () => {
 
     const fileNames = ['Ch1.pdf', 'notes.html', 'Ch2.pdf'];
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: Buffer.from(name) })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: Buffer.from(name) })),
+      };
+    });
 
     mockPrepareDeck.mockImplementation(({ name }: { name: string }) => {
       if (name.endsWith('.pdf')) {
@@ -796,11 +841,13 @@ describe('getPackagesFromZip — encrypted PDFs', () => {
 
     const fileNames = ['Ch1.pdf', 'Ch2.pdf', 'Ch3.pdf', 'good.html'];
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: Buffer.from(name) })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: Buffer.from(name) })),
+      };
+    });
 
     mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) => {
       if (name.endsWith('.pdf')) {
@@ -819,17 +866,19 @@ describe('getPackagesFromZip — encrypted PDFs', () => {
       });
     });
 
-    mockCardGeneratorClass.mockImplementation(() => ({
-      runBatch: jest
-        .fn()
-        .mockImplementation((entries: Array<{ output: string }>) =>
-          Promise.resolve(entries.map((e) => e.output))
-        ),
-    }));
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(entries.map((e) => e.output))
+          ),
+      };
+    });
 
-    jest
-      .spyOn(require('node:fs'), 'readFileSync')
-      .mockReturnValue(Buffer.from('fake-apkg'));
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
 
     const settings = new CardOption({});
     const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
@@ -853,11 +902,13 @@ describe('getPackagesFromZip — encrypted PDFs', () => {
 
     const fileNames = ['notes.html', 'broken.pdf'];
 
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: Buffer.from(name) })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: Buffer.from(name) })),
+      };
+    });
 
     mockPrepareDeck.mockImplementation(({ name }: { name: string }) => {
       if (name === 'broken.pdf') {
@@ -891,11 +942,13 @@ describe('getPackagesFromZip — encrypted PDFs', () => {
 describe('getPackagesFromZip — Anki package renamed as zip', () => {
   it('rejects the upload before any conversion runs', async () => {
     const fileNames = ['collection.anki2', 'media', '0', '1', '2'];
-    mockZipHandlerClass.mockImplementation(() => ({
-      build: jest.fn().mockResolvedValue(undefined),
-      getFileNames: jest.fn().mockReturnValue(fileNames),
-      files: fileNames.map((name) => ({ name, contents: 'x' })),
-    }));
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: 'x' })),
+      };
+    });
 
     const settings = new CardOption({});
     const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;

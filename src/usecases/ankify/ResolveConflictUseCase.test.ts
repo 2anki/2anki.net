@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkifySyncMappingsRepositoryInterface } from '../../data_layer/ankify/AnkifySyncMappingsRepository';
 import { AnkifySyncConflictsRepositoryInterface } from '../../data_layer/ankify/AnkifySyncConflictsRepository';
@@ -79,43 +80,43 @@ const buildHarness = (
   const upserted: NewAnkifySyncMapping[] = [];
 
   const clients: AnkifyClientsRepositoryInterface = {
-    create: jest.fn(),
-    findActiveById: jest.fn(),
-    findActiveByOwner: jest.fn().mockResolvedValue(buildClient()),
-    setStatus: jest.fn(),
-    deleteById: jest.fn(),
-    touchLastActiveAt: jest.fn(),
-    listUsedPorts: jest.fn(),
+    create: vi.fn(),
+    findActiveById: vi.fn(),
+    findActiveByOwner: vi.fn().mockResolvedValue(buildClient()),
+    setStatus: vi.fn(),
+    deleteById: vi.fn(),
+    touchLastActiveAt: vi.fn(),
+    listUsedPorts: vi.fn(),
   } as unknown as AnkifyClientsRepositoryInterface;
 
   const mappings: AnkifySyncMappingsRepositoryInterface = {
-    upsert: jest.fn(async (input: NewAnkifySyncMapping) => {
+    upsert: vi.fn(async (input: NewAnkifySyncMapping) => {
       upserted.push(input);
       return { id: 1, ...input } as unknown as AnkifySyncMapping;
     }),
   } as unknown as AnkifySyncMappingsRepositoryInterface;
 
   const conflicts: AnkifySyncConflictsRepositoryInterface = {
-    findById: jest.fn().mockResolvedValue(buildConflict()),
-    resolve: jest.fn().mockResolvedValue(undefined),
+    findById: vi.fn().mockResolvedValue(buildConflict()),
+    resolve: vi.fn().mockResolvedValue(undefined),
   } as unknown as AnkifySyncConflictsRepositoryInterface;
 
   const subscriptions: AnkifyNotionSubscriptionsRepositoryInterface = {
-    findById: jest.fn().mockResolvedValue(subscription),
+    findById: vi.fn().mockResolvedValue(subscription),
   } as unknown as AnkifyNotionSubscriptionsRepositoryInterface;
 
   const logs: AnkifySyncLogsRepositoryInterface = {
-    log: jest.fn().mockResolvedValue(undefined),
+    log: vi.fn().mockResolvedValue(undefined),
   } as unknown as AnkifySyncLogsRepositoryInterface;
 
   const notionRepo = {} as unknown as INotionRepository;
 
-  const ankiConnect = jest.fn().mockReturnValue({
-    updateNoteFields: jest.fn().mockResolvedValue(undefined),
-    sync: jest.fn().mockResolvedValue(null),
+  const ankiConnect = vi.fn().mockReturnValue({
+    updateNoteFields: vi.fn().mockResolvedValue(undefined),
+    sync: vi.fn().mockResolvedValue(null),
   });
 
-  const notionUpdater = jest.fn();
+  const notionUpdater = vi.fn();
 
   const useCase = new ResolveConflictUseCase(
     clients,

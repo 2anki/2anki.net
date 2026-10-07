@@ -1,32 +1,33 @@
+import { vi, type Mocked } from 'vitest';
 import { SaveNativeDeckUseCase } from './SaveNativeDeckUseCase';
 import { IUploadRepository } from '../../data_layer/UploadRespository';
 import StorageHandler from '../../lib/storage/StorageHandler';
 import Uploads, { UploadsId } from '../../data_layer/public/Uploads';
 
-function makeRepository(): jest.Mocked<IUploadRepository> {
+function makeRepository(): Mocked<IUploadRepository> {
   return {
-    deleteUpload: jest.fn(),
-    getUploadsByOwner: jest.fn(),
-    findByIdAndOwner: jest.fn(),
-    findByObjectId: jest.fn(),
-    findByKey: jest.fn(),
-    findAllByObjectIdAndOwner: jest.fn(),
-    update: jest.fn(),
-    getLastUploadForUser: jest.fn(),
-    getLastReconvertibleUpload: jest.fn(),
-    findByOwnerAndDedupeKey: jest.fn(),
-    insertNativeDeck: jest.fn(),
-    insertConvertedDeck: jest.fn(),
+    deleteUpload: vi.fn(),
+    getUploadsByOwner: vi.fn(),
+    findByIdAndOwner: vi.fn(),
+    findByObjectId: vi.fn(),
+    findByKey: vi.fn(),
+    findAllByObjectIdAndOwner: vi.fn(),
+    update: vi.fn(),
+    getLastUploadForUser: vi.fn(),
+    getLastReconvertibleUpload: vi.fn(),
+    findByOwnerAndDedupeKey: vi.fn(),
+    insertNativeDeck: vi.fn(),
+    insertConvertedDeck: vi.fn(),
   };
 }
 
-function makeStorage(): jest.Mocked<
+function makeStorage(): Mocked<
   Pick<StorageHandler, 'uniqify' | 'uploadFile' | 'delete'>
 > {
   return {
-    uniqify: jest.fn().mockReturnValue('app-123-deck.apkg'),
-    uploadFile: jest.fn().mockResolvedValue(undefined),
-    delete: jest.fn().mockResolvedValue(true),
+    uniqify: vi.fn().mockReturnValue('app-123-deck.apkg'),
+    uploadFile: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(true),
   };
 }
 

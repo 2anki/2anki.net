@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { GetRecentSourcesUseCase } from './GetRecentSourcesUseCase';
 import type {
   INotionTopLevelPagesRepository,
@@ -28,24 +29,24 @@ function buildUseCase(
   pages: NotionTopLevelPageRow[],
   lastUpload: LastReconvertibleUpload | null
 ) {
-  const recentByOwner = jest.fn().mockResolvedValue(pages);
+  const recentByOwner = vi.fn().mockResolvedValue(pages);
   const notionRepo = {
-    getByOwner: jest.fn(),
+    getByOwner: vi.fn(),
     getRecentByOwner: recentByOwner,
-    newestCachedAt: jest.fn(),
-    replaceForOwnerIfTokenStillValid: jest.fn(),
-    deleteByOwner: jest.fn(),
+    newestCachedAt: vi.fn(),
+    replaceForOwnerIfTokenStillValid: vi.fn(),
+    deleteByOwner: vi.fn(),
   } as unknown as INotionTopLevelPagesRepository;
 
-  const lastReconvertible = jest.fn().mockResolvedValue(lastUpload);
+  const lastReconvertible = vi.fn().mockResolvedValue(lastUpload);
   const uploadRepo = {
-    deleteUpload: jest.fn(),
-    getUploadsByOwner: jest.fn(),
-    findByIdAndOwner: jest.fn(),
-    findByKey: jest.fn(),
-    findAllByObjectIdAndOwner: jest.fn(),
-    update: jest.fn(),
-    getLastUploadForUser: jest.fn(),
+    deleteUpload: vi.fn(),
+    getUploadsByOwner: vi.fn(),
+    findByIdAndOwner: vi.fn(),
+    findByKey: vi.fn(),
+    findAllByObjectIdAndOwner: vi.fn(),
+    update: vi.fn(),
+    getLastUploadForUser: vi.fn(),
     getLastReconvertibleUpload: lastReconvertible,
   } as unknown as IUploadRepository;
 

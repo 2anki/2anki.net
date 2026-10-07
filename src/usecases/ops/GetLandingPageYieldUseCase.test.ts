@@ -1,9 +1,10 @@
+import { vi, type Mock } from 'vitest';
 import { LandingPageYieldService } from '../../services/ops/LandingPageYieldService';
 import { GetLandingPageYieldUseCase } from './GetLandingPageYieldUseCase';
 
 describe('GetLandingPageYieldUseCase', () => {
   const buildUseCase = () => {
-    const getMetrics = jest.fn().mockResolvedValue({
+    const getMetrics = vi.fn().mockResolvedValue({
       pages: [],
       since: '',
       as_of: '',
@@ -12,7 +13,7 @@ describe('GetLandingPageYieldUseCase', () => {
     return { useCase: new GetLandingPageYieldUseCase(service), getMetrics };
   };
 
-  const sinceArg = (getMetrics: jest.Mock): Date =>
+  const sinceArg = (getMetrics: Mock): Date =>
     getMetrics.mock.calls[0][0] as Date;
 
   it('defaults to a 30-day window when none is given', async () => {

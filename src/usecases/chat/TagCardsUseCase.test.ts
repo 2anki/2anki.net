@@ -1,11 +1,14 @@
+import { vi, type Mock } from 'vitest';
 import { parseTagsResponse, TagCardsUseCase } from './TagCardsUseCase';
 import { InMemoryChatMessagesRepository } from '../../data_layer/ChatMessagesRepository';
 
-jest.mock('../../lib/claude/aiSpendGuard', () => {
-  const actual = jest.requireActual('../../lib/claude/aiSpendGuard');
+vi.mock('../../lib/claude/aiSpendGuard', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../lib/claude/aiSpendGuard')
+  >('../../lib/claude/aiSpendGuard');
   return {
     ...actual,
-    withAiBudget: jest.fn(
+    withAiBudget: vi.fn(
       (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
     ),
   };
@@ -16,7 +19,7 @@ import {
   AiCreditsExhaustedError,
 } from '../../lib/claude/aiSpendGuard';
 
-const withAiBudgetMock = withAiBudget as jest.Mock;
+const withAiBudgetMock = withAiBudget as Mock;
 const runCallbackImpl = (
   _userId: number | null | undefined,
   run: () => Promise<unknown>
@@ -73,7 +76,7 @@ describe('TagCardsUseCase', () => {
   function makeAnthropic(text: string) {
     return {
       messages: {
-        create: jest.fn().mockResolvedValue({
+        create: vi.fn().mockResolvedValue({
           content: [{ type: 'text', text }],
           usage: { input_tokens: 5, output_tokens: 5 },
         }),
@@ -90,8 +93,7 @@ describe('TagCardsUseCase', () => {
 
   it('refuses the tagging call when the reservation guard is exhausted', async () => {
     const anthropic = makeAnthropic('[["geography"]]');
-    const create = (anthropic.messages as unknown as { create: jest.Mock })
-      .create;
+    const create = (anthropic.messages as unknown as { create: Mock }).create;
     withAiBudgetMock.mockRejectedValueOnce(new AiCreditsExhaustedError());
     const useCase = new TagCardsUseCase(anthropic);
 
@@ -112,8 +114,7 @@ describe('TagCardsUseCase', () => {
       ],
     });
     expect(result.tags).toEqual([['geography'], ['math']]);
-    const create = (anthropic.messages as unknown as { create: jest.Mock })
-      .create;
+    const create = (anthropic.messages as unknown as { create: Mock }).create;
     const call = create.mock.calls[0][0];
     expect(call.model).toBe('claude-haiku-4-5-20251001');
   });
@@ -123,14 +124,14 @@ describe('TagCardsUseCase', () => {
     const stored =
       'Here you go:\n\n```json\n[{"front":"Capital?","back":"Oslo"}]\n```\n\nLet me know.';
     const repo = {
-      insert: jest.fn(),
-      listForConversation: jest.fn().mockResolvedValue([]),
-      findLatestAssistantInConversation: jest
+      insert: vi.fn(),
+      listForConversation: vi.fn().mockResolvedValue([]),
+      findLatestAssistantInConversation: vi
         .fn()
         .mockResolvedValue({ id: 42, content: stored }),
-      updateContent: jest.fn().mockResolvedValue(true),
-      deleteById: jest.fn().mockResolvedValue(true),
-      deleteAllForUser: jest.fn().mockResolvedValue(0),
+      updateContent: vi.fn().mockResolvedValue(true),
+      deleteById: vi.fn().mockResolvedValue(true),
+      deleteAllForUser: vi.fn().mockResolvedValue(0),
     };
     const useCase = new TagCardsUseCase(anthropic, repo);
     await useCase.execute({
@@ -158,12 +159,12 @@ describe('TagCardsUseCase', () => {
   it('does not touch the DB when conversationId is omitted', async () => {
     const anthropic = makeAnthropic('[["geography"]]');
     const repo = {
-      insert: jest.fn(),
-      listForConversation: jest.fn().mockResolvedValue([]),
-      findLatestAssistantInConversation: jest.fn(),
-      updateContent: jest.fn(),
-      deleteById: jest.fn(),
-      deleteAllForUser: jest.fn(),
+      insert: vi.fn(),
+      listForConversation: vi.fn().mockResolvedValue([]),
+      findLatestAssistantInConversation: vi.fn(),
+      updateContent: vi.fn(),
+      deleteById: vi.fn(),
+      deleteAllForUser: vi.fn(),
     };
     const useCase = new TagCardsUseCase(anthropic, repo);
     await useCase.execute({
@@ -176,8 +177,7 @@ describe('TagCardsUseCase', () => {
 
   it('tags cards regardless of how many messages the user has sent', async () => {
     const anthropic = makeAnthropic('[["geography"]]');
-    const create = (anthropic.messages as unknown as { create: jest.Mock })
-      .create;
+    const create = (anthropic.messages as unknown as { create: Mock }).create;
     const repo = new InMemoryChatMessagesRepository();
     for (let i = 0; i < 50; i++) {
       await repo.insert({

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import ExportApkgToCsvUseCase, {
   EmptyDeckError,
   CardLimitExceededError,
@@ -19,7 +20,7 @@ function note(fields: string[], tags: string[] = []): ParsedNote {
 }
 
 describe('ExportApkgToCsvUseCase', () => {
-  const parseSpy = jest.spyOn(parseApkgNotesModule, 'parseApkgNotes');
+  const parseSpy = vi.spyOn(parseApkgNotesModule, 'parseApkgNotes');
 
   beforeEach(() => {
     parseSpy.mockReset();
@@ -104,7 +105,7 @@ describe('ExportApkgToCsvUseCase', () => {
 
 describe('ExportApkgToCsvUseCase note limit tiers', () => {
   const parseSpyFor = (count: number) =>
-    jest.spyOn(parseApkgNotesModule, 'parseApkgNotes').mockResolvedValue({
+    vi.spyOn(parseApkgNotesModule, 'parseApkgNotes').mockResolvedValue({
       notes: Array.from({ length: count }, (_, i) => note([`Q${i}`, `A${i}`])),
       unknownModelNames: [],
       deckName: 'Deck',
@@ -112,7 +113,7 @@ describe('ExportApkgToCsvUseCase note limit tiers', () => {
     });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it.each([

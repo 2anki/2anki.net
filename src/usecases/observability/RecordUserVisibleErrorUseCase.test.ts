@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { RecordUserVisibleErrorUseCase } from './RecordUserVisibleErrorUseCase';
 import { InMemoryUserVisibleErrorsRepository } from '../../data_layer/UserVisibleErrorsRepository';
 import type { IUserVisibleErrorsRepository } from '../../data_layer/UserVisibleErrorsRepository';
@@ -21,11 +22,11 @@ describe('RecordUserVisibleErrorUseCase', () => {
 
   it('swallows repository errors without re-throwing', async () => {
     const brokenRepo: IUserVisibleErrorsRepository = {
-      record: jest.fn().mockRejectedValue(new Error('DB connection lost')),
-      countBySurfaceAndCode: jest.fn().mockResolvedValue([]),
+      record: vi.fn().mockRejectedValue(new Error('DB connection lost')),
+      countBySurfaceAndCode: vi.fn().mockResolvedValue([]),
     };
     const useCase = new RecordUserVisibleErrorUseCase(brokenRepo);
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     await expect(
       useCase.execute({
@@ -44,7 +45,7 @@ describe('RecordUserVisibleErrorUseCase', () => {
 
   it('passes context through to the repository', async () => {
     const repo = new InMemoryUserVisibleErrorsRepository();
-    const recordSpy = jest.spyOn(repo, 'record');
+    const recordSpy = vi.spyOn(repo, 'record');
     const useCase = new RecordUserVisibleErrorUseCase(repo);
 
     await useCase.execute({

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { TodaySnapshotService } from '../../services/ops/TodaySnapshotService';
 import { GetTodaySnapshotUseCase } from './GetTodaySnapshotUseCase';
 
@@ -11,7 +12,7 @@ describe('GetTodaySnapshotUseCase', () => {
       errors: [],
     };
     const service = {
-      getSnapshot: jest.fn().mockResolvedValue(snapshot),
+      getSnapshot: vi.fn().mockResolvedValue(snapshot),
     } as unknown as TodaySnapshotService;
     await expect(new GetTodaySnapshotUseCase(service).execute()).resolves.toBe(
       snapshot

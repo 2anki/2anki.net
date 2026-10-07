@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { GetPassPricingUseCase } from './GetPassPricingUseCase';
 import type {
   PricingService,
@@ -6,7 +7,7 @@ import type {
 
 const makeService = (records: ResolvedPassPrice[]): PricingService =>
   ({
-    resolveAll: jest.fn().mockResolvedValue(records),
+    resolveAll: vi.fn().mockResolvedValue(records),
   }) as unknown as PricingService;
 
 describe('GetPassPricingUseCase', () => {

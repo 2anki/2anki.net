@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkiConnectClient } from '../../services/ankify/AnkiConnectClient';
 import {
@@ -22,15 +23,15 @@ const clientsRepo = (
   >
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 describe('GradeReviewCardUseCase', () => {
   it.each([0, 5, 1.5, '3', NaN])(
     'rejects ease %p with InvalidReviewEaseError and never calls AnkiConnect',
     async (ease) => {
-      const findActiveByOwner = jest.fn();
-      const factory = jest.fn();
+      const findActiveByOwner = vi.fn();
+      const factory = vi.fn();
       const useCase = new GradeReviewCardUseCase(
         {
           findActiveByOwner,
@@ -51,12 +52,12 @@ describe('GradeReviewCardUseCase', () => {
   );
 
   it('grades the card after the cid existence probe passes', async () => {
-    const findCards = jest.fn(async () => [9001]);
-    const answerCards = jest.fn(async () => [true]);
-    const factory = jest.fn(
+    const findCards = vi.fn(async () => [9001]);
+    const answerCards = vi.fn(async () => [true]);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findCards,
           answerCards,
         }) as unknown as AnkiConnectClient
@@ -75,12 +76,12 @@ describe('GradeReviewCardUseCase', () => {
   });
 
   it('rejects a cardId that does not exist and never grades', async () => {
-    const findCards = jest.fn(async () => []);
-    const answerCards = jest.fn(async () => [true]);
-    const factory = jest.fn(
+    const findCards = vi.fn(async () => []);
+    const answerCards = vi.fn(async () => [true]);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findCards,
           answerCards,
         }) as unknown as AnkiConnectClient
@@ -98,7 +99,7 @@ describe('GradeReviewCardUseCase', () => {
   });
 
   it('throws when there is no active client (offline)', async () => {
-    const useCase = new GradeReviewCardUseCase(clientsRepo(null), jest.fn());
+    const useCase = new GradeReviewCardUseCase(clientsRepo(null), vi.fn());
 
     await expect(
       useCase.execute({ owner: 42, cardId: 9001, ease: 3 })

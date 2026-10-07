@@ -1,21 +1,22 @@
+import { vi, type Mock } from 'vitest';
 import { collectMindmapImages } from './collectMindmapImages';
 import { MindmapData } from './MindmapData';
 import StorageHandler from '../../lib/storage/StorageHandler';
 
 function makeStorage(files: Record<string, Buffer> = {}): StorageHandler {
   return {
-    getFileContents: jest.fn().mockImplementation(async (key: string) => {
+    getFileContents: vi.fn().mockImplementation(async (key: string) => {
       const body = files[key];
       return { Body: body };
     }),
-    uploadFile: jest.fn(),
-    getPresignedUrl: jest.fn(),
-    objectExists: jest.fn(),
-    listByPrefix: jest.fn(),
-    deleteObjects: jest.fn(),
-    delete: jest.fn(),
-    getContents: jest.fn(),
-    uniqify: jest.fn(),
+    uploadFile: vi.fn(),
+    getPresignedUrl: vi.fn(),
+    objectExists: vi.fn(),
+    listByPrefix: vi.fn(),
+    deleteObjects: vi.fn(),
+    delete: vi.fn(),
+    getContents: vi.fn(),
+    uniqify: vi.fn(),
     s3: {} as never,
   } as unknown as StorageHandler;
 }
@@ -90,9 +91,7 @@ describe('collectMindmapImages', () => {
 
   it('skips images where getFileContents throws', async () => {
     const storage = makeStorage();
-    (storage.getFileContents as jest.Mock).mockRejectedValue(
-      new Error('S3 down')
-    );
+    (storage.getFileContents as Mock).mockRejectedValue(new Error('S3 down'));
     const data: MindmapData = {
       nodes: [nodeWithImage('a', 'mindmaps/1/map-1/img.png')],
       edges: [],

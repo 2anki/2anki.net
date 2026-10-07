@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ListMindmapsUseCase } from './ListMindmapsUseCase';
 import { MindmapRepositoryInterface } from '../../data_layer/MindmapRepository';
 import Mindmaps, { MindmapsId } from '../../data_layer/public/Mindmaps';
@@ -18,12 +19,12 @@ function makeMap(id: string): Mindmaps {
 
 function makeRepo(maps: Mindmaps[], count: number): MindmapRepositoryInterface {
   return {
-    create: jest.fn(),
-    findById: jest.fn(),
-    findByUserId: jest.fn().mockResolvedValue(maps),
-    update: jest.fn(),
-    delete: jest.fn(),
-    countByUserId: jest.fn().mockResolvedValue(count),
+    create: vi.fn(),
+    findById: vi.fn(),
+    findByUserId: vi.fn().mockResolvedValue(maps),
+    update: vi.fn(),
+    delete: vi.fn(),
+    countByUserId: vi.fn().mockResolvedValue(count),
   };
 }
 

@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import {
   ChatDeckUseCase,
   looksLikeCloze,
@@ -10,13 +11,13 @@ import CustomExporter from '../../lib/parser/exporters/CustomExporter';
 import UsersRepository from '../../data_layer/UsersRepository';
 import { MonthlyLimitError } from '../users/CheckMonthlyCardLimitUseCase';
 
-jest.mock('../../lib/parser/exporters/CustomExporter');
+vi.mock('../../lib/parser/exporters/CustomExporter');
 
 const usersRepo = {
-  getCardUsage: jest
+  getCardUsage: vi
     .fn()
     .mockResolvedValue({ cards_used: 0, month_started_at: null }),
-  incrementCardUsage: jest.fn().mockResolvedValue(0),
+  incrementCardUsage: vi.fn().mockResolvedValue(0),
 } as unknown as UsersRepository;
 
 const OWNER = { userId: 42, isPaying: true } as const;
@@ -57,11 +58,13 @@ describe('stripClozeFromStem', () => {
 
 describe('ChatDeckUseCase.execute MCQ handling', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (CustomExporter as unknown as jest.Mock).mockImplementation(() => ({
-      configure: jest.fn(),
-      save: jest.fn().mockResolvedValue(Buffer.from('apkg')),
-    }));
+    vi.clearAllMocks();
+    (CustomExporter as unknown as Mock).mockImplementation(function () {
+      return {
+        configure: vi.fn(),
+        save: vi.fn().mockResolvedValue(Buffer.from('apkg')),
+      };
+    });
   });
 
   it('passes mcq:true with options and correctIndices to the exporter for MCQ cards', async () => {
@@ -80,8 +83,8 @@ describe('ChatDeckUseCase.execute MCQ handling', () => {
       ],
     });
 
-    const Mock = CustomExporter as unknown as jest.Mock;
-    const configure = Mock.mock.results[0].value.configure as jest.Mock;
+    const Mock = CustomExporter as unknown as Mock;
+    const configure = Mock.mock.results[0].value.configure as Mock;
     const deckInfo = configure.mock.calls[0][0] as Array<{
       cards: Array<{
         mcq?: boolean;
@@ -105,8 +108,8 @@ describe('ChatDeckUseCase.execute MCQ handling', () => {
       deckName: 'Mix',
       cards: [{ front: 'Q', back: 'A' }],
     });
-    const Mock = CustomExporter as unknown as jest.Mock;
-    const configure = Mock.mock.results[0].value.configure as jest.Mock;
+    const Mock = CustomExporter as unknown as Mock;
+    const configure = Mock.mock.results[0].value.configure as Mock;
     const deckInfo = configure.mock.calls[0][0] as Array<{
       cards: Array<{ mcq?: boolean; back: string }>;
     }>;
@@ -124,8 +127,8 @@ describe('ChatDeckUseCase.execute MCQ handling', () => {
         { front: '2+2', back: '4' },
       ],
     });
-    const Mock = CustomExporter as unknown as jest.Mock;
-    const configure = Mock.mock.results[0].value.configure as jest.Mock;
+    const Mock = CustomExporter as unknown as Mock;
+    const configure = Mock.mock.results[0].value.configure as Mock;
     const deckInfo = configure.mock.calls[0][0] as Array<{
       cards: Array<{ tags: string[] }>;
     }>;
@@ -136,11 +139,13 @@ describe('ChatDeckUseCase.execute MCQ handling', () => {
 
 describe('ChatDeckUseCase.execute basic-and-reversed template', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (CustomExporter as unknown as jest.Mock).mockImplementation(() => ({
-      configure: jest.fn(),
-      save: jest.fn().mockResolvedValue(Buffer.from('apkg')),
-    }));
+    vi.clearAllMocks();
+    (CustomExporter as unknown as Mock).mockImplementation(function () {
+      return {
+        configure: vi.fn(),
+        save: vi.fn().mockResolvedValue(Buffer.from('apkg')),
+      };
+    });
   });
 
   it('duplicates cards with swapped front/back when templateSlug is basic-and-reversed', async () => {
@@ -151,8 +156,8 @@ describe('ChatDeckUseCase.execute basic-and-reversed template', () => {
       templateSlug: 'basic-and-reversed',
       cards: [{ front: 'Q', back: 'A' }],
     });
-    const Mock = CustomExporter as unknown as jest.Mock;
-    const configure = Mock.mock.results[0].value.configure as jest.Mock;
+    const Mock = CustomExporter as unknown as Mock;
+    const configure = Mock.mock.results[0].value.configure as Mock;
     const deckInfo = configure.mock.calls[0][0] as Array<{
       cards: Array<ChatDeckCard & { name: string; back: string }>;
     }>;
@@ -169,8 +174,8 @@ describe('ChatDeckUseCase.execute basic-and-reversed template', () => {
       templateSlug: 'basic-and-reversed',
       cards: [{ front: 'A standalone prompt with no answer', back: '' }],
     });
-    const Mock = CustomExporter as unknown as jest.Mock;
-    const configure = Mock.mock.results[0].value.configure as jest.Mock;
+    const Mock = CustomExporter as unknown as Mock;
+    const configure = Mock.mock.results[0].value.configure as Mock;
     const deckInfo = configure.mock.calls[0][0] as Array<{
       cards: Array<{ name: string }>;
     }>;
@@ -185,8 +190,8 @@ describe('ChatDeckUseCase.execute basic-and-reversed template', () => {
       templateSlug: 'basic',
       cards: [{ front: 'Q', back: 'A' }],
     });
-    const Mock = CustomExporter as unknown as jest.Mock;
-    const configure = Mock.mock.results[0].value.configure as jest.Mock;
+    const Mock = CustomExporter as unknown as Mock;
+    const configure = Mock.mock.results[0].value.configure as Mock;
     const deckInfo = configure.mock.calls[0][0] as Array<{
       cards: Array<{ name: string }>;
     }>;
@@ -196,11 +201,13 @@ describe('ChatDeckUseCase.execute basic-and-reversed template', () => {
 
 describe('ChatDeckUseCase.execute cloze content under a basic template label', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (CustomExporter as unknown as jest.Mock).mockImplementation(() => ({
-      configure: jest.fn(),
-      save: jest.fn().mockResolvedValue(Buffer.from('apkg')),
-    }));
+    vi.clearAllMocks();
+    (CustomExporter as unknown as Mock).mockImplementation(function () {
+      return {
+        configure: vi.fn(),
+        save: vi.fn().mockResolvedValue(Buffer.from('apkg')),
+      };
+    });
   });
 
   it('exports a normalized basic card when stray cloze content arrives under templateSlug basic', async () => {
@@ -211,8 +218,8 @@ describe('ChatDeckUseCase.execute cloze content under a basic template label', (
       templateSlug: 'basic',
       cards: [{ front: 'The capital of France is {{c1::Paris}}.', back: '' }],
     });
-    const Mock = CustomExporter as unknown as jest.Mock;
-    const configure = Mock.mock.results[0].value.configure as jest.Mock;
+    const Mock = CustomExporter as unknown as Mock;
+    const configure = Mock.mock.results[0].value.configure as Mock;
     const deckInfo = configure.mock.calls[0][0] as Array<{
       cards: Array<{ cloze: boolean; name: string; back: string }>;
     }>;
@@ -231,8 +238,8 @@ describe('ChatDeckUseCase.execute cloze content under a basic template label', (
       templateSlug: 'basic-and-reversed',
       cards: [{ front: 'The capital of France is {{c1::Paris}}.', back: '' }],
     });
-    const Mock = CustomExporter as unknown as jest.Mock;
-    const configure = Mock.mock.results[0].value.configure as jest.Mock;
+    const Mock = CustomExporter as unknown as Mock;
+    const configure = Mock.mock.results[0].value.configure as Mock;
     const deckInfo = configure.mock.calls[0][0] as Array<{
       cards: Array<{ cloze: boolean; name: string; back: string }>;
     }>;
@@ -251,8 +258,8 @@ describe('ChatDeckUseCase.execute cloze content under a basic template label', (
       templateSlug: 'cloze',
       cards: [{ front: 'The capital of France is {{c1::Paris}}.', back: '' }],
     });
-    const Mock = CustomExporter as unknown as jest.Mock;
-    const configure = Mock.mock.results[0].value.configure as jest.Mock;
+    const Mock = CustomExporter as unknown as Mock;
+    const configure = Mock.mock.results[0].value.configure as Mock;
     const deckInfo = configure.mock.calls[0][0] as Array<{
       cards: Array<{ cloze: boolean; name: string }>;
     }>;
@@ -411,19 +418,21 @@ describe('transformBlankToCloze', () => {
 
 describe('ChatDeckUseCase.execute monthly card limit', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (CustomExporter as unknown as jest.Mock).mockImplementation(() => ({
-      configure: jest.fn(),
-      save: jest.fn().mockResolvedValue(Buffer.from('apkg')),
-    }));
+    vi.clearAllMocks();
+    (CustomExporter as unknown as Mock).mockImplementation(function () {
+      return {
+        configure: vi.fn(),
+        save: vi.fn().mockResolvedValue(Buffer.from('apkg')),
+      };
+    });
   });
 
   function buildRepo(cardsUsed: number) {
     return {
-      getCardUsage: jest
+      getCardUsage: vi
         .fn()
         .mockResolvedValue({ cards_used: cardsUsed, month_started_at: null }),
-      incrementCardUsage: jest.fn().mockResolvedValue(0),
+      incrementCardUsage: vi.fn().mockResolvedValue(0),
     } as unknown as UsersRepository;
   }
 

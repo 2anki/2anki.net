@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { GetAnkifyStatsUseCase } from './GetAnkifyStatsUseCase';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import {
@@ -16,33 +17,33 @@ const makeClientsRepo = (
   client: AnkifyClient | null
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 const TODAY = '2026-06-12';
 
 interface FakeAnkiConnect {
-  ping: jest.Mock;
-  deckNames: jest.Mock;
-  deckNamesAndIds: jest.Mock;
-  getNumCardsReviewedToday: jest.Mock;
-  getNumCardsReviewedByDay: jest.Mock;
-  getDeckStats: jest.Mock;
-  cardReviews: jest.Mock;
-  getReviewMinutesByDay: jest.Mock;
+  ping: Mock;
+  deckNames: Mock;
+  deckNamesAndIds: Mock;
+  getNumCardsReviewedToday: Mock;
+  getNumCardsReviewedByDay: Mock;
+  getDeckStats: Mock;
+  cardReviews: Mock;
+  getReviewMinutesByDay: Mock;
 }
 
 const makeAnkiConnect = (
-  overrides: Partial<Record<keyof FakeAnkiConnect, jest.Mock>> = {}
+  overrides: Partial<Record<keyof FakeAnkiConnect, Mock>> = {}
 ): FakeAnkiConnect => ({
-  ping: jest.fn(async () => 6),
-  deckNames: jest.fn(async () => [] as string[]),
-  deckNamesAndIds: jest.fn(async () => ({}) as Record<string, number>),
-  getNumCardsReviewedToday: jest.fn(async () => 0),
-  getNumCardsReviewedByDay: jest.fn(async () => [] as Array<[string, number]>),
-  getDeckStats: jest.fn(async () => ({}) as Record<string, AnkiDeckStat>),
-  cardReviews: jest.fn(async () => []),
-  getReviewMinutesByDay: jest.fn(async () => new Map()),
+  ping: vi.fn(async () => 6),
+  deckNames: vi.fn(async () => [] as string[]),
+  deckNamesAndIds: vi.fn(async () => ({}) as Record<string, number>),
+  getNumCardsReviewedToday: vi.fn(async () => 0),
+  getNumCardsReviewedByDay: vi.fn(async () => [] as Array<[string, number]>),
+  getDeckStats: vi.fn(async () => ({}) as Record<string, AnkiDeckStat>),
+  cardReviews: vi.fn(async () => []),
+  getReviewMinutesByDay: vi.fn(async () => new Map()),
   ...overrides,
 });
 
@@ -62,7 +63,7 @@ describe('GetAnkifyStatsUseCase', () => {
 
   test('returns connected:false when the client is unreachable', async () => {
     const ac = makeAnkiConnect({
-      ping: jest.fn(async () => {
+      ping: vi.fn(async () => {
         throw new AnkiConnectUnreachableError('http://x', new Error('down'));
       }),
     });
@@ -80,9 +81,9 @@ describe('GetAnkifyStatsUseCase', () => {
 
   test('skips getDeckStats when the collection has no decks', async () => {
     const ac = makeAnkiConnect({
-      deckNames: jest.fn(async () => []),
-      getNumCardsReviewedToday: jest.fn(async () => 4),
-      getNumCardsReviewedByDay: jest.fn(async () => [['2026-06-12', 4]]),
+      deckNames: vi.fn(async () => []),
+      getNumCardsReviewedToday: vi.fn(async () => 4),
+      getNumCardsReviewedByDay: vi.fn(async () => [['2026-06-12', 4]]),
     });
     const useCase = new GetAnkifyStatsUseCase(
       makeClientsRepo(activeClient),
@@ -105,17 +106,17 @@ describe('GetAnkifyStatsUseCase', () => {
 
   test('recovers full deck paths from deckNamesAndIds and sorts decks by total desc', async () => {
     const ac = makeAnkiConnect({
-      deckNamesAndIds: jest.fn(async () => ({
+      deckNamesAndIds: vi.fn(async () => ({
         Default: 1,
         Pharmacology: 111,
         'Spanish::Verbs': 222,
       })),
-      getNumCardsReviewedToday: jest.fn(async () => 12),
-      getNumCardsReviewedByDay: jest.fn(async () => [
+      getNumCardsReviewedToday: vi.fn(async () => 12),
+      getNumCardsReviewedByDay: vi.fn(async () => [
         ['2026-06-12', 12],
         ['2026-06-11', 8],
       ]),
-      getDeckStats: jest.fn(async () => ({
+      getDeckStats: vi.fn(async () => ({
         '1': {
           deck_id: 1,
           name: 'Default',
@@ -202,11 +203,11 @@ describe('GetAnkifyStatsUseCase', () => {
 
   test('recovers the full path for a database-child subdeck whose stats name is the leaf', async () => {
     const ac = makeAnkiConnect({
-      deckNamesAndIds: jest.fn(async () => ({
+      deckNamesAndIds: vi.fn(async () => ({
         "Jlab's beginner course": 100,
         "Jlab's beginner course::Part 1: Listening comprehension": 200,
       })),
-      getDeckStats: jest.fn(async () => ({
+      getDeckStats: vi.fn(async () => ({
         '200': {
           deck_id: 200,
           name: 'Part 1: Listening comprehension',
@@ -242,8 +243,8 @@ describe('GetAnkifyStatsUseCase', () => {
 
   test('falls back to the stat name when the deck_id is absent from the names map', async () => {
     const ac = makeAnkiConnect({
-      deckNamesAndIds: jest.fn(async () => ({ Anatomy: 2 })),
-      getDeckStats: jest.fn(async () => ({
+      deckNamesAndIds: vi.fn(async () => ({ Anatomy: 2 })),
+      getDeckStats: vi.fn(async () => ({
         '999': {
           deck_id: 999,
           name: 'Orphan::Leaf',
@@ -277,8 +278,8 @@ describe('GetAnkifyStatsUseCase', () => {
 
   test('tie-breaks decks with equal totals by name ascending', async () => {
     const ac = makeAnkiConnect({
-      deckNamesAndIds: jest.fn(async () => ({ Zoology: 1, Anatomy: 2 })),
-      getDeckStats: jest.fn(async () => ({
+      deckNamesAndIds: vi.fn(async () => ({ Zoology: 1, Anatomy: 2 })),
+      getDeckStats: vi.fn(async () => ({
         '1': {
           deck_id: 1,
           name: 'Zoology',

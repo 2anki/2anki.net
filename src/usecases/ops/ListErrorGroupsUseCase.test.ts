@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ListErrorGroupsUseCase } from './ListErrorGroupsUseCase';
 import {
   IErrorEventRepository,
@@ -72,16 +73,16 @@ describe('ListErrorGroupsUseCase', () => {
   });
 
   it('passes options through to the repository, including resolution status', async () => {
-    const listGroupsSpy = jest.fn(async (): Promise<ErrorGroupRow[]> => []);
-    const countGroupsSpy = jest.fn(async (): Promise<number> => 0);
+    const listGroupsSpy = vi.fn(async (): Promise<ErrorGroupRow[]> => []);
+    const countGroupsSpy = vi.fn(async (): Promise<number> => 0);
     const repo: IErrorEventRepository = {
-      insert: jest.fn(),
-      existsWithinWindow: jest.fn(async () => false),
+      insert: vi.fn(),
+      existsWithinWindow: vi.fn(async () => false),
       listGroups: listGroupsSpy,
       countGroups: countGroupsSpy,
-      latestSamples: jest.fn(async () => []),
-      resolveGroup: jest.fn(),
-      reopenGroup: jest.fn(),
+      latestSamples: vi.fn(async () => []),
+      resolveGroup: vi.fn(),
+      reopenGroup: vi.fn(),
     };
 
     const useCase = new ListErrorGroupsUseCase(repo);

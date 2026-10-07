@@ -1,12 +1,13 @@
+import { vi } from 'vitest';
 import { CreateCreditPackCheckoutUseCase } from './CreateCreditPackCheckoutUseCase';
 
-const mockStripeCreateSession = jest.fn();
+const mockStripeCreateSession = vi.fn();
 
 const makeStripe = () =>
   ({ checkout: { sessions: { create: mockStripeCreateSession } } }) as never;
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  vi.resetAllMocks();
   delete process.env.APP_URL;
 });
 

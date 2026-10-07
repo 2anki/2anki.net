@@ -53,7 +53,7 @@ describe('jest testPathIgnorePatterns derived from test-runner-split.json', () =
     ).toBe(false);
   });
 
-  it('keeps services and usecases suites in jest', () => {
+  it('keeps services suites in jest but hands usecases to vitest (phase 3 widened the glob)', () => {
     expect(
       ignoredByJest(
         `${BASE}/services/NotionService/BlockHandler/BlockHandler.test.ts`
@@ -61,6 +61,6 @@ describe('jest testPathIgnorePatterns derived from test-runner-split.json', () =
     ).toBe(false);
     expect(
       ignoredByJest(`${BASE}/usecases/uploads/GeneratePackagesUseCase.test.ts`)
-    ).toBe(false);
+    ).toBe(true);
   });
 });

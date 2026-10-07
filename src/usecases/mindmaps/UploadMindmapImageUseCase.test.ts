@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   UploadMindmapImageUseCase,
   MindmapImageTooLargeError,
@@ -12,17 +13,17 @@ const TINY_PNG = Buffer.from(
 
 function makeStorage(overrides: Partial<StorageHandler> = {}): StorageHandler {
   return {
-    uploadFile: jest.fn().mockResolvedValue(undefined),
-    getPresignedUrl: jest
+    uploadFile: vi.fn().mockResolvedValue(undefined),
+    getPresignedUrl: vi
       .fn()
       .mockResolvedValue('https://spaces.example.com/presigned'),
-    getFileContents: jest.fn(),
-    objectExists: jest.fn(),
-    listByPrefix: jest.fn(),
-    deleteObjects: jest.fn(),
-    delete: jest.fn(),
-    getContents: jest.fn(),
-    uniqify: jest.fn(),
+    getFileContents: vi.fn(),
+    objectExists: vi.fn(),
+    listByPrefix: vi.fn(),
+    deleteObjects: vi.fn(),
+    delete: vi.fn(),
+    getContents: vi.fn(),
+    uniqify: vi.fn(),
     s3: {} as never,
     ...overrides,
   } as unknown as StorageHandler;

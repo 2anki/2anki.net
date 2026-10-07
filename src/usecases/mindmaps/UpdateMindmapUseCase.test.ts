@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import {
   UpdateMindmapUseCase,
   MindmapLimitError,
@@ -28,12 +29,12 @@ function makeRepo(
   updatedMap: Mindmaps | null = null
 ): MindmapRepositoryInterface {
   return {
-    create: jest.fn(),
-    findById: jest.fn(),
-    findByUserId: jest.fn(),
-    update: jest.fn().mockResolvedValue(updatedMap),
-    delete: jest.fn(),
-    countByUserId: jest.fn(),
+    create: vi.fn(),
+    findById: vi.fn(),
+    findByUserId: vi.fn(),
+    update: vi.fn().mockResolvedValue(updatedMap),
+    delete: vi.fn(),
+    countByUserId: vi.fn(),
   };
 }
 
@@ -218,7 +219,7 @@ describe('UpdateMindmapUseCase', () => {
       isPaying: false,
     });
 
-    const saved = (repo.update as jest.Mock).mock.calls[0][2] as {
+    const saved = (repo.update as Mock).mock.calls[0][2] as {
       data: MindmapData;
     };
     const savedImage = saved.data.nodes[0].image!;
@@ -251,7 +252,7 @@ describe('UpdateMindmapUseCase', () => {
       isPaying: false,
     });
 
-    const saved = (repo.update as jest.Mock).mock.calls[0][2] as {
+    const saved = (repo.update as Mock).mock.calls[0][2] as {
       data: MindmapData;
     };
     const savedImage = saved.data.nodes[0].image!;
@@ -281,7 +282,7 @@ describe('UpdateMindmapUseCase', () => {
       isPaying: false,
     });
 
-    const saved = (repo.update as jest.Mock).mock.calls[0][2] as {
+    const saved = (repo.update as Mock).mock.calls[0][2] as {
       data: MindmapData;
     };
     const savedImage = saved.data.nodes[0].image!;
@@ -311,7 +312,7 @@ describe('UpdateMindmapUseCase', () => {
       isPaying: false,
     });
 
-    const saved = (repo.update as jest.Mock).mock.calls[0][2] as {
+    const saved = (repo.update as Mock).mock.calls[0][2] as {
       data: MindmapData;
     };
     expect(saved.data.edges).toEqual([{ source: 'a', target: 'b' }]);
@@ -343,7 +344,7 @@ describe('UpdateMindmapUseCase', () => {
       isPaying: false,
     });
 
-    const saved = (repo.update as jest.Mock).mock.calls[0][2] as {
+    const saved = (repo.update as Mock).mock.calls[0][2] as {
       data: MindmapData;
     };
     const savedImage = saved.data.nodes[0].image!;
@@ -375,7 +376,7 @@ describe('UpdateMindmapUseCase', () => {
       isPaying: false,
     });
 
-    const saved = (repo.update as jest.Mock).mock.calls[0][2] as {
+    const saved = (repo.update as Mock).mock.calls[0][2] as {
       data: MindmapData;
     };
     const savedImage = saved.data.nodes[0].image!;

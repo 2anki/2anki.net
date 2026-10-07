@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkifyNotionSubscriptionsRepositoryInterface } from '../../data_layer/ankify/AnkifyNotionSubscriptionsRepository';
 import { AnkiConnectClient } from '../../services/ankify/AnkiConnectClient';
@@ -20,24 +21,24 @@ const clientsRepo = (
   >
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 const subsRepo = (
   rows: { target_deck: string | null; notion_page_title: string | null }[]
 ): AnkifyNotionSubscriptionsRepositoryInterface =>
   ({
-    listByOwner: jest.fn(async () => rows),
+    listByOwner: vi.fn(async () => rows),
   }) as unknown as AnkifyNotionSubscriptionsRepositoryInterface;
 
 describe('EditLeechNoteUseCase', () => {
   test('updates the note fields after the ownership check passes', async () => {
-    const findNotes = jest.fn(async () => [7001]);
-    const updateNoteFields = jest.fn(async () => null);
-    const factory = jest.fn(
+    const findNotes = vi.fn(async () => [7001]);
+    const updateNoteFields = vi.fn(async () => null);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findNotes,
           updateNoteFields,
         }) as unknown as AnkiConnectClient
@@ -63,12 +64,12 @@ describe('EditLeechNoteUseCase', () => {
   });
 
   test('rejects a note in an unowned deck and never mutates', async () => {
-    const findNotes = jest.fn(async () => []);
-    const updateNoteFields = jest.fn(async () => null);
-    const factory = jest.fn(
+    const findNotes = vi.fn(async () => []);
+    const updateNoteFields = vi.fn(async () => null);
+    const factory = vi.fn(
       () =>
         ({
-          ping: jest.fn(async () => 6),
+          ping: vi.fn(async () => 6),
           findNotes,
           updateNoteFields,
         }) as unknown as AnkiConnectClient
@@ -93,7 +94,7 @@ describe('EditLeechNoteUseCase', () => {
       subsRepo([
         { target_deck: 'Notion Sync::Pharma', notion_page_title: null },
       ]),
-      jest.fn()
+      vi.fn()
     );
 
     await expect(

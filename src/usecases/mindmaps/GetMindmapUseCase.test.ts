@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { GetMindmapUseCase } from './GetMindmapUseCase';
 import { MindmapRepositoryInterface } from '../../data_layer/MindmapRepository';
 import Mindmaps, { MindmapsId } from '../../data_layer/public/Mindmaps';
@@ -7,12 +8,12 @@ import StorageHandler from '../../lib/storage/StorageHandler';
 
 function makeRepo(map: Mindmaps | null): MindmapRepositoryInterface {
   return {
-    create: jest.fn(),
-    findById: jest.fn().mockResolvedValue(map),
-    findByUserId: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    countByUserId: jest.fn(),
+    create: vi.fn(),
+    findById: vi.fn().mockResolvedValue(map),
+    findByUserId: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    countByUserId: vi.fn(),
   };
 }
 
@@ -20,15 +21,15 @@ function makeStorage(
   presignedUrl = 'https://spaces.example.com/presigned'
 ): StorageHandler {
   return {
-    getPresignedUrl: jest.fn().mockResolvedValue(presignedUrl),
-    uploadFile: jest.fn(),
-    getFileContents: jest.fn(),
-    objectExists: jest.fn(),
-    listByPrefix: jest.fn(),
-    deleteObjects: jest.fn(),
-    delete: jest.fn(),
-    getContents: jest.fn(),
-    uniqify: jest.fn(),
+    getPresignedUrl: vi.fn().mockResolvedValue(presignedUrl),
+    uploadFile: vi.fn(),
+    getFileContents: vi.fn(),
+    objectExists: vi.fn(),
+    listByPrefix: vi.fn(),
+    deleteObjects: vi.fn(),
+    delete: vi.fn(),
+    getContents: vi.fn(),
+    uniqify: vi.fn(),
     s3: {} as never,
   } as unknown as StorageHandler;
 }
@@ -122,9 +123,7 @@ describe('GetMindmapUseCase', () => {
     };
     const map = makeMap(data);
     const storage = makeStorage();
-    (storage.getPresignedUrl as jest.Mock).mockRejectedValue(
-      new Error('S3 down')
-    );
+    (storage.getPresignedUrl as Mock).mockRejectedValue(new Error('S3 down'));
     const useCase = new GetMindmapUseCase(makeRepo(map), storage);
 
     const result = await useCase.execute('map-1' as MindmapsId, 1 as UsersId);

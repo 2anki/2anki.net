@@ -1,3 +1,4 @@
+import { vi, type Mock, type Mocked } from 'vitest';
 import {
   ClaimSubscriptionUseCase,
   CLAIM_INITIATE_MESSAGE,
@@ -13,7 +14,7 @@ process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
 const makeTokensRepo = (
   overrides: Partial<ISubscriptionClaimTokensRepository> = {}
 ): ISubscriptionClaimTokensRepository => ({
-  insert: jest.fn().mockResolvedValue({
+  insert: vi.fn().mockResolvedValue({
     id: 1,
     token_hash: 'hash',
     user_id: 99,
@@ -22,16 +23,16 @@ const makeTokensRepo = (
     consumed_at: null,
     created_at: new Date(),
   }),
-  findByTokenHash: jest.fn().mockResolvedValue(null),
-  markConsumed: jest.fn().mockResolvedValue(undefined),
-  countRecentByUser: jest.fn().mockResolvedValue(0),
+  findByTokenHash: vi.fn().mockResolvedValue(null),
+  markConsumed: vi.fn().mockResolvedValue(undefined),
+  countRecentByUser: vi.fn().mockResolvedValue(0),
   ...overrides,
 });
 
 const makeAuditRepo = (
   overrides: Partial<ISubscriptionClaimAuditRepository> = {}
 ): ISubscriptionClaimAuditRepository => ({
-  insert: jest.fn().mockResolvedValue({
+  insert: vi.fn().mockResolvedValue({
     id: 1,
     user_id: 99,
     email_hash: 'eh',
@@ -39,55 +40,55 @@ const makeAuditRepo = (
     outcome: 'initiate',
     created_at: new Date(),
   }),
-  countRecentByIp: jest.fn().mockResolvedValue(0),
+  countRecentByIp: vi.fn().mockResolvedValue(0),
   ...overrides,
 });
 
 const makeEmailService = (
   overrides: Partial<IEmailService> = {}
 ): IEmailService => ({
-  sendResetEmail: jest.fn(),
-  sendConversionEmail: jest.fn(),
-  sendConversionLinkEmail: jest.fn(),
-  sendContactEmail: jest.fn(),
-  sendSubscriptionCancelledEmail: jest.fn(),
-  sendSubscriptionScheduledCancellationEmail: jest.fn(),
-  sendSubscriptionResumingSoonEmail: jest.fn().mockResolvedValue(undefined),
-  sendHostedAnkiAccessRequestEmail: jest.fn(),
-  sendMagicLinkEmail: jest.fn(),
-  sendReEngagementEmail: jest.fn(),
-  sendInactivityWarningEmail: jest.fn(),
-  sendAbandonedCheckoutRecoveryEmail: jest.fn(),
-  sendPassWinbackEmail: jest.fn(),
-  sendParserCanaryAlert: jest.fn(),
-  sendAiSpendAlertEmail: jest.fn(),
-  sendNotionReconnectEmail: jest.fn().mockResolvedValue(undefined),
-  sendSubscriptionClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-  sendPassClaimConfirmation: jest.fn().mockResolvedValue(undefined),
-  sendAnonymousPassClaimEmail: jest.fn().mockResolvedValue(undefined),
-  sendContactConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-  sendPriceLockInEmail: jest.fn().mockResolvedValue(undefined),
-  sendSubscriptionRecoveryEmail: jest.fn().mockResolvedValue(undefined),
-  sendEmailChangeConfirmationEmail: jest.fn().mockResolvedValue(undefined),
-  sendEmailChangeNotificationEmail: jest.fn().mockResolvedValue(undefined),
+  sendResetEmail: vi.fn(),
+  sendConversionEmail: vi.fn(),
+  sendConversionLinkEmail: vi.fn(),
+  sendContactEmail: vi.fn(),
+  sendSubscriptionCancelledEmail: vi.fn(),
+  sendSubscriptionScheduledCancellationEmail: vi.fn(),
+  sendSubscriptionResumingSoonEmail: vi.fn().mockResolvedValue(undefined),
+  sendHostedAnkiAccessRequestEmail: vi.fn(),
+  sendMagicLinkEmail: vi.fn(),
+  sendReEngagementEmail: vi.fn(),
+  sendInactivityWarningEmail: vi.fn(),
+  sendAbandonedCheckoutRecoveryEmail: vi.fn(),
+  sendPassWinbackEmail: vi.fn(),
+  sendParserCanaryAlert: vi.fn(),
+  sendAiSpendAlertEmail: vi.fn(),
+  sendNotionReconnectEmail: vi.fn().mockResolvedValue(undefined),
+  sendSubscriptionClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+  sendPassClaimConfirmation: vi.fn().mockResolvedValue(undefined),
+  sendAnonymousPassClaimEmail: vi.fn().mockResolvedValue(undefined),
+  sendContactConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+  sendPriceLockInEmail: vi.fn().mockResolvedValue(undefined),
+  sendSubscriptionRecoveryEmail: vi.fn().mockResolvedValue(undefined),
+  sendEmailChangeConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+  sendEmailChangeNotificationEmail: vi.fn().mockResolvedValue(undefined),
   ...overrides,
 });
 
 const makeStripe = (
   customerEmail = 'payer@stripe.example.com'
-): jest.Mocked<StripeTypes> =>
+): Mocked<StripeTypes> =>
   ({
     customers: {
-      retrieve: jest.fn().mockResolvedValue({
+      retrieve: vi.fn().mockResolvedValue({
         id: 'cus_abc123',
         email: customerEmail,
       }),
     },
-  }) as unknown as jest.Mocked<StripeTypes>;
+  }) as unknown as Mocked<StripeTypes>;
 
 const makeSubscriptionService = (subs: StripeTypes.Subscription[] = []) =>
   ({
-    findActiveStripeSubscriptions: jest.fn().mockResolvedValue(subs),
+    findActiveStripeSubscriptions: vi.fn().mockResolvedValue(subs),
   }) as unknown as typeof SubscriptionService;
 
 const baseInput = {
@@ -168,7 +169,7 @@ describe('ClaimSubscriptionUseCase', () => {
   it('rate-limits the user at 12 attempts per hour', async () => {
     const emailService = makeEmailService();
     const tokensRepo = makeTokensRepo({
-      countRecentByUser: jest.fn().mockResolvedValue(12),
+      countRecentByUser: vi.fn().mockResolvedValue(12),
     });
     const fakeSub = {
       customer: 'cus_xyz',
@@ -193,7 +194,7 @@ describe('ClaimSubscriptionUseCase', () => {
   it('rate-limits the IP at 60 attempts per hour', async () => {
     const emailService = makeEmailService();
     const auditRepo = makeAuditRepo({
-      countRecentByIp: jest.fn().mockResolvedValue(60),
+      countRecentByIp: vi.fn().mockResolvedValue(60),
     });
     const fakeSub = {
       customer: 'cus_xyz',
@@ -227,7 +228,7 @@ describe('ClaimSubscriptionUseCase', () => {
 
     await useCase.execute(baseInput);
 
-    const insertCall = (auditRepo.insert as jest.Mock).mock.calls[0][0];
+    const insertCall = (auditRepo.insert as Mock).mock.calls[0][0];
     expect(insertCall.email_hash).not.toBe(baseInput.submittedEmail);
     expect(insertCall).not.toHaveProperty('email');
   });

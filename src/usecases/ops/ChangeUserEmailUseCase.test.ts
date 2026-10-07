@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   ChangeUserEmailRepository,
   ChangeUserEmailUseCase,
@@ -45,7 +46,7 @@ class FakeUsersRepository implements ChangeUserEmailRepository {
 }
 
 function makeEventsSink(): Pick<EventsSink, 'record'> {
-  return { record: jest.fn() };
+  return { record: vi.fn() };
 }
 
 const NOW = new Date('2026-09-01T12:00:00Z');

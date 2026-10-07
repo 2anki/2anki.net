@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import {
   RefreshAnkifySubscriptionUseCase,
   RefreshCooldownError,
@@ -33,22 +34,22 @@ const sampleSubscription = (
 
 const makeSubscriptionsRepo = (
   subscription: AnkifyNotionSubscription | null
-): jest.Mocked<AnkifyNotionSubscriptionsRepositoryInterface> =>
+): Mocked<AnkifyNotionSubscriptionsRepositoryInterface> =>
   ({
-    upsert: jest.fn(),
-    listByOwner: jest.fn(),
-    listEnabled: jest.fn(),
-    findByPageId: jest.fn(),
-    findById: jest.fn(async () => subscription),
-    setEnabled: jest.fn(),
-    deleteById: jest.fn(),
-    recordPoll: jest.fn(),
-  }) as unknown as jest.Mocked<AnkifyNotionSubscriptionsRepositoryInterface>;
+    upsert: vi.fn(),
+    listByOwner: vi.fn(),
+    listEnabled: vi.fn(),
+    findByPageId: vi.fn(),
+    findById: vi.fn(async () => subscription),
+    setEnabled: vi.fn(),
+    deleteById: vi.fn(),
+    recordPoll: vi.fn(),
+  }) as unknown as Mocked<AnkifyNotionSubscriptionsRepositoryInterface>;
 
-const makeSyncUseCase = (): jest.Mocked<
+const makeSyncUseCase = (): Mocked<
   Pick<SyncNotionPageToRacUseCase, 'execute'>
 > => ({
-  execute: jest.fn(async (_input) => ({
+  execute: vi.fn(async (_input) => ({
     client: {} as never,
     subscription: sampleSubscription(),
     created: 2,
@@ -110,7 +111,7 @@ describe('RefreshAnkifySubscriptionUseCase', () => {
     const subscription = sampleSubscription({ id: 7, owner: 42 });
     const subs = makeSubscriptionsRepo(subscription);
     const sync = {
-      execute: jest.fn(async () => new AnkifyClientOfflineSkip(7)),
+      execute: vi.fn(async () => new AnkifyClientOfflineSkip(7)),
     };
     const useCase = new RefreshAnkifySubscriptionUseCase(
       subs,
@@ -168,7 +169,7 @@ describe('RefreshAnkifySubscriptionUseCase', () => {
     const subs = makeSubscriptionsRepo(subscription);
     const release: { fn: (() => void) | null } = { fn: null };
     const slowSync = {
-      execute: jest.fn(
+      execute: vi.fn(
         (_input) =>
           new Promise<{
             client: never;

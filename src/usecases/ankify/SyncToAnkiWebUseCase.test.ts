@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import {
   AnkiConnectClient,
@@ -23,14 +24,14 @@ const clientsRepo = (
   >
 ): AnkifyClientsRepositoryInterface =>
   ({
-    findActiveByOwner: jest.fn(async () => client),
+    findActiveByOwner: vi.fn(async () => client),
   }) as unknown as AnkifyClientsRepositoryInterface;
 
 describe('SyncToAnkiWebUseCase', () => {
   test('triggers a sync on the active client', async () => {
-    const ping = jest.fn(async () => 6);
-    const sync = jest.fn(async () => null);
-    const factory = jest.fn(
+    const ping = vi.fn(async () => 6);
+    const sync = vi.fn(async () => null);
+    const factory = vi.fn(
       () => ({ ping, sync }) as unknown as AnkiConnectClient
     );
     const useCase = new SyncToAnkiWebUseCase(
@@ -45,7 +46,7 @@ describe('SyncToAnkiWebUseCase', () => {
   });
 
   test('throws when there is no active client', async () => {
-    const useCase = new SyncToAnkiWebUseCase(clientsRepo(null), jest.fn());
+    const useCase = new SyncToAnkiWebUseCase(clientsRepo(null), vi.fn());
 
     await expect(useCase.execute(42)).rejects.toBeInstanceOf(
       NoActiveAnkifyClientForSyncError
@@ -53,10 +54,10 @@ describe('SyncToAnkiWebUseCase', () => {
   });
 
   test('propagates AnkiConnectUnreachableError', async () => {
-    const ping = jest.fn(async () => {
+    const ping = vi.fn(async () => {
       throw new AnkiConnectUnreachableError('http://x', new Error('down'));
     });
-    const factory = jest.fn(() => ({ ping }) as unknown as AnkiConnectClient);
+    const factory = vi.fn(() => ({ ping }) as unknown as AnkiConnectClient);
     const useCase = new SyncToAnkiWebUseCase(
       clientsRepo(activeClient),
       factory

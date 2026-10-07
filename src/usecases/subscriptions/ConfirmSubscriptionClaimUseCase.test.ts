@@ -1,3 +1,4 @@
+import { vi, type Mocked } from 'vitest';
 import { ConfirmSubscriptionClaimUseCase } from './ConfirmSubscriptionClaimUseCase';
 import type { ISubscriptionClaimTokensRepository } from '../../data_layer/SubscriptionClaimTokensRepository';
 import type { ISubscriptionClaimAuditRepository } from '../../data_layer/SubscriptionClaimAuditRepository';
@@ -25,17 +26,17 @@ const makeFreshToken = (
 const makeTokensRepo = (
   overrides: Partial<ISubscriptionClaimTokensRepository> = {}
 ): ISubscriptionClaimTokensRepository => ({
-  insert: jest.fn().mockResolvedValue(makeFreshToken()),
-  findByTokenHash: jest.fn().mockResolvedValue(makeFreshToken()),
-  markConsumed: jest.fn().mockResolvedValue(undefined),
-  countRecentByUser: jest.fn().mockResolvedValue(0),
+  insert: vi.fn().mockResolvedValue(makeFreshToken()),
+  findByTokenHash: vi.fn().mockResolvedValue(makeFreshToken()),
+  markConsumed: vi.fn().mockResolvedValue(undefined),
+  countRecentByUser: vi.fn().mockResolvedValue(0),
   ...overrides,
 });
 
 const makeAuditRepo = (
   overrides: Partial<ISubscriptionClaimAuditRepository> = {}
 ): ISubscriptionClaimAuditRepository => ({
-  insert: jest.fn().mockResolvedValue({
+  insert: vi.fn().mockResolvedValue({
     id: 1,
     user_id: 99,
     email_hash: 'eh',
@@ -43,35 +44,33 @@ const makeAuditRepo = (
     outcome: 'confirm_success',
     created_at: new Date(),
   }),
-  countRecentByIp: jest.fn().mockResolvedValue(0),
+  countRecentByIp: vi.fn().mockResolvedValue(0),
   ...overrides,
 });
 
-const makeUsersRepo = (): jest.Mocked<
-  Pick<UsersRepository, 'getEmailById'>
-> => ({
-  getEmailById: jest.fn().mockResolvedValue('user@example.com'),
+const makeUsersRepo = (): Mocked<Pick<UsersRepository, 'getEmailById'>> => ({
+  getEmailById: vi.fn().mockResolvedValue('user@example.com'),
 });
 
 const makeSubscriptionService = (subs: StripeTypes.Subscription[] = []) =>
   ({
-    findActiveStripeSubscriptions: jest.fn().mockResolvedValue(subs),
+    findActiveStripeSubscriptions: vi.fn().mockResolvedValue(subs),
   }) as unknown as typeof SubscriptionService;
 
-const makeStripe = (): jest.Mocked<StripeTypes> =>
+const makeStripe = (): Mocked<StripeTypes> =>
   ({
     customers: {
-      retrieve: jest.fn().mockResolvedValue({
+      retrieve: vi.fn().mockResolvedValue({
         id: 'cus_test',
         email: 'payer@example.com',
         subscriptions: { data: [] },
       }),
-      list: jest.fn().mockResolvedValue({ data: [] }),
+      list: vi.fn().mockResolvedValue({ data: [] }),
     },
-  }) as unknown as jest.Mocked<StripeTypes>;
+  }) as unknown as Mocked<StripeTypes>;
 
 const makeTransactionalDb = (shouldThrowConstraint = false): Knex => {
-  const trxFn = jest
+  const trxFn = vi
     .fn()
     .mockImplementation(
       async (fn: (trx: Knex.Transaction) => Promise<void>) => {
@@ -83,13 +82,13 @@ const makeTransactionalDb = (shouldThrowConstraint = false): Knex => {
         }
         const fakeTrx = {
           fn: { now: () => new Date() },
-          raw: jest.fn(),
+          raw: vi.fn(),
         } as unknown as Knex.Transaction;
 
         const tableProxy = () => ({
           where: () => ({
-            forUpdate: () => ({ first: jest.fn().mockResolvedValue({}) }),
-            update: jest.fn().mockResolvedValue(1),
+            forUpdate: () => ({ first: vi.fn().mockResolvedValue({}) }),
+            update: vi.fn().mockResolvedValue(1),
           }),
         });
 
@@ -105,7 +104,7 @@ const makeTransactionalDb = (shouldThrowConstraint = false): Knex => {
 describe('ConfirmSubscriptionClaimUseCase', () => {
   it('returns invalid_token when no token found', async () => {
     const tokensRepo = makeTokensRepo({
-      findByTokenHash: jest.fn().mockResolvedValue(null),
+      findByTokenHash: vi.fn().mockResolvedValue(null),
     });
     const useCase = new ConfirmSubscriptionClaimUseCase(
       makeTransactionalDb(),
@@ -129,7 +128,7 @@ describe('ConfirmSubscriptionClaimUseCase', () => {
       expires_at: new Date(Date.now() - 1000),
     });
     const tokensRepo = makeTokensRepo({
-      findByTokenHash: jest.fn().mockResolvedValue(expiredToken),
+      findByTokenHash: vi.fn().mockResolvedValue(expiredToken),
     });
     const useCase = new ConfirmSubscriptionClaimUseCase(
       makeTransactionalDb(),
@@ -153,7 +152,7 @@ describe('ConfirmSubscriptionClaimUseCase', () => {
       consumed_at: new Date(Date.now() - 5000),
     });
     const tokensRepo = makeTokensRepo({
-      findByTokenHash: jest.fn().mockResolvedValue(consumedToken),
+      findByTokenHash: vi.fn().mockResolvedValue(consumedToken),
     });
     const useCase = new ConfirmSubscriptionClaimUseCase(
       makeTransactionalDb(),
@@ -194,7 +193,7 @@ describe('ConfirmSubscriptionClaimUseCase', () => {
   it('writes an audit row on every outcome', async () => {
     const auditRepo = makeAuditRepo();
     const tokensRepo = makeTokensRepo({
-      findByTokenHash: jest.fn().mockResolvedValue(null),
+      findByTokenHash: vi.fn().mockResolvedValue(null),
     });
     const useCase = new ConfirmSubscriptionClaimUseCase(
       makeTransactionalDb(),

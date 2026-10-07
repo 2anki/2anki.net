@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { TrackEventUseCase } from './TrackEventUseCase';
 import { EventsSink } from '../../services/events/EventsSink';
 import { IEventsRepository, EventRow } from '../../data_layer/EventsRepository';
@@ -5,18 +6,18 @@ import { IEventsRepository, EventRow } from '../../data_layer/EventsRepository';
 function makeFakeRepository() {
   const inserted: EventRow[] = [];
   const repo: IEventsRepository = {
-    insertEvents: jest.fn(async (rows) => {
+    insertEvents: vi.fn(async (rows) => {
       for (const r of rows) inserted.push(r);
     }),
-    countByName: jest.fn(async () => 0),
-    countDistinctUsers: jest.fn(async () => 0),
-    countByNameForUser: jest.fn(async () => 0),
-    lastEventAt: jest.fn(async () => null),
-    groupPaywallShownByVariantAndSurface: jest.fn(async () => []),
-    groupPaywallClicksByVariant: jest.fn(async () => []),
-    groupUploadFunnel: jest.fn(async () => []),
-    groupUploadFunnelByOrigin: jest.fn(async () => []),
-    groupConversionFailedByReason: jest.fn(async () => ({
+    countByName: vi.fn(async () => 0),
+    countDistinctUsers: vi.fn(async () => 0),
+    countByNameForUser: vi.fn(async () => 0),
+    lastEventAt: vi.fn(async () => null),
+    groupPaywallShownByVariantAndSurface: vi.fn(async () => []),
+    groupPaywallClicksByVariant: vi.fn(async () => []),
+    groupUploadFunnel: vi.fn(async () => []),
+    groupUploadFunnelByOrigin: vi.fn(async () => []),
+    groupConversionFailedByReason: vi.fn(async () => ({
       paywall: 0,
       empty: 0,
       technical: 0,
@@ -62,7 +63,7 @@ describe('TrackEventUseCase', () => {
       props: { email: 'x@x.com', source: 'notion', token: 'abc' },
     });
     await sink.flush();
-    const [call] = (repo.insertEvents as jest.Mock).mock.calls;
+    const [call] = (repo.insertEvents as Mock).mock.calls;
     expect(call[0][0].props).toEqual({ source: 'notion' });
   });
 
@@ -82,7 +83,7 @@ describe('TrackEventUseCase', () => {
       },
     });
     await sink.flush();
-    const [call] = (repo.insertEvents as jest.Mock).mock.calls;
+    const [call] = (repo.insertEvents as Mock).mock.calls;
     expect(call[0][0].props).toEqual({
       source: 'pricing_page',
       team_size: '2–10',
