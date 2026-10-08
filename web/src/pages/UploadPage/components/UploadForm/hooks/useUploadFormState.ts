@@ -43,6 +43,7 @@ export interface BatchResult {
   coloredTextPageCount?: number;
   emptyBackCount?: number;
   structureRescuedRule?: string;
+  imageDropReason?: string;
 }
 
 export interface LockedPdfInfo {
@@ -66,6 +67,7 @@ export function useUploadFormState(onReset: () => void) {
   const [mcqCount, setMcqCount] = useState<number>(0);
   const [mcqSkippedCount, setMcqSkippedCount] = useState<number>(0);
   const [droppedImageCount, setDroppedImageCount] = useState<number>(0);
+  const [imageDropReason, setImageDropReason] = useState<string | null>(null);
   const [expiredNotionImageCount, setExpiredNotionImageCount] =
     useState<number>(0);
   const [coloredTextPageCount, setColoredTextPageCount] = useState<number>(0);
@@ -116,6 +118,7 @@ export function useUploadFormState(onReset: () => void) {
     setMcqCount(0);
     setMcqSkippedCount(0);
     setDroppedImageCount(0);
+    setImageDropReason(null);
     setExpiredNotionImageCount(0);
     setColoredTextPageCount(0);
     setEmptyBackCount(0);
@@ -169,6 +172,8 @@ export function useUploadFormState(onReset: () => void) {
     setMcqSkippedCount,
     droppedImageCount,
     setDroppedImageCount,
+    imageDropReason,
+    setImageDropReason,
     expiredNotionImageCount,
     setExpiredNotionImageCount,
     coloredTextPageCount,

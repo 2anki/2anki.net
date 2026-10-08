@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-08-missing-images-from-a-notion-html-upload",
+  "date": "2026-10-08",
+  "type": "fix",
+  "title": "When you upload a Notion page's HTML file without its image folder, your deck now tells you the images are missing and to upload the whole .zip instead, both after converting and on My Decks"
+}

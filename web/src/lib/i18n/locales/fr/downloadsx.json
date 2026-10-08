@@ -54,7 +54,9 @@
     "notionExportExpired_one": "{{count}} image n'a pas pu être téléchargée et n'est pas dans ce paquet. Le lien vers l'image dans cet export Notion a expiré — ces liens ne durent qu'environ une heure. Exportez à nouveau la page et téléversez le nouveau fichier peu après.",
     "notionExportExpired_other": "{{count}} images n'ont pas pu être téléchargées et ne sont pas dans ce paquet. Les liens vers les images dans cet export Notion ont expiré — ces liens ne durent qu'environ une heure. Exportez à nouveau la page et téléversez le nouveau fichier peu après.",
     "notionExportExpiredMultiDeck_one": "{{count}} image n'a pas pu être téléchargée et n'est pas dans vos paquets. Le lien vers l'image dans cet export Notion a expiré — ces liens ne durent qu'environ une heure. Exportez à nouveau la page et téléversez le nouveau fichier peu après.",
-    "notionExportExpiredMultiDeck_other": "{{count}} images n'ont pas pu être téléchargées et ne sont pas dans vos paquets. Les liens vers les images dans cet export Notion ont expiré — ces liens ne durent qu'environ une heure. Exportez à nouveau la page et téléversez le nouveau fichier peu après."
+    "notionExportExpiredMultiDeck_other": "{{count}} images n'ont pas pu être téléchargées et ne sont pas dans vos paquets. Les liens vers les images dans cet export Notion ont expiré — ces liens ne durent qu'environ une heure. Exportez à nouveau la page et téléversez le nouveau fichier peu après.",
+    "notionHtmlUpload_one": "{{count}} image ne figure pas dans ce paquet. Le fichier que tu as importé est la page HTML d'un export Notion, sans son dossier d'images. Importe plutôt le .zip complet de ton export Notion pour conserver les images.",
+    "notionHtmlUpload_other": "{{count}} images ne figurent pas dans ce paquet. Le fichier que tu as importé est la page HTML d'un export Notion, sans son dossier d'images. Importe plutôt le .zip complet de ton export Notion pour conserver les images."
   },
   "cardLimitPartial": {
     "heldBack_one": "Ton paquet contient {{delivered}} de tes {{limit}} cartes mensuelles. {{count}} carte de plus est prête — <pricingLink>passe à l'illimité</pricingLink>.",

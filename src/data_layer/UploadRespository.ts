@@ -29,6 +29,11 @@ export interface ConvertedDeckInsert {
   size_mb: number;
 }
 
+export interface UploadConversionMeta {
+  droppedImageCount?: number;
+  imageDropReason?: string | null;
+}
+
 export interface IUploadRepository {
   deleteUpload(owner: number, key: string): Promise<number>;
   getUploadsByOwner(owner: number): Promise<Uploads[]>;
@@ -44,7 +49,8 @@ export interface IUploadRepository {
     filename: string,
     key: string,
     size_mb: number,
-    source?: UploadSource | null
+    source?: UploadSource | null,
+    conversionMeta?: UploadConversionMeta
   ): Promise<Uploads[]>;
   getLastUploadForUser(userId: number): Promise<LastUpload | null>;
   getLastReconvertibleUpload(
@@ -145,7 +151,8 @@ class UploadRepository implements IUploadRepository {
     filename: string,
     key: string,
     size_mb: number,
-    source: UploadSource | null = null
+    source: UploadSource | null = null,
+    conversionMeta?: UploadConversionMeta
   ): Promise<Uploads[]> {
     return this.database(this.table).insert({
       owner,
@@ -153,6 +160,8 @@ class UploadRepository implements IUploadRepository {
       key,
       size_mb,
       source,
+      dropped_image_count: conversionMeta?.droppedImageCount ?? null,
+      image_drop_reason: conversionMeta?.imageDropReason ?? null,
     });
   }
 

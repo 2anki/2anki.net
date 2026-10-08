@@ -571,7 +571,8 @@
       "blocksSkipped_other": "{{count}} Blöcke übersprungen",
       "structureGuessed": "Struktur geraten",
       "columnsGuessed": "Spalten geraten",
-      "sharedTooltip": "Geteilt — klicken, um die Vorschau zu öffnen"
+      "sharedTooltip": "Geteilt — klicken, um die Vorschau zu öffnen",
+      "imagesMissing": "Bilder fehlen"
     },
     "done": "Fertig",
     "openInNotion": "In Notion öffnen",

@@ -54,7 +54,9 @@
     "notionExportExpired_one": "No se pudo descargar {{count}} imagen y no está en este mazo. El enlace a la imagen en esta exportación de Notion caducó — estos enlaces duran alrededor de una hora. Exporta la página de nuevo y sube el archivo nuevo poco después.",
     "notionExportExpired_other": "No se pudieron descargar {{count}} imágenes y no están en este mazo. Los enlaces a las imágenes en esta exportación de Notion caducaron — estos enlaces duran alrededor de una hora. Exporta la página de nuevo y sube el archivo nuevo poco después.",
     "notionExportExpiredMultiDeck_one": "No se pudo descargar {{count}} imagen y no está en tus mazos. El enlace a la imagen en esta exportación de Notion caducó — estos enlaces duran alrededor de una hora. Exporta la página de nuevo y sube el archivo nuevo poco después.",
-    "notionExportExpiredMultiDeck_other": "No se pudieron descargar {{count}} imágenes y no están en tus mazos. Los enlaces a las imágenes en esta exportación de Notion caducaron — estos enlaces duran alrededor de una hora. Exporta la página de nuevo y sube el archivo nuevo poco después."
+    "notionExportExpiredMultiDeck_other": "No se pudieron descargar {{count}} imágenes y no están en tus mazos. Los enlaces a las imágenes en esta exportación de Notion caducaron — estos enlaces duran alrededor de una hora. Exporta la página de nuevo y sube el archivo nuevo poco después.",
+    "notionHtmlUpload_one": "{{count}} imagen no está en este mazo. El archivo que subiste es la página HTML de una exportación de Notion, sin su carpeta de imágenes. Sube el .zip completo de tu exportación de Notion para conservar las imágenes.",
+    "notionHtmlUpload_other": "{{count}} imágenes no están en este mazo. El archivo que subiste es la página HTML de una exportación de Notion, sin su carpeta de imágenes. Sube el .zip completo de tu exportación de Notion para conservar las imágenes."
   },
   "cardLimitPartial": {
     "heldBack_one": "Tu mazo tiene {{delivered}} de tus {{limit}} tarjetas mensuales. {{count}} tarjeta más está lista — <pricingLink>mejora para tarjetas ilimitadas</pricingLink>.",

@@ -18,6 +18,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setMcqCount: vi.fn(),
     setMcqSkippedCount: vi.fn(),
     setDroppedImageCount: vi.fn(),
+    setImageDropReason: vi.fn(),
     setExpiredNotionImageCount: vi.fn(),
     setColoredTextPageCount: vi.fn(),
     setEmptyBackCount: vi.fn(),
@@ -137,6 +138,30 @@ describe('applyConversionSuccess', () => {
     );
 
     expect(handlers.setDroppedImageCount).toHaveBeenCalledWith(3);
+  });
+
+  it('reads the image-drop reason from the X-Image-Drop-Reason header on a single deck', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({
+        'X-Dropped-Assets': '2',
+        'X-Image-Drop-Reason': 'notion_html_no_folder',
+      }),
+      handlers
+    );
+
+    expect(handlers.setImageDropReason).toHaveBeenCalledWith(
+      'notion_html_no_folder'
+    );
+  });
+
+  it('sets the image-drop reason to null when the header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setImageDropReason).toHaveBeenCalledWith(null);
   });
 
   it('reads the coloured-text page count from the X-Colored-Text-Pages header on a single deck', async () => {

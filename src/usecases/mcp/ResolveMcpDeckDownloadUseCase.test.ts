@@ -17,6 +17,8 @@ function makeRow(overrides: Partial<Uploads> = {}): Uploads {
     created_at: new Date('2026-07-19T00:00:00Z'),
     source: 'app',
     dedupe_key: null,
+    dropped_image_count: null,
+    image_drop_reason: null,
     ...overrides,
   };
 }

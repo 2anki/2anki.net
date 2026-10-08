@@ -162,6 +162,7 @@ interface PrepareDeckResult {
   droppedImageCount: number;
   coloredTextPageCount: number;
   expiredNotionImageCount: number;
+  missingLocalImageCount: number;
   emptyBackCount: number;
   parsePath?: string;
   engine?: ConversionEngine;
@@ -830,6 +831,7 @@ async function buildParserResult(
         droppedImageCount: parser.droppedImageCount,
         coloredTextPageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
+        missingLocalImageCount: parser.missingLocalImageCount,
         emptyBackCount: parser.emptyBackCount,
         // This is the branch a document takes when nothing recognised it, so it
         // is exactly the population a rescue has to clear. Without a score here
@@ -872,6 +874,7 @@ async function buildParserResult(
     droppedImageCount: parser.droppedImageCount,
     coloredTextPageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
+    missingLocalImageCount: parser.missingLocalImageCount,
     emptyBackCount: parser.emptyBackCount,
     parsePath: parser.parsePathSignature(),
     engine: 'parser',
@@ -1100,6 +1103,7 @@ async function buildClaudeDeck(
     ),
     coloredTextPageCount: sumColoredTextPages(convertedFiles),
     expiredNotionImageCount: 0,
+    missingLocalImageCount: 0,
     emptyBackCount: 0,
     pdfPageCount: sumPdfPageCount(convertedFiles),
   };
@@ -1242,6 +1246,7 @@ export interface DeckInfoOnlyResult {
   droppedImageCount: number;
   coloredTextPageCount: number;
   expiredNotionImageCount: number;
+  missingLocalImageCount: number;
   emptyBackCount: number;
   parsePath?: string;
   engine?: ConversionEngine;
@@ -1295,6 +1300,7 @@ export async function prepareDeckInfoOnly(
         droppedImageCount: parser.droppedImageCount,
         coloredTextPageCount,
         expiredNotionImageCount: parser.expiredNotionImageCount,
+        missingLocalImageCount: parser.missingLocalImageCount,
         emptyBackCount: parser.emptyBackCount,
         needsIndividualBuild: true,
       };
@@ -1326,6 +1332,7 @@ export async function prepareDeckInfoOnly(
     droppedImageCount: parser.droppedImageCount,
     coloredTextPageCount,
     expiredNotionImageCount: parser.expiredNotionImageCount,
+    missingLocalImageCount: parser.missingLocalImageCount,
     emptyBackCount: parser.emptyBackCount,
     parsePath: parser.parsePathSignature(),
     engine: 'parser',

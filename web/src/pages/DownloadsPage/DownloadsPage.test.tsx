@@ -85,6 +85,8 @@ let mockUploads: {
   object_id: string;
   created_at: string | null;
   source?: string | null;
+  dropped_image_count?: number | null;
+  image_drop_reason?: string | null;
 }[] = [];
 let mockDropboxUploads: {
   id: number;
@@ -1442,6 +1444,69 @@ describe('DownloadsPage conversion note toggles', () => {
 
     expect(
       screen.queryByRole('button', { name: /Conversion report/ })
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('DownloadsPage missing-images notice on upload rows', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-18T12:00:00Z'));
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    mockJobs = [];
+    mockDropboxUploads = [];
+    mockGoogleDriveUploads = [];
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    delete (globalThis as AnalyticsGlobals).hj;
+    delete (globalThis as AnalyticsGlobals).gtag;
+  });
+
+  const uploadRow = (
+    overrides: Partial<(typeof mockUploads)[number]> = {}
+  ) => ({
+    id: 'u-html',
+    size_mb: 1,
+    owner: 1,
+    key: 'notes.apkg',
+    filename: 'notes.html',
+    object_id: '',
+    created_at: '2026-05-18T10:00:00Z',
+    source: null,
+    dropped_image_count: null,
+    image_drop_reason: null,
+    ...overrides,
+  });
+
+  it('shows the badge and the sub-row for a notion_html_no_folder upload', () => {
+    mockUploads = [
+      uploadRow({
+        dropped_image_count: 2,
+        image_drop_reason: 'notion_html_no_folder',
+      }),
+    ];
+    renderAt('/downloads');
+
+    expect(screen.getByText('Images missing')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /The file you uploaded is the HTML page from a Notion export/
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('shows nothing extra for an upload with no dropped images', () => {
+    mockUploads = [uploadRow()];
+    renderAt('/downloads');
+
+    expect(screen.queryByText('Images missing')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /The file you uploaded is the HTML page from a Notion export/
+      )
     ).not.toBeInTheDocument();
   });
 });

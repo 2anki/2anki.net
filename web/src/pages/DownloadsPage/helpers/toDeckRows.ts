@@ -10,6 +10,8 @@ export type DeckRow =
       source: 'upload' | 'app';
       kind: 'file';
       upload: UserUpload;
+      droppedImageCount: number;
+      imageDropReason: string | null;
       sortKey: Date;
     }
   | { source: 'dropbox'; kind: 'dropbox'; upload: DropboxUpload; sortKey: Date }
@@ -82,6 +84,8 @@ export function toDeckRows(
       source: uploadSource(upload.source),
       kind: 'file',
       upload,
+      droppedImageCount: upload.dropped_image_count ?? 0,
+      imageDropReason: upload.image_drop_reason ?? null,
       sortKey: toSortKey(upload.created_at),
     });
   }

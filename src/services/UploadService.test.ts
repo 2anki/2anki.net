@@ -1192,6 +1192,139 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it('flags notion_html_no_folder and persists it when an HTML-only upload drops a local image', async () => {
+    const update = vi.fn().mockResolvedValue([] as Uploads[]);
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 12,
+              droppedImageCount: 2,
+              missingLocalImageCount: 2,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      { ...buildRepository(), update },
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'notes.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/notes.html',
+        },
+      ],
+    } as unknown as Partial<express.Request>);
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(res.set).toHaveBeenCalledWith(
+      'X-Image-Drop-Reason',
+      'notion_html_no_folder'
+    );
+    expect(update).toHaveBeenCalledWith(
+      42,
+      'deck',
+      expect.any(String),
+      expect.any(Number),
+      null,
+      { droppedImageCount: 2, imageDropReason: 'notion_html_no_folder' }
+    );
+  });
+
+  it('keeps the generic guidance when a dropped image on an HTML upload is a remote drop, not a missing local path', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 12,
+              droppedImageCount: 1,
+              missingLocalImageCount: 0,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'notes.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/notes.html',
+        },
+      ],
+    } as unknown as Partial<express.Request>);
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Image-Drop-Reason',
+      expect.anything()
+    );
+  });
+
+  it('does not flag notion_html_no_folder for a zip upload even when a local image is missing', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 12,
+              droppedImageCount: 2,
+              missingLocalImageCount: 2,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Image-Drop-Reason',
+      expect.anything()
+    );
+  });
+
   it('sets X-Credits-Used from the request cost on a single-deck sync upload', async () => {
     mockPackages([{ name: 'deck', cardCount: 12 }]);
     const costByRequestId = vi.fn().mockResolvedValue(0.88);
@@ -4258,7 +4391,8 @@ describe('UploadService.handleSyncUpload — persisted copy for a signed-in owne
       'deck',
       key,
       expect.any(Number),
-      null
+      null,
+      { droppedImageCount: 0, imageDropReason: null }
     );
     expect(res.set).toHaveBeenCalledWith('X-Download-Key', key);
     expect(exposedHeaders(res)).toContain('X-Download-Key');

@@ -37,6 +37,8 @@ describe('ImageDropNotice', () => {
       dropped_count: 3,
       source: 'notion',
       expired_count: 0,
+      surface: 'upload_form',
+      reason: null,
     });
   });
 
@@ -59,6 +61,8 @@ describe('ImageDropNotice', () => {
       dropped_count: 1,
       source: 'upload',
       expired_count: 0,
+      surface: 'upload_form',
+      reason: null,
     });
   });
 
@@ -85,6 +89,8 @@ describe('ImageDropNotice', () => {
       dropped_count: 1,
       source: 'pdf',
       expired_count: 0,
+      surface: 'upload_form',
+      reason: null,
     });
   });
 
@@ -147,6 +153,33 @@ describe('ImageDropNotice', () => {
       dropped_count: 2,
       source: 'upload',
       expired_count: 2,
+      surface: 'upload_form',
+      reason: null,
+    });
+  });
+
+  it('uses the Notion-HTML-no-folder copy for the notionHtml source', () => {
+    render(<ImageDropNotice count={2} source="notionHtml" />);
+    expect(
+      screen.getByText(
+        /The file you uploaded is the HTML page from a Notion export/
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Upload the whole \.zip from your Notion export/)
+    ).toBeInTheDocument();
+  });
+
+  it('fires the usage event with the downloads_row surface and the reason', () => {
+    render(
+      <ImageDropNotice count={2} source="notionHtml" surface="downloads_row" />
+    );
+    expect(track).toHaveBeenCalledWith('image_drop_notice_shown', {
+      dropped_count: 2,
+      source: 'notionHtml',
+      expired_count: 0,
+      surface: 'downloads_row',
+      reason: 'notion_html_no_folder',
     });
   });
 });

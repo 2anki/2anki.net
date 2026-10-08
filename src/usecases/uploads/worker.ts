@@ -293,6 +293,7 @@ async function processFile(
       singleFilePackage.uploadIdentityStats = d.uploadIdentityStats;
       singleFilePackage.expiredNotionImageCount =
         d.expiredNotionImageCount ?? 0;
+      singleFilePackage.missingLocalImageCount = d.missingLocalImageCount ?? 0;
       singleFilePackage.pdfPageCount = d.pdfPageCount;
       singleFilePackage.coloredTextPageCount = d.coloredTextPageCount ?? 0;
       packages.push(singleFilePackage);

@@ -571,7 +571,8 @@
       "blocksSkipped_other": "{{count}} blocos ignorados",
       "structureGuessed": "Estrutura deduzida",
       "columnsGuessed": "Colunas deduzidas",
-      "sharedTooltip": "Compartilhado — clique para abrir a prévia"
+      "sharedTooltip": "Compartilhado — clique para abrir a prévia",
+      "imagesMissing": "Imagens ausentes"
     },
     "done": "Pronto",
     "openInNotion": "Abrir no Notion",

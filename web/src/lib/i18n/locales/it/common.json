@@ -571,7 +571,8 @@
       "blocksSkipped_other": "{{count}} blocchi saltati",
       "structureGuessed": "Struttura dedotta",
       "columnsGuessed": "Colonne dedotte",
-      "sharedTooltip": "Condiviso — clicca per aprire l'anteprima"
+      "sharedTooltip": "Condiviso — clicca per aprire l'anteprima",
+      "imagesMissing": "Immagini mancanti"
     },
     "done": "Fatto",
     "openInNotion": "Apri in Notion",

@@ -481,3 +481,56 @@ describe('UploadController.retryPdfWithCredential rate limit', () => {
     expect(capturedStatus).toBe(400);
   });
 });
+
+describe('UploadController.getUploads', () => {
+  function buildService(rows: Uploads[]): UploadService {
+    const repository = {
+      getUploadsByOwner: vi.fn().mockResolvedValue(rows),
+    } as unknown as IUploadRepository;
+    return new UploadService(
+      repository,
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+  }
+
+  it('maps rows to a typed response carrying the image-drop metadata', async () => {
+    const row = {
+      id: 7,
+      owner: 42,
+      key: 'owner-42-deck.apkg',
+      filename: 'notes.apkg',
+      object_id: null,
+      size_mb: 1,
+      created_at: new Date('2026-10-06T00:00:00Z'),
+      source: null,
+      dedupe_key: 'secret-hash',
+      dropped_image_count: 3,
+      image_drop_reason: 'notion_html_no_folder',
+    } as unknown as Uploads;
+    const controller = new UploadController(
+      buildService([row]),
+      {} as unknown as NotionService
+    );
+    const jsonSpy = vi.fn();
+    const res = {
+      locals: { owner: 42 },
+      json: jsonSpy,
+      status: vi.fn(),
+    } as unknown as express.Response;
+
+    await controller.getUploads({} as express.Request, res);
+
+    expect(jsonSpy).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 7,
+        dropped_image_count: 3,
+        image_drop_reason: 'notion_html_no_folder',
+        created_at: '2026-10-06T00:00:00.000Z',
+      }),
+    ]);
+    const [payload] = jsonSpy.mock.calls[0] as [Record<string, unknown>[]];
+    expect(payload[0]).not.toHaveProperty('dedupe_key');
+  });
+});

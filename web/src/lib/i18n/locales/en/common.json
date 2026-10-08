@@ -571,7 +571,8 @@
       "blocksSkipped_other": "{{count}} blocks skipped",
       "structureGuessed": "Structure guessed",
       "columnsGuessed": "Columns guessed",
-      "sharedTooltip": "Shared — click to open preview"
+      "sharedTooltip": "Shared — click to open preview",
+      "imagesMissing": "Images missing"
     },
     "done": "Done",
     "openInNotion": "Open in Notion",

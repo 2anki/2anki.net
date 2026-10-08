@@ -13,7 +13,7 @@ describe('UploadRepository.update generated SQL', () => {
     ).toString();
 
     expect(sql).toBe(
-      'insert into "uploads" ("filename", "key", "owner", "size_mb", "source") values (\'deck.apkg\', \'key/deck.apkg\', 7, 1.5, \'app\')'
+      'insert into "uploads" ("dropped_image_count", "filename", "image_drop_reason", "key", "owner", "size_mb", "source") values (NULL, \'deck.apkg\', NULL, \'key/deck.apkg\', 7, 1.5, \'app\')'
     );
   });
 
@@ -28,7 +28,25 @@ describe('UploadRepository.update generated SQL', () => {
     ).toString();
 
     expect(sql).toBe(
-      'insert into "uploads" ("filename", "key", "owner", "size_mb", "source") values (\'deck.apkg\', \'key/deck.apkg\', 7, 1.5, NULL)'
+      'insert into "uploads" ("dropped_image_count", "filename", "image_drop_reason", "key", "owner", "size_mb", "source") values (NULL, \'deck.apkg\', NULL, \'key/deck.apkg\', 7, 1.5, NULL)'
+    );
+  });
+
+  it('persists the dropped-image count and reason when conversion metadata is supplied', () => {
+    const pg = knex({ client: 'pg' });
+    const repo = new UploadRepository(pg);
+
+    const sql = (
+      repo.update(7, 'deck.apkg', 'key/deck.apkg', 1.5, null, {
+        droppedImageCount: 2,
+        imageDropReason: 'notion_html_no_folder',
+      }) as unknown as {
+        toString(): string;
+      }
+    ).toString();
+
+    expect(sql).toBe(
+      'insert into "uploads" ("dropped_image_count", "filename", "image_drop_reason", "key", "owner", "size_mb", "source") values (2, \'deck.apkg\', \'notion_html_no_folder\', \'key/deck.apkg\', 7, 1.5, NULL)'
     );
   });
 });

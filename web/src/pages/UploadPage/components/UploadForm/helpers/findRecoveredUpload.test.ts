@@ -12,6 +12,8 @@ function upload(overrides: Partial<UserUpload>): UserUpload {
     object_id: 'obj-1',
     created_at: null,
     source: null,
+    dropped_image_count: null,
+    image_drop_reason: null,
     ...overrides,
   };
 }

@@ -587,7 +587,8 @@
       "blocksSkipped_other": "{{count}} блока пропущено",
       "structureGuessed": "Структура определена",
       "columnsGuessed": "Столбцы определены",
-      "sharedTooltip": "Общая — нажми, чтобы открыть предпросмотр"
+      "sharedTooltip": "Общая — нажми, чтобы открыть предпросмотр",
+      "imagesMissing": "Нет изображений"
     },
     "done": "Готово",
     "openInNotion": "Открыть в Notion",

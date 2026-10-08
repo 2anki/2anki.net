@@ -319,6 +319,8 @@ function UploadForm({
     droppedImageCount,
     overSplit,
     setDroppedImageCount,
+    imageDropReason,
+    setImageDropReason,
     expiredNotionImageCount,
     setExpiredNotionImageCount,
     coloredTextPageCount,
@@ -418,6 +420,7 @@ function UploadForm({
     setMcqCount,
     setMcqSkippedCount,
     setDroppedImageCount,
+    setImageDropReason,
     setExpiredNotionImageCount,
     setColoredTextPageCount,
     setEmptyBackCount,
@@ -1713,7 +1716,10 @@ function UploadForm({
   const currentFilename = (): string =>
     driveFilename ?? dropboxFilename ?? displayFilename(fileInputRef.current);
 
-  const imageDropSource = (): 'pdf' | 'upload' => {
+  const imageDropSource = (): 'pdf' | 'upload' | 'notionHtml' => {
+    if (imageDropReason === 'notion_html_no_folder') {
+      return 'notionHtml';
+    }
     const remote = driveFilename ?? dropboxFilename;
     if (remote) {
       return remote.toLowerCase().endsWith('.pdf') ? 'pdf' : 'upload';

@@ -1878,6 +1878,7 @@ describe('remote image rehosting', () => {
     await parser.writeDeckInfo(ws);
 
     expect(parser.droppedImageCount).toBe(1);
+    expect(parser.missingLocalImageCount).toBe(0);
   });
 
   test('counts an expired Notion signed image separately when the fetch returns null', async () => {
@@ -1947,6 +1948,7 @@ describe('local and markdown images that cannot be resolved from the export', ()
 
     const card = parser.payload[0].cards[0];
     expect(parser.droppedImageCount).toBe(1);
+    expect(parser.missingLocalImageCount).toBe(1);
     expect(card.media).toHaveLength(0);
     expect(downloadMediaOrSkipMock).not.toHaveBeenCalled();
   });

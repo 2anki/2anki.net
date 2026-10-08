@@ -571,7 +571,8 @@
       "blocksSkipped_other": "{{count}} blokken overgeslagen",
       "structureGuessed": "Structuur geraden",
       "columnsGuessed": "Kolommen geraden",
-      "sharedTooltip": "Gedeeld — klik om het voorbeeld te openen"
+      "sharedTooltip": "Gedeeld — klik om het voorbeeld te openen",
+      "imagesMissing": "Afbeeldingen ontbreken"
     },
     "done": "Klaar",
     "openInNotion": "Openen in Notion",

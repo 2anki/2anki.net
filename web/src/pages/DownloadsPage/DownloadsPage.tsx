@@ -41,6 +41,7 @@ import {
   ThinDeckNotice,
   shouldShowThinDeckNotice,
 } from './components/ThinDeckNotice';
+import { ImageDropNotice } from './components/ImageDropNotice';
 import { NotionColumnMappingModal } from '../../components/NotionColumnMappingModal/NotionColumnMappingModal';
 import {
   parseAmbiguousColumnsPayload,
@@ -76,6 +77,7 @@ const VALID_FILTERS = new Set<FilterValue>([
   'drive',
 ]);
 const APKG_PATTERN = /\.apkg$/i;
+const NOTION_HTML_NO_FOLDER_REASON = 'notion_html_no_folder';
 const EMPTY_DECK_REASON_PREFIX = 'No cards in this deck yet.';
 const ACTIVE_STATUSES = new Set(['done', 'failed', 'cancelled', 'interrupted']);
 
@@ -918,6 +920,16 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                       {t('downloads.badge.shared')}
                                     </Link>
                                   )}
+                                  {row.imageDropReason ===
+                                    NOTION_HTML_NO_FOLDER_REASON &&
+                                    row.droppedImageCount > 0 && (
+                                      <span
+                                        className={sharedStyles.badgeWarning}
+                                        style={{ marginLeft: '0.5rem' }}
+                                      >
+                                        {t('downloads.badge.imagesMissing')}
+                                      </span>
+                                    )}
                                 </td>
                                 <td>
                                   <span className={sharedStyles.badge}>
@@ -1012,6 +1024,22 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                   </td>
                                 </tr>
                               )}
+                              {row.imageDropReason ===
+                                NOTION_HTML_NO_FOLDER_REASON &&
+                                row.droppedImageCount > 0 && (
+                                  <tr key={`upload-${u.key}-image-drop`}>
+                                    <td
+                                      colSpan={4}
+                                      className={styles.emptyTogglePanel}
+                                    >
+                                      <ImageDropNotice
+                                        count={row.droppedImageCount}
+                                        source="notionHtml"
+                                        surface="downloads_row"
+                                      />
+                                    </td>
+                                  </tr>
+                                )}
                             </Fragment>
                           );
                         }
