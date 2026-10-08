@@ -30,6 +30,11 @@ import {
 } from '../../lib/pdf/pdfPasswordSentinel';
 import { buildLockedPdfWarning } from '../../lib/pdf/lockedPdfWarning';
 import { buildConversionFailureWarning } from './conversionFailureWarning';
+import {
+  EmptyDeckError,
+  EmptyDeckReason,
+  mostSpecificEmptyReason,
+} from '../jobs/EmptyDeckError';
 
 const LOCKED_PDF = Symbol('locked-pdf');
 
@@ -76,6 +81,22 @@ interface BatchOutcome {
   warnings: string[];
   lockedPdfs: string[];
   failedFiles: string[];
+  emptyReasons: EmptyDeckReason[];
+}
+
+// A file that produced no cards still knows why: it either threw an
+// EmptyDeckError (prose text, a page with no toggles) or returned a zero-card
+// result carrying the parser's classification. Capturing both keeps the reason
+// from being flattened to unknown when the whole upload comes out empty.
+function reasonFromRejection(error: unknown): EmptyDeckReason | undefined {
+  return error instanceof EmptyDeckError ? error.reason : undefined;
+}
+
+function reasonFromZeroCardResult(result: {
+  cardCount?: number;
+  emptyReason?: EmptyDeckReason;
+}): EmptyDeckReason | undefined {
+  return (result.cardCount ?? 0) === 0 ? result.emptyReason : undefined;
 }
 
 interface BatchBuildContext {
@@ -122,14 +143,19 @@ async function buildDeckBatch(
 
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
+  const emptyReasons: EmptyDeckReason[] = [];
   const preparedResults: DeckInfoOnlyResult[] = [];
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
       failedFiles.push(fileNames[index]);
+      const reason = reasonFromRejection(result.reason);
+      if (reason != null) emptyReasons.push(reason);
     } else if (isLockedPdfEntry(result.value)) {
       lockedPdfs.push(result.value.filename);
     } else {
       preparedResults.push(result.value);
+      const reason = reasonFromZeroCardResult(result.value);
+      if (reason != null) emptyReasons.push(reason);
     }
   });
 
@@ -205,8 +231,9 @@ async function buildDeckBatch(
   warnings.push(...stragglerOutcomes.warnings);
   lockedPdfs.push(...stragglerOutcomes.lockedPdfs);
   failedFiles.push(...stragglerOutcomes.failedFiles);
+  emptyReasons.push(...stragglerOutcomes.emptyReasons);
 
-  return { packages, warnings, lockedPdfs, failedFiles };
+  return { packages, warnings, lockedPdfs, failedFiles, emptyReasons };
 }
 
 async function buildStragglerDecks(
@@ -220,6 +247,7 @@ async function buildStragglerDecks(
   const warnings: string[] = [];
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
+  const emptyReasons: EmptyDeckReason[] = [];
 
   for (const straggler of stragglers) {
     const relevantFiles = getRelevantFiles(
@@ -240,13 +268,17 @@ async function buildStragglerDecks(
           uploadIdentity,
         })
       );
-    } catch {
+    } catch (error) {
       failedFiles.push(straggler.inputFileName);
+      const reason = reasonFromRejection(error);
+      if (reason != null) emptyReasons.push(reason);
       continue;
     }
     if (isLockedPdfEntry(outcome)) {
       lockedPdfs.push(outcome.filename);
     } else if (outcome) {
+      const reason = reasonFromZeroCardResult(outcome);
+      if (reason != null) emptyReasons.push(reason);
       const pkg = new Package(
         outcome.name,
         outcome.cardCount ?? 0,
@@ -269,7 +301,7 @@ async function buildStragglerDecks(
     }
   }
 
-  return { packages, warnings, lockedPdfs, failedFiles };
+  return { packages, warnings, lockedPdfs, failedFiles, emptyReasons };
 }
 
 async function buildClaudeFlashcardDeck(
@@ -390,16 +422,21 @@ async function buildAllInOneSlot(
   const warnings: string[] = [];
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
+  const emptyReasons: EmptyDeckReason[] = [];
   let cardsHeldBack: number | undefined;
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
       failedFiles.push(supportedFileNames[index]);
+      const reason = reasonFromRejection(result.reason);
+      if (reason != null) emptyReasons.push(reason);
       return;
     }
     const outcome = result.value;
     if (isLockedPdfEntry(outcome)) {
       lockedPdfs.push(outcome.filename);
     } else if (outcome) {
+      const reason = reasonFromZeroCardResult(outcome);
+      if (reason != null) emptyReasons.push(reason);
       const pkg = new Package(
         outcome.name,
         outcome.cardCount ?? 0,
@@ -426,7 +463,26 @@ async function buildAllInOneSlot(
   });
   appendLockedPdfWarning(warnings, lockedPdfs);
   appendConversionFailureWarning(warnings, failedFiles);
-  return { packages, warnings, cardsHeldBack };
+  return {
+    packages,
+    warnings,
+    cardsHeldBack,
+    emptyReason: emptyReasonForEmptyResult(packages, emptyReasons),
+  };
+}
+
+// Only attach a reason when the slot produced no cards at all; a zip where one
+// file converted and another came up empty is a success, and tagging it with
+// the empty file's reason would mislabel it.
+function emptyReasonForEmptyResult(
+  packages: Package[],
+  emptyReasons: EmptyDeckReason[]
+): EmptyDeckReason | undefined {
+  const totalCards = packages.reduce((sum, p) => sum + (p.cardCount ?? 0), 0);
+  if (totalCards > 0 || emptyReasons.length === 0) {
+    return undefined;
+  }
+  return mostSpecificEmptyReason(emptyReasons);
 }
 
 function appendLockedPdfWarning(warnings: string[], lockedPdfs: string[]) {
@@ -538,18 +594,26 @@ export const getPackagesFromZip = async (
   const warnings: string[] = [];
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
+  const emptyReasons: EmptyDeckReason[] = [];
   settledChunks.forEach((result, index) => {
     if (result.status === 'rejected') {
       failedFiles.push(...chunks[index]);
+      const reason = reasonFromRejection(result.reason);
+      if (reason != null) emptyReasons.push(reason);
       return;
     }
     packages.push(...result.value.packages);
     warnings.push(...result.value.warnings);
     lockedPdfs.push(...result.value.lockedPdfs);
     failedFiles.push(...result.value.failedFiles);
+    emptyReasons.push(...result.value.emptyReasons);
   });
   appendLockedPdfWarning(warnings, lockedPdfs);
   appendConversionFailureWarning(warnings, failedFiles);
 
-  return { packages, warnings };
+  return {
+    packages,
+    warnings,
+    emptyReason: emptyReasonForEmptyResult(packages, emptyReasons),
+  };
 };

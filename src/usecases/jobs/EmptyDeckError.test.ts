@@ -1,4 +1,4 @@
-import { EmptyDeckError } from './EmptyDeckError';
+import { EmptyDeckError, mostSpecificEmptyReason } from './EmptyDeckError';
 
 describe('EmptyDeckError', () => {
   it('is an Error subclass with the EmptyDeckError name', () => {
@@ -44,5 +44,34 @@ describe('EmptyDeckError', () => {
     }
 
     expect(caught).toBeInstanceOf(EmptyDeckError);
+  });
+});
+
+describe('mostSpecificEmptyReason', () => {
+  it('returns unknown for an empty list', () => {
+    expect(mostSpecificEmptyReason([])).toBe('unknown');
+  });
+
+  it('prefers all_filtered over no_toggles, no_content and unknown', () => {
+    expect(
+      mostSpecificEmptyReason([
+        'unknown',
+        'no_content',
+        'no_toggles',
+        'all_filtered',
+      ])
+    ).toBe('all_filtered');
+  });
+
+  it('prefers no_toggles over no_content and unknown', () => {
+    expect(
+      mostSpecificEmptyReason(['unknown', 'no_content', 'no_toggles'])
+    ).toBe('no_toggles');
+  });
+
+  it('prefers no_content over unknown', () => {
+    expect(mostSpecificEmptyReason(['unknown', 'no_content'])).toBe(
+      'no_content'
+    );
   });
 });

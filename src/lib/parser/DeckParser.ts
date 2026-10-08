@@ -63,6 +63,7 @@ import {
   isHTMLFile,
   isImageFileEmbedable,
   isMarkdownFile,
+  isPlainText,
 } from '../storage/checks';
 import { getFileContents } from './getFileContents';
 import { normalizeNotionEquations } from './normalizeNotionEquations';
@@ -301,6 +302,16 @@ export class DeckParser {
           )
         : [];
     } else {
+      // A plain-text file carries real content even when the fallback parser
+      // finds no question/answer structure in it, so record the text here.
+      // Otherwise an empty .txt deck reports no_content (nothing to read) when
+      // the honest reason is no_toggles (text, but no card shape).
+      if (!this.meaningfulTextSeen && isPlainText(name)) {
+        const contents = getFileContents(firstFile, false);
+        if ((contents?.toString().trim().length ?? 0) > 0) {
+          this.meaningfulTextSeen = true;
+        }
+      }
       this.payload = [];
     }
   }

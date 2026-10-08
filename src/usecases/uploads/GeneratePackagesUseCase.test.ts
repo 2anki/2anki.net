@@ -285,6 +285,26 @@ describe('GeneratePackagesUseCase', () => {
     expect((err as EmptyDeckError).reason).toBe('all_filtered');
   });
 
+  it('threads the worker emptyReason through for a zero-card success result', async () => {
+    mockRunUploadGeneration.mockResolvedValueOnce({
+      ok: true,
+      packages: [],
+      warnings: [],
+      emptyReason: 'no_toggles',
+    });
+    const useCase = new GeneratePackagesUseCase();
+
+    const result = await useCase.execute(
+      false,
+      [makeFile('notes.zip')],
+      makeSettings(),
+      makeWorkspace()
+    );
+
+    expect(result.packages).toHaveLength(0);
+    expect(result.emptyReason).toBe('no_toggles');
+  });
+
   it('rejects with UploadFileUnavailableError when an upload temp file is gone and has no buffer', async () => {
     const useCase = new GeneratePackagesUseCase();
     const file = makeFile('lecture.zip');

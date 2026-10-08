@@ -426,6 +426,72 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(body.docsLink).toBe('/documentation/help/common-problems');
   });
 
+  it('carries the worker empty_reason onto conversion_failed and the 400 body', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ packages: [], emptyReason: 'all_filtered' }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      cookies: { anon_id: 'anon-filtered' },
+    } as Partial<express.Request>);
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({
+        props: expect.objectContaining({
+          reason: 'empty_deck',
+          empty_reason: 'all_filtered',
+        }),
+      })
+    );
+    const body = capturedJson() as { empty_reason: string };
+    expect(body.empty_reason).toBe('all_filtered');
+  });
+
+  it('falls back to unknown empty_reason when the worker classified nothing', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({
+        props: expect.objectContaining({
+          reason: 'empty_deck',
+          empty_reason: 'unknown',
+        }),
+      })
+    );
+    const body = capturedJson() as { empty_reason: string };
+    expect(body.empty_reason).toBe('unknown');
+  });
+
   it('returns image_only_no_text with a Photo to Deck link when an image-only upload yields 0 cards', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {

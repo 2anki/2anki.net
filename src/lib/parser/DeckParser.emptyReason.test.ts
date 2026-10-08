@@ -50,6 +50,19 @@ describe('DeckParser.emptyDeckReason', () => {
       makeParser('cherry.html', toggle, { cherry: 'true' }).emptyDeckReason()
     ).toBe('all_filtered');
   });
+
+  it('reports no_toggles for a plain-text file with prose but no question/answer', () => {
+    expect(
+      makeParser(
+        'notes.txt',
+        'The mitochondria is the powerhouse of the cell.'
+      ).emptyDeckReason()
+    ).toBe('no_toggles');
+  });
+
+  it('reports no_content for an empty plain-text file', () => {
+    expect(makeParser('blank.txt', '   ').emptyDeckReason()).toBe('no_content');
+  });
 });
 
 describe('EmptyDeckError carries the classified reason', () => {
