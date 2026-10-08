@@ -25,6 +25,16 @@ describe('EmptyDeckError', () => {
     expect(new EmptyDeckError('markdown').sourceFormat).toBe('markdown');
   });
 
+  it('defaults reason to unknown', () => {
+    expect(new EmptyDeckError().reason).toBe('unknown');
+  });
+
+  it('stores the classified reason when provided', () => {
+    expect(new EmptyDeckError(undefined, 'all_filtered').reason).toBe(
+      'all_filtered'
+    );
+  });
+
   it('survives an instanceof check after being thrown and caught', () => {
     let caught: unknown;
     try {

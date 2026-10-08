@@ -268,7 +268,8 @@
       "unreadableFileBody": "Przeglądarka nie może już odczytać wybranej wersji: została zapisana, przeniesiona lub usunięta po wybraniu. Wybierz plik ponownie, aby przesłać aktualną wersję.",
       "unreadableChooseAgain": "Wybierz plik ponownie",
       "sampleSuccessNote": "To jest przykładowa talia. Teraz przekonwertuj własny plik.",
-      "convertYourOwn": "Przekonwertuj własny plik"
+      "convertYourOwn": "Przekonwertuj własny plik",
+      "emptyAllFiltered": "Filtr kart usunął wszystkie karty. Jeśli włączono cherry pick (🍒) lub skip (🥑), oznacz potrzebne toggle albo wyłącz filtr, a potem przekonwertuj ponownie."
     },
     "page": {
       "title": "Przekształć swoje notatki",
@@ -669,7 +670,9 @@
       "getDayPass": "Kup Day Pass — {{price}}",
       "getWeekPass": "Kup Week Pass — {{price}}",
       "upgradeUnlimited": "Przejdź na Pro"
-    }
+    },
+    "emptyDeckAllFiltered": "Filtr kart usunął wszystkie karty. Cherry pick zostawia tylko toggle oznaczone 🍒, a skip usuwa toggle oznaczone 🥑. Wyłącz filtr w ustawieniach kart albo oznacz potrzebne toggle, a potem przekonwertuj ponownie.",
+    "emptyDeckNoContent": "Ta strona nie zawierała czytelnego tekstu. Sprawdź, czy wyeksportowano ją z zawartością, a potem przekonwertuj ponownie."
   },
   "modals": {
     "consent": {

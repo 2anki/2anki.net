@@ -19,6 +19,7 @@ import getUniqueFileName from '../../../lib/misc/getUniqueFileName';
 import Deck from '../../../lib/parser/Deck';
 import { detectNotionApiMCQ } from '../../../lib/parser/findNotionToggleLists';
 import Note from '../../../lib/parser/Note';
+import type { EmptyDeckReason } from '../../../usecases/jobs/EmptyDeckError';
 import { countEmptyBacks } from '../../../lib/parser/countEmptyBacks';
 import ParserRules from '../../../lib/parser/ParserRules';
 import CardOption from '../../../lib/parser/Settings';
@@ -239,6 +240,8 @@ class BlockHandler implements IBlockRenderer {
   emptyBackCount = 0;
 
   cardCount = 0;
+
+  cardsRemovedByUserFilter = 0;
 
   blocksSeen = 0;
 
@@ -671,12 +674,14 @@ class BlockHandler implements IBlockRenderer {
       tr.clear();
     }
 
+    const beforeUserFilter = cards.length;
     if (this.settings.isCherry) {
       cards = cards.filter((c) => c.hasCherry());
     }
     if (this.settings.isAvocado) {
       cards = cards.filter((c) => !c.hasAvocado());
     }
+    this.cardsRemovedByUserFilter += beforeUserFilter - cards.length;
 
     if (this.settings.useTags && tags.length > 0) {
       cards.forEach((c) => {
@@ -695,6 +700,21 @@ class BlockHandler implements IBlockRenderer {
     );
 
     return cards; // .filter((c) => !c.isValid());
+  }
+
+  // Why a Notion conversion produced no cards, from counters the page walk
+  // already kept. A cherry-pick or skip filter that emptied the deck wins
+  // first; otherwise a page that surfaced no flashcard-shaped block reads as
+  // no_toggles (the toggle teaching is the right Notion advice). Blocks seen
+  // but no cards kept, with no filter, stays honest as unknown.
+  emptyDeckReason(): EmptyDeckReason {
+    if (this.cardsRemovedByUserFilter > 0) {
+      return 'all_filtered';
+    }
+    if (this.blocksSeen === 0) {
+      return 'no_toggles';
+    }
+    return 'unknown';
   }
 
   async findFlashcards(locator: Finder): Promise<Deck[]> {

@@ -8,7 +8,7 @@ import {
   CONVERSION_TRUNCATED_MESSAGE,
   FileConversionError,
 } from '../../infrastracture/adapters/fileConversion/claudeFileConversion';
-import { EmptyDeckError } from './EmptyDeckError';
+import { EmptyDeckError, EmptyDeckReason } from './EmptyDeckError';
 import { inferColumnMapping } from '../../lib/notionDatabase/inferColumnMapping';
 import { isPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
 import { isNotionDatabaseNotPageError } from '../../services/NotionService/helpers/isNotionDatabaseNotPageError';
@@ -24,6 +24,26 @@ export const CONVERSION_PROCESS_CRASHED_REASON =
 
 export const EMPTY_DECK_FAILURE_REASON =
   "No cards in this deck yet. 2anki makes a card from every Notion toggle — the toggle title becomes the question, what's inside becomes the answer. Wrap your key terms in toggles, then convert again.";
+
+// Each reason keeps the "No cards in this deck yet." prefix so the empty-deck
+// detectors (web isEmptyDeckReason, normalizeFailureReasons bucket) still fire.
+// The continuation carries the reason; the web keys its localized copy off the
+// markers below, so keep them in sync with web ConversionResult.
+export const EMPTY_DECK_ALL_FILTERED_REASON =
+  'No cards in this deck yet. Your card filter removed every card. Cherry pick keeps only toggles marked 🍒 and skip drops toggles marked 🥑. Turn the filter off in card settings, or mark the toggles you want, then convert again.';
+
+export const EMPTY_DECK_NO_CONTENT_REASON =
+  'No cards in this deck yet. This file had no text we could read. Check that you exported the page with its content, then convert again.';
+
+export function emptyDeckReasonMessage(reason: EmptyDeckReason): string {
+  if (reason === 'all_filtered') {
+    return EMPTY_DECK_ALL_FILTERED_REASON;
+  }
+  if (reason === 'no_content') {
+    return EMPTY_DECK_NO_CONTENT_REASON;
+  }
+  return EMPTY_DECK_FAILURE_REASON;
+}
 
 export const MARKDOWN_LIKELY_LOSSY_REASON =
   'Notion Markdown exports flatten toggles — re-export this page as HTML and the toggles become flashcards.';
@@ -250,7 +270,7 @@ export function jobFailureReasonFromError(
     if (error.sourceFormat === 'markdown') {
       return MARKDOWN_LIKELY_LOSSY_REASON;
     }
-    return EMPTY_DECK_FAILURE_REASON;
+    return emptyDeckReasonMessage(error.reason);
   }
   if (
     hasName(error, 'PythonZeroCardsError') ||

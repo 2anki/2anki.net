@@ -44,6 +44,17 @@ describe('extractErrorMessage', () => {
     expect(result.message).toContain('.zip');
   });
 
+  test('preserves empty_reason so the sync empty-deck copy can match the cause', async () => {
+    const response = jsonResponse({
+      code: 'empty_export',
+      message: 'No cards were found in this file.',
+      empty_reason: 'all_filtered',
+    });
+    const result = await extractErrorMessage(response);
+    expect(result.code).toBe('empty_export');
+    expect(result.empty_reason).toBe('all_filtered');
+  });
+
   test('passes the ai_credits_exhausted code through so its copy is reachable', async () => {
     const response = jsonResponse({
       code: 'ai_credits_exhausted',

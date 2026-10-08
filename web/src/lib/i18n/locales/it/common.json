@@ -258,7 +258,8 @@
       "unreadableFileBody": "Il browser non riesce più a leggere la versione scelta: è stata salvata, spostata o eliminata dopo la selezione. Scegli di nuovo il file per caricare la versione attuale.",
       "unreadableChooseAgain": "Scegli di nuovo il file",
       "sampleSuccessNote": "Questo è un mazzo di esempio. Ora converti il tuo file.",
-      "convertYourOwn": "Converti il tuo file"
+      "convertYourOwn": "Converti il tuo file",
+      "emptyAllFiltered": "Un filtro delle carte ha rimosso tutte le carte. Se hai attivato cherry pick (🍒) o skip (🥑), contrassegna i toggle che vuoi oppure disattiva il filtro, poi converti di nuovo."
     },
     "page": {
       "title": "Converti i tuoi appunti",
@@ -651,7 +652,9 @@
       "getDayPass": "Ottieni il Day Pass — {{price}}",
       "getWeekPass": "Ottieni il Week Pass — {{price}}",
       "upgradeUnlimited": "Passa a Pro"
-    }
+    },
+    "emptyDeckAllFiltered": "Un filtro delle carte ha rimosso tutte le carte. Cherry pick tiene solo i toggle contrassegnati con 🍒 e skip scarta quelli con 🥑. Disattiva il filtro nelle impostazioni delle carte o contrassegna i toggle che vuoi, poi converti di nuovo.",
+    "emptyDeckNoContent": "Questa pagina non conteneva testo leggibile. Controlla di averla esportata con il suo contenuto, poi converti di nuovo."
   },
   "modals": {
     "consent": {

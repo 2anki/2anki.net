@@ -21,6 +21,8 @@ import {
   DECK_TOO_LARGE_REASON,
   DOCX_UNREADABLE_REASON,
   EMPTY_DECK_FAILURE_REASON,
+  EMPTY_DECK_ALL_FILTERED_REASON,
+  EMPTY_DECK_NO_CONTENT_REASON,
   MARKDOWN_LIKELY_LOSSY_REASON,
   NOTION_TOKEN_EXPIRED_REASON,
   NOTION_DATABASE_NOT_PAGE_REASON,
@@ -116,6 +118,39 @@ describe('jobFailureReasonFromError', () => {
   it('returns EMPTY_DECK_FAILURE_REASON for EmptyDeckError without sourceFormat', () => {
     const reason = jobFailureReasonFromError(new EmptyDeckError(), 'job-html');
     expect(reason).toBe(EMPTY_DECK_FAILURE_REASON);
+  });
+
+  it('returns the all_filtered message for a cherry-filtered empty deck', () => {
+    const reason = jobFailureReasonFromError(
+      new EmptyDeckError(undefined, 'all_filtered'),
+      'job-cherry'
+    );
+    expect(reason).toBe(EMPTY_DECK_ALL_FILTERED_REASON);
+    expect(reason.startsWith('No cards in this deck yet.')).toBe(true);
+    expect(reason).toContain('🍒');
+  });
+
+  it('returns the no_content message for an empty-text upload', () => {
+    const reason = jobFailureReasonFromError(
+      new EmptyDeckError(undefined, 'no_content'),
+      'job-empty'
+    );
+    expect(reason).toBe(EMPTY_DECK_NO_CONTENT_REASON);
+    expect(reason.startsWith('No cards in this deck yet.')).toBe(true);
+  });
+
+  it('keeps the markers the web ConversionResult keys its localized copy off', () => {
+    expect(EMPTY_DECK_ALL_FILTERED_REASON).toContain('card filter removed');
+    expect(EMPTY_DECK_NO_CONTENT_REASON).toContain('no text we could read');
+  });
+
+  it('still codes every empty-deck reason as empty_deck for the funnel', () => {
+    expect(
+      jobFailureReasonCode(new EmptyDeckError(undefined, 'all_filtered'))
+    ).toBe('empty_deck');
+    expect(
+      jobFailureReasonCode(new EmptyDeckError(undefined, 'no_content'))
+    ).toBe('empty_deck');
   });
 
   it('returns the PythonExitError message verbatim (no "Technical error" prefix)', () => {

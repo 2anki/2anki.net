@@ -258,7 +258,8 @@
       "unreadableFileBody": "Le navigateur ne peut plus lire la version choisie : elle a été enregistrée, déplacée ou supprimée après la sélection. Choisissez-le à nouveau pour envoyer la version actuelle.",
       "unreadableChooseAgain": "Choisir le fichier à nouveau",
       "sampleSuccessNote": "Ceci est un paquet d'exemple. Convertis maintenant ton propre fichier.",
-      "convertYourOwn": "Convertir ton propre fichier"
+      "convertYourOwn": "Convertir ton propre fichier",
+      "emptyAllFiltered": "Un filtre de cartes a supprimé toutes les cartes. Si tu as activé cherry pick (🍒) ou skip (🥑), marque les toggles voulus ou désactive le filtre, puis reconvertis."
     },
     "page": {
       "title": "Convertis tes notes",
@@ -651,7 +652,9 @@
       "getDayPass": "Prendre un Day Pass — {{price}}",
       "getWeekPass": "Prendre un Week Pass — {{price}}",
       "upgradeUnlimited": "Passer à Pro"
-    }
+    },
+    "emptyDeckAllFiltered": "Un filtre de cartes a supprimé toutes les cartes. Cherry pick ne garde que les toggles marqués 🍒 et skip retire ceux marqués 🥑. Désactive le filtre dans les réglages de carte ou marque les toggles voulus, puis reconvertis.",
+    "emptyDeckNoContent": "Cette page ne contenait aucun texte lisible. Vérifie que tu l'as exportée avec son contenu, puis reconvertis."
   },
   "modals": {
     "consent": {

@@ -1651,6 +1651,13 @@ function UploadForm({
         </p>
       );
     }
+    if (localError?.empty_reason === 'all_filtered') {
+      return (
+        <p className={formStyles.emptyBody}>
+          {t('upload.form.emptyAllFiltered')}
+        </p>
+      );
+    }
     if (driveMimeType === 'application/vnd.google-apps.document') {
       return (
         <p className={formStyles.emptyBody}>

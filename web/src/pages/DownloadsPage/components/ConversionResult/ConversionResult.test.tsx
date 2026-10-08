@@ -351,6 +351,51 @@ describe('ConversionResult — failed variant', () => {
     expect(screen.queryByText(/Check status/i)).toBeNull();
   });
 
+  it('names the filter setting when a card filter emptied the deck', () => {
+    const allFilteredReason =
+      'No cards in this deck yet. Your card filter removed every card. Cherry pick keeps only toggles marked 🍒 and skip drops toggles marked 🥑. Turn the filter off in card settings, or mark the toggles you want, then convert again.';
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Filtered Notion page"
+          failureReason={allFilteredReason}
+          source="notion"
+          onMapColumns={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText(/Cherry pick keeps only toggles marked/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/makes a card from every Notion toggle/i)
+    ).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'See how toggles become cards' })
+    ).toHaveAttribute('href', '/documentation/cards/notion-blocks');
+  });
+
+  it('tells the user the page had no readable text for a no_content empty deck', () => {
+    const noContentReason =
+      'No cards in this deck yet. This file had no text we could read. Check that you exported the page with its content, then convert again.';
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Blank upload"
+          failureReason={noContentReason}
+          source="upload"
+          onMapColumns={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/no text we could read/i)).toBeInTheDocument();
+    expect(screen.queryByText(/No cards came out of this file/)).toBeNull();
+  });
+
   it('shows a subpages recovery hint when the server reports a too-large OOM failure', () => {
     const tooLargeReason =
       'This page is too large for us to convert in one go. Split it into smaller pages — or convert it section by section — and try again.';

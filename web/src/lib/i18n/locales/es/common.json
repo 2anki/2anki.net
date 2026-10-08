@@ -258,7 +258,8 @@
       "unreadableFileBody": "El navegador ya no puede leer la versión que elegiste: se guardó, movió o eliminó después de seleccionarla. Elígelo de nuevo para subir la versión actual.",
       "unreadableChooseAgain": "Elegir el archivo de nuevo",
       "sampleSuccessNote": "Este es un mazo de ejemplo. Ahora convierte tu propio archivo.",
-      "convertYourOwn": "Convertir tu propio archivo"
+      "convertYourOwn": "Convertir tu propio archivo",
+      "emptyAllFiltered": "Un filtro de tarjetas eliminó todas las tarjetas. Si activaste cherry pick (🍒) o skip (🥑), marca los toggles que quieras o desactiva el filtro, y vuelve a convertir."
     },
     "page": {
       "title": "Convierte tus notas",
@@ -651,7 +652,9 @@
       "getDayPass": "Consigue el Day Pass — {{price}}",
       "getWeekPass": "Consigue el Week Pass — {{price}}",
       "upgradeUnlimited": "Mejora a Pro"
-    }
+    },
+    "emptyDeckAllFiltered": "Un filtro de tarjetas eliminó todas las tarjetas. Cherry pick solo conserva los toggles marcados con 🍒 y skip descarta los marcados con 🥑. Desactiva el filtro en los ajustes de tarjeta o marca los toggles que quieras, y vuelve a convertir.",
+    "emptyDeckNoContent": "Esta página no tenía texto que pudiéramos leer. Comprueba que la exportaste con su contenido y vuelve a convertir."
   },
   "modals": {
     "consent": {

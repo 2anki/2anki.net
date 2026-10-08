@@ -258,7 +258,8 @@
       "unreadableFileBody": "The browser can't read the version you chose any more — it was saved, moved or deleted after you picked it. Choose the file again to upload the current version.",
       "unreadableChooseAgain": "Choose the file again",
       "sampleSuccessNote": "This is a sample deck. Convert your own file next.",
-      "convertYourOwn": "Convert your own file"
+      "convertYourOwn": "Convert your own file",
+      "emptyAllFiltered": "A card filter removed every card. If you turned on cherry pick (🍒) or skip (🥑), mark the toggles you want or turn the filter off, then convert again."
     },
     "page": {
       "title": "Convert your notes",
@@ -651,7 +652,9 @@
       "getDayPass": "Get Day Pass — {{price}}",
       "getWeekPass": "Get Week Pass — {{price}}",
       "upgradeUnlimited": "Upgrade to Pro"
-    }
+    },
+    "emptyDeckAllFiltered": "A card filter removed every card. Cherry pick keeps only toggles marked 🍒 and skip drops toggles marked 🥑. Turn the filter off in card settings, or mark the toggles you want, then convert again.",
+    "emptyDeckNoContent": "This page had no text we could read. Check that you exported it with its content, then convert again."
   },
   "modals": {
     "consent": {

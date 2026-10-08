@@ -53,7 +53,10 @@ import { isImageOnlyUpload } from '../lib/upload/isImageOnlyUpload';
 import { mergeStoredCardOptions } from '../lib/upload/mergeStoredCardOptions';
 import { decodeUploadImage } from '../lib/upload/decodeUploadImage';
 import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
-import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
+import {
+  EmptyDeckError,
+  EmptyDeckReason,
+} from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
 import type { DeckScore } from '../lib/parser/scoreCandidateDeck';
 import type { InducedRescue } from '../lib/parser/induction/candidateRules';
@@ -139,6 +142,7 @@ interface EmptyDeckResponse {
   message: string;
   filename: string;
   docsLink: string;
+  empty_reason: EmptyDeckReason;
 }
 
 interface MarkdownLossyResponse {
@@ -1188,6 +1192,7 @@ class UploadService {
             'No cards were found in this file. Most files need a toggle-list (Notion) or a question/answer pair to become cards. See common problems for the formats that work.',
           filename,
           docsLink: '/documentation/help/common-problems',
+          empty_reason: err.reason,
         };
         return res.status(400).json(body);
       } else if (err instanceof Error && err.name === 'EmptyContentError') {
@@ -1423,7 +1428,12 @@ class UploadService {
             message,
             err,
           });
-          this.trackUploadFailed(req, res, uploadFailureReason(err));
+          this.trackUploadFailed(
+            req,
+            res,
+            uploadFailureReason(err),
+            err instanceof EmptyDeckError ? { empty_reason: err.reason } : {}
+          );
         }
         const reason = resolveAsyncFailureReason(err, ws.id);
         await this.jobRepository.updateJobStatus(
@@ -1625,6 +1635,7 @@ class UploadService {
         props: {
           ...this.baseFunnelProps(req),
           reason: 'empty_deck',
+          empty_reason: 'unknown',
         },
       });
       throw new EmptyDeckError();
@@ -1882,9 +1893,13 @@ class UploadService {
       track('conversion_failed', {
         userId: Number(owner),
         anonymousId: this.resolveAnonId(req),
-        props: { ...this.baseFunnelProps(req), reason: 'empty_deck' },
+        props: {
+          ...this.baseFunnelProps(req),
+          reason: 'empty_deck',
+          empty_reason: 'no_content',
+        },
       });
-      throw new EmptyDeckError();
+      throw new EmptyDeckError(undefined, 'no_content');
     }
 
     const deckName = deckNameFromImageFilename(file.originalname);
@@ -2237,13 +2252,14 @@ class UploadService {
   private trackUploadFailed(
     req: express.Request,
     res: express.Response,
-    reason: string
+    reason: string,
+    extraProps: Record<string, unknown> = {}
   ): void {
     const owner = getOwner(res);
     track('conversion_failed', {
       userId: owner != null ? Number(owner) : null,
       anonymousId: this.resolveAnonId(req),
-      props: { ...this.baseFunnelProps(req), reason },
+      props: { ...this.baseFunnelProps(req), reason, ...extraProps },
     });
   }
 

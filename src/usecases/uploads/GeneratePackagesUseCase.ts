@@ -32,7 +32,7 @@ export interface PackageResult {
 
 function buildWorkerError(failure: UploadGenerationFailure): Error {
   if (failure.name === 'EmptyDeckError') {
-    return new EmptyDeckError(failure.sourceFormat);
+    return new EmptyDeckError(failure.sourceFormat, failure.reason);
   }
   if (failure.message != null && failure.message.trim() !== '') {
     const e = new Error(failure.message);

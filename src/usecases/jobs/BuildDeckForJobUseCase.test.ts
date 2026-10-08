@@ -59,7 +59,10 @@ describe('BuildDeckForJobUseCase', () => {
     configure: vi.fn(),
   } as unknown as CustomExporter;
 
-  const bl = { firstPageTitle: 'Title' } as unknown as BlockHandler;
+  const bl = {
+    firstPageTitle: 'Title',
+    emptyDeckReason: () => 'no_toggles',
+  } as unknown as BlockHandler;
   const ws = { location: '/tmp/ws' } as unknown as Workspace;
   const settings = { deckName: 'Deck' } as unknown as CardOption;
 

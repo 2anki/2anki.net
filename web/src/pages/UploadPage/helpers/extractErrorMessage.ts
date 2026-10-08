@@ -19,7 +19,11 @@ export async function extractErrorMessage(
       const code: UploadErrorCode = isValidCode(body.code)
         ? body.code
         : 'unknown';
-      return { code, message: body.message };
+      const result: UploadErrorBody = { code, message: body.message };
+      if (typeof body.empty_reason === 'string') {
+        result.empty_reason = body.empty_reason;
+      }
+      return result;
     }
   } catch {
     const text = await response.text().catch(() => '');

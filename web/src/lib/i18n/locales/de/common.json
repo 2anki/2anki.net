@@ -258,7 +258,8 @@
       "unreadableFileBody": "Der Browser kann die gewählte Version nicht mehr lesen – sie wurde nach der Auswahl gespeichert, verschoben oder gelöscht. Wähle die Datei erneut, um die aktuelle Version hochzuladen.",
       "unreadableChooseAgain": "Datei erneut wählen",
       "sampleSuccessNote": "Das ist ein Beispielstapel. Konvertiere als Nächstes deine eigene Datei.",
-      "convertYourOwn": "Eigene Datei konvertieren"
+      "convertYourOwn": "Eigene Datei konvertieren",
+      "emptyAllFiltered": "Ein Kartenfilter hat alle Karten entfernt. Wenn du Cherry Pick (🍒) oder Skip (🥑) aktiviert hast, markiere die gewünschten Toggles oder schalte den Filter aus, und konvertiere dann erneut."
     },
     "page": {
       "title": "Konvertiere deine Notizen",
@@ -651,7 +652,9 @@
       "getDayPass": "Day Pass holen — {{price}}",
       "getWeekPass": "Week Pass holen — {{price}}",
       "upgradeUnlimited": "Auf Pro upgraden"
-    }
+    },
+    "emptyDeckAllFiltered": "Ein Kartenfilter hat alle Karten entfernt. Cherry Pick behält nur Toggles mit 🍒, und Skip entfernt Toggles mit 🥑. Schalte den Filter in den Karteneinstellungen aus oder markiere die gewünschten Toggles, und konvertiere dann erneut.",
+    "emptyDeckNoContent": "Diese Seite enthielt keinen lesbaren Text. Prüfe, ob du sie mit ihrem Inhalt exportiert hast, und konvertiere dann erneut."
   },
   "modals": {
     "consent": {

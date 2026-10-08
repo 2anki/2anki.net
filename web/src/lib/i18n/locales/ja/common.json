@@ -253,7 +253,8 @@
       "unreadableFileBody": "選択したバージョンをブラウザが読み込めなくなりました。選択後に保存、移動、または削除された可能性があります。もう一度ファイルを選んで、現在のバージョンをアップロードしてください。",
       "unreadableChooseAgain": "ファイルをもう一度選ぶ",
       "sampleSuccessNote": "これはサンプルのデッキです。次は自分のファイルを変換しましょう。",
-      "convertYourOwn": "自分のファイルを変換"
+      "convertYourOwn": "自分のファイルを変換",
+      "emptyAllFiltered": "カードフィルターがすべてのカードを除外しました。cherry pick（🍒）や skip（🥑）をオンにしている場合は、必要なトグルに印を付けるか、フィルターをオフにしてから、もう一度変換してください。"
     },
     "page": {
       "title": "ノートを変換",
@@ -642,7 +643,9 @@
       "getDayPass": "Get Day Pass — {{price}}",
       "getWeekPass": "Get Week Pass — {{price}}",
       "upgradeUnlimited": "Pro にアップグレード"
-    }
+    },
+    "emptyDeckAllFiltered": "カードフィルターがすべてのカードを除外しました。cherry pick は 🍒 の付いたトグルだけを残し、skip は 🥑 の付いたトグルを除外します。カード設定でフィルターをオフにするか、必要なトグルに印を付けてから、もう一度変換してください。",
+    "emptyDeckNoContent": "このページには読み取れるテキストがありませんでした。内容を含めてエクスポートしたか確認してから、もう一度変換してください。"
   },
   "modals": {
     "consent": {

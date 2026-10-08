@@ -265,6 +265,26 @@ describe('GeneratePackagesUseCase', () => {
     expect((err as EmptyDeckError).sourceFormat).toBe('markdown');
   });
 
+  it('preserves the classified reason on EmptyDeckError across the pool boundary', async () => {
+    mockRunUploadGeneration.mockResolvedValueOnce({
+      ok: false,
+      error: {
+        message:
+          'No cards found in your upload. Use .zip, .html, .md, or .csv.',
+        name: 'EmptyDeckError',
+        reason: 'all_filtered',
+      },
+    });
+    const useCase = new GeneratePackagesUseCase();
+
+    const err = await useCase
+      .execute(false, [makeFile('notes.html')], makeSettings(), makeWorkspace())
+      .catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(EmptyDeckError);
+    expect((err as EmptyDeckError).reason).toBe('all_filtered');
+  });
+
   it('rejects with UploadFileUnavailableError when an upload temp file is gone and has no buffer', async () => {
     const useCase = new GeneratePackagesUseCase();
     const file = makeFile('lecture.zip');

@@ -258,7 +258,8 @@
       "unreadableFileBody": "De browser kan de gekozen versie niet meer lezen: het is na het kiezen opgeslagen, verplaatst of verwijderd. Kies het opnieuw om de huidige versie te uploaden.",
       "unreadableChooseAgain": "Kies het bestand opnieuw",
       "sampleSuccessNote": "Dit is een voorbeelddeck. Converteer nu je eigen bestand.",
-      "convertYourOwn": "Je eigen bestand converteren"
+      "convertYourOwn": "Je eigen bestand converteren",
+      "emptyAllFiltered": "Een kaartfilter heeft alle kaarten verwijderd. Als je cherry pick (🍒) of skip (🥑) hebt aangezet, markeer dan de gewenste toggles of zet het filter uit, en converteer opnieuw."
     },
     "page": {
       "title": "Zet je notities om",
@@ -651,7 +652,9 @@
       "getDayPass": "Day Pass kopen — {{price}}",
       "getWeekPass": "Week Pass kopen — {{price}}",
       "upgradeUnlimited": "Upgraden naar Pro"
-    }
+    },
+    "emptyDeckAllFiltered": "Een kaartfilter heeft alle kaarten verwijderd. Cherry pick houdt alleen toggles met 🍒 en skip verwijdert toggles met 🥑. Zet het filter uit in de kaartinstellingen of markeer de gewenste toggles, en converteer opnieuw.",
+    "emptyDeckNoContent": "Deze pagina bevatte geen leesbare tekst. Controleer of je hem met zijn inhoud hebt geëxporteerd en converteer opnieuw."
   },
   "modals": {
     "consent": {
