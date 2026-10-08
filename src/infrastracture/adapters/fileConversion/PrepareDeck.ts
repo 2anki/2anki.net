@@ -1,5 +1,6 @@
 import getDeckFilename from '../../../lib/anki/getDeckFilename';
 import type { IssuedCardGuid } from '../../../lib/anki/guidLedgerTypes';
+import type { EmptyDeckReason } from '../../../usecases/jobs/EmptyDeckError';
 import {
   DeckParser,
   DeckParserInput,
@@ -171,6 +172,7 @@ interface PrepareDeckResult {
   guidEntries?: IssuedCardGuid[];
   uploadIdentityStats?: UploadIdentityStats;
   pdfPageCount?: number;
+  emptyReason?: EmptyDeckReason;
 }
 
 function sumPdfPageCount(convertedFiles: ConvertedFile[]): number | undefined {
@@ -890,6 +892,8 @@ async function buildParserResult(
     uploadIdentityStats: uploadIdentityStatsFor(input, parser),
     cardsHeldBack: parser.cardsHeldBack,
     pdfPageCount: sumPdfPageCount(convertedFiles),
+    emptyReason:
+      parser.totalCardCount() === 0 ? parser.emptyDeckReason() : undefined,
   };
 }
 
@@ -1255,6 +1259,7 @@ export interface DeckInfoOnlyResult {
   guidEntries?: IssuedCardGuid[];
   uploadIdentityStats?: UploadIdentityStats;
   needsIndividualBuild: boolean;
+  emptyReason?: EmptyDeckReason;
 }
 
 export async function prepareDeckInfoOnly(
@@ -1303,6 +1308,7 @@ export async function prepareDeckInfoOnly(
         missingLocalImageCount: parser.missingLocalImageCount,
         emptyBackCount: parser.emptyBackCount,
         needsIndividualBuild: true,
+        emptyReason: parser.emptyDeckReason(),
       };
     }
   }
@@ -1347,5 +1353,7 @@ export async function prepareDeckInfoOnly(
     guidEntries: parser.uploadIdentityEntries,
     uploadIdentityStats: uploadIdentityStatsFor(input, parser),
     needsIndividualBuild: false,
+    emptyReason:
+      parser.totalCardCount() === 0 ? parser.emptyDeckReason() : undefined,
   };
 }

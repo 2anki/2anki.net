@@ -38,7 +38,11 @@ import {
   buildVocabDeckFromEpub,
   buildVocabDeckFromKindleClippings,
 } from './BuildVocabDeckUseCase';
-import { EmptyDeckError } from '../jobs/EmptyDeckError';
+import {
+  EmptyDeckError,
+  EmptyDeckReason,
+  mostSpecificEmptyReason,
+} from '../jobs/EmptyDeckError';
 import {
   UploadGenerationResult,
   UploadGenerationTask,
@@ -99,6 +103,7 @@ interface FileResult {
   packages: Package[];
   warnings: string[];
   cardsHeldBack?: number;
+  emptyReason?: EmptyDeckReason;
 }
 
 // Files handled by these branches in processFile pre-empt the Claude/PrepareDeck
@@ -191,6 +196,7 @@ async function processFile(
   const packages: Package[] = [];
   const warnings: string[] = [];
   let cardsHeldBack: number | undefined;
+  let emptyReason: EmptyDeckReason | undefined;
   const filename = file.originalname;
   const key = file.key;
 
@@ -298,6 +304,7 @@ async function processFile(
       singleFilePackage.coloredTextPageCount = d.coloredTextPageCount ?? 0;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
+      emptyReason = d.emptyReason;
     }
   } else if (isCompressedFile(filename) || isCompressedFile(key)) {
     const result = await getPackagesFromZip(
@@ -312,9 +319,10 @@ async function processFile(
     packages.push(...result.packages);
     if (result.warnings) warnings.push(...result.warnings);
     cardsHeldBack = result.cardsHeldBack;
+    emptyReason = result.emptyReason;
   }
 
-  return { packages, warnings, cardsHeldBack };
+  return { packages, warnings, cardsHeldBack, emptyReason };
 }
 
 async function doGenerationWork(
@@ -325,6 +333,7 @@ async function doGenerationWork(
   warnings: string[];
   cardFingerprints?: string[];
   cardsHeldBack?: number;
+  emptyReason?: EmptyDeckReason;
 }> {
   const {
     paying,
@@ -342,6 +351,7 @@ async function doGenerationWork(
   let packages: Package[] = [];
   const warnings: string[] = [];
   let cardsHeldBack = 0;
+  const emptyReasons: EmptyDeckReason[] = [];
 
   const dedupeAcrossDecks = shouldDedupeAcrossDecks(
     paying,
@@ -373,7 +383,16 @@ async function doGenerationWork(
     packages = packages.concat(result.packages);
     warnings.push(...result.warnings);
     cardsHeldBack += result.cardsHeldBack ?? 0;
+    if (result.emptyReason != null) emptyReasons.push(result.emptyReason);
   }
+
+  // Only report a reason when the whole upload produced no cards. A reason from
+  // one empty file in an otherwise successful upload would mislabel a success.
+  const totalCards = packages.reduce((sum, p) => sum + (p.cardCount ?? 0), 0);
+  const emptyReason =
+    totalCards === 0 && emptyReasons.length > 0
+      ? mostSpecificEmptyReason(emptyReasons)
+      : undefined;
 
   const reportsCrossDeck =
     crossFileDedup != null && crossFileDedup.historicalKeys.size > 0;
@@ -402,6 +421,7 @@ async function doGenerationWork(
     warnings,
     cardFingerprints,
     cardsHeldBack: cardLimit != null ? cardsHeldBack : undefined,
+    emptyReason,
   };
 }
 
@@ -410,9 +430,16 @@ export async function runUploadGenerationInWorker(
   onProgress: (step: string) => void = () => {}
 ): Promise<UploadGenerationResult> {
   try {
-    const { packages, warnings, cardFingerprints, cardsHeldBack } =
+    const { packages, warnings, cardFingerprints, cardsHeldBack, emptyReason } =
       await doGenerationWork(task, onProgress);
-    return { ok: true, packages, warnings, cardFingerprints, cardsHeldBack };
+    return {
+      ok: true,
+      packages,
+      warnings,
+      cardFingerprints,
+      cardsHeldBack,
+      emptyReason,
+    };
   } catch (err) {
     return {
       ok: false,

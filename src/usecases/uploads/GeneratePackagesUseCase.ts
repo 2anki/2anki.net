@@ -5,7 +5,7 @@ import Package from '../../lib/parser/Package';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import { UploadedFile } from '../../lib/storage/types';
 import Workspace from '../../lib/parser/WorkSpace';
-import { EmptyDeckError } from '../jobs/EmptyDeckError';
+import { EmptyDeckError, EmptyDeckReason } from '../jobs/EmptyDeckError';
 import { runUploadGeneration } from '../../lib/conversionPool';
 import { UploadGenerationFailure } from './uploadGenerationTypes';
 import { ensureUploadBytes } from './ensureUploadBytes';
@@ -28,6 +28,7 @@ export interface PackageResult {
   warnings?: string[];
   cardFingerprints?: string[];
   cardsHeldBack?: number;
+  emptyReason?: EmptyDeckReason;
 }
 
 function buildWorkerError(failure: UploadGenerationFailure): Error {
@@ -104,6 +105,7 @@ class GeneratePackagesUseCase {
         warnings: result.warnings,
         cardFingerprints: result.cardFingerprints,
         cardsHeldBack: result.cardsHeldBack,
+        emptyReason: result.emptyReason,
       };
     }
     throw buildWorkerError(result.error);

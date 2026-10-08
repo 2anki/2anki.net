@@ -34,6 +34,7 @@ export type UploadGenerationResult =
       warnings: string[];
       cardFingerprints?: string[];
       cardsHeldBack?: number;
+      emptyReason?: EmptyDeckReason;
     }
   | { ok: false; error: UploadGenerationFailure };
 

@@ -4,6 +4,7 @@ import { setupTests } from '../../test/configure-jest';
 import { getPackagesFromZip } from './getPackagesFromZip';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import Workspace from '../../lib/parser/WorkSpace';
+import { EmptyDeckError } from '../jobs/EmptyDeckError';
 
 vi.mock('node:fs', { spy: true });
 vi.mock('../../infrastracture/adapters/fileConversion/PrepareDeck');
@@ -936,6 +937,67 @@ describe('getPackagesFromZip — encrypted PDFs', () => {
     expect(result.warnings).toContain(
       'broken.pdf could not be converted and was skipped. The rest of your upload converted — try uploading that file on its own.'
     );
+  });
+});
+
+describe('getPackagesFromZip — empty-deck reason', () => {
+  const singleFileZip = (name: string) => {
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue([name]),
+        files: [{ name, contents: 'x' }],
+      };
+    });
+  };
+
+  const runSingleFile = () =>
+    getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      new CardOption({}),
+      { location: FAKE_WORKSPACE_LOCATION } as Workspace
+    );
+
+  it('carries no_toggles when the only file threw an EmptyDeckError', async () => {
+    singleFileZip('notes.txt');
+    mockPrepareDeck.mockRejectedValue(
+      new EmptyDeckError(undefined, 'no_toggles')
+    );
+
+    const result = await runSingleFile();
+
+    expect(result.packages).toHaveLength(0);
+    expect(result.emptyReason).toBe('no_toggles');
+  });
+
+  it('carries all_filtered from a zero-card result that was not thrown', async () => {
+    singleFileZip('filtered.html');
+    mockPrepareDeck.mockResolvedValue({
+      name: 'filtered.html',
+      apkg: Buffer.from(''),
+      deck: [],
+      cardCount: 0,
+      emptyReason: 'all_filtered',
+    });
+
+    const result = await runSingleFile();
+
+    expect(result.emptyReason).toBe('all_filtered');
+  });
+
+  it('does not attach a reason when the upload produced cards', async () => {
+    singleFileZip('good.html');
+    mockPrepareDeck.mockResolvedValue({
+      name: 'good.html',
+      apkg: Buffer.from(''),
+      deck: [],
+      cardCount: 3,
+    });
+
+    const result = await runSingleFile();
+
+    expect(result.emptyReason).toBeUndefined();
   });
 });
 

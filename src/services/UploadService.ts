@@ -1587,7 +1587,7 @@ class UploadService {
       }
     }
 
-    const { packages, warnings, cardFingerprints, cardsHeldBack } =
+    const { packages, warnings, cardFingerprints, cardsHeldBack, emptyReason } =
       await useCase.execute(
         paying,
         req.files as UploadedFile[],
@@ -1659,16 +1659,17 @@ class UploadService {
           paying
         );
       }
+      const resolvedEmptyReason = emptyReason ?? 'unknown';
       track('conversion_failed', {
         userId: ownerId,
         anonymousId: this.resolveAnonId(req),
         props: {
           ...this.baseFunnelProps(req),
           reason: 'empty_deck',
-          empty_reason: 'unknown',
+          empty_reason: resolvedEmptyReason,
         },
       });
-      throw new EmptyDeckError();
+      throw new EmptyDeckError(undefined, resolvedEmptyReason);
     }
 
     this.recordConversionOutput(
@@ -2223,28 +2224,21 @@ class UploadService {
     }
 
     const useCase = new GeneratePackagesUseCase();
-    const { packages, cardFingerprints, cardsHeldBack } = await useCase.execute(
-      paying,
-      [file],
-      settings,
-      ws,
-      undefined,
-      ownerId,
-      {
+    const { packages, cardFingerprints, cardsHeldBack, emptyReason } =
+      await useCase.execute(paying, [file], settings, ws, undefined, ownerId, {
         knownGuids,
         uploadIdentity,
         existingCardFingerprints,
         requestId,
         ...(cardLimit != null ? { cardLimit } : {}),
-      }
-    );
+      });
     this.recordIssuedGuids(packages, ownerId, settings);
     this.recordUploadIdentityMetric(packages, ownerId);
     this.recordCardFingerprints(ownerId, cardFingerprints);
 
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
     if (totalCards === 0) {
-      throw new EmptyDeckError();
+      throw new EmptyDeckError(undefined, emptyReason ?? 'unknown');
     }
 
     if (!signedInMonthlyPartial) {

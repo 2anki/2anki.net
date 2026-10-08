@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-08-empty-upload-tells-you-why",
+  "date": "2026-10-08",
+  "type": "fix",
+  "title": "A file or zip upload that comes out empty now explains why, so a card filter that removed every card says so instead of showing a generic no cards message"
+}
