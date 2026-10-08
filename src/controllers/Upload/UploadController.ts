@@ -29,6 +29,7 @@ import { isPaying } from '../../lib/isPaying';
 import CardOption from '../../lib/parser/Settings';
 import Workspace from '../../lib/parser/WorkSpace';
 import { toText } from '../../services/NotionService/BlockHandler/helpers/deckNameToText';
+import { toUploadResponse } from '../../types/UploadResponse';
 
 const DROPBOX_PAGE_SIZE = 10;
 const GOOGLE_DRIVE_PAGE_SIZE = 10;
@@ -96,7 +97,7 @@ class UploadController {
     const owner = getOwner(res);
     try {
       const uploads = await this.service.getUploadsByOwner(owner);
-      res.json(uploads);
+      res.json(uploads.map(toUploadResponse));
     } catch (error) {
       console.info('Get uploads failed');
       console.error(error);

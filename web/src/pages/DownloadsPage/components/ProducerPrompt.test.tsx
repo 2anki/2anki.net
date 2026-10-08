@@ -28,6 +28,8 @@ function makeUploads(count: number): UserUpload[] {
     object_id: `o${i}`,
     created_at: created,
     source: 'upload',
+    dropped_image_count: null,
+    image_drop_reason: null,
   }));
 }
 

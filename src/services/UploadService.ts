@@ -186,6 +186,7 @@ interface BatchUploadResponse {
   coloredTextPageCount?: number;
   emptyBackCount?: number;
   structureRescuedRule?: string;
+  imageDropReason?: string;
 }
 
 export interface HeldUploadResponse {
@@ -269,6 +270,32 @@ function sumColoredTextPages(
   packages: { coloredTextPageCount?: number }[]
 ): number {
   return packages.reduce((sum, p) => sum + (p.coloredTextPageCount ?? 0), 0);
+}
+
+function sumMissingLocalImages(
+  packages: { missingLocalImageCount?: number }[]
+): number {
+  return packages.reduce((sum, p) => sum + (p.missingLocalImageCount ?? 0), 0);
+}
+
+export const NOTION_HTML_NO_FOLDER_REASON = 'notion_html_no_folder';
+
+function isHtmlOnlyUpload(files: UploadedFile[]): boolean {
+  return files.length > 0 && files.every((f) => isHTMLFile(f.originalname));
+}
+
+// A relative-path image drop in an HTML-only upload means the user dropped the
+// Notion export's .html page without its image folder — the fix is to upload
+// the whole .zip, not to edit the file. A remote/expired drop keeps the generic
+// guidance, so it is deliberately excluded here.
+function resolveImageDropReason(
+  packages: { missingLocalImageCount?: number }[],
+  files: UploadedFile[]
+): string | null {
+  if (sumMissingLocalImages(packages) > 0 && isHtmlOnlyUpload(files)) {
+    return NOTION_HTML_NO_FOLDER_REASON;
+  }
+  return null;
 }
 
 function hasSessionToken(req: express.Request): boolean {
@@ -1010,7 +1037,9 @@ class UploadService {
     filename: string,
     apkg: Buffer,
     source: UploadSource | null,
-    requestId: string | undefined
+    requestId: string | undefined,
+    droppedImageCount = 0,
+    imageDropReason: string | null = null
   ): Promise<string | null> {
     try {
       const storage = new StorageHandler();
@@ -1026,7 +1055,8 @@ class UploadService {
         filename,
         key,
         BytesToMegaBytes(apkg.byteLength),
-        source
+        source,
+        { droppedImageCount, imageDropReason }
       );
       return key;
     } catch (error) {
@@ -1714,6 +1744,13 @@ class UploadService {
         builtWarnings.length > 0
           ? [...(warnings ?? []), ...builtWarnings]
           : warnings;
+      const totalDroppedImageCount = sumDroppedImages(packages);
+      const totalExpiredNotionImageCount = sumExpiredNotionImages(packages);
+      const totalColoredTextPageCount = sumColoredTextPages(packages);
+      const imageDropReason = resolveImageDropReason(
+        packages,
+        req.files as UploadedFile[]
+      );
       const downloadKey =
         owner == null
           ? null
@@ -1722,7 +1759,9 @@ class UploadService {
               first.name,
               apkg,
               this.resolvePersistedSource(req),
-              res.locals.requestId
+              res.locals.requestId,
+              totalDroppedImageCount,
+              imageDropReason
             );
       if (owner == null) {
         await this.storeAnonymousRecoveryCopy(req, apkg);
@@ -1735,9 +1774,6 @@ class UploadService {
         (sum, p) => sum + (p.mcqSkippedCount ?? 0),
         0
       );
-      const totalDroppedImageCount = sumDroppedImages(packages);
-      const totalExpiredNotionImageCount = sumExpiredNotionImages(packages);
-      const totalColoredTextPageCount = sumColoredTextPages(packages);
       res.set('Content-Type', 'application/apkg');
       res.set('Content-Length', plen.toString());
       res.set('X-Card-Count', totalCards.toString());
@@ -1752,6 +1788,10 @@ class UploadService {
       if (totalDroppedImageCount > 0) {
         res.set('X-Dropped-Assets', totalDroppedImageCount.toString());
         exposedHeaders.push('X-Dropped-Assets');
+      }
+      if (imageDropReason != null) {
+        res.set('X-Image-Drop-Reason', imageDropReason);
+        exposedHeaders.push('X-Image-Drop-Reason');
       }
       if (totalExpiredNotionImageCount > 0) {
         res.set(
@@ -1863,7 +1903,8 @@ class UploadService {
           includesAiCreditsWarning(warnings)
             ? AI_CREDITS_EXHAUSTED_WARNING_CODE
             : null,
-          sumColoredTextPages(packages)
+          sumColoredTextPages(packages),
+          resolveImageDropReason(packages, req.files as UploadedFile[])
         )
       );
   }
@@ -2023,7 +2064,8 @@ class UploadService {
     structureRescuedRule?: string,
     expiredNotionImageCount = 0,
     warningCode: string | null = null,
-    coloredTextPageCount = 0
+    coloredTextPageCount = 0,
+    imageDropReason: string | null = null
   ): Promise<BatchUploadResponse> {
     const apkgFilenames = (await fs.promises.readdir(ws.location)).filter(
       (filename) => filename.endsWith('.apkg')
@@ -2046,6 +2088,7 @@ class UploadService {
       ...(coloredTextPageCount > 0 ? { coloredTextPageCount } : {}),
       ...(emptyBackCount > 0 ? { emptyBackCount } : {}),
       ...(structureRescuedRule == null ? {} : { structureRescuedRule }),
+      ...(imageDropReason == null ? {} : { imageDropReason }),
     };
   }
 

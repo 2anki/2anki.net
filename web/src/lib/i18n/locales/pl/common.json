@@ -587,7 +587,8 @@
       "blocksSkipped_other": "Pominięto {{count}} bloku",
       "structureGuessed": "Odgadnięto strukturę",
       "columnsGuessed": "Odgadnięto kolumny",
-      "sharedTooltip": "Udostępnione — kliknij, aby otworzyć podgląd"
+      "sharedTooltip": "Udostępnione — kliknij, aby otworzyć podgląd",
+      "imagesMissing": "Brak obrazów"
     },
     "done": "Gotowe",
     "openInNotion": "Otwórz w Notion",

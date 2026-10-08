@@ -23,6 +23,10 @@ export default interface Uploads {
   source: string | null;
 
   dedupe_key: string | null;
+
+  dropped_image_count: number | null;
+
+  image_drop_reason: string | null;
 }
 
 /** Represents the initializer for the table public.uploads */
@@ -46,6 +50,10 @@ export interface UploadsInitializer {
   source?: string | null;
 
   dedupe_key?: string | null;
+
+  dropped_image_count?: number | null;
+
+  image_drop_reason?: string | null;
 }
 
 /** Represents the mutator for the table public.uploads */
@@ -67,4 +75,8 @@ export interface UploadsMutator {
   source?: string | null;
 
   dedupe_key?: string | null;
+
+  dropped_image_count?: number | null;
+
+  image_drop_reason?: string | null;
 }

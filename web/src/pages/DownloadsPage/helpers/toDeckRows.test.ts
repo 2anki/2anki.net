@@ -33,6 +33,8 @@ const makeUpload = (overrides: Partial<UserUpload> = {}): UserUpload => ({
   object_id: 'obj-upload-1',
   created_at: '2026-05-10T09:00:00Z',
   source: null,
+  dropped_image_count: null,
+  image_drop_reason: null,
   ...overrides,
 });
 

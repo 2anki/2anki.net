@@ -54,7 +54,9 @@
     "notionExportExpired_one": "Não foi possível baixar {{count}} imagem e ela não está neste baralho. O link para a imagem nesta exportação do Notion expirou — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida.",
     "notionExportExpired_other": "Não foi possível baixar {{count}} imagens e elas não estão neste baralho. Os links para as imagens nesta exportação do Notion expiraram — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida.",
     "notionExportExpiredMultiDeck_one": "Não foi possível baixar {{count}} imagem e ela não está nos seus baralhos. O link para a imagem nesta exportação do Notion expirou — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida.",
-    "notionExportExpiredMultiDeck_other": "Não foi possível baixar {{count}} imagens e elas não estão nos seus baralhos. Os links para as imagens nesta exportação do Notion expiraram — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida."
+    "notionExportExpiredMultiDeck_other": "Não foi possível baixar {{count}} imagens e elas não estão nos seus baralhos. Os links para as imagens nesta exportação do Notion expiraram — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida.",
+    "notionHtmlUpload_one": "{{count}} imagem não está neste baralho. O arquivo que você enviou é a página HTML de uma exportação do Notion, sem a pasta de imagens. Envie o .zip completo da sua exportação do Notion para manter as imagens.",
+    "notionHtmlUpload_other": "{{count}} imagens não estão neste baralho. O arquivo que você enviou é a página HTML de uma exportação do Notion, sem a pasta de imagens. Envie o .zip completo da sua exportação do Notion para manter as imagens."
   },
   "cardLimitPartial": {
     "heldBack_one": "Seu baralho tem {{delivered}} das suas {{limit}} cartas mensais. Mais {{count}} carta está pronta — <pricingLink>faça upgrade para cartas ilimitadas</pricingLink>.",

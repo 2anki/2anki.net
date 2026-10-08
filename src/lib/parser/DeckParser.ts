@@ -186,6 +186,8 @@ export class DeckParser {
 
   expiredNotionImageCount: number;
 
+  missingLocalImageCount: number;
+
   emptyBackCount: number;
 
   // Basic-mode cards that carry {{cN::…}} markup; Anki renders the braces
@@ -244,6 +246,7 @@ export class DeckParser {
     this.usedHeuristic = false;
     this.droppedImageCount = 0;
     this.expiredNotionImageCount = 0;
+    this.missingLocalImageCount = 0;
     this.emptyBackCount = 0;
     this.strayClozeCount = 0;
     this.recognizedCardStructureCount = 0;
@@ -941,6 +944,7 @@ export class DeckParser {
       } else {
         dom(elem).attr('src', decodedPath.split('/').pop() ?? originalName);
         this.droppedImageCount++;
+        this.missingLocalImageCount++;
       }
       return true;
     }

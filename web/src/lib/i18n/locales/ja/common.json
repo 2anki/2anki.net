@@ -563,7 +563,8 @@
       "blocksSkipped_other": "ブロック {{count}} 個をスキップ",
       "structureGuessed": "構造を推定",
       "columnsGuessed": "列を推定",
-      "sharedTooltip": "共有済み — クリックしてプレビューを開く"
+      "sharedTooltip": "共有済み — クリックしてプレビューを開く",
+      "imagesMissing": "画像がありません"
     },
     "done": "完了",
     "openInNotion": "Notion で開く",

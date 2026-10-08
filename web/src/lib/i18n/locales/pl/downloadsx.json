@@ -70,7 +70,11 @@
     "notionExportExpiredMultiDeck_one": "{{count}} obraz nie został pobrany i nie ma go w Twoich taliach. Link do obrazu w tym eksporcie Notion wygasł — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik.",
     "notionExportExpiredMultiDeck_few": "{{count}} obrazy nie zostały pobrane i nie ma ich w Twoich taliach. Linki do obrazów w tym eksporcie Notion wygasły — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik.",
     "notionExportExpiredMultiDeck_many": "{{count}} obrazów nie zostało pobranych i nie ma ich w Twoich taliach. Linki do obrazów w tym eksporcie Notion wygasły — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik.",
-    "notionExportExpiredMultiDeck_other": "{{count}} obrazów nie zostało pobranych i nie ma ich w Twoich taliach. Linki do obrazów w tym eksporcie Notion wygasły — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik."
+    "notionExportExpiredMultiDeck_other": "{{count}} obrazów nie zostało pobranych i nie ma ich w Twoich taliach. Linki do obrazów w tym eksporcie Notion wygasły — takie linki działają tylko około godziny. Wyeksportuj stronę ponownie i wkrótce potem prześlij nowy plik.",
+    "notionHtmlUpload_one": "{{count}} obraz nie znajduje się w tej talii. Przesłany plik to strona HTML z eksportu Notion, bez folderu z obrazami. Prześlij zamiast tego cały plik .zip z eksportu Notion, aby zachować obrazy.",
+    "notionHtmlUpload_few": "{{count}} obrazy nie znajdują się w tej talii. Przesłany plik to strona HTML z eksportu Notion, bez folderu z obrazami. Prześlij zamiast tego cały plik .zip z eksportu Notion, aby zachować obrazy.",
+    "notionHtmlUpload_many": "{{count}} obrazów nie znajduje się w tej talii. Przesłany plik to strona HTML z eksportu Notion, bez folderu z obrazami. Prześlij zamiast tego cały plik .zip z eksportu Notion, aby zachować obrazy.",
+    "notionHtmlUpload_other": "{{count}} obrazu nie znajduje się w tej talii. Przesłany plik to strona HTML z eksportu Notion, bez folderu z obrazami. Prześlij zamiast tego cały plik .zip z eksportu Notion, aby zachować obrazy."
   },
   "cardLimitPartial": {
     "heldBack_one": "Twoja talia ma {{delivered}} z {{limit}} miesięcznych kart. Gotowa jest jeszcze {{count}} karta — <pricingLink>przejdź na nieograniczone karty</pricingLink>.",
