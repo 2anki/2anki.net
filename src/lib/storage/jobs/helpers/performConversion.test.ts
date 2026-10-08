@@ -430,7 +430,7 @@ describe('performConversion — heavy pipeline', () => {
           ws: {},
           exporter: {},
           settings: {},
-          bl: {},
+          bl: { emptyDeckReason: () => 'no_toggles' },
           rules: {},
         }),
       };
@@ -597,14 +597,14 @@ describe('performConversion — heavy pipeline', () => {
     );
   });
 
-  it('emits conversion_failed with the anonymous_id when decks have zero cards', async () => {
+  it('emits conversion_failed with the anonymous_id and empty_reason when decks have zero cards', async () => {
     (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
       return {
         execute: vi.fn().mockResolvedValue({
           ws: {},
           exporter: {},
           settings: {},
-          bl: {},
+          bl: { emptyDeckReason: () => 'all_filtered' },
           rules: {},
         }),
       };
@@ -625,7 +625,10 @@ describe('performConversion — heavy pipeline', () => {
       'conversion_failed',
       expect.objectContaining({
         anonymousId: 'anon-from-cookie',
-        props: expect.objectContaining({ reason: 'empty_deck' }),
+        props: expect.objectContaining({
+          reason: 'empty_deck',
+          empty_reason: 'all_filtered',
+        }),
       })
     );
   });
@@ -765,7 +768,7 @@ describe('performConversion — signup_origin attribution', () => {
           ws: {},
           exporter: {},
           settings: {},
-          bl: {},
+          bl: { emptyDeckReason: () => 'no_toggles' },
           rules: {},
         }),
       };

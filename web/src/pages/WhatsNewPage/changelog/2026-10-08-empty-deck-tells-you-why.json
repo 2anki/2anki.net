@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-08-empty-deck-tells-you-why",
+  "date": "2026-10-08",
+  "type": "fix",
+  "title": "A conversion with no cards now explains why, whether your page had no toggles, a card filter removed everything, or there was no readable text"
+}

@@ -60,7 +60,7 @@ export class BuildDeckForJobUseCase {
 
     if (filteredDecks.length === 0) {
       console.log('conversion.zero_cards', { id, owner, type });
-      throw new EmptyDeckError();
+      throw new EmptyDeckError(undefined, bl.emptyDeckReason());
     }
 
     const priorUploads = await this.uploadRepository.findAllByObjectIdAndOwner(

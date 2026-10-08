@@ -21,7 +21,7 @@ import { buildConversionReport } from '../../../../services/NotionService/helper
 import { countDuplicateGuids } from '../../../anki/countDuplicateGuids';
 import { NotifyUserUseCase } from '../../../../usecases/jobs/NotifyUserUseCase';
 import {
-  EMPTY_DECK_FAILURE_REASON,
+  emptyDeckReasonMessage,
   isColumnsAmbiguousError,
   isNotionUnauthorizedError,
   jobFailureReasonCode,
@@ -295,10 +295,16 @@ export default async function performConversion(
       logPrefix
     );
     if (cardCount === 0) {
+      const emptyReason = bl.emptyDeckReason();
       const setJobFailed = new SetJobFailedUseCase(jobRepository);
-      await setJobFailed.execute(id, owner, EMPTY_DECK_FAILURE_REASON);
+      await setJobFailed.execute(
+        id,
+        owner,
+        emptyDeckReasonMessage(emptyReason)
+      );
       trackConversionFailed(owner, anonId, type, resolvedSignupOrigin, {
         reason: 'empty_deck',
+        empty_reason: emptyReason,
       });
       return;
     }

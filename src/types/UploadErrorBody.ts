@@ -22,7 +22,10 @@ export type UploadErrorCode =
   | 'ai_credits_exhausted'
   | 'unknown';
 
+import type { EmptyDeckReason } from '../usecases/jobs/EmptyDeckError';
+
 export interface UploadErrorBody {
   code: UploadErrorCode;
   message: string;
+  empty_reason?: EmptyDeckReason;
 }

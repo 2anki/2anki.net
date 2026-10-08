@@ -258,7 +258,8 @@
       "unreadableFileBody": "O navegador não consegue mais ler a versão escolhida: ela foi salva, movida ou excluída depois da seleção. Escolha o arquivo de novo para enviar a versão atual.",
       "unreadableChooseAgain": "Escolher o arquivo de novo",
       "sampleSuccessNote": "Este é um baralho de exemplo. Agora converta o seu próprio arquivo.",
-      "convertYourOwn": "Converter o seu próprio arquivo"
+      "convertYourOwn": "Converter o seu próprio arquivo",
+      "emptyAllFiltered": "Um filtro de cartões removeu todos os cartões. Se você ativou o cherry pick (🍒) ou o skip (🥑), marque os toggles que quiser ou desative o filtro e converta de novo."
     },
     "page": {
       "title": "Converta suas anotações",
@@ -651,7 +652,9 @@
       "getDayPass": "Obter Day Pass — {{price}}",
       "getWeekPass": "Obter Week Pass — {{price}}",
       "upgradeUnlimited": "Fazer upgrade para o Pro"
-    }
+    },
+    "emptyDeckAllFiltered": "Um filtro de cartões removeu todos os cartões. O cherry pick mantém apenas os toggles marcados com 🍒 e o skip descarta os marcados com 🥑. Desative o filtro nas configurações de cartão ou marque os toggles que quiser e converta de novo.",
+    "emptyDeckNoContent": "Esta página não tinha texto que pudéssemos ler. Verifique se você a exportou com o conteúdo e converta de novo."
   },
   "modals": {
     "consent": {

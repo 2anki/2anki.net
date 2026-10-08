@@ -85,7 +85,10 @@ import {
   ancestorSectionTags,
   collectAndStripSectionMarkers,
 } from './collectSectionTags';
-import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
+import {
+  EmptyDeckError,
+  EmptyDeckReason,
+} from '../../usecases/jobs/EmptyDeckError';
 import { extractName } from '../extractDeckName';
 import {
   InducedRescue,
@@ -189,6 +192,12 @@ export class DeckParser {
   // literally, so the conversion report warns and offers cloze mode (#4402).
   strayClozeCount: number;
 
+  private recognizedCardStructureCount: number;
+
+  private cardsRemovedByUserFilter: number;
+
+  private meaningfulTextSeen: boolean;
+
   private readonly knownGuids?: KnownGuids;
 
   private readonly uploadIdentity?: UploadIdentityContext;
@@ -237,6 +246,9 @@ export class DeckParser {
     this.expiredNotionImageCount = 0;
     this.emptyBackCount = 0;
     this.strayClozeCount = 0;
+    this.recognizedCardStructureCount = 0;
+    this.cardsRemovedByUserFilter = 0;
+    this.meaningfulTextSeen = false;
     this.sawUnclassifiedParse = false;
     this.cardLimit = input.cardLimit;
     this.payload = [];
@@ -254,6 +266,9 @@ export class DeckParser {
     if (isMarkdownFile(name)) {
       const contents = getFileContents(firstFile, false);
       const contentsStr = contents?.toString();
+      if (!this.meaningfulTextSeen && (contentsStr?.trim().length ?? 0) > 0) {
+        this.meaningfulTextSeen = true;
+      }
       if (this.settings.nestedBulletPoints || hasNestedBullets(contentsStr)) {
         this.payload = handleNestedBulletPointsInMarkdown({
           name,
@@ -535,6 +550,11 @@ export class DeckParser {
 
     const disableIndentedBullets = this.settings.disableIndentedBulletPoints;
     if (cards.length === 0) {
+      // Only the zero-card branch feeds the empty-deck reason, so the page-text
+      // measurement stays off the hot path for conversions that produced cards.
+      if (!this.meaningfulTextSeen && domPlainTextLength(dom) > 0) {
+        this.meaningfulTextSeen = true;
+      }
       const tableNotes = this.induceDominantTableCards(dom);
       const overlappingPageNotes =
         tableNotes != null ? [] : this.buildPageListOverlappingNotes(dom);
@@ -1375,7 +1395,10 @@ export class DeckParser {
       const markdownSourced =
         isMarkdownFile(this.firstDeckName) ||
         isMarkdownSourcedFiles(this.files);
-      throw new EmptyDeckError(markdownSourced ? 'markdown' : undefined);
+      throw new EmptyDeckError(
+        markdownSourced ? 'markdown' : undefined,
+        this.emptyDeckReason()
+      );
     }
 
     this.emptyBackCount = 0;
@@ -1614,7 +1637,10 @@ export class DeckParser {
       const markdownSourced =
         isMarkdownFile(this.firstDeckName) ||
         isMarkdownSourcedFiles(this.files);
-      throw new EmptyDeckError(markdownSourced ? 'markdown' : undefined);
+      throw new EmptyDeckError(
+        markdownSourced ? 'markdown' : undefined,
+        this.emptyDeckReason()
+      );
     }
 
     this.applyCardLimit();
@@ -1629,6 +1655,34 @@ export class DeckParser {
 
   totalCardCount() {
     return this.payload.reduce((total, p) => total + p.cardCount, 0);
+  }
+
+  // Why an empty parse produced no cards, derived from state the parse already
+  // holds — no second pass. A user filter that emptied the deck wins first
+  // (cherry-pick keeps only 🍒 toggles, 🥑 skips), then a page with no readable
+  // text, then text that held no structure the parser recognises; anything else
+  // stays honest as unknown.
+  emptyDeckReason(): EmptyDeckReason {
+    if (this.cardsRemovedByUserFilter > 0) {
+      return 'all_filtered';
+    }
+    if (!this.meaningfulTextSeen) {
+      return 'no_content';
+    }
+    if (this.recognizedCardStructureCount === 0) {
+      return 'no_toggles';
+    }
+    return 'unknown';
+  }
+
+  private keepOrDropCard(note: Note, cards: Note[]): void {
+    this.recognizedCardStructureCount += 1;
+    if (this.dropsByMatchingRules(note)) {
+      this.cardsRemovedByUserFilter += 1;
+      console.debug('dropping due to matching rules');
+    } else {
+      cards.push(note);
+    }
   }
 
   private loadDOM(contents: string) {
@@ -1953,11 +2007,7 @@ export class DeckParser {
                 note.sourcePageId = pageId;
                 note.sectionTags = sectionTags;
                 mcqCount++;
-                if (this.dropsByMatchingRules(note)) {
-                  console.debug('dropping due to matching rules');
-                } else {
-                  cards.push(note);
-                }
+                this.keepOrDropCard(note, cards);
                 return;
               }
 
@@ -1980,17 +2030,11 @@ export class DeckParser {
                   note.back += link;
                 }
               }
-              if (this.dropsByMatchingRules(note)) {
-                console.debug('dropping due to matching rules');
-              } else {
-                cards.push(note);
-              }
+              this.keepOrDropCard(note, cards);
               for (const child of promoted) {
                 child.sourcePageId = pageId;
                 child.sectionTags = sectionTags;
-                if (!this.dropsByMatchingRules(child)) {
-                  cards.push(child);
-                }
+                this.keepOrDropCard(child, cards);
               }
             }
           }

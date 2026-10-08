@@ -37,6 +37,11 @@ type Source = 'notion' | 'upload' | 'dropbox' | 'drive';
 
 const NOTION_TOKEN_EXPIRED_REASON = 'notion_token_expired';
 const EMPTY_DECK_REASON_PREFIX = 'No cards in this deck yet.';
+// Markers the server embeds in the empty-deck message so the localized copy can
+// branch on the reason. Keep in sync with EMPTY_DECK_ALL_FILTERED_REASON /
+// EMPTY_DECK_NO_CONTENT_REASON in src/usecases/jobs/jobFailureReason.ts.
+const EMPTY_DECK_ALL_FILTERED_MARKER = 'card filter removed';
+const EMPTY_DECK_NO_CONTENT_MARKER = 'no text we could read';
 const TOGGLES_DOCS_HREF = '/documentation/cards/notion-blocks';
 const FILE_FORMATS_DOCS_HREF = '/documentation/reference/file-formats';
 
@@ -191,23 +196,40 @@ function FailedVariant({
     // The toggle teaching is right for Notion and wrong for everyone else: of
     // 227 firings in 30 days, 157 were people uploading a Word, PDF, or
     // Markdown file, told to go use a Notion feature they have no access to.
+    // The reason markers let each empty-deck cause get copy that matches it.
     const fromNotion = source === 'notion';
-    return (
+    const emptyDeckPanel = (body: string, href: string, label: string) => (
       <div>
-        <p>
-          {fromNotion
-            ? t('conversionResult.emptyDeckTeaching')
-            : t('conversionResult.emptyDeckTeachingUpload')}
-        </p>
+        <p>{body}</p>
         <Link
-          to={fromNotion ? TOGGLES_DOCS_HREF : FILE_FORMATS_DOCS_HREF}
+          to={href}
           className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
         >
-          {fromNotion
-            ? t('conversionResult.togglesDocs')
-            : t('conversionResult.uploadFormatsDocs')}
+          {label}
         </Link>
       </div>
+    );
+
+    if (failureReason.includes(EMPTY_DECK_ALL_FILTERED_MARKER)) {
+      return emptyDeckPanel(
+        t('conversionResult.emptyDeckAllFiltered'),
+        TOGGLES_DOCS_HREF,
+        t('conversionResult.togglesDocs')
+      );
+    }
+
+    let teaching = t('conversionResult.emptyDeckTeachingUpload');
+    if (failureReason.includes(EMPTY_DECK_NO_CONTENT_MARKER)) {
+      teaching = t('conversionResult.emptyDeckNoContent');
+    } else if (fromNotion) {
+      teaching = t('conversionResult.emptyDeckTeaching');
+    }
+    return emptyDeckPanel(
+      teaching,
+      fromNotion ? TOGGLES_DOCS_HREF : FILE_FORMATS_DOCS_HREF,
+      fromNotion
+        ? t('conversionResult.togglesDocs')
+        : t('conversionResult.uploadFormatsDocs')
     );
   }
 

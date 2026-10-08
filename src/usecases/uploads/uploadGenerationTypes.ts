@@ -4,6 +4,7 @@ import type Package from '../../lib/parser/Package';
 import type CardOption from '../../lib/parser/Settings/CardOption';
 import type Workspace from '../../lib/parser/WorkSpace';
 import type { UploadedFile } from '../../lib/storage/types';
+import type { EmptyDeckReason } from '../jobs/EmptyDeckError';
 
 export interface UploadGenerationTask {
   paying: boolean;
@@ -23,6 +24,7 @@ export interface UploadGenerationFailure {
   message?: string;
   name?: string;
   sourceFormat?: 'markdown';
+  reason?: EmptyDeckReason;
 }
 
 export type UploadGenerationResult =

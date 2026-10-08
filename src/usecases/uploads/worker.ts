@@ -420,6 +420,7 @@ export async function runUploadGenerationInWorker(
         name: err instanceof Error ? err.name : undefined,
         sourceFormat:
           err instanceof EmptyDeckError ? err.sourceFormat : undefined,
+        reason: err instanceof EmptyDeckError ? err.reason : undefined,
       },
     };
   } finally {
