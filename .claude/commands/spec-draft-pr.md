@@ -69,6 +69,8 @@ The file must use the pm format from `.claude/agents/pm.md` section 4, augmented
 
 Keep it to one page. If the work is bigger, split into numbered files (`<slug>-1.md`, `<slug>-2.md`) and link them.
 
+Leave any unresolved ambiguity marked in place with `[NEEDS CLARIFICATION: <question>]` (see `.claude/agents/pm.md` section 4) — do not guess a value to make the spec read cleanly. The draft is allowed to carry markers; `/implement` resolves them before code lands. `check-spec-format.py` validates the required headings on the spec commit and tolerates markers on this `docs:` commit.
+
 ## Step 5 — Open a draft PR
 
 1. Pick the conventional commit prefix the implementation will land under — `feat` for new behavior, `fix` for a bug, `refactor`/`chore`/`perf` otherwise. The branch keeps this prefix through implementation, so don't use `docs/`.

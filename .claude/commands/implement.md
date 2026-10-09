@@ -20,6 +20,7 @@ When `$ARGUMENTS` is a PR number or URL (or you can find a draft PR titled `spec
    gh pr edit <n> --head feat/spec-<slug>
    ```
 2. Read the spec at `Documentation/specs/<slug>.md` (it is the source of truth — do not re-derive scope).
+2b. **Clarify pass — refuse to start while any `[NEEDS CLARIFICATION]` marker remains.** Grep the spec (`grep -n "NEEDS CLARIFICATION" Documentation/specs/<slug>.md`). For each marker, ask the structured question it carries as a numbered list and wait for the answer — do not guess around it (a guessed "300 credits per billing period" silently meant per-year for annual Unlimited in #4426, caught only after implementation). Fold each answer back into the spec in place of its marker, commit that resolution as `docs: resolve clarifications in <slug> spec`, and only then continue. `check-spec-format.py` blocks any implementation-phase commit that still carries a marker, so an unresolved spec cannot reach code.
 3. Follow the engineer workflow in `.claude/agents/engineer.md`:
    - Restate the change in one sentence.
    - Trace the code path (list files, name the layer).
@@ -27,11 +28,13 @@ When `$ARGUMENTS` is a PR number or URL (or you can find a draft PR titled `spec
    - Write the failing test first (TDD per CLAUDE.md).
    - Implement (smallest viable change, no comments — meaningful names instead).
 4. Commit in logical chunks on the existing branch using conventional-commit messages.
-5. Before the final push, remove the spec file — its text lives in the original `docs: add spec for …` commit on this branch and in the deletion diff:
+5. Before the final push, archive then remove the spec file.
+   - **Archive the acceptance criteria into the owning surface's `FEATURE.md`** (OpenSpec `archive`). Find the `FEATURE.md` nearest the code you touched (e.g. `src/lib/ankify/FEATURE.md`, `src/lib/parser/FEATURE.md`) — create one only if the surface genuinely has none. Fold the spec's *final* acceptance criteria into a short `## Behavior` list, one line each as requirement + scenario ("Empty uploads surface the reason — a 0-card deck returns the empty-deck message, not a silent success"). This is the durable record the next reader gets as requirements instead of reverse-engineering them from tests. Commit as `docs: record <feature> behavior in FEATURE.md`.
+   - Then remove the spec file. After squash-merge its text is not recoverable from `main` (the add+remove nets to zero) — recover it from the spec PR per `.claude/docs/spec-lifecycle.md` if ever needed:
    ```
    git rm Documentation/specs/<slug>.md
    git commit -m "chore: remove implemented spec for <feature name>" \
-     -m "Spec text preserved in git history: git log -p -- Documentation/specs/<slug>.md"
+     -m "Acceptance criteria archived to <surface>/FEATURE.md; spec text recoverable from the spec PR (see spec-lifecycle.md)."
    ```
 6. **Add a changelog entry if this PR changes user-visible behavior.** See CLAUDE.md > Changelog for the rules (file path, when to add, voice). One line, user-facing prose — no implementation details. If you can't write the entry without referencing internal code, the PR probably doesn't need one. Commit as `chore: add changelog entry for <feature>`.
 7. **Update user docs if this PR adds or changes a user-visible feature.** User docs live at `web/src/pages/DocsPage/content/` (rendered in-app at 2anki.net/docs). Add a new MDX file or update an existing one whenever you ship: a new input format, a new converter capability, a changed flow the existing docs already describe, or a new account-level feature. The trigger is stricter than the changelog rule — skip when: pure bug fix (the docs were already correct), internal refactor, copy-only tweak, or a change so small a user would never look it up. Follow VOICE.md for prose; sentence-case headings; no implementation details. If you add a new MDX page, register it in `web/src/pages/DocsPage/sidebar.ts` so it shows up in navigation. Commit as `docs: update user docs for <feature>`.
