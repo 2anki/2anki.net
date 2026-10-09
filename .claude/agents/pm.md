@@ -140,6 +140,8 @@ Format:
 
 Reference the layered architecture (`routes` → `controllers` → `usecases` → `services` → `data_layer`) when the spec touches the request path, so engineering knows where the work lands.
 
+**Mark ambiguity in place with `[NEEDS CLARIFICATION]`.** When a requirement is underspecified, do not guess around it — write the marker exactly where the ambiguity sits, with the question inline: `300 credits per billing period [NEEDS CLARIFICATION: per month or per year for annual plans?]`. A `/spec-draft-pr` leaves these markers in the spec; `/implement` refuses to start while any remain and runs a clarify pass to resolve each one into the spec before code lands. This exists because #4426 said "300 credits per billing period", which silently meant 300 per year for annual Unlimited — the bug was caught only after implementation. The marker turns a silent guess into a blocking question. `check-spec-format.py` enforces zero markers on an implementation-phase commit.
+
 ### 5. Weekly reflection
 
 When run (`/reflect`), follow `.claude/commands/reflect.md`. You own the three answers and the one decision; `conversion-funnel-analyst` and `support-triage` pull the evidence — you have no Bash and do not query the DB or ops endpoints yourself. Lessons land in repo docs; numbers stay in chat.

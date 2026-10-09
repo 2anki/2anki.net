@@ -15,6 +15,13 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
   5. No review-agent pass marker for the head SHA
      (`<!-- ship-review: pass sha=<headRefOid> -->`, full 40-char SHA, posted by
      /ship). Dependabot PRs are exempt — the /batch dependabot decision matrix is their review.
+  6. The PR came from a spec PR but the body has no `## Deviations from spec`
+     heading — an implement PR must list where the code departs from the spec
+     (issue #4427 item 4). "Came from a spec" needs BOTH the `<type>/spec-<slug>`
+     branch name (`/spec-draft-pr`'s) AND a spec-lifecycle commit headline
+     (`add spec for …` or `remove implemented spec …`). The commit evidence is
+     what keeps a non-spec branch whose slug merely starts with `spec`
+     (`chore/spec-lifecycle-gates`) from tripping the gate.
 
 `gh pr view` tooling errors fail open (a broken gh should not block a human).
 
@@ -62,6 +69,13 @@ def deny(reason):
 
 
 REVIEW_MARKER = re.compile(r"<!--\s*ship-review:\s*pass\s+sha=([0-9a-f]{40})\s*-->")
+# `/spec-draft-pr` names the branch `<type>/spec-<slug>` and keeps that name
+# through `/implement`. The name alone is not enough — `chore/spec-lifecycle-gates`
+# matches it by accident — so the gate also requires a spec-lifecycle commit
+# headline, which only a real spec PR carries. Non-spec PRs stay unaffected.
+SPEC_BRANCH = re.compile(r"^[a-z]+/spec-", re.IGNORECASE)
+SPEC_COMMIT = re.compile(r"add spec for|remove implemented spec", re.IGNORECASE)
+DEVIATIONS_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+Deviations from spec\b", re.IGNORECASE | re.MULTILINE)
 # `gh pr view --json author` reports the bot as `app/dependabot`; the GitHub UI
 # and the REST API spell it `dependabot[bot]`. Accept both so the review-marker
 # exemption actually fires (#4555).
@@ -102,7 +116,7 @@ def pr_args(pr_ref):
 def fetch_pr_data(pr_ref):
     stdout = run_gh(
         ["gh", "pr", "view", *pr_args(pr_ref), "--json",
-         "number,headRefOid,author,files,statusCheckRollup,reviews,comments"],
+         "number,headRefOid,headRefName,body,author,files,commits,statusCheckRollup,reviews,comments"],
         "pr view",
     )
     if stdout is None:
@@ -188,6 +202,40 @@ def review_marker_violation(pr_data):
     )
 
 
+def is_spec_branch(head_ref_name):
+    return bool(SPEC_BRANCH.match(head_ref_name or ""))
+
+
+def has_spec_commit(commits):
+    for commit in commits or []:
+        if SPEC_COMMIT.search(commit.get("messageHeadline") or ""):
+            return True
+    return False
+
+
+def came_from_spec(pr_data):
+    return is_spec_branch(pr_data.get("headRefName")) and has_spec_commit(
+        pr_data.get("commits")
+    )
+
+
+def has_deviations_heading(body):
+    return bool(DEVIATIONS_HEADING.search(body or ""))
+
+
+def deviations_violation(pr_data):
+    if not came_from_spec(pr_data):
+        return None
+    if has_deviations_heading(pr_data.get("body")):
+        return None
+    return (
+        "branch came from a spec PR (`<type>/spec-<slug>`) but the body has no "
+        "`## Deviations from spec` heading — list every place the code departs "
+        "from the spec (or write 'None — matches the spec'); see the engineer "
+        "PR template"
+    )
+
+
 def main():
     if os.environ.get("CLAUDE_SKIP_SAFETY"):
         allow()
@@ -226,6 +274,10 @@ def main():
         marker_violation = review_marker_violation(pr_data)
         if marker_violation:
             violations.append(marker_violation)
+
+    spec_violation = deviations_violation(pr_data)
+    if spec_violation:
+        violations.append(spec_violation)
 
     if violations:
         bullet_list = "\n".join(f"  - {v}" for v in violations)

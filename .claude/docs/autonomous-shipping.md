@@ -16,6 +16,7 @@ Before this, every merge was a human step — but branch protection on `main` re
 | 2 | Every rollup entry COMPLETED and non-FAILURE; every `test*` check RAN; dep changes have a SUCCESS test | `gh pr view --json statusCheckRollup,files` |
 | 3 | Review-agent pass marker for the head SHA | `<!-- ship-review: pass sha=<headRefOid> -->` in a PR review or comment; dependabot exempt. **Honor-system**, like the browser attestation: anyone who can comment can post it — it binds the operator's session to having run the review, it does not prove the review ran |
 | 5 | Browser attestation (web/src diffs) and changelog (feat/fix) | existing hooks |
+| 6 | PR came from a spec (`<type>/spec-<slug>` branch + a spec-lifecycle commit) → body carries `## Deviations from spec` | `gh pr view --json headRefName,body,commits`; non-spec PRs unaffected |
 
 `gh pr view` tooling errors **fail open** (a broken `gh` must not block a human). SonarCloud was a fifth condition until 2026-10-01; it was removed because it added a serial wait that timed out on 8% of PRs while `main` carried 1,102 unactioned findings, the gate rating only new code.
 

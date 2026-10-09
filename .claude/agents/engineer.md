@@ -104,6 +104,9 @@ Link the issue. State the user-visible outcome.
 ## How
 Brief technical approach. Anything non-obvious.
 
+## Deviations from spec
+Every place the code departs from the spec, with the reason — one bullet each (e.g. "legacy plan detected via `unit_amount <= 200` because the spec assumed a single price"). "None — matches the spec" is a valid answer. Required on any PR whose branch came from a spec PR (`<type>/spec-<slug>`); `check-merge-status.py` blocks the merge if the heading is absent. This was the most useful part of the credits PR body, and it was written unprompted — now it is a heading.
+
 ## Measuring success
 Specific log, metric, or query that confirms this worked in production.
 
