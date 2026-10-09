@@ -144,9 +144,14 @@
     "activatingSubscription": "Estamos ativando sua assinatura. Isso costuma levar só alguns segundos.",
     "autoRedirect": "Você será redirecionado automaticamente assim que sua assinatura estiver ativa."
   },
-  "verifyEmail": {
-    "message": "Verifique sua caixa de entrada — confirme seu e-mail para proteger sua conta.",
-    "dismiss": "Dispensar"
+  "confirmEmail": {
+    "aria": "Confirme seu e-mail para usar seus baralhos em qualquer dispositivo",
+    "headline": "Volte aos seus baralhos de qualquer dispositivo",
+    "body": "Você criou {{deckName}} neste dispositivo. Confirme seu e-mail para poder entrar de qualquer lugar e baixar novamente cada baralho que criar.",
+    "bodyNoName": "Este baralho está salvo na sua conta. Confirme seu e-mail para poder entrar de qualquer dispositivo e baixar novamente cada baralho que criar.",
+    "cta": "Envie um link para eu entrar",
+    "sent": "Enviado. Abra o link na sua caixa de entrada para concluir.",
+    "error": "Não foi possível enviar o link agora. Tente de novo em um instante."
   },
   "createAccount": {
     "aria": "Crie uma conta grátis para guardar seus baralhos",

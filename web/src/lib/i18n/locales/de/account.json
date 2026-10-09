@@ -144,9 +144,14 @@
     "activatingSubscription": "Wir aktivieren dein Abo. Das dauert normalerweise nur ein paar Sekunden.",
     "autoRedirect": "Du wirst automatisch weitergeleitet, sobald dein Abo aktiv ist."
   },
-  "verifyEmail": {
-    "message": "Sieh in deinem Postfach nach — bestätige deine E-Mail, um dein Konto zu sichern.",
-    "dismiss": "Schließen"
+  "confirmEmail": {
+    "aria": "Bestätige deine E-Mail, um deine Stapel auf jedem Gerät zu nutzen",
+    "headline": "Komm von jedem Gerät zu deinen Stapeln zurück",
+    "body": "Du hast {{deckName}} auf diesem Gerät erstellt. Bestätige deine E-Mail, damit du dich überall anmelden und jeden Stapel, den du erstellst, erneut herunterladen kannst.",
+    "bodyNoName": "Dieser Stapel ist in deinem Konto gespeichert. Bestätige deine E-Mail, damit du dich von jedem Gerät aus anmelden und jeden Stapel, den du erstellst, erneut herunterladen kannst.",
+    "cta": "Schick mir einen Link zum Anmelden",
+    "sent": "Gesendet. Öffne den Link in deinem Postfach, um fertig zu werden.",
+    "error": "Der Link konnte gerade nicht gesendet werden. Versuch es gleich noch einmal."
   },
   "createAccount": {
     "aria": "Kostenloses Konto erstellen, um deine Stapel zu sichern",

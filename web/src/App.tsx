@@ -15,7 +15,6 @@ import { ChunkReloadOverlay } from './components/ChunkReloadOverlay/ChunkReloadO
 import { DomRecoveryBoundary } from './components/DomRecoveryBoundary/DomRecoveryBoundary';
 import { getErrorMessage } from './components/errors/helpers/getErrorMessage';
 import { SkeletonPage } from './components/Skeleton/Skeleton';
-import { VerifyEmailNotice } from './components/VerifyEmailNotice/VerifyEmailNotice';
 import { HeldDeckClaimRedirect } from './components/HeldDeckClaimRedirect/HeldDeckClaimRedirect';
 import {
   clearReloadingFlag,
@@ -412,7 +411,6 @@ function AppContent({
         }
         features={data?.features}
       >
-        <VerifyEmailNotice emailVerified={data?.user?.email_verified} />
         <HeldDeckClaimRedirect isLoggedIn={isLoggedInResolved} />
         <RouteRecoveryBoundary>
           <Routes>

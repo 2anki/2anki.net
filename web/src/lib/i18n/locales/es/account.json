@@ -144,9 +144,14 @@
     "activatingSubscription": "Estamos activando tu suscripción. Suele tardar solo unos segundos.",
     "autoRedirect": "Se te redirigirá automáticamente en cuanto tu suscripción esté activa."
   },
-  "verifyEmail": {
-    "message": "Revisa tu bandeja de entrada — confirma tu correo para proteger tu cuenta.",
-    "dismiss": "Descartar"
+  "confirmEmail": {
+    "aria": "Confirma tu correo para usar tus mazos en cualquier dispositivo",
+    "headline": "Vuelve a tus mazos desde cualquier dispositivo",
+    "body": "Creaste {{deckName}} en este dispositivo. Confirma tu correo para poder iniciar sesión en cualquier lugar y volver a descargar cada mazo que hagas.",
+    "bodyNoName": "Este mazo está guardado en tu cuenta. Confirma tu correo para poder iniciar sesión desde cualquier dispositivo y volver a descargar cada mazo que hagas.",
+    "cta": "Envíame un enlace para iniciar sesión",
+    "sent": "Enviado. Abre el enlace en tu bandeja de entrada para terminar.",
+    "error": "No se pudo enviar el enlace ahora mismo. Inténtalo de nuevo en un momento."
   },
   "createAccount": {
     "aria": "Crea una cuenta gratuita para guardar tus mazos",

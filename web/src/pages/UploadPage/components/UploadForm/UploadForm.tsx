@@ -61,6 +61,7 @@ import {
 } from './assertFilesReadable';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
+import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/ConfirmEmailNotice';
 import { AnonymousPartialGate } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
@@ -1385,6 +1386,7 @@ function UploadForm({
 
   const successOffer = resolveSuccessOffer({
     anonymous: userLocals != null && userLocals.user?.email == null,
+    emailVerified: userLocals?.user?.email_verified,
   });
 
   const renderSuccessState = () => (
@@ -1521,6 +1523,15 @@ function UploadForm({
           secondary={downloadRecovered}
         />
       )}
+      {successOffer === 'confirm_email' &&
+        cardsHeldBack === 0 &&
+        !sampleRun &&
+        userLocals?.user?.email != null && (
+          <ConfirmEmailNotice
+            email={userLocals.user.email}
+            deckName={deckName}
+          />
+        )}
       <button
         type="button"
         className={

@@ -108,7 +108,10 @@ class UsersController {
       }
       await this.authService.logOutEverywhere(owner.id);
       try {
-        await this.userService.markEmailVerified(owner.id.toString());
+        await this.userService.markEmailVerified(
+          owner.id.toString(),
+          'password_reset'
+        );
       } catch (error) {
         // The password already changed; a missed verification mark must not
         // report the reset as failed.
@@ -790,7 +793,7 @@ class UsersController {
     }
 
     if (!isNewUser) recordUnverifiedSignin(user, 'google');
-    await this.userService.markEmailVerified(user.id.toString());
+    await this.userService.markEmailVerified(user.id.toString(), 'google');
 
     const token = await this.authService.newJWTToken(user.id);
     if (!token) {
@@ -915,7 +918,7 @@ class UsersController {
     }
 
     if (!isNewUser) recordUnverifiedSignin(user, 'microsoft');
-    await this.userService.markEmailVerified(user.id.toString());
+    await this.userService.markEmailVerified(user.id.toString(), 'microsoft');
 
     const token = await this.authService.newJWTToken(user.id);
     if (!token) {
@@ -1163,7 +1166,7 @@ class UsersController {
     }
 
     if (!isNewUser) recordUnverifiedSignin(user, 'apple');
-    await this.userService.markEmailVerified(user.id.toString());
+    await this.userService.markEmailVerified(user.id.toString(), 'apple');
 
     const token = await this.authService.newJWTToken(user.id);
     if (!token) {
@@ -1360,7 +1363,10 @@ class UsersController {
       if (result?.purpose !== 'verify_email') {
         return res.redirect(`${base}?verify_error=expired`);
       }
-      await this.userService.markEmailVerified(result.userId.toString());
+      await this.userService.markEmailVerified(
+        result.userId.toString(),
+        'email_link'
+      );
       return res.redirect(`${base}?verified=1`);
     } catch (error) {
       console.error('Email verification failed:', error);
@@ -1399,7 +1405,10 @@ class UsersController {
         await this.authService.persistToken(jwtToken, user.id.toString());
         await this.userService.updateLastLoginAt(user.id.toString());
         recordUnverifiedSignin(user, 'magic_link');
-        await this.userService.markEmailVerified(user.id.toString());
+        await this.userService.markEmailVerified(
+          user.id.toString(),
+          'magic_link'
+        );
         res.cookie('token', jwtToken, sessionCookieOptions());
         const redirect = sanitizeRelativeRedirect(req.query?.redirect);
         if (redirect != null) {
@@ -1420,7 +1429,10 @@ class UsersController {
         const resetToken = crypto.randomUUID();
         await this.userService.updateResetToken(user.id.toString(), resetToken);
         recordUnverifiedSignin(user, 'magic_link_reset');
-        await this.userService.markEmailVerified(user.id.toString());
+        await this.userService.markEmailVerified(
+          user.id.toString(),
+          'magic_link_reset'
+        );
         return res
           .status(200)
           .json({ purpose: 'password_reset', reset_token: resetToken });

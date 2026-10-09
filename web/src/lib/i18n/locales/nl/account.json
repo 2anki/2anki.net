@@ -144,9 +144,14 @@
     "activatingSubscription": "We activeren je abonnement. Dit duurt meestal maar een paar seconden.",
     "autoRedirect": "Je wordt automatisch doorgestuurd zodra je abonnement actief is."
   },
-  "verifyEmail": {
-    "message": "Check je inbox — bevestig je e-mail om je account te beveiligen.",
-    "dismiss": "Sluiten"
+  "confirmEmail": {
+    "aria": "Bevestig je e-mail om je decks op elk apparaat te gebruiken",
+    "headline": "Kom vanaf elk apparaat terug bij je decks",
+    "body": "Je hebt {{deckName}} op dit apparaat gemaakt. Bevestig je e-mail zodat je overal kunt inloggen en elke deck die je maakt opnieuw kunt downloaden.",
+    "bodyNoName": "Deze deck is opgeslagen in je account. Bevestig je e-mail zodat je vanaf elk apparaat kunt inloggen en elke deck die je maakt opnieuw kunt downloaden.",
+    "cta": "Mail me een link om in te loggen",
+    "sent": "Verzonden. Open de link in je inbox om af te ronden.",
+    "error": "Kon de link nu niet versturen. Probeer het zo meteen opnieuw."
   },
   "createAccount": {
     "aria": "Maak een gratis account om je decks te bewaren",
