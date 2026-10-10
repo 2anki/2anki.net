@@ -134,7 +134,7 @@
     "oxfmt": "^0.72.0",
     "oxlint": "^1.68.0",
     "ts-node": "^10.9.1",
-    "typescript": "~6.0.3",
+    "typescript": "~7.0.2",
     "vitest": "^5.0.3"
   },
   "pnpm": {
