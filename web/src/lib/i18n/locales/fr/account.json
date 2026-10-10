@@ -144,9 +144,14 @@
     "activatingSubscription": "Nous activons ton abonnement. Cela ne prend généralement que quelques secondes.",
     "autoRedirect": "Tu seras automatiquement redirigé une fois ton abonnement actif."
   },
-  "verifyEmail": {
-    "message": "Vérifie ta boîte de réception — confirme ton e-mail pour sécuriser ton compte.",
-    "dismiss": "Ignorer"
+  "confirmEmail": {
+    "aria": "Confirme ton e-mail pour utiliser tes paquets sur n'importe quel appareil",
+    "headline": "Retrouve tes paquets depuis n'importe quel appareil",
+    "body": "Tu as créé {{deckName}} sur cet appareil. Confirme ton e-mail pour pouvoir te connecter partout et retélécharger chaque paquet que tu crées.",
+    "bodyNoName": "Ce paquet est enregistré dans ton compte. Confirme ton e-mail pour pouvoir te connecter depuis n'importe quel appareil et retélécharger chaque paquet que tu crées.",
+    "cta": "Envoie-moi un lien pour me connecter",
+    "sent": "Envoyé. Ouvre le lien dans ta boîte de réception pour terminer.",
+    "error": "Impossible d'envoyer le lien pour l'instant. Réessaie dans un moment."
   },
   "createAccount": {
     "aria": "Crée un compte gratuit pour garder tes paquets",

@@ -75,6 +75,7 @@ export const KNOWN_EVENTS = new Set([
   'feature_flag_changed',
   'account_created',
   'unverified_account_signin',
+  'email_verified',
   'account_offer_shown',
   'account_offer_clicked',
   'signup_completed',

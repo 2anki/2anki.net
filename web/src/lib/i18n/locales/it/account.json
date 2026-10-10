@@ -144,9 +144,14 @@
     "activatingSubscription": "Stiamo attivando il tuo abbonamento. Di solito ci vogliono solo pochi secondi.",
     "autoRedirect": "Verrai reindirizzato automaticamente non appena il tuo abbonamento è attivo."
   },
-  "verifyEmail": {
-    "message": "Controlla la posta in arrivo — conferma la tua email per proteggere il tuo account.",
-    "dismiss": "Chiudi"
+  "confirmEmail": {
+    "aria": "Conferma la tua email per usare i tuoi mazzi su qualsiasi dispositivo",
+    "headline": "Torna ai tuoi mazzi da qualsiasi dispositivo",
+    "body": "Hai creato {{deckName}} su questo dispositivo. Conferma la tua email per poter accedere ovunque e riscaricare ogni mazzo che crei.",
+    "bodyNoName": "Questo mazzo è salvato nel tuo account. Conferma la tua email per poter accedere da qualsiasi dispositivo e riscaricare ogni mazzo che crei.",
+    "cta": "Inviami un link per accedere",
+    "sent": "Inviato. Apri il link nella tua casella di posta per completare.",
+    "error": "Non è stato possibile inviare il link in questo momento. Riprova tra un istante."
   },
   "createAccount": {
     "aria": "Crea un account gratuito per salvare i tuoi mazzi",

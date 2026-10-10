@@ -157,6 +157,36 @@ describe('UsersService.register', () => {
   });
 });
 
+describe('UsersService.markEmailVerified', () => {
+  beforeEach(() => trackMock.mockClear());
+
+  it('fires email_verified with the method once the repository update resolves', async () => {
+    const repository = {
+      markEmailVerified: vi.fn().mockResolvedValue(1),
+    } as unknown as UsersRepository & { markEmailVerified: Mock };
+    const service = new UsersService(repository, buildEmailService());
+
+    await service.markEmailVerified('42', 'magic_link');
+
+    expect(repository.markEmailVerified).toHaveBeenCalledWith('42');
+    expect(trackMock).toHaveBeenCalledWith('email_verified', {
+      userId: 42,
+      props: { method: 'magic_link' },
+    });
+  });
+
+  it('does not fire the event for a non-numeric user id', async () => {
+    const repository = {
+      markEmailVerified: vi.fn().mockResolvedValue(1),
+    } as unknown as UsersRepository;
+    const service = new UsersService(repository, buildEmailService());
+
+    await service.markEmailVerified('not-a-number', 'google');
+
+    expect(trackMock).not.toHaveBeenCalled();
+  });
+});
+
 function emailTakenError() {
   return Object.assign(
     new Error('duplicate key value violates unique constraint'),

@@ -144,9 +144,14 @@
     "activatingSubscription": "Aktywujemy Twoją subskrypcję. Zwykle zajmuje to tylko kilka sekund.",
     "autoRedirect": "Zostaniesz automatycznie przekierowany, gdy subskrypcja stanie się aktywna."
   },
-  "verifyEmail": {
-    "message": "Sprawdź skrzynkę — potwierdź e-mail, aby zabezpieczyć konto.",
-    "dismiss": "Zamknij"
+  "confirmEmail": {
+    "aria": "Potwierdź e-mail, aby korzystać z talii na każdym urządzeniu",
+    "headline": "Wróć do swoich talii z każdego urządzenia",
+    "body": "Utworzyłeś {{deckName}} na tym urządzeniu. Potwierdź e-mail, aby móc logować się wszędzie i ponownie pobierać każdą talię, którą tworzysz.",
+    "bodyNoName": "Ta talia jest zapisana na Twoim koncie. Potwierdź e-mail, aby móc logować się z dowolnego urządzenia i ponownie pobierać każdą talię, którą tworzysz.",
+    "cta": "Wyślij mi link do logowania",
+    "sent": "Wysłano. Otwórz link w skrzynce, aby dokończyć.",
+    "error": "Nie udało się teraz wysłać linku. Spróbuj ponownie za chwilę."
   },
   "createAccount": {
     "aria": "Utwórz darmowe konto, aby zapisać swoje talie",

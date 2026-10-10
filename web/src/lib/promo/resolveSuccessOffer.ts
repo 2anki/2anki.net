@@ -1,14 +1,17 @@
-export type SuccessOfferKind = 'anon_signup';
+export type SuccessOfferKind = 'anon_signup' | 'confirm_email';
 
 export interface SuccessOfferContext {
   anonymous: boolean;
+  emailVerified?: boolean;
 }
 
-// Only anonymous visitors get an offer after a download. The logged-in free
-// upsell was removed: over ninety days it was shown 1,921 times and produced
-// no purchase at all, while a third of the people who saw it dismissed it.
+// The success state renders at most one offer. An anonymous visitor is asked to
+// create an account; a signed-in user whose email is still unverified is asked
+// to confirm it. Anonymity wins — a guest has no email to confirm.
 export function resolveSuccessOffer(
   context: SuccessOfferContext
 ): SuccessOfferKind | null {
-  return context.anonymous ? 'anon_signup' : null;
+  if (context.anonymous) return 'anon_signup';
+  if (context.emailVerified === false) return 'confirm_email';
+  return null;
 }

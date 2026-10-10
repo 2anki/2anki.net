@@ -144,9 +144,14 @@
     "activatingSubscription": "We're activating your subscription. This usually takes just a few seconds.",
     "autoRedirect": "You'll be automatically redirected once your subscription is active."
   },
-  "verifyEmail": {
-    "message": "Check your inbox — confirm your email to secure your account.",
-    "dismiss": "Dismiss"
+  "confirmEmail": {
+    "aria": "Confirm your email to use your decks on any device",
+    "headline": "Get back to your decks from any device",
+    "body": "You made {{deckName}} on this device. Confirm your email so you can sign in anywhere and re-download every deck you make.",
+    "bodyNoName": "This deck is saved to your account. Confirm your email so you can sign in from any device and re-download every deck you make.",
+    "cta": "Email me a link to sign in",
+    "sent": "Sent. Open the link in your inbox to finish.",
+    "error": "Couldn't send the link just now. Try again in a moment."
   },
   "createAccount": {
     "aria": "Create a free account to save your decks",

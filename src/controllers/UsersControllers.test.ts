@@ -506,7 +506,7 @@ describe('UsersController.verifyEmail', () => {
 
     await controller.verifyEmail(req, res, next);
 
-    expect(markEmailVerified).toHaveBeenCalledWith('7');
+    expect(markEmailVerified).toHaveBeenCalledWith('7', 'email_link');
     expect(res.redirect).toHaveBeenCalledWith('/login?verified=1');
   });
 
@@ -530,7 +530,7 @@ describe('UsersController.verifyEmail', () => {
 
     await controller.verifyEmail(req, res, next);
 
-    expect(markEmailVerified).toHaveBeenCalledWith('7');
+    expect(markEmailVerified).toHaveBeenCalledWith('7', 'email_link');
     expect(res.redirect).toHaveBeenCalledWith('/account?verified=1');
   });
 
@@ -942,7 +942,46 @@ describe('UsersController.verifyMagicLink', () => {
 
     await controller.verifyMagicLink(req, res, next);
 
-    expect(markEmailVerified).toHaveBeenCalledWith('5');
+    expect(markEmailVerified).toHaveBeenCalledWith('5', 'magic_link');
+  });
+
+  it('re-establishes one clean session when an authenticated user clicks the link on the same device', async () => {
+    const verifyMagicToken = vi
+      .fn()
+      .mockResolvedValue({ userId: 5, purpose: 'login' });
+    const getUserById = vi
+      .fn()
+      .mockResolvedValue({ id: 5, email: 'al@example.com' });
+    const newJWTToken = vi.fn().mockResolvedValue('fresh-session-tok');
+    const persistToken = vi.fn().mockResolvedValue(undefined);
+    const updateLastLoginAt = vi.fn().mockResolvedValue(undefined);
+    const { controller } = buildVerifyController({
+      verifyMagicToken,
+      getUserById,
+      newJWTToken,
+      persistToken,
+      updateLastLoginAt,
+    });
+    const req = {
+      params: { token: 'valid-tok' },
+      cookies: { token: 'stale-session-tok' },
+    } as unknown as express.Request;
+    const res = buildVerifyRes();
+    const next = vi.fn();
+
+    await controller.verifyMagicLink(req, res, next);
+
+    expect(persistToken).toHaveBeenCalledTimes(1);
+    expect(persistToken).toHaveBeenCalledWith('fresh-session-tok', '5');
+    expect(updateLastLoginAt).toHaveBeenCalledTimes(1);
+    expect(res.cookie).toHaveBeenCalledWith(
+      'token',
+      'fresh-session-tok',
+      expect.objectContaining({ sameSite: 'lax' })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ token: 'fresh-session-tok' });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it('marks email verified after a successful password_reset magic link', async () => {
@@ -978,7 +1017,7 @@ describe('UsersController.verifyMagicLink', () => {
 
     await controller.verifyMagicLink(req, res, next);
 
-    expect(markEmailVerified).toHaveBeenCalledWith('8');
+    expect(markEmailVerified).toHaveBeenCalledWith('8', 'magic_link_reset');
   });
 
   it('echoes a validated relative redirect for a login token', async () => {
@@ -3368,7 +3407,7 @@ describe('UsersController.newPassword', () => {
 
     await controller.newPassword(buildReq(), res, vi.fn());
 
-    expect(markEmailVerified).toHaveBeenCalledWith('7');
+    expect(markEmailVerified).toHaveBeenCalledWith('7', 'password_reset');
     expect(res.status).toHaveBeenCalledWith(200);
   });
 

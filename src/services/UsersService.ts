@@ -26,6 +26,17 @@ export interface RegisterTelemetry {
   referrer?: string | null;
 }
 
+// How an email came to be verified, threaded into the email_verified event at
+// the single verification choke point in markEmailVerified().
+export type EmailVerificationMethod =
+  | 'password_reset'
+  | 'google'
+  | 'microsoft'
+  | 'apple'
+  | 'email_link'
+  | 'magic_link'
+  | 'magic_link_reset';
+
 const MAGIC_LINK_RATE_LIMIT = 5;
 const MAGIC_LINK_RATE_WINDOW_MS = 60 * 60 * 1000;
 const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000;
@@ -234,8 +245,16 @@ class UsersService {
     return this.repository.markAnkifyWelcomeSeen(owner);
   }
 
-  markEmailVerified(userId: string) {
-    return this.repository.markEmailVerified(userId);
+  async markEmailVerified(userId: string, method: EmailVerificationMethod) {
+    const result = await this.repository.markEmailVerified(userId);
+    const numericUserId = Number(userId);
+    if (Number.isFinite(numericUserId)) {
+      track('email_verified', {
+        userId: numericUserId,
+        props: { method },
+      });
+    }
+    return result;
   }
 
   async requestMagicLink(

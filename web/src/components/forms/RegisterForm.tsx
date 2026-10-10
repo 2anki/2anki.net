@@ -127,10 +127,6 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
       if (res.status === 200) {
         track('signup_completed', { method: 'email' });
         globalThis.sessionStorage?.setItem(SIGNUP_FLAG_KEY, '1');
-        globalThis.sessionStorage?.setItem(
-          'email_verification_pending',
-          'true'
-        );
         globalThis.location.href = redirect
           ? `/${redirect.replace(/^\//, '')}`
           : '/upload';
