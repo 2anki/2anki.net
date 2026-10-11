@@ -289,6 +289,8 @@ export class ConversionProcessPool {
   }
 
   private takeNextTask(): QueuedTask | null {
+    // A drain has a deadline; every child takes work so the queue clears fastest.
+    if (this.draining) return this.queue.shift() ?? null;
     const busyOwners = this.busyBackgroundOwners();
     const backgroundCap = Math.max(1, this.deps.maxChildren - 1);
     const backgroundHasRoom = busyOwners.length < backgroundCap;

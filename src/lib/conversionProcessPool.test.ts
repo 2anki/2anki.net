@@ -384,6 +384,20 @@ describe('ConversionProcessPool scheduling', () => {
       expect(taskIdsFor(created[0])).toEqual([1]);
     });
 
+    it('drains queued background tasks on every child at shutdown', () => {
+      const { pool, created } = makePool({ maxChildren: 2 });
+      pool.start();
+      for (let i = 0; i < 4; i += 1) {
+        pool.runTask(`notion-a-${i}`, undefined, background('a'));
+      }
+      created.forEach((child) => child.ready());
+      expect(created.flatMap(taskIdsFor)).toEqual([1]);
+
+      void pool.shutdown();
+
+      expect(created.flatMap(taskIdsFor).sort()).toEqual([1, 2]);
+    });
+
     it('hands a freed background slot to the next upload first', async () => {
       const { pool, created } = makePool({ maxChildren: 2 });
       pool.start();
