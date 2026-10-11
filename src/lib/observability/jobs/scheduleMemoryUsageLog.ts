@@ -13,6 +13,8 @@ interface PoolSample {
   utilization: number;
   children?: number;
   childrenRssMb?: number;
+  busyBackground?: number;
+  queuedInteractive?: number;
 }
 
 interface IntervalHandle {
@@ -53,6 +55,12 @@ export function formatMemoryUsageLine(
     }
     if (pool.childrenRssMb != null) {
       fields.push(`children_rss_mb=${pool.childrenRssMb}`);
+    }
+    if (pool.busyBackground != null) {
+      fields.push(`pool_busy_background=${pool.busyBackground}`);
+    }
+    if (pool.queuedInteractive != null) {
+      fields.push(`pool_queue_interactive=${pool.queuedInteractive}`);
     }
   }
   if (workerHeapUsedBytes != null) {

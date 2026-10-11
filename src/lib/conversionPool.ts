@@ -75,6 +75,8 @@ export function describeConversionPool(): {
   utilization: number;
   children: number;
   childrenRssMb: number;
+  busyBackground: number;
+  queuedInteractive: number;
 } | null {
   if (pool == null) return null;
   return pool.describe();
@@ -83,7 +85,11 @@ export function describeConversionPool(): {
 export async function runConversion(
   request: ConversionWorkerRequest
 ): Promise<void> {
-  await getConversionPool().runTask({ type: 'conversion', request });
+  await getConversionPool().runTask(
+    { type: 'conversion', request },
+    undefined,
+    { kind: 'background', owner: String(request.owner) }
+  );
 }
 
 export async function runUploadGeneration(

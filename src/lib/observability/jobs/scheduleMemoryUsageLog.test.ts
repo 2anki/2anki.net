@@ -52,6 +52,20 @@ describe('formatMemoryUsageLine', () => {
       '[memory] rss_mb=1200 heap_total_mb=300 heap_used_mb=250 external_mb=700 array_buffers_mb=650 pool_threads=2 pool_queue=1 pool_utilization=0.5 pool_children=2 children_rss_mb=820'
     );
   });
+
+  it('adds the background-lane split so a stalled lane shows in the log', () => {
+    expect(
+      formatMemoryUsageLine(memory, {
+        queueSize: 5,
+        threads: 4,
+        utilization: 1,
+        busyBackground: 3,
+        queuedInteractive: 2,
+      })
+    ).toBe(
+      '[memory] rss_mb=1200 heap_total_mb=300 heap_used_mb=250 external_mb=700 array_buffers_mb=650 pool_threads=4 pool_queue=5 pool_utilization=1 pool_busy_background=3 pool_queue_interactive=2'
+    );
+  });
 });
 
 describe('scheduleMemoryUsageLog', () => {

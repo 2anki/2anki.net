@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-11-uploads-keep-moving-during-notion-syncs",
+  "date": "2026-10-11",
+  "type": "fix",
+  "title": "File uploads keep converting while large Notion pages convert in the background"
+}
