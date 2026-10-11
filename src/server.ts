@@ -13,7 +13,8 @@ if (existsSync(localEnvFile)) {
   dotenv.config({ path: localEnvFile, quiet: true });
 }
 
-import { BUILD_DIR } from './lib/constants';
+import { BUILD_DIR, SUPPORT_CC_ADDRESS } from './lib/constants';
+import { track } from './services/events/track';
 import { mountWebBuild } from './lib/mountWebBuild';
 import ErrorHandler from './routes/middleware/ErrorHandler';
 import { makeErrorCaptureMiddleware } from './routes/middleware/ErrorCaptureMiddleware';
@@ -100,6 +101,7 @@ import { scheduleParserCanary } from './lib/parser/canary/scheduleParserCanary';
 import { scheduleExportDriftCanary } from './lib/parser/canary/scheduleExportDriftCanary';
 import { scheduleObservabilityCleanup } from './lib/observability/jobs/scheduleObservabilityCleanup';
 import { scheduleMemoryUsageLog } from './lib/observability/jobs/scheduleMemoryUsageLog';
+import { scheduleConversionStallWatch } from './lib/observability/jobs/conversionStallWatch';
 import { scheduleMcpOAuthReaper } from './lib/mcp/jobs/scheduleMcpOAuthReaper';
 import { McpAuthorizationCodeRepository } from './data_layer/McpAuthorizationCodeRepository';
 import { McpTokenRepository } from './data_layer/McpTokenRepository';
@@ -398,6 +400,19 @@ const serve = async () => {
   registerSchedulerTimer(
     scheduleMemoryUsageLog({
       samplePool: describeConversionPool,
+      setIntervalFn: setInterval,
+    })
+  );
+
+  registerSchedulerTimer(
+    scheduleConversionStallWatch({
+      samplePool: describeConversionPool,
+      sendAlert: (subject, body) =>
+        emailService.sendAiSpendAlertEmail(SUPPORT_CC_ADDRESS, subject, body),
+      recordAlert: (waitSeconds) =>
+        track('conversion_stall_alert_sent', {
+          props: { wait_seconds: waitSeconds },
+        }),
       setIntervalFn: setInterval,
     })
   );

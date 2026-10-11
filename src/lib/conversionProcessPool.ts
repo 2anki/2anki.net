@@ -64,6 +64,7 @@ export interface ProcessPoolDeps extends Partial<TimerApi> {
   killGroupFn?: (pid: number, signal: NodeJS.Signals) => void;
   log?: (line: string) => void;
   warn?: (line: string) => void;
+  now?: () => number;
 }
 
 // Background work (a Notion conversion nobody is waiting on in the browser) may
@@ -81,6 +82,7 @@ interface QueuedTask {
   taskId: number;
   payload: unknown;
   lane?: BackgroundLane;
+  enqueuedAt: number;
   onProgress?: (step: string) => void;
   resolve: (value: unknown) => void;
   reject: (error: unknown) => void;
@@ -152,6 +154,8 @@ export class ConversionProcessPool {
 
   private readonly warn: (line: string) => void;
 
+  private readonly now: () => number;
+
   constructor(private readonly deps: ProcessPoolDeps) {
     this.timers = {
       setTimeoutFn:
@@ -179,6 +183,7 @@ export class ConversionProcessPool {
     this.killGroup = deps.killGroupFn ?? defaultKillGroup;
     this.log = deps.log ?? ((line) => console.info(line));
     this.warn = deps.warn ?? ((line) => console.warn(line));
+    this.now = deps.now ?? Date.now;
   }
 
   start(): void {
@@ -201,6 +206,7 @@ export class ConversionProcessPool {
         taskId: this.nextTaskId++,
         payload,
         lane,
+        enqueuedAt: this.now(),
         onProgress,
         resolve,
         reject,
@@ -218,6 +224,7 @@ export class ConversionProcessPool {
     childrenRssMb: number;
     busyBackground: number;
     queuedInteractive: number;
+    oldestInteractiveWaitMs: number;
   } {
     const live = this.children.length;
     const busy = this.children.filter((c) => c.status === 'busy').length;
@@ -233,7 +240,13 @@ export class ConversionProcessPool {
       childrenRssMb: Math.round(childrenRssBytes / BYTES_PER_MB),
       busyBackground: this.busyBackgroundOwners().length,
       queuedInteractive: this.queue.filter((t) => t.lane == null).length,
+      oldestInteractiveWaitMs: this.oldestInteractiveWaitMs(),
     };
+  }
+
+  private oldestInteractiveWaitMs(): number {
+    const oldest = this.queue.find((task) => task.lane == null);
+    return oldest == null ? 0 : Math.max(0, this.now() - oldest.enqueuedAt);
   }
 
   async shutdown(timeoutMs?: number): Promise<void> {

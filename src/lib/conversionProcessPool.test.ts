@@ -413,6 +413,28 @@ describe('ConversionProcessPool scheduling', () => {
     });
   });
 
+  it('describe reports how long the oldest queued upload has waited', () => {
+    let clock = 1_000;
+    const { pool, created } = makePool({ maxChildren: 1, now: () => clock });
+    pool.start();
+    pool.runTask('upload-1');
+    clock = 2_000;
+    pool.runTask('notion-a', undefined, { kind: 'background', owner: 'a' });
+    pool.runTask('upload-2');
+    created[0].ready();
+    clock = 61_000;
+
+    expect(pool.describe().oldestInteractiveWaitMs).toBe(59_000);
+  });
+
+  it('describe reports no wait when no upload is queued', () => {
+    const { pool } = makePool({ now: () => 5_000 });
+    pool.start();
+    pool.runTask('notion-a', undefined, { kind: 'background', owner: 'a' });
+
+    expect(pool.describe().oldestInteractiveWaitMs).toBe(0);
+  });
+
   it('describe reports queue, children and summed RSS', () => {
     const { pool, created } = makePool();
     pool.start();
