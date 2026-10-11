@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-12-site-loads-during-updates",
+  "date": "2026-10-12",
+  "type": "fix",
+  "title": "Pages keep loading while a site update rolls out, instead of asking you to refresh"
+}
