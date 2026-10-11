@@ -308,6 +308,97 @@ describe('ConversionProcessPool scheduling', () => {
     expect(killGroupFn).toHaveBeenCalledWith(created[0].pid, 'SIGKILL');
   });
 
+  describe('background lane', () => {
+    const taskIdsFor = (child: FakeChild) =>
+      child.sent
+        .filter((m) => m.kind === 'task')
+        .map((m) => (m as { taskId: number }).taskId);
+
+    const background = (owner: string) => ({
+      kind: 'background' as const,
+      owner,
+    });
+
+    it('keeps a child free for an upload queued behind long background tasks', () => {
+      const { pool, created } = makePool({ maxChildren: 4 });
+      pool.start();
+      ['a', 'b', 'c', 'd'].forEach((owner) =>
+        pool.runTask(`notion-${owner}`, undefined, background(owner))
+      );
+      pool.runTask('upload');
+      created.forEach((child) => child.ready());
+
+      const dispatched = created.flatMap(taskIdsFor);
+      expect(dispatched).toHaveLength(4);
+      expect(dispatched).toContain(5);
+      expect(dispatched).not.toContain(4);
+    });
+
+    it('leaves the last child idle when only background tasks are queued', () => {
+      const { pool, created } = makePool({ maxChildren: 4 });
+      pool.start();
+      ['a', 'b', 'c', 'd'].forEach((owner) =>
+        pool.runTask(`notion-${owner}`, undefined, background(owner))
+      );
+      created.forEach((child) => child.ready());
+
+      expect(created.flatMap(taskIdsFor).sort()).toEqual([1, 2, 3]);
+      expect(pool.describe()).toMatchObject({
+        queueSize: 1,
+        busyBackground: 3,
+        queuedInteractive: 0,
+      });
+    });
+
+    it('dispatches another owner before a second task from a busy owner', () => {
+      const { pool, created } = makePool({ maxChildren: 4 });
+      pool.start();
+      for (let i = 0; i < 5; i += 1) {
+        pool.runTask(`notion-a-${i}`, undefined, background('a'));
+      }
+      pool.runTask('notion-b', undefined, background('b'));
+      created[0].ready();
+      created[1].ready();
+
+      expect(taskIdsFor(created[0])).toEqual([1]);
+      expect(taskIdsFor(created[1])).toEqual([6]);
+    });
+
+    it('lets one owner use the spare background slots when no one else waits', () => {
+      const { pool, created } = makePool({ maxChildren: 4 });
+      pool.start();
+      for (let i = 0; i < 5; i += 1) {
+        pool.runTask(`notion-a-${i}`, undefined, background('a'));
+      }
+      created.forEach((child) => child.ready());
+
+      expect(created.flatMap(taskIdsFor).sort()).toEqual([1, 2, 3]);
+    });
+
+    it('still runs background work on a single-child pool', () => {
+      const { pool, created } = makePool({ maxChildren: 1 });
+      pool.start();
+      pool.runTask('notion-a', undefined, background('a'));
+      created[0].ready();
+
+      expect(taskIdsFor(created[0])).toEqual([1]);
+    });
+
+    it('hands a freed background slot to the next upload first', async () => {
+      const { pool, created } = makePool({ maxChildren: 2 });
+      pool.start();
+      const first = pool.runTask('notion-a', undefined, background('a'));
+      pool.runTask('notion-b', undefined, background('b'));
+      pool.runTask('upload-1');
+      created.forEach((child) => child.ready());
+      expect(created.flatMap(taskIdsFor).sort()).toEqual([1, 3]);
+
+      created[0].result(1, 'done', 10);
+      await first;
+      expect(taskIdsFor(created[0])).toEqual([1, 2]);
+    });
+  });
+
   it('describe reports queue, children and summed RSS', () => {
     const { pool, created } = makePool();
     pool.start();

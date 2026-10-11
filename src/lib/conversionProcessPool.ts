@@ -66,9 +66,21 @@ export interface ProcessPoolDeps extends Partial<TimerApi> {
   warn?: (line: string) => void;
 }
 
+// Background work (a Notion conversion nobody is waiting on in the browser) may
+// hold every child but one, so a sync upload never queues behind it. Within that
+// lane, an owner already running a task yields to an owner who is not, so one
+// account's batch of large pages cannot fill the lane (2026-10-11: eleven long
+// Notion jobs from one account held all four children for 80 minutes while
+// every upload on the site hung).
+export interface BackgroundLane {
+  kind: 'background';
+  owner: string;
+}
+
 interface QueuedTask {
   taskId: number;
   payload: unknown;
+  lane?: BackgroundLane;
   onProgress?: (step: string) => void;
   resolve: (value: unknown) => void;
   reject: (error: unknown) => void;
@@ -181,12 +193,14 @@ export class ConversionProcessPool {
 
   runTask(
     payload: unknown,
-    onProgress?: (step: string) => void
+    onProgress?: (step: string) => void,
+    lane?: BackgroundLane
   ): Promise<unknown> {
     return new Promise<unknown>((resolve, reject) => {
       this.queue.push({
         taskId: this.nextTaskId++,
         payload,
+        lane,
         onProgress,
         resolve,
         reject,
@@ -202,6 +216,8 @@ export class ConversionProcessPool {
     utilization: number;
     children: number;
     childrenRssMb: number;
+    busyBackground: number;
+    queuedInteractive: number;
   } {
     const live = this.children.length;
     const busy = this.children.filter((c) => c.status === 'busy').length;
@@ -215,6 +231,8 @@ export class ConversionProcessPool {
       utilization: live === 0 ? 0 : Number((busy / live).toFixed(2)),
       children: live,
       childrenRssMb: Math.round(childrenRssBytes / BYTES_PER_MB),
+      busyBackground: this.busyBackgroundOwners().length,
+      queuedInteractive: this.queue.filter((t) => t.lane == null).length,
     };
   }
 
@@ -241,9 +259,10 @@ export class ConversionProcessPool {
   private maybeDispatch(): void {
     for (const record of this.children) {
       if (this.queue.length === 0) break;
-      if (record.status === 'idle') {
-        this.dispatchTo(record, this.queue.shift()!);
-      }
+      if (record.status !== 'idle') continue;
+      const next = this.takeNextTask();
+      if (next == null) break;
+      this.dispatchTo(record, next);
     }
     // Spawn only enough new children to cover the still-queued tasks, counting
     // children that are already starting as pending capacity so a single task
@@ -261,6 +280,28 @@ export class ConversionProcessPool {
     if (!this.draining && this.children.length === 0) {
       this.spawnChild();
     }
+  }
+
+  private busyBackgroundOwners(): string[] {
+    return this.children
+      .filter((c) => c.status === 'busy' && c.current?.lane != null)
+      .map((c) => c.current!.lane!.owner);
+  }
+
+  private takeNextTask(): QueuedTask | null {
+    const busyOwners = this.busyBackgroundOwners();
+    const backgroundCap = Math.max(1, this.deps.maxChildren - 1);
+    const backgroundHasRoom = busyOwners.length < backgroundCap;
+    const isRunnable = (task: QueuedTask) =>
+      task.lane == null || backgroundHasRoom;
+    let index = this.queue.findIndex(
+      (task) =>
+        isRunnable(task) &&
+        (task.lane == null || !busyOwners.includes(task.lane.owner))
+    );
+    if (index < 0) index = this.queue.findIndex(isRunnable);
+    if (index < 0) return null;
+    return this.queue.splice(index, 1)[0];
   }
 
   private dispatchTo(record: ChildRecord, task: QueuedTask): void {
