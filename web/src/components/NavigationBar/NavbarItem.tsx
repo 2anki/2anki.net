@@ -8,6 +8,9 @@ export interface NavbarItemProps {
   children: React.ReactNode;
 }
 
+const withoutTrailingSlash = (value: string) =>
+  value.length > 1 ? value.replace(/\/$/, '') : value;
+
 export default function NavbarItem({
   path,
   href,
@@ -19,7 +22,9 @@ export default function NavbarItem({
       onClick={onClick}
       href={href}
       className={`${styles.navLink} ${
-        path === href ? styles.navLinkActive : ''
+        withoutTrailingSlash(path) === withoutTrailingSlash(href)
+          ? styles.navLinkActive
+          : ''
       }`}
     >
       {children}

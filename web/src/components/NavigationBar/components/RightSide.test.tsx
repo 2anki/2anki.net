@@ -31,7 +31,7 @@ describe('RightSide (anonymous nav)', () => {
     render(<RightSide path="/" isLoggedIn={false} />);
     expect(screen.getByRole('link', { name: 'Pricing' })).toHaveAttribute(
       'href',
-      '/pricing'
+      '/pricing/'
     );
     const positions = getNavLinks().map((a) => a.textContent);
     expect(positions.indexOf('Pricing')).toBeLessThan(
@@ -43,15 +43,15 @@ describe('RightSide (anonymous nav)', () => {
     render(<RightSide path="/" isLoggedIn />);
     expect(screen.getByRole('link', { name: 'Pricing' })).toHaveAttribute(
       'href',
-      '/pricing'
+      '/pricing/'
     );
   });
 
-  it('Docs link points to /documentation', () => {
+  it('Docs link points to /documentation/', () => {
     render(<RightSide path="/" isLoggedIn={false} />);
     expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
       'href',
-      '/documentation'
+      '/documentation/'
     );
   });
 
@@ -62,11 +62,11 @@ describe('RightSide (anonymous nav)', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows a Download link to /app for logged-out visitors', () => {
+  it('shows a Download link to /app/ for logged-out visitors', () => {
     render(<RightSide path="/" isLoggedIn={false} />);
     expect(screen.getByRole('link', { name: 'Download' })).toHaveAttribute(
       'href',
-      '/app'
+      '/app/'
     );
   });
 

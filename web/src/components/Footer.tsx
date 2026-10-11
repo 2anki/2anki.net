@@ -15,11 +15,11 @@ function Footer() {
         </div>
         <div className={styles.group}>
           <span className={styles.groupTitle}>{t('footer.product')}</span>
-          <a href="/about">{t('common:nav.about')}</a>
-          <a href="/app">{t('footer.iosApp')}</a>
-          <a href="/documentation">{t('common:nav.docs')}</a>
-          <a href="/pricing">{t('common:nav.pricing')}</a>
-          <a href="/contact">{t('common:nav.contact')}</a>
+          <a href="/about/">{t('common:nav.about')}</a>
+          <a href="/app/">{t('footer.iosApp')}</a>
+          <a href="/documentation/">{t('common:nav.docs')}</a>
+          <a href="/pricing/">{t('common:nav.pricing')}</a>
+          <a href="/contact/">{t('common:nav.contact')}</a>
         </div>
         <div className={styles.group}>
           <span className={styles.groupTitle}>{t('footer.legal')}</span>
@@ -29,7 +29,7 @@ function Footer() {
           <a href="/documentation/misc/privacy-policy">
             {t('common:nav.privacy')}
           </a>
-          <a href="/security">{t('footer.security')}</a>
+          <a href="/security/">{t('footer.security')}</a>
           <a href={STRIPE_CUSTOMER_PORTAL_URL} rel="noreferrer">
             {t('footer.manageSubscription')}
           </a>

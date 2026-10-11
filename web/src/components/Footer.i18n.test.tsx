@@ -24,11 +24,11 @@ describe('Footer in German', () => {
     render(<Footer />);
     expect(screen.getByRole('link', { name: 'Über uns' })).toHaveAttribute(
       'href',
-      '/about'
+      '/about/'
     );
     expect(screen.getByRole('link', { name: 'Doku' })).toHaveAttribute(
       'href',
-      '/documentation'
+      '/documentation/'
     );
   });
 });
