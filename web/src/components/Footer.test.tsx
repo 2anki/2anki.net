@@ -24,19 +24,19 @@ describe('Footer', () => {
     render(<Footer />);
     expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute(
       'href',
-      '/about'
+      '/about/'
     );
     expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
       'href',
-      '/documentation'
+      '/documentation/'
     );
     expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute(
       'href',
-      '/contact'
+      '/contact/'
     );
     expect(
       screen.getByRole('link', { name: 'iOS and macOS app' })
-    ).toHaveAttribute('href', '/app');
+    ).toHaveAttribute('href', '/app/');
     expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute(
       'href',
       '/documentation/misc/terms-of-service'

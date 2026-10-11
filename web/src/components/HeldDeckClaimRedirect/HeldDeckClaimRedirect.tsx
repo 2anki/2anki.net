@@ -20,7 +20,7 @@ export function HeldDeckClaimRedirect({ isLoggedIn }: Props) {
 
   useEffect(() => {
     if (!isLoggedIn || checkedRef.current) return;
-    if (location.pathname === '/upload') return;
+    if (location.pathname.replace(/\/$/, '') === '/upload') return;
     if (globalThis.sessionStorage?.getItem(SESSION_KEY) === '1') return;
     checkedRef.current = true;
     let cancelled = false;

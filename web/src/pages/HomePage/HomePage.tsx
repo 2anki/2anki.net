@@ -205,7 +205,7 @@ export function HomePage({
           </Link>
           <span className={styles.footerDot} aria-hidden="true" />
           <Link
-            to="/app"
+            to="/app/"
             className={styles.cardOptionsLink}
             onClick={() => track('home_native_app_link_clicked')}
           >
@@ -270,7 +270,7 @@ export function HomePage({
             <VideoCard key={embedId} embedId={embedId} title={title} />
           ))}
           {showAll && (
-            <a href="/contact" className={styles.walkCard}>
+            <a href="/contact/" className={styles.walkCard}>
               <div className={styles.walkCtaThumb}>
                 <span className={styles.walkCtaIcon}>+</span>
                 <p className={styles.walkCtaBody}>

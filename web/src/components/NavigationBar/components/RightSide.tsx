@@ -13,20 +13,20 @@ export function RightSide({ path, isLoggedIn }: Readonly<RightSideProps>) {
   const { t } = useTranslation();
   return (
     <div className={styles.navEnd}>
-      <NavbarItem href="/upload" path={path}>
+      <NavbarItem href="/upload/" path={path}>
         {t('nav.upload')}
       </NavbarItem>
-      <NavbarItem href="/print" path={path}>
+      <NavbarItem href="/print/" path={path}>
         {t('nav.print')}
       </NavbarItem>
-      <NavbarItem href="/documentation" path={path}>
+      <NavbarItem href="/documentation/" path={path}>
         {t('nav.docs')}
       </NavbarItem>
-      <NavbarItem href="/pricing" path={path}>
+      <NavbarItem href="/pricing/" path={path}>
         {t('nav.pricing')}
       </NavbarItem>
       {!isLoggedIn && (
-        <NavbarItem href="/app" path={path}>
+        <NavbarItem href="/app/" path={path}>
           {t('nav.download')}
         </NavbarItem>
       )}
