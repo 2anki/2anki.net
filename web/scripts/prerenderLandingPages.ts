@@ -412,6 +412,24 @@ const META_ONLY_PAGES: MetaOnlyPageMeta[] = [
       'Convert notes and files into Anki decks on your device. Markdown, PDF, Notion, CSV, OPML, and Kindle highlights — parsed locally, free on the App Store.',
   },
   {
+    pathname: '/print',
+    title: 'Print Anki flashcards — turn a deck into a PDF | 2anki',
+    description:
+      'Drop an Anki deck (.apkg) and get a PDF of its cards you can print or share. Study on paper, hand out to a study group, or keep an offline copy.',
+    h1: 'Print your flashcards',
+    intro:
+      "Drop an Anki deck (.apkg) here. We'll make a PDF you can print or share.",
+  },
+  {
+    pathname: '/templates',
+    title: 'Anki note types — starter templates to import | 2anki',
+    description:
+      'Starter Anki note types you can drop in or customize: preview the front and back, then open the .apkg in Anki to import the template.',
+    h1: 'Note types',
+    intro:
+      'Starter Anki note types you can drop in or customize. Open the .apkg in Anki to import.',
+  },
+  {
     pathname: '/security',
     title: 'Report a security vulnerability — 2anki',
     description:

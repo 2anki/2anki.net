@@ -421,6 +421,21 @@ describe.each([
 );
 
 describe('emitMetaOnlyPages', () => {
+  it.each([
+    ['print', 'Print Anki flashcards — turn a deck into a PDF | 2anki'],
+    ['templates', 'Anki note types — starter templates to import | 2anki'],
+  ])(
+    'gives /%s its own title and a self-referencing canonical',
+    (slug, title) => {
+      emitMetaOnlyPages(buildDir);
+      const html = readFileSync(join(buildDir, slug, 'index.html'), 'utf8');
+      expect(html).toContain(`<title>${title}</title>`);
+      expect(html).toContain(
+        `<link rel="canonical" href="https://2anki.net/${slug}/">`
+      );
+    }
+  );
+
   it('writes one HTML file per meta-only route', () => {
     const files = emitMetaOnlyPages(buildDir);
     expect(files.some((p) => p.endsWith('upload/index.html'))).toBe(true);
