@@ -77,6 +77,7 @@ export function describeConversionPool(): {
   childrenRssMb: number;
   busyBackground: number;
   queuedInteractive: number;
+  oldestInteractiveWaitMs: number;
 } | null {
   if (pool == null) return null;
   return pool.describe();
