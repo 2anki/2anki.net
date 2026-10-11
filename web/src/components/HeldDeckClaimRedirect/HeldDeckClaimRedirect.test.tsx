@@ -68,8 +68,12 @@ describe('HeldDeckClaimRedirect', () => {
     await waitFor(() => expect(getHeldDeck).not.toHaveBeenCalled());
   });
 
-  it('does not check on the upload page itself', async () => {
-    renderAt('/upload', true);
-    await waitFor(() => expect(getHeldDeck).not.toHaveBeenCalled());
-  });
+  it.each(['/upload', '/upload/'])(
+    'does not check on the upload page itself (%s)',
+    async (path) => {
+      getHeldDeck.mockResolvedValue({ cardCount: 21, cardsHeldBack: 13 });
+      renderAt(path, true);
+      await waitFor(() => expect(getHeldDeck).not.toHaveBeenCalled());
+    }
+  );
 });
