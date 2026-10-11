@@ -13,10 +13,25 @@ The app runs **blue-green**, so the live process is `server-green` or `server-bl
 
 Every app line carries an ISO timestamp prefix (`log_date_format` in `ecosystem.blue-green.config.js`; the files are `~/.pm2/logs/server-<color>-{out,error}.log` plus dated rotations). To read a window — "errors in the last 5 days" — filter on that prefix. Never scope by file mtime or `find -newermt`: pm2 appends to whatever already sits at a log path, and after the 2026-08-22 daemon restart reused pm_ids appended fresh output onto July files, so mtime-scoped reads reported July's `NoActiveAnkifyClientError` as live and spawned two phantom fixes (#4203 → #4223, #4236 → #4251).
 
+Then run the **stall-signal read** as a second SSH call. Run it every time: a stalled conversion queue produces no error line, so the error tail above is blind to it by construction. Between 2026-10-09 and 10-11, three stalls hung every upload for up to 88 minutes, and the only report was a customer email.
+
+```bash
+ssh -o ConnectTimeout=10 alemayhu@2anki.net 'S=$(date -u -d "-24 hours" +%FT%H); cd ~/.pm2/logs; cat server-*-out*.log | awk -v s="$S" "substr(\$0,1,13)>=s" | sort > /tmp/stall_ro.log; echo "== max pool_queue / pool_queue_interactive per hour (>=3)"; grep "\[memory\]" /tmp/stall_ro.log | sed -E "s/^(.{13}).*pool_queue=([0-9]+).*/\1 \2/" | awk "{if(\$2>m[\$1])m[\$1]=\$2} END{for(k in m) if(m[k]>=3) print k, m[k]}" | sort; grep -oE "^.{13}.*pool_queue_interactive=[1-9][0-9]*" /tmp/stall_ro.log | sed -E "s/^(.{13}).*=/\1 qi=/" | sort -u | tail -5; echo "== no-response requests per hour (>=10)"; grep -E "HTTP/1.1\" - - " /tmp/stall_ro.log | cut -c1-13 | uniq -c | awk "\$1>=10"; echo "== stall lines"; grep -c "\[conversion-pool\] stall" /tmp/stall_ro.log; echo "== max tempfile dwell (ms)"; grep -oE "dwellMs: [0-9]+" /tmp/stall_ro.log | awk "{if(\$2>m)m=\$2} END{print m+0}"; rm /tmp/stall_ro.log'
+```
+
+Thresholds. Any one of these makes the verdict **"watching: uploads queued"**, whatever the error count says:
+- `pool_queue_interactive` is 1 or more for longer than a minute, or `pool_queue` is 10 or more in any hour;
+- 10 or more requests with no status (`HTTP/1.1" - -`) in an hour, meaning requests the server never answered;
+- any `[conversion-pool] stall` line (the watch emails ops once an upload waits 120s);
+- a max `tempfile dwell` above 120000 ms.
+
+Widen `-24 hours` to match the window you were asked about. "Errors in the last 7 days" means this read over 7 days too.
+
 Then report concisely:
 
 - **Process**: online / errored / restarted recently? Note recent uptime, not the lifetime ↺ counter.
 - **Recent activity**: are real requests being served (200/304 in access logs)?
+- **Stalls**: the stall-signal read above. Report the worst hour, or "none".
 - **Errors**: distinguish user-facing thrown errors (e.g. `getNoPackageError`) from actual crashes (`uncaught exception`, native binding failures, EADDRINUSE).
 - **Verdict**: one paragraph — "deploy healthy" / "watching X" / "broken, escalate".
 
