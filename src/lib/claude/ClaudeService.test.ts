@@ -2038,7 +2038,7 @@ describe('floor v1 — card-size scaled bounds', () => {
 
   it('SYSTEM_PROMPT puts multiple-choice options on the front and only the answer on the back', () => {
     expect(SYSTEM_PROMPT).toContain(
-      'q = the question plus every option in source order; a = only the correct option'
+      "q = the question plus every option in source order; a = only the correct option's letter"
     );
     expect(SYSTEM_PROMPT).toContain('Never put the options on a');
     expect(SYSTEM_PROMPT).toContain(
