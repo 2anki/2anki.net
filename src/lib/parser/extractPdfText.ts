@@ -168,6 +168,36 @@ interface PdfJsPageProxy {
   }): Promise<{ items: Array<{ str: string; transform: number[] }> }>;
   getOperatorList(): Promise<PdfOperatorList>;
   cleanup(): void;
+  view?: number[];
+  rotate?: number;
+}
+
+// Layout signals logged with every extraction so a later change can tell
+// lecture slides (landscape pages, no front/back rhythm) from PDFs of
+// pre-made cards (page 1 a short question, page 2 a longer answer) before
+// the image fallback stops pairing pages for everyone.
+export function isLandscapePage(
+  view: number[] | undefined,
+  rotate: number | undefined
+): boolean {
+  if (view == null || view.length < 4) return false;
+  const width = Math.abs(view[2] - view[0]);
+  const height = Math.abs(view[3] - view[1]);
+  const quarterTurned = ((rotate ?? 0) / 90) % 2 !== 0;
+  return quarterTurned ? height > width : width > height;
+}
+
+export function frontShorterPairShare(pages: PdfPage[]): number | null {
+  let pairs = 0;
+  let frontShorter = 0;
+  for (let i = 0; i + 1 < pages.length; i += 2) {
+    const front = pages[i].text.trim().length;
+    const back = pages[i + 1].text.trim().length;
+    if (front === 0 && back === 0) continue;
+    pairs += 1;
+    if (front < back) frontShorter += 1;
+  }
+  return pairs === 0 ? null : frontShorter / pairs;
 }
 
 function resolveRasterImageOpcodes(): Set<number> {
@@ -335,6 +365,7 @@ export async function extractPdfText(
 
   const imageCounts: number[] = [];
   const coloredTextFlags: boolean[] = [];
+  let landscapePageCount = 0;
 
   const pagerender = async (pageData: PdfJsPageProxy): Promise<string> => {
     const textContent = await pageData.getTextContent({
@@ -344,6 +375,9 @@ export async function extractPdfText(
     const operatorList = await getOperatorListSafe(pageData);
     imageCounts.push(countImagePaintOps(operatorList));
     coloredTextFlags.push(pageHasColoredText(operatorList));
+    if (isLandscapePage(pageData.view, pageData.rotate)) {
+      landscapePageCount += 1;
+    }
     pageData.cleanup();
     return extractPageText(textContent) + '\f';
   };
@@ -390,12 +424,16 @@ export async function extractPdfText(
 
   const pagesWithImage = pages.filter((p) => p.imagePaintCount > 0).length;
   const coloredTextPageCount = coloredTextFlags.filter(Boolean).length;
+  const pairShare = frontShorterPairShare(pages);
 
   console.info('[extractPdfText] result', {
     pageCount,
     avgCharsPerPage: Math.round(avgCharsPerPage),
     pagesWithImage,
     coloredTextPageCount,
+    landscapePageCount,
+    frontShorterPairShare:
+      pairShare == null ? null : Math.round(pairShare * 100) / 100,
     isDrmLocked,
     credentialProvided: credential != null,
     durationMs: Date.now() - t0,
