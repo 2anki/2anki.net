@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-12-large-drawing-pdfs-convert",
+  "date": "2026-10-12",
+  "type": "fix",
+  "title": "Large PDFs full of diagrams and drawings convert instead of failing partway through"
+}

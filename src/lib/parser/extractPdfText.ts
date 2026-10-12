@@ -167,6 +167,7 @@ interface PdfJsPageProxy {
     disableCombineTextItems: boolean;
   }): Promise<{ items: Array<{ str: string; transform: number[] }> }>;
   getOperatorList(): Promise<PdfOperatorList>;
+  cleanup(): void;
 }
 
 function resolveRasterImageOpcodes(): Set<number> {
@@ -343,6 +344,7 @@ export async function extractPdfText(
     const operatorList = await getOperatorListSafe(pageData);
     imageCounts.push(countImagePaintOps(operatorList));
     coloredTextFlags.push(pageHasColoredText(operatorList));
+    pageData.cleanup();
     return extractPageText(textContent) + '\f';
   };
 
