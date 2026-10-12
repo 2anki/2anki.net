@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-12-ai-mcq-options-front",
+  "date": "2026-10-12",
+  "type": "fix",
+  "title": "AI decks from test banks put the question and all answer options on the front, and only the correct answer on the back"
+}

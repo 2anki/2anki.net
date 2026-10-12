@@ -2036,6 +2036,16 @@ describe('floor v1 — card-size scaled bounds', () => {
     }
   });
 
+  it('SYSTEM_PROMPT puts multiple-choice options on the front and only the answer on the back', () => {
+    expect(SYSTEM_PROMPT).toContain(
+      "q = the question plus every option in source order; a = only the correct option's letter"
+    );
+    expect(SYSTEM_PROMPT).toContain('Never put the options on a');
+    expect(SYSTEM_PROMPT).toContain(
+      'Without a marked answer, treat the text as ordinary content'
+    );
+  });
+
   it('SYSTEM_PROMPT keeps list cloze deletions on one card unless instructed otherwise', () => {
     expect(SYSTEM_PROMPT).toContain('one card per list, not one card per item');
     expect(SYSTEM_PROMPT).toContain(
