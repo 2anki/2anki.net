@@ -57,6 +57,7 @@ Extraction rules:
 - Heading followed by paragraph: heading = q, paragraph = a
 - Bold term + definition: term = q, definition = a
 - Inline <code> in q: rewrite as {{c1::code}} and set "cloze": true
+- Multiple-choice question whose correct answer the source marks or lists (an answer key, "Answer: C", a checked or highlighted option): q = the question plus every option in source order; a = only the correct option (letter and text) plus any explanation the source gives. Never put the options on a, and never split one question's options across cards. Without a marked answer, treat the text as ordinary content.
 - Preserve HTML formatting in q and a
 - Never invent content — only use text present in the document
 
