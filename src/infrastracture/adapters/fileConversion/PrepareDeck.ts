@@ -561,7 +561,11 @@ async function convertPdfByManualTextFlag(
     throw new Error(buildPdfPasswordSentinel(file.name));
   }
 
-  if (!textResult.isDrmLocked && textResult.cardCount > 0) {
+  if (
+    !textResult.isDrmLocked &&
+    textResult.cardCount > 0 &&
+    !textResult.overSplit
+  ) {
     console.log('[PrepareDeck] convertFile pdf→text→html', {
       file: file.name,
       cardCount: textResult.cardCount,
@@ -579,6 +583,7 @@ async function convertPdfByManualTextFlag(
   console.log('[PrepareDeck] convertFile pdf→images (text fallback)', {
     file: file.name,
     isDrmLocked: textResult.isDrmLocked,
+    overSplit: textResult.overSplit,
     cardCount: textResult.cardCount,
     durationMs: Date.now() - t0,
   });

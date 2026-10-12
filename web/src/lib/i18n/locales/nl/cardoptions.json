@@ -87,7 +87,7 @@
     },
     "pdf-extract-text": {
       "label": "Tekst uit PDF's halen",
-      "description": "Zet de tekst in een PDF om in kaarten. Laat uit om elke pagina als afbeelding weer te geven — pagina 1 op de voorkant, pagina 2 op de achterkant."
+      "description": "Maak altijd kaarten van de tekst in een PDF: elke kop wordt de vraag, de tekst eronder het antwoord. Laat uit en 2anki kiest per PDF tekstkaarten of pagina-afbeeldingen."
     },
     "pdf-page-pairs": {
       "label": "Twee pagina's maken één kaart",

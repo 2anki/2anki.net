@@ -87,7 +87,7 @@
     },
     "pdf-extract-text": {
       "label": "Estrai il testo dai PDF",
-      "description": "Trasforma in carte il testo dentro un PDF. Lascialo disattivato per rendere ogni pagina come immagine — pagina 1 sul fronte, pagina 2 sul retro."
+      "description": "Crea sempre carte dal testo di un PDF: ogni titolo diventa la domanda, il testo sotto la risposta. Lascialo disattivato e 2anki sceglie carte di testo o immagini delle pagine per ogni PDF."
     },
     "pdf-page-pairs": {
       "label": "Due pagine fanno una carta",

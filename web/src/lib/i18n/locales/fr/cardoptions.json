@@ -87,7 +87,7 @@
     },
     "pdf-extract-text": {
       "label": "Extraire le texte des PDF",
-      "description": "Transforme le texte d'un PDF en cartes. Laisse-le désactivé pour afficher chaque page comme une image — page 1 au recto, page 2 au verso."
+      "description": "Crée toujours des cartes à partir du texte d'un PDF : chaque titre devient la question, le texte en dessous la réponse. Laisse-le désactivé et 2anki choisit des cartes de texte ou des images de page pour chaque PDF."
     },
     "pdf-page-pairs": {
       "label": "Deux pages font une carte",

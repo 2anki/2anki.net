@@ -135,7 +135,7 @@ const supportedOptions = (): CardOptionDetail[] => {
     new CardOptionDetail(
       'pdf-extract-text',
       'Extract text from PDFs',
-      'Turn the text inside a PDF into cards. Leave off to render each page as an image — page 1 on the front, page 2 on the back.',
+      'Always make cards from the text in a PDF: each heading becomes the question, the text below it the answer. Leave off and 2anki picks text cards or page images for each PDF.',
       defaultFor('pdf-extract-text')
     ),
     new CardOptionDetail(

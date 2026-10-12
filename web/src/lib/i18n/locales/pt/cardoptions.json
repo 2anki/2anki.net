@@ -87,7 +87,7 @@
     },
     "pdf-extract-text": {
       "label": "Extrair texto de PDFs",
-      "description": "Transforma o texto de um PDF em cartões. Deixe desligado para renderizar cada página como imagem — página 1 na frente, página 2 no verso."
+      "description": "Sempre cria cartões a partir do texto de um PDF: cada título vira a pergunta e o texto abaixo, a resposta. Deixe desligado e o 2anki escolhe cartões de texto ou imagens de página para cada PDF."
     },
     "pdf-page-pairs": {
       "label": "Duas páginas formam um cartão",

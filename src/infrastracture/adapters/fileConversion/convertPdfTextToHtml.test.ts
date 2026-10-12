@@ -5,15 +5,15 @@ import {
 } from './convertPdfTextToHtml';
 
 vi.mock('../../../lib/parser/extractPdfText');
-vi.mock('../../../lib/parser/synthesizeCardsFromPdf');
 
 import { extractPdfText } from '../../../lib/parser/extractPdfText';
-import { synthesizeCardsFromPdf } from '../../../lib/parser/synthesizeCardsFromPdf';
 
 const mockExtract = extractPdfText as MockedFunction<typeof extractPdfText>;
-const mockSynthesize = synthesizeCardsFromPdf as MockedFunction<
-  typeof synthesizeCardsFromPdf
->;
+const BODY = 'enough body text after the heading to read as its answer.';
+const headingPage = (heading: string, body = `${heading} has ${BODY}`) => ({
+  text: `${heading}\n${body}`,
+  imagePaintCount: 0,
+});
 
 describe('convertPdfTextToHtml', () => {
   beforeEach(() => {
@@ -40,8 +40,8 @@ describe('convertPdfTextToHtml', () => {
       droppedImageCount: 0,
       coloredTextPageCount: 0,
       images: [],
+      overSplit: false,
     });
-    expect(mockSynthesize).not.toHaveBeenCalled();
   });
 
   it('returns needsCredential true when extractPdfText signals missing credential', async () => {
@@ -67,23 +67,19 @@ describe('convertPdfTextToHtml', () => {
       droppedImageCount: 0,
       coloredTextPageCount: 0,
       images: [],
+      overSplit: false,
     });
-    expect(mockSynthesize).not.toHaveBeenCalled();
   });
 
-  it('wraps each synthesized card in a toggle and reports the count', async () => {
+  it('wraps each heading card in a toggle and reports the count', async () => {
     mockExtract.mockResolvedValue({
-      pages: [{ text: 'page one', imagePaintCount: 0 }],
-      pageCount: 1,
-      avgCharsPerPage: 60,
+      pages: [headingPage('Mitosis'), headingPage('Meiosis')],
+      pageCount: 2,
+      avgCharsPerPage: 80,
       isDrmLocked: false,
       needsCredential: false,
       coloredTextPageCount: 0,
     });
-    mockSynthesize.mockReturnValue([
-      { front: 'Q1', back: 'A1', tags: [] },
-      { front: 'Q2', back: 'A2', tags: [] },
-    ]);
 
     const result = await convertPdfTextToHtml(Buffer.from('x'), 'study.pdf');
 
@@ -92,23 +88,22 @@ describe('convertPdfTextToHtml', () => {
     expect(result.cardCount).toBe(2);
     expect(result.html).toContain('<title>study</title>');
     expect(result.html.match(/<ul class="toggle">/g)).toHaveLength(2);
-    expect(result.html).toContain('<summary>Q1</summary>');
-    expect(result.html).toContain('<p>A1</p>');
+    expect(result.html).toContain('<summary>Mitosis</summary>');
+    expect(result.html).toContain(`<p>Mitosis has ${BODY}</p>`);
   });
 
   it('reports the summed painted-image count as dropped images', async () => {
     mockExtract.mockResolvedValue({
       pages: [
-        { text: 'page one', imagePaintCount: 2 },
-        { text: 'page two', imagePaintCount: 4 },
+        { ...headingPage('Mitosis'), imagePaintCount: 2 },
+        { ...headingPage('Meiosis'), imagePaintCount: 4 },
       ],
       pageCount: 2,
-      avgCharsPerPage: 60,
+      avgCharsPerPage: 80,
       isDrmLocked: false,
       needsCredential: false,
       coloredTextPageCount: 0,
     });
-    mockSynthesize.mockReturnValue([{ front: 'Q1', back: 'A1', tags: [] }]);
 
     const result = await convertPdfTextToHtml(Buffer.from('x'), 'study.pdf');
 
@@ -117,14 +112,13 @@ describe('convertPdfTextToHtml', () => {
 
   it('carries the coloured-text page count through on the text path', async () => {
     mockExtract.mockResolvedValue({
-      pages: [{ text: 'page one', imagePaintCount: 0 }],
+      pages: [headingPage('Mitosis')],
       pageCount: 3,
       avgCharsPerPage: 60,
       isDrmLocked: false,
       needsCredential: false,
       coloredTextPageCount: 2,
     });
-    mockSynthesize.mockReturnValue([{ front: 'Q1', back: 'A1', tags: [] }]);
 
     const result = await convertPdfTextToHtml(Buffer.from('x'), 'study.pdf');
 
@@ -133,54 +127,45 @@ describe('convertPdfTextToHtml', () => {
 
   it('escapes HTML-sensitive characters in card content', async () => {
     mockExtract.mockResolvedValue({
-      pages: [{ text: 'p', imagePaintCount: 0 }],
+      pages: [headingPage('Tags <b> and quotes "x"', `a & b ${BODY}`)],
       pageCount: 1,
-      avgCharsPerPage: 60,
+      avgCharsPerPage: 80,
       isDrmLocked: false,
       needsCredential: false,
       coloredTextPageCount: 0,
     });
-    mockSynthesize.mockReturnValue([
-      { front: '<script>alert("x")</script>', back: 'a & b', tags: [] },
-    ]);
 
     const result = await convertPdfTextToHtml(Buffer.from('x'), 'unsafe.pdf');
 
-    expect(result.html).not.toContain('<script>alert');
-    expect(result.html).toContain(
-      '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;'
-    );
+    expect(result.html).not.toContain('<b> and');
+    expect(result.html).toContain('Tags &lt;b&gt; and quotes &quot;x&quot;');
     expect(result.html).toContain('a &amp; b');
   });
 
   it('preserves line breaks inside cards by converting newlines to <br>', async () => {
     mockExtract.mockResolvedValue({
-      pages: [{ text: 'p', imagePaintCount: 0 }],
+      pages: [headingPage('Mitosis', `First line of ${BODY}\nSecond line`)],
       pageCount: 1,
-      avgCharsPerPage: 60,
+      avgCharsPerPage: 80,
       isDrmLocked: false,
       needsCredential: false,
       coloredTextPageCount: 0,
     });
-    mockSynthesize.mockReturnValue([
-      { front: 'line1\nline2', back: 'b', tags: [] },
-    ]);
 
     const result = await convertPdfTextToHtml(Buffer.from('x'), 'multi.pdf');
 
-    expect(result.html).toContain('line1<br>line2');
+    expect(result.html).toContain(`First line of ${BODY}<br>Second line`);
   });
 
   it('uses the basename without extension as the page title', async () => {
     mockExtract.mockResolvedValue({
-      pages: [{ text: 'p', imagePaintCount: 0 }],
+      pages: [headingPage('Mitosis')],
       pageCount: 1,
       avgCharsPerPage: 60,
       isDrmLocked: false,
       needsCredential: false,
       coloredTextPageCount: 0,
     });
-    mockSynthesize.mockReturnValue([{ front: 'q', back: 'a', tags: [] }]);
 
     const result = await convertPdfTextToHtml(
       Buffer.from('x'),
@@ -188,6 +173,59 @@ describe('convertPdfTextToHtml', () => {
     );
 
     expect(result.html).toContain('<title>Chapter 3</title>');
+  });
+});
+
+describe('convertPdfTextToHtml with the extract-text option on', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('makes a card per heading instead of pairing page 1 with page 2', async () => {
+    mockExtract.mockResolvedValue({
+      pages: [
+        {
+          text: 'Photosynthesis\nPlants turn light into chemical energy inside the chloroplast.',
+          imagePaintCount: 0,
+        },
+        {
+          text: 'Cellular respiration\nCells break glucose down to release energy stored as ATP.',
+          imagePaintCount: 0,
+        },
+      ],
+      pageCount: 2,
+      avgCharsPerPage: 80,
+      isDrmLocked: false,
+      needsCredential: false,
+      coloredTextPageCount: 0,
+    });
+
+    const result = await convertPdfTextToHtml(Buffer.from('x'), 'bio.pdf');
+
+    expect(result.cardCount).toBe(2);
+    expect(result.overSplit).toBe(false);
+    expect(result.html).toContain('<summary>Photosynthesis</summary>');
+    expect(result.html).toContain('<summary>Cellular respiration</summary>');
+  });
+
+  it('flags a card explosion so the caller can fall back', async () => {
+    const lines = Array.from(
+      { length: 40 },
+      (_, i) =>
+        `Term ${i + 1}\nA definition long enough to read as the body of term ${i + 1}.`
+    ).join('\n');
+    mockExtract.mockResolvedValue({
+      pages: [{ text: lines, imagePaintCount: 0 }],
+      pageCount: 1,
+      avgCharsPerPage: lines.length,
+      isDrmLocked: false,
+      needsCredential: false,
+      coloredTextPageCount: 0,
+    });
+
+    const result = await convertPdfTextToHtml(Buffer.from('x'), 'terms.pdf');
+
+    expect(result.overSplit).toBe(true);
   });
 });
 
@@ -224,7 +262,6 @@ describe('convertPdfTextToHtmlAuto', () => {
     expect(result.html).toContain(
       '<p>Movement of water across a semipermeable membrane down a gradient.</p>'
     );
-    expect(mockSynthesize).not.toHaveBeenCalled();
   });
 
   it('reports the summed painted-image count as dropped on a text-shaped PDF', async () => {
@@ -395,7 +432,6 @@ describe('convertPdfTextToHtmlAuto', () => {
     expect(result.isTextShaped).toBe(false);
     expect(result.cardCount).toBe(0);
     expect(result.html).toBe('');
-    expect(mockSynthesize).not.toHaveBeenCalled();
   });
 
   it('reports text-shaped with zero cards when no heading structure exists', async () => {
@@ -579,21 +615,18 @@ describe('embedded image injection', () => {
     expect(loadImages).not.toHaveBeenCalled();
   });
 
-  it('injects on the page-pairs path too', async () => {
+  it('injects figures on the extract-text path too', async () => {
     mockExtract.mockResolvedValue({
       pages: [
-        { text: 'Question page', imagePaintCount: 1 },
-        { text: 'Answer page', imagePaintCount: 0 },
+        { ...headingPage('Mitosis'), imagePaintCount: 1 },
+        headingPage('Meiosis'),
       ],
       pageCount: 2,
-      avgCharsPerPage: 60,
+      avgCharsPerPage: 80,
       isDrmLocked: false,
       needsCredential: false,
       coloredTextPageCount: 0,
     });
-    mockSynthesize.mockReturnValue([
-      { front: 'Question page', back: 'Answer page', tags: [], pageIndex: 0 },
-    ]);
     const loadImages = vi
       .fn()
       .mockResolvedValue([
@@ -602,13 +635,13 @@ describe('embedded image injection', () => {
 
     const result = await convertPdfTextToHtml(
       Buffer.from('x'),
-      'pairs.pdf',
+      'notes.pdf',
       undefined,
       loadImages
     );
 
     expect(result.html).toContain(
-      '<img src="pairs.pdf-images/img-001-000.png">'
+      '<img src="notes.pdf-images/img-001-000.png">'
     );
     expect(result.droppedImageCount).toBe(0);
   });

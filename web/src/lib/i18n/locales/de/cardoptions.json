@@ -87,7 +87,7 @@
     },
     "pdf-extract-text": {
       "label": "Text aus PDFs extrahieren",
-      "description": "Wandle den Text in einem PDF in Karten um. Lass die Option aus, um jede Seite als Bild darzustellen — Seite 1 auf der Vorderseite, Seite 2 auf der Rückseite."
+      "description": "Mach immer Karten aus dem Text eines PDFs: Jede Überschrift wird zur Frage, der Text darunter zur Antwort. Lass die Option aus, und 2anki wählt für jedes PDF Textkarten oder Seitenbilder."
     },
     "pdf-page-pairs": {
       "label": "Zwei Seiten ergeben eine Karte",

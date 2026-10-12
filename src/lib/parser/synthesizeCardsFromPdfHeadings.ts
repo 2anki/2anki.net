@@ -1,4 +1,15 @@
-import type { PdfCard, PdfPage } from './synthesizeCardsFromPdf';
+export interface PdfPage {
+  text: string;
+}
+
+export interface PdfCard {
+  front: string;
+  back: string;
+  tags: string[];
+  // 0-based page the card's front came from, so per-page assets (extracted
+  // figures) can be attached to the right card.
+  pageIndex?: number;
+}
 
 const HEADING_MAX_CHARS = 60;
 const SENTENCE_TAIL = /[.,;]$/;
