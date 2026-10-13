@@ -547,6 +547,46 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
     expect(CustomExporterMock).not.toHaveBeenCalled();
     expect(crossFileDedup.suppressed).toBe(1);
   });
+
+  it('falls back to the standard parser when a single upload gets no AI cards and nothing was suppressed', async () => {
+    const { createCrossFileDedupState } = await vi.importActual<
+      typeof import('../../../lib/claude/ClaudeService')
+    >('../../../lib/claude/ClaudeService');
+    const crossFileDedup = createCrossFileDedupState();
+    generateDeckInfo.mockResolvedValueOnce([]);
+
+    const result = await PrepareDeck({
+      name: 'notes.html',
+      files: [{ name: 'notes.html', contents: '<p>Some notes</p>' }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+      crossFileDedup,
+    });
+
+    expect(result?.engine).toBe('parser');
+    expect(crossFileDedup.suppressed).toBe(0);
+  });
+
+  it('sends a plain-text upload to Claude', async () => {
+    generateDeckInfo.mockResolvedValueOnce(
+      deckWithCards('Text Deck', [{ name: 'Front', back: 'Back' }])
+    );
+
+    const result = await PrepareDeck({
+      name: 'lecture.txt',
+      files: [{ name: 'lecture.txt', contents: 'Mitosis has four phases.' }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    expect(generateDeckInfo.mock.calls[0][0]).toContain(
+      'Mitosis has four phases.'
+    );
+    expect(result?.engine).toBe('claude');
+  });
 });
 
 describe('PrepareDeck — PDF text-vs-image gate', () => {

@@ -289,6 +289,25 @@ describe('runUploadGenerationInWorker', () => {
 
     expect(result.ok).toBe(true);
   });
+
+  it('converts an uploaded PDF even when PDFs inside ZIPs are switched off', async () => {
+    const file = makeFile({
+      originalname: 'lecture.pdf',
+      filename: 'lecture.pdf',
+      key: 'lecture.pdf',
+      path: '',
+      buffer: Buffer.from('%PDF-1.4'),
+    });
+    const task = {
+      ...makeTask(file),
+      settings: new CardOption({ 'process-pdfs': 'false' }),
+    };
+
+    await runUploadGenerationInWorker(task);
+
+    expect(mockPrepareDeck).toHaveBeenCalledTimes(1);
+    expect(mockPrepareDeck.mock.calls[0][0].settings.processPDFs).toBe(true);
+  });
 });
 
 describe('countAiContentFiles', () => {

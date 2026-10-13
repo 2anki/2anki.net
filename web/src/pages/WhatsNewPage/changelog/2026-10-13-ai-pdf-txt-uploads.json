@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-13-ai-pdf-txt-uploads",
+  "date": "2026-10-13",
+  "type": "fix",
+  "title": "AI flashcards work again for PDF and text uploads, even with Process PDF files turned off"
+}

@@ -4,6 +4,7 @@ import { UploadedFile } from '../../lib/storage/types';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import CardOption from '../../lib/parser/Settings/CardOption';
+import { processUploadedPdf } from './processUploadedPdf';
 import Package from '../../lib/parser/Package';
 import fs from 'fs';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
@@ -263,7 +264,7 @@ async function processFile(
     const d = await PrepareDeck({
       name: filename,
       files: [{ name: filename, contents: fileContents }],
-      settings,
+      settings: processUploadedPdf(filename, settings),
       noLimits: paying,
       workspace,
       onProgress,
