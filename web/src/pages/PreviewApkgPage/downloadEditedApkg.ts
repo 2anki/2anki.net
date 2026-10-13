@@ -20,7 +20,11 @@ export async function downloadEditedApkg(
     const err = await response
       .json()
       .catch(() => ({ message: response.statusText }));
-    throw new Error(err.message ?? 'Download failed.');
+    // The status lets reportClientError skip a 4xx: an upload that expired
+    // while the preview tab sat open is expected, not a bug to investigate.
+    throw Object.assign(new Error(err.message ?? 'Download failed.'), {
+      status: response.status,
+    });
   }
   const blob = await response.blob();
   const disposition = response.headers.get('Content-Disposition') ?? '';
