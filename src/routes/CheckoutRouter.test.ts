@@ -4,12 +4,14 @@ import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
 const mockStripeCreate = vi.fn();
+const mockPriceRetrieve = vi.fn();
 
 vi.mock('../lib/integrations/stripe', () => ({
   getStripe: vi.fn().mockReturnValue({
     checkout: {
       sessions: { create: mockStripeCreate },
     },
+    prices: { retrieve: mockPriceRetrieve },
     customers: {
       list: vi.fn().mockResolvedValue({ data: [] }),
       search: vi.fn().mockResolvedValue({ data: [] }),
@@ -113,6 +115,7 @@ describe('CheckoutRouter — pass routes', () => {
     // The router captures this at construction, unlike the pass price ids,
     // which resolve per request.
     process.env.UNLIMITED_MONTHLY_PRICE_ID = 'price_unlimited_test';
+    process.env.AUTO_SYNC_PRICE_ID = 'price_auto_sync_test';
     ({ server, url } = await buildServer());
   });
 
@@ -171,6 +174,32 @@ describe('CheckoutRouter — pass routes', () => {
 
       expect(res.status).toBe(409);
       expect((await res.json()).code).toBe('already_subscribed');
+      expect(mockStripeCreate).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['a lifetime holder', 'already_lifetime', () => (mockHeldPatreon = true)],
+      [
+        'an Apple subscriber',
+        'billed_through_apple',
+        () =>
+          (mockHeldPass = {
+            kind: 'unlimited',
+            expires_at: new Date('2026-11-08T00:00:00.000Z'),
+            stripe_payment_intent_id: 'apple:txn',
+          }),
+      ],
+    ])('answers 409 when %s buys Auto Sync', async (_who, code, hold) => {
+      hold();
+
+      const res = await fetch(`${url}/api/checkout/auto-sync`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+
+      expect(res.status).toBe(409);
+      expect((await res.json()).code).toBe(code);
       expect(mockStripeCreate).not.toHaveBeenCalled();
     });
 
@@ -399,5 +428,37 @@ describe('CheckoutRouter — pass routes', () => {
       const body = await res.json();
       expect(body.passes).toEqual({});
     });
+  });
+});
+
+describe('CheckoutRouter — GET /api/checkout/auto-sync/price', () => {
+  let server: http.Server;
+  let url: string;
+
+  beforeAll(async () => {
+    process.env.AUTO_SYNC_PRICE_ID = 'price_auto_sync_test';
+    ({ server, url } = await buildServer());
+  });
+
+  afterAll(() => server.close());
+
+  it('serves the live Stripe price for the configured Auto Sync price', async () => {
+    mockPriceRetrieve.mockResolvedValue({
+      active: true,
+      unit_amount: 3000,
+      currency: 'usd',
+      recurring: { interval: 'month' },
+    });
+
+    const res = await fetch(`${url}/api/checkout/auto-sync/price`);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      amount: 3000,
+      currency: 'usd',
+      interval: 'month',
+      display: '$30',
+    });
+    expect(mockPriceRetrieve).toHaveBeenCalledWith('price_auto_sync_test');
   });
 });

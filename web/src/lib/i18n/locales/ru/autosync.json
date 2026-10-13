@@ -1,0 +1,19 @@
+{
+  "section": "Синхронизация из Notion",
+  "perMonth": "/ мес.",
+  "perYear": "/ год",
+  "benefitPro": "Всё, что есть в Pro",
+  "benefitSync": "Правки в Notion попадают в Anki каждые 5 минут",
+  "benefitDevices": "Учись на любом устройстве",
+  "benefitCancel": "Отмена в любой момент",
+  "cta": "Подключить Auto Sync",
+  "ctaSwitch": "Перейти с Pro на Auto Sync",
+  "switchNote": "Перед подтверждением Stripe покажет пересчитанную цену.",
+  "pending": "Открываем оплату…",
+  "activeTitle": "У тебя есть Auto Sync",
+  "activeCta": "Открыть Auto Sync",
+  "capReached": "Сейчас мест в Auto Sync нет. Напиши на support@2anki.net, и мы сообщим, когда место освободится.",
+  "upgradeUnavailable": "Не получилось сменить план здесь. Напиши на support@2anki.net, и мы сделаем это за тебя.",
+  "error": "Не удалось открыть оплату. Попробуй ещё раз или напиши на support@2anki.net.",
+  "learnMore": "Как работает синхронизация"
+}

@@ -1,0 +1,19 @@
+{
+  "section": "Synchroniseren vanuit Notion",
+  "perMonth": "/ mnd",
+  "perYear": "/ jaar",
+  "benefitPro": "Alles van Pro",
+  "benefitSync": "Wijzigingen in Notion staan elke 5 minuten in Anki",
+  "benefitDevices": "Leer op elk apparaat",
+  "benefitCancel": "Altijd opzegbaar",
+  "cta": "Auto Sync nemen",
+  "ctaSwitch": "Overstappen van Pro naar Auto Sync",
+  "switchNote": "Stripe laat je de naar rato berekende prijs zien voordat je bevestigt.",
+  "pending": "Betaling starten…",
+  "activeTitle": "Je hebt Auto Sync",
+  "activeCta": "Auto Sync openen",
+  "capReached": "Auto Sync zit op dit moment vol. Mail support@2anki.net, dan laten we het je weten zodra er een plek vrijkomt.",
+  "upgradeUnavailable": "We konden je abonnement hier niet omzetten. Mail support@2anki.net, dan regelen wij het voor je.",
+  "error": "De betaling kon niet starten. Probeer het opnieuw of mail support@2anki.net.",
+  "learnMore": "Zo werkt synchroniseren"
+}

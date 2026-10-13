@@ -388,10 +388,10 @@ const META_ONLY_PAGES: MetaOnlyPageMeta[] = [
     pathname: '/pricing',
     title: 'Pricing — Free, Day Pass, Pro, Lifetime | 2anki',
     description:
-      'Compare 2anki plans. Free converts 100 cards a month. Pro at $7.99/mo or $64/yr. Day and Week Passes from $4. Lifetime with Auto Sync included.',
+      'Compare 2anki plans. Free converts 100 cards a month. Pro at $7.99/mo or $64/yr. Day and Week Passes from $4. Auto Sync keeps Notion and Anki in step.',
     h1: 'Pricing',
     intro:
-      'Free converts 100 cards a month. Pro is $7.99/mo or $64/yr. A Day Pass is $4, a Week Pass $9 — one-time payments, no subscription. Lifetime is $345 once, with Auto Sync included. Cancel any subscription in one click.',
+      'Free converts 100 cards a month. Pro is $7.99/mo or $64/yr. A Day Pass is $4, a Week Pass $9 — one-time payments, no subscription. Auto Sync is a monthly plan that includes Pro and syncs Notion edits to Anki every 5 minutes. Cancel any subscription in one click.',
   },
   {
     pathname: '/about',

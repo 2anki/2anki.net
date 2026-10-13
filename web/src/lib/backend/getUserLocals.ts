@@ -30,6 +30,7 @@ interface GetUserLocalsResponse {
     ops?: boolean;
   };
   autoSyncActive?: boolean;
+  autoSyncCapReached?: boolean;
   freePrintAvailable?: boolean | null;
   pending_email_change?: {
     new_email: string;

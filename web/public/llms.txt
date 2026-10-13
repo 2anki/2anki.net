@@ -45,15 +45,15 @@ Strikethrough text in the page body becomes a tag on every card in the deck.
 ## Auto Sync (Notion → Anki, automatic)
 
 Auto Sync connects a Notion workspace and keeps Anki decks up to date every 5
-minutes. No exports, no manual steps. Included with Lifetime, or switched on by
-arrangement — email support@2anki.net.
+minutes. No exports, no manual steps. Sold as a monthly plan on the pricing
+page that includes everything in Pro; existing Lifetime members already have it.
 
 ## Pricing
 
 - Free: up to 21 cards per conversion without an account, and 100 cards per month with a free account.
 - Pro: $7.99/month or $64/year, with no monthly card limit, PDF support, concurrent conversions, and 300 AI credits a month.
-- Lifetime: from $345 — all Pro features paid once, Auto Sync included.
-- Auto Sync: not sold as a plan — included with Lifetime, or switched on by arrangement.
+- Auto Sync: monthly plan with everything in Pro plus Notion to Anki sync every 5 minutes. Pro subscribers can switch from the pricing page.
+- Lifetime: closed to new members.
 - Day Pass: $4 — 24 hours of Pro features, including 300 AI credits.
 - Week Pass: $9 — 7 days of Pro features, including 500 AI credits.
 

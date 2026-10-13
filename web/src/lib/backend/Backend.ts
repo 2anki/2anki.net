@@ -655,6 +655,27 @@ export class Backend {
     await post(`${this.baseURL}users/debug/ankify-welcome-seen`, {});
   }
 
+  async getAutoSyncPrice(): Promise<{
+    display: string;
+    interval: string;
+  } | null> {
+    try {
+      const body = (await get(`${this.baseURL}checkout/auto-sync/price`)) as {
+        display?: unknown;
+        interval?: unknown;
+      } | null;
+      if (
+        typeof body?.display !== 'string' ||
+        typeof body.interval !== 'string'
+      ) {
+        return null;
+      }
+      return { display: body.display, interval: body.interval };
+    } catch {
+      return null;
+    }
+  }
+
   async getCheckoutPrices(): Promise<CheckoutPrices | null> {
     try {
       const body = (await get(`${this.baseURL}checkout/prices`)) as unknown;
@@ -708,6 +729,51 @@ export class Backend {
       } | null;
       if (body?.url != null) {
         return { url: body.url };
+      }
+      return { status: 'error' };
+    } catch {
+      return { status: 'error' };
+    }
+  }
+
+  async startAutoSyncCheckout(
+    variant?: string,
+    surface?: string
+  ): Promise<
+    | { url: string }
+    | {
+        status:
+          | 'cap_reached'
+          | 'already_subscribed'
+          | 'upgrade_unavailable'
+          | 'error';
+      }
+    | CheckoutConflict
+  > {
+    try {
+      const response = await post(`${this.baseURL}checkout/auto-sync`, {
+        variant,
+        surface,
+      });
+      if (response.status === CONFLICT) {
+        return (await readCheckoutConflict(response)) ?? { status: 'error' };
+      }
+      if (!response.ok) {
+        return { status: 'error' };
+      }
+      const body = (await response.json().catch(() => null)) as {
+        url?: string;
+        status?: string;
+      } | null;
+      if (typeof body?.url === 'string') {
+        return { url: body.url };
+      }
+      if (
+        body?.status === 'cap_reached' ||
+        body?.status === 'already_subscribed' ||
+        body?.status === 'upgrade_unavailable'
+      ) {
+        return { status: body.status };
       }
       return { status: 'error' };
     } catch {

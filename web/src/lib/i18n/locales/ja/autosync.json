@@ -1,0 +1,19 @@
+{
+  "section": "Notion から同期",
+  "perMonth": "/ 月",
+  "perYear": "/ 年",
+  "benefitPro": "Pro のすべての機能",
+  "benefitSync": "Notion の変更が 5 分ごとに Anki に反映されます",
+  "benefitDevices": "どのデバイスでも学習できます",
+  "benefitCancel": "いつでも解約できます",
+  "cta": "Auto Sync を始める",
+  "ctaSwitch": "Pro から Auto Sync に切り替える",
+  "switchNote": "確定する前に、Stripe が日割り料金を表示します。",
+  "pending": "決済を開始しています…",
+  "activeTitle": "Auto Sync をご利用中です",
+  "activeCta": "Auto Sync を開く",
+  "capReached": "Auto Sync は現在満席です。support@2anki.net までご連絡ください。空きが出たらお知らせします。",
+  "upgradeUnavailable": "ここではプランを切り替えられませんでした。support@2anki.net までご連絡いただければ、こちらで切り替えます。",
+  "error": "決済を開始できませんでした。もう一度お試しいただくか、support@2anki.net までご連絡ください。",
+  "learnMore": "同期のしくみ"
+}

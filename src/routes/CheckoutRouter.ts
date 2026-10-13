@@ -4,6 +4,8 @@ import { optionalAuthMiddleware } from './middleware/optionalAuthMiddleware';
 import { RejectDuplicatePurchase } from './middleware/RejectDuplicatePurchase';
 import { resolveStripeCustomer } from './middleware/ResolveStripeCustomer';
 import AutoSyncCheckoutController from '../controllers/AutoSyncCheckoutController';
+import AutoSyncPriceController from '../controllers/AutoSyncPriceController';
+import { GetAutoSyncPriceUseCase } from '../usecases/checkout/GetAutoSyncPriceUseCase';
 import PassCheckoutController from '../controllers/PassCheckoutController';
 import ResumeCheckoutController from '../controllers/ResumeCheckoutController';
 import UnlimitedCheckoutController from '../controllers/UnlimitedCheckoutController';
@@ -67,10 +69,33 @@ const CheckoutRouter = () => {
     Number.parseInt(process.env.HOSTED_ANKI_MAX_SUBSCRIBERS ?? '', 10) ||
     DEFAULT_MAX_SUBSCRIBERS;
 
+  const autoSyncPrice = new GetAutoSyncPriceUseCase(getStripe(), priceId);
+
+  /**
+   * @swagger
+   * /api/checkout/auto-sync/price:
+   *   get:
+   *     summary: Get the live Auto Sync price
+   *     description: |
+   *       Reads the Auto Sync price from Stripe so the pricing page shows what
+   *       checkout charges. 404 when no active price is configured, which
+   *       hides the offer.
+   *     tags: [Payments]
+   *     responses:
+   *       200:
+   *         description: Amount, currency, interval and display string
+   *       404:
+   *         description: Auto Sync is not on sale
+   */
+  router.get('/api/checkout/auto-sync/price', (req, res) =>
+    new AutoSyncPriceController(autoSyncPrice).getPrice(req, res)
+  );
+
   router.post(
     '/api/checkout/auto-sync',
     RequireAuthentication,
     express.json(),
+    RejectDuplicatePurchase('auto_sync'),
     async (req, res) => {
       if (priceId === '') {
         return res

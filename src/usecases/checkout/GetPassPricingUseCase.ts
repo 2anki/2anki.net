@@ -23,7 +23,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 const symbolFor = (currency: string): string =>
   CURRENCY_SYMBOLS[currency.toLowerCase()] ?? `${currency.toUpperCase()} `;
 
-const formatDisplay = (amount: number, currency: string): string => {
+export const formatDisplay = (amount: number, currency: string): string => {
   const dollars = amount / 100;
   const rendered = amount % 100 === 0 ? String(dollars) : dollars.toFixed(2);
   return `${symbolFor(currency)}${rendered}`;

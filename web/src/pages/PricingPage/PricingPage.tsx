@@ -10,6 +10,10 @@ import type { CheckoutConflict } from '../../lib/checkout/checkoutConflict';
 import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMessage';
 import { useCardUsage } from '../../lib/hooks/useCardUsage';
 import { usePricingOrderVariant } from '../../lib/hooks/usePricingOrderVariant';
+import {
+  AutoSyncCard,
+  type AutoSyncCardState,
+} from './components/AutoSyncCard';
 import { ComparisonTable } from './components/ComparisonTable';
 import { FeatureGrid } from './components/FeatureGrid';
 import { PassCards } from './components/PassCards';
@@ -34,6 +38,8 @@ interface PricingPageProps {
   email?: string;
   signupCountry?: string | null;
   entitlement?: PricingEntitlement;
+  autoSyncActive?: boolean;
+  autoSyncCapReached?: boolean;
 }
 
 type PassState = 'idle' | 'pending' | 'error';
@@ -43,6 +49,8 @@ export default function PricingPage({
   email: _email,
   signupCountry,
   entitlement,
+  autoSyncActive = false,
+  autoSyncCapReached = false,
 }: Readonly<PricingPageProps>) {
   const { t, i18n } = useTranslation();
   const isUS = signupCountry === 'US';
@@ -61,6 +69,14 @@ export default function PricingPage({
   const [unlimitedPending, setUnlimitedPending] = useState(false);
   const [unlimitedError, setUnlimitedError] = useState(false);
   const [pricing, setPricing] = useState(LEGACY_UNLIMITED_PRICING);
+  const [autoSyncPrice, setAutoSyncPrice] = useState<{
+    display: string;
+    interval: string;
+  } | null>(null);
+  const [autoSyncPending, setAutoSyncPending] = useState(false);
+  const [autoSyncOutcome, setAutoSyncOutcome] = useState<
+    'unavailable' | 'error' | null
+  >(null);
   const fromPaywall = searchParams.get('source') === 'paywall-cancel';
   const fromContext = searchParams.get('from');
   const showContextBanner =
@@ -90,6 +106,19 @@ export default function PricingPage({
           legacy: result.legacy,
           lockInDeadline: result.lockInDeadline,
         });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    get2ankiApi()
+      .getAutoSyncPrice()
+      .then((result) => {
+        if (!cancelled) setAutoSyncPrice(result);
       })
       .catch(() => {});
     return () => {
@@ -229,6 +258,70 @@ export default function PricingPage({
     setUnlimitedError(true);
   };
 
+  const handleAutoSyncCheckout = async () => {
+    track('paywall_upgrade_clicked', {
+      surface: 'pricing_page',
+      plan: 'auto_sync',
+      variant: pricingOrder,
+    });
+    if (!isLoggedIn) {
+      globalThis.location.href = `/login?redirect=${encodeURIComponent('/pricing#auto-sync')}`;
+      return;
+    }
+    setConflict(null);
+    setAutoSyncOutcome(null);
+    setAutoSyncPending(true);
+    const result = await get2ankiApi().startAutoSyncCheckout(
+      pricingOrder,
+      'pricing_page'
+    );
+    if ('url' in result) {
+      globalThis.location.href = result.url;
+      return;
+    }
+    setAutoSyncPending(false);
+    if (result.status === 'conflict') {
+      setConflict(result);
+      return;
+    }
+    if (result.status === 'already_subscribed') {
+      globalThis.location.href = '/ankify/setup';
+      return;
+    }
+    setAutoSyncOutcome(result.status === 'error' ? 'error' : 'unavailable');
+  };
+
+  const autoSyncCardState = (): AutoSyncCardState => {
+    if (autoSyncActive) return 'active';
+    if (autoSyncOutcome != null) return autoSyncOutcome;
+    if (autoSyncCapReached) return 'full';
+    if (ownsOngoingAccess(entitlement)) return 'switch';
+    return 'buy';
+  };
+
+  // Lifetime already includes Auto Sync, and an Apple plan cannot be switched
+  // from here, so neither is offered it.
+  const showAutoSync =
+    autoSyncPrice != null &&
+    entitlement?.patreon !== true &&
+    entitlement?.planSource !== 'apple';
+
+  const autoSyncSection =
+    showAutoSync && autoSyncPrice != null ? (
+      <>
+        <h2 className={styles.sectionLabel}>{t('autosync:section')}</h2>
+        <div className={styles.grid}>
+          <AutoSyncCard
+            price={autoSyncPrice.display}
+            interval={autoSyncPrice.interval}
+            state={autoSyncCardState()}
+            pending={autoSyncPending}
+            onBuy={handleAutoSyncCheckout}
+          />
+        </div>
+      </>
+    ) : null;
+
   const pricingFaqJsonLd = JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -339,6 +432,8 @@ export default function PricingPage({
           {monthlySection}
         </>
       )}
+
+      {autoSyncSection}
 
       <p className={styles.pricesNote}>{t('pricing.pricesNote')}</p>
 

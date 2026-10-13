@@ -1,0 +1,19 @@
+{
+  "section": "Synchronizacja z Notion",
+  "perMonth": "/ mies.",
+  "perYear": "/ rok",
+  "benefitPro": "Wszystko z Pro",
+  "benefitSync": "Zmiany w Notion trafiają do Anki co 5 minut",
+  "benefitDevices": "Ucz się na dowolnym urządzeniu",
+  "benefitCancel": "Anuluj w każdej chwili",
+  "cta": "Wybierz Auto Sync",
+  "ctaSwitch": "Przejdź z Pro na Auto Sync",
+  "switchNote": "Przed potwierdzeniem Stripe pokaże ci proporcjonalną cenę.",
+  "pending": "Uruchamianie płatności…",
+  "activeTitle": "Masz Auto Sync",
+  "activeCta": "Otwórz Auto Sync",
+  "capReached": "Auto Sync jest teraz pełny. Napisz na support@2anki.net, a damy ci znać, gdy zwolni się miejsce.",
+  "upgradeUnavailable": "Nie udało się tu zmienić twojego planu. Napisz na support@2anki.net, a zrobimy to za ciebie.",
+  "error": "Nie udało się uruchomić płatności. Spróbuj ponownie lub napisz na support@2anki.net.",
+  "learnMore": "Jak działa synchronizacja"
+}

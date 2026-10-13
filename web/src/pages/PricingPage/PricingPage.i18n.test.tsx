@@ -12,6 +12,9 @@ vi.mock('../../lib/backend/get2ankiApi', () => ({
     startPassCheckout: vi.fn(),
     startUnlimitedCheckout: vi.fn(),
     getCheckoutPrices: vi.fn().mockResolvedValue(null),
+    getAutoSyncPrice: vi
+      .fn()
+      .mockResolvedValue({ display: '$30', interval: 'month' }),
   }),
 }));
 
@@ -74,6 +77,14 @@ describe('PricingPage in German', () => {
     renderPricing();
     expect(
       screen.getByRole('heading', { name: 'Alles, was 2anki kann' })
+    ).toBeInTheDocument();
+  });
+
+  it('translates the Auto Sync card', async () => {
+    renderPricing();
+    expect(await screen.findByText('Sync aus Notion')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Auto Sync holen' })
     ).toBeInTheDocument();
   });
 });

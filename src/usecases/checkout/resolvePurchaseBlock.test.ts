@@ -114,4 +114,45 @@ describe('resolvePurchaseBlock', () => {
       })?.code
     ).toBe('already_lifetime');
   });
+
+  describe('auto_sync', () => {
+    it('lets a Pro subscriber through, because their subscription is switched rather than doubled', () => {
+      expect(
+        resolvePurchaseBlock('auto_sync', {
+          ...nothing,
+          activeSubscription: true,
+        })
+      ).toBeNull();
+    });
+
+    it.each([
+      [
+        'a running pass',
+        { activePassKind: '120d' as const, activePassExpiresAt: expiry },
+      ],
+      [
+        'an unlimited pass',
+        { activePassKind: 'unlimited' as const, activePassExpiresAt: expiry },
+      ],
+    ])('lets someone holding %s buy Auto Sync', (_label, held) => {
+      expect(
+        resolvePurchaseBlock('auto_sync', { ...nothing, ...held })
+      ).toBeNull();
+    });
+
+    it('blocks a lifetime holder, whose plan already includes it', () => {
+      expect(
+        resolvePurchaseBlock('auto_sync', { ...nothing, lifetime: true })?.code
+      ).toBe('already_lifetime');
+    });
+
+    it('blocks an Apple subscriber, who would pay twice for Pro', () => {
+      expect(
+        resolvePurchaseBlock('auto_sync', {
+          ...nothing,
+          billedThroughApple: true,
+        })?.code
+      ).toBe('billed_through_apple');
+    });
+  });
 });
