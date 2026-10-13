@@ -14,6 +14,7 @@ import {
   isImageFile,
   isMarkdownFile,
   isPDFFile,
+  isPlainText,
   isPPTFile,
   isPptxFile,
   isXLSXFile,
@@ -897,6 +898,10 @@ async function buildParserResult(
   };
 }
 
+function isClaudeTextInput(name: string): boolean {
+  return Boolean(isHTMLFile(name) || isMarkdownFile(name) || isPlainText(name));
+}
+
 async function buildClaudeDeck(
   input: DeckParserInput,
   allFiles: DeckParserInput['files'],
@@ -906,7 +911,7 @@ async function buildClaudeDeck(
 ): Promise<PrepareDeckResult | undefined> {
   console.log('[PrepareDeck] Claude branch: collecting HTML content');
   const htmlFiles = allFiles.filter(
-    (f) => (isHTMLFile(f.name) || isMarkdownFile(f.name)) && f.contents
+    (f) => isClaudeTextInput(f.name) && f.contents
   );
 
   // Figure images extracted per source file (PDF text-layer, DOCX) travel
@@ -920,10 +925,7 @@ async function buildClaudeDeck(
   );
   const mediaFiles = allFiles
     .filter(
-      (f) =>
-        !isHTMLFile(f.name) &&
-        !isMarkdownFile(f.name) &&
-        !perFileFigureNames.has(f.name)
+      (f) => !isClaudeTextInput(f.name) && !perFileFigureNames.has(f.name)
     )
     .map((f) => f.name);
 
@@ -963,6 +965,7 @@ async function buildClaudeDeck(
     hasFieldMapping: fieldMapping != null,
   });
   const tClaude = Date.now();
+  const suppressedBefore = input.crossFileDedup?.suppressed ?? 0;
   const baseGenerateDeckInfoOptions = {
     isPaying: input.noLimits,
     userId: input.userId ?? null,
@@ -1051,7 +1054,11 @@ async function buildClaudeDeck(
     // In a multi-file upload a later file whose cards were all covered by
     // earlier files has nothing of its own to export; drop it and let the
     // earlier files carry the upload.
-    if (crossFileDedup && !tripped) {
+    if (
+      crossFileDedup &&
+      crossFileDedup.suppressed > suppressedBefore &&
+      !tripped
+    ) {
       console.info(
         '[PrepareDeck] Claude branch: file fully covered by earlier files',
         {
