@@ -1,3 +1,4 @@
+import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
@@ -32,6 +33,31 @@ export interface CreateImageOcclusionDeckInput {
   images: ImageOcclusionImage[];
   imageFiles: { name: string; path: string }[];
   isPaying: boolean;
+  ownerId: number | null;
+}
+
+// The client names the S3 object to read, so a key is honoured only inside
+// the caller's own draft folder. Without this, any key in the bucket, another
+// user's upload included, could be pulled into a deck the caller downloads.
+function assertOwnDraftKey(key: string, ownerId: number | null): void {
+  const prefix = `io-drafts/${ownerId}/`;
+  if (
+    ownerId == null ||
+    !key.startsWith(prefix) ||
+    key.slice(prefix.length).includes('/') ||
+    key.includes('..')
+  ) {
+    throw new HttpCodedError(
+      'This image is not part of your draft.',
+      400,
+      'invalid_image_key'
+    );
+  }
+}
+
+function isMissingObject(error: unknown): boolean {
+  const name = (error as { name?: unknown } | null)?.name;
+  return name === 'NoSuchKey' || name === 'NotFound';
 }
 
 function findPython(): string {
@@ -85,6 +111,10 @@ export class CreateImageOcclusionDeckUseCase {
       throw new ImageLimitError(FREE_TIER_IMAGE_LIMIT);
     }
 
+    for (const img of input.images) {
+      if (img.s3Key != null) assertOwnDraftKey(img.s3Key, input.ownerId);
+    }
+
     const workspaceDir = path.join(os.tmpdir(), `io-${randomUUID()}`);
     fs.mkdirSync(workspaceDir, { recursive: true });
 
@@ -104,7 +134,18 @@ export class CreateImageOcclusionDeckUseCase {
           const safeName = path.basename(img.imageName);
           const dest = path.join(workspaceDir, safeName);
           if (!fs.existsSync(dest)) {
-            const s3Obj = await storage.getFileContents(img.s3Key as string);
+            const s3Obj = await storage
+              .getFileContents(img.s3Key as string)
+              .catch((error: unknown) => {
+                if (isMissingObject(error)) {
+                  throw new HttpCodedError(
+                    'An image in this draft is no longer available. Upload it again.',
+                    404,
+                    'image_missing'
+                  );
+                }
+                throw error;
+              });
             if (s3Obj.Body != null) {
               fs.writeFileSync(dest, s3Obj.Body as Buffer);
             }
