@@ -15,12 +15,16 @@ import PricingPage from './PricingPage';
 const mockStartPassCheckout = vi.fn();
 const mockStartUnlimitedCheckout = vi.fn();
 const mockGetCheckoutPrices = vi.fn();
+const mockGetAutoSyncPrice = vi.fn();
+const mockStartAutoSyncCheckout = vi.fn();
 
 vi.mock('../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: () => ({
     startPassCheckout: mockStartPassCheckout,
     startUnlimitedCheckout: mockStartUnlimitedCheckout,
     getCheckoutPrices: mockGetCheckoutPrices,
+    getAutoSyncPrice: mockGetAutoSyncPrice,
+    startAutoSyncCheckout: mockStartAutoSyncCheckout,
   }),
 }));
 
@@ -51,6 +55,8 @@ vi.mock('../../lib/hooks/usePricingOrderVariant', () => ({
 beforeEach(() => {
   mockPricingVariant.current = 'minimal';
   mockGetCheckoutPrices.mockResolvedValue(null);
+  mockGetAutoSyncPrice.mockResolvedValue(null);
+  mockStartAutoSyncCheckout.mockReset();
 });
 
 type AnalyticsGlobals = {
@@ -111,12 +117,12 @@ describe('PricingPage layout', () => {
     expect(screen.getAllByText('Pro').length).toBeGreaterThan(0);
   });
 
-  it('does not sell Auto Sync as a standalone plan', () => {
+  it('hides Auto Sync when Stripe has no price for it', async () => {
     renderAt('/pricing', { isLoggedIn: true });
+    await waitFor(() => expect(mockGetAutoSyncPrice).toHaveBeenCalled());
     expect(
       screen.queryByRole('button', { name: 'Get Auto Sync' })
     ).not.toBeInTheDocument();
-    expect(screen.queryByText('What is Auto Sync?')).not.toBeInTheDocument();
   });
 
   it('does not show the auto-sync upsell context banner', () => {
@@ -891,5 +897,120 @@ describe('PricingPage billing interval survives the trip through sign-in', () =>
     expect(
       screen.getByRole('button', { name: /billed yearly/i })
     ).toBeInTheDocument();
+  });
+});
+
+describe('PricingPage Auto Sync', () => {
+  const location = { href: '' };
+
+  beforeEach(() => {
+    mockUseCardUsage.mockReturnValue(null);
+    mockGetAutoSyncPrice.mockResolvedValue({
+      display: '$30',
+      interval: 'month',
+    });
+    location.href = '';
+    vi.stubGlobal('location', location);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('shows the live Stripe price', async () => {
+    renderAt('/pricing', { isLoggedIn: true });
+    const card = await screen.findByTestId('auto-sync-card');
+    expect(card).toHaveTextContent('$30');
+    expect(card).toHaveTextContent('Everything in Pro');
+  });
+
+  it('sends a buyer to the checkout url', async () => {
+    mockStartAutoSyncCheckout.mockResolvedValue({
+      url: 'https://checkout.stripe.com/auto-sync',
+    });
+    renderAt('/pricing', { isLoggedIn: true });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Get Auto Sync' })
+    );
+
+    await waitFor(() =>
+      expect(location.href).toBe('https://checkout.stripe.com/auto-sync')
+    );
+  });
+
+  it('sends a signed-out visitor to log in first', async () => {
+    renderAt('/pricing', { isLoggedIn: false });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Get Auto Sync' })
+    );
+
+    expect(location.href).toBe('/login?redirect=%2Fpricing%23auto-sync');
+    expect(mockStartAutoSyncCheckout).not.toHaveBeenCalled();
+  });
+
+  it('offers a Pro subscriber a switch, even though their Pro plans are hidden', async () => {
+    renderAt('/pricing', {
+      isLoggedIn: true,
+      entitlement: { subscriber: true, planSource: 'stripe', passKind: null },
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Switch Pro to Auto Sync' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Stripe shows the prorated price before you confirm.')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('unlimited-card')).not.toBeInTheDocument();
+  });
+
+  it('asks to email support when the plan cannot be switched here', async () => {
+    mockStartAutoSyncCheckout.mockResolvedValue({
+      status: 'upgrade_unavailable',
+    });
+    renderAt('/pricing', {
+      isLoggedIn: true,
+      entitlement: { subscriber: true, planSource: 'stripe', passKind: null },
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Switch Pro to Auto Sync' })
+    );
+
+    expect(
+      await screen.findByText(
+        "We couldn't switch your plan here. Email support@2anki.net and we'll do it for you."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('links someone who already has it to Auto Sync instead of selling it again', async () => {
+    renderAt('/pricing', { isLoggedIn: true, autoSyncActive: true });
+
+    expect(
+      await screen.findByRole('link', { name: 'Open Auto Sync' })
+    ).toHaveAttribute('href', '/ankify');
+    expect(
+      screen.queryByRole('button', { name: 'Get Auto Sync' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('disables the button when every seat is taken', async () => {
+    renderAt('/pricing', { isLoggedIn: true, autoSyncCapReached: true });
+
+    expect(
+      await screen.findByRole('button', { name: 'Get Auto Sync' })
+    ).toBeDisabled();
+  });
+
+  it.each([
+    ['a lifetime holder', { patreon: true }],
+    ['an Apple subscriber', { subscriber: true, planSource: 'apple' as const }],
+  ])('does not offer Auto Sync to %s', async (_who, entitlement) => {
+    renderAt('/pricing', { isLoggedIn: true, entitlement });
+
+    await waitFor(() => expect(mockGetAutoSyncPrice).toHaveBeenCalled());
+    expect(screen.queryByTestId('auto-sync-card')).not.toBeInTheDocument();
   });
 });

@@ -1,0 +1,19 @@
+{
+  "section": "Sync aus Notion",
+  "perMonth": "/ Monat",
+  "perYear": "/ Jahr",
+  "benefitPro": "Alles aus Pro",
+  "benefitSync": "Änderungen in Notion landen alle 5 Minuten in Anki",
+  "benefitDevices": "Lerne auf jedem Gerät",
+  "benefitCancel": "Jederzeit kündbar",
+  "cta": "Auto Sync holen",
+  "ctaSwitch": "Von Pro zu Auto Sync wechseln",
+  "switchNote": "Stripe zeigt dir den anteiligen Preis, bevor du bestätigst.",
+  "pending": "Checkout startet…",
+  "activeTitle": "Du hast Auto Sync",
+  "activeCta": "Auto Sync öffnen",
+  "capReached": "Auto Sync ist gerade voll. Schreib an support@2anki.net, dann melden wir uns, sobald ein Platz frei wird.",
+  "upgradeUnavailable": "Wir konnten deinen Plan hier nicht wechseln. Schreib an support@2anki.net, dann erledigen wir das für dich.",
+  "error": "Checkout konnte nicht starten. Versuch es noch einmal oder schreib an support@2anki.net.",
+  "learnMore": "So funktioniert Sync"
+}

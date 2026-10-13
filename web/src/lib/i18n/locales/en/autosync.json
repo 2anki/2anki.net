@@ -1,0 +1,19 @@
+{
+  "section": "Sync from Notion",
+  "perMonth": "/ mo",
+  "perYear": "/ yr",
+  "benefitPro": "Everything in Pro",
+  "benefitSync": "Notion edits reach Anki every 5 minutes",
+  "benefitDevices": "Study on any device",
+  "benefitCancel": "Cancel anytime",
+  "cta": "Get Auto Sync",
+  "ctaSwitch": "Switch Pro to Auto Sync",
+  "switchNote": "Stripe shows the prorated price before you confirm.",
+  "pending": "Starting checkout…",
+  "activeTitle": "You have Auto Sync",
+  "activeCta": "Open Auto Sync",
+  "capReached": "Auto Sync is full right now. Email support@2anki.net and we'll add you when a seat opens.",
+  "upgradeUnavailable": "We couldn't switch your plan here. Email support@2anki.net and we'll do it for you.",
+  "error": "Couldn't start checkout. Try again, or email support@2anki.net.",
+  "learnMore": "How sync works"
+}

@@ -1,6 +1,6 @@
 import type { PassKind } from '../../data_layer/UserPassRepository';
 
-export type PurchaseKind = 'subscription' | 'pass';
+export type PurchaseKind = 'subscription' | 'pass' | 'auto_sync';
 
 export interface HeldEntitlements {
   lifetime: boolean;
@@ -49,6 +49,11 @@ export const resolvePurchaseBlock = (
       'billed_through_apple',
       'Your plan is billed through Apple. Manage it in your Apple subscriptions.'
     );
+  }
+  // Auto Sync replaces a Pro subscription in place (AutoSyncCheckoutUseCase),
+  // and it adds a capability no pass carries, so neither one is a duplicate.
+  if (kind === 'auto_sync') {
+    return null;
   }
   if (held.activeSubscription) {
     return block(

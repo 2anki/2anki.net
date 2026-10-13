@@ -481,6 +481,8 @@ function AppContent({
                   email={data?.user?.email}
                   signupCountry={data?.user?.signup_country ?? null}
                   entitlement={data?.locals}
+                  autoSyncActive={data?.autoSyncActive === true}
+                  autoSyncCapReached={data?.autoSyncCapReached === true}
                 />
               }
             />

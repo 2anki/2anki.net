@@ -10,7 +10,7 @@ import {
 
 export type AutoSyncCheckoutResult =
   | { url: string }
-  | { status: 'cap_reached' | 'already_subscribed' };
+  | { status: 'cap_reached' | 'already_subscribed' | 'upgrade_unavailable' };
 
 const DEFAULT_MAX_SUBSCRIBERS = 50;
 
@@ -18,7 +18,10 @@ export class AutoSyncCheckoutUseCase {
   private readonly maxSubscribers: number;
 
   constructor(
-    private readonly stripe: Pick<StripeTypes, 'checkout'>,
+    private readonly stripe: Pick<
+      StripeTypes,
+      'checkout' | 'subscriptions' | 'billingPortal'
+    >,
     private readonly priceId: string,
     private readonly productId: string,
     maxSubscribers?: number,
@@ -66,6 +69,19 @@ export class AutoSyncCheckoutUseCase {
       return { status: 'already_subscribed' };
     }
 
+    // The subscriptions table keeps one row per email, so a second Stripe
+    // subscription beside Pro would overwrite the Pro row, and cancelling
+    // either would switch both off. A Pro subscriber switches their existing
+    // subscription to the Auto Sync price instead, on Stripe's confirm page,
+    // which shows the proration before anything is charged.
+    if (existingSubs.length > 0) {
+      return this.switchExistingSubscription(
+        existingSubs,
+        input.userId,
+        input.stripeCustomerId ?? null
+      );
+    }
+
     const sessionParams: StripeTypes.Checkout.SessionCreateParams = {
       mode: 'subscription',
       line_items: [{ price: this.priceId, quantity: 1 }],
@@ -100,4 +116,85 @@ export class AutoSyncCheckoutUseCase {
 
     return { url: session.url! };
   }
+
+  private async switchExistingSubscription(
+    rows: Array<{ payload: unknown }>,
+    userId: number,
+    accountCustomerId: string | null
+  ): Promise<AutoSyncCheckoutResult> {
+    const subscriptionId = rows
+      .map((row) => stripeSubscriptionId(row.payload))
+      .find((id) => id != null);
+    if (subscriptionId == null) {
+      console.info('auto_sync.checkout.upgrade_unavailable', {
+        user_id: userId,
+        reason: 'no_subscription_id',
+      });
+      return { status: 'upgrade_unavailable' };
+    }
+
+    const subscription =
+      await this.stripe.subscriptions.retrieve(subscriptionId);
+    const items = subscription.items?.data ?? [];
+    if (items.length !== 1) {
+      console.info('auto_sync.checkout.upgrade_unavailable', {
+        user_id: userId,
+        reason: 'item_count',
+        item_count: items.length,
+      });
+      return { status: 'upgrade_unavailable' };
+    }
+
+    const customer =
+      typeof subscription.customer === 'string'
+        ? subscription.customer
+        : subscription.customer.id;
+    // Rows match on linked_email as well as email, so the subscription found
+    // can belong to a different Stripe customer. A portal session shows that
+    // customer's cards and invoices, so it opens only for the account's own.
+    if (accountCustomerId == null || customer !== accountCustomerId) {
+      console.info('auto_sync.checkout.upgrade_unavailable', {
+        user_id: userId,
+        reason: 'customer_mismatch',
+      });
+      return { status: 'upgrade_unavailable' };
+    }
+
+    const appUrl = process.env.APP_URL ?? 'https://2anki.net';
+    const session = await this.stripe.billingPortal.sessions.create({
+      customer,
+      return_url: `${appUrl}/pricing`,
+      flow_data: {
+        type: 'subscription_update_confirm',
+        subscription_update_confirm: {
+          subscription: subscription.id,
+          items: [{ id: items[0].id, price: this.priceId, quantity: 1 }],
+        },
+        after_completion: {
+          type: 'redirect',
+          redirect: { return_url: `${appUrl}/ankify/setup` },
+        },
+      },
+    });
+
+    console.info('auto_sync.checkout.upgrade_session_created', {
+      user_id: userId,
+      session_id_hash: hashToken(session.id ?? ''),
+    });
+
+    return { url: session.url };
+  }
+}
+
+function stripeSubscriptionId(payload: unknown): string | null {
+  let parsed = payload;
+  if (typeof payload === 'string') {
+    try {
+      parsed = JSON.parse(payload);
+    } catch {
+      return null;
+    }
+  }
+  const id = (parsed as { id?: unknown } | null)?.id;
+  return typeof id === 'string' && id.startsWith('sub_') ? id : null;
 }

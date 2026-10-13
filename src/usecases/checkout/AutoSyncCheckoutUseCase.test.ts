@@ -23,10 +23,16 @@ const AUTO_SYNC_PRICE_ID = 'price_test_auto_sync';
 const MAX_SUBSCRIBERS = 10;
 
 const mockStripeCreateSession = vi.fn();
+const mockRetrieveSubscription = vi.fn();
+const mockCreatePortalSession = vi.fn();
 
 const makeUseCase = () =>
   new AutoSyncCheckoutUseCase(
-    { checkout: { sessions: { create: mockStripeCreateSession } } } as never,
+    {
+      checkout: { sessions: { create: mockStripeCreateSession } },
+      subscriptions: { retrieve: mockRetrieveSubscription },
+      billingPortal: { sessions: { create: mockCreatePortalSession } },
+    } as never,
     AUTO_SYNC_PRICE_ID,
     AUTO_SYNC_PRODUCT_ID,
     MAX_SUBSCRIBERS
@@ -228,5 +234,145 @@ describe('AutoSyncCheckoutUseCase', () => {
     );
 
     consoleSpy.mockRestore();
+  });
+
+  describe('when the user already pays for Pro', () => {
+    const proRow = {
+      active: true,
+      stripe_product_id: 'prod_pro',
+      payload: { id: 'sub_pro', object: 'subscription' },
+    };
+
+    beforeEach(() => {
+      mockCountActive.mockResolvedValue(0);
+      mockGetUserActiveSubscriptions.mockResolvedValue([proRow]);
+    });
+
+    test('sends them to Stripe to switch the Pro subscription to Auto Sync', async () => {
+      mockRetrieveSubscription.mockResolvedValue({
+        id: 'sub_pro',
+        customer: 'cus_pro',
+        status: 'active',
+        items: { data: [{ id: 'si_pro' }] },
+      });
+      mockCreatePortalSession.mockResolvedValue({
+        url: 'https://billing.stripe.com/session/test',
+      });
+
+      const result = await makeUseCase().execute({
+        userEmail: 'user@example.com',
+        userId: 42,
+        stripeCustomerId: 'cus_pro',
+      });
+
+      expect(result).toEqual({
+        url: 'https://billing.stripe.com/session/test',
+      });
+      expect(mockRetrieveSubscription).toHaveBeenCalledWith('sub_pro');
+      expect(mockCreatePortalSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customer: 'cus_pro',
+          return_url: expect.stringContaining('/pricing'),
+          flow_data: {
+            type: 'subscription_update_confirm',
+            subscription_update_confirm: {
+              subscription: 'sub_pro',
+              items: [{ id: 'si_pro', price: AUTO_SYNC_PRICE_ID, quantity: 1 }],
+            },
+            after_completion: {
+              type: 'redirect',
+              redirect: {
+                return_url: expect.stringContaining('/ankify/setup'),
+              },
+            },
+          },
+        })
+      );
+      expect(mockStripeCreateSession).not.toHaveBeenCalled();
+    });
+
+    test('reads the subscription id from a payload stored as a JSON string', async () => {
+      mockGetUserActiveSubscriptions.mockResolvedValue([
+        { ...proRow, payload: JSON.stringify(proRow.payload) },
+      ]);
+      mockRetrieveSubscription.mockResolvedValue({
+        id: 'sub_pro',
+        customer: { id: 'cus_pro' },
+        status: 'active',
+        items: { data: [{ id: 'si_pro' }] },
+      });
+      mockCreatePortalSession.mockResolvedValue({
+        url: 'https://billing.stripe.com/session/test',
+      });
+
+      await makeUseCase().execute({
+        userEmail: 'user@example.com',
+        userId: 42,
+        stripeCustomerId: 'cus_pro',
+      });
+
+      expect(mockRetrieveSubscription).toHaveBeenCalledWith('sub_pro');
+      expect(mockCreatePortalSession).toHaveBeenCalledWith(
+        expect.objectContaining({ customer: 'cus_pro' })
+      );
+    });
+
+    test.each([
+      ['another customer', 'cus_someone_else'],
+      ['no customer on the account', null],
+    ])(
+      'never opens a billing portal for a subscription owned by %s',
+      async (_label, accountCustomer) => {
+        mockRetrieveSubscription.mockResolvedValue({
+          id: 'sub_pro',
+          customer: 'cus_pro',
+          status: 'active',
+          items: { data: [{ id: 'si_pro' }] },
+        });
+
+        const result = await makeUseCase().execute({
+          userEmail: 'user@example.com',
+          userId: 42,
+          stripeCustomerId: accountCustomer,
+        });
+
+        expect(result).toEqual({ status: 'upgrade_unavailable' });
+        expect(mockCreatePortalSession).not.toHaveBeenCalled();
+        expect(mockStripeCreateSession).not.toHaveBeenCalled();
+      }
+    );
+
+    test('never opens a second checkout, so the two plans cannot share one row', async () => {
+      mockRetrieveSubscription.mockResolvedValue({
+        id: 'sub_pro',
+        customer: 'cus_pro',
+        status: 'active',
+        items: { data: [{ id: 'si_a' }, { id: 'si_b' }] },
+      });
+
+      const result = await makeUseCase().execute({
+        userEmail: 'user@example.com',
+        userId: 42,
+      });
+
+      expect(result).toEqual({ status: 'upgrade_unavailable' });
+      expect(mockStripeCreateSession).not.toHaveBeenCalled();
+      expect(mockCreatePortalSession).not.toHaveBeenCalled();
+    });
+
+    test('reports upgrade_unavailable when the stored row has no Stripe subscription id', async () => {
+      mockGetUserActiveSubscriptions.mockResolvedValue([
+        { ...proRow, payload: {} },
+      ]);
+
+      const result = await makeUseCase().execute({
+        userEmail: 'user@example.com',
+        userId: 42,
+      });
+
+      expect(result).toEqual({ status: 'upgrade_unavailable' });
+      expect(mockRetrieveSubscription).not.toHaveBeenCalled();
+      expect(mockStripeCreateSession).not.toHaveBeenCalled();
+    });
   });
 });
