@@ -262,6 +262,7 @@ describe('AutoSyncCheckoutUseCase', () => {
       const result = await makeUseCase().execute({
         userEmail: 'user@example.com',
         userId: 42,
+        stripeCustomerId: 'cus_pro',
       });
 
       expect(result).toEqual({
@@ -307,6 +308,7 @@ describe('AutoSyncCheckoutUseCase', () => {
       await makeUseCase().execute({
         userEmail: 'user@example.com',
         userId: 42,
+        stripeCustomerId: 'cus_pro',
       });
 
       expect(mockRetrieveSubscription).toHaveBeenCalledWith('sub_pro');
@@ -314,6 +316,31 @@ describe('AutoSyncCheckoutUseCase', () => {
         expect.objectContaining({ customer: 'cus_pro' })
       );
     });
+
+    test.each([
+      ['another customer', 'cus_someone_else'],
+      ['no customer on the account', null],
+    ])(
+      'never opens a billing portal for a subscription owned by %s',
+      async (_label, accountCustomer) => {
+        mockRetrieveSubscription.mockResolvedValue({
+          id: 'sub_pro',
+          customer: 'cus_pro',
+          status: 'active',
+          items: { data: [{ id: 'si_pro' }] },
+        });
+
+        const result = await makeUseCase().execute({
+          userEmail: 'user@example.com',
+          userId: 42,
+          stripeCustomerId: accountCustomer,
+        });
+
+        expect(result).toEqual({ status: 'upgrade_unavailable' });
+        expect(mockCreatePortalSession).not.toHaveBeenCalled();
+        expect(mockStripeCreateSession).not.toHaveBeenCalled();
+      }
+    );
 
     test('never opens a second checkout, so the two plans cannot share one row', async () => {
       mockRetrieveSubscription.mockResolvedValue({

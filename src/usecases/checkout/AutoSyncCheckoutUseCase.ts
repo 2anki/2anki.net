@@ -75,7 +75,11 @@ export class AutoSyncCheckoutUseCase {
     // subscription to the Auto Sync price instead, on Stripe's confirm page,
     // which shows the proration before anything is charged.
     if (existingSubs.length > 0) {
-      return this.switchExistingSubscription(existingSubs, input.userId);
+      return this.switchExistingSubscription(
+        existingSubs,
+        input.userId,
+        input.stripeCustomerId ?? null
+      );
     }
 
     const sessionParams: StripeTypes.Checkout.SessionCreateParams = {
@@ -115,7 +119,8 @@ export class AutoSyncCheckoutUseCase {
 
   private async switchExistingSubscription(
     rows: Array<{ payload: unknown }>,
-    userId: number
+    userId: number,
+    accountCustomerId: string | null
   ): Promise<AutoSyncCheckoutResult> {
     const subscriptionId = rows
       .map((row) => stripeSubscriptionId(row.payload))
@@ -140,11 +145,22 @@ export class AutoSyncCheckoutUseCase {
       return { status: 'upgrade_unavailable' };
     }
 
-    const appUrl = process.env.APP_URL ?? 'https://2anki.net';
     const customer =
       typeof subscription.customer === 'string'
         ? subscription.customer
         : subscription.customer.id;
+    // Rows match on linked_email as well as email, so the subscription found
+    // can belong to a different Stripe customer. A portal session shows that
+    // customer's cards and invoices, so it opens only for the account's own.
+    if (accountCustomerId == null || customer !== accountCustomerId) {
+      console.info('auto_sync.checkout.upgrade_unavailable', {
+        user_id: userId,
+        reason: 'customer_mismatch',
+      });
+      return { status: 'upgrade_unavailable' };
+    }
+
+    const appUrl = process.env.APP_URL ?? 'https://2anki.net';
     const session = await this.stripe.billingPortal.sessions.create({
       customer,
       return_url: `${appUrl}/pricing`,
