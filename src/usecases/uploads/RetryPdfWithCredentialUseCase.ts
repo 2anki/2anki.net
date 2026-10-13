@@ -2,6 +2,7 @@ import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/Prepar
 import Workspace from '../../lib/parser/WorkSpace';
 import CardOption from '../../lib/parser/Settings';
 import { isPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
+import { processUploadedPdf } from './processUploadedPdf';
 
 export interface RetryPdfResult {
   apkg: Buffer;
@@ -30,7 +31,7 @@ export class RetryPdfWithCredentialUseCase {
       const result = await PrepareDeck({
         name: filename,
         files: [{ name: filename, contents: fileBuffer }],
-        settings,
+        settings: processUploadedPdf(filename, settings),
         noLimits: paying,
         workspace,
         userId,
