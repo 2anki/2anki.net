@@ -7,6 +7,13 @@ import {
 vi.mock('node:fs');
 vi.mock('node:child_process');
 
+const mockGetFileContents = vi.fn();
+vi.mock('../../lib/storage/StorageHandler', () => ({
+  default: class {
+    getFileContents = mockGetFileContents;
+  },
+}));
+
 import * as nodeFs from 'node:fs';
 import * as nodeChildProcess from 'node:child_process';
 
@@ -28,6 +35,7 @@ function buildInput(
     ],
     imageFiles: [{ name: 'img1.jpg', path: '/tmp/img1.jpg' }],
     isPaying: true,
+    ownerId: 7,
     ...overrides,
   };
 }
@@ -166,6 +174,54 @@ describe('CreateImageOcclusionDeckUseCase', () => {
       }
 
       await expect(promise).resolves.toBe('/tmp/deck.apkg');
+    });
+  });
+
+  describe('draft images stored in S3', () => {
+    const withKey = (s3Key: string, ownerId: number | null = 7) =>
+      buildInput({
+        ownerId,
+        imageFiles: [],
+        images: [
+          {
+            imageName: 'img1.jpg',
+            header: '',
+            rects: [{ x: 0, y: 0, w: 10, h: 10, label: '' }],
+            s3Key,
+          },
+        ],
+      });
+
+    beforeEach(() => {
+      mockGetFileContents.mockReset();
+      (mockFs.mkdirSync as Mock).mockImplementation(() => undefined);
+      (mockFs.existsSync as Mock).mockReturnValue(false);
+      (mockFs.rmSync as Mock).mockImplementation(() => undefined);
+    });
+
+    it.each([
+      ["another user's draft", 'io-drafts/8/a.jpg', 7],
+      ['an upload outside the drafts folder', 'uploads/abc.apkg', 7],
+      ['a path that climbs out of the folder', 'io-drafts/7/../8/a.jpg', 7],
+      ['a signed-out caller', 'io-drafts/7/a.jpg', null],
+    ])('refuses to read %s from the bucket', async (_label, key, ownerId) => {
+      await expect(
+        new CreateImageOcclusionDeckUseCase().execute(withKey(key, ownerId))
+      ).rejects.toMatchObject({ status: 400, code: 'invalid_image_key' });
+      expect(mockGetFileContents).not.toHaveBeenCalled();
+    });
+
+    it('answers 404 when the draft image is gone from the bucket', async () => {
+      mockGetFileContents.mockRejectedValue(
+        Object.assign(new Error('UnknownError'), { name: 'NoSuchKey' })
+      );
+
+      await expect(
+        new CreateImageOcclusionDeckUseCase().execute(
+          withKey('io-drafts/7/a.jpg')
+        )
+      ).rejects.toMatchObject({ status: 404, code: 'image_missing' });
+      expect(mockGetFileContents).toHaveBeenCalledWith('io-drafts/7/a.jpg');
     });
   });
 });

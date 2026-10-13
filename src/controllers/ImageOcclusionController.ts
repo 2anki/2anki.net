@@ -109,6 +109,7 @@ class ImageOcclusionController {
         images,
         imageFiles,
         isPaying,
+        ownerId: getOwnerId(res),
       });
     } catch (err) {
       if (err instanceof HttpCodedError) {

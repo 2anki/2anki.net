@@ -81,6 +81,26 @@ describe('ImageOcclusionController.create', () => {
     );
   });
 
+  it.each([
+    ['the signed-in owner', '42', 42],
+    ['no one when signed out', undefined, null],
+  ])('scopes draft images to %s', async (_label, owner, expected) => {
+    const execute = vi.fn().mockRejectedValue(new ImageLimitError(3));
+    const controller = new ImageOcclusionController({
+      execute,
+    } as unknown as CreateImageOcclusionDeckUseCase);
+    const { res } = buildResponse();
+    if (owner != null) {
+      (res.locals as Record<string, unknown>).owner = owner;
+    }
+
+    await controller.create(buildRequest(4), res);
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({ ownerId: expected })
+    );
+  });
+
   it('rethrows errors that carry no HTTP mapping', async () => {
     const useCase = {
       execute: vi.fn().mockRejectedValue(new Error('python exploded')),
