@@ -70,6 +70,11 @@ export const PASS_WINBACK_TEMPLATE = fs.readFileSync(
   'utf8'
 );
 
+export const PASS_ENDING_TEMPLATE = fs.readFileSync(
+  path.join(EMAIL_TEMPLATES_DIRECTORY, 'pass-ending.html'),
+  'utf8'
+);
+
 export const NOTION_RECONNECT_TEMPLATE = fs.readFileSync(
   path.join(EMAIL_TEMPLATES_DIRECTORY, 'notion-reconnect.html'),
   'utf8'
@@ -117,6 +122,7 @@ export const EMAIL_CATEGORIES = {
   inactivityWarning: 'inactivity-warning',
   abandonedCheckoutRecovery: 'abandoned-checkout-recovery',
   passWinback: 'pass-winback',
+  passEnding: 'pass-ending',
   subscriptionClaim: 'subscription-claim',
   contactConfirmation: 'contact-confirmation',
   passClaim: 'pass-claim',

@@ -516,6 +516,10 @@ describe('EmailService tags every outgoing send with a template category', () =>
       run: (s) => s.sendPassWinbackEmail('user@example.com', 'tok'),
     },
     {
+      category: EMAIL_CATEGORIES.passEnding,
+      run: (s) => s.sendPassEndingEmail('user@example.com', 'tok', 'Week Pass'),
+    },
+    {
       category: EMAIL_CATEGORIES.subscriptionClaim,
       run: (s) =>
         s.sendSubscriptionClaimConfirmation(

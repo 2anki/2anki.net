@@ -50,6 +50,28 @@ describe('commercial email unsubscribe links', () => {
     expect(html).toContain("Don't want emails like this? Unsubscribe");
   });
 
+  it('pass-ending email names the pass, links the pricing page and resolves the unsubscribe URL', async () => {
+    const service = getDefaultEmailService();
+    await service.sendPassEndingEmail(
+      'bob@example.com',
+      'tok-ending',
+      'Semester Pass'
+    );
+
+    const { html, subject, text } = lastMessage();
+    expect(subject).toBe('Your Semester Pass ends tomorrow');
+    expect(text).toContain('Your Semester Pass ends in about a day.');
+    expect(html).toContain(
+      'href="https://2anki.net/r/email?t=tok-ending&c=pass_ending&to=/pricing"'
+    );
+    expect(html).toContain(
+      'href="https://2anki.net/unsubscribe?uid=tok-ending"'
+    );
+    expect(html).not.toContain('{{passLabel}}');
+    expect(html).not.toContain('{{unsubscribeUrl}}');
+    expect(html).toContain("Don't want emails like this? Unsubscribe");
+  });
+
   it('abandoned-checkout-recovery email contains a resolved unsubscribe URL', async () => {
     const service = getDefaultEmailService();
     await service.sendAbandonedCheckoutRecoveryEmail(

@@ -91,6 +91,7 @@ import { updateStripeSubscriptions } from './lib/storage/jobs/helpers/updateStri
 import { ScheduleCleanup } from './lib/storage/jobs/ScheduleCleanup';
 import { scheduleReEngagementEmails } from './lib/reengagement/jobs/scheduleReEngagementEmails';
 import { scheduleInactivityWarnings } from './lib/inactivity/jobs/scheduleInactivityWarnings';
+import { schedulePassEndingEmails } from './lib/passes/jobs/schedulePassEndingEmails';
 import { schedulePauseResumeWarnings } from './lib/subscriptions/jobs/schedulePauseResumeWarnings';
 import PauseResumeWarningRepository from './data_layer/PauseResumeWarningRepository';
 import { SendPauseResumeWarningsUseCase } from './usecases/ops/SendPauseResumeWarningsUseCase';
@@ -109,6 +110,9 @@ import { McpOAuthClientRepository } from './data_layer/McpOAuthClientRepository'
 import { ObservabilityRepository } from './data_layer/ObservabilityRepository';
 import { getDefaultEmailService } from './services/EmailService/EmailService';
 import { SendInactivityWarningsUseCase } from './usecases/ops/SendInactivityWarningsUseCase';
+import { SendPassEndingEmailsUseCase } from './usecases/ops/SendPassEndingEmailsUseCase';
+import PassEndingRepository from './data_layer/PassEndingRepository';
+import { emailHash } from './lib/emailHash';
 import { DeleteInactiveUsersUseCase } from './usecases/ops/DeleteInactiveUsersUseCase';
 import UsersRepository from './data_layer/UsersRepository';
 import { ChatAttachmentsRepository } from './data_layer/ChatAttachmentsRepository';
@@ -369,6 +373,22 @@ const serve = async () => {
     .then(registerSchedulerTimer)
     .catch((error) => {
       console.error('[pause-resume-warnings] failed to schedule:', error);
+    });
+
+  const sendPassEndingEmailsUseCase = new SendPassEndingEmailsUseCase(
+    new PassEndingRepository(database),
+    emailService,
+    (email) =>
+      new SuppressionEventsRepository(database).isSuppressed(emailHash(email))
+  );
+  schedulePassEndingEmails(sendPassEndingEmailsUseCase, {
+    eventsSink,
+    lastRunAt: () => eventsRepo.lastEventAt('email_batch_sent', 'pass_ending'),
+    lock: jobLock,
+  })
+    .then(registerSchedulerTimer)
+    .catch((error) => {
+      console.error('[pass-ending] failed to schedule:', error);
     });
 
   const deleteInactiveUsersUseCase = new DeleteInactiveUsersUseCase(

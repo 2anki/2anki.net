@@ -9,6 +9,7 @@ export const JOB_LOCK_KEYS = {
   inactivityWarnings: 21002,
   pauseResumeWarnings: 21003,
   inactiveUserDeletions: 21004,
+  passEndingEmails: 21005,
 } as const;
 
 export interface IJobLockRepository {

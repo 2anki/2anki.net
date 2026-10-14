@@ -43,6 +43,7 @@ function makeEmailService(): Mocked<IEmailService> {
     sendInactivityWarningEmail: vi.fn(),
     sendAbandonedCheckoutRecoveryEmail: vi.fn().mockResolvedValue(undefined),
     sendPassWinbackEmail: vi.fn().mockResolvedValue(undefined),
+    sendPassEndingEmail: vi.fn().mockResolvedValue(undefined),
     sendParserCanaryAlert: vi.fn().mockResolvedValue(undefined),
     sendAiSpendAlertEmail: vi.fn().mockResolvedValue(undefined),
     sendNotionReconnectEmail: vi.fn().mockResolvedValue(undefined),
