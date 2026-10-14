@@ -56,7 +56,7 @@ const EmailRedirectRouter = () => {
    *         name: c
    *         schema:
    *           type: string
-   *           enum: [inactivity, reengagement]
+   *           enum: [inactivity, reengagement, price_lock_in, pass_winback, pass_ending]
    *         description: Campaign — disambiguates which table to resolve the token against
    *       - in: query
    *         name: to
@@ -108,7 +108,7 @@ const EmailRedirectRouter = () => {
           userId = result.userId;
           emailId = result.id;
         }
-      } else if (campaign === 'pass_winback') {
+      } else if (campaign === 'pass_winback' || campaign === 'pass_ending') {
         const result = await new PassWinbackRepository(database)
           .findByToken(token)
           .catch(() => null);

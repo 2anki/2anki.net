@@ -4,6 +4,7 @@ import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
 import type { IInactivityEmailRepository } from '../data_layer/InactivityEmailRepository';
+import type { IPassWinbackRepository } from '../data_layer/PassWinbackRepository';
 import type { IReEngagementRepository } from '../data_layer/ReEngagementRepository';
 import type { EventsSink } from '../services/events/EventsSink';
 import { resolveEmailDestination } from './EmailRedirectRouter';
@@ -20,6 +21,11 @@ const mockReEngagementRepo: Mocked<
   findByToken: vi.fn().mockResolvedValue(null),
 };
 
+const mockPassWinbackRepo: Mocked<Pick<IPassWinbackRepository, 'findByToken'>> =
+  {
+    findByToken: vi.fn().mockResolvedValue(null),
+  };
+
 const mockSink: Mocked<Pick<EventsSink, 'record'>> = {
   record: vi.fn(),
 };
@@ -35,6 +41,12 @@ vi.mock('../data_layer/ReEngagementRepository', () => ({
   __esModule: true,
   default: vi.fn().mockImplementation(function () {
     return mockReEngagementRepo;
+  }),
+}));
+vi.mock('../data_layer/PassWinbackRepository', () => ({
+  __esModule: true,
+  default: vi.fn().mockImplementation(function () {
+    return mockPassWinbackRepo;
   }),
 }));
 vi.mock('../services/events/eventsSinkInstance', () => ({
@@ -127,6 +139,33 @@ describe('EmailRedirectRouter', () => {
           props: expect.objectContaining({
             campaign: 'inactivity',
             email_id: null,
+          }),
+        })
+      );
+    });
+
+    it('resolves a pass_ending token against the pass notifications table', async () => {
+      mockPassWinbackRepo.findByToken.mockResolvedValueOnce({
+        id: 9,
+        userId: 77,
+      });
+      const res = await fetch(
+        `${url}/r/email?t=ending-token&c=pass_ending&to=/pricing`,
+        { redirect: 'manual' }
+      );
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe('https://2anki.net/pricing');
+      expect(mockPassWinbackRepo.findByToken).toHaveBeenCalledWith(
+        'ending-token'
+      );
+      expect(mockSink.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'email_clicked',
+          user_id: 77,
+          props: expect.objectContaining({
+            campaign: 'pass_ending',
+            email_id: 9,
+            destination: '/pricing',
           }),
         })
       );

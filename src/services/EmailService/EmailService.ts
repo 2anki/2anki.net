@@ -13,6 +13,7 @@ import {
   MAGIC_LINK_TEMPLATE,
   NOTION_RECONNECT_TEMPLATE,
   PASS_WINBACK_TEMPLATE,
+  PASS_ENDING_TEMPLATE,
   PASSWORD_RESET_TEMPLATE,
   PRICE_LOCK_IN_TEMPLATE,
   RE_ENGAGEMENT_TEMPLATE,
@@ -95,6 +96,11 @@ export interface IEmailService {
   ): Promise<void>;
   sendAbandonedCheckoutRecoveryEmail(to: string, token: string): Promise<void>;
   sendPassWinbackEmail(to: string, token: string): Promise<void>;
+  sendPassEndingEmail(
+    to: string,
+    token: string,
+    passLabel: string
+  ): Promise<void>;
   sendParserCanaryAlert(to: string, summary: string): Promise<void>;
   sendAiSpendAlertEmail(
     to: string,
@@ -604,6 +610,39 @@ export class EmailService implements IEmailService {
       await sgMail.send(msg);
     } catch (error) {
       console.error(`Failed to send pass win-back to ${to}:`, error);
+      throw error;
+    }
+  }
+
+  async sendPassEndingEmail(
+    to: string,
+    token: string,
+    passLabel: string
+  ): Promise<void> {
+    const domain = process.env.DOMAIN ?? 'https://2anki.net';
+    const ctaUrl = `${domain}/r/email?t=${encodeURIComponent(token)}&c=pass_ending&to=/pricing`;
+    const unsubscribeUrl = `${domain}/unsubscribe?uid=${token}`;
+    const markup = PASS_ENDING_TEMPLATE.replaceAll(
+      '{{passLabel}}',
+      escapeHtml(passLabel)
+    )
+      .replace('{{ctaUrl}}', ctaUrl)
+      .replace('{{unsubscribeUrl}}', unsubscribeUrl);
+    const $ = cheerio.load(markup);
+    const text = $('body').text().replace(/\s+/g, ' ').trim();
+    const msg = {
+      to,
+      from: this.defaultSender,
+      subject: `Your ${passLabel} ends tomorrow`,
+      text,
+      html: markup,
+      replyTo: 'support@2anki.net',
+      categories: [EMAIL_CATEGORIES.passEnding],
+    };
+    try {
+      await sgMail.send(msg);
+    } catch (error) {
+      console.error(`Failed to send pass ending email to ${to}:`, error);
       throw error;
     }
   }
@@ -1188,6 +1227,14 @@ export class UnimplementedEmailService implements IEmailService {
 
   async sendPassWinbackEmail(to: string, token: string): Promise<void> {
     console.info('sendPassWinbackEmail not handled', to, token);
+  }
+
+  async sendPassEndingEmail(
+    to: string,
+    token: string,
+    passLabel: string
+  ): Promise<void> {
+    console.info('sendPassEndingEmail not handled', to, token, passLabel);
   }
 
   async sendParserCanaryAlert(to: string, summary: string): Promise<void> {
