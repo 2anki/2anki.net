@@ -40,6 +40,14 @@ function encodeMediaUrl(baseUrl: string, name: string): string {
   return `${baseUrl}${encodeURIComponent(name)}`;
 }
 
+function decodeMediaRef(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 function mediaUrlIfKnown(
   name: string,
   mediaMap: Map<string, string>,
@@ -77,7 +85,7 @@ export function rewriteMediaRefs(
     SRC_ATTR_REGEX,
     (_match, attr: string, value: string) => {
       if (!isLocalRef(value)) return `${attr}="${value}"`;
-      const decoded = decodeURIComponent(value);
+      const decoded = decodeMediaRef(value);
       const url = mediaUrlIfKnown(decoded, mediaMap, baseUrl);
       if (!url) return `${attr}="" data-missing-media="${escapeHtml(decoded)}"`;
       return `${attr}="${url}"`;
