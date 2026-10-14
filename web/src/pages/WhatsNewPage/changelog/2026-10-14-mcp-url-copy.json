@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-14-mcp-url-copy",
+  "date": "2026-10-14",
+  "type": "fix",
+  "title": "The Claude, ChatGPT and Gemini guides no longer put a period right after the connector address, so the address you copy connects"
+}

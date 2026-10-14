@@ -818,11 +818,11 @@ const claudeToAnki: AnswerConfig = {
   sections: [
     {
       heading: 'What the MCP connector is',
-      body: '2anki runs a hosted MCP connector at https://2anki.net/mcp. Add it once in Claude — Settings → Connectors — or in ChatGPT with developer mode turned on. From then on you ask the assistant for flashcards the same way you ask it anything else, and it builds the deck through 2anki and returns a download link. Nothing runs on your machine; the connector talks to 2anki directly.',
+      body: '2anki runs a hosted MCP connector at https://2anki.net/mcp and you add it once: in Claude under Settings → Connectors, or in ChatGPT with developer mode turned on. From then on you ask the assistant for flashcards the same way you ask it anything else, and it builds the deck through 2anki and returns a download link. Nothing runs on your machine; the connector talks to 2anki directly.',
     },
     {
       heading: 'Add the connector and ask for cards',
-      body: 'In Claude, open Settings → Connectors, add a custom connector, and paste https://2anki.net/mcp. In ChatGPT, turn on developer mode and add the same URL. Sign in when prompted so the deck lands in your account. Then type a normal request — "make 20 cards on the Krebs cycle" or "turn these notes into cloze cards" — and download the .apkg the assistant links back. The full walkthrough, with screenshots, is in the docs guide.',
+      body: 'In Claude, open Settings → Connectors, add a custom connector, and paste https://2anki.net/mcp as the URL. In ChatGPT, turn on developer mode and add the same URL. Sign in when prompted so the deck lands in your account. Then type a normal request — "make 20 cards on the Krebs cycle" or "turn these notes into cloze cards" — and download the .apkg the assistant links back. The full walkthrough, with screenshots, is in the docs guide.',
     },
     {
       heading: 'What you can ask for',
@@ -883,11 +883,11 @@ const chatgptToAnki: AnswerConfig = {
     'Turn on ChatGPT developer mode, add the 2anki connector, ask for flashcards, and get a download link for a ready .apkg deck you open in Anki.',
   h1: 'Turn ChatGPT conversations into Anki flashcards',
   intro:
-    '2anki runs a hosted MCP connector. Turn on developer mode in ChatGPT, add https://2anki.net/mcp, then ask for flashcards on any topic or paste in your notes — ChatGPT hands back a download link for a ready .apkg deck you open in Anki.',
+    '2anki runs a hosted MCP connector. Turn on developer mode in ChatGPT, add https://2anki.net/mcp as a connector, then ask for flashcards on any topic or paste in your notes — ChatGPT hands back a download link for a ready .apkg deck you open in Anki.',
   sections: [
     {
       heading: 'What the MCP connector is',
-      body: '2anki runs a hosted MCP connector at https://2anki.net/mcp. ChatGPT reaches it once you turn on developer mode and add it as a connector, which takes a paid ChatGPT plan. From then on you ask ChatGPT for flashcards the same way you ask it anything else, and it builds the deck through 2anki and returns a download link. Nothing runs on your machine; the connector talks to 2anki directly. The same connector works in Claude and in Gemini clients that support MCP servers — see those guides.',
+      body: '2anki runs a hosted MCP connector at https://2anki.net/mcp that ChatGPT reaches once you turn on developer mode and add it as a connector, which takes a paid ChatGPT plan. From then on you ask ChatGPT for flashcards the same way you ask it anything else, and it builds the deck through 2anki and returns a download link. Nothing runs on your machine; the connector talks to 2anki directly. The same connector works in Claude and in Gemini clients that support MCP servers — see those guides.',
     },
     {
       heading: 'Add the connector and ask for cards',
@@ -909,7 +909,7 @@ const chatgptToAnki: AnswerConfig = {
   faqs: [
     {
       q: 'Does the 2anki connector work in ChatGPT?',
-      a: 'Yes, on a paid ChatGPT plan — developer mode is a paid feature. Turn it on under Settings → Apps & Connectors → Advanced settings, choose Create, enter https://2anki.net/mcp, and pick OAuth. Then add 2anki from the tools menu and ask for flashcards. It also works in Claude.',
+      a: 'Yes, on a paid ChatGPT plan — developer mode is a paid feature. Turn it on under Settings → Apps & Connectors → Advanced settings, choose Create, enter https://2anki.net/mcp as the URL and pick OAuth. Then add 2anki from the tools menu and ask for flashcards. It also works in Claude.',
     },
     {
       q: 'Can it read a photo of my notes?',
@@ -952,7 +952,7 @@ const geminiToAnki: AnswerConfig = {
   sections: [
     {
       heading: 'What the MCP connector is',
-      body: '2anki runs a hosted MCP connector at https://2anki.net/mcp. Any AI assistant that can connect to an MCP server can reach it, sign in once, and build decks through your 2anki account. Claude and ChatGPT have step-by-step guides today — see those. Whether Gemini can add the connector depends on the client you use, which the next section covers; the URL is the same for every assistant that can add it.',
+      body: '2anki runs a hosted MCP connector at https://2anki.net/mcp that any AI assistant with MCP support can reach: sign in once and it builds decks through your 2anki account. Claude and ChatGPT have step-by-step guides today — see those. Whether Gemini can add the connector depends on the client you use, which the next section covers; the URL is the same for every assistant that can add it.',
     },
     {
       heading: 'If your Gemini client supports MCP servers',
