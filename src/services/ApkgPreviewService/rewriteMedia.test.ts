@@ -9,6 +9,24 @@ describe('rewriteMediaRefs', () => {
     expect(out).toBe('<img src="/api/apkg/deck.apkg/media/diagram.png">');
   });
 
+  it('decodes a percent-encoded src to find the media file', () => {
+    const map = new Map([['my diagram.png', '0']]);
+    const out = rewriteMediaRefs('<img src="my%20diagram.png">', map, BASE);
+    expect(out).toBe('<img src="/api/apkg/deck.apkg/media/my%20diagram.png">');
+  });
+
+  it('uses the raw src when it is not valid percent-encoding', () => {
+    const map = new Map([['100% done.png', '0']]);
+    const out = rewriteMediaRefs('<img src="100% done.png">', map, BASE);
+    expect(out).toBe('<img src="/api/apkg/deck.apkg/media/100%25%20done.png">');
+  });
+
+  it('marks a malformed src as missing when no file matches', () => {
+    const map = new Map();
+    const out = rewriteMediaRefs('<img src="50%off.png">', map, BASE);
+    expect(out).toBe('<img src="" data-missing-media="50%off.png">');
+  });
+
   it('leaves absolute urls alone', () => {
     const map = new Map();
     const out = rewriteMediaRefs(

@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-14-apkg-percent-filenames",
+  "date": "2026-10-14",
+  "type": "fix",
+  "title": "Decks with a % in an image filename now preview and print to PDF instead of failing"
+}
