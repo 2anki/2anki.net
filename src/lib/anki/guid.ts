@@ -4,8 +4,8 @@ const BASE91_TABLE =
   'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-./:;<=>?@[]^_`{|}~';
 
 /**
- * Byte-for-byte port of genanki's guid_for (create_deck venv,
- * genanki/util.py). The 8-byte accumulator exceeds Number.MAX_SAFE_INTEGER,
+ * Byte-for-byte port of guid_for in create_deck/helpers/guid.py (itself
+ * carried over from genanki). The 8-byte accumulator exceeds Number.MAX_SAFE_INTEGER,
  * so the arithmetic must stay in BigInt.
  */
 export function guidFor(...values: Array<string | number>): string {

@@ -5,8 +5,8 @@ You can report issues in the [server](https://github.com/2anki/server/issues) re
 
 ## Dependencies
 
-This project requires Python 3.x and the following main dependencies:
-- `genanki` - Core library for creating Anki packages
+This project requires Python 3.10+ and the following main dependencies:
+- `anki` - Anki's own library; every `.apkg` is built in a throwaway collection and exported the way Anki desktop exports
 - `pydantic` - Data validation and settings management
 - `ftfy` - Text encoding fixes for proper Unicode handling
 - `pylint` - Code linting (development)

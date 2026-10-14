@@ -1,6 +1,6 @@
 [MASTER]
 # Python version to analyze
-py-version=3.9
+py-version=3.10
 
 # Number of processes to use
 jobs=1

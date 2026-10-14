@@ -1,12 +1,8 @@
-# make sure to update the alemayhu/base-image-n2a
-# and pull it in the live server: ssh root@2anki.net docker pull alemayhu/base-image-n2a
-genanki==0.13.1
+# Anki's own engine writes every .apkg (helpers/write_apkg.py) and its importer
+# drives tests/test_anki_import.py. Needs Python >= 3.10; prod runs 3.10.
+anki==26.8.1
 pydantic>=2.13.3,<3.0.0
 pylint>=4.0.5
 ftfy~=6.3.1
 pytest
 mock
-# Test-only: Anki's own importer drives tests/test_anki_import.py to prove generated
-# decks import and re-import cleanly. The marker keeps this ~10MB rslib wheel off the
-# prod base image (Python 3.10) and off CI's Python 3.14 row, where the test importorskips.
-anki==26.8.1; python_version >= "3.11" and python_version < "3.14"

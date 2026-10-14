@@ -1,95 +1,150 @@
 """
-This module provides functionality to write a new Anki package file (.apkg) using provided deck payloads and media files.
+Writes an Anki package (.apkg) with Anki's own engine.
+
+The deck payloads are built into a throwaway collection through the official
+collection API, then exported with the same code path Anki desktop uses for
+File > Export. Anki owns the schema, the card generation, the media gathering
+and the package layout, so the package is whatever current Anki writes.
+
+What this module pins on top of Anki's defaults, and why:
+- Notetypes and decks keep the ids 2anki assigns, so a returning user's import
+  updates in place instead of forking. Anki honours a caller-supplied id only
+  through the "add or update with existing id" path, which is what
+  `models.update(preserve_usn=True)` and `decks.update(preserve_usn=True)` call.
+- The notetype `mod` is the shared constant from N2AModel; `preserve_usn=True`
+  is also what keeps it instead of stamping the build time.
+- Notes are numbered from 1 in document order. Anki shows a new card's `due`
+  as "New #N", and it is the only carrier of document order the user can see
+  or sort by. One counter across every deck in the file, so parent -> child
+  page order survives too.
+- A note whose `mod` is pinned gets it written after the add, because the add
+  itself always stamps the current time.
+- Media is copied into the collection's media folder under its own basename.
+  Anki then packages every file a note or template actually references.
 """
 
 import os
-import sys
 import re
+import shutil
+import sys
 import tempfile
 import uuid
 
-from genanki import Deck, Package
+from anki.collection import AddNoteRequest, Collection, ExportAnkiPackageOptions
+from anki.notes import Note
 
+FIRST_CARD_POSITION = 1
+NEXT_CARD_POSITION_KEY = "nextPos"
 
-class FastPackage(Package):
-    """
-    Subclass of genanki.Package that sets `journal_mode=MEMORY` and
-    `synchronous=OFF` on the SQLite collection before any DDL/DML runs.
+EXPORT_OPTIONS = ExportAnkiPackageOptions(
+    with_scheduling=True,
+    with_deck_configs=False,
+    with_media=True,
+    legacy=True,
+)
 
-    Justified because the .apkg SQLite collection is a build artifact written
-    once, finalized, and immediately consumed by the ZIP step. There is no
-    crash-recovery window where durability matters; the resulting file bytes
-    are unchanged.
-    """
-
-    def write_to_db(self, cursor, timestamp, id_gen):
-        cursor.execute('PRAGMA journal_mode=MEMORY')
-        cursor.execute('PRAGMA synchronous=OFF')
-        super().write_to_db(cursor, timestamp, id_gen)
 
 def sanitize_filename(filename):
     """
     Sanitize the filename by removing any character that is not alphanumeric, a space, or a hyphen.
     Replace spaces with hyphens. Ensures the result is safe for use as a filename.
     """
-    # Remove path separators and other dangerous characters
     sanitized = re.sub(
         r'[^\w\s\-\U0001F600-\U0001F64F]', '', filename, flags=re.UNICODE
     )
     sanitized = sanitized.replace(' ', '-')
-    # Use basename to ensure no directory traversal is possible
     return os.path.basename(sanitized)
 
-def create_decks(deck_payloads):
-    """
-    Create decks from the provided deck payloads.
 
-    Args:
-        deck_payloads (list): List of dictionaries containing deck information.
+def _register_notetype(collection, registered, model):
+    notetype = registered.get(model.model_id)
+    if notetype is None:
+        notetype = model.to_notetype_dict(collection)
+        collection.models.update(notetype, preserve_usn=True, skip_checks=True)
+        registered[model.model_id] = notetype
+    return notetype
 
-    Returns:
-        tuple: A tuple containing the list of created decks and the ID of the first deck.
-    """
-    first_deck_id = ""
-    decks = []
 
+def _add_deck(collection, deck_payload):
+    deck = collection.decks.new_deck_legacy(False)
+    deck["id"] = int(deck_payload["id"])
+    deck["name"] = deck_payload["name"]
+    deck["desc"] = deck_payload.get("desc", "")
+    collection.decks.update(deck, preserve_usn=True)
+    return deck["id"]
+
+
+def _add_notes(collection, deck_id, n2a_notes, registered):
+    requests = []
+    for n2a_note in n2a_notes:
+        notetype = _register_notetype(collection, registered, n2a_note.model)
+        note = Note(collection, model=notetype)
+        note.fields = list(n2a_note.fields)
+        note.tags = list(n2a_note.tags)
+        if n2a_note.guid:
+            note.guid = n2a_note.guid
+        requests.append(AddNoteRequest(note=note, deck_id=deck_id))
+    if requests:
+        collection.add_notes(requests)
+    return [
+        (int(n2a_note.mod), request.note.id)
+        for n2a_note, request in zip(n2a_notes, requests)
+        if n2a_note.mod is not None
+    ]
+
+
+def _copy_media(collection, media_files):
+    media_dir = collection.media.dir()
+    for path in media_files:
+        shutil.copyfile(path, os.path.join(media_dir, os.path.basename(path)))
+
+
+def fill_collection(collection, deck_payloads, media_files):
+    """Add every deck, notetype, note and media file to the collection."""
+    collection.models.remove_all_notetypes()
+    collection.set_config(NEXT_CARD_POSITION_KEY, FIRST_CARD_POSITION)
+
+    registered = {}
+    pinned_mods = []
     for deck_payload in deck_payloads:
-        deck = Deck(
-            deck_id=deck_payload["id"],
-            name=deck_payload["name"],
-            description=deck_payload["desc"]
+        deck_id = _add_deck(collection, deck_payload)
+        pinned_mods.extend(
+            _add_notes(collection, deck_id, deck_payload["notes"], registered)
         )
 
-        if not first_deck_id:
-            first_deck_id = str(deck_payload["id"])
+    if pinned_mods:
+        collection.db.executemany(
+            "update notes set mod = ? where id = ?", pinned_mods
+        )
+    _copy_media(collection, media_files)
 
-        for note in deck_payload["notes"]:
-            deck.add_note(note)
 
-        decks.append(deck)
-
-    return decks, first_deck_id
-
-def write_package_to_temp_file(package):
+def write_package_to_temp_file(deck_payloads, media_files):
     """
-    Write the package to a temporary file.
-
-    Args:
-        package (Package): The package to be written to a file.
-
-    Returns:
-        str: The path to the temporary file.
+    Build the decks into a throwaway collection and export it as an .apkg in
+    the temp directory. Returns the path to the package.
     """
-    temp_filename = f"temp_apkg_{uuid.uuid4().hex}.apkg"
-    temp_path = os.path.join(tempfile.gettempdir(), temp_filename)
-
+    temp_path = os.path.join(
+        tempfile.gettempdir(), f"temp_apkg_{uuid.uuid4().hex}.apkg"
+    )
+    collection_dir = tempfile.mkdtemp(prefix="2anki-collection-")
     try:
-        package.write_to_file(temp_path)
+        collection = Collection(os.path.join(collection_dir, "collection.anki2"))
+        try:
+            fill_collection(collection, deck_payloads, media_files)
+            collection.export_anki_package(
+                out_path=temp_path, options=EXPORT_OPTIONS, limit=None
+            )
+        finally:
+            collection.close()
     except Exception as e:
         print(f"Error writing to temporary file: {e}", file=sys.stderr)
         raise
+    finally:
+        shutil.rmtree(collection_dir, ignore_errors=True)
 
     return temp_path
+
 
 def _validate_path_safety(name_str, id_str):
     """Validate inputs for path traversal attempts."""
@@ -97,6 +152,7 @@ def _validate_path_safety(name_str, id_str):
     for pattern in dangerous_patterns:
         if pattern in name_str or pattern in id_str:
             raise ValueError("Path traversal attempt detected in filename")
+
 
 def _create_safe_filename(sanitized_name, first_deck_id):
     """Create a safe filename from sanitized inputs."""
@@ -109,6 +165,7 @@ def _create_safe_filename(sanitized_name, first_deck_id):
 
     return os.path.basename(f"{base_filename}.apkg")
 
+
 def _verify_path_within_cwd(final_path, cwd):
     """Verify the final path is within the current working directory."""
     real_final_path = os.path.realpath(final_path)
@@ -116,6 +173,7 @@ def _verify_path_within_cwd(final_path, cwd):
 
     if not real_final_path.startswith(real_cwd + os.sep) and not real_final_path == real_cwd:
         raise ValueError("Path traversal attempt detected in final path")
+
 
 def rename_temp_file(temp_path, sanitized_name, first_deck_id):
     """
@@ -153,6 +211,7 @@ def rename_temp_file(temp_path, sanitized_name, first_deck_id):
 
     return final_path
 
+
 def _write_new_apkg(deck_payloads, media_files):
     """
     Write a new Anki package file (.apkg) using provided deck payloads and media files.
@@ -161,21 +220,17 @@ def _write_new_apkg(deck_payloads, media_files):
         deck_payloads (list): List of dictionaries containing deck information.
         media_files (list): List of media files to be included in the package.
     """
-    decks, first_deck_id = create_decks(deck_payloads)
-    package = FastPackage(decks)
     missing = {f for f in media_files if not os.path.exists(f)}
     if missing:
         print(f"Skipping {len(missing)} missing media file(s): {missing}", file=sys.stderr)
     existing_media = list(dict.fromkeys(f for f in media_files if os.path.exists(f)))
-    package.media_files = existing_media
 
     sanitized_name = sanitize_filename(deck_payloads[0]["name"]) if deck_payloads else "default"
-    temp_path = write_package_to_temp_file(package)
+    first_deck_id = str(deck_payloads[0]["id"]) if deck_payloads else ""
+    temp_path = write_package_to_temp_file(deck_payloads, existing_media)
     final_path = rename_temp_file(temp_path, sanitized_name, first_deck_id)
 
-    # Handle Unicode characters properly for Windows console
     try:
         sys.stdout.write(final_path)
     except UnicodeEncodeError:
-        # If Unicode encoding fails, encode to bytes and write to stdout buffer
         sys.stdout.buffer.write(final_path.encode('utf-8'))

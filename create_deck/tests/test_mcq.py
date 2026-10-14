@@ -97,7 +97,7 @@ class TestMCQDeckBuild:
                 with zipfile.ZipFile(result) as archive:
                     archive.extractall(extract_dir)
                 conn = sqlite3.connect(
-                    os.path.join(extract_dir, "collection.anki2")
+                    os.path.join(extract_dir, "collection.anki21")
                 )
                 try:
                     flds = conn.execute("select flds from notes").fetchone()[0]

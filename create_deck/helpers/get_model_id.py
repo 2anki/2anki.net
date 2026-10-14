@@ -1,5 +1,5 @@
 """
-Helper for retrieving the model id for genanki.
+Helper for retrieving the notetype id a deck ships with.
 """
 
 import hashlib
