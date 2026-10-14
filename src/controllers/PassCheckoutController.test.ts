@@ -157,6 +157,7 @@ describe('PassCheckoutController ad-click attribution', () => {
     const { controller } = makeController(execute);
     const req = {
       cookies: {
+        cookie_consent: 'granted',
         ad_click: encodeURIComponent(
           JSON.stringify({ gclid: 'Cj0abc', utm_source: 'google' })
         ),

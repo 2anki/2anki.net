@@ -17,8 +17,23 @@ const AD_CLICK_PARAMS = [...CLICK_ID_PARAMS, ...UTM_PARAMS] as const;
 // leaves the browser that the server would drop anyway.
 const CLICK_ID_PATTERN = /^[A-Za-z0-9_-]{1,200}$/;
 const UTM_PATTERN = /^[\w .:/+-]{1,100}$/;
-const PUBLIC_LANDING_PATTERN =
-  /^\/(?!\/)(?!s\/)(?!preview\/)[a-zA-Z0-9\-_/]{0,199}$/;
+const LANDING_SHAPE = /^\/(?!\/)[a-zA-Z0-9\-_/]{0,199}$/;
+const TWO_SEGMENT_PREFIXES = new Set(['convert', 'answers']);
+
+// Same reduction as src/lib/attribution/adClick.ts: first segment, plus the
+// second under /convert/ and /answers/. Ids and tokens live deeper and never
+// enter the cookie.
+export function publicLandingPath(pathname: string): string | null {
+  if (!LANDING_SHAPE.test(pathname)) {
+    return null;
+  }
+  const segments = pathname.split('/').filter((part) => part.length > 0);
+  if (segments.length === 0) {
+    return '/';
+  }
+  const depth = TWO_SEGMENT_PREFIXES.has(segments[0].toLowerCase()) ? 2 : 1;
+  return `/${segments.slice(0, depth).join('/')}/`;
+}
 
 export type AdClickParam = (typeof AD_CLICK_PARAMS)[number];
 
@@ -94,9 +109,8 @@ export function buildAdClickCookie(
   if (!hasClickId(params) && storedClickHasId(cookieHeader)) {
     return null;
   }
-  const landing = PUBLIC_LANDING_PATTERN.test(pathname)
-    ? { landing: pathname }
-    : {};
+  const publicPath = publicLandingPath(pathname);
+  const landing = publicPath == null ? {} : { landing: publicPath };
   const payload = JSON.stringify({ ...params, ...landing });
   const value = encodeURIComponent(payload);
   const secureFlag = secure ? '; Secure' : '';
@@ -110,8 +124,9 @@ interface AdClickDocument {
 
 /**
  * Writes the attribution cookie only once marketing cookies are consented to
- * (`cookie_consent=granted`, set by the consent banner). Without that cookie
- * this is a no-op, so no click data is stored before the visitor agreed.
+ * (`cookie_consent=granted`; the consent banner that sets it is a follow-up
+ * change). Without that cookie this is a no-op, so no click data is stored
+ * before the visitor agreed.
  */
 export function captureAdClick(
   doc: AdClickDocument | null = typeof document === 'undefined'

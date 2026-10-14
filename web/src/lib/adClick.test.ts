@@ -71,9 +71,21 @@ describe('buildAdClickCookie', () => {
     expect(cookie).toContain('; Secure');
   });
 
-  it('omits the landing path for share and preview routes', () => {
-    const cookie = buildAdClickCookie('', '?gclid=1', '/s/share-token', true);
-    expect(decodeCookieValue(cookie as string)).toEqual({ gclid: '1' });
+  it('stores only the public segments of the landing path', () => {
+    for (const [path, stored] of [
+      ['/s/share-token', '/s/'],
+      ['/S/share-token', '/S/'],
+      ['/preview/apkg/k', '/preview/'],
+      ['/mindmaps/4821', '/mindmaps/'],
+      ['/convert/word-to-anki/', '/convert/word-to-anki/'],
+      ['/notion-to-anki', '/notion-to-anki/'],
+    ]) {
+      const cookie = buildAdClickCookie('', '?gclid=1', path, true);
+      expect(decodeCookieValue(cookie as string)).toEqual({
+        gclid: '1',
+        landing: stored,
+      });
+    }
   });
 
   it('returns null when the URL carries no attribution', () => {

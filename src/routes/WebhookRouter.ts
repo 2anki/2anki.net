@@ -392,8 +392,10 @@ const WebhooksRouter = () => {
             },
           });
 
-          // One GA4 purchase per paid session, sent after the grant so a
-          // failed grant (which makes Stripe retry) cannot double-count.
+          // One GA4 purchase per paid session, sent after the grant attempt
+          // so a slow GA4 call never delays the grant itself. The send is
+          // bounded (GA4Service timeout) so it cannot push this response past
+          // Stripe's delivery timeout and provoke a redelivery.
           const reportPurchaseToGa4 = async () => {
             if (session.payment_status !== 'paid') {
               return;

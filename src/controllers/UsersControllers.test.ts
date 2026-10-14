@@ -3484,6 +3484,7 @@ describe('UsersController.register ad-click attribution', () => {
       body: { email: 'jane.doe@example.com', password: SAMPLE_PW },
       query: {},
       cookies: {
+        cookie_consent: 'granted',
         ad_click: encodeURIComponent(
           JSON.stringify({ gclid: 'Cj0abc', utm_source: 'google', fbclid: 'x' })
         ),

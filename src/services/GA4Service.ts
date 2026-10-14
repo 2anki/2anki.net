@@ -1,4 +1,8 @@
 const GA4_ENDPOINT = 'https://www.google-analytics.com/mp/collect';
+// The webhook awaits this call before answering Stripe; a stalled GA4 must
+// not push the response past Stripe's delivery timeout (which would trigger a
+// redelivery and a second grant).
+const GA4_TIMEOUT_MS = 5000;
 
 interface PurchaseParams {
   transactionId: string;
@@ -21,6 +25,7 @@ export async function sendPurchaseEvent(params: PurchaseParams): Promise<void> {
 
   await fetch(url, {
     method: 'POST',
+    signal: AbortSignal.timeout(GA4_TIMEOUT_MS),
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       client_id: clientId,

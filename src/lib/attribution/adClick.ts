@@ -23,14 +23,8 @@ type Rule = { pattern: RegExp; lowercase: boolean };
 
 const CLICK_ID: Rule = { pattern: /^[A-Za-z0-9_-]{1,200}$/, lowercase: false };
 const UTM: Rule = { pattern: /^[\w .:/+-]{1,100}$/, lowercase: true };
-// Public landing pages only: no protocol-relative `//`, and never the
-// token-bearing share (/s/) or preview (/preview/) routes.
-const LANDING: Rule = {
-  pattern: /^\/(?!\/)(?!s\/)(?!preview\/)[a-zA-Z0-9\-_/]{0,199}$/,
-  lowercase: false,
-};
 
-const RULES = new Map<keyof AdClickAttribution, Rule>([
+const RULES = new Map<Exclude<keyof AdClickAttribution, 'landing'>, Rule>([
   ['gclid', CLICK_ID],
   ['gbraid', CLICK_ID],
   ['wbraid', CLICK_ID],
@@ -39,8 +33,44 @@ const RULES = new Map<keyof AdClickAttribution, Rule>([
   ['utm_campaign', UTM],
   ['utm_term', UTM],
   ['utm_content', UTM],
-  ['landing', LANDING],
 ]);
+
+const LANDING_SHAPE = /^\/(?!\/)[a-zA-Z0-9\-_/]{0,199}$/;
+const TWO_SEGMENT_PREFIXES = new Set(['convert', 'answers']);
+
+/**
+ * Reduce a landing pathname to the segments that name a public page: the
+ * first segment, plus the second under /convert/ and /answers/. Ids and
+ * tokens only ever appear deeper (/s/:token, /preview/apkg/:key,
+ * /mindmaps/:id), so they never reach storage. Mirrored in
+ * web/src/lib/adClick.ts.
+ */
+export function publicLandingPath(pathname: unknown): string | null {
+  if (typeof pathname !== 'string' || !LANDING_SHAPE.test(pathname)) {
+    return null;
+  }
+  const segments = pathname.split('/').filter((part) => part.length > 0);
+  if (segments.length === 0) {
+    return '/';
+  }
+  const depth = TWO_SEGMENT_PREFIXES.has(segments[0].toLowerCase()) ? 2 : 1;
+  return `/${segments.slice(0, depth).join('/')}/`;
+}
+
+function sanitize(read: (key: string) => unknown): AdClickAttribution {
+  const result: AdClickAttribution = {};
+  for (const [key, rule] of RULES) {
+    const value = read(key);
+    if (typeof value === 'string' && rule.pattern.test(value)) {
+      result[key] = rule.lowercase ? value.toLowerCase() : value;
+    }
+  }
+  const landing = publicLandingPath(read('landing'));
+  if (landing != null) {
+    result.landing = landing;
+  }
+  return result;
+}
 
 function decode(raw: string): unknown {
   let text = raw;
@@ -65,18 +95,9 @@ export function parseAdClick(raw: unknown): AdClickAttribution {
     return {};
   }
   const record = parsed as Record<string, unknown>;
-  const result: AdClickAttribution = {};
-  for (const [key, rule] of RULES) {
-    if (!Object.prototype.hasOwnProperty.call(record, key)) {
-      continue;
-    }
-    const value = record[key];
-    if (typeof value !== 'string' || !rule.pattern.test(value)) {
-      continue;
-    }
-    result[key] = rule.lowercase ? value.toLowerCase() : value;
-  }
-  return result;
+  return sanitize((key) =>
+    Object.prototype.hasOwnProperty.call(record, key) ? record[key] : undefined
+  );
 }
 
 /**
@@ -86,14 +107,7 @@ export function parseAdClick(raw: unknown): AdClickAttribution {
 export function pickAdClickMetadata(
   metadata: Record<string, string | undefined>
 ): AdClickAttribution {
-  const result: AdClickAttribution = {};
-  for (const [key, rule] of RULES) {
-    const value = metadata[key];
-    if (typeof value === 'string' && rule.pattern.test(value)) {
-      result[key] = rule.lowercase ? value.toLowerCase() : value;
-    }
-  }
-  return result;
+  return sanitize((key) => metadata[key]);
 }
 
 const EVENT_KEYS = [
@@ -106,9 +120,10 @@ const EVENT_KEYS = [
 ] as const;
 
 /**
- * The subset worth carrying on funnel events: the events sink strips any key
- * matching /content/ and drops a whole event whose props pass 1 KB, so
- * utm_term, utm_content and landing stay in Stripe metadata only.
+ * The subset worth carrying on funnel events. The events sink strips any key
+ * matching /content/ (so utm_content would vanish) and drops a whole event
+ * whose props pass 1 KB, so the free-text utm_term / utm_content and the
+ * landing path stay in Stripe metadata and on the user row only.
  */
 export function adClickEventProps(
   attribution: AdClickAttribution
@@ -123,10 +138,18 @@ export function adClickEventProps(
   return props;
 }
 
+/**
+ * Honours a later withdrawal of consent: the browser only writes `ad_click`
+ * while `cookie_consent` is granted, but the stored cookie outlives a deny,
+ * so the server ignores it unless consent still reads granted.
+ */
 export function readAdClickCookie(req: {
   cookies?: unknown;
 }): AdClickAttribution | undefined {
   const cookies = req.cookies as Record<string, unknown> | undefined;
+  if (cookies?.cookie_consent !== 'granted') {
+    return undefined;
+  }
   const parsed = parseAdClick(cookies?.ad_click);
   return Object.keys(parsed).length > 0 ? parsed : undefined;
 }

@@ -70,27 +70,61 @@ describe('parseAdClick', () => {
     ).toEqual({ utm_term: 'pdf to anki' });
   });
 
-  it('keeps only a plain public path for landing', () => {
+  it('keeps only the public segments of the landing path', () => {
     expect(parseAdClick(cookie({ landing: 'https://evil.example/' }))).toEqual(
       {}
     );
     expect(parseAdClick(cookie({ landing: '//evil.example/' }))).toEqual({});
-    expect(parseAdClick(cookie({ landing: '/s/secret-share-token' }))).toEqual(
-      {}
-    );
-    expect(parseAdClick(cookie({ landing: '/preview/apkg/key123' }))).toEqual(
-      {}
-    );
+    expect(parseAdClick(cookie({ landing: '/' }))).toEqual({ landing: '/' });
+    expect(parseAdClick(cookie({ landing: '/notion-to-anki' }))).toEqual({
+      landing: '/notion-to-anki/',
+    });
     expect(parseAdClick(cookie({ landing: '/convert/word-to-anki/' }))).toEqual(
       { landing: '/convert/word-to-anki/' }
     );
+    expect(
+      parseAdClick(cookie({ landing: '/answers/chatgpt-to-anki/' }))
+    ).toEqual({ landing: '/answers/chatgpt-to-anki/' });
+  });
+
+  it.each([
+    ['/s/secret-share-token', '/s/'],
+    ['/S/secret-share-token', '/S/'],
+    ['/preview/apkg/key123', '/preview/'],
+    ['/mindmaps/4821', '/mindmaps/'],
+    ['/users/r/77', '/users/'],
+    ['/convert/word-to-anki/extra/42', '/convert/word-to-anki/'],
+  ])('never stores the id or token in %s', (input, stored) => {
+    const parsed = parseAdClick(cookie({ landing: input }));
+    expect(parsed.landing).toBe(stored);
+    expect(parsed.landing).not.toContain('42');
+    expect(parsed.landing).not.toContain('token');
   });
 });
 
 describe('readAdClickCookie', () => {
-  it('reads the ad_click cookie off an express request', () => {
-    const req = { cookies: { ad_click: cookie({ gclid: 'abc' }) } } as never;
+  it('reads the ad_click cookie off an express request when consent is granted', () => {
+    const req = {
+      cookies: {
+        cookie_consent: 'granted',
+        ad_click: cookie({ gclid: 'abc' }),
+      },
+    } as never;
     expect(readAdClickCookie(req)).toEqual({ gclid: 'abc' });
+  });
+
+  it('ignores a stored ad_click cookie once consent is withdrawn or absent', () => {
+    expect(
+      readAdClickCookie({
+        cookies: {
+          cookie_consent: 'denied',
+          ad_click: cookie({ gclid: 'abc' }),
+        },
+      })
+    ).toBeUndefined();
+    expect(
+      readAdClickCookie({ cookies: { ad_click: cookie({ gclid: 'abc' }) } })
+    ).toBeUndefined();
   });
 
   it('returns undefined when there is no usable cookie', () => {

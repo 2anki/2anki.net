@@ -123,6 +123,7 @@ describe('AutoSyncCheckoutController ad-click attribution', () => {
     const req = {
       locals: {},
       cookies: {
+        cookie_consent: 'granted',
         ad_click: encodeURIComponent(
           JSON.stringify({ gclid: 'Cj0abc', utm_source: 'google' })
         ),

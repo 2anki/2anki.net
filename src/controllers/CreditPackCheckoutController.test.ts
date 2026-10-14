@@ -99,6 +99,7 @@ describe('CreditPackCheckoutController ad-click attribution', () => {
     const req = {
       body: {},
       cookies: {
+        cookie_consent: 'granted',
         ad_click: encodeURIComponent(
           JSON.stringify({ gclid: 'Cj0abc', utm_source: 'google' })
         ),
