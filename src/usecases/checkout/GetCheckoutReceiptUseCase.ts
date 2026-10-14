@@ -12,7 +12,11 @@ export interface CheckoutReceipt {
   amount: number;
   currency: string;
   kind: CheckoutReceiptKind;
+  anonymous: boolean;
 }
+
+const isMissingSession = (error: unknown): boolean =>
+  (error as { code?: string } | null)?.code === 'resource_missing';
 
 function kindFor(session: StripeTypes.Checkout.Session): CheckoutReceiptKind {
   const meta = session.metadata ?? {};
@@ -49,8 +53,11 @@ export class GetCheckoutReceiptUseCase {
     let session: StripeTypes.Checkout.Session;
     try {
       session = await this.stripe.checkout.sessions.retrieve(input.sessionId);
-    } catch {
-      return null;
+    } catch (error) {
+      if (isMissingSession(error)) {
+        return null;
+      }
+      throw error;
     }
     if (session.payment_status !== 'paid') {
       return null;
@@ -66,6 +73,7 @@ export class GetCheckoutReceiptUseCase {
       amount: session.amount_total ?? 0,
       currency: (session.currency ?? 'usd').toUpperCase(),
       kind: kindFor(session),
+      anonymous: !ownsSession,
     };
   }
 }

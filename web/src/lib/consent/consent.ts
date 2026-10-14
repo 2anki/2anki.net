@@ -1,4 +1,4 @@
-import { AD_CLICK_COOKIE, COOKIE_CONSENT_COOKIE } from '../adClick';
+import { AD_CLICK_COOKIE, COOKIE_CONSENT_COOKIE } from './cookies';
 
 export type ConsentChoice = 'granted' | 'denied';
 export type ConsentRegion = 'eea' | 'other';
@@ -15,7 +15,9 @@ interface ConsentDocument {
 
 interface GtagWindow {
   gtag?: (...args: unknown[]) => void;
+  hj?: unknown;
   dispatchEvent?: (event: Event) => boolean;
+  location?: { reload: () => void };
 }
 
 function doc(): ConsentDocument | null {
@@ -88,7 +90,15 @@ export function setConsent(
     d.cookie = `${AD_CLICK_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax${secure}`;
   }
   applyConsentToGtag(choice);
-  (globalThis as GtagWindow).dispatchEvent?.(
-    new CustomEvent(CONSENT_CHANGE_EVENT, { detail: choice })
-  );
+  const w = globalThis as GtagWindow;
+  w.dispatchEvent?.(new CustomEvent(CONSENT_CHANGE_EVENT, { detail: choice }));
+  // Hotjar has no client-side off switch once its script runs, so a withdrawal
+  // after it loaded takes a reload to honour (the next load sees `denied`).
+  if (choice === 'denied' && typeof w.hj === 'function') {
+    try {
+      w.location?.reload();
+    } catch {
+      // jsdom and some embedded views refuse reload; the cookie already says denied.
+    }
+  }
 }

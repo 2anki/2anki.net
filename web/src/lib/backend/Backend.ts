@@ -781,9 +781,12 @@ export class Backend {
     }
   }
 
-  async getCheckoutReceipt(
-    sessionId: string
-  ): Promise<{ amount: number; currency: string; kind: string } | null> {
+  async getCheckoutReceipt(sessionId: string): Promise<{
+    amount: number;
+    currency: string;
+    kind: string;
+    anonymous: boolean;
+  } | null> {
     try {
       const response = await fetch(
         `${this.baseURL}checkout/receipt?session_id=${encodeURIComponent(sessionId)}`,
@@ -796,6 +799,7 @@ export class Backend {
         amount?: unknown;
         currency?: unknown;
         kind?: unknown;
+        anonymous?: unknown;
       };
       if (
         typeof body.amount !== 'number' ||
@@ -804,7 +808,12 @@ export class Backend {
       ) {
         return null;
       }
-      return { amount: body.amount, currency: body.currency, kind: body.kind };
+      return {
+        amount: body.amount,
+        currency: body.currency,
+        kind: body.kind,
+        anonymous: body.anonymous === true,
+      };
     } catch {
       return null;
     }

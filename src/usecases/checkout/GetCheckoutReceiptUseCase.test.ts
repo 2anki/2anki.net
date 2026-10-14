@@ -25,7 +25,12 @@ describe('GetCheckoutReceiptUseCase', () => {
 
     await expect(
       uc.execute({ sessionId: 'cs_test_1', ownerId: 42 })
-    ).resolves.toEqual({ amount: 1200, currency: 'USD', kind: 'pass_7d' });
+    ).resolves.toEqual({
+      amount: 1200,
+      currency: 'USD',
+      kind: 'pass_7d',
+      anonymous: false,
+    });
     expect(retrieve).toHaveBeenCalledWith('cs_test_1');
   });
 
@@ -37,7 +42,12 @@ describe('GetCheckoutReceiptUseCase', () => {
 
     await expect(
       uc.execute({ sessionId: 'cs_test_1', ownerId: null })
-    ).resolves.toEqual({ amount: 1200, currency: 'USD', kind: 'pass_24h' });
+    ).resolves.toEqual({
+      amount: 1200,
+      currency: 'USD',
+      kind: 'pass_24h',
+      anonymous: true,
+    });
   });
 
   it('refuses another user’s session', async () => {
@@ -68,7 +78,11 @@ describe('GetCheckoutReceiptUseCase', () => {
   });
 
   it('returns null when Stripe does not know the session', async () => {
-    retrieve.mockRejectedValue(new Error('No such checkout.session'));
+    retrieve.mockRejectedValue(
+      Object.assign(new Error('No such checkout.session'), {
+        code: 'resource_missing',
+      })
+    );
     const uc = new GetCheckoutReceiptUseCase(stripe());
 
     await expect(
@@ -88,5 +102,15 @@ describe('GetCheckoutReceiptUseCase', () => {
     await expect(
       uc.execute({ sessionId: 'cs_test_1', ownerId: 42 })
     ).resolves.toMatchObject({ kind });
+  });
+  it('rethrows Stripe outages instead of reporting them as not found', async () => {
+    retrieve.mockRejectedValue(
+      Object.assign(new Error('rate limited'), { code: 'rate_limit' })
+    );
+    const uc = new GetCheckoutReceiptUseCase(stripe());
+
+    await expect(
+      uc.execute({ sessionId: 'cs_test_1', ownerId: 42 })
+    ).rejects.toThrow('rate limited');
   });
 });

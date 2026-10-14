@@ -75,7 +75,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
       return stored != null && stored.length > 0 ? stored : null;
     }
   );
-  const { data: userLocals } = useUserLocals();
+  const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
   const pageViewTracked = useRef(false);
   const signupTracked = useRef(false);
   const reattachTracked = useRef(false);
@@ -128,11 +128,16 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   }, [userLocals]);
 
   useEffect(() => {
-    const sessionId =
-      searchParams.get('session_id') ?? searchParams.get('pass_session');
+    if (userLocalsLoading) return;
+    const returnedFromCheckout =
+      searchParams.get('from') === 'pass' ||
+      searchParams.get('checkout') === 'success';
+    const sessionId = returnedFromCheckout
+      ? searchParams.get('session_id')
+      : searchParams.get('pass_session');
     if (sessionId == null || sessionId.length === 0) return;
     void reportPurchaseConversion(sessionId, userLocals?.user?.email);
-  }, [searchParams, userLocals]);
+  }, [searchParams, userLocals, userLocalsLoading]);
 
   useEffect(() => {
     if (

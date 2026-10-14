@@ -1,5 +1,6 @@
-export const AD_CLICK_COOKIE = 'ad_click';
-export const COOKIE_CONSENT_COOKIE = 'cookie_consent';
+import { AD_CLICK_COOKIE, COOKIE_CONSENT_COOKIE } from './consent/cookies';
+
+export { AD_CLICK_COOKIE, COOKIE_CONSENT_COOKIE };
 
 const MAX_AGE_SECONDS = 90 * 24 * 60 * 60;
 
@@ -35,6 +36,12 @@ export function publicLandingPath(pathname: string): string | null {
   return `/${segments.slice(0, depth).join('/')}/`;
 }
 
+interface AdClickDocument {
+  cookie: string;
+  location: { pathname: string; search: string; protocol: string };
+  documentElement?: { dataset: { consentRegion?: string } };
+}
+
 export type AdClickParam = (typeof AD_CLICK_PARAMS)[number];
 
 export type AdClickParams = Partial<Record<AdClickParam, string>>;
@@ -51,6 +58,22 @@ function readCookie(cookieHeader: string, name: string): string | null {
 
 export function hasMarketingConsent(cookieHeader: string): boolean {
   return readCookie(cookieHeader, COOKIE_CONSENT_COOKIE) === 'granted';
+}
+
+/**
+ * Same rule as consent.ts getEffectiveConsent, without importing it: an
+ * explicit choice wins; with none, the server-stamped region decides (consent
+ * is implied outside the EEA/UK/CH, required inside).
+ */
+function marketingAllowed(doc: AdClickDocument): boolean {
+  const stored = readCookie(doc.cookie, COOKIE_CONSENT_COOKIE);
+  if (stored === 'granted') {
+    return true;
+  }
+  if (stored === 'denied') {
+    return false;
+  }
+  return doc.documentElement?.dataset.consentRegion === 'other';
 }
 
 function hasClickId(params: AdClickParams): boolean {
@@ -117,11 +140,6 @@ export function buildAdClickCookie(
   return `${AD_CLICK_COOKIE}=${value}; Max-Age=${MAX_AGE_SECONDS}; Path=/; SameSite=Lax${secureFlag}`;
 }
 
-interface AdClickDocument {
-  cookie: string;
-  location: { pathname: string; search: string; protocol: string };
-}
-
 /**
  * Writes the attribution cookie only once marketing cookies are consented to
  * (`cookie_consent=granted`; the consent banner that sets it is a follow-up
@@ -134,7 +152,7 @@ export function captureAdClick(
     : document,
   landing: { search: string; pathname: string } | null = null
 ): void {
-  if (doc == null || !hasMarketingConsent(doc.cookie)) {
+  if (doc == null || !marketingAllowed(doc)) {
     return;
   }
   const next = buildAdClickCookie(

@@ -116,6 +116,27 @@ describe('setConsent', () => {
   });
 });
 
+describe('setConsent after Hotjar loaded', () => {
+  it('reloads the page on a later deny so Hotjar stops recording', () => {
+    const reload = vi.fn();
+    (globalThis as { hj?: unknown }).hj = () => undefined;
+    const original = globalThis.location;
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: { ...original, reload },
+    });
+
+    setConsent('denied', fakeDoc('cookie_consent=granted', 'eea'));
+
+    expect(reload).toHaveBeenCalledTimes(1);
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: original,
+    });
+    delete (globalThis as { hj?: unknown }).hj;
+  });
+});
+
 describe('applyConsentToGtag', () => {
   it('is a no-op when gtag is not on the page', () => {
     expect(() => applyConsentToGtag('denied')).not.toThrow();

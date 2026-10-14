@@ -175,4 +175,27 @@ describe('captureAdClick', () => {
     captureAdClick(doc);
     expect(doc.cookie).toBe(existing);
   });
+
+  it('writes without a consent cookie when the server placed the visitor outside the EEA', () => {
+    const doc = {
+      cookie: '',
+      documentElement: { dataset: { consentRegion: 'other' } },
+      location: { pathname: '/', search: '?gclid=us1', protocol: 'https:' },
+    };
+    captureAdClick(doc);
+    expect(decodeCookieValue(doc.cookie)).toEqual({
+      gclid: 'us1',
+      landing: '/',
+    });
+  });
+
+  it('respects an explicit deny even outside the EEA', () => {
+    const doc = {
+      cookie: 'cookie_consent=denied',
+      documentElement: { dataset: { consentRegion: 'other' } },
+      location: { pathname: '/', search: '?gclid=us1', protocol: 'https:' },
+    };
+    captureAdClick(doc);
+    expect(doc.cookie).toBe('cookie_consent=denied');
+  });
 });

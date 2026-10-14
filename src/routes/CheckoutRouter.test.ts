@@ -501,6 +501,7 @@ describe('CheckoutRouter — GET /api/checkout/receipt', () => {
       amount: 600,
       currency: 'USD',
       kind: 'pass_24h',
+      anonymous: true,
     });
     expect(mockStripeRetrieve).toHaveBeenCalledWith('cs_test_a1B2c3D4e5F6g7');
   });

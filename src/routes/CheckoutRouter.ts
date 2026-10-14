@@ -8,6 +8,7 @@ import AutoSyncPriceController from '../controllers/AutoSyncPriceController';
 import { GetAutoSyncPriceUseCase } from '../usecases/checkout/GetAutoSyncPriceUseCase';
 import PassCheckoutController from '../controllers/PassCheckoutController';
 import CheckoutReceiptController from '../controllers/CheckoutReceiptController';
+import { ipRateLimit } from './middleware/ipRateLimit';
 import { GetCheckoutReceiptUseCase } from '../usecases/checkout/GetCheckoutReceiptUseCase';
 import ResumeCheckoutController from '../controllers/ResumeCheckoutController';
 import UnlimitedCheckoutController from '../controllers/UnlimitedCheckoutController';
@@ -220,10 +221,15 @@ const CheckoutRouter = () => {
    *       404:
    *         description: Unknown, unpaid or not the caller's session
    */
-  router.get('/api/checkout/receipt', optionalAuthMiddleware, (req, res) =>
-    new CheckoutReceiptController(
-      new GetCheckoutReceiptUseCase(getStripe())
-    ).getReceipt(req, res)
+  const receiptRateLimit = ipRateLimit(30);
+  router.get(
+    '/api/checkout/receipt',
+    receiptRateLimit,
+    optionalAuthMiddleware,
+    (req, res) =>
+      new CheckoutReceiptController(
+        new GetCheckoutReceiptUseCase(getStripe())
+      ).getReceipt(req, res)
   );
 
   router.post(

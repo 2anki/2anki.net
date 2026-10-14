@@ -2,7 +2,7 @@
   position: fixed;
   left: var(--space-4);
   right: var(--space-4);
-  bottom: var(--space-4);
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
   z-index: 1000;
   display: flex;
   flex-wrap: wrap;
@@ -50,6 +50,8 @@
   gap: var(--space-2);
 }
 
+/* Both choices share one style on purpose: declining must be as easy and as
+   visible as accepting, or the consent is not freely given. */
 .primary,
 .secondary {
   padding: var(--space-2) var(--space-4);
@@ -57,25 +59,12 @@
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   cursor: pointer;
-  border: 1px solid var(--color-border);
-}
-
-.primary {
-  background: var(--color-text-link);
-  border-color: var(--color-text-link);
-  color: #ffffff;
-}
-
-.primary:hover {
-  background: var(--color-text-link-hover);
-  border-color: var(--color-text-link-hover);
-}
-
-.secondary {
+  border: 1px solid var(--color-text-primary);
   background: var(--color-bg-secondary);
   color: var(--color-text-primary);
 }
 
+.primary:hover,
 .secondary:hover {
   background: var(--color-bg-tertiary);
 }
@@ -89,9 +78,11 @@
 
 @media (max-width: 480px) {
   .banner {
-    left: var(--space-2);
-    right: var(--space-2);
-    bottom: var(--space-2);
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    max-height: 60vh;
+    overflow: auto;
   }
 
   .actions {

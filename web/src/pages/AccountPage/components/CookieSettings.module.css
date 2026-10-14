@@ -25,8 +25,9 @@
 }
 
 .button[aria-pressed='true'] {
-  border-color: var(--color-text-link);
-  color: var(--color-text-link);
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
+  font-weight: var(--font-semibold);
 }
 
 .button:focus-visible {

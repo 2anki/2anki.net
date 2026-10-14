@@ -27,7 +27,7 @@ import { readAdClickCookie } from '../lib/attribution/adClick';
 import { sessionCookieOptions } from '../shared/session';
 
 import { sendIndex } from './IndexController/sendIndex';
-import { consentRegionFor } from '../lib/http/consentRegion';
+import { consentRegionForRequest } from '../lib/http/consentRegion';
 import { getRandomUUID } from '../shared/helpers/getRandomUUID';
 import SubscriptionService from '../services/SubscriptionService';
 import { OPS_OWNER_EMAIL } from '../routes/middleware/RequireOpsAccess';
@@ -316,11 +316,7 @@ class UsersController {
       const token = req.params.id;
       const isValid = await this.authService.isValidToken(token);
       if (isValid) {
-        return sendIndex(
-          res,
-          '',
-          consentRegionFor(extractCountryFromRequest(req))
-        );
+        return sendIndex(res, '', consentRegionForRequest(req));
       }
       return res.redirect('/login');
     } catch (error) {
@@ -697,7 +693,7 @@ class UsersController {
   async checkUser(req: express.Request, res: express.Response) {
     const user = await this.authService.getUserFrom(req.cookies.token);
     if (!user) {
-      sendIndex(res, '', consentRegionFor(extractCountryFromRequest(req)));
+      sendIndex(res, '', consentRegionForRequest(req));
     } else {
       res.redirect(getRedirect(req));
     }

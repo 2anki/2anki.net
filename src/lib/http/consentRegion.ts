@@ -1,3 +1,7 @@
+import type express from 'express';
+import geoip from 'geoip-lite';
+import { resolveClientIp } from '../rateLimit/ipHelpers';
+
 export type ConsentRegion = 'eea' | 'other';
 
 // EU 27 + EEA (IS, LI, NO) + UK + Switzerland: where a cookie banner with a
@@ -48,4 +52,15 @@ export function consentRegionFor(country: string | null): ConsentRegion {
   return CONSENT_REQUIRED_COUNTRIES.has(country.toUpperCase())
     ? 'eea'
     : 'other';
+}
+
+/**
+ * Resolved from the client IP only. The CDN country headers that
+ * extractCountryFromRequest also accepts are not stripped by the Apache in
+ * front of this box, so a visitor could send `cf-ipcountry: US` and skip the
+ * banner. Geo lookup of the proxy-resolved IP cannot be forged that way.
+ */
+export function consentRegionForRequest(req: express.Request): ConsentRegion {
+  const geo = geoip.lookup(resolveClientIp(req));
+  return consentRegionFor(geo?.country ?? null);
 }

@@ -36,9 +36,12 @@ describe('parseCheckoutSessionId', () => {
 
 describe('CheckoutReceiptController', () => {
   it('returns the receipt for a valid session id and the signed-in owner', async () => {
-    const execute = vi
-      .fn()
-      .mockResolvedValue({ amount: 600, currency: 'USD', kind: 'pass_24h' });
+    const execute = vi.fn().mockResolvedValue({
+      amount: 600,
+      currency: 'USD',
+      kind: 'pass_24h',
+      anonymous: false,
+    });
     const res = makeRes({ owner: 42 });
 
     await makeController(execute).getReceipt(
@@ -54,6 +57,7 @@ describe('CheckoutReceiptController', () => {
       amount: 600,
       currency: 'USD',
       kind: 'pass_24h',
+      anonymous: false,
     });
   });
 

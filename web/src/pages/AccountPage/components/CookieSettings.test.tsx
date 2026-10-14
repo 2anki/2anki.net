@@ -23,13 +23,13 @@ describe('CookieSettings', () => {
       screen.getByRole('button', { name: 'Only necessary' })
     ).toHaveAttribute('aria-pressed', 'true');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Allow all' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept all' }));
 
     expect(document.cookie).toContain('cookie_consent=granted');
     expect(screen.getByRole('status')).toHaveTextContent(
       'Analytics and ads cookies are allowed'
     );
-    expect(screen.getByRole('button', { name: 'Allow all' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Accept all' })).toHaveAttribute(
       'aria-pressed',
       'true'
     );

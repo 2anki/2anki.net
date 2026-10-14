@@ -4,7 +4,7 @@ import http from 'http';
 import os from 'os';
 import path from 'path';
 
-import { INDEX_HTML_CACHE_CONTROL, mountWebBuild } from './mountWebBuild';
+import { mountWebBuild } from './mountWebBuild';
 
 describe('mountWebBuild', () => {
   let buildDir: string;
@@ -41,22 +41,24 @@ describe('mountWebBuild', () => {
     });
   });
 
-  it('serves / with the no-cache header so clients revalidate the shell', async () => {
+  it('leaves / to the router so the shell gets its consent region stamp', async () => {
     const response = await fetch(`${baseUrl}/`);
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get('cache-control')).toBe(
-      INDEX_HTML_CACHE_CONTROL
-    );
+    expect(response.status).toBe(404);
   });
 
-  it('serves /index.html with the no-cache header', async () => {
+  it('leaves a direct /index.html request to the router as well', async () => {
     const response = await fetch(`${baseUrl}/index.html`);
 
+    expect(response.status).toBe(404);
+  });
+
+  it('still serves plain files from the build directory', async () => {
+    fs.writeFileSync(path.join(buildDir, 'robots.txt'), 'User-agent: *');
+    const response = await fetch(`${baseUrl}/robots.txt`);
+
     expect(response.status).toBe(200);
-    expect(response.headers.get('cache-control')).toBe(
-      INDEX_HTML_CACHE_CONTROL
-    );
+    await expect(response.text()).resolves.toBe('User-agent: *');
   });
 
   it('keeps hashed assets immutable for a year', async () => {
