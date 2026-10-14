@@ -54,4 +54,13 @@ describe('ipRateLimit', () => {
     run(limit, '4.4.4.4');
     expect(run(limit, '1.1.1.1').next).toHaveBeenCalled();
   });
+
+  it('evicts the oldest ip when the cap is hit inside one window', () => {
+    const limit = ipRateLimit(1, 2);
+    run(limit, '1.1.1.1');
+    run(limit, '2.2.2.2');
+    run(limit, '3.3.3.3');
+    expect(run(limit, '1.1.1.1').next).toHaveBeenCalled();
+    expect(run(limit, '1.1.1.1').next).not.toHaveBeenCalled();
+  });
 });

@@ -127,17 +127,23 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     fireSignupConversion();
   }, [userLocals]);
 
-  useEffect(() => {
-    if (userLocalsLoading) return;
+  // Captured once on mount: the effects below strip the checkout params from
+  // the URL straight away, while the conversion must wait for user locals.
+  const [returnedSessionId] = useState<string | null>(() => {
     const returnedFromCheckout =
       searchParams.get('from') === 'pass' ||
-      searchParams.get('checkout') === 'success';
+      searchParams.get('checkout') === 'success' ||
+      searchParams.get('credits') === 'added';
     const sessionId = returnedFromCheckout
       ? searchParams.get('session_id')
       : searchParams.get('pass_session');
-    if (sessionId == null || sessionId.length === 0) return;
-    void reportPurchaseConversion(sessionId, userLocals?.user?.email);
-  }, [searchParams, userLocals, userLocalsLoading]);
+    return sessionId != null && sessionId.length > 0 ? sessionId : null;
+  });
+
+  useEffect(() => {
+    if (userLocalsLoading || returnedSessionId == null) return;
+    void reportPurchaseConversion(returnedSessionId, userLocals?.user?.email);
+  }, [returnedSessionId, userLocals, userLocalsLoading]);
 
   useEffect(() => {
     if (

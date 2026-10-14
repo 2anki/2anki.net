@@ -85,7 +85,13 @@ export default function AnkifySetupPage({ backend }: Props) {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
-    if (sessionId == null || sessionId.length === 0) return;
+    if (
+      searchParams.get('checkout') !== 'success' ||
+      sessionId == null ||
+      sessionId.length === 0
+    ) {
+      return;
+    }
     void reportPurchaseConversion(sessionId);
     const next = new URLSearchParams(searchParams);
     next.delete('session_id');

@@ -29,6 +29,12 @@ export function ipRateLimit(limitPerMinute: number, maxTrackedIps = 5000) {
     // it without bound; drop expired windows once it gets large.
     if (counters.size >= maxTrackedIps) {
       sweepExpired(now);
+      if (counters.size >= maxTrackedIps) {
+        const oldest = counters.keys().next().value;
+        if (oldest != null) {
+          counters.delete(oldest);
+        }
+      }
     }
     const entry = counters.get(ip);
     if (entry == null || now >= entry.resetAt) {

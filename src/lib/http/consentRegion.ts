@@ -58,7 +58,9 @@ export function consentRegionFor(country: string | null): ConsentRegion {
  * Resolved from the client IP only. The CDN country headers that
  * extractCountryFromRequest also accepts are not stripped by the Apache in
  * front of this box, so a visitor could send `cf-ipcountry: US` and skip the
- * banner. Geo lookup of the proxy-resolved IP cannot be forged that way.
+ * banner. The proxy-resolved IP (`trust proxy` 1 behind Apache) ignores a
+ * client-prepended X-Forwarded-For; forging it would need a direct connection
+ * to the Node port, which the host firewall only allows from the box itself.
  */
 export function consentRegionForRequest(req: express.Request): ConsentRegion {
   const geo = geoip.lookup(resolveClientIp(req));

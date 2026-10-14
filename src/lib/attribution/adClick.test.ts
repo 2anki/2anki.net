@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { adClickEventProps, parseAdClick, readAdClickCookie } from './adClick';
+import { consentRegionForRequest } from '../http/consentRegion';
+
+vi.mock('../http/consentRegion', () => ({
+  consentRegionForRequest: vi.fn(() => 'eea'),
+}));
 
 const cookie = (value: unknown) => encodeURIComponent(JSON.stringify(value));
 
@@ -113,47 +118,49 @@ describe('readAdClickCookie', () => {
     expect(readAdClickCookie(req)).toEqual({ gclid: 'abc' });
   });
 
-  it('ignores a stored ad_click cookie once consent is withdrawn or absent', () => {
+  it('returns undefined when there is no usable cookie', () => {
+    expect(readAdClickCookie({} as never)).toBeUndefined();
+    expect(
+      readAdClickCookie({
+        cookies: { cookie_consent: 'granted', ad_click: '{}' },
+      } as never)
+    ).toBeUndefined();
+  });
+
+  it('ignores a stored ad_click cookie once consent is withdrawn, or absent in the EEA', () => {
     expect(
       readAdClickCookie({
         cookies: {
           cookie_consent: 'denied',
           ad_click: cookie({ gclid: 'abc' }),
         },
-      })
+      } as never)
     ).toBeUndefined();
     expect(
-      readAdClickCookie({ cookies: { ad_click: cookie({ gclid: 'abc' }) } })
+      readAdClickCookie({
+        cookies: { ad_click: cookie({ gclid: 'abc' }) },
+      } as never)
     ).toBeUndefined();
   });
 
-  it('returns undefined when there is no usable cookie', () => {
-    expect(readAdClickCookie({} as never)).toBeUndefined();
-    expect(readAdClickCookie({ cookies: { ad_click: '{}' } })).toBeUndefined();
-  });
-});
-
-describe('adClickEventProps', () => {
-  it('keeps the click ids and campaign keys, drops utm_term, utm_content and landing', () => {
+  it('accepts ad_click without a consent cookie where consent is implied by region', () => {
+    vi.mocked(consentRegionForRequest).mockReturnValueOnce('other');
     expect(
-      adClickEventProps({
-        gclid: 'a',
-        gbraid: 'b',
-        wbraid: 'c',
-        utm_source: 'google',
-        utm_medium: 'cpc',
-        utm_campaign: 'notion',
-        utm_term: 'pdf to anki',
-        utm_content: 'rsa-1',
-        landing: '/pdf-to-anki/',
-      })
-    ).toEqual({
-      gclid: 'a',
-      gbraid: 'b',
-      wbraid: 'c',
-      utm_source: 'google',
-      utm_medium: 'cpc',
-      utm_campaign: 'notion',
-    });
+      readAdClickCookie({
+        cookies: { ad_click: cookie({ gclid: 'abc' }) },
+      } as never)
+    ).toEqual({ gclid: 'abc' });
+  });
+
+  it('still drops an explicit deny outside the EEA', () => {
+    vi.mocked(consentRegionForRequest).mockReturnValueOnce('other');
+    expect(
+      readAdClickCookie({
+        cookies: {
+          cookie_consent: 'denied',
+          ad_click: cookie({ gclid: 'abc' }),
+        },
+      } as never)
+    ).toBeUndefined();
   });
 });

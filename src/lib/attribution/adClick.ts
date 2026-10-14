@@ -1,3 +1,6 @@
+import type express from 'express';
+import { consentRegionForRequest } from '../http/consentRegion';
+
 /**
  * Attribution the web app stores in the `ad_click` cookie when a visitor lands
  * from an ad (Google click ids + utm_* + landing path). Parsed here once so the
@@ -139,17 +142,25 @@ export function adClickEventProps(
 }
 
 /**
- * Honours a later withdrawal of consent: the browser only writes `ad_click`
- * while `cookie_consent` is granted, but the stored cookie outlives a deny,
- * so the server ignores it unless consent still reads granted.
+ * Mirrors the browser rule: an explicit `cookie_consent` wins; with none, the
+ * visitor's region decides (implied outside the EEA/UK/CH, required inside).
+ * The stored cookie outlives a later deny, so `denied` always drops it.
  */
-export function readAdClickCookie(req: {
-  cookies?: unknown;
-}): AdClickAttribution | undefined {
+export function readAdClickCookie(
+  req: express.Request
+): AdClickAttribution | undefined {
   const cookies = req.cookies as Record<string, unknown> | undefined;
-  if (cookies?.cookie_consent !== 'granted') {
+  const raw = cookies?.ad_click;
+  if (typeof raw !== 'string' || raw.length === 0) {
     return undefined;
   }
-  const parsed = parseAdClick(cookies?.ad_click);
+  const consent = cookies?.cookie_consent;
+  if (consent === 'denied') {
+    return undefined;
+  }
+  if (consent !== 'granted' && consentRegionForRequest(req) !== 'other') {
+    return undefined;
+  }
+  const parsed = parseAdClick(raw);
   return Object.keys(parsed).length > 0 ? parsed : undefined;
 }
