@@ -146,6 +146,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   }, [returnedSessionId, userLocals, userLocalsLoading]);
 
   useEffect(() => {
+    if (userLocalsLoading) return;
     if (
       searchParams.get('from') === 'pass' ||
       searchParams.get('checkout') === 'success'
@@ -157,9 +158,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
       const qs = next.toString();
       navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, userLocalsLoading]);
 
   useEffect(() => {
+    if (userLocalsLoading) return;
     const passSession = searchParams.get('pass_session');
     if (passSession != null && passSession.length > 0) {
       // Owner decision: anonymous passes live in the browser (localStorage is sanctioned for this use case)
@@ -169,9 +171,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
       const qs = next.toString();
       navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, userLocalsLoading]);
 
   useEffect(() => {
+    if (userLocalsLoading) return;
     if (searchParams.get('credits') === 'added') {
       setCreditsConfirmation(
         tCredits('confirmation', {
@@ -185,7 +188,14 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
       const qs = next.toString();
       navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
     }
-  }, [searchParams, navigate, queryClient, tCredits, i18n.language]);
+  }, [
+    searchParams,
+    navigate,
+    queryClient,
+    tCredits,
+    i18n.language,
+    userLocalsLoading,
+  ]);
 
   if (
     view === 'template' ||
