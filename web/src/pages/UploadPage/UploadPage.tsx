@@ -6,6 +6,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { track } from '../../lib/analytics/track';
+import { fireSignupConversion } from '../../lib/analytics/googleAds';
+import { reportPurchaseConversion } from '../../lib/analytics/reportPurchaseConversion';
 import { markOnboarded } from '../../lib/backend/markOnboarded';
 import { storePassToken } from '../../lib/anonymousPass';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
@@ -122,12 +124,25 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     if (globalThis.sessionStorage?.getItem(SIGNUP_FLAG_KEY) != null) return;
     globalThis.sessionStorage?.setItem(SIGNUP_FLAG_KEY, '1');
     track('signup_completed', { method: 'oauth' });
+    fireSignupConversion();
   }, [userLocals]);
 
   useEffect(() => {
-    if (searchParams.get('from') === 'pass') {
+    const sessionId =
+      searchParams.get('session_id') ?? searchParams.get('pass_session');
+    if (sessionId == null || sessionId.length === 0) return;
+    void reportPurchaseConversion(sessionId, userLocals?.user?.email);
+  }, [searchParams, userLocals]);
+
+  useEffect(() => {
+    if (
+      searchParams.get('from') === 'pass' ||
+      searchParams.get('checkout') === 'success'
+    ) {
       const next = new URLSearchParams(searchParams);
       next.delete('from');
+      next.delete('checkout');
+      next.delete('session_id');
       const qs = next.toString();
       navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
     }
@@ -155,6 +170,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
       queryClient.invalidateQueries({ queryKey: AI_CREDITS_QUERY_KEY });
       const next = new URLSearchParams(searchParams);
       next.delete('credits');
+      next.delete('session_id');
       const qs = next.toString();
       navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
     }

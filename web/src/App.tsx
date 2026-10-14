@@ -22,7 +22,8 @@ import {
   lazyWithRetry,
 } from './lib/chunkReload';
 import { captureFirstTouch } from './lib/firstTouch';
-import { captureAdClick } from './lib/adClick';
+import { captureAdClick, rememberLanding } from './lib/adClick';
+import { CONSENT_CHANGE_EVENT } from './lib/consent/consent';
 import i18n from './lib/i18n';
 import { useUserLocals } from './lib/hooks/useUserLocals';
 import isOfflineMode from './lib/isOfflineMode';
@@ -741,7 +742,12 @@ function AppWithCookies() {
 
   useEffect(() => {
     captureFirstTouch();
+    const landing = rememberLanding();
     captureAdClick();
+    const onConsent = () => captureAdClick(undefined, landing);
+    globalThis.addEventListener(CONSENT_CHANGE_EVENT, onConsent);
+    return () =>
+      globalThis.removeEventListener(CONSENT_CHANGE_EVENT, onConsent);
   }, []);
 
   useEffect(() => {

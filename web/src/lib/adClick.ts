@@ -131,19 +131,36 @@ interface AdClickDocument {
 export function captureAdClick(
   doc: AdClickDocument | null = typeof document === 'undefined'
     ? null
-    : document
+    : document,
+  landing: { search: string; pathname: string } | null = null
 ): void {
   if (doc == null || !hasMarketingConsent(doc.cookie)) {
     return;
   }
   const next = buildAdClickCookie(
     doc.cookie,
-    doc.location.search,
-    doc.location.pathname,
+    landing?.search ?? doc.location.search,
+    landing?.pathname ?? doc.location.pathname,
     doc.location.protocol === 'https:'
   );
   if (next == null) {
     return;
   }
   doc.cookie = next;
+}
+
+/**
+ * The visitor usually answers the banner after the SPA has already navigated
+ * away from the landing URL, so the landing search and path are remembered
+ * from first load and replayed when consent arrives.
+ */
+export function rememberLanding(
+  doc: AdClickDocument | null = typeof document === 'undefined'
+    ? null
+    : document
+): { search: string; pathname: string } | null {
+  if (doc == null) {
+    return null;
+  }
+  return { search: doc.location.search, pathname: doc.location.pathname };
 }

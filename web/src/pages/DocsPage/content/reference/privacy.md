@@ -31,6 +31,22 @@ You can review or revoke 2anki's access to your Google account and Drive at any 
 
 2anki's use and transfer to any other app of information received from Google APIs will adhere to the Google API Services User Data Policy, including the Limited Use requirements. That policy is published at https://developers.google.com/terms/api-services-user-data-policy.
 
+## Cookies
+
+Necessary cookies keep you signed in and remember choices you made on this site; they are always set. Analytics and advertising cookies are set only after you accept them in the cookie banner (shown in the EEA, the UK and Switzerland) and you can change that choice any time under Account.
+
+| Cookie           | Purpose                                                                                                                                                                                            | Lifetime     | Type        |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ----------- |
+| `token`          | Keeps you signed in                                                                                                                                                                                | 30 days      | Necessary   |
+| `anon_id`        | Tells one visitor's conversions apart from another's before sign-up                                                                                                                                | 1 year       | Necessary   |
+| `first_touch`    | Remembers which page you arrived on, so we know which pages work                                                                                                                                   | 30 minutes   | Necessary   |
+| `cookie_consent` | Remembers your cookie choice                                                                                                                                                                       | 1 year       | Necessary   |
+| `ad_click`       | Remembers the ad click (Google click id, campaign tags) that brought you here, so a later purchase can be attributed to it. Stored on your account at sign-up and attached to your payment record. | 90 days      | Advertising |
+| `_ga`, `_ga_*`   | Google Analytics usage statistics                                                                                                                                                                  | 2 years      | Analytics   |
+| `_hj*`           | Hotjar interaction analysis                                                                                                                                                                        | up to 1 year | Analytics   |
+
+With advertising cookies allowed we also tell Google Ads when a visit that started from one of our ads leads to a sign-up or a purchase (amount, currency and an order reference, and, for signed-in users, a hashed email address Google uses to match the conversion). We never share the content of your notes or decks.
+
 ## Service Providers
 
 | Service             | Purpose                                                                                                                                                    | Privacy Policy                                                                                |
@@ -41,6 +57,7 @@ You can review or revoke 2anki's access to your Google account and Drive at any 
 | Notion              | Notion integration — pages you connect for conversion                                                                                                      | [Terms and Privacy](https://www.notion.so/Terms-and-Privacy-28ffdd083dc3473e9c2da6ec011b58ac) |
 | Hotjar              | User interaction analysis                                                                                                                                  | [Privacy Policy](https://www.hotjar.com/legal/policies/privacy/)                              |
 | Google Analytics    | Usage tracking                                                                                                                                             | [Privacy Policy](https://policies.google.com/privacy?hl=en-US)                                |
+| Google Ads          | Measuring which ads lead to sign-ups and purchases (only with advertising cookies allowed)                                                                 | [Privacy Policy](https://policies.google.com/privacy?hl=en-US)                                |
 | Google Sign-In      | Optional sign-in — reads your email address and name, see above                                                                                            | [Privacy Policy](https://policies.google.com/privacy?hl=en-US)                                |
 | Google Drive        | Optional file picker — reads only the files you choose, see above                                                                                          | [Privacy Policy](https://policies.google.com/privacy?hl=en-US)                                |
 | 2anki (self-hosted) | Anonymized error reporting — no file contents or personal data, just route, status, and timing; stored on our own infrastructure and deleted after 30 days | —                                                                                             |

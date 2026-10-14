@@ -4,6 +4,7 @@ import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { PageLayout } from '../Layout/PageLayout';
 import { SidebarFeatures, SidebarLocals } from './Sidebar';
 import { SidebarLayout } from './SidebarLayout';
+import { CookieBanner } from '../CookieBanner/CookieBanner';
 
 const TOP_BAR_PATHS = new Set(['/login', '/register', '/forgot']);
 const TOP_BAR_PREFIXES = ['/users/r/'];
@@ -49,6 +50,7 @@ export function AppShell({
         error={error}
       >
         {children}
+        <CookieBanner />
       </SidebarLayout>
     );
   }
@@ -56,6 +58,7 @@ export function AppShell({
   return (
     <PageLayout error={error} isLoggedIn={isLoggedIn}>
       {children}
+      <CookieBanner />
     </PageLayout>
   );
 }

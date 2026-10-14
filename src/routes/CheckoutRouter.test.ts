@@ -4,12 +4,13 @@ import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
 const mockStripeCreate = vi.fn();
+const mockStripeRetrieve = vi.fn();
 const mockPriceRetrieve = vi.fn();
 
 vi.mock('../lib/integrations/stripe', () => ({
   getStripe: vi.fn().mockReturnValue({
     checkout: {
-      sessions: { create: mockStripeCreate },
+      sessions: { create: mockStripeCreate, retrieve: mockStripeRetrieve },
     },
     prices: { retrieve: mockPriceRetrieve },
     customers: {
@@ -460,5 +461,72 @@ describe('CheckoutRouter — GET /api/checkout/auto-sync/price', () => {
       display: '$30',
     });
     expect(mockPriceRetrieve).toHaveBeenCalledWith('price_auto_sync_test');
+  });
+});
+
+describe('CheckoutRouter — GET /api/checkout/receipt', () => {
+  let server: http.Server;
+  let url: string;
+
+  beforeAll(async () => {
+    process.env.UNLIMITED_MONTHLY_PRICE_ID = 'price_unlimited_test';
+    process.env.AUTO_SYNC_PRICE_ID = 'price_auto_sync_test';
+    ({ server, url } = await buildServer());
+  });
+
+  afterAll(() => server.close());
+
+  beforeEach(() => {
+    mockStripeRetrieve.mockReset();
+    mockOptionalOwner = undefined;
+    mockOptionalEmail = undefined;
+  });
+
+  it('returns the receipt for an anonymous pass session without a login', async () => {
+    mockStripeRetrieve.mockResolvedValue({
+      id: 'cs_test_a1B2c3D4e5F6g7',
+      payment_status: 'paid',
+      amount_total: 600,
+      currency: 'usd',
+      mode: 'payment',
+      metadata: { pass_anonymous: '1', pass_kind: '24h' },
+    });
+
+    const res = await fetch(
+      `${url}/api/checkout/receipt?session_id=cs_test_a1B2c3D4e5F6g7`
+    );
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      amount: 600,
+      currency: 'USD',
+      kind: 'pass_24h',
+    });
+    expect(mockStripeRetrieve).toHaveBeenCalledWith('cs_test_a1B2c3D4e5F6g7');
+  });
+
+  it('hides another user\u2019s session as 404', async () => {
+    mockOptionalOwner = 7;
+    mockStripeRetrieve.mockResolvedValue({
+      id: 'cs_test_a1B2c3D4e5F6g7',
+      payment_status: 'paid',
+      amount_total: 2900,
+      currency: 'usd',
+      mode: 'payment',
+      metadata: { user_id: '42', pass_kind: '120d' },
+    });
+
+    const res = await fetch(
+      `${url}/api/checkout/receipt?session_id=cs_test_a1B2c3D4e5F6g7`
+    );
+
+    expect(res.status).toBe(404);
+  });
+
+  it('rejects a malformed session id with 400 and never calls Stripe', async () => {
+    const res = await fetch(`${url}/api/checkout/receipt?session_id=nope`);
+
+    expect(res.status).toBe(400);
+    expect(mockStripeRetrieve).not.toHaveBeenCalled();
   });
 });

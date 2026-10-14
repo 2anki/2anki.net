@@ -1,6 +1,8 @@
 import express from 'express';
 import { getDatabase } from '../../data_layer';
 import { sendIndex } from './sendIndex';
+import { extractCountryFromRequest } from '../../lib/http/extractCountryFromRequest';
+import { consentRegionFor } from '../../lib/http/consentRegion';
 import { getDefaultEmailService } from '../../services/EmailService/EmailService';
 import {
   shouldSendContactAck,
@@ -14,7 +16,11 @@ import {
 
 class IndexController {
   public getIndex(request: express.Request, response: express.Response) {
-    sendIndex(response, request.path);
+    sendIndex(
+      response,
+      request.path,
+      consentRegionFor(extractCountryFromRequest(request))
+    );
   }
 
   async contactUs(req: express.Request, res: express.Response) {

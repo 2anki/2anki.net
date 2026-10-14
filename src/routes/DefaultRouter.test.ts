@@ -9,6 +9,10 @@ import { isKnownAppRoute } from './knownRoutes';
 
 const SHELL_HTML =
   '<!doctype html><html><body><div id="root"></div></body></html>';
+// sendIndex stamps the consent region on the shell before sending it; the
+// test requests carry no country header, so the region falls back to eea.
+const SERVED_SHELL =
+  '<!doctype html><html data-consent-region="eea"><body><div id="root"></div></body></html>';
 
 vi.mock('../controllers/IndexController/getIndexFileContents', () => ({
   getIndexFileContents: vi.fn(() => SHELL_HTML),
@@ -40,7 +44,7 @@ describe('DefaultRouter catch-all status', () => {
       const res = await fetch(`${url}${junkPath}`);
       const body = await res.text();
       expect(res.status).toBe(404);
-      expect(body).toBe(SHELL_HTML);
+      expect(body).toBe(SERVED_SHELL);
     }
   );
 
@@ -63,7 +67,7 @@ describe('DefaultRouter catch-all status', () => {
       expect(res.status).toBe(200);
       expect(body).toContain('<main class="legal-prerender"');
       expect(body).toContain('</main></div>');
-      expect(body).not.toBe(SHELL_HTML);
+      expect(body).not.toBe(SERVED_SHELL);
     }
   );
 
@@ -73,7 +77,7 @@ describe('DefaultRouter catch-all status', () => {
       const res = await fetch(`${url}${knownPath}`);
       const body = await res.text();
       expect(res.status).toBe(200);
-      expect(body).toBe(SHELL_HTML);
+      expect(body).toBe(SERVED_SHELL);
     }
   );
 });

@@ -1,0 +1,12 @@
+{
+  "title": "2anki の Cookie について",
+  "body": "どのページから人が来ているかを知り、広告の効果を測るために Cookie を使っています。データを売ることはありません。設定はいつでもアカウントから変更できます。",
+  "privacyLink": "プライバシーポリシー",
+  "acceptAll": "すべて許可",
+  "onlyNecessary": "必要なもののみ",
+  "settingsTitle": "Cookie",
+  "settingsDescription": "分析と広告の Cookie は、どのページから人が来ているかを知るためのものです。必要な Cookie はログイン状態を保つために常に有効です。",
+  "statusGranted": "分析と広告の Cookie を許可しています",
+  "statusDenied": "必要な Cookie のみ設定されています",
+  "allow": "すべて許可"
+}

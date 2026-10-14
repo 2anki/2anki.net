@@ -28,7 +28,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#000000" />
   <meta http-equiv="Content-Security-Policy"
-    content="script-src 'self' 'unsafe-inline' https://*.digitaloceanspaces.com https://www.googletagmanager.com https://www.google-analytics.com https://static.hotjar.com https://script.hotjar.com https://www.dropbox.com https://apis.google.com https://accounts.google.com https://*.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-src https://*.google.com https://www.youtube.com https://www.youtube-nocookie.com; img-src 'self' data: blob: https:;">
+    content="script-src 'self' 'unsafe-inline' https://*.digitaloceanspaces.com https://www.googletagmanager.com https://www.google-analytics.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://static.hotjar.com https://script.hotjar.com https://www.dropbox.com https://apis.google.com https://accounts.google.com https://*.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-src https://*.google.com https://td.doubleclick.net https://www.youtube.com https://www.youtube-nocookie.com; img-src 'self' data: blob: https:;">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <!--
       Notice the use of  in the tags above.
@@ -151,10 +151,37 @@
     ]
   }
   </script>
-  <!-- Hotjar Tracking Code for https://2anki.net (deferred until after load) -->
+  <!-- Consent Mode v2: everything starts denied in the EEA/UK/CH (the server
+       stamps data-consent-region on <html>), granted elsewhere, and the banner
+       updates it. Must run before any tag loads. -->
   <script>
-    globalThis.addEventListener('load', function () {
-      (function (h, o, t, j) {
+    (function () {
+      globalThis.dataLayer = globalThis.dataLayer || [];
+      globalThis.gtag = function () {
+        dataLayer.push(arguments);
+      };
+      var region = document.documentElement.getAttribute('data-consent-region');
+      var stored = document.cookie.match(/(?:^|;\s*)cookie_consent=(granted|denied)/);
+      var granted = stored ? stored[1] === 'granted' : region === 'other';
+      var state = granted ? 'granted' : 'denied';
+      gtag('consent', 'default', {
+        ad_storage: state,
+        ad_user_data: state,
+        ad_personalization: state,
+        analytics_storage: state,
+        wait_for_update: 500,
+      });
+      globalThis.__consentGranted = granted;
+    })();
+  </script>
+  <!-- Hotjar Tracking Code for https://2anki.net (only with analytics consent) -->
+  <script>
+    (function () {
+      var loaded = false;
+      function loadHotjar() {
+        if (loaded) return;
+        loaded = true;
+        (function (h, o, t, j) {
         h.hj = h.hj || function () {
           const hjQueue = h.hj.q = h.hj.q || [];
           hjQueue.push(arguments);
@@ -165,8 +192,15 @@
         scriptElement.async = 1;
         scriptElement.src = t + h._hjSettings.hjid + j + h._hjSettings.hjsv;
         headElement.appendChild(scriptElement);
-      })(globalThis, document, 'https://static.hotjar.com/c/hotjar-', '.js?sv=');
-    });
+        })(globalThis, document, 'https://static.hotjar.com/c/hotjar-', '.js?sv=');
+      }
+      globalThis.addEventListener('load', function () {
+        if (globalThis.__consentGranted) loadHotjar();
+      });
+      globalThis.addEventListener('consentchange', function (event) {
+        if (event.detail === 'granted') loadHotjar();
+      });
+    })();
   </script>
 
   <!-- Legacy redirect (early + preserve URL) -->
@@ -192,15 +226,11 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
   </noscript>
 
-  <!-- Global site tag (gtag.js) - Google Analytics (deferred until after load) -->
+  <!-- Global site tag (gtag.js) - Google Analytics + Google Ads (deferred until after load) -->
   <!-- Note: SRI not used for gtag.js as Google frequently updates this script,
        which would break the integrity hash. Using secure loading with error handling instead. -->
   <script>
     globalThis.addEventListener('load', function () {
-      globalThis.dataLayer = globalThis.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
       const script = document.createElement('script');
       script.async = true;
       script.src = 'https://www.googletagmanager.com/gtag/js?id=G-X6K69TY3EX';
@@ -210,6 +240,7 @@
       script.onload = function () {
         gtag('js', new Date());
         gtag('config', 'G-X6K69TY3EX', { anonymize_ip: true });
+        gtag('config', 'AW-18513857875', { allow_enhanced_conversions: true });
       };
       document.head.appendChild(script);
     });

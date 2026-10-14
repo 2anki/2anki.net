@@ -57,7 +57,7 @@ describe('CreateCreditPackCheckoutUseCase', () => {
 
       expect(mockStripeCreateSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          success_url: `https://staging.2anki.net${path}?credits=added`,
+          success_url: `https://staging.2anki.net${path}?credits=added&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `https://staging.2anki.net${path}`,
         })
       );
@@ -73,7 +73,8 @@ describe('CreateCreditPackCheckoutUseCase', () => {
 
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        success_url: 'https://staging.2anki.net/upload?credits=added',
+        success_url:
+          'https://staging.2anki.net/upload?credits=added&session_id={CHECKOUT_SESSION_ID}',
         cancel_url: 'https://staging.2anki.net/upload',
       })
     );

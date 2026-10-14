@@ -37,7 +37,7 @@ export function resolveCreditPackRedirect(
 ): CreditPackRedirect {
   const path = source == null ? '/upload' : SOURCE_PATHS[source];
   return {
-    successUrl: `${appUrl}${path}?credits=added`,
+    successUrl: `${appUrl}${path}?credits=added&session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${appUrl}${path}`,
   };
 }
