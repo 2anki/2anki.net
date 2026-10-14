@@ -392,22 +392,27 @@ const WebhooksRouter = () => {
             },
           });
 
-          // GA4 purchase fires here, before the pass / credit-pack branches
-          // return early, so one-time purchases report like subscriptions do.
-          try {
-            const { sendPurchaseEvent } =
-              await import('../services/GA4Service');
-            await sendPurchaseEvent({
-              transactionId: session.id,
-              valueCents: session.amount_total ?? 0,
-              currency: session.currency ?? 'usd',
-              stripeCustomerId:
-                typeof session.customer === 'string' ? session.customer : '',
-              clientId: sessionMeta.ga_client_id,
-            });
-          } catch (ga4Error) {
-            console.error('[ga4] failed to send purchase event', ga4Error);
-          }
+          // One GA4 purchase per paid session, sent after the grant so a
+          // failed grant (which makes Stripe retry) cannot double-count.
+          const reportPurchaseToGa4 = async () => {
+            if (session.payment_status !== 'paid') {
+              return;
+            }
+            try {
+              const { sendPurchaseEvent } =
+                await import('../services/GA4Service');
+              await sendPurchaseEvent({
+                transactionId: session.id,
+                valueCents: session.amount_total ?? 0,
+                currency: session.currency ?? 'usd',
+                stripeCustomerId:
+                  typeof session.customer === 'string' ? session.customer : '',
+                clientId: sessionMeta.ga_client_id,
+              });
+            } catch (ga4Error) {
+              console.error('[ga4] failed to send purchase event', ga4Error);
+            }
+          };
 
           if (passKind != null && isAnonymousPassKind(passKind)) {
             const paymentIntentId =
@@ -499,6 +504,7 @@ const WebhooksRouter = () => {
               } catch (passError) {
                 console.error('pass.webhook.grant_failed', passError);
               }
+              await reportPurchaseToGa4();
               response.send();
               return;
             }
@@ -541,6 +547,7 @@ const WebhooksRouter = () => {
             } catch (passError) {
               console.error('pass.webhook.grant_failed', passError);
             }
+            await reportPurchaseToGa4();
             response.send();
             return;
           }
@@ -594,6 +601,7 @@ const WebhooksRouter = () => {
             } catch (creditsError) {
               console.error('credits.webhook.grant_failed', creditsError);
             }
+            await reportPurchaseToGa4();
             response.send();
             return;
           }
@@ -693,6 +701,7 @@ const WebhooksRouter = () => {
             }
           }
 
+          await reportPurchaseToGa4();
           console.log('checkout.session.completed');
           break;
         }

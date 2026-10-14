@@ -1794,15 +1794,17 @@ describe('WebhookRouter — ad-click attribution and GA4 purchase for passes', (
     expect(call?.[1].props).not.toHaveProperty('fbclid');
   });
 
-  it('sends the GA4 purchase for a pass session instead of returning early', async () => {
+  it('sends the GA4 purchase once for a paid pass session instead of returning early', async () => {
     mockWebhookEvent = makePassSessionEvent({
       id: 'cs_pass_ga4',
+      payment_status: 'paid',
       metadata: { user_id: '42', pass_kind: '24h', ga_client_id: '1.2' },
     });
 
     const res = await postWebhook();
     expect(res.status).toBe(200);
     const { sendPurchaseEvent } = await import('../services/GA4Service');
+    expect(sendPurchaseEvent).toHaveBeenCalledTimes(1);
     expect(sendPurchaseEvent).toHaveBeenCalledWith({
       transactionId: 'cs_pass_ga4',
       valueCents: 400,
@@ -1810,5 +1812,18 @@ describe('WebhookRouter — ad-click attribution and GA4 purchase for passes', (
       stripeCustomerId: '',
       clientId: '1.2',
     });
+  });
+
+  it('does not send a GA4 purchase for a session that is not paid yet', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      id: 'cs_pass_unpaid',
+      payment_status: 'unpaid',
+      metadata: { user_id: '42', pass_kind: '24h' },
+    });
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    const { sendPurchaseEvent } = await import('../services/GA4Service');
+    expect(sendPurchaseEvent).not.toHaveBeenCalled();
   });
 });

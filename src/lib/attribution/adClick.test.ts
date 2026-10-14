@@ -36,17 +36,12 @@ describe('parseAdClick', () => {
   });
 
   it('drops unknown keys, prototype names and non-string values', () => {
-    expect(
-      parseAdClick(
-        cookie({
-          gclid: 'ok',
-          toString: 'x',
-          __proto__: { polluted: '1' },
-          fbclid: 'nope',
-          utm_term: 7,
-        })
-      )
-    ).toEqual({ gclid: 'ok' });
+    const raw =
+      '{"gclid":"ok","toString":"x","__proto__":{"polluted":"1"},"constructor":{"prototype":{"x":1}},"fbclid":"nope","utm_term":7}';
+    const result = parseAdClick(raw);
+    expect(result).toEqual({ gclid: 'ok' });
+    expect(result).not.toHaveProperty('polluted');
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
 
   it('rejects click ids with characters outside [A-Za-z0-9_-] and oversize values', () => {
@@ -75,8 +70,15 @@ describe('parseAdClick', () => {
     ).toEqual({ utm_term: 'pdf to anki' });
   });
 
-  it('keeps only a plain path for landing', () => {
+  it('keeps only a plain public path for landing', () => {
     expect(parseAdClick(cookie({ landing: 'https://evil.example/' }))).toEqual(
+      {}
+    );
+    expect(parseAdClick(cookie({ landing: '//evil.example/' }))).toEqual({});
+    expect(parseAdClick(cookie({ landing: '/s/secret-share-token' }))).toEqual(
+      {}
+    );
+    expect(parseAdClick(cookie({ landing: '/preview/apkg/key123' }))).toEqual(
       {}
     );
     expect(parseAdClick(cookie({ landing: '/convert/word-to-anki/' }))).toEqual(

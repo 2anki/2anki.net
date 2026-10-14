@@ -2,6 +2,7 @@ import { vi, type Mock } from 'vitest';
 import Knex from 'knex';
 import KnexConfig from '../KnexConfig';
 import UsersRepository from './UsersRepository';
+import type DeletedUserUsageRepository from './DeletedUserUsageRepository';
 import { isNewMonth } from '../lib/User/isNewMonth';
 import { startOfMonthUtc } from '../lib/User/startOfMonthUtc';
 
@@ -842,19 +843,22 @@ describe('UsersRepository.createUserAndSeedFromTombstone attribution column', ()
     const insertSpy = vi
       .fn()
       .mockReturnValue({ returning: vi.fn().mockResolvedValue([{ id: 5 }]) });
-    const trx: any = vi.fn().mockReturnValue({ insert: insertSpy });
-    const knex: any = vi.fn();
-    knex.transaction = vi.fn().mockImplementation(async (cb: any) => cb(trx));
+    const trx = vi.fn().mockReturnValue({ insert: insertSpy });
+    const knex = Object.assign(vi.fn(), {
+      transaction: vi
+        .fn()
+        .mockImplementation(async (cb: (t: typeof trx) => unknown) => cb(trx)),
+    }) as unknown as Knex.Knex;
     const tombstoneRepo = {
       snapshot: vi.fn(),
       consumeIfCurrentMonth: vi.fn().mockResolvedValue(null),
-    };
+    } as unknown as DeletedUserUsageRepository;
     return { knex, tombstoneRepo, insertSpy };
   }
 
   it('stores the ad click attribution as jsonb', async () => {
     const { knex, tombstoneRepo, insertSpy } = buildInsertKnex();
-    const repo = new UsersRepository(knex, tombstoneRepo as any);
+    const repo = new UsersRepository(knex, tombstoneRepo);
 
     await repo.createUserAndSeedFromTombstone(
       'al',
@@ -878,7 +882,7 @@ describe('UsersRepository.createUserAndSeedFromTombstone attribution column', ()
 
   it('stores null attribution when the signup carried no ad click', async () => {
     const { knex, tombstoneRepo, insertSpy } = buildInsertKnex();
-    const repo = new UsersRepository(knex, tombstoneRepo as any);
+    const repo = new UsersRepository(knex, tombstoneRepo);
 
     await repo.createUserAndSeedFromTombstone(
       'al',

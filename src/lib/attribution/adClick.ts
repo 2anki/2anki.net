@@ -23,8 +23,10 @@ type Rule = { pattern: RegExp; lowercase: boolean };
 
 const CLICK_ID: Rule = { pattern: /^[A-Za-z0-9_-]{1,200}$/, lowercase: false };
 const UTM: Rule = { pattern: /^[\w .:/+-]{1,100}$/, lowercase: true };
+// Public landing pages only: no protocol-relative `//`, and never the
+// token-bearing share (/s/) or preview (/preview/) routes.
 const LANDING: Rule = {
-  pattern: /^\/[a-zA-Z0-9\-_/]{0,199}$/,
+  pattern: /^\/(?!\/)(?!s\/)(?!preview\/)[a-zA-Z0-9\-_/]{0,199}$/,
   lowercase: false,
 };
 
