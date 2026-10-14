@@ -10,7 +10,7 @@ The case for a rewrite is throughput and memory. Neither is the constraint:
 - Conversion time goes to work outside Node: poppler (`pdftoppm`, `pdfimages`, `pdfinfo`), LibreOffice, Chromium via puppeteer, the Python packager, and the Notion and Claude APIs. A Rust orchestrator makes none of those faster.
 - The two real memory incidents were glibc arenas plus tsx recompiles (#4687) and pdf.js retaining page data (#4715). Both were fixed in place.
 
-What a rewrite would replace: about 112k lines across 1055 source files, 814 server test files, 188 Knex migrations, 40 Express routers, and four integrations with no Rust SDK of equal footing (Notion, Stripe webhooks, Apple App Store server library, mammoth for docx). All of it on hard-rail surfaces that nobody reviews. It makes no flashcard simpler, faster or more beautiful, so it fails the goal check.
+What a rewrite would replace, counted on 2026-10-14 under `src/` (`*.ts`, tests are `*.test.ts`): 1055 non-test files holding 112k lines, plus 814 test files, 257k lines in all; 188 Knex migrations; 40 files in `src/routes/` that build an Express `Router()`; 66 non-test files importing the Notion SDK. Four integrations have no Rust SDK of equal footing (Notion, Stripe webhooks, Apple App Store server library, mammoth for docx). All of it on hard-rail surfaces that nobody reviews. It makes no flashcard simpler, faster or more beautiful, so it fails the goal check.
 
 ## Ecosystem map, for the next time this comes up
 
@@ -18,16 +18,16 @@ What a rewrite would replace: about 112k lines across 1055 source files, 814 ser
 | --- | --- | --- |
 | Express | axum | low |
 | knex + pg, 188 migrations | sqlx, migrations rewritten | high |
-| cheerio (25 parser files) | scraper | medium |
+| cheerio (18 parser files) | scraper | medium |
 | pdf-parse (pdf.js 1.10) | pdfium-render | medium, heuristics tuned to pdf.js |
 | mammoth (docx) | docx-rs, partial | high |
 | markdown-it + plugins | comrak | medium |
 | sanitize-html | ammonia | low |
 | puppeteer | chromiumoxide | medium |
 | dockerode | bollard | low |
-| @notionhq/client (66 files) | none, hand-rolled | high |
+| @notionhq/client (66 importing files) | none, hand-rolled | high |
 | @anthropic-ai/sdk | none, hand-rolled | medium |
-| stripe (22 files) | async-stripe, community | high |
+| stripe (webhooks, checkout, subscriptions) | async-stripe, community | high |
 | @modelcontextprotocol/sdk | rmcp | low |
 | @apple/app-store-server-library | none | high |
 
