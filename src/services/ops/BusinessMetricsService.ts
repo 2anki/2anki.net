@@ -1,5 +1,5 @@
 import type { Stripe } from 'stripe';
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 
 import { getStripe } from '../../lib/integrations/stripe';
 import { isPaused } from '../../lib/subscriptions/isPaused';

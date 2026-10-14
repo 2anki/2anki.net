@@ -1,4 +1,4 @@
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 import { withStripeRetry } from '../lib/storage/jobs/helpers/withStripeRetry';
 import hashToken from '../lib/misc/hashToken';
 

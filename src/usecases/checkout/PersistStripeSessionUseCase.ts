@@ -1,4 +1,4 @@
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 import type { Knex } from 'knex';
 
 import { updateStoreSubscription } from '../../lib/integrations/stripe';

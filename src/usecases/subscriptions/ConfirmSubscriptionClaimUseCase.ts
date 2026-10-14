@@ -6,7 +6,7 @@ import type { ISubscriptionClaimAuditRepository } from '../../data_layer/Subscri
 import type UsersRepository from '../../data_layer/UsersRepository';
 import type { SubscriptionService } from '../../services/SubscriptionService';
 import { updateStoreSubscription } from '../../lib/integrations/stripe';
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 
 export type ConfirmOutcome =
   | { success: true }

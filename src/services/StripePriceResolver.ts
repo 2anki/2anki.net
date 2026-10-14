@@ -1,4 +1,4 @@
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 
 const resolvedPriceIdCache = new Map<string, string>();
 

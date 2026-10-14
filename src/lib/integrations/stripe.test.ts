@@ -2,7 +2,7 @@ process.env.STRIPE_KEY = 'sk_test_fake_key_for_unit_tests';
 
 import knexLib, { Knex } from 'knex';
 import { isDeveloperTierProduct, updateStoreSubscription } from './stripe';
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 
 const makeCustomer = (
   email: string | null,

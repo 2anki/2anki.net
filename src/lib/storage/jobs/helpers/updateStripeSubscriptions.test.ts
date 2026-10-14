@@ -1,5 +1,5 @@
 import { vi, type Mock, type MockInstance } from 'vitest';
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 
 const mockStripeInstance = vi.hoisted(() => ({
   subscriptions: {

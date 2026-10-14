@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 import type { IEmailService } from '../../services/EmailService/EmailService';
 import type { IAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import type { IPassClaimTokensRepository } from '../../data_layer/PassClaimTokensRepository';

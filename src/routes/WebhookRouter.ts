@@ -1,5 +1,5 @@
 import express from 'express';
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 
 import {
   extractProductId,
