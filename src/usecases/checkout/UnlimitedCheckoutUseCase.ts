@@ -1,4 +1,4 @@
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 import hashToken from '../../lib/misc/hashToken';
 import { optionalMetadata } from './checkoutMetadata';
 import { StripePriceResolver } from '../../services/StripePriceResolver';

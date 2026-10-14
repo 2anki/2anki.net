@@ -6,7 +6,7 @@ import {
 import { DeveloperSubscriptionsRepository } from '../../../../data_layer/DeveloperSubscriptionsRepository';
 import { getDatabase } from '../../../../data_layer';
 import { Knex } from 'knex';
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 import { reconcileActiveSubscriptions } from './reconcileActiveSubscriptions';
 import { withStripeRetry } from './withStripeRetry';
 import { emailHash } from '../../../emailHash';

@@ -30,7 +30,6 @@ import {
 } from './constants';
 import { isValidDeckName, addDeckNameSuffix } from '../../lib/anki/format';
 import { escapeHtml } from '../../lib/notion-render/escape';
-import { ClientResponse } from '@sendgrid/mail';
 import { SUPPORT_CC_ADDRESS, SUPPORT_EMAIL_ADDRESS } from '../../lib/constants';
 import { emailHash } from '../../lib/emailHash';
 import { getDatabase } from '../../data_layer';
@@ -142,6 +141,7 @@ export const PRICE_LOCK_IN_SUBJECTS: Record<'a' | 'b', string> = {
   b: 'Your current rate is grandfathered until Sunday',
 };
 
+type ClientResponse = Awaited<ReturnType<typeof sgMail.send>>[0];
 type SgMessage = Exclude<Parameters<typeof sgMail.send>[0], unknown[]>;
 type IsEmailSuppressed = (email: string) => Promise<boolean>;
 type GetRecipientLanguage = (email: string) => Promise<string | null>;

@@ -1,5 +1,5 @@
 import { Knex } from 'knex';
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 import { DeveloperSubscriptionsRepository } from '../../../../data_layer/DeveloperSubscriptionsRepository';
 import { isPaused } from '../../../subscriptions/isPaused';
 

@@ -7,7 +7,7 @@ import type { ISubscriptionClaimTokensRepository } from '../../data_layer/Subscr
 import type { ISubscriptionClaimAuditRepository } from '../../data_layer/SubscriptionClaimAuditRepository';
 import type { IEmailService } from '../../services/EmailService/EmailService';
 import type { SubscriptionService } from '../../services/SubscriptionService';
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 
 process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
 

@@ -3,7 +3,7 @@ import { ConfirmSubscriptionClaimUseCase } from './ConfirmSubscriptionClaimUseCa
 import type { ISubscriptionClaimTokensRepository } from '../../data_layer/SubscriptionClaimTokensRepository';
 import type { ISubscriptionClaimAuditRepository } from '../../data_layer/SubscriptionClaimAuditRepository';
 import type { SubscriptionService } from '../../services/SubscriptionService';
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 import type SubscriptionClaimTokens from '../../data_layer/public/SubscriptionClaimTokens';
 import type { Knex } from 'knex';
 import type UsersRepository from '../../data_layer/UsersRepository';

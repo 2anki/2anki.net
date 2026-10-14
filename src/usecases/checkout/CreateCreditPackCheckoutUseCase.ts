@@ -1,4 +1,4 @@
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 import { optionalMetadata } from './checkoutMetadata';
 import { CreditPackSource, resolveCreditPackRedirect } from './creditPack';
 import { createCheckoutSession } from './createCheckoutSession';

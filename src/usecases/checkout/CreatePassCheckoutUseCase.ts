@@ -1,4 +1,4 @@
-import type { Stripe as StripeTypes } from 'stripe/cjs/stripe.core';
+import type StripeTypes from 'stripe';
 import type { PassKind } from '../../data_layer/UserPassRepository';
 import { optionalMetadata } from './checkoutMetadata';
 import { createCheckoutSession } from './createCheckoutSession';
