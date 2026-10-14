@@ -1,36 +1,34 @@
 """
-Retrieve the correct genanki model
+Retrieve the correct notetype for a card
 """
-from genanki import Model
-
 from .get_model_id import get_model_id
 from .get_template import get_template
-from .n2a_model import N2AModel
+from .n2a_model import CLOZE, FRONT_BACK, N2AModel
 
 MODEL_INFO = {
     "cloze": {
         "file_name": "n2a-cloze.json",
-        "model_type": Model.CLOZE
+        "model_type": CLOZE
     },
     "basic": {
         "file_name": "n2a-basic.json",
-        "model_type": Model.FRONT_BACK
+        "model_type": FRONT_BACK
     },
     "input": {
         "file_name": "n2a-input.json",
-        "model_type": Model.FRONT_BACK
+        "model_type": FRONT_BACK
     },
     "io": {
         "file_name": "n2a-io.json",
-        "model_type": Model.CLOZE
+        "model_type": CLOZE
     },
     "mcq": {
         "file_name": "n2a-mcq.json",
-        "model_type": Model.FRONT_BACK
+        "model_type": FRONT_BACK
     },
     "hierarchy": {
         "file_name": "n2a-hierarchy.json",
-        "model_type": Model.FRONT_BACK
+        "model_type": FRONT_BACK
     }
 }
 
@@ -189,7 +187,7 @@ def get_model(descriptor, mcq_settings=None, front_lang="", back_lang=""):
 
 def get_custom_model(model_name, field_names, is_cloze, css):
     """
-    Build a genanki Model that preserves the user's original note-type
+    Build a notetype that preserves the user's original note-type
     structure. Used by the apkg-input transform pipeline when the source
     deck has fields beyond Front/Back — we keep all of them so the
     transformed deck round-trips cleanly into Anki.
@@ -213,14 +211,14 @@ def get_custom_model(model_name, field_names, is_cloze, css):
         for name in remaining:
             afmt_parts.append(f"<br>{{{{{name}}}}}")
         afmt = "".join(afmt_parts)
-        model_type = Model.CLOZE
+        model_type = CLOZE
     else:
         qfmt = f"{{{{{first}}}}}"
         afmt_parts = ['{{FrontSide}}<hr id="answer">']
         for name in remaining:
             afmt_parts.append(f"<br>{{{{{name}}}}}")
         afmt = "".join(afmt_parts)
-        model_type = Model.FRONT_BACK
+        model_type = FRONT_BACK
 
     return N2AModel(
         safe_id,

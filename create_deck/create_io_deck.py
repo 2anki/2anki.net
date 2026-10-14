@@ -25,12 +25,11 @@ import os
 import sys
 import traceback
 
-from genanki import Note
-from genanki.util import guid_for
-
 from helpers.get_model import get_model
 from helpers.get_model_id import get_model_id
+from helpers.guid import guid_for
 from helpers.io_shapes import shapes_to_occlusion_field
+from helpers.n2a_note import N2ANote
 from helpers.write_apkg import _write_new_apkg
 from backend.utils.email_error_alert import send_error_email
 
@@ -57,7 +56,7 @@ def build_io_notes(image_entry, occlude_inactive, media_files):
     fields = [occlusion_field, image_html, header, "", ""]
 
     note_guid = guid_for(image_basename, header, occlusion_field)
-    note = Note(model, fields=fields, guid=note_guid)
+    note = N2ANote(model, fields=fields, guid=note_guid)
 
     media_files.append(image_path)
     return [note]
@@ -99,11 +98,6 @@ if __name__ == "__main__":
         if not notes:
             print("No cards generated; exiting cleanly")
             sys.exit(0)
-
-        # Same rule as create_deck.py: image order is document order, and
-        # Anki shows `due` as "New #N" for new cards.
-        for position, note in enumerate(notes, start=1):
-            note.due = position
 
         deck_payload = [
             {

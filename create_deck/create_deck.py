@@ -12,12 +12,11 @@ import json
 import sys
 import os
 
-from genanki.util import guid_for
-
 from helpers.cards import get_safe_value
 from helpers.get_model import get_custom_model, get_model, resolve_tts_langs
 from helpers.get_model_id import get_model_id
 from helpers.get_template import get_template
+from helpers.guid import guid_for
 from helpers.n2a_note import N2ANote
 from helpers.read_template import read_template
 from helpers.sanitize_tags import sanitize_tags
@@ -191,18 +190,10 @@ def build_one_deck(data_file, template_dir):
     }
     front_lang, back_lang = resolve_tts_langs(mt)
 
-    # Anki keeps a new card's `due` from the apkg and shows it as "New #N"; it
-    # is the only carrier of document order the user can see or sort by. One
-    # counter across every deck in the file, so parent -> child page order
-    # survives too. `card["number"]` cannot serve: it may be a Notion id string
-    # or a .5 reversed-note offset, and Anki rebuilds sfld from the front field
-    # on import anyway.
-    position = 0
     for deck in data:
         cards = deck.get("cards", [])
         notes = []
         for card in cards:
-            position += 1
             tags = sanitize_tags(card.get('tags', []))
             front = card.get("name", "")
             back = card.get("back", "")
@@ -279,9 +270,8 @@ def build_one_deck(data_file, template_dir):
                 card_type = "cloze" if card.get("cloze") else ("mcq" if card.get("mcq") else ("input" if card.get("enableInput") else "basic"))
                 guid_value = front if card.get('hierarchy', False) else fields[0]
                 guid = _content_guid(deck["name"], guid_value, card_type, back, content_guid_seen)
-            my_note = N2ANote(model, fields=fields,
-                              sort_field=card["number"], tags=tags,
-                              guid=guid, due=position, mod=card.get("mod"))
+            my_note = N2ANote(model, fields=fields, tags=tags,
+                              guid=guid, mod=card.get("mod"))
             guid_records.append({"notionId": notion_id, "guid": guid})
             notes.append(my_note)
             media_files = media_files + card["media"]
@@ -305,7 +295,7 @@ def build_one_deck(data_file, template_dir):
     buf = io.StringIO()
     with redirect_stdout(buf):
         _write_new_apkg(decks, media_files)
-    return buf.getvalue().strip()
+    return buf.getvalue().strip().splitlines()[-1]
 
 
 def run_batch(manifest_path, template_dir):

@@ -1,7 +1,6 @@
 """Tests for the apkg-input transform pipeline's custom-model factory."""
-from genanki import Model
-
 from .get_model import get_custom_model
+from .n2a_model import N2AModel
 
 
 def test_keeps_user_field_names_in_order():
@@ -25,7 +24,7 @@ def test_basic_model_back_renders_remaining_fields_after_front_side():
 
 def test_basic_model_is_front_back_type():
     model = get_custom_model("Vocab", ["Word", "Definition"], False, "")
-    assert model.model_type == Model.FRONT_BACK
+    assert model.model_type == N2AModel.FRONT_BACK
 
 
 def test_cloze_model_wraps_first_field_as_cloze():
@@ -35,7 +34,7 @@ def test_cloze_model_wraps_first_field_as_cloze():
     assert qfmt == "{{cloze:Text}}"
     assert "{{cloze:Text}}" in afmt
     assert "{{Extra}}" in afmt
-    assert model.model_type == Model.CLOZE
+    assert model.model_type == N2AModel.CLOZE
 
 
 def test_falls_back_to_front_back_when_no_field_names_given():

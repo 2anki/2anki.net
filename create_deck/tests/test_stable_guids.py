@@ -199,7 +199,7 @@ class TestStableGuids:
 
 class TestUseContentGuidMarker:
     def test_marker_forces_content_formula_over_notion_id(self):
-        from genanki.util import guid_for
+        from helpers.guid import guid_for
 
         notion_id = "3917ab29-a11e-8047-9d97-cf0f00b3c8f7"
         marked = _deck_info_with_notion_id("Science", "front", "back", notion_id)
@@ -272,7 +272,7 @@ class TestGuidForCrossLanguageParity:
     ]
 
     def test_vectors_match_pinned_guids(self):
-        from genanki.util import guid_for
+        from helpers.guid import guid_for
 
         for args, expected in self.VECTORS:
             assert guid_for(*args) == expected, args
@@ -296,7 +296,7 @@ class TestContentGuidCollisionForking:
         assert guids[0] != guids[1]
 
     def test_same_front_same_back_still_collapse_onto_one_guid(self):
-        from genanki.util import guid_for
+        from helpers.guid import guid_for
 
         deck_info = _deck_info_cards(
             "Deck", [("What is H2O?", "Water"), ("What is H2O?", "Water")]
