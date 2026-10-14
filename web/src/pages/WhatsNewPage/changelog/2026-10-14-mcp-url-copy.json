@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-14-mcp-url-copy",
+  "date": "2026-10-14",
+  "type": "fix",
+  "title": "Copying the connector address from the Answers pages no longer picks up a trailing period that stopped Claude from connecting"
+}
