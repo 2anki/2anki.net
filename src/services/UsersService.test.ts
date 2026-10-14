@@ -69,6 +69,7 @@ describe('UsersService.register', () => {
       'Alex',
       'hashed',
       'alex@example.com',
+      null,
       null
     );
   });
@@ -83,6 +84,7 @@ describe('UsersService.register', () => {
       'jane.doe',
       'hashed',
       'jane.doe@example.com',
+      null,
       null
     );
   });
@@ -97,6 +99,7 @@ describe('UsersService.register', () => {
       'student',
       'hashed',
       'student@uni.edu',
+      null,
       null
     );
   });
@@ -116,7 +119,8 @@ describe('UsersService.register', () => {
       'Alex',
       'hashed',
       'al@example.com',
-      '/notion-to-anki'
+      '/notion-to-anki',
+      null
     );
   });
 
@@ -436,7 +440,8 @@ describe('UsersService.requestMagicLink', () => {
       'newcomer',
       expect.any(String),
       'newcomer@example.com',
-      'magic_link'
+      'magic_link',
+      null
     );
     const storedPassword = createUserAndSeedFromTombstone.mock.calls[0][1];
     expect(storedPassword).toMatch(/^\$2[aby]\$/);
@@ -473,7 +478,8 @@ describe('UsersService.requestMagicLink', () => {
       'viambient',
       expect.any(String),
       'viambient@example.com',
-      '/mcp'
+      '/mcp',
+      null
     );
   });
 
@@ -729,5 +735,41 @@ describe('UsersService.verifyMagicToken', () => {
     const result = await service.verifyMagicToken(sentToken);
 
     expect(result).toBeNull();
+  });
+});
+
+describe('UsersService.register ad-click attribution', () => {
+  it('persists the attribution and copies it onto account_created', async () => {
+    const repository = buildRegisterRepository();
+    const service = new UsersService(repository, buildEmailService());
+
+    await service.register('Alex', 'hashed', 'al@example.com', '/pdf-to-anki', {
+      method: 'password',
+      attribution: {
+        gclid: 'Cj0abc',
+        utm_source: 'google',
+        utm_campaign: 'notion',
+      },
+    });
+
+    expect(repository.createUserAndSeedFromTombstone).toHaveBeenCalledWith(
+      'Alex',
+      'hashed',
+      'al@example.com',
+      '/pdf-to-anki',
+      { gclid: 'Cj0abc', utm_source: 'google', utm_campaign: 'notion' }
+    );
+    expect(trackImport).toHaveBeenCalledWith(
+      'account_created',
+      expect.objectContaining({
+        props: expect.objectContaining({
+          method: 'password',
+          signup_origin: '/pdf-to-anki',
+          gclid: 'Cj0abc',
+          utm_source: 'google',
+          utm_campaign: 'notion',
+        }),
+      })
+    );
   });
 });

@@ -234,3 +234,29 @@ describe('UnlimitedCheckoutController', () => {
     );
   });
 });
+
+describe('UnlimitedCheckoutController ad-click attribution', () => {
+  it('forwards the parsed ad_click cookie to the use case', async () => {
+    const req = {
+      body: { interval: 'month' },
+      cookies: {
+        ad_click: encodeURIComponent(
+          JSON.stringify({ gclid: 'Cj0abc', utm_source: 'google' })
+        ),
+      },
+    } as unknown as Request;
+    const res = makeResponse();
+    const uc = makeUseCase();
+    const controller = new UnlimitedCheckoutController(
+      uc,
+      makeContext(),
+      makeSink()
+    );
+    await controller.createSession(req, res as unknown as Response);
+    expect(uc.execute as Mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adClick: { gclid: 'Cj0abc', utm_source: 'google' },
+      })
+    );
+  });
+});

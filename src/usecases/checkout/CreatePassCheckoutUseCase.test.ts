@@ -384,3 +384,30 @@ describe('CreatePassCheckoutUseCase', () => {
     expect(call.custom_fields).toBeUndefined();
   });
 });
+
+describe('CreatePassCheckoutUseCase ad-click attribution', () => {
+  it('stamps the ad click fields into session metadata', async () => {
+    mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
+    const uc = new CreatePassCheckoutUseCase(makeStripe(), 'price_24h', '24h');
+    await uc.execute({
+      userId: 7,
+      adClick: {
+        gclid: 'Cj0abc',
+        utm_source: 'google',
+        utm_campaign: 'notion',
+        landing: '/notion-to-anki/',
+      },
+    });
+    expect(mockStripeCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          pass_kind: '24h',
+          gclid: 'Cj0abc',
+          utm_source: 'google',
+          utm_campaign: 'notion',
+          landing: '/notion-to-anki/',
+        }),
+      })
+    );
+  });
+});

@@ -376,3 +376,33 @@ describe('AutoSyncCheckoutUseCase', () => {
     });
   });
 });
+
+describe('AutoSyncCheckoutUseCase ad-click attribution', () => {
+  test('stamps the ad click fields into session metadata', async () => {
+    mockCountActive.mockResolvedValue(0);
+    mockGetUserActiveSubscriptions.mockResolvedValue([]);
+    mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
+    const uc = makeUseCase();
+    await uc.execute({
+      userEmail: 'user@example.com',
+      userId: 42,
+      adClick: {
+        gclid: 'Cj0abc',
+        utm_source: 'google',
+        utm_campaign: 'notion',
+        landing: '/notion-to-anki/',
+      },
+    });
+    expect(mockStripeCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          user_id: '42',
+          gclid: 'Cj0abc',
+          utm_source: 'google',
+          utm_campaign: 'notion',
+          landing: '/notion-to-anki/',
+        }),
+      })
+    );
+  });
+});

@@ -1,6 +1,7 @@
 import type StripeTypes from 'stripe';
 import hashToken from '../../lib/misc/hashToken';
 import { optionalMetadata } from './checkoutMetadata';
+import type { AdClickAttribution } from '../../lib/attribution/adClick';
 import { StripePriceResolver } from '../../services/StripePriceResolver';
 import {
   LEGACY_LOCK_IN_WINDOW_END,
@@ -78,6 +79,7 @@ export class UnlimitedCheckoutUseCase {
     anonId?: string;
     surface?: string;
     gaClientId?: string;
+    adClick?: AdClickAttribution;
     pricingV2On?: boolean;
     createdAt?: Date | null;
     now?: Date;
@@ -117,6 +119,7 @@ export class UnlimitedCheckoutUseCase {
           anon_id: input.anonId,
           surface: input.surface,
           ga_client_id: input.gaClientId,
+          ...input.adClick,
         }),
       },
     };

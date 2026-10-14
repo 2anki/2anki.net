@@ -553,3 +553,36 @@ describe('UnlimitedCheckoutUseCase', () => {
     );
   });
 });
+
+describe('UnlimitedCheckoutUseCase ad-click attribution', () => {
+  it('stamps the ad click fields into session metadata', async () => {
+    mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
+    const uc = new UnlimitedCheckoutUseCase(
+      makeStripe(),
+      MONTHLY_PRICE_ID,
+      YEARLY_PRICE_ID
+    );
+    await uc.execute({
+      userEmail: 'user@example.com',
+      userId: 12,
+      interval: 'month',
+      adClick: {
+        gclid: 'Cj0abc',
+        utm_source: 'google',
+        utm_campaign: 'notion',
+        landing: '/notion-to-anki/',
+      },
+    });
+    expect(mockStripeCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          user_id: '12',
+          gclid: 'Cj0abc',
+          utm_source: 'google',
+          utm_campaign: 'notion',
+          landing: '/notion-to-anki/',
+        }),
+      })
+    );
+  });
+});

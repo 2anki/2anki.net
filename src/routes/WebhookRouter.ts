@@ -1,4 +1,8 @@
 import express from 'express';
+import {
+  adClickEventProps,
+  pickAdClickMetadata,
+} from '../lib/attribution/adClick';
 import type StripeTypes from 'stripe';
 
 import {
@@ -362,6 +366,9 @@ const WebhooksRouter = () => {
           const surface = sessionMeta.surface;
           const anonId = sessionMeta.anon_id;
           const billingInterval = sessionMeta.interval;
+          const attribution = adClickEventProps(
+            pickAdClickMetadata(sessionMeta)
+          );
           const userIdMeta = Number.parseInt(sessionMeta.user_id ?? '', 10);
           track('checkout_completed', {
             userId: Number.isNaN(userIdMeta) ? null : userIdMeta,
@@ -381,8 +388,26 @@ const WebhooksRouter = () => {
               session.recovered_from !== ''
                 ? { recovered: true }
                 : {}),
+              ...attribution,
             },
           });
+
+          // GA4 purchase fires here, before the pass / credit-pack branches
+          // return early, so one-time purchases report like subscriptions do.
+          try {
+            const { sendPurchaseEvent } =
+              await import('../services/GA4Service');
+            await sendPurchaseEvent({
+              transactionId: session.id,
+              valueCents: session.amount_total ?? 0,
+              currency: session.currency ?? 'usd',
+              stripeCustomerId:
+                typeof session.customer === 'string' ? session.customer : '',
+              clientId: sessionMeta.ga_client_id,
+            });
+          } catch (ga4Error) {
+            console.error('[ga4] failed to send purchase event', ga4Error);
+          }
 
           if (passKind != null && isAnonymousPassKind(passKind)) {
             const paymentIntentId =
@@ -666,22 +691,6 @@ const WebhooksRouter = () => {
                 error
               );
             }
-          }
-
-          try {
-            const { sendPurchaseEvent } =
-              await import('../services/GA4Service');
-            await sendPurchaseEvent({
-              transactionId: session.id,
-              valueCents: session.amount_total ?? 0,
-              currency: session.currency ?? 'usd',
-              stripeCustomerId:
-                typeof session.customer === 'string' ? session.customer : '',
-              clientId: (session.metadata as Record<string, string> | null)
-                ?.ga_client_id,
-            });
-          } catch (ga4Error) {
-            console.error('[ga4] failed to send purchase event', ga4Error);
           }
 
           console.log('checkout.session.completed');

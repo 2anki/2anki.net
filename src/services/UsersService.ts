@@ -1,4 +1,8 @@
 import crypto from 'crypto';
+import {
+  adClickEventProps,
+  type AdClickAttribution,
+} from '../lib/attribution/adClick';
 import bcrypt from 'bcryptjs';
 
 import UsersRepository from '../data_layer/UsersRepository';
@@ -24,6 +28,7 @@ export interface RegisterTelemetry {
     | 'magic_link';
   anonymousId?: string | null;
   referrer?: string | null;
+  attribution?: AdClickAttribution | null;
 }
 
 // How an email came to be verified, threaded into the email_verified event at
@@ -143,11 +148,13 @@ class UsersService {
     const trimmedName = name?.trim() ?? '';
     const resolvedName =
       trimmedName.length > 0 ? trimmedName : normalizedEmail.split('@')[0];
+    const attribution = telemetry?.attribution ?? null;
     const inserted = await this.repository.createUserAndSeedFromTombstone(
       resolvedName,
       password,
       normalizedEmail,
-      signupOrigin ?? null
+      signupOrigin ?? null,
+      attribution
     );
     // account_created must fire for EVERY creation path (password, all four
     // OAuth providers, magic-link) or the signup funnel undercounts — it sat
@@ -163,6 +170,7 @@ class UsersService {
         props.signup_referrer = telemetry.referrer;
       }
       props.method = telemetry?.method ?? 'unknown';
+      Object.assign(props, adClickEventProps(attribution ?? {}));
       track('account_created', {
         userId,
         anonymousId: telemetry?.anonymousId ?? null,

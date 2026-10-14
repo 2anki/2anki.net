@@ -115,3 +115,26 @@ describe('AutoSyncCheckoutController', () => {
     );
   });
 });
+
+describe('AutoSyncCheckoutController ad-click attribution', () => {
+  test('forwards the parsed ad_click cookie to the use case', async () => {
+    const uc = makeUseCase({ url: 'https://s' });
+    const controller = new AutoSyncCheckoutController(uc);
+    const req = {
+      locals: {},
+      cookies: {
+        ad_click: encodeURIComponent(
+          JSON.stringify({ gclid: 'Cj0abc', utm_source: 'google' })
+        ),
+      },
+    } as unknown as Request;
+    const res = makeResponse();
+    res.locals = { owner: 42, email: 'user@example.com' };
+    await controller.createSession(req, res as unknown as Response);
+    expect(uc.execute as Mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adClick: { gclid: 'Cj0abc', utm_source: 'google' },
+      })
+    );
+  });
+});

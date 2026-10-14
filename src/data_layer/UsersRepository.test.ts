@@ -206,6 +206,7 @@ describe('UsersRepository.createUserAndSeedFromTombstone', () => {
       SAMPLE_HASH,
       'al@example.com',
       null,
+      null,
       new Date('2026-05-24T00:00:00Z')
     );
 
@@ -232,6 +233,7 @@ describe('UsersRepository.createUserAndSeedFromTombstone', () => {
       'al',
       SAMPLE_HASH,
       'al@example.com',
+      null,
       null,
       now
     );
@@ -832,5 +834,60 @@ describe('UsersRepository.clearStripeCustomerIdIf', () => {
 
     const row = await db('users').where({ id }).first();
     expect(row.stripe_customer_id).toBe('cus_newer');
+  });
+});
+
+describe('UsersRepository.createUserAndSeedFromTombstone attribution column', () => {
+  function buildInsertKnex() {
+    const insertSpy = vi
+      .fn()
+      .mockReturnValue({ returning: vi.fn().mockResolvedValue([{ id: 5 }]) });
+    const trx: any = vi.fn().mockReturnValue({ insert: insertSpy });
+    const knex: any = vi.fn();
+    knex.transaction = vi.fn().mockImplementation(async (cb: any) => cb(trx));
+    const tombstoneRepo = {
+      snapshot: vi.fn(),
+      consumeIfCurrentMonth: vi.fn().mockResolvedValue(null),
+    };
+    return { knex, tombstoneRepo, insertSpy };
+  }
+
+  it('stores the ad click attribution as jsonb', async () => {
+    const { knex, tombstoneRepo, insertSpy } = buildInsertKnex();
+    const repo = new UsersRepository(knex, tombstoneRepo as any);
+
+    await repo.createUserAndSeedFromTombstone(
+      'al',
+      SAMPLE_HASH,
+      'al@example.com',
+      '/notion-to-anki',
+      { gclid: 'Cj0abc', utm_source: 'google', utm_campaign: 'notion' }
+    );
+
+    expect(insertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        signup_origin: '/notion-to-anki',
+        signup_attribution: JSON.stringify({
+          gclid: 'Cj0abc',
+          utm_source: 'google',
+          utm_campaign: 'notion',
+        }),
+      })
+    );
+  });
+
+  it('stores null attribution when the signup carried no ad click', async () => {
+    const { knex, tombstoneRepo, insertSpy } = buildInsertKnex();
+    const repo = new UsersRepository(knex, tombstoneRepo as any);
+
+    await repo.createUserAndSeedFromTombstone(
+      'al',
+      SAMPLE_HASH,
+      'al@example.com'
+    );
+
+    expect(insertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ signup_attribution: null })
+    );
   });
 });

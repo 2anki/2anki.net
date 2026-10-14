@@ -3475,3 +3475,34 @@ describe('UsersController.getAiCredits', () => {
     });
   });
 });
+
+describe('UsersController.register ad-click attribution', () => {
+  it('passes the parsed ad_click cookie to the service as telemetry.attribution', async () => {
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
+    const { controller } = buildController({ register });
+    const req = {
+      body: { email: 'jane.doe@example.com', password: SAMPLE_PW },
+      query: {},
+      cookies: {
+        ad_click: encodeURIComponent(
+          JSON.stringify({ gclid: 'Cj0abc', utm_source: 'google', fbclid: 'x' })
+        ),
+      },
+    } as unknown as express.Request;
+    const res = buildRes();
+    const next = vi.fn();
+
+    await controller.register(req, res, next);
+
+    expect(register).toHaveBeenCalledWith(
+      '',
+      'hashed',
+      'jane.doe@example.com',
+      null,
+      expect.objectContaining({
+        method: 'password',
+        attribution: { gclid: 'Cj0abc', utm_source: 'google' },
+      })
+    );
+  });
+});

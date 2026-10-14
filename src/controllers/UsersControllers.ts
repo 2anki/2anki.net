@@ -23,6 +23,7 @@ import {
   parseFirstTouch,
   FirstTouchAttribution,
 } from './helpers/parseFirstTouch';
+import { readAdClickCookie } from '../lib/attribution/adClick';
 import { sessionCookieOptions } from '../shared/session';
 
 import { sendIndex } from './IndexController/sendIndex';
@@ -273,6 +274,7 @@ class UsersController {
           method: 'password',
           anonymousId: readAnonIdCookie(req),
           referrer: firstTouch.signupReferrer,
+          attribution: readAdClickCookie(req),
         }
       );
       const newUser = await this.userService.getUserFrom(email);
@@ -762,6 +764,7 @@ class UsersController {
           method: 'google',
           anonymousId: readAnonIdCookie(req),
           referrer: readFirstTouchCookie(req).signupReferrer,
+          attribution: readAdClickCookie(req),
         }
       );
       user = await this.userService.getUserFrom(email);
@@ -881,6 +884,7 @@ class UsersController {
             method: 'microsoft',
             anonymousId: readAnonIdCookie(req),
             referrer: readFirstTouchCookie(req).signupReferrer,
+            attribution: readAdClickCookie(req),
           }
         );
         user = await this.userService.getUserFrom(email);
@@ -1129,6 +1133,7 @@ class UsersController {
             method: 'apple',
             anonymousId: readAnonIdCookie(req),
             referrer: readFirstTouchCookie(req).signupReferrer,
+            attribution: readAdClickCookie(req),
           }
         );
         user = await this.userService.getUserFrom(email);
@@ -1254,6 +1259,7 @@ class UsersController {
           method: 'notion_oauth',
           anonymousId: readAnonIdCookie(req),
           referrer: readFirstTouchCookie(req).signupReferrer,
+          attribution: readAdClickCookie(req),
         }
       );
       user = await this.userService.getUserFrom(email);
@@ -1329,6 +1335,7 @@ class UsersController {
         {
           anonymousId: readAnonIdCookie(req),
           referrer: readFirstTouchCookie(req).signupReferrer,
+          attribution: readAdClickCookie(req),
         }
       );
     } catch (error) {

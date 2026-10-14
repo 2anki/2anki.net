@@ -91,3 +91,24 @@ describe('CreditPackCheckoutController', () => {
     );
   });
 });
+
+describe('CreditPackCheckoutController ad-click attribution', () => {
+  it('forwards the parsed ad_click cookie to the use case', async () => {
+    const execute = vi.fn().mockResolvedValue({ url: 'https://s' });
+    const controller = makeController(execute);
+    const req = {
+      body: {},
+      cookies: {
+        ad_click: encodeURIComponent(
+          JSON.stringify({ gclid: 'Cj0abc', utm_source: 'google' })
+        ),
+      },
+    } as never;
+    await controller.createSession(req, makeRes());
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adClick: { gclid: 'Cj0abc', utm_source: 'google' },
+      })
+    );
+  });
+});

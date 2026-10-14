@@ -1,4 +1,5 @@
 import { Knex } from 'knex';
+import type { AdClickAttribution } from '../lib/attribution/adClick';
 
 import Users from './public/Users';
 import Subscriptions from './public/Subscriptions';
@@ -152,6 +153,7 @@ class UsersRepository {
     password: string,
     email: string,
     signupOrigin?: string | null,
+    signupAttribution?: AdClickAttribution | null,
     now: Date = new Date()
   ): Promise<Array<{ id: string | number }>> {
     return this.database.transaction(async (trx) => {
@@ -161,6 +163,10 @@ class UsersRepository {
           password,
           email,
           signup_origin: signupOrigin ?? null,
+          signup_attribution:
+            signupAttribution == null
+              ? null
+              : JSON.stringify(signupAttribution),
         })
         .returning(['id']);
       const id = inserted[0].id;

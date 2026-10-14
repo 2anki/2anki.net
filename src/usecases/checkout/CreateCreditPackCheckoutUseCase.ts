@@ -1,5 +1,6 @@
 import type StripeTypes from 'stripe';
 import { optionalMetadata } from './checkoutMetadata';
+import type { AdClickAttribution } from '../../lib/attribution/adClick';
 import { CreditPackSource, resolveCreditPackRedirect } from './creditPack';
 import { createCheckoutSession } from './createCheckoutSession';
 import {
@@ -24,6 +25,7 @@ export class CreateCreditPackCheckoutUseCase {
     stripeCustomerId?: string | null;
     source?: CreditPackSource;
     gaClientId?: string;
+    adClick?: AdClickAttribution;
   }): Promise<CreateCreditPackCheckoutResult> {
     const appUrl = process.env.APP_URL ?? 'https://2anki.net';
     const { successUrl, cancelUrl } = resolveCreditPackRedirect(
@@ -40,6 +42,7 @@ export class CreateCreditPackCheckoutUseCase {
       optionalMetadata({
         surface: input.source,
         ga_client_id: input.gaClientId,
+        ...input.adClick,
       })
     );
 
