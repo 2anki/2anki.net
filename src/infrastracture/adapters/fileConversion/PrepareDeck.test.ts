@@ -708,6 +708,21 @@ describe('PrepareDeck — PDF text-vs-image gate', () => {
     expect(convertPDFToImages).not.toHaveBeenCalled();
   });
 
+  it('falls back to page images when pdf-extract-text would explode into cards', async () => {
+    convertPdfTextToHtml.mockResolvedValueOnce({
+      html: '',
+      cardCount: 400,
+      isDrmLocked: false,
+      needsCredential: false,
+      overSplit: true,
+    });
+
+    await runPdf(makeSettings({ 'pdf-extract-text': 'true' }));
+
+    expect(convertPdfTextToHtml).toHaveBeenCalledTimes(1);
+    expect(convertPDFToImages).toHaveBeenCalledTimes(1);
+  });
+
   it('routes straight to page images when pdf-page-pairs is on, skipping detection', async () => {
     expect(makeSettings({ 'pdf-page-pairs': 'true' }).pdfPagePairs).toBe(true);
     await runPdf(makeSettings({ 'pdf-page-pairs': 'true' }));

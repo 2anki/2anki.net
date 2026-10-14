@@ -87,7 +87,7 @@
     },
     "pdf-extract-text": {
       "label": "Wyodrębnij tekst z plików PDF",
-      "description": "Zamień tekst z pliku PDF na karty. Zostaw wyłączone, aby wyrenderować każdą stronę jako obraz — strona 1 na przodzie, strona 2 na tyle."
+      "description": "Zawsze twórz karty z tekstu w pliku PDF: każdy nagłówek staje się pytaniem, a tekst pod nim odpowiedzią. Zostaw wyłączone, a 2anki wybierze dla każdego pliku PDF karty tekstowe lub obrazy stron."
     },
     "pdf-page-pairs": {
       "label": "Dwie strony tworzą jedną kartę",

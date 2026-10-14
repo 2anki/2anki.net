@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-12-pdf-extract-text-headings",
+  "date": "2026-10-12",
+  "type": "fix",
+  "title": "Extract text from PDFs makes one card per heading instead of pairing page 1 with page 2"
+}

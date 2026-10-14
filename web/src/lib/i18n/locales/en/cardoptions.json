@@ -87,7 +87,7 @@
     },
     "pdf-extract-text": {
       "label": "Extract text from PDFs",
-      "description": "Turn the text inside a PDF into cards. Leave off to render each page as an image — page 1 on the front, page 2 on the back."
+      "description": "Always make cards from the text in a PDF: each heading becomes the question, the text below it the answer. Leave off and 2anki picks text cards or page images for each PDF."
     },
     "pdf-page-pairs": {
       "label": "Two pages make one card",

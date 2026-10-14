@@ -1,9 +1,8 @@
 import { extractPdfText } from '../../../lib/parser/extractPdfText';
 import {
-  synthesizeCardsFromPdf,
+  synthesizeCardsFromPdfHeadings,
   PdfCard,
-} from '../../../lib/parser/synthesizeCardsFromPdf';
-import { synthesizeCardsFromPdfHeadings } from '../../../lib/parser/synthesizeCardsFromPdfHeadings';
+} from '../../../lib/parser/synthesizeCardsFromPdfHeadings';
 import { isTextShapedPdf } from '../../../lib/parser/isTextShapedPdf';
 import { ExtractedPdfImage } from '../../../lib/pdf/extractPdfImages';
 import path from 'path';
@@ -83,11 +82,11 @@ export interface ConvertPdfTextToHtmlResult {
   droppedImageCount: number;
   coloredTextPageCount: number;
   images: PdfHtmlImage[];
+  overSplit: boolean;
 }
 
 export interface ConvertPdfTextToHtmlAutoResult extends ConvertPdfTextToHtmlResult {
   isTextShaped: boolean;
-  overSplit: boolean;
   pageCount: number;
 }
 
@@ -140,6 +139,10 @@ function remainingDroppedImages(
   return Math.max(0, paintedImageCount - embeddedCount);
 }
 
+// The extract-text option forces the text path even for PDFs that look like
+// slides or scans: the same heading cards auto-detection builds, minus the
+// text-shape gate. It used to pair page 1's text with page 2's, which no
+// learner asked for and halved the deck.
 export async function convertPdfTextToHtml(
   buffer: Buffer,
   name: string,
@@ -149,31 +152,40 @@ export async function convertPdfTextToHtml(
   const title = path.basename(name, path.extname(name));
   const extraction = await extractPdfText(buffer, credential);
 
-  if (extraction.needsCredential) {
+  if (extraction.needsCredential || extraction.isDrmLocked) {
     return {
       html: '',
       cardCount: 0,
+      isDrmLocked: extraction.isDrmLocked && !extraction.needsCredential,
+      needsCredential: extraction.needsCredential,
+      droppedImageCount: 0,
+      coloredTextPageCount: 0,
+      images: [],
+      overSplit: false,
+    };
+  }
+
+  const cards = synthesizeCardsFromPdfHeadings(extraction.pages, title);
+  const overSplit =
+    cards.length / Math.max(extraction.pageCount, 1) > MAX_CARDS_PER_PAGE;
+  const paintedImageCount = extraction.pages.reduce(
+    (sum, p) => sum + p.imagePaintCount,
+    0
+  );
+
+  if (overSplit) {
+    return {
+      html: '',
+      cardCount: cards.length,
       isDrmLocked: false,
-      needsCredential: true,
-      droppedImageCount: 0,
-      coloredTextPageCount: 0,
-      images: [],
-    };
-  }
-
-  if (extraction.isDrmLocked) {
-    return {
-      html: '',
-      cardCount: 0,
-      isDrmLocked: true,
       needsCredential: false,
-      droppedImageCount: 0,
+      droppedImageCount: paintedImageCount,
       coloredTextPageCount: 0,
       images: [],
+      overSplit,
     };
   }
 
-  const cards = synthesizeCardsFromPdf(extraction.pages, title);
   const { placed, files } = await loadPlacedImages(loadImages, name);
   const html = renderCardsAsHtml(title, cards, placed);
 
@@ -182,12 +194,10 @@ export async function convertPdfTextToHtml(
     cardCount: cards.length,
     isDrmLocked: false,
     needsCredential: false,
-    droppedImageCount: remainingDroppedImages(
-      extraction.pages.reduce((sum, p) => sum + p.imagePaintCount, 0),
-      files.length
-    ),
+    droppedImageCount: remainingDroppedImages(paintedImageCount, files.length),
     coloredTextPageCount: extraction.coloredTextPageCount,
     images: files,
+    overSplit,
   };
 }
 

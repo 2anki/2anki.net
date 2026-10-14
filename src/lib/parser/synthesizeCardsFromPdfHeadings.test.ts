@@ -1,5 +1,5 @@
 import { synthesizeCardsFromPdfHeadings } from './synthesizeCardsFromPdfHeadings';
-import type { PdfPage } from './synthesizeCardsFromPdf';
+import type { PdfPage } from './synthesizeCardsFromPdfHeadings';
 
 describe('synthesizeCardsFromPdfHeadings', () => {
   it('starts a new card at a short line followed by longer body text', () => {

@@ -87,7 +87,7 @@
     },
     "pdf-extract-text": {
       "label": "Extraer texto de los PDF",
-      "description": "Convierte el texto de un PDF en tarjetas. Déjalo desactivado para mostrar cada página como una imagen — la página 1 en el anverso, la página 2 en el reverso."
+      "description": "Crea siempre tarjetas con el texto de un PDF: cada título se convierte en la pregunta y el texto de debajo en la respuesta. Déjalo desactivado y 2anki elige tarjetas de texto o imágenes de página para cada PDF."
     },
     "pdf-page-pairs": {
       "label": "Dos páginas forman una tarjeta",
