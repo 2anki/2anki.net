@@ -150,3 +150,24 @@ describe('PassCheckoutController', () => {
     expect(record).not.toHaveBeenCalled();
   });
 });
+
+describe('PassCheckoutController ad-click attribution', () => {
+  it('forwards the parsed ad_click cookie to the use case', async () => {
+    const execute = vi.fn().mockResolvedValue({ url: 'https://s' });
+    const { controller } = makeController(execute);
+    const req = {
+      cookies: {
+        cookie_consent: 'granted',
+        ad_click: encodeURIComponent(
+          JSON.stringify({ gclid: 'Cj0abc', utm_source: 'google' })
+        ),
+      },
+    } as never;
+    await controller.createSession(req, makeRes());
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adClick: { gclid: 'Cj0abc', utm_source: 'google' },
+      })
+    );
+  });
+});

@@ -39,6 +39,7 @@ describe('sendPurchaseEvent', () => {
       `${GA4_ENDPOINT}?measurement_id=G-TEST123&api_secret=test-secret`
     );
 
+    expect((options as RequestInit).signal).toBeInstanceOf(AbortSignal);
     const body = JSON.parse((options as RequestInit).body as string);
     expect(body).toMatchObject({
       client_id: 'GA1.1.123456789.1234567890',

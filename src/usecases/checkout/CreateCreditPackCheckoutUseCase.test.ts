@@ -121,3 +121,30 @@ describe('CreateCreditPackCheckoutUseCase', () => {
     expect(call.metadata.ga_client_id).toBe('GA1.2.3');
   });
 });
+
+describe('CreateCreditPackCheckoutUseCase ad-click attribution', () => {
+  it('stamps the ad click fields into session metadata', async () => {
+    mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
+    const uc = new CreateCreditPackCheckoutUseCase(makeStripe(), 'price_pack');
+    await uc.execute({
+      userId: 1,
+      adClick: {
+        gclid: 'Cj0abc',
+        utm_source: 'google',
+        utm_campaign: 'notion',
+        landing: '/notion-to-anki/',
+      },
+    });
+    expect(mockStripeCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          credit_pack: '1',
+          gclid: 'Cj0abc',
+          utm_source: 'google',
+          utm_campaign: 'notion',
+          landing: '/notion-to-anki/',
+        }),
+      })
+    );
+  });
+});

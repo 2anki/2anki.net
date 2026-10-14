@@ -1,4 +1,8 @@
 import express from 'express';
+import {
+  adClickEventProps,
+  pickAdClickMetadata,
+} from '../lib/attribution/adClick';
 import type StripeTypes from 'stripe';
 
 import {
@@ -362,6 +366,9 @@ const WebhooksRouter = () => {
           const surface = sessionMeta.surface;
           const anonId = sessionMeta.anon_id;
           const billingInterval = sessionMeta.interval;
+          const attribution = adClickEventProps(
+            pickAdClickMetadata(sessionMeta)
+          );
           const userIdMeta = Number.parseInt(sessionMeta.user_id ?? '', 10);
           track('checkout_completed', {
             userId: Number.isNaN(userIdMeta) ? null : userIdMeta,
@@ -381,8 +388,33 @@ const WebhooksRouter = () => {
               session.recovered_from !== ''
                 ? { recovered: true }
                 : {}),
+              ...attribution,
             },
           });
+
+          // One GA4 purchase per paid session, sent after the grant attempt
+          // so a slow GA4 call never delays the grant itself. The send is
+          // bounded (GA4Service timeout) so it cannot push this response past
+          // Stripe's delivery timeout and provoke a redelivery.
+          const reportPurchaseToGa4 = async () => {
+            if (session.payment_status !== 'paid') {
+              return;
+            }
+            try {
+              const { sendPurchaseEvent } =
+                await import('../services/GA4Service');
+              await sendPurchaseEvent({
+                transactionId: session.id,
+                valueCents: session.amount_total ?? 0,
+                currency: session.currency ?? 'usd',
+                stripeCustomerId:
+                  typeof session.customer === 'string' ? session.customer : '',
+                clientId: sessionMeta.ga_client_id,
+              });
+            } catch (ga4Error) {
+              console.error('[ga4] failed to send purchase event', ga4Error);
+            }
+          };
 
           if (passKind != null && isAnonymousPassKind(passKind)) {
             const paymentIntentId =
@@ -474,6 +506,7 @@ const WebhooksRouter = () => {
               } catch (passError) {
                 console.error('pass.webhook.grant_failed', passError);
               }
+              await reportPurchaseToGa4();
               response.send();
               return;
             }
@@ -516,6 +549,7 @@ const WebhooksRouter = () => {
             } catch (passError) {
               console.error('pass.webhook.grant_failed', passError);
             }
+            await reportPurchaseToGa4();
             response.send();
             return;
           }
@@ -569,6 +603,7 @@ const WebhooksRouter = () => {
             } catch (creditsError) {
               console.error('credits.webhook.grant_failed', creditsError);
             }
+            await reportPurchaseToGa4();
             response.send();
             return;
           }
@@ -668,22 +703,7 @@ const WebhooksRouter = () => {
             }
           }
 
-          try {
-            const { sendPurchaseEvent } =
-              await import('../services/GA4Service');
-            await sendPurchaseEvent({
-              transactionId: session.id,
-              valueCents: session.amount_total ?? 0,
-              currency: session.currency ?? 'usd',
-              stripeCustomerId:
-                typeof session.customer === 'string' ? session.customer : '',
-              clientId: (session.metadata as Record<string, string> | null)
-                ?.ga_client_id,
-            });
-          } catch (ga4Error) {
-            console.error('[ga4] failed to send purchase event', ga4Error);
-          }
-
+          await reportPurchaseToGa4();
           console.log('checkout.session.completed');
           break;
         }

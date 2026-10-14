@@ -67,6 +67,8 @@ export default interface Users {
   reset_token_expires_at: Date | null;
 
   reset_token_used_at: Date | null;
+
+  signup_attribution: unknown | null;
 }
 
 /** Represents the initializer for the table public.users */
@@ -146,6 +148,8 @@ export interface UsersInitializer {
   reset_token_expires_at?: Date | null;
 
   reset_token_used_at?: Date | null;
+
+  signup_attribution?: unknown | null;
 }
 
 /** Represents the mutator for the table public.users */
@@ -211,4 +215,6 @@ export interface UsersMutator {
   reset_token_expires_at?: Date | null;
 
   reset_token_used_at?: Date | null;
+
+  signup_attribution?: unknown | null;
 }

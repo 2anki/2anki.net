@@ -1,6 +1,7 @@
 import type StripeTypes from 'stripe';
 import type { PassKind } from '../../data_layer/UserPassRepository';
 import { optionalMetadata } from './checkoutMetadata';
+import type { AdClickAttribution } from '../../lib/attribution/adClick';
 import { createCheckoutSession } from './createCheckoutSession';
 import {
   CheckoutCustomerRefresher,
@@ -27,6 +28,7 @@ export class CreatePassCheckoutUseCase {
     anonId?: string;
     surface?: string;
     gaClientId?: string;
+    adClick?: AdClickAttribution;
   }): Promise<CreatePassCheckoutResult> {
     const appUrl = process.env.APP_URL ?? 'https://2anki.net';
     const isAnonymous = input.userId == null;
@@ -48,6 +50,7 @@ export class CreatePassCheckoutUseCase {
         anon_id: input.anonId,
         surface: input.surface,
         ga_client_id: input.gaClientId,
+        ...input.adClick,
       })
     );
 

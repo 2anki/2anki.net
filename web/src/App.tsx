@@ -22,6 +22,7 @@ import {
   lazyWithRetry,
 } from './lib/chunkReload';
 import { captureFirstTouch } from './lib/firstTouch';
+import { captureAdClick } from './lib/adClick';
 import i18n from './lib/i18n';
 import { useUserLocals } from './lib/hooks/useUserLocals';
 import isOfflineMode from './lib/isOfflineMode';
@@ -740,6 +741,7 @@ function AppWithCookies() {
 
   useEffect(() => {
     captureFirstTouch();
+    captureAdClick();
   }, []);
 
   useEffect(() => {

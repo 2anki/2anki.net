@@ -6,6 +6,7 @@ import {
 import { parsePricingVariant } from '../usecases/checkout/pricingVariant';
 import { parseCheckoutSurface } from '../usecases/checkout/checkoutSurface';
 import { parseGaClientId } from '../usecases/checkout/gaClientId';
+import { readAdClickCookie } from '../lib/attribution/adClick';
 import { PricingResolutionError } from '../usecases/checkout/PricingResolutionError';
 import type { EventsSink } from '../services/events/EventsSink';
 
@@ -35,6 +36,7 @@ class UnlimitedCheckoutController {
     const stripeCustomerId = res.locals.stripeCustomerId as string | undefined;
     const anonId = (req.cookies?.anon_id as string | undefined) ?? undefined;
     const gaClientId = parseGaClientId(req.cookies?._ga);
+    const adClick = readAdClickCookie(req);
     const createdAt = await this.context.getUserCreatedAt(userId);
     const surface = parseCheckoutSurface(req.body?.surface);
 
@@ -49,6 +51,7 @@ class UnlimitedCheckoutController {
         anonId,
         surface,
         gaClientId,
+        adClick,
         pricingV2On: this.context.pricingV2On,
         createdAt,
       });

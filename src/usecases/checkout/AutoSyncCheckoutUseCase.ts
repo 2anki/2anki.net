@@ -2,6 +2,7 @@ import type StripeTypes from 'stripe';
 import SubscriptionService from '../../services/SubscriptionService';
 import hashToken from '../../lib/misc/hashToken';
 import { optionalMetadata } from './checkoutMetadata';
+import type { AdClickAttribution } from '../../lib/attribution/adClick';
 import { createCheckoutSession } from './createCheckoutSession';
 import {
   CheckoutCustomerRefresher,
@@ -38,6 +39,7 @@ export class AutoSyncCheckoutUseCase {
     anonId?: string;
     surface?: string;
     gaClientId?: string;
+    adClick?: AdClickAttribution;
   }): Promise<AutoSyncCheckoutResult> {
     console.info('auto_sync.checkout.started', { user_id: input.userId });
 
@@ -99,6 +101,7 @@ export class AutoSyncCheckoutUseCase {
           anon_id: input.anonId,
           surface: input.surface,
           ga_client_id: input.gaClientId,
+          ...input.adClick,
         }),
       },
     };

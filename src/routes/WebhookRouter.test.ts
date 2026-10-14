@@ -1739,3 +1739,91 @@ describe('WebhookRouter — customer.subscription.created', () => {
     expect(updateStoreSubscription).not.toHaveBeenCalled();
   });
 });
+
+describe('WebhookRouter — ad-click attribution and GA4 purchase for passes', () => {
+  let server: http.Server;
+  let url: string;
+
+  beforeAll(async () => {
+    ({ server, url } = await buildServer());
+  });
+
+  afterAll(() => server.close());
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function postWebhook() {
+    return fetch(`${url}/webhook`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': 'sig_test',
+      },
+      body: JSON.stringify({}),
+    });
+  }
+
+  it('copies the ad click metadata onto checkout_completed and ignores junk', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      metadata: {
+        user_id: '42',
+        pass_kind: '24h',
+        gclid: 'Cj0abc',
+        utm_source: 'Google',
+        utm_campaign: 'notion',
+        fbclid: 'nope',
+      },
+    });
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    const call = mockTrack.mock.calls.find(
+      (c) => c[0] === 'checkout_completed'
+    );
+    expect(call?.[1]).toMatchObject({
+      userId: 42,
+      props: {
+        plan: '24h',
+        gclid: 'Cj0abc',
+        utm_source: 'google',
+        utm_campaign: 'notion',
+      },
+    });
+    expect(call?.[1].props).not.toHaveProperty('fbclid');
+  });
+
+  it('sends the GA4 purchase once for a paid pass session instead of returning early', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      id: 'cs_pass_ga4',
+      payment_status: 'paid',
+      metadata: { user_id: '42', pass_kind: '24h', ga_client_id: '1.2' },
+    });
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    const { sendPurchaseEvent } = await import('../services/GA4Service');
+    expect(sendPurchaseEvent).toHaveBeenCalledTimes(1);
+    expect(sendPurchaseEvent).toHaveBeenCalledWith({
+      transactionId: 'cs_pass_ga4',
+      valueCents: 400,
+      currency: 'usd',
+      stripeCustomerId: '',
+      clientId: '1.2',
+    });
+  });
+
+  it('does not send a GA4 purchase for a session that is not paid yet', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      id: 'cs_pass_unpaid',
+      payment_status: 'unpaid',
+      metadata: { user_id: '42', pass_kind: '24h' },
+    });
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    const { sendPurchaseEvent } = await import('../services/GA4Service');
+    expect(sendPurchaseEvent).not.toHaveBeenCalled();
+  });
+});
