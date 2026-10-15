@@ -13,6 +13,7 @@ vi.mock('./googleAds', () => ({
 }));
 
 import { reportPurchaseConversion } from './reportPurchaseConversion';
+import { CONSENT_CHANGE_EVENT } from '../consent/consent';
 
 const receipt = {
   amount: 600,
@@ -83,5 +84,34 @@ describe('reportPurchaseConversion', () => {
 
     expect(getCheckoutReceipt).toHaveBeenCalledTimes(2);
     expect(firePurchaseConversion).toHaveBeenCalledTimes(2);
+  });
+
+  it('sends a held purchase when consent is granted later, without a second lookup', async () => {
+    getCheckoutReceipt.mockResolvedValue(receipt);
+    firePurchaseConversion.mockReturnValueOnce(false);
+
+    await reportPurchaseConversion('cs_test_held', 'a@b.test');
+    expect(firePurchaseConversion).toHaveBeenCalledTimes(1);
+
+    globalThis.dispatchEvent(
+      new CustomEvent(CONSENT_CHANGE_EVENT, { detail: 'denied' })
+    );
+    expect(firePurchaseConversion).toHaveBeenCalledTimes(1);
+
+    globalThis.dispatchEvent(
+      new CustomEvent(CONSENT_CHANGE_EVENT, { detail: 'granted' })
+    );
+    expect(firePurchaseConversion).toHaveBeenCalledTimes(2);
+    expect(firePurchaseConversion).toHaveBeenLastCalledWith({
+      sessionId: 'cs_test_held',
+      amountCents: 600,
+      currency: 'USD',
+      kind: 'pass_24h',
+      email: 'a@b.test',
+    });
+    expect(getCheckoutReceipt).toHaveBeenCalledTimes(1);
+
+    await reportPurchaseConversion('cs_test_held');
+    expect(getCheckoutReceipt).toHaveBeenCalledTimes(1);
   });
 });

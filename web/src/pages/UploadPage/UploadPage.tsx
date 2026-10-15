@@ -161,16 +161,15 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   }, [searchParams, navigate, userLocalsLoading]);
 
   useEffect(() => {
-    if (userLocalsLoading) return;
     const passSession = searchParams.get('pass_session');
-    if (passSession != null && passSession.length > 0) {
-      // Owner decision: anonymous passes live in the browser (localStorage is sanctioned for this use case)
-      storePassToken(passSession);
-      const next = new URLSearchParams(searchParams);
-      next.delete('pass_session');
-      const qs = next.toString();
-      navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
-    }
+    if (passSession == null || passSession.length === 0) return;
+    // Owner decision: anonymous passes live in the browser (localStorage is sanctioned for this use case)
+    storePassToken(passSession);
+    if (userLocalsLoading) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('pass_session');
+    const qs = next.toString();
+    navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
   }, [searchParams, navigate, userLocalsLoading]);
 
   useEffect(() => {

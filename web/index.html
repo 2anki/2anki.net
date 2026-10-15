@@ -238,8 +238,14 @@
         console.warn('Failed to load Google Analytics');
       };
       script.onload = function () {
+        var pageUrl = new URL(location.href);
+        pageUrl.searchParams.delete('session_id');
+        pageUrl.searchParams.delete('pass_session');
         gtag('js', new Date());
-        gtag('config', 'G-X6K69TY3EX', { anonymize_ip: true });
+        gtag('config', 'G-X6K69TY3EX', {
+          anonymize_ip: true,
+          page_location: pageUrl.toString(),
+        });
         gtag('config', 'AW-18513857875', { allow_enhanced_conversions: true });
       };
       document.head.appendChild(script);

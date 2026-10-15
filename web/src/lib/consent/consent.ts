@@ -1,4 +1,5 @@
 import { AD_CLICK_COOKIE, COOKIE_CONSENT_COOKIE } from './cookies';
+import { FIRST_TOUCH_COOKIE } from '../firstTouch';
 
 export type ConsentChoice = 'granted' | 'denied';
 export type ConsentRegion = 'eea' | 'other';
@@ -88,6 +89,7 @@ export function setConsent(
   d.cookie = `${COOKIE_CONSENT_COOKIE}=${choice}; Max-Age=${ONE_YEAR_SECONDS}; Path=/; SameSite=Lax${secure}`;
   if (choice === 'denied') {
     d.cookie = `${AD_CLICK_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax${secure}`;
+    d.cookie = `${FIRST_TOUCH_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax${secure}`;
   }
   applyConsentToGtag(choice);
   const w = globalThis as GtagWindow;

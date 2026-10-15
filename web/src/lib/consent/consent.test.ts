@@ -91,7 +91,7 @@ describe('setConsent', () => {
     globalThis.removeEventListener(CONSENT_CHANGE_EVENT, listener);
   });
 
-  it('denying also expires the ad_click cookie', () => {
+  it('denying also expires the ad_click and first_touch cookies', () => {
     const writes: string[] = [];
     const d = {
       ...fakeDoc('', 'eea'),
@@ -107,6 +107,7 @@ describe('setConsent', () => {
 
     expect(writes[0]).toContain('cookie_consent=denied');
     expect(writes[1]).toContain('ad_click=; Max-Age=0');
+    expect(writes[2]).toContain('first_touch=; Max-Age=0');
   });
 
   it('omits Secure on http so local development still stores the choice', () => {

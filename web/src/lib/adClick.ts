@@ -65,6 +65,14 @@ export function hasMarketingConsent(cookieHeader: string): boolean {
  * explicit choice wins; with none, the server-stamped region decides (consent
  * is implied outside the EEA/UK/CH, required inside).
  */
+export function marketingCookiesAllowed(
+  doc: AdClickDocument | null = typeof document === 'undefined'
+    ? null
+    : document
+): boolean {
+  return doc != null && marketingAllowed(doc);
+}
+
 function marketingAllowed(doc: AdClickDocument): boolean {
   const stored = readCookie(doc.cookie, COOKIE_CONSENT_COOKIE);
   if (stored === 'granted') {

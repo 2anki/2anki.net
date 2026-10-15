@@ -1,8 +1,11 @@
 import { get2ankiApi } from '../backend/get2ankiApi';
-import { firePurchaseConversion } from './googleAds';
+import { CONSENT_CHANGE_EVENT } from '../consent/consent';
+import { firePurchaseConversion, PurchaseConversion } from './googleAds';
 
 const REPORTED_PREFIX = 'ads_purchase_reported:';
 const inFlight = new Set<string>();
+const awaitingConsent = new Map<string, PurchaseConversion>();
+let listeningForConsent = false;
 
 function alreadyReported(sessionId: string): boolean {
   try {
@@ -23,12 +26,39 @@ function markReported(sessionId: string): void {
   }
 }
 
+function flushAwaitingConsent(event: Event): void {
+  if ((event as CustomEvent).detail !== 'granted') {
+    return;
+  }
+  for (const [sessionId, purchase] of awaitingConsent) {
+    if (firePurchaseConversion(purchase)) {
+      markReported(sessionId);
+      awaitingConsent.delete(sessionId);
+    }
+  }
+}
+
+/**
+ * An EEA buyer often answers the banner only after Stripe has sent them back,
+ * by which time the page has stripped the session id from the URL. The
+ * receipt is kept in memory and sent the moment consent is granted.
+ */
+function holdUntilConsent(purchase: PurchaseConversion): void {
+  awaitingConsent.set(purchase.sessionId, purchase);
+  if (listeningForConsent) {
+    return;
+  }
+  listeningForConsent = true;
+  globalThis.addEventListener?.(CONSENT_CHANGE_EVENT, flushAwaitingConsent);
+}
+
 /**
  * Called by the pages Stripe sends buyers back to. Looks the session up
  * server-side (amount, currency, kind) and reports the purchase to Google
- * Ads. Marks the session only once something was actually sent, so a failed
- * lookup or a not-yet-granted consent can be retried later in the session.
- * The email is attached only to a receipt the signed-in user owns.
+ * Ads. Marks the session only once something was actually sent; a purchase
+ * that could not be sent yet (consent not granted) waits for the next grant
+ * in this page session. The email is attached only to a receipt the
+ * signed-in user owns.
  */
 export async function reportPurchaseConversion(
   sessionId: string,
@@ -43,15 +73,18 @@ export async function reportPurchaseConversion(
     if (receipt == null) {
       return;
     }
-    const sent = firePurchaseConversion({
+    const purchase: PurchaseConversion = {
       sessionId,
       amountCents: receipt.amount,
       currency: receipt.currency,
       kind: receipt.kind,
       email: receipt.anonymous ? null : email,
-    });
-    if (sent) {
+    };
+    if (firePurchaseConversion(purchase)) {
       markReported(sessionId);
+      awaitingConsent.delete(sessionId);
+    } else {
+      holdUntilConsent(purchase);
     }
   } finally {
     inFlight.delete(sessionId);

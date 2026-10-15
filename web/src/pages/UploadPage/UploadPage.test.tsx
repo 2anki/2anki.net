@@ -36,6 +36,10 @@ let fakeUser: FakeUser = null;
 let fakeLocals: { patreon?: boolean; subscriber?: boolean } | undefined;
 let fakeLocalsLoading = false;
 const reportPurchaseConversion = vi.fn();
+const storePassToken = vi.fn();
+vi.mock('../../lib/anonymousPass', () => ({
+  storePassToken: (...args: unknown[]) => storePassToken(...args),
+}));
 vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
   reportPurchaseConversion: (...args: unknown[]) =>
     reportPurchaseConversion(...args),
@@ -55,25 +59,31 @@ function LocationProbe() {
   return <output data-testid="location-search">{location.search}</output>;
 }
 
+const buildPage = (entry: string, queryClient: QueryClient) => (
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[entry]}>
+        <LocationProbe />
+        <Routes>
+          <Route
+            path="/upload"
+            element={<UploadPage setErrorMessage={() => {}} />}
+          />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  </HelmetProvider>
+);
+
 const renderPage = (entry = '/upload') => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
-    <HelmetProvider>
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={[entry]}>
-          <LocationProbe />
-          <Routes>
-            <Route
-              path="/upload"
-              element={<UploadPage setErrorMessage={() => {}} />}
-            />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>
-    </HelmetProvider>
-  );
+  const result = render(buildPage(entry, queryClient));
+  return {
+    ...result,
+    rerenderPage: () => result.rerender(buildPage(entry, queryClient)),
+  };
 };
 
 const renderPageWithSession = (
@@ -565,6 +575,7 @@ describe('UploadPage AI badge survives browser translation', () => {
 describe('UploadPage checkout return', () => {
   beforeEach(() => {
     reportPurchaseConversion.mockReset();
+    storePassToken.mockReset();
     fakeLocalsLoading = false;
     fakeUser = null;
     fakeLocals = undefined;
@@ -604,13 +615,58 @@ describe('UploadPage checkout return', () => {
     );
   });
 
-  it('reports an anonymous pass return without an email', async () => {
+  it('reports an anonymous pass return without an email and stores the pass', async () => {
     renderPage('/upload?pass_session=cs_test_anon456');
 
     await waitFor(() =>
       expect(reportPurchaseConversion).toHaveBeenCalledWith(
         'cs_test_anon456',
         undefined
+      )
+    );
+    expect(storePassToken).toHaveBeenCalledWith('cs_test_anon456');
+  });
+
+  it('stores an anonymous pass before user locals resolve, and strips it after', async () => {
+    fakeLocalsLoading = true;
+
+    const { rerenderPage } = renderPage('/upload?pass_session=cs_test_slow');
+
+    expect(storePassToken).toHaveBeenCalledWith('cs_test_slow');
+    expect(screen.getByTestId('location-search')).toHaveTextContent(
+      'pass_session=cs_test_slow'
+    );
+
+    fakeLocalsLoading = false;
+    rerenderPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location-search')).not.toHaveTextContent(
+        'pass_session'
+      )
+    );
+    expect(reportPurchaseConversion).toHaveBeenCalledWith(
+      'cs_test_slow',
+      undefined
+    );
+  });
+
+  it('reports a signed-in return once locals resolve after a loading first render', async () => {
+    fakeLocalsLoading = true;
+
+    const { rerenderPage } = renderPage(
+      '/upload?checkout=success&session_id=cs_test_pro'
+    );
+    expect(reportPurchaseConversion).not.toHaveBeenCalled();
+
+    fakeLocalsLoading = false;
+    fakeUser = { id: 7, email: 'pro@example.com' };
+    rerenderPage();
+
+    await waitFor(() =>
+      expect(reportPurchaseConversion).toHaveBeenCalledWith(
+        'cs_test_pro',
+        'pro@example.com'
       )
     );
   });
