@@ -153,4 +153,30 @@ describe('GrantUnclaimedPassUseCase', () => {
 
     expect(outcome).toEqual({ success: false, reason: 'already_claimed' });
   });
+
+  it('refuses to grant a pass whose payment was refunded', async () => {
+    const anonRepo = new InMemoryAnonymousPassRepository(new Set(['pi_r']));
+    const pass = await anonRepo.insert({
+      stripeSessionId: 'cs_r',
+      kind: '24h',
+      expiresAt: new Date('2026-08-01T00:00:00Z'),
+      paymentIntentId: 'pi_r',
+    });
+    const userPassRepo = new UserPassMem();
+    const useCase = new GrantUnclaimedPassUseCase(
+      anonRepo,
+      userPassRepo,
+      makeUsersRepo(42),
+      makeEventsSink()
+    );
+
+    const outcome = await useCase.execute(
+      { anonymousPassId: pass.id, email: 'buyer@example.com' },
+      NOW
+    );
+
+    expect(outcome).toEqual({ success: false, reason: 'refunded' });
+    expect(await userPassRepo.findActive(42, NOW)).toBeNull();
+    expect((await anonRepo.findById(pass.id))?.claimed_by_user_id).toBeNull();
+  });
 });

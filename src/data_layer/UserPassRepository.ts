@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 import { ActivePassRow } from '../lib/claude/aiCredits/allowance';
+import { refundAwareExpiry } from './RefundedPaymentIntentsRepository';
 
 export type PassKind = '24h' | '7d' | '120d' | 'unlimited';
 
@@ -172,7 +173,11 @@ export class UserPassRepository implements IUserPassRepository {
         .insert({
           user_id: userId,
           kind,
-          expires_at: expiresAt,
+          expires_at: refundAwareExpiry(
+            this.database,
+            stripePaymentIntentId,
+            expiresAt
+          ) as unknown as Date,
           stripe_payment_intent_id: stripePaymentIntentId,
         })
         .returning('*');
@@ -207,7 +212,11 @@ export class UserPassRepository implements IUserPassRepository {
         .insert({
           user_id: userId,
           kind,
-          expires_at: expiresAt,
+          expires_at: refundAwareExpiry(
+            this.database,
+            stripePaymentIntentId,
+            expiresAt
+          ) as unknown as Date,
           stripe_payment_intent_id: stripePaymentIntentId,
         })
         .returning('*');
@@ -228,6 +237,21 @@ export class UserPassRepository implements IUserPassRepository {
 export class InMemoryUserPassRepository implements IUserPassRepository {
   private readonly rows: UserPass[] = [];
   private nextId = 1;
+
+  // Payment intents already fully refunded; mirrors refunded_payment_intents
+  // so an insert for one of them lands already ended, as in Postgres.
+  constructor(
+    private readonly refundedIntents: ReadonlySet<string> = new Set()
+  ) {}
+
+  private refundAware(
+    paymentIntentId: string,
+    expiresAt: Date,
+    now: Date
+  ): Date {
+    if (!this.refundedIntents.has(paymentIntentId)) return expiresAt;
+    return expiresAt < now ? expiresAt : now;
+  }
 
   seed(row: Omit<UserPass, 'id'>): UserPass {
     const entry: UserPass = { id: this.nextId++, ...row };
@@ -303,7 +327,7 @@ export class InMemoryUserPassRepository implements IUserPassRepository {
       id: this.nextId++,
       user_id: userId,
       kind,
-      expires_at: expiresAt,
+      expires_at: this.refundAware(stripePaymentIntentId, expiresAt, now),
       stripe_payment_intent_id: stripePaymentIntentId,
     };
     this.rows.push(entry);
@@ -325,7 +349,11 @@ export class InMemoryUserPassRepository implements IUserPassRepository {
       id: this.nextId++,
       user_id: userId,
       kind,
-      expires_at: expiresAt,
+      expires_at: this.refundAware(
+        stripePaymentIntentId,
+        expiresAt,
+        new Date()
+      ),
       stripe_payment_intent_id: stripePaymentIntentId,
     };
     this.rows.push(entry);

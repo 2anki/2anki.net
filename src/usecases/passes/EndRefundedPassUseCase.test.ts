@@ -6,6 +6,7 @@ import {
 } from './EndRefundedPassUseCase';
 import { InMemoryAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import { InMemoryUserPassRepository } from '../../data_layer/UserPassRepository';
+import { InMemoryRefundedPaymentIntentsRepository } from '../../data_layer/RefundedPaymentIntentsRepository';
 import type { EventsSink } from '../../services/events/EventsSink';
 
 const NOW = new Date('2026-10-15T12:00:00Z');
@@ -20,15 +21,19 @@ function partialRefund(paymentIntentId: string): RefundedCharge {
 }
 
 function setup() {
-  const userPassRepo = new InMemoryUserPassRepository();
-  const anonPassRepo = new InMemoryAnonymousPassRepository();
+  const refundedRepo = new InMemoryRefundedPaymentIntentsRepository();
+  const userPassRepo = new InMemoryUserPassRepository(refundedRepo.refunded);
+  const anonPassRepo = new InMemoryAnonymousPassRepository(
+    refundedRepo.refunded
+  );
   const eventsSink: Pick<EventsSink, 'record'> = { record: vi.fn() };
   const useCase = new EndRefundedPassUseCase(
     userPassRepo,
     anonPassRepo,
+    refundedRepo,
     eventsSink
   );
-  return { userPassRepo, anonPassRepo, eventsSink, useCase };
+  return { userPassRepo, anonPassRepo, refundedRepo, eventsSink, useCase };
 }
 
 describe('isFullRefund', () => {
@@ -190,5 +195,117 @@ describe('EndRefundedPassUseCase', () => {
     expect(second).toEqual({ status: 'already_ended', kind: '24h' });
     const pass = await userPassRepo.findByPaymentIntentId('pi_refund');
     expect(pass?.expires_at).toEqual(NOW);
+  });
+
+  it('ends the pass when a partial refund is followed by one covering the rest', async () => {
+    const { userPassRepo, refundedRepo, useCase } = setup();
+    userPassRepo.seed({
+      user_id: 42,
+      kind: '7d',
+      expires_at: new Date(NOW.getTime() + 7 * DAY_MS),
+      stripe_payment_intent_id: 'pi_split',
+    });
+
+    const first = await useCase.execute(partialRefund('pi_split'), NOW);
+    expect(first).toEqual({ status: 'partial_refund', kind: '7d' });
+    expect(await refundedRepo.isRefunded('pi_split')).toBe(false);
+    expect(await userPassRepo.findActive(42, NOW)).not.toBeNull();
+
+    const second = await useCase.execute(
+      {
+        paymentIntentId: 'pi_split',
+        refunded: false,
+        amount: 900,
+        amountRefunded: 900,
+      },
+      NOW
+    );
+    expect(second).toEqual(
+      expect.objectContaining({ status: 'ended', endedUserPasses: 1 })
+    );
+    expect(await userPassRepo.findActive(42, NOW)).toBeNull();
+  });
+
+  it('only ends the pass bought with the refunded payment intent', async () => {
+    const { userPassRepo, useCase } = setup();
+    userPassRepo.seed({
+      user_id: 42,
+      kind: '24h',
+      expires_at: new Date(NOW.getTime() + DAY_MS),
+      stripe_payment_intent_id: 'pi_refunded',
+    });
+    const otherExpiry = new Date(NOW.getTime() + 7 * DAY_MS);
+    userPassRepo.seed({
+      user_id: 42,
+      kind: '7d',
+      expires_at: otherExpiry,
+      stripe_payment_intent_id: 'pi_kept',
+    });
+
+    await useCase.execute(fullRefund('pi_refunded'), NOW);
+
+    expect(
+      (await userPassRepo.findByPaymentIntentId('pi_refunded'))?.expires_at
+    ).toEqual(NOW);
+    expect(
+      (await userPassRepo.findByPaymentIntentId('pi_kept'))?.expires_at
+    ).toEqual(otherExpiry);
+  });
+
+  describe('refund delivered before checkout.session.completed', () => {
+    it('records the refunded intent even though no pass exists yet', async () => {
+      const { refundedRepo, useCase } = setup();
+
+      const outcome = await useCase.execute(fullRefund('pi_early'), NOW);
+
+      expect(outcome).toEqual({ status: 'no_pass' });
+      expect(await refundedRepo.isRefunded('pi_early')).toBe(true);
+    });
+
+    it('a later account-pass grant lands already ended', async () => {
+      const { userPassRepo, useCase } = setup();
+      await useCase.execute(fullRefund('pi_early'), NOW);
+
+      const granted = await userPassRepo.upsertWithExtension(
+        42,
+        '7d',
+        7 * DAY_MS,
+        'pi_early',
+        NOW
+      );
+
+      expect(granted.expires_at).toEqual(NOW);
+      expect(await userPassRepo.findActive(42, NOW)).toBeNull();
+    });
+
+    it('a later anonymous grant lands ended and cannot be claimed or activated', async () => {
+      const { anonPassRepo, useCase } = setup();
+      await useCase.execute(fullRefund('pi_early'), NOW);
+
+      const granted = await anonPassRepo.insert({
+        stripeSessionId: 'cs_early',
+        kind: '24h',
+        expiresAt: new Date(Date.now() + DAY_MS),
+        paymentIntentId: 'pi_early',
+      });
+
+      expect(granted.expires_at.getTime()).toBeLessThanOrEqual(Date.now());
+      expect(await anonPassRepo.claim(granted.id, 42)).toBe(false);
+      const activated = await anonPassRepo.activate(
+        granted.id,
+        new Date(),
+        new Date(Date.now() + DAY_MS)
+      );
+      expect(activated?.activated_at).toBeNull();
+      expect(activated?.expires_at.getTime()).toBeLessThanOrEqual(Date.now());
+    });
+  });
+
+  it('a partial refund does not record the intent as refunded', async () => {
+    const { refundedRepo, useCase } = setup();
+
+    await useCase.execute(partialRefund('pi_partial_only'), NOW);
+
+    expect(await refundedRepo.isRefunded('pi_partial_only')).toBe(false);
   });
 });

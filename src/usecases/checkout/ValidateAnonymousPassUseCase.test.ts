@@ -206,4 +206,43 @@ describe('ValidateAnonymousPassUseCase', () => {
       expect(result.valid).toBe(false);
     });
   });
+
+  describe('refunded payment', () => {
+    it('is not valid when the refund landed before the pass row was written', async () => {
+      const refunded = new Set(['pi_r']);
+      const refundedRepo = new InMemoryAnonymousPassRepository(refunded);
+      const refundedUseCase = new ValidateAnonymousPassUseCase(refundedRepo);
+      await refundedRepo.insert({
+        stripeSessionId: 'cs_r',
+        kind: '24h',
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        paymentIntentId: 'pi_r',
+      });
+
+      const result = await refundedUseCase.execute('cs_r');
+
+      expect(result).toEqual({ valid: false });
+    });
+
+    it('refuses to activate a pass whose refund is recorded but not yet ended', async () => {
+      const refunded = new Set<string>();
+      const racingRepo = new InMemoryAnonymousPassRepository(refunded);
+      const racingUseCase = new ValidateAnonymousPassUseCase(racingRepo);
+      const claimDeadline = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      await racingRepo.insert({
+        stripeSessionId: 'cs_race',
+        kind: '24h',
+        expiresAt: claimDeadline,
+        paymentIntentId: 'pi_race',
+      });
+      refunded.add('pi_race');
+
+      const result = await racingUseCase.execute('cs_race', now);
+
+      expect(result).toEqual({ valid: false });
+      const stored = await racingRepo.findBySessionId('cs_race');
+      expect(stored?.activated_at).toBeNull();
+      expect(stored?.expires_at).toEqual(claimDeadline);
+    });
+  });
 });

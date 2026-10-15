@@ -79,11 +79,25 @@ export class ConfirmPassClaimUseCase {
 
     const claimed = await this.anonPassRepo.claim(pass.id, userId);
     if (!claimed) {
+      // claim() refuses a refunded pass in the same UPDATE; a row that is
+      // still unclaimed afterwards was refused for that, not lost to a race.
+      const current = await this.anonPassRepo.findById(pass.id);
+      if (current != null && current.claimed_by_user_id == null) {
+        await audit('pass_confirm_pass_expired');
+        return { success: false, reason: 'pass_expired' };
+      }
       await audit('pass_confirm_race');
       return { success: false, reason: 'already_claimed' };
     }
 
     const grantExpiry = await this.resolveGrantExpiry(pass);
+    if (grantExpiry.getTime() <= Date.now()) {
+      // The pass ended between the expiry check and activation — a refund
+      // landed in between. Release the claim rather than grant nothing.
+      await this.anonPassRepo.unclaim(pass.id);
+      await audit('pass_confirm_pass_expired');
+      return { success: false, reason: 'pass_expired' };
+    }
 
     try {
       await this.userPassRepo.upsertWithAbsoluteExpiry(

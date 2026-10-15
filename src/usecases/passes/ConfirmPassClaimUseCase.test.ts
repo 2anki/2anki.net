@@ -263,4 +263,57 @@ describe('ConfirmPassClaimUseCase', () => {
     const row = await anonRepo.findById(1);
     expect(row?.claimed_by_user_id).toBeNull();
   });
+
+  describe('refunded payment', () => {
+    it('refuses the claim when the refund is recorded before the claim lands', async () => {
+      const refunded = new Set<string>();
+      const anonRepo = new InMemoryAnonymousPassRepository(refunded);
+      await seedPass(anonRepo);
+      refunded.add('pi_1');
+      const userPassRepo = makeUserPassRepo();
+      const useCase = new ConfirmPassClaimUseCase(
+        makeDb(),
+        makeTokensRepo(),
+        anonRepo,
+        userPassRepo,
+        makeAuditRepo()
+      );
+
+      const outcome = await useCase.execute(42, RAW_TOKEN, 'ip', 'eh');
+
+      expect(outcome).toEqual({ success: false, reason: 'pass_expired' });
+      expect(userPassRepo.upsertWithAbsoluteExpiry).not.toHaveBeenCalled();
+      const row = await anonRepo.findById(1);
+      expect(row?.claimed_by_user_id).toBeNull();
+    });
+
+    it('releases the claim and grants nothing when the refund lands between claim and activation', async () => {
+      const refunded = new Set<string>();
+      const anonRepo = new InMemoryAnonymousPassRepository(refunded);
+      await seedPass(anonRepo);
+      const realClaim = anonRepo.claim.bind(anonRepo);
+      vi.spyOn(anonRepo, 'claim').mockImplementation(async (id, userId) => {
+        const claimed = await realClaim(id, userId);
+        refunded.add('pi_1');
+        await anonRepo.endByPaymentIntentId('pi_1', new Date());
+        return claimed;
+      });
+      const userPassRepo = makeUserPassRepo();
+      const useCase = new ConfirmPassClaimUseCase(
+        makeDb(),
+        makeTokensRepo(),
+        anonRepo,
+        userPassRepo,
+        makeAuditRepo()
+      );
+
+      const outcome = await useCase.execute(42, RAW_TOKEN, 'ip', 'eh');
+
+      expect(outcome).toEqual({ success: false, reason: 'pass_expired' });
+      expect(userPassRepo.upsertWithAbsoluteExpiry).not.toHaveBeenCalled();
+      const row = await anonRepo.findById(1);
+      expect(row?.claimed_by_user_id).toBeNull();
+      expect(row?.activated_at).toBeNull();
+    });
+  });
 });

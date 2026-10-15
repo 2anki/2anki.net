@@ -1,5 +1,9 @@
 import type { Knex } from 'knex';
 import type { PassKind } from './UserPassRepository';
+import {
+  refundAwareExpiry,
+  whereNotRefunded,
+} from './RefundedPaymentIntentsRepository';
 
 export interface AnonymousPass {
   id: number;
@@ -123,7 +127,11 @@ export class AnonymousPassRepository implements IAnonymousPassRepository {
         .insert({
           stripe_session_id: params.stripeSessionId,
           kind: params.kind,
-          expires_at: params.expiresAt,
+          expires_at: refundAwareExpiry(
+            this.database,
+            params.paymentIntentId,
+            params.expiresAt
+          ) as unknown as Date,
           payment_intent_id: params.paymentIntentId,
           buyer_email_hash: params.buyerEmailHash ?? null,
         })
@@ -224,11 +232,18 @@ export class AnonymousPassRepository implements IAnonymousPassRepository {
       .update({ buyer_email_hash: buyerEmailHash });
   }
 
+  buildClaimQuery(id: number, userId: number) {
+    return whereNotRefunded(
+      this.database(this.table).where({ id }).whereNull('claimed_by_user_id'),
+      `${this.table}.payment_intent_id`
+    ).update({ claimed_by_user_id: userId });
+  }
+
+  // A refunded pass cannot be claimed: the refund check sits in the same
+  // UPDATE, so a claim racing the refund webhook either lands first (and the
+  // refund then ends the claimed pass) or is refused.
   async claim(id: number, userId: number): Promise<boolean> {
-    const updated = await this.database(this.table)
-      .where({ id })
-      .whereNull('claimed_by_user_id')
-      .update({ claimed_by_user_id: userId });
+    const updated = await this.buildClaimQuery(id, userId);
     return updated === 1;
   }
 
@@ -238,15 +253,25 @@ export class AnonymousPassRepository implements IAnonymousPassRepository {
       .update({ claimed_by_user_id: null });
   }
 
+  buildActivateQuery(id: number, activatedAt: Date, expiresAt: Date) {
+    return whereNotRefunded(
+      this.database(this.table)
+        .where({ id })
+        .whereNull('activated_at')
+        .where('expires_at', '>', activatedAt),
+      `${this.table}.payment_intent_id`
+    ).update({ activated_at: activatedAt, expires_at: expiresAt });
+  }
+
+  // Activation pushes expires_at forward, so it must never touch a pass that
+  // has already ended (claim window lapsed or refunded) — otherwise it would
+  // re-open access the refund just closed.
   async activate(
     id: number,
     activatedAt: Date,
     expiresAt: Date
   ): Promise<AnonymousPass | null> {
-    await this.database(this.table)
-      .where({ id })
-      .whereNull('activated_at')
-      .update({ activated_at: activatedAt, expires_at: expiresAt });
+    await this.buildActivateQuery(id, activatedAt, expiresAt);
     return this.findById(id);
   }
 
@@ -261,6 +286,11 @@ export class AnonymousPassRepository implements IAnonymousPassRepository {
 export class InMemoryAnonymousPassRepository implements IAnonymousPassRepository {
   private readonly rows: AnonymousPass[] = [];
   private nextId = 1;
+
+  // Payment intents already fully refunded; mirrors refunded_payment_intents.
+  constructor(
+    private readonly refundedIntents: ReadonlySet<string> = new Set()
+  ) {}
 
   async findBySessionId(
     stripeSessionId: string
@@ -299,7 +329,9 @@ export class InMemoryAnonymousPassRepository implements IAnonymousPassRepository
       id: this.nextId++,
       stripe_session_id: params.stripeSessionId,
       kind: params.kind,
-      expires_at: params.expiresAt,
+      expires_at: this.refundedIntents.has(params.paymentIntentId)
+        ? new Date(Math.min(params.expiresAt.getTime(), Date.now()))
+        : params.expiresAt,
       payment_intent_id: params.paymentIntentId,
       claimed_by_user_id: null,
       buyer_email_hash: params.buyerEmailHash ?? null,
@@ -360,6 +392,7 @@ export class InMemoryAnonymousPassRepository implements IAnonymousPassRepository
   async claim(id: number, userId: number): Promise<boolean> {
     const row = this.rows.find((r) => r.id === id);
     if (row == null || row.claimed_by_user_id != null) return false;
+    if (this.refundedIntents.has(row.payment_intent_id)) return false;
     row.claimed_by_user_id = userId;
     return true;
   }
@@ -376,7 +409,11 @@ export class InMemoryAnonymousPassRepository implements IAnonymousPassRepository
   ): Promise<AnonymousPass | null> {
     const row = this.rows.find((r) => r.id === id);
     if (row == null) return null;
-    if (row.activated_at == null) {
+    if (
+      row.activated_at == null &&
+      row.expires_at > activatedAt &&
+      !this.refundedIntents.has(row.payment_intent_id)
+    ) {
       row.activated_at = activatedAt;
       row.expires_at = expiresAt;
     }

@@ -31,7 +31,7 @@ export class ValidateAnonymousPassUseCase {
 
     const active = await this.anonPassRepo.findActive(stripeSessionId, now);
     if (active != null) {
-      return { valid: true, pass: await this.ensureActivated(active, now) };
+      return this.toResult(await this.ensureActivated(active, now), now);
     }
 
     const existing = await this.anonPassRepo.findBySessionId(stripeSessionId);
@@ -40,6 +40,22 @@ export class ValidateAnonymousPassUseCase {
     }
 
     return this.reconcileFromStripe(stripeSessionId, now);
+  }
+
+  // Activation is refused for a refunded pass, and an insert for a refunded
+  // payment intent lands already ended, so re-check after both: an ended
+  // pass, or one that is still unactivated after ensureActivated (activation
+  // was refused), is not valid.
+  private toResult(
+    pass: AnonymousPass,
+    now: Date
+  ): ValidateAnonymousPassResult {
+    const activationRefused =
+      pass.activated_at == null && isAnonymousPassKind(pass.kind);
+    if (pass.expires_at <= now || activationRefused) {
+      return { valid: false };
+    }
+    return { valid: true, pass };
   }
 
   private async ensureActivated(
@@ -97,7 +113,7 @@ export class ValidateAnonymousPassUseCase {
         expiresAt,
         paymentIntentId,
       });
-      return { valid: true, pass: await this.ensureActivated(pass, now) };
+      return this.toResult(await this.ensureActivated(pass, now), now);
     } catch {
       return { valid: false };
     }

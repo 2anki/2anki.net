@@ -7,6 +7,7 @@ import type {
   UserPass,
   UserPassRepository,
 } from '../../data_layer/UserPassRepository';
+import type { IRefundedPaymentIntentsRepository } from '../../data_layer/RefundedPaymentIntentsRepository';
 import type { EventsSink } from '../../services/events/EventsSink';
 
 export type RefundUserPassRepository = Pick<
@@ -38,6 +39,8 @@ export type EndRefundedPassOutcome =
     }
   | { status: 'already_ended'; kind: PassKind };
 
+// Stripe's amount_refunded is cumulative across every refund on the charge,
+// so a partial refund followed by another that covers the rest is full here.
 export function isFullRefund(charge: RefundedCharge): boolean {
   if (charge.refunded) {
     return true;
@@ -46,17 +49,29 @@ export function isFullRefund(charge: RefundedCharge): boolean {
 }
 
 /**
- * Ends the pass bought with a refunded charge. Passes are keyed by the
- * charge's payment intent in both user_passes and anonymous_passes (a claimed
- * anonymous pass has a row in each). Only a full refund ends access; a
- * partial refund is recorded and leaves the pass running. Subscription
- * charges never match a pass row, so they fall through as `no_pass` —
- * subscription access is ended by customer.subscription.deleted instead.
+ * Ends the pass bought with a refunded charge. Only reached from the Stripe
+ * webhook after signature verification. Passes are keyed by the charge's
+ * payment intent in both user_passes and anonymous_passes (a claimed
+ * anonymous pass has a row in each), so a refund can only end the pass paid
+ * for by that charge. Only a full refund ends access; a partial refund is
+ * recorded and leaves the pass running.
+ *
+ * A full refund is first recorded in refunded_payment_intents — even when no
+ * pass exists yet — so a checkout.session.completed that Stripe delivers
+ * after the refund grants an already-ended pass, and a claim or activation
+ * racing this handler is refused in the same statement.
+ *
+ * Subscription charges never match a pass row, so they end as `no_pass` and
+ * subscription access is left to customer.subscription.deleted.
  */
 export class EndRefundedPassUseCase {
   constructor(
     private readonly userPassRepo: RefundUserPassRepository,
     private readonly anonPassRepo: RefundAnonymousPassRepository,
+    private readonly refundedIntentsRepo: Pick<
+      IRefundedPaymentIntentsRepository,
+      'markRefunded'
+    >,
     private readonly eventsSink?: Pick<EventsSink, 'record'>
   ) {}
 
@@ -69,6 +84,11 @@ export class EndRefundedPassUseCase {
       return { status: 'no_payment_intent' };
     }
 
+    const full = isFullRefund(charge);
+    if (full) {
+      await this.refundedIntentsRepo.markRefunded(paymentIntentId, now);
+    }
+
     const userPass =
       await this.userPassRepo.findByPaymentIntentId(paymentIntentId);
     const anonPasses =
@@ -79,7 +99,6 @@ export class EndRefundedPassUseCase {
 
     const kind = userPass?.kind ?? anonPasses[0].kind;
     const userId = resolveUserId(userPass, anonPasses);
-    const full = isFullRefund(charge);
 
     if (!full) {
       this.record(userId, kind, false, false, now);

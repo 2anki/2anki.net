@@ -4,13 +4,17 @@ import http from 'node:http';
 import { AddressInfo } from 'node:net';
 import { InMemoryUserPassRepository } from '../data_layer/UserPassRepository';
 import { InMemoryAnonymousPassRepository } from '../data_layer/AnonymousPassRepository';
+import { InMemoryRefundedPaymentIntentsRepository } from '../data_layer/RefundedPaymentIntentsRepository';
 import { emailHash } from '../lib/emailHash';
 import * as stripeIntegrationMock from '../lib/integrations/stripe';
 
 process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
 
 const mockUpsert = vi.fn();
-const inMemoryRepo = new InMemoryUserPassRepository();
+const inMemoryRefundedRepo = new InMemoryRefundedPaymentIntentsRepository();
+const inMemoryRepo = new InMemoryUserPassRepository(
+  inMemoryRefundedRepo.refunded
+);
 
 const mockAnonInsert = vi.fn();
 const mockAnonFindBySessionId = vi.fn().mockResolvedValue(null);
@@ -18,7 +22,9 @@ const mockAnonFindById = vi.fn().mockResolvedValue(null);
 const mockAnonClaim = vi.fn().mockResolvedValue(true);
 const mockUpsertAbsolute = vi.fn();
 const mockPassClaimTokenInsert = vi.fn().mockResolvedValue({ id: 1 });
-const inMemoryAnonRepo = new InMemoryAnonymousPassRepository();
+const inMemoryAnonRepo = new InMemoryAnonymousPassRepository(
+  inMemoryRefundedRepo.refunded
+);
 
 const {
   mockCustomersRetrieve,
@@ -143,6 +149,19 @@ vi.mock('../data_layer/AnonymousPassRepository', async () => {
       };
     }),
     InMemoryAnonymousPassRepository: AnonMem,
+  };
+});
+
+vi.mock('../data_layer/RefundedPaymentIntentsRepository', async () => {
+  const actual = await vi.importActual<
+    typeof import('../data_layer/RefundedPaymentIntentsRepository')
+  >('../data_layer/RefundedPaymentIntentsRepository');
+  return {
+    ...actual,
+    __esModule: true,
+    default: vi.fn().mockImplementation(function () {
+      return inMemoryRefundedRepo;
+    }),
   };
 });
 
@@ -1856,6 +1875,7 @@ describe('WebhookRouter — charge.refunded', () => {
     vi.clearAllMocks();
     inMemoryRepo.clear();
     inMemoryAnonRepo.clear();
+    inMemoryRefundedRepo.clear();
     vi.spyOn(console, 'info').mockImplementation(() => {});
   });
 
@@ -2068,5 +2088,142 @@ describe('WebhookRouter — charge.refunded', () => {
       'pass.refund.failed',
       expect.any(Error)
     );
+  });
+
+  it('ends the pass once a partial refund is followed by one covering the rest', async () => {
+    inMemoryRepo.seed({
+      user_id: 42,
+      kind: '7d',
+      expires_at: new Date(Date.now() + 7 * DAY_MS),
+      stripe_payment_intent_id: 'pi_refund',
+    });
+
+    mockWebhookEvent = makeChargeRefundedEvent({
+      refunded: false,
+      amount_refunded: 300,
+    });
+    await postWebhook();
+    expect(await inMemoryRepo.findActive(42, new Date())).not.toBeNull();
+
+    mockWebhookEvent = makeChargeRefundedEvent({
+      refunded: false,
+      amount_refunded: 900,
+    });
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(await inMemoryRepo.findActive(42, new Date())).toBeNull();
+  });
+
+  it('ignores a charge.refunded whose signature does not verify', async () => {
+    const expiresAt = new Date(Date.now() + 7 * DAY_MS);
+    inMemoryRepo.seed({
+      user_id: 42,
+      kind: '7d',
+      expires_at: expiresAt,
+      stripe_payment_intent_id: 'pi_refund',
+    });
+    mockWebhookEvent = makeChargeRefundedEvent();
+    const { getStripe } = stripeIntegrationMock as unknown as {
+      getStripe: Mock;
+    };
+    getStripe.mockReturnValueOnce({
+      webhooks: {
+        constructEvent: vi.fn(() => {
+          throw new Error('No signatures found');
+        }),
+      },
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(400);
+    const pass = await inMemoryRepo.findActive(42, new Date());
+    expect(pass?.expires_at).toEqual(expiresAt);
+    expect(await inMemoryRefundedRepo.isRefunded('pi_refund')).toBe(false);
+  });
+
+  describe('refund delivered before checkout.session.completed', () => {
+    it('grants the account pass already ended', async () => {
+      mockUpsert.mockImplementation(
+        (
+          userId: number,
+          kind: '24h',
+          durationMs: number,
+          paymentIntentId: string,
+          now: Date
+        ) =>
+          inMemoryRepo.upsertWithExtension(
+            userId,
+            kind,
+            durationMs,
+            paymentIntentId,
+            now
+          )
+      );
+      mockWebhookEvent = makeChargeRefundedEvent({
+        payment_intent: 'pi_early',
+      });
+      await postWebhook();
+
+      mockWebhookEvent = makePassSessionEvent({ payment_intent: 'pi_early' });
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(await inMemoryRepo.findActive(42, new Date())).toBeNull();
+      const pass = await inMemoryRepo.findByPaymentIntentId('pi_early');
+      expect(pass?.kind).toBe('24h');
+    });
+
+    it('grants the anonymous pass already ended and sends no claim email', async () => {
+      mockAnonInsert.mockImplementation(
+        (params: Parameters<typeof inMemoryAnonRepo.insert>[0]) =>
+          inMemoryAnonRepo.insert(params)
+      );
+      mockWebhookEvent = makeChargeRefundedEvent({
+        payment_intent: 'pi_early',
+      });
+      await postWebhook();
+
+      mockWebhookEvent = makePassSessionEvent({
+        id: 'cs_early',
+        payment_intent: 'pi_early',
+        customer_details: { email: 'buyer@example.com' },
+        metadata: { pass_kind: '24h', pass_anonymous: '1' },
+      });
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(await inMemoryAnonRepo.findActive('cs_early', new Date())).toBe(
+        null
+      );
+      expect(mockPassClaimTokenInsert).not.toHaveBeenCalled();
+      expect(mockSendAnonymousPassClaimEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('grant failures return non-2xx so Stripe retries', () => {
+    it('returns 500 when the account pass grant fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockUpsert.mockRejectedValueOnce(new Error('db down'));
+      mockWebhookEvent = makePassSessionEvent();
+
+      const res = await postWebhook();
+
+      expect(res.status).toBe(500);
+    });
+
+    it('returns 500 when the anonymous pass grant fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockAnonInsert.mockRejectedValueOnce(new Error('db down'));
+      mockWebhookEvent = makePassSessionEvent({
+        metadata: { pass_kind: '24h', pass_anonymous: '1' },
+      });
+
+      const res = await postWebhook();
+
+      expect(res.status).toBe(500);
+    });
   });
 });
