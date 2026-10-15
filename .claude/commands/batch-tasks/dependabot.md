@@ -48,7 +48,7 @@ Inspect the bumped package (from the title) and the file list. Hold — comment 
 
 - **Pinned override** — touches a package listed in `pnpm.overrides` (`package.json`): `path-to-regexp`, `picomatch`, `rollup`, `yaml`, `@types/express`, `@types/express-serve-static-core`. Bumping these can silently re-open a CVE we've worked around.
 - **Built dependency** — touches anything in `pnpm.onlyBuiltDependencies` (currently `better-sqlite3`). Build-step deps need a manual smoke run.
-- **Security-sensitive surface** — touches `bcryptjs`, `jsonwebtoken`, `sanitize-html`, `multer`, `express`, `stripe`, `@notionhq/client`, `@anthropic-ai/sdk`, `@sendgrid/mail`, `axios`, `knex`, or anything matching `node-*`. Even minors here get the full server suite and a `/security-review` before `/ship`.
+- **Security-sensitive surface** — touches `bcryptjs`, `jsonwebtoken`, `sanitize-html`, `multer`, `express`, `stripe`, `@notionhq/client`, `@anthropic-ai/sdk`, `@sendgrid/mail`, `axios`, `knex`, or anything matching `node-*`. Even minors here get a manual look.
 - **Held bump** — the package appears under "Held bumps" in `.claude/rules/dependencies.md` — that list is the only source of holds (it reads "None at the moment" today). Comment with the hold reason and return `needs-review`; do not re-litigate the hold.
 - **Stale or skipped CI** — any `test`-named check in `statusCheckRollup` is SKIPPED/CANCELLED, or the PR's checks predate a `.github/workflows/` change on main. Comment `@dependabot rebase`, wait for the new run, and re-evaluate — never merge on a rollup whose test job didn't run (the 2026-08-06 outage shipped exactly this way).
 
@@ -78,9 +78,13 @@ Decision matrix:
 | --- | --- | --- | --- |
 | patch | green | none | `/ship <n>` → status `merged` |
 | patch | red | any | comment with the failure summary → status `needs-review` |
-| patch | green | security | comment "Security-flagged — needs eyes" → status `needs-review` |
-| minor | green | none | full server suite locally, then `/ship <n>` → status `merged` |
-| major | any | any | the `dependencies.md` major-bump checks (changelog for removed APIs, full server suite, plugin grep), then `/ship <n>` if clean → status `merged`; a real breakage → fix on the branch or return `needs-review` with the reason |
+| patch | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
+| minor | green | none | full server suite locally green, then `/ship <n>` → status `merged` |
+| minor | red | any | comment with the failure summary → status `needs-review` |
+| minor | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
+| major | green | none | the `dependencies.md` major-bump checks (changelog for removed APIs, full server suite locally green, plugin grep), then `/ship <n>` → status `merged`; a breakage → comment what broke → status `needs-review` |
+| major | red | any | comment with the failure summary → status `needs-review` |
+| major | green | security | the major-bump checks plus `/security-review`; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
 | unknown | any | any | comment "Could not parse bump level from title" → status `needs-review` |
 
 **Merge call:**
@@ -89,7 +93,7 @@ Decision matrix:
 /ship <n>
 ```
 
-Only ever from the `patch + green + no security` row, and only when Step 2 raised no hold. Never from any other row.
+Only ever from a `green` row whose listed checks and reviews passed, and only when Step 2 raised no hold. Never from a red row.
 
 **Comment call (any `needs-review` exit):**
 

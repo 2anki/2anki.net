@@ -35,7 +35,7 @@ Steps:
 
 4. End with a one-line summary: "X themes, Y high-urgency, suggest filing Z issues."
 
-File the issues (anonymised per `.claude/rules/support-confidentiality.md`) and print their URLs.
+Write each issue draft to a scratchpad file, grep it for names, email addresses, workspace names, deck titles and upload filenames per `.claude/rules/support-confidentiality.md`, fix any hit, then file the issues and print their URLs.
 
 ---
 

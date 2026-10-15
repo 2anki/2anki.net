@@ -17,7 +17,7 @@ Pilot scope is the `dependabot` task type. `dead-code` and `copy-sweep` are defe
   - `src/services/AuthenticationService/**`
   - `src/lib/Token.ts`
   - anything matching `auth` or `payments` in the diff path
-  Dispatch them too: the worker runs `/security-review` on the diff before `/ship`.
+  Dispatch them too: the worker runs `/security-review` on the diff, and `/ship` adds its own fresh read-only reviewers before the marker.
 
 ## Step 1 — pre-check
 
@@ -27,13 +27,7 @@ Refuse to start if the orchestrator's main checkout is dirty.
 git status --porcelain
 ```
 
-If the output is non-empty, abort with:
-
-```
-Orchestrator checkout has uncommitted changes — dispatching from a fresh worktree off origin/main instead.
-```
-
-and run the dispatch from that fresh worktree; never touch the dirty root.
+If the output is non-empty, print `Orchestrator checkout has uncommitted changes — dispatching from a fresh worktree off origin/main instead.`, create that worktree with `git worktree add <path> origin/main`, and dispatch from it. Never stash, reset, checkout or clean the dirty root; those changes belong to another session.
 
 ## Step 2 — parse arguments
 
@@ -59,13 +53,7 @@ For each PR:
 2. If `--patch-only` is set, drop entries whose bump level is not `patch`.
 3. Pull the file list (`files[].path`). If any path matches `HARD_BLOCK_PATHS`, drop the entry from the dispatch list and add it to a separate `hard-blocked` list to surface in the final report.
 
-Cap the result at `MAX_TASKS`. If the raw queue had more than `MAX_TASKS` viable entries, print:
-
-```
-Queue has <N> tasks; cap is 20. Dispatching the first 20; the rest go to the next run.
-```
-
-and continue.
+Cap the result at `MAX_TASKS`. Invoking `/batch` is Alexander's approval for up to `MAX_TASKS` agent runs. If the raw queue had more than `MAX_TASKS` viable entries, print `Queue has <N> tasks; cap is 20. Dispatching the first 20; the remaining <N-20> stay in the queue for the next /batch.` and continue; nothing is dropped, the leftovers are still open on GitHub.
 
 ## Step 4 — dispatch loop
 

@@ -12,7 +12,7 @@ You are a peer in product decisions, not a downstream implementer. Surface what'
 ## Operating principles
 
 - **Read before you write.** Before changing anything, grep for related code, read the existing patterns, and match them. The repo has conventions — follow them.
-- **TDD by default.** Write a failing test, verify it fails for the right reason, pass it in the simplest way, then refactor. If a change truly cannot be tested, state why in the PR body and ship.
+- **TDD by default.** Write a failing test, verify it fails for the right reason, pass it in the simplest way, then refactor. Skip a test only when Alexander explicitly asks; record that in the PR body.
 - **Outside-in testing.** Mock external dependencies only (HTTP, third-party APIs, email) — not internal services.
 - **Small PRs.** A PR should do one thing. If you're refactoring while adding a feature, split into two PRs.
 - **Type safety is non-negotiable.** No `any`. No `@ts-ignore` without a one-line reason.
@@ -62,7 +62,7 @@ mandatory. If you add a trigger, confirm the path resolves first.
 
 **Why:** Reverting a worktree is free; reverting a bad edit on the orchestrator's main checkout costs a force-revert and may require a re-deploy. The cost of `EnterWorktree` is seconds; the cost of a botched auth or payments change on main is hours.
 
-**pwd-verify before every mutation.** Run `pwd` + `git rev-parse --show-toplevel` before EVERY `Edit`/`Write` AND every git command — not just before commit (per `.claude/docs/parallel-pr-coordination.md`; three recurrences prove the gate has to sit upstream of commit). If the result doesn't match your assigned worktree, return to it (or re-create it from `origin/main`), re-verify and continue — never stash, never paper over the pollution with a stash + apply dance; halt only if foreign changes already landed in the main checkout.
+**pwd-verify before every mutation.** Run `pwd` + `git rev-parse --show-toplevel` before EVERY `Edit`/`Write` AND every git command — not just before commit (per `.claude/docs/parallel-pr-coordination.md`; three recurrences prove the gate has to sit upstream of commit). If the result doesn't match your assigned worktree, return to it (or, when that stray checkout has no uncommitted changes, re-create your worktree from `origin/main`), re-verify and continue — never stash, never `reset`, `checkout --`, `clean` or remove a directory that holds uncommitted changes in either checkout (move your own files with `cp` or cherry-pick), never paper over the pollution with a stash + apply dance; halt only if foreign changes already landed in the main checkout.
 
 ## Workflow
 
