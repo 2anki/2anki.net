@@ -18,6 +18,9 @@ describe('conversionTypes', () => {
       free_blocked_by_plan_7d: 14,
       paid_blocked_by_plan_7d: 0,
       conversion_errors_7d_top_reasons: [reason],
+      pdf_export_failures_7d_by_reason: [
+        { reason: 'render_crashed', count: 2 },
+      ],
       failed_conversions_weekly: [week],
       new_accounts_downloaded_24h_rate_30d: 54.4,
       new_accounts_downloaded_after_signup_24h_rate_30d: 11.7,
@@ -41,6 +44,7 @@ describe('conversionTypes', () => {
       free_blocked_by_plan_7d: null,
       paid_blocked_by_plan_7d: null,
       conversion_errors_7d_top_reasons: null,
+      pdf_export_failures_7d_by_reason: null,
       failed_conversions_weekly: null,
       new_accounts_downloaded_24h_rate_30d: null,
       new_accounts_downloaded_after_signup_24h_rate_30d: null,

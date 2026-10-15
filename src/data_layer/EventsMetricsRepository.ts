@@ -6,6 +6,7 @@ import {
   REASON_PROP_EXPRESSION,
 } from './classifyFailureReason';
 import type { PassSalesCounts } from '../types/ops/BusinessMetrics';
+import type { ConversionErrorCount } from '../types/ops/ConversionMetrics';
 
 export type { PassSalesCounts };
 
@@ -27,6 +28,7 @@ export interface IEventsMetricsRepository {
     since: Date,
     tier: ConversionTier
   ): Promise<ConversionOutcomeCounts>;
+  pdfExportFailuresByReason(since: Date): Promise<ConversionErrorCount[]>;
 }
 
 export interface IPassSalesRepository {
@@ -75,6 +77,11 @@ export interface ConversionOutcomesRow {
   plan_blocked: PostgresNumeric;
 }
 
+export interface PdfExportFailureRow {
+  reason: string | null;
+  count: number | string;
+}
+
 const PAID_CUSTOMER_FILTER =
   "users.stripe_customer_id IS NOT NULL AND users.stripe_customer_id != ''";
 const FREE_CUSTOMER_FILTER =
@@ -114,6 +121,17 @@ export function mapUploadToDownloadRateRow(
   return (Number(row.downloaders) / Number(row.uploaders)) * 100;
 }
 
+export function mapPdfExportFailureRows(
+  rows: PdfExportFailureRow[]
+): ConversionErrorCount[] {
+  return rows
+    .map((row) => ({
+      reason: row.reason ?? 'unknown',
+      count: Number(row.count),
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
 export class EventsMetricsRepository
   implements IEventsMetricsRepository, IPassSalesRepository
 {
@@ -140,6 +158,24 @@ export class EventsMetricsRepository
       week_passes: byPlan.get('7d') ?? 0,
       semester_passes: byPlan.get('120d') ?? 0,
     };
+  }
+
+  buildPdfExportFailuresByReasonQuery(since: Date): Knex.QueryBuilder {
+    return this.database('events')
+      .select(this.database.raw("props->>'reason' as reason"))
+      .count('* as count')
+      .where('name', 'pdf_export_failed')
+      .where('created_at', '>=', since)
+      .groupBy('reason');
+  }
+
+  async pdfExportFailuresByReason(
+    since: Date
+  ): Promise<ConversionErrorCount[]> {
+    const rows = (await this.buildPdfExportFailuresByReasonQuery(
+      since
+    )) as PdfExportFailureRow[];
+    return mapPdfExportFailureRows(rows);
   }
 
   buildNewAccountDownloadsQuery(

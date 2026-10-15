@@ -4,6 +4,7 @@ import {
   EventsMetricsRepository,
   mapConversionOutcomesRow,
   mapNewAccountDownloadsRow,
+  mapPdfExportFailureRows,
   mapUploadToDownloadRateRow,
 } from './EventsMetricsRepository';
 
@@ -78,6 +79,19 @@ describe('EventsMetricsRepository generated SQL', () => {
       'upload_started',
       'deck_downloaded',
     ]);
+  });
+
+  it('counts pdf export failures by reason inside the window', () => {
+    const sql = repository
+      .buildPdfExportFailuresByReasonQuery(sevenDaysAgo)
+      .toString();
+
+    expect(sql).toContain('"events"');
+    expect(sql).toContain("props->>'reason' as reason");
+    expect(sql).toContain('"name" = \'pdf_export_failed\'');
+    expect(sql).toContain('"created_at" >=');
+    expect(sql).toContain('group by "reason"');
+    expect(sql).toContain('count(*)');
   });
 
   it('counts pass checkouts by plan inside the window', () => {
@@ -228,6 +242,30 @@ describe('mapNewAccountDownloadsRow', () => {
       downloadedWithin24h: 376,
       downloadedAfterSignup: 82,
     });
+  });
+});
+
+describe('mapPdfExportFailureRows', () => {
+  it('returns an empty array when the query yields no rows', () => {
+    expect(mapPdfExportFailureRows([])).toEqual([]);
+  });
+
+  it('turns the string counts Postgres returns into numbers, sorted by count', () => {
+    expect(
+      mapPdfExportFailureRows([
+        { reason: 'render_timeout', count: '2' },
+        { reason: 'render_crashed', count: '9' },
+      ])
+    ).toEqual([
+      { reason: 'render_crashed', count: 9 },
+      { reason: 'render_timeout', count: 2 },
+    ]);
+  });
+
+  it('labels a null reason as unknown', () => {
+    expect(mapPdfExportFailureRows([{ reason: null, count: '4' }])).toEqual([
+      { reason: 'unknown', count: 4 },
+    ]);
   });
 });
 

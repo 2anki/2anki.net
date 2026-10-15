@@ -132,6 +132,7 @@ export class ConversionMetricsService {
       freeOutcomes,
       paidOutcomes,
       topErrors7d,
+      pdfExportFailures7d,
       failedConversionsWeeklyRows,
       newAccountDownloads30d,
       uploadToDownloadRate7d,
@@ -140,6 +141,7 @@ export class ConversionMetricsService {
       this.eventsMetricsRepository.conversionOutcomes(sevenDaysAgo, 'free'),
       this.eventsMetricsRepository.conversionOutcomes(sevenDaysAgo, 'paid'),
       this.repository.topFailureReasons7d(sevenDaysAgo),
+      this.eventsMetricsRepository.pdfExportFailuresByReason(sevenDaysAgo),
       this.repository.failedConversionsWeekly(earliestStart, weekEnd),
       this.newAccountDownloads(now, thirtyDaysAgo),
       this.eventsMetricsRepository.uploadToDownloadRate(sevenDaysAgo),
@@ -163,6 +165,10 @@ export class ConversionMetricsService {
       paid_blocked_by_plan_7d: fromOutcomes(paidOutcomes, (o) => o.planBlocked),
       conversion_errors_7d_top_reasons:
         topErrors7d.status === 'fulfilled' ? topErrors7d.value : null,
+      pdf_export_failures_7d_by_reason:
+        pdfExportFailures7d.status === 'fulfilled'
+          ? pdfExportFailures7d.value
+          : null,
       failed_conversions_weekly: failedConversionsWeekly,
       new_accounts_downloaded_24h_rate_30d: shareOfNewAccounts(
         newAccountDownloads30d,

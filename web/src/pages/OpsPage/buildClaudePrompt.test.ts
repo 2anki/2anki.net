@@ -61,6 +61,7 @@ function makeConversions(
     free_blocked_by_plan_7d: 63,
     paid_blocked_by_plan_7d: 0,
     conversion_errors_7d_top_reasons: [{ reason: 'Notion timeout', count: 12 }],
+    pdf_export_failures_7d_by_reason: [{ reason: 'render_crashed', count: 7 }],
     failed_conversions_weekly: [{ week: '2026-06-01', count: 3 }],
     new_accounts_downloaded_24h_rate_30d: 54.4,
     new_accounts_downloaded_after_signup_24h_rate_30d: 11.7,
@@ -255,6 +256,8 @@ describe('buildClaudePrompt — conversions', () => {
       'New accounts making a deck after signup (%): 11.7'
     );
     expect(prompt).toContain('Notion timeout');
+    expect(prompt).toContain('PDF export failures by reason (7d)');
+    expect(prompt).toContain('render_crashed');
     expect(prompt).toContain(
       'find the biggest conversion leak and propose one fix'
     );

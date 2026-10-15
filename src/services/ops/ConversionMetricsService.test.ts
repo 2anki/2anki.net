@@ -33,6 +33,7 @@ function makeFailingEventsRepo(): IEventsMetricsRepository {
     newAccountDownloads: vi.fn().mockRejectedValue(new Error('db down')),
     uploadToDownloadRate: vi.fn().mockRejectedValue(new Error('db down')),
     conversionOutcomes: vi.fn().mockRejectedValue(new Error('db down')),
+    pdfExportFailuresByReason: vi.fn().mockRejectedValue(new Error('db down')),
   };
 }
 
@@ -43,6 +44,7 @@ function makeStubEventsRepo(
     newAccountDownloads: vi.fn().mockResolvedValue(null),
     uploadToDownloadRate: vi.fn().mockResolvedValue(null),
     conversionOutcomes: vi.fn().mockResolvedValue(outcomes()),
+    pdfExportFailuresByReason: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -84,6 +86,7 @@ describe('ConversionMetricsService — graceful failure', () => {
     expect(metrics.free_blocked_by_plan_7d).toBeNull();
     expect(metrics.paid_blocked_by_plan_7d).toBeNull();
     expect(metrics.conversion_errors_7d_top_reasons).toBeNull();
+    expect(metrics.pdf_export_failures_7d_by_reason).toBeNull();
     expect(metrics.failed_conversions_weekly).toBeNull();
     expect(metrics.new_accounts_downloaded_24h_rate_30d).toBeNull();
     expect(
@@ -231,6 +234,43 @@ describe('ConversionMetricsService — shape assembly', () => {
     const metrics = await service.getMetrics();
 
     expect(metrics.conversion_errors_7d_top_reasons).toEqual(reasons);
+  });
+
+  it('passes through pdf export failures by reason over the last seven days', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-05-19T00:00:00.000Z'));
+    const pdfReasons: ConversionErrorCount[] = [
+      { reason: 'render_crashed', count: 9 },
+      { reason: 'render_timeout', count: 2 },
+    ];
+    const eventsRepo = makeStubEventsRepo({
+      pdfExportFailuresByReason: vi.fn().mockResolvedValue(pdfReasons),
+    });
+    const service = new ConversionMetricsService(makeStubRepo(), eventsRepo);
+
+    const metrics = await service.getMetrics();
+
+    expect(metrics.pdf_export_failures_7d_by_reason).toEqual(pdfReasons);
+    expect(eventsRepo.pdfExportFailuresByReason).toHaveBeenCalledWith(
+      new Date('2025-05-12T00:00:00.000Z')
+    );
+    vi.useRealTimers();
+  });
+
+  it('nulls pdf export failures when only that query fails', async () => {
+    const service = new ConversionMetricsService(
+      makeStubRepo(),
+      makeStubEventsRepo({
+        pdfExportFailuresByReason: vi
+          .fn()
+          .mockRejectedValue(new Error('db down')),
+      })
+    );
+
+    const metrics = await service.getMetrics();
+
+    expect(metrics.pdf_export_failures_7d_by_reason).toBeNull();
+    expect(metrics.conversion_errors_7d_top_reasons).toEqual([]);
   });
 
   it('produces a 12-week time series with zeroes for weeks with no data', async () => {
