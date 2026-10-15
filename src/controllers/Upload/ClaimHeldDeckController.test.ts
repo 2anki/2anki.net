@@ -10,6 +10,7 @@ import {
   type HeldFileStore,
 } from '../../usecases/uploads/ClaimHeldDeckUseCase';
 import { MonthlyLimitError } from '../../usecases/users/CheckMonthlyCardLimitUseCase';
+import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import { ClaimHeldDeckController } from './ClaimHeldDeckController';
 import { track } from '../../services/events/track';
 
@@ -170,6 +171,38 @@ describe('ClaimHeldDeckController', () => {
 
     expect(capturedStatus()).toBe(409);
     expect(capturedJson()).toEqual({ code: 'monthly_limit' });
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'anonymous_partial_claimed',
+      expect.anything()
+    );
+  });
+
+  it('POST 400s with empty_export and the reason when the owner conversion has no cards', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo);
+    const store: HeldFileStore = {
+      getFileContents: vi
+        .fn()
+        .mockResolvedValue({ Body: Buffer.from('<html></html>') }),
+    };
+    const converter: HeldDeckConverter = {
+      convertHeldFileForOwner: vi
+        .fn()
+        .mockRejectedValue(new EmptyDeckError(undefined, 'all_filtered')),
+    };
+    const controller = new ClaimHeldDeckController(
+      new ClaimHeldDeckUseCase(repo, store, converter)
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse(7);
+
+    await controller.claim(buildRequest(ANON), res);
+
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'empty_export',
+      message: 'No cards found in your upload. Use .zip, .html, .md, or .csv.',
+      empty_reason: 'all_filtered',
+    });
     expect(trackMock).not.toHaveBeenCalledWith(
       'anonymous_partial_claimed',
       expect.anything()
