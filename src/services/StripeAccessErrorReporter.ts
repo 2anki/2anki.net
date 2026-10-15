@@ -65,10 +65,8 @@ export const makeStripeAccessErrorReporter = (
 
   return async (err: Error, req: Request, res: Response): Promise<void> => {
     const type = stripeAccessErrorType(err) ?? 'StripeError';
-    const path =
-      req.originalUrl == null
-        ? null
-        : redactStripeIds(req.originalUrl.split('?')[0]);
+    const pathname = req.originalUrl?.split(/[?#]/)[0];
+    const path = pathname ? redactStripeIds(pathname) : null;
     const message = `Stripe access denied: ${type}`;
     const messageHash = sha256(message);
     const userId =
@@ -104,10 +102,6 @@ export const makeStripeAccessErrorReporter = (
     }
 
     try {
-      track('stripe_access_alert_sent', {
-        userId,
-        props: { stripe_error_type: type },
-      });
       await sendAlert(
         `[2anki] Stripe access error: ${type}`,
         `A Stripe API request was denied with ${type}. The configured ` +
@@ -118,6 +112,10 @@ export const makeStripeAccessErrorReporter = (
           `revoked, update the server's Stripe secret. Details on the /ops ` +
           `error dashboard.`
       );
+      track('stripe_access_alert_sent', {
+        userId,
+        props: { stripe_error_type: type },
+      });
     } catch (alertError) {
       console.error('[stripe-access] alert failed', alertError);
     }

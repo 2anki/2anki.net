@@ -148,18 +148,39 @@ describe('makeStripeAccessErrorReporter', () => {
     expect(body).not.toContain('token=abc');
   });
 
-  it('survives a throwing analytics sink and still passes control back', async () => {
+  it('still records the row and sends the alert when the analytics sink throws', async () => {
     const repo = makeRepository();
     trackMock.mockImplementation(() => {
       throw new Error('sink down');
     });
+    const sendAlert = vi.fn().mockResolvedValue(undefined);
+    const report = makeStripeAccessErrorReporter(repo, null, { sendAlert });
+
+    await report(permissionError(), makeReq(), makeRes(777));
+
+    expect(repo.inserts).toHaveLength(1);
+    expect(sendAlert).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not count an alert as sent when the email fails', async () => {
+    const repo = makeRepository();
+    const sendAlert = vi.fn().mockRejectedValue(new Error('sendgrid down'));
+    const report = makeStripeAccessErrorReporter(repo, null, { sendAlert });
+
+    await report(permissionError(), makeReq(), makeRes(777));
+
+    expect(trackMock).not.toHaveBeenCalled();
+  });
+
+  it('stores a null url for an empty request path', async () => {
+    const repo = makeRepository();
     const report = makeStripeAccessErrorReporter(repo, null, {
       sendAlert: vi.fn().mockResolvedValue(undefined),
     });
 
-    await expect(
-      report(permissionError(), makeReq(), makeRes(777))
-    ).resolves.toBeUndefined();
+    await report(permissionError(), makeReq(''), makeRes(777));
+
+    expect(repo.inserts[0].url).toBeNull();
   });
 
   it('dedups on the message with a surrogate ip so different callers share it', async () => {
