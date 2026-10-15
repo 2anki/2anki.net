@@ -94,17 +94,13 @@ const PRINT_NON_TEXT_TAGS = [
   'button',
 ];
 
-// Same reasoning as dropping <button>: popup chrome hangs its controls off
-// script-driven anchors with no href, and without scripts those lead nowhere.
-// Only a symbol-only one (`↪`) is chrome; words or an image are card content.
-const isSymbolOnly = (text: string): boolean =>
-  text.trim().length > 0 && !/[\p{L}\p{N}]/u.test(text);
+// Same reasoning as dropping <button>: the popup's "open" control is an anchor
+// whose only text is `↪`, and without scripts it does nothing. Only that glyph
+// goes; the anchor and anything else inside it (words, images) is card content.
+const POPUP_OPEN_GLYPH = '↪';
 
-const isDeadPrintAnchor = (frame: sanitizeHtml.IFrame): boolean =>
-  frame.tag === 'a' &&
-  !frame.attribs.href &&
-  frame.mediaChildren.length === 0 &&
-  isSymbolOnly(frame.text);
+const dropPopupGlyph = (text: string, tagName: string): string =>
+  tagName === 'a' && text.trim() === POPUP_OPEN_GLYPH ? '' : text;
 
 export interface SanitizeCardOptions {
   print?: boolean;
@@ -121,7 +117,7 @@ export function sanitizeCardHtml(
     allowedSchemes: ['http', 'https', 'mailto', 'data'],
     allowedSchemesAppliedToAttributes: ['href', 'src'],
     disallowedTagsMode: 'discard',
-    exclusiveFilter: options.print ? isDeadPrintAnchor : undefined,
+    textFilter: options.print ? dropPopupGlyph : undefined,
     parser: { lowerCaseTags: true, lowerCaseAttributeNames: false },
   });
 }

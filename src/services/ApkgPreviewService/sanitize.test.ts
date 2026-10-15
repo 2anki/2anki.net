@@ -125,12 +125,18 @@ describe('sanitizeCardHtml — print option', () => {
     ).toBe('<div>a</div>');
   });
 
-  it('drops href-less popup anchors and their glyph when printing', () => {
+  it('removes the popup open-arrow glyph from anchors when printing', () => {
     expect(
       sanitizeCardHtml('<div id="popup"><a href="">↪</a>kept</div>', {
         print: true,
       })
-    ).toBe('<div id="popup">kept</div>');
+    ).toBe('<div id="popup"><a></a>kept</div>');
+  });
+
+  it('keeps the arrow as card text outside anchors when printing', () => {
+    expect(sanitizeCardHtml('<div>a ↪ b</div>', { print: true })).toBe(
+      '<div>a ↪ b</div>'
+    );
   });
 
   it('keeps anchors with an href when printing', () => {
@@ -149,9 +155,18 @@ describe('sanitizeCardHtml — print option', () => {
     expect(sanitizeCardHtml(html, { print: true })).toBe(html);
   });
 
-  it('keeps href-less anchors that wrap a nested image when printing', () => {
-    const html = '<a><span><img src="logo.png" /></span></a>';
-    expect(sanitizeCardHtml(html, { print: true })).toBe(html);
+  it('keeps a nested image beside the glyph when printing', () => {
+    expect(
+      sanitizeCardHtml('<a><span><img src="logo.png" /></span>↪</a>', {
+        print: true,
+      })
+    ).toBe('<a><span><img src="logo.png" /></span></a>');
+  });
+
+  it('keeps symbol-only card text in href-less anchors when printing', () => {
+    expect(
+      sanitizeCardHtml('<a name="inf">∞</a> <a>→</a>', { print: true })
+    ).toBe('<a>∞</a> <a>→</a>');
   });
 
   it('keeps href-less anchors on non-print surfaces', () => {
