@@ -133,9 +133,26 @@ describe('sanitizeCardHtml — print option', () => {
     ).toBe('<div id="popup"><a></a>kept</div>');
   });
 
+  it('removes the glyph wrapped in child tags inside the anchor when printing', () => {
+    expect(
+      sanitizeCardHtml('<a><span>↪</span></a><a><b>↪</b></a>', { print: true })
+    ).toBe('<a><span></span></a><a><b></b></a>');
+  });
+
+  it('removes the glyph wrapped in a discarded tag inside the anchor when printing', () => {
+    expect(sanitizeCardHtml('<a><foo>↪</foo></a>', { print: true })).toBe(
+      '<a></a>'
+    );
+  });
+
+  it('keeps a real link whose text is the arrow when printing', () => {
+    const html = '<a href="https://x.com">↪</a>';
+    expect(sanitizeCardHtml(html, { print: true })).toBe(html);
+  });
+
   it('keeps the arrow as card text outside anchors when printing', () => {
-    expect(sanitizeCardHtml('<div>a ↪ b</div>', { print: true })).toBe(
-      '<div>a ↪ b</div>'
+    expect(sanitizeCardHtml('<a>↪</a><div>a ↪ b</div>', { print: true })).toBe(
+      '<a></a><div>a ↪ b</div>'
     );
   });
 

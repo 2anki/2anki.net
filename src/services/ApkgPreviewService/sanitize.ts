@@ -95,12 +95,31 @@ const PRINT_NON_TEXT_TAGS = [
 ];
 
 // Same reasoning as dropping <button>: the popup's "open" control is an anchor
-// whose only text is `↪`, and without scripts it does nothing. Only that glyph
-// goes; the anchor and anything else inside it (words, images) is card content.
+// with no destination whose only text is `↪`, and without scripts it does
+// nothing. Only that glyph goes, however deep it sits inside such an anchor;
+// the anchor itself, its words and images, and real links print as before.
 const POPUP_OPEN_GLYPH = '↪';
 
-const dropPopupGlyph = (text: string, tagName: string): string =>
-  tagName === 'a' && text.trim() === POPUP_OPEN_GLYPH ? '' : text;
+const printPopupGlyphFilter = (): sanitizeHtml.IOptions => {
+  const openAnchorsLackHref: boolean[] = [];
+  let anchorsWithoutHrefOpen = 0;
+  return {
+    onOpenTag: (name, attribs) => {
+      if (name !== 'a') return;
+      const lacksHref = (attribs.href ?? '').trim() === '';
+      openAnchorsLackHref.push(lacksHref);
+      if (lacksHref) anchorsWithoutHrefOpen++;
+    },
+    onCloseTag: (name) => {
+      if (name !== 'a') return;
+      if (openAnchorsLackHref.pop()) anchorsWithoutHrefOpen--;
+    },
+    textFilter: (text) =>
+      anchorsWithoutHrefOpen > 0 && text.trim() === POPUP_OPEN_GLYPH
+        ? ''
+        : text,
+  };
+};
 
 export interface SanitizeCardOptions {
   print?: boolean;
@@ -117,8 +136,8 @@ export function sanitizeCardHtml(
     allowedSchemes: ['http', 'https', 'mailto', 'data'],
     allowedSchemesAppliedToAttributes: ['href', 'src'],
     disallowedTagsMode: 'discard',
-    textFilter: options.print ? dropPopupGlyph : undefined,
     parser: { lowerCaseTags: true, lowerCaseAttributeNames: false },
+    ...(options.print ? printPopupGlyphFilter() : {}),
   });
 }
 
