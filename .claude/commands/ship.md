@@ -44,7 +44,7 @@ Run every row that matches the hit. Any failure → fix on the branch and restar
 
 Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh context, diff only) and read the synthesized verdict.
 
-**`review-pr` may be switched off on the maintainer's machine (`.claude/settings.local.json`, per-machine and untracked), so invoke the reviewers yourself** with the `Agent` tool rather than the skill — one agent per dimension, each briefed to read the diff and report BLOCKING / NON-BLOCKING / verdict with no edits, commits or merges. **Never use `subagent_type: "fork"` for a reviewer.** A fork inherits this whole ship task, the shared worktree and the operator's `gh` auth, and on #4679 three read-only-briefed forks edited, force-pushed, posted markers and enqueued the merge themselves. Use a fresh read-only type (`caveman:cavecrew-reviewer`), save the diff to a scratchpad file first, and pass only the diff path and the review brief, never the ship steps. The marker you post in a moment is the merge gate's only substantive review condition, so it must stand for a review that actually ran. Do not post it on the strength of your own reading alone.
+**`review-pr` may be switched off on the maintainer's machine (`.claude/settings.local.json`, per-machine and untracked), so invoke the reviewers yourself** with the `Agent` tool rather than the skill — one agent per dimension, each briefed to read the diff and report BLOCKING / NON-BLOCKING / verdict with no edits, commits or merges. **Never use `subagent_type: "fork"` for a reviewer.** A fork inherits this whole ship task, the shared worktree and the operator's `gh` auth, and on #4679 three read-only-briefed forks edited, force-pushed, posted markers and merged themselves. Use a fresh read-only type (`caveman:cavecrew-reviewer`), save the diff to a scratchpad file first, and pass only the diff path and the review brief, never the ship steps. The marker you post in a moment is the merge gate's only substantive review condition, so it must stand for a review that actually ran. Do not post it on the strength of your own reading alone.
 
 - **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. There is no round cap: keep fixing and re-reviewing until a pass is clean (no BLOCKING findings from any reviewer) or a CLAUDE.md carve-out fires. For the review loop, a clean pass or a `CLAUDE.md` halt is the only end; for the run, the usage limit is.
   - Re-raised point: fix it, or, if it is non-security and already handled, cite the evidence in the next brief. Never a reason to stop.
@@ -68,26 +68,26 @@ gh pr view <n> --json statusCheckRollup --jq '.statusCheckRollup[] | "\(.name //
 
 Every entry must be COMPLETED and non-FAILURE. Don't busy-poll — use `Monitor` on that command, or `ScheduleWakeup` (270s) when a run has minutes left. A FAILURE → read the log (`gh run view <id> --log-failed`), fix on the branch, restart from step 1.
 
-## 4. Merge (through the merge queue)
+## 4. Merge
 
-`main` merges through GitHub's merge queue (squash strategy set by the queue rule; `--delete-branch` is rejected while the queue is on). `gh pr merge` **enqueues** — it does not merge, and `mergeCommit` stays `null` until the queue lands the PR.
+The merge queue on `main` was switched off on 2026-10-15 (ruleset `main merge queue`, enforcement `disabled`): it rebuilt `main` + the PR and re-ran the same required workflows that had just passed on the head SHA, about seven minutes per PR with nothing new learned. Classic branch protection still gates the merge on green required checks, and this flow has already rebased on `origin/main` and waited for the rollup, so `gh pr merge` merges directly.
 
 ```bash
 gh pr merge <n> --repo 2anki/server --squash
 ```
 
-The `check-merge-status.py`, `check-browser-attestation.py`, and `check-changelog-on-merge.py` hooks re-verify everything before the enqueue. A deny prints the reason — act on it, never bypass.
+The `check-merge-status.py`, `check-browser-attestation.py`, and `check-changelog-on-merge.py` hooks re-verify everything before the merge. A deny prints the reason — act on it, never bypass.
 
-Then wait for the queue. The queue builds `main` + the PR on a `gh-readonly-queue/main/pr-<n>-<sha>` branch and runs the required workflows there; that takes about seven minutes when the queue is idle. Poll with `Monitor` (60 s interval) on:
+Then read the merge SHA:
 
 ```bash
-gh api graphql -f query='{ repository(owner:"2anki", name:"2anki.net") { pullRequest(number:<n>) { state mergeCommit { oid } mergeQueueEntry { state position } } } }'
+gh api graphql -f query='{ repository(owner:"2anki", name:"2anki.net") { pullRequest(number:<n>) { state mergeCommit { oid } } } }'
 ```
 
 - `state: MERGED` → record `MERGE_SHA` from `mergeCommit.oid` and continue.
-- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake: read both failed logs, put the fix on the branch, and restart from step 1. When the failing job is infrastructure the branch cannot change (a runner outage, a GitHub incident), convert it to draft (`gh pr ready --undo`, since a ready PR with red checks is a merge invitation), note the run URL on it, pause this PR on a `ScheduleWakeup` of 1200s and resume this same step; when the rollup is green again, `gh pr ready` and re-enqueue. The ship does not end, and other items proceed while this PR waits.
+- `state: OPEN` → the merge was refused (a required check went red between the rollup read and the merge, or `main` moved and `strict` protection wants a rebase). Read `gh pr view <n> --json mergeStateStatus,statusCheckRollup`, fix on the branch or rebase, and restart from step 1. When the failing job is infrastructure the branch cannot change (a runner outage, a GitHub incident), convert it to draft (`gh pr ready --undo`, since a ready PR with red checks is a merge invitation), note the run URL on it, pause this PR on a `ScheduleWakeup` of 1200s and resume this same step; when the rollup is green again, `gh pr ready` and merge. The ship does not end, and other items proceed while this PR waits.
 
-Never delete the branch by hand before the queue has merged; the queue needs it.
+Never delete the branch by hand before `state: MERGED` is confirmed.
 
 ## 5. Watch the deploy
 
@@ -97,7 +97,7 @@ A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.m
 gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion
 ```
 
-Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the queue merge; `ScheduleWakeup` 60s if not yet listed). Then `gh run watch <id> --exit-status` — deploys take 6–10 minutes; prefer `ScheduleWakeup` 270s or a `Monitor` over holding the shell.
+Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the merge; `ScheduleWakeup` 60s if not yet listed). Then `gh run watch <id> --exit-status` — deploys take 6–10 minutes; prefer `ScheduleWakeup` 270s or a `Monitor` over holding the shell.
 
 ## 6. Verify prod
 
@@ -117,7 +117,7 @@ Watch for 15 minutes after the deploy. Any regression → step 8 revert.
 
 ## 7. Local cleanup
 
-Runs on the success path only (healthy deploy, or a merge with no deploy) — skip if you're headed to step 8 instead. "Merge" here means the queue's `state: MERGED` from step 4, never the enqueue moment; the branch only exists to delete once that's confirmed.
+Runs on the success path only (healthy deploy, or a merge with no deploy) — skip if you're headed to step 8 instead. "Merge" here means `state: MERGED` from step 4; the branch only exists to delete once that's confirmed.
 
 If this checkout is still on the just-merged branch: `git checkout main && git pull --ff-only`, then `git branch -D <branch>` (squash-merges leave the tip unreachable from main, so `-d` refuses), `git fetch --prune origin`, and `git worktree remove <path>` if a dedicated worktree carried this PR. Skip silently if the checkout is already on a different branch — nothing to clean up here.
 
