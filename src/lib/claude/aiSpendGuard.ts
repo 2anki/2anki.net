@@ -71,6 +71,20 @@ function defaultDeps(): AiBudgetDeps {
   };
 }
 
+// The allowance window each user last recorded the exhausted event in. The
+// ledger read below is asynchronous and the events sink writes in batches, so
+// when a 100-page PDF fans out and every per-page guard observes the same spent
+// balance within the same tick, all of them read a count of zero and all of
+// them fire: one user produced 102 events in 0.3s on 2026-10-15. Claiming the
+// window synchronously here, before the first ledger read, is what makes the
+// per-window promise hold inside one process; the ledger still dedupes across
+// processes and restarts.
+const claimedExhaustedWindows = new Map<number, number>();
+
+export function resetExhaustedEventLedger(): void {
+  claimedExhaustedWindows.clear();
+}
+
 // Fires the exhausted event at most once per allowance window. Detached and
 // deduped by the ledger so any observer of a ≤ 0 balance — the pre-check, the
 // per-chunk guard, the per-page guard — records exactly one event per window.
@@ -79,6 +93,11 @@ function fireExhaustedOnce(
   userId: number,
   windowStart: Date
 ): void {
+  const windowKey = windowStart.getTime();
+  if (claimedExhaustedWindows.get(userId) === windowKey) {
+    return;
+  }
+  claimedExhaustedWindows.set(userId, windowKey);
   void deps.reader
     .eventCountSince(EXHAUSTED_EVENT, userId, windowStart)
     .then((already) => {
@@ -86,9 +105,10 @@ function fireExhaustedOnce(
         track(EXHAUSTED_EVENT, { userId, props: {} });
       }
     })
-    .catch((error) =>
-      console.error('[ai-credits] exhausted-event dedup failed', error)
-    );
+    .catch((error) => {
+      claimedExhaustedWindows.delete(userId);
+      console.error('[ai-credits] exhausted-event dedup failed', error);
+    });
 }
 
 // Reads the caller's credit balance and, when it is spent, records the

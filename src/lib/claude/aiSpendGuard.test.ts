@@ -5,6 +5,7 @@ import {
   AiCreditsExhaustedError,
   assertAiBudget,
   getAiBudgetStatus,
+  resetExhaustedEventLedger,
   withAiBudget,
 } from './aiSpendGuard';
 import { AiCreditBalance } from './aiCredits/balance';
@@ -58,6 +59,7 @@ function makeDeps(overrides: {
 describe('assertAiBudget', () => {
   beforeEach(() => {
     trackMock.mockReset();
+    resetExhaustedEventLedger();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
   afterEach(() => vi.restoreAllMocks());
@@ -168,6 +170,7 @@ describe('withAiBudget', () => {
 
   beforeEach(() => {
     trackMock.mockReset();
+    resetExhaustedEventLedger();
     resetInflightReservations();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
@@ -295,6 +298,7 @@ describe('withAiBudget', () => {
 describe('getAiBudgetStatus', () => {
   beforeEach(() => {
     trackMock.mockReset();
+    resetExhaustedEventLedger();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
   afterEach(() => vi.restoreAllMocks());
@@ -355,5 +359,38 @@ describe('getAiBudgetStatus', () => {
     );
     await flushAsync();
     expect(trackMock).not.toHaveBeenCalled();
+  });
+
+  it('fires the exhausted event once when many guards observe zero in the same tick', async () => {
+    const deps = makeDeps({ balance: balanceWith(0) });
+    await Promise.all(
+      Array.from({ length: 100 }, () => getAiBudgetStatus(42, deps))
+    );
+    await flushAsync();
+    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(deps.reader.eventCountSince).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires once per window: a new allowance window records a new event', async () => {
+    await getAiBudgetStatus(42, makeDeps({ balance: balanceWith(0) }));
+    const nextWindow: AiCreditBalance = {
+      ...balanceWith(0),
+      windowStart: new Date('2026-10-01T00:00:00.000Z'),
+      windowEnd: new Date('2026-11-01T00:00:00.000Z'),
+    };
+    await getAiBudgetStatus(42, makeDeps({ balance: nextWindow }));
+    await flushAsync();
+    expect(trackMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('releases the claim when the ledger read fails so a later observer can record it', async () => {
+    const failing = makeDeps({ balance: balanceWith(0) });
+    failing.reader.eventCountSince.mockRejectedValueOnce(new Error('db down'));
+    await getAiBudgetStatus(42, failing);
+    await flushAsync();
+    expect(trackMock).not.toHaveBeenCalled();
+    await getAiBudgetStatus(42, makeDeps({ balance: balanceWith(0) }));
+    await flushAsync();
+    expect(trackMock).toHaveBeenCalledTimes(1);
   });
 });
