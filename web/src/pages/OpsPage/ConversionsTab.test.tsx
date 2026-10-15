@@ -33,6 +33,10 @@ const buildSampleMetrics = (
     { reason: 'Notion timeout', count: 12 },
     { reason: 'Parser crash', count: 5 },
   ],
+  pdf_export_failures_7d_by_reason: [
+    { reason: 'render_crashed', count: 9 },
+    { reason: 'render_timeout', count: 3 },
+  ],
   failed_conversions_weekly: Array.from({ length: 12 }).map((_, i) => ({
     week: `2026-02-${String((i % 28) + 1).padStart(2, '0')}`,
     count: i % 4,
@@ -156,6 +160,27 @@ describe('ConversionsTab', () => {
     expect(
       screen.getByText('Failed conversions, last 12 weeks')
     ).toBeInTheDocument();
+    expect(
+      screen.getByText('PDF export failures by reason, last 7 days')
+    ).toBeInTheDocument();
+  });
+
+  test('shows the PDF-failures empty state when no PDF export failed', async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () =>
+        buildSampleMetrics({ pdf_export_failures_7d_by_reason: [] }),
+    });
+
+    renderTab();
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('No PDF export failures in this window.')
+      ).toBeInTheDocument()
+    );
   });
 
   test('shows ChartPanel empty state when failure arrays are empty', async () => {

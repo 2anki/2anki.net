@@ -177,6 +177,9 @@ vi.mock('../services/ops/ConversionMetricsService', () => {
             { reason: 'Empty page', count: 12 },
             { reason: 'Network timeout', count: 5 },
           ],
+          pdf_export_failures_7d_by_reason: [
+            { reason: 'render_crashed', count: 4 },
+          ],
           failed_conversions_weekly: [
             { week: '2026-05-04', count: 3 },
             { week: '2026-05-11', count: 8 },
@@ -509,6 +512,7 @@ describe('OpsRouter /api/ops/conversion/metrics', () => {
           free_conversion_success_rate_7d: expect.any(Number),
           paid_conversion_success_rate_7d: expect.any(Number),
           conversion_errors_7d_top_reasons: expect.any(Array),
+          pdf_export_failures_7d_by_reason: expect.any(Array),
           failed_conversions_weekly: expect.any(Array),
           new_accounts_downloaded_24h_rate_30d: expect.any(Number),
           new_accounts_downloaded_after_signup_24h_rate_30d: expect.any(Number),

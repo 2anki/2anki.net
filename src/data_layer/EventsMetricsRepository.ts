@@ -6,6 +6,8 @@ import {
   REASON_PROP_EXPRESSION,
 } from './classifyFailureReason';
 import type { PassSalesCounts } from '../types/ops/BusinessMetrics';
+import type { ConversionErrorCount } from '../types/ops/ConversionMetrics';
+import { PDF_EXPORT_FAILURE_REASONS } from '../types/PdfExportFailureReason';
 
 export type { PassSalesCounts };
 
@@ -27,6 +29,7 @@ export interface IEventsMetricsRepository {
     since: Date,
     tier: ConversionTier
   ): Promise<ConversionOutcomeCounts>;
+  pdfExportFailuresByReason(since: Date): Promise<ConversionErrorCount[]>;
 }
 
 export interface IPassSalesRepository {
@@ -64,6 +67,10 @@ export interface NewAccountDownloadCounts {
 // this many minutes is a deck made after signing up.
 const HELD_DECK_DOWNLOAD_MINUTES = 10;
 
+// Mirrors the top-10 cap the jobs top-failure-reasons breakdown applies, so an
+// unexpected reason explosion cannot blow up the ops payload.
+const PDF_EXPORT_FAILURE_REASON_LIMIT = 10;
+
 export interface UploadToDownloadRateRow {
   uploaders: number | string;
   downloaders: number | string;
@@ -73,6 +80,11 @@ export interface ConversionOutcomesRow {
   succeeded: PostgresNumeric;
   technical_failed: PostgresNumeric;
   plan_blocked: PostgresNumeric;
+}
+
+export interface PdfExportFailureRow {
+  reason: string;
+  count: number | string;
 }
 
 const PAID_CUSTOMER_FILTER =
@@ -114,6 +126,14 @@ export function mapUploadToDownloadRateRow(
   return (Number(row.downloaders) / Number(row.uploaders)) * 100;
 }
 
+export function mapPdfExportFailureRows(
+  rows: PdfExportFailureRow[]
+): ConversionErrorCount[] {
+  return rows
+    .map((row) => ({ reason: row.reason, count: Number(row.count) }))
+    .sort((a, b) => b.count - a.count);
+}
+
 export class EventsMetricsRepository
   implements IEventsMetricsRepository, IPassSalesRepository
 {
@@ -140,6 +160,32 @@ export class EventsMetricsRepository
       week_passes: byPlan.get('7d') ?? 0,
       semester_passes: byPlan.get('120d') ?? 0,
     };
+  }
+
+  buildPdfExportFailuresByReasonQuery(since: Date): Knex.QueryBuilder {
+    const reasonPlaceholders = PDF_EXPORT_FAILURE_REASONS.map(() => '?').join(
+      ', '
+    );
+    return this.database('events')
+      .select(this.database.raw(`${REASON_PROP_EXPRESSION} as reason`))
+      .count('* as count')
+      .where('name', 'pdf_export_failed')
+      .where('created_at', '>=', since)
+      .whereRaw(`${REASON_PROP_EXPRESSION} in (${reasonPlaceholders})`, [
+        ...PDF_EXPORT_FAILURE_REASONS,
+      ])
+      .groupBy(this.database.raw(REASON_PROP_EXPRESSION))
+      .orderBy('count', 'desc')
+      .limit(PDF_EXPORT_FAILURE_REASON_LIMIT);
+  }
+
+  async pdfExportFailuresByReason(
+    since: Date
+  ): Promise<ConversionErrorCount[]> {
+    const rows = (await this.buildPdfExportFailuresByReasonQuery(
+      since
+    )) as PdfExportFailureRow[];
+    return mapPdfExportFailureRows(rows);
   }
 
   buildNewAccountDownloadsQuery(

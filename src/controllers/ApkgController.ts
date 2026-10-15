@@ -38,6 +38,7 @@ import JobRepository from '../data_layer/JobRepository';
 import sendErrorResponse from '../lib/sendErrorResponse';
 import { isPaying } from '../lib/isPaying';
 import { getApkgImportNoteCap } from '../lib/apkg/importLimits';
+import type { PdfExportFailureReason } from '../types/PdfExportFailureReason';
 import { buildContentDisposition } from '../lib/buildContentDisposition';
 import { getSafeFilename, toDownloadBasename } from '../lib/getSafeFilename';
 import { track } from '../services/events/track';
@@ -578,17 +579,6 @@ function csvNoteLimitFor(owner: unknown, paying: boolean): number | null {
   }
   return owner == null ? CSV_ANONYMOUS_NOTE_LIMIT : CSV_FREE_NOTE_LIMIT;
 }
-
-export type PdfExportFailureReason =
-  | 'no_file'
-  | 'not_apkg'
-  | 'invalid_options'
-  | 'apkg_too_large'
-  | 'card_limit'
-  | 'render_timeout'
-  | 'render_crashed'
-  | 'invalid_apkg'
-  | 'unexpected';
 
 // Coarse on purpose: enough to tell "huge deck" from "tiny deck" on the ops
 // side without logging anything that identifies a specific upload.

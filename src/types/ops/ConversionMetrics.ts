@@ -31,6 +31,7 @@ export type ConversionMetricKey =
   | 'free_blocked_by_plan_7d'
   | 'paid_blocked_by_plan_7d'
   | 'conversion_errors_7d_top_reasons'
+  | 'pdf_export_failures_7d_by_reason'
   | 'failed_conversions_weekly'
   | 'new_accounts_downloaded_24h_rate_30d'
   | 'new_accounts_downloaded_after_signup_24h_rate_30d'
@@ -44,6 +45,7 @@ export interface ConversionMetricsResponse {
   free_blocked_by_plan_7d: number | null;
   paid_blocked_by_plan_7d: number | null;
   conversion_errors_7d_top_reasons: ConversionErrorCount[] | null;
+  pdf_export_failures_7d_by_reason: ConversionErrorCount[] | null;
   failed_conversions_weekly: FailedConversionsWeekPoint[] | null;
   new_accounts_downloaded_24h_rate_30d: number | null;
   new_accounts_downloaded_after_signup_24h_rate_30d: number | null;

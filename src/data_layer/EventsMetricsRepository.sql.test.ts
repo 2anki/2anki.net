@@ -4,6 +4,7 @@ import {
   EventsMetricsRepository,
   mapConversionOutcomesRow,
   mapNewAccountDownloadsRow,
+  mapPdfExportFailureRows,
   mapUploadToDownloadRateRow,
 } from './EventsMetricsRepository';
 
@@ -78,6 +79,31 @@ describe('EventsMetricsRepository generated SQL', () => {
       'upload_started',
       'deck_downloaded',
     ]);
+  });
+
+  it('counts pdf export failures by reason inside the window', () => {
+    const sql = repository
+      .buildPdfExportFailuresByReasonQuery(sevenDaysAgo)
+      .toString();
+
+    expect(sql).toContain('"events"');
+    expect(sql).toContain("props->>'reason' as reason");
+    expect(sql).toContain('"name" = \'pdf_export_failed\'');
+    expect(sql).toContain('"created_at" >=');
+    expect(sql).toContain("group by props->>'reason'");
+    expect(sql).toContain('count(*)');
+    expect(sql).toContain('order by "count" desc');
+    expect(sql).toMatch(/limit 10$/);
+  });
+
+  it('keeps only the reasons the PDF route itself records', () => {
+    const sql = repository
+      .buildPdfExportFailuresByReasonQuery(sevenDaysAgo)
+      .toString();
+
+    expect(sql).toContain(
+      "props->>'reason' in ('no_file', 'not_apkg', 'invalid_options', 'apkg_too_large', 'card_limit', 'render_timeout', 'render_crashed', 'invalid_apkg', 'unexpected')"
+    );
   });
 
   it('counts pass checkouts by plan inside the window', () => {
@@ -228,6 +254,24 @@ describe('mapNewAccountDownloadsRow', () => {
       downloadedWithin24h: 376,
       downloadedAfterSignup: 82,
     });
+  });
+});
+
+describe('mapPdfExportFailureRows', () => {
+  it('returns an empty array when the query yields no rows', () => {
+    expect(mapPdfExportFailureRows([])).toEqual([]);
+  });
+
+  it('turns the string counts Postgres returns into numbers, sorted by count', () => {
+    expect(
+      mapPdfExportFailureRows([
+        { reason: 'render_timeout', count: '2' },
+        { reason: 'render_crashed', count: '9' },
+      ])
+    ).toEqual([
+      { reason: 'render_crashed', count: 9 },
+      { reason: 'render_timeout', count: 2 },
+    ]);
   });
 });
 
