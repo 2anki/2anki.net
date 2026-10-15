@@ -1,4 +1,8 @@
-import { getSafeFilename, truncateToBytes } from './getSafeFilename';
+import {
+  getSafeFilename,
+  toDownloadBasename,
+  truncateToBytes,
+} from './getSafeFilename';
 
 test('returns filename without slashes', () => {
   expect(getSafeFilename('x/y/z')).toBe('x-y-z');
@@ -53,5 +57,31 @@ describe('truncateToBytes', () => {
 
   test('returns empty string for empty input', () => {
     expect(truncateToBytes('', 200)).toBe('');
+  });
+});
+
+describe('toDownloadBasename', () => {
+  test.each([
+    ['PEDİATRİ', 'PEDİATRİ'],
+    ['Speicheldrüsen Lernkarten', 'Speicheldrüsen Lernkarten'],
+    ['漢字 01', '漢字 01'],
+    ['Здравствуйте', 'Здравствуйте'],
+    ['नमस्ते', 'नमस्ते'],
+    ['deck-v2_final.1', 'deck-v2_final.1'],
+  ])('keeps %s readable', (input, expected) => {
+    expect(toDownloadBasename(input)).toBe(expected);
+  });
+
+  test.each([
+    ['../../etc/passwd', '.._.._etc_passwd'],
+    ['a\\b', 'a_b'],
+    ['say "hi"', 'say _hi_'],
+    ["it's", 'it_s'],
+    ['line\r\nbreak', 'line__break'],
+    ['tab\there', 'tab_here'],
+    ['nul\0byte', 'nul_byte'],
+    ['semi;colon', 'semi_colon'],
+  ])('strips unsafe characters from %j', (input, expected) => {
+    expect(toDownloadBasename(input)).toBe(expected);
   });
 });

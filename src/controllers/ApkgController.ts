@@ -38,7 +38,7 @@ import sendErrorResponse from '../lib/sendErrorResponse';
 import { isPaying } from '../lib/isPaying';
 import { getApkgImportNoteCap } from '../lib/apkg/importLimits';
 import { buildContentDisposition } from '../lib/buildContentDisposition';
-import { getSafeFilename } from '../lib/getSafeFilename';
+import { getSafeFilename, toDownloadBasename } from '../lib/getSafeFilename';
 import { track } from '../services/events/track';
 
 async function tryUnlink(filePath: string): Promise<void> {
@@ -283,9 +283,9 @@ class ApkgController {
         isPaying(res.locals),
         pdfOptions
       );
-      const safeName = file.originalname
-        .replace(/\.apkg$/i, '')
-        .replace(/[^\w\s.-]/g, '_');
+      const safeName = toDownloadBasename(
+        file.originalname.replace(/\.apkg$/i, '')
+      );
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader(
         'Content-Disposition',

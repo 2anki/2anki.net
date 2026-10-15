@@ -136,3 +136,38 @@ describe('CONVERT_SLUGS parity with the landing config', () => {
     }
   );
 });
+
+describe('DefaultRouter contact form attachments', () => {
+  let server: http.Server;
+  let url: string;
+  let seenNames: string[] = [];
+
+  beforeAll(async () => {
+    const { default: IndexController } =
+      await import('../controllers/IndexController/IndexController');
+    vi.spyOn(IndexController.prototype, 'contactUs').mockImplementation(
+      async (req, res) => {
+        const files = (req.files ?? []) as Express.Multer.File[];
+        seenNames = files.map((file) => file.originalname);
+        return res.status(200).json({ ok: true });
+      }
+    );
+    ({ server, url } = await buildServer());
+  });
+
+  afterAll(() => server.close());
+
+  it('keeps a non-ASCII attachment name intact', async () => {
+    const form = new FormData();
+    form.append('attachments', new Blob(['x']), 'PEDİATRİ.apkg');
+    form.append('attachments', new Blob(['y']), '漢字.pdf');
+
+    const res = await fetch(`${url}/api/contact-us`, {
+      method: 'POST',
+      body: form,
+    });
+
+    expect(res.status).toBe(200);
+    expect(seenNames).toEqual(['PEDİATRİ.apkg', '漢字.pdf']);
+  });
+});

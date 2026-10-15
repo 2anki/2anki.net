@@ -503,6 +503,25 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
     );
   });
 
+  it('names the PDF after a non-ASCII deck file without mangling it', async () => {
+    const controller = makeController();
+    const req = makeReq({ body: {} }) as Request;
+    req.file = {
+      ...req.file,
+      originalname: 'PEDİATRİ "1".apkg',
+    } as Express.Multer.File;
+    const res = makePdfRes({ owner: 42 });
+
+    await controller.exportPdf(req, res);
+
+    const disposition = (res.setHeader as Mock).mock.calls.find(
+      ([name]) => name === 'Content-Disposition'
+    )?.[1] as string;
+    expect(decodeURIComponent(disposition.split("UTF-8''")[1])).toBe(
+      'PEDİATRİ _1_.pdf'
+    );
+  });
+
   it('does not fire when the request is rejected before parsePdfOptions succeeds', async () => {
     const controller = makeController();
     const req = makeReq({ body: { backgroundColor: 'not-a-hex' } }) as Request;

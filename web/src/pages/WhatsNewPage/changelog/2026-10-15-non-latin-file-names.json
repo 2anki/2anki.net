@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-15-non-latin-file-names",
+  "date": "2026-10-15",
+  "type": "fix",
+  "title": "Printed PDFs and contact form attachments keep file names in Turkish, Cyrillic, Chinese and other scripts"
+}
