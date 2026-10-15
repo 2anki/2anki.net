@@ -27,25 +27,25 @@ type FallbackWriter = (payload: FallbackErrorPayload) => void;
 const isMalformedRequestBody = (err: Error): boolean =>
   (err as { type?: string })?.type === 'entity.parse.failed';
 
-export const makeErrorCaptureMiddleware = (
+export type ServerErrorRecorder = (
+  err: Error,
+  req: Request,
+  res: Response
+) => Promise<void>;
+
+/**
+ * Writes one error_events row (source 'server') for an unexpected error,
+ * deduplicated per message + client IP over five minutes, falling back to the
+ * JSONL file when the database is unreachable. Never throws. Exported so a
+ * controller that answers its own 500 (instead of calling next(err)) can still
+ * put the failure on the ops error dashboard.
+ */
+export const makeServerErrorRecorder = (
   repository: IErrorEventRepository,
   writeFallback?: FallbackWriter,
   release: string | null = null
-) => {
-  return async (
-    err: Error,
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
-    if (
-      isMalformedRequestBody(err) ||
-      isLimitError(err) ||
-      isExpectedClientFault(err)
-    ) {
-      next(err);
-      return;
-    }
+): ServerErrorRecorder => {
+  return async (err: Error, req: Request, res: Response): Promise<void> => {
     const message = redactStripeIds(err?.message ?? String(err));
     const stack = err?.stack == null ? null : redactStripeIds(err.stack);
     try {
@@ -85,6 +85,30 @@ export const makeErrorCaptureMiddleware = (
         });
       }
     }
+  };
+};
+
+export const makeErrorCaptureMiddleware = (
+  repository: IErrorEventRepository,
+  writeFallback?: FallbackWriter,
+  release: string | null = null
+) => {
+  const record = makeServerErrorRecorder(repository, writeFallback, release);
+  return async (
+    err: Error,
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    if (
+      isMalformedRequestBody(err) ||
+      isLimitError(err) ||
+      isExpectedClientFault(err)
+    ) {
+      next(err);
+      return;
+    }
+    await record(err, req, res);
     next(err);
   };
 };

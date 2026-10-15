@@ -11,7 +11,10 @@ import PdfRenderService, {
 import { NotionService } from '../services/NotionService/NotionService';
 import JobRepository from '../data_layer/JobRepository';
 import ImportApkgToNotionUseCase from '../usecases/apkg/ImportApkgToNotionUseCase';
-import ExportApkgToPdfUseCase from '../usecases/apkg/ExportApkgToPdfUseCase';
+import type { ServerErrorRecorder } from '../routes/middleware/ErrorCaptureMiddleware';
+import ExportApkgToPdfUseCase, {
+  CardLimitExceededError,
+} from '../usecases/apkg/ExportApkgToPdfUseCase';
 import ExportApkgToCsvUseCase, {
   CardLimitExceededError as CsvCardLimitExceededError,
   EmptyDeckError as CsvEmptyDeckError,
@@ -88,7 +91,7 @@ function makeAPIResponseError(code: string, status: number): APIResponseError {
   return err;
 }
 
-function makeController() {
+function makeController(recordServerError?: ServerErrorRecorder) {
   const downloadService = {
     getFileBody: vi.fn(),
     isMissingDownloadError: vi.fn().mockReturnValue(false),
@@ -119,7 +122,8 @@ function makeController() {
     previewService,
     pdfRenderService,
     notionService,
-    jobRepository
+    jobRepository,
+    recordServerError
   );
 }
 
@@ -580,8 +584,129 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
 
     await controller.exportPdf(req, res);
 
-    expect(trackMock).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'pdf_print_options_used',
+      expect.anything()
+    );
+    expect(trackMock).toHaveBeenCalledWith('pdf_export_failed', {
+      userId: 42,
+      props: { reason: 'invalid_options', card_count_bucket: 'unknown' },
+    });
     expect(res.status).toHaveBeenCalledWith(400);
+  });
+});
+
+describe('ApkgController.exportPdf — pdf_export_failed event', () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    trackMock.mockClear();
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
+  function rejectWith(error: unknown) {
+    (ExportApkgToPdfUseCase as Mock).mockImplementation(function () {
+      return { execute: vi.fn().mockRejectedValue(error) };
+    });
+  }
+
+  function makePdfRes(): Response {
+    const res = makeRes({ owner: 42 }) as Partial<Response> & {
+      setHeader?: Mock;
+      send?: Mock;
+    };
+    res.setHeader = vi.fn();
+    res.send = vi.fn();
+    return res as Response;
+  }
+
+  function failedEventProps(): Record<string, unknown> | undefined {
+    const call = trackMock.mock.calls.find(
+      ([name]) => name === 'pdf_export_failed'
+    );
+    return call?.[1]?.props as Record<string, unknown> | undefined;
+  }
+
+  it.each([
+    [
+      'render_crashed',
+      Object.assign(new PdfRenderCrashedError(), { cardCount: 2400 }),
+      '1001-5000',
+    ],
+    [
+      'render_timeout',
+      Object.assign(new PdfRenderTimeoutError(), { cardCount: 300 }),
+      '101-500',
+    ],
+    [
+      'card_limit',
+      // The use case module is auto-mocked, so set the field the real
+      // constructor would.
+      Object.assign(new CardLimitExceededError(1200), { cardCount: 1200 }),
+      '1001-5000',
+    ],
+    ['unexpected', new Error('something unexpected'), 'unknown'],
+  ])(
+    'tracks reason %s with a card count bucket',
+    async (reason, error, bucket) => {
+      rejectWith(error);
+      const controller = makeController(vi.fn().mockResolvedValue(undefined));
+
+      await controller.exportPdf(
+        makeReq({ body: {} }) as Request,
+        makePdfRes()
+      );
+
+      expect(trackMock).toHaveBeenCalledWith('pdf_export_failed', {
+        userId: 42,
+        props: { reason, card_count_bucket: bucket },
+      });
+    }
+  );
+
+  it('tracks a missing upload as no_file', async () => {
+    const controller = makeController();
+
+    await controller.exportPdf(
+      makeReq({ body: {}, file: undefined }) as Request,
+      makePdfRes()
+    );
+
+    expect(failedEventProps()).toEqual({
+      reason: 'no_file',
+      card_count_bucket: 'unknown',
+    });
+  });
+
+  it('records an unexpected failure in error_events and still answers 500', async () => {
+    const boom = new Error('something unexpected');
+    rejectWith(boom);
+    const record = vi.fn().mockResolvedValue(undefined);
+    const controller = makeController(record);
+    const req = makeReq({ body: {} }) as Request;
+    const res = makePdfRes();
+
+    await controller.exportPdf(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(record).toHaveBeenCalledWith(boom, req, res);
+  });
+
+  it('does not record expected deck failures in error_events', async () => {
+    rejectWith(new PdfRenderCrashedError());
+    const record = vi.fn().mockResolvedValue(undefined);
+    const controller = makeController(record);
+
+    await controller.exportPdf(makeReq({ body: {} }) as Request, makePdfRes());
+
+    expect(record).not.toHaveBeenCalled();
   });
 });
 

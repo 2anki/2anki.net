@@ -15,6 +15,10 @@ import UsersRepository from '../data_layer/UsersRepository';
 import { NotionService } from '../services/NotionService/NotionService';
 import { getDatabase } from '../data_layer';
 import { normalizeUploadFilenames } from './middleware/normalizeUploadFilenames';
+import { ErrorEventRepository } from '../data_layer/ErrorEventRepository';
+import { makeServerErrorRecorder } from './middleware/ErrorCaptureMiddleware';
+import { writeFallbackError } from '../lib/errorFallback';
+import { getRelease } from '../lib/release';
 
 const ApkgRouter = () => {
   const database = getDatabase();
@@ -32,7 +36,12 @@ const ApkgRouter = () => {
     previewService,
     undefined,
     notionService,
-    jobRepository
+    jobRepository,
+    makeServerErrorRecorder(
+      new ErrorEventRepository(database),
+      writeFallbackError,
+      getRelease()
+    )
   );
   const router = express.Router();
 

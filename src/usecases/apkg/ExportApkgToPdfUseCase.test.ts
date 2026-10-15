@@ -212,6 +212,24 @@ describe('ExportApkgToPdfUseCase', () => {
     expect(pdfRenderService.renderDocument).not.toHaveBeenCalled();
   });
 
+  it('tags a render crash with the card count for failure analytics', async () => {
+    const parsed = makeParsed(3);
+    previewService.parse.mockResolvedValue(parsed);
+    previewService.getMeta.mockReturnValue(makeMeta(3));
+    previewService.getCardsPage.mockReturnValueOnce({
+      cards: [makeCard(1), makeCard(2), makeCard(3)],
+      nextCursor: null,
+      total: 3,
+    });
+    pdfRenderService.renderDocument.mockRejectedValue(
+      new PdfRenderCrashedError()
+    );
+
+    await expect(
+      useCase.execute(Buffer.from('fake-apkg'))
+    ).rejects.toMatchObject({ name: 'PdfRenderCrashedError', cardCount: 3 });
+  });
+
   it('uses white background by default', async () => {
     const parsed = makeParsed(1);
     const cards = [makeCard(1)];
