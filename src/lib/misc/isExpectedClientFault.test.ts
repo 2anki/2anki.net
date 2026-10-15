@@ -91,6 +91,23 @@ describe('isExpectedClientFault', () => {
     ).toBe(false);
   });
 
+  it('returns false for an http-error that wraps a filesystem error', () => {
+    expect(
+      isExpectedClientFault(
+        Object.assign(
+          new Error("ENOENT: no such file or directory, stat '/srv/ws/x'"),
+          {
+            code: 'ENOENT',
+            errno: -2,
+            status: 404,
+            statusCode: 404,
+            expose: true,
+          }
+        )
+      )
+    ).toBe(false);
+  });
+
   it('returns false for a 5xx HttpCodedError', () => {
     expect(
       isExpectedClientFault(new HttpCodedError('upstream down', 503, 'up'))

@@ -117,6 +117,24 @@ describe('ErrorHandler', () => {
     });
   });
 
+  test('keeps the generic 500 for an http-error that wraps a filesystem error', async () => {
+    const res = makeResponse(false);
+    const req = makeRequest();
+    const missingFile = Object.assign(
+      new Error("ENOENT: no such file or directory, stat '/srv/ws/x'"),
+      { code: 'ENOENT', errno: -2, status: 404, statusCode: 404, expose: true }
+    );
+
+    await ErrorHandler(res as unknown as express.Response, req, missingFile);
+
+    expect(res.statusCode).toBe(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'unknown' })
+    );
+    const body = (res.json as Mock).mock.calls[0][0] as { message: string };
+    expect(body.message).not.toContain('/srv/ws');
+  });
+
   test('emits code=invalid_markup for a PythonExitError with kind invalid-markup', async () => {
     const res = makeResponse(false);
     const req = makeRequest();
