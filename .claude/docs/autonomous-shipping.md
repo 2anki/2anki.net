@@ -32,7 +32,7 @@ Preflight (draft? rail class? rebased?) → rail verification when the classifie
 
 Only these stop a run, the list in `CLAUDE.md` Process:
 
-- A value only he holds: a prod secret, a Google or Stripe dashboard login, a payment card, or whether to take a third-party bump that fails or has an open finding after `/security-review` (the fix lives upstream, not on the branch).
+- A value only he holds: a prod secret, a Google or Stripe dashboard login, a payment card, or whether to take a third-party bump that fails, has an open finding after `/security-review`, or is held or pinned in `.claude/rules/dependencies.md` (the fix lives upstream, not on the branch).
 - Incurring new spend (a new paid service, plan, model, or paid batch run) needs his approval.
 - A destructive, irreversible action. An unverified assumption on a rail path (auth, payments, migrations) counts, because a wrong guess there is not undone by a revert.
 - A confirmed secret exposure or auth bypass found mid-run: halt and tell him.

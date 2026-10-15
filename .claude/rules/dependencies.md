@@ -24,7 +24,7 @@
 
 ## Update rhythm
 
-- Dependabot PRs land weekly (grouped minors/patches per `.github/dependabot.yml`; majors arrive as individual PRs). There is no auto-merge workflow — every merge is a decision. Use `/batch dependabot` for batches; its decision matrix (green bumps ship through `/ship` after the checks for their level, a red caused by our own code against a documented API change is adapted on the branch, a red caused by the package itself goes to `needs-review` after one flake rerun, as do the dependency-hold checks) applies to hand-merges too.
+- Dependabot PRs land weekly (grouped minors/patches per `.github/dependabot.yml`; majors arrive as individual PRs). There is no auto-merge workflow — every merge is a decision. Use `/batch dependabot` for batches; its decision matrix (green bumps ship through `/ship` after the checks for their level, a red caused by our own code against a documented API change is fixed on a branch of ours that carries the bump, a red caused by the package itself goes to `needs-review` after one flake rerun, as do the dependency-hold checks) applies to hand-merges too.
 - Major bumps need the major-bump checks before `/ship` — read the changelog for removed APIs, run the full server suite (`pnpm test`, not just `/check`), sanity-test the conversion path, and attach the suite output to the `/ship` review brief.
 - Drop unused deps quarterly with `/dead-code-auditor` (sub-agent) or `pnpm dlx depcheck`.
 
