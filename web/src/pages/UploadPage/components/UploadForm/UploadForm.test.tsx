@@ -34,6 +34,13 @@ vi.mock('../../../../lib/backend/get2ankiApi', () => ({
   })),
 }));
 
+vi.mock('../../../../lib/reportClientError', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('../../../../lib/reportClientError')
+  >()),
+  reportClientError: vi.fn(),
+}));
+
 vi.mock('../../../../lib/hooks/useCardUsage', () => ({
   useCardUsage: vi.fn(() => null),
   CARD_USAGE_QUERY_KEY: ['cardUsage'],
@@ -47,7 +54,10 @@ import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
 import { useCardUsage } from '../../../../lib/hooks/useCardUsage';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { track } from '../../../../lib/analytics/track';
+import { reportClientError } from '../../../../lib/reportClientError';
+import { UserNotice } from '../../../../lib/errors/UserNotice';
 
+const mockReportClientError = vi.mocked(reportClientError);
 const mockUseUserLocals = vi.mocked(useUserLocals);
 const mockUseCardUsage = vi.mocked(useCardUsage);
 const mockGet2ankiApi = vi.mocked(get2ankiApi);
@@ -3572,6 +3582,84 @@ describe('UploadForm try-a-sample', () => {
     expect(vi.mocked(track)).not.toHaveBeenCalledWith(
       'upload_cancelled',
       expect.anything()
+    );
+  });
+});
+
+describe('claiming a held deck after sign-in', () => {
+  const signIn = () =>
+    mockUseUserLocals.mockReturnValue({
+      data: { user: { id: 42 }, locals: { owner: 42 } },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+
+  const mockClaim = (result: {
+    status: number;
+    error: { code: string; message: string; empty_reason?: string } | null;
+  }) =>
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi
+        .fn()
+        .mockResolvedValue({ cardCount: 21, cardsHeldBack: 13 }),
+      claimHeldDeck: vi.fn().mockResolvedValue({
+        downloadKey: null,
+        cardCount: null,
+        deckName: null,
+        ...result,
+      }),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+  beforeEach(() => {
+    mockReportClientError.mockClear();
+  });
+
+  it('shows the empty-deck help when the owner conversion has no cards', async () => {
+    signIn();
+    mockClaim({
+      status: 400,
+      error: {
+        code: 'empty_export',
+        message: 'No cards found in your upload.',
+        empty_reason: 'all_filtered',
+      },
+    });
+    const setErrorMessage = vi.fn();
+
+    renderUploadForm(<UploadForm setErrorMessage={setErrorMessage} />);
+
+    expect(
+      await screen.findByText(/A card filter removed every card/)
+    ).toBeInTheDocument();
+    expect(setErrorMessage).not.toHaveBeenCalled();
+    expect(mockReportClientError).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed claim with its status and keeps the generic message', async () => {
+    signIn();
+    mockClaim({
+      status: 500,
+      error: { code: 'unknown', message: 'Something broke on our end.' },
+    });
+    const setErrorMessage = vi.fn();
+
+    renderUploadForm(<UploadForm setErrorMessage={setErrorMessage} />);
+
+    await waitFor(() => expect(setErrorMessage).toHaveBeenCalledTimes(1));
+    const notice = setErrorMessage.mock.calls[0][0] as UserNotice;
+    expect(notice).toBeInstanceOf(UserNotice);
+    expect(notice.message).toBe('Conversion failed.');
+    expect(mockReportClientError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 500,
+        message:
+          'Held deck claim failed (HTTP 500): Something broke on our end.',
+      }),
+      { surface: 'held_deck_claim' }
     );
   });
 });

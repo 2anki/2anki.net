@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-15-held-deck-empty",
+  "date": "2026-10-15",
+  "type": "fix",
+  "title": "Claiming a saved deck after sign-in shows why it came out empty instead of a generic failure"
+}

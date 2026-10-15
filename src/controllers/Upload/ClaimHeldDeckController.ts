@@ -6,6 +6,8 @@ import {
   NoHeldDeckError,
 } from '../../usecases/uploads/ClaimHeldDeckUseCase';
 import { MonthlyLimitError } from '../../usecases/users/CheckMonthlyCardLimitUseCase';
+import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
+import type { UploadErrorBody } from '../../types/UploadErrorBody';
 import { getOwner } from '../../lib/User/getOwner';
 import { isPaying } from '../../lib/isPaying';
 import { track } from '../../services/events/track';
@@ -58,6 +60,14 @@ export class ClaimHeldDeckController {
       }
       if (err instanceof MonthlyLimitError) {
         return res.status(409).json({ code: 'monthly_limit' });
+      }
+      if (err instanceof EmptyDeckError) {
+        const body: UploadErrorBody = {
+          code: 'empty_export',
+          message: err.message,
+          empty_reason: err.reason,
+        };
+        return res.status(400).json(body);
       }
       throw err;
     }

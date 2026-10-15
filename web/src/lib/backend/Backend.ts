@@ -21,6 +21,10 @@ import isOfflineMode from '../isOfflineMode';
 import getObjectIcon, { ObjectIcon } from '../notion/getObjectIcon';
 import { Rules, Settings } from '../types';
 import { UserNotice, isIntentionalBackendNotice } from '../errors/UserNotice';
+import {
+  isUploadErrorCode,
+  type UploadErrorBody,
+} from '../../types/UploadErrorBody';
 import { AnkifyStats } from '../../pages/AnkifyPage/stats/types';
 import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
@@ -79,6 +83,18 @@ export interface ClaimHeldDeckResult {
   downloadKey: string | null;
   cardCount: number | null;
   deckName: string | null;
+  error: UploadErrorBody | null;
+}
+
+function toClaimError(body: unknown): UploadErrorBody | null {
+  if (body == null || typeof body !== 'object') return null;
+  const { code, message, empty_reason } = body as Record<string, unknown>;
+  if (!isUploadErrorCode(code) || typeof message !== 'string') return null;
+  const error: UploadErrorBody = { code, message };
+  if (typeof empty_reason === 'string') {
+    error.empty_reason = empty_reason as UploadErrorBody['empty_reason'];
+  }
+  return error;
 }
 
 export interface CheckoutPrices {
@@ -425,13 +441,16 @@ export class Backend {
         downloadKey: body.downloadKey ?? null,
         cardCount: body.cardCount ?? null,
         deckName: body.deckName ?? null,
+        error: null,
       };
     }
+    const failure: unknown = await response.json().catch(() => null);
     return {
       status: response.status,
       downloadKey: null,
       cardCount: null,
       deckName: null,
+      error: toClaimError(failure),
     };
   }
 

@@ -54,7 +54,11 @@ import { AI_CREDITS_QUERY_KEY } from '../../../../lib/hooks/useAiCredits';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
-import { isLargeUpload } from '../../../../lib/reportClientError';
+import {
+  isLargeUpload,
+  reportClientError,
+} from '../../../../lib/reportClientError';
+import { UserNotice } from '../../../../lib/errors/UserNotice';
 import {
   assertFilesReadable,
   UnreadableFileError,
@@ -153,6 +157,17 @@ function toFriendlyThrownError(error: unknown): UploadErrorBody {
   if (error instanceof Error)
     return { code: 'unknown', message: error.message };
   return { code: 'unknown', message: REJECTED_FALLBACK };
+}
+
+// The status lets reportClientError skip a 4xx; the body rides in the message
+// so the ops export says why the claim failed instead of the generic copy.
+function claimFailure(status: number, error: UploadErrorBody | null): Error {
+  return Object.assign(
+    new Error(
+      `Held deck claim failed (HTTP ${status}): ${error?.message ?? 'no body'}`
+    ),
+    { status, code: error?.code }
+  );
 }
 
 function zoneStateForUploadError(
@@ -500,14 +515,21 @@ function UploadForm({
           setZoneState('heldExpired');
         } else if (result.status === 409) {
           leaveTo('/limit?kind=card_count');
+        } else if (result.error?.code === 'empty_export') {
+          setLocalError(result.error);
+          setZoneState('emptyDeck');
         } else {
           resetForm();
-          setErrorMessage(t('upload.form.liveError'));
+          reportClientError(claimFailure(result.status, result.error), {
+            surface: 'held_deck_claim',
+          });
+          setErrorMessage(new UserNotice(t('upload.form.liveError')));
         }
-      } catch {
+      } catch (error) {
         if (cancelled) return;
         resetForm();
-        setErrorMessage(t('upload.form.liveError'));
+        reportClientError(error, { surface: 'held_deck_claim' });
+        setErrorMessage(new UserNotice(t('upload.form.liveError')));
       }
     })();
     return () => {
