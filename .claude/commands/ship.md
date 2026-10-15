@@ -14,7 +14,7 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
 
 - Draft → read the body, then one of:
   - it records a blocker only Alexander can clear (a value only he holds: a secret, a Stripe or Google dashboard setting, spend approval) → interactive run: ask him for that value in the chat; unattended run: leave it draft and name the value in the morning summary;
-  - it is a `/spec-draft-pr` spec, or flagged WIP → leave it draft and report that (a spec goes through `/implement`, never `gh pr ready` here);
+  - it is a `/spec-draft-pr` spec, or flagged WIP, or a rail-path change (auth, payments, migrations) whose body records an unverified assumption → leave it draft and report that (a spec goes through `/implement`, never `gh pr ready` here; the assumption goes to Alexander by name);
   - otherwise → finish what keeps it draft, wait for green, `gh pr ready`, and continue.
 - Rail class? Run the classifier on the file list and diff:
   ```bash
@@ -44,10 +44,10 @@ Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh contex
 
 **`review-pr` is switched off in `.claude/settings.local.json`, so invoke the reviewers yourself** with the `Agent` tool rather than the skill — one agent per dimension, each briefed to read the diff and report BLOCKING / NON-BLOCKING / verdict with no edits, commits or merges. **Never use `subagent_type: "fork"` for a reviewer.** A fork inherits this whole ship task, the shared worktree and the operator's `gh` auth, and on #4679 three read-only-briefed forks edited, force-pushed, posted markers and enqueued the merge themselves. Use a fresh read-only type (`caveman:cavecrew-reviewer`), save the diff to a scratchpad file first, and pass only the diff path and the review brief, never the ship steps. The marker you post in a moment is the merge gate's only substantive review condition, so it must stand for a review that actually ran. Do not post it on the strength of your own reading alone.
 
-- **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. There is no round cap: keep fixing and re-reviewing until a pass comes back clean. (2026-10-15: a two-round cap stopped a CI-green, security-clean PR with every finding already fixed; Alexander merged it by hand hours later while a paid campaign ran unattributed.)
+- **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. There is no round cap: keep fixing and re-reviewing until a pass comes back clean. The reviewer runs are part of the ship Alexander asked for, not a spend decision. (2026-10-15: a two-round cap stopped a CI-green, security-clean PR with every finding already fixed; Alexander merged it by hand hours later while a paid campaign ran unattributed.)
   - A reviewer re-raising a point you already addressed is a fix to make, or, for a non-security point you can show is already handled, evidence to put in the next review brief. It is never a reason to stop.
   - A security finding clears only on a code change that a fresh reviewer passes, never on your own reply.
-  - A confirmed secret exposure or auth bypass in the diff halts the run: print the evidence, post no marker, merge nothing, tell Alexander.
+  - A confirmed secret exposure or auth bypass in the diff halts the run: print the evidence, push nothing more (a fix commit does not remove a secret from history), post no marker, merge nothing, name the secret for Alexander to rotate.
   - The only other halt is a finding you cannot fix on the branch (a prod secret, a third-party dashboard setting). In an interactive run ask Alexander for that one thing in the chat and keep shipping once it is in; an unattended run (`/overnight-prs`) parks it behind a safe default and names it in the morning summary.
 - **Clean** → post the pass marker for the exact head SHA:
   ```bash

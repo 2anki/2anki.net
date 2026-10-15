@@ -35,7 +35,7 @@ Steps:
 
 4. End with a one-line summary: "X themes, Y high-urgency, suggest filing Z issues."
 
-Write each issue draft to a scratchpad file. Build a blocklist from the source message itself (sender name and email, workspace name, deck titles, upload filenames, any quoted subject line) plus an email-address regex, grep every draft against it per `.claude/rules/support-confidentiality.md`, fix any hit and re-grep until clean, then file the issues and print their URLs.
+Write each issue draft to a scratchpad file. Build a blocklist from every identifier you saw while triaging: the source message (sender name and email, workspace name, deck titles, upload filenames, any quoted subject line) and anything read during investigation (prod rows, filenames, titles), plus an email-address regex. Grep every draft against it per `.claude/rules/support-confidentiality.md`, fix any hit and re-grep until clean, then file the issues and print their URLs. A draft that still needs to quote the user's own words or content to make sense is not filed: save it as a `.txt` in Downloads for Alexander and say so.
 
 ---
 
