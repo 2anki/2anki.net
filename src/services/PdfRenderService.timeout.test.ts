@@ -9,6 +9,7 @@ import PdfRenderService, {
   PdfRenderCrashedError,
   PdfRenderTimeoutError,
   guardLocalFiles,
+  withConnectBlock,
   isBrowserGoneError,
 } from './PdfRenderService';
 
@@ -206,7 +207,7 @@ describe('PdfRenderService temp-file rendering', () => {
       expect.stringMatching(/^file:\/\/.*\/index\.html$/),
       expect.objectContaining({ waitUntil: 'load' })
     );
-    expect(seenHtml).toBe('<img src="media-0.png">');
+    expect(seenHtml).toBe(withConnectBlock('<img src="media-0.png">'));
     expect(seenAsset).toEqual(Buffer.from('png-bytes'));
     expect(page.setRequestInterception).toHaveBeenCalledWith(true);
     expect(page.on).toHaveBeenCalledWith('request', expect.any(Function));
@@ -255,6 +256,23 @@ describe('PdfRenderService temp-file rendering', () => {
   });
 });
 
+describe('withConnectBlock', () => {
+  it('puts a connect-src none CSP first in the head', () => {
+    const out = withConnectBlock(
+      '<!DOCTYPE html><html><head><title>x</title></head><body></body></html>'
+    );
+    expect(out).toMatch(
+      /^<!DOCTYPE html><html><head><meta http-equiv="Content-Security-Policy" content="connect-src 'none'"><title>/
+    );
+  });
+
+  it('prepends the CSP when there is no head', () => {
+    expect(withConnectBlock('<p>x</p>')).toBe(
+      `<meta http-equiv="Content-Security-Policy" content="connect-src 'none'"><p>x</p>`
+    );
+  });
+});
+
 describe('guardLocalFiles', () => {
   function request(url: string) {
     return {
@@ -296,6 +314,8 @@ describe('guardLocalFiles', () => {
     'https://user@cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js',
     'https://cdn.jsdelivr.net.evil.com/npm/mathjax@3/es5/tex-chtml.js',
     'not a url',
+    'ws://attacker.example/x',
+    'wss://attacker.example/x',
   ])('blocks %s', (url) => {
     const req = request(url);
     guard(req as unknown as HTTPRequest);

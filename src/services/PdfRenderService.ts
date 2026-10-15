@@ -80,13 +80,23 @@ async function writeDocument(dir: string, doc: PdfDocument): Promise<string> {
     await writeFile(path.join(dir, name), bytes);
   }
   const htmlPath = path.join(dir, 'index.html');
-  await writeFile(htmlPath, doc.html, 'utf8');
+  await writeFile(htmlPath, withConnectBlock(doc.html), 'utf8');
   return htmlPath;
 }
 
-// The page loads from file://, which would otherwise let deck HTML pull any
-// file on the host into the PDF (an <iframe src="file:///etc/passwd"> renders).
-// Only files inside this render's own directory may load.
+// Request interception never sees WebSocket, fetch-to-ws or other script
+// connections, so the page also carries a CSP that forbids them all. Deck
+// scripts are already stripped by sanitizeCardHtml; this is the backstop.
+const CONNECT_BLOCK =
+  '<meta http-equiv="Content-Security-Policy" content="connect-src \'none\'">';
+
+export function withConnectBlock(html: string): string {
+  const head = /<head[^>]*>/i.exec(html);
+  if (head == null) return CONNECT_BLOCK + html;
+  const at = head.index + head[0].length;
+  return html.slice(0, at) + CONNECT_BLOCK + html.slice(at);
+}
+
 // The only remote script a PDF page may load: the MathJax build the document
 // links to (MATHJAX_CONFIG in ExportApkgToPdfUseCase).
 const MATHJAX_PREFIX = 'https://cdn.jsdelivr.net/npm/mathjax@3/';
