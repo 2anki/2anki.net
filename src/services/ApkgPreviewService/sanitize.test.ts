@@ -139,3 +139,14 @@ describe('extractTemplateStyles', () => {
     expect(extractTemplateStyles('{{Front}}')).toBe('');
   });
 });
+
+describe('sanitizeCss — cannot close its <style> element', () => {
+  it.each([
+    '.a{}</style><script>alert(1)</script>',
+    '.a{}</sty</style>le><script>alert(1)</script>',
+    '.a{}</style\n<img src=x onerror=alert(1)>',
+  ])('leaves no HTML tag in %s', (css) => {
+    const out = sanitizeCss(css);
+    expect(out).not.toMatch(/<\/?[a-z]/i);
+  });
+});

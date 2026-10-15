@@ -26,13 +26,15 @@ const BACK = `<div class="plain-copy">{{cloze:Text}}</div>
 {{#Extra}}<div id="extra">{{edit:Extra}}</div>{{/Extra}}
 <div id="popup"><button onclick="closePopup()">&times;</button><a href="">&#8618;</a></div>
 <style>#popup { display: none; }</style>
-<script>setupPopup();</script>`;
+<script>setupPopup();</script>
+<img src="missing.png" onerror="fetch('http://169.254.169.254/')">`;
 
 const CSS = `html { display: flex; flex-direction: column; }
 table td { background-color: #ddecf2; }
 .plain-copy { display: none; }
 .edit-copy { display: block; }
-#brand-logo { position: fixed; bottom: 10px; right: 10px; }`;
+#brand-logo { position: fixed; bottom: 10px; right: 10px; }
+.x {}</sty</style>le><script>alert('css')</script>`;
 
 const FIELDS = ['Text', 'Extra', 'Notes'];
 
@@ -64,7 +66,7 @@ function buildScriptedClozeApkg(): Promise<Buffer> {
   const fields = [
     'The {{c1::sinoatrial node}} paces the heart from the {{c2::right atrium}}',
     'Pacemaker cells depolarise on their own',
-    'Lecture recap for the hint',
+    'Lecture recap for the hint<script>alert("field")</script><img src="x.png" onerror="alert(1)">',
   ];
   db.prepare(
     "INSERT INTO notes (id, guid, mid, tags, flds) VALUES (10, 'g', 1, '', ?)"
@@ -92,14 +94,14 @@ describe('ExportApkgToPdfUseCase — scripted cloze templates', () => {
 
   beforeEach(async () => {
     pdfRenderService = {
-      renderHtml: vi.fn().mockResolvedValue(Buffer.from('%PDF-')),
+      renderDocument: vi.fn().mockResolvedValue(Buffer.from('%PDF-')),
     } as unknown as Mocked<PdfRenderService>;
     const useCase = new ExportApkgToPdfUseCase(
       new ApkgPreviewService(),
       pdfRenderService
     );
     await useCase.execute(await buildScriptedClozeApkg(), true);
-    html = pdfRenderService.renderHtml.mock.calls[0][0];
+    html = pdfRenderService.renderDocument.mock.calls[0][0].html;
   });
 
   it('prints the cloze text behind an add-on filter on the front', () => {
@@ -137,5 +139,30 @@ describe('ExportApkgToPdfUseCase — scripted cloze templates', () => {
 
   it('hides fixed-position overlays before printing', () => {
     expect(html).toContain("getComputedStyle(nodes[i]).position === 'fixed'");
+  });
+
+  it('drops <script> and on* handlers from fields and templates', () => {
+    expect(html).not.toContain('alert("field")');
+    expect(html).not.toContain('alert(1)');
+    expect(html).not.toMatch(/<script[^>]*>\s*alert/);
+    expect(html).not.toContain('onerror');
+    expect(html).not.toContain('setupPopup');
+    expect(html).not.toContain('169.254.169.254');
+  });
+
+  it('lets note CSS no way out of its <style> element', () => {
+    const styleCloses = html.match(/<\/style>/g) ?? [];
+    const styleOpens = html.match(/<style\b/g) ?? [];
+    expect(styleCloses).toHaveLength(styleOpens.length);
+  });
+
+  it('only runs scripts that carry the render nonce', () => {
+    const csp = html.match(/script-src 'nonce-([^']+)'/);
+    expect(csp).not.toBeNull();
+    const scripts = html.match(/<script\b[^>]*>/g) ?? [];
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const tag of scripts) {
+      expect(tag).toContain(`nonce="${csp?.[1]}"`);
+    }
   });
 });

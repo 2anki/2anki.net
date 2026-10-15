@@ -114,11 +114,17 @@ export function sanitizeCardHtml(
 }
 
 export function sanitizeCss(css: string): string {
-  return css
-    .replace(/@import[^;]*;/gi, '')
-    .replace(/expression\s*\(/gi, '')
-    .replace(/javascript\s*:/gi, '')
-    .replace(/<\/?style[^>]*>/gi, '');
+  return (
+    css
+      .replace(/@import[^;]*;/gi, '')
+      .replace(/expression\s*\(/gi, '')
+      .replace(/javascript\s*:/gi, '')
+      .replace(/<\/?style[^>]*>/gi, '')
+      // The CSS is written into a <style> element. Stripping `</style>`
+      // alone can be defeated (`</sty</style>le>` re-forms it), so escape
+      // every `<` as the CSS escape `\3c ` — no HTML tag can survive.
+      .replaceAll('<', String.raw`\3c `)
+  );
 }
 
 const STYLE_BLOCK_REGEX = /<style\b[^>]*>([\s\S]*?)<\/style>/gi; // NOSONAR

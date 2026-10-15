@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { decompress as zstdDecompress } from 'fzstd';
 import ApkgPreviewService, {
   ParsedApkg,
@@ -5,6 +6,7 @@ import ApkgPreviewService, {
 import PdfRenderService, {
   PdfRenderCrashedError,
   PdfRenderTimeoutError,
+  MATHJAX_URL_PREFIX,
 } from '../../services/PdfRenderService';
 import { RenderedCard } from '../../services/ApkgPreviewService/types';
 
@@ -180,7 +182,7 @@ class DeckStyles {
 // Fixed-position elements are viewport overlays — logos, timers, tag bars,
 // popups. Chrome prints them on every page, so hide them. Runs before
 // `load`, ahead of the MathJax wait and page.pdf().
-const PRINT_FIXUPS_SCRIPT = `<script>
+const printFixupsScript = (nonce: string): string => `<script nonce="${nonce}">
 (function () {
   var nodes = document.querySelectorAll('.card-content *');
   for (var i = 0; i < nodes.length; i++) {
@@ -216,13 +218,21 @@ function collectAllCards(
   return all;
 }
 
-const MATHJAX_CONFIG = String.raw`<script>
+const mathJaxConfig = (
+  nonce: string
+): string => String.raw`<script nonce="${nonce}">
 window.MathJax = {
   tex: { inlineMath: [['\\(','\\)'], ['$','$']], displayMath: [['\\[','\\]'], ['$$','$$']] },
   startup: { typeset: true }
 };
 </script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>`;
+<script nonce="${nonce}" src="${MATHJAX_URL_PREFIX}es5/tex-chtml.js" async></script>`;
+
+// Defence in depth behind the HTML sanitizer: only scripts carrying this
+// render's nonce (ours) run, and MathJax may load its own components from
+// the pinned CDN path. Deck markup can't add a script that executes.
+const contentSecurityPolicy = (nonce: string): string =>
+  `<meta http-equiv="Content-Security-Policy" content="script-src 'nonce-${nonce}' ${MATHJAX_URL_PREFIX}; object-src 'none'; base-uri 'none'; form-action 'none'">`;
 
 function buildHtml(
   deckName: string,
@@ -230,6 +240,7 @@ function buildHtml(
   assets: PdfAssets,
   backgroundColor: string
 ): string {
+  const nonce = crypto.randomBytes(16).toString('base64');
   const deckStyles = new DeckStyles();
   const rows = cards
     .map((card) =>
@@ -240,6 +251,7 @@ function buildHtml(
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+${contentSecurityPolicy(nonce)}
 <title>${escapeHtml(deckName)}</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background:${backgroundColor}; }
@@ -252,7 +264,7 @@ function buildHtml(
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
 ${deckStyles.toHtml()}
-${MATHJAX_CONFIG}
+${mathJaxConfig(nonce)}
 </head>
 <body>
 <h1>${escapeHtml(deckName)}</h1>
@@ -262,7 +274,7 @@ ${MATHJAX_CONFIG}
 ${rows}
 </tbody>
 </table>
-${PRINT_FIXUPS_SCRIPT}
+${printFixupsScript(nonce)}
 </body>
 </html>`;
 }
