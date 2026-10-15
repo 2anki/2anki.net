@@ -2,7 +2,9 @@ import { decompress as zstdDecompress } from 'fzstd';
 import ApkgPreviewService, {
   ParsedApkg,
 } from '../../services/ApkgPreviewService/ApkgPreviewService';
-import PdfRenderService from '../../services/PdfRenderService';
+import PdfRenderService, {
+  PdfRenderCrashedError,
+} from '../../services/PdfRenderService';
 import { RenderedCard } from '../../services/ApkgPreviewService/types';
 
 const ZSTD_MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd]);
@@ -21,15 +23,6 @@ const AUDIO_EXTENSIONS = new Set([
   'opus',
 ]);
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov']);
-
-const IMAGE_MIME: Record<string, string> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-  svg: 'image/svg+xml',
-};
 
 function extensionOf(name: string): string {
   const dot = name.lastIndexOf('.');
@@ -57,34 +50,55 @@ function replaceSoundTokens(html: string): string {
   });
 }
 
-function replaceMediaWithBase64(html: string, parsed: ParsedApkg): string {
+// Collects the deck media a render needs as separate files. Images used to be
+// inlined as base64, which made the HTML several times the size of the media
+// (one copy per reference) and pushed big decks past Chrome's 100 MiB DevTools
+// message limit and V8's maximum string length.
+class PdfAssets {
+  readonly files = new Map<string, Buffer>();
+  private readonly byArchiveName = new Map<string, string>();
+
+  constructor(private readonly parsed: ParsedApkg) {}
+
+  fileFor(nameOnly: string): string | null {
+    const archiveName = this.parsed.mediaMap.get(nameOnly);
+    if (archiveName == null) return null;
+    const existing = this.byArchiveName.get(archiveName);
+    if (existing != null) return existing;
+    let buffer = this.parsed.mediaEntries.get(archiveName);
+    if (buffer == null) return null;
+    if (buffer.length >= 4 && buffer.subarray(0, 4).equals(ZSTD_MAGIC)) {
+      buffer = Buffer.from(zstdDecompress(new Uint8Array(buffer)));
+    }
+    const ext = extensionOf(nameOnly);
+    const suffix = /^[a-z0-9]{1,5}$/.test(ext) ? `.${ext}` : '';
+    const fileName = `media-${this.files.size}${suffix}`;
+    this.files.set(fileName, buffer);
+    this.byArchiveName.set(archiveName, fileName);
+    return fileName;
+  }
+}
+
+function replaceMediaWithFiles(html: string, assets: PdfAssets): string {
   const SRC_REGEX = /\b(src)="([^"]+)"/g;
   return html.replace(SRC_REGEX, (_match, attr: string, value: string) => {
     if (value.startsWith('data:') || /^https?:\/\//i.test(value)) {
       return `${attr}="${value}"`;
     }
-    const decoded = decodeURIComponent(value);
+    let decoded = value;
+    try {
+      decoded = decodeURIComponent(value);
+    } catch {
+      // Keep the raw value; a stray % in a media name is not worth a 500.
+    }
     const nameOnly = decoded.split('/').pop() ?? decoded;
 
     if (isAudioOrVideo(nameOnly)) {
       return `${attr}=""`;
     }
 
-    const archiveName = parsed.mediaMap.get(nameOnly);
-    if (archiveName == null) {
-      return `${attr}=""`;
-    }
-    let buffer = parsed.mediaEntries.get(archiveName);
-    if (buffer == null) {
-      return `${attr}=""`;
-    }
-    if (buffer.length >= 4 && buffer.subarray(0, 4).equals(ZSTD_MAGIC)) {
-      buffer = Buffer.from(zstdDecompress(new Uint8Array(buffer)));
-    }
-    const ext = extensionOf(nameOnly);
-    const mime = IMAGE_MIME[ext] ?? 'application/octet-stream';
-    const dataUri = `data:${mime};base64,${buffer.toString('base64')}`;
-    return `${attr}="${dataUri}"`;
+    const fileName = assets.fileFor(nameOnly);
+    return `${attr}="${fileName ?? ''}"`;
   });
 }
 
@@ -92,9 +106,9 @@ function replaceMissingMediaPlaceholders(html: string): string {
   return html.replace(/data-missing-media="[^"]+"/g, '');
 }
 
-function processCardHtml(side: string, parsed: ParsedApkg): string {
+function processCardHtml(side: string, assets: PdfAssets): string {
   let result = replaceSoundTokens(side);
-  result = replaceMediaWithBase64(result, parsed);
+  result = replaceMediaWithFiles(result, assets);
   result = replaceMissingMediaPlaceholders(result);
   return result;
 }
@@ -105,9 +119,9 @@ function stripFrontFromBack(back: string): string {
   return back.substring(hrIndex).replace(/<hr\s*\/?>/i, '');
 }
 
-function buildCardRow(card: RenderedCard, parsed: ParsedApkg): string {
-  const front = processCardHtml(card.front, parsed);
-  const back = processCardHtml(stripFrontFromBack(card.back), parsed);
+function buildCardRow(card: RenderedCard, assets: PdfAssets): string {
+  const front = processCardHtml(card.front, assets);
+  const back = processCardHtml(stripFrontFromBack(card.back), assets);
   return `<tr>
     <td class="card-cell"><style scoped>${card.css}</style><div class="card-content">${front}</div></td>
     <td class="card-cell"><style scoped>${card.css}</style><div class="card-content">${back}</div></td>
@@ -148,10 +162,10 @@ window.MathJax = {
 function buildHtml(
   deckName: string,
   cards: RenderedCard[],
-  parsed: ParsedApkg,
+  assets: PdfAssets,
   backgroundColor: string
 ): string {
-  const rows = cards.map((card) => buildCardRow(card, parsed)).join('\n');
+  const rows = cards.map((card) => buildCardRow(card, assets)).join('\n');
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -227,8 +241,19 @@ export default class ExportApkgToPdfUseCase {
     const cards = collectAllCards(this.previewService, parsed);
     const deckName =
       meta.decks.length > 0 ? meta.decks[0].fullName : 'Flashcards';
-    const html = buildHtml(deckName, cards, parsed, options.backgroundColor);
-    const pdf = await this.pdfRenderService.renderHtml(html, options);
+    const assets = new PdfAssets(parsed);
+    let html: string;
+    try {
+      html = buildHtml(deckName, cards, assets, options.backgroundColor);
+    } catch (error) {
+      // V8 caps a string at ~512 MiB; a deck that big can't be printed whole.
+      if (error instanceof RangeError) throw new PdfRenderCrashedError(error);
+      throw error;
+    }
+    const pdf = await this.pdfRenderService.renderDocument(
+      { html, assets: assets.files },
+      options
+    );
     return { pdf, deckName, cardCount: cards.length };
   }
 }

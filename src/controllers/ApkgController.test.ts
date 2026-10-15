@@ -5,6 +5,7 @@ import ApkgController from './ApkgController';
 import DownloadService from '../services/DownloadService';
 import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewService';
 import PdfRenderService, {
+  PdfRenderCrashedError,
   PdfRenderTimeoutError,
 } from '../services/PdfRenderService';
 import { NotionService } from '../services/NotionService/NotionService';
@@ -374,6 +375,56 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
         'This deck is too large to turn into a PDF in time. Split it into smaller decks in Anki and print them one at a time.',
     });
     expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it('answers 400 with split-the-deck advice when the browser crashes mid-render', async () => {
+    // Prod: TargetCloseError from Page.setDocumentContent on a large image deck
+    // was answered as a generic 500 "PDF generation failed."
+    const cause = Object.assign(
+      new Error('Protocol error (Page.setDocumentContent): Target closed'),
+      { name: 'TargetCloseError' }
+    );
+    (ExportApkgToPdfUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(new PdfRenderCrashedError(cause)),
+      };
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const controller = makeController();
+    const req = makeReq({ body: {} }) as Request;
+    const res = makePdfRes({ owner: 42 });
+
+    await controller.exportPdf(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message:
+        'This deck is too big to print in one go. Split it into smaller decks in Anki and print them one at a time.',
+    });
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
+  it('keeps the generic 500 for errors it does not recognise', async () => {
+    (ExportApkgToPdfUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(new Error('something unexpected')),
+      };
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const controller = makeController();
+    const req = makeReq({ body: {} }) as Request;
+    const res = makePdfRes({ owner: 42 });
+
+    await controller.exportPdf(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'PDF generation failed.',
+    });
     errorSpy.mockRestore();
   });
 

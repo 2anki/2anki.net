@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-15-pdf-large-image-decks",
+  "date": "2026-10-15",
+  "type": "fix",
+  "title": "Print to PDF works for Anki decks with hundreds of images"
+}
