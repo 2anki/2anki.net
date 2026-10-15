@@ -24,6 +24,7 @@ import {
   FirstTouchAttribution,
 } from './helpers/parseFirstTouch';
 import { readAdClickCookie } from '../lib/attribution/adClick';
+import { readGaMeasurement } from '../usecases/checkout/gaClientId';
 import { sessionCookieOptions } from '../shared/session';
 
 import { sendIndex } from './IndexController/sendIndex';
@@ -276,6 +277,7 @@ class UsersController {
           anonymousId: readAnonIdCookie(req),
           referrer: firstTouch.signupReferrer,
           attribution: readAdClickCookie(req),
+          ...readGaMeasurement(req),
         }
       );
       const newUser = await this.userService.getUserFrom(email);
@@ -766,6 +768,7 @@ class UsersController {
           anonymousId: readAnonIdCookie(req),
           referrer: readFirstTouchCookie(req).signupReferrer,
           attribution: readAdClickCookie(req),
+          ...readGaMeasurement(req),
         }
       );
       user = await this.userService.getUserFrom(email);
@@ -886,6 +889,7 @@ class UsersController {
             anonymousId: readAnonIdCookie(req),
             referrer: readFirstTouchCookie(req).signupReferrer,
             attribution: readAdClickCookie(req),
+            ...readGaMeasurement(req),
           }
         );
         user = await this.userService.getUserFrom(email);
@@ -1135,6 +1139,7 @@ class UsersController {
             anonymousId: readAnonIdCookie(req),
             referrer: readFirstTouchCookie(req).signupReferrer,
             attribution: readAdClickCookie(req),
+            ...readGaMeasurement(req),
           }
         );
         user = await this.userService.getUserFrom(email);
@@ -1261,6 +1266,7 @@ class UsersController {
           anonymousId: readAnonIdCookie(req),
           referrer: readFirstTouchCookie(req).signupReferrer,
           attribution: readAdClickCookie(req),
+          ...readGaMeasurement(req),
         }
       );
       user = await this.userService.getUserFrom(email);
@@ -1337,6 +1343,7 @@ class UsersController {
           anonymousId: readAnonIdCookie(req),
           referrer: readFirstTouchCookie(req).signupReferrer,
           attribution: readAdClickCookie(req),
+          ...readGaMeasurement(req),
         }
       );
     } catch (error) {

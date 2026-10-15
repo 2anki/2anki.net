@@ -177,6 +177,32 @@ describe('AutoSyncCheckoutUseCase', () => {
     );
   });
 
+  test('stamps ga_client_id and ga_session_id into metadata when provided', async () => {
+    mockCountActive.mockResolvedValue(0);
+    mockGetUserActiveSubscriptions.mockResolvedValue([]);
+    mockStripeCreateSession.mockResolvedValue({
+      url: 'https://checkout.stripe.com/test',
+    });
+
+    const uc = makeUseCase();
+    await uc.execute({
+      userEmail: 'user@example.com',
+      userId: 42,
+      gaClientId: '1234567890.987654321',
+      gaSessionId: '1744000000',
+    });
+
+    expect(mockStripeCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: {
+          user_id: '42',
+          ga_client_id: '1234567890.987654321',
+          ga_session_id: '1744000000',
+        },
+      })
+    );
+  });
+
   test('does not log raw Stripe IDs in session creation args', async () => {
     mockCountActive.mockResolvedValue(0);
     mockGetUserActiveSubscriptions.mockResolvedValue([]);

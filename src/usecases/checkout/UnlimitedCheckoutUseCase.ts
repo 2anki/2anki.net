@@ -79,6 +79,7 @@ export class UnlimitedCheckoutUseCase {
     anonId?: string;
     surface?: string;
     gaClientId?: string;
+    gaSessionId?: string;
     adClick?: AdClickAttribution;
     pricingV2On?: boolean;
     createdAt?: Date | null;
@@ -119,6 +120,7 @@ export class UnlimitedCheckoutUseCase {
           anon_id: input.anonId,
           surface: input.surface,
           ga_client_id: input.gaClientId,
+          ga_session_id: input.gaSessionId,
           ...input.adClick,
         }),
       },

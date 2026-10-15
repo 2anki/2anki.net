@@ -28,6 +28,7 @@ export class CreatePassCheckoutUseCase {
     anonId?: string;
     surface?: string;
     gaClientId?: string;
+    gaSessionId?: string;
     adClick?: AdClickAttribution;
   }): Promise<CreatePassCheckoutResult> {
     const appUrl = process.env.APP_URL ?? 'https://2anki.net';
@@ -50,6 +51,7 @@ export class CreatePassCheckoutUseCase {
         anon_id: input.anonId,
         surface: input.surface,
         ga_client_id: input.gaClientId,
+        ga_session_id: input.gaSessionId,
         ...input.adClick,
       })
     );

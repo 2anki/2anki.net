@@ -181,6 +181,28 @@ describe('CreatePassCheckoutUseCase', () => {
       const call = mockStripeCreateSession.mock.calls[0][0];
       expect(call.metadata.pricing_variant).toBeUndefined();
     });
+
+    it('stamps ga_client_id and ga_session_id into metadata when provided', async () => {
+      mockStripeCreateSession.mockResolvedValue({
+        url: 'https://checkout.stripe.com/v',
+      });
+
+      const uc = new CreatePassCheckoutUseCase(
+        makeStripe(),
+        'price_24h',
+        '24h'
+      );
+      await uc.execute({
+        userEmail: 'user@example.com',
+        userId: 7,
+        gaClientId: '1234567890.987654321',
+        gaSessionId: '1744000000',
+      });
+
+      const call = mockStripeCreateSession.mock.calls[0][0];
+      expect(call.metadata.ga_client_id).toBe('1234567890.987654321');
+      expect(call.metadata.ga_session_id).toBe('1744000000');
+    });
   });
 
   describe('anon_id funnel attribution', () => {

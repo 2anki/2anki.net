@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { CreateCreditPackCheckoutUseCase } from '../usecases/checkout/CreateCreditPackCheckoutUseCase';
 import { parseCreditPackSource } from '../usecases/checkout/creditPack';
-import { parseGaClientId } from '../usecases/checkout/gaClientId';
+import { readGaMeasurement } from '../usecases/checkout/gaClientId';
 import { readAdClickCookie } from '../lib/attribution/adClick';
 
 class CreditPackCheckoutController {
@@ -16,7 +16,7 @@ class CreditPackCheckoutController {
     const userEmail = res.locals.email as string | undefined;
     const stripeCustomerId = res.locals.stripeCustomerId as string | undefined;
     const source = parseCreditPackSource(req.body?.source);
-    const gaClientId = parseGaClientId(req.cookies?._ga);
+    const { gaClientId, gaSessionId } = readGaMeasurement(req);
     const adClick = readAdClickCookie(req);
 
     const result = await this.useCase.execute({
@@ -24,6 +24,7 @@ class CreditPackCheckoutController {
       userEmail,
       source,
       gaClientId,
+      gaSessionId,
       adClick,
       stripeCustomerId,
     });

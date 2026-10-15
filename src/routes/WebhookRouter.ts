@@ -419,6 +419,7 @@ const WebhooksRouter = () => {
                 stripeCustomerId:
                   typeof session.customer === 'string' ? session.customer : '',
                 clientId: sessionMeta.ga_client_id,
+                sessionId: sessionMeta.ga_session_id,
               });
             } catch (ga4Error) {
               console.error('[ga4] failed to send purchase event', ga4Error);
