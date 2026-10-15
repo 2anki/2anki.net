@@ -98,19 +98,27 @@ export default function AnkifySetupPage({ backend }: Props) {
       : null;
   });
 
+  const buyerId = userLocals?.user?.id;
+  const buyerEmail = userLocals?.user?.email;
+
   useEffect(() => {
     if (userLocalsLoading) {
       return;
     }
-    replayPendingPurchaseConversions(userLocals?.user?.email);
-  }, [userLocals, userLocalsLoading]);
+    replayPendingPurchaseConversions(
+      buyerId == null ? null : { id: buyerId, email: buyerEmail }
+    );
+  }, [buyerId, buyerEmail, userLocalsLoading]);
 
   useEffect(() => {
     if (userLocalsLoading || checkoutSessionId == null) {
       return;
     }
-    void reportPurchaseConversion(checkoutSessionId, userLocals?.user?.email);
-  }, [checkoutSessionId, userLocals, userLocalsLoading]);
+    void reportPurchaseConversion(
+      checkoutSessionId,
+      buyerId == null ? null : { id: buyerId, email: buyerEmail }
+    );
+  }, [checkoutSessionId, buyerId, buyerEmail, userLocalsLoading]);
 
   useEffect(() => {
     if (checkoutSessionId == null) {

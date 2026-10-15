@@ -143,17 +143,25 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     return sessionId != null && sessionId.length > 0 ? sessionId : null;
   });
 
+  const buyerId = userLocals?.user?.id;
+  const buyerEmail = userLocals?.user?.email;
+
   useEffect(() => {
     if (userLocalsLoading) {
       return;
     }
-    replayPendingPurchaseConversions(userLocals?.user?.email);
-  }, [userLocals, userLocalsLoading]);
+    replayPendingPurchaseConversions(
+      buyerId == null ? null : { id: buyerId, email: buyerEmail }
+    );
+  }, [buyerId, buyerEmail, userLocalsLoading]);
 
   useEffect(() => {
     if (userLocalsLoading || returnedSessionId == null) return;
-    void reportPurchaseConversion(returnedSessionId, userLocals?.user?.email);
-  }, [returnedSessionId, userLocals, userLocalsLoading]);
+    void reportPurchaseConversion(
+      returnedSessionId,
+      buyerId == null ? null : { id: buyerId, email: buyerEmail }
+    );
+  }, [returnedSessionId, buyerId, buyerEmail, userLocalsLoading]);
 
   useEffect(() => {
     if (userLocalsLoading) return;

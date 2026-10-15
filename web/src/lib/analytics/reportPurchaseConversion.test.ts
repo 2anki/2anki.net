@@ -27,6 +27,7 @@ const receipt = {
 
 const ok = { status: 'ok' as const, receipt };
 const PENDING_PREFIX = 'ads_purchase_pending:';
+const buyer = { id: 7, email: 'a@b.test' };
 
 const purchaseFor = (sessionId: string, email: string | null = 'a@b.test') => ({
   sessionId,
@@ -36,12 +37,12 @@ const purchaseFor = (sessionId: string, email: string | null = 'a@b.test') => ({
   email,
 });
 
-const pendingFor = (sessionId: string, ownedByUser = true) => ({
+const pendingFor = (sessionId: string, ownerId: number | null = 7) => ({
   sessionId,
   amountCents: 600,
   currency: 'USD',
   kind: 'pass_24h',
-  ownedByUser,
+  ownerId,
 });
 
 const grant = () => {
@@ -68,7 +69,7 @@ describe('reportPurchaseConversion', () => {
   it('fetches the receipt and fires the conversion with the owner email', async () => {
     getCheckoutReceipt.mockResolvedValue(ok);
 
-    await reportPurchaseConversion('cs_test_1', 'a@b.test');
+    await reportPurchaseConversion('cs_test_1', buyer);
 
     expect(getCheckoutReceipt).toHaveBeenCalledWith('cs_test_1');
     expect(firePurchaseConversion).toHaveBeenCalledWith({
@@ -86,7 +87,7 @@ describe('reportPurchaseConversion', () => {
       receipt: { ...receipt, anonymous: true },
     });
 
-    await reportPurchaseConversion('cs_test_anon', 'a@b.test');
+    await reportPurchaseConversion('cs_test_anon', buyer);
 
     expect(firePurchaseConversion).toHaveBeenCalledWith(
       expect.objectContaining({ email: null })
@@ -125,7 +126,7 @@ describe('reportPurchaseConversion', () => {
     getCheckoutReceipt.mockResolvedValue(ok);
     firePurchaseConversion.mockReturnValueOnce(false);
 
-    await reportPurchaseConversion('cs_test_held', 'a@b.test');
+    await reportPurchaseConversion('cs_test_held', buyer);
     expect(firePurchaseConversion).toHaveBeenCalledTimes(1);
 
     globalThis.dispatchEvent(
@@ -152,8 +153,10 @@ describe('reportPurchaseConversion receipt retry', () => {
       .mockResolvedValueOnce({ status: 'transient' })
       .mockResolvedValueOnce(ok);
 
-    const pending = reportPurchaseConversion('cs_retry', 'a@b.test');
-    await vi.advanceTimersByTimeAsync(2000);
+    const pending = reportPurchaseConversion('cs_retry', buyer);
+    await vi.advanceTimersByTimeAsync(299);
+    expect(getCheckoutReceipt).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
     await pending;
 
     expect(getCheckoutReceipt).toHaveBeenCalledTimes(2);
@@ -167,7 +170,11 @@ describe('reportPurchaseConversion receipt retry', () => {
     getCheckoutReceipt.mockResolvedValue({ status: 'transient' });
 
     const pending = reportPurchaseConversion('cs_down');
-    await vi.advanceTimersByTimeAsync(5000);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(getCheckoutReceipt).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(599);
+    expect(getCheckoutReceipt).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1);
     await pending;
 
     expect(getCheckoutReceipt).toHaveBeenCalledTimes(3);
@@ -189,7 +196,7 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
     getCheckoutReceipt.mockResolvedValue(ok);
     firePurchaseConversion.mockReturnValueOnce(false);
 
-    await reportPurchaseConversion('cs_hold', 'a@b.test');
+    await reportPurchaseConversion('cs_hold', buyer);
 
     const stored = sessionStorage.getItem(`${PENDING_PREFIX}cs_hold`);
     expect(stored).not.toBeNull();
@@ -206,7 +213,7 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
     getCheckoutReceipt.mockResolvedValue(ok);
     firePurchaseConversion.mockReturnValueOnce(false);
 
-    await reportPurchaseConversion('cs_deny', 'a@b.test');
+    await reportPurchaseConversion('cs_deny', buyer);
     expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_deny`)).not.toBeNull();
 
     globalThis.dispatchEvent(
@@ -225,7 +232,7 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
     );
     document.cookie = 'cookie_consent=granted';
 
-    replayPendingPurchaseConversions('a@b.test');
+    replayPendingPurchaseConversions(buyer);
 
     expect(getCheckoutReceipt).not.toHaveBeenCalled();
     expect(firePurchaseConversion).toHaveBeenCalledWith(
@@ -241,7 +248,7 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
       JSON.stringify(pendingFor('cs_reload_wait'))
     );
 
-    replayPendingPurchaseConversions('a@b.test');
+    replayPendingPurchaseConversions(buyer);
     expect(firePurchaseConversion).not.toHaveBeenCalled();
 
     grant();
@@ -258,7 +265,7 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
     );
     document.cookie = 'cookie_consent=granted';
 
-    replayPendingPurchaseConversions('a@b.test');
+    replayPendingPurchaseConversions(buyer);
 
     expect(firePurchaseConversion).not.toHaveBeenCalled();
     expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_done`)).toBeNull();
@@ -268,11 +275,11 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
   it('replays an anonymous pending purchase without the signed-in email', () => {
     sessionStorage.setItem(
       `${PENDING_PREFIX}cs_anon`,
-      JSON.stringify(pendingFor('cs_anon', false))
+      JSON.stringify(pendingFor('cs_anon', null))
     );
     document.cookie = 'cookie_consent=granted';
 
-    replayPendingPurchaseConversions('a@b.test');
+    replayPendingPurchaseConversions(buyer);
 
     expect(firePurchaseConversion).toHaveBeenCalledWith(
       purchaseFor('cs_anon', null)
@@ -287,7 +294,7 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
     );
     document.cookie = 'cookie_consent=denied';
 
-    replayPendingPurchaseConversions('a@b.test');
+    replayPendingPurchaseConversions(buyer);
 
     expect(firePurchaseConversion).not.toHaveBeenCalled();
     expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_denied`)).toBeNull();
@@ -296,7 +303,7 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
   it('sweeps a persisted pending purchase that was never replayed when consent is denied', async () => {
     getCheckoutReceipt.mockResolvedValue(ok);
     firePurchaseConversion.mockReturnValueOnce(false);
-    await reportPurchaseConversion('cs_live', 'a@b.test');
+    await reportPurchaseConversion('cs_live', buyer);
     sessionStorage.setItem(
       `${PENDING_PREFIX}cs_elsewhere`,
       JSON.stringify(pendingFor('cs_elsewhere'))
@@ -308,5 +315,72 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
 
     expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_live`)).toBeNull();
     expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_elsewhere`)).toBeNull();
+  });
+
+  it('replays without an email when a different account is signed in', () => {
+    sessionStorage.setItem(
+      `${PENDING_PREFIX}cs_switched`,
+      JSON.stringify(pendingFor('cs_switched', 7))
+    );
+    document.cookie = 'cookie_consent=granted';
+
+    replayPendingPurchaseConversions({ id: 8, email: 'other@b.test' });
+
+    expect(firePurchaseConversion).toHaveBeenCalledWith(
+      purchaseFor('cs_switched', null)
+    );
+    document.cookie = 'cookie_consent=; Max-Age=0';
+  });
+
+  it('replays without an email when nobody is signed in', () => {
+    sessionStorage.setItem(
+      `${PENDING_PREFIX}cs_signed_out`,
+      JSON.stringify(pendingFor('cs_signed_out', 7))
+    );
+    document.cookie = 'cookie_consent=granted';
+
+    replayPendingPurchaseConversions(null);
+
+    expect(firePurchaseConversion).toHaveBeenCalledWith(
+      purchaseFor('cs_signed_out', null)
+    );
+    document.cookie = 'cookie_consent=; Max-Age=0';
+  });
+
+  it('does not hold a purchase when consent was denied while the lookup was in flight', async () => {
+    getCheckoutReceipt.mockImplementation(async () => {
+      document.cookie = 'cookie_consent=denied';
+      return ok;
+    });
+    firePurchaseConversion.mockReturnValue(false);
+
+    await reportPurchaseConversion('cs_denied_mid', buyer);
+
+    expect(firePurchaseConversion).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_denied_mid`)).toBeNull();
+  });
+
+  it('sends once when a replay fires the session while the live lookup is in flight', async () => {
+    sessionStorage.setItem(
+      `${PENDING_PREFIX}cs_race`,
+      JSON.stringify(pendingFor('cs_race'))
+    );
+    document.cookie = 'cookie_consent=granted';
+    let release: (value: typeof ok) => void = () => {};
+    getCheckoutReceipt.mockReturnValue(
+      new Promise<typeof ok>((resolve) => {
+        release = resolve;
+      })
+    );
+
+    const live = reportPurchaseConversion('cs_race', buyer);
+    replayPendingPurchaseConversions(buyer);
+    expect(firePurchaseConversion).toHaveBeenCalledTimes(1);
+
+    release(ok);
+    await live;
+
+    expect(firePurchaseConversion).toHaveBeenCalledTimes(1);
+    document.cookie = 'cookie_consent=; Max-Age=0';
   });
 });

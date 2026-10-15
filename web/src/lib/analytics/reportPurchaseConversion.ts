@@ -12,25 +12,35 @@ const PENDING_PREFIX = 'ads_purchase_pending:';
 const MAX_RECEIPT_ATTEMPTS = 3;
 const RECEIPT_RETRY_BASE_MS = 300;
 
+/** The signed-in user a return page knows about, if any. */
+export interface PurchaseBuyer {
+  id: number;
+  email?: string | null;
+}
+
 /**
  * What survives a reload. The buyer email is deliberately not stored: nothing
- * about the visitor is written to the browser before consent, only the fact
- * that the signed-in user owned the receipt, so the replay can re-attach the
- * email of whoever is signed in at that point.
+ * about the visitor is written to the browser before consent, only the id of
+ * the account that owned the receipt, so the replay re-attaches an email only
+ * when that same account is still signed in.
  */
 interface PendingPurchase {
   sessionId: string;
   amountCents: number;
   currency: string;
   kind: string;
-  ownedByUser: boolean;
+  ownerId: number | null;
 }
 
 const inFlight = new Set<string>();
+const reportedThisLoad = new Set<string>();
 const awaitingConsent = new Map<string, PurchaseConversion>();
 let listeningForConsent = false;
 
 function alreadyReported(sessionId: string): boolean {
+  if (reportedThisLoad.has(sessionId)) {
+    return true;
+  }
   try {
     return (
       globalThis.sessionStorage?.getItem(`${REPORTED_PREFIX}${sessionId}`) !=
@@ -42,6 +52,7 @@ function alreadyReported(sessionId: string): boolean {
 }
 
 function markReported(sessionId: string): void {
+  reportedThisLoad.add(sessionId);
   try {
     globalThis.sessionStorage?.setItem(`${REPORTED_PREFIX}${sessionId}`, '1');
   } catch {
@@ -49,13 +60,16 @@ function markReported(sessionId: string): void {
   }
 }
 
-function persistPending(purchase: PurchaseConversion): void {
+function persistPending(
+  purchase: PurchaseConversion,
+  ownerId: number | null
+): void {
   const pending: PendingPurchase = {
     sessionId: purchase.sessionId,
     amountCents: purchase.amountCents,
     currency: purchase.currency,
     kind: purchase.kind,
-    ownedByUser: purchase.email != null && purchase.email !== '',
+    ownerId,
   };
   try {
     globalThis.sessionStorage?.setItem(
@@ -80,16 +94,19 @@ function parsePending(raw: string): PendingPurchase | null {
     const value = JSON.parse(raw) as Partial<PendingPurchase>;
     if (
       typeof value.sessionId === 'string' &&
-      typeof value.amountCents === 'number' &&
+      Number.isSafeInteger(value.amountCents) &&
+      (value.amountCents as number) >= 0 &&
       typeof value.currency === 'string' &&
       typeof value.kind === 'string'
     ) {
       return {
         sessionId: value.sessionId,
-        amountCents: value.amountCents,
+        amountCents: value.amountCents as number,
         currency: value.currency,
         kind: value.kind,
-        ownedByUser: value.ownedByUser === true,
+        ownerId: Number.isSafeInteger(value.ownerId)
+          ? (value.ownerId as number)
+          : null,
       };
     }
   } catch {
@@ -168,9 +185,12 @@ function ensureConsentListener(): void {
  * before the choice does not lose it, and it is sent the moment consent is
  * granted.
  */
-function holdUntilConsent(purchase: PurchaseConversion): void {
+function holdUntilConsent(
+  purchase: PurchaseConversion,
+  ownerId: number | null
+): void {
   awaitingConsent.set(purchase.sessionId, purchase);
-  persistPending(purchase);
+  persistPending(purchase, ownerId);
   ensureConsentListener();
 }
 
@@ -203,9 +223,12 @@ async function fetchReceiptWithRetry(
  * now (consent already granted) or re-arms it to fire on the next grant. The
  * pages Stripe returns buyers to call this on mount, once the signed-in user
  * is known, so a reload before the banner choice no longer drops the
- * conversion. An explicit "denied" clears the persisted entries instead.
+ * conversion. The email is re-attached only when the account that bought is
+ * the one signed in now. An explicit "denied" clears the persisted entries.
  */
-export function replayPendingPurchaseConversions(email?: string | null): void {
+export function replayPendingPurchaseConversions(
+  buyer?: PurchaseBuyer | null
+): void {
   const persisted = loadPersistedPending();
   if (readStoredConsent() === 'denied') {
     for (const pending of persisted) {
@@ -223,7 +246,10 @@ export function replayPendingPurchaseConversions(email?: string | null): void {
       amountCents: pending.amountCents,
       currency: pending.currency,
       kind: pending.kind,
-      email: pending.ownedByUser ? (email ?? null) : null,
+      email:
+        pending.ownerId != null && buyer?.id === pending.ownerId
+          ? (buyer.email ?? null)
+          : null,
     });
   }
   if (awaitingConsent.size === 0) {
@@ -242,7 +268,7 @@ export function replayPendingPurchaseConversions(email?: string | null): void {
  */
 export async function reportPurchaseConversion(
   sessionId: string,
-  email?: string | null
+  buyer?: PurchaseBuyer | null
 ): Promise<void> {
   if (alreadyReported(sessionId) || inFlight.has(sessionId)) {
     return;
@@ -250,22 +276,27 @@ export async function reportPurchaseConversion(
   inFlight.add(sessionId);
   try {
     const receipt = await fetchReceiptWithRetry(sessionId);
-    if (receipt == null || alreadyReported(sessionId)) {
+    if (
+      receipt == null ||
+      alreadyReported(sessionId) ||
+      readStoredConsent() === 'denied'
+    ) {
       return;
     }
+    const owner = receipt.anonymous ? null : (buyer ?? null);
     const purchase: PurchaseConversion = {
       sessionId,
       amountCents: receipt.amount,
       currency: receipt.currency,
       kind: receipt.kind,
-      email: receipt.anonymous ? null : email,
+      email: owner?.email ?? null,
     };
     if (firePurchaseConversion(purchase)) {
       markReported(sessionId);
       awaitingConsent.delete(sessionId);
       clearPending(sessionId);
     } else {
-      holdUntilConsent(purchase);
+      holdUntilConsent(purchase, owner?.id ?? null);
     }
   } finally {
     inFlight.delete(sessionId);

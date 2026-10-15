@@ -99,10 +99,10 @@ describe('AnkifySetupPage checkout return', () => {
     );
 
     await waitFor(() =>
-      expect(reportPurchaseConversion).toHaveBeenCalledWith(
-        'cs_auto',
-        'buyer@example.com'
-      )
+      expect(reportPurchaseConversion).toHaveBeenCalledWith('cs_auto', {
+        id: 7,
+        email: 'buyer@example.com',
+      })
     );
   });
 
@@ -110,9 +110,10 @@ describe('AnkifySetupPage checkout return', () => {
     renderAt('/ankify/setup', makeBackend());
 
     await waitFor(() =>
-      expect(replayPendingPurchaseConversions).toHaveBeenCalledWith(
-        'buyer@example.com'
-      )
+      expect(replayPendingPurchaseConversions).toHaveBeenCalledWith({
+        id: 7,
+        email: 'buyer@example.com',
+      })
     );
     expect(reportPurchaseConversion).not.toHaveBeenCalled();
   });
