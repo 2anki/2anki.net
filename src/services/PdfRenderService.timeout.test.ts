@@ -40,7 +40,11 @@ function stubPage(overrides: Record<string, Mock> = {}): Record<string, Mock> {
 function stubBrowser(page: Record<string, Mock>) {
   const close = vi.fn().mockResolvedValue(undefined);
   launchMock.mockResolvedValue({
-    newPage: vi.fn().mockResolvedValue(page),
+    newPage: vi.fn().mockResolvedValue({
+      setRequestInterception: vi.fn().mockResolvedValue(undefined),
+      on: vi.fn(),
+      ...page,
+    }),
     close,
   });
   return close;

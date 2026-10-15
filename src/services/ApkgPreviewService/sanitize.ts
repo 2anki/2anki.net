@@ -72,10 +72,40 @@ const ALLOWED_ATTRS: sanitizeHtml.IOptions['allowedAttributes'] = {
   polygon: ['points', 'fill', 'stroke', 'stroke-width'],
 };
 
-export function sanitizeCardHtml(html: string): string {
+// The print path renders every card into one headless-Chrome page that runs
+// no deck scripts, so it can afford what the shared surfaces cannot:
+// - `id` attributes, so the deck's own `#popup { display: none }`-style rules
+//   keep its interactive chrome hidden the way Anki shows the card before
+//   any click;
+// - dropping <button> with its label. Without the template's scripts a button
+//   does nothing, and its label (`×`, "Reveal Next") is not card content.
+const PRINT_ALLOWED_ATTRS: sanitizeHtml.IOptions['allowedAttributes'] = {
+  ...ALLOWED_ATTRS,
+  '*': ['class', 'style', 'dir', 'lang', 'id'],
+};
+// sanitize-html's own default list plus <button>. `xmp` must stay: dropping
+// it from the list re-emits its raw text unescaped.
+const PRINT_NON_TEXT_TAGS = [
+  'script',
+  'style',
+  'textarea',
+  'option',
+  'xmp',
+  'button',
+];
+
+export interface SanitizeCardOptions {
+  print?: boolean;
+}
+
+export function sanitizeCardHtml(
+  html: string,
+  options: SanitizeCardOptions = {}
+): string {
   return sanitizeHtml(html, {
     allowedTags: ALLOWED_TAGS,
-    allowedAttributes: ALLOWED_ATTRS,
+    allowedAttributes: options.print ? PRINT_ALLOWED_ATTRS : ALLOWED_ATTRS,
+    nonTextTags: options.print ? PRINT_NON_TEXT_TAGS : undefined,
     allowedSchemes: ['http', 'https', 'mailto', 'data'],
     allowedSchemesAppliedToAttributes: ['href', 'src'],
     disallowedTagsMode: 'discard',
@@ -84,9 +114,28 @@ export function sanitizeCardHtml(html: string): string {
 }
 
 export function sanitizeCss(css: string): string {
-  return css
-    .replace(/@import[^;]*;/gi, '')
-    .replace(/expression\s*\(/gi, '')
-    .replace(/javascript\s*:/gi, '')
-    .replace(/<\/?style[^>]*>/gi, '');
+  return (
+    css
+      .replace(/@import[^;]*;/gi, '')
+      .replace(/expression\s*\(/gi, '')
+      .replace(/javascript\s*:/gi, '')
+      .replace(/<\/?style[^>]*>/gi, '')
+      // The CSS is written into a <style> element. Stripping `</style>`
+      // alone can be defeated (`</sty</style>le>` re-forms it), so escape
+      // every `<` as the CSS escape `\3c ` — no HTML tag can survive.
+      .replaceAll('<', String.raw`\3c `)
+  );
+}
+
+const STYLE_BLOCK_REGEX = /<style\b[^>]*>([\s\S]*?)<\/style>/gi; // NOSONAR
+
+// Card templates often carry their own <style> blocks (AnKing hides its
+// Wikipedia popup this way). The HTML sanitizer drops them, so the print
+// path lifts them out of the template and appends them to the note CSS.
+export function extractTemplateStyles(template: string): string {
+  const blocks: string[] = [];
+  for (const match of template.matchAll(STYLE_BLOCK_REGEX)) {
+    blocks.push(match[1]);
+  }
+  return blocks.join('\n');
 }

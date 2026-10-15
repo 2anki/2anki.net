@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-15-pdf-scripted-note-types",
+  "date": "2026-10-15",
+  "type": "fix",
+  "title": "Decks with scripted note types no longer print blank cards to PDF. The card text prints, without the buttons and logos"
+}

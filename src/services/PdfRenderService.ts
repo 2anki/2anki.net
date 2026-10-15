@@ -104,7 +104,7 @@ export function withConnectBlock(html: string): string {
 
 // The only remote script a PDF page may load: the MathJax build the document
 // links to (MATHJAX_CONFIG in ExportApkgToPdfUseCase).
-const MATHJAX_PREFIX = 'https://cdn.jsdelivr.net/npm/mathjax@3/';
+export const MATHJAX_URL_PREFIX = 'https://cdn.jsdelivr.net/npm/mathjax@3/';
 
 /**
  * Deck HTML is untrusted, so the render page may load only its own temp
@@ -115,7 +115,7 @@ const MATHJAX_PREFIX = 'https://cdn.jsdelivr.net/npm/mathjax@3/';
  */
 export function guardLocalFiles(dirUrl: string) {
   const dir = new URL(dirUrl);
-  const mathjax = new URL(MATHJAX_PREFIX);
+  const mathjax = new URL(MATHJAX_URL_PREFIX);
   return (request: HTTPRequest): void => {
     if (!isAllowedRenderUrl(request.url(), dir, mathjax)) {
       void request.abort('accessdenied');

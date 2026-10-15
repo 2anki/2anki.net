@@ -9,7 +9,11 @@ import {
   TemplateSpecials,
 } from './renderTemplate';
 import { rewriteMediaRefs } from './rewriteMedia';
-import { sanitizeCardHtml, sanitizeCss } from './sanitize';
+import {
+  extractTemplateStyles,
+  sanitizeCardHtml,
+  sanitizeCss,
+} from './sanitize';
 import {
   DeckMeta,
   NormalizedCollection,
@@ -43,6 +47,12 @@ export interface ParsedApkg {
   mediaMap: Map<string, string>;
   mediaEntries: Map<string, Buffer>;
   parsedAt: number;
+}
+
+export interface CardRenderOptions {
+  // Render for the PDF export: keep element ids, drop buttons, and carry
+  // template <style> blocks into `css`. See sanitizeCardHtml.
+  print?: boolean;
 }
 
 export default class ApkgPreviewService {
@@ -104,7 +114,8 @@ export default class ApkgPreviewService {
     cursor: number,
     pageSize: number,
     mediaBaseUrl: string,
-    deckId: number | null = null
+    deckId: number | null = null,
+    options: CardRenderOptions = {}
   ): { cards: RenderedCard[]; nextCursor: number | null; total: number } {
     const all =
       deckId == null
@@ -114,7 +125,7 @@ export default class ApkgPreviewService {
     const slice = all.slice(cursor, end);
     const cards: RenderedCard[] = [];
     for (const card of slice) {
-      const rendered = this.renderCard(parsed, card.id, mediaBaseUrl);
+      const rendered = this.renderCard(parsed, card.id, mediaBaseUrl, options);
       if (rendered) cards.push(rendered);
     }
     return {
@@ -235,7 +246,8 @@ export default class ApkgPreviewService {
   private renderCard(
     parsed: ParsedApkg,
     cardId: number,
-    mediaBaseUrl: string
+    mediaBaseUrl: string,
+    options: CardRenderOptions
   ): RenderedCard | null {
     const card = parsed.collection.cards.find((c) => c.id === cardId);
     if (!card) {
@@ -322,15 +334,22 @@ export default class ApkgPreviewService {
     );
 
     const front = rewriteMediaRefs(
-      sanitizeCardHtml(frontRaw),
+      sanitizeCardHtml(frontRaw, options),
       parsed.mediaMap,
       mediaBaseUrl
     );
     const back = rewriteMediaRefs(
-      sanitizeCardHtml(backRaw),
+      sanitizeCardHtml(backRaw, options),
       parsed.mediaMap,
       mediaBaseUrl
     );
+    const css = options.print
+      ? [
+          noteType.css,
+          extractTemplateStyles(template.qfmt),
+          extractTemplateStyles(template.afmt),
+        ].join('\n')
+      : noteType.css;
 
     const deckPath = deck?.name ? deck.name.split('::') : [];
 
@@ -341,7 +360,7 @@ export default class ApkgPreviewService {
       deckName: deck?.name ?? '',
       deckPath,
       noteTypeName: noteType.name,
-      css: sanitizeCss(noteType.css),
+      css: sanitizeCss(css),
       front,
       back,
     };

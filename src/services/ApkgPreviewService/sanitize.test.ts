@@ -1,4 +1,8 @@
-import { sanitizeCardHtml, sanitizeCss } from './sanitize';
+import {
+  extractTemplateStyles,
+  sanitizeCardHtml,
+  sanitizeCss,
+} from './sanitize';
 
 describe('sanitizeCardHtml', () => {
   it('preserves mark tags with highlight-yellow_background class', () => {
@@ -97,5 +101,52 @@ describe('sanitizeCss', () => {
     const css =
       '.highlight-yellow_background { background: rgb(251,243,219); }';
     expect(sanitizeCss(css)).toBe(css);
+  });
+});
+
+describe('sanitizeCardHtml — print option', () => {
+  const html = '<div id="popup"><button onclick="x()">Close</button>kept</div>';
+
+  it('strips ids and keeps button labels by default', () => {
+    expect(sanitizeCardHtml(html)).toBe('<div>Closekept</div>');
+  });
+
+  it('keeps ids and drops buttons with their labels when printing', () => {
+    expect(sanitizeCardHtml(html, { print: true })).toBe(
+      '<div id="popup">kept</div>'
+    );
+  });
+
+  it('still drops scripts and event handlers when printing', () => {
+    expect(
+      sanitizeCardHtml('<div onclick="x()">a</div><script>x()</script>', {
+        print: true,
+      })
+    ).toBe('<div>a</div>');
+  });
+});
+
+describe('extractTemplateStyles', () => {
+  it('returns the contents of every <style> block in a template', () => {
+    const template =
+      '<div>{{Front}}</div><style>#a { color: red; }</style><style media="all">.b { top: 0; }</style>';
+    expect(extractTemplateStyles(template)).toBe(
+      '#a { color: red; }\n.b { top: 0; }'
+    );
+  });
+
+  it('returns an empty string when the template has no <style>', () => {
+    expect(extractTemplateStyles('{{Front}}')).toBe('');
+  });
+});
+
+describe('sanitizeCss — cannot close its <style> element', () => {
+  it.each([
+    '.a{}</style><script>alert(1)</script>',
+    '.a{}</sty</style>le><script>alert(1)</script>',
+    '.a{}</style\n<img src=x onerror=alert(1)>',
+  ])('leaves no HTML tag in %s', (css) => {
+    const out = sanitizeCss(css);
+    expect(out).not.toMatch(/<\/?[a-z]/i);
   });
 });
