@@ -125,6 +125,12 @@ describe('ExportApkgToPdfUseCase — scripted cloze templates', () => {
     expect(html).not.toContain('×');
   });
 
+  it('drops the stray popup glyph the deck can no longer hide', () => {
+    const [, back] = cardCells(html);
+    expect(back).not.toContain('↪');
+    expect(html).not.toContain('↪');
+  });
+
   it('keeps element ids and template <style> rules so the deck hides its own popup', () => {
     expect(html).toContain('<div id="popup">');
     expect(html).toContain('#popup { display: none; }');

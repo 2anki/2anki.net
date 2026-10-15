@@ -124,6 +124,27 @@ describe('sanitizeCardHtml — print option', () => {
       })
     ).toBe('<div>a</div>');
   });
+
+  it('drops href-less popup anchors and their glyph when printing', () => {
+    expect(
+      sanitizeCardHtml('<div id="popup"><a href="">↪</a>kept</div>', {
+        print: true,
+      })
+    ).toBe('<div id="popup">kept</div>');
+  });
+
+  it('keeps real links and image-wrapping anchors when printing', () => {
+    const html =
+      '<a href="https://x.com">link</a><a href="#jump">frag</a><a><img src="logo.png" /></a>';
+    const result = sanitizeCardHtml(html, { print: true });
+    expect(result).toContain('<a href="https://x.com">link</a>');
+    expect(result).toContain('<a href="#jump">frag</a>');
+    expect(result).toContain('<img src="logo.png" />');
+  });
+
+  it('keeps href-less anchors on non-print surfaces', () => {
+    expect(sanitizeCardHtml('<a>↪</a>kept')).toBe('<a>↪</a>kept');
+  });
 });
 
 describe('extractTemplateStyles', () => {
