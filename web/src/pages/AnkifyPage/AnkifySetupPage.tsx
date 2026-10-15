@@ -1,6 +1,10 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { reportPurchaseConversion } from '../../lib/analytics/reportPurchaseConversion';
+import {
+  replayPendingPurchaseConversions,
+  reportPurchaseConversion,
+} from '../../lib/analytics/reportPurchaseConversion';
+import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
@@ -83,21 +87,40 @@ export default function AnkifySetupPage({ backend }: Props) {
   const containerReady = readiness.data?.ready === true;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  useEffect(() => {
+  const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
+
+  const [checkoutSessionId] = useState<string | null>(() => {
     const sessionId = searchParams.get('session_id');
-    if (
-      searchParams.get('checkout') !== 'success' ||
-      sessionId == null ||
-      sessionId.length === 0
-    ) {
+    return searchParams.get('checkout') === 'success' &&
+      sessionId != null &&
+      sessionId.length > 0
+      ? sessionId
+      : null;
+  });
+
+  useEffect(() => {
+    replayPendingPurchaseConversions();
+  }, []);
+
+  useEffect(() => {
+    if (userLocalsLoading || checkoutSessionId == null) {
       return;
     }
-    void reportPurchaseConversion(sessionId);
+    void reportPurchaseConversion(checkoutSessionId, userLocals?.user?.email);
+  }, [checkoutSessionId, userLocals, userLocalsLoading]);
+
+  useEffect(() => {
+    if (checkoutSessionId == null) {
+      return;
+    }
     const next = new URLSearchParams(searchParams);
+    if (!next.has('session_id') && !next.has('checkout')) {
+      return;
+    }
     next.delete('session_id');
     next.delete('checkout');
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [checkoutSessionId, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!hasActiveClient || containerReady) {

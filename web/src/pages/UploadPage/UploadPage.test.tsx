@@ -36,6 +36,7 @@ let fakeUser: FakeUser = null;
 let fakeLocals: { patreon?: boolean; subscriber?: boolean } | undefined;
 let fakeLocalsLoading = false;
 const reportPurchaseConversion = vi.fn();
+const replayPendingPurchaseConversions = vi.fn();
 const storePassToken = vi.fn();
 vi.mock('../../lib/anonymousPass', () => ({
   storePassToken: (...args: unknown[]) => storePassToken(...args),
@@ -43,6 +44,7 @@ vi.mock('../../lib/anonymousPass', () => ({
 vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
   reportPurchaseConversion: (...args: unknown[]) =>
     reportPurchaseConversion(...args),
+  replayPendingPurchaseConversions: () => replayPendingPurchaseConversions(),
 }));
 vi.mock('../../lib/hooks/useUserLocals', () => ({
   useUserLocals: () => ({
@@ -575,10 +577,17 @@ describe('UploadPage AI badge survives browser translation', () => {
 describe('UploadPage checkout return', () => {
   beforeEach(() => {
     reportPurchaseConversion.mockReset();
+    replayPendingPurchaseConversions.mockReset();
     storePassToken.mockReset();
     fakeLocalsLoading = false;
     fakeUser = null;
     fakeLocals = undefined;
+  });
+
+  it('replays any purchase held across a reload on mount', () => {
+    renderPage('/upload');
+
+    expect(replayPendingPurchaseConversions).toHaveBeenCalledTimes(1);
   });
 
   afterEach(() => {

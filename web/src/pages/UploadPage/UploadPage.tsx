@@ -7,7 +7,10 @@ import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabe
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { track } from '../../lib/analytics/track';
 import { fireSignupConversion } from '../../lib/analytics/googleAds';
-import { reportPurchaseConversion } from '../../lib/analytics/reportPurchaseConversion';
+import {
+  replayPendingPurchaseConversions,
+  reportPurchaseConversion,
+} from '../../lib/analytics/reportPurchaseConversion';
 import { markOnboarded } from '../../lib/backend/markOnboarded';
 import { storePassToken } from '../../lib/anonymousPass';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
@@ -139,6 +142,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
       : searchParams.get('pass_session');
     return sessionId != null && sessionId.length > 0 ? sessionId : null;
   });
+
+  useEffect(() => {
+    replayPendingPurchaseConversions();
+  }, []);
 
   useEffect(() => {
     if (userLocalsLoading || returnedSessionId == null) return;

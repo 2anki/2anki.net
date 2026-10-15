@@ -59,6 +59,18 @@ export type ReviewQueue =
   | { connected: false; reason: 'offline' }
   | { connected: false; reason: 'error' };
 
+export interface CheckoutReceipt {
+  amount: number;
+  currency: string;
+  kind: string;
+  anonymous: boolean;
+}
+
+export type CheckoutReceiptResult =
+  | { status: 'ok'; receipt: CheckoutReceipt }
+  | { status: 'not_found' }
+  | { status: 'transient' };
+
 export type ReviewCard =
   | { connected: true; card: ReviewQueueCard | null }
   | { connected: false; reason: 'offline' }
@@ -800,19 +812,17 @@ export class Backend {
     }
   }
 
-  async getCheckoutReceipt(sessionId: string): Promise<{
-    amount: number;
-    currency: string;
-    kind: string;
-    anonymous: boolean;
-  } | null> {
+  async getCheckoutReceipt(sessionId: string): Promise<CheckoutReceiptResult> {
     try {
       const response = await fetch(
         `${this.baseURL}checkout/receipt?session_id=${encodeURIComponent(sessionId)}`,
         { credentials: 'include' }
       );
       if (!response.ok) {
-        return null;
+        if (response.status === 429 || response.status >= 500) {
+          return { status: 'transient' };
+        }
+        return { status: 'not_found' };
       }
       const body = (await response.json()) as {
         amount?: unknown;
@@ -825,16 +835,19 @@ export class Backend {
         typeof body.currency !== 'string' ||
         typeof body.kind !== 'string'
       ) {
-        return null;
+        return { status: 'not_found' };
       }
       return {
-        amount: body.amount,
-        currency: body.currency,
-        kind: body.kind,
-        anonymous: body.anonymous === true,
+        status: 'ok',
+        receipt: {
+          amount: body.amount,
+          currency: body.currency,
+          kind: body.kind,
+          anonymous: body.anonymous === true,
+        },
       };
     } catch {
-      return null;
+      return { status: 'transient' };
     }
   }
 
