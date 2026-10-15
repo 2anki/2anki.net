@@ -82,7 +82,7 @@ Decision matrix:
 | minor | green | none | full server suite locally green, then `/ship <n>` → status `merged` |
 | minor | red | any | same as patch + red |
 | minor | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
-| major | green | none | the `dependencies.md` major-bump checks (changelog for removed APIs, full server suite locally green, plugin grep, a sanity run of the conversion path), written into the `/ship` review brief so its fresh reviewers confirm them, then `/ship <n>` → status `merged`; a breakage → comment what broke → status `needs-review` |
+| major | green | none | the `dependencies.md` major-bump checks (changelog for removed APIs, full server suite locally green, plugin grep, a sanity run of the conversion path), with the local suite output attached to the `/ship` review brief so its fresh reviewers confirm them, then `/ship <n>` → status `merged`; a breakage → comment what broke → status `needs-review` |
 | major | red | any | same as patch + red |
 | major | green | security | the major-bump checks plus `/security-review`; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
 | unknown | any | any | comment "Could not parse bump level from title" → status `needs-review` |

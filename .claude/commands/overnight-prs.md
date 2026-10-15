@@ -212,16 +212,16 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
   verification. A destructive migration is split into reversible expand/contract steps first.
 - Unsure whether an issue is irrelevant → leave it OPEN; don't close on a guess.
 - Fix failing checks on the branch. A failure the branch cannot fix (a runner outage, a GitHub
-  incident) leaves the PR ready with the run URL noted, per `/ship` step 4, and is logged as a
-  `PR … (check-failure, ready)`.
+  incident) puts the PR back to draft with the run URL noted, per `/ship` step 4 (a ready PR with
+  red checks is a merge invitation), and is logged as a `PR … (check-failure, draft)`.
 
 ## Logging
 Running log, one line per issue, with a running counter so the log reconciles against M:
 `[idx/M] #NNN <title> → <state>`. There are FIVE terminal states — every issue you reach lands in
 exactly one, so the log accounts for every issue you opened, not just the ones you acted on:
 - `SHIPPED <url> (T1|T2, healthy|no deploy|reverted)` — merged and deployed through `/ship`.
-- `PR <url> (T3, draft | check-failure, ready)` — a Tier 3 draft that waits on a value only Alexander
-  holds with no safe default, or a ready PR whose checks failed on infrastructure; name the blocker.
+- `PR <url> (T3|check-failure, draft)` — a Tier 3 draft that waits on a value only Alexander holds
+  with no safe default, or a draft whose checks failed on infrastructure; name the blocker.
 - `CLOSED: <reason>` — closed per Step 0 (already fixed / already shipped / superseded / duplicate
   of #m / junk).
 - `SKIPPED: <reason>` — relevant but still unintelligible after the trio looked, or unsafe with no
