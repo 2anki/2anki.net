@@ -19,10 +19,10 @@ export interface PurchaseBuyer {
 }
 
 /**
- * What survives a reload. The buyer email is deliberately not stored: nothing
- * about the visitor is written to the browser before consent, only the id of
- * the account that owned the receipt, so the replay re-attaches an email only
- * when that same account is still signed in.
+ * What survives a reload: the receipt facts (session id, amount, currency,
+ * kind) and the id of the account that owned it. The buyer email is
+ * deliberately not stored, so the replay re-attaches an email only when that
+ * same account is still signed in.
  */
 interface PendingPurchase {
   sessionId: string;
@@ -122,6 +122,7 @@ function loadPersistedPending(): PendingPurchase[] {
     if (store == null) {
       return out;
     }
+    const corrupt: string[] = [];
     for (let index = 0; index < store.length; index += 1) {
       const key = store.key(index);
       if (key == null || !key.startsWith(PENDING_PREFIX)) {
@@ -129,9 +130,14 @@ function loadPersistedPending(): PendingPurchase[] {
       }
       const raw = store.getItem(key);
       const parsed = raw == null ? null : parsePending(raw);
-      if (parsed != null) {
+      if (parsed == null) {
+        corrupt.push(key);
+      } else {
         out.push(parsed);
       }
+    }
+    for (const key of corrupt) {
+      store.removeItem(key);
     }
   } catch {
     return out;
@@ -196,7 +202,7 @@ function holdUntilConsent(
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
-    globalThis.setTimeout?.(resolve, ms);
+    globalThis.setTimeout(resolve, ms);
   });
 }
 
@@ -234,6 +240,7 @@ export function replayPendingPurchaseConversions(
     for (const pending of persisted) {
       clearPending(pending.sessionId);
     }
+    dropAwaitingConsent();
     return;
   }
   for (const pending of persisted) {

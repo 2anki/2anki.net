@@ -829,8 +829,10 @@ export class Backend {
         currency?: unknown;
         kind?: unknown;
         anonymous?: unknown;
-      };
+      } | null;
       if (
+        body == null ||
+        typeof body !== 'object' ||
         typeof body.amount !== 'number' ||
         typeof body.currency !== 'string' ||
         typeof body.kind !== 'string'

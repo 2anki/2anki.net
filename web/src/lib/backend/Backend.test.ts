@@ -652,6 +652,21 @@ describe('Backend', () => {
       });
     });
 
+    it('treats a 200 with a null body as not_found', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(null),
+        })
+      );
+
+      await expect(backend.getCheckoutReceipt('cs_null')).resolves.toEqual({
+        status: 'not_found',
+      });
+    });
+
     it('treats a 200 with a malformed body as not_found', async () => {
       vi.stubGlobal(
         'fetch',

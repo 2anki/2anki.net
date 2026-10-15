@@ -317,6 +317,17 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
     expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_elsewhere`)).toBeNull();
   });
 
+  it('drops a corrupt persisted entry instead of re-parsing it every replay', () => {
+    sessionStorage.setItem(`${PENDING_PREFIX}cs_corrupt`, '{not json');
+    document.cookie = 'cookie_consent=granted';
+
+    replayPendingPurchaseConversions(buyer);
+
+    expect(firePurchaseConversion).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_corrupt`)).toBeNull();
+    document.cookie = 'cookie_consent=; Max-Age=0';
+  });
+
   it('replays without an email when a different account is signed in', () => {
     sessionStorage.setItem(
       `${PENDING_PREFIX}cs_switched`,
