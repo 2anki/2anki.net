@@ -11,8 +11,10 @@ const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
 interface ConsentDocument {
   cookie: string;
   documentElement: { dataset: { consentRegion?: string } };
-  location: { protocol: string };
+  location: { protocol: string; hostname?: string };
 }
+
+const VENDOR_COOKIE_PREFIXES = ['_ga', '_gcl', '_hj'];
 
 interface GtagWindow {
   gtag?: (...args: unknown[]) => void;
@@ -78,6 +80,30 @@ export function applyConsentToGtag(choice: ConsentChoice): void {
   });
 }
 
+function cookieNames(cookieHeader: string): string[] {
+  return cookieHeader
+    .split(';')
+    .map((entry) => entry.trim().split('=')[0])
+    .filter((name) => name.length > 0);
+}
+
+/** Google and Hotjar set their cookies on the site domain, so both the
+ * host-only and the domain form are expired. */
+function expireVendorCookies(d: ConsentDocument, secure: string): void {
+  const labels = (d.location.hostname ?? '').split('.');
+  const domain =
+    labels.length >= 2 ? `; Domain=.${labels.slice(-2).join('.')}` : '';
+  for (const name of cookieNames(d.cookie)) {
+    if (!VENDOR_COOKIE_PREFIXES.some((prefix) => name.startsWith(prefix))) {
+      continue;
+    }
+    d.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax${secure}`;
+    if (domain !== '') {
+      d.cookie = `${name}=; Max-Age=0; Path=/${domain}; SameSite=Lax${secure}`;
+    }
+  }
+}
+
 export function setConsent(
   choice: ConsentChoice,
   d: ConsentDocument | null = doc()
@@ -87,12 +113,14 @@ export function setConsent(
   }
   const secure = d.location.protocol === 'https:' ? '; Secure' : '';
   d.cookie = `${COOKIE_CONSENT_COOKIE}=${choice}; Max-Age=${ONE_YEAR_SECONDS}; Path=/; SameSite=Lax${secure}`;
+  const w = globalThis as GtagWindow;
   if (choice === 'denied') {
     d.cookie = `${AD_CLICK_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax${secure}`;
     d.cookie = `${FIRST_TOUCH_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax${secure}`;
+    expireVendorCookies(d, secure);
+    w.gtag?.('set', 'user_data', {});
   }
   applyConsentToGtag(choice);
-  const w = globalThis as GtagWindow;
   w.dispatchEvent?.(new CustomEvent(CONSENT_CHANGE_EVENT, { detail: choice }));
   // Hotjar has no client-side off switch once its script runs, so a withdrawal
   // after it loaded takes a reload to honour (the next load sees `denied`).

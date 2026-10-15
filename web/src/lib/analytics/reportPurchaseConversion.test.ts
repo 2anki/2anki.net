@@ -86,7 +86,7 @@ describe('reportPurchaseConversion', () => {
     expect(firePurchaseConversion).toHaveBeenCalledTimes(2);
   });
 
-  it('sends a held purchase when consent is granted later, without a second lookup', async () => {
+  it('sends a held purchase when consent is really granted later, without a second lookup', async () => {
     getCheckoutReceipt.mockResolvedValue(receipt);
     firePurchaseConversion.mockReturnValueOnce(false);
 
@@ -101,6 +101,13 @@ describe('reportPurchaseConversion', () => {
     globalThis.dispatchEvent(
       new CustomEvent(CONSENT_CHANGE_EVENT, { detail: 'granted' })
     );
+    expect(firePurchaseConversion).toHaveBeenCalledTimes(1);
+
+    document.cookie = 'cookie_consent=granted';
+    globalThis.dispatchEvent(
+      new CustomEvent(CONSENT_CHANGE_EVENT, { detail: 'granted' })
+    );
+    document.cookie = 'cookie_consent=; Max-Age=0';
     expect(firePurchaseConversion).toHaveBeenCalledTimes(2);
     expect(firePurchaseConversion).toHaveBeenLastCalledWith({
       sessionId: 'cs_test_held',

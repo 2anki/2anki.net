@@ -1,5 +1,5 @@
 import { get2ankiApi } from '../backend/get2ankiApi';
-import { CONSENT_CHANGE_EVENT } from '../consent/consent';
+import { CONSENT_CHANGE_EVENT, getEffectiveConsent } from '../consent/consent';
 import { firePurchaseConversion, PurchaseConversion } from './googleAds';
 
 const REPORTED_PREFIX = 'ads_purchase_reported:';
@@ -27,7 +27,10 @@ function markReported(sessionId: string): void {
 }
 
 function flushAwaitingConsent(event: Event): void {
-  if ((event as CustomEvent).detail !== 'granted') {
+  if (
+    (event as CustomEvent).detail !== 'granted' ||
+    getEffectiveConsent() !== 'granted'
+  ) {
     return;
   }
   for (const [sessionId, purchase] of awaitingConsent) {

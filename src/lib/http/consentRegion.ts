@@ -66,3 +66,20 @@ export function consentRegionForRequest(req: express.Request): ConsentRegion {
   const geo = geoip.lookup(resolveClientIp(req));
   return consentRegionFor(geo?.country ?? null);
 }
+
+/**
+ * Mirrors the browser rule for analytics and marketing cookies: an explicit
+ * `cookie_consent` wins; with none, consent is implied outside the EEA/UK/CH
+ * and required inside.
+ */
+export function trackingAllowedFor(req: express.Request): boolean {
+  const cookies = req.cookies as Record<string, unknown> | undefined;
+  const consent = cookies?.cookie_consent;
+  if (consent === 'granted') {
+    return true;
+  }
+  if (consent === 'denied') {
+    return false;
+  }
+  return consentRegionForRequest(req) === 'other';
+}

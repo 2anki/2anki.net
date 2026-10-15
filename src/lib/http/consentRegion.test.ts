@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import geoip from 'geoip-lite';
-import { consentRegionFor, consentRegionForRequest } from './consentRegion';
+import {
+  consentRegionFor,
+  consentRegionForRequest,
+  trackingAllowedFor,
+} from './consentRegion';
 
 vi.mock('geoip-lite', () => ({ default: { lookup: vi.fn() } }));
 vi.mock('../rateLimit/ipHelpers', () => ({
@@ -42,5 +46,33 @@ describe('consentRegionForRequest', () => {
     vi.mocked(geoip.lookup).mockReturnValue(null);
 
     expect(consentRegionForRequest({ headers: {} } as never)).toBe('eea');
+  });
+});
+
+describe('trackingAllowedFor', () => {
+  it('follows an explicit choice whatever the region says', () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+    expect(
+      trackingAllowedFor({
+        headers: {},
+        cookies: { cookie_consent: 'denied' },
+      } as never)
+    ).toBe(false);
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'DE' } as never);
+    expect(
+      trackingAllowedFor({
+        headers: {},
+        cookies: { cookie_consent: 'granted' },
+      } as never)
+    ).toBe(true);
+  });
+
+  it('implies consent outside the EEA and requires it inside when no choice is stored', () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+    expect(trackingAllowedFor({ headers: {}, cookies: {} } as never)).toBe(
+      true
+    );
+    vi.mocked(geoip.lookup).mockReturnValue(null);
+    expect(trackingAllowedFor({ headers: {} } as never)).toBe(false);
   });
 });

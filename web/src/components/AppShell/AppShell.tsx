@@ -49,16 +49,16 @@ export function AppShell({
         onLogOut={onLogOut}
         error={error}
       >
-        {children}
         <CookieBanner />
+        {children}
       </SidebarLayout>
     );
   }
 
   return (
     <PageLayout error={error} isLoggedIn={isLoggedIn}>
-      {children}
       <CookieBanner />
+      {children}
     </PageLayout>
   );
 }

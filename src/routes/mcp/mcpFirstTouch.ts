@@ -1,4 +1,5 @@
 import express from 'express';
+import { trackingAllowedFor } from '../../lib/http/consentRegion';
 
 const FIRST_TOUCH_COOKIE = 'first_touch';
 const MAX_AGE_MS = 30 * 60 * 1000;
@@ -14,7 +15,7 @@ export function mcpFirstTouchMiddleware(
   next: express.NextFunction
 ): void {
   const cookies = req.cookies as Record<string, unknown> | undefined;
-  if (cookies?.[FIRST_TOUCH_COOKIE] == null) {
+  if (cookies?.[FIRST_TOUCH_COOKIE] == null && trackingAllowedFor(req)) {
     res.cookie(
       FIRST_TOUCH_COOKIE,
       JSON.stringify({ landingPath: '/mcp', referrer: '' }),

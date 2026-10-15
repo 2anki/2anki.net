@@ -110,6 +110,39 @@ describe('setConsent', () => {
     expect(writes[2]).toContain('first_touch=; Max-Age=0');
   });
 
+  it('denying expires Google and Hotjar cookies on both cookie scopes and clears user data', () => {
+    const gtag = vi.fn();
+    (globalThis as { gtag?: unknown }).gtag = gtag;
+    const writes: string[] = [];
+    const d = {
+      ...fakeDoc('', 'eea'),
+      location: { protocol: 'https:', hostname: 'www.2anki.net' },
+      set cookie(value: string) {
+        writes.push(value);
+      },
+      get cookie() {
+        return 'token=abc; _ga=GA1.1.1; _ga_X6K69TY3EX=GS1.1; _gcl_au=1.1; _hjSessionUser_1=x';
+      },
+    };
+
+    setConsent('denied', d);
+
+    const expired = writes.filter((w) => w.includes('Max-Age=0'));
+    expect(expired).toContainEqual(
+      expect.stringContaining('_ga=; Max-Age=0; Path=/; SameSite=Lax; Secure')
+    );
+    expect(expired).toContainEqual(
+      expect.stringContaining('_ga=; Max-Age=0; Path=/; Domain=.2anki.net')
+    );
+    expect(expired).toContainEqual(expect.stringContaining('_ga_X6K69TY3EX=;'));
+    expect(expired).toContainEqual(expect.stringContaining('_gcl_au=;'));
+    expect(expired).toContainEqual(
+      expect.stringContaining('_hjSessionUser_1=;')
+    );
+    expect(expired.some((w) => w.startsWith('token='))).toBe(false);
+    expect(gtag).toHaveBeenCalledWith('set', 'user_data', {});
+  });
+
   it('omits Secure on http so local development still stores the choice', () => {
     const d = fakeDoc('', 'eea', 'http:');
     setConsent('granted', d);
