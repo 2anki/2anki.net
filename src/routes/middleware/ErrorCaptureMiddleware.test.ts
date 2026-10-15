@@ -317,6 +317,28 @@ describe('makeErrorCaptureMiddleware', () => {
     expect(next).toHaveBeenCalledWith(codedError);
   });
 
+  it('does not record a 416 from a bad Range header on a static file', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const next = makeNext();
+    const rangeError = Object.assign(new Error('Range Not Satisfiable'), {
+      name: 'RangeNotSatisfiableError',
+      status: 416,
+      statusCode: 416,
+      expose: true,
+    });
+
+    await middleware(
+      rangeError,
+      makeReq('/mascot/Notion%201.png'),
+      makeRes(),
+      next
+    );
+
+    expect(repo.inserts).toHaveLength(0);
+    expect(next).toHaveBeenCalledWith(rangeError);
+  });
+
   it('records a 5xx HttpCodedError', async () => {
     const repo = makeRepository();
     const middleware = makeErrorCaptureMiddleware(repo);

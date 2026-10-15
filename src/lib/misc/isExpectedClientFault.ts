@@ -17,6 +17,22 @@ const isClientAbort = (error: Error): boolean => {
   );
 };
 
+// http-errors marks a request's own fault with `expose: true` and a 4xx
+// status. `send` (behind express.static) throws one for a bad Range header on
+// a static file — a 416 for the caller, not a crash to investigate.
+export const exposedHttpClientStatus = (error: Error): number | null => {
+  const { status, expose } = error as { status?: unknown; expose?: unknown };
+  if (
+    expose === true &&
+    typeof status === 'number' &&
+    status >= 400 &&
+    status < 500
+  ) {
+    return status;
+  }
+  return null;
+};
+
 export const isExpectedClientFault = (error?: Error): boolean => {
   if (!error) {
     return false;
@@ -28,6 +44,9 @@ export const isExpectedClientFault = (error?: Error): boolean => {
     return true;
   }
   if (isHttpCodedClientFault(error)) {
+    return true;
+  }
+  if (exposedHttpClientStatus(error) != null) {
     return true;
   }
   // Every multer error is the request's fault (too large, wrong field,

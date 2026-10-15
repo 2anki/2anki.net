@@ -98,6 +98,25 @@ describe('ErrorHandler', () => {
     );
   });
 
+  test('answers an exposed 4xx http-error with its own status', async () => {
+    const res = makeResponse(false);
+    const req = makeRequest();
+    const rangeError = Object.assign(new Error('Range Not Satisfiable'), {
+      name: 'RangeNotSatisfiableError',
+      status: 416,
+      statusCode: 416,
+      expose: true,
+    });
+
+    await ErrorHandler(res as unknown as express.Response, req, rangeError);
+
+    expect(res.statusCode).toBe(416);
+    expect(res.json).toHaveBeenCalledWith({
+      code: 'unknown',
+      message: 'Range Not Satisfiable',
+    });
+  });
+
   test('emits code=invalid_markup for a PythonExitError with kind invalid-markup', async () => {
     const res = makeResponse(false);
     const req = makeRequest();
