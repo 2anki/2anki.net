@@ -63,7 +63,9 @@ ABSOLUTE SAFETY RULES (non-negotiable):
   - NEVER put a reporter's name, email, Notion workspace, or deck title in a
     commit, PR, branch, or issue comment — use the numeric user ID or a role.
   - Unsure about product, UX or copy → run the trio, ship, and record the call under
-    `## Decisions`. Skip only issues outside acquisition scope.
+    `## Decisions`. A price, payment or Stripe value, a paid plan or any new spend → draft and
+    name it in the summary; the four `CLAUDE.md` halts apply. Skip only issues outside
+    acquisition scope.
 
 LOG one line per issue as you go: issue # → verified relevant / closed (reason) /
 fixed (PR #) / skipped (reason). Stop when the acquisition-relevant queue is

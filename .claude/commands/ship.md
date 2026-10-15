@@ -13,6 +13,7 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
 ```
 
 - Rail-class PR (auth, payments, migrations) whose body records an unverified assumption → `gh pr ready --undo`, name the assumption for Alexander, and stop this PR's ship; a wrong guess there is not undone by a revert.
+- PR that incurs new spend (a paid service, plan, model or paid batch run) with no recorded approval from Alexander → `gh pr ready --undo`, name the spend, and stop this PR's ship; the run continues with other items.
 - Draft → read the body, then one of:
   - it records a blocker only Alexander can clear (a value only he holds: a secret, a Stripe or Google dashboard setting; or new spend to approve) → interactive run: ask him for that value in the chat; unattended run: leave it draft, name the value in the morning summary, and continue with the next item;
   - it is a `/spec-draft-pr` spec → not a ship target: route it to `/implement`, report that, and continue with the next item (never `gh pr ready` here); a WIP flag is the author's note, not a halt: finish the work, then ready it;
@@ -24,7 +25,7 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
   python3 -c "import sys; sys.path.insert(0,'.claude/hooks'); import hard_rails as r; p=open('/tmp/ship-paths.txt').read().split(); print(r.rail_paths(p)); print(r.rail_content_hits(open('/tmp/ship-diff.txt').read()))"
   ```
   Any hit → run the matching checks in step 1b before step 2, and step 6b after the deploy. A rail PR merges on that evidence; it does not stop and wait for Alexander, unless its body records an unverified assumption (step 1).
-- Bring the branch up to date: `gh pr checkout <n>`, `git fetch origin main`, `git rebase origin/main`. If the rebase moved HEAD, `git push --force-with-lease origin <branch>` and re-read `headRefOid`. A Dependabot-authored head is the exception: never rebase or push it yourself; comment `@dependabot rebase`, wait on a `ScheduleWakeup` of 1200s, and re-read `headRefOid`.
+- Bring the branch up to date: `gh pr checkout <n>`, `git fetch origin main`, `git rebase origin/main`. If the rebase moved HEAD, `git push --force-with-lease origin <branch>` and re-read `headRefOid`. A Dependabot-authored head is the exception: never rebase or push it yourself; comment `@dependabot rebase`, wait on a `ScheduleWakeup` of 1200s, and re-read `headRefOid`; the run continues with other items meanwhile, this holds only this PR.
 
 ## 1b. Rail verification (only when step 1 hit)
 
@@ -104,7 +105,7 @@ Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the queu
 curl -fsS https://2anki.net/api/version | jq -r .sha
 ```
 
-Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise. Verdict "watching X" → re-run `/deploy-status` after a `ScheduleWakeup` of 270s, reporting the evidence each round; the loop ends only at healthy or broken, never report healthy while watching. A failed deploy run is "watching" only once its log confirms the last-good restore ran; otherwise it is "broken" (the 2026-08-06 shape: live process up, poisoned disk). Verdict "broken" → step 8.
+Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise. Verdict "watching X" → re-run `/deploy-status` after a `ScheduleWakeup` of 270s, reporting the evidence each round; the loop ends only at healthy or broken, never report healthy while watching; the run continues with other items meanwhile, this holds only this PR's deploy verdict. A failed deploy run is "watching" only once its log confirms the last-good restore ran; otherwise it is "broken" (the 2026-08-06 shape: live process up, poisoned disk). Verdict "broken" → step 8.
 
 ## 6b. Rail verification after deploy (only when step 1 hit)
 

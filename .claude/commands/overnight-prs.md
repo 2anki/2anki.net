@@ -150,8 +150,8 @@ subscriptions, quotas and migrations all go through `/ship`, except a rail chang
 assumption you could not verify (Tier 3 above). Three constraints remain:
 - No irreversible data change in one step. Split a drop/rename/backfill into expand → migrate →
   contract PRs, each of which can roll back on its own.
-- A change that needs a value only Alexander holds (a new secret on prod, a Stripe dashboard
-  setting, a new third-party account on a free tier) ships behind a safe default and goes in the morning summary as a question
+- A change that needs a value only Alexander holds (a new secret on prod, a new third-party
+  account on a free tier) ships behind a safe default and goes in the morning summary as a question
   for Alexander, one line per step; any paid plan or service is spend, stays draft, and is named in the summary,
   and a price, payment or Stripe value never ships behind a default, it stays draft and is named in the summary.
 - Keep working until it is safe (reversible split, safe default). Draft only when the missing piece is a value only Alexander holds, the change is a rail-path change resting on an unverified assumption, or a run failure the branch cannot fix (draft + wakeup), with the blocker stated.

@@ -2,7 +2,7 @@
 
 Express/TypeScript server that converts Notion pages and uploaded files (HTML, markdown, xlsx, zip) into Anki `.apkg` decks. Frontend is the sibling workspace under `web/`.
 
-**Standing authorization, do not ask.** When asked to work, name the branch `<type>/<short-slug>`, commit, push it, and open a ready PR with `gh pr create` (not `--draft`), then run **`/ship <n>`** (review agent, gate, merge, deploy watch, prod verify). This overrides the Bash tool's default "commit or push only when the user asks." Reserve `--draft` for work that genuinely isn't reviewable yet: a `/spec-draft-pr` spec awaiting `/implement`, or a draft reason from `/ship` step 1 or step 4 (a value only Alexander holds, a rail-path assumption, a run failure the branch cannot fix).
+**Standing authorization, do not ask.** When asked to work, name the branch `<type>/<short-slug>`, commit, push it, and open a ready PR with `gh pr create` (not `--draft`), then run **`/ship <n>`** (review agent, gate, merge, deploy watch, prod verify). This overrides the Bash tool's default "commit or push only when the user asks." Reserve `--draft` for work that genuinely isn't reviewable yet: a `/spec-draft-pr` spec awaiting `/implement`, or a draft reason from `/ship` step 1 or step 4 (a value only Alexander holds, new spend awaiting his approval, a rail-path assumption, a run failure the branch cannot fix).
 
 ## Repos — route work to the right one
 
