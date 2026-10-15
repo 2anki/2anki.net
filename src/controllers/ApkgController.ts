@@ -41,6 +41,7 @@ import { getApkgImportNoteCap } from '../lib/apkg/importLimits';
 import { buildContentDisposition } from '../lib/buildContentDisposition';
 import { getSafeFilename, toDownloadBasename } from '../lib/getSafeFilename';
 import { track } from '../services/events/track';
+import type { ServerErrorRecorder } from '../routes/middleware/ErrorCaptureMiddleware';
 
 async function tryUnlink(filePath: string): Promise<void> {
   const fs = await import('node:fs/promises');
@@ -139,7 +140,8 @@ class ApkgController {
     private readonly previewService: ApkgPreviewService,
     private readonly pdfRenderService: PdfRenderService = new PdfRenderService(),
     private readonly notionService?: NotionService,
-    private readonly jobRepository?: JobRepository
+    private readonly jobRepository?: JobRepository,
+    private readonly recordServerError?: ServerErrorRecorder
   ) {}
 
   private async loadForKey(req: Request, res: Response) {
@@ -240,15 +242,18 @@ class ApkgController {
     try {
       const file = req.file;
       if (file == null) {
+        trackPdfExportFailed(res, 'no_file');
         res.status(400).json({ message: 'No file uploaded.' });
         return;
       }
       if (!isApkg(file.originalname)) {
+        trackPdfExportFailed(res, 'not_apkg');
         res.status(400).json({ message: 'File must be an .apkg file.' });
         return;
       }
       const pdfOptions = parsePdfOptions(req.body as Record<string, unknown>);
       if (pdfOptions == null) {
+        trackPdfExportFailed(res, 'invalid_options');
         res.status(400).json({
           message:
             'Invalid background color. Use a six-digit hex value like #ffffff.',
@@ -294,7 +299,7 @@ class ApkgController {
       );
       res.send(result.pdf);
     } catch (error) {
-      sendPdfExportError(res, error);
+      await sendPdfExportError(req, res, error, this.recordServerError);
     }
   }
 
@@ -574,9 +579,52 @@ function csvNoteLimitFor(owner: unknown, paying: boolean): number | null {
   return owner == null ? CSV_ANONYMOUS_NOTE_LIMIT : CSV_FREE_NOTE_LIMIT;
 }
 
-function sendPdfExportError(res: Response, error: unknown): void {
-  if (sendApkgTooLarge(res, error)) return;
+export type PdfExportFailureReason =
+  | 'no_file'
+  | 'not_apkg'
+  | 'invalid_options'
+  | 'apkg_too_large'
+  | 'card_limit'
+  | 'render_timeout'
+  | 'render_crashed'
+  | 'invalid_apkg'
+  | 'unexpected';
+
+// Coarse on purpose: enough to tell "huge deck" from "tiny deck" on the ops
+// side without logging anything that identifies a specific upload.
+export function cardCountBucket(cardCount: number | undefined): string {
+  if (cardCount == null) return 'unknown';
+  if (cardCount <= 100) return '1-100';
+  if (cardCount <= 500) return '101-500';
+  if (cardCount <= 1000) return '501-1000';
+  if (cardCount <= 5000) return '1001-5000';
+  return '5000+';
+}
+
+function trackPdfExportFailed(
+  res: Response,
+  reason: PdfExportFailureReason,
+  cardCount?: number
+): void {
+  track('pdf_export_failed', {
+    userId: typeof res.locals.owner === 'number' ? res.locals.owner : null,
+    props: { reason, card_count_bucket: cardCountBucket(cardCount) },
+  });
+}
+
+async function sendPdfExportError(
+  req: Request,
+  res: Response,
+  error: unknown,
+  recordServerError?: ServerErrorRecorder
+): Promise<void> {
+  if (error instanceof ApkgTooLargeError) {
+    trackPdfExportFailed(res, 'apkg_too_large');
+    sendApkgTooLarge(res, error);
+    return;
+  }
   if (error instanceof CardLimitExceededError) {
+    trackPdfExportFailed(res, 'card_limit', error.cardCount);
     res.status(400).json({ message: error.message });
     return;
   }
@@ -584,21 +632,30 @@ function sendPdfExportError(res: Response, error: unknown): void {
     track('pdf_render_timed_out', {
       userId: typeof res.locals.owner === 'number' ? res.locals.owner : null,
     });
+    trackPdfExportFailed(res, 'render_timeout', error.cardCount);
     res.status(400).json({ message: error.message });
     return;
   }
   if (error instanceof PdfRenderCrashedError) {
     // The deck is the problem, not the server: answer with what to do next.
     console.warn('PDF render crashed:', error.cause);
+    trackPdfExportFailed(res, 'render_crashed', error.cardCount);
     res.status(400).json({ message: error.message });
     return;
   }
   if (isInvalidApkgError(error)) {
+    trackPdfExportFailed(res, 'invalid_apkg');
     res.status(400).json({ message: 'Invalid .apkg file' });
     return;
   }
   console.error(error);
+  trackPdfExportFailed(res, 'unexpected');
   res.status(500).json({ message: 'PDF generation failed.' });
+  await recordServerError?.(
+    error instanceof Error ? error : new Error(String(error)),
+    req,
+    res
+  );
 }
 
 function sendImportStartError(res: Response, error: unknown): void {

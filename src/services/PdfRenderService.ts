@@ -37,6 +37,9 @@ export const PDF_TOO_BIG_MESSAGE =
   'This deck is too big to print in one go. Split it into smaller decks in Anki and print them one at a time.';
 
 export class PdfRenderTimeoutError extends Error {
+  // Set by the export use case so failure analytics can bucket deck size.
+  cardCount?: number;
+
   constructor() {
     super(
       'This deck is too large to turn into a PDF in time. Split it into smaller decks in Anki and print them one at a time.'
@@ -46,6 +49,8 @@ export class PdfRenderTimeoutError extends Error {
 }
 
 export class PdfRenderCrashedError extends Error {
+  cardCount?: number;
+
   constructor(public readonly cause?: unknown) {
     super(PDF_TOO_BIG_MESSAGE);
     this.name = 'PdfRenderCrashedError';

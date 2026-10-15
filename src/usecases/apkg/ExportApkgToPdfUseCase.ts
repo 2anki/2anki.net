@@ -4,6 +4,7 @@ import ApkgPreviewService, {
 } from '../../services/ApkgPreviewService/ApkgPreviewService';
 import PdfRenderService, {
   PdfRenderCrashedError,
+  PdfRenderTimeoutError,
 } from '../../services/PdfRenderService';
 import { RenderedCard } from '../../services/ApkgPreviewService/types';
 
@@ -241,6 +242,26 @@ export default class ExportApkgToPdfUseCase {
     const cards = collectAllCards(this.previewService, parsed);
     const deckName =
       meta.decks.length > 0 ? meta.decks[0].fullName : 'Flashcards';
+    try {
+      const pdf = await this.render(deckName, cards, parsed, options);
+      return { pdf, deckName, cardCount: cards.length };
+    } catch (error) {
+      if (
+        error instanceof PdfRenderCrashedError ||
+        error instanceof PdfRenderTimeoutError
+      ) {
+        error.cardCount = cards.length;
+      }
+      throw error;
+    }
+  }
+
+  private async render(
+    deckName: string,
+    cards: RenderedCard[],
+    parsed: ParsedApkg,
+    options: PdfOptions
+  ): Promise<Buffer> {
     const assets = new PdfAssets(parsed);
     let html: string;
     try {
@@ -250,11 +271,10 @@ export default class ExportApkgToPdfUseCase {
       if (error instanceof RangeError) throw new PdfRenderCrashedError(error);
       throw error;
     }
-    const pdf = await this.pdfRenderService.renderDocument(
+    return this.pdfRenderService.renderDocument(
       { html, assets: assets.files },
       options
     );
-    return { pdf, deckName, cardCount: cards.length };
   }
 }
 
