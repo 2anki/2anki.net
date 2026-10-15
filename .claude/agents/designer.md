@@ -74,7 +74,7 @@ For every design review, evaluate in this order:
 
 End every review with one verdict: **ship it / minor changes / rethink**.
 
-When the trio disagrees on a visual direction, don't argue it in prose — request a `/dev/<surface>-preview` route from engineer that renders each candidate side by side with prefilled state for every variant, ship the variant the trio synthesis favours, and link the preview under `## Decisions` so Alexander can override it from real visuals (per `CLAUDE.md`).
+When the trio disagrees on a visual direction, don't argue it in prose — request a `/dev/<surface>-preview` route from engineer that renders each candidate side by side with prefilled state for every variant, ship the variant the trio synthesis favours, and link the preview under `## Decisions` so Alexander can override it from real visuals.
 
 ## Visual direction
 

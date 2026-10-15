@@ -16,8 +16,8 @@ Alexander is asleep and will NOT respond — never wait, never ask a question. *
 issue needs a product, UX, or copy decision, CONVENE THE TRIO (pm + designer + engineer in one
 parallel Agent call), let them make the call, implement it, and write every decision and
 assumption into a `## Decisions made overnight` section of the PR so Alexander can review and
-override in the morning.** You only SKIP when a change is genuinely unsafe to make unattended
-(see the hard rails below) or when you truly cannot tell what the issue is asking even after the
+override in the morning.** You only SKIP when no reversible split or safe default makes the change safe
+unattended (see the hard rails below) or when you truly cannot tell what the issue is asking even after the
 trio looks at it. Defer the *judgment to a documented trio call*, don't defer the *work*.
 
 Optional focus / seed from the invocation: $ARGUMENTS
@@ -136,7 +136,7 @@ READY with a `## Decisions made overnight` section, then `/ship`.**
 - Document EVERY decision and assumption in the PR (format below) so Alexander can override.
 - Rail paths are fine; `/ship` runs the extra rail verification.
 
-**Tier 3 — rests on a value only Alexander holds (a price, a contract term, an external account) → open DRAFT, flagged.** An assumption you cannot verify with tools is NOT Tier 3 unless it sits on a rail path (auth, payments, migrations): off the rails the trio picks the most likely reading, you ship it reversibly through `/ship`, and the call lands under `## Decisions` for him to override; on a rail path the unverified assumption stays draft.
+**Tier 3 — rests on a value only Alexander holds (a price, a contract term, an external account) and no safe default exists → open DRAFT, flagged.** When a safe default exists, ship behind it (see the hard rails below) and ask in the morning summary. An assumption you cannot verify with tools is NOT Tier 3 unless it sits on a rail path (auth, payments, migrations): off the rails the trio picks the most likely reading, you ship it reversibly through `/ship`, and the call lands under `## Decisions` for him to override; on a rail path the unverified assumption stays draft.
 - The missing piece is a fact no test, log, or prod read can supply and only he knows.
   A migration alone is NOT Tier 3: write it, run `pnpm kanel`, and ship it through `/ship`, whose
   rail verification runs `migration-reviewer` and the migrate/rollback cycle.
@@ -213,20 +213,20 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
 
 ## Logging
 Running log, one line per issue, with a running counter so the log reconciles against M:
-`[idx/M] #NNN <title> → <state>`. There are FOUR terminal states — every issue you reach lands in
+`[idx/M] #NNN <title> → <state>`. There are FIVE terminal states — every issue you reach lands in
 exactly one, so the log accounts for every issue you opened, not just the ones you acted on:
 - `SHIPPED <url> (T1|T2, healthy|no deploy|reverted)` — merged and deployed through `/ship`.
-- `PR <url> (T3|check, draft)` — a draft that waits on a value only Alexander holds, or on a check
-  failure outside the diff; name the blocker.
+- `PR <url> (T3|check-failure, draft)` — a draft that waits on a value only Alexander holds with no
+  safe default, or on a check failure outside the diff; name the blocker.
 - `CLOSED: <reason>` — closed per Step 0 (already fixed / already shipped / superseded / duplicate
   of #m / junk).
-- `SKIPPED: <reason>` — relevant but still unintelligible after the trio looked, or needs a value
-  only Alexander holds. Left OPEN. This should be the
+- `SKIPPED: <reason>` — relevant but still unintelligible after the trio looked, or unsafe with no
+  reversible split (a value only Alexander holds is a `PR … draft`, not a skip). Left OPEN. This should be the
   exception, not the default — if you're skipping most issues, you're back to the old broken
   behavior.
 - `REACHED: left open` — examined, genuinely nothing to ship and not closeable. Should be rare.
 
-On stop, print the summary in this order — counts are the hero; the four buckets must sum to
+On stop, print the summary in this order — counts are the hero; the five buckets must sum to
 "reached", and "reached + never reached" must equal M:
 
 1. **Coverage line first** (a half-awake reader sees this before anything else). "Never reached"
@@ -247,8 +247,8 @@ On stop, print the summary in this order — counts are the hero; the four bucke
 
 ## Stop conditions
 Stop when every issue in the Step 0a backlog file has been processed (its number is in
-`/tmp/overnight-processed.txt`), OR you hit your usage/token limit, OR remaining candidates all
-need Alexander's input. A `/ship` that is mid-deploy when you stop must finish first — never
+`/tmp/overnight-processed.txt`), OR you hit your usage/token limit, OR every remaining candidate
+needs a value only Alexander holds. A `/ship` that is mid-deploy when you stop must finish first — never
 leave a merge unverified. "No eligible issues remain" is true ONLY when N == M from Step 0a — never
 infer it from an un-paginated `gh issue list`. ALWAYS emit the coverage line on stop, even when
 truncated. Do NOT invent work. Quality and safety over volume.

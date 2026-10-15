@@ -12,7 +12,7 @@ Pilot scope is the `dependabot` task type. `dead-code` and `copy-sweep` are defe
 - `MAX_TASKS = 20`
 - `MAX_CONCURRENT = 4`
 - `TIMEOUT_PER_TASK = 10 min`
-- `HARD_BLOCK_PATHS` — any change touching:
+- `HARD_BLOCK_PATHS` — a flag, not a block: entries touching these paths still dispatch, with `/security-review` first. Any change touching:
   - `src/services/StripeService/**`
   - `src/services/AuthenticationService/**`
   - `src/lib/Token.ts`
@@ -21,7 +21,7 @@ Pilot scope is the `dependabot` task type. `dead-code` and `copy-sweep` are defe
 
 ## Step 1 — pre-check
 
-Refuse to start if the orchestrator's main checkout is dirty.
+Check whether the orchestrator's main checkout is dirty:
 
 ```
 git status --porcelain
@@ -53,7 +53,7 @@ For each PR:
 2. If `--patch-only` is set, drop entries whose bump level is not `patch`.
 3. Pull the file list (`files[].path`). If any path matches `HARD_BLOCK_PATHS`, keep the entry in the dispatch list, mark it `hard-blocked` so the worker runs `/security-review` on the diff first, and list it separately in the final report.
 
-Cap the result at `MAX_TASKS`. Invoking `/batch` is Alexander's approval for up to `MAX_TASKS` agent runs. If the raw queue had more than `MAX_TASKS` viable entries, print `Queue has <N> tasks; cap is 20. Dispatching the first 20; the remaining <N-20> stay in the queue for the next /batch.` and continue; nothing is dropped, the leftovers are still open on GitHub.
+Cap the result at `MAX_TASKS`. Alexander typing `/batch` himself is the approval for up to `MAX_TASKS` agent runs; an agent never invokes `/batch` to create that approval. If the raw queue had more than `MAX_TASKS` viable entries, print `Queue has <N> tasks; cap is 20. Dispatching the first 20; the remaining <N-20> stay in the queue for the next /batch.` and continue; nothing is dropped, the leftovers are still open on GitHub.
 
 ## Step 4 — dispatch loop
 
@@ -97,7 +97,7 @@ Print one final markdown table:
 | bump qux from 5.0.0 to 5.0.1 | dependabot/npm_and_yarn/qux-5.0.1 | 2304 | timeout |
 ```
 
-Status values are exactly: `merged | open | needs-review | failed-checks | timeout`. No others.
+Status values are exactly: `merged | open | needs-review | failed-checks | timeout`. No others. (`would-dispatch` appears only in `--dry-run` output, and `hard-blocked` is a flag on a row, not a status.)
 
 Below the table, one summary line:
 

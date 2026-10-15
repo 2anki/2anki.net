@@ -12,7 +12,10 @@ You are shipping PR `$ARGUMENTS`. This is the **only** path an agent uses to run
 gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headRefOid,body,author,statusCheckRollup
 ```
 
-- Draft → read the body. If it records a blocker only Alexander can clear (a value only he holds: a secret, a Stripe or Google dashboard setting, spend approval), stop and ask him for that value in the chat. If the body flags it as WIP, it stays draft; report that. Otherwise finish what keeps it draft (a `/spec-draft-pr` spec goes through `/implement` first), wait for green, `gh pr ready`, and continue.
+- Draft → read the body, then one of:
+  - it records a blocker only Alexander can clear (a value only he holds: a secret, a Stripe or Google dashboard setting, spend approval) → interactive run: ask him for that value in the chat; unattended run: leave it draft and name the value in the morning summary;
+  - it is a `/spec-draft-pr` spec, or flagged WIP → leave it draft and report that (a spec goes through `/implement`, never `gh pr ready` here);
+  - otherwise → finish what keeps it draft, wait for green, `gh pr ready`, and continue.
 - Rail class? Run the classifier on the file list and diff:
   ```bash
   gh pr view <n> --json files --jq '.files[].path' > /tmp/ship-paths.txt
@@ -80,7 +83,7 @@ gh api graphql -f query='{ repository(owner:"2anki", name:"2anki.net") { pullReq
 ```
 
 - `state: MERGED` → record `MERGE_SHA` from `mergeCommit.oid` and continue.
-- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake: read both failed logs, put the fix on the branch, and restart from step 1. Stop only when the failing job is infrastructure the branch cannot change (a runner outage, a GitHub incident), and say so with the run URL.
+- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake: read both failed logs, put the fix on the branch, and restart from step 1. When the failing job is infrastructure the branch cannot change (a runner outage, a GitHub incident), leave the PR ready, note the run URL on it, and move on; retry the enqueue once the incident clears.
 
 Never delete the branch by hand before the queue has merged; the queue needs it.
 
@@ -100,7 +103,7 @@ Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the queu
 curl -fsS https://2anki.net/api/version | jq -r .sha
 ```
 
-Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise.
+Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise. Verdict "watching X" → re-run `/deploy-status` after a `ScheduleWakeup` of 270s until it reads healthy or broken; never report healthy while watching. Verdict "broken" → step 8.
 
 ## 6b. Rail verification after deploy (only when step 1 hit)
 
@@ -131,4 +134,4 @@ If the deploy run failed, `/api/version` does not report the merge SHA after the
 
 End with two lines: the PR URL, and the deploy verdict (`healthy <sha>` / `no deploy` / `reverted → <revert PR URL>`).
 
-Trio calls stay in the PR body under `## Decisions`; Alexander overrides one by commenting on the merged PR or opening a follow-up. If the PR leaves a step only Alexander can do (a prod secret, a Stripe dashboard setting, confirming on a specific account), ask Alexander for it in the chat. Do not open a `Needs you` issue. Do not create a daily `Shipped <date>` digest issue: those were dropped 2026-09-08 because they duplicated the merged-PR list and added an issue a day to close.
+Trio calls stay in the PR body under `## Decisions`; Alexander overrides one by commenting on the merged PR or opening a follow-up. If the PR leaves a step only Alexander can do (a prod secret, a Stripe dashboard setting, confirming on a specific account), ask Alexander for it in the chat; an unattended run names it in the morning summary instead. Do not open a `Needs you` issue. Do not create a daily `Shipped <date>` digest issue: those were dropped 2026-09-08 because they duplicated the merged-PR list and added an issue a day to close.

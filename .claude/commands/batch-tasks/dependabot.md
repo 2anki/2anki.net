@@ -48,9 +48,9 @@ Inspect the bumped package (from the title) and the file list. Hold — comment 
 
 - **Pinned override** — touches a package listed in `pnpm.overrides` (`package.json`): `path-to-regexp`, `picomatch`, `rollup`, `yaml`, `@types/express`, `@types/express-serve-static-core`. Bumping these can silently re-open a CVE we've worked around.
 - **Built dependency** — touches anything in `pnpm.onlyBuiltDependencies` (currently `better-sqlite3`). Build-step deps need a manual smoke run.
-- **Security-sensitive surface** — touches `bcryptjs`, `jsonwebtoken`, `sanitize-html`, `multer`, `express`, `stripe`, `@notionhq/client`, `@anthropic-ai/sdk`, `@sendgrid/mail`, `axios`, `knex`, or anything matching `node-*`. Even minors here get a manual look.
+- **Security-sensitive surface** — touches `bcryptjs`, `jsonwebtoken`, `sanitize-html`, `multer`, `express`, `stripe`, `@notionhq/client`, `@anthropic-ai/sdk`, `@sendgrid/mail`, `axios`, `knex`, or anything matching `node-*`. Even minors here get a manual look, so the `security` matrix rows below never apply to these packages.
 - **Held bump** — the package appears under "Held bumps" in `.claude/rules/dependencies.md` — that list is the only source of named-package holds (it reads "None at the moment" today). Comment with the hold reason and return `needs-review`; do not re-litigate the hold.
-- **Stale or skipped CI** — any `test`-named check in `statusCheckRollup` is SKIPPED/CANCELLED, or the PR's checks predate a `.github/workflows/` change on main. Comment `@dependabot rebase`, wait for the new run, and re-evaluate — never merge on a rollup whose test job didn't run (the 2026-08-06 outage shipped exactly this way).
+- **Stale or skipped CI** — any `test`-named check in `statusCheckRollup` is SKIPPED/CANCELLED, or the PR's checks predate a `.github/workflows/` change on main. Comment `@dependabot rebase`, exit `needs-review`, and re-evaluate on the next `/batch` — never merge on a rollup whose test job didn't run (the 2026-08-06 outage shipped exactly this way).
 
 For any 2b hold, comment with the reason and a changelog link so the next reviewer can decide in 30 seconds, then exit `needs-review`:
 
@@ -77,13 +77,13 @@ Decision matrix:
 | bump | /check | security label | action |
 | --- | --- | --- | --- |
 | patch | green | none | `/ship <n>` → status `merged` |
-| patch | red | any | comment with the failure summary → status `needs-review` |
+| patch | red | any | read the failed log once; a flake unrelated to the diff → `gh run rerun` and re-evaluate; otherwise comment the failure summary → status `needs-review` (a bump is never patched on the branch) |
 | patch | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
 | minor | green | none | full server suite locally green, then `/ship <n>` → status `merged` |
-| minor | red | any | comment with the failure summary → status `needs-review` |
+| minor | red | any | same as patch + red |
 | minor | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
 | major | green | none | the `dependencies.md` major-bump checks (changelog for removed APIs, full server suite locally green, plugin grep), written into the `/ship` review brief so its fresh reviewers confirm them, then `/ship <n>` → status `merged`; a breakage → comment what broke → status `needs-review` |
-| major | red | any | comment with the failure summary → status `needs-review` |
+| major | red | any | same as patch + red |
 | major | green | security | the major-bump checks plus `/security-review`; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
 | unknown | any | any | comment "Could not parse bump level from title" → status `needs-review` |
 
@@ -93,7 +93,7 @@ Decision matrix:
 /ship <n>
 ```
 
-Only ever from a `green` row whose listed checks and reviews passed, and only when Step 2 raised no hold. Never from a red row.
+Only ever from a `green` row whose listed checks and reviews passed, and only when Step 2 raised no hold. Never from a red row. A `/ship` that ends without `state: MERGED` (a dequeue, a revert, a step only Alexander can do) maps to `failed-checks` when CI failed and `needs-review` otherwise.
 
 **Comment call (any `needs-review` exit):**
 
