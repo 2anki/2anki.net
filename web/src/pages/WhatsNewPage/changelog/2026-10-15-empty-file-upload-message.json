@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-15-empty-file-upload-message",
+  "date": "2026-10-15",
+  "type": "fix",
+  "title": "Uploading a 0-byte file, such as a cloud drive placeholder, says so and asks for the downloaded copy"
+}

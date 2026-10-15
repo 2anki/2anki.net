@@ -257,6 +257,8 @@
       "unreadableFileTitle": "Dit bestand is veranderd sinds je het koos",
       "unreadableFileBody": "De browser kan de gekozen versie niet meer lezen: het is na het kiezen opgeslagen, verplaatst of verwijderd. Kies het opnieuw om de huidige versie te uploaden.",
       "unreadableChooseAgain": "Kies het bestand opnieuw",
+      "emptyFileTitle": "Dit bestand is leeg",
+      "emptyFileBody": "Het is 0 bytes, dus er valt niets om te zetten. Staat het in OneDrive, iCloud Drive of Google Drive? Open het dan één keer zodat het naar je computer wordt gedownload en kies het daarna opnieuw.",
       "sampleSuccessNote": "Dit is een voorbeelddeck. Converteer nu je eigen bestand.",
       "convertYourOwn": "Je eigen bestand converteren",
       "emptyAllFiltered": "Een kaartfilter heeft alle kaarten verwijderd. Als je cherry pick (🍒) of skip (🥑) hebt aangezet, markeer dan de gewenste toggles of zet het filter uit, en converteer opnieuw."

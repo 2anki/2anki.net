@@ -257,6 +257,8 @@
       "unreadableFileTitle": "Diese Datei hat sich geändert, seit du sie ausgewählt hast",
       "unreadableFileBody": "Der Browser kann die gewählte Version nicht mehr lesen – sie wurde nach der Auswahl gespeichert, verschoben oder gelöscht. Wähle die Datei erneut, um die aktuelle Version hochzuladen.",
       "unreadableChooseAgain": "Datei erneut wählen",
+      "emptyFileTitle": "Diese Datei ist leer",
+      "emptyFileBody": "Sie hat 0 Bytes, also gibt es nichts umzuwandeln. Liegt sie in OneDrive, iCloud Drive oder Google Drive, öffne sie einmal, damit sie auf deinen Computer geladen wird, und wähle sie dann erneut.",
       "sampleSuccessNote": "Das ist ein Beispielstapel. Konvertiere als Nächstes deine eigene Datei.",
       "convertYourOwn": "Eigene Datei konvertieren",
       "emptyAllFiltered": "Ein Kartenfilter hat alle Karten entfernt. Wenn du Cherry Pick (🍒) oder Skip (🥑) aktiviert hast, markiere die gewünschten Toggles oder schalte den Filter aus, und konvertiere dann erneut."

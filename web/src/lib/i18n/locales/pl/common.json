@@ -267,6 +267,8 @@
       "unreadableFileTitle": "Ten plik zmienił się od momentu wyboru",
       "unreadableFileBody": "Przeglądarka nie może już odczytać wybranej wersji: została zapisana, przeniesiona lub usunięta po wybraniu. Wybierz plik ponownie, aby przesłać aktualną wersję.",
       "unreadableChooseAgain": "Wybierz plik ponownie",
+      "emptyFileTitle": "Ten plik jest pusty",
+      "emptyFileBody": "Ma 0 bajtów, więc nie ma czego konwertować. Jeśli leży w OneDrive, iCloud Drive lub Google Drive, otwórz go raz, aby pobrał się na komputer, a potem wybierz go ponownie.",
       "sampleSuccessNote": "To jest przykładowa talia. Teraz przekonwertuj własny plik.",
       "convertYourOwn": "Przekonwertuj własny plik",
       "emptyAllFiltered": "Filtr kart usunął wszystkie karty. Jeśli włączono cherry pick (🍒) lub skip (🥑), oznacz potrzebne toggle albo wyłącz filtr, a potem przekonwertuj ponownie."

@@ -1634,7 +1634,46 @@ describe('UploadForm analytics events', () => {
       expect(requests).not.toContain('/api/events/errors');
       expect(trackMock).toHaveBeenCalledWith(
         'upload_file_unreadable',
-        expect.objectContaining({ fileExt: '.zip' })
+        expect.objectContaining({ reason: 'changed', fileExt: '.zip' })
+      );
+      expect(trackMock).not.toHaveBeenCalledWith(
+        'upload_failed',
+        expect.anything()
+      );
+    });
+
+    it('names a 0-byte pick as empty and asks for the downloaded copy, without uploading', async () => {
+      const { track } = await import('../../../../lib/analytics/track');
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
+      const requests: string[] = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string) => {
+          requests.push(url);
+          return Promise.resolve(new Response(null));
+        })
+      );
+
+      await submitUpload(new File([], 'placeholder.pdf'));
+
+      await waitFor(() =>
+        expect(screen.getByText('This file is empty')).toBeInTheDocument()
+      );
+      expect(
+        screen.getByText(/open it once so it downloads to your computer/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Choose the file again' })
+      ).toBeInTheDocument();
+      expect(requests).not.toContain('/api/upload/file');
+      expect(trackMock).toHaveBeenCalledWith(
+        'upload_file_unreadable',
+        expect.objectContaining({
+          reason: 'empty',
+          fileExt: '.pdf',
+          fileSizeBytes: 0,
+        })
       );
       expect(trackMock).not.toHaveBeenCalledWith(
         'upload_failed',
