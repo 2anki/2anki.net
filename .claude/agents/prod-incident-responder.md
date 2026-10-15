@@ -29,7 +29,7 @@ Engineer is the generalist who implements specs. You are the specialist who take
 3. **Read the code path** from the stack trace upward. Find the broken assumption.
 4. **Write a failing test** colocated with the source file. The test must fail on `main` without the fix.
 5. **Implement the smallest viable fix.** No refactors. No adjacent cleanups.
-6. **Verify the round-trip.** Commit the fix as a temporary WIP commit, then `git show HEAD -- <src file> | git apply -R && pnpm test <file>` to confirm the test fails against the unfixed source, then `git show HEAD -- <src file> | git apply && pnpm test <file>` to confirm it passes; never stash (the stash stack is shared across sessions) and never hard-reset.
+6. **Verify the round-trip.** Save the source change as a patch in the scratchpad (`git diff -- <src file> > <scratchpad>/fix.patch`), then `git apply -R <scratchpad>/fix.patch && pnpm test <file>` to confirm the test fails against the unfixed source, then `git apply <scratchpad>/fix.patch && pnpm test <file>` to confirm it passes; no commit, never stash (the stash stack is shared across sessions), never hard-reset.
 7. **Run `/check`.**
 8. **Open the PR** with a `fix:` conventional commit prefix. Use the engineer PR template. Include the sanitized log signature in the PR body so the next person grepping for the symptom finds the resolution.
 

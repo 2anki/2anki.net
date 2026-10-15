@@ -24,7 +24,7 @@ The only bypasses are ones an agent cannot reach from inside a session: merging 
 
 ## Hard rails
 
-`.claude/hooks/hard_rails.py` lists the high-blast-radius surfaces: auth, payments/Stripe, subscriptions, checkout, passes, webhooks, quota constants, migrations and the generated data layer, `src/server.ts`, `.github/`, the harness (`.claude/`, `CLAUDE.md`) and the prod safety limits. It no longer blocks a merge. `/ship` uses it to classify the PR and, on a hit, runs the matching extra verification before and after the merge (`.claude/commands/ship.md`, step 1b and step 6b). A rail PR merges on that evidence; it does not wait for Alexander.
+`.claude/hooks/hard_rails.py` lists the high-blast-radius surfaces: auth, payments/Stripe, subscriptions, checkout, passes, webhooks, quota constants, migrations and the generated data layer, `src/server.ts`, `.github/`, the harness (`.claude/`, `CLAUDE.md`) and the prod safety limits. It no longer blocks a merge. `/ship` uses it to classify the PR and, on a hit, runs the matching extra verification before and after the merge (`.claude/commands/ship.md`, step 1b and step 6b). A rail PR merges on that evidence; it does not wait for Alexander, unless its body records an unverified assumption (`ship.md` step 1).
 
 ## `/ship` in one paragraph
 
@@ -37,7 +37,7 @@ Only these halt, the list in `CLAUDE.md` Process. A secret exposure halts the wh
 - A destructive, irreversible action. An unverified assumption on a rail path (auth, payments, migrations) counts, because a wrong guess there is not undone by a revert.
 - A confirmed secret exposure or auth bypass found mid-run: halt and tell him.
 
-Everything else is fixed on the branch and the run goes on. For a value only he holds, an unattended run ships behind a safe default if one exists, otherwise leaves the PR draft and names the value in the morning summary (a price, payment or Stripe value never ships behind a default, it stays draft and is named in the summary); spend and destructive halts never ship behind a default (spend leaves a draft, a destructive step is not executed, both are named in the summary), and an auth, JWT, webhook or signing secret never gets a default (a missing one fails closed at boot and the PR stays draft with the variable named); the only other draft is a failure the branch cannot change (a runner outage, a GitHub incident, per `/ship` step 4), held on a wakeup until green while the run continues with other items; any other red is fixed on the branch.
+Everything else is fixed on the branch and the run goes on. For a value only he holds, an unattended run ships behind a safe default if one exists, otherwise leaves the PR draft and names the value in the morning summary (a price, payment or Stripe value, a payment card, or a third-party bump decision never ships behind a default, it stays draft and is named in the summary); spend and destructive halts never ship behind a default (spend leaves a draft, a destructive step is not executed, both are named in the summary), and an auth, JWT, webhook or signing secret never gets a default (a missing one fails closed at boot and the PR stays draft with the variable named); the only other draft is a failure the branch cannot change (a runner outage, a GitHub incident, per `/ship` step 4), held on a wakeup until green while the run continues with other items; any other red is fixed on the branch.
 
 Sanctioned exemptions inside `/ship` only: starting `pnpm dev` for the browser attestation (kill it after), and the read-only `/deploy-status` SSH.
 

@@ -137,7 +137,7 @@ READY with a `## Decisions made overnight` section, then `/ship`.**
 - Document EVERY decision and assumption in the PR (format below) so Alexander can override.
 - Rail paths are fine unless the change rests on an unverified assumption (Tier 3); `/ship` runs the extra rail verification.
 
-**Tier 3 — rests on a value only Alexander holds (a price, a contract term, an external account) and no safe default exists, on new spend awaiting his approval, or on a rail-path assumption → open DRAFT, flagged.** When a safe default exists, ship behind it (see the hard rails below) and ask in the morning summary; a price, payment or Stripe value never ships behind a default, it stays draft and is named in the summary. An assumption you cannot verify with tools is NOT Tier 3 off the rails: the trio picks the most likely reading, you ship it reversibly through `/ship`, and the call lands under `## Decisions` for him to override.
+**Tier 3 — rests on a value only Alexander holds (a price, a contract term, an external account) and no safe default exists, on new spend awaiting his approval, or on a rail-path assumption → open DRAFT, flagged.** When a safe default exists, ship behind it (see the hard rails below) and ask in the morning summary; a price, payment or Stripe value, a payment card, or a third-party bump decision never ships behind a default, it stays draft and is named in the summary. An assumption you cannot verify with tools is NOT Tier 3 off the rails: the trio picks the most likely reading, you ship it reversibly through `/ship`, and the call lands under `## Decisions` for him to override.
 - On a rail path (auth, payments, migrations) an unverified assumption is the one exception: it stays draft, because a wrong guess there is not reversible by a revert. Name the assumption in the morning summary.
 - A migration alone is NOT Tier 3: write it, run `pnpm kanel`, and ship it through `/ship`, whose
   rail verification runs `migration-reviewer` and the migrate/rollback cycle.
@@ -225,8 +225,8 @@ exactly one, so the log accounts for every issue you opened, not just the ones y
 - `SHIPPED <url> (T1|T2, healthy|no deploy|reverted)` — merged and deployed through `/ship`.
 - `PR <url> (T1|T2|T3, draft: <blocker>)` — a draft left by `/ship` step 1 or step 4 or by Tier 3:
   a value only Alexander holds with no safe default, new spend, a rail-path assumption, or a run
-  failure the branch cannot fix (written only when the night ends with that wakeup still waiting);
-  name the blocker.
+  failure the branch cannot fix (that last case is written only when the night ends with its wakeup
+  still waiting; the others are written at once); name the blocker.
 - `CLOSED: <reason>` — closed per Step 0 (already fixed / already shipped / superseded / duplicate
   of #m / junk).
 - `SKIPPED: <reason>` — relevant but still unintelligible after the trio looked (a value only

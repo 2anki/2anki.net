@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Do not run `npm install` or `yarn`. | `pnpm install` (or `pnpm --frozen-lockfile` in CI). Mixing managers corrupts the lockfile. | — |
 | Do not edit `pnpm-lock.yaml` by hand. | Re-run `pnpm install` after changing `package.json`. | — |
-| Do not bypass `pnpm.overrides`. | Pinned overrides exist for a reason (CVEs such as `path-to-regexp`, `picomatch`, `rollup`, `yaml`); the full set is every key under `pnpm.overrides` in `package.json`. Bumping them silently re-opens the issue. | CWE-1395, CWE-937 |
+| Do not bypass `pnpm.overrides`. | Pinned overrides exist for a reason: `path-to-regexp ≥ 8.4.0` (CVE), `picomatch ≥ 4.0.4`, `rollup ≥ 4.59.0`, `yaml ≥ 2.8.3`, and the rest of the keys under `pnpm.overrides` in `package.json` (that file is the full set). Lowering any of them silently re-opens the issue. | CWE-1395, CWE-937 |
 | Do not add a dep without checking transitive bloat. | `pnpm why <pkg>` first; if a small helper is enough, write it instead. | — |
 | Do not `pnpm add` against the root for a web-only package. | `pnpm --filter 2anki-web add <pkg>` so it lands in the right workspace. | — |
 | Do not introduce a new HTTP client. | Use `instrumentedAxios` from `services/observability/`. The SSRF guard, allowlist, and DNS pinning live there. | CWE-918 |
