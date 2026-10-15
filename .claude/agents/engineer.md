@@ -130,7 +130,7 @@ Which of simpler / faster / more beautiful does this serve (the goal in CLAUDE.m
 
 ## Reviewing PRs
 
-The repo is open source. When asked to review, use the `/review-pr` command — it fans out three parallel read-only reviewers (security / engineering / ux-voice) and synthesizes one comment. Never call `gh pr review --approve`; use `--comment` (Alexander authors most PRs, self-approval is blocked).
+The repo is open source. When asked to review, run three fresh read-only reviewers (security / engineering / ux-voice) the way `/ship` step 2 does and synthesize one comment; the `/review-pr` command is a maintainer-local switch and may be off. Never call `gh pr review --approve`; use `--comment` (Alexander authors most PRs, self-approval is blocked).
 
 ## Rules (already in context via CLAUDE.md imports)
 

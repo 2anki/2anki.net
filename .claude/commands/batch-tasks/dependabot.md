@@ -44,13 +44,13 @@ If any file matches, run `/security-review` on the diff and the full server suit
 
 ### 2b — dependency-rules hold checks (`.claude/rules/dependencies.md`)
 
-Inspect the bumped package (from the title) and the file list. Each bullet names its action: a hold (comment + `needs-review`) is the "whether to take this bump" carve-out in `CLAUDE.md` Process; a route adds a check before `/ship`:
+Inspect the bumped package (from the title) and the file list. Each bullet names its action: a hold (comment + `needs-review`) is the "whether to take this bump" carve-out in `CLAUDE.md` Process; a route adds a check before `/ship`; a wait pauses on a wakeup:
 
-- **Pinned override** — touches a package listed in `pnpm.overrides` (`package.json`): `path-to-regexp`, `picomatch`, `rollup`, `yaml`, `@types/express`, `@types/express-serve-static-core`. Bumping these can silently re-open a CVE we've worked around.
+- **Pinned override** — Hold: touches a package listed in `pnpm.overrides` (`package.json`): `path-to-regexp`, `picomatch`, `rollup`, `yaml`, `@types/express`, `@types/express-serve-static-core`. Bumping these can silently re-open a CVE we've worked around.
 - **Built dependency** — touches anything in `pnpm.onlyBuiltDependencies` (currently `better-sqlite3`). Route: run the smoke test yourself (load the built module, run the server suite) before `/ship`; hold only on a failure, which is the failing-bump carve-out.
-- **Security-sensitive surface** — touches `bcryptjs`, `jsonwebtoken`, `sanitize-html`, `multer`, `express`, `stripe`, `@notionhq/client`, `@anthropic-ai/sdk`, `@sendgrid/mail`, `axios`, `knex`, or anything matching `node-*`. Route: even minors here get `/security-review` on the diff and the full server suite before `/ship`, with both results in the `/ship` review brief; a finding → comment it → `needs-review`.
+- **Security-sensitive surface** — touches `bcryptjs`, `jsonwebtoken`, `sanitize-html`, `multer`, `express`, `stripe`, `@notionhq/client`, `@anthropic-ai/sdk`, `@sendgrid/mail`, `axios`, `knex`, or anything matching `node-*`. Route: even minors here get `/security-review` on the diff and the full server suite before `/ship`, with both results in the `/ship` review brief; a finding in the bumped package → comment it → `needs-review` (carve-out); one in our own adapted code → fix on the branch and re-run.
 - **Held bump** — the package appears under "Held bumps" in `.claude/rules/dependencies.md` — that list is the only source of named-package holds (it reads "None at the moment" today). Comment with the hold reason and return `needs-review` (a flagged third-party bump, the CLAUDE.md carve-out); do not re-litigate the hold.
-- **Stale or skipped CI** — any `test`-named check in `statusCheckRollup` is SKIPPED/CANCELLED, or the PR's checks predate a `.github/workflows/` change on main. Comment `@dependabot rebase`, `ScheduleWakeup` 1200s, re-read the rollup and continue; keep waiting on the wakeup until the test check has run — never merge on a rollup whose test job didn't run (the 2026-08-06 outage shipped exactly this way).
+- **Stale or skipped CI** — Wait: any `test`-named check in `statusCheckRollup` is SKIPPED/CANCELLED, or the PR's checks predate a `.github/workflows/` change on main. Comment `@dependabot rebase`, `ScheduleWakeup` 1200s, re-read the rollup and continue; keep waiting on the wakeup until the test check has run — never merge on a rollup whose test job didn't run (the 2026-08-06 outage shipped exactly this way).
 
 For any 2b hold, comment with the reason and a changelog link so the next reviewer can decide in 30 seconds, then exit `needs-review`:
 
@@ -78,13 +78,13 @@ Decision matrix:
 | --- | --- | --- | --- |
 | patch | green | none | `/ship <n>` → status `merged` |
 | patch | red | any | read the failed log; a flake unrelated to the diff → `gh run rerun` once and re-evaluate (a second red is not a flake); our code failing against a documented API change → adapt it on the branch, re-run `/check`, continue; the package itself broken → comment what broke → status `needs-review` (a failing third-party bump, the CLAUDE.md carve-out) |
-| patch | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
+| patch | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding in the bumped package → comment it → status `needs-review` (carve-out); a finding in our own adapted code → fix on the branch, re-run `/security-review` |
 | minor | green | none | full server suite locally green, then `/ship <n>` → status `merged` |
 | minor | red | any | same as patch + red |
-| minor | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
-| major | green | none | the `dependencies.md` major-bump checks (changelog for removed APIs, full server suite locally green, plugin grep, a sanity run of the conversion path), with the local suite output attached to the `/ship` review brief so its fresh reviewers confirm them, then `/ship <n>` → status `merged`; a breakage → comment what broke → status `needs-review` |
+| minor | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding in the bumped package → comment it → status `needs-review` (carve-out); a finding in our own adapted code → fix on the branch, re-run `/security-review` |
+| major | green | none | the `dependencies.md` major-bump checks (changelog for removed APIs, full server suite locally green, plugin grep, a sanity run of the conversion path), with the local suite output attached to the `/ship` review brief so its fresh reviewers confirm them, then `/ship <n>` → status `merged`; our code breaking against a documented API change → adapt it on the branch, re-run the suite, continue; the package itself broken → comment what broke → status `needs-review` (carve-out) |
 | major | red | any | same as patch + red |
-| major | green | security | the major-bump checks plus `/security-review`; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
+| major | green | security | the major-bump checks plus `/security-review`; clean → `/ship <n>` → status `merged`; a finding in the bumped package → comment it → status `needs-review` (carve-out); a finding in our own adapted code → fix on the branch, re-run `/security-review` |
 | unknown | any | any | comment "Could not parse bump level from title" → status `needs-review` |
 
 **Merge call:**
@@ -130,7 +130,7 @@ Include the PR number and the head branch name in your return payload so the dis
 - **Never** bypass the queue with `gh pr merge --admin`. The `check-merge-status.py` hook is the gate.
 - **Never** rebase or push to the Dependabot branch yourself — comment `@dependabot rebase` if needed; the bot owns the branch.
 - **Never** close a held PR without merging. The Dependabot workflow expects merge or label, not close (`.claude/rules/dependencies.md`).
-- **Do not** read or edit `pnpm-lock.yaml` directly. If a major needs lockfile attention, run `pnpm install` on the branch (never edit the lockfile by hand), commit the result, and continue.
+- **Do not** read or edit `pnpm-lock.yaml` directly. If a major needs lockfile attention, comment `@dependabot rebase` (the bot owns the branch), wait on a `ScheduleWakeup` of 1200s, and continue; never edit the lockfile by hand.
 
 ## When held majors pile up
 

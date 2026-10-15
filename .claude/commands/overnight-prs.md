@@ -8,8 +8,8 @@ is still relevant against the current codebase, CLOSE the ones that no longer ap
 relevant ones into merged, deployed pull requests (one PR per issue) — not just bug fixes, but
 features, improvements, and copy/UX changes too. Every Tier 1 and Tier 2 PR goes through `/ship`
 (review agent → gate → rail verification → merge → deploy verified); a draft is only for a value
-only Alexander holds with no safe default, or a rail-path change resting on an unverified
-assumption. Keep going until you exhaust the queue or hit your usage limit (the environment ending the run, never a reason to quit early). The night is wasted if
+only Alexander holds with no safe default, a rail-path change resting on an unverified
+assumption, or a run failure the branch cannot fix (draft + wakeup, `/ship` step 4). Keep going until you exhaust the queue or hit your usage limit (the environment ending the run, never a reason to quit early). The night is wasted if
 you only close stale issues and ship nothing.
 
 Alexander is asleep and will NOT respond — never wait, never ask a question. **The old rule was
@@ -17,7 +17,7 @@ Alexander is asleep and will NOT respond — never wait, never ask a question. *
 issue needs a product, UX, or copy decision, CONVENE THE TRIO (pm + designer + engineer in one
 parallel Agent call), let them make the call, implement it, and write every decision and
 assumption into a `## Decisions made overnight` section of the PR so Alexander can review and
-override in the morning.** You only SKIP when you truly cannot tell what the issue is asking even after the
+override in the morning.** SKIP is per issue, never a stop of the run: you only SKIP when you truly cannot tell what the issue is asking even after the
 trio looks at it. Defer the *judgment to a documented trio call*, don't defer the *work*.
 
 Optional focus / seed from the invocation: $ARGUMENTS
@@ -66,7 +66,7 @@ M=$(jq 'length' /tmp/overnight-backlog.json)   # the denominator for the coverag
   re-examine issues a prior run already PR'd or CLOSED. You MAY re-examine an earlier SKIP if the
   code has since changed. This file holds numbers only — never reporter data.
 - The goal is real, shipped work: close what's dead and open PRs across all three tiers (bug
-  fixes, trio-decided features/improvements, draft migrations). A night that only closes stale
+  fixes, trio-decided features/improvements, migrations). A night that only closes stale
   issues and ships no PRs has not earned its run — work the queue, don't just survey it.
 
 ## Step 0 for EVERY issue — verify it's still relevant against the codebase
@@ -152,7 +152,7 @@ assumption you could not verify (Tier 3 above). Three constraints remain:
 - A change that needs a value only Alexander holds (a new secret on prod, a Stripe dashboard
   setting, a new third-party account) ships behind a safe default and goes in the morning summary as a question
   for Alexander, one line per step.
-- Keep working until it is safe (reversible split, safe default). Draft only when the missing piece is a value only Alexander holds, or the change is a rail-path change resting on an unverified assumption, with the blocker stated.
+- Keep working until it is safe (reversible split, safe default). Draft only when the missing piece is a value only Alexander holds, the change is a rail-path change resting on an unverified assumption, or a run failure the branch cannot fix (draft + wakeup), with the blocker stated.
 
 ### `## Decisions made overnight` — required in every Tier 2 and Tier 3 PR
 List each judgment call the trio made, so the morning review is a yes/no, not an investigation:
