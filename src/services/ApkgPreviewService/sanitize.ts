@@ -94,13 +94,17 @@ const PRINT_NON_TEXT_TAGS = [
   'button',
 ];
 
-// Same reasoning as dropping <button>: popup chrome also hangs its controls
-// off script-driven anchors that have no href (a `↪` "open" glyph next to the
-// `×` close button). Stripped of scripts the anchor leads nowhere, and its
-// glyph is not card content. An anchor wrapping an image is kept — that is a
-// linked logo or figure, not a dead control.
+// Same reasoning as dropping <button>: popup chrome hangs its controls off
+// script-driven anchors with no href, and without scripts those lead nowhere.
+// Only a symbol-only one (`↪`) is chrome; words or an image are card content.
+const isSymbolOnly = (text: string): boolean =>
+  text.trim().length > 0 && !/[\p{L}\p{N}]/u.test(text);
+
 const isDeadPrintAnchor = (frame: sanitizeHtml.IFrame): boolean =>
-  frame.tag === 'a' && !frame.attribs.href && frame.mediaChildren.length === 0;
+  frame.tag === 'a' &&
+  !frame.attribs.href &&
+  frame.mediaChildren.length === 0 &&
+  isSymbolOnly(frame.text);
 
 export interface SanitizeCardOptions {
   print?: boolean;

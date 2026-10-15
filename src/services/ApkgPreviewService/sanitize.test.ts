@@ -133,13 +133,25 @@ describe('sanitizeCardHtml — print option', () => {
     ).toBe('<div id="popup">kept</div>');
   });
 
-  it('keeps real links and image-wrapping anchors when printing', () => {
-    const html =
-      '<a href="https://x.com">link</a><a href="#jump">frag</a><a><img src="logo.png" /></a>';
-    const result = sanitizeCardHtml(html, { print: true });
-    expect(result).toContain('<a href="https://x.com">link</a>');
-    expect(result).toContain('<a href="#jump">frag</a>');
-    expect(result).toContain('<img src="logo.png" />');
+  it('keeps anchors with an href when printing', () => {
+    const html = '<a href="https://x.com">link</a><a href="#jump">frag</a>';
+    expect(sanitizeCardHtml(html, { print: true })).toBe(html);
+  });
+
+  it('keeps href-less anchors that carry words when printing', () => {
+    expect(
+      sanitizeCardHtml('<a name="term">Key term</a> after', { print: true })
+    ).toBe('<a>Key term</a> after');
+  });
+
+  it('keeps href-less anchors that wrap an image when printing', () => {
+    const html = '<a><img src="logo.png" /></a>';
+    expect(sanitizeCardHtml(html, { print: true })).toBe(html);
+  });
+
+  it('keeps href-less anchors that wrap a nested image when printing', () => {
+    const html = '<a><span><img src="logo.png" /></span></a>';
+    expect(sanitizeCardHtml(html, { print: true })).toBe(html);
   });
 
   it('keeps href-less anchors on non-print surfaces', () => {
