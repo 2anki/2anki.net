@@ -37,7 +37,7 @@ FAN OUT — at most TWO engineer agents running concurrently (never more). Each
 agent works in its own git worktree (isolation: "worktree"), on ONE issue, off a
 FRESH origin/main (never stack branches). When one finishes, start the next from
 the queue. Brief each agent to `pwd`-verify its worktree, and if it has strayed, copy
-its own edits back, list the stray paths, and continue from the worktree; never commit into the main checkout.
+its own edits into its worktree, list the stray paths, and continue from the worktree; never commit into the main checkout.
 
 PER-ISSUE WORKFLOW (each agent):
   1. git checkout main && pull; branch fix/<slug> or feat/<slug>.

@@ -15,7 +15,7 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
 - Rail-class PR (auth, payments, migrations) whose body records an unverified assumption → `gh pr ready --undo`, name the assumption for Alexander, and stop this PR's ship; a wrong guess there is not undone by a revert.
 - Draft → read the body, then one of:
   - it records a blocker only Alexander can clear (a value only he holds: a secret, a Stripe or Google dashboard setting, spend approval) → interactive run: ask him for that value in the chat; unattended run: leave it draft and name the value in the morning summary;
-  - it is a `/spec-draft-pr` spec, or flagged WIP, or a rail-path change (auth, payments, migrations) whose body records an unverified assumption → leave it draft and report that (a spec goes through `/implement`, never `gh pr ready` here; the assumption goes to Alexander by name);
+  - it is a `/spec-draft-pr` spec → leave it draft and report that (a spec goes through `/implement`, never `gh pr ready` here); a WIP flag is the author's note, not a halt: finish the work, then ready it;
   - otherwise → finish what keeps it draft, wait for green, `gh pr ready`, and continue.
 - Rail class? Run the classifier on the file list and diff:
   ```bash
@@ -49,7 +49,7 @@ Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh contex
   - Re-raised point: fix it, or, if it is non-security and already handled, cite the evidence in the next brief. Never a reason to stop.
   - A security finding clears only on a code change that a fresh reviewer passes, never on your own reply.
   - A confirmed secret exposure or auth bypass, in the diff or found mid-run, halts the run: print the file, line and secret type with the value redacted to its last four characters, push nothing more (a fix commit does not remove a secret from history), post no marker, merge nothing, name the secret for Alexander to rotate.
-  - The only other halt is a finding you cannot fix on the branch (a prod secret, a third-party dashboard setting). In an interactive run ask Alexander for that one thing in the chat and keep shipping once it is in. An unattended run (`/overnight-prs`) ships behind a safe default if one exists; otherwise it leaves the PR draft and names the value in the morning summary.
+  - The other halts are the four in `CLAUDE.md` Process, most often a value only Alexander holds (a prod secret, a third-party dashboard setting). In an interactive run ask Alexander for that one thing in the chat and keep shipping once it is in. An unattended run (`/overnight-prs`) ships behind a safe default if one exists; otherwise it leaves the PR draft and names the value in the morning summary.
 - **Clean** → post the pass marker for the exact head SHA:
   ```bash
   HEAD=$(gh pr view <n> --json headRefOid --jq .headRefOid)
@@ -84,7 +84,7 @@ gh api graphql -f query='{ repository(owner:"2anki", name:"2anki.net") { pullReq
 ```
 
 - `state: MERGED` → record `MERGE_SHA` from `mergeCommit.oid` and continue.
-- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake: read both failed logs, put the fix on the branch, and restart from step 1. When the failing job is infrastructure the branch cannot change (a runner outage, a GitHub incident), convert it to draft (`gh pr ready --undo`, since a ready PR with red checks is a merge invitation), note the run URL on it, end this PR's ship (not the run), and re-check with a `ScheduleWakeup` of 1200s; when the rollup is green again, `gh pr ready` and re-enqueue.
+- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake: read both failed logs, put the fix on the branch, and restart from step 1. When the failing job is infrastructure the branch cannot change (a runner outage, a GitHub incident), convert it to draft (`gh pr ready --undo`, since a ready PR with red checks is a merge invitation), note the run URL on it, pause this PR on a `ScheduleWakeup` of 1200s and resume this same step; when the rollup is green again, `gh pr ready` and re-enqueue. The ship does not end.
 
 Never delete the branch by hand before the queue has merged; the queue needs it.
 

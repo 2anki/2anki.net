@@ -118,8 +118,8 @@ Load on demand — read these when the task touches the named surface (kept out 
 ## Process
 
 - **When Alexander asks for a change or a ship, the work ends done, not handed back.** No rule in this harness may stop a run and wait for him, except these four. Everything else is fixed on the branch and the run continues, and no new cap or stop gets added.
-  - A value only he holds: a prod secret, a Google or Stripe dashboard login, a payment card, or whether to take a third-party bump that fails or is flagged (the fix lives upstream, not on the branch).
-  - Approving spend.
+  - A value only he holds: a prod secret, a Google or Stripe dashboard login, a payment card, or whether to take a third-party bump that fails or has an open finding after `/security-review` (the fix lives upstream, not on the branch).
+  - Incurring new spend (a new paid service, plan, model, or paid batch run) needs his approval.
   - A destructive, irreversible action. An unverified assumption on a rail path (auth, payments, migrations) counts, because a wrong guess there is not undone by a revert.
   - A confirmed secret exposure or auth bypass found mid-run: halt and tell him.
   - Why: 2026-10-15, a two-round review cap in `/ship` stopped a CI-green, security-clean PR with every finding fixed; he merged it by hand hours later while a paid campaign ran unattributed.
@@ -176,7 +176,7 @@ Trio conventions: be opinionated (one recommendation, not five options); specs f
 
 ## Trio review
 
-The trio is **opt-in**: run `/trio <task>` for pricing, payment, onboarding, signup, cancel-flow and new-surface work, or whenever a product question is real. It is three agents at five to eight minutes each, so it is not the default for a bug fix, copy tweak, instrumentation change or refactor — those go straight to the engineer. The synthesis format, the preview-route rule for visual disagreements, and the surface-lifecycle obligations live in `.claude/commands/trio.md`.
+The trio is **opt-in**: run `/trio <task>` for pricing, payment, onboarding, signup, cancel-flow and new-surface work, or whenever a product question is real. It is three agents at five to eight minutes each, so it is not the default for a bug fix, copy tweak, instrumentation change or refactor — those go straight to the engineer. The synthesis format and the surface-lifecycle obligations live in `.claude/commands/trio.md`; the preview-route rule for visual disagreements lives in `.claude/agents/designer.md`.
 
 ## Spec lifecycle
 

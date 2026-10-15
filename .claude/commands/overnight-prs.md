@@ -17,8 +17,7 @@ Alexander is asleep and will NOT respond — never wait, never ask a question. *
 issue needs a product, UX, or copy decision, CONVENE THE TRIO (pm + designer + engineer in one
 parallel Agent call), let them make the call, implement it, and write every decision and
 assumption into a `## Decisions made overnight` section of the PR so Alexander can review and
-override in the morning.** You only SKIP when no reversible split or safe default makes the change safe
-unattended (see the hard rails below) or when you truly cannot tell what the issue is asking even after the
+override in the morning.** You only SKIP when you truly cannot tell what the issue is asking even after the
 trio looks at it. Defer the *judgment to a documented trio call*, don't defer the *work*.
 
 Optional focus / seed from the invocation: $ARGUMENTS
@@ -224,8 +223,8 @@ exactly one, so the log accounts for every issue you opened, not just the ones y
   with no safe default, or a draft whose checks failed on infrastructure; name the blocker.
 - `CLOSED: <reason>` — closed per Step 0 (already fixed / already shipped / superseded / duplicate
   of #m / junk).
-- `SKIPPED: <reason>` — relevant but still unintelligible after the trio looked, or unsafe with no
-  reversible split (a value only Alexander holds is a `PR … draft`, not a skip). Left OPEN. This should be the
+- `SKIPPED: <reason>` — relevant but still unintelligible after the trio looked (a value only
+  Alexander holds or a rail assumption is a `PR … draft`, not a skip). Left OPEN. This should be the
   exception, not the default — if you're skipping most issues, you're back to the old broken
   behavior.
 - `REACHED: left open` — examined, genuinely nothing to ship and not closeable. Should be rare.
@@ -242,9 +241,9 @@ On stop, print the summary in this order — counts are the hero; the five bucke
    If N == M, write "Reached all <M>." and "0 never reached." The phrase "no eligible issues
    remain" is true ONLY when N == M.
 2. **Why it stopped** — one line: `Stopped: <queue exhausted | usage/token limit | every remaining
-   candidate needs a value only you hold>.[ <M-N> issues never reached — rerun to continue.]`
+   candidate needs a value only you hold or is a rail-path assumption>.[ <M-N> issues never reached — rerun to continue.]`
 3. **Shipped** — issue #, title, PR URL, deploy verdict.
-3b. **PRs waiting for you** — issue #, title, PR URL, why (a value only you hold, or a check failure outside the diff).
+3b. **PRs waiting for you** — issue #, title, PR URL, why (a value only you hold, a rail-path assumption, or a check failure the branch cannot fix).
 4. **Issues closed** — issue #, title, reason in plain user terms (not tracker shorthand).
 5. **Issues skipped — left open for you** — issue #, title, the specific blocker.
 6. A trailing count for the `REACHED: left open` bucket (`<R> reached, left open — no action`).

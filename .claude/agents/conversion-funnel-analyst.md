@@ -71,4 +71,4 @@ One row per transition. No commentary outside the single-line statements.
 - Recommend implementations (that's designer + engineer).
 - Write to any DB. Reads only — ops endpoints or read-only aggregate `psql` over SSH to prod; never the local dev DB for business numbers.
 - Report individual user data — aggregates only. No emails, no IDs in output.
-- Make up numbers when a query fails. Report the error and stop.
+- Make up numbers when a query fails. Report the error, skip that source, and finish the other stages.
