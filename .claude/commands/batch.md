@@ -12,28 +12,22 @@ Pilot scope is the `dependabot` task type. `dead-code` and `copy-sweep` are defe
 - `MAX_TASKS = 20`
 - `MAX_CONCURRENT = 4`
 - `TIMEOUT_PER_TASK = 10 min`
-- `HARD_BLOCK_PATHS` — any change touching:
+- `HARD_BLOCK_PATHS` — a flag, not a block: entries touching these paths still dispatch, with `/security-review` first. Any change touching:
   - `src/services/StripeService/**`
   - `src/services/AuthenticationService/**`
   - `src/lib/Token.ts`
   - anything matching `auth` or `payments` in the diff path
-  Route those to `/security-review` with a clear error; never dispatch them.
+  Dispatch them too: the worker runs `/security-review` on the diff, and `/ship` adds its own fresh read-only reviewers before the marker.
 
 ## Step 1 — pre-check
 
-Refuse to start if the orchestrator's main checkout is dirty.
+Check whether the orchestrator's main checkout is dirty:
 
 ```
 git status --porcelain
 ```
 
-If the output is non-empty, abort with:
-
-```
-Refusing to dispatch — orchestrator checkout has uncommitted changes. The worktree-isolation invariant requires a clean root. Stash or commit first.
-```
-
-Do not proceed past this check under any condition.
+If the output is non-empty, print `Orchestrator checkout has uncommitted changes — dispatching from a fresh worktree off origin/main instead.`, create that worktree with `git worktree add .claude/worktrees/batch-<timestamp> origin/main`, and dispatch from it. Never stash, reset, checkout or clean the dirty root; those changes belong to another session.
 
 ## Step 2 — parse arguments
 
@@ -57,19 +51,13 @@ For each PR:
 
 1. Read the title. Dependabot encodes the bump level there — extract `patch | minor | major` from the conventional `bump <pkg> from X to Y` shape plus the semver delta. If you cannot determine the bump level, mark it `unknown` and treat as non-patch.
 2. If `--patch-only` is set, drop entries whose bump level is not `patch`.
-3. Pull the file list (`files[].path`). If any path matches `HARD_BLOCK_PATHS`, drop the entry from the dispatch list and add it to a separate `hard-blocked` list to surface in the final report.
+3. Pull the file list (`files[].path`). If any path matches `HARD_BLOCK_PATHS`, keep the entry in the dispatch list, mark it `hard-blocked` so the worker runs `/security-review` on the diff first, and list it separately in the final report.
 
-Cap the result at `MAX_TASKS`. If the raw queue had more than `MAX_TASKS` viable entries, print:
-
-```
-Queue has <N> tasks; cap is 20. Dispatch the first 20? (y/n)
-```
-
-Wait for confirmation before continuing. On `n`, exit cleanly.
+Cap the result at `MAX_TASKS`. Alexander typing `/batch` himself is the approval for up to `MAX_TASKS` agent runs; an agent never invokes `/batch` to create that approval. If the raw queue had more than `MAX_TASKS` viable entries, print `Queue has <N> tasks; cap is 20. Dispatching the first 20; the remaining <N-20> stay in the queue for the next /batch.` and continue; nothing is dropped, the leftovers are still open on GitHub.
 
 ## Step 4 — dispatch loop
 
-If `--dry-run`, print the table from step 6 with status `would-dispatch` for every viable task and `hard-blocked → security-review` for blocked entries, then exit.
+If `--dry-run`, print the table from step 6 with status `would-dispatch` for every viable task and `would-dispatch (hard-blocked: security-review first)` for marked entries, then exit.
 
 Otherwise:
 
@@ -83,7 +71,7 @@ Otherwise:
     - Invoke the worker with `isolation: "worktree"` and `run_in_background: true`. Record its task ID alongside the worktree ID.
   - Wait for the next worker to finish (do not busy-poll — use the agent completion notification).
   - When a worker returns, print one line: `<pr#> <branch> → <status>`. Move it from in-flight to completed.
-  - If a worker has been in-flight longer than `TIMEOUT_PER_TASK`, kill it via `TaskStop` and record status `timeout`.
+  - If a worker has been in-flight longer than `TIMEOUT_PER_TASK`, kill it via `TaskStop` and record status `timeout`; this per-task cap ends that task only, and the loop continues with the next.
 
 ## Step 5 — cleanup
 
@@ -109,15 +97,15 @@ Print one final markdown table:
 | bump qux from 5.0.0 to 5.0.1 | dependabot/npm_and_yarn/qux-5.0.1 | 2304 | timeout |
 ```
 
-Status values are exactly: `merged | open | needs-review | failed-checks | timeout`. No others.
+Row statuses are exactly: `merged | open | needs-review | failed-checks | timeout`. (`would-dispatch` appears only in `--dry-run` output, and `hard-blocked` is a flag on a row, not a status.)
 
 Below the table, one summary line:
 
 ```
-N merged · N needs-review · N failed-checks · N timeout · N hard-blocked (routed to /security-review)
+N merged · N needs-review · N failed-checks · N timeout · N hard-blocked (security-reviewed before /ship)
 ```
 
-If `hard-blocked` is non-empty, list those PR numbers separately so Alexander can route them by hand.
+If `hard-blocked` is non-empty, list those PR numbers with the `/security-review` verdict each one shipped on.
 
 ## Step 7 — exit
 

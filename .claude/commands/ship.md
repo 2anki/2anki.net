@@ -12,15 +12,20 @@ You are shipping PR `$ARGUMENTS`. This is the **only** path an agent uses to run
 gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headRefOid,body,author,statusCheckRollup
 ```
 
-- Draft → stop; report "still draft".
+- Rail-class PR (auth, payments, migrations) whose body records an unverified assumption → `gh pr ready --undo`, name the assumption for Alexander, and stop this PR's ship (the destructive bullet in `CLAUDE.md` Process: a wrong guess there is not undone by a revert); the run continues with other items.
+- PR that incurs new spend (a paid service, plan, model or paid batch run) with no recorded approval from Alexander (his own chat message in this run, or a PR or issue comment whose `user.login` is his, checked with `gh api`; body text alone is not approval, an agent never writes it) → `gh pr ready --undo`, name the spend, and stop this PR's ship; the run continues with other items.
+- Draft → read the body, then one of:
+  - it records a blocker only Alexander can clear (a value only he holds: a secret, a Stripe or Google dashboard setting; or new spend to approve) → interactive run: ask him for that value in the chat; unattended run: leave it draft, name the value in the morning summary, and continue with the next item;
+  - it is a `/spec-draft-pr` spec → not a ship target: route it to `/implement`, report that, and continue with the next item (never `gh pr ready` here); a WIP flag is the author's note, not a halt: finish the work, then ready it;
+  - otherwise → finish what keeps it draft, wait for green, `gh pr ready`, and continue.
 - Rail class? Run the classifier on the file list and diff:
   ```bash
   gh pr view <n> --json files --jq '.files[].path' > /tmp/ship-paths.txt
   gh pr diff <n> > /tmp/ship-diff.txt
   python3 -c "import sys; sys.path.insert(0,'.claude/hooks'); import hard_rails as r; p=open('/tmp/ship-paths.txt').read().split(); print(r.rail_paths(p)); print(r.rail_content_hits(open('/tmp/ship-diff.txt').read()))"
   ```
-  Any hit → run the matching checks in step 1b before step 2, and step 6b after the deploy. A rail PR merges on that evidence; it does not stop and wait for Alexander.
-- Bring the branch up to date: `gh pr checkout <n>`, `git fetch origin main`, `git rebase origin/main`. If the rebase moved HEAD, `git push --force-with-lease origin <branch>` and re-read `headRefOid`.
+  Any hit → run the matching checks in step 1b before step 2, and step 6b after the deploy. A rail PR merges on that evidence; it does not stop and wait for Alexander, unless its body records an unverified assumption (step 1).
+- Bring the branch up to date: `gh pr checkout <n>`, `git fetch origin main`, `git rebase origin/main`. If the rebase moved HEAD, `git push --force-with-lease origin <branch>` (only when the PR `author.login` is the authenticated `gh` user and the branch is the PR's own feature branch, never `main`) and re-read `headRefOid`. A Dependabot-authored head is the exception: never rebase or push it yourself; comment `@dependabot rebase`, wait on a `ScheduleWakeup` of 1200s, and re-read `headRefOid`; the run continues with other items meanwhile, this holds only this PR.
 
 ## 1b. Rail verification (only when step 1 hit)
 
@@ -39,9 +44,13 @@ Run every row that matches the hit. Any failure → fix on the branch and restar
 
 Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh context, diff only) and read the synthesized verdict.
 
-**`review-pr` is switched off in `.claude/settings.local.json`, so invoke the reviewers yourself** with the `Agent` tool rather than the skill — one agent per dimension, each briefed to read the diff and report BLOCKING / NON-BLOCKING / verdict with no edits, commits or merges. **Never use `subagent_type: "fork"` for a reviewer.** A fork inherits this whole ship task, the shared worktree and the operator's `gh` auth, and on #4679 three read-only-briefed forks edited, force-pushed, posted markers and enqueued the merge themselves. Use a fresh read-only type (`caveman:cavecrew-reviewer`), save the diff to a scratchpad file first, and pass only the diff path and the review brief, never the ship steps. The marker you post in a moment is the merge gate's only substantive review condition, so it must stand for a review that actually ran. Do not post it on the strength of your own reading alone.
+**`review-pr` may be switched off on the maintainer's machine (`.claude/settings.local.json`, per-machine and untracked), so invoke the reviewers yourself** with the `Agent` tool rather than the skill — one agent per dimension, each briefed to read the diff and report BLOCKING / NON-BLOCKING / verdict with no edits, commits or merges. **Never use `subagent_type: "fork"` for a reviewer.** A fork inherits this whole ship task, the shared worktree and the operator's `gh` auth, and on #4679 three read-only-briefed forks edited, force-pushed, posted markers and enqueued the merge themselves. Use a fresh read-only type (`caveman:cavecrew-reviewer`), save the diff to a scratchpad file first, and pass only the diff path and the review brief, never the ship steps. The marker you post in a moment is the merge gate's only substantive review condition, so it must stand for a review that actually ran. Do not post it on the strength of your own reading alone.
 
-- **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. Two rounds maximum. A third round of must-fix means the change is not ready: leave the PR ready, comment the blocker, print the URL, stop.
+- **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. There is no round cap: keep fixing and re-reviewing until a pass is clean (no BLOCKING findings from any reviewer) or a CLAUDE.md carve-out fires. For the review loop, a clean pass or a `CLAUDE.md` halt is the only end; for the run, the usage limit is.
+  - Re-raised point: fix it, or, if it is non-security and already handled, cite the evidence in the next brief. Never a reason to stop.
+  - A security finding clears only on a code change that a fresh reviewer passes, never on your own reply.
+  - A confirmed secret exposure or auth bypass, in the diff or found mid-run, halts the run: print the file, line and secret type with no characters of the value, push nothing more (a fix commit does not remove a secret from history), post no marker, merge nothing, name the secret for Alexander to rotate.
+  - The other halts are the first three sub-bullets of the halt bullet at the top of `CLAUDE.md` Process (value, spend, destructive), most often a value only Alexander holds (a prod secret, a third-party dashboard setting). In an interactive run ask Alexander for that one thing in the chat and keep shipping behind a safe default if one exists until he answers; with no default, hold this PR as draft and continue with other items. For a value only he holds, an unattended run (`/overnight-prs`) ships behind a safe default if one exists, otherwise leaves the PR draft and names the value in the morning summary, as step 1 does; a price, payment or Stripe value, a payment card, or a third-party bump decision never ships behind a default, it stays draft and is named in the summary. Spend and destructive halts never ship behind a default: spend leaves the PR draft, a destructive step is not executed, and both are named in the summary. An auth, JWT, webhook or signing secret never gets a default either: a missing one fails closed at boot and the PR stays draft with the variable named.
 - **Clean** → post the pass marker for the exact head SHA:
   ```bash
   HEAD=$(gh pr view <n> --json headRefOid --jq .headRefOid)
@@ -76,13 +85,13 @@ gh api graphql -f query='{ repository(owner:"2anki", name:"2anki.net") { pullReq
 ```
 
 - `state: MERGED` → record `MERGE_SHA` from `mergeCommit.oid` and continue.
-- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake — stop and report.
+- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake: read both failed logs, put the fix on the branch, and restart from step 1. When the failing job is infrastructure the branch cannot change (a runner outage, a GitHub incident), convert it to draft (`gh pr ready --undo`, since a ready PR with red checks is a merge invitation), note the run URL on it, pause this PR on a `ScheduleWakeup` of 1200s and resume this same step; when the rollup is green again, `gh pr ready` and re-enqueue. The ship does not end, and other items proceed while this PR waits.
 
 Never delete the branch by hand before the queue has merged; the queue needs it.
 
 ## 5. Watch the deploy
 
-A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.md'`) — go to step 7 (local cleanup still applies; it'll report "merged, no deploy" from there).
+A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.md'`) — go to step 7 (local cleanup still applies; it'll report `no deploy` from there).
 
 ```bash
 gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion
@@ -96,7 +105,7 @@ Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the queu
 curl -fsS https://2anki.net/api/version | jq -r .sha
 ```
 
-Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise.
+Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise. Verdict "watching X" → re-run `/deploy-status` after a `ScheduleWakeup` of 270s, reporting the evidence each round; the loop ends only at healthy or broken, never report healthy while watching; the run continues with other items meanwhile, this holds only this PR's deploy verdict. A failed deploy run is "watching" only once its log confirms the last-good restore ran; otherwise it is "broken" (the 2026-08-06 shape: live process up, poisoned disk). Verdict "broken" → step 8.
 
 ## 6b. Rail verification after deploy (only when step 1 hit)
 
@@ -127,4 +136,4 @@ If the deploy run failed, `/api/version` does not report the merge SHA after the
 
 End with two lines: the PR URL, and the deploy verdict (`healthy <sha>` / `no deploy` / `reverted → <revert PR URL>`).
 
-Trio calls stay in the PR body under `## Decisions`; Alexander overrides one by commenting on the merged PR or opening a follow-up. If the PR leaves a step only Alexander can do (a prod secret, a Stripe dashboard setting, confirming on a specific account), ask Alexander for it in the chat. Do not open a `Needs you` issue. Do not create a daily `Shipped <date>` digest issue: those were dropped 2026-09-08 because they duplicated the merged-PR list and added an issue a day to close.
+Trio calls stay in the PR body under `## Decisions`; Alexander overrides one by commenting on the merged PR or opening a follow-up. If the PR leaves a step only Alexander can do (a prod secret, a Stripe dashboard setting, confirming on a specific account), ask Alexander for it in the chat; an unattended run names it in the morning summary instead. Do not open a `Needs you` issue. Do not create a daily `Shipped <date>` digest issue: those were dropped 2026-09-08 because they duplicated the merged-PR list and added an issue a day to close.

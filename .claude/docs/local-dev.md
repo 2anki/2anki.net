@@ -20,7 +20,7 @@ Environment-specific facts for running the toolchain, migrations, and checks on 
 
 ## Main checkout is shared test infra — verify it's clean
 
-The main checkout (`/Users/a/src/github.com/2anki/server`) is where full-pipeline runs work, but it is Alexander's live working tree. Before trusting ANY real-pipeline result from it, `git status` it and confirm it's clean and at the expected sha (and that the feature's new files exist). A dirty tree runs the WRONG code and gives false results — a "conversion still broken" reading once turned out to be the main checkout running with a source file deleted from its working tree; on clean code it converted fine. Treat the main checkout as read-only test infra; do experiments in a worktree. Restore with `git checkout HEAD -- .` (the `safety.py` hook blocks `git reset --hard` with uncommitted changes).
+The main checkout (`/Users/a/src/github.com/2anki/server`) is where full-pipeline runs work, but it is Alexander's live working tree. Before trusting ANY real-pipeline result from it, `git status` it and confirm it's clean and at the expected sha (and that the feature's new files exist). A dirty tree runs the WRONG code and gives false results — a "conversion still broken" reading once turned out to be the main checkout running with a source file deleted from its working tree; on clean code it converted fine. Treat the main checkout as read-only test infra; do experiments in a worktree. Restore with `git checkout HEAD -- .` (a manual operator step, agents never run `checkout --`; the `safety.py` hook blocks `git reset --hard` with uncommitted changes).
 
 ## Diagnosing local hook / deploy oddities
 
@@ -39,7 +39,7 @@ Rules to keep it from recurring:
 - **The SessionStart hook (`session-start.sh`) warns when orphans exist** so accumulation gets caught next session instead of festering for 11 days. It only warns — never auto-kills — because a long-lived `pnpm dev` may be one Alexander started on purpose.
 - **`git worktree remove` on a slow disk hangs deleting `node_modules`** (a 2-min timeout is not enough for a fully-installed worktree). Kill the worktree's processes FIRST (`reap-orphans.sh --force`, or the agent stop), then remove — with no procs holding files it's fast. If it still drags, `rm -rf <dir> && git worktree prune` in the background.
 - **After a parallel PR batch, reap and remove.** Every finished agent leaves a worktree (source + a full `node_modules`) and may leave check procs. Once its PR is pushed the local worktree is redundant: `git worktree remove <path>` (or the rm+prune above). Don't let done worktrees and their node_modules pile up — they're the disk half of the same problem.
-- **Never leave a dev server running.** `pnpm dev`, `vite preview`, and `test:golden-path` start servers that reparent to init if not stopped. If you (or an agent) start one, kill it in the same session. CLAUDE.md already says "ask before starting the server" — this is why: a forgotten one runs for days.
+- **Never leave a dev server running.** `pnpm dev`, `vite preview`, and `test:golden-path` start servers that reparent to init if not stopped. If you (or an agent) start one, kill it in the same session. CLAUDE.md says "start it when you need it, kill it when you are done" — this is why: a forgotten one runs for days.
 
 ## Harness mechanics
 

@@ -36,8 +36,9 @@ STEP 0 — VERIFY RELEVANCE before any code. For each candidate issue:
 FAN OUT — at most TWO engineer agents running concurrently (never more). Each
 agent works in its own git worktree (isolation: "worktree"), on ONE issue, off a
 FRESH origin/main (never stack branches). When one finishes, start the next from
-the queue. Brief each agent to `pwd`-verify its worktree and HALT rather than
-commit into the main checkout.
+the queue. Brief each agent to `pwd`-verify its worktree, and if it has strayed, copy
+its own edits into its worktree (`git status --porcelain` each target first; never over uncommitted
+changes, name them in the report), list the stray paths, and continue from the worktree; never commit into the main checkout.
 
 PER-ISSUE WORKFLOW (each agent):
   1. git checkout main && pull; branch fix/<slug> or feat/<slug>.
@@ -61,12 +62,14 @@ ABSOLUTE SAFETY RULES (non-negotiable):
   - One PR per issue, off fresh origin/main. Never stack branches.
   - NEVER put a reporter's name, email, Notion workspace, or deck title in a
     commit, PR, branch, or issue comment — use the numeric user ID or a role.
-  - When blocked or unsure an issue is safe/in-scope, SKIP it and leave it open.
-    Prefer doing nothing over shipping something wrong.
+  - Unsure about product, UX or copy → run the trio, ship, and record the call under
+    `## Decisions`. A price, payment or Stripe value, a paid plan or any new spend → draft and
+    name it in the summary; the four `CLAUDE.md` halts apply. Skip only issues outside
+    acquisition scope.
 
 LOG one line per issue as you go: issue # → verified relevant / closed (reason) /
 fixed (PR #) / skipped (reason). Stop when the acquisition-relevant queue is
-empty, you hit a tool/rate limit, or two agents can't make safe progress.
+empty; on a tool or rate limit, `ScheduleWakeup` and resume.
 
 Start now: pull main, pull the open issues, triage by the acquisition filter,
 and begin.
