@@ -6,6 +6,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { track } from '../../lib/analytics/track';
+import { fireSignupConversion } from '../../lib/analytics/googleAds';
+import { reportPurchaseConversion } from '../../lib/analytics/reportPurchaseConversion';
 import { markOnboarded } from '../../lib/backend/markOnboarded';
 import { storePassToken } from '../../lib/anonymousPass';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
@@ -73,7 +75,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
       return stored != null && stored.length > 0 ? stored : null;
     }
   );
-  const { data: userLocals } = useUserLocals();
+  const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
   const pageViewTracked = useRef(false);
   const signupTracked = useRef(false);
   const reattachTracked = useRef(false);
@@ -122,30 +124,56 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     if (globalThis.sessionStorage?.getItem(SIGNUP_FLAG_KEY) != null) return;
     globalThis.sessionStorage?.setItem(SIGNUP_FLAG_KEY, '1');
     track('signup_completed', { method: 'oauth' });
+    fireSignupConversion();
   }, [userLocals]);
 
+  // Captured once on mount: the effects below strip the checkout params from
+  // the URL straight away, while the conversion must wait for user locals.
+  const [returnedSessionId] = useState<string | null>(() => {
+    const returnedFromCheckout =
+      searchParams.get('from') === 'pass' ||
+      searchParams.get('checkout') === 'success' ||
+      searchParams.get('credits') === 'added';
+    const sessionId = returnedFromCheckout
+      ? searchParams.get('session_id')
+      : searchParams.get('pass_session');
+    return sessionId != null && sessionId.length > 0 ? sessionId : null;
+  });
+
   useEffect(() => {
-    if (searchParams.get('from') === 'pass') {
+    if (userLocalsLoading || returnedSessionId == null) return;
+    void reportPurchaseConversion(returnedSessionId, userLocals?.user?.email);
+  }, [returnedSessionId, userLocals, userLocalsLoading]);
+
+  useEffect(() => {
+    if (userLocalsLoading) return;
+    if (
+      searchParams.get('from') === 'pass' ||
+      searchParams.get('checkout') === 'success'
+    ) {
       const next = new URLSearchParams(searchParams);
       next.delete('from');
+      next.delete('checkout');
+      next.delete('session_id');
       const qs = next.toString();
       navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, userLocalsLoading]);
 
   useEffect(() => {
     const passSession = searchParams.get('pass_session');
-    if (passSession != null && passSession.length > 0) {
-      // Owner decision: anonymous passes live in the browser (localStorage is sanctioned for this use case)
-      storePassToken(passSession);
-      const next = new URLSearchParams(searchParams);
-      next.delete('pass_session');
-      const qs = next.toString();
-      navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
-    }
-  }, [searchParams, navigate]);
+    if (passSession == null || passSession.length === 0) return;
+    // Owner decision: anonymous passes live in the browser (localStorage is sanctioned for this use case)
+    storePassToken(passSession);
+    if (userLocalsLoading) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('pass_session');
+    const qs = next.toString();
+    navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
+  }, [searchParams, navigate, userLocalsLoading]);
 
   useEffect(() => {
+    if (userLocalsLoading) return;
     if (searchParams.get('credits') === 'added') {
       setCreditsConfirmation(
         tCredits('confirmation', {
@@ -155,10 +183,18 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
       queryClient.invalidateQueries({ queryKey: AI_CREDITS_QUERY_KEY });
       const next = new URLSearchParams(searchParams);
       next.delete('credits');
+      next.delete('session_id');
       const qs = next.toString();
       navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
     }
-  }, [searchParams, navigate, queryClient, tCredits, i18n.language]);
+  }, [
+    searchParams,
+    navigate,
+    queryClient,
+    tCredits,
+    i18n.language,
+    userLocalsLoading,
+  ]);
 
   if (
     view === 'template' ||

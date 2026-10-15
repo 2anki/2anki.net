@@ -96,7 +96,9 @@ describe('UnlimitedCheckoutUseCase', () => {
 
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        success_url: expect.stringContaining('/upload'),
+        success_url: expect.stringContaining(
+          '/upload?checkout=success&session_id={CHECKOUT_SESSION_ID}'
+        ),
         cancel_url: expect.stringContaining('/pricing'),
       })
     );

@@ -103,7 +103,7 @@ export class UnlimitedCheckoutUseCase {
     const sessionParams: StripeTypes.Checkout.SessionCreateParams = {
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${appUrl}/upload`,
+      success_url: `${appUrl}/upload?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/pricing`,
       customer_email:
         input.stripeCustomerId == null ? input.userEmail : undefined,

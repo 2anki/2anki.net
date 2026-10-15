@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { UploadPage } from './UploadPage';
 
@@ -27,40 +27,63 @@ vi.mock('../../lib/data_layer/userPreferencesSync', () => ({
 
 type FakeUser = {
   id?: number;
+  email?: string;
   created_at?: string | null;
   onboarded_at?: string | null;
 } | null;
 
 let fakeUser: FakeUser = null;
 let fakeLocals: { patreon?: boolean; subscriber?: boolean } | undefined;
+let fakeLocalsLoading = false;
+const reportPurchaseConversion = vi.fn();
+const storePassToken = vi.fn();
+vi.mock('../../lib/anonymousPass', () => ({
+  storePassToken: (...args: unknown[]) => storePassToken(...args),
+}));
+vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
+  reportPurchaseConversion: (...args: unknown[]) =>
+    reportPurchaseConversion(...args),
+}));
 vi.mock('../../lib/hooks/useUserLocals', () => ({
   useUserLocals: () => ({
     data: fakeUser == null ? undefined : { user: fakeUser, locals: fakeLocals },
-    isLoading: false,
+    isLoading: fakeLocalsLoading,
     error: null,
     isError: false,
     refetch: () => {},
   }),
 }));
 
-const renderPage = () => {
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location-search">{location.search}</output>;
+}
+
+const buildPage = (entry: string, queryClient: QueryClient) => (
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[entry]}>
+        <LocationProbe />
+        <Routes>
+          <Route
+            path="/upload"
+            element={<UploadPage setErrorMessage={() => {}} />}
+          />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  </HelmetProvider>
+);
+
+const renderPage = (entry = '/upload') => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
-    <HelmetProvider>
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={['/upload']}>
-          <Routes>
-            <Route
-              path="/upload"
-              element={<UploadPage setErrorMessage={() => {}} />}
-            />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>
-    </HelmetProvider>
-  );
+  const result = render(buildPage(entry, queryClient));
+  return {
+    ...result,
+    rerenderPage: () => result.rerender(buildPage(entry, queryClient)),
+  };
 };
 
 const renderPageWithSession = (
@@ -546,5 +569,111 @@ describe('UploadPage AI badge survives browser translation', () => {
     fakeLocals = { patreon: true, subscriber: false };
     renderPage();
     expect(collectUnwrappedTextNodes(badgeFor(/AI is off/))).toEqual([]);
+  });
+});
+
+describe('UploadPage checkout return', () => {
+  beforeEach(() => {
+    reportPurchaseConversion.mockReset();
+    storePassToken.mockReset();
+    fakeLocalsLoading = false;
+    fakeUser = null;
+    fakeLocals = undefined;
+  });
+
+  afterEach(() => {
+    fakeLocalsLoading = false;
+    fakeUser = null;
+  });
+
+  it('keeps the checkout params in the URL and reports nothing while user locals load', () => {
+    fakeLocalsLoading = true;
+
+    renderPage('/upload?from=pass&session_id=cs_test_abc123');
+
+    expect(screen.getByTestId('location-search')).toHaveTextContent(
+      'session_id=cs_test_abc123'
+    );
+    expect(reportPurchaseConversion).not.toHaveBeenCalled();
+  });
+
+  it('reports the purchase with the signed-in email once locals resolve, then strips the params', async () => {
+    fakeUser = { id: 42, email: 'buyer@example.com' };
+
+    renderPage('/upload?from=pass&session_id=cs_test_abc123');
+
+    await waitFor(() =>
+      expect(reportPurchaseConversion).toHaveBeenCalledWith(
+        'cs_test_abc123',
+        'buyer@example.com'
+      )
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('location-search')).not.toHaveTextContent(
+        'session_id'
+      )
+    );
+  });
+
+  it('reports an anonymous pass return without an email and stores the pass', async () => {
+    renderPage('/upload?pass_session=cs_test_anon456');
+
+    await waitFor(() =>
+      expect(reportPurchaseConversion).toHaveBeenCalledWith(
+        'cs_test_anon456',
+        undefined
+      )
+    );
+    expect(storePassToken).toHaveBeenCalledWith('cs_test_anon456');
+  });
+
+  it('stores an anonymous pass before user locals resolve, and strips it after', async () => {
+    fakeLocalsLoading = true;
+
+    const { rerenderPage } = renderPage('/upload?pass_session=cs_test_slow');
+
+    expect(storePassToken).toHaveBeenCalledWith('cs_test_slow');
+    expect(screen.getByTestId('location-search')).toHaveTextContent(
+      'pass_session=cs_test_slow'
+    );
+
+    fakeLocalsLoading = false;
+    rerenderPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location-search')).not.toHaveTextContent(
+        'pass_session'
+      )
+    );
+    expect(reportPurchaseConversion).toHaveBeenCalledWith(
+      'cs_test_slow',
+      undefined
+    );
+  });
+
+  it('reports a signed-in return once locals resolve after a loading first render', async () => {
+    fakeLocalsLoading = true;
+
+    const { rerenderPage } = renderPage(
+      '/upload?checkout=success&session_id=cs_test_pro'
+    );
+    expect(reportPurchaseConversion).not.toHaveBeenCalled();
+
+    fakeLocalsLoading = false;
+    fakeUser = { id: 7, email: 'pro@example.com' };
+    rerenderPage();
+
+    await waitFor(() =>
+      expect(reportPurchaseConversion).toHaveBeenCalledWith(
+        'cs_test_pro',
+        'pro@example.com'
+      )
+    );
+  });
+
+  it('ignores a bare session_id that did not come back from checkout', () => {
+    renderPage('/upload?session_id=cs_test_planted');
+
+    expect(reportPurchaseConversion).not.toHaveBeenCalled();
   });
 });

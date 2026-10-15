@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { trackingAllowedFor } from '../lib/http/consentRegion';
 import { KNOWN_EVENTS } from '../types/AnalyticsEvents';
 import { TrackEventUseCase } from '../usecases/events/TrackEventUseCase';
 import { parseFirstTouch } from './helpers/parseFirstTouch';
@@ -37,7 +38,9 @@ export class EventsController {
     }
 
     const userId = (res.locals.owner as number | undefined) ?? null;
-    const anonymousId = (req.cookies?.anon_id as string | undefined) ?? null;
+    const anonymousId = trackingAllowedFor(req)
+      ? ((req.cookies?.anon_id as string | undefined) ?? null)
+      : null;
 
     this.trackEventUseCase.execute({
       name,

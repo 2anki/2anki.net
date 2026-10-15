@@ -87,7 +87,7 @@ export class AutoSyncCheckoutUseCase {
     const sessionParams: StripeTypes.Checkout.SessionCreateParams = {
       mode: 'subscription',
       line_items: [{ price: this.priceId, quantity: 1 }],
-      success_url: `${process.env.APP_URL ?? 'https://2anki.net'}/ankify/setup`,
+      success_url: `${process.env.APP_URL ?? 'https://2anki.net'}/ankify/setup?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.APP_URL ?? 'https://2anki.net'}/pricing`,
       customer_email:
         input.stripeCustomerId == null ? input.userEmail : undefined,

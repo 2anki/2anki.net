@@ -16,6 +16,7 @@ import {
   LogOutEverywhere,
 } from './components';
 import { LanguagePicker } from '../../components/LanguagePicker/LanguagePicker';
+import { CookieSettings } from './components/CookieSettings';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './AccountPage.module.css';
 
@@ -139,6 +140,10 @@ export default function AccountPage() {
 
       <section className={styles.section}>
         <LanguagePicker variant="labeled" />
+      </section>
+
+      <section className={styles.section}>
+        <CookieSettings />
       </section>
 
       <PlanDetails subscriptionType={subscriptionType} />

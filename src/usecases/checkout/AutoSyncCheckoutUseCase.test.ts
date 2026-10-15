@@ -91,7 +91,9 @@ describe('AutoSyncCheckoutUseCase', () => {
       expect.objectContaining({
         mode: 'subscription',
         line_items: [{ price: AUTO_SYNC_PRICE_ID, quantity: 1 }],
-        success_url: expect.stringContaining('/ankify/setup'),
+        success_url: expect.stringContaining(
+          '/ankify/setup?checkout=success&session_id={CHECKOUT_SESSION_ID}'
+        ),
         cancel_url: expect.stringContaining('/pricing'),
         metadata: { user_id: '42' },
         subscription_data: { metadata: { user_id: '42' } },

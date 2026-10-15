@@ -1,7 +1,7 @@
 import { vi, type MockedFunction } from 'vitest';
 import { Response } from 'express';
 
-import { sendIndex } from './sendIndex';
+import { sendIndex, withConsentRegion } from './sendIndex';
 import { getIndexFileContents } from './getIndexFileContents';
 import { INDEX_HTML_CACHE_CONTROL } from '../../lib/mountWebBuild';
 
@@ -31,7 +31,20 @@ describe('sendIndex', () => {
     sendIndex(res);
 
     expect(res.status).not.toHaveBeenCalled();
-    expect(res.send).toHaveBeenCalledWith('<html>ready</html>');
+    expect(res.send).toHaveBeenCalledWith(
+      '<html data-consent-region="eea">ready</html>'
+    );
+  });
+
+  it('stamps the consent region the caller resolved', () => {
+    mockedGet.mockReturnValue('<html lang="en">ready</html>');
+    const res = buildResponse();
+
+    sendIndex(res, '/', 'other');
+
+    expect(res.send).toHaveBeenCalledWith(
+      '<html lang="en" data-consent-region="other">ready</html>'
+    );
   });
 
   it('marks the shell no-cache so stale clients pick up new builds', () => {
@@ -55,5 +68,25 @@ describe('sendIndex', () => {
     expect(res.status).toHaveBeenCalledWith(503);
     expect(res.set).toHaveBeenCalledWith('Retry-After', '5');
     expect(res.send).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('withConsentRegion', () => {
+  it('adds the attribute to a bare html tag', () => {
+    expect(withConsentRegion('<!doctype html><html><head></head>', 'eea')).toBe(
+      '<!doctype html><html data-consent-region="eea"><head></head>'
+    );
+  });
+
+  it('keeps existing attributes', () => {
+    expect(withConsentRegion('<html lang="en" dir="ltr">', 'other')).toBe(
+      '<html lang="en" dir="ltr" data-consent-region="other">'
+    );
+  });
+
+  it('leaves html without a root tag untouched', () => {
+    expect(withConsentRegion('<div>no shell</div>', 'eea')).toBe(
+      '<div>no shell</div>'
+    );
   });
 });

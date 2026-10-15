@@ -2,16 +2,35 @@ import express from 'express';
 import { getIndexFileContents } from './getIndexFileContents';
 import { INDEX_HTML_CACHE_CONTROL } from '../../lib/mountWebBuild';
 import { legalPrerenderFor } from '../../lib/legalPrerender';
+import type { ConsentRegion } from '../../lib/http/consentRegion';
 
 const BUILD_PENDING_BODY =
   'The site is being updated. Refresh in a few seconds.';
 
-export const sendIndex = (response: express.Response, requestPath = '') => {
+const HTML_OPEN_TAG = /<html(\s[^>]*)?>/;
+
+/**
+ * The cookie banner decides client-side whether to show, but only the server
+ * knows the visitor's country. The region rides on the <html> element so the
+ * inline consent script can read it before any tag loads.
+ */
+export function withConsentRegion(html: string, region: ConsentRegion): string {
+  return html.replace(HTML_OPEN_TAG, (_match, attrs: string | undefined) => {
+    return `<html${attrs ?? ''} data-consent-region="${region}">`;
+  });
+}
+
+export const sendIndex = (
+  response: express.Response,
+  requestPath = '',
+  consentRegion: ConsentRegion = 'eea'
+) => {
   response.set('Cache-Control', INDEX_HTML_CACHE_CONTROL);
   const html = getIndexFileContents();
   if (html == null) {
     response.set('Retry-After', '5');
     return response.status(503).send(BUILD_PENDING_BODY);
   }
-  return response.send(legalPrerenderFor(requestPath, html) ?? html);
+  const shell = withConsentRegion(html, consentRegion);
+  return response.send(legalPrerenderFor(requestPath, shell) ?? shell);
 };

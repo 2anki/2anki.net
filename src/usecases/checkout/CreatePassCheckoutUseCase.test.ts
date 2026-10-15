@@ -131,7 +131,8 @@ describe('CreatePassCheckoutUseCase', () => {
 
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        success_url: 'https://staging.2anki.net/upload?from=pass',
+        success_url:
+          'https://staging.2anki.net/upload?from=pass&session_id={CHECKOUT_SESSION_ID}',
         cancel_url: 'https://staging.2anki.net/pricing',
       })
     );

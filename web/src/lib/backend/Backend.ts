@@ -800,6 +800,44 @@ export class Backend {
     }
   }
 
+  async getCheckoutReceipt(sessionId: string): Promise<{
+    amount: number;
+    currency: string;
+    kind: string;
+    anonymous: boolean;
+  } | null> {
+    try {
+      const response = await fetch(
+        `${this.baseURL}checkout/receipt?session_id=${encodeURIComponent(sessionId)}`,
+        { credentials: 'include' }
+      );
+      if (!response.ok) {
+        return null;
+      }
+      const body = (await response.json()) as {
+        amount?: unknown;
+        currency?: unknown;
+        kind?: unknown;
+        anonymous?: unknown;
+      };
+      if (
+        typeof body.amount !== 'number' ||
+        typeof body.currency !== 'string' ||
+        typeof body.kind !== 'string'
+      ) {
+        return null;
+      }
+      return {
+        amount: body.amount,
+        currency: body.currency,
+        kind: body.kind,
+        anonymous: body.anonymous === true,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   async startPassCheckout(
     kind: '24h' | '7d' | '120d',
     variant?: string,

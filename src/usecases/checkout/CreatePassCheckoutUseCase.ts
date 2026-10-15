@@ -35,7 +35,7 @@ export class CreatePassCheckoutUseCase {
 
     const successUrl = isAnonymous
       ? `${appUrl}/upload?pass_session={CHECKOUT_SESSION_ID}`
-      : `${appUrl}/upload?from=pass`;
+      : `${appUrl}/upload?from=pass&session_id={CHECKOUT_SESSION_ID}`;
 
     const metadata: Record<string, string> = { pass_kind: this.passKind };
     if (isAnonymous) {

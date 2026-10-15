@@ -30,6 +30,7 @@ function buildMocks(opts: {
   userId?: number | null;
   anonId?: string | null;
   firstTouch?: string;
+  consent?: 'granted' | 'denied';
 }) {
   const repo = makeFakeRepository();
   const sink = new EventsSink(repo);
@@ -40,6 +41,7 @@ function buildMocks(opts: {
   const cookies: Record<string, string> = {};
   if (opts.anonId != null) cookies.anon_id = opts.anonId;
   if (opts.firstTouch != null) cookies.first_touch = opts.firstTouch;
+  if (opts.consent != null) cookies.cookie_consent = opts.consent;
 
   const req = {
     body: {},
@@ -196,14 +198,31 @@ describe('EventsController', () => {
     );
   });
 
-  it('reads anonymousId from cookie', () => {
+  it('reads anonymousId from cookie when tracking is allowed', () => {
     const { controller, req, res, executeSpy } = buildMocks({
       anonId: 'cookie-anon',
+      consent: 'granted',
     });
     req.body = { name: 'upload_error_chat_shown' };
     controller.track(req, res);
     expect(executeSpy).toHaveBeenCalledWith(
       expect.objectContaining({ anonymousId: 'cookie-anon' })
+    );
+  });
+
+  it('drops anonymousId after Only necessary, and in the EEA before any choice', () => {
+    const denied = buildMocks({ anonId: 'cookie-anon', consent: 'denied' });
+    denied.req.body = { name: 'upload_error_chat_shown' };
+    denied.controller.track(denied.req, denied.res);
+    expect(denied.executeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ anonymousId: null })
+    );
+
+    const undecided = buildMocks({ anonId: 'cookie-anon' });
+    undecided.req.body = { name: 'upload_error_chat_shown' };
+    undecided.controller.track(undecided.req, undecided.res);
+    expect(undecided.executeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ anonymousId: null })
     );
   });
 

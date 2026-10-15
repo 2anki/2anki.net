@@ -38,17 +38,23 @@ interface FirstTouchDocument {
   location: { pathname: string };
 }
 
+/**
+ * Analytics cookie: written only when analytics cookies are allowed. The
+ * banner is usually answered after the SPA left the landing URL, so the
+ * caller can replay the remembered landing path once consent arrives.
+ */
 export function captureFirstTouch(
   doc: FirstTouchDocument | null = typeof document === 'undefined'
     ? null
-    : document
+    : document,
+  landingPath: string | null = null
 ): void {
   if (doc == null) {
     return;
   }
   const next = buildFirstTouchCookie(
     doc.cookie,
-    doc.location.pathname,
+    landingPath ?? doc.location.pathname,
     doc.referrer
   );
   if (next == null) {

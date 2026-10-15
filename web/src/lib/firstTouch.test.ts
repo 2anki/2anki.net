@@ -67,4 +67,17 @@ describe('captureFirstTouch', () => {
       `${FIRST_TOUCH_COOKIE}=%7B%22landingPath%22%3A%22%2Ffirst%22%7D`
     );
   });
+
+  it('records the remembered landing path instead of the current one', () => {
+    const doc = {
+      cookie: '',
+      referrer: '',
+      location: { pathname: '/upload' },
+    };
+    captureFirstTouch(doc, '/pdf-to-anki/');
+    expect(decodeCookieValue(doc.cookie)).toEqual({
+      landingPath: '/pdf-to-anki/',
+      referrer: '',
+    });
+  });
 });

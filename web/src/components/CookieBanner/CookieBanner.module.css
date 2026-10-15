@@ -1,0 +1,96 @@
+.banner {
+  position: fixed;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  z-index: 1000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: var(--space-4);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.text {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.title {
+  margin: 0 0 var(--space-1);
+  font-weight: var(--font-semibold);
+}
+
+.body {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.link {
+  color: var(--color-text-link);
+  text-decoration: underline;
+}
+
+.link:hover {
+  color: var(--color-text-link-hover);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Both choices share one style on purpose: declining must be as easy and as
+   visible as accepting, or the consent is not freely given. */
+.primary,
+.secondary {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  border: 1px solid var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.primary:hover,
+.secondary:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible,
+.link:focus-visible {
+  outline: 2px solid var(--color-text-link);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .banner {
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    max-height: 60vh;
+    overflow: auto;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .primary,
+  .secondary {
+    flex: 1 1 auto;
+  }
+}

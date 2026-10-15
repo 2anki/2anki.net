@@ -7,6 +7,9 @@ import AutoSyncCheckoutController from '../controllers/AutoSyncCheckoutControlle
 import AutoSyncPriceController from '../controllers/AutoSyncPriceController';
 import { GetAutoSyncPriceUseCase } from '../usecases/checkout/GetAutoSyncPriceUseCase';
 import PassCheckoutController from '../controllers/PassCheckoutController';
+import CheckoutReceiptController from '../controllers/CheckoutReceiptController';
+import { ipRateLimit } from './middleware/ipRateLimit';
+import { GetCheckoutReceiptUseCase } from '../usecases/checkout/GetCheckoutReceiptUseCase';
 import ResumeCheckoutController from '../controllers/ResumeCheckoutController';
 import UnlimitedCheckoutController from '../controllers/UnlimitedCheckoutController';
 import { AutoSyncCheckoutUseCase } from '../usecases/checkout/AutoSyncCheckoutUseCase';
@@ -197,6 +200,36 @@ const CheckoutRouter = () => {
       });
       return controller.getPrices(_req, res);
     }
+  );
+
+  /**
+   * @openapi
+   * /api/checkout/receipt:
+   *   get:
+   *     summary: Amount, currency and kind of a paid Checkout Session the caller owns
+   *     parameters:
+   *       - in: query
+   *         name: session_id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: Receipt for the success page's purchase conversion
+   *       400:
+   *         description: Malformed session id
+   *       404:
+   *         description: Unknown, unpaid or not the caller's session
+   */
+  const receiptRateLimit = ipRateLimit(30);
+  router.get(
+    '/api/checkout/receipt',
+    receiptRateLimit,
+    optionalAuthMiddleware,
+    (req, res) =>
+      new CheckoutReceiptController(
+        new GetCheckoutReceiptUseCase(getStripe())
+      ).getReceipt(req, res)
   );
 
   router.post(
