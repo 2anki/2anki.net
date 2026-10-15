@@ -272,6 +272,7 @@ describe('guardLocalFiles', () => {
     'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js',
     'data:image/png;base64,AAAA',
     'about:blank',
+    'FILE:///tmp/2anki-pdf-abc/media-1.png',
   ])('lets %s load', (url) => {
     const req = request(url);
     guard(req as unknown as HTTPRequest);
@@ -290,6 +291,11 @@ describe('guardLocalFiles', () => {
     'https://example.com/tracker.png',
     'https://cdn.jsdelivr.net/npm/evil@1/x.js',
     'ftp://example.com/file',
+    'file:///tmp/2anki-pdf-ABC/index.html',
+    'https://cdn.jsdelivr.net/npm/mathjax@3/../evil@1/x.js',
+    'https://user@cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js',
+    'https://cdn.jsdelivr.net.evil.com/npm/mathjax@3/es5/tex-chtml.js',
+    'not a url',
   ])('blocks %s', (url) => {
     const req = request(url);
     guard(req as unknown as HTTPRequest);

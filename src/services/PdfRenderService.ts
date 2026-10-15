@@ -99,21 +99,43 @@ const MATHJAX_PREFIX = 'https://cdn.jsdelivr.net/npm/mathjax@3/';
  * internal or third-party addresses.
  */
 export function guardLocalFiles(dirUrl: string) {
-  const dir = dirUrl.toLowerCase();
+  const dir = new URL(dirUrl);
+  const mathjax = new URL(MATHJAX_PREFIX);
   return (request: HTTPRequest): void => {
-    const url = request.url();
-    const lower = url.toLowerCase();
-    const allowed =
-      (lower.startsWith('file:') && lower.startsWith(dir)) ||
-      lower.startsWith('data:') ||
-      lower === 'about:blank' ||
-      url.startsWith(MATHJAX_PREFIX);
-    if (!allowed) {
+    if (!isAllowedRenderUrl(request.url(), dir, mathjax)) {
       void request.abort('accessdenied');
       return;
     }
     void request.continue();
   };
+}
+
+// Compares parsed URLs, not raw strings: the scheme is case-insensitive, but
+// paths are compared exactly, so a differently-cased sibling temp directory
+// (another render's) never matches.
+function isAllowedRenderUrl(raw: string, dir: URL, mathjax: URL): boolean {
+  if (raw === 'about:blank') return true;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+  switch (url.protocol) {
+    case 'data:':
+      return true;
+    case 'file:':
+      return url.host === dir.host && url.pathname.startsWith(dir.pathname);
+    case 'https:':
+      return (
+        url.origin === mathjax.origin &&
+        url.username === '' &&
+        url.password === '' &&
+        url.pathname.startsWith(mathjax.pathname)
+      );
+    default:
+      return false;
+  }
 }
 
 export default class PdfRenderService {
