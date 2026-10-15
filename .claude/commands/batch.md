@@ -51,13 +51,13 @@ For each PR:
 
 1. Read the title. Dependabot encodes the bump level there — extract `patch | minor | major` from the conventional `bump <pkg> from X to Y` shape plus the semver delta. If you cannot determine the bump level, mark it `unknown` and treat as non-patch.
 2. If `--patch-only` is set, drop entries whose bump level is not `patch`.
-3. Pull the file list (`files[].path`). If any path matches `HARD_BLOCK_PATHS`, drop the entry from the dispatch list and add it to a separate `hard-blocked` list to surface in the final report.
+3. Pull the file list (`files[].path`). If any path matches `HARD_BLOCK_PATHS`, keep the entry in the dispatch list, mark it `hard-blocked` so the worker runs `/security-review` on the diff first, and list it separately in the final report.
 
 Cap the result at `MAX_TASKS`. Invoking `/batch` is Alexander's approval for up to `MAX_TASKS` agent runs. If the raw queue had more than `MAX_TASKS` viable entries, print `Queue has <N> tasks; cap is 20. Dispatching the first 20; the remaining <N-20> stay in the queue for the next /batch.` and continue; nothing is dropped, the leftovers are still open on GitHub.
 
 ## Step 4 — dispatch loop
 
-If `--dry-run`, print the table from step 6 with status `would-dispatch` for every viable task and `hard-blocked → security-review` for blocked entries, then exit.
+If `--dry-run`, print the table from step 6 with status `would-dispatch` for every viable task and `would-dispatch (hard-blocked: security-review first)` for marked entries, then exit.
 
 Otherwise:
 
@@ -102,7 +102,7 @@ Status values are exactly: `merged | open | needs-review | failed-checks | timeo
 Below the table, one summary line:
 
 ```
-N merged · N needs-review · N failed-checks · N timeout · N hard-blocked (routed to /security-review)
+N merged · N needs-review · N failed-checks · N timeout · N hard-blocked (security-reviewed before /ship)
 ```
 
 If `hard-blocked` is non-empty, list those PR numbers with the `/security-review` verdict each one shipped on.

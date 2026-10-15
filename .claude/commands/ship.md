@@ -44,7 +44,7 @@ Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh contex
 - **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. There is no round cap: keep fixing and re-reviewing until a pass comes back clean. (2026-10-15: a two-round cap stopped a CI-green, security-clean PR with every finding already fixed; Alexander merged it by hand hours later while a paid campaign ran unattributed.)
   - A reviewer re-raising a point you already addressed is a fix to make, or, for a non-security point you can show is already handled, evidence to put in the next review brief. It is never a reason to stop.
   - A security finding clears only on a code change that a fresh reviewer passes, never on your own reply.
-  - The only halt here is a finding you cannot fix on the branch (a prod secret, a third-party dashboard setting). Ask Alexander for that one thing in the chat and keep shipping once it is in.
+  - The only halt here is a finding you cannot fix on the branch (a prod secret, a third-party dashboard setting). In an interactive run ask Alexander for that one thing in the chat and keep shipping once it is in; an unattended run (`/overnight-prs`) parks it behind a safe default and names it in the morning summary.
 - **Clean** → post the pass marker for the exact head SHA:
   ```bash
   HEAD=$(gh pr view <n> --json headRefOid --jq .headRefOid)

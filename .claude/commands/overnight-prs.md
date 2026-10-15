@@ -216,8 +216,8 @@ Running log, one line per issue, with a running counter so the log reconciles ag
 `[idx/M] #NNN <title> → <state>`. There are FOUR terminal states — every issue you reach lands in
 exactly one, so the log accounts for every issue you opened, not just the ones you acted on:
 - `SHIPPED <url> (T1|T2, healthy|no deploy|reverted)` — merged and deployed through `/ship`.
-- `PR <url> (T3, draft)` — opened a Tier 3 draft that waits on a value only Alexander holds; name
-  the value.
+- `PR <url> (T3|check, draft)` — a draft that waits on a value only Alexander holds, or on a check
+  failure outside the diff; name the blocker.
 - `CLOSED: <reason>` — closed per Step 0 (already fixed / already shipped / superseded / duplicate
   of #m / junk).
 - `SKIPPED: <reason>` — relevant but still unintelligible after the trio looked, or needs a value
@@ -240,7 +240,7 @@ On stop, print the summary in this order — counts are the hero; the four bucke
 2. **Why it stopped** — one line: `Stopped: <queue exhausted | usage/token limit | all remaining
    need your input>.[ <M-N> issues never reached — rerun to continue.]`
 3. **Shipped** — issue #, title, PR URL, deploy verdict.
-3b. **PRs waiting for you** — issue #, title, PR URL, why (review round / Tier 3).
+3b. **PRs waiting for you** — issue #, title, PR URL, why (a value only you hold, or a check failure outside the diff).
 4. **Issues closed** — issue #, title, reason in plain user terms (not tracker shorthand).
 5. **Issues skipped — left open for you** — issue #, title, the specific blocker.
 6. A trailing count for the `REACHED: left open` bucket (`<R> reached, left open — no action`).
