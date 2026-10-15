@@ -186,7 +186,7 @@ export default function ConversionsTab() {
 
           <ChartPanel
             title="PDF export failures by reason, last 7 days"
-            subtitle="From pdf_export_failed events"
+            subtitle="From pdf_export_failed events · top 10"
             isLoading={showInitialSkeleton}
             isEmpty={
               (visible?.pdf_export_failures_7d_by_reason?.length ?? 0) === 0

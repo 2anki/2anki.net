@@ -7,6 +7,7 @@ import {
 } from './classifyFailureReason';
 import type { PassSalesCounts } from '../types/ops/BusinessMetrics';
 import type { ConversionErrorCount } from '../types/ops/ConversionMetrics';
+import { PDF_EXPORT_FAILURE_REASONS } from '../types/PdfExportFailureReason';
 
 export type { PassSalesCounts };
 
@@ -82,7 +83,7 @@ export interface ConversionOutcomesRow {
 }
 
 export interface PdfExportFailureRow {
-  reason: string | null;
+  reason: string;
   count: number | string;
 }
 
@@ -129,10 +130,7 @@ export function mapPdfExportFailureRows(
   rows: PdfExportFailureRow[]
 ): ConversionErrorCount[] {
   return rows
-    .map((row) => ({
-      reason: row.reason ?? 'unknown',
-      count: Number(row.count),
-    }))
+    .map((row) => ({ reason: row.reason, count: Number(row.count) }))
     .sort((a, b) => b.count - a.count);
 }
 
@@ -165,12 +163,18 @@ export class EventsMetricsRepository
   }
 
   buildPdfExportFailuresByReasonQuery(since: Date): Knex.QueryBuilder {
+    const reasonPlaceholders = PDF_EXPORT_FAILURE_REASONS.map(() => '?').join(
+      ', '
+    );
     return this.database('events')
-      .select(this.database.raw("props->>'reason' as reason"))
+      .select(this.database.raw(`${REASON_PROP_EXPRESSION} as reason`))
       .count('* as count')
       .where('name', 'pdf_export_failed')
       .where('created_at', '>=', since)
-      .groupBy(this.database.raw("props->>'reason'"))
+      .whereRaw(`${REASON_PROP_EXPRESSION} in (${reasonPlaceholders})`, [
+        ...PDF_EXPORT_FAILURE_REASONS,
+      ])
+      .groupBy(this.database.raw(REASON_PROP_EXPRESSION))
       .orderBy('count', 'desc')
       .limit(PDF_EXPORT_FAILURE_REASON_LIMIT);
   }

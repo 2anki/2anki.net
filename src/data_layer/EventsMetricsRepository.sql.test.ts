@@ -93,7 +93,17 @@ describe('EventsMetricsRepository generated SQL', () => {
     expect(sql).toContain("group by props->>'reason'");
     expect(sql).toContain('count(*)');
     expect(sql).toContain('order by "count" desc');
-    expect(sql).toContain('limit 10');
+    expect(sql).toMatch(/limit 10$/);
+  });
+
+  it('keeps only the reasons the PDF route itself records', () => {
+    const sql = repository
+      .buildPdfExportFailuresByReasonQuery(sevenDaysAgo)
+      .toString();
+
+    expect(sql).toContain(
+      "props->>'reason' in ('no_file', 'not_apkg', 'invalid_options', 'apkg_too_large', 'card_limit', 'render_timeout', 'render_crashed', 'invalid_apkg', 'unexpected')"
+    );
   });
 
   it('counts pass checkouts by plan inside the window', () => {
@@ -261,12 +271,6 @@ describe('mapPdfExportFailureRows', () => {
     ).toEqual([
       { reason: 'render_crashed', count: 9 },
       { reason: 'render_timeout', count: 2 },
-    ]);
-  });
-
-  it('labels a null reason as unknown', () => {
-    expect(mapPdfExportFailureRows([{ reason: null, count: '4' }])).toEqual([
-      { reason: 'unknown', count: 4 },
     ]);
   });
 });
