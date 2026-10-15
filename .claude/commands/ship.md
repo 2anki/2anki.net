@@ -14,7 +14,7 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
 
 - Rail-class PR (auth, payments, migrations) whose body records an unverified assumption → `gh pr ready --undo`, name the assumption for Alexander, and stop this PR's ship; a wrong guess there is not undone by a revert.
 - Draft → read the body, then one of:
-  - it records a blocker only Alexander can clear (a value only he holds: a secret, a Stripe or Google dashboard setting, spend approval) → interactive run: ask him for that value in the chat; unattended run: leave it draft and name the value in the morning summary;
+  - it records a blocker only Alexander can clear (a value only he holds: a secret, a Stripe or Google dashboard setting; or new spend to approve) → interactive run: ask him for that value in the chat; unattended run: leave it draft and name the value in the morning summary;
   - it is a `/spec-draft-pr` spec → not a ship target: route it to `/implement` and report that (never `gh pr ready` here); a WIP flag is the author's note, not a halt: finish the work, then ready it;
   - otherwise → finish what keeps it draft, wait for green, `gh pr ready`, and continue.
 - Rail class? Run the classifier on the file list and diff:
@@ -23,7 +23,7 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
   gh pr diff <n> > /tmp/ship-diff.txt
   python3 -c "import sys; sys.path.insert(0,'.claude/hooks'); import hard_rails as r; p=open('/tmp/ship-paths.txt').read().split(); print(r.rail_paths(p)); print(r.rail_content_hits(open('/tmp/ship-diff.txt').read()))"
   ```
-  Any hit → run the matching checks in step 1b before step 2, and step 6b after the deploy. A rail PR merges on that evidence; it does not stop and wait for Alexander.
+  Any hit → run the matching checks in step 1b before step 2, and step 6b after the deploy. A rail PR merges on that evidence; it does not stop and wait for Alexander, unless its body records an unverified assumption (step 1).
 - Bring the branch up to date: `gh pr checkout <n>`, `git fetch origin main`, `git rebase origin/main`. If the rebase moved HEAD, `git push --force-with-lease origin <branch>` and re-read `headRefOid`.
 
 ## 1b. Rail verification (only when step 1 hit)
@@ -43,7 +43,7 @@ Run every row that matches the hit. Any failure → fix on the branch and restar
 
 Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh context, diff only) and read the synthesized verdict.
 
-**`review-pr` is switched off on the maintainer's machine (`.claude/settings.local.json`, per-machine and untracked), so invoke the reviewers yourself** with the `Agent` tool rather than the skill — one agent per dimension, each briefed to read the diff and report BLOCKING / NON-BLOCKING / verdict with no edits, commits or merges. **Never use `subagent_type: "fork"` for a reviewer.** A fork inherits this whole ship task, the shared worktree and the operator's `gh` auth, and on #4679 three read-only-briefed forks edited, force-pushed, posted markers and enqueued the merge themselves. Use a fresh read-only type (`caveman:cavecrew-reviewer`), save the diff to a scratchpad file first, and pass only the diff path and the review brief, never the ship steps. The marker you post in a moment is the merge gate's only substantive review condition, so it must stand for a review that actually ran. Do not post it on the strength of your own reading alone.
+**`review-pr` may be switched off on the maintainer's machine (`.claude/settings.local.json`, per-machine and untracked), so invoke the reviewers yourself** with the `Agent` tool rather than the skill — one agent per dimension, each briefed to read the diff and report BLOCKING / NON-BLOCKING / verdict with no edits, commits or merges. **Never use `subagent_type: "fork"` for a reviewer.** A fork inherits this whole ship task, the shared worktree and the operator's `gh` auth, and on #4679 three read-only-briefed forks edited, force-pushed, posted markers and enqueued the merge themselves. Use a fresh read-only type (`caveman:cavecrew-reviewer`), save the diff to a scratchpad file first, and pass only the diff path and the review brief, never the ship steps. The marker you post in a moment is the merge gate's only substantive review condition, so it must stand for a review that actually ran. Do not post it on the strength of your own reading alone.
 
 - **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. There is no round cap: keep fixing and re-reviewing until a pass is clean (no BLOCKING findings from any reviewer) or a CLAUDE.md carve-out fires. For the review loop, a clean pass or a `CLAUDE.md` halt is the only end; for the run, the usage limit is.
   - Re-raised point: fix it, or, if it is non-security and already handled, cite the evidence in the next brief. Never a reason to stop.

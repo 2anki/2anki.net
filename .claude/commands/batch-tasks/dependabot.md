@@ -29,7 +29,7 @@ From the JSON:
 
 ## Step 2 — belt-and-suspenders needs-eyes check
 
-Even though the dispatcher filtered, re-check the PR against the full needs-eyes set before considering a merge. A PR is **needs-eyes** if ANY of the following hold.
+Even though the dispatcher filtered, re-check the PR against the full needs-eyes set before considering a merge. A PR is **needs-eyes** if ANY of the following apply (hold, route or wait).
 
 ### 2a — hard-block paths (security-review)
 

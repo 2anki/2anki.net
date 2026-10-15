@@ -97,7 +97,7 @@ Print one final markdown table:
 | bump qux from 5.0.0 to 5.0.1 | dependabot/npm_and_yarn/qux-5.0.1 | 2304 | timeout |
 ```
 
-Status values are exactly: `merged | open | needs-review | failed-checks | timeout`. No others. (`would-dispatch` appears only in `--dry-run` output, and `hard-blocked` is a flag on a row, not a status.)
+Row statuses are exactly: `merged | open | needs-review | failed-checks | timeout`. (`would-dispatch` appears only in `--dry-run` output, and `hard-blocked` is a flag on a row, not a status.)
 
 Below the table, one summary line:
 
