@@ -257,6 +257,8 @@
       "unreadableFileTitle": "Questo file è cambiato da quando l'hai scelto",
       "unreadableFileBody": "Il browser non riesce più a leggere la versione scelta: è stata salvata, spostata o eliminata dopo la selezione. Scegli di nuovo il file per caricare la versione attuale.",
       "unreadableChooseAgain": "Scegli di nuovo il file",
+      "emptyFileTitle": "Questo file è vuoto",
+      "emptyFileBody": "Ha 0 byte, quindi non c'è nulla da convertire. Se si trova in OneDrive, iCloud Drive o Google Drive, aprilo una volta perché venga scaricato sul tuo computer, poi scegli di nuovo il file.",
       "sampleSuccessNote": "Questo è un mazzo di esempio. Ora converti il tuo file.",
       "convertYourOwn": "Converti il tuo file",
       "emptyAllFiltered": "Un filtro delle carte ha rimosso tutte le carte. Se hai attivato cherry pick (🍒) o skip (🥑), contrassegna i toggle che vuoi oppure disattiva il filtro, poi converti di nuovo."

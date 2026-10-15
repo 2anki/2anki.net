@@ -252,6 +252,8 @@
       "unreadableFileTitle": "選択後にこのファイルが変更されました",
       "unreadableFileBody": "選択したバージョンをブラウザが読み込めなくなりました。選択後に保存、移動、または削除された可能性があります。もう一度ファイルを選んで、現在のバージョンをアップロードしてください。",
       "unreadableChooseAgain": "ファイルをもう一度選ぶ",
+      "emptyFileTitle": "このファイルは空です",
+      "emptyFileBody": "0 バイトのため、変換できる内容がありません。OneDrive、iCloud Drive、Google Drive にあるファイルなら、一度開いてパソコンにダウンロードしてから、もう一度選んでください。",
       "sampleSuccessNote": "これはサンプルのデッキです。次は自分のファイルを変換しましょう。",
       "convertYourOwn": "自分のファイルを変換",
       "emptyAllFiltered": "カードフィルターがすべてのカードを除外しました。cherry pick（🍒）や skip（🥑）をオンにしている場合は、必要なトグルに印を付けるか、フィルターをオフにしてから、もう一度変換してください。"

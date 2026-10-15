@@ -1010,6 +1010,7 @@ function UploadForm({
     const fileSizeBytes = failedFile?.size ?? null;
     if (error instanceof UnreadableFileError) {
       track('upload_file_unreadable', {
+        reason: error.reason,
         fileSizeBytes,
         fileExt,
         ...(isRetry ? { retry: true } : {}),
@@ -1932,16 +1933,20 @@ function UploadForm({
   };
 
   // The browser refuses to read the picked file (saved again, moved or deleted
-  // since the pick), so a same-file retry can never succeed: the only way out
-  // is a fresh pick.
+  // since the pick), or the pick is a 0-byte cloud placeholder, so a same-file
+  // retry can never succeed: the only way out is a fresh pick.
   const renderUnreadableFileState = () => (
     <div className={formStyles.stateContent}>
       <WarningIcon className={formStyles.iconError} />
       <p className={formStyles.errorTitle}>
-        {t('upload.form.unreadableFileTitle')}
+        {unreadableFile?.size === 0
+          ? t('upload.form.emptyFileTitle')
+          : t('upload.form.unreadableFileTitle')}
       </p>
       <p className={formStyles.errorBody}>
-        {t('upload.form.unreadableFileBody')}
+        {unreadableFile?.size === 0
+          ? t('upload.form.emptyFileBody')
+          : t('upload.form.unreadableFileBody')}
       </p>
       <button
         type="button"

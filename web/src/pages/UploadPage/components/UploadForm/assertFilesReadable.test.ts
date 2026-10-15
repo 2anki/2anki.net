@@ -23,8 +23,19 @@ function unreadable(name: string): File {
 describe('assertFilesReadable', () => {
   it('resolves when every file can be read', async () => {
     await expect(
-      assertFilesReadable([new File(['a'], 'a.txt'), new File([], 'empty.txt')])
+      assertFilesReadable([new File(['a'], 'a.txt'), new File(['b'], 'b.txt')])
     ).resolves.toBeUndefined();
+  });
+
+  it('rejects a 0-byte file as empty before touching the disk', async () => {
+    const empty = new File([], 'placeholder.pdf');
+    const error = await assertFilesReadable([
+      new File(['a'], 'a.txt'),
+      empty,
+    ]).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(UnreadableFileError);
+    expect((error as UnreadableFileError).file).toBe(empty);
+    expect((error as UnreadableFileError).reason).toBe('empty');
   });
 
   it('throws an UnreadableFileError naming the file the browser refuses', async () => {
@@ -35,5 +46,6 @@ describe('assertFilesReadable', () => {
     ]).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(UnreadableFileError);
     expect((error as UnreadableFileError).file).toBe(stale);
+    expect((error as UnreadableFileError).reason).toBe('changed');
   });
 });
