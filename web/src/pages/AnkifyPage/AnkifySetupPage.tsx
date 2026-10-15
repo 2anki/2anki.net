@@ -99,8 +99,11 @@ export default function AnkifySetupPage({ backend }: Props) {
   });
 
   useEffect(() => {
-    replayPendingPurchaseConversions();
-  }, []);
+    if (userLocalsLoading) {
+      return;
+    }
+    replayPendingPurchaseConversions(userLocals?.user?.email);
+  }, [userLocals, userLocalsLoading]);
 
   useEffect(() => {
     if (userLocalsLoading || checkoutSessionId == null) {

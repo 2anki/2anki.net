@@ -36,6 +36,14 @@ const purchaseFor = (sessionId: string, email: string | null = 'a@b.test') => ({
   email,
 });
 
+const pendingFor = (sessionId: string, ownedByUser = true) => ({
+  sessionId,
+  amountCents: 600,
+  currency: 'USD',
+  kind: 'pass_24h',
+  ownedByUser,
+});
+
 const grant = () => {
   document.cookie = 'cookie_consent=granted';
   globalThis.dispatchEvent(
@@ -185,7 +193,8 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
 
     const stored = sessionStorage.getItem(`${PENDING_PREFIX}cs_hold`);
     expect(stored).not.toBeNull();
-    expect(JSON.parse(stored as string)).toEqual(purchaseFor('cs_hold'));
+    expect(JSON.parse(stored as string)).toEqual(pendingFor('cs_hold'));
+    expect(stored).not.toContain('a@b.test');
 
     globalThis.dispatchEvent(
       new CustomEvent(CONSENT_CHANGE_EVENT, { detail: 'denied' })
@@ -212,11 +221,11 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
   it('replays a persisted pending purchase after a reload once consent is granted', () => {
     sessionStorage.setItem(
       `${PENDING_PREFIX}cs_reload`,
-      JSON.stringify(purchaseFor('cs_reload'))
+      JSON.stringify(pendingFor('cs_reload'))
     );
     document.cookie = 'cookie_consent=granted';
 
-    replayPendingPurchaseConversions();
+    replayPendingPurchaseConversions('a@b.test');
 
     expect(getCheckoutReceipt).not.toHaveBeenCalled();
     expect(firePurchaseConversion).toHaveBeenCalledWith(
@@ -229,10 +238,10 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
   it('replays a persisted pending purchase that is still waiting for consent', () => {
     sessionStorage.setItem(
       `${PENDING_PREFIX}cs_reload_wait`,
-      JSON.stringify(purchaseFor('cs_reload_wait'))
+      JSON.stringify(pendingFor('cs_reload_wait'))
     );
 
-    replayPendingPurchaseConversions();
+    replayPendingPurchaseConversions('a@b.test');
     expect(firePurchaseConversion).not.toHaveBeenCalled();
 
     grant();
@@ -245,14 +254,59 @@ describe('reportPurchaseConversion held-purchase persistence', () => {
     sessionStorage.setItem('ads_purchase_reported:cs_done', '1');
     sessionStorage.setItem(
       `${PENDING_PREFIX}cs_done`,
-      JSON.stringify(purchaseFor('cs_done'))
+      JSON.stringify(pendingFor('cs_done'))
     );
     document.cookie = 'cookie_consent=granted';
 
-    replayPendingPurchaseConversions();
+    replayPendingPurchaseConversions('a@b.test');
 
     expect(firePurchaseConversion).not.toHaveBeenCalled();
     expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_done`)).toBeNull();
     document.cookie = 'cookie_consent=; Max-Age=0';
+  });
+
+  it('replays an anonymous pending purchase without the signed-in email', () => {
+    sessionStorage.setItem(
+      `${PENDING_PREFIX}cs_anon`,
+      JSON.stringify(pendingFor('cs_anon', false))
+    );
+    document.cookie = 'cookie_consent=granted';
+
+    replayPendingPurchaseConversions('a@b.test');
+
+    expect(firePurchaseConversion).toHaveBeenCalledWith(
+      purchaseFor('cs_anon', null)
+    );
+    document.cookie = 'cookie_consent=; Max-Age=0';
+  });
+
+  it('clears persisted pending purchases on replay after an explicit denial', () => {
+    sessionStorage.setItem(
+      `${PENDING_PREFIX}cs_denied`,
+      JSON.stringify(pendingFor('cs_denied'))
+    );
+    document.cookie = 'cookie_consent=denied';
+
+    replayPendingPurchaseConversions('a@b.test');
+
+    expect(firePurchaseConversion).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_denied`)).toBeNull();
+  });
+
+  it('sweeps a persisted pending purchase that was never replayed when consent is denied', async () => {
+    getCheckoutReceipt.mockResolvedValue(ok);
+    firePurchaseConversion.mockReturnValueOnce(false);
+    await reportPurchaseConversion('cs_live', 'a@b.test');
+    sessionStorage.setItem(
+      `${PENDING_PREFIX}cs_elsewhere`,
+      JSON.stringify(pendingFor('cs_elsewhere'))
+    );
+
+    globalThis.dispatchEvent(
+      new CustomEvent(CONSENT_CHANGE_EVENT, { detail: 'denied' })
+    );
+
+    expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_live`)).toBeNull();
+    expect(sessionStorage.getItem(`${PENDING_PREFIX}cs_elsewhere`)).toBeNull();
   });
 });

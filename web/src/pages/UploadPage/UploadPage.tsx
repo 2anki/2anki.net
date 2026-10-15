@@ -144,8 +144,11 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   });
 
   useEffect(() => {
-    replayPendingPurchaseConversions();
-  }, []);
+    if (userLocalsLoading) {
+      return;
+    }
+    replayPendingPurchaseConversions(userLocals?.user?.email);
+  }, [userLocals, userLocalsLoading]);
 
   useEffect(() => {
     if (userLocalsLoading || returnedSessionId == null) return;

@@ -1,12 +1,30 @@
 import { CheckoutReceipt } from '../backend/Backend';
 import { get2ankiApi } from '../backend/get2ankiApi';
-import { CONSENT_CHANGE_EVENT, getEffectiveConsent } from '../consent/consent';
+import {
+  CONSENT_CHANGE_EVENT,
+  getEffectiveConsent,
+  readStoredConsent,
+} from '../consent/consent';
 import { firePurchaseConversion, PurchaseConversion } from './googleAds';
 
 const REPORTED_PREFIX = 'ads_purchase_reported:';
 const PENDING_PREFIX = 'ads_purchase_pending:';
 const MAX_RECEIPT_ATTEMPTS = 3;
 const RECEIPT_RETRY_BASE_MS = 300;
+
+/**
+ * What survives a reload. The buyer email is deliberately not stored: nothing
+ * about the visitor is written to the browser before consent, only the fact
+ * that the signed-in user owned the receipt, so the replay can re-attach the
+ * email of whoever is signed in at that point.
+ */
+interface PendingPurchase {
+  sessionId: string;
+  amountCents: number;
+  currency: string;
+  kind: string;
+  ownedByUser: boolean;
+}
 
 const inFlight = new Set<string>();
 const awaitingConsent = new Map<string, PurchaseConversion>();
@@ -32,10 +50,17 @@ function markReported(sessionId: string): void {
 }
 
 function persistPending(purchase: PurchaseConversion): void {
+  const pending: PendingPurchase = {
+    sessionId: purchase.sessionId,
+    amountCents: purchase.amountCents,
+    currency: purchase.currency,
+    kind: purchase.kind,
+    ownedByUser: purchase.email != null && purchase.email !== '',
+  };
   try {
     globalThis.sessionStorage?.setItem(
       `${PENDING_PREFIX}${purchase.sessionId}`,
-      JSON.stringify(purchase)
+      JSON.stringify(pending)
     );
   } catch {
     // Storage blocked: the purchase still lives in memory for this page load.
@@ -50,9 +75,9 @@ function clearPending(sessionId: string): void {
   }
 }
 
-function parsePending(raw: string): PurchaseConversion | null {
+function parsePending(raw: string): PendingPurchase | null {
   try {
-    const value = JSON.parse(raw) as Partial<PurchaseConversion>;
+    const value = JSON.parse(raw) as Partial<PendingPurchase>;
     if (
       typeof value.sessionId === 'string' &&
       typeof value.amountCents === 'number' &&
@@ -64,7 +89,7 @@ function parsePending(raw: string): PurchaseConversion | null {
         amountCents: value.amountCents,
         currency: value.currency,
         kind: value.kind,
-        email: typeof value.email === 'string' ? value.email : null,
+        ownedByUser: value.ownedByUser === true,
       };
     }
   } catch {
@@ -73,8 +98,8 @@ function parsePending(raw: string): PurchaseConversion | null {
   return null;
 }
 
-function loadPersistedPending(): PurchaseConversion[] {
-  const out: PurchaseConversion[] = [];
+function loadPersistedPending(): PendingPurchase[] {
+  const out: PendingPurchase[] = [];
   try {
     const store = globalThis.sessionStorage;
     if (store == null) {
@@ -114,6 +139,9 @@ function dropAwaitingConsent(): void {
   for (const sessionId of awaitingConsent.keys()) {
     clearPending(sessionId);
   }
+  for (const pending of loadPersistedPending()) {
+    clearPending(pending.sessionId);
+  }
   awaitingConsent.clear();
 }
 
@@ -136,8 +164,9 @@ function ensureConsentListener(): void {
 /**
  * An EEA buyer often answers the banner only after Stripe has sent them back,
  * by which time the page has stripped the session id from the URL. The receipt
- * is kept in memory and in sessionStorage, so a reload before the choice does
- * not lose it, and it is sent the moment consent is granted.
+ * is kept in memory and (without the email) in sessionStorage, so a reload
+ * before the choice does not lose it, and it is sent the moment consent is
+ * granted.
  */
 function holdUntilConsent(purchase: PurchaseConversion): void {
   awaitingConsent.set(purchase.sessionId, purchase);
@@ -172,16 +201,30 @@ async function fetchReceiptWithRetry(
 /**
  * Looks any persisted held purchase back up after a reload and either sends it
  * now (consent already granted) or re-arms it to fire on the next grant. The
- * pages Stripe returns buyers to call this on mount, so a reload before the
- * banner choice no longer drops the conversion.
+ * pages Stripe returns buyers to call this on mount, once the signed-in user
+ * is known, so a reload before the banner choice no longer drops the
+ * conversion. An explicit "denied" clears the persisted entries instead.
  */
-export function replayPendingPurchaseConversions(): void {
-  for (const purchase of loadPersistedPending()) {
-    if (alreadyReported(purchase.sessionId)) {
-      clearPending(purchase.sessionId);
+export function replayPendingPurchaseConversions(email?: string | null): void {
+  const persisted = loadPersistedPending();
+  if (readStoredConsent() === 'denied') {
+    for (const pending of persisted) {
+      clearPending(pending.sessionId);
+    }
+    return;
+  }
+  for (const pending of persisted) {
+    if (alreadyReported(pending.sessionId)) {
+      clearPending(pending.sessionId);
       continue;
     }
-    awaitingConsent.set(purchase.sessionId, purchase);
+    awaitingConsent.set(pending.sessionId, {
+      sessionId: pending.sessionId,
+      amountCents: pending.amountCents,
+      currency: pending.currency,
+      kind: pending.kind,
+      email: pending.ownedByUser ? (email ?? null) : null,
+    });
   }
   if (awaitingConsent.size === 0) {
     return;
@@ -207,7 +250,7 @@ export async function reportPurchaseConversion(
   inFlight.add(sessionId);
   try {
     const receipt = await fetchReceiptWithRetry(sessionId);
-    if (receipt == null) {
+    if (receipt == null || alreadyReported(sessionId)) {
       return;
     }
     const purchase: PurchaseConversion = {

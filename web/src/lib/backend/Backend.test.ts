@@ -584,4 +584,87 @@ describe('Backend', () => {
       ).resolves.toBeNull();
     });
   });
+
+  describe('getCheckoutReceipt', () => {
+    const receipt = {
+      amount: 600,
+      currency: 'USD',
+      kind: 'pass_24h',
+      anonymous: false,
+    };
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('returns the receipt on a 200 with a well-formed body', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(createMockResponse(200, true, '', receipt));
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(backend.getCheckoutReceipt('cs_ok')).resolves.toEqual({
+        status: 'ok',
+        receipt,
+      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/checkout/receipt?session_id=cs_ok',
+        { credentials: 'include' }
+      );
+    });
+
+    it.each([400, 401, 403, 404])(
+      'treats a %i as not_found so the caller never retries it',
+      async (status) => {
+        vi.stubGlobal(
+          'fetch',
+          vi.fn().mockResolvedValue(createMockResponse(status, false))
+        );
+
+        await expect(backend.getCheckoutReceipt('cs_gone')).resolves.toEqual({
+          status: 'not_found',
+        });
+      }
+    );
+
+    it.each([429, 500, 502, 503])(
+      'treats a %i as transient so the caller retries it',
+      async (status) => {
+        vi.stubGlobal(
+          'fetch',
+          vi.fn().mockResolvedValue(createMockResponse(status, false))
+        );
+
+        await expect(backend.getCheckoutReceipt('cs_busy')).resolves.toEqual({
+          status: 'transient',
+        });
+      }
+    );
+
+    it('treats a network failure as transient', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+      );
+
+      await expect(backend.getCheckoutReceipt('cs_offline')).resolves.toEqual({
+        status: 'transient',
+      });
+    });
+
+    it('treats a 200 with a malformed body as not_found', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValue(
+            createMockResponse(200, true, '', { amount: '6.00' })
+          )
+      );
+
+      await expect(backend.getCheckoutReceipt('cs_bad')).resolves.toEqual({
+        status: 'not_found',
+      });
+    });
+  });
 });

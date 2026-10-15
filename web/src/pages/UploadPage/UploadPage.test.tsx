@@ -44,7 +44,8 @@ vi.mock('../../lib/anonymousPass', () => ({
 vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
   reportPurchaseConversion: (...args: unknown[]) =>
     reportPurchaseConversion(...args),
-  replayPendingPurchaseConversions: () => replayPendingPurchaseConversions(),
+  replayPendingPurchaseConversions: (...args: unknown[]) =>
+    replayPendingPurchaseConversions(...args),
 }));
 vi.mock('../../lib/hooks/useUserLocals', () => ({
   useUserLocals: () => ({
@@ -584,10 +585,23 @@ describe('UploadPage checkout return', () => {
     fakeLocals = undefined;
   });
 
-  it('replays any purchase held across a reload on mount', () => {
+  it('replays any purchase held across a reload once locals resolve', () => {
+    fakeUser = { id: 42, email: 'buyer@example.com' };
+
     renderPage('/upload');
 
     expect(replayPendingPurchaseConversions).toHaveBeenCalledTimes(1);
+    expect(replayPendingPurchaseConversions).toHaveBeenCalledWith(
+      'buyer@example.com'
+    );
+  });
+
+  it('does not replay held purchases while user locals load', () => {
+    fakeLocalsLoading = true;
+
+    renderPage('/upload');
+
+    expect(replayPendingPurchaseConversions).not.toHaveBeenCalled();
   });
 
   afterEach(() => {

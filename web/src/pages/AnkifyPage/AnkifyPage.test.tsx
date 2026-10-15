@@ -21,7 +21,8 @@ const replayPendingPurchaseConversions = vi.fn();
 vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
   reportPurchaseConversion: (...args: unknown[]) =>
     reportPurchaseConversion(...args),
-  replayPendingPurchaseConversions: () => replayPendingPurchaseConversions(),
+  replayPendingPurchaseConversions: (...args: unknown[]) =>
+    replayPendingPurchaseConversions(...args),
 }));
 
 import { getUserLocals } from '../../lib/backend/getUserLocals';
@@ -109,7 +110,9 @@ describe('AnkifySetupPage checkout return', () => {
     renderAt('/ankify/setup', makeBackend());
 
     await waitFor(() =>
-      expect(replayPendingPurchaseConversions).toHaveBeenCalled()
+      expect(replayPendingPurchaseConversions).toHaveBeenCalledWith(
+        'buyer@example.com'
+      )
     );
     expect(reportPurchaseConversion).not.toHaveBeenCalled();
   });
