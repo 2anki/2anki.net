@@ -139,3 +139,46 @@ describe('AutoSyncCheckoutController ad-click attribution', () => {
     );
   });
 });
+
+describe('AutoSyncCheckoutController GA measurement', () => {
+  test('forwards the GA client id and session id when tracking is allowed', async () => {
+    const uc = makeUseCase({ url: 'https://s' });
+    const controller = new AutoSyncCheckoutController(uc);
+    const req = {
+      locals: {},
+      cookies: {
+        cookie_consent: 'granted',
+        _ga: 'GA1.1.1234567890.987654321',
+        _ga_X6K69TY3EX: 'GS1.1.1744000000.5.1.1744000100.0.0.0',
+      },
+    } as unknown as Request;
+    const res = makeResponse();
+    res.locals = { owner: 42, email: 'user@example.com' };
+    await controller.createSession(req, res as unknown as Response);
+    expect(uc.execute as Mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gaClientId: '1234567890.987654321',
+        gaSessionId: '1744000000',
+      })
+    );
+  });
+
+  test('omits the GA ids when consent is denied', async () => {
+    const uc = makeUseCase({ url: 'https://s' });
+    const controller = new AutoSyncCheckoutController(uc);
+    const req = {
+      locals: {},
+      cookies: {
+        cookie_consent: 'denied',
+        _ga: 'GA1.1.1234567890.987654321',
+        _ga_X6K69TY3EX: 'GS1.1.1744000000.5.1.1744000100.0.0.0',
+      },
+    } as unknown as Request;
+    const res = makeResponse();
+    res.locals = { owner: 42, email: 'user@example.com' };
+    await controller.createSession(req, res as unknown as Response);
+    const call = (uc.execute as Mock).mock.calls[0][0];
+    expect(call.gaClientId).toBeUndefined();
+    expect(call.gaSessionId).toBeUndefined();
+  });
+});

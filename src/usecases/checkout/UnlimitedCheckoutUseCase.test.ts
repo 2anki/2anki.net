@@ -313,6 +313,30 @@ describe('UnlimitedCheckoutUseCase', () => {
     );
   });
 
+  it('stamps ga_session_id into metadata when provided', async () => {
+    mockStripeCreateSession.mockResolvedValue({
+      url: 'https://checkout.stripe.com/test',
+    });
+
+    const uc = new UnlimitedCheckoutUseCase(
+      makeStripe(),
+      MONTHLY_PRICE_ID,
+      YEARLY_PRICE_ID
+    );
+    await uc.execute({
+      userEmail: 'user@example.com',
+      userId: 12,
+      interval: 'month',
+      gaSessionId: '1744000000',
+    });
+
+    expect(mockStripeCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ ga_session_id: '1744000000' }),
+      })
+    );
+  });
+
   it('omits ga_client_id from metadata when absent', async () => {
     mockStripeCreateSession.mockResolvedValue({
       url: 'https://checkout.stripe.com/test',

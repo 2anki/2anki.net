@@ -192,6 +192,36 @@ describe('UsersController.register', () => {
     );
   });
 
+  it('forwards the GA client id and session id to register when tracking is allowed', async () => {
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
+    const { controller } = buildController({ register });
+    const req = {
+      body: { email: 'jane.doe@example.com', password: SAMPLE_PW },
+      query: {},
+      cookies: {
+        cookie_consent: 'granted',
+        _ga: 'GA1.1.1234567890.987654321',
+        _ga_X6K69TY3EX: 'GS1.1.1744000000.5.1.1744000100.0.0.0',
+      },
+    } as unknown as express.Request;
+    const res = buildRes();
+    const next = vi.fn();
+
+    await controller.register(req, res, next);
+
+    expect(register).toHaveBeenCalledWith(
+      '',
+      'hashed',
+      'jane.doe@example.com',
+      null,
+      expect.objectContaining({
+        method: 'password',
+        gaClientId: '1234567890.987654321',
+        gaSessionId: '1744000000',
+      })
+    );
+  });
+
   it('emits signup_origin and signup_referrer from the first_touch cookie', async () => {
     const register = vi.fn().mockResolvedValue([{ id: 1 }]);
     const { controller } = buildController({ register });

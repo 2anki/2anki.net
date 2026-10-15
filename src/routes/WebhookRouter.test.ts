@@ -1841,9 +1841,44 @@ describe('WebhookRouter — ad-click attribution and GA4 purchase for passes', (
       transactionId: 'cs_pass_ga4',
       valueCents: 400,
       currency: 'usd',
-      stripeCustomerId: '',
       clientId: '1.2',
     });
+  });
+
+  it('passes the GA session id from metadata to the purchase event', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      id: 'cs_pass_ga4_session',
+      payment_status: 'paid',
+      metadata: {
+        user_id: '42',
+        pass_kind: '24h',
+        ga_client_id: '1.2',
+        ga_session_id: '1744000000',
+      },
+    });
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    const { sendPurchaseEvent } = await import('../services/GA4Service');
+    expect(sendPurchaseEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: '1.2',
+        sessionId: '1744000000',
+      })
+    );
+  });
+
+  it('does not send a GA4 purchase when checkout recorded no ga_client_id', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      id: 'cs_pass_no_consent',
+      payment_status: 'paid',
+      metadata: { user_id: '42', pass_kind: '24h' },
+    });
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    const { sendPurchaseEvent } = await import('../services/GA4Service');
+    expect(sendPurchaseEvent).not.toHaveBeenCalled();
   });
 
   it('does not send a GA4 purchase for a session that is not paid yet', async () => {

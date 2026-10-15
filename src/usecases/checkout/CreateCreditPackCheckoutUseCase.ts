@@ -25,6 +25,7 @@ export class CreateCreditPackCheckoutUseCase {
     stripeCustomerId?: string | null;
     source?: CreditPackSource;
     gaClientId?: string;
+    gaSessionId?: string;
     adClick?: AdClickAttribution;
   }): Promise<CreateCreditPackCheckoutResult> {
     const appUrl = process.env.APP_URL ?? 'https://2anki.net';
@@ -42,6 +43,7 @@ export class CreateCreditPackCheckoutUseCase {
       optionalMetadata({
         surface: input.source,
         ga_client_id: input.gaClientId,
+        ga_session_id: input.gaSessionId,
         ...input.adClick,
       })
     );

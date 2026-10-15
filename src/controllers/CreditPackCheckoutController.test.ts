@@ -113,3 +113,25 @@ describe('CreditPackCheckoutController ad-click attribution', () => {
     );
   });
 });
+
+describe('CreditPackCheckoutController GA measurement', () => {
+  it('forwards the GA client id and session id when tracking is allowed', async () => {
+    const execute = vi.fn().mockResolvedValue({ url: 'https://s' });
+    const controller = makeController(execute);
+    const req = {
+      body: {},
+      cookies: {
+        cookie_consent: 'granted',
+        _ga: 'GA1.1.1234567890.987654321',
+        _ga_X6K69TY3EX: 'GS1.1.1744000000.5.1.1744000100.0.0.0',
+      },
+    } as never;
+    await controller.createSession(req, makeRes());
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gaClientId: '1234567890.987654321',
+        gaSessionId: '1744000000',
+      })
+    );
+  });
+});

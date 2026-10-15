@@ -121,6 +121,16 @@ describe('CreateCreditPackCheckoutUseCase', () => {
     const call = mockStripeCreateSession.mock.calls[0][0];
     expect(call.metadata.ga_client_id).toBe('GA1.2.3');
   });
+
+  it('stamps the ga session id for purchase attribution when provided', async () => {
+    mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
+
+    const uc = new CreateCreditPackCheckoutUseCase(makeStripe(), 'price_pack');
+    await uc.execute({ userId: 1, gaSessionId: '1744000000' });
+
+    const call = mockStripeCreateSession.mock.calls[0][0];
+    expect(call.metadata.ga_session_id).toBe('1744000000');
+  });
 });
 
 describe('CreateCreditPackCheckoutUseCase ad-click attribution', () => {

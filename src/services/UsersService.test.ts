@@ -8,6 +8,7 @@ import type { IEmailService } from './EmailService/EmailService';
 import type AuthenticationService from './AuthenticationService';
 import { InMemoryMagicTokenRepository } from '../data_layer/MagicTokenRepository';
 import { track as trackImport } from './events/track';
+import { sendSignUpEvent as sendSignUpEventImport } from './GA4Service';
 
 vi.mock('../lib/misc/hashToken', () => ({
   default: (s: string) => `hashed:${s}`,
@@ -15,8 +16,12 @@ vi.mock('../lib/misc/hashToken', () => ({
 vi.mock('./events/track', () => ({
   track: vi.fn(),
 }));
+vi.mock('./GA4Service', () => ({
+  sendSignUpEvent: vi.fn().mockResolvedValue(undefined),
+}));
 
 const trackMock = trackImport as unknown as Mock;
+const sendSignUpEventMock = sendSignUpEventImport as unknown as Mock;
 
 function buildEmailService(
   overrides: Partial<IEmailService> = {}
@@ -158,6 +163,37 @@ describe('UsersService.register', () => {
       anonymousId: null,
       props: { method: 'unknown' },
     });
+  });
+
+  it('fires a GA4 sign_up event with method, client id and session id when GA measurement is present', async () => {
+    sendSignUpEventMock.mockClear();
+    const repository = buildRegisterRepository();
+    const service = new UsersService(repository, buildEmailService());
+
+    await service.register('Alex', 'hashed', 'al@example.com', 'google', {
+      method: 'google',
+      gaClientId: '1234567890.987654321',
+      gaSessionId: '1744000000',
+    });
+
+    expect(sendSignUpEventMock).toHaveBeenCalledWith({
+      clientId: '1234567890.987654321',
+      sessionId: '1744000000',
+      method: 'google',
+    });
+  });
+
+  it('does not fire a GA4 sign_up event when no GA client id is present', async () => {
+    sendSignUpEventMock.mockClear();
+    const repository = buildRegisterRepository();
+    const service = new UsersService(repository, buildEmailService());
+
+    await service.register('Alex', 'hashed', 'al@example.com', 'password', {
+      method: 'password',
+      anonymousId: 'anon-1',
+    });
+
+    expect(sendSignUpEventMock).not.toHaveBeenCalled();
   });
 });
 

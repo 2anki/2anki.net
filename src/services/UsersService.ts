@@ -15,6 +15,7 @@ import type { IMagicTokenRepository } from '../data_layer/MagicTokenRepository';
 import hashToken from '../lib/misc/hashToken';
 import { isResetTokenLive } from '../lib/User/isResetTokenLive';
 import { track } from './events/track';
+import { sendSignUpEvent } from './GA4Service';
 
 // Who signed up how, threaded into the account_created event at the single
 // creation choke point in register().
@@ -29,6 +30,8 @@ export interface RegisterTelemetry {
   anonymousId?: string | null;
   referrer?: string | null;
   attribution?: AdClickAttribution | null;
+  gaClientId?: string;
+  gaSessionId?: string;
 }
 
 // How an email came to be verified, threaded into the email_verified event at
@@ -176,6 +179,18 @@ class UsersService {
         anonymousId: telemetry?.anonymousId ?? null,
         props,
       });
+      // GA4's recommended sign_up event, mirrored at the same choke point so a
+      // new path can't forget it. Only when the visitor's GA client id reached
+      // us under consent; fire-and-forget so a slow GA4 never delays signup.
+      if (telemetry?.gaClientId != null) {
+        void sendSignUpEvent({
+          clientId: telemetry.gaClientId,
+          sessionId: telemetry.gaSessionId,
+          method: telemetry?.method ?? 'unknown',
+        }).catch((error) => {
+          console.error('[ga4] failed to send sign_up event', error);
+        });
+      }
     }
     return inserted;
   }

@@ -404,9 +404,13 @@ const WebhooksRouter = () => {
           // One GA4 purchase per paid session, sent after the grant attempt
           // so a slow GA4 call never delays the grant itself. The send is
           // bounded (GA4Service timeout) so it cannot push this response past
-          // Stripe's delivery timeout and provoke a redelivery.
+          // Stripe's delivery timeout and provoke a redelivery. Checkout only
+          // stamps ga_client_id when the buyer consented to analytics and had
+          // a GA cookie; without it there is nothing to attribute and no
+          // identifier may go to Google.
           const reportPurchaseToGa4 = async () => {
-            if (session.payment_status !== 'paid') {
+            const gaClientId = sessionMeta.ga_client_id;
+            if (session.payment_status !== 'paid' || gaClientId == null) {
               return;
             }
             try {
@@ -416,9 +420,8 @@ const WebhooksRouter = () => {
                 transactionId: session.id,
                 valueCents: session.amount_total ?? 0,
                 currency: session.currency ?? 'usd',
-                stripeCustomerId:
-                  typeof session.customer === 'string' ? session.customer : '',
-                clientId: sessionMeta.ga_client_id,
+                clientId: gaClientId,
+                sessionId: sessionMeta.ga_session_id,
               });
             } catch (ga4Error) {
               console.error('[ga4] failed to send purchase event', ga4Error);
