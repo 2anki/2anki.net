@@ -40,7 +40,7 @@ Re-check the file list against the hard-block set from `.claude/commands/batch.m
 - `src/lib/Token.ts`
 - any path matching `auth` or `payments`
 
-If any file matches, run `/security-review` on the diff and the full server suite. Clean → ship it through `/ship <n>`. A finding → fix on the branch or, when the bump itself is the finding, comment the reason and return `needs-review`.
+If any file matches, run `/security-review` on the diff and the full server suite, and put both results in the `/ship` review brief so its fresh reviewers check them. Clean → `/ship <n>`. Any finding → comment it and return `needs-review`; a dependency bump is never patched on the branch.
 
 ### 2b — dependency-rules hold checks (`.claude/rules/dependencies.md`)
 
@@ -82,7 +82,7 @@ Decision matrix:
 | minor | green | none | full server suite locally green, then `/ship <n>` → status `merged` |
 | minor | red | any | comment with the failure summary → status `needs-review` |
 | minor | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
-| major | green | none | the `dependencies.md` major-bump checks (changelog for removed APIs, full server suite locally green, plugin grep), then `/ship <n>` → status `merged`; a breakage → comment what broke → status `needs-review` |
+| major | green | none | the `dependencies.md` major-bump checks (changelog for removed APIs, full server suite locally green, plugin grep), written into the `/ship` review brief so its fresh reviewers confirm them, then `/ship <n>` → status `merged`; a breakage → comment what broke → status `needs-review` |
 | major | red | any | comment with the failure summary → status `needs-review` |
 | major | green | security | the major-bump checks plus `/security-review`; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
 | unknown | any | any | comment "Could not parse bump level from title" → status `needs-review` |

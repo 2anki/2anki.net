@@ -136,7 +136,7 @@ READY with a `## Decisions made overnight` section, then `/ship`.**
 - Document EVERY decision and assumption in the PR (format below) so Alexander can override.
 - Rail paths are fine; `/ship` runs the extra rail verification.
 
-**Tier 3 — rests on a value only Alexander holds (a price, a contract term, an external account) → open DRAFT, flagged.** An assumption you cannot verify with tools is NOT Tier 3: the trio picks the most likely reading, you ship it reversibly through `/ship`, and the call lands under `## Decisions` for him to override.
+**Tier 3 — rests on a value only Alexander holds (a price, a contract term, an external account) → open DRAFT, flagged.** An assumption you cannot verify with tools is NOT Tier 3 unless it sits on a rail path (auth, payments, migrations): off the rails the trio picks the most likely reading, you ship it reversibly through `/ship`, and the call lands under `## Decisions` for him to override; on a rail path the unverified assumption stays draft.
 - The missing piece is a fact no test, log, or prod read can supply and only he knows.
   A migration alone is NOT Tier 3: write it, run `pnpm kanel`, and ship it through `/ship`, whose
   rail verification runs `migration-reviewer` and the migrate/rollback cycle.

@@ -35,7 +35,7 @@ Steps:
 
 4. End with a one-line summary: "X themes, Y high-urgency, suggest filing Z issues."
 
-Write each issue draft to a scratchpad file, grep it for names, email addresses, workspace names, deck titles and upload filenames per `.claude/rules/support-confidentiality.md`, fix any hit, then file the issues and print their URLs.
+Write each issue draft to a scratchpad file. Build a blocklist from the source message itself (sender name and email, workspace name, deck titles, upload filenames, any quoted subject line) plus an email-address regex, grep every draft against it per `.claude/rules/support-confidentiality.md`, fix any hit and re-grep until clean, then file the issues and print their URLs.
 
 ---
 
