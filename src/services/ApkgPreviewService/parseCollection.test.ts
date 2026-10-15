@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { buildModernCollection } from '../../test/fixtures/apkg/buildModernCollection';
 import { parseCollection } from './parseCollection';
 
 function buildLegacyCollection(): Buffer {
@@ -111,5 +112,45 @@ describe('parseCollection — legacy schema', () => {
 
     expect(result.cards).toHaveLength(1);
     expect(result.cards[0]).toMatchObject({ id: 100, nid: 10, did: 2, ord: 0 });
+  });
+});
+
+describe('parseCollection — modern schema (collection.anki21b)', () => {
+  function modernFixture(kind: 0 | 1) {
+    return buildModernCollection({
+      noteType: {
+        id: 1,
+        name: kind === 1 ? 'Cloze' : 'Basic',
+        kind,
+        css: '.card { color: black; }',
+        fields: ['Text', 'Extra'],
+        templates: [{ name: 'Card 1', qfmt: '{{Text}}', afmt: '{{Extra}}' }],
+      },
+      deck: { id: 2, name: 'Demo' },
+      note: { id: 10, fields: ['front', 'back'] },
+      cards: [{ id: 100, ord: 0 }],
+    });
+  }
+
+  it('reads the cloze kind from the notetype config blob', () => {
+    const result = parseCollection(modernFixture(1));
+
+    expect(result.noteTypes.get(1)?.type).toBe(1);
+  });
+
+  it('treats a config blob without a kind field as a normal note type', () => {
+    const result = parseCollection(modernFixture(0));
+
+    expect(result.noteTypes.get(1)?.type).toBe(0);
+  });
+
+  it('still reads css and templates from the config blobs', () => {
+    const noteType = parseCollection(modernFixture(1)).noteTypes.get(1);
+
+    expect(noteType?.css).toBe('.card { color: black; }');
+    expect(noteType?.templates[0]).toMatchObject({
+      qfmt: '{{Text}}',
+      afmt: '{{Extra}}',
+    });
   });
 });

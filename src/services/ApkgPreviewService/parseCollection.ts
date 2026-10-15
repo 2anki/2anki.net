@@ -4,8 +4,14 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { readString } from './protobuf';
+import { readString, readVarint } from './protobuf';
 import { Card, Deck, NormalizedCollection, Note, NoteType } from './types';
+
+// anki/proto/notetypes.proto — Notetype.Config: `Kind kind = 1` (0 normal,
+// 1 cloze), `string css = 3`.
+const NOTETYPE_CONFIG_KIND_FIELD = 1;
+const NOTETYPE_CONFIG_CSS_FIELD = 3;
+const NOTETYPE_KIND_CLOZE = 1;
 
 interface LegacyModelJson {
   id: number | string;
@@ -165,11 +171,17 @@ function loadModernNoteTypes(db: Database.Database): Map<number, NoteType> {
   const map = new Map<number, NoteType>();
   for (const row of noteTypeRows) {
     const cfg = row.config;
-    const css = cfg ? readString(cfg, 3) : '';
+    const css = cfg ? readString(cfg, NOTETYPE_CONFIG_CSS_FIELD) : '';
+    // Schema 18 has no `mtype` column — the kind lives in the config blob.
+    // Keep `mtype` as a fallback for any intermediate schema that has it.
+    const kind =
+      (cfg ? readVarint(cfg, NOTETYPE_CONFIG_KIND_FIELD) : undefined) ??
+      row.mtype ??
+      0;
     map.set(row.id, {
       id: row.id,
       name: row.name,
-      type: (row.mtype ?? 0) === 1 ? 1 : 0,
+      type: kind === NOTETYPE_KIND_CLOZE ? 1 : 0,
       css,
       fields: [],
       templates: [],

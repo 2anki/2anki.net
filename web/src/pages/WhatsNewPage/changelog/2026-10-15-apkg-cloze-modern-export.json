@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-15-apkg-cloze-modern-export",
+  "date": "2026-10-15",
+  "type": "fix",
+  "title": "Cloze decks exported from recent Anki versions preview and print each cloze card with its own blank"
+}
