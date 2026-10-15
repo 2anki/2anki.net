@@ -455,6 +455,15 @@ const WebhooksRouter = () => {
                 const alreadyGranted = await anonRepo.findBySessionId(
                   session.id
                 );
+                // A refund Stripe delivered before this event: the insert
+                // below lands the pass already ended (checked inside the
+                // INSERT), and no claim email or account link goes out. Read
+                // before the insert so a failure here leaves nothing written
+                // and the 500 retry starts clean.
+                const endedByRefund =
+                  await new RefundedPaymentIntentsRepository(
+                    getDatabase()
+                  ).isRefunded(paymentIntentId);
                 const granted = await anonRepo.insert({
                   stripeSessionId: session.id,
                   kind: passKind,
@@ -469,9 +478,6 @@ const WebhooksRouter = () => {
                   payment_intent_id_hash: hashToken(paymentIntentId),
                 });
 
-                // A refund Stripe delivered before this event already ended
-                // the pass inside the insert; send no claim email or link.
-                const endedByRefund = granted.expires_at <= now;
                 if (endedByRefund) {
                   console.info('pass.granted.already_refunded', {
                     kind: passKind,
@@ -574,7 +580,7 @@ const WebhooksRouter = () => {
                 now
               );
               console.info(
-                granted.expires_at <= now
+                granted.expires_at <= new Date()
                   ? 'pass.granted.already_refunded'
                   : 'pass.granted',
                 {
