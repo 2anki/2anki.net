@@ -5,7 +5,7 @@ import {
   AiCreditsExhaustedError,
   assertAiBudget,
   getAiBudgetStatus,
-  resetExhaustedEventLedger,
+  resetExhaustedWindowClaims,
   withAiBudget,
 } from './aiSpendGuard';
 import { AiCreditBalance } from './aiCredits/balance';
@@ -59,7 +59,7 @@ function makeDeps(overrides: {
 describe('assertAiBudget', () => {
   beforeEach(() => {
     trackMock.mockReset();
-    resetExhaustedEventLedger();
+    resetExhaustedWindowClaims();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
   afterEach(() => vi.restoreAllMocks());
@@ -170,7 +170,7 @@ describe('withAiBudget', () => {
 
   beforeEach(() => {
     trackMock.mockReset();
-    resetExhaustedEventLedger();
+    resetExhaustedWindowClaims();
     resetInflightReservations();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
@@ -298,7 +298,7 @@ describe('withAiBudget', () => {
 describe('getAiBudgetStatus', () => {
   beforeEach(() => {
     trackMock.mockReset();
-    resetExhaustedEventLedger();
+    resetExhaustedWindowClaims();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
   afterEach(() => vi.restoreAllMocks());
@@ -381,6 +381,23 @@ describe('getAiBudgetStatus', () => {
     await getAiBudgetStatus(42, makeDeps({ balance: nextWindow }));
     await flushAsync();
     expect(trackMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('claims once per day for the rolling fallback whose start moves on every call', async () => {
+    const rollingStart = (offsetMs: number): AiCreditBalance => ({
+      ...balanceWith(0),
+      windowStart: new Date(
+        new Date('2026-08-08T12:00:00.000Z').getTime() + offsetMs
+      ),
+      windowEnd: null,
+    });
+    await Promise.all([
+      getAiBudgetStatus(42, makeDeps({ balance: rollingStart(0) })),
+      getAiBudgetStatus(42, makeDeps({ balance: rollingStart(40) })),
+      getAiBudgetStatus(42, makeDeps({ balance: rollingStart(900) })),
+    ]);
+    await flushAsync();
+    expect(trackMock).toHaveBeenCalledTimes(1);
   });
 
   it('releases the claim when the ledger read fails so a later observer can record it', async () => {

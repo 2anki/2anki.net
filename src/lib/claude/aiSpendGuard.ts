@@ -78,12 +78,16 @@ function defaultDeps(): AiBudgetDeps {
 // them fire: one user produced 102 events in 0.3s on 2026-10-15. Claiming the
 // window synchronously here, before the first ledger read, is what makes the
 // per-window promise hold inside one process; the ledger still dedupes across
-// processes and restarts.
+// processes and restarts. Keyed by the window's start day, not its instant,
+// because the rolling-30-day fallback derives a fresh start on every call.
 const claimedExhaustedWindows = new Map<number, number>();
 
-export function resetExhaustedEventLedger(): void {
+export function resetExhaustedWindowClaims(): void {
   claimedExhaustedWindows.clear();
 }
+
+const windowClaimKey = (windowStart: Date): number =>
+  Math.floor(windowStart.getTime() / DAY_MS);
 
 // Fires the exhausted event at most once per allowance window. Detached and
 // deduped by the ledger so any observer of a ≤ 0 balance — the pre-check, the
@@ -93,7 +97,7 @@ function fireExhaustedOnce(
   userId: number,
   windowStart: Date
 ): void {
-  const windowKey = windowStart.getTime();
+  const windowKey = windowClaimKey(windowStart);
   if (claimedExhaustedWindows.get(userId) === windowKey) {
     return;
   }
@@ -106,7 +110,9 @@ function fireExhaustedOnce(
       }
     })
     .catch((error) => {
-      claimedExhaustedWindows.delete(userId);
+      if (claimedExhaustedWindows.get(userId) === windowKey) {
+        claimedExhaustedWindows.delete(userId);
+      }
       console.error('[ai-credits] exhausted-event dedup failed', error);
     });
 }
