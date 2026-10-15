@@ -43,6 +43,16 @@ describe('isExpectedClientFault', () => {
       'a 4xx HttpCodedError',
       () => new HttpCodedError('limit reached', 402, 'limit'),
     ],
+    [
+      'a 416 http-error from a bad Range header on a static file',
+      () =>
+        Object.assign(new Error('Range Not Satisfiable'), {
+          name: 'RangeNotSatisfiableError',
+          status: 416,
+          statusCode: 416,
+          expose: true,
+        }),
+    ],
   ];
 
   it.each(clientFaultCases)('returns true for %s', (_label, makeError) => {
@@ -57,6 +67,45 @@ describe('isExpectedClientFault', () => {
     expect(isExpectedClientFault(new SyntaxError('thrown by our code'))).toBe(
       false
     );
+  });
+
+  it('returns false for a 5xx http-error even when marked expose', () => {
+    expect(
+      isExpectedClientFault(
+        Object.assign(new Error('Internal Server Error'), {
+          status: 500,
+          statusCode: 500,
+          expose: true,
+        })
+      )
+    ).toBe(false);
+  });
+
+  it('returns false for a 4xx status that is not an exposed http-error', () => {
+    expect(
+      isExpectedClientFault(
+        Object.assign(new Error('upstream rejected the call'), {
+          status: 400,
+        })
+      )
+    ).toBe(false);
+  });
+
+  it('returns false for an http-error that wraps a filesystem error', () => {
+    expect(
+      isExpectedClientFault(
+        Object.assign(
+          new Error("ENOENT: no such file or directory, stat '/srv/ws/x'"),
+          {
+            code: 'ENOENT',
+            errno: -2,
+            status: 404,
+            statusCode: 404,
+            expose: true,
+          }
+        )
+      )
+    ).toBe(false);
   });
 
   it('returns false for a 5xx HttpCodedError', () => {

@@ -5,7 +5,10 @@ import multer from 'multer';
 import nodemailer from 'nodemailer';
 import { UploadedFile } from '../../lib/storage/types';
 import { isLimitError } from '../../lib/misc/isLimitError';
-import { isExpectedClientFault } from '../../lib/misc/isExpectedClientFault';
+import {
+  exposedHttpClientStatus,
+  isExpectedClientFault,
+} from '../../lib/misc/isExpectedClientFault';
 import { isEmptyPayload } from '../../lib/misc/isEmptyPayload';
 import { redactStripeIds } from '../../lib/log/redactStripeIds';
 import { preserveFilesForDebugging } from '../../lib/debug/preserveFilesForDebugging';
@@ -117,6 +120,13 @@ export default async function ErrorHandler(
 
   if (err instanceof HttpCodedError) {
     res.status(err.status).json({ code: err.code, message: err.message });
+    return;
+  }
+
+  const exposedStatus = exposedHttpClientStatus(err);
+  if (exposedStatus != null) {
+    const body: UploadErrorBody = { code: 'unknown', message: err.message };
+    res.status(exposedStatus).json(body);
     return;
   }
 
