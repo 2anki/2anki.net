@@ -12,7 +12,7 @@ export interface TemplateSpecials {
 // Applied to Anki template strings (qfmt/afmt) loaded from the deck's
 // own note-type config — not from HTTP input. Negated classes bound the
 // captures, so there's no unbounded backtracking window.
-const TAG_REGEX = /\{\{([#^/])?([a-zA-Z][a-zA-Z0-9_-]*:)?([^{}]+?)\}\}/g; // NOSONAR
+const TAG_REGEX = /\{\{([#^/])?([^{}]+?)\}\}/g; // NOSONAR
 
 const FURIGANA_REGEX = /([^\s[\]]+)\[([^[\]]+)\]/g;
 
@@ -31,13 +31,10 @@ function isEmptyField(value: string | undefined): boolean {
   return stripped.length === 0;
 }
 
-function applyFieldModifier(
-  modifier: string | undefined,
-  value: string
-): string {
-  if (!modifier) return value;
-  const name = modifier.replace(/:$/, '');
-  switch (name) {
+function applyFilter(filter: string, value: string): string {
+  // `{{tts en_US voices=…:Field}}` is a play button in Anki, not text.
+  if (filter === 'tts' || filter.startsWith('tts ')) return '';
+  switch (filter) {
     case 'text':
       return stripHtml(value);
     case 'hint':
@@ -53,8 +50,24 @@ function applyFieldModifier(
     case 'cloze':
       return value;
     default:
+      // Add-on filters such as `edit:` (Edit Field During Review) only add
+      // behaviour in Anki's reviewer, so the field passes through unchanged.
       return value;
   }
+}
+
+// `{{edit:cloze:Text}}` stacks filters; Anki applies them right to left,
+// starting with the one next to the field name. `{{clickable::Tags}}` leaves
+// an empty segment, which is skipped.
+function parseFieldReference(raw: string): { name: string; filters: string[] } {
+  const parts = raw.split(':');
+  const name = (parts.pop() ?? '').trim();
+  const filters = parts.map((part) => part.trim()).filter((part) => part);
+  return { name, filters };
+}
+
+function applyFilters(filters: string[], value: string): string {
+  return filters.reduceRight((acc, filter) => applyFilter(filter, acc), value);
 }
 
 function resolveFieldValue(
@@ -105,7 +118,7 @@ function renderTemplateInternal(
   TAG_REGEX.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = TAG_REGEX.exec(template)) != null) {
-    const [full, sigil, modifier, rawName] = match;
+    const [full, sigil, rawName] = match;
     const name = rawName.trim();
     out += template.slice(lastIndex, match.index);
 
@@ -130,8 +143,9 @@ function renderTemplateInternal(
       continue;
     }
 
-    const value = resolveFieldValue(name, fieldMap, specials) ?? '';
-    out += applyFieldModifier(modifier, value);
+    const reference = parseFieldReference(rawName);
+    const value = resolveFieldValue(reference.name, fieldMap, specials) ?? '';
+    out += applyFilters(reference.filters, value);
     lastIndex = match.index + full.length;
   }
   out += template.slice(lastIndex);

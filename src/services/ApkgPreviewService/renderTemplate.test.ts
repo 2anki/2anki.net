@@ -72,4 +72,34 @@ describe('renderTemplate', () => {
     // Front value contains a literal {{Back}} — must NOT be re-rendered.
     expect(renderTemplate('{{Front}}', map)).toBe('{{Back}}');
   });
+
+  it.each([
+    ['an add-on filter stacked on cloze', '{{edit:cloze:Front}}'],
+    ['an add-on filter on a plain field', '{{edit:Front}}'],
+    ['an unknown filter', '{{some-addon:Front}}'],
+  ])('renders the field through %s', (_label, template) => {
+    const map = buildFieldMap(['<b>field text</b>', '', ''], basicNoteType);
+    expect(renderTemplate(template, map)).toBe('<b>field text</b>');
+  });
+
+  it('applies stacked filters right to left', () => {
+    const map = buildFieldMap(['<b>bold</b>', '', ''], basicNoteType);
+    expect(renderTemplate('{{hint:text:Front}}', map)).toBe(
+      '<span class="hint">bold</span>'
+    );
+  });
+
+  it('resolves a filter written with an empty segment, like {{clickable::Tags}}', () => {
+    const map = buildFieldMap(['', '', ''], basicNoteType);
+    expect(renderTemplate('{{clickable::Tags}}', map, { Tags: 'cardio' })).toBe(
+      'cardio'
+    );
+  });
+
+  it('renders a tts reference as nothing, since Anki plays it as audio', () => {
+    const map = buildFieldMap(['spoken', '', ''], basicNoteType);
+    expect(renderTemplate('[{{tts en_US voices=Apple:Front}}]', map)).toBe(
+      '[]'
+    );
+  });
 });

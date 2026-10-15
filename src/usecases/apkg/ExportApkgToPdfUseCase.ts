@@ -114,20 +114,82 @@ function processCardHtml(side: string, assets: PdfAssets): string {
   return result;
 }
 
-function stripFrontFromBack(back: string): string {
-  const hrIndex = back.search(/<hr\s*\/?>/i);
-  if (hrIndex === -1) return back;
-  return back.substring(hrIndex).replace(/<hr\s*\/?>/i, '');
+const HR_REGEX = /<hr\b[^>]*>/i;
+
+// Text plus image sources, whitespace-collapsed: enough to tell whether the
+// part of the back before its first <hr> is the {{FrontSide}} copy.
+function visibleSignature(html: string): string {
+  return html
+    .replace(/<img\b[^>]*?\bsrc="([^"]*)"[^>]*>/gi, ' [img:$1] ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-function buildCardRow(card: RenderedCard, assets: PdfAssets): string {
+// A `{{FrontSide}}<hr id=answer>…` back repeats the question; the PDF already
+// prints it in the Front column, so only the answer after the <hr> is kept.
+// Backs that do not start with the front (AnKing's cloze back puts the
+// revealed text before its <hr>) are printed whole.
+function answerSide(front: string, back: string): string {
+  const hrIndex = back.search(HR_REGEX);
+  if (hrIndex === -1) return back;
+  const beforeHr = back.substring(0, hrIndex);
+  if (visibleSignature(beforeHr) !== visibleSignature(front)) return back;
+  return back.substring(hrIndex).replace(HR_REGEX, '');
+}
+
+function buildCardRow(
+  card: RenderedCard,
+  assets: PdfAssets,
+  scopeClass: string
+): string {
   const front = processCardHtml(card.front, assets);
-  const back = processCardHtml(stripFrontFromBack(card.back), assets);
+  const back = processCardHtml(answerSide(card.front, card.back), assets);
   return `<tr>
-    <td class="card-cell"><style scoped>${card.css}</style><div class="card-content">${front}</div></td>
-    <td class="card-cell"><style scoped>${card.css}</style><div class="card-content">${back}</div></td>
+    <td class="card-cell"><div class="card-content ${scopeClass}">${front}</div></td>
+    <td class="card-cell"><div class="card-content ${scopeClass}">${back}</div></td>
   </tr>`;
 }
+
+// Chrome ignores <style scoped>, so note-type CSS used to apply to the whole
+// document: one deck's `html { display: flex }` or `table { … }` rules
+// restyled the PDF's own layout and every other note type. @scope confines
+// each stylesheet to its own cards, and each one is emitted once instead of
+// twice per card.
+class DeckStyles {
+  private readonly classByCss = new Map<string, string>();
+
+  scopeClassFor(css: string): string {
+    const existing = this.classByCss.get(css);
+    if (existing != null) return existing;
+    const scopeClass = `deck-css-${this.classByCss.size}`;
+    this.classByCss.set(css, scopeClass);
+    return scopeClass;
+  }
+
+  toHtml(): string {
+    return Array.from(this.classByCss.entries())
+      .map(
+        ([css, scopeClass]) =>
+          `<style>@scope (.${scopeClass}) {\n${css}\n}</style>`
+      )
+      .join('\n');
+  }
+}
+
+// Fixed-position elements are viewport overlays — logos, timers, tag bars,
+// popups. Chrome prints them on every page, so hide them. Runs before
+// `load`, ahead of the MathJax wait and page.pdf().
+const PRINT_FIXUPS_SCRIPT = `<script>
+(function () {
+  var nodes = document.querySelectorAll('.card-content *');
+  for (var i = 0; i < nodes.length; i++) {
+    if (getComputedStyle(nodes[i]).position === 'fixed') {
+      nodes[i].style.setProperty('display', 'none', 'important');
+    }
+  }
+})();
+</script>`;
 
 function collectAllCards(
   previewService: ApkgPreviewService,
@@ -143,7 +205,9 @@ function collectAllCards(
       parsed,
       cursor,
       pageSize,
-      mediaBaseUrl
+      mediaBaseUrl,
+      null,
+      { print: true }
     );
     all.push(...page.cards);
     if (page.nextCursor == null) break;
@@ -166,7 +230,12 @@ function buildHtml(
   assets: PdfAssets,
   backgroundColor: string
 ): string {
-  const rows = cards.map((card) => buildCardRow(card, assets)).join('\n');
+  const deckStyles = new DeckStyles();
+  const rows = cards
+    .map((card) =>
+      buildCardRow(card, assets, deckStyles.scopeClassFor(card.css))
+    )
+    .join('\n');
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -182,6 +251,7 @@ function buildHtml(
   .card-content img { max-width: 100%; height: auto; }
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
+${deckStyles.toHtml()}
 ${MATHJAX_CONFIG}
 </head>
 <body>
@@ -192,6 +262,7 @@ ${MATHJAX_CONFIG}
 ${rows}
 </tbody>
 </table>
+${PRINT_FIXUPS_SCRIPT}
 </body>
 </html>`;
 }
