@@ -9,7 +9,12 @@ import { resolveClientIp } from '../../lib/rateLimit/ipHelpers';
 import { buildUnknownPythonErrorContext } from '../../lib/anki/scrubPythonRawOutput';
 import { isLimitError } from '../../lib/misc/isLimitError';
 import { isExpectedClientFault } from '../../lib/misc/isExpectedClientFault';
+import { isStripeAccessError } from '../../lib/misc/isStripeAccessError';
 import { redactStripeIds } from '../../lib/log/redactStripeIds';
+import {
+  makeStripeAccessErrorReporter,
+  StripeAccessErrorReporter,
+} from '../../services/StripeAccessErrorReporter';
 
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -91,9 +96,13 @@ export const makeServerErrorRecorder = (
 export const makeErrorCaptureMiddleware = (
   repository: IErrorEventRepository,
   writeFallback?: FallbackWriter,
-  release: string | null = null
+  release: string | null = null,
+  reportStripeAccessError?: StripeAccessErrorReporter
 ) => {
   const record = makeServerErrorRecorder(repository, writeFallback, release);
+  const reportStripe =
+    reportStripeAccessError ??
+    makeStripeAccessErrorReporter(repository, release);
   return async (
     err: Error,
     req: Request,
@@ -105,6 +114,11 @@ export const makeErrorCaptureMiddleware = (
       isLimitError(err) ||
       isExpectedClientFault(err)
     ) {
+      next(err);
+      return;
+    }
+    if (isStripeAccessError(err)) {
+      await reportStripe(err, req, res);
       next(err);
       return;
     }

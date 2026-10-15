@@ -409,6 +409,33 @@ describe('makeErrorCaptureMiddleware', () => {
     expect(next).toHaveBeenCalledWith(realError);
   });
 
+  it('routes a Stripe access error to the reporter, not the generic recorder', async () => {
+    const repo = makeRepository();
+    const reporter = vi.fn().mockResolvedValue(undefined);
+    const middleware = makeErrorCaptureMiddleware(
+      repo,
+      undefined,
+      null,
+      reporter
+    );
+    const next = makeNext();
+    const stripeError = Object.assign(new Error('key lacks permission'), {
+      type: 'StripePermissionError',
+      statusCode: 403,
+    });
+
+    await middleware(
+      stripeError,
+      makeReq('/api/checkout/auto-sync'),
+      makeRes(777),
+      next
+    );
+
+    expect(reporter).toHaveBeenCalledTimes(1);
+    expect(repo.inserts).toHaveLength(0);
+    expect(next).toHaveBeenCalledWith(stripeError);
+  });
+
   it('calls writeFallback with db-outage phase when the repository insert fails', async () => {
     const brokenRepo: IErrorEventRepository = {
       async insert() {
