@@ -126,7 +126,7 @@ function buildConversionsPrompt(payload: ConversionMetricsResponse): string {
     ),
     jsonBlock(
       'PDF export failures by reason (7d)',
-      payload.pdf_export_failures_7d_by_reason
+      sanitizeStringsDeep(payload.pdf_export_failures_7d_by_reason)
     ),
     jsonBlock(
       'Failed conversions (12 weeks)',

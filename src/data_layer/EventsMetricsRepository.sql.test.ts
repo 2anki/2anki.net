@@ -90,8 +90,10 @@ describe('EventsMetricsRepository generated SQL', () => {
     expect(sql).toContain("props->>'reason' as reason");
     expect(sql).toContain('"name" = \'pdf_export_failed\'');
     expect(sql).toContain('"created_at" >=');
-    expect(sql).toContain('group by "reason"');
+    expect(sql).toContain("group by props->>'reason'");
     expect(sql).toContain('count(*)');
+    expect(sql).toContain('order by "count" desc');
+    expect(sql).toContain('limit 10');
   });
 
   it('counts pass checkouts by plan inside the window', () => {

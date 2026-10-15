@@ -66,6 +66,10 @@ export interface NewAccountDownloadCounts {
 // this many minutes is a deck made after signing up.
 const HELD_DECK_DOWNLOAD_MINUTES = 10;
 
+// Mirrors the top-10 cap the jobs top-failure-reasons breakdown applies, so an
+// unexpected reason explosion cannot blow up the ops payload.
+const PDF_EXPORT_FAILURE_REASON_LIMIT = 10;
+
 export interface UploadToDownloadRateRow {
   uploaders: number | string;
   downloaders: number | string;
@@ -166,7 +170,9 @@ export class EventsMetricsRepository
       .count('* as count')
       .where('name', 'pdf_export_failed')
       .where('created_at', '>=', since)
-      .groupBy('reason');
+      .groupBy(this.database.raw("props->>'reason'"))
+      .orderBy('count', 'desc')
+      .limit(PDF_EXPORT_FAILURE_REASON_LIMIT);
   }
 
   async pdfExportFailuresByReason(
