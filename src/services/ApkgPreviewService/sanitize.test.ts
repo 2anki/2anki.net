@@ -124,6 +124,71 @@ describe('sanitizeCardHtml — print option', () => {
       })
     ).toBe('<div>a</div>');
   });
+
+  it('removes the popup open-arrow glyph from anchors when printing', () => {
+    expect(
+      sanitizeCardHtml('<div id="popup"><a href="">↪</a>kept</div>', {
+        print: true,
+      })
+    ).toBe('<div id="popup"><a></a>kept</div>');
+  });
+
+  it('removes the glyph wrapped in child tags inside the anchor when printing', () => {
+    expect(
+      sanitizeCardHtml('<a><span>↪</span></a><a><b>↪</b></a>', { print: true })
+    ).toBe('<a><span></span></a><a><b></b></a>');
+  });
+
+  it('removes the glyph wrapped in a discarded tag inside the anchor when printing', () => {
+    expect(sanitizeCardHtml('<a><foo>↪</foo></a>', { print: true })).toBe(
+      '<a></a>'
+    );
+  });
+
+  it('keeps a real link whose text is the arrow when printing', () => {
+    const html = '<a href="https://x.com">↪</a>';
+    expect(sanitizeCardHtml(html, { print: true })).toBe(html);
+  });
+
+  it('keeps the arrow as card text outside anchors when printing', () => {
+    expect(sanitizeCardHtml('<a>↪</a><div>a ↪ b</div>', { print: true })).toBe(
+      '<a></a><div>a ↪ b</div>'
+    );
+  });
+
+  it('keeps anchors with an href when printing', () => {
+    const html = '<a href="https://x.com">link</a><a href="#jump">frag</a>';
+    expect(sanitizeCardHtml(html, { print: true })).toBe(html);
+  });
+
+  it('keeps href-less anchors that carry words when printing', () => {
+    expect(
+      sanitizeCardHtml('<a name="term">Key term</a> after', { print: true })
+    ).toBe('<a>Key term</a> after');
+  });
+
+  it('keeps href-less anchors that wrap an image when printing', () => {
+    const html = '<a><img src="logo.png" /></a>';
+    expect(sanitizeCardHtml(html, { print: true })).toBe(html);
+  });
+
+  it('keeps a nested image beside the glyph when printing', () => {
+    expect(
+      sanitizeCardHtml('<a><span><img src="logo.png" /></span>↪</a>', {
+        print: true,
+      })
+    ).toBe('<a><span><img src="logo.png" /></span></a>');
+  });
+
+  it('keeps symbol-only card text in href-less anchors when printing', () => {
+    expect(
+      sanitizeCardHtml('<a name="inf">∞</a> <a>→</a>', { print: true })
+    ).toBe('<a>∞</a> <a>→</a>');
+  });
+
+  it('keeps href-less anchors on non-print surfaces', () => {
+    expect(sanitizeCardHtml('<a>↪</a>kept')).toBe('<a>↪</a>kept');
+  });
 });
 
 describe('extractTemplateStyles', () => {

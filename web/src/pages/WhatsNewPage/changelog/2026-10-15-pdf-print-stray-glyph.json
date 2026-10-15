@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-15-pdf-print-stray-glyph",
+  "date": "2026-10-15",
+  "type": "fix",
+  "title": "PDFs of decks with scripted note types no longer show a stray arrow on card backs"
+}

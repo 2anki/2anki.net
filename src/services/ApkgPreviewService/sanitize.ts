@@ -94,6 +94,33 @@ const PRINT_NON_TEXT_TAGS = [
   'button',
 ];
 
+// Same reasoning as dropping <button>: the popup's "open" control is an anchor
+// with no destination whose only text is `↪`, and without scripts it does
+// nothing. Only that glyph goes, however deep it sits inside such an anchor;
+// the anchor itself, its words and images, and real links print as before.
+const POPUP_OPEN_GLYPH = '↪';
+
+const printPopupGlyphFilter = (): sanitizeHtml.IOptions => {
+  const openAnchorsLackHref: boolean[] = [];
+  let anchorsWithoutHrefOpen = 0;
+  return {
+    onOpenTag: (name, attribs) => {
+      if (name !== 'a') return;
+      const lacksHref = (attribs.href ?? '').trim() === '';
+      openAnchorsLackHref.push(lacksHref);
+      if (lacksHref) anchorsWithoutHrefOpen++;
+    },
+    onCloseTag: (name) => {
+      if (name !== 'a') return;
+      if (openAnchorsLackHref.pop()) anchorsWithoutHrefOpen--;
+    },
+    textFilter: (text) =>
+      anchorsWithoutHrefOpen > 0 && text.trim() === POPUP_OPEN_GLYPH
+        ? ''
+        : text,
+  };
+};
+
 export interface SanitizeCardOptions {
   print?: boolean;
 }
@@ -110,6 +137,7 @@ export function sanitizeCardHtml(
     allowedSchemesAppliedToAttributes: ['href', 'src'],
     disallowedTagsMode: 'discard',
     parser: { lowerCaseTags: true, lowerCaseAttributeNames: false },
+    ...(options.print ? printPopupGlyphFilter() : {}),
   });
 }
 
