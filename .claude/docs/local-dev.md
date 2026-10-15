@@ -20,7 +20,7 @@ Environment-specific facts for running the toolchain, migrations, and checks on 
 
 ## Main checkout is shared test infra — verify it's clean
 
-The main checkout (`/Users/a/src/github.com/2anki/server`) is where full-pipeline runs work, but it is Alexander's live working tree. Before trusting ANY real-pipeline result from it, `git status` it and confirm it's clean and at the expected sha (and that the feature's new files exist). A dirty tree runs the WRONG code and gives false results — a "conversion still broken" reading once turned out to be the main checkout running with a source file deleted from its working tree; on clean code it converted fine. Treat the main checkout as read-only test infra; do experiments in a worktree. Restore with `git checkout HEAD -- .` (the `safety.py` hook blocks `git reset --hard` with uncommitted changes).
+The main checkout (`/Users/a/src/github.com/2anki/server`) is where full-pipeline runs work, but it is Alexander's live working tree. Before trusting ANY real-pipeline result from it, `git status` it and confirm it's clean and at the expected sha (and that the feature's new files exist). A dirty tree runs the WRONG code and gives false results — a "conversion still broken" reading once turned out to be the main checkout running with a source file deleted from its working tree; on clean code it converted fine. Treat the main checkout as read-only test infra; do experiments in a worktree. Restore with `git checkout HEAD -- .` (a manual operator step; agents never run `checkout --`) (the `safety.py` hook blocks `git reset --hard` with uncommitted changes).
 
 ## Diagnosing local hook / deploy oddities
 

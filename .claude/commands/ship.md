@@ -13,7 +13,7 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
 ```
 
 - Rail-class PR (auth, payments, migrations) whose body records an unverified assumption → `gh pr ready --undo`, name the assumption for Alexander, and stop this PR's ship (the destructive bullet in `CLAUDE.md` Process: a wrong guess there is not undone by a revert); the run continues with other items.
-- PR that incurs new spend (a paid service, plan, model or paid batch run) with no recorded approval from Alexander → `gh pr ready --undo`, name the spend, and stop this PR's ship; the run continues with other items.
+- PR that incurs new spend (a paid service, plan, model or paid batch run) with no recorded approval from Alexander (his own chat message or PR comment, quoted in the body; an agent never writes that approval) → `gh pr ready --undo`, name the spend, and stop this PR's ship; the run continues with other items.
 - Draft → read the body, then one of:
   - it records a blocker only Alexander can clear (a value only he holds: a secret, a Stripe or Google dashboard setting; or new spend to approve) → interactive run: ask him for that value in the chat; unattended run: leave it draft, name the value in the morning summary, and continue with the next item;
   - it is a `/spec-draft-pr` spec → not a ship target: route it to `/implement`, report that, and continue with the next item (never `gh pr ready` here); a WIP flag is the author's note, not a halt: finish the work, then ready it;
