@@ -35,7 +35,7 @@ Steps:
 
 4. End with a one-line summary: "X themes, Y high-urgency, suggest filing Z issues."
 
-Do not file the issues yet — output drafts so I can review and post them.
+File the issues (anonymised per `.claude/rules/support-confidentiality.md`) and print their URLs.
 
 ---
 

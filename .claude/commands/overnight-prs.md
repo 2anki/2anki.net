@@ -7,8 +7,8 @@ You are working autonomously overnight on the 2anki/server repo. Your job: verif
 is still relevant against the current codebase, CLOSE the ones that no longer apply, and turn the
 relevant ones into merged, deployed pull requests (one PR per issue) — not just bug fixes, but
 features, improvements, and copy/UX changes too. Every Tier 1 and Tier 2 PR goes through `/ship`
-(review agent → gate → rail verification → merge → deploy verified); only Tier 3 drafts wait
-for Alexander. Keep going until you exhaust the queue or hit your usage limit. The night is wasted if
+(review agent → gate → rail verification → merge → deploy verified); a draft is only for a value
+only Alexander holds. Keep going until you exhaust the queue or hit your usage limit. The night is wasted if
 you only close stale issues and ship nothing.
 
 Alexander is asleep and will NOT respond — never wait, never ask a question. **The old rule was
@@ -136,8 +136,8 @@ READY with a `## Decisions made overnight` section, then `/ship`.**
 - Document EVERY decision and assumption in the PR (format below) so Alexander can override.
 - Rail paths are fine; `/ship` runs the extra rail verification.
 
-**Tier 3 — rests on an assumption you cannot verify with tools → open DRAFT, flagged.**
-- The fix is large or uncertain enough that no test, log, or prod read can confirm it is right.
+**Tier 3 — rests on a value only Alexander holds (a price, a contract term, an external account) → open DRAFT, flagged.** An assumption you cannot verify with tools is NOT Tier 3: the trio picks the most likely reading, you ship it reversibly through `/ship`, and the call lands under `## Decisions` for him to override.
+- The missing piece is a fact no test, log, or prod read can supply and only he knows.
   A migration alone is NOT Tier 3: write it, run `pnpm kanel`, and ship it through `/ship`, whose
   rail verification runs `migration-reviewer` and the migrate/rollback cycle.
 - Same trio + documentation as Tier 2, but `gh pr create --draft` and say plainly at the top of
@@ -151,7 +151,7 @@ subscriptions, quotas and migrations all go through `/ship`. Three constraints r
 - A change that needs a value only Alexander holds (a new secret on prod, a Stripe dashboard
   setting, a new third-party account) ships behind a safe default and goes in the morning summary as a question
   for Alexander, one line per step.
-- Anything you cannot make safe in two attempts → leave it DRAFT with the blocker stated.
+- Keep working until it is safe (reversible split, safe default). Draft only when the missing piece is a value only Alexander holds, with the blocker stated.
 
 ### `## Decisions made overnight` — required in every Tier 2 and Tier 3 PR
 List each judgment call the trio made, so the morning review is a yes/no, not an investigation:
@@ -187,8 +187,8 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
     `.claude/docs/browser-attestation.md` (out-clause when there's no runtime-visible effect —
     don't claim a check you didn't run). Link the issue.
 12. Tier 1 and Tier 2: run `/ship <n>`. It reviews, waits for green, merges, watches the deploy,
-    verifies prod. Rail PRs ship the same way with the extra verification. A third review round
-    leaves the PR ready for Alexander — log it as `PR` not `SHIPPED`. Tier 3 stays draft.
+    verifies prod. Rail PRs ship the same way with the extra verification. `/ship` keeps fixing
+    until the review is clean and logs `SHIPPED`. Tier 3 stays draft.
 
 ## Between issues — cleanup
 - `git checkout main && git pull --ff-only`.
@@ -208,16 +208,16 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
 - Touches a hard rail (auth / payments / migration) → ship it through `/ship` with the rail
   verification. A destructive migration is split into reversible expand/contract steps first.
 - Unsure whether an issue is irrelevant → leave it OPEN; don't close on a guess.
-- A failing check you can't resolve in two attempts → leave the PR DRAFT, note the blocker, move
-  on. Don't thrash.
+- Fix a failing check; leave the PR DRAFT only when the failure is outside the diff and cannot be
+  fixed from the branch, and say so in the body.
 
 ## Logging
 Running log, one line per issue, with a running counter so the log reconciles against M:
 `[idx/M] #NNN <title> → <state>`. There are FOUR terminal states — every issue you reach lands in
 exactly one, so the log accounts for every issue you opened, not just the ones you acted on:
 - `SHIPPED <url> (T1|T2, healthy|no deploy|reverted)` — merged and deployed through `/ship`.
-- `PR <url> (T1|T2|T3, ready|draft)` — opened a PR that is waiting for Alexander (third review
-  round, or Tier 3 draft); note the tier and whether it's ready or draft.
+- `PR <url> (T3, draft)` — opened a Tier 3 draft that waits on a value only Alexander holds; name
+  the value.
 - `CLOSED: <reason>` — closed per Step 0 (already fixed / already shipped / superseded / duplicate
   of #m / junk).
 - `SKIPPED: <reason>` — relevant but still unintelligible after the trio looked, or needs a value

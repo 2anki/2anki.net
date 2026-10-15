@@ -116,7 +116,7 @@ Pipe a single comment with this shape:
 
 Never use `--approve` — Alexander authors most PRs and GitHub blocks self-approval. Use `--comment` even when the verdict is "approve."
 
-Stop after posting. Merging is `/ship`'s job — it calls this command as its review step and posts the `ship-review` marker on a clean verdict; never merge from here.
+Return the verdict to the caller; inside `/ship`, continue to step 3. Merging is `/ship`'s job — it calls this command as its review step and posts the `ship-review` marker on a clean verdict; never merge from here.
 
 ## Notes
 

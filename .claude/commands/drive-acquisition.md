@@ -61,12 +61,12 @@ ABSOLUTE SAFETY RULES (non-negotiable):
   - One PR per issue, off fresh origin/main. Never stack branches.
   - NEVER put a reporter's name, email, Notion workspace, or deck title in a
     commit, PR, branch, or issue comment — use the numeric user ID or a role.
-  - When blocked or unsure an issue is safe/in-scope, SKIP it and leave it open.
-    Prefer doing nothing over shipping something wrong.
+  - Unsure about product, UX or copy → run the trio, ship, and record the call under
+    `## Decisions`. Skip only issues outside acquisition scope.
 
 LOG one line per issue as you go: issue # → verified relevant / closed (reason) /
 fixed (PR #) / skipped (reason). Stop when the acquisition-relevant queue is
-empty, you hit a tool/rate limit, or two agents can't make safe progress.
+empty or you hit a tool/rate limit.
 
 Start now: pull main, pull the open issues, triage by the acquisition filter,
 and begin.

@@ -12,7 +12,7 @@ You are shipping PR `$ARGUMENTS`. This is the **only** path an agent uses to run
 gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headRefOid,body,author,statusCheckRollup
 ```
 
-- Draft → stop; report "still draft".
+- Draft → finish what keeps it draft (a `/spec-draft-pr` spec goes through `/implement` first), wait for green, `gh pr ready`, and continue.
 - Rail class? Run the classifier on the file list and diff:
   ```bash
   gh pr view <n> --json files --jq '.files[].path' > /tmp/ship-paths.txt
@@ -41,7 +41,7 @@ Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh contex
 
 **`review-pr` is switched off in `.claude/settings.local.json`, so invoke the reviewers yourself** with the `Agent` tool rather than the skill — one agent per dimension, each briefed to read the diff and report BLOCKING / NON-BLOCKING / verdict with no edits, commits or merges. **Never use `subagent_type: "fork"` for a reviewer.** A fork inherits this whole ship task, the shared worktree and the operator's `gh` auth, and on #4679 three read-only-briefed forks edited, force-pushed, posted markers and enqueued the merge themselves. Use a fresh read-only type (`caveman:cavecrew-reviewer`), save the diff to a scratchpad file first, and pass only the diff path and the review brief, never the ship steps. The marker you post in a moment is the merge gate's only substantive review condition, so it must stand for a review that actually ran. Do not post it on the strength of your own reading alone.
 
-- **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. Two rounds maximum. A third round of must-fix means the change is not ready: leave the PR ready, comment the blocker, print the URL, stop.
+- **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. There is no round cap: keep fixing and re-reviewing until a pass comes back clean. A reviewer re-raising a point you already addressed is a fix to make or a reply to give in the review brief, never a reason to stop. The only halt here is a finding you cannot fix on the branch (a prod secret, a third-party dashboard setting); ask Alexander for that one thing in the chat and keep shipping once it is in. 2026-10-15: a two-round cap stopped a CI-green, security-clean PR with every finding already fixed, and Alexander had to merge it by hand hours later while a paid campaign ran unattributed.
 - **Clean** → post the pass marker for the exact head SHA:
   ```bash
   HEAD=$(gh pr view <n> --json headRefOid --jq .headRefOid)
@@ -76,7 +76,7 @@ gh api graphql -f query='{ repository(owner:"2anki", name:"2anki.net") { pullReq
 ```
 
 - `state: MERGED` → record `MERGE_SHA` from `mergeCommit.oid` and continue.
-- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake — stop and report.
+- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake: read both failed logs, put the fix on the branch, and restart from step 1. Stop only when the failing job is infrastructure the branch cannot change (a runner outage, a GitHub incident), and say so with the run URL.
 
 Never delete the branch by hand before the queue has merged; the queue needs it.
 
