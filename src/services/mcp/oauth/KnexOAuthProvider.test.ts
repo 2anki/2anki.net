@@ -154,7 +154,11 @@ class FakeTokenRepo implements IMcpTokenRepository {
 
 function fakeResponse(
   cookieToken?: string,
-  reqOverrides: { method?: string; body?: Record<string, unknown> } = {}
+  reqOverrides: {
+    method?: string;
+    body?: Record<string, unknown>;
+    consent?: 'granted' | 'denied';
+  } = {}
 ) {
   const calls = {
     redirectedTo: null as string | null,
@@ -165,7 +169,12 @@ function fakeResponse(
   };
   const res = {
     req: {
-      cookies: cookieToken != null ? { token: cookieToken } : {},
+      cookies: {
+        ...(cookieToken != null ? { token: cookieToken } : {}),
+        ...(reqOverrides.consent != null
+          ? { cookie_consent: reqOverrides.consent }
+          : {}),
+      },
       originalUrl: '/authorize?client_id=abc&state=xyz',
       method: reqOverrides.method ?? 'GET',
       body: reqOverrides.body ?? {},
@@ -274,9 +283,9 @@ describe('KnexOAuthProvider client registration', () => {
 });
 
 describe('KnexOAuthProvider authorize', () => {
-  it('redirects to login and sets first-touch when not signed in', async () => {
+  it('redirects to login and sets first-touch when not signed in and tracking is allowed', async () => {
     const { provider } = makeProvider();
-    const { res, calls } = fakeResponse();
+    const { res, calls } = fakeResponse(undefined, { consent: 'granted' });
     await provider.authorize(
       CLIENT,
       {
@@ -289,6 +298,22 @@ describe('KnexOAuthProvider authorize', () => {
     expect(calls.redirectedTo).toContain('/login?next=');
     expect(calls.cookies[0].name).toBe('first_touch');
     expect(calls.cookies[0].value).toContain('/mcp');
+  });
+
+  it('redirects to login without first-touch when tracking is not allowed', async () => {
+    const { provider } = makeProvider();
+    const { res, calls } = fakeResponse();
+    await provider.authorize(
+      CLIENT,
+      {
+        codeChallenge: 'chal',
+        redirectUri: 'https://claude.ai/callback',
+        state: 'xyz',
+      },
+      res
+    );
+    expect(calls.redirectedTo).toContain('/login?next=');
+    expect(calls.cookies).toEqual([]);
   });
 
   const AUTHORIZE_PARAMS = {

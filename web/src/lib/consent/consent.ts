@@ -14,7 +14,7 @@ interface ConsentDocument {
   location: { protocol: string; hostname?: string };
 }
 
-const VENDOR_COOKIE_PREFIXES = ['_ga', '_gcl', '_hj'];
+const VENDOR_COOKIE_PREFIXES = ['_ga', '_gac', '_gcl', '_hj'];
 
 interface GtagWindow {
   gtag?: (...args: unknown[]) => void;

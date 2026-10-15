@@ -18,6 +18,7 @@ import {
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 import AuthenticationService from '../../AuthenticationService';
+import { trackingAllowedFor } from '../../../lib/http/consentRegion';
 import UsersRepository from '../../../data_layer/UsersRepository';
 import { IMcpOAuthClientRepository } from '../../../data_layer/McpOAuthClientRepository';
 import { IMcpAuthorizationCodeRepository } from '../../../data_layer/McpAuthorizationCodeRepository';
@@ -190,9 +191,14 @@ export class KnexOAuthProvider implements OAuthServerProvider {
   }
 
   private redirectToLogin(res: Response): void {
-    const originalUrl = res.req?.originalUrl ?? '';
-    const cookies = res.req?.cookies as Record<string, unknown> | undefined;
-    if (cookies?.first_touch == null) {
+    const req = res.req;
+    const originalUrl = req?.originalUrl ?? '';
+    const cookies = req?.cookies as Record<string, unknown> | undefined;
+    if (
+      req != null &&
+      cookies?.first_touch == null &&
+      trackingAllowedFor(req)
+    ) {
       res.cookie('first_touch', JSON.stringify({ landingPath: '/mcp' }), {
         httpOnly: false,
         sameSite: 'lax',

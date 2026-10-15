@@ -121,7 +121,7 @@ describe('setConsent', () => {
         writes.push(value);
       },
       get cookie() {
-        return 'token=abc; _ga=GA1.1.1; _ga_X6K69TY3EX=GS1.1; _gcl_au=1.1; _hjSessionUser_1=x';
+        return 'token=abc; _ga=GA1.1.1; _ga_X6K69TY3EX=GS1.1; _gac_AW-1=1.2; _gcl_au=1.1; _hjSessionUser_1=x';
       },
     };
 
@@ -136,6 +136,7 @@ describe('setConsent', () => {
     );
     expect(expired).toContainEqual(expect.stringContaining('_ga_X6K69TY3EX=;'));
     expect(expired).toContainEqual(expect.stringContaining('_gcl_au=;'));
+    expect(expired).toContainEqual(expect.stringContaining('_gac_AW-1=;'));
     expect(expired).toContainEqual(
       expect.stringContaining('_hjSessionUser_1=;')
     );
