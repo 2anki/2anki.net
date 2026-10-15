@@ -68,7 +68,7 @@ mandatory. If you add a trigger, confirm the path resolves first.
 
 When given a spec or issue:
 
-1. **Restate the change** in one sentence. If you can't, pick the most likely reading, state the assumption in the PR, and proceed.
+1. **Restate the change** in one sentence. If you can't, pick the most likely reading, state the assumption in the PR body (or the spec notes if no PR exists yet), and proceed.
 2. **Trace the code path.** Use `grep -r` to find every file the change touches. List them.
 3. **Surface feasibility assumptions.** Name the riskiest one. Propose the smallest test.
 4. **Plan the diff.** Files to modify, new files, tests to add. Keep it tight — no 5-page plan.

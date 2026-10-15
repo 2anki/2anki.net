@@ -44,11 +44,11 @@ Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh contex
 
 **`review-pr` is switched off in `.claude/settings.local.json`, so invoke the reviewers yourself** with the `Agent` tool rather than the skill — one agent per dimension, each briefed to read the diff and report BLOCKING / NON-BLOCKING / verdict with no edits, commits or merges. **Never use `subagent_type: "fork"` for a reviewer.** A fork inherits this whole ship task, the shared worktree and the operator's `gh` auth, and on #4679 three read-only-briefed forks edited, force-pushed, posted markers and enqueued the merge themselves. Use a fresh read-only type (`caveman:cavecrew-reviewer`), save the diff to a scratchpad file first, and pass only the diff path and the review brief, never the ship steps. The marker you post in a moment is the merge gate's only substantive review condition, so it must stand for a review that actually ran. Do not post it on the strength of your own reading alone.
 
-- **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. There is no round cap: keep fixing and re-reviewing until a pass comes back clean. The reviewer runs are part of the ship Alexander asked for, not a spend decision. (2026-10-15: a two-round cap stopped a CI-green, security-clean PR with every finding already fixed; Alexander merged it by hand hours later while a paid campaign ran unattributed.)
-  - A reviewer re-raising a point you already addressed is a fix to make, or, for a non-security point you can show is already handled, evidence to put in the next review brief. It is never a reason to stop.
+- **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. There is no round cap: keep fixing and re-reviewing until a pass is clean (no BLOCKING findings from any reviewer) or a CLAUDE.md carve-out fires. The reviewer runs are part of the ship Alexander asked for, not a spend decision.
+  - Re-raised point: fix it, or, if it is non-security and already handled, cite the evidence in the next brief. Never a reason to stop.
   - A security finding clears only on a code change that a fresh reviewer passes, never on your own reply.
-  - A confirmed secret exposure or auth bypass in the diff halts the run: print the evidence, push nothing more (a fix commit does not remove a secret from history), post no marker, merge nothing, name the secret for Alexander to rotate.
-  - The only other halt is a finding you cannot fix on the branch (a prod secret, a third-party dashboard setting). In an interactive run ask Alexander for that one thing in the chat and keep shipping once it is in; an unattended run (`/overnight-prs`) parks it behind a safe default and names it in the morning summary.
+  - A confirmed secret exposure or auth bypass, in the diff or found mid-run, halts the run: print the evidence, push nothing more (a fix commit does not remove a secret from history), post no marker, merge nothing, name the secret for Alexander to rotate.
+  - The only other halt is a finding you cannot fix on the branch (a prod secret, a third-party dashboard setting). In an interactive run ask Alexander for that one thing in the chat and keep shipping once it is in. An unattended run (`/overnight-prs`) ships behind a safe default if one exists; otherwise it leaves the PR draft and names the value in the morning summary.
 - **Clean** → post the pass marker for the exact head SHA:
   ```bash
   HEAD=$(gh pr view <n> --json headRefOid --jq .headRefOid)
@@ -83,13 +83,13 @@ gh api graphql -f query='{ repository(owner:"2anki", name:"2anki.net") { pullReq
 ```
 
 - `state: MERGED` → record `MERGE_SHA` from `mergeCommit.oid` and continue.
-- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake: read both failed logs, put the fix on the branch, and restart from step 1. When the failing job is infrastructure the branch cannot change (a runner outage, a GitHub incident), leave the PR ready, note the run URL on it, and move on; retry the enqueue once the incident clears.
+- `state: OPEN` with `mergeQueueEntry: null` → the queue **dequeued** the PR: a required job failed on the queue branch. Find it with `gh run list --limit 30 --json databaseId,headBranch,conclusion` filtered to `headBranch` starting with `gh-readonly-queue/main/pr-<n>-`, read `--log-failed`, and decide: a fix goes on the branch (restart from step 1); a flake that never touches the diff (a fixture timeout on a busy runner, say) → re-run `gh pr merge <n> --squash` once and watch again. Two dequeues in a row is not a flake: read both failed logs, put the fix on the branch, and restart from step 1. When the failing job is infrastructure the branch cannot change (a runner outage, a GitHub incident), leave the PR ready, note the run URL on it, end this PR's ship (not the run), and re-check with a `ScheduleWakeup` of 1200s until the incident clears, then re-enqueue.
 
 Never delete the branch by hand before the queue has merged; the queue needs it.
 
 ## 5. Watch the deploy
 
-A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.md'`) — go to step 7 (local cleanup still applies; it'll report "merged, no deploy" from there).
+A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.md'`) — go to step 7 (local cleanup still applies; it'll report `no deploy` from there).
 
 ```bash
 gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion
@@ -103,7 +103,7 @@ Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the queu
 curl -fsS https://2anki.net/api/version | jq -r .sha
 ```
 
-Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise. Verdict "watching X" → re-run `/deploy-status` after a `ScheduleWakeup` of 270s until it reads healthy or broken; never report healthy while watching. Verdict "broken" → step 8.
+Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise. Verdict "watching X" → re-run `/deploy-status` after a `ScheduleWakeup` of 270s, reporting the evidence each round; the loop ends only at healthy or broken, never report healthy while watching. Verdict "broken" → step 8.
 
 ## 6b. Rail verification after deploy (only when step 1 hit)
 

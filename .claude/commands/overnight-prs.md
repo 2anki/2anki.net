@@ -8,7 +8,8 @@ is still relevant against the current codebase, CLOSE the ones that no longer ap
 relevant ones into merged, deployed pull requests (one PR per issue) — not just bug fixes, but
 features, improvements, and copy/UX changes too. Every Tier 1 and Tier 2 PR goes through `/ship`
 (review agent → gate → rail verification → merge → deploy verified); a draft is only for a value
-only Alexander holds. Keep going until you exhaust the queue or hit your usage limit. The night is wasted if
+only Alexander holds, a spec or WIP, a check failure the branch cannot fix, or a rail-path change
+resting on an unverified assumption. Keep going until you exhaust the queue or hit your usage limit. The night is wasted if
 you only close stale issues and ship nothing.
 
 Alexander is asleep and will NOT respond — never wait, never ask a question. **The old rule was
@@ -136,8 +137,9 @@ READY with a `## Decisions made overnight` section, then `/ship`.**
 - Document EVERY decision and assumption in the PR (format below) so Alexander can override.
 - Rail paths are fine; `/ship` runs the extra rail verification.
 
-**Tier 3 — rests on a value only Alexander holds (a price, a contract term, an external account) and no safe default exists → open DRAFT, flagged.** When a safe default exists, ship behind it (see the hard rails below) and ask in the morning summary. An assumption you cannot verify with tools is NOT Tier 3 unless it sits on a rail path (auth, payments, migrations): off the rails the trio picks the most likely reading, you ship it reversibly through `/ship`, and the call lands under `## Decisions` for him to override; on a rail path the unverified assumption stays draft.
-- The missing piece is a fact no test, log, or prod read can supply and only he knows.
+**Tier 3 — rests on a value only Alexander holds (a price, a contract term, an external account) and no safe default exists → open DRAFT, flagged.** When a safe default exists, ship behind it (see the hard rails below) and ask in the morning summary. An assumption you cannot verify with tools is NOT Tier 3 off the rails: the trio picks the most likely reading, you ship it reversibly through `/ship`, and the call lands under `## Decisions` for him to override.
+- On a rail path (auth, payments, migrations) an unverified assumption is the one exception: it stays draft, because a wrong guess there is not reversible by a revert. Name the assumption in the morning summary.
+- The missing piece is a value only Alexander holds.
   A migration alone is NOT Tier 3: write it, run `pnpm kanel`, and ship it through `/ship`, whose
   rail verification runs `migration-reviewer` and the migrate/rollback cycle.
 - Same trio + documentation as Tier 2, but `gh pr create --draft` and say plainly at the top of
@@ -145,13 +147,14 @@ READY with a `## Decisions made overnight` section, then `/ship`.**
 
 **Hard rails — ship them, with more evidence.** Nobody reviews the code, so the rail checks in
 `/ship` (step 1b before merge, step 6b after deploy) stand in for the reviewer. Auth, payments,
-subscriptions, quotas and migrations all go through `/ship`. Three constraints remain:
+subscriptions, quotas and migrations all go through `/ship`, except a rail change resting on an
+assumption you could not verify (Tier 3 above). Three constraints remain:
 - No irreversible data change in one step. Split a drop/rename/backfill into expand → migrate →
   contract PRs, each of which can roll back on its own.
 - A change that needs a value only Alexander holds (a new secret on prod, a Stripe dashboard
   setting, a new third-party account) ships behind a safe default and goes in the morning summary as a question
   for Alexander, one line per step.
-- Keep working until it is safe (reversible split, safe default). Draft only when the missing piece is a value only Alexander holds, with the blocker stated.
+- Keep working until it is safe (reversible split, safe default). Draft only when the missing piece is a value only Alexander holds, or the change is a rail-path change resting on an unverified assumption, with the blocker stated.
 
 ### `## Decisions made overnight` — required in every Tier 2 and Tier 3 PR
 List each judgment call the trio made, so the morning review is a yes/no, not an investigation:
@@ -208,16 +211,17 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
 - Touches a hard rail (auth / payments / migration) → ship it through `/ship` with the rail
   verification. A destructive migration is split into reversible expand/contract steps first.
 - Unsure whether an issue is irrelevant → leave it OPEN; don't close on a guess.
-- Fix a failing check; leave the PR DRAFT only when the failure is outside the diff and cannot be
-  fixed from the branch, and say so in the body.
+- Fix failing checks on the branch. A failure the branch cannot fix (a runner outage, a GitHub
+  incident) leaves the PR ready with the run URL noted, per `/ship` step 4, and is logged as a
+  `PR … (check-failure, ready)`.
 
 ## Logging
 Running log, one line per issue, with a running counter so the log reconciles against M:
 `[idx/M] #NNN <title> → <state>`. There are FIVE terminal states — every issue you reach lands in
 exactly one, so the log accounts for every issue you opened, not just the ones you acted on:
 - `SHIPPED <url> (T1|T2, healthy|no deploy|reverted)` — merged and deployed through `/ship`.
-- `PR <url> (T3|check-failure, draft)` — a draft that waits on a value only Alexander holds with no
-  safe default, or on a check failure outside the diff; name the blocker.
+- `PR <url> (T3, draft | check-failure, ready)` — a Tier 3 draft that waits on a value only Alexander
+  holds with no safe default, or a ready PR whose checks failed on infrastructure; name the blocker.
 - `CLOSED: <reason>` — closed per Step 0 (already fixed / already shipped / superseded / duplicate
   of #m / junk).
 - `SKIPPED: <reason>` — relevant but still unintelligible after the trio looked, or unsafe with no
@@ -237,8 +241,8 @@ On stop, print the summary in this order — counts are the hero; the five bucke
    ```
    If N == M, write "Reached all <M>." and "0 never reached." The phrase "no eligible issues
    remain" is true ONLY when N == M.
-2. **Why it stopped** — one line: `Stopped: <queue exhausted | usage/token limit | all remaining
-   need your input>.[ <M-N> issues never reached — rerun to continue.]`
+2. **Why it stopped** — one line: `Stopped: <queue exhausted | usage/token limit | every remaining
+   candidate needs a value only you hold>.[ <M-N> issues never reached — rerun to continue.]`
 3. **Shipped** — issue #, title, PR URL, deploy verdict.
 3b. **PRs waiting for you** — issue #, title, PR URL, why (a value only you hold, or a check failure outside the diff).
 4. **Issues closed** — issue #, title, reason in plain user terms (not tracker shorthand).

@@ -40,7 +40,7 @@ Re-check the file list against the hard-block set from `.claude/commands/batch.m
 - `src/lib/Token.ts`
 - any path matching `auth` or `payments`
 
-If any file matches, run `/security-review` on the diff and the full server suite, and put both results in the `/ship` review brief so its fresh reviewers check them. Clean → `/ship <n>`. Any finding → comment it and return `needs-review`; a dependency bump is never patched on the branch.
+If any file matches, run `/security-review` on the diff and the full server suite, and put both results in the `/ship` review brief so its fresh reviewers check them. Clean → `/ship <n>`. Any finding → comment it and return `needs-review`: the fix lives upstream in the package, not on this branch, so this is the "value only Alexander holds" carve-out (whether to take the bump at all).
 
 ### 2b — dependency-rules hold checks (`.claude/rules/dependencies.md`)
 
@@ -77,12 +77,12 @@ Decision matrix:
 | bump | /check | security label | action |
 | --- | --- | --- | --- |
 | patch | green | none | `/ship <n>` → status `merged` |
-| patch | red | any | read the failed log once; a flake unrelated to the diff → `gh run rerun` and re-evaluate; otherwise comment the failure summary → status `needs-review` (a bump is never patched on the branch) |
+| patch | red | any | read the failed log; a flake unrelated to the diff → `gh run rerun` once and re-evaluate (a second red is not a flake); our code failing against a documented API change → adapt it on the branch, re-run `/check`, continue; the package itself broken → comment what broke → status `needs-review` (the fix is upstream) |
 | patch | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
 | minor | green | none | full server suite locally green, then `/ship <n>` → status `merged` |
 | minor | red | any | same as patch + red |
 | minor | green | security | run `/security-review` on the diff; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
-| major | green | none | the `dependencies.md` major-bump checks (changelog for removed APIs, full server suite locally green, plugin grep), written into the `/ship` review brief so its fresh reviewers confirm them, then `/ship <n>` → status `merged`; a breakage → comment what broke → status `needs-review` |
+| major | green | none | the `dependencies.md` major-bump checks (changelog for removed APIs, full server suite locally green, plugin grep, a sanity run of the conversion path), written into the `/ship` review brief so its fresh reviewers confirm them, then `/ship <n>` → status `merged`; a breakage → comment what broke → status `needs-review` |
 | major | red | any | same as patch + red |
 | major | green | security | the major-bump checks plus `/security-review`; clean → `/ship <n>` → status `merged`; a finding → comment it → status `needs-review` |
 | unknown | any | any | comment "Could not parse bump level from title" → status `needs-review` |
@@ -93,7 +93,7 @@ Decision matrix:
 /ship <n>
 ```
 
-Only ever from a `green` row whose listed checks and reviews passed, and only when Step 2 raised no hold. Never from a red row. A `/ship` that ends without `state: MERGED` (a dequeue, a revert, a step only Alexander can do) maps to `failed-checks` when CI failed and `needs-review` otherwise.
+Only ever from a `green` row whose listed checks and reviews passed, and only when Step 2 raised no hold. Never from a red row. A `/ship` that ends without `state: MERGED` (a revert, or a step only Alexander can do) maps to `failed-checks` when CI failed and `needs-review` otherwise.
 
 **Comment call (any `needs-review` exit):**
 

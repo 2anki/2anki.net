@@ -27,7 +27,7 @@ Check whether the orchestrator's main checkout is dirty:
 git status --porcelain
 ```
 
-If the output is non-empty, print `Orchestrator checkout has uncommitted changes — dispatching from a fresh worktree off origin/main instead.`, create that worktree with `git worktree add <path> origin/main`, and dispatch from it. Never stash, reset, checkout or clean the dirty root; those changes belong to another session.
+If the output is non-empty, print `Orchestrator checkout has uncommitted changes — dispatching from a fresh worktree off origin/main instead.`, create that worktree with `git worktree add .claude/worktrees/batch-<timestamp> origin/main`, and dispatch from it. Never stash, reset, checkout or clean the dirty root; those changes belong to another session.
 
 ## Step 2 — parse arguments
 
