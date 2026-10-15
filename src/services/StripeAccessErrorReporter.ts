@@ -66,7 +66,9 @@ export const makeStripeAccessErrorReporter = (
   return async (err: Error, req: Request, res: Response): Promise<void> => {
     const type = stripeAccessErrorType(err) ?? 'StripeError';
     const path =
-      req.originalUrl == null ? null : redactStripeIds(req.originalUrl);
+      req.originalUrl == null
+        ? null
+        : redactStripeIds(req.originalUrl.split('?')[0]);
     const message = `Stripe access denied: ${type}`;
     const messageHash = sha256(message);
     const userId =
@@ -101,21 +103,23 @@ export const makeStripeAccessErrorReporter = (
       return;
     }
 
-    track('stripe_access_alert_sent', {
-      userId,
-      props: { stripe_error_type: type },
-    });
     try {
+      track('stripe_access_alert_sent', {
+        userId,
+        props: { stripe_error_type: type },
+      });
       await sendAlert(
-        `[2anki] Stripe access error — ${type}`,
-        `A Stripe API request was denied with ${type}. The live key is ` +
-          `probably invalid or missing a permission the request needs. ` +
-          `Request path: ${path ?? 'unknown'}. Repeats within the next hour ` +
-          `are suppressed. Check the restricted key's permissions in the ` +
-          `Stripe dashboard and the /ops error dashboard.`
+        `[2anki] Stripe access error: ${type}`,
+        `A Stripe API request was denied with ${type}. The configured ` +
+          `Stripe key is invalid, revoked, or missing a permission this ` +
+          `request needs. Request path: ${path ?? 'unknown'}. Repeats ` +
+          `within the next hour are suppressed. Check the restricted key's ` +
+          `permissions in the Stripe dashboard; if the key was rotated or ` +
+          `revoked, update the server's Stripe secret. Details on the /ops ` +
+          `error dashboard.`
       );
-    } catch (emailError) {
-      console.error('[stripe-access] alert email failed', emailError);
+    } catch (alertError) {
+      console.error('[stripe-access] alert failed', alertError);
     }
   };
 };

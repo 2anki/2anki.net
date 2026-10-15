@@ -10,7 +10,7 @@ import { track } from './events/track';
 vi.mock('./events/track', () => ({ track: vi.fn() }));
 const trackMock = track as Mock;
 
-const FAKE_KEY = 'rk_live_FAKEKEY0123456789abcdef';
+const FAKE_KEY = 'fake-stripe-key-marker-not-a-real-key';
 
 function makeRepository(existsResult = false): IErrorEventRepository & {
   inserts: ErrorEventInsert[];
@@ -111,11 +111,55 @@ describe('makeStripeAccessErrorReporter', () => {
       makeRes(777)
     );
 
-    expect(repo.inserts[0].url).toBe(
-      '/api/billing/portal?customer=<stripe_id>'
-    );
+    expect(repo.inserts[0].url).toBe('/api/billing/portal');
     const [, body] = sendAlert.mock.calls[0];
     expect(body).not.toContain('cus_Qx1aBcD2eFgH3i');
+  });
+
+  it('redacts a Stripe id embedded in the path itself', async () => {
+    const repo = makeRepository();
+    const report = makeStripeAccessErrorReporter(repo, null, {
+      sendAlert: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await report(
+      permissionError(),
+      makeReq('/api/billing/portal/cus_Qx1aBcD2eFgH3i'),
+      makeRes(777)
+    );
+
+    expect(repo.inserts[0].url).toBe('/api/billing/portal/<stripe_id>');
+  });
+
+  it('drops the query string so unrelated params never reach the row or email', async () => {
+    const repo = makeRepository();
+    const sendAlert = vi.fn().mockResolvedValue(undefined);
+    const report = makeStripeAccessErrorReporter(repo, null, { sendAlert });
+
+    await report(
+      permissionError(),
+      makeReq('/api/checkout/auto-sync?email=someone%40example.com&token=abc'),
+      makeRes(777)
+    );
+
+    expect(repo.inserts[0].url).toBe('/api/checkout/auto-sync');
+    const [, body] = sendAlert.mock.calls[0];
+    expect(body).not.toContain('example.com');
+    expect(body).not.toContain('token=abc');
+  });
+
+  it('survives a throwing analytics sink and still passes control back', async () => {
+    const repo = makeRepository();
+    trackMock.mockImplementation(() => {
+      throw new Error('sink down');
+    });
+    const report = makeStripeAccessErrorReporter(repo, null, {
+      sendAlert: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await expect(
+      report(permissionError(), makeReq(), makeRes(777))
+    ).resolves.toBeUndefined();
   });
 
   it('dedups on the message with a surrogate ip so different callers share it', async () => {
