@@ -7,6 +7,7 @@ import DownloadService from '../services/DownloadService';
 import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewService';
 import ApkgToNotionBlocksService from '../services/ApkgToNotionBlocksService';
 import PdfRenderService, {
+  PdfRenderCrashedError,
   PdfRenderTimeoutError,
 } from '../services/PdfRenderService';
 import ExportApkgToPdfUseCase, {
@@ -583,6 +584,12 @@ function sendPdfExportError(res: Response, error: unknown): void {
     track('pdf_render_timed_out', {
       userId: typeof res.locals.owner === 'number' ? res.locals.owner : null,
     });
+    res.status(400).json({ message: error.message });
+    return;
+  }
+  if (error instanceof PdfRenderCrashedError) {
+    // The deck is the problem, not the server: answer with what to do next.
+    console.warn('PDF render crashed:', error.cause);
     res.status(400).json({ message: error.message });
     return;
   }
