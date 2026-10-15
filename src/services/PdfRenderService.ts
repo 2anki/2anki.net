@@ -87,10 +87,28 @@ async function writeDocument(dir: string, doc: PdfDocument): Promise<string> {
 // The page loads from file://, which would otherwise let deck HTML pull any
 // file on the host into the PDF (an <iframe src="file:///etc/passwd"> renders).
 // Only files inside this render's own directory may load.
+// The only remote script a PDF page may load: the MathJax build the document
+// links to (MATHJAX_CONFIG in ExportApkgToPdfUseCase).
+const MATHJAX_PREFIX = 'https://cdn.jsdelivr.net/npm/mathjax@3/';
+
+/**
+ * Deck HTML is untrusted, so the render page may load only its own temp
+ * directory, inline data, and MathJax. Everything else is aborted: other
+ * local files (an iframe on file:///etc/hosts rendered the hosts file) and
+ * any other http(s) URL, which would let a deck make the server fetch
+ * internal or third-party addresses.
+ */
 export function guardLocalFiles(dirUrl: string) {
+  const dir = dirUrl.toLowerCase();
   return (request: HTTPRequest): void => {
     const url = request.url();
-    if (url.startsWith('file:') && !url.startsWith(dirUrl)) {
+    const lower = url.toLowerCase();
+    const allowed =
+      (lower.startsWith('file:') && lower.startsWith(dir)) ||
+      lower.startsWith('data:') ||
+      lower === 'about:blank' ||
+      url.startsWith(MATHJAX_PREFIX);
+    if (!allowed) {
       void request.abort('accessdenied');
       return;
     }

@@ -271,6 +271,7 @@ describe('guardLocalFiles', () => {
     'file:///tmp/2anki-pdf-abc/media-3.jpg',
     'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js',
     'data:image/png;base64,AAAA',
+    'about:blank',
   ])('lets %s load', (url) => {
     const req = request(url);
     guard(req as unknown as HTTPRequest);
@@ -282,6 +283,13 @@ describe('guardLocalFiles', () => {
     'file:///etc/hosts',
     'file:///tmp/2anki-pdf-other/index.html',
     'file:///tmp/2anki-pdf-abc',
+    'FILE:///etc/hosts',
+    'File:///tmp/2anki-pdf-other/index.html',
+    'http://169.254.169.254/latest/meta-data/',
+    'http://localhost:2020/api/users/debug/locals',
+    'https://example.com/tracker.png',
+    'https://cdn.jsdelivr.net/npm/evil@1/x.js',
+    'ftp://example.com/file',
   ])('blocks %s', (url) => {
     const req = request(url);
     guard(req as unknown as HTTPRequest);
