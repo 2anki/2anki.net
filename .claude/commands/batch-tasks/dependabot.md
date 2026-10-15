@@ -44,13 +44,13 @@ If any file matches, run `/security-review` on the diff and the full server suit
 
 ### 2b — dependency-rules hold checks (`.claude/rules/dependencies.md`)
 
-Inspect the bumped package (from the title) and the file list. Hold — comment + `needs-review` — if ANY are true:
+Inspect the bumped package (from the title) and the file list. Each bullet names its action: a hold (comment + `needs-review`) is the "whether to take this bump" carve-out in `CLAUDE.md` Process; a route adds a check before `/ship`:
 
 - **Pinned override** — touches a package listed in `pnpm.overrides` (`package.json`): `path-to-regexp`, `picomatch`, `rollup`, `yaml`, `@types/express`, `@types/express-serve-static-core`. Bumping these can silently re-open a CVE we've worked around.
-- **Built dependency** — touches anything in `pnpm.onlyBuiltDependencies` (currently `better-sqlite3`). Run the smoke test yourself (load the built module, run the server suite); hold only on a failure, which is the failing-bump carve-out.
-- **Security-sensitive surface** — touches `bcryptjs`, `jsonwebtoken`, `sanitize-html`, `multer`, `express`, `stripe`, `@notionhq/client`, `@anthropic-ai/sdk`, `@sendgrid/mail`, `axios`, `knex`, or anything matching `node-*`. Even minors here get a manual look, so the `security` matrix rows below never apply to these packages.
+- **Built dependency** — touches anything in `pnpm.onlyBuiltDependencies` (currently `better-sqlite3`). Route: run the smoke test yourself (load the built module, run the server suite) before `/ship`; hold only on a failure, which is the failing-bump carve-out.
+- **Security-sensitive surface** — touches `bcryptjs`, `jsonwebtoken`, `sanitize-html`, `multer`, `express`, `stripe`, `@notionhq/client`, `@anthropic-ai/sdk`, `@sendgrid/mail`, `axios`, `knex`, or anything matching `node-*`. Route: even minors here get `/security-review` on the diff and the full server suite before `/ship`, with both results in the `/ship` review brief; a finding → comment it → `needs-review`.
 - **Held bump** — the package appears under "Held bumps" in `.claude/rules/dependencies.md` — that list is the only source of named-package holds (it reads "None at the moment" today). Comment with the hold reason and return `needs-review` (a flagged third-party bump, the CLAUDE.md carve-out); do not re-litigate the hold.
-- **Stale or skipped CI** — any `test`-named check in `statusCheckRollup` is SKIPPED/CANCELLED, or the PR's checks predate a `.github/workflows/` change on main. Comment `@dependabot rebase`, `ScheduleWakeup` 1200s, re-read the rollup and continue; exit `needs-review` only if the test check still did not run — never merge on a rollup whose test job didn't run (the 2026-08-06 outage shipped exactly this way).
+- **Stale or skipped CI** — any `test`-named check in `statusCheckRollup` is SKIPPED/CANCELLED, or the PR's checks predate a `.github/workflows/` change on main. Comment `@dependabot rebase`, `ScheduleWakeup` 1200s, re-read the rollup and continue; keep waiting on the wakeup until the test check has run — never merge on a rollup whose test job didn't run (the 2026-08-06 outage shipped exactly this way).
 
 For any 2b hold, comment with the reason and a changelog link so the next reviewer can decide in 30 seconds, then exit `needs-review`:
 

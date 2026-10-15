@@ -71,7 +71,7 @@ Otherwise:
     - Invoke the worker with `isolation: "worktree"` and `run_in_background: true`. Record its task ID alongside the worktree ID.
   - Wait for the next worker to finish (do not busy-poll — use the agent completion notification).
   - When a worker returns, print one line: `<pr#> <branch> → <status>`. Move it from in-flight to completed.
-  - If a worker has been in-flight longer than `TIMEOUT_PER_TASK`, kill it via `TaskStop` and record status `timeout`; this is the one cap in the loop, and the loop continues with the next task.
+  - If a worker has been in-flight longer than `TIMEOUT_PER_TASK`, kill it via `TaskStop` and record status `timeout`; this per-task cap ends that task only, and the loop continues with the next.
 
 ## Step 5 — cleanup
 

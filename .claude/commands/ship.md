@@ -15,7 +15,7 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
 - Rail-class PR (auth, payments, migrations) whose body records an unverified assumption → `gh pr ready --undo`, name the assumption for Alexander, and stop this PR's ship; a wrong guess there is not undone by a revert.
 - Draft → read the body, then one of:
   - it records a blocker only Alexander can clear (a value only he holds: a secret, a Stripe or Google dashboard setting, spend approval) → interactive run: ask him for that value in the chat; unattended run: leave it draft and name the value in the morning summary;
-  - it is a `/spec-draft-pr` spec → leave it draft and report that (a spec goes through `/implement`, never `gh pr ready` here); a WIP flag is the author's note, not a halt: finish the work, then ready it;
+  - it is a `/spec-draft-pr` spec → not a ship target: route it to `/implement` and report that (never `gh pr ready` here); a WIP flag is the author's note, not a halt: finish the work, then ready it;
   - otherwise → finish what keeps it draft, wait for green, `gh pr ready`, and continue.
 - Rail class? Run the classifier on the file list and diff:
   ```bash
@@ -48,8 +48,8 @@ Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh contex
 - **Blocking findings** → fix them on the branch, commit, push, and start again from step 1. There is no round cap: keep fixing and re-reviewing until a pass is clean (no BLOCKING findings from any reviewer) or a CLAUDE.md carve-out fires. The reviewer runs are part of the ship Alexander asked for, not a spend decision.
   - Re-raised point: fix it, or, if it is non-security and already handled, cite the evidence in the next brief. Never a reason to stop.
   - A security finding clears only on a code change that a fresh reviewer passes, never on your own reply.
-  - A confirmed secret exposure or auth bypass, in the diff or found mid-run, halts the run: print the file, line and secret type with the value redacted to its last four characters, push nothing more (a fix commit does not remove a secret from history), post no marker, merge nothing, name the secret for Alexander to rotate.
-  - The other halts are the four in `CLAUDE.md` Process, most often a value only Alexander holds (a prod secret, a third-party dashboard setting). In an interactive run ask Alexander for that one thing in the chat and keep shipping once it is in. An unattended run (`/overnight-prs`) ships behind a safe default if one exists; otherwise it leaves the PR draft and names the value in the morning summary.
+  - A confirmed secret exposure or auth bypass, in the diff or found mid-run, halts the run: print the file, line and secret type with no characters of the value, push nothing more (a fix commit does not remove a secret from history), post no marker, merge nothing, name the secret for Alexander to rotate.
+  - The other halts are the first three in `CLAUDE.md` Process, most often a value only Alexander holds (a prod secret, a third-party dashboard setting). In an interactive run ask Alexander for that one thing in the chat and keep shipping once it is in. An unattended run (`/overnight-prs`) ships behind a safe default if one exists; otherwise it leaves the PR draft and names the value in the morning summary.
 - **Clean** → post the pass marker for the exact head SHA:
   ```bash
   HEAD=$(gh pr view <n> --json headRefOid --jq .headRefOid)

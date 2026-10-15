@@ -35,7 +35,7 @@ Steps:
 
 4. End with a one-line summary: "X themes, Y high-urgency, suggest filing Z issues."
 
-Do not file the issues yet — output drafts so Alexander can review and post them. A public issue built from a support message is an irreversible disclosure, so this is the one triage step that keeps a human read (see `.claude/rules/support-confidentiality.md`).
+Do not file the issues yet — output drafts so Alexander can review and post them. A public issue built from a support message is an irreversible disclosure, the destructive-action halt in `CLAUDE.md` Process (see `.claude/rules/support-confidentiality.md`); no other triage step waits.
 
 ---
 

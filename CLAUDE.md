@@ -117,7 +117,7 @@ Load on demand — read these when the task touches the named surface (kept out 
 
 ## Process
 
-- **When Alexander asks for a change or a ship, the work ends done, not handed back.** No rule in this harness may stop a run and wait for him, except these four. Everything else is fixed on the branch and the run continues, and no new cap or stop gets added.
+- **When Alexander asks for a change or a ship, the work ends done, not handed back.** No rule in this harness may stop a run and wait for him, except these four. Everything else is fixed on the branch and the run continues, and no new cap or stop gets added. This does not override hook denials, the merge gate, or the never-skip-safety rules: a denial is fixed on the branch, never routed around.
   - A value only he holds: a prod secret, a Google or Stripe dashboard login, a payment card, or whether to take a third-party bump that fails or has an open finding after `/security-review` (the fix lives upstream, not on the branch).
   - Incurring new spend (a new paid service, plan, model, or paid batch run) needs his approval.
   - A destructive, irreversible action. An unverified assumption on a rail path (auth, payments, migrations) counts, because a wrong guess there is not undone by a revert.

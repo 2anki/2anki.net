@@ -28,7 +28,7 @@ The only bypasses are ones an agent cannot reach from inside a session: merging 
 
 ## `/ship` in one paragraph
 
-Preflight (draft? rail class? rebased?) → rail verification when the classifier hits → review agent (`/review-pr` fan-out; fix rounds until clean, no cap) posts the marker → wait for the rollup → `gh pr merge --squash` enqueues in the merge queue (hooks re-verify; `--delete-branch` is rejected while the queue is on) → poll the PR until `state: MERGED` (a dequeue means a required job failed on the `gh-readonly-queue/…` branch; one retry for a diff-unrelated flake, otherwise fix on the branch and go again) → find the deploy run for the merge SHA and watch it → `curl /api/version` must report the merge SHA, then `/deploy-status` → on failure, `git revert` on a `revert/<slug>` branch shipped through the same command (review agent skipped for a mechanical revert), comment on the deploy-failure issue. Full steps: `.claude/commands/ship.md`.
+Preflight (draft? rail class? rebased?) → rail verification when the classifier hits → review agent (fresh read-only reviewers run by `/ship` step 2; fix rounds until clean, no cap) posts the marker → wait for the rollup → `gh pr merge --squash` enqueues in the merge queue (hooks re-verify; `--delete-branch` is rejected while the queue is on) → poll the PR until `state: MERGED` (a dequeue means a required job failed on the `gh-readonly-queue/…` branch; one retry for a diff-unrelated flake, otherwise fix on the branch and go again) → find the deploy run for the merge SHA and watch it → `curl /api/version` must report the merge SHA, then `/deploy-status` → on failure, `git revert` on a `revert/<slug>` branch shipped through the same command (review agent skipped for a mechanical revert), comment on the deploy-failure issue. Full steps: `.claude/commands/ship.md`.
 
 Only these stop a run, the list in `CLAUDE.md` Process:
 
@@ -37,7 +37,7 @@ Only these stop a run, the list in `CLAUDE.md` Process:
 - A destructive, irreversible action. An unverified assumption on a rail path (auth, payments, migrations) counts, because a wrong guess there is not undone by a revert.
 - A confirmed secret exposure or auth bypass found mid-run: halt and tell him.
 
-Everything else is fixed on the branch and the run goes on; an unattended run ships behind a safe default if one exists, otherwise leaves the PR draft and names the value in the morning summary.
+Everything else is fixed on the branch and the run goes on. For a listed halt, an unattended run ships behind a safe default if one exists, otherwise leaves the PR draft and names the value in the morning summary; it never drafts for any other reason.
 
 Sanctioned exemptions inside `/ship` only: starting `pnpm dev` for the browser attestation (kill it after), and the read-only `/deploy-status` SSH.
 

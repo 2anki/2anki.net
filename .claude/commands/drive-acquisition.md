@@ -66,7 +66,7 @@ ABSOLUTE SAFETY RULES (non-negotiable):
 
 LOG one line per issue as you go: issue # → verified relevant / closed (reason) /
 fixed (PR #) / skipped (reason). Stop when the acquisition-relevant queue is
-empty or you hit a tool/rate limit.
+empty; on a tool or rate limit, `ScheduleWakeup` and resume.
 
 Start now: pull main, pull the open issues, triage by the acquisition filter,
 and begin.
