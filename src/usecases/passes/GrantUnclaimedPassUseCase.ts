@@ -19,7 +19,11 @@ export type GrantUnclaimedPassOutcome =
   | { success: true; userId: number; kind: PassKind; expiresAt: Date }
   | {
       success: false;
-      reason: 'pass_not_found' | 'user_not_found' | 'already_claimed';
+      reason:
+        | 'pass_not_found'
+        | 'user_not_found'
+        | 'already_claimed'
+        | 'refunded';
     };
 
 export class GrantUnclaimedPassUseCase {
@@ -52,6 +56,12 @@ export class GrantUnclaimedPassUseCase {
     if (pass.claimed_by_user_id == null) {
       const claimed = await this.anonPassRepo.claim(pass.id, userId);
       if (!claimed) {
+        // claim() refuses a refunded pass; a row that is still unclaimed
+        // after a failed claim was refused for that reason, not a race.
+        const current = await this.anonPassRepo.findById(pass.id);
+        if (current != null && current.claimed_by_user_id == null) {
+          return { success: false, reason: 'refunded' };
+        }
         return { success: false, reason: 'already_claimed' };
       }
     }

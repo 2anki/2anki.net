@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 import { ActivePassRow } from '../lib/claude/aiCredits/allowance';
+import { refundAwareExpiry } from './RefundedPaymentIntentsRepository';
 
 export type PassKind = '24h' | '7d' | '120d' | 'unlimited';
 
@@ -92,6 +93,37 @@ export class UserPassRepository implements IUserPassRepository {
     return row != null;
   }
 
+  async findByPaymentIntentId(
+    paymentIntentId: string
+  ): Promise<UserPass | null> {
+    const row = await this.database<UserPassRow>(this.table)
+      .where('stripe_payment_intent_id', paymentIntentId)
+      .first();
+    return row ? toUserPass(row) : null;
+  }
+
+  buildEndByPaymentIntentIdQuery(paymentIntentId: string, now: Date) {
+    return this.database<UserPassRow>(this.table)
+      .where('stripe_payment_intent_id', paymentIntentId)
+      .where('expires_at', '>', now)
+      .update({ expires_at: now })
+      .returning('*');
+  }
+
+  // Moves expires_at back to `now` for the pass bought with this payment
+  // intent, if it is still running. Already-ended passes are left untouched,
+  // so a redelivered webhook changes nothing and returns no rows.
+  async endByPaymentIntentId(
+    paymentIntentId: string,
+    now: Date
+  ): Promise<UserPass[]> {
+    const rows: UserPassRow[] = await this.buildEndByPaymentIntentIdQuery(
+      paymentIntentId,
+      now
+    );
+    return rows.map(toUserPass);
+  }
+
   async listActiveInWindow(
     since: Date,
     until: Date
@@ -141,7 +173,11 @@ export class UserPassRepository implements IUserPassRepository {
         .insert({
           user_id: userId,
           kind,
-          expires_at: expiresAt,
+          expires_at: refundAwareExpiry(
+            this.database,
+            stripePaymentIntentId,
+            expiresAt
+          ) as unknown as Date,
           stripe_payment_intent_id: stripePaymentIntentId,
         })
         .returning('*');
@@ -176,7 +212,11 @@ export class UserPassRepository implements IUserPassRepository {
         .insert({
           user_id: userId,
           kind,
-          expires_at: expiresAt,
+          expires_at: refundAwareExpiry(
+            this.database,
+            stripePaymentIntentId,
+            expiresAt
+          ) as unknown as Date,
           stripe_payment_intent_id: stripePaymentIntentId,
         })
         .returning('*');
@@ -197,6 +237,21 @@ export class UserPassRepository implements IUserPassRepository {
 export class InMemoryUserPassRepository implements IUserPassRepository {
   private readonly rows: UserPass[] = [];
   private nextId = 1;
+
+  // Payment intents already fully refunded; mirrors refunded_payment_intents
+  // so an insert for one of them lands already ended, as in Postgres.
+  constructor(
+    private readonly refundedIntents: ReadonlySet<string> = new Set()
+  ) {}
+
+  private refundAware(
+    paymentIntentId: string,
+    expiresAt: Date,
+    now: Date
+  ): Date {
+    if (!this.refundedIntents.has(paymentIntentId)) return expiresAt;
+    return expiresAt < now ? expiresAt : now;
+  }
 
   seed(row: Omit<UserPass, 'id'>): UserPass {
     const entry: UserPass = { id: this.nextId++, ...row };
@@ -223,6 +278,32 @@ export class InMemoryUserPassRepository implements IUserPassRepository {
     );
   }
 
+  async findByPaymentIntentId(
+    paymentIntentId: string
+  ): Promise<UserPass | null> {
+    return (
+      this.rows.find((r) => r.stripe_payment_intent_id === paymentIntentId) ??
+      null
+    );
+  }
+
+  async endByPaymentIntentId(
+    paymentIntentId: string,
+    now: Date
+  ): Promise<UserPass[]> {
+    const ended: UserPass[] = [];
+    for (const row of this.rows) {
+      if (
+        row.stripe_payment_intent_id === paymentIntentId &&
+        row.expires_at > now
+      ) {
+        row.expires_at = now;
+        ended.push(row);
+      }
+    }
+    return ended;
+  }
+
   async upsertWithExtension(
     userId: number,
     kind: PassKind,
@@ -246,7 +327,7 @@ export class InMemoryUserPassRepository implements IUserPassRepository {
       id: this.nextId++,
       user_id: userId,
       kind,
-      expires_at: expiresAt,
+      expires_at: this.refundAware(stripePaymentIntentId, expiresAt, now),
       stripe_payment_intent_id: stripePaymentIntentId,
     };
     this.rows.push(entry);
@@ -268,7 +349,11 @@ export class InMemoryUserPassRepository implements IUserPassRepository {
       id: this.nextId++,
       user_id: userId,
       kind,
-      expires_at: expiresAt,
+      expires_at: this.refundAware(
+        stripePaymentIntentId,
+        expiresAt,
+        new Date()
+      ),
       stripe_payment_intent_id: stripePaymentIntentId,
     };
     this.rows.push(entry);

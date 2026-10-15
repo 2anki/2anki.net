@@ -4,13 +4,17 @@ import http from 'node:http';
 import { AddressInfo } from 'node:net';
 import { InMemoryUserPassRepository } from '../data_layer/UserPassRepository';
 import { InMemoryAnonymousPassRepository } from '../data_layer/AnonymousPassRepository';
+import { InMemoryRefundedPaymentIntentsRepository } from '../data_layer/RefundedPaymentIntentsRepository';
 import { emailHash } from '../lib/emailHash';
 import * as stripeIntegrationMock from '../lib/integrations/stripe';
 
 process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
 
 const mockUpsert = vi.fn();
-const inMemoryRepo = new InMemoryUserPassRepository();
+const inMemoryRefundedRepo = new InMemoryRefundedPaymentIntentsRepository();
+const inMemoryRepo = new InMemoryUserPassRepository(
+  inMemoryRefundedRepo.refunded
+);
 
 const mockAnonInsert = vi.fn();
 const mockAnonFindBySessionId = vi.fn().mockResolvedValue(null);
@@ -18,7 +22,9 @@ const mockAnonFindById = vi.fn().mockResolvedValue(null);
 const mockAnonClaim = vi.fn().mockResolvedValue(true);
 const mockUpsertAbsolute = vi.fn();
 const mockPassClaimTokenInsert = vi.fn().mockResolvedValue({ id: 1 });
-const inMemoryAnonRepo = new InMemoryAnonymousPassRepository();
+const inMemoryAnonRepo = new InMemoryAnonymousPassRepository(
+  inMemoryRefundedRepo.refunded
+);
 
 const {
   mockCustomersRetrieve,
@@ -114,6 +120,10 @@ vi.mock('../data_layer/UserPassRepository', async () => {
       return {
         upsertWithExtension: mockUpsert,
         upsertWithAbsoluteExpiry: mockUpsertAbsolute,
+        findByPaymentIntentId: (paymentIntentId: string) =>
+          inMemoryRepo.findByPaymentIntentId(paymentIntentId),
+        endByPaymentIntentId: (paymentIntentId: string, now: Date) =>
+          inMemoryRepo.endByPaymentIntentId(paymentIntentId, now),
       };
     }),
     InMemoryUserPassRepository: Mem,
@@ -132,9 +142,26 @@ vi.mock('../data_layer/AnonymousPassRepository', async () => {
         findBySessionId: mockAnonFindBySessionId,
         findById: mockAnonFindById,
         claim: mockAnonClaim,
+        findByPaymentIntentId: (paymentIntentId: string) =>
+          inMemoryAnonRepo.findByPaymentIntentId(paymentIntentId),
+        endByPaymentIntentId: (paymentIntentId: string, now: Date) =>
+          inMemoryAnonRepo.endByPaymentIntentId(paymentIntentId, now),
       };
     }),
     InMemoryAnonymousPassRepository: AnonMem,
+  };
+});
+
+vi.mock('../data_layer/RefundedPaymentIntentsRepository', async () => {
+  const actual = await vi.importActual<
+    typeof import('../data_layer/RefundedPaymentIntentsRepository')
+  >('../data_layer/RefundedPaymentIntentsRepository');
+  return {
+    ...actual,
+    __esModule: true,
+    default: vi.fn().mockImplementation(function () {
+      return inMemoryRefundedRepo;
+    }),
   };
 });
 
@@ -173,6 +200,11 @@ vi.mock('../lib/misc/hashToken', () => ({
 
 vi.mock('../services/GA4Service', () => ({
   sendPurchaseEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
+const mockSinkRecord = vi.fn();
+vi.mock('../services/events/eventsSinkInstance', () => ({
+  getEventsSink: () => ({ record: mockSinkRecord }),
 }));
 
 const mockTrack = vi.fn();
@@ -1825,5 +1857,373 @@ describe('WebhookRouter — ad-click attribution and GA4 purchase for passes', (
     expect(res.status).toBe(200);
     const { sendPurchaseEvent } = await import('../services/GA4Service');
     expect(sendPurchaseEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('WebhookRouter — charge.refunded', () => {
+  let server: http.Server;
+  let url: string;
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  beforeAll(async () => {
+    ({ server, url } = await buildServer());
+  });
+
+  afterAll(() => server.close());
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    inMemoryRepo.clear();
+    inMemoryAnonRepo.clear();
+    inMemoryRefundedRepo.clear();
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function makeChargeRefundedEvent(overrides: Record<string, unknown> = {}) {
+    return {
+      type: 'charge.refunded',
+      data: {
+        object: {
+          id: 'ch_test',
+          object: 'charge',
+          amount: 900,
+          amount_refunded: 900,
+          refunded: true,
+          payment_intent: 'pi_refund',
+          ...overrides,
+        },
+      },
+    };
+  }
+
+  function postWebhook() {
+    return fetch(`${url}/webhook`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'stripe-signature': 'sig_test',
+      },
+      body: JSON.stringify({}),
+    });
+  }
+
+  it('ends a running account pass on a full refund', async () => {
+    inMemoryRepo.seed({
+      user_id: 42,
+      kind: '7d',
+      expires_at: new Date(Date.now() + 7 * DAY_MS),
+      stripe_payment_intent_id: 'pi_refund',
+    });
+    mockWebhookEvent = makeChargeRefundedEvent();
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(await inMemoryRepo.findActive(42, new Date())).toBeNull();
+    const pass = await inMemoryRepo.findByPaymentIntentId('pi_refund');
+    expect(pass?.expires_at.getTime()).toBeLessThanOrEqual(Date.now());
+    expect(mockSinkRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'pass_refunded',
+        user_id: 42,
+        props: { kind: '7d', full: true, access_ended: true },
+      })
+    );
+  });
+
+  it('ends an anonymous pass on a full refund', async () => {
+    await inMemoryAnonRepo.insert({
+      stripeSessionId: 'cs_anon',
+      kind: '24h',
+      expiresAt: new Date(Date.now() + DAY_MS),
+      paymentIntentId: 'pi_refund',
+    });
+    mockWebhookEvent = makeChargeRefundedEvent();
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(await inMemoryAnonRepo.findActive('cs_anon', new Date())).toBeNull();
+    expect(mockSinkRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'pass_refunded',
+        user_id: null,
+        props: { kind: '24h', full: true, access_ended: true },
+      })
+    );
+  });
+
+  it('treats amount_refunded >= amount as a full refund', async () => {
+    inMemoryRepo.seed({
+      user_id: 42,
+      kind: '24h',
+      expires_at: new Date(Date.now() + DAY_MS),
+      stripe_payment_intent_id: 'pi_refund',
+    });
+    mockWebhookEvent = makeChargeRefundedEvent({ refunded: false });
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(await inMemoryRepo.findActive(42, new Date())).toBeNull();
+  });
+
+  it('accepts an expanded payment_intent object', async () => {
+    inMemoryRepo.seed({
+      user_id: 42,
+      kind: '24h',
+      expires_at: new Date(Date.now() + DAY_MS),
+      stripe_payment_intent_id: 'pi_refund',
+    });
+    mockWebhookEvent = makeChargeRefundedEvent({
+      payment_intent: { id: 'pi_refund', object: 'payment_intent' },
+    });
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(await inMemoryRepo.findActive(42, new Date())).toBeNull();
+  });
+
+  it('leaves the pass running on a partial refund', async () => {
+    const expiresAt = new Date(Date.now() + 7 * DAY_MS);
+    inMemoryRepo.seed({
+      user_id: 42,
+      kind: '7d',
+      expires_at: expiresAt,
+      stripe_payment_intent_id: 'pi_refund',
+    });
+    mockWebhookEvent = makeChargeRefundedEvent({
+      refunded: false,
+      amount_refunded: 300,
+    });
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    const pass = await inMemoryRepo.findActive(42, new Date());
+    expect(pass?.expires_at).toEqual(expiresAt);
+    expect(mockSinkRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'pass_refunded',
+        props: { kind: '7d', full: false, access_ended: false },
+      })
+    );
+  });
+
+  it('returns 200 and changes nothing for an unknown payment intent', async () => {
+    const expiresAt = new Date(Date.now() + 7 * DAY_MS);
+    inMemoryRepo.seed({
+      user_id: 42,
+      kind: '7d',
+      expires_at: expiresAt,
+      stripe_payment_intent_id: 'pi_other',
+    });
+    mockWebhookEvent = makeChargeRefundedEvent({
+      payment_intent: 'pi_subscription_invoice',
+    });
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    const pass = await inMemoryRepo.findActive(42, new Date());
+    expect(pass?.expires_at).toEqual(expiresAt);
+    expect(mockSinkRecord).not.toHaveBeenCalled();
+    expect(mockUpdateStoreSubscription).not.toHaveBeenCalled();
+    expect(mockDeactivateDeveloperSubscription).not.toHaveBeenCalled();
+  });
+
+  it('is idempotent when Stripe redelivers the same refund', async () => {
+    inMemoryRepo.seed({
+      user_id: 42,
+      kind: '24h',
+      expires_at: new Date(Date.now() + DAY_MS),
+      stripe_payment_intent_id: 'pi_refund',
+    });
+    await inMemoryAnonRepo.insert({
+      stripeSessionId: 'cs_anon',
+      kind: '24h',
+      expiresAt: new Date(Date.now() + DAY_MS),
+      paymentIntentId: 'pi_refund',
+    });
+    mockWebhookEvent = makeChargeRefundedEvent();
+
+    const first = await postWebhook();
+    const endedAt = (await inMemoryRepo.findByPaymentIntentId('pi_refund'))
+      ?.expires_at;
+    const [anonEnded] =
+      await inMemoryAnonRepo.findByPaymentIntentId('pi_refund');
+    const anonEndedAt = anonEnded.expires_at;
+    const second = await postWebhook();
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    const pass = await inMemoryRepo.findByPaymentIntentId('pi_refund');
+    expect(pass?.expires_at).toEqual(endedAt);
+    const [anon] = await inMemoryAnonRepo.findByPaymentIntentId('pi_refund');
+    expect(anon.expires_at).toEqual(anonEndedAt);
+    expect(mockSinkRecord).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        name: 'pass_refunded',
+        props: { kind: '24h', full: true, access_ended: false },
+      })
+    );
+  });
+
+  it('returns 500 so Stripe retries when ending the pass fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(inMemoryRepo, 'findByPaymentIntentId').mockRejectedValueOnce(
+      new Error('db down')
+    );
+    mockWebhookEvent = makeChargeRefundedEvent();
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(500);
+    expect(errorSpy).toHaveBeenCalledWith(
+      'pass.refund.failed',
+      expect.any(Error)
+    );
+  });
+
+  it('ends the pass once a partial refund is followed by one covering the rest', async () => {
+    inMemoryRepo.seed({
+      user_id: 42,
+      kind: '7d',
+      expires_at: new Date(Date.now() + 7 * DAY_MS),
+      stripe_payment_intent_id: 'pi_refund',
+    });
+
+    mockWebhookEvent = makeChargeRefundedEvent({
+      refunded: false,
+      amount_refunded: 300,
+    });
+    await postWebhook();
+    expect(await inMemoryRepo.findActive(42, new Date())).not.toBeNull();
+
+    mockWebhookEvent = makeChargeRefundedEvent({
+      refunded: false,
+      amount_refunded: 900,
+    });
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(await inMemoryRepo.findActive(42, new Date())).toBeNull();
+  });
+
+  it('ignores a charge.refunded whose signature does not verify', async () => {
+    const expiresAt = new Date(Date.now() + 7 * DAY_MS);
+    inMemoryRepo.seed({
+      user_id: 42,
+      kind: '7d',
+      expires_at: expiresAt,
+      stripe_payment_intent_id: 'pi_refund',
+    });
+    mockWebhookEvent = makeChargeRefundedEvent();
+    const { getStripe } = stripeIntegrationMock as unknown as {
+      getStripe: Mock;
+    };
+    getStripe.mockReturnValueOnce({
+      webhooks: {
+        constructEvent: vi.fn(() => {
+          throw new Error('No signatures found');
+        }),
+      },
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(400);
+    const pass = await inMemoryRepo.findActive(42, new Date());
+    expect(pass?.expires_at).toEqual(expiresAt);
+    expect(await inMemoryRefundedRepo.isRefunded('pi_refund')).toBe(false);
+  });
+
+  describe('refund delivered before checkout.session.completed', () => {
+    it('grants the account pass already ended', async () => {
+      mockUpsert.mockImplementation(
+        (
+          userId: number,
+          kind: '24h',
+          durationMs: number,
+          paymentIntentId: string,
+          now: Date
+        ) =>
+          inMemoryRepo.upsertWithExtension(
+            userId,
+            kind,
+            durationMs,
+            paymentIntentId,
+            now
+          )
+      );
+      mockWebhookEvent = makeChargeRefundedEvent({
+        payment_intent: 'pi_early',
+      });
+      await postWebhook();
+
+      mockWebhookEvent = makePassSessionEvent({ payment_intent: 'pi_early' });
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(await inMemoryRepo.findActive(42, new Date())).toBeNull();
+      const pass = await inMemoryRepo.findByPaymentIntentId('pi_early');
+      expect(pass?.kind).toBe('24h');
+    });
+
+    it('grants the anonymous pass already ended and sends no claim email', async () => {
+      mockAnonInsert.mockImplementation(
+        (params: Parameters<typeof inMemoryAnonRepo.insert>[0]) =>
+          inMemoryAnonRepo.insert(params)
+      );
+      mockWebhookEvent = makeChargeRefundedEvent({
+        payment_intent: 'pi_early',
+      });
+      await postWebhook();
+
+      mockWebhookEvent = makePassSessionEvent({
+        id: 'cs_early',
+        payment_intent: 'pi_early',
+        customer_details: { email: 'buyer@example.com' },
+        metadata: { pass_kind: '24h', pass_anonymous: '1' },
+      });
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(await inMemoryAnonRepo.findActive('cs_early', new Date())).toBe(
+        null
+      );
+      expect(mockPassClaimTokenInsert).not.toHaveBeenCalled();
+      expect(mockSendAnonymousPassClaimEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('grant failures return non-2xx so Stripe retries', () => {
+    it('returns 500 when the account pass grant fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockUpsert.mockRejectedValueOnce(new Error('db down'));
+      mockWebhookEvent = makePassSessionEvent();
+
+      const res = await postWebhook();
+
+      expect(res.status).toBe(500);
+    });
+
+    it('returns 500 when the anonymous pass grant fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockAnonInsert.mockRejectedValueOnce(new Error('db down'));
+      mockWebhookEvent = makePassSessionEvent({
+        metadata: { pass_kind: '24h', pass_anonymous: '1' },
+      });
+
+      const res = await postWebhook();
+
+      expect(res.status).toBe(500);
+    });
   });
 });

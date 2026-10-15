@@ -22,8 +22,10 @@ import UserPassRepository, {
 } from '../data_layer/UserPassRepository';
 import AnonymousPassRepository from '../data_layer/AnonymousPassRepository';
 import PassClaimTokensRepository from '../data_layer/PassClaimTokensRepository';
+import RefundedPaymentIntentsRepository from '../data_layer/RefundedPaymentIntentsRepository';
 import { SendAnonymousPassClaimEmailUseCase } from '../usecases/passes/SendAnonymousPassClaimEmailUseCase';
 import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
+import { EndRefundedPassUseCase } from '../usecases/passes/EndRefundedPassUseCase';
 import {
   PASS_CLAIM_WINDOW_MS,
   PASS_DURATION_MS,
@@ -91,6 +93,12 @@ const WebhooksRouter = () => {
     usersRepository,
     getEventsSink()
   );
+  const endRefundedPassUseCase = new EndRefundedPassUseCase(
+    new UserPassRepository(database),
+    new AnonymousPassRepository(database),
+    new RefundedPaymentIntentsRepository(database),
+    getEventsSink()
+  );
 
   /**
    * @swagger
@@ -122,6 +130,7 @@ const WebhooksRouter = () => {
    *       - customer.subscription.deleted
    *       - checkout.session.completed
    *       - checkout.session.expired
+   *       - charge.refunded
    */
   router.post(
     '/webhook',
@@ -446,6 +455,15 @@ const WebhooksRouter = () => {
                 const alreadyGranted = await anonRepo.findBySessionId(
                   session.id
                 );
+                // A refund Stripe delivered before this event: the insert
+                // below lands the pass already ended (checked inside the
+                // INSERT), and no claim email or account link goes out. Read
+                // before the insert so a failure here leaves nothing written
+                // and the 500 retry starts clean.
+                const endedByRefund =
+                  await new RefundedPaymentIntentsRepository(
+                    getDatabase()
+                  ).isRefunded(paymentIntentId);
                 const granted = await anonRepo.insert({
                   stripeSessionId: session.id,
                   kind: passKind,
@@ -460,33 +478,49 @@ const WebhooksRouter = () => {
                   payment_intent_id_hash: hashToken(paymentIntentId),
                 });
 
+                if (endedByRefund) {
+                  console.info('pass.granted.already_refunded', {
+                    kind: passKind,
+                    anonymous: true,
+                    payment_intent_id_hash: hashToken(paymentIntentId),
+                  });
+                }
+
                 let autoLinked = false;
-                if (alreadyGranted == null) {
+                if (alreadyGranted == null && !endedByRefund) {
                   const accountEmail = session.custom_fields
                     ?.find((field) => field.key === 'account_email')
                     ?.text?.value?.trim();
                   if (accountEmail != null && accountEmail !== '') {
-                    const outcome = await grantUnclaimedPassUseCase.execute(
-                      { anonymousPassId: granted.id, email: accountEmail },
-                      now
-                    );
-                    if (outcome.success) {
-                      autoLinked = true;
-                      track('pass_account_email_autolinked', {
-                        userId: outcome.userId,
-                        props: { kind: passKind },
-                      });
-                      console.info('pass.autolinked', {
-                        user_id: outcome.userId,
-                        kind: passKind,
-                        payment_intent_id_hash: hashToken(paymentIntentId),
-                      });
+                    // The insert above has committed, and a retried delivery
+                    // skips this block, so a failure here must not fail the
+                    // webhook: fall through to the claim email instead.
+                    try {
+                      const outcome = await grantUnclaimedPassUseCase.execute(
+                        { anonymousPassId: granted.id, email: accountEmail },
+                        now
+                      );
+                      if (outcome.success) {
+                        autoLinked = true;
+                        track('pass_account_email_autolinked', {
+                          userId: outcome.userId,
+                          props: { kind: passKind },
+                        });
+                        console.info('pass.autolinked', {
+                          user_id: outcome.userId,
+                          kind: passKind,
+                          payment_intent_id_hash: hashToken(paymentIntentId),
+                        });
+                      }
+                    } catch (autolinkError) {
+                      console.error('pass.autolink.failed', autolinkError);
                     }
                   }
                 }
 
                 if (
                   !autoLinked &&
+                  !endedByRefund &&
                   alreadyGranted == null &&
                   buyerEmail != null
                 ) {
@@ -504,7 +538,12 @@ const WebhooksRouter = () => {
                   }
                 }
               } catch (passError) {
+                // Nothing after the insert can throw out of this block, so a
+                // failure here means no pass was written. Return non-2xx so
+                // Stripe retries rather than leaving a paid buyer without one.
                 console.error('pass.webhook.grant_failed', passError);
+                response.status(500).send();
+                return;
               }
               await reportPurchaseToGa4();
               response.send();
@@ -540,14 +579,22 @@ const WebhooksRouter = () => {
                 paymentIntentId,
                 now
               );
-              console.info('pass.granted', {
-                user_id: passUserId,
-                kind: passKind,
-                expires_at: granted.expires_at.toISOString(),
-                payment_intent_id_hash: hashToken(paymentIntentId),
-              });
+              console.info(
+                granted.expires_at <= new Date()
+                  ? 'pass.granted.already_refunded'
+                  : 'pass.granted',
+                {
+                  user_id: passUserId,
+                  kind: passKind,
+                  expires_at: granted.expires_at.toISOString(),
+                  payment_intent_id_hash: hashToken(paymentIntentId),
+                }
+              );
             } catch (passError) {
+              // The upsert is keyed by payment intent, so a retry is safe.
               console.error('pass.webhook.grant_failed', passError);
+              response.status(500).send();
+              return;
             }
             await reportPurchaseToGa4();
             response.send();
@@ -738,6 +785,33 @@ const WebhooksRouter = () => {
               ? null
               : { url: recoveryUrl, expiresAt: recoveryExpiresAt }
           );
+          break;
+        }
+        case 'charge.refunded': {
+          const charge = event.data.object as StripeTypes.Charge;
+          const paymentIntentId =
+            typeof charge.payment_intent === 'string'
+              ? charge.payment_intent
+              : (charge.payment_intent?.id ?? null);
+          try {
+            const outcome = await endRefundedPassUseCase.execute({
+              paymentIntentId,
+              refunded: charge.refunded === true,
+              amount: charge.amount ?? 0,
+              amountRefunded: charge.amount_refunded ?? 0,
+            });
+            console.info('pass.refund', {
+              ...outcome,
+              payment_intent_id_hash:
+                paymentIntentId == null ? null : hashToken(paymentIntentId),
+            });
+          } catch (refundError) {
+            // Ending the pass is idempotent, so a 500 here is safe: Stripe
+            // retries the delivery and the retry finishes the job.
+            console.error('pass.refund.failed', refundError);
+            response.status(500).send();
+            return;
+          }
           break;
         }
         default:

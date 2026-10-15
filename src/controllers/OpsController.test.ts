@@ -686,6 +686,24 @@ describe('OpsController.grantUnclaimedPass', () => {
     expect(res.status).toHaveBeenCalledWith(409);
   });
 
+  it('returns 409 naming the refund when the pass was refunded', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValue({ success: false, reason: 'refunded' });
+    const controller = buildController(execute);
+    const req = {
+      body: { anonymousPassId: 55, email: 'buyer@example.com' },
+    } as unknown as express.Request;
+    const res = buildRes();
+
+    await controller.grantUnclaimedPass(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'That pass was refunded.',
+    });
+  });
+
   it('returns 400 without calling the use case on a missing pass id', async () => {
     const execute = vi.fn();
     const controller = buildController(execute);

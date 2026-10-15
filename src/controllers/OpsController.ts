@@ -250,6 +250,10 @@ class OpsController {
         res.status(404).json({ message: 'No pass found for that id.' });
         return;
       }
+      if (outcome.reason === 'refunded') {
+        res.status(409).json({ message: 'That pass was refunded.' });
+        return;
+      }
       if (outcome.reason === 'user_not_found') {
         res.status(404).json({ message: 'No account found for that email.' });
         return;
