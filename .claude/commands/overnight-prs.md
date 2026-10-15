@@ -152,8 +152,8 @@ assumption you could not verify (Tier 3 above). Three constraints remain:
   contract PRs, each of which can roll back on its own.
 - A change that needs a value only Alexander holds (a new secret on prod, a new third-party
   account on a free tier) ships behind a safe default and goes in the morning summary as a question
-  for Alexander, one line per step; any paid plan or service is spend, stays draft, and is named in the summary,
-  and a price, payment or Stripe value never ships behind a default, it stays draft and is named in the summary.
+  for Alexander, one line per step; any paid plan or service is spend, stays draft, and is named in the summary
+  (price, payment and Stripe values: see Tier 3 above).
 - Keep working until it is safe (reversible split, safe default). Draft only when the missing piece is a value only Alexander holds, the change is a rail-path change resting on an unverified assumption, or a run failure the branch cannot fix (draft + wakeup), with the blocker stated.
 
 ### `## Decisions made overnight` — required in every Tier 2 and Tier 3 PR
@@ -224,7 +224,8 @@ exactly one, so the log accounts for every issue you opened, not just the ones y
 - `SHIPPED <url> (T1|T2, healthy|no deploy|reverted)` — merged and deployed through `/ship`.
 - `PR <url> (T1|T2|T3, draft: <blocker>)` — a draft left by `/ship` step 1 or step 4 or by Tier 3:
   a value only Alexander holds with no safe default, new spend, a rail-path assumption, or a run
-  failure the branch cannot fix; name the blocker.
+  failure the branch cannot fix (written only when the night ends with that wakeup still waiting);
+  name the blocker.
 - `CLOSED: <reason>` — closed per Step 0 (already fixed / already shipped / superseded / duplicate
   of #m / junk).
 - `SKIPPED: <reason>` — relevant but still unintelligible after the trio looked (a value only
