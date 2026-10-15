@@ -36,6 +36,7 @@ let fakeUser: FakeUser = null;
 let fakeLocals: { patreon?: boolean; subscriber?: boolean } | undefined;
 let fakeLocalsLoading = false;
 const reportPurchaseConversion = vi.fn();
+const replayPendingPurchaseConversions = vi.fn();
 const storePassToken = vi.fn();
 vi.mock('../../lib/anonymousPass', () => ({
   storePassToken: (...args: unknown[]) => storePassToken(...args),
@@ -43,6 +44,8 @@ vi.mock('../../lib/anonymousPass', () => ({
 vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
   reportPurchaseConversion: (...args: unknown[]) =>
     reportPurchaseConversion(...args),
+  replayPendingPurchaseConversions: (...args: unknown[]) =>
+    replayPendingPurchaseConversions(...args),
 }));
 vi.mock('../../lib/hooks/useUserLocals', () => ({
   useUserLocals: () => ({
@@ -575,10 +578,31 @@ describe('UploadPage AI badge survives browser translation', () => {
 describe('UploadPage checkout return', () => {
   beforeEach(() => {
     reportPurchaseConversion.mockReset();
+    replayPendingPurchaseConversions.mockReset();
     storePassToken.mockReset();
     fakeLocalsLoading = false;
     fakeUser = null;
     fakeLocals = undefined;
+  });
+
+  it('replays any purchase held across a reload once locals resolve', () => {
+    fakeUser = { id: 42, email: 'buyer@example.com' };
+
+    renderPage('/upload');
+
+    expect(replayPendingPurchaseConversions).toHaveBeenCalledTimes(1);
+    expect(replayPendingPurchaseConversions).toHaveBeenCalledWith({
+      id: 42,
+      email: 'buyer@example.com',
+    });
+  });
+
+  it('does not replay held purchases while user locals load', () => {
+    fakeLocalsLoading = true;
+
+    renderPage('/upload');
+
+    expect(replayPendingPurchaseConversions).not.toHaveBeenCalled();
   });
 
   afterEach(() => {
@@ -603,10 +627,10 @@ describe('UploadPage checkout return', () => {
     renderPage('/upload?from=pass&session_id=cs_test_abc123');
 
     await waitFor(() =>
-      expect(reportPurchaseConversion).toHaveBeenCalledWith(
-        'cs_test_abc123',
-        'buyer@example.com'
-      )
+      expect(reportPurchaseConversion).toHaveBeenCalledWith('cs_test_abc123', {
+        id: 42,
+        email: 'buyer@example.com',
+      })
     );
     await waitFor(() =>
       expect(screen.getByTestId('location-search')).not.toHaveTextContent(
@@ -621,7 +645,7 @@ describe('UploadPage checkout return', () => {
     await waitFor(() =>
       expect(reportPurchaseConversion).toHaveBeenCalledWith(
         'cs_test_anon456',
-        undefined
+        null
       )
     );
     expect(storePassToken).toHaveBeenCalledWith('cs_test_anon456');
@@ -645,10 +669,7 @@ describe('UploadPage checkout return', () => {
         'pass_session'
       )
     );
-    expect(reportPurchaseConversion).toHaveBeenCalledWith(
-      'cs_test_slow',
-      undefined
-    );
+    expect(reportPurchaseConversion).toHaveBeenCalledWith('cs_test_slow', null);
   });
 
   it('reports a signed-in return once locals resolve after a loading first render', async () => {
@@ -664,10 +685,10 @@ describe('UploadPage checkout return', () => {
     rerenderPage();
 
     await waitFor(() =>
-      expect(reportPurchaseConversion).toHaveBeenCalledWith(
-        'cs_test_pro',
-        'pro@example.com'
-      )
+      expect(reportPurchaseConversion).toHaveBeenCalledWith('cs_test_pro', {
+        id: 7,
+        email: 'pro@example.com',
+      })
     );
   });
 

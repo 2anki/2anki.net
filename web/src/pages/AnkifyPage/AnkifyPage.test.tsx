@@ -16,6 +16,15 @@ vi.mock('../../lib/backend/getUserLocals', () => ({
   })),
 }));
 
+const reportPurchaseConversion = vi.fn();
+const replayPendingPurchaseConversions = vi.fn();
+vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
+  reportPurchaseConversion: (...args: unknown[]) =>
+    reportPurchaseConversion(...args),
+  replayPendingPurchaseConversions: (...args: unknown[]) =>
+    replayPendingPurchaseConversions(...args),
+}));
+
 import { getUserLocals } from '../../lib/backend/getUserLocals';
 
 const ANKI_WEB_ACK_KEY = 'ankify_anki_web_acknowledged';
@@ -71,6 +80,44 @@ const makeBackend = (overrides: Partial<Backend> = {}): Backend =>
     searchTopLevelPages: vi.fn(async () => []),
     ...overrides,
   }) as unknown as Backend;
+
+describe('AnkifySetupPage checkout return', () => {
+  beforeEach(() => {
+    globalThis.localStorage?.removeItem(ANKI_WEB_ACK_KEY);
+    reportPurchaseConversion.mockReset();
+    replayPendingPurchaseConversions.mockReset();
+    vi.mocked(getUserLocals).mockResolvedValue({
+      user: { id: 7, email: 'buyer@example.com' } as never,
+      locals: {},
+    } as never);
+  });
+
+  test('reports the Auto Sync purchase with the signed-in email', async () => {
+    renderAt(
+      '/ankify/setup?checkout=success&session_id=cs_auto',
+      makeBackend()
+    );
+
+    await waitFor(() =>
+      expect(reportPurchaseConversion).toHaveBeenCalledWith('cs_auto', {
+        id: 7,
+        email: 'buyer@example.com',
+      })
+    );
+  });
+
+  test('replays any purchase held across a reload on mount', async () => {
+    renderAt('/ankify/setup', makeBackend());
+
+    await waitFor(() =>
+      expect(replayPendingPurchaseConversions).toHaveBeenCalledWith({
+        id: 7,
+        email: 'buyer@example.com',
+      })
+    );
+    expect(reportPurchaseConversion).not.toHaveBeenCalled();
+  });
+});
 
 describe('AnkifySetupPage', () => {
   beforeEach(() => {
