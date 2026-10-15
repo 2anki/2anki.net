@@ -1,5 +1,7 @@
 import { vi } from 'vitest';
+import { buildModernCollection } from '../../test/fixtures/apkg/buildModernCollection';
 import ApkgPreviewService from './ApkgPreviewService';
+import { parseCollection } from './parseCollection';
 import { NormalizedCollection } from './types';
 
 const IO_TEMPLATE_QFMT =
@@ -380,5 +382,62 @@ describe('ApkgPreviewService.getCardsPage', () => {
       expect(result.cards).toHaveLength(1);
       expect(result.cards[0].noteTypeName).toBe('n2a-mcq');
     });
+  });
+});
+
+describe('ApkgPreviewService — modern-schema cloze export', () => {
+  const service = new ApkgPreviewService();
+
+  function parseModernCloze() {
+    const collection = parseCollection(
+      buildModernCollection({
+        noteType: {
+          id: 1,
+          name: 'Cloze',
+          kind: 1,
+          css: '',
+          fields: ['Text', 'Extra'],
+          templates: [
+            { name: 'Cloze', qfmt: '{{cloze:Text}}', afmt: '{{cloze:Text}}' },
+          ],
+        },
+        deck: { id: 2, name: 'Demo' },
+        note: {
+          id: 10,
+          fields: ['{{c1::Paris}} is the capital of {{c2::France}}', ''],
+        },
+        cards: [
+          { id: 100, ord: 0 },
+          { id: 101, ord: 1 },
+        ],
+      })
+    );
+    return makeParsed(collection);
+  }
+
+  it('renders card ord 1 with cloze c2 active on the front', () => {
+    const result = service.getCardsPage(
+      parseModernCloze(),
+      0,
+      10,
+      'http://example.com'
+    );
+
+    const second = result.cards.find((c) => c.ord === 1);
+    expect(second?.front).toContain('<span class="cloze">[…]</span>');
+    expect(second?.front).toContain('Paris is the capital of');
+    expect(second?.back).toContain('<span class="cloze">France</span>');
+  });
+
+  it('does not fall back to template 0 for cloze card ord 1', () => {
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
+    service.getCardsPage(parseModernCloze(), 0, 10, 'http://example.com');
+
+    const fallbacks = debugSpy.mock.calls.filter(([msg]) =>
+      String(msg).includes('template ord=')
+    );
+    debugSpy.mockRestore();
+    expect(fallbacks).toHaveLength(0);
   });
 });
