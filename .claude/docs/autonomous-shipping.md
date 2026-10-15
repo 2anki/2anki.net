@@ -37,7 +37,7 @@ Only these stop a run, the list in `CLAUDE.md` Process:
 - A destructive, irreversible action. An unverified assumption on a rail path (auth, payments, migrations) counts, because a wrong guess there is not undone by a revert.
 - A confirmed secret exposure or auth bypass found mid-run: halt and tell him.
 
-Everything else is fixed on the branch and the run goes on. For a listed halt, an unattended run ships behind a safe default if one exists, otherwise leaves the PR draft and names the value in the morning summary; the only other draft is a failure the branch cannot change (a runner outage, a GitHub incident, per `/ship` step 4), held on a wakeup until green; any other red is fixed on the branch.
+Everything else is fixed on the branch and the run goes on. For a value only he holds, an unattended run ships behind a safe default if one exists, otherwise leaves the PR draft and names the value in the morning summary; spend and destructive halts never ship behind a default (spend leaves a draft, a destructive step is not executed, both are named in the summary); the only other draft is a failure the branch cannot change (a runner outage, a GitHub incident, per `/ship` step 4), held on a wakeup until green; any other red is fixed on the branch.
 
 Sanctioned exemptions inside `/ship` only: starting `pnpm dev` for the browser attestation (kill it after), and the read-only `/deploy-status` SSH.
 

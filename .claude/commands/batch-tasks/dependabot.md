@@ -93,7 +93,7 @@ Decision matrix:
 /ship <n>
 ```
 
-Only ever from a `green` row whose listed checks and reviews passed, and only when Step 2 raised no hold. Never from a red row to merge the bot PR; a red row's `/ship` targets our own carry branch only. A `/ship` that ends without `state: MERGED` maps to `needs-review` only when a `CLAUDE.md` Process halt ended it (a revert after a failed deploy counts, and is logged with the revert PR); any other non-merged state means `/ship` is still running, so resume it per `ship.md` step 4.
+Only ever from a `green` row whose listed checks and reviews passed, and only when Step 2 raised no hold. Never from a red row to merge the bot PR; a red row's `/ship` targets our own carry branch only. A `/ship` that ends without `state: MERGED` maps to `needs-review` only when one of the four `CLAUDE.md` Process halts ended it. A revert is `/ship` step 8, not a halt: log the revert PR and resume the ship after the fix. Any other non-merged state means `/ship` is still running, so resume it per `ship.md` step 4.
 
 **Comment call (any `needs-review` exit):**
 
