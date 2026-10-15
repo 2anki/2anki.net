@@ -92,6 +92,37 @@ export class UserPassRepository implements IUserPassRepository {
     return row != null;
   }
 
+  async findByPaymentIntentId(
+    paymentIntentId: string
+  ): Promise<UserPass | null> {
+    const row = await this.database<UserPassRow>(this.table)
+      .where('stripe_payment_intent_id', paymentIntentId)
+      .first();
+    return row ? toUserPass(row) : null;
+  }
+
+  buildEndByPaymentIntentIdQuery(paymentIntentId: string, now: Date) {
+    return this.database<UserPassRow>(this.table)
+      .where('stripe_payment_intent_id', paymentIntentId)
+      .where('expires_at', '>', now)
+      .update({ expires_at: now })
+      .returning('*');
+  }
+
+  // Moves expires_at back to `now` for the pass bought with this payment
+  // intent, if it is still running. Already-ended passes are left untouched,
+  // so a redelivered webhook changes nothing and returns no rows.
+  async endByPaymentIntentId(
+    paymentIntentId: string,
+    now: Date
+  ): Promise<UserPass[]> {
+    const rows: UserPassRow[] = await this.buildEndByPaymentIntentIdQuery(
+      paymentIntentId,
+      now
+    );
+    return rows.map(toUserPass);
+  }
+
   async listActiveInWindow(
     since: Date,
     until: Date
@@ -221,6 +252,32 @@ export class InMemoryUserPassRepository implements IUserPassRepository {
     return this.rows.some(
       (r) => r.stripe_payment_intent_id === paymentIntentId
     );
+  }
+
+  async findByPaymentIntentId(
+    paymentIntentId: string
+  ): Promise<UserPass | null> {
+    return (
+      this.rows.find((r) => r.stripe_payment_intent_id === paymentIntentId) ??
+      null
+    );
+  }
+
+  async endByPaymentIntentId(
+    paymentIntentId: string,
+    now: Date
+  ): Promise<UserPass[]> {
+    const ended: UserPass[] = [];
+    for (const row of this.rows) {
+      if (
+        row.stripe_payment_intent_id === paymentIntentId &&
+        row.expires_at > now
+      ) {
+        row.expires_at = now;
+        ended.push(row);
+      }
+    }
+    return ended;
   }
 
   async upsertWithExtension(

@@ -141,6 +141,37 @@ export class AnonymousPassRepository implements IAnonymousPassRepository {
     }
   }
 
+  async findByPaymentIntentId(
+    paymentIntentId: string
+  ): Promise<AnonymousPass[]> {
+    const rows = await this.database<AnonymousPassRow>(this.table)
+      .where('payment_intent_id', paymentIntentId)
+      .orderBy('id', 'asc');
+    return rows.map(toAnonymousPass);
+  }
+
+  buildEndByPaymentIntentIdQuery(paymentIntentId: string, now: Date) {
+    return this.database<AnonymousPassRow>(this.table)
+      .where('payment_intent_id', paymentIntentId)
+      .where('expires_at', '>', now)
+      .update({ expires_at: now })
+      .returning('*');
+  }
+
+  // Moves expires_at back to `now` for passes bought with this payment intent
+  // that are still running. An ended anonymous pass can no longer be
+  // validated, activated or claimed, and a redelivered webhook is a no-op.
+  async endByPaymentIntentId(
+    paymentIntentId: string,
+    now: Date
+  ): Promise<AnonymousPass[]> {
+    const rows: AnonymousPassRow[] = await this.buildEndByPaymentIntentIdQuery(
+      paymentIntentId,
+      now
+    );
+    return rows.map(toAnonymousPass);
+  }
+
   async listActiveInWindow(
     since: Date,
     until: Date
@@ -276,6 +307,26 @@ export class InMemoryAnonymousPassRepository implements IAnonymousPassRepository
     };
     this.rows.push(entry);
     return entry;
+  }
+
+  async findByPaymentIntentId(
+    paymentIntentId: string
+  ): Promise<AnonymousPass[]> {
+    return this.rows.filter((r) => r.payment_intent_id === paymentIntentId);
+  }
+
+  async endByPaymentIntentId(
+    paymentIntentId: string,
+    now: Date
+  ): Promise<AnonymousPass[]> {
+    const ended: AnonymousPass[] = [];
+    for (const row of this.rows) {
+      if (row.payment_intent_id === paymentIntentId && row.expires_at > now) {
+        row.expires_at = now;
+        ended.push(row);
+      }
+    }
+    return ended;
   }
 
   async findUnclaimedByBuyerEmailHash(

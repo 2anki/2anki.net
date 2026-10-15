@@ -82,4 +82,61 @@ describe('InMemoryAnonymousPassRepository', () => {
     const found = await repo.findBySessionId('cs_idem');
     expect(found).not.toBeNull();
   });
+
+  describe('endByPaymentIntentId', () => {
+    it('ends a running pass at now so it can no longer be validated', async () => {
+      await repo.insert({
+        stripeSessionId: 'cs_refund',
+        kind: '24h',
+        expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+        paymentIntentId: 'pi_refund',
+      });
+
+      const ended = await repo.endByPaymentIntentId('pi_refund', now);
+
+      expect(ended).toEqual([
+        expect.objectContaining({
+          stripe_session_id: 'cs_refund',
+          kind: '24h',
+          expires_at: now,
+        }),
+      ]);
+      expect(await repo.findActive('cs_refund', now)).toBeNull();
+    });
+
+    it('returns nothing on a repeated call', async () => {
+      await repo.insert({
+        stripeSessionId: 'cs_refund',
+        kind: '7d',
+        expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+        paymentIntentId: 'pi_refund',
+      });
+
+      await repo.endByPaymentIntentId('pi_refund', now);
+      const second = await repo.endByPaymentIntentId(
+        'pi_refund',
+        new Date(now.getTime() + 60_000)
+      );
+
+      expect(second).toEqual([]);
+      const [pass] = await repo.findByPaymentIntentId('pi_refund');
+      expect(pass.expires_at).toEqual(now);
+    });
+
+    it('does not touch passes bought with a different payment intent', async () => {
+      const otherExpiry = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      await repo.insert({
+        stripeSessionId: 'cs_other',
+        kind: '24h',
+        expiresAt: otherExpiry,
+        paymentIntentId: 'pi_other',
+      });
+
+      const ended = await repo.endByPaymentIntentId('pi_refund', now);
+
+      expect(ended).toEqual([]);
+      const other = await repo.findBySessionId('cs_other');
+      expect(other?.expires_at).toEqual(otherExpiry);
+    });
+  });
 });

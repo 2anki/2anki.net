@@ -24,6 +24,7 @@ import AnonymousPassRepository from '../data_layer/AnonymousPassRepository';
 import PassClaimTokensRepository from '../data_layer/PassClaimTokensRepository';
 import { SendAnonymousPassClaimEmailUseCase } from '../usecases/passes/SendAnonymousPassClaimEmailUseCase';
 import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
+import { EndRefundedPassUseCase } from '../usecases/passes/EndRefundedPassUseCase';
 import {
   PASS_CLAIM_WINDOW_MS,
   PASS_DURATION_MS,
@@ -91,6 +92,11 @@ const WebhooksRouter = () => {
     usersRepository,
     getEventsSink()
   );
+  const endRefundedPassUseCase = new EndRefundedPassUseCase(
+    new UserPassRepository(database),
+    new AnonymousPassRepository(database),
+    getEventsSink()
+  );
 
   /**
    * @swagger
@@ -122,6 +128,7 @@ const WebhooksRouter = () => {
    *       - customer.subscription.deleted
    *       - checkout.session.completed
    *       - checkout.session.expired
+   *       - charge.refunded
    */
   router.post(
     '/webhook',
@@ -738,6 +745,33 @@ const WebhooksRouter = () => {
               ? null
               : { url: recoveryUrl, expiresAt: recoveryExpiresAt }
           );
+          break;
+        }
+        case 'charge.refunded': {
+          const charge = event.data.object as StripeTypes.Charge;
+          const paymentIntentId =
+            typeof charge.payment_intent === 'string'
+              ? charge.payment_intent
+              : (charge.payment_intent?.id ?? null);
+          try {
+            const outcome = await endRefundedPassUseCase.execute({
+              paymentIntentId,
+              refunded: charge.refunded === true,
+              amount: charge.amount ?? 0,
+              amountRefunded: charge.amount_refunded ?? 0,
+            });
+            console.info('pass.refund', {
+              ...outcome,
+              payment_intent_id_hash:
+                paymentIntentId == null ? null : hashToken(paymentIntentId),
+            });
+          } catch (refundError) {
+            // Ending the pass is idempotent, so a 500 here is safe: Stripe
+            // retries the delivery and the retry finishes the job.
+            console.error('pass.refund.failed', refundError);
+            response.status(500).send();
+            return;
+          }
           break;
         }
         default:

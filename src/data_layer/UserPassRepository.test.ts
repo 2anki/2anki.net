@@ -227,4 +227,75 @@ describe('InMemoryUserPassRepository', () => {
       expect(second.id).toBe(first.id);
     });
   });
+
+  describe('endByPaymentIntentId', () => {
+    it('ends a running pass at now and returns it', async () => {
+      repo.seed({
+        user_id: 1,
+        kind: '7d',
+        expires_at: new Date(NOW.getTime() + DURATION_7D),
+        stripe_payment_intent_id: 'pi_refund',
+      });
+
+      const ended = await repo.endByPaymentIntentId('pi_refund', NOW);
+
+      expect(ended).toEqual([
+        expect.objectContaining({
+          user_id: 1,
+          kind: '7d',
+          expires_at: NOW,
+        }),
+      ]);
+      expect(await repo.findActive(1, NOW)).toBeNull();
+    });
+
+    it('leaves an already-ended pass untouched and returns nothing', async () => {
+      const expiredAt = new Date(NOW.getTime() - DURATION_24H);
+      repo.seed({
+        user_id: 1,
+        kind: '24h',
+        expires_at: expiredAt,
+        stripe_payment_intent_id: 'pi_refund',
+      });
+
+      const ended = await repo.endByPaymentIntentId('pi_refund', NOW);
+
+      expect(ended).toEqual([]);
+      const pass = await repo.findByPaymentIntentId('pi_refund');
+      expect(pass?.expires_at).toEqual(expiredAt);
+    });
+
+    it('is idempotent across repeated calls', async () => {
+      repo.seed({
+        user_id: 1,
+        kind: '24h',
+        expires_at: new Date(NOW.getTime() + DURATION_24H),
+        stripe_payment_intent_id: 'pi_refund',
+      });
+
+      await repo.endByPaymentIntentId('pi_refund', NOW);
+      const later = new Date(NOW.getTime() + 60_000);
+      const second = await repo.endByPaymentIntentId('pi_refund', later);
+
+      expect(second).toEqual([]);
+      const pass = await repo.findByPaymentIntentId('pi_refund');
+      expect(pass?.expires_at).toEqual(NOW);
+    });
+
+    it('does not touch passes bought with a different payment intent', async () => {
+      const otherExpiry = new Date(NOW.getTime() + DURATION_7D);
+      repo.seed({
+        user_id: 1,
+        kind: '7d',
+        expires_at: otherExpiry,
+        stripe_payment_intent_id: 'pi_other',
+      });
+
+      const ended = await repo.endByPaymentIntentId('pi_refund', NOW);
+
+      expect(ended).toEqual([]);
+      const pass = await repo.findActive(1, NOW);
+      expect(pass?.expires_at).toEqual(otherExpiry);
+    });
+  });
 });
