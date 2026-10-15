@@ -8,8 +8,7 @@ interface PurchaseParams {
   transactionId: string;
   valueCents: number;
   currency: string;
-  stripeCustomerId: string;
-  clientId?: string;
+  clientId: string;
   sessionId?: string;
 }
 
@@ -36,7 +35,6 @@ export async function sendPurchaseEvent(params: PurchaseParams): Promise<void> {
     return;
   }
 
-  const clientId = params.clientId ?? params.stripeCustomerId;
   const url = `${GA4_ENDPOINT}?measurement_id=${measurementId}&api_secret=${apiSecret}`;
 
   await fetch(url, {
@@ -44,7 +42,7 @@ export async function sendPurchaseEvent(params: PurchaseParams): Promise<void> {
     signal: AbortSignal.timeout(GA4_TIMEOUT_MS),
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      client_id: clientId,
+      client_id: params.clientId,
       events: [
         {
           name: 'purchase',

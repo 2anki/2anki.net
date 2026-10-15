@@ -27,7 +27,6 @@ describe('sendPurchaseEvent', () => {
       transactionId: 'cs_test_abc123',
       valueCents: 999,
       currency: 'usd',
-      stripeCustomerId: 'cus_test123',
       clientId: 'GA1.1.123456789.1234567890',
     });
 
@@ -65,7 +64,7 @@ describe('sendPurchaseEvent', () => {
       transactionId: 'cs_test_abc123',
       valueCents: 999,
       currency: 'usd',
-      stripeCustomerId: 'cus_test123',
+      clientId: 'GA1.1.123456789.1234567890',
     });
 
     expect(global.fetch).not.toHaveBeenCalled();
@@ -79,25 +78,10 @@ describe('sendPurchaseEvent', () => {
       transactionId: 'cs_test_abc123',
       valueCents: 999,
       currency: 'usd',
-      stripeCustomerId: 'cus_test123',
+      clientId: 'GA1.1.123456789.1234567890',
     });
 
     expect(global.fetch).not.toHaveBeenCalled();
-  });
-
-  it('falls back to stripeCustomerId as client_id when clientId param is absent', async () => {
-    const { sendPurchaseEvent } = await import('./GA4Service');
-    await sendPurchaseEvent({
-      transactionId: 'cs_test_abc123',
-      valueCents: 500,
-      currency: 'eur',
-      stripeCustomerId: 'cus_fallback123',
-    });
-
-    const [, options] = (global.fetch as MockedFunction<typeof fetch>).mock
-      .calls[0];
-    const body = JSON.parse((options as RequestInit).body as string);
-    expect(body.client_id).toBe('cus_fallback123');
   });
 
   it('adds session_id and engagement_time_msec when a sessionId is provided', async () => {
@@ -106,7 +90,6 @@ describe('sendPurchaseEvent', () => {
       transactionId: 'cs_test_abc123',
       valueCents: 999,
       currency: 'usd',
-      stripeCustomerId: 'cus_test123',
       clientId: 'GA1.1.123456789.1234567890',
       sessionId: '1744000000',
     });
@@ -126,7 +109,6 @@ describe('sendPurchaseEvent', () => {
       transactionId: 'cs_test_abc123',
       valueCents: 999,
       currency: 'usd',
-      stripeCustomerId: 'cus_test123',
       clientId: 'GA1.1.123456789.1234567890',
     });
 
