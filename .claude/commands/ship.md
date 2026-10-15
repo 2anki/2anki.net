@@ -24,7 +24,7 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
   python3 -c "import sys; sys.path.insert(0,'.claude/hooks'); import hard_rails as r; p=open('/tmp/ship-paths.txt').read().split(); print(r.rail_paths(p)); print(r.rail_content_hits(open('/tmp/ship-diff.txt').read()))"
   ```
   Any hit → run the matching checks in step 1b before step 2, and step 6b after the deploy. A rail PR merges on that evidence; it does not stop and wait for Alexander, unless its body records an unverified assumption (step 1).
-- Bring the branch up to date: `gh pr checkout <n>`, `git fetch origin main`, `git rebase origin/main`. If the rebase moved HEAD, `git push --force-with-lease origin <branch>` and re-read `headRefOid`.
+- Bring the branch up to date: `gh pr checkout <n>`, `git fetch origin main`, `git rebase origin/main`. If the rebase moved HEAD, `git push --force-with-lease origin <branch>` and re-read `headRefOid`. A Dependabot-authored head is the exception: never rebase or push it yourself; comment `@dependabot rebase`, wait on a `ScheduleWakeup` of 1200s, and re-read `headRefOid`.
 
 ## 1b. Rail verification (only when step 1 hit)
 

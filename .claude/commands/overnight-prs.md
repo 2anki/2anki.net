@@ -8,8 +8,9 @@ is still relevant against the current codebase, CLOSE the ones that no longer ap
 relevant ones into merged, deployed pull requests (one PR per issue) — not just bug fixes, but
 features, improvements, and copy/UX changes too. Every Tier 1 and Tier 2 PR goes through `/ship`
 (review agent → gate → rail verification → merge → deploy verified); a draft is only for a value
-only Alexander holds with no safe default, a rail-path change resting on an unverified
-assumption, or a run failure the branch cannot fix (draft + wakeup, `/ship` step 4). Keep going until you exhaust the queue or hit your usage limit (the environment ending the run, never a reason to quit early). The night is wasted if
+only Alexander holds with no safe default, new spend awaiting his approval, a rail-path change
+resting on an unverified assumption, or a run failure the branch cannot fix (draft + wakeup,
+`/ship` step 4). Keep going until you exhaust the queue or hit your usage limit (the environment ending the run, never a reason to quit early). The night is wasted if
 you only close stale issues and ship nothing.
 
 Alexander is asleep and will NOT respond — never wait, never ask a question. **The old rule was
@@ -125,7 +126,7 @@ fits, and always pick the smallest change that resolves the issue, traceable lin
 - You can write a FAILING TEST that reproduces it, watch it fail for the right reason, then make
   it pass.
 - Self-contained (a handful of files); no product/UX/copy judgment needed.
-- Rail paths are fine; `/ship` runs the extra rail verification (see below).
+- Rail paths are fine unless the change rests on an unverified assumption (Tier 3); `/ship` runs the extra rail verification (see below).
 
 **Tier 2 — improvement or feature that needs a product/UX/copy decision → run the TRIO, then open
 READY with a `## Decisions made overnight` section, then `/ship`.**
@@ -134,7 +135,7 @@ READY with a `## Decisions made overnight` section, then `/ship`.**
   Take their recommendation as the spec: what to build, what NOT to build, the exact copy.
 - Implement it with the same rigor as Tier 1 (tests, /check, changelog if user-visible).
 - Document EVERY decision and assumption in the PR (format below) so Alexander can override.
-- Rail paths are fine; `/ship` runs the extra rail verification.
+- Rail paths are fine unless the change rests on an unverified assumption (Tier 3); `/ship` runs the extra rail verification.
 
 **Tier 3 — rests on a value only Alexander holds (a price, a contract term, an external account) and no safe default exists, or on a rail-path assumption → open DRAFT, flagged.** When a safe default exists, ship behind it (see the hard rails below) and ask in the morning summary; a price, payment or Stripe value never ships behind a default, it stays draft and is named in the summary. An assumption you cannot verify with tools is NOT Tier 3 off the rails: the trio picks the most likely reading, you ship it reversibly through `/ship`, and the call lands under `## Decisions` for him to override.
 - On a rail path (auth, payments, migrations) an unverified assumption is the one exception: it stays draft, because a wrong guess there is not reversible by a revert. Name the assumption in the morning summary.
@@ -206,7 +207,8 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
 - Can't reproduce a reported bug → read the code path it names. If you find a plausible defect,
   fix it with a characterization test and say in the PR "could not reproduce from the report; the
   likely cause is X — please confirm." If there's nothing actionable in the code, SKIP and log.
-- Touches a hard rail (auth / payments / migration) → ship it through `/ship` with the rail
+- Touches a hard rail (auth / payments / migration) → unless it rests on an unverified
+  assumption (Tier 3), ship it through `/ship` with the rail
   verification. A destructive migration is split into reversible expand/contract steps first.
 - Unsure whether an issue is irrelevant → leave it OPEN; don't close on a guess.
 - Fix failing checks on the branch. A failure the branch cannot fix (a runner outage, a GitHub
