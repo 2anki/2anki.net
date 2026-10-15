@@ -118,7 +118,7 @@ Load on demand — read these when the task touches the named surface (kept out 
 ## Process
 
 - **When Alexander asks for a change or a ship, the work ends done, not handed back.** No rule in this harness may stop a run and wait for him, except these four (the carve-outs every other harness doc cites). Everything else is fixed on the branch and the run continues, and no new cap or stop gets added. This does not override hook denials, the merge gate, or the never-skip-safety rules: a denial is fixed on the branch, never routed around.
-  - A value only he holds: a prod secret, a Google or Stripe dashboard login, a payment card, or whether to take a third-party bump that fails, has an open finding after `/security-review`, or is held in `.claude/rules/dependencies.md` or pinned under `pnpm.overrides` in `package.json` (the fix lives upstream, not on the branch).
+  - A value only he holds: a prod secret, a Google or Stripe dashboard login, a payment card, or whether to take a third-party bump that fails, has an open finding after `/security-review`, or is held in `.claude/rules/dependencies.md`, pinned under `pnpm.overrides` in `package.json`, or on the security-surface or install-time-build list in the dependabot worker (the fix lives upstream, not on the branch).
   - Incurring new spend (a new paid service, plan, model, or paid batch run) needs his approval.
   - A destructive, irreversible action. An unverified assumption on a rail path (auth, payments, migrations) counts, because a wrong guess there is not undone by a revert.
   - A confirmed secret exposure or auth bypass found mid-run: halt and tell him.

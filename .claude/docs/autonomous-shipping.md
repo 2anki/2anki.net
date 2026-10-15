@@ -32,7 +32,7 @@ Preflight (draft? rail class? rebased?) → rail verification when the classifie
 
 Only these halt, the list in `CLAUDE.md` Process. A secret exposure halts the whole run; the value and spend halts, and the rail-assumption case under the destructive bullet, hold their own PR (draft, named in the summary) while the run continues with other items; any other destructive step is not executed and the run continues:
 
-- A value only he holds: a prod secret, a Google or Stripe dashboard login, a payment card, or whether to take a third-party bump that fails, has an open finding after `/security-review`, or is held in `.claude/rules/dependencies.md` or pinned under `pnpm.overrides` in `package.json` (the fix lives upstream, not on the branch).
+- A value only he holds: a prod secret, a Google or Stripe dashboard login, a payment card, or whether to take a third-party bump that fails, has an open finding after `/security-review`, or is held in `.claude/rules/dependencies.md`, pinned under `pnpm.overrides` in `package.json`, or on the security-surface or install-time-build list in the dependabot worker (the fix lives upstream, not on the branch).
 - Incurring new spend (a new paid service, plan, model, or paid batch run) needs his approval.
 - A destructive, irreversible action. An unverified assumption on a rail path (auth, payments, migrations) counts, because a wrong guess there is not undone by a revert.
 - A confirmed secret exposure or auth bypass found mid-run: halt and tell him.
@@ -43,7 +43,7 @@ Sanctioned exemptions inside `/ship` only: starting `pnpm dev` for the browser a
 
 ## Decisions and manual steps
 
-Trio decisions land in the PR body under `## Decisions` (the `## Decisions made overnight` heading in `/overnight-prs`, `## Decisions` elsewhere). The merged PR is where Alexander overrides a call — comment on it or open a follow-up. A step only Alexander can do (a prod secret, a free-tier third-party account) ships behind a safe default, and in an interactive run the agent asks him for it in the session chat (an unattended run names it in the morning summary; a price, payment or Stripe value never ships behind a default, it stays draft and is named there too). Do not open `Needs you` issues; they were dropped on 2026-10-05 because they piled up as issues to close. The daily `Shipped <date>` digest issues (label `shipped-digest`, 2026-08-26 to 2026-09-08) were dropped: they duplicated `gh pr list --state merged` and cost an issue a day to close. Agents never create one.
+Trio decisions land in the PR body under `## Decisions` (the `## Decisions made overnight` heading in `/overnight-prs`, `## Decisions` elsewhere). The merged PR is where Alexander overrides a call — comment on it or open a follow-up. A step only Alexander can do (a prod secret other than an auth, JWT, webhook or signing secret, which fails closed and stays draft; a free-tier third-party account) ships behind a safe default, and in an interactive run the agent asks him for it in the session chat and keeps shipping behind the default until he answers (an unattended run names it in the morning summary; a price, payment or Stripe value never ships behind a default, it stays draft and is named there too). Do not open `Needs you` issues; they were dropped on 2026-10-05 because they piled up as issues to close. The daily `Shipped <date>` digest issues (label `shipped-digest`, 2026-08-26 to 2026-09-08) were dropped: they duplicated `gh pr list --state merged` and cost an issue a day to close. Agents never create one.
 
 ## Throughput
 

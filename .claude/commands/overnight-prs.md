@@ -150,8 +150,9 @@ subscriptions, quotas and migrations all go through `/ship`, except a rail chang
 assumption you could not verify (Tier 3 above). Three constraints remain:
 - No irreversible data change in one step. Split a drop/rename/backfill into expand → migrate →
   contract PRs, each of which can roll back on its own.
-- A change that needs a value only Alexander holds (a new secret on prod, a new third-party
-  account on a free tier) ships behind a safe default and goes in the morning summary as a question
+- A change that needs a value only Alexander holds (a new secret on prod other than an auth, JWT,
+  webhook or signing secret, which fails closed at boot and stays draft; a new third-party account
+  on a free tier) ships behind a safe default and goes in the morning summary as a question
   for Alexander, one line per step; any paid plan or service is spend, stays draft, and is named in the summary
   (price, payment and Stripe values: see Tier 3 above).
 - Keep working until it is safe (reversible split, safe default). Draft only when the missing piece is a value only Alexander holds, the change is a rail-path change resting on an unverified assumption, or a run failure the branch cannot fix (draft + wakeup), with the blocker stated.
@@ -245,8 +246,8 @@ On stop, print the summary in this order — counts are the hero; the five bucke
    ```
    If N == M, write "Reached all <M>." and "0 never reached." The phrase "no eligible issues
    remain" is true ONLY when N == M.
-2. **Why it stopped** — one line: `Stopped: <queue exhausted | usage/token limit | every remaining
-   candidate needs a value only you hold, new spend, or is a rail-path assumption>.[ <M-N> issues never reached — rerun to continue.]`
+2. **Why it stopped** — one line: `Stopped: <queue exhausted | usage/token limit | confirmed secret exposure or auth bypass | every
+   remaining candidate needs a value only you hold, new spend, or is a rail-path assumption>.[ <M-N> issues never reached — rerun to continue.]`
 3. **Shipped** — issue #, title, PR URL, deploy verdict.
 3b. **PRs waiting for you** — issue #, title, PR URL, why (a value only you hold, new spend, a rail-path assumption, or a run failure the branch cannot fix).
 4. **Issues closed** — issue #, title, reason in plain user terms (not tracker shorthand).
@@ -255,8 +256,9 @@ On stop, print the summary in this order — counts are the hero; the five bucke
 
 ## Stop conditions
 Stop when every issue in the Step 0a backlog file has been processed (its number is in
-`/tmp/overnight-processed.txt`), OR you hit your usage/token limit, OR every remaining candidate
-needs a value only Alexander holds, new spend, or is a rail-path assumption. A `/ship` that is mid-deploy when you stop must finish first — never
+`/tmp/overnight-processed.txt`), OR you hit your usage/token limit, OR a confirmed secret exposure or auth
+bypass halts the run (`CLAUDE.md` Process), OR every remaining candidate needs a value only
+Alexander holds, new spend, or is a rail-path assumption. A `/ship` that is mid-deploy when you stop must finish first — never
 leave a merge unverified. "No eligible issues remain" is true ONLY when N == M from Step 0a — never
 infer it from an un-paginated `gh issue list`. ALWAYS emit the coverage line on stop, even when
 truncated. Do NOT invent work. Quality and safety over volume.
