@@ -2,5 +2,5 @@
   "id": "2026-10-15-pdf-scripted-note-types",
   "date": "2026-10-15",
   "type": "fix",
-  "title": "Printing an Anki deck to PDF keeps the card text for scripted note types like AnKing, without their buttons and logos"
+  "title": "Decks with scripted note types no longer print blank cards to PDF. The card text prints, without the buttons and logos"
 }
