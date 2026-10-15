@@ -21,15 +21,15 @@ export class UnreadableFileError extends Error {
 // A 0-byte pick is most often a cloud placeholder (OneDrive Files On-Demand,
 // iCloud Drive, Google Drive stream) that has not been downloaded to the disk
 // yet: the picker reports it, the one-byte read below has nothing to read, and
-// the upload then dies with a bare "Failed to fetch" that no retry can fix
-// (36 events from 14 uploaders between 2026-09-28 and 2026-10-15, two thirds of
-// whom never converted anything afterwards). An empty file can never become a
-// deck either way, so name it before the request instead of after.
+// the upload then dies with a bare "Failed to fetch" that no retry can fix.
+// A pick with no content at all can never become a deck, so it is named
+// before the request instead of after. A batch that still carries content
+// goes through: the server tolerates an empty companion file.
 export async function assertFilesReadable(files: File[]): Promise<void> {
+  if (files.length > 0 && files.every((file) => file.size === 0)) {
+    throw new UnreadableFileError(files[0], 'empty');
+  }
   for (const file of files) {
-    if (file.size === 0) {
-      throw new UnreadableFileError(file, 'empty');
-    }
     try {
       await file.slice(0, 1).arrayBuffer();
     } catch {

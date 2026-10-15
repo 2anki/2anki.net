@@ -258,7 +258,7 @@
       "unreadableFileBody": "The browser can't read the version you chose any more — it was saved, moved or deleted after you picked it. Choose the file again to upload the current version.",
       "unreadableChooseAgain": "Choose the file again",
       "emptyFileTitle": "This file is empty",
-      "emptyFileBody": "It's 0 bytes, so there's nothing to convert. If it lives in OneDrive, iCloud Drive or Google Drive, open it once so it downloads to your computer, then choose it again.",
+      "emptyFileBody": "It's 0 bytes, so there's nothing to convert. If it lives in OneDrive, iCloud Drive, or Google Drive, open it once so it downloads to your computer, then choose it again.",
       "sampleSuccessNote": "This is a sample deck. Convert your own file next.",
       "convertYourOwn": "Convert your own file",
       "emptyAllFiltered": "A card filter removed every card. If you turned on cherry pick (🍒) or skip (🥑), mark the toggles you want or turn the filter off, then convert again."

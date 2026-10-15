@@ -27,15 +27,18 @@ describe('assertFilesReadable', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('rejects a 0-byte file as empty before touching the disk', async () => {
+  it('rejects a 0-byte pick as empty before touching the disk', async () => {
     const empty = new File([], 'placeholder.pdf');
-    const error = await assertFilesReadable([
-      new File(['a'], 'a.txt'),
-      empty,
-    ]).catch((e: unknown) => e);
+    const error = await assertFilesReadable([empty]).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(UnreadableFileError);
     expect((error as UnreadableFileError).file).toBe(empty);
     expect((error as UnreadableFileError).reason).toBe('empty');
+  });
+
+  it('lets a batch through when an empty companion sits beside real content', async () => {
+    await expect(
+      assertFilesReadable([new File(['a'], 'a.txt'), new File([], 'stray.md')])
+    ).resolves.toBeUndefined();
   });
 
   it('throws an UnreadableFileError naming the file the browser refuses', async () => {
