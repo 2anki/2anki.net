@@ -14,6 +14,7 @@ import BlocksCacheRepository from '../data_layer/BlocksCacheRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import { NotionService } from '../services/NotionService/NotionService';
 import { getDatabase } from '../data_layer';
+import { normalizeUploadFilenames } from './middleware/normalizeUploadFilenames';
 
 const ApkgRouter = () => {
   const database = getDatabase();
@@ -224,6 +225,7 @@ const ApkgRouter = () => {
     RequireAllowedOrigin,
     RequireAuthentication,
     importUpload.single('file'),
+    normalizeUploadFilenames,
     (req, res) => controller.importToNotion(req, res)
   );
 
@@ -244,6 +246,7 @@ const ApkgRouter = () => {
     RequireAuthentication,
     printQuotaMiddleware(usersRepository),
     pdfUpload.single('file'),
+    normalizeUploadFilenames,
     (req, res) => controller.exportPdf(req, res)
   );
 
@@ -260,6 +263,7 @@ const ApkgRouter = () => {
     '/api/apkg/csv',
     RequireAllowedOrigin,
     csvUpload.single('file'),
+    normalizeUploadFilenames,
     (req, res) => controller.exportCsv(req, res)
   );
 

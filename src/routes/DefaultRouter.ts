@@ -4,6 +4,7 @@ import multer from 'multer';
 import IndexController from '../controllers/IndexController/IndexController';
 import { ensureIsLoggedIn } from './middleware/ensureIsLoggedIn';
 import { isKnownAppRoute } from './knownRoutes';
+import { normalizeUploadFilenames } from './middleware/normalizeUploadFilenames';
 
 const upload = multer({
   limits: { fileSize: 25 * 1024 * 1024 },
@@ -164,6 +165,7 @@ const DefaultRouter = () => {
   router.post(
     '/api/contact-us',
     contactUpload.array('attachments'),
+    normalizeUploadFilenames,
     (req, res) => controller.contactUs(req, res)
   );
 

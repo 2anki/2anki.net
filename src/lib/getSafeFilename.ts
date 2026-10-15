@@ -13,3 +13,11 @@ export function truncateToBytes(name: string, maxBytes: number): string {
   }
   return encoded.slice(0, end).toString('utf8');
 }
+
+// For a download name built from an uploaded file's name: keeps letters,
+// digits and combining marks in any script ("PEDİATRİ", "漢字") plus space,
+// dot, underscore and hyphen, and turns everything else (path separators,
+// quotes, control characters, punctuation) into "_".
+export function toDownloadBasename(name: string): string {
+  return name.replace(/[^\p{L}\p{M}\p{N} ._-]/gu, '_');
+}

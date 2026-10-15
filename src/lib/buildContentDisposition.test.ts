@@ -43,6 +43,17 @@ describe('buildContentDisposition', () => {
     );
   });
 
+  it('percent-encodes characters RFC 5987 does not allow in filename*', () => {
+    const result = buildContentDisposition("Dad's (draft)*.pdf");
+    expect(result).toContain("filename*=UTF-8''Dad%27s%20%28draft%29%2A.pdf");
+  });
+
+  it('carries a Turkish name through filename*', () => {
+    const result = buildContentDisposition('PEDİATRİ.pdf');
+    expect(result).toMatch(/^attachment; filename="PED_ATR_\.pdf"/);
+    expect(decodeURIComponent(result.split("UTF-8''")[1])).toBe('PEDİATRİ.pdf');
+  });
+
   it('strips backslash from ASCII fallback', () => {
     const result = buildContentDisposition('path\\to\\file.apkg');
     expect(result).toMatch(/filename="path_to_file\.apkg"/);
