@@ -36,6 +36,7 @@ import AuthenticationService from '../services/AuthenticationService';
 import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import { PersistStripeSessionUseCase } from '../usecases/checkout/PersistStripeSessionUseCase';
 import hashToken from '../lib/misc/hashToken';
+import { errorName } from '../lib/log/errorName';
 import { emailHash } from '../lib/emailHash';
 import { track } from '../services/events/track';
 import { getEventsSink } from '../services/events/eventsSinkInstance';
@@ -424,7 +425,9 @@ const WebhooksRouter = () => {
                 sessionId: sessionMeta.ga_session_id,
               });
             } catch (ga4Error) {
-              console.error('[ga4] failed to send purchase event', ga4Error);
+              console.error(
+                `[ga4] failed to send purchase event: ${errorName(ga4Error)}`
+              );
             }
           };
 

@@ -11,6 +11,7 @@ import {
 } from '../../lib/misc/isExpectedClientFault';
 import { isEmptyPayload } from '../../lib/misc/isEmptyPayload';
 import { redactStripeIds } from '../../lib/log/redactStripeIds';
+import { isStripeAccessError } from '../../lib/misc/isStripeAccessError';
 import { preserveFilesForDebugging } from '../../lib/debug/preserveFilesForDebugging';
 import { shouldShareFilesForDebugging } from './shouldShareFilesForDebugging';
 import * as cheerio from 'cheerio';
@@ -144,7 +145,7 @@ export default async function ErrorHandler(
     return;
   }
 
-  if (!quietError && isInternalFault(err)) {
+  if (!quietError && (isInternalFault(err) || isStripeAccessError(err))) {
     const body: UploadErrorBody = {
       code: 'unknown',
       message:
@@ -167,6 +168,8 @@ const SQLSTATE_RE = /^[0-9A-Z]{5}$/;
  * user-facing messages — surfacing err.message for these leaks internals
  * (CWE-209) and mislabels a server bug as a client fault. Deliberate throws
  * (limit errors, upload-shape errors) are plain Error and keep the 400 path.
+ * A rejected Stripe key (isStripeAccessError) is our configuration fault too;
+ * its message names the key prefix and the missing permission.
  */
 function isInternalFault(err: Error): boolean {
   if (

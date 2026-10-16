@@ -16,6 +16,7 @@ import hashToken from '../lib/misc/hashToken';
 import { isResetTokenLive } from '../lib/User/isResetTokenLive';
 import { track } from './events/track';
 import { sendSignUpEvent } from './GA4Service';
+import { errorName } from '../lib/log/errorName';
 
 // Who signed up how, threaded into the account_created event at the single
 // creation choke point in register().
@@ -188,7 +189,9 @@ class UsersService {
           sessionId: telemetry.gaSessionId,
           method: telemetry?.method ?? 'unknown',
         }).catch((error) => {
-          console.error('[ga4] failed to send sign_up event', error);
+          console.error(
+            `[ga4] failed to send sign_up event: ${errorName(error)}`
+          );
         });
       }
     }
