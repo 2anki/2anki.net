@@ -166,6 +166,7 @@ describe('RegisterForm', () => {
           method: 'email',
           status,
           reason,
+          attempts: 1,
         });
       });
     }
@@ -209,10 +210,18 @@ describe('RegisterForm', () => {
     const alert = await screen.findByRole('alert', undefined, {
       timeout: 3000,
     });
-    expect(within(alert).getByRole('link', { name: 'Log in' })).toHaveAttribute(
-      'href',
-      '/login'
+    expect(alert).toHaveTextContent(
+      'This email already has an account — log in or reset your password.'
     );
+    expect(
+      within(alert).getByRole('link', { name: 'Reset password' })
+    ).toHaveAttribute('href', '/forgot');
+    expect(trackMock).toHaveBeenCalledWith('signup_failed', {
+      method: 'email',
+      status: 400,
+      reason: 'account_exists',
+      attempts: 2,
+    });
     expect(trackMock).not.toHaveBeenCalledWith(
       'signup_failed',
       expect.objectContaining({ reason: 'network' })
@@ -342,7 +351,7 @@ describe('RegisterForm', () => {
       timeout: 3000,
     });
     expect(alert).toHaveTextContent(
-      "We couldn't reach 2anki.net. Check your connection and try again. If you already have an account, log in instead."
+      "Couldn't reach 2anki.net. Check your connection and try again. If you already have an account, log in instead."
     );
     expect(within(alert).getByRole('link', { name: 'Log in' })).toHaveAttribute(
       'href',

@@ -35,6 +35,7 @@ const MIN_PASSWORD_LENGTH = 8;
 const SIGNUP_FLAG_KEY = 'signup_completed_tracked';
 const REGISTER_ATTEMPTS = 2;
 const RETRY_DELAY_MS = 500;
+const CAUSE_MAX_LENGTH = 120;
 
 type SignupFailureReason =
   | 'account_exists'
@@ -65,18 +66,30 @@ function loginHref(redirect?: string | null): string {
 }
 
 function thrownCause(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  const message = error instanceof Error ? error.message : String(error);
+  return message.slice(0, CAUSE_MAX_LENGTH);
+}
+
+interface RegisterAttempt {
+  readonly res: Response;
+  readonly attempts: number;
 }
 
 async function registerWithRetry(
   email: string,
   password: string,
   signupOrigin: string | null
-): Promise<Response> {
+): Promise<RegisterAttempt> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= REGISTER_ATTEMPTS; attempt += 1) {
     try {
-      return await get2ankiApi().register('', email, password, signupOrigin);
+      const res = await get2ankiApi().register(
+        '',
+        email,
+        password,
+        signupOrigin
+      );
+      return { res, attempts: attempt };
     } catch (error) {
       lastError = error;
       if (attempt < REGISTER_ATTEMPTS) {
@@ -146,7 +159,11 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
     setConnectionFailed(false);
 
     try {
-      const res = await registerWithRetry(email, password, signupOrigin);
+      const { res, attempts } = await registerWithRetry(
+        email,
+        password,
+        signupOrigin
+      );
       if (res.status === 200) {
         track('signup_completed', { method: 'email' });
         fireSignupConversion();
@@ -162,6 +179,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
           method: 'email',
           status: res.status,
           reason: classifySignupFailure(res.status, backendMessage),
+          attempts,
         });
         if (isAccountExistsFailure(backendMessage)) {
           if (email.includes('@')) {
