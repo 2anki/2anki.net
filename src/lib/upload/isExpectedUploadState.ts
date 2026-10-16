@@ -18,6 +18,7 @@ export const EXPECTED_ERROR_NAMES = new Set([
   'EpubNoAnnotationsError',
   'EpubTooLargeError',
   'NotionDatabaseColumnsError',
+  'InvalidPDFException',
 ]);
 
 export const EXPECTED_MESSAGE_PATTERNS = [

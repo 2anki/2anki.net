@@ -137,6 +137,17 @@ const isLockedPdfError = (error: unknown): error is Error =>
   (error.message.startsWith('pdfinfo_password') ||
     isPdfPasswordSentinel(error.message));
 
+// pdfinfo reports a damaged file as a pdfinfo_failed message; pdf.js throws an
+// InvalidPDFException ("Invalid PDF structure") whose raw text otherwise
+// reaches the user with code unknown.
+export const isUnreadablePdfError = (error: unknown): error is Error =>
+  error instanceof Error &&
+  (/^pdfinfo_(failed|spawn_failed)/.test(error.message) ||
+    error.name === 'InvalidPDFException');
+
+export const PDF_UNREADABLE_REASON =
+  'We could not read this PDF. It may be corrupted, password-protected, or an unsupported variant. Try re-exporting the PDF or splitting it into smaller files.';
+
 export type JobFailureReasonCode =
   | 'empty_deck'
   | 'markdown_likely_lossy'
@@ -255,10 +266,7 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
   if (isLockedPdfError(error)) {
     return 'pdf_password';
   }
-  if (
-    error instanceof Error &&
-    /^pdfinfo_(failed|spawn_failed)/.test(error.message)
-  ) {
+  if (isUnreadablePdfError(error)) {
     return 'pdf_unreadable';
   }
   return 'unknown';
@@ -365,11 +373,8 @@ export function jobFailureReasonFromError(
   if (isLockedPdfError(error)) {
     return 'This PDF is password-protected. Remove the password and try again.';
   }
-  if (
-    error instanceof Error &&
-    /^pdfinfo_(failed|spawn_failed)/.test(error.message)
-  ) {
-    return 'We could not read this PDF. It may be corrupted, password-protected, or an unsupported variant. Try re-exporting the PDF or splitting it into smaller files.';
+  if (isUnreadablePdfError(error)) {
+    return PDF_UNREADABLE_REASON;
   }
   return genericFailureReason(jobId);
 }

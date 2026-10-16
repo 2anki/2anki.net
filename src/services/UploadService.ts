@@ -75,8 +75,10 @@ import type {
 import type { ConversionEngine } from '../lib/parser/conversionEngine';
 import {
   MARKDOWN_LIKELY_LOSSY_REASON,
+  isUnreadablePdfError,
   jobFailureReasonCode,
   jobFailureReasonFromError,
+  PDF_UNREADABLE_REASON,
 } from '../usecases/jobs/jobFailureReason';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import { getOwner } from '../lib/User/getOwner';
@@ -1264,17 +1266,13 @@ class UploadService {
           reason: 'missing_password',
           filename,
         });
-      } else if (
-        err instanceof Error &&
-        /^pdfinfo_(failed|spawn_failed)/.test(err.message)
-      ) {
+      } else if (isUnreadablePdfError(err)) {
         if (!isExpectedUploadState(err)) {
           this.trackUploadFailed(req, res, 'pdf_unreadable');
         }
         return res.status(400).json({
           code: 'pdf_processing_failed',
-          message:
-            'We could not read this PDF. It may be corrupted, password-protected, or an unsupported variant. Try re-exporting the PDF or splitting it into smaller files.',
+          message: PDF_UNREADABLE_REASON,
         });
       } else if (
         err instanceof Error &&
