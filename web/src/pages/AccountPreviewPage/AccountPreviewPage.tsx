@@ -60,10 +60,7 @@ const variants: Variant[] = [
           </p>
           <div className={accountStyles.actions}>
             <button type="button" className={accountStyles.secondaryButton}>
-              Cancel at period end
-            </button>
-            <button type="button" className={accountStyles.textButton}>
-              or cancel now
+              Cancel subscription
             </button>
           </div>
         </section>
@@ -89,10 +86,7 @@ const variants: Variant[] = [
           </p>
           <div className={accountStyles.actions}>
             <button type="button" className={accountStyles.secondaryButton}>
-              Cancel at period end
-            </button>
-            <button type="button" className={accountStyles.textButton}>
-              or cancel now
+              Cancel subscription
             </button>
           </div>
         </section>
