@@ -845,41 +845,49 @@ describe('UploadService.handleUpload — error paths', () => {
     );
   });
 
-  it('records client_left and answers nothing when the request died before the file was read', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(function () {
-      return {
-        execute: vi
-          .fn()
-          .mockRejectedValue(new UploadFileUnavailableError('notes.zip')),
-      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
-    });
+  it.each([
+    ['the request aborted mid-body', { aborted: true }, {}],
+    ['the response socket was destroyed', {}, { destroyed: true }],
+    ['the response had already ended', {}, { writableEnded: true }],
+  ])(
+    'records client_left and answers nothing when %s before the file was read',
+    async (_shape, reqState, resState) => {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi
+            .fn()
+            .mockRejectedValue(new UploadFileUnavailableError('notes.zip')),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
 
-    const service = new UploadService(
-      buildRepository(),
-      {} as JobRepository,
-      buildUsersRepo(),
-      ...fakeUploadServiceDeps()
-    );
-    const req = buildRequest({ aborted: true } as Partial<express.Request>);
-    const { res, capturedStatus, capturedJson } = buildResponse();
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const req = buildRequest(reqState as Partial<express.Request>);
+      const { res, capturedStatus, capturedJson } = buildResponse();
+      Object.assign(res, resState);
 
-    await service.handleUpload(req, res);
+      await service.handleUpload(req, res);
 
-    expect(capturedStatus()).toBe(0);
-    expect(capturedJson()).toBeNull();
-    expect(trackMock).toHaveBeenCalledWith(
-      'conversion_failed',
-      expect.objectContaining({
-        props: expect.objectContaining({ reason: 'client_left' }),
-      })
-    );
-    expect(trackMock).not.toHaveBeenCalledWith(
-      'conversion_failed',
-      expect.objectContaining({
-        props: expect.objectContaining({ reason: 'upload_incomplete' }),
-      })
-    );
-  });
+      expect(capturedStatus()).toBe(0);
+      expect(capturedJson()).toBeNull();
+      expect(trackMock).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          props: expect.objectContaining({ reason: 'client_left' }),
+        })
+      );
+      expect(trackMock).not.toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          props: expect.objectContaining({ reason: 'upload_incomplete' }),
+        })
+      );
+    }
+  );
 
   it('rejects .apkg upload with 400 and the "already an Anki deck" message before reaching GeneratePackagesUseCase', async () => {
     const executeMock = vi.fn();
