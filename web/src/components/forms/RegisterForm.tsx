@@ -33,6 +33,9 @@ interface Props {
 
 const MIN_PASSWORD_LENGTH = 8;
 const SIGNUP_FLAG_KEY = 'signup_completed_tracked';
+const REGISTER_ATTEMPTS = 2;
+const RETRY_DELAY_MS = 500;
+const CAUSE_MAX_LENGTH = 120;
 
 type SignupFailureReason =
   | 'account_exists'
@@ -62,6 +65,41 @@ function loginHref(redirect?: string | null): string {
   return `/login?redirect=${encodeURIComponent(redirect)}`;
 }
 
+function thrownCause(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.slice(0, CAUSE_MAX_LENGTH);
+}
+
+interface RegisterAttempt {
+  readonly res: Response;
+  readonly attempts: number;
+}
+
+async function registerWithRetry(
+  email: string,
+  password: string,
+  signupOrigin: string | null
+): Promise<RegisterAttempt> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= REGISTER_ATTEMPTS; attempt += 1) {
+    try {
+      const res = await get2ankiApi().register(
+        '',
+        email,
+        password,
+        signupOrigin
+      );
+      return { res, attempts: attempt };
+    } catch (error) {
+      lastError = error;
+      if (attempt < REGISTER_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      }
+    }
+  }
+  throw lastError;
+}
+
 function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
   const { t } = useTranslation();
   const inline = variant === 'inline';
@@ -71,6 +109,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [accountExists, setAccountExists] = useState(false);
+  const [connectionFailed, setConnectionFailed] = useState(false);
   const signupOrigin = useMemo(
     () =>
       readSignupOrigin(
@@ -117,10 +156,10 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
     event.preventDefault();
     setLoading(true);
     setAccountExists(false);
+    setConnectionFailed(false);
 
     try {
-      const res = await get2ankiApi().register(
-        '',
+      const { res, attempts } = await registerWithRetry(
         email,
         password,
         signupOrigin
@@ -140,6 +179,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
           method: 'email',
           status: res.status,
           reason: classifySignupFailure(res.status, backendMessage),
+          attempts,
         });
         if (isAccountExistsFailure(backendMessage)) {
           if (email.includes('@')) {
@@ -162,8 +202,13 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
       }
     } catch (error) {
       console.error('Register submit failed', error);
-      track('signup_failed', { method: 'email', reason: 'network' });
-      setErrorMessage(t('auth.register.errorGeneric'));
+      track('signup_failed', {
+        method: 'email',
+        reason: 'network',
+        cause: thrownCause(error),
+        attempts: REGISTER_ATTEMPTS,
+      });
+      setConnectionFailed(true);
       setLoading(false);
     }
   };
@@ -188,6 +233,14 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
           <div className={styles.recoveryActions}>
             <Link to={loginHref(redirect)}>{t('auth.register.logIn')}</Link>
             <Link to="/forgot">{t('auth.register.resetPassword')}</Link>
+          </div>
+        </div>
+      )}
+      {connectionFailed && (
+        <div className={styles.recovery} role="alert">
+          <p>{t('auth.register.errorNetwork')}</p>
+          <div className={styles.recoveryActions}>
+            <Link to={loginHref(redirect)}>{t('auth.register.logIn')}</Link>
           </div>
         </div>
       )}

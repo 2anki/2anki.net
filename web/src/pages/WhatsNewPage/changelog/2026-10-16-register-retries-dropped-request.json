@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-16-register-retries-dropped-request",
+  "date": "2026-10-16",
+  "type": "fix",
+  "title": "Creating an account retries once when the connection drops, and points you to log in if it still fails"
+}

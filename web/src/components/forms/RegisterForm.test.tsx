@@ -166,23 +166,67 @@ describe('RegisterForm', () => {
           method: 'email',
           status,
           reason,
+          attempts: 1,
         });
       });
     }
   );
 
-  it('fires signup_failed with reason network and no status when the request throws', async () => {
-    registerMock.mockRejectedValue(new TypeError('Failed to fetch'));
+  it('fires signup_failed with reason network and the thrown cause when both attempts throw', async () => {
+    registerMock.mockRejectedValue(new TypeError('Load failed'));
 
     renderForm();
     fillAndSubmit();
 
-    await waitFor(() => {
-      expect(trackMock).toHaveBeenCalledWith('signup_failed', {
-        method: 'email',
-        reason: 'network',
+    await waitFor(
+      () => {
+        expect(trackMock).toHaveBeenCalledWith('signup_failed', {
+          method: 'email',
+          reason: 'network',
+          cause: 'Load failed',
+          attempts: 2,
+        });
+      },
+      { timeout: 3000 }
+    );
+    expect(registerMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries once when the request throws and shows the account-exists CTA from the retry', async () => {
+    registerMock
+      .mockRejectedValueOnce(new TypeError('Load failed'))
+      .mockResolvedValueOnce({
+        status: 400,
+        json: () =>
+          Promise.resolve({
+            message:
+              'An account with this email already exists. Try logging in instead.',
+          }),
       });
+
+    const setErrorMessage = renderForm();
+    fillAndSubmit();
+
+    const alert = await screen.findByRole('alert', undefined, {
+      timeout: 3000,
     });
+    expect(alert).toHaveTextContent(
+      'This email already has an account — log in or reset your password.'
+    );
+    expect(
+      within(alert).getByRole('link', { name: 'Reset password' })
+    ).toHaveAttribute('href', '/forgot');
+    expect(trackMock).toHaveBeenCalledWith('signup_failed', {
+      method: 'email',
+      status: 400,
+      reason: 'account_exists',
+      attempts: 2,
+    });
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'signup_failed',
+      expect.objectContaining({ reason: 'network' })
+    );
+    expect(setErrorMessage).not.toHaveBeenCalled();
   });
 
   it('does not fire signup_failed on a successful registration', async () => {
@@ -297,17 +341,26 @@ describe('RegisterForm', () => {
     expect(arg.message).toBe(notice);
   });
 
-  it('shows the generic error, not the account-exists message, when the request itself fails', async () => {
+  it('shows a connection notice with a log-in link instead of the generic error when both attempts throw', async () => {
     registerMock.mockRejectedValue(new TypeError('Failed to fetch'));
 
-    const setErrorMessage = renderForm();
+    const setErrorMessage = renderForm('/upload');
     fillAndSubmit();
 
-    await waitFor(() => {
-      expect(setErrorMessage).toHaveBeenCalledWith(
-        'Something went wrong on our end. Try again, or email support@2anki.net if it keeps happening.'
-      );
+    const alert = await screen.findByRole('alert', undefined, {
+      timeout: 3000,
     });
+    expect(alert).toHaveTextContent(
+      "Couldn't reach 2anki.net. Check your connection and try again. If you already have an account, log in instead."
+    );
+    expect(within(alert).getByRole('link', { name: 'Log in' })).toHaveAttribute(
+      'href',
+      '/login?redirect=%2Fupload'
+    );
+    expect(setErrorMessage).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Create account' })
+    ).not.toBeDisabled();
   });
 
   it('passes a generic backend failure through as a plain message', async () => {

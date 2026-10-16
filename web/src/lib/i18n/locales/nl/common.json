@@ -386,7 +386,8 @@
       "creating": "Account aanmaken…",
       "create": "Account aanmaken",
       "loginQuestion": "Heb je een account?",
-      "errorGeneric": "Er is iets misgegaan aan onze kant. Probeer het opnieuw, of mail support@2anki.net als het blijft gebeuren."
+      "errorGeneric": "Er is iets misgegaan aan onze kant. Probeer het opnieuw, of mail support@2anki.net als het blijft gebeuren.",
+      "errorNetwork": "2anki.net was niet bereikbaar. Controleer je verbinding en probeer het opnieuw. Heb je al een account, log dan in."
     },
     "forgot": {
       "title": "Wachtwoord opnieuw instellen",
