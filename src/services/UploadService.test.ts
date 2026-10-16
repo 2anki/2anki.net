@@ -806,6 +806,12 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(body.code).toBe('pdf_processing_failed');
     expect(body.message).not.toMatch(/Invalid PDF structure/);
     expect(body.message).toMatch(/could not read this PDF/);
+    // A damaged file is a user-input state, like a pdfinfo failure: it is not
+    // a conversion failure for the funnel or a red tile for ops (#4496).
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.anything()
+    );
   });
 
   it('rejects .apkg upload with 400 and the "already an Anki deck" message before reaching GeneratePackagesUseCase', async () => {
