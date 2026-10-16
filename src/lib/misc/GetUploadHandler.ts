@@ -35,19 +35,26 @@ export function withNormalizedFilenames(
       // true for every healthy request by the time multer calls back and
       // would disable the snapshot everywhere.
       const requestDead = req.aborted || res.writableEnded || res.destroyed;
+      const requestState = {
+        complete: req.complete,
+        readableEnded: req.readableEnded,
+        aborted: req.aborted,
+        destroyed: req.destroyed,
+        headersSent: res.headersSent,
+      };
       const files = req.files as UploadedFile[] | undefined;
       if (files) {
         for (const file of files) {
           file.originalname = decodeMultipartFilename(file.originalname);
         }
         if (!requestDead) {
-          ensureUploadBytes(files);
+          ensureUploadBytes(files, requestState);
         }
       }
       if (req.file) {
         req.file.originalname = decodeMultipartFilename(req.file.originalname);
         if (!requestDead) {
-          ensureUploadBytes([req.file as UploadedFile]);
+          ensureUploadBytes([req.file as UploadedFile], requestState);
         }
       }
       callback();

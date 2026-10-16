@@ -20,8 +20,28 @@ import { UploadedFile } from '../../lib/storage/types';
 // for the small-file majority.
 export const SNAPSHOT_MAX_BYTES = 64 * 1024 * 1024;
 
-export function ensureUploadBytes(files: UploadedFile[]): void {
-  const unreadable: { file: string; error: string }[] = [];
+// Since 2026-09-01 the multer callback has handed back paths that are already
+// gone (ENOENT on every file, no multer error, #4761). The one warn line
+// carries the state that tells a vanished directory from an unlinked file:
+// whether the parent directory still exists and how many entries it holds,
+// the size multer reported after writing, and the request's stream flags.
+function uploadDirState(filePath: string): {
+  dirExists: boolean;
+  dirEntries: number | null;
+} {
+  const dir = path.dirname(filePath);
+  try {
+    return { dirExists: true, dirEntries: fs.readdirSync(dir).length };
+  } catch {
+    return { dirExists: false, dirEntries: null };
+  }
+}
+
+export function ensureUploadBytes(
+  files: UploadedFile[],
+  request?: Record<string, boolean | undefined>
+): void {
+  const unreadable: { file: UploadedFile; error: unknown }[] = [];
   for (const file of files) {
     if (file.buffer != null || !file.path) continue;
     if (file.size > SNAPSHOT_MAX_BYTES) continue;
@@ -31,16 +51,22 @@ export function ensureUploadBytes(files: UploadedFile[]): void {
       // The file is already gone or unreadable at request time. Leave the
       // buffer unset; the worker surfaces its own clear error if the disk read
       // also fails by the time it runs.
-      unreadable.push({ file: path.basename(file.path), error: String(error) });
+      unreadable.push({ file, error });
     }
   }
   if (unreadable.length > 0) {
     // One line per request, not per file: an aborted multi-file upload used to
     // dump 4 log lines for each of its dozens of vanished temp files (#4173).
+    const first = unreadable[0];
     console.warn('[upload] could not snapshot upload bytes', {
       count: unreadable.length,
-      firstFile: unreadable[0].file,
-      firstError: unreadable[0].error,
+      total: files.length,
+      firstFile: path.basename(first.file.path),
+      firstError: String(first.error),
+      firstCode: (first.error as { code?: unknown })?.code ?? null,
+      firstSize: first.file.size ?? null,
+      ...uploadDirState(first.file.path),
+      request: request ?? null,
     });
   }
 }
