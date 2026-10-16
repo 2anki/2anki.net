@@ -118,6 +118,7 @@ describe('sendPurchaseEvent', () => {
     expect(body.events[0].params).not.toHaveProperty('session_id');
     expect(body.events[0].params).not.toHaveProperty('engagement_time_msec');
   });
+
   it('resolves and logs only the error name when the request fails', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     (global.fetch as MockedFunction<typeof fetch>).mockRejectedValue(
@@ -141,10 +142,36 @@ describe('sendPurchaseEvent', () => {
 
     expect(errorSpy).toHaveBeenCalledTimes(1);
     const logged = errorSpy.mock.calls[0].map(String).join(' ');
+    expect(logged).toContain('purchase');
     expect(logged).toContain('TypeError');
     expect(logged).not.toContain('test-secret');
     expect(logged).not.toContain('api_secret');
     errorSpy.mockRestore();
+  });
+
+  it('logs the status and skips the success line when GA4 rejects the payload', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    (global.fetch as MockedFunction<typeof fetch>).mockResolvedValue({
+      ok: false,
+      status: 400,
+      url: `${GA4_ENDPOINT}?api_secret=test-secret`,
+    } as Response);
+    const { sendPurchaseEvent } = await import('./GA4Service');
+
+    await sendPurchaseEvent({
+      transactionId: 'cs_test_abc123',
+      valueCents: 999,
+      currency: 'usd',
+      clientId: 'GA1.1.123456789.1234567890',
+    });
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[ga4] purchase send failed: HTTP 400'
+    );
+    expect(infoSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+    infoSpy.mockRestore();
   });
 });
 
@@ -236,6 +263,7 @@ describe('sendSignUpEvent', () => {
 
     expect(errorSpy).toHaveBeenCalledTimes(1);
     const logged = errorSpy.mock.calls[0].map(String).join(' ');
+    expect(logged).toContain('sign_up');
     expect(logged).toContain('TimeoutError');
     expect(logged).not.toContain('test-secret');
     errorSpy.mockRestore();

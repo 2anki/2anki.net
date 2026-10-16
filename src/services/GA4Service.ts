@@ -1,3 +1,5 @@
+import { errorName } from '../lib/log/errorName';
+
 const GA4_ENDPOINT = 'https://www.google-analytics.com/mp/collect';
 // The webhook awaits this call before answering Stripe; a stalled GA4 must
 // not push the response past Stripe's delivery timeout (which would trigger a
@@ -21,25 +23,25 @@ interface SignUpParams {
 // The Measurement Protocol carries api_secret in the request URL, so a failed
 // request's error object (its message, cause or config) can hold the secret.
 // Only the error class ever reaches the logs.
-function errorName(error: unknown): string {
-  const name = (error as { name?: unknown })?.name;
-  return typeof name === 'string' && name.length > 0 ? name : 'Error';
-}
-
 async function postEvent(
+  eventName: string,
   url: string,
   body: Record<string, unknown>
 ): Promise<boolean> {
   try {
-    await fetch(url, {
+    const response = await fetch(url, {
       method: 'POST',
       signal: AbortSignal.timeout(GA4_TIMEOUT_MS),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    return true;
+    if (response.ok) {
+      return true;
+    }
+    console.error(`[ga4] ${eventName} send failed: HTTP ${response.status}`);
+    return false;
   } catch (error) {
-    console.error(`[ga4] send failed: ${errorName(error)}`);
+    console.error(`[ga4] ${eventName} send failed: ${errorName(error)}`);
     return false;
   }
 }
@@ -63,7 +65,7 @@ export async function sendPurchaseEvent(params: PurchaseParams): Promise<void> {
 
   const url = `${GA4_ENDPOINT}?measurement_id=${measurementId}&api_secret=${apiSecret}`;
 
-  const sent = await postEvent(url, {
+  const sent = await postEvent('purchase', url, {
     client_id: params.clientId,
     events: [
       {
@@ -94,7 +96,7 @@ export async function sendSignUpEvent(params: SignUpParams): Promise<void> {
 
   const url = `${GA4_ENDPOINT}?measurement_id=${measurementId}&api_secret=${apiSecret}`;
 
-  const sent = await postEvent(url, {
+  const sent = await postEvent('sign_up', url, {
     client_id: params.clientId,
     events: [
       {
