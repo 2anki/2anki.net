@@ -42,7 +42,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.131.0",
+    "@anthropic-ai/sdk": "^0.133.0",
     "@apple/app-store-server-library": "^3.1.0",
     "@aws-sdk/client-s3": "^3.1048.0",
     "@aws-sdk/s3-request-presigner": "^3.1048.0",
@@ -111,7 +111,7 @@
     "@types/crypto-js": "^4.2.1",
     "@types/dockerode": "^4.0.1",
     "@types/dotenv": "^8.2.0",
-    "@types/express": "^4.17.25",
+    "@types/express": "^5.0.6",
     "@types/geoip-lite": "^1.4.4",
     "@types/html-to-text": "^9.0.0",
     "@types/jsonwebtoken": "^9.0.2",
@@ -139,7 +139,7 @@
   },
   "pnpm": {
     "overrides": {
-      "@types/express": "^4.17.25",
+      "@types/express": "^5.0.6",
       "@types/express-serve-static-core": "^4.19.8",
       "rollup": ">=4.59.0",
       "rolldown": ">=1.0.2",
