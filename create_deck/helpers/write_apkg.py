@@ -48,9 +48,13 @@ def sanitize_filename(filename):
     """
     Sanitize the filename by removing any character that is not alphanumeric, a space, or a hyphen.
     Replace spaces with hyphens. Ensures the result is safe for use as a filename.
+    Whitespace other than a plain space (tabs, form feeds, U+2028, record
+    separators) is dropped: str.splitlines() treats those as line breaks, and a
+    path printed with one in it reaches the caller as a bare fragment.
     """
+    sanitized = re.sub(r'[^\S ]', '', filename)
     sanitized = re.sub(
-        r'[^\w\s\-\U0001F600-\U0001F64F]', '', filename, flags=re.UNICODE
+        r'[^\w\s\-\U0001F600-\U0001F64F]', '', sanitized, flags=re.UNICODE
     )
     sanitized = sanitized.replace(' ', '-')
     return os.path.basename(sanitized)

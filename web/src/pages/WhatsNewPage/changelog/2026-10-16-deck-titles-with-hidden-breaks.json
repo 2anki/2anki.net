@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-16-deck-titles-with-hidden-breaks",
+  "date": "2026-10-16",
+  "type": "fix",
+  "title": "Deck titles with a hidden line-break character build into a deck instead of failing"
+}

@@ -295,7 +295,7 @@ def build_one_deck(data_file, template_dir):
     buf = io.StringIO()
     with redirect_stdout(buf):
         _write_new_apkg(decks, media_files)
-    return buf.getvalue().strip().splitlines()[-1]
+    return buf.getvalue().strip().split('\n')[-1]
 
 
 def run_batch(manifest_path, template_dir):

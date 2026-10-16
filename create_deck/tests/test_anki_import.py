@@ -58,6 +58,22 @@ def _build_io_apkg(build_dir: Path) -> str:
     return result.stdout.strip().splitlines()[-1]
 
 
+def test_deck_name_with_a_line_separator_still_yields_the_apkg_path(tmp_path):
+    decks = json.loads(FIXTURE.read_text())
+    decks[0]["name"] = "Week\u2028One\x0cNotes"
+    (tmp_path / "deck_info.json").write_text(json.dumps(decks))
+    previous_dir = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        apkg_path = build_one_deck(str(tmp_path / "deck_info.json"), TEMPLATE_DIR)
+    finally:
+        os.chdir(previous_dir)
+
+    assert os.path.isabs(apkg_path)
+    assert os.path.exists(apkg_path)
+    assert os.path.basename(apkg_path).startswith("WeekOneNotes-")
+
+
 def _build_apkg(build_dir: Path) -> str:
     shutil.copy(FIXTURE, build_dir / "deck_info.json")
     previous_dir = os.getcwd()

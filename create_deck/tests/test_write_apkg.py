@@ -90,6 +90,10 @@ def _decks(connection):
         ("../../../etc/passwd", "etcpasswd"),
         ("..\\..\\windows\\system32", "windowssystem32"),
         ("test/../danger", "testdanger"),
+        ("Week\u2028One", "WeekOne"),
+        ("Form\x0cFeed Deck", "FormFeed-Deck"),
+        ("Tab\tName", "TabName"),
+        ("Record\x1eSeparator", "RecordSeparator"),
     ],
 )
 def test_sanitize_filename(raw, expected):
