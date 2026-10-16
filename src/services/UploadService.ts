@@ -1245,15 +1245,19 @@ class UploadService {
           message: WORKER_INTERRUPTED_REASON,
         });
       } else if (err instanceof UploadFileUnavailableError) {
-        const owner = getOwner(res);
-        track('conversion_failed', {
-          userId: owner != null ? Number(owner) : null,
-          anonymousId: this.resolveAnonId(req),
-          props: {
-            ...this.baseFunnelProps(req),
-            reason: 'upload_incomplete',
-          },
-        });
+        // A visitor who leaves the page mid-upload takes the request with
+        // them: the socket closes, multer removes the temp files, and the
+        // conversion then finds nothing to read. That is not an incomplete
+        // upload, and there is no one left to answer (#4761).
+        const clientLeft = req.aborted || res.writableEnded || res.destroyed;
+        this.trackUploadFailed(
+          req,
+          res,
+          clientLeft ? 'client_left' : 'upload_incomplete'
+        );
+        if (clientLeft) {
+          return;
+        }
         return res.status(400).json({
           code: 'upload_incomplete',
           message:
