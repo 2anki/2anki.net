@@ -17,7 +17,7 @@
     "cancelThisPlan": "このプランを解約",
     "cancelThisPlanNow": "このプランを解約しますか？",
     "cancelPlanNoticeWithLabel": "{{planLabel}} プランは、お支払い済み期間の終了日である {{date}} に終了します。このプランの料金が再度請求されることはありません。",
-    "cancelPlanNotice": "このプランはお支払い済み期間の終了時に終了します。このプランの料金が再度請求されることはありません。",
+    "cancelPlanNotice": "このプランはお支払い済み期間とともに終了します。このプランの料金が再度請求されることはありません。",
     "processing": "処理中…",
     "keepIt": "続ける",
     "multipleActive": "有効なサブスクリプションが {{count}} 件あります。二重に請求されている可能性が高いため、不要な方を解約してください。",

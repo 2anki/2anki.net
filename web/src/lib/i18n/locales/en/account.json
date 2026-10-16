@@ -17,7 +17,7 @@
     "cancelThisPlan": "Cancel this plan",
     "cancelThisPlanNow": "Cancel this plan?",
     "cancelPlanNoticeWithLabel": "The {{planLabel}} plan ends on {{date}}, the end of the period you paid for. Your card won't be charged for it again.",
-    "cancelPlanNotice": "This plan ends at the end of the period you paid for. Your card won't be charged for it again.",
+    "cancelPlanNotice": "This plan ends with the period you paid for. Your card won't be charged for it again.",
     "processing": "Processing…",
     "keepIt": "Keep it",
     "multipleActive": "You have {{count}} active subscriptions. You're likely being charged twice — cancel the one you don't want to keep.",
