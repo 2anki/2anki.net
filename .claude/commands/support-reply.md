@@ -17,7 +17,7 @@ Use the `pm` agent (with engineer if technical diagnosis is needed).
 6. Flag if this email reveals a recurring theme worth feeding into `/triage-feedback` later.
 
 Output:
-- **Draft reply** (ready to copy-paste-send)
+- **Draft reply**, saved to `~/Downloads/reply-<name>.txt`. It goes out only on Alexander's word, from `support@2anki.net` through `himalaya` per the Sending section of `.claude/docs/support-email.md`.
 - **Internal note** (anything Alexander should know but not say to the user)
 - **Issue draft** (if applicable)
 
