@@ -17,6 +17,7 @@ describe('isExpectedUploadState', () => {
     'IncompleteZipError',
     'EpubNoAnnotationsError',
     'EpubTooLargeError',
+    'NotionDatabaseColumnsError',
   ])(
     'treats %s as a user input state even after the worker rebuilds it',
     (name) => {

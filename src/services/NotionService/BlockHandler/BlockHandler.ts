@@ -37,6 +37,7 @@ import { tableRowsToCards } from '../blocks/lists/BlockTable';
 import { blockToStaticMarkup } from '../helpers/blockToStaticMarkup';
 import { getToggleSummaryRichText } from '../helpers/getToggleSummaryRichText';
 import { isToggleHeading } from '../helpers/isToggleHeading';
+import { NotionDatabaseColumnsError } from '../helpers/NotionDatabaseColumnsError';
 import { classifyBlock } from '../../../lib/parser/intent/classifyBlock';
 import {
   buildHeadingContextMap,
@@ -779,9 +780,10 @@ class BlockHandler implements IBlockRenderer {
       !columnNames.includes(frontField) ||
       !columnNames.includes(backField)
     ) {
-      throw new Error(
-        `Front or back column not found in database. Got: ${columnNames.join(', ')}`
-      );
+      throw new NotionDatabaseColumnsError(columnNames, {
+        frontField: locator.frontField,
+        backField: locator.backField,
+      });
     }
 
     let notes = notesFromRows(

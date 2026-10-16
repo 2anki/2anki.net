@@ -17,6 +17,7 @@ export const EXPECTED_ERROR_NAMES = new Set([
   'IncompleteZipError',
   'EpubNoAnnotationsError',
   'EpubTooLargeError',
+  'NotionDatabaseColumnsError',
 ]);
 
 export const EXPECTED_MESSAGE_PATTERNS = [

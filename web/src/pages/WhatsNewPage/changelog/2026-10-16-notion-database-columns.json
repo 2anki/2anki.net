@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-16-notion-database-columns",
+  "date": "2026-10-16",
+  "type": "fix",
+  "title": "A Notion database missing a front or back column says which column to add or pick"
+}
