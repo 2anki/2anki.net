@@ -123,6 +123,7 @@ const isNoHighlightsError = (error: unknown): error is Error =>
 const MESSAGE_IS_REASON_NAMES = [
   'ImageOnlyContentError',
   'EpubTooLargeError',
+  'NotionDatabaseColumnsError',
 ] as const;
 
 const carriesItsOwnReason = (error: unknown): error is Error =>
@@ -147,6 +148,7 @@ export type JobFailureReasonCode =
   | 'notion_rate_limited'
   | 'notion_not_found'
   | 'notion_database_not_page'
+  | 'notion_database_columns'
   | 'apkg_too_large'
   | 'zip_invalid'
   | 'already_anki_deck'
@@ -204,6 +206,9 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
   }
   if (hasName(error, 'EpubTooLargeError')) {
     return 'epub_too_large';
+  }
+  if (hasName(error, 'NotionDatabaseColumnsError')) {
+    return 'notion_database_columns';
   }
   if (isNoHighlightsError(error)) {
     return 'no_highlights';

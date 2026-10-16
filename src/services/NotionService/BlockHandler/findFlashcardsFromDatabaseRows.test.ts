@@ -220,7 +220,9 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
         decks: [],
         parentName: '',
       })
-    ).rejects.toThrow(/Front or back column not found/);
+    ).rejects.toThrow(
+      'This database has only one column, Notes. Cards need a front and a back column. Add a text column for the back, fill it in, then convert again.'
+    );
   });
 
   it('honors explicit frontField/backField when provided, bypassing auto-infer', async () => {
@@ -264,7 +266,9 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
         frontField: 'Nope',
         backField: 'Also Nope',
       })
-    ).rejects.toThrow(/Front or back column not found/);
+    ).rejects.toThrow(
+      'This database has no column named Nope, Also Nope. It has: Term, Definition. Pick a column that exists for the front and the back, then convert again.'
+    );
   });
 
   it('records resolvedDatabasePath with viaPageLinkSelfHeal=false on the deliberate database-picker entry point', async () => {

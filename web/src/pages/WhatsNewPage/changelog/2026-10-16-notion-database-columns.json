@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-16-notion-database-columns",
+  "date": "2026-10-16",
+  "type": "fix",
+  "title": "A Notion database with only a title column says which column to add instead of failing with no reason"
+}
