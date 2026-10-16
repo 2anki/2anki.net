@@ -83,6 +83,23 @@ describe('useSubscriptionCancellation', () => {
     expect(result.current.cancelError).toBe('');
   });
 
+  it('says access has ended when the plan ends now', async () => {
+    vi.mocked(cancelSubscription).mockResolvedValue({ message: 'ok' });
+
+    const { result } = renderHook(() => useSubscriptionCancellation(), {
+      wrapper: buildWrapper(),
+    });
+
+    act(() => {
+      result.current.cancelUserSubscription(null, undefined, true);
+    });
+
+    await waitFor(() => {
+      expect(result.current.showFollowUp).toBe(true);
+    });
+    expect(result.current.cancelSuccess).toBe('Cancelled. Access has ended.');
+  });
+
   it('surfaces the server message and keeps the follow-up hidden on failure', async () => {
     vi.mocked(cancelSubscription).mockRejectedValue(
       new Error('No active subscription found for this account.')

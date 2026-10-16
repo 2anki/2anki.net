@@ -290,6 +290,22 @@ describe('SubscriptionService.cancelUserSubscriptions', () => {
     expect(sendCancelledEmail).not.toHaveBeenCalled();
   });
 
+  it('ends a paused subscription now even when the mode is period_end', async () => {
+    stripe.subscriptions.list.mockResolvedValue({
+      data: [
+        {
+          ...activeSub,
+          pause_collection: { behavior: 'void', resumes_at: periodEndSeconds },
+        },
+      ],
+    });
+
+    await SubscriptionService.cancelUserSubscriptions(email, 'period_end');
+
+    expect(stripe.subscriptions.cancel).toHaveBeenCalledWith('sub_123');
+    expect(stripe.subscriptions.update).not.toHaveBeenCalled();
+  });
+
   it('cancels immediately when mode is "immediate"', async () => {
     await SubscriptionService.cancelUserSubscriptions(email, 'immediate');
 
@@ -438,29 +454,43 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
     });
   });
 
-  it('cancels the matching subscription immediately', async () => {
-    await SubscriptionService.cancelSubscriptionById(
+  it('schedules an active plan at period end and reports the mode', async () => {
+    const mode = await SubscriptionService.cancelSubscriptionById(
       email,
-      'sub_owned',
-      'immediate'
+      'sub_owned'
     );
 
-    expect(stripe.subscriptions.cancel).toHaveBeenCalledWith('sub_owned');
-    expect(stripe.subscriptions.cancel).not.toHaveBeenCalledWith('sub_sibling');
-    expect(stripe.subscriptions.update).not.toHaveBeenCalled();
-  });
-
-  it('schedules cancellation at period end when mode is period_end', async () => {
-    await SubscriptionService.cancelSubscriptionById(
-      email,
-      'sub_owned',
-      'period_end'
-    );
-
+    expect(mode).toBe('period_end');
     expect(stripe.subscriptions.update).toHaveBeenCalledWith('sub_owned', {
       cancel_at_period_end: true,
     });
+    expect(stripe.subscriptions.update).not.toHaveBeenCalledWith(
+      'sub_sibling',
+      expect.anything()
+    );
     expect(stripe.subscriptions.cancel).not.toHaveBeenCalled();
+  });
+
+  it('ends a paused plan now', async () => {
+    const pausedSub = {
+      ...activeSub,
+      id: 'sub_paused',
+      pause_collection: { behavior: 'void', resumes_at: periodEndSeconds },
+    };
+    stripe.subscriptions.list.mockResolvedValue({ data: [pausedSub] });
+    stripe.subscriptions.cancel.mockResolvedValue({
+      ...pausedSub,
+      status: 'canceled',
+    });
+
+    const mode = await SubscriptionService.cancelSubscriptionById(
+      email,
+      'sub_paused'
+    );
+
+    expect(mode).toBe('immediate');
+    expect(stripe.subscriptions.cancel).toHaveBeenCalledWith('sub_paused');
+    expect(stripe.subscriptions.update).not.toHaveBeenCalled();
   });
 
   it('cancels a past_due subscription immediately and soft-deletes its DB row', async () => {
@@ -475,12 +505,12 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
       ended_at: periodEndSeconds,
     });
 
-    await SubscriptionService.cancelSubscriptionById(
+    const mode = await SubscriptionService.cancelSubscriptionById(
       email,
-      'sub_due',
-      'immediate'
+      'sub_due'
     );
 
+    expect(mode).toBe('immediate');
     expect(stripe.subscriptions.cancel).toHaveBeenCalledWith('sub_due');
     expect(stripe.subscriptions.update).not.toHaveBeenCalled();
     expect(db.whereRawSpy).toHaveBeenCalledWith("payload->>'id' = ?", [
@@ -493,20 +523,19 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
 
   it('throws SubscriptionNotOwnedError and never calls Stripe when the id is not owned', async () => {
     await expect(
-      SubscriptionService.cancelSubscriptionById(
-        email,
-        'sub_other',
-        'immediate'
-      )
+      SubscriptionService.cancelSubscriptionById(email, 'sub_other')
     ).rejects.toBeInstanceOf(SubscriptionNotOwnedError);
 
     expect(stripe.subscriptions.cancel).not.toHaveBeenCalled();
     expect(stripe.subscriptions.update).not.toHaveBeenCalled();
   });
 
-  it('soft-deletes only the targeted DB row scoped by the Stripe id on immediate cancel', async () => {
+  it('soft-deletes only the targeted DB row scoped by the Stripe id when a plan ends now', async () => {
     const db = buildDbMock();
     (getDatabase as Mock).mockReturnValue(db);
+    stripe.subscriptions.list.mockResolvedValue({
+      data: [{ ...ownedSub, status: 'unpaid' }, siblingSub],
+    });
     stripe.subscriptions.cancel.mockResolvedValue({
       id: 'sub_owned',
       status: 'canceled',
@@ -514,11 +543,7 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
       ended_at: 1800000000,
     });
 
-    await SubscriptionService.cancelSubscriptionById(
-      email,
-      'sub_owned',
-      'immediate'
-    );
+    await SubscriptionService.cancelSubscriptionById(email, 'sub_owned');
 
     expect(db.whereRawSpy).toHaveBeenCalledWith("payload->>'id' = ?", [
       'sub_owned',
@@ -535,15 +560,11 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
     expect(updatePayload.updated_at).toBeInstanceOf(Date);
   });
 
-  it('does not touch the DB for period_end cancel', async () => {
+  it('does not touch the DB when a plan is scheduled at period end', async () => {
     const db = buildDbMock();
     (getDatabase as Mock).mockReturnValue(db);
 
-    await SubscriptionService.cancelSubscriptionById(
-      email,
-      'sub_owned',
-      'period_end'
-    );
+    await SubscriptionService.cancelSubscriptionById(email, 'sub_owned');
 
     expect(db.deleteSpy).not.toHaveBeenCalled();
     expect(db.whereRawSpy).not.toHaveBeenCalled();
@@ -553,11 +574,7 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     try {
-      await SubscriptionService.cancelSubscriptionById(
-        email,
-        'sub_owned',
-        'immediate'
-      );
+      await SubscriptionService.cancelSubscriptionById(email, 'sub_owned');
 
       const leakedId = logSpy.mock.calls.some((args) =>
         args.some((arg) => typeof arg === 'string' && arg.includes('sub_owned'))

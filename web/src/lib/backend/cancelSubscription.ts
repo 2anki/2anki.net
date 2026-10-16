@@ -3,8 +3,6 @@ import { post } from './api';
 const UNAUTHORIZED = 401;
 const OK = 200;
 
-export type CancelMode = 'immediate' | 'period_end';
-
 // The self-serve cancel always ends at the period end; the server enforces
 // it, so there is no mode to send.
 export const cancelSubscription = async (
@@ -30,13 +28,14 @@ export const cancelSubscription = async (
   return response.json();
 };
 
+// The server decides how the plan ends: at the period end when one was paid
+// for, now when there is none to honour (unpaid or paused).
 export const cancelSubscriptionById = async (
-  id: string,
-  mode: CancelMode
+  id: string
 ): Promise<{ message: string }> => {
   const response = await post(
     `/api/users/subscriptions/${encodeURIComponent(id)}/cancel`,
-    { mode }
+    {}
   );
 
   if (response?.status === UNAUTHORIZED) {

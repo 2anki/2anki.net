@@ -537,7 +537,7 @@ describe('UsersController.cancelSubscriptionById', () => {
 
   it('returns 200 when a subscription is cancelled by id', async () => {
     (SubscriptionService.cancelSubscriptionById as Mock).mockResolvedValue(
-      undefined
+      'period_end'
     );
     const { controller } = buildByIdController();
     const req = {
@@ -550,15 +550,14 @@ describe('UsersController.cancelSubscriptionById', () => {
 
     expect(SubscriptionService.cancelSubscriptionById).toHaveBeenCalledWith(
       'sub@example.com',
-      'sub_owned',
-      'immediate'
+      'sub_owned'
     );
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
-  it('fires subscription_cancelled with reason and cancel_type from the request', async () => {
+  it('fires subscription_cancelled with the reason and the mode the service applied, not the request', async () => {
     (SubscriptionService.cancelSubscriptionById as Mock).mockResolvedValue(
-      undefined
+      'immediate'
     );
     const { controller } = buildByIdController();
     const req = {
@@ -572,7 +571,7 @@ describe('UsersController.cancelSubscriptionById', () => {
     expect(trackMock).toHaveBeenCalledTimes(1);
     expect(trackMock).toHaveBeenCalledWith('subscription_cancelled', {
       userId: 1,
-      props: { reason: 'I finished what I needed', cancel_type: 'period_end' },
+      props: { reason: 'I finished what I needed', cancel_type: 'immediate' },
     });
   });
 

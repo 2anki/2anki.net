@@ -20,14 +20,21 @@ export function useSubscriptionCancellation(onSuccess?: () => void) {
   };
 
   const { mutate, isPending: isCancelling } = useMutation({
-    mutationFn: ({ reason }: { periodEnd?: number | null; reason?: string }) =>
-      cancelSubscription(reason),
+    mutationFn: ({
+      reason,
+    }: {
+      periodEnd?: number | null;
+      reason?: string;
+      endsNow?: boolean;
+    }) => cancelSubscription(reason),
     onSuccess: (_data, variables) => {
       setCancelError('');
       setCancelSuccess(
-        t('subscription.cancelledPeriodEnd', {
-          date: formatPeriodEnd(variables.periodEnd),
-        })
+        variables.endsNow
+          ? t('subscription.cancelledImmediate')
+          : t('subscription.cancelledPeriodEnd', {
+              date: formatPeriodEnd(variables.periodEnd),
+            })
       );
       setShowFollowUp(true);
       onSuccess?.();
@@ -50,13 +57,16 @@ export function useSubscriptionCancellation(onSuccess?: () => void) {
     onSettled: () => setShowFollowUp(false),
   });
 
+  // endsNow: the server ends a paused plan at once (nothing was paid for the
+  // pause), so the success line must not promise access until a date.
   const cancelUserSubscription = (
     periodEnd?: number | null,
-    reason?: string
+    reason?: string,
+    endsNow = false
   ) => {
     setCancelError('');
     setCancelSuccess('');
-    mutate({ periodEnd, reason });
+    mutate({ periodEnd, reason, endsNow });
   };
 
   const submitFeedback = (reason: CancellationReason, comment: string) => {

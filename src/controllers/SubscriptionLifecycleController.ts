@@ -22,11 +22,8 @@ class SubscriptionLifecycleController {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    // Self-serve cancel always ends at the period end, whatever the client
-    // sends: a subscriber who cancels keeps the time they paid for. On
-    // 2026-07-09/10 one subscriber lost access the moment she cancelled,
-    // six times in two days, re-buying each time; the only safe place to
-    // hold the line is here, not in the client.
+    // Whatever the client sends, a subscriber who cancels keeps the time
+    // they paid for; the service ends a paused plan now, since it has none.
     const mode = 'period_end';
 
     try {
@@ -78,19 +75,15 @@ class SubscriptionLifecycleController {
       return res.status(400).json({ message: 'A subscription id is required' });
     }
 
-    const requestedMode =
-      req.body?.mode === 'period_end' ? 'period_end' : 'immediate';
-
     try {
       const user = await this.userService.getUserById(owner);
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      await SubscriptionService.cancelSubscriptionById(
+      const mode = await SubscriptionService.cancelSubscriptionById(
         user.email,
-        id,
-        requestedMode
+        id
       );
 
       const reason =
@@ -99,7 +92,7 @@ class SubscriptionLifecycleController {
           : null;
       track('subscription_cancelled', {
         userId: owner,
-        props: { reason, cancel_type: requestedMode },
+        props: { reason, cancel_type: mode },
       });
 
       return res.status(200).json({ message: 'This plan has been cancelled.' });

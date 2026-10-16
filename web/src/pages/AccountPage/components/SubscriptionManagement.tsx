@@ -438,9 +438,7 @@ function StripeSubscriptionManagement({
 
   const handleCancelDuringPause = () => {
     track('subscription_cancelled_during_pause');
-    cancelUserSubscription(
-      view.kind === 'paused' ? view.subscription.current_period_end : null
-    );
+    cancelUserSubscription(null, undefined, true);
   };
 
   const handleManageBilling = () => {

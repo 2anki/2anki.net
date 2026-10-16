@@ -87,16 +87,16 @@ describe('cancelSubscriptionById', () => {
     vi.clearAllMocks();
   });
 
-  it('posts the mode to the per-subscription endpoint with the id in the path', async () => {
+  it('posts to the per-subscription endpoint with the id in the path and no mode', async () => {
     vi.mocked(api.post).mockResolvedValue(
       createMockResponse(200, { message: 'cancelled' })
     );
 
-    await cancelSubscriptionById('sub_owned', 'immediate');
+    await cancelSubscriptionById('sub_owned');
 
     expect(api.post).toHaveBeenCalledWith(
       '/api/users/subscriptions/sub_owned/cancel',
-      { mode: 'immediate' }
+      {}
     );
   });
 
@@ -105,18 +105,18 @@ describe('cancelSubscriptionById', () => {
       createMockResponse(200, { message: 'cancelled' })
     );
 
-    await expect(
-      cancelSubscriptionById('sub_owned', 'immediate')
-    ).resolves.toEqual({ message: 'cancelled' });
+    await expect(cancelSubscriptionById('sub_owned')).resolves.toEqual({
+      message: 'cancelled',
+    });
   });
 
   it('redirects to login on 401', async () => {
     const original = globalThis.location.href;
     vi.mocked(api.post).mockResolvedValue(createMockResponse(401, {}));
 
-    await expect(
-      cancelSubscriptionById('sub_owned', 'immediate')
-    ).rejects.toThrow('Authentication required');
+    await expect(cancelSubscriptionById('sub_owned')).rejects.toThrow(
+      'Authentication required'
+    );
 
     globalThis.location.href = original;
   });
@@ -130,9 +130,9 @@ describe('cancelSubscriptionById', () => {
       )
     );
 
-    await expect(
-      cancelSubscriptionById('sub_other', 'immediate')
-    ).rejects.toThrow('Subscription not found');
+    await expect(cancelSubscriptionById('sub_other')).rejects.toThrow(
+      'Subscription not found'
+    );
   });
 });
 
