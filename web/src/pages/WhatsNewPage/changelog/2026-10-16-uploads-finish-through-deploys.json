@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-16-uploads-finish-through-deploys",
+  "date": "2026-10-16",
+  "type": "fix",
+  "title": "Uploads that are still converting when a new version goes live finish instead of failing"
+}

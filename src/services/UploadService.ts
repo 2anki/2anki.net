@@ -1236,6 +1236,12 @@ class UploadService {
             'This export is too large to process in one go. Try splitting it into smaller pages, removing embedded images, or enabling Claude AI in settings to process it in chunks.',
         };
         return res.status(400).json(body);
+      } else if (isWorkerTerminationError(err)) {
+        console.info('[UploadService] sync upload interrupted by pool drain');
+        return res.status(503).json({
+          code: 'unknown',
+          message: WORKER_INTERRUPTED_REASON,
+        });
       } else if (err instanceof UploadFileUnavailableError) {
         const owner = getOwner(res);
         track('conversion_failed', {

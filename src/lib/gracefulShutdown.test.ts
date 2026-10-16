@@ -23,7 +23,8 @@ import {
   describeActiveResources,
   describeDatabasePool,
   gracefulShutdown,
-  HTTP_CLOSE_BUDGET_MS,
+  HTTP_CLOSE_DEADLINE_MS,
+  HTTP_CLOSE_GRACE_MS,
   POOL_DRAIN_TIMEOUT_MS,
   SHUTDOWN_TIMEOUT_MS,
   PM2_KILL_TIMEOUT_MS,
@@ -156,26 +157,22 @@ describe('gracefulShutdown', () => {
     expect(SHUTDOWN_TIMEOUT_MS).toBeLessThan(PM2_KILL_TIMEOUT_MS);
   });
 
-  it('bounds the HTTP close so piscina keeps its full self-managed window', async () => {
-    const POOL_CLOSE_TIMEOUT_MS = (
-      await vi.importActual<typeof import('./conversionPool')>(
-        './conversionPool'
-      )
-    ).POOL_CLOSE_TIMEOUT_MS;
-    expect(HTTP_CLOSE_BUDGET_MS + POOL_CLOSE_TIMEOUT_MS).toBeLessThan(
-      SHUTDOWN_TIMEOUT_MS
+  it('keeps the sever deadline inside the hard-exit reserve after a full pool drain', () => {
+    expect(HTTP_CLOSE_DEADLINE_MS).toBeGreaterThanOrEqual(
+      POOL_DRAIN_TIMEOUT_MS
     );
+    expect(HTTP_CLOSE_DEADLINE_MS).toBeLessThan(SHUTDOWN_TIMEOUT_MS);
   });
 
-  it('severs hung connections after the close budget so the drain still runs', async () => {
-    vi.useFakeTimers();
-    const warnSpy = vi
-      .spyOn(console, 'warn')
-      .mockImplementation(() => undefined);
+  function holdingServer(): {
+    server: http.Server;
+    calls: { closeAll: number };
+    finishClose: () => void;
+  } {
     let closeCb: (() => void) | undefined;
     const calls = { closeAll: 0 };
-    // An open SSE stream is an in-flight request: closeIdleConnections cannot
-    // reap it and server.close waits for it forever.
+    // An in-flight request (an upload mid-conversion, an SSE stream): the
+    // server only closes once the handler ends it or the socket is destroyed.
     const server = {
       close: (cb?: () => void) => {
         closeCb = cb;
@@ -187,16 +184,120 @@ describe('gracefulShutdown', () => {
         closeCb?.();
       },
     } as unknown as http.Server;
+    return { server, calls, finishClose: () => closeCb?.() };
+  }
+
+  it('keeps an upload connection open until its conversion drains from the pool', async () => {
+    vi.useFakeTimers();
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    let releasePool: (() => void) | undefined;
+    drainMock.mockReturnValue(
+      new Promise<void>((resolve) => {
+        releasePool = resolve;
+      })
+    );
+    const { server, calls, finishClose } = holdingServer();
     const { db, destroyCalls } = fakeDatabase();
 
     const done = gracefulShutdown('SIGINT', server, db);
-    await Promise.resolve();
-    vi.advanceTimersByTime(HTTP_CLOSE_BUDGET_MS + 1);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(calls.closeAll).toBe(0);
+    expect(destroyCalls.count).toBe(0);
+
+    releasePool!();
+    await vi.advanceTimersByTimeAsync(HTTP_CLOSE_GRACE_MS - 1);
+    expect(calls.closeAll).toBe(0);
+    finishClose();
+    await vi.advanceTimersByTimeAsync(HTTP_CLOSE_GRACE_MS);
+    await done;
+
+    expect(calls.closeAll).toBe(0);
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(destroyCalls.count).toBe(1);
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    warnSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it('severs connections still open after the pool drained plus the grace so the exit still runs', async () => {
+    vi.useFakeTimers();
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const { server, calls } = holdingServer();
+    const { db, destroyCalls } = fakeDatabase();
+
+    const done = gracefulShutdown('SIGINT', server, db);
+    await vi.advanceTimersByTimeAsync(HTTP_CLOSE_GRACE_MS - 1);
+    expect(calls.closeAll).toBe(0);
+    await vi.advanceTimersByTimeAsync(2);
     await done;
 
     expect(calls.closeAll).toBe(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('severing remaining connections')
+    );
     expect(drainMock).toHaveBeenCalledTimes(1);
     expect(destroyCalls.count).toBe(1);
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    warnSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it('severs at the deadline, not grace later, when the pool drain ran to its timeout', async () => {
+    vi.useFakeTimers();
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    let releasePool: (() => void) | undefined;
+    drainMock.mockReturnValue(
+      new Promise<void>((resolve) => {
+        releasePool = resolve;
+      })
+    );
+    const { server, calls } = holdingServer();
+    const { db, destroyCalls } = fakeDatabase();
+
+    const done = gracefulShutdown('SIGINT', server, db);
+    await vi.advanceTimersByTimeAsync(POOL_DRAIN_TIMEOUT_MS);
+    releasePool!();
+    await vi.advanceTimersByTimeAsync(
+      HTTP_CLOSE_DEADLINE_MS - POOL_DRAIN_TIMEOUT_MS + 1
+    );
+    await done;
+
+    expect(calls.closeAll).toBe(1);
+    expect(destroyCalls.count).toBe(1);
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    expect(exitSpy).not.toHaveBeenCalledWith(1);
+    warnSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it('does not warn about a sever when HTTP closed before the pool drained', async () => {
+    vi.useFakeTimers();
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    let releasePool: (() => void) | undefined;
+    drainMock.mockReturnValue(
+      new Promise<void>((resolve) => {
+        releasePool = resolve;
+      })
+    );
+    const { server, calls } = fakeServer();
+    const { db } = fakeDatabase();
+
+    const done = gracefulShutdown('SIGINT', server, db);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(calls.close).toBe(1);
+    releasePool!();
+    await vi.advanceTimersByTimeAsync(HTTP_CLOSE_GRACE_MS + 1);
+    await done;
+
+    expect(warnSpy).not.toHaveBeenCalled();
     expect(exitSpy).toHaveBeenCalledWith(0);
     warnSpy.mockRestore();
     vi.useRealTimers();
@@ -240,9 +341,11 @@ describe('gracefulShutdown', () => {
     const phases = infoSpy.mock.calls
       .map(([m]) => String(m))
       .filter((m) => / drained in \d+ms$/.test(m));
-    expect(phases).toEqual([
-      expect.stringMatching(/^HTTP server drained in \d+ms$/),
+    expect(phases.slice(0, 2).sort()).toEqual([
       expect.stringMatching(/^Conversion pool drained in \d+ms$/),
+      expect.stringMatching(/^HTTP server drained in \d+ms$/),
+    ]);
+    expect(phases.slice(2)).toEqual([
       expect.stringMatching(/^Events sink drained in \d+ms$/),
       expect.stringMatching(/^Database pool drained in \d+ms$/),
     ]);
