@@ -2,7 +2,11 @@ import { vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { ensureUploadBytes, SNAPSHOT_MAX_BYTES } from './ensureUploadBytes';
+import {
+  DIR_ENTRIES_CAP,
+  ensureUploadBytes,
+  SNAPSHOT_MAX_BYTES,
+} from './ensureUploadBytes';
 import { UploadedFile } from '../../lib/storage/types';
 import { getFileContents } from './worker';
 
@@ -26,7 +30,7 @@ describe('ensureUploadBytes', () => {
   });
 
   afterEach(() => {
-    if (fs.existsSync(tmpPath)) fs.rmSync(tmpPath);
+    fs.rmSync(path.dirname(tmpPath), { recursive: true, force: true });
   });
 
   it('snapshots disk bytes into buffer when the file has a path but no buffer', () => {
@@ -90,7 +94,103 @@ describe('ensureUploadBytes', () => {
       '[upload] could not snapshot upload bytes',
       expect.objectContaining({
         count: 2,
+        total: 2,
         firstFile: path.basename(tmpPath),
+      })
+    );
+    warn.mockRestore();
+  });
+
+  it('reports the upload directory state when a file is missing', () => {
+    fs.rmSync(tmpPath);
+    fs.writeFileSync(path.join(path.dirname(tmpPath), 'sibling.bin'), 'x');
+    const file = makeFile({ path: tmpPath, size: 1234 });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const request = {
+      complete: true,
+      readableEnded: true,
+      aborted: false,
+      destroyed: true,
+      headersSent: false,
+    };
+    ensureUploadBytes([file], request);
+
+    expect(warn).toHaveBeenCalledWith(
+      '[upload] could not snapshot upload bytes',
+      expect.objectContaining({
+        count: 1,
+        total: 1,
+        firstSize: 1234,
+        firstCode: 'ENOENT',
+        dirExists: true,
+        dirEntries: 1,
+        dirEntriesCapped: false,
+        dirError: null,
+        request,
+      })
+    );
+    warn.mockRestore();
+  });
+
+  it('caps the directory count so a huge upload directory is not listed in full', () => {
+    fs.rmSync(tmpPath);
+    const dir = path.dirname(tmpPath);
+    for (let i = 0; i < DIR_ENTRIES_CAP + 5; i += 1) {
+      fs.writeFileSync(path.join(dir, `entry-${i}`), '');
+    }
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    ensureUploadBytes([makeFile({ path: tmpPath })]);
+
+    expect(warn).toHaveBeenCalledWith(
+      '[upload] could not snapshot upload bytes',
+      expect.objectContaining({
+        dirEntries: DIR_ENTRIES_CAP,
+        dirEntriesCapped: true,
+      })
+    );
+    warn.mockRestore();
+  });
+
+  it('reports a listing failure on a directory that exists as its own code', () => {
+    fs.rmSync(tmpPath);
+    const file = makeFile({ path: tmpPath });
+    const opendir = vi.spyOn(fs, 'opendirSync').mockImplementation(() => {
+      throw Object.assign(new Error('EACCES: permission denied'), {
+        code: 'EACCES',
+      });
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    ensureUploadBytes([file]);
+
+    expect(warn).toHaveBeenCalledWith(
+      '[upload] could not snapshot upload bytes',
+      expect.objectContaining({
+        dirExists: true,
+        dirEntries: null,
+        dirError: 'EACCES',
+      })
+    );
+    warn.mockRestore();
+    opendir.mockRestore();
+  });
+
+  it('reports a vanished upload directory as dirExists false', () => {
+    const dir = path.dirname(tmpPath);
+    fs.rmSync(dir, { recursive: true, force: true });
+    const file = makeFile({ path: tmpPath });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    ensureUploadBytes([file]);
+
+    expect(warn).toHaveBeenCalledWith(
+      '[upload] could not snapshot upload bytes',
+      expect.objectContaining({
+        dirExists: false,
+        dirEntries: null,
+        dirError: 'ENOENT',
       })
     );
     warn.mockRestore();

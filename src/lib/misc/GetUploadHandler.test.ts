@@ -97,6 +97,37 @@ describe('withNormalizedFilenames', () => {
     expect(file.buffer).toEqual(Buffer.from('disk-bytes'));
   });
 
+  it('passes the request state into the missing-file warning', () => {
+    fs.rmSync(tmpPath);
+    const file = makeDiskFile(tmpPath);
+    const req = {
+      files: [file],
+      destroyed: true,
+      aborted: false,
+      complete: true,
+      readableEnded: true,
+    } as unknown as express.Request;
+    const res = { headersSent: false } as express.Response;
+    const wrapped = withNormalizedFilenames((_req, _res, next) => next());
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    wrapped(req, res, vi.fn());
+
+    expect(warn).toHaveBeenCalledWith(
+      '[upload] could not snapshot upload bytes',
+      expect.objectContaining({
+        request: {
+          complete: true,
+          readableEnded: true,
+          aborted: false,
+          destroyed: true,
+          headersSent: false,
+        },
+      })
+    );
+    warn.mockRestore();
+  });
+
   it('skips the snapshot entirely when the request already aborted', () => {
     fs.rmSync(tmpPath); // multer 2.x removes temp files when the client aborts
     const file = makeDiskFile(tmpPath);
