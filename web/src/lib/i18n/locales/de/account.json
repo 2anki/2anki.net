@@ -53,7 +53,7 @@
     "cancelledPeriodEnd": "Gekündigt. Du behältst den Zugang bis {{date}}.",
     "cancelledImmediate": "Gekündigt. Der Zugang ist beendet.",
     "cancelFailed": "Dein Abo konnte nicht gekündigt werden. Versuch es gleich noch einmal.",
-    "perPlanCancelFailed": "Dieser Plan konnte nicht gekündigt werden. Versuch es noch einmal.",
+    "perPlanCancelFailed": "Dieser Tarif konnte nicht gekündigt werden. Versuch es noch einmal.",
     "pauseFailed": "Dein Abo konnte nicht pausiert werden. Versuch es gleich noch einmal.",
     "resumeFailed": "Dein Abo konnte nicht fortgesetzt werden. Versuch es gleich noch einmal."
   },
