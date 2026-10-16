@@ -22,13 +22,16 @@ export const SHUTDOWN_TIMEOUT_MS = 85_000;
 // can run past the old 23s window; the 80s budget lets it finish, and the 5s
 // reserve below SHUTDOWN_TIMEOUT_MS covers the trailing database.destroy().
 export const POOL_DRAIN_TIMEOUT_MS = POOL_CLOSE_TIMEOUT_MS + 3_000;
-// server.close() waits for every in-flight request, and an open SSE stream or
-// a slow client transfer is one closeIdleConnections cannot reap — unbounded,
-// this phase ate the whole 85s clock and starved the pool of its drain window
-// (~2 force-exits/week, #4177). After this budget the remaining connections
-// are severed; the retiring color is already off the load balancer, so the
-// only requests cut are ones that would die at the hard exit anyway.
-export const HTTP_CLOSE_BUDGET_MS = 2_000;
+// A synchronous upload holds its connection open while its conversion runs in
+// the pool, so the HTTP close and the pool drain run together: closing HTTP
+// first (the 2s budget from #4186) severed every upload the pool was about to
+// finish, one to three per deploy and 23 on 2026-10-09, logged as "- -"
+// right after "HTTP server drained in 2002ms". Idle connections still close at
+// once. Whatever is open once the pool has drained gets this long to flush its
+// response and is then severed, so an SSE stream or a stalled transfer cannot
+// hold the clock past the pool's own bound (#4177) and the hard exit keeps a
+// reserve: POOL_DRAIN_TIMEOUT_MS + HTTP_CLOSE_GRACE_MS < SHUTDOWN_TIMEOUT_MS.
+export const HTTP_CLOSE_GRACE_MS = 1_000;
 
 let shuttingDown = false;
 
@@ -111,30 +114,40 @@ export async function gracefulShutdown(
   }, SHUTDOWN_TIMEOUT_MS);
   hardExit.unref();
 
-  await timedPhase('HTTP server', async () => {
-    server.closeIdleConnections?.();
-    const closed = new Promise<void>((resolve) =>
-      server.close(() => resolve())
-    );
-    const closeBudget = setTimeout(() => {
-      console.warn(
-        `HTTP close exceeded ${HTTP_CLOSE_BUDGET_MS}ms — severing remaining connections`
-      );
-      server.closeAllConnections?.();
-    }, HTTP_CLOSE_BUDGET_MS);
-    closeBudget.unref();
-    await closed;
-    clearTimeout(closeBudget);
-  });
-
-  phase = 'Conversion pool';
-  await timedPhase('Conversion pool', async () => {
+  const poolDrained = timedPhase('Conversion pool', async () => {
     try {
       await shutdownConversionPool({ timeoutMs: POOL_DRAIN_TIMEOUT_MS });
     } catch (err) {
       console.error('Conversion pool drain failed:', err);
     }
   });
+
+  await timedPhase('HTTP server', async () => {
+    server.closeIdleConnections?.();
+    let closed = false;
+    const closedPromise = new Promise<void>((resolve) =>
+      server.close(() => {
+        closed = true;
+        resolve();
+      })
+    );
+    let sever: NodeJS.Timeout | undefined;
+    void poolDrained.then(() => {
+      if (closed) return;
+      sever = setTimeout(() => {
+        console.warn(
+          `HTTP close exceeded ${HTTP_CLOSE_GRACE_MS}ms after the conversion pool drained — severing remaining connections`
+        );
+        server.closeAllConnections?.();
+      }, HTTP_CLOSE_GRACE_MS);
+      sever.unref();
+    });
+    await closedPromise;
+    clearTimeout(sever);
+  });
+
+  phase = 'Conversion pool';
+  await poolDrained;
 
   // After the pool so the worker threads have finished flushing their own usage
   // rows into the main-thread sink; before the DB pool closes so the drained
