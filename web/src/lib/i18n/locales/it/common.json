@@ -386,7 +386,8 @@
       "creating": "Creazione account…",
       "create": "Crea un account",
       "loginQuestion": "Hai un account?",
-      "errorGeneric": "Qualcosa è andato storto dalla nostra parte. Riprova, oppure scrivi a support@2anki.net se continua a succedere."
+      "errorGeneric": "Qualcosa è andato storto dalla nostra parte. Riprova, oppure scrivi a support@2anki.net se continua a succedere.",
+      "errorNetwork": "Non siamo riusciti a raggiungere 2anki.net. Controlla la connessione e riprova. Se hai già un account, accedi."
     },
     "forgot": {
       "title": "Reimposta la password",

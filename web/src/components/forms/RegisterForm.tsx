@@ -33,6 +33,8 @@ interface Props {
 
 const MIN_PASSWORD_LENGTH = 8;
 const SIGNUP_FLAG_KEY = 'signup_completed_tracked';
+const REGISTER_ATTEMPTS = 2;
+const RETRY_DELAY_MS = 500;
 
 type SignupFailureReason =
   | 'account_exists'
@@ -62,6 +64,29 @@ function loginHref(redirect?: string | null): string {
   return `/login?redirect=${encodeURIComponent(redirect)}`;
 }
 
+function thrownCause(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function registerWithRetry(
+  email: string,
+  password: string,
+  signupOrigin: string | null
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= REGISTER_ATTEMPTS; attempt += 1) {
+    try {
+      return await get2ankiApi().register('', email, password, signupOrigin);
+    } catch (error) {
+      lastError = error;
+      if (attempt < REGISTER_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      }
+    }
+  }
+  throw lastError;
+}
+
 function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
   const { t } = useTranslation();
   const inline = variant === 'inline';
@@ -71,6 +96,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [accountExists, setAccountExists] = useState(false);
+  const [connectionFailed, setConnectionFailed] = useState(false);
   const signupOrigin = useMemo(
     () =>
       readSignupOrigin(
@@ -117,14 +143,10 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
     event.preventDefault();
     setLoading(true);
     setAccountExists(false);
+    setConnectionFailed(false);
 
     try {
-      const res = await get2ankiApi().register(
-        '',
-        email,
-        password,
-        signupOrigin
-      );
+      const res = await registerWithRetry(email, password, signupOrigin);
       if (res.status === 200) {
         track('signup_completed', { method: 'email' });
         fireSignupConversion();
@@ -162,8 +184,13 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
       }
     } catch (error) {
       console.error('Register submit failed', error);
-      track('signup_failed', { method: 'email', reason: 'network' });
-      setErrorMessage(t('auth.register.errorGeneric'));
+      track('signup_failed', {
+        method: 'email',
+        reason: 'network',
+        cause: thrownCause(error),
+        attempts: REGISTER_ATTEMPTS,
+      });
+      setConnectionFailed(true);
       setLoading(false);
     }
   };
@@ -188,6 +215,14 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
           <div className={styles.recoveryActions}>
             <Link to={loginHref(redirect)}>{t('auth.register.logIn')}</Link>
             <Link to="/forgot">{t('auth.register.resetPassword')}</Link>
+          </div>
+        </div>
+      )}
+      {connectionFailed && (
+        <div className={styles.recovery} role="alert">
+          <p>{t('auth.register.errorNetwork')}</p>
+          <div className={styles.recoveryActions}>
+            <Link to={loginHref(redirect)}>{t('auth.register.logIn')}</Link>
           </div>
         </div>
       )}

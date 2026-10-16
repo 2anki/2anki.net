@@ -386,7 +386,8 @@
       "creating": "Création du compte…",
       "create": "Créer un compte",
       "loginQuestion": "Tu as déjà un compte ?",
-      "errorGeneric": "Une erreur est survenue de notre côté. Réessaie, ou écris à support@2anki.net si ça continue."
+      "errorGeneric": "Une erreur est survenue de notre côté. Réessaie, ou écris à support@2anki.net si ça continue.",
+      "errorNetwork": "Impossible de joindre 2anki.net. Vérifie ta connexion et réessaie. Si tu as déjà un compte, connecte-toi plutôt."
     },
     "forgot": {
       "title": "Réinitialise ton mot de passe",
