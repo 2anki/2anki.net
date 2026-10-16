@@ -4,7 +4,10 @@ import { getUploadLimits } from './getUploadLimits';
 import { getMaxUploadCount } from './getMaxUploadCount';
 import { isPaying } from '../isPaying';
 import { decodeMultipartFilename } from './decodeMultipartFilename';
-import { ensureUploadBytes } from '../../usecases/uploads/ensureUploadBytes';
+import {
+  ensureUploadBytes,
+  type UploadRequestState,
+} from '../../usecases/uploads/ensureUploadBytes';
 import { UploadedFile } from '../storage/types';
 
 type UploadHandler = (
@@ -35,7 +38,7 @@ export function withNormalizedFilenames(
       // true for every healthy request by the time multer calls back and
       // would disable the snapshot everywhere.
       const requestDead = req.aborted || res.writableEnded || res.destroyed;
-      const requestState = {
+      const requestState: UploadRequestState = {
         complete: req.complete,
         readableEnded: req.readableEnded,
         aborted: req.aborted,
