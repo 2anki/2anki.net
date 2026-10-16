@@ -17,7 +17,7 @@
     "cancelThisPlan": "Dit abonnement opzeggen",
     "cancelThisPlanNow": "Dit abonnement opzeggen?",
     "cancelPlanNoticeWithLabel": "Het {{planLabel}}-abonnement eindigt op {{date}}, het einde van de periode die je hebt betaald. Je kaart wordt er niet meer voor belast.",
-    "cancelPlanNotice": "Dit abonnement eindigt met de periode die je hebt betaald. Je kaart wordt er niet meer voor belast.",
+    "cancelPlanNotice": "Dit abonnement loopt af aan het einde van de periode waarvoor je hebt betaald. Je kaart wordt er niet meer voor belast.",
     "processing": "Verwerken…",
     "keepIt": "Behouden",
     "multipleActive": "Je hebt {{count}} actieve abonnementen. Je wordt waarschijnlijk dubbel belast — zeg het abonnement op dat je niet wilt houden.",
