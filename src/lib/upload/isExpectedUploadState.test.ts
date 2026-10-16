@@ -18,6 +18,7 @@ describe('isExpectedUploadState', () => {
     'EpubNoAnnotationsError',
     'EpubTooLargeError',
     'NotionDatabaseColumnsError',
+    'InvalidPDFException',
   ])(
     'treats %s as a user input state even after the worker rebuilds it',
     (name) => {

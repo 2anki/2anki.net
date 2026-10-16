@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-16-damaged-pdf-message",
+  "date": "2026-10-16",
+  "type": "fix",
+  "title": "A damaged PDF upload gets a plain explanation and what to try, not a library error"
+}

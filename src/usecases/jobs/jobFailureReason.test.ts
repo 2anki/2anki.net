@@ -29,6 +29,7 @@ import {
   isNotionUnauthorizedError,
   jobFailureReasonCode,
   jobFailureReasonFromError,
+  PDF_UNREADABLE_REASON,
 } from './jobFailureReason';
 import { ConversionChildCrashedError } from '../../lib/workerTermination';
 
@@ -444,6 +445,14 @@ describe('jobFailureReasonCode', () => {
     expect(
       jobFailureReasonCode(new Error(buildPdfPasswordSentinel('lecture.pdf')))
     ).toBe('pdf_password');
+  });
+
+  it('maps a pdf.js InvalidPDFException to pdf_unreadable with the PDF copy', () => {
+    const error = rehydrated('InvalidPDFException', 'Invalid PDF structure');
+    expect(jobFailureReasonCode(error)).toBe('pdf_unreadable');
+    expect(jobFailureReasonFromError(error, 'job-1')).toBe(
+      PDF_UNREADABLE_REASON
+    );
   });
 
   it('maps a pdfinfo_failed error to pdf_unreadable', () => {

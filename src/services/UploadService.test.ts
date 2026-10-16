@@ -766,6 +766,54 @@ describe('UploadService.handleUpload — error paths', () => {
     );
   });
 
+  it('returns 400 with code pdf_processing_failed when pdf.js rejects the file structure', async () => {
+    const invalidPdf = new Error('Invalid PDF structure');
+    invalidPdf.name = 'InvalidPDFException';
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(invalidPdf),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      files: [
+        {
+          fieldname: 'files',
+          originalname: 'notes.pdf',
+          mimetype: 'application/pdf',
+          size: 1024,
+          path: '/tmp/notes.pdf',
+          encoding: '7bit',
+          destination: '/tmp',
+          filename: 'notes.pdf',
+          buffer: Buffer.alloc(0),
+          stream: null,
+        } as unknown as Express.Multer.File,
+      ],
+    });
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    const body = capturedJson() as { code: string; message: string };
+    expect(body.code).toBe('pdf_processing_failed');
+    expect(body.message).not.toMatch(/Invalid PDF structure/);
+    expect(body.message).toMatch(/could not read this PDF/);
+    // A damaged file is a user-input state, like a pdfinfo failure: it is not
+    // a conversion failure for the funnel or a red tile for ops (#4496).
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.anything()
+    );
+  });
+
   it('rejects .apkg upload with 400 and the "already an Anki deck" message before reaching GeneratePackagesUseCase', async () => {
     const executeMock = vi.fn();
     MockGeneratePackagesUseCase.mockImplementation(function () {
