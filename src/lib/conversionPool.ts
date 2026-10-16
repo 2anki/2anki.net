@@ -20,6 +20,7 @@ import {
   resolveConversionChildEntry,
 } from './conversionProcessPool';
 import { pinConversionTaskInput } from './conversionTaskInput';
+import { createWorkerTerminationError } from './workerTermination';
 import type { ConversionWorkerRequest } from './conversionRequestTypes';
 
 export { resolveConversionWorkers } from './pythonWorkerBudget';
@@ -38,6 +39,7 @@ export const POOL_CLOSE_TIMEOUT_MS = 80_000;
 export { MAX_OLD_GENERATION_SIZE_MB };
 
 let pool: ConversionProcessPool | null = null;
+let shuttingDown = false;
 
 const BYTES_PER_MB = 1024 * 1024;
 
@@ -46,6 +48,7 @@ const defaultForkFn: ForkFn = (modulePath, args, options) =>
 
 export function resetConversionPoolForTesting(): void {
   pool = null;
+  shuttingDown = false;
 }
 
 export function initConversionPool(): ConversionProcessPool {
@@ -65,7 +68,12 @@ export function initConversionPool(): ConversionProcessPool {
   return pool;
 }
 
+// Once the drain has begun, work that has not reached the pool yet is refused
+// with the same error the drain timeout uses, so callers mark the job
+// interrupted and the user retries on the new color. Letting it through would
+// start a fresh pool nobody drains, with children the exit then orphans.
 export function getConversionPool(): ConversionProcessPool {
+  if (shuttingDown) throw createWorkerTerminationError();
   return initConversionPool();
 }
 
@@ -115,8 +123,12 @@ export async function runUploadGeneration(
 export async function shutdownConversionPool(
   options: { timeoutMs?: number } = {}
 ): Promise<void> {
+  shuttingDown = true;
   if (pool == null) return;
   const handle = pool;
-  pool = null;
-  await handle.shutdown(options.timeoutMs);
+  try {
+    await handle.shutdown(options.timeoutMs);
+  } finally {
+    if (pool === handle) pool = null;
+  }
 }

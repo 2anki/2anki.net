@@ -89,6 +89,10 @@ import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase
 import { writePdfImageFallbackMarker } from '../infrastracture/adapters/fileConversion/pdfImageFallbackMarker';
 import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
+import {
+  createWorkerTerminationError,
+  WORKER_INTERRUPTED_REASON,
+} from '../lib/workerTermination';
 import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import UploadService, { resolveUploadWarning } from './UploadService';
@@ -731,6 +735,35 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(body.code).toBe('docx_processing_failed');
     expect(typeof body.message).toBe('string');
     expect(body.message).not.toMatch(/docx_parse_failed/);
+  });
+
+  it('answers 503 with the retry copy when the pool drain interrupts a sync upload', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(createWorkerTerminationError()),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(503);
+    expect(capturedJson()).toEqual({
+      code: 'unknown',
+      message: WORKER_INTERRUPTED_REASON,
+    });
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.anything()
+    );
   });
 
   it('rejects .apkg upload with 400 and the "already an Anki deck" message before reaching GeneratePackagesUseCase', async () => {

@@ -19,19 +19,21 @@ export const SHUTDOWN_TIMEOUT_MS = 85_000;
 // tasks and waits for in-flight ones, then on this timeout rejects the stragglers
 // (callers mark the job interrupted) and SIGKILLs the child groups. A large
 // Notion deck (pagination plus image/PDF downloads plus the Python .apkg build)
-// can run past the old 23s window; the 80s budget lets it finish, and the 5s
-// reserve below SHUTDOWN_TIMEOUT_MS covers the trailing database.destroy().
+// can run past the old 23s window; the 80s budget lets it finish.
 export const POOL_DRAIN_TIMEOUT_MS = POOL_CLOSE_TIMEOUT_MS + 3_000;
 // A synchronous upload holds its connection open while its conversion runs in
 // the pool, so the HTTP close and the pool drain run together: closing HTTP
 // first (the 2s budget from #4186) severed every upload the pool was about to
 // finish, one to three per deploy and 23 on 2026-10-09, logged as "- -"
 // right after "HTTP server drained in 2002ms". Idle connections still close at
-// once. Whatever is open once the pool has drained gets this long to flush its
-// response and is then severed, so an SSE stream or a stalled transfer cannot
-// hold the clock past the pool's own bound (#4177) and the hard exit keeps a
-// reserve: POOL_DRAIN_TIMEOUT_MS + HTTP_CLOSE_GRACE_MS < SHUTDOWN_TIMEOUT_MS.
-export const HTTP_CLOSE_GRACE_MS = 1_000;
+// once. Once the pool has drained, whatever is still open gets this long to
+// persist and stream its response, then is severed, so an SSE stream or a
+// stalled transfer cannot hold the clock (#4177).
+export const HTTP_CLOSE_GRACE_MS = 10_000;
+// The sever never fires later than this far into the shutdown, whatever the
+// grace says, so the events sink and the DB teardown keep a slice of the clock
+// after a pool drain that ran to its own timeout.
+export const HTTP_CLOSE_DEADLINE_MS = SHUTDOWN_TIMEOUT_MS - 2_000;
 
 let shuttingDown = false;
 
@@ -40,6 +42,7 @@ export function resetGracefulShutdownStateForTesting(): void {
 }
 
 type DrainPhase =
+  | 'HTTP server and conversion pool'
   | 'HTTP server'
   | 'Events sink'
   | 'Conversion pool'
@@ -100,7 +103,8 @@ export async function gracefulShutdown(
     console.info(`Cleared ${clearedTimers} scheduler timer(s)`);
   }
 
-  let phase: DrainPhase = 'HTTP server';
+  const startedAt = Date.now();
+  let phase: DrainPhase = 'HTTP server and conversion pool';
   const hardExit = setTimeout(() => {
     console.error(
       `Graceful shutdown exceeded ${SHUTDOWN_TIMEOUT_MS}ms during ${phase.toLowerCase()} drain — forcing exit`,
@@ -134,12 +138,14 @@ export async function gracefulShutdown(
     let sever: NodeJS.Timeout | undefined;
     void poolDrained.then(() => {
       if (closed) return;
+      const untilDeadline = startedAt + HTTP_CLOSE_DEADLINE_MS - Date.now();
+      const graceMs = Math.max(0, Math.min(HTTP_CLOSE_GRACE_MS, untilDeadline));
       sever = setTimeout(() => {
         console.warn(
-          `HTTP close exceeded ${HTTP_CLOSE_GRACE_MS}ms after the conversion pool drained — severing remaining connections`
+          `HTTP close exceeded ${graceMs}ms after the conversion pool drained — severing remaining connections`
         );
         server.closeAllConnections?.();
-      }, HTTP_CLOSE_GRACE_MS);
+      }, graceMs);
       sever.unref();
     });
     await closedPromise;

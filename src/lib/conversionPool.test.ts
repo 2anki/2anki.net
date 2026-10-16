@@ -9,6 +9,7 @@ import {
   type ConversionWorkerRequest,
 } from './conversionPool';
 import { ConversionProcessPool } from './conversionProcessPool';
+import { WORKER_TERMINATION_MESSAGE } from './workerTermination';
 
 describe('resolveConversionWorkers', () => {
   const previous = process.env.CONVERSION_WORKERS;
@@ -72,6 +73,61 @@ describe('conversion pool public API', () => {
         undefined,
         { kind: 'background', owner: '42' }
       );
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('refuses work that arrives once the drain has begun with the termination error', async () => {
+    vi.spyOn(ConversionProcessPool.prototype, 'start').mockImplementation(
+      () => undefined
+    );
+    const runTask = vi
+      .spyOn(ConversionProcessPool.prototype, 'runTask')
+      .mockResolvedValue(undefined);
+    let finishDrain: (() => void) | undefined;
+    const shutdown = vi
+      .spyOn(ConversionProcessPool.prototype, 'shutdown')
+      .mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishDrain = resolve;
+        })
+      );
+    try {
+      await runConversion({ owner: '42' } as ConversionWorkerRequest);
+      const draining = shutdownConversionPool({ timeoutMs: 10 });
+
+      await expect(
+        runConversion({ owner: '43' } as ConversionWorkerRequest)
+      ).rejects.toThrow(WORKER_TERMINATION_MESSAGE);
+      expect(runTask).toHaveBeenCalledTimes(1);
+      expect(describeConversionPool()).not.toBeNull();
+
+      finishDrain!();
+      await draining;
+      expect(shutdown).toHaveBeenCalledWith(10);
+      expect(describeConversionPool()).toBeNull();
+      await expect(
+        runConversion({ owner: '44' } as ConversionWorkerRequest)
+      ).rejects.toThrow(WORKER_TERMINATION_MESSAGE);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('refuses work after a shutdown that found no pool to drain', async () => {
+    vi.spyOn(ConversionProcessPool.prototype, 'start').mockImplementation(
+      () => undefined
+    );
+    const runTask = vi
+      .spyOn(ConversionProcessPool.prototype, 'runTask')
+      .mockResolvedValue(undefined);
+    try {
+      await shutdownConversionPool();
+      await expect(
+        runConversion({ owner: '42' } as ConversionWorkerRequest)
+      ).rejects.toThrow(WORKER_TERMINATION_MESSAGE);
+      expect(runTask).not.toHaveBeenCalled();
     } finally {
       vi.restoreAllMocks();
     }
