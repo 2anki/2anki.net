@@ -74,7 +74,7 @@ Load on demand — read these when the task touches the named surface (kept out 
 - `.claude/docs/browser-attestation.md` — read before merging any PR that touches `web/src/` (the merge hook enforces the attestation; this file explains both accepted forms).
 - `.claude/docs/first-time-fix.md` — read before touching any user-reported bug, before writing a line of diagnosis.
 - `.claude/docs/changelog.md` — read before adding a changelog entry or opening any `feat:`/`fix:` PR. The non-negotiable core: user-visible changes ship a changelog JSON in the same PR (merge hook enforces).
-- `.claude/docs/support-email.md` — read before drafting any support reply or user-facing email (draft goes to a `.txt` in Downloads, salutation/pronoun rules, no dashes).
+- `.claude/docs/support-email.md` — read before drafting or sending any support reply or user-facing email (draft goes to a `.txt` in Downloads, salutation/pronoun rules, no dashes, sending goes through `himalaya` from `support@2anki.net`, never the Gmail MCP).
 - `.claude/docs/email-templates.md` — read before editing any template under `src/services/EmailService/templates/`.
 - `.claude/docs/parallel-pr-coordination.md` — read before kicking off a multi-PR batch (more than two PRs in flight) or running `/spec-draft-pr` more than once in a row.
 - `.claude/docs/local-dev.md` — read when running toolchain/migrations/checks locally on the maintainer's machine, working out of a git worktree, or diagnosing a pre-push/deploy-status oddity.

@@ -8,8 +8,9 @@ Additional rule (scope: hand-written support replies ONLY — product email temp
 
 ## Sending
 
-**Support mail goes out from `support@2anki.net` through `himalaya`, never through the Gmail MCP.** The Gmail connector sends from Alexander's personal address, so the customer's reply lands outside the support inbox and the thread never reaches `himalaya`'s `Sent` folder. The `support` account in `~/.config/himalaya/config.toml` is the default account; it holds the IMAP and SMTP credentials, so no secret is needed on the command line. (2026-10-16: a refund offer to user 23291 went out via the Gmail MCP from the personal address while signed `support@2anki.net`; nothing in this doc had named the tool.)
+**Support mail goes out from `support@2anki.net` through `himalaya`, never through the Gmail MCP.** The Gmail connector sends from Alexander's personal address, so the customer's reply lands outside the support inbox and the thread never reaches the support `Sent` folder. The `support` account in `~/.config/himalaya/config.toml` is the default account; it holds the IMAP and SMTP credentials, so no secret is needed on the command line. (2026-10-16: a refund offer to a customer went out via the Gmail MCP from the personal address while signed `support@2anki.net`; nothing in this doc had named the tool.)
 
-- Reply to an inbound message by its envelope id so the thread stays intact: `himalaya envelope list` to find the id, then `himalaya message reply <id> --send` after the draft in Downloads is approved.
-- A first contact (no inbound mail to reply to) is a file with `From: 2anki Support <support@2anki.net>`, `To:`, `Subject:`, a blank line and the approved body, sent with `himalaya message send --save Sent <path>`.
-- Send only after Alexander says to send. One message per customer; a mis-sent mail is not resent from the other address.
+- Reply to an inbound message by its envelope id so the thread stays intact. `himalaya envelope list` finds the id. After Alexander approves the draft: `himalaya message reply <id> --to <customer address> --body-file ~/Downloads/reply-<name>.txt --save Sent --send`. The reply quotes the customer's message under the body, so the draft holds only the new text.
+- A first contact (no inbound mail to reply to) is a file with `From: 2anki Support <support@2anki.net>`, `To:`, `Subject:`, a blank line and the approved body, sent with `himalaya message send --save Sent -- <path>`.
+- A customer who replied to a mail that left from the personal address gets the next message from `support@2anki.net` as a reply to their message (set `In-Reply-To` to its `Message-ID` when it is not in the support inbox). Never resend the first message from the second address.
+- Send only after Alexander says to send.
