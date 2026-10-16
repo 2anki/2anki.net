@@ -28,6 +28,7 @@ import re
 import shutil
 import sys
 import tempfile
+import unicodedata
 import uuid
 
 from anki.collection import AddNoteRequest, Collection, ExportAnkiPackageOptions
@@ -48,11 +49,16 @@ def sanitize_filename(filename):
     """
     Sanitize the filename by removing any character that is not alphanumeric, a space, or a hyphen.
     Replace spaces with hyphens. Ensures the result is safe for use as a filename.
-    Whitespace other than a plain space (tabs, form feeds, U+2028, record
-    separators) is dropped: str.splitlines() treats those as line breaks, and a
-    path printed with one in it reaches the caller as a bare fragment.
+    Other space characters (a non-breaking or ideographic space pasted from
+    Notion) count as a space. Whitespace that is not a space (tabs, form feeds,
+    U+2028, record separators) is dropped: str.splitlines() treats those as
+    line breaks, and a path printed with one in it reaches the caller as a
+    bare fragment.
     """
-    sanitized = re.sub(r'[^\S ]', '', filename)
+    spaced = ''.join(
+        ' ' if unicodedata.category(char) == 'Zs' else char for char in filename
+    )
+    sanitized = re.sub(r'[^\S ]', '', spaced)
     sanitized = re.sub(
         r'[^\w\s\-\U0001F600-\U0001F64F]', '', sanitized, flags=re.UNICODE
     )
