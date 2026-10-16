@@ -10,8 +10,7 @@ export function usePerSubscriptionCancellation(onSuccess?: () => void) {
   const [cancelError, setCancelError] = useState<string>('');
 
   const { mutate, isPending: isCancelling } = useMutation({
-    mutationFn: ({ id }: { id: string }) =>
-      cancelSubscriptionById(id, 'immediate'),
+    mutationFn: ({ id }: { id: string }) => cancelSubscriptionById(id),
     onSuccess: () => {
       setCancelError('');
       setErrorSubId(null);

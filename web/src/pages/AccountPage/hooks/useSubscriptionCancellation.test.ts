@@ -36,11 +36,11 @@ describe('useSubscriptionCancellation', () => {
     });
 
     act(() => {
-      result.current.cancelUserSubscription('period_end', 1_800_000_000);
+      result.current.cancelUserSubscription(1_800_000_000);
     });
 
     await waitFor(() => {
-      expect(cancelSubscription).toHaveBeenCalledWith('period_end', undefined);
+      expect(cancelSubscription).toHaveBeenCalledWith(undefined);
     });
   });
 
@@ -53,17 +53,13 @@ describe('useSubscriptionCancellation', () => {
 
     act(() => {
       result.current.cancelUserSubscription(
-        'period_end',
         1_800_000_000,
         "I don't use it enough"
       );
     });
 
     await waitFor(() => {
-      expect(cancelSubscription).toHaveBeenCalledWith(
-        'period_end',
-        "I don't use it enough"
-      );
+      expect(cancelSubscription).toHaveBeenCalledWith("I don't use it enough");
     });
   });
 
@@ -75,7 +71,7 @@ describe('useSubscriptionCancellation', () => {
     });
 
     act(() => {
-      result.current.cancelUserSubscription('period_end', 1_800_000_000);
+      result.current.cancelUserSubscription(1_800_000_000);
     });
 
     await waitFor(() => {
@@ -85,6 +81,23 @@ describe('useSubscriptionCancellation', () => {
       /^Cancelled\. You keep access until /
     );
     expect(result.current.cancelError).toBe('');
+  });
+
+  it('says access has ended when the plan ends now', async () => {
+    vi.mocked(cancelSubscription).mockResolvedValue({ message: 'ok' });
+
+    const { result } = renderHook(() => useSubscriptionCancellation(), {
+      wrapper: buildWrapper(),
+    });
+
+    act(() => {
+      result.current.cancelUserSubscription(null, undefined, true);
+    });
+
+    await waitFor(() => {
+      expect(result.current.showFollowUp).toBe(true);
+    });
+    expect(result.current.cancelSuccess).toBe('Cancelled. Access has ended.');
   });
 
   it('surfaces the server message and keeps the follow-up hidden on failure', async () => {
@@ -97,7 +110,7 @@ describe('useSubscriptionCancellation', () => {
     });
 
     act(() => {
-      result.current.cancelUserSubscription('period_end', 1_800_000_000);
+      result.current.cancelUserSubscription(1_800_000_000);
     });
 
     await waitFor(() => {

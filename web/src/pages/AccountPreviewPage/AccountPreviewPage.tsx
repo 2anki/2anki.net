@@ -171,11 +171,6 @@ const variants: Variant[] = [
           <p className={accountStyles.statusLine}>
             Ends <strong>15 June 2026</strong>. Access continues until then.
           </p>
-          <div className={accountStyles.actions}>
-            <button type="button" className={accountStyles.textButton}>
-              Cancel now instead
-            </button>
-          </div>
         </section>
         <AccountDeletion />
       </>

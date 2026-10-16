@@ -37,28 +37,14 @@ describe('cancelSubscription', () => {
     });
   });
 
-  it('defaults mode to period_end when called without args', async () => {
+  it('sends no cancel mode: the server always schedules the period end', async () => {
     vi.mocked(api.post).mockResolvedValue(
       createMockResponse(200, { message: 'ok' })
     );
 
     await cancelSubscription();
 
-    expect(api.post).toHaveBeenCalledWith('/api/users/cancel-subscription', {
-      mode: 'period_end',
-    });
-  });
-
-  it('sends the requested mode in the body', async () => {
-    vi.mocked(api.post).mockResolvedValue(
-      createMockResponse(200, { message: 'ok' })
-    );
-
-    await cancelSubscription('immediate');
-
-    expect(api.post).toHaveBeenCalledWith('/api/users/cancel-subscription', {
-      mode: 'immediate',
-    });
+    expect(api.post).toHaveBeenCalledWith('/api/users/cancel-subscription', {});
   });
 
   it('throws the server message from a JSON error body', async () => {
@@ -83,27 +69,14 @@ describe('cancelSubscription', () => {
     await expect(cancelSubscription()).rejects.toThrow('Internal Server Error');
   });
 
-  it('does not send a reason when none is provided', async () => {
+  it('sends the reason when provided', async () => {
     vi.mocked(api.post).mockResolvedValue(
       createMockResponse(200, { message: 'ok' })
     );
 
-    await cancelSubscription('period_end');
+    await cancelSubscription("I don't use it enough");
 
     expect(api.post).toHaveBeenCalledWith('/api/users/cancel-subscription', {
-      mode: 'period_end',
-    });
-  });
-
-  it('sends the reason alongside the mode when provided', async () => {
-    vi.mocked(api.post).mockResolvedValue(
-      createMockResponse(200, { message: 'ok' })
-    );
-
-    await cancelSubscription('period_end', "I don't use it enough");
-
-    expect(api.post).toHaveBeenCalledWith('/api/users/cancel-subscription', {
-      mode: 'period_end',
       reason: "I don't use it enough",
     });
   });
@@ -114,16 +87,16 @@ describe('cancelSubscriptionById', () => {
     vi.clearAllMocks();
   });
 
-  it('posts the mode to the per-subscription endpoint with the id in the path', async () => {
+  it('posts to the per-subscription endpoint with the id in the path and no mode', async () => {
     vi.mocked(api.post).mockResolvedValue(
       createMockResponse(200, { message: 'cancelled' })
     );
 
-    await cancelSubscriptionById('sub_owned', 'immediate');
+    await cancelSubscriptionById('sub_owned');
 
     expect(api.post).toHaveBeenCalledWith(
       '/api/users/subscriptions/sub_owned/cancel',
-      { mode: 'immediate' }
+      {}
     );
   });
 
@@ -132,18 +105,18 @@ describe('cancelSubscriptionById', () => {
       createMockResponse(200, { message: 'cancelled' })
     );
 
-    await expect(
-      cancelSubscriptionById('sub_owned', 'immediate')
-    ).resolves.toEqual({ message: 'cancelled' });
+    await expect(cancelSubscriptionById('sub_owned')).resolves.toEqual({
+      message: 'cancelled',
+    });
   });
 
   it('redirects to login on 401', async () => {
     const original = globalThis.location.href;
     vi.mocked(api.post).mockResolvedValue(createMockResponse(401, {}));
 
-    await expect(
-      cancelSubscriptionById('sub_owned', 'immediate')
-    ).rejects.toThrow('Authentication required');
+    await expect(cancelSubscriptionById('sub_owned')).rejects.toThrow(
+      'Authentication required'
+    );
 
     globalThis.location.href = original;
   });
@@ -157,9 +130,9 @@ describe('cancelSubscriptionById', () => {
       )
     );
 
-    await expect(
-      cancelSubscriptionById('sub_other', 'immediate')
-    ).rejects.toThrow('Subscription not found');
+    await expect(cancelSubscriptionById('sub_other')).rejects.toThrow(
+      'Subscription not found'
+    );
   });
 });
 

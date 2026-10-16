@@ -7,6 +7,13 @@ import { isPaused } from '../lib/subscriptions/isPaused';
 
 export type CancelMode = 'immediate' | 'period_end';
 
+const UNPAID_STATUSES: ReadonlySet<string> = new Set([
+  'past_due',
+  'unpaid',
+  'incomplete',
+  'incomplete_expired',
+]);
+
 async function softDeleteLocalSubscription(
   db: ReturnType<typeof getDatabase>,
   stripeSubscriptionId: string,
@@ -175,7 +182,11 @@ export class SubscriptionService {
     const db = getDatabase();
 
     for (const sub of subs) {
-      if (mode === 'immediate') {
+      // A paused subscription has no paid period in progress (its invoices
+      // are voided and paid features are off), so there is nothing to keep
+      // open until a period end: it ends now.
+      const endsNow = mode === 'immediate' || isPaused(sub);
+      if (endsNow) {
         console.log(`Cancelling Stripe subscription ${sub.id} immediately`);
         const canceled = await stripe.subscriptions.cancel(sub.id);
         await softDeleteLocalSubscription(db, sub.id, canceled);
@@ -207,20 +218,24 @@ export class SubscriptionService {
     return subs.length;
   }
 
+  // The caller never picks the mode. A plan with a paid period in progress is
+  // scheduled to end with that period; one with no paid period to honour (an
+  // unpaid status, or a pause with its invoices voided) ends now. Returns the
+  // mode that was applied so the caller can record it.
   static async cancelSubscriptionById(
     callerEmail: string,
-    id: string,
-    mode: CancelMode
-  ): Promise<void> {
+    id: string
+  ): Promise<CancelMode> {
     const owned = await this.findRecentStripeSubscriptions(callerEmail);
-    const isOwned = owned.some((sub) => sub.id === id);
-    if (!isOwned) {
+    const target = owned.find((sub) => sub.id === id);
+    if (target == null) {
       throw new SubscriptionNotOwnedError();
     }
 
     const stripe = getStripe();
+    const endsNow = isPaused(target) || UNPAID_STATUSES.has(target.status);
 
-    if (mode === 'immediate') {
+    if (endsNow) {
       const canceled = await stripe.subscriptions.cancel(id);
       await softDeleteLocalSubscription(getDatabase(), id, canceled);
     } else {
@@ -228,6 +243,7 @@ export class SubscriptionService {
     }
 
     console.log('subscription_self_serve_extra_cancel');
+    return endsNow ? 'immediate' : 'period_end';
   }
 
   static async pauseSubscription(

@@ -22,8 +22,9 @@ class SubscriptionLifecycleController {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const requestedMode =
-      req.body?.mode === 'immediate' ? 'immediate' : 'period_end';
+    // Whatever the client sends, a subscriber who cancels keeps the time
+    // they paid for; the service ends a paused plan now, since it has none.
+    const mode = 'period_end';
 
     try {
       const user = await this.userService.getUserById(owner);
@@ -33,7 +34,7 @@ class SubscriptionLifecycleController {
 
       const processedCount = await SubscriptionService.cancelUserSubscriptions(
         user.email,
-        requestedMode
+        mode
       );
 
       if (processedCount === 0) {
@@ -49,15 +50,13 @@ class SubscriptionLifecycleController {
           : null;
       track('subscription_cancelled', {
         userId: owner,
-        props: { reason, cancel_type: requestedMode },
+        props: { reason, cancel_type: mode },
       });
 
-      const message =
-        requestedMode === 'immediate'
-          ? 'Your subscription has been cancelled. A confirmation email is on its way.'
-          : 'Your subscription is scheduled to cancel at the end of the current billing period. A confirmation email is on its way.';
-
-      res.status(200).json({ message });
+      res.status(200).json({
+        message:
+          'Your subscription is scheduled to cancel at the end of the current billing period. A confirmation email is on its way.',
+      });
     } catch (error) {
       console.info('Cancel subscription failed');
       console.error(error);
@@ -76,19 +75,15 @@ class SubscriptionLifecycleController {
       return res.status(400).json({ message: 'A subscription id is required' });
     }
 
-    const requestedMode =
-      req.body?.mode === 'period_end' ? 'period_end' : 'immediate';
-
     try {
       const user = await this.userService.getUserById(owner);
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      await SubscriptionService.cancelSubscriptionById(
+      const mode = await SubscriptionService.cancelSubscriptionById(
         user.email,
-        id,
-        requestedMode
+        id
       );
 
       const reason =
@@ -97,7 +92,7 @@ class SubscriptionLifecycleController {
           : null;
       track('subscription_cancelled', {
         userId: owner,
-        props: { reason, cancel_type: requestedMode },
+        props: { reason, cancel_type: mode },
       });
 
       return res.status(200).json({ message: 'This plan has been cancelled.' });

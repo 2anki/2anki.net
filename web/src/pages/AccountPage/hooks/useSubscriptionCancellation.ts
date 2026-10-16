@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import {
   cancelSubscription,
   submitCancellationFeedback,
-  CancelMode,
 } from '../../../lib/backend/cancelSubscription';
 import { CancellationReason } from '../components/cancellationReasons';
 import { formatLongDate } from '../utils/formatLongDate';
@@ -22,17 +21,16 @@ export function useSubscriptionCancellation(onSuccess?: () => void) {
 
   const { mutate, isPending: isCancelling } = useMutation({
     mutationFn: ({
-      mode,
       reason,
     }: {
-      mode: CancelMode;
       periodEnd?: number | null;
       reason?: string;
-    }) => cancelSubscription(mode, reason),
+      endsNow?: boolean;
+    }) => cancelSubscription(reason),
     onSuccess: (_data, variables) => {
       setCancelError('');
       setCancelSuccess(
-        variables.mode === 'immediate'
+        variables.endsNow
           ? t('subscription.cancelledImmediate')
           : t('subscription.cancelledPeriodEnd', {
               date: formatPeriodEnd(variables.periodEnd),
@@ -59,14 +57,16 @@ export function useSubscriptionCancellation(onSuccess?: () => void) {
     onSettled: () => setShowFollowUp(false),
   });
 
+  // endsNow: the server ends a paused plan at once (nothing was paid for the
+  // pause), so the success line must not promise access until a date.
   const cancelUserSubscription = (
-    mode: CancelMode = 'period_end',
     periodEnd?: number | null,
-    reason?: string
+    reason?: string,
+    endsNow = false
   ) => {
     setCancelError('');
     setCancelSuccess('');
-    mutate({ mode, periodEnd, reason });
+    mutate({ periodEnd, reason, endsNow });
   };
 
   const submitFeedback = (reason: CancellationReason, comment: string) => {

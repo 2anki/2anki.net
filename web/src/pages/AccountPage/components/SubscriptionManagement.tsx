@@ -425,11 +425,7 @@ function StripeSubscriptionManagement({
         ...(reason ? { reason } : {}),
       });
     }
-    cancelUserSubscription(
-      'period_end',
-      activeSub?.current_period_end,
-      reason || undefined
-    );
+    cancelUserSubscription(activeSub?.current_period_end, reason || undefined);
     setConfirming(false);
   };
 
@@ -442,7 +438,7 @@ function StripeSubscriptionManagement({
 
   const handleCancelDuringPause = () => {
     track('subscription_cancelled_during_pause');
-    cancelUserSubscription('immediate');
+    cancelUserSubscription(null, undefined, true);
   };
 
   const handleManageBilling = () => {
@@ -627,25 +623,11 @@ function StripeSubscriptionManagement({
           )}
 
           {view.kind === 'scheduled' && (
-            <>
-              <p className={styles.statusLine}>
-                {t('subscription.endsPrefix')}{' '}
-                <strong>{fmt(view.subscription.cancel_at)}</strong>.{' '}
-                {t('subscription.accessContinues')}
-              </p>
-              <div className={styles.actions}>
-                <button
-                  type="button"
-                  className={styles.textButton}
-                  onClick={() => cancelUserSubscription('immediate')}
-                  disabled={isCancelling}
-                >
-                  {isCancelling
-                    ? t('subscription.processing')
-                    : t('subscription.cancelNowInstead')}
-                </button>
-              </div>
-            </>
+            <p className={styles.statusLine}>
+              {t('subscription.endsPrefix')}{' '}
+              <strong>{fmt(view.subscription.cancel_at)}</strong>.{' '}
+              {t('subscription.accessContinues')}
+            </p>
           )}
 
           {view.kind === 'cancelled' && (

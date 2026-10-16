@@ -32,7 +32,10 @@ vi.mock('../../../lib/analytics/track', () => ({
 }));
 
 import { useStripeSubscriptions } from '../../../lib/hooks/useStripeSubscriptions';
-import { cancelSubscriptionById } from '../../../lib/backend/cancelSubscription';
+import {
+  cancelSubscription,
+  cancelSubscriptionById,
+} from '../../../lib/backend/cancelSubscription';
 import { resumeSubscription } from '../../../lib/backend/pauseSubscription';
 import { track } from '../../../lib/analytics/track';
 
@@ -317,7 +320,7 @@ describe('SubscriptionManagement', () => {
     ).toBeNull();
   });
 
-  it('cancels the targeted subscription immediately after inline confirm', async () => {
+  it('cancels the targeted subscription after inline confirm', async () => {
     const refetch = vi.fn().mockResolvedValue(undefined);
     const subs = [
       {
@@ -354,16 +357,16 @@ describe('SubscriptionManagement', () => {
       screen.getAllByRole('button', { name: 'Cancel this plan' })[1]
     );
 
-    const panel = screen.getByRole('group', { name: 'Cancel this plan now' });
+    const panel = screen.getByRole('group', { name: 'Cancel this plan?' });
+    expect(
+      within(panel).getByText(/ends on .*the end of the period you paid for/)
+    ).toBeTruthy();
     fireEvent.click(
       within(panel).getByRole('button', { name: 'Cancel this plan' })
     );
 
     await waitFor(() =>
-      expect(cancelSubscriptionById).toHaveBeenCalledWith(
-        'sub_late',
-        'immediate'
-      )
+      expect(cancelSubscriptionById).toHaveBeenCalledWith('sub_late')
     );
   });
 
@@ -425,8 +428,9 @@ describe('SubscriptionManagement', () => {
     await waitFor(() => expect(resumeSubscription).toHaveBeenCalled());
   });
 
-  it('fires the cancelled-during-pause event when cancelling from paused', () => {
+  it('cancelling from paused ends now and says so, with no access promised', async () => {
     stubStripePaused();
+    vi.mocked(cancelSubscription).mockResolvedValue({ message: 'ok' });
     renderStripeManagement();
 
     fireEvent.click(
@@ -434,6 +438,11 @@ describe('SubscriptionManagement', () => {
     );
 
     expect(track).toHaveBeenCalledWith('subscription_cancelled_during_pause');
+    await waitFor(() => expect(cancelSubscription).toHaveBeenCalled());
+    expect(
+      await screen.findByText('Cancelled. Access has ended.')
+    ).toBeTruthy();
+    expect(screen.queryByText(/You keep access until/)).toBeNull();
   });
 
   describe('past_due subscription', () => {
@@ -480,7 +489,7 @@ describe('SubscriptionManagement', () => {
       );
     });
 
-    it('cancels the past_due subscription through the per-id immediate route', async () => {
+    it('cancels the past_due subscription through the per-id route', async () => {
       stubStripePastDue();
       vi.mocked(cancelSubscriptionById).mockResolvedValue({ message: 'ok' });
       renderStripeManagement();
@@ -493,10 +502,7 @@ describe('SubscriptionManagement', () => {
       );
 
       await waitFor(() =>
-        expect(cancelSubscriptionById).toHaveBeenCalledWith(
-          'sub_due',
-          'immediate'
-        )
+        expect(cancelSubscriptionById).toHaveBeenCalledWith('sub_due')
       );
     });
   });

@@ -39,7 +39,7 @@ describe('usePerSubscriptionCancellation', () => {
     expect(result.current.confirmingSubId).toBeNull();
   });
 
-  it('cancels the targeted subscription immediately and refetches', async () => {
+  it('cancels the targeted subscription and refetches', async () => {
     vi.mocked(cancelSubscriptionById).mockResolvedValue({ message: 'ok' });
     const onSuccess = vi.fn();
 
@@ -51,10 +51,7 @@ describe('usePerSubscriptionCancellation', () => {
     act(() => result.current.confirmCancel('sub_owned'));
 
     await waitFor(() =>
-      expect(cancelSubscriptionById).toHaveBeenCalledWith(
-        'sub_owned',
-        'immediate'
-      )
+      expect(cancelSubscriptionById).toHaveBeenCalledWith('sub_owned')
     );
     expect(onSuccess).toHaveBeenCalled();
     expect(result.current.confirmingSubId).toBeNull();
