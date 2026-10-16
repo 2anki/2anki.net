@@ -68,7 +68,7 @@ gh pr checkout <n>
 
 ## Step 4 — run /check AND the server suite
 
-Invoke the `/check` skill — the existing parallel server tsc + web typecheck + web vitest + web lint pipeline. Then run the full server Jest suite: `pnpm test`. **`/check` does not run server Jest**, and tsc cannot see a runtime API removal inside an untyped JS dependency — the 2026-08-06 markdown-it 15 outage passed typecheck and died at module load, which `pnpm test` catches instantly (any suite importing the broken module fails at import). Capture overall pass/fail across both; the documented environmental failures (`getPageCount` pdfinfo, `PythonExitError` in venv-less worktrees) don't count as red. If anything else failed, mark the run as failed and record the first failing summary line for the comment.
+Invoke the `/check` skill — the existing parallel server tsc + `arch` + web typecheck + web vitest + web lint pipeline. Then run the full server vitest suite: `pnpm test`. A dependency bump is the second case, after the shared parser or exporter list, where both full suites run locally (`.claude/rules/dependencies.md`). **`/check` does not run the server suite**, and tsc cannot see a runtime API removal inside an untyped JS dependency — the 2026-08-06 markdown-it 15 outage passed typecheck and died at module load, which `pnpm test` catches instantly (any suite importing the broken module fails at import). Capture overall pass/fail across both; the documented environmental failures (`getPageCount` pdfinfo, `PythonExitError` in venv-less worktrees) don't count as red. If anything else failed, mark the run as failed and record the first failing summary line for the comment.
 
 ## Step 5 — decide
 
