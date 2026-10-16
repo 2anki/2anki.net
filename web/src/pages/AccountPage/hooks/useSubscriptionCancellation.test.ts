@@ -36,11 +36,11 @@ describe('useSubscriptionCancellation', () => {
     });
 
     act(() => {
-      result.current.cancelUserSubscription('period_end', 1_800_000_000);
+      result.current.cancelUserSubscription(1_800_000_000);
     });
 
     await waitFor(() => {
-      expect(cancelSubscription).toHaveBeenCalledWith('period_end', undefined);
+      expect(cancelSubscription).toHaveBeenCalledWith(undefined);
     });
   });
 
@@ -53,17 +53,13 @@ describe('useSubscriptionCancellation', () => {
 
     act(() => {
       result.current.cancelUserSubscription(
-        'period_end',
         1_800_000_000,
         "I don't use it enough"
       );
     });
 
     await waitFor(() => {
-      expect(cancelSubscription).toHaveBeenCalledWith(
-        'period_end',
-        "I don't use it enough"
-      );
+      expect(cancelSubscription).toHaveBeenCalledWith("I don't use it enough");
     });
   });
 
@@ -75,7 +71,7 @@ describe('useSubscriptionCancellation', () => {
     });
 
     act(() => {
-      result.current.cancelUserSubscription('period_end', 1_800_000_000);
+      result.current.cancelUserSubscription(1_800_000_000);
     });
 
     await waitFor(() => {
@@ -97,7 +93,7 @@ describe('useSubscriptionCancellation', () => {
     });
 
     act(() => {
-      result.current.cancelUserSubscription('period_end', 1_800_000_000);
+      result.current.cancelUserSubscription(1_800_000_000);
     });
 
     await waitFor(() => {

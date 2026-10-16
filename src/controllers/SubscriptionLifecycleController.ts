@@ -22,8 +22,12 @@ class SubscriptionLifecycleController {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const requestedMode =
-      req.body?.mode === 'immediate' ? 'immediate' : 'period_end';
+    // Self-serve cancel always ends at the period end, whatever the client
+    // sends: a subscriber who cancels keeps the time they paid for. On
+    // 2026-07-09/10 one subscriber lost access the moment she cancelled,
+    // six times in two days, re-buying each time; the only safe place to
+    // hold the line is here, not in the client.
+    const mode = 'period_end';
 
     try {
       const user = await this.userService.getUserById(owner);
@@ -33,7 +37,7 @@ class SubscriptionLifecycleController {
 
       const processedCount = await SubscriptionService.cancelUserSubscriptions(
         user.email,
-        requestedMode
+        mode
       );
 
       if (processedCount === 0) {
@@ -49,15 +53,13 @@ class SubscriptionLifecycleController {
           : null;
       track('subscription_cancelled', {
         userId: owner,
-        props: { reason, cancel_type: requestedMode },
+        props: { reason, cancel_type: mode },
       });
 
-      const message =
-        requestedMode === 'immediate'
-          ? 'Your subscription has been cancelled. A confirmation email is on its way.'
-          : 'Your subscription is scheduled to cancel at the end of the current billing period. A confirmation email is on its way.';
-
-      res.status(200).json({ message });
+      res.status(200).json({
+        message:
+          'Your subscription is scheduled to cancel at the end of the current billing period. A confirmation email is on its way.',
+      });
     } catch (error) {
       console.info('Cancel subscription failed');
       console.error(error);

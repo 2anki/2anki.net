@@ -5,11 +5,12 @@ const OK = 200;
 
 export type CancelMode = 'immediate' | 'period_end';
 
+// The self-serve cancel always ends at the period end; the server enforces
+// it, so there is no mode to send.
 export const cancelSubscription = async (
-  mode: CancelMode = 'period_end',
   reason?: string
 ): Promise<{ message: string }> => {
-  const body = reason == null ? { mode } : { mode, reason };
+  const body = reason == null ? {} : { reason };
   const response = await post('/api/users/cancel-subscription', body);
 
   if (response?.status === UNAUTHORIZED) {

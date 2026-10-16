@@ -37,28 +37,14 @@ describe('cancelSubscription', () => {
     });
   });
 
-  it('defaults mode to period_end when called without args', async () => {
+  it('sends no cancel mode: the server always schedules the period end', async () => {
     vi.mocked(api.post).mockResolvedValue(
       createMockResponse(200, { message: 'ok' })
     );
 
     await cancelSubscription();
 
-    expect(api.post).toHaveBeenCalledWith('/api/users/cancel-subscription', {
-      mode: 'period_end',
-    });
-  });
-
-  it('sends the requested mode in the body', async () => {
-    vi.mocked(api.post).mockResolvedValue(
-      createMockResponse(200, { message: 'ok' })
-    );
-
-    await cancelSubscription('immediate');
-
-    expect(api.post).toHaveBeenCalledWith('/api/users/cancel-subscription', {
-      mode: 'immediate',
-    });
+    expect(api.post).toHaveBeenCalledWith('/api/users/cancel-subscription', {});
   });
 
   it('throws the server message from a JSON error body', async () => {
@@ -83,27 +69,14 @@ describe('cancelSubscription', () => {
     await expect(cancelSubscription()).rejects.toThrow('Internal Server Error');
   });
 
-  it('does not send a reason when none is provided', async () => {
+  it('sends the reason when provided', async () => {
     vi.mocked(api.post).mockResolvedValue(
       createMockResponse(200, { message: 'ok' })
     );
 
-    await cancelSubscription('period_end');
+    await cancelSubscription("I don't use it enough");
 
     expect(api.post).toHaveBeenCalledWith('/api/users/cancel-subscription', {
-      mode: 'period_end',
-    });
-  });
-
-  it('sends the reason alongside the mode when provided', async () => {
-    vi.mocked(api.post).mockResolvedValue(
-      createMockResponse(200, { message: 'ok' })
-    );
-
-    await cancelSubscription('period_end', "I don't use it enough");
-
-    expect(api.post).toHaveBeenCalledWith('/api/users/cancel-subscription', {
-      mode: 'period_end',
       reason: "I don't use it enough",
     });
   });

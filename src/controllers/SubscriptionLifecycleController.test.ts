@@ -158,7 +158,7 @@ describe('UsersController.cancelSubscription', () => {
     });
   });
 
-  it('records cancel_type immediate when the mode is immediate', async () => {
+  it('schedules at period end even when the client asks for immediate', async () => {
     (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(2);
     const { controller } = buildCancelController();
     const req = {
@@ -168,9 +168,16 @@ describe('UsersController.cancelSubscription', () => {
 
     await controller.cancelSubscription(req, res);
 
+    expect(SubscriptionService.cancelUserSubscriptions).toHaveBeenCalledWith(
+      'sub@example.com',
+      'period_end'
+    );
     expect(trackMock).toHaveBeenCalledWith('subscription_cancelled', {
       userId: 1,
-      props: { reason: 'Too expensive', cancel_type: 'immediate' },
+      props: { reason: 'Too expensive', cancel_type: 'period_end' },
+    });
+    expect(res.json).toHaveBeenCalledWith({
+      message: expect.stringMatching(/end of the current billing period/),
     });
   });
 

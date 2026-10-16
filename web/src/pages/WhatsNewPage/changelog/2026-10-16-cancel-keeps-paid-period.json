@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-16-cancel-keeps-paid-period",
+  "date": "2026-10-16",
+  "type": "fix",
+  "title": "Cancelling a subscription always keeps your access until the end of the period you paid for"
+}
