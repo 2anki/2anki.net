@@ -606,8 +606,8 @@ describe('jobFailureReason — expected upload states on the async path', () => 
     ['EmptyDeckError', 'No cards', EMPTY_DECK_FAILURE_REASON, 'empty_deck'],
     [
       'NotionDatabaseColumnsError',
-      'This database has only one column, Name. Cards need a front and a back column. Add a text column for the back, fill it in, then convert again.',
-      'This database has only one column, Name. Cards need a front and a back column. Add a text column for the back, fill it in, then convert again.',
+      'This database has only one column, "Name". Cards need a front and a back column. Add a text column for the back, fill it in, then convert again.',
+      'This database has only one column, "Name". Cards need a front and a back column. Add a text column for the back, fill it in, then convert again.',
       'notion_database_columns',
     ],
   ])(

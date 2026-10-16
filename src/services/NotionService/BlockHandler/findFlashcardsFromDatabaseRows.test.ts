@@ -221,7 +221,24 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
         parentName: '',
       })
     ).rejects.toThrow(
-      'This database has only one column, Notes. Cards need a front and a back column. Add a text column for the back, fill it in, then convert again.'
+      'This database has only one column, "Notes". Cards need a front and a back column. Add a text column for the back, fill it in, then convert again.'
+    );
+  });
+
+  it('asks for rows when the database has none', async () => {
+    const api = makeApi({ rows: [] });
+    const bl = makeHandler(api);
+
+    await expect(
+      bl.findFlashcards({
+        parentType: 'notion-database',
+        topLevelId: 'db-1',
+        rules: new ParserRules(),
+        decks: [],
+        parentName: '',
+      })
+    ).rejects.toThrow(
+      'This database has no rows yet. Add a row with a front and a back column filled in, then convert again.'
     );
   });
 
@@ -267,7 +284,7 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
         backField: 'Also Nope',
       })
     ).rejects.toThrow(
-      'This database has no column named Nope, Also Nope. It has: Term, Definition. Pick a column that exists for the front and the back, then convert again.'
+      'This database has no columns named "Nope" or "Also Nope". It has "Term" and "Definition". Pick columns it has for the front and the back, then convert again.'
     );
   });
 

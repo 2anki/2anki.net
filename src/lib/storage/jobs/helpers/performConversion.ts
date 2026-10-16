@@ -29,6 +29,7 @@ import {
 } from '../../../../usecases/jobs/jobFailureReason';
 import { PythonExitError } from '../../../anki/buildPythonExitError';
 import { EmptyDeckError } from '../../../../usecases/jobs/EmptyDeckError';
+import { NotionDatabaseColumnsError } from '../../../../services/NotionService/helpers/NotionDatabaseColumnsError';
 import {
   ConversionRuleScoresRepository,
   type ConversionScoreSource,
@@ -485,6 +486,7 @@ export default async function performConversion(
     });
     const isExpectedUserState =
       error instanceof EmptyDeckError ||
+      error instanceof NotionDatabaseColumnsError ||
       isColumnsAmbiguousError(error) ||
       isNotionUnauthorizedError(error);
     if (isExpectedUserState) {
