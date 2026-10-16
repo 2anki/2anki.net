@@ -46,7 +46,7 @@ PER-ISSUE WORKFLOW (each agent):
      reason → smallest fix → green.
   3. Changelog JSON entry only if a real user would notice (web/src/pages/
      WhatsNewPage/changelog/), per the rules; otherwise state "no entry" in the PR.
-  4. Run /check. Say in
+  4. Run the local check set in `.claude/agents/engineer.md` step 9 (`/check` and the full server suite only for the shared parser or exporter list in `.claude/rules/testing.md`). Say in
      the PR body.
   5. If the diff touches web/src/, add the ## Browser check attestation.
   6. Conventional commit, subject ≤72 chars, "Fixes #<n>", Co-Authored-By line.

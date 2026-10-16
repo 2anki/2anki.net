@@ -133,7 +133,7 @@ READY with a `## Decisions made overnight` section, then `/ship`.**
 - A feature request, an enhancement, a copy change, an empty/error/loading state, a small UX fix.
 - BEFORE coding, run the trio (pm + designer + engineer in one parallel Agent call) on the issue.
   Take their recommendation as the spec: what to build, what NOT to build, the exact copy.
-- Implement it with the same rigor as Tier 1 (tests, /check, changelog if user-visible).
+- Implement it with the same rigor as Tier 1 (tests, the local check set in `.claude/agents/engineer.md` step 9, changelog if user-visible).
 - Document EVERY decision and assumption in the PR (format below) so Alexander can override.
 - Rail paths are fine unless the change rests on an unverified assumption (Tier 3); `/ship` runs the extra rail verification.
 
@@ -180,7 +180,7 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
 5. Implement the smallest change that makes the test pass. Strip any debug scaffolding.
 6. If user-visible, add ONE changelog JSON under `web/src/pages/WhatsNewPage/changelog/` per
    `CLAUDE.md` (user voice, no implementation detail). Internal-only → no entry.
-7. `/check` (server tsc + web typecheck + web vitest + web lint) — must be green.
+7. The local check set in `.claude/agents/engineer.md` step 9 must be green: the test files the diff touches, server typecheck and `arch`, web typecheck and lint, `pnpm format:check`; run `/check` and the full server suite only when the diff touches the shared parser or exporter list in `.claude/rules/testing.md`. CI runs both full suites on every push.
 9. `git rebase origin/main`. Commit with a conventional `fix:`/`feat:` subject ≤72 chars, body
    with `Fixes #<n>`. Co-author trailer per `CLAUDE.md`.
 10. `git push -u origin <branch>` (use `--no-verify` ONLY if the pre-push hook false-positives on
