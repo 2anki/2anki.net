@@ -2,6 +2,7 @@ import express from 'express';
 import type { Knex } from 'knex';
 import UsersService from '../services/UsersService';
 import SubscriptionService, {
+  type CancelMode,
   SubscriptionNotOwnedError,
   AnnualPlanNotPausableError,
   SubscriptionTooNewToPauseError,
@@ -32,12 +33,12 @@ class SubscriptionLifecycleController {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      const processedCount = await SubscriptionService.cancelUserSubscriptions(
+      const applied = await SubscriptionService.cancelUserSubscriptions(
         user.email,
         mode
       );
 
-      if (processedCount === 0) {
+      if (applied.length === 0) {
         return res.status(422).json({
           message:
             "No active subscription found for this account. If you paid with a different email, use the form below to connect it — we'll send a confirmation link to that inbox.",
@@ -48,14 +49,21 @@ class SubscriptionLifecycleController {
         typeof req.body?.reason === 'string' && req.body.reason.length > 0
           ? req.body.reason
           : null;
+      // Access continues while any plan is scheduled; only an all-immediate
+      // result (a paused plan with no paid period) ends access now.
+      const cancelType: CancelMode = applied.every((m) => m === 'immediate')
+        ? 'immediate'
+        : 'period_end';
       track('subscription_cancelled', {
         userId: owner,
-        props: { reason, cancel_type: mode },
+        props: { reason, cancel_type: cancelType },
       });
 
       res.status(200).json({
         message:
-          'Your subscription is scheduled to cancel at the end of the current billing period. A confirmation email is on its way.',
+          cancelType === 'immediate'
+            ? 'Your subscription has been cancelled. A confirmation email is on its way.'
+            : 'Your subscription is scheduled to cancel at the end of the current billing period. A confirmation email is on its way.',
       });
     } catch (error) {
       console.info('Cancel subscription failed');

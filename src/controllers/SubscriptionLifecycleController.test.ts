@@ -89,7 +89,7 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('returns 422 with a recovery hint when no subscription matches the account', async () => {
-    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(0);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue([]);
     const { controller } = buildCancelController();
     const req = { body: { mode: 'period_end' } } as express.Request;
     const res = buildResWithLocals();
@@ -105,7 +105,9 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('returns 200 when a subscription is cancelled', async () => {
-    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(1);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue([
+      'period_end',
+    ]);
     const { controller } = buildCancelController();
     const req = { body: { mode: 'period_end' } } as express.Request;
     const res = buildResWithLocals();
@@ -116,7 +118,9 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('does not record feedback from the cancel endpoint even if a reason is sent', async () => {
-    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(1);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue([
+      'period_end',
+    ]);
     const insert = vi.fn().mockResolvedValue([1]);
     const db = vi.fn().mockReturnValue({ insert });
     const { controller } = buildCancelController(db);
@@ -142,7 +146,9 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('fires subscription_cancelled once with reason and period_end cancel_type', async () => {
-    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(1);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue([
+      'period_end',
+    ]);
     const { controller } = buildCancelController();
     const req = {
       body: { mode: 'period_end', reason: "I don't use it enough" },
@@ -159,7 +165,10 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('schedules at period end even when the client asks for immediate', async () => {
-    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(2);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue([
+      'period_end',
+      'period_end',
+    ]);
     const { controller } = buildCancelController();
     const req = {
       body: { mode: 'immediate', reason: 'Too expensive' },
@@ -181,8 +190,52 @@ describe('UsersController.cancelSubscription', () => {
     });
   });
 
+  it('records immediate when the service ended a paused-only subscription now', async () => {
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue([
+      'immediate',
+    ]);
+    const { controller } = buildCancelController();
+    const req = { body: { reason: 'Taking a break' } } as express.Request;
+    const res = buildResWithLocals();
+
+    await controller.cancelSubscription(req, res);
+
+    expect(trackMock).toHaveBeenCalledWith('subscription_cancelled', {
+      userId: 1,
+      props: { reason: 'Taking a break', cancel_type: 'immediate' },
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      message: expect.stringMatching(/has been cancelled/i),
+    });
+    const body = res.json.mock.calls[0][0] as { message: string };
+    expect(body.message).not.toMatch(/end of the current billing period/);
+  });
+
+  it('keeps period_end when one plan was scheduled and a paused one ended now', async () => {
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue([
+      'immediate',
+      'period_end',
+    ]);
+    const { controller } = buildCancelController();
+    const req = { body: {} } as express.Request;
+    const res = buildResWithLocals();
+
+    await controller.cancelSubscription(req, res);
+
+    expect(trackMock).toHaveBeenCalledWith('subscription_cancelled', {
+      userId: 1,
+      props: { reason: null, cancel_type: 'period_end' },
+    });
+    expect(res.json).toHaveBeenCalledWith({
+      message: expect.stringMatching(/end of the current billing period/),
+    });
+  });
+
   it('sends reason null when the body omits a reason', async () => {
-    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(1);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue([
+      'period_end',
+    ]);
     const { controller } = buildCancelController();
     const req = { body: { mode: 'period_end' } } as express.Request;
     const res = buildResWithLocals();
@@ -196,7 +249,7 @@ describe('UsersController.cancelSubscription', () => {
   });
 
   it('does not fire subscription_cancelled when no subscription matches', async () => {
-    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue(0);
+    (SubscriptionService.cancelUserSubscriptions as Mock).mockResolvedValue([]);
     const { controller } = buildCancelController();
     const req = { body: { mode: 'period_end' } } as express.Request;
     const res = buildResWithLocals();

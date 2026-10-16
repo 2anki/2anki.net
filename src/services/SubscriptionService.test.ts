@@ -280,8 +280,9 @@ describe('SubscriptionService.cancelUserSubscriptions', () => {
   });
 
   it('schedules cancellation at period end by default', async () => {
-    await SubscriptionService.cancelUserSubscriptions(email);
+    const modes = await SubscriptionService.cancelUserSubscriptions(email);
 
+    expect(modes).toEqual(['period_end']);
     expect(stripe.subscriptions.update).toHaveBeenCalledWith('sub_123', {
       cancel_at_period_end: true,
     });
@@ -300,8 +301,12 @@ describe('SubscriptionService.cancelUserSubscriptions', () => {
       ],
     });
 
-    await SubscriptionService.cancelUserSubscriptions(email, 'period_end');
+    const modes = await SubscriptionService.cancelUserSubscriptions(
+      email,
+      'period_end'
+    );
 
+    expect(modes).toEqual(['immediate']);
     expect(stripe.subscriptions.cancel).toHaveBeenCalledWith('sub_123');
     expect(stripe.subscriptions.update).not.toHaveBeenCalled();
   });
@@ -357,23 +362,23 @@ describe('SubscriptionService.cancelUserSubscriptions', () => {
     expect(db.deleteSpy).not.toHaveBeenCalled();
   });
 
-  it('returns the count of processed subscriptions', async () => {
+  it('returns one applied mode per processed subscription', async () => {
     stripe.subscriptions.list.mockResolvedValue({
       data: [activeSub, { ...activeSub, id: 'sub_456' }],
     });
 
     const result = await SubscriptionService.cancelUserSubscriptions(email);
 
-    expect(result).toBe(2);
+    expect(result).toEqual(['period_end', 'period_end']);
     expect(stripe.subscriptions.update).toHaveBeenCalledTimes(2);
   });
 
-  it('returns 0 when Stripe has no active subscriptions', async () => {
+  it('returns an empty list when Stripe has no active subscriptions', async () => {
     stripe.subscriptions.list.mockResolvedValue({ data: [] });
 
     const result = await SubscriptionService.cancelUserSubscriptions(email);
 
-    expect(result).toBe(0);
+    expect(result).toEqual([]);
     expect(stripe.subscriptions.update).not.toHaveBeenCalled();
   });
 
@@ -399,7 +404,7 @@ describe('SubscriptionService.cancelUserSubscriptions', () => {
       expect.objectContaining({ status: 'all' })
     );
     expect(stripe.subscriptions.cancel).toHaveBeenCalledWith('sub_past');
-    expect(result).toBe(1);
+    expect(result).toEqual(['immediate']);
   });
 
   it('skips already-canceled subscriptions when allStatuses is true', async () => {
@@ -416,7 +421,7 @@ describe('SubscriptionService.cancelUserSubscriptions', () => {
 
     expect(stripe.subscriptions.cancel).toHaveBeenCalledWith('sub_123');
     expect(stripe.subscriptions.cancel).not.toHaveBeenCalledWith('sub_old');
-    expect(result).toBe(1);
+    expect(result).toEqual(['immediate']);
   });
 
   it('never writes the user email to the logs', async () => {

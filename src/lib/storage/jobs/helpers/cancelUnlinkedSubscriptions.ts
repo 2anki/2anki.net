@@ -52,7 +52,7 @@ async function cancelAndNotify(email: string): Promise<void> {
     false,
     false
   );
-  if (cancelled === 0) {
+  if (cancelled.length === 0) {
     console.warn(
       'No active Stripe subscriptions found for this row — skipping email'
     );
