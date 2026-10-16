@@ -160,12 +160,15 @@ export class SubscriptionService {
     return listStripeSubscriptionsFor(userEmail, 'all');
   }
 
+  // Returns the mode applied to each subscription it processed, so a caller
+  // can record and report what happened (a paused plan ends now even when
+  // the requested mode is period_end).
   static async cancelUserSubscriptions(
     userEmail: string,
     mode: CancelMode = 'period_end',
     allStatuses = false,
     sendEmail = true
-  ): Promise<number> {
+  ): Promise<CancelMode[]> {
     const stripe = getStripe();
     const emailService = getDefaultEmailService();
     const allSubs = allStatuses
@@ -180,12 +183,14 @@ export class SubscriptionService {
     );
 
     const db = getDatabase();
+    const applied: CancelMode[] = [];
 
     for (const sub of subs) {
       // A paused subscription has no paid period in progress (its invoices
       // are voided and paid features are off), so there is nothing to keep
       // open until a period end: it ends now.
       const endsNow = mode === 'immediate' || isPaused(sub);
+      applied.push(endsNow ? 'immediate' : 'period_end');
       if (endsNow) {
         console.log(`Cancelling Stripe subscription ${sub.id} immediately`);
         const canceled = await stripe.subscriptions.cancel(sub.id);
@@ -215,7 +220,7 @@ export class SubscriptionService {
       }
     }
 
-    return subs.length;
+    return applied;
   }
 
   // The caller never picks the mode. A plan with a paid period in progress is
