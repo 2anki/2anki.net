@@ -439,6 +439,28 @@ describe('ErrorHandler', () => {
     errorSpy.mockRestore();
   });
 
+  test('a Stripe access error responds 500 without echoing the key or permission', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeResponse(false);
+    const req = makeRequest();
+
+    const stripeError = Object.assign(
+      new Error(
+        'Invalid API Key provided: sk_live_********************abcd (permission: subscription_read)'
+      ),
+      { name: 'StripeAuthenticationError', type: 'StripeAuthenticationError' }
+    );
+    await ErrorHandler(res as unknown as express.Response, req, stripeError);
+
+    expect(res.statusCode).toBe(500);
+    const body = res.body as { code: string; message: string };
+    expect(body.code).toBe('unknown');
+    expect(body.message).not.toContain('sk_live');
+    expect(body.message).not.toContain('permission');
+    expect(body.message).toContain('support@2anki.net');
+    errorSpy.mockRestore();
+  });
+
   test('an over-long form field responds 413 with a friendly message', async () => {
     const res = makeResponse(false);
     const req = makeRequest();

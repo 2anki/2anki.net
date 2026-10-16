@@ -188,7 +188,9 @@ class UsersService {
           sessionId: telemetry.gaSessionId,
           method: telemetry?.method ?? 'unknown',
         }).catch((error) => {
-          console.error('[ga4] failed to send sign_up event', error);
+          console.error(
+            `[ga4] failed to send sign_up event: ${(error as Error)?.name ?? 'Error'}`
+          );
         });
       }
     }

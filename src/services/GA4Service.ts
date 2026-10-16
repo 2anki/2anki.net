@@ -18,6 +18,32 @@ interface SignUpParams {
   sessionId?: string;
 }
 
+// The Measurement Protocol carries api_secret in the request URL, so a failed
+// request's error object (its message, cause or config) can hold the secret.
+// Only the error class ever reaches the logs.
+function errorName(error: unknown): string {
+  const name = (error as { name?: unknown })?.name;
+  return typeof name === 'string' && name.length > 0 ? name : 'Error';
+}
+
+async function postEvent(
+  url: string,
+  body: Record<string, unknown>
+): Promise<boolean> {
+  try {
+    await fetch(url, {
+      method: 'POST',
+      signal: AbortSignal.timeout(GA4_TIMEOUT_MS),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return true;
+  } catch (error) {
+    console.error(`[ga4] send failed: ${errorName(error)}`);
+    return false;
+  }
+}
+
 function sessionParams(
   sessionId: string | undefined
 ): Record<string, string | number> {
@@ -37,28 +63,25 @@ export async function sendPurchaseEvent(params: PurchaseParams): Promise<void> {
 
   const url = `${GA4_ENDPOINT}?measurement_id=${measurementId}&api_secret=${apiSecret}`;
 
-  await fetch(url, {
-    method: 'POST',
-    signal: AbortSignal.timeout(GA4_TIMEOUT_MS),
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: params.clientId,
-      events: [
-        {
-          name: 'purchase',
-          params: {
-            transaction_id: params.transactionId,
-            value: params.valueCents / 100,
-            currency: params.currency.toUpperCase(),
-            items: [],
-            ...sessionParams(params.sessionId),
-          },
+  const sent = await postEvent(url, {
+    client_id: params.clientId,
+    events: [
+      {
+        name: 'purchase',
+        params: {
+          transaction_id: params.transactionId,
+          value: params.valueCents / 100,
+          currency: params.currency.toUpperCase(),
+          items: [],
+          ...sessionParams(params.sessionId),
         },
-      ],
-    }),
+      },
+    ],
   });
 
-  console.info(`[ga4] purchase sent ${params.transactionId}`);
+  if (sent) {
+    console.info(`[ga4] purchase sent ${params.transactionId}`);
+  }
 }
 
 export async function sendSignUpEvent(params: SignUpParams): Promise<void> {
@@ -71,23 +94,20 @@ export async function sendSignUpEvent(params: SignUpParams): Promise<void> {
 
   const url = `${GA4_ENDPOINT}?measurement_id=${measurementId}&api_secret=${apiSecret}`;
 
-  await fetch(url, {
-    method: 'POST',
-    signal: AbortSignal.timeout(GA4_TIMEOUT_MS),
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: params.clientId,
-      events: [
-        {
-          name: 'sign_up',
-          params: {
-            method: params.method,
-            ...sessionParams(params.sessionId),
-          },
+  const sent = await postEvent(url, {
+    client_id: params.clientId,
+    events: [
+      {
+        name: 'sign_up',
+        params: {
+          method: params.method,
+          ...sessionParams(params.sessionId),
         },
-      ],
-    }),
+      },
+    ],
   });
 
-  console.info('[ga4] sign_up sent');
+  if (sent) {
+    console.info('[ga4] sign_up sent');
+  }
 }

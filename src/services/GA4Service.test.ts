@@ -118,6 +118,34 @@ describe('sendPurchaseEvent', () => {
     expect(body.events[0].params).not.toHaveProperty('session_id');
     expect(body.events[0].params).not.toHaveProperty('engagement_time_msec');
   });
+  it('resolves and logs only the error name when the request fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (global.fetch as MockedFunction<typeof fetch>).mockRejectedValue(
+      Object.assign(
+        new TypeError(
+          `fetch failed ${GA4_ENDPOINT}?measurement_id=G-TEST123&api_secret=test-secret`
+        ),
+        { cause: { url: `${GA4_ENDPOINT}?api_secret=test-secret` } }
+      )
+    );
+    const { sendPurchaseEvent } = await import('./GA4Service');
+
+    await expect(
+      sendPurchaseEvent({
+        transactionId: 'cs_test_abc123',
+        valueCents: 999,
+        currency: 'usd',
+        clientId: 'GA1.1.123456789.1234567890',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    const logged = errorSpy.mock.calls[0].map(String).join(' ');
+    expect(logged).toContain('TypeError');
+    expect(logged).not.toContain('test-secret');
+    expect(logged).not.toContain('api_secret');
+    errorSpy.mockRestore();
+  });
 });
 
 describe('sendSignUpEvent', () => {
@@ -187,5 +215,29 @@ describe('sendSignUpEvent', () => {
     });
 
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('resolves and logs only the error name when the request times out', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (global.fetch as MockedFunction<typeof fetch>).mockRejectedValue(
+      Object.assign(new Error('The operation was aborted due to timeout'), {
+        name: 'TimeoutError',
+        config: { url: `${GA4_ENDPOINT}?api_secret=test-secret` },
+      })
+    );
+    const { sendSignUpEvent } = await import('./GA4Service');
+
+    await expect(
+      sendSignUpEvent({
+        clientId: 'GA1.1.123456789.1234567890',
+        method: 'google',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    const logged = errorSpy.mock.calls[0].map(String).join(' ');
+    expect(logged).toContain('TimeoutError');
+    expect(logged).not.toContain('test-secret');
+    errorSpy.mockRestore();
   });
 });

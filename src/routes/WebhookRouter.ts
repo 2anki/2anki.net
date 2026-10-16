@@ -424,7 +424,9 @@ const WebhooksRouter = () => {
                 sessionId: sessionMeta.ga_session_id,
               });
             } catch (ga4Error) {
-              console.error('[ga4] failed to send purchase event', ga4Error);
+              console.error(
+                `[ga4] failed to send purchase event: ${(ga4Error as Error)?.name ?? 'Error'}`
+              );
             }
           };
 
