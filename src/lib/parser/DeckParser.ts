@@ -1752,12 +1752,21 @@ export class DeckParser {
   // payload) would carry them. The bytes go to the workspace under the same
   // content-hash name embedFile gives a local image, so the build step finds
   // them as an ordinary relative image and bundles them like any other.
+  // With embed-images off the build step never bundles anything, so the data
+  // URI has to stay inline for Anki to show the picture at all.
   private unpackDataUriImages(contents: string): string {
+    if (!this.settings.embedImages) {
+      return contents;
+    }
+    const written = new Map<string, string>();
     const { html, count, bytes } = extractDataUriImages(
       contents,
       (image, extension) => {
         const fileName = `${getUniqueFileName(image)}.${extension}`;
-        this.customExporter.addMedia(fileName, image);
+        if (!written.has(fileName)) {
+          this.customExporter.addMedia(fileName, image);
+          written.set(fileName, fileName);
+        }
         return fileName;
       }
     );

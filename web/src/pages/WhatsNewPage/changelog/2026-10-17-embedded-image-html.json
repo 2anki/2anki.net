@@ -2,5 +2,5 @@
   "id": "2026-10-17-embedded-image-html",
   "date": "2026-10-17",
   "type": "fix",
-  "title": "An HTML page with its pictures saved inside it converts in one go, however large the pictures are"
+  "title": "Large HTML pages with their images saved inside them convert in one go"
 }

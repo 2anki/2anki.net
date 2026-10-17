@@ -1,4 +1,7 @@
-import { extractDataUriImages } from './extractDataUriImages';
+import {
+  MAX_EXTRACTED_IMAGES,
+  extractDataUriImages,
+} from './extractDataUriImages';
 
 const PNG_BYTES = Buffer.from('fake-png-bytes');
 const PNG_B64 = PNG_BYTES.toString('base64');
@@ -62,11 +65,12 @@ describe('extractDataUriImages', () => {
     expect(written[0].bytes).toEqual(PNG_BYTES);
   });
 
-  it('leaves an image subtype it does not know, an empty payload and non-img data URIs alone', () => {
+  it('leaves an image subtype it does not know, an empty payload, an entity-wrapped payload and non-img data URIs alone', () => {
     const { written, write } = collectingWriter();
     const html = [
       `<img src="data:image/x-icon;base64,${PNG_B64}">`,
       '<img src="data:image/png;base64,">',
+      `<img src="data:image/png;base64,${PNG_B64.slice(0, 4)}&#10;${PNG_B64.slice(4)}">`,
       `<a href="data:image/png;base64,${PNG_B64}">link</a>`,
       '<img src="photo.png">',
     ].join('');
@@ -75,6 +79,50 @@ describe('extractDataUriImages', () => {
 
     expect(result).toEqual({ html, count: 0, bytes: 0 });
     expect(written).toEqual([]);
+  });
+
+  it('leaves a payload that runs into markup or never closes, and a data URI with extra parameters', () => {
+    const { written, write } = collectingWriter();
+    const html = [
+      '<img src="data:image/png;base64,AAAA><p class="x">text</p>',
+      `<img src="data:image/png;base64,${PNG_B64}'>`,
+      `<img src="data:image/svg+xml;charset=utf-8;base64,${PNG_B64}">`,
+      `<p>data:image/png;base64,${PNG_B64}</p>`,
+      `<div src="data:image/png;base64,${PNG_B64}">`,
+    ].join('');
+
+    const result = extractDataUriImages(html, write);
+
+    expect(result).toEqual({ html, count: 0, bytes: 0 });
+    expect(written).toEqual([]);
+  });
+
+  it('stops after the image cap and leaves the rest inline', () => {
+    const { written, write } = collectingWriter();
+    const one = `<img src="data:image/png;base64,${PNG_B64}">`;
+    const html = one.repeat(MAX_EXTRACTED_IMAGES + 3);
+
+    const result = extractDataUriImages(html, write);
+
+    expect(written).toHaveLength(MAX_EXTRACTED_IMAGES);
+    expect(result.count).toBe(MAX_EXTRACTED_IMAGES);
+    expect(result.html.endsWith(one.repeat(3))).toBe(true);
+  });
+
+  it('runs in linear time on a page built to stall a backtracking pattern', () => {
+    const { write } = collectingWriter();
+    const unclosedImgs = `data:image/ ${'<img src=x '.repeat(80000)}`;
+    const mismatchedQuotes = `<img src="data:image/png;base64,AAAA' `.repeat(
+      40000
+    );
+    const markers = 'data:image/'.repeat(100000);
+
+    const start = Date.now();
+    extractDataUriImages(unclosedImgs, write);
+    extractDataUriImages(mismatchedQuotes, write);
+    extractDataUriImages(markers, write);
+
+    expect(Date.now() - start).toBeLessThan(1000);
   });
 
   it('returns the same string untouched when there is no data URI at all', () => {
