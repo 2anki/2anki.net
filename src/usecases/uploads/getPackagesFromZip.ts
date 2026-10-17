@@ -97,6 +97,10 @@ function reasonFromRejection(error: unknown): EmptyDeckReason | undefined {
   return error instanceof EmptyDeckError ? error.reason : undefined;
 }
 
+function rescueFromRejection(error: unknown): RescueCandidate[] {
+  return error instanceof EmptyDeckError ? error.rescueCandidates : [];
+}
+
 function reasonFromZeroCardResult(result: {
   cardCount?: number;
   emptyReason?: EmptyDeckReason;
@@ -163,6 +167,7 @@ async function buildDeckBatch(
       failedFiles.push(fileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
+      rescueCandidateSets.push(rescueFromRejection(result.reason));
     } else if (isLockedPdfEntry(result.value)) {
       lockedPdfs.push(result.value.filename);
     } else {
@@ -295,6 +300,7 @@ async function buildStragglerDecks(
       failedFiles.push(straggler.inputFileName);
       const reason = reasonFromRejection(error);
       if (reason != null) emptyReasons.push(reason);
+      rescueCandidateSets.push(rescueFromRejection(error));
       continue;
     }
     if (isLockedPdfEntry(outcome)) {
@@ -461,6 +467,7 @@ async function buildAllInOneSlot(
       failedFiles.push(supportedFileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
+      rescueCandidateSets.push(rescueFromRejection(result.reason));
       return;
     }
     const outcome = result.value;
@@ -649,6 +656,7 @@ export const getPackagesFromZip = async (
       failedFiles.push(...chunks[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
+      rescueCandidateSets.push(rescueFromRejection(result.reason));
       return;
     }
     packages.push(...result.value.packages);

@@ -29,6 +29,7 @@ export type ConversionScoreOutcome =
   // the rescue path starts accumulating its own corpus on its first deploy
   // instead of needing a second migration and a second full window.
   | 'rescue_shipped'
+  | 'rescue_chosen'
   | 'rescue_rejected';
 
 // Bump alongside SCORER_VERSION in scoreCandidateDeck when the measurement

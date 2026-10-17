@@ -756,7 +756,7 @@ export class DeckParser {
     }
     this.recordInducedRule({
       rule,
-      outcome: 'rescue_shipped',
+      outcome: 'rescue_chosen',
       score: scoreCandidateDeck(cards, domPlainTextLength(dom)),
     });
     return cards;
@@ -1453,7 +1453,8 @@ export class DeckParser {
         isMarkdownSourcedFiles(this.files);
       throw new EmptyDeckError(
         markdownSourced ? 'markdown' : undefined,
-        this.emptyDeckReason()
+        this.emptyDeckReason(),
+        this.rescueCandidates
       );
     }
 
@@ -1695,7 +1696,8 @@ export class DeckParser {
         isMarkdownSourcedFiles(this.files);
       throw new EmptyDeckError(
         markdownSourced ? 'markdown' : undefined,
-        this.emptyDeckReason()
+        this.emptyDeckReason(),
+        this.rescueCandidates
       );
     }
 

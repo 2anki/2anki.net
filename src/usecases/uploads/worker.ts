@@ -474,6 +474,8 @@ export async function runUploadGenerationInWorker(
         sourceFormat:
           err instanceof EmptyDeckError ? err.sourceFormat : undefined,
         reason: err instanceof EmptyDeckError ? err.reason : undefined,
+        rescueCandidates:
+          err instanceof EmptyDeckError ? err.rescueCandidates : undefined,
       },
     };
   } finally {

@@ -1911,6 +1911,9 @@ class UploadService {
       props: {
         ...this.baseFunnelProps(req),
         card_count_bucket: toCardCountBucket(totalCards),
+        ...(settings.rescueRule != null
+          ? { rescue_chosen: settings.rescueRule }
+          : {}),
         ...this.pdfPageCountProps(packages),
       },
     });
