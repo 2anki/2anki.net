@@ -775,8 +775,19 @@ function UploadForm({
   // Buttons need exactly one local file to send back: a remote upload holds
   // no bytes here, and a multi-file submit stops at the first empty file, so
   // its offer would describe only that file.
+  // Only the default empty-state body carries offers; the card-filter,
+  // Markdown, Google Drive and .txt bodies return their own advice first, so
+  // nothing is offered or counted as offered there.
+  const emptyStateUsesDefaultBody =
+    zoneState === 'emptyDeck' &&
+    localError?.code === 'empty_export' &&
+    localError.empty_reason !== 'all_filtered' &&
+    !(driveMimeType?.startsWith('application/vnd.google-apps.') ?? false) &&
+    !/\.txt$/i.test(
+      driveFilename ?? dropboxFilename ?? displayFilename(fileInputRef.current)
+    );
   const offeredRescue =
-    zoneState === 'emptyDeck' && rescueFiles.length === 1
+    emptyStateUsesDefaultBody && rescueFiles.length === 1
       ? localError?.rescue
       : null;
 
@@ -784,7 +795,7 @@ function UploadForm({
   // free AI run; a paying account with AI off spends its own credits on a
   // click; one with AI on already had Claude try, so nothing is offered.
   const aiRescueState = (() => {
-    if (zoneState !== 'emptyDeck' || localError?.code !== 'empty_export') {
+    if (!emptyStateUsesDefaultBody) {
       return null;
     }
     if (!isAuthenticated) return 'anon';

@@ -1684,6 +1684,9 @@ describe('UploadForm analytics events', () => {
 
   describe('AI offer on the empty state', () => {
     const trackMock = vi.mocked(track);
+    afterEach(() => {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+    });
     const emptyBody = {
       code: 'empty_export',
       message: 'No cards were found in this file.',
@@ -1726,7 +1729,7 @@ describe('UploadForm analytics events', () => {
       );
       await submitOneFile(container);
       const link = container.querySelector('a[href="/pricing"]');
-      expect(link?.textContent).toBe('Get AI cards with the paid plan');
+      expect(link?.textContent).toBe('Get AI cards with a paid plan');
       expect(trackMock).toHaveBeenCalledWith('upload_ai_rescue_shown', {
         state: 'anon',
       });
@@ -1752,7 +1755,7 @@ describe('UploadForm analytics events', () => {
       );
       await submitOneFile(container);
       const link = container.querySelector('a[href="/pricing"]');
-      expect(link?.textContent).toBe('Get AI cards with the paid plan');
+      expect(link?.textContent).toBe('Get AI cards with a paid plan');
     });
 
     it('resubmits the file with AI on for a paying account with AI off', async () => {
@@ -1790,7 +1793,6 @@ describe('UploadForm analytics events', () => {
       const sent = retry.body as FormData;
       expect(sent.getAll('claude-ai-flashcards')).toEqual(['true']);
       expect((sent.get('pakker') as File).name).toBe('notes.html');
-      globalThis.localStorage.removeItem('claude-ai-flashcards');
     });
 
     it('shows no AI button for a paying account that submitted two files', async () => {
@@ -1824,6 +1826,47 @@ describe('UploadForm analytics events', () => {
         expect(container.querySelector('[class*="emptyTitle"]')).not.toBeNull();
       });
       expect(container.textContent).not.toContain('Make cards with AI');
+    });
+
+    it('offers nothing and counts nothing on the .txt empty state', async () => {
+      const txtBody = { ...emptyBody, filename: 'notes.txt' };
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          redirected: false,
+          status: 400,
+          clone: () => ({ json: () => Promise.resolve(txtBody) }),
+          text: () => Promise.resolve(JSON.stringify(txtBody)),
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+        })
+      );
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const input = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      Object.defineProperty(input, 'files', {
+        value: [new File(['prose'], 'notes.txt', { type: 'text/plain' })],
+      });
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+      await waitFor(() => {
+        expect(container.querySelector('[class*="emptyTitle"]')).not.toBeNull();
+      });
+      expect(container.querySelector('a[href="/pricing"]')).toBeNull();
+      expect(trackMock).not.toHaveBeenCalledWith(
+        'upload_ai_rescue_shown',
+        expect.anything()
+      );
+      expect(trackMock).not.toHaveBeenCalledWith(
+        'upload_rescue_offered',
+        expect.anything()
+      );
     });
 
     it('shows no AI offer when AI already ran', async () => {

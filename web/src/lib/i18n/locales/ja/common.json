@@ -266,7 +266,7 @@
       "readingToggles_other": "{{n}} 個のトグル",
       "readingNextToggles": "各質問をトグルに入れ、その中に答えを書いてから、もう一度変換してください。",
       "aiRescueLead": "Claude がこのファイルからカードを書くこともできます。",
-      "aiRescueUpgrade": "有料プランで AI のカードを作る",
+      "aiRescueUpgrade": "有料プランなら AI でカードを作れます",
       "aiRescueMake": "AI でカードを作る",
       "rescueLead": "このファイルの内容からでもカードを作れます。",
       "rescueColumns_other": "表の列から {{n}} 枚のカードを作る",

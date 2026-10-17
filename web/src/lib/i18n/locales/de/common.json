@@ -273,7 +273,7 @@
       "readingToggles_other": "{{n}} Toggles",
       "readingNextToggles": "Setze jede Frage in einen Toggle mit der Antwort darin, und konvertiere dann erneut.",
       "aiRescueLead": "Claude kann aus dieser Datei auch Karten schreiben.",
-      "aiRescueUpgrade": "KI-Karten mit dem bezahlten Plan bekommen",
+      "aiRescueUpgrade": "KI-Karten mit einem bezahlten Tarif bekommen",
       "aiRescueMake": "Karten mit KI erstellen",
       "rescueLead": "Aus dem Inhalt kannst du trotzdem Karten erstellen:",
       "rescueColumns_one": "{{n}} Karte aus den Tabellenspalten erstellen",

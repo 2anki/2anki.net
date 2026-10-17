@@ -273,7 +273,7 @@
       "readingToggles_other": "{{n}} toggles",
       "readingNextToggles": "Put each question in a toggle with its answer inside it, then convert again.",
       "aiRescueLead": "Claude can also write cards from this file.",
-      "aiRescueUpgrade": "Get AI cards with the paid plan",
+      "aiRescueUpgrade": "Get AI cards with a paid plan",
       "aiRescueMake": "Make cards with AI",
       "rescueLead": "You can still make cards from it:",
       "rescueColumns_one": "Make {{n}} card from the table columns",

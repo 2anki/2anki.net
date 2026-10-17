@@ -273,7 +273,7 @@
       "readingToggles_other": "{{n}} toggles",
       "readingNextToggles": "Coloque cada pergunta em um toggle com a resposta dentro e converta de novo.",
       "aiRescueLead": "O Claude também pode escrever cartões a partir deste arquivo.",
-      "aiRescueUpgrade": "Cartões com IA no plano pago",
+      "aiRescueUpgrade": "Cartões com IA em um plano pago",
       "aiRescueMake": "Criar cartões com IA",
       "rescueLead": "Você ainda pode criar cartões com o que há no arquivo:",
       "rescueColumns_one": "Criar {{n}} cartão com as colunas da tabela",
