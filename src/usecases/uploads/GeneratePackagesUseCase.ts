@@ -1,5 +1,8 @@
 import fs from 'node:fs';
-import type { RescueCandidate } from '../../types/RescueCandidate';
+import {
+  isRescueCandidate,
+  type RescueCandidate,
+} from '../../types/RescueCandidate';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import Package from '../../lib/parser/Package';
@@ -38,7 +41,7 @@ function buildWorkerError(failure: UploadGenerationFailure): Error {
     return new EmptyDeckError(
       failure.sourceFormat,
       failure.reason,
-      failure.rescueCandidates ?? []
+      (failure.rescueCandidates ?? []).filter(isRescueCandidate)
     );
   }
   if (failure.message != null && failure.message.trim() !== '') {

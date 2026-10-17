@@ -1832,13 +1832,18 @@ function UploadForm({
         </>
       );
     }
+    if (rescue.length > 0) {
+      return (
+        <>
+          {rescueActions}
+          <p className={formStyles.emptyBody}>{commonProblems}</p>
+        </>
+      );
+    }
     return (
-      <>
-        <p className={formStyles.emptyBody}>
-          {t('upload.form.noCardsBody')} {commonProblems}
-        </p>
-        {rescueActions}
-      </>
+      <p className={formStyles.emptyBody}>
+        {t('upload.form.noCardsBody')} {commonProblems}
+      </p>
     );
   };
 

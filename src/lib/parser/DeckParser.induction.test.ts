@@ -456,15 +456,19 @@ describe('DeckParser dominant table documents', () => {
   });
 
   it('lets a candidate that clears the floor win over a chosen rule', () => {
+    const strayList = '<ul><li>stray one</li><li>stray two</li></ul>';
     const parser = parse(
-      page(`${EMPTY_TOGGLE}${HEADING_SECTIONS}`),
-      new CardOption({ cherry: 'false', 'rescue-rule': 'guess' })
+      page(`${EMPTY_TOGGLE}${HEADING_SECTIONS}${strayList}`),
+      new CardOption({ cherry: 'false', 'rescue-rule': 'bullets' })
     );
 
     expect(parser.inducedRule).toMatchObject({
       rule: 'heading',
       outcome: 'rescue_shipped',
     });
+    expect(
+      parser.payload[0].cards.map((card) => card.name).join(' ')
+    ).toContain('osmosis');
   });
 
   it('never applies a chosen rule to a page that makes cards on its own', () => {

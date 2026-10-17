@@ -264,7 +264,7 @@
       "emptyAllFiltered": "Um filtro de cartões removeu todos os cartões. Se você ativou o cherry pick (🍒) ou o skip (🥑), marque os toggles que quiser ou desative o filtro e converta de novo.",
       "readingNext": "Coloque cada pergunta em um toggle, ou transforme-a em um título com a resposta logo abaixo e converta de novo.",
       "readingNextAnswers": "Coloque a pergunta no título do toggle e a resposta dentro dele e converta de novo.",
-      "readingRescueVerdict": "Sozinho, ele não gerou nenhum cartão.",
+      "readingRescueVerdict": "Nada disso virou cartão por conta própria.",
       "readingNoPairs": "Nada nele formou uma pergunta com a sua resposta.",
       "readingTogglesNoPairs_one": "O toggle não tinha uma pergunta com a resposta dentro.",
       "readingTogglesNoPairs_other": "Nenhum toggle tinha uma pergunta com a resposta dentro.",

@@ -264,7 +264,7 @@
       "emptyAllFiltered": "Ein Kartenfilter hat alle Karten entfernt. Wenn du Cherry Pick (🍒) oder Skip (🥑) aktiviert hast, markiere die gewünschten Toggles oder schalte den Filter aus, und konvertiere dann erneut.",
       "readingNext": "Setze jede Frage in einen Toggle oder mache sie zu einer Überschrift mit der Antwort darunter, und konvertiere dann erneut.",
       "readingNextAnswers": "Schreibe die Frage in den Toggle-Titel und die Antwort in den Toggle, und konvertiere dann erneut.",
-      "readingRescueVerdict": "Von allein sind daraus keine Karten entstanden.",
+      "readingRescueVerdict": "Von selbst sind daraus keine Karten entstanden.",
       "readingNoPairs": "Nichts darin ließ sich zu einer Frage mit einer Antwort zusammenfügen.",
       "readingTogglesNoPairs_one": "Der Toggle enthielt keine Frage mit einer Antwort darin.",
       "readingTogglesNoPairs_other": "Keiner der Toggles enthielt eine Frage mit einer Antwort darin.",
