@@ -17,7 +17,14 @@ describe('isEmptyUploadReading', () => {
     ],
     [
       'a zip reading',
-      { kind: 'zip', files: 2, readable: 0, imageFiles: 2, otherFiles: 0 },
+      {
+        kind: 'zip',
+        files: 2,
+        readable: 0,
+        archives: 0,
+        imageFiles: 2,
+        otherFiles: 0,
+      },
       true,
     ],
     ['null', null, false],

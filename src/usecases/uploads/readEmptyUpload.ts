@@ -10,10 +10,12 @@ import type {
 } from '../../types/EmptyUploadReading';
 
 // The reading is built on the request before the 400 goes out, so it is
-// bounded: a handful of files, none large enough to make the census (which
-// re-converts a docx) a visible delay on the empty-deck answer.
+// bounded: a handful of files, none large enough to make re-reading them from
+// disk or the census (which re-converts a docx) a visible delay or a heap
+// spike on the empty-deck answer. A 5 MB text document is already hundreds
+// of pages; a bigger one simply gets no reading.
 export const READING_MAX_FILES = 5;
-export const READING_MAX_BYTES = 25 * 1024 * 1024;
+export const READING_MAX_BYTES = 5 * 1024 * 1024;
 
 export interface ReadableUpload {
   originalname: string;
@@ -52,6 +54,7 @@ function zipReading(census: ZipStructureCensus): ZipReading {
     kind: 'zip',
     files: census.entryCount,
     readable: census.supportedCount,
+    archives: census.nestedZipCount,
     imageFiles: census.imageCount,
     otherFiles: Math.max(census.unsupportedCount - census.imageCount, 0),
   };

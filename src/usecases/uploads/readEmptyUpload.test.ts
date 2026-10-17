@@ -55,8 +55,26 @@ describe('readEmptyUpload', () => {
       kind: 'zip',
       files: 4,
       readable: 1,
+      archives: 0,
       imageFiles: 2,
       otherFiles: 1,
+    });
+  });
+
+  it('counts a wrapper zip whose only entry is another zip', async () => {
+    const inner = zipSync({ 'Page abc.html': strToU8('<html></html>') });
+    const zip = Buffer.from(zipSync({ 'Export-Part-1.zip': inner }));
+    const reading = await readEmptyUpload(
+      [{ originalname: 'export.zip', size: zip.length }],
+      bytesFrom({ 'export.zip': zip })
+    );
+    expect(reading).toEqual({
+      kind: 'zip',
+      files: 1,
+      readable: 0,
+      archives: 1,
+      imageFiles: 0,
+      otherFiles: 0,
     });
   });
 

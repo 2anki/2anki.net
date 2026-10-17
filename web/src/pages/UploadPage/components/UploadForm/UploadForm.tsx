@@ -1681,16 +1681,6 @@ function UploadForm({
     );
   };
 
-  const renderEmptyReading = () => {
-    const reading = localError?.reading;
-    if (reading == null) return null;
-    return (
-      <p className={formStyles.emptyReading}>
-        {describeEmptyReading(reading, t, i18n.language)}
-      </p>
-    );
-  };
-
   const renderEmptyDeckBody = () => {
     if (localError?.code === 'markdown_likely_lossy') {
       return (
@@ -1746,18 +1736,31 @@ function UploadForm({
         </p>
       );
     }
-    return (
-      <p className={formStyles.emptyBody}>
-        {t(
-          localError?.reading != null
-            ? 'upload.form.readingNext'
-            : 'upload.form.noCardsBody'
-        )}{' '}
+    const commonProblems = (
+      <>
         {t('upload.form.seeCommonProblemsPrefix')}
         <a href="/documentation/help/common-problems">
           {t('upload.form.commonProblems')}
         </a>
         {t('upload.form.seeCommonProblemsSuffix')}
+      </>
+    );
+    const reading = localError?.reading;
+    if (reading != null) {
+      const copy = describeEmptyReading(reading, t, i18n.language);
+      return (
+        <>
+          <p className={formStyles.emptyReading}>{copy.text}</p>
+          <p className={formStyles.emptyBody}>
+            {copy.next != null && `${t(`upload.form.${copy.next}`)} `}
+            {commonProblems}
+          </p>
+        </>
+      );
+    }
+    return (
+      <p className={formStyles.emptyBody}>
+        {t('upload.form.noCardsBody')} {commonProblems}
       </p>
     );
   };
@@ -1793,7 +1796,6 @@ function UploadForm({
       <div className={formStyles.stateContent}>
         <WarningIcon className={formStyles.iconWarning} />
         <p className={formStyles.emptyTitle}>{emptyTitle}</p>
-        {renderEmptyReading()}
         {renderEmptyDeckBody()}
         <div className={formStyles.emptyActions}>
           {downloadLink && (

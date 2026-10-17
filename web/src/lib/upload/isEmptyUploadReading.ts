@@ -10,7 +10,13 @@ const DOCUMENT_FIELDS = [
   'toggles',
   'images',
 ] as const;
-const ZIP_FIELDS = ['files', 'readable', 'imageFiles', 'otherFiles'] as const;
+const ZIP_FIELDS = [
+  'files',
+  'readable',
+  'archives',
+  'imageFiles',
+  'otherFiles',
+] as const;
 
 function hasCounts(
   value: Record<string, unknown>,

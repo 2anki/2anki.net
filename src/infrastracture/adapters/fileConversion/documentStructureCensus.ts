@@ -40,6 +40,12 @@ export interface ZipStructureCensus {
 const ZIP_CENSUS_MAX_ENTRIES = 50;
 const IMAGE_ENTRY = /\.(png|jpe?g|gif|webp|bmp|svg|heic|tiff?)$/i;
 
+// A zip made on macOS carries a __MACOSX/ twin of every entry plus ._ resource
+// forks; they are metadata, not pages or images the user put in.
+function isResourceForkEntry(name: string): boolean {
+  return name.startsWith('__MACOSX/') || /(^|\/)\._[^/]*$/.test(name);
+}
+
 // Central-directory walk only — the filter always returns false, so no entry
 // ever inflates and a zip bomb cannot hurt the diagnostics path.
 export function censusZipEntries(buffer: Buffer): ZipStructureCensus {
@@ -67,9 +73,10 @@ export function censusZipEntries(buffer: Buffer): ZipStructureCensus {
     };
   }
 
-  const nested = all.filter((e) => /\.zip$/i.test(e.name));
-  const flat = all.filter((e) => !/\.zip$/i.test(e.name));
-  const entries = all.slice(0, ZIP_CENSUS_MAX_ENTRIES).map((e) => ({
+  const content = all.filter((e) => !isResourceForkEntry(e.name));
+  const nested = content.filter((e) => /\.zip$/i.test(e.name));
+  const flat = content.filter((e) => !/\.zip$/i.test(e.name));
+  const entries = content.slice(0, ZIP_CENSUS_MAX_ENTRIES).map((e) => ({
     name: logFileLabel(e.name),
     size: e.size,
     supported: Boolean(isZipContentFileSupported(e.name)),
@@ -77,32 +84,67 @@ export function censusZipEntries(buffer: Buffer): ZipStructureCensus {
 
   return {
     kind: 'zip',
-    entryCount: all.length,
+    entryCount: content.length,
     nestedZipCount: nested.length,
     supportedCount: flat.filter((e) => isZipContentFileSupported(e.name))
       .length,
     unsupportedCount: flat.filter((e) => !isZipContentFileSupported(e.name))
       .length,
     imageCount: flat.filter((e) => IMAGE_ENTRY.test(e.name)).length,
-    truncated: all.length > ZIP_CENSUS_MAX_ENTRIES,
+    truncated: content.length > ZIP_CENSUS_MAX_ENTRIES,
     entries,
   };
 }
 
-// Tags become spaces first so "<h1>Cell</h1><p>biology</p>" reads as two
-// words, not one; a bare entity such as &nbsp; is spacing, not a word.
+// Single linear pass over the markup with head, style and script removed, so a
+// Notion export's embedded CSS never counts as prose. A "<" opens a tag only
+// when a tag name, "/" or "!" follows, so "x < 5" in a text file stays words.
+// &nbsp; splits words like a space and a bare entity such as &amp; is not a
+// word. A scanner rather than a regex replace keeps a megabyte of "<<<<" with
+// no closing ">" linear on the request path.
 function countWords(html: string): number {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .split(/\s+/)
-    .filter((token) => token !== '' && !/^&[a-z#0-9]+;$/i.test(token)).length;
+  let words = 0;
+  let inTag = false;
+  let token = '';
+  const flush = () => {
+    if (token !== '' && !/^&[a-z#0-9]+;$/i.test(token)) {
+      words += 1;
+    }
+    token = '';
+  };
+  const text = html.replace(/&nbsp;/g, ' ');
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (inTag) {
+      if (char === '>') inTag = false;
+      continue;
+    }
+    if (char === '<' && /[A-Za-z/!]/.test(text[i + 1] ?? '')) {
+      inTag = true;
+      flush();
+      continue;
+    }
+    if (/\s/.test(char)) {
+      flush();
+      continue;
+    }
+    token += char;
+  }
+  flush();
+  return words;
+}
+
+function proseMarkup($: cheerio.CheerioAPI): string {
+  const prose = $.root().clone();
+  prose.find('head, style, script').remove();
+  return prose.html() ?? '';
 }
 
 export function censusFromHtml(html: string): DocumentStructureCensus {
   const $ = cheerio.load(html);
   return {
     chars: html.length,
-    words: countWords(html),
+    words: countWords(proseMarkup($)),
     headings: $('h1, h2, h3, h4, h5, h6').length,
     paragraphs: $('p').length,
     lists: $('ul, ol').length,

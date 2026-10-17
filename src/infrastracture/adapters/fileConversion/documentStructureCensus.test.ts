@@ -116,6 +116,26 @@ describe('censusUploadedFile — zip archives (#4029)', () => {
     return Buffer.from(zipSync(entries));
   }
 
+  it('drops macOS resource-fork entries from the census', async () => {
+    const zip = buildZip({
+      'Page abc.html': strToU8('<html></html>'),
+      '__MACOSX/._Page abc.html': strToU8('meta'),
+      'img/._photo.png': strToU8('meta'),
+      'img/photo.png': strToU8('png'),
+    });
+    const census = await censusUploadedFile({
+      originalname: 'export.zip',
+      buffer: zip,
+    });
+    expect(census).toMatchObject({
+      kind: 'zip',
+      entryCount: 2,
+      supportedCount: 1,
+      unsupportedCount: 1,
+      imageCount: 1,
+    });
+  });
+
   it('returns an entry manifest with supported verdicts and nested-zip count', async () => {
     const inner = zipSync({ 'Inner Page abc.html': strToU8('<html></html>') });
     const zip = buildZip({
@@ -179,5 +199,27 @@ describe('censusUploadedFile — zip archives (#4029)', () => {
       truncated: true,
     });
     expect((census as { entries: unknown[] }).entries.length).toBe(50);
+  });
+});
+
+describe('countWords through censusFromHtml', () => {
+  it('ignores bare entities and unterminated tags', () => {
+    expect(censusFromHtml('<p>a&nbsp;b &amp; c</p>').words).toBe(3);
+    expect(censusFromHtml('<p>one two</p><br').words).toBe(2);
+  });
+
+  it('does not count the CSS a Notion export embeds', () => {
+    const html =
+      '<html><head><title>Page</title><style>.a { color: red; } .b { margin: 0 }</style></head><body><h1>Cells</h1><p>two words</p><script>var x = 1;</script></body></html>';
+    expect(censusFromHtml(html).words).toBe(3);
+  });
+
+  it('drops a bare less-than sign in plain text, keeping the words around it', () => {
+    expect(censusFromHtml('x < 5 and y < 7').words).toBe(5);
+  });
+
+  it('finishes a long run of opening brackets', () => {
+    const html = '<'.repeat(2_000_000) + ' word';
+    expect(censusFromHtml(html).words).toBe(2);
   });
 });
