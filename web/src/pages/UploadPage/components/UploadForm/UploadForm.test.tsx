@@ -1682,6 +1682,118 @@ describe('UploadForm analytics events', () => {
     expect(container.textContent).not.toContain('not the zip');
   });
 
+  describe('AI offer on the empty state', () => {
+    const emptyBody = {
+      code: 'empty_export',
+      message: 'No cards were found in this file.',
+      filename: 'notes.html',
+      docsLink: '/documentation/help/common-problems',
+      empty_reason: 'no_toggles',
+    };
+    const emptyFetch = () =>
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 400,
+        clone: () => ({ json: () => Promise.resolve(emptyBody) }),
+        text: () => Promise.resolve(JSON.stringify(emptyBody)),
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+      });
+    const submitOneFile = async (container: HTMLElement) => {
+      const input = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      Object.defineProperty(input, 'files', {
+        value: [
+          new File(['<p>prose</p>'], 'notes.html', { type: 'text/html' }),
+        ],
+      });
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+      await waitFor(() => {
+        expect(container.querySelector('[class*="emptyTitle"]')).not.toBeNull();
+      });
+    };
+
+    it('asks an anonymous user to sign in', async () => {
+      vi.stubGlobal('fetch', emptyFetch());
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      await submitOneFile(container);
+      const link = container.querySelector('a[href="/login?redirect=/upload"]');
+      expect(link?.textContent).toBe('Sign in to use AI');
+    });
+
+    it('points a free account at the paid plan', async () => {
+      mockUseUserLocals.mockReturnValue({
+        data: { user: { id: 7 }, locals: { subscriber: false } },
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+      vi.stubGlobal('fetch', emptyFetch());
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      await submitOneFile(container);
+      const link = container.querySelector('a[href="/pricing"]');
+      expect(link?.textContent).toBe(
+        'Make cards with AI, part of the paid plan'
+      );
+    });
+
+    it('resubmits the file with AI on for a paying account with AI off', async () => {
+      mockUseUserLocals.mockReturnValue({
+        data: { user: { id: 7 }, locals: { subscriber: true } },
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+      const fetchMock = emptyFetch();
+      vi.stubGlobal('fetch', fetchMock);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      await submitOneFile(container);
+      const button = Array.from(container.querySelectorAll('button')).find(
+        (b) => b.textContent === 'Make cards with AI'
+      );
+      expect(button).toBeDefined();
+      await act(async () => {
+        button!.click();
+      });
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      });
+      const [, retry] = fetchMock.mock.calls[1] as [string, RequestInit];
+      const sent = retry.body as FormData;
+      expect(sent.get('claude-ai-flashcards')).toBe('true');
+      expect((sent.get('pakker') as File).name).toBe('notes.html');
+    });
+
+    it('shows no AI offer when AI already ran', async () => {
+      mockUseUserLocals.mockReturnValue({
+        data: { user: { id: 7 }, locals: { subscriber: true } },
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+      vi.stubGlobal('fetch', emptyFetch());
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn />
+      );
+      await submitOneFile(container);
+      expect(container.textContent).not.toContain('Make cards with AI');
+    });
+  });
+
   it('keeps the reading off the card-filter state, where it would contradict the body', async () => {
     const jsonBody = {
       code: 'empty_export',

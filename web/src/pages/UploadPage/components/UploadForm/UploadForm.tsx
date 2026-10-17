@@ -779,6 +779,46 @@ function UploadForm({
     zoneState === 'emptyDeck' && rescueFiles.length === 1
       ? localError?.rescue
       : null;
+
+  // The AI offer on the empty state: who the user is decides what the button
+  // does. Anonymous signs in, a free account sees the paid plan, a paying
+  // account with AI off sends the same file back with AI on for this one
+  // conversion. A paying account with AI on already had Claude try, so the
+  // offer would promise nothing new and is not shown.
+  const aiRescueState = (() => {
+    if (zoneState !== 'emptyDeck' || localError?.code !== 'empty_export') {
+      return null;
+    }
+    if (!isAuthenticated) return 'anon';
+    if (!isPaying) return 'free';
+    if (aiOn) return null;
+    return rescueFiles.length === 1 ? 'paying' : null;
+  })();
+  useEffect(() => {
+    if (aiRescueState != null) {
+      track('upload_ai_rescue_shown', { state: aiRescueState });
+    }
+  }, [aiRescueState]);
+
+  const handleAiRescue = () => {
+    const files = rescueFiles;
+    if (files.length !== 1) return;
+    track('upload_ai_rescue_clicked', { state: 'paying' });
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('pakker', file, file.name);
+    }
+    for (const [key, value] of Object.entries(globalThis.localStorage)) {
+      formData.append(key, value);
+    }
+    formData.set('claude-ai-flashcards', 'true');
+    setLocalError(null);
+    setZoneState('converting');
+    setProgressWidth(10);
+    setProgressSlow(false);
+    setShowFallback(false);
+    void runFileUpload(formData, files, false);
+  };
   useEffect(() => {
     if (offeredRescue != null && offeredRescue.length > 0) {
       track('upload_rescue_offered', {
@@ -1804,6 +1844,38 @@ function UploadForm({
         {t('upload.form.seeCommonProblemsSuffix')}
       </>
     );
+    const aiActions = aiRescueState != null && (
+      <div className={formStyles.aiRescueActions}>
+        <p className={formStyles.rescueLead}>{t('upload.form.aiRescueLead')}</p>
+        {aiRescueState === 'anon' && (
+          <Link
+            to="/login?redirect=/upload"
+            className={formStyles.aiRescueButton}
+            onClick={() => track('upload_ai_rescue_clicked', { state: 'anon' })}
+          >
+            {t('upload.form.aiRescueSignIn')}
+          </Link>
+        )}
+        {aiRescueState === 'free' && (
+          <Link
+            to="/pricing"
+            className={formStyles.aiRescueButton}
+            onClick={() => track('upload_ai_rescue_clicked', { state: 'free' })}
+          >
+            {t('upload.form.aiRescueUpgrade')}
+          </Link>
+        )}
+        {aiRescueState === 'paying' && (
+          <button
+            type="button"
+            className={formStyles.aiRescueButton}
+            onClick={handleAiRescue}
+          >
+            {t('upload.form.aiRescueMake')}
+          </button>
+        )}
+      </div>
+    );
     const rescue = rescueFiles.length === 1 ? (localError?.rescue ?? []) : [];
     const rescueActions = rescue.length > 0 && (
       <div className={formStyles.rescueActions}>
@@ -1836,6 +1908,7 @@ function UploadForm({
         <>
           <p className={formStyles.emptyReading}>{copy.text}</p>
           {rescueActions}
+          {aiActions}
           <p className={formStyles.emptyBody}>
             {copy.next != null && `${t(`upload.form.${copy.next}`)} `}
             {commonProblems}
@@ -1847,14 +1920,18 @@ function UploadForm({
       return (
         <>
           {rescueActions}
+          {aiActions}
           <p className={formStyles.emptyBody}>{commonProblems}</p>
         </>
       );
     }
     return (
-      <p className={formStyles.emptyBody}>
-        {t('upload.form.noCardsBody')} {commonProblems}
-      </p>
+      <>
+        <p className={formStyles.emptyBody}>
+          {t('upload.form.noCardsBody')} {commonProblems}
+        </p>
+        {aiActions}
+      </>
     );
   };
 
