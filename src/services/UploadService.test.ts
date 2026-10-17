@@ -659,6 +659,36 @@ describe('UploadService.handleUpload — error paths', () => {
     );
   });
 
+  it('offers no rescue for a multi-file submit, whose offer would describe one file', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [],
+          emptyReason: 'no_toggles',
+          rescueCandidates: [{ rule: 'heading', cards: 2 }],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      files: [
+        { originalname: 'a.html', mimetype: 'text/html', size: 10 },
+        { originalname: 'b.html', mimetype: 'text/html', size: 10 },
+      ],
+    } as unknown as Partial<express.Request>);
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedJson()).toMatchObject({ code: 'empty_export', rescue: [] });
+  });
+
   it('sends reading null when the empty file cannot be read back', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {

@@ -323,7 +323,10 @@ function UploadForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const convertRef = useRef<HTMLButtonElement>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
-  const lastUploadedFilesRef = useRef<File[]>([]);
+  // The files behind the last local submit, kept so a rescue button can send
+  // them back with the chosen rule. Remote (Dropbox, Drive) submits clear it:
+  // those bytes never reach the browser, so no button is offered for them.
+  const [rescueFiles, setRescueFiles] = useState<File[]>([]);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [sampleRun, setSampleRun] = useState(false);
   const {
@@ -769,7 +772,13 @@ function UploadForm({
     }
   }, [zoneState]);
 
-  const offeredRescue = zoneState === 'emptyDeck' ? localError?.rescue : null;
+  // Buttons need exactly one local file to send back: a remote upload holds
+  // no bytes here, and a multi-file submit stops at the first empty file, so
+  // its offer would describe only that file.
+  const offeredRescue =
+    zoneState === 'emptyDeck' && rescueFiles.length === 1
+      ? localError?.rescue
+      : null;
   useEffect(() => {
     if (offeredRescue != null && offeredRescue.length > 0) {
       track('upload_rescue_offered', {
@@ -841,6 +850,7 @@ function UploadForm({
 
   const handleDropboxFiles = async (files: DropboxFile[]) => {
     const first = files[0];
+    setRescueFiles([]);
     setDropboxFilename(first?.name ?? null);
     setDropboxError(null);
     setSampleRun(false);
@@ -893,6 +903,7 @@ function UploadForm({
     accessToken: string
   ) => {
     const first = files[0];
+    setRescueFiles([]);
     setDriveFilename(first?.name ?? null);
     setDriveMimeType(first?.mimeType ?? null);
     setDriveError(null);
@@ -1172,7 +1183,7 @@ function UploadForm({
     uploadedFiles: File[],
     isRetry: boolean
   ): Promise<boolean> => {
-    lastUploadedFilesRef.current = uploadedFiles;
+    setRescueFiles(uploadedFiles);
     const submittedAt = Date.now();
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
@@ -1259,8 +1270,8 @@ function UploadForm({
   // The user picked a structure from the empty-deck offer; the same files go
   // back with the chosen rule, and the server builds that deck.
   const handleRescueChoice = (rule: RescueRule, cards: number) => {
-    const files = lastUploadedFilesRef.current;
-    if (files.length === 0) return;
+    const files = rescueFiles;
+    if (files.length !== 1) return;
     track('upload_rescue_chosen', { rule, cards });
     const formData = new FormData();
     for (const file of files) {
@@ -1793,7 +1804,7 @@ function UploadForm({
         {t('upload.form.seeCommonProblemsSuffix')}
       </>
     );
-    const rescue = localError?.rescue ?? [];
+    const rescue = rescueFiles.length === 1 ? (localError?.rescue ?? []) : [];
     const rescueActions = rescue.length > 0 && (
       <div className={formStyles.rescueActions}>
         <p className={formStyles.rescueLead}>{t('upload.form.rescueLead')}</p>

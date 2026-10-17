@@ -263,6 +263,17 @@ function shippedRescueRule(
   return shipped?.inducedRule?.rule;
 }
 
+// The rule the user picked on the empty state, read off the deck that shipped
+// rather than the request: a chosen rule the floor outran was never applied.
+function chosenRescueRule(
+  packages: { inducedRule?: InducedRescue }[]
+): string | undefined {
+  const chosen = packages.find(
+    (p) => p.inducedRule?.outcome === 'rescue_chosen'
+  );
+  return chosen?.inducedRule?.rule;
+}
+
 function sumDroppedImages(packages: { droppedImageCount?: number }[]): number {
   return packages.reduce((sum, p) => sum + (p.droppedImageCount ?? 0), 0);
 }
@@ -1231,7 +1242,9 @@ class UploadService {
           docsLink: '/documentation/help/common-problems',
           empty_reason: err.reason,
           reading: await readEmptyUpload(files, readUploadBytes),
-          rescue: err.rescueCandidates,
+          // A multi-file submit stops at the first empty file, so an offer
+          // would describe only that file; the form offers nothing for those.
+          rescue: files?.length === 1 ? err.rescueCandidates : [],
         };
         return res.status(400).json(body);
       } else if (err instanceof Error && err.name === 'EmptyContentError') {
@@ -1911,8 +1924,8 @@ class UploadService {
       props: {
         ...this.baseFunnelProps(req),
         card_count_bucket: toCardCountBucket(totalCards),
-        ...(settings.rescueRule != null
-          ? { rescue_chosen: settings.rescueRule }
+        ...(chosenRescueRule(packages) != null
+          ? { rescue_chosen: chosenRescueRule(packages) }
           : {}),
         ...this.pdfPageCountProps(packages),
       },
