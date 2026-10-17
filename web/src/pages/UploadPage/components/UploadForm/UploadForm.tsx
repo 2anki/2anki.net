@@ -327,6 +327,9 @@ function UploadForm({
   // them back with the chosen rule. Remote (Dropbox, Drive) submits clear it:
   // those bytes never reach the browser, so no button is offered for them.
   const [rescueFiles, setRescueFiles] = useState<File[]>([]);
+  // True while the last submit was the AI resend from the empty state, so a
+  // second empty result after Claude tried never offers AI again.
+  const [lastSubmitUsedAi, setLastSubmitUsedAi] = useState(false);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [sampleRun, setSampleRun] = useState(false);
   const {
@@ -775,10 +778,61 @@ function UploadForm({
   // Buttons need exactly one local file to send back: a remote upload holds
   // no bytes here, and a multi-file submit stops at the first empty file, so
   // its offer would describe only that file.
+  // Only the default empty-state body carries offers; the card-filter,
+  // Google Drive native and .txt bodies return their own advice first, so
+  // nothing is offered or counted as offered there (the Markdown case has
+  // its own error code). Any Drive native type is excluded, wider than the
+  // three the body names, so a type without its own advice fails safe.
+  const emptyStateUsesDefaultBody =
+    zoneState === 'emptyDeck' &&
+    localError?.code === 'empty_export' &&
+    localError.empty_reason !== 'all_filtered' &&
+    !(driveMimeType?.startsWith('application/vnd.google-apps.') ?? false) &&
+    !/\.txt$/i.test(
+      driveFilename ?? dropboxFilename ?? displayFilename(fileInputRef.current)
+    );
   const offeredRescue =
-    zoneState === 'emptyDeck' && rescueFiles.length === 1
+    emptyStateUsesDefaultBody && rescueFiles.length === 1
       ? localError?.rescue
       : null;
+
+  // Anonymous and free accounts are sent to the paid plan rather than to a
+  // free AI run; a paying account with AI off spends its own credits on a
+  // click; one with AI on already had Claude try, so nothing is offered.
+  const aiRescueState = (() => {
+    if (!emptyStateUsesDefaultBody) {
+      return null;
+    }
+    if (!isAuthenticated) return 'anon';
+    if (!isPaying) return 'free';
+    if (aiOn || lastSubmitUsedAi) return null;
+    return rescueFiles.length === 1 ? 'paying' : null;
+  })();
+  useEffect(() => {
+    if (aiRescueState != null) {
+      track('upload_ai_rescue_shown', { state: aiRescueState });
+    }
+  }, [aiRescueState]);
+
+  const handleAiRescue = () => {
+    const files = rescueFiles;
+    if (files.length !== 1) return;
+    track('upload_ai_rescue_clicked', { state: 'paying' });
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('pakker', file, file.name);
+    }
+    for (const [key, value] of Object.entries(globalThis.localStorage)) {
+      formData.append(key, value);
+    }
+    formData.set('claude-ai-flashcards', 'true');
+    setLocalError(null);
+    setZoneState('converting');
+    setProgressWidth(10);
+    setProgressSlow(false);
+    setShowFallback(false);
+    void runFileUpload(formData, files, false);
+  };
   useEffect(() => {
     if (offeredRescue != null && offeredRescue.length > 0) {
       track('upload_rescue_offered', {
@@ -1184,6 +1238,7 @@ function UploadForm({
     isRetry: boolean
   ): Promise<boolean> => {
     setRescueFiles(uploadedFiles);
+    setLastSubmitUsedAi(formData.get('claude-ai-flashcards') === 'true');
     const submittedAt = Date.now();
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
@@ -1804,6 +1859,31 @@ function UploadForm({
         {t('upload.form.seeCommonProblemsSuffix')}
       </>
     );
+    const aiActions = aiRescueState != null && (
+      <div className={formStyles.aiRescueActions}>
+        <p className={formStyles.rescueLead}>{t('upload.form.aiRescueLead')}</p>
+        {(aiRescueState === 'anon' || aiRescueState === 'free') && (
+          <Link
+            to="/pricing"
+            className={formStyles.aiRescueButton}
+            onClick={() =>
+              track('upload_ai_rescue_clicked', { state: aiRescueState })
+            }
+          >
+            {t('upload.form.aiRescueUpgrade')}
+          </Link>
+        )}
+        {aiRescueState === 'paying' && (
+          <button
+            type="button"
+            className={formStyles.aiRescueButton}
+            onClick={handleAiRescue}
+          >
+            {t('upload.form.aiRescueMake')}
+          </button>
+        )}
+      </div>
+    );
     const rescue = rescueFiles.length === 1 ? (localError?.rescue ?? []) : [];
     const rescueActions = rescue.length > 0 && (
       <div className={formStyles.rescueActions}>
@@ -1836,6 +1916,7 @@ function UploadForm({
         <>
           <p className={formStyles.emptyReading}>{copy.text}</p>
           {rescueActions}
+          {aiActions}
           <p className={formStyles.emptyBody}>
             {copy.next != null && `${t(`upload.form.${copy.next}`)} `}
             {commonProblems}
@@ -1847,14 +1928,18 @@ function UploadForm({
       return (
         <>
           {rescueActions}
+          {aiActions}
           <p className={formStyles.emptyBody}>{commonProblems}</p>
         </>
       );
     }
     return (
-      <p className={formStyles.emptyBody}>
-        {t('upload.form.noCardsBody')} {commonProblems}
-      </p>
+      <>
+        <p className={formStyles.emptyBody}>
+          {t('upload.form.noCardsBody')} {commonProblems}
+        </p>
+        {aiActions}
+      </>
     );
   };
 
