@@ -4,6 +4,7 @@ import scoreCandidateDeck, {
 } from '../scoreCandidateDeck';
 import { candidateOrderIndex, InducedRule } from './candidateRules';
 import { clearsQualityFloor } from './qualityFloor';
+import type { RescueCandidate } from '../../../types/RescueCandidate';
 
 export interface Candidate<T extends ScorableCard> {
   rule: InducedRule;
@@ -22,6 +23,9 @@ export interface RankResult<T extends ScorableCard> {
   // clears the floor, so a rejected rescue still says which structure came
   // closest rather than vanishing from the corpus.
   best: ScoredCandidate<T> | null;
+  // Every rule that produced at least one card, with its count, in rule order.
+  // When nothing clears the floor these are offered to the user as a choice.
+  candidates: RescueCandidate[];
 }
 
 // Produces one candidate deck per rule, drops the rules that yielded nothing,
@@ -58,8 +62,14 @@ export function rankCandidates<T extends ScorableCard>(
     ordered.find((candidate) =>
       clearsQualityFloor(candidate.cards, candidate.score)
     ) ?? null;
+  const offered = [...scored]
+    .sort((a, b) => candidateOrderIndex(a.rule) - candidateOrderIndex(b.rule))
+    .map((candidate) => ({
+      rule: candidate.rule,
+      cards: candidate.cards.length,
+    }));
 
-  return { winner, best };
+  return { winner, best, candidates: offered };
 }
 
 export default rankCandidates;

@@ -403,6 +403,59 @@ describe('DeckParser dominant table documents', () => {
     expect(parser.inducedRule).toMatchObject({ outcome: 'rescue_rejected' });
   });
 
+  it('offers the structures that made cards when none cleared the floor', () => {
+    const twoSections =
+      '<h2>What is osmosis?</h2><p>Water crossing a membrane.</p>' +
+      '<h2>What is diffusion?</h2><p>Particles spreading out over time.</p>';
+    const parser = parse(page(twoSections), new CardOption({}));
+
+    expect(parser.payload[0].cards).toHaveLength(0);
+    expect(parser.rescueCandidates).toEqual([{ rule: 'heading', cards: 2 }]);
+  });
+
+  it('ships the structure the user chose even below the floor', () => {
+    const twoSections =
+      '<h2>What is osmosis?</h2><p>Water crossing a membrane.</p>' +
+      '<h2>What is diffusion?</h2><p>Particles spreading out over time.</p>';
+    const parser = parse(
+      page(twoSections),
+      new CardOption({ 'rescue-rule': 'heading' })
+    );
+
+    expect(parser.payload[0].cards.map((card) => card.name)).toEqual([
+      'What is osmosis?',
+      'What is diffusion?',
+    ]);
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
+    expect(parser.rescueCandidates).toEqual([]);
+  });
+
+  it('ignores a chosen rule that yields nothing and falls back to the offer', () => {
+    const twoSections =
+      '<h2>What is osmosis?</h2><p>Water crossing a membrane.</p>' +
+      '<h2>What is diffusion?</h2><p>Particles spreading out over time.</p>';
+    const parser = parse(
+      page(twoSections),
+      new CardOption({ 'rescue-rule': 'quote' })
+    );
+
+    expect(parser.payload[0].cards).toHaveLength(0);
+    expect(parser.rescueCandidates).toEqual([{ rule: 'heading', cards: 2 }]);
+  });
+
+  it('never applies a chosen rule to a page that makes cards on its own', () => {
+    const parser = parse(
+      page(HEADING_SECTIONS),
+      new CardOption({ 'rescue-rule': 'bullets' })
+    );
+
+    expect(parser.payload[0].cards.length).toBeGreaterThan(0);
+    expect(parser.inducedRule?.rule).not.toBe('bullets');
+  });
+
   it('does not append fan-out lists when disable-indented-bullets is on', () => {
     const strayList = '<ul class="bulleted-list"><li>stray note</li></ul>';
     const parser = parse(

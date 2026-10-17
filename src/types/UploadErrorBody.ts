@@ -24,10 +24,12 @@ export type UploadErrorCode =
 
 import type { EmptyDeckReason } from '../usecases/jobs/EmptyDeckError';
 import type { EmptyUploadReading } from './EmptyUploadReading';
+import type { RescueCandidate } from './RescueCandidate';
 
 export interface UploadErrorBody {
   code: UploadErrorCode;
   message: string;
   empty_reason?: EmptyDeckReason;
   reading?: EmptyUploadReading | null;
+  rescue?: RescueCandidate[];
 }

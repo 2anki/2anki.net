@@ -35,6 +35,10 @@ import {
   EmptyDeckReason,
   mostSpecificEmptyReason,
 } from '../jobs/EmptyDeckError';
+import {
+  mergeRescueCandidates,
+  type RescueCandidate,
+} from '../../types/RescueCandidate';
 
 const LOCKED_PDF = Symbol('locked-pdf');
 
@@ -82,6 +86,7 @@ interface BatchOutcome {
   lockedPdfs: string[];
   failedFiles: string[];
   emptyReasons: EmptyDeckReason[];
+  rescueCandidateSets: RescueCandidate[][];
 }
 
 // A file that produced no cards still knows why: it either threw an
@@ -97,6 +102,13 @@ function reasonFromZeroCardResult(result: {
   emptyReason?: EmptyDeckReason;
 }): EmptyDeckReason | undefined {
   return (result.cardCount ?? 0) === 0 ? result.emptyReason : undefined;
+}
+
+function rescueFromZeroCardResult(result: {
+  cardCount?: number;
+  rescueCandidates?: RescueCandidate[];
+}): RescueCandidate[] {
+  return (result.cardCount ?? 0) === 0 ? (result.rescueCandidates ?? []) : [];
 }
 
 interface BatchBuildContext {
@@ -144,6 +156,7 @@ async function buildDeckBatch(
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
   const emptyReasons: EmptyDeckReason[] = [];
+  const rescueCandidateSets: RescueCandidate[][] = [];
   const preparedResults: DeckInfoOnlyResult[] = [];
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
@@ -156,6 +169,7 @@ async function buildDeckBatch(
       preparedResults.push(result.value);
       const reason = reasonFromZeroCardResult(result.value);
       if (reason != null) emptyReasons.push(reason);
+      rescueCandidateSets.push(rescueFromZeroCardResult(result.value));
     }
   });
 
@@ -232,8 +246,16 @@ async function buildDeckBatch(
   lockedPdfs.push(...stragglerOutcomes.lockedPdfs);
   failedFiles.push(...stragglerOutcomes.failedFiles);
   emptyReasons.push(...stragglerOutcomes.emptyReasons);
+  rescueCandidateSets.push(...stragglerOutcomes.rescueCandidateSets);
 
-  return { packages, warnings, lockedPdfs, failedFiles, emptyReasons };
+  return {
+    packages,
+    warnings,
+    lockedPdfs,
+    failedFiles,
+    emptyReasons,
+    rescueCandidateSets,
+  };
 }
 
 async function buildStragglerDecks(
@@ -248,6 +270,7 @@ async function buildStragglerDecks(
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
   const emptyReasons: EmptyDeckReason[] = [];
+  const rescueCandidateSets: RescueCandidate[][] = [];
 
   for (const straggler of stragglers) {
     const relevantFiles = getRelevantFiles(
@@ -279,6 +302,7 @@ async function buildStragglerDecks(
     } else if (outcome) {
       const reason = reasonFromZeroCardResult(outcome);
       if (reason != null) emptyReasons.push(reason);
+      rescueCandidateSets.push(rescueFromZeroCardResult(outcome));
       const pkg = new Package(
         outcome.name,
         outcome.cardCount ?? 0,
@@ -301,7 +325,14 @@ async function buildStragglerDecks(
     }
   }
 
-  return { packages, warnings, lockedPdfs, failedFiles, emptyReasons };
+  return {
+    packages,
+    warnings,
+    lockedPdfs,
+    failedFiles,
+    emptyReasons,
+    rescueCandidateSets,
+  };
 }
 
 async function buildClaudeFlashcardDeck(
@@ -423,6 +454,7 @@ async function buildAllInOneSlot(
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
   const emptyReasons: EmptyDeckReason[] = [];
+  const rescueCandidateSets: RescueCandidate[][] = [];
   let cardsHeldBack: number | undefined;
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
@@ -437,6 +469,7 @@ async function buildAllInOneSlot(
     } else if (outcome) {
       const reason = reasonFromZeroCardResult(outcome);
       if (reason != null) emptyReasons.push(reason);
+      rescueCandidateSets.push(rescueFromZeroCardResult(outcome));
       const pkg = new Package(
         outcome.name,
         outcome.cardCount ?? 0,
@@ -468,6 +501,7 @@ async function buildAllInOneSlot(
     warnings,
     cardsHeldBack,
     emptyReason: emptyReasonForEmptyResult(packages, emptyReasons),
+    rescueCandidates: rescueForEmptyResult(packages, rescueCandidateSets),
   };
 }
 
@@ -483,6 +517,20 @@ function emptyReasonForEmptyResult(
     return undefined;
   }
   return mostSpecificEmptyReason(emptyReasons);
+}
+
+// Same gate as the reason: candidates are only offered when the whole slot
+// produced nothing, so a zip that half converted never shows rescue buttons.
+function rescueForEmptyResult(
+  packages: Package[],
+  rescueCandidateSets: RescueCandidate[][]
+): RescueCandidate[] | undefined {
+  const totalCards = packages.reduce((sum, p) => sum + (p.cardCount ?? 0), 0);
+  if (totalCards > 0) {
+    return undefined;
+  }
+  const merged = mergeRescueCandidates(rescueCandidateSets);
+  return merged.length > 0 ? merged : undefined;
 }
 
 function appendLockedPdfWarning(warnings: string[], lockedPdfs: string[]) {
@@ -595,6 +643,7 @@ export const getPackagesFromZip = async (
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
   const emptyReasons: EmptyDeckReason[] = [];
+  const rescueCandidateSets: RescueCandidate[][] = [];
   settledChunks.forEach((result, index) => {
     if (result.status === 'rejected') {
       failedFiles.push(...chunks[index]);
@@ -607,6 +656,7 @@ export const getPackagesFromZip = async (
     lockedPdfs.push(...result.value.lockedPdfs);
     failedFiles.push(...result.value.failedFiles);
     emptyReasons.push(...result.value.emptyReasons);
+    rescueCandidateSets.push(...result.value.rescueCandidateSets);
   });
   appendLockedPdfWarning(warnings, lockedPdfs);
   appendConversionFailureWarning(warnings, failedFiles);
@@ -615,5 +665,6 @@ export const getPackagesFromZip = async (
     packages,
     warnings,
     emptyReason: emptyReasonForEmptyResult(packages, emptyReasons),
+    rescueCandidates: rescueForEmptyResult(packages, rescueCandidateSets),
   };
 };

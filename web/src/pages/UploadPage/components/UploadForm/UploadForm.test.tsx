@@ -1432,6 +1432,69 @@ describe('UploadForm analytics events', () => {
     });
   });
 
+  it('offers one-click rescue buttons and resubmits the files with the chosen rule', async () => {
+    const jsonBody = {
+      code: 'empty_export',
+      message: 'No cards were found in this file.',
+      filename: 'notes.html',
+      docsLink: '/documentation/help/common-problems',
+      empty_reason: 'no_toggles',
+      rescue: [
+        { rule: 'heading', cards: 14 },
+        { rule: 'bullets', cards: 40 },
+      ],
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 400,
+      clone: () => ({ json: () => Promise.resolve(jsonBody) }),
+      text: () => Promise.resolve(JSON.stringify(jsonBody)),
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const file = new File(['<p>prose</p>'], 'notes.html', {
+      type: 'text/html',
+    });
+    Object.defineProperty(input, 'files', { value: [file] });
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    const buttons = await waitFor(() => {
+      const found = Array.from(
+        container.querySelectorAll('[class*="rescueButton"]')
+      );
+      expect(found).toHaveLength(2);
+      return found as HTMLButtonElement[];
+    });
+    expect(buttons.map((b) => b.textContent)).toEqual([
+      'Make 14 cards from the headings',
+      'Make 40 cards from the bullet points',
+    ]);
+
+    await act(async () => {
+      buttons[1].click();
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+    const [, retry] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const sent = retry.body as FormData;
+    expect(sent.get('rescue-rule')).toBe('bullets');
+    expect((sent.get('pakker') as File).name).toBe('notes.html');
+  });
+
   it('keeps the reading off the card-filter state, where it would contradict the body', async () => {
     const jsonBody = {
       code: 'empty_export',

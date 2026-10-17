@@ -1,4 +1,8 @@
 import * as cheerio from 'cheerio';
+import {
+  mergeRescueCandidates,
+  type RescueCandidate,
+} from '../../types/RescueCandidate';
 import type { Element } from 'domhandler';
 
 import preserveNewlinesIfApplicable from '../../services/NotionService/helpers/preserveNewlinesIfApplicable';
@@ -218,6 +222,10 @@ export class DeckParser {
   };
 
   inducedRule?: InducedRescue;
+
+  // Structures that produced cards but failed the quality floor, summed across
+  // sub-decks; offered on the empty-deck state so the user can pick one.
+  rescueCandidates: RescueCandidate[] = [];
 
   private sawUnclassifiedParse: boolean;
 
@@ -729,6 +737,30 @@ export class DeckParser {
     return winner.cards;
   }
 
+  // The user picked a structure on the empty-deck state after seeing the
+  // counts, so the quality floor steps aside: a deck they chose with their
+  // eyes open beats an honest empty one. Still only reachable on the
+  // zero-usable-card branch, so a conversion that makes cards never sees it.
+  private induceChosenRule(
+    dom: cheerio.CheerioAPI,
+    rules: InducedRule[]
+  ): Note[] | null {
+    const rule = this.settings.rescueRule;
+    if (rule == null || !rules.includes(rule)) {
+      return null;
+    }
+    const cards = induceCardsFromDom(dom, rule);
+    if (cards.length === 0) {
+      return null;
+    }
+    this.recordInducedRule({
+      rule,
+      outcome: 'rescue_shipped',
+      score: scoreCandidateDeck(cards, domPlainTextLength(dom)),
+    });
+    return cards;
+  }
+
   private uploadCandidateRules(): InducedRule[] {
     // clozeFromToggleContent assumes a toggle front; isCherry means the user
     // explicitly restricted the conversion to selected blocks, so inducing a
@@ -786,7 +818,11 @@ export class DeckParser {
     if (rules.length === 0) {
       return null;
     }
-    const { winner, best } = runInduction(
+    const chosen = this.induceChosenRule(dom, rules);
+    if (chosen != null) {
+      return chosen;
+    }
+    const { winner, best, candidates } = runInduction(
       rules,
       (rule) => induceCardsFromDom(dom, rule),
       domPlainTextLength(dom)
@@ -799,6 +835,10 @@ export class DeckParser {
           score: best.score,
         });
       }
+      this.rescueCandidates = mergeRescueCandidates([
+        this.rescueCandidates,
+        candidates,
+      ]);
       return null;
     }
     this.recordInducedRule({

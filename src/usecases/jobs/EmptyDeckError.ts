@@ -1,3 +1,5 @@
+import type { RescueCandidate } from '../../types/RescueCandidate';
+
 export type EmptyDeckReason =
   | 'no_toggles'
   | 'all_filtered'
@@ -34,10 +36,19 @@ export class EmptyDeckError extends Error {
 
   readonly reason: EmptyDeckReason;
 
-  constructor(sourceFormat?: 'markdown', reason: EmptyDeckReason = 'unknown') {
+  // Structures that made cards but missed the quality floor; the empty-deck
+  // response offers them so the user can choose one.
+  readonly rescueCandidates: RescueCandidate[];
+
+  constructor(
+    sourceFormat?: 'markdown',
+    reason: EmptyDeckReason = 'unknown',
+    rescueCandidates: RescueCandidate[] = []
+  ) {
     super('No cards found in your upload. Use .zip, .html, .md, or .csv.');
     this.name = 'EmptyDeckError';
     this.sourceFormat = sourceFormat;
     this.reason = reason;
+    this.rescueCandidates = rescueCandidates;
   }
 }

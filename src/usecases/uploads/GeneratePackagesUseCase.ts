@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import type { RescueCandidate } from '../../types/RescueCandidate';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import Package from '../../lib/parser/Package';
@@ -29,6 +30,7 @@ export interface PackageResult {
   cardFingerprints?: string[];
   cardsHeldBack?: number;
   emptyReason?: EmptyDeckReason;
+  rescueCandidates?: RescueCandidate[];
 }
 
 function buildWorkerError(failure: UploadGenerationFailure): Error {
@@ -106,6 +108,7 @@ class GeneratePackagesUseCase {
         cardFingerprints: result.cardFingerprints,
         cardsHeldBack: result.cardsHeldBack,
         emptyReason: result.emptyReason,
+        rescueCandidates: result.rescueCandidates,
       };
     }
     throw buildWorkerError(result.error);

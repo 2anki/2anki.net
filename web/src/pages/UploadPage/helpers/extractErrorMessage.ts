@@ -5,6 +5,7 @@ import {
   type UploadErrorCode,
 } from '../../../types/UploadErrorBody';
 import { isEmptyUploadReading } from '../../../lib/upload/isEmptyUploadReading';
+import { readRescueCandidates } from '../../../lib/upload/isRescueCandidate';
 
 const REJECTED_FALLBACK =
   'The server rejected the upload. Try again or email support@2anki.net.';
@@ -26,6 +27,10 @@ export async function extractErrorMessage(
       }
       if (isEmptyUploadReading(body.reading)) {
         result.reading = body.reading;
+      }
+      const rescue = readRescueCandidates(body.rescue);
+      if (rescue.length > 0) {
+        result.rescue = rescue;
       }
       return result;
     }

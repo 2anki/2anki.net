@@ -31,7 +31,11 @@ import { ThinDeckNotice } from '../../../DownloadsPage/components/ThinDeckNotice
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
-import { describeEmptyReading } from '../../helpers/describeEmptyReading';
+import {
+  describeEmptyReading,
+  formatCount,
+} from '../../helpers/describeEmptyReading';
+import type { RescueRule } from '../../../../lib/upload/isRescueCandidate';
 import { useDrag } from '../../../../lib/hooks/useDrag';
 import { usePassPrices } from '../../../../lib/hooks/usePassPrices';
 import { useUploadFormState } from './hooks/useUploadFormState';
@@ -171,6 +175,15 @@ function claimFailure(status: number, error: UploadErrorBody | null): Error {
   );
 }
 
+const RESCUE_LABEL_KEYS: Record<RescueRule, string> = {
+  columns: 'rescueColumns',
+  heading: 'rescueHeading',
+  quote: 'rescueQuote',
+  numbered: 'rescueNumbered',
+  bullets: 'rescueBullets',
+  guess: 'rescueGuess',
+};
+
 function zoneStateForUploadError(
   message: UploadErrorBody
 ): 'emptyDeck' | 'imageOnly' | 'error' {
@@ -308,6 +321,7 @@ function UploadForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const convertRef = useRef<HTMLButtonElement>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
+  const lastUploadedFilesRef = useRef<File[]>([]);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [sampleRun, setSampleRun] = useState(false);
   const {
@@ -753,6 +767,15 @@ function UploadForm({
     }
   }, [zoneState]);
 
+  const offeredRescue = zoneState === 'emptyDeck' ? localError?.rescue : null;
+  useEffect(() => {
+    if (offeredRescue != null && offeredRescue.length > 0) {
+      track('upload_rescue_offered', {
+        rules: offeredRescue.map((candidate) => candidate.rule),
+      });
+    }
+  }, [offeredRescue]);
+
   useEffect(() => {
     if (zoneState === 'imageOnly') {
       track('image_only_photo_deck_shown');
@@ -1147,6 +1170,7 @@ function UploadForm({
     uploadedFiles: File[],
     isRetry: boolean
   ): Promise<boolean> => {
+    lastUploadedFilesRef.current = uploadedFiles;
     const submittedAt = Date.now();
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
@@ -1228,6 +1252,28 @@ function UploadForm({
       setLocalError(toFriendlyThrownError(error));
       setZoneState('error');
     }
+  };
+
+  // The user picked a structure from the empty-deck offer; the same files go
+  // back with the chosen rule, and the server builds that deck.
+  const handleRescueChoice = (rule: RescueRule, cards: number) => {
+    const files = lastUploadedFilesRef.current;
+    if (files.length === 0) return;
+    track('upload_rescue_chosen', { rule, cards });
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('pakker', file, file.name);
+    }
+    for (const [key, value] of Object.entries(globalThis.localStorage)) {
+      formData.append(key, value);
+    }
+    formData.set('rescue-rule', rule);
+    setLocalError(null);
+    setZoneState('converting');
+    setProgressWidth(10);
+    setProgressSlow(false);
+    setShowFallback(false);
+    void runFileUpload(formData, files, true);
   };
 
   const handleNetworkRetry = async () => {
@@ -1745,6 +1791,25 @@ function UploadForm({
         {t('upload.form.seeCommonProblemsSuffix')}
       </>
     );
+    const rescue = localError?.rescue ?? [];
+    const rescueActions = rescue.length > 0 && (
+      <div className={formStyles.rescueActions}>
+        <p className={formStyles.rescueLead}>{t('upload.form.rescueLead')}</p>
+        {rescue.map((candidate) => (
+          <button
+            key={candidate.rule}
+            type="button"
+            className={formStyles.rescueButton}
+            onClick={() => handleRescueChoice(candidate.rule, candidate.cards)}
+          >
+            {t(`upload.form.${RESCUE_LABEL_KEYS[candidate.rule]}`, {
+              count: candidate.cards,
+              n: formatCount(candidate.cards),
+            })}
+          </button>
+        ))}
+      </div>
+    );
     const reading = localError?.reading;
     if (reading != null) {
       const copy = describeEmptyReading(
@@ -1756,6 +1821,7 @@ function UploadForm({
       return (
         <>
           <p className={formStyles.emptyReading}>{copy.text}</p>
+          {rescueActions}
           <p className={formStyles.emptyBody}>
             {copy.next != null && `${t(`upload.form.${copy.next}`)} `}
             {commonProblems}
@@ -1764,9 +1830,12 @@ function UploadForm({
       );
     }
     return (
-      <p className={formStyles.emptyBody}>
-        {t('upload.form.noCardsBody')} {commonProblems}
-      </p>
+      <>
+        {rescueActions}
+        <p className={formStyles.emptyBody}>
+          {t('upload.form.noCardsBody')} {commonProblems}
+        </p>
+      </>
     );
   };
 

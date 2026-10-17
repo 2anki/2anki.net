@@ -616,6 +616,49 @@ describe('UploadService.handleUpload — error paths', () => {
     });
   });
 
+  it('offers the rescue candidates the worker found on the empty response', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [],
+          emptyReason: 'no_toggles',
+          rescueCandidates: [
+            { rule: 'heading', cards: 14 },
+            { rule: 'bullets', cards: 40 },
+          ],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(buildRequest(), res);
+
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toMatchObject({
+      code: 'empty_export',
+      empty_reason: 'no_toggles',
+      rescue: [
+        { rule: 'heading', cards: 14 },
+        { rule: 'bullets', cards: 40 },
+      ],
+    });
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({
+        props: expect.objectContaining({
+          rescue_offered: ['heading', 'bullets'],
+        }),
+      })
+    );
+  });
+
   it('sends reading null when the empty file cannot be read back', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {
