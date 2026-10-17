@@ -53,6 +53,7 @@ import get16DigitRandomId from '../../shared/helpers/get16DigitRandomId';
 import { isValidAudioFile } from '../anki/format';
 import FallbackParser from './experimental/FallbackParser';
 import { embedFile } from './exporters/embedFile';
+import { extractDataUriImages } from './extractDataUriImages';
 import {
   resolveNotionS3ImageFromZip,
   isNotionSignedFileUrl,
@@ -529,7 +530,9 @@ export class DeckParser {
     decks: Deck[],
     inheritedGlobalTags: string[] = []
   ) {
-    const { dom, isNewFormat } = this.loadAndNormalizeDOM(contents);
+    const { dom, isNewFormat } = this.loadAndNormalizeDOM(
+      this.unpackDataUriImages(contents)
+    );
 
     const extractedStyle = extractStyles(dom);
     const codeThemeStyle = getCodeThemeCss(this.settings.codeTheme);
@@ -1741,6 +1744,41 @@ export class DeckParser {
     } else {
       cards.push(note);
     }
+  }
+
+  // Runs on the raw string, before any DOM exists: a page whose images are
+  // base64 data URIs is mostly picture bytes, and every copy the parse makes
+  // of the HTML (the cheerio tree, each card's front and back, the exporter
+  // payload) would carry them. The bytes go to the workspace under the same
+  // content-hash name embedFile gives a local image, so the build step finds
+  // them as an ordinary relative image and bundles them like any other.
+  // With embed-images off the build step never bundles anything, so the data
+  // URI has to stay inline for Anki to show the picture at all.
+  private unpackDataUriImages(contents: string): string {
+    if (!this.settings.embedImages) {
+      return contents;
+    }
+    const written = new Set<string>();
+    const { html, count, bytes } = extractDataUriImages(
+      contents,
+      (image, extension) => {
+        const fileName = `${getUniqueFileName(image)}.${extension}`;
+        if (!written.has(fileName)) {
+          this.customExporter.addMedia(fileName, image);
+          written.add(fileName);
+        }
+        return fileName;
+      }
+    );
+    if (count > 0) {
+      console.info('[DeckParser] unpacked embedded images', {
+        count,
+        bytes,
+        htmlBytesBefore: contents.length,
+        htmlBytesAfter: html.length,
+      });
+    }
+    return html;
   }
 
   private loadDOM(contents: string) {

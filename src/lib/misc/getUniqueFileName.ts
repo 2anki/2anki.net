@@ -6,7 +6,7 @@ import crypto from 'crypto';
  * @param input user supplied filename
  * @returns hex digest
  */
-const getUniqueFileName = (input: string, max: number = 100) => {
+const getUniqueFileName = (input: string | Buffer, max: number = 100) => {
   const shasum = crypto.createHash('sha512');
   shasum.update(input);
   return shasum.digest('hex').slice(0, max);
