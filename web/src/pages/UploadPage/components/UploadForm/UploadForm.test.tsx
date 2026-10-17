@@ -1829,7 +1829,11 @@ describe('UploadForm analytics events', () => {
     });
 
     it('offers nothing and counts nothing on the .txt empty state', async () => {
-      const txtBody = { ...emptyBody, filename: 'notes.txt' };
+      const txtBody = {
+        ...emptyBody,
+        filename: 'notes.txt',
+        rescue: [{ rule: 'heading', cards: 2 }],
+      };
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue({
@@ -1867,6 +1871,42 @@ describe('UploadForm analytics events', () => {
         'upload_rescue_offered',
         expect.anything()
       );
+    });
+
+    it('does not offer AI again after the AI resend also made no cards', async () => {
+      mockUseUserLocals.mockReturnValue({
+        data: { user: { id: 7 }, locals: { subscriber: true } },
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+      const fetchMock = emptyFetch();
+      vi.stubGlobal('fetch', fetchMock);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      await submitOneFile(container);
+      const button = Array.from(container.querySelectorAll('button')).find(
+        (b) => b.textContent === 'Make cards with AI'
+      );
+      await act(async () => {
+        button!.click();
+      });
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      });
+      await waitFor(() => {
+        expect(container.querySelector('[class*="emptyTitle"]')).not.toBeNull();
+      });
+      expect(container.textContent).not.toContain('Make cards with AI');
+      expect(
+        trackMock.mock.calls.filter(
+          ([name, props]) =>
+            name === 'upload_ai_rescue_shown' &&
+            (props as { state: string }).state === 'paying'
+        )
+      ).toHaveLength(1);
     });
 
     it('shows no AI offer when AI already ran', async () => {

@@ -327,6 +327,9 @@ function UploadForm({
   // them back with the chosen rule. Remote (Dropbox, Drive) submits clear it:
   // those bytes never reach the browser, so no button is offered for them.
   const [rescueFiles, setRescueFiles] = useState<File[]>([]);
+  // True while the last submit was the AI resend from the empty state, so a
+  // second empty result after Claude tried never offers AI again.
+  const [lastSubmitUsedAi, setLastSubmitUsedAi] = useState(false);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [sampleRun, setSampleRun] = useState(false);
   const {
@@ -776,8 +779,10 @@ function UploadForm({
   // no bytes here, and a multi-file submit stops at the first empty file, so
   // its offer would describe only that file.
   // Only the default empty-state body carries offers; the card-filter,
-  // Markdown, Google Drive and .txt bodies return their own advice first, so
-  // nothing is offered or counted as offered there.
+  // Google Drive native and .txt bodies return their own advice first, so
+  // nothing is offered or counted as offered there (the Markdown case has
+  // its own error code). Any Drive native type is excluded, wider than the
+  // three the body names, so a type without its own advice fails safe.
   const emptyStateUsesDefaultBody =
     zoneState === 'emptyDeck' &&
     localError?.code === 'empty_export' &&
@@ -800,7 +805,7 @@ function UploadForm({
     }
     if (!isAuthenticated) return 'anon';
     if (!isPaying) return 'free';
-    if (aiOn) return null;
+    if (aiOn || lastSubmitUsedAi) return null;
     return rescueFiles.length === 1 ? 'paying' : null;
   })();
   useEffect(() => {
@@ -1233,6 +1238,7 @@ function UploadForm({
     isRetry: boolean
   ): Promise<boolean> => {
     setRescueFiles(uploadedFiles);
+    setLastSubmitUsedAi(formData.get('claude-ai-flashcards') === 'true');
     const submittedAt = Date.now();
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
@@ -1929,10 +1935,10 @@ function UploadForm({
     }
     return (
       <>
-        {aiActions}
         <p className={formStyles.emptyBody}>
           {t('upload.form.noCardsBody')} {commonProblems}
         </p>
+        {aiActions}
       </>
     );
   };
