@@ -414,6 +414,39 @@
   color: var(--color-text-link-hover);
 }
 
+.rescueActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 440px;
+}
+
+.rescueLead {
+  width: 100%;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.rescueButton {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: var(--color-primary);
+  color: var(--color-bg-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  box-shadow: var(--shadow-xs);
+  transition: background var(--transition-fast);
+}
+
+.rescueButton:hover {
+  background: var(--color-primary-hover);
+}
+
 .emptyActions {
   display: flex;
   align-items: center;

@@ -1,5 +1,23 @@
 import CardOption from './CardOption';
 
+describe('CardOption rescueRule', () => {
+  it('is undefined when the option is absent', () => {
+    expect(new CardOption({}).rescueRule).toBeUndefined();
+  });
+
+  it('reads a known rule from the payload', () => {
+    expect(new CardOption({ 'rescue-rule': 'bullets' }).rescueRule).toBe(
+      'bullets'
+    );
+  });
+
+  it('drops a value outside the rule vocabulary', () => {
+    expect(new CardOption({ 'rescue-rule': 'toString' }).rescueRule).toBe(
+      undefined
+    );
+  });
+});
+
 describe('CardOption codeTheme', () => {
   it('defaults to github when the option is absent', () => {
     const option = new CardOption({});

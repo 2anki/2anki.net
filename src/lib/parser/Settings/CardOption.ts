@@ -1,4 +1,5 @@
 import { getDefaultUserInstructions } from '../../../infrastracture/adapters/fileConversion/convertPDFToHTML';
+import { isRescueRule, type RescueRule } from '../../../types/RescueCandidate';
 import { validateCardStylePicker } from '../../claude/getCardStylePromptFragment';
 import { parseTemplate } from './helpers/parseTemplate';
 import { validateCardSize } from '../../claude/cardSize';
@@ -109,6 +110,10 @@ class CardOption {
 
   readonly claudeAIFlashcards: boolean;
 
+  // A structure the user chose on the empty-deck state after no candidate
+  // cleared the quality floor on its own. Only read on the zero-card branch.
+  readonly rescueRule: RescueRule | undefined;
+
   readonly aiComprehensive: boolean;
 
   readonly shareFilesForDebugging: boolean;
@@ -193,6 +198,9 @@ class CardOption {
     this.pdfPagePairs = input['pdf-page-pairs'] === 'true';
     this.downloadPdfs = input['download-pdfs'] === 'true';
     this.claudeAIFlashcards = input['claude-ai-flashcards'] === 'true';
+    this.rescueRule = isRescueRule(input['rescue-rule'])
+      ? input['rescue-rule']
+      : undefined;
     this.aiComprehensive = input['ai-comprehensive'] === 'true';
     this.shareFilesForDebugging = input['share-files-for-debugging'] === 'true';
     /* Is this really needed? */

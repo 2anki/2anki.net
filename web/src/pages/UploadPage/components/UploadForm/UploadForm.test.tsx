@@ -670,6 +670,62 @@ describe('UploadForm analytics events', () => {
     expect(screen.queryByText(/Cards built from the/)).toBeNull();
   });
 
+  it('offers no rescue buttons when a Dropbox file makes no cards', async () => {
+    const previousKey = process.env.REACT_APP_DROPBOX_APP_KEY;
+    process.env.REACT_APP_DROPBOX_APP_KEY = 'test-key';
+    (window as unknown as { Dropbox?: unknown }).Dropbox = {
+      choose: ({ success }: { success: (files: unknown[]) => void }) => {
+        success([
+          {
+            id: 'id:1',
+            name: 'prose.html',
+            bytes: 200,
+            icon: 'page_white',
+            isDir: false,
+            link: 'https://dl.dropboxusercontent.com/x/prose.html',
+            linkType: 'direct',
+          },
+        ]);
+      },
+    };
+    const jsonBody = {
+      code: 'empty_export',
+      message: 'No cards were found in this file.',
+      filename: 'prose.html',
+      docsLink: '/documentation/help/common-problems',
+      empty_reason: 'no_toggles',
+      rescue: [{ rule: 'heading', cards: 2 }],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 400,
+        clone: () => ({ json: () => Promise.resolve(jsonBody) }),
+        json: () => Promise.resolve(jsonBody),
+        text: () => Promise.resolve(JSON.stringify(jsonBody)),
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const chooser = Array.from(container.querySelectorAll('button')).find((b) =>
+      /dropbox/i.test(b.textContent ?? '')
+    );
+    expect(chooser).toBeDefined();
+    await act(async () => {
+      chooser!.click();
+    });
+
+    await waitFor(() => {
+      expect(container.querySelector('[class*="emptyTitle"]')).not.toBeNull();
+    });
+    expect(container.querySelector('[class*="rescueButton"]')).toBeNull();
+    process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
+  });
+
   it('posts to /api/upload/dropbox when the chooser returns a file', async () => {
     const previousKey = process.env.REACT_APP_DROPBOX_APP_KEY;
     process.env.REACT_APP_DROPBOX_APP_KEY = 'test-key';
@@ -1430,6 +1486,117 @@ describe('UploadForm analytics events', () => {
         'Put each question in a toggle with its answer inside it, then convert again. See common problems for the formats that work.'
       );
     });
+  });
+
+  it('offers one-click rescue buttons and resubmits the files with the chosen rule', async () => {
+    const jsonBody = {
+      code: 'empty_export',
+      message: 'No cards were found in this file.',
+      filename: 'notes.html',
+      docsLink: '/documentation/help/common-problems',
+      empty_reason: 'no_toggles',
+      rescue: [
+        { rule: 'heading', cards: 14 },
+        { rule: 'bullets', cards: 40 },
+      ],
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 400,
+      clone: () => ({ json: () => Promise.resolve(jsonBody) }),
+      text: () => Promise.resolve(JSON.stringify(jsonBody)),
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const file = new File(['<p>prose</p>'], 'notes.html', {
+      type: 'text/html',
+    });
+    Object.defineProperty(input, 'files', { value: [file] });
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    const buttons = await waitFor(() => {
+      const found = Array.from(
+        container.querySelectorAll('[class*="rescueButton"]')
+      );
+      expect(found).toHaveLength(2);
+      return found as HTMLButtonElement[];
+    });
+    expect(buttons.map((b) => b.textContent)).toEqual([
+      'Make 14 cards from the headings',
+      'Make 40 cards from the bullet points',
+    ]);
+    expect(
+      container.querySelector('[class*="emptyBody"]')?.textContent
+    ).not.toContain('Put each question');
+
+    await act(async () => {
+      buttons[1].click();
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+    const [, retry] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const sent = retry.body as FormData;
+    expect(sent.get('rescue-rule')).toBe('bullets');
+    expect((sent.get('pakker') as File).name).toBe('notes.html');
+  });
+
+  it('offers no rescue buttons for a multi-file submit', async () => {
+    const jsonBody = {
+      code: 'empty_export',
+      message: 'No cards were found in this file.',
+      filename: 'a.html',
+      docsLink: '/documentation/help/common-problems',
+      empty_reason: 'no_toggles',
+      rescue: [{ rule: 'heading', cards: 2 }],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 400,
+        clone: () => ({ json: () => Promise.resolve(jsonBody) }),
+        text: () => Promise.resolve(JSON.stringify(jsonBody)),
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [
+        new File(['<p>a</p>'], 'a.html', { type: 'text/html' }),
+        new File(['<p>b</p>'], 'b.html', { type: 'text/html' }),
+      ],
+    });
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    await waitFor(() => {
+      expect(container.querySelector('[class*="emptyTitle"]')).not.toBeNull();
+    });
+    expect(container.querySelector('[class*="rescueButton"]')).toBeNull();
   });
 
   it('keeps the reading off the card-filter state, where it would contradict the body', async () => {

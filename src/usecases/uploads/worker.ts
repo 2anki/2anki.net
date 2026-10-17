@@ -1,4 +1,8 @@
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
+import {
+  mergeRescueCandidates,
+  type RescueCandidate,
+} from '../../types/RescueCandidate';
 import { track } from '../../services/events/track';
 import { UploadedFile } from '../../lib/storage/types';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
@@ -105,6 +109,7 @@ interface FileResult {
   warnings: string[];
   cardsHeldBack?: number;
   emptyReason?: EmptyDeckReason;
+  rescueCandidates?: RescueCandidate[];
 }
 
 // Files handled by these branches in processFile pre-empt the Claude/PrepareDeck
@@ -198,6 +203,7 @@ async function processFile(
   const warnings: string[] = [];
   let cardsHeldBack: number | undefined;
   let emptyReason: EmptyDeckReason | undefined;
+  let rescueCandidates: RescueCandidate[] | undefined;
   const filename = file.originalname;
   const key = file.key;
 
@@ -306,6 +312,7 @@ async function processFile(
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
       emptyReason = d.emptyReason;
+      rescueCandidates = d.rescueCandidates;
     }
   } else if (isCompressedFile(filename) || isCompressedFile(key)) {
     const result = await getPackagesFromZip(
@@ -321,9 +328,10 @@ async function processFile(
     if (result.warnings) warnings.push(...result.warnings);
     cardsHeldBack = result.cardsHeldBack;
     emptyReason = result.emptyReason;
+    rescueCandidates = result.rescueCandidates;
   }
 
-  return { packages, warnings, cardsHeldBack, emptyReason };
+  return { packages, warnings, cardsHeldBack, emptyReason, rescueCandidates };
 }
 
 async function doGenerationWork(
@@ -335,6 +343,7 @@ async function doGenerationWork(
   cardFingerprints?: string[];
   cardsHeldBack?: number;
   emptyReason?: EmptyDeckReason;
+  rescueCandidates?: RescueCandidate[];
 }> {
   const {
     paying,
@@ -353,6 +362,7 @@ async function doGenerationWork(
   const warnings: string[] = [];
   let cardsHeldBack = 0;
   const emptyReasons: EmptyDeckReason[] = [];
+  const rescueCandidateSets: RescueCandidate[][] = [];
 
   const dedupeAcrossDecks = shouldDedupeAcrossDecks(
     paying,
@@ -385,6 +395,9 @@ async function doGenerationWork(
     warnings.push(...result.warnings);
     cardsHeldBack += result.cardsHeldBack ?? 0;
     if (result.emptyReason != null) emptyReasons.push(result.emptyReason);
+    if (result.rescueCandidates != null) {
+      rescueCandidateSets.push(result.rescueCandidates);
+    }
   }
 
   // Only report a reason when the whole upload produced no cards. A reason from
@@ -394,6 +407,9 @@ async function doGenerationWork(
     totalCards === 0 && emptyReasons.length > 0
       ? mostSpecificEmptyReason(emptyReasons)
       : undefined;
+  const mergedRescue = mergeRescueCandidates(rescueCandidateSets);
+  const rescueCandidates =
+    totalCards === 0 && mergedRescue.length > 0 ? mergedRescue : undefined;
 
   const reportsCrossDeck =
     crossFileDedup != null && crossFileDedup.historicalKeys.size > 0;
@@ -423,6 +439,7 @@ async function doGenerationWork(
     cardFingerprints,
     cardsHeldBack: cardLimit != null ? cardsHeldBack : undefined,
     emptyReason,
+    rescueCandidates,
   };
 }
 
@@ -431,8 +448,14 @@ export async function runUploadGenerationInWorker(
   onProgress: (step: string) => void = () => {}
 ): Promise<UploadGenerationResult> {
   try {
-    const { packages, warnings, cardFingerprints, cardsHeldBack, emptyReason } =
-      await doGenerationWork(task, onProgress);
+    const {
+      packages,
+      warnings,
+      cardFingerprints,
+      cardsHeldBack,
+      emptyReason,
+      rescueCandidates,
+    } = await doGenerationWork(task, onProgress);
     return {
       ok: true,
       packages,
@@ -440,6 +463,7 @@ export async function runUploadGenerationInWorker(
       cardFingerprints,
       cardsHeldBack,
       emptyReason,
+      rescueCandidates,
     };
   } catch (err) {
     return {
@@ -450,6 +474,8 @@ export async function runUploadGenerationInWorker(
         sourceFormat:
           err instanceof EmptyDeckError ? err.sourceFormat : undefined,
         reason: err instanceof EmptyDeckError ? err.reason : undefined,
+        rescueCandidates:
+          err instanceof EmptyDeckError ? err.rescueCandidates : undefined,
       },
     };
   } finally {

@@ -140,6 +140,7 @@ import {
 } from '../lib/claude/aiSpendGuard';
 import { readEmptyUpload } from '../usecases/uploads/readEmptyUpload';
 import type { EmptyUploadReading } from '../types/EmptyUploadReading';
+import type { RescueCandidate } from '../types/RescueCandidate';
 
 interface EmptyDeckResponse {
   code: 'empty_export';
@@ -148,6 +149,7 @@ interface EmptyDeckResponse {
   docsLink: string;
   empty_reason: EmptyDeckReason;
   reading: EmptyUploadReading | null;
+  rescue: RescueCandidate[];
 }
 
 interface MarkdownLossyResponse {
@@ -259,6 +261,17 @@ function shippedRescueRule(
     (p) => p.inducedRule?.outcome === 'rescue_shipped'
   );
   return shipped?.inducedRule?.rule;
+}
+
+// The rule the user picked on the empty state, read off the deck that shipped
+// rather than the request: a chosen rule the floor outran was never applied.
+function chosenRescueRule(
+  packages: { inducedRule?: InducedRescue }[]
+): string | undefined {
+  const chosen = packages.find(
+    (p) => p.inducedRule?.outcome === 'rescue_chosen'
+  );
+  return chosen?.inducedRule?.rule;
 }
 
 function sumDroppedImages(packages: { droppedImageCount?: number }[]): number {
@@ -1229,6 +1242,9 @@ class UploadService {
           docsLink: '/documentation/help/common-problems',
           empty_reason: err.reason,
           reading: await readEmptyUpload(files, readUploadBytes),
+          // A multi-file submit stops at the first empty file, so an offer
+          // would describe only that file; the form offers nothing for those.
+          rescue: files?.length === 1 ? err.rescueCandidates : [],
         };
         return res.status(400).json(body);
       } else if (err instanceof Error && err.name === 'EmptyContentError') {
@@ -1599,22 +1615,28 @@ class UploadService {
       }
     }
 
-    const { packages, warnings, cardFingerprints, cardsHeldBack, emptyReason } =
-      await useCase.execute(
-        paying,
-        req.files as UploadedFile[],
-        settings,
-        ws,
-        undefined,
-        syncOwnerId,
-        {
-          knownGuids,
-          uploadIdentity,
-          existingCardFingerprints,
-          requestId: res.locals.requestId,
-          ...(cardLimit != null ? { cardLimit } : {}),
-        }
-      );
+    const {
+      packages,
+      warnings,
+      cardFingerprints,
+      cardsHeldBack,
+      emptyReason,
+      rescueCandidates,
+    } = await useCase.execute(
+      paying,
+      req.files as UploadedFile[],
+      settings,
+      ws,
+      undefined,
+      syncOwnerId,
+      {
+        knownGuids,
+        uploadIdentity,
+        existingCardFingerprints,
+        requestId: res.locals.requestId,
+        ...(cardLimit != null ? { cardLimit } : {}),
+      }
+    );
     this.recordIssuedGuids(packages, syncOwnerId, settings);
     this.recordUploadIdentityMetric(packages, syncOwnerId);
     this.recordCardFingerprints(syncOwnerId, cardFingerprints);
@@ -1679,9 +1701,14 @@ class UploadService {
           ...this.baseFunnelProps(req),
           reason: 'empty_deck',
           empty_reason: resolvedEmptyReason,
+          rescue_offered: (rescueCandidates ?? []).map((c) => c.rule),
         },
       });
-      throw new EmptyDeckError(undefined, resolvedEmptyReason);
+      throw new EmptyDeckError(
+        undefined,
+        resolvedEmptyReason,
+        rescueCandidates ?? []
+      );
     }
 
     this.recordConversionOutput(
@@ -1897,6 +1924,9 @@ class UploadService {
       props: {
         ...this.baseFunnelProps(req),
         card_count_bucket: toCardCountBucket(totalCards),
+        ...(chosenRescueRule(packages) != null
+          ? { rescue_chosen: chosenRescueRule(packages) }
+          : {}),
         ...this.pdfPageCountProps(packages),
       },
     });

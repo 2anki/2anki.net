@@ -31,7 +31,11 @@ import { ThinDeckNotice } from '../../../DownloadsPage/components/ThinDeckNotice
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
-import { describeEmptyReading } from '../../helpers/describeEmptyReading';
+import {
+  describeEmptyReading,
+  formatCount,
+} from '../../helpers/describeEmptyReading';
+import type { RescueRule } from '../../../../lib/upload/isRescueCandidate';
 import { useDrag } from '../../../../lib/hooks/useDrag';
 import { usePassPrices } from '../../../../lib/hooks/usePassPrices';
 import { useUploadFormState } from './hooks/useUploadFormState';
@@ -171,6 +175,17 @@ function claimFailure(status: number, error: UploadErrorBody | null): Error {
   );
 }
 
+// A Map, not an object literal: the rule comes off the network, and an
+// object lookup with a prototype key would hand back a Function.
+const RESCUE_LABEL_KEYS = new Map<RescueRule, string>([
+  ['columns', 'rescueColumns'],
+  ['heading', 'rescueHeading'],
+  ['quote', 'rescueQuote'],
+  ['numbered', 'rescueNumbered'],
+  ['bullets', 'rescueBullets'],
+  ['guess', 'rescueGuess'],
+]);
+
 function zoneStateForUploadError(
   message: UploadErrorBody
 ): 'emptyDeck' | 'imageOnly' | 'error' {
@@ -308,6 +323,10 @@ function UploadForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const convertRef = useRef<HTMLButtonElement>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
+  // The files behind the last local submit, kept so a rescue button can send
+  // them back with the chosen rule. Remote (Dropbox, Drive) submits clear it:
+  // those bytes never reach the browser, so no button is offered for them.
+  const [rescueFiles, setRescueFiles] = useState<File[]>([]);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [sampleRun, setSampleRun] = useState(false);
   const {
@@ -753,6 +772,21 @@ function UploadForm({
     }
   }, [zoneState]);
 
+  // Buttons need exactly one local file to send back: a remote upload holds
+  // no bytes here, and a multi-file submit stops at the first empty file, so
+  // its offer would describe only that file.
+  const offeredRescue =
+    zoneState === 'emptyDeck' && rescueFiles.length === 1
+      ? localError?.rescue
+      : null;
+  useEffect(() => {
+    if (offeredRescue != null && offeredRescue.length > 0) {
+      track('upload_rescue_offered', {
+        rules: offeredRescue.map((candidate) => candidate.rule),
+      });
+    }
+  }, [offeredRescue]);
+
   useEffect(() => {
     if (zoneState === 'imageOnly') {
       track('image_only_photo_deck_shown');
@@ -816,6 +850,7 @@ function UploadForm({
 
   const handleDropboxFiles = async (files: DropboxFile[]) => {
     const first = files[0];
+    setRescueFiles([]);
     setDropboxFilename(first?.name ?? null);
     setDropboxError(null);
     setSampleRun(false);
@@ -868,6 +903,7 @@ function UploadForm({
     accessToken: string
   ) => {
     const first = files[0];
+    setRescueFiles([]);
     setDriveFilename(first?.name ?? null);
     setDriveMimeType(first?.mimeType ?? null);
     setDriveError(null);
@@ -1147,6 +1183,7 @@ function UploadForm({
     uploadedFiles: File[],
     isRetry: boolean
   ): Promise<boolean> => {
+    setRescueFiles(uploadedFiles);
     const submittedAt = Date.now();
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
@@ -1228,6 +1265,28 @@ function UploadForm({
       setLocalError(toFriendlyThrownError(error));
       setZoneState('error');
     }
+  };
+
+  // The user picked a structure from the empty-deck offer; the same files go
+  // back with the chosen rule, and the server builds that deck.
+  const handleRescueChoice = (rule: RescueRule, cards: number) => {
+    const files = rescueFiles;
+    if (files.length !== 1) return;
+    track('upload_rescue_chosen', { rule, cards });
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('pakker', file, file.name);
+    }
+    for (const [key, value] of Object.entries(globalThis.localStorage)) {
+      formData.append(key, value);
+    }
+    formData.set('rescue-rule', rule);
+    setLocalError(null);
+    setZoneState('converting');
+    setProgressWidth(10);
+    setProgressSlow(false);
+    setShowFallback(false);
+    void runFileUpload(formData, files, false);
   };
 
   const handleNetworkRetry = async () => {
@@ -1745,21 +1804,50 @@ function UploadForm({
         {t('upload.form.seeCommonProblemsSuffix')}
       </>
     );
+    const rescue = rescueFiles.length === 1 ? (localError?.rescue ?? []) : [];
+    const rescueActions = rescue.length > 0 && (
+      <div className={formStyles.rescueActions}>
+        <p className={formStyles.rescueLead}>{t('upload.form.rescueLead')}</p>
+        {rescue.map((candidate) => (
+          <button
+            key={candidate.rule}
+            type="button"
+            className={formStyles.rescueButton}
+            onClick={() => handleRescueChoice(candidate.rule, candidate.cards)}
+          >
+            {t(`upload.form.${RESCUE_LABEL_KEYS.get(candidate.rule)}`, {
+              count: candidate.cards,
+              n: formatCount(candidate.cards),
+            })}
+          </button>
+        ))}
+      </div>
+    );
     const reading = localError?.reading;
     if (reading != null) {
       const copy = describeEmptyReading(
         reading,
         t,
         i18n.language,
-        localError?.empty_reason
+        localError?.empty_reason,
+        rescue.length > 0
       );
       return (
         <>
           <p className={formStyles.emptyReading}>{copy.text}</p>
+          {rescueActions}
           <p className={formStyles.emptyBody}>
             {copy.next != null && `${t(`upload.form.${copy.next}`)} `}
             {commonProblems}
           </p>
+        </>
+      );
+    }
+    if (rescue.length > 0) {
+      return (
+        <>
+          {rescueActions}
+          <p className={formStyles.emptyBody}>{commonProblems}</p>
         </>
       );
     }

@@ -201,6 +201,32 @@ describe('GeneratePackagesUseCase', () => {
     ).rejects.toBeInstanceOf(EmptyDeckError);
   });
 
+  it('keeps the rescue candidates on a rebuilt EmptyDeckError', async () => {
+    mockRunUploadGeneration.mockResolvedValueOnce({
+      ok: false,
+      error: {
+        message:
+          'No cards found in your upload. Use .zip, .html, .md, or .csv.',
+        name: 'EmptyDeckError',
+        reason: 'no_toggles',
+        rescueCandidates: [{ rule: 'heading', cards: 2 }],
+      },
+    });
+    const useCase = new GeneratePackagesUseCase();
+
+    await expect(
+      useCase.execute(
+        false,
+        [makeFile('empty.html')],
+        makeSettings(),
+        makeWorkspace()
+      )
+    ).rejects.toMatchObject({
+      reason: 'no_toggles',
+      rescueCandidates: [{ rule: 'heading', cards: 2 }],
+    });
+  });
+
   it('rejects with a non-empty parser-crash error when the worker error has no message', async () => {
     mockRunUploadGeneration.mockResolvedValueOnce({ ok: false, error: {} });
     const useCase = new GeneratePackagesUseCase();

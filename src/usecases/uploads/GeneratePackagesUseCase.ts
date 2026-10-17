@@ -1,4 +1,8 @@
 import fs from 'node:fs';
+import {
+  isRescueCandidate,
+  type RescueCandidate,
+} from '../../types/RescueCandidate';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import Package from '../../lib/parser/Package';
@@ -29,11 +33,16 @@ export interface PackageResult {
   cardFingerprints?: string[];
   cardsHeldBack?: number;
   emptyReason?: EmptyDeckReason;
+  rescueCandidates?: RescueCandidate[];
 }
 
 function buildWorkerError(failure: UploadGenerationFailure): Error {
   if (failure.name === 'EmptyDeckError') {
-    return new EmptyDeckError(failure.sourceFormat, failure.reason);
+    return new EmptyDeckError(
+      failure.sourceFormat,
+      failure.reason,
+      (failure.rescueCandidates ?? []).filter(isRescueCandidate)
+    );
   }
   if (failure.message != null && failure.message.trim() !== '') {
     const e = new Error(failure.message);
@@ -106,6 +115,7 @@ class GeneratePackagesUseCase {
         cardFingerprints: result.cardFingerprints,
         cardsHeldBack: result.cardsHeldBack,
         emptyReason: result.emptyReason,
+        rescueCandidates: result.rescueCandidates,
       };
     }
     throw buildWorkerError(result.error);

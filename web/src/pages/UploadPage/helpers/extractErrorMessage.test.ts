@@ -53,6 +53,25 @@ describe('extractErrorMessage', () => {
     expect(bad.reading).toBeUndefined();
   });
 
+  test('carries well-formed rescue candidates and drops malformed ones', async () => {
+    const result = await extractErrorMessage(
+      jsonResponse({
+        code: 'empty_export',
+        message: 'No cards.',
+        rescue: [
+          { rule: 'heading', cards: 14 },
+          { rule: 'nope', cards: 1 },
+        ],
+      })
+    );
+    expect(result.rescue).toEqual([{ rule: 'heading', cards: 14 }]);
+
+    const none = await extractErrorMessage(
+      jsonResponse({ code: 'empty_export', message: 'No cards.', rescue: [] })
+    );
+    expect(none.rescue).toBeUndefined();
+  });
+
   test('defaults code to unknown when JSON has no code field', async () => {
     const response = jsonResponse({ message: 'No active subscription.' });
     const result = await extractErrorMessage(response);

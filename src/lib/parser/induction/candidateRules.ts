@@ -1,16 +1,11 @@
 import type { DeckScore } from '../scoreCandidateDeck';
+import type { RescueRule } from '../../../types/RescueCandidate';
 
 // The structural shapes a zero-card conversion is re-derived from. Each name is
 // recorded verbatim on conversion_rule_scores.rule so a corpus query can say
 // which structure rescues which format. 'guess' is the existing plain-text
 // heuristic (Q:/A:, term::definition) kept as the final candidate.
-export type InducedRule =
-  | 'columns'
-  | 'heading'
-  | 'quote'
-  | 'numbered'
-  | 'bullets'
-  | 'guess';
+export type InducedRule = RescueRule;
 
 // Tie-break order, most conservative first: an explicit two-column pairing is
 // the least likely to invent a boundary, plain-text guessing the most. When two
@@ -35,7 +30,10 @@ export function candidateOrderIndex(rule: InducedRule): number {
 // same whether it came from the Notion or the upload path.
 export interface InducedRescue {
   rule: InducedRule;
-  outcome: 'rescue_shipped' | 'rescue_rejected';
+  // rescue_chosen: the user picked the rule on the empty-deck state, so the
+  // floor was set aside; kept apart from rescue_shipped so the corpus the
+  // floor is tuned from never mixes in decks the floor rejected.
+  outcome: 'rescue_shipped' | 'rescue_chosen' | 'rescue_rejected';
   // The winning (or best-attempted) candidate's own composite score, so a
   // rejected rescue records the deck it actually judged rather than whatever a
   // later stage shipped or an empty deck. `null` until a candidate was scored.
@@ -51,7 +49,8 @@ export function mergeInducedRescue(
   next: InducedRescue
 ): InducedRescue {
   if (
-    current?.outcome === 'rescue_shipped' &&
+    (current?.outcome === 'rescue_shipped' ||
+      current?.outcome === 'rescue_chosen') &&
     next.outcome === 'rescue_rejected'
   ) {
     return current;

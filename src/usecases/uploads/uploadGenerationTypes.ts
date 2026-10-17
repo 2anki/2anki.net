@@ -1,4 +1,5 @@
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
+import type { RescueCandidate } from '../../types/RescueCandidate';
 import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import type Package from '../../lib/parser/Package';
 import type CardOption from '../../lib/parser/Settings/CardOption';
@@ -25,6 +26,7 @@ export interface UploadGenerationFailure {
   name?: string;
   sourceFormat?: 'markdown';
   reason?: EmptyDeckReason;
+  rescueCandidates?: RescueCandidate[];
 }
 
 export type UploadGenerationResult =
@@ -35,6 +37,7 @@ export type UploadGenerationResult =
       cardFingerprints?: string[];
       cardsHeldBack?: number;
       emptyReason?: EmptyDeckReason;
+      rescueCandidates?: RescueCandidate[];
     }
   | { ok: false; error: UploadGenerationFailure };
 

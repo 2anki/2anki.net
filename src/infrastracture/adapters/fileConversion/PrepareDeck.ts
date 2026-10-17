@@ -1,4 +1,5 @@
 import getDeckFilename from '../../../lib/anki/getDeckFilename';
+import type { RescueCandidate } from '../../../types/RescueCandidate';
 import type { IssuedCardGuid } from '../../../lib/anki/guidLedgerTypes';
 import type { EmptyDeckReason } from '../../../usecases/jobs/EmptyDeckError';
 import {
@@ -174,6 +175,7 @@ interface PrepareDeckResult {
   uploadIdentityStats?: UploadIdentityStats;
   pdfPageCount?: number;
   emptyReason?: EmptyDeckReason;
+  rescueCandidates?: RescueCandidate[];
 }
 
 function sumPdfPageCount(convertedFiles: ConvertedFile[]): number | undefined {
@@ -900,6 +902,8 @@ async function buildParserResult(
     pdfPageCount: sumPdfPageCount(convertedFiles),
     emptyReason:
       parser.totalCardCount() === 0 ? parser.emptyDeckReason() : undefined,
+    rescueCandidates:
+      parser.totalCardCount() === 0 ? parser.rescueCandidates : undefined,
   };
 }
 
@@ -1272,6 +1276,7 @@ export interface DeckInfoOnlyResult {
   uploadIdentityStats?: UploadIdentityStats;
   needsIndividualBuild: boolean;
   emptyReason?: EmptyDeckReason;
+  rescueCandidates?: RescueCandidate[];
 }
 
 export async function prepareDeckInfoOnly(
@@ -1367,5 +1372,7 @@ export async function prepareDeckInfoOnly(
     needsIndividualBuild: false,
     emptyReason:
       parser.totalCardCount() === 0 ? parser.emptyDeckReason() : undefined,
+    rescueCandidates:
+      parser.totalCardCount() === 0 ? parser.rescueCandidates : undefined,
   };
 }

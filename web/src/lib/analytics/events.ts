@@ -11,6 +11,8 @@ export const KNOWN_EVENTS = new Set([
   'upload_error_chat_engaged',
   'upload_error_chat_resolved_retry',
   'upload_empty_deck_chat_shown',
+  'upload_rescue_offered',
+  'upload_rescue_chosen',
   'upload_empty_deck_chat_engaged',
   'chat_all_conversations_deleted',
   'chat_message_sent',

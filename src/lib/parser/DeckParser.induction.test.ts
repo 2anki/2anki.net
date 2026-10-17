@@ -4,6 +4,7 @@ import { DeckParser } from './DeckParser';
 import CardOption from './Settings';
 import Workspace from './WorkSpace';
 import Deck from './Deck';
+import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import { setupTests } from '../../test/configure-jest';
 
 beforeEach(() => setupTests());
@@ -401,6 +402,110 @@ describe('DeckParser dominant table documents', () => {
 
     expect(parser.payload[0].cards).toHaveLength(0);
     expect(parser.inducedRule).toMatchObject({ outcome: 'rescue_rejected' });
+  });
+
+  const REPEATED_FRONTS =
+    '<table><thead><tr><th>Day</th><th>Task</th></tr></thead><tbody>' +
+    '<tr><td>Monday</td><td>Study cardiology chapter one</td></tr>' +
+    '<tr><td>Monday</td><td>Review pharmacology flashcards</td></tr>' +
+    '<tr><td>Monday</td><td>Practice ECG interpretation</td></tr>' +
+    '<tr><td>Monday</td><td>Read renal physiology notes</td></tr>' +
+    '</tbody></table>';
+
+  it('offers the structures that made cards when none cleared the floor', () => {
+    const parser = parse(page(REPEATED_FRONTS), new CardOption({}));
+
+    expect(parser.payload[0].cards).toHaveLength(0);
+    expect(parser.rescueCandidates).toContainEqual({
+      rule: 'columns',
+      cards: 4,
+    });
+  });
+
+  it('ships the structure the user chose even below the floor', () => {
+    const parser = parse(
+      page(REPEATED_FRONTS),
+      new CardOption({ 'rescue-rule': 'columns' })
+    );
+
+    expect(parser.payload[0].cards).toHaveLength(4);
+    expect(parser.payload[0].cards.map((card) => card.name)).toEqual([
+      'Monday',
+      'Monday',
+      'Monday',
+      'Monday',
+    ]);
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'columns',
+      outcome: 'rescue_chosen',
+    });
+    expect(parser.rescueCandidates).toEqual([]);
+  });
+
+  it('ignores a chosen rule that yields nothing and falls back to the offer', () => {
+    const parser = parse(
+      page(REPEATED_FRONTS),
+      new CardOption({ 'rescue-rule': 'quote' })
+    );
+
+    expect(parser.payload[0].cards).toHaveLength(0);
+    expect(parser.rescueCandidates).toContainEqual({
+      rule: 'columns',
+      cards: 4,
+    });
+  });
+
+  it('lets a candidate that clears the floor win over a chosen rule', () => {
+    const strayList = '<ul><li>stray one</li><li>stray two</li></ul>';
+    const parser = parse(
+      page(`${EMPTY_TOGGLE}${HEADING_SECTIONS}${strayList}`),
+      new CardOption({ cherry: 'false', 'rescue-rule': 'bullets' })
+    );
+
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
+    expect(
+      parser.payload[0].cards.map((card) => card.name).join(' ')
+    ).toContain('osmosis');
+  });
+
+  it('never applies a chosen rule to a page that makes cards on its own', () => {
+    const toggles =
+      '<ul class="toggle"><li><details open=""><summary>What is a cell?</summary><div class="indented">The basic unit of life.</div></details></li></ul>' +
+      '<ul class="toggle"><li><details open=""><summary>What is a tissue?</summary><div class="indented">Cells working together.</div></details></li></ul>' +
+      '<ul><li>stray bullet one</li><li>stray bullet two</li></ul>';
+    const parser = parse(
+      page(toggles),
+      new CardOption({ 'rescue-rule': 'bullets' })
+    );
+
+    expect(parser.payload[0].cards.map((card) => card.name)).toEqual([
+      "<div class='toggle'>What is a cell?</div>",
+      "<div class='toggle'>What is a tissue?</div>",
+    ]);
+    expect(parser.inducedRule).toBeUndefined();
+  });
+
+  it('carries the candidates on the error thrown when the parse had no notes at all', () => {
+    const quotes =
+      '<h2>What is osmosis?</h2><blockquote>Water crossing a membrane.</blockquote>' +
+      '<h2>What is diffusion?</h2><blockquote>Particles spreading out over time.</blockquote>';
+    const parser = parse(page(quotes), new CardOption({}));
+
+    expect(parser.totalCardCount()).toBe(0);
+    let thrown: unknown;
+    try {
+      parser.tryExperimental();
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(EmptyDeckError);
+    expect((thrown as EmptyDeckError).rescueCandidates).toContainEqual({
+      rule: 'heading',
+      cards: 2,
+    });
   });
 
   it('does not append fan-out lists when disable-indented-bullets is on', () => {

@@ -25,6 +25,17 @@ describe('rankCandidates', () => {
     expect(result.best?.rule).toBe('heading');
   });
 
+  it('lists every candidate with its card count in rule order', () => {
+    const result = rankCandidates([
+      candidate('bullets', wellFormed(2)),
+      candidate('heading', wellFormed(1)),
+    ]);
+    expect(result.candidates).toEqual([
+      { rule: 'heading', cards: 1 },
+      { rule: 'bullets', cards: 2 },
+    ]);
+  });
+
   it('ships the best-scoring candidate that clears the floor', () => {
     const strong = wellFormed(6);
     const weak: ScorableCard[] = [
