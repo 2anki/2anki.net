@@ -7,6 +7,7 @@ import { isZipContentFileSupported } from '../../../usecases/uploads/isZipConten
 
 export interface DocumentStructureCensus {
   chars: number;
+  words: number;
   headings: number;
   paragraphs: number;
   lists: number;
@@ -31,11 +32,13 @@ export interface ZipStructureCensus {
   nestedZipCount: number;
   supportedCount: number;
   unsupportedCount: number;
+  imageCount: number;
   truncated: boolean;
   entries: ZipEntryCensus[];
 }
 
 const ZIP_CENSUS_MAX_ENTRIES = 50;
+const IMAGE_ENTRY = /\.(png|jpe?g|gif|webp|bmp|svg|heic|tiff?)$/i;
 
 // Central-directory walk only — the filter always returns false, so no entry
 // ever inflates and a zip bomb cannot hurt the diagnostics path.
@@ -58,6 +61,7 @@ export function censusZipEntries(buffer: Buffer): ZipStructureCensus {
       nestedZipCount: 0,
       supportedCount: 0,
       unsupportedCount: 0,
+      imageCount: 0,
       truncated: false,
       entries: [],
     };
@@ -79,15 +83,26 @@ export function censusZipEntries(buffer: Buffer): ZipStructureCensus {
       .length,
     unsupportedCount: flat.filter((e) => !isZipContentFileSupported(e.name))
       .length,
+    imageCount: flat.filter((e) => IMAGE_ENTRY.test(e.name)).length,
     truncated: all.length > ZIP_CENSUS_MAX_ENTRIES,
     entries,
   };
+}
+
+// Tags become spaces first so "<h1>Cell</h1><p>biology</p>" reads as two
+// words, not one; a bare entity such as &nbsp; is spacing, not a word.
+function countWords(html: string): number {
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token !== '' && !/^&[a-z#0-9]+;$/i.test(token)).length;
 }
 
 export function censusFromHtml(html: string): DocumentStructureCensus {
   const $ = cheerio.load(html);
   return {
     chars: html.length,
+    words: countWords(html),
     headings: $('h1, h2, h3, h4, h5, h6').length,
     paragraphs: $('p').length,
     lists: $('ul, ol').length,

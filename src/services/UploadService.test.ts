@@ -572,6 +572,73 @@ describe('UploadService.handleUpload — error paths', () => {
     );
   });
 
+  it('tells the user what it read when a text document yields 0 cards', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const html =
+      '<h1>Cell biology</h1><p>The nucleus holds DNA.</p><ul><li>one</li><li>two</li></ul>';
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'notes.html',
+          mimetype: 'text/html',
+          size: html.length,
+          buffer: Buffer.from(html, 'utf8'),
+        },
+      ],
+    } as unknown as Partial<express.Request>);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toMatchObject({
+      code: 'empty_export',
+      reading: {
+        kind: 'document',
+        words: 8,
+        headings: 1,
+        listItems: 2,
+        tables: 0,
+        toggles: 0,
+        images: 0,
+      },
+    });
+  });
+
+  it('sends reading null when the empty file cannot be read back', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(buildRequest(), res);
+
+    expect(capturedJson()).toMatchObject({
+      code: 'empty_export',
+      reading: null,
+    });
+  });
+
   it('EmptyDeckError response body contains no HTML tags', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {

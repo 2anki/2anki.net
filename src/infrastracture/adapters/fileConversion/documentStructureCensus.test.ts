@@ -42,6 +42,7 @@ describe('censusFromHtml', () => {
     `;
     expect(censusFromHtml(html)).toEqual({
       chars: html.length,
+      words: 11,
       headings: 2,
       paragraphs: 2,
       lists: 2,
@@ -55,6 +56,7 @@ describe('censusFromHtml', () => {
   it('returns zero counts for empty input', () => {
     expect(censusFromHtml('')).toEqual({
       chars: 0,
+      words: 0,
       headings: 0,
       paragraphs: 0,
       lists: 0,
@@ -68,6 +70,11 @@ describe('censusFromHtml', () => {
   it('counts images', () => {
     const html = '<p><img src="a.png" /><img src="b.png" /></p>';
     expect(censusFromHtml(html).images).toBe(2);
+  });
+
+  it('counts visible words, not markup', () => {
+    const html = '<h1>Cell  biology</h1><p>The <b>nucleus</b> holds DNA.</p>';
+    expect(censusFromHtml(html).words).toBe(6);
   });
 });
 
@@ -129,6 +136,7 @@ describe('censusUploadedFile — zip archives (#4029)', () => {
       nestedZipCount: 1,
       supportedCount: 2,
       unsupportedCount: 1,
+      imageCount: 1,
       truncated: false,
     });
     const entries = (

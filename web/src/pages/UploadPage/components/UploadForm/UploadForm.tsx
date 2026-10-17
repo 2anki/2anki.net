@@ -31,6 +31,7 @@ import { ThinDeckNotice } from '../../../DownloadsPage/components/ThinDeckNotice
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
+import { describeEmptyReading } from '../../helpers/describeEmptyReading';
 import { useDrag } from '../../../../lib/hooks/useDrag';
 import { usePassPrices } from '../../../../lib/hooks/usePassPrices';
 import { useUploadFormState } from './hooks/useUploadFormState';
@@ -303,7 +304,7 @@ function UploadForm({
   aiOn = false,
   sample = false,
 }: Readonly<UploadFormProps>) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const convertRef = useRef<HTMLButtonElement>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
@@ -1680,6 +1681,16 @@ function UploadForm({
     );
   };
 
+  const renderEmptyReading = () => {
+    const reading = localError?.reading;
+    if (reading == null) return null;
+    return (
+      <p className={formStyles.emptyReading}>
+        {describeEmptyReading(reading, t, i18n.language)}
+      </p>
+    );
+  };
+
   const renderEmptyDeckBody = () => {
     if (localError?.code === 'markdown_likely_lossy') {
       return (
@@ -1737,7 +1748,11 @@ function UploadForm({
     }
     return (
       <p className={formStyles.emptyBody}>
-        {t('upload.form.noCardsBody')}{' '}
+        {t(
+          localError?.reading != null
+            ? 'upload.form.readingNext'
+            : 'upload.form.noCardsBody'
+        )}{' '}
         {t('upload.form.seeCommonProblemsPrefix')}
         <a href="/documentation/help/common-problems">
           {t('upload.form.commonProblems')}
@@ -1778,6 +1793,7 @@ function UploadForm({
       <div className={formStyles.stateContent}>
         <WarningIcon className={formStyles.iconWarning} />
         <p className={formStyles.emptyTitle}>{emptyTitle}</p>
+        {renderEmptyReading()}
         {renderEmptyDeckBody()}
         <div className={formStyles.emptyActions}>
           {downloadLink && (

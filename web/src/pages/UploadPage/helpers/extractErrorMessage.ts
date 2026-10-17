@@ -4,6 +4,7 @@ import {
   type UploadErrorBody,
   type UploadErrorCode,
 } from '../../../types/UploadErrorBody';
+import { isEmptyUploadReading } from '../../../lib/upload/isEmptyUploadReading';
 
 const REJECTED_FALLBACK =
   'The server rejected the upload. Try again or email support@2anki.net.';
@@ -22,6 +23,9 @@ export async function extractErrorMessage(
       const result: UploadErrorBody = { code, message: body.message };
       if (typeof body.empty_reason === 'string') {
         result.empty_reason = body.empty_reason;
+      }
+      if (isEmptyUploadReading(body.reading)) {
+        result.reading = body.reading;
       }
       return result;
     }

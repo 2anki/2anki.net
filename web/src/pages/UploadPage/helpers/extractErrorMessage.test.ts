@@ -28,6 +28,31 @@ describe('extractErrorMessage', () => {
     expect(result.message).toBe('File too big.');
   });
 
+  test('carries a well-formed reading and drops a malformed one', async () => {
+    const reading = {
+      kind: 'document',
+      words: 12,
+      headings: 1,
+      listItems: 0,
+      tables: 0,
+      toggles: 0,
+      images: 0,
+    };
+    const good = await extractErrorMessage(
+      jsonResponse({ code: 'empty_export', message: 'No cards.', reading })
+    );
+    expect(good.reading).toEqual(reading);
+
+    const bad = await extractErrorMessage(
+      jsonResponse({
+        code: 'empty_export',
+        message: 'No cards.',
+        reading: { kind: 'document', words: 'many' },
+      })
+    );
+    expect(bad.reading).toBeUndefined();
+  });
+
   test('defaults code to unknown when JSON has no code field', async () => {
     const response = jsonResponse({ message: 'No active subscription.' });
     const result = await extractErrorMessage(response);

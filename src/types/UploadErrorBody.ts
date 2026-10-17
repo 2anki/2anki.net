@@ -23,9 +23,11 @@ export type UploadErrorCode =
   | 'unknown';
 
 import type { EmptyDeckReason } from '../usecases/jobs/EmptyDeckError';
+import type { EmptyUploadReading } from './EmptyUploadReading';
 
 export interface UploadErrorBody {
   code: UploadErrorCode;
   message: string;
   empty_reason?: EmptyDeckReason;
+  reading?: EmptyUploadReading | null;
 }
