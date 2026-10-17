@@ -138,6 +138,8 @@ import {
   AiCreditsExhaustedError,
   getAiBudgetStatus,
 } from '../lib/claude/aiSpendGuard';
+import { readEmptyUpload } from '../usecases/uploads/readEmptyUpload';
+import type { EmptyUploadReading } from '../types/EmptyUploadReading';
 
 interface EmptyDeckResponse {
   code: 'empty_export';
@@ -145,6 +147,7 @@ interface EmptyDeckResponse {
   filename: string;
   docsLink: string;
   empty_reason: EmptyDeckReason;
+  reading: EmptyUploadReading | null;
 }
 
 interface MarkdownLossyResponse {
@@ -1225,6 +1228,7 @@ class UploadService {
           filename,
           docsLink: '/documentation/help/common-problems',
           empty_reason: err.reason,
+          reading: await readEmptyUpload(files, readUploadBytes),
         };
         return res.status(400).json(body);
       } else if (err instanceof Error && err.name === 'EmptyContentError') {

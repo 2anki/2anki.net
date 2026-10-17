@@ -1381,6 +1381,103 @@ describe('UploadForm analytics events', () => {
     });
   });
 
+  it('shows what was read above the empty-deck guidance', async () => {
+    const jsonBody = {
+      code: 'empty_export',
+      message: 'No cards were found in this file.',
+      filename: 'notes.html',
+      docsLink: '/documentation/help/common-problems',
+      empty_reason: 'no_toggles',
+      reading: {
+        kind: 'document',
+        words: 3200,
+        headings: 14,
+        listItems: 0,
+        tables: 0,
+        toggles: 0,
+        images: 0,
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 400,
+        clone: () => ({ json: () => Promise.resolve(jsonBody) }),
+        text: () => Promise.resolve(JSON.stringify(jsonBody)),
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    await waitFor(() => {
+      const reading = container.querySelector('[class*="emptyReading"]');
+      expect(reading?.textContent).toBe(
+        'We read 3200 words and 14 headings. Nothing in it is shaped like a card: no toggles and no question-and-answer pairs.'
+      );
+      expect(
+        container.querySelector('[class*="emptyBody"]')?.textContent
+      ).toContain(
+        'Put each question in a toggle with its answer inside it, then convert again. See common problems for the formats that work.'
+      );
+    });
+  });
+
+  it('keeps the reading off the card-filter state, where it would contradict the body', async () => {
+    const jsonBody = {
+      code: 'empty_export',
+      message: 'No cards were found in this file.',
+      filename: 'notes.html',
+      docsLink: '/documentation/help/common-problems',
+      empty_reason: 'all_filtered',
+      reading: {
+        kind: 'document',
+        words: 400,
+        headings: 0,
+        listItems: 0,
+        tables: 0,
+        toggles: 5,
+        images: 0,
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 400,
+        clone: () => ({ json: () => Promise.resolve(jsonBody) }),
+        text: () => Promise.resolve(JSON.stringify(jsonBody)),
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('[class*="emptyBody"]')?.textContent
+      ).toContain('A card filter removed every card.');
+      expect(container.querySelector('[class*="emptyReading"]')).toBeNull();
+    });
+  });
+
   const imageOnlyJsonBody = {
     code: 'image_only_no_text',
     message:

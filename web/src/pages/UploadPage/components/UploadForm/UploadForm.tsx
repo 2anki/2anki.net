@@ -31,6 +31,7 @@ import { ThinDeckNotice } from '../../../DownloadsPage/components/ThinDeckNotice
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
+import { describeEmptyReading } from '../../helpers/describeEmptyReading';
 import { useDrag } from '../../../../lib/hooks/useDrag';
 import { usePassPrices } from '../../../../lib/hooks/usePassPrices';
 import { useUploadFormState } from './hooks/useUploadFormState';
@@ -303,7 +304,7 @@ function UploadForm({
   aiOn = false,
   sample = false,
 }: Readonly<UploadFormProps>) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const convertRef = useRef<HTMLButtonElement>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
@@ -1735,14 +1736,36 @@ function UploadForm({
         </p>
       );
     }
-    return (
-      <p className={formStyles.emptyBody}>
-        {t('upload.form.noCardsBody')}{' '}
+    const commonProblems = (
+      <>
         {t('upload.form.seeCommonProblemsPrefix')}
         <a href="/documentation/help/common-problems">
           {t('upload.form.commonProblems')}
         </a>
         {t('upload.form.seeCommonProblemsSuffix')}
+      </>
+    );
+    const reading = localError?.reading;
+    if (reading != null) {
+      const copy = describeEmptyReading(
+        reading,
+        t,
+        i18n.language,
+        localError?.empty_reason
+      );
+      return (
+        <>
+          <p className={formStyles.emptyReading}>{copy.text}</p>
+          <p className={formStyles.emptyBody}>
+            {copy.next != null && `${t(`upload.form.${copy.next}`)} `}
+            {commonProblems}
+          </p>
+        </>
+      );
+    }
+    return (
+      <p className={formStyles.emptyBody}>
+        {t('upload.form.noCardsBody')} {commonProblems}
       </p>
     );
   };

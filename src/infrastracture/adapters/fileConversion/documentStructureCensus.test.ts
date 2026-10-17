@@ -42,6 +42,7 @@ describe('censusFromHtml', () => {
     `;
     expect(censusFromHtml(html)).toEqual({
       chars: html.length,
+      words: 11,
       headings: 2,
       paragraphs: 2,
       lists: 2,
@@ -55,6 +56,7 @@ describe('censusFromHtml', () => {
   it('returns zero counts for empty input', () => {
     expect(censusFromHtml('')).toEqual({
       chars: 0,
+      words: 0,
       headings: 0,
       paragraphs: 0,
       lists: 0,
@@ -68,6 +70,11 @@ describe('censusFromHtml', () => {
   it('counts images', () => {
     const html = '<p><img src="a.png" /><img src="b.png" /></p>';
     expect(censusFromHtml(html).images).toBe(2);
+  });
+
+  it('counts visible words, not markup', () => {
+    const html = '<h1>Cell  biology</h1><p>The <b>nucleus</b> holds DNA.</p>';
+    expect(censusFromHtml(html).words).toBe(6);
   });
 });
 
@@ -109,6 +116,26 @@ describe('censusUploadedFile — zip archives (#4029)', () => {
     return Buffer.from(zipSync(entries));
   }
 
+  it('drops macOS resource-fork entries from the census', async () => {
+    const zip = buildZip({
+      'Page abc.html': strToU8('<html></html>'),
+      '__MACOSX/._Page abc.html': strToU8('meta'),
+      'img/._photo.png': strToU8('meta'),
+      'img/photo.png': strToU8('png'),
+    });
+    const census = await censusUploadedFile({
+      originalname: 'export.zip',
+      buffer: zip,
+    });
+    expect(census).toMatchObject({
+      kind: 'zip',
+      entryCount: 2,
+      supportedCount: 1,
+      unsupportedCount: 1,
+      imageCount: 1,
+    });
+  });
+
   it('returns an entry manifest with supported verdicts and nested-zip count', async () => {
     const inner = zipSync({ 'Inner Page abc.html': strToU8('<html></html>') });
     const zip = buildZip({
@@ -129,6 +156,7 @@ describe('censusUploadedFile — zip archives (#4029)', () => {
       nestedZipCount: 1,
       supportedCount: 2,
       unsupportedCount: 1,
+      imageCount: 1,
       truncated: false,
     });
     const entries = (
@@ -171,5 +199,52 @@ describe('censusUploadedFile — zip archives (#4029)', () => {
       truncated: true,
     });
     expect((census as { entries: unknown[] }).entries.length).toBe(50);
+  });
+});
+
+describe('countWords through censusFromHtml', () => {
+  it('counts decoded text and drops runs with no letter or digit', () => {
+    expect(censusFromHtml('<p>a&nbsp;b &amp; c</p>').words).toBe(3);
+    expect(censusFromHtml('<p>one two</p><br').words).toBe(2);
+    expect(censusFromHtml('x < 5 and y < 7').words).toBe(5);
+  });
+
+  it('does not count the CSS a Notion export embeds', () => {
+    const html =
+      '<html><head><title>Page</title><style>.a { color: red; } .b { margin: 0 }</style></head><body><h1>Cells</h1><p>two words</p><script>var x = 1;</script><noscript>hidden</noscript><svg><text>label</text></svg></body></html>';
+    expect(censusFromHtml(html).words).toBe(3);
+  });
+
+  it('counts each han, kana or hangul character as a word', () => {
+    expect(
+      censusFromHtml('<p>細胞生物学は細胞の構造を研究する学問です。</p>').words
+    ).toBe(20);
+    expect(censusFromHtml('<p>세포 생물학</p>').words).toBe(5);
+  });
+
+  it('counts a word written in astral letters', () => {
+    expect(censusFromHtml('<p>\u{20000}\u{20001} \u{1D400}</p>').words).toBe(2);
+  });
+
+  it('keeps words apart across adjacent elements', () => {
+    expect(censusFromHtml('<h1>Cell</h1><p>biology</p>').words).toBe(2);
+  });
+
+  it('finishes a long unbroken run without counting it as prose', () => {
+    const html = '<p>' + '<'.repeat(2_000_000) + ' word</p>';
+    expect(censusFromHtml(html).words).toBe(1);
+  });
+
+  it('stops scanning past the word budget', () => {
+    const html = '<p>' + 'ab '.repeat(3_000_000) + '</p>';
+    expect(censusFromHtml(html).words).toBe(1_747_627);
+  });
+});
+
+describe('censusFromHtml on a Notion export fixture', () => {
+  it('counts only the visible words of the page', async () => {
+    const fs = await import('node:fs');
+    const html = fs.readFileSync('src/test/fixtures/no-images.html', 'utf8');
+    expect(censusFromHtml(html).words).toBe(12);
   });
 });

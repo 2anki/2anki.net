@@ -389,6 +389,14 @@
   margin: 0;
 }
 
+.emptyReading {
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  line-height: var(--leading-relaxed);
+  max-width: 440px;
+  margin: 0;
+}
+
 .emptyBody {
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
