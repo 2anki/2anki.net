@@ -1248,8 +1248,8 @@ class UploadService {
         const reading = await readEmptyUpload(files, readUploadBytes);
         // A zip of nothing but images is the photo case in a wrapper: send
         // it to Photo to Deck like a bare image, not to the toggle advice.
-        if (isImageOnlyZip(reading)) {
-          return this.respondImageOnlyNoText(req, res, files);
+        if (files?.length === 1 && isImageOnlyZip(reading)) {
+          return this.respondImageOnlyNoText(req, res, files, 'zip');
         }
         const body: EmptyDeckResponse = {
           code: 'empty_export',
@@ -2059,13 +2059,14 @@ class UploadService {
   private respondImageOnlyNoText(
     req: express.Request,
     res: express.Response,
-    files: UploadedFile[] | undefined
+    files: UploadedFile[] | undefined,
+    container: 'image' | 'zip' = 'image'
   ) {
     const owner = getOwner(res);
     track('image_only_no_text_shown', {
       userId: owner != null ? Number(owner) : null,
       anonymousId: this.resolveAnonId(req),
-      props: { source: this.resolveUploadSource(req) },
+      props: { source: this.resolveUploadSource(req), container },
     });
     const body: ImageOnlyResponse = {
       code: 'image_only_no_text',

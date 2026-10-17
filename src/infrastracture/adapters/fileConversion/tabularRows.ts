@@ -2,8 +2,7 @@ import * as XLSX from 'xlsx';
 
 export type TabularRow = unknown[];
 
-export const isTsvFile = (fileName: string): boolean =>
-  /\.tsv$/i.test(fileName);
+const isTsvFile = (fileName: string): boolean => /\.tsv$/i.test(fileName);
 
 function firstLineHoldsTab(bytes: Buffer): boolean {
   const newline = bytes.indexOf(0x0a);

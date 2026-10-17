@@ -725,6 +725,12 @@ describe('UploadService.handleUpload — error paths', () => {
       code: 'image_only_no_text',
       photoToDeckUrl: '/photo-to-deck',
     });
+    expect(trackMock).toHaveBeenCalledWith(
+      'image_only_no_text_shown',
+      expect.objectContaining({
+        props: expect.objectContaining({ container: 'zip' }),
+      })
+    );
   });
 
   it.each([

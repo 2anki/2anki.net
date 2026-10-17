@@ -1640,6 +1640,48 @@ describe('UploadForm analytics events', () => {
     });
   });
 
+  it('shows no unzip line for a bare image that has no text', async () => {
+    const jsonBody = {
+      code: 'image_only_no_text',
+      message: 'These look like images with no text to read.',
+      filename: 'photo.png',
+      photoToDeckUrl: '/photo-to-deck',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 400,
+        clone: () => ({ json: () => Promise.resolve(jsonBody) }),
+        text: () => Promise.resolve(JSON.stringify(jsonBody)),
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [new File(['png'], 'photo.png', { type: 'image/png' })],
+    });
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    await waitFor(() => {
+      expect(container.textContent).toContain(
+        'Photo to Deck turns images into cards'
+      );
+    });
+    expect(container.textContent).not.toContain('not the zip');
+  });
+
   it('keeps the reading off the card-filter state, where it would contradict the body', async () => {
     const jsonBody = {
       code: 'empty_export',
