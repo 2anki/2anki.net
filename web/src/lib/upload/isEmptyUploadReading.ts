@@ -28,8 +28,8 @@ function hasCounts(
   });
 }
 
-// Mirrors the server guard: the 400 body is data from the network, so the
-// shape is checked before the form renders counts from it.
+// The 400 body is data from the network, so the shape is checked before the
+// form renders counts from it.
 export function isEmptyUploadReading(
   value: unknown
 ): value is EmptyUploadReading {

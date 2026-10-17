@@ -203,23 +203,39 @@ describe('censusUploadedFile — zip archives (#4029)', () => {
 });
 
 describe('countWords through censusFromHtml', () => {
-  it('ignores bare entities and unterminated tags', () => {
+  it('counts decoded text and drops runs with no letter or digit', () => {
     expect(censusFromHtml('<p>a&nbsp;b &amp; c</p>').words).toBe(3);
     expect(censusFromHtml('<p>one two</p><br').words).toBe(2);
+    expect(censusFromHtml('x < 5 and y < 7').words).toBe(5);
   });
 
   it('does not count the CSS a Notion export embeds', () => {
     const html =
-      '<html><head><title>Page</title><style>.a { color: red; } .b { margin: 0 }</style></head><body><h1>Cells</h1><p>two words</p><script>var x = 1;</script></body></html>';
+      '<html><head><title>Page</title><style>.a { color: red; } .b { margin: 0 }</style></head><body><h1>Cells</h1><p>two words</p><script>var x = 1;</script><noscript>hidden</noscript><svg><text>label</text></svg></body></html>';
     expect(censusFromHtml(html).words).toBe(3);
   });
 
-  it('drops a bare less-than sign in plain text, keeping the words around it', () => {
-    expect(censusFromHtml('x < 5 and y < 7').words).toBe(5);
+  it('keeps words apart across adjacent elements', () => {
+    expect(censusFromHtml('<h1>Cell</h1><p>biology</p>').words).toBe(2);
   });
 
-  it('finishes a long run of opening brackets', () => {
-    const html = '<'.repeat(2_000_000) + ' word';
-    expect(censusFromHtml(html).words).toBe(2);
+  it('finishes a long unbroken run without counting it as prose', () => {
+    const html = '<p>' + '<'.repeat(2_000_000) + ' word</p>';
+    expect(censusFromHtml(html).words).toBe(1);
+  });
+
+  it('stops scanning past the word budget', () => {
+    const html = '<p>' + 'ab '.repeat(3_000_000) + '</p>';
+    const words = censusFromHtml(html).words;
+    expect(words).toBeGreaterThan(1_000_000);
+    expect(words).toBeLessThan(2_000_000);
+  });
+});
+
+describe('censusFromHtml on a Notion export fixture', () => {
+  it('counts only the visible words of the page', async () => {
+    const fs = await import('node:fs');
+    const html = fs.readFileSync('src/test/fixtures/no-images.html', 'utf8');
+    expect(censusFromHtml(html).words).toBe(12);
   });
 });

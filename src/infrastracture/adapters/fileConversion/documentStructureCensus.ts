@@ -96,55 +96,98 @@ export function censusZipEntries(buffer: Buffer): ZipStructureCensus {
   };
 }
 
-// Single linear pass over the markup with head, style and script removed, so a
-// Notion export's embedded CSS never counts as prose. A "<" opens a tag only
-// when a tag name, "/" or "!" follows, so "x < 5" in a text file stays words.
-// &nbsp; splits words like a space and a bare entity such as &amp; is not a
-// word. A scanner rather than a regex replace keeps a megabyte of "<<<<" with
-// no closing ">" linear on the request path.
-function countWords(html: string): number {
-  let words = 0;
-  let inTag = false;
-  let token = '';
-  const flush = () => {
-    if (token !== '' && !/^&[a-z#0-9]+;$/i.test(token)) {
-      words += 1;
-    }
-    token = '';
-  };
-  const text = html.replace(/&nbsp;/g, ' ');
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i];
-    if (inTag) {
-      if (char === '>') inTag = false;
-      continue;
-    }
-    if (char === '<' && /[A-Za-z/!]/.test(text[i + 1] ?? '')) {
-      inTag = true;
-      flush();
-      continue;
-    }
-    if (/\s/.test(char)) {
-      flush();
-      continue;
-    }
-    token += char;
-  }
-  flush();
-  return words;
+// Word count over the parsed text nodes, so entities are already decoded and
+// tags never count. head, style, script, noscript, template and svg are
+// skipped so a Notion export's embedded CSS never reads as prose. A run of
+// non-space characters is a word only when it holds a letter or digit, so a
+// lone "&" or "<" is not one. Nothing is accumulated per character, and the
+// scan stops after WORD_SCAN_MAX_CHARS: the reading path caps files at 5 MB,
+// and the no-package log census has no cap, so a 100 MB upload must cost a
+// bounded scan, never a per-character string or a multi-gigabyte heap.
+const WORD_SCAN_MAX_CHARS = 5 * 1024 * 1024;
+const WORDLESS_ELEMENTS = new Set([
+  'head',
+  'style',
+  'script',
+  'noscript',
+  'template',
+  'svg',
+]);
+
+interface CensusNode {
+  type: string;
+  name?: string;
+  data?: string;
+  children?: CensusNode[];
 }
 
-function proseMarkup($: cheerio.CheerioAPI): string {
-  const prose = $.root().clone();
-  prose.find('head, style, script').remove();
-  return prose.html() ?? '';
+function isWordSpace(code: number): boolean {
+  return (
+    code <= 32 ||
+    code === 0x85 ||
+    code === 0xa0 ||
+    code === 0x1680 ||
+    (code >= 0x2000 && code <= 0x200a) ||
+    code === 0x2028 ||
+    code === 0x2029 ||
+    code === 0x202f ||
+    code === 0x205f ||
+    code === 0x3000
+  );
+}
+
+const WORD_CHARACTER = /[\p{L}\p{N}]/u;
+
+function countRuns(
+  data: string,
+  budget: number
+): { words: number; scanned: number } {
+  const limit = Math.min(data.length, budget);
+  let words = 0;
+  let inRun = false;
+  let runIsWord = false;
+  for (let i = 0; i < limit; i += 1) {
+    if (isWordSpace(data.charCodeAt(i))) {
+      if (runIsWord) words += 1;
+      inRun = false;
+      runIsWord = false;
+      continue;
+    }
+    inRun = true;
+    if (!runIsWord && WORD_CHARACTER.test(data[i])) runIsWord = true;
+  }
+  if (inRun && runIsWord) words += 1;
+  return { words, scanned: limit };
+}
+
+function countWords(root: CensusNode): number {
+  let words = 0;
+  let budget = WORD_SCAN_MAX_CHARS;
+  const stack: CensusNode[] = [root];
+  while (stack.length > 0 && budget > 0) {
+    const node = stack.pop() as CensusNode;
+    if (node.type === 'text') {
+      const run = countRuns(node.data ?? '', budget);
+      words += run.words;
+      budget -= run.scanned;
+      continue;
+    }
+    if (WORDLESS_ELEMENTS.has(node.name ?? '')) {
+      continue;
+    }
+    const children = node.children ?? [];
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      stack.push(children[i]);
+    }
+  }
+  return words;
 }
 
 export function censusFromHtml(html: string): DocumentStructureCensus {
   const $ = cheerio.load(html);
   return {
     chars: html.length,
-    words: countWords(proseMarkup($)),
+    words: countWords($.root()[0] as unknown as CensusNode),
     headings: $('h1, h2, h3, h4, h5, h6').length,
     paragraphs: $('p').length,
     lists: $('ul, ol').length,

@@ -83,16 +83,14 @@ export function describeEmptyReading(
     ['readingListItems', reading.listItems],
     ['readingTables', reading.tables],
     ['readingImages', reading.images],
+    ['readingToggles', reading.toggles],
   ]);
   const lead = t('upload.form.readingLead', {
     parts: joinParts(parts, language),
   });
   if (reading.toggles > 0) {
     return {
-      text: `${lead} ${t('upload.form.readingEmptyToggles', {
-        count: reading.toggles,
-        n: formatCount(reading.toggles),
-      })}`,
+      text: `${lead} ${t('upload.form.readingTogglesNoPairs')}`,
       next: 'readingNextAnswers',
     };
   }

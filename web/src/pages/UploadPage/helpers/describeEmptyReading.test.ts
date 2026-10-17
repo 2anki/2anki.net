@@ -69,11 +69,11 @@ describe('describeEmptyReading', () => {
     });
   });
 
-  it('blames empty toggles and asks for answers when toggles were there', () => {
+  it('counts the toggles it saw and asks for a question with its answer inside', () => {
     expect(
       describeEmptyReading(document({ words: 40, toggles: 1 }), t, 'en')
     ).toEqual({
-      text: 'We read 40 words. 1 toggle had nothing inside it to use as an answer.',
+      text: 'We read 40 words and 1 toggle. None of the toggles held a question with an answer inside.',
       next: 'readingNextAnswers',
     });
   });
