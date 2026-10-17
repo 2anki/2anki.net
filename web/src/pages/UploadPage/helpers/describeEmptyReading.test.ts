@@ -47,7 +47,7 @@ function zip(
 }
 
 describe('describeEmptyReading', () => {
-  it('lists what was read, says nothing was card-shaped, and asks for structure', () => {
+  it('lists what was read and points at toggles when headings were already tried', () => {
     expect(
       describeEmptyReading(
         document({ words: 3200, headings: 14, tables: 1 }),
@@ -56,6 +56,15 @@ describe('describeEmptyReading', () => {
       )
     ).toEqual({
       text: 'We read 3200 words, 14 headings, and 1 table. Nothing in it is shaped like a card: no toggles and no question-and-answer pairs.',
+      next: 'readingNextToggles',
+    });
+  });
+
+  it('offers toggles or headings when the document has neither', () => {
+    expect(
+      describeEmptyReading(document({ words: 800, listItems: 6 }), t, 'en')
+    ).toEqual({
+      text: 'We read 800 words and 6 list items. Nothing in it is shaped like a card: no toggles and no question-and-answer pairs.',
       next: 'readingNext',
     });
   });
@@ -84,7 +93,7 @@ describe('describeEmptyReading', () => {
         'en'
       )
     ).toEqual({
-      text: "This zip holds 70 image files and 1 file in a format we can't read. None of them is a page we can read. Export your notes as HTML and upload that.",
+      text: "This zip holds 70 image files and 1 file in a format we can't read. None of them is a file we can read. Export your notes as HTML and upload that.",
       next: null,
     });
   });
@@ -97,7 +106,7 @@ describe('describeEmptyReading', () => {
         'en'
       )
     ).toEqual({
-      text: 'This zip holds 1 readable page and 2 image files. Nothing in it is shaped like a card: no toggles and no question-and-answer pairs.',
+      text: 'This zip holds 1 readable file and 2 image files. Nothing in it is shaped like a card: no toggles and no question-and-answer pairs.',
       next: 'readingNext',
     });
   });
@@ -106,7 +115,7 @@ describe('describeEmptyReading', () => {
     expect(
       describeEmptyReading(zip({ files: 1, archives: 1 }), t, 'en')
     ).toEqual({
-      text: 'This zip holds 1 zip inside it. Nothing in it is shaped like a card: no toggles and no question-and-answer pairs.',
+      text: 'This zip holds 1 nested zip. Nothing in it is shaped like a card: no toggles and no question-and-answer pairs.',
       next: 'readingNext',
     });
   });

@@ -1427,7 +1427,7 @@ describe('UploadForm analytics events', () => {
       expect(
         container.querySelector('[class*="emptyBody"]')?.textContent
       ).toContain(
-        'Put each question in a toggle, or as a heading with its answer underneath, then convert again. See common problems for the formats that work.'
+        'Put each question in a toggle with its answer inside it, then convert again. See common problems for the formats that work.'
       );
     });
   });

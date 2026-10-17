@@ -2,7 +2,10 @@ import type { TFunction } from 'i18next';
 
 import type { EmptyUploadReading } from '../../../lib/upload/isEmptyUploadReading';
 
-export type EmptyReadingNextStep = 'readingNext' | 'readingNextAnswers';
+export type EmptyReadingNextStep =
+  | 'readingNext'
+  | 'readingNextAnswers'
+  | 'readingNextToggles';
 
 export interface EmptyReadingCopy {
   text: string;
@@ -39,7 +42,9 @@ function countedParts(
 // One or two sentences saying what the parser saw in the file, plus which
 // next step fits, so "no cards" stops being a verdict and becomes a reading
 // the user can act on. A reading that ends on its own instruction (no text,
-// an empty zip, a zip with nothing readable) carries no next step.
+// an empty zip, a zip with nothing readable) carries no next step. A document
+// that already has headings was tried by the heading rule and failed it, so
+// its next step points at toggles only.
 export function describeEmptyReading(
   reading: EmptyUploadReading,
   t: TFunction,
@@ -93,6 +98,6 @@ export function describeEmptyReading(
   }
   return {
     text: `${lead} ${t('upload.form.readingNoCards')}`,
-    next: 'readingNext',
+    next: reading.headings > 0 ? 'readingNextToggles' : 'readingNext',
   };
 }
