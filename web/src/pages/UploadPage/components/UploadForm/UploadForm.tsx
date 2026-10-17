@@ -175,14 +175,16 @@ function claimFailure(status: number, error: UploadErrorBody | null): Error {
   );
 }
 
-const RESCUE_LABEL_KEYS: Record<RescueRule, string> = {
-  columns: 'rescueColumns',
-  heading: 'rescueHeading',
-  quote: 'rescueQuote',
-  numbered: 'rescueNumbered',
-  bullets: 'rescueBullets',
-  guess: 'rescueGuess',
-};
+// A Map, not an object literal: the rule comes off the network, and an
+// object lookup with a prototype key would hand back a Function.
+const RESCUE_LABEL_KEYS = new Map<RescueRule, string>([
+  ['columns', 'rescueColumns'],
+  ['heading', 'rescueHeading'],
+  ['quote', 'rescueQuote'],
+  ['numbered', 'rescueNumbered'],
+  ['bullets', 'rescueBullets'],
+  ['guess', 'rescueGuess'],
+]);
 
 function zoneStateForUploadError(
   message: UploadErrorBody
@@ -1273,7 +1275,7 @@ function UploadForm({
     setProgressWidth(10);
     setProgressSlow(false);
     setShowFallback(false);
-    void runFileUpload(formData, files, true);
+    void runFileUpload(formData, files, false);
   };
 
   const handleNetworkRetry = async () => {
@@ -1802,7 +1804,7 @@ function UploadForm({
             className={formStyles.rescueButton}
             onClick={() => handleRescueChoice(candidate.rule, candidate.cards)}
           >
-            {t(`upload.form.${RESCUE_LABEL_KEYS[candidate.rule]}`, {
+            {t(`upload.form.${RESCUE_LABEL_KEYS.get(candidate.rule)}`, {
               count: candidate.cards,
               n: formatCount(candidate.cards),
             })}
@@ -1816,7 +1818,8 @@ function UploadForm({
         reading,
         t,
         i18n.language,
-        localError?.empty_reason
+        localError?.empty_reason,
+        rescue.length > 0
       );
       return (
         <>
@@ -1831,10 +1834,10 @@ function UploadForm({
     }
     return (
       <>
-        {rescueActions}
         <p className={formStyles.emptyBody}>
           {t('upload.form.noCardsBody')} {commonProblems}
         </p>
+        {rescueActions}
       </>
     );
   };

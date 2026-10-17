@@ -739,8 +739,9 @@ export class DeckParser {
 
   // The user picked a structure on the empty-deck state after seeing the
   // counts, so the quality floor steps aside: a deck they chose with their
-  // eyes open beats an honest empty one. Still only reachable on the
-  // zero-usable-card branch, so a conversion that makes cards never sees it.
+  // eyes open beats an honest empty one. Only consulted once no candidate
+  // cleared the floor on its own, so a forged field can never replace a deck
+  // the floor would have accepted, and never on a page that makes cards.
   private induceChosenRule(
     dom: cheerio.CheerioAPI,
     rules: InducedRule[]
@@ -818,16 +819,16 @@ export class DeckParser {
     if (rules.length === 0) {
       return null;
     }
-    const chosen = this.induceChosenRule(dom, rules);
-    if (chosen != null) {
-      return chosen;
-    }
     const { winner, best, candidates } = runInduction(
       rules,
       (rule) => induceCardsFromDom(dom, rule),
       domPlainTextLength(dom)
     );
     if (winner == null) {
+      const chosen = this.induceChosenRule(dom, rules);
+      if (chosen != null) {
+        return chosen;
+      }
       if (best != null) {
         this.recordInducedRule({
           rule: best.rule,

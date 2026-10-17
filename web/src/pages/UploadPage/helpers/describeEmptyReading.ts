@@ -45,12 +45,15 @@ function countedParts(
 // an empty zip, a zip with nothing readable) carries no next step. A document
 // that already has headings was tried by the heading rule and failed it, so
 // its next step points at toggles only. A zip's census never opens its pages,
-// so its verdict claims nothing about toggles.
+// so its verdict claims nothing about toggles. When the server offers rescue
+// buttons the verdict must not deny the shapes those buttons name, and the
+// buttons are the next step.
 export function describeEmptyReading(
   reading: EmptyUploadReading,
   t: TFunction,
   language: string,
-  emptyReason?: string
+  emptyReason?: string,
+  offersRescue = false
 ): EmptyReadingCopy {
   if (reading.kind === 'zip') {
     if (reading.files === 0) {
@@ -68,6 +71,12 @@ export function describeEmptyReading(
     if (reading.readable === 0 && reading.archives === 0) {
       return {
         text: `${lead} ${t('upload.form.readingZipNoPages')}`,
+        next: null,
+      };
+    }
+    if (offersRescue) {
+      return {
+        text: `${lead} ${t('upload.form.readingRescueVerdict')}`,
         next: null,
       };
     }
@@ -90,6 +99,12 @@ export function describeEmptyReading(
   const lead = t('upload.form.readingLead', {
     parts: joinParts(parts, language),
   });
+  if (offersRescue) {
+    return {
+      text: `${lead} ${t('upload.form.readingRescueVerdict')}`,
+      next: null,
+    };
+  }
   if (reading.toggles > 0) {
     return {
       text: `${lead} ${t('upload.form.readingTogglesNoPairs', {

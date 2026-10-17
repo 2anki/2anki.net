@@ -403,47 +403,67 @@ describe('DeckParser dominant table documents', () => {
     expect(parser.inducedRule).toMatchObject({ outcome: 'rescue_rejected' });
   });
 
+  const REPEATED_FRONTS =
+    '<table><thead><tr><th>Day</th><th>Task</th></tr></thead><tbody>' +
+    '<tr><td>Monday</td><td>Study cardiology chapter one</td></tr>' +
+    '<tr><td>Monday</td><td>Review pharmacology flashcards</td></tr>' +
+    '<tr><td>Monday</td><td>Practice ECG interpretation</td></tr>' +
+    '<tr><td>Monday</td><td>Read renal physiology notes</td></tr>' +
+    '</tbody></table>';
+
   it('offers the structures that made cards when none cleared the floor', () => {
-    const twoSections =
-      '<h2>What is osmosis?</h2><p>Water crossing a membrane.</p>' +
-      '<h2>What is diffusion?</h2><p>Particles spreading out over time.</p>';
-    const parser = parse(page(twoSections), new CardOption({}));
+    const parser = parse(page(REPEATED_FRONTS), new CardOption({}));
 
     expect(parser.payload[0].cards).toHaveLength(0);
-    expect(parser.rescueCandidates).toEqual([{ rule: 'heading', cards: 2 }]);
+    expect(parser.rescueCandidates).toContainEqual({
+      rule: 'columns',
+      cards: 4,
+    });
   });
 
   it('ships the structure the user chose even below the floor', () => {
-    const twoSections =
-      '<h2>What is osmosis?</h2><p>Water crossing a membrane.</p>' +
-      '<h2>What is diffusion?</h2><p>Particles spreading out over time.</p>';
     const parser = parse(
-      page(twoSections),
-      new CardOption({ 'rescue-rule': 'heading' })
+      page(REPEATED_FRONTS),
+      new CardOption({ 'rescue-rule': 'columns' })
     );
 
+    expect(parser.payload[0].cards).toHaveLength(4);
     expect(parser.payload[0].cards.map((card) => card.name)).toEqual([
-      'What is osmosis?',
-      'What is diffusion?',
+      'Monday',
+      'Monday',
+      'Monday',
+      'Monday',
     ]);
     expect(parser.inducedRule).toMatchObject({
-      rule: 'heading',
+      rule: 'columns',
       outcome: 'rescue_shipped',
     });
     expect(parser.rescueCandidates).toEqual([]);
   });
 
   it('ignores a chosen rule that yields nothing and falls back to the offer', () => {
-    const twoSections =
-      '<h2>What is osmosis?</h2><p>Water crossing a membrane.</p>' +
-      '<h2>What is diffusion?</h2><p>Particles spreading out over time.</p>';
     const parser = parse(
-      page(twoSections),
+      page(REPEATED_FRONTS),
       new CardOption({ 'rescue-rule': 'quote' })
     );
 
     expect(parser.payload[0].cards).toHaveLength(0);
-    expect(parser.rescueCandidates).toEqual([{ rule: 'heading', cards: 2 }]);
+    expect(parser.rescueCandidates).toContainEqual({
+      rule: 'columns',
+      cards: 4,
+    });
+  });
+
+  it('lets a candidate that clears the floor win over a chosen rule', () => {
+    const parser = parse(
+      page(`${EMPTY_TOGGLE}${HEADING_SECTIONS}`),
+      new CardOption({ cherry: 'false', 'rescue-rule': 'guess' })
+    );
+
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
   });
 
   it('never applies a chosen rule to a page that makes cards on its own', () => {

@@ -149,6 +149,33 @@ describe('describeEmptyReading', () => {
     });
   });
 
+  it('neither denies the shapes nor adds a next step when rescue buttons are offered', () => {
+    expect(
+      describeEmptyReading(
+        document({ words: 3200, headings: 14 }),
+        t,
+        'en',
+        'no_toggles',
+        true
+      )
+    ).toEqual({
+      text: 'We read 3200 words and 14 headings. None of it made cards on its own.',
+      next: null,
+    });
+    expect(
+      describeEmptyReading(
+        zip({ files: 3, readable: 1, imageFiles: 2 }),
+        t,
+        'en',
+        'unknown',
+        true
+      )
+    ).toEqual({
+      text: 'This zip holds 1 readable file and 2 image files. None of it made cards on its own.',
+      next: null,
+    });
+  });
+
   it('groups thousands with a thin space from ten thousand up', () => {
     expect(formatCount(9999)).toBe('9999');
     expect(formatCount(12450)).toBe('12\u2009450');

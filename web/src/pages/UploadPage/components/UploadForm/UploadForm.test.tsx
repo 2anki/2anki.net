@@ -1481,6 +1481,9 @@ describe('UploadForm analytics events', () => {
       'Make 14 cards from the headings',
       'Make 40 cards from the bullet points',
     ]);
+    expect(
+      container.querySelector('[class*="emptyBody"]')?.textContent
+    ).not.toContain('Put each question');
 
     await act(async () => {
       buttons[1].click();
