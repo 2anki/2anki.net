@@ -44,11 +44,13 @@ function countedParts(
 // the user can act on. A reading that ends on its own instruction (no text,
 // an empty zip, a zip with nothing readable) carries no next step. A document
 // that already has headings was tried by the heading rule and failed it, so
-// its next step points at toggles only.
+// its next step points at toggles only. A zip's census never opens its pages,
+// so its verdict claims nothing about toggles.
 export function describeEmptyReading(
   reading: EmptyUploadReading,
   t: TFunction,
-  language: string
+  language: string,
+  emptyReason?: string
 ): EmptyReadingCopy {
   if (reading.kind === 'zip') {
     if (reading.files === 0) {
@@ -70,7 +72,7 @@ export function describeEmptyReading(
       };
     }
     return {
-      text: `${lead} ${t('upload.form.readingNoCards')}`,
+      text: `${lead} ${t('upload.form.readingNoPairs')}`,
       next: 'readingNext',
     };
   }
@@ -90,12 +92,20 @@ export function describeEmptyReading(
   });
   if (reading.toggles > 0) {
     return {
-      text: `${lead} ${t('upload.form.readingTogglesNoPairs')}`,
+      text: `${lead} ${t('upload.form.readingTogglesNoPairs', {
+        count: reading.toggles,
+      })}`,
       next: 'readingNextAnswers',
     };
   }
+  // "No toggles and no pairs" is only true when the parser said so; an
+  // unknown reason means it recognised a card shape that still yielded nothing.
+  const verdict =
+    emptyReason === 'unknown'
+      ? t('upload.form.readingNoPairs')
+      : t('upload.form.readingNoCards');
   return {
-    text: `${lead} ${t('upload.form.readingNoCards')}`,
+    text: `${lead} ${verdict}`,
     next: reading.headings > 0 ? 'readingNextToggles' : 'readingNext',
   };
 }

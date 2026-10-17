@@ -147,14 +147,21 @@ function countRuns(
   let inRun = false;
   let runIsWord = false;
   for (let i = 0; i < limit; i += 1) {
-    if (isWordSpace(data.charCodeAt(i))) {
+    const code = data.charCodeAt(i);
+    if (isWordSpace(code)) {
       if (runIsWord) words += 1;
       inRun = false;
       runIsWord = false;
       continue;
     }
     inRun = true;
-    if (!runIsWord && WORD_CHARACTER.test(data[i])) runIsWord = true;
+    if (!runIsWord && WORD_CHARACTER.test(data[i])) {
+      runIsWord = true;
+    } else if (!runIsWord && code >= 0xd800 && code <= 0xdbff) {
+      // An astral letter (CJK Extension B, math alphanumerics) spans two
+      // code units; test the pair so the run still counts.
+      runIsWord = WORD_CHARACTER.test(data.slice(i, i + 2));
+    }
   }
   if (inRun && runIsWord) words += 1;
   return { words, scanned: limit };

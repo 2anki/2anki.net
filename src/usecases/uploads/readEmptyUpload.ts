@@ -10,10 +10,11 @@ import type {
 } from '../../types/EmptyUploadReading';
 
 // The reading is built on the request before the 400 goes out, so it is
-// bounded: a handful of files, none large enough to make re-reading them from
-// disk or the census (which re-converts a docx) a visible delay or a heap
-// spike on the empty-deck answer. A 5 MB text document is already hundreds
-// of pages; a bigger one simply gets no reading.
+// bounded: a handful of files and 5 MB in total, so re-reading them from disk
+// and the census (a cheerio parse, or a docx re-conversion) stay a short
+// delay on the empty-deck answer rather than seconds per file. A 5 MB text
+// document is already hundreds of pages; a bigger upload simply gets no
+// reading, or a reading of the files that fit.
 export const READING_MAX_FILES = 5;
 export const READING_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -67,9 +68,14 @@ export async function readEmptyUpload<T extends ReadableUpload>(
   files: T[] | undefined,
   readBytes: (file: T) => Promise<Buffer | null>
 ): Promise<EmptyUploadReading | null> {
-  const candidates = (files ?? [])
-    .filter((file) => file.size <= READING_MAX_BYTES)
-    .slice(0, READING_MAX_FILES);
+  const candidates: T[] = [];
+  let budget = READING_MAX_BYTES;
+  for (const file of files ?? []) {
+    if (candidates.length === READING_MAX_FILES) break;
+    if (file.size > budget) continue;
+    budget -= file.size;
+    candidates.push(file);
+  }
   let document: DocumentReading | null = null;
   let zip: ZipReading | null = null;
   for (const file of candidates) {

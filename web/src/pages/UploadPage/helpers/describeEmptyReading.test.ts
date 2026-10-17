@@ -60,6 +60,28 @@ describe('describeEmptyReading', () => {
     });
   });
 
+  it('claims no missing shape when the parser gave an unknown reason', () => {
+    expect(
+      describeEmptyReading(
+        document({ words: 90, toggles: 0 }),
+        t,
+        'en',
+        'unknown'
+      )
+    ).toEqual({
+      text: 'We read 90 words. Nothing in it paired up as a question with an answer.',
+      next: 'readingNext',
+    });
+  });
+
+  it('pluralises the toggle verdict', () => {
+    expect(
+      describeEmptyReading(document({ words: 40, toggles: 3 }), t, 'en').text
+    ).toBe(
+      'We read 40 words and 3 toggles. None of the toggles held a question with an answer inside.'
+    );
+  });
+
   it('offers toggles or headings when the document has neither', () => {
     expect(
       describeEmptyReading(document({ words: 800, listItems: 6 }), t, 'en')
@@ -73,7 +95,7 @@ describe('describeEmptyReading', () => {
     expect(
       describeEmptyReading(document({ words: 40, toggles: 1 }), t, 'en')
     ).toEqual({
-      text: 'We read 40 words and 1 toggle. None of the toggles held a question with an answer inside.',
+      text: 'We read 40 words and 1 toggle. The toggle held no question with an answer inside.',
       next: 'readingNextAnswers',
     });
   });
@@ -93,7 +115,7 @@ describe('describeEmptyReading', () => {
         'en'
       )
     ).toEqual({
-      text: "This zip holds 70 image files and 1 file in a format we can't read. None of them is a file we can read. Export your notes as HTML and upload that.",
+      text: "This zip holds 70 image files and 1 file in a format we can't read. There is nothing in it we can turn into cards. Export your notes as HTML and upload that.",
       next: null,
     });
   });
@@ -106,7 +128,7 @@ describe('describeEmptyReading', () => {
         'en'
       )
     ).toEqual({
-      text: 'This zip holds 1 readable file and 2 image files. Nothing in it is shaped like a card: no toggles and no question-and-answer pairs.',
+      text: 'This zip holds 1 readable file and 2 image files. Nothing in it paired up as a question with an answer.',
       next: 'readingNext',
     });
   });
@@ -115,7 +137,7 @@ describe('describeEmptyReading', () => {
     expect(
       describeEmptyReading(zip({ files: 1, archives: 1 }), t, 'en')
     ).toEqual({
-      text: 'This zip holds 1 nested zip. Nothing in it is shaped like a card: no toggles and no question-and-answer pairs.',
+      text: 'This zip holds 1 nested zip. Nothing in it paired up as a question with an answer.',
       next: 'readingNext',
     });
   });

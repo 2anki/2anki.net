@@ -94,6 +94,22 @@ describe('readEmptyUpload', () => {
     expect(reading).toBeNull();
   });
 
+  it('spends one byte budget across the files it reads', async () => {
+    const seen: string[] = [];
+    const readBytes = async (file: { originalname: string }) => {
+      seen.push(file.originalname);
+      return Buffer.from('<p>word</p>');
+    };
+    const files = [
+      { originalname: 'a.html', size: 3 * 1024 * 1024 },
+      { originalname: 'b.html', size: 3 * 1024 * 1024 },
+      { originalname: 'c.html', size: 1024 },
+    ];
+    const reading = await readEmptyUpload(files, readBytes);
+    expect(seen).toEqual(['a.html', 'c.html']);
+    expect(reading).toMatchObject({ kind: 'document', words: 2 });
+  });
+
   it('skips oversized files and stops after the file cap', async () => {
     const readBytes = vi.fn(async () => Buffer.from('<p>word</p>'));
     const files = Array.from({ length: READING_MAX_FILES + 2 }, (_, i) => ({

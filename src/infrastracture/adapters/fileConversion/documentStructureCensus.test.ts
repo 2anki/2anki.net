@@ -215,6 +215,10 @@ describe('countWords through censusFromHtml', () => {
     expect(censusFromHtml(html).words).toBe(3);
   });
 
+  it('counts a word written in astral letters', () => {
+    expect(censusFromHtml('<p>\u{20000}\u{20001} \u{1D400}</p>').words).toBe(2);
+  });
+
   it('keeps words apart across adjacent elements', () => {
     expect(censusFromHtml('<h1>Cell</h1><p>biology</p>').words).toBe(2);
   });

@@ -1747,7 +1747,12 @@ function UploadForm({
     );
     const reading = localError?.reading;
     if (reading != null) {
-      const copy = describeEmptyReading(reading, t, i18n.language);
+      const copy = describeEmptyReading(
+        reading,
+        t,
+        i18n.language,
+        localError?.empty_reason
+      );
       return (
         <>
           <p className={formStyles.emptyReading}>{copy.text}</p>
