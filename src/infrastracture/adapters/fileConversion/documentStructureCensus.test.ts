@@ -215,6 +215,13 @@ describe('countWords through censusFromHtml', () => {
     expect(censusFromHtml(html).words).toBe(3);
   });
 
+  it('counts each han, kana or hangul character as a word', () => {
+    expect(
+      censusFromHtml('<p>細胞生物学は細胞の構造を研究する学問です。</p>').words
+    ).toBe(20);
+    expect(censusFromHtml('<p>세포 생물학</p>').words).toBe(5);
+  });
+
   it('counts a word written in astral letters', () => {
     expect(censusFromHtml('<p>\u{20000}\u{20001} \u{1D400}</p>').words).toBe(2);
   });
@@ -230,9 +237,7 @@ describe('countWords through censusFromHtml', () => {
 
   it('stops scanning past the word budget', () => {
     const html = '<p>' + 'ab '.repeat(3_000_000) + '</p>';
-    const words = censusFromHtml(html).words;
-    expect(words).toBeGreaterThan(1_000_000);
-    expect(words).toBeLessThan(2_000_000);
+    expect(censusFromHtml(html).words).toBe(1_747_627);
   });
 });
 

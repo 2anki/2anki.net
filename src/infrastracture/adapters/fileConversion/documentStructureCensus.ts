@@ -138,6 +138,19 @@ function isWordSpace(code: number): boolean {
 
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 
+// Han, kana and hangul prose carries no spaces, so each such character
+// counts as a word of its own; "1 word" for a page of Japanese is worse
+// than an approximate count.
+function isCjkCharacter(code: number): boolean {
+  return (
+    (code >= 0x3040 && code <= 0x30ff) ||
+    (code >= 0x3400 && code <= 0x4dbf) ||
+    (code >= 0x4e00 && code <= 0x9fff) ||
+    (code >= 0xac00 && code <= 0xd7af) ||
+    (code >= 0xf900 && code <= 0xfaff)
+  );
+}
+
 function countRuns(
   data: string,
   budget: number
@@ -150,6 +163,13 @@ function countRuns(
     const code = data.charCodeAt(i);
     if (isWordSpace(code)) {
       if (runIsWord) words += 1;
+      inRun = false;
+      runIsWord = false;
+      continue;
+    }
+    if (isCjkCharacter(code)) {
+      if (runIsWord) words += 1;
+      words += 1;
       inRun = false;
       runIsWord = false;
       continue;
