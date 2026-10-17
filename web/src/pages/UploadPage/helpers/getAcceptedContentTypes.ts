@@ -13,6 +13,7 @@ export const ACCEPTED_FORMATS = [
 ] as const;
 
 const PICKER_ONLY_EXTENSIONS = [
+  '.htm',
   '.tsv',
   '.doc',
   '.ppt',

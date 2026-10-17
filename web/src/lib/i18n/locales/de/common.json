@@ -193,6 +193,7 @@
       "tryDifferent": "Eine andere Datei versuchen",
       "imagesTitle": "Foto zu Stapel macht aus Bildern Karten",
       "imagesBody": "Hier gibt es keinen Text zum Lesen, also gab es nichts zu konvertieren. Foto zu Stapel liest dein Bild mit KI und entwirft Karten, die du vor dem Download prüfst.",
+      "imagesUnzip": "Foto zu Stapel nimmt die Fotos selbst, nicht die Zip-Datei. Entpacke sie und zieh die Fotos hinein.",
       "imagesBodyAccount": "Mit einem Konto sind 5 Fotos pro Monat kostenlos.",
       "imagesCreateAccount": "Kostenloses Konto erstellen",
       "tryPhotoToDeck": "Foto zu Stapel öffnen",

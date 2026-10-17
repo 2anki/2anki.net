@@ -32,7 +32,7 @@ function resolveColumns(rows: TabularRow[]): FrontBackColumns {
 
 export function convertXLSXToHTML(buffer: Buffer, title: string): string {
   const { rows, frontIndex, backIndex } = resolveColumns(
-    rowsFromBuffer(buffer)
+    rowsFromBuffer(buffer, title)
   );
 
   return `<!DOCTYPE html>

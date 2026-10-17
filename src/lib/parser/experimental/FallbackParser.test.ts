@@ -148,6 +148,32 @@ describe('FallbackParser comma-separated text (Quizlet comma export)', () => {
   });
 });
 
+describe('FallbackParser .tsv files', () => {
+  it('keeps commas inside the cells of a tab-separated file', () => {
+    const tsv =
+      'What is osmosis, really?\tWater, crossing a membrane\nWhat is diffusion?\tParticles spreading\n';
+    const parser = new FallbackParser([
+      { name: 'cards.tsv', contents: Buffer.from(tsv) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks[0].cards.map((card) => [card.name, card.back])).toEqual([
+      ['What is osmosis, really?', 'Water, crossing a membrane'],
+      ['What is diffusion?', 'Particles spreading'],
+    ]);
+  });
+
+  it('maps a front and back header in a .tsv and drops the byte order mark', () => {
+    const tsv = '\ufeffback\tfront\nHello\tBonjour\n';
+    const parser = new FallbackParser([
+      { name: 'vocab.tsv', contents: Buffer.from(tsv) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks[0].cards).toHaveLength(1);
+    expect(decks[0].cards[0].name).toBe('Bonjour');
+    expect(decks[0].cards[0].back).toBe('Hello');
+  });
+});
+
 describe('FallbackParser CSV column mapping', () => {
   it('maps front and back by column name when the header order is reversed', () => {
     const csv = 'back,front\nHello,Bonjour';

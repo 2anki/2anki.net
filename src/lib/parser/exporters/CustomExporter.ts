@@ -61,7 +61,7 @@ class CustomExporter {
   media: string[];
 
   constructor(firstDeckName: string, workspace: string) {
-    this.firstDeckName = firstDeckName.replace('.html', '');
+    this.firstDeckName = firstDeckName.replace(/\.html?$/i, '');
     this.workspace = workspace;
     this.media = [];
   }

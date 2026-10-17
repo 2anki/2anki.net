@@ -193,6 +193,7 @@
       "tryDifferent": "Tentar outro arquivo",
       "imagesTitle": "O Foto para baralho transforma imagens em cartões",
       "imagesBody": "Não há texto para ler aqui, então não havia nada para converter. O Foto para baralho lê sua imagem com IA e rascunha cartões que você revisa antes de baixar.",
+      "imagesUnzip": "O Foto para baralho aceita as fotos em si, não o zip. Descompacte o arquivo e solte as fotos.",
       "imagesBodyAccount": "Com uma conta, 5 fotos por mês são grátis.",
       "imagesCreateAccount": "Criar uma conta gratuita",
       "tryPhotoToDeck": "Abrir Foto para baralho",

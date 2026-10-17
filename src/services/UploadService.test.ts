@@ -689,6 +689,98 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(capturedJson()).toMatchObject({ code: 'empty_export', rescue: [] });
   });
 
+  it('routes a zip of nothing but images to Photo to Deck', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages: [] }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+    const { zipSync, strToU8 } = await import('fflate');
+    const zip = Buffer.from(
+      zipSync({ 'a.png': strToU8('png'), 'b.jpg': strToU8('jpg') })
+    );
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'photos.zip',
+          mimetype: 'application/zip',
+          size: zip.length,
+          buffer: zip,
+        },
+      ],
+    } as unknown as Partial<express.Request>);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toMatchObject({
+      code: 'image_only_no_text',
+      photoToDeckUrl: '/photo-to-deck',
+    });
+    expect(trackMock).toHaveBeenCalledWith(
+      'image_only_no_text_shown',
+      expect.objectContaining({
+        props: expect.objectContaining({ container: 'zip' }),
+      })
+    );
+  });
+
+  it.each([
+    ['a readable page', { 'a.png': 'png', 'Page abc.html': '<html></html>' }],
+    ['a nested zip', { 'a.png': 'png', 'inner.zip': 'PK' }],
+    ['an unknown file', { 'a.png': 'png', 'deck.colpkg': 'x' }],
+  ])(
+    'keeps the plain empty state for a zip of images plus %s',
+    async (_label, entries) => {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue({ packages: [] }),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+      const { zipSync, strToU8 } = await import('fflate');
+      const zip = Buffer.from(
+        zipSync(
+          Object.fromEntries(
+            Object.entries(entries).map(([name, text]) => [name, strToU8(text)])
+          )
+        )
+      );
+
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const req = buildRequest({
+        files: [
+          {
+            originalname: 'mixed.zip',
+            mimetype: 'application/zip',
+            size: zip.length,
+            buffer: zip,
+          },
+        ],
+      } as unknown as Partial<express.Request>);
+      const { res, capturedJson } = buildResponse();
+
+      await service.handleUpload(req, res);
+
+      expect(capturedJson()).toMatchObject({
+        code: 'empty_export',
+        reading: { kind: 'zip', imageFiles: 1 },
+      });
+    }
+  );
+
   it('sends reading null when the empty file cannot be read back', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {

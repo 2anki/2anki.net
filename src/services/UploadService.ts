@@ -166,7 +166,7 @@ interface ImageOnlyResponse {
 }
 
 const IMAGE_ONLY_NO_TEXT_MESSAGE =
-  'These look like images — no text to read. Turn them into cards with Photo to Deck.';
+  'These look like images with no text to read. Turn them into cards with Photo to Deck.';
 
 const AI_FALLBACK_MAX_BYTES = 50 * 1024 * 1024;
 
@@ -319,6 +319,17 @@ function resolveImageDropReason(
 function hasSessionToken(req: express.Request): boolean {
   const token = (req.cookies as Record<string, unknown> | undefined)?.token;
   return typeof token === 'string' && token.length > 0;
+}
+
+function isImageOnlyZip(reading: EmptyUploadReading | null): boolean {
+  return (
+    reading != null &&
+    reading.kind === 'zip' &&
+    reading.imageFiles > 0 &&
+    reading.readable === 0 &&
+    reading.archives === 0 &&
+    reading.otherFiles === 0
+  );
 }
 
 async function readUploadBytes(file: UploadedFile): Promise<Buffer | null> {
@@ -1234,6 +1245,12 @@ class UploadService {
         if (isImageOnlyUpload(files)) {
           return this.respondImageOnlyNoText(req, res, files);
         }
+        const reading = await readEmptyUpload(files, readUploadBytes);
+        // A zip of nothing but images is the photo case in a wrapper: send
+        // it to Photo to Deck like a bare image, not to the toggle advice.
+        if (files?.length === 1 && isImageOnlyZip(reading)) {
+          return this.respondImageOnlyNoText(req, res, files, 'zip');
+        }
         const body: EmptyDeckResponse = {
           code: 'empty_export',
           message:
@@ -1241,7 +1258,7 @@ class UploadService {
           filename,
           docsLink: '/documentation/help/common-problems',
           empty_reason: err.reason,
-          reading: await readEmptyUpload(files, readUploadBytes),
+          reading,
           // A multi-file submit stops at the first empty file, so an offer
           // would describe only that file; the form offers nothing for those.
           rescue: files?.length === 1 ? err.rescueCandidates : [],
@@ -2042,13 +2059,14 @@ class UploadService {
   private respondImageOnlyNoText(
     req: express.Request,
     res: express.Response,
-    files: UploadedFile[] | undefined
+    files: UploadedFile[] | undefined,
+    container: 'image' | 'zip' = 'image'
   ) {
     const owner = getOwner(res);
     track('image_only_no_text_shown', {
       userId: owner != null ? Number(owner) : null,
       anonymousId: this.resolveAnonId(req),
-      props: { source: this.resolveUploadSource(req) },
+      props: { source: this.resolveUploadSource(req), container },
     });
     const body: ImageOnlyResponse = {
       code: 'image_only_no_text',

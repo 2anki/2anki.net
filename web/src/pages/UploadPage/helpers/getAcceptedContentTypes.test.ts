@@ -26,6 +26,7 @@ describe('accepted formats single source of truth', () => {
     const accept = getAcceptedContentTypes();
     for (const ext of [
       ...ACCEPTED_FORMATS,
+      '.htm',
       '.tsv',
       '.doc',
       '.ppt',

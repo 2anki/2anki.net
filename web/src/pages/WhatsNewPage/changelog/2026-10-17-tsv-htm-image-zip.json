@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-17-tsv-htm-image-zip",
+  "date": "2026-10-17",
+  "type": "fix",
+  "title": "Tab separated files keep their commas, .htm pages convert like .html, and a zip of photos points you to Photo to Deck"
+}

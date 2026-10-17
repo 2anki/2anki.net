@@ -6,7 +6,7 @@ function mediaPrefixForHtml(htmlFileName: string): string {
   const dir = lastSlash >= 0 ? normalized.substring(0, lastSlash) : '';
   const base = normalized
     .substring(lastSlash + 1)
-    .replace(/\.html$/i, '')
+    .replace(/\.html?$/i, '')
     .replace(/ [a-f0-9]{32}$/i, '')
     .trim();
   return dir ? `${dir}/${base}/` : `${base}/`;

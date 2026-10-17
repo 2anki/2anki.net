@@ -280,7 +280,7 @@ class FallbackParser {
     contents: Uint8Array,
     fileName: string
   ): { cards: Note[]; deckName: string; clean: boolean } {
-    const rows = rowsFromBuffer(Buffer.from(contents));
+    const rows = rowsFromBuffer(Buffer.from(contents), fileName);
     const named = rows.length > 0 ? detectFieldColumns(rows[0]) : null;
     const frontIndex = named?.frontIndex ?? 0;
     const backIndex = named?.backIndex ?? 1;
