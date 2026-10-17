@@ -1683,6 +1683,7 @@ describe('UploadForm analytics events', () => {
   });
 
   describe('AI offer on the empty state', () => {
+    const trackMock = vi.mocked(track);
     const emptyBody = {
       code: 'empty_export',
       message: 'No cards were found in this file.',
@@ -1718,14 +1719,23 @@ describe('UploadForm analytics events', () => {
       });
     };
 
-    it('asks an anonymous user to sign in', async () => {
+    it('points an anonymous user at the paid plan and records the offer', async () => {
       vi.stubGlobal('fetch', emptyFetch());
       const { container } = renderUploadForm(
         <UploadForm setErrorMessage={vi.fn()} />
       );
       await submitOneFile(container);
-      const link = container.querySelector('a[href="/login?redirect=/upload"]');
-      expect(link?.textContent).toBe('Sign in to use AI');
+      const link = container.querySelector('a[href="/pricing"]');
+      expect(link?.textContent).toBe('Get AI cards with the paid plan');
+      expect(trackMock).toHaveBeenCalledWith('upload_ai_rescue_shown', {
+        state: 'anon',
+      });
+      await act(async () => {
+        (link as HTMLAnchorElement).click();
+      });
+      expect(trackMock).toHaveBeenCalledWith('upload_ai_rescue_clicked', {
+        state: 'anon',
+      });
     });
 
     it('points a free account at the paid plan', async () => {
@@ -1742,9 +1752,7 @@ describe('UploadForm analytics events', () => {
       );
       await submitOneFile(container);
       const link = container.querySelector('a[href="/pricing"]');
-      expect(link?.textContent).toBe(
-        'Make cards with AI, part of the paid plan'
-      );
+      expect(link?.textContent).toBe('Get AI cards with the paid plan');
     });
 
     it('resubmits the file with AI on for a paying account with AI off', async () => {
@@ -1755,6 +1763,7 @@ describe('UploadForm analytics events', () => {
         isError: false,
         refetch: vi.fn(),
       } as unknown as ReturnType<typeof useUserLocals>);
+      globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
       const fetchMock = emptyFetch();
       vi.stubGlobal('fetch', fetchMock);
       const { container } = renderUploadForm(
@@ -1765,16 +1774,56 @@ describe('UploadForm analytics events', () => {
         (b) => b.textContent === 'Make cards with AI'
       );
       expect(button).toBeDefined();
+      expect(trackMock).toHaveBeenCalledWith('upload_ai_rescue_shown', {
+        state: 'paying',
+      });
       await act(async () => {
         button!.click();
+      });
+      expect(trackMock).toHaveBeenCalledWith('upload_ai_rescue_clicked', {
+        state: 'paying',
       });
       await waitFor(() => {
         expect(fetchMock).toHaveBeenCalledTimes(2);
       });
       const [, retry] = fetchMock.mock.calls[1] as [string, RequestInit];
       const sent = retry.body as FormData;
-      expect(sent.get('claude-ai-flashcards')).toBe('true');
+      expect(sent.getAll('claude-ai-flashcards')).toEqual(['true']);
       expect((sent.get('pakker') as File).name).toBe('notes.html');
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+    });
+
+    it('shows no AI button for a paying account that submitted two files', async () => {
+      mockUseUserLocals.mockReturnValue({
+        data: { user: { id: 7 }, locals: { subscriber: true } },
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+      vi.stubGlobal('fetch', emptyFetch());
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      const input = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      Object.defineProperty(input, 'files', {
+        value: [
+          new File(['<p>a</p>'], 'a.html', { type: 'text/html' }),
+          new File(['<p>b</p>'], 'b.html', { type: 'text/html' }),
+        ],
+      });
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+      await waitFor(() => {
+        expect(container.querySelector('[class*="emptyTitle"]')).not.toBeNull();
+      });
+      expect(container.textContent).not.toContain('Make cards with AI');
     });
 
     it('shows no AI offer when AI already ran', async () => {

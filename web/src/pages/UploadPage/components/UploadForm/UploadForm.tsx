@@ -780,11 +780,9 @@ function UploadForm({
       ? localError?.rescue
       : null;
 
-  // The AI offer on the empty state: who the user is decides what the button
-  // does. Anonymous signs in, a free account sees the paid plan, a paying
-  // account with AI off sends the same file back with AI on for this one
-  // conversion. A paying account with AI on already had Claude try, so the
-  // offer would promise nothing new and is not shown.
+  // Anonymous and free accounts are sent to the paid plan rather than to a
+  // free AI run; a paying account with AI off spends its own credits on a
+  // click; one with AI on already had Claude try, so nothing is offered.
   const aiRescueState = (() => {
     if (zoneState !== 'emptyDeck' || localError?.code !== 'empty_export') {
       return null;
@@ -1847,20 +1845,13 @@ function UploadForm({
     const aiActions = aiRescueState != null && (
       <div className={formStyles.aiRescueActions}>
         <p className={formStyles.rescueLead}>{t('upload.form.aiRescueLead')}</p>
-        {aiRescueState === 'anon' && (
-          <Link
-            to="/login?redirect=/upload"
-            className={formStyles.aiRescueButton}
-            onClick={() => track('upload_ai_rescue_clicked', { state: 'anon' })}
-          >
-            {t('upload.form.aiRescueSignIn')}
-          </Link>
-        )}
-        {aiRescueState === 'free' && (
+        {(aiRescueState === 'anon' || aiRescueState === 'free') && (
           <Link
             to="/pricing"
             className={formStyles.aiRescueButton}
-            onClick={() => track('upload_ai_rescue_clicked', { state: 'free' })}
+            onClick={() =>
+              track('upload_ai_rescue_clicked', { state: aiRescueState })
+            }
           >
             {t('upload.form.aiRescueUpgrade')}
           </Link>
@@ -1927,10 +1918,10 @@ function UploadForm({
     }
     return (
       <>
+        {aiActions}
         <p className={formStyles.emptyBody}>
           {t('upload.form.noCardsBody')} {commonProblems}
         </p>
-        {aiActions}
       </>
     );
   };
