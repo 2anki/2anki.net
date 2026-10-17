@@ -5,6 +5,12 @@ export type TabularRow = unknown[];
 export const isTsvFile = (fileName: string): boolean =>
   /\.tsv$/i.test(fileName);
 
+function firstLineHoldsTab(bytes: Buffer): boolean {
+  const newline = bytes.indexOf(0x0a);
+  const firstLine = bytes.subarray(0, newline === -1 ? bytes.length : newline);
+  return firstLine.includes(0x09);
+}
+
 // Closed set (trio decision, #3945): English plus the three locales with real
 // upload traffic — de, es, pt. A pair only drops row 0 when BOTH words match
 // exactly, so every addition slightly widens the false-drop surface; extend on
@@ -37,8 +43,9 @@ const UTF8_BOM = Buffer.from([0xef, 0xbb, 0xbf]);
 
 // SheetJS keeps a UTF-8 byte order mark inside the first cell and, for a
 // text file, guesses the separator by counting characters, so a .tsv whose
-// cells hold commas splits on the commas. A .tsv is read with the tab fixed
-// as the separator; the mark is stripped for every text file.
+// cells hold commas splits on the commas. A .tsv whose first line holds a
+// tab is read with the tab fixed as the separator (a mislabeled comma file
+// keeps the guess); the mark is stripped for every text file.
 export function rowsFromBuffer(buffer: Buffer, fileName = ''): TabularRow[] {
   const bytes = buffer.subarray(0, 3).equals(UTF8_BOM)
     ? buffer.subarray(3)
@@ -46,7 +53,7 @@ export function rowsFromBuffer(buffer: Buffer, fileName = ''): TabularRow[] {
   const workbook = XLSX.read(bytes, {
     type: 'buffer',
     codepage: 65001,
-    ...(isTsvFile(fileName) ? { FS: '\t' } : {}),
+    ...(isTsvFile(fileName) && firstLineHoldsTab(bytes) ? { FS: '\t' } : {}),
   });
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];

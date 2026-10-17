@@ -193,6 +193,7 @@
       "tryDifferent": "Try a different file",
       "imagesTitle": "Photo to Deck turns images into cards",
       "imagesBody": "There's no text to read here, so there's nothing to convert. Photo to Deck reads your image with AI and drafts cards you check before you download.",
+      "imagesUnzip": "Photo to Deck takes the photos themselves, not the zip. Unzip it and drop the photos in.",
       "imagesBodyAccount": "5 photos a month are free with an account.",
       "imagesCreateAccount": "Create a free account",
       "tryPhotoToDeck": "Open Photo to Deck",

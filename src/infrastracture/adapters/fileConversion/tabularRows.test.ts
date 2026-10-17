@@ -8,13 +8,28 @@ describe('rowsFromBuffer', () => {
     ]);
   });
 
-  it('drops a UTF-8 byte order mark instead of leaving it in the first cell', () => {
-    const tsv = '\ufeffWhat is osmosis?\tWater crossing a membrane\n';
-    expect(rowsFromBuffer(Buffer.from(tsv, 'utf8'), 'cards.tsv')).toEqual([
-      ['What is osmosis?', 'Water crossing a membrane'],
-    ]);
-    const csv = '\ufefffront,back\nQ,A\n';
-    expect(rowsFromBuffer(Buffer.from(csv, 'utf8'), 'cards.csv')).toEqual([
+  it.each([
+    [
+      'cards.tsv',
+      '\ufeffWhat is osmosis?\tWater crossing a membrane\n',
+      [['What is osmosis?', 'Water crossing a membrane']],
+    ],
+    [
+      'cards.csv',
+      '\ufefffront,back\nQ,A\n',
+      [
+        ['front', 'back'],
+        ['Q', 'A'],
+      ],
+    ],
+  ])('drops a UTF-8 byte order mark in %s', (name, text, rows) => {
+    expect(rowsFromBuffer(Buffer.from(text, 'utf8'), name)).toEqual(rows);
+  });
+
+  it('keeps the guessed separator for a .tsv whose first line has no tab', () => {
+    expect(
+      rowsFromBuffer(Buffer.from('front,back\nQ,A\n', 'utf8'), 'cards.tsv')
+    ).toEqual([
       ['front', 'back'],
       ['Q', 'A'],
     ]);

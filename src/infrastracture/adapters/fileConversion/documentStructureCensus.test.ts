@@ -121,6 +121,8 @@ describe('censusUploadedFile — zip archives (#4029)', () => {
       'Page abc.html': strToU8('<html></html>'),
       '__MACOSX/._Page abc.html': strToU8('meta'),
       'img/._photo.png': strToU8('meta'),
+      'img/Thumbs.db': strToU8('meta'),
+      '.DS_Store': strToU8('meta'),
       'img/photo.png': strToU8('png'),
     });
     const census = await censusUploadedFile({

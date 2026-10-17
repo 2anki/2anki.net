@@ -2470,6 +2470,9 @@ function UploadForm({
       <WarningIcon className={formStyles.iconWarning} />
       <p className={formStyles.emptyTitle}>{t('upload.form.imagesTitle')}</p>
       <p className={formStyles.emptyBody}>{t('upload.form.imagesBody')}</p>
+      {/\.zip$/i.test(currentFilename()) && (
+        <p className={formStyles.emptyBody}>{t('upload.form.imagesUnzip')}</p>
+      )}
       {!isAuthenticated && (
         <p className={formStyles.emptyBody}>
           {t('upload.form.imagesBodyAccount')}

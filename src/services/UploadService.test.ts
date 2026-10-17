@@ -727,6 +727,54 @@ describe('UploadService.handleUpload — error paths', () => {
     });
   });
 
+  it.each([
+    ['a readable page', { 'a.png': 'png', 'Page abc.html': '<html></html>' }],
+    ['a nested zip', { 'a.png': 'png', 'inner.zip': 'PK' }],
+    ['an unknown file', { 'a.png': 'png', 'deck.colpkg': 'x' }],
+  ])(
+    'keeps the plain empty state for a zip of images plus %s',
+    async (_label, entries) => {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue({ packages: [] }),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+      const { zipSync, strToU8 } = await import('fflate');
+      const zip = Buffer.from(
+        zipSync(
+          Object.fromEntries(
+            Object.entries(entries).map(([name, text]) => [name, strToU8(text)])
+          )
+        )
+      );
+
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const req = buildRequest({
+        files: [
+          {
+            originalname: 'mixed.zip',
+            mimetype: 'application/zip',
+            size: zip.length,
+            buffer: zip,
+          },
+        ],
+      } as unknown as Partial<express.Request>);
+      const { res, capturedJson } = buildResponse();
+
+      await service.handleUpload(req, res);
+
+      expect(capturedJson()).toMatchObject({
+        code: 'empty_export',
+        reading: { kind: 'zip', imageFiles: 1 },
+      });
+    }
+  );
+
   it('sends reading null when the empty file cannot be read back', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {

@@ -193,6 +193,7 @@
       "tryDifferent": "Prueba con otro archivo",
       "imagesTitle": "Foto a mazo convierte imágenes en tarjetas",
       "imagesBody": "Aquí no hay texto que leer, así que no había nada que convertir. Foto a mazo lee tu imagen con IA y redacta tarjetas que revisas antes de descargar.",
+      "imagesUnzip": "Photo to Deck acepta las fotos en sí, no el zip. Descomprímelo y arrastra las fotos.",
       "imagesBodyAccount": "Con una cuenta, 5 fotos al mes son gratis.",
       "imagesCreateAccount": "Crear una cuenta gratuita",
       "tryPhotoToDeck": "Abrir Foto a mazo",

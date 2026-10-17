@@ -166,7 +166,7 @@ interface ImageOnlyResponse {
 }
 
 const IMAGE_ONLY_NO_TEXT_MESSAGE =
-  'These look like images — no text to read. Turn them into cards with Photo to Deck.';
+  'These look like images with no text to read. Turn them into cards with Photo to Deck.';
 
 const AI_FALLBACK_MAX_BYTES = 50 * 1024 * 1024;
 
