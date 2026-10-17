@@ -321,6 +321,17 @@ function hasSessionToken(req: express.Request): boolean {
   return typeof token === 'string' && token.length > 0;
 }
 
+function isImageOnlyZip(reading: EmptyUploadReading | null): boolean {
+  return (
+    reading != null &&
+    reading.kind === 'zip' &&
+    reading.imageFiles > 0 &&
+    reading.readable === 0 &&
+    reading.archives === 0 &&
+    reading.otherFiles === 0
+  );
+}
+
 async function readUploadBytes(file: UploadedFile): Promise<Buffer | null> {
   if (file.buffer != null) {
     return file.buffer;
@@ -1234,6 +1245,12 @@ class UploadService {
         if (isImageOnlyUpload(files)) {
           return this.respondImageOnlyNoText(req, res, files);
         }
+        const reading = await readEmptyUpload(files, readUploadBytes);
+        // A zip of nothing but images is the photo case in a wrapper: send
+        // it to Photo to Deck like a bare image, not to the toggle advice.
+        if (isImageOnlyZip(reading)) {
+          return this.respondImageOnlyNoText(req, res, files);
+        }
         const body: EmptyDeckResponse = {
           code: 'empty_export',
           message:
@@ -1241,7 +1258,7 @@ class UploadService {
           filename,
           docsLink: '/documentation/help/common-problems',
           empty_reason: err.reason,
-          reading: await readEmptyUpload(files, readUploadBytes),
+          reading,
           // A multi-file submit stops at the first empty file, so an offer
           // would describe only that file; the form offers nothing for those.
           rescue: files?.length === 1 ? err.rescueCandidates : [],

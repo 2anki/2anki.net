@@ -1,4 +1,5 @@
 import {
+  isHTMLFile,
   isCSVFile,
   hasMarkdownFileName,
   isCompressedFile,
@@ -109,5 +110,15 @@ describe('isPptxFile', () => {
     ['deck.pptx.zip', false],
   ])('%s → %s', (name, expected) => {
     expect(isPptxFile(name)).toBe(expected);
+  });
+});
+
+describe('isHTMLFile', () => {
+  it.each(['page.html', 'page.htm', 'PAGE.HTM'])('accepts %s', (name) => {
+    expect(Boolean(isHTMLFile(name))).toBe(true);
+  });
+
+  it.each(['page.xhtml', 'page.html.txt', 'htm'])('rejects %s', (name) => {
+    expect(Boolean(isHTMLFile(name))).toBe(false);
   });
 });

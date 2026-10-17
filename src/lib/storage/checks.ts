@@ -1,6 +1,6 @@
 export const isMarkdownFile = (fileName: string) => /.md$/i.exec(fileName);
 
-export const isHTMLFile = (fileName: string) => /.html$/i.exec(fileName);
+export const isHTMLFile = (fileName: string) => /\.html?$/i.exec(fileName);
 
 export const isPlainText = (fileName: string) => /\.txt$/i.exec(fileName);
 
