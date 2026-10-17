@@ -50,8 +50,6 @@ function buildParser(
 }
 
 test('an image embedded as a data URI becomes a media file on the card instead of inline base64', async () => {
-  process.env.SKIP_CREATE_DECK = 'true';
-
   const constructorWorkspace = new Workspace(true, 'fs');
   const buildWorkspace = Workspace.subdir(constructorWorkspace.location);
   const parser = buildParser(constructorWorkspace);
@@ -90,7 +88,6 @@ test('with embed-images off the data URI stays inline so Anki can still show it'
 });
 
 test('a page mixing an embedded, a relative and a remote image keeps each on its own path', async () => {
-  process.env.SKIP_CREATE_DECK = 'true';
   const workspace = new Workspace(true, 'fs');
   fs.writeFileSync(path.join(workspace.location, 'local.png'), 'local-bytes');
   const extra = [
@@ -112,6 +109,7 @@ test('a page mixing an embedded, a relative and a remote image keeps each on its
   expect(local.media).toEqual([`${getUniqueFileName('local-bytes')}.png`]);
   expect(remote.back).toContain('<img src="https://example.com/remote.png">');
   expect(remote.media).toEqual([]);
+  expect(parser.droppedImageCount).toBe(1);
 });
 
 test('the same picture used twice is written once and both cards reference it', () => {

@@ -119,6 +119,8 @@ describe('extractDataUriImages', () => {
     const quotedMarkers = ' src="data:image/'.repeat(100000);
     const unclosedPayload = `<img src="data:image/png;base64,${'A'.repeat(2_000_000)}`;
     const nestedImgs = `<img alt="${'<img '.repeat(100000)}" src="data:image/png;base64,${PNG_B64}">`;
+    const noBase64Tag = `<img ${' src="data:image/png'.repeat(100000)}>`;
+    const halfTags = `<img ${' src="data:image/'.repeat(100000)}`;
 
     const start = Date.now();
     extractDataUriImages(unclosedImgs, write);
@@ -127,6 +129,8 @@ describe('extractDataUriImages', () => {
     extractDataUriImages(quotedMarkers, write);
     extractDataUriImages(unclosedPayload, write);
     extractDataUriImages(nestedImgs, write);
+    extractDataUriImages(noBase64Tag, write);
+    extractDataUriImages(halfTags, write);
 
     expect(Date.now() - start).toBeLessThan(1000);
   });

@@ -1758,14 +1758,14 @@ export class DeckParser {
     if (!this.settings.embedImages) {
       return contents;
     }
-    const written = new Map<string, string>();
+    const written = new Set<string>();
     const { html, count, bytes } = extractDataUriImages(
       contents,
       (image, extension) => {
         const fileName = `${getUniqueFileName(image)}.${extension}`;
         if (!written.has(fileName)) {
           this.customExporter.addMedia(fileName, image);
-          written.set(fileName, fileName);
+          written.add(fileName);
         }
         return fileName;
       }

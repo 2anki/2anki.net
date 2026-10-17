@@ -92,15 +92,20 @@ function readDataUriSrc(html: string, at: number): DataUriSrc | null {
   const valueStart = attrStart + SRC_DATA_PREFIX.length + 1;
   if (!html.startsWith(MARKER, valueStart)) return null;
   const subtypeStart = valueStart + MARKER.length;
-  const subtypeEnd = html.indexOf(BASE64_TAG, subtypeStart);
-  if (subtypeEnd < 0 || subtypeEnd - subtypeStart > MAX_SUBTYPE_CHARS) {
-    return null;
-  }
+  // Look for `;base64,` only inside a short window: an unbounded indexOf
+  // would rescan the rest of the file for every `src="data:image/` on a
+  // page that never says base64.
+  const subtypeWindow = html.slice(
+    subtypeStart,
+    subtypeStart + MAX_SUBTYPE_CHARS + BASE64_TAG.length
+  );
+  const subtypeLength = subtypeWindow.indexOf(BASE64_TAG);
+  if (subtypeLength < 0 || subtypeLength > MAX_SUBTYPE_CHARS) return null;
   const extension = EXTENSION_BY_SUBTYPE.get(
-    html.slice(subtypeStart, subtypeEnd).toLowerCase()
+    subtypeWindow.slice(0, subtypeLength).toLowerCase()
   );
   if (!extension) return null;
-  const payloadStart = subtypeEnd + BASE64_TAG.length;
+  const payloadStart = subtypeStart + subtypeLength + BASE64_TAG.length;
   let payloadEnd = payloadStart;
   while (
     payloadEnd < html.length &&
