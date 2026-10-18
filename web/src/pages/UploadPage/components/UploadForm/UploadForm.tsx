@@ -2704,7 +2704,10 @@ function UploadForm({
       return t('anonymousPartial:gateLive', { count: heldDeck.cardCount });
     }
     if (zoneState === 'heldExpired') {
-      return `${t('anonymousPartial:expiredHeadline')}. ${t('anonymousPartial:expiredBody')}`;
+      const expiredBody = isPaying
+        ? t('monthlyPartial:expiredBody')
+        : t('anonymousPartial:expiredBody');
+      return `${t('anonymousPartial:expiredHeadline')}. ${expiredBody}`;
     }
     return '';
   };
