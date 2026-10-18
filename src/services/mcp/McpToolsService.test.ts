@@ -6,6 +6,7 @@ import path from 'node:path';
 
 import type UsersRepository from '../../data_layer/UsersRepository';
 import { McpToolsService, UploadEntrypoint } from './McpToolsService';
+import { makeFreeQuotaReachedError } from '../../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { DeckPersistence } from './McpDeckPersistence';
 import { JobWithDownloadKey } from '../../data_layer/JobRepository';
 import ApkgPreviewService from '../ApkgPreviewService/ApkgPreviewService';
@@ -1172,12 +1173,7 @@ describe('McpToolsService.photoToDeck', () => {
   });
 
   it('states the free photo quota and its reset date with no upgrade pitch', async () => {
-    const quotaError = Object.assign(
-      new Error(
-        "Free plan is 5 photos per month. You've used 5. Paid plans include AI credits for more."
-      ),
-      { status: 429, used: 5, limit: 5 }
-    );
+    const quotaError = makeFreeQuotaReachedError(5, 5);
     const generateCards = vi.fn(async () => {
       throw quotaError;
     });
