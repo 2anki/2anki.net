@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-18-broken-batch-upload-advice",
+  "date": "2026-10-18",
+  "type": "fix",
+  "title": "A batch upload that breaks off midway asks you to send a few files at a time"
+}
