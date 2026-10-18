@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-18-mcp-limit-reset-date",
+  "date": "2026-10-18",
+  "type": "fix",
+  "title": "The 2anki connector in Claude says when your free card and photo limits reset"
+}

@@ -285,7 +285,7 @@ function makeNoReadyMadeQuestionsError(): Error & {
   return err;
 }
 
-function makeFreeQuotaReachedError(
+export function makeFreeQuotaReachedError(
   used: number,
   limit: number
 ): Error & {
