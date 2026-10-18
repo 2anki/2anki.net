@@ -4413,6 +4413,7 @@ describe('claiming a held deck after sign-in', () => {
         downloadKey: 'full-deck.apkg',
         cardCount: 342,
         deckName: 'notes',
+        kind: 'plan',
         error: null,
       });
       mockGet2ankiApi.mockReturnValue({
@@ -4441,6 +4442,11 @@ describe('claiming a held deck after sign-in', () => {
 
       expect(getHeldDeck).toHaveBeenCalledTimes(3);
       await waitFor(() => expect(claimHeldDeck).toHaveBeenCalledTimes(1));
+      expect(
+        await screen.findByText(
+          "Your full deck is ready. It's in Downloads too."
+        )
+      ).toBeInTheDocument();
     });
 
     it('checks once when the visitor did not just come back from checkout', async () => {

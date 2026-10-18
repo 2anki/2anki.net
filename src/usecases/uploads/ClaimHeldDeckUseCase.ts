@@ -56,9 +56,18 @@ export interface ClaimParams {
 
 // A signed-in free user whose upload was cut at the monthly limit has the
 // source file held under this key, so the full deck can be built once they
-// pay. It never collides with an anon_id cookie, which is a UUID.
+// pay. Only the owner reaches it: holdKeys derives it from the session, and
+// isPlanHoldKey keeps a cookie forged in this shape out of the lookup.
+const PLAN_HOLD_PREFIX = 'plan:';
+
 export function planHoldKey(owner: string): string {
-  return `plan:${owner}`;
+  return `${PLAN_HOLD_PREFIX}${owner}`;
+}
+
+// The anon_id cookie is client-controlled: a visitor who sets it to
+// `plan:<someone>` must never reach another owner's plan hold.
+export function isPlanHoldKey(anonId: string): boolean {
+  return anonId.startsWith(PLAN_HOLD_PREFIX);
 }
 
 function holdKeys(
@@ -67,7 +76,7 @@ function holdKeys(
   paying: boolean
 ) {
   const keys: { key: string; kind: HoldKind }[] = [];
-  if (anonId != null) {
+  if (anonId != null && !isPlanHoldKey(anonId)) {
     keys.push({ key: anonId, kind: 'signup' });
   }
   if (paying && owner != null) {

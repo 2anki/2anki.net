@@ -517,6 +517,7 @@ function UploadForm({
     useGooglePicker();
   const driveButtonRef = useRef<HTMLButtonElement>(null);
   const claimAttemptedRef = useRef(false);
+  const [planClaim, setPlanClaim] = useState(false);
   const [returnedFromCheckout] = useState(() => {
     const params = new URLSearchParams(globalThis.location?.search ?? '');
     return (
@@ -544,7 +545,8 @@ function UploadForm({
           await new Promise((resolve) =>
             setTimeout(resolve, CHECKOUT_CLAIM_RETRY_MS)
           );
-          if (cancelled) return;
+          // A visitor who starts an upload while waiting keeps that upload.
+          if (cancelled || zoneStateRef.current !== 'idle') return;
           hold = await get2ankiApi().getHeldDeck();
         }
         if (cancelled || hold == null) return;
@@ -557,6 +559,7 @@ function UploadForm({
         const result = await get2ankiApi().claimHeldDeck();
         if (cancelled) return;
         if (result.status === 200 && result.downloadKey != null) {
+          setPlanClaim(result.kind === 'plan');
           setDownloadLink(recoveryDownloadUrl(result.downloadKey));
           if (result.deckName) setDeckName(result.deckName);
           setCardCount(result.cardCount);
@@ -2475,7 +2478,7 @@ function UploadForm({
         <ConversionResult variant="success" count={cardCount} />
       )}
       <p className={formStyles.successSecondary}>
-        {isPaying
+        {planClaim
           ? t('monthlyPartial:readyBody')
           : t('anonymousPartial:readyBody')}
       </p>

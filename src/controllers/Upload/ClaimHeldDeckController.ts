@@ -62,6 +62,7 @@ export class ClaimHeldDeckController {
         downloadKey: result.downloadKey,
         cardCount: result.cardCount,
         deckName: result.deckName,
+        kind: result.kind,
       });
     } catch (err) {
       if (err instanceof NoHeldDeckError) {

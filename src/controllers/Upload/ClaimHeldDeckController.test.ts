@@ -142,6 +142,7 @@ describe('ClaimHeldDeckController', () => {
       downloadKey: 'owner-key.apkg',
       cardCount: 34,
       deckName: 'notes',
+      kind: 'signup',
     });
     expect(trackMock).toHaveBeenCalledWith('anonymous_partial_claimed', {
       userId: 7,
@@ -262,6 +263,7 @@ describe('ClaimHeldDeckController', () => {
         downloadKey: 'owner-key.apkg',
         cardCount: 34,
         deckName: 'notes',
+        kind: 'plan',
       });
       expect(trackMock).toHaveBeenCalledWith('monthly_partial_claimed', {
         userId: 42,

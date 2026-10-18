@@ -5626,6 +5626,21 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   });
 
+  it('never writes a signup hold under an anon_id forged as a plan key', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    // 'plan:42' hashes into the treatment arm, so only the key guard stops it.
+    const req = buildEligibleRequest('plan:42');
+    const { res, capturedSend, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(capturedSend()).toBeNull();
+    expect(heldDeck.rows).toHaveLength(0);
+  });
+
   it('falls back to the wall when the held file cannot be stored', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21 }], 13);
@@ -5968,25 +5983,28 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
     mockStorageUploadFile.mockImplementation(async (key: string) => {
       if (key.startsWith('held/')) throw new Error('no credentials');
     });
-    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
-    mockPartial([{ name: 'deck', cardCount: 10 }], 5);
-    const heldDeck = new InMemoryHeldDeckRepository();
-    const { res, capturedStatus, capturedSend } = buildResponse();
-    (res.locals as Record<string, unknown>).owner = 42;
+    try {
+      const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+      mockPartial([{ name: 'deck', cardCount: 10 }], 5);
+      const heldDeck = new InMemoryHeldDeckRepository();
+      const { res, capturedStatus, capturedSend } = buildResponse();
+      (res.locals as Record<string, unknown>).owner = 42;
 
-    await serviceUnderTest(usersRepo, heldDeck).handleUpload(
-      partialRequestWithBytes(),
-      res
-    );
+      await serviceUnderTest(usersRepo, heldDeck).handleUpload(
+        partialRequestWithBytes(),
+        res
+      );
 
-    expect(capturedStatus()).toBe(200);
-    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
-    expect(heldDeck.rows).toHaveLength(0);
-    expect(headerValue(res, 'X-Held-For-Plan')).toBeUndefined();
-    expect(conversionSucceededProps()).not.toHaveProperty('held_for_plan');
-    expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 10);
-    mockStorageUploadFile.mockReset();
-    mockStorageUploadFile.mockResolvedValue(undefined);
+      expect(capturedStatus()).toBe(200);
+      expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
+      expect(heldDeck.rows).toHaveLength(0);
+      expect(headerValue(res, 'X-Held-For-Plan')).toBeUndefined();
+      expect(conversionSucceededProps()).not.toHaveProperty('held_for_plan');
+      expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 10);
+    } finally {
+      mockStorageUploadFile.mockReset();
+      mockStorageUploadFile.mockResolvedValue(undefined);
+    }
   });
 
   it('holds nothing when the deck fits the remaining allowance', async () => {

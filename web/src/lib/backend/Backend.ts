@@ -95,6 +95,7 @@ export interface ClaimHeldDeckResult {
   downloadKey: string | null;
   cardCount: number | null;
   deckName: string | null;
+  kind: 'signup' | 'plan' | null;
   error: UploadErrorBody | null;
 }
 
@@ -447,12 +448,14 @@ export class Backend {
         downloadKey?: string | null;
         cardCount?: number | null;
         deckName?: string | null;
+        kind?: unknown;
       };
       return {
         status: OK,
         downloadKey: body.downloadKey ?? null,
         cardCount: body.cardCount ?? null,
         deckName: body.deckName ?? null,
+        kind: body.kind === 'plan' || body.kind === 'signup' ? body.kind : null,
         error: null,
       };
     }
@@ -462,6 +465,7 @@ export class Backend {
       downloadKey: null,
       cardCount: null,
       deckName: null,
+      kind: null,
       error: toClaimError(failure),
     };
   }

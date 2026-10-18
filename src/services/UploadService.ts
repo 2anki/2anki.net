@@ -96,7 +96,10 @@ import {
   isAnonymousPartialDeliveryEligible,
   isPartialDeliveryEligible,
 } from '../usecases/uploads/isPartialDeliveryEligible';
-import { planHoldKey } from '../usecases/uploads/ClaimHeldDeckUseCase';
+import {
+  isPlanHoldKey,
+  planHoldKey,
+} from '../usecases/uploads/ClaimHeldDeckUseCase';
 import {
   ANONYMOUS_PARTIAL_DELIVERY_FLAG,
   resolveAnonymousPartialArm,
@@ -2201,7 +2204,7 @@ class UploadService {
     const anonId = this.resolveAnonId(req);
     const file = (req.files as UploadedFile[])[0];
     const bytes = await readUploadBytes(file);
-    if (anonId == null || bytes == null) {
+    if (anonId == null || isPlanHoldKey(anonId) || bytes == null) {
       throw new AnonymousCardCapError(
         cardCount + cardsHeldBack,
         ANONYMOUS_CARD_CAP

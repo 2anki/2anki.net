@@ -76,8 +76,14 @@ export function MonthlyLimitPartialOffer({
 
   const goPro = async () => {
     track('paywall_upgrade_clicked', { surface: SURFACE, plan: 'unlimited' });
+    setError(null);
     setPending('pro');
-    await startUnlimitedUpgrade(SURFACE);
+    try {
+      await startUnlimitedUpgrade(SURFACE);
+    } catch {
+      setError(t('checkoutError'));
+      setPending(null);
+    }
   };
 
   return (

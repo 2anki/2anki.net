@@ -118,4 +118,18 @@ describe('MonthlyLimitPartialOffer', () => {
       expect(startUnlimitedUpgrade).toHaveBeenCalledWith('upload-partial')
     );
   });
+
+  it('re-enables the offers and explains when the Pro checkout cannot start', async () => {
+    vi.mocked(startUnlimitedUpgrade).mockRejectedValueOnce(
+      new Error('offline')
+    );
+    render(<MonthlyLimitPartialOffer delivered={42} heldBack={300} saved />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go Pro' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Couldn't start checkout."
+    );
+    expect(screen.getByRole('button', { name: 'Go Pro' })).toBeEnabled();
+  });
 });

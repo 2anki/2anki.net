@@ -424,6 +424,34 @@ describe('ClaimHeldDeckUseCase', () => {
       ).rejects.toBeInstanceOf(NoHeldDeckError);
     });
 
+    it.each([true, false])(
+      'never lets an anon_id cookie forged as a plan key reach that plan hold (paying: %s)',
+      async (paying) => {
+        const repo = new InMemoryHeldDeckRepository();
+        await seedHold(repo, { anonId: planHoldKey('9999') });
+        const { converter, convertHeldFileForOwner } = buildConverter();
+        const useCase = new ClaimHeldDeckUseCase(
+          repo,
+          buildStore().store,
+          converter
+        );
+
+        expect(
+          await useCase.peek(planHoldKey('9999'), OWNER, paying)
+        ).toBeNull();
+        await expect(
+          useCase.execute({
+            anonId: planHoldKey('9999'),
+            owner: OWNER,
+            paying,
+            requestId: undefined,
+          })
+        ).rejects.toBeInstanceOf(NoHeldDeckError);
+        expect(convertHeldFileForOwner).not.toHaveBeenCalled();
+        expect(repo.rows[0].claimed_at).toBeNull();
+      }
+    );
+
     it('prefers the signup hold from this browser over a plan hold', async () => {
       const repo = new InMemoryHeldDeckRepository();
       await seedHold(repo, { anonId: planHoldKey(OWNER) });
