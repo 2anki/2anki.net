@@ -50,6 +50,7 @@ export interface ConversionSuccessHandlers {
   setColoredTextPageCount: (value: number) => void;
   setEmptyBackCount: (value: number) => void;
   setCardsHeldBack: (value: number) => void;
+  setHeldForPlan: (value: boolean) => void;
   setOverSplit: (value: boolean) => void;
   setCreditsUsed: (value: number) => void;
   setDownloadLink: (value: string | null) => void;
@@ -162,6 +163,7 @@ export async function applyConversionSuccess(
   handlers.setCardsHeldBack(
     parseNonNegativeIntHeader(response.headers, 'X-Cards-Held-Back')
   );
+  handlers.setHeldForPlan(response.headers.get('X-Held-For-Plan') === '1');
   handlers.setOverSplit(response.headers.get('X-Over-Split') === '1');
   handlers.setCreditsUsed(
     parseNonNegativeIntHeader(response.headers, 'X-Credits-Used')

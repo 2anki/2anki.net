@@ -1,0 +1,13 @@
+{
+  "aria": "Kaarten tegengehouden door de maandlimiet",
+  "headline": "Dit deck heeft {{delivered}} van {{total}} kaarten",
+  "bodySaved_one": "Je hebt de {{monthly}} gratis kaarten van deze maand gebruikt. Nog {{count}} kaart blijft 7 dagen bewaard: neem een pass en het volledige deck komt in Downloads, zonder opnieuw te uploaden.",
+  "bodySaved_other": "Je hebt de {{monthly}} gratis kaarten van deze maand gebruikt. De andere {{count}} blijven 7 dagen bewaard: neem een pass en het volledige deck komt in Downloads, zonder opnieuw te uploaden.",
+  "bodyNotSaved": "Je hebt de {{monthly}} gratis kaarten van deze maand gebruikt. Neem een pass en upload het bestand opnieuw voor alle {{total}} kaarten.",
+  "dayPass": "Day Pass · {{price}}",
+  "semesterPass": "Semester Pass · {{price}}",
+  "pro": "Neem Pro",
+  "checkoutError": "Afrekenen kon niet starten. Probeer het opnieuw of mail support@2anki.net.",
+  "readyBody": "Je volledige deck is klaar. Het staat ook in Downloads.",
+  "expiredBody": "Tegengehouden decks blijven 7 dagen bewaard. Upload het bestand opnieuw om het volledige deck te maken."
+}

@@ -4216,6 +4216,109 @@ describe('UploadForm try-a-sample', () => {
   });
 });
 
+describe('UploadForm monthly-limit partial offer', () => {
+  function setUserLocals(data: ReturnType<typeof useUserLocals>['data']) {
+    mockUseUserLocals.mockReturnValue({
+      data,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    });
+  }
+
+  beforeEach(() => {
+    vi.mocked(track).mockClear();
+    mockUseCardUsage.mockReturnValue(null);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+  });
+
+  afterEach(() => {
+    setUserLocals(undefined);
+    vi.unstubAllGlobals();
+  });
+
+  async function uploadWithHeaders(headers: Record<string, string>) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          ...headers,
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [new File(['x'], 'notes.html')],
+      configurable: true,
+    });
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+    await screen.findByRole('button', { name: 'Make another deck' });
+  }
+
+  it('tells a signed-in free user the deck was cut and offers the rest', async () => {
+    setUserLocals({
+      user: { id: 2, email: 'free@example.com' },
+      locals: { owner: 2, patreon: false, subscriber: false },
+    } as unknown as ReturnType<typeof useUserLocals>['data']);
+
+    await uploadWithHeaders({
+      'X-Card-Count': '42',
+      'X-Cards-Held-Back': '300',
+      'X-Held-For-Plan': '1',
+    });
+
+    expect(
+      screen.getByText('This deck has 42 of 342 cards')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/The other 300 are saved for 7 days/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Day Pass/ })
+    ).toBeInTheDocument();
+    expect(track).toHaveBeenCalledWith('monthly_partial_offer_shown', {
+      cards_held_back: 300,
+      saved: true,
+    });
+  });
+
+  it('shows no offer when nothing was held back', async () => {
+    setUserLocals({
+      user: { id: 2, email: 'free@example.com' },
+      locals: { owner: 2, patreon: false, subscriber: false },
+    } as unknown as ReturnType<typeof useUserLocals>['data']);
+
+    await uploadWithHeaders({ 'X-Card-Count': '42' });
+
+    expect(screen.queryByText(/This deck has 42 of/)).toBeNull();
+    expect(track).not.toHaveBeenCalledWith(
+      'monthly_partial_offer_shown',
+      expect.anything()
+    );
+  });
+});
+
 describe('claiming a held deck after sign-in', () => {
   const signIn = () =>
     mockUseUserLocals.mockReturnValue({
@@ -4291,5 +4394,73 @@ describe('claiming a held deck after sign-in', () => {
       }),
       { surface: 'held_deck_claim' }
     );
+  });
+
+  describe('after a checkout return', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      globalThis.history.replaceState({}, '', '/');
+    });
+
+    function mockHoldAppearingLater() {
+      const getHeldDeck = vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue({ cardCount: 42, cardsHeldBack: 300 });
+      const claimHeldDeck = vi.fn().mockResolvedValue({
+        status: 200,
+        downloadKey: 'full-deck.apkg',
+        cardCount: 342,
+        deckName: 'notes',
+        kind: 'plan',
+        error: null,
+      });
+      mockGet2ankiApi.mockReturnValue({
+        startPassCheckout: vi.fn(),
+        getUploads: vi.fn().mockResolvedValue([]),
+        getHeldDeck,
+        claimHeldDeck,
+      } as unknown as ReturnType<typeof get2ankiApi>);
+      return { getHeldDeck, claimHeldDeck };
+    }
+
+    it('keeps checking until the paid-for deck is visible, then claims it', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      globalThis.history.replaceState(
+        {},
+        '',
+        '/upload?from=pass&session_id=cs_test_1'
+      );
+      signIn();
+      const { getHeldDeck, claimHeldDeck } = mockHoldAppearingLater();
+
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(7000);
+      });
+
+      expect(getHeldDeck).toHaveBeenCalledTimes(3);
+      await waitFor(() => expect(claimHeldDeck).toHaveBeenCalledTimes(1));
+      expect(
+        await screen.findByText(
+          "Your full deck is ready. It's in Downloads too."
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('checks once when the visitor did not just come back from checkout', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      signIn();
+      const { getHeldDeck, claimHeldDeck } = mockHoldAppearingLater();
+
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(7000);
+      });
+
+      expect(getHeldDeck).toHaveBeenCalledTimes(1);
+      expect(claimHeldDeck).not.toHaveBeenCalled();
+    });
   });
 });

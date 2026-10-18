@@ -1,0 +1,13 @@
+{
+  "aria": "Carte trattenute dal limite mensile",
+  "headline": "Questo mazzo contiene {{delivered}} delle {{total}} carte",
+  "bodySaved_one": "Hai usato le {{monthly}} carte gratuite di questo mese. {{count}} carta in più resta salvata per 7 giorni: prendi un pass e il mazzo completo arriva in Download, senza ricaricarlo.",
+  "bodySaved_other": "Hai usato le {{monthly}} carte gratuite di questo mese. Le altre {{count}} restano salvate per 7 giorni: prendi un pass e il mazzo completo arriva in Download, senza ricaricarlo.",
+  "bodyNotSaved": "Hai usato le {{monthly}} carte gratuite di questo mese. Prendi un pass, poi ricarica il file per avere tutte le {{total}} carte.",
+  "dayPass": "Day Pass · {{price}}",
+  "semesterPass": "Semester Pass · {{price}}",
+  "pro": "Passa a Pro",
+  "checkoutError": "Impossibile avviare il pagamento. Riprova o scrivi a support@2anki.net.",
+  "readyBody": "Il tuo mazzo completo è pronto. Lo trovi anche in Download.",
+  "expiredBody": "I mazzi trattenuti restano salvati per 7 giorni. Ricarica il file per creare il mazzo completo."
+}

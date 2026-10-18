@@ -72,6 +72,7 @@ import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
 import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/ConfirmEmailNotice';
 import { AnonymousPartialGate } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
+import { MonthlyLimitPartialOffer } from '../../../../components/MonthlyLimitPartialOffer/MonthlyLimitPartialOffer';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
 import DocsLink from './DocsLink';
@@ -102,6 +103,8 @@ const REJECTED_FALLBACK =
 const NETWORK_FALLBACK =
   "Couldn't upload your file. Check your connection and try again.";
 const REATTACH_FILENAME_KEY = 'upload_pending_filename';
+const CHECKOUT_CLAIM_RETRIES = 5;
+const CHECKOUT_CLAIM_RETRY_MS = 3000;
 
 function isLimitRedirect(url: URL): boolean {
   return (
@@ -368,6 +371,8 @@ function UploadForm({
     setEmptyBackCount,
     cardsHeldBack,
     setCardsHeldBack,
+    heldForPlan,
+    setHeldForPlan,
     heldDeck,
     setHeldDeck,
     setOverSplit,
@@ -464,6 +469,7 @@ function UploadForm({
     setColoredTextPageCount,
     setEmptyBackCount,
     setCardsHeldBack,
+    setHeldForPlan,
     setOverSplit,
     setCreditsUsed,
     setDownloadLink,
@@ -511,6 +517,13 @@ function UploadForm({
     useGooglePicker();
   const driveButtonRef = useRef<HTMLButtonElement>(null);
   const claimAttemptedRef = useRef(false);
+  const [planClaim, setPlanClaim] = useState(false);
+  const [returnedFromCheckout] = useState(() => {
+    const params = new URLSearchParams(globalThis.location?.search ?? '');
+    return (
+      params.get('from') === 'pass' || params.get('checkout') === 'success'
+    );
+  });
 
   useEffect(() => {
     if (!isAuthenticated || claimAttemptedRef.current) return;
@@ -518,7 +531,24 @@ function UploadForm({
     let cancelled = false;
     (async () => {
       try {
-        const hold = await get2ankiApi().getHeldDeck();
+        let hold = await get2ankiApi().getHeldDeck();
+        // The pass or plan is written by Stripe's webhook, which can land a
+        // few seconds after the buyer is back here; until then the deck they
+        // paid to unlock is not visible to the claim check.
+        for (
+          let attempt = 0;
+          hold == null &&
+          returnedFromCheckout &&
+          attempt < CHECKOUT_CLAIM_RETRIES;
+          attempt++
+        ) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, CHECKOUT_CLAIM_RETRY_MS)
+          );
+          // A visitor who starts an upload while waiting keeps that upload.
+          if (cancelled || zoneStateRef.current !== 'idle') return;
+          hold = await get2ankiApi().getHeldDeck();
+        }
         if (cancelled || hold == null) return;
         setHeldDeck({
           cardCount: hold.cardCount,
@@ -529,6 +559,7 @@ function UploadForm({
         const result = await get2ankiApi().claimHeldDeck();
         if (cancelled) return;
         if (result.status === 200 && result.downloadKey != null) {
+          setPlanClaim(result.kind === 'plan');
           setDownloadLink(recoveryDownloadUrl(result.downloadKey));
           if (result.deckName) setDeckName(result.deckName);
           setCardCount(result.cardCount);
@@ -1592,6 +1623,13 @@ function UploadForm({
           </p>
         )
       )}
+      {isAuthenticated && cardsHeldBack > 0 && cardCount != null && (
+        <MonthlyLimitPartialOffer
+          delivered={cardCount}
+          heldBack={cardsHeldBack}
+          saved={heldForPlan}
+        />
+      )}
       {creditsUsed > 0 && (
         <p className={formStyles.successSecondary}>
           {t('upload.form.creditsUsed', { count: creditsUsed })}
@@ -2440,7 +2478,9 @@ function UploadForm({
         <ConversionResult variant="success" count={cardCount} />
       )}
       <p className={formStyles.successSecondary}>
-        {t('anonymousPartial:readyBody')}
+        {planClaim
+          ? t('monthlyPartial:readyBody')
+          : t('anonymousPartial:readyBody')}
       </p>
       {downloadLink && (
         <a
@@ -2479,7 +2519,9 @@ function UploadForm({
         {t('anonymousPartial:expiredHeadline')}
       </p>
       <p className={formStyles.successSecondary}>
-        {t('anonymousPartial:expiredBody')}
+        {isPaying
+          ? t('monthlyPartial:expiredBody')
+          : t('anonymousPartial:expiredBody')}
       </p>
       <button
         type="button"
@@ -2662,7 +2704,10 @@ function UploadForm({
       return t('anonymousPartial:gateLive', { count: heldDeck.cardCount });
     }
     if (zoneState === 'heldExpired') {
-      return `${t('anonymousPartial:expiredHeadline')}. ${t('anonymousPartial:expiredBody')}`;
+      const expiredBody = isPaying
+        ? t('monthlyPartial:expiredBody')
+        : t('anonymousPartial:expiredBody');
+      return `${t('anonymousPartial:expiredHeadline')}. ${expiredBody}`;
     }
     return '';
   };

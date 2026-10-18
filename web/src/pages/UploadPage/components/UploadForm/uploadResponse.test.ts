@@ -23,6 +23,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setColoredTextPageCount: vi.fn(),
     setEmptyBackCount: vi.fn(),
     setCardsHeldBack: vi.fn(),
+    setHeldForPlan: vi.fn(),
     setOverSplit: vi.fn(),
     setCreditsUsed: vi.fn(),
     setDownloadLink: vi.fn(),
@@ -250,6 +251,23 @@ describe('applyConversionSuccess', () => {
 
     expect(handlers.setCardsHeldBack).toHaveBeenCalledWith(13);
   });
+
+  it.each([
+    ['1', true],
+    [null, false],
+  ])(
+    'reads X-Held-For-Plan %s as a saved source file: %s',
+    async (header, expected) => {
+      const handlers = buildHandlers();
+
+      await applyConversionSuccess(
+        singleDeckResponse(header == null ? {} : { 'X-Held-For-Plan': header }),
+        handlers
+      );
+
+      expect(handlers.setHeldForPlan).toHaveBeenCalledWith(expected);
+    }
+  );
 
   it('sets the held-back count to 0 when the X-Cards-Held-Back header is absent', async () => {
     const handlers = buildHandlers();

@@ -6,6 +6,7 @@ import {
   ClaimHeldDeckUseCase,
   HeldDeckExpiredError,
   NoHeldDeckError,
+  planHoldKey,
   type HeldDeckConversion,
   type HeldDeckConverter,
   type HeldFileStore,
@@ -124,6 +125,7 @@ describe('ClaimHeldDeckUseCase', () => {
       downloadKey: 'owner-key.apkg',
       cardCount: 34,
       deckName: 'study-notes',
+      kind: 'signup',
     });
     expect(getFileContents).toHaveBeenCalledWith('held/abc.html');
     expect(convertHeldFileForOwner).toHaveBeenCalledTimes(1);
@@ -328,5 +330,152 @@ describe('ClaimHeldDeckUseCase', () => {
       cardsHeldBack: 13,
     });
     expect(await useCase.peek(null)).toBeNull();
+  });
+
+  describe('plan holds', () => {
+    it('hides a plan hold until the owner pays', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo, { anonId: planHoldKey(OWNER) });
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        buildConverter().converter
+      );
+
+      expect(await useCase.peek(null, OWNER, false)).toBeNull();
+      expect(await useCase.peek(null, OWNER, true)).toEqual({
+        cardCount: 21,
+        cardsHeldBack: 13,
+      });
+    });
+
+    it('refuses to claim a plan hold for an owner who has not paid, leaving it in place', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo, { anonId: planHoldKey(OWNER) });
+      const { converter, convertHeldFileForOwner } = buildConverter();
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter
+      );
+
+      await expect(
+        useCase.execute({
+          anonId: ANON,
+          owner: OWNER,
+          paying: false,
+          requestId: undefined,
+        })
+      ).rejects.toBeInstanceOf(NoHeldDeckError);
+
+      expect(convertHeldFileForOwner).not.toHaveBeenCalled();
+      expect(repo.rows[0].claimed_at).toBeNull();
+    });
+
+    it('builds the full deck as a paying owner once they have a plan', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo, { anonId: planHoldKey(OWNER) });
+      const { converter, convertHeldFileForOwner } = buildConverter();
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter
+      );
+
+      const result = await useCase.execute({
+        anonId: ANON,
+        owner: OWNER,
+        paying: true,
+        requestId: 'req-1',
+      });
+
+      expect(result).toEqual({
+        downloadKey: 'owner-key.apkg',
+        cardCount: 34,
+        deckName: 'study-notes',
+        kind: 'plan',
+      });
+      expect(convertHeldFileForOwner).toHaveBeenCalledWith(
+        OWNER,
+        expect.objectContaining({ originalname: 'study-notes.html' }),
+        true,
+        null,
+        'req-1'
+      );
+      expect(repo.rows[0].claimed_by).toBe(Number(OWNER));
+    });
+
+    it("claims another owner's plan hold never", async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo, { anonId: planHoldKey('9999') });
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        buildConverter().converter
+      );
+
+      await expect(
+        useCase.execute({
+          anonId: ANON,
+          owner: OWNER,
+          paying: true,
+          requestId: undefined,
+        })
+      ).rejects.toBeInstanceOf(NoHeldDeckError);
+    });
+
+    it.each([true, false])(
+      'never lets an anon_id cookie forged as a plan key reach that plan hold (paying: %s)',
+      async (paying) => {
+        const repo = new InMemoryHeldDeckRepository();
+        await seedHold(repo, { anonId: planHoldKey('9999') });
+        const { converter, convertHeldFileForOwner } = buildConverter();
+        const useCase = new ClaimHeldDeckUseCase(
+          repo,
+          buildStore().store,
+          converter
+        );
+
+        expect(
+          await useCase.peek(planHoldKey('9999'), OWNER, paying)
+        ).toBeNull();
+        await expect(
+          useCase.execute({
+            anonId: planHoldKey('9999'),
+            owner: OWNER,
+            paying,
+            requestId: undefined,
+          })
+        ).rejects.toBeInstanceOf(NoHeldDeckError);
+        expect(convertHeldFileForOwner).not.toHaveBeenCalled();
+        expect(repo.rows[0].claimed_at).toBeNull();
+      }
+    );
+
+    it('prefers the signup hold from this browser over a plan hold', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo, { anonId: planHoldKey(OWNER) });
+      await seedHold(repo);
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        buildConverter().converter
+      );
+
+      const result = await useCase.execute({
+        anonId: ANON,
+        owner: OWNER,
+        paying: true,
+        requestId: undefined,
+      });
+
+      expect(result.kind).toBe('signup');
+      expect(
+        repo.rows.find((r) => r.anon_id === ANON)?.claimed_at
+      ).not.toBeNull();
+      expect(
+        repo.rows.find((r) => r.anon_id === planHoldKey(OWNER))?.claimed_at
+      ).toBeNull();
+    });
   });
 });

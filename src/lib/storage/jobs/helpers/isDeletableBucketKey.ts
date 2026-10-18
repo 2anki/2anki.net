@@ -8,10 +8,11 @@
 // bucket depends on SPACES_ASSETS_BUCKET, which is a CI secret we cannot read
 // from here — the bucket holds no assets/ objects today, but the previous
 // sweep would have deleted them either way, so absence proves nothing.
-// 'held/' is the anonymous-partial-delivery hold: the uploaded source file a
-// treatment-arm visitor over the cap can claim after signing up. It has its own
-// held_decks row and its own 24h expiry sweep, so the dangling-object walk must
-// leave it alone rather than delete a file a signup is about to claim.
+// 'held/' holds an uploaded source file waiting to be claimed: a treatment-arm
+// visitor over the anonymous cap (24h, claimed after signing up) or a free user
+// cut at the monthly limit (7 days, claimed after paying). Each has its own
+// held_decks row and expiry sweep, so the dangling-object walk must leave it
+// alone rather than delete a file a claim is about to read.
 // 'recover/' holds an anonymous visitor's finished deck for a day so a dropped
 // response can be fetched again. Nothing references those keys by design, so
 // the dangling walk would count every one as an orphan and a busy day would
