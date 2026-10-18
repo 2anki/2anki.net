@@ -217,15 +217,19 @@ describe('Upload file — multer error handling', () => {
     }
   );
 
-  test('a stray field name is not the file cap and still reaches the service', async () => {
+  function brokenUploadController(
+    error: Error,
+    files: { path: string }[] = [{ path: '/gone/1' }]
+  ) {
     (getUploadHandler as Mock).mockImplementation(
       () =>
         (
-          _req: express.Request,
+          req: express.Request,
           _res: express.Response,
           cb: (err?: unknown) => void
         ) => {
-          cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'avatar'));
+          req.files = files as never;
+          cb(error);
         }
     );
     const uploadService = new UploadService(
@@ -241,16 +245,81 @@ describe('Upload file — multer error handling', () => {
       uploadService,
       new NotionService({} as INotionRepository)
     );
+    return { controller, handleUpload };
+  }
 
-    controller.file(
-      {} as express.Request,
-      {
+  test.each([
+    ['a client that closed the connection', new Error('Request closed')],
+    ['a truncated multipart body', new Error('Unexpected end of form')],
+    [
+      'a stray field name',
+      new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'avatar'),
+    ],
+  ])(
+    'answers upload_incomplete for %s without converting the deleted temp files',
+    async (_label, error) => {
+      const { controller, handleUpload } = brokenUploadController(error);
+      const jsonSpy = vi.fn();
+      let capturedStatus = 0;
+      const fakeRes = {
         locals: {},
-      } as unknown as express.Response
-    );
+        status: (code: number) => {
+          capturedStatus = code;
+          return { json: jsonSpy };
+        },
+      } as unknown as express.Response;
+
+      controller.file({ cookies: {} } as express.Request, fakeRes);
+      await new Promise((r) => setImmediate(r));
+
+      expect(handleUpload).not.toHaveBeenCalled();
+      expect(capturedStatus).toBe(400);
+      expect(jsonSpy).toHaveBeenCalledWith({
+        code: 'upload_incomplete',
+        message:
+          'Your upload didn’t finish, so there was nothing to convert. Upload the file again.',
+      });
+    }
+  );
+
+  test('asks for a few files at a time when a batch broke off', async () => {
+    const { controller } = brokenUploadController(new Error('Request closed'), [
+      { path: '/gone/1' },
+      { path: '/gone/2' },
+      { path: '/gone/3' },
+    ]);
+    const jsonSpy = vi.fn();
+    const fakeRes = {
+      locals: {},
+      status: () => ({ json: jsonSpy }),
+    } as unknown as express.Response;
+
+    controller.file({ cookies: {} } as express.Request, fakeRes);
     await new Promise((r) => setImmediate(r));
 
-    expect(handleUpload).toHaveBeenCalledTimes(1);
+    expect(jsonSpy).toHaveBeenCalledWith({
+      code: 'upload_incomplete',
+      message:
+        'Your upload didn’t finish, so there was nothing to convert. Upload the files again, a few at a time.',
+    });
+  });
+
+  test('sends nothing when the visitor has already left', async () => {
+    const { controller, handleUpload } = brokenUploadController(
+      new Error('Request aborted')
+    );
+    const status = vi.fn();
+    const fakeRes = {
+      locals: {},
+      destroyed: true,
+      status,
+    } as unknown as express.Response;
+
+    controller.file({ cookies: {} } as express.Request, fakeRes);
+    await new Promise((r) => setImmediate(r));
+
+    expect(handleUpload).not.toHaveBeenCalled();
+    expect(status).not.toHaveBeenCalled();
   });
 
   test('returns 413 with code=too_large when multer LIMIT_FILE_SIZE fires', async () => {

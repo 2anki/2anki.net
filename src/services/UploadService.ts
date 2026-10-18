@@ -208,6 +208,13 @@ export interface HeldUploadResponse {
 }
 
 const HELD_DECK_TTL_MS = 24 * 60 * 60 * 1000;
+const SERVER_WRITE_ERRORS = new Set([
+  'ENOSPC',
+  'EACCES',
+  'EMFILE',
+  'EIO',
+  'EROFS',
+]);
 const PLAN_HOLD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const MARKDOWN_HEURISTIC_WARNING =
@@ -2395,6 +2402,58 @@ class UploadService {
   private resolvePersistedSource(req: express.Request): UploadSource | null {
     const body = req.body as Record<string, unknown> | undefined;
     return validateUploadSource(body?.source);
+  }
+
+  respondToBrokenUpload(
+    req: express.Request,
+    res: express.Response,
+    error: Error
+  ): void {
+    const clientLeft = req.aborted || res.writableEnded || res.destroyed;
+    const uploadError = (error as { code?: unknown }).code ?? error.name;
+    // A failed disk write (ENOSPC, EACCES, EMFILE) is our fault, not a
+    // broken upload, so it answers 500 and does not blame the connection.
+    if (SERVER_WRITE_ERRORS.has(String(uploadError))) {
+      console.error('[upload] could not store the upload', {
+        requestId: res.locals.requestId,
+        uploadError,
+        message: error.message,
+      });
+      this.trackUploadFailed(req, res, 'upload_store_failed', {
+        upload_error: String(uploadError),
+      });
+      if (!clientLeft) {
+        res.status(500).json({
+          code: 'unknown',
+          message:
+            'Something went wrong on our end saving your upload. Try again in a minute, or email support@2anki.net.',
+        });
+      }
+      return;
+    }
+    console.warn('[upload] upload stream ended with an error', {
+      requestId: res.locals.requestId,
+      uploadError,
+      message: error.message,
+      files: Array.isArray(req.files) ? req.files.length : 0,
+      clientLeft,
+    });
+    this.trackUploadFailed(
+      req,
+      res,
+      clientLeft ? 'client_left' : 'upload_incomplete',
+      { upload_error: String(uploadError) }
+    );
+    if (clientLeft) {
+      return;
+    }
+    const batch = Array.isArray(req.files) && req.files.length > 1;
+    res.status(400).json({
+      code: 'upload_incomplete',
+      message: batch
+        ? 'Your upload didn’t finish, so there was nothing to convert. Upload the files again, a few at a time.'
+        : 'Your upload didn’t finish, so there was nothing to convert. Upload the file again.',
+    });
   }
 
   private trackUploadFailed(

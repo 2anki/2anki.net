@@ -137,6 +137,12 @@ class UploadController {
             error instanceof Error ? error : null
           );
         }
+        // Any other multer error means the body broke off or was refused, and
+        // multer has already deleted every temp file it wrote. Converting the
+        // leftover entries in req.files only ever ended in ENOENT (#4761).
+        if (error != null) {
+          return this.service.respondToBrokenUpload(req, res, error);
+        }
         await this.service.handleUpload(req, res);
       });
     } catch (error) {
