@@ -2397,6 +2397,38 @@ class UploadService {
     return validateUploadSource(body?.source);
   }
 
+  respondToBrokenUpload(
+    req: express.Request,
+    res: express.Response,
+    error: Error
+  ): void {
+    const clientLeft = req.aborted || res.writableEnded || res.destroyed;
+    const uploadError = (error as { code?: unknown }).code ?? error.name;
+    console.warn('[upload] upload stream ended with an error', {
+      requestId: res.locals.requestId,
+      uploadError,
+      message: error.message,
+      files: Array.isArray(req.files) ? req.files.length : 0,
+      clientLeft,
+    });
+    this.trackUploadFailed(
+      req,
+      res,
+      clientLeft ? 'client_left' : 'upload_incomplete',
+      { upload_error: String(uploadError) }
+    );
+    if (clientLeft) {
+      return;
+    }
+    const batch = Array.isArray(req.files) && req.files.length > 1;
+    res.status(400).json({
+      code: 'upload_incomplete',
+      message: batch
+        ? 'Your upload didn’t finish, so there was nothing to convert. Upload the files again, a few at a time.'
+        : 'Your upload didn’t finish, so there was nothing to convert. Upload the file again.',
+    });
+  }
+
   private trackUploadFailed(
     req: express.Request,
     res: express.Response,

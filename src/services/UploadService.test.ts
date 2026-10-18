@@ -5813,6 +5813,81 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   });
 });
 
+describe('UploadService.respondToBrokenUpload', () => {
+  function service() {
+    return new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+  }
+
+  it('records upload_incomplete with the multer error and answers the visitor', () => {
+    trackMock.mockClear();
+    const { res, capturedStatus, capturedJson } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    service().respondToBrokenUpload(
+      buildRequest(),
+      res,
+      new Error('Unexpected end of form')
+    );
+
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toMatchObject({ code: 'upload_incomplete' });
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({
+        userId: 42,
+        props: expect.objectContaining({
+          reason: 'upload_incomplete',
+          upload_error: 'Error',
+        }),
+      })
+    );
+  });
+
+  it('names a multer error by its code', () => {
+    trackMock.mockClear();
+    const { res } = buildResponse();
+    const error = Object.assign(new Error('Unexpected field'), {
+      code: 'LIMIT_UNEXPECTED_FILE',
+    });
+
+    service().respondToBrokenUpload(buildRequest(), res, error);
+
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({
+        props: expect.objectContaining({
+          upload_error: 'LIMIT_UNEXPECTED_FILE',
+        }),
+      })
+    );
+  });
+
+  it('records client_left and answers nobody once the visitor has gone', () => {
+    trackMock.mockClear();
+    const { res, capturedStatus } = buildResponse();
+    (res as unknown as { destroyed: boolean }).destroyed = true;
+
+    service().respondToBrokenUpload(
+      buildRequest(),
+      res,
+      new Error('Request closed')
+    );
+
+    expect(capturedStatus()).toBe(0);
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({
+        props: expect.objectContaining({ reason: 'client_left' }),
+      })
+    );
+  });
+});
+
 describe('UploadService.handleSyncUpload — signed-in monthly partial delivery', () => {
   const originalWorkspaceBase = process.env.WORKSPACE_BASE;
 
