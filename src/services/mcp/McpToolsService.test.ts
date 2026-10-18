@@ -200,7 +200,6 @@ describe('McpToolsService.listMyDecks', () => {
       jobId: 'job-1',
       title: 'Pharmacology',
       status: 'done',
-      createdAt: '2026-07-18T00:00:00.000Z',
       downloadUrl: 'https://mcp.test/api/upload/jobs/job-1/download',
     });
     expect(decks[1].title).toBe('Untitled deck');
@@ -269,7 +268,7 @@ describe('McpToolsService.getDeckPreview', () => {
       expect.anything()
     );
     expect(preview.cardCount).toBe(3);
-    expect(preview.decks).toEqual([{ id: 1, name: 'Bio', cardCount: 3 }]);
+    expect(preview.decks).toEqual([{ name: 'Bio', cardCount: 3 }]);
     expect(preview.sampleCards).toEqual([{ front: 'Q', back: 'A' }]);
   });
 
@@ -356,7 +355,7 @@ describe('McpToolsService.convertToDeck', () => {
       filename: 'deck.apkg',
       downloadUrl: `https://mcp.test/api/mcp/decks/${jobId}/download`,
       deckCount: 1,
-      decks: [{ id: 1, name: 'Bio', cardCount: 3 }],
+      decks: [{ name: 'Bio', cardCount: 3 }],
       sampleCards: [{ front: 'Q', back: 'A' }],
     });
     expect(jobId).toEqual(expect.any(String));
@@ -481,13 +480,20 @@ describe('McpToolsService.convertToDeck', () => {
     };
     const { service, persist } = makeService({ uploadEntry });
     trackMock.mockClear();
-    const result = await service.convertToDeck({ text: 'x' }, 'owner', {});
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-18T12:00:00Z'));
+    const result = await service
+      .convertToDeck({ text: 'x' }, 'owner', {})
+      .finally(() => vi.useRealTimers());
     expect(result).toEqual({
       kind: 'error',
       code: 'monthly_limit',
       message:
-        "You've reached your free limit of 100 cards this month, so this deck wasn't created. Upgrade to Pro to keep converting, or wait for your limit to reset next month. Upgrade: https://2anki.net/pricing?from=mcp",
-      next_step: { upgrade_url: 'https://2anki.net/pricing?from=mcp' },
+        "You've used this month's 100 free cards, so this deck wasn't created. Your limit resets on November 1. Plan details: https://2anki.net/documentation/help/limits",
+      next_step: {
+        plans_url: 'https://2anki.net/documentation/help/limits',
+        upgrade_url: 'https://2anki.net/documentation/help/limits',
+      },
     });
     expect(trackMock).toHaveBeenCalledTimes(1);
     expect(trackMock).toHaveBeenCalledWith(
@@ -496,8 +502,8 @@ describe('McpToolsService.convertToDeck', () => {
         props: { source: 'mcp', surface: 'mcp', kind: 'card_count' },
       })
     );
-    expect((result as { message: string }).message).toContain(
-      'https://2anki.net/pricing?from=mcp'
+    expect((result as { message: string }).message).not.toMatch(
+      /upgrade|pricing|checkout/i
     );
     expect(persist).not.toHaveBeenCalled();
   });
@@ -522,12 +528,12 @@ describe('McpToolsService.convertToDeck', () => {
       kind: 'error',
       code: 'monthly_limit',
       next_step: {
-        upgrade_url: 'https://2anki.net/pricing?from=mcp',
+        plans_url: 'https://2anki.net/documentation/help/limits',
         cards_held_back: 2,
       },
     });
     expect((result as { message: string }).message).toMatch(
-      /2 cards were held back — none were created\.$/
+      /2 cards were held back, so none were created\.$/
     );
     expect(trackMock).toHaveBeenCalledTimes(1);
     expect(persist).not.toHaveBeenCalled();
@@ -1165,20 +1171,56 @@ describe('McpToolsService.photoToDeck', () => {
     expect(generateCards).not.toHaveBeenCalled();
   });
 
-  it('surfaces a quota-exceeded error from the vision use case', async () => {
+  it('states the free photo quota and its reset date with no upgrade pitch', async () => {
     const quotaError = Object.assign(
       new Error(
-        'Free plan is 5 photos per month. Paid plans include AI credits for more.'
+        "Free plan is 5 photos per month. You've used 5. Paid plans include AI credits for more."
       ),
-      { status: 429 }
+      { status: 429, used: 5, limit: 5 }
     );
     const generateCards = vi.fn(async () => {
       throw quotaError;
     });
     const { service } = makeService({ generateCards });
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-12-30T12:00:00Z'));
+    const error = await service
+      .photoToDeck({ image: ONE_PIXEL_PNG_BASE64 }, 'o', {})
+      .catch((e: unknown) => e)
+      .finally(() => vi.useRealTimers());
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe(
+      'The free plan includes 5 photos a month and 5 have been used. The count resets on January 1. Plan details: https://2anki.net/documentation/help/limits'
+    );
+    expect(error).toMatchObject({ status: 429, used: 5, limit: 5 });
+  });
+
+  it('passes other vision errors through unchanged', async () => {
+    const otherError = Object.assign(new Error('Too many requests'), {
+      status: 429,
+    });
+    const generateCards = vi.fn(async () => {
+      throw otherError;
+    });
+    const { service } = makeService({ generateCards });
     await expect(
       service.photoToDeck({ image: ONE_PIXEL_PNG_BASE64 }, 'o', {})
-    ).rejects.toThrow(/Free plan is 5 photos per month/);
+    ).rejects.toBe(otherError);
+  });
+
+  it('returns only the front and back of each photo card', async () => {
+    const generateCards = vi.fn(async () => ({
+      cards: [{ front: 'Q', back: 'A', internal: 'x' }],
+      cardCount: 1,
+    }));
+    const { service } = makeService({ generateCards });
+    const result = await service.photoToDeck(
+      { image: ONE_PIXEL_PNG_BASE64 },
+      'o',
+      {}
+    );
+    expect(result.cards).toEqual([{ front: 'Q', back: 'A' }]);
   });
 });
 
@@ -1312,13 +1354,15 @@ describe('McpToolsService.createDeck with subdecks', () => {
       kind: 'error',
       code: 'monthly_limit',
       next_step: {
-        upgrade_url: 'https://2anki.net/pricing?from=mcp',
+        plans_url: 'https://2anki.net/documentation/help/limits',
         cards_held_back: expect.any(Number),
       },
     });
     const message = (result as { message: string }).message;
-    expect(message).toContain('https://2anki.net/pricing?from=mcp');
-    expect(message).toMatch(/\d+ cards were held back — none were created\.$/);
+    expect(message).toContain('https://2anki.net/documentation/help/limits');
+    expect(message).toMatch(
+      /\d+ cards were held back, so none were created\.$/
+    );
     expect(trackMock).toHaveBeenCalledWith(
       'paywall_shown',
       expect.objectContaining({

@@ -60,10 +60,52 @@ const EMPTY_BACK_MESSAGE =
   'Some cards have an empty back. Every card needs both a front and a back.';
 const GENERIC_CONVERT_ERROR = 'Could not convert this input.';
 const MONTHLY_LIMIT_CODE = 'monthly_limit';
-const MONTHLY_LIMIT_MESSAGE =
-  "You've reached your free limit of 100 cards this month, so this deck wasn't created. Upgrade to Pro to keep converting, or wait for your limit to reset next month. Upgrade: https://2anki.net/pricing?from=mcp";
 const CARD_LIMIT_REDIRECT_PREFIX = '/limit?kind=card_count';
-const UPGRADE_URL = 'https://2anki.net/pricing?from=mcp';
+// Directory review rules allow a link to an informational plans page, never a
+// page that starts a checkout, so limit messages point at the limits docs.
+const PLANS_URL = 'https://2anki.net/documentation/help/limits';
+
+// The free card and photo counters reset on the first day of each calendar
+// month (UTC), so the next reset is always the first of next month.
+function nextMonthlyReset(now: Date = new Date()): string {
+  const reset = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+  );
+  return reset.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function monthlyLimitMessage(): string {
+  return `You've used this month's 100 free cards, so this deck wasn't created. Your limit resets on ${nextMonthlyReset()}. Plan details: ${PLANS_URL}`;
+}
+
+function isFreePhotoQuotaError(
+  error: unknown
+): error is Error & { used: number; limit: number } {
+  const candidate = error as {
+    status?: unknown;
+    used?: unknown;
+    limit?: unknown;
+  };
+  return (
+    error instanceof Error &&
+    candidate.status === 429 &&
+    typeof candidate.used === 'number' &&
+    typeof candidate.limit === 'number'
+  );
+}
+
+function freePhotoQuotaError(used: number, limit: number): Error {
+  return Object.assign(
+    new Error(
+      `The free plan includes ${limit} photos a month and ${used} have been used. The count resets on ${nextMonthlyReset()}. Plan details: ${PLANS_URL}`
+    ),
+    { status: 429, used, limit }
+  );
+}
 
 // MCP owners are the OAuth user id as a string; anything else has no user row.
 function ownerToUserId(owner: string): number | null {
@@ -72,8 +114,8 @@ function ownerToUserId(owner: string): number | null {
 }
 
 function heldBackSentence(count: number): string {
-  if (count === 1) return " 1 card was held back — it wasn't created.";
-  return ` ${count} cards were held back — none were created.`;
+  if (count === 1) return " 1 card was held back, so it wasn't created.";
+  return ` ${count} cards were held back, so none were created.`;
 }
 
 function monthlyLimitResult(
@@ -84,8 +126,11 @@ function monthlyLimitResult(
     userId: ownerToUserId(owner),
     props: { source: 'mcp', surface: 'mcp', kind: 'card_count' },
   });
-  const next_step: McpNextStep = { upgrade_url: UPGRADE_URL };
-  let message = MONTHLY_LIMIT_MESSAGE;
+  const next_step: McpNextStep = {
+    plans_url: PLANS_URL,
+    upgrade_url: PLANS_URL,
+  };
+  let message = monthlyLimitMessage();
   if (cardsHeldBack != null && cardsHeldBack > 0) {
     next_step.cards_held_back = cardsHeldBack;
     message += heldBackSentence(cardsHeldBack);
@@ -187,7 +232,6 @@ export interface DeckSummary {
   jobId: string;
   title: string;
   status: string;
-  createdAt: string | null;
   downloadUrl: string | null;
 }
 
@@ -201,7 +245,7 @@ export interface DeckPreview {
   note?: string;
   cardCount: number;
   deckCount: number;
-  decks: { id: number; name: string; cardCount: number }[];
+  decks: { name: string; cardCount: number }[];
   sampleCards: SampleCard[];
 }
 
@@ -220,7 +264,7 @@ export type ConvertResult =
       filename: string | null;
       downloadUrl?: string;
       deckCount?: number;
-      decks?: { id: number; name: string; cardCount: number }[];
+      decks?: { name: string; cardCount: number }[];
       sampleCards?: SampleCard[];
       applied?: AppliedOptions;
       ignored?: IgnoredOption[];
@@ -228,11 +272,13 @@ export type ConvertResult =
     }
   | { kind: 'error'; message: string; code?: string; next_step?: McpNextStep };
 
-// Attached to a monthly-limit error so the assistant can relay the way past
-// the cap in the same turn (#4393). The link is the pricing page already in
-// the message; no checkout deep link, which would need payment code.
+// Attached to a monthly-limit error so the assistant can relay the limit and
+// where to read about plans in the same turn (#4393). The link is an
+// informational page with no checkout. upgrade_url is a deprecated alias of
+// plans_url, kept for one release for clients that already read it (#4790).
 export interface McpNextStep {
   cards_held_back?: number;
+  plans_url: string;
   upgrade_url: string;
 }
 
@@ -338,7 +384,7 @@ export class McpToolsService {
     locals: Record<string, unknown>
   ): Promise<PhotoDeckResult> {
     const photo = decodePhotoInput(input.image);
-    const generated = await this.photoToFlashcards.generateCards({
+    const generated = await this.generatePhotoCards({
       imageBase64: photo.imageBase64,
       mediaType: photo.mediaType,
       deckName: '',
@@ -352,10 +398,23 @@ export class McpToolsService {
     });
 
     return {
-      cards: generated.cards,
+      cards: generated.cards.map(({ front, back }) => ({ front, back })),
       count: generated.cardCount,
       summary: `${generated.cardCount} cards from your photo. Review them, then call create_deck to build and download the deck.`,
     };
+  }
+
+  private async generatePhotoCards(
+    input: Parameters<PhotoToFlashcardsUseCase['generateCards']>[0]
+  ) {
+    try {
+      return await this.photoToFlashcards.generateCards(input);
+    } catch (error) {
+      if (isFreePhotoQuotaError(error)) {
+        throw freePhotoQuotaError(error.used, error.limit);
+      }
+      throw error;
+    }
   }
 
   async listMyDecks(
@@ -368,7 +427,6 @@ export class McpToolsService {
       jobId: job.object_id,
       title: job.title ?? 'Untitled deck',
       status: job.status,
-      createdAt: job.created_at ? new Date(job.created_at).toISOString() : null,
       downloadUrl:
         job.download_key != null
           ? `${this.baseUrl}/api/upload/jobs/${job.object_id}/download`
@@ -422,7 +480,6 @@ export class McpToolsService {
       cardCount: meta.totalCards,
       deckCount: meta.decks.length,
       decks: meta.decks.map((deck) => ({
-        id: deck.id,
         name: deck.fullName,
         cardCount: deck.cardCount,
       })),
@@ -698,7 +755,6 @@ export class McpToolsService {
       return {
         deckCount: meta.decks.length,
         decks: meta.decks.map((deck) => ({
-          id: deck.id,
           name: deck.fullName,
           cardCount: deck.cardCount,
         })),
