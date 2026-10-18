@@ -5867,6 +5867,28 @@ describe('UploadService.respondToBrokenUpload', () => {
     );
   });
 
+  it('answers 500 and blames no connection when the disk write failed', () => {
+    trackMock.mockClear();
+    const { res, capturedStatus, capturedJson } = buildResponse();
+    const error = Object.assign(new Error('no space left on device'), {
+      code: 'ENOSPC',
+    });
+
+    service().respondToBrokenUpload(buildRequest(), res, error);
+
+    expect(capturedStatus()).toBe(500);
+    expect(capturedJson()).toMatchObject({ code: 'unknown' });
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({
+        props: expect.objectContaining({
+          reason: 'upload_store_failed',
+          upload_error: 'ENOSPC',
+        }),
+      })
+    );
+  });
+
   it('records client_left and answers nobody once the visitor has gone', () => {
     trackMock.mockClear();
     const { res, capturedStatus } = buildResponse();
