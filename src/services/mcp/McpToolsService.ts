@@ -16,8 +16,10 @@ import CustomExporter from '../../lib/parser/exporters/CustomExporter';
 import { isTypableAnswer } from '../../lib/parser/isTypableAnswer';
 import {
   CheckMonthlyCardLimitUseCase,
+  MONTHLY_CARD_LIMIT,
   MonthlyLimitError,
 } from '../../usecases/users/CheckMonthlyCardLimitUseCase';
+import { startOfNextMonthUtc } from '../../lib/User/startOfMonthUtc';
 import { DeckPersistence } from './McpDeckPersistence';
 import { McpCard, serializeCardsToMarkdown } from './serializeCardsToMarkdown';
 import { groupCardsBySubdeck, hasSubdecks } from './composeSubdecks';
@@ -65,21 +67,20 @@ const CARD_LIMIT_REDIRECT_PREFIX = '/limit?kind=card_count';
 // page that starts a checkout, so limit messages point at the limits docs.
 const PLANS_URL = 'https://2anki.net/documentation/help/limits';
 
-// The free card and photo counters reset on the first day of each calendar
-// month (UTC), so the next reset is always the first of next month.
+// The free card counter resets on the first day of each calendar month (UTC).
 function nextMonthlyReset(now: Date = new Date()): string {
-  const reset = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
-  );
-  return reset.toLocaleDateString('en-US', {
+  return startOfNextMonthUtc(now).toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
     timeZone: 'UTC',
   });
 }
 
-function monthlyLimitMessage(): string {
-  return `You've used this month's 100 free cards, so this deck wasn't created. Your limit resets on ${nextMonthlyReset()}. Plan details: ${PLANS_URL}`;
+// A deck is refused when it would take the month past the limit, which can
+// happen with free cards still left, so the message never claims they are all
+// used up.
+function monthlyLimitMessage(heldBack: string): string {
+  return `This deck would go over the free plan's ${MONTHLY_CARD_LIMIT} cards for this month, so it wasn't created.${heldBack} The count resets on ${nextMonthlyReset()}. Plan details: ${PLANS_URL}`;
 }
 
 function isFreePhotoQuotaError(
@@ -101,7 +102,7 @@ function isFreePhotoQuotaError(
 function freePhotoQuotaError(used: number, limit: number): Error {
   return Object.assign(
     new Error(
-      `The free plan includes ${limit} photos a month and ${used} have been used. The count resets on ${nextMonthlyReset()}. Plan details: ${PLANS_URL}`
+      `You've used all ${limit} free photos for this month. The count resets on ${nextMonthlyReset()}. Plan details: ${PLANS_URL}`
     ),
     { status: 429, used, limit }
   );
@@ -114,8 +115,8 @@ function ownerToUserId(owner: string): number | null {
 }
 
 function heldBackSentence(count: number): string {
-  if (count === 1) return " 1 card was held back, so it wasn't created.";
-  return ` ${count} cards were held back, so none were created.`;
+  if (count === 1) return ' 1 card was held back.';
+  return ` ${count} cards were held back.`;
 }
 
 function monthlyLimitResult(
@@ -130,11 +131,12 @@ function monthlyLimitResult(
     plans_url: PLANS_URL,
     upgrade_url: PLANS_URL,
   };
-  let message = monthlyLimitMessage();
+  let heldBack = '';
   if (cardsHeldBack != null && cardsHeldBack > 0) {
     next_step.cards_held_back = cardsHeldBack;
-    message += heldBackSentence(cardsHeldBack);
+    heldBack = heldBackSentence(cardsHeldBack);
   }
+  const message = monthlyLimitMessage(heldBack);
   return { kind: 'error', code: MONTHLY_LIMIT_CODE, message, next_step };
 }
 const OVER_SIZE_MESSAGE =

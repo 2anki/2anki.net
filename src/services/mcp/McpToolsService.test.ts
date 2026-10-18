@@ -489,7 +489,7 @@ describe('McpToolsService.convertToDeck', () => {
       kind: 'error',
       code: 'monthly_limit',
       message:
-        "You've used this month's 100 free cards, so this deck wasn't created. Your limit resets on November 1. Plan details: https://2anki.net/documentation/help/limits",
+        "This deck would go over the free plan's 100 cards for this month, so it wasn't created. The count resets on November 1. Plan details: https://2anki.net/documentation/help/limits",
       next_step: {
         plans_url: 'https://2anki.net/documentation/help/limits',
         upgrade_url: 'https://2anki.net/documentation/help/limits',
@@ -533,7 +533,7 @@ describe('McpToolsService.convertToDeck', () => {
       },
     });
     expect((result as { message: string }).message).toMatch(
-      /2 cards were held back, so none were created\.$/
+      /wasn't created\. 2 cards were held back\. The count resets on /
     );
     expect(trackMock).toHaveBeenCalledTimes(1);
     expect(persist).not.toHaveBeenCalled();
@@ -1191,7 +1191,7 @@ describe('McpToolsService.photoToDeck', () => {
 
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toBe(
-      'The free plan includes 5 photos a month and 5 have been used. The count resets on January 1. Plan details: https://2anki.net/documentation/help/limits'
+      "You've used all 5 free photos for this month. The count resets on January 1. Plan details: https://2anki.net/documentation/help/limits"
     );
     expect(error).toMatchObject({ status: 429, used: 5, limit: 5 });
   });
@@ -1360,9 +1360,7 @@ describe('McpToolsService.createDeck with subdecks', () => {
     });
     const message = (result as { message: string }).message;
     expect(message).toContain('https://2anki.net/documentation/help/limits');
-    expect(message).toMatch(
-      /\d+ cards were held back, so none were created\.$/
-    );
+    expect(message).toMatch(/\d+ cards were held back\. The count resets on /);
     expect(trackMock).toHaveBeenCalledWith(
       'paywall_shown',
       expect.objectContaining({
