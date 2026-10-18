@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-18-monthly-limit-held-cards",
+  "date": "2026-10-18",
+  "type": "fix",
+  "title": "An upload cut short by the monthly card limit says how many cards are waiting and saves them for 7 days"
+}

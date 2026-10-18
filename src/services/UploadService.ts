@@ -96,6 +96,7 @@ import {
   isAnonymousPartialDeliveryEligible,
   isPartialDeliveryEligible,
 } from '../usecases/uploads/isPartialDeliveryEligible';
+import { planHoldKey } from '../usecases/uploads/ClaimHeldDeckUseCase';
 import {
   ANONYMOUS_PARTIAL_DELIVERY_FLAG,
   resolveAnonymousPartialArm,
@@ -204,6 +205,7 @@ export interface HeldUploadResponse {
 }
 
 const HELD_DECK_TTL_MS = 24 * 60 * 60 * 1000;
+const PLAN_HOLD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const MARKDOWN_HEURISTIC_WARNING =
   'Your Markdown file was processed using heuristic detection. For reliable results, use the nested bullet format or enable Claude AI in settings.';
@@ -1870,6 +1872,14 @@ class UploadService {
         res.set('X-Cards-Held-Back', heldBack.toString());
         exposedHeaders.push('X-Cards-Held-Back');
       }
+      const heldForPlan =
+        owner != null && signedInMonthlyPartial && heldBack > 0
+          ? await this.holdDeckForPlan(req, res, owner, totalCards, heldBack)
+          : false;
+      if (heldForPlan) {
+        res.set('X-Held-For-Plan', '1');
+        exposedHeaders.push('X-Held-For-Plan');
+      }
       if (packages.some((p) => p.overSplit)) {
         res.set('X-Over-Split', '1');
         exposedHeaders.push('X-Over-Split');
@@ -1925,6 +1935,7 @@ class UploadService {
                 card_limit_partial: true,
                 cards_held_back: heldBack,
                 ...(partialArm !== 'off' ? { arm: partialArm } : {}),
+                ...(heldForPlan ? { held_for_plan: true } : {}),
               }
             : {}),
         },
@@ -2237,6 +2248,43 @@ class UploadService {
       totalCards: cardCount + cardsHeldBack,
     };
     return res.status(200).json(body);
+  }
+
+  // A signed-in free user whose upload was cut to their remaining monthly
+  // allowance still gets the cards that fit; the source file is held so the
+  // full deck can be built once they pay, without uploading it again. A
+  // failure here never costs them the partial deck, only the later claim.
+  private async holdDeckForPlan(
+    req: express.Request,
+    res: express.Response,
+    owner: string,
+    cardCount: number,
+    cardsHeldBack: number
+  ): Promise<boolean> {
+    try {
+      const file = (req.files as UploadedFile[])[0];
+      const bytes = await readUploadBytes(file);
+      if (bytes == null) {
+        return false;
+      }
+      const storageKey = `held/${randomUUID()}`;
+      await new StorageHandler().uploadFile(storageKey, bytes);
+      await this.heldDeckRepository.insert({
+        storageKey,
+        anonId: planHoldKey(owner),
+        filename: file.originalname,
+        cardCount,
+        cardsHeldBack,
+        expiresAt: new Date(Date.now() + PLAN_HOLD_TTL_MS),
+      });
+      return true;
+    } catch (error) {
+      console.error('[UploadService] could not hold the deck for a plan', {
+        requestId: res.locals.requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
   }
 
   // The claim runs the same single-file conversion a signed-in sync upload

@@ -38,10 +38,13 @@ export interface HeldDeckConverter {
   ): Promise<HeldDeckConversion>;
 }
 
+export type HoldKind = 'signup' | 'plan';
+
 export interface ClaimResult {
   downloadKey: string;
   cardCount: number;
   deckName: string;
+  kind: HoldKind;
 }
 
 export interface ClaimParams {
@@ -49,6 +52,28 @@ export interface ClaimParams {
   owner: string;
   paying: boolean;
   requestId: string | undefined;
+}
+
+// A signed-in free user whose upload was cut at the monthly limit has the
+// source file held under this key, so the full deck can be built once they
+// pay. It never collides with an anon_id cookie, which is a UUID.
+export function planHoldKey(owner: string): string {
+  return `plan:${owner}`;
+}
+
+function holdKeys(
+  anonId: string | null,
+  owner: string | null,
+  paying: boolean
+) {
+  const keys: { key: string; kind: HoldKind }[] = [];
+  if (anonId != null) {
+    keys.push({ key: anonId, kind: 'signup' });
+  }
+  if (paying && owner != null) {
+    keys.push({ key: planHoldKey(owner), kind: 'plan' });
+  }
+  return keys;
 }
 
 function isMissingObjectError(error: unknown): boolean {
@@ -71,32 +96,34 @@ export class ClaimHeldDeckUseCase {
     private readonly converter: HeldDeckConverter
   ) {}
 
+  // A plan hold is only visible once the owner pays: before that there is
+  // nothing to claim, and the full deck would be refused at the limit again.
   async peek(
-    anonId: string | null
+    anonId: string | null,
+    owner: string | null = null,
+    paying = false
   ): Promise<{ cardCount: number; cardsHeldBack: number } | null> {
-    if (anonId == null) {
+    const found = await this.findClaimable(holdKeys(anonId, owner, paying));
+    if (found == null) {
       return null;
     }
-    const hold = await this.repository.findNewestClaimable(anonId, new Date());
-    if (hold == null) {
-      return null;
-    }
+    const { hold } = found;
     return { cardCount: hold.card_count, cardsHeldBack: hold.cards_held_back };
   }
 
   async execute(params: ClaimParams): Promise<ClaimResult> {
     const { anonId, owner, paying, requestId } = params;
-    if (anonId == null) {
+    const keys = holdKeys(anonId, owner, paying);
+    const found = await this.findClaimable(keys);
+    if (found == null) {
+      for (const { key } of keys) {
+        if ((await this.repository.findNewestByAnonId(key)) != null) {
+          throw new HeldDeckExpiredError();
+        }
+      }
       throw new NoHeldDeckError();
     }
-    const hold = await this.repository.findNewestClaimable(anonId, new Date());
-    if (hold == null) {
-      const latest = await this.repository.findNewestByAnonId(anonId);
-      if (latest == null) {
-        throw new NoHeldDeckError();
-      }
-      throw new HeldDeckExpiredError();
-    }
+    const { hold, kind } = found;
     const claimed = await this.repository.markClaimed(
       hold.id,
       Number(owner),
@@ -118,6 +145,7 @@ export class ClaimHeldDeckUseCase {
         downloadKey: conversion.downloadKey,
         cardCount: conversion.cardCount,
         deckName: conversion.deckName,
+        kind,
       };
     } catch (error) {
       // Deterministic refusals consume the hold: a monthly-limit refusal, a
@@ -129,6 +157,17 @@ export class ClaimHeldDeckUseCase {
       }
       throw error;
     }
+  }
+
+  private async findClaimable(keys: { key: string; kind: HoldKind }[]) {
+    const now = new Date();
+    for (const { key, kind } of keys) {
+      const hold = await this.repository.findNewestClaimable(key, now);
+      if (hold != null) {
+        return { hold, kind };
+      }
+    }
+    return null;
   }
 
   private async readHeldFile(

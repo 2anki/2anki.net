@@ -5886,14 +5886,126 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
     return (call?.[1] as { props: Record<string, unknown> }).props;
   }
 
-  function serviceUnderTest(usersRepo: UsersRepository) {
+  function serviceUnderTest(
+    usersRepo: UsersRepository,
+    heldDeck?: InMemoryHeldDeckRepository
+  ) {
     return new UploadService(
       buildRepository(),
       {} as JobRepository,
       usersRepo,
-      ...fakeUploadServiceDeps()
+      ...fakeUploadServiceDeps(heldDeck ? { heldDeck } : {})
     );
   }
+
+  function heldUploads() {
+    return mockStorageUploadFile.mock.calls.filter(([key]) =>
+      String(key).startsWith('held/')
+    );
+  }
+
+  function partialRequestWithBytes(): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'study-notes.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/study-notes.html',
+          buffer: Buffer.from('<html>study notes</html>'),
+        },
+      ],
+    } as unknown as Partial<express.Request>);
+  }
+
+  it('holds the source file under the owner for a week so a plan can unlock the full deck', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-18T12:00:00Z'));
+    try {
+      mockStorageUploadFile.mockClear();
+      const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+      mockPartial([{ name: 'deck', cardCount: 10 }], 5);
+      const heldDeck = new InMemoryHeldDeckRepository();
+      const { res, capturedStatus, capturedSend } = buildResponse();
+      (res.locals as Record<string, unknown>).owner = 42;
+
+      await serviceUnderTest(usersRepo, heldDeck).handleUpload(
+        partialRequestWithBytes(),
+        res
+      );
+
+      expect(capturedStatus()).toBe(200);
+      expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
+      expect(heldUploads()).toHaveLength(1);
+      const [storageKey, bytes] = heldUploads()[0];
+      expect(bytes).toEqual(Buffer.from('<html>study notes</html>'));
+      expect(heldDeck.rows).toHaveLength(1);
+      expect(heldDeck.rows[0]).toMatchObject({
+        storage_key: storageKey,
+        anon_id: 'plan:42',
+        filename: 'study-notes.html',
+        card_count: 10,
+        cards_held_back: 5,
+        claimed_at: null,
+      });
+      expect(heldDeck.rows[0].expires_at).toEqual(
+        new Date('2026-10-25T12:00:00Z')
+      );
+      expect(headerValue(res, 'X-Held-For-Plan')).toBe('1');
+      expect(exposedHeaders(res)).toContain('X-Held-For-Plan');
+      expect(conversionSucceededProps()).toMatchObject({
+        card_limit_partial: true,
+        cards_held_back: 5,
+        held_for_plan: true,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('still delivers the partial deck when the source cannot be held', async () => {
+    mockStorageUploadFile.mockClear();
+    mockStorageUploadFile.mockImplementation(async (key: string) => {
+      if (key.startsWith('held/')) throw new Error('no credentials');
+    });
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+    mockPartial([{ name: 'deck', cardCount: 10 }], 5);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const { res, capturedStatus, capturedSend } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo, heldDeck).handleUpload(
+      partialRequestWithBytes(),
+      res
+    );
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
+    expect(heldDeck.rows).toHaveLength(0);
+    expect(headerValue(res, 'X-Held-For-Plan')).toBeUndefined();
+    expect(conversionSucceededProps()).not.toHaveProperty('held_for_plan');
+    expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 10);
+    mockStorageUploadFile.mockReset();
+    mockStorageUploadFile.mockResolvedValue(undefined);
+  });
+
+  it('holds nothing when the deck fits the remaining allowance', async () => {
+    mockStorageUploadFile.mockClear();
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+    mockPartial([{ name: 'deck', cardCount: 10 }], 0);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo, heldDeck).handleUpload(
+      partialRequestWithBytes(),
+      res
+    );
+
+    expect(heldUploads()).toHaveLength(0);
+    expect(heldDeck.rows).toHaveLength(0);
+    expect(headerValue(res, 'X-Held-For-Plan')).toBeUndefined();
+  });
 
   it('truncates a free user over their remaining allowance to a partial deck', async () => {
     const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);

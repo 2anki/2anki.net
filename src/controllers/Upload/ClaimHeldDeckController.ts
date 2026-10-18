@@ -22,7 +22,11 @@ export class ClaimHeldDeckController {
   constructor(private readonly useCase: ClaimHeldDeckUseCase) {}
 
   async check(req: Request, res: Response): Promise<Response> {
-    const hold = await this.useCase.peek(anonId(req));
+    const hold = await this.useCase.peek(
+      anonId(req),
+      String(getOwner(res)),
+      isPaying(res.locals)
+    );
     if (hold == null) {
       return res.status(204).send();
     }
@@ -41,11 +45,19 @@ export class ClaimHeldDeckController {
         paying: isPaying(res.locals),
         requestId: res.locals.requestId,
       });
-      track('anonymous_partial_claimed', {
-        userId: Number(owner),
-        anonymousId: anonId(req),
-        props: { arm: 'treatment' },
-      });
+      if (result.kind === 'plan') {
+        track('monthly_partial_claimed', {
+          userId: Number(owner),
+          anonymousId: anonId(req),
+          props: { card_count: result.cardCount },
+        });
+      } else {
+        track('anonymous_partial_claimed', {
+          userId: Number(owner),
+          anonymousId: anonId(req),
+          props: { arm: 'treatment' },
+        });
+      }
       return res.status(200).json({
         downloadKey: result.downloadKey,
         cardCount: result.cardCount,

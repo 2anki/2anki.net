@@ -6,6 +6,7 @@ vi.mock('../../services/events/track', () => ({ track: vi.fn() }));
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
 import {
   ClaimHeldDeckUseCase,
+  planHoldKey,
   type HeldDeckConverter,
   type HeldFileStore,
 } from '../../usecases/uploads/ClaimHeldDeckUseCase';
@@ -221,5 +222,56 @@ describe('ClaimHeldDeckController', () => {
     const second = buildResponse(7);
     await controller.claim(buildRequest(ANON), second.res);
     expect(second.capturedStatus()).toBe(410);
+  });
+
+  describe('plan holds', () => {
+    async function seedPlanHold(repo: InMemoryHeldDeckRepository) {
+      await repo.insert({
+        storageKey: 'held/plan.html',
+        anonId: planHoldKey('42'),
+        filename: 'notes.html',
+        cardCount: 10,
+        cardsHeldBack: 5,
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+    }
+
+    it('reports no hold to an owner who has not paid yet', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedPlanHold(repo);
+      const controller = new ClaimHeldDeckController(buildUseCase(repo));
+      const { res, capturedStatus } = buildResponse(42);
+
+      await controller.check(buildRequest(null), res);
+
+      expect(capturedStatus()).toBe(204);
+    });
+
+    it('claims the full deck for a paying owner and records it as a plan claim', async () => {
+      trackMock.mockClear();
+      const repo = new InMemoryHeldDeckRepository();
+      await seedPlanHold(repo);
+      const controller = new ClaimHeldDeckController(buildUseCase(repo));
+      const { res, capturedStatus, capturedJson } = buildResponse(42);
+      (res.locals as Record<string, unknown>).subscriber = true;
+
+      await controller.claim(buildRequest(null), res);
+
+      expect(capturedStatus()).toBe(200);
+      expect(capturedJson()).toEqual({
+        downloadKey: 'owner-key.apkg',
+        cardCount: 34,
+        deckName: 'notes',
+      });
+      expect(trackMock).toHaveBeenCalledWith('monthly_partial_claimed', {
+        userId: 42,
+        anonymousId: null,
+        props: { card_count: 34 },
+      });
+      expect(trackMock).not.toHaveBeenCalledWith(
+        'anonymous_partial_claimed',
+        expect.anything()
+      );
+    });
   });
 });
