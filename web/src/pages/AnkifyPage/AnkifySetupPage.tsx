@@ -15,6 +15,7 @@ import { Backend } from '../../lib/backend/Backend';
 import AnkifyClient from '../../lib/interfaces/AnkifyClient';
 import { Skeleton } from '../../components/Skeleton/Skeleton';
 import AnkifyPlanPanel from './components/AnkifyPlanPanel';
+import { isForbidden } from '../../lib/backend/isForbidden';
 
 const QUERY_KEY = ['ankify-clients'];
 const READINESS_QUERY_KEY = ['ankify-active-ready'];
@@ -22,6 +23,8 @@ import { acknowledgeAnkiWeb } from '../../lib/data_layer/userPreferencesSync';
 const ANKI_WEB_ACK_KEY = 'ankify_anki_web_acknowledged';
 const SESSION_URL_PREFIX = 'ankify_session_url:';
 const STARTING_TIMEOUT_MS = 45_000;
+const CHECKOUT_POLL_MS = 2_000;
+const CHECKOUT_WAIT_MS = 60_000;
 
 const sessionUrlKey = (clientId: number) => `${SESSION_URL_PREFIX}${clientId}`;
 
@@ -72,9 +75,7 @@ export default function AnkifySetupPage({ backend }: Props) {
   } = useQuery<AnkifyClient[]>({
     queryKey: QUERY_KEY,
     queryFn: () => api.listAnkifyClients(),
-    retry: (failureCount, error) =>
-      (error as { status?: number } | undefined)?.status !== 403 &&
-      failureCount < 3,
+    retry: (failureCount, error) => !isForbidden(error) && failureCount < 3,
   });
 
   const activeClient = (data ?? []).find((c) => c.status === 'active');
@@ -95,7 +96,11 @@ export default function AnkifySetupPage({ backend }: Props) {
   const containerReady = readiness.data?.ready === true;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
+  const {
+    data: userLocals,
+    isLoading: userLocalsLoading,
+    refetch: refetchUserLocals,
+  } = useUserLocals();
 
   const [checkoutSessionId] = useState<string | null>(() => {
     const sessionId = searchParams.get('session_id');
@@ -105,6 +110,37 @@ export default function AnkifySetupPage({ backend }: Props) {
       ? sessionId
       : null;
   });
+
+  const [returnedFromCheckout] = useState<boolean>(
+    () => searchParams.get('checkout') === 'success'
+  );
+  const [checkoutWaitTimedOut, setCheckoutWaitTimedOut] = useState(false);
+
+  const hasAutoSyncAccess = userLocals?.autoSyncActive === true;
+
+  useEffect(() => {
+    if (!returnedFromCheckout || hasAutoSyncAccess || checkoutWaitTimedOut) {
+      return;
+    }
+    const poll = setInterval(() => {
+      void refetchUserLocals();
+      queryClient.refetchQueries({ queryKey: QUERY_KEY });
+    }, CHECKOUT_POLL_MS);
+    const giveUp = setTimeout(
+      () => setCheckoutWaitTimedOut(true),
+      CHECKOUT_WAIT_MS
+    );
+    return () => {
+      clearInterval(poll);
+      clearTimeout(giveUp);
+    };
+  }, [
+    returnedFromCheckout,
+    hasAutoSyncAccess,
+    checkoutWaitTimedOut,
+    refetchUserLocals,
+    queryClient,
+  ]);
 
   const buyerId = userLocals?.user?.id;
   const buyerEmail = userLocals?.user?.email;
@@ -273,13 +309,46 @@ export default function AnkifySetupPage({ backend }: Props) {
     }
   }, [isLoading, hasActiveClient, signedInAcknowledged, navigate]);
 
-  const isForbidden = (error: unknown) =>
-    (error as { status?: number } | undefined)?.status === 403;
-  const lacksAutoSync =
-    userLocals?.autoSyncActive === false ||
-    isForbidden(clientsError) ||
-    isForbidden(provision.error);
-  if (lacksAutoSync) {
+  const accessDenied =
+    !hasAutoSyncAccess &&
+    (userLocals?.autoSyncActive === false ||
+      isForbidden(clientsError) ||
+      isForbidden(provision.error));
+
+  if (returnedFromCheckout && !hasAutoSyncAccess) {
+    const stuck = checkoutWaitTimedOut;
+    return (
+      <main className={styles.setupTakeover}>
+        <header className={styles.setupTakeoverHeading}>
+          <h1 className={styles.setupTakeoverTitle}>
+            {stuck ? t('setup.checkoutStuckTitle') : t('setup.activatingTitle')}
+          </h1>
+          <p className={styles.setupTakeoverSubtitle}>
+            {stuck ? t('setup.checkoutStuckHint') : t('setup.activatingHint')}
+          </p>
+        </header>
+        {!stuck && (
+          <div
+            className={styles.setupActiveStepActions}
+            role="status"
+            aria-live="polite"
+          >
+            <Skeleton width="11rem" height="2.25rem" radius="0.4rem" />
+          </div>
+        )}
+      </main>
+    );
+  }
+
+  if (accessDenied) {
+    if (userLocalsLoading) {
+      return (
+        <main className={styles.setupTakeover}>
+          <Skeleton width="60%" height="2rem" />
+          <Skeleton width="80%" height="1rem" />
+        </main>
+      );
+    }
     return <AnkifyPlanPanel planSource={userLocals?.locals?.planSource} />;
   }
 

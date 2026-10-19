@@ -348,7 +348,11 @@
     "restartAnkiError": "No se pudo reiniciar Anki. Inténtalo de nuevo o escribe a support@2anki.net.",
     "signInNext": "Inicia sesión en AnkiWeb (siguiente)",
     "takeoverTitle": "Configura Anki en tu navegador.",
-    "takeoverSubtitle": "Alrededor de un minuto, dos pasos."
+    "takeoverSubtitle": "Alrededor de un minuto, dos pasos.",
+    "activatingTitle": "Activando Auto Sync.",
+    "activatingHint": "Esto tarda unos segundos.",
+    "checkoutStuckTitle": "Auto Sync está tardando más de lo habitual.",
+    "checkoutStuckHint": "Tu suscripción está confirmada. Si Auto Sync no está listo en unos minutos, escribe a support@2anki.net."
   },
   "plan": {
     "title": "Auto Sync es un plan aparte",

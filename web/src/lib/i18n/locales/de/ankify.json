@@ -348,7 +348,11 @@
     "restartAnkiError": "Anki konnte nicht neu starten. Versuch es erneut oder schreib an support@2anki.net.",
     "signInNext": "Bei AnkiWeb anmelden (als Nächstes)",
     "takeoverTitle": "Richte Anki in deinem Browser ein.",
-    "takeoverSubtitle": "Etwa eine Minute, zwei Schritte."
+    "takeoverSubtitle": "Etwa eine Minute, zwei Schritte.",
+    "activatingTitle": "Auto Sync wird aktiviert.",
+    "activatingHint": "Das dauert ein paar Sekunden.",
+    "checkoutStuckTitle": "Auto Sync dauert länger als üblich.",
+    "checkoutStuckHint": "Dein Abo ist bestätigt. Wenn Auto Sync in ein paar Minuten nicht bereit ist, schreib an support@2anki.net."
   },
   "plan": {
     "title": "Auto Sync ist ein eigener Tarif",

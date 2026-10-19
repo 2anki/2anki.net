@@ -348,7 +348,11 @@
     "restartAnkiError": "Kon Anki niet herstarten. Probeer het opnieuw, of mail support@2anki.net.",
     "signInNext": "Inloggen bij AnkiWeb (volgende)",
     "takeoverTitle": "Stel Anki in je browser in.",
-    "takeoverSubtitle": "Ongeveer een minuut, twee stappen."
+    "takeoverSubtitle": "Ongeveer een minuut, twee stappen.",
+    "activatingTitle": "Auto Sync wordt geactiveerd.",
+    "activatingHint": "Dit duurt een paar seconden.",
+    "checkoutStuckTitle": "Auto Sync duurt langer dan normaal.",
+    "checkoutStuckHint": "Je abonnement is bevestigd. Als Auto Sync over een paar minuten nog niet klaar is, mail support@2anki.net."
   },
   "plan": {
     "title": "Auto Sync is een apart abonnement",

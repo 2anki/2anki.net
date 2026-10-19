@@ -348,7 +348,11 @@
     "restartAnkiError": "Couldn't restart Anki. Try again, or email support@2anki.net.",
     "signInNext": "Sign in to AnkiWeb (next)",
     "takeoverTitle": "Set up Anki in your browser.",
-    "takeoverSubtitle": "About a minute, two steps."
+    "takeoverSubtitle": "About a minute, two steps.",
+    "activatingTitle": "Activating Auto Sync.",
+    "activatingHint": "This takes a few seconds.",
+    "checkoutStuckTitle": "Auto Sync is taking longer than usual.",
+    "checkoutStuckHint": "Your subscription is confirmed. If Auto Sync isn't ready in a few minutes, email support@2anki.net."
   },
   "plan": {
     "title": "Auto Sync is its own plan",

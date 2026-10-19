@@ -358,7 +358,11 @@
     "restartAnkiError": "Не удалось перезапустить Anki. Попробуй ещё раз или напиши на support@2anki.net.",
     "signInNext": "Войти в AnkiWeb (далее)",
     "takeoverTitle": "Настрой Anki в браузере.",
-    "takeoverSubtitle": "Около минуты, два шага."
+    "takeoverSubtitle": "Около минуты, два шага.",
+    "activatingTitle": "Включаем Auto Sync.",
+    "activatingHint": "Это займёт несколько секунд.",
+    "checkoutStuckTitle": "Auto Sync занимает больше времени, чем обычно.",
+    "checkoutStuckHint": "Твоя подписка подтверждена. Если Auto Sync не будет готов через несколько минут, напиши на support@2anki.net."
   },
   "plan": {
     "title": "Auto Sync продаётся отдельно",

@@ -343,7 +343,11 @@
     "restartAnkiError": "Anki を再起動できませんでした。もう一度お試しいただくか、support@2anki.net までご連絡ください。",
     "signInNext": "AnkiWeb にサインイン（次）",
     "takeoverTitle": "ブラウザで Anki を設定しましょう。",
-    "takeoverSubtitle": "約 1 分、2 ステップです。"
+    "takeoverSubtitle": "約 1 分、2 ステップです。",
+    "activatingTitle": "Auto Sync を有効化しています。",
+    "activatingHint": "数秒かかります。",
+    "checkoutStuckTitle": "Auto Sync にいつもより時間がかかっています。",
+    "checkoutStuckHint": "ご登録は確認できています。数分たっても Auto Sync が準備できない場合は support@2anki.net までご連絡ください。"
   },
   "plan": {
     "title": "Auto Sync は独立したプラン",

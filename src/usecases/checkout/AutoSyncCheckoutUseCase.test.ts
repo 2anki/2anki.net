@@ -310,7 +310,9 @@ describe('AutoSyncCheckoutUseCase', () => {
             after_completion: {
               type: 'redirect',
               redirect: {
-                return_url: expect.stringContaining('/ankify/setup'),
+                return_url: expect.stringContaining(
+                  '/ankify/setup?checkout=success'
+                ),
               },
             },
           },

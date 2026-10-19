@@ -51,13 +51,18 @@ const makeBackend = (overrides: Partial<Backend> = {}): Backend =>
     ...overrides,
   }) as unknown as Backend;
 
-const renderSetup = (backend: Backend) => {
+const renderSetup = (
+  backend: Backend,
+  opts: { path?: string; retries?: boolean } = {}
+) => {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: {
+      queries: opts.retries ? { retry: 3, retryDelay: 0 } : { retry: false },
+    },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/ankify/setup']}>
+      <MemoryRouter initialEntries={[opts.path ?? '/ankify/setup']}>
         <Routes>
           <Route
             path="/ankify/setup"
@@ -120,28 +125,14 @@ describe('AnkifySetupPage plan panel', () => {
   });
 
   test('a 403 from the clients list shows the panel without retrying', async () => {
-    vi.mocked(getUserLocals).mockResolvedValue(localsWith(undefined));
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(false));
     const forbidden = Object.assign(new Error('Forbidden'), { status: 403 });
     const listAnkifyClients = vi.fn(async () => {
       throw forbidden;
     });
     const backend = makeBackend({ listAnkifyClients });
 
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: 3, retryDelay: 0 } },
-    });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={['/ankify/setup']}>
-          <Routes>
-            <Route
-              path="/ankify/setup"
-              element={<AnkifySetupPage backend={backend} />}
-            />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>
-    );
+    renderSetup(backend, { retries: true });
 
     expect(
       await screen.findByRole('heading', {
@@ -149,6 +140,65 @@ describe('AnkifySetupPage plan panel', () => {
       })
     ).toBeInTheDocument();
     expect(listAnkifyClients).toHaveBeenCalledTimes(1);
+  });
+
+  test('retries a 500 from the clients list', async () => {
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(true));
+    const serverError = Object.assign(new Error('Server error'), {
+      status: 500,
+    });
+    const listAnkifyClients = vi.fn(async () => {
+      throw serverError;
+    });
+    const backend = makeBackend({ listAnkifyClients });
+
+    renderSetup(backend, { retries: true });
+
+    await waitFor(() => expect(listAnkifyClients).toHaveBeenCalledTimes(4));
+  });
+
+  test('checkout success shows the finishing state, not the panel', async () => {
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(false));
+    const forbidden = Object.assign(new Error('Forbidden'), { status: 403 });
+    const backend = makeBackend({
+      listAnkifyClients: vi.fn(async () => {
+        throw forbidden;
+      }),
+    });
+
+    renderSetup(backend, { path: '/ankify/setup?checkout=success' });
+
+    expect(
+      await screen.findByText(/activating auto sync/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: /auto sync is its own plan/i })
+    ).not.toBeInTheDocument();
+  });
+
+  test('access that lands after checkout shows setup, not the panel', async () => {
+    vi.mocked(getUserLocals)
+      .mockResolvedValueOnce(localsWith(false))
+      .mockResolvedValue(localsWith(true));
+    const forbidden = Object.assign(new Error('Forbidden'), { status: 403 });
+    const listAnkifyClients = vi
+      .fn()
+      .mockRejectedValueOnce(forbidden)
+      .mockResolvedValue([]);
+    const backend = makeBackend({ listAnkifyClients });
+
+    renderSetup(backend, { path: '/ankify/setup?checkout=success' });
+
+    expect(
+      await screen.findByText(/activating auto sync/i)
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole(
+        'button',
+        { name: /start anki/i },
+        { timeout: 6000 }
+      )
+    ).toBeInTheDocument();
   });
 
   test('points Apple-plan users to support instead of pricing', async () => {
