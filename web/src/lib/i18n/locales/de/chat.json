@@ -111,5 +111,7 @@
     "keepReading": "Deine bisherigen Chats bleiben hier lesbar.",
     "seePlans": "Pläne ansehen"
   },
-  "aiCreditsExhausted": "Deine KI-Credits sind aufgebraucht. Eine einmalige Aufladung ohne Abo reicht für mehrere weitere Decks und gilt 90 Tage. Oder warte auf deinen kostenlosen Reset."
+  "aiCreditsExhausted": "Deine KI-Credits sind aufgebraucht. Eine einmalige Aufladung ohne Abo reicht für mehrere weitere Decks und gilt 90 Tage. Oder warte auf deinen kostenlosen Reset.",
+  "aiCreditsExhaustedPlan": "Deine KI-Credits sind aufgebraucht. Eine einmalige Aufladung reicht für mehrere weitere Decks und gilt 90 Tage. Oder warte auf die Zurücksetzung deiner Plan-Credits.",
+  "aiCreditsExhaustedPass": "Die KI-Credits deines Passes sind aufgebraucht. Eine einmalige Aufladung reicht für mehrere weitere Decks."
 }

@@ -13,6 +13,7 @@ import {
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { BuyCreditsButton } from '../BuyCreditsButton/BuyCreditsButton';
 import { isPayingUser } from '../NavigationBar/helpers/getPlanLabel';
+import { aiCreditsExhaustedCopyKey } from './aiCreditsExhaustedCopy';
 import sharedStyles from '../../styles/shared.module.css';
 import { compressImageForUpload } from '../../lib/image/compressImageForUpload';
 import AssistantMarkdown from '../../pages/Chat/AssistantMarkdown';
@@ -1207,6 +1208,8 @@ export default function ChatPanel({
 
   const showScrollPill = userScrolledAway && isLoading;
 
+  const aiCreditsExhaustedKey = aiCreditsExhaustedCopyKey(userLocals?.locals);
+
   return (
     <>
       {(showConsentModal ||
@@ -1251,7 +1254,7 @@ export default function ChatPanel({
                   )}
                   {aiCreditsExhausted && (
                     <output className={styles.aiCreditsNotice}>
-                      {t('aiCreditsExhausted')}{' '}
+                      {t(aiCreditsExhaustedKey)}{' '}
                       <BuyCreditsButton
                         source="credits_chat"
                         variant="secondary"
@@ -1381,7 +1384,7 @@ export default function ChatPanel({
               )}
               {aiCreditsExhausted && (
                 <output className={styles.aiCreditsNotice}>
-                  {t('aiCreditsExhausted')}{' '}
+                  {t(aiCreditsExhaustedKey)}{' '}
                   <BuyCreditsButton source="credits_chat" variant="secondary" />
                 </output>
               )}

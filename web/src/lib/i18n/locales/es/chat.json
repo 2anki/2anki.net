@@ -111,5 +111,7 @@
     "keepReading": "Tus chats anteriores siguen aquí para leerlos.",
     "seePlans": "Ver planes"
   },
-  "aiCreditsExhausted": "Te has quedado sin créditos de IA. Una recarga única, sin suscripción, alcanza para varios mazos más y es válida durante 90 días. O espera a que se restablezcan gratis."
+  "aiCreditsExhausted": "Te has quedado sin créditos de IA. Una recarga única, sin suscripción, alcanza para varios mazos más y es válida durante 90 días. O espera a que se restablezcan gratis.",
+  "aiCreditsExhaustedPlan": "Te has quedado sin créditos de IA. Una recarga única alcanza para varios mazos más y es válida durante 90 días. O espera a que se restablezcan los créditos de tu plan.",
+  "aiCreditsExhaustedPass": "Los créditos de IA de tu pase se han agotado. Una recarga única alcanza para varios mazos más."
 }

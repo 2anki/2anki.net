@@ -111,5 +111,7 @@
     "keepReading": "Tes anciennes discussions restent lisibles ici.",
     "seePlans": "Voir les offres"
   },
-  "aiCreditsExhausted": "Tu n'as plus de crédits IA. Une recharge unique, sans abonnement, suffit pour plusieurs paquets de plus et reste valable 90 jours. Ou attends ta réinitialisation gratuite."
+  "aiCreditsExhausted": "Tu n'as plus de crédits IA. Une recharge unique, sans abonnement, suffit pour plusieurs paquets de plus et reste valable 90 jours. Ou attends ta réinitialisation gratuite.",
+  "aiCreditsExhaustedPlan": "Tu n'as plus de crédits IA. Une recharge unique suffit pour plusieurs paquets de plus et reste valable 90 jours. Ou attends la réinitialisation des crédits de ton forfait.",
+  "aiCreditsExhaustedPass": "Les crédits IA de ton pass sont épuisés. Une recharge unique suffit pour plusieurs paquets de plus."
 }

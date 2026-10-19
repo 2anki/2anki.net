@@ -111,5 +111,7 @@
     "keepReading": "Suas conversas anteriores continuam aqui para leitura.",
     "seePlans": "Ver planos"
   },
-  "aiCreditsExhausted": "Você ficou sem créditos de IA. Uma recarga única, sem assinatura, dá para vários baralhos a mais e vale por 90 dias. Ou espere pela redefinição gratuita."
+  "aiCreditsExhausted": "Você ficou sem créditos de IA. Uma recarga única, sem assinatura, dá para vários baralhos a mais e vale por 90 dias. Ou espere pela redefinição gratuita.",
+  "aiCreditsExhaustedPlan": "Você ficou sem créditos de IA. Uma recarga única dá para vários baralhos a mais e vale por 90 dias. Ou espere pela redefinição dos créditos do seu plano.",
+  "aiCreditsExhaustedPass": "Os créditos de IA do seu passe acabaram. Uma recarga única dá para vários baralhos a mais."
 }
