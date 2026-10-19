@@ -346,6 +346,54 @@ describe('renderNotionBlocks — nested lists', () => {
     );
     expect(out.html).not.toContain('deep-child');
   });
+
+  it('skips an empty coloured bullet with no children (no empty <li>)', async () => {
+    const empty: NotionRenderableBlock = {
+      type: 'bulleted_list_item',
+      bulleted_list_item: { rich_text: [], color: 'red' },
+    };
+    const out = await renderNotionBlocks([empty], noChildren);
+    expect(out.html).toBe('');
+  });
+
+  it('wraps only the text of a coloured bullet, not its nested children', async () => {
+    const parent: NotionRenderableBlock = {
+      type: 'bulleted_list_item',
+      id: 'c1',
+      has_children: true,
+      bulleted_list_item: {
+        rich_text: [{ plain_text: 'parent' }],
+        color: 'red',
+      },
+    };
+    const fetch = fetcherFor({ c1: [bullet('kid')] });
+    const out = await renderNotionBlocks([parent], fetch);
+    expect(out.html).toBe(
+      '<ul><li><span class="n2a-highlight-red" style="color: #E03E3E">parent</span>' +
+        '<ul><li>kid</li></ul></li></ul>'
+    );
+  });
+
+  it('renders a toggle child of a list item as <details> inside the <li>', async () => {
+    const fetch = fetcherFor({
+      p: [
+        {
+          id: 'tog',
+          type: 'toggle',
+          has_children: true,
+          toggle: { rich_text: [{ plain_text: 'T' }] },
+        },
+      ],
+      tog: [para('ans')],
+    });
+    const out = await renderNotionBlocks(
+      [bullet('point', { id: 'p', has_children: true })],
+      fetch
+    );
+    expect(out.html).toBe(
+      '<ul><li>point<details><summary>T</summary><p>ans</p></details></li></ul>'
+    );
+  });
 });
 
 describe('renderNotionBlocks — media', () => {
