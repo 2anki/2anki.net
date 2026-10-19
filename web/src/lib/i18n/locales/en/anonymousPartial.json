@@ -1,9 +1,11 @@
 {
   "gateAria": "Create a free account to download your deck",
-  "gateHeadline": "Your first {{count}} cards are ready",
+  "gateHeadlineAll": "All {{total}} cards are ready",
+  "gateHeadlineCapped": "Your first {{monthly}} cards are ready",
   "gateBody": "Create a free account to download them. Up to {{monthly}} cards a month, free.",
   "gateContext": "This file made {{total}} cards.",
-  "gateLive": "Your {{count}} cards are ready. Create a free account to download them.",
+  "gateLiveAll": "All {{total}} cards are ready. Create a free account to download them.",
+  "gateLiveCapped": "Your first {{monthly}} cards are ready. Create a free account to download them.",
   "preparing": "Preparing your download",
   "readyBody": "You're signed in. Download your deck below.",
   "expiredHeadline": "This deck is no longer saved",

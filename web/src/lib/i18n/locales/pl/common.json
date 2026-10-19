@@ -163,7 +163,8 @@
       "or": "lub",
       "chooseFiles": "Wybierz pliki",
       "csvHint": "Nazwij kolumny front i back (albo question i answer), żeby 2anki poprawnie je zmapowało — inaczej użyje pierwszej kolumny jako przodu, a drugiej jako tyłu.",
-      "folderHint": "Foldery też działają — jeśli przeglądarka rozpakowała eksport z Notion, upuść cały folder."
+      "folderHint": "Foldery też działają — jeśli przeglądarka rozpakowała eksport z Notion, upuść cały folder.",
+      "anonCapHint": "Bez konta otrzymujesz do {{cap}} fiszek na konwersję. Darmowe konto daje {{monthly}} fiszek miesięcznie."
     },
     "form": {
       "makingDeck": "Tworzenie Twojej talii…",

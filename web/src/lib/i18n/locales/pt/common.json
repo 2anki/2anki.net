@@ -161,7 +161,8 @@
       "or": "ou",
       "chooseFiles": "Escolher arquivos",
       "csvHint": "Nomeie suas colunas como front e back (ou question e answer) para que o 2anki mapeie certo — caso contrário, ele usa a primeira coluna como frente e a segunda como verso.",
-      "folderHint": "Pastas também funcionam — se o navegador descompactou uma exportação do Notion, solte a pasta inteira."
+      "folderHint": "Pastas também funcionam — se o navegador descompactou uma exportação do Notion, solte a pasta inteira.",
+      "anonCapHint": "Sem conta, você recebe até {{cap}} cartões por conversão. Uma conta gratuita libera {{monthly}} cartões por mês."
     },
     "form": {
       "makingDeck": "Criando seu baralho...",

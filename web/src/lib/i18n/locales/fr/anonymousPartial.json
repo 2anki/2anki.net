@@ -1,9 +1,11 @@
 {
   "gateAria": "Crée un compte gratuit pour télécharger ton paquet",
-  "gateHeadline": "Tes {{count}} premières cartes sont prêtes",
+  "gateHeadlineAll": "Tes {{total}} cartes sont prêtes",
+  "gateHeadlineCapped": "Tes {{monthly}} premières cartes sont prêtes",
   "gateBody": "Crée un compte gratuit pour les télécharger. Jusqu'à {{monthly}} cartes par mois, gratuitement.",
   "gateContext": "Ce fichier a produit {{total}} cartes.",
-  "gateLive": "Tes {{count}} cartes sont prêtes. Crée un compte gratuit pour les télécharger.",
+  "gateLiveAll": "Tes {{total}} cartes sont prêtes. Crée un compte gratuit pour les télécharger.",
+  "gateLiveCapped": "Tes {{monthly}} premières cartes sont prêtes. Crée un compte gratuit pour les télécharger.",
   "preparing": "Préparation de ton téléchargement",
   "readyBody": "Tu es connecté. Télécharge ton paquet ci-dessous.",
   "expiredHeadline": "Ce paquet n'est plus enregistré",
