@@ -349,7 +349,7 @@
     "explore": {
       "heading": "Make better decks",
       "sub": "Three settings worth knowing about.",
-      "mcqBody": "Turn on MCQ and your next conversion includes multiple-choice cards alongside standard ones.",
+      "mcqBody": "Turn on MCQ and any question you marked as multiple choice, with one option checked or one bullet bolded, converts to a multiple-choice card. It converts what you marked, it does not write new ones.",
       "mcqCta": "Turn on MCQ",
       "photoBody": "Snap a textbook page, lecture slide, or handwritten notes — 2anki builds the cards from the image.",
       "freePhotoHint": "Free plan: 5 photos per month",

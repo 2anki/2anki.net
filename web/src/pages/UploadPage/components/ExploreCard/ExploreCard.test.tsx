@@ -64,11 +64,14 @@ describe('ExploreCard', () => {
     expect(screen.getByText('Deck defaults')).toBeInTheDocument();
   });
 
-  it('describes MCQ as a Card Options toggle', () => {
+  it('describes MCQ as converting source-marked questions, not generating new ones', () => {
     renderCard({ paying: false });
     expect(
-      screen.getByText(/multiple-choice cards alongside standard ones/i)
+      screen.getByText(/one option checked or one bullet bolded/i)
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/your next conversion includes multiple-choice cards/i)
+    ).not.toBeInTheDocument();
   });
 
   it('mentions image-to-cards in the Photo to deck row', () => {
