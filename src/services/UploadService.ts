@@ -136,6 +136,7 @@ import {
   isPdfPasswordSentinel,
   parsePdfPasswordSentinel,
 } from '../lib/pdf/pdfPasswordSentinel';
+import { isPdfPageRangeError } from '../lib/pdf/pdfPageRange';
 import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
   aiCreditsExhaustedWarningText,
@@ -1377,6 +1378,11 @@ class UploadService {
           code: 'upload_incomplete',
           message:
             'Your upload didn’t finish, so there was nothing to convert. Upload the file again.',
+        });
+      } else if (isPdfPageRangeError(err)) {
+        return res.status(400).json({
+          code: 'pdf_page_range',
+          message: err.message,
         });
       } else if (err instanceof Error && isPdfPasswordSentinel(err.message)) {
         const filename = parsePdfPasswordSentinel(err.message) ?? 'your file';

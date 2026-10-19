@@ -124,6 +124,7 @@ const MESSAGE_IS_REASON_NAMES = [
   'ImageOnlyContentError',
   'EpubTooLargeError',
   'NotionDatabaseColumnsError',
+  'PdfPageRangeError',
 ] as const;
 
 const carriesItsOwnReason = (error: unknown): error is Error =>
@@ -165,6 +166,7 @@ export type JobFailureReasonCode =
   | 'already_anki_deck'
   | 'pdf_password'
   | 'pdf_unreadable'
+  | 'pdf_page_range'
   | 'docx_unreadable'
   | 'no_highlights'
   | 'epub_too_large'
@@ -220,6 +222,9 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
   }
   if (hasName(error, 'NotionDatabaseColumnsError')) {
     return 'notion_database_columns';
+  }
+  if (hasName(error, 'PdfPageRangeError')) {
+    return 'pdf_page_range';
   }
   if (isNoHighlightsError(error)) {
     return 'no_highlights';

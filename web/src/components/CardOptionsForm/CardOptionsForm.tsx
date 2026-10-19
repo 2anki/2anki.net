@@ -300,6 +300,7 @@ function computeSnapshot(values: {
   clozeName: string;
   inputName: string;
   userInstructions: string;
+  pdfPageRange: string;
   checkboxValues: Record<string, boolean>;
   mcqEnabled: boolean;
   mcqTtsQuestion: string;
@@ -447,6 +448,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         getLocalStorageValue('user-instructions', '', settings)
       )
     );
+    const [pdfPageRange, setPdfPageRange] = useState(
+      getLocalStorageValue('pdf-page-range', '', settings)
+    );
     const [instructionsOpen, setInstructionsOpen] = useState(
       window.location.hash === '#pdf-ai'
     );
@@ -550,6 +554,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       setUserInstructions(
         normalizeStoredInstructions(localStorage.getItem('user-instructions'))
       );
+      setPdfPageRange(localStorage.getItem('pdf-page-range') ?? '');
       setMcqEnabled(
         (localStorage.getItem('mcq-enabled') ??
           DEFAULT_MCQ_ENABLED.toString()) === 'true'
@@ -599,6 +604,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
             'user-instructions',
             (value) => setUserInstructions(normalizeStoredInstructions(value)),
           ],
+          ['pdf-page-range', setPdfPageRange],
           ['mcq-tts-question', setMcqTtsQuestion],
           ['mcq-tts-correct-answer', setMcqTtsCorrectAnswer],
           ['mcq-tts-extra', setMcqTtsExtra],
@@ -673,6 +679,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           clozeName,
           inputName,
           userInstructions,
+          pdfPageRange,
           checkboxValues,
           mcqEnabled,
           mcqTtsQuestion,
@@ -699,6 +706,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         clozeName,
         inputName,
         userInstructions,
+        pdfPageRange,
         checkboxValues,
         mcqEnabled,
         mcqTtsQuestion,
@@ -770,6 +778,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       setClozeName('');
       setInputName('');
       setUserInstructions('');
+      setPdfPageRange('');
       setMcqEnabled(DEFAULT_MCQ_ENABLED);
       setMcqTtsQuestion(DEFAULT_MCQ_TTS_LANG);
       setMcqTtsCorrectAnswer(DEFAULT_MCQ_TTS_LANG);
@@ -812,6 +821,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       payload['text-align'] = textAlign;
       payload['page-emoji'] = pageEmoji;
       payload['user-instructions'] = userInstructions;
+      payload['pdf-page-range'] = pdfPageRange;
       payload['mcq-enabled'] = mcqEnabled.toString();
       payload['mcq-tts-question'] = mcqTtsQuestion;
       payload['mcq-tts-correct-answer'] = mcqTtsCorrectAnswer;
@@ -962,6 +972,31 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           />
         </details>
       </fieldset>
+    );
+
+    const pdfPageRangeField = (
+      <div className={fieldStyles.section} id="pdf-page-range">
+        <label
+          htmlFor="pdf-page-range-input"
+          className={fieldStyles.sectionLabel}
+        >
+          {t('cardOptions.pdfPageRange.label')}
+        </label>
+        <input
+          id="pdf-page-range-input"
+          name="pdf-page-range"
+          className={fieldStyles.deckInput}
+          placeholder={t('cardOptions.pdfPageRange.placeholder')}
+          value={pdfPageRange}
+          onChange={(e) => {
+            setPdfPageRange(e.target.value);
+            saveValueInLocalStorage('pdf-page-range', e.target.value, pageId);
+          }}
+        />
+        <p className={fieldStyles.sectionHint}>
+          {t('cardOptions.pdfPageRange.hint')}
+        </p>
+      </div>
     );
 
     const showResetButton = !hideActions && pageId == null;
@@ -1197,6 +1232,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                       badge={PREMIUM_KEYS.has(o.key) ? premiumBadge : undefined}
                     />
                   ))}
+                  {isPdfAiGroup && pdfPageRangeField}
                   {isPdfAiGroup &&
                     (checkboxValues['pdf-page-pairs'] ?? false) &&
                     (checkboxValues['claude-ai-flashcards'] ?? false) &&

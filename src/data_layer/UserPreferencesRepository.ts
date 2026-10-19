@@ -46,6 +46,7 @@ export type CardOptions = Partial<{
   'process-pdfs': string;
   'pdf-extract-text': string;
   'pdf-page-pairs': string;
+  'pdf-page-range': string;
   'download-pdfs': string;
   'markdown-nested-bullet-points': string;
   'disable-indented-bullets': string;
@@ -129,6 +130,7 @@ export const ALLOWED_CARD_OPTION_KEYS = new Set([
   'process-pdfs',
   'pdf-extract-text',
   'pdf-page-pairs',
+  'pdf-page-range',
   'download-pdfs',
   'markdown-nested-bullet-points',
   'disable-indented-bullets',

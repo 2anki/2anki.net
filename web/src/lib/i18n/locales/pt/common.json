@@ -829,6 +829,11 @@
     "comprehensiveHint": "Com um documento longo isso pode gerar um baralho enorme. Para menos cartões e mais completos, defina o tamanho do cartão como Detalhado.",
     "comprehensiveHintLink": "Ir para Tamanho do cartão",
     "pagePairsAiNote": "Duas páginas formam um cartão está ativado, então um envio apenas de PDFs ignora a conversão com IA. Cada duas páginas formam um cartão de imagem.",
+    "pdfPageRange": {
+      "label": "Páginas",
+      "placeholder": "ex. 12-30, 45",
+      "hint": "Converter apenas estas páginas. Use números e intervalos como 12-30, 45. Deixe em branco para converter o PDF inteiro."
+    },
     "mcq": {
       "heading": "Perguntas de múltipla escolha (MCQ)",
       "aria": "Ativar perguntas de múltipla escolha",

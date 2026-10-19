@@ -416,6 +416,7 @@ describe('SettingsController', () => {
       'process-pdfs': 'true',
       'pdf-extract-text': 'false',
       'pdf-page-pairs': 'false',
+      'pdf-page-range': '',
       'download-pdfs': 'false',
       'page-emoji': 'first_emoji',
       'image-quiz-html-to-anki': 'false',
