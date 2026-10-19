@@ -104,12 +104,18 @@ function startsNewMarkerItem(dedentedLine: string): boolean {
   );
 }
 
-// A document that carries a `##`+ heading is heading-body shaped: its *, +, and
-// ordered list lines belong on a card back, so the new markers decline and only
-// guessMarkdownCards owns it. `-` is intentionally unaffected — a `## Chapter`
-// over a dash list still yields one card per dash item, as it did before.
-function allowsNewMarkers(body: string): boolean {
-  return !SUBHEADING_REGEX.test(body);
+// The new markers (*, +, ordered) are enabled only for a document that is
+// unambiguously one of their lists: no `##`+ heading (that is heading-body
+// shape, whose list lines belong on a card back) and no column-0 `-` front
+// (that is a dash-style document, where a `*`/`+`/ordered line is sub-content,
+// not a separate card). Every other document then behaves exactly as before:
+// `-` still starts cards, and the rest falls through to guessMarkdownCards.
+function documentHasSubheading(body: string): boolean {
+  return SUBHEADING_REGEX.test(body);
+}
+
+function hasColumnZeroDashFront(rawLines: string[]): boolean {
+  return rawLines.some((line) => DASH_ITEM_REGEX.test(line));
 }
 
 // A YAML front-matter fence is a run of dashes. Without stripping it, the
@@ -166,8 +172,10 @@ export const handleNestedBulletPointsInMarkdown = (
 
   const withoutAside = body.replace(/^<\/?aside[^>]*>\s*$/gim, '');
   const indent = commonIndent(withoutAside);
-  const newMarkersAllowed = allowsNewMarkers(dedent(withoutAside));
   const rawLines = withoutAside.split('\n');
+  const newMarkersAllowed =
+    !documentHasSubheading(dedent(withoutAside)) &&
+    !hasColumnZeroDashFront(rawLines);
   let isCreating = false;
   let currentFront = '';
   let currentBack = '';

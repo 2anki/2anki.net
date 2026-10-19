@@ -276,7 +276,7 @@ describe('handleNestedBulletPointsInMarkdown', () => {
 
     it('does not treat a column-0 emphasis span as a new card front', () => {
       const contents = [
-        '- Question one',
+        '* Question one',
         '    first back line',
         '*important closing note*',
       ].join('\n');
@@ -285,6 +285,34 @@ describe('handleNestedBulletPointsInMarkdown', () => {
 
       expect(decks[0].cards).toHaveLength(1);
       expect(decks[0].cards[0].back).toContain('important closing note');
+    });
+
+    it('turns off new markers when the document has a column-0 - front', () => {
+      const contents = [
+        '- What are the steps?',
+        '1. step one',
+        '2. step two',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(1);
+      expect(decks[0].cards[0].name).toContain('What are the steps');
+      expect(decks[0].cards[0].back).toContain('step one');
+      expect(decks[0].cards[0].back).toContain('step two');
+    });
+
+    it('keeps a * or + line under a dash item on the back, not a new card', () => {
+      const contents = [
+        '- A dash question',
+        '* star sub-point',
+        '+ plus sub-point',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(1);
+      expect(decks[0].cards[0].name).toContain('A dash question');
     });
 
     it('treats a 1) numbered marker as a card front', () => {

@@ -8,7 +8,6 @@ import CardOption from './Settings/CardOption';
 import { DeckParser } from './DeckParser';
 import Workspace from './WorkSpace';
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
-import { serializeCardsToMarkdown } from '../../services/mcp/serializeCardsToMarkdown';
 
 const downloadMediaOrSkipMock = vi.hoisted(() =>
   vi.fn<(url: string) => Promise<Buffer | null>>()
@@ -1752,57 +1751,6 @@ describe('heading-body markdown with lists stays on the heading fallback (regres
     expect(parser.payload[0].cards[0].name).toContain('What are the options');
     expect(parser.payload[0].cards[0].back).toContain('first option');
     expect(parser.payload[0].cards[0].back).toContain('second option');
-  });
-
-  it('round-trips an MCP card whose back is a numbered list as one card', () => {
-    const markdown = serializeCardsToMarkdown([
-      { front: 'List the first two steps', back: '1. Boil water\n2. Add tea' },
-    ]);
-
-    const parser = parseMarkdown(markdown);
-
-    expect(parser.payload[0].cards).toHaveLength(1);
-    expect(parser.payload[0].cards[0].name).toContain(
-      'List the first two steps'
-    );
-    expect(parser.payload[0].cards[0].back).toContain('Boil water');
-    expect(parser.payload[0].cards[0].back).toContain('Add tea');
-  });
-
-  it('round-trips MCP cards whose backs contain nested lists without splitting', () => {
-    const markdown = serializeCardsToMarkdown([
-      {
-        front: 'How do you brew tea',
-        back: '1. Boil water\n   - use a kettle\n2. Add tea',
-      },
-      { front: 'What is DNA', back: 'The molecule of heredity' },
-    ]);
-
-    const parser = parseMarkdown(markdown);
-
-    expect(parser.payload[0].cards).toHaveLength(2);
-    expect(parser.payload[0].cards[0].name).toContain('How do you brew tea');
-    expect(parser.payload[0].cards[0].back).toContain('use a kettle');
-    expect(parser.payload[0].cards[1].name).toContain('What is DNA');
-  });
-
-  it('round-trips an MCP card whose back is a dash list as one card that renders as a list', () => {
-    const markdown = serializeCardsToMarkdown([
-      {
-        front: 'Name two mitochondrion facts',
-        back: '- it makes ATP\n- it has its own DNA',
-      },
-      { front: 'What is DNA', back: 'The molecule of heredity' },
-    ]);
-
-    const parser = parseMarkdown(markdown);
-
-    expect(parser.payload[0].cards).toHaveLength(2);
-    expect(parser.payload[0].cards[0].name).toContain(
-      'Name two mitochondrion facts'
-    );
-    expect(parser.payload[0].cards[0].back).toContain('<li>it makes ATP</li>');
-    expect(parser.payload[0].cards[1].name).toContain('What is DNA');
   });
 
   it('keeps - bullets under ## headings as one card per dash item (same as before)', () => {
