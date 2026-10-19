@@ -11,7 +11,7 @@
     },
     "all": {
       "label": "Usar todas as listas toggle",
-      "description": "Puxa toggles de qualquer lugar da página, inclusive os que estão dentro de listas, callouts ou colunas. Desligado, só os toggles de nível superior viram cartões."
+      "description": "Em exportações do Notion enviadas, puxa toggles de qualquer lugar da página, inclusive os que estão dentro de listas, callouts ou colunas. Desligado, só os toggles de nível superior viram cartões."
     },
     "paragraph": {
       "label": "Usar texto simples no verso",
@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "No máximo um toggle por cartão",
-      "description": "Cada toggle de nível superior vira um cartão. Um toggle aninhado dentro de outro permanece no verso do cartão principal e não vira um cartão próprio, a não ser que você o selecione com Cherry-pick. Para ter um cartão por toggle, mantenha-os no nível superior em vez de aninhá-los."
+      "description": "Cada toggle de nível superior vira um cartão. Um toggle aninhado dentro de outro permanece no verso do cartão principal e não vira um cartão próprio. Para ter um cartão por toggle, mantenha-os no nível superior em vez de aninhá-los."
     },
     "remove-mp3-links": {
       "label": "Remover links de MP3 dos arquivos de áudio",

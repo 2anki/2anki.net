@@ -11,7 +11,7 @@
     },
     "all": {
       "label": "Utiliser toutes les listes à bascule",
-      "description": "Récupère les bascules partout sur la page, y compris celles dans des listes, encadrés ou colonnes. Désactivé, seules les bascules de premier niveau deviennent des cartes."
+      "description": "Sur les exports Notion importés, récupère les bascules partout sur la page, y compris celles dans des listes, encadrés ou colonnes. Désactivé, seules les bascules de premier niveau deviennent des cartes."
     },
     "paragraph": {
       "label": "Utiliser du texte brut pour le verso",
@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "Maximum une bascule par carte",
-      "description": "Chaque bascule de premier niveau devient une carte. Une bascule imbriquée dans une autre reste au verso de la carte parente et ne devient pas une carte à part, sauf si tu la sélectionnes avec Cherry-pick. Pour obtenir une carte par bascule, garde-les au premier niveau au lieu de les imbriquer."
+      "description": "Chaque bascule de premier niveau devient une carte. Une bascule imbriquée dans une autre reste au verso de la carte parente et ne devient pas une carte à part. Pour obtenir une carte par bascule, garde-les au premier niveau au lieu de les imbriquer."
     },
     "remove-mp3-links": {
       "label": "Retirer les liens MP3 des fichiers audio",

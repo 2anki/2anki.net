@@ -11,7 +11,7 @@
     },
     "all": {
       "label": "Use all toggle lists",
-      "description": "Pull toggles from anywhere on the page, including ones inside lists, callouts or columns. Off, only top-level toggles become cards."
+      "description": "On uploaded Notion exports, pull toggles from anywhere on the page, including ones inside lists, callouts or columns. Off, only top-level toggles become cards."
     },
     "paragraph": {
       "label": "Use plain text for back",
@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "Maximum one toggle per card",
-      "description": "Each top-level toggle becomes one card. A toggle nested inside another stays on the parent card's back, not a card of its own unless you cherry-pick it. To get a card per toggle, keep them at the top level instead of nesting them."
+      "description": "Each top-level toggle becomes one card. A toggle nested inside another stays on the parent card's back, not a card of its own. To get a card per toggle, keep them at the top level instead of nesting them."
     },
     "remove-mp3-links": {
       "label": "Remove MP3 links from audio files",

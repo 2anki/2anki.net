@@ -11,7 +11,7 @@
     },
     "all": {
       "label": "Alle togglelijsten gebruiken",
-      "description": "Haal toggles van overal op de pagina op, ook die in lijsten, callouts of kolommen. Uit: alleen toggles op het hoogste niveau worden kaarten."
+      "description": "Bij geüploade Notion-exports haal je toggles van overal op de pagina op, ook die in lijsten, callouts of kolommen. Uit: alleen toggles op het hoogste niveau worden kaarten."
     },
     "paragraph": {
       "label": "Platte tekst gebruiken voor de achterkant",
@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "Maximaal één toggle per kaart",
-      "description": "Elke toggle op het hoogste niveau wordt één kaart. Een toggle die in een andere is genest, blijft op de achterkant van de bovenliggende kaart en wordt geen eigen kaart, tenzij je hem met Cherry-pick selecteert. Wil je een kaart per toggle, houd ze dan op het hoogste niveau in plaats van ze te nesten."
+      "description": "Elke toggle op het hoogste niveau wordt één kaart. Een toggle die in een andere is genest, blijft op de achterkant van de bovenliggende kaart en wordt geen eigen kaart. Wil je een kaart per toggle, houd ze dan op het hoogste niveau in plaats van ze te nesten."
     },
     "remove-mp3-links": {
       "label": "MP3-links uit audiobestanden verwijderen",

@@ -11,7 +11,7 @@
     },
     "all": {
       "label": "Alle Toggle-Listen verwenden",
-      "description": "Übernimm Toggles von überall auf der Seite, auch solche in Listen, Callouts oder Spalten. Aus: Nur Toggles der obersten Ebene werden zu Karten."
+      "description": "Bei hochgeladenen Notion-Exporten: Übernimm Toggles von überall auf der Seite, auch solche in Listen, Callouts oder Spalten. Aus: Nur Toggles der obersten Ebene werden zu Karten."
     },
     "paragraph": {
       "label": "Reinen Text für die Rückseite verwenden",
@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "Maximal ein Toggle pro Karte",
-      "description": "Jeder Toggle auf oberster Ebene wird zu einer Karte. Ein Toggle, der in einem anderen verschachtelt ist, bleibt auf der Rückseite der übergeordneten Karte und wird keine eigene Karte, außer du pickst ihn mit Cherry-pick heraus. Damit jeder Toggle eine eigene Karte wird, lass sie auf oberster Ebene, statt sie zu verschachteln."
+      "description": "Jeder Toggle auf oberster Ebene wird zu einer Karte. Ein Toggle, der in einem anderen verschachtelt ist, bleibt auf der Rückseite der übergeordneten Karte und wird keine eigene Karte. Damit jeder Toggle eine eigene Karte wird, lass sie auf oberster Ebene, statt sie zu verschachteln."
     },
     "remove-mp3-links": {
       "label": "MP3-Links aus Audiodateien entfernen",
