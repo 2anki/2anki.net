@@ -20,6 +20,27 @@ describe('buildConversionReport', () => {
     });
   });
 
+  it('records skipped database rows as an output-stage entry that does not inflate blocks_skipped', () => {
+    const report = buildConversionReport({ ...baseInput, rowPagesSkipped: 5 });
+
+    expect(report.summary.blocks_skipped).toBe(0);
+    expect(report.entries).toEqual([
+      expect.objectContaining({
+        stage: 'output',
+        reason_code: 'row_pages_skipped',
+        count: 5,
+      }),
+    ]);
+  });
+
+  it('omits the row-pages-skipped entry when none were skipped', () => {
+    const report = buildConversionReport({ ...baseInput, rowPagesSkipped: 0 });
+
+    expect(
+      report.entries.some((e) => e.reason_code === 'row_pages_skipped')
+    ).toBe(false);
+  });
+
   it('aggregates every signal into one accounting', () => {
     const report = buildConversionReport({
       ...baseInput,

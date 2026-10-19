@@ -369,6 +369,64 @@ describe('performConversion — heavy pipeline', () => {
     );
   });
 
+  it('carries the row-page walk skipped count into the stored conversion report', async () => {
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {
+            resolvedDatabasePath: {
+              viaPageLinkSelfHeal: false,
+              rowPageWalk: true,
+              rowPagesSkipped: 3,
+            },
+          },
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return { execute: vi.fn().mockResolvedValue(undefined) };
+    });
+    const completeJobExecute = vi.fn().mockResolvedValue(undefined);
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return { execute: completeJobExecute };
+    });
+
+    await performConversion(mockDatabase, baseRequest);
+
+    const call = completeJobExecute.mock.calls[0];
+    const report = call[call.length - 1];
+    expect(report.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stage: 'output',
+          reason_code: 'row_pages_skipped',
+          count: 3,
+        }),
+      ])
+    );
+  });
+
   it('fails the whole job with the monthly_limit reason when there is no allowance left', async () => {
     (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
       return {

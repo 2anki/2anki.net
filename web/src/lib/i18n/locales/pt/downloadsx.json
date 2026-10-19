@@ -131,6 +131,8 @@
     "reasonDuplicateGuid_one": "1 cartão repete a pergunta de outro cartão neste baralho. O Anki mantém apenas o primeiro e ignora este. Dê a ele uma pergunta diferente e converta de novo.",
     "reasonDuplicateGuid_other": "{{count}} cartões repetem a pergunta de outro cartão neste baralho. O Anki mantém apenas o primeiro de cada grupo e ignora o restante. Mude o texto das perguntas repetidas e converta de novo.",
     "reasonTruncated": "A conversão parou antes do fim da página.",
+    "reasonRowPagesSkipped_one": "1 linha do banco de dados ficou de fora porque a conversão atingiu o limite de linhas.",
+    "reasonRowPagesSkipped_other": "{{count}} linhas do banco de dados ficaram de fora porque a conversão atingiu o limite de linhas.",
     "reasonOversize": "Este baralho tem mais de 100 MB. O AnkiWeb não sincroniza arquivos tão grandes — ele ainda importa no Anki no seu computador.",
     "reasonUnsupported_one": "{{count}} bloco {{type}} ainda não pode virar cartões.",
     "reasonUnsupported_other": "{{count}} blocos {{type}} ainda não podem virar cartões.",

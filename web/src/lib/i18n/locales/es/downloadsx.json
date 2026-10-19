@@ -131,6 +131,8 @@
     "reasonDuplicateGuid_one": "1 tarjeta repite la pregunta de otra tarjeta en este mazo. Anki conserva solo la primera y omite esta. Dale una pregunta diferente y convierte de nuevo.",
     "reasonDuplicateGuid_other": "{{count}} tarjetas repiten la pregunta de otra tarjeta en este mazo. Anki conserva solo la primera de cada grupo y omite el resto. Cambia el texto de las preguntas repetidas y convierte de nuevo.",
     "reasonTruncated": "La conversión se detuvo antes del final de la página.",
+    "reasonRowPagesSkipped_one": "Se omitió 1 fila de la base de datos porque la conversión alcanzó su límite de filas.",
+    "reasonRowPagesSkipped_other": "Se omitieron {{count}} filas de la base de datos porque la conversión alcanzó su límite de filas.",
     "reasonOversize": "Este mazo pesa más de 100 MB. AnkiWeb no sincroniza archivos tan grandes — aun así se puede importar en Anki en tu computadora.",
     "reasonUnsupported_one": "{{count}} bloque {{type}} aún no puede convertirse en tarjetas.",
     "reasonUnsupported_other": "{{count}} bloques {{type}} aún no pueden convertirse en tarjetas.",

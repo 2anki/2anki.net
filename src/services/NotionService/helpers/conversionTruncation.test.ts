@@ -158,6 +158,76 @@ describe('buildNotionConversionSignalPayload', () => {
     });
   });
 
+  it('flags a row-page walk on an otherwise-clean database conversion', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      0,
+      undefined,
+      { viaPageLinkSelfHeal: false, rowPageWalk: true }
+    );
+    expect(JSON.parse(payload as string)).toEqual({
+      code: 'notion_database_resolved',
+      via_page_link_selfheal: false,
+      row_page_walk: true,
+    });
+  });
+
+  it('omits row_page_walk when the database resolved as two-column rows', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      0,
+      undefined,
+      { viaPageLinkSelfHeal: false }
+    );
+    expect(JSON.parse(payload as string).row_page_walk).toBeUndefined();
+  });
+
+  it('records row_pages_skipped on a row-page walk that hit its limit', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      0,
+      undefined,
+      { viaPageLinkSelfHeal: false, rowPageWalk: true, rowPagesSkipped: 5 }
+    );
+    expect(JSON.parse(payload as string)).toEqual({
+      code: 'notion_database_resolved',
+      via_page_link_selfheal: false,
+      row_page_walk: true,
+      row_pages_skipped: 5,
+    });
+  });
+
+  it('omits row_pages_skipped when no rows were skipped', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      0,
+      undefined,
+      { viaPageLinkSelfHeal: false, rowPageWalk: true, rowPagesSkipped: 0 }
+    );
+    expect(JSON.parse(payload as string).row_pages_skipped).toBeUndefined();
+  });
+
+  it('records row_pages_errored separately from skipped rows', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      0,
+      undefined,
+      {
+        viaPageLinkSelfHeal: false,
+        rowPageWalk: true,
+        rowPagesSkipped: 2,
+        rowPagesErrored: 1,
+      }
+    );
+    expect(JSON.parse(payload as string)).toEqual({
+      code: 'notion_database_resolved',
+      via_page_link_selfheal: false,
+      row_page_walk: true,
+      row_pages_skipped: 2,
+      row_pages_errored: 1,
+    });
+  });
+
   it('adds via_page_link_selfheal onto the guessed-columns payload rather than competing with it', () => {
     const payload = buildNotionConversionSignalPayload(
       undefined,

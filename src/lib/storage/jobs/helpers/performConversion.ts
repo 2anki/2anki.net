@@ -411,6 +411,7 @@ export default async function performConversion(
         truncation: bl.truncation,
         apkgSizeMegabytes: size,
         duplicateGuidCount: countDuplicateGuids(ws.location),
+        rowPagesSkipped: bl.resolvedDatabasePath?.rowPagesSkipped,
       })
     );
 

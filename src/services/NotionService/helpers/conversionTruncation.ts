@@ -38,6 +38,9 @@ export interface GuessedColumnMapping {
 
 export interface ResolvedDatabasePath {
   viaPageLinkSelfHeal: boolean;
+  rowPageWalk?: boolean;
+  rowPagesSkipped?: number;
+  rowPagesErrored?: number;
 }
 
 export function isTruncatedBlockFetch(
@@ -117,6 +120,9 @@ export function buildNotionConversionSignalPayload(
     front_field?: string;
     back_field?: string;
     via_page_link_selfheal?: boolean;
+    row_page_walk?: boolean;
+    row_pages_skipped?: number;
+    row_pages_errored?: number;
     unsupported_blocks?: Record<string, number>;
     rule?: string;
     forbidden_blocks?: number;
@@ -155,6 +161,21 @@ export function buildNotionConversionSignalPayload(
 
   if (resolvedDatabasePath != null) {
     payload.via_page_link_selfheal = resolvedDatabasePath.viaPageLinkSelfHeal;
+    if (resolvedDatabasePath.rowPageWalk) {
+      payload.row_page_walk = true;
+    }
+    if (
+      resolvedDatabasePath.rowPagesSkipped != null &&
+      resolvedDatabasePath.rowPagesSkipped > 0
+    ) {
+      payload.row_pages_skipped = resolvedDatabasePath.rowPagesSkipped;
+    }
+    if (
+      resolvedDatabasePath.rowPagesErrored != null &&
+      resolvedDatabasePath.rowPagesErrored > 0
+    ) {
+      payload.row_pages_errored = resolvedDatabasePath.rowPagesErrored;
+    }
   }
 
   if (hasUnsupportedBlocks) {

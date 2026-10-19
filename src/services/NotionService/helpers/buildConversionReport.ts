@@ -39,6 +39,7 @@ export interface ConversionReportInput {
   truncation?: ConversionTruncation;
   apkgSizeMegabytes?: number;
   duplicateGuidCount?: number;
+  rowPagesSkipped?: number;
 }
 
 export const MAX_REPORT_ENTRIES = 50;
@@ -112,6 +113,13 @@ export function buildConversionReport(
       count: 1,
     });
   }
+  push({
+    stage: 'output',
+    reason_code: 'row_pages_skipped',
+    human_reason:
+      'Database rows left out because the conversion hit its row limit',
+    count: input.rowPagesSkipped ?? 0,
+  });
   if (
     input.apkgSizeMegabytes != null &&
     input.apkgSizeMegabytes > APKG_SYNC_LIMIT_MB

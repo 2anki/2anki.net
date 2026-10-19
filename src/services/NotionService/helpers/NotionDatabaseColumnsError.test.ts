@@ -6,7 +6,7 @@ import {
 describe('notionDatabaseColumnsReason', () => {
   it('names the single column and asks for a back column', () => {
     expect(notionDatabaseColumnsReason(['Name'])).toBe(
-      'This database has only one column, "Name". Cards need a front and a back column. Add a text column for the back, fill it in, then convert again.'
+      'This database has only one column, "Name". Add a text column for the back and fill it in, or put the card content in toggles inside each row\'s page, then convert again.'
     );
   });
 
@@ -58,7 +58,7 @@ describe('notionDatabaseColumnsReason', () => {
 
   it('falls back to asking for a pick when two or more columns exist and none was requested', () => {
     expect(notionDatabaseColumnsReason(['Term', 'Definition'])).toBe(
-      'Cards need a front and a back column. This database has "Term" and "Definition". Pick one for each, then convert again.'
+      'Cards need a front and a back column. This database has "Term" and "Definition". Pick one for each, or put the card content in toggles inside each row\'s page, then convert again.'
     );
   });
 });

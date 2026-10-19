@@ -29,7 +29,7 @@ export function notionDatabaseColumnsReason(
     return 'This database has no rows yet. Add a row with a front and a back column filled in, then convert again.';
   }
   if (columns.length === 1) {
-    return `This database has only one column, "${columns[0]}". Cards need a front and a back column. Add a text column for the back, fill it in, then convert again.`;
+    return `This database has only one column, "${columns[0]}". Add a text column for the back and fill it in, or put the card content in toggles inside each row's page, then convert again.`;
   }
   const missing = [requested?.frontField, requested?.backField].filter(
     (name): name is string => name != null && !columns.includes(name)
@@ -38,7 +38,7 @@ export function notionDatabaseColumnsReason(
     const noun = missing.length === 1 ? 'no column named' : 'no columns named';
     return `This database has ${noun} ${joinNames(missing, 'or')}. It has ${availableColumns(columns)}. Pick columns it has for the front and the back, then convert again.`;
   }
-  return `Cards need a front and a back column. This database has ${availableColumns(columns)}. Pick one for each, then convert again.`;
+  return `Cards need a front and a back column. This database has ${availableColumns(columns)}. Pick one for each, or put the card content in toggles inside each row's page, then convert again.`;
 }
 
 export class NotionDatabaseColumnsError extends Error {
