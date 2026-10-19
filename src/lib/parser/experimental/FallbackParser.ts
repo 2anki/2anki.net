@@ -207,13 +207,20 @@ class FallbackParser {
   private detectFieldSeparator(segments: string[]): string | null {
     for (const separator of this.fieldSeparators) {
       const withSeparator = segments.filter((segment) =>
-        segment.includes(separator)
+        this.hasFieldSeparator(segment, separator)
       );
       if (withSeparator.length >= segments.length * 0.9) {
         return separator;
       }
     }
     return null;
+  }
+
+  private hasFieldSeparator(segment: string, separator: string): boolean {
+    if (separator === ',') {
+      return /,\S/.test(segment);
+    }
+    return segment.includes(separator);
   }
 
   private rowSegments(contents: string): string[] {

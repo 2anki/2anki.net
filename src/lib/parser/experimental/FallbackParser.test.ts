@@ -276,6 +276,26 @@ describe('FallbackParser conservative rejection of prose and CSV shapes', () => 
     const decks = parser.run({} as any);
     expect(decks).toHaveLength(0);
   });
+
+  it('keeps a semicolon paragraph of comma clauses an empty deck', () => {
+    const content =
+      'First, we mix the flour; second, we add the eggs; finally, we bake it.';
+    const parser = new FallbackParser([
+      { name: 'recipe.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(0);
+  });
+
+  it('keeps a semicolon paragraph of date clauses an empty deck', () => {
+    const content =
+      'In 1990, the wall fell; in 1991, the USSR collapsed; in 1992, the treaty was signed.';
+    const parser = new FallbackParser([
+      { name: 'timeline.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(0);
+  });
 });
 
 describe('FallbackParser .tsv files', () => {
