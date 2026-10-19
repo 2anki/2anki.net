@@ -148,11 +148,12 @@ import {
 import { readEmptyUpload } from '../usecases/uploads/readEmptyUpload';
 import type { EmptyUploadReading } from '../types/EmptyUploadReading';
 import type { RescueCandidate } from '../types/RescueCandidate';
+import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
 import {
-  InMemoryRateLimiter,
-  RateLimiter,
-} from '../lib/rateLimit/InMemoryRateLimiter';
-import { hashIp, resolveClientIp } from '../lib/rateLimit/ipHelpers';
+  hashIp,
+  ipRateLimitBucket,
+  resolveClientIp,
+} from '../lib/rateLimit/ipHelpers';
 
 interface EmptyDeckResponse {
   code: 'empty_export';
@@ -611,7 +612,7 @@ function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
 
 class UploadService {
   private readonly inFlightConversions = new Set<string>();
-  private readonly holdRateLimiter: RateLimiter;
+  private readonly holdRateLimiter: InMemoryRateLimiter;
 
   getUploadsByOwner(owner: number) {
     return this.uploadRepository.getUploadsByOwner(owner);
@@ -630,7 +631,7 @@ class UploadService {
     private readonly photoToFlashcardsUseCase: PhotoToFlashcardsUseCase,
     private readonly aiRequestCostReader: IAiRequestCostReader,
     private readonly heldDeckRepository: IHeldDeckRepository,
-    holdRateLimiter?: RateLimiter
+    holdRateLimiter?: InMemoryRateLimiter
   ) {
     this.holdRateLimiter =
       holdRateLimiter ??
@@ -2224,10 +2225,10 @@ class UploadService {
 
   // One visitor only ever needs their latest unclaimed hold; the earlier ones
   // can never be claimed once a newer file is stored, so they are swept to keep
-  // storage flat. The object goes first and the row only follows a confirmed
-  // delete, mirroring the nightly sweep so a failed object delete keeps its row
-  // for the next pass rather than orphaning it. A prune failure never costs the
-  // visitor the hold that was just written.
+  // storage flat. The row goes first, guarded by claimed_at IS NULL, and only a
+  // row the delete actually removed has its object deleted. A claim landing in
+  // another tab between the lookup and here sets claimed_at, so that row is left
+  // alone and keeps its file rather than losing it to a stale snapshot.
   private async pruneSupersededHolds(
     holds: ExpiredHeldDeck[],
     storage: StorageHandler
@@ -2235,24 +2236,21 @@ class UploadService {
     if (holds.length === 0) {
       return;
     }
-    const removed: number[] = [];
+    const removedIds = await this.heldDeckRepository.deleteUnclaimedByIds(
+      holds.map((hold) => hold.id)
+    );
+    if (removedIds.length === 0) {
+      return;
+    }
+    const removed = new Set(removedIds);
     for (const hold of holds) {
-      if (await storage.delete(hold.storageKey)) {
-        removed.push(hold.id);
+      if (removed.has(hold.id)) {
+        await storage.delete(hold.storageKey);
       }
     }
-    try {
-      await this.heldDeckRepository.deleteByIds(removed);
-      if (removed.length > 0) {
-        console.info('[UploadService] pruned superseded held decks', {
-          count: removed.length,
-        });
-      }
-    } catch (error) {
-      console.error('[UploadService] could not prune superseded holds', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    console.info('[UploadService] pruned superseded held decks', {
+      count: removedIds.length,
+    });
   }
 
   private async holdDeckForSignup(
@@ -2274,8 +2272,22 @@ class UploadService {
     // The anon_id cookie is client-controlled, so a script can mint a fresh id
     // per request and defeat the per-anon prune below. The per-IP daily cap is
     // the backstop: past it the visitor falls back to the limit wall instead of
-    // writing another source file to storage (#4802).
-    if (!this.holdRateLimiter.check(hashIp(resolveClientIp(req)))) {
+    // writing another source file to storage (#4802). The IP is bucketed by /64
+    // first so one IPv6 prefix cannot rotate addresses to burn the budget.
+    const decision = this.holdRateLimiter.evaluate(
+      hashIp(ipRateLimitBucket(resolveClientIp(req)))
+    );
+    if (decision === 'global') {
+      console.info(
+        '[UploadService] held deck throttled by global daily budget',
+        { requestId: res.locals.requestId }
+      );
+      throw new AnonymousCardCapError(
+        cardCount + cardsHeldBack,
+        ANONYMOUS_CARD_CAP
+      );
+    }
+    if (decision === 'per_key') {
       console.info('[UploadService] held deck throttled by per-IP daily cap', {
         requestId: res.locals.requestId,
       });
@@ -2284,11 +2296,13 @@ class UploadService {
         ANONYMOUS_CARD_CAP
       );
     }
-    const supersededHolds =
-      await this.heldDeckRepository.findUnclaimedByAnonId(anonId);
     const storage = new StorageHandler();
     const storageKey = `held/${randomUUID()}`;
+    // The lookup and the prune share the fallback with the write: a DB error in
+    // any of them ends in the limit wall, never a 500 bubbling to the client.
     try {
+      const supersededHolds =
+        await this.heldDeckRepository.findUnclaimedByAnonId(anonId);
       await storage.uploadFile(storageKey, bytes);
       await this.heldDeckRepository.insert({
         storageKey,
@@ -2298,6 +2312,7 @@ class UploadService {
         cardsHeldBack,
         expiresAt: new Date(Date.now() + HELD_DECK_TTL_MS),
       });
+      await this.pruneSupersededHolds(supersededHolds, storage);
     } catch (error) {
       console.error('[UploadService] could not hold the deck for signup', {
         requestId: res.locals.requestId,
@@ -2308,7 +2323,6 @@ class UploadService {
         ANONYMOUS_CARD_CAP
       );
     }
-    await this.pruneSupersededHolds(supersededHolds, storage);
     track('conversion_succeeded', {
       userId: null,
       anonymousId: anonId,

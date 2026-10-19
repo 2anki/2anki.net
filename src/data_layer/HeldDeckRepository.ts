@@ -27,6 +27,8 @@ export interface IHeldDeckRepository {
   releaseClaim(id: number, claimedBy: number): Promise<void>;
   findExpired(now: Date, claimedBefore: Date): Promise<ExpiredHeldDeck[]>;
   deleteByIds(ids: number[]): Promise<void>;
+  /** Deletes only still-unclaimed rows among the ids; returns the ids removed. */
+  deleteUnclaimedByIds(ids: number[]): Promise<number[]>;
 }
 
 export class HeldDeckRepository implements IHeldDeckRepository {
@@ -165,6 +167,24 @@ export class HeldDeckRepository implements IHeldDeckRepository {
     }
     await this.buildDeleteByIdsQuery(ids);
   }
+
+  buildDeleteUnclaimedByIdsQuery(ids: number[]): Knex.QueryBuilder {
+    return this.database(this.table)
+      .whereIn('id', ids)
+      .whereNull('claimed_at')
+      .del()
+      .returning('id');
+  }
+
+  async deleteUnclaimedByIds(ids: number[]): Promise<number[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const deleted = (await this.buildDeleteUnclaimedByIdsQuery(ids)) as {
+      id: number;
+    }[];
+    return deleted.map((row) => row.id);
+  }
 }
 
 export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
@@ -258,6 +278,18 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
         this.rows.splice(i, 1);
       }
     }
+  }
+
+  async deleteUnclaimedByIds(ids: number[]): Promise<number[]> {
+    const removed: number[] = [];
+    for (let i = this.rows.length - 1; i >= 0; i -= 1) {
+      const row = this.rows[i];
+      if (ids.includes(row.id as number) && row.claimed_at == null) {
+        removed.push(row.id as number);
+        this.rows.splice(i, 1);
+      }
+    }
+    return removed;
   }
 }
 

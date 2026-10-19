@@ -104,4 +104,15 @@ describe('HeldDeckRepository generated SQL', () => {
     expect(sql).toBe('delete from "held_decks" where "id" in (?, ?)');
     expect(bindings).toEqual([1, 2]);
   });
+
+  it('prunes only still-unclaimed rows and returns the ids removed', () => {
+    const { sql, bindings } = repository
+      .buildDeleteUnclaimedByIdsQuery([1, 2])
+      .toSQL();
+
+    expect(sql).toBe(
+      'delete from "held_decks" where "id" in (?, ?) and "claimed_at" is null returning "id"'
+    );
+    expect(bindings).toEqual([1, 2]);
+  });
 });

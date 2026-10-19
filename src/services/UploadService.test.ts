@@ -5697,6 +5697,146 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     });
   });
 
+  function requestFromIp(forwardedFor: string): express.Request {
+    const req = buildEligibleRequest(TREATMENT_ID);
+    (req as unknown as { headers: Record<string, string> }).headers = {
+      'x-forwarded-for': forwardedFor,
+    };
+    return req;
+  }
+
+  it('shares one per-IP bucket across addresses in the same IPv6 /64', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 60_000,
+      perKeyMax: 1,
+      globalMax: 100,
+    });
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck }),
+      limiter
+    );
+
+    const first = buildResponse();
+    await service.handleUpload(requestFromIp('2001:db8:1:2::1'), first.res);
+    expect(first.capturedStatus()).toBe(200);
+
+    const second = responseWithRedirect();
+    await service.handleUpload(
+      requestFromIp('2001:db8:1:2:aaaa::9'),
+      second.res
+    );
+    expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(heldDeck.rows).toHaveLength(1);
+  });
+
+  it('logs the global-budget wall separately from the per-IP cap', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 60_000,
+      perKeyMax: 10,
+      globalMax: 1,
+    });
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck }),
+      limiter
+    );
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    try {
+      await service.handleUpload(
+        requestFromIp('198.51.100.1'),
+        buildResponse().res
+      );
+      const second = responseWithRedirect();
+      await service.handleUpload(requestFromIp('198.51.100.2'), second.res);
+
+      expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+      const messages = infoSpy.mock.calls.map(([message]) => message);
+      expect(messages).toContain(
+        '[UploadService] held deck throttled by global daily budget'
+      );
+      expect(messages).not.toContain(
+        '[UploadService] held deck throttled by per-IP daily cap'
+      );
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('keeps a claimed hold and its file when a claim lands mid-prune', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockStorageDelete.mockClear();
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = serviceUnderTest(heldDeck);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+    const first = heldDeck.rows[0];
+    await heldDeck.markClaimed(first.id as number, 7, new Date());
+
+    vi.spyOn(heldDeck, 'findUnclaimedByAnonId').mockResolvedValueOnce([
+      { id: first.id as number, storageKey: first.storage_key },
+    ]);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+
+    expect(heldDeck.rows.some((row) => row.id === first.id)).toBe(true);
+    expect(mockStorageDelete).not.toHaveBeenCalledWith(first.storage_key);
+  });
+
+  it('walls instead of 500ing when the unclaimed lookup fails', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    vi.spyOn(heldDeck, 'findUnclaimedByAnonId').mockRejectedValueOnce(
+      new Error('db down')
+    );
+    const service = serviceUnderTest(heldDeck);
+    const { res, redirectedTo } = responseWithRedirect();
+
+    await service.handleUpload(buildEligibleRequest(TREATMENT_ID), res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(heldDeck.rows).toHaveLength(0);
+  });
+
+  it('walls instead of 500ing when the prune delete fails', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = serviceUnderTest(heldDeck);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+    vi.spyOn(heldDeck, 'deleteUnclaimedByIds').mockRejectedValueOnce(
+      new Error('db down')
+    );
+    const { res, redirectedTo } = responseWithRedirect();
+
+    await service.handleUpload(buildEligibleRequest(TREATMENT_ID), res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+  });
+
   it('never writes a signup hold under an anon_id forged as a plan key', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21 }], 13);

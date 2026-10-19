@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import express from 'express';
-import { resolveClientIp, hashIp } from './ipHelpers';
+import { resolveClientIp, hashIp, ipRateLimitBucket } from './ipHelpers';
 
 function makeReq(
   headers: Record<string, unknown>,
@@ -86,5 +86,53 @@ describe('hashIp', () => {
 
   it('produces different digests for different inputs', () => {
     expect(hashIp('203.0.113.7')).not.toBe(hashIp('203.0.113.8'));
+  });
+});
+
+describe('ipRateLimitBucket', () => {
+  it('passes an IPv4 address through unchanged', () => {
+    expect(ipRateLimitBucket('203.0.113.7')).toBe('203.0.113.7');
+  });
+
+  it('buckets an IPv6 address by its /64 prefix', () => {
+    expect(ipRateLimitBucket('2001:db8:1234:5678:9abc:def0:1234:5678')).toBe(
+      '2001:db8:1234:5678::/64'
+    );
+  });
+
+  it('puts two addresses in the same /64 into one bucket', () => {
+    expect(ipRateLimitBucket('2001:db8:1:2:aaaa:bbbb:cccc:dddd')).toBe(
+      ipRateLimitBucket('2001:db8:1:2:1111:2222:3333:4444')
+    );
+  });
+
+  it('separates addresses from different /64 prefixes', () => {
+    expect(ipRateLimitBucket('2001:db8:1:2::1')).not.toBe(
+      ipRateLimitBucket('2001:db8:1:3::1')
+    );
+  });
+
+  it('expands a compressed IPv6 address before taking the prefix', () => {
+    expect(ipRateLimitBucket('2001:db8::1')).toBe('2001:db8:0:0::/64');
+  });
+
+  it('collapses a dotted IPv4-mapped IPv6 address to the IPv4', () => {
+    expect(ipRateLimitBucket('::ffff:203.0.113.7')).toBe('203.0.113.7');
+  });
+
+  it('collapses a hex IPv4-mapped IPv6 address to the same IPv4', () => {
+    expect(ipRateLimitBucket('::ffff:cb00:7107')).toBe('203.0.113.7');
+  });
+
+  it('strips an IPv6 zone id before bucketing', () => {
+    expect(ipRateLimitBucket('fe80::1%eth0')).toBe('fe80:0:0:0::/64');
+  });
+
+  it("returns 'unknown' for an empty input", () => {
+    expect(ipRateLimitBucket('')).toBe('unknown');
+  });
+
+  it('passes a non-IP string through unchanged', () => {
+    expect(ipRateLimitBucket('unknown')).toBe('unknown');
   });
 });

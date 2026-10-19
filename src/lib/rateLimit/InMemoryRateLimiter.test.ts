@@ -54,4 +54,39 @@ describe('InMemoryRateLimiter', () => {
     expect(limiter.check('ip-b')).toBe(true);
     expect(limiter.check('ip-c')).toBe(false);
   });
+
+  test('evaluate reports a per-key rejection distinctly from an allow', () => {
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 1000,
+      perKeyMax: 1,
+      globalMax: 100,
+      now: () => 0,
+    });
+    expect(limiter.evaluate('ip-a')).toBe('allowed');
+    expect(limiter.evaluate('ip-a')).toBe('per_key');
+  });
+
+  test('evaluate reports a global rejection distinctly from a per-key one', () => {
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 1000,
+      perKeyMax: 10,
+      globalMax: 1,
+      now: () => 0,
+    });
+    expect(limiter.evaluate('ip-a')).toBe('allowed');
+    expect(limiter.evaluate('ip-b')).toBe('global');
+  });
+
+  test('a per-key rejection does not consume the global budget', () => {
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 1000,
+      perKeyMax: 1,
+      globalMax: 2,
+      now: () => 0,
+    });
+    expect(limiter.evaluate('ip-a')).toBe('allowed');
+    expect(limiter.evaluate('ip-a')).toBe('per_key');
+    expect(limiter.evaluate('ip-b')).toBe('allowed');
+    expect(limiter.evaluate('ip-c')).toBe('global');
+  });
 });
