@@ -336,7 +336,12 @@ class BlockHandler implements IBlockRenderer {
       return '';
     }
     this.exporter.addMedia(newName, contents);
-    return `<img src="${newName}" />`;
+    return `<img src="${newName}" />${this.renderImageCaption(image)}`;
+  }
+
+  private renderImageCaption(image: ImageBlockObjectResponse): string {
+    const html = renderTextChildren(image.image.caption, this.settings);
+    return html === '' ? '' : `<figcaption>${html}</figcaption>`;
   }
 
   async embedAudioFile(c: AudioBlockObjectResponse): Promise<string> {
