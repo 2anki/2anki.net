@@ -79,6 +79,29 @@ export const en: EmailStrings = {
     cta: 'Finish signing up',
     signoff: 'The 2anki Team',
   },
+  passEnding: {
+    subject: 'Your {{passLabel}} ends tomorrow',
+    title: 'Your {{passLabel}} ends tomorrow',
+    intro:
+      'Your {{passLabel}} ends in about a day. Here is what happens to your account next, in two versions.',
+    withoutPlanHeading: 'Without a plan',
+    withoutPlan1: 'Tomorrow: the free limit is back. 100 cards a month.',
+    withoutPlan2:
+      'Next week: a lecture that comes out at 140 cards does not convert. It waits for next month, or for another pass.',
+    withoutPlan3: 'Exam week: another pass, bought the night before.',
+    withPlanHeading: 'With Pro',
+    withPlan1: 'Tomorrow: same login, same decks, no gap. No card limit.',
+    withPlan2: 'Next week: every conversion comes out whole.',
+    withPlan3: 'Exam week: nothing to buy.',
+    ctaIntro:
+      'To get the second version, start Pro before your pass ends. Cancel any time.',
+    cta: 'Start Pro',
+    otherPasses:
+      'Prefer another pass? The pricing page has Day and Week passes too. Pay once, nothing recurring.',
+    replyLine:
+      'A conversion not coming out right? Reply to this email. Alexander reads every one.',
+    signoff: 'The 2anki Team',
+  },
   commercialShared: {
     unsubscribe: "Don't want emails like this? Unsubscribe",
   },

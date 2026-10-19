@@ -26,7 +26,7 @@ const variants: Variant[] = [
         <UserProfile
           user={{ name: 'Alex Newcomer', email: 'alex@example.com' }}
         />
-        <PlanDetails subscriptionType="free" />
+        <PlanDetails plan="free" />
         <AccountDeletion />
       </>
     ),
@@ -42,18 +42,18 @@ const variants: Variant[] = [
             email: 'j6y7w6md9k@privaterelay.appleid.com',
           }}
         />
-        <PlanDetails subscriptionType="free" />
+        <PlanDetails plan="free" />
         <AccountDeletion />
       </>
     ),
   },
   {
-    label: 'Premium subscriber — active',
+    label: 'Pro subscriber — active',
     note: 'Active monthly subscription.',
     render: () => (
       <>
         <UserProfile user={{ name: 'Casey Pro', email: 'casey@example.com' }} />
-        <PlanDetails subscriptionType="subscriber" />
+        <PlanDetails plan="pro" />
         <section className={accountStyles.section}>
           <p className={accountStyles.statusLine}>
             $6.00 / month · Renews <strong>15 June 2026</strong>
@@ -69,14 +69,14 @@ const variants: Variant[] = [
     ),
   },
   {
-    label: 'Premium subscriber — legacy $2/mo',
+    label: 'Pro subscriber — legacy $2/mo',
     note: 'Active on the legacy price; about to be told what they’d lose.',
     render: () => (
       <>
         <UserProfile
           user={{ name: 'Dani Legacy', email: 'dani@example.com' }}
         />
-        <PlanDetails subscriptionType="subscriber" />
+        <PlanDetails plan="pro" />
         <section className={accountStyles.section}>
           <p className={accountStyles.statusLine}>
             $2.00 / month · Renews <strong>15 June 2026</strong>
@@ -102,7 +102,7 @@ const variants: Variant[] = [
         <UserProfile
           user={{ name: 'Dani Legacy', email: 'dani@example.com' }}
         />
-        <PlanDetails subscriptionType="subscriber" />
+        <PlanDetails plan="pro" />
         <section className={accountStyles.section}>
           <p className={accountStyles.statusLine}>
             $2.00 / month · Renews <strong>15 June 2026</strong>
@@ -130,7 +130,7 @@ const variants: Variant[] = [
     render: () => (
       <>
         <UserProfile user={{ name: 'Casey Pro', email: 'casey@example.com' }} />
-        <PlanDetails subscriptionType="subscriber" />
+        <PlanDetails plan="pro" />
         <section className={accountStyles.section}>
           <p className={accountStyles.statusLine}>
             $7.99 / month · Renews <strong>15 June 2026</strong>
@@ -153,14 +153,14 @@ const variants: Variant[] = [
     ),
   },
   {
-    label: 'Premium subscriber — scheduled to cancel',
+    label: 'Pro subscriber — scheduled to cancel',
     note: 'Has cancelled; still inside the paid window.',
     render: () => (
       <>
         <UserProfile
           user={{ name: 'Jamie Leaving', email: 'jamie@example.com' }}
         />
-        <PlanDetails subscriptionType="subscriber" />
+        <PlanDetails plan="pro" />
         <section className={accountStyles.section}>
           <p className={accountStyles.statusLine}>
             Ends <strong>15 June 2026</strong>. Access continues until then.
@@ -176,12 +176,38 @@ const variants: Variant[] = [
     render: () => (
       <>
         <UserProfile user={{ name: 'Sam Past', email: 'sam@example.com' }} />
-        <PlanDetails subscriptionType="free" />
+        <PlanDetails plan="free" />
         <section className={accountStyles.section}>
           <p className={accountStyles.statusLineMuted}>
             Ended <strong>1 May 2026</strong>. Previous plan: $6.00 / month.
           </p>
         </section>
+        <AccountDeletion />
+      </>
+    ),
+  },
+  {
+    label: 'Auto Sync subscriber',
+    note: 'Active Auto Sync plan; named as its own product, not Pro.',
+    render: () => (
+      <>
+        <UserProfile
+          user={{ name: 'Morgan Sync', email: 'morgan@example.com' }}
+        />
+        <PlanDetails plan="autoSync" />
+        <AccountDeletion />
+      </>
+    ),
+  },
+  {
+    label: 'Week Pass holder',
+    note: 'Bought a Week Pass; sees the pass name and when it ends.',
+    render: () => (
+      <>
+        <UserProfile
+          user={{ name: 'Robin Rush', email: 'robin@example.com' }}
+        />
+        <PlanDetails plan="weekPass" passExpiresAt="2026-06-15T09:30:00.000Z" />
         <AccountDeletion />
       </>
     ),
@@ -194,7 +220,7 @@ const variants: Variant[] = [
         <UserProfile
           user={{ name: 'Robin Forever', email: 'robin@example.com' }}
         />
-        <PlanDetails subscriptionType="lifetime" />
+        <PlanDetails plan="lifetime" />
         <AccountDeletion />
       </>
     ),

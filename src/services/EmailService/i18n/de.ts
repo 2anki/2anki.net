@@ -82,6 +82,31 @@ export const de: DeepPartial<EmailStrings> = {
     cta: 'Anmeldung abschließen',
     signoff: 'Das 2anki-Team',
   },
+  passEnding: {
+    subject: 'Dein {{passLabel}} endet morgen',
+    title: 'Dein {{passLabel}} endet morgen',
+    intro:
+      'Dein {{passLabel}} endet in etwa einem Tag. Hier ist, was als Nächstes mit deinem Konto passiert, in zwei Varianten.',
+    withoutPlanHeading: 'Ohne Plan',
+    withoutPlan1:
+      'Morgen: Das kostenlose Limit ist zurück. 100 Karten pro Monat.',
+    withoutPlan2:
+      'Nächste Woche: Eine Vorlesung, die 140 Karten ergibt, wird nicht umgewandelt. Sie wartet auf den nächsten Monat oder auf einen weiteren Pass.',
+    withoutPlan3: 'Prüfungswoche: ein weiterer Pass, am Abend zuvor gekauft.',
+    withPlanHeading: 'Mit Pro',
+    withPlan1:
+      'Morgen: gleicher Login, gleiche Stapel, keine Lücke. Kein Kartenlimit.',
+    withPlan2: 'Nächste Woche: Jede Umwandlung kommt vollständig heraus.',
+    withPlan3: 'Prüfungswoche: nichts zu kaufen.',
+    ctaIntro:
+      'Um die zweite Variante zu bekommen, starte Pro, bevor dein Pass endet. Jederzeit kündbar.',
+    cta: 'Pro starten',
+    otherPasses:
+      'Lieber ein anderer Pass? Auf der Preisseite gibt es auch Tages- und Wochenpässe. Einmal zahlen, nichts Wiederkehrendes.',
+    replyLine:
+      'Eine Umwandlung sieht nicht richtig aus? Antworte auf diese E-Mail. Alexander liest jede einzelne.',
+    signoff: 'Das 2anki-Team',
+  },
   commercialShared: {
     unsubscribe: 'Keine E-Mails wie diese? Abmelden',
   },

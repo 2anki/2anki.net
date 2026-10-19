@@ -622,18 +622,33 @@ export class EmailService implements IEmailService {
     const domain = process.env.DOMAIN ?? 'https://2anki.net';
     const ctaUrl = `${domain}/r/email?t=${encodeURIComponent(token)}&c=pass_ending&to=/pricing`;
     const unsubscribeUrl = `${domain}/unsubscribe?uid=${token}`;
-    const markup = PASS_ENDING_TEMPLATE.replaceAll(
-      '{{passLabel}}',
-      escapeHtml(passLabel)
-    )
+    const strings = getEmailStrings(await this.resolveLanguage(to));
+    const copy = strings.passEnding;
+    const markup = PASS_ENDING_TEMPLATE.replace('{{title}}', copy.title)
+      .replace('{{intro}}', copy.intro)
+      .replace('{{withoutPlanHeading}}', copy.withoutPlanHeading)
+      .replace('{{withoutPlan1}}', copy.withoutPlan1)
+      .replace('{{withoutPlan2}}', copy.withoutPlan2)
+      .replace('{{withoutPlan3}}', copy.withoutPlan3)
+      .replace('{{withPlanHeading}}', copy.withPlanHeading)
+      .replace('{{withPlan1}}', copy.withPlan1)
+      .replace('{{withPlan2}}', copy.withPlan2)
+      .replace('{{withPlan3}}', copy.withPlan3)
+      .replace('{{ctaIntro}}', copy.ctaIntro)
+      .replace('{{cta}}', copy.cta)
+      .replace('{{otherPasses}}', copy.otherPasses)
+      .replace('{{replyLine}}', copy.replyLine)
+      .replace('{{signoff}}', copy.signoff)
+      .replace('{{unsubscribe}}', strings.commercialShared.unsubscribe)
       .replace('{{ctaUrl}}', ctaUrl)
-      .replace('{{unsubscribeUrl}}', unsubscribeUrl);
+      .replace('{{unsubscribeUrl}}', unsubscribeUrl)
+      .replaceAll('{{passLabel}}', escapeHtml(passLabel));
     const $ = cheerio.load(markup);
     const text = $('body').text().replace(/\s+/g, ' ').trim();
     const msg = {
       to,
       from: this.defaultSender,
-      subject: `Your ${passLabel} ends tomorrow`,
+      subject: copy.subject.replaceAll('{{passLabel}}', passLabel),
       text,
       html: markup,
       replyTo: 'support@2anki.net',

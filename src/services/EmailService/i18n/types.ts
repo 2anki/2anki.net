@@ -65,6 +65,25 @@ export interface AbandonedCheckoutStrings {
   signoff: string;
 }
 
+export interface PassEndingStrings {
+  subject: string;
+  title: string;
+  intro: string;
+  withoutPlanHeading: string;
+  withoutPlan1: string;
+  withoutPlan2: string;
+  withoutPlan3: string;
+  withPlanHeading: string;
+  withPlan1: string;
+  withPlan2: string;
+  withPlan3: string;
+  ctaIntro: string;
+  cta: string;
+  otherPasses: string;
+  replyLine: string;
+  signoff: string;
+}
+
 export interface CommercialSharedStrings {
   unsubscribe: string;
 }
@@ -78,6 +97,7 @@ export interface EmailStrings {
   reEngagement: ReEngagementStrings;
   inactivityWarning: InactivityWarningStrings;
   abandonedCheckout: AbandonedCheckoutStrings;
+  passEnding: PassEndingStrings;
   commercialShared: CommercialSharedStrings;
 }
 

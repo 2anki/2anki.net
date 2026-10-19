@@ -1,29 +1,62 @@
 import { useTranslation } from 'react-i18next';
 import styles from '../AccountPage.module.css';
 import { AiCreditsAccountLine } from './AiCreditsAccountLine';
+import { formatLongDate } from '../utils/formatLongDate';
+import type { PlanName } from '../hooks/useSubscriptionStatus';
 
 interface PlanDetailsProps {
-  readonly subscriptionType: 'subscriber' | 'lifetime' | 'free';
+  readonly plan: PlanName;
+  readonly passExpiresAt?: string | null;
 }
 
-export function PlanDetails({ subscriptionType }: PlanDetailsProps) {
-  const { t } = useTranslation('account');
+const PLAN_NAME: Record<Exclude<PlanName, 'free'>, string> = {
+  pro: 'Pro',
+  autoSync: 'Auto Sync',
+  lifetime: 'Lifetime',
+  dayPass: 'Day Pass',
+  weekPass: 'Week Pass',
+  semesterPass: 'Semester Pass',
+};
 
-  if (subscriptionType === 'lifetime') {
+const PLAN_META_KEY: Record<'pro' | 'autoSync' | 'lifetime', string> = {
+  pro: 'planDetails.proMeta',
+  autoSync: 'planDetails.autoSyncMeta',
+  lifetime: 'planDetails.lifetimeMeta',
+};
+
+function isDatedPass(
+  plan: PlanName
+): plan is 'dayPass' | 'weekPass' | 'semesterPass' {
+  return plan === 'dayPass' || plan === 'weekPass' || plan === 'semesterPass';
+}
+
+export function PlanDetails({ plan, passExpiresAt }: PlanDetailsProps) {
+  const { t, i18n } = useTranslation('account');
+
+  if (plan === 'free') {
     return (
       <section className={styles.section}>
-        <p className={styles.planTier}>Lifetime</p>
-        <p className={styles.planMeta}>{t('planDetails.lifetimeMeta')}</p>
+        <p className={styles.planTier}>{t('planDetails.free')}</p>
+        <p className={styles.planMeta}>{t('planDetails.freeMeta')}</p>
         <AiCreditsAccountLine />
+        <a href="/pricing" className={styles.primaryButton}>
+          {t('planDetails.seePlans')}
+        </a>
       </section>
     );
   }
 
-  if (subscriptionType === 'subscriber') {
+  if (isDatedPass(plan)) {
     return (
       <section className={styles.section}>
-        <p className={styles.planTier}>{t('subscription.premium')}</p>
-        <p className={styles.planMeta}>{t('planDetails.premiumMeta')}</p>
+        <p className={styles.planTier}>{PLAN_NAME[plan]}</p>
+        {passExpiresAt != null && (
+          <p className={styles.planMeta}>
+            {t('planDetails.passEnds', {
+              date: formatLongDate(new Date(passExpiresAt), i18n.language),
+            })}
+          </p>
+        )}
         <AiCreditsAccountLine />
       </section>
     );
@@ -31,12 +64,9 @@ export function PlanDetails({ subscriptionType }: PlanDetailsProps) {
 
   return (
     <section className={styles.section}>
-      <p className={styles.planTier}>{t('planDetails.free')}</p>
-      <p className={styles.planMeta}>{t('planDetails.freeMeta')}</p>
+      <p className={styles.planTier}>{PLAN_NAME[plan]}</p>
+      <p className={styles.planMeta}>{t(PLAN_META_KEY[plan])}</p>
       <AiCreditsAccountLine />
-      <a href="/pricing" className={styles.primaryButton}>
-        {t('planDetails.seePlans')}
-      </a>
     </section>
   );
 }

@@ -8,7 +8,7 @@
     "other": "その他"
   },
   "subscription": {
-    "premium": "Premium",
+    "premium": "Pro",
     "unknownDate": "不明な日付",
     "endsPrefix": "終了",
     "endedPrefix": "終了済み",
@@ -109,7 +109,9 @@
   },
   "planDetails": {
     "lifetimeMeta": "現在および今後のすべての機能。",
-    "premiumMeta": "無制限のカード、すべての形式。",
+    "proMeta": "すべての形式、月間カードの上限なし。",
+    "autoSyncMeta": "Notion のライブ同期、月間カードの上限なし。",
+    "passEnds": "{{date}} に終了",
     "free": "無料",
     "freeMeta": "毎月100枚のカード。",
     "seePlans": "プランを見る"

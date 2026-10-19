@@ -8,7 +8,7 @@
     "other": "Otro"
   },
   "subscription": {
-    "premium": "Premium",
+    "premium": "Pro",
     "unknownDate": "una fecha desconocida",
     "endsPrefix": "Finaliza",
     "endedPrefix": "Finalizó",
@@ -109,7 +109,9 @@
   },
   "planDetails": {
     "lifetimeMeta": "Todas las funciones actuales y futuras.",
-    "premiumMeta": "Tarjetas ilimitadas, todos los formatos.",
+    "proMeta": "Todos los formatos, sin tope mensual de tarjetas.",
+    "autoSyncMeta": "Sincronización en vivo con Notion, sin tope mensual de tarjetas.",
+    "passEnds": "Termina el {{date}}",
     "free": "Free",
     "freeMeta": "100 tarjetas al mes.",
     "seePlans": "Ver planes"
