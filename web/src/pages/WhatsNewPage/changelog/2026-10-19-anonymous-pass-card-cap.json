@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-anonymous-pass-card-cap",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "A pass bought without an account now converts the whole file instead of stopping at 21 cards"
+}

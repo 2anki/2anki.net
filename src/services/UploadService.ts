@@ -1754,7 +1754,7 @@ class UploadService {
         candidateCardCount: totalCards,
         isPaying: paying,
       });
-    } else if (owner == null && totalCards > ANONYMOUS_CARD_CAP) {
+    } else if (owner == null && !paying && totalCards > ANONYMOUS_CARD_CAP) {
       if (authenticated) {
         throw new MonthlyLimitError(
           MONTHLY_CARD_LIMIT,
@@ -2184,7 +2184,7 @@ class UploadService {
     req: express.Request,
     res: express.Response
   ): Promise<PartialDeliveryArm> {
-    if (getOwner(res) != null || hasSessionToken(req)) {
+    if (getOwner(res) != null || hasSessionToken(req) || isPaying(res.locals)) {
       return 'off';
     }
     if (
