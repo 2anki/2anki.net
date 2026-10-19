@@ -12,10 +12,14 @@ describe('withTextColor', () => {
     expect(withTextColor(baseStyle, undefined)).toBe(baseStyle);
   });
 
-  it('appends a universal color rule for a valid swatch hex', () => {
+  it('appends a container-scoped color rule for a valid swatch hex', () => {
     expect(withTextColor(baseStyle, '#1f6feb')).toBe(
-      `${baseStyle}\n* { color:#1f6feb }`
+      `${baseStyle}\n.card { color:#1f6feb }`
     );
+  });
+
+  it('scopes the color to the card container, not every element', () => {
+    expect(withTextColor(baseStyle, '#d1242f')).not.toContain('* { color');
   });
 
   it('rejects a CSS-injection payload and emits no color rule', () => {

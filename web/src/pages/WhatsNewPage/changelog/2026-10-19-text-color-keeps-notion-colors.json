@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-text-color-keeps-notion-colors",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "The card text color option keeps the colors you set inside Notion on bold, italic, and linked text"
+}

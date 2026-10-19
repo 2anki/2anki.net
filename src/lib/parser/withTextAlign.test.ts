@@ -12,16 +12,20 @@ describe('withTextAlign', () => {
     expect(withTextAlign(baseStyle, undefined)).toBe(baseStyle);
   });
 
-  it('appends a universal text-align rule for left', () => {
+  it('appends a container-scoped text-align rule for left', () => {
     expect(withTextAlign(baseStyle, 'left')).toBe(
-      `${baseStyle}\n* { text-align:left }`
+      `${baseStyle}\n.card { text-align:left }`
     );
   });
 
-  it('appends a universal text-align rule for right', () => {
+  it('appends a container-scoped text-align rule for right', () => {
     expect(withTextAlign(baseStyle, 'right')).toBe(
-      `${baseStyle}\n* { text-align:right }`
+      `${baseStyle}\n.card { text-align:right }`
     );
+  });
+
+  it('scopes the alignment to the card container, not every element', () => {
+    expect(withTextAlign(baseStyle, 'center')).not.toContain('* { text-align');
   });
 
   it('rejects a CSS-injection payload and emits no alignment rule', () => {
