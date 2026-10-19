@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-notion-toggle-in-list-callout",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Notion conversions pick up toggles nested inside a bullet or callout"
+}
