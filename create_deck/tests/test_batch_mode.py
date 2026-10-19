@@ -155,6 +155,64 @@ class TestBatchMode:
             assert "beta.jpg" not in alpha_media, f"beta.jpg leaked into alpha deck"
             assert "alpha.jpg" not in beta_media, f"alpha.jpg leaked into beta deck"
 
+    def test_object_media_keeps_same_named_files_from_different_folders(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subdir = os.path.join(tmpdir, "deck")
+            os.makedirs(os.path.join(subdir, "folderA"))
+            os.makedirs(os.path.join(subdir, "folderB"))
+            with open(os.path.join(subdir, "folderA", "image.png"), "wb") as f:
+                f.write(b"A-bytes")
+            with open(os.path.join(subdir, "folderB", "image.png"), "wb") as f:
+                f.write(b"B-bytes")
+
+            deck_info = [
+                {
+                    "id": 1234567890,
+                    "name": "Deck",
+                    "cards": [
+                        {
+                            "name": "<img src='folderA_image.png'>"
+                            "<img src='folderB_image.png'>",
+                            "back": "back",
+                            "number": 0,
+                            "tags": [],
+                            "media": [
+                                {
+                                    "path": "folderA/image.png",
+                                    "name": "folderA_image.png",
+                                },
+                                {
+                                    "path": "folderB/image.png",
+                                    "name": "folderB_image.png",
+                                },
+                            ],
+                            "cloze": False,
+                            "enableInput": False,
+                        }
+                    ],
+                    "settings": {"template": "notionstyle"},
+                }
+            ]
+            deck_info_path = os.path.join(subdir, "deck_info.json")
+            with open(deck_info_path, "w", encoding="utf-8") as f:
+                json.dump(deck_info, f)
+            output_path = os.path.join(subdir, "Deck.apkg")
+
+            manifest_path = os.path.join(tmpdir, "manifest.json")
+            with open(manifest_path, "w") as f:
+                json.dump([{"input": deck_info_path, "output": output_path}], f)
+
+            result = subprocess.run(
+                [PYTHON, str(SCRIPT), "--batch", manifest_path, str(TEMPLATE_DIR)],
+                capture_output=True,
+                text=True,
+                cwd=subdir,
+            )
+            assert result.returncode == 0, f"stderr: {result.stderr}"
+            media = _apkg_media_names(output_path)
+            assert "folderA_image.png" in media, f"got {media}"
+            assert "folderB_image.png" in media, f"got {media}"
+
     def test_batch_failure_surfaces_input_path(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = os.path.join(tmpdir, "manifest.json")

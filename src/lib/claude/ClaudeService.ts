@@ -21,6 +21,7 @@ import {
   type ConversionResultCacheStore,
 } from './conversionResultCache';
 import { track } from '../../services/events/track';
+import { isImageFile } from '../storage/checks';
 
 export interface FieldMappingEntry {
   name: string;
@@ -238,6 +239,16 @@ export interface DeckInfo {
   cards: CardInfo[];
 }
 
+// A media file the deck references. `path` is where the file sits in the
+// workspace (relative, possibly in a folder); `name` is the collision-free
+// filename the card HTML points at and that the exporter bundles it under.
+// Keeping both lets two same-named files from different folders survive
+// instead of overwriting each other under a shared basename.
+export interface MediaEntry {
+  path: string;
+  name: string;
+}
+
 export interface CardInfo {
   name: string;
   back: string;
@@ -246,7 +257,7 @@ export interface CardInfo {
   number: number;
   enableInput: boolean;
   answer: string;
-  media: string[];
+  media: MediaEntry[];
   chunkIndex?: number;
 }
 
@@ -258,26 +269,66 @@ export function normalizeTag(raw: string): string {
     .slice(0, 32);
 }
 
-function resolveMediaPath(
-  claudePath: string,
+// Resolve a reference the model emitted (an <img src> or a declared media
+// filename) to the actual file in the upload. An exact relative-path match
+// wins; otherwise fall back to the first file whose basename matches, which
+// is how the model's bare `image.png` resolves to `Folder/image.png`. Returns
+// null when nothing in the upload matches so the caller can leave it alone.
+function matchMediaFile(
+  ref: string,
   availableMediaFiles: string[]
-): string {
-  const normalized = claudePath.replaceAll('\\', '/');
+): string | null {
+  const normalized = decodeURIComponent(ref).replaceAll('\\', '/');
   if (availableMediaFiles.includes(normalized)) return normalized;
   const filename = normalized.split('/').pop() ?? normalized;
   const match = availableMediaFiles.find((f) =>
     f.replaceAll('\\', '/').endsWith('/' + filename)
   );
-  return match ?? normalized;
+  return match ?? null;
 }
 
-function stripPathsFromCardHtml(html: string): string {
+// The collision-free filename a media file is bundled under. Folder-qualifying
+// the name keeps two different `image.png` files from different folders from
+// overwriting each other in the deck's media folder. A file already at the
+// upload root (no folder) keeps its own name, so the common case is unchanged.
+export function bundledMediaName(sourcePath: string): string {
+  return sourcePath
+    .replaceAll('\\', '/')
+    .replace(/^\/+/, '')
+    .replace(/\/+/g, '_');
+}
+
+interface CardMediaRewrite {
+  html: string;
+  entries: MediaEntry[];
+}
+
+// Point every local <img src> at a bundled filename and collect the files to
+// ship, whether or not the model declared them in `media`. An image the model
+// placed but did not declare used to ship broken; now the src is resolved to a
+// real upload file and carried so the exporter bundles it. Non-image local
+// links keep collapsing to their basename, unchanged.
+function rewriteCardMediaImages(
+  html: string,
+  availableMediaFiles: string[]
+): CardMediaRewrite {
   const $ = cheerio.load(html);
+  const entries: MediaEntry[] = [];
+  const seen = new Set<string>();
   $('img[src]').each((_, el) => {
     const src = $(el).attr('src') ?? '';
-    if (!src.startsWith('http://') && !src.startsWith('https://')) {
+    if (src.startsWith('http://') || src.startsWith('https://')) return;
+    const matched = matchMediaFile(src, availableMediaFiles);
+    if (matched == null) {
       const filename = decodeURIComponent(src).split('/').pop() ?? src;
       $(el).attr('src', filename);
+      return;
+    }
+    const name = bundledMediaName(matched);
+    $(el).attr('src', name);
+    if (!seen.has(name)) {
+      seen.add(name);
+      entries.push({ path: matched, name });
     }
   });
   $('a[href]').each((_, el) => {
@@ -288,7 +339,7 @@ function stripPathsFromCardHtml(html: string): string {
     }
   });
   const body = $('body');
-  return body.length ? (body.html() ?? html) : html;
+  return { html: body.length ? (body.html() ?? html) : html, entries };
 }
 
 const AUDIO_EXTENSIONS = new RegExp(
@@ -349,18 +400,35 @@ export function expandCompactDeckInfo(
       useNotionId: true,
     },
     cards: d.cards.map((c) => {
+      const front = rewriteCardMediaImages(c.q ?? '', availableMediaFiles);
+      const backImages = rewriteCardMediaImages(c.a ?? '', availableMediaFiles);
       const { back: rewrittenBack, audioFilenames } = rewriteAudioAnchors(
-        stripPathsFromCardHtml(c.a ?? '')
+        backImages.html
       );
-      const declaredMedia = (c.media ?? []).map((m) =>
-        resolveMediaPath(m, availableMediaFiles)
-      );
-      const audioMedia = audioFilenames.map((name) =>
-        resolveMediaPath(name, availableMediaFiles)
-      );
-      const media = Array.from(new Set([...declaredMedia, ...audioMedia]));
+
+      const media: MediaEntry[] = [];
+      const seen = new Set<string>();
+      const add = (entry: MediaEntry) => {
+        if (seen.has(entry.name)) return;
+        seen.add(entry.name);
+        media.push(entry);
+      };
+      for (const entry of [...front.entries, ...backImages.entries]) add(entry);
+      for (const declared of c.media ?? []) {
+        const matched = matchMediaFile(declared, availableMediaFiles);
+        if (matched != null)
+          add({ path: matched, name: bundledMediaName(matched) });
+      }
+      // Audio keeps its basename as the bundled name so it matches the
+      // [sound:<basename>] token rewriteAudioAnchors already emitted.
+      for (const filename of audioFilenames) {
+        add({
+          path: matchMediaFile(filename, availableMediaFiles) ?? filename,
+          name: filename,
+        });
+      }
       return {
-        name: stripPathsFromCardHtml(c.q),
+        name: front.html,
         back: rewrittenBack,
         tags: (c.tags ?? []).map(normalizeTag).filter((t) => t.length > 0),
         cloze: c.cloze ?? false,
@@ -372,6 +440,33 @@ export function expandCompactDeckInfo(
       };
     }),
   }));
+}
+
+// How many image files were handed to the model but never referenced by any
+// card it produced. The model skips decorative or redundant images; this is
+// the count of what it left on the table, logged so a user who notices a
+// missing image has a server-side number behind it.
+export function countOfferedImagesNotUsed(
+  decks: DeckInfo[],
+  offeredMediaFiles: string[]
+): number {
+  const used = new Set<string>();
+  for (const deck of decks) {
+    for (const card of deck.cards) {
+      for (const entry of card.media)
+        used.add(entry.path.replaceAll('\\', '/'));
+    }
+  }
+  const offeredImages = new Set(
+    offeredMediaFiles
+      .filter((f) => isImageFile(f))
+      .map((f) => f.replaceAll('\\', '/'))
+  );
+  let unused = 0;
+  for (const image of offeredImages) {
+    if (!used.has(image)) unused += 1;
+  }
+  return unused;
 }
 
 let _anthropicClient: Anthropic | null = null;

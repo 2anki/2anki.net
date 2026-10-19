@@ -35,6 +35,9 @@ import {
   resolveFloorV1Bounds,
   thinDecksToCeiling,
   allocateCeilingKeepCounts,
+  expandCompactDeckInfo,
+  bundledMediaName,
+  countOfferedImagesNotUsed,
   type DeckInfo,
   type CardInfo,
 } from './ClaudeService';
@@ -2489,5 +2492,130 @@ describe('thinDecksToCeiling', () => {
       expect(value).toBeGreaterThanOrEqual(1);
       expect(value).toBeLessThanOrEqual(counts[index]);
     });
+  });
+});
+
+describe('bundledMediaName', () => {
+  it('leaves a root-level filename unchanged', () => {
+    expect(bundledMediaName('image.png')).toBe('image.png');
+  });
+
+  it('folder-qualifies a nested path into one flat filename', () => {
+    expect(bundledMediaName('folderA/image.png')).toBe('folderA_image.png');
+  });
+
+  it('normalises backslashes and leading slashes', () => {
+    expect(bundledMediaName('/a\\b/image.png')).toBe('a_b_image.png');
+  });
+});
+
+describe('expandCompactDeckInfo — media bundling', () => {
+  it('bundles an <img> the model used but did not declare in media', () => {
+    const decks = expandCompactDeckInfo(
+      [
+        {
+          deck: 'Deck',
+          cards: [{ q: 'Q', a: 'See <img src="diagram.png"> here' }],
+        },
+      ],
+      ['diagram.png'],
+      null
+    );
+
+    const card = decks[0].cards[0];
+    expect(card.media).toEqual([{ path: 'diagram.png', name: 'diagram.png' }]);
+    expect(card.back).toContain('<img src="diagram.png">');
+  });
+
+  it('keeps two same-named images from different folders apart', () => {
+    const decks = expandCompactDeckInfo(
+      [
+        {
+          deck: 'Deck',
+          cards: [
+            {
+              q: 'Q',
+              a: '<img src="folderA/image.png"><img src="folderB/image.png">',
+            },
+          ],
+        },
+      ],
+      ['folderA/image.png', 'folderB/image.png'],
+      null
+    );
+
+    const card = decks[0].cards[0];
+    expect(card.media).toEqual([
+      { path: 'folderA/image.png', name: 'folderA_image.png' },
+      { path: 'folderB/image.png', name: 'folderB_image.png' },
+    ]);
+    expect(card.back).toContain('<img src="folderA_image.png">');
+    expect(card.back).toContain('<img src="folderB_image.png">');
+    expect(card.back).not.toContain('folderA/image.png');
+  });
+
+  it('resolves a bare declared filename to its folder-qualified source', () => {
+    const decks = expandCompactDeckInfo(
+      [
+        {
+          deck: 'Deck',
+          cards: [{ q: 'Q', a: '<img src="image.png">', media: ['image.png'] }],
+        },
+      ],
+      ['chapter-3/image.png'],
+      null
+    );
+
+    const card = decks[0].cards[0];
+    expect(card.media).toEqual([
+      { path: 'chapter-3/image.png', name: 'chapter-3_image.png' },
+    ]);
+    expect(card.back).toContain('<img src="chapter-3_image.png">');
+  });
+
+  it('does not count an http image as bundled media', () => {
+    const decks = expandCompactDeckInfo(
+      [
+        {
+          deck: 'Deck',
+          cards: [{ q: 'Q', a: '<img src="https://example.com/x.png">' }],
+        },
+      ],
+      [],
+      null
+    );
+
+    expect(decks[0].cards[0].media).toEqual([]);
+    expect(decks[0].cards[0].back).toContain(
+      '<img src="https://example.com/x.png">'
+    );
+  });
+});
+
+describe('countOfferedImagesNotUsed', () => {
+  it('counts images offered to the model that no card referenced', () => {
+    const decks = expandCompactDeckInfo(
+      [{ deck: 'Deck', cards: [{ q: 'Q', a: '<img src="used.png">' }] }],
+      ['used.png', 'skipped.png', 'also-skipped.png'],
+      null
+    );
+
+    expect(
+      countOfferedImagesNotUsed(decks, [
+        'used.png',
+        'skipped.png',
+        'also-skipped.png',
+      ])
+    ).toBe(2);
+  });
+
+  it('ignores non-image offered files', () => {
+    const decks = expandCompactDeckInfo(
+      [{ deck: 'Deck', cards: [{ q: 'Q', a: 'no media' }] }],
+      ['notes.pdf'],
+      null
+    );
+
+    expect(countOfferedImagesNotUsed(decks, ['notes.pdf'])).toBe(0);
   });
 });

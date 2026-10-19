@@ -51,6 +51,7 @@ import {
   createCrossFileDedupState,
   absorbFileIntoCrossFileDedup,
   buildTopUpInstruction,
+  countOfferedImagesNotUsed,
 } from '../../../lib/claude/ClaudeService';
 import { getConversionResultCache } from '../../../data_layer/ConversionResultCacheRepository';
 import {
@@ -1022,11 +1023,16 @@ async function buildClaudeDeck(
   }
 
   const deckInfo = aiDecks as unknown as Deck[];
+  const offeredImagesNotUsed = countOfferedImagesNotUsed(
+    deckInfoArrays.flat(),
+    [...mediaFiles, ...perFileFigureNames]
+  );
   console.log('[PrepareDeck] Claude branch: generateDeckInfo done', {
     durationMs: Date.now() - tClaude,
     htmlFilesProcessed: htmlFiles.length,
     totalDecks: deckInfo.length,
     totalCards: deckInfo.reduce((sum, d) => sum + d.cards.length, 0),
+    offeredImagesNotUsed,
   });
 
   // An empty AI deck must never reach the Python exporter — a zero-card deck

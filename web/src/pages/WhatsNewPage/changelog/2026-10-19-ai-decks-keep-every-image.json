@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-ai-decks-keep-every-image",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "AI conversions now keep every image on your cards, even same-named images from different folders"
+}
