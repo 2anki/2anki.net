@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-text-only-uploads-report-dropped-images",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Uploads that convert to plain text now tell you when images were left out"
+}

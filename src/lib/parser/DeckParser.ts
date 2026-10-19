@@ -1847,6 +1847,7 @@ export class DeckParser {
     const fallback = new FallbackParser(this.files);
 
     this.payload = fallback.run(this.settings);
+    this.droppedImageCount += fallback.droppedImageCount;
     if (
       !this.payload ||
       this.payload.length === 0 ||
