@@ -60,7 +60,7 @@
     },
     "q8": {
       "question": "Jak mogę zapłacić?",
-      "answer": "Płatność przyjmuje karty kredytowe i debetowe z dowolnego kraju, Apple Pay, Google Pay, Link i PayPal. W zależności od kraju i planu dostępne są też lokalne metody, takie jak Klarna, Bancontact, BLIK, EPS, Przelewy24, MobilePay, TWINT, Alipay i WeChat Pay. Ceny są w USD, a płatność może je pokazać i pobrać w Twojej lokalnej walucie."
+      "answer": "Płatność przyjmuje karty kredytowe i debetowe z dowolnego kraju, a także Apple Pay, Google Pay, Link i PayPal, jeśli obsługuje je Twoje urządzenie i region. W zależności od kraju i planu dostępne są też lokalne metody, takie jak Klarna, Bancontact, BLIK, EPS, Przelewy24, MobilePay, TWINT, Alipay i WeChat Pay. Ceny są w USD, a płatność może je pokazać i pobrać w Twojej lokalnej walucie."
     },
     "q6": {
       "question": "Czy jest aplikacja?",

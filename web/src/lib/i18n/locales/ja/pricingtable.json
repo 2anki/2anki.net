@@ -60,7 +60,7 @@
     },
     "q8": {
       "question": "支払い方法は？",
-      "answer": "チェックアウトでは、どの国で発行されたクレジットカード・デビットカードでも使えるほか、Apple Pay、Google Pay、Link、PayPal に対応しています。国やプランによっては、Klarna、Bancontact、BLIK、EPS、Przelewy24、MobilePay、TWINT、Alipay、WeChat Pay などの各地域の支払い方法も利用できます。価格は USD 表示ですが、チェックアウトで現地通貨で表示・請求される場合があります。"
+      "answer": "チェックアウトでは、どの国で発行されたクレジットカード・デビットカードでも使えます。お使いの端末と地域が対応していれば、Apple Pay、Google Pay、Link、PayPal も利用できます。国やプランによっては、Klarna、Bancontact、BLIK、EPS、Przelewy24、MobilePay、TWINT、Alipay、WeChat Pay などの各地域の支払い方法も利用できます。価格は USD 表示ですが、チェックアウトで現地通貨で表示・請求される場合があります。"
     },
     "q6": {
       "question": "アプリはありますか？",
