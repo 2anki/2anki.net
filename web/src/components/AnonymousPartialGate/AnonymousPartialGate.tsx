@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import RegisterForm from '../forms/RegisterForm';
+import { AnonymousDayPassOffer } from '../AnonymousDayPassOffer/AnonymousDayPassOffer';
 import { FREE_MONTHLY_CARDS } from '../../pages/LimitPage/LimitWall';
 import { track } from '../../lib/analytics/track';
 import type { HeldDeckState } from '../../pages/UploadPage/components/UploadForm/hooks/useUploadFormState';
@@ -71,6 +72,10 @@ export function AnonymousPartialGate({ held }: Props) {
           setErrorMessage={(e) => setError(errorText(e))}
         />
       </div>
+      <AnonymousDayPassOffer
+        surface="anonymous-gate"
+        totalCards={held.totalCards}
+      />
     </section>
   );
 }

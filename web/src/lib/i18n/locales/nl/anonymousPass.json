@@ -1,0 +1,8 @@
+{
+  "headline": "Heb je nu meteen alle kaarten nodig?",
+  "body": "Een Day Pass voor {{price}} haalt het kaartlimiet 24 uur weg, zonder account.",
+  "afterPay": "Zet het bestand na het betalen opnieuw neer om alle kaarten te krijgen.",
+  "afterPayTotal": "Zet het bestand na het betalen opnieuw neer om alle {{total}} kaarten te krijgen.",
+  "cta": "Koop een Day Pass voor {{price}}",
+  "checkoutError": "Afrekenen kon niet starten. Probeer het opnieuw of mail support@2anki.net."
+}

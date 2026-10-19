@@ -1,0 +1,8 @@
+{
+  "headline": "Besoin de toutes les cartes tout de suite ?",
+  "body": "Un Day Pass à {{price}} lève la limite de cartes pendant 24 heures, sans compte.",
+  "afterPay": "Après le paiement, dépose à nouveau le fichier pour obtenir toutes les cartes.",
+  "afterPayTotal": "Après le paiement, dépose à nouveau le fichier pour obtenir les {{total}} cartes.",
+  "cta": "Prendre un Day Pass à {{price}}",
+  "checkoutError": "Impossible de lancer le paiement. Réessaie ou écris à support@2anki.net."
+}

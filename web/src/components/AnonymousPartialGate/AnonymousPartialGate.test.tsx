@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnonymousPartialGate } from './AnonymousPartialGate';
 import { track } from '../../lib/analytics/track';
@@ -11,9 +12,11 @@ function renderGate(
   held = { cardCount: 21, cardsHeldBack: 13, totalCards: 34 }
 ) {
   return render(
-    <MemoryRouter>
-      <AnonymousPartialGate held={held} />
-    </MemoryRouter>
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <AnonymousPartialGate held={held} />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -29,6 +32,16 @@ describe('AnonymousPartialGate', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/100 cards a month/)).toBeInTheDocument();
     expect(screen.getByText('This file made 34 cards.')).toBeInTheDocument();
+  });
+
+  it('offers a Day Pass below the sign-up form for the whole file', () => {
+    renderGate();
+    expect(
+      screen.getByText(/drop the file again to get all 34 cards/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Get a Day Pass for/ })
+    ).toBeInTheDocument();
   });
 
   it('labels the region for assistive tech', () => {

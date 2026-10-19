@@ -1,0 +1,8 @@
+{
+  "headline": "Need every card now?",
+  "body": "A Day Pass for {{price}} lifts the card limit for 24 hours, no account needed.",
+  "afterPay": "After paying, drop the file again to get every card.",
+  "afterPayTotal": "After paying, drop the file again to get all {{total}} cards.",
+  "cta": "Get a Day Pass for {{price}}",
+  "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net."
+}
