@@ -2,5 +2,5 @@
   "id": "2026-10-19-text-only-uploads-report-dropped-images",
   "date": "2026-10-19",
   "type": "fix",
-  "title": "When your deck is missing images, we now tell you why and how to keep them"
+  "title": "If we read your HTML file as plain text, we now tell you its images were left out"
 }

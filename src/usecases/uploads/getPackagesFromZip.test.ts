@@ -485,6 +485,65 @@ describe('getPackagesFromZip — batch concurrency', () => {
     ).toBe(false);
   });
 
+  it('threads the plain-text fallback image count onto a rebuilt straggler package', async () => {
+    const fileNames = ['deck0.html'];
+
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
+
+    mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        deckInfoPath: `/fake/${name}/deck_info.json`,
+        outputPath: `/fake/${name}/out.apkg`,
+        name,
+        inputFileName: name,
+        deck: [],
+        cardCount: 1,
+        needsIndividualBuild: false,
+      })
+    );
+
+    mockPrepareDeck.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        name,
+        apkg: Buffer.from('fake-apkg'),
+        deck: [],
+        cardCount: 1,
+        mcqCount: 0,
+        mcqSkippedCount: 0,
+        droppedImageCount: 2,
+        plainTextFallbackImageCount: 2,
+        expiredNotionImageCount: 0,
+        emptyBackCount: 0,
+      })
+    );
+
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi.fn().mockRejectedValue(new Error('Python batch failed')),
+      };
+    });
+
+    const settings = new CardOption({});
+    const workspace = { location: FAKE_WORKSPACE_LOCATION } as Workspace;
+
+    const result = await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      settings,
+      workspace
+    );
+
+    expect(result.packages).toHaveLength(1);
+    expect(result.packages[0].droppedImageCount).toBe(2);
+    expect(result.packages[0].plainTextFallbackImageCount).toBe(2);
+  });
+
   it('retries a deck individually when the batch produced no apkg for it', async () => {
     const fileCount = 8;
     const fileNames = Array.from(

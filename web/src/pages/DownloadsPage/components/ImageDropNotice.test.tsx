@@ -218,9 +218,11 @@ describe('ImageDropNotice', () => {
     render(<ImageDropNotice count={2} source="plainText" />);
     expect(screen.getByText(/we read it as plain text/)).toBeInTheDocument();
     expect(
-      screen.getByText(/nest each answer under its question/)
+      screen.getByText(/put each answer under its question/)
     ).toBeInTheDocument();
-    expect(screen.queryByText(/\.zip/)).toBeNull();
+    expect(
+      screen.getByText(/upload the page and its images together in one \.zip/)
+    ).toBeInTheDocument();
   });
 
   it('fires the usage event with the plain_text_fallback reason', () => {
