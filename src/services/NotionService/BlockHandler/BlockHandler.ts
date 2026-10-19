@@ -12,6 +12,7 @@ import {
 } from '@notionhq/client/build/src/api-endpoints';
 
 import getDeckName from '../../../lib/anki/getDeckname';
+import { audioFileExtensionFromUrl } from '../../../lib/anki/format';
 import { inferColumnMapping } from '../../../lib/notionDatabase/inferColumnMapping';
 import sanitizeTags from '../../../lib/anki/sanitizeTags';
 import { S3FileName, SuffixFrom } from '../../../lib/misc/file';
@@ -361,7 +362,7 @@ class BlockHandler implements IBlockRenderer {
     if (this.settings.isTextOnlyBack || isTesting() || !url) {
       return '';
     }
-    const newName = getUniqueFileName(url);
+    const newName = getUniqueFileName(url) + audioFileExtensionFromUrl(url);
 
     const contents = await downloadWithFreshUrlRetry({
       api: this.api,

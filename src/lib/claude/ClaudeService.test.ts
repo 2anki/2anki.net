@@ -557,6 +557,14 @@ describe('rewriteAudioAnchors', () => {
     }
   });
 
+  it('replaces a webm audio anchor with a [sound:] token', () => {
+    const { back, audioFilenames } = rewriteAudioAnchors(
+      '<a href="browser-recording.webm">play</a>'
+    );
+    expect(audioFilenames).toEqual(['browser-recording.webm']);
+    expect(back).toContain('[sound:browser-recording.webm]');
+  });
+
   it('does nothing when the card has no audio links', () => {
     const input = '<p>No audio here</p><img src="x.png"/>';
     const { back, audioFilenames } = rewriteAudioAnchors(input);

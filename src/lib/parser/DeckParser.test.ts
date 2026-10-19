@@ -2364,4 +2364,19 @@ describe('card audio embedding', () => {
     expect(card.back).not.toContain('[sound:');
     expect(card.media).toHaveLength(0);
   });
+
+  test('counts a missing audio link separately from dropped images', async () => {
+    const parser = audioParser(
+      '<figure><div class="source"><a href="Audio%20Deck/missing.mp3">missing.mp3</a></div></figure>',
+      []
+    );
+    const ws = new Workspace(true, 'fs');
+
+    await parser.writeDeckInfo(ws);
+    const card = parser.payload[0].cards[0];
+
+    expect(card.back).not.toContain('[sound:');
+    expect(parser.droppedAudioCount).toBe(1);
+    expect(parser.droppedImageCount).toBe(0);
+  });
 });
