@@ -48,10 +48,11 @@ export interface LowRatingFeedbackEmailParams {
   comment: string | null;
   page: string;
   replyTo: string;
+  emailVerified: boolean;
   userId: string | null;
   latestJobId: number | null;
   latestJobStatus: string | null;
-  plan: string;
+  plan: string | null;
 }
 
 export interface IEmailService {
@@ -1109,17 +1110,36 @@ export class EmailService implements IEmailService {
       params.latestJobId == null
         ? '(none)'
         : `${params.latestJobId} (${params.latestJobStatus ?? 'unknown'})`;
-    const userId = params.userId ?? '(no matching account)';
+
+    const accountTextLines = params.emailVerified
+      ? [
+          `Plan: ${params.plan ?? 'free'}`,
+          `User ID: ${params.userId ?? '(unknown)'}`,
+          `Latest job: ${latestJob}`,
+          `Address (verified account): ${params.replyTo}`,
+        ]
+      : [
+          `Address: ${params.replyTo} (unverified, typed into the feedback form)`,
+        ];
+
+    const accountHtmlLines = params.emailVerified
+      ? [
+          `<li>Plan: ${escapeHtml(params.plan ?? 'free')}</li>`,
+          `<li>User ID: ${escapeHtml(params.userId ?? '(unknown)')}</li>`,
+          `<li>Latest job: ${escapeHtml(latestJob)}</li>`,
+          `<li>Address (verified account): ${escapeHtml(params.replyTo)}</li>`,
+        ]
+      : [
+          `<li>Address: ${escapeHtml(params.replyTo)} (unverified, typed into the feedback form)</li>`,
+        ];
 
     const textLines = [
       `A user left a ${params.rating}/5 rating and asked to be contacted.`,
       'Reply to this email to answer them.',
       '',
       `Rating: ${params.rating}/5`,
-      `Plan: ${params.plan}`,
       `Page: ${params.page}`,
-      `User ID: ${userId}`,
-      `Latest job: ${latestJob}`,
+      ...accountTextLines,
       '',
       'Comment:',
       comment ?? '(no comment)',
@@ -1130,10 +1150,8 @@ export class EmailService implements IEmailService {
       '<p><strong>Reply to this email to answer them.</strong></p>',
       '<ul>',
       `<li>Rating: ${params.rating}/5</li>`,
-      `<li>Plan: ${escapeHtml(params.plan)}</li>`,
       `<li>Page: ${escapeHtml(params.page)}</li>`,
-      `<li>User ID: ${escapeHtml(userId)}</li>`,
-      `<li>Latest job: ${escapeHtml(latestJob)}</li>`,
+      ...accountHtmlLines,
       '</ul>',
       '<p>Comment:</p>',
       `<blockquote>${comment == null ? '(no comment)' : escapeHtml(comment)}</blockquote>`,

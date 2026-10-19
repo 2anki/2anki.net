@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 
 import { IEmojiFeedbackRepository } from '../data_layer/EmojiFeedbackRepository';
 import { ILowRatingNotifier } from '../usecases/feedback/NotifyLowRatingUseCase';
+import { getOwnerId } from '../lib/User/getOwner';
+import { resolveClientIp } from '../lib/rateLimit/ipHelpers';
 
 const EMAIL_MAX_LENGTH = 254;
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -62,6 +64,8 @@ class EmojiFeedbackController {
       comment: sanitizedComment,
       page: sanitizedPage,
       email: sanitizedEmail,
+      owner: getOwnerId(res),
+      ip: resolveClientIp(req),
       now: new Date(),
     });
   }

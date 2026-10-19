@@ -6,15 +6,27 @@ import { LowRatingContextRepository } from '../data_layer/LowRatingContextReposi
 import { getDatabase } from '../data_layer';
 import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import { NotifyLowRatingUseCase } from '../usecases/feedback/NotifyLowRatingUseCase';
+import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
+import { optionalAuthMiddleware } from './middleware/optionalAuthMiddleware';
+
+const HOUR_MS = 60 * 60 * 1000;
+const NOTIFICATIONS_PER_IP_PER_HOUR = 5;
+const NOTIFICATIONS_PER_HOUR = 30;
 
 const EmojiFeedbackRouter = () => {
   const router = express.Router();
   const database = getDatabase();
   const repo = new EmojiFeedbackRepository(database);
+  const notificationLimiter = new InMemoryRateLimiter({
+    windowMs: HOUR_MS,
+    perKeyMax: NOTIFICATIONS_PER_IP_PER_HOUR,
+    globalMax: NOTIFICATIONS_PER_HOUR,
+  });
   const notifier = new NotifyLowRatingUseCase(
     repo,
     new LowRatingContextRepository(database),
-    getDefaultEmailService()
+    getDefaultEmailService(),
+    notificationLimiter
   );
   const controller = new EmojiFeedbackController(repo, notifier);
 
@@ -48,7 +60,9 @@ const EmojiFeedbackRouter = () => {
    *       400:
    *         description: Invalid input
    */
-  router.post('/api/emoji-feedback', (req, res) => controller.submit(req, res));
+  router.post('/api/emoji-feedback', optionalAuthMiddleware, (req, res) =>
+    controller.submit(req, res)
+  );
 
   return router;
 };

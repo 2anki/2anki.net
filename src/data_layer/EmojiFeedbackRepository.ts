@@ -84,19 +84,26 @@ export class EmojiFeedbackRepository implements IEmojiFeedbackRepository {
     }));
   }
 
-  async countLowRatingsFromEmailOnDay(
+  buildLowRatingsFromEmailOnDayQuery(
     email: string,
     day: Date
-  ): Promise<number> {
+  ): Knex.QueryBuilder {
     const start = startOfUtcDay(day);
     const end = new Date(start.getTime() + MS_PER_DAY);
-    const row = await this.database(this.table)
+    return this.database(this.table)
       .whereRaw('LOWER(TRIM(email)) = LOWER(?)', [email.trim()])
       .andWhere('rating', '<=', LOW_RATING_MAX)
       .andWhere('created_at', '>=', start)
       .andWhere('created_at', '<', end)
-      .count<{ count: string | number }[]>('* as count')
+      .count('* as count')
       .first();
+  }
+
+  async countLowRatingsFromEmailOnDay(
+    email: string,
+    day: Date
+  ): Promise<number> {
+    const row = await this.buildLowRatingsFromEmailOnDayQuery(email, day);
     return Number(row?.count ?? 0);
   }
 }

@@ -1,60 +1,50 @@
 import knex from 'knex';
 
-describe('EmojiFeedbackRepository.countLowRatingsFromEmailOnDay generated SQL', () => {
-  it('filters by email, low rating and the day range with bound params', () => {
-    const pg = knex({ client: 'pg' });
+import { EmojiFeedbackRepository } from './EmojiFeedbackRepository';
+import { LowRatingContextRepository } from './LowRatingContextRepository';
 
-    const sql = pg('emoji_feedback')
-      .whereRaw('LOWER(TRIM(email)) = LOWER(?)', ['learner@example.com'])
-      .andWhere('rating', '<=', 2)
-      .andWhere('created_at', '>=', '2026-10-19T00:00:00.000Z')
-      .andWhere('created_at', '<', '2026-10-20T00:00:00.000Z')
-      .count('* as count')
-      .first()
+const pg = knex({ client: 'pg' });
+
+describe('EmojiFeedbackRepository dedupe-count generated SQL', () => {
+  it('filters by email, low rating and a day range with bound params', () => {
+    const repo = new EmojiFeedbackRepository(pg);
+
+    const sql = repo
+      .buildLowRatingsFromEmailOnDayQuery(
+        'learner@example.com',
+        new Date('2026-10-19T12:00:00.000Z')
+      )
       .toString();
 
-    expect(sql).toBe(
-      'select count(*) as "count" from "emoji_feedback" ' +
-        "where LOWER(TRIM(email)) = LOWER('learner@example.com') " +
-        'and "rating" <= 2 ' +
-        'and "created_at" >= \'2026-10-19T00:00:00.000Z\' ' +
-        'and "created_at" < \'2026-10-20T00:00:00.000Z\' limit 1'
-    );
+    expect(sql).toContain('select count(*) as "count" from "emoji_feedback"');
+    expect(sql).toContain("LOWER(TRIM(email)) = LOWER('learner@example.com')");
+    expect(sql).toContain('"rating" <= 2');
+    expect(sql).toMatch(/"created_at" >= '[^']+' and "created_at" < '[^']+'/);
+    expect(sql).toContain('limit 1');
   });
 });
 
-describe('LowRatingContextRepository.getByEmail generated SQL', () => {
-  it('matches an active subscription by linked_email or payer email', () => {
-    const pg = knex({ client: 'pg' });
+describe('LowRatingContextRepository generated SQL', () => {
+  const repo = new LowRatingContextRepository(pg);
 
-    const sql = pg('subscriptions')
-      .where({ active: true })
-      .andWhere((builder) =>
-        builder
-          .where({ linked_email: 'learner@example.com' })
-          .orWhere({ email: 'learner@example.com' })
-      )
-      .first()
-      .toString();
+  it('looks up the account by user id', () => {
+    expect(repo.buildUserQuery(21770).toString()).toBe(
+      'select "id", "email", "patreon" from "users" where "id" = 21770 limit 1'
+    );
+  });
 
-    expect(sql).toBe(
-      'select * from "subscriptions" where "active" = true ' +
-        'and ("linked_email" = \'learner@example.com\' ' +
-        'or ("email" = \'learner@example.com\')) limit 1'
+  it('matches an active subscription on either lowercased email column', () => {
+    expect(
+      repo.buildActiveSubscriptionQuery('Learner@Example.com').toString()
+    ).toBe(
+      'select * from "subscriptions" where "active" = true and ' +
+        "(LOWER(linked_email) = LOWER('Learner@Example.com') " +
+        "or LOWER(email) = LOWER('Learner@Example.com')) limit 1"
     );
   });
 
   it('reads the newest job for an owner', () => {
-    const pg = knex({ client: 'pg' });
-
-    const sql = pg('jobs')
-      .where({ owner: '21770' })
-      .orderBy('id', 'desc')
-      .select('id', 'status')
-      .first()
-      .toString();
-
-    expect(sql).toBe(
+    expect(repo.buildLatestJobQuery('21770').toString()).toBe(
       'select "id", "status" from "jobs" where "owner" = \'21770\' ' +
         'order by "id" desc limit 1'
     );

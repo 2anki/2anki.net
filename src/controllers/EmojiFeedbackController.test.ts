@@ -3,19 +3,10 @@ import { Request, Response } from 'express';
 
 import EmojiFeedbackController from './EmojiFeedbackController';
 import { IEmojiFeedbackRepository } from '../data_layer/EmojiFeedbackRepository';
-import type {
-  ILowRatingContextRepository,
-  LowRatingContext,
-} from '../data_layer/LowRatingContextRepository';
+import type { ILowRatingContextRepository } from '../data_layer/LowRatingContextRepository';
 import type { IEmailService } from '../services/EmailService/EmailService';
+import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
 import { NotifyLowRatingUseCase } from '../usecases/feedback/NotifyLowRatingUseCase';
-
-const defaultContext: LowRatingContext = {
-  userId: null,
-  latestJobId: null,
-  latestJobStatus: null,
-  plan: 'unknown',
-};
 
 function buildMocks() {
   const repo: Mocked<IEmojiFeedbackRepository> = {
@@ -25,13 +16,23 @@ function buildMocks() {
     countLowRatingsFromEmailOnDay: vi.fn().mockResolvedValue(1),
   };
   const contextRepo: Mocked<ILowRatingContextRepository> = {
-    getByEmail: vi.fn().mockResolvedValue(defaultContext),
+    getByOwner: vi.fn().mockResolvedValue(null),
   };
   const sendLowRatingFeedbackEmail = vi.fn().mockResolvedValue(undefined);
   const emailService = {
     sendLowRatingFeedbackEmail,
   } as unknown as IEmailService;
-  const notifier = new NotifyLowRatingUseCase(repo, contextRepo, emailService);
+  const rateLimiter = new InMemoryRateLimiter({
+    windowMs: 60 * 60 * 1000,
+    perKeyMax: 100,
+    globalMax: 100,
+  });
+  const notifier = new NotifyLowRatingUseCase(
+    repo,
+    contextRepo,
+    emailService,
+    rateLimiter
+  );
   const controller = new EmojiFeedbackController(repo, notifier);
   const req = { body: {} } as Request;
   const res = {
@@ -167,6 +168,7 @@ describe('EmojiFeedbackController', () => {
       comment: 'cards are wrong',
       page: '/upload',
       replyTo: 'learner@example.com',
+      emailVerified: false,
     });
   });
 

@@ -1,75 +1,74 @@
 import type { Knex } from 'knex';
 
-export type FeedbackPlan = 'lifetime' | 'subscriber' | 'free' | 'unknown';
+export type FeedbackPlan = 'lifetime' | 'subscriber' | 'free';
 
-export interface LowRatingContext {
-  userId: string | null;
+export interface LowRatingAccountContext {
+  email: string;
+  userId: string;
   latestJobId: number | null;
   latestJobStatus: string | null;
   plan: FeedbackPlan;
 }
 
 export interface ILowRatingContextRepository {
-  getByEmail(email: string): Promise<LowRatingContext>;
+  getByOwner(owner: number): Promise<LowRatingAccountContext | null>;
 }
 
 export class LowRatingContextRepository implements ILowRatingContextRepository {
   constructor(private readonly database: Knex) {}
 
-  async getByEmail(email: string): Promise<LowRatingContext> {
-    const normalized = email.trim().toLowerCase();
-
-    const user = await this.database('users')
-      .whereRaw('LOWER(TRIM(email)) = LOWER(?)', [email.trim()])
-      .select('id', 'patreon')
+  buildUserQuery(owner: number): Knex.QueryBuilder {
+    return this.database('users')
+      .where({ id: owner })
+      .select('id', 'email', 'patreon')
       .first();
+  }
 
-    const activeSubscription = await this.database('subscriptions')
+  buildActiveSubscriptionQuery(email: string): Knex.QueryBuilder {
+    return this.database('subscriptions')
       .where({ active: true })
       .andWhere((builder) =>
         builder
-          .where({ linked_email: normalized })
-          .orWhere({ email: normalized })
+          .whereRaw('LOWER(linked_email) = LOWER(?)', [email])
+          .orWhereRaw('LOWER(email) = LOWER(?)', [email])
       )
       .first();
+  }
 
-    const plan = resolvePlan(
-      user != null,
-      user?.patreon === true,
-      activeSubscription != null
-    );
-
-    if (user == null) {
-      return {
-        userId: null,
-        latestJobId: null,
-        latestJobStatus: null,
-        plan,
-      };
-    }
-
-    const userId = String(user.id);
-    const latestJob = await this.database('jobs')
-      .where({ owner: userId })
+  buildLatestJobQuery(owner: string): Knex.QueryBuilder {
+    return this.database('jobs')
+      .where({ owner })
       .orderBy('id', 'desc')
       .select('id', 'status')
       .first();
+  }
+
+  async getByOwner(owner: number): Promise<LowRatingAccountContext | null> {
+    const user = await this.buildUserQuery(owner);
+    if (user == null) {
+      return null;
+    }
+
+    const activeSubscription = await this.buildActiveSubscriptionQuery(
+      user.email
+    );
+    const latestJob = await this.buildLatestJobQuery(String(user.id));
 
     return {
-      userId,
+      email: user.email,
+      userId: String(user.id),
       latestJobId: latestJob == null ? null : Number(latestJob.id),
       latestJobStatus: latestJob?.status ?? null,
-      plan,
+      plan: resolvePlan(user.patreon === true, activeSubscription != null),
     };
   }
 }
 
 const resolvePlan = (
-  hasUser: boolean,
   isLifetime: boolean,
   hasActiveSubscription: boolean
 ): FeedbackPlan => {
   if (isLifetime) return 'lifetime';
   if (hasActiveSubscription) return 'subscriber';
-  return hasUser ? 'free' : 'unknown';
+  return 'free';
 };
