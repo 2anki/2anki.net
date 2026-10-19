@@ -28,7 +28,10 @@ import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import { withFontSize } from '../../../lib/parser/withFontSize';
 import { withTextColor } from '../../../lib/parser/withTextColor';
 import { withTextAlign } from '../../../lib/parser/withTextAlign';
-import { wrapWithColorClass } from '../../../lib/notion-render/richText';
+import {
+  wrapBlockWithColorClass,
+  wrapWithColorClass,
+} from '../../../lib/notion-render/richText';
 import get16DigitRandomId from '../../../shared/helpers/get16DigitRandomId';
 import { NOTION_STYLE, getCodeThemeCss } from '../../../templates/helper';
 import NotionAPIWrapper from '../NotionAPIWrapper';
@@ -597,7 +600,7 @@ class BlockHandler implements IBlockRenderer {
           name = wrapWithColorClass(toggleColor, name);
         }
         if (back) {
-          back = wrapWithColorClass(toggleColor, back);
+          back = wrapBlockWithColorClass(toggleColor, back);
         }
       } else if (isColumnList(block) && rules.useColums()) {
         const card = await this.buildColumnListCard(block.id);

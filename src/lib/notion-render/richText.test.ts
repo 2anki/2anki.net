@@ -1,4 +1,28 @@
-import { renderPlainText, renderRichText } from './richText';
+import {
+  renderPlainText,
+  renderRichText,
+  wrapBlockWithColorClass,
+} from './richText';
+
+describe('wrapBlockWithColorClass', () => {
+  it('wraps a text colour in a block div with an inline colour style', () => {
+    expect(wrapBlockWithColorClass('red', 'body')).toBe(
+      '<div class="block-color-red" style="color: #E03E3E">body</div>'
+    );
+  });
+
+  it('wraps a background colour in a block div with an inline background style', () => {
+    expect(wrapBlockWithColorClass('red_background', 'body')).toBe(
+      '<div class="block-color-red_background" style="background-color: rgb(253, 235, 236)">body</div>'
+    );
+  });
+
+  it('returns the content untouched for a default or unknown colour', () => {
+    expect(wrapBlockWithColorClass('default', 'body')).toBe('body');
+    expect(wrapBlockWithColorClass(undefined, 'body')).toBe('body');
+    expect(wrapBlockWithColorClass('chartreuse', 'body')).toBe('body');
+  });
+});
 
 describe('renderRichText', () => {
   it('returns empty string for nullish or empty input', () => {

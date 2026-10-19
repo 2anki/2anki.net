@@ -320,8 +320,12 @@ describe('BlockHandler', () => {
       undefined
     );
     const card = flashcards[0];
-    expect(card.name).toContain('color: #E03E3E');
-    expect(card.back).toContain('color: #E03E3E');
+    expect(card.name).toContain(
+      '<span class="n2a-highlight-red" style="color: #E03E3E">'
+    );
+    expect(card.back).toContain(
+      '<div class="block-color-red" style="color: #E03E3E">'
+    );
   });
 
   test('a background-coloured toggle renders a background on the card front and back', async () => {
@@ -345,8 +349,12 @@ describe('BlockHandler', () => {
       undefined
     );
     const card = flashcards[0];
-    expect(card.name).toContain('background-color: rgb(253, 235, 236)');
-    expect(card.back).toContain('background-color: rgb(253, 235, 236)');
+    expect(card.name).toContain(
+      '<span class="n2a-highlight-red_background" style="background-color: rgb(253, 235, 236)">'
+    );
+    expect(card.back).toContain(
+      '<div class="block-color-red_background" style="background-color: rgb(253, 235, 236)">'
+    );
   });
 
   test('Multi-line Toggle with Cloze and Newlines', async () => {
