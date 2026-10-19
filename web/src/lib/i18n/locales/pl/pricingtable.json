@@ -58,6 +58,10 @@
       "question": "Czy mogę anulować w dowolnym momencie?",
       "answer": "Anuluj jednym kliknięciem z poziomu konta — bez pisania do wsparcia. W planie rocznym anulowanie zatrzymuje następne odnowienie, a dostęp pozostaje przez opłacony już rok; niewykorzystany czas nie podlega zwrotowi. Przepustki są jednorazowe, więc nie ma czego anulować."
     },
+    "q8": {
+      "question": "Jak mogę zapłacić?",
+      "answer": "Płatność przyjmuje karty kredytowe i debetowe z dowolnego kraju, Apple Pay, Google Pay, Link i PayPal. W zależności od kraju i planu dostępne są też lokalne metody, takie jak Klarna, Bancontact, BLIK, EPS, Przelewy24, MobilePay, TWINT, Alipay i WeChat Pay. Ceny są w USD, a płatność może je pokazać i pobrać w Twojej lokalnej walucie."
+    },
     "q6": {
       "question": "Czy jest aplikacja?",
       "answer": "Tak — 2anki jest darmowe w App Store na iPhone'a, iPada i Maca, obok aplikacji webowej. Pliki są przetwarzane na urządzeniu. Obowiązują te same plany: Day Pass, Week Pass i Pro są dostępne jako zakupy w aplikacji."

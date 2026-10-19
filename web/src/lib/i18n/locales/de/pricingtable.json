@@ -58,6 +58,10 @@
       "question": "Kann ich jederzeit kündigen?",
       "answer": "Kündige mit einem Klick in deinem Konto — keine E-Mail an den Support nötig. Bei einem Jahresplan stoppt die Kündigung die nächste Verlängerung und dein Zugang bleibt für das bereits bezahlte Jahr bestehen; nicht genutzte Zeit wird nicht erstattet. Pässe sind einmalig, es gibt also nichts zu kündigen."
     },
+    "q8": {
+      "question": "Wie kann ich bezahlen?",
+      "answer": "Im Checkout kannst du mit Kredit- und Debitkarten aus jedem Land, Apple Pay, Google Pay, Link und PayPal zahlen. Je nach Land und Plan gibt es auch lokale Zahlungsarten wie Klarna, Bancontact, BLIK, EPS, Przelewy24, MobilePay, TWINT, Alipay und WeChat Pay. Die Preise sind in USD, und der Checkout kann sie in deiner Landeswährung anzeigen und abbuchen."
+    },
     "q6": {
       "question": "Gibt es eine App?",
       "answer": "Ja — 2anki ist kostenlos im App Store für iPhone, iPad und Mac, neben der Web-App. Dateien werden auf dem Gerät verarbeitet. Es gelten dieselben Tarife: Day Pass, Week Pass und Pro sind als In-App-Käufe verfügbar."

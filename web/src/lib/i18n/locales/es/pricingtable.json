@@ -58,6 +58,10 @@
       "question": "¿Puedo cancelar cuando quiera?",
       "answer": "Cancela con un clic desde tu cuenta — sin necesidad de escribir a soporte. En un plan anual, cancelar detiene la próxima renovación y tu acceso continúa durante el año que ya pagaste; el tiempo no usado no se reembolsa. Los pases son de pago único, así que no hay nada que cancelar."
     },
+    "q8": {
+      "question": "¿Cómo puedo pagar?",
+      "answer": "El pago acepta tarjetas de crédito y débito de cualquier país, Apple Pay, Google Pay, Link y PayPal. Según tu país y tu plan, también ofrece métodos locales como Klarna, Bancontact, BLIK, EPS, Przelewy24, MobilePay, TWINT, Alipay y WeChat Pay. Los precios están en USD y el pago puede mostrarlos y cobrarlos en tu moneda local."
+    },
     "q6": {
       "question": "¿Hay una aplicación?",
       "answer": "Sí — 2anki es gratis en la App Store para iPhone, iPad y Mac, junto con la app web. Los archivos se procesan en el dispositivo. Se aplican los mismos planes: Day Pass, Week Pass y Pro están disponibles como compras dentro de la app."

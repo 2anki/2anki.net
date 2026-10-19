@@ -52,6 +52,13 @@ export const buildPricingFaq = (
     answerKey: 'faq.q5.answer',
   },
   {
+    question: 'How can I pay?',
+    answer:
+      'Checkout takes credit and debit cards issued in any country, Apple Pay, Google Pay, Link and PayPal. Depending on your country and plan, it also offers local methods such as Klarna, Bancontact, BLIK, EPS, Przelewy24, MobilePay, TWINT, Alipay and WeChat Pay. Prices are in USD, and checkout can show and charge them in your local currency.',
+    questionKey: 'faq.q8.question',
+    answerKey: 'faq.q8.answer',
+  },
+  {
     question: 'Is there an app?',
     answer:
       'Yes — 2anki is free on the App Store for iPhone, iPad, and Mac, alongside the web app. Files are parsed on-device. The same plans apply: Day Pass, Week Pass, and Pro are available as in-app purchases.',
