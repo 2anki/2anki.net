@@ -54,7 +54,7 @@ export const buildPricingFaq = (
   {
     question: 'How can I pay?',
     answer:
-      'Checkout takes credit and debit cards issued in any country, Apple Pay, Google Pay, Link and PayPal. Depending on your country and plan, it also offers local methods such as Klarna, Bancontact, BLIK, EPS, Przelewy24, MobilePay, TWINT, Alipay and WeChat Pay. Prices are in USD, and checkout can show and charge them in your local currency.',
+      'Checkout takes credit and debit cards issued in any country, plus Apple Pay, Google Pay, Link, and PayPal where your device and region support them. Depending on your country and plan, it also offers local methods such as Klarna, Bancontact, BLIK, EPS, Przelewy24, MobilePay, TWINT, Alipay, and WeChat Pay. Prices are in USD, and checkout can show and charge them in your local currency.',
     questionKey: 'faq.q8.question',
     answerKey: 'faq.q8.answer',
   },
