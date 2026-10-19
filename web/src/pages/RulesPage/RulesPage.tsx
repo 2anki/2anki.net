@@ -16,6 +16,8 @@ import { FieldHint } from '../../components/FieldHint';
 import Switch from '../../components/input/Switch';
 import TemplateSelect from '../../components/TemplateSelect';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
+import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabel';
 import sharedStyles from '../../styles/shared.module.css';
 import RuleDefinition from '../SearchPage/components/RuleDefinition';
 import { NewRule } from '../SearchPage/types';
@@ -62,6 +64,9 @@ const advancedDeckOptions = [
   'quote',
   'child_database',
 ];
+const planGatedDeckOptions = advancedDeckOptions.filter(
+  (type) => type !== 'child_database'
+);
 const advancedDeckLabelKeys: Record<string, string> = {
   toggle: 'rules.labelToggle',
   heading_1: 'rules.labelHeading1',
@@ -99,6 +104,14 @@ function hasAdvancedDeckType(deckTypes: string[]): boolean {
   return deckTypes.some((type) => advancedDeckOptions.includes(type));
 }
 
+function hasPlanGatedDeckType(deckTypes: string[]): boolean {
+  return deckTypes.some((type) => planGatedDeckOptions.includes(type));
+}
+
+function hasRuleBasedSubDeck(subDeckTypes: string[]): boolean {
+  return subDeckTypes.some((type) => type !== 'child_page');
+}
+
 const byLocale = (a: string, b: string) => a.localeCompare(b);
 
 function snapshot(rules: NewRule, tags: string, email: boolean) {
@@ -116,6 +129,9 @@ export default function RulesPage({ setErrorMessage }: Readonly<Props>) {
   const { id = '' } = useParams<{ id: string }>();
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { data: userLocals } = useUserLocals();
+  const localsLoaded = userLocals != null;
+  const isPaying = isPayingUser(userLocals?.locals);
 
   const titleParam = params.get('title');
   const headingTitle = titleParam
@@ -363,6 +379,11 @@ export default function RulesPage({ setErrorMessage }: Readonly<Props>) {
                   <FieldHint text={t('rules.decksHint')} />
                 </div>
                 <p className={styles.groupHint}>{t('rules.decksIntro')}</p>
+                <p className={styles.scopeNote}>
+                  {t('rules.notionOnlyNotePrefix')}
+                  <Link to="/upload">{t('rules.notionOnlyNoteLink')}</Link>
+                  {t('rules.notionOnlyNoteSuffix')}
+                </p>
 
                 <div className={styles.section}>
                   <div className={styles.labelRow}>
@@ -402,11 +423,17 @@ export default function RulesPage({ setErrorMessage }: Readonly<Props>) {
                       labels={advancedDeckLabels}
                       onSelected={(fco) => toggleSelection('deck_is', fco)}
                     />
-                    {hasAdvancedDeckType(rules.deck_is) && (
-                      <p className={styles.advancedWarning}>
-                        {t('rules.advancedWarning')}
-                      </p>
-                    )}
+                    {localsLoaded &&
+                      hasPlanGatedDeckType(rules.deck_is) &&
+                      (isPaying ? (
+                        <p className={styles.advancedWarning}>
+                          {t('rules.advancedWarning')}
+                        </p>
+                      ) : (
+                        <p className={styles.planNote}>
+                          {t('rules.freePlanDeckNote')}
+                        </p>
+                      ))}
                   </div>
                 </details>
 
@@ -422,6 +449,13 @@ export default function RulesPage({ setErrorMessage }: Readonly<Props>) {
                     options={subDeckOptions}
                     onSelected={(fco) => toggleSelection('sub_deck_is', fco)}
                   />
+                  {localsLoaded &&
+                    !isPaying &&
+                    hasRuleBasedSubDeck(rules.sub_deck_is) && (
+                      <p className={styles.planNote}>
+                        {t('rules.freePlanDeckNote')}
+                      </p>
+                    )}
                 </div>
               </section>
 

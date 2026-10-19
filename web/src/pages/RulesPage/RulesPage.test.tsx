@@ -23,6 +23,17 @@ vi.mock('../../components/CardOptionsForm/CardOptionsForm', () => ({
   )),
 }));
 
+const mockUseUserLocals = vi.fn(() => ({ data: undefined }) as unknown);
+vi.mock('../../lib/hooks/useUserLocals', () => ({
+  useUserLocals: () => mockUseUserLocals(),
+}));
+
+function mockPlan(paying: boolean) {
+  mockUseUserLocals.mockReturnValue({
+    data: { locals: { patreon: false, subscriber: paying } },
+  });
+}
+
 const mockApi = {
   getRules: vi.fn(),
   getFavorites: vi.fn(),
@@ -208,6 +219,7 @@ describe('RulesPage deck boundaries', () => {
 describe('RulesPage advanced deck types', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPlan(true);
     mockApi.getRules.mockResolvedValue(null);
     mockApi.getFavorites.mockResolvedValue([]);
     mockApi.saveRules.mockResolvedValue(undefined);
@@ -349,5 +361,129 @@ describe('RulesPage advanced deck types', () => {
     await waitFor(() => {
       expect(screen.getByText(/re-split this page/i)).toBeInTheDocument();
     });
+  });
+});
+
+describe('RulesPage plan-aware deck split note', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockApi.getRules.mockResolvedValue({
+      id: 9,
+      object_id: 'page-plan',
+      flashcard_is: 'toggle',
+      sub_deck_is: 'child_page',
+      tags_is: 'strikethrough',
+      deck_is: 'page,database,toggle',
+      owner: 1,
+      email_notification: false,
+    });
+    mockApi.getFavorites.mockResolvedValue([]);
+  });
+
+  it('tells a free user the deck split needs a paid plan instead of warning about a re-split', async () => {
+    mockPlan(false);
+    renderPage('page-plan');
+    await waitFor(() => {
+      expect(
+        screen.getByText(/stay as cards in the page's deck/i)
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/re-split this page/i)).toBeNull();
+  });
+
+  it('keeps the accurate re-split warning for a paying user', async () => {
+    mockPlan(true);
+    renderPage('page-plan');
+    await waitFor(() => {
+      expect(screen.getByText(/re-split this page/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/needs a paid plan/i)).toBeNull();
+  });
+
+  it('shows the free-plan note in the sub-decks section when a heading sub-deck is chosen', async () => {
+    mockApi.getRules.mockResolvedValue({
+      id: 10,
+      object_id: 'page-subdeck',
+      flashcard_is: 'toggle',
+      sub_deck_is: 'child_page,heading_1',
+      tags_is: 'strikethrough',
+      deck_is: 'page,database',
+      owner: 1,
+      email_notification: false,
+    });
+    mockPlan(false);
+    renderPage('page-subdeck');
+    await waitFor(() => {
+      expect(
+        screen.getByText(/stay as cards in the page's deck/i)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('does not show the free-plan sub-deck note when only child pages are chosen', async () => {
+    mockApi.getRules.mockResolvedValue({
+      id: 11,
+      object_id: 'page-childpage',
+      flashcard_is: 'toggle',
+      sub_deck_is: 'child_page',
+      tags_is: 'strikethrough',
+      deck_is: 'page,database',
+      owner: 1,
+      email_notification: false,
+    });
+    mockPlan(false);
+    renderPage('page-childpage');
+    await waitFor(() => {
+      expect(screen.getByText('Deck boundaries')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/needs a paid plan/i)).toBeNull();
+  });
+
+  it('states that the rules apply to Notion-connected pages only', async () => {
+    mockPlan(true);
+    renderPage('page-plan');
+    await waitFor(() => {
+      expect(
+        screen.getByText(/apply to Notion-connected pages/i)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('links the Notion-only note to the upload page options', async () => {
+    mockPlan(true);
+    renderPage('page-plan');
+    const link = await screen.findByRole('link', {
+      name: /upload page options/i,
+    });
+    expect(link).toHaveAttribute('href', '/upload');
+  });
+
+  it('does not show the plan note for child_database alone, which is not plan-gated', async () => {
+    mockApi.getRules.mockResolvedValue({
+      id: 12,
+      object_id: 'page-childdb',
+      flashcard_is: 'toggle',
+      sub_deck_is: 'child_page',
+      tags_is: 'strikethrough',
+      deck_is: 'page,database,child_database',
+      owner: 1,
+      email_notification: false,
+    });
+    mockPlan(false);
+    renderPage('page-childdb');
+    await waitFor(() => {
+      expect(screen.getByText('Deck boundaries')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/needs a paid plan/i)).toBeNull();
+  });
+
+  it('renders no plan note until the user plan has loaded', async () => {
+    mockUseUserLocals.mockReturnValue({ data: undefined });
+    renderPage('page-plan');
+    await waitFor(() => {
+      expect(screen.getByText('Deck boundaries')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/needs a paid plan/i)).toBeNull();
+    expect(screen.queryByText(/re-split this page/i)).toBeNull();
   });
 });
